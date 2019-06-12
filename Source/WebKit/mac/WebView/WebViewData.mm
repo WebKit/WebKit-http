@@ -37,6 +37,7 @@
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/TextIndicatorWindow.h>
+#import <WebCore/ValidationBubble.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/RunLoop.h>
@@ -47,6 +48,11 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 #import "WebMediaPlaybackTargetPicker.h"
+#endif
+
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+#import <WebCore/WebPlaybackSessionInterfaceMac.h>
+#import <WebCore/WebPlaybackSessionModelMediaElement.h>
 #endif
 
 BOOL applicationIsTerminating = NO;
@@ -138,7 +144,11 @@ WebViewLayerFlushScheduler::WebViewLayerFlushScheduler(LayerFlushController* flu
     zoomMultiplier = 1;
     zoomsTextOnly = NO;
 
+#if PLATFORM(MAC)
+    interactiveFormValidationEnabled = YES;
+#else
     interactiveFormValidationEnabled = NO;
+#endif
     // The default value should be synchronized with WebCore/page/Settings.cpp.
     validationMessageTimerMagnification = 50;
 

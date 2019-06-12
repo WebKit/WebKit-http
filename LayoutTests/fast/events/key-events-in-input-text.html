@@ -25,9 +25,12 @@ function eventInfo(event, where) {
     else if (event.type == "keydown" || event.type == "keypress" || event.type == "keyup") 
         return (where ? "(" + where + ") " : "") + target.tagName + " - " + event.type
             + ' - ' + [event.ctrlKey, event.altKey, event.shiftKey, event.metaKey]
+            + ' - ' + event.key
+            + ' - ' + event.code
             + ' - ' + event.keyIdentifier
             + ' - ' + event.keyCode
             + ' - ' + event.charCode
+            + ' - ' + event.which
             + '. Value: "' + target.value + '".';
     else if (event.type == "mousedown" || event.type == "click" || event.type == "mouseup")
         return (where ? "(" + where + ") " : "") + target.tagName + " - " + event.type
@@ -38,9 +41,12 @@ function eventInfo(event, where) {
     }
 }
 log("target - type - " + ["ctrlKey", "altKey", "shiftKey", "metaKey"]
+        + ' - ' + "key"
+        + ' - ' + "code"
         + ' - ' + "keyIdentifier"
         + ' - ' + "keyCode"
-        + ' - ' + "charCode");
+        + ' - ' + "charCode"
+        + ' - ' + "which");
 
 if (document.getElementsByTagName("input")[0].addEventListener)
     document.getElementsByTagName("input")[0].addEventListener('textInput', function(e) {log(eventInfo(e));}, false);

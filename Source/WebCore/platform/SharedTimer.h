@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,9 +26,10 @@
 #ifndef SharedTimer_h
 #define SharedTimer_h
 
-#include <functional>
 #include <wtf/FastMalloc.h>
+#include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Seconds.h>
 
 namespace WebCore {
 
@@ -40,10 +41,10 @@ class SharedTimer {
 public:
     SharedTimer() = default;
     virtual ~SharedTimer() { }
-    virtual void setFiredFunction(std::function<void()>&&) = 0;
+    virtual void setFiredFunction(WTF::Function<void()>&&) = 0;
 
     // The fire interval is in seconds relative to the current monotonic clock time.
-    virtual void setFireInterval(double) = 0;
+    virtual void setFireInterval(Seconds) = 0;
     virtual void stop() = 0;
 
     virtual void invalidate() { }

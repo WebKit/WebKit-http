@@ -29,7 +29,7 @@
 #include "RenderSVGResourceRadialGradient.h"
 #include "SVGNames.h"
 #include "SVGStopElement.h"
-#include "SVGTransformList.h"
+#include "SVGTransformListValues.h"
 #include "SVGTransformable.h"
 #include "StyleResolver.h"
 #include "XLinkNames.h"
@@ -84,7 +84,7 @@ void SVGGradientElement::parseAttribute(const QualifiedName& name, const AtomicS
     }
 
     if (name == SVGNames::gradientTransformAttr) {
-        SVGTransformList newList;
+        SVGTransformListValues newList;
         newList.parse(value);
         detachAnimatedGradientTransformListWrappers(newList.size());
         setGradientTransformBaseValue(newList);
@@ -133,19 +133,14 @@ Vector<Gradient::ColorStop> SVGGradientElement::buildStops()
     float previousOffset = 0.0f;
 
     for (auto& stop : childrenOfType<SVGStopElement>(*this)) {
-        Color color = stop.stopColorIncludingOpacity();
+        const Color& color = stop.stopColorIncludingOpacity();
 
-        // Figure out right monotonic offset
+        // Figure out right monotonic offset.
         float offset = stop.offset();
         offset = std::min(std::max(previousOffset, offset), 1.0f);
         previousOffset = offset;
 
-        // Extract individual channel values
-        // FIXME: Why doesn't ColorStop take a Color and an offset??
-        float r, g, b, a;
-        color.getRGBA(r, g, b, a);
-
-        stops.append(Gradient::ColorStop(offset, r, g, b, a));
+        stops.append(Gradient::ColorStop(offset, color));
     }
 
     return stops;

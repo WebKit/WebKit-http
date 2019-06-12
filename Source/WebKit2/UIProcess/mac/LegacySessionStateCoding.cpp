@@ -59,6 +59,13 @@ static const CFStringRef sessionHistoryEntryShouldOpenExternalURLsPolicyKey = CF
 // Session history entry data.
 const uint32_t sessionHistoryEntryDataVersion = 2;
 
+// Maximum size for subframe session data.
+#if PLATFORM(IOS)
+static const uint32_t maximumSessionStateDataSize = 2 * 1024 * 1024;
+#else
+static const uint32_t maximumSessionStateDataSize = std::numeric_limits<uint32_t>::max();
+#endif
+
 template<typename T> void isValidEnum(T);
 
 class HistoryEntryDataEncoder {
@@ -275,8 +282,8 @@ static void encodeFormDataElement(HistoryEntryDataEncoder& encoder, const HTTPBo
         encoder << false;
 
         encoder << element.fileStart;
-        encoder << element.fileLength.valueOr(-1);
-        encoder << element.expectedFileModificationTime.valueOr(std::numeric_limits<double>::quiet_NaN());
+        encoder << element.fileLength.value_or(-1);
+        encoder << element.expectedFileModificationTime.value_or(std::numeric_limits<double>::quiet_NaN());
         break;
 
     case HTTPBody::Element::Type::Blob:
@@ -421,22 +428,36 @@ static RetainPtr<CFDictionaryRef> encodeSessionHistory(const BackForwardListStat
         return createDictionary({ { sessionHistoryVersionKey, sessionHistoryVersionNumber.get() } });
 
     auto entries = adoptCF(CFArrayCreateMutable(kCFAllocatorDefault, backForwardListState.items.size(), &kCFTypeArrayCallBacks));
+    size_t totalDataSize = 0;
 
     for (const auto& item : backForwardListState.items) {
         auto url = item.pageState.mainFrameState.urlString.createCFString();
         auto title = item.pageState.title.createCFString();
         auto originalURL = item.pageState.mainFrameState.originalURLString.createCFString();
-        auto data = encodeSessionHistoryEntryData(item.pageState.mainFrameState);
+        auto data = totalDataSize <= maximumSessionStateDataSize ? encodeSessionHistoryEntryData(item.pageState.mainFrameState) : nullptr;
         auto shouldOpenExternalURLsPolicyValue = static_cast<uint64_t>(item.pageState.shouldOpenExternalURLsPolicy);
         auto shouldOpenExternalURLsPolicy = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt64Type, &shouldOpenExternalURLsPolicyValue));
 
-        auto entryDictionary = createDictionary({
-            { sessionHistoryEntryURLKey, url.get() },
-            { sessionHistoryEntryTitleKey, title.get() },
-            { sessionHistoryEntryOriginalURLKey, originalURL.get() },
-            { sessionHistoryEntryDataKey, data.get() },
-            { sessionHistoryEntryShouldOpenExternalURLsPolicyKey, shouldOpenExternalURLsPolicy.get() },
-        });
+        RetainPtr<CFDictionaryRef> entryDictionary;
+
+        if (data) {
+            totalDataSize += CFDataGetLength(data.get());
+
+            entryDictionary = createDictionary({
+                { sessionHistoryEntryURLKey, url.get() },
+                { sessionHistoryEntryTitleKey, title.get() },
+                { sessionHistoryEntryOriginalURLKey, originalURL.get() },
+                { sessionHistoryEntryDataKey, data.get() },
+                { sessionHistoryEntryShouldOpenExternalURLsPolicyKey, shouldOpenExternalURLsPolicy.get() },
+            });
+        } else {
+            entryDictionary = createDictionary({
+                { sessionHistoryEntryURLKey, url.get() },
+                { sessionHistoryEntryTitleKey, title.get() },
+                { sessionHistoryEntryOriginalURLKey, originalURL.get() },
+                { sessionHistoryEntryShouldOpenExternalURLsPolicyKey, shouldOpenExternalURLsPolicy.get() },
+            });
+        }
 
         CFArrayAppendValue(entries.get(), entryDictionary.get());
     }
@@ -683,13 +704,13 @@ public:
 #endif
 
     template<typename T>
-    auto operator>>(Optional<T>& value) -> typename std::enable_if<std::is_enum<T>::value, HistoryEntryDataDecoder&>::type
+    auto operator>>(std::optional<T>& value) -> typename std::enable_if<std::is_enum<T>::value, HistoryEntryDataDecoder&>::type
     {
         uint32_t underlyingEnumValue;
         *this >> underlyingEnumValue;
 
         if (!isValid() || !isValidEnum(static_cast<T>(underlyingEnumValue)))
-            value = Nullopt;
+            value = std::nullopt;
         else
             value = static_cast<T>(underlyingEnumValue);
 
@@ -769,7 +790,7 @@ private:
 
 static void decodeFormDataElement(HistoryEntryDataDecoder& decoder, HTTPBody::Element& formDataElement)
 {
-    Optional<FormDataElementType> elementType;
+    std::optional<FormDataElementType> elementType;
     decoder >> elementType;
     if (!elementType)
         return;
@@ -1047,7 +1068,7 @@ static bool decodeV1SessionHistory(CFDictionaryRef sessionHistoryDictionary, Bac
     auto currentIndexNumber = dynamic_cf_cast<CFNumberRef>(CFDictionaryGetValue(sessionHistoryDictionary, sessionHistoryCurrentIndexKey));
     if (!currentIndexNumber) {
         // No current index means the dictionary represents an empty session.
-        backForwardListState.currentIndex = Nullopt;
+        backForwardListState.currentIndex = std::nullopt;
         backForwardListState.items = { };
         return true;
     }
@@ -1101,22 +1122,23 @@ bool decodeLegacySessionState(const uint8_t* bytes, size_t size, SessionState& s
     if (versionNumber != sessionStateDataVersion)
         return false;
 
-    auto sessionStateDictionary = adoptCF(dynamic_cf_cast<CFDictionaryRef>(CFPropertyListCreateWithData(kCFAllocatorDefault, adoptCF(CFDataCreate(kCFAllocatorDefault, bytes + sizeof(uint32_t), size - sizeof(uint32_t))).get(), kCFPropertyListImmutable, nullptr, nullptr)));
+    auto cfPropertyList = adoptCF(CFPropertyListCreateWithData(kCFAllocatorDefault, adoptCF(CFDataCreate(kCFAllocatorDefault, bytes + sizeof(uint32_t), size - sizeof(uint32_t))).get(), kCFPropertyListImmutable, nullptr, nullptr));
+    auto sessionStateDictionary = dynamic_cf_cast<CFDictionaryRef>(cfPropertyList.get());
     if (!sessionStateDictionary)
         return false;
 
-    if (auto backForwardListDictionary = dynamic_cf_cast<CFDictionaryRef>(CFDictionaryGetValue(sessionStateDictionary.get(), sessionHistoryKey))) {
+    if (auto backForwardListDictionary = dynamic_cf_cast<CFDictionaryRef>(CFDictionaryGetValue(sessionStateDictionary, sessionHistoryKey))) {
         if (!decodeSessionHistory(backForwardListDictionary, sessionState.backForwardListState))
             return false;
     }
 
-    if (auto provisionalURLString = dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(sessionStateDictionary.get(), provisionalURLKey))) {
+    if (auto provisionalURLString = dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(sessionStateDictionary, provisionalURLKey))) {
         sessionState.provisionalURL = WebCore::URL(WebCore::URL(), provisionalURLString);
         if (!sessionState.provisionalURL.isValid())
             return false;
     }
 
-    if (auto renderTreeSize = dynamic_cf_cast<CFNumberRef>(CFDictionaryGetValue(sessionStateDictionary.get(), renderTreeSizeKey)))
+    if (auto renderTreeSize = dynamic_cf_cast<CFNumberRef>(CFDictionaryGetValue(sessionStateDictionary, renderTreeSizeKey)))
         CFNumberGetValue(renderTreeSize, kCFNumberSInt64Type, &sessionState.renderTreeSize);
     else
         sessionState.renderTreeSize = 0;

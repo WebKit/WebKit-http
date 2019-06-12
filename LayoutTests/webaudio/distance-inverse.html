@@ -2,7 +2,7 @@
 <html>
   <head>
     <script src="resources/audio-testing.js"></script>
-    <script src="../resources/js-test-pre.js"></script>
+    <script src="../resources/js-test.js"></script>
     <script src="resources/distance-model-testing.js"></script>
   </head>
 
@@ -14,26 +14,17 @@
       description("Test inverse distance model of AudioPannerNode.");
 
       function runTest() {
-          if (window.testRunner) {
-              testRunner.dumpAsText();
-              testRunner.waitUntilDone();
-          }
-
           window.jsTestIsAsync = true;
 
           // Create offline audio context.
           context = new webkitOfflineAudioContext(2, sampleRate * renderLengthSeconds, sampleRate);
 
-          // Temp panner node so we can get the INVERSE_DISTANCE value.
+          // Temp panner node so we can get the inverse value.
           var tempPanner = context.createPanner();
-          createTestAndRun(context, tempPanner.INVERSE_DISTANCE, 1);
+          createTestAndRun(context, "inverse");
       }
 
       runTest();
-      successfullyParsed = true;
-
     </script>
-
-<script src="../resources/js-test-post.js"></script>
   </body>
 </html>

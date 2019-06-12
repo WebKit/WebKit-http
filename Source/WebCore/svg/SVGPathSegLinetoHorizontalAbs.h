@@ -19,14 +19,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathSegLinetoHorizontalAbs_h
-#define SVGPathSegLinetoHorizontalAbs_h
+#pragma once
 
 #include "SVGPathSegLinetoHorizontal.h"
 
 namespace WebCore {
 
-class SVGPathSegLinetoHorizontalAbs : public SVGPathSegLinetoHorizontal {
+class SVGPathSegLinetoHorizontalAbs final : public SVGPathSegLinetoHorizontal {
 public:
     static Ref<SVGPathSegLinetoHorizontalAbs> create(const SVGPathElement& element, SVGPathSegRole role, float x)
     {
@@ -39,10 +38,8 @@ private:
     {
     }
 
-    virtual unsigned short pathSegType() const override { return PATHSEG_LINETO_HORIZONTAL_ABS; }
-    virtual String pathSegTypeAsLetter() const override { return "H"; }
+    unsigned short pathSegType() const final { return PATHSEG_LINETO_HORIZONTAL_ABS; }
+    String pathSegTypeAsLetter() const final { return "H"; }
 };
 
 } // namespace WebCore
-
-#endif

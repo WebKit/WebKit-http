@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,21 +34,17 @@
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>
 #include <runtime/VM.h>
-#include <sys/sysctl.h>
 
 namespace WebCore {
 
-static size_t vmPageSize()
+size_t vmPageSize()
 {
-    static size_t pageSize;
-    static std::once_flag onceFlag;
-    std::call_once(onceFlag, [&] {
-        size_t outputSize = sizeof(pageSize);
-        int status = sysctlbyname("vm.pagesize", &pageSize, &outputSize, nullptr, 0);
-        ASSERT_UNUSED(status, status != -1);
-        ASSERT(pageSize);
-    });
-    return pageSize;
+#if PLATFORM(IOS)
+    return vm_kernel_page_size;
+#else
+    static size_t cached = sysconf(_SC_PAGESIZE);
+    return cached;
+#endif
 }
 
 void logFootprintComparison(const std::array<TagInfo, 256>& before, const std::array<TagInfo, 256>& after)
@@ -84,6 +80,7 @@ const char* displayNameForVMTag(unsigned tag)
     case VM_MEMORY_IMAGEIO: return "ImageIO";
     case VM_MEMORY_CGIMAGE: return "CG image";
     case VM_MEMORY_JAVASCRIPT_JIT_EXECUTABLE_ALLOCATOR: return "JSC JIT";
+    case VM_MEMORY_JAVASCRIPT_CORE: return "WebAssembly";
     case VM_MEMORY_MALLOC: return "malloc";
     case VM_MEMORY_MALLOC_HUGE: return "malloc (huge)";
     case VM_MEMORY_MALLOC_LARGE: return "malloc (large)";
@@ -164,6 +161,8 @@ static float cpuUsage()
 
         if (!(threadBasicInfo->flags & TH_FLAGS_IDLE))
             usage += threadBasicInfo->cpu_usage / static_cast<float>(TH_USAGE_SCALE) * 100.0;
+
+        mach_port_deallocate(mach_task_self(), threadList[i]);
     }
 
     kr = vm_deallocate(mach_task_self(), (vm_offset_t)threadList, threadCount * sizeof(thread_t));
@@ -183,6 +182,8 @@ static unsigned categoryForVMTag(unsigned tag)
         return MemoryCategory::Images;
     case VM_MEMORY_JAVASCRIPT_JIT_EXECUTABLE_ALLOCATOR:
         return MemoryCategory::JSJIT;
+    case VM_MEMORY_JAVASCRIPT_CORE:
+        return MemoryCategory::WebAssembly;
     case VM_MEMORY_MALLOC:
     case VM_MEMORY_MALLOC_HUGE:
     case VM_MEMORY_MALLOC_LARGE:
@@ -195,7 +196,7 @@ static unsigned categoryForVMTag(unsigned tag)
     default:
         return MemoryCategory::Other;
     }
-};
+}
 
 void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& data)
 {
@@ -219,14 +220,26 @@ void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& dat
     data.totalDirtySize = totalDirtyPages * vmPageSize();
 
     size_t currentGCHeapCapacity = vm->heap.blockBytesAllocated();
-    size_t currentGCOwned = vm->heap.extraMemorySize();
+    size_t currentGCOwnedExtra = vm->heap.extraMemorySize();
+    size_t currentGCOwnedExternal = vm->heap.externalMemorySize();
+    ASSERT(currentGCOwnedExternal <= currentGCOwnedExtra);
 
     data.categories[MemoryCategory::GCHeap].dirtySize = currentGCHeapCapacity;
-    data.categories[MemoryCategory::GCOwned].dirtySize = currentGCOwned;
+    data.categories[MemoryCategory::GCOwned].dirtySize = currentGCOwnedExtra - currentGCOwnedExternal;
+    data.categories[MemoryCategory::GCOwned].externalSize = currentGCOwnedExternal;
 
-    // Subtract known subchunks from the bmalloc bucket.
-    // FIXME: Handle running with bmalloc disabled.
-    data.categories[MemoryCategory::bmalloc].dirtySize -= currentGCHeapCapacity + currentGCOwned;
+    auto& mallocBucket = isFastMallocEnabled() ? data.categories[MemoryCategory::bmalloc] : data.categories[MemoryCategory::LibcMalloc];
+
+    // First subtract memory allocated by the GC heap, since we track that separately.
+    mallocBucket.dirtySize -= currentGCHeapCapacity;
+
+    // It would be nice to assert that the "GC owned" amount is smaller than the total dirty malloc size,
+    // but since the "GC owned" accounting is inexact, it's not currently feasible.
+    size_t currentGCOwnedGenerallyInMalloc = currentGCOwnedExtra - currentGCOwnedExternal;
+    if (currentGCOwnedGenerallyInMalloc < mallocBucket.dirtySize)
+        mallocBucket.dirtySize -= currentGCOwnedGenerallyInMalloc;
+
+    data.totalExternalSize = currentGCOwnedExternal;
 
     data.timeOfNextEdenCollection = vm->heap.edenActivityCallback()->nextFireTime();
     data.timeOfNextFullCollection = vm->heap.fullActivityCallback()->nextFireTime();

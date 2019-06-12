@@ -30,6 +30,7 @@
 #include "FloatRect.h"
 #include "GraphicsTypes.h"
 #include "Image.h"
+#include "Settings.h"
 
 #if USE(CG)
 
@@ -47,42 +48,47 @@ class ImageBuffer;
 
 class PDFDocumentImage final : public Image {
 public:
-    static PassRefPtr<PDFDocumentImage> create(ImageObserver* observer)
+    static Ref<PDFDocumentImage> create(ImageObserver* observer)
     {
-        return adoptRef(new PDFDocumentImage(observer));
+        return adoptRef(*new PDFDocumentImage(observer));
     }
+
+    void setPdfImageCachingPolicy(PDFImageCachingPolicy);
 
 private:
     PDFDocumentImage(ImageObserver*);
     virtual ~PDFDocumentImage();
 
-    virtual bool isPDFDocumentImage() const override { return true; }
+    bool isPDFDocumentImage() const override { return true; }
 
-    virtual String filenameExtension() const override;
+    String filenameExtension() const override;
 
-    virtual bool hasSingleSecurityOrigin() const override { return true; }
+    bool hasSingleSecurityOrigin() const override { return true; }
 
-    virtual bool dataChanged(bool allDataReceived) override;
+    EncodedDataStatus dataChanged(bool allDataReceived) override;
 
-    virtual void destroyDecodedData(bool /*destroyAll*/ = true) override;
+    void destroyDecodedData(bool /*destroyAll*/ = true) override;
 
-    virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override;
-    virtual FloatSize size() const override;
+    void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override;
+    FloatSize size() const override;
 
-    virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
+    ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) override;
 
     // FIXME: Implement this to be less conservative.
-    virtual bool currentFrameKnownToBeOpaque() override { return false; }
+    bool currentFrameKnownToBeOpaque() const override { return false; }
 
-    virtual void dump(TextStream&) const override;
+    void dump(TextStream&) const override;
 
     void createPDFDocument();
     void computeBoundsForCurrentPage();
     unsigned pageCount() const;
     void drawPDFPage(GraphicsContext&);
 
+    void decodedSizeChanged(size_t newCachedBytes);
     void updateCachedImageIfNeeded(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect);
     bool cacheParametersMatch(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect) const;
+
+    PDFImageCachingPolicy m_pdfImageCachingPolicy { PDFImageCachingDefault };
 
 #if USE(PDFKIT_FOR_PDFDOCUMENTIMAGE)
     RetainPtr<PDFDocument> m_document;
@@ -91,6 +97,7 @@ private:
 #endif
 
     std::unique_ptr<ImageBuffer> m_cachedImageBuffer;
+    FloatRect m_cachedImageRect;
     AffineTransform m_cachedTransform;
     FloatSize m_cachedDestinationSize;
     FloatRect m_cachedSourceRect;
@@ -102,6 +109,8 @@ private:
 };
 
 }
+
+SPECIALIZE_TYPE_TRAITS_IMAGE(PDFDocumentImage)
 
 #endif // USE(CG)
 

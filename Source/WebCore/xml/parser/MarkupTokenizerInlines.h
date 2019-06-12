@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2016 Apple Inc. All Rights Reserved.
  * Copyright (C) 2009 Torch Mobile, Inc. http://www.torchmobile.com/
  * Copyright (C) 2010 Google, Inc. All Rights Reserved.
  *
@@ -25,10 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MarkupTokenizerInlines_h
-#define MarkupTokenizerInlines_h
-
-#include "SegmentedString.h"
+#pragma once
 
 #if COMPILER(MSVC)
 // Disable the "unreachable code" warning so we can compile the ASSERT_NOT_REACHED in the END_STATE macro.
@@ -45,7 +42,7 @@ inline bool isTokenizerWhitespace(UChar character)
 #define BEGIN_STATE(stateName)                                  \
     case stateName:                                             \
     stateName: {                                                \
-        const auto currentState = stateName;                    \
+        constexpr auto currentState = stateName;                \
         UNUSED_PARAM(currentState);
 
 #define END_STATE()                                             \
@@ -75,6 +72,15 @@ inline bool isTokenizerWhitespace(UChar character)
         character = m_preprocessor.nextInputCharacter();        \
         goto newState;                                          \
     } while (false)
+#define ADVANCE_PAST_NON_NEWLINE_TO(newState)                   \
+    do {                                                        \
+        if (!m_preprocessor.advancePastNonNewline(source, isNullCharacterSkippingState(newState))) { \
+            m_state = newState;                                 \
+            return haveBufferedCharacterToken();                \
+        }                                                       \
+        character = m_preprocessor.nextInputCharacter();        \
+        goto newState;                                          \
+    } while (false)
 
 // For more complex cases, caller consumes the characters first and then uses this macro.
 #define SWITCH_TO(newState)                                     \
@@ -87,6 +93,4 @@ inline bool isTokenizerWhitespace(UChar character)
         goto newState;                                          \
     } while (false)
 
-}
-
-#endif // MarkupTokenizerInlines_h
+} // namespace WebCore

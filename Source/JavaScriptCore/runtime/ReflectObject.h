@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ReflectObject_h
-#define ReflectObject_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -36,7 +35,7 @@ private:
 
 public:
     typedef JSNonFinalObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static ReflectObject* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
     {
@@ -52,12 +51,8 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-
 protected:
     void finishCreation(VM&, JSGlobalObject*);
 };
 
 } // namespace JSC
-
-#endif // ReflectObject_h

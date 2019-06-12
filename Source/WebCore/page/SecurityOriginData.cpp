@@ -27,9 +27,11 @@
 #include "SecurityOriginData.h"
 
 #include "Document.h"
+#include "FileSystem.h"
 #include "Frame.h"
 #include "SecurityOrigin.h"
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 
 using namespace WebCore;
 
@@ -46,10 +48,10 @@ SecurityOriginData SecurityOriginData::fromSecurityOrigin(const SecurityOrigin& 
     return securityOriginData;
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String SecurityOriginData::debugString() const
 {
-    return makeString(protocol, "://", host, ":", String::number(port));
+    return makeString(protocol, "://", host, ":", String::number(port.value_or(0)));
 }
 #endif
 
@@ -62,16 +64,64 @@ SecurityOriginData SecurityOriginData::fromFrame(Frame* frame)
     if (!document)
         return SecurityOriginData();
 
-    SecurityOrigin* origin = document->securityOrigin();
-    if (!origin)
-        return SecurityOriginData();
-    
-    return SecurityOriginData::fromSecurityOrigin(*origin);
+    return SecurityOriginData::fromSecurityOrigin(document->securityOrigin());
 }
 
 Ref<SecurityOrigin> SecurityOriginData::securityOrigin() const
 {
     return SecurityOrigin::create(protocol.isolatedCopy(), host.isolatedCopy(), port);
+}
+
+static const char separatorCharacter = '_';
+
+String SecurityOriginData::databaseIdentifier() const
+{
+    // Historically, we've used the following (somewhat non-sensical) string
+    // for the databaseIdentifier of local files. We used to compute this
+    // string because of a bug in how we handled the scheme for file URLs.
+    // Now that we've fixed that bug, we still need to produce this string
+    // to avoid breaking existing persistent state.
+    if (equalIgnoringASCIICase(protocol, "file"))
+        return ASCIILiteral("file__0");
+    
+    StringBuilder stringBuilder;
+    stringBuilder.append(protocol);
+    stringBuilder.append(separatorCharacter);
+    stringBuilder.append(encodeForFileName(host));
+    stringBuilder.append(separatorCharacter);
+    stringBuilder.appendNumber(port.value_or(0));
+    
+    return stringBuilder.toString();
+}
+
+std::optional<SecurityOriginData> SecurityOriginData::fromDatabaseIdentifier(const String& databaseIdentifier)
+{
+    // Make sure there's a first separator
+    size_t separator1 = databaseIdentifier.find(separatorCharacter);
+    if (separator1 == notFound)
+        return std::nullopt;
+    
+    // Make sure there's a second separator
+    size_t separator2 = databaseIdentifier.reverseFind(separatorCharacter);
+    if (separator2 == notFound)
+        return std::nullopt;
+    
+    // Ensure there were at least 2 separator characters. Some hostnames on intranets have
+    // underscores in them, so we'll assume that any additional underscores are part of the host.
+    if (separator1 == separator2)
+        return std::nullopt;
+    
+    // Make sure the port section is a valid port number or doesn't exist
+    bool portOkay;
+    int port = databaseIdentifier.right(databaseIdentifier.length() - separator2 - 1).toInt(&portOkay);
+    bool portAbsent = (separator2 == databaseIdentifier.length() - 1);
+    if (!(portOkay || portAbsent))
+        return std::nullopt;
+    
+    if (port < 0 || port > std::numeric_limits<uint16_t>::max())
+        return std::nullopt;
+    
+    return SecurityOriginData {databaseIdentifier.substring(0, separator1), databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1), static_cast<uint16_t>(port)};
 }
 
 SecurityOriginData SecurityOriginData::isolatedCopy() const

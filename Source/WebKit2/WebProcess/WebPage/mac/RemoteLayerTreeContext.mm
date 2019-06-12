@@ -35,7 +35,8 @@
 #import <WebCore/FrameView.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
-#import <wtf/TemporaryChange.h>
+#import <wtf/SetForScope.h>
+#import <wtf/SystemTracing.h>
 
 using namespace WebCore;
 
@@ -51,6 +52,16 @@ RemoteLayerTreeContext::~RemoteLayerTreeContext()
 {
     for (auto& layer : m_liveLayers.values())
         layer->clearContext();
+}
+
+float RemoteLayerTreeContext::deviceScaleFactor() const
+{
+    return m_webPage.deviceScaleFactor();
+}
+
+LayerHostingMode RemoteLayerTreeContext::layerHostingMode() const
+{
+    return m_webPage.layerHostingMode();
 }
 
 void RemoteLayerTreeContext::layerWasCreated(PlatformCALayerRemote& layer, PlatformCALayer::LayerType type)
@@ -106,6 +117,8 @@ std::unique_ptr<GraphicsLayer> RemoteLayerTreeContext::createGraphicsLayer(WebCo
 
 void RemoteLayerTreeContext::buildTransaction(RemoteLayerTreeTransaction& transaction, PlatformCALayer& rootLayer)
 {
+    TraceScope tracingScope(BuildTransactionStart, BuildTransactionEnd);
+
     PlatformCALayerRemote& rootLayerRemote = downcast<PlatformCALayerRemote>(rootLayer);
     transaction.setRootLayerID(rootLayerRemote.layerID());
 

@@ -27,6 +27,7 @@
 #include <WebCore/HitTestResult.h>
 #include <WebCore/Node.h>
 #include <WebCore/RenderObject.h>
+#include <WebCore/SharedBuffer.h>
 #include <WebCore/URL.h>
 #include <wtf/text/WTFString.h>
 
@@ -45,6 +46,7 @@ WebHitTestResultData::WebHitTestResultData(const WebCore::HitTestResult& hitTest
     , absoluteMediaURL(hitTestResult.absoluteMediaURL().string())
     , linkLabel(hitTestResult.textContent())
     , linkTitle(hitTestResult.titleDisplayString())
+    , linkSuggestedFilename(hitTestResult.linkSuggestedFilename())
     , isContentEditable(hitTestResult.isContentEditable())
     , elementBoundingBox(elementBoundingBoxInWindowCoordinates(hitTestResult))
     , isScrollbar(hitTestResult.scrollbar())
@@ -64,6 +66,7 @@ WebHitTestResultData::WebHitTestResultData(const WebCore::HitTestResult& hitTest
     , absoluteMediaURL(hitTestResult.absoluteMediaURL().string())
     , linkLabel(hitTestResult.textContent())
     , linkTitle(hitTestResult.titleDisplayString())
+    , linkSuggestedFilename(hitTestResult.linkSuggestedFilename())
     , isContentEditable(hitTestResult.isContentEditable())
     , elementBoundingBox(elementBoundingBoxInWindowCoordinates(hitTestResult))
     , isScrollbar(hitTestResult.scrollbar())
@@ -91,7 +94,7 @@ WebHitTestResultData::~WebHitTestResultData()
 {
 }
 
-void WebHitTestResultData::encode(IPC::ArgumentEncoder& encoder) const
+void WebHitTestResultData::encode(IPC::Encoder& encoder) const
 {
     encoder << absoluteImageURL;
     encoder << absolutePDFURL;
@@ -99,6 +102,7 @@ void WebHitTestResultData::encode(IPC::ArgumentEncoder& encoder) const
     encoder << absoluteMediaURL;
     encoder << linkLabel;
     encoder << linkTitle;
+    encoder << linkSuggestedFilename;
     encoder << isContentEditable;
     encoder << elementBoundingBox;
     encoder << isScrollbar;
@@ -124,7 +128,7 @@ void WebHitTestResultData::encode(IPC::ArgumentEncoder& encoder) const
     platformEncode(encoder);
 }
 
-bool WebHitTestResultData::decode(IPC::ArgumentDecoder& decoder, WebHitTestResultData& hitTestResultData)
+bool WebHitTestResultData::decode(IPC::Decoder& decoder, WebHitTestResultData& hitTestResultData)
 {
     if (!decoder.decode(hitTestResultData.absoluteImageURL)
         || !decoder.decode(hitTestResultData.absolutePDFURL)
@@ -132,6 +136,7 @@ bool WebHitTestResultData::decode(IPC::ArgumentDecoder& decoder, WebHitTestResul
         || !decoder.decode(hitTestResultData.absoluteMediaURL)
         || !decoder.decode(hitTestResultData.linkLabel)
         || !decoder.decode(hitTestResultData.linkTitle)
+        || !decoder.decode(hitTestResultData.linkSuggestedFilename)
         || !decoder.decode(hitTestResultData.isContentEditable)
         || !decoder.decode(hitTestResultData.elementBoundingBox)
         || !decoder.decode(hitTestResultData.isScrollbar)
@@ -170,11 +175,11 @@ bool WebHitTestResultData::decode(IPC::ArgumentDecoder& decoder, WebHitTestResul
 }
 
 #if !PLATFORM(MAC)
-void WebHitTestResultData::platformEncode(IPC::ArgumentEncoder& encoder) const
+void WebHitTestResultData::platformEncode(IPC::Encoder& encoder) const
 {
 }
 
-bool WebHitTestResultData::platformDecode(IPC::ArgumentDecoder& decoder, WebHitTestResultData& hitTestResultData)
+bool WebHitTestResultData::platformDecode(IPC::Decoder& decoder, WebHitTestResultData& hitTestResultData)
 {
     return true;
 }

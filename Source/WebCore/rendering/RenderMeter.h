@@ -18,13 +18,11 @@
  *
  */
 
-#ifndef RenderMeter_h
-#define RenderMeter_h
+#pragma once
 
 #if ENABLE(METER_ELEMENT)
-#include "RenderBlockFlow.h"
-#include "RenderWidget.h"
 
+#include "RenderBlockFlow.h"
 
 namespace WebCore {
 
@@ -32,19 +30,18 @@ class HTMLMeterElement;
 
 class RenderMeter final : public RenderBlockFlow {
 public:
-    RenderMeter(HTMLElement&, Ref<RenderStyle>&&);
+    RenderMeter(HTMLElement&, RenderStyle&&);
     virtual ~RenderMeter();
 
     HTMLMeterElement* meterElement() const;
-    virtual void updateFromElement() override;
+    void updateFromElement() override;
 
 private:
-    virtual void updateLogicalWidth() override;
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    void updateLogicalWidth() override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
-    virtual const char* renderName() const override { return "RenderMeter"; }
-    virtual bool isMeter() const override { return true; }
-    virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
+    const char* renderName() const override { return "RenderMeter"; }
+    bool isMeter() const override { return true; }
 };
 
 } // namespace WebCore
@@ -52,6 +49,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMeter, isMeter())
 
 #endif // ENABLE(METER_ELEMENT)
-
-#endif // RenderMeter_h
-

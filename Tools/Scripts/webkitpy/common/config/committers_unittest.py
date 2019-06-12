@@ -28,6 +28,7 @@
 import unittest
 from webkitpy.common.config.committers import CommitterList, Contributor, Committer, Reviewer
 
+
 class CommittersTest(unittest.TestCase):
     def test_committer_lookup(self):
         committer = Committer('Test One', 'one@test.com', 'one')
@@ -108,8 +109,7 @@ class CommittersTest(unittest.TestCase):
 
     # Basic testing of the edit distance matching ...
     def test_contributors_by_fuzzy_match(self):
-        self._assert_fuzz_match('Geoff Garen', 'Geoffrey Garen', 3)
-        self._assert_fuzz_match('Kenneth Christiansen', 'Kenneth Rohde Christiansen', 6)
+        self._assert_fuzz_match('Geof Garen', 'Geoffrey Garen', 4)
         self._assert_fuzz_match('Sam', 'Sam Weinig', 0)
         self._assert_fuzz_match('me', None, 2)
 

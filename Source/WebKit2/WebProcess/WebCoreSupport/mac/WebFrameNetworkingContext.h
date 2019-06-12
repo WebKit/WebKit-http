@@ -33,6 +33,8 @@
 
 namespace WebKit {
 
+struct WebsiteDataStoreParameters;
+
 class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
     static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
@@ -42,6 +44,7 @@ public:
 
     // FIXME: remove platform-specific code and use SessionTracker
     static void ensurePrivateBrowsingSession(WebCore::SessionID);
+    static void ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&);
 
     static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
 
@@ -53,12 +56,12 @@ private:
     {
     }
 
-    virtual bool localFileContentSniffingEnabled() const override;
-    virtual SchedulePairHashSet* scheduledRunLoopPairs() const override;
-    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
-    virtual String sourceApplicationIdentifier() const override;
-    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
-    virtual WebCore::NetworkStorageSession& storageSession() const override;
+    bool localFileContentSniffingEnabled() const override;
+    SchedulePairHashSet* scheduledRunLoopPairs() const override;
+    RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
+    String sourceApplicationIdentifier() const override;
+    WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
+    WebCore::NetworkStorageSession& storageSession() const override;
 };
 
 }

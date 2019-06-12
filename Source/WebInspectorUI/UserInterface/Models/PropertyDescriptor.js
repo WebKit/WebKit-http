@@ -56,17 +56,17 @@ WebInspector.PropertyDescriptor = class PropertyDescriptor extends WebInspector.
     // Static
 
     // Runtime.PropertyDescriptor or Runtime.InternalPropertyDescriptor (second argument).
-    static fromPayload(payload, internal)
+    static fromPayload(payload, internal, target)
     {
         if (payload.value)
-            payload.value = WebInspector.RemoteObject.fromPayload(payload.value);
+            payload.value = WebInspector.RemoteObject.fromPayload(payload.value, target);
         if (payload.get)
-            payload.get = WebInspector.RemoteObject.fromPayload(payload.get);
+            payload.get = WebInspector.RemoteObject.fromPayload(payload.get, target);
         if (payload.set)
-            payload.set = WebInspector.RemoteObject.fromPayload(payload.set);
+            payload.set = WebInspector.RemoteObject.fromPayload(payload.set, target);
 
         if (payload.symbol)
-            payload.symbol = WebInspector.RemoteObject.fromPayload(payload.symbol);
+            payload.symbol = WebInspector.RemoteObject.fromPayload(payload.symbol, target);
 
         if (internal) {
             console.assert(payload.value);
@@ -79,65 +79,18 @@ WebInspector.PropertyDescriptor = class PropertyDescriptor extends WebInspector.
 
     // Public
 
-    get name()
-    {
-        return this._name;
-    }
-
-    get value()
-    {
-        return this._value;
-    }
-
-    get get()
-    {
-        return this._get;
-    }
-
-    get set()
-    {
-        return this._set;
-    }
-
-    get writable()
-    {
-        return this._writable;
-    }
-
-    get configurable()
-    {
-        return this._configurable;
-    }
-
-    get enumerable()
-    {
-        return this._enumerable;
-    }
-
-    get symbol()
-    {
-        return this._symbol;
-    }
-
-    get isOwnProperty()
-    {
-        return this._own;
-    }
-
-    get wasThrown()
-    {
-        return this._wasThrown;
-    }
-
-    get nativeGetter()
-    {
-        return this._nativeGetterValue;
-    }
-
-    get isInternalProperty()
-    {
-        return this._internal;
-    }
+    get name() { return this._name; }
+    get value() { return this._value; }
+    get get() { return this._get; }
+    get set() { return this._set; }
+    get writable() { return this._writable; }
+    get configurable() { return this._configurable; }
+    get enumerable() { return this._enumerable; }
+    get symbol() { return this._symbol; }
+    get isOwnProperty() { return this._own; }
+    get wasThrown() { return this._wasThrown; }
+    get nativeGetter() { return this._nativeGetterValue; }
+    get isInternalProperty() { return this._internal; }
 
     hasValue()
     {

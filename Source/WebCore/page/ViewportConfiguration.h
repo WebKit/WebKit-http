@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ViewportConfiguration_h
-#define ViewportConfiguration_h
+#pragma once
 
 #include "FloatSize.h"
 #include "IntSize.h"
@@ -33,6 +32,9 @@
 
 namespace WebCore {
 
+static const double forceAlwaysUserScalableMaximumScale = 5.0;
+static const double forceAlwaysUserScalableMinimumScale = 1.0;
+
 class TextStream;
 
 class ViewportConfiguration {
@@ -40,31 +42,18 @@ class ViewportConfiguration {
 public:
     // FIXME: unify with ViewportArguments.
     struct Parameters {
-        Parameters()
-            : width(0)
-            , height(0)
-            , initialScale(0)
-            , minimumScale(0)
-            , maximumScale(0)
-            , allowsUserScaling(false)
-            , allowsShrinkToFit(false)
-            , widthIsSet(false)
-            , heightIsSet(false)
-            , initialScaleIsSet(false)
-        {
-        }
+        double width { 0 };
+        double height { 0 };
+        double initialScale { 0 };
+        double minimumScale { 0 };
+        double maximumScale { 0 };
+        bool allowsUserScaling { false };
+        bool allowsShrinkToFit { false };
+        bool avoidsUnsafeArea { true };
 
-        double width;
-        double height;
-        double initialScale;
-        double minimumScale;
-        double maximumScale;
-        bool allowsUserScaling;
-        bool allowsShrinkToFit;
-
-        bool widthIsSet;
-        bool heightIsSet;
-        bool initialScaleIsSet;
+        bool widthIsSet { false };
+        bool heightIsSet { false };
+        bool initialScaleIsSet { false };
     };
 
     WEBCORE_EXPORT ViewportConfiguration();
@@ -88,9 +77,12 @@ public:
     WEBCORE_EXPORT double initialScale() const;
     WEBCORE_EXPORT double initialScaleIgnoringContentSize() const;
     WEBCORE_EXPORT double minimumScale() const;
-    double maximumScale() const { return m_configuration.maximumScale; }
+    double maximumScale() const { return m_forceAlwaysUserScalable ? forceAlwaysUserScalableMaximumScale : m_configuration.maximumScale; }
+    double maximumScaleIgnoringAlwaysScalable() const { return m_configuration.maximumScale; }
     WEBCORE_EXPORT bool allowsUserScaling() const;
+    WEBCORE_EXPORT bool allowsUserScalingIgnoringAlwaysScalable() const;
     bool allowsShrinkToFit() const;
+    bool avoidsUnsafeArea() const { return m_configuration.avoidsUnsafeArea; }
 
     WEBCORE_EXPORT static Parameters webpageParameters();
     WEBCORE_EXPORT static Parameters textDocumentParameters();
@@ -100,7 +92,7 @@ public:
     
 #ifndef NDEBUG
     WTF::CString description() const;
-    void dump() const;
+    WEBCORE_EXPORT void dump() const;
 #endif
 
 private:
@@ -127,5 +119,3 @@ private:
 TextStream& operator<<(TextStream&, const ViewportConfiguration::Parameters&);
 
 } // namespace WebCore
-
-#endif // ViewportConfiguration_h

@@ -26,18 +26,18 @@
 #include "config.h"
 #include "CustomEvent.h"
 
-#include "EventNames.h"
 #include <runtime/JSCInlines.h>
 
 namespace WebCore {
 
-CustomEvent::CustomEvent()
+CustomEvent::CustomEvent(IsTrusted isTrusted)
+    : Event(isTrusted)
 {
 }
 
-CustomEvent::CustomEvent(const AtomicString& type, const CustomEventInit& initializer)
-    : Event(type, initializer)
-    , m_detail(initializer.detail)
+CustomEvent::CustomEvent(JSC::ExecState& state, const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : Event(type, initializer, isTrusted)
+    , m_detail(state.vm(), initializer.detail)
 {
 }
 
@@ -45,25 +45,24 @@ CustomEvent::~CustomEvent()
 {
 }
 
-void CustomEvent::initCustomEvent(const AtomicString& type, bool canBubble, bool cancelable, const Deprecated::ScriptValue& detail)
+void CustomEvent::initCustomEvent(JSC::ExecState& state, const AtomicString& type, bool canBubble, bool cancelable, JSC::JSValue detail)
 {
-    if (dispatched())
+    if (isBeingDispatched())
         return;
 
     initEvent(type, canBubble, cancelable);
 
-    m_detail = detail;
+    m_detail = { state.vm(), detail };
     m_serializedDetail = nullptr;
     m_triedToSerialize = false;
 }
 
-RefPtr<SerializedScriptValue> CustomEvent::trySerializeDetail(JSC::ExecState* exec)
+RefPtr<SerializedScriptValue> CustomEvent::trySerializeDetail(JSC::ExecState& state)
 {
-    if (!m_serializedDetail && !m_triedToSerialize) {
-        m_serializedDetail = SerializedScriptValue::create(exec, m_detail.jsValue(), nullptr, nullptr, NonThrowing);
+    if (!m_triedToSerialize) {
+        m_serializedDetail = SerializedScriptValue::create(state, m_detail, SerializationErrorMode::NonThrowing);
         m_triedToSerialize = true;
     }
-    
     return m_serializedDetail;
 }
 

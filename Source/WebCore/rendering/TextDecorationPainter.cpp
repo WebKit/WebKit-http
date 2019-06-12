@@ -25,7 +25,10 @@
 
 #include "FontCascade.h"
 #include "GraphicsContext.h"
+#include "HTMLAnchorElement.h"
+#include "HTMLFontElement.h"
 #include "InlineTextBoxStyle.h"
+#include "RenderBlock.h"
 #include "RenderStyle.h"
 #include "RenderText.h"
 #include "ShadowData.h"
@@ -78,7 +81,7 @@ static void adjustStepToDecorationLength(float& step, float& controlPointDistanc
  *             |-----------|
  *                 step
  */
-static void strokeWavyTextDecoration(GraphicsContext& context, const FloatPoint& start, const FloatPoint& end, float strokeThickness)
+static void strokeWavyTextDecoration(GraphicsContext& context, const FloatPoint& start, const FloatPoint& end, float strokeThickness, float fontSize)
 {
     FloatPoint p1 = start;
     FloatPoint p2 = end;
@@ -89,7 +92,7 @@ static void strokeWavyTextDecoration(GraphicsContext& context, const FloatPoint&
 
     float controlPointDistance;
     float step;
-    getWavyStrokeParameters(strokeThickness, controlPointDistance, step);
+    getWavyStrokeParameters(fontSize, controlPointDistance, step);
 
     bool isVerticalLine = (p1.x() == p2.x());
 
@@ -202,7 +205,7 @@ static DashArray translateIntersectionPointsToSkipInkBoundaries(const DashArray&
 }
 
 static void drawSkipInkUnderline(GraphicsContext& context, const FontCascade& font, const TextRun& textRun, const FloatPoint& textOrigin, const FloatPoint& localOrigin,
-    float underlineOffset, float width, bool isPrinting, bool doubleLines)
+    float underlineOffset, float width, bool isPrinting, bool doubleLines, StrokeStyle strokeStyle)
 {
     FloatPoint adjustedLocalOrigin = localOrigin;
     adjustedLocalOrigin.move(0, underlineOffset);
@@ -210,7 +213,7 @@ static void drawSkipInkUnderline(GraphicsContext& context, const FontCascade& fo
     DashArray intersections = font.dashesForIntersectionsWithRect(textRun, textOrigin, underlineBoundingBox);
     DashArray a = translateIntersectionPointsToSkipInkBoundaries(intersections, underlineBoundingBox.height(), width);
     ASSERT(!(a.size() % 2));
-    context.drawLinesForText(adjustedLocalOrigin, a, isPrinting, doubleLines);
+    context.drawLinesForText(adjustedLocalOrigin, a, isPrinting, doubleLines, strokeStyle);
 }
 #endif
 
@@ -243,14 +246,9 @@ TextDecorationPainter::TextDecorationPainter(GraphicsContext& context, TextDecor
     , m_decoration(decoration)
     , m_wavyOffset(wavyOffsetFromDecoration())
     , m_isPrinting(renderer.document().printing())
+    , m_styles(stylesForRenderer(renderer, m_decoration, isFirstLine))
     , m_lineStyle(isFirstLine ? renderer.firstLineStyle() : renderer.style())
 {
-    renderer.getTextDecorationColorsAndStyles(m_decoration, m_underlineColor, m_overlineColor, m_linethroughColor, m_underlineStyle, m_overlineStyle,
-        m_linethroughStyle);
-    if (isFirstLine) {
-        renderer.getTextDecorationColorsAndStyles(m_decoration, m_underlineColor, m_overlineColor, m_linethroughColor,
-            m_underlineStyle, m_overlineStyle, m_linethroughStyle, true);
-    }
 }
 
 void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const FloatPoint& textOrigin, const FloatPoint& boxOrigin)
@@ -264,36 +262,36 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
     m_context.setStrokeThickness(textDecorationThickness);
     FloatPoint localOrigin = boxOrigin;
 
-    auto paintDecoration = [&](TextDecoration decoration, TextDecorationStyle style, Color color, StrokeStyle strokeStyle,
-        const FloatPoint& start, const FloatPoint& end, int offset) {
+    auto paintDecoration = [&](TextDecoration decoration, TextDecorationStyle style, const Color& color, const FloatPoint& start, const FloatPoint& end, int offset) {
 #if !ENABLE(CSS3_TEXT_DECORATION_SKIP_INK)
         UNUSED_PARAM(offset);
 #endif
         m_context.setStrokeColor(color);
-        m_context.setStrokeStyle(strokeStyle);
+
+        auto strokeStyle = textDecorationStyleToStrokeStyle(style);
 
         if (style == TextDecorationStyleWavy)
-            strokeWavyTextDecoration(m_context, start, end, textDecorationThickness);
+            strokeWavyTextDecoration(m_context, start, end, textDecorationThickness, m_lineStyle.fontSize());
         else if (decoration == TextDecorationUnderline || decoration == TextDecorationOverline) {
 #if ENABLE(CSS3_TEXT_DECORATION_SKIP_INK)
             if ((m_lineStyle.textDecorationSkip() == TextDecorationSkipInk || m_lineStyle.textDecorationSkip() == TextDecorationSkipAuto) && m_isHorizontal) {
                 if (!m_context.paintingDisabled())
-                    drawSkipInkUnderline(m_context, *m_font, textRun, textOrigin, localOrigin, offset, m_width, m_isPrinting, style == TextDecorationStyleDouble);
+                    drawSkipInkUnderline(m_context, *m_font, textRun, textOrigin, localOrigin, offset, m_width, m_isPrinting, style == TextDecorationStyleDouble, strokeStyle);
             } else
                 // FIXME: Need to support text-decoration-skip: none.
 #endif
-                m_context.drawLineForText(start, m_width, m_isPrinting, style == TextDecorationStyleDouble);
+                m_context.drawLineForText(start, m_width, m_isPrinting, style == TextDecorationStyleDouble, strokeStyle);
             
         } else {
             ASSERT(decoration == TextDecorationLineThrough);
-            m_context.drawLineForText(start, m_width, m_isPrinting, style == TextDecorationStyleDouble);
+            m_context.drawLineForText(start, m_width, m_isPrinting, style == TextDecorationStyleDouble, strokeStyle);
         }
     };
 
     bool linesAreOpaque = !m_isPrinting
-        && (!(m_decoration & TextDecorationUnderline) || m_underlineColor.alpha() == 255)
-        && (!(m_decoration & TextDecorationOverline) || m_overlineColor.alpha() == 255)
-        && (!(m_decoration & TextDecorationLineThrough) || m_linethroughColor.alpha() == 255);
+        && (!(m_decoration & TextDecorationUnderline) || m_styles.underlineColor.isOpaque())
+        && (!(m_decoration & TextDecorationOverline) || m_styles.overlineColor.isOpaque())
+        && (!(m_decoration & TextDecorationLineThrough) || m_styles.linethroughColor.isOpaque());
 
     int extraOffset = 0;
     bool clipping = !linesAreOpaque && m_shadow && m_shadow->next();
@@ -332,21 +330,21 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
         // These decorations should match the visual overflows computed in visualOverflowForDecorations()
         if (m_decoration & TextDecorationUnderline) {
             const int offset = computeUnderlineOffset(m_lineStyle.textUnderlinePosition(), m_lineStyle.fontMetrics(), m_inlineTextBox, textDecorationThickness);
-            int wavyOffset = m_underlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
+            int wavyOffset = m_styles.underlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
             FloatPoint start = localOrigin + FloatSize(0, offset + wavyOffset);
             FloatPoint end = localOrigin + FloatSize(m_width, offset + wavyOffset);
-            paintDecoration(TextDecorationUnderline, m_underlineStyle, m_underlineColor, textDecorationStyleToStrokeStyle(m_underlineStyle), start, end, offset);
+            paintDecoration(TextDecorationUnderline, m_styles.underlineStyle, m_styles.underlineColor, start, end, offset);
         }
         if (m_decoration & TextDecorationOverline) {
-            int wavyOffset = m_overlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
+            int wavyOffset = m_styles.overlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
             FloatPoint start = localOrigin - FloatSize(0, wavyOffset);
             FloatPoint end = localOrigin + FloatSize(m_width, -wavyOffset);
-            paintDecoration(TextDecorationOverline, m_overlineStyle, m_overlineColor, textDecorationStyleToStrokeStyle(m_overlineStyle), start, end, 0);
+            paintDecoration(TextDecorationOverline, m_styles.overlineStyle, m_styles.overlineColor, start, end, 0);
         }
         if (m_decoration & TextDecorationLineThrough) {
             FloatPoint start = localOrigin + FloatSize(0, 2 * m_baseline / 3);
             FloatPoint end = localOrigin + FloatSize(m_width, 2 * m_baseline / 3);
-            paintDecoration(TextDecorationLineThrough, m_linethroughStyle, m_linethroughColor, textDecorationStyleToStrokeStyle(m_linethroughStyle), start, end, 0);
+            paintDecoration(TextDecorationLineThrough, m_styles.linethroughStyle, m_styles.linethroughColor, start, end, 0);
         }
     } while (shadow);
 
@@ -354,6 +352,80 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
         m_context.restore();
     else if (m_shadow)
         m_context.clearShadow();
+}
+
+static Color decorationColor(const RenderStyle& style)
+{
+    // Check for text decoration color first.
+    Color result = style.visitedDependentColor(CSSPropertyWebkitTextDecorationColor);
+    if (result.isValid())
+        return result;
+    if (style.hasPositiveStrokeWidth()) {
+        // Prefer stroke color if possible but not if it's fully transparent.
+        result = style.visitedDependentColor(style.hasExplicitlySetStrokeColor() ? CSSPropertyStrokeColor :  CSSPropertyWebkitTextStrokeColor);
+        if (result.isVisible())
+            return result;
+    }
+    
+    return style.visitedDependentColor(CSSPropertyWebkitTextFillColor);
+}
+
+static void collectStylesForRenderer(TextDecorationPainter::Styles& result, const RenderObject& renderer, unsigned requestedDecorations, bool firstLineStyle)
+{
+    unsigned remainingDecoration = requestedDecorations;
+    auto extractDecorations = [&] (const RenderStyle& style, unsigned decorations) {
+        auto color = decorationColor(style);
+        auto decorationStyle = style.textDecorationStyle();
+
+        if (decorations & TextDecorationUnderline) {
+            remainingDecoration &= ~TextDecorationUnderline;
+            result.underlineColor = color;
+            result.underlineStyle = decorationStyle;
+        }
+        if (decorations & TextDecorationOverline) {
+            remainingDecoration &= ~TextDecorationOverline;
+            result.overlineColor = color;
+            result.overlineStyle = decorationStyle;
+        }
+        if (decorations & TextDecorationLineThrough) {
+            remainingDecoration &= ~TextDecorationLineThrough;
+            result.linethroughColor = color;
+            result.linethroughStyle = decorationStyle;
+        }
+
+    };
+
+    auto* current = &renderer;
+    do {
+        auto& style = firstLineStyle ? current->firstLineStyle() : current->style();
+        extractDecorations(style, style.textDecoration());
+
+        if (current->isRubyText())
+            return;
+
+        current = current->parent();
+        if (current && current->isAnonymousBlock() && downcast<RenderBlock>(*current).continuation())
+            current = downcast<RenderBlock>(*current).continuation();
+
+        if (!remainingDecoration)
+            break;
+
+    } while (current && !is<HTMLAnchorElement>(current->node()) && !is<HTMLFontElement>(current->node()));
+
+    // If we bailed out, use the element we bailed out at (typically a <font> or <a> element).
+    if (remainingDecoration && current) {
+        auto& style = firstLineStyle ? current->firstLineStyle() : current->style();
+        extractDecorations(style, remainingDecoration);
+    }
+}
+
+auto TextDecorationPainter::stylesForRenderer(const RenderObject& renderer, unsigned requestedDecorations, bool firstLineStyle) -> Styles
+{
+    Styles result;
+    collectStylesForRenderer(result, renderer, requestedDecorations, false);
+    if (firstLineStyle)
+        collectStylesForRenderer(result, renderer, requestedDecorations, true);
+    return result;
 }
 
 } // namespace WebCore

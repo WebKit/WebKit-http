@@ -25,22 +25,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Yarr_h
-#define Yarr_h
+#pragma once
 
-#include "YarrInterpreter.h"
-#include "YarrPattern.h"
+#include <limits.h>
 
 namespace JSC { namespace Yarr {
 
-#define YarrStackSpaceForBackTrackInfoPatternCharacter 1 // Only for !fixed quantifiers.
-#define YarrStackSpaceForBackTrackInfoCharacterClass 1 // Only for !fixed quantifiers.
+#define YarrStackSpaceForBackTrackInfoPatternCharacter 2 // Only for !fixed quantifiers.
+#define YarrStackSpaceForBackTrackInfoCharacterClass 2 // Only for !fixed quantifiers.
 #define YarrStackSpaceForBackTrackInfoBackReference 2
 #define YarrStackSpaceForBackTrackInfoAlternative 1 // One per alternative.
 #define YarrStackSpaceForBackTrackInfoParentheticalAssertion 1
 #define YarrStackSpaceForBackTrackInfoParenthesesOnce 1 // Only for !fixed quantifiers.
 #define YarrStackSpaceForBackTrackInfoParenthesesTerminal 1
 #define YarrStackSpaceForBackTrackInfoParentheses 2
+#define YarrStackSpaceForDotStarEnclosure 1
 
 static const unsigned quantifyInfinite = UINT_MAX;
 static const unsigned offsetNoMatch = std::numeric_limits<unsigned>::max();
@@ -63,7 +62,6 @@ enum YarrCharSize {
     Char16
 };
 
+struct BytecodePattern;
+
 } } // namespace JSC::Yarr
-
-#endif // Yarr_h
-

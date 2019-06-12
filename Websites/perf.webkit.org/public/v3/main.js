@@ -7,9 +7,18 @@ class SpinningPage extends Page {
 }
 
 function main() {
+    const requiredFeatures = {
+        'Shadow DOM API': () => { return !!Element.prototype.attachShadow; },
+    };
+
+    for (let name in requiredFeatures) {
+        if (!requiredFeatures[name]())
+            return alert(`Your browser does not support ${name}. Try using the latest Safari or Chrome.`);
+    }
+
     (new SpinningPage).open();
 
-    fetchManifest().then(function (manifest) {
+    Manifest.fetch().then(function (manifest) {
         var dashboardToolbar = new DashboardToolbar;
         var dashboardPages = [];
         if (manifest.dashboards) {
@@ -18,10 +27,15 @@ function main() {
         }
 
         var router = new PageRouter();
-
         var chartsToolbar = new ChartsToolbar;
-        var chartsPage = new ChartsPage(chartsToolbar);
 
+        var summaryPages = [];
+        if (manifest.summaryPages) {
+            for (var summaryPage of manifest.summaryPages)
+                summaryPages.push(new SummaryPage(summaryPage));
+        }
+
+        var chartsPage = new ChartsPage(chartsToolbar);
         var analysisCategoryPage = new AnalysisCategoryPage();
 
         var createAnalysisTaskPage = new CreateAnalysisTaskPage();
@@ -30,85 +44,38 @@ function main() {
         var analysisTaskPage = new AnalysisTaskPage();
         analysisTaskPage.setParentPage(analysisCategoryPage);
 
+        var buildRequestQueuePage = new BuildRequestQueuePage();
+        buildRequestQueuePage.setParentPage(analysisCategoryPage);
+
         var heading = new Heading(manifest.siteTitle);
-        heading.addPageGroup([chartsPage, analysisCategoryPage]);
+        heading.addPageGroup(summaryPages.concat([chartsPage, analysisCategoryPage]));
 
         heading.setTitle(manifest.siteTitle);
         heading.addPageGroup(dashboardPages);
 
         var router = new PageRouter();
+        for (var summaryPage of summaryPages)
+            router.addPage(summaryPage);
         router.addPage(chartsPage);
         router.addPage(createAnalysisTaskPage);
         router.addPage(analysisTaskPage);
+        router.addPage(buildRequestQueuePage);
         router.addPage(analysisCategoryPage);
         for (var page of dashboardPages)
             router.addPage(page);
 
-        if (dashboardPages)
+        if (summaryPages.length)
+            router.setDefaultPage(summaryPages[0]);
+        else if (dashboardPages.length)
             router.setDefaultPage(dashboardPages[0]);
         else
             router.setDefaultPage(chartsPage);
 
         heading.setRouter(router);
         router.route();
+    }).catch(function (error) {
+        alert('Failed to load the site manifest: ' + error);
     });
-}
-
-function fetchManifest()
-{
-    return getJSON('../data/manifest.json').then(didFetchManifest, function () {
-        return getJSON('../api/manifest/').then(didFetchManifest, function (error) {
-            alert('Failed to load the site manifest: ' + error);
-        });
-    });
-}
-
-function didFetchManifest(rawResponse)
-{
-    Instrumentation.startMeasuringTime('Main', 'didFetchManifest');
-
-    var tests = [];
-    var testParentMap = {};
-    for (var testId in rawResponse.tests) {
-        var test = rawResponse.tests[testId];
-        var topLevel = !test.parentId;
-        if (test.parentId)
-            testParentMap[testId] = parseInt(test.parentId);
-        tests.push(new Test(testId, test, topLevel));
-    }
-    for (var testId in testParentMap)
-        Test.findById(testId).setParentTest(Test.findById(testParentMap[testId]));
-
-    function buildObjectsFromIdMap(idMap, constructor, resolver) {
-        for (var id in idMap) {
-            if (resolver)
-                resolver(idMap[id]);
-            new constructor(id, idMap[id]);
-        }
-    }
-    buildObjectsFromIdMap(rawResponse.metrics, Metric, function (raw) {
-        raw.test = Test.findById(raw.test);
-    });
-
-    buildObjectsFromIdMap(rawResponse.all, Platform, function (raw) {
-        raw.lastModifiedByMetric = {};
-        raw.lastModified.forEach(function (lastModified, index) {
-            raw.lastModifiedByMetric[raw.metrics[index]] = lastModified;
-        });
-        raw.metrics = raw.metrics.map(function (id) { return Metric.findById(id); });
-    });
-    buildObjectsFromIdMap(rawResponse.builders, Builder);
-    buildObjectsFromIdMap(rawResponse.repositories, Repository);
-    buildObjectsFromIdMap(rawResponse.bugTrackers, BugTracker, function (raw) {
-        raw.repositories = raw.repositories.map(function (id) { return Repository.findById(id); });
-    });
-
-    Instrumentation.endMeasuringTime('Main', 'didFetchManifest');
-
-    return {
-        siteTitle: rawResponse.siteTitle,
-        dashboards: rawResponse.dashboards, // FIXME: Add an abstraction around dashboards.
-    }
 }
 
 if (document.readyState != 'loading')

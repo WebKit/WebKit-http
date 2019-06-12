@@ -27,15 +27,14 @@
 #include <WebCore/IntRect.h>
 #include <WebCore/PageOverlay.h>
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 OBJC_CLASS DDActionContext;
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebCore {
@@ -51,6 +50,7 @@ struct WebHitTestResultData {
     String absoluteMediaURL;
     String linkLabel;
     String linkTitle;
+    String linkSuggestedFilename;
     bool isContentEditable;
     WebCore::IntRect elementBoundingBox;
     bool isScrollbar;
@@ -80,10 +80,10 @@ struct WebHitTestResultData {
     WebHitTestResultData(const WebCore::HitTestResult&, bool includeImage);
     ~WebHitTestResultData();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    void platformEncode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebHitTestResultData&);
-    static bool platformDecode(IPC::ArgumentDecoder&, WebHitTestResultData&);
+    void encode(IPC::Encoder&) const;
+    void platformEncode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebHitTestResultData&);
+    static bool platformDecode(IPC::Decoder&, WebHitTestResultData&);
 
     WebCore::IntRect elementBoundingBoxInWindowCoordinates(const WebCore::HitTestResult&);
 };

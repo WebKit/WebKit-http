@@ -23,19 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameListenerProxy_h
-#define WebFrameListenerProxy_h
+#pragma once
 
 #include "APINavigation.h"
 #include "APIObject.h"
 #include <WebCore/FrameLoaderTypes.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 
 namespace WebKit {
 
 class WebFrameProxy;
+struct WebsitePolicies;
 
 class WebFrameListenerProxy : public API::Object {
 public:
@@ -50,7 +49,7 @@ public:
 protected:
     WebFrameListenerProxy(WebFrameProxy*, uint64_t listenerID);
 
-    void receivedPolicyDecision(WebCore::PolicyAction);
+    void receivedPolicyDecision(WebCore::PolicyAction, const WebsitePolicies&);
 
 private:
     RefPtr<WebFrameProxy> m_frame;
@@ -59,5 +58,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebFrameListenerProxy_h

@@ -23,15 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebCoreAVCFResourceLoader_h
-#define WebCoreAVCFResourceLoader_h
+#pragma once
 
 #if ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_LOADER_DELEGATE)
 
 #include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
 #include <wtf/Noncopyable.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
 
@@ -46,7 +45,7 @@ class MediaPlayerPrivateAVFoundationCF;
 class WebCoreAVCFResourceLoader : public RefCounted<WebCoreAVCFResourceLoader>, CachedRawResourceClient {
     WTF_MAKE_NONCOPYABLE(WebCoreAVCFResourceLoader); WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<WebCoreAVCFResourceLoader> create(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef);
+    static Ref<WebCoreAVCFResourceLoader> create(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef);
     virtual ~WebCoreAVCFResourceLoader();
 
     void startLoading();
@@ -56,12 +55,12 @@ public:
     CachedRawResource* resource();
 
 private:
-    // CachedResourceClient
-    virtual void responseReceived(CachedResource*, const ResourceResponse&) override;
-    virtual void dataReceived(CachedResource*, const char*, int) override;
-    virtual void notifyFinished(CachedResource*) override;
+    // CachedRawResourceClient
+    void responseReceived(CachedResource&, const ResourceResponse&) override;
+    void dataReceived(CachedResource&, const char*, int) override;
+    void notifyFinished(CachedResource&) override;
 
-    void fulfillRequestWithResource(CachedResource*);
+    void fulfillRequestWithResource(CachedResource&);
 
     WebCoreAVCFResourceLoader(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef);
     MediaPlayerPrivateAVFoundationCF* m_parent;
@@ -71,6 +70,4 @@ private:
 
 }
 
-#endif // ENABLE(VIDEO) && USE(AVFOUNDATION) 
-
-#endif // WebCoreAVFResourceLoader_h
+#endif // ENABLE(VIDEO) && USE(AVFOUNDATION)

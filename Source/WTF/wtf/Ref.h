@@ -28,13 +28,13 @@
 
 #include <wtf/Assertions.h>
 #include <wtf/GetPtr.h>
-#include <wtf/Noncopyable.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/TypeCasts.h>
 
 #if ASAN_ENABLED
 extern "C" void __asan_poison_memory_region(void const volatile *addr, size_t size);
 extern "C" void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
-extern "C" bool __asan_address_is_poisoned(void const volatile *addr);
+extern "C" int __asan_address_is_poisoned(void const volatile *addr);
 #endif
 
 namespace WTF {
@@ -46,6 +46,8 @@ template<typename T> Ref<T> adoptRef(T&);
 
 template<typename T> class Ref {
 public:
+    static constexpr bool isRef = true;
+
     ~Ref()
     {
 #if ASAN_ENABLED
@@ -79,49 +81,40 @@ public:
         ASSERT(m_ptr);
     }
 
-    Ref& operator=(T& object)
-    {
-        ASSERT(m_ptr);
-        object.ref();
-        m_ptr->deref();
-        m_ptr = &object;
-        ASSERT(m_ptr);
-        return *this;
-    }
+    Ref& operator=(T&);
+    Ref& operator=(Ref&&);
+    template<typename U> Ref& operator=(Ref<U>&&);
 
     // Use copyRef() and the move assignment operators instead.
-    Ref& operator=(const Ref& reference) = delete;
-    template<typename U> Ref& operator=(const Ref<U>& reference) = delete;
+    Ref& operator=(const Ref&) = delete;
+    template<typename U> Ref& operator=(const Ref<U>&) = delete;
 
-    Ref& operator=(Ref&& reference)
+    void swap(Ref&);
+
+    // Hash table deleted values, which are only constructed and never copied or destroyed.
+    Ref(HashTableDeletedValueType) : m_ptr(hashTableDeletedValue()) { }
+    bool isHashTableDeletedValue() const { return m_ptr == hashTableDeletedValue(); }
+    static T* hashTableDeletedValue() { return reinterpret_cast<T*>(-1); }
+
+    Ref(HashTableEmptyValueType) : m_ptr(hashTableEmptyValue()) { }
+    bool isHashTableEmptyValue() const { return m_ptr == hashTableEmptyValue(); }
+    static T* hashTableEmptyValue() { return nullptr; }
+
+    const T* ptrAllowingHashTableEmptyValue() const { ASSERT(m_ptr || isHashTableEmptyValue()); return m_ptr; }
+    T* ptrAllowingHashTableEmptyValue() { ASSERT(m_ptr || isHashTableEmptyValue()); return m_ptr; }
+
+    void assignToHashTableEmptyValue(Ref&& reference)
     {
-        ASSERT(m_ptr);
-        m_ptr->deref();
+        ASSERT(m_ptr == hashTableEmptyValue());
         m_ptr = &reference.leakRef();
         ASSERT(m_ptr);
-        return *this;
     }
 
-    template<typename U> Ref& operator=(Ref<U>&& reference)
-    {
-        ASSERT(m_ptr);
-        m_ptr->deref();
-        m_ptr = &reference.leakRef();
-        ASSERT(m_ptr);
-        return *this;
-    }
-
-    const T* operator->() const { ASSERT(m_ptr); return m_ptr; }
-    T* operator->() { ASSERT(m_ptr); return m_ptr; }
-
-    const T* ptr() const { ASSERT(m_ptr); return m_ptr; }
-    T* ptr() { ASSERT(m_ptr); return m_ptr; }
-
-    const T& get() const { ASSERT(m_ptr); return *m_ptr; }
-    T& get() { ASSERT(m_ptr); return *m_ptr; }
-
-    operator T&() { ASSERT(m_ptr); return *m_ptr; }
-    operator const T&() const { ASSERT(m_ptr); return *m_ptr; }
+    T* operator->() const { ASSERT(m_ptr); return m_ptr; }
+    T* ptr() const RETURNS_NONNULL { ASSERT(m_ptr); return m_ptr; }
+    T& get() const { ASSERT(m_ptr); return *m_ptr; }
+    operator T&() const { ASSERT(m_ptr); return *m_ptr; }
+    bool operator!() const { ASSERT(m_ptr); return !*m_ptr; }
 
     template<typename U> Ref<T> replace(Ref<U>&&) WARN_UNUSED_RETURN;
 
@@ -155,6 +148,41 @@ private:
     T* m_ptr;
 };
 
+template<typename T> void swap(Ref<T>&, Ref<T>&);
+template<typename T> Ref<T> adoptRef(T&);
+template<typename T> Ref<T> makeRef(T&);
+
+template<typename T> inline Ref<T>& Ref<T>::operator=(T& reference)
+{
+    Ref copiedReference = reference;
+    swap(copiedReference);
+    return *this;
+}
+
+template<typename T> inline Ref<T>& Ref<T>::operator=(Ref&& reference)
+{
+    Ref movedReference = WTFMove(reference);
+    swap(movedReference);
+    return *this;
+}
+
+template<typename T> template<typename U> inline Ref<T>& Ref<T>::operator=(Ref<U>&& reference)
+{
+    Ref movedReference = WTFMove(reference);
+    swap(movedReference);
+    return *this;
+}
+
+template<typename T> inline void Ref<T>::swap(Ref& other)
+{
+    std::swap(m_ptr, other.m_ptr);
+}
+
+template<typename T> inline void swap(Ref<T>& a, Ref<T>& b)
+{
+    a.swap(b);
+}
+
 template<typename T> template<typename U> inline Ref<T> Ref<T>::replace(Ref<U>&& reference)
 {
     auto oldReference = adoptRef(*m_ptr);
@@ -165,6 +193,11 @@ template<typename T> template<typename U> inline Ref<T> Ref<T>::replace(Ref<U>&&
 template<typename T, typename U> inline Ref<T> static_reference_cast(Ref<U>& reference)
 {
     return Ref<T>(static_cast<T&>(reference.get()));
+}
+
+template<typename T, typename U> inline Ref<T> static_reference_cast(Ref<U>&& reference)
+{
+    return adoptRef(static_cast<T&>(reference.leakRef()));
 }
 
 template<typename T, typename U> inline Ref<T> static_reference_cast(const Ref<U>& reference)
@@ -178,18 +211,39 @@ struct GetPtrHelper<Ref<T>> {
     static T* getPtr(const Ref<T>& p) { return const_cast<T*>(p.ptr()); }
 };
 
+template <typename T> 
+struct IsSmartPtr<Ref<T>> {
+    static const bool value = true;
+};
+
 template<typename T>
 inline Ref<T> adoptRef(T& reference)
 {
     adopted(&reference);
     return Ref<T>(reference, Ref<T>::Adopt);
+}
 
+template<typename T>
+inline Ref<T> makeRef(T& reference)
+{
+    return Ref<T>(reference);
+}
+
+template<typename ExpectedType, typename ArgType> inline bool is(Ref<ArgType>& source)
+{
+    return is<ExpectedType>(source.get());
+}
+
+template<typename ExpectedType, typename ArgType> inline bool is(const Ref<ArgType>& source)
+{
+    return is<ExpectedType>(source.get());
 }
 
 } // namespace WTF
 
 using WTF::Ref;
 using WTF::adoptRef;
+using WTF::makeRef;
 using WTF::static_reference_cast;
 
 #endif // WTF_Ref_h

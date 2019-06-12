@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NumberInputType_h
-#define NumberInputType_h
+#pragma once
 
 #include "TextFieldInputType.h"
 
@@ -40,32 +39,30 @@ public:
     explicit NumberInputType(HTMLInputElement& element) : TextFieldInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual void setValue(const String&, bool valueChanged, TextFieldEventBehavior) override;
-    virtual double valueAsDouble() const override;
-    virtual void setValueAsDouble(double, TextFieldEventBehavior, ExceptionCode&) const override;
-    virtual void setValueAsDecimal(const Decimal&, TextFieldEventBehavior, ExceptionCode&) const override;
-    virtual bool typeMismatchFor(const String&) const override;
-    virtual bool typeMismatch() const override;
-    virtual bool sizeShouldIncludeDecoration(int defaultSize, int& preferredSize) const override;
-    virtual float decorationWidth() const override;
-    virtual bool isSteppable() const override;
-    virtual StepRange createStepRange(AnyStepHandling) const override;
-    virtual void handleKeydownEvent(KeyboardEvent*) override;
-    virtual Decimal parseToNumber(const String&, const Decimal&) const override;
-    virtual String serialize(const Decimal&) const override;
-    virtual String localizeValue(const String&) const override;
-    virtual String visibleValue() const override;
-    virtual String convertFromVisibleValue(const String&) const override;
-    virtual String sanitizeValue(const String&) const override;
-    virtual bool hasBadInput() const override;
-    virtual String badInputText() const override;
-    virtual bool supportsPlaceholder() const override;
-    virtual bool isNumberField() const override;
-    virtual void minOrMaxAttributeChanged() override;
-    virtual void stepAttributeChanged() override;
+    const AtomicString& formControlType() const final;
+    void setValue(const String&, bool valueChanged, TextFieldEventBehavior) final;
+    double valueAsDouble() const final;
+    ExceptionOr<void> setValueAsDouble(double, TextFieldEventBehavior) const final;
+    ExceptionOr<void> setValueAsDecimal(const Decimal&, TextFieldEventBehavior) const final;
+    bool typeMismatchFor(const String&) const final;
+    bool typeMismatch() const final;
+    bool sizeShouldIncludeDecoration(int defaultSize, int& preferredSize) const final;
+    float decorationWidth() const final;
+    bool isSteppable() const final;
+    StepRange createStepRange(AnyStepHandling) const final;
+    void handleKeydownEvent(KeyboardEvent&) final;
+    Decimal parseToNumber(const String&, const Decimal&) const final;
+    String serialize(const Decimal&) const final;
+    String localizeValue(const String&) const final;
+    String visibleValue() const final;
+    String convertFromVisibleValue(const String&) const final;
+    String sanitizeValue(const String&) const final;
+    bool hasBadInput() const final;
+    String badInputText() const final;
+    bool supportsPlaceholder() const final;
+    bool isNumberField() const final;
+    void minOrMaxAttributeChanged() final;
+    void stepAttributeChanged() final;
 };
 
 } // namespace WebCore
-
-#endif // NumberInputType_h

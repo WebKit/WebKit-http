@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,23 +26,23 @@
 #include "config.h"
 #include "TrackBase.h"
 
-#include "HTMLMediaElement.h"
+#include "Language.h"
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(VIDEO_TRACK)
+
+#include "HTMLMediaElement.h"
 
 namespace WebCore {
 
 static int s_uniqueId = 0;
 
 TrackBase::TrackBase(Type type, const AtomicString& id, const AtomicString& label, const AtomicString& language)
-    : m_mediaElement(0)
-#if ENABLE(MEDIA_SOURCE)
-    , m_sourceBuffer(0)
-#endif
-    , m_uniqueId(++s_uniqueId)
+    : m_uniqueId(++s_uniqueId)
     , m_id(id)
     , m_label(label)
     , m_language(language)
+    , m_validBCP47Language(language)
 {
     ASSERT(type != BaseTrack);
     m_type = type;
@@ -57,19 +57,99 @@ Element* TrackBase::element()
     return m_mediaElement;
 }
 
-void TrackBase::setKind(const AtomicString& kind)
+// See: https://tools.ietf.org/html/bcp47#section-2.1
+static bool isValidBCP47LanguageTag(const String& languageTag)
+{
+    auto const length = languageTag.length();
+
+    // Max length picked as double the longest example tag in spec which is 49 characters:
+    // https://tools.ietf.org/html/bcp47#section-4.4.2
+    if (length < 2 || length > 100)
+        return false;
+
+    UChar firstChar = languageTag[0];
+
+    if (!isASCIIAlpha(firstChar))
+        return false;
+
+    UChar secondChar = languageTag[1];
+
+    if (length == 2)
+        return isASCIIAlpha(secondChar);
+
+    bool grandFatheredIrregularOrPrivateUse = (firstChar == 'i' || firstChar == 'x') && secondChar == '-';
+    unsigned nextCharIndexToCheck;
+
+    if (!grandFatheredIrregularOrPrivateUse) {
+        if (!isASCIIAlpha(secondChar))
+            return false;
+
+        if (length == 3)
+            return isASCIIAlpha(languageTag[2]);
+
+        if (isASCIIAlpha(languageTag[2])) {
+            if (languageTag[3] == '-')
+                nextCharIndexToCheck = 4;
+            else
+                return false;
+        } else if (languageTag[2] == '-')
+            nextCharIndexToCheck = 3;
+        else
+            return false;
+    } else
+        nextCharIndexToCheck = 2;
+
+    for (; nextCharIndexToCheck < length; ++nextCharIndexToCheck) {
+        UChar c = languageTag[nextCharIndexToCheck];
+        if (isASCIIAlphanumeric(c) || c == '-')
+            continue;
+        return false;
+    }
+    return true;
+}
+    
+void TrackBase::setLanguage(const AtomicString& language)
+{
+    if (!language.isEmpty() && !isValidBCP47LanguageTag(language)) {
+        String message;
+        if (language.contains((UChar)'\0'))
+            message = WTF::ASCIILiteral("The language contains a null character and is not a valid BCP 47 language tag.");
+        else {
+            StringBuilder stringBuilder;
+            stringBuilder.appendLiteral("The language '");
+            stringBuilder.append(language);
+            stringBuilder.appendLiteral("' is not a valid BCP 47 language tag.");
+            message = stringBuilder.toString();
+        }
+        if (auto element = this->element())
+            element->document().addConsoleMessage(MessageSource::Rendering, MessageLevel::Warning, message);
+    } else
+        m_validBCP47Language = language;
+    
+    m_language = language;
+}
+
+AtomicString TrackBase::validBCP47Language() const
+{
+    return m_validBCP47Language;
+}
+
+MediaTrackBase::MediaTrackBase(Type type, const AtomicString& id, const AtomicString& label, const AtomicString& language)
+    : TrackBase(type, id, label, language)
+{
+}
+
+void MediaTrackBase::setKind(const AtomicString& kind)
 {
     setKindInternal(kind);
 }
 
-void TrackBase::setKindInternal(const AtomicString& kind)
+void MediaTrackBase::setKindInternal(const AtomicString& kind)
 {
-    String oldKind = m_kind;
-
     if (isValidKind(kind))
         m_kind = kind;
     else
-        m_kind = defaultKindKeyword();
+        m_kind = emptyAtom();
 }
 
 } // namespace WebCore

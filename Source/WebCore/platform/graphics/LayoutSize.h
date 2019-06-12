@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LayoutSize_h
-#define LayoutSize_h
+#pragma once
 
 #include "FloatSize.h"
 #include "IntSize.h"
@@ -87,6 +86,8 @@ public:
         m_width *= widthScale;
         m_height *= heightScale;
     }
+
+    LayoutSize constrainedBetween(const LayoutSize& min, const LayoutSize& max) const;
     
     LayoutSize expandedTo(const LayoutSize& other) const
     {
@@ -189,8 +190,7 @@ inline FloatSize floorSizeToDevicePixels(const LayoutSize& size, float pixelSnap
     return FloatSize(floorToDevicePixel(size.width(), pixelSnappingFactor), floorToDevicePixel(size.height(), pixelSnappingFactor));
 }
 
-TextStream& operator<<(TextStream&, const LayoutSize&);
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, const LayoutSize&);
 
 } // namespace WebCore
 
-#endif // LayoutSize_h

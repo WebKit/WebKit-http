@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IndexValueEntry_h
-#define IndexValueEntry_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBKeyData.h"
-#include <set>
 
 namespace WebCore {
 
@@ -60,8 +58,8 @@ public:
         }
 
         Iterator(IndexValueEntry&);
-        Iterator(IndexValueEntry&, std::set<IDBKeyData>::iterator);
-        Iterator(IndexValueEntry&, std::set<IDBKeyData>::reverse_iterator);
+        Iterator(IndexValueEntry&, IDBKeyDataSet::iterator);
+        Iterator(IndexValueEntry&, IDBKeyDataSet::reverse_iterator);
 
         bool isValid() const;
         void invalidate();
@@ -74,8 +72,8 @@ public:
     private:
         IndexValueEntry* m_entry { nullptr };
         bool m_forward { true };
-        std::set<IDBKeyData>::iterator m_forwardIterator;
-        std::set<IDBKeyData>::reverse_iterator m_reverseIterator;
+        IDBKeyDataSet::iterator m_forwardIterator;
+        IDBKeyDataSet::reverse_iterator m_reverseIterator;
     };
 
     Iterator begin();
@@ -90,7 +88,7 @@ public:
 
 private:
     union {
-        std::set<IDBKeyData>* m_orderedKeys;
+        IDBKeyDataSet* m_orderedKeys;
         IDBKeyData* m_key;
     };
 
@@ -101,4 +99,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IndexValueEntry_h

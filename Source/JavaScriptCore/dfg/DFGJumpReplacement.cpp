@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +39,15 @@ void JumpReplacement::fire()
     if (Options::dumpDisassembly())
         dataLogF("Firing jump replacement watchpoint from %p, to %p.\n", m_source.dataLocation(), m_destination.dataLocation());
     MacroAssembler::replaceWithJump(m_source, m_destination);
+}
+
+void JumpReplacement::installVMTrapBreakpoint()
+{
+#if ENABLE(SIGNAL_BASED_VM_TRAPS)
+    MacroAssembler::replaceWithVMHalt(m_source);
+#else
+    UNREACHABLE_FOR_PLATFORM();
+#endif
 }
 
 } } // namespace JSC::DFG

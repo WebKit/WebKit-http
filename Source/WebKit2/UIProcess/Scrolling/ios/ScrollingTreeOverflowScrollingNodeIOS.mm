@@ -30,15 +30,16 @@
 #if ENABLE(ASYNC_SCROLLING)
 
 #import <QuartzCore/QuartzCore.h>
-#import <WebCore/BlockExceptions.h>
 #import <WebCore/ScrollingStateOverflowScrollingNode.h>
 #import <WebCore/ScrollingTree.h>
 #import <UIKit/UIPanGestureRecognizer.h>
 #import <UIKit/UIScrollView.h>
-#import <wtf/TemporaryChange.h>
+#import <wtf/BlockObjCExceptions.h>
+#import <wtf/SetForScope.h>
 
 #if ENABLE(CSS_SCROLL_SNAP)
 #import <WebCore/AxisScrollSnapOffsets.h>
+#import <WebCore/ScrollSnapOffsetsInfo.h>
 #endif
 
 using namespace WebCore;
@@ -88,7 +89,7 @@ using namespace WebCore;
 
     if (!_scrollingTreeNode->horizontalSnapOffsets().isEmpty()) {
         unsigned index;
-        float potentialSnapPosition = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->horizontalSnapOffsets(), horizontalTarget, velocity.x, index);
+        float potentialSnapPosition = closestSnapOffset(_scrollingTreeNode->horizontalSnapOffsets(), _scrollingTreeNode->horizontalSnapOffsetRanges(), horizontalTarget, velocity.x, index);
         _scrollingTreeNode->setCurrentHorizontalSnapPointIndex(index);
         if (horizontalTarget >= 0 && horizontalTarget <= scrollView.contentSize.width)
             targetContentOffset->x = potentialSnapPosition;
@@ -96,7 +97,7 @@ using namespace WebCore;
 
     if (!_scrollingTreeNode->verticalSnapOffsets().isEmpty()) {
         unsigned index;
-        float potentialSnapPosition = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->verticalSnapOffsets(), verticalTarget, velocity.y, index);
+        float potentialSnapPosition = closestSnapOffset(_scrollingTreeNode->verticalSnapOffsets(), _scrollingTreeNode->verticalSnapOffsetRanges(), verticalTarget, velocity.y, index);
         _scrollingTreeNode->setCurrentVerticalSnapPointIndex(index);
         if (verticalTarget >= 0 && verticalTarget <= scrollView.contentSize.height)
             targetContentOffset->y = potentialSnapPosition;
@@ -154,7 +155,7 @@ ScrollingTreeOverflowScrollingNodeIOS::~ScrollingTreeOverflowScrollingNodeIOS()
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
-void ScrollingTreeOverflowScrollingNodeIOS::updateBeforeChildren(const WebCore::ScrollingStateNode& stateNode)
+void ScrollingTreeOverflowScrollingNodeIOS::commitStateBeforeChildren(const WebCore::ScrollingStateNode& stateNode)
 {
     if (stateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollLayer)) {
         BEGIN_BLOCK_OBJC_EXCEPTIONS
@@ -165,21 +166,21 @@ void ScrollingTreeOverflowScrollingNodeIOS::updateBeforeChildren(const WebCore::
         END_BLOCK_OBJC_EXCEPTIONS
     }
 
-    ScrollingTreeOverflowScrollingNode::updateBeforeChildren(stateNode);
+    ScrollingTreeOverflowScrollingNode::commitStateBeforeChildren(stateNode);
 
     const auto& scrollingStateNode = downcast<ScrollingStateOverflowScrollingNode>(stateNode);
     if (scrollingStateNode.hasChangedProperty(ScrollingStateNode::ScrollLayer))
         m_scrollLayer = scrollingStateNode.layer();
 
-    if (scrollingStateNode.hasChangedProperty(ScrollingStateOverflowScrollingNode::ScrolledContentsLayer))
+    if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrolledContentsLayer))
         m_scrolledContentsLayer = scrollingStateNode.scrolledContentsLayer();
 }
 
-void ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren(const ScrollingStateNode& stateNode)
+void ScrollingTreeOverflowScrollingNodeIOS::commitStateAfterChildren(const ScrollingStateNode& stateNode)
 {
-    ScrollingTreeOverflowScrollingNode::updateAfterChildren(stateNode);
+    ScrollingTreeOverflowScrollingNode::commitStateAfterChildren(stateNode);
 
-    TemporaryChange<bool> updatingChange(m_updatingFromStateNode, true);
+    SetForScope<bool> updatingChange(m_updatingFromStateNode, true);
 
     const auto& scrollingStateNode = downcast<ScrollingStateOverflowScrollingNode>(stateNode);
 
@@ -254,7 +255,7 @@ FloatPoint ScrollingTreeOverflowScrollingNodeIOS::scrollPosition() const
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
-void ScrollingTreeOverflowScrollingNodeIOS::setScrollLayerPosition(const FloatPoint& scrollPosition)
+void ScrollingTreeOverflowScrollingNodeIOS::setScrollLayerPosition(const FloatPoint& scrollPosition, const FloatRect&)
 {
     [m_scrollLayer setPosition:CGPointMake(-scrollPosition.x() + scrollOrigin().x(), -scrollPosition.y() + scrollOrigin().y())];
 

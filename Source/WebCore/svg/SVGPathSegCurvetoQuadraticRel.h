@@ -19,14 +19,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathSegCurvetoQuadraticRel_h
-#define SVGPathSegCurvetoQuadraticRel_h
+#pragma once
 
 #include "SVGPathSegCurvetoQuadratic.h"
 
 namespace WebCore {
 
-class SVGPathSegCurvetoQuadraticRel : public SVGPathSegCurvetoQuadratic {
+class SVGPathSegCurvetoQuadraticRel final : public SVGPathSegCurvetoQuadratic {
 public:
     static Ref<SVGPathSegCurvetoQuadraticRel> create(const SVGPathElement& element, SVGPathSegRole role, float x, float y, float x1, float y1)
     {
@@ -39,10 +38,8 @@ private:
     {
     }
 
-    virtual unsigned short pathSegType() const override { return PATHSEG_CURVETO_QUADRATIC_REL; }
-    virtual String pathSegTypeAsLetter() const override { return "q"; }
+    unsigned short pathSegType() const final { return PATHSEG_CURVETO_QUADRATIC_REL; }
+    String pathSegTypeAsLetter() const final { return "q"; }
 };
 
 } // namespace WebCore
-
-#endif

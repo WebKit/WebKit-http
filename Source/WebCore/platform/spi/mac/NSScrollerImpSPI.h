@@ -37,6 +37,10 @@
 @property(getter=isTracking) BOOL tracking;
 @end
 
+@interface NSScrollerImpPair ()
++ (NSUserInterfaceLayoutDirection)scrollerLayoutDirection;
+@end
+
 #else
 
 enum {
@@ -75,6 +79,7 @@ typedef NSUInteger NSOverlayScrollerState;
 @property(readonly) CGFloat knobMinLength;
 @property(readonly) CGFloat knobOverlapEndInset;
 @property(readonly) CGFloat trackOverlapEndInset;
+@property NSUserInterfaceLayoutDirection userInterfaceLayoutDirection;
 - (NSRect)rectForPart:(NSScrollerPart)partCode;
 - (void)drawKnobSlotInRect:(NSRect)slotRect highlight:(BOOL)flag alpha:(CGFloat)alpha;
 - (void)drawKnobSlotInRect:(NSRect)slotRect highlight:(BOOL)flag;
@@ -110,6 +115,7 @@ typedef NSUInteger NSOverlayScrollerState;
 @property(retain) NSScrollerImp *verticalScrollerImp;
 @property(retain) NSScrollerImp *horizontalScrollerImp;
 @property NSScrollerStyle scrollerStyle;
++ (NSUserInterfaceLayoutDirection)scrollerLayoutDirection;
 - (void)flashScrollers;
 - (void)hideOverlayScrollers;
 - (void)lockOverlayScrollerState:(NSOverlayScrollerState)state;

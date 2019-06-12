@@ -45,7 +45,6 @@
 #include "SourceCode.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
-#include "VMEntryScope.h"
 #include <wtf/CurrentTime.h>
 
 using namespace JSC;
@@ -90,7 +89,7 @@ void InspectorRuntimeAgent::parse(ErrorString&, const String& expression, Inspec
     JSLockHolder lock(m_vm);
 
     ParserError error;
-    checkSyntax(m_vm, JSC::makeSource(expression), error);
+    checkSyntax(m_vm, JSC::makeSource(expression, { }), error);
 
     switch (error.syntaxErrorType()) {
     case ParserError::SyntaxErrorNone:
@@ -137,7 +136,7 @@ void InspectorRuntimeAgent::callFunctionOn(ErrorString& errorString, const Strin
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = ASCIILiteral("Inspected frame has gone");
+        errorString = ASCIILiteral("Could not find InjectedScript for objectId");
         return;
     }
 
@@ -159,11 +158,28 @@ void InspectorRuntimeAgent::callFunctionOn(ErrorString& errorString, const Strin
     }
 }
 
+void InspectorRuntimeAgent::getPreview(ErrorString& errorString, const String& objectId, RefPtr<Inspector::Protocol::Runtime::ObjectPreview>& preview)
+{
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
+    if (injectedScript.hasNoValue()) {
+        errorString = ASCIILiteral("Could not find InjectedScript for objectId");
+        return;
+    }
+
+    ScriptDebugServer::PauseOnExceptionsState previousPauseOnExceptionsState = setPauseOnExceptionsState(m_scriptDebugServer, ScriptDebugServer::DontPauseOnExceptions);
+    muteConsole();
+
+    injectedScript.getPreview(errorString, objectId, &preview);
+
+    unmuteConsole();
+    setPauseOnExceptionsState(m_scriptDebugServer, previousPauseOnExceptionsState);
+}
+
 void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String& objectId, const bool* const ownProperties, const bool* const generatePreview, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties)
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = ASCIILiteral("Inspected frame has gone");
+        errorString = ASCIILiteral("Could not find InjectedScript for objectId");
         return;
     }
 
@@ -181,7 +197,7 @@ void InspectorRuntimeAgent::getDisplayableProperties(ErrorString& errorString, c
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = ASCIILiteral("Inspected frame has gone");
+        errorString = ASCIILiteral("Could not find InjectedScript for objectId");
         return;
     }
 
@@ -199,7 +215,7 @@ void InspectorRuntimeAgent::getCollectionEntries(ErrorString& errorString, const
 {
     InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
     if (injectedScript.hasNoValue()) {
-        errorString = ASCIILiteral("Inspected frame has gone");
+        errorString = ASCIILiteral("Could not find InjectedScript for objectId");
         return;
     }
 
@@ -217,7 +233,7 @@ void InspectorRuntimeAgent::saveResult(ErrorString& errorString, const Inspector
     if (callArgument.getString(ASCIILiteral("objectId"), objectId)) {
         injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
         if (injectedScript.hasNoValue()) {
-            errorString = ASCIILiteral("Inspected frame has gone");
+            errorString = ASCIILiteral("Could not find InjectedScript for objectId");
             return;
         }
     } else {
@@ -317,6 +333,16 @@ void InspectorRuntimeAgent::disableTypeProfiler(ErrorString&)
     setTypeProfilerEnabledState(false);
 }
 
+void InspectorRuntimeAgent::enableControlFlowProfiler(ErrorString&)
+{
+    setControlFlowProfilerEnabledState(true);
+}
+
+void InspectorRuntimeAgent::disableControlFlowProfiler(ErrorString&)
+{
+    setControlFlowProfilerEnabledState(false);
+}
+
 void InspectorRuntimeAgent::setTypeProfilerEnabledState(bool isTypeProfilingEnabled)
 {
     if (m_isTypeProfilingEnabled == isTypeProfilingEnabled)
@@ -326,11 +352,23 @@ void InspectorRuntimeAgent::setTypeProfilerEnabledState(bool isTypeProfilingEnab
     VM& vm = m_vm;
     vm.whenIdle([&vm, isTypeProfilingEnabled] () {
         bool shouldRecompileFromTypeProfiler = (isTypeProfilingEnabled ? vm.enableTypeProfiler() : vm.disableTypeProfiler());
-        bool shouldRecompileFromControlFlowProfiler = (isTypeProfilingEnabled ? vm.enableControlFlowProfiler() : vm.disableControlFlowProfiler());
-        bool needsToRecompile = shouldRecompileFromTypeProfiler || shouldRecompileFromControlFlowProfiler;
+        if (shouldRecompileFromTypeProfiler)
+            vm.deleteAllCode(PreventCollectionAndDeleteAllCode);
+    });
+}
 
-        if (needsToRecompile)
-            vm.deleteAllCode();
+void InspectorRuntimeAgent::setControlFlowProfilerEnabledState(bool isControlFlowProfilingEnabled)
+{
+    if (m_isControlFlowProfilingEnabled == isControlFlowProfilingEnabled)
+        return;
+    m_isControlFlowProfilingEnabled = isControlFlowProfilingEnabled;
+
+    VM& vm = m_vm;
+    vm.whenIdle([&vm, isControlFlowProfilingEnabled] () {
+        bool shouldRecompileFromControlFlowProfiler = (isControlFlowProfilingEnabled ? vm.enableControlFlowProfiler() : vm.disableControlFlowProfiler());
+
+        if (shouldRecompileFromControlFlowProfiler)
+            vm.deleteAllCode(PreventCollectionAndDeleteAllCode);
     });
 }
 

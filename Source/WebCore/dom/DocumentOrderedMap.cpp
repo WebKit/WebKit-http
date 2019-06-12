@@ -54,7 +54,9 @@ void DocumentOrderedMap::add(const AtomicStringImpl& key, Element& element, cons
 
     if (!element.isInTreeScope())
         return;
-    Map::AddResult addResult = m_map.add(&key, MapEntry(&element));
+    Map::AddResult addResult = m_map.ensure(&key, [&element] {
+        return MapEntry(&element);
+    });
     MapEntry& entry = addResult.iterator->value;
 
 #if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
@@ -147,25 +149,18 @@ HTMLMapElement* DocumentOrderedMap::getElementByMapName(const AtomicStringImpl& 
     }));
 }
 
-HTMLMapElement* DocumentOrderedMap::getElementByCaseFoldedMapName(const AtomicStringImpl& key, const TreeScope& scope) const
-{
-    return downcast<HTMLMapElement>(get(key, scope, [] (const AtomicStringImpl& key, const Element& element) {
-        return is<HTMLMapElement>(element) && equal(downcast<HTMLMapElement>(element).getName().string().foldCase().impl(), &key);
-    }));
-}
-
-HTMLImageElement* DocumentOrderedMap::getElementByCaseFoldedUsemap(const AtomicStringImpl& key, const TreeScope& scope) const
+HTMLImageElement* DocumentOrderedMap::getElementByUsemap(const AtomicStringImpl& key, const TreeScope& scope) const
 {
     return downcast<HTMLImageElement>(get(key, scope, [] (const AtomicStringImpl& key, const Element& element) {
         // FIXME: HTML5 specification says we should match both image and object elements.
-        return is<HTMLImageElement>(element) && downcast<HTMLImageElement>(element).matchesCaseFoldedUsemap(key);
+        return is<HTMLImageElement>(element) && downcast<HTMLImageElement>(element).matchesUsemap(key);
     }));
 }
 
 HTMLLabelElement* DocumentOrderedMap::getElementByLabelForAttribute(const AtomicStringImpl& key, const TreeScope& scope) const
 {
     return downcast<HTMLLabelElement>(get(key, scope, [] (const AtomicStringImpl& key, const Element& element) {
-        return is<HTMLLabelElement>(element) && element.fastGetAttribute(forAttr).impl() == &key;
+        return is<HTMLLabelElement>(element) && element.attributeWithoutSynchronization(forAttr).impl() == &key;
     }));
 }
 

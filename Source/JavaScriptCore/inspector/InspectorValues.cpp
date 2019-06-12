@@ -151,8 +151,7 @@ bool readHexDigits(const UChar* start, const UChar* end, const UChar** tokenEnd,
         return false;
 
     for (int i = 0; i < digits; ++i) {
-        UChar c = *start++;
-        if (!(('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')))
+        if (!isASCIIHexDigit(*start++))
             return false;
     }
 
@@ -262,19 +261,6 @@ Token parseToken(const UChar* start, const UChar* end, const UChar** tokenStart,
     return INVALID_TOKEN;
 }
 
-inline int hexToInt(UChar c)
-{
-    if ('0' <= c && c <= '9')
-        return c - '0';
-    if ('A' <= c && c <= 'F')
-        return c - 'A' + 10;
-    if ('a' <= c && c <= 'f')
-        return c - 'a' + 10;
-
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
 bool decodeString(const UChar* start, const UChar* end, StringBuilder& output)
 {
     while (start < end) {
@@ -308,15 +294,11 @@ bool decodeString(const UChar* start, const UChar* end, StringBuilder& output)
             c = '\v';
             break;
         case 'x':
-            c = (hexToInt(*start) << 4) +
-                hexToInt(*(start + 1));
+            c = toASCIIHexValue(start[0], start[1]);
             start += 2;
             break;
         case 'u':
-            c = (hexToInt(*start) << 12) +
-                (hexToInt(*(start + 1)) << 8) +
-                (hexToInt(*(start + 2)) << 4) +
-                hexToInt(*(start + 3));
+            c = toASCIIHexValue(start[0], start[1]) << 8 | toASCIIHexValue(start[2], start[3]);
             start += 4;
             break;
         default:
@@ -363,17 +345,17 @@ RefPtr<InspectorValue> buildValue(const UChar* start, const UChar* end, const UC
         result = InspectorValue::null();
         break;
     case BOOL_TRUE:
-        result = InspectorBasicValue::create(true);
+        result = InspectorValue::create(true);
         break;
     case BOOL_FALSE:
-        result = InspectorBasicValue::create(false);
+        result = InspectorValue::create(false);
         break;
     case NUMBER: {
         bool ok;
         double value = charactersToDouble(tokenStart, tokenEnd - tokenStart, &ok);
         if (!ok)
             return nullptr;
-        result = InspectorBasicValue::create(value);
+        result = InspectorValue::create(value);
         break;
     }
     case STRING: {
@@ -381,7 +363,7 @@ RefPtr<InspectorValue> buildValue(const UChar* start, const UChar* end, const UC
         bool ok = decodeString(tokenStart + 1, tokenEnd - 1, value);
         if (!ok)
             return nullptr;
-        result = InspectorString::create(value);
+        result = InspectorValue::create(value);
         break;
     }
     case ARRAY_BEGIN: {
@@ -459,7 +441,7 @@ RefPtr<InspectorValue> buildValue(const UChar* start, const UChar* end, const UC
         return nullptr;
     }
     *valueTokenEnd = tokenEnd;
-    return result.release();
+    return result;
 }
 
 inline bool escapeChar(UChar c, StringBuilder& dst)
@@ -498,59 +480,39 @@ inline void doubleQuoteString(const String& str, StringBuilder& dst)
 
 } // anonymous namespace
 
-bool InspectorValue::asBoolean(bool&) const
+Ref<InspectorValue> InspectorValue::null()
 {
-    return false;
+    return adoptRef(*new InspectorValue);
 }
 
-bool InspectorValue::asDouble(double&) const
+Ref<InspectorValue> InspectorValue::create(bool value)
 {
-    return false;
+    return adoptRef(*new InspectorValue(value));
 }
 
-bool InspectorValue::asDouble(float&) const
+Ref<InspectorValue> InspectorValue::create(int value)
 {
-    return false;
+    return adoptRef(*new InspectorValue(value));
 }
 
-bool InspectorValue::asInteger(int&) const
+Ref<InspectorValue> InspectorValue::create(double value)
 {
-    return false;
+    return adoptRef(*new InspectorValue(value));
 }
 
-bool InspectorValue::asInteger(unsigned&) const
+Ref<InspectorValue> InspectorValue::create(const String& value)
 {
-    return false;
+    return adoptRef(*new InspectorValue(value));
 }
 
-bool InspectorValue::asInteger(long&) const
+Ref<InspectorValue> InspectorValue::create(const char* value)
 {
-    return false;
+    return adoptRef(*new InspectorValue(value));
 }
 
-bool InspectorValue::asInteger(long long&) const
+bool InspectorValue::asValue(RefPtr<Inspector::InspectorValue> & value)
 {
-    return false;
-}
-
-bool InspectorValue::asInteger(unsigned long&) const
-{
-    return false;
-}
-
-bool InspectorValue::asInteger(unsigned long long&) const
-{
-    return false;
-}
-
-bool InspectorValue::asString(String&) const
-{
-    return false;
-}
-
-bool InspectorValue::asValue(RefPtr<InspectorValue>& output)
-{
-    output = this;
+    value = this;
     return true;
 }
 
@@ -571,11 +533,11 @@ bool InspectorValue::parseJSON(const String& jsonInput, RefPtr<InspectorValue>& 
     const UChar* start = characters;
     const UChar* end = start + jsonInput.length();
     const UChar* tokenEnd;
-    RefPtr<InspectorValue> result = buildValue(start, end, &tokenEnd, 0);
+    auto result = buildValue(start, end, &tokenEnd, 0);
     if (!result || tokenEnd != end)
         return false;
 
-    output = result.release();
+    output = WTFMove(result);
     return true;
 }
 
@@ -587,110 +549,119 @@ String InspectorValue::toJSONString() const
     return result.toString();
 }
 
-void InspectorValue::writeJSON(StringBuilder& output) const
-{
-    ASSERT(m_type == Type::Null);
-
-    output.appendLiteral("null");
-}
-
-bool InspectorBasicValue::asBoolean(bool& output) const
+bool InspectorValue::asBoolean(bool& output) const
 {
     if (type() != Type::Boolean)
         return false;
 
-    output = m_booleanValue;
+    output = m_value.boolean;
     return true;
 }
 
-bool InspectorBasicValue::asDouble(double& output) const
+bool InspectorValue::asDouble(double& output) const
 {
     if (type() != Type::Double)
         return false;
 
-    output = m_doubleValue;
+    output = m_value.number;
     return true;
 }
 
-bool InspectorBasicValue::asDouble(float& output) const
+bool InspectorValue::asDouble(float& output) const
 {
     if (type() != Type::Double)
         return false;
 
-    output = static_cast<float>(m_doubleValue);
+    output = static_cast<float>(m_value.number);
     return true;
 }
 
-bool InspectorBasicValue::asInteger(int& output) const
+bool InspectorValue::asInteger(int& output) const
 {
     if (type() != Type::Integer && type() != Type::Double)
         return false;
 
-    output = static_cast<int>(m_doubleValue);
+    output = static_cast<int>(m_value.number);
     return true;
 }
 
-bool InspectorBasicValue::asInteger(unsigned& output) const
+bool InspectorValue::asInteger(unsigned& output) const
 {
     if (type() != Type::Integer && type() != Type::Double)
         return false;
 
-    output = static_cast<unsigned>(m_doubleValue);
+    output = static_cast<unsigned>(m_value.number);
     return true;
 }
 
-bool InspectorBasicValue::asInteger(long& output) const
+bool InspectorValue::asInteger(long& output) const
 {
     if (type() != Type::Integer && type() != Type::Double)
         return false;
 
-    output = static_cast<long>(m_doubleValue);
+    output = static_cast<long>(m_value.number);
     return true;
 }
 
-bool InspectorBasicValue::asInteger(long long& output) const
+bool InspectorValue::asInteger(long long& output) const
 {
     if (type() != Type::Integer && type() != Type::Double)
         return false;
 
-    output = static_cast<long long>(m_doubleValue);
+    output = static_cast<long long>(m_value.number);
     return true;
 }
 
-bool InspectorBasicValue::asInteger(unsigned long& output) const
+bool InspectorValue::asInteger(unsigned long& output) const
 {
     if (type() != Type::Integer && type() != Type::Double)
         return false;
 
-    output = static_cast<unsigned long>(m_doubleValue);
+    output = static_cast<unsigned long>(m_value.number);
     return true;
 }
 
-bool InspectorBasicValue::asInteger(unsigned long long& output) const
+bool InspectorValue::asInteger(unsigned long long& output) const
 {
     if (type() != Type::Integer && type() != Type::Double)
         return false;
 
-    output = static_cast<unsigned long long>(m_doubleValue);
+    output = static_cast<unsigned long long>(m_value.number);
     return true;
 }
 
-void InspectorBasicValue::writeJSON(StringBuilder& output) const
+bool InspectorValue::asString(String& output) const
 {
-    ASSERT(type() == Type::Boolean || type() == Type::Double || type() == Type::Integer);
+    if (type() != Type::String)
+        return false;
 
-    if (type() == Type::Boolean) {
-        if (m_booleanValue)
+    output = m_value.string;
+    return true;
+}
+
+void InspectorValue::writeJSON(StringBuilder& output) const
+{
+    switch (m_type) {
+    case Type::Null:
+        output.appendLiteral("null");
+        break;
+    case Type::Boolean:
+        if (m_value.boolean)
             output.appendLiteral("true");
         else
             output.appendLiteral("false");
-    } else if (type() == Type::Double || type() == Type::Integer) {
+        break;
+    case Type::String:
+        doubleQuoteString(m_value.string, output);
+        break;
+    case Type::Double:
+    case Type::Integer: {
         NumberToLStringBuffer buffer;
-        if (!std::isfinite(m_doubleValue)) {
+        if (!std::isfinite(m_value.number)) {
             output.appendLiteral("null");
             return;
         }
-        DecimalNumber decimal = m_doubleValue;
+        DecimalNumber decimal = m_value.number;
         unsigned length = 0;
         if (decimal.bufferLengthForStringDecimal() > WTF::NumberToStringBufferLength) {
             // Not enough room for decimal. Use exponential format.
@@ -703,19 +674,11 @@ void InspectorBasicValue::writeJSON(StringBuilder& output) const
         } else
             length = decimal.toStringDecimal(buffer, WTF::NumberToStringBufferLength);
         output.append(buffer, length);
+        break;
     }
-}
-
-bool InspectorString::asString(String& output) const
-{
-    output = m_stringValue;
-    return true;
-}
-
-void InspectorString::writeJSON(StringBuilder& output) const
-{
-    ASSERT(type() == Type::String);
-    doubleQuoteString(m_stringValue, output);
+    default:
+        ASSERT_NOT_REACHED();
+    }
 }
 
 InspectorObjectBase::~InspectorObjectBase()
@@ -775,8 +738,8 @@ bool InspectorObjectBase::getArray(const String& name, RefPtr<InspectorArray>& o
 
 bool InspectorObjectBase::getValue(const String& name, RefPtr<InspectorValue>& output) const
 {
-    Dictionary::const_iterator findResult = m_data.find(name);
-    if (findResult == m_data.end())
+    Dictionary::const_iterator findResult = m_map.find(name);
+    if (findResult == m_map.end())
         return false;
 
     output = findResult->value;
@@ -785,7 +748,7 @@ bool InspectorObjectBase::getValue(const String& name, RefPtr<InspectorValue>& o
 
 void InspectorObjectBase::remove(const String& name)
 {
-    m_data.remove(name);
+    m_map.remove(name);
     m_order.removeFirst(name);
 }
 
@@ -793,8 +756,8 @@ void InspectorObjectBase::writeJSON(StringBuilder& output) const
 {
     output.append('{');
     for (size_t i = 0; i < m_order.size(); ++i) {
-        auto findResult = m_data.find(m_order[i]);
-        ASSERT(findResult != m_data.end());
+        auto findResult = m_map.find(m_order[i]);
+        ASSERT(findResult != m_map.end());
         if (i)
             output.append(',');
         doubleQuoteString(findResult->key, output);
@@ -805,8 +768,8 @@ void InspectorObjectBase::writeJSON(StringBuilder& output) const
 }
 
 InspectorObjectBase::InspectorObjectBase()
-    : InspectorValue(Type::Object)
-    , m_data()
+    : Inspector::InspectorValue(Type::Object)
+    , m_map()
     , m_order()
 {
 }
@@ -825,8 +788,8 @@ bool InspectorArrayBase::asArray(RefPtr<InspectorArray>& output)
 void InspectorArrayBase::writeJSON(StringBuilder& output) const
 {
     output.append('[');
-    for (Vector<RefPtr<InspectorValue>>::const_iterator it = m_data.begin(); it != m_data.end(); ++it) {
-        if (it != m_data.begin())
+    for (Vector<RefPtr<InspectorValue>>::const_iterator it = m_map.begin(); it != m_map.end(); ++it) {
+        if (it != m_map.begin())
             output.append(',');
         (*it)->writeJSON(output);
     }
@@ -835,14 +798,14 @@ void InspectorArrayBase::writeJSON(StringBuilder& output) const
 
 InspectorArrayBase::InspectorArrayBase()
     : InspectorValue(Type::Array)
-    , m_data()
+    , m_map()
 {
 }
 
 RefPtr<InspectorValue> InspectorArrayBase::get(size_t index) const
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(index < m_data.size());
-    return m_data[index];
+    ASSERT_WITH_SECURITY_IMPLICATION(index < m_map.size());
+    return m_map[index];
 }
 
 Ref<InspectorObject> InspectorObject::create()
@@ -853,36 +816,6 @@ Ref<InspectorObject> InspectorObject::create()
 Ref<InspectorArray> InspectorArray::create()
 {
     return adoptRef(*new InspectorArray);
-}
-
-Ref<InspectorValue> InspectorValue::null()
-{
-    return adoptRef(*new InspectorValue);
-}
-
-Ref<InspectorString> InspectorString::create(const String& value)
-{
-    return adoptRef(*new InspectorString(value));
-}
-
-Ref<InspectorString> InspectorString::create(const char* value)
-{
-    return adoptRef(*new InspectorString(value));
-}
-
-Ref<InspectorBasicValue> InspectorBasicValue::create(bool value)
-{
-    return adoptRef(*new InspectorBasicValue(value));
-}
-
-Ref<InspectorBasicValue> InspectorBasicValue::create(int value)
-{
-    return adoptRef(*new InspectorBasicValue(value));
-}
-
-Ref<InspectorBasicValue> InspectorBasicValue::create(double value)
-{
-    return adoptRef(*new InspectorBasicValue(value));
 }
 
 } // namespace Inspector

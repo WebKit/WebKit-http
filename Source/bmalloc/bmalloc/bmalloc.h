@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,6 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#include "AvailableMemory.h"
 #include "Cache.h"
 #include "Heap.h"
 #include "PerProcess.h"
@@ -41,6 +42,12 @@ inline void* tryMalloc(size_t size)
 inline void* malloc(size_t size)
 {
     return Cache::allocate(size);
+}
+
+// Returns null on failure.
+inline void* tryMemalign(size_t alignment, size_t size)
+{
+    return Cache::tryAllocate(alignment, size);
 }
 
 // Crashes on failure.
@@ -69,9 +76,40 @@ inline void scavenge()
 {
     scavengeThisThread();
 
-    std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
-    PerProcess<Heap>::get()->scavenge(lock, std::chrono::milliseconds(0));
+    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+    PerProcess<Heap>::get()->scavenge(lock);
 }
+
+inline bool isEnabled()
+{
+    std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
+    return !PerProcess<Heap>::getFastCase()->debugHeap();
+}
+    
+inline size_t availableMemory()
+{
+    return bmalloc::availableMemory();
+}
+    
+#if BPLATFORM(IOS)
+inline size_t memoryFootprint()
+{
+    return bmalloc::memoryFootprint();
+}
+
+inline double percentAvailableMemoryInUse()
+{
+    return bmalloc::percentAvailableMemoryInUse();
+}
+#endif
+
+#if BOS(DARWIN)
+inline void setScavengerThreadQOSClass(qos_class_t overrideClass)
+{
+    std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
+    PerProcess<Heap>::getFastCase()->setScavengerThreadQOSClass(overrideClass);
+}
+#endif
 
 } // namespace api
 } // namespace bmalloc

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,9 +26,11 @@
 #include "config.h"
 #include "InspectorScriptProfilerAgent.h"
 
+#include "DeferGC.h"
+#include "HeapInlines.h"
 #include "InspectorEnvironment.h"
 #include "SamplingProfiler.h"
-#include <wtf/RunLoop.h>
+#include "ScriptDebugServer.h"
 #include <wtf/Stopwatch.h>
 
 using namespace JSC;
@@ -53,11 +55,18 @@ void InspectorScriptProfilerAgent::didCreateFrontendAndBackend(FrontendRouter*, 
 
 void InspectorScriptProfilerAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
-    ErrorString ignored;
-    stopTracking(ignored);
+    // Stop tracking without sending results.
+    if (m_tracking) {
+        m_tracking = false;
+        m_activeEvaluateScript = false;
+        m_environment.scriptDebugServer().setProfilingClient(nullptr);
+
+        // Stop sampling without processing the samples.
+        stopSamplingWhenDisconnecting();
+    }
 }
 
-void InspectorScriptProfilerAgent::startTracking(ErrorString&, const bool* includeSamples)
+void InspectorScriptProfilerAgent::startTracking(ErrorString&, const bool* const includeSamples)
 {
     if (m_tracking)
         return;
@@ -67,11 +76,9 @@ void InspectorScriptProfilerAgent::startTracking(ErrorString&, const bool* inclu
 #if ENABLE(SAMPLING_PROFILER)
     if (includeSamples && *includeSamples) {
         VM& vm = m_environment.scriptDebugServer().vm();
-        vm.ensureSamplingProfiler(m_environment.executionStopwatch());
+        SamplingProfiler& samplingProfiler = vm.ensureSamplingProfiler(m_environment.executionStopwatch());
 
-        SamplingProfiler& samplingProfiler = *vm.samplingProfiler();
         LockHolder locker(samplingProfiler.getLock());
-
         samplingProfiler.setStopWatch(locker, m_environment.executionStopwatch());
         samplingProfiler.noticeCurrentThreadAsJSCExecutionThread(locker);
         samplingProfiler.start(locker);
@@ -157,7 +164,7 @@ void InspectorScriptProfilerAgent::addEvent(double startTime, double endTime, Pr
 }
 
 #if ENABLE(SAMPLING_PROFILER)
-static Ref<Protocol::ScriptProfiler::Samples> buildSamples(VM& vm, Vector<SamplingProfiler::StackTrace>&& samplingProfilerStackTraces, double totalTime)
+static Ref<Protocol::ScriptProfiler::Samples> buildSamples(VM& vm, Vector<SamplingProfiler::StackTrace>&& samplingProfilerStackTraces)
 {
     Ref<Protocol::Array<Protocol::ScriptProfiler::StackTrace>> stackTraces = Protocol::Array<Protocol::ScriptProfiler::StackTrace>::create();
     for (SamplingProfiler::StackTrace& stackTrace : samplingProfilerStackTraces) {
@@ -173,8 +180,8 @@ static Ref<Protocol::ScriptProfiler::Samples> buildSamples(VM& vm, Vector<Sampli
 
             if (stackFrame.hasExpressionInfo()) {
                 Ref<Protocol::ScriptProfiler::ExpressionLocation> expressionLocation = Protocol::ScriptProfiler::ExpressionLocation::create()
-                    .setLine(stackFrame.lineNumber)
-                    .setColumn(stackFrame.columnNumber)
+                    .setLine(stackFrame.lineNumber())
+                    .setColumn(stackFrame.columnNumber())
                     .release();
                 frame->setExpressionLocation(WTFMove(expressionLocation));
             }
@@ -190,7 +197,6 @@ static Ref<Protocol::ScriptProfiler::Samples> buildSamples(VM& vm, Vector<Sampli
 
     return Protocol::ScriptProfiler::Samples::create()
         .setStackTraces(WTFMove(stackTraces))
-        .setTotalTime(totalTime)
         .release();
 }
 #endif // ENABLE(SAMPLING_PROFILER)
@@ -199,15 +205,18 @@ void InspectorScriptProfilerAgent::trackingComplete()
 {
 #if ENABLE(SAMPLING_PROFILER)
     if (m_enabledSamplingProfiler) {
-        JSLockHolder lock(m_environment.scriptDebugServer().vm());
-        SamplingProfiler* samplingProfiler = m_environment.scriptDebugServer().vm().samplingProfiler();
+        VM& vm = m_environment.scriptDebugServer().vm();
+        JSLockHolder lock(vm);
+        DeferGC deferGC(vm.heap);
+        SamplingProfiler* samplingProfiler = vm.samplingProfiler();
         RELEASE_ASSERT(samplingProfiler);
-        LockHolder locker(samplingProfiler->getLock());
-        samplingProfiler->stop(locker);
-        Vector<SamplingProfiler::StackTrace> stackTraces = samplingProfiler->releaseStackTraces(locker);
-        Ref<Protocol::ScriptProfiler::Samples> samples = buildSamples(m_environment.scriptDebugServer().vm(), WTFMove(stackTraces), samplingProfiler->totalTime(locker));
 
+        LockHolder locker(samplingProfiler->getLock());
+        samplingProfiler->pause(locker);
+        Vector<SamplingProfiler::StackTrace> stackTraces = samplingProfiler->releaseStackTraces(locker);
         locker.unlockEarly();
+
+        Ref<Protocol::ScriptProfiler::Samples> samples = buildSamples(vm, WTFMove(stackTraces));
 
         m_enabledSamplingProfiler = false;
 
@@ -217,6 +226,34 @@ void InspectorScriptProfilerAgent::trackingComplete()
 #else
     m_frontendDispatcher->trackingComplete(nullptr);
 #endif // ENABLE(SAMPLING_PROFILER)
+}
+
+void InspectorScriptProfilerAgent::stopSamplingWhenDisconnecting()
+{
+#if ENABLE(SAMPLING_PROFILER)
+    if (!m_enabledSamplingProfiler)
+        return;
+
+    VM& vm = m_environment.scriptDebugServer().vm();
+    JSLockHolder lock(vm);
+    SamplingProfiler* samplingProfiler = vm.samplingProfiler();
+    RELEASE_ASSERT(samplingProfiler);
+    LockHolder locker(samplingProfiler->getLock());
+    samplingProfiler->pause(locker);
+    samplingProfiler->clearData(locker);
+
+    m_enabledSamplingProfiler = false;
+#endif
+}
+
+void InspectorScriptProfilerAgent::programmaticCaptureStarted()
+{
+    m_frontendDispatcher->programmaticCaptureStarted();
+}
+
+void InspectorScriptProfilerAgent::programmaticCaptureStopped()
+{
+    m_frontendDispatcher->programmaticCaptureStopped();
 }
 
 } // namespace Inspector

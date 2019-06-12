@@ -26,60 +26,46 @@
 #include "config.h"
 #include "DeleteFromTextNodeCommand.h"
 
+#include "Editing.h"
 #include "Document.h"
-#include "ExceptionCodePlaceholder.h"
 #include "Text.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
-DeleteFromTextNodeCommand::DeleteFromTextNodeCommand(RefPtr<Text>&& node, unsigned offset, unsigned count, EditAction editingAction)
+DeleteFromTextNodeCommand::DeleteFromTextNodeCommand(Ref<Text>&& node, unsigned offset, unsigned count, EditAction editingAction)
     : SimpleEditCommand(node->document(), editingAction)
-    , m_node(node)
+    , m_node(WTFMove(node))
     , m_offset(offset)
     , m_count(count)
 {
-    ASSERT(m_node);
     ASSERT(m_offset <= m_node->length());
     ASSERT(m_offset + m_count <= m_node->length());
 }
 
 void DeleteFromTextNodeCommand::doApply()
 {
-    ASSERT(m_node);
-
-    if (!isEditableNode(*m_node))
+    if (!isEditableNode(m_node))
         return;
 
-    ExceptionCode ec = 0;
-    m_text = m_node->substringData(m_offset, m_count, ec);
-    if (ec)
+    auto result = m_node->substringData(m_offset, m_count);
+    if (result.hasException())
         return;
-    
-    // Need to notify this before actually deleting the text
-    if (shouldPostAccessibilityNotification())
-        notifyAccessibilityForTextChange(m_node.get(), applyEditType(), m_text, VisiblePosition(Position(m_node, m_offset)));
-
-    m_node->deleteData(m_offset, m_count, ec);
+    m_text = result.releaseReturnValue();
+    m_node->deleteData(m_offset, m_count);
 }
 
 void DeleteFromTextNodeCommand::doUnapply()
 {
-    ASSERT(m_node);
-
     if (!m_node->hasEditableStyle())
         return;
 
-    m_node->insertData(m_offset, m_text, IGNORE_EXCEPTION);
-
-    if (shouldPostAccessibilityNotification())
-        notifyAccessibilityForTextChange(m_node.get(), unapplyEditType(), m_text, VisiblePosition(Position(m_node, m_offset)));
+    m_node->insertData(m_offset, m_text);
 }
 
 #ifndef NDEBUG
 void DeleteFromTextNodeCommand::getNodesInCommand(HashSet<Node*>& nodes)
 {
-    addNodeAndDescendants(m_node.get(), nodes);
+    addNodeAndDescendants(m_node.ptr(), nodes);
 }
 #endif
 

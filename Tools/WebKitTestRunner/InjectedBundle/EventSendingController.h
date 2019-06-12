@@ -23,19 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EventSendingController_h
-#define EventSendingController_h
+#pragma once
 
 #include "JSWrappable.h"
 #include <WebKit/WKEvent.h>
 #include <WebKit/WKGeometry.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 
 namespace WTR {
 
 class EventSendingController : public JSWrappable {
 public:
-    static PassRefPtr<EventSendingController> create();
+    static Ref<EventSendingController> create();
     virtual ~EventSendingController();
 
     void makeWindowObject(JSContextRef, JSObjectRef windowObject, JSValueRef* exception);
@@ -53,7 +52,6 @@ public:
     void mouseForceChanged(double force);
     void mouseScrollBy(int x, int y);
     void mouseScrollByWithWheelAndMomentumPhases(int x, int y, JSStringRef phase, JSStringRef momentum);
-    void swipeGestureWithWheelAndMomentumPhases(int x, int y, JSStringRef phase, JSStringRef momentum);
     void continuousMouseScrollBy(int x, int y, bool paged);
     JSValueRef contextClick();
     void leapForward(int milliseconds);
@@ -92,5 +90,3 @@ private:
 };
 
 } // namespace WTR
-
-#endif // EventSendingController_h

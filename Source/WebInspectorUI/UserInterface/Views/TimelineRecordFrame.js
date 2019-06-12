@@ -96,9 +96,12 @@ WebInspector.TimelineRecordFrame = class TimelineRecordFrame extends WebInspecto
 
         this._element.style.width = (1 / graphDataSource.timelineOverview.secondsPerPixel) + "px";
 
-        var graphDuration = graphDataSource.endTime - graphDataSource.startTime
-        var recordLeftPosition = (frameIndex - graphDataSource.startTime) / graphDuration;
-        this._updateElementPosition(this._element, recordLeftPosition, "left");
+        var graphDuration = graphDataSource.endTime - graphDataSource.startTime;
+        let recordPosition = (frameIndex - graphDataSource.startTime) / graphDuration;
+
+        let property = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "right" : "left";
+        this._updateElementPosition(this._element, recordPosition, property);
+
         this._updateChildElements(graphDataSource);
 
         return true;
@@ -272,11 +275,11 @@ WebInspector.TimelineRecordFrame = class TimelineRecordFrame extends WebInspecto
     _updateElementPosition(element, newPosition, property)
     {
         newPosition *= 100;
-        newPosition = newPosition.toFixed(2);
 
-        var currentPosition = parseFloat(element.style[property]).toFixed(2);
-        if (currentPosition !== newPosition)
-            element.style[property] = newPosition + "%";
+        let newPositionAprox = Math.round(newPosition * 100);
+        let currentPositionAprox = Math.round(parseFloat(element.style[property]) * 100);
+        if (currentPositionAprox !== newPositionAprox)
+            element.style[property] = (newPositionAprox / 100) + "%";
     }
 };
 

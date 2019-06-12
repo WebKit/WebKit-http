@@ -38,24 +38,24 @@ class MediaPlayerPrivateAVFoundationCF;
 
 class InbandTextTrackPrivateLegacyAVCF : public InbandTextTrackPrivateAVF {
 public:
-    static PassRefPtr<InbandTextTrackPrivateLegacyAVCF> create(MediaPlayerPrivateAVFoundationCF* player, AVCFPlayerItemTrackRef track)
+    static Ref<InbandTextTrackPrivateLegacyAVCF> create(MediaPlayerPrivateAVFoundationCF* player, AVCFPlayerItemTrackRef track)
     {
-        return adoptRef(new InbandTextTrackPrivateLegacyAVCF(player, track));
+        return adoptRef(*new InbandTextTrackPrivateLegacyAVCF(player, track));
     }
 
     ~InbandTextTrackPrivateLegacyAVCF() { }
 
-    virtual InbandTextTrackPrivate::Kind kind() const override;
-    virtual bool isClosedCaptions() const override;
-    virtual bool containsOnlyForcedSubtitles() const override;
-    virtual bool isMainProgramContent() const override;
-    virtual bool isEasyToRead() const override;
-    virtual AtomicString label() const override;
-    virtual AtomicString language() const override;
+    InbandTextTrackPrivate::Kind kind() const override;
+    bool isClosedCaptions() const override;
+    bool containsOnlyForcedSubtitles() const override;
+    bool isMainProgramContent() const override;
+    bool isEasyToRead() const override;
+    AtomicString label() const override;
+    AtomicString language() const override;
 
-    virtual void disconnect() override;
+    void disconnect() override;
 
-    virtual Category textTrackCategory() const override { return LegacyClosedCaption; }
+    Category textTrackCategory() const override { return LegacyClosedCaption; }
 
     AVCFPlayerItemTrackRef avPlayerItemTrack() const { return m_playerItemTrack.get(); }
 

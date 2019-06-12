@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef LabelsNodeList_h
-#define LabelsNodeList_h
+#pragma once
 
 #include "LabelableElement.h"
 #include "LiveNodeList.h"
@@ -38,13 +37,11 @@ public:
     }
     ~LabelsNodeList();
 
-    virtual bool elementMatches(Element&) const override;
-    virtual bool isRootedAtDocument() const override { return true; }
+    bool elementMatches(Element&) const override;
+    bool isRootedAtDocument() const override { return true; }
 
 private:
     explicit LabelsNodeList(LabelableElement& forNode);
 };
 
 } // namespace WebCore
-
-#endif // LabelsNodeList_h

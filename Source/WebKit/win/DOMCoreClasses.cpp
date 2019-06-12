@@ -31,12 +31,14 @@
 #include "DOMHTMLClasses.h"
 #include "WebKitGraphics.h"
 
+#include <WebCore/Attr.h>
 #include <WebCore/BString.h>
 #include <WebCore/COMPtr.h>
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Document.h>
 #include <WebCore/DragImage.h>
 #include <WebCore/Element.h>
+#include <WebCore/Event.h>
 #include <WebCore/Font.h>
 #include <WebCore/FontCascade.h>
 #include <WebCore/Frame.h>
@@ -52,6 +54,7 @@
 #include <WebCore/Range.h>
 #include <WebCore/RenderElement.h>
 #include <WebCore/RenderTreeAsText.h>
+#include <WebCore/StyledElement.h>
 
 #include <initguid.h>
 // {3B0C0EFF-478B-4b0b-8290-D2321E08E23E}
@@ -248,8 +251,7 @@ HRESULT DOMNode::insertBefore(_In_opt_ IDOMNode* newChild, _In_opt_ IDOMNode* re
 
     COMPtr<DOMNode> refChildNode(Query, refChild);
 
-    ExceptionCode ec;
-    if (!m_node->insertBefore(newChildNode->node(), refChildNode ? refChildNode->node() : 0, ec))
+    if (m_node->insertBefore(*newChildNode->node(), refChildNode ? refChildNode->node() : nullptr).hasException())
         return E_FAIL;
 
     *result = newChild;
@@ -280,8 +282,7 @@ HRESULT DOMNode::removeChild(_In_opt_ IDOMNode* oldChild, _COM_Outptr_opt_ IDOMN
     if (!oldChildNode)
         return E_FAIL;
 
-    ExceptionCode ec;
-    if (!m_node->removeChild(oldChildNode->node(), ec))
+    if (m_node->removeChild(*oldChildNode->node()).hasException())
         return E_FAIL;
 
     *result = oldChild;
@@ -411,8 +412,8 @@ HRESULT DOMNode::setTextContent(_In_ BSTR /*text*/)
 
 HRESULT DOMNode::addEventListener(_In_ BSTR type, _In_opt_ IDOMEventListener* listener, BOOL useCapture)
 {
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_node->addEventListener(type, webListener, useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_node->addEventListener(type, WTFMove(webListener), useCapture);
 
     return S_OK;
 }
@@ -423,8 +424,8 @@ HRESULT DOMNode::removeEventListener(_In_ BSTR type, _In_opt_ IDOMEventListener*
         return E_POINTER;
     if (!m_node)
         return E_FAIL;
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_node->removeEventListener(type, webListener.get(), useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_node->removeEventListener(type, webListener, useCapture);
     return S_OK;
 }
 
@@ -440,9 +441,15 @@ HRESULT DOMNode::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (FAILED(hr))
         return hr;
 
-    WebCore::ExceptionCode ec = 0;
-    *result = m_node->dispatchEventForBindings(domEvent->coreEvent(), ec) ? TRUE : FALSE;
-    return ec ? E_FAIL : S_OK;
+    if (!domEvent->coreEvent())
+        return E_FAIL;
+
+    auto dispatchResult = m_node->dispatchEventForBindings(*domEvent->coreEvent());
+    if (dispatchResult.hasException())
+        return E_FAIL;
+
+    *result = dispatchResult.releaseReturnValue();
+    return S_OK;
 }
 
 // DOMNode - DOMNode ----------------------------------------------------------
@@ -634,9 +641,11 @@ HRESULT DOMDocument::createElement(_In_ BSTR tagName, _COM_Outptr_opt_ IDOMEleme
         return E_FAIL;
 
     String tagNameString(tagName);
-    ExceptionCode ec;
-    *result = DOMElement::createInstance(m_document->createElementForBindings(tagNameString, ec).get());
-    return *result ? S_OK : E_FAIL;
+    auto createElementResult = m_document->createElementForBindings(tagNameString);
+    if (createElementResult.hasException())
+        return E_FAIL;
+    *result = DOMElement::createInstance(createElementResult.releaseReturnValue().ptr());
+    return S_OK;
 }
 
 HRESULT DOMDocument::createDocumentFragment(_COM_Outptr_opt_ IDOMDocumentFragment** result)
@@ -790,6 +799,8 @@ HRESULT DOMDocument::getComputedStyle(_In_opt_ IDOMElement* elt, _In_ BSTR pseud
     if (FAILED(hr))
         return hr;
     Element* element = domEle->element();
+    if (!element)
+        return E_FAIL;
 
     WebCore::DOMWindow* dv = m_document->defaultView();
     String pseudoEltString(pseudoElt);
@@ -797,7 +808,7 @@ HRESULT DOMDocument::getComputedStyle(_In_opt_ IDOMElement* elt, _In_ BSTR pseud
     if (!dv)
         return E_FAIL;
     
-    *result = DOMCSSStyleDeclaration::createInstance(dv->getComputedStyle(element, pseudoEltString.impl()).get());
+    *result = DOMCSSStyleDeclaration::createInstance(dv->getComputedStyle(*element, pseudoEltString.impl()).ptr());
     return *result ? S_OK : E_FAIL;
 }
 
@@ -811,8 +822,11 @@ HRESULT DOMDocument::createEvent(_In_ BSTR eventType, _COM_Outptr_opt_ IDOMEvent
 
     String eventTypeString(eventType, SysStringLen(eventType));
     WebCore::ExceptionCode ec = 0;
-    *result = DOMEvent::createInstance(m_document->createEvent(eventTypeString, ec));
-    return *result ? S_OK : E_FAIL;
+    auto createEventResult = m_document->createEvent(eventTypeString);
+    if (createEventResult.hasException())
+        return E_FAIL;
+    *result = DOMEvent::createInstance(createEventResult.releaseReturnValue());
+    return S_OK;
 }
 
 // DOMDocument - DOMDocument --------------------------------------------------
@@ -909,8 +923,8 @@ HRESULT DOMWindow::addEventListener(_In_ BSTR type, _In_opt_ IDOMEventListener* 
         return E_POINTER;
     if (!m_window)
         return E_FAIL;
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_window->addEventListener(type, webListener, useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_window->addEventListener(type, WTFMove(webListener), useCapture);
     return S_OK;
 }
 
@@ -920,8 +934,8 @@ HRESULT DOMWindow::removeEventListener(_In_ BSTR type, _In_opt_ IDOMEventListene
         return E_POINTER;
     if (!m_window)
         return E_FAIL;
-    RefPtr<WebEventListener> webListener = WebEventListener::create(listener);
-    m_window->removeEventListener(type, webListener.get(), useCapture);
+    auto webListener = WebEventListener::create(listener);
+    m_window->removeEventListener(type, webListener, useCapture);
     return S_OK;
 }
 
@@ -937,9 +951,15 @@ HRESULT DOMWindow::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (FAILED(hr))
         return hr;
 
-    WebCore::ExceptionCode ec = 0;
-    *result = m_window->dispatchEventForBindings(domEvent->coreEvent(), ec) ? TRUE : FALSE;
-    return ec ? E_FAIL : S_OK;
+    if (!domEvent->coreEvent())
+        return E_FAIL;
+
+    auto dispatchResult = m_window->dispatchEventForBindings(*domEvent->coreEvent());
+    if (dispatchResult.hasException())
+        return E_FAIL;
+
+    *result = dispatchResult.releaseReturnValue();
+    return S_OK;
 }
 
 
@@ -1061,9 +1081,8 @@ HRESULT DOMElement::setAttribute(_In_ BSTR name, _In_ BSTR value)
 
     WTF::String nameString(name, SysStringLen(name));
     WTF::String valueString(value, SysStringLen(value));
-    WebCore::ExceptionCode ec = 0;
-    m_element->setAttribute(nameString, valueString, ec);
-    return ec ? E_FAIL : S_OK;
+    auto result = m_element->setAttribute(nameString, valueString);
+    return result.hasException() ? E_FAIL : S_OK;
 }
     
 HRESULT DOMElement::removeAttribute(_In_ BSTR /*name*/)
@@ -1276,7 +1295,7 @@ HRESULT DOMElement::font(_Out_ WebFontDescription* webFontDescription)
     webFontDescription->family = familyCharactersBuffer;
     webFontDescription->familyLength = family.length();
     webFontDescription->size = fontDescription.computedSize();
-    webFontDescription->bold = fontDescription.weight() >= WebCore::FontWeight600;
+    webFontDescription->bold = isFontWeightBold(fontDescription.weight());
     webFontDescription->italic = fontDescription.italic();
 
     return S_OK;
@@ -1332,14 +1351,10 @@ HRESULT DOMElement::style(_COM_Outptr_opt_ IDOMCSSStyleDeclaration** result)
     if (!result)
         return E_POINTER;
     *result = nullptr;
-    if (!m_element)
+    if (!is<WebCore::StyledElement>(m_element))
         return E_FAIL;
 
-    WebCore::CSSStyleDeclaration* style = m_element->cssomStyle();
-    if (!style)
-        return E_FAIL;
-
-    *result = DOMCSSStyleDeclaration::createInstance(style);
+    *result = DOMCSSStyleDeclaration::createInstance(&downcast<WebCore::StyledElement>(*m_element).cssomStyle());
     return *result ? S_OK : E_FAIL;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MarkStack_h
-#define MarkStack_h
+#pragma once
 
-#include "GCSegmentedArrayInlines.h"
+#include "GCSegmentedArray.h"
 
 namespace JSC {
 
@@ -36,10 +35,10 @@ class MarkStackArray : public GCSegmentedArray<const JSCell*> {
 public:
     MarkStackArray();
 
-    void donateSomeCellsTo(MarkStackArray& other);
-    void stealSomeCellsFrom(MarkStackArray& other, size_t idleThreadCount);
+    void transferTo(MarkStackArray&);
+    size_t transferTo(MarkStackArray&, size_t limit); // Optimized for when `limit` is small.
+    void donateSomeCellsTo(MarkStackArray&);
+    void stealSomeCellsFrom(MarkStackArray&, size_t idleThreadCount);
 };
 
 } // namespace JSC
-
-#endif

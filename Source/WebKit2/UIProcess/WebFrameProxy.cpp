@@ -31,8 +31,8 @@
 #include "WebFramePolicyListenerProxy.h"
 #include "WebPageMessages.h"
 #include "WebPageProxy.h"
+#include "WebPasteboardProxy.h"
 #include "WebProcessPool.h"
-#include <WebCore/DOMImplementation.h>
 #include <WebCore/Image.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <stdio.h>
@@ -53,6 +53,9 @@ WebFrameProxy::WebFrameProxy(WebPageProxy* page, uint64_t frameID)
 WebFrameProxy::~WebFrameProxy()
 {
     WebProcessPool::statistics().wkFrameCount--;
+#if PLATFORM(GTK)
+    WebPasteboardProxy::singleton().didDestroyFrame(this);
+#endif
 }
 
 void WebFrameProxy::webProcessWillShutDown()
@@ -117,15 +120,13 @@ bool WebFrameProxy::isDisplayingStandaloneMediaDocument() const
 
 bool WebFrameProxy::isDisplayingMarkupDocument() const
 {
-    // FIXME: This check should be moved to somewhere in WebCore.
-    return m_MIMEType == "text/html" || m_MIMEType == "image/svg+xml" || m_MIMEType == "application/x-webarchive" || DOMImplementation::isXMLMIMEType(m_MIMEType);
+    // FIXME: This should be a call to a single MIMETypeRegistry function; adding a new one if needed.
+    // FIXME: This is doing case sensitive comparisons on MIME types, should be using ASCII case insensitive instead.
+    return m_MIMEType == "text/html" || m_MIMEType == "image/svg+xml" || m_MIMEType == "application/x-webarchive" || MIMETypeRegistry::isXMLMIMEType(m_MIMEType);
 }
 
 bool WebFrameProxy::isDisplayingPDFDocument() const
 {
-    if (m_MIMEType.isEmpty())
-        return false;
-
     return MIMETypeRegistry::isPDFOrPostScriptMIMEType(m_MIMEType);
 }
 
@@ -175,14 +176,14 @@ void WebFrameProxy::didChangeTitle(const String& title)
     m_title = title;
 }
 
-void WebFrameProxy::receivedPolicyDecision(WebCore::PolicyAction action, uint64_t listenerID, API::Navigation* navigation)
+void WebFrameProxy::receivedPolicyDecision(WebCore::PolicyAction action, uint64_t listenerID, API::Navigation* navigation, const WebsitePolicies& websitePolicies)
 {
     if (!m_page)
         return;
 
     ASSERT(m_activeListener);
     ASSERT(m_activeListener->listenerID() == listenerID);
-    m_page->receivedPolicyDecision(action, this, listenerID, navigation);
+    m_page->receivedPolicyDecision(action, *this, listenerID, navigation, websitePolicies);
 }
 
 WebFramePolicyListenerProxy& WebFrameProxy::setUpPolicyListenerProxy(uint64_t listenerID)
@@ -201,34 +202,34 @@ WebFormSubmissionListenerProxy& WebFrameProxy::setUpFormSubmissionListenerProxy(
     return *static_cast<WebFormSubmissionListenerProxy*>(m_activeListener.get());
 }
 
-void WebFrameProxy::getWebArchive(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
+void WebFrameProxy::getWebArchive(Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)
 {
     if (!m_page) {
         callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    m_page->getWebArchiveOfFrame(this, callbackFunction);
+    m_page->getWebArchiveOfFrame(this, WTFMove(callbackFunction));
 }
 
-void WebFrameProxy::getMainResourceData(std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
+void WebFrameProxy::getMainResourceData(Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)
 {
     if (!m_page) {
         callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    m_page->getMainResourceDataOfFrame(this, callbackFunction);
+    m_page->getMainResourceDataOfFrame(this, WTFMove(callbackFunction));
 }
 
-void WebFrameProxy::getResourceData(API::URL* resourceURL, std::function<void (API::Data*, CallbackBase::Error)> callbackFunction)
+void WebFrameProxy::getResourceData(API::URL* resourceURL, Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)
 {
     if (!m_page) {
         callbackFunction(nullptr, CallbackBase::Error::Unknown);
         return;
     }
 
-    m_page->getResourceDataFromFrame(this, resourceURL, callbackFunction);
+    m_page->getResourceDataFromFrame(this, resourceURL, WTFMove(callbackFunction));
 }
 
 void WebFrameProxy::setUnreachableURL(const String& unreachableURL)
@@ -247,13 +248,20 @@ bool WebFrameProxy::didHandleContentFilterUnblockNavigation(const WebCore::Resou
     RefPtr<WebPageProxy> page { m_page };
     ASSERT(page);
     m_contentFilterUnblockHandler.requestUnblockAsync([page](bool unblocked) {
-        if (unblocked) {
-            const bool reloadFromOrigin = false;
-            const bool contentBlockersEnabled = true;
-            page->reload(reloadFromOrigin, contentBlockersEnabled);
-        }
+        if (unblocked)
+            page->reload({ });
     });
     return true;
+}
+#endif
+
+#if PLATFORM(GTK)
+void WebFrameProxy::collapseSelection()
+{
+    if (!m_page)
+        return;
+
+    m_page->process().send(Messages::WebPage::CollapseSelectionInFrame(m_frameID), m_page->pageID());
 }
 #endif
 

@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef BatchedTransitionOptimizer_h
-#define BatchedTransitionOptimizer_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -35,24 +34,10 @@ class BatchedTransitionOptimizer {
     WTF_MAKE_NONCOPYABLE(BatchedTransitionOptimizer);
 public:
     BatchedTransitionOptimizer(VM& vm, JSObject* object)
-        : m_vm(&vm)
-        , m_object(object)
     {
-        if (!m_object->structure(vm)->isDictionary())
-            m_object->convertToDictionary(vm);
+        if (!object->structure(vm)->isDictionary())
+            object->convertToDictionary(vm);
     }
-
-    ~BatchedTransitionOptimizer()
-    {
-        if (m_object->structure()->isDictionary())
-            m_object->flattenDictionaryObject(*m_vm);
-    }
-
-private:
-    VM* m_vm;
-    JSObject* m_object;
 };
 
 } // namespace JSC
-
-#endif // BatchedTransitionOptimizer_h

@@ -42,13 +42,13 @@ WKTypeID WKBundleHitTestResultGetTypeID()
 WKBundleNodeHandleRef WKBundleHitTestResultCopyNodeHandle(WKBundleHitTestResultRef hitTestResultRef)
 {
     RefPtr<InjectedBundleNodeHandle> nodeHandle = toImpl(hitTestResultRef)->nodeHandle();
-    return toAPI(nodeHandle.release().leakRef());
+    return toAPI(nodeHandle.leakRef());
 }
 
 WKBundleNodeHandleRef WKBundleHitTestResultCopyURLElementHandle(WKBundleHitTestResultRef hitTestResultRef)
 {
     RefPtr<InjectedBundleNodeHandle> urlElementNodeHandle = toImpl(hitTestResultRef)->urlElementHandle();
-    return toAPI(urlElementNodeHandle.release().leakRef());
+    return toAPI(urlElementNodeHandle.leakRef());
 }
 
 WKBundleFrameRef WKBundleHitTestResultGetFrame(WKBundleHitTestResultRef hitTestResultRef)
@@ -119,4 +119,9 @@ WKStringRef WKBundleHitTestResultCopyLinkLabel(WKBundleHitTestResultRef hitTestR
 WKStringRef WKBundleHitTestResultCopyLinkTitle(WKBundleHitTestResultRef hitTestResultRef)
 {
     return toCopiedAPI(toImpl(hitTestResultRef)->linkTitle());
+}
+
+WKStringRef WKBundleHitTestResultCopyLinkSuggestedFilename(WKBundleHitTestResultRef hitTestResultRef)
+{
+    return toCopiedAPI(toImpl(hitTestResultRef)->linkSuggestedFilename());
 }

@@ -28,10 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MIMEHeader_h
-#define MIMEHeader_h
+#pragma once
 
-#include <wtf/HashMap.h>
+#if ENABLE(MHTML)
+
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
@@ -51,7 +51,7 @@ public:
         Unknown
     };
 
-    static PassRefPtr<MIMEHeader> parseHeader(SharedBufferChunkReader* crLFLineReader);
+    static RefPtr<MIMEHeader> parseHeader(SharedBufferChunkReader& crLFLineReader);
 
     bool isMultipart() const { return m_contentType.startsWith("multipart/"); }
 

@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLBodyElement_h
-#define HTMLBodyElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -41,30 +40,30 @@ private:
 
     bool isFirstBodyElementOfDocument() const;
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
 
-    virtual bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const final;
     
-    virtual bool supportsFocus() const override;
+    bool supportsFocus() const final;
 
-    virtual int scrollLeft() override;
-    virtual void setScrollLeft(int) override;
+    int scrollLeft() final;
+    void setScrollLeft(int) final;
     
-    virtual int scrollTop() override;
-    virtual void setScrollTop(int) override;
+    int scrollTop() final;
+    void setScrollTop(int) final;
+
+    void scrollTo(const ScrollToOptions&) final;
     
-    virtual int scrollHeight() override;
-    virtual int scrollWidth() override;
+    int scrollHeight() final;
+    int scrollWidth() final;
     
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
     static EventHandlerNameMap createWindowEventHandlerNameMap();
 };
 
 } //namespace
-
-#endif

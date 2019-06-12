@@ -34,44 +34,85 @@
 
 namespace WebCore {
 
-void CryptoAlgorithmAES_KW::platformEncrypt(const CryptoKeyAES& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
+// FIXME: We should change data to Vector<uint8_t> type once WebKitSubtleCrypto is deprecated.
+// https://bugs.webkit.org/show_bug.cgi?id=164939
+static ExceptionOr<Vector<uint8_t>> wrapKeyAES_KW(const Vector<uint8_t>& key, const uint8_t* data, size_t dataLength)
+{
+    Vector<uint8_t> result(CCSymmetricWrappedSize(kCCWRAPAES, dataLength));
+    size_t resultSize = result.size();
+    if (CCSymmetricKeyWrap(kCCWRAPAES, CCrfc3394_iv, CCrfc3394_ivLen, key.data(), key.size(), data, dataLength, result.data(), &resultSize))
+        return Exception { OperationError };
+
+    result.shrink(resultSize);
+    return WTFMove(result);
+}
+
+// FIXME: We should change data to Vector<uint8_t> type once WebKitSubtleCrypto is deprecated.
+// https://bugs.webkit.org/show_bug.cgi?id=164939
+static ExceptionOr<Vector<uint8_t>> unwrapKeyAES_KW(const Vector<uint8_t>& key, const uint8_t* data, size_t dataLength)
+{
+    Vector<uint8_t> result(CCSymmetricUnwrappedSize(kCCWRAPAES, dataLength));
+    size_t resultSize = result.size();
+
+    if (resultSize % 8)
+        return Exception { OperationError };
+
+    if (CCSymmetricKeyUnwrap(kCCWRAPAES, CCrfc3394_iv, CCrfc3394_ivLen, key.data(), key.size(), data, dataLength, result.data(), &resultSize))
+        return Exception { OperationError };
+
+    result.shrink(resultSize);
+    return WTFMove(result);
+}
+
+void CryptoAlgorithmAES_KW::platformWrapKey(Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback)
+{
+    auto& aesKey = downcast<CryptoKeyAES>(key.get());
+    auto result = wrapKeyAES_KW(aesKey.key(), data.data(), data.size());
+    if (result.hasException()) {
+        exceptionCallback(result.releaseException().code());
+        return;
+    }
+    callback(result.releaseReturnValue());
+}
+
+void CryptoAlgorithmAES_KW::platformUnwrapKey(Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback)
+{
+    auto& aesKey = downcast<CryptoKeyAES>(key.get());
+    auto result = unwrapKeyAES_KW(aesKey.key(), data.data(), data.size());
+    if (result.hasException()) {
+        exceptionCallback(result.releaseException().code());
+        return;
+    }
+    callback(result.releaseReturnValue());
+}
+
+ExceptionOr<void> CryptoAlgorithmAES_KW::platformEncrypt(const CryptoKeyAES& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
 {
     if (data.second % 8) {
         // RFC 3394 uses 64-bit blocks as input.
         // <rdar://problem/15949992> CommonCrypto doesn't detect incorrect data length, silently producing a bad cyphertext.
         failureCallback();
-        return;
+        return { };
     }
 
-    Vector<uint8_t> result(CCSymmetricWrappedSize(kCCWRAPAES, data.second));
-    size_t resultSize = result.size();
-    int status = CCSymmetricKeyWrap(kCCWRAPAES, CCrfc3394_iv, CCrfc3394_ivLen, key.key().data(), key.key().size(), data.first, data.second, result.data(), &resultSize);
-    if (status) {
+    auto result = wrapKeyAES_KW(key.key(), data.first, data.second);
+    if (result.hasException()) {
         failureCallback();
-        return;
+        return { };
     }
-    result.shrink(resultSize);
-    callback(result);
+    callback(result.releaseReturnValue());
+    return { };
 }
 
-void CryptoAlgorithmAES_KW::platformDecrypt(const CryptoKeyAES& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
+ExceptionOr<void> CryptoAlgorithmAES_KW::platformDecrypt(const CryptoKeyAES& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
 {
-    Vector<uint8_t> result(CCSymmetricUnwrappedSize(kCCWRAPAES, data.second));
-    size_t resultSize = result.size();
-
-    if (resultSize % 8) {
+    auto result = unwrapKeyAES_KW(key.key(), data.first, data.second);
+    if (result.hasException()) {
         failureCallback();
-        return;
+        return { };
     }
-
-    int status = CCSymmetricKeyUnwrap(kCCWRAPAES, CCrfc3394_iv, CCrfc3394_ivLen, key.key().data(), key.key().size(), data.first, data.second, result.data(), &resultSize);
-    if (status) {
-        failureCallback();
-        return;
-    }
-    result.shrink(resultSize);
-    callback(result);
-}
+    callback(result.releaseReturnValue());
+    return { };}
 
 } // namespace WebCore
 

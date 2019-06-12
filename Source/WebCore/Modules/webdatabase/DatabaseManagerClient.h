@@ -22,28 +22,30 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
-#ifndef DatabaseManagerClient_h
-#define DatabaseManagerClient_h
+
+#pragma once
 
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
-class SecurityOrigin;
+struct SecurityOriginData;
 
 class DatabaseManagerClient {
 public:
     virtual ~DatabaseManagerClient() { }
-    virtual void dispatchDidModifyOrigin(SecurityOrigin*) = 0;
-    virtual void dispatchDidModifyDatabase(SecurityOrigin*, const String& databaseName) = 0;
+    virtual void dispatchDidModifyOrigin(const SecurityOriginData&) = 0;
+    virtual void dispatchDidModifyDatabase(const SecurityOriginData&, const String& databaseName) = 0;
 
 #if PLATFORM(IOS)
-    virtual void dispatchDidAddNewOrigin(SecurityOrigin*) = 0;
+    virtual void dispatchDidAddNewOrigin() = 0;
     virtual void dispatchDidDeleteDatabase() = 0;
     virtual void dispatchDidDeleteDatabaseOrigin() = 0;
+#else
+    static void dispatchDidAddNewOrigin() { }
+    static void dispatchDidDeleteDatabase() { }
+    static void dispatchDidDeleteDatabaseOrigin() { }
 #endif
 };
 
 } // namespace WebCore
-
-#endif // DatabaseManagerClient_h

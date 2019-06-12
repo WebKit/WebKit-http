@@ -76,7 +76,7 @@
 
 @property (nonatomic, setter=_setViewScale:) CGFloat _viewScale;
 
-@property (nonatomic, setter=_setOverrideDeviceScaleFactor:) CGFloat _overrideDeviceScaleFactor WK_AVAILABLE(10_11, NA);
+@property (nonatomic, setter=_setOverrideDeviceScaleFactor:) CGFloat _overrideDeviceScaleFactor WK_API_AVAILABLE(macosx(10.11));
 
 @property (nonatomic, setter=_setAutomaticallyAdjustsContentInsets:) BOOL _automaticallyAdjustsContentInsets;
 
@@ -84,8 +84,10 @@
 @property (copy, nonatomic) NSColor *underlayColor;
 
 #if WK_API_ENABLED
-@property (strong, nonatomic, setter=_setInspectorAttachmentView:) NSView *_inspectorAttachmentView WK_AVAILABLE(10_11, NA);
+@property (strong, nonatomic, setter=_setInspectorAttachmentView:) NSView *_inspectorAttachmentView WK_API_AVAILABLE(macosx(10.11));
 #endif
+
+@property (nonatomic, readwrite, setter=_setRequiresUserActionForEditingControlsManager:) BOOL _requiresUserActionForEditingControlsManager;
 
 - (NSView*)fullScreenPlaceholderView;
 - (NSWindow*)createFullScreenWindow;
@@ -129,6 +131,11 @@
 - (void)_didChangeContentSize:(NSSize)newSize;
 
 - (void)_gestureEventWasNotHandledByWebCore:(NSEvent *)event;
+
+@property (nonatomic, readwrite, setter=_setWantsMediaPlaybackControlsView:) BOOL _wantsMediaPlaybackControlsView;
+@property (nonatomic, readonly)  id _mediaPlaybackControlsView;
+- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView;
+- (void)_removeMediaPlaybackControlsView;
 
 @end
 

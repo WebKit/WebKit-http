@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-RenderFrameBase::RenderFrameBase(HTMLFrameElementBase& element, Ref<RenderStyle>&& style)
+RenderFrameBase::RenderFrameBase(HTMLFrameElementBase& element, RenderStyle&& style)
     : RenderWidget(element, WTFMove(style))
 {
 }
@@ -56,7 +56,7 @@ void RenderFrameBase::layoutWithFlattening(bool hasFixedWidth, bool hasFixedHeig
 {
     view().protectRenderWidgetUntilLayoutIsDone(*this);
 
-    peformLayoutWithFlattening(hasFixedWidth, hasFixedHeight);
+    performLayoutWithFlattening(hasFixedWidth, hasFixedHeight);
 
     clearNeedsLayout();
 }
@@ -68,7 +68,7 @@ RenderView* RenderFrameBase::childRenderView() const
     return childView()->renderView();
 }
 
-void RenderFrameBase::peformLayoutWithFlattening(bool hasFixedWidth, bool hasFixedHeight)
+void RenderFrameBase::performLayoutWithFlattening(bool hasFixedWidth, bool hasFixedHeight)
 {
     if (!childRenderView())
         return;

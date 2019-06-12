@@ -25,17 +25,18 @@
 
 #import <WebCore/DatabaseManagerClient.h>
 
-class WebDatabaseManagerClient : public WebCore::DatabaseManagerClient {
+class WebDatabaseManagerClient final : public WebCore::DatabaseManagerClient {
 public:
     static WebDatabaseManagerClient* sharedWebDatabaseManagerClient();
     
     virtual ~WebDatabaseManagerClient();
-    virtual void dispatchDidModifyOrigin(WebCore::SecurityOrigin*) override;
-    virtual void dispatchDidModifyDatabase(WebCore::SecurityOrigin*, const WTF::String& databaseIdentifier) override;
+    void dispatchDidModifyOrigin(const WebCore::SecurityOriginData&) final;
+    void dispatchDidModifyDatabase(const WebCore::SecurityOriginData&, const WTF::String& databaseIdentifier) final;
+
 #if PLATFORM(IOS)
-    virtual void dispatchDidAddNewOrigin(WebCore::SecurityOrigin*) override;
-    virtual void dispatchDidDeleteDatabase() override;
-    virtual void dispatchDidDeleteDatabaseOrigin() override;
+    void dispatchDidAddNewOrigin() final;
+    void dispatchDidDeleteDatabase() final;
+    void dispatchDidDeleteDatabaseOrigin() final;
     void newDatabaseOriginWasAdded();
     void databaseWasDeleted();
     void databaseOriginWasDeleted();
@@ -47,8 +48,8 @@ private:
 #if PLATFORM(IOS)
     void databaseOriginsDidChange();
 
-    bool m_isHandlingNewDatabaseOriginNotification;
-    bool m_isHandlingDeleteDatabaseNotification;
-    bool m_isHandlingDeleteDatabaseOriginNotification;
+    bool m_isHandlingNewDatabaseOriginNotification { false };
+    bool m_isHandlingDeleteDatabaseNotification { false };
+    bool m_isHandlingDeleteDatabaseOriginNotification { false };
 #endif
 };

@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef BorderValue_h
-#define BorderValue_h
+#pragma once
 
 #include "Color.h"
 #include "RenderStyleConstants.h"
@@ -34,10 +33,7 @@ class BorderValue {
 friend class RenderStyle;
 public:
     BorderValue()
-        : m_width(3)
-        , m_color(0)
-        , m_colorIsValid(false)
-        , m_style(BNONE)
+        : m_style(BNONE)
         , m_isAuto(AUTO_OFF)
     {
     }
@@ -49,7 +45,7 @@ public:
 
     bool isTransparent() const
     {
-        return m_colorIsValid && !alphaChannel(m_color);
+        return m_color.isValid() && !m_color.isVisible();
     }
 
     bool isVisible(bool checkStyle = true) const
@@ -59,7 +55,7 @@ public:
 
     bool operator==(const BorderValue& o) const
     {
-        return m_width == o.m_width && m_style == o.m_style && m_color == o.m_color && m_colorIsValid == o.m_colorIsValid;
+        return m_width == o.m_width && m_style == o.m_style && m_color == o.m_color;
     }
 
     bool operator!=(const BorderValue& o) const
@@ -69,19 +65,17 @@ public:
 
     void setColor(const Color& color)
     {
-        m_color = color.rgb();
-        m_colorIsValid = color.isValid();
+        m_color = color;
     }
 
-    Color color() const { return Color(m_color, m_colorIsValid); }
+    const Color& color() const { return m_color; }
 
     float width() const { return m_width; }
     EBorderStyle style() const { return static_cast<EBorderStyle>(m_style); }
 
 protected:
-    float m_width;
-    RGBA32 m_color;
-    unsigned m_colorIsValid : 1;
+    float m_width { 3 };
+    Color m_color;
 
     unsigned m_style : 4; // EBorderStyle
 
@@ -90,5 +84,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // BorderValue_h

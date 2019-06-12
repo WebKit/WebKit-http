@@ -33,15 +33,12 @@
 #import "ResourceCachesToClear.h"
 #import "SandboxInitializationParameters.h"
 #import "SecItemShim.h"
+#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/CertificateInfo.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/WebCoreThreadSystemInterface.h>
 
 #define ENABLE_MANUAL_NETWORK_SANDBOXING 0
-
-@interface NSURLRequest (WKDetails)
-+ (void)setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host;
-@end
 
 using namespace WebCore;
 
@@ -89,7 +86,7 @@ void NetworkProcess::clearCacheForAllOrigins(uint32_t cachesToClear)
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
 #if ENABLE(SEC_ITEM_SHIM)
-    SecItemShim::singleton().initialize(this);
+    initializeSecItemShim(*this);
 #endif
     platformInitializeNetworkProcessCocoa(parameters);
 }

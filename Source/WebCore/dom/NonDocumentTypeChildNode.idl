@@ -28,10 +28,6 @@
 [
     NoInterfaceObject,
 ] interface NonDocumentTypeChildNode {
-    readonly attribute Element previousElementSibling;
-    readonly attribute Element nextElementSibling;
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [Conditional=SHADOW_DOM] readonly attribute HTMLSlotElement assignedSlot;
-#endif
+    readonly attribute Element? previousElementSibling;
+    readonly attribute Element? nextElementSibling;
 };

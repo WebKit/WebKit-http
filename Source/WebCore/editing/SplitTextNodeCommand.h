@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SplitTextNodeCommand_h
-#define SplitTextNodeCommand_h
+#pragma once
 
 #include "EditCommand.h"
 
@@ -34,28 +33,26 @@ class Text;
 
 class SplitTextNodeCommand : public SimpleEditCommand {
 public:
-    static Ref<SplitTextNodeCommand> create(PassRefPtr<Text> node, int offset)
+    static Ref<SplitTextNodeCommand> create(Ref<Text>&& node, int offset)
     {
-        return adoptRef(*new SplitTextNodeCommand(node, offset));
+        return adoptRef(*new SplitTextNodeCommand(WTFMove(node), offset));
     }
 
 private:
-    SplitTextNodeCommand(PassRefPtr<Text>, int offset);
+    SplitTextNodeCommand(Ref<Text>&&, int offset);
 
-    virtual void doApply() override;
-    virtual void doUnapply() override;
-    virtual void doReapply() override;
+    void doApply() override;
+    void doUnapply() override;
+    void doReapply() override;
     void insertText1AndTrimText2();
     
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override;
+    void getNodesInCommand(HashSet<Node*>&) override;
 #endif
 
     RefPtr<Text> m_text1;
-    RefPtr<Text> m_text2;
+    Ref<Text> m_text2;
     unsigned m_offset;
 };
 
 } // namespace WebCore
-
-#endif // SplitTextNodeCommand_h

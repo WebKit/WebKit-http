@@ -27,42 +27,57 @@
 #include "config.h"
 #include "Editor.h"
 
+#include "Blob.h"
 #include "CachedImage.h"
-#include "DataObjectGtk.h"
+#include "DOMURL.h"
 #include "DocumentFragment.h"
 #include "Frame.h"
+#include "HTMLEmbedElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLObjectElement.h"
 #include "HTMLParserIdioms.h"
 #include "Pasteboard.h"
 #include "RenderImage.h"
 #include "SVGElement.h"
+#include "SVGImageElement.h"
+#include "SelectionData.h"
 #include "XLinkNames.h"
 #include "markup.h"
 
 namespace WebCore {
 
-static PassRefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard& pasteboard, Frame& frame, Range& range, bool allowPlainText, bool& chosePlainText)
+static RefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard& pasteboard, Frame& frame, Range& range, bool allowPlainText, bool& chosePlainText)
 {
     chosePlainText = false;
 
     if (!pasteboard.hasData())
         return nullptr;
 
-    RefPtr<DataObjectGtk> dataObject = pasteboard.dataObject();
-    if (dataObject->hasMarkup() && frame.document()) {
-        if (RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(*frame.document(), dataObject->markup(), emptyString(), DisallowScriptingAndPluginContent))
-            return fragment.release();
+    const auto& selection = pasteboard.selectionData();
+    if (selection.hasImage()) {
+        Vector<uint8_t> buffer;
+        auto status = cairo_surface_write_to_png_stream(selection.image()->nativeImage().get(), [](void* output, const unsigned char* data, unsigned size) {
+            if (!reinterpret_cast<Vector<uint8_t>*>(output)->tryAppend(data, size))
+                return CAIRO_STATUS_WRITE_ERROR;
+            return CAIRO_STATUS_SUCCESS;
+        }, &buffer);
+        if (status == CAIRO_STATUS_SUCCESS) {
+            auto blob = Blob::create(WTFMove(buffer), "image/png");
+            return frame.editor().createFragmentForImageAndURL(DOMURL::createObjectURL(*frame.document(), blob));
+        }
     }
+
+    if (selection.hasMarkup() && frame.document())
+        return createFragmentFromMarkup(*frame.document(), selection.markup(), emptyString(), DisallowScriptingAndPluginContent);
 
     if (!allowPlainText)
         return nullptr;
 
-    if (dataObject->hasText()) {
+    if (selection.hasText()) {
         chosePlainText = true;
-        if (RefPtr<DocumentFragment> fragment = createFragmentFromText(range, dataObject->text()))
-            return fragment.release();
+        return createFragmentFromText(range, selection.text());
     }
 
     return nullptr;
@@ -76,19 +91,19 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, Ma
 
     bool chosePlainText;
     RefPtr<DocumentFragment> fragment = createFragmentFromPasteboardData(*pasteboard, m_frame, *range, allowPlainText, chosePlainText);
-    if (fragment && shouldInsertFragment(fragment, range, EditorInsertActionPasted))
+    if (fragment && shouldInsertFragment(*fragment, range.get(), EditorInsertAction::Pasted))
         pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard), chosePlainText, mailBlockquoteHandling);
 }
 
 static const AtomicString& elementURL(Element& element)
 {
     if (is<HTMLImageElement>(element) || is<HTMLInputElement>(element))
-        return element.fastGetAttribute(HTMLNames::srcAttr);
+        return element.attributeWithoutSynchronization(HTMLNames::srcAttr);
     if (is<SVGImageElement>(element))
-        return element.fastGetAttribute(XLinkNames::hrefAttr);
+        return element.attributeWithoutSynchronization(XLinkNames::hrefAttr);
     if (is<HTMLEmbedElement>(element) || is<HTMLObjectElement>(element))
         return element.imageSourceURL();
-    return nullAtom;
+    return nullAtom();
 }
 
 static bool getImageForElement(Element& element, RefPtr<Image>& image)
@@ -125,11 +140,10 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
     pasteboardContent.canSmartCopyOrDelete = canSmartCopyOrDelete();
     pasteboardContent.text = selectedTextForDataTransfer();
     pasteboardContent.markup = createMarkup(*selectedRange(), nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
-    pasteboardContent.callback = nullptr;
     pasteboard.write(pasteboardContent);
 }
 
-PassRefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range& context, bool allowPlainText, bool& chosePlainText)
+RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range& context, bool allowPlainText, bool& chosePlainText)
 {
     return createFragmentFromPasteboardData(pasteboard, m_frame, context, allowPlainText, chosePlainText);
 }

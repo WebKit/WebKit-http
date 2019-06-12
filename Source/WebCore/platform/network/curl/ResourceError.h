@@ -40,12 +40,15 @@ namespace WebCore {
 class ResourceError : public ResourceErrorBase
 {
 public:
-    ResourceError() : m_sslErrors(0)
+    ResourceError(Type type = Type::Null)
+        : ResourceErrorBase(type)
+        , m_sslErrors(0)
     {
     }
 
-    ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription)
-        : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription), m_sslErrors(0)
+    ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, Type type = Type::General)
+        : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription, type)
+        , m_sslErrors(0)
     {
     }
 
@@ -54,6 +57,9 @@ public:
     bool hasSSLConnectError() const { return errorCode() == CURLE_SSL_CONNECT_ERROR; }
 
 private:
+    friend class ResourceErrorBase;
+    void doPlatformIsolatedCopy(const ResourceError&) { }
+
     unsigned m_sslErrors;
 };
 

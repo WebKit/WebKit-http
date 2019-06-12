@@ -9,45 +9,123 @@
 #include "libANGLE/renderer/gl/TransformFeedbackGL.h"
 
 #include "common/debug.h"
+#include "libANGLE/ContextState.h"
+#include "libANGLE/renderer/gl/BufferGL.h"
+#include "libANGLE/renderer/gl/FunctionsGL.h"
+#include "libANGLE/renderer/gl/StateManagerGL.h"
 
 namespace rx
 {
 
-TransformFeedbackGL::TransformFeedbackGL()
-    : TransformFeedbackImpl()
-{}
+TransformFeedbackGL::TransformFeedbackGL(const gl::TransformFeedbackState &state,
+                                         const FunctionsGL *functions,
+                                         StateManagerGL *stateManager)
+    : TransformFeedbackImpl(state),
+      mFunctions(functions),
+      mStateManager(stateManager),
+      mTransformFeedbackID(0),
+      mIsActive(false),
+      mIsPaused(false)
+{
+    mFunctions->genTransformFeedbacks(1, &mTransformFeedbackID);
+}
 
 TransformFeedbackGL::~TransformFeedbackGL()
-{}
+{
+    mStateManager->deleteTransformFeedback(mTransformFeedbackID);
+    mTransformFeedbackID = 0;
+}
 
 void TransformFeedbackGL::begin(GLenum primitiveMode)
 {
-    UNIMPLEMENTED();
+    // Do not begin directly, StateManagerGL will handle beginning and resuming transform feedback.
 }
 
 void TransformFeedbackGL::end()
 {
-    UNIMPLEMENTED();
+    syncActiveState(false, GL_NONE);
 }
 
 void TransformFeedbackGL::pause()
 {
-    UNIMPLEMENTED();
+    syncPausedState(true);
 }
 
 void TransformFeedbackGL::resume()
 {
-    UNIMPLEMENTED();
+    // Do not resume directly, StateManagerGL will handle beginning and resuming transform feedback.
 }
 
 void TransformFeedbackGL::bindGenericBuffer(const BindingPointer<gl::Buffer> &binding)
 {
-    UNIMPLEMENTED();
 }
 
 void TransformFeedbackGL::bindIndexedBuffer(size_t index, const OffsetBindingPointer<gl::Buffer> &binding)
 {
-    UNIMPLEMENTED();
+    // Directly bind buffer (not through the StateManager methods) because the buffer bindings are
+    // tracked per transform feedback object
+    mStateManager->bindTransformFeedback(GL_TRANSFORM_FEEDBACK, mTransformFeedbackID);
+    if (binding.get() != nullptr)
+    {
+        const BufferGL *bufferGL = GetImplAs<BufferGL>(binding.get());
+        if (binding.getSize() != 0)
+        {
+            mFunctions->bindBufferRange(GL_TRANSFORM_FEEDBACK_BUFFER, static_cast<GLuint>(index),
+                                        bufferGL->getBufferID(), binding.getOffset(),
+                                        binding.getSize());
+        }
+        else
+        {
+            mFunctions->bindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, static_cast<GLuint>(index),
+                                       bufferGL->getBufferID());
+        }
+    }
+    else
+    {
+        mFunctions->bindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, static_cast<GLuint>(index), 0);
+    }
+}
+
+GLuint TransformFeedbackGL::getTransformFeedbackID() const
+{
+    return mTransformFeedbackID;
+}
+
+void TransformFeedbackGL::syncActiveState(bool active, GLenum primitiveMode) const
+{
+    if (mIsActive != active)
+    {
+        mIsActive = active;
+        mIsPaused = false;
+
+        mStateManager->bindTransformFeedback(GL_TRANSFORM_FEEDBACK, mTransformFeedbackID);
+        if (mIsActive)
+        {
+            mFunctions->beginTransformFeedback(primitiveMode);
+        }
+        else
+        {
+            mFunctions->endTransformFeedback();
+        }
+    }
+}
+
+void TransformFeedbackGL::syncPausedState(bool paused) const
+{
+    if (mIsActive && mIsPaused != paused)
+    {
+        mIsPaused = paused;
+
+        mStateManager->bindTransformFeedback(GL_TRANSFORM_FEEDBACK, mTransformFeedbackID);
+        if (mIsPaused)
+        {
+            mFunctions->pauseTransformFeedback();
+        }
+        else
+        {
+            mFunctions->resumeTransformFeedback();
+        }
+    }
 }
 
 }

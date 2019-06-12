@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSBoundFunction_h
-#define JSBoundFunction_h
+#pragma once
 
 #include "JSFunction.h"
 
 namespace JSC {
 
+EncodedJSValue JSC_HOST_CALL boundThisNoArgsFunctionCall(ExecState*);
 EncodedJSValue JSC_HOST_CALL boundFunctionCall(ExecState*);
+EncodedJSValue JSC_HOST_CALL boundThisNoArgsFunctionConstruct(ExecState*);
 EncodedJSValue JSC_HOST_CALL boundFunctionConstruct(ExecState*);
 EncodedJSValue JSC_HOST_CALL isBoundFunction(ExecState*);
 EncodedJSValue JSC_HOST_CALL hasInstanceBoundFunction(ExecState*);
@@ -40,21 +41,23 @@ public:
     typedef JSFunction Base;
     const static unsigned StructureFlags = ~ImplementsDefaultHasInstance & Base::StructureFlags;
 
-    static JSBoundFunction* create(VM&, JSGlobalObject*, JSObject* targetFunction, JSValue boundThis, JSValue boundArgs, int, const String&);
+    static JSBoundFunction* create(VM&, ExecState*, JSGlobalObject*, JSObject* targetFunction, JSValue boundThis, JSArray* boundArgs, int, const String& name);
     
     static bool customHasInstance(JSObject*, ExecState*, JSValue);
 
     JSObject* targetFunction() { return m_targetFunction.get(); }
     JSValue boundThis() { return m_boundThis.get(); }
-    JSValue boundArgs() { return m_boundArgs.get(); }
+    JSArray* boundArgs() { return m_boundArgs.get(); } // DO NOT allow this array to be mutated!
+    JSArray* boundArgsCopy(ExecState*);
 
-    String toStringName(ExecState*);
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype) 
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
         ASSERT(globalObject);
         return Structure::create(vm, globalObject, prototype, TypeInfo(JSFunctionType, StructureFlags), info()); 
     }
+    
+    static ptrdiff_t offsetOfTargetFunction() { return OBJECT_OFFSETOF(JSBoundFunction, m_targetFunction); }
+    static ptrdiff_t offsetOfBoundThis() { return OBJECT_OFFSETOF(JSBoundFunction, m_boundThis); }
 
     DECLARE_INFO;
 
@@ -62,15 +65,13 @@ protected:
     static void visitChildren(JSCell*, SlotVisitor&);
 
 private:
-    JSBoundFunction(VM&, JSGlobalObject*, Structure*, JSObject* targetFunction, JSValue boundThis, JSValue boundArgs);
+    JSBoundFunction(VM&, JSGlobalObject*, Structure*, JSObject* targetFunction, JSValue boundThis, JSArray* boundArgs);
     
-    void finishCreation(VM&, NativeExecutable*, int, const String&);
+    void finishCreation(VM&, NativeExecutable*, int length);
 
     WriteBarrier<JSObject> m_targetFunction;
     WriteBarrier<Unknown> m_boundThis;
-    WriteBarrier<Unknown> m_boundArgs;
+    WriteBarrier<JSArray> m_boundArgs;
 };
 
 } // namespace JSC
-
-#endif // JSFunction_h

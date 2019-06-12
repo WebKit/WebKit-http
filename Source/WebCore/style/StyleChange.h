@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StyleChange_h
-#define StyleChange_h
+#pragma once
 
 namespace WebCore {
 
@@ -32,11 +31,9 @@ class RenderStyle;
 
 namespace Style {
 
-enum Change { NoChange, NoInherit, Inherit, Detach, Force };
+enum Change { NoChange, NoInherit, Inherit, Force, Detach };
 
 Change determineChange(const RenderStyle&, const RenderStyle&);
 
 }
 }
-
-#endif

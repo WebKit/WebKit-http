@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef VariableWriteFireDetail_h
-#define VariableWriteFireDetail_h
+#pragma once
 
 #include "Watchpoint.h"
 
@@ -41,9 +40,9 @@ public:
     {
     }
     
-    virtual void dump(PrintStream&) const override;
+    JS_EXPORT_PRIVATE void dump(PrintStream&) const override;
     
-    JS_EXPORT_PRIVATE static void touch(WatchpointSet*, JSObject*, const PropertyName&);
+    JS_EXPORT_PRIVATE static void touch(VM&, WatchpointSet*, JSObject*, const PropertyName&);
 
 private:
     JSObject* m_object;
@@ -51,5 +50,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // VariableWriteFireDetail_h

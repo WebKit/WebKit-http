@@ -21,31 +21,55 @@
  *
  */
 
-#ifndef RegisteredEventListener_h
-#define RegisteredEventListener_h
+#pragma once
 
 #include "EventListener.h"
-#include <wtf/RefPtr.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
-    class RegisteredEventListener {
-    public:
-        RegisteredEventListener(PassRefPtr<EventListener> listener, bool useCapture)
-            : listener(listener)
-            , useCapture(useCapture)
-        {
-        }
+// https://dom.spec.whatwg.org/#concept-event-listener
+class RegisteredEventListener : public RefCounted<RegisteredEventListener> {
+public:
+    struct Options {
+        Options(bool capture = false, bool passive = false, bool once = false)
+            : capture(capture)
+            , passive(passive)
+            , once(once)
+        { }
 
-        RefPtr<EventListener> listener;
-        bool useCapture;
+        bool capture;
+        bool passive;
+        bool once;
     };
-    
-    inline bool operator==(const RegisteredEventListener& a, const RegisteredEventListener& b)
+
+    static Ref<RegisteredEventListener> create(Ref<EventListener>&& listener, const Options& options)
     {
-        return *a.listener == *b.listener && a.useCapture == b.useCapture;
+        return adoptRef(*new RegisteredEventListener(WTFMove(listener), options));
     }
 
-} // namespace WebCore
+    EventListener& callback() const { return m_callback; }
+    bool useCapture() const { return m_useCapture; }
+    bool isPassive() const { return m_isPassive; }
+    bool isOnce() const { return m_isOnce; }
+    bool wasRemoved() const { return m_wasRemoved; }
 
-#endif // RegisteredEventListener_h
+    void markAsRemoved() { m_wasRemoved = true; }
+
+private:
+    RegisteredEventListener(Ref<EventListener>&& listener, const Options& options)
+        : m_callback(WTFMove(listener))
+        , m_useCapture(options.capture)
+        , m_isPassive(options.passive)
+        , m_isOnce(options.once)
+    {
+    }
+
+    Ref<EventListener> m_callback;
+    bool m_useCapture { false };
+    bool m_isPassive { false };
+    bool m_isOnce { false };
+    bool m_wasRemoved { false };
+};
+
+} // namespace WebCore

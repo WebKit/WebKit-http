@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef DocumentRuleSets_h
-#define DocumentRuleSets_h
+#pragma once
 
 #include "CSSDefaultStyleSheets.h"
 #include "RuleFeature.h"
@@ -38,43 +37,52 @@ class CSSStyleSheet;
 class ExtensionStyleSheets;
 class InspectorCSSOMWrappers;
 class MediaQueryEvaluator;
-class RuleSet;
 
 class DocumentRuleSets {
 public:
-    DocumentRuleSets();
+    DocumentRuleSets(StyleResolver&);
     ~DocumentRuleSets();
-    RuleSet* authorStyle() const { return m_authorStyle.get(); }
-    RuleSet* userStyle() const { return m_userStyle.get(); }
-    RuleFeatureSet& features() { return m_features; }
+
+    bool isAuthorStyleDefined() const { return m_isAuthorStyleDefined; }
+    RuleSet& authorStyle() const { return *m_authorStyle.get(); }
+    RuleSet* userStyle() const;
     const RuleFeatureSet& features() const;
     RuleSet* sibling() const { return m_siblingRuleSet.get(); }
     RuleSet* uncommonAttribute() const { return m_uncommonAttributeRuleSet.get(); }
-    RuleSet* ancestorClassRules(AtomicStringImpl* className) const;
+    RuleSet* ancestorClassRules(const AtomicString& className) const;
 
     struct AttributeRules {
+        WTF_MAKE_FAST_ALLOCATED;
+    public:
         Vector<const CSSSelector*> attributeSelectors;
         std::unique_ptr<RuleSet> ruleSet;
     };
-    const AttributeRules* ancestorAttributeRulesForHTML(AtomicStringImpl*) const;
+    const AttributeRules* ancestorAttributeRulesForHTML(const AtomicString&) const;
 
-    void initUserStyle(ExtensionStyleSheets&, const MediaQueryEvaluator&, StyleResolver&);
+    void setUsesSharedUserStyle(bool b) { m_usesSharedUserStyle = b; }
+    void initializeUserStyle();
+
     void resetAuthorStyle();
     void appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>&, MediaQueryEvaluator*, InspectorCSSOMWrappers&, StyleResolver*);
+
+    RuleFeatureSet& mutableFeatures();
 
 private:
     void collectFeatures() const;
     void collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyleSheet>>&, RuleSet& userStyle, const MediaQueryEvaluator&, StyleResolver&);
 
+    bool m_isAuthorStyleDefined { false };
     std::unique_ptr<RuleSet> m_authorStyle;
     std::unique_ptr<RuleSet> m_userStyle;
+    bool m_usesSharedUserStyle { false };
 
+    StyleResolver& m_styleResolver;
     mutable RuleFeatureSet m_features;
     mutable unsigned m_defaultStyleVersionOnFeatureCollection { 0 };
     mutable std::unique_ptr<RuleSet> m_siblingRuleSet;
     mutable std::unique_ptr<RuleSet> m_uncommonAttributeRuleSet;
-    mutable HashMap<AtomicStringImpl*, std::unique_ptr<RuleSet>> m_ancestorClassRuleSets;
-    mutable HashMap<AtomicStringImpl*, std::unique_ptr<AttributeRules>> m_ancestorAttributeRuleSetsForHTML;
+    mutable HashMap<AtomicString, std::unique_ptr<RuleSet>> m_ancestorClassRuleSets;
+    mutable HashMap<AtomicString, std::unique_ptr<AttributeRules>> m_ancestorAttributeRuleSetsForHTML;
 };
 
 inline const RuleFeatureSet& DocumentRuleSets::features() const
@@ -84,6 +92,12 @@ inline const RuleFeatureSet& DocumentRuleSets::features() const
     return m_features;
 }
 
-} // namespace WebCore
+// FIXME: There should be just the const version.
+inline RuleFeatureSet& DocumentRuleSets::mutableFeatures()
+{
+    if (m_defaultStyleVersionOnFeatureCollection < CSSDefaultStyleSheets::defaultStyleVersion)
+        collectFeatures();
+    return m_features;
+}
 
-#endif // DocumentRuleSets_h
+} // namespace WebCore

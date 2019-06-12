@@ -28,21 +28,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorFrontendClient_h
-#define InspectorFrontendClient_h
+#pragma once
 
+#include "UserInterfaceLayoutDirection.h"
 #include <wtf/Forward.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
-
-class ContextMenuItem;
-class Event;
 
 class InspectorFrontendClient {
 public:
     enum class DockSide {
         Undocked = 0,
         Right,
+        Left,
         Bottom,
     };
 
@@ -56,9 +55,13 @@ public:
 
     virtual String localizedStringsURL() = 0;
     virtual unsigned inspectionLevel() const = 0;
+    virtual String backendCommandsURL() { return String(); };
+    virtual String debuggableType() { return ASCIILiteral("web"); }
 
     virtual void bringToFront() = 0;
     virtual void closeWindow() = 0;
+
+    virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() const = 0;
 
     WEBCORE_EXPORT virtual void requestSetDockSide(DockSide) = 0;
     WEBCORE_EXPORT virtual void changeAttachedWindowHeight(unsigned) = 0;
@@ -72,11 +75,12 @@ public:
 
     virtual void inspectedURLChanged(const String&) = 0;
 
+    virtual void pagePaused() { }
+    virtual void pageUnpaused() { }
+
     WEBCORE_EXPORT virtual void sendMessageToBackend(const String&) = 0;
 
     WEBCORE_EXPORT virtual bool isUnderTest() = 0;
 };
 
 } // namespace WebCore
-
-#endif

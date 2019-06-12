@@ -176,7 +176,7 @@ new
 // CSS_PROP_STOP_OPACITY
 // CSS_PROP_COLOR_INTERPOLATION
 //auto
-sRGB
+//sRGB
 linearRGB
 
 // CSS_PROP_COLOR_INTERPOLATION_FILTERS
@@ -212,7 +212,7 @@ linearRGB
 // CSS_PROP_SHAPE_RENDERING
 //auto
 //optimizeSpeed
-crispEdges
+crispedges
 //geometricPrecision
 
 // CSS_PROP_STROKE

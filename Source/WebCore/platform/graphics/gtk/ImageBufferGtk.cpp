@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-static bool encodeImage(cairo_surface_t* surface, const String& mimeType, const double* quality, GUniqueOutPtr<gchar>& buffer, gsize& bufferSize)
+static bool encodeImage(cairo_surface_t* surface, const String& mimeType, std::optional<double> quality, GUniqueOutPtr<gchar>& buffer, gsize& bufferSize)
 {
     // List of supported image encoding types comes from the GdkPixbuf documentation.
     // http://developer.gnome.org/gdk-pixbuf/stable/gdk-pixbuf-File-saving.html#gdk-pixbuf-save-to-bufferv
@@ -75,19 +75,30 @@ static bool encodeImage(cairo_surface_t* surface, const String& mimeType, const 
     return !error;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, const double* quality, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
+{
+    Vector<uint8_t> imageData = toData(mimeType, quality);
+    if (imageData.isEmpty())
+        return "data:,";
+
+    Vector<char> base64Data;
+    base64Encode(imageData.data(), imageData.size(), base64Data);
+
+    return "data:" + mimeType + ";base64," + base64Data;
+}
+
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
     GUniqueOutPtr<gchar> buffer;
     gsize bufferSize;
     if (!encodeImage(m_data.m_surface.get(), mimeType, quality, buffer, bufferSize))
-        return "data:,";
+        return { };
 
-    Vector<char> base64Data;
-    base64Encode(buffer.get(), bufferSize, base64Data);
-
-    return "data:" + mimeType + ";base64," + base64Data;
+    Vector<uint8_t> imageData;
+    imageData.append(buffer.get(), bufferSize);
+    return imageData;
 }
 
 }

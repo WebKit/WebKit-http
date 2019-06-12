@@ -36,6 +36,8 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         this._navigationBar = new WebInspector.NavigationBar;
         this.addSubview(this._navigationBar);
 
+        this._targetTreeElementMap = new Map;
+
         var scopeItemPrefix = "resource-sidebar-";
         var scopeBarItems = [];
 
@@ -47,6 +49,10 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
             scopeBarItem[WebInspector.ResourceSidebarPanel.ResourceTypeSymbol] = value;
             scopeBarItems.push(scopeBarItem);
         }
+
+        let canvasesScopeBarItem = new WebInspector.ScopeBarItem(scopeItemPrefix + WebInspector.Canvas.ResourceSidebarType, WebInspector.UIString("Canvases"));
+        canvasesScopeBarItem[WebInspector.ResourceSidebarPanel.ResourceTypeSymbol] = WebInspector.Canvas.ResourceSidebarType;
+        scopeBarItems.insertAtIndex(canvasesScopeBarItem, scopeBarItems.length - 1);
 
         this._scopeBar = new WebInspector.ScopeBar("resource-sidebar-scope-bar", scopeBarItems, scopeBarItems[0], true);
         this._scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectionDidChange, this);
@@ -61,6 +67,10 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.ScriptRemoved, this._scriptWasRemoved, this);
         WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.ScriptsCleared, this._scriptsCleared, this);
 
+        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+
+        WebInspector.targetManager.addEventListener(WebInspector.TargetManager.Event.TargetRemoved, this._targetRemoved, this);
+
         WebInspector.notifications.addEventListener(WebInspector.Notification.ExtraDomainsActivated, this._extraDomainsActivated, this);
 
         this.contentTreeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
@@ -68,11 +78,8 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
         if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript) {
             this.contentTreeOutline.disclosureButtons = false;
-            WebInspector.SourceCode.addEventListener(WebInspector.SourceCode.Event.SourceMapAdded, () => { this.contentTreeOutline.disclosureButtons = true }, this);
+            WebInspector.SourceCode.addEventListener(WebInspector.SourceCode.Event.SourceMapAdded, () => { this.contentTreeOutline.disclosureButtons = true; }, this);
         }
-
-        if (WebInspector.frameResourceManager.mainFrame)
-            this._mainFrameMainResourceDidChange(WebInspector.frameResourceManager.mainFrame);
     }
 
     // Public
@@ -108,7 +115,7 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
     {
         // A custom implementation is needed for this since the frames are populated lazily.
 
-        if (!this._mainFrameTreeElement && (representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Frame)) {
+        if (!this._mainFrameTreeElement && (representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Frame || representedObject instanceof WebInspector.Collection)) {
             // All resources are under the main frame, so we need to return early if we don't have the main frame yet.
             return null;
         }
@@ -166,13 +173,17 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         // window.eval() or browser features like Auto Fill and Reader. They are not normally added to the sidebar, but since
         // we have a ScriptContentView asking for the tree element we will make a ScriptTreeElement on demand and add it.
 
-        if (!this._anonymousScriptsFolderTreeElement)
-            this._anonymousScriptsFolderTreeElement = new WebInspector.FolderTreeElement(WebInspector.UIString("Anonymous Scripts"));
+        if (!this._anonymousScriptsFolderTreeElement) {
+            let collection = new WebInspector.Collection(WebInspector.Collection.TypeVerifier.Script);
+            this._anonymousScriptsFolderTreeElement = new WebInspector.FolderTreeElement(WebInspector.UIString("Anonymous Scripts"), collection);
+        }
 
         if (!this._anonymousScriptsFolderTreeElement.parent) {
             var index = insertionIndexForObjectInListSortedByFunction(this._anonymousScriptsFolderTreeElement, this.contentTreeOutline.children, this._compareTreeElements);
             this.contentTreeOutline.insertChild(this._anonymousScriptsFolderTreeElement, index);
         }
+
+        this._anonymousScriptsFolderTreeElement.representedObject.add(representedObject);
 
         var scriptTreeElement = new WebInspector.ScriptTreeElement(representedObject);
         this._anonymousScriptsFolderTreeElement.appendChild(scriptTreeElement);
@@ -181,6 +192,14 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
     }
 
     // Protected
+
+    initialLayout()
+    {
+        super.initialLayout();
+
+        if (WebInspector.frameResourceManager.mainFrame)
+            this._mainFrameMainResourceDidChange(WebInspector.frameResourceManager.mainFrame);
+    }
 
     hasCustomFilters()
     {
@@ -209,6 +228,12 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
             if (treeElement instanceof WebInspector.ScriptTreeElement)
                 return selectedScopeBarItem[WebInspector.ResourceSidebarPanel.ResourceTypeSymbol] === WebInspector.Resource.Type.Script;
+
+            if (treeElement instanceof WebInspector.CanvasTreeElement)
+                return selectedScopeBarItem[WebInspector.ResourceSidebarPanel.ResourceTypeSymbol] === WebInspector.Canvas.ResourceSidebarType;
+
+            if (treeElement instanceof WebInspector.CSSStyleSheetTreeElement)
+                return selectedScopeBarItem[WebInspector.ResourceSidebarPanel.ResourceTypeSymbol] === WebInspector.Resource.Type.Stylesheet;
 
             console.assert(treeElement instanceof WebInspector.ResourceTreeElement, "Unknown treeElement", treeElement);
             if (!(treeElement instanceof WebInspector.ResourceTreeElement))
@@ -275,28 +300,45 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
         // We don't add scripts without URLs here. Those scripts can quickly clutter the interface and
         // are usually more transient. They will get added if/when they need to be shown in a content view.
-        if (!script.url)
+        if (!script.url && !script.sourceURL)
             return;
+
+        // Worker script.
+        if (script.target !== WebInspector.mainTarget) {
+            if (script.isMainResource())
+                this._addTargetWithMainResource(script.target);
+            return;
+        }
 
         // If the script URL matches a resource we can assume it is part of that resource and does not need added.
-        if (script.resource)
+        if (script.resource || script.dynamicallyAddedScriptElement)
             return;
 
-        var insertIntoTopLevel = false;
+        let insertIntoTopLevel = false;
+        let parentFolderTreeElement = null;
 
         if (script.injected) {
-            if (!this._extensionScriptsFolderTreeElement)
-                this._extensionScriptsFolderTreeElement = new WebInspector.FolderTreeElement(WebInspector.UIString("Extension Scripts"));
-            var parentFolderTreeElement = this._extensionScriptsFolderTreeElement;
+            if (!this._extensionScriptsFolderTreeElement) {
+                let collection = new WebInspector.Collection(WebInspector.Collection.TypeVerifier.Script);
+                this._extensionScriptsFolderTreeElement = new WebInspector.FolderTreeElement(WebInspector.UIString("Extension Scripts"), collection);
+            }
+
+            parentFolderTreeElement = this._extensionScriptsFolderTreeElement;
         } else {
             if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript && !WebInspector.hasExtraDomains)
                 insertIntoTopLevel = true;
             else {
-                if (!this._extraScriptsFolderTreeElement)
-                    this._extraScriptsFolderTreeElement = new WebInspector.FolderTreeElement(WebInspector.UIString("Extra Scripts"));
-                var parentFolderTreeElement = this._extraScriptsFolderTreeElement;
+                if (!this._extraScriptsFolderTreeElement) {
+                    let collection = new WebInspector.Collection(WebInspector.Collection.TypeVerifier.Script);
+                    this._extraScriptsFolderTreeElement = new WebInspector.FolderTreeElement(WebInspector.UIString("Extra Scripts"), collection);
+                }
+
+                parentFolderTreeElement = this._extraScriptsFolderTreeElement;
             }
         }
+
+        if (parentFolderTreeElement)
+            parentFolderTreeElement.representedObject.add(script);
 
         var scriptTreeElement = new WebInspector.ScriptTreeElement(script);
 
@@ -320,43 +362,107 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         if (!scriptTreeElement)
             return;
 
-        scriptTreeElement.parent.removeChild(scriptTreeElement);
+        let parentTreeElement = scriptTreeElement.parent;
+        parentTreeElement.removeChild(scriptTreeElement);
+
+        if (parentTreeElement instanceof WebInspector.FolderTreeElement) {
+            parentTreeElement.representedObject.remove(script);
+
+            if (!parentTreeElement.children.length)
+                parentTreeElement.parent.removeChild(parentTreeElement);
+        }
     }
 
     _scriptsCleared(event)
     {
         const suppressOnDeselect = true;
         const suppressSelectSibling = true;
-        
+
         if (this._extensionScriptsFolderTreeElement) {
             if (this._extensionScriptsFolderTreeElement.parent)
                 this._extensionScriptsFolderTreeElement.parent.removeChild(this._extensionScriptsFolderTreeElement, suppressOnDeselect, suppressSelectSibling);
+
+            this._extensionScriptsFolderTreeElement.representedObject.clear();
             this._extensionScriptsFolderTreeElement = null;
         }
 
         if (this._extraScriptsFolderTreeElement) {
             if (this._extraScriptsFolderTreeElement.parent)
                 this._extraScriptsFolderTreeElement.parent.removeChild(this._extraScriptsFolderTreeElement, suppressOnDeselect, suppressSelectSibling);
+
+            this._extraScriptsFolderTreeElement.representedObject.clear();
             this._extraScriptsFolderTreeElement = null;
         }
 
         if (this._anonymousScriptsFolderTreeElement) {
             if (this._anonymousScriptsFolderTreeElement.parent)
                 this._anonymousScriptsFolderTreeElement.parent.removeChild(this._anonymousScriptsFolderTreeElement, suppressOnDeselect, suppressSelectSibling);
+
+            this._anonymousScriptsFolderTreeElement.representedObject.clear();
             this._anonymousScriptsFolderTreeElement = null;
         }
+
+        if (this._targetTreeElementMap.size) {
+            for (let treeElement of this._targetTreeElementMap)
+                treeElement.parent.removeChild(treeElement, suppressOnDeselect, suppressSelectSibling);
+            this._targetTreeElementMap.clear();
+        }
+    }
+
+    _styleSheetAdded(event)
+    {
+        let styleSheet = event.data.styleSheet;
+        if (!styleSheet.isInspectorStyleSheet())
+            return;
+
+        let frameTreeElement = this.treeElementForRepresentedObject(styleSheet.parentFrame);
+        if (!frameTreeElement)
+            return;
+
+        frameTreeElement.addRepresentedObjectToNewChildQueue(styleSheet);
+    }
+
+    _addTargetWithMainResource(target)
+    {
+        console.assert(target.type === WebInspector.Target.Type.Worker);
+
+        let targetTreeElement = new WebInspector.WorkerTreeElement(target);
+        this._targetTreeElementMap.set(target, targetTreeElement);
+
+        let index = insertionIndexForObjectInListSortedByFunction(targetTreeElement, this.contentTreeOutline.children, this._compareTreeElements);
+        this.contentTreeOutline.insertChild(targetTreeElement, index);
+    }
+
+    _targetRemoved(event)
+    {
+        let removedTarget = event.data.target;
+
+        let targetTreeElement = this._targetTreeElementMap.take(removedTarget);
+        if (targetTreeElement)
+            targetTreeElement.parent.removeChild(targetTreeElement);
     }
 
     _treeSelectionDidChange(event)
     {
-        let treeElement = event.data.selectedElement;
-        if (!treeElement || treeElement instanceof WebInspector.FolderTreeElement)
+        if (!this.visible)
             return;
 
-        if (treeElement instanceof WebInspector.ResourceTreeElement
+        let treeElement = event.data.selectedElement;
+        if (!treeElement)
+            return;
+
+        if (treeElement instanceof WebInspector.FolderTreeElement
+            || treeElement instanceof WebInspector.ResourceTreeElement
             || treeElement instanceof WebInspector.ScriptTreeElement
-            || treeElement instanceof WebInspector.ContentFlowTreeElement) {
-            WebInspector.showRepresentedObject(treeElement.representedObject);
+            || treeElement instanceof WebInspector.CSSStyleSheetTreeElement
+            || treeElement instanceof WebInspector.ContentFlowTreeElement
+            || treeElement instanceof WebInspector.CanvasTreeElement) {
+            const cookie = null;
+            const options = {
+                ignoreNetworkTab: true,
+                ignoreSearchTab: true,
+            };
+            WebInspector.showRepresentedObject(treeElement.representedObject, cookie, options);
             return;
         }
 
@@ -374,7 +480,7 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         console.assert(a.mainTitle);
         console.assert(b.mainTitle);
 
-        return (a.mainTitle || "").localeCompare(b.mainTitle || "");
+        return (a.mainTitle || "").extendedLocaleCompare(b.mainTitle || "");
     }
 
     _extraDomainsActivated()

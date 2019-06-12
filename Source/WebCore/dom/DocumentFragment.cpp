@@ -27,7 +27,6 @@
 #include "ElementDescendantIterator.h"
 #include "HTMLDocumentParser.h"
 #include "Page.h"
-#include "Settings.h"
 #include "XMLDocumentParser.h"
 
 namespace WebCore {
@@ -93,6 +92,9 @@ bool DocumentFragment::parseXML(const String& source, Element* contextElement, P
 
 Element* DocumentFragment::getElementById(const AtomicString& id) const
 {
+    if (id.isNull())
+        return nullptr;
+
     // Fast path for ShadowRoot, where we are both a DocumentFragment and a TreeScope.
     if (isTreeScope())
         return treeScope().getElementById(id);

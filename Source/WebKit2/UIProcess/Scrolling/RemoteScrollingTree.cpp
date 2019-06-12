@@ -87,7 +87,7 @@ void RemoteScrollingTree::scrollingTreeNodeWillStartPanGesture()
 {
     m_scrollingCoordinatorProxy.scrollingTreeNodeWillStartPanGesture();
 }
-    
+
 void RemoteScrollingTree::scrollingTreeNodeWillStartScroll()
 {
     m_scrollingCoordinatorProxy.scrollingTreeNodeWillStartScroll();
@@ -100,9 +100,9 @@ void RemoteScrollingTree::scrollingTreeNodeDidEndScroll()
 
 #endif
 
-void RemoteScrollingTree::scrollingTreeNodeDidScroll(ScrollingNodeID nodeID, const FloatPoint& scrollPosition, SetOrSyncScrollingLayerPosition scrollingLayerPositionAction)
+void RemoteScrollingTree::scrollingTreeNodeDidScroll(ScrollingNodeID nodeID, const FloatPoint& scrollPosition, const std::optional<FloatPoint>& layoutViewportOrigin, ScrollingLayerPositionAction scrollingLayerPositionAction)
 {
-    m_scrollingCoordinatorProxy.scrollingTreeNodeDidScroll(nodeID, scrollPosition, scrollingLayerPositionAction);
+    m_scrollingCoordinatorProxy.scrollingTreeNodeDidScroll(nodeID, scrollPosition, layoutViewportOrigin, scrollingLayerPositionAction);
 }
 
 void RemoteScrollingTree::scrollingTreeNodeRequestsScroll(ScrollingNodeID nodeID, const FloatPoint& scrollPosition, bool representsProgrammaticScroll)
@@ -110,7 +110,7 @@ void RemoteScrollingTree::scrollingTreeNodeRequestsScroll(ScrollingNodeID nodeID
     m_scrollingCoordinatorProxy.scrollingTreeNodeRequestsScroll(nodeID, scrollPosition, representsProgrammaticScroll);
 }
 
-PassRefPtr<ScrollingTreeNode> RemoteScrollingTree::createScrollingTreeNode(ScrollingNodeType nodeType, ScrollingNodeID nodeID)
+Ref<ScrollingTreeNode> RemoteScrollingTree::createScrollingTreeNode(ScrollingNodeType nodeType, ScrollingNodeID nodeID)
 {
     switch (nodeType) {
     case FrameScrollingNode:
@@ -124,14 +124,15 @@ PassRefPtr<ScrollingTreeNode> RemoteScrollingTree::createScrollingTreeNode(Scrol
         return ScrollingTreeOverflowScrollingNodeIOS::create(*this, nodeID);
 #else
         ASSERT_NOT_REACHED();
-        return nullptr;
+        break;
 #endif
     case FixedNode:
         return ScrollingTreeFixedNode::create(*this, nodeID);
     case StickyNode:
         return ScrollingTreeStickyNode::create(*this, nodeID);
     }
-    return nullptr;
+    ASSERT_NOT_REACHED();
+    return ScrollingTreeFixedNode::create(*this, nodeID);
 }
 
 void RemoteScrollingTree::currentSnapPointIndicesDidChange(ScrollingNodeID nodeID, unsigned horizontal, unsigned vertical)

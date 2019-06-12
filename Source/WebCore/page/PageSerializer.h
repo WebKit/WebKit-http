@@ -28,10 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageSerializer_h
-#define PageSerializer_h
+#pragma once
 
-#include "URL.h"
 #include "URLHash.h"
 #include "SharedBuffer.h"
 #include <wtf/HashMap.h>
@@ -57,20 +55,20 @@ public:
         URL url;
         String mimeType;
         RefPtr<SharedBuffer> data;
-        Resource();
-        Resource(const URL&, const String& mimeType, PassRefPtr<SharedBuffer> data);
     };
 
-    explicit PageSerializer(Vector<Resource>*);
+    explicit PageSerializer(Vector<Resource>&);
 
     // Initiates the serialization of the frame's page. All serialized content and retrieved
     // resources are added to the Vector passed to the constructor. The first resource in that
     // vector is the top frame serialized content.
-    void serialize(Page*);
+    void serialize(Page&);
+
+private:
+    class SerializerMarkupAccumulator;
 
     URL urlForBlankFrame(Frame*);
 
-private:
     void serializeFrame(Frame*);
 
     // Serializes the stylesheet back to text and adds it to the resources if URL is not-empty.
@@ -81,12 +79,10 @@ private:
     void retrieveResourcesForProperties(const StyleProperties*, Document*);
     void retrieveResourcesForRule(StyleRule&, Document*);
 
-    Vector<Resource>* m_resources;
+    Vector<Resource>& m_resources;
     ListHashSet<URL> m_resourceURLs;
     HashMap<Frame*, URL> m_blankFrameURLs;
-    unsigned m_blankFrameCounter;
+    unsigned m_blankFrameCounter { 0 };
 };
 
-}
-
-#endif
+} // namespace WebCore

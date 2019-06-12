@@ -24,12 +24,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RadioNodeList_h
-#define RadioNodeList_h
+#pragma once
 
 #include "HTMLElement.h"
 #include "LiveNodeList.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -48,8 +46,8 @@ public:
     String value() const;
     void setValue(const String&);
 
-    virtual bool elementMatches(Element&) const override;
-    virtual bool isRootedAtDocument() const override { return m_isRootedAtDocument; }
+    bool elementMatches(Element&) const override;
+    bool isRootedAtDocument() const override { return m_isRootedAtDocument; }
 
 private:
     RadioNodeList(ContainerNode&, const AtomicString& name);
@@ -64,7 +62,4 @@ inline HTMLElement* RadioNodeList::item(unsigned offset) const
     return downcast<HTMLElement>(CachedLiveNodeList<RadioNodeList>::item(offset));
 }
 
-} // namepsace
-
-#endif
-
+} // namepsace WebCore

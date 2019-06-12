@@ -22,17 +22,22 @@
 
 messages -> WebPasteboardProxy {
 #if PLATFORM(IOS)
-    WriteWebContentToPasteboard(struct WebCore::PasteboardWebContent content)
-    WriteImageToPasteboard(struct WebCore::PasteboardImage pasteboardImage)
-    WriteStringToPasteboard(String pasteboardType, String text) 
-    ReadStringFromPasteboard(uint64_t index, String pasteboardType) -> (String string)
-    ReadURLFromPasteboard(uint64_t index, String pasteboardType) -> (String string)
-    ReadBufferFromPasteboard(uint64_t index, String pasteboardType) -> (WebKit::SharedMemory::Handle handle, uint64_t size)
-    GetPasteboardItemsCount() -> (uint64_t itemsCount)
+    WriteURLToPasteboard(struct WebCore::PasteboardURL url, String pasteboardName)
+    WriteWebContentToPasteboard(struct WebCore::PasteboardWebContent content, String pasteboardName)
+    WriteImageToPasteboard(struct WebCore::PasteboardImage pasteboardImage, String pasteboardName)
+    WriteStringToPasteboard(String pasteboardType, String text, String pasteboardName)
+    ReadStringFromPasteboard(uint64_t index, String pasteboardType, String pasteboardName) -> (String string)
+    ReadURLFromPasteboard(uint64_t index, String pasteboardType, String pasteboardName) -> (String url, String title)
+    ReadBufferFromPasteboard(uint64_t index, String pasteboardType, String pasteboardName) -> (WebKit::SharedMemory::Handle handle, uint64_t size)
+    GetPasteboardItemsCount(String pasteboardName) -> (uint64_t itemsCount)
+    GetFilenamesForDataInteraction(String pasteboardName) -> (Vector<String> filenames)
+    UpdateSupportedTypeIdentifiers(Vector<String> identifiers, String pasteboardName)
+    GetPasteboardTypesByFidelityForItemAtIndex(uint64_t index, String pasteboardName) -> (Vector<String> types)
 #endif
 
 #if PLATFORM(COCOA)
     # Pasteboard messages.
+    GetNumberOfFiles(String pasteboardName) -> (uint64_t numberOfFiles)
     GetPasteboardTypes(String pasteboardName) -> (Vector<String> types)
     GetPasteboardPathnamesForType(String pasteboardName, String pasteboardType) -> (Vector<String> pathnames)
     GetPasteboardStringForType(String pasteboardName, String pasteboardType) -> (String string)
@@ -44,8 +49,20 @@ messages -> WebPasteboardProxy {
     GetPasteboardURL(String pasteboardName) -> (String urlString)
     AddPasteboardTypes(String pasteboardName, Vector<String> pasteboardTypes) -> (uint64_t changeCount)
     SetPasteboardTypes(String pasteboardName, Vector<String> pasteboardTypes) -> (uint64_t changeCount)
-    SetPasteboardPathnamesForType(String pasteboardName, String pasteboardType, Vector<String> pathnames) -> (uint64_t changeCount)
+    SetPasteboardPathnamesForType(String pasteboardName, String pasteboardType, Vector<String> pathnames) -> (uint64_t changeCount) WantsConnection
     SetPasteboardStringForType(String pasteboardName, String pasteboardType, String string) -> (uint64_t changeCount)
     SetPasteboardBufferForType(String pasteboardName, String pasteboardType, WebKit::SharedMemory::Handle handle, uint64_t size) -> (uint64_t changeCount)
+#endif
+
+#if PLATFORM(GTK)
+    WriteToClipboard(String pasteboardName, struct WebKit::WebSelectionData pasteboardContent)
+    ReadFromClipboard(String pasteboardName) -> (struct WebKit::WebSelectionData pasteboardContent)
+#endif
+
+#if PLATFORM(WPE)
+    GetPasteboardTypes() -> (Vector<String> types)
+    ReadStringFromPasteboard(uint64_t index, String pasteboardType) -> (String string)
+    WriteWebContentToPasteboard(struct WebCore::PasteboardWebContent content)
+    WriteStringToPasteboard(String pasteboardType, String text)
 #endif
 }

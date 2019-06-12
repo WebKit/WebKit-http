@@ -24,6 +24,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
+use FindBin;
+use lib "$FindBin::Bin/../bindings/scripts";
 
 use InFilesCompiler;
 
@@ -249,7 +251,7 @@ sub printGetterAndSetter($$$$)
         print $file "    $type $settingName() const { return m_$settingName; } \\\n";
         print $file "    $webcoreExport void $setterFunctionName($type $settingName)";
     } else {
-        print $file "    const $type& $settingName() { return m_$settingName; } \\\n";
+        print $file "    const $type& $settingName() const { return m_$settingName; } \\\n";
         print $file "    $webcoreExport void $setterFunctionName(const $type& $settingName)";
     }
     if ($setNeedsStyleRecalcInAllFrames) {
@@ -359,6 +361,7 @@ sub generateInternalSettingsIdlFile($)
 
     print $file "[\n";
     print $file "    NoInterfaceObject,\n";
+    print $file "    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,\n";
     print $file "] interface InternalSettingsGenerated {\n";
 
     sub writeIdlSetter($$$) {
@@ -367,7 +370,7 @@ sub generateInternalSettingsIdlFile($)
         my $type = $parsedItems{$settingName}{"type"};
         my $idlType = $webcoreTypeToIdlType{$type};
         my $setterFunctionName = setterFunctionName($settingName);
-        print $file "    void $setterFunctionName(in $idlType $settingName);\n";
+        print $file "    void $setterFunctionName($idlType $settingName);\n";
     };
 
     enumerateParsedItems($file, $parsedItemsRef, \&writeIdlSetter);
@@ -386,8 +389,7 @@ sub generateInternalSettingsHeaderFile($)
     print $file $InCompiler->license();
 
     print $file <<EOF;
-#ifndef InternalSettingsGenerated_h
-#define InternalSettingsGenerated_h
+#pragma once
 
 #include "Supplementable.h"
 #include <wtf/RefCounted.h>
@@ -437,7 +439,6 @@ EOF
 
     print $file "};\n\n";
     print $file "} // namespace WebCore\n";
-    print $file "#endif // InternalSettingsGenerated_h\n";
 
     close $file;
 }

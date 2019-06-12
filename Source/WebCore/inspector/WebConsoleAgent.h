@@ -23,8 +23,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebConsoleAgent_h
-#define WebConsoleAgent_h
+#pragma once
 
 #include <inspector/agents/InspectorConsoleAgent.h>
 
@@ -39,10 +38,10 @@ class WebConsoleAgent : public Inspector::InspectorConsoleAgent {
     WTF_MAKE_NONCOPYABLE(WebConsoleAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WebConsoleAgent(Inspector::AgentContext&);
+    WebConsoleAgent(Inspector::AgentContext&, Inspector::InspectorHeapAgent*);
     virtual ~WebConsoleAgent() { }
 
-    virtual void setMonitoringXHREnabled(ErrorString&, bool enabled) override final;
+    void setMonitoringXHREnabled(ErrorString&, bool enabled) final;
 
     void frameWindowDiscarded(DOMWindow*);
 
@@ -55,5 +54,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // !defined(WebConsoleAgent_h)

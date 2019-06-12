@@ -23,16 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGDominators_h
-#define DFGDominators_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGBasicBlock.h"
-#include "DFGBlockMap.h"
-#include "DFGBlockSet.h"
 #include "DFGCFG.h"
-#include "DFGCommon.h"
 #include "DFGGraph.h"
 #include <wtf/Dominators.h>
 #include <wtf/FastMalloc.h>
@@ -53,5 +48,3 @@ public:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGDominators_h

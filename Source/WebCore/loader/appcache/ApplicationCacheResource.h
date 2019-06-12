@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ApplicationCacheResource_h
-#define ApplicationCacheResource_h
+#pragma once
 
 #include "SubstituteResource.h"
 
@@ -40,10 +39,12 @@ public:
         Fallback = 1 << 4
     };
         
-    static Ref<ApplicationCacheResource> create(const URL& url, const ResourceResponse& response, unsigned type, PassRefPtr<SharedBuffer> buffer = SharedBuffer::create(), const String& path = String())
+    static Ref<ApplicationCacheResource> create(const URL& url, const ResourceResponse& response, unsigned type, RefPtr<SharedBuffer> buffer = SharedBuffer::create(), const String& path = String())
     {
         ASSERT(!url.hasFragmentIdentifier());
-        return adoptRef(*new ApplicationCacheResource(url, response, type, buffer, path));
+        if (!buffer)
+            buffer = SharedBuffer::create();
+        return adoptRef(*new ApplicationCacheResource(url, response, type, buffer.releaseNonNull(), path));
     }
 
     unsigned type() const { return m_type; }
@@ -62,9 +63,9 @@ public:
 #endif
     
 private:
-    ApplicationCacheResource(const URL&, const ResourceResponse&, unsigned type, PassRefPtr<SharedBuffer>, const String& path);
+    ApplicationCacheResource(const URL&, const ResourceResponse&, unsigned type, Ref<SharedBuffer>&&, const String& path);
 
-    virtual void deliver(ResourceLoader&) override;
+    void deliver(ResourceLoader&) override;
 
     unsigned m_type;
     unsigned m_storageID;
@@ -73,5 +74,3 @@ private:
 };
     
 } // namespace WebCore
-
-#endif // ApplicationCacheResource_h

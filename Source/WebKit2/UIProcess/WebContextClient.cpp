@@ -26,7 +26,6 @@
 #include "config.h"
 #include "WebContextClient.h"
 
-#include "APIArray.h"
 #include "WebProcessPool.h"
 
 namespace WebKit {
@@ -47,23 +46,12 @@ void WebContextClient::networkProcessDidCrash(WebProcessPool* processPool)
     m_client.networkProcessDidCrash(toAPI(processPool), m_client.base.clientInfo);
 }
 
-void WebContextClient::plugInInformationBecameAvailable(WebProcessPool* processPool, API::Array* plugInInfo)
+void WebContextClient::databaseProcessDidCrash(WebProcessPool* processPool)
 {
-    if (!m_client.plugInInformationBecameAvailable)
+    if (!m_client.databaseProcessDidCrash)
         return;
 
-    // FIXME: The API contract expects us to hand a reference to the array here. This is wrong.
-    plugInInfo->ref();
-
-    m_client.plugInInformationBecameAvailable(toAPI(processPool), toAPI(plugInInfo), m_client.base.clientInfo);
-}
-
-PassRefPtr<API::Data> WebContextClient::copyWebCryptoMasterKey(WebProcessPool* processPool)
-{
-    if (!m_client.copyWebCryptoMasterKey)
-        return nullptr;
-
-    return adoptRef(toImpl(m_client.copyWebCryptoMasterKey(toAPI(processPool), m_client.base.clientInfo)));
+    m_client.databaseProcessDidCrash(toAPI(processPool), m_client.base.clientInfo);
 }
 
 } // namespace WebKit

@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SubstituteData_h
-#define SubstituteData_h
+#pragma once
 
 #include "ResourceResponse.h"
 #include "SharedBuffer.h"
 #include "URL.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -45,15 +43,15 @@ namespace WebCore {
         {
         }
 
-        SubstituteData(PassRefPtr<SharedBuffer> content, const URL& failingURL, const ResourceResponse& response, SessionHistoryVisibility shouldRevealToSessionHistory)
-            : m_content(content)
+        SubstituteData(RefPtr<SharedBuffer>&& content, const URL& failingURL, const ResourceResponse& response, SessionHistoryVisibility shouldRevealToSessionHistory)
+            : m_content(WTFMove(content))
             , m_failingURL(failingURL)
             , m_response(response)
             , m_shouldRevealToSessionHistory(shouldRevealToSessionHistory)
         {
         }
 
-        bool isValid() const { return m_content != 0; }
+        bool isValid() const { return m_content != nullptr; }
         bool shouldRevealToSessionHistory() const { return m_shouldRevealToSessionHistory == SessionHistoryVisibility::Visible; }
 
         const SharedBuffer* content() const { return m_content.get(); }
@@ -69,7 +67,4 @@ namespace WebCore {
         SessionHistoryVisibility m_shouldRevealToSessionHistory { SessionHistoryVisibility::Hidden };
     };
 
-}
-
-#endif // SubstituteData_h
-
+} // namespace WebCore

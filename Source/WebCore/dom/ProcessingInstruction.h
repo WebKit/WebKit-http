@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000 Peter Kelly (pmk@post.com)
- * Copyright (C) 2006 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef ProcessingInstruction_h
-#define ProcessingInstruction_h
+#pragma once
 
 #include "CachedResourceHandle.h"
 #include "CachedStyleSheetClient.h"
@@ -41,7 +40,7 @@ public:
 
     void setCreatedByParser(bool createdByParser) { m_createdByParser = createdByParser; }
 
-    virtual void finishParsingChildren() override;
+    void finishParsingChildren() override;
 
     const String& localHref() const { return m_localHref; }
     StyleSheet* sheet() const { return m_sheet.get(); }
@@ -55,23 +54,23 @@ private:
     friend class CharacterData;
     ProcessingInstruction(Document&, const String& target, const String& data);
 
-    virtual String nodeName() const override;
-    virtual NodeType nodeType() const override;
-    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    String nodeName() const override;
+    NodeType nodeType() const override;
+    Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void removedFrom(ContainerNode&) override;
 
     void checkStyleSheet();
-    virtual void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet*) override;
+    void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet*) override;
 #if ENABLE(XSLT)
-    virtual void setXSLStyleSheet(const String& href, const URL& baseURL, const String& sheet) override;
+    void setXSLStyleSheet(const String& href, const URL& baseURL, const String& sheet) override;
 #endif
 
     bool isLoading() const;
-    virtual bool sheetLoaded() override;
+    bool sheetLoaded() override;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 
     void parseStyleSheet(const String& sheet);
 
@@ -88,6 +87,7 @@ private:
 #if ENABLE(XSLT)
     bool m_isXSL { false };
 #endif
+    bool m_isHandlingBeforeLoad { false };
 };
 
 } // namespace WebCore
@@ -95,5 +95,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ProcessingInstruction)
     static bool isType(const WebCore::Node& node) { return node.nodeType() == WebCore::Node::PROCESSING_INSTRUCTION_NODE; }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

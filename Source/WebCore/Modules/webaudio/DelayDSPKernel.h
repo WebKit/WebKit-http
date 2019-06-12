@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DelayDSPKernel_h
-#define DelayDSPKernel_h
+#pragma once
 
 #include "AudioArray.h"
 #include "AudioDSPKernel.h"
@@ -38,15 +37,15 @@ public:
     explicit DelayDSPKernel(DelayProcessor*);
     DelayDSPKernel(double maxDelayTime, float sampleRate);
     
-    virtual void process(const float* source, float* destination, size_t framesToProcess) override;
-    virtual void reset() override;
+    void process(const float* source, float* destination, size_t framesToProcess) override;
+    void reset() override;
     
     double maxDelayTime() const { return m_maxDelayTime; }
     
     void setDelayFrames(double numberOfFrames) { m_desiredDelayFrames = numberOfFrames; }
 
-    virtual double tailTime() const override;
-    virtual double latencyTime() const override;
+    double tailTime() const override;
+    double latencyTime() const override;
 
 private:
     AudioFloatArray m_buffer;
@@ -64,5 +63,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // DelayDSPKernel_h

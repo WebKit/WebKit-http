@@ -39,6 +39,7 @@ namespace WebCore {
 // mapping a rectangle through transforms. When initialized from a rect, the
 // points are in clockwise order from top left.
 class FloatQuad {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     FloatQuad()
     {
@@ -124,6 +125,11 @@ public:
         m_p2.move(dx, dy);
         m_p3.move(dx, dy);
         m_p4.move(dx, dy);
+    }
+    
+    void scale(float s)
+    {
+        scale(s, s);
     }
 
     void scale(float dx, float dy)

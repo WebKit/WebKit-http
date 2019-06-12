@@ -27,14 +27,12 @@
 #define WebNotificationProvider_h
 
 #include "APIClient.h"
+#include "APINotificationProvider.h"
 #include "WKNotificationProvider.h"
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
 namespace API {
-
-class Dictionary;
-
 template<> struct ClientTraits<WKNotificationProviderBase> {
     typedef std::tuple<WKNotificationProviderV0> Versions;
 };
@@ -45,18 +43,20 @@ namespace WebKit {
 class WebNotification;
 class WebNotificationManagerProxy;
 class WebPageProxy;
-    
-class WebNotificationProvider : public API::Client<WKNotificationProviderBase> {
-public:
-    void show(WebPageProxy*, WebNotification*);
-    void cancel(WebNotification*);
-    void didDestroyNotification(WebNotification*);
-    void clearNotifications(const Vector<uint64_t>& notificationIDs);
 
-    void addNotificationManager(WebNotificationManagerProxy*);
-    void removeNotificationManager(WebNotificationManagerProxy*);
-    
-    PassRefPtr<API::Dictionary> notificationPermissions();
+class WebNotificationProvider : public API::NotificationProvider, public API::Client<WKNotificationProviderBase> {
+public:
+    explicit WebNotificationProvider(const WKNotificationProviderBase*);
+
+    void show(WebPageProxy&, WebNotification&) override;
+    void cancel(WebNotification&) override;
+    void didDestroyNotification(WebNotification&) override;
+    void clearNotifications(const Vector<uint64_t>& notificationIDs) override;
+
+    void addNotificationManager(WebNotificationManagerProxy&) override;
+    void removeNotificationManager(WebNotificationManagerProxy&) override;
+
+    HashMap<WTF::String, bool> notificationPermissions() override;
 };
 
 } // namespace WebKit

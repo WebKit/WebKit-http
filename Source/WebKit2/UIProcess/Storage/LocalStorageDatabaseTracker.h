@@ -23,13 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LocalStorageDatabaseTracker_h
-#define LocalStorageDatabaseTracker_h
+#pragma once
 
 #include <WebCore/SQLiteDatabase.h>
 #include <wtf/HashSet.h>
 #include <wtf/Optional.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/WorkQueue.h>
@@ -38,6 +36,7 @@
 
 namespace WebCore {
 class SecurityOrigin;
+struct SecurityOriginData;
 }
 
 namespace WebKit {
@@ -46,29 +45,29 @@ struct LocalStorageDetails;
 
 class LocalStorageDatabaseTracker : public ThreadSafeRefCounted<LocalStorageDatabaseTracker> {
 public:
-    static PassRefPtr<LocalStorageDatabaseTracker> create(PassRefPtr<WorkQueue>, const String& localStorageDirectory);
+    static Ref<LocalStorageDatabaseTracker> create(Ref<WorkQueue>&&, const String& localStorageDirectory);
     ~LocalStorageDatabaseTracker();
 
-    String databasePath(WebCore::SecurityOrigin*) const;
+    String databasePath(const WebCore::SecurityOriginData&) const;
 
-    void didOpenDatabaseWithOrigin(WebCore::SecurityOrigin*);
-    void deleteDatabaseWithOrigin(WebCore::SecurityOrigin*);
+    void didOpenDatabaseWithOrigin(const WebCore::SecurityOriginData&);
+    void deleteDatabaseWithOrigin(const WebCore::SecurityOriginData&);
     void deleteAllDatabases();
 
     // Returns a vector of the origins whose databases have been deleted.
-    Vector<Ref<WebCore::SecurityOrigin>> deleteDatabasesModifiedSince(std::chrono::system_clock::time_point);
+    Vector<WebCore::SecurityOriginData> deleteDatabasesModifiedSince(std::chrono::system_clock::time_point);
 
-    Vector<Ref<WebCore::SecurityOrigin>> origins() const;
+    Vector<WebCore::SecurityOriginData> origins() const;
 
     struct OriginDetails {
         String originIdentifier;
-        Optional<time_t> creationTime;
-        Optional<time_t> modificationTime;
+        std::optional<time_t> creationTime;
+        std::optional<time_t> modificationTime;
     };
     Vector<OriginDetails> originDetails();
 
 private:
-    LocalStorageDatabaseTracker(PassRefPtr<WorkQueue>, const String& localStorageDirectory);
+    LocalStorageDatabaseTracker(Ref<WorkQueue>&&, const String& localStorageDirectory);
 
     String databasePath(const String& filename) const;
     String trackerDatabasePath() const;
@@ -91,8 +90,12 @@ private:
 
     WebCore::SQLiteDatabase m_database;
     HashSet<String> m_origins;
+
+#if PLATFORM(IOS)
+    void platformMaybeExcludeFromBackup() const;
+
+    mutable bool m_hasExcludedFromBackup { false };
+#endif
 };
 
 } // namespace WebKit
-
-#endif // LocalStorageDatabaseTracker_h

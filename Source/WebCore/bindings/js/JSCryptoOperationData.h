@@ -23,23 +23,22 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSCryptoOperationData_h
-#define JSCryptoOperationData_h
+#pragma once
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace JSC {
 class ExecState;
 class JSValue;
+class ThrowScope;
 }
 
 namespace WebCore {
 
-typedef std::pair<const uint8_t*, size_t> CryptoOperationData;
+using CryptoOperationData = std::pair<const uint8_t*, size_t>;
 
-bool cryptoOperationDataFromJSValue(JSC::ExecState*, JSC::JSValue, CryptoOperationData&);
+CryptoOperationData cryptoOperationDataFromJSValue(JSC::ExecState&, JSC::ThrowScope&, JSC::JSValue);
 
 } // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // JSCryptoOperationData_h

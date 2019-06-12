@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DeferGC_h
-#define DeferGC_h
+#pragma once
 
+#include "DisallowScope.h"
 #include "Heap.h"
-#include <wtf/Noncopyable.h>
 #include <wtf/ThreadSpecific.h>
 
 namespace JSC {
@@ -68,34 +67,41 @@ private:
     Heap& m_heap;
 };
 
-#ifndef NDEBUG
-class DisallowGC {
+class DisallowGC : public DisallowScope<DisallowGC> {
     WTF_MAKE_NONCOPYABLE(DisallowGC);
+    typedef DisallowScope<DisallowGC> Base;
 public:
-    DisallowGC()
-    {
-        WTF::threadSpecificSet(s_isGCDisallowedOnCurrentThread, reinterpret_cast<void*>(true));
-    }
+#ifdef NDEBUG
 
-    ~DisallowGC()
-    {
-        WTF::threadSpecificSet(s_isGCDisallowedOnCurrentThread, reinterpret_cast<void*>(false));
-    }
+    ALWAYS_INLINE DisallowGC(bool = false) { }
+    ALWAYS_INLINE static void initialize() { }
 
-    static bool isGCDisallowedOnCurrentThread()
-    {
-        return !!WTF::threadSpecificGet(s_isGCDisallowedOnCurrentThread);
-    }
+#else // not NDEBUG
+
+    DisallowGC(bool enabled = true)
+        : Base(enabled)
+    { }
+
     static void initialize()
     {
-        WTF::threadSpecificKeyCreate(&s_isGCDisallowedOnCurrentThread, 0);
+        WTF::threadSpecificKeyCreate(&s_scopeReentryCount, 0);
     }
 
-    JS_EXPORT_PRIVATE static WTF::ThreadSpecificKey s_isGCDisallowedOnCurrentThread;
-};
+private:
+    static uintptr_t scopeReentryCount()
+    {
+        return reinterpret_cast<uintptr_t>(WTF::threadSpecificGet(s_scopeReentryCount));
+    }
+    static void setScopeReentryCount(uintptr_t value)
+    {
+        WTF::threadSpecificSet(s_scopeReentryCount, reinterpret_cast<void*>(value));
+    }
+    
+    JS_EXPORT_PRIVATE static WTF::ThreadSpecificKey s_scopeReentryCount;
+
 #endif // NDEBUG
+    
+    friend class DisallowScope<DisallowGC>;
+};
 
 } // namespace JSC
-
-#endif // DeferGC_h
-

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGAdaptiveStructureWatchpoint_h
-#define DFGAdaptiveStructureWatchpoint_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -42,7 +41,7 @@ public:
     void install();
 
 protected:
-    virtual void fireInternal(const FireDetail&) override;
+    void fireInternal(const FireDetail&) override;
 
 private:
     ObjectPropertyCondition m_key;
@@ -52,6 +51,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGAdaptiveStructureWatchpoint_h
-

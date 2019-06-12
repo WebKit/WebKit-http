@@ -23,16 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaStreamAudioSource_h
-#define MediaStreamAudioSource_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "AudioDestinationConsumer.h"
 #include "RealtimeMediaSource.h"
 #include <wtf/Lock.h>
-#include <wtf/RefCounted.h>
-#include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -41,29 +38,29 @@ namespace WebCore {
 class AudioBus;
 class RealtimeMediaSourceCapabilities;
 
-class MediaStreamAudioSource : public RealtimeMediaSource {
+class MediaStreamAudioSource final : public RealtimeMediaSource {
 public:
     static Ref<MediaStreamAudioSource> create();
 
     ~MediaStreamAudioSource() { }
 
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() override;
-    const RealtimeMediaSourceSettings& settings() override;
-    
+    const RealtimeMediaSourceCapabilities& capabilities() const final;
+    const RealtimeMediaSourceSettings& settings() const final;
+
     const String& deviceId() const { return m_deviceId; }
     void setDeviceId(const String& deviceId) { m_deviceId = deviceId; }
 
     void setAudioFormat(size_t numberOfChannels, float sampleRate);
     void consumeAudio(AudioBus*, size_t numberOfFrames);
 
-    void addAudioConsumer(PassRefPtr<AudioDestinationConsumer>);
+    void addAudioConsumer(AudioDestinationConsumer*);
     bool removeAudioConsumer(AudioDestinationConsumer*);
     const Vector<RefPtr<AudioDestinationConsumer>>& audioConsumers() const { return m_audioConsumers; }
 
 private:
     MediaStreamAudioSource();
 
-    AudioSourceProvider* audioSourceProvider() override;
+    bool isCaptureSource() const final { return true; }
 
     String m_deviceId;
     Lock m_audioConsumersLock;
@@ -74,5 +71,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // MediaStreamAudioSource_h

@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSUnicodeRangeValue_h
-#define CSSUnicodeRangeValue_h
+#pragma once
 
 #include "CSSValue.h"
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
-class CSSUnicodeRangeValue : public CSSValue {
+class CSSUnicodeRangeValue final : public CSSValue {
 public:
     static Ref<CSSUnicodeRangeValue> create(UChar32 from, UChar32 to)
     {
@@ -60,5 +58,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSUnicodeRangeValue, isUnicodeRangeValue())
-
-#endif // CSSUnicodeRangeValue_h

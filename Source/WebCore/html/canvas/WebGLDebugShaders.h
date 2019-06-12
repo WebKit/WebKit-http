@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLDebugShaders_h
-#define WebGLDebugShaders_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,18 +31,14 @@ namespace WebCore {
 
 class WebGLShader;
 
-typedef int ExceptionCode;
-
 class WebGLDebugShaders final : public WebGLExtension {
 public:
-    explicit WebGLDebugShaders(WebGLRenderingContextBase*);
+    explicit WebGLDebugShaders(WebGLRenderingContextBase&);
     virtual ~WebGLDebugShaders();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 
-    String getTranslatedShaderSource(WebGLShader*, ExceptionCode&);
+    String getTranslatedShaderSource(WebGLShader*);
 };
 
 } // namespace WebCore
-
-#endif // WebGLDebugShaders_h

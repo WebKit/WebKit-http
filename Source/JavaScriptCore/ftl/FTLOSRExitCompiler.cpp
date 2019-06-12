@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -181,12 +181,12 @@ static void compileStub(
     // This code requires framePointerRegister is the same as callFrameRegister
     static_assert(MacroAssembler::framePointerRegister == GPRInfo::callFrameRegister, "MacroAssembler::framePointerRegister and GPRInfo::callFrameRegister must be the same");
 
-    CCallHelpers jit(vm, codeBlock);
+    CCallHelpers jit(codeBlock);
 
     // The first thing we need to do is restablish our frame in the case of an exception.
     if (exit.isGenericUnwindHandler()) {
         RELEASE_ASSERT(vm->callFrameForCatch); // The first time we hit this exit, like at all other times, this field should be non-null.
-        jit.restoreCalleeSavesFromVMCalleeSavesBuffer();
+        jit.restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(*vm);
         jit.loadPtr(vm->addressOfCallFrameForCatch(), MacroAssembler::framePointerRegister);
         jit.addPtr(CCallHelpers::TrustedImm32(codeBlock->stackPointerOffset() * sizeof(Register)),
             MacroAssembler::framePointerRegister, CCallHelpers::stackPointerRegister);
@@ -277,15 +277,15 @@ static void compileStub(
             if (ArrayProfile* arrayProfile = jit.baselineCodeBlockFor(codeOrigin)->getArrayProfile(codeOrigin.bytecodeIndex)) {
                 jit.load32(MacroAssembler::Address(GPRInfo::regT0, JSCell::structureIDOffset()), GPRInfo::regT1);
                 jit.store32(GPRInfo::regT1, arrayProfile->addressOfLastSeenStructureID());
-                jit.load8(MacroAssembler::Address(GPRInfo::regT0, JSCell::indexingTypeOffset()), GPRInfo::regT1);
+                jit.load8(MacroAssembler::Address(GPRInfo::regT0, JSCell::indexingTypeAndMiscOffset()), GPRInfo::regT1);
                 jit.move(MacroAssembler::TrustedImm32(1), GPRInfo::regT2);
                 jit.lshift32(GPRInfo::regT1, GPRInfo::regT2);
                 jit.or32(GPRInfo::regT2, MacroAssembler::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
             }
         }
 
-        if (!!exit.m_descriptor->m_valueProfile)
-            jit.store64(GPRInfo::regT0, exit.m_descriptor->m_valueProfile.getSpecFailBucket(0));
+        if (exit.m_descriptor->m_valueProfile)
+            exit.m_descriptor->m_valueProfile.emitReportValue(jit, JSValueRegs(GPRInfo::regT0));
     }
 
     // Materialize all objects. Don't materialize an object until all
@@ -394,36 +394,6 @@ static void compileStub(
         jit.store64(GPRInfo::regT0, unwindScratch + i);
     }
     
-    jit.load32(CCallHelpers::payloadFor(JSStack::ArgumentCount), GPRInfo::regT2);
-    
-    // Let's say that the FTL function had failed its arity check. In that case, the stack will
-    // contain some extra stuff.
-    //
-    // We compute the padded stack space:
-    //
-    //     paddedStackSpace = roundUp(codeBlock->numParameters - regT2 + 1)
-    //
-    // The stack will have regT2 + CallFrameHeaderSize stuff.
-    // We want to make the stack look like this, from higher addresses down:
-    //
-    //     - argument padding
-    //     - actual arguments
-    //     - call frame header
-
-    // This code assumes that we're dealing with FunctionCode.
-    RELEASE_ASSERT(codeBlock->codeType() == FunctionCode);
-    
-    jit.add32(
-        MacroAssembler::TrustedImm32(-codeBlock->numParameters()), GPRInfo::regT2,
-        GPRInfo::regT3);
-    MacroAssembler::Jump arityIntact = jit.branch32(
-        MacroAssembler::GreaterThanOrEqual, GPRInfo::regT3, MacroAssembler::TrustedImm32(0));
-    jit.neg32(GPRInfo::regT3);
-    jit.add32(MacroAssembler::TrustedImm32(1 + stackAlignmentRegisters() - 1), GPRInfo::regT3);
-    jit.and32(MacroAssembler::TrustedImm32(-stackAlignmentRegisters()), GPRInfo::regT3);
-    jit.add32(GPRInfo::regT3, GPRInfo::regT2);
-    arityIntact.link(&jit);
-
     CodeBlock* baselineCodeBlock = jit.baselineCodeBlockFor(exit.m_codeOrigin);
 
     // First set up SP so that our data doesn't get clobbered by signals.
@@ -439,10 +409,12 @@ static void compileStub(
 
     RegisterSet allFTLCalleeSaves = RegisterSet::ftlCalleeSaveRegisters();
     RegisterAtOffsetList* baselineCalleeSaves = baselineCodeBlock->calleeSaveRegisters();
-    RegisterAtOffsetList* vmCalleeSaves = vm->getAllCalleeSaveRegisterOffsets();
+    RegisterAtOffsetList* vmCalleeSaves = VM::getAllCalleeSaveRegisterOffsets();
     RegisterSet vmCalleeSavesToSkip = RegisterSet::stackRegisters();
-    if (exit.isExceptionHandler())
-        jit.move(CCallHelpers::TrustedImmPtr(vm->calleeSaveRegistersBuffer), GPRInfo::regT1);
+    if (exit.isExceptionHandler()) {
+        jit.loadPtr(&vm->topVMEntryFrame, GPRInfo::regT1);
+        jit.addPtr(CCallHelpers::TrustedImm32(VMEntryFrame::calleeSaveRegistersBufferOffset()), GPRInfo::regT1);
+    }
 
     for (Reg reg = Reg::first(); reg <= Reg::last(); reg = reg.next()) {
         if (!allFTLCalleeSaves.get(reg)) {
@@ -517,9 +489,9 @@ static void compileStub(
     
     handleExitCounts(jit, exit);
     reifyInlinedCallFrames(jit, exit);
-    adjustAndJumpToTarget(jit, exit);
+    adjustAndJumpToTarget(*vm, jit, exit);
     
-    LinkBuffer patchBuffer(*vm, jit, codeBlock);
+    LinkBuffer patchBuffer(jit, codeBlock);
     exit.m_code = FINALIZE_CODE_IF(
         shouldDumpDisassembly() || Options::verboseOSR() || Options::verboseFTLOSRExit(),
         patchBuffer,
@@ -532,8 +504,6 @@ static void compileStub(
 
 extern "C" void* compileFTLOSRExit(ExecState* exec, unsigned exitID)
 {
-    SamplingRegion samplingRegion("FTL OSR Exit Compilation");
-
     if (shouldDumpDisassembly() || Options::verboseOSR() || Options::verboseFTLOSRExit())
         dataLog("Compiling OSR exit with exitID = ", exitID, "\n");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,22 +23,24 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Common_h
-#define B3Common_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
-namespace JSC { namespace B3 {
+#include "CPU.h"
+#include "GPRInfo.h"
+#include "JSExportMacros.h"
+#include "Options.h"
+#include <wtf/Optional.h>
 
-inline bool is64Bit() { return sizeof(void*) == 8; }
-inline bool is32Bit() { return !is64Bit(); }
+namespace JSC { namespace B3 {
 
 enum B3ComplitationMode {
     B3Mode,
     AirMode
 };
 
-bool shouldDumpIR(B3ComplitationMode);
+JS_EXPORT_PRIVATE bool shouldDumpIR(B3ComplitationMode);
 bool shouldDumpIRAtEachPhase(B3ComplitationMode);
 bool shouldValidateIR();
 bool shouldValidateIRAtEachPhase();
@@ -68,6 +70,11 @@ inline bool isIdentical(double left, double right)
     return isIdentical<int64_t>(left, right);
 }
 
+inline bool isIdentical(float left, float right)
+{
+    return isIdentical<int32_t>(left, right);
+}
+
 template<typename ResultType, typename InputType, typename BitsType>
 inline bool isRepresentableAsImpl(InputType originalValue)
 {
@@ -91,6 +98,12 @@ template<typename ResultType>
 inline bool isRepresentableAs(int64_t value)
 {
     return isRepresentableAsImpl<ResultType, int64_t, int64_t>(value);
+}
+
+template<typename ResultType>
+inline bool isRepresentableAs(size_t value)
+{
+    return isRepresentableAsImpl<ResultType, size_t, size_t>(value);
 }
 
 template<typename ResultType>
@@ -119,9 +132,59 @@ static IntType chillMod(IntType numerator, IntType denominator)
     return numerator % denominator;
 }
 
+template<typename IntType>
+static IntType chillUDiv(IntType numerator, IntType denominator)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType unsignedNumerator = static_cast<UnsignedIntType>(numerator);
+    UnsignedIntType unsignedDenominator = static_cast<UnsignedIntType>(denominator);
+    if (!unsignedDenominator)
+        return 0;
+    return unsignedNumerator / unsignedDenominator;
+}
+
+template<typename IntType>
+static IntType chillUMod(IntType numerator, IntType denominator)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType unsignedNumerator = static_cast<UnsignedIntType>(numerator);
+    UnsignedIntType unsignedDenominator = static_cast<UnsignedIntType>(denominator);
+    if (!unsignedDenominator)
+        return 0;
+    return unsignedNumerator % unsignedDenominator;
+}
+
+template<typename IntType>
+static IntType rotateRight(IntType value, int32_t shift)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType uValue = static_cast<UnsignedIntType>(value);
+    int32_t bits = sizeof(IntType) * 8;
+    int32_t mask = bits - 1;
+    shift &= mask;
+    return (uValue >> shift) | (uValue << ((bits - shift) & mask));
+}
+
+template<typename IntType>
+static IntType rotateLeft(IntType value, int32_t shift)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType uValue = static_cast<UnsignedIntType>(value);
+    int32_t bits = sizeof(IntType) * 8;
+    int32_t mask = bits - 1;
+    shift &= mask;
+    return (uValue << shift) | (uValue >> ((bits - shift) & mask));
+}
+
+inline unsigned defaultOptLevel()
+{
+    // This should almost always return 2, but we allow this default to be lowered for testing. Some
+    // components will deliberately set the optLevel.
+    return Options::defaultB3OptLevel();
+}
+
+std::optional<GPRReg> pinnedExtendedOffsetAddrRegister();
+
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Common_h
-

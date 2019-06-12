@@ -46,6 +46,9 @@ String WebsiteDataRecord::displayNameForCookieHostName(const String& hostName)
 #if PLATFORM(COCOA)
     if (hostName == String(kCFHTTPCookieLocalFileDomain))
         return displayNameForLocalFiles();
+#else
+    if (hostName == "localhost")
+        return hostName;
 #endif
 
 #if ENABLE(PUBLIC_SUFFIX_LIST)
@@ -66,31 +69,31 @@ String WebsiteDataRecord::displayNameForPluginDataHostName(const String& hostNam
 }
 #endif
 
-String WebsiteDataRecord::displayNameForOrigin(const WebCore::SecurityOrigin& securityOrigin)
+String WebsiteDataRecord::displayNameForOrigin(const WebCore::SecurityOriginData& securityOrigin)
 {
-    const auto& protocol = securityOrigin.protocol();
+    const auto& protocol = securityOrigin.protocol;
 
     if (protocol == "file")
         return displayNameForLocalFiles();
 
 #if ENABLE(PUBLIC_SUFFIX_LIST)
     if (protocol == "http" || protocol == "https")
-        return WebCore::topPrivatelyControlledDomain(securityOrigin.host());
+        return WebCore::topPrivatelyControlledDomain(securityOrigin.host);
 #endif
 
     return String();
 }
 
-void WebsiteDataRecord::add(WebsiteDataTypes type, RefPtr<WebCore::SecurityOrigin>&& origin)
+void WebsiteDataRecord::add(WebsiteDataType type, const WebCore::SecurityOriginData& origin)
 {
     types |= type;
 
-    origins.add(WTFMove(origin));
+    origins.add(origin);
 }
 
 void WebsiteDataRecord::addCookieHostName(const String& hostName)
 {
-    types |= WebsiteDataTypeCookies;
+    types |= WebsiteDataType::Cookies;
 
     cookieHostNames.add(hostName);
 }
@@ -98,10 +101,66 @@ void WebsiteDataRecord::addCookieHostName(const String& hostName)
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebsiteDataRecord::addPluginDataHostName(const String& hostName)
 {
-    types |= WebsiteDataTypePlugInData;
+    types |= WebsiteDataType::PlugInData;
 
     pluginDataHostNames.add(hostName);
 }
 #endif
+
+static inline bool hostIsInDomain(StringView host, StringView domain)
+{
+    if (!host.endsWithIgnoringASCIICase(domain))
+        return false;
+    
+    ASSERT(host.length() >= domain.length());
+    unsigned suffixOffset = host.length() - domain.length();
+    return !suffixOffset || host[suffixOffset - 1] == '.';
+}
+
+bool WebsiteDataRecord::matchesTopPrivatelyControlledDomain(const String& topPrivatelyControlledDomain) const
+{
+    if (topPrivatelyControlledDomain.isEmpty())
+        return false;
+
+    if (types.contains(WebsiteDataType::Cookies)) {
+        for (const auto& hostName : cookieHostNames) {
+            if (hostIsInDomain(hostName, topPrivatelyControlledDomain))
+                return true;
+        }
+    }
+
+    for (const auto& dataRecordOriginData : origins) {
+        if (hostIsInDomain(dataRecordOriginData.host, topPrivatelyControlledDomain))
+            return true;
+    }
+
+    return false;
+}
+
+String WebsiteDataRecord::topPrivatelyControlledDomain()
+{
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    if (!cookieHostNames.isEmpty())
+        return WebCore::topPrivatelyControlledDomain(cookieHostNames.takeAny());
+    
+    if (!origins.isEmpty())
+        return WebCore::topPrivatelyControlledDomain(origins.takeAny().securityOrigin().get().host());
+    
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    if (!pluginDataHostNames.isEmpty())
+        return WebCore::topPrivatelyControlledDomain(pluginDataHostNames.takeAny());
+#endif
+    
+#endif // ENABLE(PUBLIC_SUFFIX_LIST)
+    
+    return emptyString();
+}
+
+void WebsiteDataRecord::addOriginWithCredential(const String& origin)
+{
+    types |= WebsiteDataType::Credentials;
+
+    originsWithCredentials.add(origin);
+}
 
 }

@@ -38,15 +38,19 @@
 #include <WebCore/NotImplemented.h>
 #include <wtf/RunLoop.h>
 
+#if OS(LINUX)
+#include "MemoryPressureMonitor.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
 
-static const double minimumLifetime = 2 * 60;
-static const double snapshottingMinimumLifetime = 30;
+static const Seconds minimumLifetime { 2_min };
+static const Seconds snapshottingMinimumLifetime { 30_s };
 
-static const double shutdownTimeout = 1 * 60;
-static const double snapshottingShutdownTimeout = 15;
+static const Seconds shutdownTimeout { 1_min };
+static const Seconds snapshottingShutdownTimeout { 15_s };
 
 static uint64_t generateCallbackID()
 {
@@ -95,9 +99,9 @@ void PluginProcessProxy::processWillShutDown(IPC::Connection& connection)
 
 // Asks the plug-in process to create a new connection to a web process. The connection identifier will be 
 // encoded in the given argument encoder and sent back to the connection of the given web process.
-void PluginProcessProxy::getPluginProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
+void PluginProcessProxy::getPluginProcessConnection(Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&& reply)
 {
-    m_pendingConnectionReplies.append(reply);
+    m_pendingConnectionReplies.append(WTFMove(reply));
 
     if (state() == State::Launching) {
         m_numPendingConnectionRequests++;
@@ -106,10 +110,10 @@ void PluginProcessProxy::getPluginProcessConnection(PassRefPtr<Messages::WebProc
     
     // Ask the plug-in process to create a connection. Since the plug-in can be waiting for a synchronous reply
     // we need to make sure that this message is always processed, even when the plug-in is waiting for a synchronus reply.
-    m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0, IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0, IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
-void PluginProcessProxy::fetchWebsiteData(std::function<void (Vector<String>)> completionHandler)
+void PluginProcessProxy::fetchWebsiteData(WTF::Function<void (Vector<String>)>&& completionHandler)
 {
     uint64_t callbackID = generateCallbackID();
     m_pendingFetchWebsiteDataCallbacks.set(callbackID, WTFMove(completionHandler));
@@ -122,7 +126,7 @@ void PluginProcessProxy::fetchWebsiteData(std::function<void (Vector<String>)> c
     m_connection->send(Messages::PluginProcess::GetSitesWithData(callbackID), 0);
 }
 
-void PluginProcessProxy::deleteWebsiteData(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+void PluginProcessProxy::deleteWebsiteData(std::chrono::system_clock::time_point modifiedSince, WTF::Function<void ()>&& completionHandler)
 {
     uint64_t callbackID = generateCallbackID();
     m_pendingDeleteWebsiteDataCallbacks.set(callbackID, WTFMove(completionHandler));
@@ -135,7 +139,7 @@ void PluginProcessProxy::deleteWebsiteData(std::chrono::system_clock::time_point
     m_connection->send(Messages::PluginProcess::DeleteWebsiteData(modifiedSince, callbackID), 0);
 }
 
-void PluginProcessProxy::deleteWebsiteDataForHostNames(const Vector<String>& hostNames, std::function<void ()> completionHandler)
+void PluginProcessProxy::deleteWebsiteDataForHostNames(const Vector<String>& hostNames, WTF::Function<void ()>&& completionHandler)
 {
     uint64_t callbackID = generateCallbackID();
     m_pendingDeleteWebsiteDataForHostNamesCallbacks.set(callbackID, WTFMove(completionHandler));
@@ -214,9 +218,7 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::I
     }
 
     m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
-#if (PLATFORM(MAC) || PLATFORM(QT) && USE(MACH_PORTS)) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-    m_connection->setShouldCloseConnectionOnMachExceptions();
-#elif PLATFORM(QT) && USE(UNIX_DOMAIN_SOCKETS)
+#if PLATFORM(QT) && USE(UNIX_DOMAIN_SOCKETS)
     m_connection->setShouldCloseConnectionOnProcessTermination(processIdentifier());
 #endif
 
@@ -231,6 +233,12 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::I
         parameters.minimumLifetime = minimumLifetime;
         parameters.terminationTimeout = shutdownTimeout;
     }
+
+#if OS(LINUX)
+    if (MemoryPressureMonitor::isEnabled())
+        parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
+#endif
+
     platformInitializePluginProcess(parameters);
 
     // Initialize the plug-in host process.

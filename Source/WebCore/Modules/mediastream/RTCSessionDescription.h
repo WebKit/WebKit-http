@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,43 +29,38 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCSessionDescription_h
-#define RTCSessionDescription_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
-#include "ExceptionCode.h"
+#include "ExceptionOr.h"
+#include "RTCSdpType.h"
 #include "ScriptWrappable.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class Dictionary;
-
 class RTCSessionDescription : public RefCounted<RTCSessionDescription>, public ScriptWrappable {
 public:
-    static RefPtr<RTCSessionDescription> create(const Dictionary&, ExceptionCode&);
-    static Ref<RTCSessionDescription> create(const RTCSessionDescription*);
-    static Ref<RTCSessionDescription> create(const String& type, const String& sdp);
-    virtual ~RTCSessionDescription() { }
 
-    const String& type() const { return m_type; }
-    void setType(const String&, ExceptionCode&);
+    struct Init {
+        RTCSdpType type;
+        String sdp;
+    };
+    static Ref<RTCSessionDescription> create(Init&&);
+    static Ref<RTCSessionDescription> create(RTCSdpType, String&& sdp);
+
+    RTCSdpType type() const { return m_type; }
 
     const String& sdp() const { return m_sdp; }
-    void setSdp(const String& sdp) { m_sdp = sdp; }
+    void setSdp(String&& sdp) { m_sdp = WTFMove(sdp); }
 
 private:
-    explicit RTCSessionDescription(const String& type, const String& sdp);
+    RTCSessionDescription(RTCSdpType, String&& sdp);
 
-    String m_type;
+    RTCSdpType m_type;
     String m_sdp;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCSessionDescription_h
+#endif // ENABLE(WEB_RTC)

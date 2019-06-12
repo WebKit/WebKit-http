@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GCActivityCallback_h
-#define GCActivityCallback_h
+#pragma once
 
-#include "HeapTimer.h"
+#include "JSRunLoopTimer.h"
 #include <wtf/RefPtr.h>
 
 #if USE(CF)
@@ -41,15 +40,15 @@ namespace JSC {
 class FullGCActivityCallback;
 class Heap;
 
-class JS_EXPORT_PRIVATE GCActivityCallback : public HeapTimer, public ThreadSafeRefCounted<GCActivityCallback> {
-    WTF_MAKE_FAST_ALLOCATED;
+class JS_EXPORT_PRIVATE GCActivityCallback : public JSRunLoopTimer {
 public:
+    using Base = JSRunLoopTimer;
     static RefPtr<FullGCActivityCallback> createFullTimer(Heap*);
     static RefPtr<GCActivityCallback> createEdenTimer(Heap*);
 
     GCActivityCallback(Heap*);
 
-    virtual void doWork() override;
+    void doWork() override;
 
     virtual void doCollection() = 0;
 
@@ -61,70 +60,28 @@ public:
 
     static bool s_shouldCreateGCTimer;
 
-#if USE(CF) || PLATFORM(EFL)
-    double nextFireTime() const { return m_nextFireTime; }
-#endif
+    MonotonicTime nextFireTime();
 
 protected:
-    virtual double lastGCLength() = 0;
+    virtual Seconds lastGCLength() = 0;
     virtual double gcTimeSlice(size_t bytes) = 0;
     virtual double deathRate() = 0;
 
-#if USE(CF)
-    GCActivityCallback(VM* vm, CFRunLoopRef runLoop)
-        : HeapTimer(vm, runLoop)
+    GCActivityCallback(VM* vm)
+        : Base(vm)
         , m_enabled(true)
         , m_delay(s_decade)
     {
     }
-#elif PLATFORM(EFL)
-    static constexpr double s_hour = 3600;
-    GCActivityCallback(VM* vm, bool flag)
-        : HeapTimer(vm)
-        , m_enabled(flag)
-        , m_delay(s_hour)
-    {
-    }
-#elif PLATFORM(QT)
-    static constexpr double s_hour = 3600;
-    GCActivityCallback(VM* vm)
-        : HeapTimer(vm)
-        , m_enabled(true)
-        , m_delay(s_hour)
-    {
-    }
-#elif USE(GLIB)
-    GCActivityCallback(VM* vm)
-        : HeapTimer(vm)
-        , m_enabled(true)
-        , m_delay(-1)
-    {
-    }
-#else
-    GCActivityCallback(VM* vm)
-        : HeapTimer(vm)
-        , m_enabled(true)
-    {
-    }
-#endif
 
     bool m_enabled;
 
-#if USE(CF)
-protected:
-    GCActivityCallback(Heap*, CFRunLoopRef);
-#endif
-#if USE(CF) || USE(GLIB) || PLATFORM(QT)
 protected:
     void cancelTimer();
-    void scheduleTimer(double);
+    void scheduleTimer(Seconds);
 
 private:
-    double m_delay;
-    double m_nextFireTime { 0 };
-#endif
+    Seconds m_delay;
 };
 
 } // namespace JSC
-
-#endif

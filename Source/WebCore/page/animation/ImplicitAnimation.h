@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImplicitAnimation_h
-#define ImplicitAnimation_h
+#pragma once
 
 #include "AnimationBase.h"
 #include "CSSPropertyNames.h"
@@ -41,7 +40,7 @@ class RenderElement;
 // for a single RenderElement.
 class ImplicitAnimation : public AnimationBase {
 public:
-    static Ref<ImplicitAnimation> create(Animation& animation, CSSPropertyID animatingProperty, RenderElement* renderer, CompositeAnimation* compositeAnimation, RenderStyle* fromStyle)
+    static Ref<ImplicitAnimation> create(const Animation& animation, CSSPropertyID animatingProperty, RenderElement* renderer, CompositeAnimation* compositeAnimation, const RenderStyle* fromStyle)
     {
         return adoptRef(*new ImplicitAnimation(animation, animatingProperty, renderer, compositeAnimation, fromStyle));
     };
@@ -49,21 +48,21 @@ public:
     CSSPropertyID transitionProperty() const { return m_transitionProperty; }
     CSSPropertyID animatingProperty() const { return m_animatingProperty; }
 
-    virtual void onAnimationEnd(double elapsedTime) override;
-    virtual bool startAnimation(double timeOffset) override;
-    virtual void pauseAnimation(double timeOffset) override;
-    virtual void endAnimation() override;
+    void onAnimationEnd(double elapsedTime) override;
+    bool startAnimation(double timeOffset) override;
+    void pauseAnimation(double timeOffset) override;
+    void endAnimation() override;
 
-    virtual bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* currentStyle, RenderStyle* targetStyle, RefPtr<RenderStyle>& animatedStyle) override;
-    virtual void getAnimatedStyle(RefPtr<RenderStyle>& animatedStyle) override;
-    virtual void reset(RenderStyle* to);
+    bool animate(CompositeAnimation&, RenderElement*, const RenderStyle* currentStyle, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle) override;
+    void getAnimatedStyle(std::unique_ptr<RenderStyle>& animatedStyle) override;
+    void reset(const RenderStyle& to, CompositeAnimation&);
 
     bool computeExtentOfTransformAnimation(LayoutRect&) const override;
 
     void setOverridden(bool);
-    virtual bool overridden() const override { return m_overridden; }
+    bool overridden() const override { return m_overridden; }
 
-    virtual bool affectsProperty(CSSPropertyID) const override;
+    bool affectsProperty(CSSPropertyID) const override;
 
     bool hasStyle() const { return m_fromStyle && m_toStyle; }
 
@@ -71,7 +70,7 @@ public:
 
     void blendPropertyValueInStyle(CSSPropertyID, RenderStyle*);
 
-    virtual double timeToNextService() override;
+    std::optional<Seconds> timeToNextService() override;
     
     bool active() const { return m_active; }
     void setActive(bool b) { m_active = b; }
@@ -87,12 +86,12 @@ protected:
 #endif
 
 private:
-    ImplicitAnimation(Animation&, CSSPropertyID, RenderElement*, CompositeAnimation*, RenderStyle*);
+    ImplicitAnimation(const Animation&, CSSPropertyID, RenderElement*, CompositeAnimation*, const RenderStyle*);
     virtual ~ImplicitAnimation();
 
     // The two styles that we are blending.
-    RefPtr<RenderStyle> m_fromStyle;
-    RefPtr<RenderStyle> m_toStyle;
+    std::unique_ptr<RenderStyle> m_fromStyle;
+    std::unique_ptr<RenderStyle> m_toStyle;
 
     CSSPropertyID m_transitionProperty; // Transition property as specified in the RenderStyle.
     CSSPropertyID m_animatingProperty; // Specific property for this ImplicitAnimation
@@ -102,5 +101,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ImplicitAnimation_h

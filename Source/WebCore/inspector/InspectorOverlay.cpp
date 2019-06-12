@@ -30,18 +30,21 @@
 #include "InspectorOverlay.h"
 
 #include "DocumentLoader.h"
+#include "EditorClient.h"
 #include "Element.h"
 #include "EmptyClients.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "InspectorClient.h"
 #include "InspectorOverlayPage.h"
+#include "LibWebRTCProvider.h"
 #include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
 #include "PageConfiguration.h"
 #include "PolygonShape.h"
 #include "PseudoElement.h"
+#include "RTCController.h"
 #include "RectangleShape.h"
 #include "RenderBoxModelObject.h"
 #include "RenderElement.h"
@@ -54,13 +57,13 @@
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "Settings.h"
+#include "SocketProvider.h"
 #include "StyledElement.h"
-#include <bindings/ScriptValue.h>
 #include <inspector/InspectorProtocolObjects.h>
 #include <inspector/InspectorValues.h>
-#include <wtf/text/StringBuilder.h>
 
 using namespace Inspector;
+using namespace std::literals::chrono_literals;
 
 namespace WebCore {
 
@@ -324,8 +327,8 @@ void InspectorOverlay::update()
         return;
 
     FrameView* overlayView = overlayPage()->mainFrame().view();
-    IntSize viewportSize = view->unscaledVisibleContentSizeIncludingObscuredArea();
-    IntSize frameViewFullSize = view->unscaledVisibleContentSizeIncludingObscuredArea(ScrollableArea::IncludeScrollbars);
+    IntSize viewportSize = view->sizeForVisibleContent();
+    IntSize frameViewFullSize = view->sizeForVisibleContent(ScrollableArea::IncludeScrollbars);
     overlayView->resize(frameViewFullSize);
 
     // Clear canvas and paint things.
@@ -340,7 +343,7 @@ void InspectorOverlay::update()
     drawPaintRects();
 
     // Position DOM elements.
-    overlayPage()->mainFrame().document()->recalcStyle(Style::Force);
+    overlayPage()->mainFrame().document()->resolveStyle(Document::ResolveStyleType::Rebuild);
     if (overlayView->needsLayout())
         overlayView->layout();
 
@@ -505,14 +508,14 @@ void InspectorOverlay::showPaintRect(const FloatRect& rect)
 
     IntRect rootRect = m_page.mainFrame().view()->contentsToRootView(enclosingIntRect(rect));
 
-    const std::chrono::milliseconds removeDelay = std::chrono::milliseconds(250);
+    const auto removeDelay = 250ms;
 
     std::chrono::steady_clock::time_point removeTime = std::chrono::steady_clock::now() + removeDelay;
     m_paintRects.append(TimeRectPair(removeTime, rootRect));
 
     if (!m_paintRectUpdateTimer.isActive()) {
-        const double paintRectsUpdateIntervalSeconds = 0.032;
-        m_paintRectUpdateTimer.startRepeating(paintRectsUpdateIntervalSeconds);
+        const Seconds paintRectsUpdateInterval { 32_ms };
+        m_paintRectUpdateTimer.startRepeating(paintRectsUpdateInterval);
     }
 
     drawPaintRects();
@@ -589,7 +592,6 @@ static RefPtr<Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::Frag
     return WTFMove(arrayOfFragments);
 }
 
-#if ENABLE(CSS_SHAPES)
 static FloatPoint localPointToRoot(RenderObject* renderer, const FrameView* mainView, const FrameView* view, const FloatPoint& point)
 {
     FloatPoint result = renderer->localToAbsolute(point);
@@ -691,7 +693,6 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ShapeOutsideData> buildObjectFo
 
     return WTFMove(shapeObject);
 }
-#endif
 
 static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElementData(Node* node, HighlightType type)
 {
@@ -713,28 +714,27 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElem
         .setIdValue(element.getIdAttribute())
         .release();
 
-    StringBuilder classNames;
     if (element.hasClass() && is<StyledElement>(element)) {
+        auto classes = Inspector::Protocol::Array<String>::create();
         HashSet<AtomicString> usedClassNames;
         const SpaceSplitString& classNamesString = downcast<StyledElement>(element).classNames();
-        size_t classNameCount = classNamesString.size();
-        for (size_t i = 0; i < classNameCount; ++i) {
+        for (size_t i = 0; i < classNamesString.size(); ++i) {
             const AtomicString& className = classNamesString[i];
             if (usedClassNames.contains(className))
                 continue;
+
             usedClassNames.add(className);
-            classNames.append('.');
-            classNames.append(className);
+            classes->addItem(className);
         }
+        elementData->setClasses(WTFMove(classes));
     }
+
     if (node->isPseudoElement()) {
         if (node->pseudoId() == BEFORE)
-            classNames.appendLiteral("::before");
+            elementData->setPseudoElement("before");
         else if (node->pseudoId() == AFTER)
-            classNames.appendLiteral("::after");
+            elementData->setPseudoElement("after");
     }
-    if (!classNames.isEmpty())
-        elementData->setClassName(classNames.toString());
 
     RenderElement* renderer = element.renderer();
     if (!renderer)
@@ -771,13 +771,11 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElem
         elementData->setContentFlowData(WTFMove(contentFlowData));
     }
 
-#if ENABLE(CSS_SHAPES)
     if (is<RenderBox>(*renderer)) {
         auto& renderBox = downcast<RenderBox>(*renderer);
         if (RefPtr<Inspector::Protocol::OverlayTypes::ShapeOutsideData> shapeObject = buildObjectForShapeOutside(containingFrame, &renderBox))
             elementData->setShapeOutsideData(WTFMove(shapeObject));
     }
-#endif
 
     // Need to enable AX to get the computed role.
     if (!WebCore::AXObjectCache::accessibilityEnabled())
@@ -864,9 +862,14 @@ Page* InspectorOverlay::overlayPage()
     if (m_overlayPage)
         return m_overlayPage.get();
 
-    PageConfiguration pageConfiguration;
+    PageConfiguration pageConfiguration(
+        createEmptyEditorClient(),
+        SocketProvider::create(),
+        makeUniqueRef<LibWebRTCProvider>()
+    );
     fillWithEmptyClients(pageConfiguration);
-    m_overlayPage = std::make_unique<Page>(pageConfiguration);
+    m_overlayPage = std::make_unique<Page>(WTFMove(pageConfiguration));
+    m_overlayPage->setDeviceScaleFactor(m_page.deviceScaleFactor());
 
     Settings& settings = m_page.settings();
     Settings& overlaySettings = m_overlayPage->settings();
@@ -922,11 +925,17 @@ void InspectorOverlay::reset(const IntSize& viewportSize, const IntSize& frameVi
     evaluateInOverlay("reset", WTFMove(configObject));
 }
 
+static void evaluateCommandInOverlay(Page* page, Ref<InspectorArray>&& command)
+{
+    page->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ')')));
+}
+
 void InspectorOverlay::evaluateInOverlay(const String& method)
 {
     Ref<InspectorArray> command = InspectorArray::create();
     command->pushString(method);
-    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ')')));
+
+    evaluateCommandInOverlay(overlayPage(), WTFMove(command));
 }
 
 void InspectorOverlay::evaluateInOverlay(const String& method, const String& argument)
@@ -934,7 +943,8 @@ void InspectorOverlay::evaluateInOverlay(const String& method, const String& arg
     Ref<InspectorArray> command = InspectorArray::create();
     command->pushString(method);
     command->pushString(argument);
-    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ')')));
+
+    evaluateCommandInOverlay(overlayPage(), WTFMove(command));
 }
 
 void InspectorOverlay::evaluateInOverlay(const String& method, RefPtr<InspectorValue>&& argument)
@@ -942,7 +952,8 @@ void InspectorOverlay::evaluateInOverlay(const String& method, RefPtr<InspectorV
     Ref<InspectorArray> command = InspectorArray::create();
     command->pushString(method);
     command->pushValue(WTFMove(argument));
-    overlayPage()->mainFrame().script().evaluate(ScriptSourceCode(makeString("dispatch(", command->toJSONString(), ')')));
+
+    evaluateCommandInOverlay(overlayPage(), WTFMove(command));
 }
 
 void InspectorOverlay::freePage()

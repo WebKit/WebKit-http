@@ -33,14 +33,17 @@
 #define FUNCTIONS m_functions
 #include "OpenGLShimsQt.h"
 #define glIsEnabled(...) m_functions->glIsEnabled(__VA_ARGS__)
+#elif USE(LIBEPOXY)
+#include "EpoxyShims.h"
 #elif USE(OPENGL_ES_2)
+#define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include "OpenGLESShims.h"
 #elif PLATFORM(IOS)
 #include <OpenGLES/ES2/gl.h>
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 

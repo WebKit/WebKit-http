@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006, 2016 Apple Inc.  All rights reserved.
  * Copyright (C) 2008-2009 Torch Mobile, Inc.
  * Copyright (C) Research In Motion Limited 2009-2010. All rights reserved.
  * Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies)
@@ -26,419 +26,206 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageDecoder_h
-#define ImageDecoder_h
+#pragma once
 
+#include "ImageFrame.h"
 #include "IntRect.h"
-#include "ImageSource.h"
-#include "PlatformScreen.h"
+#include "IntSize.h"
 #include "SharedBuffer.h"
 #include <wtf/Assertions.h>
+#include <wtf/Optional.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-#if USE(QCMSLIB)
-#include "qcms.h"
-#if OS(DARWIN)
-#include "GraphicsContextCG.h"
-#include <ApplicationServices/ApplicationServices.h>
-#include <wtf/RetainPtr.h>
-#endif
-#endif
-
 namespace WebCore {
 
-    // ImageFrame represents the decoded image data.  This buffer is what all
-    // decoders write a single frame into.
-    class ImageFrame {
-    public:
-        enum FrameStatus { FrameEmpty, FramePartial, FrameComplete };
-        enum FrameDisposalMethod {
-            // If you change the numeric values of these, make sure you audit
-            // all users, as some users may cast raw values to/from these
-            // constants.
-            DisposeNotSpecified,      // Leave frame in framebuffer
-            DisposeKeep,              // Leave frame in framebuffer
-            DisposeOverwriteBgcolor,  // Clear frame to transparent
-            DisposeOverwritePrevious  // Clear frame to previous framebuffer
-                                      // contents
-        };
-        typedef unsigned PixelData;
+// ImageDecoder is a base for all format-specific decoders
+// (e.g. JPEGImageDecoder). This base manages the ImageFrame cache.
+//
+// ENABLE(IMAGE_DECODER_DOWN_SAMPLING) allows image decoders to downsample
+// at decode time. Image decoders will downsample any images larger than
+// |m_maxNumPixels|. FIXME: Not yet supported by all decoders.
+class ImageDecoder : public ThreadSafeRefCounted<ImageDecoder> {
+    WTF_MAKE_NONCOPYABLE(ImageDecoder); WTF_MAKE_FAST_ALLOCATED;
+public:
+    ImageDecoder(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+        : m_premultiplyAlpha(alphaOption == AlphaOption::Premultiplied)
+        , m_ignoreGammaAndColorProfile(gammaAndColorProfileOption == GammaAndColorProfileOption::Ignored)
+    {
+    }
 
-        ImageFrame();
+    virtual ~ImageDecoder()
+    {
+    }
 
-        ImageFrame(const ImageFrame& other) { operator=(other); }
+    // Returns nullptr if we can't sniff a supported type from the provided data (possibly
+    // because there isn't enough data yet).
+    static RefPtr<ImageDecoder> create(SharedBuffer& data, AlphaOption, GammaAndColorProfileOption);
 
-        // For backends which refcount their data, this operator doesn't need to
-        // create a new copy of the image data, only increase the ref count.
-        ImageFrame& operator=(const ImageFrame& other);
+    virtual String filenameExtension() const = 0;
 
-        // These do not touch other metadata, only the raw pixel data.
-        void clearPixelData();
-        void zeroFillPixelData();
-        void zeroFillFrameRect(const IntRect&);
+    bool premultiplyAlpha() const { return m_premultiplyAlpha; }
 
-        // Makes this frame have an independent copy of the provided image's
-        // pixel data, so that modifications in one frame are not reflected in
-        // the other.  Returns whether the copy succeeded.
-        bool copyBitmapData(const ImageFrame&);
+    bool isAllDataReceived() const
+    {
+        ASSERT(!m_decodingSizeFromSetData);
+        return m_encodedDataStatus == EncodedDataStatus::Complete;
+    }
 
-        // Copies the pixel data at [(startX, startY), (endX, startY)) to the
-        // same X-coordinates on each subsequent row up to but not including
-        // endY.
-        void copyRowNTimes(int startX, int endX, int startY, int endY)
-        {
-            ASSERT(startX < width());
-            ASSERT(endX <= width());
-            ASSERT(startY < height());
-            ASSERT(endY <= height());
-            const int rowBytes = (endX - startX) * sizeof(PixelData);
-            const PixelData* const startAddr = getAddr(startX, startY);
-            for (int destY = startY + 1; destY < endY; ++destY)
-                memcpy(getAddr(startX, destY), startAddr, rowBytes);
+    virtual void setData(SharedBuffer& data, bool allDataReceived)
+    {
+        if (m_encodedDataStatus == EncodedDataStatus::Error)
+            return;
+
+        m_data = &data;
+        if (m_encodedDataStatus == EncodedDataStatus::TypeAvailable) {
+            m_decodingSizeFromSetData = true;
+            tryDecodeSize(allDataReceived);
+            m_decodingSizeFromSetData = false;
         }
 
-        // Allocates space for the pixel data.  Must be called before any pixels
-        // are written.  Must only be called once.  Returns whether allocation
-        // succeeded.
-        bool setSize(int newWidth, int newHeight);
+        if (m_encodedDataStatus == EncodedDataStatus::Error)
+            return;
 
-        // Returns a caller-owned pointer to the underlying native image data.
-        // (Actual use: This pointer will be owned by BitmapImage and freed in
-        // FrameData::clear()).
-        PassNativeImagePtr asNewNativeImage() const;
-
-        bool hasAlpha() const;
-        const IntRect& originalFrameRect() const { return m_originalFrameRect; }
-        FrameStatus status() const { return m_status; }
-        unsigned duration() const { return m_duration; }
-        FrameDisposalMethod disposalMethod() const { return m_disposalMethod; }
-        bool premultiplyAlpha() const { return m_premultiplyAlpha; }
-
-        void setHasAlpha(bool alpha);
-        void setColorProfile(const ColorProfile&);
-        void setOriginalFrameRect(const IntRect& r) { m_originalFrameRect = r; }
-        void setStatus(FrameStatus status);
-        void setDuration(unsigned duration) { m_duration = duration; }
-        void setDisposalMethod(FrameDisposalMethod method) { m_disposalMethod = method; }
-        void setPremultiplyAlpha(bool premultiplyAlpha) { m_premultiplyAlpha = premultiplyAlpha; }
-
-        inline void setRGBA(int x, int y, unsigned r, unsigned g, unsigned b, unsigned a)
-        {
-            setRGBA(getAddr(x, y), r, g, b, a);
+        if (allDataReceived) {
+            ASSERT(m_encodedDataStatus == EncodedDataStatus::SizeAvailable);
+            m_encodedDataStatus = EncodedDataStatus::Complete;
         }
+    }
 
-        inline PixelData* getAddr(int x, int y)
-        {
-            return m_bytes + (y * width()) + x;
-        }
+    EncodedDataStatus encodedDataStatus() const { return m_encodedDataStatus; }
 
-        inline bool hasPixelData() const
-        {
-            return m_bytes;
-        }
+    bool isSizeAvailable() { return m_encodedDataStatus >= EncodedDataStatus::SizeAvailable; }
 
-        // Use fix point multiplier instead of integer division or floating point math.
-        // This multipler produces exactly the same result for all values in range 0 - 255.
-        static const unsigned fixPointShift = 24;
-        static const unsigned fixPointMult = static_cast<unsigned>(1.0 / 255.0 * (1 << fixPointShift)) + 1;
-        // Multiplies unsigned value by fixpoint value and converts back to unsigned.
-        static unsigned fixPointUnsignedMultiply(unsigned fixed, unsigned v)
-        {
-            return  (fixed * v) >> fixPointShift;
-        }
+    virtual IntSize size() { return isSizeAvailable() ? m_size : IntSize(); }
 
-        inline void setRGBA(PixelData* dest, unsigned r, unsigned g, unsigned b, unsigned a)
-        {
-            if (m_premultiplyAlpha && a < 255) {
-                if (!a) {
-                    *dest = 0;
-                    return;
-                }
+    IntSize scaledSize()
+    {
+        return m_scaled ? IntSize(m_scaledColumns.size(), m_scaledRows.size()) : size();
+    }
 
-                unsigned alphaMult = a * fixPointMult;
-                r = fixPointUnsignedMultiply(r, alphaMult);
-                g = fixPointUnsignedMultiply(g, alphaMult);
-                b = fixPointUnsignedMultiply(b, alphaMult);
-            }
-            *dest = (a << 24 | r << 16 | g << 8 | b);
-        }
+    // This will only differ from size() for ICO (where each frame is a
+    // different icon) or other formats where different frames are different
+    // sizes. This does NOT differ from size() for GIF, since decoding GIFs
+    // composites any smaller frames against previous frames to create full-
+    // size frames.
+    virtual IntSize frameSizeAtIndex(size_t, SubsamplingLevel)
+    {
+        return size();
+    }
 
-#if ENABLE(APNG)
-        static inline unsigned divide255(unsigned a)
-        {
-            return (a + (a >> 8) + 1) >> 8;
-        }
+    // Returns whether the size is legal (i.e. not going to result in
+    // overflow elsewhere). If not, marks decoding as failed.
+    virtual bool setSize(const IntSize& size)
+    {
+        if (ImageBackingStore::isOverSize(size))
+            return setFailed();
+        m_size = size;
+        m_encodedDataStatus = EncodedDataStatus::SizeAvailable;
+        return true;
+    }
 
-        inline void overRGBA(PixelData* dest, unsigned r, unsigned g, unsigned b, unsigned a)
-        {
-            if (!a)
-                return;
+    // Lazily-decodes enough of the image to get the frame count (if
+    // possible), without decoding the individual frames.
+    // FIXME: Right now that has to be done by each subclass; factor the
+    // decode call out and use it here.
+    virtual size_t frameCount() const { return 1; }
 
-            if (a < 255) {
-                unsigned aDest = ((*dest) >> 24) & 255;
-                if (aDest) {
-                    unsigned rDest = ((*dest) >> 16) & 255;
-                    unsigned gDest = ((*dest) >> 8) & 255;
-                    unsigned bDest = (*dest) & 255;
-                    unsigned aAux = 255 - a;
-                    if (!m_premultiplyAlpha) {
-                        rDest = divide255(rDest * aDest);
-                        gDest = divide255(gDest * aDest);
-                        bDest = divide255(bDest * aDest);
-                    }
-                    r = divide255(r * a + rDest * aAux);
-                    g = divide255(g * a + gDest * aAux);
-                    b = divide255(b * a + bDest * aAux);
-                    a += divide255(aDest * aAux);
-                    if (!m_premultiplyAlpha) {
-                        r = (r * 255 + a - 1) / a;
-                        g = (g * 255 + a - 1) / a;
-                        b = (b * 255 + a - 1) / a;
-                    }
-                } else if (m_premultiplyAlpha) {
-                    r = divide255(r * a);
-                    g = divide255(g * a);
-                    b = divide255(b * a);
-                }
-            }
-            *dest = (a << 24 | r << 16 | g << 8 | b);
-        }
-#endif
+    virtual RepetitionCount repetitionCount() const { return RepetitionCountNone; }
 
-    private:
-        int width() const
-        {
-            return m_size.width();
-        }
+    // Decodes as much of the requested frame as possible, and returns an
+    // ImageDecoder-owned pointer.
+    virtual ImageFrame* frameBufferAtIndex(size_t) = 0;
 
-        int height() const
-        {
-            return m_size.height();
-        }
+    bool frameIsCompleteAtIndex(size_t);
 
-        Vector<PixelData> m_backingStore;
-        PixelData* m_bytes; // The memory is backed by m_backingStore.
-        IntSize m_size;
-        // FIXME: Do we need m_colorProfile anymore?
-        ColorProfile m_colorProfile;
-        bool m_hasAlpha;
-        IntRect m_originalFrameRect; // This will always just be the entire
-                                     // buffer except for GIF frames whose
-                                     // original rect was smaller than the
-                                     // overall image size.
-        FrameStatus m_status;
-        unsigned m_duration;
-        FrameDisposalMethod m_disposalMethod;
-        bool m_premultiplyAlpha;
-    };
+    // Make the best effort guess to check if the requested frame has alpha channel.
+    bool frameHasAlphaAtIndex(size_t) const;
 
-    // ImageDecoder is a base for all format-specific decoders
-    // (e.g. JPEGImageDecoder).  This base manages the ImageFrame cache.
-    //
-    // ENABLE(IMAGE_DECODER_DOWN_SAMPLING) allows image decoders to downsample
-    // at decode time.  Image decoders will downsample any images larger than
-    // |m_maxNumPixels|.  FIXME: Not yet supported by all decoders.
-    class ImageDecoder {
-        WTF_MAKE_NONCOPYABLE(ImageDecoder); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        ImageDecoder(ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
-            : m_scaled(false)
-            , m_premultiplyAlpha(alphaOption == ImageSource::AlphaPremultiplied)
-            , m_ignoreGammaAndColorProfile(gammaAndColorProfileOption == ImageSource::GammaAndColorProfileIgnored)
-            , m_sizeAvailable(false)
-            , m_maxNumPixels(-1)
-            , m_isAllDataReceived(false)
-            , m_failed(false) { }
+    // Number of bytes in the decoded frame requested. Return 0 if not yet decoded.
+    unsigned frameBytesAtIndex(size_t) const;
+    
+    float frameDurationAtIndex(size_t);
+    
+    NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, const DecodingOptions& = DecodingMode::Synchronous);
 
-        virtual ~ImageDecoder() { }
+    void setIgnoreGammaAndColorProfile(bool flag) { m_ignoreGammaAndColorProfile = flag; }
+    bool ignoresGammaAndColorProfile() const { return m_ignoreGammaAndColorProfile; }
 
-        // Returns a caller-owned decoder of the appropriate type.  Returns 0 if
-        // we can't sniff a supported type from the provided data (possibly
-        // because there isn't enough data yet).
-        static ImageDecoder* create(const SharedBuffer& data, ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
+    ImageOrientation frameOrientationAtIndex(size_t) const { return m_orientation; }
+    
+    bool frameAllowSubsamplingAtIndex(size_t) const { return false; }
 
-        virtual String filenameExtension() const = 0;
+    enum { ICCColorProfileHeaderLength = 128 };
 
-        bool isAllDataReceived() const { return m_isAllDataReceived; }
+    static bool rgbColorProfile(const char* profileData, unsigned profileLength)
+    {
+        ASSERT_UNUSED(profileLength, profileLength >= ICCColorProfileHeaderLength);
 
-        virtual void setData(SharedBuffer* data, bool allDataReceived)
-        {
-            if (m_failed)
-                return;
-            m_data = data;
-            m_isAllDataReceived = allDataReceived;
-        }
+        return !memcmp(&profileData[16], "RGB ", 4);
+    }
 
-        // Lazily-decodes enough of the image to get the size (if possible).
-        // FIXME: Right now that has to be done by each subclass; factor the
-        // decode call out and use it here.
-        virtual bool isSizeAvailable()
-        {
-            return !m_failed && m_sizeAvailable;
-        }
+    static size_t bytesDecodedToDetermineProperties() { return 0; }
+    
+    static SubsamplingLevel subsamplingLevelForScale(float, SubsamplingLevel) { return SubsamplingLevel::Default; }
 
-        virtual IntSize size() const { return m_size; }
+    static bool inputDeviceColorProfile(const char* profileData, unsigned profileLength)
+    {
+        ASSERT_UNUSED(profileLength, profileLength >= ICCColorProfileHeaderLength);
 
-        IntSize scaledSize() const
-        {
-            return m_scaled ? IntSize(m_scaledColumns.size(), m_scaledRows.size()) : size();
-        }
+        return !memcmp(&profileData[12], "mntr", 4) || !memcmp(&profileData[12], "scnr", 4);
+    }
 
-        // This will only differ from size() for ICO (where each frame is a
-        // different icon) or other formats where different frames are different
-        // sizes.  This does NOT differ from size() for GIF, since decoding GIFs
-        // composites any smaller frames against previous frames to create full-
-        // size frames.
-        virtual IntSize frameSizeAtIndex(size_t) const
-        {
-            return size();
-        }
+    // Sets the "decode failure" flag. For caller convenience (since so
+    // many callers want to return false after calling this), returns false
+    // to enable easy tailcalling. Subclasses may override this to also
+    // clean up any local data.
+    virtual bool setFailed()
+    {
+        m_encodedDataStatus = EncodedDataStatus::Error;
+        return false;
+    }
 
-        // Returns whether the size is legal (i.e. not going to result in
-        // overflow elsewhere).  If not, marks decoding as failed.
-        virtual bool setSize(unsigned width, unsigned height)
-        {
-            if (isOverSize(width, height))
-                return setFailed();
-            m_size = IntSize(width, height);
-            m_sizeAvailable = true;
-            return true;
-        }
+    bool failed() const { return m_encodedDataStatus == EncodedDataStatus::Error; }
 
-        // Lazily-decodes enough of the image to get the frame count (if
-        // possible), without decoding the individual frames.
-        // FIXME: Right now that has to be done by each subclass; factor the
-        // decode call out and use it here.
-        virtual size_t frameCount() { return 1; }
+    // Clears decoded pixel data from before the provided frame unless that
+    // data may be needed to decode future frames (e.g. due to GIF frame
+    // compositing).
+    virtual void clearFrameBufferCache(size_t) { }
 
-        virtual int repetitionCount() const { return cAnimationNone; }
+    // If the image has a cursor hot-spot, stores it in the argument
+    // and returns true. Otherwise returns false.
+    virtual std::optional<IntPoint> hotSpot() const { return std::nullopt; }
 
-        // Decodes as much of the requested frame as possible, and returns an
-        // ImageDecoder-owned pointer.
-        virtual ImageFrame* frameBufferAtIndex(size_t) = 0;
+protected:
+    void prepareScaleDataIfNecessary();
+    int upperBoundScaledX(int origX, int searchStart = 0);
+    int lowerBoundScaledX(int origX, int searchStart = 0);
+    int upperBoundScaledY(int origY, int searchStart = 0);
+    int lowerBoundScaledY(int origY, int searchStart = 0);
+    int scaledY(int origY, int searchStart = 0);
 
-        // Make the best effort guess to check if the requested frame has alpha channel.
-        virtual bool frameHasAlphaAtIndex(size_t) const;
+    RefPtr<SharedBuffer> m_data; // The encoded data.
+    Vector<ImageFrame, 1> m_frameBufferCache;
+    bool m_scaled { false };
+    Vector<int> m_scaledColumns;
+    Vector<int> m_scaledRows;
+    bool m_premultiplyAlpha;
+    bool m_ignoreGammaAndColorProfile;
+    ImageOrientation m_orientation;
 
-        // Number of bytes in the decoded frame requested. Return 0 if not yet decoded.
-        virtual unsigned frameBytesAtIndex(size_t) const;
+private:
+    virtual void tryDecodeSize(bool) = 0;
 
-        void setIgnoreGammaAndColorProfile(bool flag) { m_ignoreGammaAndColorProfile = flag; }
-        bool ignoresGammaAndColorProfile() const { return m_ignoreGammaAndColorProfile; }
-
-        ImageOrientation orientation() const { return m_orientation; }
-
-        enum { iccColorProfileHeaderLength = 128 };
-
-        static bool rgbColorProfile(const char* profileData, unsigned profileLength)
-        {
-            ASSERT_UNUSED(profileLength, profileLength >= iccColorProfileHeaderLength);
-
-            return !memcmp(&profileData[16], "RGB ", 4);
-        }
-
-        static bool inputDeviceColorProfile(const char* profileData, unsigned profileLength)
-        {
-            ASSERT_UNUSED(profileLength, profileLength >= iccColorProfileHeaderLength);
-
-            return !memcmp(&profileData[12], "mntr", 4) || !memcmp(&profileData[12], "scnr", 4);
-        }
-
-#if USE(QCMSLIB)
-        static qcms_profile* qcmsOutputDeviceProfile()
-        {
-            static qcms_profile* outputDeviceProfile = 0;
-
-            static bool qcmsInitialized = false;
-            if (!qcmsInitialized) {
-                qcmsInitialized = true;
-                // FIXME: Add optional ICCv4 support.
-#if OS(DARWIN)
-                RetainPtr<CGColorSpaceRef> monitorColorSpace = adoptCF(CGDisplayCopyColorSpace(CGMainDisplayID()));
-                CFDataRef iccProfile(CGColorSpaceCopyICCProfile(monitorColorSpace.get()));
-                if (iccProfile) {
-                    size_t length = CFDataGetLength(iccProfile);
-                    const unsigned char* systemProfile = CFDataGetBytePtr(iccProfile);
-                    outputDeviceProfile = qcms_profile_from_memory(systemProfile, length);
-                    CFRelease(iccProfile);
-                }
-#endif
-                if (outputDeviceProfile && qcms_profile_is_bogus(outputDeviceProfile)) {
-                    qcms_profile_release(outputDeviceProfile);
-                    outputDeviceProfile = 0;
-                }
-                if (!outputDeviceProfile)
-                    outputDeviceProfile = qcms_profile_sRGB();
-                if (outputDeviceProfile)
-                    qcms_profile_precache_output_transform(outputDeviceProfile);
-            }
-            return outputDeviceProfile;
-        }
-#endif
-
-        // Sets the "decode failure" flag.  For caller convenience (since so
-        // many callers want to return false after calling this), returns false
-        // to enable easy tailcalling.  Subclasses may override this to also
-        // clean up any local data.
-        virtual bool setFailed()
-        {
-            m_failed = true;
-            return false;
-        }
-
-        bool failed() const { return m_failed; }
-
-        // Clears decoded pixel data from before the provided frame unless that
-        // data may be needed to decode future frames (e.g. due to GIF frame
-        // compositing).
-        virtual void clearFrameBufferCache(size_t) { }
-
+    IntSize m_size;
+    EncodedDataStatus m_encodedDataStatus { EncodedDataStatus::TypeAvailable };
+    bool m_decodingSizeFromSetData { false };
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
-        void setMaxNumPixels(int m) { m_maxNumPixels = m; }
+    static const int m_maxNumPixels { 1024 * 1024 };
+#else
+    static const int m_maxNumPixels { -1 };
 #endif
-
-        // If the image has a cursor hot-spot, stores it in the argument
-        // and returns true. Otherwise returns false.
-        virtual bool hotSpot(IntPoint&) const { return false; }
-
-    protected:
-        void prepareScaleDataIfNecessary();
-        int upperBoundScaledX(int origX, int searchStart = 0);
-        int lowerBoundScaledX(int origX, int searchStart = 0);
-        int upperBoundScaledY(int origY, int searchStart = 0);
-        int lowerBoundScaledY(int origY, int searchStart = 0);
-        int scaledY(int origY, int searchStart = 0);
-
-        RefPtr<SharedBuffer> m_data; // The encoded data.
-        Vector<ImageFrame, 1> m_frameBufferCache;
-        // FIXME: Do we need m_colorProfile any more, for any port?
-        ColorProfile m_colorProfile;
-        bool m_scaled;
-        Vector<int> m_scaledColumns;
-        Vector<int> m_scaledRows;
-        bool m_premultiplyAlpha;
-        bool m_ignoreGammaAndColorProfile;
-        ImageOrientation m_orientation;
-
-    private:
-        // Some code paths compute the size of the image as "width * height * 4"
-        // and return it as a (signed) int.  Avoid overflow.
-        static bool isOverSize(unsigned width, unsigned height)
-        {
-            unsigned long long total_size = static_cast<unsigned long long>(width)
-                                          * static_cast<unsigned long long>(height);
-            return total_size > ((1 << 29) - 1);
-        }
-
-        IntSize m_size;
-        bool m_sizeAvailable;
-        int m_maxNumPixels;
-        bool m_isAllDataReceived;
-        bool m_failed;
-    };
+};
 
 } // namespace WebCore
-
-#endif

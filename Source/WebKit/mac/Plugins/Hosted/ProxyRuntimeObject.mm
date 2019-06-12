@@ -34,17 +34,17 @@ using namespace JSC;
 namespace WebKit {
 
 
-const ClassInfo ProxyRuntimeObject::s_info = { "ProxyRuntimeObject", &RuntimeObject::s_info, 0, CREATE_METHOD_TABLE(ProxyRuntimeObject) };
+const ClassInfo ProxyRuntimeObject::s_info = { "ProxyRuntimeObject", &RuntimeObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ProxyRuntimeObject) };
 
-ProxyRuntimeObject::ProxyRuntimeObject(VM& vm, Structure* structure, PassRefPtr<ProxyInstance> instance)
-    : RuntimeObject(vm, structure, instance)
+ProxyRuntimeObject::ProxyRuntimeObject(VM& vm, Structure* structure, Ref<ProxyInstance>&& instance)
+    : RuntimeObject(vm, structure, WTFMove(instance))
 {
 }
 
 void ProxyRuntimeObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(&s_info));
+    ASSERT(inherits(vm, &s_info));
 }
 
 ProxyInstance* ProxyRuntimeObject::getInternalProxyInstance() const

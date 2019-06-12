@@ -21,86 +21,69 @@
 #include "config.h"
 #include "CSSImageValue.h"
 
-#include "CSSCursorImageValue.h"
-#include "CSSParser.h"
+#include "CSSMarkup.h"
+#include "CSSPrimitiveValue.h"
 #include "CSSValueKeywords.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "CachedResourceRequestInitiators.h"
-#include "CrossOriginAccessControl.h"
+#include "DeprecatedCSSOMPrimitiveValue.h"
 #include "Document.h"
 #include "Element.h"
-#include "MemoryCache.h"
-#include "StyleCachedImage.h"
-#include "StylePendingImage.h"
 
 namespace WebCore {
 
-CSSImageValue::CSSImageValue(const String& url)
+CSSImageValue::CSSImageValue(URL&& url)
     : CSSValue(ImageClass)
-    , m_url(url)
+    , m_url(WTFMove(url))
     , m_accessedImage(false)
 {
 }
 
-CSSImageValue::CSSImageValue(const String& url, StyleImage* image)
+CSSImageValue::CSSImageValue(CachedImage& image)
     : CSSValue(ImageClass)
-    , m_url(url)
-    , m_image(image)
+    , m_url(image.url())
+    , m_cachedImage(&image)
     , m_accessedImage(true)
 {
 }
 
-inline void CSSImageValue::detachPendingImage()
-{
-    if (is<StylePendingImage>(m_image.get()))
-        downcast<StylePendingImage>(*m_image).detachFromCSSValue();
-}
 
 CSSImageValue::~CSSImageValue()
 {
-    detachPendingImage();
 }
 
-StyleImage* CSSImageValue::cachedOrPendingImage()
+bool CSSImageValue::isPending() const
 {
-    if (!m_image)
-        m_image = StylePendingImage::create(this);
-
-    return m_image.get();
+    return !m_accessedImage;
 }
 
-StyleCachedImage* CSSImageValue::cachedImage(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
+CachedImage* CSSImageValue::loadImage(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
     if (!m_accessedImage) {
         m_accessedImage = true;
 
-        CachedResourceRequest request(ResourceRequest(loader.document()->completeURL(m_url)), options);
+        CachedResourceRequest request(ResourceRequest(loader.document()->completeURL(m_url.string())), options);
         if (m_initiatorName.isEmpty())
             request.setInitiator(cachedResourceRequestInitiators().css);
         else
             request.setInitiator(m_initiatorName);
 
-        if (options.requestOriginPolicy() == PotentiallyCrossOriginEnabled)
-            updateRequestForAccessControl(request.mutableResourceRequest(), loader.document()->securityOrigin(), options.allowCredentials());
-
-        if (CachedResourceHandle<CachedImage> cachedImage = loader.requestImage(request)) {
-            detachPendingImage();
-            m_image = StyleCachedImage::create(cachedImage.get());
+        if (options.mode == FetchOptions::Mode::Cors) {
+            ASSERT(loader.document());
+            request.updateForAccessControl(*loader.document());
         }
+        m_cachedImage = loader.requestImage(WTFMove(request));
     }
-
-    return is<StyleCachedImage>(m_image.get()) ? downcast<StyleCachedImage>(m_image.get()) : nullptr;
+    return m_cachedImage.get();
 }
 
-bool CSSImageValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSImageValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
-    if (!is<StyleCachedImage>(m_image.get()))
+    if (!m_cachedImage)
         return false;
-    CachedResource* cachedResource = downcast<StyleCachedImage>(*m_image).cachedImage();
-    ASSERT(cachedResource);
-    return handler(*cachedResource);
+    return handler(*m_cachedImage);
 }
 
 bool CSSImageValue::equals(const CSSImageValue& other) const
@@ -110,20 +93,20 @@ bool CSSImageValue::equals(const CSSImageValue& other) const
 
 String CSSImageValue::customCSSText() const
 {
-    return "url(" + quoteCSSURLIfNeeded(m_url) + ')';
+    return serializeURL(m_url);
 }
 
-Ref<CSSValue> CSSImageValue::cloneForCSSOM() const
+Ref<DeprecatedCSSOMValue> CSSImageValue::createDeprecatedCSSOMWrapper() const
 {
     // NOTE: We expose CSSImageValues as URI primitive values in CSSOM to maintain old behavior.
-    Ref<CSSPrimitiveValue> uriValue = CSSPrimitiveValue::create(m_url, CSSPrimitiveValue::CSS_URI);
-    uriValue->setCSSOMSafe();
-    return WTFMove(uriValue);
+    return DeprecatedCSSOMPrimitiveValue::create(CSSPrimitiveValue::create(m_url, CSSPrimitiveValue::CSS_URI));
 }
 
 bool CSSImageValue::knownToBeOpaque(const RenderElement* renderer) const
 {
-    return m_image ? m_image->knownToBeOpaque(renderer) : false;
+    if (!m_cachedImage)
+        return false;
+    return m_cachedImage->currentFrameKnownToBeOpaque(renderer);
 }
 
 } // namespace WebCore

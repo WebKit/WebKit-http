@@ -27,11 +27,12 @@
 #include "ModifySelectionListLevel.h"
 
 #include "Document.h"
+#include "Editing.h"
 #include "Frame.h"
 #include "FrameSelection.h"
-#include "HTMLElement.h"
+#include "HTMLOListElement.h"
+#include "HTMLUListElement.h"
 #include "RenderObject.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
@@ -79,7 +80,7 @@ static bool getStartEndListChildren(const VisibleSelection& selection, Node*& st
     // if the selection ends on a list item with a sublist, include the entire sublist
     if (endListChild->renderer()->isListItem()) {
         RenderObject* r = endListChild->renderer()->nextSibling();
-        if (r && isListElement(r->node()))
+        if (r && isListHTMLElement(r->node()))
             endListChild = r->node();
     }
 
@@ -93,8 +94,8 @@ void ModifySelectionListLevelCommand::insertSiblingNodeRangeBefore(Node* startNo
     Node* node = startNode;
     while (1) {
         Node* next = node->nextSibling();
-        removeNode(node);
-        insertNodeBefore(node, refNode);
+        removeNode(*node);
+        insertNodeBefore(*node, *refNode);
 
         if (node == endNode)
             break;
@@ -108,8 +109,8 @@ void ModifySelectionListLevelCommand::insertSiblingNodeRangeAfter(Node* startNod
     Node* node = startNode;
     while (1) {
         Node* next = node->nextSibling();
-        removeNode(node);
-        insertNodeAfter(node, refNode);
+        removeNode(*node);
+        insertNodeAfter(*node, *refNode);
 
         if (node == endNode)
             break;
@@ -124,8 +125,8 @@ void ModifySelectionListLevelCommand::appendSiblingNodeRange(Node* startNode, No
     Node* node = startNode;
     while (1) {
         Node* next = node->nextSibling();
-        removeNode(node);
-        appendNode(node, newParent);
+        removeNode(*node);
+        appendNode(*node, *newParent);
 
         if (node == endNode)
             break;
@@ -176,7 +177,7 @@ void IncreaseSelectionListLevelCommand::doApply()
         return;
 
     Node* previousItem = startListChild->renderer()->previousSibling()->node();
-    if (isListElement(previousItem)) {
+    if (isListHTMLElement(previousItem)) {
         // move nodes up into preceding list
         appendSiblingNodeRange(startListChild, endListChild, downcast<Element>(previousItem));
         m_listElement = previousItem;
@@ -190,15 +191,15 @@ void IncreaseSelectionListLevelCommand::doApply()
                     newParent = newParent->cloneElementWithoutChildren(document());
                 break;
             case OrderedList:
-                newParent = createOrderedListElement(document());
+                newParent = HTMLOListElement::create(document());
                 break;
             case UnorderedList:
-                newParent = createUnorderedListElement(document());
+                newParent = HTMLUListElement::create(document());
                 break;
         }
-        insertNodeBefore(newParent, startListChild);
+        insertNodeBefore(*newParent, *startListChild);
         appendSiblingNodeRange(startListChild, endListChild, newParent.get());
-        m_listElement = newParent.release();
+        m_listElement = WTFMove(newParent);
     }
 }
 
@@ -209,26 +210,26 @@ bool IncreaseSelectionListLevelCommand::canIncreaseSelectionListLevel(Document* 
     return canIncreaseListLevel(document->frame()->selection().selection(), startListChild, endListChild);
 }
 
-PassRefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevel(Document* document, Type type)
+RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevel(Document* document, Type type)
 {
     ASSERT(document);
     ASSERT(document->frame());
-    RefPtr<IncreaseSelectionListLevelCommand> command = create(*document, type);
+    auto command = create(*document, type);
     command->apply();
-    return command->m_listElement.release();
+    return WTFMove(command->m_listElement);
 }
 
-PassRefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevel(Document* document)
+RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevel(Document* document)
 {
     return increaseSelectionListLevel(document, InheritedListType);
 }
 
-PassRefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelOrdered(Document* document)
+RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelOrdered(Document* document)
 {
     return increaseSelectionListLevel(document, OrderedList);
 }
 
-PassRefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelUnordered(Document* document)
+RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelUnordered(Document* document)
 {
     return increaseSelectionListLevel(document, UnorderedList);
 }
@@ -243,11 +244,11 @@ static bool canDecreaseListLevel(const VisibleSelection& selection, Node*& start
 {
     if (!getStartEndListChildren(selection, start, end))
         return false;
-    
+
     // there must be a destination list to move the items to
-    if (!isListElement(start->parentNode()->parentNode()))
+    if (!isListHTMLElement(start->parentNode()->parentNode()))
         return false;
-        
+
     return true;
 }
 
@@ -266,14 +267,14 @@ void DecreaseSelectionListLevelCommand::doApply()
         // at start of sublist, move the child(ren) to before the sublist
         insertSiblingNodeRangeBefore(startListChild, endListChild, listNode);
         // if that was the whole sublist we moved, remove the sublist node
-        if (!nextItem)
-            removeNode(listNode);
+        if (!nextItem && listNode)
+            removeNode(*listNode);
     } else if (!nextItem) {
         // at end of list, move the child(ren) to after the sublist
         insertSiblingNodeRangeAfter(startListChild, endListChild, listNode);    
     } else if (listNode) {
         // in the middle of list, split the list and move the children to the divide
-        splitElement(listNode, startListChild);
+        splitElement(*listNode, *startListChild);
         insertSiblingNodeRangeBefore(startListChild, endListChild, listNode);
     }
 }
@@ -289,7 +290,7 @@ void DecreaseSelectionListLevelCommand::decreaseSelectionListLevel(Document* doc
 {
     ASSERT(document);
     ASSERT(document->frame());
-    applyCommand(create(*document));
+    create(*document)->apply();
 }
 
 }

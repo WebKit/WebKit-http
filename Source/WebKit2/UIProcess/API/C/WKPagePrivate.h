@@ -29,6 +29,8 @@
 #include <WebKit/WKBase.h>
 #include <WebKit/WKPage.h>
 
+#include <unistd.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -41,9 +43,6 @@ enum {
     kWKDebugFlashBackingStoreUpdates = 1 << 1
 };
 typedef unsigned WKPageDebugPaintFlags;
-
-WK_EXPORT void WKPageSetDebugPaintFlags(WKPageDebugPaintFlags flags);
-WK_EXPORT WKPageDebugPaintFlags WKPageGetDebugPaintFlags(void);
 
 WK_EXPORT WKStringRef WKPageCopyStandardUserAgentWithApplicationName(WKStringRef);
 
@@ -84,6 +83,9 @@ WK_EXPORT void WKPageBeginPrinting(WKPageRef page, WKFrameRef frame, WKPrintInfo
 WK_EXPORT void WKPageDrawPagesToPDF(WKPageRef page, WKFrameRef frame, WKPrintInfo printInfo, uint32_t first, uint32_t count, WKPageDrawToPDFFunction callback, void* context);
 WK_EXPORT void WKPageEndPrinting(WKPageRef page);
 
+WK_EXPORT bool WKPageGetIsControlledByAutomation(WKPageRef page);
+WK_EXPORT void WKPageSetControlledByAutomation(WKPageRef page, bool controlled);
+
 WK_EXPORT bool WKPageGetAllowsRemoteInspection(WKPageRef page);
 WK_EXPORT void WKPageSetAllowsRemoteInspection(WKPageRef page, bool allow);
 
@@ -93,10 +95,15 @@ WK_EXPORT void WKPageSetMayStartMediaWhenInWindow(WKPageRef page, bool mayStartM
 typedef void (*WKPageGetBytecodeProfileFunction)(WKStringRef, WKErrorRef, void*);
 WK_EXPORT void WKPageGetBytecodeProfile(WKPageRef page, void* context, WKPageGetBytecodeProfileFunction function);
 
+typedef void (*WKPageGetSamplingProfilerOutputFunction)(WKStringRef, WKErrorRef, void*);
+WK_EXPORT void WKPageGetSamplingProfilerOutput(WKPageRef page, void* context, WKPageGetSamplingProfilerOutputFunction function);
+
 typedef void (*WKPageIsWebProcessResponsiveFunction)(bool isWebProcessResponsive, void* context);
 WK_EXPORT void WKPageIsWebProcessResponsive(WKPageRef page, void* context, WKPageIsWebProcessResponsiveFunction function);
     
 WK_EXPORT WKArrayRef WKPageCopyRelatedPages(WKPageRef page);
+
+WK_EXPORT WKFrameRef WKPageLookUpFrameFromHandle(WKPageRef page, WKFrameHandleRef handle);
 
 enum {
     kWKScrollPinningBehaviorDoNotPin,
@@ -112,7 +119,35 @@ WK_EXPORT bool WKPageGetAddsVisitedLinks(WKPageRef page);
 WK_EXPORT void WKPageSetAddsVisitedLinks(WKPageRef page, bool visitedLinks);
 
 WK_EXPORT bool WKPageIsPlayingAudio(WKPageRef page);
-WK_EXPORT void WKPageSetMuted(WKPageRef page, bool muted);
+
+enum {
+    kWKMediaNoneMuted = 0,
+    kWKMediaAudioMuted = 1 << 0,
+    kWKMediaCaptureDevicesMuted = 1 << 1,
+};
+typedef uint32_t WKMediaMutedState;
+WK_EXPORT void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted);
+
+WK_EXPORT void WKPageClearUserMediaState(WKPageRef page);
+WK_EXPORT void WKPageSetMediaCaptureEnabled(WKPageRef page, bool enabled);
+WK_EXPORT bool WKPageGetMediaCaptureEnabled(WKPageRef page);
+
+WK_EXPORT void WKPageDidAllowPointerLock(WKPageRef page);
+WK_EXPORT void WKPageDidDenyPointerLock(WKPageRef page);
+
+enum {
+    kWKMediaIsNotPlaying = 0,
+    kWKMediaIsPlayingAudio = 1 << 0,
+    kWKMediaIsPlayingVideo = 1 << 1,
+    kWKMediaHasActiveAudioCaptureDevice = 1 << 2,
+    kWKMediaHasActiveVideoCaptureDevice = 1 << 3,
+    kWKMediaHasMutedAudioCaptureDevice = 1 << 4,
+    kWKMediaHasMutedVideoCaptureDevice = 1 << 5,
+};
+typedef uint32_t WKMediaState;
+
+
+WK_EXPORT WKMediaState WKPageGetMediaState(WKPageRef page);
 
 enum {
     kWKMediaEventTypePlayPause,
@@ -128,6 +163,15 @@ WK_EXPORT void WKPageLoadURLWithShouldOpenExternalURLsPolicy(WKPageRef page, WKU
 
 typedef void (*WKPagePostPresentationUpdateFunction)(WKErrorRef, void*);
 WK_EXPORT void WKPageCallAfterNextPresentationUpdate(WKPageRef page, void* context, WKPagePostPresentationUpdateFunction function);
+
+WK_EXPORT bool WKPageGetResourceCachingDisabled(WKPageRef page);
+WK_EXPORT void WKPageSetResourceCachingDisabled(WKPageRef page, bool disabled);
+
+WK_EXPORT void WKPageRestoreFromSessionStateWithoutNavigation(WKPageRef page, WKTypeRef sessionState);
+
+WK_EXPORT void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportScaleLimits);
+
+WK_EXPORT pid_t WKPageGetProcessIdentifier(WKPageRef page);
 
 #ifdef __cplusplus
 }

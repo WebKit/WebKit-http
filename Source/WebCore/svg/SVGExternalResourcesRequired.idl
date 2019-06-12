@@ -26,8 +26,6 @@
 
 [
     NoInterfaceObject,
-    ObjCProtocol,
 ] interface SVGExternalResourcesRequired { 
     readonly attribute SVGAnimatedBoolean externalResourcesRequired;
 };
-

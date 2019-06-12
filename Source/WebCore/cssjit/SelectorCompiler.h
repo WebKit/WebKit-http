@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SelectorCompiler_h
-#define SelectorCompiler_h
+#pragma once
 
 #if ENABLE(CSS_SELECTOR_JIT)
 
@@ -77,11 +76,11 @@ enum class SelectorContext {
     QuerySelector
 };
 
-typedef unsigned (*RuleCollectorSimpleSelectorChecker)(Element*, unsigned*);
-typedef unsigned (*QuerySelectorSimpleSelectorChecker)(Element*);
+typedef unsigned (*RuleCollectorSimpleSelectorChecker)(const Element*, unsigned*);
+typedef unsigned (*QuerySelectorSimpleSelectorChecker)(const Element*);
 
-typedef unsigned (*RuleCollectorSelectorCheckerWithCheckingContext)(Element*, const SelectorChecker::CheckingContext*, unsigned*);
-typedef unsigned (*QuerySelectorSelectorCheckerWithCheckingContext)(Element*, const SelectorChecker::CheckingContext*);
+typedef unsigned (*RuleCollectorSelectorCheckerWithCheckingContext)(const Element*, SelectorChecker::CheckingContext*, unsigned*);
+typedef unsigned (*QuerySelectorSelectorCheckerWithCheckingContext)(const Element*, const SelectorChecker::CheckingContext*);
 
 SelectorCompilationStatus compileSelector(const CSSSelector*, JSC::VM*, SelectorContext, JSC::MacroAssemblerCodeRef& outputCodeRef);
 
@@ -113,5 +112,3 @@ inline QuerySelectorSelectorCheckerWithCheckingContext querySelectorSelectorChec
 } // namespace WebCore
 
 #endif // ENABLE(CSS_SELECTOR_JIT)
-
-#endif // SelectorCompiler_h

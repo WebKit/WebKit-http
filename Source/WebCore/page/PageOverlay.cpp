@@ -136,7 +136,7 @@ IntSize PageOverlay::viewToOverlayOffset() const
     return IntSize();
 }
 
-void PageOverlay::setBackgroundColor(RGBA32 backgroundColor)
+void PageOverlay::setBackgroundColor(const Color& backgroundColor)
 {
     if (m_backgroundColor == backgroundColor)
         return;
@@ -250,7 +250,7 @@ void PageOverlay::stopFadeOutAnimation()
 void PageOverlay::startFadeAnimation()
 {
     m_fadeAnimationStartTime = currentTime();
-    m_fadeAnimationTimer.startRepeating(1 / fadeAnimationFrameRate);
+    m_fadeAnimationTimer.startRepeating(1_s / fadeAnimationFrameRate);
 }
 
 void PageOverlay::fadeAnimationTimerFired()
@@ -274,7 +274,7 @@ void PageOverlay::fadeAnimationTimerFired()
 
         // If this was a fade out, uninstall the page overlay.
         if (wasFadingOut)
-            controller()->uninstallPageOverlay(this, PageOverlay::FadeMode::DoNotFade);
+            controller()->uninstallPageOverlay(*this, PageOverlay::FadeMode::DoNotFade);
     }
 }
 

@@ -42,6 +42,7 @@
 #include "Text.h"
 #include "VTTScanner.h"
 #include "WebVTTElement.h"
+#include "WebVTTTokenizer.h"
 
 namespace WebCore {
 
@@ -104,24 +105,23 @@ void WebVTTParser::getNewRegions(Vector<RefPtr<VTTRegion>>& outputRegions)
     m_regionList.clear();
 }
 
-void WebVTTParser::parseFileHeader(const String& data)
+void WebVTTParser::parseFileHeader(String&& data)
 {
     m_state = Initial;
     m_lineReader.reset();
-    m_lineReader.append(data);
+    m_lineReader.append(WTFMove(data));
     parse();
 }
 
 void WebVTTParser::parseBytes(const char* data, unsigned length)
 {
-    String textData = m_decoder->decode(data, length);
-    m_lineReader.append(textData);
+    m_lineReader.append(m_decoder->decode(data, length));
     parse();
 }
 
 void WebVTTParser::parseCueData(const ISOWebVTTCue& data)
 {
-    RefPtr<WebVTTCueData> cue = WebVTTCueData::create();
+    auto cue = WebVTTCueData::create();
 
     MediaTime startTime = data.presentationTime();
     cue->setStartTime(startTime);
@@ -135,16 +135,15 @@ void WebVTTParser::parseCueData(const ISOWebVTTCue& data)
     if (WebVTTParser::collectTimeStamp(data.originalStartTime(), originalStartTime))
         cue->setOriginalStartTime(originalStartTime);
 
-    m_cuelist.append(cue);
+    m_cuelist.append(WTFMove(cue));
     if (m_client)
         m_client->newCuesParsed();
 }
 
 void WebVTTParser::flush()
 {
-    String textData = m_decoder->flush();
-    m_lineReader.append(textData);
-    m_lineReader.setEndOfStream();
+    m_lineReader.append(m_decoder->flush());
+    m_lineReader.appendEndOfStream();
     parse();
     flushPendingCue();
 }
@@ -153,15 +152,11 @@ void WebVTTParser::parse()
 {    
     // WebVTT parser algorithm. (5.1 WebVTT file parsing.)
     // Steps 1 - 3 - Initial setup.
-    String line;
-    while (m_lineReader.getLine(line)) {
-        if (line.isNull())
-            return;
-
+    while (auto line = m_lineReader.nextLine()) {
         switch (m_state) {
         case Initial:
             // Steps 4 - 9 - Check for a valid WebVTT signature.
-            if (!hasRequiredFileIdentifier(line)) {
+            if (!hasRequiredFileIdentifier(*line)) {
                 if (m_client)
                     m_client->fileFailedToParse();
                 return;
@@ -171,9 +166,9 @@ void WebVTTParser::parse()
             break;
 
         case Header:
-            collectMetadataHeader(line);
+            collectMetadataHeader(*line);
 
-            if (line.isEmpty()) {
+            if (line->isEmpty()) {
                 // Steps 10-14 - Allow a header (comment area) under the WEBVTT line.
                 if (m_client && m_regionList.size())
                     m_client->newRegionsParsed();
@@ -181,43 +176,43 @@ void WebVTTParser::parse()
                 break;
             }
             // Step 15 - Break out of header loop if the line could be a timestamp line.
-            if (line.contains("-->"))
-                m_state = recoverCue(line);
+            if (line->contains("-->"))
+                m_state = recoverCue(*line);
 
             // Step 16 - Line is not the empty string and does not contain "-->".
             break;
 
         case Id:
             // Steps 17 - 20 - Allow any number of line terminators, then initialize new cue values.
-            if (line.isEmpty())
+            if (line->isEmpty())
                 break;
 
             // Step 21 - Cue creation (start a new cue).
             resetCueValues();
 
             // Steps 22 - 25 - Check if this line contains an optional identifier or timing data.
-            m_state = collectCueId(line);
+            m_state = collectCueId(*line);
             break;
 
         case TimingsAndSettings:
             // Steps 26 - 27 - Discard current cue if the line is empty.
-            if (line.isEmpty()) {
+            if (line->isEmpty()) {
                 m_state = Id;
                 break;
             }
 
             // Steps 28 - 29 - Collect cue timings and settings.
-            m_state = collectTimingsAndSettings(line);
+            m_state = collectTimingsAndSettings(*line);
             break;
 
         case CueText:
             // Steps 31 - 41 - Collect the cue text, create a cue, and add it to the output.
-            m_state = collectCueText(line);
+            m_state = collectCueText(*line);
             break;
 
         case BadCue:
             // Steps 42 - 48 - Discard lines until an empty line or a potential timing line is seen.
-            m_state = ignoreBadCue(line);
+            m_state = ignoreBadCue(*line);
             break;
 
         case Finished:
@@ -364,7 +359,7 @@ public:
     WebVTTTreeBuilder(Document& document)
         : m_document(document) { }
 
-    PassRefPtr<DocumentFragment> buildFromString(const String& cueText);
+    Ref<DocumentFragment> buildFromString(const String& cueText);
 
 private:
     void constructTreeFromToken(Document&);
@@ -375,19 +370,19 @@ private:
     Document& m_document;
 };
 
-PassRefPtr<DocumentFragment> WebVTTTreeBuilder::buildFromString(const String& cueText)
+Ref<DocumentFragment> WebVTTTreeBuilder::buildFromString(const String& cueText)
 {
     // Cue text processing based on
     // 5.4 WebVTT cue text parsing rules, and
     // 5.5 WebVTT cue text DOM construction rules.
-    RefPtr<DocumentFragment> fragment = DocumentFragment::create(m_document);
+    auto fragment = DocumentFragment::create(m_document);
 
     if (cueText.isEmpty()) {
         fragment->parserAppendChild(Text::create(m_document, emptyString()));
-        return fragment.release();
+        return fragment;
     }
 
-    m_currentNode = fragment;
+    m_currentNode = fragment.ptr();
 
     WebVTTTokenizer tokenizer(cueText);
     m_languageStack.clear();
@@ -395,10 +390,10 @@ PassRefPtr<DocumentFragment> WebVTTTreeBuilder::buildFromString(const String& cu
     while (tokenizer.nextToken(m_token))
         constructTreeFromToken(m_document);
     
-    return fragment.release();
+    return fragment;
 }
 
-PassRefPtr<DocumentFragment> WebVTTParser::createDocumentFragmentFromCueText(Document& document, const String& cueText)
+Ref<DocumentFragment> WebVTTParser::createDocumentFragmentFromCueText(Document& document, const String& cueText)
 {
     WebVTTTreeBuilder treeBuilder(document);
     return treeBuilder.buildFromString(cueText);
@@ -536,8 +531,7 @@ void WebVTTTreeBuilder::constructTreeFromToken(Document& document)
 
     switch (m_token.type()) {
     case WebVTTTokenTypes::Character: {
-        auto child = Text::create(document, m_token.characters());
-        m_currentNode->parserAppendChild(WTFMove(child));
+        m_currentNode->parserAppendChild(Text::create(document, m_token.characters()));
         break;
     }
     case WebVTTTokenTypes::StartTag: {
@@ -552,17 +546,17 @@ void WebVTTTreeBuilder::constructTreeFromToken(Document& document)
 
         auto child = WebVTTElement::create(nodeType, document);
         if (!m_token.classes().isEmpty())
-            child->setAttribute(classAttr, m_token.classes());
+            child->setAttributeWithoutSynchronization(classAttr, m_token.classes());
 
         if (nodeType == WebVTTNodeTypeVoice)
-            child->setAttribute(WebVTTElement::voiceAttributeName(), m_token.annotation());
+            child->setAttributeWithoutSynchronization(WebVTTElement::voiceAttributeName(), m_token.annotation());
         else if (nodeType == WebVTTNodeTypeLanguage) {
             m_languageStack.append(m_token.annotation());
-            child->setAttribute(WebVTTElement::langAttributeName(), m_languageStack.last());
+            child->setAttributeWithoutSynchronization(WebVTTElement::langAttributeName(), m_languageStack.last());
         }
         if (!m_languageStack.isEmpty())
             child->setLanguage(m_languageStack.last());
-        m_currentNode->parserAppendChild(child.copyRef());
+        m_currentNode->parserAppendChild(child);
         m_currentNode = WTFMove(child);
         break;
     }

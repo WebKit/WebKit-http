@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,114 +31,162 @@
 
 #include "DirectArguments.h"
 #include "JSArray.h"
-#include "JSFunction.h"
 #include "JSCInlines.h"
+#include "JSFunction.h"
+#include "JSMap.h"
+#include "JSSet.h"
+#include "ProxyObject.h"
+#include "RegExpObject.h"
 #include "ScopedArguments.h"
 #include "StringObject.h"
 #include "ValueProfile.h"
+#include <wtf/CommaPrinter.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
 
-void dumpSpeculation(PrintStream& out, SpeculatedType value)
+struct PrettyPrinter {
+    PrettyPrinter(PrintStream& out)
+        : out(out)
+        , separator("|")
+    { }
+    
+    template<typename T>
+    void print(const T& value)
+    {
+        out.print(separator, value);
+    }
+    
+    PrintStream& out;
+    CommaPrinter separator;
+};
+    
+void dumpSpeculation(PrintStream& outStream, SpeculatedType value)
 {
+    StringPrintStream strStream;
+    PrettyPrinter out(outStream);
+    PrettyPrinter strOut(strStream);
+    
     if (value == SpecNone) {
         out.print("None");
         return;
     }
     
-    StringPrintStream myOut;
-    
     bool isTop = true;
     
     if ((value & SpecCell) == SpecCell)
-        myOut.print("Cell");
+        strOut.print("Cell");
     else {
         if ((value & SpecObject) == SpecObject)
-            myOut.print("Object");
+            strOut.print("Object");
         else {
             if (value & SpecCellOther)
-                myOut.print("Othercell");
+                strOut.print("OtherCell");
             else
                 isTop = false;
     
             if (value & SpecObjectOther)
-                myOut.print("Otherobj");
+                strOut.print("OtherObj");
             else
                 isTop = false;
     
             if (value & SpecFinalObject)
-                myOut.print("Final");
+                strOut.print("Final");
             else
                 isTop = false;
 
             if (value & SpecArray)
-                myOut.print("Array");
+                strOut.print("Array");
             else
                 isTop = false;
     
             if (value & SpecInt8Array)
-                myOut.print("Int8array");
+                strOut.print("Int8Array");
             else
                 isTop = false;
     
             if (value & SpecInt16Array)
-                myOut.print("Int16array");
+                strOut.print("Int16Array");
             else
                 isTop = false;
     
             if (value & SpecInt32Array)
-                myOut.print("Int32array");
+                strOut.print("Int32Array");
             else
                 isTop = false;
     
             if (value & SpecUint8Array)
-                myOut.print("Uint8array");
+                strOut.print("Uint8Array");
             else
                 isTop = false;
 
             if (value & SpecUint8ClampedArray)
-                myOut.print("Uint8clampedarray");
+                strOut.print("Uint8ClampedArray");
             else
                 isTop = false;
     
             if (value & SpecUint16Array)
-                myOut.print("Uint16array");
+                strOut.print("Uint16Array");
             else
                 isTop = false;
     
             if (value & SpecUint32Array)
-                myOut.print("Uint32array");
+                strOut.print("Uint32Array");
             else
                 isTop = false;
     
             if (value & SpecFloat32Array)
-                myOut.print("Float32array");
+                strOut.print("Float32array");
             else
                 isTop = false;
     
             if (value & SpecFloat64Array)
-                myOut.print("Float64array");
+                strOut.print("Float64Array");
             else
                 isTop = false;
     
             if (value & SpecFunction)
-                myOut.print("Function");
+                strOut.print("Function");
             else
                 isTop = false;
     
             if (value & SpecDirectArguments)
-                myOut.print("Directarguments");
+                strOut.print("DirectArguments");
             else
                 isTop = false;
     
             if (value & SpecScopedArguments)
-                myOut.print("Scopedarguments");
+                strOut.print("ScopedArguments");
             else
                 isTop = false;
     
             if (value & SpecStringObject)
-                myOut.print("Stringobject");
+                strOut.print("StringObject");
+            else
+                isTop = false;
+    
+            if (value & SpecRegExpObject)
+                strOut.print("RegExpObject");
+            else
+                isTop = false;
+
+            if (value & SpecMapObject)
+                strOut.print("MapObject");
+            else
+                isTop = false;
+
+            if (value & SpecSetObject)
+                strOut.print("SetObject");
+            else
+                isTop = false;
+
+            if (value & SpecProxyObject)
+                strOut.print("ProxyObject");
+            else
+                isTop = false;
+
+            if (value & SpecDerivedArray)
+                strOut.print("DerivedArray");
             else
                 isTop = false;
     
@@ -149,78 +197,78 @@ void dumpSpeculation(PrintStream& out, SpeculatedType value)
         }
 
         if ((value & SpecString) == SpecString)
-            myOut.print("String");
+            strOut.print("String");
         else {
             if (value & SpecStringIdent)
-                myOut.print("Stringident");
+                strOut.print("StringIdent");
             else
                 isTop = false;
             
             if (value & SpecStringVar)
-                myOut.print("Stringvar");
+                strOut.print("StringVar");
             else
                 isTop = false;
         }
 
         if (value & SpecSymbol)
-            myOut.print("Symbol");
+            strOut.print("Symbol");
         else
             isTop = false;
     }
     
-    if (value == SpecInt32)
-        myOut.print("Int32");
+    if (value == SpecInt32Only)
+        strOut.print("Int32");
     else {
         if (value & SpecBoolInt32)
-            myOut.print("Boolint32");
+            strOut.print("BoolInt32");
         else
             isTop = false;
         
         if (value & SpecNonBoolInt32)
-            myOut.print("Nonboolint32");
+            strOut.print("NonBoolInt32");
         else
             isTop = false;
     }
     
-    if (value & SpecInt52)
-        myOut.print("Int52");
+    if (value & SpecInt52Only)
+        strOut.print("Int52");
         
     if ((value & SpecBytecodeDouble) == SpecBytecodeDouble)
-        myOut.print("Bytecodedouble");
+        strOut.print("BytecodeDouble");
     else {
-        if (value & SpecInt52AsDouble)
-            myOut.print("Int52asdouble");
+        if (value & SpecAnyIntAsDouble)
+            strOut.print("AnyIntAsDouble");
         else
             isTop = false;
         
         if (value & SpecNonIntAsDouble)
-            myOut.print("Nonintasdouble");
+            strOut.print("NonIntAsdouble");
         else
             isTop = false;
         
         if (value & SpecDoublePureNaN)
-            myOut.print("Doublepurenan");
+            strOut.print("DoublePureNan");
         else
             isTop = false;
     }
     
     if (value & SpecDoubleImpureNaN)
-        out.print("Doubleimpurenan");
+        out.print("DoubleImpureNan");
     
     if (value & SpecBoolean)
-        myOut.print("Bool");
+        strOut.print("Bool");
     else
         isTop = false;
     
     if (value & SpecOther)
-        myOut.print("Other");
+        strOut.print("Other");
     else
         isTop = false;
     
     if (isTop)
         out.print("Top");
     else
-        out.print(myOut.toCString());
+        out.print(strStream.toCString());
     
     if (value & SpecEmpty)
         out.print("Empty");
@@ -274,12 +322,12 @@ static const char* speculationToAbbreviatedString(SpeculatedType prediction)
         return "<BoolInt32>";
     if (isInt32Speculation(prediction))
         return "<Int32>";
-    if (isInt52AsDoubleSpeculation(prediction))
-        return "<Int52AsDouble>";
+    if (isAnyIntAsDoubleSpeculation(prediction))
+        return "<AnyIntAsDouble>";
     if (isInt52Speculation(prediction))
         return "<Int52>";
-    if (isMachineIntSpeculation(prediction))
-        return "<MachineInt>";
+    if (isAnyIntSpeculation(prediction))
+        return "<AnyInt>";
     if (isDoubleSpeculation(prediction))
         return "<Double>";
     if (isFullNumberSpeculation(prediction))
@@ -329,6 +377,12 @@ SpeculatedType speculationFromTypedArrayType(TypedArrayType type)
 
 SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
 {
+    if (classInfo == JSString::info())
+        return SpecString;
+
+    if (classInfo == Symbol::info())
+        return SpecSymbol;
+
     if (classInfo == JSFinalObject::info())
         return SpecFinalObject;
     
@@ -346,12 +400,24 @@ SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
 
     if (classInfo == RegExpObject::info())
         return SpecRegExpObject;
+
+    if (classInfo == JSMap::info())
+        return SpecMapObject;
+
+    if (classInfo == JSSet::info())
+        return SpecSetObject;
+
+    if (classInfo == ProxyObject::info())
+        return SpecProxyObject;
     
     if (classInfo->isSubClassOf(JSFunction::info()))
         return SpecFunction;
     
     if (isTypedView(classInfo->typedArrayStorageType))
         return speculationFromTypedArrayType(classInfo->typedArrayStorageType);
+
+    if (classInfo->isSubClassOf(JSArray::info()))
+        return SpecDerivedArray;
     
     if (classInfo->isSubClassOf(JSObject::info()))
         return SpecObjectOther;
@@ -365,12 +431,15 @@ SpeculatedType speculationFromStructure(Structure* structure)
         return SpecString;
     if (structure->typeInfo().type() == SymbolType)
         return SpecSymbol;
+    if (structure->typeInfo().type() == DerivedArrayType)
+        return SpecDerivedArray;
     return speculationFromClassInfo(structure->classInfo());
 }
 
 SpeculatedType speculationFromCell(JSCell* cell)
 {
-    if (JSString* string = jsDynamicCast<JSString*>(cell)) {
+    if (cell->isString()) {
+        JSString* string = jsCast<JSString*>(cell);
         if (const StringImpl* impl = string->tryGetValueImpl()) {
             if (impl->isAtomic())
                 return SpecStringIdent;
@@ -393,8 +462,8 @@ SpeculatedType speculationFromValue(JSValue value)
         double number = value.asNumber();
         if (number != number)
             return SpecDoublePureNaN;
-        if (value.isMachineInt())
-            return SpecInt52AsDouble;
+        if (value.isAnyInt())
+            return SpecAnyIntAsDouble;
         return SpecNonIntAsDouble;
     }
     if (value.isCell())
@@ -437,10 +506,35 @@ TypedArrayType typedArrayTypeFromSpeculation(SpeculatedType type)
     return NotTypedArray;
 }
 
+SpeculatedType speculationFromJSType(JSType type)
+{
+    switch (type) {
+    case StringType:
+        return SpecString;
+    case SymbolType:
+        return SpecSymbol;
+    case ArrayType:
+        return SpecArray;
+    case DerivedArrayType:
+        return SpecDerivedArray;
+    case RegExpObjectType:
+        return SpecRegExpObject;
+    case ProxyObjectType:
+        return SpecProxyObject;
+    case JSMapType:
+        return SpecMapObject;
+    case JSSetType:
+        return SpecSetObject;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+    return SpecNone;
+}
+
 SpeculatedType leastUpperBoundOfStrictlyEquivalentSpeculations(SpeculatedType type)
 {
-    if (type & SpecInteger)
-        type |= SpecInteger;
+    if (type & (SpecAnyInt | SpecAnyIntAsDouble))
+        type |= (SpecAnyInt | SpecAnyIntAsDouble);
     if (type & SpecString)
         type |= SpecString;
     return type;
@@ -522,10 +616,11 @@ SpeculatedType typeOfDoubleMinMax(SpeculatedType a, SpeculatedType b)
 
 SpeculatedType typeOfDoubleNegation(SpeculatedType value)
 {
-    // Impure NaN could become pure NaN because bits might get cleared.
-    if (value & SpecDoubleImpureNaN)
-        value |= SpecDoublePureNaN;
-    // We could get negative zero, which mixes SpecInt52AsDouble and SpecNotIntAsDouble.
+    // Changing bits can make pure NaN impure and vice versa:
+    // 0xefff000000000000 (pure) - 0xffff000000000000 (impure)
+    if (value & SpecDoubleNaN)
+        value |= SpecDoubleNaN;
+    // We could get negative zero, which mixes SpecAnyIntAsDouble and SpecNotIntAsDouble.
     // We could also overflow a large negative int into something that is no longer
     // representable as an int.
     if (value & SpecDoubleReal)
@@ -540,12 +635,13 @@ SpeculatedType typeOfDoubleAbs(SpeculatedType value)
 
 SpeculatedType typeOfDoubleRounding(SpeculatedType value)
 {
-    // We might lose bits, which leads to a NaN being purified.
-    if (value & SpecDoubleImpureNaN)
-        value |= SpecDoublePureNaN;
+    // Double Pure NaN can becomes impure when converted back from Float.
+    // and vice versa.
+    if (value & SpecDoubleNaN)
+        value |= SpecDoubleNaN;
     // We might lose bits, which leads to a value becoming integer-representable.
     if (value & SpecNonIntAsDouble)
-        value |= SpecInt52AsDouble;
+        value |= SpecAnyIntAsDouble;
     return value;
 }
 

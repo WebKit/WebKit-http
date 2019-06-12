@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2007, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,13 +21,11 @@
  *
  */
 
-#ifndef ChildNodeList_h
-#define ChildNodeList_h
+#pragma once
 
 #include "CollectionIndexCache.h"
 #include "NodeList.h"
 #include <wtf/Ref.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -46,11 +44,11 @@ public:
 private:
     explicit EmptyNodeList(Node& owner) : m_owner(owner) { }
 
-    virtual unsigned length() const override { return 0; }
-    virtual Node* item(unsigned) const override { return nullptr; }
-    virtual size_t memoryCost() const override { return 0; }
+    unsigned length() const override { return 0; }
+    Node* item(unsigned) const override { return nullptr; }
+    size_t memoryCost() const override { return 0; }
 
-    virtual bool isEmptyNodeList() const override { return true; }
+    bool isEmptyNodeList() const override { return true; }
 
     Ref<Node> m_owner;
 };
@@ -80,16 +78,20 @@ public:
 private:
     explicit ChildNodeList(ContainerNode& parent);
 
-    virtual unsigned length() const override;
-    virtual Node* item(unsigned index) const override;
-    virtual size_t memoryCost() const override { return m_indexCache.memoryCost(); }
+    unsigned length() const override;
+    Node* item(unsigned index) const override;
+    size_t memoryCost() const override
+    {
+        // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful
+        // about what data we access here and how. Accessing m_indexCache is safe because
+        // because it doesn't involve any pointer chasing.
+        return m_indexCache.memoryCost();
+    }
 
-    virtual bool isChildNodeList() const override { return true; }
+    bool isChildNodeList() const override { return true; }
 
     Ref<ContainerNode> m_parent;
     mutable CollectionIndexCache<ChildNodeList, Node*> m_indexCache;
 };
 
 } // namespace WebCore
-
-#endif // ChildNodeList_h

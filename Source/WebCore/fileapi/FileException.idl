@@ -29,19 +29,15 @@
  */
 
 [
-    NoInterfaceObject,
     DoNotCheckConstants,
     ImplementationLacksVTable,
+    NoInterfaceObject,
 ] exception FileException {
+    readonly attribute unsigned short code;
+    readonly attribute DOMString name;
+    readonly attribute DOMString message;
 
-    readonly attribute unsigned short   code;
-    readonly attribute DOMString        name;
-    readonly attribute DOMString        message;
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // Override in a Mozilla compatible format
     [NotEnumerable] DOMString toString();
-#endif
 
     // FileExceptionCode
     const unsigned short NOT_FOUND_ERR = 1;

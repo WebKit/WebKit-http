@@ -1,6 +1,6 @@
 # Copyright (C) 2009, Google Inc. All rights reserved.
 # Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
-# Copyright (C) 2015 Apple Inc. All rights reserved.
+# Copyright (C) 2015, 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -64,14 +64,17 @@ class DeprecatedPort(object):
     def port(port_name):
         ports = {
             "gtk-wk2": GtkWK2Port,
+            "ios-device": IOSPort,
+            # FIXME: https://bugs.webkit.org/show_bug.cgi?id=169302
             "ios": IOSPort,
+            "ios-simulator-wk2": IOSSimulatorWK2Port,
             "mac": MacPort,
             "mac-wk2": MacWK2Port,
             "win": WinPort,
             "wincairo": WinCairoPort,
             "qt": QtPort,
             "qt-wk2": QtWK2Port,
-            "efl-wk2": EflWK2Port,
+            "wpe": WpePort,
         }
         default_port = {
             "Windows": WinPort,
@@ -96,24 +99,29 @@ class DeprecatedPort(object):
     def prepare_changelog_command(self):
         return self.script_shell_command("prepare-ChangeLog")
 
-    def build_webkit_command(self, build_style=None):
-        command = self.script_shell_command("build-webkit")
+    def _append_build_style_flag(self, command, build_style):
         if build_style == "debug":
             command.append("--debug")
-        if build_style == "release":
+        elif build_style == "release":
             command.append("--release")
         return command
 
-    def run_javascriptcore_tests_command(self):
-        return self.script_shell_command("run-javascriptcore-tests")
+    def build_webkit_command(self, build_style=None):
+        command = self.script_shell_command("build-webkit")
+        return self._append_build_style_flag(command, build_style)
+
+    def build_jsc_command(self, build_style=None):
+        command = self.script_shell_command("build-jsc")
+        return self._append_build_style_flag(command, build_style)
+
+    def run_javascriptcore_tests_command(self, build_style=None):
+        command = self.script_shell_command("run-javascriptcore-tests")
+        command.append("--no-fail-fast")
+        return self._append_build_style_flag(command, build_style)
 
     def run_webkit_tests_command(self, build_style=None):
         command = self.script_shell_command("run-webkit-tests")
-        if build_style == "debug":
-            command.append("--debug")
-        if build_style == "release":
-            command.append("--release")
-        return command
+        return self._append_build_style_flag(command, build_style)
 
     def run_python_unittests_command(self):
         return self.script_shell_command("test-webkitpy")
@@ -124,13 +132,31 @@ class DeprecatedPort(object):
     def run_bindings_tests_command(self):
         return self.script_shell_command("run-bindings-tests")
 
+    def run_api_tests_command(self, build_style=None):
+        command = self.script_shell_command("run-api-tests")
+        return self._append_build_style_flag(command, build_style)
+
 
 class IOSPort(DeprecatedPort):
-    port_flag_name = "ios"
+    port_flag_name = "ios-device"
 
     def build_webkit_command(self, build_style=None):
         command = super(IOSPort, self).build_webkit_command(build_style=build_style)
         command.append("--sdk=iphoneos")
+        return command
+
+
+class IOSSimulatorWK2Port(DeprecatedPort):
+    port_flag_name = "ios-simulator-wk2"
+
+    def build_webkit_command(self, build_style=None):
+        command = super(IOSSimulatorWK2Port, self).build_webkit_command(build_style=build_style)
+        command.append("--sdk=iphonesimulator")
+        return command
+
+    def run_webkit_tests_command(self, build_style=None):
+        command = super(IOSSimulatorWK2Port, self).run_webkit_tests_command(build_style)
+        command.append("--ios-simulator")
         return command
 
 
@@ -141,6 +167,7 @@ class MacPort(DeprecatedPort):
         command = super(MacPort, self).run_webkit_tests_command(build_style)
         command.append("--dump-render-tree")
         return command
+
 
 class MacWK2Port(DeprecatedPort):
     port_flag_name = "mac-wk2"
@@ -210,12 +237,17 @@ class QtWK2Port(DeprecatedPort):
         return command
 
 
-class EflWK2Port(DeprecatedPort):
-    port_flag_name = "efl-wk2"
+class WpePort(DeprecatedPort):
+    port_flag_name = "wpe"
 
     def build_webkit_command(self, build_style=None):
-        command = super(EflWK2Port, self).build_webkit_command(build_style=build_style)
-        command.append("--efl")
-        command.append("--update-efl")
-        command.append(super(EflWK2Port, self).makeArgs())
+        command = super(WpePort, self).build_webkit_command(build_style=build_style)
+        command.append("--wpe")
+        command.append("--update-wpe")
+        command.append(super(WpePort, self).makeArgs())
+        return command
+
+    def run_webkit_tests_command(self, build_style=None):
+        command = super(WpePort, self).run_webkit_tests_command(build_style)
+        command.append("--wpe")
         return command

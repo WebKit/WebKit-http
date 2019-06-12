@@ -42,6 +42,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
         this._flows = new Map;
         this._contentNodesToFlowsMap = new Map;
         this._restoreSelectedNodeIsAllowed = true;
+        this._loadNodeAttributesTimeout = 0;
 
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
     }
@@ -82,6 +83,11 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
         }
 
         DOMAgent.getDocument(onDocumentAvailable.bind(this));
+    }
+
+    ensureDocument()
+    {
+        this.requestDocument(function(){});
     }
 
     pushNodeToFrontend(objectId, callback)
@@ -150,7 +156,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
     {
         for (var nodeId of nodeIds)
             this._attributeLoadNodeIds[nodeId] = true;
-        if ("_loadNodeAttributesTimeout" in this)
+        if (this._loadNodeAttributesTimeout)
             return;
         this._loadNodeAttributesTimeout = setTimeout(this._loadNodeAttributes.bind(this), 0);
     }
@@ -166,12 +172,12 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
             var node = this._idToDOMNode[nodeId];
             if (node) {
                 node._setAttributesPayload(attributes);
-                this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.AttributeModified, { node, name: "style" });
+                this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.AttributeModified, {node, name: "style"});
                 node.dispatchEventToListeners(WebInspector.DOMNode.Event.AttributeModified, {name: "style"});
             }
         }
 
-        this._loadNodeAttributesTimeout = undefined;
+        this._loadNodeAttributesTimeout = 0;
 
         for (var nodeId in this._attributeLoadNodeIds) {
             var nodeIdAsNumber = parseInt(nodeId);
@@ -200,11 +206,16 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
     _setDocument(payload)
     {
         this._idToDOMNode = {};
+
+        let newDocument = null;
         if (payload && "nodeId" in payload)
-            this._document = new WebInspector.DOMNode(this, null, false, payload);
-        else
-            this._document = null;
-        this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.DocumentUpdated, this._document);
+            newDocument = new WebInspector.DOMNode(this, null, false, payload);
+
+        if (this._document === newDocument)
+            return;
+
+        this._document = newDocument;
+        this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.DocumentUpdated, {document: this._document});
     }
 
     _setDetachedRoot(payload)
@@ -246,6 +257,13 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
         parent._removeChild(node);
         this._unbind(node);
         this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.NodeRemoved, {node, parent});
+    }
+
+    _customElementStateChanged(elementId, newState)
+    {
+        const node = this._idToDOMNode[elementId];
+        node._customElementState = newState;
+        this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.CustomElementStateChanged, {node});
     }
 
     _pseudoElementAdded(parentId, pseudoElement)
@@ -335,8 +353,8 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
                 if (!remoteObject)
                     return;
                 let specialLogStyles = true;
-                let synthetic = true;
-                WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(WebInspector.UIString("Selected Element"), remoteObject, specialLogStyles, synthetic);
+                let shouldRevealConsole = false;
+                WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(WebInspector.UIString("Selected Element"), remoteObject, specialLogStyles, shouldRevealConsole);
             });
         }
 
@@ -408,11 +426,30 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
             DOMAgent.hideHighlight();
     }
 
+    highlightDOMNodeList(nodeIds, mode)
+    {
+        // COMPATIBILITY (iOS 11): DOM.highlightNodeList did not exist.
+        if (!DOMAgent.highlightNodeList)
+            return;
+
+        if (this._hideDOMNodeHighlightTimeout) {
+            clearTimeout(this._hideDOMNodeHighlightTimeout);
+            this._hideDOMNodeHighlightTimeout = undefined;
+        }
+
+        DOMAgent.highlightNodeList(nodeIds, this._buildHighlightConfig(mode));
+    }
+
     highlightSelector(selectorText, frameId, mode)
     {
         // COMPATIBILITY (iOS 8): DOM.highlightSelector did not exist.
         if (!DOMAgent.highlightSelector)
             return;
+
+        if (this._hideDOMNodeHighlightTimeout) {
+            clearTimeout(this._hideDOMNodeHighlightTimeout);
+            this._hideDOMNodeHighlightTimeout = undefined;
+        }
 
         DOMAgent.highlightSelector(this._buildHighlightConfig(mode), selectorText, frameId);
     }
@@ -448,13 +485,13 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
 
     set inspectModeEnabled(enabled)
     {
-        function callback(error)
-        {
+        if (enabled === this._inspectModeEnabled)
+            return;
+
+        DOMAgent.setInspectModeEnabled(enabled, this._buildHighlightConfig(), (error) => {
             this._inspectModeEnabled = error ? false : enabled;
             this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.InspectModeStateChanged);
-        }
-
-        DOMAgent.setInspectModeEnabled(enabled, this._buildHighlightConfig(), callback.bind(this));
+        });
     }
 
     _buildHighlightConfig(mode = "all")
@@ -492,7 +529,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
     _updateContentFlowFromPayload(contentFlow, flowPayload)
     {
         console.assert(contentFlow.contentNodes.length === flowPayload.content.length);
-        console.assert(contentFlow.contentNodes.every(function(node, i) { return node.id === flowPayload.content[i]; }));
+        console.assert(contentFlow.contentNodes.every((node, i) => node.id === flowPayload.content[i]));
 
         // FIXME: Collect the regions from the payload.
         contentFlow.overset = flowPayload.overset;
@@ -597,9 +634,21 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
         flow.removeContentNode(this.nodeForId(contentNodeId));
     }
 
-    _coerceRemoteArrayOfDOMNodes(objectId, callback)
+    _coerceRemoteArrayOfDOMNodes(remoteObject, callback)
     {
-        var length, nodes, received = 0, lastError = null, domTreeManager = this;
+        console.assert(remoteObject.type === "object");
+        console.assert(remoteObject.subtype === "array");
+
+        let length = remoteObject.size;
+        if (!length) {
+            callback(null, []);
+            return;
+        }
+
+        let nodes;
+        let received = 0;
+        let lastError = null;
+        let domTreeManager = this;
 
         function nodeRequested(index, error, nodeId)
         {
@@ -611,28 +660,17 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
                 callback(lastError, nodes);
         }
 
-        WebInspector.runtimeManager.getPropertiesForRemoteObject(objectId, function(error, properties) {
+        WebInspector.runtimeManager.getPropertiesForRemoteObject(remoteObject.objectId, function(error, properties) {
             if (error) {
                 callback(error);
                 return;
             }
 
-            var lengthProperty = properties.get("length");
-            if (!lengthProperty || lengthProperty.value.type !== "number") {
-                callback(null);
-                return;
-            }
-
-            length = lengthProperty.value.value;
-            if (!length) {
-                callback(null, []);
-                return;
-            }
-
             nodes = new Array(length);
-            for (var i = 0; i < length; ++i) {
-                var nodeProperty = properties.get(String(i));
+            for (let i = 0; i < length; ++i) {
+                let nodeProperty = properties.get(String(i));
                 console.assert(nodeProperty.value.type === "object");
+                console.assert(nodeProperty.value.subtype === "node");
                 DOMAgent.requestNode(nodeProperty.value.objectId, nodeRequested.bind(null, i));
             }
         });
@@ -648,11 +686,10 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
                 resultReadyCallback(error);
                 return;
             }
-            // Serialize "backendFunction" and execute it in the context of the page
-            // passing the DOMNode as the "this" reference.
+
             var evalParameters = {
                 objectId: remoteObject.objectId,
-                functionDeclaration: appendWebInspectorSourceURL(backendFunction.toString()),
+                functionDeclaration: appendWebInspectorSourceURL(inspectedPage_node_getFlowInfo.toString()),
                 doNotPauseOnExceptionsAndMuteConsole: true,
                 returnByValue: false,
                 generatePreview: false
@@ -713,16 +750,13 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
                 return;
             }
 
-            console.assert(regionsProperty.value.type === "object");
-            console.assert(regionsProperty.value.subtype === "array");
-            this._coerceRemoteArrayOfDOMNodes(regionsProperty.value.objectId, function(error, nodes) {
+            this._coerceRemoteArrayOfDOMNodes(regionsProperty.value, function(error, nodes) {
                 result.regions = nodes;
                 resultReadyCallback(error, result);
             });
         }
 
-        // Note that "backendFunction" is serialized and executed in the context of the page.
-        function backendFunction()
+        function inspectedPage_node_getFlowInfo()
         {
             function getComputedProperty(node, propertyName)
             {
@@ -756,7 +790,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
             if (result.contentFlowName) {
                 var flowThread = node.ownerDocument.webkitGetNamedFlows().namedItem(result.contentFlowName);
                 if (flowThread)
-                    result.regions = flowThread.getRegionsByContent(node);
+                    result.regions = Array.from(flowThread.getRegionsByContent(node));
             }
 
             return result;
@@ -778,6 +812,7 @@ WebInspector.DOMTreeManager.Event = {
     CharacterDataModified: "dom-tree-manager-character-data-modified",
     NodeInserted: "dom-tree-manager-node-inserted",
     NodeRemoved: "dom-tree-manager-node-removed",
+    CustomElementStateChanged: "dom-tree-manager-custom-element-state-changed",
     DocumentUpdated: "dom-tree-manager-document-updated",
     ChildNodeCountUpdated: "dom-tree-manager-child-node-count-updated",
     DOMNodeWasInspected: "dom-tree-manager-dom-node-was-inspected",

@@ -52,6 +52,7 @@ class PageRouter {
             destinationPage.open(parsed.state);
         } else
             destinationPage.updateFromSerializedState(parsed.state, false);
+        destinationPage.enqueueToRender();
 
         return true;
     }
@@ -127,23 +128,55 @@ class PageRouter {
 
     _serializeHashQueryValue(value)
     {
-        if (!(value instanceof Array)) {
-            console.assert(value === null || typeof(value) === 'number' || /[A-Za-z0-9]*/.test(value));
-            return value === null ? 'null' : value;
+        if (value instanceof Array) {
+            var serializedItems = [];
+            for (var item of value)
+                serializedItems.push(this._serializeHashQueryValue(item));
+            return '(' + serializedItems.join('-') + ')';
         }
-
-        var serializedItems = [];
-        for (var item of value)
-            serializedItems.push(this._serializeHashQueryValue(item));
-        return '(' + serializedItems.join('-') + ')';
+        if (value instanceof Set)
+            return Array.from(value).sort().join('|');
+        console.assert(value === null || value === undefined || typeof(value) === 'number' || /[0-9]*/.test(value));
+        return value === null || value === undefined ? 'null' : value;
     }
 
     _deserializeHashQueryValue(value)
     {
-        try {
-            return JSON.parse(value.replace(/\(/g, '[').replace(/\)/g, ']').replace(/-/g, ','));
-        } catch (error) {
-            return value;
+        if (value.charAt(0) == '(') {
+            var nestingLevel = 0;
+            var end = 0;
+            var start = 1;
+            var result = [];
+            for (var character of value) {
+                if (character == '(')
+                    nestingLevel++;
+                else if (character == ')') {
+                    nestingLevel--;
+                    if (!nestingLevel)
+                        break;
+                } else if (nestingLevel == 1 && character == '-') {
+                    result.push(this._deserializeHashQueryValue(value.substring(start, end)));
+                    start = end + 1;
+                }
+                end++;
+            }
+            result.push(this._deserializeHashQueryValue(value.substring(start, end)));
+            return result;
         }
+        if (value == 'true')
+            return true;
+        if (value == 'false')
+            return true;
+        if (value.match(/^[0-9\.]+$/))
+            return parseFloat(value);
+        if (value.match(/^[A-Za-z][A-Za-z0-9|]*$/))
+            return new Set(value.toLowerCase().split('|'));
+        return null;
+    }
+
+    _countOccurrences(string, regex)
+    {
+        var match = string.match(regex);
+        return match ? match.length : 0;
     }
 }

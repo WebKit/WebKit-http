@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirBasicBlock_h
-#define AirBasicBlock_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,11 +33,16 @@
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 
-namespace JSC { namespace B3 { namespace Air {
+namespace JSC { namespace B3 {
+
+template<typename> class GenericBlockInsertionSet;
+
+namespace Air {
 
 class BlockInsertionSet;
 class Code;
 class InsertionSet;
+class PhaseInsertionSet;
 
 class BasicBlock {
     WTF_MAKE_NONCOPYABLE(BasicBlock);
@@ -100,6 +104,9 @@ public:
     const SuccessorList& successors() const { return m_successors; }
     SuccessorList& successors() { return m_successors; }
 
+    void setSuccessors(FrequentedBlock);
+    void setSuccessors(FrequentedBlock, FrequentedBlock);
+
     BasicBlock* successorBlock(unsigned index) const { return successor(index).block(); }
     BasicBlock*& successorBlock(unsigned index) { return successor(index).block(); }
     SuccessorCollection<BasicBlock, SuccessorList> successorBlocks()
@@ -134,6 +141,8 @@ private:
     friend class BlockInsertionSet;
     friend class Code;
     friend class InsertionSet;
+    friend class PhaseInsertionSet;
+    template<typename> friend class B3::GenericBlockInsertionSet;
     
     BasicBlock(unsigned index, double frequency);
 
@@ -171,6 +180,3 @@ inline DeepBasicBlockDump deepDump(const BasicBlock* block)
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirBasicBlock_h
-

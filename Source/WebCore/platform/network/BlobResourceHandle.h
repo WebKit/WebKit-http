@@ -28,12 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BlobResourceHandle_h
-#define BlobResourceHandle_h
+#pragma once
 
 #include "FileStreamClient.h"
 #include "ResourceHandle.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -44,11 +42,11 @@ class BlobData;
 class FileStream;
 class ResourceHandleClient;
 class ResourceRequest;
-struct BlobDataItem;
+class BlobDataItem;
 
 class BlobResourceHandle final : public FileStreamClient, public ResourceHandle  {
 public:
-    static PassRefPtr<BlobResourceHandle> createAsync(BlobData*, const ResourceRequest&, ResourceHandleClient*);
+    static Ref<BlobResourceHandle> createAsync(BlobData*, const ResourceRequest&, ResourceHandleClient*);
 
     static void loadResourceSynchronously(BlobData*, const ResourceRequest&, ResourceError&, ResourceResponse&, Vector<char>& data);
 
@@ -57,24 +55,33 @@ public:
 
     bool aborted() const { return m_aborted; }
 
+    enum class Error {
+        NoError = 0,
+        NotFoundError = 1,
+        SecurityError = 2,
+        RangeError = 3,
+        NotReadableError = 4,
+        MethodNotAllowed = 5
+    };
+
 private:
     BlobResourceHandle(BlobData*, const ResourceRequest&, ResourceHandleClient*, bool async);
     virtual ~BlobResourceHandle();
 
     // FileStreamClient methods.
-    virtual void didGetSize(long long) override;
-    virtual void didOpen(bool) override;
-    virtual void didRead(int) override;
+    void didGetSize(long long) override;
+    void didOpen(bool) override;
+    void didRead(int) override;
 
     // ResourceHandle methods.
-    virtual void cancel() override;
-    virtual void continueDidReceiveResponse() override;
+    void cancel() override;
+    void continueDidReceiveResponse() override;
 
     void doStart();
     void getSizeForNext();
     void seek();
     void consumeData(const char* data, int bytesRead);
-    void failed(int errorCode);
+    void failed(Error);
 
     void readAsync();
     void readDataAsync(const BlobDataItem&);
@@ -87,8 +94,10 @@ private:
     void notifyResponseOnSuccess();
     void notifyResponseOnError();
     void notifyReceiveData(const char*, int);
-    void notifyFail(int errorCode);
+    void notifyFail(Error);
     void notifyFinish();
+
+    bool erroredOrAborted() const { return m_aborted || m_errorCode != Error::NoError; }
 
     enum { kPositionNotSpecified = -1 };
 
@@ -98,7 +107,7 @@ private:
     std::unique_ptr<FileStream> m_stream; // For synchronous loading.
     Vector<char> m_buffer;
     Vector<long long> m_itemLengthList;
-    int m_errorCode { 0 };
+    Error m_errorCode { Error::NoError };
     bool m_aborted { false };
     long long m_rangeOffset { kPositionNotSpecified };
     long long m_rangeEnd { kPositionNotSpecified };
@@ -112,5 +121,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // BlobResourceHandle_h

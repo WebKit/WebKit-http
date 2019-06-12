@@ -27,20 +27,20 @@
 #define RunLoopObserver_h
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <functional>
+#include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RetainPtr.h>
 
 namespace WebCore {
 
 class RunLoopObserver {
-    WTF_MAKE_NONCOPYABLE(RunLoopObserver);
+    WTF_MAKE_NONCOPYABLE(RunLoopObserver); WTF_MAKE_FAST_ALLOCATED;
 public:
-    typedef std::function<void ()> RunLoopObserverCallback;
+    typedef WTF::Function<void ()> RunLoopObserverCallback;
 
-    RunLoopObserver(CFIndex order, RunLoopObserverCallback callback)
+    RunLoopObserver(CFIndex order, RunLoopObserverCallback&& callback)
         : m_order(order)
-        , m_callback(callback)
+        , m_callback(WTFMove(callback))
     { }
 
     WEBCORE_EXPORT ~RunLoopObserver();

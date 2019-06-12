@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CompositeEditCommand_h
-#define CompositeEditCommand_h
+#pragma once
 
+#include "AXObjectCache.h"
 #include "EditCommand.h"
 #include "CSSPropertyNames.h"
 #include "UndoStep.h"
@@ -34,17 +34,42 @@
 namespace WebCore {
 
 class EditingStyle;
+class DataTransfer;
 class HTMLElement;
+class StaticRange;
 class StyledElement;
 class Text;
 
+class AccessibilityUndoReplacedText {
+public:
+    AccessibilityUndoReplacedText() { }
+    void configureRangeDeletedByReapplyWithStartingSelection(const VisibleSelection&);
+    void configureRangeDeletedByReapplyWithEndingSelection(const VisibleSelection&);
+    void setRangeDeletedByUnapply(const VisiblePositionIndexRange&);
+
+    void captureTextForUnapply();
+    void captureTextForReapply();
+
+    void postTextStateChangeNotificationForUnapply(AXObjectCache*);
+    void postTextStateChangeNotificationForReapply(AXObjectCache*);
+
+private:
+    int indexForVisiblePosition(const VisiblePosition&, RefPtr<ContainerNode>&) const;
+    String textDeletedByUnapply();
+    String textDeletedByReapply();
+
+    String m_replacedText;
+    VisiblePositionIndexRange m_rangeDeletedByUnapply;
+    VisiblePositionIndexRange m_rangeDeletedByReapply;
+};
+
 class EditCommandComposition : public UndoStep {
 public:
-    static Ref<EditCommandComposition> create(Document&, const VisibleSelection&, const VisibleSelection&, EditAction);
+    static Ref<EditCommandComposition> create(Document&, const VisibleSelection& startingSelection, const VisibleSelection& endingSelection, EditAction);
 
-    virtual void unapply() override;
-    virtual void reapply() override;
-    virtual EditAction editingAction() const override { return m_editAction; }
+    void unapply() override;
+    void reapply() override;
+    EditAction editingAction() const override { return m_editAction; }
     void append(SimpleEditCommand*);
     bool wasCreateLinkCommand() const { return m_editAction == EditActionCreateLink; }
 
@@ -54,12 +79,11 @@ public:
     void setEndingSelection(const VisibleSelection&);
     Element* startingRootEditableElement() const { return m_startingRootEditableElement.get(); }
     Element* endingRootEditableElement() const { return m_endingRootEditableElement.get(); }
+    void setRangeDeletedByUnapply(const VisiblePositionIndexRange&);
 
 #ifndef NDEBUG
     virtual void getNodesInCommand(HashSet<Node*>&);
 #endif
-
-    AXTextEditType unapplyEditType() const;
 
 private:
     EditCommandComposition(Document&, const VisibleSelection& startingSelection, const VisibleSelection& endingSelection, EditAction);
@@ -70,6 +94,7 @@ private:
     Vector<RefPtr<SimpleEditCommand>> m_commands;
     RefPtr<Element> m_startingRootEditableElement;
     RefPtr<Element> m_endingRootEditableElement;
+    AccessibilityUndoReplacedText m_replacedText;
     EditAction m_editAction;
 };
 
@@ -79,8 +104,8 @@ public:
 
     void apply();
     bool isFirstCommand(EditCommand* command) { return !m_commands.isEmpty() && m_commands.first() == command; }
-    EditCommandComposition* composition() { return m_composition.get(); }
-    EditCommandComposition* ensureComposition();
+    EditCommandComposition* composition() const;
+    EditCommandComposition& ensureComposition();
 
     virtual bool isCreateLinkCommand() const;
     virtual bool isTypingCommand() const;
@@ -89,71 +114,82 @@ public:
     virtual bool shouldRetainAutocorrectionIndicator() const;
     virtual void setShouldRetainAutocorrectionIndicator(bool);
     virtual bool shouldStopCaretBlinking() const { return false; }
+    virtual String inputEventTypeName() const;
+    virtual String inputEventData() const { return { }; }
+    virtual bool isBeforeInputEventCancelable() const { return true; }
+    virtual bool shouldDispatchInputEvents() const { return true; }
+    Vector<RefPtr<StaticRange>> targetRangesForBindings() const;
+    virtual RefPtr<DataTransfer> inputEventDataTransfer() const;
 
 protected:
     explicit CompositeEditCommand(Document&, EditAction = EditActionUnspecified);
 
+    // If willApplyCommand returns false, we won't proceed with applying the command.
+    virtual bool willApplyCommand();
+    virtual void didApplyCommand();
+
+    virtual Vector<RefPtr<StaticRange>> targetRanges() const;
+
     //
     // sugary-sweet convenience functions to help create and apply edit commands in composite commands
     //
-    void appendNode(PassRefPtr<Node>, PassRefPtr<ContainerNode> parent);
-    void applyCommandToComposite(PassRefPtr<EditCommand>);
-    void applyCommandToComposite(PassRefPtr<CompositeEditCommand>, const VisibleSelection&);
+    void appendNode(Ref<Node>&&, Ref<ContainerNode>&& parent);
+    void applyCommandToComposite(Ref<EditCommand>&&);
+    void applyCommandToComposite(Ref<CompositeEditCommand>&&, const VisibleSelection&);
     void applyStyle(const EditingStyle*, EditAction = EditActionChangeAttributes);
     void applyStyle(const EditingStyle*, const Position& start, const Position& end, EditAction = EditActionChangeAttributes);
-    void applyStyledElement(PassRefPtr<Element>);
-    void removeStyledElement(PassRefPtr<Element>);
+    void applyStyledElement(Ref<Element>&&);
+    void removeStyledElement(Ref<Element>&&);
     void deleteSelection(bool smartDelete = false, bool mergeBlocksAfterDelete = true, bool replace = false, bool expandForSpecialElements = true, bool sanitizeMarkup = true);
     void deleteSelection(const VisibleSelection&, bool smartDelete = false, bool mergeBlocksAfterDelete = true, bool replace = false, bool expandForSpecialElements = true, bool sanitizeMarkup = true);
-    virtual void deleteTextFromNode(PassRefPtr<Text>, unsigned offset, unsigned count);
+    virtual void deleteTextFromNode(Text&, unsigned offset, unsigned count);
     void inputText(const String&, bool selectInsertedText = false);
     bool isRemovableBlock(const Node*);
-    void insertNodeAfter(PassRefPtr<Node>, PassRefPtr<Node> refChild);
-    void insertNodeAt(PassRefPtr<Node>, const Position&);
-    void insertNodeAtTabSpanPosition(PassRefPtr<Node>, const Position&);
-    void insertNodeBefore(PassRefPtr<Node>, PassRefPtr<Node> refChild, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
+    void insertNodeAfter(Ref<Node>&&, Node& refChild);
+    void insertNodeAt(Ref<Node>&&, const Position&);
+    void insertNodeAtTabSpanPosition(Ref<Node>&&, const Position&);
+    void insertNodeBefore(Ref<Node>&&, Node& refChild, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
     void insertParagraphSeparator(bool useDefaultParagraphElement = false, bool pasteBlockqutoeIntoUnquotedArea = false);
     void insertLineBreak();
-    void insertTextIntoNode(PassRefPtr<Text>, unsigned offset, const String& text);
-    void mergeIdenticalElements(PassRefPtr<Element>, PassRefPtr<Element>);
+    void insertTextIntoNode(Text&, unsigned offset, const String& text);
+    void mergeIdenticalElements(Element&, Element&);
     void rebalanceWhitespace();
     void rebalanceWhitespaceAt(const Position&);
-    void rebalanceWhitespaceOnTextSubstring(PassRefPtr<Text>, int startOffset, int endOffset);
+    void rebalanceWhitespaceOnTextSubstring(Text&, int startOffset, int endOffset);
     void prepareWhitespaceAtPositionForSplit(Position&);
     bool canRebalance(const Position&) const;
     bool shouldRebalanceLeadingWhitespaceFor(const String&) const;
-    void removeCSSProperty(PassRefPtr<StyledElement>, CSSPropertyID);
-    void removeNodeAttribute(PassRefPtr<Element>, const QualifiedName& attribute);
-    void removeChildrenInRange(PassRefPtr<Node>, unsigned from, unsigned to);
-    virtual void removeNode(PassRefPtr<Node>, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
-    HTMLElement* replaceElementWithSpanPreservingChildrenAndAttributes(PassRefPtr<HTMLElement>);
-    void removeNodePreservingChildren(PassRefPtr<Node>, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
-    void removeNodeAndPruneAncestors(PassRefPtr<Node>);
-    void moveRemainingSiblingsToNewParent(Node*, Node* pastLastNodeToMove, PassRefPtr<Element> prpNewParent);
+    void removeNodeAttribute(Element&, const QualifiedName& attribute);
+    void removeChildrenInRange(Node&, unsigned from, unsigned to);
+    virtual void removeNode(Node&, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
+    HTMLElement* replaceElementWithSpanPreservingChildrenAndAttributes(HTMLElement&);
+    void removeNodePreservingChildren(Node&, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
+    void removeNodeAndPruneAncestors(Node&);
+    void moveRemainingSiblingsToNewParent(Node*, Node* pastLastNodeToMove, Element& newParent);
     void updatePositionForNodeRemovalPreservingChildren(Position&, Node&);
-    void prune(PassRefPtr<Node>);
-    void replaceTextInNode(PassRefPtr<Text>, unsigned offset, unsigned count, const String& replacementText);
+    void prune(Node*);
+    void replaceTextInNode(Text&, unsigned offset, unsigned count, const String& replacementText);
     Position replaceSelectedTextInNode(const String&);
-    void replaceTextInNodePreservingMarkers(PassRefPtr<Text>, unsigned offset, unsigned count, const String& replacementText);
+    void replaceTextInNodePreservingMarkers(Text&, unsigned offset, unsigned count, const String& replacementText);
     Position positionOutsideTabSpan(const Position&);
-    void setNodeAttribute(PassRefPtr<Element>, const QualifiedName& attribute, const AtomicString& value);
-    void splitElement(PassRefPtr<Element>, PassRefPtr<Node> atChild);
-    void splitTextNode(PassRefPtr<Text>, unsigned offset);
-    void splitTextNodeContainingElement(PassRefPtr<Text>, unsigned offset);
-    void wrapContentsInDummySpan(PassRefPtr<Element>);
+    void setNodeAttribute(Element&, const QualifiedName& attribute, const AtomicString& value);
+    void splitElement(Element&, Node& atChild);
+    void splitTextNode(Text&, unsigned offset);
+    void splitTextNodeContainingElement(Text&, unsigned offset);
+    void wrapContentsInDummySpan(Element&);
 
-    void deleteInsignificantText(PassRefPtr<Text>, unsigned start, unsigned end);
+    void deleteInsignificantText(Text&, unsigned start, unsigned end);
     void deleteInsignificantText(const Position& start, const Position& end);
     void deleteInsignificantTextDownstream(const Position&);
 
-    PassRefPtr<Node> appendBlockPlaceholder(PassRefPtr<Element>);
-    PassRefPtr<Node> insertBlockPlaceholder(const Position&);
-    PassRefPtr<Node> addBlockPlaceholderIfNeeded(Element*);
+    Ref<Element> appendBlockPlaceholder(Ref<Element>&&);
+    RefPtr<Node> insertBlockPlaceholder(const Position&);
+    RefPtr<Node> addBlockPlaceholderIfNeeded(Element*);
     void removePlaceholderAt(const Position&);
 
-    PassRefPtr<Node> insertNewDefaultParagraphElementAt(const Position&);
+    Ref<HTMLElement> insertNewDefaultParagraphElementAt(const Position&);
 
-    PassRefPtr<Node> moveParagraphContentsToNewBlockIfNecessary(const Position&);
+    RefPtr<Node> moveParagraphContentsToNewBlockIfNecessary(const Position&);
     
     void pushAnchorElementDown(Element&);
     
@@ -163,22 +199,21 @@ protected:
     void cloneParagraphUnderNewElement(const Position& start, const Position& end, Node* outerNode, Element* blockElement);
     void cleanupAfterDeletion(VisiblePosition destination = VisiblePosition());
     
+    std::optional<VisibleSelection> shouldBreakOutOfEmptyListItem() const;
     bool breakOutOfEmptyListItem();
     bool breakOutOfEmptyMailBlockquotedParagraph();
     
     Position positionAvoidingSpecialElementBoundary(const Position&);
     
-    PassRefPtr<Node> splitTreeToNode(Node*, Node*, bool splitAncestor = false);
+    RefPtr<Node> splitTreeToNode(Node&, Node&, bool splitAncestor = false);
 
     Vector<RefPtr<EditCommand>> m_commands;
 
 private:
-    virtual bool isCompositeEditCommand() const override { return true; }
+    bool isCompositeEditCommand() const override { return true; }
 
     RefPtr<EditCommandComposition> m_composition;
 };
-    
-void applyCommand(PassRefPtr<CompositeEditCommand>);
 
 inline CompositeEditCommand* toCompositeEditCommand(EditCommand* command)
 {
@@ -188,5 +223,3 @@ inline CompositeEditCommand* toCompositeEditCommand(EditCommand* command)
 }
 
 } // namespace WebCore
-
-#endif // CompositeEditCommand_h

@@ -29,9 +29,19 @@
  */
 
 [
-    Conditional=MEDIA_STREAM,
-    ConstructorTemplate=Event
+    Conditional=WEB_RTC,
+    Constructor(DOMString type, RTCTrackEventInit eventInitDict),
+    EnabledAtRuntime=PeerConnection,
 ] interface RTCTrackEvent : Event {
-   [InitializedByEventConstructor] readonly attribute RTCRtpReceiver receiver;
-   [InitializedByEventConstructor] readonly attribute MediaStreamTrack track;
+    readonly attribute RTCRtpReceiver receiver;
+    readonly attribute MediaStreamTrack track;
+    readonly attribute FrozenArray<MediaStream> streams;
+    readonly attribute RTCRtpTransceiver transceiver;
+};
+
+dictionary RTCTrackEventInit : EventInit {
+    required RTCRtpReceiver receiver;
+    required MediaStreamTrack track;
+    sequence<MediaStream> streams = [];
+    required RTCRtpTransceiver transceiver;
 };

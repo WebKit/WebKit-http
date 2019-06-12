@@ -29,25 +29,17 @@
 
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
-#include "HTTPHeaderNames.h"
-#include "HTTPParsers.h"
-#include "MIMETypeRegistry.h"
-#include "MemoryCache.h"
+#include "CachedResourceRequest.h"
 #include "RuntimeApplicationChecks.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
-CachedScript::CachedScript(const ResourceRequest& resourceRequest, const String& charset, SessionID sessionID)
-    : CachedResource(resourceRequest, Script, sessionID)
-    , m_decoder(TextResourceDecoder::create(ASCIILiteral("application/javascript"), charset))
+CachedScript::CachedScript(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), Script, sessionID)
+    , m_decoder(TextResourceDecoder::create(ASCIILiteral("application/javascript"), request.charset()))
 {
-    // It's javascript we want.
-    // But some websites think their scripts are <some wrong mimetype here>
-    // and refuse to serve them if we only accept application/x-javascript.
-    setAccept("*/*");
 }
 
 CachedScript::~CachedScript()
@@ -62,11 +54,6 @@ void CachedScript::setEncoding(const String& chs)
 String CachedScript::encoding() const
 {
     return m_decoder->encoding().name();
-}
-
-String CachedScript::mimeType() const
-{
-    return extractMIMETypeFromMediaType(m_response.httpHeaderField(HTTPHeaderName::ContentType)).convertToASCIILowercase();
 }
 
 StringView CachedScript::script()
@@ -89,11 +76,13 @@ StringView CachedScript::script()
     }
 
     if (m_decodingState == DataAndDecodedStringHaveSameBytes)
-        return { reinterpret_cast<const LChar*>(m_data->data()), m_data->size() };
+        return { reinterpret_cast<const LChar*>(m_data->data()), static_cast<unsigned>(m_data->size()) };
 
     if (!m_script) {
         m_script = m_decoder->decodeAndFlush(m_data->data(), encodedSize());
-        m_scriptHash = m_script.impl()->hash();
+        ASSERT(!m_scriptHash || m_scriptHash == m_script.impl()->hash());
+        if (m_decodingState == NeverDecoded)
+            m_scriptHash = m_script.impl()->hash();
         m_decodingState = DataAndDecodedStringHaveDifferentBytes;
         setDecodedSize(m_script.sizeInBytes());
     }
@@ -122,23 +111,31 @@ void CachedScript::destroyDecodedData()
     setDecodedSize(0);
 }
 
-#if ENABLE(NOSNIFF)
-bool CachedScript::mimeTypeAllowedByNosniff() const
+void CachedScript::setBodyDataFrom(const CachedResource& resource)
 {
-    return parseContentTypeOptionsHeader(m_response.httpHeaderField(HTTPHeaderName::XContentTypeOptions)) != ContentTypeOptionsNosniff || MIMETypeRegistry::isSupportedJavaScriptMIMEType(mimeType());
+    ASSERT(resource.type() == type());
+    auto& script = static_cast<const CachedScript&>(resource);
+
+    CachedResource::setBodyDataFrom(resource);
+
+    m_script = script.m_script;
+    m_scriptHash = script.m_scriptHash;
+    m_decodingState = script.m_decodingState;
+    m_decoder = script.m_decoder;
 }
-#endif
 
 bool CachedScript::shouldIgnoreHTTPStatusCodeErrors() const
 {
+#if PLATFORM(MAC)
     // This is a workaround for <rdar://problem/13916291>
     // REGRESSION (r119759): Adobe Flash Player "smaller" installer relies on the incorrect firing
     // of a load event and needs an app-specific hack for compatibility.
     // The installer in question tries to load .js file that doesn't exist, causing the server to
     // return a 404 response. Normally, this would trigger an error event to be dispatched, but the
     // installer expects a load event instead so we work around it here.
-    if (applicationIsSolidStateNetworksDownloader())
+    if (MacApplication::isSolidStateNetworksDownloader())
         return true;
+#endif
 
     return CachedResource::shouldIgnoreHTTPStatusCodeErrors();
 }

@@ -37,6 +37,10 @@
 #include <wtf/MathExtras.h>
 #include <wtf/win/GDIObject.h>
 
+#if USE(DIRECT2D)
+#include <dwrite.h>
+#endif
+
 namespace WebCore {
 
 const float cSmallCapsFontSizeMultiplier = 0.7f;
@@ -135,22 +139,19 @@ void Font::platformDestroy()
 RefPtr<Font> Font::platformCreateScaledFont(const FontDescription& fontDescription, float scaleFactor) const
 {
     float scaledSize = scaleFactor * m_platformData.size();
-    if (isCustomFont()) {
-        FontPlatformData scaledFont(m_platformData);
-        scaledFont.setSize(scaledSize);
-        return Font::create(scaledFont, true, false);
-    }
+    if (origin() == Origin::Remote)
+        return Font::create(FontPlatformData::cloneWithSize(m_platformData, scaledSize), Font::Origin::Remote);
 
     LOGFONT winfont;
     GetObject(m_platformData.hfont(), sizeof(LOGFONT), &winfont);
     winfont.lfHeight = -lroundf(scaledSize * (m_platformData.useGDI() ? 1 : 32));
     auto hfont = adoptGDIObject(::CreateFontIndirect(&winfont));
-    return Font::create(FontPlatformData(WTFMove(hfont), scaledSize, m_platformData.syntheticBold(), m_platformData.syntheticOblique(), m_platformData.useGDI()), isCustomFont(), false);
+    return Font::create(FontPlatformData(WTFMove(hfont), scaledSize, m_platformData.syntheticBold(), m_platformData.syntheticOblique(), m_platformData.useGDI()), origin());
 }
 
 void Font::determinePitch()
 {
-    if (isCustomFont()) {
+    if (origin() == Origin::Remote) {
         m_treatAsFixedPitch = false;
         return;
     }

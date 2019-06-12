@@ -6,112 +6,131 @@
 
 #include "compiler/translator/InitializeVariables.h"
 
+#include "angle_gl.h"
 #include "common/debug.h"
+#include "compiler/translator/IntermNode.h"
+#include "compiler/translator/SymbolTable.h"
+#include "compiler/translator/util.h"
+
+namespace sh
+{
 
 namespace
 {
 
-TIntermConstantUnion *constructFloatConstUnionNode(const TType &type)
+class VariableInitializer : public TIntermTraverser
 {
-    TType myType = type;
-    unsigned char size = static_cast<unsigned char>(myType.getNominalSize());
-    if (myType.isMatrix())
-        size *= size;
-    TConstantUnion *u = new TConstantUnion[size];
-    for (int ii = 0; ii < size; ++ii)
-        u[ii].setFConst(0.0f);
+  public:
+    VariableInitializer(const InitVariableList &vars, const TSymbolTable &symbolTable)
+        : TIntermTraverser(true, false, false),
+          mVariables(vars),
+          mSymbolTable(symbolTable),
+          mCodeInserted(false)
+    {
+        ASSERT(mSymbolTable.atGlobalLevel());
+    }
 
-    myType.clearArrayness();
-    myType.setQualifier(EvqConst);
-    TIntermConstantUnion *node = new TIntermConstantUnion(u, myType);
-    return node;
+  protected:
+    bool visitBinary(Visit, TIntermBinary *node) override { return false; }
+    bool visitUnary(Visit, TIntermUnary *node) override { return false; }
+    bool visitIfElse(Visit, TIntermIfElse *node) override { return false; }
+    bool visitLoop(Visit, TIntermLoop *node) override { return false; }
+    bool visitBranch(Visit, TIntermBranch *node) override { return false; }
+    bool visitAggregate(Visit, TIntermAggregate *node) override { return false; }
+
+    bool visitFunctionDefinition(Visit visit, TIntermFunctionDefinition *node) override;
+
+  private:
+    void insertInitCode(TIntermSequence *sequence);
+
+    const InitVariableList &mVariables;
+    const TSymbolTable &mSymbolTable;
+    bool mCodeInserted;
+};
+
+// VariableInitializer implementation.
+
+bool VariableInitializer::visitFunctionDefinition(Visit visit, TIntermFunctionDefinition *node)
+{
+    // Function definition.
+    ASSERT(visit == PreVisit);
+    if (node->getFunctionSymbolInfo()->isMain())
+    {
+        TIntermBlock *body = node->getBody();
+        insertInitCode(body->getSequence());
+        mCodeInserted = true;
+    }
+    return false;
 }
 
-TIntermConstantUnion *constructIndexNode(int index)
+void VariableInitializer::insertInitCode(TIntermSequence *sequence)
 {
-    TConstantUnion *u = new TConstantUnion[1];
-    u[0].setIConst(index);
+    for (const auto &var : mVariables)
+    {
+        TString name = TString(var.name.c_str());
 
-    TType type(EbtInt, EbpUndefined, EvqConst, 1);
-    TIntermConstantUnion *node = new TIntermConstantUnion(u, type);
-    return node;
+        if (var.isArray())
+        {
+            // Assign the array elements one by one to keep the AST compatible with ESSL 1.00 which
+            // doesn't have array assignment.
+            size_t pos = name.find_last_of('[');
+            if (pos != TString::npos)
+            {
+                name = name.substr(0, pos);
+            }
+            TType elementType = sh::GetShaderVariableBasicType(var);
+            TType arrayType   = elementType;
+            arrayType.setArraySize(var.elementCount());
+
+            // Workaround for http://crbug.com/709317
+            //   This loop is reversed to initialize elements in increasing
+            // order [0 1 2 ...]. Otherwise, they're initialized in
+            // decreasing order [... 2 1 0], due to
+            // `sequence->insert(sequence->begin(), ...)` below.
+            for (unsigned int i = var.arraySize; i > 0; --i)
+            {
+                unsigned int index = i - 1;
+                TIntermSymbol *arraySymbol = new TIntermSymbol(0, name, arrayType);
+                TIntermBinary *element     = new TIntermBinary(EOpIndexDirect, arraySymbol,
+                                                           TIntermTyped::CreateIndexNode(index));
+
+                TIntermTyped *zero        = TIntermTyped::CreateZero(elementType);
+                TIntermBinary *assignment = new TIntermBinary(EOpAssign, element, zero);
+
+                sequence->insert(sequence->begin(), assignment);
+            }
+        }
+        else if (var.isStruct())
+        {
+            TVariable *structInfo = reinterpret_cast<TVariable *>(mSymbolTable.findGlobal(name));
+            ASSERT(structInfo);
+
+            TIntermSymbol *symbol = new TIntermSymbol(0, name, structInfo->getType());
+            TIntermTyped *zero    = TIntermTyped::CreateZero(structInfo->getType());
+
+            TIntermBinary *assign = new TIntermBinary(EOpAssign, symbol, zero);
+            sequence->insert(sequence->begin(), assign);
+        }
+        else
+        {
+            TType type            = sh::GetShaderVariableBasicType(var);
+            TIntermSymbol *symbol = new TIntermSymbol(0, name, type);
+            TIntermTyped *zero    = TIntermTyped::CreateZero(type);
+
+            TIntermBinary *assign = new TIntermBinary(EOpAssign, symbol, zero);
+            sequence->insert(sequence->begin(), assign);
+        }
+    }
 }
 
 }  // namespace anonymous
 
-bool InitializeVariables::visitAggregate(Visit visit, TIntermAggregate *node)
+void InitializeVariables(TIntermNode *root,
+                         const InitVariableList &vars,
+                         const TSymbolTable &symbolTable)
 {
-    bool visitChildren = !mCodeInserted;
-    switch (node->getOp())
-    {
-      case EOpSequence:
-        break;
-      case EOpFunction:
-      {
-        // Function definition.
-        ASSERT(visit == PreVisit);
-        if (node->getName() == "main(")
-        {
-            TIntermSequence *sequence = node->getSequence();
-            ASSERT((sequence->size() == 1) || (sequence->size() == 2));
-            TIntermAggregate *body = NULL;
-            if (sequence->size() == 1)
-            {
-                body = new TIntermAggregate(EOpSequence);
-                sequence->push_back(body);
-            }
-            else
-            {
-                body = (*sequence)[1]->getAsAggregate();
-            }
-            ASSERT(body);
-            insertInitCode(body->getSequence());
-            mCodeInserted = true;
-        }
-        break;
-      }
-      default:
-        visitChildren = false;
-        break;
-    }
-    return visitChildren;
+    VariableInitializer initializer(vars, symbolTable);
+    root->traverse(&initializer);
 }
 
-void InitializeVariables::insertInitCode(TIntermSequence *sequence)
-{
-    for (size_t ii = 0; ii < mVariables.size(); ++ii)
-    {
-        const InitVariableInfo &varInfo = mVariables[ii];
-
-        if (varInfo.type.isArray())
-        {
-            for (int index = varInfo.type.getArraySize() - 1; index >= 0; --index)
-            {
-                TIntermBinary *assign = new TIntermBinary(EOpAssign);
-                sequence->insert(sequence->begin(), assign);
-
-                TIntermBinary *indexDirect = new TIntermBinary(EOpIndexDirect);
-                TIntermSymbol *symbol = new TIntermSymbol(0, varInfo.name, varInfo.type);
-                indexDirect->setLeft(symbol);
-                TIntermConstantUnion *indexNode = constructIndexNode(index);
-                indexDirect->setRight(indexNode);
-
-                assign->setLeft(indexDirect);
-
-                TIntermConstantUnion *zeroConst = constructFloatConstUnionNode(varInfo.type);
-                assign->setRight(zeroConst);
-            }
-        }
-        else
-        {
-            TIntermBinary *assign = new TIntermBinary(EOpAssign);
-            sequence->insert(sequence->begin(), assign);
-            TIntermSymbol *symbol = new TIntermSymbol(0, varInfo.name, varInfo.type);
-            assign->setLeft(symbol);
-            TIntermConstantUnion *zeroConst = constructFloatConstUnionNode(varInfo.type);
-            assign->setRight(zeroConst);
-        }
-
-    }
-}
-
+}  // namespace sh

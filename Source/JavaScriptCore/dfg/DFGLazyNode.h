@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DFGLazyNode_h
-#define DFGLazyNode_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -110,9 +109,10 @@ public:
 
     unsigned hash() const
     {
-        if (asValue())
-            return WTF::PtrHash<FrozenValue*>::hash(asValue());
-        return WTF::PtrHash<Node*>::hash(m_node);
+        void* toHash = m_node;
+        if (FrozenValue* value = asValue())
+            toHash = value;
+        return WTF::PtrHash<void*>::hash(toHash);
     }
 
     bool operator==(const LazyNode& other) const
@@ -183,5 +183,3 @@ template<> struct HashTraits<JSC::DFG::LazyNode> : SimpleClassHashTraits<JSC::DF
 } // namespace WTF
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGLazyNode_h

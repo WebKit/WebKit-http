@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorScriptProfilerAgent_h
-#define InspectorScriptProfilerAgent_h
+#pragma once
 
+#include "Debugger.h"
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
 #include "inspector/InspectorAgentBase.h"
-#include "inspector/ScriptDebugServer.h"
 #include <wtf/Noncopyable.h>
 
 namespace JSC {
@@ -46,17 +45,20 @@ public:
     InspectorScriptProfilerAgent(AgentContext&);
     virtual ~InspectorScriptProfilerAgent();
 
-    virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(DisconnectReason) override;
+    void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(DisconnectReason) override;
 
     // ScriptProfilerBackendDispatcherHandler
-    virtual void startTracking(ErrorString&, const bool* includeSamples) override;
-    virtual void stopTracking(ErrorString&) override;
+    void startTracking(ErrorString&, const bool* const includeSamples) override;
+    void stopTracking(ErrorString&) override;
+
+    void programmaticCaptureStarted();
+    void programmaticCaptureStopped();
 
     // Debugger::ProfilingClient
-    virtual bool isAlreadyProfiling() const override;
-    virtual double willEvaluateScript() override;
-    virtual void didEvaluateScript(double, JSC::ProfilingReason) override;
+    bool isAlreadyProfiling() const override;
+    double willEvaluateScript() override;
+    void didEvaluateScript(double, JSC::ProfilingReason) override;
 
 private:
     struct Event {
@@ -67,6 +69,7 @@ private:
 
     void addEvent(double startTime, double endTime, JSC::ProfilingReason);
     void trackingComplete();
+    void stopSamplingWhenDisconnecting();
 
     std::unique_ptr<ScriptProfilerFrontendDispatcher> m_frontendDispatcher;
     RefPtr<ScriptProfilerBackendDispatcher> m_backendDispatcher;
@@ -79,5 +82,3 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // InspectorScriptProfilerAgent_h

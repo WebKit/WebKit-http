@@ -160,6 +160,8 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
                 this._previewView = new WebInspector.ObjectPreviewView(resolvedValue.preview);
                 valueOrGetterElement = this._previewView.element;
             } else {
+                this._loadPreviewLazilyIfNeeded();
+
                 valueOrGetterElement = WebInspector.FormattedValue.createElementForRemoteObject(resolvedValue, this.hadError());
 
                 // Special case a function property string.
@@ -220,6 +222,22 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
         return container;
     }
 
+    _loadPreviewLazilyIfNeeded()
+    {
+        let resolvedValue = this.resolvedValue();
+        if (!resolvedValue.canLoadPreview())
+            return;
+
+        resolvedValue.updatePreview((preview) => {
+            if (preview) {
+                this.mainTitle = this._titleFragment();
+
+                if (this.expanded)
+                    this._previewView.showTitle();
+            }
+        });
+    }
+
     _alwaysDisplayAsProperty()
     {
         // Constructor, though a function, is often better treated as an expandable object.
@@ -272,7 +290,7 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
             }
 
             // Native DOM constructor or on native objects that are not functions.
-            if (parentDescription.endsWith("Constructor") || parentDescription === "Math" || parentDescription === "JSON") {
+            if (parentDescription.endsWith("Constructor") || ["Math", "JSON", "Reflect", "Console"].includes(parentDescription)) {
                 var name = parentDescription;
                 if (WebInspector.NativeConstructorFunctionParameters[name]) {
                     var params = WebInspector.NativeConstructorFunctionParameters[name][this._property.name];
@@ -306,7 +324,7 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
         var resolvedValue = this.resolvedValue();
         if (resolvedValue.isCollectionType() && this._mode === WebInspector.ObjectTreeView.Mode.Properties)
             resolvedValue.getCollectionEntries(0, 100, this._updateChildrenInternal.bind(this, this._updateEntries, this._mode));
-        else if (this._mode === WebInspector.ObjectTreeView.Mode.ClassAPI)
+        else if (this._mode === WebInspector.ObjectTreeView.Mode.ClassAPI || this._mode === WebInspector.ObjectTreeView.Mode.PureAPI)
             resolvedValue.getOwnPropertyDescriptors(this._updateChildrenInternal.bind(this, this._updateProperties, WebInspector.ObjectTreeView.Mode.ClassAPI));
         else if (this.property.name === "__proto__")
             resolvedValue.getOwnPropertyDescriptors(this._updateChildrenInternal.bind(this, this._updateProperties, WebInspector.ObjectTreeView.Mode.PrototypeAPI));
@@ -338,16 +356,16 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
         }
 
         if (!this.children.length) {
-            var emptyMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("No Entries."));
+            var emptyMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("No Entries"));
             this.appendChild(new WebInspector.TreeElement(emptyMessageElement, null, false));
         }
 
         // Show the prototype so users can see the API.
         var resolvedValue = this.resolvedValue();
-        resolvedValue.getOwnPropertyDescriptor("__proto__", function(propertyDescriptor) {
+        resolvedValue.getOwnPropertyDescriptor("__proto__", (propertyDescriptor) => {
             if (propertyDescriptor)
                 this.appendChild(new WebInspector.ObjectTreePropertyTreeElement(propertyDescriptor, propertyPath, mode));
-        }.bind(this));
+        });
     }
 
     _updateProperties(properties, propertyPath, mode)
@@ -391,7 +409,7 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
         }
 
         if (!this.children.length || (hadProto && this.children.length === 1)) {
-            var emptyMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("No Properties."));
+            var emptyMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("No Properties"));
             this.insertChild(new WebInspector.TreeElement(emptyMessageElement, null, false), 0);
         }
     }

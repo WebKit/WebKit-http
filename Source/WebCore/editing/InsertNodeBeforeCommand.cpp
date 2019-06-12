@@ -27,22 +27,19 @@
 #include "InsertNodeBeforeCommand.h"
 
 #include "Document.h"
-#include "ExceptionCodePlaceholder.h"
+#include "Editing.h"
 #include "RenderElement.h"
 #include "Text.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
-InsertNodeBeforeCommand::InsertNodeBeforeCommand(RefPtr<Node>&& insertChild, RefPtr<Node>&& refChild, ShouldAssumeContentIsAlwaysEditable shouldAssumeContentIsAlwaysEditable, EditAction editingAction)
-    : SimpleEditCommand(refChild->document(), editingAction)
-    , m_insertChild(insertChild)
+InsertNodeBeforeCommand::InsertNodeBeforeCommand(Ref<Node>&& insertChild, Node& refChild, ShouldAssumeContentIsAlwaysEditable shouldAssumeContentIsAlwaysEditable, EditAction editingAction)
+    : SimpleEditCommand(refChild.document(), editingAction)
+    , m_insertChild(WTFMove(insertChild))
     , m_refChild(refChild)
     , m_shouldAssumeContentIsAlwaysEditable(shouldAssumeContentIsAlwaysEditable)
 {
-    ASSERT(m_insertChild);
     ASSERT(!m_insertChild->parentNode());
-    ASSERT(m_refChild);
     ASSERT(m_refChild->parentNode());
 
     ASSERT(m_refChild->parentNode()->hasEditableStyle() || !m_refChild->parentNode()->renderer());
@@ -55,33 +52,22 @@ void InsertNodeBeforeCommand::doApply()
         return;
     ASSERT(isEditableNode(*parent));
 
-    parent->insertBefore(*m_insertChild, m_refChild.get(), IGNORE_EXCEPTION);
-
-    if (shouldPostAccessibilityNotification()) {
-        Position position = is<Text>(m_insertChild.get()) ? Position(downcast<Text>(m_insertChild.get()), 0) : createLegacyEditingPosition(m_insertChild.get(), 0);
-        notifyAccessibilityForTextChange(m_insertChild.get(), applyEditType(), m_insertChild->nodeValue(), VisiblePosition(position));
-    }
+    parent->insertBefore(m_insertChild, m_refChild.ptr());
 }
 
 void InsertNodeBeforeCommand::doUnapply()
 {
-    if (!isEditableNode(*m_insertChild))
+    if (!isEditableNode(m_insertChild))
         return;
 
-    // Need to notify this before actually deleting the text
-    if (shouldPostAccessibilityNotification()) {
-        Position position = is<Text>(m_insertChild.get()) ? Position(downcast<Text>(m_insertChild.get()), 0) : createLegacyEditingPosition(m_insertChild.get(), 0);
-        notifyAccessibilityForTextChange(m_insertChild.get(), unapplyEditType(), m_insertChild->nodeValue(), VisiblePosition(position));
-    }
-
-    m_insertChild->remove(IGNORE_EXCEPTION);
+    m_insertChild->remove();
 }
 
 #ifndef NDEBUG
 void InsertNodeBeforeCommand::getNodesInCommand(HashSet<Node*>& nodes)
 {
-    addNodeAndDescendants(m_insertChild.get(), nodes);
-    addNodeAndDescendants(m_refChild.get(), nodes);
+    addNodeAndDescendants(m_insertChild.ptr(), nodes);
+    addNodeAndDescendants(m_refChild.ptr(), nodes);
 }
 #endif
 

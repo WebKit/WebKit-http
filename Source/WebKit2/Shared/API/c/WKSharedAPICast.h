@@ -29,7 +29,6 @@
 #include "APIError.h"
 #include "APINumber.h"
 #include "APISecurityOrigin.h"
-#include "APISession.h"
 #include "APIString.h"
 #include "APIURL.h"
 #include "APIURLRequest.h"
@@ -81,7 +80,6 @@ class ObjCObjectGraph;
 class WebCertificateInfo;
 class WebConnection;
 class WebContextMenuItem;
-class WebGraphicsContext;
 class WebImage;
 
 template<typename APIType> struct APITypeInfo;
@@ -100,7 +98,6 @@ WK_ADD_API_MAPPING(WKDataRef, API::Data)
 WK_ADD_API_MAPPING(WKDictionaryRef, API::Dictionary)
 WK_ADD_API_MAPPING(WKDoubleRef, API::Double)
 WK_ADD_API_MAPPING(WKErrorRef, API::Error)
-WK_ADD_API_MAPPING(WKGraphicsContextRef, WebGraphicsContext)
 WK_ADD_API_MAPPING(WKImageRef, WebImage)
 WK_ADD_API_MAPPING(WKPointRef, API::Point)
 WK_ADD_API_MAPPING(WKRectRef, API::Rect)
@@ -114,7 +111,6 @@ WK_ADD_API_MAPPING(WKURLRef, API::URL)
 WK_ADD_API_MAPPING(WKURLRequestRef, API::URLRequest)
 WK_ADD_API_MAPPING(WKURLResponseRef, API::URLResponse)
 WK_ADD_API_MAPPING(WKUserContentURLPatternRef, API::UserContentURLPattern)
-WK_ADD_API_MAPPING(WKSessionRef, API::Session)
 
 template<> struct APITypeInfo<WKMutableArrayRef> { typedef API::Array ImplType; };
 template<> struct APITypeInfo<WKMutableDictionaryRef> { typedef API::Dictionary ImplType; };
@@ -140,7 +136,7 @@ auto toImpl(T t) -> ImplType*
 template<typename ImplType, typename APIType = typename ImplTypeInfo<ImplType>::APIType>
 class ProxyingRefPtr {
 public:
-    ProxyingRefPtr(PassRefPtr<ImplType> impl)
+    ProxyingRefPtr(RefPtr<ImplType>&& impl)
         : m_impl(impl)
     {
     }
@@ -214,8 +210,8 @@ inline ProxyingRefPtr<API::URLResponse> toAPI(const WebCore::ResourceResponse& r
 inline WKSecurityOriginRef toCopiedAPI(WebCore::SecurityOrigin* origin)
 {
     if (!origin)
-        return 0;
-    return toAPI(API::SecurityOrigin::create(*origin).leakRef());
+        return nullptr;
+    return toAPI(&API::SecurityOrigin::create(*origin).leakRef());
 }
 
 /* Geometry conversions */
@@ -296,6 +292,8 @@ inline WKEventModifiers toAPI(WebEvent::Modifiers modifiers)
         wkModifiers |= kWKEventModifiersAltKey;
     if (modifiers & WebEvent::MetaKey)
         wkModifiers |= kWKEventModifiersMetaKey;
+    if (modifiers & WebEvent::CapsLockKey)
+        wkModifiers |= kWKEventModifiersCapsLockKey;
     return wkModifiers;
 }
 
@@ -338,7 +336,7 @@ inline WKContextMenuItemTag toAPI(WebCore::ContextMenuAction action)
         return kWKContextMenuItemTagDownloadImageToDisk;
     case WebCore::ContextMenuItemTagCopyImageToClipboard:
         return kWKContextMenuItemTagCopyImageToClipboard;
-#if PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
+#if PLATFORM(GTK) || PLATFORM(QT)
     case WebCore::ContextMenuItemTagCopyImageUrlToClipboard:
         return kWKContextMenuItemTagCopyImageUrlToClipboard;
 #endif
@@ -358,7 +356,7 @@ inline WKContextMenuItemTag toAPI(WebCore::ContextMenuAction action)
         return kWKContextMenuItemTagCut;
     case WebCore::ContextMenuItemTagPaste:
         return kWKContextMenuItemTagPaste;
-#if PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
+#if PLATFORM(GTK) || PLATFORM(QT)
     case WebCore::ContextMenuItemTagSelectAll:
         return kWKContextMenuItemTagSelectAll;
 #endif
@@ -472,6 +470,8 @@ inline WKContextMenuItemTag toAPI(WebCore::ContextMenuAction action)
         return kWKContextMenuItemTagToggleVideoFullscreen;
     case WebCore::ContextMenuItemTagEnterVideoFullscreen:
         return kWKContextMenuItemTagEnterVideoFullscreen;
+    case WebCore::ContextMenuItemTagToggleVideoEnhancedFullscreen:
+        return kWKContextMenuItemTagToggleVideoEnhancedFullscreen;
     case WebCore::ContextMenuItemTagMediaPlayPause:
         return kWKContextMenuItemTagMediaPlayPause;
     case WebCore::ContextMenuItemTagMediaMute:
@@ -511,8 +511,8 @@ inline WKContextMenuItemTag toAPI(WebCore::ContextMenuAction action)
     case WebCore::ContextMenuItemTagShareMenu:
         return kWKContextMenuItemTagShareMenu;
     default:
-        if (action < WebCore::ContextMenuItemBaseApplicationTag)
-            LOG_ERROR("ContextMenuAction %i is an unknown tag but is below the allowable custom tag value of %i", action, WebCore::  ContextMenuItemBaseApplicationTag);
+        if (action < WebCore::ContextMenuItemBaseApplicationTag && !(action >= WebCore::ContextMenuItemBaseCustomTag && action <= WebCore::ContextMenuItemLastCustomTag))
+            LOG_ERROR("ContextMenuAction %i is an unknown tag but is below the allowable custom tag value of %i", action, WebCore::ContextMenuItemBaseApplicationTag);
         return static_cast<WKContextMenuItemTag>(action);
     }
 }
@@ -535,7 +535,7 @@ inline WebCore::ContextMenuAction toImpl(WKContextMenuItemTag tag)
     case kWKContextMenuItemTagCopyImageToClipboard:
         return WebCore::ContextMenuItemTagCopyImageToClipboard;
     case kWKContextMenuItemTagOpenFrameInNewWindow:
-#if PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
+#if PLATFORM(GTK) || PLATFORM(QT)
     case kWKContextMenuItemTagCopyImageUrlToClipboard:
         return WebCore::ContextMenuItemTagCopyImageUrlToClipboard;
 #endif
@@ -554,7 +554,7 @@ inline WebCore::ContextMenuAction toImpl(WKContextMenuItemTag tag)
         return WebCore::ContextMenuItemTagCut;
     case kWKContextMenuItemTagPaste:
         return WebCore::ContextMenuItemTagPaste;
-#if PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
+#if PLATFORM(GTK) || PLATFORM(QT)
     case kWKContextMenuItemTagSelectAll:
         return WebCore::ContextMenuItemTagSelectAll;
 #endif
@@ -668,6 +668,8 @@ inline WebCore::ContextMenuAction toImpl(WKContextMenuItemTag tag)
         return WebCore::ContextMenuItemTagToggleVideoFullscreen;
     case kWKContextMenuItemTagEnterVideoFullscreen:
         return WebCore::ContextMenuItemTagEnterVideoFullscreen;
+    case kWKContextMenuItemTagToggleVideoEnhancedFullscreen:
+        return WebCore::ContextMenuItemTagToggleVideoEnhancedFullscreen;
     case kWKContextMenuItemTagMediaPlayPause:
         return WebCore::ContextMenuItemTagMediaPlayPause;
     case kWKContextMenuItemTagMediaMute:
@@ -707,7 +709,7 @@ inline WebCore::ContextMenuAction toImpl(WKContextMenuItemTag tag)
         return WebCore::ContextMenuItemTagOpenLinkInThisWindow;
 #endif
     default:
-        if (tag < kWKContextMenuItemBaseApplicationTag)
+        if (tag < kWKContextMenuItemBaseApplicationTag && !(tag >= WebCore::ContextMenuItemBaseCustomTag && tag <= WebCore::ContextMenuItemLastCustomTag))
             LOG_ERROR("WKContextMenuItemTag %i is an unknown tag but is below the allowable custom tag value of %i", tag, kWKContextMenuItemBaseApplicationTag);
         return static_cast<WebCore::ContextMenuAction>(tag);
     }
@@ -908,15 +910,15 @@ inline WebCore::PageVisibilityState toPageVisibilityState(WKPageVisibilityState 
 {
     switch (wkPageVisibilityState) {
     case kWKPageVisibilityStateVisible:
-        return WebCore::PageVisibilityStateVisible;
+        return WebCore::PageVisibilityState::Visible;
     case kWKPageVisibilityStateHidden:
-        return WebCore::PageVisibilityStateHidden;
+        return WebCore::PageVisibilityState::Hidden;
     case kWKPageVisibilityStatePrerender:
-        return WebCore::PageVisibilityStatePrerender;
+        return WebCore::PageVisibilityState::Prerender;
     }
 
     ASSERT_NOT_REACHED();
-    return WebCore::PageVisibilityStateVisible;
+    return WebCore::PageVisibilityState::Visible;
 }
 
 inline ImageOptions toImageOptions(WKImageOptions wkImageOptions)
@@ -936,6 +938,9 @@ inline SnapshotOptions snapshotOptionsFromImageOptions(WKImageOptions wkImageOpt
     if (wkImageOptions & kWKImageOptionsShareable)
         snapshotOptions |= SnapshotOptionsShareable;
 
+    if (wkImageOptions & kWKSnapshotOptionsExtendedColor)
+        snapshotOptions |= SnapshotOptionsExtendedColor;
+    
     return snapshotOptions;
 }
 

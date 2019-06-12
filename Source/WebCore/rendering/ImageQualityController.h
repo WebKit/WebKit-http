@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageQualityController_h
-#define ImageQualityController_h
+#pragma once
 
 #include "GraphicsTypes.h"
 #include "Timer.h"
@@ -45,7 +44,7 @@ class ImageQualityController {
 public:
     explicit ImageQualityController(const RenderView&);
 
-    static Optional<InterpolationQuality> interpolationQualityFromStyle(const RenderStyle&);
+    static std::optional<InterpolationQuality> interpolationQualityFromStyle(const RenderStyle&);
     InterpolationQuality chooseInterpolationQuality(GraphicsContext&, RenderBoxModelObject*, Image&, const void* layer, const LayoutSize&);
 
     void rendererWillBeDestroyed(RenderBoxModelObject& renderer) { removeObject(&renderer); }
@@ -67,6 +66,4 @@ private:
     bool m_liveResizeOptimizationIsActive { false };
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore

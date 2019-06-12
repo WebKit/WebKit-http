@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,13 +25,13 @@
  */
 
 #include "config.h"
-#include "IDBKeyPath.h"
 
 #if ENABLE(INDEXED_DATABASE)
+#include "IDBKeyPath.h"
 
-#include "KeyedCoding.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/dtoa.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -191,118 +192,61 @@ void IDBParseKeyPath(const String& keyPath, Vector<String>& elements, IDBKeyPath
     }
 }
 
-IDBKeyPath::IDBKeyPath(const String& string)
-    : m_type(IndexedDB::KeyPathType::String)
-    , m_string(string)
+bool isIDBKeyPathValid(const IDBKeyPath& keyPath)
 {
-    ASSERT(!m_string.isNull());
-}
-
-IDBKeyPath::IDBKeyPath(const Vector<String>& array)
-    : m_type(IndexedDB::KeyPathType::Array)
-    , m_array(array)
-{
-#ifndef NDEBUG
-    for (auto& key : array)
-        ASSERT(!key.isNull());
-#endif
-}
-
-bool IDBKeyPath::isValid() const
-{
-    switch (m_type) {
-    case IndexedDB::KeyPathType::Null:
-        return false;
-
-    case IndexedDB::KeyPathType::String:
-        return IDBIsValidKeyPath(m_string);
-
-    case IndexedDB::KeyPathType::Array:
-        if (m_array.isEmpty())
+    auto visitor = WTF::makeVisitor([](const String& string) {
+        return IDBIsValidKeyPath(string);
+    }, [](const Vector<String>& vector) {
+        if (vector.isEmpty())
             return false;
-        for (auto& key : m_array) {
+        for (auto& key : vector) {
             if (!IDBIsValidKeyPath(key))
                 return false;
         }
         return true;
-    }
-    ASSERT_NOT_REACHED();
-    return false;
+    });
+    return WTF::visit(visitor, keyPath);
 }
 
-bool IDBKeyPath::operator==(const IDBKeyPath& other) const
+IDBKeyPath isolatedCopy(const IDBKeyPath& keyPath)
 {
-    if (m_type != other.m_type)
-        return false;
+    auto visitor = WTF::makeVisitor([](const String& string) -> IDBKeyPath {
+        return string.isolatedCopy();
+    }, [](const Vector<String>& vector) -> IDBKeyPath {
+        Vector<String> vectorCopy;
+        vectorCopy.reserveInitialCapacity(vector.size());
+        for (auto& string : vector)
+            vectorCopy.uncheckedAppend(string.isolatedCopy());
+        return vectorCopy;
+    });
 
-    switch (m_type) {
-    case IndexedDB::KeyPathType::Null:
-        return true;
-    case IndexedDB::KeyPathType::String:
-        return m_string == other.m_string;
-    case IndexedDB::KeyPathType::Array:
-        return m_array == other.m_array;
-    }
-    ASSERT_NOT_REACHED();
-    return false;
+    return WTF::visit(visitor, keyPath);
 }
 
-IDBKeyPath IDBKeyPath::isolatedCopy() const
+#ifndef NDEBUG
+String loggingString(const IDBKeyPath& path)
 {
-    IDBKeyPath result;
-    result.m_type = m_type;
-    result.m_string = m_string.isolatedCopy();
+    auto visitor = WTF::makeVisitor([](const String& string) {
+        return makeString("< ", string, " >");
+    }, [](const Vector<String>& strings) {
+        if (strings.isEmpty())
+            return String("< >");
 
-    result.m_array.reserveInitialCapacity(m_array.size());
-    for (auto& key : m_array)
-        result.m_array.uncheckedAppend(key.isolatedCopy());
+        StringBuilder builder;
+        builder.append("< ");
+        for (size_t i = 0; i < strings.size() - 1; ++i) {
+            builder.append(strings[i]);
+            builder.append(", ");
+        }
+        builder.append(strings.last());
+        builder.append(" >");
 
-    return result;
+        return builder.toString();
+    });
+
+    return WTF::visit(visitor, path);
 }
-
-void IDBKeyPath::encode(KeyedEncoder& encoder) const
-{
-    encoder.encodeEnum("type", m_type);
-    switch (m_type) {
-    case IndexedDB::KeyPathType::Null:
-        break;
-    case IndexedDB::KeyPathType::String:
-        encoder.encodeString("string", m_string);
-        break;
-    case IndexedDB::KeyPathType::Array:
-        encoder.encodeObjects("array", m_array.begin(), m_array.end(), [](WebCore::KeyedEncoder& encoder, const String& string) {
-            encoder.encodeString("string", string);
-        });
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-    };
-}
-
-bool IDBKeyPath::decode(KeyedDecoder& decoder, IDBKeyPath& result)
-{
-    auto enumFunction = [](IndexedDB::KeyPathType value) {
-        return value == IndexedDB::KeyPathType::Null || value == IndexedDB::KeyPathType::String || value == IndexedDB::KeyPathType::Array;
-    };
-
-    if (!decoder.decodeEnum("type", result.m_type, enumFunction))
-        return false;
-
-    if (result.m_type == IndexedDB::KeyPathType::Null)
-        return true;
-
-    if (result.m_type == IndexedDB::KeyPathType::String)
-        return decoder.decodeString("string", result.m_string);
-
-    ASSERT(result.m_type == IndexedDB::KeyPathType::Array);
-
-    auto arrayFunction = [](KeyedDecoder& decoder, String& result) {
-        return decoder.decodeString("string", result);
-    };
-
-    result.m_array.clear();
-    return decoder.decodeObjects("array", result.m_array, arrayFunction);
-}
+#endif
 
 } // namespace WebCore
 

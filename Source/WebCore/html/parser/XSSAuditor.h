@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef XSSAuditor_h
-#define XSSAuditor_h
+#pragma once
 
 #include "HTMLToken.h"
 #include "HTTPParsers.h"
@@ -106,8 +105,7 @@ private:
     URL m_documentURL;
     bool m_isEnabled;
 
-    ContentSecurityPolicy::ReflectedXSSDisposition m_xssProtection;
-    bool m_didSendValidCSPHeader;
+    XSSProtectionDisposition m_xssProtection;
     bool m_didSendValidXSSProtectionHeader;
 
     String m_decodedURL;
@@ -120,6 +118,4 @@ private:
     TextEncoding m_encoding;
 };
 
-}
-
-#endif
+} // namespace WebCore

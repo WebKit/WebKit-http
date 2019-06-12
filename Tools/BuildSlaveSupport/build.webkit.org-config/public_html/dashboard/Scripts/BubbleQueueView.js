@@ -75,24 +75,6 @@ BubbleQueueView.prototype = {
         }, this);
     },
 
-    addLinkToRow: function(rowElement, className, text, url)
-    {
-        var linkElement = document.createElement("a");
-        linkElement.className = className;
-        linkElement.textContent = text;
-        linkElement.href = url;
-        linkElement.target = "_blank";
-        rowElement.appendChild(linkElement);
-    },
-
-    addTextToRow: function(rowElement, className, text)
-    {
-        var spanElement = document.createElement("span");
-        spanElement.className = className;
-        spanElement.textContent = text;
-        rowElement.appendChild(spanElement);
-    },
-
     _addQueueHeadingToPopover: function(queue, content)
     {
         var title = document.createElement("div");
@@ -113,29 +95,10 @@ BubbleQueueView.prototype = {
         content.appendChild(title);
     },
 
-    _addDividerToPopover: function(content)
-    {
-        var divider = document.createElement("div");
-        divider.className = "divider";
-        content.appendChild(divider);
-    },
-
     _timeIntervalString: function(time)
     {
-        var secondsInHour = 60 * 60;
         var timeDifference = (Date.now() - time.getTime()) / 1000;
-        var hours = Math.floor(timeDifference / secondsInHour);
-        var minutes = Math.floor((timeDifference - hours * secondsInHour) / 60);
-        var hoursPart = "";
-        if (hours === 1)
-            hoursPart = "1\xa0hour and ";
-        else if (hours > 0)
-            hoursPart = hours + "\xa0hours and ";
-        if (!minutes)
-            return "less than a minute";
-        if (minutes === 1)
-            return hoursPart + "1\xa0minute";
-        return hoursPart + minutes + "\xa0minutes";
+        return this._readableTimeString(timeDifference)
     },
 
     _popoverContentForBubbleQueue: function(queue)

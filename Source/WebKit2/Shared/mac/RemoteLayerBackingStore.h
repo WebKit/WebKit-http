@@ -23,12 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RemoteLayerBackingStore_h
-#define RemoteLayerBackingStore_h
+#pragma once
 
 #include "ShareableBitmap.h"
 #include <WebCore/FloatRect.h>
 #include <WebCore/IOSurface.h>
+#include <WebCore/MachSendRight.h>
 #include <WebCore/Region.h>
 #include <chrono>
 
@@ -50,7 +50,7 @@ public:
     RemoteLayerBackingStore(PlatformCALayerRemote*);
     ~RemoteLayerBackingStore();
 
-    void ensureBackingStore(WebCore::FloatSize, float scale, bool acceleratesDrawing, bool isOpaque);
+    void ensureBackingStore(WebCore::FloatSize, float scale, bool acceleratesDrawing, bool deepColor, bool isOpaque);
 
     void setNeedsDisplay(const WebCore::IntRect);
     void setNeedsDisplay();
@@ -65,10 +65,11 @@ public:
 
     PlatformCALayerRemote* layer() const { return m_layer; }
 
-    void applyBackingStoreToLayer(CALayer *);
+    enum class LayerContentsType { IOSurface, CAMachPort };
+    void applyBackingStoreToLayer(CALayer *, LayerContentsType);
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RemoteLayerBackingStore&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RemoteLayerBackingStore&);
 
     void enumerateRectsBeingDrawn(CGContextRef, void (^)(CGRect));
 
@@ -97,7 +98,11 @@ private:
     void drawInContext(WebCore::GraphicsContext&, CGImageRef backImage);
     void clearBackingStore();
     void swapToValidFrontBuffer();
-    
+
+#if USE(IOSURFACE)
+    WebCore::IOSurface::Format surfaceBufferFormat() const;
+#endif
+
     WebCore::IntSize backingStoreSize() const;
 
     PlatformCALayerRemote* m_layer;
@@ -134,11 +139,13 @@ private:
     Buffer m_backBuffer;
 #if USE(IOSURFACE)
     Buffer m_secondaryBackBuffer;
+    WebCore::MachSendRight m_frontBufferSendRight;
 #endif
 
     RetainPtr<CGContextRef> m_frontContextPendingFlush;
 
-    bool m_acceleratesDrawing;
+    bool m_acceleratesDrawing { false };
+    bool m_deepColor { false };
 
     WebCore::RepaintRectList m_paintingRects;
 
@@ -146,5 +153,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // RemoteLayerBackingStore_h

@@ -24,92 +24,81 @@
  *
  */
 
-#ifndef MessagePort_h
-#define MessagePort_h
+#pragma once
 
-#include "EventListener.h"
 #include "EventTarget.h"
+#include "ExceptionOr.h"
 #include "MessagePortChannel.h"
-#include <memory>
-#include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
+
+namespace JSC {
+class ExecState;
+class JSObject;
+class JSValue;
+}
 
 namespace WebCore {
 
-    class Event;
-    class Frame;
-    class MessagePort;
-    class ScriptExecutionContext;
+class Frame;
 
-    // The overwhelmingly common case is sending a single port, so handle that efficiently with an inline buffer of size 1.
-    typedef Vector<RefPtr<MessagePort>, 1> MessagePortArray;
+class MessagePort final : public RefCounted<MessagePort>, public EventTargetWithInlineData {
+public:
+    static Ref<MessagePort> create(ScriptExecutionContext& scriptExecutionContext) { return adoptRef(*new MessagePort(scriptExecutionContext)); }
+    virtual ~MessagePort();
 
-    class MessagePort final : public RefCounted<MessagePort>, public EventTargetWithInlineData {
-    public:
-        static Ref<MessagePort> create(ScriptExecutionContext& scriptExecutionContext) { return adoptRef(*new MessagePort(scriptExecutionContext)); }
-        virtual ~MessagePort();
+    ExceptionOr<void> postMessage(JSC::ExecState&, JSC::JSValue message, Vector<JSC::Strong<JSC::JSObject>>&&);
 
-        void postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, ExceptionCode&);
-        // Needed for Objective-C bindings (see bug 28774).
-        void postMessage(PassRefPtr<SerializedScriptValue> message, MessagePort*, ExceptionCode&);
+    void start();
+    void close();
 
-        void start();
-        void close();
+    void entangle(std::unique_ptr<MessagePortChannel>&&);
 
-        void entangle(std::unique_ptr<MessagePortChannel>);
-        std::unique_ptr<MessagePortChannel> disentangle();
+    // Returns nullptr if the passed-in vector is empty.
+    static ExceptionOr<std::unique_ptr<MessagePortChannelArray>> disentanglePorts(Vector<RefPtr<MessagePort>>&&);
 
-        // Returns 0 if there is an exception, or if the passed-in array is 0/empty.
-        static std::unique_ptr<MessagePortChannelArray> disentanglePorts(const MessagePortArray*, ExceptionCode&);
+    static Vector<RefPtr<MessagePort>> entanglePorts(ScriptExecutionContext&, std::unique_ptr<MessagePortChannelArray>&&);
 
-        // Returns 0 if the passed array is 0/empty.
-        static std::unique_ptr<MessagePortArray> entanglePorts(ScriptExecutionContext&, std::unique_ptr<MessagePortChannelArray>);
+    void messageAvailable();
+    bool started() const { return m_started; }
 
-        void messageAvailable();
-        bool started() const { return m_started; }
+    void contextDestroyed();
 
-        void contextDestroyed();
+    ScriptExecutionContext* scriptExecutionContext() const final { return m_scriptExecutionContext; }
 
-        virtual EventTargetInterface eventTargetInterface() const override { return MessagePortEventTargetInterfaceType; }
-        virtual ScriptExecutionContext* scriptExecutionContext() const override { return m_scriptExecutionContext; }
+    void dispatchMessages();
 
-        void dispatchMessages();
+    bool hasPendingActivity();
 
-        using RefCounted<MessagePort>::ref;
-        using RefCounted<MessagePort>::deref;
+    // Returns null if there is no entangled port, or if the entangled port is run by a different thread.
+    // This is used solely to enable a GC optimization. Some platforms may not be able to determine ownership
+    // of the remote port (since it may live cross-process) - those platforms may always return null.
+    MessagePort* locallyEntangledPort();
 
-        bool hasPendingActivity();
+    using RefCounted::ref;
+    using RefCounted::deref;
 
-        // Returns null if there is no entangled port, or if the entangled port is run by a different thread.
-        // This is used solely to enable a GC optimization. Some platforms may not be able to determine ownership
-        // of the remote port (since it may live cross-process) - those platforms may always return null.
-        MessagePort* locallyEntangledPort();
+private:
+    explicit MessagePort(ScriptExecutionContext&);
 
-        // A port starts out its life entangled, and remains entangled until it is closed or is cloned.
-        bool isEntangled() { return !m_closed && !isNeutered(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
-        // A port gets neutered when it is transferred to a new owner via postMessage().
-        bool isNeutered() { return !m_entangledChannel; }
+    bool isMessagePort() const final { return true; }
+    EventTargetInterface eventTargetInterface() const final { return MessagePortEventTargetInterfaceType; }
 
-        bool addEventListener(const AtomicString& eventType, RefPtr<EventListener>&&, bool useCapture) override;
+    bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) final;
 
-    private:
-        explicit MessagePort(ScriptExecutionContext&);
+    std::unique_ptr<MessagePortChannel> disentangle();
 
-        virtual void refEventTarget() override { ref(); }
-        virtual void derefEventTarget() override { deref(); }
-        virtual bool isMessagePort() const override { return true; }
+    // A port starts out its life entangled, and remains entangled until it is closed or is cloned.
+    bool isEntangled() const { return !m_closed && !isNeutered(); }
 
-        std::unique_ptr<MessagePortChannel> m_entangledChannel;
+    // A port gets neutered when it is transferred to a new owner via postMessage().
+    bool isNeutered() const { return !m_entangledChannel; }
 
-        bool m_started;
-        bool m_closed;
-
-        ScriptExecutionContext* m_scriptExecutionContext;
-    };
+    std::unique_ptr<MessagePortChannel> m_entangledChannel;
+    bool m_started { false };
+    bool m_closed { false };
+    ScriptExecutionContext* m_scriptExecutionContext;
+};
 
 } // namespace WebCore
-
-#endif // MessagePort_h

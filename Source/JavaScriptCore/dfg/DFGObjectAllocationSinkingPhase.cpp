@@ -48,6 +48,20 @@ namespace JSC { namespace DFG {
 
 namespace {
 
+NO_RETURN_DUE_TO_CRASH NEVER_INLINE void crash(const char*, int line, int)
+{
+    UNUSED_PARAM(line);
+    CRASH_WITH_SECURITY_IMPLICATION_AND_INFO(ObjectAllocationSinkingAssertionFailure, line);
+}
+
+#undef RELEASE_ASSERT
+#define RELEASE_ASSERT(assertion) do { \
+    if (!(assertion)) { \
+        WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
+        crash(__FILE__, __LINE__, __COUNTER__); \
+    } \
+} while (0)
+
 bool verbose = false;
 
 // In order to sink object cycles, we use a points-to analysis coupled
@@ -139,7 +153,7 @@ public:
     // once it is escaped if it still has pointers to it in order to
     // replace any use of those pointers by the corresponding
     // materialization
-    enum class Kind { Escaped, Object, Activation, Function, ArrowFunction, GeneratorFunction };
+    enum class Kind { Escaped, Object, Activation, Function, GeneratorFunction, AsyncFunction };
 
     explicit Allocation(Node* identifier = nullptr, Kind kind = Kind::Escaped)
         : m_identifier(identifier)
@@ -186,28 +200,29 @@ public:
         }
     }
 
-    Allocation& setStructures(const StructureSet& structures)
+    Allocation& setStructures(const RegisteredStructureSet& structures)
     {
         ASSERT(hasStructures() && !structures.isEmpty());
         m_structures = structures;
         return *this;
     }
 
-    Allocation& mergeStructures(const StructureSet& structures)
+    Allocation& mergeStructures(const RegisteredStructureSet& structures)
     {
         ASSERT(hasStructures() || structures.isEmpty());
         m_structures.merge(structures);
         return *this;
     }
 
-    Allocation& filterStructures(const StructureSet& structures)
+    Allocation& filterStructures(const RegisteredStructureSet& structures)
     {
         ASSERT(hasStructures());
         m_structures.filter(structures);
+        RELEASE_ASSERT(!m_structures.isEmpty());
         return *this;
     }
 
-    const StructureSet& structures() const
+    const RegisteredStructureSet& structures() const
     {
         return m_structures;
     }
@@ -233,7 +248,7 @@ public:
 
     bool isFunctionAllocation() const
     {
-        return m_kind == Kind::Function || m_kind == Kind::ArrowFunction || m_kind == Kind::GeneratorFunction;
+        return m_kind == Kind::Function || m_kind == Kind::GeneratorFunction || m_kind == Kind::AsyncFunction;
     }
 
     bool operator==(const Allocation& other) const
@@ -268,13 +283,13 @@ public:
         case Kind::Function:
             out.print("Function");
             break;
-                
-        case Kind::ArrowFunction:
-            out.print("ArrowFunction");
-            break;
 
         case Kind::GeneratorFunction:
             out.print("GeneratorFunction");
+            break;
+
+        case Kind::AsyncFunction:
+            out.print("AsyncFunction");
             break;
 
         case Kind::Activation:
@@ -283,7 +298,7 @@ public:
         }
         out.print("Allocation(");
         if (!m_structures.isEmpty())
-            out.print(inContext(m_structures, context));
+            out.print(inContext(m_structures.toStructureSet(), context));
         if (!m_fields.isEmpty()) {
             if (!m_structures.isEmpty())
                 out.print(", ");
@@ -296,7 +311,7 @@ private:
     Node* m_identifier; // This is the actual node that created the allocation
     Kind m_kind;
     HashMap<PromotedLocationDescriptor, Node*> m_fields;
-    StructureSet m_structures;
+    RegisteredStructureSet m_structures;
 };
 
 class LocalHeap {
@@ -441,7 +456,7 @@ public:
             return;
         }
 
-        HashSet<Node*> toEscape;
+        NodeSet toEscape;
 
         for (auto& allocationEntry : other.m_allocations)
             m_allocations.add(allocationEntry.key, allocationEntry.value);
@@ -458,14 +473,14 @@ public:
                 continue;
 
             if (allocationEntry.value.kind() != allocationIter->value.kind()) {
-                toEscape.add(allocationEntry.key);
+                toEscape.addVoid(allocationEntry.key);
                 for (const auto& fieldEntry : allocationIter->value.fields())
-                    toEscape.add(fieldEntry.value);
+                    toEscape.addVoid(fieldEntry.value);
             } else {
                 mergePointerSets(
                     allocationEntry.value.fields(), allocationIter->value.fields(),
                     [&] (Node* identifier) {
-                        toEscape.add(identifier);
+                        toEscape.addVoid(identifier);
                     },
                     [&] (PromotedLocationDescriptor field) {
                         allocationEntry.value.remove(field);
@@ -476,7 +491,7 @@ public:
 
         mergePointerSets(m_pointers, other.m_pointers,
             [&] (Node* identifier) {
-                toEscape.add(identifier);
+                toEscape.addVoid(identifier);
             },
             [&] (Node* field) {
                 m_pointers.remove(field);
@@ -499,7 +514,7 @@ public:
         assertIsValid();
     }
 
-    void pruneByLiveness(const HashSet<Node*>& live)
+    void pruneByLiveness(const NodeSet& live)
     {
         Vector<Node*> toRemove;
         for (const auto& entry : m_pointers) {
@@ -655,9 +670,9 @@ private:
 
     void prune()
     {
-        HashSet<Node*> reachable;
+        NodeSet reachable;
         for (const auto& entry : m_pointers)
-            reachable.add(entry.value);
+            reachable.addVoid(entry.value);
 
         // Repeatedly mark as reachable allocations in fields of other
         // reachable allocations
@@ -832,30 +847,31 @@ private:
             target = &m_heap.newAllocation(node, Allocation::Kind::Object);
             target->setStructures(node->structure());
             writes.add(
-                StructurePLoc, LazyNode(m_graph.freeze(node->structure())));
+                StructurePLoc, LazyNode(m_graph.freeze(node->structure().get())));
             break;
 
         case NewFunction:
-        case NewArrowFunction:
-        case NewGeneratorFunction: {
-            if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid()) {
+        case NewGeneratorFunction:
+        case NewAsyncFunction: {
+            if (isStillValid(node->castOperand<FunctionExecutable*>()->singletonFunction())) {
                 m_heap.escape(node->child1().node());
                 break;
             }
-            
+
             if (node->op() == NewGeneratorFunction)
                 target = &m_heap.newAllocation(node, Allocation::Kind::GeneratorFunction);
-            else if (node->op() == NewArrowFunction)
-                target = &m_heap.newAllocation(node, Allocation::Kind::ArrowFunction);
+            else if (node->op() == NewAsyncFunction)
+                target = &m_heap.newAllocation(node, Allocation::Kind::AsyncFunction);
             else
                 target = &m_heap.newAllocation(node, Allocation::Kind::Function);
+
             writes.add(FunctionExecutablePLoc, LazyNode(node->cellOperand()));
             writes.add(FunctionActivationPLoc, LazyNode(node->child1().node()));
             break;
         }
 
         case CreateActivation: {
-            if (node->castOperand<SymbolTable*>()->singletonScope()->isStillValid()) {
+            if (isStillValid(node->castOperand<SymbolTable*>()->singletonScope())) {
                 m_heap.escape(node->child1().node());
                 break;
             }
@@ -864,7 +880,7 @@ private:
             writes.add(ActivationScopePLoc, LazyNode(node->child1().node()));
             {
                 SymbolTable* symbolTable = node->castOperand<SymbolTable*>();
-                ConcurrentJITLocker locker(symbolTable->m_lock);
+                ConcurrentJSLocker locker(symbolTable->m_lock);
                 LazyNode initialValue(m_graph.freeze(node->initializationValueForActivation()));
                 for (auto iter = symbolTable->begin(locker), end = symbolTable->end(locker); iter != end; ++iter) {
                     writes.add(
@@ -878,7 +894,7 @@ private:
         case PutStructure:
             target = m_heap.onlyLocalAllocation(node->child1().node());
             if (target && target->isObjectAllocation()) {
-                writes.add(StructurePLoc, LazyNode(m_graph.freeze(JSValue(node->transition()->next))));
+                writes.add(StructurePLoc, LazyNode(m_graph.freeze(JSValue(node->transition()->next.get()))));
                 target->setStructures(node->transition()->next);
             } else
                 m_heap.escape(node->child1().node());
@@ -887,7 +903,15 @@ private:
         case CheckStructure: {
             Allocation* allocation = m_heap.onlyLocalAllocation(node->child1().node());
             if (allocation && allocation->isObjectAllocation()) {
-                allocation->filterStructures(node->structureSet());
+                RegisteredStructureSet filteredStructures = allocation->structures();
+                filteredStructures.filter(node->structureSet());
+                if (filteredStructures.isEmpty()) {
+                    // FIXME: Write a test for this:
+                    // https://bugs.webkit.org/show_bug.cgi?id=174322
+                    m_heap.escape(node->child1().node());
+                    break;
+                }
+                allocation->setStructures(filteredStructures);
                 if (Node* value = heapResolve(PromotedHeapLocation(allocation->identifier(), StructurePLoc)))
                     node->convertToCheckStructureImmediate(value);
             } else
@@ -911,7 +935,7 @@ private:
             Allocation* allocation = m_heap.onlyLocalAllocation(node->child1().node());
             if (allocation && allocation->isObjectAllocation()) {
                 MultiGetByOffsetData& data = node->multiGetByOffsetData();
-                StructureSet validStructures;
+                RegisteredStructureSet validStructures;
                 bool hasInvalidStructures = false;
                 for (const auto& multiGetByOffsetCase : data.cases) {
                     if (!allocation->structures().overlaps(multiGetByOffsetCase.set()))
@@ -931,7 +955,7 @@ private:
                         RELEASE_ASSERT_NOT_REACHED();
                     }
                 }
-                if (hasInvalidStructures) {
+                if (hasInvalidStructures || validStructures.isEmpty()) {
                     m_heap.escape(node->child1().node());
                     break;
                 }
@@ -1086,6 +1110,7 @@ private:
         m_materializationToEscapee.clear();
         m_materializationSiteToMaterializations.clear();
         m_materializationSiteToRecoveries.clear();
+        m_materializationSiteToHints.clear();
 
         // Logically we wish to consider every allocation and sink
         // it. However, it is probably not profitable to sink an
@@ -1152,17 +1177,17 @@ private:
 
             // The sink candidates are initially the unescaped
             // allocations dying at tail of blocks
-            HashSet<Node*> allocations;
+            NodeSet allocations;
             for (const auto& entry : m_heap.allocations()) {
                 if (!entry.value.isEscapedAllocation())
-                    allocations.add(entry.key);
+                    allocations.addVoid(entry.key);
             }
 
             m_heap.pruneByLiveness(m_combinedLiveness.liveAtTail[block]);
 
             for (Node* identifier : allocations) {
                 if (!m_heap.isAllocation(identifier))
-                    m_sinkCandidates.add(identifier);
+                    m_sinkCandidates.addVoid(identifier);
             }
         }
 
@@ -1241,16 +1266,35 @@ private:
             return;
 
         // First collect the hints that will be needed when the node
-        // we materialize is still stored into other unescaped sink candidates
-        Vector<PromotedHeapLocation> hints;
+        // we materialize is still stored into other unescaped sink candidates.
+        // The way to interpret this vector is:
+        //
+        // PromotedHeapLocation(NotEscapedAllocation, field) = identifierAllocation
+        //
+        // e.g:
+        // PromotedHeapLocation(@PhantomNewFunction, FunctionActivationPLoc) = IdentifierOf(@MaterializeCreateActivation)
+        // or:
+        // PromotedHeapLocation(@PhantomCreateActivation, ClosureVarPLoc(x)) = IdentifierOf(@NewFunction)
+        //
+        // When the rhs of the `=` is to be materialized at this `where` point in the program
+        // and IdentifierOf(Materialization) is the original sunken allocation of the materialization.
+        //
+        // The reason we need to collect all the `identifiers` here is that
+        // we may materialize multiple versions of the allocation along control
+        // flow edges. We will PutHint these values along those edges. However,
+        // we also need to PutHint them when we join and have a Phi of the allocations.
+        Vector<std::pair<PromotedHeapLocation, Node*>> hints;
         for (const auto& entry : m_heap.allocations()) {
             if (escapees.contains(entry.key))
                 continue;
 
             for (const auto& field : entry.value.fields()) {
                 ASSERT(m_sinkCandidates.contains(entry.key) || !escapees.contains(field.value));
-                if (escapees.contains(field.value) && !field.key.neededForMaterialization())
-                    hints.append(PromotedHeapLocation(entry.key, field.key));
+                auto iter = escapees.find(field.value);
+                if (iter != escapees.end()) {
+                    ASSERT(m_sinkCandidates.contains(field.value));
+                    hints.append(std::make_pair(PromotedHeapLocation(entry.key, field.key), field.value));
+                }
             }
         }
 
@@ -1289,28 +1333,28 @@ private:
 
 
         // Compute dependencies between materializations
-        HashMap<Node*, HashSet<Node*>> dependencies;
-        HashMap<Node*, HashSet<Node*>> reverseDependencies;
-        HashMap<Node*, HashSet<Node*>> forMaterialization;
+        HashMap<Node*, NodeSet> dependencies;
+        HashMap<Node*, NodeSet> reverseDependencies;
+        HashMap<Node*, NodeSet> forMaterialization;
         for (const auto& entry : escapees) {
-            auto& myDependencies = dependencies.add(entry.key, HashSet<Node*>()).iterator->value;
-            auto& myDependenciesForMaterialization = forMaterialization.add(entry.key, HashSet<Node*>()).iterator->value;
-            reverseDependencies.add(entry.key, HashSet<Node*>());
+            auto& myDependencies = dependencies.add(entry.key, NodeSet()).iterator->value;
+            auto& myDependenciesForMaterialization = forMaterialization.add(entry.key, NodeSet()).iterator->value;
+            reverseDependencies.add(entry.key, NodeSet());
             for (const auto& field : entry.value.fields()) {
                 if (escapees.contains(field.value) && field.value != entry.key) {
-                    myDependencies.add(field.value);
-                    reverseDependencies.add(field.value, HashSet<Node*>()).iterator->value.add(entry.key);
+                    myDependencies.addVoid(field.value);
+                    reverseDependencies.add(field.value, NodeSet()).iterator->value.addVoid(entry.key);
                     if (field.key.neededForMaterialization())
-                        myDependenciesForMaterialization.add(field.value);
+                        myDependenciesForMaterialization.addVoid(field.value);
                 }
             }
         }
 
         // Helper function to update the materialized set and the
         // dependencies
-        HashSet<Node*> materialized;
+        NodeSet materialized;
         auto materialize = [&] (Node* identifier) {
-            materialized.add(identifier);
+            materialized.addVoid(identifier);
             for (Node* dep : dependencies.get(identifier))
                 reverseDependencies.find(dep)->value.remove(identifier);
             for (Node* rdep : reverseDependencies.get(identifier)) {
@@ -1378,7 +1422,7 @@ private:
             // first.
             if (materialized.isEmpty()) {
                 uint64_t maxEvaluation = 0;
-                Allocation* bestAllocation;
+                Allocation* bestAllocation = nullptr;
                 for (auto& entry : escapees) {
                     if (!forMaterialization.find(entry.key)->value.isEmpty())
                         continue;
@@ -1402,15 +1446,15 @@ private:
 
         materialized.clear();
 
-        HashSet<Node*> escaped;
+        NodeSet escaped;
         for (const Allocation& allocation : toMaterialize)
-            escaped.add(allocation.identifier());
+            escaped.addVoid(allocation.identifier());
         for (const Allocation& allocation : toMaterialize) {
             for (const auto& field : allocation.fields()) {
                 if (escaped.contains(field.value) && !materialized.contains(field.value))
                     toRecover.append(PromotedHeapLocation(allocation.identifier(), field.key));
             }
-            materialized.add(allocation.identifier());
+            materialized.addVoid(allocation.identifier());
         }
 
         Vector<Node*>& materializations = m_materializationSiteToMaterializations.add(
@@ -1429,10 +1473,8 @@ private:
 
         // The hints need to be after the "real" recoveries so that we
         // don't hint not-yet-complete objects
-        if (!hints.isEmpty()) {
-            m_materializationSiteToRecoveries.add(
-                where, Vector<PromotedHeapLocation>()).iterator->value.appendVector(hints);
-        }
+        m_materializationSiteToHints.add(
+            where, Vector<std::pair<PromotedHeapLocation, Node*>>()).iterator->value.appendVector(hints);
     }
 
     Node* createMaterialization(const Allocation& allocation, Node* where)
@@ -1443,22 +1485,21 @@ private:
         switch (allocation.kind()) {
         case Allocation::Kind::Object: {
             ObjectMaterializationData* data = m_graph.m_objectMaterializationData.add();
-            StructureSet* set = m_graph.addStructureSet(allocation.structures());
 
             return m_graph.addNode(
                 allocation.identifier()->prediction(), Node::VarArg, MaterializeNewObject,
                 where->origin.withSemantic(allocation.identifier()->origin.semantic),
-                OpInfo(set), OpInfo(data), 0, 0);
+                OpInfo(m_graph.addStructureSet(allocation.structures())), OpInfo(data), 0, 0);
         }
 
-        case Allocation::Kind::ArrowFunction:
+        case Allocation::Kind::AsyncFunction:
         case Allocation::Kind::GeneratorFunction:
         case Allocation::Kind::Function: {
             FrozenValue* executable = allocation.identifier()->cellOperand();
             
             NodeType nodeType =
-                allocation.kind() == Allocation::Kind::ArrowFunction ? NewArrowFunction :
-                allocation.kind() == Allocation::Kind::GeneratorFunction ? NewGeneratorFunction : NewFunction;
+                allocation.kind() == Allocation::Kind::GeneratorFunction ? NewGeneratorFunction :
+                allocation.kind() == Allocation::Kind::AsyncFunction ? NewAsyncFunction : NewFunction;
             
             return m_graph.addNode(
                 allocation.identifier()->prediction(), nodeType,
@@ -1499,10 +1540,10 @@ private:
                         // If the location is not on a sink candidate,
                         // we only sink it if it is read
                         if (m_sinkCandidates.contains(location.base()))
-                            locations.add(location);
+                            locations.addVoid(location);
                     },
                     [&] (PromotedHeapLocation location) -> Node* {
-                        locations.add(location);
+                        locations.addVoid(location);
                         return nullptr;
                     });
             }
@@ -1547,6 +1588,9 @@ private:
         HashMap<FrozenValue*, Node*> lazyMapping;
         if (!m_bottom)
             m_bottom = m_insertionSet.insertConstant(0, m_graph.block(0)->at(0)->origin, jsNumber(1927));
+
+        Vector<HashSet<PromotedHeapLocation>> hintsForPhi(m_sinkCandidates.size());
+
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
             m_heap = m_heapAtHead[block];
 
@@ -1566,6 +1610,31 @@ private:
                 for (Node* materialization : m_materializationSiteToMaterializations.get(node)) {
                     Node* escapee = m_materializationToEscapee.get(materialization);
                     m_allocationSSA.newDef(m_nodeToVariable.get(escapee), block, materialization);
+                }
+
+                for (std::pair<PromotedHeapLocation, Node*> pair : m_materializationSiteToHints.get(node)) {
+                    PromotedHeapLocation location = pair.first;
+                    Node* identifier = pair.second;
+                    // We're materializing `identifier` at this point, and the unmaterialized
+                    // version is inside `location`. We track which SSA variable this belongs
+                    // to in case we also need a PutHint for the Phi.
+                    if (UNLIKELY(validationEnabled())) {
+                        RELEASE_ASSERT(m_sinkCandidates.contains(location.base()));
+                        RELEASE_ASSERT(m_sinkCandidates.contains(identifier));
+
+                        bool found = false;
+                        for (Node* materialization : m_materializationSiteToMaterializations.get(node)) {
+                            // We're materializing `identifier` here. This asserts that this is indeed the case.
+                            if (m_materializationToEscapee.get(materialization) == identifier) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        RELEASE_ASSERT(found);
+                    }
+
+                    SSACalculator::Variable* variable = m_nodeToVariable.get(identifier);
+                    hintsForPhi[variable->index()].addVoid(location);
                 }
 
                 if (m_sinkCandidates.contains(node))
@@ -1643,7 +1712,7 @@ private:
 
         // Place Phis in the right places, replace all uses of any load with the appropriate
         // value, and create the materialization nodes.
-        LocalOSRAvailabilityCalculator availabilityCalculator;
+        LocalOSRAvailabilityCalculator availabilityCalculator(m_graph);
         m_graph.clearReplacements();
         for (BasicBlock* block : m_graph.blocksInPreOrder()) {
             m_heap = m_heapAtHead[block];
@@ -1683,6 +1752,12 @@ private:
                 insertOSRHintsForUpdate(
                     0, block->at(0)->origin, canExit,
                     availabilityCalculator.m_availability, identifier, phiDef->value());
+
+                for (PromotedHeapLocation location : hintsForPhi[variable->index()]) {
+                    m_insertionSet.insert(0,
+                        location.createHint(m_graph, block->at(0)->origin.withInvalidExit(), phiDef->value()));
+                    m_localMapping.set(location, phiDef->value());
+                }
             }
 
             if (verbose) {
@@ -1701,6 +1776,8 @@ private:
                     m_localMapping.set(location, m_bottom);
 
                     if (m_sinkCandidates.contains(node)) {
+                        if (verbose)
+                            dataLog("For sink candidate ", node, " found location ", location, "\n");
                         m_insertionSet.insert(
                             nodeIndex + 1,
                             location.createHint(
@@ -1720,6 +1797,8 @@ private:
 
                 for (PromotedHeapLocation location : m_materializationSiteToRecoveries.get(node))
                     m_insertionSet.insert(nodeIndex, createRecovery(block, location, node, canExit));
+                for (std::pair<PromotedHeapLocation, Node*> pair : m_materializationSiteToHints.get(node))
+                    m_insertionSet.insert(nodeIndex, createRecovery(block, pair.first, node, canExit));
 
                 // We need to put the OSR hints after the recoveries,
                 // because we only want the hints once the object is
@@ -1767,6 +1846,8 @@ private:
 
                         doLower = true;
 
+                        if (verbose)
+                            dataLog("Creating hint with value ", nodeValue, " before ", node, "\n");
                         m_insertionSet.insert(
                             nodeIndex + 1,
                             location.createHint(
@@ -1788,13 +1869,16 @@ private:
                         node->convertToPhantomNewObject();
                         break;
 
-                    case NewArrowFunction:
                     case NewFunction:
                         node->convertToPhantomNewFunction();
                         break;
 
                     case NewGeneratorFunction:
                         node->convertToPhantomNewGeneratorFunction();
+                        break;
+
+                    case NewAsyncFunction:
+                        node->convertToPhantomNewAsyncFunction();
                         break;
 
                     case CreateActivation:
@@ -1845,7 +1929,7 @@ private:
         }
     }
 
-    Node* resolve(BasicBlock* block, PromotedHeapLocation location)
+    NEVER_INLINE Node* resolve(BasicBlock* block, PromotedHeapLocation location)
     {
         // If we are currently pointing to a single local allocation,
         // simply return the associated materialization.
@@ -1862,14 +1946,15 @@ private:
         ASSERT(def->value());
 
         Node* result = def->value();
-
+        if (result->replacement())
+            result = result->replacement();
         ASSERT(!result->replacement());
 
         m_localMapping.add(location, result);
         return result;
     }
 
-    Node* resolve(BasicBlock* block, Node* node)
+    NEVER_INLINE Node* resolve(BasicBlock* block, Node* node)
     {
         // If we are currently pointing to a single local allocation,
         // simply return the associated materialization.
@@ -1883,7 +1968,7 @@ private:
         return node;
     }
 
-    Node* getMaterialization(BasicBlock* block, Node* identifier)
+    NEVER_INLINE Node* getMaterialization(BasicBlock* block, Node* identifier)
     {
         ASSERT(m_heap.isAllocation(identifier));
         if (!m_sinkCandidates.contains(identifier))
@@ -1902,6 +1987,13 @@ private:
 
     void insertOSRHintsForUpdate(unsigned nodeIndex, NodeOrigin origin, bool& canExit, AvailabilityMap& availability, Node* escapee, Node* materialization)
     {
+        if (verbose) {
+            dataLog("Inserting OSR hints at ", origin, ":\n");
+            dataLog("    Escapee: ", escapee, "\n");
+            dataLog("    Materialization: ", materialization, "\n");
+            dataLog("    Availability: ", availability, "\n");
+        }
+        
         // We need to follow() the value in the heap.
         // Consider the following graph:
         //
@@ -1974,7 +2066,7 @@ private:
 
                 case NamedPropertyPLoc: {
                     ASSERT(location.base() == allocation.identifier());
-                    data.m_properties.append(PhantomPropertyValue(location.info()));
+                    data.m_properties.append(location.descriptor());
                     Node* value = resolve(block, location);
                     if (m_sinkCandidates.contains(value))
                         m_graph.m_varArgChildren.append(m_bottom);
@@ -2024,7 +2116,7 @@ private:
 
                 case ClosureVarPLoc: {
                     ASSERT(location.base() == allocation.identifier());
-                    data.m_properties.append(PhantomPropertyValue(location.info()));
+                    data.m_properties.append(location.descriptor());
                     Node* value = resolve(block, location);
                     if (m_sinkCandidates.contains(value))
                         m_graph.m_varArgChildren.append(m_bottom);
@@ -2045,8 +2137,8 @@ private:
         }
         
         case NewFunction:
-        case NewArrowFunction:
-        case NewGeneratorFunction: {
+        case NewGeneratorFunction:
+        case NewAsyncFunction: {
             Vector<PromotedHeapLocation> locations = m_locationsForAllocation.get(escapee);
             ASSERT(locations.size() == 2);
                 
@@ -2087,7 +2179,7 @@ private:
         case NamedPropertyPLoc: {
             Allocation& allocation = m_heap.getAllocation(location.base());
 
-            Vector<Structure*> structures;
+            Vector<RegisteredStructure> structures;
             structures.appendRange(allocation.structures().begin(), allocation.structures().end());
             unsigned identifierNumber = location.info();
             UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
@@ -2095,10 +2187,11 @@ private:
             std::sort(
                 structures.begin(),
                 structures.end(),
-                [uid] (Structure *a, Structure* b) -> bool {
+                [uid] (RegisteredStructure a, RegisteredStructure b) -> bool {
                     return a->getConcurrently(uid) < b->getConcurrently(uid);
                 });
 
+            RELEASE_ASSERT(structures.size());
             PropertyOffset firstOffset = structures[0]->getConcurrently(uid);
 
             if (firstOffset == structures.last()->getConcurrently(uid)) {
@@ -2112,7 +2205,6 @@ private:
                 data->identifierNumber = identifierNumber;
 
                 return m_graph.addNode(
-                    SpecNone,
                     PutByOffset,
                     origin.takeValidExit(canExit),
                     OpInfo(data),
@@ -2127,7 +2219,7 @@ private:
             {
                 PropertyOffset currentOffset = firstOffset;
                 StructureSet currentSet;
-                for (Structure* structure : structures) {
+                for (RegisteredStructure structure : structures) {
                     PropertyOffset offset = structure->getConcurrently(uid);
                     if (offset != currentOffset) {
                         // Because our analysis treats MultiPutByOffset like an escape, we only have to
@@ -2140,14 +2232,13 @@ private:
                         currentOffset = offset;
                         currentSet.clear();
                     }
-                    currentSet.add(structure);
+                    currentSet.add(structure.get());
                 }
                 data->variants.append(
                     PutByIdVariant::replace(currentSet, currentOffset, InferredType::Top));
             }
 
             return m_graph.addNode(
-                SpecNone,
                 MultiPutByOffset,
                 origin.takeValidExit(canExit),
                 OpInfo(data),
@@ -2158,7 +2249,6 @@ private:
 
         case ClosureVarPLoc: {
             return m_graph.addNode(
-                SpecNone,
                 PutClosureVar,
                 origin.takeValidExit(canExit),
                 OpInfo(location.info()),
@@ -2173,9 +2263,18 @@ private:
         }
     }
 
+    // This is a great way of asking value->isStillValid() without having to worry about getting
+    // different answers. It turns out that this analysis works OK regardless of what this
+    // returns but breaks badly if this changes its mind for any particular InferredValue. This
+    // method protects us from that.
+    bool isStillValid(InferredValue* value)
+    {
+        return m_validInferredValues.add(value, value->isStillValid()).iterator->value;
+    }
+
     SSACalculator m_pointerSSA;
     SSACalculator m_allocationSSA;
-    HashSet<Node*> m_sinkCandidates;
+    NodeSet m_sinkCandidates;
     HashMap<PromotedHeapLocation, SSACalculator::Variable*> m_locationToVariable;
     HashMap<Node*, SSACalculator::Variable*> m_nodeToVariable;
     HashMap<PromotedHeapLocation, Node*> m_localMapping;
@@ -2183,9 +2282,12 @@ private:
     InsertionSet m_insertionSet;
     CombinedLiveness m_combinedLiveness;
 
+    HashMap<InferredValue*, bool> m_validInferredValues;
+
     HashMap<Node*, Node*> m_materializationToEscapee;
     HashMap<Node*, Vector<Node*>> m_materializationSiteToMaterializations;
     HashMap<Node*, Vector<PromotedHeapLocation>> m_materializationSiteToRecoveries;
+    HashMap<Node*, Vector<std::pair<PromotedHeapLocation, Node*>>> m_materializationSiteToHints;
 
     HashMap<Node*, Vector<PromotedHeapLocation>> m_locationsForAllocation;
 
@@ -2200,7 +2302,6 @@ private:
 
 bool performObjectAllocationSinking(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Object Allocation Sinking Phase");
     return runPhase<ObjectAllocationSinkingPhase>(graph);
 }
 

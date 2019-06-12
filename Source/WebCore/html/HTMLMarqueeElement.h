@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLMarqueeElement_h
-#define HTMLMarqueeElement_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "HTMLElement.h"
@@ -36,37 +35,33 @@ public:
 
     int minimumDelay() const;
 
-    // DOM Functions
-
-    void start();
-    virtual void stop() override;
+    WEBCORE_EXPORT void start();
+    WEBCORE_EXPORT void stop() final;
     
-    int scrollAmount() const;
-    void setScrollAmount(int, ExceptionCode&);
+    // Number of pixels to move on each scroll movement. Defaults to 6.
+    WEBCORE_EXPORT unsigned scrollAmount() const;
+    WEBCORE_EXPORT void setScrollAmount(unsigned);
     
-    int scrollDelay() const;
-    void setScrollDelay(int, ExceptionCode&);
+    // Interval between each scroll movement, in milliseconds. Defaults to 60.
+    WEBCORE_EXPORT unsigned scrollDelay() const;
+    WEBCORE_EXPORT void setScrollDelay(unsigned);
     
-    int loop() const;
-    void setLoop(int, ExceptionCode&);
+    // Loop count. -1 means loop indefinitely.
+    WEBCORE_EXPORT int loop() const;
+    WEBCORE_EXPORT ExceptionOr<void> setLoop(int);
     
 private:
     HTMLMarqueeElement(const QualifiedName&, Document&);
 
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 
-    // ActiveDOMObject
-    virtual bool canSuspendForDocumentSuspension() const override;
-    virtual void suspend(ReasonForSuspension) override;
-    virtual void resume() override;
-    virtual const char* activeDOMObjectName() const override { return "HTMLMarqueeElement"; }
-
-    virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
+    bool canSuspendForDocumentSuspension() const final;
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
+    const char* activeDOMObjectName() const final { return "HTMLMarqueeElement"; }
 
     RenderMarquee* renderMarquee() const;
 };
 
 } // namespace WebCore
-
-#endif // HTMLMarqueeElement_h

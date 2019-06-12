@@ -28,14 +28,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// FIXME 169871: should be subclass of EventTarget
 [
+    Conditional=MEDIA_STREAM,
     NoInterfaceObject,
-    Conditional=MEDIA_STREAM
 ] interface MediaDevices {
+    attribute EventHandler ondevicechange;
+    Promise<sequence<MediaDeviceInfo>> enumerateDevices();
+
     MediaTrackSupportedConstraints getSupportedConstraints();
+    [PrivateIdentifier, PublicIdentifier] Promise<MediaStream> getUserMedia(optional MediaStreamConstraints constraints);
+};
 
-    [JSBuiltin] Promise getUserMedia(Dictionary options);
-    [RaisesException] Promise enumerateDevices();
-
-    [Private, RaisesException, ImplementedAs=getUserMedia] Promise getUserMediaFromJS(Dictionary options);
+[
+    Conditional=MEDIA_STREAM,
+] dictionary MediaStreamConstraints {
+    (boolean or MediaTrackConstraints) video = false;
+    (boolean or MediaTrackConstraints) audio = false;
 };

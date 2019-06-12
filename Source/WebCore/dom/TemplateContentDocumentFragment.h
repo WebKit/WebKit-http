@@ -24,10 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TemplateContentDocumentFragment_h
-#define TemplateContentDocumentFragment_h
-
-#if ENABLE(TEMPLATE_ELEMENT)
+#pragma once
 
 #include "DocumentFragment.h"
 
@@ -50,13 +47,9 @@ private:
     {
     }
 
-    virtual bool isTemplateContent() const override { return true; }
+    bool isTemplateContent() const override { return true; }
 
     const Element* m_host;
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(TEMPLATE_ELEMENT)
-
-#endif // TemplateContentDocumentFragment_h

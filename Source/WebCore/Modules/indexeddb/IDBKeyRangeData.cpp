@@ -63,12 +63,12 @@ IDBKeyRangeData IDBKeyRangeData::isolatedCopy() const
     return result;
 }
 
-PassRefPtr<IDBKeyRange> IDBKeyRangeData::maybeCreateIDBKeyRange() const
+RefPtr<IDBKeyRange> IDBKeyRangeData::maybeCreateIDBKeyRange() const
 {
     if (isNull)
         return nullptr;
 
-    return IDBKeyRange::create(lowerKey.maybeCreateIDBKey(), upperKey.maybeCreateIDBKey(), lowerOpen ? IDBKeyRange::LowerBoundOpen : IDBKeyRange::LowerBoundClosed, upperOpen ? IDBKeyRange::UpperBoundOpen : IDBKeyRange::UpperBoundClosed);
+    return IDBKeyRange::create(lowerKey.maybeCreateIDBKey(), upperKey.maybeCreateIDBKey(), lowerOpen, upperOpen);
 }
 
 bool IDBKeyRangeData::isExactlyOneKey() const
@@ -113,7 +113,7 @@ bool IDBKeyRangeData::isValid() const
     return true;
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String IDBKeyRangeData::loggingString() const
 {
     auto result = makeString(lowerOpen ? "( " : "[ ", lowerKey.loggingString(), ", ", upperKey.loggingString(), upperOpen ? " )" : " ]");

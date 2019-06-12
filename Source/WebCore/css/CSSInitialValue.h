@@ -18,15 +18,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSInitialValue_h
-#define CSSInitialValue_h
+#pragma once
 
 #include "CSSValue.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-class CSSInitialValue : public CSSValue {
+class CSSInitialValue final : public CSSValue {
 public:
     static Ref<CSSInitialValue> createExplicit()
     {
@@ -63,5 +61,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSInitialValue, isInitialValue())
-
-#endif // CSSInitialValue_h

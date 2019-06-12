@@ -28,15 +28,17 @@
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
+#include "Attachment.h"
 #include "PluginProcessAttributes.h"
+#include <wtf/Seconds.h>
 
 #if PLATFORM(COCOA)
 #include <WebCore/MachSendRight.h>
 #endif
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -44,20 +46,21 @@ namespace WebKit {
 struct PluginProcessCreationParameters {
     PluginProcessCreationParameters();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, PluginProcessCreationParameters&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, PluginProcessCreationParameters&);
 
     PluginProcessType processType;
     bool supportsAsynchronousPluginInitialization;
 
-    double minimumLifetime;
-    double terminationTimeout;
+    Seconds minimumLifetime;
+    Seconds terminationTimeout;
 
 #if PLATFORM(COCOA)
     WebCore::MachSendRight acceleratedCompositingPort;
-#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     RetainPtr<CFDataRef> networkATSContext;
 #endif
+#if OS(LINUX)
+    IPC::Attachment memoryPressureMonitorHandle;
 #endif
 };
 

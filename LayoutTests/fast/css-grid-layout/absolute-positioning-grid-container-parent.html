@@ -4,8 +4,8 @@
 <style>
 
 .grid {
-    -webkit-grid-template-columns: 50px 100px 150px;
-    -webkit-grid-template-rows: 25px 50px 100px;
+    grid-template-columns: 50px 100px 150px;
+    grid-template-rows: 25px 50px 100px;
     width: 300px;
     height: 200px;
     border: 5px solid black;
@@ -35,25 +35,25 @@
 
 <div class="container relative">
     <div class="grid">
-        <div class="sizedToGridArea absolute autoRowAutoColumn" data-offset-x="50" data-offset-y="10" data-expected-width="500" data-expected-height="400"></div>
+        <div class="sizedToGridArea absolute autoRowAutoColumn" data-offset-x="35" data-offset-y="5" data-expected-width="500" data-expected-height="400"></div>
     </div>
 </div>
 
 <div class="container relative">
     <div class="grid">
-        <div class="sizedToGridArea absolute firstRowFirstColumn" data-offset-x="50" data-offset-y="10" data-expected-width="500" data-expected-height="400"></div>
+        <div class="sizedToGridArea absolute firstRowFirstColumn" data-offset-x="35" data-offset-y="5" data-expected-width="500" data-expected-height="400"></div>
     </div>
 </div>
 
 <div class="container relative">
     <div class="grid">
-        <div class="sizedToGridArea absolute secondRowSecondColumn" data-offset-x="50" data-offset-y="10" data-expected-width="500" data-expected-height="400"></div>
+        <div class="sizedToGridArea absolute secondRowSecondColumn" data-offset-x="35" data-offset-y="5" data-expected-width="500" data-expected-height="400"></div>
     </div>
 </div>
 
 <div class="container">
     <div class="grid relative">
-        <div class="sizedToGridArea absolute autoRowAutoColumn" data-offset-x="15" data-offset-y="5" data-expected-width="330" data-expected-height="210"></div>
+        <div class="sizedToGridArea absolute autoRowAutoColumn" data-offset-x="0" data-offset-y="0" data-expected-width="330" data-expected-height="210"></div>
     </div>
 </div>
 
@@ -66,6 +66,42 @@
 <div class="container">
     <div class="grid relative">
         <div class="sizedToGridArea absolute secondRowSecondColumn" data-offset-x="65" data-offset-y="30" data-expected-width="265" data-expected-height="180"></div>
+    </div>
+</div>
+
+<div class="container relative">
+    <div class="grid directionRTL">
+        <div class="sizedToGridArea absolute autoRowAutoColumn" data-offset-x="-135" data-offset-y="5" data-expected-width="500" data-expected-height="400"></div>
+    </div>
+</div>
+
+<div class="container relative">
+    <div class="grid directionRTL">
+        <div class="sizedToGridArea absolute firstRowFirstColumn" data-offset-x="-135" data-offset-y="5" data-expected-width="500" data-expected-height="400"></div>
+    </div>
+</div>
+
+<div class="container relative">
+    <div class="grid directionRTL">
+        <div class="sizedToGridArea absolute secondRowSecondColumn" data-offset-x="-135" data-offset-y="5" data-expected-width="500" data-expected-height="400"></div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="grid relative directionRTL">
+        <div class="sizedToGridArea absolute autoRowAutoColumn" data-offset-x="0" data-offset-y="0" data-expected-width="330" data-expected-height="210"></div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="grid relative directionRTL">
+        <div class="sizedToGridArea absolute firstRowFirstColumn" data-offset-x="0" data-offset-y="5" data-expected-width="315" data-expected-height="205"></div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="grid relative directionRTL">
+        <div class="sizedToGridArea absolute secondRowSecondColumn" data-offset-x="0" data-offset-y="30" data-expected-width="265" data-expected-height="180"></div>
     </div>
 </div>
 

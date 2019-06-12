@@ -26,7 +26,6 @@
 #include "config.h"
 #include "SlotAssignment.h"
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 
 #include "HTMLSlotElement.h"
 #include "ShadowRoot.h"
@@ -38,7 +37,7 @@ using namespace HTMLNames;
 
 static const AtomicString& slotNameFromAttributeValue(const AtomicString& value)
 {
-    return value == nullAtom ? SlotAssignment::defaultSlotName() : value;
+    return value == nullAtom() ? SlotAssignment::defaultSlotName() : value;
 }
 
 static const AtomicString& slotNameFromSlotAttribute(const Node& child)
@@ -46,16 +45,14 @@ static const AtomicString& slotNameFromSlotAttribute(const Node& child)
     if (is<Text>(child))
         return SlotAssignment::defaultSlotName();
 
-    return slotNameFromAttributeValue(downcast<Element>(child).fastGetAttribute(slotAttr));
+    return slotNameFromAttributeValue(downcast<Element>(child).attributeWithoutSynchronization(slotAttr));
 }
 
 SlotAssignment::SlotAssignment()
-    : m_slotNameFunction(slotNameFromSlotAttribute)
 {
 }
 
-SlotAssignment::SlotAssignment(SlotNameFunction function)
-    : m_slotNameFunction(WTFMove(function))
+SlotAssignment::~SlotAssignment()
 {
 }
 
@@ -64,13 +61,7 @@ HTMLSlotElement* SlotAssignment::findAssignedSlot(const Node& node, ShadowRoot& 
     if (!is<Text>(node) && !is<Element>(node))
         return nullptr;
 
-    if (!m_slotAssignmentsIsValid)
-        assignSlots(shadowRoot);
-
-    auto slotName = m_slotNameFunction(node);
-    if (!slotName)
-        return nullptr;
-
+    auto slotName = slotNameForHostChild(node);
     auto it = m_slots.find(slotName);
     if (it == m_slots.end())
         return nullptr;
@@ -86,7 +77,7 @@ void SlotAssignment::addSlotElementByName(const AtomicString& name, HTMLSlotElem
 #endif
 
     // FIXME: We should be able to do a targeted reconstruction.
-    shadowRoot.host()->setNeedsStyleRecalc(ReconstructRenderTree);
+    shadowRoot.host()->invalidateStyleAndRenderersForSubtree();
 
     const AtomicString& slotName = slotNameFromAttributeValue(name);
     auto addResult = m_slots.add(slotName, std::unique_ptr<SlotInfo>());
@@ -118,7 +109,7 @@ void SlotAssignment::removeSlotElementByName(const AtomicString& name, HTMLSlotE
 #endif
 
     if (auto* host = shadowRoot.host()) // FIXME: We should be able to do a targeted reconstruction.
-        host->setNeedsStyleRecalc(ReconstructRenderTree);
+        host->invalidateStyleAndRenderersForSubtree();
 
     auto it = m_slots.find(slotNameFromAttributeValue(name));
     RELEASE_ASSERT(it != m_slots.end());
@@ -136,17 +127,43 @@ void SlotAssignment::removeSlotElementByName(const AtomicString& name, HTMLSlotE
     ASSERT(slotInfo.element || m_needsToResolveSlotElements);
 }
 
-const Vector<Node*>* SlotAssignment::assignedNodesForSlot(const HTMLSlotElement& slotElement, ShadowRoot& shadowRoot)
+void SlotAssignment::didChangeSlot(const AtomicString& slotAttrValue, ShadowRoot& shadowRoot)
 {
-    if (!m_slotAssignmentsIsValid)
-        assignSlots(shadowRoot);
-
-    const AtomicString& slotName = slotNameFromAttributeValue(slotElement.fastGetAttribute(nameAttr));
+    auto& slotName = slotNameFromAttributeValue(slotAttrValue);
     auto it = m_slots.find(slotName);
     if (it == m_slots.end())
-        return nullptr;
+        return;
+    
+    it->value->assignedNodes.clear();
+    m_slotAssignmentsIsValid = false;
+
+    HTMLSlotElement* slotElement = findFirstSlotElement(*it->value, shadowRoot);
+    if (!slotElement)
+        return;
+
+    shadowRoot.host()->invalidateStyleAndRenderersForSubtree();
+
+    if (shadowRoot.mode() == ShadowRootMode::UserAgent)
+        return;
+
+    slotElement->enqueueSlotChangeEvent();
+}
+
+void SlotAssignment::hostChildElementDidChange(const Element& childElement, ShadowRoot& shadowRoot)
+{
+    didChangeSlot(childElement.attributeWithoutSynchronization(slotAttr), shadowRoot);
+}
+
+const Vector<Node*>* SlotAssignment::assignedNodesForSlot(const HTMLSlotElement& slotElement, ShadowRoot& shadowRoot)
+{
+    ASSERT(slotElement.containingShadowRoot() == &shadowRoot);
+    const AtomicString& slotName = slotNameFromAttributeValue(slotElement.attributeWithoutSynchronization(nameAttr));
+    auto it = m_slots.find(slotName);
+    RELEASE_ASSERT(it != m_slots.end());
 
     auto& slotInfo = *it->value;
+    if (!m_slotAssignmentsIsValid)
+        assignSlots(shadowRoot);
 
     if (!slotInfo.assignedNodes.size())
         return nullptr;
@@ -158,18 +175,9 @@ const Vector<Node*>* SlotAssignment::assignedNodesForSlot(const HTMLSlotElement&
     return &slotInfo.assignedNodes;
 }
 
-void SlotAssignment::invalidate(ShadowRoot& shadowRoot)
+const AtomicString& SlotAssignment::slotNameForHostChild(const Node& child) const
 {
-    // FIXME: We should be able to do a targeted reconstruction.
-    shadowRoot.host()->setNeedsStyleRecalc(ReconstructRenderTree);
-    m_slotAssignmentsIsValid = false;
-}
-
-void SlotAssignment::invalidateDefaultSlot(ShadowRoot& shadowRoot)
-{
-    auto it = m_slots.find(defaultSlotName());
-    if (it != m_slots.end() && it->value->elementCount)
-        invalidate(shadowRoot); // FIXME: We should be able to reconstruct only under the default slot.
+    return slotNameFromSlotAttribute(child);
 }
 
 HTMLSlotElement* SlotAssignment::findFirstSlotElement(SlotInfo& slotInfo, ShadowRoot& shadowRoot)
@@ -179,6 +187,7 @@ HTMLSlotElement* SlotAssignment::findFirstSlotElement(SlotInfo& slotInfo, Shadow
 
 #ifndef NDEBUG
     ASSERT(!slotInfo.element || m_slotElementsForConsistencyCheck.contains(slotInfo.element));
+    ASSERT(!!slotInfo.element == !!slotInfo.elementCount);
 #endif
 
     return slotInfo.element;
@@ -197,7 +206,7 @@ void SlotAssignment::resolveAllSlotElements(ShadowRoot& shadowRoot)
 
     unsigned slotCount = m_slots.size();
     for (auto& slotElement : descendantsOfType<HTMLSlotElement>(shadowRoot)) {
-        auto& slotName = slotNameFromAttributeValue(slotElement.fastGetAttribute(nameAttr));
+        auto& slotName = slotNameFromAttributeValue(slotElement.attributeWithoutSynchronization(nameAttr));
 
         auto it = m_slots.find(slotName);
         RELEASE_ASSERT(it != m_slots.end());
@@ -226,9 +235,7 @@ void SlotAssignment::assignSlots(ShadowRoot& shadowRoot)
     for (auto* child = host.firstChild(); child; child = child->nextSibling()) {
         if (!is<Text>(*child) && !is<Element>(*child))
             continue;
-        auto slotName = m_slotNameFunction(*child);
-        if (!slotName)
-            continue;
+        auto slotName = slotNameForHostChild(*child);
         assignToSlot(*child, slotName);
     }
 
@@ -252,5 +259,4 @@ void SlotAssignment::assignToSlot(Node& child, const AtomicString& slotName)
 
 }
 
-#endif
 

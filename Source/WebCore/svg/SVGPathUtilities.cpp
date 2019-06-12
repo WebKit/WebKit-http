@@ -21,6 +21,7 @@
 #include "config.h"
 #include "SVGPathUtilities.h"
 
+#include "FloatPoint.h"
 #include "Path.h"
 #include "PathTraversalState.h"
 #include "SVGPathBlender.h"
@@ -48,7 +49,7 @@ bool buildPathFromString(const String& d, Path& result)
     return SVGPathParser::parse(source, builder);
 }
 
-bool buildSVGPathByteStreamFromSVGPathSegList(const SVGPathSegList& list, SVGPathByteStream& result, PathParsingMode parsingMode)
+bool buildSVGPathByteStreamFromSVGPathSegListValues(const SVGPathSegListValues& list, SVGPathByteStream& result, PathParsingMode parsingMode)
 {
     result.clear();
     if (list.isEmpty())
@@ -63,7 +64,7 @@ bool appendSVGPathByteStreamFromSVGPathSeg(RefPtr<SVGPathSeg>&& pathSeg, SVGPath
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=15412 - Implement normalized path segment lists!
     ASSERT(parsingMode == UnalteredParsing);
 
-    SVGPathSegList appendedItemList(PathSegUnalteredRole);
+    SVGPathSegListValues appendedItemList(PathSegUnalteredRole);
     appendedItemList.append(WTFMove(pathSeg));
 
     SVGPathByteStream appendedByteStream;
@@ -86,7 +87,7 @@ bool buildPathFromByteStream(const SVGPathByteStream& stream, Path& result)
     return SVGPathParser::parse(source, builder);
 }
 
-bool buildSVGPathSegListFromByteStream(const SVGPathByteStream& stream, SVGPathElement& element, SVGPathSegList& result, PathParsingMode parsingMode)
+bool buildSVGPathSegListValuesFromByteStream(const SVGPathByteStream& stream, SVGPathElement& element, SVGPathSegListValues& result, PathParsingMode parsingMode)
 {
     if (stream.isEmpty())
         return true;
@@ -105,7 +106,7 @@ bool buildStringFromByteStream(const SVGPathByteStream& stream, String& result, 
     return SVGPathParser::parseToString(source, result, parsingMode);
 }
 
-bool buildStringFromSVGPathSegList(const SVGPathSegList& list, String& result, PathParsingMode parsingMode)
+bool buildStringFromSVGPathSegListValues(const SVGPathSegListValues& list, String& result, PathParsingMode parsingMode)
 {
     result = String();
     if (list.isEmpty())
@@ -192,7 +193,7 @@ bool getTotalLengthOfSVGPathByteStream(const SVGPathByteStream& stream, float& t
     return ok;
 }
 
-bool getPointAtLengthOfSVGPathByteStream(const SVGPathByteStream& stream, float length, SVGPoint& point)
+bool getPointAtLengthOfSVGPathByteStream(const SVGPathByteStream& stream, float length, FloatPoint& point)
 {
     if (stream.isEmpty())
         return false;
@@ -205,45 +206,6 @@ bool getPointAtLengthOfSVGPathByteStream(const SVGPathByteStream& stream, float 
     bool ok = SVGPathParser::parse(source, builder);
     point = builder.currentPoint();
     return ok;
-}
-
-static void pathIteratorForBuildingString(SVGPathConsumer& consumer, const PathElement& pathElement)
-{
-    switch (pathElement.type) {
-    case PathElementMoveToPoint:
-        consumer.moveTo(pathElement.points[0], false, AbsoluteCoordinates);
-        break;
-    case PathElementAddLineToPoint:
-        consumer.lineTo(pathElement.points[0], AbsoluteCoordinates);
-        break;
-    case PathElementAddQuadCurveToPoint:
-        consumer.curveToQuadratic(pathElement.points[0], pathElement.points[1], AbsoluteCoordinates);
-        break;
-    case PathElementAddCurveToPoint:
-        consumer.curveToCubic(pathElement.points[0], pathElement.points[1], pathElement.points[2], AbsoluteCoordinates);
-        break;
-    case PathElementCloseSubpath:
-        consumer.closePath();
-        break;
-
-    default:
-        ASSERT_NOT_REACHED();
-        break;
-    }
-}
-
-bool buildStringFromPath(const Path& path, String& string)
-{
-    // Ideally we would have a SVGPathPlatformPathSource, but it's not possible to manually iterate
-    // a path, only apply a function to all path elements at once.
-
-    SVGPathStringBuilder builder;
-    path.apply([&builder](const PathElement& pathElement) {
-        pathIteratorForBuildingString(builder, pathElement);
-    });
-    string = builder.result();
-
-    return true;
 }
 
 }

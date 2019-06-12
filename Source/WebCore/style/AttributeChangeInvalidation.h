@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AttributeChangeInvalidation_h
-#define AttributeChangeInvalidation_h
+#pragma once
 
 #include "Element.h"
 
@@ -46,7 +45,7 @@ private:
     const bool m_isEnabled;
     Element& m_element;
 
-    RuleSet* m_descendantInvalidationRuleSet { nullptr };
+    const RuleSet* m_descendantInvalidationRuleSet { nullptr };
 };
 
 inline AttributeChangeInvalidation::AttributeChangeInvalidation(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
@@ -68,6 +67,3 @@ inline AttributeChangeInvalidation::~AttributeChangeInvalidation()
     
 }
 }
-
-#endif
-

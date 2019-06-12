@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,14 @@ TestHarness = class TestHarness extends WebInspector.Object
         super();
 
         this._logCount = 0;
+        this._failureObjects = new Map;
+        this._failureObjectIdentifier = 1;
+
+        // Options that are set per-test for debugging purposes.
+        this.forceDebugLogging = false;
+
+        // Options that are set per-test to ensure deterministic output.
+        this.suppressStackTraces = false;
     }
 
     completeTest()
@@ -48,6 +56,11 @@ TestHarness = class TestHarness extends WebInspector.Object
     }
 
     evaluateInPage(string, callback)
+    {
+        throw new Error("Must be implemented by subclasses.");
+    }
+
+    debug()
     {
         throw new Error("Must be implemented by subclasses.");
     }
@@ -86,12 +99,72 @@ TestHarness = class TestHarness extends WebInspector.Object
         this.log("ASSERT: " + stringifiedMessage);
     }
 
-    expectThat(condition, message)
+    expectThat(actual, message)
     {
-        if (condition)
-            this.pass(message);
-        else
-            this.fail(message);
+        this._expect(TestHarness.ExpectationType.True, !!actual, message, actual);
+    }
+
+    expectFalse(actual, message)
+    {
+        this._expect(TestHarness.ExpectationType.False, !actual, message, actual);
+    }
+
+    expectNull(actual, message)
+    {
+        this._expect(TestHarness.ExpectationType.Null, actual === null, message, actual, null);
+    }
+
+    expectNotNull(actual, message)
+    {
+        this._expect(TestHarness.ExpectationType.NotNull, actual !== null, message, actual);
+    }
+
+    expectEqual(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.Equal, expected === actual, message, actual, expected);
+    }
+
+    expectNotEqual(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.NotEqual, expected !== actual, message, actual, expected);
+    }
+
+    expectShallowEqual(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.ShallowEqual, Object.shallowEqual(actual, expected), message, actual, expected);
+    }
+
+    expectNotShallowEqual(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.NotShallowEqual, !Object.shallowEqual(actual, expected), message, actual, expected);
+    }
+
+    expectEqualWithAccuracy(actual, expected, accuracy, message)
+    {
+        console.assert(typeof expected === "number");
+        console.assert(typeof actual === "number");
+
+        this._expect(TestHarness.ExpectationType.EqualWithAccuracy, Math.abs(expected - actual) <= accuracy, message, actual, expected, accuracy);
+    }
+
+    expectLessThan(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.LessThan, actual < expected, message, actual, expected);
+    }
+
+    expectLessThanOrEqual(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.LessThanOrEqual, actual <= expected, message, actual, expected);
+    }
+
+    expectGreaterThan(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.GreaterThan, actual > expected, message, actual, expected);
+    }
+
+    expectGreaterThanOrEqual(actual, expected, message)
+    {
+        this._expect(TestHarness.ExpectationType.GreaterThanOrEqual, actual >= expected, message, actual, expected);
     }
 
     pass(message)
@@ -112,7 +185,190 @@ TestHarness = class TestHarness extends WebInspector.Object
     {
         if (message instanceof Element)
             return message.textContent;
-        
+
         return (typeof message !== "string") ? JSON.stringify(message) : message;
     }
+
+    static sanitizeURL(url)
+    {
+        if (!url)
+            return "(unknown)";
+
+        let lastPathSeparator = Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\"));
+        let location = (lastPathSeparator > 0) ? url.substr(lastPathSeparator + 1) : url;
+        if (!location.length)
+            location = "(unknown)";
+
+        // Clean up the location so it is bracketed or in parenthesis.
+        if (url.indexOf("[native code]") !== -1)
+            location = "[native code]";
+
+        return location;
+    }
+
+    static sanitizeStackFrame(frame, i)
+    {
+        // Most frames are of the form "functionName@file:///foo/bar/File.js:345".
+        // But, some frames do not have a functionName. Get rid of the file path.
+        let nameAndURLSeparator = frame.indexOf("@");
+        let frameName = (nameAndURLSeparator > 0) ? frame.substr(0, nameAndURLSeparator) : "(anonymous)";
+
+        let lastPathSeparator = Math.max(frame.lastIndexOf("/"), frame.lastIndexOf("\\"));
+        let frameLocation = (lastPathSeparator > 0) ? frame.substr(lastPathSeparator + 1) : frame;
+        if (!frameLocation.length)
+            frameLocation = "unknown";
+
+        // Clean up the location so it is bracketed or in parenthesis.
+        if (frame.indexOf("[native code]") !== -1)
+            frameLocation = "[native code]";
+        else
+            frameLocation = "(" + frameLocation + ")";
+
+        return `#${i}: ${frameName} ${frameLocation}`;
+    }
+
+    sanitizeStack(stack)
+    {
+        if (this.suppressStackTraces)
+            return "(suppressed)";
+
+        if (!stack || typeof stack !== "string")
+            return "(unknown)";
+
+        return stack.split("\n").map(TestHarness.sanitizeStackFrame).join("\n");
+    }
+
+    // Private
+
+    _expect(type, condition, message, ...values)
+    {
+        console.assert(values.length > 0, "Should have an 'actual' value.");
+
+        if (!message || !condition) {
+            values = values.map(this._expectationValueAsString.bind(this));
+            message = message || this._expectationMessageFormat(type).format(...values);
+        }
+
+        if (condition) {
+            this.pass(message);
+            return;
+        }
+
+        message += "\n    Expected: " + this._expectedValueFormat(type).format(...values.slice(1));
+        message += "\n    Actual: " + values[0];
+
+        this.fail(message);
+    }
+
+    _expectationValueAsString(value)
+    {
+        let instanceIdentifier = (object) => {
+            let id = this._failureObjects.get(object);
+            if (!id) {
+                id = this._failureObjectIdentifier++;
+                this._failureObjects.set(object, id);
+            }
+            return "#" + id;
+        };
+
+        const maximumValueStringLength = 200;
+        const defaultValueString = String(new Object); // [object Object]
+
+        // Special case for numbers, since JSON.stringify converts Infinity and NaN to null.
+        if (typeof value === "number")
+            return value;
+
+        try {
+            let valueString = JSON.stringify(value);
+            if (valueString.length <= maximumValueStringLength)
+                return valueString;
+        } catch (e) {}
+
+        try {
+            let valueString = String(value);
+            if (valueString === defaultValueString && value.constructor && value.constructor.name !== "Object")
+                return value.constructor.name + " instance " + instanceIdentifier(value);
+            return valueString;
+        } catch (e) {
+            return defaultValueString;
+        }
+    }
+
+    _expectationMessageFormat(type)
+    {
+        switch (type) {
+        case TestHarness.ExpectationType.True:
+            return "expectThat(%s)";
+        case TestHarness.ExpectationType.False:
+            return "expectFalse(%s)";
+        case TestHarness.ExpectationType.Null:
+            return "expectNull(%s)";
+        case TestHarness.ExpectationType.NotNull:
+            return "expectNotNull(%s)";
+        case TestHarness.ExpectationType.Equal:
+            return "expectEqual(%s, %s)";
+        case TestHarness.ExpectationType.NotEqual:
+            return "expectNotEqual(%s, %s)";
+        case TestHarness.ExpectationType.ShallowEqual:
+            return "expectShallowEqual(%s, %s)";
+        case TestHarness.ExpectationType.NotShallowEqual:
+            return "expectNotShallowEqual(%s, %s)";
+        case TestHarness.ExpectationType.EqualWithAccuracy:
+            return "expectEqualWithAccuracy(%s, %s, %s)";
+        case TestHarness.ExpectationType.LessThan:
+            return "expectLessThan(%s, %s)";
+        case TestHarness.ExpectationType.LessThanOrEqual:
+            return "expectLessThanOrEqual(%s, %s)";
+        case TestHarness.ExpectationType.GreaterThan:
+            return "expectGreaterThan(%s, %s)";
+        case TestHarness.ExpectationType.GreaterThanOrEqual:
+            return "expectGreaterThanOrEqual(%s, %s)";
+        default:
+            console.error("Unknown TestHarness.ExpectationType type: " + type);
+            return null;
+        }
+    }
+
+    _expectedValueFormat(type)
+    {
+        switch (type) {
+        case TestHarness.ExpectationType.True:
+            return "truthy";
+        case TestHarness.ExpectationType.False:
+            return "falsey";
+        case TestHarness.ExpectationType.NotNull:
+            return "not null";
+        case TestHarness.ExpectationType.NotEqual:
+        case TestHarness.ExpectationType.NotShallowEqual:
+            return "not %s";
+        case TestHarness.ExpectationType.EqualWithAccuracy:
+            return "%s +/- %s";
+        case TestHarness.ExpectationType.LessThan:
+            return "less than %s";
+        case TestHarness.ExpectationType.LessThanOrEqual:
+            return "less than or equal to %s";
+        case TestHarness.ExpectationType.GreaterThan:
+            return "greater than %s";
+        case TestHarness.ExpectationType.GreaterThanOrEqual:
+            return "greater than or equal to %s";
+        default:
+            return "%s";
+        }
+    }
+};
+
+TestHarness.ExpectationType = {
+    True: Symbol("expect-true"),
+    False: Symbol("expect-false"),
+    Null: Symbol("expect-null"),
+    NotNull: Symbol("expect-not-null"),
+    Equal: Symbol("expect-equal"),
+    NotEqual: Symbol("expect-not-equal"),
+    ShallowEqual: Symbol("expect-shallow-equal"),
+    NotShallowEqual: Symbol("expect-not-shallow-equal"),
+    EqualWithAccuracy: Symbol("expect-equal-with-accuracy"),
+    LessThan: Symbol("expect-less-than"),
+    LessThanOrEqual: Symbol("expect-less-than-or-equal"),
+    GreaterThan: Symbol("expect-greater-than"),
+    GreaterThanOrEqual: Symbol("expect-greater-than-or-equal"),
 };

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ElementAndTextDescendantIterator_h
-#define ElementAndTextDescendantIterator_h
+#pragma once
 
 #include "Element.h"
 #include "ElementIteratorAssertions.h"
@@ -36,7 +35,8 @@ namespace WebCore {
 class ElementAndTextDescendantIterator {
 public:
     ElementAndTextDescendantIterator();
-    explicit ElementAndTextDescendantIterator(ContainerNode& root);
+    enum FirstChildTag { FirstChild };
+    ElementAndTextDescendantIterator(ContainerNode& root, FirstChildTag);
     ElementAndTextDescendantIterator(ContainerNode& root, Node* current);
 
     ElementAndTextDescendantIterator& operator++() { return traverseNext(); }
@@ -49,8 +49,8 @@ public:
     bool operator==(const ElementAndTextDescendantIterator& other) const;
     bool operator!=(const ElementAndTextDescendantIterator& other) const;
 
-    bool operator!() const { return !m_current; }
-    explicit operator bool() const { return m_current; }
+    bool operator!() const { return !m_depth; }
+    explicit operator bool() const { return m_depth; }
 
     void dropAssertions();
 
@@ -101,7 +101,7 @@ inline ElementAndTextDescendantIterator::ElementAndTextDescendantIterator()
 {
 }
 
-inline ElementAndTextDescendantIterator::ElementAndTextDescendantIterator(ContainerNode& root)
+inline ElementAndTextDescendantIterator::ElementAndTextDescendantIterator(ContainerNode& root, FirstChildTag)
     : m_current(firstChild(root))
 #if !ASSERT_DISABLED
     , m_assertions(m_current)
@@ -114,7 +114,7 @@ inline ElementAndTextDescendantIterator::ElementAndTextDescendantIterator(Contai
 }
 
 inline ElementAndTextDescendantIterator::ElementAndTextDescendantIterator(ContainerNode& root, Node* current)
-    : m_current(current != &root ? current : nullptr)
+    : m_current(current)
 #if !ASSERT_DISABLED
     , m_assertions(m_current)
 #endif
@@ -122,6 +122,8 @@ inline ElementAndTextDescendantIterator::ElementAndTextDescendantIterator(Contai
     if (!m_current)
         return;
     ASSERT(isElementOrText(*m_current));
+    if (m_current == &root)
+        return;
 
     Vector<Node*, 20> ancestorStack;
     auto* ancestor = m_current->parentNode();
@@ -284,7 +286,7 @@ inline const Node* ElementAndTextDescendantIterator::operator->() const
 inline bool ElementAndTextDescendantIterator::operator==(const ElementAndTextDescendantIterator& other) const
 {
     ASSERT(!m_assertions.domTreeHasMutated());
-    return m_current == other.m_current;
+    return m_current == other.m_current || (!m_depth && !other.m_depth);
 }
 
 inline bool ElementAndTextDescendantIterator::operator!=(const ElementAndTextDescendantIterator& other) const
@@ -301,7 +303,7 @@ inline ElementAndTextDescendantIteratorAdapter::ElementAndTextDescendantIterator
 
 inline ElementAndTextDescendantIterator ElementAndTextDescendantIteratorAdapter::begin()
 {
-    return ElementAndTextDescendantIterator(m_root);
+    return ElementAndTextDescendantIterator(m_root, ElementAndTextDescendantIterator::FirstChild);
 }
 
 inline ElementAndTextDescendantIterator ElementAndTextDescendantIteratorAdapter::end()
@@ -316,5 +318,4 @@ inline ElementAndTextDescendantIteratorAdapter elementAndTextDescendants(Contain
     return ElementAndTextDescendantIteratorAdapter(root);
 }
 
-}
-#endif
+} // namespace WebCore

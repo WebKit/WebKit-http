@@ -1,5 +1,5 @@
 # Copyright (c) 2009 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -62,11 +62,12 @@ class AbstractQueue(Command, QueueEngineDelegate):
     watchers = [
     ]
 
+    _skip_status = "Skip"
     _pass_status = "Pass"
     _fail_status = "Fail"
     _error_status = "Error"
 
-    def __init__(self, options=None): # Default values should never be collections (like []) as default values are shared between invocations
+    def __init__(self, options=None):  # Default values should never be collections (like []) as default values are shared between invocations
         options_list = (options or []) + [
             make_option("--no-confirm", action="store_false", dest="confirm", default=True, help="Do not ask the user for confirmation before running the queue.  Dangerous!"),
             make_option("--exit-after-iteration", action="store", type="int", dest="iterations", default=None, help="Stop running the queue after iterating this number of times."),
@@ -117,7 +118,7 @@ class AbstractQueue(Command, QueueEngineDelegate):
         return os.path.join(self._log_directory(), "%s.log" % self.name)
 
     def work_item_log_path(self, work_item):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def begin_work_queue(self):
         _log.info("CAUTION: %s will discard all local changes in \"%s\"" % (self.name, self._tool.scm().checkout_root))
@@ -137,18 +138,18 @@ class AbstractQueue(Command, QueueEngineDelegate):
         return not self._options.iterations or self._iteration_count <= self._options.iterations
 
     def next_work_item(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def process_work_item(self, work_item):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def handle_unexpected_error(self, work_item, message):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     # Command methods
 
     def execute(self, options, args, tool, engine=QueueEngine):
-        self._options = options # FIXME: This code is wrong.  Command.options is a list, this assumes an Options element!
+        self._options = options  # FIXME: This code is wrong.  Command.options is a list, this assumes an Options element!
         self._tool = tool  # FIXME: This code is wrong too!  Command.bind_to_tool handles this!
         return engine(self.name, self, self._tool.wakeup_event, self._options.seconds_to_sleep).run()
 
@@ -242,6 +243,10 @@ class AbstractPatchQueue(AbstractQueue):
     def _did_error(self, patch, reason):
         message = "%s: %s" % (self._error_status, reason)
         self._update_status(message, patch)
+        self._release_work_item(patch)
+
+    def _did_skip(self, patch):
+        self._update_status(self._skip_status, patch)
         self._release_work_item(patch)
 
     def _unlock_patch(self, patch):
@@ -339,8 +344,8 @@ class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTas
                 return True
             self._unlock_patch(patch)
             return False
-        except PatchIsNotValid:
-            self._did_error(patch, "%s did not process patch." % self.name)
+        except PatchIsNotValid as error:
+            self._did_error(patch, "%s did not process patch. Reason: %s" % (self.name, error.failure_message))
             return False
         except ScriptError, e:
             validator = CommitterValidator(self._tool)
@@ -445,6 +450,7 @@ class AbstractReviewQueue(PatchProcessingQueue, StepSequenceErrorHandler):
         return self._next_patch()
 
     def process_work_item(self, patch):
+        self._update_status("Started processing patch", patch)
         passed = self.review_patch(patch)
         if passed:
             self._did_pass(patch)
@@ -477,8 +483,8 @@ class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):
         except UnableToApplyPatch, e:
             self._did_error(patch, "%s unable to apply patch." % self.name)
             return False
-        except PatchIsNotValid:
-            self._did_error(patch, "%s did not process patch." % self.name)
+        except PatchIsNotValid as error:
+            self._did_error(patch, "%s did not process patch. Reason: %s" % (self.name, error.failure_message))
             return False
         except ScriptError, e:
             output = re.sub(r'Failed to run .+ exit_code: 1', '', e.output)

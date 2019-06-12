@@ -63,15 +63,21 @@ WebInspector.ScriptContentView = class ScriptContentView extends WebInspector.Co
         this._showTypesButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("show-types", toolTipTypes, activatedToolTipTypes, "Images/NavigationItemTypes.svg", 13, 14);
         this._showTypesButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleTypeAnnotations, this);
         this._showTypesButtonNavigationItem.enabled = false;
-
         WebInspector.showJavaScriptTypeInformationSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showJavaScriptTypeInformationSettingChanged, this);
+
+        let toolTipCodeCoverage = WebInspector.UIString("Fade unexecuted code");
+        let activatedToolTipCodeCoverage = WebInspector.UIString("Do not fade unexecuted code");
+        this._codeCoverageButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("code-coverage", toolTipCodeCoverage, activatedToolTipCodeCoverage, "Images/NavigationItemCodeCoverage.svg", 13, 14);
+        this._codeCoverageButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleUnexecutedCodeHighlights, this);
+        this._codeCoverageButtonNavigationItem.enabled = false;
+        WebInspector.enableControlFlowProfilerSetting.addEventListener(WebInspector.Setting.Event.Changed, this._enableControlFlowProfilerSettingChanged, this);
     }
 
     // Public
 
     get navigationItems()
     {
-        return [this._prettyPrintButtonNavigationItem, this._showTypesButtonNavigationItem];
+        return [this._prettyPrintButtonNavigationItem, this._showTypesButtonNavigationItem, this._codeCoverageButtonNavigationItem];
     }
 
     get script()
@@ -101,17 +107,24 @@ WebInspector.ScriptContentView = class ScriptContentView extends WebInspector.Co
 
     shown()
     {
+        super.shown();
+
         this._textEditor.shown();
     }
 
     hidden()
     {
+        super.hidden();
+
         this._textEditor.hidden();
     }
 
     closed()
     {
+        super.closed();
+
         WebInspector.showJavaScriptTypeInformationSetting.removeEventListener(null, null, this);
+        WebInspector.enableControlFlowProfilerSetting.removeEventListener(null, null, this);
 
         this._textEditor.close();
     }
@@ -202,24 +215,44 @@ WebInspector.ScriptContentView = class ScriptContentView extends WebInspector.Co
     _contentDidPopulate(event)
     {
         this._prettyPrintButtonNavigationItem.enabled = this._textEditor.canBeFormatted();
+
         this._showTypesButtonNavigationItem.enabled = this._textEditor.canShowTypeAnnotations();
         this._showTypesButtonNavigationItem.activated = WebInspector.showJavaScriptTypeInformationSetting.value;
+
+        this._codeCoverageButtonNavigationItem.enabled = this._textEditor.canShowCoverageHints();
+        this._codeCoverageButtonNavigationItem.activated = WebInspector.enableControlFlowProfilerSetting.value;
     }
 
     _togglePrettyPrint(event)
     {
         var activated = !this._prettyPrintButtonNavigationItem.activated;
-        this._textEditor.formatted = activated;
+        this._textEditor.updateFormattedState(activated);
     }
 
     _toggleTypeAnnotations(event)
     {
-        this._textEditor.toggleTypeAnnotations();
+        this._showTypesButtonNavigationItem.enabled = false;
+        this._textEditor.toggleTypeAnnotations().then(() => {
+            this._showTypesButtonNavigationItem.enabled = true;
+        });
+    }
+
+    _toggleUnexecutedCodeHighlights(event)
+    {
+        this._codeCoverageButtonNavigationItem.enabled = false;
+        this._textEditor.toggleUnexecutedCodeHighlights().then(() => {
+            this._codeCoverageButtonNavigationItem.enabled = true;
+        });
     }
 
     _showJavaScriptTypeInformationSettingChanged(event)
     {
         this._showTypesButtonNavigationItem.activated = WebInspector.showJavaScriptTypeInformationSetting.value;
+    }
+
+    _enableControlFlowProfilerSettingChanged(event)
+    {
+        this._codeCoverageButtonNavigationItem.activated = WebInspector.enableControlFlowProfilerSetting.value;
     }
 
     _textEditorFormattingDidChange(event)

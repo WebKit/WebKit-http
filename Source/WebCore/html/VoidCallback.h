@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef VoidCallback_h
-#define VoidCallback_h
+#pragma once
 
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -33,9 +33,7 @@ namespace WebCore {
 class VoidCallback : public RefCounted<VoidCallback> {
 public:
     virtual ~VoidCallback() { }
-    virtual bool handleEvent() = 0;
+    virtual CallbackResult<void> handleEvent() = 0;
 };
 
 } // namespace WebCore
-
-#endif

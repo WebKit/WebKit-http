@@ -31,6 +31,7 @@
 #include "WebCookieManager.h"
 #include "WebPage.h"
 #include "WebProcess.h"
+#include "WebsiteDataStoreParameters.h"
 #include <WebCore/CFNetworkSPI.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
@@ -49,7 +50,7 @@ void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID
 {
     ASSERT(sessionID.isEphemeral());
 
-    if (SessionTracker::storageSession(sessionID))
+    if (WebCore::NetworkStorageSession::storageSession(sessionID))
         return;
 
     String base;
@@ -58,24 +59,45 @@ void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID
     else
         base = SessionTracker::getIdentifierBase();
 
-    SessionTracker::setSession(sessionID, NetworkStorageSession::createPrivateBrowsingSession(base + '.' + String::number(sessionID.sessionID()))
+    NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, base + '.' + String::number(sessionID.sessionID()));
 #if USE(NETWORK_SESSION)
-        , std::make_unique<NetworkSession>(NetworkSession::Type::Ephemeral, sessionID, nullptr)
+    auto networkSession = NetworkSession::create(sessionID);
+    SessionTracker::setSession(sessionID, WTFMove(networkSession));
 #endif
-    );
+}
+
+void WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&& parameters)
+{
+    if (NetworkStorageSession::storageSession(parameters.sessionID))
+        return;
+
+    String base;
+    if (SessionTracker::getIdentifierBase().isNull())
+        base = [[NSBundle mainBundle] bundleIdentifier];
+    else
+        base = SessionTracker::getIdentifierBase();
+
+    SandboxExtension::consumePermanently(parameters.cookieStoragePathExtensionHandle);
+
+    RetainPtr<CFDataRef> cookieStorageData = adoptCF(CFDataCreate(kCFAllocatorDefault, parameters.uiProcessCookieStorageIdentifier.data(), parameters.uiProcessCookieStorageIdentifier.size()));
+    auto uiProcessCookieStorage = adoptCF(CFHTTPCookieStorageCreateFromIdentifyingData(kCFAllocatorDefault, cookieStorageData.get()));
+
+    NetworkStorageSession::ensureSession(parameters.sessionID, base + '.' + String::number(parameters.sessionID.sessionID()), WTFMove(uiProcessCookieStorage));
+
+#if USE(NETWORK_SESSION)
+    auto networkSession = NetworkSession::create(parameters.sessionID);
+    SessionTracker::setSession(parameters.sessionID, WTFMove(networkSession));
+#endif
 }
 
 void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy policy)
 {
     [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:static_cast<NSHTTPCookieAcceptPolicy>(policy)];
 
-    if (RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage())
-        CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
-
-    for (const auto& session : SessionTracker::storageSessionMap().values()) {
-        if (session)
-            CFHTTPCookieStorageSetCookieAcceptPolicy(session->cookieStorage().get(), policy);
-    }
+    NetworkStorageSession::forEach([&] (const NetworkStorageSession& networkStorageSession) {
+        if (auto cookieStorage = networkStorageSession.cookieStorage())
+            CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
+    });
 }
     
 bool WebFrameNetworkingContext::localFileContentSniffingEnabled() const
@@ -86,20 +108,13 @@ bool WebFrameNetworkingContext::localFileContentSniffingEnabled() const
 SchedulePairHashSet* WebFrameNetworkingContext::scheduledRunLoopPairs() const
 {
     if (!frame() || !frame()->page())
-        return 0;
+        return nullptr;
     return frame()->page()->scheduledRunLoopPairs();
 }
 
 RetainPtr<CFDataRef> WebFrameNetworkingContext::sourceApplicationAuditData() const
 {
-#if PLATFORM(IOS)
-    audit_token_t auditToken;
-    if (!WebProcess::singleton().parentProcessConnection()->getAuditToken(auditToken))
-        return nullptr;
-    return adoptCF(CFDataCreate(0, (const UInt8*)&auditToken, sizeof(auditToken)));
-#else
-    return nullptr;
-#endif
+    return WebProcess::singleton().sourceApplicationAuditData();
 }
 
 String WebFrameNetworkingContext::sourceApplicationIdentifier() const
@@ -116,10 +131,10 @@ NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
     ASSERT(RunLoop::isMain());
     if (frame()) {
-        if (auto* storageSession = SessionTracker::storageSession(frame()->page()->sessionID()))
+        if (auto* storageSession = WebCore::NetworkStorageSession::storageSession(frame()->page()->sessionID()))
             return *storageSession;
         // Some requests may still be coming shortly after WebProcess was told to destroy its session.
-        LOG_ERROR("Invalid session ID. Please file a bug unless you just disabled private browsing, in which case it's an expected race.");
+        LOG_ERROR("WEB Invalid session ID. Please file a bug unless you just disabled private browsing, in which case it's an expected race.");
     }
     return NetworkStorageSession::defaultStorageSession();
 }

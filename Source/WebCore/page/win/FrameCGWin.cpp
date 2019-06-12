@@ -26,6 +26,8 @@
 #include "config.h"
 #include "FrameWin.h"
 
+#if USE(CG)
+
 #include "BitmapInfo.h"
 #include "Frame.h"
 #include "FrameSelection.h"
@@ -83,3 +85,5 @@ GDIObject<HBITMAP> imageFromRect(const Frame* frame, IntRect& ir)
 }
 
 } // namespace WebCore
+
+#endif

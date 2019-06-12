@@ -25,13 +25,13 @@
 
 WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspector.DataGridNode
 {
-    constructor(graphOnly, graphDataSource, hasChildren)
+    constructor(includesGraph, graphDataSource, hasChildren)
     {
         super({}, hasChildren);
 
         this.copyable = false;
 
-        this._graphOnly = graphOnly || false;
+        this._includesGraph = includesGraph || false;
         this._graphDataSource = graphDataSource || null;
 
         if (graphDataSource) {
@@ -41,6 +41,11 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
     }
 
     // Public
+
+    get record()
+    {
+        return this.records && this.records.length ? this.records[0] : null;
+    }
 
     get records()
     {
@@ -103,6 +108,12 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
         if (!value)
             return emDash;
 
+        const options = {
+            useGoToArrowButton: true,
+            ignoreNetworkTab: true,
+            ignoreSearchTab: true,
+        };
+
         if (value instanceof WebInspector.SourceCodeLocation) {
             if (value.sourceCode instanceof WebInspector.Resource) {
                 cell.classList.add(WebInspector.ResourceTreeElement.ResourceIconStyleClassName);
@@ -120,13 +131,7 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
             value.populateLiveDisplayLocationTooltip(cell);
 
             var fragment = document.createDocumentFragment();
-
-            var goToArrowButtonLink = WebInspector.createSourceCodeLocationLink(value, false, true);
-            fragment.appendChild(goToArrowButtonLink);
-
-            var icon = document.createElement("div");
-            icon.className = "icon";
-            fragment.appendChild(icon);
+            fragment.appendChild(WebInspector.createSourceCodeLocationLink(value, options));
 
             var titleElement = document.createElement("span");
             value.populateLiveDisplayLocationString(titleElement, "textContent");
@@ -153,12 +158,7 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
                 // Give the whole cell a tooltip and keep it up to date.
                 callFrame.sourceCodeLocation.populateLiveDisplayLocationTooltip(cell);
 
-                var goToArrowButtonLink = WebInspector.createSourceCodeLocationLink(callFrame.sourceCodeLocation, false, true);
-                fragment.appendChild(goToArrowButtonLink);
-
-                var icon = document.createElement("div");
-                icon.classList.add("icon");
-                fragment.appendChild(icon);
+                fragment.appendChild(WebInspector.createSourceCodeLocationLink(callFrame.sourceCodeLocation, options));
 
                 if (isAnonymousFunction) {
                     // For anonymous functions we show the resource or script icon and name.
@@ -207,10 +207,8 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
 
     refresh()
     {
-        if (this._graphDataSource && this._graphOnly) {
+        if (this._graphDataSource && this._includesGraph)
             this.needsGraphRefresh();
-            return;
-        }
 
         super.refresh();
     }
@@ -231,8 +229,11 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
         if (!this.revealed)
             return;
 
-        var secondsPerPixel = this._graphDataSource.secondsPerPixel;
-        console.assert(isFinite(secondsPerPixel) && secondsPerPixel > 0);
+        let secondsPerPixel = this._graphDataSource.secondsPerPixel;
+        if (isNaN(secondsPerPixel))
+            return;
+
+        console.assert(secondsPerPixel > 0);
 
         var recordBarIndex = 0;
 
@@ -246,8 +247,10 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
                 timelineRecordBar.records = records;
             }
             timelineRecordBar.refresh(this._graphDataSource);
-            if (!timelineRecordBar.element.parentNode)
+            if (!timelineRecordBar.element.parentNode) {
                 this._graphContainerElement.appendChild(timelineRecordBar.element);
+                this.didAddRecordBar(timelineRecordBar);
+            }
             ++recordBarIndex;
         }
 
@@ -289,8 +292,9 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
 
         // Remove the remaining unused TimelineRecordBars.
         for (; recordBarIndex < this._timelineRecordBars.length; ++recordBarIndex) {
-            this._timelineRecordBars[recordBarIndex].records = null;
             this._timelineRecordBars[recordBarIndex].element.remove();
+            this.didRemoveRecordBar(this._timelineRecordBars[recordBarIndex]);
+            this._timelineRecordBars[recordBarIndex].records = null;
         }
     }
 
@@ -318,7 +322,39 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
         this._scheduledGraphRefreshIdentifier = requestAnimationFrame(this.refreshGraph.bind(this));
     }
 
+    displayName()
+    {
+        // Can be overridden by subclasses.
+        const includeDetails = true;
+        return WebInspector.TimelineTabContentView.displayNameForRecord(this.record, true);
+    }
+
+    iconClassNames()
+    {
+        // Can be overridden by subclasses.
+        return [WebInspector.TimelineTabContentView.iconClassNameForRecord(this.record)];
+    }
+
     // Protected
+
+    createGoToArrowButton(cellElement, callback)
+    {
+        function buttonClicked(event)
+        {
+            if (this.hidden || !this.revealed)
+                return;
+
+            event.stopPropagation();
+
+            callback(this, cellElement.__columnIdentifier);
+        }
+
+        let button = WebInspector.createGoToArrowButton();
+        button.addEventListener("click", buttonClicked.bind(this));
+
+        let contentElement = cellElement.firstChild;
+        contentElement.appendChild(button);
+    }
 
     isRecordVisible(record)
     {
@@ -337,5 +373,35 @@ WebInspector.TimelineDataGridNode = class TimelineDataGridNode extends WebInspec
             return false;
 
         return true;
+    }
+
+    filterableDataForColumn(columnIdentifier)
+    {
+        let value = this.data[columnIdentifier];
+        if (value instanceof WebInspector.SourceCodeLocation)
+            return value.displayLocationString();
+
+        if (value instanceof WebInspector.CallFrame)
+            return [value.functionName, value.sourceCodeLocation.displayLocationString()];
+
+        return super.filterableDataForColumn(columnIdentifier);
+    }
+
+    didAddRecordBar(recordBar)
+    {
+        // Implemented by subclasses.
+    }
+
+    didRemoveRecordBar(recordBar)
+    {
+        // Implemented by subclasses.
+    }
+
+    didResizeColumn(columnIdentifier)
+    {
+        if (columnIdentifier !== "graph")
+            return;
+
+        this.needsGraphRefresh();
     }
 };

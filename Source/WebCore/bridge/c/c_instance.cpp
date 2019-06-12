@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2003, 2006, 2016 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,8 +72,10 @@ void CInstance::moveGlobalExceptionToExecState(ExecState* exec)
         return;
 
     {
-        JSLockHolder lock(exec);
-        exec->vm().throwException(exec, createError(exec, globalExceptionString()));
+        VM& vm = exec->vm();
+        JSLockHolder lock(vm);
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        throwException(exec, scope, createError(exec, globalExceptionString()));
     }
 
     globalExceptionString() = String();
@@ -139,12 +141,12 @@ private:
     void finishCreation(VM& vm, const String& name)
     {
         Base::finishCreation(vm, name);
-        ASSERT(inherits(info()));
+        ASSERT(inherits(vm, info()));
     }
 
 };
 
-const ClassInfo CRuntimeMethod::s_info = { "CRuntimeMethod", &RuntimeMethod::s_info, 0, CREATE_METHOD_TABLE(CRuntimeMethod) };
+const ClassInfo CRuntimeMethod::s_info = { "CRuntimeMethod", &RuntimeMethod::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(CRuntimeMethod) };
 
 JSValue CInstance::getMethod(ExecState* exec, PropertyName propertyName)
 {
@@ -154,8 +156,11 @@ JSValue CInstance::getMethod(ExecState* exec, PropertyName propertyName)
 
 JSValue CInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod)
 {
-    if (!asObject(runtimeMethod)->inherits(CRuntimeMethod::info()))
-        return exec->vm().throwException(exec, createTypeError(exec, "Attempt to invoke non-plug-in method on plug-in object."));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (!asObject(runtimeMethod)->inherits(vm, CRuntimeMethod::info()))
+        return throwTypeError(exec, scope, ASCIILiteral("Attempt to invoke non-plug-in method on plug-in object."));
 
     CMethod* method = static_cast<CMethod*>(runtimeMethod->method());
     ASSERT(method);
@@ -184,7 +189,7 @@ JSValue CInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod)
     }
 
     if (!retval)
-        exec->vm().throwException(exec, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
+        throwException(exec, scope, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
 
     for (i = 0; i < count; i++)
         _NPN_ReleaseVariantValue(&cArgs[i]);
@@ -197,6 +202,9 @@ JSValue CInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod)
 
 JSValue CInstance::invokeDefaultMethod(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!_object->_class->invokeDefault)
         return jsUndefined();
 
@@ -219,7 +227,7 @@ JSValue CInstance::invokeDefaultMethod(ExecState* exec)
     }
 
     if (!retval)
-        exec->vm().throwException(exec, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
+        throwException(exec, scope, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
 
     for (i = 0; i < count; i++)
         _NPN_ReleaseVariantValue(&cArgs[i]);
@@ -236,6 +244,9 @@ bool CInstance::supportsConstruct() const
 
 JSValue CInstance::invokeConstruct(ExecState* exec, const ArgList& args)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!_object->_class->construct)
         return jsUndefined();
 
@@ -258,7 +269,7 @@ JSValue CInstance::invokeConstruct(ExecState* exec, const ArgList& args)
     }
 
     if (!retval)
-        exec->vm().throwException(exec, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
+        throwException(exec, scope, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
 
     for (i = 0; i < count; i++)
         _NPN_ReleaseVariantValue(&cArgs[i]);
@@ -311,6 +322,9 @@ JSValue CInstance::valueOf(ExecState* exec) const
 
 bool CInstance::toJSPrimitive(ExecState* exec, const char* name, JSValue& resultValue) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     NPIdentifier ident = _NPN_GetStringIdentifier(name);
     if (!_object->_class->hasMethod(_object, ident))
         return false;
@@ -328,7 +342,7 @@ bool CInstance::toJSPrimitive(ExecState* exec, const char* name, JSValue& result
     }
 
     if (!retval)
-        exec->vm().throwException(exec, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
+        throwException(exec, scope, createError(exec, ASCIILiteral("Error calling method on NPObject.")));
 
     resultValue = convertNPVariantToValue(exec, &resultVariant, m_rootObject.get());
     _NPN_ReleaseVariantValue(&resultVariant);

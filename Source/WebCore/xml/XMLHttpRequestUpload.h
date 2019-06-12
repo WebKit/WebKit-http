@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef XMLHttpRequestUpload_h
-#define XMLHttpRequestUpload_h
+#pragma once
 
 #include "XMLHttpRequest.h"
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -38,6 +36,7 @@ namespace WebCore {
     class XMLHttpRequest;
 
     class XMLHttpRequestUpload final : public XMLHttpRequestEventTarget {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         explicit XMLHttpRequestUpload(XMLHttpRequest*);
 
@@ -45,15 +44,15 @@ namespace WebCore {
         void deref() { m_xmlHttpRequest->deref(); }
         XMLHttpRequest* xmlHttpRequest() const { return m_xmlHttpRequest; }
 
-        virtual EventTargetInterface eventTargetInterface() const override { return XMLHttpRequestUploadEventTargetInterfaceType; }
-        virtual ScriptExecutionContext* scriptExecutionContext() const override { return m_xmlHttpRequest->scriptExecutionContext(); }
+        EventTargetInterface eventTargetInterface() const override { return XMLHttpRequestUploadEventTargetInterfaceType; }
+        ScriptExecutionContext* scriptExecutionContext() const override { return m_xmlHttpRequest->scriptExecutionContext(); }
 
         void dispatchThrottledProgressEvent(bool lengthComputable, unsigned long long loaded, unsigned long long total);
         void dispatchProgressEvent(const AtomicString &type);
 
     private:
-        virtual void refEventTarget() override final { ref(); }
-        virtual void derefEventTarget() override final { deref(); }
+        void refEventTarget() final { ref(); }
+        void derefEventTarget() final { deref(); }
 
         XMLHttpRequest* m_xmlHttpRequest;
         bool m_lengthComputable;
@@ -62,5 +61,3 @@ namespace WebCore {
     };
     
 } // namespace WebCore
-
-#endif // XMLHttpRequestUpload_h

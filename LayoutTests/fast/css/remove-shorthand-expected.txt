@@ -48,7 +48,7 @@ Removing -webkit-column-rule
 removes "column-rule-width, column-rule-style, column-rule-color"
 and adds "".
 Removing list-style
-removes "list-style-type, list-style-position, list-style-image"
+removes "list-style"
 and adds "".
 Removing margin
 removes "margin"
@@ -64,7 +64,7 @@ removes "-webkit-mask"
 and adds "".
 Removing -webkit-mask-position
 removes "-webkit-mask"
-and adds "-webkit-mask".
+and adds "-webkit-mask-image, -webkit-mask-repeat-x, -webkit-mask-repeat-y".
 Removing overflow
 removes "overflow"
 and adds "".
@@ -72,5 +72,5 @@ Removing padding
 removes "padding"
 and adds "".
 Removing -webkit-text-stroke
-removes "-webkit-text-stroke-color, -webkit-text-stroke-width"
+removes "-webkit-text-stroke-width, -webkit-text-stroke-color"
 and adds "".

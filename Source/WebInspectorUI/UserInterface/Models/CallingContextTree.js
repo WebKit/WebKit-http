@@ -25,27 +25,76 @@
 
 WebInspector.CallingContextTree = class CallingContextTree extends WebInspector.Object
 {
-    constructor()
+    constructor(type)
     {
         super();
 
-        this._root = new WebInspector.CCTNode(-1, -1, -1, "<root>", null);
-        this._totalNumberOfSamples = 0;
+        this._type = type || WebInspector.CallingContextTree.Type.TopDown;
+
+        this.reset();
     }
 
     // Public
 
+    get type() { return this._type; }
     get totalNumberOfSamples() { return this._totalNumberOfSamples; }
-    
-    updateTreeWithStackTrace({timestamp, stackFrames})
+
+    reset()
+    {
+        this._root = new WebInspector.CallingContextTreeNode(-1, -1, -1, "<root>", null);
+        this._totalNumberOfSamples = 0;
+    }
+
+    totalDurationInTimeRange(startTime, endTime)
+    {
+        return this._root.filteredTimestampsAndDuration(startTime, endTime).duration;
+    }
+
+    updateTreeWithStackTrace({timestamp, stackFrames}, duration)
     {
         this._totalNumberOfSamples++;
+
         let node = this._root;
-        node.addTimestampAndExpressionLocation(timestamp, null);
-        for (let i = stackFrames.length; i--; ) {
-            let stackFrame = stackFrames[i];
-            node = node.findOrMakeChild(stackFrame);
-            node.addTimestampAndExpressionLocation(timestamp, stackFrame.expressionLocation || null);
+        node.addTimestampAndExpressionLocation(timestamp, duration, null);
+
+        switch (this._type) {
+        case WebInspector.CallingContextTree.Type.TopDown:
+            for (let i = stackFrames.length; i--; ) {
+                let stackFrame = stackFrames[i];
+                node = node.findOrMakeChild(stackFrame);
+                node.addTimestampAndExpressionLocation(timestamp, duration, stackFrame.expressionLocation || null, i === 0);
+            }
+            break;
+        case WebInspector.CallingContextTree.Type.BottomUp:
+            for (let i = 0; i < stackFrames.length; ++i) {
+                let stackFrame = stackFrames[i];
+                node = node.findOrMakeChild(stackFrame);
+                node.addTimestampAndExpressionLocation(timestamp, duration, stackFrame.expressionLocation || null, i === 0);
+            }
+            break;
+        case WebInspector.CallingContextTree.Type.TopFunctionsTopDown:
+            for (let i = stackFrames.length; i--; ) {
+                node = this._root;
+                for (let j = i + 1; j--; ) {
+                    let stackFrame = stackFrames[j];
+                    node = node.findOrMakeChild(stackFrame);
+                    node.addTimestampAndExpressionLocation(timestamp, duration, stackFrame.expressionLocation || null, j === 0);
+                }
+            }
+            break;
+        case WebInspector.CallingContextTree.Type.TopFunctionsBottomUp:
+            for (let i = 0; i < stackFrames.length; i++) {
+                node = this._root;
+                for (let j = i; j < stackFrames.length; j++) {
+                    let stackFrame = stackFrames[j];
+                    node = node.findOrMakeChild(stackFrame);
+                    node.addTimestampAndExpressionLocation(timestamp, duration, stackFrame.expressionLocation || null, j === 0);
+                }
+            }
+            break;
+        default:
+            console.assert(false, "This should not be reached.");
+            break;
         }
     }
 
@@ -53,15 +102,20 @@ WebInspector.CallingContextTree = class CallingContextTree extends WebInspector.
     {
         let cpuProfile = {};
         let roots = [];
-        let numSamplesInTimeRange = this._root.filteredTimestamps(startTime, endTime).length;
+        let numSamplesInTimeRange = this._root.filteredTimestampsAndDuration(startTime, endTime).timestamps.length;
 
         this._root.forEachChild((child) => {
             if (child.hasStackTraceInTimeRange(startTime, endTime))
-                roots.push(child.toCPUProfileNode(numSamplesInTimeRange, startTime, endTime)); 
+                roots.push(child.toCPUProfileNode(numSamplesInTimeRange, startTime, endTime));
         });
 
         cpuProfile.rootNodes = roots;
         return cpuProfile;
+    }
+
+    forEachChild(callback)
+    {
+        this._root.forEachChild(callback);
     }
 
     forEachNode(callback)
@@ -114,180 +168,9 @@ WebInspector.CallingContextTree = class CallingContextTree extends WebInspector.
     }
 };
 
-WebInspector.CCTNode = class CCTNode extends WebInspector.Object
-{
-    constructor(sourceID, line, column, name, url)
-    {
-        super();
-
-        this._children = {};
-        this._sourceID = sourceID;
-        this._line = line;
-        this._column = column;
-        this._name = name;
-        this._url = url;
-        this._uid = WebInspector.CCTNode.__uid++;
-
-        this._timestamps = [];
-        this._expressionLocations = {}; // Keys are "line:column" strings. Values are arrays of timestamps in sorted order.
-    }
-
-    // Static and Private
-
-    static _hash(stackFrame)
-    {
-        return stackFrame.name + ":" + stackFrame.sourceID + ":" + stackFrame.line + ":" + stackFrame.column;
-    }
-
-    // Public
-
-    get sourceID() { return this._sourceID; }
-    get line() { return this._line; }
-    get column() { return this._column; }
-    get name() { return this._name; }
-    get uid() { return this._uid; }
-    get url() { return this._url; }
-
-    hasStackTraceInTimeRange(startTime, endTime)
-    {
-        console.assert(startTime <= endTime);
-        if (startTime > endTime)
-            return false;
-
-        let timestamps = this._timestamps;
-        let length = timestamps.length;
-        if (!length)
-            return false;
-
-        let index = timestamps.lowerBound(startTime);
-        if (index === length)
-            return false;
-        console.assert(startTime <= timestamps[index]);
-
-        let hasTimestampInRange = timestamps[index] <= endTime;
-        return hasTimestampInRange;
-    }
-
-    filteredTimestamps(startTime, endTime)
-    {
-        let index = this._timestamps.lowerBound(startTime); // The left-most (smallest) item that is >= startTime.
-        let result = [];
-        for (; index < this._timestamps.length; index++) {
-            let timestamp = this._timestamps[index];
-            console.assert(startTime <= timestamp);
-            if (!(timestamp <= endTime))
-                break;
-            result.push(timestamp);
-        }
-        return result;
-    }
-
-    hasChildren()
-    {
-        return !!Object.getOwnPropertyNames(this._children).length;
-    }
-
-    findOrMakeChild(stackFrame)
-    {
-        let hash = WebInspector.CCTNode._hash(stackFrame);
-        let node = this._children[hash];
-        if (node)
-            return node;
-        node = new WebInspector.CCTNode(stackFrame.sourceID, stackFrame.line, stackFrame.column, stackFrame.name, stackFrame.url);
-        this._children[hash] = node;
-        return node;
-    }
-
-    addTimestampAndExpressionLocation(timestamp, expressionLocation)
-    {
-        console.assert(!this._timestamps.length || this._timestamps.lastValue <= timestamp, "Expected timestamps to be added in sorted, increasing, order.");
-        this._timestamps.push(timestamp);
-
-        if (!expressionLocation)
-            return;
-
-        let {line, column} = expressionLocation;    
-        let hashCons = line + ":" + column;
-        let timestamps = this._expressionLocations[hashCons];
-        if (!timestamps) {
-            timestamps = [];
-            this._expressionLocations[hashCons] = timestamps;
-        }
-        console.assert(!timestamps.length || timestamps.lastValue <= timestamp, "Expected timestamps to be added in sorted, increasing, order.");
-        timestamps.push(timestamp);
-    }
-
-    forEachChild(callback)
-    {
-        for (let propertyName of Object.getOwnPropertyNames(this._children))
-            callback(this._children[propertyName]);
-    }
-
-    forEachNode(callback)
-    {
-        callback(this);
-        this.forEachChild(function(child) {
-            child.forEachNode(callback);
-        });
-    }
-
-    toCPUProfileNode(numSamples, startTime, endTime)
-    {
-        let children = [];
-        this.forEachChild((child) => {
-            if (child.hasStackTraceInTimeRange(startTime, endTime))
-                children.push(child.toCPUProfileNode(numSamples, startTime, endTime));
-        });
-        let cpuProfileNode = {
-            id: this._uid,
-            functionName: this._name,
-            url: this._url,
-            lineNumber: this._line,
-            columnNumber: this._column,
-            children: children
-        };
-
-        let timestamps = [];
-        let frameStartTime = Number.MAX_VALUE;
-        let frameEndTime = Number.MIN_VALUE;
-        for (let i = 0; i < this._timestamps.length; i++) {
-            let timestamp = this._timestamps[i];
-            if (startTime <= timestamp && timestamp <= endTime) {
-                timestamps.push(timestamp);
-                frameStartTime = Math.min(frameStartTime, timestamp);
-                frameEndTime = Math.max(frameEndTime, timestamp);
-            }
-        }
-
-        cpuProfileNode.callInfo = {
-            callCount: timestamps.length, // Totally not callCount, but oh well, this makes life easier because of field names.
-            startTime: frameStartTime,
-            endTime: frameEndTime,
-            totalTime: (timestamps.length / numSamples) * (endTime - startTime)
-        };
-
-        return cpuProfileNode;
-    }
-
-    // Testing.
-
-    __test_buildLeafLinkedLists(parent, result)
-    {
-        let linkedListNode = {
-            name: this._name,
-            url: this._url,
-            parent: parent
-        };
-        if (this.hasChildren()) {
-            this.forEachChild((child) => {
-                child.__test_buildLeafLinkedLists(linkedListNode, result);
-            });
-        } else {
-            // We're a leaf.
-            result.push(linkedListNode);
-        }
-    }
+WebInspector.CallingContextTree.Type = {
+    TopDown: Symbol("TopDown"),
+    BottomUp: Symbol("BottomUp"),
+    TopFunctionsTopDown: Symbol("TopFunctionsTopDown"),
+    TopFunctionsBottomUp: Symbol("TopFunctionsBottomUp"),
 };
-
-WebInspector.CCTNode.__uid = 0;
-

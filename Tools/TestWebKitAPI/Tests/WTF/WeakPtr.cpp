@@ -24,8 +24,8 @@
  */
 
 #include "config.h"
-#include "test.h"
 
+#include "Test.h"
 #include <wtf/WeakPtr.h>
 
 namespace TestWebKitAPI {
@@ -43,6 +43,9 @@ TEST(WTF_WeakPtr, Basic)
     EXPECT_TRUE(weakPtr1);
     EXPECT_TRUE(weakPtr2);
     EXPECT_TRUE(weakPtr3);
+    EXPECT_TRUE(weakPtr1 == weakPtr2);
+    EXPECT_TRUE(weakPtr1 == &dummy);
+    EXPECT_TRUE(&dummy == weakPtr2);
     delete factory;
     EXPECT_NULL(weakPtr1.get());
     EXPECT_NULL(weakPtr2.get());
@@ -75,6 +78,9 @@ TEST(WTF_WeakPtr, MultipleFactories)
     WeakPtr<int> weakPtr2 = factory2->createWeakPtr();
     EXPECT_EQ(weakPtr1.get(), &dummy1);
     EXPECT_EQ(weakPtr2.get(), &dummy2);
+    EXPECT_TRUE(weakPtr1 != weakPtr2);
+    EXPECT_TRUE(weakPtr1 != &dummy2);
+    EXPECT_TRUE(&dummy1 != weakPtr2);
     delete factory1;
     EXPECT_NULL(weakPtr1.get());
     EXPECT_EQ(weakPtr2.get(), &dummy2);

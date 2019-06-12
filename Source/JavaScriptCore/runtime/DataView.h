@@ -23,34 +23,32 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DataView_h
-#define DataView_h
+#pragma once
 
 #include "ArrayBufferView.h"
 #include <wtf/FlipBytes.h>
-#include <wtf/PassRefPtr.h>
 
 namespace JSC {
 
 class DataView : public ArrayBufferView {
 protected:
-    DataView(PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned byteLength);
+    DataView(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned byteLength);
     
 public:
-    JS_EXPORT_PRIVATE static Ref<DataView> create(PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned length);
-    static Ref<DataView> create(PassRefPtr<ArrayBuffer>);
+    JS_EXPORT_PRIVATE static Ref<DataView> create(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned length);
+    static Ref<DataView> create(RefPtr<ArrayBuffer>&&);
     
-    virtual unsigned byteLength() const override
+    unsigned byteLength() const override
     {
         return m_byteLength;
     }
     
-    virtual TypedArrayType getType() const override
+    TypedArrayType getType() const override
     {
         return TypeDataView;
     }
 
-    virtual JSArrayBufferView* wrap(ExecState*, JSGlobalObject*) override;
+    JSArrayBufferView* wrap(ExecState*, JSGlobalObject*) override;
     
     template<typename T>
     T get(unsigned offset, bool littleEndian, bool* status = 0)
@@ -97,6 +95,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // DataView_h
-

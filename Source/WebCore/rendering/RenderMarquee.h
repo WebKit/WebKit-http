@@ -41,8 +41,7 @@
  * version of this file under any of the LGPL, the MPL or the GPL.
  */
 
-#ifndef RenderMarquee_h
-#define RenderMarquee_h
+#pragma once
 
 #include "Length.h"
 #include "RenderStyleConstants.h"
@@ -52,7 +51,7 @@ namespace WebCore {
 
 class RenderLayer;
 
-// This class handles the auto-scrolling of layers with overflow: marquee.
+// This class handles the auto-scrolling for <marquee>
 class RenderMarquee final {
     WTF_MAKE_NONCOPYABLE(RenderMarquee); WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -96,5 +95,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // RenderMarquee_h

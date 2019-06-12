@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 namespace bmalloc {
 
 class Deallocator;
+class DebugHeap;
 class Heap;
 
 // Per-cache object allocator.
@@ -43,35 +44,37 @@ public:
 
     void* tryAllocate(size_t);
     void* allocate(size_t);
+    void* tryAllocate(size_t alignment, size_t);
     void* allocate(size_t alignment, size_t);
     void* reallocate(void*, size_t);
 
     void scavenge();
 
 private:
+    void* allocateImpl(size_t alignment, size_t, bool crashOnFailure);
+    
     bool allocateFastCase(size_t, void*&);
     void* allocateSlowCase(size_t);
     
-    void* allocateMedium(size_t);
+    void* allocateLogSizeClass(size_t);
     void* allocateLarge(size_t);
-    void* allocateXLarge(size_t);
     
     void refillAllocator(BumpAllocator&, size_t sizeClass);
     void refillAllocatorSlowCase(BumpAllocator&, size_t sizeClass);
     
-    std::array<BumpAllocator, mediumMax / alignment> m_bumpAllocators;
-    std::array<BumpRangeCache, mediumMax / alignment> m_bumpRangeCaches;
+    std::array<BumpAllocator, sizeClassCount> m_bumpAllocators;
+    std::array<BumpRangeCache, sizeClassCount> m_bumpRangeCaches;
 
-    bool m_isBmallocEnabled;
+    DebugHeap* m_debugHeap;
     Deallocator& m_deallocator;
 };
 
 inline bool Allocator::allocateFastCase(size_t size, void*& object)
 {
-    if (size > mediumMax)
+    if (size > maskSizeClassMax)
         return false;
 
-    BumpAllocator& allocator = m_bumpAllocators[sizeClass(size)];
+    BumpAllocator& allocator = m_bumpAllocators[maskSizeClass(size)];
     if (!allocator.canAllocate())
         return false;
 

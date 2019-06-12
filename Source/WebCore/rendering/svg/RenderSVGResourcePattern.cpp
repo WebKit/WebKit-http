@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-RenderSVGResourcePattern::RenderSVGResourcePattern(SVGPatternElement& element, Ref<RenderStyle>&& style)
+RenderSVGResourcePattern::RenderSVGResourcePattern(SVGPatternElement& element, RenderStyle&& style)
     : RenderSVGResourceContainer(element, WTFMove(style))
     , m_shouldCollectPatternAttributes(true)
 {
@@ -69,19 +69,13 @@ void RenderSVGResourcePattern::collectPatternAttributes(PatternAttributes& attri
     }
 }
 
-PatternData* RenderSVGResourcePattern::buildPattern(RenderElement& renderer, unsigned short resourceMode, GraphicsContext& context)
+PatternData* RenderSVGResourcePattern::buildPattern(RenderElement& renderer, OptionSet<RenderSVGResourceMode> resourceMode, GraphicsContext& context)
 {
+    ASSERT(!m_shouldCollectPatternAttributes);
+
     PatternData* currentData = m_patternMap.get(&renderer);
     if (currentData && currentData->pattern)
         return currentData;
-
-    if (m_shouldCollectPatternAttributes) {
-        patternElement().synchronizeAnimatedSVGAttribute(anyQName());
-
-        m_attributes = PatternAttributes();
-        collectPatternAttributes(m_attributes);
-        m_shouldCollectPatternAttributes = false;
-    }
 
     // If we couldn't determine the pattern content element root, stop here.
     if (!m_attributes.patternContentElement())
@@ -121,7 +115,7 @@ PatternData* RenderSVGResourcePattern::buildPattern(RenderElement& renderer, uns
 
     // Build pattern.
     auto patternData = std::make_unique<PatternData>();
-    patternData->pattern = Pattern::create(copiedImage, true, true);
+    patternData->pattern = Pattern::create(copiedImage.releaseNonNull(), true, true);
 
     // Compute pattern space transformation.
 
@@ -133,7 +127,7 @@ PatternData* RenderSVGResourcePattern::buildPattern(RenderElement& renderer, uns
         patternData->transform = patternTransform * patternData->transform;
 
     // Account for text drawing resetting the context to non-scaled, see SVGInlineTextBox::paintTextWithShadows.
-    if (resourceMode & ApplyToTextMode) {
+    if (resourceMode.contains(RenderSVGResourceMode::ApplyToText)) {
         AffineTransform additionalTextTransformation;
         if (shouldTransformOnTextPainting(renderer, additionalTextTransformation))
             patternData->transform *= additionalTextTransformation;
@@ -146,11 +140,19 @@ PatternData* RenderSVGResourcePattern::buildPattern(RenderElement& renderer, uns
     return m_patternMap.set(&renderer, WTFMove(patternData)).iterator->value.get();
 }
 
-bool RenderSVGResourcePattern::applyResource(RenderElement& renderer, const RenderStyle& style, GraphicsContext*& context, unsigned short resourceMode)
+bool RenderSVGResourcePattern::applyResource(RenderElement& renderer, const RenderStyle& style, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode)
 {
     ASSERT(context);
-    ASSERT(resourceMode != ApplyToDefaultMode);
+    ASSERT(resourceMode != RenderSVGResourceMode::ApplyToDefault);
 
+    if (m_shouldCollectPatternAttributes) {
+        patternElement().synchronizeAnimatedSVGAttribute(anyQName());
+
+        m_attributes = PatternAttributes();
+        collectPatternAttributes(m_attributes);
+        m_shouldCollectPatternAttributes = false;
+    }
+    
     // Spec: When the geometry of the applicable element has no width or height and objectBoundingBox is specified,
     // then the given effect (e.g. a gradient or a filter) will be ignored.
     FloatRect objectBoundingBox = renderer.objectBoundingBox();
@@ -166,11 +168,11 @@ bool RenderSVGResourcePattern::applyResource(RenderElement& renderer, const Rend
 
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
-    if (resourceMode & ApplyToFillMode) {
+    if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
         context->setAlpha(svgStyle.fillOpacity());
         context->setFillPattern(*patternData->pattern);
         context->setFillRule(svgStyle.fillRule());
-    } else if (resourceMode & ApplyToStrokeMode) {
+    } else if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
         if (svgStyle.vectorEffect() == VE_NON_SCALING_STROKE)
             patternData->pattern->setPatternSpaceTransform(transformOnNonScalingStroke(&renderer, patternData->transform));
         context->setAlpha(svgStyle.strokeOpacity());
@@ -178,14 +180,14 @@ bool RenderSVGResourcePattern::applyResource(RenderElement& renderer, const Rend
         SVGRenderSupport::applyStrokeStyleToContext(context, style, renderer);
     }
 
-    if (resourceMode & ApplyToTextMode) {
-        if (resourceMode & ApplyToFillMode) {
+    if (resourceMode.contains(RenderSVGResourceMode::ApplyToText)) {
+        if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
             context->setTextDrawingMode(TextModeFill);
 
 #if USE(CG)
             context->applyFillPattern();
 #endif
-        } else if (resourceMode & ApplyToStrokeMode) {
+        } else if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
             context->setTextDrawingMode(TextModeStroke);
 
 #if USE(CG)
@@ -197,18 +199,18 @@ bool RenderSVGResourcePattern::applyResource(RenderElement& renderer, const Rend
     return true;
 }
 
-void RenderSVGResourcePattern::postApplyResource(RenderElement&, GraphicsContext*& context, unsigned short resourceMode, const Path* path, const RenderSVGShape* shape)
+void RenderSVGResourcePattern::postApplyResource(RenderElement&, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode, const Path* path, const RenderSVGShape* shape)
 {
     ASSERT(context);
-    ASSERT(resourceMode != ApplyToDefaultMode);
+    ASSERT(resourceMode != RenderSVGResourceMode::ApplyToDefault);
 
-    if (resourceMode & ApplyToFillMode) {
+    if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
         if (path)
             context->fillPath(*path);
         else if (shape)
             shape->fillShape(*context);
     }
-    if (resourceMode & ApplyToStrokeMode) {
+    if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
         if (path)
             context->strokePath(*path);
         else if (shape)

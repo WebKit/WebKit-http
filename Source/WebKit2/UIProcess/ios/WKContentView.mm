@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,10 @@
 #import "APIPageConfiguration.h"
 #import "AccessibilityIOS.h"
 #import "ApplicationStateTracker.h"
+#import "InputViewUpdateDeferrer.h"
+#import "Logging.h"
 #import "PageClientImplIOS.h"
+#import "PrintInfo.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteScrollingCoordinatorProxy.h"
 #import "SmartMagnificationController.h"
@@ -48,6 +51,8 @@
 #import "WebPageGroup.h"
 #import "WebProcessPool.h"
 #import "WebSystemInterface.h"
+#import "_WKFrameHandleInternal.h"
+#import "_WKWebViewPrintFormatterInternal.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/FrameView.h>
@@ -55,6 +60,7 @@
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/QuartzCoreSPI.h>
+#import <WebCore/TextStream.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/RetainPtr.h>
 
@@ -87,15 +93,14 @@ public:
     HistoricalVelocityData()
         : m_historySize(0)
         , m_latestDataIndex(0)
-        , m_lastAppendTimestamp(0)
     {
     }
 
-    VelocityData velocityForNewData(CGPoint newPosition, double scale, double timestamp)
+    VelocityData velocityForNewData(CGPoint newPosition, double scale, MonotonicTime timestamp)
     {
         // Due to all the source of rect update, the input is very noisy. To smooth the output, we accumulate all changes
         // within 1 frame as a single update. No speed computation is ever done on data within the same frame.
-        const double filteringThreshold = 1 / 60.;
+        const Seconds filteringThreshold(1.0 / 60);
 
         VelocityData velocityData;
         if (m_historySize > 0) {
@@ -106,14 +111,14 @@ public:
             else
                 oldestDataIndex = m_historySize - (distanceToLastHistoricalData - m_latestDataIndex);
 
-            double timeDelta = timestamp - m_history[oldestDataIndex].timestamp;
+            Seconds timeDelta = timestamp - m_history[oldestDataIndex].timestamp;
             if (timeDelta > filteringThreshold) {
                 Data& oldestData = m_history[oldestDataIndex];
-                velocityData = VelocityData((newPosition.x - oldestData.position.x) / timeDelta, (newPosition.y - oldestData.position.y) / timeDelta, (scale - oldestData.scale) / timeDelta);
+                velocityData = VelocityData((newPosition.x - oldestData.position.x) / timeDelta.seconds(), (newPosition.y - oldestData.position.y) / timeDelta.seconds(), (scale - oldestData.scale) / timeDelta.seconds());
             }
         }
 
-        double timeSinceLastAppend = timestamp - m_lastAppendTimestamp;
+        Seconds timeSinceLastAppend = timestamp - m_lastAppendTimestamp;
         if (timeSinceLastAppend > filteringThreshold)
             append(newPosition, scale, timestamp);
         else
@@ -124,7 +129,7 @@ public:
     void clear() { m_historySize = 0; }
 
 private:
-    void append(CGPoint newPosition, double scale, double timestamp)
+    void append(CGPoint newPosition, double scale, MonotonicTime timestamp)
     {
         m_latestDataIndex = (m_latestDataIndex + 1) % maxHistoryDepth;
         m_history[m_latestDataIndex] = { timestamp, newPosition, scale };
@@ -141,10 +146,10 @@ private:
 
     unsigned m_historySize;
     unsigned m_latestDataIndex;
-    double m_lastAppendTimestamp;
+    MonotonicTime m_lastAppendTimestamp;
 
     struct Data {
-        double timestamp;
+        MonotonicTime timestamp;
         CGPoint position;
         double scale;
     } m_history[maxHistoryDepth];
@@ -181,6 +186,9 @@ private:
     RetainPtr<NSUndoManager> _undoManager;
 
     std::unique_ptr<ApplicationStateTracker> _applicationStateTracker;
+
+    BOOL _isPrintingToPDF;
+    RetainPtr<CGPDFDocumentRef> _printedDocument;
 }
 
 - (instancetype)_commonInitializationWithProcessPool:(WebKit::WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration
@@ -196,15 +204,14 @@ private:
     WebProcessPool::statistics().wkViewCount++;
 
     _rootContentView = adoptNS([[UIView alloc] init]);
+    [_rootContentView layer].name = @"RootContent";
     [_rootContentView layer].masksToBounds = NO;
     [_rootContentView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
 
     _fixedClippingView = adoptNS([[UIView alloc] init]);
+    [_fixedClippingView layer].name = @"FixedClipping";
     [_fixedClippingView layer].masksToBounds = YES;
     [_fixedClippingView layer].anchorPoint = CGPointZero;
-#ifndef NDEBUG
-    [[_fixedClippingView layer] setName:@"Fixed clipping"];
-#endif
 
     [self addSubview:_fixedClippingView.get()];
     [_fixedClippingView addSubview:_rootContentView.get()];
@@ -278,7 +285,7 @@ private:
         return;
 
     ASSERT(!_applicationStateTracker);
-    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationWillEnterForeground));
+    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationDidCreateWindowContext), @selector(_applicationDidFinishSnapshottingAfterEnteringBackground), @selector(_applicationWillEnterForeground));
 }
 
 - (WKBrowsingContextController *)browsingContextController
@@ -355,28 +362,88 @@ private:
     [_fixedClippingView setBounds:clippingBounds];
 }
 
-- (void)didUpdateVisibleRect:(CGRect)visibleRect unobscuredRect:(CGRect)unobscuredRect unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
-    scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale inStableState:(BOOL)isStableState isChangingObscuredInsetsInteractively:(BOOL)isChangingObscuredInsetsInteractively
+- (void)_didExitStableState
 {
-    double timestamp = monotonicallyIncreasingTime();
+    _needsDeferredEndScrollingSelectionUpdate = self.shouldHideSelectionWhenScrolling;
+    if (!_needsDeferredEndScrollingSelectionUpdate)
+        return;
+
+    [_textSelectionAssistant deactivateSelection];
+    [[_webSelectionAssistant selectionView] setHidden:YES];
+}
+
+- (CGRect)_computeUnobscuredContentRectRespectingInputViewBounds:(CGRect)unobscuredContentRect inputViewBounds:(CGRect)inputViewBounds
+{
+    // The input view bounds are in window coordinates, but the unobscured rect is in content coordinates. Account for this by converting input view bounds to content coordinates.
+    CGRect inputViewBoundsInContentCoordinates = [self.window convertRect:inputViewBounds toView:self];
+    if (CGRectGetHeight(inputViewBoundsInContentCoordinates))
+        unobscuredContentRect.size.height = std::min<float>(CGRectGetHeight(unobscuredContentRect), CGRectGetMinY(inputViewBoundsInContentCoordinates) - CGRectGetMinY(unobscuredContentRect));
+    return unobscuredContentRect;
+}
+
+- (void)didUpdateVisibleRect:(CGRect)visibleContentRect
+    unobscuredRect:(CGRect)unobscuredContentRect
+    unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
+    obscuredInsets:(UIEdgeInsets)obscuredInsets
+    unobscuredSafeAreaInsets:(UIEdgeInsets)unobscuredSafeAreaInsets
+    inputViewBounds:(CGRect)inputViewBounds
+    scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale
+    inStableState:(BOOL)isStableState
+    isChangingObscuredInsetsInteractively:(BOOL)isChangingObscuredInsetsInteractively
+    enclosedInScrollableAncestorView:(BOOL)enclosedInScrollableAncestorView
+{
+    auto drawingArea = _page->drawingArea();
+    if (!drawingArea)
+        return;
+
+    MonotonicTime timestamp = MonotonicTime::now();
     HistoricalVelocityData::VelocityData velocityData;
     if (!isStableState)
-        velocityData = _historicalKinematicData.velocityForNewData(visibleRect.origin, zoomScale, timestamp);
+        velocityData = _historicalKinematicData.velocityForNewData(visibleContentRect.origin, zoomScale, timestamp);
     else
         _historicalKinematicData.clear();
 
-    FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredRect, zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect);
-    _page->updateVisibleContentRects(visibleRect, unobscuredRect, unobscuredRectInScrollViewCoordinates, fixedPositionRectForLayout,
-        zoomScale, isStableState, isChangingObscuredInsetsInteractively, _webView._allowsViewportShrinkToFit, timestamp, velocityData.horizontalVelocity, velocityData.verticalVelocity, velocityData.scaleChangeRate);
-
     RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
-    FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), zoomScale);
+
+    CGRect unobscuredContentRectRespectingInputViewBounds = [self _computeUnobscuredContentRectRespectingInputViewBounds:unobscuredContentRect inputViewBounds:inputViewBounds];
+    FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->customFixedPositionRect(), zoomScale, FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect, scrollingCoordinator->visualViewportEnabled());
+
+    VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
+        visibleContentRect,
+        unobscuredContentRect,
+        unobscuredRectInScrollViewCoordinates,
+        unobscuredContentRectRespectingInputViewBounds,
+        fixedPositionRectForLayout,
+        WebCore::FloatBoxExtent(obscuredInsets.top, obscuredInsets.right, obscuredInsets.bottom, obscuredInsets.left),
+        WebCore::FloatBoxExtent(unobscuredSafeAreaInsets.top, unobscuredSafeAreaInsets.right, unobscuredSafeAreaInsets.bottom, unobscuredSafeAreaInsets.left),
+        zoomScale,
+        isStableState,
+        _sizeChangedSinceLastVisibleContentRectUpdate,
+        isChangingObscuredInsetsInteractively,
+        _webView._allowsViewportShrinkToFit,
+        enclosedInScrollableAncestorView,
+        timestamp,
+        velocityData.horizontalVelocity,
+        velocityData.verticalVelocity,
+        velocityData.scaleChangeRate,
+        downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea).lastCommittedLayerTreeTransactionID());
+
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKContentView didUpdateVisibleRect]" << visibleContentRectUpdateInfo.dump());
+
+    bool wasStableState = _page->inStableState();
+    _page->updateVisibleContentRects(visibleContentRectUpdateInfo);
+
+    _sizeChangedSinceLastVisibleContentRectUpdate = NO;
+
+    FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), zoomScale, FrameView::LayoutViewportConstraint::Unconstrained, scrollingCoordinator->visualViewportEnabled());
     scrollingCoordinator->viewportChangedViaDelegatedScrolling(scrollingCoordinator->rootScrollingNodeID(), fixedPositionRect, zoomScale);
 
-    if (auto drawingArea = _page->drawingArea())
-        drawingArea->updateDebugIndicator();
-        
+    drawingArea->updateDebugIndicator();
+    
     [self updateFixedClippingView:fixedPositionRect];
+
+    if (wasStableState && !isStableState)
+        [self _didExitStableState];
 }
 
 - (void)didFinishScrolling
@@ -492,6 +559,8 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     CGPoint scrollOrigin = -layerTreeTransaction.scrollOrigin();
     CGRect contentBounds = { scrollOrigin, contentsSize };
 
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKContentView _didCommitLayerTree:] transactionID " <<  layerTreeTransaction.transactionID() << " contentBounds " << FloatRect(contentBounds));
+
     BOOL boundsChanged = !CGRectEqualToRect([self bounds], contentBounds);
     if (boundsChanged)
         [self setBounds:contentBounds];
@@ -501,16 +570,17 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     if (_interactionViewsContainerView) {
         FloatPoint scaledOrigin = layerTreeTransaction.scrollOrigin();
         float scale = [[_webView scrollView] zoomScale];
-        scaledOrigin.scale(scale, scale);
+        scaledOrigin.scale(scale);
         [_interactionViewsContainerView setFrame:CGRectMake(scaledOrigin.x(), scaledOrigin.y(), 0, 0)];
     }
     
     if (boundsChanged) {
-        FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), [[_webView scrollView] zoomScale]);
+        // FIXME: factor computeCustomFixedPositionRect() into something that gives us this rect.
+        FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), [[_webView scrollView] zoomScale]);
         [self updateFixedClippingView:fixedPositionRect];
 
         // We need to push the new content bounds to the webview to update fixed position rects.
-        [_webView _updateVisibleContentRects];
+        [_webView _scheduleVisibleContentRectUpdate];
     }
     
     // Updating the selection requires a full editor state. If the editor state is missing post layout
@@ -518,6 +588,11 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     // so we delay the selection update.
     if (!_page->editorState().isMissingPostLayoutData)
         [self _updateChangedSelection];
+}
+
+- (void)_layerTreeCommitComplete
+{
+    [_webView _layerTreeCommitComplete];
 }
 
 - (void)_setAcceleratedCompositingRootView:(UIView *)rootView
@@ -533,10 +608,11 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     return [_webView _scrollToRect:targetRect origin:origin minimumScrollDistance:minimumScrollDistance];
 }
 
-- (void)_zoomToFocusRect:(CGRect)rectToFocus selectionRect:(CGRect)selectionRect fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll
+- (void)_zoomToFocusRect:(CGRect)rectToFocus selectionRect:(CGRect)selectionRect insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll
 {
     [_webView _zoomToFocusRect:rectToFocus
                  selectionRect:selectionRect
+                   insideFixed:insideFixed
                       fontSize:fontSize
                   minimumScale:minimumScale
                   maximumScale:maximumScale
@@ -567,20 +643,97 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 - (void)_applicationDidEnterBackground
 {
     _page->applicationDidEnterBackground();
-    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
+    _page->activityStateDidChange(ActivityState::AllFlags & ~ActivityState::IsInWindow);
+}
+
+- (void)_applicationDidCreateWindowContext
+{
+    if (auto drawingArea = _page->drawingArea())
+        drawingArea->hideContentUntilAnyUpdate();
+}
+
+- (void)_applicationDidFinishSnapshottingAfterEnteringBackground
+{
+    _page->applicationDidFinishSnapshottingAfterEnteringBackground();
 }
 
 - (void)_applicationWillEnterForeground
 {
     _page->applicationWillEnterForeground();
-    if (auto drawingArea = _page->drawingArea())
-        drawingArea->hideContentUntilAnyUpdate();
-    _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow, true, WebPageProxy::ViewStateChangeDispatchMode::Immediate);
+    _page->activityStateDidChange(ActivityState::AllFlags & ~ActivityState::IsInWindow, true, WebPageProxy::ActivityStateChangeDispatchMode::Immediate);
 }
 
 - (void)_applicationDidBecomeActive:(NSNotification*)notification
 {
     _page->applicationDidBecomeActive();
+}
+
+@end
+
+#pragma mark Printing
+
+@interface WKContentView (_WKWebViewPrintFormatter) <_WKWebViewPrintProvider>
+@end
+
+@implementation WKContentView (_WKWebViewPrintFormatter)
+
+- (NSUInteger)_wk_pageCountForPrintFormatter:(_WKWebViewPrintFormatter *)printFormatter
+{
+    if (_isPrintingToPDF)
+        return 0;
+
+    uint64_t frameID;
+    if (_WKFrameHandle *handle = printFormatter.frameToPrint)
+        frameID = handle._frameID;
+    else if (auto mainFrame = _page->mainFrame())
+        frameID = mainFrame->frameID();
+    else
+        return 0;
+
+    // The first page can have a smaller content rect than subsequent pages if a top content inset
+    // is specified. Since WebKit requires a uniform content rect for each page during layout, use
+    // the intersection of the first and non-first page rects.
+    // FIXME: Teach WebCore::PrintContext to accept an initial content offset when paginating.
+    CGRect printingRect = CGRectIntersection([printFormatter _pageContentRect:YES], [printFormatter _pageContentRect:NO]);
+    if (CGRectIsEmpty(printingRect))
+        return 0;
+
+    PrintInfo printInfo;
+    printInfo.pageSetupScaleFactor = 1;
+    printInfo.snapshotFirstPage = printFormatter.snapshotFirstPage;
+    if (printInfo.snapshotFirstPage) {
+        static const CGFloat maximumPDFHeight = 200 * 72; // maximum PDF height for a single page is 200 inches
+        CGSize contentSize = self.bounds.size;
+        printingRect = (CGRect) { CGPointZero, { contentSize.width, std::min(contentSize.height, maximumPDFHeight) } };
+        [printFormatter _setSnapshotPaperRect:printingRect];
+    }
+    printInfo.availablePaperWidth = CGRectGetWidth(printingRect);
+    printInfo.availablePaperHeight = CGRectGetHeight(printingRect);
+
+    _isPrintingToPDF = YES;
+    auto retainedSelf = retainPtr(self);
+    return _page->computePagesForPrintingAndDrawToPDF(frameID, printInfo, [retainedSelf](const IPC::DataReference& pdfData, CallbackBase::Error error) {
+        retainedSelf->_isPrintingToPDF = NO;
+        if (error != CallbackBase::Error::None)
+            return;
+
+        auto data = adoptCF(CFDataCreate(kCFAllocatorDefault, pdfData.data(), pdfData.size()));
+        auto dataProvider = adoptCF(CGDataProviderCreateWithCFData(data.get()));
+        retainedSelf->_printedDocument = adoptCF(CGPDFDocumentCreateWithProvider(dataProvider.get()));
+    });
+}
+
+- (CGPDFDocumentRef)_wk_printedDocument
+{
+    if (_isPrintingToPDF) {
+        if (!_page->process().connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DrawToPDFCallback>(_page->pageID(), Seconds::infinity())) {
+            ASSERT_NOT_REACHED();
+            return nullptr;
+        }
+        ASSERT(!_isPrintingToPDF);
+    }
+
+    return _printedDocument.autorelease();
 }
 
 @end

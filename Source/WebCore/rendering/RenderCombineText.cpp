@@ -43,7 +43,7 @@ void RenderCombineText::styleDidChange(StyleDifference diff, const RenderStyle* 
     // clobbering width variants and shrink-to-fit changes, since we won't recombine when
     // the font doesn't change.
     if (!oldStyle || oldStyle->fontCascade() != style().fontCascade())
-        m_combineFontStyle = RenderStyle::clone(&style());
+        m_combineFontStyle = RenderStyle::clonePtr(style());
 
     RenderText::styleDidChange(diff, oldStyle);
 
@@ -71,10 +71,10 @@ float RenderCombineText::width(unsigned from, unsigned length, const FontCascade
     return RenderText::width(from, length, font, xPosition, fallbackFonts, glyphOverflow);
 }
 
-Optional<FloatPoint> RenderCombineText::computeTextOrigin(const FloatRect& boxRect) const
+std::optional<FloatPoint> RenderCombineText::computeTextOrigin(const FloatRect& boxRect) const
 {
     if (!m_isCombined)
-        return Nullopt;
+        return std::nullopt;
 
     // Visually center m_combinedTextWidth/Ascent/Descent within boxRect
     FloatPoint result = boxRect.minXMaxYCorner();
@@ -84,17 +84,15 @@ Optional<FloatPoint> RenderCombineText::computeTextOrigin(const FloatRect& boxRe
     return result;
 }
 
-void RenderCombineText::getStringToRender(int start, String& string, int& length) const
+String RenderCombineText::combinedStringForRendering() const
 {
-    ASSERT(start >= 0);
     if (m_isCombined) {
-        string = originalText();
-        length = string.length();
-        return;
+        auto originalText = this->originalText();
+        ASSERT(!originalText.isNull());
+        return originalText;
     }
  
-    string = text();
-    string = string.substringSharingImpl(static_cast<unsigned>(start), length);
+    return { };
 }
 
 void RenderCombineText::combineText()
@@ -138,8 +136,8 @@ void RenderCombineText::combineText()
     else {
         // Need to try compressed glyphs.
         static const FontWidthVariant widthVariants[] = { HalfWidth, ThirdWidth, QuarterWidth };
-        for (size_t i = 0 ; i < WTF_ARRAY_LENGTH(widthVariants) ; ++i) {
-            description.setWidthVariant(widthVariants[i]); // When modifying this, make sure to keep it in sync with FontPlatformData::isForTextCombine()!
+        for (auto widthVariant : widthVariants) {
+            description.setWidthVariant(widthVariant); // When modifying this, make sure to keep it in sync with FontPlatformData::isForTextCombine()!
 
             FontCascade compressedFont(description, style().fontCascade().letterSpacing(), style().fontCascade().wordSpacing());
             compressedFont.update(fontSelector);

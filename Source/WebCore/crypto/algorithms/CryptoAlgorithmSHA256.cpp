@@ -28,23 +28,15 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoDigest.h"
+#include "ExceptionCode.h"
+#include "ScriptExecutionContext.h"
+#include <pal/crypto/CryptoDigest.h>
 
 namespace WebCore {
 
-const char* const CryptoAlgorithmSHA256::s_name = "SHA-256";
-
-CryptoAlgorithmSHA256::CryptoAlgorithmSHA256()
+Ref<CryptoAlgorithm> CryptoAlgorithmSHA256::create()
 {
-}
-
-CryptoAlgorithmSHA256::~CryptoAlgorithmSHA256()
-{
-}
-
-std::unique_ptr<CryptoAlgorithm> CryptoAlgorithmSHA256::create()
-{
-    return std::unique_ptr<CryptoAlgorithm>(new CryptoAlgorithmSHA256);
+    return adoptRef(*new CryptoAlgorithmSHA256);
 }
 
 CryptoAlgorithmIdentifier CryptoAlgorithmSHA256::identifier() const
@@ -52,17 +44,35 @@ CryptoAlgorithmIdentifier CryptoAlgorithmSHA256::identifier() const
     return s_identifier;
 }
 
-void CryptoAlgorithmSHA256::digest(const CryptoAlgorithmParameters&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
+void CryptoAlgorithmSHA256::digest(Vector<uint8_t>&& message, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
 {
-    std::unique_ptr<CryptoDigest> digest = CryptoDigest::create(CryptoAlgorithmIdentifier::SHA_256);
+    auto digest = PAL::CryptoDigest::create(PAL::CryptoDigest::Algorithm::SHA_256);
     if (!digest) {
-        failureCallback();
+        exceptionCallback(OperationError);
         return;
     }
 
-    digest->addBytes(data.first, data.second);
+    context.ref();
+    workQueue.dispatch([digest = WTFMove(digest), message = WTFMove(message), callback = WTFMove(callback), &context]() mutable {
+        digest->addBytes(message.data(), message.size());
+        auto result = digest->computeHash();
+        context.postTask([callback = WTFMove(callback), result = WTFMove(result)](ScriptExecutionContext& context) {
+            callback(result);
+            context.deref();
+        });
+    });
+}
 
+ExceptionOr<void> CryptoAlgorithmSHA256::digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
+{
+    auto digest = PAL::CryptoDigest::create(PAL::CryptoDigest::Algorithm::SHA_256);
+    if (!digest) {
+        failureCallback();
+        return { };
+    }
+    digest->addBytes(data.first, data.second);
     callback(digest->computeHash());
+    return { };
 }
 
 }

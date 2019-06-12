@@ -78,6 +78,9 @@ class Queue(object):
         display_name = display_name.replace("Wk2", "WK2")
         display_name = display_name.replace("Ews", "EWS")
         display_name = display_name.replace("Ios", "iOS")
+        display_name = display_name.replace("Jsc", "JSC")
+        display_name = display_name.replace("Wpe", "WPE")
+        display_name = display_name.replace("Gtk", "GTK")
         return display_name
 
     _dash_regexp = re.compile("-")

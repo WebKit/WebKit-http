@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLModElement_h
-#define HTMLModElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -35,9 +34,7 @@ public:
 private:
     HTMLModElement(const QualifiedName&, Document&);
 
-    virtual bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const final;
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

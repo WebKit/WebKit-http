@@ -26,6 +26,7 @@
 #include "Document.h"
 #include "HTMLNames.h"
 #include "NodeRenderStyle.h"
+#include "RenderElement.h"
 #include "RenderStyle.h"
 #include "StyleInheritedData.h"
 #include "StyleResolver.h"
@@ -52,7 +53,7 @@ Ref<HTMLTitleElement> HTMLTitleElement::create(const QualifiedName& tagName, Doc
 Node::InsertionNotificationRequest HTMLTitleElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (inDocument() && !isInShadowTree())
+    if (isConnected() && !isInShadowTree())
         document().titleElementAdded(*this);
     return InsertionDone;
 }
@@ -60,7 +61,7 @@ Node::InsertionNotificationRequest HTMLTitleElement::insertedInto(ContainerNode&
 void HTMLTitleElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.inDocument() && !insertionPoint.isInShadowTree())
+    if (insertionPoint.isConnected() && !insertionPoint.isInShadowTree())
         document().titleElementRemoved(*this);
 }
 
@@ -73,40 +74,25 @@ void HTMLTitleElement::childrenChanged(const ChildChange& change)
 
 String HTMLTitleElement::text() const
 {
-    return TextNodeTraversal::contentsAsString(*this);
+    StringBuilder result;
+    for (Text* text = TextNodeTraversal::firstChild(*this); text; text = TextNodeTraversal::nextSibling(*text))
+        result.append(text->data());
+    return result.toString();
 }
 
 StringWithDirection HTMLTitleElement::computedTextWithDirection()
 {
     TextDirection direction = LTR;
-    if (RenderStyle* computedStyle = this->computedStyle())
+    if (auto* computedStyle = this->computedStyle())
         direction = computedStyle->direction();
-    else {
-        auto style = resolveStyle(parentElement() ? parentElement()->renderStyle() : nullptr);
-        direction = style.get().direction();
-    }
-    return StringWithDirection(text(), direction);
+    else
+        direction = styleResolver().styleForElement(*this, parentElement() ? parentElement()->renderStyle() : nullptr).renderStyle->direction();
+    return { text(), direction };
 }
 
 void HTMLTitleElement::setText(const String& value)
 {
-    Ref<HTMLTitleElement> protectFromMutationEvents(*this);
-    
-    if (!value.isEmpty() && hasOneChild() && is<Text>(*firstChild())) {
-        downcast<Text>(*firstChild()).setData(value);
-        return;
-    }
-
-    // We make a copy here because entity of "value" argument can be Document::m_title,
-    // which goes empty during removeChildren() invocation below,
-    // which causes HTMLTitleElement::childrenChanged(), which ends up Document::setTitle().
-    String valueCopy(value);
-
-    if (hasChildNodes())
-        removeChildren();
-
-    if (!valueCopy.isEmpty())
-        appendChild(document().createTextNode(valueCopy), IGNORE_EXCEPTION);
+    setTextContent(value);
 }
 
 }

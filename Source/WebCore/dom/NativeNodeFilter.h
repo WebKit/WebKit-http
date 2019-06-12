@@ -23,39 +23,27 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NativeNodeFilter_h
-#define NativeNodeFilter_h
+#pragma once
 
 #include "NodeFilter.h"
 #include "NodeFilterCondition.h"
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
 class NativeNodeFilter final : public NodeFilter {
 public:
-    static Ref<NativeNodeFilter> create(RefPtr<NodeFilterCondition>&& condition)
+    static Ref<NativeNodeFilter> create(Ref<NodeFilterCondition>&& condition)
     {
         return adoptRef(*new NativeNodeFilter(WTFMove(condition)));
     }
 
-    static Ref<NativeNodeFilter> create()
-    {
-        return adoptRef(*new NativeNodeFilter());
-    }
-
-    virtual uint16_t acceptNode(Node*) override;
-
-    void setCondition(RefPtr<NodeFilterCondition>&& condition) { ASSERT(!m_condition); m_condition = condition; }
+    CallbackResult<unsigned short> acceptNode(Node&) override;
 
 private:
-    explicit NativeNodeFilter(RefPtr<NodeFilterCondition>&&);
+    WEBCORE_EXPORT explicit NativeNodeFilter(Ref<NodeFilterCondition>&&);
 
-    NativeNodeFilter() { }
-
-    RefPtr<NodeFilterCondition> m_condition;
+    Ref<NodeFilterCondition> m_condition;
 };
 
 } // namespace WebCore
-
-#endif // NativeNodeFilter_h
-

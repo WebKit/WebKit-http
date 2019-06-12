@@ -31,7 +31,9 @@
 #include "PluginDatabase.h"
 #include "PluginDebug.h"
 #include "PluginView.h"
+#include <JavaScriptCore/CatchScope.h>
 #include <JavaScriptCore/Completion.h>
+#include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/JSGlobalObject.h>
 #include <WebCore/IdentifierRep.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -67,7 +69,7 @@ void PluginPackage::freeLibrarySoon()
     ASSERT(m_module);
     ASSERT(!m_loadCount);
 
-    m_freeLibraryTimer.startOneShot(0);
+    m_freeLibraryTimer.startOneShot(0_s);
 }
 
 void PluginPackage::freeLibraryTimerFired()
@@ -75,7 +77,7 @@ void PluginPackage::freeLibraryTimerFired()
     ASSERT(m_module);
     // Do nothing if the module got loaded again meanwhile
     if (!m_loadCount) {
-        unloadModule(m_module);
+        ::FreeLibrary(m_module);
         m_module = 0;
     }
 }
@@ -162,28 +164,26 @@ void PluginPackage::setEnabled(bool enabled)
     m_isEnabled = enabled;
 }
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
-PassRefPtr<PluginPackage> PluginPackage::createPackage(const String& path, const time_t& lastModified)
+RefPtr<PluginPackage> PluginPackage::createPackage(const String& path, const time_t& lastModified)
 {
     RefPtr<PluginPackage> package = adoptRef(new PluginPackage(path, lastModified));
 
     if (!package->fetchInfo())
-        return 0;
+        return nullptr;
 
-    return package.release();
+    return package;
 }
-#endif
 
 #if ENABLE(NETSCAPE_PLUGIN_METADATA_CACHE)
-PassRefPtr<PluginPackage> PluginPackage::createPackageFromCache(const String& path, const time_t& lastModified, const String& name, const String& description, const String& mimeDescription)
+Ref<PluginPackage> PluginPackage::createPackageFromCache(const String& path, const time_t& lastModified, const String& name, const String& description, const String& mimeDescription)
 {
-    RefPtr<PluginPackage> package = adoptRef(new PluginPackage(path, lastModified));
+    Ref<PluginPackage> package = adoptRef(*new PluginPackage(path, lastModified));
     package->m_name = name;
     package->m_description = description;
     package->determineModuleVersionFromDescription();
     package->setMIMEDescription(mimeDescription);
     package->m_infoIsFromCache = true;
-    return package.release();
+    return package;
 }
 #endif
 
@@ -290,11 +290,6 @@ static void getListFromVariantArgs(JSC::ExecState* exec, const NPVariant* args, 
         aList.append(JSC::Bindings::convertNPVariantToValue(exec, &args[i], rootObject));
 }
 
-static inline JSC::SourceCode makeSource(const String& source, const String& url = String(), const TextPosition& startPosition = TextPosition::minimumPosition())
-{
-    return JSC::SourceCode(JSC::StringSourceProvider::create(source, url, startPosition), startPosition.m_line.oneBasedInt(), startPosition.m_column.oneBasedInt());
-}
-
 static bool NPN_Evaluate(NPP instance, NPObject* o, NPString* s, NPVariant* variant)
 {
     if (o->_class == NPScriptObjectClass) {
@@ -308,14 +303,18 @@ static bool NPN_Evaluate(NPP instance, NPObject* o, NPString* s, NPVariant* vari
         // PluginView, so we destroy it asynchronously.
         PluginView::keepAlive(instance);
 
-        JSC::ExecState* exec = rootObject->globalObject()->globalExec();
-        JSC::JSLockHolder lock(exec);
+        auto globalObject = rootObject->globalObject();
+        auto& vm = globalObject->vm();
+        JSC::JSLockHolder lock(vm);
+        auto scope = DECLARE_CATCH_SCOPE(vm);
+
+        JSC::ExecState* exec = globalObject->globalExec();
         String scriptString = JSC::Bindings::convertNPStringToUTF16(s);
 
-        JSC::JSValue returnValue = JSC::evaluate(rootObject->globalObject()->globalExec(), makeSource(scriptString), JSC::JSValue());
+        JSC::JSValue returnValue = JSC::evaluate(exec, JSC::makeSource(scriptString, { }), JSC::JSValue());
 
         JSC::Bindings::convertValueToNPVariant(exec, returnValue, variant);
-        exec->clearException();
+        scope.clearException();
         return true;
     }
 
@@ -345,12 +344,17 @@ static bool NPN_Invoke(NPP npp, NPObject* o, NPIdentifier methodName, const NPVa
         JSC::Bindings::RootObject* rootObject = obj->rootObject;
         if (!rootObject || !rootObject->isValid())
             return false;
-        JSC::ExecState* exec = rootObject->globalObject()->globalExec();
-        JSC::JSLockHolder lock(exec);
+
+        auto globalObject = rootObject->globalObject();
+        auto& vm = globalObject->vm();
+        JSC::JSLockHolder lock(vm);
+        auto scope = DECLARE_CATCH_SCOPE(vm);
+
+        JSC::ExecState* exec = globalObject->globalExec();
         JSC::JSValue function = obj->imp->get(exec, JSC::Bindings::identifierFromNPIdentifier(exec, i->string()));
         JSC::CallData callData;
         JSC::CallType callType = getCallData(function, callData);
-        if (callType == JSC::CallTypeNone)
+        if (callType == JSC::CallType::None)
             return false;
 
         // Call the function object.
@@ -360,7 +364,7 @@ static bool NPN_Invoke(NPP npp, NPObject* o, NPIdentifier methodName, const NPVa
 
         // Convert and return the result of the function call.
         JSC::Bindings::convertValueToNPVariant(exec, resultV, result);
-        exec->clearException();
+        scope.clearException();
         return true;
     }
 

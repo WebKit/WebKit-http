@@ -194,7 +194,6 @@ WebInspector.CodeMirrorTokenTrackingController = class CodeMirrorTokenTrackingCo
 
     _startTracking()
     {
-        console.assert(!this._tracking);
         if (this._tracking)
             return;
 
@@ -210,7 +209,6 @@ WebInspector.CodeMirrorTokenTrackingController = class CodeMirrorTokenTrackingCo
 
     _stopTracking()
     {
-        console.assert(this._tracking);
         if (!this._tracking)
             return;
 
@@ -276,8 +274,6 @@ WebInspector.CodeMirrorTokenTrackingController = class CodeMirrorTokenTrackingCo
             const forceHidePopover = true;
             this._delegate.tokenTrackingControllerHighlightedRangeReleased(this, forceHidePopover);
         }
-
-        this._candidate = null;
     }
 
     _mouseEntered(event)
@@ -350,6 +346,31 @@ WebInspector.CodeMirrorTokenTrackingController = class CodeMirrorTokenTrackingCo
 
         // We have a new hovered token.
         var tokenInfo = this._previousTokenInfo = this._getTokenInfoForPosition(position);
+
+        if (/\bmeta\b/.test(token.type)) {
+            let nextTokenPosition = Object.shallowCopy(position);
+            nextTokenPosition.ch = tokenInfo.token.end + 1;
+
+            let nextToken = this._codeMirror.getTokenAt(nextTokenPosition);
+            if (nextToken && nextToken.type && !/\bmeta\b/.test(nextToken.type)) {
+                console.assert(tokenInfo.token.end === nextToken.start);
+
+                tokenInfo.token.type = nextToken.type;
+                tokenInfo.token.string = tokenInfo.token.string + nextToken.string;
+                tokenInfo.token.end = nextToken.end;
+            }
+        } else {
+            let previousTokenPosition = Object.shallowCopy(position);
+            previousTokenPosition.ch = tokenInfo.token.start - 1;
+
+            let previousToken = this._codeMirror.getTokenAt(previousTokenPosition);
+            if (previousToken && previousToken.type && /\bmeta\b/.test(previousToken.type)) {
+                console.assert(tokenInfo.token.start === previousToken.end);
+
+                tokenInfo.token.string = previousToken.string + tokenInfo.token.string;
+                tokenInfo.token.start = previousToken.start;
+            }
+        }
 
         if (this._tokenHoverTimer)
             clearTimeout(this._tokenHoverTimer);
@@ -511,7 +532,7 @@ WebInspector.CodeMirrorTokenTrackingController = class CodeMirrorTokenTrackingCo
             // Peek ahead to see if the next token is "}" or ",". If it is, we are a shorthand and therefore a variable.
             let shorthand = false;
             let mode = tokenInfo.innerMode.mode;
-            let position =  {line: tokenInfo.position.line, ch: tokenInfo.token.end};
+            let position = {line: tokenInfo.position.line, ch: tokenInfo.token.end};
             WebInspector.walkTokens(this._codeMirror, mode, position, function(tokenType, string) {
                 if (tokenType)
                     return false;

@@ -27,12 +27,13 @@
 #include "WebPrintOperationGtk.h"
 
 #include "WebCoreArgumentCoders.h"
+#include "WebErrors.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
 #include <WebCore/DocumentLoader.h>
-#include <WebCore/ErrorsGtk.h>
 #include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/PlatformContextCairo.h>
@@ -62,7 +63,7 @@ public:
     {
     }
 
-    void startPrint(WebCore::PrintContext* printContext, uint64_t callbackID) override
+    void startPrint(WebCore::PrintContext* printContext, CallbackID callbackID) override
     {
         m_printContext = printContext;
         m_callbackID = callbackID;
@@ -177,7 +178,7 @@ public:
     {
     }
 
-    void startPrint(WebCore::PrintContext* printContext, uint64_t callbackID) override
+    void startPrint(WebCore::PrintContext* printContext, CallbackID callbackID) override
     {
         m_printContext = printContext;
         m_callbackID = callbackID;
@@ -210,6 +211,7 @@ struct PrintPagesData {
         , firstSheetNumber(0)
         , numberOfSheets(0)
         , firstPagePosition(0)
+        , lastPagePosition(0)
         , collated(0)
         , uncollated(0)
         , isDone(false)
@@ -362,7 +364,6 @@ struct PrintPagesData {
     GRefPtr<GMainLoop> mainLoop;
 
     int totalPrinted;
-    size_t totalToPrint;
     int pageNumber;
     Vector<size_t> pages;
     size_t sheetNumber;
@@ -379,7 +380,7 @@ struct PrintPagesData {
     bool isValid : 1;
 };
 
-PassRefPtr<WebPrintOperationGtk> WebPrintOperationGtk::create(WebPage* page, const PrintInfo& printInfo)
+RefPtr<WebPrintOperationGtk> WebPrintOperationGtk::create(WebPage* page, const PrintInfo& printInfo)
 {
 #if HAVE(GTK_UNIX_PRINTING)
     return adoptRef(new WebPrintOperationGtkUnix(page, printInfo));
@@ -388,7 +389,7 @@ PassRefPtr<WebPrintOperationGtk> WebPrintOperationGtk::create(WebPage* page, con
 #else
     UNUSED_PARAM(page);
     UNUSED_PARAM(printInfo);
-    return 0;
+    return nullptr;
 #endif
 }
 
@@ -398,7 +399,6 @@ WebPrintOperationGtk::WebPrintOperationGtk(WebPage* page, const PrintInfo& print
     , m_pageSetup(printInfo.pageSetup.get())
     , m_printMode(printInfo.printMode)
     , m_printContext(0)
-    , m_callbackID(0)
     , m_xDPI(1)
     , m_yDPI(1)
     , m_printPagesIdleId(0)

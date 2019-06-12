@@ -27,9 +27,9 @@
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
 
-#include "SoftLinking.h"
 #include <CoreText/CoreText.h>
 #include <MediaAccessibility/MediaAccessibility.h>
+#include <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_FOR_HEADER(WebCore, MediaAccessibility)
 
@@ -65,7 +65,8 @@ SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, MediaAccessibility, MACaptionAppearanceCo
 #define MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics softLink_MediaAccessibility_MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics
 SOFT_LINK_FUNCTION_MAY_FAIL_FOR_HEADER(WebCore, MediaAccessibility, MAAudibleMediaCopyPreferredCharacteristics, CFArrayRef, (), ())
 #define MAAudibleMediaCopyPreferredCharacteristics softLink_MediaAccessibility_MAAudibleMediaCopyPreferredCharacteristics
-
+SOFT_LINK_FUNCTION_MAY_FAIL_FOR_HEADER(WebCore, MediaAccessibility, MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle, CTFontDescriptorRef, (MACaptionAppearanceDomain domain, MACaptionAppearanceBehavior *behavior, MACaptionAppearanceFontStyle fontStyle, CFStringRef trackLanguage, CGFloat darwingPointSize, CGFloat *strokeWidthPt), (domain, behavior, fontStyle, trackLanguage, darwingPointSize, strokeWidthPt))
+#define MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle softLink_MediaAccessibility_MACaptionAppearanceCopyFontDescriptorWithStrokeForStyle
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, MediaAccessibility, kMAXCaptionAppearanceSettingsChangedNotification, CFStringRef)
 #define kMAXCaptionAppearanceSettingsChangedNotification get_MediaAccessibility_kMAXCaptionAppearanceSettingsChangedNotification()
 SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(WebCore, MediaAccessibility, kMAAudibleMediaSettingsChangedNotification, CFStringRef)

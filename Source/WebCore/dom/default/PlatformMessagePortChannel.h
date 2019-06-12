@@ -28,14 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformMessagePortChannel_h
-#define PlatformMessagePortChannel_h
+#pragma once
 
 #include "MessagePortChannel.h"
-
 #include <wtf/MessageQueue.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/Threading.h>
 
 namespace WebCore {
 
@@ -46,30 +42,22 @@ namespace WebCore {
     // The goal of this implementation is to eliminate contention except when cloning or closing the port, so each side of the channel has its own separate mutex.
     class PlatformMessagePortChannel : public ThreadSafeRefCounted<PlatformMessagePortChannel> {
     public:
-        class EventData {
-            WTF_MAKE_NONCOPYABLE(EventData); WTF_MAKE_FAST_ALLOCATED;
-        public:
-            EventData(PassRefPtr<SerializedScriptValue> message, std::unique_ptr<MessagePortChannelArray>);
-
-            PassRefPtr<SerializedScriptValue> message() { return m_message; }
-            std::unique_ptr<MessagePortChannelArray> channels() { return WTFMove(m_channels); }
-
-        private:
-            RefPtr<SerializedScriptValue> m_message;
-            std::unique_ptr<MessagePortChannelArray> m_channels;
-        };
-
         // Wrapper for MessageQueue that allows us to do thread safe sharing by two proxies.
         class MessagePortQueue : public ThreadSafeRefCounted<MessagePortQueue> {
         public:
             static Ref<MessagePortQueue> create() { return adoptRef(*new MessagePortQueue()); }
 
-            std::unique_ptr<PlatformMessagePortChannel::EventData> tryGetMessage()
+            std::unique_ptr<MessagePortChannel::EventData> takeMessage()
             {
                 return m_queue.tryGetMessage();
             }
 
-            bool appendAndCheckEmpty(std::unique_ptr<PlatformMessagePortChannel::EventData> message)
+            Deque<std::unique_ptr<MessagePortChannel::EventData>> takeAllMessages()
+            {
+                return m_queue.takeAllMessages();
+            }
+
+            bool appendAndCheckEmpty(std::unique_ptr<MessagePortChannel::EventData>&& message)
             {
                 return m_queue.appendAndCheckEmpty(WTFMove(message));
             }
@@ -82,13 +70,13 @@ namespace WebCore {
         private:
             MessagePortQueue() { }
 
-            MessageQueue<PlatformMessagePortChannel::EventData> m_queue;
+            MessageQueue<MessagePortChannel::EventData> m_queue;
         };
 
         ~PlatformMessagePortChannel();
 
-        static Ref<PlatformMessagePortChannel> create(PassRefPtr<MessagePortQueue> incoming, PassRefPtr<MessagePortQueue> outgoing);
-        PlatformMessagePortChannel(PassRefPtr<MessagePortQueue> incoming, PassRefPtr<MessagePortQueue> outgoing);
+        static Ref<PlatformMessagePortChannel> create(MessagePortQueue* incoming, MessagePortQueue* outgoing);
+        PlatformMessagePortChannel(MessagePortQueue* incoming, MessagePortQueue* outgoing);
 
         RefPtr<PlatformMessagePortChannel> entangledChannel();
 
@@ -110,5 +98,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // PlatformMessagePortChannel_h

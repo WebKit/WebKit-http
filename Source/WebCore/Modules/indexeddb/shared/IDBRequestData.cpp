@@ -29,7 +29,8 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBConnectionToServer.h"
-#include "IDBOpenDBRequestImpl.h"
+#include "IDBDatabase.h"
+#include "IDBOpenDBRequest.h"
 
 namespace WebCore {
 
@@ -37,9 +38,9 @@ IDBRequestData::IDBRequestData()
 {
 }
 
-IDBRequestData::IDBRequestData(const IDBClient::IDBConnectionToServer& connection, const IDBClient::IDBOpenDBRequest& request)
-    : m_serverConnectionIdentifier(connection.identifier())
-    , m_requestIdentifier(std::make_unique<IDBResourceIdentifier>(connection, request))
+IDBRequestData::IDBRequestData(const IDBClient::IDBConnectionProxy& connectionProxy, const IDBOpenDBRequest& request)
+    : m_serverConnectionIdentifier(connectionProxy.serverConnectionIdentifier())
+    , m_requestIdentifier(std::make_unique<IDBResourceIdentifier>(connectionProxy, request))
     , m_databaseIdentifier(request.databaseIdentifier())
     , m_requestedVersion(request.version())
     , m_requestType(request.requestType())
@@ -47,7 +48,7 @@ IDBRequestData::IDBRequestData(const IDBClient::IDBConnectionToServer& connectio
 }
 
 IDBRequestData::IDBRequestData(IDBClient::TransactionOperation& operation)
-    : m_serverConnectionIdentifier(operation.transaction().database().serverConnection().identifier())
+    : m_serverConnectionIdentifier(operation.transaction().database().connectionProxy().serverConnectionIdentifier())
     , m_requestIdentifier(std::make_unique<IDBResourceIdentifier>(operation.identifier()))
     , m_transactionIdentifier(std::make_unique<IDBResourceIdentifier>(operation.transactionIdentifier()))
     , m_objectStoreIdentifier(operation.objectStoreIdentifier())
@@ -75,6 +76,36 @@ IDBRequestData::IDBRequestData(const IDBRequestData& other)
         m_transactionIdentifier = std::make_unique<IDBResourceIdentifier>(*other.m_transactionIdentifier);
     if (other.m_cursorIdentifier)
         m_cursorIdentifier = std::make_unique<IDBResourceIdentifier>(*other.m_cursorIdentifier);
+}
+
+IDBRequestData::IDBRequestData(const IDBRequestData& that, IsolatedCopyTag)
+{
+    isolatedCopy(that, *this);
+}
+
+
+IDBRequestData IDBRequestData::isolatedCopy() const
+{
+    return { *this, IsolatedCopy };
+}
+
+void IDBRequestData::isolatedCopy(const IDBRequestData& source, IDBRequestData& destination)
+{
+    destination.m_serverConnectionIdentifier = source.m_serverConnectionIdentifier;
+    destination.m_objectStoreIdentifier = source.m_objectStoreIdentifier;
+    destination.m_indexIdentifier = source.m_indexIdentifier;
+    destination.m_indexRecordType = source.m_indexRecordType;
+    destination.m_requestedVersion = source.m_requestedVersion;
+    destination.m_requestType = source.m_requestType;
+
+    destination.m_databaseIdentifier = source.m_databaseIdentifier.isolatedCopy();
+
+    if (source.m_requestIdentifier)
+        destination.m_requestIdentifier = std::make_unique<IDBResourceIdentifier>(*source.m_requestIdentifier);
+    if (source.m_transactionIdentifier)
+        destination.m_transactionIdentifier = std::make_unique<IDBResourceIdentifier>(*source.m_transactionIdentifier);
+    if (source.m_cursorIdentifier)
+        destination.m_cursorIdentifier = std::make_unique<IDBResourceIdentifier>(*source.m_cursorIdentifier);
 }
 
 uint64_t IDBRequestData::serverConnectionIdentifier() const

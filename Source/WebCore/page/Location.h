@@ -26,15 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Location_h
-#define Location_h
+#pragma once
 
 #include "DOMStringList.h"
 #include "DOMWindowProperty.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -42,47 +39,43 @@ class DOMWindow;
 class Frame;
 class URL;
 
-typedef int ExceptionCode;
-
 class Location : public ScriptWrappable, public RefCounted<Location>, public DOMWindowProperty {
 public:
     static Ref<Location> create(Frame* frame) { return adoptRef(*new Location(frame)); }
 
-    void setHref(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setHref(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String href() const;
 
-    void assign(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> assign(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     void replace(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     void reload(DOMWindow& activeWindow);
 
-    void setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&, ExceptionCode&);
+    ExceptionOr<void> setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String protocol() const;
-    void setHost(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setHost(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String host() const;
-    void setHostname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setHostname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String hostname() const;
-    void setPort(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setPort(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String port() const;
-    void setPathname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setPathname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String pathname() const;
-    void setSearch(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setSearch(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String search() const;
-    void setHash(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setHash(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String hash() const;
     String origin() const;
 
     String toString() const { return href(); }
 
-    PassRefPtr<DOMStringList> ancestorOrigins() const;
+    Ref<DOMStringList> ancestorOrigins() const;
 
 private:
     explicit Location(Frame*);
 
-    void setLocation(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
+    ExceptionOr<void> setLocation(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
 
     const URL& url() const;
 };
 
 } // namespace WebCore
-
-#endif // Location_h

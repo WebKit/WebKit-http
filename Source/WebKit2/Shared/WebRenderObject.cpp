@@ -58,9 +58,9 @@ RefPtr<WebRenderObject> WebRenderObject::create(WebPage* page)
     return adoptRef(new WebRenderObject(contentRenderer, true));
 }
 
-PassRefPtr<WebRenderObject> WebRenderObject::create(const String& name, const String& elementTagName, const String& elementID, PassRefPtr<API::Array> elementClassNames, WebCore::IntPoint absolutePosition, WebCore::IntRect frameRect, const String& textSnippet, unsigned textLength, PassRefPtr<API::Array> children)
+Ref<WebRenderObject> WebRenderObject::create(const String& name, const String& elementTagName, const String& elementID, RefPtr<API::Array>&& elementClassNames, WebCore::IntPoint absolutePosition, WebCore::IntRect frameRect, const String& textSnippet, unsigned textLength, RefPtr<API::Array>&& children)
 {
-    return adoptRef(new WebRenderObject(name, elementTagName, elementID, elementClassNames, absolutePosition, frameRect, textSnippet, textLength, children));
+    return adoptRef(*new WebRenderObject(name, elementTagName, elementID, WTFMove(elementClassNames), absolutePosition, frameRect, textSnippet, textLength, WTFMove(children)));
 }
 
 WebRenderObject::WebRenderObject(RenderObject* renderer, bool shouldIncludeDescendants)
@@ -106,41 +106,34 @@ WebRenderObject::WebRenderObject(RenderObject* renderer, bool shouldIncludeDesce
         m_frameRect = downcast<RenderText>(*renderer).linesBoundingBox();
         m_frameRect.setLocation(downcast<RenderText>(*renderer).firstRunLocation());
     } else if (is<RenderInline>(*renderer))
-        m_frameRect = downcast<RenderInline>(*renderer).borderBoundingBox();
+        m_frameRect = IntRect(downcast<RenderInline>(*renderer).borderBoundingBox());
 
     if (!shouldIncludeDescendants)
         return;
 
     Vector<RefPtr<API::Object>> children;
 
-    for (RenderObject* coreChild = renderer->firstChildSlow(); coreChild; coreChild = coreChild->nextSibling()) {
-        RefPtr<WebRenderObject> child = adoptRef(new WebRenderObject(coreChild, shouldIncludeDescendants));
-        children.append(WTFMove(child));
-    }
+    for (auto* coreChild = renderer->firstChildSlow(); coreChild; coreChild = coreChild->nextSibling())
+        children.append(adoptRef(*new WebRenderObject(coreChild, shouldIncludeDescendants)));
 
     if (is<RenderWidget>(*renderer)) {
-        if (Widget* widget = downcast<RenderWidget>(*renderer).widget()) {
-            if (is<FrameView>(*widget)) {
-                FrameView& frameView = downcast<FrameView>(*widget);
-                if (RenderView* coreContentRenderer = frameView.frame().contentRenderer()) {
-                    RefPtr<WebRenderObject> contentRenderer = adoptRef(new WebRenderObject(coreContentRenderer, shouldIncludeDescendants));
-
-                    children.append(WTFMove(contentRenderer));
-                }
-            }
+        auto* widget = downcast<RenderWidget>(*renderer).widget();
+        if (is<FrameView>(widget)) {
+            if (auto* coreContentRenderer = downcast<FrameView>(*widget).frame().contentRenderer())
+                children.append(adoptRef(*new WebRenderObject(coreContentRenderer, shouldIncludeDescendants)));
         }
     }
 
     m_children = API::Array::create(WTFMove(children));
 }
 
-WebRenderObject::WebRenderObject(const String& name, const String& elementTagName, const String& elementID, PassRefPtr<API::Array> elementClassNames, WebCore::IntPoint absolutePosition, WebCore::IntRect frameRect, const String& textSnippet, unsigned textLength, PassRefPtr<API::Array> children)
-    : m_children(children)
+WebRenderObject::WebRenderObject(const String& name, const String& elementTagName, const String& elementID, RefPtr<API::Array>&& elementClassNames, WebCore::IntPoint absolutePosition, WebCore::IntRect frameRect, const String& textSnippet, unsigned textLength, RefPtr<API::Array>&& children)
+    : m_children(WTFMove(children))
     , m_name(name)
     , m_elementTagName(elementTagName)
     , m_elementID(elementID)
     , m_textSnippet(textSnippet)
-    , m_elementClassNames(elementClassNames)
+    , m_elementClassNames(WTFMove(elementClassNames))
     , m_absolutePosition(absolutePosition)
     , m_frameRect(frameRect)
     , m_textLength(textLength)

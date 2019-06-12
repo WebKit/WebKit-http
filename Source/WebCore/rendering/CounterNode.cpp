@@ -33,12 +33,6 @@ CounterNode::CounterNode(RenderElement& owner, bool hasResetType, int value)
     , m_value(value)
     , m_countInParent(0)
     , m_owner(owner)
-    , m_rootRenderer(0)
-    , m_parent(0)
-    , m_previousSibling(0)
-    , m_nextSibling(0)
-    , m_firstChild(0)
-    , m_lastChild(0)
 {
 }
 
@@ -47,8 +41,8 @@ CounterNode::~CounterNode()
     // Ideally this would be an assert and this would never be reached. In reality this happens a lot
     // so we need to handle these cases. The node is still connected to the tree so we need to detach it.
     if (m_parent || m_previousSibling || m_nextSibling || m_firstChild || m_lastChild) {
-        CounterNode* oldParent = 0;
-        CounterNode* oldPreviousSibling = 0;
+        CounterNode* oldParent = nullptr;
+        CounterNode* oldPreviousSibling = nullptr;
         // Instead of calling removeChild() we do this safely as the tree is likely broken if we get here.
         if (m_parent) {
             if (m_parent->m_firstChild == this)
@@ -56,24 +50,24 @@ CounterNode::~CounterNode()
             if (m_parent->m_lastChild == this)
                 m_parent->m_lastChild = m_previousSibling;
             oldParent = m_parent;
-            m_parent = 0;
+            m_parent = nullptr;
         }
         if (m_previousSibling) {
             if (m_previousSibling->m_nextSibling == this)
                 m_previousSibling->m_nextSibling = m_nextSibling;
             oldPreviousSibling = m_previousSibling;
-            m_previousSibling = 0;
+            m_previousSibling = nullptr;
         }
         if (m_nextSibling) {
             if (m_nextSibling->m_previousSibling == this)
                 m_nextSibling->m_previousSibling = oldPreviousSibling;
-            m_nextSibling = 0;
+            m_nextSibling = nullptr;
         }
         if (m_firstChild) {
             // The node's children are reparented to the old parent.
             for (CounterNode* child = m_firstChild; child; ) {
                 CounterNode* nextChild = child->m_nextSibling;
-                CounterNode* nextSibling = 0;
+                CounterNode* nextSibling = nullptr;
                 child->m_parent = oldParent;
                 if (oldPreviousSibling) {
                     nextSibling = oldPreviousSibling->m_nextSibling;
@@ -98,14 +92,14 @@ Ref<CounterNode> CounterNode::create(RenderElement& owner, bool hasResetType, in
 CounterNode* CounterNode::nextInPreOrderAfterChildren(const CounterNode* stayWithin) const
 {
     if (this == stayWithin)
-        return 0;
+        return nullptr;
 
     const CounterNode* current = this;
     CounterNode* next;
     while (!(next = current->m_nextSibling)) {
         current = current->m_parent;
         if (!current || current == stayWithin)
-            return 0;
+            return nullptr;
     }
     return next;
 }
@@ -122,7 +116,7 @@ CounterNode* CounterNode::lastDescendant() const
 {
     CounterNode* last = m_lastChild;
     if (!last)
-        return 0;
+        return nullptr;
 
     while (CounterNode* lastChild = last->m_lastChild)
         last = lastChild;
@@ -151,64 +145,49 @@ int CounterNode::computeCountInParent() const
     return m_parent->m_value + increment;
 }
 
-void CounterNode::addRenderer(RenderCounter* value)
+void CounterNode::addRenderer(RenderCounter& renderer)
 {
-    if (!value) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-    if (value->m_counterNode) {
-        ASSERT_NOT_REACHED();
-        value->m_counterNode->removeRenderer(value);
-    }
-    ASSERT(!value->m_nextForSameCounter);
-    for (RenderCounter* iterator = m_rootRenderer;iterator; iterator = iterator->m_nextForSameCounter) {
-        if (iterator == value) {
-            ASSERT_NOT_REACHED();
-            return;
-        }
-    }
-    value->m_nextForSameCounter = m_rootRenderer;
-    m_rootRenderer = value;
-    if (value->m_counterNode != this) {
-        if (value->m_counterNode) {
-            ASSERT_NOT_REACHED();
-            value->m_counterNode->removeRenderer(value);
-        }
-        value->m_counterNode = this;
-    }
+    ASSERT(!renderer.m_counterNode);
+    ASSERT(!renderer.m_nextForSameCounter);
+    renderer.m_nextForSameCounter = m_rootRenderer;
+    m_rootRenderer = &renderer;
+    renderer.m_counterNode = this;
 }
 
-void CounterNode::removeRenderer(RenderCounter* value)
+void CounterNode::removeRenderer(RenderCounter& renderer)
 {
-    if (!value) {
-        ASSERT_NOT_REACHED();
+    ASSERT(renderer.m_counterNode && renderer.m_counterNode == this);
+    RenderCounter* previous = nullptr;
+    for (auto* current = m_rootRenderer; current; previous = current, current = current->m_nextForSameCounter) {
+        if (current != &renderer)
+            continue;
+
+        if (previous)
+            previous->m_nextForSameCounter = renderer.m_nextForSameCounter;
+        else
+            m_rootRenderer = renderer.m_nextForSameCounter;
+        renderer.m_nextForSameCounter = nullptr;
+        renderer.m_counterNode = nullptr;
         return;
-    }
-    if (value->m_counterNode && value->m_counterNode != this) {
-        ASSERT_NOT_REACHED();
-        value->m_counterNode->removeRenderer(value);
-    }
-    RenderCounter* previous = 0;
-    for (RenderCounter* iterator = m_rootRenderer;iterator; iterator = iterator->m_nextForSameCounter) {
-        if (iterator == value) {
-            if (previous)
-                previous->m_nextForSameCounter = value->m_nextForSameCounter;
-            else
-                m_rootRenderer = value->m_nextForSameCounter;
-            value->m_nextForSameCounter = 0;
-            value->m_counterNode = 0;
-            return;
-        }
-        previous = iterator;
     }
     ASSERT_NOT_REACHED();
 }
 
 void CounterNode::resetRenderers()
 {
-    while (m_rootRenderer)
-        m_rootRenderer->invalidate(); // This makes m_rootRenderer point to the next renderer if any since it disconnects the m_rootRenderer from this.
+    if (!m_rootRenderer)
+        return;
+    bool skipLayoutAndPerfWidthsRecalc = m_rootRenderer->renderTreeBeingDestroyed();
+    auto* current = m_rootRenderer;
+    while (current) {
+        if (!skipLayoutAndPerfWidthsRecalc)
+            current->setNeedsLayoutAndPrefWidthsRecalc();
+        auto* next = current->m_nextForSameCounter;
+        current->m_nextForSameCounter = nullptr;
+        current->m_counterNode = nullptr;
+        current = next;
+    }
+    m_rootRenderer = nullptr;
 }
 
 void CounterNode::resetThisAndDescendantsRenderers()
@@ -232,47 +211,46 @@ void CounterNode::recount()
     }
 }
 
-void CounterNode::insertAfter(CounterNode* newChild, CounterNode* refChild, const AtomicString& identifier)
+void CounterNode::insertAfter(CounterNode& newChild, CounterNode* beforeChild, const AtomicString& identifier)
 {
-    ASSERT(newChild);
-    ASSERT(!newChild->m_parent);
-    ASSERT(!newChild->m_previousSibling);
-    ASSERT(!newChild->m_nextSibling);
-    // If the refChild is not our child we can not complete the request. This hardens against bugs in RenderCounter.
+    ASSERT(!newChild.m_parent);
+    ASSERT(!newChild.m_previousSibling);
+    ASSERT(!newChild.m_nextSibling);
+    // If the beforeChild is not our child we can not complete the request. This hardens against bugs in RenderCounter.
     // When renderers are reparented it may request that we insert counter nodes improperly.
-    if (refChild && refChild->m_parent != this)
+    if (beforeChild && beforeChild->m_parent != this)
         return;
 
-    if (newChild->m_hasResetType) {
-        while (m_lastChild != refChild)
+    if (newChild.m_hasResetType) {
+        while (m_lastChild != beforeChild)
             RenderCounter::destroyCounterNode(m_lastChild->owner(), identifier);
     }
 
     CounterNode* next;
 
-    if (refChild) {
-        next = refChild->m_nextSibling;
-        refChild->m_nextSibling = newChild;
+    if (beforeChild) {
+        next = beforeChild->m_nextSibling;
+        beforeChild->m_nextSibling = &newChild;
     } else {
         next = m_firstChild;
-        m_firstChild = newChild;
+        m_firstChild = &newChild;
     }
 
-    newChild->m_parent = this;
-    newChild->m_previousSibling = refChild;
+    newChild.m_parent = this;
+    newChild.m_previousSibling = beforeChild;
 
     if (next) {
-        ASSERT(next->m_previousSibling == refChild);
-        next->m_previousSibling = newChild;
-        newChild->m_nextSibling = next;
+        ASSERT(next->m_previousSibling == beforeChild);
+        next->m_previousSibling = &newChild;
+        newChild.m_nextSibling = next;
     } else {
-        ASSERT(m_lastChild == refChild);
-        m_lastChild = newChild;
+        ASSERT(m_lastChild == beforeChild);
+        m_lastChild = &newChild;
     }
 
-    if (!newChild->m_firstChild || newChild->m_hasResetType) {
-        newChild->m_countInParent = newChild->computeCountInParent();
-        newChild->resetThisAndDescendantsRenderers();
+    if (!newChild.m_firstChild || newChild.m_hasResetType) {
+        newChild.m_countInParent = newChild.computeCountInParent();
+        newChild.resetThisAndDescendantsRenderers();
         if (next)
             next->recount();
         return;
@@ -280,16 +258,16 @@ void CounterNode::insertAfter(CounterNode* newChild, CounterNode* refChild, cons
 
     // The code below handles the case when a formerly root increment counter is loosing its root position
     // and therefore its children become next siblings.
-    CounterNode* last = newChild->m_lastChild;
-    CounterNode* first = newChild->m_firstChild;
+    CounterNode* last = newChild.m_lastChild;
+    CounterNode* first = newChild.m_firstChild;
 
     if (first) {
         ASSERT(last);
-        newChild->m_nextSibling = first;
-        if (m_lastChild == newChild)
+        newChild.m_nextSibling = first;
+        if (m_lastChild == &newChild)
             m_lastChild = last;
 
-        first->m_previousSibling = newChild;
+        first->m_previousSibling = &newChild;
     
         // The case when the original next sibling of the inserted node becomes a child of
         // one of the former children of the inserted node is not handled as it is believed
@@ -302,7 +280,7 @@ void CounterNode::insertAfter(CounterNode* newChild, CounterNode* refChild, cons
         //    attached to renderers that were already in the document's render tree.
         last->m_nextSibling = next;
         if (next) {
-            ASSERT(next->m_previousSibling == newChild);
+            ASSERT(next->m_previousSibling == &newChild);
             next->m_previousSibling = last;
         } else
             m_lastChild = last;
@@ -312,37 +290,36 @@ void CounterNode::insertAfter(CounterNode* newChild, CounterNode* refChild, cons
                 break;
         }
     }
-    newChild->m_firstChild = 0;
-    newChild->m_lastChild = 0;
-    newChild->m_countInParent = newChild->computeCountInParent();
-    newChild->resetRenderers();
+    newChild.m_firstChild = nullptr;
+    newChild.m_lastChild = nullptr;
+    newChild.m_countInParent = newChild.computeCountInParent();
+    newChild.resetRenderers();
     first->recount();
 }
 
-void CounterNode::removeChild(CounterNode* oldChild)
+void CounterNode::removeChild(CounterNode& oldChild)
 {
-    ASSERT(oldChild);
-    ASSERT(!oldChild->m_firstChild);
-    ASSERT(!oldChild->m_lastChild);
+    ASSERT(!oldChild.m_firstChild);
+    ASSERT(!oldChild.m_lastChild);
 
-    CounterNode* next = oldChild->m_nextSibling;
-    CounterNode* previous = oldChild->m_previousSibling;
+    CounterNode* next = oldChild.m_nextSibling;
+    CounterNode* previous = oldChild.m_previousSibling;
 
-    oldChild->m_nextSibling = 0;
-    oldChild->m_previousSibling = 0;
-    oldChild->m_parent = 0;
+    oldChild.m_nextSibling = nullptr;
+    oldChild.m_previousSibling = nullptr;
+    oldChild.m_parent = nullptr;
 
     if (previous) 
         previous->m_nextSibling = next;
     else {
-        ASSERT(m_firstChild == oldChild);
+        ASSERT(m_firstChild == &oldChild);
         m_firstChild = next;
     }
 
     if (next)
         next->m_previousSibling = previous;
     else {
-        ASSERT(m_lastChild == oldChild);
+        ASSERT(m_lastChild == &oldChild);
         m_lastChild = previous;
     }
 

@@ -161,7 +161,7 @@ void WebNetscapePluginEventHandlerCocoa::syntheticKeyDownWithCommandModifier(int
     
     NPCocoaEvent event;
     initializeEvent(&event, NPCocoaEventKeyDown);
-    event.data.key.modifierFlags = NSCommandKeyMask;
+    event.data.key.modifierFlags = NSEventModifierFlagCommand;
     event.data.key.keyCode = keyCode;
     event.data.key.isARepeat = false;
     event.data.key.characters = (NPNSString *)characters.get();

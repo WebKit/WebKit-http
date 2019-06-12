@@ -55,23 +55,26 @@
 
 - (void)insertNode:(WKDOMNode *)node before:(WKDOMNode *)refNode
 {
-    // FIXME: Do something about the exception.
-    WebCore::ExceptionCode ec;
-    _impl->insertBefore(WebKit::toWebCoreNode(node), WebKit::toWebCoreNode(refNode), ec);
+    if (!node)
+        return;
+
+    _impl->insertBefore(*WebKit::toWebCoreNode(node), WebKit::toWebCoreNode(refNode));
 }
 
 - (void)appendChild:(WKDOMNode *)node
 {
-    // FIXME: Do something about the exception.
-    WebCore::ExceptionCode ec;
-    _impl->appendChild(WebKit::toWebCoreNode(node), ec);
+    if (!node)
+        return;
+
+    _impl->appendChild(*WebKit::toWebCoreNode(node));
 }
 
 - (void)removeChild:(WKDOMNode *)node
 {
-    // FIXME: Do something about the exception.
-    WebCore::ExceptionCode ec;
-    _impl->removeChild(WebKit::toWebCoreNode(node), ec);
+    if (!node)
+        return;
+
+    _impl->removeChild(*WebKit::toWebCoreNode(node));
 }
 
 - (WKDOMDocument *)document
@@ -120,8 +123,8 @@
 
 - (WKBundleNodeHandleRef)_copyBundleNodeHandleRef
 {
-    RefPtr<WebKit::InjectedBundleNodeHandle> nodeHandle = WebKit::InjectedBundleNodeHandle::getOrCreate(_impl.get());
-    return toAPI(nodeHandle.release().leakRef());
+    auto nodeHandle = WebKit::InjectedBundleNodeHandle::getOrCreate(_impl.get());
+    return toAPI(nodeHandle.leakRef());
 }
 
 @end

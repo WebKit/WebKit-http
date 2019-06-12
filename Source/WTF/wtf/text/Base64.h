@@ -25,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Base64_h
-#define Base64_h
+#pragma once
 
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
@@ -48,13 +47,62 @@ enum Base64DecodeOptions {
 
 class SignedOrUnsignedCharVectorAdapter {
 public:
-    SignedOrUnsignedCharVectorAdapter(Vector<char>& vector) { m_vector.c = &vector; }
-    SignedOrUnsignedCharVectorAdapter(Vector<uint8_t>& vector) { m_vector.u = &vector; }
+    SignedOrUnsignedCharVectorAdapter(Vector<char>& vector)
+        : m_isSigned(true)
+    {
+        m_vector.c = &vector;
+    }
+    SignedOrUnsignedCharVectorAdapter(Vector<uint8_t>& vector)
+        : m_isSigned(false)
+    {
+        m_vector.u = &vector;
+    }
 
-    operator Vector<char>&() { return *m_vector.c; }
-    void clear() { m_vector.c->clear(); }
+    uint8_t* data()
+    {
+        if (m_isSigned)
+            return reinterpret_cast<uint8_t*>(m_vector.c->data());
+        return m_vector.u->data();
+    }
+    
+    size_t size() const
+    {
+        if (m_isSigned)
+            return m_vector.c->size();
+        return m_vector.u->size();
+    }
+    
+    void clear()
+    {
+        if (m_isSigned) {
+            m_vector.c->clear();
+            return;
+        }
+        m_vector.u->clear();
+    }
+    
+    void grow(size_t size)
+    {
+        if (m_isSigned) {
+            m_vector.c->grow(size);
+            return;
+        }
+        m_vector.u->grow(size);
+    }
+    
+    void shrink(size_t size)
+    {
+        if (m_isSigned) {
+            m_vector.c->shrink(size);
+            return;
+        }
+        m_vector.u->shrink(size);
+    }
+    
+    uint8_t& operator[](size_t position) { return data()[position]; }
 
 private:
+    bool m_isSigned;
     union {
         Vector<char>* c;
         Vector<uint8_t>* u;
@@ -63,14 +111,32 @@ private:
 
 class ConstSignedOrUnsignedCharVectorAdapter {
 public:
-    ConstSignedOrUnsignedCharVectorAdapter(const Vector<char>& vector) { m_vector.c = &vector; }
-    ConstSignedOrUnsignedCharVectorAdapter(const Vector<uint8_t>& vector) { m_vector.u = &vector; }
+    ConstSignedOrUnsignedCharVectorAdapter(const Vector<char>& vector)
+        : m_isSigned(false)
+    {
+        m_vector.c = &vector;
+    }
+    ConstSignedOrUnsignedCharVectorAdapter(const Vector<uint8_t>& vector)
+        : m_isSigned(true)
+    {
+        m_vector.u = &vector;
+    }
 
-    operator const Vector<char>&() { return *m_vector.c; }
-    const char* data() const { return m_vector.c->data(); }
-    size_t size() const { return m_vector.c->size(); }
+    const uint8_t* data() const
+    {
+        if (m_isSigned)
+            return reinterpret_cast<const uint8_t*>(m_vector.c->data());
+        return m_vector.u->data();
+    }
+    size_t size() const
+    {
+        if (m_isSigned)
+            return m_vector.c->size();
+        return m_vector.u->size();
+    }
 
 private:
+    bool m_isSigned;
     union {
         const Vector<char>* c;
         const Vector<uint8_t>* u;
@@ -85,6 +151,7 @@ String base64Encode(ConstSignedOrUnsignedCharVectorAdapter, Base64EncodePolicy =
 String base64Encode(const CString&, Base64EncodePolicy = Base64DoNotInsertLFs);
 
 WTF_EXPORT_PRIVATE bool base64Decode(const String&, SignedOrUnsignedCharVectorAdapter, unsigned options = Base64Default);
+WTF_EXPORT_PRIVATE bool base64Decode(StringView, SignedOrUnsignedCharVectorAdapter, unsigned options = Base64Default);
 WTF_EXPORT_PRIVATE bool base64Decode(const Vector<char>&, SignedOrUnsignedCharVectorAdapter, unsigned options = Base64Default);
 WTF_EXPORT_PRIVATE bool base64Decode(const char*, unsigned, SignedOrUnsignedCharVectorAdapter, unsigned options = Base64Default);
 
@@ -122,6 +189,7 @@ String base64URLEncode(ConstSignedOrUnsignedCharVectorAdapter);
 String base64URLEncode(const CString&);
 
 WTF_EXPORT_PRIVATE bool base64URLDecode(const String&, SignedOrUnsignedCharVectorAdapter);
+WTF_EXPORT_PRIVATE bool base64URLDecode(StringView, SignedOrUnsignedCharVectorAdapter);
 WTF_EXPORT_PRIVATE bool base64URLDecode(const Vector<char>&, SignedOrUnsignedCharVectorAdapter);
 WTF_EXPORT_PRIVATE bool base64URLDecode(const char*, unsigned, SignedOrUnsignedCharVectorAdapter);
 
@@ -145,6 +213,11 @@ inline String base64URLEncode(const CString& in)
     return base64URLEncode(in.data(), in.length());
 }
 
+template<typename CharacterType> static inline bool isBase64OrBase64URLCharacter(CharacterType c)
+{
+    return isASCIIAlphanumeric(c) || c == '+' || c == '/' || c == '-' || c == '_';
+}
+
 } // namespace WTF
 
 using WTF::Base64EncodePolicy;
@@ -155,5 +228,4 @@ using WTF::Base64IgnoreSpacesAndNewLines;
 using WTF::base64Encode;
 using WTF::base64Decode;
 using WTF::base64URLDecode;
-
-#endif // Base64_h
+using WTF::isBase64OrBase64URLCharacter;

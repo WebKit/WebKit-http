@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CurrentScriptIncrementer_h
-#define CurrentScriptIncrementer_h
+#pragma once
 
 #include "Document.h"
 #include "HTMLScriptElement.h"
@@ -37,18 +36,22 @@ namespace WebCore {
 class CurrentScriptIncrementer {
     WTF_MAKE_NONCOPYABLE(CurrentScriptIncrementer);
 public:
-    CurrentScriptIncrementer(Document& document, Element* element)
+    CurrentScriptIncrementer(Document& document, Element& element)
         : m_document(document)
-        , m_isHTMLScriptElement(is<HTMLScriptElement>(*element))
+        , m_isHTMLScriptElement(is<HTMLScriptElement>(element))
     {
-        if (m_isHTMLScriptElement)
-            m_document.pushCurrentScript(downcast<HTMLScriptElement>(element));
+        if (!m_isHTMLScriptElement)
+            return;
+        auto& scriptElement = downcast<HTMLScriptElement>(element);
+        bool shouldPushNullForCurrentScript = scriptElement.isInShadowTree() || scriptElement.scriptType() == ScriptElement::ScriptType::Module;
+        m_document.pushCurrentScript(shouldPushNullForCurrentScript ? nullptr : &scriptElement);
     }
 
     ~CurrentScriptIncrementer()
     {
-        if (m_isHTMLScriptElement)
-            m_document.popCurrentScript();
+        if (!m_isHTMLScriptElement)
+            return;
+        m_document.popCurrentScript();
     }
 
 private:
@@ -56,6 +59,4 @@ private:
     bool m_isHTMLScriptElement;
 };
 
-}
-
-#endif
+} // namespace WebCore

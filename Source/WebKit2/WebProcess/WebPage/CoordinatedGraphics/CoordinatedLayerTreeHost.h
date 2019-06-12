@@ -23,94 +23,73 @@
 
 #if USE(COORDINATED_GRAPHICS)
 
-#include "LayerTreeContext.h"
+#include "CompositingCoordinator.h"
 #include "LayerTreeHost.h"
-#include <WebCore/CompositingCoordinator.h>
-#include <WebCore/GraphicsLayerFactory.h>
-#include <wtf/HashSet.h>
+#include "OptionalCallbackID.h"
+#include <wtf/RunLoop.h>
 
 namespace WebCore {
 class CoordinatedSurface;
+class GraphicsLayerFactory;
 }
 
 namespace WebKit {
 
 class WebPage;
 
-class CoordinatedLayerTreeHost : public LayerTreeHost, public WebCore::CompositingCoordinator::Client
+class CoordinatedLayerTreeHost : public LayerTreeHost, public CompositingCoordinator::Client
 {
 public:
-    static Ref<CoordinatedLayerTreeHost> create(WebPage*);
+    static Ref<CoordinatedLayerTreeHost> create(WebPage&);
     virtual ~CoordinatedLayerTreeHost();
 
-    virtual const LayerTreeContext& layerTreeContext() override { return m_layerTreeContext; }
-    virtual void setLayerFlushSchedulingEnabled(bool) override;
-    virtual void scheduleLayerFlush() override;
-    virtual void setShouldNotifyAfterNextScheduledLayerFlush(bool) override;
-    virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
-    virtual void invalidate() override;
-
-    virtual void setNonCompositedContentsNeedDisplay() override { }
-    virtual void setNonCompositedContentsNeedDisplayInRect(const WebCore::IntRect&) override { }
-    virtual void scrollNonCompositedContents(const WebCore::IntRect&) override { }
-    virtual void forceRepaint() override;
-    virtual bool forceRepaintAsync(uint64_t callbackID) override;
-    virtual void sizeDidChange(const WebCore::IntSize& newSize) override;
-
-    virtual void pauseRendering() override { m_isSuspended = true; }
-    virtual void resumeRendering() override { m_isSuspended = false; scheduleLayerFlush(); }
-    virtual void deviceOrPageScaleFactorChanged() override;
-    virtual void pageBackgroundTransparencyChanged() override;
-
-    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
-    WebCore::CoordinatedGraphicsLayer* mainContentsLayer();
-
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-    virtual void scheduleAnimation() override;
-#endif
-
-    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
-
-    static PassRefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
-
 protected:
-    explicit CoordinatedLayerTreeHost(WebPage*);
+    explicit CoordinatedLayerTreeHost(WebPage&);
 
-private:
-    // CoordinatedLayerTreeHost
-    void cancelPendingLayerFlush();
-    void performScheduledLayerFlush();
+    void scheduleLayerFlush() override;
+    void cancelPendingLayerFlush() override;
+    void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
+    void invalidate() override;
+
+    void forceRepaint() override;
+    bool forceRepaintAsync(CallbackID) override;
+    void sizeDidChange(const WebCore::IntSize& newSize) override;
+
+    void deviceOrPageScaleFactorChanged() override;
+    void pageBackgroundTransparencyChanged() override;
+
+    void clearUpdateAtlases() override;
+
     void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&);
     void renderNextFrame();
-    void purgeBackingStores();
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset);
 
-    void layerFlushTimerFired();
+    WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
 
-    void updateRootLayers();
+    void scheduleAnimation() override;
+
+    void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
 
     // CompositingCoordinator::Client
-    virtual void didFlushRootLayer(const WebCore::FloatRect& visibleContentRect) override;
-    virtual void notifyFlushRequired() override { scheduleLayerFlush(); };
-    virtual void commitSceneState(const WebCore::CoordinatedGraphicsState&) override;
-    virtual void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) override;
+    void didFlushRootLayer(const WebCore::FloatRect& visibleContentRect) override;
+    void notifyFlushRequired() override { scheduleLayerFlush(); };
+    void commitSceneState(const WebCore::CoordinatedGraphicsState&) override;
+    void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) override;
+    void releaseUpdateAtlases(Vector<uint32_t>&&) override { };
 
-    std::unique_ptr<WebCore::CompositingCoordinator> m_coordinator;
+private:
+    void layerFlushTimerFired();
 
-    bool m_notifyAfterScheduledLayerFlush;
-    bool m_isValid;
-    bool m_isSuspended;
-    bool m_isWaitingForRenderer;
+    static RefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
 
-    LayerTreeContext m_layerTreeContext;
-
-    WebCore::Timer m_layerFlushTimer;
-    bool m_layerFlushSchedulingEnabled;
-    uint64_t m_forceRepaintAsyncCallbackID;
-
-    WebCore::GraphicsLayer* m_contentLayer;
-    WebCore::GraphicsLayer* m_viewOverlayRootLayer;
+    CompositingCoordinator m_coordinator;
+    bool m_isWaitingForRenderer { true };
+    bool m_scheduledWhileWaitingForRenderer { false };
+    struct {
+        OptionalCallbackID callbackID;
+        bool needsFreshFlush { false };
+    } m_forceRepaintAsync;
+    RunLoop::Timer<CoordinatedLayerTreeHost> m_layerFlushTimer;
 };
 
 } // namespace WebKit

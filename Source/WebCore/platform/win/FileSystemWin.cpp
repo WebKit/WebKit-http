@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Collabora, Ltd. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,14 +33,15 @@
 #include "FileMetadata.h"
 #include "NotImplemented.h"
 #include "PathWalker.h"
+#include <io.h>
+#include <shlobj.h>
+#include <shlwapi.h>
+#include <sys/stat.h>
+#include <windows.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
-#include <wtf/text/StringBuilder.h>
 
-#include <windows.h>
-#include <shlobj.h>
-#include <shlwapi.h>
 
 namespace WebCore {
 
@@ -176,6 +177,13 @@ bool deleteEmptyDirectory(const String& path)
     return !!RemoveDirectoryW(filename.charactersWithNullTermination().data());
 }
 
+bool moveFile(const String& oldPath, const String& newPath)
+{
+    String oldFilename = oldPath;
+    String newFilename = newPath;
+    return !!::MoveFileEx(oldFilename.charactersWithNullTermination().data(), newFilename.charactersWithNullTermination().data(), MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
+}
+
 String pathByAppendingComponent(const String& path, const String& component)
 {
     Vector<UChar> buffer(MAX_PATH);
@@ -191,7 +199,7 @@ String pathByAppendingComponent(const String& path, const String& component)
 
     buffer.shrink(wcslen(buffer.data()));
 
-    return String::adopt(buffer);
+    return String::adopt(WTFMove(buffer));
 }
 
 #if !USE(CF)
@@ -273,7 +281,7 @@ static String storageDirectory(DWORD pathIdentifier)
     if (FAILED(SHGetFolderPathW(0, pathIdentifier | CSIDL_FLAG_CREATE, 0, 0, buffer.data())))
         return String();
     buffer.resize(wcslen(buffer.data()));
-    String directory = String::adopt(buffer);
+    String directory = String::adopt(WTFMove(buffer));
 
     DEPRECATED_DEFINE_STATIC_LOCAL(String, companyNameDirectory, (ASCIILiteral("Apple Computer\\")));
     directory = pathByAppendingComponent(directory, companyNameDirectory + bundleName());
@@ -338,10 +346,12 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 {
     DWORD desiredAccess = 0;
     DWORD creationDisposition = 0;
+    DWORD shareMode = 0;
     switch (mode) {
     case OpenForRead:
         desiredAccess = GENERIC_READ;
         creationDisposition = OPEN_EXISTING;
+        shareMode = FILE_SHARE_READ;
         break;
     case OpenForWrite:
         desiredAccess = GENERIC_WRITE;
@@ -352,7 +362,7 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     }
 
     String destination = path;
-    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, 0, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
+    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, shareMode, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
 }
 
 void closeFile(PlatformFileHandle& handle)
@@ -409,9 +419,9 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
     return static_cast<int>(bytesRead);
 }
 
-bool unloadModule(PlatformModule module)
+bool hardLinkOrCopyFile(const String& source, const String& destination)
 {
-    return ::FreeLibrary(module);
+    return !!::CopyFile(source.charactersWithNullTermination().data(), destination.charactersWithNullTermination().data(), TRUE);
 }
 
 String localUserSpecificStorageDirectory()
@@ -440,6 +450,29 @@ Vector<String> listDirectory(const String& directory, const String& filter)
     } while (walker.step());
 
     return entries;
+}
+
+bool getVolumeFreeSpace(const String&, uint64_t&)
+{
+    notImplemented();
+    return false;
+}
+
+std::optional<int32_t> getFileDeviceId(const CString& fsFile)
+{
+    auto handle = openFile(fsFile.data(), OpenForRead);
+    if (!isHandleValid(handle))
+        return std::nullopt;
+
+    BY_HANDLE_FILE_INFORMATION fileInformation = { };
+    if (!::GetFileInformationByHandle(handle, &fileInformation)) {
+        closeFile(handle);
+        return std::nullopt;
+    }
+
+    closeFile(handle);
+
+    return fileInformation.dwVolumeSerialNumber;
 }
 
 } // namespace WebCore

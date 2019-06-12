@@ -55,8 +55,6 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
         this._editing = false;
         this._visible = false;
 
-        this.element.addEventListener("contextmenu", this._contextMenuEventFired.bind(this));
-
         this._hideElementKeyboardShortcut = new WebInspector.KeyboardShortcut(null, "H", this._hideElement.bind(this), this.element);
         this._hideElementKeyboardShortcut.implicitlyPreventsDefault = false;
 
@@ -157,10 +155,10 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     update()
     {
-        var selectedNode = this.selectedTreeElement ? this.selectedTreeElement.representedObject : null;
-
         if (!this.rootDOMNode)
             return;
+
+        let selectedNode = this.selectedTreeElement ? this.selectedTreeElement.representedObject : null;
 
         this.removeChildren();
 
@@ -189,10 +187,12 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     updateSelection()
     {
-        if (!this.selectedTreeElement)
-            return;
-        var element = this.treeOutline.selectedTreeElement;
-        element.updateSelection();
+        // This will miss updating selection areas used for the hovered tree element and
+        // and those used to show forced pseudo class indicators, but this should be okay.
+        // The hovered element will update when user moves the mouse, and indicators don't need the
+        // selection area height to be accurate since they use ::before to place the indicator.
+        if (this.selectedTreeElement)
+            this.selectedTreeElement.updateSelectionArea();
     }
 
     _selectedNodeChanged()
@@ -202,17 +202,9 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     findTreeElement(node)
     {
-        function isAncestorNode(ancestor, node)
-        {
-            return ancestor.isAncestor(node);
-        }
-
-        function parentNode(node)
-        {
-            return node.parentNode;
-        }
-
-        var treeElement = super.findTreeElement(node, isAncestorNode, parentNode);
+        let isAncestorNode = (ancestor, node) => ancestor.isAncestor(node);
+        let parentNode = (node) => node.parentNode;
+        let treeElement = super.findTreeElement(node, isAncestorNode, parentNode);
         if (!treeElement && node.nodeType() === Node.TEXT_NODE) {
             // The text node might have been inlined if it was short, so try to find the parent element.
             treeElement = super.findTreeElement(node.parentNode, isAncestorNode, parentNode);
@@ -246,29 +238,29 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     populateContextMenu(contextMenu, event, treeElement)
     {
-        var tag = event.target.enclosingNodeOrSelfWithClass("html-tag");
-        var textNode = event.target.enclosingNodeOrSelfWithClass("html-text-node");
-        var commentNode = event.target.enclosingNodeOrSelfWithClass("html-comment");
+        let tag = event.target.enclosingNodeOrSelfWithClass("html-tag");
+        let textNode = event.target.enclosingNodeOrSelfWithClass("html-text-node");
+        let commentNode = event.target.enclosingNodeOrSelfWithClass("html-comment");
+        let pseudoElement = event.target.enclosingNodeOrSelfWithClass("html-pseudo-element");
 
-        var populated = false;
         if (tag && treeElement._populateTagContextMenu) {
-            if (populated)
-                contextMenu.appendSeparator();
+            contextMenu.appendSeparator();
+
             treeElement._populateTagContextMenu(contextMenu, event);
-            populated = true;
         } else if (textNode && treeElement._populateTextContextMenu) {
-            if (populated)
-                contextMenu.appendSeparator();
+            contextMenu.appendSeparator();
+
             treeElement._populateTextContextMenu(contextMenu, textNode);
-            populated = true;
-        } else if (commentNode && treeElement._populateNodeContextMenu) {
-            if (populated)
-                contextMenu.appendSeparator();
+        } else if ((commentNode || pseudoElement) && treeElement._populateNodeContextMenu) {
+            contextMenu.appendSeparator();
+
             treeElement._populateNodeContextMenu(contextMenu);
-            populated = true;
         }
 
-        return populated;
+        const options = {excludeRevealElement: this._excludeRevealElementContextMenu};
+        WebInspector.appendContextMenuItemsForDOMNode(contextMenu, treeElement.representedObject, options);
+
+        super.populateContextMenu(contextMenu, event, treeElement);
     }
 
     adjustCollapsedRange()
@@ -282,6 +274,13 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
         if (!node || this._suppressRevealAndSelect)
             return;
 
+        if (!WebInspector.showShadowDOMSetting.value) {
+            while (node && node.isInShadowTree())
+                node = node.parentNode;
+            if (!node)
+                return;
+        }
+
         var treeElement = this.createTreeElementFor(node);
         if (!treeElement)
             return;
@@ -289,35 +288,9 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
         treeElement.revealAndSelect(omitFocus);
     }
 
-    _treeElementFromEvent(event)
-    {
-        var scrollContainer = this.element.parentElement;
-
-        // We choose this X coordinate based on the knowledge that our list
-        // items extend at least to the right edge of the outer <ol> container.
-        // In the no-word-wrap mode the outer <ol> may be wider than the tree container
-        // (and partially hidden), in which case we are left to use only its right boundary.
-        var x = scrollContainer.totalOffsetLeft + scrollContainer.offsetWidth - 36;
-
-        var y = event.pageY;
-
-        // Our list items have 1-pixel cracks between them vertically. We avoid
-        // the cracks by checking slightly above and slightly below the mouse
-        // and seeing if we hit the same element each time.
-        var elementUnderMouse = this.treeElementFromPoint(x, y);
-        var elementAboveMouse = this.treeElementFromPoint(x, y - 2);
-        var element;
-        if (elementUnderMouse === elementAboveMouse)
-            element = elementUnderMouse;
-        else
-            element = this.treeElementFromPoint(x, y + 2);
-
-        return element;
-    }
-
     _onmousedown(event)
     {
-        var element = this._treeElementFromEvent(event);
+        let element = this.treeElementFromEvent(event);
         if (!element || element.isEventWithinDisclosureTriangle(event)) {
             event.preventDefault();
             return;
@@ -328,13 +301,13 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     _onmousemove(event)
     {
-        var element = this._treeElementFromEvent(event);
+        let element = this.treeElementFromEvent(event);
         if (element && this._previousHoveredElement === element)
             return;
 
         if (this._previousHoveredElement) {
             this._previousHoveredElement.hovered = false;
-            delete this._previousHoveredElement;
+            this._previousHoveredElement = null;
         }
 
         if (element) {
@@ -357,7 +330,7 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
         if (this._previousHoveredElement) {
             this._previousHoveredElement.hovered = false;
-            delete this._previousHoveredElement;
+            this._previousHoveredElement = null;
         }
 
         WebInspector.domTreeManager.hideDOMNodeHighlight();
@@ -365,7 +338,7 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     _ondragstart(event)
     {
-        var treeElement = this._treeElementFromEvent(event);
+        let treeElement = this.treeElementFromEvent(event);
         if (!treeElement)
             return false;
 
@@ -386,23 +359,30 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     _ondragover(event)
     {
+        if (event.dataTransfer.types.includes(WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesDragType)) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+            return false;
+        }
+
         if (!this._nodeBeingDragged)
             return false;
 
-        var treeElement = this._treeElementFromEvent(event);
+        let treeElement = this.treeElementFromEvent(event);
         if (!this._isValidDragSourceOrTarget(treeElement))
             return false;
 
-        var node = treeElement.representedObject;
+        let node = treeElement.representedObject;
         while (node) {
             if (node === this._nodeBeingDragged)
                 return false;
             node = node.parentNode;
         }
 
-        treeElement.updateSelection();
+        this.dragOverTreeElement = treeElement;
         treeElement.listItemElement.classList.add("elements-drag-over");
-        this._dragOverTreeElement = treeElement;
+        treeElement.updateSelectionArea();
+
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
         return false;
@@ -445,21 +425,25 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
                 this.selectDOMNode(newNode, true);
         }
 
-        var treeElement = this._treeElementFromEvent(event);
+        let treeElement = this.treeElementFromEvent(event);
         if (this._nodeBeingDragged && treeElement) {
-            var parentNode;
-            var anchorNode;
+            let parentNode = null;
+            let anchorNode = null;
 
             if (treeElement._elementCloseTag) {
                 // Drop onto closing tag -> insert as last child.
                 parentNode = treeElement.representedObject;
             } else {
-                var dragTargetNode = treeElement.representedObject;
+                let dragTargetNode = treeElement.representedObject;
                 parentNode = dragTargetNode.parentNode;
                 anchorNode = dragTargetNode;
             }
 
             this._nodeBeingDragged.moveTo(parentNode, anchorNode, callback.bind(this));
+        } else {
+            let className = event.dataTransfer.getData(WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesDragType);
+            if (className && treeElement)
+                treeElement.representedObject.toggleClass(className, true);
         }
 
         delete this._nodeBeingDragged;
@@ -474,52 +458,19 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
 
     _clearDragOverTreeElementMarker()
     {
-        if (this._dragOverTreeElement) {
-            this._dragOverTreeElement.updateSelection();
-            this._dragOverTreeElement.listItemElement.classList.remove("elements-drag-over");
-            delete this._dragOverTreeElement;
+        if (this.dragOverTreeElement) {
+            let element = this.dragOverTreeElement;
+            this.dragOverTreeElement = null;
+
+            element.listItemElement.classList.remove("elements-drag-over");
+            element.updateSelectionArea();
         }
-    }
-
-    _contextMenuEventFired(event)
-    {
-        let treeElement = this._treeElementFromEvent(event);
-        if (!treeElement)
-            return;
-
-        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
-        this.populateContextMenu(contextMenu, event, treeElement);
     }
 
     _updateModifiedNodes()
     {
         if (this._elementsTreeUpdater)
             this._elementsTreeUpdater._updateModifiedNodes();
-    }
-
-    _populateContextMenu(contextMenu, domNode)
-    {
-        function revealElement()
-        {
-            WebInspector.domTreeManager.inspectElement(domNode.id);
-        }
-
-        function logElement()
-        {
-            WebInspector.RemoteObject.resolveNode(domNode, WebInspector.RuntimeManager.ConsoleObjectGroup, function(remoteObject) {
-                if (!remoteObject)
-                    return;
-                let text = WebInspector.UIString("Selected Element");
-                WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, true);
-            });
-        }
-
-        contextMenu.appendSeparator();
-
-        if (!this._excludeRevealElementContextMenu)
-            contextMenu.appendItem(WebInspector.UIString("Reveal in DOM Tree"), revealElement);
-
-        contextMenu.appendItem(WebInspector.UIString("Log Element"), logElement);
     }
 
     _showShadowDOMSettingChanged(event)
@@ -556,7 +507,7 @@ WebInspector.DOMTreeOutline = class DOMTreeOutline extends WebInspector.TreeOutl
             console.assert(effectiveNode);
             if (!effectiveNode)
                 return;
-        }            
+        }
 
         if (effectiveNode.nodeType() !== Node.ELEMENT_NODE)
             return;

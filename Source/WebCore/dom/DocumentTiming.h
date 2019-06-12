@@ -23,32 +23,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DocumentTiming_h
-#define DocumentTiming_h
+#pragma once
 
 #if ENABLE(WEB_TIMING)
+
+#include <wtf/MonotonicTime.h>
 
 namespace WebCore {
 
 struct DocumentTiming {
-    DocumentTiming()
-        : domLoading(0.0)
-        , domInteractive(0.0)
-        , domContentLoadedEventStart(0.0)
-        , domContentLoadedEventEnd(0.0)
-        , domComplete(0.0)
-    {
-    }
-
-    double domLoading;
-    double domInteractive;
-    double domContentLoadedEventStart;
-    double domContentLoadedEventEnd;
-    double domComplete;
+    MonotonicTime domLoading;
+    MonotonicTime domInteractive;
+    MonotonicTime domContentLoadedEventStart;
+    MonotonicTime domContentLoadedEventEnd;
+    MonotonicTime domComplete;
 };
 
-}
+} // namespace WebCore
 
-#endif
-
-#endif
+#endif // ENABLE(WEB_TIMING)

@@ -18,11 +18,9 @@
  *
  */
 
-#ifndef RenderButton_h
-#define RenderButton_h
+#pragma once
 
 #include "RenderFlexibleBox.h"
-#include "Timer.h"
 #include <memory>
 
 namespace WebCore {
@@ -35,44 +33,40 @@ class RenderTextFragment;
 // to date as the button changes.
 class RenderButton final : public RenderFlexibleBox {
 public:
-    RenderButton(HTMLFormControlElement&, Ref<RenderStyle>&&);
+    RenderButton(HTMLFormControlElement&, RenderStyle&&);
     virtual ~RenderButton();
 
     HTMLFormControlElement& formControlElement() const;
 
-    virtual bool canBeSelectionLeaf() const override;
+    bool canBeSelectionLeaf() const override;
 
-    virtual void addChild(RenderObject* newChild, RenderObject *beforeChild = 0) override;
-    virtual void removeChild(RenderObject&) override;
-    virtual void removeLeftoverAnonymousBlock(RenderBlock*) override { }
-    virtual bool createsAnonymousWrapper() const override { return true; }
+    void addChild(RenderObject* newChild, RenderObject *beforeChild = 0) override;
+    void removeChild(RenderObject&) override;
+    void removeLeftoverAnonymousBlock(RenderBlock*) override { }
+    bool createsAnonymousWrapper() const override { return true; }
 
-    void setupInnerStyle(RenderStyle*);
-    virtual void updateFromElement() override;
+    void updateFromElement() override;
 
-    virtual bool canHaveGeneratedChildren() const override;
-    virtual bool hasControlClip() const override { return true; }
-    virtual LayoutRect controlClipRect(const LayoutPoint&) const override;
+    bool canHaveGeneratedChildren() const override;
+    bool hasControlClip() const override { return true; }
+    LayoutRect controlClipRect(const LayoutPoint&) const override;
+
+    void updateAnonymousChildStyle(const RenderObject& anonymousChild, RenderStyle&) const override;
 
     void setText(const String&);
     String text() const;
 
 #if PLATFORM(IOS)
-    virtual void layout() override;
+    void layout() override;
 #endif
 
 private:
     void element() const = delete;
 
-    virtual const char* renderName() const override { return "RenderButton"; }
-    virtual bool isRenderButton() const override { return true; }
+    const char* renderName() const override { return "RenderButton"; }
+    bool isRenderButton() const override { return true; }
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-
-    virtual bool hasLineIfEmpty() const override;
-
-    virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
+    bool hasLineIfEmpty() const override;
 
     bool isFlexibleBoxImpl() const override { return true; }
 
@@ -83,5 +77,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderButton, isRenderButton())
-
-#endif // RenderButton_h

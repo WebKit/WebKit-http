@@ -24,16 +24,17 @@
  */
 
 
-#ifndef WebVideoFullscreenModelVideoElement_h
-#define WebVideoFullscreenModelVideoElement_h
+#pragma once
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
-#include <WebCore/EventListener.h>
-#include <WebCore/FloatRect.h>
-#include <WebCore/HTMLMediaElementEnums.h>
-#include <WebCore/PlatformLayer.h>
-#include <WebCore/WebVideoFullscreenModel.h>
+#include "EventListener.h"
+#include "FloatRect.h"
+#include "HTMLMediaElementEnums.h"
+#include "PlatformLayer.h"
+#include "WebVideoFullscreenModel.h"
+#include <wtf/Function.h>
+#include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
@@ -42,7 +43,7 @@ namespace WebCore {
 class AudioTrack;
 class HTMLVideoElement;
 class TextTrack;
-class WebVideoFullscreenInterface;
+class WebPlaybackSessionModelMediaElement;
 
 class WebVideoFullscreenModelVideoElement : public WebVideoFullscreenModel, public EventListener {
 public:
@@ -51,54 +52,48 @@ public:
         return adoptRef(*new WebVideoFullscreenModelVideoElement());
     }
     WEBCORE_EXPORT virtual ~WebVideoFullscreenModelVideoElement();
-    WEBCORE_EXPORT void setWebVideoFullscreenInterface(WebVideoFullscreenInterface*);
     WEBCORE_EXPORT void setVideoElement(HTMLVideoElement*);
-    WEBCORE_EXPORT HTMLVideoElement* videoElement() const { return m_videoElement.get(); }
-    WEBCORE_EXPORT void setVideoFullscreenLayer(PlatformLayer*);
+    HTMLVideoElement* videoElement() const { return m_videoElement.get(); }
+    WEBCORE_EXPORT void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler = [] { });
+    WEBCORE_EXPORT void waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler = [] { });
     
-    WEBCORE_EXPORT virtual void handleEvent(WebCore::ScriptExecutionContext*, WebCore::Event*) override;
+    WEBCORE_EXPORT void handleEvent(WebCore::ScriptExecutionContext*, WebCore::Event*) override;
     void updateForEventName(const WTF::AtomicString&);
-    bool operator==(const EventListener& rhs) override
-        {return static_cast<WebCore::EventListener*>(this) == &rhs;}
+    bool operator==(const EventListener& rhs) const override { return static_cast<const WebCore::EventListener*>(this) == &rhs; }
 
-    WEBCORE_EXPORT virtual void play() override;
-    WEBCORE_EXPORT virtual void pause() override;
-    WEBCORE_EXPORT virtual void togglePlayState() override;
-    WEBCORE_EXPORT virtual void beginScrubbing() override;
-    WEBCORE_EXPORT virtual void endScrubbing() override;
-    WEBCORE_EXPORT virtual void seekToTime(double time) override;
-    WEBCORE_EXPORT virtual void fastSeek(double time) override;
-    WEBCORE_EXPORT virtual void beginScanningForward() override;
-    WEBCORE_EXPORT virtual void beginScanningBackward() override;
-    WEBCORE_EXPORT virtual void endScanning() override;
-    WEBCORE_EXPORT virtual void requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode) override;
-    WEBCORE_EXPORT virtual void setVideoLayerFrame(FloatRect) override;
-    WEBCORE_EXPORT virtual void setVideoLayerGravity(VideoGravity) override;
-    WEBCORE_EXPORT virtual void selectAudioMediaOption(uint64_t index) override;
-    WEBCORE_EXPORT virtual void selectLegibleMediaOption(uint64_t index) override;
-    WEBCORE_EXPORT virtual void fullscreenModeChanged(HTMLMediaElementEnums::VideoFullscreenMode) override;
-    WEBCORE_EXPORT virtual bool isVisible() const override;
+    WEBCORE_EXPORT void addClient(WebVideoFullscreenModelClient&) override;
+    WEBCORE_EXPORT void removeClient(WebVideoFullscreenModelClient&) override;
+    WEBCORE_EXPORT void requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode, bool finishedWithMedia = false) override;
+    WEBCORE_EXPORT void setVideoLayerFrame(FloatRect) override;
+    WEBCORE_EXPORT void setVideoLayerGravity(VideoGravity) override;
+    WEBCORE_EXPORT void fullscreenModeChanged(HTMLMediaElementEnums::VideoFullscreenMode) override;
+    WEBCORE_EXPORT bool isVisible() const override;
+    WEBCORE_EXPORT FloatSize videoDimensions() const override { return m_videoDimensions; }
+    WEBCORE_EXPORT bool hasVideo() const override { return m_hasVideo; }
+
 
 protected:
     WEBCORE_EXPORT WebVideoFullscreenModelVideoElement();
 
 private:
+    void setHasVideo(bool);
+    void setVideoDimensions(const FloatSize&);
+
     static const Vector<WTF::AtomicString>& observedEventNames();
     const WTF::AtomicString& eventNameAll();
-    
+
     RefPtr<HTMLVideoElement> m_videoElement;
     RetainPtr<PlatformLayer> m_videoFullscreenLayer;
     bool m_isListening { false };
-    WebVideoFullscreenInterface* m_videoFullscreenInterface { nullptr };
+    HashSet<WebVideoFullscreenModelClient*> m_clients;
+    bool m_hasVideo { false };
+    FloatSize m_videoDimensions;
     FloatRect m_videoFrame;
     Vector<RefPtr<TextTrack>> m_legibleTracksForMenu;
     Vector<RefPtr<AudioTrack>> m_audioTracksForMenu;
-
-    void updateLegibleOptions();
 };
 
 }
 
 #endif
 
-#endif

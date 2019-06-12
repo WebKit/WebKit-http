@@ -76,9 +76,8 @@ private:
     FontCascadeFonts(RefPtr<FontSelector>&&);
     FontCascadeFonts(const FontPlatformData&);
 
-    GlyphData glyphDataForSystemFallback(UChar32, const FontCascadeDescription&, FontVariant);
-    GlyphData glyphDataForNormalVariant(UChar32, const FontCascadeDescription&);
-    GlyphData glyphDataForVariant(UChar32, const FontCascadeDescription&, FontVariant, unsigned fallbackIndex);
+    GlyphData glyphDataForSystemFallback(UChar32, const FontCascadeDescription&, FontVariant, bool systemFallbackShouldBeInvisible);
+    GlyphData glyphDataForVariant(UChar32, const FontCascadeDescription&, FontVariant, unsigned fallbackIndex = 0);
 
     Vector<FontRanges, 1> m_realizedFallbackRanges;
     unsigned m_lastRealizedFallbackIndex { 0 };

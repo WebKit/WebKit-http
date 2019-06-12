@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef DateConstructor_h
-#define DateConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
 
@@ -31,7 +30,7 @@ class GetterSetter;
 class DateConstructor : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static DateConstructor* create(VM& vm, Structure* structure, DatePrototype* datePrototype, GetterSetter*)
     {
@@ -54,8 +53,6 @@ private:
     DateConstructor(VM&, Structure*);
     static ConstructType getConstructData(JSCell*, ConstructData&);
     static CallType getCallData(JSCell*, CallData&);
-
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 };
 
 JSObject* constructDate(ExecState*, JSGlobalObject*, JSValue newTarget, const ArgList&);
@@ -63,5 +60,3 @@ JSObject* constructDate(ExecState*, JSGlobalObject*, JSValue newTarget, const Ar
 EncodedJSValue JSC_HOST_CALL dateNow(ExecState*);
 
 } // namespace JSC
-
-#endif // DateConstructor_h

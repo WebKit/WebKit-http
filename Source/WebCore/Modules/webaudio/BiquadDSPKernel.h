@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BiquadDSPKernel_h
-#define BiquadDSPKernel_h
+#pragma once
 
 #include "AudioDSPKernel.h"
 #include "Biquad.h"
@@ -43,8 +42,8 @@ public:
     }
     
     // AudioDSPKernel
-    virtual void process(const float* source, float* dest, size_t framesToProcess) override;
-    virtual void reset() override { m_biquad.reset(); }
+    void process(const float* source, float* dest, size_t framesToProcess) override;
+    void reset() override { m_biquad.reset(); }
 
     // Get the magnitude and phase response of the filter at the given
     // set of frequencies (in Hz). The phase response is in radians.
@@ -53,8 +52,8 @@ public:
                               float* magResponse,
                               float* phaseResponse);
 
-    virtual double tailTime() const override;
-    virtual double latencyTime() const override;
+    double tailTime() const override;
+    double latencyTime() const override;
 
 protected:
     Biquad m_biquad;
@@ -71,5 +70,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // BiquadDSPKernel_h

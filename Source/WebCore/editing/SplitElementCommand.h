@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SplitElementCommand_h
-#define SplitElementCommand_h
+#pragma once
 
 #include "EditCommand.h"
 
@@ -32,28 +31,26 @@ namespace WebCore {
 
 class SplitElementCommand : public SimpleEditCommand {
 public:
-    static Ref<SplitElementCommand> create(PassRefPtr<Element> element, PassRefPtr<Node> splitPointChild)
+    static Ref<SplitElementCommand> create(Ref<Element>&& element, Ref<Node>&& splitPointChild)
     {
-        return adoptRef(*new SplitElementCommand(element, splitPointChild));
+        return adoptRef(*new SplitElementCommand(WTFMove(element), WTFMove(splitPointChild)));
     }
 
 private:
-    SplitElementCommand(PassRefPtr<Element>, PassRefPtr<Node> splitPointChild);
+    SplitElementCommand(Ref<Element>&&, Ref<Node>&& splitPointChild);
 
-    virtual void doApply() override;
-    virtual void doUnapply() override;
-    virtual void doReapply() override;
+    void doApply() override;
+    void doUnapply() override;
+    void doReapply() override;
     void executeApply();
 
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override;
+    void getNodesInCommand(HashSet<Node*>&) override;
 #endif
 
     RefPtr<Element> m_element1;
-    RefPtr<Element> m_element2;
-    RefPtr<Node> m_atChild;
+    Ref<Element> m_element2;
+    Ref<Node> m_atChild;
 };
 
 } // namespace WebCore
-
-#endif // SplitElementCommand_h

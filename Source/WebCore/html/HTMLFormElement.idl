@@ -19,38 +19,29 @@
  */
 
 [
-    CustomNamedGetter,
+    LegacyUnenumerableNamedProperties,
     OverrideBuiltins,
+    JSGenerateToNativeObject,
 ] interface HTMLFormElement : HTMLElement {
     [Reflect=accept_charset] attribute DOMString acceptCharset;
-    [Reflect, URL] attribute DOMString action;
-    [Reflect] attribute DOMString autocomplete;
-    [TreatNullAs=NullString] attribute DOMString enctype;
-    [TreatNullAs=NullString] attribute DOMString encoding;
-    [TreatNullAs=NullString] attribute DOMString method;
+    [Reflect, URL] attribute USVString action;
+    attribute DOMString autocomplete;
+    attribute DOMString enctype;
+    [ImplementedAs=enctype] attribute DOMString encoding;
+    attribute DOMString method;
     [Reflect] attribute DOMString name;
     [Reflect] attribute boolean noValidate;
     [Reflect] attribute DOMString target;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    [ImplementedAs=elementsForNativeBindings] readonly attribute HTMLCollection elements;
-#else
     readonly attribute HTMLFormControlsCollection elements;
-#endif
-    readonly attribute long length;
+    readonly attribute unsigned long length;
+    getter Element? (unsigned long index);
+    getter (RadioNodeList or Element)? (DOMString name);
 
-    getter Element (unsigned long index);
-
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=NullString] attribute DOMString autocapitalize;
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [ImplementedAs=submitFromJavaScript] void submit();
-#else
-    void submit();
-#endif
     void reset();
     boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
 
     [Conditional=REQUEST_AUTOCOMPLETE] void requestAutocomplete();
 };

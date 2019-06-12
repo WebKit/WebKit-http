@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +28,14 @@
 
 #if ENABLE(NETWORK_CACHE)
 
-#include <functional>
 #include <wtf/FunctionDispatcher.h>
 #include <wtf/SHA1.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/WTFString.h>
+
+#if PLATFORM(COCOA)
+#include <wtf/DispatchPtr.h>
+#endif
 
 #if USE(SOUP)
 #include <WebCore/GRefPtrSoup.h>
@@ -44,67 +47,12 @@ class SharedMemory;
 
 namespace NetworkCache {
 
-#if PLATFORM(COCOA)
-template <typename T> class DispatchPtr;
-template <typename T> DispatchPtr<T> adoptDispatch(T dispatchObject);
-
-// FIXME: Use OSObjectPtr instead when it works with dispatch_data_t on all platforms.
-template<typename T> class DispatchPtr {
-public:
-    DispatchPtr()
-        : m_ptr(nullptr)
-    {
-    }
-    explicit DispatchPtr(T ptr)
-        : m_ptr(ptr)
-    {
-        if (m_ptr)
-            dispatch_retain(m_ptr);
-    }
-    DispatchPtr(const DispatchPtr& other)
-        : m_ptr(other.m_ptr)
-    {
-        if (m_ptr)
-            dispatch_retain(m_ptr);
-    }
-    ~DispatchPtr()
-    {
-        if (m_ptr)
-            dispatch_release(m_ptr);
-    }
-
-    DispatchPtr& operator=(const DispatchPtr& other)
-    {
-        auto copy = other;
-        std::swap(m_ptr, copy.m_ptr);
-        return *this;
-    }
-
-    T get() const { return m_ptr; }
-    explicit operator bool() const { return m_ptr; }
-
-    friend DispatchPtr adoptDispatch<T>(T);
-
-private:
-    struct Adopt { };
-    DispatchPtr(Adopt, T data)
-        : m_ptr(data)
-    {
-    }
-
-    T m_ptr;
-};
-
-template <typename T> DispatchPtr<T> adoptDispatch(T dispatchObject)
-{
-    return DispatchPtr<T>(typename DispatchPtr<T>::Adopt { }, dispatchObject);
-}
-#endif
-
 class Data {
 public:
     Data() { }
     Data(const uint8_t*, size_t);
+
+    ~Data() { }
 
     static Data empty();
     static Data adoptMap(void* map, size_t, int fd);
@@ -126,7 +74,7 @@ public:
 
     Data subrange(size_t offset, size_t) const;
 
-    bool apply(const std::function<bool (const uint8_t*, size_t)>&&) const;
+    bool apply(const Function<bool (const uint8_t*, size_t)>&) const;
 
     Data mapToFile(const char* path) const;
 
@@ -154,7 +102,11 @@ Data concatenate(const Data&, const Data&);
 bool bytesEqual(const Data&, const Data&);
 Data adoptAndMapFile(int fd, size_t offset, size_t);
 Data mapFile(const char* path);
-SHA1::Digest computeSHA1(const Data&);
+
+using Salt = std::array<uint8_t, 8>;
+
+std::optional<Salt> readOrMakeSalt(const String& path);
+SHA1::Digest computeSHA1(const Data&, const Salt&);
 
 }
 }

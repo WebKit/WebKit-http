@@ -1,3 +1,4 @@
+//@ skip if $hostOS == "windows"
 description("This test checks the behavior of String.prototype.localeCompare as described in the ECMAScript Internationalization API Specification (ECMA-402 2.0).");
 
 shouldBe("String.prototype.localeCompare.length", "1");
@@ -6,9 +7,9 @@ shouldBeTrue("Object.getOwnPropertyDescriptor(String.prototype, 'localeCompare')
 shouldBeTrue("Object.getOwnPropertyDescriptor(String.prototype, 'localeCompare').writable");
 
 // Test RequireObjectCoercible.
-shouldThrow("String.prototype.localeCompare.call()", "'TypeError: String.prototype.localeCompare requires that |this| not be undefined'");
-shouldThrow("String.prototype.localeCompare.call(undefined)", "'TypeError: String.prototype.localeCompare requires that |this| not be undefined'");
-shouldThrow("String.prototype.localeCompare.call(null)", "'TypeError: String.prototype.localeCompare requires that |this| not be null'");
+shouldThrow("String.prototype.localeCompare.call()", "'TypeError: String.prototype.localeCompare requires that |this| not be null or undefined'");
+shouldThrow("String.prototype.localeCompare.call(undefined)", "'TypeError: String.prototype.localeCompare requires that |this| not be null or undefined'");
+shouldThrow("String.prototype.localeCompare.call(null)", "'TypeError: String.prototype.localeCompare requires that |this| not be null or undefined'");
 shouldNotThrow("String.prototype.localeCompare.call({}, '')");
 shouldNotThrow("String.prototype.localeCompare.call([], '')");
 shouldNotThrow("String.prototype.localeCompare.call(NaN, '')");

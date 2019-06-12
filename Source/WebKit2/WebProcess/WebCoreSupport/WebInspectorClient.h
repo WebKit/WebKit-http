@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInspectorClient_h
-#define WebInspectorClient_h
+#pragma once
 
 #include <WebCore/InspectorClient.h>
 #include <WebCore/PageOverlay.h>
@@ -60,21 +59,22 @@ private:
     void hideHighlight() override;
 
 #if PLATFORM(IOS)
-    virtual void showInspectorIndication() override;
-    virtual void hideInspectorIndication() override;
+    void showInspectorIndication() override;
+    void hideInspectorIndication() override;
 
-    virtual void didSetSearchingForNode(bool) override;
+    void didSetSearchingForNode(bool) override;
 #endif
 
-    virtual bool overridesShowPaintRects() const override { return true; }
-    virtual void showPaintRect(const WebCore::FloatRect&) override;
+    void elementSelectionChanged(bool) override;
+
+    bool overridesShowPaintRects() const override { return true; }
+    void showPaintRect(const WebCore::FloatRect&) override;
 
     // PageOverlay::Client
-    virtual void pageOverlayDestroyed(WebCore::PageOverlay&) override;
-    virtual void willMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
-    virtual void didMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
-    virtual void drawRect(WebCore::PageOverlay&, WebCore::GraphicsContext&, const WebCore::IntRect&) override;
-    virtual bool mouseEvent(WebCore::PageOverlay&, const WebCore::PlatformMouseEvent&) override;
+    void willMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
+    void didMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
+    void drawRect(WebCore::PageOverlay&, WebCore::GraphicsContext&, const WebCore::IntRect&) override;
+    bool mouseEvent(WebCore::PageOverlay&, const WebCore::PlatformMouseEvent&) override;
 
     void animationEndedForLayer(const WebCore::GraphicsLayer*);
 
@@ -87,5 +87,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebInspectorClient_h

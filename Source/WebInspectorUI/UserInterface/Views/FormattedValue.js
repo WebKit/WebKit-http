@@ -39,7 +39,7 @@ WebInspector.FormattedValue.createLinkifiedElementString = function(string)
 {
     var span = document.createElement("span");
     span.className = "formatted-string";
-    span.append("\"", WebInspector.linkifyStringAsFragment(string.replace(/"/g, "\\\"")), "\"");
+    span.append("\"", WebInspector.linkifyStringAsFragment(string.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")), "\"");
     return span;
 };
 
@@ -94,7 +94,7 @@ WebInspector.FormattedValue.createElementForError = function(object)
 
 WebInspector.FormattedValue.createElementForNodePreview = function(preview)
 {
-    var value = preview.value;
+    var value = preview.value || preview.description;
     var span = document.createElement("span");
     span.className = "formatted-node-preview syntax-highlighted";
 
@@ -153,6 +153,14 @@ WebInspector.FormattedValue.createElementForNodePreview = function(preview)
     return span;
 };
 
+WebInspector.FormattedValue.createElementForFunctionWithName = function(description)
+{
+    var span = document.createElement("span");
+    span.classList.add("formatted-function");
+    span.textContent = description.substring(0, description.indexOf("("));
+    return span;
+};
+
 WebInspector.FormattedValue.createElementForTypesAndValue = function(type, subtype, displayString, size, isPreview, hadException)
 {
     var span = document.createElement("span");
@@ -206,6 +214,17 @@ WebInspector.FormattedValue.createElementForObjectPreview = function(objectPrevi
 WebInspector.FormattedValue.createElementForPropertyPreview = function(propertyPreview)
 {
     return WebInspector.FormattedValue.createElementForTypesAndValue(propertyPreview.type, propertyPreview.subtype, propertyPreview.value, undefined, true, false);
+};
+
+WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForObjectPreview = function(objectPreview, previewViewMode)
+{
+    if (objectPreview.subtype === "node")
+        return WebInspector.FormattedValue.createElementForNodePreview(objectPreview);
+
+    if (objectPreview.type === "function")
+        return WebInspector.FormattedValue.createElementForFunctionWithName(objectPreview.description);
+
+    return new WebInspector.ObjectPreviewView(objectPreview, previewViewMode).element;
 };
 
 WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForRemoteObject = function(object, previewViewMode)

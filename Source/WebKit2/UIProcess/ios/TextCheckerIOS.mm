@@ -84,6 +84,19 @@ void TextChecker::setAutomaticTextReplacementEnabled(bool)
 {
     notImplemented();
 }
+    
+static bool testingModeEnabled = false;
+    
+void TextChecker::setTestingMode(bool enabled)
+{
+    testingModeEnabled = enabled;
+}
+    
+bool TextChecker::isTestingMode()
+{
+    return testingModeEnabled;
+}
+
 
 static bool smartInsertDeleteEnabled;
 
@@ -132,7 +145,7 @@ void TextChecker::closeSpellDocumentWithTag(int64_t)
 
 #if USE(UNIFIED_TEXT_CHECKING)
 
-Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t, StringView, uint64_t)
+Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t, StringView, int32_t, uint64_t, bool)
 {
     notImplemented();
     return Vector<TextCheckingResult>();
@@ -171,7 +184,7 @@ void TextChecker::updateSpellingUIWithGrammarString(int64_t, const String&, cons
     notImplemented();
 }
 
-void TextChecker::getGuessesForWord(int64_t, const String&, const String&, Vector<String>&)
+void TextChecker::getGuessesForWord(int64_t, const String&, const String&, int32_t, Vector<String>&, bool)
 {
     notImplemented();
 }
@@ -186,7 +199,7 @@ void TextChecker::ignoreWord(int64_t, const String&)
     notImplemented();
 }
 
-void TextChecker::requestCheckingOfString(PassRefPtr<TextCheckerCompletion>)
+void TextChecker::requestCheckingOfString(Ref<TextCheckerCompletion>&&, int32_t)
 {
     notImplemented();
 }

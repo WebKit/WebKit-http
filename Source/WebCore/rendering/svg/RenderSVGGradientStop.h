@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGGradientStop_h
-#define RenderSVGGradientStop_h
+#pragma once
 
 #include "RenderElement.h"
 #include "SVGStopElement.h"
@@ -32,30 +31,30 @@ class SVGGradientElement;
 // This class exists mostly so we can hear about gradient stop style changes
 class RenderSVGGradientStop final : public RenderElement {
 public:
-    RenderSVGGradientStop(SVGStopElement&, Ref<RenderStyle>&&);
+    RenderSVGGradientStop(SVGStopElement&, RenderStyle&&);
     virtual ~RenderSVGGradientStop();
 
     SVGStopElement& element() const { return downcast<SVGStopElement>(RenderObject::nodeForNonAnonymous()); }
 
 private:
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
-    virtual void layout() override;
+    void layout() override;
 
     // These overrides are needed to prevent ASSERTs on <svg><stop /></svg>
     // RenderObject's default implementations ASSERT_NOT_REACHED()
     // https://bugs.webkit.org/show_bug.cgi?id=20400
-    virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject*) const override { return LayoutRect(); }
-    virtual FloatRect objectBoundingBox() const override { return FloatRect(); }
-    virtual FloatRect strokeBoundingBox() const override { return FloatRect(); }
-    virtual FloatRect repaintRectInLocalCoordinates() const override { return FloatRect(); }
-    virtual bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint&, HitTestAction) override { return false; }
+    LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject*) const override { return LayoutRect(); }
+    FloatRect objectBoundingBox() const override { return FloatRect(); }
+    FloatRect strokeBoundingBox() const override { return FloatRect(); }
+    FloatRect repaintRectInLocalCoordinates() const override { return FloatRect(); }
+    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint&, HitTestAction) override { return false; }
 
-    virtual bool isSVGGradientStop() const override { return true; }
-    virtual const char* renderName() const override { return "RenderSVGGradientStop"; }
+    bool isSVGGradientStop() const override { return true; }
+    const char* renderName() const override { return "RenderSVGGradientStop"; }
 
-    virtual bool canHaveChildren() const override { return false; }
-    virtual void paint(PaintInfo&, const LayoutPoint&) override { }
+    bool canHaveChildren() const override { return false; }
+    void paint(PaintInfo&, const LayoutPoint&) override { }
 
     SVGGradientElement* gradientElement();
 };
@@ -63,5 +62,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGGradientStop, isSVGGradientStop())
-
-#endif // RenderSVGGradientStop_h

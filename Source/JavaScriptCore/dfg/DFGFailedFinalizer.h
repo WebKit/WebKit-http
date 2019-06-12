@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGFailedFinalizer_h
-#define DFGFailedFinalizer_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -37,14 +36,11 @@ public:
     FailedFinalizer(Plan&);
     virtual ~FailedFinalizer();
     
-    virtual size_t codeSize() override;
-    virtual bool finalize() override;
-    virtual bool finalizeFunction() override;
+    size_t codeSize() override;
+    bool finalize() override;
+    bool finalizeFunction() override;
 };
 
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGFailedFinalizer_h
-

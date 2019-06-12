@@ -40,12 +40,12 @@ LabelableElement::~LabelableElement()
 {
 }
 
-PassRefPtr<NodeList> LabelableElement::labels()
+RefPtr<NodeList> LabelableElement::labels()
 {
     if (!supportLabels())
-        return 0;
+        return nullptr;
 
-    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<LabelsNodeList>(*this, starAtom);
+    return ensureRareData().ensureNodeLists().addCacheWithAtomicName<LabelsNodeList>(*this, starAtom());
 }
 
 } // namespace Webcore

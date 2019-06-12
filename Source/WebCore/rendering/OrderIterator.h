@@ -29,16 +29,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OrderIterator_h
-#define OrderIterator_h
+#pragma once
 
-#include <wtf/Noncopyable.h>
-#include <wtf/Vector.h>
+#include <set>
 
 namespace WebCore {
 
 class RenderBox;
-
+class RenderObject;
+    
 class OrderIterator {
 public:
     friend class OrderIteratorPopulator;
@@ -49,29 +48,33 @@ public:
     RenderBox* first();
     RenderBox* next();
 
+    bool shouldSkipChild(const RenderObject&) const;
+
 private:
     void reset();
 
     RenderBox& m_containerBox;
     RenderBox* m_currentChild;
 
-    Vector<int, 1> m_orderValues;
-    int m_orderIndex;
+    using OrderValues = std::set<int, std::less<int>, FastAllocator<int>>;
+    OrderValues m_orderValues;
+    OrderValues::const_iterator m_orderValuesIterator;
+    bool m_isReset { false };
 };
 
 class OrderIteratorPopulator {
 public:
-    OrderIteratorPopulator(OrderIterator&);
+    explicit OrderIteratorPopulator(OrderIterator& iterator)
+        : m_iterator(iterator)
+    {
+        m_iterator.m_orderValues.clear();
+    }
     ~OrderIteratorPopulator();
 
-    void collectChild(const RenderBox&);
+    bool collectChild(const RenderBox&);
 
 private:
-    void removeDuplicatedOrderValues();
-
     OrderIterator& m_iterator;
 };
 
 } // namespace WebCore
-
-#endif //  OrderIterator_h

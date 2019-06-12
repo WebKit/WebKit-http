@@ -26,15 +26,12 @@
 #include "config.h"
 #include "JSWeakMap.h"
 
-#include "JSCJSValueInlines.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
 #include "WeakMapData.h"
-#include "WriteBarrierInlines.h"
 
 namespace JSC {
 
-const ClassInfo JSWeakMap::s_info = { "WeakMap", &Base::s_info, 0, CREATE_METHOD_TABLE(JSWeakMap) };
+const ClassInfo JSWeakMap::s_info = { "WeakMap", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSWeakMap) };
 
 void JSWeakMap::finishCreation(VM& vm)
 {
@@ -46,7 +43,12 @@ void JSWeakMap::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     Base::visitChildren(cell, visitor);
     JSWeakMap* thisObj = jsCast<JSWeakMap*>(cell);
-    visitor.append(&thisObj->m_weakMapData);
+    visitor.append(thisObj->m_weakMapData);
+}
+
+String JSWeakMap::toStringName(const JSObject*, ExecState*)
+{
+    return ASCIILiteral("Object");
 }
 
 }

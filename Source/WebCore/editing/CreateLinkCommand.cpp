@@ -25,17 +25,17 @@
 
 #include "config.h"
 #include "CreateLinkCommand.h"
-#include "htmlediting.h"
-#include "Text.h"
 
+#include "Editing.h"
 #include "HTMLAnchorElement.h"
+#include "Text.h"
 
 namespace WebCore {
 
 CreateLinkCommand::CreateLinkCommand(Document& document, const String& url)
     : CompositeEditCommand(document)
+    , m_url(url)
 {
-    m_url = url;
 }
 
 void CreateLinkCommand::doApply()
@@ -43,16 +43,15 @@ void CreateLinkCommand::doApply()
     if (endingSelection().isNone())
         return;
         
-    RefPtr<HTMLAnchorElement> anchorElement = HTMLAnchorElement::create(document());
+    auto anchorElement = HTMLAnchorElement::create(document());
     anchorElement->setHref(m_url);
     
     if (endingSelection().isRange())
-        applyStyledElement(anchorElement.release());
+        applyStyledElement(WTFMove(anchorElement));
     else {
-        insertNodeAt(anchorElement.get(), endingSelection().start());
-        RefPtr<Text> textNode = Text::create(document(), m_url);
-        appendNode(textNode.release(), anchorElement.get());
-        setEndingSelection(VisibleSelection(positionInParentBeforeNode(anchorElement.get()), positionInParentAfterNode(anchorElement.get()), DOWNSTREAM, endingSelection().isDirectional()));
+        insertNodeAt(anchorElement.copyRef(), endingSelection().start());
+        appendNode(Text::create(document(), m_url), anchorElement.copyRef());
+        setEndingSelection(VisibleSelection(positionInParentBeforeNode(anchorElement.ptr()), positionInParentAfterNode(anchorElement.ptr()), DOWNSTREAM, endingSelection().isDirectional()));
     }
 }
 

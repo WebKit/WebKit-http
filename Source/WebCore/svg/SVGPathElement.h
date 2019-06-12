@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathElement_h
-#define SVGPathElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedNumber.h"
@@ -27,7 +26,7 @@
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGPathByteStream.h"
-#include "SVGPathSegList.h"
+#include "SVGPathSegListValues.h"
 
 namespace WebCore {
 
@@ -50,7 +49,8 @@ class SVGPathSegCurvetoCubicSmoothAbs;
 class SVGPathSegCurvetoCubicSmoothRel;
 class SVGPathSegCurvetoQuadraticSmoothAbs;
 class SVGPathSegCurvetoQuadraticSmoothRel;
-class SVGPathSegListPropertyTearOff;
+class SVGPathSegList;
+class SVGPoint;
 
 class SVGPathElement final : public SVGGraphicsElement,
                              public SVGExternalResourcesRequired {
@@ -58,7 +58,7 @@ public:
     static Ref<SVGPathElement> create(const QualifiedName&, Document&);
     
     float getTotalLength() const;
-    SVGPoint getPointAtLength(float distance) const;
+    Ref<SVGPoint> getPointAtLength(float distance) const;
     unsigned getPathSegAtLength(float distance) const;
 
     Ref<SVGPathSegClosePath> createSVGPathSegClosePath(SVGPathSegRole = PathSegUndefinedRole);
@@ -82,16 +82,16 @@ public:
     Ref<SVGPathSegCurvetoQuadraticSmoothRel> createSVGPathSegCurvetoQuadraticSmoothRel(float x, float y, SVGPathSegRole = PathSegUndefinedRole);
 
     // Used in the bindings only.
-    RefPtr<SVGPathSegListPropertyTearOff> pathSegList();
-    RefPtr<SVGPathSegListPropertyTearOff> animatedPathSegList();
-    RefPtr<SVGPathSegListPropertyTearOff> normalizedPathSegList();
-    RefPtr<SVGPathSegListPropertyTearOff> animatedNormalizedPathSegList();
+    Ref<SVGPathSegList> pathSegList();
+    Ref<SVGPathSegList> animatedPathSegList();
+    RefPtr<SVGPathSegList> normalizedPathSegList();
+    RefPtr<SVGPathSegList> animatedNormalizedPathSegList();
 
     const SVGPathByteStream& pathByteStream() const;
 
     void pathSegListChanged(SVGPathSegRole, ListModification = ListModificationUnknown);
 
-    virtual FloatRect getBBox(StyleUpdateStrategy = AllowStyleUpdate) override;
+    FloatRect getBBox(StyleUpdateStrategy = AllowStyleUpdate) final;
 
     static const SVGPropertyInfo* dPropertyInfo();
 
@@ -99,15 +99,19 @@ public:
 
     WeakPtr<SVGPathElement> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
 
+    void animatedPropertyWillBeDeleted();
+
+    size_t approximateMemoryCost() const final;
+
 private:
     SVGPathElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const override { return SVGTests::isValid(); }
+    bool isValid() const final { return SVGTests::isValid(); }
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual bool supportsMarkers() const override { return true; }
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void svgAttributeChanged(const QualifiedName&) final;
+    bool supportsMarkers() const final { return true; }
 
     // Custom 'd' property
     static void synchronizeD(SVGElement* contextElement);
@@ -118,20 +122,18 @@ private:
         DECLARE_ANIMATED_BOOLEAN_OVERRIDE(ExternalResourcesRequired, externalResourcesRequired)
     END_DECLARE_ANIMATED_PROPERTIES
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    virtual Node::InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    Node::InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
 
     void invalidateMPathDependencies();
 
 private:
     SVGPathByteStream m_pathByteStream;
-    mutable SVGSynchronizableAnimatedProperty<SVGPathSegList> m_pathSegList;
+    mutable SVGSynchronizableAnimatedProperty<SVGPathSegListValues> m_pathSegList;
     WeakPtrFactory<SVGPathElement> m_weakPtrFactory;
     bool m_isAnimValObserved;
 };
 
 } // namespace WebCore
-
-#endif

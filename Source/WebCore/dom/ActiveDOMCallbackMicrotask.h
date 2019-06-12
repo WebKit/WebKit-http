@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,32 +23,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ActiveDOMCallbackMicrotask_h
-#define ActiveDOMCallbackMicrotask_h
+#pragma once
 
 #include "ActiveDOMCallback.h"
 #include "Microtasks.h"
-#include <functional>
+#include <wtf/Function.h>
 
 namespace WebCore {
 
-class ActiveDOMCallbackMicrotask : public Microtask, public ActiveDOMCallback {
+class ActiveDOMCallbackMicrotask final : public Microtask, public ActiveDOMCallback {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT ActiveDOMCallbackMicrotask(MicrotaskQueue&, ScriptExecutionContext&, std::function<void()>&&);
-    virtual ~ActiveDOMCallbackMicrotask();
+    WEBCORE_EXPORT ActiveDOMCallbackMicrotask(MicrotaskQueue&, ScriptExecutionContext&, WTF::Function<void ()>&&);
+    WEBCORE_EXPORT virtual ~ActiveDOMCallbackMicrotask();
 
-    virtual Result run() override;
+    Result run() override;
 
 private:
-    virtual void contextDestroyed() override;
+    void contextDestroyed() override;
 
     // FIXME: It should not be necessary to have the queue as a member. Instead, it should
     // be accessed via the ScriptExecutionContext, which should hold a reference to the relevent
     // queue.
     MicrotaskQueue& m_queue;
-    std::function<void()> m_task;
+    WTF::Function<void ()> m_task;
 };
 
 } // namespace WebCore
-
-#endif // ActiveDOMCallbackMicrotask_h

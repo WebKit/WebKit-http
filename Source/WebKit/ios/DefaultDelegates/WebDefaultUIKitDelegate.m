@@ -27,6 +27,7 @@
 
 #import "WebDefaultUIKitDelegate.h"
 
+#import "DOMRange.h"
 #import "WebUIDelegate.h"
 
 static WebDefaultUIKitDelegate *sharedDelegate = nil;
@@ -170,7 +171,7 @@ static WebDefaultUIKitDelegate *sharedDelegate = nil;
 {
 }
 
-- (void)deleteFromInputwithFlags:(NSUInteger)flags
+- (void)deleteFromInputWithFlags:(NSUInteger)flags
 {
 }
 
@@ -207,7 +208,7 @@ static WebDefaultUIKitDelegate *sharedDelegate = nil;
 {
 }
 
-- (void)webView:(WebView *)webView runOpenPanelForFileButtonWithResultListener:(id<WebOpenPanelResultListener>)resultListener allowMultipleFiles:(BOOL)allowMultipleFiles acceptMIMETypes:(NSArray *)mimeTypes
+- (void)webView:(WebView *)webView runOpenPanelForFileButtonWithResultListener:(id<WebOpenPanelResultListener>)resultListener configuration:(NSDictionary *)configuration
 {
     [resultListener cancel];
 }
@@ -258,6 +259,11 @@ static WebDefaultUIKitDelegate *sharedDelegate = nil;
 }
 
 - (BOOL)performsTwoStepPaste:(DOMDocumentFragment*)fragment
+{
+    return NO;
+}
+
+- (BOOL)performTwoStepDrop:(DOMDocumentFragment *)fragment atDestination:(DOMRange *)destination isMove:(BOOL)isMove
 {
     return NO;
 }

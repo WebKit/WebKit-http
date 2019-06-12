@@ -17,20 +17,20 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAnimatedLengthList_h
-#define SVGAnimatedLengthList_h
+#pragma once
 
 #include "SVGAnimatedListPropertyTearOff.h"
 #include "SVGAnimatedTypeAnimator.h"
+#include "SVGLength.h"
 #include "SVGLengthList.h"
 
 namespace WebCore {
 
-typedef SVGAnimatedListPropertyTearOff<SVGLengthList> SVGAnimatedLengthList;
+using SVGAnimatedLengthList = SVGAnimatedListPropertyTearOff<SVGLengthListValues>;
 
 // Helper macros to declare/define a SVGAnimatedLengthList object
 #define DECLARE_ANIMATED_LENGTH_LIST(UpperProperty, LowerProperty) \
-DECLARE_ANIMATED_LIST_PROPERTY(SVGAnimatedLengthList, SVGLengthList, UpperProperty, LowerProperty)
+DECLARE_ANIMATED_LIST_PROPERTY(SVGAnimatedLengthList, SVGLengthListValues, UpperProperty, LowerProperty)
 
 #define DEFINE_ANIMATED_LENGTH_LIST(OwnerType, DOMAttribute, UpperProperty, LowerProperty) \
 DEFINE_ANIMATED_PROPERTY(AnimatedLengthList, OwnerType, DOMAttribute, DOMAttribute.localName(), UpperProperty, LowerProperty)
@@ -41,21 +41,19 @@ class SVGAnimatedLengthListAnimator final : public SVGAnimatedTypeAnimator {
 public:
     SVGAnimatedLengthListAnimator(SVGAnimationElement*, SVGElement*);
 
-    virtual std::unique_ptr<SVGAnimatedType> constructFromString(const String&) override;
-    virtual std::unique_ptr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
-    virtual void stopAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
-    virtual void resetAnimValToBaseVal(const SVGElementAnimatedPropertyList&, SVGAnimatedType&) override;
-    virtual void animValWillChange(const SVGElementAnimatedPropertyList&) override;
-    virtual void animValDidChange(const SVGElementAnimatedPropertyList&) override;
+    std::unique_ptr<SVGAnimatedType> constructFromString(const String&) override;
+    std::unique_ptr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
+    void stopAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
+    void resetAnimValToBaseVal(const SVGElementAnimatedPropertyList&, SVGAnimatedType&) override;
+    void animValWillChange(const SVGElementAnimatedPropertyList&) override;
+    void animValDidChange(const SVGElementAnimatedPropertyList&) override;
 
-    virtual void addAnimatedTypes(SVGAnimatedType*, SVGAnimatedType*) override;
-    virtual void calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*) override;
-    virtual float calculateDistance(const String& fromString, const String& toString) override;
+    void addAnimatedTypes(SVGAnimatedType*, SVGAnimatedType*) override;
+    void calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*) override;
+    float calculateDistance(const String& fromString, const String& toString) override;
 
 private:
     SVGLengthMode m_lengthMode;
 };
 
 } // namespace WebCore
-
-#endif

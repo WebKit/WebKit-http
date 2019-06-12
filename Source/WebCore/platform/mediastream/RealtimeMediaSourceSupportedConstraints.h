@@ -91,9 +91,10 @@ public:
     bool supportsGroupId() const { return m_supportsGroupId; }
     void setSupportsGroupId(bool value) { m_supportsGroupId = value; }
 
-    const AtomicString& nameForConstraint(MediaConstraintType) const;
-    MediaConstraintType constraintFromName(const String& constraintName) const;
     bool supportsConstraint(MediaConstraintType) const;
+
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static bool decode(Decoder&, RealtimeMediaSourceSupportedConstraints&);
 
 private:
     bool m_supportsWidth { false };
@@ -108,6 +109,38 @@ private:
     bool m_supportsDeviceId { false };
     bool m_supportsGroupId { false };
 };
+
+template<class Encoder>
+void RealtimeMediaSourceSupportedConstraints::encode(Encoder& encoder) const
+{
+    encoder << m_supportsWidth
+        << m_supportsHeight
+        << m_supportsAspectRatio
+        << m_supportsFrameRate
+        << m_supportsFacingMode
+        << m_supportsVolume
+        << m_supportsSampleRate
+        << m_supportsSampleSize
+        << m_supportsEchoCancellation
+        << m_supportsDeviceId
+        << m_supportsGroupId;
+}
+
+template<class Decoder>
+bool RealtimeMediaSourceSupportedConstraints::decode(Decoder& decoder, RealtimeMediaSourceSupportedConstraints& constraints)
+{
+    return decoder.decode(constraints.m_supportsWidth)
+        && decoder.decode(constraints.m_supportsHeight)
+        && decoder.decode(constraints.m_supportsAspectRatio)
+        && decoder.decode(constraints.m_supportsFrameRate)
+        && decoder.decode(constraints.m_supportsFacingMode)
+        && decoder.decode(constraints.m_supportsVolume)
+        && decoder.decode(constraints.m_supportsSampleRate)
+        && decoder.decode(constraints.m_supportsSampleSize)
+        && decoder.decode(constraints.m_supportsEchoCancellation)
+        && decoder.decode(constraints.m_supportsDeviceId)
+        && decoder.decode(constraints.m_supportsGroupId);
+}
 
 } // namespace WebCore
 

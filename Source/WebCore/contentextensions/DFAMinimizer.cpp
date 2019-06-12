@@ -32,7 +32,6 @@
 #include "DFANode.h"
 #include "MutableRangeList.h"
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/Hasher.h>
 #include <wtf/Vector.h>
 
@@ -88,7 +87,7 @@ public:
             m_elementPositionInPartitionedNodes[i] = i;
             m_elementToSetMap[i] = 0;
         }
-        m_sets.append(SetDescriptor({ 0, size, 0 }));
+        m_sets.uncheckedAppend(SetDescriptor { 0, size, 0 });
     }
 
     void reserveUninitializedCapacity(unsigned elementCount)

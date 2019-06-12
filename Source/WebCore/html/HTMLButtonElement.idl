@@ -22,28 +22,23 @@ interface HTMLButtonElement : HTMLElement {
     [Reflect] attribute boolean autofocus;
     [Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
-    attribute DOMString formAction;
-    [TreatNullAs=NullString] attribute DOMString formEnctype;
-    [TreatNullAs=NullString] attribute DOMString formMethod;
+    attribute USVString formAction;
+
+    attribute DOMString formEnctype;
+    attribute DOMString formMethod;
+    attribute DOMString type;
+
     [Reflect] attribute boolean formNoValidate;
     [Reflect] attribute DOMString formTarget;
     [Reflect] attribute DOMString name;
-    [TreatNullAs=NullString] attribute DOMString type;
     [Reflect] attribute DOMString value;
 
     readonly attribute boolean willValidate;
     readonly attribute ValidityState validity;
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
-    void setCustomValidity([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString error);
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
+    void setCustomValidity(DOMString error);
 
     readonly attribute NodeList labels;
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString accessKey;
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    void click();
-#endif
 };

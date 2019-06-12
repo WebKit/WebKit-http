@@ -1,5 +1,6 @@
 /*
- *  Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +26,7 @@
 
 #include "config.h"
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
 #include "RTCNotifiersMock.h"
 
@@ -37,9 +38,9 @@
 
 namespace WebCore {
 
-SessionRequestNotifier::SessionRequestNotifier(PassRefPtr<RTCSessionDescriptionRequest> request, PassRefPtr<RTCSessionDescriptionDescriptor> descriptor, const String& errorName)
-    : m_request(request)
-    , m_descriptor(descriptor)
+SessionRequestNotifier::SessionRequestNotifier(RefPtr<RTCSessionDescriptionRequest>&& request, RefPtr<RTCSessionDescriptionDescriptor>&& descriptor, const String& errorName)
+    : m_request(WTFMove(request))
+    , m_descriptor(WTFMove(descriptor))
     , m_errorName(errorName)
 {
 }
@@ -47,13 +48,13 @@ SessionRequestNotifier::SessionRequestNotifier(PassRefPtr<RTCSessionDescriptionR
 void SessionRequestNotifier::fire()
 {
     if (m_descriptor)
-        m_request->requestSucceeded(m_descriptor);
+        m_request->requestSucceeded(*m_descriptor);
     else
         m_request->requestFailed(m_errorName);
 }
 
-VoidRequestNotifier::VoidRequestNotifier(PassRefPtr<RTCVoidRequest> request, bool success, const String& errorName)
-    : m_request(request)
+VoidRequestNotifier::VoidRequestNotifier(RefPtr<RTCVoidRequest>&& request, bool success, const String& errorName)
+    : m_request(WTFMove(request))
     , m_success(success)
     , m_errorName(errorName)
 {
@@ -67,7 +68,7 @@ void VoidRequestNotifier::fire()
         m_request->requestFailed(m_errorName);
 }
 
-IceConnectionNotifier::IceConnectionNotifier(RTCPeerConnectionHandlerClient* client, RTCPeerConnectionHandlerClient::IceConnectionState connectionState, RTCPeerConnectionHandlerClient::IceGatheringState gatheringState)
+IceConnectionNotifier::IceConnectionNotifier(RTCPeerConnectionHandlerClient* client, RTCIceConnectionState connectionState, RTCIceGatheringState gatheringState)
     : m_client(client)
     , m_connectionState(connectionState)
     , m_gatheringState(gatheringState)
@@ -80,7 +81,7 @@ void IceConnectionNotifier::fire()
     m_client->didChangeIceConnectionState(m_connectionState);
 }
 
-SignalingStateNotifier::SignalingStateNotifier(RTCPeerConnectionHandlerClient* client, RTCPeerConnectionHandlerClient::SignalingState signalingState)
+SignalingStateNotifier::SignalingStateNotifier(RTCPeerConnectionHandlerClient* client, RTCSignalingState signalingState)
     : m_client(client)
     , m_signalingState(signalingState)
 {
@@ -101,7 +102,7 @@ void RemoteDataChannelNotifier::fire()
     m_client->didAddRemoteDataChannel(std::make_unique<RTCDataChannelHandlerMock>("RTCDataChannelHandlerMock", RTCDataChannelInit()));
 }
 
-DataChannelStateNotifier::DataChannelStateNotifier(RTCDataChannelHandlerClient* client, RTCDataChannelHandlerClient::ReadyState state)
+DataChannelStateNotifier::DataChannelStateNotifier(RTCDataChannelHandlerClient* client, RTCDataChannelState state)
     : m_client(client)
     , m_state(state)
 {
@@ -114,4 +115,4 @@ void DataChannelStateNotifier::fire()
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(WEB_RTC)

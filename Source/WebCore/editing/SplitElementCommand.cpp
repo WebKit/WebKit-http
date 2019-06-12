@@ -32,39 +32,34 @@
 
 namespace WebCore {
 
-SplitElementCommand::SplitElementCommand(PassRefPtr<Element> element, PassRefPtr<Node> atChild)
+SplitElementCommand::SplitElementCommand(Ref<Element>&& element, Ref<Node>&& atChild)
     : SimpleEditCommand(element->document())
-    , m_element2(element)
-    , m_atChild(atChild)
+    , m_element2(WTFMove(element))
+    , m_atChild(WTFMove(atChild))
 {
-    ASSERT(m_element2);
-    ASSERT(m_atChild);
-    ASSERT(m_atChild->parentNode() == m_element2);
+    ASSERT(m_atChild->parentNode() == m_element2.ptr());
 }
 
 void SplitElementCommand::executeApply()
 {
-    if (m_atChild->parentNode() != m_element2)
+    if (m_atChild->parentNode() != m_element2.ptr())
         return;
     
     Vector<Ref<Node>> children;
-    for (Node* node = m_element2->firstChild(); node != m_atChild; node = node->nextSibling())
+    for (Node* node = m_element2->firstChild(); node != m_atChild.ptr(); node = node->nextSibling())
         children.append(*node);
-    
-    ExceptionCode ec = 0;
-    
-    ContainerNode* parent = m_element2->parentNode();
+
+    auto* parent = m_element2->parentNode();
     if (!parent || !parent->hasEditableStyle())
         return;
-    parent->insertBefore(*m_element1, m_element2.get(), ec);
-    if (ec)
+    if (parent->insertBefore(*m_element1, m_element2.ptr()).hasException())
         return;
 
     // Delete id attribute from the second element because the same id cannot be used for more than one element
     m_element2->removeAttribute(HTMLNames::idAttr);
 
     for (auto& child : children)
-        m_element1->appendChild(WTFMove(child), ec);
+        m_element1->appendChild(child);
 }
     
 void SplitElementCommand::doApply()
@@ -86,14 +81,14 @@ void SplitElementCommand::doUnapply()
     RefPtr<Node> refChild = m_element2->firstChild();
 
     for (auto& child : children)
-        m_element2->insertBefore(WTFMove(child), refChild.get(), IGNORE_EXCEPTION);
+        m_element2->insertBefore(child, refChild.get());
 
     // Recover the id attribute of the original element.
     const AtomicString& id = m_element1->getIdAttribute();
     if (!id.isNull())
         m_element2->setIdAttribute(id);
 
-    m_element1->remove(IGNORE_EXCEPTION);
+    m_element1->remove();
 }
 
 void SplitElementCommand::doReapply()
@@ -108,8 +103,8 @@ void SplitElementCommand::doReapply()
 void SplitElementCommand::getNodesInCommand(HashSet<Node*>& nodes)
 {
     addNodeAndDescendants(m_element1.get(), nodes);
-    addNodeAndDescendants(m_element2.get(), nodes);
-    addNodeAndDescendants(m_atChild.get(), nodes);
+    addNodeAndDescendants(m_element2.ptr(), nodes);
+    addNodeAndDescendants(m_atChild.ptr(), nodes);
 }
 #endif
     

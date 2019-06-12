@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple, Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,23 +35,25 @@
 
 #include "RealtimeMediaSource.h"
 #include "RealtimeMediaSourceCenter.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class RealtimeMediaSourceCenterMac final : public RealtimeMediaSourceCenter {
 public:
-    RealtimeMediaSourceCenterMac();
+    WEBCORE_EXPORT static RealtimeMediaSourceCenterMac& singleton();
 
 private:
+    friend class NeverDestroyed<RealtimeMediaSourceCenterMac>;
+    RealtimeMediaSourceCenterMac();
     ~RealtimeMediaSourceCenterMac();
 
-    void validateRequestConstraints(MediaStreamCreationClient*, RefPtr<MediaConstraints>& audioConstraints, RefPtr<MediaConstraints>& videoConstraints) override;
-    void createMediaStream(PassRefPtr<MediaStreamCreationClient>, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints) override;
-    void createMediaStream(MediaStreamCreationClient*, const String& audioDeviceID, const String& videoDeviceID) override;
-    bool getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient>) override;
-    RefPtr<TrackSourceInfo> sourceWithUID(const String&, RealtimeMediaSource::Type, MediaConstraints*) override;
+    RealtimeMediaSource::AudioCaptureFactory& defaultAudioFactory() final;
+    RealtimeMediaSource::VideoCaptureFactory& defaultVideoFactory() final;
+
+    CaptureDeviceManager& defaultAudioCaptureDeviceManager() final;
+    CaptureDeviceManager& defaultVideoCaptureDeviceManager() final;
 };
 
 } // namespace WebCore

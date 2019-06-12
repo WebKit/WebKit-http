@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OESTextureHalfFloat_h
-#define OESTextureHalfFloat_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class OESTextureHalfFloat final : public WebGLExtension {
 public:
-    OESTextureHalfFloat(WebGLRenderingContextBase*);
+    OESTextureHalfFloat(WebGLRenderingContextBase&);
     virtual ~OESTextureHalfFloat();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // OESTextureHalfFloat_h

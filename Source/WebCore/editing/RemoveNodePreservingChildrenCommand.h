@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RemoveNodePreservingChildrenCommand_h
-#define RemoveNodePreservingChildrenCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -32,20 +31,18 @@ namespace WebCore {
 
 class RemoveNodePreservingChildrenCommand : public CompositeEditCommand {
 public:
-    static Ref<RemoveNodePreservingChildrenCommand> create(PassRefPtr<Node> node, ShouldAssumeContentIsAlwaysEditable shouldAssumeContentIsAlwaysEditable, EditAction editingAction)
+    static Ref<RemoveNodePreservingChildrenCommand> create(Ref<Node>&& node, ShouldAssumeContentIsAlwaysEditable shouldAssumeContentIsAlwaysEditable, EditAction editingAction)
     {
-        return adoptRef(*new RemoveNodePreservingChildrenCommand(node, shouldAssumeContentIsAlwaysEditable, editingAction));
+        return adoptRef(*new RemoveNodePreservingChildrenCommand(WTFMove(node), shouldAssumeContentIsAlwaysEditable, editingAction));
     }
 
 private:
-    explicit RemoveNodePreservingChildrenCommand(PassRefPtr<Node>, ShouldAssumeContentIsAlwaysEditable, EditAction);
+    explicit RemoveNodePreservingChildrenCommand(Ref<Node>&&, ShouldAssumeContentIsAlwaysEditable, EditAction);
 
-    virtual void doApply();
+    void doApply() override;
 
-    RefPtr<Node> m_node;
+    Ref<Node> m_node;
     ShouldAssumeContentIsAlwaysEditable m_shouldAssumeContentIsAlwaysEditable;
 };
 
 } // namespace WebCore
-
-#endif // RemoveNodePreservingChildrenCommand_h

@@ -43,8 +43,9 @@ static inline void collectElementIdentifierHashes(const Element* element, Vector
     AtomicString tagLowercaseLocalName = element->localName().convertToASCIILowercase();
     identifierHashes.append(tagLowercaseLocalName.impl()->existingHash() * TagNameSalt);
 
-    if (element->hasID())
-        identifierHashes.append(element->idForStyleResolution().impl()->existingHash() * IdAttributeSalt);
+    auto& id = element->idForStyleResolution();
+    if (!id.isNull())
+        identifierHashes.append(id.impl()->existingHash() * IdAttributeSalt);
     const StyledElement* styledElement = element->isStyledElement() ? static_cast<const StyledElement*>(element) : 0;
     if (styledElement && styledElement->hasClass()) {
         const SpaceSplitString& classNames = styledElement->classNames();
@@ -108,7 +109,7 @@ static inline void collectDescendantSelectorIdentifierHashes(const CSSSelector* 
         break;
     case CSSSelector::Tag: {
         const AtomicString& tagLowercaseLocalName = selector->tagLowercaseLocalName();
-        if (tagLowercaseLocalName != starAtom)
+        if (tagLowercaseLocalName != starAtom())
             (*hash++) = tagLowercaseLocalName.impl()->existingHash() * TagNameSalt;
         break;
     }
@@ -121,14 +122,14 @@ void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsign
 {
     unsigned* hash = identifierHashes;
     unsigned* end = identifierHashes + maximumIdentifierCount;
-    CSSSelector::Relation relation = selector->relation();
+    auto relation = selector->relation();
 
     // Skip the topmost selector. It is handled quickly by the rule hashes.
     bool skipOverSubselectors = true;
     for (selector = selector->tagHistory(); selector; selector = selector->tagHistory()) {
         // Only collect identifiers that match ancestors.
         switch (relation) {
-        case CSSSelector::SubSelector:
+        case CSSSelector::Subselector:
             if (!skipOverSubselectors)
                 collectDescendantSelectorIdentifierHashes(selector, hash);
             break;
@@ -137,7 +138,10 @@ void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsign
         case CSSSelector::ShadowDescendant:
             skipOverSubselectors = true;
             break;
-        case CSSSelector::Descendant:
+        case CSSSelector::DescendantSpace:
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+        case CSSSelector::DescendantDoubleChild:
+#endif
         case CSSSelector::Child:
             skipOverSubselectors = false;
             collectDescendantSelectorIdentifierHashes(selector, hash);

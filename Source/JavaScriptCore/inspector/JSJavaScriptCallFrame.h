@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSJavaScriptCallFrame_h
-#define JSJavaScriptCallFrame_h
+#pragma once
 
 #include "JSDestructibleObject.h"
 #include "JavaScriptCallFrame.h"
@@ -43,9 +42,9 @@ public:
         return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 
-    static JSJavaScriptCallFrame* create(JSC::VM& vm, JSC::Structure* structure, PassRefPtr<JavaScriptCallFrame> impl)
+    static JSJavaScriptCallFrame* create(JSC::VM& vm, JSC::Structure* structure, Ref<JavaScriptCallFrame>&& impl)
     {
-        JSJavaScriptCallFrame* instance = new (NotNull, JSC::allocateCell<JSJavaScriptCallFrame>(vm.heap)) JSJavaScriptCallFrame(vm, structure, impl);
+        JSJavaScriptCallFrame* instance = new (NotNull, JSC::allocateCell<JSJavaScriptCallFrame>(vm.heap)) JSJavaScriptCallFrame(vm, structure, WTFMove(impl));
         instance->finishCreation(vm);
         return instance;
     }
@@ -57,8 +56,8 @@ public:
     void releaseImpl();
 
     // Functions.
-    JSC::JSValue evaluate(JSC::ExecState*);
-    JSC::JSValue scopeType(JSC::ExecState*);
+    JSC::JSValue evaluateWithScopeExtension(JSC::ExecState*);
+    JSC::JSValue scopeDescriptions(JSC::ExecState*);
 
     // Attributes.
     JSC::JSValue caller(JSC::ExecState*) const;
@@ -69,6 +68,7 @@ public:
     JSC::JSValue scopeChain(JSC::ExecState*) const;
     JSC::JSValue thisObject(JSC::ExecState*) const;
     JSC::JSValue type(JSC::ExecState*) const;
+    JSC::JSValue isTailDeleted(JSC::ExecState*) const;
 
     // Constants.
     static const unsigned short GLOBAL_SCOPE = 0;
@@ -83,15 +83,12 @@ protected:
     void finishCreation(JSC::VM&);
 
 private:
-    JSJavaScriptCallFrame(JSC::VM&, JSC::Structure*, PassRefPtr<JavaScriptCallFrame>);
+    JSJavaScriptCallFrame(JSC::VM&, JSC::Structure*, Ref<JavaScriptCallFrame>&&);
     ~JSJavaScriptCallFrame();
 
     JavaScriptCallFrame* m_impl;
 };
 
 JSC::JSValue toJS(JSC::ExecState*, JSC::JSGlobalObject*, JavaScriptCallFrame*);
-JSJavaScriptCallFrame* toJSJavaScriptCallFrame(JSC::JSValue);
 
 } // namespace Inspector
-
-#endif // !defined(JSJavaScriptCallFrame_h)

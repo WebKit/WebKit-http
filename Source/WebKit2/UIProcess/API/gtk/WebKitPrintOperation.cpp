@@ -20,15 +20,17 @@
 #include "config.h"
 #include "WebKitPrintOperation.h"
 
+#include "WebKitPrintCustomWidgetPrivate.h"
 #include "WebKitPrintOperationPrivate.h"
 #include "WebKitPrivate.h"
-#include "WebKitWebViewBasePrivate.h"
+#include "WebKitWebViewPrivate.h"
 #include "WebPageProxy.h"
 #include <WebCore/GtkUtilities.h>
 #include <WebCore/NotImplemented.h>
 #include <glib/gi18n-lib.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/glib/WTFGType.h>
 #include <wtf/text/CString.h>
 
 #if HAVE(GTK_UNIX_PRINTING)
@@ -60,6 +62,7 @@ enum {
 enum {
     FINISHED,
     FAILED,
+    CREATE_CUSTOM_WIDGET,
 
     LAST_SIGNAL
 };
@@ -126,6 +129,15 @@ static void webkitPrintOperationSetProperty(GObject* object, guint propId, const
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
     }
+}
+
+static gboolean webkitPrintOperationAccumulatorObjectHandled(GSignalInvocationHint*, GValue* returnValue, const GValue* handlerReturn, gpointer)
+{
+    void* object = g_value_get_object(handlerReturn);
+    if (object)
+        g_value_set_object(returnValue, object);
+
+    return !object;
 }
 
 static void webkit_print_operation_class_init(WebKitPrintOperationClass* printOperationClass)
@@ -206,9 +218,37 @@ static void webkit_print_operation_class_init(WebKitPrintOperationClass* printOp
             g_cclosure_marshal_VOID__BOXED,
             G_TYPE_NONE, 1,
             G_TYPE_ERROR | G_SIGNAL_TYPE_STATIC_SCOPE);
+
+    /**
+     * WebKitPrintOperation::create-custom-widget:
+     * @print_operation: the #WebKitPrintOperation on which the signal was emitted
+     *
+     * Emitted when displaying the print dialog with webkit_print_operation_run_dialog().
+     * The returned #WebKitPrintCustomWidget will be added to the print dialog and
+     * it will be owned by the @print_operation. However, the object is guaranteed
+     * to be alive until the #WebKitPrintCustomWidget::apply is emitted.
+     *
+     * Returns: (transfer full): A #WebKitPrintCustomWidget that will be embedded in the dialog.
+     *
+     * Since: 2.16
+     */
+    signals[CREATE_CUSTOM_WIDGET] =
+        g_signal_new(
+            "create-custom-widget",
+            G_TYPE_FROM_CLASS(gObjectClass),
+            G_SIGNAL_RUN_LAST,
+            0,
+            webkitPrintOperationAccumulatorObjectHandled, 0,
+            g_cclosure_marshal_generic,
+            WEBKIT_TYPE_PRINT_CUSTOM_WIDGET, 0);
 }
 
 #if HAVE(GTK_UNIX_PRINTING)
+static void notifySelectedPrinterCallback(GtkPrintUnixDialog* dialog, GParamSpec*, WebKitPrintCustomWidget* printCustomWidget)
+{
+    webkitPrintCustomWidgetEmitUpdateCustomWidgetSignal(printCustomWidget, gtk_print_unix_dialog_get_page_setup(dialog), gtk_print_unix_dialog_get_settings(dialog));
+}
+
 static WebKitPrintOperationResponse webkitPrintOperationRunDialog(WebKitPrintOperation* printOperation, GtkWindow* parent)
 {
     GtkPrintUnixDialog* printDialog = GTK_PRINT_UNIX_DIALOG(gtk_print_unix_dialog_new(0, parent));
@@ -233,11 +273,23 @@ static WebKitPrintOperationResponse webkitPrintOperationRunDialog(WebKitPrintOpe
 
     gtk_print_unix_dialog_set_embed_page_setup(printDialog, TRUE);
 
+    GRefPtr<WebKitPrintCustomWidget> customWidget;
+    g_signal_emit(printOperation, signals[CREATE_CUSTOM_WIDGET], 0, &customWidget.outPtr());
+    if (customWidget) {
+        const gchar* widgetTitle = webkit_print_custom_widget_get_title(customWidget.get());
+        GtkWidget* widget = webkit_print_custom_widget_get_widget(customWidget.get());
+
+        g_signal_connect(printDialog, "notify::selected-printer", G_CALLBACK(notifySelectedPrinterCallback), customWidget.get());
+        gtk_print_unix_dialog_add_custom_tab(printDialog, widget, gtk_label_new(widgetTitle));
+    }
+
     WebKitPrintOperationResponse returnValue = WEBKIT_PRINT_OPERATION_RESPONSE_CANCEL;
     if (gtk_dialog_run(GTK_DIALOG(printDialog)) == GTK_RESPONSE_OK) {
         priv->printSettings = adoptGRef(gtk_print_unix_dialog_get_settings(printDialog));
         priv->pageSetup = gtk_print_unix_dialog_get_page_setup(printDialog);
         returnValue = WEBKIT_PRINT_OPERATION_RESPONSE_PRINT;
+        if (customWidget)
+            webkitPrintCustomWidgetEmitCustomWidgetApplySignal(customWidget.get());
     }
 
     gtk_widget_destroy(GTK_WIDGET(printDialog));
@@ -256,10 +308,8 @@ static WebKitPrintOperationResponse webkitPrintOperationRunDialog(WebKitPrintOpe
 static void drawPagesForPrintingCompleted(API::Error* wkPrintError, WebKitPrintOperation* printOperation)
 {
     // When running synchronously WebPageProxy::printFrame() calls endPrinting().
-    if (printOperation->priv->printMode == PrintInfo::PrintModeAsync && printOperation->priv->webView) {
-        WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(printOperation->priv->webView));
-        page->endPrinting();
-    }
+    if (printOperation->priv->printMode == PrintInfo::PrintModeAsync && printOperation->priv->webView)
+        webkitWebViewGetPage(printOperation->priv->webView).endPrinting();
 
     const WebCore::ResourceError& resourceError = wkPrintError ? wkPrintError->platformError() : WebCore::ResourceError();
     if (!resourceError.isNull()) {
@@ -273,9 +323,9 @@ static void drawPagesForPrintingCompleted(API::Error* wkPrintError, WebKitPrintO
 static void webkitPrintOperationPrintPagesForFrame(WebKitPrintOperation* printOperation, WebFrameProxy* webFrame, GtkPrintSettings* printSettings, GtkPageSetup* pageSetup)
 {
     PrintInfo printInfo(printSettings, pageSetup, printOperation->priv->printMode);
-    WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(printOperation->priv->webView));
+    auto& page = webkitWebViewGetPage(printOperation->priv->webView);
     g_object_ref(printOperation);
-    page->drawPagesForPrinting(webFrame, printInfo, PrintFinishedCallback::create([printOperation](API::Error* printError, CallbackBase::Error) {
+    page.drawPagesForPrinting(webFrame, printInfo, PrintFinishedCallback::create([printOperation](API::Error* printError, CallbackBase::Error) {
         drawPagesForPrintingCompleted(printError, adoptGRef(printOperation).get());
     }));
 }
@@ -415,8 +465,8 @@ WebKitPrintOperationResponse webkit_print_operation_run_dialog(WebKitPrintOperat
 {
     g_return_val_if_fail(WEBKIT_IS_PRINT_OPERATION(printOperation), WEBKIT_PRINT_OPERATION_RESPONSE_CANCEL);
 
-    WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(printOperation->priv->webView));
-    return webkitPrintOperationRunDialogForFrame(printOperation, parent, page->mainFrame());
+    auto& page = webkitWebViewGetPage(printOperation->priv->webView);
+    return webkitPrintOperationRunDialogForFrame(printOperation, parent, page.mainFrame());
 }
 
 /**
@@ -440,6 +490,6 @@ void webkit_print_operation_print(WebKitPrintOperation* printOperation)
     GRefPtr<GtkPrintSettings> printSettings = priv->printSettings ? priv->printSettings : adoptGRef(gtk_print_settings_new());
     GRefPtr<GtkPageSetup> pageSetup = priv->pageSetup ? priv->pageSetup : adoptGRef(gtk_page_setup_new());
 
-    WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(printOperation->priv->webView));
-    webkitPrintOperationPrintPagesForFrame(printOperation, page->mainFrame(), printSettings.get(), pageSetup.get());
+    auto& page = webkitWebViewGetPage(printOperation->priv->webView);
+    webkitPrintOperationPrintPagesForFrame(printOperation, page.mainFrame(), printSettings.get(), pageSetup.get());
 }

@@ -27,27 +27,31 @@
 #include "config.h"
 #include "TreeScope.h"
 
-#include "DOMSelection.h"
+#include "Attr.h"
 #include "DOMWindow.h"
 #include "ElementIterator.h"
 #include "FocusController.h"
 #include "Frame.h"
+#include "FrameView.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLLabelElement.h"
 #include "HTMLMapElement.h"
 #include "HitTestResult.h"
 #include "IdTargetObserverRegistry.h"
+#include "NodeRareData.h"
 #include "Page.h"
+#include "PointerLockController.h"
+#include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
+#include "Settings.h"
 #include "ShadowRoot.h"
-#include "TreeScopeAdopter.h"
 #include <wtf/text/CString.h>
 
 namespace WebCore {
 
 struct SameSizeAsTreeScope {
-    void* pointers[9];
+    void* pointers[8];
 };
 
 COMPILE_ASSERT(sizeof(TreeScope) == sizeof(SameSizeAsTreeScope), treescope_should_stay_small);
@@ -56,7 +60,7 @@ using namespace HTMLNames;
 
 TreeScope::TreeScope(ShadowRoot& shadowRoot, Document& document)
     : m_rootNode(shadowRoot)
-    , m_documentScope(&document)
+    , m_documentScope(document)
     , m_parentTreeScope(&document)
     , m_idTargetObserverRegistry(std::make_unique<IdTargetObserverRegistry>())
 {
@@ -65,7 +69,7 @@ TreeScope::TreeScope(ShadowRoot& shadowRoot, Document& document)
 
 TreeScope::TreeScope(Document& document)
     : m_rootNode(document)
-    , m_documentScope(&document)
+    , m_documentScope(document)
     , m_parentTreeScope(nullptr)
     , m_idTargetObserverRegistry(std::make_unique<IdTargetObserverRegistry>())
 {
@@ -74,10 +78,6 @@ TreeScope::TreeScope(Document& document)
 
 TreeScope::~TreeScope()
 {
-    if (m_selection) {
-        m_selection->clearTreeScope();
-        m_selection = nullptr;
-    }
 }
 
 void TreeScope::destroyTreeScopeData()
@@ -87,15 +87,13 @@ void TreeScope::destroyTreeScopeData()
     m_labelsByForAttribute = nullptr;
 }
 
-void TreeScope::setParentTreeScope(TreeScope* newParentScope)
+void TreeScope::setParentTreeScope(TreeScope& newParentScope)
 {
     // A document node cannot be re-parented.
     ASSERT(!m_rootNode.isDocumentNode());
-    // Every scope other than document needs a parent scope.
-    ASSERT(newParentScope);
 
-    m_parentTreeScope = newParentScope;
-    setDocumentScope(&newParentScope->documentScope());
+    m_parentTreeScope = &newParentScope;
+    setDocumentScope(newParentScope.documentScope());
 }
 
 Element* TreeScope::getElementById(const AtomicString& elementId) const
@@ -113,6 +111,17 @@ Element* TreeScope::getElementById(const String& elementId) const
         return nullptr;
 
     if (RefPtr<AtomicStringImpl> atomicElementId = AtomicStringImpl::lookUp(elementId.impl()))
+        return m_elementsById->getElementById(*atomicElementId, *this);
+
+    return nullptr;
+}
+
+Element* TreeScope::getElementById(StringView elementId) const
+{
+    if (!m_elementsById)
+        return nullptr;
+
+    if (auto atomicElementId = elementId.toExistingAtomicString())
         return m_elementsById->getElementById(*atomicElementId, *this);
 
     return nullptr;
@@ -168,12 +177,55 @@ void TreeScope::removeElementByName(const AtomicStringImpl& name, Element& eleme
     m_elementsByName->remove(name, element);
 }
 
-Node* TreeScope::ancestorInThisScope(Node* node) const
+
+Node& TreeScope::retargetToScope(Node& node) const
+{
+    auto& scope = node.treeScope();
+    if (LIKELY(this == &scope || !node.isInShadowTree()))
+        return node;
+    ASSERT(is<ShadowRoot>(scope.rootNode()));
+
+    Vector<TreeScope*, 8> nodeTreeScopes;
+    for (auto* currentScope = &scope; currentScope; currentScope = currentScope->parentTreeScope())
+        nodeTreeScopes.append(currentScope);
+    ASSERT(nodeTreeScopes.size() >= 2);
+
+    Vector<const TreeScope*, 8> ancestorScopes;
+    for (auto* currentScope = this; currentScope; currentScope = currentScope->parentTreeScope())
+        ancestorScopes.append(currentScope);
+
+    size_t i = nodeTreeScopes.size();
+    size_t j = ancestorScopes.size();
+    while (i > 0 && j > 0 && nodeTreeScopes[i - 1] == ancestorScopes[j - 1]) {
+        --i;
+        --j;
+    }
+
+    bool nodeIsInOuterTreeScope = !i;
+    if (nodeIsInOuterTreeScope)
+        return node;
+
+    ShadowRoot& shadowRootInLowestCommonTreeScope = downcast<ShadowRoot>(nodeTreeScopes[i - 1]->rootNode());
+    return *shadowRootInLowestCommonTreeScope.host();
+}
+
+Node* TreeScope::ancestorNodeInThisScope(Node* node) const
 {
     for (; node; node = node->shadowHost()) {
         if (&node->treeScope() == this)
             return node;
         if (!node->isInShadowTree())
+            return nullptr;
+    }
+    return nullptr;
+}
+
+Element* TreeScope::ancestorElementInThisScope(Element* element) const
+{
+    for (; element; element = element->shadowHost()) {
+        if (&element->treeScope() == this)
+            return element;
+        if (!element->isInShadowTree())
             return nullptr;
     }
     return nullptr;
@@ -209,8 +261,6 @@ HTMLMapElement* TreeScope::getImageMap(const String& url) const
     String name = url.substring(hashPosition + 1);
     if (name.isEmpty())
         return nullptr;
-    if (m_rootNode.document().isHTMLDocument())
-        return m_imageMapsByName->getElementByCaseFoldedMapName(*AtomicString(name.foldCase()).impl(), *this);
     return m_imageMapsByName->getElementByMapName(*AtomicString(name).impl(), *this);
 }
 
@@ -236,7 +286,7 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
         m_labelsByForAttribute = std::make_unique<DocumentOrderedMap>();
 
         for (auto& label : descendantsOfType<HTMLLabelElement>(m_rootNode)) {
-            const AtomicString& forValue = label.fastGetAttribute(forAttr);
+            const AtomicString& forValue = label.attributeWithoutSynchronization(forAttr);
             if (!forValue.isEmpty())
                 addLabel(*forValue.impl(), label);
         }
@@ -245,19 +295,66 @@ HTMLLabelElement* TreeScope::labelElementForId(const AtomicString& forAttributeV
     return m_labelsByForAttribute->getElementByLabelForAttribute(*forAttributeValue.impl(), *this);
 }
 
-DOMSelection* TreeScope::getSelection() const
+Node* TreeScope::nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint)
 {
-    if (!m_rootNode.document().frame())
+    auto* frame = documentScope().frame();
+    auto* view = documentScope().view();
+    if (!frame || !view)
         return nullptr;
 
-    if (m_selection)
-        return m_selection.get();
+    LayoutPoint absolutePoint;
+    if (frame->settings().visualViewportEnabled()) {
+        documentScope().updateLayout();
+        FloatPoint layoutViewportPoint = view->clientToLayoutViewportPoint(clientPoint);
+        FloatRect layoutViewportBounds({ }, view->layoutViewportRect().size());
+        if (!layoutViewportBounds.contains(layoutViewportPoint))
+            return nullptr;
+        absolutePoint = LayoutPoint(view->layoutViewportToAbsolutePoint(layoutViewportPoint));
+    } else {
+        float scaleFactor = frame->pageZoomFactor() * frame->frameScaleFactor();
 
-    if (this != &m_rootNode.document())
-        return m_rootNode.document().getSelection();
+        absolutePoint = clientPoint;
+        absolutePoint.scale(scaleFactor);
+        absolutePoint.moveBy(view->contentsScrollPosition());
 
-    m_selection = DOMSelection::create(&m_rootNode.document());
-    return m_selection.get();
+        LayoutRect visibleRect;
+#if PLATFORM(IOS)
+        visibleRect = view->unobscuredContentRect();
+#else
+        visibleRect = view->visibleContentRect();
+#endif
+        if (!visibleRect.contains(absolutePoint))
+            return nullptr;
+    }
+
+    HitTestResult result(absolutePoint);
+    documentScope().renderView()->hitTest(HitTestRequest(), result);
+
+    if (localPoint)
+        *localPoint = result.localPoint();
+
+    return result.innerNode();
+}
+
+Element* TreeScope::elementFromPoint(double x, double y)
+{
+    Document& document = documentScope();
+    if (!document.hasLivingRenderTree())
+        return nullptr;
+
+    Node* node = nodeFromPoint(LayoutPoint(x, y), nullptr);
+    if (!node)
+        return nullptr;
+
+    node = &retargetToScope(*node);
+    while (!is<Element>(*node)) {
+        node = node->parentInComposedTree();
+        if (!node)
+            break;
+        node = &retargetToScope(*node);
+    }
+
+    return downcast<Element>(node);
 }
 
 Element* TreeScope::findAnchor(const String& name)
@@ -282,16 +379,6 @@ Element* TreeScope::findAnchor(const String& name)
     return nullptr;
 }
 
-void TreeScope::adoptIfNeeded(Node* node)
-{
-    ASSERT(node);
-    ASSERT(!node->isDocumentNode());
-    ASSERT(!node->m_deletionHasBegun);
-    TreeScopeAdopter adopter(node, *this);
-    if (adopter.needsScopeChange())
-        adopter.execute();
-}
-
 static Element* focusedFrameOwnerElement(Frame* focusedFrame, Frame* currentFrame)
 {
     for (; focusedFrame; focusedFrame = focusedFrame->tree().parent()) {
@@ -301,24 +388,32 @@ static Element* focusedFrameOwnerElement(Frame* focusedFrame, Frame* currentFram
     return nullptr;
 }
 
-Element* TreeScope::focusedElement()
+Element* TreeScope::focusedElementInScope()
 {
-    Document& document = m_rootNode.document();
+    Document& document = documentScope();
     Element* element = document.focusedElement();
 
     if (!element && document.page())
         element = focusedFrameOwnerElement(document.page()->focusController().focusedFrame(), document.frame());
-    if (!element)
-        return nullptr;
-    TreeScope* treeScope = &element->treeScope();
-    while (treeScope != this && treeScope != &document) {
-        element = downcast<ShadowRoot>(treeScope->rootNode()).host();
-        treeScope = &element->treeScope();
-    }
-    if (this != treeScope)
-        return nullptr;
-    return element;
+
+    return ancestorElementInThisScope(element);
 }
+
+#if ENABLE(POINTER_LOCK)
+
+Element* TreeScope::pointerLockElement() const
+{
+    Document& document = documentScope();
+    Page* page = document.page();
+    if (!page || page->pointerLockController().lockPending())
+        return nullptr;
+    auto* element = page->pointerLockController().element();
+    if (!element || &element->document() != &document)
+        return nullptr;
+    return ancestorElementInThisScope(element);
+}
+
+#endif
 
 static void listTreeScopes(Node* node, Vector<TreeScope*, 5>& treeScopes)
 {

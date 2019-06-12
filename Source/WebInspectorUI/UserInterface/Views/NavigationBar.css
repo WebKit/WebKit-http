@@ -28,10 +28,9 @@
     justify-content: center;
     flex-wrap: wrap;
 
-    box-shadow: inset hsla(0, 0%, 100%, 0.2) 0 1px 0;
     border-bottom: 1px solid var(--border-color);
 
-    height: 29px;
+    height: var(--navigation-bar-height);
 
     white-space: nowrap;
     overflow: hidden;
@@ -44,6 +43,6 @@
     align-items: center;
     flex-wrap: wrap;
 
-    height: 28px;
+    height: auto;
     outline: none;
 }

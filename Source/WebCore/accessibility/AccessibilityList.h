@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityList_h
-#define AccessibilityList_h
+#pragma once
 
 #include "AccessibilityRenderObject.h"
 
@@ -42,18 +41,16 @@ public:
     bool isOrderedList() const;
     bool isDescriptionList() const;
 
-    virtual AccessibilityRole roleValue() const override;
+    AccessibilityRole roleValue() const override;
 
 private:
     explicit AccessibilityList(RenderObject*);
-    virtual bool isList() const override { return true; }
-    virtual bool computeAccessibilityIsIgnored() const override;
-    virtual AccessibilityRole determineAccessibilityRole() override;
+    bool isList() const override { return true; }
+    bool computeAccessibilityIsIgnored() const override;
+    AccessibilityRole determineAccessibilityRole() override;
     bool childHasPseudoVisibleListItemMarkers(RenderObject*);
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityList, isList())
-
-#endif // AccessibilityList_h

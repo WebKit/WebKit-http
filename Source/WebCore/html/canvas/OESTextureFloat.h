@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OESTextureFloat_h
-#define OESTextureFloat_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class OESTextureFloat final : public WebGLExtension {
 public:
-    OESTextureFloat(WebGLRenderingContextBase*);
+    OESTextureFloat(WebGLRenderingContextBase&);
     virtual ~OESTextureFloat();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // OESTextureFloat_h

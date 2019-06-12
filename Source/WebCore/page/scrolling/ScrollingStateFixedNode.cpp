@@ -27,6 +27,7 @@
 #include "ScrollingStateFixedNode.h"
 
 #include "GraphicsLayer.h"
+#include "Logging.h"
 #include "ScrollingStateTree.h"
 #include "TextStream.h"
 
@@ -64,24 +65,44 @@ void ScrollingStateFixedNode::updateConstraints(const FixedPositionViewportConst
     if (m_constraints == constraints)
         return;
 
+    LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateFixedNode " << scrollingNodeID() << " updateConstraints with viewport rect " << constraints.viewportRectAtLastLayout());
+
     m_constraints = constraints;
     setPropertyChanged(ViewportConstraints);
 }
 
-void ScrollingStateFixedNode::syncLayerPositionForViewportRect(const LayoutRect& viewportRect)
+void ScrollingStateFixedNode::reconcileLayerPositionForViewportRect(const LayoutRect& viewportRect, ScrollingLayerPositionAction action)
 {
     FloatPoint position = m_constraints.layerPositionForViewportRect(viewportRect);
-    if (layer().representsGraphicsLayer())
-        static_cast<GraphicsLayer*>(layer())->syncPosition(position);
+    if (layer().representsGraphicsLayer()) {
+        GraphicsLayer* graphicsLayer = static_cast<GraphicsLayer*>(layer());
+
+        LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateFixedNode " << scrollingNodeID() <<" reconcileLayerPositionForViewportRect " << action << " position of layer " << graphicsLayer->primaryLayerID() << " to " << position);
+        
+        switch (action) {
+        case ScrollingLayerPositionAction::Set:
+            graphicsLayer->setPosition(position);
+            break;
+
+        case ScrollingLayerPositionAction::SetApproximate:
+            graphicsLayer->setApproximatePosition(position);
+            break;
+        
+        case ScrollingLayerPositionAction::Sync:
+            graphicsLayer->syncPosition(position);
+            break;
+        }
+    }
 }
 
-void ScrollingStateFixedNode::dumpProperties(TextStream& ts, int indent) const
+void ScrollingStateFixedNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
 {
-    ts << "(" << "Fixed node" << "\n";
+    ts << "Fixed node";
+    ScrollingStateNode::dumpProperties(ts, behavior);
 
     if (m_constraints.anchorEdges()) {
-        writeIndent(ts, indent + 1);
-        ts << "(anchor edges: ";
+        TextStream::GroupScope scope(ts);
+        ts << "anchor edges: ";
         if (m_constraints.hasAnchorEdge(ViewportConstraints::AnchorEdgeLeft))
             ts << "AnchorEdgeLeft ";
         if (m_constraints.hasAnchorEdge(ViewportConstraints::AnchorEdgeRight))
@@ -90,24 +111,16 @@ void ScrollingStateFixedNode::dumpProperties(TextStream& ts, int indent) const
             ts << "AnchorEdgeTop";
         if (m_constraints.hasAnchorEdge(ViewportConstraints::AnchorEdgeBottom))
             ts << "AnchorEdgeBottom";
-        ts << ")\n";
     }
 
-    if (!m_constraints.alignmentOffset().isEmpty()) {
-        writeIndent(ts, indent + 1);
-        ts << "(alignment offset " << m_constraints.alignmentOffset().width() << " " << m_constraints.alignmentOffset().height() << ")\n";
-    }
+    if (!m_constraints.alignmentOffset().isEmpty())
+        ts.dumpProperty("alignment offset", m_constraints.alignmentOffset());
 
-    if (!m_constraints.viewportRectAtLastLayout().isEmpty()) {
-        writeIndent(ts, indent + 1);
-        FloatRect viewportRect = m_constraints.viewportRectAtLastLayout();
-        ts << "(viewport rect at last layout: " << viewportRect.x() << " " << viewportRect.y() << " " << viewportRect.width() << " " << viewportRect.height() << ")\n";
-    }
+    if (!m_constraints.viewportRectAtLastLayout().isEmpty())
+        ts.dumpProperty("viewport rect at last layout", m_constraints.viewportRectAtLastLayout());
 
-    if (m_constraints.layerPositionAtLastLayout() != FloatPoint()) {
-        writeIndent(ts, indent + 1);
-        ts << "(layer position at last layout " << m_constraints.layerPositionAtLastLayout().x() << " " << m_constraints.layerPositionAtLastLayout().y() << ")\n";
-    }
+    if (m_constraints.layerPositionAtLastLayout() != FloatPoint())
+        ts.dumpProperty("layer position at last layout", m_constraints.layerPositionAtLastLayout());
 }
 
 } // namespace WebCore

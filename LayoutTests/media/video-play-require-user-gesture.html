@@ -1,3 +1,4 @@
+<!-- webkit-test-runner [ enableModernMediaControls=false ] -->
 <html>
     <head>
         <title>Test that video play, pause and enterfullscreen does not work unless a user gesture is involved in playing a video</title>
@@ -7,27 +8,7 @@
         <script>
             var userGestureInitiated = 0;
             if (window.internals) 
-                window.internals.settings.setRequiresUserGestureForMediaPlayback(true);
-
-            function click()
-            {
-                if (window.eventSender) {
-                    var playCoords;
-                    try {
-                        playCoords = mediaControlsButtonCoordinates(video, "play-button");
-                    } catch (exception) {
-                        failTest(exception.description);
-                        return;
-                    }
-                    var x = playCoords[0];
-                    var y = playCoords[1];
-                     
-                    userGestureInitiated = 1;
-                    eventSender.mouseMoveTo(x, y);
-                    eventSender.mouseDown();
-                    eventSender.mouseUp();
-                }
-            }
+                window.internals.settings.setVideoPlaybackRequiresUserGesture(true);
 
             function playing()
             {
@@ -56,13 +37,19 @@
             {
                 consoleWrite("");
                 consoleWrite("* No user gesture initiated");
-                run("video.play()");
+                run("handlePromise(video.play())");
                 testDOMException("video.webkitEnterFullScreen()", "DOMException.INVALID_STATE_ERR");
                 testExpected("video.paused", true);
                 consoleWrite("");
 
                 consoleWrite("* User gesture initiated");
-                click();
+                userGestureInitiated = 1;
+                try {
+                    clickPlayButton(video);
+                } catch (exception) {
+                    failTest(exception.description);
+                    return;
+                }
             }
 
             function start()

@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef SQLStatement_h
-#define SQLStatement_h
+
+#pragma once
 
 #include "SQLCallbackWrapper.h"
 #include "SQLStatementCallback.h"
@@ -45,7 +45,7 @@ class SQLTransactionBackend;
 
 class SQLStatement {
 public:
-    SQLStatement(Database&, const String&, const Vector<SQLValue>&, PassRefPtr<SQLStatementCallback>, PassRefPtr<SQLStatementErrorCallback>, int permissions);
+    SQLStatement(Database&, const String&, Vector<SQLValue>&&, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&, int permissions);
     ~SQLStatement();
 
     bool execute(Database&);
@@ -53,13 +53,13 @@ public:
 
     bool hasStatementCallback() const { return m_statementCallbackWrapper.hasCallback(); }
     bool hasStatementErrorCallback() const { return m_statementErrorCallbackWrapper.hasCallback(); }
-    bool performCallback(SQLTransaction*);
+    bool performCallback(SQLTransaction&);
 
     void setDatabaseDeletedError();
     void setVersionMismatchedError();
 
-    PassRefPtr<SQLError> sqlError() const;
-    PassRefPtr<SQLResultSet> sqlResultSet() const;
+    SQLError* sqlError() const;
+    SQLResultSet* sqlResultSet() const;
 
 private:
     void setFailureDueToQuota();
@@ -77,5 +77,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SQLStatement_h

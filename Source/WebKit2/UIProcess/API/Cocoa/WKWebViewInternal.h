@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
 #import <WebCore/FloatRect.h>
+#import <WebCore/LengthBox.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -56,7 +57,9 @@ struct PrintInfo;
 }
 
 @class WKWebViewContentProviderRegistry;
+@class WKPasswordView;
 @class _WKFrameHandle;
+@protocol _WKWebViewPrintProvider;
 
 @interface WKWebView () WK_WEB_VIEW_PROTOCOLS {
 
@@ -75,18 +78,19 @@ struct PrintInfo;
 
 - (void)_didCommitLoadForMainFrame;
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction;
+- (void)_layerTreeCommitComplete;
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition nextValidLayerTreeTransactionID:(uint64_t)nextValidLayerTreeTransactionID;
 - (void)_couldNotRestorePageState;
-- (void)_restorePageStateToExposedRect:(WebCore::FloatRect)exposedRect scale:(double)scale;
-- (void)_restorePageStateToUnobscuredCenter:(WebCore::FloatPoint)center scale:(double)scale;
+- (void)_restorePageScrollPosition:(std::optional<WebCore::FloatPoint>)scrollPosition scrollOrigin:(WebCore::FloatPoint)scrollOrigin previousObscuredInset:(WebCore::FloatBoxExtent)insets scale:(double)scale;
+- (void)_restorePageStateToUnobscuredCenter:(std::optional<WebCore::FloatPoint>)center scale:(double)scale; // FIXME: needs scroll origin?
 
-- (PassRefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot;
+- (RefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot;
 
-- (void)_scrollToContentOffset:(WebCore::FloatPoint)contentOffset scrollOrigin:(WebCore::IntPoint)scrollOrigin;
+- (void)_scrollToContentScrollPosition:(WebCore::FloatPoint)scrollPosition scrollOrigin:(WebCore::IntPoint)scrollOrigin;
 - (BOOL)_scrollToRect:(WebCore::FloatRect)targetRect origin:(WebCore::FloatPoint)origin minimumScrollDistance:(float)minimumScrollDistance;
 - (void)_scrollByContentOffset:(WebCore::FloatPoint)offset;
-- (void)_zoomToFocusRect:(WebCore::FloatRect)focusedElementRect selectionRect:(WebCore::FloatRect)selectionRectInDocumentCoordinates fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll;
+- (void)_zoomToFocusRect:(WebCore::FloatRect)focusedElementRect selectionRect:(WebCore::FloatRect)selectionRectInDocumentCoordinates insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll;
 - (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance;
 - (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
 - (void)_zoomToInitialScaleWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
@@ -97,7 +101,7 @@ struct PrintInfo;
 - (void)_willInvokeUIScrollViewDelegateCallback;
 - (void)_didInvokeUIScrollViewDelegateCallback;
 
-- (void)_updateVisibleContentRects;
+- (void)_scheduleVisibleContentRectUpdate;
 
 - (void)_didFinishLoadForMainFrame;
 - (void)_didFailLoadForMainFrame;
@@ -110,12 +114,32 @@ struct PrintInfo;
 
 - (void)_navigationGestureDidBegin;
 - (void)_navigationGestureDidEnd;
+- (BOOL)_isNavigationSwipeGestureRecognizer:(UIGestureRecognizer *)recognizer;
+
+- (void)_showPasswordViewWithDocumentName:(NSString *)documentName passwordHandler:(void (^)(NSString *))passwordHandler;
+- (void)_hidePasswordView;
+
+- (void)_didChangeAvoidsUnsafeArea:(BOOL)avoidsUnsafeArea;
+
+- (void)_addShortcut:(id)sender;
+- (void)_arrowKey:(id)sender;
+- (void)_define:(id)sender;
+- (void)_lookup:(id)sender;
+- (void)_reanalyze:(id)sender;
+- (void)_share:(id)sender;
+- (void)_showTextStyleOptions:(id)sender;
+- (void)_promptForReplace:(id)sender;
+- (void)_transliterateChinese:(id)sender;
+- (void)replace:(id)sender;
+
+@property (nonatomic, readonly) WKPasswordView *_passwordView;
 
 @property (nonatomic, readonly) BOOL _isBackground;
 
 @property (nonatomic, readonly) WKWebViewContentProviderRegistry *_contentProviderRegistry;
 
 @property (nonatomic, readonly) WKSelectionGranularity _selectionGranularity;
+@property (nonatomic, readonly) BOOL _allowsBlockSelection;
 
 @property (nonatomic, readonly) BOOL _allowsDoubleTapGestures;
 @property (nonatomic, readonly) UIEdgeInsets _computedContentInset;
@@ -129,9 +153,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy&);
 
 #if PLATFORM(IOS)
 @interface WKWebView (_WKWebViewPrintFormatter)
-- (NSInteger)_computePageCountAndStartDrawingToPDFForFrame:(_WKFrameHandle *)frame printInfo:(const WebKit::PrintInfo&)printInfo firstPage:(uint32_t)firstPage computedTotalScaleFactor:(double&)totalScaleFactor;
-- (void)_endPrinting;
-@property (nonatomic, setter=_setPrintedDocument:) CGPDFDocumentRef _printedDocument;
+@property (nonatomic, readonly) id <_WKWebViewPrintProvider> _printProvider;
 @end
 #endif
 

@@ -32,8 +32,8 @@
 
 namespace IPC {
 
-class ArgumentEncoder;
-class ArgumentDecoder;
+class Encoder;
+class Decoder;
 
 class StringReference {
 public:
@@ -68,8 +68,8 @@ public:
         return a.m_size == b.m_size && !memcmp(a.m_data, b.m_data, a.m_size);
     }
 
-    void encode(ArgumentEncoder&) const;
-    static bool decode(ArgumentDecoder&, StringReference&);
+    void encode(Encoder&) const;
+    static bool decode(Decoder&, StringReference&);
 
     struct Hash {
         static unsigned hash(const StringReference& a);

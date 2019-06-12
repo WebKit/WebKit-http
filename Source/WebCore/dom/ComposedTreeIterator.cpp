@@ -27,14 +27,36 @@
 #include "ComposedTreeIterator.h"
 
 #include "HTMLSlotElement.h"
+#include "TextStream.h"
 
 namespace WebCore {
 
-ComposedTreeIterator::ComposedTreeIterator(ContainerNode& root)
+ComposedTreeIterator::Context::Context()
+{
+}
+
+ComposedTreeIterator::Context::Context(ContainerNode& root, FirstChildTag)
+    : iterator(root, ElementAndTextDescendantIterator::FirstChild)
+{
+}
+
+ComposedTreeIterator::Context::Context(ContainerNode& root, Node& node)
+    : iterator(root, &node)
+{
+}
+
+ComposedTreeIterator::Context::Context(ContainerNode& root, Node& node, SlottedTag)
+    : iterator(root, &node)
+    , end(iterator)
+{
+    end.traverseNextSibling();
+}
+
+ComposedTreeIterator::ComposedTreeIterator(ContainerNode& root, FirstChildTag)
+    : m_rootIsInShadowTree(root.isInShadowTree())
 {
     ASSERT(!is<ShadowRoot>(root));
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (is<HTMLSlotElement>(root)) {
         auto& slot = downcast<HTMLSlotElement>(root);
         if (auto* assignedNodes = slot.assignedNodes()) {
@@ -42,12 +64,17 @@ ComposedTreeIterator::ComposedTreeIterator(ContainerNode& root)
             return;
         }
     }
-#endif
-    auto& effectiveRoot = root.shadowRoot() ? *root.shadowRoot() : root;
-    m_contextStack.uncheckedAppend(Context(effectiveRoot));
+    if (auto* shadowRoot = root.shadowRoot()) {
+        ElementAndTextDescendantIterator firstChild(*shadowRoot, ElementAndTextDescendantIterator::FirstChild);
+        initializeContextStack(root, firstChild ? *firstChild : root);
+        return;
+    }
+
+    m_contextStack.uncheckedAppend(Context(root, FirstChild));
 }
 
 ComposedTreeIterator::ComposedTreeIterator(ContainerNode& root, Node& current)
+    : m_rootIsInShadowTree(root.isInShadowTree())
 {
     ASSERT(!is<ShadowRoot>(root));
     ASSERT(!is<ShadowRoot>(current));
@@ -74,15 +101,18 @@ void ComposedTreeIterator::initializeContextStack(ContainerNode& root, Node& cur
         }
         if (is<ShadowRoot>(*parent)) {
             auto& shadowRoot = downcast<ShadowRoot>(*parent);
-            m_contextStack.append(Context(shadowRoot, *contextCurrent, currentSlotNodeIndex));
+            m_contextStack.append(Context(shadowRoot, *contextCurrent));
+            m_contextStack.last().slotNodeIndex = currentSlotNodeIndex;
+
             node = shadowRoot.host();
             contextCurrent = node;
             currentSlotNodeIndex = notFound;
             continue;
         }
         if (auto* shadowRoot = parent->shadowRoot()) {
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
-            m_contextStack.append(Context(*parent, *contextCurrent, currentSlotNodeIndex));
+            m_contextStack.append(Context(*parent, *contextCurrent, Context::Slotted));
+            m_contextStack.last().slotNodeIndex = currentSlotNodeIndex;
+
             auto* assignedSlot = shadowRoot->findAssignedSlot(*node);
             if (assignedSlot) {
                 currentSlotNodeIndex = assignedSlot->assignedNodes()->find(node);
@@ -92,67 +122,71 @@ void ComposedTreeIterator::initializeContextStack(ContainerNode& root, Node& cur
                 continue;
             }
             // The node is not part of the composed tree.
-#else
-            UNUSED_PARAM(shadowRoot);
-#endif
             *this = { };
             return;
         }
         node = parent;
     }
-    m_contextStack.append(Context(root, *contextCurrent, currentSlotNodeIndex));
+    m_contextStack.append(Context(root, *contextCurrent));
+    m_contextStack.last().slotNodeIndex = currentSlotNodeIndex;
 
     m_contextStack.reverse();
 }
 
-bool ComposedTreeIterator::pushContext(ShadowRoot& shadowRoot)
+void ComposedTreeIterator::dropAssertions()
 {
-    Context shadowContext(shadowRoot);
-    if (!shadowContext.iterator)
-        return false;
+    for (auto& context : m_contextStack)
+        context.iterator.dropAssertions();
+    m_didDropAssertions = true;
+}
+
+void ComposedTreeIterator::traverseShadowRoot(ShadowRoot& shadowRoot)
+{
+    Context shadowContext(shadowRoot, FirstChild);
+    if (!shadowContext.iterator) {
+        // Empty shadow root.
+        traverseNextSkippingChildren();
+        return;
+    }
+
+    if (m_didDropAssertions)
+        shadowContext.iterator.dropAssertions();
+
     m_contextStack.append(WTFMove(shadowContext));
-    return true;
 }
 
 void ComposedTreeIterator::traverseNextInShadowTree()
 {
-    ASSERT(m_contextStack.size() > 1);
+    ASSERT(m_contextStack.size() > 1 || m_rootIsInShadowTree);
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (is<HTMLSlotElement>(current())) {
         auto& slot = downcast<HTMLSlotElement>(current());
         if (auto* assignedNodes = slot.assignedNodes()) {
             context().slotNodeIndex = 0;
             auto* assignedNode = assignedNodes->at(0);
-            m_contextStack.append(Context(*assignedNode->parentElement(), *assignedNode));
+            m_contextStack.append(Context(*assignedNode->parentElement(), *assignedNode, Context::Slotted));
             return;
         }
     }
-#endif
 
     context().iterator.traverseNext();
 
-    if (!context().iterator)
+    if (context().iterator == context().end)
         traverseNextLeavingContext();
 }
 
 void ComposedTreeIterator::traverseNextLeavingContext()
 {
-    ASSERT(m_contextStack.size() > 1);
-
-    while (!context().iterator && m_contextStack.size() > 1) {
+    while (context().iterator == context().end && m_contextStack.size() > 1) {
         m_contextStack.removeLast();
-        if (!context().iterator)
-            return;
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
         if (is<HTMLSlotElement>(current()) && advanceInSlot(1))
             return;
-#endif
+        if (context().iterator == context().end)
+            return;
         context().iterator.traverseNextSkippingChildren();
     }
 }
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 bool ComposedTreeIterator::advanceInSlot(int direction)
 {
     ASSERT(context().slotNodeIndex != notFound);
@@ -164,7 +198,7 @@ bool ComposedTreeIterator::advanceInSlot(int direction)
         return false;
 
     auto* slotNode = assignedNodes.at(context().slotNodeIndex);
-    m_contextStack.append(Context(*slotNode->parentElement(), *slotNode));
+    m_contextStack.append(Context(*slotNode->parentElement(), *slotNode, Context::Slotted));
     return true;
 }
 
@@ -178,6 +212,30 @@ void ComposedTreeIterator::traverseSiblingInSlot(int direction)
     if (!advanceInSlot(direction))
         *this = { };
 }
-#endif
+
+String composedTreeAsText(ContainerNode& root, ComposedTreeAsTextMode mode)
+{
+    TextStream stream;
+    auto descendants = composedTreeDescendants(root);
+    for (auto it = descendants.begin(), end = descendants.end(); it != end; ++it) {
+        writeIndent(stream, it.depth());
+
+        if (is<Text>(*it)) {
+            stream << "#text";
+            if (mode == ComposedTreeAsTextMode::WithPointers)
+                stream << " " << &*it;
+            stream << "\n";
+            continue;
+        }
+        auto& element = downcast<Element>(*it);
+        stream << element.localName();
+        if (element.shadowRoot())
+            stream << " (shadow root)";
+        if (mode == ComposedTreeAsTextMode::WithPointers)
+            stream << " " << &*it;
+        stream << "\n";
+    }
+    return stream.release();
+}
 
 }

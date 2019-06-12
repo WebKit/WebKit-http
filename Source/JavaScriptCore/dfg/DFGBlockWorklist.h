@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGBlockWorklist_h
-#define DFGBlockWorklist_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DFGBasicBlock.h"
 #include "DFGBlockSet.h"
 #include <wtf/GraphNodeWorklist.h>
-#include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
 
@@ -57,6 +55,3 @@ typedef PostOrderGraphNodeWorklist<BasicBlock*, BlockSet> PostOrderBlockWorklist
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGBlockWorklist_h
-

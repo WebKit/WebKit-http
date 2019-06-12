@@ -30,8 +30,9 @@
 
 #include "MediaPlayerPrivate.h"
 #include "SourceBufferPrivateClient.h"
+#include <wtf/Function.h>
+#include <wtf/HashMap.h>
 #include <wtf/MediaTime.h>
-#include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 
 OBJC_CLASS AVAsset;
@@ -41,12 +42,18 @@ OBJC_CLASS AVSampleBufferRenderSynchronizer;
 OBJC_CLASS AVStreamSession;
 
 typedef struct OpaqueCMTimebase* CMTimebaseRef;
+typedef struct __CVBuffer *CVPixelBufferRef;
+typedef struct __CVBuffer *CVOpenGLTextureRef;
 
 namespace WebCore {
 
 class CDMSessionMediaSourceAVFObjC;
-class PlatformClockCM;
 class MediaSourcePrivateAVFObjC;
+class PixelBufferConformerCV;
+class PlatformClockCM;
+class TextureCacheCV;
+class VideoTextureCopierCV;
+class WebCoreDecompressionSession;
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 class VideoFullscreenLayerManager;
@@ -64,14 +71,11 @@ public:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
-    void addDisplayLayer(AVSampleBufferDisplayLayer*);
-    void removeDisplayLayer(AVSampleBufferDisplayLayer*);
-
     void addAudioRenderer(AVSampleBufferAudioRenderer*);
     void removeAudioRenderer(AVSampleBufferAudioRenderer*);
 
-    virtual MediaPlayer::NetworkState networkState() const override;
-    virtual MediaPlayer::ReadyState readyState() const override;
+    MediaPlayer::NetworkState networkState() const override;
+    MediaPlayer::ReadyState readyState() const override;
     void setReadyState(MediaPlayer::ReadyState);
     void setNetworkState(MediaPlayer::NetworkState);
 
@@ -79,117 +83,147 @@ public:
     void waitForSeekCompleted();
     void seekCompleted();
     void setLoadingProgresssed(bool flag) { m_loadingProgressed = flag; }
-    void setHasAvailableVideoFrame(bool flag) { m_hasAvailableVideoFrame = flag; }
+    void setHasAvailableVideoFrame(bool);
+    bool hasAvailableVideoFrame() const override;
+    void setHasAvailableAudioSample(AVSampleBufferAudioRenderer*, bool);
+    bool allRenderersHaveAvailableSamples() const { return m_allRenderersHaveAvailableSamples; }
+    void updateAllRenderersHaveAvailableSamples();
     void durationChanged();
 
     void effectiveRateChanged();
-    void sizeChanged();
+    void sizeWillChangeAtTime(const MediaTime&, const FloatSize&);
+    void setNaturalSize(const FloatSize&);
+    void flushPendingSizeChanges();
     void characteristicsChanged();
 
+    MediaTime currentMediaTime() const override;
+    AVSampleBufferDisplayLayer* sampleBufferDisplayLayer() const { return m_sampleBufferDisplayLayer.get(); }
+    WebCoreDecompressionSession* decompressionSession() const { return m_decompressionSession.get(); }
+
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-    virtual void setVideoFullscreenLayer(PlatformLayer*) override;
-    virtual void setVideoFullscreenFrame(FloatRect) override;
+    void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) override;
+    void setVideoFullscreenFrame(FloatRect) override;
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(VIDEO_TRACK)
+    bool requiresTextTrackRepresentation() const override;
+    void setTextTrackRepresentation(TextTrackRepresentation*) override;
+    void syncTextTrackBounds() override;
+#endif
+    
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     bool hasStreamSession() { return m_streamSession; }
     AVStreamSession *streamSession();
-    virtual void setCDMSession(CDMSession*) override;
+    void setCDMSession(CDMSession*) override;
     CDMSessionMediaSourceAVFObjC* cdmSession() const { return m_session; }
     void keyNeeded(Uint8Array*);
 #endif
+
+    const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const;
 
     WeakPtr<MediaPlayerPrivateMediaSourceAVFObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 private:
     // MediaPlayerPrivateInterface
-    virtual void load(const String& url) override;
-    virtual void load(const String& url, MediaSourcePrivateClient*) override;
+    void load(const String& url) override;
+    void load(const String& url, MediaSourcePrivateClient*) override;
 #if ENABLE(MEDIA_STREAM)
     void load(MediaStreamPrivate&) override;
 #endif
-    virtual void cancelLoad() override;
+    void cancelLoad() override;
 
-    virtual void prepareToPlay() override;
-    virtual PlatformMedia platformMedia() const override;
-    virtual PlatformLayer* platformLayer() const override;
+    void prepareToPlay() override;
+    PlatformMedia platformMedia() const override;
+    PlatformLayer* platformLayer() const override;
 
-    virtual bool supportsFullscreen() const override { return true; }
+    bool supportsPictureInPicture() const override { return true; }
+    bool supportsFullscreen() const override { return true; }
 
-    virtual void play() override;
+    void play() override;
     void playInternal();
 
-    virtual void pause() override;
+    void pause() override;
     void pauseInternal();
 
-    virtual bool paused() const override;
+    bool paused() const override;
 
-    virtual void setVolume(float volume) override;
-    virtual bool supportsMuting() const override { return true; }
-    virtual void setMuted(bool) override;
+    void setVolume(float volume) override;
+    bool supportsMuting() const override { return true; }
+    void setMuted(bool) override;
 
-    virtual bool supportsScanning() const override;
+    bool supportsScanning() const override;
 
-    virtual FloatSize naturalSize() const override;
+    FloatSize naturalSize() const override;
 
-    virtual bool hasVideo() const override;
-    virtual bool hasAudio() const override;
+    bool hasVideo() const override;
+    bool hasAudio() const override;
 
-    virtual void setVisible(bool) override;
+    void setVisible(bool) override;
 
-    virtual MediaTime durationMediaTime() const override;
-    virtual MediaTime currentMediaTime() const override;
-    virtual MediaTime startTime() const override;
-    virtual MediaTime initialTime() const override;
+    MediaTime durationMediaTime() const override;
+    MediaTime startTime() const override;
+    MediaTime initialTime() const override;
 
-    virtual void seekWithTolerance(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold) override;
-    virtual bool seeking() const override;
-    virtual void setRateDouble(double) override;
+    void seekWithTolerance(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold) override;
+    bool seeking() const override;
+    void setRateDouble(double) override;
 
     void setPreservesPitch(bool) override;
 
-    virtual std::unique_ptr<PlatformTimeRanges> seekable() const override;
-    virtual MediaTime maxMediaTimeSeekable() const override;
-    virtual MediaTime minMediaTimeSeekable() const override;
-    virtual std::unique_ptr<PlatformTimeRanges> buffered() const override;
+    std::unique_ptr<PlatformTimeRanges> seekable() const override;
+    MediaTime maxMediaTimeSeekable() const override;
+    MediaTime minMediaTimeSeekable() const override;
+    std::unique_ptr<PlatformTimeRanges> buffered() const override;
 
-    virtual bool didLoadingProgress() const override;
+    bool didLoadingProgress() const override;
 
-    virtual void setSize(const IntSize&) override;
+    void setSize(const IntSize&) override;
 
-    virtual void paint(GraphicsContext&, const FloatRect&) override;
-    virtual void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
+    NativeImagePtr nativeImageForCurrentTime() override;
+    bool updateLastPixelBuffer();
+    bool updateLastImage();
+    void paint(GraphicsContext&, const FloatRect&) override;
+    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
+    bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum target, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY) override;
 
-    virtual bool hasAvailableVideoFrame() const override;
-
-    virtual bool supportsAcceleratedRendering() const override;
+    bool supportsAcceleratedRendering() const override;
     // called when the rendering system flips the into or out of accelerated rendering mode.
-    virtual void acceleratedRenderingStateChanged() override;
+    void acceleratedRenderingStateChanged() override;
+    void notifyActiveSourceBuffersChanged() override;
 
-    virtual MediaPlayer::MovieLoadType movieLoadType() const override;
+    // NOTE: Because the only way for MSE to recieve data is through an ArrayBuffer provided by
+    // javascript running in the page, the video will, by necessity, always be CORS correct and
+    // in the page's origin.
+    bool hasSingleSecurityOrigin() const override { return true; }
+    bool didPassCORSAccessCheck() const override { return true; }
 
-    virtual void prepareForRendering() override;
+    MediaPlayer::MovieLoadType movieLoadType() const override;
 
-    virtual String engineDescription() const override;
+    void prepareForRendering() override;
 
-    virtual String languageOfPrimaryAudioTrack() const override;
+    String engineDescription() const override;
 
-    virtual size_t extraMemoryCost() const override;
+    String languageOfPrimaryAudioTrack() const override;
 
-    virtual unsigned long totalVideoFrames() override;
-    virtual unsigned long droppedVideoFrames() override;
-    virtual unsigned long corruptedVideoFrames() override;
-    virtual MediaTime totalFrameDelay() override;
+    size_t extraMemoryCost() const override;
+
+    unsigned long totalVideoFrames() override;
+    unsigned long droppedVideoFrames() override;
+    unsigned long corruptedVideoFrames() override;
+    MediaTime totalFrameDelay() override;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    virtual bool isCurrentPlaybackTargetWireless() const override;
-    virtual void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
-    virtual void setShouldPlayToPlaybackTarget(bool) override;
+    bool isCurrentPlaybackTargetWireless() const override;
+    void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
+    void setShouldPlayToPlaybackTarget(bool) override;
     bool wirelessVideoPlaybackDisabled() const override { return false; }
 #endif
 
     void ensureLayer();
     void destroyLayer();
+    void ensureDecompressionSession();
+    void destroyDecompressionSession();
+
     bool shouldBePlaying() const;
 
     friend class MediaSourcePrivateAVFObjC;
@@ -209,25 +243,48 @@ private:
 
     MediaPlayer* m_player;
     WeakPtrFactory<MediaPlayerPrivateMediaSourceAVFObjC> m_weakPtrFactory;
+    WeakPtrFactory<MediaPlayerPrivateMediaSourceAVFObjC> m_sizeChangeObserverWeakPtrFactory;
     RefPtr<MediaSourcePrivateAVFObjC> m_mediaSourcePrivate;
     RetainPtr<AVAsset> m_asset;
     RetainPtr<AVSampleBufferDisplayLayer> m_sampleBufferDisplayLayer;
-    Vector<RetainPtr<AVSampleBufferAudioRenderer>> m_sampleBufferAudioRenderers;
+
+    struct AudioRendererProperties {
+        bool hasAudibleSample { false };
+    };
+    HashMap<RetainPtr<AVSampleBufferAudioRenderer>, AudioRendererProperties> m_sampleBufferAudioRendererMap;
     RetainPtr<AVSampleBufferRenderSynchronizer> m_synchronizer;
     RetainPtr<id> m_timeJumpedObserver;
     RetainPtr<id> m_durationObserver;
     RetainPtr<AVStreamSession> m_streamSession;
+    RetainPtr<CVPixelBufferRef> m_lastPixelBuffer;
+    RetainPtr<CGImageRef> m_lastImage;
+    std::unique_ptr<PixelBufferConformerCV> m_rgbConformer;
+    RefPtr<WebCoreDecompressionSession> m_decompressionSession;
+    Deque<RetainPtr<id>> m_sizeChangeObservers;
     Timer m_seekTimer;
     CDMSessionMediaSourceAVFObjC* m_session;
     MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
+    bool m_readyStateIsWaitingForAvailableFrame { false };
     MediaTime m_lastSeekTime;
+    FloatSize m_naturalSize;
     double m_rate;
     bool m_playing;
     bool m_seeking;
-    bool m_seekCompleted;
+    enum SeekState {
+        Seeking,
+        WaitingForAvailableFame,
+        SeekCompleted,
+    };
+    SeekState m_seekCompleted { SeekCompleted };
     mutable bool m_loadingProgressed;
-    bool m_hasAvailableVideoFrame;
+    bool m_hasBeenAskedToPaintGL { false };
+    bool m_hasAvailableVideoFrame { false };
+    bool m_allRenderersHaveAvailableSamples { false };
+    RetainPtr<PlatformLayer> m_textTrackRepresentationLayer;
+    std::unique_ptr<TextureCacheCV> m_textureCache;
+    std::unique_ptr<VideoTextureCopierCV> m_videoTextureCopier;
+    RetainPtr<CVOpenGLTextureRef> m_lastTexture;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     RefPtr<MediaPlaybackTarget> m_playbackTarget;
     bool m_shouldPlayToTarget { false };

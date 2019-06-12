@@ -32,12 +32,12 @@
 #include "LegacyTileGridTile.h"
 #include "LegacyTileLayer.h"
 #include "LegacyTileLayerPool.h"
-#include "MemoryPressureHandler.h"
 #include "QuartzCoreSPI.h"
 #include "SystemMemory.h"
 #include "WAKWindow.h"
 #include <algorithm>
 #include <functional>
+#include <wtf/MemoryPressureHandler.h>
 
 namespace WebCore {
 
@@ -180,7 +180,7 @@ IntRect LegacyTileGrid::bounds() const
     return IntRect(IntPoint(), IntSize([tileHostLayer() size]));
 }
 
-PassRefPtr<LegacyTileGridTile> LegacyTileGrid::tileForIndex(const TileIndex& index) const
+RefPtr<LegacyTileGridTile> LegacyTileGrid::tileForIndex(const TileIndex& index) const
 {
     return m_tiles.get(index);
 }
@@ -240,7 +240,7 @@ void LegacyTileGrid::centerTileGridOrigin(const IntRect& visibleRect)
     m_origin = newOrigin;
 }
 
-PassRefPtr<LegacyTileGridTile> LegacyTileGrid::tileForPoint(const IntPoint& point) const
+RefPtr<LegacyTileGridTile> LegacyTileGrid::tileForPoint(const IntPoint& point) const
 {
     return tileForIndex(tileIndexForPoint(point));
 }

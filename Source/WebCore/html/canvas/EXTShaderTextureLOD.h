@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EXTShaderTextureLOD_h
-#define EXTShaderTextureLOD_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class EXTShaderTextureLOD final : public WebGLExtension {
 public:
-    explicit EXTShaderTextureLOD(WebGLRenderingContextBase*);
+    explicit EXTShaderTextureLOD(WebGLRenderingContextBase&);
     virtual ~EXTShaderTextureLOD();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // EXTShaderTextureLOD_h

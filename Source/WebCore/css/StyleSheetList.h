@@ -18,12 +18,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef StyleSheetList_h
-#define StyleSheetList_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -31,16 +29,17 @@ namespace WebCore {
 class Document;
 class HTMLStyleElement;
 class StyleSheet;
+class CSSStyleSheet;
 
-class StyleSheetList : public RefCounted<StyleSheetList> {
+class StyleSheetList final : public RefCounted<StyleSheetList> {
 public:
     static Ref<StyleSheetList> create(Document* document) { return adoptRef(*new StyleSheetList(document)); }
-    ~StyleSheetList();
+    WEBCORE_EXPORT ~StyleSheetList();
 
-    unsigned length() const;
-    StyleSheet* item(unsigned index);
+    WEBCORE_EXPORT unsigned length() const;
+    WEBCORE_EXPORT StyleSheet* item(unsigned index);
 
-    HTMLStyleElement* getNamedItem(const String&) const;
+    CSSStyleSheet* namedItem(const AtomicString&) const;
     Vector<AtomicString> supportedPropertyNames();
 
     Document* document() { return m_document; }
@@ -56,5 +55,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleSheetList_h

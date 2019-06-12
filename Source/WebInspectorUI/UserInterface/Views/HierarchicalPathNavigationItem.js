@@ -44,6 +44,22 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
         if (!newComponents)
             newComponents = [];
 
+        let componentsEqual = function(a, b) {
+            let getRepresentedObjects = (component) => component.representedObject;
+            let representedObjectsA = a.map(getRepresentedObjects);
+            let representedObjectsB = b.map(getRepresentedObjects);
+            if (!Array.shallowEqual(representedObjectsA, representedObjectsB))
+                return false;
+
+            let getExtraComparisonData = (component) => component.comparisonData;
+            let extraComparisonDataA = a.map(getExtraComparisonData);
+            let extraComparisonDataB = b.map(getExtraComparisonData);
+            return Array.shallowEqual(extraComparisonDataA, extraComparisonDataB);
+        };
+
+        if (this._components && componentsEqual(this._components, newComponents))
+            return;
+
         for (var i = 0; this._components && i < this._components.length; ++i)
             this._components[i].removeEventListener(WebInspector.HierarchicalPathComponent.Event.SiblingWasSelected, this._siblingPathComponentWasSelected, this);
 

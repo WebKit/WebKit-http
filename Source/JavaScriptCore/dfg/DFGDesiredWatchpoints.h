@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGDesiredWatchpoints_h
-#define DFGDesiredWatchpoints_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "CodeOrigin.h"
 #include "DFGCommonData.h"
 #include "DFGDesiredInferredType.h"
 #include "InferredValue.h"
@@ -223,6 +221,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGDesiredWatchpoints_h
-

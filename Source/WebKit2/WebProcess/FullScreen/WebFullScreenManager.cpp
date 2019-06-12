@@ -79,7 +79,7 @@ WebCore::Element* WebFullScreenManager::element()
     return m_element.get(); 
 }
 
-void WebFullScreenManager::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void WebFullScreenManager::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     didReceiveWebFullScreenManagerMessage(connection, decoder);
 }
@@ -157,13 +157,10 @@ void WebFullScreenManager::close()
 void WebFullScreenManager::saveScrollPosition()
 {
     m_scrollPosition = m_page->corePage()->mainFrame().view()->scrollPosition();
-    m_topContentInset = m_page->corePage()->topContentInset();
-    m_page->corePage()->setTopContentInset(0);
 }
 
 void WebFullScreenManager::restoreScrollPosition()
 {
-    m_page->corePage()->setTopContentInset(m_topContentInset);
     m_page->corePage()->mainFrame().view()->setScrollPosition(m_scrollPosition);
 }
 

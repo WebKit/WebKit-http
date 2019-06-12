@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PlatformKeyboardEvent_h
-#define PlatformKeyboardEvent_h
+#pragma once
 
 #include "KeypressCommand.h"
 #include "PlatformEvent.h"
@@ -52,11 +51,6 @@ class QKeyEvent;
 QT_END_NAMESPACE
 #endif
 
-#if PLATFORM(EFL)
-typedef struct _Evas_Event_Key_Down Evas_Event_Key_Down;
-typedef struct _Evas_Event_Key_Up Evas_Event_Key_Up;
-#endif
-
 namespace WebCore {
 
     class PlatformKeyboardEvent : public PlatformEvent {
@@ -65,8 +59,6 @@ namespace WebCore {
         PlatformKeyboardEvent()
             : PlatformEvent(PlatformEvent::KeyDown)
             , m_windowsVirtualKeyCode(0)
-            , m_nativeVirtualKeyCode(0)
-            , m_macCharCode(0)
 #if USE(APPKIT) || PLATFORM(GTK)
             , m_handledByInputMethod(false)
 #endif
@@ -83,14 +75,25 @@ namespace WebCore {
         {
         }
 
-        PlatformKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
+        PlatformKeyboardEvent(Type type, const String& text, const String& unmodifiedText,
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        const String& key,
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        const String& code,
+#endif
+        const String& keyIdentifier, int windowsVirtualKeyCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, OptionSet<Modifier> modifiers, double timestamp)
             : PlatformEvent(type, modifiers, timestamp)
             , m_text(text)
             , m_unmodifiedText(unmodifiedText)
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+            , m_key(key)
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+            , m_code(code)
+#endif
             , m_keyIdentifier(keyIdentifier)
             , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
-            , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
-            , m_macCharCode(macCharCode)
 #if USE(APPKIT) || PLATFORM(GTK)
             , m_handledByInputMethod(false)
 #endif
@@ -117,13 +120,17 @@ namespace WebCore {
 
         String keyIdentifier() const { return m_keyIdentifier; }
 
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        const String& key() const { return m_key; }
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        const String& code() const { return m_code; }
+#endif
+
         // Most compatible Windows virtual key code associated with the event.
         // Zero for Char events.
         int windowsVirtualKeyCode() const { return m_windowsVirtualKeyCode; }
         void setWindowsVirtualKeyCode(int code) { m_windowsVirtualKeyCode = code; }
-
-        int nativeVirtualKeyCode() const { return m_nativeVirtualKeyCode; }
-        int macCharCode() const { return m_macCharCode; }
 
 #if USE(APPKIT) || PLATFORM(GTK)
         bool handledByInputMethod() const { return m_handledByInputMethod; }
@@ -159,9 +166,12 @@ namespace WebCore {
         const CompositionResults& compositionResults() const { return m_compositionResults; }
 
         // Used by WebKit2
+        static String keyValueForGdkKeyCode(unsigned);
+        static String keyCodeForHardwareKeyCode(unsigned);
         static String keyIdentifierForGdkKeyCode(unsigned);
         static int windowsKeyCodeForGdkKeyCode(unsigned);
         static String singleCharacterString(unsigned);
+        static bool modifiersContainCapsLock(unsigned);
 #endif
 
 #if PLATFORM(QT)
@@ -171,18 +181,17 @@ namespace WebCore {
         uint32_t nativeScanCode() const;
 #endif
 
-#if PLATFORM(EFL)
-        explicit PlatformKeyboardEvent(const Evas_Event_Key_Down*);
-        explicit PlatformKeyboardEvent(const Evas_Event_Key_Up*);
-#endif
-
     protected:
         String m_text;
         String m_unmodifiedText;
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        String m_key;
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        String m_code;
+#endif
         String m_keyIdentifier;
         int m_windowsVirtualKeyCode;
-        int m_nativeVirtualKeyCode;
-        int m_macCharCode;
 #if USE(APPKIT) || PLATFORM(GTK)
         bool m_handledByInputMethod;
 #endif
@@ -219,5 +228,3 @@ int windowsKeyCodeForKeyEvent(unsigned int keycode, bool isKeypad = false);
 #endif
 
 } // namespace WebCore
-
-#endif // PlatformKeyboardEvent_h

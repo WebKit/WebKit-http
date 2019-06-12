@@ -5,7 +5,7 @@ class Heading extends ComponentBase {
         super('page-heading');
         this._title = '';
         this._pageGroups = [];
-        this._renderedOnce = false;
+        this._renderedCurrentPage = null;
         this._toolbar = null;
         this._toolbarChanged = false;
         this._router = null;
@@ -50,11 +50,12 @@ class Heading extends ComponentBase {
         }
 
         if (this._toolbar)
-            this._toolbar.render();
+            this._toolbar.enqueueToRender();
 
-        // Workaround the bounding rects being 0x0 when the content is empty.
-        if (this._renderedOnce && !Heading.isElementInViewport(this.element()))
+        var currentPage = this._router.currentPage();
+        if (this._renderedCurrentPage == currentPage)
             return;
+        this._renderedCurrentPage = currentPage;
 
         var title = this.content().querySelector('.heading-title a');
         title.textContent = this._title;
@@ -63,7 +64,6 @@ class Heading extends ComponentBase {
         var link = ComponentBase.createLink;
         var router = this._router;
 
-        var currentPage = this._router.currentPage();
         this.renderReplace(this.content().querySelector('.heading-navigation-list'),
             this._pageGroups.map(function (group) {
                 return element('ul', group.map(function (page) {
@@ -72,8 +72,6 @@ class Heading extends ComponentBase {
                         link(page.name(), router.url(page.routeName(), page.serializeState())));
                 }));
             }));
-
-        this._renderedOnce = true;
     }
 
     static htmlTemplate()

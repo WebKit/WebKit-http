@@ -31,17 +31,15 @@
 
 import fnmatch
 import json
+import sys
 
 from webkitpy.common.editdistance import edit_distance
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system.filesystem import FileSystem
 
 
-# The list of contributors have been moved to contributors.json
-
-
 class Contributor(object):
-    def __init__(self, name, email_or_emails, irc_nickname_or_nicknames=None):
+    def __init__(self, name, email_or_emails, irc_nickname_or_nicknames=None, alias_or_aliases=None, expertise=None):
         assert(name)
         assert(email_or_emails)
         self.full_name = name
@@ -49,13 +47,23 @@ class Contributor(object):
             self.emails = [email_or_emails]
         else:
             self.emails = email_or_emails
+        self._case_preserved_emails = self.emails
         self.emails = map(lambda email: email.lower(), self.emails)  # Emails are case-insensitive.
+
         if isinstance(irc_nickname_or_nicknames, str):
             self.irc_nicknames = [irc_nickname_or_nicknames]
         else:
             self.irc_nicknames = irc_nickname_or_nicknames
+
+        if isinstance(alias_or_aliases, str):
+            self.aliases = [alias_or_aliases]
+        else:
+            self.aliases = alias_or_aliases
+
+        self.expertise = expertise
         self.can_commit = False
         self.can_review = False
+        self.is_bot = False
 
     def bugzilla_email(self):
         # FIXME: We're assuming the first email is a valid bugzilla email,
@@ -68,6 +76,16 @@ class Contributor(object):
     def __unicode__(self):
         return '"%s" <%s>' % (self.full_name, self.emails[0])
 
+    def __eq__(self, other):
+        return (other is not None
+            and self.full_name == other.full_name
+            and self.emails == other.emails
+            and self._case_preserved_emails == other._case_preserved_emails
+            and self.irc_nicknames == other.irc_nicknames
+            and self.expertise == other.expertise
+            and self.can_commit == other.can_commit
+            and self.can_review == other.can_review)
+
     def contains_string(self, search_string):
         string = search_string.lower()
         if string in self.full_name.lower():
@@ -76,8 +94,29 @@ class Contributor(object):
             for nickname in self.irc_nicknames:
                 if string in nickname.lower():
                     return True
+        if self.aliases:
+            for alias in self.aliases:
+                if string in alias.lower():
+                    return True
         for email in self.emails:
             if string in email:
+                return True
+        return False
+
+    def mentioned_in_text(self, text):
+        lower_text = text.lower()
+        if self.full_name.lower() in lower_text:
+            return True
+        if self.irc_nicknames:
+            for nickname in self.irc_nicknames:
+                if nickname.lower() in lower_text:
+                    return True
+        if self.aliases:
+            for alias in self.aliases:
+                if alias.lower() in lower_text:
+                    return True
+        for email in self.emails:
+            if email in lower_text:
                 return True
         return False
 
@@ -93,17 +132,45 @@ class Contributor(object):
                 return True
         return False
 
+    def as_dict(self):
+        info = {"emails" : self._case_preserved_emails}
+
+        if self.aliases:
+            info["aliases"] = self.aliases
+
+        if self.can_review:
+            info["status"] = "reviewer"
+        elif self.can_commit:
+            info["status"] = "committer"
+
+        if self.irc_nicknames:
+            info["nicks"] = self.irc_nicknames
+
+        if self.expertise:
+            info["expertise"] = self.expertise
+
+        if self.is_bot:
+            info["class"] = "bot"
+
+        return info
+
 
 class Committer(Contributor):
-    def __init__(self, name, email_or_emails, irc_nickname=None):
-        Contributor.__init__(self, name, email_or_emails, irc_nickname)
+    def __init__(self, name, email_or_emails, irc_nickname=None, alias_or_aliases=None, expertise=None):
+        Contributor.__init__(self, name, email_or_emails, irc_nickname, alias_or_aliases, expertise)
         self.can_commit = True
 
 
 class Reviewer(Committer):
-    def __init__(self, name, email_or_emails, irc_nickname=None):
-        Committer.__init__(self, name, email_or_emails, irc_nickname)
+    def __init__(self, name, email_or_emails, irc_nickname=None, alias_or_aliases=None, expertise=None):
+        Committer.__init__(self, name, email_or_emails, irc_nickname, alias_or_aliases, expertise)
         self.can_review = True
+
+
+class Bot(Contributor):
+    def __init__(self, name, email_or_emails, irc_nickname=None, alias_or_aliases=None, expertise=None):
+        Contributor.__init__(self, name, email_or_emails, irc_nickname, alias_or_aliases, expertise)
+        self.is_bot = True
 
 
 class CommitterList(object):
@@ -113,36 +180,78 @@ class CommitterList(object):
                  committers=[],
                  reviewers=[],
                  contributors=[]):
-        # FIXME: These arguments only exist for testing. Clean it up.
-        if not (committers or reviewers or contributors):
-            loaded_data = self.load_json()
-            contributors = loaded_data['Contributors']
-            committers = loaded_data['Committers']
-            reviewers = loaded_data['Reviewers']
+        if committers or reviewers or contributors:
+            self.load_test_data(committers, reviewers, contributors)
+        else:
+            self.load_json()
 
-        self._contributors = contributors + committers + reviewers
-        self._committers = committers + reviewers
-        self._reviewers = reviewers
         self._contributors_by_name = {}
         self._accounts_by_email = {}
         self._accounts_by_login = {}
 
-    @staticmethod
-    @memoized
-    def load_json():
+    def load_json(self):
         filesystem = FileSystem()
         json_path = filesystem.join(filesystem.dirname(filesystem.path_to_module('webkitpy.common.config')), 'contributors.json')
-        contributors = json.loads(filesystem.read_text_file(json_path))
+        try:
+            contributors = json.loads(filesystem.read_text_file(json_path))
+        except ValueError, e:
+            sys.exit('contributors.json is malformed: ' + str(e))
 
-        return {
-            'Contributors': [Contributor(name, data.get('emails'), data.get('nicks')) for name, data in contributors['Contributors'].iteritems()],
-            'Committers': [Committer(name, data.get('emails'), data.get('nicks')) for name, data in contributors['Committers'].iteritems()],
-            'Reviewers': [Reviewer(name, data.get('emails'), data.get('nicks')) for name, data in contributors['Reviewers'].iteritems()],
-        }
+        self._contributors = []
+        self._committers = []
+        self._reviewers = []
 
+        for name, data in contributors.iteritems():
+            contributor = None
+            status = data.get('status')
+            if status == "reviewer":
+                contributor = Reviewer(name, data.get('emails'), data.get('nicks'), data.get('aliases'), data.get('expertise'))
+                self._reviewers.append(contributor)
+                self._committers.append(contributor)
+            elif status == "committer":
+                contributor = Committer(name, data.get('emails'), data.get('nicks'), data.get('aliases'), data.get('expertise'))
+                self._committers.append(contributor)
+            elif data.get('class') == 'bot':
+                contributor = Bot(name, data.get('emails'), data.get('nicks'), data.get('aliases'), data.get('expertise'))
+            else:
+                contributor = Contributor(name, data.get('emails'), data.get('nicks'), data.get('aliases'), data.get('expertise'))
+
+            self._contributors.append(contributor)
+
+    def load_test_data(self, committers, reviewers, contributors):
+        self._contributors = contributors + committers + reviewers
+        self._committers = committers + reviewers
+        self._reviewers = reviewers
+
+    @staticmethod
+    def _contributor_list_to_dict(list):
+        committers_dict = {}
+        for contributor in sorted(list):
+            committers_dict[contributor.full_name] = contributor.as_dict()
+        return committers_dict
+
+    def as_json(self):
+        result = CommitterList._contributor_list_to_dict(self._contributors)
+        return json.dumps(result, sort_keys=True, indent=3, separators=(',', ' : '))
+
+    def reformat_in_place(self):
+        filesystem = FileSystem()
+        json_path = filesystem.join(filesystem.dirname(filesystem.path_to_module('webkitpy.common.config')), 'contributors.json')
+        filesystem.write_text_file(json_path, self.as_json())
+
+    # Contributors who are not in any other category.
+    def _exclusive_contributors(self):
+        return filter(lambda contributor: not (contributor.can_commit or contributor.can_review), self._contributors)
+
+    # Committers who are not reviewers.
+    def _exclusive_committers(self):
+        return filter(lambda contributor: contributor.can_commit and not contributor.can_review, self._committers)
+
+    # This is the superset of contributors + committers + reviewers
     def contributors(self):
         return self._contributors
 
+    # This is the superset of committers + reviewers
     def committers(self):
         return self._committers
 
@@ -152,9 +261,14 @@ class CommitterList(object):
     def _name_to_contributor_map(self):
         if not len(self._contributors_by_name):
             for contributor in self._contributors:
-                assert(contributor.full_name)
-                assert(contributor.full_name.lower() not in self._contributors_by_name)  # We should never have duplicate names.
+                assert contributor.full_name
+                assert contributor.full_name.lower() not in self._contributors_by_name  # We should never have duplicate names.
                 self._contributors_by_name[contributor.full_name.lower()] = contributor
+                if contributor.aliases is None:
+                    continue
+                for alias in contributor.aliases:
+                    assert alias.lower() not in self._contributors_by_name
+                    self._contributors_by_name[alias.lower()] = contributor
         return self._contributors_by_name
 
     def _email_to_account_map(self):

@@ -23,13 +23,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef XPathVariableReference_h
-#define XPathVariableReference_h
+#pragma once
 
 #include "XPathExpressionNode.h"
 
 namespace WebCore {
-
     namespace XPath {
 
         // Variable references are not used with XPathEvaluator.
@@ -37,12 +35,10 @@ namespace WebCore {
         public:
             explicit VariableReference(const String& name);
         private:
-            virtual Value evaluate() const;
-            virtual Value::Type resultType() const { ASSERT_NOT_REACHED(); return Value::NumberValue; }
+            Value evaluate() const override;
+            Value::Type resultType() const override { ASSERT_NOT_REACHED(); return Value::NumberValue; }
             String m_name;
         };
 
-    }
-}
-
-#endif // XPath_VariableReference_H
+    } // namespace XPath
+} // namespace WebCore

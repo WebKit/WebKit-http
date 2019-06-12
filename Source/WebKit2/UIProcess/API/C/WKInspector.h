@@ -28,6 +28,8 @@
 
 #include <WebKit/WKBase.h>
 
+#if !TARGET_OS_IPHONE
+
 #ifndef __cplusplus
 #include <stdbool.h>
 #endif
@@ -61,8 +63,13 @@ WK_EXPORT void WKInspectorDetach(WKInspectorRef inspector);
 WK_EXPORT bool WKInspectorIsProfilingPage(WKInspectorRef inspector);
 WK_EXPORT void WKInspectorTogglePageProfiling(WKInspectorRef inspector);
 
+WK_EXPORT bool WKInspectorIsElementSelectionActive(WKInspectorRef inspector);
+WK_EXPORT void WKInspectorToggleElementSelection(WKInspectorRef inspector);
+
 #ifdef __cplusplus
 }
 #endif
+
+#endif // !TARGET_OS_IPHONE
 
 #endif // WKInspector_h

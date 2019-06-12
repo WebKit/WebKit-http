@@ -40,7 +40,7 @@
 #include <wtf/text/CString.h>
 
 
-// The Life-Cycle of a SQLStatement i.e. Who's keeping the SQLStatement alive? 
+// The Life-Cycle of a SQLStatement i.e. Who's keeping the SQLStatement alive?
 // ==========================================================================
 // The RefPtr chain goes something like this:
 //
@@ -74,11 +74,11 @@
 
 namespace WebCore {
 
-SQLStatement::SQLStatement(Database& database, const String& statement, const Vector<SQLValue>& arguments, PassRefPtr<SQLStatementCallback> callback, PassRefPtr<SQLStatementErrorCallback> errorCallback, int permissions)
+SQLStatement::SQLStatement(Database& database, const String& statement, Vector<SQLValue>&& arguments, RefPtr<SQLStatementCallback>&& callback, RefPtr<SQLStatementErrorCallback>&& errorCallback, int permissions)
     : m_statement(statement.isolatedCopy())
-    , m_arguments(arguments)
-    , m_statementCallbackWrapper(callback, database.scriptExecutionContext())
-    , m_statementErrorCallbackWrapper(errorCallback, database.scriptExecutionContext())
+    , m_arguments(WTFMove(arguments))
+    , m_statementCallbackWrapper(WTFMove(callback), &database.scriptExecutionContext())
+    , m_statementErrorCallbackWrapper(WTFMove(errorCallback), &database.scriptExecutionContext())
     , m_permissions(permissions)
 {
 }
@@ -87,14 +87,14 @@ SQLStatement::~SQLStatement()
 {
 }
 
-PassRefPtr<SQLError> SQLStatement::sqlError() const
+SQLError* SQLStatement::sqlError() const
 {
-    return m_error;
+    return m_error.get();
 }
 
-PassRefPtr<SQLResultSet> SQLStatement::sqlResultSet() const
+SQLResultSet* SQLStatement::sqlResultSet() const
 {
-    return m_resultSet;
+    return m_resultSet.get();
 }
 
 bool SQLStatement::execute(Database& db)
@@ -154,14 +154,14 @@ bool SQLStatement::execute(Database& db)
     switch (result) {
     case SQLITE_ROW: {
         int columnCount = statement.columnCount();
-        SQLResultSetRowList* rows = resultSet->rows();
+        auto& rows = resultSet->rows();
 
         for (int i = 0; i < columnCount; i++)
-            rows->addColumn(statement.getColumnName(i));
+            rows.addColumn(statement.getColumnName(i));
 
         do {
             for (int i = 0; i < columnCount; i++)
-                rows->addResult(statement.getColumnValue(i));
+                rows.addResult(statement.getColumnValue(i));
 
             result = statement.step();
         } while (result == SQLITE_ROW);
@@ -199,27 +199,39 @@ bool SQLStatement::execute(Database& db)
     return true;
 }
 
-bool SQLStatement::performCallback(SQLTransaction* transaction)
+bool SQLStatement::performCallback(SQLTransaction& transaction)
 {
-    ASSERT(transaction);
-
-    bool callbackError = false;
-
-    RefPtr<SQLStatementCallback> callback = m_statementCallbackWrapper.unwrap();
-    RefPtr<SQLStatementErrorCallback> errorCallback = m_statementErrorCallbackWrapper.unwrap();
-    RefPtr<SQLError> error = sqlError();
-
     // Call the appropriate statement callback and track if it resulted in an error,
     // because then we need to jump to the transaction error callback.
-    if (error) {
-        if (errorCallback)
-            callbackError = errorCallback->handleEvent(transaction, error.get());
-    } else if (callback) {
-        RefPtr<SQLResultSet> resultSet = sqlResultSet();
-        callbackError = !callback->handleEvent(transaction, resultSet.get());
+
+    if (m_error) {
+        if (auto errorCallback = m_statementErrorCallbackWrapper.unwrap()) {
+            auto result = errorCallback->handleEvent(transaction, *m_error);
+
+            // The spec says:
+            // "If the error callback returns false, then move on to the next statement..."
+            // "Otherwise, the error callback did not return false, or there was no error callback"
+            // Therefore an exception and returning true are the same thing - so, return true on an exception
+
+            switch (result.type()) {
+            case CallbackResultType::Success:
+                return result.releaseReturnValue();
+            case CallbackResultType::ExceptionThrown:
+            case CallbackResultType::UnableToExecute:
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    if (auto callback = m_statementCallbackWrapper.unwrap()) {
+        ASSERT(m_resultSet);
+
+        auto result = callback->handleEvent(transaction, *m_resultSet);
+        return result.type() == CallbackResultType::ExceptionThrown;
     }
 
-    return callbackError;
+    return false;
 }
 
 void SQLStatement::setDatabaseDeletedError()

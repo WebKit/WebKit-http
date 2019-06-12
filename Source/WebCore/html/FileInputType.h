@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FileInputType_h
-#define FileInputType_h
+#pragma once
 
 #include "BaseClickableWithKeyInputType.h"
 #include "FileChooser.h"
@@ -51,62 +50,51 @@ public:
     static Vector<FileChooserFileInfo> filesFromFormControlState(const FormControlState&);
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual FormControlState saveFormControlState() const override;
-    virtual void restoreFormControlState(const FormControlState&) override;
-    virtual bool appendFormData(FormDataList&, bool) const override;
-    virtual bool valueMissing(const String&) const override;
-    virtual String valueMissingText() const override;
-    virtual void handleDOMActivateEvent(Event*) override;
-    virtual RenderPtr<RenderElement> createInputRenderer(Ref<RenderStyle>&&) override;
-    virtual bool canSetStringValue() const override;
-    virtual bool canChangeFromAnotherType() const override;
-    virtual FileList* files() override;
-    virtual void setFiles(PassRefPtr<FileList>) override;
-#if PLATFORM(IOS)
-    virtual String displayString() const override;
-#endif
-    virtual bool canSetValue(const String&) override;
-    virtual bool getTypeSpecificValue(String&) override; // Checked first, before internal storage or the value attribute.
-    virtual void setValue(const String&, bool valueChanged, TextFieldEventBehavior) override;
+    const AtomicString& formControlType() const final;
+    FormControlState saveFormControlState() const final;
+    void restoreFormControlState(const FormControlState&) final;
+    bool appendFormData(FormDataList&, bool) const final;
+    bool valueMissing(const String&) const final;
+    String valueMissingText() const final;
+    void handleDOMActivateEvent(Event&) final;
+    RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) final;
+    bool canSetStringValue() const final;
+    FileList* files() final;
+    void setFiles(RefPtr<FileList>&&) final;
+    enum class RequestIcon { Yes, No };
+    void setFiles(RefPtr<FileList>&&, RequestIcon);
+    String displayString() const final;
+    bool canSetValue(const String&) final;
+    bool getTypeSpecificValue(String&) final; // Checked first, before internal storage or the value attribute.
+    void setValue(const String&, bool valueChanged, TextFieldEventBehavior) final;
 
 #if ENABLE(DRAG_SUPPORT)
-    virtual bool receiveDroppedFiles(const DragData&) override;
+    bool receiveDroppedFiles(const DragData&) final;
 #endif
 
-    virtual Icon* icon() const override;
-    virtual bool isFileUpload() const override;
-    virtual void createShadowSubtree() override;
-    virtual void disabledAttributeChanged() override;
-    virtual void multipleAttributeChanged() override;
-    virtual String defaultToolTip() const override;
+    Icon* icon() const final;
+    bool isFileUpload() const final;
+    void createShadowSubtree() final;
+    void disabledAttributeChanged() final;
+    void multipleAttributeChanged() final;
+    String defaultToolTip() const final;
 
-    // FileChooserClient implementation.
-    virtual void filesChosen(const Vector<FileChooserFileInfo>&) override;
-#if PLATFORM(IOS)
-    virtual void filesChosen(const Vector<FileChooserFileInfo>&, const String& displayString, Icon*) override;
-#endif
+    void filesChosen(const Vector<FileChooserFileInfo>&, const String& displayString = { }, Icon* = nullptr) final;
 
     // FileIconLoaderClient implementation.
-    virtual void updateRendering(PassRefPtr<Icon>) override;
+    void iconLoaded(RefPtr<Icon>&&) final;
 
-    PassRefPtr<FileList> createFileList(const Vector<FileChooserFileInfo>& files) const;
+    static Ref<FileList> createFileList(const Vector<FileChooserFileInfo>&);
     void requestIcon(const Vector<String>&);
 
     void applyFileChooserSettings(const FileChooserSettings&);
 
     RefPtr<FileChooser> m_fileChooser;
-#if !PLATFORM(IOS)
     std::unique_ptr<FileIconLoader> m_fileIconLoader;
-#endif
 
-    RefPtr<FileList> m_fileList;
+    Ref<FileList> m_fileList;
     RefPtr<Icon> m_icon;
-#if PLATFORM(IOS)
     String m_displayString;
-#endif
 };
 
 } // namespace WebCore
-
-#endif // FileInputType_h

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-#ifndef DecodedDataDocumentParser_h
-#define DecodedDataDocumentParser_h
+#pragma once
 
 #include "DocumentParser.h"
 
@@ -41,13 +40,11 @@ protected:
 
 private:
     // append is used by DocumentWriter::replaceDocument.
-    virtual void append(RefPtr<StringImpl>&&) override = 0;
+    void append(RefPtr<StringImpl>&&) override = 0;
 
     // appendBytes and flush are used by DocumentWriter (the loader).
-    virtual void appendBytes(DocumentWriter&, const char* bytes, size_t length) override;
-    virtual void flush(DocumentWriter&) override;
+    void appendBytes(DocumentWriter&, const char* bytes, size_t length) override;
+    void flush(DocumentWriter&) override;
 };
 
-}
-
-#endif // DecodedDataDocumentParser_h
+} // namespace WebCore

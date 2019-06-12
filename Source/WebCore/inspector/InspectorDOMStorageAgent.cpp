@@ -40,15 +40,15 @@
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
 #include "Page.h"
-#include "PageGroup.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginData.h"
 #include "Storage.h"
 #include "StorageNamespace.h"
 #include "StorageNamespaceProvider.h"
+#include "StorageType.h"
 #include "VoidCallback.h"
 #include <inspector/InspectorFrontendDispatchers.h>
 #include <inspector/InspectorValues.h>
-#include <wtf/Vector.h>
 
 using namespace Inspector;
 
@@ -146,9 +146,9 @@ String InspectorDOMStorageAgent::storageId(Storage* storage)
     ASSERT(document);
     DOMWindow* window = document->domWindow();
     ASSERT(window);
-    RefPtr<SecurityOrigin> securityOrigin = document->securityOrigin();
+    Ref<SecurityOrigin> securityOrigin = document->securityOrigin();
     bool isLocalStorage = window->optionalLocalStorage() == storage;
-    return storageId(securityOrigin.get(), isLocalStorage)->toJSONString();
+    return storageId(securityOrigin.ptr(), isLocalStorage)->toJSONString();
 }
 
 RefPtr<Inspector::Protocol::DOMStorage::StorageId> InspectorDOMStorageAgent::storageId(SecurityOrigin* securityOrigin, bool isLocalStorage)
@@ -159,12 +159,12 @@ RefPtr<Inspector::Protocol::DOMStorage::StorageId> InspectorDOMStorageAgent::sto
         .release();
 }
 
-void InspectorDOMStorageAgent::didDispatchDOMStorageEvent(const String& key, const String& oldValue, const String& newValue, StorageType storageType, SecurityOrigin* securityOrigin, Page*)
+void InspectorDOMStorageAgent::didDispatchDOMStorageEvent(const String& key, const String& oldValue, const String& newValue, StorageType storageType, SecurityOrigin* securityOrigin)
 {
     if (!m_enabled)
         return;
 
-    RefPtr<Inspector::Protocol::DOMStorage::StorageId> id = storageId(securityOrigin, storageType == LocalStorage);
+    RefPtr<Inspector::Protocol::DOMStorage::StorageId> id = storageId(securityOrigin, storageType == StorageType::Local);
 
     if (key.isNull())
         m_frontendDispatcher->domStorageItemsCleared(id);
@@ -196,7 +196,7 @@ RefPtr<StorageArea> InspectorDOMStorageAgent::findStorageArea(ErrorString& error
     }
 
     if (!isLocalStorage)
-        return m_pageAgent->page().sessionStorage()->storageArea(targetFrame->document()->securityOrigin());
+        return m_pageAgent->page().sessionStorage()->storageArea(SecurityOriginData::fromSecurityOrigin(targetFrame->document()->securityOrigin()));
     return m_pageAgent->page().storageNamespaceProvider().localStorageArea(*targetFrame->document());
 }
 

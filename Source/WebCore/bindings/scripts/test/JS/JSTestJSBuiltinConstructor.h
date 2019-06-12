@@ -18,8 +18,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef JSTestJSBuiltinConstructor_h
-#define JSTestJSBuiltinConstructor_h
+#pragma once
 
 #include "JSDOMWrapper.h"
 
@@ -27,7 +26,7 @@ namespace WebCore {
 
 class JSTestJSBuiltinConstructor : public JSDOMObject {
 public:
-    typedef JSDOMObject Base;
+    using Base = JSDOMObject;
     static JSTestJSBuiltinConstructor* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JSTestJSBuiltinConstructor* ptr = new (NotNull, JSC::allocateCell<JSTestJSBuiltinConstructor>(globalObject->vm().heap)) JSTestJSBuiltinConstructor(structure, *globalObject);
@@ -35,10 +34,8 @@ public:
         return ptr;
     }
 
-    static const bool hasStaticPropertyTable = false;
-
-    static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
+    static JSC::JSObject* createPrototype(JSC::VM&, JSDOMGlobalObject&);
+    static JSC::JSObject* prototype(JSC::VM&, JSDOMGlobalObject&);
     static void destroy(JSC::JSCell*);
 
     DECLARE_INFO;
@@ -49,8 +46,6 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static void visitChildren(JSCell*, JSC::SlotVisitor&);
-
 
     // Custom attributes
     JSC::JSValue testAttributeCustom(JSC::ExecState&) const;
@@ -62,10 +57,9 @@ public:
 protected:
     JSTestJSBuiltinConstructor(JSC::Structure*, JSDOMGlobalObject&);
 
+    void finishCreation(JSC::VM&);
 };
 
 
 
 } // namespace WebCore
-
-#endif

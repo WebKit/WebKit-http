@@ -23,17 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StyleFontSizeFunctions_h
-#define StyleFontSizeFunctions_h
+#pragma once
 
-#include "TextFlags.h"
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
 class Document;
 class RenderStyle;
-class Settings;
 
 namespace Style {
 
@@ -49,5 +45,3 @@ int legacyFontSizeForPixelSize(int pixelFontSize, bool shouldUseFixedDefaultSize
 
 }
 }
-
-#endif

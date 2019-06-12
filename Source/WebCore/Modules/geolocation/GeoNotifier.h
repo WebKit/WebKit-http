@@ -24,11 +24,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GeoNotifier_h
-#define GeoNotifier_h
+#pragma once
 
 #if ENABLE(GEOLOCATION)
 
+#include "PositionOptions.h"
 #include "Timer.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
@@ -41,23 +41,22 @@ class Geolocation;
 class PositionCallback;
 class PositionError;
 class PositionErrorCallback;
-class PositionOptions;
 
 class GeoNotifier : public RefCounted<GeoNotifier> {
 public:
-    static Ref<GeoNotifier> create(Geolocation& geolocation, RefPtr<PositionCallback>&& positionCallback, RefPtr<PositionErrorCallback>&& positionErrorCallback, RefPtr<PositionOptions>&& options)
+    static Ref<GeoNotifier> create(Geolocation& geolocation, Ref<PositionCallback>&& positionCallback, RefPtr<PositionErrorCallback>&& positionErrorCallback, PositionOptions&& options)
     {
         return adoptRef(*new GeoNotifier(geolocation, WTFMove(positionCallback), WTFMove(positionErrorCallback), WTFMove(options)));
     }
 
-    PositionOptions* options() const { return m_options.get(); }
+    const PositionOptions& options() const { return m_options; }
     void setFatalError(RefPtr<PositionError>&&);
 
     bool useCachedPosition() const { return m_useCachedPosition; }
     void setUseCachedPosition();
 
-    void runSuccessCallback(Geoposition*);
-    void runErrorCallback(PositionError*);
+    void runSuccessCallback(Geoposition*); // FIXME: This should take a reference.
+    void runErrorCallback(PositionError&);
 
     void startTimerIfNeeded();
     void stopTimer();
@@ -65,12 +64,12 @@ public:
     bool hasZeroTimeout() const;
 
 private:
-    GeoNotifier(Geolocation&, RefPtr<PositionCallback>&&, RefPtr<PositionErrorCallback>&&, RefPtr<PositionOptions>&&);
+    GeoNotifier(Geolocation&, Ref<PositionCallback>&&, RefPtr<PositionErrorCallback>&&, PositionOptions&&);
 
     Ref<Geolocation> m_geolocation;
-    RefPtr<PositionCallback> m_successCallback;
+    Ref<PositionCallback> m_successCallback;
     RefPtr<PositionErrorCallback> m_errorCallback;
-    RefPtr<PositionOptions> m_options;
+    PositionOptions m_options;
     Timer m_timer;
     RefPtr<PositionError> m_fatalError;
     bool m_useCachedPosition;
@@ -79,5 +78,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(GEOLOCATION)
-
-#endif // GeoNotifier_h

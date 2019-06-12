@@ -26,8 +26,9 @@
 #include "config.h"
 #include "ScriptedAnimationController.h"
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-
+#include "Chrome.h"
+#include "ChromeClient.h"
+#include "DOMWindow.h"
 #include "DisplayRefreshMonitor.h"
 #include "DisplayRefreshMonitorManager.h"
 #include "Document.h"
@@ -36,32 +37,39 @@
 #include "InspectorInstrumentation.h"
 #include "Logging.h"
 #include "MainFrame.h"
+#include "Page.h"
 #include "RequestAnimationFrameCallback.h"
 #include "Settings.h"
-#include <wtf/Ref.h>
-
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
 #include <algorithm>
 #include <wtf/CurrentTime.h>
+#include <wtf/Ref.h>
+#include <wtf/SystemTracing.h>
+#include <wtf/text/StringBuilder.h>
 
 // Allow a little more than 60fps to make sure we can at least hit that frame rate.
-#define MinimumAnimationInterval 0.015
-#define MinimumThrottledAnimationInterval 10
-#endif
+static const Seconds fullSpeedAnimationInterval { 15_ms };
+// Allow a little more than 30fps to make sure we can at least hit that frame rate.
+static const Seconds halfSpeedThrottlingAnimationInterval { 30_ms };
+static const Seconds aggressiveThrottlingAnimationInterval { 10_s };
+
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(page() && page()->isAlwaysOnLoggingAllowed(), PerformanceLogging, "%p - ScriptedAnimationController::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
 
-ScriptedAnimationController::ScriptedAnimationController(Document* document, PlatformDisplayID displayID)
-    : m_document(document)
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
+ScriptedAnimationController::ScriptedAnimationController(Document& document, PlatformDisplayID displayID)
+    : m_document(&document)
     , m_animationTimer(*this, &ScriptedAnimationController::animationTimerFired)
-#endif
 {
     windowScreenDidChange(displayID);
 }
 
 ScriptedAnimationController::~ScriptedAnimationController()
 {
+}
+
+bool ScriptedAnimationController::requestAnimationFrameEnabled() const
+{
+    return m_document && m_document->settings().requestAnimationFrameEnabled();
 }
 
 void ScriptedAnimationController::suspend()
@@ -80,39 +88,91 @@ void ScriptedAnimationController::resume()
         scheduleAnimation();
 }
 
-void ScriptedAnimationController::setThrottled(bool isThrottled)
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && !RELEASE_LOG_DISABLED
+
+static const char* throttlingReasonToString(ScriptedAnimationController::ThrottlingReason reason)
 {
-#if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    if (m_isThrottled == isThrottled)
+    switch (reason) {
+    case ScriptedAnimationController::ThrottlingReason::VisuallyIdle:
+        return "VisuallyIdle";
+    case ScriptedAnimationController::ThrottlingReason::OutsideViewport:
+        return "OutsideViewport";
+    case ScriptedAnimationController::ThrottlingReason::LowPowerMode:
+        return "LowPowerMode";
+    case ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame:
+        return "NonInteractiveCrossOriginFrame";
+    }
+}
+
+static String throttlingReasonsToString(OptionSet<ScriptedAnimationController::ThrottlingReason> reasons)
+{
+    if (reasons.isEmpty())
+        return ASCIILiteral("[Unthrottled]");
+
+    StringBuilder builder;
+    for (auto reason : reasons) {
+        if (!builder.isEmpty())
+            builder.append('|');
+        builder.append(throttlingReasonToString(reason));
+    }
+    return builder.toString();
+}
+
+#endif
+
+void ScriptedAnimationController::addThrottlingReason(ThrottlingReason reason)
+{
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    if (m_throttlingReasons.contains(reason))
         return;
 
-    LOG(Animations, "%p - Setting RequestAnimationFrame throttling state to %d in frame %p (isMainFrame: %d)", this, isThrottled, m_document->frame(), m_document->frame() ? m_document->frame()->isMainFrame() : 0);
+    m_throttlingReasons |= reason;
 
-    m_isThrottled = isThrottled;
+    RELEASE_LOG_IF_ALLOWED("addThrottlingReason(%s) -> %s", throttlingReasonToString(reason), throttlingReasonsToString(m_throttlingReasons).utf8().data());
+
     if (m_animationTimer.isActive()) {
         m_animationTimer.stop();
         scheduleAnimation();
     }
 #else
-    UNUSED_PARAM(isThrottled);
+    UNUSED_PARAM(reason);
+#endif
+}
+
+void ScriptedAnimationController::removeThrottlingReason(ThrottlingReason reason)
+{
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    if (!m_throttlingReasons.contains(reason))
+        return;
+
+    m_throttlingReasons -= reason;
+
+    RELEASE_LOG_IF_ALLOWED("removeThrottlingReason(%s) -> %s", throttlingReasonToString(reason), throttlingReasonsToString(m_throttlingReasons).utf8().data());
+
+    if (m_animationTimer.isActive()) {
+        m_animationTimer.stop();
+        scheduleAnimation();
+    }
+#else
+    UNUSED_PARAM(reason);
 #endif
 }
 
 bool ScriptedAnimationController::isThrottled() const
 {
-#if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    return m_isThrottled;
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    return !m_throttlingReasons.isEmpty();
 #else
     return false;
 #endif
 }
 
-ScriptedAnimationController::CallbackId ScriptedAnimationController::registerCallback(PassRefPtr<RequestAnimationFrameCallback> callback)
+ScriptedAnimationController::CallbackId ScriptedAnimationController::registerCallback(Ref<RequestAnimationFrameCallback>&& callback)
 {
     ScriptedAnimationController::CallbackId id = ++m_nextCallbackId;
     callback->m_firedOrCancelled = false;
     callback->m_id = id;
-    m_callbacks.append(callback);
+    m_callbacks.append(WTFMove(callback));
 
     InspectorInstrumentation::didRequestAnimationFrame(m_document, id);
 
@@ -133,13 +193,15 @@ void ScriptedAnimationController::cancelCallback(CallbackId id)
     }
 }
 
-void ScriptedAnimationController::serviceScriptedAnimations(double monotonicTimeNow)
+void ScriptedAnimationController::serviceScriptedAnimations(double timestamp)
 {
-    if (!m_callbacks.size() || m_suspendCount || (m_document->settings() && !m_document->settings()->requestAnimationFrameEnabled()))
+    if (!m_callbacks.size() || m_suspendCount || !requestAnimationFrameEnabled())
         return;
 
-    double highResNowMs = 1000.0 * m_document->loader()->timing().monotonicTimeToZeroBasedDocumentTime(monotonicTimeNow);
-    double legacyHighResNowMs = 1000.0 * m_document->loader()->timing().monotonicTimeToPseudoWallTime(monotonicTimeNow);
+    TraceScope tracingScope(RAFCallbackStart, RAFCallbackEnd);
+
+    double highResNowMs = 1000 * timestamp;
+    double legacyHighResNowMs = 1000 * (timestamp + m_document->loader()->timing().referenceWallTime().secondsSinceEpoch().seconds());
 
     // First, generate a list of callbacks to consider.  Callbacks registered from this point
     // on are considered only for the "next" frame, not this one.
@@ -147,7 +209,7 @@ void ScriptedAnimationController::serviceScriptedAnimations(double monotonicTime
 
     // Invoking callbacks may detach elements from our document, which clears the document's
     // reference to us, so take a defensive reference.
-    Ref<ScriptedAnimationController> protect(*this);
+    Ref<ScriptedAnimationController> protectedThis(*this);
 
     for (auto& callback : callbacks) {
         if (!callback->m_firedOrCancelled) {
@@ -175,7 +237,7 @@ void ScriptedAnimationController::serviceScriptedAnimations(double monotonicTime
 
 void ScriptedAnimationController::windowScreenDidChange(PlatformDisplayID displayID)
 {
-    if (m_document->settings() && !m_document->settings()->requestAnimationFrameEnabled())
+    if (!requestAnimationFrameEnabled())
         return;
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     DisplayRefreshMonitorManager::sharedManager().windowScreenDidChange(displayID, *this);
@@ -184,14 +246,35 @@ void ScriptedAnimationController::windowScreenDidChange(PlatformDisplayID displa
 #endif
 }
 
+Seconds ScriptedAnimationController::interval() const
+{
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    if (m_throttlingReasons.contains(ThrottlingReason::VisuallyIdle) || m_throttlingReasons.contains(ThrottlingReason::OutsideViewport))
+        return aggressiveThrottlingAnimationInterval;
+
+    if (m_throttlingReasons.contains(ThrottlingReason::LowPowerMode))
+        return halfSpeedThrottlingAnimationInterval;
+
+    if (m_throttlingReasons.contains(ThrottlingReason::NonInteractedCrossOriginFrame))
+        return halfSpeedThrottlingAnimationInterval;
+
+    ASSERT(m_throttlingReasons.isEmpty());
+#endif
+    return fullSpeedAnimationInterval;
+}
+
+Page* ScriptedAnimationController::page() const
+{
+    return m_document ? m_document->page() : nullptr;
+}
+
 void ScriptedAnimationController::scheduleAnimation()
 {
-    if (!m_document || (m_document->settings() && !m_document->settings()->requestAnimationFrameEnabled()))
+    if (!requestAnimationFrameEnabled())
         return;
 
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    if (!m_isUsingTimer && !m_isThrottled) {
+    if (!m_isUsingTimer && !isThrottled()) {
         if (DisplayRefreshMonitorManager::sharedManager().scheduleAnimation(*this))
             return;
 
@@ -201,36 +284,36 @@ void ScriptedAnimationController::scheduleAnimation()
     if (m_animationTimer.isActive())
         return;
 
-    double animationInterval = MinimumAnimationInterval;
-#if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    if (m_isThrottled)
-        animationInterval = MinimumThrottledAnimationInterval;
-#endif
+    Seconds animationInterval = interval();
+    Seconds scheduleDelay = std::max(animationInterval - Seconds(m_document->domWindow()->nowTimestamp() - m_lastAnimationFrameTimestamp), 0_s);
 
-    double scheduleDelay = std::max<double>(animationInterval - (monotonicallyIncreasingTime() - m_lastAnimationFrameTimeMonotonic), 0);
+    if (isThrottled()) {
+        // FIXME: not ideal to snapshot time both in now() and nowTimestamp(), the latter of which also has reduced resolution.
+        MonotonicTime now = MonotonicTime::now();
+
+        MonotonicTime fireTime = now + scheduleDelay;
+        Seconds alignmentInterval = 10_ms;
+        // Snap to the nearest alignmentInterval.
+        Seconds alignment = (fireTime + alignmentInterval / 2) % alignmentInterval;
+        MonotonicTime alignedFireTime = fireTime - alignment;
+        scheduleDelay = alignedFireTime - now;
+    }
+
     m_animationTimer.startOneShot(scheduleDelay);
-#else
-    if (FrameView* frameView = m_document->view())
-        frameView->scheduleAnimation();
-#endif
 }
 
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
 void ScriptedAnimationController::animationTimerFired()
 {
-    m_lastAnimationFrameTimeMonotonic = monotonicallyIncreasingTime();
-    serviceScriptedAnimations(m_lastAnimationFrameTimeMonotonic);
+    m_lastAnimationFrameTimestamp = m_document->domWindow()->nowTimestamp();
+    serviceScriptedAnimations(m_lastAnimationFrameTimestamp);
 }
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-void ScriptedAnimationController::displayRefreshFired(double monotonicTimeNow)
+void ScriptedAnimationController::displayRefreshFired()
 {
-    serviceScriptedAnimations(monotonicTimeNow);
+    serviceScriptedAnimations(m_document->domWindow()->nowTimestamp());
 }
-#endif
-#endif
 
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<DisplayRefreshMonitor> ScriptedAnimationController::createDisplayRefreshMonitor(PlatformDisplayID displayID) const
 {
     if (!m_document->page())
@@ -243,7 +326,4 @@ RefPtr<DisplayRefreshMonitor> ScriptedAnimationController::createDisplayRefreshM
 }
 #endif
 
-
 }
-
-#endif

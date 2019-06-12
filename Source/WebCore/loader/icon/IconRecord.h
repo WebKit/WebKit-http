@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-#ifndef IconRecord_h
-#define IconRecord_h
+#pragma once
 
 #include "PageURLRecord.h"
 #include "SharedBuffer.h"
@@ -83,7 +82,7 @@ public:
     time_t getTimestamp() { return m_stamp; }
     void setTimestamp(time_t stamp) { m_stamp = stamp; }
         
-    void setImageData(PassRefPtr<SharedBuffer> data);
+    void setImageData(RefPtr<SharedBuffer>&&);
     Image* image(const IntSize&);    
     
     String iconURL() { return m_iconURL; }
@@ -118,7 +117,4 @@ private:
     // SizeImageMap m_images;
 };
 
-
 } //namespace WebCore
-
-#endif

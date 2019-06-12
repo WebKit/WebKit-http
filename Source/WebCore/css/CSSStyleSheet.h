@@ -18,14 +18,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSStyleSheet_h
-#define CSSStyleSheet_h
+#pragma once
 
-#include "CSSParserMode.h"
-#include "CSSRule.h"
+#include "ExceptionOr.h"
 #include "StyleSheet.h"
 #include <memory>
-#include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -33,7 +30,6 @@
 
 namespace WebCore {
 
-class CSSCharsetRule;
 class CSSImportRule;
 class CSSParser;
 class CSSRule;
@@ -41,52 +37,57 @@ class CSSRuleList;
 class CSSStyleSheet;
 class CachedCSSStyleSheet;
 class Document;
+class Element;
 class MediaQuerySet;
-class SecurityOrigin;
 class StyleRuleKeyframes;
 class StyleSheetContents;
 
-typedef int ExceptionCode;
+namespace Style {
+class Scope;
+}
 
 class CSSStyleSheet final : public StyleSheet {
 public:
     static Ref<CSSStyleSheet> create(Ref<StyleSheetContents>&&, CSSImportRule* ownerRule = 0);
-    static Ref<CSSStyleSheet> create(Ref<StyleSheetContents>&&, Node* ownerNode);
-    static Ref<CSSStyleSheet> createInline(Node&, const URL&, const TextPosition& startPosition = TextPosition::minimumPosition(), const String& encoding = String());
+    static Ref<CSSStyleSheet> create(Ref<StyleSheetContents>&&, Node& ownerNode, const std::optional<bool>& isOriginClean = std::nullopt);
+    static Ref<CSSStyleSheet> createInline(Ref<StyleSheetContents>&&, Element& owner, const TextPosition& startPosition);
 
     virtual ~CSSStyleSheet();
 
-    virtual CSSStyleSheet* parentStyleSheet() const override;
-    virtual Node* ownerNode() const override { return m_ownerNode; }
-    virtual MediaList* media() const override;
-    virtual String href() const override;
-    virtual String title() const override { return m_title; }
-    virtual bool disabled() const override { return m_isDisabled; }
-    virtual void setDisabled(bool) override;
+    CSSStyleSheet* parentStyleSheet() const final;
+    Node* ownerNode() const final { return m_ownerNode; }
+    MediaList* media() const final;
+    String href() const final;
+    String title() const final { return m_title; }
+    bool disabled() const final { return m_isDisabled; }
+    void setDisabled(bool) final;
     
-    RefPtr<CSSRuleList> cssRules();
-    unsigned insertRule(const String& rule, unsigned index, ExceptionCode&);
-    void deleteRule(unsigned index, ExceptionCode&);
+    WEBCORE_EXPORT RefPtr<CSSRuleList> cssRules();
+    WEBCORE_EXPORT ExceptionOr<unsigned> insertRule(const String& rule, unsigned index);
+    WEBCORE_EXPORT ExceptionOr<void> deleteRule(unsigned index);
     
-    // IE Extensions
-    RefPtr<CSSRuleList> rules();
-    int addRule(const String& selector, const String& style, int index, ExceptionCode&);
-    int addRule(const String& selector, const String& style, ExceptionCode&);
-    void removeRule(unsigned index, ExceptionCode& ec) { deleteRule(index, ec); }
+    WEBCORE_EXPORT RefPtr<CSSRuleList> rules();
+    WEBCORE_EXPORT ExceptionOr<int> addRule(const String& selector, const String& style, std::optional<unsigned> index);
+    ExceptionOr<void> removeRule(unsigned index) { return deleteRule(index); }
     
     // For CSSRuleList.
     unsigned length() const;
     CSSRule* item(unsigned index);
 
-    virtual void clearOwnerNode() override;
-    virtual CSSImportRule* ownerRule() const override { return m_ownerRule; }
-    virtual URL baseURL() const override;
-    virtual bool isLoading() const override;
+    void clearOwnerNode() final;
+    CSSImportRule* ownerRule() const final { return m_ownerRule; }
+    URL baseURL() const final;
+    bool isLoading() const final;
     
     void clearOwnerRule() { m_ownerRule = 0; }
+
     Document* ownerDocument() const;
+    CSSStyleSheet& rootStyleSheet();
+    const CSSStyleSheet& rootStyleSheet() const;
+    Style::Scope* styleScope();
+
     MediaQuerySet* mediaQueries() const { return m_mediaQueries.get(); }
-    void setMediaQueries(PassRefPtr<MediaQuerySet>);
+    void setMediaQueries(Ref<MediaQuerySet>&&);
     void setTitle(const String& title) { m_title = title; }
 
     bool hadRulesMutation() const { return m_mutatedRules; }
@@ -127,16 +128,18 @@ public:
 private:
     CSSStyleSheet(Ref<StyleSheetContents>&&, CSSImportRule* ownerRule);
     CSSStyleSheet(Ref<StyleSheetContents>&&, Node* ownerNode, const TextPosition& startPosition, bool isInlineStylesheet);
+    CSSStyleSheet(Ref<StyleSheetContents>&&, Node& ownerNode, const TextPosition& startPosition, bool isInlineStylesheet, const std::optional<bool>&);
 
-    virtual bool isCSSStyleSheet() const override { return true; }
-    virtual String type() const override { return ASCIILiteral("text/css"); }
+    bool isCSSStyleSheet() const final { return true; }
+    String type() const final { return ASCIILiteral("text/css"); }
 
     bool canAccessRules() const;
-    
+
     Ref<StyleSheetContents> m_contents;
     bool m_isInlineStylesheet;
     bool m_isDisabled;
     bool m_mutatedRules;
+    std::optional<bool> m_isOriginClean;
     String m_title;
     RefPtr<MediaQuerySet> m_mediaQueries;
 
@@ -155,5 +158,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::CSSStyleSheet)
     static bool isType(const WebCore::StyleSheet& styleSheet) { return styleSheet.isCSSStyleSheet(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // CSSStyleSheet_h

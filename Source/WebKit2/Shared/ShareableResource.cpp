@@ -39,14 +39,14 @@ ShareableResource::Handle::Handle()
 {
 }
 
-void ShareableResource::Handle::encode(IPC::ArgumentEncoder& encoder) const
+void ShareableResource::Handle::encode(IPC::Encoder& encoder) const
 {
     encoder << m_handle;
     encoder << m_offset;
     encoder << m_size;
 }
 
-bool ShareableResource::Handle::decode(IPC::ArgumentDecoder& decoder, Handle& handle)
+bool ShareableResource::Handle::decode(IPC::Decoder& decoder, Handle& handle)
 {
     if (!decoder.decode(handle.m_handle))
         return false;
@@ -60,7 +60,7 @@ bool ShareableResource::Handle::decode(IPC::ArgumentDecoder& decoder, Handle& ha
 #if USE(CF)
 static void shareableResourceDeallocate(void *ptr, void *info)
 {
-    (static_cast<ShareableResource*>(info))->deref(); // Balanced by ref() in createShareableResourceDeallocator()
+    static_cast<ShareableResource*>(info)->deref(); // Balanced by ref() in createShareableResourceDeallocator()
 }
     
 static CFAllocatorRef createShareableResourceDeallocator(ShareableResource* resource)
@@ -80,14 +80,14 @@ static CFAllocatorRef createShareableResourceDeallocator(ShareableResource* reso
 }
 #endif
 
-PassRefPtr<SharedBuffer> ShareableResource::wrapInSharedBuffer()
+RefPtr<SharedBuffer> ShareableResource::wrapInSharedBuffer()
 {
     ref(); // Balanced by deref when SharedBuffer is deallocated.
 
 #if USE(CF)
     RetainPtr<CFAllocatorRef> deallocator = adoptCF(createShareableResourceDeallocator(this));
     RetainPtr<CFDataRef> cfData = adoptCF(CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(data()), static_cast<CFIndex>(size()), deallocator.get()));
-    return SharedBuffer::wrapCFData(cfData.get());
+    return SharedBuffer::create(cfData.get());
 #elif USE(SOUP)
     return SharedBuffer::wrapSoupBuffer(soup_buffer_new_with_owner(data(), size(), this, [](void* data) { static_cast<ShareableResource*>(data)->deref(); }));
 #else
@@ -96,7 +96,7 @@ PassRefPtr<SharedBuffer> ShareableResource::wrapInSharedBuffer()
 #endif
 }
 
-PassRefPtr<SharedBuffer> ShareableResource::Handle::tryWrapInSharedBuffer() const
+RefPtr<SharedBuffer> ShareableResource::Handle::tryWrapInSharedBuffer() const
 {
     RefPtr<ShareableResource> resource = ShareableResource::map(*this);
     if (!resource) {
@@ -107,26 +107,25 @@ PassRefPtr<SharedBuffer> ShareableResource::Handle::tryWrapInSharedBuffer() cons
     return resource->wrapInSharedBuffer();
 }
 
-Ref<ShareableResource> ShareableResource::create(PassRefPtr<SharedMemory> sharedMemory, unsigned offset, unsigned size)
+Ref<ShareableResource> ShareableResource::create(Ref<SharedMemory>&& sharedMemory, unsigned offset, unsigned size)
 {
-    return adoptRef(*new ShareableResource(sharedMemory, offset, size));
+    return adoptRef(*new ShareableResource(WTFMove(sharedMemory), offset, size));
 }
 
-PassRefPtr<ShareableResource> ShareableResource::map(const Handle& handle)
+RefPtr<ShareableResource> ShareableResource::map(const Handle& handle)
 {
-    RefPtr<SharedMemory> sharedMemory = SharedMemory::map(handle.m_handle, SharedMemory::Protection::ReadOnly);
+    auto sharedMemory = SharedMemory::map(handle.m_handle, SharedMemory::Protection::ReadOnly);
     if (!sharedMemory)
-        return 0;
+        return nullptr;
 
-    return create(sharedMemory.release(), handle.m_offset, handle.m_size);
+    return create(sharedMemory.releaseNonNull(), handle.m_offset, handle.m_size);
 }
 
-ShareableResource::ShareableResource(PassRefPtr<SharedMemory> sharedMemory, unsigned offset, unsigned size)
-    : m_sharedMemory(sharedMemory)
+ShareableResource::ShareableResource(Ref<SharedMemory>&& sharedMemory, unsigned offset, unsigned size)
+    : m_sharedMemory(WTFMove(sharedMemory))
     , m_offset(offset)
     , m_size(size)
 {
-    ASSERT(m_sharedMemory);
     ASSERT(m_offset + m_size <= m_sharedMemory->size());
     
     // FIXME (NetworkProcess): This data was received from another process.  If it is bogus, should we assume that process is compromised and we should kill it?

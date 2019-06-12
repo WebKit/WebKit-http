@@ -38,7 +38,8 @@
 #import "WKSharedAPICast.h"
 #import "WKStringCF.h"
 #import "WebProcessPool.h"
-#import <WebKitSystemInterface.h>
+#import <WebCore/PluginBlacklist.h>
+#import <WebCore/WebGLBlacklist.h>
 #import <wtf/RetainPtr.h>
 
 using namespace WebKit;
@@ -48,7 +49,7 @@ bool WKContextIsPlugInUpdateAvailable(WKContextRef contextRef, WKStringRef plugI
 #if PLATFORM(IOS)
     return false;
 #else
-    return WKIsPluginUpdateAvailable((NSString *)adoptCF(WKStringCopyCFString(kCFAllocatorDefault, plugInBundleIdentifierRef)).get());
+    return WebCore::PluginBlacklist::isPluginUpdateAvailable((NSString *)adoptCF(WKStringCopyCFString(kCFAllocatorDefault, plugInBundleIdentifierRef)).get());
 #endif
 }
 
@@ -73,8 +74,8 @@ WKDictionaryRef WKContextCopyPlugInInfoForBundleIdentifier(WKContextRef contextR
     if (plugin.path.isNull())
         return 0;
 
-    RefPtr<API::Dictionary> dictionary = createPluginInformationDictionary(plugin);
-    return toAPI(dictionary.release().leakRef());
+    auto dictionary = createPluginInformationDictionary(plugin);
+    return toAPI(&dictionary.leakRef());
 #else
     return 0;
 #endif
@@ -156,15 +157,18 @@ WKStringRef WKPlugInInfoIsSandboxedKey()
 
 bool WKContextShouldBlockWebGL()
 {
-    return WKShouldBlockWebGL();
+#if PLATFORM(MAC)
+    return WebCore::WebGLBlacklist::shouldBlockWebGL();
+#else
+    return false;
+#endif
 }
 
 bool WKContextShouldSuggestBlockWebGL()
 {
-    return WKShouldSuggestBlockingWebGL();
-}
-
-pid_t WKContextGetNetworkProcessIdentifier(WKContextRef contextRef)
-{
-    return toImpl(contextRef)->networkProcessIdentifier();
+#if PLATFORM(MAC)
+    return WebCore::WebGLBlacklist::shouldSuggestBlockingWebGL();
+#else
+    return false;
+#endif
 }

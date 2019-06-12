@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008, 2016-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef ObjectConstructor_h
-#define ObjectConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
 #include "JSGlobalObject.h"
@@ -30,15 +29,15 @@ namespace JSC {
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState*);
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptors(ExecState*);
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertySymbols(ExecState*);
+EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyNames(ExecState*);
 EncodedJSValue JSC_HOST_CALL objectConstructorKeys(ExecState*);
-EncodedJSValue JSC_HOST_CALL ownEnumerablePropertyKeys(ExecState*);
 
 class ObjectPrototype;
 
 class ObjectConstructor : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static ObjectConstructor* create(VM& vm, JSGlobalObject* globalObject, Structure* structure, ObjectPrototype* objectPrototype)
     {
@@ -47,16 +46,12 @@ public:
         return constructor;
     }
 
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-
     DECLARE_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
-
-    JSFunction* addDefineProperty(ExecState*, JSGlobalObject*);
 
 protected:
     void finishCreation(VM&, JSGlobalObject*, ObjectPrototype*);
@@ -76,8 +71,7 @@ inline JSObject* constructEmptyObject(ExecState* exec, JSObject* prototype, unsi
 {
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     PrototypeMap& prototypeMap = globalObject->vm().prototypeMap;
-    Structure* structure = prototypeMap.emptyObjectStructureForPrototype(
-        prototype, inlineCapacity);
+    Structure* structure = prototypeMap.emptyObjectStructureForPrototype(globalObject, prototype, inlineCapacity);
     return constructEmptyObject(exec, structure);
 }
 
@@ -88,16 +82,47 @@ inline JSObject* constructEmptyObject(ExecState* exec, JSObject* prototype)
 
 inline JSObject* constructEmptyObject(ExecState* exec)
 {
-    return constructEmptyObject(exec, exec->lexicalGlobalObject()->objectPrototype());
+    return constructEmptyObject(exec, exec->lexicalGlobalObject()->objectStructureForObjectConstructor());
 }
 
-JSObject* objectConstructorFreeze(ExecState*, JSObject*);
-JSValue objectConstructorGetPrototypeOf(ExecState*, JSObject*);
+inline JSObject* constructObject(ExecState* exec, JSGlobalObject* globalObject, JSValue arg)
+{
+    if (arg.isUndefinedOrNull())
+        return constructEmptyObject(exec, globalObject->objectPrototype());
+    return arg.toObject(exec, globalObject);
+}
+
+// Section 6.2.4.4 of the ES6 specification.
+// https://tc39.github.io/ecma262/#sec-frompropertydescriptor
+inline JSObject* constructObjectFromPropertyDescriptor(ExecState* exec, const PropertyDescriptor& descriptor)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSObject* description = constructEmptyObject(exec);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+
+    if (!descriptor.isAccessorDescriptor()) {
+        description->putDirect(vm, vm.propertyNames->value, descriptor.value() ? descriptor.value() : jsUndefined(), 0);
+        description->putDirect(vm, vm.propertyNames->writable, jsBoolean(descriptor.writable()), 0);
+    } else {
+        ASSERT(descriptor.getter() || descriptor.setter());
+        if (descriptor.getter())
+            description->putDirect(vm, vm.propertyNames->get, descriptor.getter(), 0);
+        if (descriptor.setter())
+            description->putDirect(vm, vm.propertyNames->set, descriptor.setter(), 0);
+    }
+    
+    description->putDirect(vm, vm.propertyNames->enumerable, jsBoolean(descriptor.enumerable()), 0);
+    description->putDirect(vm, vm.propertyNames->configurable, jsBoolean(descriptor.configurable()), 0);
+
+    return description;
+}
+
+
+JS_EXPORT_PRIVATE JSObject* objectConstructorFreeze(ExecState*, JSObject*);
 JSValue objectConstructorGetOwnPropertyDescriptor(ExecState*, JSObject*, const Identifier&);
 JSValue objectConstructorGetOwnPropertyDescriptors(ExecState*, JSObject*);
 JSArray* ownPropertyKeys(ExecState*, JSObject*, PropertyNameMode, DontEnumPropertiesMode);
 bool toPropertyDescriptor(ExecState*, JSValue, PropertyDescriptor&);
 
 } // namespace JSC
-
-#endif // ObjectConstructor_h

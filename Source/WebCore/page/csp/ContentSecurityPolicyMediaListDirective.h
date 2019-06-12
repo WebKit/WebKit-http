@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ContentSecurityPolicyMediaListDirective_h
-#define ContentSecurityPolicyMediaListDirective_h
+#pragma once
 
 #include "ContentSecurityPolicyDirective.h"
 #include <wtf/HashSet.h>
@@ -33,11 +32,11 @@
 
 namespace WebCore {
 
-class ContentSecurityPolicy;
+class ContentSecurityPolicyDirectiveList;
 
 class ContentSecurityPolicyMediaListDirective : public ContentSecurityPolicyDirective {
 public:
-    ContentSecurityPolicyMediaListDirective(const String& name, const String& value, const ContentSecurityPolicy&);
+    ContentSecurityPolicyMediaListDirective(const ContentSecurityPolicyDirectiveList&, const String& name, const String& value);
 
     bool allows(const String& type) const;
 
@@ -48,5 +47,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif /* ContentSecurityPolicyMediaListDirective_h */

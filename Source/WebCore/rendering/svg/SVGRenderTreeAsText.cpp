@@ -30,7 +30,6 @@
 #include "SVGRenderTreeAsText.h"
 
 #include "GraphicsTypes.h"
-#include "HTMLNames.h"
 #include "NodeRenderStyle.h"
 #include "RenderImage.h"
 #include "RenderIterator.h"
@@ -51,10 +50,8 @@
 #include "SVGEllipseElement.h"
 #include "SVGInlineTextBox.h"
 #include "SVGLineElement.h"
-#include "SVGNames.h"
 #include "SVGPathElement.h"
 #include "SVGPathUtilities.h"
-#include "SVGPointList.h"
 #include "SVGPolyElement.h"
 #include "SVGRectElement.h"
 #include "SVGRootInlineBox.h"
@@ -190,19 +187,18 @@ static void writeStyle(TextStream& ts, const RenderElement& renderer)
 
             SVGLengthContext lengthContext(&shape.graphicsElement());
             double dashOffset = lengthContext.valueForLength(svgStyle.strokeDashOffset());
-            double strokeWidth = lengthContext.valueForLength(svgStyle.strokeWidth());
-            const Vector<SVGLength>& dashes = svgStyle.strokeDashArray();
+            double strokeWidth = lengthContext.valueForLength(style.strokeWidth());
+            const auto& dashes = svgStyle.strokeDashArray();
 
             DashArray dashArray;
-            const Vector<SVGLength>::const_iterator end = dashes.end();
-            for (Vector<SVGLength>::const_iterator it = dashes.begin(); it != end; ++it)
-                dashArray.append((*it).value(lengthContext));
+            for (auto& length : dashes)
+                dashArray.append(length.value(lengthContext));
 
             writeIfNotDefault(ts, "opacity", svgStyle.strokeOpacity(), 1.0f);
             writeIfNotDefault(ts, "stroke width", strokeWidth, 1.0);
-            writeIfNotDefault(ts, "miter limit", svgStyle.strokeMiterLimit(), 4.0f);
-            writeIfNotDefault(ts, "line cap", svgStyle.capStyle(), ButtCap);
-            writeIfNotDefault(ts, "line join", svgStyle.joinStyle(), MiterJoin);
+            writeIfNotDefault(ts, "miter limit", style.strokeMiterLimit(), 4.0f);
+            writeIfNotDefault(ts, "line cap", style.capStyle(), ButtCap);
+            writeIfNotDefault(ts, "line join", style.joinStyle(), MiterJoin);
             writeIfNotDefault(ts, "dash offset", dashOffset, 0.0);
             if (!dashArray.isEmpty())
                 writeNameValuePair(ts, "dash array", dashArray);
@@ -323,7 +319,7 @@ static inline void writeSVGInlineTextBox(TextStream& ts, SVGInlineTextBox* textB
         // FIXME: Remove this hack, once the new text layout engine is completly landed. We want to preserve the old layout test results for now.
         ts << "chunk 1 ";
         ETextAnchor anchor = svgStyle.textAnchor();
-        bool isVerticalText = svgStyle.isVerticalWritingMode();
+        bool isVerticalText = textBox->renderer().style().isVerticalWritingMode();
         if (anchor == TA_MIDDLE) {
             ts << "(middle anchor";
             if (isVerticalText)

@@ -23,14 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AVVideoCaptureSource_h
-#define AVVideoCaptureSource_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
 #include "AVMediaCaptureSource.h"
+#include "OrientationNotifier.h"
 
 OBJC_CLASS CALayer;
+OBJC_CLASS AVFrameRateRange;
 
 typedef struct CGImage *CGImageRef;
 typedef const struct opaqueCMFormatDescription *CMFormatDescriptionRef;
@@ -40,51 +41,63 @@ namespace WebCore {
 
 class FloatRect;
 class GraphicsContext;
+class PixelBufferConformerCV;
 
-class AVVideoCaptureSource : public AVMediaCaptureSource {
+class AVVideoCaptureSource : public AVMediaCaptureSource, private OrientationNotifier::Observer {
 public:
-    static RefPtr<AVMediaCaptureSource> create(AVCaptureDevice*, const AtomicString&, PassRefPtr<MediaConstraints>);
+    static CaptureSourceOrError create(AVCaptureDevice*, const AtomicString&, const MediaConstraints*);
+
+    WEBCORE_EXPORT static VideoCaptureFactory& factory();
 
     int32_t width() const { return m_width; }
     int32_t height() const { return m_height; }
 
 private:
-    AVVideoCaptureSource(AVCaptureDevice*, const AtomicString&, PassRefPtr<MediaConstraints>);
+    AVVideoCaptureSource(AVCaptureDevice*, const AtomicString&);
     virtual ~AVVideoCaptureSource();
 
-    void setupCaptureSession() override;
-    void shutdownCaptureSession() override;
+    bool setupCaptureSession() final;
+    void shutdownCaptureSession() final;
 
-    void updateSettings(RealtimeMediaSourceSettings&) override;
+    void updateSettings(RealtimeMediaSourceSettings&) final;
 
-    void initializeCapabilities(RealtimeMediaSourceCapabilities&) override;
-    void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) override;
+    void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
+    bool applySize(const IntSize&) final;
+    bool applyFrameRate(double) final;
+    bool setPreset(NSString*);
 
-    bool applyConstraints(MediaConstraints*);
-    bool setFrameRateConstraint(float minFrameRate, float maxFrameRate);
+    void monitorOrientation(OrientationNotifier&) final;
+    void computeSampleRotation();
 
-    bool updateFramerate(CMSampleBufferRef);
+    bool isFrameRateSupported(double frameRate);
 
-    void captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef, AVCaptureConnection*) override;
-    void processNewFrame(RetainPtr<CMSampleBufferRef>);
+    NSString *bestSessionPresetForVideoDimensions(std::optional<int> width, std::optional<int> height) const;
+    bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
 
-    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
-    PlatformLayer* platformLayer() const override;
+    void initializeCapabilities(RealtimeMediaSourceCapabilities&) final;
+    void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) final;
 
-    RetainPtr<CGImageRef> currentFrameCGImage();
-    RefPtr<Image> currentFrameImage() override;
+    // OrientationNotifier::Observer API
+    void orientationChanged(int orientation) final;
 
+    bool setFrameRateConstraint(double minFrameRate, double maxFrameRate);
+
+    void captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef, AVCaptureConnection*) final;
+    void processNewFrame(RetainPtr<CMSampleBufferRef>, RetainPtr<AVCaptureConnection>);
+
+    RetainPtr<NSString> m_pendingPreset;
     RetainPtr<CMSampleBufferRef> m_buffer;
-    RetainPtr<CGImageRef> m_lastImage;
-    Vector<Float64> m_videoFrameTimeStamps;
-    mutable RetainPtr<PlatformLayer> m_videoPreviewLayer;
-    Float64 m_frameRate { 0 };
+    RetainPtr<AVCaptureVideoDataOutput> m_videoOutput;
+
+    std::unique_ptr<PixelBufferConformerCV> m_pixelBufferConformer;
+
     int32_t m_width { 0 };
     int32_t m_height { 0 };
+    int m_sensorOrientation { 0 };
+    int m_deviceOrientation { 0 };
+    MediaSample::VideoRotation m_sampleRotation { MediaSample::VideoRotation::None };
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // AVVideoCaptureSource_h

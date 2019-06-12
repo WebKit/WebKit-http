@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,6 @@
 #include "config.h"
 #include "WordLock.h"
 
-#include "DataLog.h"
-#include "StringPrintStream.h"
 #include "ThreadSpecific.h"
 #include "ThreadingPrimitives.h"
 #include <condition_variable>
@@ -61,7 +59,7 @@ struct ThreadData {
     ThreadData* queueTail { nullptr };
 };
 
-ThreadSpecific<ThreadData>* threadData;
+ThreadSpecific<ThreadData, CanBeGCThread::True>* threadData;
 
 ThreadData* myThreadData()
 {
@@ -69,7 +67,7 @@ ThreadData* myThreadData()
     std::call_once(
         initializeOnce,
         [] {
-            threadData = new ThreadSpecific<ThreadData>();
+            threadData = new ThreadSpecific<ThreadData, CanBeGCThread::True>();
         });
 
     return *threadData;
@@ -77,7 +75,7 @@ ThreadData* myThreadData()
 
 } // anonymous namespace
 
-NEVER_INLINE void WordLock::lockSlow()
+NEVER_INLINE void WordLockBase::lockSlow()
 {
     unsigned spinCount = 0;
 
@@ -178,7 +176,7 @@ NEVER_INLINE void WordLock::lockSlow()
     }
 }
 
-NEVER_INLINE void WordLock::unlockSlow()
+NEVER_INLINE void WordLockBase::unlockSlow()
 {
     // The fast path can fail either because of spurious weak CAS failure, or because someone put a
     // thread on the queue, or the queue lock is held. If the queue lock is held, it can only be
@@ -255,7 +253,7 @@ NEVER_INLINE void WordLock::unlockSlow()
     // We do this carefully because this may run either before or during the parkingLock critical
     // section in lockSlow().
     {
-        std::unique_lock<std::mutex> locker(queueHead->parkingLock);
+        std::lock_guard<std::mutex> locker(queueHead->parkingLock);
         queueHead->shouldPark = false;
     }
     // Doesn't matter if we notify_all() or notify_one() here since the only thread that could be

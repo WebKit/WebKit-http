@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,8 +22,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef ContentExtensionStyleSheet_h
-#define ContentExtensionStyleSheet_h
+
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
@@ -45,6 +45,7 @@ public:
     {
         return adoptRef(*new ContentExtensionStyleSheet(document));
     }
+    virtual ~ContentExtensionStyleSheet();
 
     bool addDisplayNoneSelector(const String& selector, uint32_t selectorID);
 
@@ -61,4 +62,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(CONTENT_EXTENSIONS)
-#endif // ContentExtensionStyleSheet_h

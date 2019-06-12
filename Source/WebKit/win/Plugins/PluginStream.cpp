@@ -96,7 +96,8 @@ PluginStream::~PluginStream()
 void PluginStream::start()
 {
     ASSERT(!m_loadManually);
-    m_loader = webResourceLoadScheduler().schedulePluginStreamLoad(m_frame, this, m_resourceRequest);
+    ASSERT(m_frame);
+    m_loader = webResourceLoadScheduler().schedulePluginStreamLoad(*m_frame, *this, m_resourceRequest);
 }
 
 void PluginStream::stop()
@@ -348,7 +349,7 @@ void PluginStream::deliverData()
         int32_t deliveryBytes = m_pluginFuncs->writeready(m_instance, &m_stream);
 
         if (deliveryBytes <= 0) {
-            m_delayDeliveryTimer.startOneShot(0);
+            m_delayDeliveryTimer.startOneShot(0_s);
             break;
         } else {
             deliveryBytes = min(deliveryBytes, totalBytes - totalBytesDelivered);
@@ -403,7 +404,7 @@ void PluginStream::sendJavaScriptStream(const URL& requestURL, const CString& re
     destroyStream(resultString.isNull() ? NPRES_NETWORK_ERR : NPRES_DONE);
 }
 
-void PluginStream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse&, std::function<void (WebCore::ResourceRequest&&)>&& callback)
+void PluginStream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse&, WTF::Function<void (WebCore::ResourceRequest&&)>&& callback)
 {
     // FIXME: We should notify the plug-in with NPP_URLRedirectNotify here.
     callback(WTFMove(request));

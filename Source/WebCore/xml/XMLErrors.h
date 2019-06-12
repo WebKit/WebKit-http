@@ -26,13 +26,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef XMLErrors_h
-#define XMLErrors_h
-
-#include <wtf/text/StringBuilder.h>
-#include <wtf/text/TextPosition.h>
+#pragma once
 
 #include <libxml/parser.h>
+#include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextPosition.h>
 
 namespace WebCore {
 
@@ -40,9 +38,8 @@ class Document;
 
 class XMLErrors {
 public:
-    explicit XMLErrors(Document*);
+    explicit XMLErrors(Document&);
 
-    // Exposed for callbacks:
     enum ErrorType { warning, nonFatal, fatal };
     void handleError(ErrorType, const char* message, int lineNumber, int columnNumber);
     void handleError(ErrorType, const char* message, TextPosition);
@@ -52,13 +49,10 @@ public:
 private:
     void appendErrorMessage(const String& typeString, TextPosition, const char* message);
 
-    Document* m_document;
-
-    int m_errorCount;
-    TextPosition m_lastErrorPosition;
+    Document& m_document;
+    int m_errorCount { 0 };
+    std::optional<TextPosition> m_lastErrorPosition;
     StringBuilder m_errorMessages;
 };
 
 } // namespace WebCore
-
-#endif // XMLErrors_h

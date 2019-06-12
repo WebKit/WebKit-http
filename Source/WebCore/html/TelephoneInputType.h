@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TelephoneInputType_h
-#define TelephoneInputType_h
+#pragma once
 
 #include "BaseTextInputType.h"
 
@@ -40,10 +39,8 @@ public:
     explicit TelephoneInputType(HTMLInputElement& element) : BaseTextInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual bool isTelephoneField() const override;
+    const AtomicString& formControlType() const override;
+    bool isTelephoneField() const override;
 };
 
 } // namespace WebCore
-
-#endif // TelephoneInputType_h

@@ -1,8 +1,8 @@
 if (${WTF_PLATFORM_WIN_CAIRO})
     add_definitions(-DUSE_CAIRO=1 -DUSE_CURL=1 -DWEBKIT_EXPORTS=1)
     list(APPEND WebKit_INCLUDE_DIRECTORIES
+        ${CAIRO_INCLUDE_DIRS}
         "${WEBKIT_LIBRARIES_DIR}/include"
-        "${WEBKIT_LIBRARIES_DIR}/include/cairo"
         "${WEBKIT_LIBRARIES_DIR}/include/sqlite"
         "${WEBCORE_DIR}/platform/graphics/cairo"
     )
@@ -11,9 +11,8 @@ if (${WTF_PLATFORM_WIN_CAIRO})
         win/WebURLAuthenticationChallengeSenderCURL.cpp
     )
     list(APPEND WebKit_LIBRARIES
-        PRIVATE libeay32.lib
+        ${OPENSSL_LIBRARIES}
         PRIVATE mfuuid.lib
-        PRIVATE ssleay32.lib
         PRIVATE strmiids.lib
     )
 else ()
@@ -25,6 +24,8 @@ else ()
         PRIVATE CFNetwork${DEBUG_SUFFIX}
         PRIVATE CoreFoundation${DEBUG_SUFFIX}
         PRIVATE CoreGraphics${DEBUG_SUFFIX}
+        PRIVATE CoreText${DEBUG_SUFFIX}
+        PRIVATE QuartzCore${DEBUG_SUFFIX}
         PRIVATE SQLite3${DEBUG_SUFFIX}
         PRIVATE WebKitSystemInterface${DEBUG_SUFFIX}
         PRIVATE libdispatch${DEBUG_SUFFIX}
@@ -35,6 +36,8 @@ else ()
         PRIVATE zdll${DEBUG_SUFFIX}
     )
 endif ()
+
+list(APPEND WebKit_LIBRARIES PRIVATE WTF${DEBUG_SUFFIX})
 
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/WebKitVersion.h
@@ -48,19 +51,15 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}/../include/private"
     "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore"
     "${CMAKE_BINARY_DIR}/../include/private/WebCore"
-    Storage
-    win
-    win/plugins
-    win/WebCoreSupport
-    WebKit.vcxproj/WebKit
-    "${WEBKIT_DIR}/.."
+    "${WEBKIT_DIR}/win"
+    "${WEBKIT_DIR}/win/plugins"
+    "${WEBKIT_DIR}/win/WebCoreSupport"
     "${DERIVED_SOURCES_WEBKIT_DIR}/include"
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces"
-    "${DERIVED_SOURCES_DIR}"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/egl"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE/include/khr"
+    "${FORWARDING_HEADERS_DIR}/ANGLE"
+    "${FORWARDING_HEADERS_DIR}/ANGLE/include"
+    "${FORWARDING_HEADERS_DIR}/ANGLE/include/egl"
+    "${FORWARDING_HEADERS_DIR}/ANGLE/include/khr"
     "${DERIVED_SOURCES_DIR}/WebKit"
 )
 
@@ -82,6 +81,7 @@ list(APPEND WebKit_INCLUDES
     win/MemoryStream.h
     win/ProgIDMacros.h
     win/WebActionPropertyBag.h
+    win/WebApplicationCache.h
     win/WebArchive.h
     win/WebBackForwardList.h
     win/WebCache.h
@@ -135,21 +135,13 @@ list(APPEND WebKit_INCLUDES
 )
 
 list(APPEND WebKit_SOURCES_Classes
-    Storage/StorageAreaImpl.cpp
-    Storage/StorageAreaSync.cpp
-    Storage/StorageNamespaceImpl.cpp
-    Storage/StorageSyncManager.cpp
-    Storage/StorageThread.cpp
-    Storage/StorageTracker.cpp
-    Storage/WebDatabaseProvider.cpp
-    Storage/WebStorageNamespaceProvider.cpp
-
     cf/WebCoreSupport/WebInspectorClientCF.cpp
 
     win/AccessibleBase.cpp
     win/AccessibleDocument.cpp
     win/AccessibleImage.cpp
     win/AccessibleTextImpl.cpp
+    win/BackForwardList.cpp
     win/CFDictionaryPropertyBag.cpp
     win/DOMCSSClasses.cpp
     win/DOMCoreClasses.cpp
@@ -162,6 +154,7 @@ list(APPEND WebKit_SOURCES_Classes
     win/MarshallingHelpers.cpp
     win/MemoryStream.cpp
     win/WebActionPropertyBag.cpp
+    win/WebApplicationCache.cpp
     win/WebArchive.cpp
     win/WebBackForwardList.cpp
     win/WebCache.cpp
@@ -223,6 +216,8 @@ list(APPEND WebKit_SOURCES_Classes
     win/plugins/PluginView.cpp
     win/plugins/PluginViewWin.cpp
     win/plugins/npapi.cpp
+
+    win/storage/WebDatabaseProvider.cpp
 )
 
 list(APPEND WebKit_SOURCES_WebCoreSupport
@@ -251,15 +246,32 @@ list(APPEND WebKit_SOURCES_WebCoreSupport
     win/WebCoreSupport/WebInspectorDelegate.h
     win/WebCoreSupport/WebPlatformStrategies.cpp
     win/WebCoreSupport/WebPlatformStrategies.h
+    win/WebCoreSupport/WebPluginInfoProvider.cpp
+    win/WebCoreSupport/WebPluginInfoProvider.h
     win/WebCoreSupport/WebVisitedLinkStore.cpp
     win/WebCoreSupport/WebVisitedLinkStore.h
 )
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
     enable_language(ASM_MASM)
-    list(APPEND WebKit_SOURCES
-        win/plugins/PaintHooks.asm
-    )
+    if (MSVC)
+        set(MASM_EXECUTABLE ml64)
+        set(MASM_FLAGS /c /Fo)
+        add_custom_command(
+            OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/PaintHooks.obj
+            MAIN_DEPENDENCY win/plugins/PaintHooks.asm
+            COMMAND ${MASM_EXECUTABLE} ${MASM_FLAGS}
+                ${DERIVED_SOURCES_WEBKIT_DIR}/PaintHooks.obj
+                ${CMAKE_CURRENT_SOURCE_DIR}/win/plugins/PaintHooks.asm
+            VERBATIM)
+        list(APPEND WebKit_SOURCES
+            ${DERIVED_SOURCES_WEBKIT_DIR}/PaintHooks.obj
+        )
+    else ()
+        list(APPEND WebKit_SOURCES
+            win/plugins/PaintHooks.asm
+        )
+    endif ()
 endif ()
 
 list(APPEND WebKit_SOURCES ${WebKit_INCLUDES} ${WebKit_SOURCES_Classes} ${WebKit_SOURCES_WebCoreSupport})
@@ -376,11 +388,11 @@ set(WEBKIT_IDL_DEPENDENCIES
     win/Interfaces/Accessible2/AccessibleText.idl
     win/Interfaces/Accessible2/AccessibleText2.idl
     win/Interfaces/Accessible2/IA2CommonTypes.idl
-    "${DERIVED_SOURCES_WEBKIT_DIR}/autoversion.h"
+    "${DERIVED_SOURCES_WEBKIT_DIR}/include/autoversion.h"
 )
 
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/autoversion.h
+    OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/include/autoversion.h
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/auto-version.pl ${DERIVED_SOURCES_WEBKIT_DIR}
     VERBATIM)
@@ -417,12 +429,14 @@ add_library(WebKitGUID STATIC
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/AccessibleText2_i.c"
 )
 set_target_properties(WebKitGUID PROPERTIES OUTPUT_NAME WebKitGUID${DEBUG_SUFFIX})
-set_target_properties(WebKitGUID PROPERTIES FOLDER "WebKit")
 
 list(APPEND WebKit_LIBRARIES
     PRIVATE Comctl32
     PRIVATE Comsupp
     PRIVATE Crypt32
+    PRIVATE D2d1
+    PRIVATE Dwrite
+    PRIVATE dxguid
     PRIVATE Iphlpapi
     PRIVATE Psapi
     PRIVATE Rpcrt4
@@ -431,6 +445,8 @@ list(APPEND WebKit_LIBRARIES
     PRIVATE Version
     PRIVATE Winmm
     PRIVATE WebKitGUID${DEBUG_SUFFIX}
+    PRIVATE WebCoreDerivedSources${DEBUG_SUFFIX}
+    PRIVATE WindowsCodecs
 )
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)
@@ -452,11 +468,7 @@ string(REPLACE " " "\;" CXX_LIBS ${CMAKE_CXX_STANDARD_LIBRARIES})
 list(APPEND WebKit_LIBRARIES ${CXX_LIBS})
 set(CMAKE_CXX_STANDARD_LIBRARIES "")
 
-if (${WTF_PLATFORM_WIN_CAIRO})
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:LIBCMTD")
-else ()
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD")
-endif ()
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD")
 
 # If this directory isn't created before midl runs and attempts to output WebKit.tlb,
 # It fails with an unusual error - midl failed - failed to save all changes
@@ -464,12 +476,12 @@ file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces)
 
 set(WebKitGUID_PRE_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/WebKit/preBuild.cmd")
-file(WRITE "${WebKitGUID_PRE_BUILD_COMMAND}" "@xcopy /y /d /f \"${CMAKE_CURRENT_SOURCE_DIR}/win/WebKitCOMAPI.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit\" >nul 2>nul\n@xcopy /y /d /f \"${CMAKE_CURRENT_SOURCE_DIR}/win/CFDictionaryPropertyBag.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit\" >nul 2>nul\n")
-file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit)
+file(WRITE "${WebKitGUID_PRE_BUILD_COMMAND}" "@xcopy /y /d /f \"${CMAKE_CURRENT_SOURCE_DIR}/win/WebKitCOMAPI.h\" \"${FORWARDING_HEADERS_DIR}/WebKit\" >nul 2>nul\n@xcopy /y /d /f \"${CMAKE_CURRENT_SOURCE_DIR}/win/CFDictionaryPropertyBag.h\" \"${FORWARDING_HEADERS_DIR}/WebKit\" >nul 2>nul\n")
+file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/WebKit)
 add_custom_command(TARGET WebKitGUID PRE_BUILD COMMAND ${WebKitGUID_PRE_BUILD_COMMAND} VERBATIM)
 
 set(WebKitGUID_POST_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/WebKit/postBuild.cmd")
-file(WRITE "${WebKitGUID_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit\" >nul 2>nul")
+file(WRITE "${WebKitGUID_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/*.h\" \"${FORWARDING_HEADERS_DIR}/WebKit\" >nul 2>nul")
 add_custom_command(TARGET WebKitGUID POST_BUILD COMMAND ${WebKitGUID_POST_BUILD_COMMAND} VERBATIM)
 
 set(WebKit_OUTPUT_NAME

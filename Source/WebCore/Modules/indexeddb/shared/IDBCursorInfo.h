@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBCursorInfo_h
-#define IDBCursorInfo_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -33,9 +32,7 @@
 
 namespace WebCore {
 
-namespace IDBClient {
 class IDBTransaction;
-}
 
 namespace IndexedDB {
 enum class CursorDirection;
@@ -52,8 +49,8 @@ enum class CursorDuplicity {
 
 class IDBCursorInfo {
 public:
-    static IDBCursorInfo objectStoreCursor(IDBClient::IDBTransaction&, uint64_t objectStoreIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection);
-    static IDBCursorInfo indexCursor(IDBClient::IDBTransaction&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
+    static IDBCursorInfo objectStoreCursor(IDBTransaction&, uint64_t objectStoreIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
+    static IDBCursorInfo indexCursor(IDBTransaction&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
 
     IDBResourceIdentifier identifier() const { return m_cursorIdentifier; }
     uint64_t sourceIdentifier() const { return m_sourceIdentifier; }
@@ -73,9 +70,13 @@ public:
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBCursorInfo&);
 
+#if !LOG_DISABLED
+    String loggingString() const;
+#endif
+
 private:
-    IDBCursorInfo(IDBClient::IDBTransaction&, uint64_t objectStoreIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
-    IDBCursorInfo(IDBClient::IDBTransaction&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
+    IDBCursorInfo(IDBTransaction&, uint64_t objectStoreIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
+    IDBCursorInfo(IDBTransaction&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData&, IndexedDB::CursorDirection, IndexedDB::CursorType);
 
     IDBCursorInfo(const IDBResourceIdentifier&, const IDBResourceIdentifier&, uint64_t, uint64_t, const IDBKeyRangeData&, IndexedDB::CursorSource, IndexedDB::CursorDirection, IndexedDB::CursorType);
 
@@ -134,4 +135,3 @@ bool IDBCursorInfo::decode(Decoder& decoder, IDBCursorInfo& info)
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBCursorInfo_h

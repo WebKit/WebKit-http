@@ -17,10 +17,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGMissingGlyphElement_h
-#define SVGMissingGlyphElement_h
+#pragma once
 
 #if ENABLE(SVG_FONTS)
+
 #include "SVGElement.h"
 #include "SVGNames.h"
 
@@ -33,10 +33,9 @@ public:
 private:
     SVGMissingGlyphElement(const QualifiedName&, Document&);
 
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(SVG_FONTS)
-#endif

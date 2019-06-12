@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LayoutRect_h
-#define LayoutRect_h
+#pragma once
 
 #include "FloatRect.h"
 #include "IntRect.h"
@@ -126,6 +125,13 @@ public:
     LayoutPoint maxXMinYCorner() const { return LayoutPoint(m_location.x() + m_size.width(), m_location.y()); } // typically topRight
     LayoutPoint minXMaxYCorner() const { return LayoutPoint(m_location.x(), m_location.y() + m_size.height()); } // typically bottomLeft
     LayoutPoint maxXMaxYCorner() const { return LayoutPoint(m_location.x() + m_size.width(), m_location.y() + m_size.height()); } // typically bottomRight
+    bool isMaxXMaxYRepresentable() const
+    {
+        FloatRect rect = *this;
+        float maxX = rect.maxX();
+        float maxY = rect.maxY();
+        return maxX > LayoutUnit::nearlyMin() && maxX < LayoutUnit::nearlyMax() && maxY > LayoutUnit::nearlyMin() && maxY < LayoutUnit::nearlyMax();
+    }
     
     bool intersects(const LayoutRect&) const;
     WEBCORE_EXPORT bool contains(const LayoutRect&) const;
@@ -139,6 +145,7 @@ public:
     void intersect(const LayoutRect&);
     WEBCORE_EXPORT void unite(const LayoutRect&);
     void uniteIfNonZero(const LayoutRect&);
+    bool checkedUnite(const LayoutRect&);
 
     void inflateX(LayoutUnit dx)
     {
@@ -239,8 +246,7 @@ inline FloatRect snapRectToDevicePixelsWithWritingDirection(const LayoutRect& re
 
 FloatRect encloseRectToDevicePixels(const LayoutRect&, float pixelSnappingFactor);
 
-TextStream& operator<<(TextStream&, const LayoutRect&);
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, const LayoutRect&);
 
 } // namespace WebCore
 
-#endif // LayoutRect_h

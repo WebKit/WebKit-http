@@ -26,6 +26,7 @@
 #include "StorageThread.h"
 
 #include <wtf/AutodrainedPool.h>
+#include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -39,7 +40,6 @@ static HashSet<StorageThread*>& activeStorageThreads()
 }
 
 StorageThread::StorageThread()
-    : m_threadID(0)
 {
     ASSERT(isMainThread());
 }
@@ -47,21 +47,19 @@ StorageThread::StorageThread()
 StorageThread::~StorageThread()
 {
     ASSERT(isMainThread());
-    ASSERT(!m_threadID);
+    ASSERT(!m_thread);
 }
 
 bool StorageThread::start()
 {
     ASSERT(isMainThread());
-    if (!m_threadID)
-        m_threadID = createThread(StorageThread::threadEntryPointCallback, this, "WebCore: LocalStorage");
+    if (!m_thread) {
+        m_thread = Thread::create("WebCore: LocalStorage", [this] {
+            threadEntryPoint();
+        });
+    }
     activeStorageThreads().add(this);
-    return m_threadID;
-}
-
-void StorageThread::threadEntryPointCallback(void* thread)
-{
-    static_cast<StorageThread*>(thread)->threadEntryPoint();
+    return m_thread;
 }
 
 void StorageThread::threadEntryPoint()
@@ -74,28 +72,28 @@ void StorageThread::threadEntryPoint()
     }
 }
 
-void StorageThread::dispatch(const std::function<void ()>& function)
+void StorageThread::dispatch(Function<void ()>&& function)
 {
     ASSERT(isMainThread());
-    ASSERT(!m_queue.killed() && m_threadID);
-    m_queue.append(std::make_unique<std::function<void ()>>(function));
+    ASSERT(!m_queue.killed() && m_thread);
+    m_queue.append(std::make_unique<Function<void ()>>(WTFMove(function)));
 }
 
 void StorageThread::terminate()
 {
     ASSERT(isMainThread());
-    ASSERT(!m_queue.killed() && m_threadID);
+    ASSERT(!m_queue.killed() && m_thread);
     activeStorageThreads().remove(this);
     // Even in weird, exceptional cases, don't wait on a nonexistent thread to terminate.
-    if (!m_threadID)
+    if (!m_thread)
         return;
 
-    m_queue.append(std::make_unique<std::function<void ()>>([this] {
+    m_queue.append(std::make_unique<Function<void ()>>([this] {
         performTerminate();
     }));
-    waitForThreadCompletion(m_threadID);
+    m_thread->waitForCompletion();
     ASSERT(m_queue.killed());
-    m_threadID = 0;
+    m_thread = nullptr;
 }
 
 void StorageThread::performTerminate()
@@ -108,8 +106,11 @@ void StorageThread::releaseFastMallocFreeMemoryInAllThreads()
 {
     HashSet<StorageThread*>& threads = activeStorageThreads();
 
-    for (HashSet<StorageThread*>::iterator it = threads.begin(), end = threads.end(); it != end; ++it)
-        (*it)->dispatch(WTF::releaseFastMallocFreeMemory);
+    for (HashSet<StorageThread*>::iterator it = threads.begin(), end = threads.end(); it != end; ++it) {
+        (*it)->dispatch([]() {
+            WTF::releaseFastMallocFreeMemory();
+        });
+    }
 }
 
 }

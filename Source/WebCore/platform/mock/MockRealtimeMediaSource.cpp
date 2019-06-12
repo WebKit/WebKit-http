@@ -32,9 +32,9 @@
 #include "MockRealtimeMediaSource.h"
 
 #if ENABLE(MEDIA_STREAM)
+#include "CaptureDevice.h"
 #include "Logging.h"
 #include "MediaConstraints.h"
-#include "MediaStreamTrackSourcesRequestClient.h"
 #include "NotImplemented.h"
 #include "RealtimeMediaSourceSettings.h"
 #include <math.h>
@@ -44,72 +44,80 @@
 
 namespace WebCore {
 
-const AtomicString& MockRealtimeMediaSource::mockAudioSourcePersistentID()
+Vector<CaptureDevice>& MockRealtimeMediaSource::audioDevices()
 {
-    static NeverDestroyed<AtomicString> id("239c24b1-2b15-11e3-8224-0800200c9a66", AtomicString::ConstructFromLiteral);
-    return id;
+    static NeverDestroyed<Vector<CaptureDevice>> info;
+    if (!info.get().size()) {
+        auto captureDevice = CaptureDevice("239c24b0-2b15-11e3-8224-0800200c9a66", CaptureDevice::DeviceType::Audio, "Mock audio device 1");
+        captureDevice.setEnabled(true);
+        info.get().append(captureDevice);
+
+        captureDevice = CaptureDevice("239c24b1-2b15-11e3-8224-0800200c9a66", CaptureDevice::DeviceType::Audio, "Mock audio device 2");
+        captureDevice.setEnabled(true);
+        info.get().append(captureDevice);
+    }
+    return info;
 }
 
-const AtomicString& MockRealtimeMediaSource::mockVideoSourcePersistentID()
+Vector<CaptureDevice>& MockRealtimeMediaSource::videoDevices()
 {
-    static NeverDestroyed<AtomicString> id("239c24b0-2b15-11e3-8224-0800200c9a66", AtomicString::ConstructFromLiteral);
-    return id;
-}
+    static NeverDestroyed<Vector<CaptureDevice>> info;
+    if (!info.get().size()) {
+        auto captureDevice = CaptureDevice("239c24b2-2b15-11e3-8224-0800200c9a66", CaptureDevice::DeviceType::Video, "Mock video device 1");
+        captureDevice.setEnabled(true);
+        info.get().append(captureDevice);
 
-const AtomicString& MockRealtimeMediaSource::mockAudioSourceName()
-{
-    static NeverDestroyed<AtomicString> name("Mock audio device", AtomicString::ConstructFromLiteral);
-    return name;
-}
-
-const AtomicString& MockRealtimeMediaSource::mockVideoSourceName()
-{
-    static NeverDestroyed<AtomicString> name("Mock video device", AtomicString::ConstructFromLiteral);
-    return name;
-}
-
-RefPtr<TrackSourceInfo> MockRealtimeMediaSource::trackSourceWithUID(const String& id, MediaConstraints*)
-{
-    // FIXME: validate constraints.
-
-    if (mockAudioSourcePersistentID() == id)
-        return TrackSourceInfo::create(mockAudioSourcePersistentID(), id, TrackSourceInfo::Audio, "Mock audio device");
-
-    if (mockVideoSourcePersistentID() == id)
-        return TrackSourceInfo::create(mockVideoSourcePersistentID(), id, TrackSourceInfo::Video, "Mock video device");
-    
-    return nullptr;
+        captureDevice = CaptureDevice("239c24b3-2b15-11e3-8224-0800200c9a66", CaptureDevice::DeviceType::Video, "Mock video device 2");
+        captureDevice.setEnabled(true);
+        info.get().append(captureDevice);
+    }
+    return info;
 }
 
 MockRealtimeMediaSource::MockRealtimeMediaSource(const String& id, RealtimeMediaSource::Type type, const String& name)
-    : RealtimeMediaSource(id, type, name)
+    : BaseRealtimeMediaSourceClass(id, type, name)
 {
-    if (type == RealtimeMediaSource::Audio)
-        setPersistentID(mockAudioSourcePersistentID());
-    else
-        setPersistentID(mockVideoSourcePersistentID());
+    switch (type) {
+    case RealtimeMediaSource::Type::Audio:
+        m_deviceIndex = name == audioDevices()[0].label() ? 0 : 1;
+        setPersistentID(String(audioDevices()[m_deviceIndex].persistentId()));
+        return;
+    case RealtimeMediaSource::Type::Video:
+        m_deviceIndex = name == videoDevices()[0].label() ? 0 : 1;
+        setPersistentID(String(videoDevices()[m_deviceIndex].persistentId()));
+        return;
+    case RealtimeMediaSource::Type::None:
+        ASSERT_NOT_REACHED();
+    }
 }
 
-RefPtr<RealtimeMediaSourceCapabilities> MockRealtimeMediaSource::capabilities()
+void MockRealtimeMediaSource::initializeCapabilities()
 {
-    if (m_capabilities)
-        return m_capabilities;
-
-    m_capabilities = RealtimeMediaSourceCapabilities::create(supportedConstraints());
+    m_capabilities = std::make_unique<RealtimeMediaSourceCapabilities>(supportedConstraints());
     m_capabilities->setDeviceId(id());
     initializeCapabilities(*m_capabilities.get());
-
-    return m_capabilities;
 }
 
-const RealtimeMediaSourceSettings& MockRealtimeMediaSource::settings()
+const RealtimeMediaSourceCapabilities& MockRealtimeMediaSource::capabilities() const
+{
+    if (!m_capabilities)
+        const_cast<MockRealtimeMediaSource&>(*this).initializeCapabilities();
+    return *m_capabilities;
+}
+
+void MockRealtimeMediaSource::initializeSettings()
 {
     if (m_currentSettings.deviceId().isEmpty()) {
-        m_currentSettings.setSupportedConstraits(supportedConstraints());
+        m_currentSettings.setSupportedConstraints(supportedConstraints());
         m_currentSettings.setDeviceId(id());
     }
 
     updateSettings(m_currentSettings);
+}
+
+const RealtimeMediaSourceSettings& MockRealtimeMediaSource::settings() const
+{
+    const_cast<MockRealtimeMediaSource&>(*this).initializeSettings();
     return m_currentSettings;
 }
 
@@ -123,7 +131,6 @@ RealtimeMediaSourceSupportedConstraints& MockRealtimeMediaSource::supportedConst
 
     return m_supportedConstraints;
 }
-
 
 } // namespace WebCore
 

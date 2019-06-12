@@ -18,10 +18,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFEMergeElement_h
-#define SVGFEMergeElement_h
+#pragma once
 
-#include "FEMerge.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
 namespace WebCore {
@@ -33,9 +31,7 @@ public:
 private:
     SVGFEMergeElement(const QualifiedName&, Document&);
 
-    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 };
 
 } // namespace WebCore
-
-#endif

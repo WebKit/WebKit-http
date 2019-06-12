@@ -23,11 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLTexture_h
-#define WebGLTexture_h
+#pragma once
 
 #include "WebGLSharedObject.h"
-
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -43,7 +41,7 @@ public:
 
     virtual ~WebGLTexture();
 
-    static Ref<WebGLTexture> create(WebGLRenderingContextBase*);
+    static Ref<WebGLTexture> create(WebGLRenderingContextBase&);
 
     void setTarget(GC3Denum target, GC3Dint maxLevel);
     void setParameteri(GC3Denum pname, GC3Dint param);
@@ -80,10 +78,13 @@ public:
 
     static GC3Dint computeLevelCount(GC3Dsizei width, GC3Dsizei height);
 
-private:
-    WebGLTexture(WebGLRenderingContextBase*);
+    bool immutable() const { return m_immutable; }
+    void setImmutable() { m_immutable = true; }
 
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
+private:
+    WebGLTexture(WebGLRenderingContextBase&);
+
+    void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 
     class LevelInfo {
     public:
@@ -112,7 +113,7 @@ private:
         GC3Denum type;
     };
 
-    virtual bool isTexture() const override { return true; }
+    bool isTexture() const override { return true; }
 
     void update();
 
@@ -135,8 +136,8 @@ private:
     bool m_isCompressed;
     bool m_isFloatType;
     bool m_isHalfFloatType;
+    bool m_isForWebGL1;
+    bool m_immutable { false };
 };
 
 } // namespace WebCore
-
-#endif // WebGLTexture_h

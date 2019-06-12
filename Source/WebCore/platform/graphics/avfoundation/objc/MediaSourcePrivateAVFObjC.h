@@ -30,12 +30,12 @@
 
 #include "MediaSourcePrivate.h"
 #include <wtf/Deque.h>
-#include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 
 OBJC_CLASS AVAsset;
+OBJC_CLASS AVSampleBufferDisplayLayer;
 OBJC_CLASS AVStreamDataParser;
 OBJC_CLASS NSError;
 OBJC_CLASS NSObject;
@@ -48,6 +48,7 @@ class MediaPlayerPrivateMediaSourceAVFObjC;
 class MediaSourcePrivateClient;
 class SourceBufferPrivateAVFObjC;
 class TimeRanges;
+class WebCoreDecompressionSession;
 
 class MediaSourcePrivateAVFObjC final : public MediaSourcePrivate {
 public:
@@ -58,35 +59,43 @@ public:
     const Vector<RefPtr<SourceBufferPrivateAVFObjC>>& sourceBuffers() const { return m_sourceBuffers; }
     const Vector<SourceBufferPrivateAVFObjC*>& activeSourceBuffers() const { return m_activeSourceBuffers; }
 
-    virtual AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&) override;
-    virtual void durationChanged() override;
-    virtual void markEndOfStream(EndOfStreamStatus) override;
-    virtual void unmarkEndOfStream() override;
-    virtual MediaPlayer::ReadyState readyState() const override;
-    virtual void setReadyState(MediaPlayer::ReadyState) override;
-    virtual void waitForSeekCompleted() override;
-    virtual void seekCompleted() override;
+    AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&) override;
+    void durationChanged() override;
+    void markEndOfStream(EndOfStreamStatus) override;
+    void unmarkEndOfStream() override;
+    MediaPlayer::ReadyState readyState() const override;
+    void setReadyState(MediaPlayer::ReadyState) override;
+    void waitForSeekCompleted() override;
+    void seekCompleted() override;
 
     MediaTime duration();
     std::unique_ptr<PlatformTimeRanges> buffered();
 
     bool hasAudio() const;
     bool hasVideo() const;
+    bool hasSelectedVideo() const;
 
+    void willSeek();
     void seekToTime(const MediaTime&);
     MediaTime fastSeekTimeForMediaTime(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold);
     FloatSize naturalSize() const;
+
+    void hasSelectedVideoChanged(SourceBufferPrivateAVFObjC&);
+    void setVideoLayer(AVSampleBufferDisplayLayer*);
+    void setDecompressionSession(WebCoreDecompressionSession*);
 
 private:
     MediaSourcePrivateAVFObjC(MediaPlayerPrivateMediaSourceAVFObjC*, MediaSourcePrivateClient*);
 
     void sourceBufferPrivateDidChangeActiveState(SourceBufferPrivateAVFObjC*, bool active);
     void sourceBufferPrivateDidReceiveInitializationSegment(SourceBufferPrivateAVFObjC*);
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void sourceBufferKeyNeeded(SourceBufferPrivateAVFObjC*, Uint8Array*);
 #endif
     void monitorSourceBuffers();
     void removeSourceBuffer(SourceBufferPrivate*);
+
+    void setSourceBufferWithSelectedVideo(SourceBufferPrivateAVFObjC*);
 
     friend class SourceBufferPrivateAVFObjC;
 
@@ -95,6 +104,7 @@ private:
     Vector<RefPtr<SourceBufferPrivateAVFObjC>> m_sourceBuffers;
     Vector<SourceBufferPrivateAVFObjC*> m_activeSourceBuffers;
     Deque<SourceBufferPrivateAVFObjC*> m_sourceBuffersNeedingSessions;
+    SourceBufferPrivateAVFObjC* m_sourceBufferWithSelectedVideo { nullptr };
     bool m_isEnded;
 };
 

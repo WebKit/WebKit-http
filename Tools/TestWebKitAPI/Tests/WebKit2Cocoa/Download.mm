@@ -42,6 +42,7 @@
 #import <wtf/text/WTFString.h>
 
 static bool isDone;
+static bool hasReceivedResponse;
 static NSURL *sourceURL = [[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"];
 
 @interface DownloadDelegate : NSObject <_WKDownloadDelegate>
@@ -64,6 +65,7 @@ static NSURL *sourceURL = [[NSBundle mainBundle] URLForResource:@"simple" withEx
 
 - (void)_download:(_WKDownload *)download didReceiveResponse:(NSURLResponse *)response
 {
+    hasReceivedResponse = true;
     EXPECT_EQ(_download, download);
     EXPECT_TRUE(_expectedContentLength == 0);
     EXPECT_TRUE(_receivedContentLength == 0);
@@ -79,6 +81,7 @@ static NSURL *sourceURL = [[NSBundle mainBundle] URLForResource:@"simple" withEx
 
 - (NSString *)_download:(_WKDownload *)download decideDestinationWithSuggestedFilename:(NSString *)filename allowOverwrite:(BOOL *)allowOverwrite
 {
+    EXPECT_TRUE(hasReceivedResponse);
     EXPECT_EQ(_download, download);
 
     WebCore::PlatformFileHandle fileHandle;
@@ -122,6 +125,7 @@ static void runTest(id <WKNavigationDelegate> navigationDelegate, id <_WKDownloa
     [[[webView configuration] processPool] _setDownloadDelegate:downloadDelegate];
 
     isDone = false;
+    hasReceivedResponse = false;
     [webView loadRequest:[NSURLRequest requestWithURL:url]];
     TestWebKitAPI::Util::run(&isDone);
 }
@@ -253,7 +257,7 @@ TEST(_WKDownload, OriginatingWebView)
 {
     RetainPtr<DownloadNavigationDelegate> navigationDelegate = adoptNS([[DownloadNavigationDelegate alloc] init]);                 
     RetainPtr<OriginatingWebViewDownloadDelegate> downloadDelegate;
-    {
+    @autoreleasepool {
         RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
         [webView setNavigationDelegate:navigationDelegate.get()];
         downloadDelegate = adoptNS([[OriginatingWebViewDownloadDelegate alloc] initWithWebView:webView.get()]);
@@ -263,6 +267,159 @@ TEST(_WKDownload, OriginatingWebView)
 
     isDone = false;
     TestWebKitAPI::Util::run(&isDone);
+}
+
+@interface DownloadRequestOriginalURLDelegate : NSObject <_WKDownloadDelegate>
+- (instancetype)initWithExpectedOriginalURL:(NSURL *)expectOriginalURL;
+@end
+
+@implementation DownloadRequestOriginalURLDelegate {
+    NSURL *_expectedOriginalURL;
+}
+
+- (instancetype)initWithExpectedOriginalURL:(NSURL *)expectedOriginalURL
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _expectedOriginalURL = expectedOriginalURL;
+    return self;
+}
+
+- (void)_downloadDidStart:(_WKDownload *)download
+{
+    if ([_expectedOriginalURL isEqual:sourceURL])
+        EXPECT_TRUE(!download.request.mainDocumentURL);
+    else
+        EXPECT_TRUE([_expectedOriginalURL isEqual:download.request.mainDocumentURL]);
+    isDone = true;
+}
+
+@end
+
+@interface DownloadRequestOriginalURLNavigationDelegate : NSObject <WKNavigationDelegate>
+@end
+
+@implementation DownloadRequestOriginalURLNavigationDelegate
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
+{
+    if ([navigationAction.request.URL isEqual:sourceURL])
+        decisionHandler(_WKNavigationActionPolicyDownload);
+    else
+        decisionHandler(WKNavigationActionPolicyAllow);
+}
+@end
+
+TEST(_WKDownload, DownloadRequestOriginalURL)
+{
+    NSURL *originalURL = [[NSBundle mainBundle] URLForResource:@"DownloadRequestOriginalURL" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"];
+    runTest(adoptNS([[DownloadRequestOriginalURLNavigationDelegate alloc] init]).get(), adoptNS([[DownloadRequestOriginalURLDelegate alloc] initWithExpectedOriginalURL:originalURL]).get(), originalURL);
+}
+
+TEST(_WKDownload, DownloadRequestOriginalURLFrame)
+{
+    NSURL *originalURL = [[NSBundle mainBundle] URLForResource:@"DownloadRequestOriginalURL2" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"];
+    runTest(adoptNS([[DownloadRequestOriginalURLNavigationDelegate alloc] init]).get(), adoptNS([[DownloadRequestOriginalURLDelegate alloc] initWithExpectedOriginalURL:originalURL]).get(), originalURL);
+}
+
+TEST(_WKDownload, DownloadRequestOriginalURLDirectDownload)
+{
+    runTest(adoptNS([[DownloadRequestOriginalURLNavigationDelegate alloc] init]).get(), adoptNS([[DownloadRequestOriginalURLDelegate alloc] initWithExpectedOriginalURL:sourceURL]).get(), sourceURL);
+}
+
+TEST(_WKDownload, DownloadRequestOriginalURLDirectDownloadWithLoadedContent)
+{
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [webView setNavigationDelegate:[[DownloadRequestOriginalURLNavigationDelegate alloc] init]];
+    [[[webView configuration] processPool] _setDownloadDelegate:[[DownloadRequestOriginalURLDelegate alloc] initWithExpectedOriginalURL:sourceURL]];
+
+    NSURL *contentURL = [[NSBundle mainBundle] URLForResource:@"simple2" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"];
+    // Here is to test if the original URL can be set correctly when the current document
+    // is completely unrelated to the download.
+    [webView loadRequest:[NSURLRequest requestWithURL:contentURL]];
+    [webView loadRequest:[NSURLRequest requestWithURL:sourceURL]];
+    isDone = false;
+    TestWebKitAPI::Util::run(&isDone);
+}
+
+@interface BlobDownloadDelegate : NSObject <_WKDownloadDelegate>
+@end
+
+@implementation BlobDownloadDelegate {
+    RetainPtr<_WKDownload> _download;
+    String _destinationPath;
+    long long _expectedContentLength;
+    uint64_t _receivedContentLength;
+}
+
+- (void)_downloadDidStart:(_WKDownload *)download
+{
+    EXPECT_NULL(_download);
+    EXPECT_NOT_NULL(download);
+    EXPECT_TRUE([[[[download request] URL] scheme] isEqualToString:@"blob"]);
+    _download = download;
+}
+
+- (void)_download:(_WKDownload *)download didReceiveResponse:(NSURLResponse *)response
+{
+    hasReceivedResponse = true;
+    EXPECT_EQ(_download, download);
+    EXPECT_EQ(_expectedContentLength, 0U);
+    EXPECT_EQ(_receivedContentLength, 0U);
+    EXPECT_TRUE([[[response URL] scheme] isEqualToString:@"blob"]);
+    _expectedContentLength = [response expectedContentLength];
+}
+
+- (void)_download:(_WKDownload *)download didReceiveData:(uint64_t)length
+{
+    EXPECT_EQ(_download, download);
+    _receivedContentLength += length;
+}
+
+- (NSString *)_download:(_WKDownload *)download decideDestinationWithSuggestedFilename:(NSString *)filename allowOverwrite:(BOOL *)allowOverwrite
+{
+    EXPECT_TRUE(hasReceivedResponse);
+    EXPECT_EQ(_download, download);
+
+    WebCore::PlatformFileHandle fileHandle;
+    _destinationPath = WebCore::openTemporaryFile("TestWebKitAPI", fileHandle);
+    EXPECT_TRUE(fileHandle != WebCore::invalidPlatformFileHandle);
+    WebCore::closeFile(fileHandle);
+
+    *allowOverwrite = YES;
+    return _destinationPath;
+}
+
+- (void)_downloadDidFinish:(_WKDownload *)download
+{
+    EXPECT_EQ(_download, download);
+    EXPECT_TRUE(_expectedContentLength == NSURLResponseUnknownLength || static_cast<uint64_t>(_expectedContentLength) == _receivedContentLength);
+    NSString* expectedContent = @"{\"x\":42,\"s\":\"hello, world\"}";
+    NSData* expectedData = [expectedContent dataUsingEncoding:NSUTF8StringEncoding];
+    EXPECT_TRUE([[[NSFileManager defaultManager] contentsAtPath:_destinationPath] isEqualToData:expectedData]);
+    WebCore::deleteFile(_destinationPath);
+    isDone = true;
+}
+
+@end
+
+@interface DownloadBlobURLNavigationDelegate : NSObject <WKNavigationDelegate>
+@end
+
+@implementation DownloadBlobURLNavigationDelegate
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
+{
+    if ([navigationAction.request.URL.scheme isEqualToString:@"blob"])
+        decisionHandler(_WKNavigationActionPolicyDownload);
+    else
+        decisionHandler(WKNavigationActionPolicyAllow);
+}
+@end
+
+TEST(_WKDownload, DownloadRequestBlobURL)
+{
+    NSURL *originalURL = [[NSBundle mainBundle] URLForResource:@"DownloadRequestBlobURL" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"];
+    runTest(adoptNS([[DownloadBlobURLNavigationDelegate alloc] init]).get(), adoptNS([[BlobDownloadDelegate alloc] init]).get(), originalURL);
 }
 
 #endif

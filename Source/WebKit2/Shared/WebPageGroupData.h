@@ -26,35 +26,25 @@
 #ifndef WebPageGroupData_h
 #define WebPageGroupData_h
 
-#include "WebCompiledContentExtensionData.h"
-#include <WebCore/UserScript.h>
-#include <WebCore/UserStyleSheet.h>
-#include <wtf/HashMap.h>
-#include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 struct WebPageGroupData {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebPageGroupData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebPageGroupData&);
 
     String identifier;
     uint64_t pageGroupID;
     bool visibleToInjectedBundle;
     bool visibleToHistoryClient;
 
-    Vector<WebCore::UserStyleSheet> userStyleSheets;
-    Vector<WebCore::UserScript> userScripts;
-
-#if ENABLE(CONTENT_EXTENSIONS)
-    HashMap<String, WebCompiledContentExtensionData> userContentExtensions;
-#endif
+    uint64_t userContentControllerIdentifier;
 };
 
 } // namespace WebKit

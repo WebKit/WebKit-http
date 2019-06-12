@@ -23,30 +23,32 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PerformanceMeasure_h
-#define PerformanceMeasure_h
+#pragma once
 
-#if ENABLE(USER_TIMING)
+#if ENABLE(WEB_TIMING)
 
 #include "PerformanceEntry.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class PerformanceMeasure : public PerformanceEntry {
+class PerformanceMeasure final : public PerformanceEntry {
 public:
     static Ref<PerformanceMeasure> create(const String& name, double startTime, double duration) { return adoptRef(*new PerformanceMeasure(name, startTime, duration)); }
 
-    virtual bool isMeasure() { return true; }
-
 private:
-    PerformanceMeasure(const String& name, double startTime, double duration) : PerformanceEntry(name, "measure", startTime, duration) { }
+    PerformanceMeasure(const String& name, double startTime, double duration)
+        : PerformanceEntry(PerformanceEntry::Type::Measure, name, ASCIILiteral("measure"), startTime, duration)
+    {
+    }
+
     ~PerformanceMeasure() { }
 };
 
-}
+} // namespace WebCore
 
-#endif // ENABLE(USER_TIMING)
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::PerformanceMeasure)
+    static bool isType(const WebCore::PerformanceEntry& entry) { return entry.isMeasure(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
-#endif // !defined(PerformanceMeasure_h)
+#endif // ENABLE(WEB_TIMING)

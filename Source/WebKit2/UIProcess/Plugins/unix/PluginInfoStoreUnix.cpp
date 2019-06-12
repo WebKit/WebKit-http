@@ -33,7 +33,11 @@
 
 #include "NetscapePluginModule.h"
 #include "PluginSearchPath.h"
+#include "ProcessExecutablePath.h"
 #include <WebCore/FileSystem.h>
+#include <WebCore/PlatformDisplay.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #if PLATFORM(GTK)
 #include "PluginInfoCache.h"
@@ -51,11 +55,11 @@ Vector<String> PluginInfoStore::pluginsDirectories()
 Vector<String> PluginInfoStore::pluginPathsInDirectory(const String& directory)
 {
     Vector<String> result;
-    Vector<String> pluginPaths = listDirectory(directory, String("*.so"));
-    Vector<String>::const_iterator end = pluginPaths.end();
-    for (Vector<String>::const_iterator it = pluginPaths.begin(); it != end; ++it) {
-        if (fileExists(*it))
-            result.append(*it);
+    char normalizedPath[PATH_MAX];
+    for (const auto& path : listDirectory(directory, String("*.so"))) {
+        CString filename = fileSystemRepresentation(path);
+        if (realpath(filename.data(), normalizedPath))
+            result.append(stringFromFileSystemRepresentation(normalizedPath));
     }
 
     return result;
@@ -69,8 +73,19 @@ Vector<String> PluginInfoStore::individualPluginPaths()
 bool PluginInfoStore::getPluginInfo(const String& pluginPath, PluginModuleInfo& plugin)
 {
 #if PLATFORM(GTK)
-    if (PluginInfoCache::singleton().getPluginInfo(pluginPath, plugin))
+    if (PluginInfoCache::singleton().getPluginInfo(pluginPath, plugin)) {
+#if ENABLE(PLUGIN_PROCESS_GTK2)
+        if (plugin.requiresGtk2) {
+            if (PlatformDisplay::sharedDisplay().type() != PlatformDisplay::Type::X11)
+                return false;
+            String pluginProcessPath = executablePathOfPluginProcess();
+            pluginProcessPath.append('2');
+            if (!fileExists(pluginProcessPath))
+                return false;
+        }
+#endif
         return true;
+    }
 
     if (NetscapePluginModule::getPluginInfo(pluginPath, plugin)) {
         PluginInfoCache::singleton().updatePluginInfo(pluginPath, plugin);

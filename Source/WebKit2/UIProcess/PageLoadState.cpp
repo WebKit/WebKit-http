@@ -124,6 +124,8 @@ void PageLoadState::commitChanges()
 
     m_committedState = m_uncommittedState;
 
+    m_webPageProxy.isLoadingChanged();
+
     // The "did" ordering is the reverse of the "will". This is a requirement of Cocoa Key-Value Observing.
     if (certificateInfoChanged)
         callObserverCallback(&Observer::didChangeCertificateInfo);
@@ -202,6 +204,9 @@ bool PageLoadState::hasOnlySecureContent(const Data& data)
 {
     if (data.hasInsecureContent)
         return false;
+
+    if (data.state == State::Provisional)
+        return WebCore::protocolIs(data.provisionalURL, "https");
 
     return WebCore::protocolIs(data.url, "https");
 }

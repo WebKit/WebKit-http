@@ -33,6 +33,7 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageOverlayController.h>
+#include <WebCore/Settings.h>
 #include <wtf/CurrentTime.h>
 
 #if PLATFORM(IOS)
@@ -51,7 +52,7 @@ public:
     }
     virtual ~RepaintIndicatorLayerClient() { }
 private:
-    virtual void notifyAnimationEnded(const GraphicsLayer* layer, const String&) override
+    void notifyAnimationEnded(const GraphicsLayer* layer, const String&) override
     {
         m_inspectorClient.animationEndedForLayer(layer);
     }
@@ -73,7 +74,7 @@ WebInspectorClient::~WebInspectorClient()
     }
 
     if (m_paintRectOverlay && m_page->mainFrame())
-        m_page->mainFrame()->pageOverlayController().uninstallPageOverlay(m_paintRectOverlay.get(), PageOverlay::FadeMode::Fade);
+        m_page->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_paintRectOverlay, PageOverlay::FadeMode::Fade);
 }
 
 void WebInspectorClient::inspectedPageDestroyed()
@@ -105,11 +106,14 @@ void WebInspectorClient::didResizeMainFrame(Frame*)
 
 void WebInspectorClient::highlight()
 {
+    if (!m_page->corePage()->settings().acceleratedCompositingEnabled())
+        return;
+
 #if !PLATFORM(IOS)
     if (!m_highlightOverlay) {
-        RefPtr<PageOverlay> highlightOverlay = PageOverlay::create(*this);
-        m_highlightOverlay = highlightOverlay.get();
-        m_page->mainFrame()->pageOverlayController().installPageOverlay(highlightOverlay.release(), PageOverlay::FadeMode::Fade);
+        auto highlightOverlay = PageOverlay::create(*this);
+        m_highlightOverlay = highlightOverlay.ptr();
+        m_page->mainFrame()->pageOverlayController().installPageOverlay(WTFMove(highlightOverlay), PageOverlay::FadeMode::Fade);
         m_highlightOverlay->setNeedsDisplay();
     } else {
         m_highlightOverlay->stopFadeOutAnimation();
@@ -126,7 +130,7 @@ void WebInspectorClient::hideHighlight()
 {
 #if !PLATFORM(IOS)
     if (m_highlightOverlay && m_page->mainFrame())
-        m_page->mainFrame()->pageOverlayController().uninstallPageOverlay(m_highlightOverlay, PageOverlay::FadeMode::Fade);
+        m_page->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_highlightOverlay, PageOverlay::FadeMode::Fade);
 #else
     m_page->hideInspectorHighlight();
 #endif
@@ -134,9 +138,12 @@ void WebInspectorClient::hideHighlight()
 
 void WebInspectorClient::showPaintRect(const FloatRect& rect)
 {
+    if (!m_page->corePage()->settings().acceleratedCompositingEnabled())
+        return;
+
     if (!m_paintRectOverlay) {
         m_paintRectOverlay = PageOverlay::create(*this, PageOverlay::OverlayType::Document);
-        m_page->mainFrame()->pageOverlayController().installPageOverlay(m_paintRectOverlay, PageOverlay::FadeMode::DoNotFade);
+        m_page->mainFrame()->pageOverlayController().installPageOverlay(*m_paintRectOverlay, PageOverlay::FadeMode::DoNotFade);
     }
 
     if (!m_paintIndicatorLayerClient)
@@ -144,6 +151,7 @@ void WebInspectorClient::showPaintRect(const FloatRect& rect)
 
     std::unique_ptr<GraphicsLayer> paintLayer = GraphicsLayer::create(m_page->drawingArea()->graphicsLayerFactory(), *m_paintIndicatorLayerClient);
     
+    paintLayer->setName("paint rect");
     paintLayer->setAnchorPoint(FloatPoint3D());
     paintLayer->setPosition(rect.location());
     paintLayer->setSize(rect.size());
@@ -192,8 +200,10 @@ void WebInspectorClient::didSetSearchingForNode(bool enabled)
 }
 #endif
 
-void WebInspectorClient::pageOverlayDestroyed(PageOverlay&)
+void WebInspectorClient::elementSelectionChanged(bool active)
 {
+    if (m_page->inspector())
+        m_page->inspector()->elementSelectionChanged(active);
 }
 
 void WebInspectorClient::willMoveToPage(PageOverlay&, Page* page)

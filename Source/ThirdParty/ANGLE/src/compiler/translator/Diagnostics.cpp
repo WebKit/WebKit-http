@@ -7,13 +7,15 @@
 #include "compiler/translator/Diagnostics.h"
 
 #include "common/debug.h"
-#include "compiler/translator/InfoSink.h"
 #include "compiler/preprocessor/SourceLocation.h"
+#include "compiler/translator/Common.h"
+#include "compiler/translator/InfoSink.h"
 
-TDiagnostics::TDiagnostics(TInfoSink& infoSink) :
-    mInfoSink(infoSink),
-    mNumErrors(0),
-    mNumWarnings(0)
+namespace sh
+{
+
+TDiagnostics::TDiagnostics(TInfoSinkBase &infoSink)
+    : mInfoSink(infoSink), mNumErrors(0), mNumWarnings(0)
 {
 }
 
@@ -22,37 +24,71 @@ TDiagnostics::~TDiagnostics()
 }
 
 void TDiagnostics::writeInfo(Severity severity,
-                             const pp::SourceLocation& loc,
-                             const std::string& reason,
-                             const std::string& token,
-                             const std::string& extra)
+                             const pp::SourceLocation &loc,
+                             const char *reason,
+                             const char *token)
 {
-    TPrefixType prefix = EPrefixNone;
     switch (severity)
     {
-      case PP_ERROR:
-        ++mNumErrors;
-        prefix = EPrefixError;
-        break;
-      case PP_WARNING:
-        ++mNumWarnings;
-        prefix = EPrefixWarning;
-        break;
-      default:
-        UNREACHABLE();
-        break;
+        case SH_ERROR:
+            ++mNumErrors;
+            break;
+        case SH_WARNING:
+            ++mNumWarnings;
+            break;
+        default:
+            UNREACHABLE();
+            break;
     }
 
-    TInfoSinkBase& sink = mInfoSink.info;
     /* VC++ format: file(linenum) : error #: 'token' : extrainfo */
-    sink.prefix(prefix);
-    sink.location(loc.file, loc.line);
-    sink << "'" << token <<  "' : " << reason << " " << extra << "\n";
+    mInfoSink.prefix(severity);
+    mInfoSink.location(loc.file, loc.line);
+    mInfoSink << "'" << token << "' : " << reason << "\n";
 }
 
-void TDiagnostics::print(ID id,
-                         const pp::SourceLocation& loc,
-                         const std::string& text)
+void TDiagnostics::globalError(const char *message)
 {
-    writeInfo(severity(id), loc, message(id), text, "");
+    ++mNumErrors;
+    mInfoSink.prefix(SH_ERROR);
+    mInfoSink << message << "\n";
 }
+
+void TDiagnostics::error(const pp::SourceLocation &loc, const char *reason, const char *token)
+{
+    writeInfo(SH_ERROR, loc, reason, token);
+}
+
+void TDiagnostics::warning(const pp::SourceLocation &loc, const char *reason, const char *token)
+{
+    writeInfo(SH_WARNING, loc, reason, token);
+}
+
+void TDiagnostics::error(const TSourceLoc &loc, const char *reason, const char *token)
+{
+    pp::SourceLocation srcLoc;
+    srcLoc.file = loc.first_file;
+    srcLoc.line = loc.first_line;
+    error(srcLoc, reason, token);
+}
+
+void TDiagnostics::warning(const TSourceLoc &loc, const char *reason, const char *token)
+{
+    pp::SourceLocation srcLoc;
+    srcLoc.file = loc.first_file;
+    srcLoc.line = loc.first_line;
+    warning(srcLoc, reason, token);
+}
+
+void TDiagnostics::print(ID id, const pp::SourceLocation &loc, const std::string &text)
+{
+    writeInfo(isError(id) ? SH_ERROR : SH_WARNING, loc, message(id), text.c_str());
+}
+
+void TDiagnostics::resetErrorCount()
+{
+    mNumErrors   = 0;
+    mNumWarnings = 0;
+}
+
+}  // namespace sh

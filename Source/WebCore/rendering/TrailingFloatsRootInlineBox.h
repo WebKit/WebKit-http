@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TrailingFloatsRootInlineBox_h
-#define TrailingFloatsRootInlineBox_h
+#pragma once
 
 #include "RootInlineBox.h"
 
@@ -39,9 +38,8 @@ public:
     }
 
 private:
-    virtual float virtualLogicalHeight() const override { return 0; }
+    float virtualLogicalHeight() const override { return 0; }
+    bool isTrailingFloatsRootInlineBox() const final { return true; }
 };
 
 } // namespace WebCore
-
-#endif // TrailingFloatsRootInlineBox_h

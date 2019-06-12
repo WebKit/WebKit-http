@@ -22,19 +22,29 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
-#ifndef NSSpellCheckerSPI_h
-#define NSSpellCheckerSPI_h
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#if PLATFORM(MAC)
 
-// FIXME: This header should include system headers when possible.
+#if USE(APPLE_INTERNAL_SDK)
+
+#import <AppKit/NSTextChecker.h>
+
+#else
+
+#if HAVE(ADVANCED_SPELL_CHECKING)
+extern NSString *NSTextCheckingInsertionPointKey;
+#endif
 
 @interface NSSpellChecker ()
-- (NSInteger)requestCandidatesForSelectedRange:(NSRange)selectedRange inString:(NSString *)stringToCheck types:(NSTextCheckingTypes)checkingTypes options:(NSDictionary<NSString *, id> *)options inSpellDocumentWithTag:(NSInteger)tag completionHandler:(void (^)(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates))completionHandler;
+
+#if HAVE(ADVANCED_SPELL_CHECKING)
 - (BOOL)deletesAutospaceBeforeString:(NSString *)string language:(NSString *)language;
-+ (BOOL)isAutomaticTextCompletionEnabled;
+#endif
+
+- (void)_preflightChosenSpellServer;
+
 @end
 
-#endif // PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 102000
+#endif
 
-#endif // NSSpellCheckerSPI_h
+#endif // PLATFORM(MAC)

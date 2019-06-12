@@ -36,7 +36,7 @@
 
 namespace WebCore {
 
-RenderSVGForeignObject::RenderSVGForeignObject(SVGForeignObjectElement& element, Ref<RenderStyle>&& style)
+RenderSVGForeignObject::RenderSVGForeignObject(SVGForeignObjectElement& element, RenderStyle&& style)
     : RenderSVGBlock(element, WTFMove(style))
     , m_needsTransformUpdate(true)
 {
@@ -103,9 +103,9 @@ FloatRect RenderSVGForeignObject::computeFloatRectForRepaint(const FloatRect& re
     return SVGRenderSupport::computeFloatRectForRepaint(*this, repaintRect, repaintContainer, fixed);
 }
 
-LayoutRect RenderSVGForeignObject::computeRectForRepaint(const LayoutRect& repaintRect, const RenderLayerModelObject* repaintContainer, bool fixed) const
+LayoutRect RenderSVGForeignObject::computeRectForRepaint(const LayoutRect& repaintRect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
 {
-    return enclosingLayoutRect(computeFloatRectForRepaint(repaintRect, repaintContainer, fixed));
+    return enclosingLayoutRect(computeFloatRectForRepaint(repaintRect, repaintContainer, context.m_hasPositionFixedDescendant));
 }
 
 const AffineTransform& RenderSVGForeignObject::localToParentTransform() const
@@ -122,13 +122,12 @@ void RenderSVGForeignObject::updateLogicalWidth()
     setWidth(static_cast<int>(roundf(m_viewport.width())));
 }
 
-void RenderSVGForeignObject::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderSVGForeignObject::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop) const
 {
     // FIXME: Investigate in size rounding issues
     // FIXME: Remove unnecessary rounding when layout is off ints: webkit.org/b/63656
     // FIXME: Is this correct for vertical writing mode?
-    computedValues.m_extent = static_cast<int>(roundf(m_viewport.height()));
-    computedValues.m_position = logicalTop;
+    return { static_cast<int>(roundf(m_viewport.height())), logicalTop, ComputedMarginValues() };
 }
 
 void RenderSVGForeignObject::layout()
@@ -183,7 +182,7 @@ bool RenderSVGForeignObject::nodeAtFloatPoint(const HitTestRequest& request, Hit
     if (hitTestAction != HitTestForeground)
         return false;
 
-    FloatPoint localPoint = localTransform().inverse().valueOr(AffineTransform()).mapPoint(pointInParent);
+    FloatPoint localPoint = localTransform().inverse().value_or(AffineTransform()).mapPoint(pointInParent);
 
     // Early exit if local point is not contained in clipped viewport area
     if (SVGRenderSupport::isOverflowHidden(*this) && !m_viewport.contains(localPoint))

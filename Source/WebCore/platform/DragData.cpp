@@ -32,45 +32,27 @@
 namespace WebCore {
 
 #if !PLATFORM(COCOA)
-DragData::DragData(DragDataRef data, const IntPoint& clientPosition, const IntPoint& globalPosition, 
-    DragOperation sourceOperationMask, DragApplicationFlags flags)
+DragData::DragData(DragDataRef data, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation sourceOperationMask, DragApplicationFlags flags, DragDestinationAction destinationAction)
     : m_clientPosition(clientPosition)
     , m_globalPosition(globalPosition)
     , m_platformDragData(data)
     , m_draggingSourceOperationMask(sourceOperationMask)
     , m_applicationFlags(flags)
+    , m_dragDestinationAction(destinationAction)
 {  
 }
 
-DragData::DragData(const String&, const IntPoint& clientPosition, const IntPoint& globalPosition,
-    DragOperation sourceOperationMask, DragApplicationFlags flags)
+DragData::DragData(const String&, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation sourceOperationMask, DragApplicationFlags flags, DragDestinationAction destinationAction)
     : m_clientPosition(clientPosition)
     , m_globalPosition(globalPosition)
     , m_platformDragData(0)
     , m_draggingSourceOperationMask(sourceOperationMask)
     , m_applicationFlags(flags)
+    , m_dragDestinationAction(destinationAction)
 {
 }
 #endif
 
-int DragData::modifierKeyState() const
-{
-    bool shiftKey, ctrlKey, altKey, metaKey;
-    shiftKey = ctrlKey = altKey = metaKey = false;
-    PlatformKeyboardEvent::getCurrentModifierState(shiftKey, ctrlKey, altKey, metaKey);
-    int keyState = 0;
-    if (shiftKey)
-        keyState = keyState | PlatformEvent::ShiftKey;
-    if (ctrlKey)
-        keyState = keyState | PlatformEvent::CtrlKey;
-    if (altKey)
-        keyState = keyState | PlatformEvent::AltKey;
-    if (metaKey)
-        keyState = keyState | PlatformEvent::MetaKey;
-    return keyState;
-}
-
 } // namespace WebCore
-
 
 #endif // ENABLE(DRAG_SUPPORT)

@@ -11,83 +11,6 @@
 
 namespace rx
 {
-NativeWindow::NativeWindow(EGLNativeWindowType window)
-{
-    mWindow = window;
-}
-
-bool NativeWindow::initialize()
-{
-    // If the native window type is a IPropertySet, extract the
-    // EGLNativeWindowType (IInspectable) and initialize the
-    // proper host with this IPropertySet.
-    ComPtr<ABI::Windows::Foundation::Collections::IPropertySet> propertySet;
-    ComPtr<IInspectable> eglNativeWindow;
-    if (IsEGLConfiguredPropertySet(mWindow, &propertySet, &eglNativeWindow))
-    {
-        // A property set was found and the EGLNativeWindowType was
-        // retrieved. The mWindow member of the host to must be updated
-        // to use the EGLNativeWindowType specified in the property set.
-        // mWindow is treated as a raw pointer not an AddRef'd interface, so
-        // the old mWindow does not need a Release() before this assignment.
-        mWindow = eglNativeWindow.Get();
-    }
-
-    ComPtr<ABI::Windows::UI::Core::ICoreWindow> coreWindow;
-    ComPtr<ABI::Windows::UI::Xaml::Controls::ISwapChainPanel> swapChainPanel;
-    if (IsCoreWindow(mWindow, &coreWindow))
-    {
-        mImpl = std::make_shared<CoreWindowNativeWindow>();
-        if (mImpl)
-        {
-            return mImpl->initialize(mWindow, propertySet.Get());
-        }
-    }
-    else if (IsSwapChainPanel(mWindow, &swapChainPanel))
-    {
-        mImpl = std::make_shared<SwapChainPanelNativeWindow>();
-        if (mImpl)
-        {
-            return mImpl->initialize(mWindow, propertySet.Get());
-        }
-    }
-    else
-    {
-        ERR("Invalid IInspectable EGLNativeWindowType detected. Valid IInspectables include ICoreWindow, ISwapChainPanel and IPropertySet");
-    }
-
-    return false;
-}
-
-bool NativeWindow::getClientRect(RECT *rect)
-{
-    if (mImpl)
-    {
-        return mImpl->getClientRect(rect);
-    }
-
-    return false;
-}
-
-bool NativeWindow::isIconic()
-{
-    return false;
-}
-
-bool NativeWindow::isValidNativeWindow(EGLNativeWindowType window)
-{
-    return IsValidEGLNativeWindowType(window);
-}
-
-HRESULT NativeWindow::createSwapChain(ID3D11Device *device, DXGIFactory *factory, DXGI_FORMAT format, unsigned int width, unsigned int height, DXGISwapChain **swapChain)
-{
-    if (mImpl)
-    {
-        return mImpl->createSwapChain(device, factory, format, width, height, swapChain);
-    }
-
-    return E_UNEXPECTED;
-}
 
 bool IsCoreWindow(EGLNativeWindowType window, ComPtr<ABI::Windows::UI::Core::ICoreWindow> *coreWindow)
 {
@@ -102,7 +25,7 @@ bool IsCoreWindow(EGLNativeWindowType window, ComPtr<ABI::Windows::UI::Core::ICo
     {
         if (coreWindow != nullptr)
         {
-            *coreWindow = coreWin.Detach();
+            *coreWindow = coreWin;
         }
         return true;
     }
@@ -123,7 +46,7 @@ bool IsSwapChainPanel(EGLNativeWindowType window, ComPtr<ABI::Windows::UI::Xaml:
     {
         if (swapChainPanel != nullptr)
         {
-            *swapChainPanel = panel.Detach();
+            *swapChainPanel = panel;
         }
         return true;
     }
@@ -160,7 +83,8 @@ bool IsEGLConfiguredPropertySet(EGLNativeWindowType window, ABI::Windows::Founda
     // considered invalid.
     if (SUCCEEDED(result) && !hasEglNativeWindowPropertyKey)
     {
-        ERR("Could not find EGLNativeWindowTypeProperty in IPropertySet. Valid EGLNativeWindowTypeProperty values include ICoreWindow");
+        ERR() << "Could not find EGLNativeWindowTypeProperty in IPropertySet. Valid "
+                 "EGLNativeWindowTypeProperty values include ICoreWindow";
         return false;
     }
 
@@ -194,19 +118,38 @@ bool IsEGLConfiguredPropertySet(EGLNativeWindowType window, ABI::Windows::Founda
     return false;
 }
 
-// A Valid EGLNativeWindowType IInspectable can only be:
-//
-// ICoreWindow
-// IPropertySet
-// 
-// Anything else will be rejected as an invalid IInspectable.
-bool IsValidEGLNativeWindowType(EGLNativeWindowType window)
+// Retrieve an optional property from a property set
+HRESULT GetOptionalPropertyValue(const ComPtr<ABI::Windows::Foundation::Collections::IMap<HSTRING, IInspectable*>> &propertyMap,
+                                 const wchar_t *propertyName,
+                                 boolean *hasKey,
+                                 ComPtr<ABI::Windows::Foundation::IPropertyValue> &propertyValue)
 {
-    return IsCoreWindow(window) || IsSwapChainPanel(window) || IsEGLConfiguredPropertySet(window);
+    if (!propertyMap || !hasKey)
+    {
+        return E_INVALIDARG;
+    }
+
+    // Assume that the value does not exist
+    *hasKey = false;
+
+    HRESULT result = propertyMap->HasKey(HStringReference(propertyName).Get(), hasKey);
+    if (SUCCEEDED(result) && !(*hasKey))
+    {
+        // Value does not exist, so return S_OK and set the exists parameter to false to indicate
+        // that a the optional property does not exist.
+        return S_OK;
+    }
+
+    if (SUCCEEDED(result))
+    {
+        result = propertyMap->Lookup(HStringReference(propertyName).Get(), &propertyValue);
+    }
+
+    return result;
 }
 
 // Attempts to read an optional SIZE property value that is assumed to be in the form of
-// an ABI::Windows::Foundation::Size.  This function validates the Size value before returning 
+// an ABI::Windows::Foundation::Size.  This function validates the Size value before returning
 // it to the caller.
 //
 // Possible return values are:
@@ -217,63 +160,118 @@ bool IsValidEGLNativeWindowType(EGLNativeWindowType window)
 //    * Invalid property value (width/height must be > 0)
 // Additional errors may be returned from IMap or IPropertyValue
 //
-HRESULT GetOptionalSizePropertyValue(const ComPtr<ABI::Windows::Foundation::Collections::IMap<HSTRING, IInspectable*>>& propertyMap, const wchar_t *propertyName, SIZE *value, bool *valueExists)
+HRESULT GetOptionalSizePropertyValue(const ComPtr<ABI::Windows::Foundation::Collections::IMap<HSTRING, IInspectable*>> &propertyMap,
+                                     const wchar_t *propertyName, SIZE *value, bool *valueExists)
 {
-    if (!propertyMap || !propertyName || !value || !valueExists)
+    ComPtr<ABI::Windows::Foundation::IPropertyValue> propertyValue;
+    ABI::Windows::Foundation::PropertyType propertyType = ABI::Windows::Foundation::PropertyType::PropertyType_Empty;
+    Size sizeValue = { 0, 0 };
+    boolean hasKey = false;
+
+    if (!propertyMap || !value || !valueExists)
     {
-        return false;
+        return E_INVALIDARG;
     }
 
     // Assume that the value does not exist
     *valueExists = false;
     *value = { 0, 0 };
 
-    ComPtr<ABI::Windows::Foundation::IPropertyValue> propertyValue;
-    ABI::Windows::Foundation::PropertyType propertyType = ABI::Windows::Foundation::PropertyType::PropertyType_Empty;
-    Size sizeValue = { 0, 0 };
-    boolean hasKey = false;
-
-    HRESULT result = propertyMap->HasKey(HStringReference(propertyName).Get(), &hasKey);
-    if (SUCCEEDED(result) && !hasKey)
-    {
-        // Value does not exist, so return S_OK and set the exists parameter to false to indicate
-        // that a the optional property does not exist.
-        *valueExists = false;
-        return S_OK;
-    }
-
-    if (SUCCEEDED(result))
-    {
-        result = propertyMap->Lookup(HStringReference(propertyName).Get(), &propertyValue);
-    }
-
-    if (SUCCEEDED(result))
+    HRESULT result = GetOptionalPropertyValue(propertyMap, propertyName, &hasKey, propertyValue);
+    if (SUCCEEDED(result) && hasKey)
     {
         result = propertyValue->get_Type(&propertyType);
-    }
 
-    // Check if the expected Size property is of PropertyType_Size type.
-    if (SUCCEEDED(result) && propertyType == ABI::Windows::Foundation::PropertyType::PropertyType_Size)
-    {
-        if (SUCCEEDED(propertyValue->GetSize(&sizeValue)) && (sizeValue.Width > 0 && sizeValue.Height > 0))
+        // Check if the expected Size property is of PropertyType_Size type.
+        if (SUCCEEDED(result) && propertyType == ABI::Windows::Foundation::PropertyType::PropertyType_Size)
         {
-            // A valid property value exists
-            *value = { static_cast<long>(sizeValue.Width), static_cast<long>(sizeValue.Height) };
-            *valueExists = true;
-            result = S_OK;
+            if (SUCCEEDED(propertyValue->GetSize(&sizeValue)) && (sizeValue.Width > 0 && sizeValue.Height > 0))
+            {
+                // A valid property value exists
+                *value = { static_cast<long>(sizeValue.Width), static_cast<long>(sizeValue.Height) };
+                *valueExists = true;
+                result = S_OK;
+            }
+            else
+            {
+                // An invalid Size property was detected. Width/Height values must > 0
+                result = E_INVALIDARG;
+            }
         }
         else
         {
-            // An invalid Size property was detected. Width/Height values must > 0
+            // An invalid property type was detected. Size property must be of PropertyType_Size
             result = E_INVALIDARG;
         }
     }
-    else
+
+    return result;
+}
+
+// Attempts to read an optional float property value that is assumed to be in the form of
+// an ABI::Windows::Foundation::Single.  This function validates the Single value before returning
+// it to the caller.
+//
+// Possible return values are:
+// S_OK, valueExists == true - optional Single value was successfully retrieved and validated
+// S_OK, valueExists == false - optional Single value was not found
+// E_INVALIDARG, valueExists = false - optional Single value was malformed in the property set.
+//    * Incorrect property type ( must be PropertyType_Single)
+//    * Invalid property value (must be > 0)
+// Additional errors may be returned from IMap or IPropertyValue
+//
+HRESULT GetOptionalSinglePropertyValue(const ComPtr<ABI::Windows::Foundation::Collections::IMap<HSTRING, IInspectable*>> &propertyMap,
+                                       const wchar_t *propertyName, float *value, bool *valueExists)
+{
+    ComPtr<ABI::Windows::Foundation::IPropertyValue> propertyValue;
+    ABI::Windows::Foundation::PropertyType propertyType = ABI::Windows::Foundation::PropertyType::PropertyType_Empty;
+    float scaleValue = 0.0f;
+    boolean hasKey = false;
+
+    if (!propertyMap || !value || !valueExists)
     {
-        // An invalid property type was detected. Size property must be of PropertyType_Size
-        result = E_INVALIDARG;
+        return E_INVALIDARG;
+    }
+
+    // Assume that the value does not exist
+    *valueExists = false;
+    *value = 0.0f;
+
+    HRESULT result = GetOptionalPropertyValue(propertyMap, propertyName, &hasKey, propertyValue);
+    if (SUCCEEDED(result) && hasKey)
+    {
+        result = propertyValue->get_Type(&propertyType);
+
+        // Check if the expected Scale property is of PropertyType_Single type.
+        if (SUCCEEDED(result) && propertyType == ABI::Windows::Foundation::PropertyType::PropertyType_Single)
+        {
+            if (SUCCEEDED(propertyValue->GetSingle(&scaleValue)) && (scaleValue > 0.0f))
+            {
+                // A valid property value exists
+                *value = scaleValue;
+                *valueExists = true;
+                result = S_OK;
+            }
+            else
+            {
+                // An invalid scale was set
+                result = E_INVALIDARG;
+            }
+        }
+        else
+        {
+            // An invalid property type was detected. Size property must be of PropertyType_Single
+            result = E_INVALIDARG;
+        }
     }
 
     return result;
+}
+
+RECT InspectableNativeWindow::clientRect(const Size &size)
+{
+    // We don't have to check if a swapchain scale was specified here; the default value is 1.0f
+    // which will have no effect.
+    return {0, 0, lround(size.Width * mSwapChainScale), lround(size.Height * mSwapChainScale)};
 }
 }

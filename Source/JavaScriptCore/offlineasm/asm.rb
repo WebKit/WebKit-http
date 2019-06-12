@@ -29,6 +29,7 @@ require "config"
 require "backends"
 require "digest/sha1"
 require "offsets"
+require 'optparse'
 require "parser"
 require "self_hash"
 require "settings"
@@ -301,6 +302,15 @@ asmFile = ARGV.shift
 offsetsFile = ARGV.shift
 outputFlnm = ARGV.shift
 
+$options = {}
+OptionParser.new do |opts|
+    opts.banner = "Usage: asm.rb asmFile offsetsFile outputFileName [--assembler=<ASM>]"
+    # This option is currently only used to specify the masm assembler
+    opts.on("--assembler=[ASM]", "Specify an assembler to use.") do |assembler|
+        $options[:assembler] = assembler
+    end
+end.parse!
+
 begin
     configurationList = offsetsAndConfigurationIndex(offsetsFile)
 rescue MissingMagicValuesException
@@ -319,7 +329,8 @@ $commentPrefix = $emitWinAsm ? ";" : "//"
 inputHash =
     $commentPrefix + " offlineasm input hash: " + parseHash(asmFile) +
     " " + Digest::SHA1.hexdigest(configurationList.map{|v| (v[0] + [v[1]]).join(' ')}.join(' ')) +
-    " " + selfHash
+    " " + selfHash +
+    " " + Digest::SHA1.hexdigest($options.has_key?(:assembler) ? $options[:assembler] : "")
 
 if FileTest.exist? outputFlnm
     File.open(outputFlnm, "r") {
@@ -347,6 +358,14 @@ File.open(outputFlnm, "w") {
         configIndex = configuration[1]
         forSettings(computeSettingsCombinations(ast)[configIndex], ast) {
             | concreteSettings, lowLevelAST, backend |
+
+            # There could be multiple backends we are generating for, but the C_LOOP is
+            # always by itself so this check to turn off $enableDebugAnnotations won't
+            # affect the generation for any other backend.
+            if backend == "C_LOOP"
+                $enableDebugAnnotations = false
+            end
+
             lowLevelAST = lowLevelAST.resolve(*buildOffsetsMap(lowLevelAST, offsetsList))
             lowLevelAST.validate
             emitCodeInConfiguration(concreteSettings, lowLevelAST, backend) {

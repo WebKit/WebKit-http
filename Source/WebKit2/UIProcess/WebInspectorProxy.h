@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014, 2016 Apple Inc. All rights reserved.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,18 +24,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInspectorProxy_h
-#define WebInspectorProxy_h
+#pragma once
 
 #include "APIObject.h"
 #include "Attachment.h"
 #include "MessageReceiver.h"
+#include "WebInspectorUtilities.h"
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
 #include "WKGeometry.h"
+#include <WebCore/IntRect.h>
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/RunLoop.h>
@@ -45,27 +46,24 @@ OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
 OBJC_CLASS WKWebInspectorProxyObjCAdapter;
 OBJC_CLASS WKWebInspectorWKWebView;
+OBJC_CLASS WKWebViewConfiguration;
 #endif
 
-#if PLATFORM(GTK)
-#include "WebInspectorClientGtk.h"
-#endif
-
-#if PLATFORM(EFL)
-#include <Ecore_Evas.h>
-#include <Evas.h>
-#endif
+namespace WebCore {
+class URL;
+}
 
 namespace WebKit {
 
 class WebFrameProxy;
+class WebInspectorProxyClient;
 class WebPageProxy;
 class WebPreferences;
-class WebProcessPool;
 
 enum class AttachmentSide {
     Bottom,
-    Right
+    Right,
+    Left,
 };
 
 class WebInspectorProxy : public API::ObjectImpl<API::Object::Type::Inspector>, public IPC::MessageReceiver {
@@ -91,10 +89,12 @@ public:
     void show();
     void hide();
     void close();
-
-    void didRelaunchInspectorPageProcess();
+    void closeForCrash();
 
 #if PLATFORM(MAC) && WK_API_ENABLED
+    static RetainPtr<WKWebViewConfiguration> createFrontendConfiguration(WebPageProxy*, bool underTest);
+    static RetainPtr<NSWindow> createFrontendWindow(NSRect savedWindowFrame);
+
     void createInspectorWindow();
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange(CGFloat = 0);
@@ -112,16 +112,18 @@ public:
 
 #if PLATFORM(GTK)
     GtkWidget* inspectorView() const { return m_inspectorView; };
-    void initializeInspectorClientGtk(const WKInspectorClientGtkBase*);
+    void setClient(std::unique_ptr<WebInspectorProxyClient>&&);
 #endif
 
     void showConsole();
     void showResources();
+    void showTimelines();
     void showMainResourceForFrame(WebFrameProxy*);
 
     AttachmentSide attachmentSide() const { return m_attachmentSide; }
     bool isAttached() const { return m_isAttached; }
     void attachRight();
+    void attachLeft();
     void attachBottom();
     void attach(AttachmentSide = AttachmentSide::Bottom);
     void detach();
@@ -134,37 +136,36 @@ public:
     bool isProfilingPage() const { return m_isProfilingPage; }
     void togglePageProfiling();
 
-    static bool isInspectorProcessPool(WebProcessPool&);
-    static bool isInspectorPage(WebPageProxy&);
+    bool isElementSelectionActive() const { return m_elementSelectionActive; }
+    void toggleElementSelection();
 
     // Provided by platform WebInspectorProxy implementations.
     static String inspectorPageURL();
     static String inspectorTestPageURL();
     static String inspectorBaseURL();
+    static bool isMainOrTestInspectorPage(const WebCore::URL&);
 
-#if ENABLE(INSPECTOR_SERVER)
-    void enableRemoteInspection();
-    void remoteFrontendConnected();
-    void remoteFrontendDisconnected();
-    void dispatchMessageFromRemoteFrontend(const String& message);
-    int remoteInspectionPageID() const { return m_remoteInspectionPageId; }
-#endif
+    static const unsigned minimumWindowWidth;
+    static const unsigned minimumWindowHeight;
+
+    static const unsigned initialWindowWidth;
+    static const unsigned initialWindowHeight;
 
 private:
     explicit WebInspectorProxy(WebPageProxy*);
 
-    static WebProcessPool& inspectorProcessPool(unsigned inspectionLevel);
-
     void eagerlyCreateInspectorPage();
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     WebPageProxy* platformCreateInspectorPage();
     void platformOpen();
     void platformDidClose();
+    void platformDidCloseForCrash();
     void platformInvalidate();
     void platformBringToFront();
+    void platformBringInspectedPageToFront();
     void platformHide();
     bool platformIsFront();
     void platformAttachAvailabilityChanged(bool);
@@ -187,17 +188,15 @@ private:
 
     // Called by WebInspectorProxy messages
     void createInspectorPage(IPC::Attachment, bool canAttach, bool underTest);
+    void frontendLoaded();
     void didClose();
     void bringToFront();
     void attachAvailabilityChanged(bool);
     void inspectedURLChanged(const String&);
+    void elementSelectionChanged(bool);
 
     void save(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void append(const String& filename, const String& content);
-
-#if ENABLE(INSPECTOR_SERVER)
-    void sendMessageToRemoteFrontend(const String& message);
-#endif
 
     bool canAttach() const { return m_canAttach; }
     bool shouldOpenAttached();
@@ -206,37 +205,27 @@ private:
 
     void open();
 
-    // The inspection level is used to give different preferences to each inspector
-    // by setting a per-level page group identifier. Local storage settings in the frontend
-    // also use the inspection level in the key prefix to disambiguate persistent view state.
     unsigned inspectionLevel() const;
-    String inspectorPageGroupIdentifier() const;
+
     WebPreferences& inspectorPagePreferences() const;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(WPE)
     void createInspectorWindow();
-#endif
-
-#if PLATFORM(GTK)
     void updateInspectorWindowTitle() const;
 #endif
 
-    static const unsigned minimumWindowWidth;
-    static const unsigned minimumWindowHeight;
+    WebPageProxy* m_inspectedPage { nullptr };
+    WebPageProxy* m_inspectorPage { nullptr };
 
-    static const unsigned initialWindowWidth;
-    static const unsigned initialWindowHeight;
-
-    WebPageProxy* m_inspectedPage {nullptr};
-    WebPageProxy* m_inspectorPage {nullptr};
-
-    bool m_underTest {false};
-    bool m_isVisible {false};
-    bool m_isAttached {false};
-    bool m_canAttach {false};
-    bool m_isProfilingPage {false};
-    bool m_showMessageSent {false};
-    bool m_ignoreFirstBringToFront {false};
+    bool m_underTest { false };
+    bool m_isVisible { false };
+    bool m_isAttached { false };
+    bool m_canAttach { false };
+    bool m_isProfilingPage { false };
+    bool m_showMessageSent { false };
+    bool m_ignoreFirstBringToFront { false };
+    bool m_elementSelectionActive { false };
+    bool m_ignoreElementSelectionChange { false };
 
     IPC::Attachment m_connectionIdentifier;
 
@@ -250,20 +239,12 @@ private:
     RunLoop::Timer<WebInspectorProxy> m_closeTimer;
     String m_urlString;
 #elif PLATFORM(GTK)
-    WebInspectorClientGtk m_client;
-    GtkWidget* m_inspectorView {nullptr};
-    GtkWidget* m_inspectorWindow {nullptr};
-    GtkWidget* m_headerBar {nullptr};
+    std::unique_ptr<WebInspectorProxyClient> m_client;
+    GtkWidget* m_inspectorView { nullptr };
+    GtkWidget* m_inspectorWindow { nullptr };
+    GtkWidget* m_headerBar { nullptr };
     String m_inspectedURLString;
-#elif PLATFORM(EFL)
-    Evas_Object* m_inspectorView {nullptr};
-    Ecore_Evas* m_inspectorWindow {nullptr};
-#endif
-#if ENABLE(INSPECTOR_SERVER)
-    int m_remoteInspectionPageId {0};
 #endif
 };
 
 } // namespace WebKit
-
-#endif // WebInspectorProxy_h

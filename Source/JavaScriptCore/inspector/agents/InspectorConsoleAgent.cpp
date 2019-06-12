@@ -29,13 +29,13 @@
 #include "ConsoleMessage.h"
 #include "InjectedScriptManager.h"
 #include "InspectorFrontendRouter.h"
+#include "InspectorHeapAgent.h"
 #include "ScriptArguments.h"
 #include "ScriptCallFrame.h"
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include "ScriptObject.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -43,11 +43,12 @@ namespace Inspector {
 static const unsigned maximumConsoleMessages = 100;
 static const int expireConsoleMessagesStep = 10;
 
-InspectorConsoleAgent::InspectorConsoleAgent(AgentContext& context)
+InspectorConsoleAgent::InspectorConsoleAgent(AgentContext& context, InspectorHeapAgent* heapAgent)
     : InspectorAgentBase(ASCIILiteral("Console"))
     , m_injectedScriptManager(context.injectedScriptManager)
     , m_frontendDispatcher(std::make_unique<ConsoleFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(ConsoleBackendDispatcher::create(context.backendDispatcher, this))
+    , m_heapAgent(heapAgent)
 {
 }
 
@@ -63,6 +64,11 @@ void InspectorConsoleAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
     String errorString;
     disable(errorString);
+}
+
+void InspectorConsoleAgent::discardValues()
+{
+    m_consoleMessages.clear();
 }
 
 void InspectorConsoleAgent::enable(ErrorString&)
@@ -126,61 +132,78 @@ void InspectorConsoleAgent::addMessageToConsole(std::unique_ptr<ConsoleMessage> 
 
 void InspectorConsoleAgent::startTiming(const String& title)
 {
-    // Follow Firebug's behavior of requiring a title that is not null or
-    // undefined for timing functions
+    ASSERT(!title.isNull());
     if (title.isNull())
         return;
 
-    m_times.add(title, monotonicallyIncreasingTime());
+    auto result = m_times.add(title, monotonicallyIncreasingTime());
+
+    if (!result.isNewEntry) {
+        // FIXME: Send an enum to the frontend for localization?
+        String warning = makeString("Timer \"", title, "\" already exists");
+        addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Timing, MessageLevel::Warning, warning));
+    }
 }
 
-void InspectorConsoleAgent::stopTiming(const String& title, PassRefPtr<ScriptCallStack> callStack)
+void InspectorConsoleAgent::stopTiming(const String& title, Ref<ScriptCallStack>&& callStack)
 {
-    // Follow Firebug's behavior of requiring a title that is not null or
-    // undefined for timing functions
+    ASSERT(!title.isNull());
     if (title.isNull())
         return;
 
-    HashMap<String, double>::iterator it = m_times.find(title);
-    if (it == m_times.end())
+    auto it = m_times.find(title);
+    if (it == m_times.end()) {
+        // FIXME: Send an enum to the frontend for localization?
+        String warning = makeString("Timer \"", title, "\" does not exist");
+        addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Timing, MessageLevel::Warning, warning));
         return;
+    }
 
     double startTime = it->value;
     m_times.remove(it);
 
     double elapsed = monotonicallyIncreasingTime() - startTime;
     String message = title + String::format(": %.3fms", elapsed * 1000);
-    addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Timing, MessageLevel::Debug, message, callStack));
+    addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Timing, MessageLevel::Debug, message, WTFMove(callStack)));
 }
 
-void InspectorConsoleAgent::count(JSC::ExecState* state, PassRefPtr<ScriptArguments> arguments)
+void InspectorConsoleAgent::takeHeapSnapshot(const String& title)
 {
-    RefPtr<ScriptCallStack> callStack(createScriptCallStackForConsole(state, ScriptCallStack::maxCallStackSizeToCapture));
-    const ScriptCallFrame& lastCaller = callStack->at(0);
-    // Follow Firebug's behavior of counting with null and undefined title in
-    // the same bucket as no argument
-    String title;
-    arguments->getFirstArgumentAsString(title);
-    String identifier = title + '@' + lastCaller.sourceURL() + ':' + String::number(lastCaller.lineNumber());
+    if (!m_injectedScriptManager.inspectorEnvironment().developerExtrasEnabled())
+        return;
 
-    HashMap<String, unsigned>::iterator it = m_counts.find(identifier);
-    int count;
-    if (it == m_counts.end())
-        count = 1;
-    else {
-        count = it->value + 1;
-        m_counts.remove(it);
+    ErrorString ignored;
+    double timestamp;
+    String snapshotData;
+    m_heapAgent->snapshot(ignored, &timestamp, &snapshotData);
+
+    m_frontendDispatcher->heapSnapshot(timestamp, snapshotData, title.isEmpty() ? nullptr : &title);
+}
+
+void InspectorConsoleAgent::count(JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
+{
+    Ref<ScriptCallStack> callStack = createScriptCallStackForConsole(state, ScriptCallStack::maxCallStackSizeToCapture);
+
+    String title;
+    String identifier;
+    if (!arguments->argumentCount()) {
+        // '@' prefix for engine generated labels.
+        title = ASCIILiteral("Global");
+        identifier = makeString('@', title);
+    } else {
+        // '#' prefix for user labels.
+        arguments->getFirstArgumentAsString(title);
+        identifier = makeString('#', title);
     }
 
-    m_counts.add(identifier, count);
+    auto result = m_counts.add(identifier, 1);
+    if (!result.isNewEntry)
+        result.iterator->value += 1;
 
-    String message;
-    if (title.isEmpty())
-        message = "<no label>: " + String::number(count);
-    else
-        message = title + ": " + String::number(count);
+    // FIXME: Web Inspector should have a better UI for counters, but for now we just log an updated counter value.
 
-    addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Debug, message, callStack));
+    String message = makeString(title, ": ", String::number(result.iterator->value));
+    addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Debug, message, WTFMove(callStack)));
 }
 
 static bool isGroupMessage(MessageType type)

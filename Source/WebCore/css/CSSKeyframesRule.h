@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSKeyframesRule_h
-#define CSSKeyframesRule_h
+#pragma once
 
 #include "CSSRule.h"
 #include "StyleRule.h"
@@ -35,34 +34,44 @@
 namespace WebCore {
 
 class CSSRuleList;
-class StyleKeyframe;
+class StyleRuleKeyframe;
 class CSSKeyframeRule;
 
-class StyleRuleKeyframes : public StyleRuleBase {
+class StyleRuleKeyframes final : public StyleRuleBase {
 public:
-    static Ref<StyleRuleKeyframes> create() { return adoptRef(*new StyleRuleKeyframes()); }
+    static Ref<StyleRuleKeyframes> create(const AtomicString& name) { return adoptRef(*new StyleRuleKeyframes(name)); }
+    static Ref<StyleRuleKeyframes> create(const AtomicString& name, std::unique_ptr<DeferredStyleGroupRuleList>&& deferredRules) { return adoptRef(*new StyleRuleKeyframes(name, WTFMove(deferredRules))); }
     
     ~StyleRuleKeyframes();
     
-    const Vector<RefPtr<StyleKeyframe>>& keyframes() const { return m_keyframes; }
-    
-    void parserAppendKeyframe(PassRefPtr<StyleKeyframe>);
-    void wrapperAppendKeyframe(PassRefPtr<StyleKeyframe>);
+    const Vector<Ref<StyleRuleKeyframe>>& keyframes() const;
+    const Vector<Ref<StyleRuleKeyframe>>* keyframesWithoutDeferredParsing() const
+    {
+        return !m_deferredRules ? &m_keyframes : nullptr;
+    }
+
+    void parserAppendKeyframe(RefPtr<StyleRuleKeyframe>&&);
+    void wrapperAppendKeyframe(Ref<StyleRuleKeyframe>&&);
     void wrapperRemoveKeyframe(unsigned);
 
-    String name() const { return m_name; }    
-    void setName(const String& name) { m_name = AtomicString(name); }
-    
-    int findKeyframeIndex(const String& key) const;
+    const AtomicString& name() const { return m_name; }
+    void setName(const AtomicString& name) { m_name = name; }
+
+    size_t findKeyframeIndex(const String& key) const;
 
     Ref<StyleRuleKeyframes> copy() const { return adoptRef(*new StyleRuleKeyframes(*this)); }
 
 private:
-    StyleRuleKeyframes();
+    StyleRuleKeyframes(const AtomicString&);
+    StyleRuleKeyframes(const AtomicString&, std::unique_ptr<DeferredStyleGroupRuleList>&&);
     StyleRuleKeyframes(const StyleRuleKeyframes&);
 
-    Vector<RefPtr<StyleKeyframe>> m_keyframes;
+    void parseDeferredRulesIfNeeded() const;
+    
+    mutable Vector<Ref<StyleRuleKeyframe>> m_keyframes;
     AtomicString m_name;
+    
+    mutable std::unique_ptr<DeferredStyleGroupRuleList> m_deferredRules;
 };
 
 class CSSKeyframesRule final : public CSSRule {
@@ -71,9 +80,9 @@ public:
 
     virtual ~CSSKeyframesRule();
 
-    virtual CSSRule::Type type() const override { return KEYFRAMES_RULE; }
-    virtual String cssText() const override;
-    virtual void reattach(StyleRuleBase&) override;
+    CSSRule::Type type() const final { return KEYFRAMES_RULE; }
+    String cssText() const final;
+    void reattach(StyleRuleBase&) final;
 
     String name() const { return m_keyframesRule->name(); }
     void setName(const String&);
@@ -104,5 +113,3 @@ SPECIALIZE_TYPE_TRAITS_CSS_RULE(CSSKeyframesRule, CSSRule::KEYFRAMES_RULE)
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRuleKeyframes)
     static bool isType(const WebCore::StyleRuleBase& rule) { return rule.isKeyframesRule(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // CSSKeyframesRule_h

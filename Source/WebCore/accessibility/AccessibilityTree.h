@@ -27,8 +27,7 @@
  */
 
 
-#ifndef AccessibilityTree_h
-#define AccessibilityTree_h
+#pragma once
 
 #include "AccessibilityRenderObject.h"
 
@@ -41,13 +40,12 @@ public:
 
 private:
     explicit AccessibilityTree(RenderObject*);
-    virtual bool computeAccessibilityIsIgnored() const override;
-    virtual AccessibilityRole determineAccessibilityRole() override;
+    bool computeAccessibilityIsIgnored() const override;
+    AccessibilityRole determineAccessibilityRole() override;
     bool isTreeValid() const;
+    bool nodeHasTreeItemChild(Node&) const;
 };
     
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityTree, isTree())
-
-#endif // AccessibilityTree_h

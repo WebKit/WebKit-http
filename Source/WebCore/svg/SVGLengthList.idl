@@ -24,15 +24,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-interface SVGLengthList { 
+[
+    SkipVTableValidation
+] interface SVGLengthList {
     readonly attribute unsigned long numberOfItems;
 
-    [RaisesException] void clear();
-    [StrictTypeChecking, RaisesException] SVGLength initialize(SVGLength item);
-    [StrictTypeChecking, RaisesException] SVGLength getItem(unsigned long index);
-    [StrictTypeChecking, RaisesException] SVGLength insertItemBefore(SVGLength item, unsigned long index);
-    [StrictTypeChecking, RaisesException] SVGLength replaceItem(SVGLength item, unsigned long index);
-    [StrictTypeChecking, RaisesException] SVGLength removeItem(unsigned long index);
-    [StrictTypeChecking, RaisesException] SVGLength appendItem(SVGLength item);
+    [MayThrowException] void clear();
+    [MayThrowException] SVGLength initialize(SVGLength item);
+    [MayThrowException] SVGLength getItem(unsigned long index);
+    [MayThrowException] SVGLength insertItemBefore(SVGLength item, unsigned long index);
+    [MayThrowException] SVGLength replaceItem(SVGLength item, unsigned long index);
+    [MayThrowException] SVGLength removeItem(unsigned long index);
+    [MayThrowException] SVGLength appendItem(SVGLength item);
 };
-

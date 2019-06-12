@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AirTmpWidth_h
-#define AirTmpWidth_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "AirArg.h"
-#include <wtf/HashSet.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -52,12 +50,21 @@ public:
     //
     // This doesn't tell you which of those properties holds, but you can query that using the other
     // methods.
-    Arg::Width width(Tmp tmp) const
+    Width width(Tmp tmp) const
     {
         auto iter = m_width.find(tmp);
         if (iter == m_width.end())
-            return Arg::minimumWidth(Arg(tmp).type());
+            return minimumWidth(Arg(tmp).bank());
         return std::min(iter->value.use, iter->value.def);
+    }
+
+    // Return the minimum required width for all defs/uses of this Tmp.
+    Width requiredWidth(Tmp tmp)
+    {
+        auto iter = m_width.find(tmp);
+        if (iter == m_width.end())
+            return minimumWidth(Arg(tmp).bank());
+        return std::max(iter->value.use, iter->value.def);
     }
 
     // This indirectly tells you how much of the tmp's high bits are guaranteed to be zero. The number of
@@ -66,20 +73,20 @@ public:
     //     TotalBits - defWidth(tmp)
     //
     // Where TotalBits are the total number of bits in the register, so 64 on a 64-bit system.
-    Arg::Width defWidth(Tmp tmp) const
+    Width defWidth(Tmp tmp) const
     {
         auto iter = m_width.find(tmp);
         if (iter == m_width.end())
-            return Arg::minimumWidth(Arg(tmp).type());
+            return minimumWidth(Arg(tmp).bank());
         return iter->value.def;
     }
 
     // This tells you how much of Tmp is going to be read.
-    Arg::Width useWidth(Tmp tmp) const
+    Width useWidth(Tmp tmp) const
     {
         auto iter = m_width.find(tmp);
         if (iter == m_width.end())
-            return Arg::minimumWidth(Arg(tmp).type());
+            return minimumWidth(Arg(tmp).bank());
         return iter->value.use;
     }
     
@@ -87,16 +94,16 @@ private:
     struct Widths {
         Widths() { }
 
-        Widths(Arg::Type type)
+        Widths(Bank bank)
         {
-            use = Arg::minimumWidth(type);
-            def = Arg::minimumWidth(type);
+            use = minimumWidth(bank);
+            def = minimumWidth(bank);
         }
 
         void dump(PrintStream& out) const;
         
-        Arg::Width use;
-        Arg::Width def;
+        Width use;
+        Width def;
     };
     
     HashMap<Tmp, Widths> m_width;
@@ -105,6 +112,3 @@ private:
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirTmpWidth_h
-

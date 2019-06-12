@@ -18,11 +18,9 @@
  *
  */
 
-#ifndef ArrayPrototype_h
-#define ArrayPrototype_h
+#pragma once
 
 #include "JSArray.h"
-#include "Lookup.h"
 
 namespace JSC {
 
@@ -35,18 +33,22 @@ private:
 public:
     typedef JSArray Base;
 
+    enum class SpeciesWatchpointStatus {
+        Uninitialized,
+        Initialized,
+        Fired
+    };
+
     static ArrayPrototype* create(VM&, JSGlobalObject*, Structure*);
         
-    DECLARE_INFO;
+    DECLARE_EXPORT_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info(), ArrayClass);
+        return Structure::create(vm, globalObject, prototype, TypeInfo(DerivedArrayType, StructureFlags), info(), ArrayClass);
     }
 
-    void setConstructor(VM&, JSObject* constructorProperty, unsigned attributes);
-
-    bool didChangeConstructorOrSpeciesProperties() const { return m_didChangeConstructorOrSpeciesProperties; }
+    void tryInitializeSpeciesWatchpoint(ExecState*);
 
     static const bool needsDestruction = false;
     // We don't need destruction since we use a finalizer.
@@ -60,12 +62,11 @@ private:
     friend ArrayPrototypeAdaptiveInferredPropertyWatchpoint;
     std::unique_ptr<ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorWatchpoint;
     std::unique_ptr<ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorSpeciesWatchpoint;
-    bool m_didChangeConstructorOrSpeciesProperties = false;
 };
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncValues(ExecState*);
+EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncConcatMemcpy(ExecState*);
+EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncAppendMemcpy(ExecState*);
 
 } // namespace JSC
-
-#endif // ArrayPrototype_h

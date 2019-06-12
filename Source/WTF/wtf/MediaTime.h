@@ -53,14 +53,14 @@ public:
     };
 
     MediaTime();
-    MediaTime(int64_t value, int32_t scale, uint32_t flags = Valid);
+    MediaTime(int64_t value, uint32_t scale, uint8_t flags = Valid);
     MediaTime(const MediaTime& rhs);
     ~MediaTime();
 
     static MediaTime createWithFloat(float floatTime);
-    static MediaTime createWithFloat(float floatTime, int32_t timeScale);
+    static MediaTime createWithFloat(float floatTime, uint32_t timeScale);
     static MediaTime createWithDouble(double doubleTime);
-    static MediaTime createWithDouble(double doubleTime, int32_t timeScale);
+    static MediaTime createWithDouble(double doubleTime, uint32_t timeScale);
 
     float toFloat() const;
     double toDouble() const;
@@ -72,12 +72,12 @@ public:
     MediaTime operator-(const MediaTime& rhs) const;
     MediaTime operator-() const;
     MediaTime operator*(int32_t) const;
-    bool operator<(const MediaTime& rhs) const;
-    bool operator>(const MediaTime& rhs) const;
-    bool operator!=(const MediaTime& rhs) const;
-    bool operator==(const MediaTime& rhs) const;
-    bool operator>=(const MediaTime& rhs) const;
-    bool operator<=(const MediaTime& rhs) const;
+    bool operator<(const MediaTime& rhs) const { return compare(rhs) == LessThan; }
+    bool operator>(const MediaTime& rhs) const { return compare(rhs) == GreaterThan; }
+    bool operator!=(const MediaTime& rhs) const { return compare(rhs) != EqualTo; }
+    bool operator==(const MediaTime& rhs) const { return compare(rhs) == EqualTo; }
+    bool operator>=(const MediaTime& rhs) const { return compare(rhs) >= EqualTo; }
+    bool operator<=(const MediaTime& rhs) const { return compare(rhs) <= EqualTo; }
     bool operator!() const;
     explicit operator bool() const;
 
@@ -88,6 +88,7 @@ public:
     } ComparisonFlags;
 
     ComparisonFlags compare(const MediaTime& rhs) const;
+    bool isBetween(const MediaTime&, const MediaTime&) const;
 
     bool isValid() const { return m_timeFlags & Valid; }
     bool isInvalid() const { return !isValid(); }
@@ -104,7 +105,7 @@ public:
     static const MediaTime& indefiniteTime();
 
     const int64_t& timeValue() const { return m_timeValue; }
-    const int32_t& timeScale() const { return m_timeScale; }
+    const uint32_t& timeScale() const { return m_timeScale; }
 
     void dump(PrintStream& out) const;
 
@@ -116,23 +117,51 @@ public:
 
     friend WTF_EXPORT_PRIVATE MediaTime abs(const MediaTime& rhs);
 
-    static const int32_t DefaultTimeScale = 10000000;
-    static const int32_t MaximumTimeScale;
+    static const uint32_t DefaultTimeScale = 10000000;
+    static const uint32_t MaximumTimeScale;
+
+    enum class RoundingFlags {
+        HalfAwayFromZero = 0,
+        TowardZero,
+        AwayFromZero,
+        TowardPositiveInfinity,
+        TowardNegativeInfinity,
+    };
+
+    MediaTime toTimeScale(uint32_t, RoundingFlags = RoundingFlags::HalfAwayFromZero) const;
+
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static bool decode(Decoder&, MediaTime&);
 
 private:
-    void setTimeScale(int32_t);
+    void setTimeScale(uint32_t, RoundingFlags = RoundingFlags::HalfAwayFromZero);
 
     union {
         int64_t m_timeValue;
         double m_timeValueAsDouble;
     };
-    int32_t m_timeScale;
-    uint32_t m_timeFlags;
+    uint32_t m_timeScale;
+    uint8_t m_timeFlags;
 };
 
 inline MediaTime operator*(int32_t lhs, const MediaTime& rhs) { return rhs.operator*(lhs); }
 
 WTF_EXPORT_PRIVATE extern MediaTime abs(const MediaTime& rhs);
+
+template<class Encoder>
+void MediaTime::encode(Encoder& encoder) const
+{
+    encoder << m_timeValue << m_timeScale << m_timeFlags;
+}
+
+template<class Decoder>
+bool MediaTime::decode(Decoder& decoder, MediaTime& time)
+{
+    return decoder.decode(time.m_timeValue)
+        && decoder.decode(time.m_timeScale)
+        && decoder.decode(time.m_timeFlags);
+}
+
 }
 
 using WTF::MediaTime;

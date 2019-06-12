@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/AtomicStringHash.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -85,28 +86,26 @@ ResourceHandle::ResourceHandle(NetworkingContext* context, const ResourceRequest
     }
 }
 
-PassRefPtr<ResourceHandle> ResourceHandle::create(NetworkingContext* context, const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff)
+RefPtr<ResourceHandle> ResourceHandle::create(NetworkingContext* context, const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff)
 {
-    BuiltinResourceHandleConstructorMap::iterator protocolMapItem = builtinResourceHandleConstructorMap().find(request.url().protocol());
+    if (auto constructor = builtinResourceHandleConstructorMap().get(request.url().protocol().toStringWithoutCopying()))
+        return constructor(request, client);
 
-    if (protocolMapItem != builtinResourceHandleConstructorMap().end())
-        return protocolMapItem->value(request, client);
-
-    RefPtr<ResourceHandle> newHandle(adoptRef(new ResourceHandle(context, request, client, defersLoading, shouldContentSniff)));
+    auto newHandle = adoptRef(*new ResourceHandle(context, request, client, defersLoading, shouldContentSniff));
 
     if (newHandle->d->m_scheduledFailureType != NoFailure)
-        return newHandle.release();
+        return WTFMove(newHandle);
 
     if (newHandle->start())
-        return newHandle.release();
+        return WTFMove(newHandle);
 
-    return 0;
+    return nullptr;
 }
 
 void ResourceHandle::scheduleFailure(FailureType type)
 {
     d->m_scheduledFailureType = type;
-    d->m_failureTimer.startOneShot(0);
+    d->m_failureTimer.startOneShot(0_s);
 }
 
 void ResourceHandle::failureTimerFired()
@@ -133,10 +132,8 @@ void ResourceHandle::failureTimerFired()
 
 void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
-    BuiltinResourceHandleSynchronousLoaderMap::iterator protocolMapItem = builtinResourceHandleSynchronousLoaderMap().find(request.url().protocol());
-
-    if (protocolMapItem != builtinResourceHandleSynchronousLoaderMap().end()) {
-        protocolMapItem->value(context, request, storedCredentials, error, response, data);
+    if (auto constructor = builtinResourceHandleSynchronousLoaderMap().get(request.url().protocol().toStringWithoutCopying())) {
+        constructor(context, request, storedCredentials, error, response, data);
         return;
     }
 
@@ -153,9 +150,29 @@ void ResourceHandle::clearClient()
     d->m_client = nullptr;
 }
 
-#if !PLATFORM(COCOA) && !USE(CFNETWORK) && !USE(SOUP) && !PLATFORM(QT)
+void ResourceHandle::didReceiveResponse(ResourceResponse&& response)
+{
+    if (response.isHTTP09()) {
+        auto url = response.url();
+        std::optional<uint16_t> port = url.port();
+        if (port && !isDefaultPortForProtocol(port.value(), url.protocol())) {
+            cancel();
+            String message = "Cancelled load from '" + url.stringCenterEllipsizedToLength() + "' because it is using HTTP/0.9.";
+            d->m_client->didFail(this, { String(), 0, url, message });
+            return;
+        }
+    }
+    if (d->m_usesAsyncCallbacks)
+        d->m_client->didReceiveResponseAsync(this, WTFMove(response));
+    else {
+        d->m_client->didReceiveResponse(this, WTFMove(response));
+        platformContinueSynchronousDidReceiveResponse();
+    }
+}
+
+#if !PLATFORM(COCOA) && !USE(CFURLCONNECTION) && !USE(SOUP) && !PLATFORM(QT)
 // ResourceHandle never uses async client calls on these platforms yet.
-void ResourceHandle::continueWillSendRequest(const ResourceRequest&)
+void ResourceHandle::continueWillSendRequest(ResourceRequest&&)
 {
     notImplemented();
 }
@@ -171,6 +188,13 @@ void ResourceHandle::continueCanAuthenticateAgainstProtectionSpace(bool)
     notImplemented();
 }
 #endif
+#endif
+
+#if !USE(SOUP)
+void ResourceHandle::platformContinueSynchronousDidReceiveResponse()
+{
+    // Do nothing.
+}
 #endif
 
 ResourceRequest& ResourceHandle::firstRequest()
@@ -238,7 +262,7 @@ void ResourceHandle::setDefersLoading(bool defers)
             d->m_failureTimer.stop();
     } else if (d->m_scheduledFailureType != NoFailure) {
         ASSERT(!d->m_failureTimer.isActive());
-        d->m_failureTimer.startOneShot(0);
+        d->m_failureTimer.startOneShot(0_s);
     }
 
     platformSetDefersLoading(defers);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLTransformFeedback_h
-#define WebGLTransformFeedback_h
+#pragma once
 
 #include "WebGLSharedObject.h"
-
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
@@ -36,17 +33,12 @@ class WebGLTransformFeedback final : public WebGLSharedObject {
 public:
     virtual ~WebGLTransformFeedback();
 
-    static Ref<WebGLTransformFeedback> create(WebGLRenderingContextBase*);
+    static Ref<WebGLTransformFeedback> create(WebGLRenderingContextBase&);
 
 protected:
-    WebGLTransformFeedback(WebGLRenderingContextBase*);
+    WebGLTransformFeedback(WebGLRenderingContextBase&);
 
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
-
-private:
-    virtual bool isTransformFeedback() const override { return true; }
+    void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 };
 
 } // namespace WebCore
-
-#endif // WebGLTransformFeedback_h

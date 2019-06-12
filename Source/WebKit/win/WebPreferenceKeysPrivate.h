@@ -167,3 +167,23 @@
 #define WebKitAllowDisplayAndRunningOfInsecureContentPreferenceKey "WebKitAllowDisplayAndRunningOfInsecureContent"
 
 #define WebKitShowTiledScrollingIndicatorPreferenceKey "WebKitShowTiledScrollingIndicator"
+
+#define WebKitFetchAPIEnabledPreferenceKey "WebKitFetchAPIEnabled"
+
+#define WebKitShadowDOMEnabledPreferenceKey "WebKitShadowDOMEnabled"
+
+#define WebKitCustomElementsEnabledPreferenceKey "WebKitCustomElementsEnabled"
+
+#define WebKitModernMediaControlsEnabledPreferenceKey "WebKitModernMediaControlsEnabled"
+
+#define WebKitWebAnimationsEnabledPreferenceKey "WebKitWebAnimationsEnabled"
+
+#define WebKitUserTimingEnabledPreferenceKey "WebKitUserTimingEnabled"
+
+#define WebKitResourceTimingEnabledPreferenceKey "WebKitResourceTimingEnabled"
+
+#define WebKitLinkPreloadEnabledPreferenceKey "WebKitLinkPreloadEnabled"
+
+#define WebKitMediaPreloadingEnabledPreferenceKey "WebKitMediaPreloadingEnabled"
+
+#define WebKitIsSecureContextAttributeEnabledPreferenceKey "WebKitIsSecureContextAttributeEnabled"

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef KeyedCoding_h
-#define KeyedCoding_h
+#pragma once
 
 #include <functional>
+#include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
@@ -105,15 +105,15 @@ public:
         return result;
     }
 
-    template<typename T, typename F>
-    bool decodeObjects(const String& key, Vector<T>& objects, F&& function)
+    template<typename ContainerType, typename F>
+    bool decodeObjects(const String& key, ContainerType& objects, F&& function)
     {
         if (!beginArray(key))
             return false;
 
         bool result = true;
         while (beginArrayElement()) {
-            T element;
+            typename ContainerType::ValueType element;
             if (!function(*this, element)) {
                 result = false;
                 break;
@@ -156,7 +156,7 @@ public:
     virtual void encodeDouble(const String& key, double) = 0;
     virtual void encodeString(const String& key, const String&) = 0;
 
-    virtual PassRefPtr<SharedBuffer> finishEncoding() = 0;
+    virtual RefPtr<SharedBuffer> finishEncoding() = 0;
 
     template<typename T>
     void encodeEnum(const String& key, T value)
@@ -211,5 +211,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // KeyedCoding_h

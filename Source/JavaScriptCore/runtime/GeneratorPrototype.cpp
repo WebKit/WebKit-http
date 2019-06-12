@@ -27,16 +27,14 @@
 #include "GeneratorPrototype.h"
 
 #include "JSCBuiltins.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
-#include "StructureInlines.h"
 
 #include "GeneratorPrototype.lut.h"
 
 namespace JSC {
 
-const ClassInfo GeneratorPrototype::s_info = { "Generator", &Base::s_info, &generatorPrototypeTable, CREATE_METHOD_TABLE(GeneratorPrototype) };
+const ClassInfo GeneratorPrototype::s_info = { "Generator", &Base::s_info, &generatorPrototypeTable, nullptr, CREATE_METHOD_TABLE(GeneratorPrototype) };
 
 /* Source for GeneratorPrototype.lut.h
 @begin generatorPrototypeTable
@@ -49,14 +47,9 @@ const ClassInfo GeneratorPrototype::s_info = { "Generator", &Base::s_info, &gene
 void GeneratorPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Generator"), DontEnum | ReadOnly);
     vm.prototypeMap.addPrototype(this);
-}
-
-bool GeneratorPrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticFunctionSlot<Base>(exec, generatorPrototypeTable, jsCast<GeneratorPrototype*>(object), propertyName, slot);
 }
 
 } // namespace JSC

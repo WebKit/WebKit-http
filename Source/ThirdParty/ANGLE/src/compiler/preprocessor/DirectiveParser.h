@@ -7,10 +7,9 @@
 #ifndef COMPILER_PREPROCESSOR_DIRECTIVEPARSER_H_
 #define COMPILER_PREPROCESSOR_DIRECTIVEPARSER_H_
 
-#include "Lexer.h"
-#include "Macro.h"
-#include "pp_utils.h"
-#include "SourceLocation.h"
+#include "compiler/preprocessor/Lexer.h"
+#include "compiler/preprocessor/Macro.h"
+#include "compiler/preprocessor/SourceLocation.h"
 
 namespace pp
 {
@@ -25,13 +24,12 @@ class DirectiveParser : public Lexer
     DirectiveParser(Tokenizer *tokenizer,
                     MacroSet *macroSet,
                     Diagnostics *diagnostics,
-                    DirectiveHandler *directiveHandler);
+                    DirectiveHandler *directiveHandler,
+                    int maxMacroExpansionDepth);
 
-    virtual void lex(Token *token);
+    void lex(Token *token) override;
 
   private:
-    PP_DISALLOW_COPY_AND_ASSIGN(DirectiveParser);
-
     void parseDirective(Token *token);
     void parseDefine(Token *token);
     void parseUndef(Token *token);
@@ -62,19 +60,21 @@ class DirectiveParser : public Lexer
         bool foundElseGroup;
 
         ConditionalBlock()
-            : skipBlock(false),
-              skipGroup(false),
-              foundValidGroup(false),
-              foundElseGroup(false)
+            : skipBlock(false), skipGroup(false), foundValidGroup(false), foundElseGroup(false)
         {
         }
     };
     bool mPastFirstStatement;
+    bool mSeenNonPreprocessorToken;  // Tracks if a non-preprocessor token has been seen yet.  Some
+                                     // macros, such as
+                                     // #extension must be declared before all shader code.
     std::vector<ConditionalBlock> mConditionalStack;
     Tokenizer *mTokenizer;
     MacroSet *mMacroSet;
     Diagnostics *mDiagnostics;
     DirectiveHandler *mDirectiveHandler;
+    int mShaderVersion;
+    int mMaxMacroExpansionDepth;
 };
 
 }  // namespace pp

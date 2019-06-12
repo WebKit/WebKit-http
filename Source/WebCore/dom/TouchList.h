@@ -22,15 +22,14 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef TouchList_h
-#define TouchList_h
+#pragma once
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/TouchListIOS.h>
 #elif ENABLE(TOUCH_EVENTS)
 
 #include "Touch.h"
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -42,22 +41,32 @@ public:
     {
         return adoptRef(*new TouchList);
     }
+    static Ref<TouchList> create(Vector<std::reference_wrapper<Touch>>&& touches)
+    {
+        return adoptRef(*new TouchList(WTFMove(touches)));
+    }
 
     unsigned length() const { return m_values.size(); }
 
     Touch* item(unsigned);
     const Touch* item(unsigned) const;
 
-    void append(const PassRefPtr<Touch> touch) { m_values.append(touch); }
+    void append(Ref<Touch>&& touch) { m_values.append(WTFMove(touch)); }
 
 private:
-    TouchList() {}
+    TouchList() = default;
 
-    Vector<RefPtr<Touch> > m_values;
+    explicit TouchList(Vector<std::reference_wrapper<Touch>>&& touches)
+    {
+        m_values.reserveInitialCapacity(touches.size());
+        for (auto& touch : touches)
+            m_values.uncheckedAppend(touch.get());
+    }
+
+    Vector<Ref<Touch>> m_values;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(TOUCH_EVENTS)
 
-#endif /* TouchList_h */

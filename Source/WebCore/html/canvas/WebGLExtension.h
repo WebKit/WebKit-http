@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLExtension_h
-#define WebGLExtension_h
+#pragma once
 
 #include "WebGLRenderingContextBase.h"
 
@@ -58,18 +57,16 @@ public:
         ANGLEInstancedArraysName,
     };
 
-    void ref() { m_context->ref(); }
-    void deref() { m_context->deref(); }
-    WebGLRenderingContextBase* context() { return m_context; }
+    void ref() { m_context.ref(); }
+    void deref() { m_context.deref(); }
+    WebGLRenderingContextBase& context() { return m_context; }
 
     virtual ~WebGLExtension();
     virtual ExtensionName getName() const = 0;
 
 protected:
-    WebGLExtension(WebGLRenderingContextBase*);
-    WebGLRenderingContextBase* m_context;
+    WebGLExtension(WebGLRenderingContextBase&);
+    WebGLRenderingContextBase& m_context;
 };
 
 } // namespace WebCore
-
-#endif // WebGLExtension_h

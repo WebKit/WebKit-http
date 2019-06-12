@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FixedTableLayout_h
-#define FixedTableLayout_h
+#pragma once
 
 #include "LayoutUnit.h"
 #include "Length.h"
@@ -34,9 +33,9 @@ class FixedTableLayout final : public TableLayout {
 public:
     explicit FixedTableLayout(RenderTable*);
 
-    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth) override;
-    virtual void applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const override;
-    virtual void layout() override;
+    void computeIntrinsicLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth) override;
+    void applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const override;
+    void layout() override;
 
 private:
     float calcWidthArray();
@@ -45,5 +44,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // FixedTableLayout_h

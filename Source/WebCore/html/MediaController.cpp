@@ -29,9 +29,12 @@
 #include "MediaController.h"
 
 #include "Clock.h"
+#include "EventNames.h"
+#include "ExceptionCode.h"
 #include "HTMLMediaElement.h"
 #include "TimeRanges.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/AtomicString.h>
 
@@ -56,7 +59,6 @@ MediaController::MediaController(ScriptExecutionContext& context)
     , m_clock(Clock::create())
     , m_scriptExecutionContext(context)
     , m_timeupdateTimer(*this, &MediaController::scheduleTimeupdateEvent)
-    , m_previousTimeupdateTime(0)
 {
 }
 
@@ -64,28 +66,26 @@ MediaController::~MediaController()
 {
 }
 
-void MediaController::addMediaElement(HTMLMediaElement* element)
+void MediaController::addMediaElement(HTMLMediaElement& element)
 {
-    ASSERT(element);
-    ASSERT(!m_mediaElements.contains(element));
+    ASSERT(!m_mediaElements.contains(&element));
 
-    m_mediaElements.append(element);
+    m_mediaElements.append(&element);
     bringElementUpToSpeed(element);
 }
 
-void MediaController::removeMediaElement(HTMLMediaElement* element)
+void MediaController::removeMediaElement(HTMLMediaElement& element)
 {
-    ASSERT(element);
-    ASSERT(m_mediaElements.contains(element));
-    m_mediaElements.remove(m_mediaElements.find(element));
+    ASSERT(m_mediaElements.contains(&element));
+    m_mediaElements.remove(m_mediaElements.find(&element));
 }
 
-bool MediaController::containsMediaElement(HTMLMediaElement* element) const
+bool MediaController::containsMediaElement(HTMLMediaElement& element) const
 {
-    return m_mediaElements.contains(element);
+    return m_mediaElements.contains(&element);
 }
 
-PassRefPtr<TimeRanges> MediaController::buffered() const
+Ref<TimeRanges> MediaController::buffered() const
 {
     if (m_mediaElements.isEmpty())
         return TimeRanges::create();
@@ -93,13 +93,13 @@ PassRefPtr<TimeRanges> MediaController::buffered() const
     // The buffered attribute must return a new static normalized TimeRanges object that represents 
     // the intersection of the ranges of the media resources of the slaved media elements that the 
     // user agent has buffered, at the time the attribute is evaluated.
-    RefPtr<TimeRanges> bufferedRanges = m_mediaElements.first()->buffered();
+    Ref<TimeRanges> bufferedRanges = m_mediaElements.first()->buffered();
     for (size_t index = 1; index < m_mediaElements.size(); ++index)
-        bufferedRanges->intersectWith(*m_mediaElements[index]->buffered().get());
+        bufferedRanges->intersectWith(m_mediaElements[index]->buffered());
     return bufferedRanges;
 }
 
-PassRefPtr<TimeRanges> MediaController::seekable() const
+Ref<TimeRanges> MediaController::seekable() const
 {
     if (m_mediaElements.isEmpty())
         return TimeRanges::create();
@@ -107,13 +107,13 @@ PassRefPtr<TimeRanges> MediaController::seekable() const
     // The seekable attribute must return a new static normalized TimeRanges object that represents
     // the intersection of the ranges of the media resources of the slaved media elements that the
     // user agent is able to seek to, at the time the attribute is evaluated.
-    RefPtr<TimeRanges> seekableRanges = m_mediaElements.first()->seekable();
+    Ref<TimeRanges> seekableRanges = m_mediaElements.first()->seekable();
     for (size_t index = 1; index < m_mediaElements.size(); ++index)
-        seekableRanges->intersectWith(*m_mediaElements[index]->seekable().get());
+        seekableRanges->intersectWith(m_mediaElements[index]->seekable());
     return seekableRanges;
 }
 
-PassRefPtr<TimeRanges> MediaController::played()
+Ref<TimeRanges> MediaController::played()
 {
     if (m_mediaElements.isEmpty())
         return TimeRanges::create();
@@ -121,9 +121,9 @@ PassRefPtr<TimeRanges> MediaController::played()
     // The played attribute must return a new static normalized TimeRanges object that represents 
     // the union of the ranges of the media resources of the slaved media elements that the 
     // user agent has so far rendered, at the time the attribute is evaluated.
-    RefPtr<TimeRanges> playedRanges = m_mediaElements.first()->played();
+    Ref<TimeRanges> playedRanges = m_mediaElements.first()->played();
     for (size_t index = 1; index < m_mediaElements.size(); ++index)
-        playedRanges->unionWith(*m_mediaElements[index]->played().get());
+        playedRanges->unionWith(m_mediaElements[index]->played());
     return playedRanges;
 }
 
@@ -149,7 +149,7 @@ double MediaController::currentTime() const
     if (m_position == MediaPlayer::invalidTime()) {
         // Some clocks may return times outside the range of [0..duration].
         m_position = std::max<double>(0, std::min(duration(), m_clock->currentTime()));
-        m_clearPositionTimer.startOneShot(0);
+        m_clearPositionTimer.startOneShot(0_s);
     }
 
     return m_position;
@@ -249,18 +249,16 @@ void MediaController::setPlaybackRate(double rate)
     scheduleEvent(eventNames().ratechangeEvent);
 }
 
-void MediaController::setVolume(double level, ExceptionCode& code)
+ExceptionOr<void> MediaController::setVolume(double level)
 {
     if (m_volume == level)
-        return;
+        return { };
 
     // If the new value is outside the range 0.0 to 1.0 inclusive, then, on setting, an 
     // IndexSizeError exception must be raised instead.
-    if (level < 0 || level > 1) {
-        code = INDEX_SIZE_ERR;
-        return;
-    }
-        
+    if (!(level >= 0 && level <= 1))
+        return Exception { INDEX_SIZE_ERR };
+
     // The volume attribute, on setting, if the new value is in the range 0.0 to 1.0 inclusive,
     // must set the MediaController's media controller volume multiplier to the new value
     m_volume = level;
@@ -270,6 +268,8 @@ void MediaController::setVolume(double level, ExceptionCode& code)
 
     for (auto& mediaElement : m_mediaElements)
         mediaElement->updateVolume();
+
+    return { };
 }
 
 void MediaController::setMuted(bool flag)
@@ -317,7 +317,7 @@ const AtomicString& MediaController::playbackState() const
         return playbackStateEnded();
     default:
         ASSERT_NOT_REACHED();
-        return nullAtom;
+        return nullAtom();
     }
 }
 
@@ -342,7 +342,7 @@ static AtomicString eventNameForReadyState(MediaControllerInterface::ReadyState 
         return eventNames().canplaythroughEvent;
     default:
         ASSERT_NOT_REACHED();
-        return nullAtom;
+        return nullAtom();
     }
 }
 
@@ -476,15 +476,14 @@ void MediaController::updateMediaElements()
         mediaElement->updatePlayState();
 }
 
-void MediaController::bringElementUpToSpeed(HTMLMediaElement* element)
+void MediaController::bringElementUpToSpeed(HTMLMediaElement& element)
 {
-    ASSERT(element);
-    ASSERT(m_mediaElements.contains(element));
+    ASSERT(m_mediaElements.contains(&element));
 
     // When the user agent is to bring a media element up to speed with its new media controller,
     // it must seek that media element to the MediaController's media controller position relative
     // to the media element's timeline.
-    element->seekInternal(MediaTime::createWithDouble(currentTime()));
+    element.seekInternal(MediaTime::createWithDouble(currentTime()));
 }
 
 bool MediaController::isBlocked() const
@@ -539,7 +538,7 @@ void MediaController::scheduleEvent(const AtomicString& eventName)
 {
     m_pendingEvents.append(Event::create(eventName, false, true));
     if (!m_asyncEventTimer.isActive())
-        m_asyncEventTimer.startOneShot(0);
+        m_asyncEventTimer.startOneShot(0_s);
 }
 
 void MediaController::asyncEventTimerFired()
@@ -665,7 +664,7 @@ void MediaController::returnToRealtime()
 
 // The spec says to fire periodic timeupdate events (those sent while playing) every
 // "15 to 250ms", we choose the slowest frequency
-static const double maxTimeupdateEventFrequency = 0.25;
+static const Seconds maxTimeupdateEventFrequency { 250_ms };
 
 void MediaController::startTimeupdateTimer()
 {
@@ -677,8 +676,8 @@ void MediaController::startTimeupdateTimer()
 
 void MediaController::scheduleTimeupdateEvent()
 {
-    double now = monotonicallyIncreasingTime();
-    double timedelta = now - m_previousTimeupdateTime;
+    MonotonicTime now = MonotonicTime::now();
+    Seconds timedelta = now - m_previousTimeupdateTime;
 
     if (timedelta < maxTimeupdateEventFrequency)
         return;

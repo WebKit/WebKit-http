@@ -18,8 +18,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef JSTestOverloadedConstructors_h
-#define JSTestOverloadedConstructors_h
+#pragma once
 
 #include "JSDOMWrapper.h"
 #include "TestOverloadedConstructors.h"
@@ -29,7 +28,7 @@ namespace WebCore {
 
 class JSTestOverloadedConstructors : public JSDOMWrapper<TestOverloadedConstructors> {
 public:
-    typedef JSDOMWrapper<TestOverloadedConstructors> Base;
+    using Base = JSDOMWrapper<TestOverloadedConstructors>;
     static JSTestOverloadedConstructors* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestOverloadedConstructors>&& impl)
     {
         JSTestOverloadedConstructors* ptr = new (NotNull, JSC::allocateCell<JSTestOverloadedConstructors>(globalObject->vm().heap)) JSTestOverloadedConstructors(structure, *globalObject, WTFMove(impl));
@@ -37,11 +36,9 @@ public:
         return ptr;
     }
 
-    static const bool hasStaticPropertyTable = false;
-
-    static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static TestOverloadedConstructors* toWrapped(JSC::JSValue);
+    static JSC::JSObject* createPrototype(JSC::VM&, JSDOMGlobalObject&);
+    static JSC::JSObject* prototype(JSC::VM&, JSDOMGlobalObject&);
+    static TestOverloadedConstructors* toWrapped(JSC::VM&, JSC::JSValue);
     static void destroy(JSC::JSCell*);
 
     DECLARE_INFO;
@@ -55,12 +52,7 @@ public:
 protected:
     JSTestOverloadedConstructors(JSC::Structure*, JSDOMGlobalObject&, Ref<TestOverloadedConstructors>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestOverloadedConstructorsOwner : public JSC::WeakHandleOwner {
@@ -80,11 +72,14 @@ inline void* wrapperKey(TestOverloadedConstructors* wrappableObject)
     return wrappableObject;
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverloadedConstructors*);
-inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOverloadedConstructors& impl) { return toJS(state, globalObject, &impl); }
-JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, TestOverloadedConstructors*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverloadedConstructors&);
+inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOverloadedConstructors* impl) { return impl ? toJS(state, globalObject, *impl) : JSC::jsNull(); }
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestOverloadedConstructors>&&);
+inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestOverloadedConstructors>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestOverloadedConstructors> {
+    using WrapperClass = JSTestOverloadedConstructors;
+    using ToWrappedReturnType = TestOverloadedConstructors*;
+};
 
 } // namespace WebCore
-
-#endif

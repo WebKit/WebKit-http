@@ -28,10 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DateInputType_h
-#define DateInputType_h
+#pragma once
 
 #if ENABLE(INPUT_TYPE_DATE)
+
 #include "BaseChooserOnlyDateAndTimeInputType.h"
 
 namespace WebCore {
@@ -41,15 +41,14 @@ public:
     explicit DateInputType(HTMLInputElement&);
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual DateComponents::Type dateType() const override;
-    virtual StepRange createStepRange(AnyStepHandling) const override;
-    virtual bool parseToDateComponentsInternal(const UChar*, unsigned length, DateComponents*) const override;
-    virtual bool setMillisecondToDateComponents(double, DateComponents*) const override;
-    virtual bool isDateField() const override;
+    const AtomicString& formControlType() const override;
+    DateComponents::Type dateType() const override;
+    StepRange createStepRange(AnyStepHandling) const override;
+    bool parseToDateComponentsInternal(const UChar*, unsigned length, DateComponents*) const override;
+    bool setMillisecondToDateComponents(double, DateComponents*) const override;
+    bool isDateField() const override;
 };
 
 } // namespace WebCore
 
 #endif
-#endif // DateInputType_h

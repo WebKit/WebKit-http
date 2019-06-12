@@ -31,7 +31,7 @@ namespace WebCore {
 void EventLoop::cycle()
 {
     [NSApp setWindowsNeedUpdate:YES];
-    [NSApp sendEvent:[NSApp nextEventMatchingMask:NSAnyEventMask untilDate:[NSDate dateWithTimeIntervalSinceNow:0.05] inMode:NSDefaultRunLoopMode dequeue:YES]];
+    [NSApp sendEvent:[NSApp nextEventMatchingMask:NSEventMaskAny untilDate:[NSDate dateWithTimeIntervalSinceNow:0.05] inMode:NSDefaultRunLoopMode dequeue:YES]];
 }
 
 } // namespace WebCore

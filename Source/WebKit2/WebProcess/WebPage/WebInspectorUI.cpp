@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,7 +86,7 @@ void WebInspectorUI::windowObjectCleared()
         m_frontendHost->disconnectClient();
 
     m_frontendHost = InspectorFrontendHost::create(this, m_page.corePage());
-    ScriptGlobalObject::set(execStateFromPage(mainThreadNormalWorld(), m_page.corePage()), ASCIILiteral("InspectorFrontendHost"), m_frontendHost.get());
+    ScriptGlobalObject::set(*execStateFromPage(mainThreadNormalWorld(), m_page.corePage()), ASCIILiteral("InspectorFrontendHost"), *m_frontendHost);
 }
 
 void WebInspectorUI::frontendLoaded()
@@ -97,6 +97,9 @@ void WebInspectorUI::frontendLoaded()
     // cleared due to a reload, the dock state won't be resent from UIProcess.
     setDockingUnavailable(m_dockingUnavailable);
     setDockSide(m_dockSide);
+    setIsVisible(m_isVisible);
+
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::FrontendLoaded(), m_inspectedPageIdentifier);
 
     bringToFront();
 }
@@ -130,8 +133,16 @@ void WebInspectorUI::closeWindow()
         m_frontendController->setInspectorFrontendClient(nullptr);
     m_frontendController = nullptr;
 
+    if (m_frontendHost)
+        m_frontendHost->disconnectClient();
+
     m_inspectedPageIdentifier = 0;
     m_underTest = false;
+}
+
+WebCore::UserInterfaceLayoutDirection WebInspectorUI::userInterfaceLayoutDirection() const
+{
+    return m_page.corePage()->userInterfaceLayoutDirection();
 }
 
 void WebInspectorUI::requestSetDockSide(DockSide side)
@@ -143,6 +154,9 @@ void WebInspectorUI::requestSetDockSide(DockSide side)
         break;
     case DockSide::Right:
         webProcess.parentProcessConnection()->send(Messages::WebInspectorProxy::AttachRight(), m_inspectedPageIdentifier);
+        break;
+    case DockSide::Left:
+        webProcess.parentProcessConnection()->send(Messages::WebInspectorProxy::AttachLeft(), m_inspectedPageIdentifier);
         break;
     case DockSide::Bottom:
         webProcess.parentProcessConnection()->send(Messages::WebInspectorProxy::AttachBottom(), m_inspectedPageIdentifier);
@@ -163,6 +177,10 @@ void WebInspectorUI::setDockSide(DockSide side)
         sideString = "right";
         break;
 
+    case DockSide::Left:
+        sideString = "left";
+        break;
+
     case DockSide::Bottom:
         sideString = "bottom";
         break;
@@ -175,8 +193,16 @@ void WebInspectorUI::setDockSide(DockSide side)
 
 void WebInspectorUI::setDockingUnavailable(bool unavailable)
 {
-    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setDockingUnavailable"), unavailable);
     m_dockingUnavailable = unavailable;
+
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setDockingUnavailable"), unavailable);
+}
+
+void WebInspectorUI::setIsVisible(bool visible)
+{
+    m_isVisible = visible;
+
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setIsVisible"), visible);
 }
 
 void WebInspectorUI::changeAttachedWindowHeight(unsigned height)
@@ -220,6 +246,11 @@ void WebInspectorUI::showResources()
     m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showResources"));
 }
 
+void WebInspectorUI::showTimelines()
+{
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showTimelines"));
+}
+
 void WebInspectorUI::showMainResourceForFrame(const String& frameIdentifier)
 {
     m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("showMainResourceForFrame"), frameIdentifier);
@@ -235,6 +266,16 @@ void WebInspectorUI::stopPageProfiling()
     m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setTimelineProfilingEnabled"), false);
 }
 
+void WebInspectorUI::startElementSelection()
+{
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setElementSelectionEnabled"), true);
+}
+
+void WebInspectorUI::stopElementSelection()
+{
+    m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("setElementSelectionEnabled"), false);
+}
+
 void WebInspectorUI::didSave(const String& url)
 {
     m_frontendAPIDispatcher.dispatchCommand(ASCIILiteral("savedURL"), url);
@@ -248,6 +289,16 @@ void WebInspectorUI::didAppend(const String& url)
 void WebInspectorUI::sendMessageToFrontend(const String& message)
 {
     m_frontendAPIDispatcher.dispatchMessageAsync(message);
+}
+
+void WebInspectorUI::pagePaused()
+{
+    m_frontendAPIDispatcher.suspend();
+}
+
+void WebInspectorUI::pageUnpaused()
+{
+    m_frontendAPIDispatcher.unsuspend();
 }
 
 void WebInspectorUI::sendMessageToBackend(const String& message)

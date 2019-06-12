@@ -23,12 +23,10 @@
  *
  */
 
-#ifndef StyleFlexibleBoxData_h
-#define StyleFlexibleBoxData_h
+#pragma once
 
 #include "Length.h"
-
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -44,12 +42,12 @@ public:
         return !(*this == o);
     }
 
-    float m_flexGrow;
-    float m_flexShrink;
-    Length m_flexBasis;
+    float flexGrow;
+    float flexShrink;
+    Length flexBasis;
 
-    unsigned m_flexDirection : 2; // EFlexDirection
-    unsigned m_flexWrap : 2; // EFlexWrap
+    unsigned flexDirection : 2; // EFlexDirection
+    unsigned flexWrap : 2; // EFlexWrap
 
 private:
     StyleFlexibleBoxData();
@@ -57,5 +55,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleFlexibleBoxData_h

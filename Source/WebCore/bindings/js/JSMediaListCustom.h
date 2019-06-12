@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSMediaListCustom_h
-#define JSMediaListCustom_h
+#pragma once
 
 #include "CSSRule.h"
 #include "CSSStyleSheet.h"
-#include "JSCSSRuleCustom.h"
 #include "JSStyleSheetCustom.h"
 #include "MediaList.h"
 
@@ -44,5 +42,3 @@ inline void* root(MediaList* mediaList)
 }
 
 } // namespace WebCore
-
-#endif // JSMediaListCustom_h

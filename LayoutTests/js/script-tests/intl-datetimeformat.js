@@ -1,3 +1,4 @@
+//@ skip if $hostOS == "windows"
 description("This test checks the behavior of Intl.DateTimeFormat as described in the ECMAScript Internationalization API Specification (ECMA-402 2.0).");
 
 // 12.1 The Intl.DateTimeFormat Constructor
@@ -72,16 +73,44 @@ shouldThrow("Intl.DateTimeFormat.supportedLocalesOf('en-x')", "'RangeError: inva
 shouldThrow("Intl.DateTimeFormat.supportedLocalesOf('en-*')", "'RangeError: invalid language tag: en-*'");
 shouldThrow("Intl.DateTimeFormat.supportedLocalesOf('en-')", "'RangeError: invalid language tag: en-'");
 shouldThrow("Intl.DateTimeFormat.supportedLocalesOf('en--US')", "'RangeError: invalid language tag: en--US'");
+// Accepts valid tags
+var validLanguageTags = [
+    "de", // ISO 639 language code
+    "de-DE", // + ISO 3166-1 country code
+    "DE-de", // tags are case-insensitive
+    "cmn", // ISO 639 language code
+    "cmn-Hans", // + script code
+    "CMN-hANS", // tags are case-insensitive
+    "cmn-hans-cn", // + ISO 3166-1 country code
+    "es-419", // + UN M.49 region code
+    "es-419-u-nu-latn-cu-bob", // + Unicode locale extension sequence
+    "i-klingon", // grandfathered tag
+    "cmn-hans-cn-t-ca-u-ca-x-t-u", // singleton subtags can also be used as private use subtags
+    "enochian-enochian", // language and variant subtags may be the same
+    "de-gregory-u-ca-gregory", // variant and extension subtags may be the same
+    "aa-a-foo-x-a-foo-bar", // variant subtags can also be used as private use subtags
+    "x-en-US-12345", // anything goes in private use tags
+    "x-12345-12345-en-US",
+    "x-en-US-12345-12345",
+    "x-en-u-foo",
+    "x-en-u-foo-u-bar"
+];
+for (var validLanguageTag of validLanguageTags) {
+    shouldNotThrow("Intl.DateTimeFormat.supportedLocalesOf('" + validLanguageTag + "')");
+}
 
 // 12.3 Properties of the Intl.DateTimeFormat Prototype Object
 
-// The value of Intl.DateTimeFormat.prototype.constructor is %DateTimeFormat%.
-shouldBe("Intl.DateTimeFormat.prototype.constructor", "Intl.DateTimeFormat");
+// is a plain object
+shouldBe("Intl.DateTimeFormat.prototype.constructor", "Object");
+shouldBe("Object.getPrototypeOf(Intl.DateTimeFormat.prototype)", "Object.prototype");
+shouldBe("Object.prototype.toString.call(Intl.DateTimeFormat.prototype)", "'[object Object]'");
 
 // 12.3.3 Intl.DateTimeFormat.prototype.format
 
 // This named accessor property returns a function that formats a date according to the effective locale and the formatting options of this DateTimeFormat object.
-shouldBeType("Intl.DateTimeFormat.prototype.format", "Function");
+var defaultDTFormat = Intl.DateTimeFormat();
+shouldBeType("defaultDTFormat.format", "Function");
 
 // The value of the [[Get]] attribute is a function
 shouldBeType("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'format').get", "Function");
@@ -94,13 +123,13 @@ shouldBeFalse("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'f
 shouldBeTrue("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'format').configurable");
 
 // The value of F’s length property is 1.
-shouldBe("Intl.DateTimeFormat.prototype.format.length", "1");
+shouldBe("defaultDTFormat.format.length", "1");
 
 // Throws on non-DateTimeFormat this.
+shouldThrow("Intl.DateTimeFormat.prototype.format", "'TypeError: Intl.DateTimeFormat.prototype.format called on value that\\'s not an object initialized as a DateTimeFormat'");
 shouldThrow("Object.defineProperty({}, 'format', Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'format')).format", "'TypeError: Intl.DateTimeFormat.prototype.format called on value that\\'s not an object initialized as a DateTimeFormat'");
 
 // The format function is unique per instance.
-shouldBeTrue("Intl.DateTimeFormat.prototype.format !== Intl.DateTimeFormat().format");
 shouldBeTrue("new Intl.DateTimeFormat().format !== new Intl.DateTimeFormat().format");
 
 // 12.3.4 DateTime Format Functions
@@ -114,22 +143,19 @@ shouldBeTrue("new Intl.DateTimeFormat().format !== new Intl.DateTimeFormat().for
 // 4. Else
 // a. Let x be ToNumber(date).
 // b. ReturnIfAbrupt(x).
-shouldThrow("Intl.DateTimeFormat.prototype.format({ valueOf() { throw Error('4b') } })", "'Error: 4b'");
+shouldThrow("defaultDTFormat.format({ valueOf() { throw Error('4b') } })", "'Error: 4b'");
 
 // 12.3.4 FormatDateTime abstract operation
 
 // 1. If x is not a finite Number, then throw a RangeError exception.
-shouldThrow("Intl.DateTimeFormat.prototype.format(Infinity)", "'RangeError: date value is not finite in DateTimeFormat format()'");
+shouldThrow("defaultDTFormat.format(Infinity)", "'RangeError: date value is not finite in DateTimeFormat format()'");
 
 // Format is bound, so calling with alternate "this" has no effect.
-shouldBe("Intl.DateTimeFormat.prototype.format.call(null, 0)", "Intl.DateTimeFormat().format(0)");
-shouldBe("Intl.DateTimeFormat.prototype.format.call(Intl.DateTimeFormat('ar'), 0)", "Intl.DateTimeFormat().format(0)");
-shouldBe("Intl.DateTimeFormat.prototype.format.call(5, 0)", "Intl.DateTimeFormat().format(0)");
-shouldBe("new Intl.DateTimeFormat().format.call(null, 0)", "Intl.DateTimeFormat().format(0)");
-shouldBe("new Intl.DateTimeFormat().format.call(Intl.DateTimeFormat('ar'), 0)", "Intl.DateTimeFormat().format(0)");
-shouldBe("new Intl.DateTimeFormat().format.call(5, 0)", "Intl.DateTimeFormat().format(0)");
+shouldBe("defaultDTFormat.format.call(null, 0)", "Intl.DateTimeFormat().format(0)");
+shouldBe("defaultDTFormat.format.call(Intl.DateTimeFormat('ar'), 0)", "Intl.DateTimeFormat().format(0)");
+shouldBe("defaultDTFormat.format.call(5, 0)", "Intl.DateTimeFormat().format(0)");
 
-shouldBeTrue("typeof Intl.DateTimeFormat.prototype.format() === 'string'");
+shouldBeTrue("typeof defaultDTFormat.format() === 'string'");
 shouldBe("Intl.DateTimeFormat('en', { timeZone: 'America/Denver' }).format(new Date(1451099872641))", "'12/25/2015'");
 
 // 12.3.5 Intl.DateTimeFormat.prototype.resolvedOptions ()
@@ -137,32 +163,20 @@ shouldBe("Intl.DateTimeFormat('en', { timeZone: 'America/Denver' }).format(new D
 shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions.length", "0");
 
 // Returns a new object whose properties and attributes are set as if constructed by an object literal.
-shouldBeType("Intl.DateTimeFormat.prototype.resolvedOptions()", "Object");
-
-// The Intl.DateTimeFormat prototype object is itself an %DateTimeFormat% instance, whose internal slots are set as if it had been constructed by the expression Construct(%DateTimeFormat%).
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().locale", "new Intl.DateTimeFormat().resolvedOptions().locale");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().timeZone", "new Intl.DateTimeFormat().resolvedOptions().timeZone");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().calendar", "new Intl.DateTimeFormat().resolvedOptions().calendar");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().numberingSystem", "new Intl.DateTimeFormat().resolvedOptions().numberingSystem");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().weekday", "new Intl.DateTimeFormat().resolvedOptions().weekday");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().era", "new Intl.DateTimeFormat().resolvedOptions().era");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().year", "new Intl.DateTimeFormat().resolvedOptions().year");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().month", "new Intl.DateTimeFormat().resolvedOptions().month");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().day", "new Intl.DateTimeFormat().resolvedOptions().day");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().hour", "new Intl.DateTimeFormat().resolvedOptions().hour");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().hour12", "new Intl.DateTimeFormat().resolvedOptions().hour12");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().minute", "new Intl.DateTimeFormat().resolvedOptions().minute");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().second", "new Intl.DateTimeFormat().resolvedOptions().second");
-shouldBe("Intl.DateTimeFormat.prototype.resolvedOptions().timeZoneName", "new Intl.DateTimeFormat().resolvedOptions().timeZoneName");
+shouldBeType("defaultDTFormat.resolvedOptions()", "Object");
 
 // Returns a new object each time.
-shouldBeFalse("Intl.DateTimeFormat.prototype.resolvedOptions() === Intl.DateTimeFormat.prototype.resolvedOptions()");
+shouldBeFalse("defaultDTFormat.resolvedOptions() === defaultDTFormat.resolvedOptions()");
 
 // Throws on non-DateTimeFormat this.
+shouldThrow("Intl.DateTimeFormat.prototype.resolvedOptions()", "'TypeError: Intl.DateTimeFormat.prototype.resolvedOptions called on value that\\'s not an object initialized as a DateTimeFormat'");
 shouldThrow("Intl.DateTimeFormat.prototype.resolvedOptions.call(5)", "'TypeError: Intl.DateTimeFormat.prototype.resolvedOptions called on value that\\'s not an object initialized as a DateTimeFormat'");
 
 shouldThrow("Intl.DateTimeFormat('$')", "'RangeError: invalid language tag: $'");
 shouldThrow("Intl.DateTimeFormat('en', null)", '"TypeError: null is not an object (evaluating \'Intl.DateTimeFormat(\'en\', null)\')"');
+
+// Defaults to en-US locale in test runner
+shouldBe("Intl.DateTimeFormat().resolvedOptions().locale", "'en-US'");
 
 // Defaults to month, day, year.
 shouldBe("Intl.DateTimeFormat('en').resolvedOptions().weekday", "undefined");
@@ -257,12 +271,11 @@ shouldBe("Intl.DateTimeFormat('en-u-ca-ISO8601').resolvedOptions().calendar", "'
 shouldBe("Intl.DateTimeFormat('en-u-ca-japanese').resolvedOptions().calendar", "'japanese'");
 shouldBe("Intl.DateTimeFormat('en-u-ca-persian').resolvedOptions().calendar", "'persian'");
 shouldBe("Intl.DateTimeFormat('en-u-ca-roc').resolvedOptions().calendar", "'roc'");
-// FIXME: https://github.com/tc39/ecma402/issues/59
-// shouldBe("Intl.DateTimeFormat('en-u-ca-ethiopic-amete-alem').resolvedOptions().calendar", "'ethioaa'");
-// shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-umalqura').resolvedOptions().calendar", "'islamic-umalqura'");
-// shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-tbla').resolvedOptions().calendar", "'islamic-tbla'");
-// shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-civil').resolvedOptions().calendar", "'islamic-civil'");
-// shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-rgsa').resolvedOptions().calendar", "'islamic-rgsa'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-ethiopic-amete-alem').resolvedOptions().calendar", "'ethiopic-amete-alem'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-umalqura').resolvedOptions().calendar", "'islamic-umalqura'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-tbla').resolvedOptions().calendar", "'islamic-tbla'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-civil').resolvedOptions().calendar", "'islamic-civil'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-rgsa').resolvedOptions().calendar", "'islamic-rgsa'");
 
 // Calendar-sensitive format().
 shouldBe("Intl.DateTimeFormat('en-u-ca-buddhist', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'12/25/2558'");
@@ -280,6 +293,11 @@ shouldBe("Intl.DateTimeFormat('en-u-ca-ISO8601', { timeZone: 'America/Los_Angele
 shouldBe("Intl.DateTimeFormat('en-u-ca-japanese', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'12/25/27'");
 shouldBe("Intl.DateTimeFormat('en-u-ca-persian', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'10/4/1394'");
 shouldBe("Intl.DateTimeFormat('en-u-ca-roc', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'12/25/104'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-ethiopic-amete-alem', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'4/15/7508'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'3/14/1437'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-tbla', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'3/14/1437'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-civil', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'3/13/1437'");
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-rgsa', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'3/14/1437'");
 
 shouldBe("Intl.DateTimeFormat('en', { numberingSystem:'gujr' }).resolvedOptions().numberingSystem", "'latn'");
 shouldBe("Intl.DateTimeFormat('en-u-nu-bogus').resolvedOptions().locale", "'en'");
@@ -353,6 +371,9 @@ shouldBe("Intl.DateTimeFormat('en-u-nu-telu', { timeZone: 'America/Los_Angeles' 
 shouldBe("Intl.DateTimeFormat('en-u-nu-thai', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'๑๒/๒๕/๒๐๑๕'");
 shouldBe("Intl.DateTimeFormat('en-u-nu-tibt', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'༡༢/༢༥/༢༠༡༥'");
 shouldBe("Intl.DateTimeFormat('en-u-nu-vaii', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'꘡꘢/꘢꘥/꘢꘠꘡꘥'");
+
+// Tests multiple keys in extension.
+shouldBe("Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-arab', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'٣/١٤/١٤٣٧'");
 
 shouldThrow("Intl.DateTimeFormat('en', { weekday: { toString() { throw 'weekday' } } })", "'weekday'");
 shouldThrow("Intl.DateTimeFormat('en', { weekday:'invalid' })", '\'RangeError: weekday must be "narrow", "short", or "long"\'');
@@ -440,7 +461,7 @@ shouldBe("Intl.DateTimeFormat('en').resolvedOptions().timeZoneName", "undefined"
 shouldBe("Intl.DateTimeFormat('en', { minute:'2-digit', hour:'numeric', timeZoneName:'short' }).resolvedOptions().timeZoneName", "'short'");
 shouldBe("Intl.DateTimeFormat('en', { minute:'2-digit', hour:'numeric', timeZoneName:'short', timeZone: 'UTC' }).format(0)", "'12:00 AM GMT'");
 shouldBe("Intl.DateTimeFormat('pt-BR', { minute:'2-digit', hour:'numeric', timeZoneName:'long' }).resolvedOptions().timeZoneName", "'long'");
-shouldBe("Intl.DateTimeFormat('pt-BR', { minute:'2-digit', hour:'numeric', timeZoneName:'long', timeZone: 'UTC' }).format(0)", "'00:00 GMT'")
+shouldBeTrue("['00:00 GMT','00:00 Horário do Meridiano de Greenwich'].includes(Intl.DateTimeFormat('pt-BR', { minute:'2-digit', hour:'numeric', timeZoneName:'long', timeZone: 'UTC' }).format(0))");
 
 let localesSample = [
   "ar", "ar-SA", "be", "ca", "cs", "da", "de", "de-CH", "en", "en-AU", "en-GB",
@@ -494,3 +515,90 @@ for (let locale of localesSample) {
     Object.keys(options).every(option => resolved[option] != null)`);
   shouldBeTrue(`typeof Intl.DateTimeFormat("${locale}", { hour: "numeric", minute: "numeric" }).format() === "string"`);
 }
+
+// Legacy compatibility with ECMA-402 1.0
+let legacyInit = "var legacy = Object.create(Intl.DateTimeFormat.prototype);";
+shouldBe(legacyInit + "Intl.DateTimeFormat.apply(legacy)", "legacy");
+shouldBe(legacyInit + "Intl.DateTimeFormat.call(legacy, 'en-u-nu-arab', { timeZone: 'America/Los_Angeles' }).format(1451099872641)", "'١٢/٢٥/٢٠١٥'");
+shouldNotBe("var incompat = {};Intl.DateTimeFormat.apply(incompat)", "incompat");
+
+// ECMA-402 4th edition 15.4 Intl.DateTimeFormat.prototype.formatToParts
+shouldBeType("Intl.DateTimeFormat.prototype.formatToParts", "Function");
+shouldBe("Intl.DateTimeFormat.prototype.formatToParts.length", "0");
+shouldBeTrue("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'formatToParts').writable");
+shouldBeFalse("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'formatToParts').enumerable");
+shouldBeTrue("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'formatToParts').configurable");
+shouldBe("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'formatToParts').get", "undefined");
+shouldBe("Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'formatToParts').set", "undefined");
+
+// Throws on non-finite or non-number
+shouldThrow("new Intl.DateTimeFormat().formatToParts({})", "'RangeError: date value is not finite in DateTimeFormat formatToParts()'");
+shouldThrow("new Intl.DateTimeFormat().formatToParts(NaN)", "'RangeError: date value is not finite in DateTimeFormat formatToParts()'");
+shouldThrow("new Intl.DateTimeFormat().formatToParts(Infinity)", "'RangeError: date value is not finite in DateTimeFormat formatToParts()'");
+shouldThrow("new Intl.DateTimeFormat().formatToParts(-Infinity)", "'RangeError: date value is not finite in DateTimeFormat formatToParts()'");
+shouldThrow("new Intl.DateTimeFormat().formatToParts(new Date(NaN))", "'RangeError: date value is not finite in DateTimeFormat formatToParts()'");
+
+shouldBe(`JSON.stringify(
+  Intl.DateTimeFormat("pt-BR", {
+    hour: "numeric", minute: "numeric", second: "numeric",
+    year: "numeric", month: "numeric", day: "numeric",
+    timeZoneName: "short", era: "short", timeZone: "UTC"
+  }).formatToParts(0).filter((part) => (part.type !== "literal"))
+)`, `JSON.stringify([
+  {"type":"day","value":"1"},
+  {"type":"month","value":"1"},
+  {"type":"year","value":"1970"},
+  {"type":"era","value":"d.C."},
+  {"type":"hour","value":"00"},
+  {"type":"minute","value":"00"},
+  {"type":"second","value":"00"},
+  {"type":"timeZoneName","value":"GMT"}
+])`);
+
+for (let locale of localesSample) {
+  // The following subsets must be available for each locale:
+  // weekday, year, month, day, hour, minute, second
+  shouldBeType(`Intl.DateTimeFormat("${locale}", { weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" }).formatToParts()`, "Array");
+  // weekday, year, month, day
+  shouldBeType(`Intl.DateTimeFormat("${locale}", { weekday: "short", year: "numeric", month: "short", day: "numeric" }).formatToParts()`, "Array");
+  // year, month, day
+  shouldBeType(`Intl.DateTimeFormat("${locale}", { year: "numeric", month: "long", day: "numeric" }).formatToParts()`, "Array");
+  // year, month
+  shouldBeType(`Intl.DateTimeFormat("${locale}", { year: "numeric", month: "long" }).formatToParts()`, "Array");
+  // month, day
+  shouldBeType(`Intl.DateTimeFormat("${locale}", { month: "long", day: "numeric" }).formatToParts()`, "Array");
+  // hour, minute, second
+  shouldBeType(`Intl.DateTimeFormat("${locale}", { hour: "numeric", minute: "numeric", second: "numeric" }).formatToParts()`, "Array");
+  // hour, minute
+  shouldBeType(`Intl.DateTimeFormat("${locale}", { hour: "numeric", minute: "numeric" }).formatToParts()`, "Array");
+}
+
+// Exceed the 32 character default buffer size
+shouldBe(`JSON.stringify(
+  Intl.DateTimeFormat('en-US', {
+    hour: "numeric", minute: "numeric", second: "numeric",
+    year: "numeric", month: "long", day: "numeric", weekday: "long",
+    timeZoneName: "short", era: "long", timeZone: "UTC"
+  }).formatToParts(0)
+)`, `JSON.stringify([
+  {"type":"weekday","value":"Thursday"},
+  {"type":"literal","value":", "},
+  {"type":"month","value":"January"},
+  {"type":"literal","value":" "},
+  {"type":"day","value":"1"},
+  {"type":"literal","value":", "},
+  {"type":"year","value":"1970"},
+  {"type":"literal","value":" "},
+  {"type":"era","value":"Anno Domini"},
+  {"type":"literal","value":", "},
+  {"type":"hour","value":"12"},
+  {"type":"literal","value":":"},
+  {"type":"minute","value":"00"},
+  {"type":"literal","value":":"},
+  {"type":"second","value":"00"},
+  {"type":"literal","value":" "},
+  {"type":"dayPeriod","value":"AM"},
+  {"type":"literal","value":" "},
+  {"type":"timeZoneName","value":"GMT"}
+])`)
+

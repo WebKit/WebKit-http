@@ -23,10 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GraphicsLayerClient_h
-#define GraphicsLayerClient_h
+#pragma once
 
-#include "IntSize.h"
 #include "TiledBacking.h"
 #include <wtf/Forward.h>
 
@@ -72,9 +70,13 @@ enum LayerTreeAsTextBehaviorFlags {
     LayerTreeAsTextIncludePaintingPhases        = 1 << 4,
     LayerTreeAsTextIncludeContentLayers         = 1 << 5,
     LayerTreeAsTextIncludePageOverlayLayers     = 1 << 6,
+    LayerTreeAsTextIncludeAcceleratesDrawing    = 1 << 7,
+    LayerTreeAsTextIncludeBackingStoreAttached  = 1 << 8,
 };
 typedef unsigned LayerTreeAsTextBehavior;
 
+enum class GraphicsLayerPaintFlags { None, AllowAsyncImageDecoding };
+    
 class GraphicsLayerClient {
 public:
     virtual ~GraphicsLayerClient() {}
@@ -92,7 +94,7 @@ public:
     // Notification that this layer requires a flush before the next display refresh.
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) { }
 
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& /* inClip */) { }
+    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& /* inClip */, GraphicsLayerPaintFlags) { }
     virtual void didCommitChangesForLayer(const GraphicsLayer*) const { }
 
     // Provides current transform (taking transform-origin and animations into account). Input matrix has been
@@ -120,11 +122,13 @@ public:
     virtual bool shouldAggressivelyRetainTiles(const GraphicsLayer*) const { return false; }
     virtual bool shouldTemporarilyRetainTileCohorts(const GraphicsLayer*) const { return true; }
 
-    virtual IntSize tileSize() const { return defaultTileSize(); }
+    virtual bool useGiantTiles() const { return false; }
 
     virtual bool needsPixelAligment() const { return false; }
 
     virtual bool needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(const GraphicsLayer&) const { return false; }
+
+    virtual void logFilledVisibleFreshTile(unsigned) { };
 
 #ifndef NDEBUG
     // RenderLayerBacking overrides this to verify that it is not
@@ -138,4 +142,3 @@ public:
 
 } // namespace WebCore
 
-#endif // GraphicsLayerClient_h

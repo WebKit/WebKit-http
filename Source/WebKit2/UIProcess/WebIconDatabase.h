@@ -31,10 +31,11 @@
 #include "WebIconDatabaseClient.h"
 #include <WebCore/IconDatabaseClient.h>
 #include <WebCore/IntSize.h>
-#include <WebCore/NativeImagePtr.h>
+#include <WebCore/NativeImage.h>
 
 namespace API {
 class Data;
+class IconDatabaseClient;
 }
 
 namespace WebCore {
@@ -48,7 +49,7 @@ class WebProcessPool;
 
 class WebIconDatabase : public API::ObjectImpl<API::Object::Type::IconDatabase>, private WebCore::IconDatabaseClient, private IPC::MessageReceiver {
 public:
-    static PassRefPtr<WebIconDatabase> create(WebProcessPool*);
+    static Ref<WebIconDatabase> create(WebProcessPool*);
     virtual ~WebIconDatabase();
 
     void invalidate();
@@ -71,7 +72,7 @@ public:
 
     WebCore::Image* imageForPageURL(const String&, const WebCore::IntSize& iconSize = WebCore::IntSize(32, 32));
     WebCore::NativeImagePtr nativeImageForPageURL(const String&, const WebCore::IntSize& iconSize = WebCore::IntSize(32, 32));
-    PassRefPtr<API::Data> iconDataForPageURL(const String& pageURL);
+    RefPtr<API::Data> iconDataForPageURL(const String& pageURL);
 
     bool isOpen();
     bool isUrlImportCompleted();
@@ -80,7 +81,7 @@ public:
     void checkIntegrityBeforeOpening();
     void close();
 
-    void initializeIconDatabaseClient(const WKIconDatabaseClientBase*);
+    void setClient(std::unique_ptr<API::IconDatabaseClient>&&);
 
     void setPrivateBrowsingEnabled(bool);
 
@@ -93,16 +94,16 @@ private:
     explicit WebIconDatabase(WebProcessPool&);
 
     // WebCore::IconDatabaseClient
-    virtual void didImportIconURLForPageURL(const String&) override;
-    virtual void didImportIconDataForPageURL(const String&) override;
-    virtual void didChangeIconForPageURL(const String&) override;
-    virtual void didRemoveAllIcons() override;
-    virtual void didFinishURLImport() override;
-    virtual void didClose() override;
+    void didImportIconURLForPageURL(const String&) override;
+    void didImportIconDataForPageURL(const String&) override;
+    void didChangeIconForPageURL(const String&) override;
+    void didRemoveAllIcons() override;
+    void didFinishURLImport() override;
+    void didClose() override;
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     void notifyIconDataReadyForPageURL(const String&);
 
@@ -114,7 +115,7 @@ private:
     bool m_shouldDerefWhenAppropriate;
     HashMap<uint64_t, String> m_pendingLoadDecisionURLMap;
 
-    WebIconDatabaseClient m_iconDatabaseClient;
+    std::unique_ptr<API::IconDatabaseClient> m_client;
 };
 
 } // namespace WebKit

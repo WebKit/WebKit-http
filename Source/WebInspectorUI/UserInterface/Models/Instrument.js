@@ -27,7 +27,28 @@ WebInspector.Instrument = class Instrument extends WebInspector.Object
 {
     // Static
 
-    static startLegacyTimelineAgent()
+    static createForTimelineType(type)
+    {
+        switch (type) {
+        case WebInspector.TimelineRecord.Type.Network:
+            return new WebInspector.NetworkInstrument;
+        case WebInspector.TimelineRecord.Type.Layout:
+            return new WebInspector.LayoutInstrument;
+        case WebInspector.TimelineRecord.Type.Script:
+            return new WebInspector.ScriptInstrument;
+        case WebInspector.TimelineRecord.Type.RenderingFrame:
+            return new WebInspector.FPSInstrument;
+        case WebInspector.TimelineRecord.Type.Memory:
+            return new WebInspector.MemoryInstrument;
+        case WebInspector.TimelineRecord.Type.HeapAllocations:
+            return new WebInspector.HeapAllocationsInstrument;
+        default:
+            console.error("Unknown TimelineRecord.Type: " + type);
+            return null;
+        }
+    }
+
+    static startLegacyTimelineAgent(initiatedByBackend)
     {
         console.assert(window.TimelineAgent, "Attempted to start legacy timeline agent without TimelineAgent.");
 
@@ -35,6 +56,9 @@ WebInspector.Instrument = class Instrument extends WebInspector.Object
             return;
 
         WebInspector.Instrument._legacyTimelineAgentStarted = true;
+
+        if (initiatedByBackend)
+            return;
 
         let result = TimelineAgent.start();
 
@@ -46,12 +70,15 @@ WebInspector.Instrument = class Instrument extends WebInspector.Object
         }
     }
 
-    static stopLegacyTimelineAgent()
+    static stopLegacyTimelineAgent(initiatedByBackend)
     {
         if (!WebInspector.Instrument._legacyTimelineAgentStarted)
             return;
 
         WebInspector.Instrument._legacyTimelineAgentStarted = false;
+
+        if (initiatedByBackend)
+            return;
 
         TimelineAgent.stop();
     }
@@ -63,14 +90,14 @@ WebInspector.Instrument = class Instrument extends WebInspector.Object
         return null; // Implemented by subclasses.
     }
 
-    startInstrumentation()
+    startInstrumentation(initiatedByBackend)
     {
-        WebInspector.Instrument.startLegacyTimelineAgent();
+        WebInspector.Instrument.startLegacyTimelineAgent(initiatedByBackend);
     }
 
-    stopInstrumentation()
+    stopInstrumentation(initiatedByBackend)
     {
-        WebInspector.Instrument.stopLegacyTimelineAgent();
+        WebInspector.Instrument.stopLegacyTimelineAgent(initiatedByBackend);
     }
 };
 

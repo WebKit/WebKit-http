@@ -26,6 +26,7 @@
 #include "config.h"
 #include "DragImage.h"
 
+#include "Element.h"
 #include "FloatRoundedRect.h"
 #include "FontCascade.h"
 #include "FontDescription.h"
@@ -35,6 +36,7 @@
 #include "Image.h"
 #include "URL.h"
 #include "StringTruncator.h"
+#include "TextIndicator.h"
 #include "TextRun.h"
 #include "WebCoreTextRenderer.h"
 #include <wtf/RetainPtr.h>
@@ -109,7 +111,7 @@ static FontCascade dragLabelFont(int size, bool bold, FontRenderingMode renderin
     SystemParametersInfo(SPI_GETNONCLIENTMETRICS, metrics.cbSize, &metrics, 0);
 
     FontCascadeDescription description;
-    description.setWeight(bold ? FontWeightBold : FontWeightNormal);
+    description.setWeight(bold ? boldWeightValue() : normalWeightValue());
     description.setOneFamily(metrics.lfSmCaptionFont.lfFaceName);
     description.setSpecifiedSize((float)size);
     description.setComputedSize((float)size);
@@ -119,7 +121,7 @@ static FontCascade dragLabelFont(int size, bool bold, FontRenderingMode renderin
     return result;
 }
 
-DragImageRef createDragImageForLink(URL& url, const String& inLabel, FontRenderingMode fontRenderingMode)
+DragImageRef createDragImageForLink(Element&, URL& url, const String& inLabel, TextIndicatorData&, FontRenderingMode fontRenderingMode, float)
 {
     // This is more or less an exact match for the Mac OS X code.
 

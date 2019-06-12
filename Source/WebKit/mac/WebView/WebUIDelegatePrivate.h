@@ -45,6 +45,10 @@
 #endif
 #endif
 
+#if TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+@protocol UIDropSession;
+#endif
+
 #define WEBMENUITEMTAG_WEBKIT_3_0_SPI_START 2000
 enum { 
     // FIXME: These should move to WebUIDelegate.h as part of the WebMenuItemTag enum there, when we're not in API freeze
@@ -102,6 +106,7 @@ enum {
     WebMenuItemTagDictationAlternative,
     WebMenuItemTagToggleVideoFullscreen,
     WebMenuItemTagShareMenu,
+    WebMenuItemTagToggleVideoEnhancedFullscreen,
 };
 
 // Deprecated; remove when there are no more clients.
@@ -138,6 +143,7 @@ extern NSString *WebConsoleMessageAppCacheMessageSource;
 extern NSString *WebConsoleMessageRenderingMessageSource;
 extern NSString *WebConsoleMessageCSSMessageSource;
 extern NSString *WebConsoleMessageSecurityMessageSource;
+extern NSString *WebConsoleMessageContentBlockerMessageSource;
 extern NSString *WebConsoleMessageOtherMessageSource;
 
 // Message Levels.
@@ -246,7 +252,6 @@ extern NSString *WebConsoleMessageErrorMessageLevel;
 
 /*!
     @method webView:decidePolicyForGeolocationRequestFromOrigin:frame:listener:
-    @abstract 
     @param webView The WebView sending the delegate method.
     @param origin The security origin that would like to use Geolocation.
     @param frame The WebFrame whose JavaScript initiated this call.
@@ -266,8 +271,8 @@ extern NSString *WebConsoleMessageErrorMessageLevel;
 /*!
     @method webView:printFrame:
     @abstract Informs that a WebFrame needs to be printed
-    @param webView The WebView sending the delegate method
-    @param frameView The WebFrame needing to be printed
+    @param sender The WebView sending the delegate method
+    @param frame The WebFrame needing to be printed
     @discussion This method is called when a script or user requests the page to be printed.
 */
 - (void)webView:(WebView *)sender printFrame:(WebFrame *)frame;
@@ -289,6 +294,16 @@ extern NSString *WebConsoleMessageErrorMessageLevel;
 - (void)webViewSupportedOrientationsUpdated:(WebView *)sender;
 
 - (BOOL)webViewCanCheckGeolocationAuthorizationStatus:(WebView *)sender;
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+/*!
+ @method webView:dragDestinationActionMaskForSession:
+ @param sender The WebView sending the delegate method
+ @param session The drop session which this destination action mask will affect
+ @abstract May be implemented to adjust which destination actions are allowed upon dropping the given session.
+ */
+- (WebDragDestinationAction)webView:(WebView *)sender dragDestinationActionMaskForSession:(id <UIDropSession>)session;
+#endif
 #endif
 
 - (NSData *)webCryptoMasterKeyForWebView:(WebView *)sender;

@@ -3,7 +3,8 @@ class CreateAnalysisTaskPage extends PageWithHeading {
     constructor()
     {
         super('Create Analysis Task');
-        this._errorMessage = null;
+        this._message = null;
+        this._renderMessageLazily = new LazilyEvaluatedFunction(this._renderMessage.bind(this));
     }
 
     title() { return 'Creating a New Analysis Task'; }
@@ -11,42 +12,56 @@ class CreateAnalysisTaskPage extends PageWithHeading {
 
     updateFromSerializedState(state, isOpen)
     {
-        this._errorMessage = state.error;
-        if (!isOpen)
-            this.render();
+        if (state.error instanceof Set)
+            state.error = Array.from(state.error.values())[0];
+        this._message = state.error || (state.inProgress ? 'Creating the analysis task page...' : '');
+    }
+
+    didConstructShadowTree()
+    {
+        this.part('form').listenToAction('startTesting', this._createAnalysisTaskWithGroup.bind(this));
+    }
+
+    _createAnalysisTaskWithGroup(repetitionCount, testGroupName, commitSets, platform, test, taskName)
+    {
+        TestGroup.createWithTask(taskName, platform, test, testGroupName, repetitionCount, commitSets).then((task) => {
+            const url = this.router().url(`analysis/task/${task.id()}`);
+            location.href = this.router().url(`analysis/task/${task.id()}`);
+        }, (error) => {
+            alert('Failed to create a new test group: ' + error);
+        });
     }
 
     render()
     {
         super.render();
-        console.log(this._errorMessage)
-        if (this._errorMessage)
-            this.content().querySelector('.message').textContent = this._errorMessage;
+        this._renderMessageLazily.evaluate(this._message);
     }
+
+    _renderMessage(message)
+    {
+        const messageContainer = this.content('message');
+        messageContainer.textContent = this._message;
+        messageContainer.style.display = this._message ? null : 'none';
+        this.content('form').style.display = this._message ? 'none' : null;
+
+      }
 
     static htmlTemplate()
     {
         return `
-            <div class="create-analysis-task-container">
-                <p class="message">Creating the analysis task page...</p>
-            </div>
-`;
+            <p id="message"></p>
+            <custom-configuration-test-group-form id="form"></custom-configuration-test-group-form>`;
     }
 
     static cssTemplate()
     {
         return `
-            .create-analysis-task-container {
-                display: flex;
+            #message {
+                text-align: center;
             }
-
-            .create-analysis-task-container > * {
-                margin: 1rem auto;
-                display: inline-block;
-            }
-
-            .create-analysis-task input {
-                font-size: inherit;
+            #form {
+                margin: 1rem;
             }
 `;
     }

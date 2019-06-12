@@ -36,9 +36,9 @@
 
 namespace WebCore {
 
-RefPtr<Scrollbar> RenderScrollbar::createCustomScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, Element* ownerElement, Frame* owningFrame)
+Ref<Scrollbar> RenderScrollbar::createCustomScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, Element* ownerElement, Frame* owningFrame)
 {
-    return adoptRef(new RenderScrollbar(scrollableArea, orientation, ownerElement, owningFrame));
+    return adoptRef(*new RenderScrollbar(scrollableArea, orientation, ownerElement, owningFrame));
 }
 
 RenderScrollbar::RenderScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, Element* ownerElement, Frame* owningFrame)
@@ -102,7 +102,7 @@ void RenderScrollbar::styleChanged()
     updateScrollbarParts();
 }
 
-void RenderScrollbar::paint(GraphicsContext& context, const IntRect& damageRect)
+void RenderScrollbar::paint(GraphicsContext& context, const IntRect& damageRect, Widget::SecurityOriginPaintPolicy)
 {
     if (context.updatingControlTints()) {
         updateScrollbarParts();
@@ -138,12 +138,12 @@ void RenderScrollbar::setPressedPart(ScrollbarPart part)
     updateScrollbarPart(TrackBGPart);
 }
 
-PassRefPtr<RenderStyle> RenderScrollbar::getScrollbarPseudoStyle(ScrollbarPart partType, PseudoId pseudoId)
+std::unique_ptr<RenderStyle> RenderScrollbar::getScrollbarPseudoStyle(ScrollbarPart partType, PseudoId pseudoId)
 {
     if (!owningRenderer())
         return 0;
 
-    RefPtr<RenderStyle> result = owningRenderer()->getUncachedPseudoStyle(PseudoStyleRequest(pseudoId, this, partType), &owningRenderer()->style());
+    std::unique_ptr<RenderStyle> result = owningRenderer()->getUncachedPseudoStyle(PseudoStyleRequest(pseudoId, this, partType), &owningRenderer()->style());
     // Scrollbars for root frames should always have background color 
     // unless explicitly specified as transparent. So we force it.
     // This is because WebKit assumes scrollbar to be always painted and missing background
@@ -213,7 +213,7 @@ void RenderScrollbar::updateScrollbarPart(ScrollbarPart partType)
     if (partType == NoPart)
         return;
 
-    RefPtr<RenderStyle> partStyle = getScrollbarPseudoStyle(partType, pseudoForScrollbarPart(partType));
+    std::unique_ptr<RenderStyle> partStyle = getScrollbarPseudoStyle(partType, pseudoForScrollbarPart(partType));
     bool needRenderer = partStyle && partStyle->display() != NONE;
 
     if (needRenderer && partStyle->display() != BLOCK) {
@@ -245,9 +245,9 @@ void RenderScrollbar::updateScrollbarPart(ScrollbarPart partType)
     }
 
     if (auto& partRendererSlot = m_parts.add(partType, nullptr).iterator->value)
-        partRendererSlot->setStyle(partStyle.releaseNonNull());
+        partRendererSlot->setStyle(WTFMove(*partStyle));
     else {
-        partRendererSlot = createRenderer<RenderScrollbarPart>(owningRenderer()->document(), partStyle.releaseNonNull(), this, partType);
+        partRendererSlot = createRenderer<RenderScrollbarPart>(owningRenderer()->document(), WTFMove(*partStyle), this, partType);
         partRendererSlot->initializeStyle();
     }
 }

@@ -28,7 +28,7 @@
 
 namespace WebKit {
 
-static const double responsivenessTimeout = 3;
+static const Seconds responsivenessTimeout { 3_s };
 
 ResponsivenessTimer::ResponsivenessTimer(ResponsivenessTimer::Client& client)
     : m_client(client)
@@ -51,6 +51,11 @@ void ResponsivenessTimer::timerFired()
 {
     if (!m_isResponsive)
         return;
+
+    if (!m_client.mayBecomeUnresponsive()) {
+        m_timer.startOneShot(responsivenessTimeout);
+        return;
+    }
 
     m_client.willChangeIsResponsive();
     m_isResponsive = false;

@@ -23,10 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WheelEventDeltaFilterMac_h
-#define WheelEventDeltaFilterMac_h
+#pragma once
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+#if PLATFORM(MAC)
 
 #include "WheelEventDeltaFilter.h"
 #include <wtf/RetainPtr.h>
@@ -39,17 +38,15 @@ class WheelEventDeltaFilterMac final : public WheelEventDeltaFilter {
 public:
     WheelEventDeltaFilterMac();
 
-    virtual void updateFromDelta(const FloatSize&) override;
-    virtual void beginFilteringDeltas() override;
-    virtual void endFilteringDeltas() override;
+    void updateFromDelta(const FloatSize&) override;
+    void beginFilteringDeltas() override;
+    void endFilteringDeltas() override;
 
 private:
     RetainPtr<_NSScrollingPredominantAxisFilter> m_predominantAxisFilter;
     double m_beginFilteringDeltasTime { 0 };
 };
 
-}
+} // namespace WebCore
 
-#endif /* PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100 */
-
-#endif /* WheelEventDeltaFilterMac_h */
+#endif // PLATFORM(MAC)

@@ -13,7 +13,6 @@ Properties:
   0 string red
   1 string green
   2 string blue
-  length number 3
 
 -- Running test case: CheckPropertiesOfBoundConstructor
 Evaluating expression: Number.bind({}, 5)
@@ -21,8 +20,8 @@ Properties:
   __proto__ function function () {
     [native code]
 }
-  arguments object TypeError: Type error
-  caller object TypeError: Type error
+  arguments getter setter
+  caller getter setter
   length number 0
   name string bound Number
 Internal properties:
@@ -31,4 +30,18 @@ Internal properties:
   targetFunction function function Number() {
     [native code]
 }
+
+-- Running test case: CheckPropertiesOfBoundFunctionNoArguments
+Evaluating expression: (function(){}).bind(null)
+Properties:
+  __proto__ function function () {
+    [native code]
+}
+  arguments getter setter
+  caller getter setter
+  length number 0
+  name string bound 
+Internal properties:
+  boundThis object undefined
+  targetFunction function function (){}
 

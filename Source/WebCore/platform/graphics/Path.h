@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2003, 2006, 2009 Apple Inc. All rights reserved.
- *               2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2003, 2006, 2009, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006 Rob Buis <buis@kde.org>
  * Copyright (C) 2007-2008 Torch Mobile, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,8 +30,8 @@
 
 #include "FloatRect.h"
 #include "WindRule.h"
-#include <functional>
 #include <wtf/FastMalloc.h>
+#include <wtf/Function.h>
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
@@ -45,6 +45,16 @@ typedef struct CGPath PlatformPath;
 
 #include <qpainterpath.h>
 typedef QPainterPath PlatformPath;
+
+#elif USE(DIRECT2D)
+#include "COMPtr.h"
+
+interface ID2D1Geometry;
+interface ID2D1GeometryGroup;
+interface ID2D1PathGeometry;
+interface ID2D1GeometrySink;
+
+typedef ID2D1GeometryGroup PlatformPath;
 
 #elif USE(CAIRO)
 
@@ -101,7 +111,7 @@ namespace WebCore {
         FloatPoint* points;
     };
 
-    typedef std::function<void (const PathElement&)> PathApplierFunction;
+    using PathApplierFunction = WTF::Function<void (const PathElement&)>;
 
     class Path {
         WTF_MAKE_FAST_ALLOCATED;
@@ -122,7 +132,7 @@ namespace WebCore {
         // fastBoundingRect() should equal or contain boundingRect(); boundingRect()
         // should perfectly bound the points within the path.
         FloatRect boundingRect() const;
-        FloatRect fastBoundingRect() const;
+        WEBCORE_EXPORT FloatRect fastBoundingRect() const;
         FloatRect strokeBoundingRect(StrokeStyleApplier* = 0) const;
 
         float length() const;
@@ -168,8 +178,12 @@ namespace WebCore {
         void translate(const FloatSize&);
 
         // To keep Path() cheap, it does not allocate a PlatformPath immediately
-        // meaning Path::platformPath() can return null (except on Qt).
+        // meaning Path::platformPath() can return null.
+#if USE(DIRECT2D)
+        PlatformPathPtr platformPath() const { return m_path.get(); }
+#else
         PlatformPathPtr platformPath() const { return m_path; }
+#endif
 #if PLATFORM(QT)
         PlatformPathPtr ensurePlatformPath() { return platformPath(); }
 #else
@@ -180,10 +194,26 @@ namespace WebCore {
         WEBCORE_EXPORT void apply(const PathApplierFunction&) const;
         void transform(const AffineTransform&);
 
+        static float circleControlPoint()
+        {
+            // Approximation of control point positions on a bezier to simulate a quarter of a circle.
+            // This is 1-kappa, where kappa = 4 * (sqrt(2) - 1) / 3
+            return 0.447715;
+        }
+
         void addBeziersForRoundedRect(const FloatRect&, const FloatSize& topLeftRadius, const FloatSize& topRightRadius, const FloatSize& bottomLeftRadius, const FloatSize& bottomRightRadius);
 
-#if USE(CG)
+#if USE(CG) || USE(DIRECT2D)
         void platformAddPathForRoundedRect(const FloatRect&, const FloatSize& topLeftRadius, const FloatSize& topRightRadius, const FloatSize& bottomLeftRadius, const FloatSize& bottomRightRadius);
+#endif
+
+#if USE(DIRECT2D)
+        ID2D1GeometrySink* activePath() const { return m_activePath.get(); }
+        void appendGeometry(ID2D1Geometry*);
+        void createGeometryWithFillMode(WindRule, COMPtr<ID2D1GeometryGroup>&) const;
+        void drawDidComplete() const;
+
+        HRESULT initializePathState();
 #endif
 
 #ifndef NDEBUG
@@ -191,7 +221,13 @@ namespace WebCore {
 #endif
 
     private:
-        PlatformPathPtr m_path;
+#if USE(DIRECT2D)
+        COMPtr<ID2D1GeometryGroup> m_path;
+        COMPtr<ID2D1PathGeometry> m_activePathGeometry;
+        COMPtr<ID2D1GeometrySink> m_activePath;
+#else
+        PlatformPathPtr m_path { nullptr };
+#endif
     };
 
 TextStream& operator<<(TextStream&, const Path&);

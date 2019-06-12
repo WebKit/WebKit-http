@@ -34,10 +34,10 @@
 
 #include "AudioBus.h"
 #include "AudioFileReader.h"
-#include "SoftLinking.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(AudioToolbox)
 SOFT_LINK(AudioToolbox, AudioFileClose, OSStatus, (AudioFileID inAudioFile), (inAudioFile))
@@ -130,7 +130,7 @@ SInt64 AudioFileReader::getSizeProc(void* clientData)
     return static_cast<AudioFileReader*>(clientData)->dataSize();
 }
 
-PassRefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono)
+RefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono)
 {
     if (!m_extAudioFileRef)
         return nullptr;
@@ -177,7 +177,7 @@ PassRefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono
     size_t busChannelCount = mixToMono ? 1 : numberOfChannels;
 
     // Create AudioBus where we'll put the PCM audio data
-    RefPtr<AudioBus> audioBus = AudioBus::create(busChannelCount, numberOfFrames);
+    auto audioBus = AudioBus::create(busChannelCount, numberOfFrames);
     audioBus->setSampleRate(m_clientDataFormat.mSampleRate); // save for later
 
     // Only allocated in the mixToMono case; deallocated on destruction.
@@ -228,16 +228,16 @@ PassRefPtr<AudioBus> AudioFileReader::createBus(float sampleRate, bool mixToMono
 
     destroyAudioBufferList(bufferList);
 
-    return audioBus.release();
+    return audioBus;
 }
 
-PassRefPtr<AudioBus> createBusFromAudioFile(const char* filePath, bool mixToMono, float sampleRate)
+RefPtr<AudioBus> createBusFromAudioFile(const char* filePath, bool mixToMono, float sampleRate)
 {
     AudioFileReader reader(filePath);
     return reader.createBus(sampleRate, mixToMono);
 }
 
-PassRefPtr<AudioBus> createBusFromInMemoryAudioFile(const void* data, size_t dataSize, bool mixToMono, float sampleRate)
+RefPtr<AudioBus> createBusFromInMemoryAudioFile(const void* data, size_t dataSize, bool mixToMono, float sampleRate)
 {
     AudioFileReader reader(data, dataSize);
     return reader.createBus(sampleRate, mixToMono);

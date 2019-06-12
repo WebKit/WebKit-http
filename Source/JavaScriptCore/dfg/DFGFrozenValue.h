@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGFrozenValue_h
-#define DFGFrozenValue_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -59,7 +58,7 @@ public:
         , m_strength(strength)
     {
         ASSERT((!!value && value.isCell()) == !!structure);
-        ASSERT(!value || !value.isCell() || value.asCell()->classInfo() == structure->classInfo());
+        ASSERT(!value || !value.isCell() || value.asCell()->classInfo(*value.asCell()->vm()) == structure->classInfo());
         ASSERT(!!structure || (strength == WeakValue));
     }
     
@@ -71,9 +70,12 @@ public:
     JSCell* cell() const { return m_value.asCell(); }
     
     template<typename T>
-    T dynamicCast()
+    T dynamicCast(VM& vm)
     {
-        return jsDynamicCast<T>(value());
+        JSValue theValue = value();
+        if (!theValue)
+            return nullptr;
+        return jsDynamicCast<T>(vm, theValue);
     }
     template<typename T>
     T cast()
@@ -93,6 +95,8 @@ public:
     
     // The strength of the value itself. The structure is almost always weak.
     ValueStrength strength() const { return m_strength; }
+
+    String tryGetString(Graph&);
     
     void dumpInContext(PrintStream& out, DumpContext* context) const;
     void dump(PrintStream& out) const;
@@ -124,6 +128,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGFrozenValue_h
-

@@ -1,3 +1,4 @@
+'use strict';
 
 class MeasurementAdaptor {
     constructor(formatMap)
@@ -27,33 +28,53 @@ class MeasurementAdaptor {
         return row[this._idIndex];
     }
 
-    adoptToAnalysisResults(row)
+    isOutlier(row)
+    {
+        return row[this._markedOutlierIndex];
+    }
+
+    applyToAnalysisResults(row)
+    {
+        var adaptedRow = this.applyTo(row);
+        adaptedRow.metricId = row[this._metricIndex];
+        adaptedRow.configType = row[this._configTypeIndex];
+        return adaptedRow;
+    }
+
+    applyTo(row)
     {
         var id = row[this._idIndex];
         var mean = row[this._meanIndex];
         var sum = row[this._sumIndex];
         var squareSum = row[this._squareSumIndex];
-        var iterationCount = row[this._countIndex];
-        var revisionList = row[this._revisionsIndex];
         var buildId = row[this._buildIndex];
-        var metricId = row[this._metricIndex];
-        var configType = row[this._configTypeIndex];
+        var builderId = row[this._builderIndex];
+        var cachedBuild = null;
+        var cachedInterval = null;
+
         var self = this;
         return {
             id: id,
+            markedOutlier: row[this._markedOutlierIndex],
             buildId: buildId,
-            metricId: metricId,
-            configType: configType,
-            rootSet: function () { return MeasurementRootSet.ensureSingleton(id, revisionList); },
+            metricId: null,
+            configType: null,
+            commitSet: function () { return MeasurementCommitSet.ensureSingleton(id, row[self._revisionsIndex]); },
             build: function () {
-                var builder = Builder.findById(row[self._builderIndex]);
-                return new Build(id, builder, row[self._buildNumberIndex]);
+                if (cachedBuild == null && builderId)
+                    cachedBuild = new Build(buildId, Builder.findById(builderId), row[self._buildNumberIndex], row[self._buildTimeIndex]);
+                return cachedBuild;
             },
+            time: row[this._commitTimeIndex],
             value: mean,
             sum: sum,
-            squareSum,
-            iterationCount: iterationCount,
-            interval: MeasurementAdaptor.computeConfidenceInterval(row[this._countIndex], mean, sum, squareSum)
+            squareSum: squareSum,
+            iterationCount: row[this._countIndex],
+            get interval () {
+                if (cachedInterval == null)
+                    cachedInterval = MeasurementAdaptor.computeConfidenceInterval(row[self._countIndex], mean, sum, squareSum);
+                return cachedInterval;
+            }
         };
     }
 
@@ -79,45 +100,12 @@ class MeasurementAdaptor {
         return { value: mean, interval: interval };
     }
 
-    adoptToSeries(row, series, seriesIndex)
-    {
-        var id = row[this._idIndex];
-        var mean = row[this._meanIndex];
-        var sum = row[this._sumIndex];
-        var squareSum = row[this._squareSumIndex];
-        var revisionList = row[this._revisionsIndex];
-        var self = this;
-        return {
-            id: id,
-            measurement: function () {
-                // Create a new Measurement class that doesn't require mimicking what runs.php generates.
-                var revisionsMap = {};
-                for (var revisionRow of revisionList)
-                    revisionsMap[revisionRow[0]] = revisionRow.slice(1);
-                return new Measurement({
-                    id: id,
-                    mean: mean,
-                    sum: sum,
-                    squareSum: squareSum,
-                    revisions: revisionsMap,
-                    build: row[self._buildIndex],
-                    buildTime: row[self._buildTimeIndex],
-                    buildNumber: row[self._buildNumberIndex],
-                    builder: row[self._builderIndex],
-                });
-            },
-            rootSet: function () { return MeasurementRootSet.ensureSingleton(id, revisionList); },
-            series: series,
-            seriesIndex: seriesIndex,
-            time: row[this._commitTimeIndex],
-            value: mean,
-            interval: MeasurementAdaptor.computeConfidenceInterval(row[this._countIndex], mean, sum, squareSum)
-        };
-    }
-
     static computeConfidenceInterval(iterationCount, mean, sum, squareSum)
     {
         var delta = Statistics.confidenceIntervalDelta(0.95, iterationCount, sum, squareSum);
         return isNaN(delta) ? null : [mean - delta, mean + delta];
     }
 }
+
+if (typeof module != 'undefined')
+    module.exports.MeasurementAdaptor = MeasurementAdaptor;

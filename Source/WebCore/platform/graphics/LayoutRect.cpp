@@ -88,6 +88,27 @@ void LayoutRect::unite(const LayoutRect& other)
     m_size = newMaxPoint - newLocation;
 }
 
+bool LayoutRect::checkedUnite(const LayoutRect& other)
+{
+    if (other.isEmpty())
+        return true;
+    if (isEmpty()) {
+        *this = other;
+        return true;
+    }
+    if (!isMaxXMaxYRepresentable() || !other.isMaxXMaxYRepresentable())
+        return false;
+    FloatPoint topLeft = FloatPoint(std::min<float>(x(), other.x()), std::min<float>(y(), other.y()));
+    FloatPoint bottomRight = FloatPoint(std::max<float>(maxX(), other.maxX()), std::max<float>(maxY(), other.maxY()));
+    FloatSize size = bottomRight - topLeft;
+    
+    if (size.width() >= LayoutUnit::nearlyMax() || size.height() >= LayoutUnit::nearlyMax())
+        return false;
+    m_location = LayoutPoint(topLeft);
+    m_size = LayoutSize(size);
+    return true;
+}
+
 void LayoutRect::uniteIfNonZero(const LayoutRect& other)
 {
     // Handle empty special cases first.
@@ -156,8 +177,10 @@ FloatRect encloseRectToDevicePixels(const LayoutRect& rect, float pixelSnappingF
 
 TextStream& operator<<(TextStream& ts, const LayoutRect& r)
 {
-    // FIXME: These should be printed as floats. Keeping them ints for consistency with previous test expectations.
-    return ts << snappedIntRect(r);
+    if (ts.hasFormattingFlag(TextStream::Formatting::LayoutUnitsAsIntegers))
+        return ts << snappedIntRect(r);
+    
+    return ts << FloatRect(r);
 }
 
 } // namespace WebCore

@@ -26,7 +26,7 @@
 #ifndef NSAttributedStringSPI_h
 #define NSAttributedStringSPI_h
 
-#import "SoftLinking.h"
+#import <wtf/SoftLinking.h>
 
 #if PLATFORM(IOS)
 
@@ -110,6 +110,14 @@ SOFT_LINK_CONSTANT(UIFoundation, NSCocoaVersionDocumentAttribute, NSString *)
 // This attribute is being deprecated at the API level, but internally UIFoundation
 // will continue to support it.
 static NSString *const NSSuperscriptAttributeName = @"NSSuperscript";
+
+@interface NSAttributedString ()
+- (id)initWithRTF:(NSData *)data documentAttributes:(NSDictionary **)dict;
+- (id)initWithRTFD:(NSData *)data documentAttributes:(NSDictionary **)dict;
+- (NSData *)RTFFromRange:(NSRange)range documentAttributes:(NSDictionary *)dict;
+- (NSData *)RTFDFromRange:(NSRange)range documentAttributes:(NSDictionary *)dict;
+- (BOOL)containsAttachments;
+@end
 
 #endif
 

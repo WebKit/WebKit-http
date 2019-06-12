@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,14 @@
  */
 
 #import "config.h"
+#import "WebVideoFullscreenHUDWindowController.h"
 
 #if ENABLE(VIDEO)
 
-#import "WebVideoFullscreenHUDWindowController.h"
-
-#import "ExceptionCodePlaceholder.h"
 #import "FloatConversion.h"
 #import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/HTMLVideoElement.h>
 #import <WebCoreSystemInterface.h>
-#import <wtf/RetainPtr.h>
 
 using namespace WebCore;
 
@@ -74,7 +71,7 @@ using namespace WebCore;
 - (id)initWithContentRect:(NSRect)contentRect styleMask:(NSUInteger)aStyle backing:(NSBackingStoreType)bufferingType defer:(BOOL)flag
 {
     UNUSED_PARAM(aStyle);
-    self = [super initWithContentRect:contentRect styleMask:NSBorderlessWindowMask backing:bufferingType defer:flag];
+    self = [super initWithContentRect:contentRect styleMask:NSWindowStyleMaskBorderless backing:bufferingType defer:flag];
     if (!self)
         return nil;
 
@@ -121,12 +118,11 @@ using namespace WebCore;
 - (BOOL)performKeyEquivalent:(NSEvent *)event
 {
     // Block all command key events while the fullscreen window is up.
-    if ([event type] != NSKeyDown)
+    if ([event type] != NSEventTypeKeyDown)
         return NO;
     
-    if (!([event modifierFlags] & NSCommandKeyMask))
+    if (!([event modifierFlags] & NSEventModifierFlagCommand))
         return NO;
-    
     return YES;
 }
 
@@ -141,8 +137,7 @@ static const NSTimeInterval HUDWindowFadeOutDelay = 3;
 
 - (id)init
 {
-    NSWindow *window = [[WebVideoFullscreenHUDWindow alloc] initWithContentRect:NSMakeRect(0, 0, windowWidth, windowHeight)
-                            styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+    NSWindow *window = [[WebVideoFullscreenHUDWindow alloc] initWithContentRect:NSMakeRect(0, 0, windowWidth, windowHeight) styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
     self = [super initWithWindow:window];
     [window setDelegate:self];
     [window release];
@@ -182,13 +177,13 @@ static const NSTimeInterval HUDWindowFadeOutDelay = 3;
                 [self togglePlaying:nil];
                 return;
             case NSUpArrowFunctionKey:
-                if ([event modifierFlags] & NSAlternateKeyMask)
+                if ([event modifierFlags] & NSEventModifierFlagOption)
                     [self setVolume:[self maxVolume]];
                 else
                     [self incrementVolume];
                 return;
             case NSDownArrowFunctionKey:
-                if ([event modifierFlags] & NSAlternateKeyMask)
+                if ([event modifierFlags] & NSEventModifierFlagOption)
                     [self setVolume:0];
                 else
                     [self decrementVolume];
@@ -368,11 +363,11 @@ static NSTextField *createTimeTextField(NSRect frame)
     [contentView addSubview:_timeline];
 
     _elapsedTimeText = createTimeTextField(NSMakeRect(timeTextFieldHorizontalMargin, timelineBottomMargin, timeTextFieldWidth, timeTextFieldHeight));
-    [_elapsedTimeText setAlignment:NSLeftTextAlignment];
+    [_elapsedTimeText setAlignment:NSTextAlignmentLeft];
     [contentView addSubview:_elapsedTimeText];
 
     _remainingTimeText = createTimeTextField(NSMakeRect(windowWidth - timeTextFieldHorizontalMargin - timeTextFieldWidth, timelineBottomMargin, timeTextFieldWidth, timeTextFieldHeight));
-    [_remainingTimeText setAlignment:NSRightTextAlignment];
+    [_remainingTimeText setAlignment:NSTextAlignmentRight];
     [contentView addSubview:_remainingTimeText];
 
     [window recalculateKeyViewLoop];
@@ -489,7 +484,7 @@ static NSTextField *createTimeTextField(NSRect frame)
         return;
     if ([_delegate videoElement]->muted())
         [_delegate videoElement]->setMuted(false);
-    [_delegate videoElement]->setVolume(volume / [self maxVolume], IGNORE_EXCEPTION);
+    [_delegate videoElement]->setVolume(volume / [self maxVolume]);
     [self updateVolume];
 }
 
@@ -564,7 +559,12 @@ static NSString *timeToString(double time)
     if (!videoElement)
         return @"";
 
-    return [@"-" stringByAppendingString:timeToString(videoElement->duration() - videoElement->currentTime())];
+    double remainingTime = 0;
+
+    if (std::isfinite(videoElement->duration()) && std::isfinite(videoElement->currentTime()))
+        remainingTime = videoElement->duration() - videoElement->currentTime();
+
+    return [@"-" stringByAppendingString:timeToString(remainingTime)];
 }
 
 - (NSString *)elapsedTimeText

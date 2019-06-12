@@ -1,3 +1,4 @@
+'use strict';
 
 class Platform extends LabeledObject {
     constructor(id, object)
@@ -7,8 +8,16 @@ class Platform extends LabeledObject {
         this._lastModifiedByMetric = object.lastModifiedByMetric;
         this._containingTests = null;
 
+        this.ensureNamedStaticMap('name')[object.name] = this;
+
         for (var metric of this._metrics)
             metric.addPlatform(this);
+    }
+
+    static findByName(name)
+    {
+        var map = this.namedStaticMap('name');
+        return map ? map[name] : null;
     }
 
     hasTest(test)
@@ -16,14 +25,14 @@ class Platform extends LabeledObject {
         if (!this._containingTests) {
             this._containingTests = {};
             for (var metric of this._metrics) {
-                for (var test = metric.test(); test; test = test.parentTest()) {
-                    if (test.id() in this._containingTests)
+                for (var currentTest = metric.test(); currentTest; currentTest = currentTest.parentTest()) {
+                    if (currentTest.id() in this._containingTests)
                         break;
-                    this._containingTests[test.id()] = true;
+                    this._containingTests[currentTest.id()] = true;
                 }
             }
         }
-        return this._containingTests[test.id()];
+        return test.id() in this._containingTests;
     }
 
     hasMetric(metric) { return !!this.lastModified(metric); }
@@ -34,3 +43,6 @@ class Platform extends LabeledObject {
         return this._lastModifiedByMetric[metric.id()];
     }
 }
+
+if (typeof module != 'undefined')
+    module.exports.Platform = Platform;

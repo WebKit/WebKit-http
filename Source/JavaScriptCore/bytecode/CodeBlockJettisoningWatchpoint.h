@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CodeBlockJettisoningWatchpoint_h
-#define CodeBlockJettisoningWatchpoint_h
+#pragma once
 
 #include "Watchpoint.h"
 
@@ -40,13 +39,10 @@ public:
     }
     
 protected:
-    virtual void fireInternal(const FireDetail&) override;
+    void fireInternal(const FireDetail&) override;
 
 private:
     CodeBlock* m_codeBlock;
 };
 
 } // namespace JSC
-
-#endif // CodeBlockJettisoningWatchpoint_h
-

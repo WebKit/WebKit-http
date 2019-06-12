@@ -23,8 +23,7 @@
     pages from the web. It has a memory cache for these objects.
 */
 
-#ifndef CachedXSLStyleSheet_h
-#define CachedXSLStyleSheet_h
+#pragma once
 
 #if ENABLE(XSLT)
 
@@ -36,18 +35,19 @@ class TextResourceDecoder;
 
 class CachedXSLStyleSheet final : public CachedResource {
 public:
-    CachedXSLStyleSheet(const ResourceRequest&, SessionID);
+    CachedXSLStyleSheet(CachedResourceRequest&&, SessionID);
     virtual ~CachedXSLStyleSheet();
 
     const String& sheet() const { return m_sheet; }
 
 private:
-    virtual void checkNotify() override;
-    virtual bool mayTryReplaceEncodedData() const override { return true; }
-    virtual void didAddClient(CachedResourceClient*) override;
-    virtual void setEncoding(const String&) override;
-    virtual String encoding() const override;
-    virtual void finishLoading(SharedBuffer*) override;
+    void checkNotify() final;
+    bool mayTryReplaceEncodedData() const final { return true; }
+    void didAddClient(CachedResourceClient&) final;
+    void setEncoding(const String&) final;
+    String encoding() const final;
+    const TextResourceDecoder* textResourceDecoder() const final { return m_decoder.get(); }
+    void finishLoading(SharedBuffer*) final;
 
     String m_sheet;
     RefPtr<TextResourceDecoder> m_decoder;
@@ -58,5 +58,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedXSLStyleSheet, CachedResource::XSLStyleSheet)
 
 #endif // ENABLE(XSLT)
-
-#endif // CachedXSLStyleSheet_h

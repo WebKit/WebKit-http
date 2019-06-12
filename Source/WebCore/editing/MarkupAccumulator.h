@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MarkupAccumulator_h
-#define MarkupAccumulator_h
+#pragma once
 
 #include "Element.h"
 #include "markup.h"
@@ -54,7 +53,7 @@ enum EntityMask {
     EntityMaskInPCDATA = EntityAmp | EntityLt | EntityGt,
     EntityMaskInHTMLPCDATA = EntityMaskInPCDATA | EntityNbsp,
     EntityMaskInAttributeValue = EntityAmp | EntityLt | EntityGt | EntityQuot,
-    EntityMaskInHTMLAttributeValue = EntityMaskInAttributeValue | EntityNbsp,
+    EntityMaskInHTMLAttributeValue = EntityAmp | EntityQuot | EntityNbsp,
 };
 
 // FIXME: Noncopyable?
@@ -93,7 +92,7 @@ protected:
     void appendStartMarkup(StringBuilder&, const Node&, Namespaces*);
     void appendEndMarkup(StringBuilder&, const Element&);
 
-    void appendAttributeValue(StringBuilder&, const String&, bool);
+    void appendAttributeValue(StringBuilder&, const String&, bool isSerializingHTML);
     void appendNamespace(StringBuilder&, const AtomicString& prefix, const AtomicString& namespaceURI, Namespaces&, bool allowEmptyDefaultNS = false);
     void appendXMLDeclaration(StringBuilder&, const Document&);
     void appendDocumentType(StringBuilder&, const DocumentType&);
@@ -123,6 +122,4 @@ private:
     unsigned m_prefixLevel;
 };
 
-}
-
-#endif
+} // namespace WebCore

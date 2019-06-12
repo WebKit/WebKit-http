@@ -36,6 +36,9 @@ class MockPlatformInfo(object):
     def is_mac(self):
         return self.os_name == 'mac'
 
+    def is_ios(self):
+        return self.os_name == 'ios'
+
     def is_linux(self):
         return self.os_name == 'linux'
 
@@ -59,6 +62,9 @@ class MockPlatformInfo(object):
 
     def xcode_sdk_version(self, sdk_name):
         return '8.1'
+
+    def xcode_version(self):
+        return '8.0'
 
     def xcode_simctl_list(self):
         return self.expected_xcode_simctl_list

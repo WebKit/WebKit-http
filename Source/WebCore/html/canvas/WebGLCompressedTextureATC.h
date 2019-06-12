@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLCompressedTextureATC_h
-#define WebGLCompressedTextureATC_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -34,14 +33,12 @@ class WebGLTexture;
 
 class WebGLCompressedTextureATC final : public WebGLExtension {
 public:
-    explicit WebGLCompressedTextureATC(WebGLRenderingContextBase*);
+    explicit WebGLCompressedTextureATC(WebGLRenderingContextBase&);
     virtual ~WebGLCompressedTextureATC();
 
-    static bool supported(WebGLRenderingContextBase*);
+    static bool supported(WebGLRenderingContextBase&);
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // WebGLCompressedTextureATC_h

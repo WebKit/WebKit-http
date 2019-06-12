@@ -36,13 +36,13 @@ namespace WebCore {
 class NullTextTrackRepresentation : public TextTrackRepresentation {
 public:
     virtual ~NullTextTrackRepresentation() { }
-    virtual void update() { }
-    virtual PlatformLayer* platformLayer() { return nullptr; }
-    virtual void setContentScale(float) { }
-    virtual IntRect bounds() const { return IntRect(); }
+    void update() override { }
+    PlatformLayer* platformLayer() override { return nullptr; }
+    void setContentScale(float) override { }
+    IntRect bounds() const override { return IntRect(); }
 };
 
-#if !PLATFORM(IOS)
+#if !(PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)))
 
 std::unique_ptr<TextTrackRepresentation> TextTrackRepresentation::create(TextTrackRepresentationClient&)
 {

@@ -34,6 +34,10 @@
 
 namespace WebCore {
 
+const unsigned defaultSpan { 1 };
+const unsigned minSpan { 1 };
+const unsigned maxSpan { 1000 };
+
 using namespace HTMLNames;
 
 inline HTMLTableColElement::HTMLTableColElement(const QualifiedName& tagName, Document& document)
@@ -65,7 +69,7 @@ void HTMLTableColElement::collectStyleForPresentationAttribute(const QualifiedNa
 void HTMLTableColElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == spanAttr) {
-        m_span = limitToOnlyNonNegativeNumbersGreaterThanZero(value.string().toUInt());
+        m_span = clampHTMLNonNegativeIntegerToRange(value, minSpan, maxSpan, defaultSpan);
         if (is<RenderTableCol>(renderer()))
             downcast<RenderTableCol>(*renderer()).updateFromElement();
     } else if (name == widthAttr) {
@@ -81,7 +85,7 @@ void HTMLTableColElement::parseAttribute(const QualifiedName& name, const Atomic
         HTMLTablePartElement::parseAttribute(name, value);
 }
 
-const StyleProperties* HTMLTableColElement::additionalPresentationAttributeStyle()
+const StyleProperties* HTMLTableColElement::additionalPresentationAttributeStyle() const
 {
     if (!hasTagName(colgroupTag))
         return nullptr;
@@ -90,14 +94,14 @@ const StyleProperties* HTMLTableColElement::additionalPresentationAttributeStyle
     return nullptr;
 }
 
-void HTMLTableColElement::setSpan(unsigned n)
+void HTMLTableColElement::setSpan(unsigned span)
 {
-    setUnsignedIntegralAttribute(spanAttr, limitToOnlyNonNegativeNumbersGreaterThanZero(n));
+    setUnsignedIntegralAttribute(spanAttr, limitToOnlyHTMLNonNegative(span, defaultSpan));
 }
 
 String HTMLTableColElement::width() const
 {
-    return fastGetAttribute(widthAttr);
+    return attributeWithoutSynchronization(widthAttr);
 }
 
 }

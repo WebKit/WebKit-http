@@ -33,29 +33,29 @@
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/StorageMap.h>
 #include <WebCore/SuddenTermination.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 using namespace WebCore;
 
-static const auto databaseUpdateInterval = std::chrono::seconds(1);
+static const auto databaseUpdateInterval = 1_s;
 
 static const int maximumItemsToUpdate = 100;
 
 namespace WebKit {
 
-PassRefPtr<LocalStorageDatabase> LocalStorageDatabase::create(PassRefPtr<WorkQueue> queue, PassRefPtr<LocalStorageDatabaseTracker> tracker, Ref<SecurityOrigin>&& securityOrigin)
+Ref<LocalStorageDatabase> LocalStorageDatabase::create(Ref<WorkQueue>&& queue, Ref<LocalStorageDatabaseTracker>&& tracker, const SecurityOriginData& securityOrigin)
 {
-    return adoptRef(new LocalStorageDatabase(queue, tracker, WTFMove(securityOrigin)));
+    return adoptRef(*new LocalStorageDatabase(WTFMove(queue), WTFMove(tracker), securityOrigin));
 }
 
-LocalStorageDatabase::LocalStorageDatabase(PassRefPtr<WorkQueue> queue, PassRefPtr<LocalStorageDatabaseTracker> tracker, Ref<SecurityOrigin>&& securityOrigin)
-    : m_queue(queue)
-    , m_tracker(tracker)
-    , m_securityOrigin(WTFMove(securityOrigin))
-    , m_databasePath(m_tracker->databasePath(m_securityOrigin.ptr()))
+LocalStorageDatabase::LocalStorageDatabase(Ref<WorkQueue>&& queue, Ref<LocalStorageDatabaseTracker>&& tracker, const SecurityOriginData& securityOrigin)
+    : m_queue(WTFMove(queue))
+    , m_tracker(WTFMove(tracker))
+    , m_securityOrigin(securityOrigin)
+    , m_databasePath(m_tracker->databasePath(m_securityOrigin))
     , m_failedToOpenDatabase(false)
     , m_didImportItems(false)
     , m_isClosed(false)
@@ -80,7 +80,7 @@ void LocalStorageDatabase::openDatabase(DatabaseOpeningStrategy openingStrategy)
     }
 
     if (m_database.isOpen())
-        m_tracker->didOpenDatabaseWithOrigin(m_securityOrigin.ptr());
+        m_tracker->didOpenDatabaseWithOrigin(m_securityOrigin);
 }
 
 bool LocalStorageDatabase::tryToOpenDatabase(DatabaseOpeningStrategy openingStrategy)
@@ -181,7 +181,10 @@ void LocalStorageDatabase::importItems(StorageMap& storageMap)
 
     int result = query.step();
     while (result == SQLITE_ROW) {
-        items.set(query.getColumnText(0), query.getColumnBlobAsString(1));
+        String key = query.getColumnText(0);
+        String value = query.getColumnBlobAsString(1);
+        if (!key.isNull() && !value.isNull())
+            items.set(key, value);
         result = query.step();
     }
 
@@ -227,7 +230,7 @@ void LocalStorageDatabase::close()
         m_database.close();
 
     if (isEmpty)
-        m_tracker->deleteDatabaseWithOrigin(m_securityOrigin.ptr());
+        m_tracker->deleteDatabaseWithOrigin(m_securityOrigin);
 }
 
 void LocalStorageDatabase::itemDidChange(const String& key, const String& value)

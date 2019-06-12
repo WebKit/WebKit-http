@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,26 +23,52 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBOpenDBRequest_h
-#define IDBOpenDBRequest_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBDatabaseIdentifier.h"
 #include "IDBRequest.h"
-#include "IndexedDB.h"
 
 namespace WebCore {
 
-class IDBOpenDBRequest : public IDBRequest {
-public:
-    virtual ~IDBOpenDBRequest() { }
+class IDBResultData;
 
-protected:
-    IDBOpenDBRequest(ScriptExecutionContext*);
+class IDBOpenDBRequest final : public IDBRequest {
+public:
+    static Ref<IDBOpenDBRequest> createDeleteRequest(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBDatabaseIdentifier&);
+    static Ref<IDBOpenDBRequest> createOpenRequest(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBDatabaseIdentifier&, uint64_t version);
+
+    virtual ~IDBOpenDBRequest();
+    
+    const IDBDatabaseIdentifier& databaseIdentifier() const { return m_databaseIdentifier; }
+    uint64_t version() const { return m_version; }
+
+    void requestCompleted(const IDBResultData&);
+    void requestBlocked(uint64_t oldVersion, uint64_t newVersion);
+
+    void versionChangeTransactionDidFinish();
+    void fireSuccessAfterVersionChangeCommit();
+    void fireErrorAfterVersionChangeCompletion();
+
+private:
+    IDBOpenDBRequest(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBDatabaseIdentifier&, uint64_t version, IndexedDB::RequestType);
+
+    bool dispatchEvent(Event&) final;
+
+    void cancelForStop() final;
+
+    void onError(const IDBResultData&);
+    void onSuccess(const IDBResultData&);
+    void onUpgradeNeeded(const IDBResultData&);
+    void onDeleteDatabaseSuccess(const IDBResultData&);
+
+    bool isOpenDBRequest() const final { return true; }
+
+    IDBDatabaseIdentifier m_databaseIdentifier;
+    uint64_t m_version { 0 };
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-
-#endif // IDBOpenDBRequest_h

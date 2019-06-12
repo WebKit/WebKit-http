@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGMayExit_h
-#define DFGMayExit_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 namespace JSC { namespace DFG {
 
+class AtTailAbstractState;
 class Graph;
 struct Node;
 
@@ -74,6 +74,11 @@ enum ExitMode {
 
 ExitMode mayExit(Graph&, Node*);
 
+// Like mayExit(), but instead of using the Check: flag to determine if something exits, it
+// evaluates whether it will exit based on the tail state. This is useful for LICM. This *may* also
+// use the AtTailAbstractState to return more precise answers for other nodes.
+ExitMode mayExit(Graph&, Node*, AtTailAbstractState&);
+
 } } // namespace JSC::DFG
 
 namespace WTF {
@@ -85,6 +90,3 @@ void printInternal(PrintStream&, JSC::DFG::ExitMode);
 } // namespace WTF
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGMayExit_h
-

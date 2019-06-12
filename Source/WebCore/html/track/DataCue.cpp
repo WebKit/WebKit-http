@@ -32,28 +32,30 @@
 #include "Logging.h"
 #include "TextTrack.h"
 #include "TextTrackCueList.h"
+#include <runtime/JSCInlines.h>
 #include <runtime/Protect.h>
+
+using namespace JSC;
 
 namespace WebCore {
 
-DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, ArrayBuffer* data, const String& type, ExceptionCode& ec)
+DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, ArrayBuffer& data, const String& type)
     : TextTrackCue(context, start, end)
     , m_type(type)
 {
-    setData(data, ec);
+    setData(data);
 }
 
 DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const void* data, unsigned length)
     : TextTrackCue(context, start, end)
+    , m_data(ArrayBuffer::create(data, length))
 {
-    m_data = ArrayBuffer::create(data, length);
 }
 
-#if ENABLE(DATACUE_VALUE)
-DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation> platformValue, const String& type)
+DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, RefPtr<SerializedPlatformRepresentation>&& platformValue, const String& type)
     : TextTrackCue(context, start, end)
     , m_type(type)
-    , m_platformValue(platformValue)
+    , m_platformValue(WTFMove(platformValue))
 {
 }
 
@@ -62,41 +64,33 @@ DataCue::DataCue(ScriptExecutionContext& context, const MediaTime& start, const 
     , m_type(type)
     , m_value(value)
 {
+    if (m_value)
+        JSC::gcProtect(m_value);
 }
-#endif
 
 DataCue::~DataCue()
 {
-#if ENABLE(DATACUE_VALUE)
     if (m_value)
         JSC::gcUnprotect(m_value);
-#endif
 }
 
-PassRefPtr<ArrayBuffer> DataCue::data() const
+RefPtr<ArrayBuffer> DataCue::data() const
 {
-#if ENABLE(DATACUE_VALUE)
     if (m_platformValue)
         return m_platformValue->data();
-#endif
 
     if (!m_data)
         return nullptr;
 
-    return ArrayBuffer::create(m_data.get());
+    return ArrayBuffer::create(*m_data);
 }
 
-void DataCue::setData(ArrayBuffer* data, ExceptionCode& ec)
+void DataCue::setData(ArrayBuffer& data)
 {
-    if (!data) {
-        ec = TypeError;
-        return;
-    }
-
-#if ENABLE(DATACUE_VALUE)
     m_platformValue = nullptr;
+    if (m_value)
+        JSC::gcUnprotect(m_value);
     m_value = JSC::JSValue();
-#endif
 
     m_data = ArrayBuffer::create(data);
 }
@@ -127,20 +121,18 @@ bool DataCue::cueContentsMatch(const TextTrackCue& cue) const
     if (m_data && m_data->data() && memcmp(m_data->data(), otherData->data(), m_data->byteLength()))
         return false;
 
-#if ENABLE(DATACUE_VALUE)
-    RefPtr<SerializedPlatformRepresentation> otherPlatformValue = dataCue->platformValue();
+    const SerializedPlatformRepresentation* otherPlatformValue = dataCue->platformValue();
     if ((otherPlatformValue && !m_platformValue) || (!otherPlatformValue && m_platformValue))
         return false;
-    if (m_platformValue && !m_platformValue->isEqual(*otherPlatformValue.get()))
+    if (m_platformValue && !m_platformValue->isEqual(*otherPlatformValue))
         return false;
 
-    JSC::JSValue thisValue = value(nullptr);
-    JSC::JSValue otherValue = dataCue->value(nullptr);
+    JSC::JSValue thisValue = valueOrNull();
+    JSC::JSValue otherValue = dataCue->valueOrNull();
     if ((otherValue && !thisValue) || (!otherValue && thisValue))
         return false;
     if (!JSC::JSValue::strictEqual(nullptr, thisValue, otherValue))
         return false;
-#endif
 
     return true;
 }
@@ -164,11 +156,10 @@ bool DataCue::doesExtendCue(const TextTrackCue& cue) const
     return TextTrackCue::doesExtendCue(cue);
 }
 
-#if ENABLE(DATACUE_VALUE)
-JSC::JSValue DataCue::value(JSC::ExecState* exec) const
+JSC::JSValue DataCue::value(JSC::ExecState& state) const
 {
-    if (exec && m_platformValue)
-        return m_platformValue->deserialize(exec);
+    if (m_platformValue)
+        return m_platformValue->deserialize(&state);
 
     if (m_value)
         return m_value;
@@ -176,7 +167,7 @@ JSC::JSValue DataCue::value(JSC::ExecState* exec) const
     return JSC::jsNull();
 }
 
-void DataCue::setValue(JSC::ExecState*, JSC::JSValue value)
+void DataCue::setValue(JSC::ExecState&, JSC::JSValue value)
 {
     // FIXME: this should use a SerializedScriptValue.
     if (m_value)
@@ -188,7 +179,14 @@ void DataCue::setValue(JSC::ExecState*, JSC::JSValue value)
     m_platformValue = nullptr;
     m_data = nullptr;
 }
-#endif
+
+JSValue DataCue::valueOrNull() const
+{
+    if (m_value)
+        return m_value;
+
+    return jsNull();
+}
 
 } // namespace WebCore
 

@@ -33,17 +33,17 @@
 #import "HostWindow.h"
 #import "IntRect.h"
 #import "MobileGestaltSPI.h"
-#import "SoftLinking.h"
 #import "UIKitSPI.h"
 #import "WAKWindow.h"
 #import "WebCoreSystemInterface.h"
 #import "Widget.h"
+#import <wtf/SoftLinking.h>
 
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK_CLASS(UIKit, UIApplication)
-SOFT_LINK_CLASS(UIKit, UIScreen)
-SOFT_LINK(UIKit, UIAccessibilityIsGrayscaleEnabled, BOOL, (void), ())
-SOFT_LINK(UIKit, UIAccessibilityIsInvertColorsEnabled, BOOL, (void), ())
+SOFT_LINK_FRAMEWORK_FOR_SOURCE(WebCore, UIKit)
+SOFT_LINK_CLASS_FOR_SOURCE(WebCore, UIKit, UIApplication)
+SOFT_LINK_CLASS_FOR_SOURCE(WebCore, UIKit, UIScreen)
+SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, UIKit, UIAccessibilityIsGrayscaleEnabled, BOOL, (void), ())
+SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, UIKit, UIAccessibilityIsInvertColorsEnabled, BOOL, (void), ())
 
 namespace WebCore {
 
@@ -56,17 +56,22 @@ int screenDepth(Widget*)
 int screenDepthPerComponent(Widget*)
 {
     // Assume the screen depth is evenly divided into four color components. See <rdar://problem/9378829>.
-    return screenDepth(0) / 4;
+    return screenDepth(nullptr) / 4;
 }
 
 bool screenIsMonochrome(Widget*)
 {
-    return UIAccessibilityIsGrayscaleEnabled();
+    return softLinkUIKitUIAccessibilityIsGrayscaleEnabled();
 }
 
 bool screenHasInvertedColors()
 {
-    return UIAccessibilityIsInvertColorsEnabled();
+    return softLinkUIKitUIAccessibilityIsInvertColorsEnabled();
+}
+
+bool screenSupportsExtendedColor(Widget*)
+{
+    return MGGetBoolAnswer(kMGQHasExtendedColorDisplay);
 }
 
 // These functions scale between screen and page coordinates because JavaScript/DOM operations
@@ -122,28 +127,28 @@ float screenPPIFactor()
 
 FloatSize screenSize()
 {
-    if (deviceHasIPadCapability() && [[getUIApplicationClass() sharedApplication] _isClassic])
+    if (deviceHasIPadCapability() && [[get_UIKit_UIApplicationClass() sharedApplication] _isClassic])
         return { 320, 480 };
-    return FloatSize([[getUIScreenClass() mainScreen] _referenceBounds].size);
+    return FloatSize([[get_UIKit_UIScreenClass() mainScreen] _referenceBounds].size);
 }
 
 FloatSize availableScreenSize()
 {
-    if (deviceHasIPadCapability() && [[getUIApplicationClass() sharedApplication] _isClassic])
+    if (deviceHasIPadCapability() && [[get_UIKit_UIApplicationClass() sharedApplication] _isClassic])
         return { 320, 480 };
-    return FloatSize([getUIScreenClass() mainScreen].bounds.size);
+    return FloatSize([get_UIKit_UIScreenClass() mainScreen].bounds.size);
 }
 
 float screenScaleFactor(UIScreen *screen)
 {
     if (!screen)
-        screen = [getUIScreenClass() mainScreen];
+        screen = [get_UIKit_UIScreenClass() mainScreen];
 
     CGFloat scale = screen.scale;
 
     // We can remove this clamping once <rdar://problem/16395475> is fixed.
     const CGFloat maximumClassicScreenScaleFactor = 2;
-    if ([[getUIApplicationClass() sharedApplication] _isClassic])
+    if ([[get_UIKit_UIApplicationClass() sharedApplication] _isClassic])
         return std::min(scale, maximumClassicScreenScaleFactor);
 
     return scale;

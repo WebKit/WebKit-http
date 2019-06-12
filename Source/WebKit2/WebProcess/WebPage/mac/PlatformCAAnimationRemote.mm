@@ -29,13 +29,13 @@
 #import "ArgumentCoders.h"
 #import "RemoteLayerTreeHost.h"
 #import "WebCoreArgumentCoders.h"
-#import <WebCore/BlockExceptions.h>
 #import <WebCore/GraphicsLayer.h>
 #import <WebCore/PlatformCAAnimationCocoa.h>
 #import <WebCore/PlatformCAFilters.h>
 #import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/TextStream.h>
 #import <WebCore/TimingFunction.h>
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/RetainPtr.h>
 #import <QuartzCore/QuartzCore.h>
@@ -105,7 +105,7 @@ static NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplici
 
 namespace WebKit {
 
-void PlatformCAAnimationRemote::KeyframeValue::encode(IPC::ArgumentEncoder& encoder) const
+void PlatformCAAnimationRemote::KeyframeValue::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(keyType);
 
@@ -128,7 +128,7 @@ void PlatformCAAnimationRemote::KeyframeValue::encode(IPC::ArgumentEncoder& enco
     }
 }
 
-bool PlatformCAAnimationRemote::KeyframeValue::decode(IPC::ArgumentDecoder& decoder, PlatformCAAnimationRemote::KeyframeValue& value)
+bool PlatformCAAnimationRemote::KeyframeValue::decode(IPC::Decoder& decoder, PlatformCAAnimationRemote::KeyframeValue& value)
 {
     if (!decoder.decodeEnum(value.keyType))
         return false;
@@ -159,7 +159,7 @@ bool PlatformCAAnimationRemote::KeyframeValue::decode(IPC::ArgumentDecoder& deco
     return true;
 }
 
-void PlatformCAAnimationRemote::Properties::encode(IPC::ArgumentEncoder& encoder) const
+void PlatformCAAnimationRemote::Properties::encode(IPC::Encoder& encoder) const
 {
     encoder << keyPath;
     encoder.encodeEnum(animationType);
@@ -196,11 +196,15 @@ void PlatformCAAnimationRemote::Properties::encode(IPC::ArgumentEncoder& encoder
         case TimingFunction::StepsFunction:
             encoder << *static_cast<StepsTimingFunction*>(timingFunction.get());
             break;
+
+        case TimingFunction::SpringFunction:
+            encoder << *static_cast<SpringTimingFunction*>(timingFunction.get());
+            break;
         }
     }
 }
 
-bool PlatformCAAnimationRemote::Properties::decode(IPC::ArgumentDecoder& decoder, PlatformCAAnimationRemote::Properties& properties)
+bool PlatformCAAnimationRemote::Properties::decode(IPC::Decoder& decoder, PlatformCAAnimationRemote::Properties& properties)
 {
     if (!decoder.decode(properties.keyPath))
         return false;
@@ -282,9 +286,15 @@ bool PlatformCAAnimationRemote::Properties::decode(IPC::ArgumentDecoder& decoder
                 if (!decoder.decode(*static_cast<StepsTimingFunction*>(timingFunction.get())))
                     return false;
                 break;
+
+            case TimingFunction::SpringFunction:
+                timingFunction = SpringTimingFunction::create();
+                if (!decoder.decode(*static_cast<SpringTimingFunction*>(timingFunction.get())))
+                    return false;
+                break;
             }
             
-            properties.timingFunctions.uncheckedAppend(timingFunction.release());
+            properties.timingFunctions.uncheckedAppend(WTFMove(timingFunction));
         }
     }
 
@@ -296,9 +306,9 @@ Ref<PlatformCAAnimation> PlatformCAAnimationRemote::create(PlatformCAAnimation::
     return adoptRef(*new PlatformCAAnimationRemote(type, keyPath));
 }
 
-PassRefPtr<PlatformCAAnimation> PlatformCAAnimationRemote::copy() const
+Ref<PlatformCAAnimation> PlatformCAAnimationRemote::copy() const
 {
-    RefPtr<PlatformCAAnimation> animation = create(animationType(), keyPath());
+    auto animation = create(animationType(), keyPath());
     
     animation->setBeginTime(beginTime());
     animation->setDuration(duration());
@@ -312,7 +322,7 @@ PassRefPtr<PlatformCAAnimation> PlatformCAAnimationRemote::copy() const
     animation->copyTimingFunctionFrom(*this);
     animation->setValueFunction(valueFunction());
 
-    downcast<PlatformCAAnimationRemote>(*animation).setHasExplicitBeginTime(hasExplicitBeginTime());
+    downcast<PlatformCAAnimationRemote>(animation.get()).setHasExplicitBeginTime(hasExplicitBeginTime());
     
     // Copy the specific Basic or Keyframe values.
     if (animationType() == Keyframe) {
@@ -640,8 +650,8 @@ void PlatformCAAnimationRemote::setValues(const Vector<RefPtr<FilterOperation>>&
     Vector<KeyframeValue> keyframes;
     keyframes.reserveInitialCapacity(values.size());
     
-    for (size_t i = 0; i < values.size(); ++i)
-        keyframes.uncheckedAppend(KeyframeValue(values[i]));
+    for (auto& value : values)
+        keyframes.uncheckedAppend(KeyframeValue { value.copyRef() });
     
     m_properties.keyValues = WTFMove(keyframes);
 }
@@ -752,6 +762,28 @@ static void addAnimationToLayer(CALayer *layer, RemoteLayerTreeHost* layerTreeHo
         }
         
         caAnimation = keyframeAnimation;
+        break;
+    }
+    case PlatformCAAnimation::Spring: {
+        RetainPtr<CASpringAnimation> springAnimation;
+        springAnimation = [CASpringAnimation animationWithKeyPath:properties.keyPath];
+        
+        if (properties.keyValues.size() > 1) {
+            [springAnimation setFromValue:animationValueFromKeyframeValue(properties.keyValues[0])];
+            [springAnimation setToValue:animationValueFromKeyframeValue(properties.keyValues[1])];
+        }
+        
+        if (properties.timingFunctions.size()) {
+            auto& timingFunction = properties.timingFunctions[0];
+            if (timingFunction->isSpringTimingFunction()) {
+                auto& function = *static_cast<const SpringTimingFunction*>(timingFunction.get());
+                [springAnimation setMass:function.mass()];
+                [springAnimation setStiffness:function.stiffness()];
+                [springAnimation setDamping:function.damping()];
+                [springAnimation setInitialVelocity:function.initialVelocity()];
+            }
+        }
+        caAnimation = springAnimation;
         break;
     }
     }

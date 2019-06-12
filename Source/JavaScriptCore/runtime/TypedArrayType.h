@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TypedArrayType_h
-#define TypedArrayType_h
+#pragma once
 
 #include "JSType.h"
 #include <wtf/PrintStream.h>
@@ -33,18 +32,34 @@ namespace JSC {
 
 struct ClassInfo;
 
+#define FOR_EACH_TYPED_ARRAY_TYPE(macro) \
+    macro(Int8) \
+    macro(Uint8) \
+    macro(Uint8Clamped) \
+    macro(Int16) \
+    macro(Uint16) \
+    macro(Int32) \
+    macro(Uint32) \
+    macro(Float32) \
+    macro(Float64) \
+    macro(DataView)
+
+#define FOR_EACH_TYPED_ARRAY_TYPE_EXCLUDING_DATA_VIEW(macro) \
+    macro(Int8) \
+    macro(Uint8) \
+    macro(Uint8Clamped) \
+    macro(Int16) \
+    macro(Uint16) \
+    macro(Int32) \
+    macro(Uint32) \
+    macro(Float32) \
+    macro(Float64)
+
 enum TypedArrayType {
     NotTypedArray,
-    TypeInt8,
-    TypeUint8,
-    TypeUint8Clamped,
-    TypeInt16,
-    TypeUint16,
-    TypeInt32,
-    TypeUint32,
-    TypeFloat32,
-    TypeFloat64,
-    TypeDataView
+#define DECLARE_TYPED_ARRAY_TYPE(name) Type ## name,
+    FOR_EACH_TYPED_ARRAY_TYPE(DECLARE_TYPED_ARRAY_TYPE)
+#undef DECLARE_TYPED_ARRAY_TYPE
 };
 
 #define NUMBER_OF_TYPED_ARRAY_TYPES TypeDataView
@@ -104,6 +119,32 @@ inline size_t elementSize(TypedArrayType type)
 const ClassInfo* constructorClassInfoForType(TypedArrayType);
 JSType typeForTypedArrayType(TypedArrayType);
 
+inline TypedArrayType typedArrayTypeForType(JSType type)
+{
+    switch (type) {
+    case Int8ArrayType:
+        return TypeInt8;
+    case Int16ArrayType:
+        return TypeInt16;
+    case Int32ArrayType:
+        return TypeInt32;
+    case Uint8ArrayType:
+        return TypeUint8;
+    case Uint8ClampedArrayType:
+        return TypeUint8Clamped;
+    case Uint16ArrayType:
+        return TypeUint16;
+    case Uint32ArrayType:
+        return TypeUint32;
+    case Float32ArrayType:
+        return TypeFloat32;
+    case Float64ArrayType:
+        return TypeFloat64;
+    default:
+        return NotTypedArray;
+    }
+}
+
 inline bool isInt(TypedArrayType type)
 {
     switch (type) {
@@ -157,6 +198,3 @@ namespace WTF {
 void printInternal(PrintStream&, JSC::TypedArrayType);
 
 } // namespace WTF
-
-#endif // TypedArrayType_h
-

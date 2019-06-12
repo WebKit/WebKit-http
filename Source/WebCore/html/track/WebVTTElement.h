@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebVTTElement_h
-#define WebVTTElement_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -48,9 +47,9 @@ enum WebVTTNodeType {
 class WebVTTElement final : public Element {
 public:
     static Ref<WebVTTElement> create(const WebVTTNodeType, Document&);
-    PassRefPtr<HTMLElement> createEquivalentHTMLElement(Document&);
+    Ref<HTMLElement> createEquivalentHTMLElement(Document&);
 
-    virtual Ref<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
+    Ref<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
 
     void setWebVTTNodeType(WebVTTNodeType type) { m_webVTTNodeType = static_cast<unsigned>(type); }
     WebVTTNodeType webVTTNodeType() const { return static_cast<WebVTTNodeType>(m_webVTTNodeType); }
@@ -63,20 +62,20 @@ public:
 
     static const QualifiedName& voiceAttributeName()
     {
-        static NeverDestroyed<QualifiedName> voiceAttr(nullAtom, "voice", nullAtom);
+        static NeverDestroyed<QualifiedName> voiceAttr(nullAtom(), "voice", nullAtom());
         return voiceAttr;
     }
     
     static const QualifiedName& langAttributeName()
     {
-        static NeverDestroyed<QualifiedName> voiceAttr(nullAtom, "lang", nullAtom);
+        static NeverDestroyed<QualifiedName> voiceAttr(nullAtom(), "lang", nullAtom());
         return voiceAttr;
     }
 
 private:
     WebVTTElement(WebVTTNodeType, Document&);
 
-    virtual bool isWebVTTElement() const override { return true; }
+    bool isWebVTTElement() const override { return true; }
 
     unsigned m_isPastNode : 1;
     unsigned m_webVTTNodeType : 4;
@@ -90,6 +89,4 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::WebVTTElement)
     static bool isType(const WebCore::Node& node) { return node.isWebVTTElement(); }
 SPECIALIZE_TYPE_TRAITS_END()
 
-#endif
-
-#endif // WebVTTElement_h
+#endif // ENABLE(VIDEO_TRACK)

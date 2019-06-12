@@ -27,10 +27,11 @@
  */
 
 #include "config.h"
-
-#if ENABLE(INDEXED_DATABASE)
 #include "IDBDatabaseException.h"
 
+#if ENABLE(INDEXED_DATABASE)
+
+#include "ExceptionCode.h"
 #include "ExceptionCodeDescription.h"
 
 namespace WebCore {
@@ -91,7 +92,7 @@ String IDBDatabaseException::getErrorName(ExceptionCode ec)
     const IDBDatabaseExceptionNameDescription* entry = getErrorEntry(ec);
     ASSERT(entry);
     if (!entry)
-        return "UnknownError";
+        return ASCIILiteral("UnknownError");
 
     return entry->name;
 }
@@ -101,7 +102,7 @@ String IDBDatabaseException::getErrorDescription(ExceptionCode ec)
     const IDBDatabaseExceptionNameDescription* entry = getErrorEntry(ec);
     ASSERT(entry);
     if (!entry)
-        return "Unknown error.";
+        return ASCIILiteral("Unknown error.");
 
     return entry->description;
 }

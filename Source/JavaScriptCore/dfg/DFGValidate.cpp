@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,13 +29,15 @@
 #if ENABLE(DFG_JIT)
 
 #include "CodeBlockWithJITType.h"
+#include "DFGClobberize.h"
 #include "DFGClobbersExitState.h"
 #include "DFGMayExit.h"
 #include "JSCInlines.h"
 #include <wtf/Assertions.h>
-#include <wtf/BitVector.h>
 
 namespace JSC { namespace DFG {
+
+namespace {
 
 class Validate {
 public:
@@ -207,7 +209,7 @@ public:
                         || node->origin.forExit != previousNode->origin.forExit);
                 }
                 
-                VALIDATE((node), !node->hasStructure() || !!node->structure());
+                VALIDATE((node), !node->hasStructure() || !!node->structure().get());
                 VALIDATE((node), !node->hasCellOperand() || node->cellOperand()->value().isCell());
                 VALIDATE((node), !node->hasCellOperand() || !!node->cellOperand()->value());
                 
@@ -263,6 +265,10 @@ public:
                     VALIDATE((node), !!node->child1());
                     VALIDATE((node), !!node->child2());
                     break;
+                case CompareEqPtr:
+                    VALIDATE((node), !!node->child1());
+                    VALIDATE((node), !!node->cellOperand()->value() && node->cellOperand()->value().isCell());
+                    break;
                 case CheckStructure:
                 case StringFromCharCode:
                     VALIDATE((node), !!node->child1());
@@ -278,10 +284,40 @@ public:
                         VALIDATE((node), !variant.oldStructureForTransition()->dfgShouldWatch());
                     }
                     break;
+                case MaterializeNewObject:
+                    for (RegisteredStructure structure : node->structureSet()) {
+                        // This only supports structures that are JSFinalObject or JSArray.
+                        VALIDATE(
+                            (node),
+                            structure->classInfo() == JSFinalObject::info()
+                            || structure->classInfo() == JSArray::info());
+
+                        // We only support certain indexing shapes.
+                        VALIDATE((node), !hasAnyArrayStorage(structure->indexingType()));
+                    }
+                    break;
                 case DoubleConstant:
                 case Int52Constant:
                     VALIDATE((node), node->isNumberConstant());
                     break;
+                case GetByOffset:
+                case PutByOffset:
+                    // FIXME: We should be able to validate that GetByOffset and PutByOffset are
+                    // using the same object for storage and base. I think this means finally
+                    // splitting these nodes into two node types, one for inline and one for
+                    // out-of-line. The out-of-line one will require that the first node is storage,
+                    // while the inline one will not take a storage child at all.
+                    // https://bugs.webkit.org/show_bug.cgi?id=159602
+                    break;
+                case HasOwnProperty: {
+                    VALIDATE((node), !!m_graph.m_vm.hasOwnPropertyCache());
+                    break;
+                }
+                case GetVectorLength: {
+                    Array::Type type = node->arrayMode().type();
+                    VALIDATE((node), type == Array::ArrayStorage || type == Array::SlowPutArrayStorage);
+                    break;
+                }
                 default:
                     break;
                 }
@@ -297,6 +333,47 @@ public:
         case SSA:
             validateSSA();
             break;
+        }
+
+        // Validate clobbered states.
+        struct DefLambdaAdaptor {
+            std::function<void(PureValue)> pureValue;
+            std::function<void(HeapLocation, LazyNode)> locationAndNode;
+
+            void operator()(PureValue value) const
+            {
+                pureValue(value);
+            }
+
+            void operator()(HeapLocation location, LazyNode node) const
+            {
+                locationAndNode(location, node);
+            }
+        };
+        for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
+            for (Node* node : *block) {
+                clobberize(m_graph, node,
+                    [&] (AbstractHeap) { },
+                    [&] (AbstractHeap heap)
+                    {
+                        // CSE assumes that HEAP TOP is never written.
+                        // If this assumption is weakened, you need to update clobbering
+                        // in CSE accordingly.
+                        if (heap.kind() == Stack)
+                            VALIDATE((node), !heap.payload().isTop());
+                    },
+                    DefLambdaAdaptor {
+                        [&] (PureValue) { },
+                        [&] (HeapLocation location, LazyNode)
+                        {
+                            VALIDATE((node), location.heap().kind() != SideState);
+
+                            // More specific kinds should be used instead.
+                            VALIDATE((node), location.heap().kind() != World);
+                            VALIDATE((node), location.heap().kind() != Heap);
+                        }
+                });
+            }
         }
     }
     
@@ -413,17 +490,17 @@ private:
                 block->variablesAtHead.numberOfLocals());
             
             for (size_t i = 0; i < block->variablesAtHead.numberOfArguments(); ++i) {
-                VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtHead.argument(i) || block->variablesAtHead.argument(i)->hasVariableAccessData(m_graph));
+                VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtHead.argument(i) || block->variablesAtHead.argument(i)->accessesStack(m_graph));
                 if (m_graph.m_form == ThreadedCPS)
-                    VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtTail.argument(i) || block->variablesAtTail.argument(i)->hasVariableAccessData(m_graph));
+                    VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtTail.argument(i) || block->variablesAtTail.argument(i)->accessesStack(m_graph));
                 
                 getLocalPositions.argument(i) = notSet;
                 setLocalPositions.argument(i) = notSet;
             }
             for (size_t i = 0; i < block->variablesAtHead.numberOfLocals(); ++i) {
-                VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtHead.local(i) || block->variablesAtHead.local(i)->hasVariableAccessData(m_graph));
+                VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtHead.local(i) || block->variablesAtHead.local(i)->accessesStack(m_graph));
                 if (m_graph.m_form == ThreadedCPS)
-                    VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtTail.local(i) || block->variablesAtTail.local(i)->hasVariableAccessData(m_graph));
+                    VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtTail.local(i) || block->variablesAtTail.local(i)->accessesStack(m_graph));
 
                 getLocalPositions.local(i) = notSet;
                 setLocalPositions.local(i) = notSet;
@@ -457,17 +534,48 @@ private:
                 case PhantomNewObject:
                 case PhantomNewFunction:
                 case PhantomNewGeneratorFunction:
+                case PhantomNewAsyncFunction:
                 case PhantomCreateActivation:
                 case GetMyArgumentByVal:
+                case GetMyArgumentByValOutOfBounds:
                 case PutHint:
                 case CheckStructureImmediate:
-                case MaterializeNewObject:
                 case MaterializeCreateActivation:
                 case PutStack:
                 case KillStack:
                 case GetStack:
                     VALIDATE((node), !"unexpected node type in CPS");
                     break;
+                case MaterializeNewObject: {
+                    // CPS only allows array lengths to be constant. This constraint only exists
+                    // because we don't have DFG support for anything more and we don't need any
+                    // other kind of support for now.
+                    ObjectMaterializationData& data = node->objectMaterializationData();
+                    for (unsigned i = data.m_properties.size(); i--;) {
+                        PromotedLocationDescriptor descriptor = data.m_properties[i];
+                        Edge edge = m_graph.varArgChild(node, 1 + i);
+                        switch (descriptor.kind()) {
+                        case PublicLengthPLoc:
+                        case VectorLengthPLoc:
+                            VALIDATE((node, edge), edge->isInt32Constant());
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+
+                    // CPS only allows one structure.
+                    VALIDATE((node), node->structureSet().size() == 1);
+
+                    // CPS disallows int32 and double arrays. Those require weird type checks and
+                    // conversions. They are not needed in the DFG right now. We should add support
+                    // for these if the DFG ever needs it.
+                    for (RegisteredStructure structure : node->structureSet()) {
+                        VALIDATE((node), !hasInt32(structure->indexingType()));
+                        VALIDATE((node), !hasDouble(structure->indexingType()));
+                    }
+                    break;
+                }
                 case Phantom:
                     VALIDATE((node), m_graph.m_fixpointState != FixpointNotConverged);
                     break;
@@ -535,8 +643,7 @@ private:
 
             bool didSeeExitOK = false;
             
-            for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
-                Node* node = block->at(nodeIndex);
+            for (auto* node : *block) {
                 didSeeExitOK |= node->origin.exitOK;
                 switch (node->op()) {
                 case Phi:
@@ -566,8 +673,10 @@ private:
                 case PhantomNewObject:
                 case PhantomNewFunction:
                 case PhantomNewGeneratorFunction:
+                case PhantomNewAsyncFunction:
                 case PhantomCreateActivation:
                 case PhantomDirectArguments:
+                case PhantomCreateRest:
                 case PhantomClonedArguments:
                 case MovHint:
                 case Upsilon:
@@ -577,6 +686,7 @@ private:
                 case TailCallForwardVarargsInlinedCaller:
                 case ConstructForwardVarargs:
                 case GetMyArgumentByVal:
+                case GetMyArgumentByValOutOfBounds:
                     break;
 
                 case Check:
@@ -586,6 +696,39 @@ private:
                 case PutHint:
                     VALIDATE((node), node->child1()->isPhantomAllocation());
                     break;
+
+                case PhantomSpread:
+                    VALIDATE((node), m_graph.m_form == SSA);
+                    // We currently only support PhantomSpread over PhantomCreateRest.
+                    VALIDATE((node), node->child1()->op() == PhantomCreateRest);
+                    break;
+
+                case PhantomNewArrayWithSpread: {
+                    VALIDATE((node), m_graph.m_form == SSA);
+                    BitVector* bitVector = node->bitVector();
+                    for (unsigned i = 0; i < node->numChildren(); i++) {
+                        Node* child = m_graph.varArgChild(node, i).node();
+                        if (bitVector->get(i)) {
+                            // We currently only support PhantomSpread over PhantomCreateRest.
+                            VALIDATE((node), child->op() == PhantomSpread);
+                        } else
+                            VALIDATE((node), !child->isPhantomAllocation());
+                    }
+                    break;
+                }
+
+                case NewArrayWithSpread: {
+                    BitVector* bitVector = node->bitVector();
+                    for (unsigned i = 0; i < node->numChildren(); i++) {
+                        Node* child = m_graph.varArgChild(node, i).node();
+                        if (child->isPhantomAllocation()) {
+                            VALIDATE((node), bitVector->get(i));
+                            VALIDATE((node), m_graph.m_form == SSA);
+                            VALIDATE((node), child->op() == PhantomSpread);
+                        }
+                    }
+                    break;
+                }
 
                 default:
                     m_graph.doToChildren(
@@ -607,7 +750,7 @@ private:
         if (m_graph.m_planStage < PlanStage::AfterFixup)
             return;
         
-        VALIDATE((node, edge), edge.useKind() == DoubleRepUse || edge.useKind() == DoubleRepRealUse || edge.useKind() == DoubleRepMachineIntUse);
+        VALIDATE((node, edge), edge.useKind() == DoubleRepUse || edge.useKind() == DoubleRepRealUse || edge.useKind() == DoubleRepAnyIntUse);
     }
 
     void checkOperand(
@@ -692,6 +835,8 @@ private:
         m_graph.dump();
     }
 };
+
+} // End anonymous namespace.
 
 void validate(Graph& graph, GraphDumpMode graphDumpMode, CString graphDumpBeforePhase)
 {

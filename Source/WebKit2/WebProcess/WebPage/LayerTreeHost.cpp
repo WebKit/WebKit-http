@@ -29,39 +29,64 @@
 
 #include "LayerTreeHost.h"
 
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-#include "CoordinatedLayerTreeHost.h"
-#elif USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS_THREADED)
 #include "ThreadedCoordinatedLayerTreeHost.h"
-#elif PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
-#include "LayerTreeHostGtk.h"
 #endif
 
 using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<LayerTreeHost> LayerTreeHost::create(WebPage* webPage)
+RefPtr<LayerTreeHost> LayerTreeHost::create(WebPage& webPage)
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     return ThreadedCoordinatedLayerTreeHost::create(webPage);
-#elif USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    return CoordinatedLayerTreeHost::create(webPage);
-#elif PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
-    return LayerTreeHostGtk::create(webPage);
 #else
     UNUSED_PARAM(webPage);
-    return 0;
+    return nullptr;
 #endif
 }
 
-LayerTreeHost::LayerTreeHost(WebPage* webPage)
+LayerTreeHost::LayerTreeHost(WebPage& webPage)
     : m_webPage(webPage)
 {
 }
 
 LayerTreeHost::~LayerTreeHost()
 {
+    ASSERT(!m_isValid);
+}
+
+void LayerTreeHost::setLayerFlushSchedulingEnabled(bool layerFlushingEnabled)
+{
+    if (m_layerFlushSchedulingEnabled == layerFlushingEnabled)
+        return;
+
+    m_layerFlushSchedulingEnabled = layerFlushingEnabled;
+
+    if (m_layerFlushSchedulingEnabled) {
+        scheduleLayerFlush();
+        return;
+    }
+
+    cancelPendingLayerFlush();
+}
+
+void LayerTreeHost::pauseRendering()
+{
+    m_isSuspended = true;
+}
+
+void LayerTreeHost::resumeRendering()
+{
+    m_isSuspended = false;
+    scheduleLayerFlush();
+}
+
+void LayerTreeHost::invalidate()
+{
+    ASSERT(m_isValid);
+    m_isValid = false;
 }
 
 } // namespace WebKit

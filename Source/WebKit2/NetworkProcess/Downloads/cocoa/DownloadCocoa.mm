@@ -28,6 +28,7 @@
 
 #if USE(NETWORK_SESSION)
 
+#import "DataReference.h"
 #import <WebCore/NotImplemented.h>
 
 namespace WebKit {
@@ -37,20 +38,18 @@ void Download::resume(const IPC::DataReference& resumeData, const String& path, 
     notImplemented();
 }
     
-void Download::cancel()
+void Download::platformCancelNetworkLoad()
 {
-    [m_download cancel];
+    ASSERT(m_downloadTask);
+    [m_downloadTask cancelByProducingResumeData: ^(NSData * _Nullable resumeData)
+    {
+        if (resumeData && resumeData.bytes && resumeData.length)
+            didCancel(IPC::DataReference(reinterpret_cast<const uint8_t*>(resumeData.bytes), resumeData.length));
+        else
+            didCancel({ });
+    }];
 }
 
-void Download::platformInvalidate()
-{
-    notImplemented();
-}
-
-void Download::platformDidFinish()
-{
-}
-    
 }
 
 #endif // USE(NETWORK_SESSION)

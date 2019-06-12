@@ -18,7 +18,7 @@ function triggerUncaughtSyntaxException()
 
 function triggerUncaughtDOMException()
 {
-    // Error: IndexSizeError: DOM Exception 1
+    // IndexSizeError (DOM Exception 1): The index is not in the allowed range.
     document.createTextNode("").splitText(100);
 }
 
@@ -68,4 +68,6 @@ function nestedCatchBlocks()
         }
         console.log(e1);
     }
+
+    TestPage.dispatchEventToFrontend("AfterTestFunction");
 }

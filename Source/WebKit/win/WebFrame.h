@@ -36,7 +36,6 @@
 #include <WebCore/ResourceHandleClient.h>
 #include <WebCore/URL.h>
 #include <sal.h>
-#include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -74,7 +73,7 @@ class WebView;
 interface IWebHistoryItemPrivate;
 
 WebFrame* kit(WebCore::Frame*);
-WebCore::Frame* core(WebFrame*);
+WEBKIT_API WebCore::Frame* core(WebFrame*);
 
 class DECLSPEC_UUID("{A3676398-4485-4a9d-87DC-CB5A40E6351D}") WebFrame : public IWebFrame2, IWebFramePrivate, IWebDocumentText
 {
@@ -171,7 +170,7 @@ public:
     virtual void frameLoaderDestroyed();
 
     // WebFrame
-    PassRefPtr<WebCore::Frame> createSubframeWithOwnerElement(IWebView*, WebCore::Page*, WebCore::HTMLFrameOwnerElement*);
+    Ref<WebCore::Frame> createSubframeWithOwnerElement(IWebView*, WebCore::Page*, WebCore::HTMLFrameOwnerElement*);
     void initWithWebView(IWebView*, WebCore::Page*);
     WebCore::Frame* impl();
     void invalidate();
@@ -200,7 +199,7 @@ public:
 
 protected:
     void loadHTMLString(_In_ BSTR string, _In_ BSTR baseURL, _In_ BSTR unreachableURL);
-    void loadData(PassRefPtr<WebCore::SharedBuffer>, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL);
+    void loadData(RefPtr<WebCore::SharedBuffer>&&, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL);
     const Vector<WebCore::IntRect>& computePageRects(HDC printDC);
     void setPrinting(bool printing, const WebCore::FloatSize& pageSize, const WebCore::FloatSize& originalPageSize, float maximumShrinkRatio, WebCore::AdjustViewSizeOrNot);
     void headerAndFooterHeights(float*, float*);

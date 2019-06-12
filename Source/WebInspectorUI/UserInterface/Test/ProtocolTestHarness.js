@@ -62,11 +62,17 @@ ProtocolTestHarness = class ProtocolTestHarness extends TestHarness
         let args = {
             method: "Runtime.evaluate",
             params: {expression}
-        }
+        };
 
         if (typeof callback === "function")
             InspectorProtocol.sendCommand(args, callback);
         else
             return InspectorProtocol.awaitCommand(args);
     }
-}
+
+    debug()
+    {
+        this.dumpActivityToSystemConsole = true;
+        this.dumpInspectorProtocolMessages = true;
+    }
+};

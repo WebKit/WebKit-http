@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ProfilerJettisonReason_h
-#define ProfilerJettisonReason_h
+#pragma once
 
 namespace JSC { namespace Profiler {
 
@@ -33,13 +32,13 @@ enum JettisonReason {
     JettisonDueToWeakReference,
     JettisonDueToDebuggerBreakpoint,
     JettisonDueToDebuggerStepping,
-    JettisonDueToLegacyProfiler,
     JettisonDueToBaselineLoopReoptimizationTrigger,
     JettisonDueToBaselineLoopReoptimizationTriggerOnOSREntryFail,
     JettisonDueToOSRExit,
     JettisonDueToProfiledWatchpoint,
     JettisonDueToUnprofiledWatchpoint,
-    JettisonDueToOldAge
+    JettisonDueToOldAge,
+    JettisonDueToVMTraps
 };
 
 } } // namespace JSC::Profiler
@@ -50,6 +49,3 @@ class PrintStream;
 void printInternal(PrintStream&, JSC::Profiler::JettisonReason);
 
 } // namespace WTF
-
-#endif // ProfilerJettisonReason_h
-

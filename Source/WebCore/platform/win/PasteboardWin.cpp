@@ -42,7 +42,6 @@
 #include "Image.h"
 #include "URL.h"
 #include "NotImplemented.h"
-#include "Page.h"
 #include "Range.h"
 #include "RenderImage.h"
 #include "SharedBuffer.h"
@@ -410,7 +409,7 @@ void Pasteboard::writeString(const String& type, const String& data)
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void Pasteboard::setDragImage(DragImageRef, const IntPoint&)
+void Pasteboard::setDragImage(DragImage, const IntPoint&)
 {
     // Do nothing in Windows.
 }
@@ -721,6 +720,11 @@ void Pasteboard::write(const PasteboardURL& pasteboardURL)
     writeURLToDataObject(pasteboardURL.url, pasteboardURL.title);
 }
 
+void Pasteboard::writeTrustworthyWebURLsPboardType(const PasteboardURL&)
+{
+    notImplemented();
+}
+
 void Pasteboard::writeImage(Element& element, const URL&, const String&)
 {
     if (!is<RenderImage>(element.renderer()))
@@ -792,7 +796,7 @@ void Pasteboard::read(PasteboardPlainText& text)
     }
 }
 
-PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context, bool allowPlainText, bool& chosePlainText)
+RefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context, bool allowPlainText, bool& chosePlainText)
 {
     chosePlainText = false;
     
@@ -805,9 +809,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& c
             GlobalUnlock(cbData);
             ::CloseClipboard();
 
-            RefPtr<DocumentFragment> fragment = fragmentFromCFHTML(frame.document(), cfhtml);
-            if (fragment)
-                return fragment.release();
+            return fragmentFromCFHTML(frame.document(), cfhtml);
         } else 
             ::CloseClipboard();
     }
@@ -821,9 +823,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& c
                 String str(buffer);
                 GlobalUnlock(cbData);
                 ::CloseClipboard();
-                RefPtr<DocumentFragment> fragment = createFragmentFromText(context, str);
-                if (fragment)
-                    return fragment.release();
+                return createFragmentFromText(context, str);
             } else 
                 ::CloseClipboard();
         }
@@ -838,15 +838,13 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& c
                 String str(buffer);
                 GlobalUnlock(cbData);
                 ::CloseClipboard();
-                RefPtr<DocumentFragment> fragment = createFragmentFromText(context, str);
-                if (fragment)
-                    return fragment.release();
+                return createFragmentFromText(context, str);
             } else
                 ::CloseClipboard();
         }
     }
     
-    return 0;
+    return nullptr;
 }
 
 void Pasteboard::setExternalDataObject(IDataObject *dataObject)
@@ -1018,7 +1016,7 @@ void Pasteboard::writeImageToDataObject(Element& element, const URL& url)
     if (!imageBuffer || !imageBuffer->size())
         return;
 
-    HGLOBAL imageFileDescriptor = createGlobalImageFileDescriptor(url.string(), element.fastGetAttribute(HTMLNames::altAttr), cachedImage);
+    HGLOBAL imageFileDescriptor = createGlobalImageFileDescriptor(url.string(), element.attributeWithoutSynchronization(HTMLNames::altAttr), cachedImage);
     if (!imageFileDescriptor)
         return;
 
@@ -1055,6 +1053,18 @@ void Pasteboard::writeMarkup(const String& markup)
     medium.hGlobal = createGlobalData(data);
     if (medium.hGlobal && FAILED(m_writableDataObject->SetData(htmlFormat(), &medium, TRUE)))
         GlobalFree(medium.hGlobal);
+}
+
+void Pasteboard::write(const PasteboardWebContent&)
+{
+}
+
+void Pasteboard::read(PasteboardWebContentReader&)
+{
+}
+
+void Pasteboard::write(const PasteboardImage&)
+{
 }
 
 } // namespace WebCore

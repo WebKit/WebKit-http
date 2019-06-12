@@ -32,10 +32,8 @@
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "CrossfadeGeneratedImage.h"
-#include "ImageBuffer.h"
 #include "RenderElement.h"
 #include "StyleCachedImage.h"
-#include "StyleGeneratedImage.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -45,10 +43,10 @@ static inline double blendFunc(double from, double to, double progress)
     return blend(from, to, progress);
 }
 
-static bool subimageKnownToBeOpaque(CSSValue& value, const RenderElement* renderer)
+static bool subimageKnownToBeOpaque(const CSSValue& value, const RenderElement& renderer)
 {
     if (is<CSSImageValue>(value))
-        return downcast<CSSImageValue>(value).knownToBeOpaque(renderer);
+        return downcast<CSSImageValue>(value).knownToBeOpaque(&renderer);
 
     if (is<CSSImageGeneratorValue>(value))
         return downcast<CSSImageGeneratorValue>(value).knownToBeOpaque(renderer);
@@ -58,18 +56,46 @@ static bool subimageKnownToBeOpaque(CSSValue& value, const RenderElement* render
     return false;
 }
 
+inline CSSCrossfadeValue::SubimageObserver::SubimageObserver(CSSCrossfadeValue& owner)
+    : m_owner(owner)
+{
+}
+
+void CSSCrossfadeValue::SubimageObserver::imageChanged(CachedImage*, const IntRect*)
+{
+    m_owner.crossfadeChanged();
+}
+
+inline CSSCrossfadeValue::CSSCrossfadeValue(Ref<CSSValue>&& fromValue, Ref<CSSValue>&& toValue, Ref<CSSPrimitiveValue>&& percentageValue, bool prefixed)
+    : CSSImageGeneratorValue(CrossfadeClass)
+    , m_fromValue(WTFMove(fromValue))
+    , m_toValue(WTFMove(toValue))
+    , m_percentageValue(WTFMove(percentageValue))
+    , m_subimageObserver(*this)
+    , m_isPrefixed(prefixed)
+{
+}
+
+Ref<CSSCrossfadeValue> CSSCrossfadeValue::create(Ref<CSSValue>&& fromValue, Ref<CSSValue>&& toValue, Ref<CSSPrimitiveValue>&& percentageValue, bool prefixed)
+{
+    return adoptRef(*new CSSCrossfadeValue(WTFMove(fromValue), WTFMove(toValue), WTFMove(percentageValue), prefixed));
+}
+
 CSSCrossfadeValue::~CSSCrossfadeValue()
 {
     if (m_cachedFromImage)
-        m_cachedFromImage->removeClient(&m_crossfadeSubimageObserver);
+        m_cachedFromImage->removeClient(m_subimageObserver);
     if (m_cachedToImage)
-        m_cachedToImage->removeClient(&m_crossfadeSubimageObserver);
+        m_cachedToImage->removeClient(m_subimageObserver);
 }
 
 String CSSCrossfadeValue::customCSSText() const
 {
     StringBuilder result;
-    result.appendLiteral("-webkit-cross-fade(");
+    if (m_isPrefixed)
+        result.appendLiteral("-webkit-cross-fade(");
+    else
+        result.appendLiteral("cross-fade(");
     result.append(m_fromValue->cssText());
     result.appendLiteral(", ");
     result.append(m_toValue->cssText());
@@ -79,110 +105,106 @@ String CSSCrossfadeValue::customCSSText() const
     return result.toString();
 }
 
-FloatSize CSSCrossfadeValue::fixedSize(const RenderElement* renderer)
+FloatSize CSSCrossfadeValue::fixedSize(const RenderElement& renderer)
 {
-    float percentage = m_percentageValue->getFloatValue();
+    float percentage = m_percentageValue->floatValue();
     float inversePercentage = 1 - percentage;
 
     // FIXME: Skip Content Security Policy check when cross fade is applied to an element in a user agent shadow tree.
     // See <https://bugs.webkit.org/show_bug.cgi?id=146663>.
-    ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
+    auto options = CachedResourceLoader::defaultCachedResourceOptions();
 
-    CachedResourceLoader& cachedResourceLoader = renderer->document().cachedResourceLoader();
-    CachedImage* cachedFromImage = cachedImageForCSSValue(m_fromValue.get(), cachedResourceLoader, options);
-    CachedImage* cachedToImage = cachedImageForCSSValue(m_toValue.get(), cachedResourceLoader, options);
+    auto& cachedResourceLoader = renderer.document().cachedResourceLoader();
+    auto* cachedFromImage = cachedImageForCSSValue(m_fromValue, cachedResourceLoader, options);
+    auto* cachedToImage = cachedImageForCSSValue(m_toValue, cachedResourceLoader, options);
 
     if (!cachedFromImage || !cachedToImage)
         return FloatSize();
 
-    FloatSize fromImageSize = cachedFromImage->imageForRenderer(renderer)->size();
-    FloatSize toImageSize = cachedToImage->imageForRenderer(renderer)->size();
+    FloatSize fromImageSize = cachedFromImage->imageForRenderer(&renderer)->size();
+    FloatSize toImageSize = cachedToImage->imageForRenderer(&renderer)->size();
 
     // Rounding issues can cause transitions between images of equal size to return
     // a different fixed size; avoid performing the interpolation if the images are the same size.
     if (fromImageSize == toImageSize)
         return fromImageSize;
 
-    return FloatSize(fromImageSize.width() * inversePercentage + toImageSize.width() * percentage,
-        fromImageSize.height() * inversePercentage + toImageSize.height() * percentage);
+    return fromImageSize * inversePercentage + toImageSize * percentage;
 }
 
 bool CSSCrossfadeValue::isPending() const
 {
-    return CSSImageGeneratorValue::subimageIsPending(m_fromValue.get())
-        || CSSImageGeneratorValue::subimageIsPending(m_toValue.get());
+    return CSSImageGeneratorValue::subimageIsPending(m_fromValue)
+        || CSSImageGeneratorValue::subimageIsPending(m_toValue);
 }
 
-bool CSSCrossfadeValue::knownToBeOpaque(const RenderElement* renderer) const
+bool CSSCrossfadeValue::knownToBeOpaque(const RenderElement& renderer) const
 {
-    return subimageKnownToBeOpaque(*m_fromValue, renderer) && subimageKnownToBeOpaque(*m_toValue, renderer);
+    return subimageKnownToBeOpaque(m_fromValue, renderer)
+        && subimageKnownToBeOpaque(m_toValue, renderer);
 }
 
 void CSSCrossfadeValue::loadSubimages(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
 {
-    CachedResourceHandle<CachedImage> oldCachedFromImage = m_cachedFromImage;
-    CachedResourceHandle<CachedImage> oldCachedToImage = m_cachedToImage;
+    auto oldCachedFromImage = m_cachedFromImage;
+    auto oldCachedToImage = m_cachedToImage;
 
-    m_cachedFromImage = CSSImageGeneratorValue::cachedImageForCSSValue(m_fromValue.get(), cachedResourceLoader, options);
-    m_cachedToImage = CSSImageGeneratorValue::cachedImageForCSSValue(m_toValue.get(), cachedResourceLoader, options);
+    m_cachedFromImage = CSSImageGeneratorValue::cachedImageForCSSValue(m_fromValue, cachedResourceLoader, options);
+    m_cachedToImage = CSSImageGeneratorValue::cachedImageForCSSValue(m_toValue, cachedResourceLoader, options);
 
     if (m_cachedFromImage != oldCachedFromImage) {
         if (oldCachedFromImage)
-            oldCachedFromImage->removeClient(&m_crossfadeSubimageObserver);
+            oldCachedFromImage->removeClient(m_subimageObserver);
         if (m_cachedFromImage)
-            m_cachedFromImage->addClient(&m_crossfadeSubimageObserver);
+            m_cachedFromImage->addClient(m_subimageObserver);
     }
 
     if (m_cachedToImage != oldCachedToImage) {
         if (oldCachedToImage)
-            oldCachedToImage->removeClient(&m_crossfadeSubimageObserver);
+            oldCachedToImage->removeClient(m_subimageObserver);
         if (m_cachedToImage)
-            m_cachedToImage->addClient(&m_crossfadeSubimageObserver);
+            m_cachedToImage->addClient(m_subimageObserver);
     }
 
-    m_crossfadeSubimageObserver.setReady(true);
+    // FIXME: Unclear why this boolean adds any value; for now keeping it around to avoid changing semantics.
+    m_subimagesAreReady = true;
 }
 
-RefPtr<Image> CSSCrossfadeValue::image(RenderElement* renderer, const FloatSize& size)
+Image* CSSCrossfadeValue::image(RenderElement& renderer, const FloatSize& size)
 {
     if (size.isEmpty())
         return nullptr;
 
     // FIXME: Skip Content Security Policy check when cross fade is applied to an element in a user agent shadow tree.
     // See <https://bugs.webkit.org/show_bug.cgi?id=146663>.
-    ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
+    auto options = CachedResourceLoader::defaultCachedResourceOptions();
 
-    CachedResourceLoader& cachedResourceLoader = renderer->document().cachedResourceLoader();
-    CachedImage* cachedFromImage = cachedImageForCSSValue(m_fromValue.get(), cachedResourceLoader, options);
-    CachedImage* cachedToImage = cachedImageForCSSValue(m_toValue.get(), cachedResourceLoader, options);
+    auto& cachedResourceLoader = renderer.document().cachedResourceLoader();
+    auto* cachedFromImage = cachedImageForCSSValue(m_fromValue, cachedResourceLoader, options);
+    auto* cachedToImage = cachedImageForCSSValue(m_toValue, cachedResourceLoader, options);
 
     if (!cachedFromImage || !cachedToImage)
-        return Image::nullImage();
+        return &Image::nullImage();
 
-    Image* fromImage = cachedFromImage->imageForRenderer(renderer);
-    Image* toImage = cachedToImage->imageForRenderer(renderer);
+    auto* fromImage = cachedFromImage->imageForRenderer(&renderer);
+    auto* toImage = cachedToImage->imageForRenderer(&renderer);
 
     if (!fromImage || !toImage)
-        return Image::nullImage();
+        return &Image::nullImage();
 
-    m_generatedImage = CrossfadeGeneratedImage::create(*fromImage, *toImage, m_percentageValue->getFloatValue(), fixedSize(renderer), size);
-
-    return m_generatedImage;
+    m_generatedImage = CrossfadeGeneratedImage::create(*fromImage, *toImage, m_percentageValue->floatValue(), fixedSize(renderer), size);
+    return m_generatedImage.get();
 }
 
-void CSSCrossfadeValue::crossfadeChanged(const IntRect&)
+inline void CSSCrossfadeValue::crossfadeChanged()
 {
-    for (auto it = clients().begin(), end = clients().end(); it != end; ++it)
-        it->key->imageChanged(static_cast<WrappedImagePtr>(this));
+    if (!m_subimagesAreReady)
+        return;
+    for (auto& client : clients())
+        client.key->imageChanged(this);
 }
 
-void CSSCrossfadeValue::CrossfadeSubimageObserverProxy::imageChanged(CachedImage*, const IntRect* rect)
-{
-    if (m_ready)
-        m_ownerValue->crossfadeChanged(*rect);
-}
-
-bool CSSCrossfadeValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSCrossfadeValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     if (m_cachedFromImage && handler(*m_cachedFromImage))
         return true;
@@ -194,35 +216,33 @@ bool CSSCrossfadeValue::traverseSubresources(const std::function<bool (const Cac
 RefPtr<CSSCrossfadeValue> CSSCrossfadeValue::blend(const CSSCrossfadeValue& from, double progress) const
 {
     ASSERT(equalInputImages(from));
-    RefPtr<StyleCachedImage> toStyledImage = StyleCachedImage::create(m_cachedToImage.get());
-    RefPtr<StyleCachedImage> fromStyledImage = StyleCachedImage::create(m_cachedFromImage.get());
 
-    auto fromImageValue = CSSImageValue::create(m_cachedFromImage->url(), fromStyledImage.get());
-    auto toImageValue = CSSImageValue::create(m_cachedToImage->url(), toStyledImage.get());
+    if (!m_cachedToImage || !m_cachedFromImage)
+        return nullptr;
 
-    RefPtr<CSSCrossfadeValue> crossfadeValue = CSSCrossfadeValue::create(WTFMove(fromImageValue), WTFMove(toImageValue));
+    auto fromImageValue = CSSImageValue::create(*m_cachedFromImage);
+    auto toImageValue = CSSImageValue::create(*m_cachedToImage);
 
-    double fromPercentage = from.m_percentageValue->getDoubleValue();
+    double fromPercentage = from.m_percentageValue->doubleValue();
     if (from.m_percentageValue->isPercentage())
         fromPercentage /= 100.0;
-    double toPercentage = m_percentageValue->getDoubleValue();
+    double toPercentage = m_percentageValue->doubleValue();
     if (m_percentageValue->isPercentage())
         toPercentage /= 100.0;
-    crossfadeValue->setPercentage(CSSPrimitiveValue::create(blendFunc(fromPercentage, toPercentage, progress), CSSPrimitiveValue::CSS_NUMBER));
-    return crossfadeValue;
+    auto percentageValue = CSSPrimitiveValue::create(blendFunc(fromPercentage, toPercentage, progress), CSSPrimitiveValue::CSS_NUMBER);
+
+    return CSSCrossfadeValue::create(WTFMove(fromImageValue), WTFMove(toImageValue), WTFMove(percentageValue), from.isPrefixed() && isPrefixed());
 }
 
 bool CSSCrossfadeValue::equals(const CSSCrossfadeValue& other) const
 {
-    return equalInputImages(other)
-        && compareCSSValuePtr(m_percentageValue, other.m_percentageValue);
+    return equalInputImages(other) && compareCSSValue(m_percentageValue, other.m_percentageValue);
 }
 
 
 bool CSSCrossfadeValue::equalInputImages(const CSSCrossfadeValue& other) const
 {
-    return compareCSSValuePtr(m_fromValue, other.m_fromValue)
-        && compareCSSValuePtr(m_toValue, other.m_toValue);
+    return compareCSSValue(m_fromValue, other.m_fromValue) && compareCSSValue(m_toValue, other.m_toValue);
 }
 
 } // namespace WebCore

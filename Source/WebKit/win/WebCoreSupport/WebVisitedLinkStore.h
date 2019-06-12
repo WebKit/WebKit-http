@@ -28,7 +28,6 @@
 
 #include <WebCore/LinkHash.h>
 #include <WebCore/VisitedLinkStore.h>
-#include <wtf/PassRef.h>
 
 class WebVisitedLinkStore final : public WebCore::VisitedLinkStore {
 public:
@@ -43,8 +42,8 @@ public:
 private:
     WebVisitedLinkStore();
 
-    virtual bool isLinkVisited(WebCore::Page&, WebCore::LinkHash, const WebCore::URL& baseURL, const AtomicString& attributeURL) override;
-    virtual void addVisitedLink(WebCore::Page&, WebCore::LinkHash) override;
+    bool isLinkVisited(WebCore::Page&, WebCore::LinkHash, const WebCore::URL& baseURL, const AtomicString& attributeURL) override;
+    void addVisitedLink(WebCore::Page&, WebCore::LinkHash) override;
 
     void populateVisitedLinksIfNeeded(WebCore::Page&);
     void addVisitedLinkHash(WebCore::LinkHash);

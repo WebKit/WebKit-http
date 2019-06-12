@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Jian Li <jianli@chromium.org>
  * Copyright (C) 2012 Patrick Gansterer <paroga@paroga.com>
  *
@@ -42,24 +42,38 @@
 #ifndef WTF_ThreadSpecific_h
 #define WTF_ThreadSpecific_h
 
+#include <wtf/MainThread.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/StdLibExtras.h>
 
 #if USE(PTHREADS)
 #include <pthread.h>
+
+#if OS(HURD)
+// PTHREAD_KEYS_MAX is not defined in bionic nor in Hurd, so explicitly define it here.
+#define PTHREAD_KEYS_MAX 1024
+#else
+#include <limits.h>
+#endif
+
 #elif OS(WINDOWS)
 #include <windows.h>
 #endif
 
 namespace WTF {
 
-#if OS(WINDOWS)
-// ThreadSpecificThreadExit should be called each time when a thread is detached.
-// This is done automatically for threads created with WTF::createThread.
-void ThreadSpecificThreadExit();
+#if OS(WINDOWS) && CPU(X86)
+#define THREAD_SPECIFIC_CALL __stdcall
+#else
+#define THREAD_SPECIFIC_CALL
 #endif
 
-template<typename T> class ThreadSpecific {
+enum class CanBeGCThread {
+    False,
+    True
+};
+
+template<typename T, CanBeGCThread canBeGCThread = CanBeGCThread::False> class ThreadSpecific {
     WTF_MAKE_NONCOPYABLE(ThreadSpecific);
 public:
     ThreadSpecific();
@@ -73,10 +87,6 @@ public:
 #endif
 
 private:
-#if OS(WINDOWS)
-    friend void ThreadSpecificThreadExit();
-#endif
-
     // Not implemented. It's technically possible to destroy a thread specific key, but one would need
     // to make sure that all values have been destroyed already (usually, that all threads that used it
     // have exited). It's unlikely that any user of this call will be in that situation - and having
@@ -85,18 +95,15 @@ private:
 
     T* get();
     void set(T*);
-    void static destroy(void* ptr);
+    void static THREAD_SPECIFIC_CALL destroy(void* ptr);
 
     struct Data {
         WTF_MAKE_NONCOPYABLE(Data);
     public:
-        Data(T* value, ThreadSpecific<T>* owner) : value(value), owner(owner) {}
+        Data(T* value, ThreadSpecific<T, canBeGCThread>* owner) : value(value), owner(owner) {}
 
         T* value;
-        ThreadSpecific<T>* owner;
-#if OS(WINDOWS)
-        void (*destructor)(void*);
-#endif
+        ThreadSpecific<T, canBeGCThread>* owner;
     };
 
 #if USE(PTHREADS)
@@ -109,6 +116,8 @@ private:
 #if USE(PTHREADS)
 
 typedef pthread_key_t ThreadSpecificKey;
+
+static const constexpr ThreadSpecificKey InvalidThreadSpecificKey = PTHREAD_KEYS_MAX;
 
 inline void threadSpecificKeyCreate(ThreadSpecificKey* key, void (*destructor)(void *))
 {
@@ -134,89 +143,115 @@ inline void* threadSpecificGet(ThreadSpecificKey key)
     return pthread_getspecific(key);
 }
 
-template<typename T>
-inline ThreadSpecific<T>::ThreadSpecific()
+template<typename T, CanBeGCThread canBeGCThread>
+inline ThreadSpecific<T, canBeGCThread>::ThreadSpecific()
 {
     int error = pthread_key_create(&m_key, destroy);
     if (error)
         CRASH();
 }
 
-template<typename T>
-inline T* ThreadSpecific<T>::get()
+template<typename T, CanBeGCThread canBeGCThread>
+inline T* ThreadSpecific<T, canBeGCThread>::get()
 {
     Data* data = static_cast<Data*>(pthread_getspecific(m_key));
-    return data ? data->value : 0;
+    if (data)
+        return data->value;
+    RELEASE_ASSERT(canBeGCThread == CanBeGCThread::True || !mayBeGCThread());
+    return nullptr;
 }
 
-template<typename T>
-inline void ThreadSpecific<T>::set(T* ptr)
+template<typename T, CanBeGCThread canBeGCThread>
+inline void ThreadSpecific<T, canBeGCThread>::set(T* ptr)
 {
+    RELEASE_ASSERT(canBeGCThread == CanBeGCThread::True || !mayBeGCThread());
     ASSERT(!get());
     pthread_setspecific(m_key, new Data(ptr, this));
 }
 
 #elif OS(WINDOWS)
 
-// The maximum number of TLS keys that can be created. For simplification, we assume that:
+// The maximum number of FLS keys that can be created. For simplification, we assume that:
 // 1) Once the instance of ThreadSpecific<> is created, it will not be destructed until the program dies.
 // 2) We do not need to hold many instances of ThreadSpecific<> data. This fixed number should be far enough.
-const int kMaxTlsKeySize = 256;
+const int kMaxFlsKeySize = 128;
 
-WTF_EXPORT_PRIVATE long& tlsKeyCount();
-WTF_EXPORT_PRIVATE DWORD* tlsKeys();
+WTF_EXPORT_PRIVATE long& flsKeyCount();
+WTF_EXPORT_PRIVATE DWORD* flsKeys();
 
-class PlatformThreadSpecificKey;
-typedef PlatformThreadSpecificKey* ThreadSpecificKey;
+typedef DWORD ThreadSpecificKey;
 
-WTF_EXPORT_PRIVATE void threadSpecificKeyCreate(ThreadSpecificKey*, void (*)(void *));
-WTF_EXPORT_PRIVATE void threadSpecificKeyDelete(ThreadSpecificKey);
-WTF_EXPORT_PRIVATE void threadSpecificSet(ThreadSpecificKey, void*);
-WTF_EXPORT_PRIVATE void* threadSpecificGet(ThreadSpecificKey);
+static const constexpr ThreadSpecificKey InvalidThreadSpecificKey = FLS_OUT_OF_INDEXES;
 
-template<typename T>
-inline ThreadSpecific<T>::ThreadSpecific()
+inline void threadSpecificKeyCreate(ThreadSpecificKey* key, void (THREAD_SPECIFIC_CALL *destructor)(void *))
+{
+    DWORD flsKey = FlsAlloc(destructor);
+    if (flsKey == FLS_OUT_OF_INDEXES)
+        CRASH();
+
+    *key = flsKey;
+}
+
+inline void threadSpecificKeyDelete(ThreadSpecificKey key)
+{
+    FlsFree(key);
+}
+
+inline void threadSpecificSet(ThreadSpecificKey key, void* data)
+{
+    FlsSetValue(key, data);
+}
+
+inline void* threadSpecificGet(ThreadSpecificKey key)
+{
+    return FlsGetValue(key);
+}
+
+template<typename T, CanBeGCThread canBeGCThread>
+inline ThreadSpecific<T, canBeGCThread>::ThreadSpecific()
     : m_index(-1)
 {
-    DWORD tlsKey = TlsAlloc();
-    if (tlsKey == TLS_OUT_OF_INDEXES)
+    DWORD flsKey = FlsAlloc(destroy);
+    if (flsKey == FLS_OUT_OF_INDEXES)
         CRASH();
 
-    m_index = InterlockedIncrement(&tlsKeyCount()) - 1;
-    if (m_index >= kMaxTlsKeySize)
+    m_index = InterlockedIncrement(&flsKeyCount()) - 1;
+    if (m_index >= kMaxFlsKeySize)
         CRASH();
-    tlsKeys()[m_index] = tlsKey;
+    flsKeys()[m_index] = flsKey;
 }
 
-template<typename T>
-inline ThreadSpecific<T>::~ThreadSpecific()
+template<typename T, CanBeGCThread canBeGCThread>
+inline ThreadSpecific<T, canBeGCThread>::~ThreadSpecific()
 {
-    // Does not invoke destructor functions. They will be called from ThreadSpecificThreadExit when the thread is detached.
-    TlsFree(tlsKeys()[m_index]);
+    FlsFree(flsKeys()[m_index]);
 }
 
-template<typename T>
-inline T* ThreadSpecific<T>::get()
+template<typename T, CanBeGCThread canBeGCThread>
+inline T* ThreadSpecific<T, canBeGCThread>::get()
 {
-    Data* data = static_cast<Data*>(TlsGetValue(tlsKeys()[m_index]));
-    return data ? data->value : 0;
+    Data* data = static_cast<Data*>(FlsGetValue(flsKeys()[m_index]));
+    if (data)
+        return data->value;
+    RELEASE_ASSERT(canBeGCThread == CanBeGCThread::True || !mayBeGCThread());
+    return nullptr;
 }
 
-template<typename T>
-inline void ThreadSpecific<T>::set(T* ptr)
+template<typename T, CanBeGCThread canBeGCThread>
+inline void ThreadSpecific<T, canBeGCThread>::set(T* ptr)
 {
+    RELEASE_ASSERT(canBeGCThread == CanBeGCThread::True || !mayBeGCThread());
     ASSERT(!get());
     Data* data = new Data(ptr, this);
-    data->destructor = &ThreadSpecific<T>::destroy;
-    TlsSetValue(tlsKeys()[m_index], data);
+    FlsSetValue(flsKeys()[m_index], data);
 }
 
 #else
 #error ThreadSpecific is not implemented for this platform.
 #endif
 
-template<typename T>
-inline void ThreadSpecific<T>::destroy(void* ptr)
+template<typename T, CanBeGCThread canBeGCThread>
+inline void THREAD_SPECIFIC_CALL ThreadSpecific<T, canBeGCThread>::destroy(void* ptr)
 {
     Data* data = static_cast<Data*>(ptr);
 
@@ -232,7 +267,7 @@ inline void ThreadSpecific<T>::destroy(void* ptr)
 #if USE(PTHREADS)
     pthread_setspecific(data->owner->m_key, 0);
 #elif OS(WINDOWS)
-    TlsSetValue(tlsKeys()[data->owner->m_index], 0);
+    FlsSetValue(flsKeys()[data->owner->m_index], 0);
 #else
 #error ThreadSpecific is not implemented for this platform.
 #endif
@@ -240,14 +275,14 @@ inline void ThreadSpecific<T>::destroy(void* ptr)
     delete data;
 }
 
-template<typename T>
-inline bool ThreadSpecific<T>::isSet()
+template<typename T, CanBeGCThread canBeGCThread>
+inline bool ThreadSpecific<T, canBeGCThread>::isSet()
 {
     return !!get();
 }
 
-template<typename T>
-inline ThreadSpecific<T>::operator T*()
+template<typename T, CanBeGCThread canBeGCThread>
+inline ThreadSpecific<T, canBeGCThread>::operator T*()
 {
     T* ptr = static_cast<T*>(get());
     if (!ptr) {
@@ -260,21 +295,21 @@ inline ThreadSpecific<T>::operator T*()
     return ptr;
 }
 
-template<typename T>
-inline T* ThreadSpecific<T>::operator->()
+template<typename T, CanBeGCThread canBeGCThread>
+inline T* ThreadSpecific<T, canBeGCThread>::operator->()
 {
     return operator T*();
 }
 
-template<typename T>
-inline T& ThreadSpecific<T>::operator*()
+template<typename T, CanBeGCThread canBeGCThread>
+inline T& ThreadSpecific<T, canBeGCThread>::operator*()
 {
     return *operator T*();
 }
 
 #if USE(WEB_THREAD)
-template<typename T>
-inline void ThreadSpecific<T>::replace(T* newPtr)
+template<typename T, CanBeGCThread canBeGCThread>
+inline void ThreadSpecific<T, canBeGCThread>::replace(T* newPtr)
 {
     ASSERT(newPtr);
     Data* data = static_cast<Data*>(pthread_getspecific(m_key));

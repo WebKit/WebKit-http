@@ -28,17 +28,10 @@ WebInspector.ProbeDetailsSidebarPanel = class ProbeDetailsSidebarPanel extends W
 {
     constructor()
     {
-        super("probe", WebInspector.UIString("Probes"), WebInspector.UIString("Probes"));
-
-        WebInspector.probeManager.addEventListener(WebInspector.ProbeManager.Event.ProbeSetAdded, this._probeSetAdded, this);
-        WebInspector.probeManager.addEventListener(WebInspector.ProbeManager.Event.ProbeSetRemoved, this._probeSetRemoved, this);
+        super("probe", WebInspector.UIString("Probes"));
 
         this._probeSetSections = new Map;
         this._inspectedProbeSets = [];
-
-        // Initialize sidebar sections for probe sets that already exist.
-        for (var probeSet of WebInspector.probeManager.probeSets)
-            this._probeSetAdded(probeSet);
     }
 
     // Public
@@ -75,7 +68,7 @@ WebInspector.ProbeDetailsSidebarPanel = class ProbeDetailsSidebarPanel extends W
         inspectedProbeSets.sort(function sortBySourceLocation(aProbeSet, bProbeSet) {
             var aLocation = aProbeSet.breakpoint.sourceCodeLocation;
             var bLocation = bProbeSet.breakpoint.sourceCodeLocation;
-            var comparisonResult = aLocation.sourceCode.displayName.localeCompare(bLocation.sourceCode.displayName);
+            var comparisonResult = aLocation.sourceCode.displayName.extendedLocaleCompare(bLocation.sourceCode.displayName);
             if (comparisonResult !== 0)
                 return comparisonResult;
 
@@ -89,6 +82,29 @@ WebInspector.ProbeDetailsSidebarPanel = class ProbeDetailsSidebarPanel extends W
         this.inspectedProbeSets = inspectedProbeSets;
 
         return !!this._inspectedProbeSets.length;
+    }
+
+    // Protected
+
+    initialLayout()
+    {
+        super.initialLayout();
+
+        WebInspector.probeManager.addEventListener(WebInspector.ProbeManager.Event.ProbeSetAdded, this._probeSetAdded, this);
+        WebInspector.probeManager.addEventListener(WebInspector.ProbeManager.Event.ProbeSetRemoved, this._probeSetRemoved, this);
+
+        // Initialize sidebar sections for probe sets that already exist.
+        for (var probeSet of WebInspector.probeManager.probeSets)
+            this._probeSetAdded(probeSet);
+    }
+
+    sizeDidChange()
+    {
+        super.sizeDidChange();
+
+        // FIXME: <https://webkit.org/b/152269> Web Inspector: Convert DetailsSection classes to use View
+        for (let detailsSection of this._probeSetSections.values())
+            detailsSection.sizeDidChange();
     }
 
     // Private

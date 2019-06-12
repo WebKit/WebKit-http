@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,7 @@
 #ifndef CookiesStrategy_h
 #define CookiesStrategy_h
 
-#include <wtf/HashSet.h>
-#include <wtf/RetainPtr.h>
+#include "SessionID.h"
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -43,6 +42,7 @@ public:
     virtual void setCookiesFromDOM(const NetworkStorageSession&, const URL& firstParty, const URL&, const String& cookieString) = 0;
     virtual bool cookiesEnabled(const NetworkStorageSession&, const URL& firstParty, const URL&) = 0;
     virtual String cookieRequestHeaderFieldValue(const NetworkStorageSession&, const URL& firstParty, const URL&) = 0;
+    virtual String cookieRequestHeaderFieldValue(SessionID, const URL& firstParty, const URL&) = 0;
     virtual bool getRawCookies(const NetworkStorageSession&, const URL& firstParty, const URL&, Vector<Cookie>&) = 0;
     virtual void deleteCookie(const NetworkStorageSession&, const URL&, const String& cookieName) = 0;
 

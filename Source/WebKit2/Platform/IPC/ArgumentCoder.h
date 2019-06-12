@@ -28,16 +28,16 @@
 
 namespace IPC {
 
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
     
 template<typename T> struct ArgumentCoder {
-    static void encode(ArgumentEncoder& encoder, const T& t)
+    static void encode(Encoder& encoder, const T& t)
     {
         t.encode(encoder);
     }
 
-    static bool decode(ArgumentDecoder& decoder, T& t)
+    static bool decode(Decoder& decoder, T& t)
     {
         return T::decode(decoder, t);
     }

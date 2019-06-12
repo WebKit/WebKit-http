@@ -27,7 +27,6 @@
 #define ScrollbarThemeGtk_h
 
 #include "ScrollbarThemeComposite.h"
-#include <wtf/glib/GRefPtr.h>
 
 namespace WebCore {
 
@@ -37,27 +36,27 @@ class ScrollbarThemeGtk final : public ScrollbarThemeComposite {
 public:
     virtual ~ScrollbarThemeGtk();
 
-    virtual bool hasButtons(Scrollbar&) override;
-    virtual bool hasThumb(Scrollbar&) override;
-    virtual IntRect backButtonRect(Scrollbar&, ScrollbarPart, bool) override;
-    virtual IntRect forwardButtonRect(Scrollbar&, ScrollbarPart, bool) override;
-    virtual IntRect trackRect(Scrollbar&, bool) override;
+    bool hasButtons(Scrollbar&) override;
+    bool hasThumb(Scrollbar&) override;
+    IntRect backButtonRect(Scrollbar&, ScrollbarPart, bool) override;
+    IntRect forwardButtonRect(Scrollbar&, ScrollbarPart, bool) override;
+    IntRect trackRect(Scrollbar&, bool) override;
 
 #ifndef GTK_API_VERSION_2
     ScrollbarThemeGtk();
 
     bool paint(Scrollbar&, GraphicsContext&, const IntRect& damageRect) override;
     ScrollbarButtonPressAction handleMousePressEvent(Scrollbar&, const PlatformMouseEvent&, ScrollbarPart) override;
-    int scrollbarThickness(ScrollbarControlSize) override;
+    int scrollbarThickness(ScrollbarControlSize, ScrollbarExpansionState = ScrollbarExpansionState::Expanded) override;
     int minimumThumbLength(Scrollbar&) override;
 
     // TODO: These are the default GTK+ values. At some point we should pull these from the theme itself.
-    virtual double initialAutoscrollTimerDelay() override { return 0.20; }
-    virtual double autoscrollTimerDelay() override { return 0.02; }
-    virtual void themeChanged() override;
-    virtual bool usesOverlayScrollbars() const override { return m_usesOverlayScrollbars; }
+    Seconds initialAutoscrollTimerDelay() override { return 200_ms; }
+    Seconds autoscrollTimerDelay() override { return 20_ms; }
+    void themeChanged() override;
+    bool usesOverlayScrollbars() const override { return m_usesOverlayScrollbars; }
     // When using overlay scrollbars, always invalidate the whole scrollbar when entering/leaving.
-    virtual bool invalidateOnMouseEnterExit() override { return m_usesOverlayScrollbars; }
+    bool invalidateOnMouseEnterExit() override { return m_usesOverlayScrollbars; }
 
 private:
     void updateThemeProperties();

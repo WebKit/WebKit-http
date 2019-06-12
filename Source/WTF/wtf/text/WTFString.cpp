@@ -100,19 +100,19 @@ void String::append(const String& str)
                 LChar* data;
                 if (str.length() > std::numeric_limits<unsigned>::max() - m_impl->length())
                     CRASH();
-                RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(m_impl->length() + str.length(), data);
+                auto newImpl = StringImpl::createUninitialized(m_impl->length() + str.length(), data);
                 memcpy(data, m_impl->characters8(), m_impl->length() * sizeof(LChar));
                 memcpy(data + m_impl->length(), str.characters8(), str.length() * sizeof(LChar));
-                m_impl = newImpl.release();
+                m_impl = WTFMove(newImpl);
                 return;
             }
             UChar* data;
             if (str.length() > std::numeric_limits<unsigned>::max() - m_impl->length())
                 CRASH();
-            RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(m_impl->length() + str.length(), data);
+            auto newImpl = StringImpl::createUninitialized(m_impl->length() + str.length(), data);
             StringView(*m_impl).getCharactersWithUpconvert(data);
             StringView(str).getCharactersWithUpconvert(data + m_impl->length());
-            m_impl = newImpl.release();
+            m_impl = WTFMove(newImpl);
         } else
             m_impl = str.m_impl;
     }
@@ -133,10 +133,10 @@ void String::append(LChar character)
     if (m_impl->length() >= std::numeric_limits<unsigned>::max())
         CRASH();
     LChar* data;
-    RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(m_impl->length() + 1, data);
+    auto newImpl = StringImpl::createUninitialized(m_impl->length() + 1, data);
     memcpy(data, m_impl->characters8(), m_impl->length());
     data[m_impl->length()] = character;
-    m_impl = newImpl.release();
+    m_impl = WTFMove(newImpl);
 }
 
 void String::append(UChar character)
@@ -154,10 +154,10 @@ void String::append(UChar character)
     if (m_impl->length() >= std::numeric_limits<unsigned>::max())
         CRASH();
     UChar* data;
-    RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(m_impl->length() + 1, data);
+    auto newImpl = StringImpl::createUninitialized(m_impl->length() + 1, data);
     StringView(*m_impl).getCharactersWithUpconvert(data);
     data[m_impl->length()] = character;
-    m_impl = newImpl.release();
+    m_impl = WTFMove(newImpl);
 }
 
 int codePointCompare(const String& a, const String& b)
@@ -187,21 +187,21 @@ void String::insert(const String& string, unsigned position)
     if (lengthToInsert > std::numeric_limits<unsigned>::max() - length())
         CRASH();
 
-    RefPtr<StringImpl> newString;
     if (is8Bit() && string.is8Bit()) {
         LChar* data;
-        newString = StringImpl::createUninitialized(length() + lengthToInsert, data);
+        auto newString = StringImpl::createUninitialized(length() + lengthToInsert, data);
         StringView(*m_impl).substring(0, position).getCharactersWithUpconvert(data);
         StringView(string).getCharactersWithUpconvert(data + position);
         StringView(*m_impl).substring(position).getCharactersWithUpconvert(data + position + lengthToInsert);
+        m_impl = WTFMove(newString);
     } else {
         UChar* data;
-        newString = StringImpl::createUninitialized(length() + lengthToInsert, data);
+        auto newString = StringImpl::createUninitialized(length() + lengthToInsert, data);
         StringView(*m_impl).substring(0, position).getCharactersWithUpconvert(data);
         StringView(string).getCharactersWithUpconvert(data + position);
         StringView(*m_impl).substring(position).getCharactersWithUpconvert(data + position + lengthToInsert);
+        m_impl = WTFMove(newString);
     }
-    m_impl = newString.release();
 }
 
 void String::append(const LChar* charactersToAppend, unsigned lengthToAppend)
@@ -226,20 +226,20 @@ void String::append(const LChar* charactersToAppend, unsigned lengthToAppend)
         if (lengthToAppend > std::numeric_limits<unsigned>::max() - strLength)
             CRASH();
         LChar* data;
-        RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
+        auto newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
         StringImpl::copyChars(data, m_impl->characters8(), strLength);
         StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
-        m_impl = newImpl.release();
+        m_impl = WTFMove(newImpl);
         return;
     }
 
     if (lengthToAppend > std::numeric_limits<unsigned>::max() - strLength)
         CRASH();
     UChar* data;
-    RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(length() + lengthToAppend, data);
+    auto newImpl = StringImpl::createUninitialized(length() + lengthToAppend, data);
     StringImpl::copyChars(data, m_impl->characters16(), strLength);
     StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
-    m_impl = newImpl.release();
+    m_impl = WTFMove(newImpl);
 }
 
 void String::append(const UChar* charactersToAppend, unsigned lengthToAppend)
@@ -262,13 +262,13 @@ void String::append(const UChar* charactersToAppend, unsigned lengthToAppend)
     if (lengthToAppend > std::numeric_limits<unsigned>::max() - strLength)
         CRASH();
     UChar* data;
-    RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
+    auto newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
     if (m_impl->is8Bit())
         StringImpl::copyChars(data, characters8(), strLength);
     else
         StringImpl::copyChars(data, characters16(), strLength);
     StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
-    m_impl = newImpl.release();
+    m_impl = WTFMove(newImpl);
 }
 
 
@@ -289,12 +289,12 @@ template <typename CharacterType>
 inline void String::removeInternal(const CharacterType* characters, unsigned position, int lengthToRemove)
 {
     CharacterType* data;
-    RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(length() - lengthToRemove, data);
+    auto newImpl = StringImpl::createUninitialized(length() - lengthToRemove, data);
     memcpy(data, characters, position * sizeof(CharacterType));
     memcpy(data + position, characters + position + lengthToRemove,
         (length() - lengthToRemove - position) * sizeof(CharacterType));
 
-    m_impl = newImpl.release();
+    m_impl = WTFMove(newImpl);
 }
 
 void String::remove(unsigned position, int lengthToRemove)
@@ -332,7 +332,7 @@ String String::substringSharingImpl(unsigned offset, unsigned length) const
 
     if (!offset && length == stringLength)
         return *this;
-    return String(StringImpl::createSubstringSharingImpl(m_impl, offset, length));
+    return String(StringImpl::createSubstringSharingImpl(*m_impl, offset, length));
 }
 
 String String::convertToASCIILowercase() const
@@ -356,6 +356,13 @@ String String::convertToLowercaseWithoutLocale() const
     if (!m_impl)
         return String();
     return m_impl->convertToLowercaseWithoutLocale();
+}
+
+String String::convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned failingIndex) const
+{
+    if (!m_impl)
+        return String();
+    return m_impl->convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(failingIndex);
 }
 
 String String::convertToUppercaseWithoutLocale() const
@@ -477,6 +484,24 @@ String String::format(const char *format, ...)
 #else
     va_list args;
     va_start(args, format);
+
+#if USE(CF) && !OS(WINDOWS)
+    if (strstr(format, "%@")) {
+        RetainPtr<CFStringRef> cfFormat = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, format, kCFStringEncodingUTF8));
+
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
+        RetainPtr<CFStringRef> result = adoptCF(CFStringCreateWithFormatAndArguments(kCFAllocatorDefault, nullptr, cfFormat.get(), args));
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
+
+        va_end(args);
+        return result.get();
+    }
+#endif // USE(CF) && !OS(WINDOWS)
 
     // Do the format once to get the length.
 #if COMPILER(MSVC)
@@ -734,19 +759,27 @@ void String::split(const String& separator, bool allowEmptyEntries, Vector<Strin
         result.append(substring(startPos));
 }
 
-void String::split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const
+void String::split(UChar separator, bool allowEmptyEntries, const SplitFunctor& functor) const
 {
-    result.clear();
+    StringView view(*this);
 
     unsigned startPos = 0;
     size_t endPos;
     while ((endPos = find(separator, startPos)) != notFound) {
         if (allowEmptyEntries || startPos != endPos)
-            result.append(substring(startPos, endPos - startPos));
+            functor(view.substring(startPos, endPos - startPos));
         startPos = endPos + 1;
     }
     if (allowEmptyEntries || startPos != length())
-        result.append(substring(startPos));
+        functor(view.substring(startPos));
+}
+
+void String::split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const
+{
+    result.clear();
+    split(separator, allowEmptyEntries, [&result](StringView item) {
+        result.append(item.toString());
+    });
 }
 
 CString String::ascii() const

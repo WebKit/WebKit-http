@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSWeakMap_h
-#define JSWeakMap_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -72,10 +71,9 @@ private:
 
     void finishCreation(VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
+    static String toStringName(const JSObject*, ExecState*);
 
     WriteBarrier<WeakMapData> m_weakMapData;
 };
 
-}
-
-#endif // !defined(JSWeakMap_h)
+} // namespace JSC

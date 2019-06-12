@@ -1,7 +1,9 @@
 
 PASS Newly-created Event 
 PASS After stopPropagation() 
-FAIL Reinitialized after stopPropagation() assert_equals: Propagation flag expected true but got false
+PASS Reinitialized after stopPropagation() 
 PASS After stopImmediatePropagation() 
-FAIL Reinitialized after stopImmediatePropagation() assert_equals: Propagation flag expected true but got false
+PASS Reinitialized after stopImmediatePropagation() 
+PASS After cancelBubble=true 
+PASS Reinitialized after cancelBubble=true 
 

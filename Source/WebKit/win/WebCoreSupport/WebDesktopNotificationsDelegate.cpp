@@ -35,7 +35,7 @@
 #include <WebCore/Document.h>
 #include <WebCore/URL.h>
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 
 using namespace WebCore;
 
@@ -170,14 +170,14 @@ void WebDesktopNotificationsDelegate::notificationControllerDestroyed()
 {
 }
 
-void WebDesktopNotificationsDelegate::requestPermission(SecurityOrigin* origin, PassRefPtr<VoidCallback>)
+void WebDesktopNotificationsDelegate::requestPermission(SecurityOrigin* origin, RefPtr<VoidCallback>&&)
 {
     BString org(origin->toString());
     if (hasNotificationDelegate())
         notificationDelegate()->requestNotificationPermission(org);
 }
 
-void WebDesktopNotificationsDelegate::requestPermission(SecurityOrigin*, PassRefPtr<NotificationPermissionCallback>)
+void WebDesktopNotificationsDelegate::requestPermission(SecurityOrigin*, RefPtr<NotificationPermissionCallback>&&)
 {
 }
 
@@ -223,4 +223,4 @@ COMPtr<IWebDesktopNotificationsDelegate> WebDesktopNotificationsDelegate::notifi
     return delegate;
 }
 
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)

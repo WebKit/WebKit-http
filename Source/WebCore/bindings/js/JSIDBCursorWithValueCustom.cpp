@@ -28,7 +28,8 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "IDBCursorWithValueImpl.h"
+#include "IDBCursorWithValue.h"
+#include <heap/HeapInlines.h>
 
 using namespace JSC;
 

@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef SelectionSubtreeRoot_h
-#define SelectionSubtreeRoot_h
+#pragma once
 
 #include "RenderObject.h"
 #include "RenderSelectionInfo.h"
@@ -45,28 +44,20 @@ public:
 
     struct OldSelectionData {
         OldSelectionData()
-            : selectionStartPos(-1)
-            , selectionEndPos(-1)
         {
         }
 
-        int selectionStartPos;
-        int selectionEndPos;
+        std::optional<unsigned> selectionStartPos;
+        std::optional<unsigned> selectionEndPos;
         SelectedObjectMap selectedObjects;
         SelectedBlockMap selectedBlocks;
     };
 
     class SelectionSubtreeData {
     public:
-        SelectionSubtreeData()
-            : m_selectionStart(nullptr)
-            , m_selectionStartPos(-1)
-            , m_selectionEnd(nullptr)
-            , m_selectionEndPos(-1)
-        {
-        }
+        SelectionSubtreeData() = default;
 
-        SelectionSubtreeData(RenderObject* selectionStart, int selectionStartPos, RenderObject* selectionEnd, int selectionEndPos)
+        SelectionSubtreeData(RenderObject* selectionStart, std::optional<unsigned> selectionStartPos, RenderObject* selectionEnd, std::optional<unsigned> selectionEndPos)
             : m_selectionStart(selectionStart)
             , m_selectionStartPos(selectionStartPos)
             , m_selectionEnd(selectionEnd)
@@ -75,46 +66,45 @@ public:
         }
 
         RenderObject* selectionStart() const { return m_selectionStart; }
-        int selectionStartPos() const { return m_selectionStartPos; }
+        std::optional<unsigned> selectionStartPos() const { return m_selectionStartPos; }
         RenderObject* selectionEnd() const { return m_selectionEnd; }
-        int selectionEndPos() const { return m_selectionEndPos; }
+        std::optional<unsigned> selectionEndPos() const { return m_selectionEndPos; }
         bool selectionClear() const
         {
             return !m_selectionStart
-            && (m_selectionStartPos == -1)
+            && (!m_selectionStartPos)
             && !m_selectionEnd
-            && (m_selectionEndPos == -1);
+            && (!m_selectionEndPos);
         }
 
-        void selectionStartEndPositions(int& startPos, int& endPos) const
+        void selectionStartEndPositions(unsigned& startPos, unsigned& endPos) const
         {
-            startPos = m_selectionStartPos;
-            endPos = m_selectionEndPos;
+            startPos = m_selectionStartPos.value();
+            endPos = m_selectionEndPos.value();
         }
         void setSelectionStart(RenderObject* selectionStart) { m_selectionStart = selectionStart; }
-        void setSelectionStartPos(int selectionStartPos) { m_selectionStartPos = selectionStartPos; }
+        void setSelectionStartPos(std::optional<unsigned> selectionStartPos) { m_selectionStartPos = selectionStartPos;}
         void setSelectionEnd(RenderObject* selectionEnd) { m_selectionEnd = selectionEnd; }
-        void setSelectionEndPos(int selectionEndPos) { m_selectionEndPos = selectionEndPos; }
+        void setSelectionEndPos(std::optional<unsigned> selectionEndPos) { m_selectionEndPos = selectionEndPos;}
         void clearSelection()
         {
             m_selectionStart = nullptr;
-            m_selectionStartPos = -1;
+            m_selectionStartPos = std::nullopt;
             m_selectionEnd = nullptr;
-            m_selectionEndPos = -1;
+            m_selectionEndPos = std::nullopt;
         }
 
     private:
-        RenderObject* m_selectionStart;
-        int m_selectionStartPos;
-        RenderObject* m_selectionEnd;
-        int m_selectionEndPos;
+        RenderObject* m_selectionStart { nullptr };
+        std::optional<unsigned> m_selectionStartPos;
+        RenderObject* m_selectionEnd { nullptr };
+        std::optional<unsigned> m_selectionEndPos;
     };
 
     typedef HashMap<SelectionSubtreeRoot*, SelectionSubtreeData> RenderSubtreesMap;
     typedef HashMap<const SelectionSubtreeRoot*, std::unique_ptr<OldSelectionData>> SubtreeOldSelectionDataMap;
 
     SelectionSubtreeRoot();
-    SelectionSubtreeRoot(RenderObject* selectionStart, int selectionStartPos, RenderObject* selectionEnd, int selectionEndPos);
 
     SelectionSubtreeData& selectionData() { return m_selectionSubtreeData; }
     const SelectionSubtreeData& selectionData() const { return m_selectionSubtreeData; }
@@ -127,5 +117,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SelectionSubtreeRoot_h

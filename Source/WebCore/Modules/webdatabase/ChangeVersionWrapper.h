@@ -25,10 +25,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef ChangeVersionWrapper_h
-#define ChangeVersionWrapper_h
 
-#include "SQLTransactionBackend.h"
+#pragma once
+
+#include "SQLTransaction.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -39,10 +39,10 @@ class ChangeVersionWrapper : public SQLTransactionWrapper {
 public:
     static Ref<ChangeVersionWrapper> create(const String& oldVersion, const String& newVersion) { return adoptRef(*new ChangeVersionWrapper(oldVersion, newVersion)); }
 
-    virtual bool performPreflight(SQLTransactionBackend*);
-    virtual bool performPostflight(SQLTransactionBackend*);
-    virtual SQLError* sqlError() const { return m_sqlError.get(); }
-    virtual void handleCommitFailedAfterPostflight(SQLTransactionBackend*);
+    bool performPreflight(SQLTransaction&) override;
+    bool performPostflight(SQLTransaction&) override;
+    SQLError* sqlError() const override { return m_sqlError.get(); };
+    void handleCommitFailedAfterPostflight(SQLTransaction&) override;
 
 private:
     ChangeVersionWrapper(const String& oldVersion, const String& newVersion);
@@ -53,5 +53,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ChangeVersionWrapper_h

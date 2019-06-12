@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013  Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CaptionUserPreferences_h
-#define CaptionUserPreferences_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
 #include "AudioTrack.h"
-#include "Language.h"
-#include "LocalizedStrings.h"
 #include "TextTrack.h"
 #include "Timer.h"
-#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
@@ -41,6 +37,7 @@ class HTMLMediaElement;
 class PageGroup;
 class AudioTrackList;
 class TextTrackList;
+struct MediaSelectionOption;
 
 class CaptionUserPreferences {
 public:
@@ -70,6 +67,8 @@ public:
 
     virtual float captionFontSizeScaleAndImportance(bool& important) const { important = false; return 0.05f; }
 
+    virtual bool captionStrokeWidthForFont(float, const String&, float&, bool&) const { return false; }
+
     virtual String captionsStyleSheetOverride() const { return m_captionsStyleSheetOverride; }
     virtual void setCaptionsStyleSheetOverride(const String&);
 
@@ -84,27 +83,30 @@ public:
     virtual Vector<String> preferredAudioCharacteristics() const;
 
     virtual String displayNameForTrack(TextTrack*) const;
+    MediaSelectionOption mediaSelectionOptionForTrack(TextTrack*) const;
     virtual Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList*);
 
     virtual String displayNameForTrack(AudioTrack*) const;
+    MediaSelectionOption mediaSelectionOptionForTrack(AudioTrack*) const;
     virtual Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList*);
 
     void setPrimaryAudioTrackLanguageOverride(const String& language) { m_primaryAudioTrackLanguageOverride = language;  }
     String primaryAudioTrackLanguageOverride() const;
 
     virtual bool testingMode() const { return m_testingMode; }
-    virtual void setTestingMode(bool override) { m_testingMode = override; }
+    void setTestingMode(bool override) { m_testingMode = override; }
     
     PageGroup& pageGroup() const { return m_pageGroup; }
 
 protected:
-    void updateCaptionStyleSheetOveride();
+    void updateCaptionStyleSheetOverride();
     void beginBlockingNotifications();
     void endBlockingNotifications();
 
 private:
     void timerFired();
     void notify();
+    Page* currentPage() const;
 
     PageGroup& m_pageGroup;
     mutable CaptionDisplayMode m_displayMode;
@@ -114,11 +116,9 @@ private:
     String m_captionsStyleSheetOverride;
     String m_primaryAudioTrackLanguageOverride;
     unsigned m_blockNotificationsCounter { 0 };
-    bool m_testingMode;
-    bool m_havePreferences;
+    bool m_testingMode { false };
+    bool m_havePreferences { false };
 };
     
 }
-#endif
-
 #endif

@@ -28,10 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MutationRecord_h
-#define MutationRecord_h
+#pragma once
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
@@ -47,7 +45,7 @@ class QualifiedName;
 
 class MutationRecord : public RefCounted<MutationRecord> {
 public:
-    static Ref<MutationRecord> createChildList(ContainerNode& target, PassRefPtr<NodeList> added, PassRefPtr<NodeList> removed, PassRefPtr<Node> previousSibling, PassRefPtr<Node> nextSibling);
+    static Ref<MutationRecord> createChildList(ContainerNode& target, Ref<NodeList>&& added, Ref<NodeList>&& removed, RefPtr<Node>&& previousSibling, RefPtr<Node>&& nextSibling);
     static Ref<MutationRecord> createAttributes(Element& target, const QualifiedName&, const AtomicString& oldValue);
     static Ref<MutationRecord> createCharacterData(CharacterData& target, const String& oldValue);
 
@@ -63,12 +61,10 @@ public:
     virtual Node* previousSibling() { return 0; }
     virtual Node* nextSibling() { return 0; }
 
-    virtual const AtomicString& attributeName() { return nullAtom; }
-    virtual const AtomicString& attributeNamespace() { return nullAtom; }
+    virtual const AtomicString& attributeName() { return nullAtom(); }
+    virtual const AtomicString& attributeNamespace() { return nullAtom(); }
 
     virtual String oldValue() { return String(); }
 };
 
 } // namespace WebCore
-
-#endif // MutationRecord_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,10 @@
 
 namespace JSC {
 
+JSStringJoiner::~JSStringJoiner()
+{
+}
+
 template<typename CharacterType>
 static inline void appendStringToData(CharacterType*& data, StringView string)
 {
@@ -44,7 +48,7 @@ static inline String joinStrings(const Vector<StringViewWithUnderlyingString>& s
 
     CharacterType* data;
     String result = StringImpl::tryCreateUninitialized(joinedLength, data);
-    if (result.isNull())
+    if (UNLIKELY(result.isNull()))
         return result;
 
     appendStringToData(data, strings[0].view);
@@ -77,17 +81,20 @@ static inline String joinStrings(const Vector<StringViewWithUnderlyingString>& s
 
 inline unsigned JSStringJoiner::joinedLength(ExecState& state) const
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     unsigned numberOfStrings = m_strings.size();
     if (!numberOfStrings)
         return 0;
 
-    Checked<unsigned, RecordOverflow> separatorLength = m_separator.length();
-    Checked<unsigned, RecordOverflow> totalSeparatorsLength = separatorLength * (numberOfStrings - 1);
-    Checked<unsigned, RecordOverflow> totalLength = totalSeparatorsLength + m_accumulatedStringsLength;
+    Checked<int32_t, RecordOverflow> separatorLength = m_separator.length();
+    Checked<int32_t, RecordOverflow> totalSeparatorsLength = separatorLength * (numberOfStrings - 1);
+    Checked<int32_t, RecordOverflow> totalLength = totalSeparatorsLength + m_accumulatedStringsLength;
 
-    unsigned result;
+    int32_t result;
     if (totalLength.safeGet(result) == CheckedState::DidOverflow) {
-        throwOutOfMemoryError(&state);
+        throwOutOfMemoryError(&state, scope);
         return 0;
     }
     return result;
@@ -95,11 +102,13 @@ inline unsigned JSStringJoiner::joinedLength(ExecState& state) const
 
 JSValue JSStringJoiner::join(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     ASSERT(m_strings.size() <= m_strings.capacity());
 
     unsigned length = joinedLength(state);
-    if (state.hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     if (!length)
         return jsEmptyString(&state);
@@ -111,7 +120,7 @@ JSValue JSStringJoiner::join(ExecState& state)
         result = joinStrings<UChar>(m_strings, m_separator, length);
 
     if (result.isNull())
-        return throwOutOfMemoryError(&state);
+        return throwOutOfMemoryError(&state, scope);
 
     return jsString(&state, WTFMove(result));
 }

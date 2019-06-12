@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2008, 2009, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -18,17 +18,15 @@
  *
  */
 
-#ifndef JSLock_h
-#define JSLock_h
+#pragma once
 
 #include <mutex>
-#include <thread>
 #include <wtf/Assertions.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/WTFThreadData.h>
+#include <wtf/text/AtomicStringTable.h>
 
 namespace JSC {
 
@@ -94,14 +92,13 @@ public:
 
     VM* vm() { return m_vm; }
 
-    bool hasExclusiveThread() const { return m_hasExclusiveThread; }
-    std::thread::id exclusiveThread() const
+    std::optional<RefPtr<Thread>> ownerThread() const
     {
-        ASSERT(m_hasExclusiveThread);
-        return m_ownerThreadID;
+        if (m_hasOwnerThread)
+            return m_ownerThread;
+        return std::nullopt;
     }
-    JS_EXPORT_PRIVATE void setExclusiveThread(std::thread::id);
-    JS_EXPORT_PRIVATE bool currentThreadIsHoldingLock();
+    bool currentThreadIsHoldingLock() { return m_hasOwnerThread && m_ownerThread->id() == currentThread(); }
 
     void willDestroyVM(VM*);
 
@@ -133,14 +130,17 @@ private:
     void grabAllLocks(DropAllLocks*, unsigned lockCount);
 
     Lock m_lock;
-    std::thread::id m_ownerThreadID;
+    // We cannot make m_ownerThread an optional (instead of pairing it with an explicit
+    // m_hasOwnerThread) because currentThreadIsHoldingLock() may be called from a
+    // different thread, and an optional is vulnerable to races.
+    // See https://bugs.webkit.org/show_bug.cgi?id=169042#c6
+    bool m_hasOwnerThread { false };
+    RefPtr<Thread> m_ownerThread;
     intptr_t m_lockCount;
     unsigned m_lockDropDepth;
-    bool m_hasExclusiveThread;
+    bool m_shouldReleaseHeapAccess;
     VM* m_vm;
     AtomicStringTable* m_entryAtomicStringTable; 
 };
 
 } // namespace
-
-#endif // JSLock_h

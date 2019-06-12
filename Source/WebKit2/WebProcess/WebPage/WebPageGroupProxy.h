@@ -23,30 +23,23 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPageGroupProxy_h
-#define WebPageGroupProxy_h
+#pragma once
 
 #include "APIObject.h"
 #include "WebPageGroupData.h"
-#include <wtf/PassRefPtr.h>
-
-namespace IPC {
-class Connection;
-class MessageDecoder;
-}
+#include <wtf/Ref.h>
 
 namespace WebCore {
 class PageGroup;
-class UserContentController;
 }
 
 namespace WebKit {
 
-class WebCompiledContentExtensionData;
+class WebUserContentController;
 
 class WebPageGroupProxy : public API::ObjectImpl<API::Object::Type::BundlePageGroup> {
 public:
-    static PassRefPtr<WebPageGroupProxy> create(const WebPageGroupData&);
+    static Ref<WebPageGroupProxy> create(const WebPageGroupData&);
     virtual ~WebPageGroupProxy();
 
     const String& identifier() const { return m_data.identifier; }
@@ -55,31 +48,14 @@ public:
     bool isVisibleToHistoryClient() const { return m_data.visibleToHistoryClient; }
     WebCore::PageGroup* corePageGroup() const { return m_pageGroup; }
 
-    WebCore::UserContentController& userContentController();
-
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
-
-    void addUserStyleSheet(const WebCore::UserStyleSheet&);
-    void addUserScript(const WebCore::UserScript&);
-    void removeAllUserStyleSheets();
-    void removeAllUserScripts();
-    void removeAllUserContent();
-
-#if ENABLE(CONTENT_EXTENSIONS)
-    void addUserContentExtension(const String& name, WebCompiledContentExtensionData);
-    void removeUserContentExtension(const String& name);
-    void removeAllUserContentExtensions();
-#endif
+    WebUserContentController& userContentController();
 
 private:
     WebPageGroupProxy(const WebPageGroupData&);
 
     WebPageGroupData m_data;
     WebCore::PageGroup* m_pageGroup;
-
-    RefPtr<WebCore::UserContentController> m_userContentController;
+    Ref<WebUserContentController> m_userContentController;
 };
 
 } // namespace WebKit
-
-#endif // WebPageGroupProxy_h

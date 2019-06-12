@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebSocketChannelClient_h
-#define WebSocketChannelClient_h
+#pragma once
 
 #if ENABLE(WEB_SOCKETS)
 
@@ -38,27 +37,26 @@
 
 namespace WebCore {
 
-    class WebSocketChannelClient {
-    public:
-        virtual ~WebSocketChannelClient() { }
-        virtual void didConnect() { }
-        virtual void didReceiveMessage(const String&) { }
-        virtual void didReceiveBinaryData(Vector<char>&&) { }
-        virtual void didReceiveMessageError() { }
-        virtual void didUpdateBufferedAmount(unsigned long /* bufferedAmount */) { }
-        virtual void didStartClosingHandshake() { }
-        enum ClosingHandshakeCompletionStatus {
-            ClosingHandshakeIncomplete,
-            ClosingHandshakeComplete
-        };
-        virtual void didClose(unsigned long /* unhandledBufferedAmount */, ClosingHandshakeCompletionStatus, unsigned short /* code */, const String& /* reason */) { }
-
-    protected:
-        WebSocketChannelClient() { }
+class WebSocketChannelClient {
+public:
+    virtual ~WebSocketChannelClient() { }
+    virtual void didConnect() = 0;
+    virtual void didReceiveMessage(const String&) = 0;
+    virtual void didReceiveBinaryData(Vector<uint8_t>&&) = 0;
+    virtual void didReceiveMessageError() = 0;
+    virtual void didUpdateBufferedAmount(unsigned bufferedAmount) = 0;
+    virtual void didStartClosingHandshake() = 0;
+    enum ClosingHandshakeCompletionStatus {
+        ClosingHandshakeIncomplete,
+        ClosingHandshakeComplete
     };
+    virtual void didClose(unsigned unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) = 0;
+    virtual void didUpgradeURL() = 0;
+
+protected:
+    WebSocketChannelClient() { }
+};
 
 } // namespace WebCore
 
 #endif // ENABLE(WEB_SOCKETS)
-
-#endif // WebSocketChannelClient_h

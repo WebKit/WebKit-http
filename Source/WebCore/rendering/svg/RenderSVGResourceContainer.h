@@ -17,11 +17,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGResourceContainer_h
-#define RenderSVGResourceContainer_h
+#pragma once
 
 #include "RenderSVGHiddenContainer.h"
 #include "RenderSVGResource.h"
+#include "SVGDocumentExtensions.h"
 
 namespace WebCore {
 
@@ -32,10 +32,10 @@ class RenderSVGResourceContainer : public RenderSVGHiddenContainer,
 public:
     virtual ~RenderSVGResourceContainer();
 
-    virtual void layout() override;
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override final;
+    void layout() override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
 
-    virtual bool isSVGResourceContainer() const override final { return true; }
+    bool isSVGResourceContainer() const final { return true; }
 
     static bool shouldTransformOnTextPainting(const RenderElement&, AffineTransform&);
     static AffineTransform transformOnNonScalingStroke(RenderObject*, const AffineTransform& resourceTransform);
@@ -45,7 +45,7 @@ public:
     void removeClientRenderLayer(RenderLayer*);
 
 protected:
-    RenderSVGResourceContainer(SVGElement&, Ref<RenderStyle>&&);
+    RenderSVGResourceContainer(SVGElement&, RenderStyle&&);
 
     enum InvalidationMode {
         LayoutAndBoundariesInvalidation,
@@ -66,7 +66,7 @@ private:
     void addClient(RenderElement&);
     void removeClient(RenderElement&);
 
-    virtual void willBeDestroyed() override final;
+    void willBeDestroyed() final;
     void registerResource();
 
     AtomicString m_id;
@@ -102,5 +102,3 @@ Renderer* getRenderSVGResourceById(Document& document, const AtomicString& id)
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGResourceContainer, isSVGResourceContainer())
-
-#endif // RenderSVGResourceContainer_h

@@ -27,8 +27,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BoxShape_h
-#define BoxShape_h
+#pragma once
 
 #include "FloatRoundedRect.h"
 #include "RenderStyleConstants.h"
@@ -47,11 +46,11 @@ public:
     {
     }
 
-    virtual LayoutRect shapeMarginLogicalBoundingBox() const override;
-    virtual bool isEmpty() const override { return m_bounds.isEmpty(); }
-    virtual LineSegment getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const override;
+    LayoutRect shapeMarginLogicalBoundingBox() const override;
+    bool isEmpty() const override { return m_bounds.isEmpty(); }
+    LineSegment getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const override;
 
-    virtual void buildDisplayPaths(DisplayPaths&) const override;
+    void buildDisplayPaths(DisplayPaths&) const override;
 
 private:
     FloatRoundedRect shapeMarginBounds() const;
@@ -60,5 +59,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // BoxShape_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GraphicsLayer_h
-#define GraphicsLayer_h
+#pragma once
 
 #include "Animation.h"
 #include "Color.h"
@@ -38,6 +37,7 @@
 #include "PlatformLayer.h"
 #include "TransformOperations.h"
 #include "WindRule.h"
+#include <wtf/Function.h>
 #include <wtf/TypeCasts.h>
 
 #if ENABLE(CSS_COMPOSITING)
@@ -80,11 +80,15 @@ protected:
 
     AnimationValue(const AnimationValue& other)
         : m_keyTime(other.m_keyTime)
-        , m_timingFunction(other.m_timingFunction ? other.m_timingFunction->clone() : nullptr)
+        , m_timingFunction(other.m_timingFunction ? RefPtr<TimingFunction> { other.m_timingFunction->clone() } : nullptr)
     {
     }
 
+    AnimationValue(AnimationValue&&) = default;
+
 private:
+    void operator=(const AnimationValue&) = delete;
+
     double m_keyTime;
     RefPtr<TimingFunction> m_timingFunction;
 };
@@ -99,15 +103,9 @@ public:
     {
     }
 
-    virtual std::unique_ptr<AnimationValue> clone() const override
+    std::unique_ptr<AnimationValue> clone() const override
     {
         return std::make_unique<FloatAnimationValue>(*this);
-    }
-
-    FloatAnimationValue(const FloatAnimationValue& other)
-        : AnimationValue(other)
-        , m_value(other.m_value)
-    {
     }
 
     float value() const { return m_value; }
@@ -126,7 +124,7 @@ public:
     {
     }
 
-    virtual std::unique_ptr<AnimationValue> clone() const override
+    std::unique_ptr<AnimationValue> clone() const override
     {
         return std::make_unique<TransformAnimationValue>(*this);
     }
@@ -134,9 +132,12 @@ public:
     TransformAnimationValue(const TransformAnimationValue& other)
         : AnimationValue(other)
     {
-        for (size_t i = 0; i < other.m_value.operations().size(); ++i)
-            m_value.operations().append(other.m_value.operations()[i]->clone());
+        m_value.operations().reserveInitialCapacity(other.m_value.operations().size());
+        for (auto& operation : other.m_value.operations())
+            m_value.operations().uncheckedAppend(operation->clone());
     }
+
+    TransformAnimationValue(TransformAnimationValue&&) = default;
 
     const TransformOperations& value() const { return m_value; }
 
@@ -154,7 +155,7 @@ public:
     {
     }
 
-    virtual std::unique_ptr<AnimationValue> clone() const override
+    std::unique_ptr<AnimationValue> clone() const override
     {
         return std::make_unique<FilterAnimationValue>(*this);
     }
@@ -162,9 +163,12 @@ public:
     FilterAnimationValue(const FilterAnimationValue& other)
         : AnimationValue(other)
     {
-        for (size_t i = 0; i < other.m_value.operations().size(); ++i)
-            m_value.operations().append(other.m_value.operations()[i]->clone());
+        m_value.operations().reserveInitialCapacity(other.m_value.operations().size());
+        for (auto& operation : other.m_value.operations())
+            m_value.operations().uncheckedAppend(operation->clone());
     }
+
+    FilterAnimationValue(FilterAnimationValue&&) = default;
 
     const FilterOperations& value() const { return m_value; }
 
@@ -185,13 +189,12 @@ public:
     KeyframeValueList(const KeyframeValueList& other)
         : m_property(other.property())
     {
-        for (size_t i = 0; i < other.m_values.size(); ++i)
-            m_values.append(other.m_values[i]->clone());
+        m_values.reserveInitialCapacity(other.m_values.size());
+        for (auto& value : other.m_values)
+            m_values.uncheckedAppend(value->clone());
     }
 
-    ~KeyframeValueList()
-    {
-    }
+    KeyframeValueList(KeyframeValueList&&) = default;
 
     KeyframeValueList& operator=(const KeyframeValueList& other)
     {
@@ -199,6 +202,8 @@ public:
         swap(copy);
         return *this;
     }
+
+    KeyframeValueList& operator=(KeyframeValueList&&) = default;
 
     void swap(KeyframeValueList& other)
     {
@@ -210,10 +215,10 @@ public:
 
     size_t size() const { return m_values.size(); }
     const AnimationValue& at(size_t i) const { return *m_values.at(i); }
-    
+
     // Insert, sorted by keyTime.
     WEBCORE_EXPORT void insert(std::unique_ptr<const AnimationValue>);
-    
+
 protected:
     Vector<std::unique_ptr<const AnimationValue>> m_values;
     AnimatedPropertyID m_property;
@@ -225,7 +230,6 @@ protected:
 class GraphicsLayer {
     WTF_MAKE_NONCOPYABLE(GraphicsLayer); WTF_MAKE_FAST_ALLOCATED;
 public:
-
     enum class Type {
         Normal,
         PageTiledBacking,
@@ -241,7 +245,7 @@ public:
 
     virtual void initialize(Type) { }
 
-    typedef uint64_t PlatformLayerID;
+    using PlatformLayerID = uint64_t;
     virtual PlatformLayerID primaryLayerID() const { return 0; }
 
     GraphicsLayerClient& client() const { return m_client; }
@@ -307,7 +311,11 @@ public:
 
     // The position of the layer (the location of its top-left corner in its parent)
     const FloatPoint& position() const { return m_position; }
-    virtual void setPosition(const FloatPoint& p) { m_position = p; }
+    virtual void setPosition(const FloatPoint& p) { m_approximatePosition = std::nullopt; m_position = p; }
+
+    // approximatePosition, if set, overrides position() and is used during coverage rect computation.
+    FloatPoint approximatePosition() const { return m_approximatePosition ? m_approximatePosition.value() : m_position; }
+    virtual void setApproximatePosition(const FloatPoint& p) { m_approximatePosition = p; }
 
     // For platforms that move underlying platform layers on a different thread for scrolling; just update the GraphicsLayer state.
     virtual void syncPosition(const FloatPoint& p) { m_position = p; }
@@ -346,6 +354,9 @@ public:
     bool contentsAreVisible() const { return m_contentsVisible; }
     virtual void setContentsVisible(bool b) { m_contentsVisible = b; }
 
+    bool userInteractionEnabled() const { return m_userInteractionEnabled; }
+    virtual void setUserInteractionEnabled(bool b) { m_userInteractionEnabled = b; }
+    
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
     virtual void setAcceleratesDrawing(bool b) { m_acceleratesDrawing = b; }
 
@@ -364,6 +375,9 @@ public:
     bool contentsOpaque() const { return m_contentsOpaque; }
     virtual void setContentsOpaque(bool b) { m_contentsOpaque = b; }
 
+    bool supportsSubpixelAntialiasedText() const { return m_supportsSubpixelAntialiasedText; }
+    virtual void setSupportsSubpixelAntialiasedText(bool b) { m_supportsSubpixelAntialiasedText = b; }
+
     bool backfaceVisibility() const { return m_backfaceVisibility; }
     virtual void setBackfaceVisibility(bool b) { m_backfaceVisibility = b; }
 
@@ -377,8 +391,8 @@ public:
     const FilterOperations& backdropFilters() const { return m_backdropFilters; }
     virtual bool setBackdropFilters(const FilterOperations& filters) { m_backdropFilters = filters; return true; }
 
-    virtual void setBackdropFiltersRect(const FloatRect& backdropFiltersRect) { m_backdropFiltersRect = backdropFiltersRect; }
-    FloatRect backdropFiltersRect() const { return m_backdropFiltersRect; }
+    virtual void setBackdropFiltersRect(const FloatRoundedRect& backdropFiltersRect) { m_backdropFiltersRect = backdropFiltersRect; }
+    const FloatRoundedRect& backdropFiltersRect() const { return m_backdropFiltersRect; }
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return m_blendMode; }
@@ -429,9 +443,9 @@ public:
 
     // Transitions are identified by a special animation name that cannot clash with a keyframe identifier.
     static String animationNameForTransition(AnimatedPropertyID);
-    
+
     // Return true if the animation is handled by the compositing system. If this returns
-    // false, the animation will be run by AnimationController.
+    // false, the animation will be run by CSSAnimationController.
     // These methods handle both transitions and keyframe animations.
     virtual bool addAnimation(const KeyframeValueList&, const FloatSize& /*boxSize*/, const Animation*, const String& /*animationName*/, double /*timeOffset*/)  { return false; }
     virtual void pauseAnimation(const String& /*animationName*/, double /*timeOffset*/) { }
@@ -439,7 +453,7 @@ public:
 
     WEBCORE_EXPORT virtual void suspendAnimations(double time);
     WEBCORE_EXPORT virtual void resumeAnimations();
-    
+
     // Layer contents
     virtual void setContentsToImage(Image*) { }
     virtual bool shouldDirectlyCompositeImage(Image*) const { return true; }
@@ -452,11 +466,11 @@ public:
     virtual bool usesContentsLayer() const { return false; }
 
     // Callback from the underlying graphics system to draw layer contents.
-    void paintGraphicsLayerContents(GraphicsContext&, const FloatRect& clip);
-    
+    void paintGraphicsLayerContents(GraphicsContext&, const FloatRect& clip, GraphicsLayerPaintFlags = GraphicsLayerPaintFlags::AllowAsyncImageDecoding);
+
     // For hosting this GraphicsLayer in a native layer hierarchy.
     virtual PlatformLayer* platformLayer() const { return 0; }
-    
+
     enum CompositingCoordinatesOrientation { CompositingCoordinatesTopDown, CompositingCoordinatesBottomUp };
 
     // Flippedness of the contents of this layer. Does not affect sublayer geometry.
@@ -507,11 +521,13 @@ public:
     virtual void deviceOrPageScaleFactorChanged() { }
     WEBCORE_EXPORT void noteDeviceOrPageScaleFactorChangedIncludingDescendants();
 
+    void setIsInWindow(bool);
+
     // Some compositing systems may do internal batching to synchronize compositing updates
     // with updates drawn into the window. These methods flush internal batched state on this layer
     // and descendant layers, and this layer only.
-    virtual void flushCompositingState(const FloatRect& /* clipRect */, bool /* viewportIsStable */) { }
-    virtual void flushCompositingStateForThisLayerOnly(bool /* viewportIsStable */) { }
+    virtual void flushCompositingState(const FloatRect& /* clipRect */) { }
+    virtual void flushCompositingStateForThisLayerOnly() { }
 
     // If the exposed rect of this layer changes, returns true if this or descendant layers need a flush,
     // for example to allocate new tiles.
@@ -531,7 +547,11 @@ public:
     // Return an estimate of the backing store memory cost (in bytes). May be incorrect for tiled layers.
     WEBCORE_EXPORT virtual double backingStoreMemoryEstimate() const;
 
-    bool usingTiledBacking() const { return m_usingTiledBacking; }
+    virtual bool backingStoreAttached() const { return true; }
+
+    void setCanDetachBackingStore(bool b) { m_canDetachBackingStore = b; }
+    bool canDetachBackingStore() const { return m_canDetachBackingStore; }
+
     virtual TiledBacking* tiledBacking() const { return 0; }
 
     void resetTrackedRepaints();
@@ -540,6 +560,7 @@ public:
     static bool supportsBackgroundColorContent();
     static bool supportsLayerType(Type);
     static bool supportsContentsTiling();
+    static bool supportsSubpixelAntialiasedLayerText();
 
     void updateDebugIndicators();
 
@@ -548,6 +569,12 @@ public:
     virtual bool isGraphicsLayerCA() const { return false; }
     virtual bool isGraphicsLayerCARemote() const { return false; }
     virtual bool isGraphicsLayerTextureMapper() const { return false; }
+    virtual bool isCoordinatedGraphicsLayer() const { return false; }
+
+    const std::optional<FloatRect>& animationExtent() const { return m_animationExtent; }
+    void setAnimationExtent(std::optional<FloatRect> animationExtent) { m_animationExtent = animationExtent; }
+
+    static void traverse(GraphicsLayer&, const WTF::Function<void (GraphicsLayer&)>&);
 
 protected:
     WEBCORE_EXPORT explicit GraphicsLayer(Type, GraphicsLayerClient&);
@@ -592,6 +619,10 @@ protected:
     
     // Position is relative to the parent GraphicsLayer
     FloatPoint m_position;
+
+    // If set, overrides m_position. Only used for coverage computation.
+    std::optional<FloatPoint> m_approximatePosition;
+
     FloatPoint3D m_anchorPoint;
     FloatSize m_size;
     FloatPoint m_boundsOrigin;
@@ -613,9 +644,9 @@ protected:
     const Type m_type;
 
     bool m_contentsOpaque : 1;
+    bool m_supportsSubpixelAntialiasedText : 1;
     bool m_preserves3D: 1;
     bool m_backfaceVisibility : 1;
-    bool m_usingTiledBacking : 1;
     bool m_masksToBounds : 1;
     bool m_drawsContent : 1;
     bool m_contentsVisible : 1;
@@ -626,6 +657,8 @@ protected:
     bool m_showRepaintCounter : 1;
     bool m_isMaskLayer : 1;
     bool m_isTrackingDisplayListReplay : 1;
+    bool m_userInteractionEnabled : 1;
+    bool m_canDetachBackingStore : 1;
     
     GraphicsLayerPaintingPhase m_paintingPhase;
     CompositingCoordinatesOrientation m_contentsOrientation; // affects orientation of layer contents
@@ -645,7 +678,8 @@ protected:
     FloatRoundedRect m_masksToBoundsRect;
     FloatSize m_contentsTilePhase;
     FloatSize m_contentsTileSize;
-    FloatRect m_backdropFiltersRect;
+    FloatRoundedRect m_backdropFiltersRect;
+    std::optional<FloatRect> m_animationExtent;
 
     int m_repaintCount;
     CustomAppearance m_customAppearance;
@@ -666,9 +700,7 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
     static bool isType(const WebCore::GraphicsLayer& layer) { return layer.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
 
-#ifndef NDEBUG
-// Outside the WebCore namespace for ease of invocation from gdb.
+#if ENABLE(TREE_DEBUGGING)
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer);
 #endif
-
-#endif // GraphicsLayer_h

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2013 The MathJax Consortium.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,494 +26,460 @@
  */
 
 #include "config.h"
+#include "RenderMathMLScripts.h"
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLScripts.h"
-
 #include "MathMLElement.h"
+#include "MathMLScriptsElement.h"
+#include "RenderMathMLOperator.h"
 
 namespace WebCore {
-    
-using namespace MathMLNames;
 
-// RenderMathMLScripts implements various MathML elements drawing scripts attached to a base. For valid MathML elements, the structure of the render tree should be:
-//
-// - msub, msup, msubsup: BaseWrapper SubSupPairWrapper
-// - mmultiscripts: BaseWrapper SubSupPairWrapper* (mprescripts SubSupPairWrapper*)*
-//
-// where BaseWrapper and SubSupPairWrapper do not contain any <mprescripts/> children. In addition, BaseWrapper must have one child and SubSupPairWrapper must have either one child (msub, msup) or two children (msubsup, mmultiscripts).
-//
-// In order to accept invalid markup and to handle the script elements consistently and uniformly, we will use a more general structure that encompasses both valid and invalid elements:
-//
-// BaseWrapper SubSupPairWrapper* (mprescripts SubSupPairWrapper*)*
-//
-// where BaseWrapper can now be empty and SubSupPairWrapper can now have one or two elements.
-//
-
-static bool isPrescript(const RenderObject& renderObject)
+static bool isPrescriptDelimiter(const RenderObject& renderObject)
 {
     return renderObject.node() && renderObject.node()->hasTagName(MathMLNames::mprescriptsTag);
 }
 
-RenderMathMLScripts::RenderMathMLScripts(Element& element, Ref<RenderStyle>&& style)
+RenderMathMLScripts::RenderMathMLScripts(MathMLScriptsElement& element, RenderStyle&& style)
     : RenderMathMLBlock(element, WTFMove(style))
-    , m_baseWrapper(0)
 {
     // Determine what kind of sub/sup expression we have by element name
     if (element.hasTagName(MathMLNames::msubTag))
-        m_kind = Sub;
+        m_scriptType = Sub;
     else if (element.hasTagName(MathMLNames::msupTag))
-        m_kind = Super;
+        m_scriptType = Super;
     else if (element.hasTagName(MathMLNames::msubsupTag))
-        m_kind = SubSup;
+        m_scriptType = SubSup;
+    else if (element.hasTagName(MathMLNames::munderTag))
+        m_scriptType = Under;
+    else if (element.hasTagName(MathMLNames::moverTag))
+        m_scriptType = Over;
+    else if (element.hasTagName(MathMLNames::munderoverTag))
+        m_scriptType = UnderOver;
     else {
         ASSERT(element.hasTagName(MathMLNames::mmultiscriptsTag));
-        m_kind = Multiscripts;
+        m_scriptType = Multiscripts;
     }
 }
 
-RenderBoxModelObject* RenderMathMLScripts::base() const
+MathMLScriptsElement& RenderMathMLScripts::element() const
 {
-    if (!m_baseWrapper)
-        return nullptr;
-    RenderObject* base = m_baseWrapper->firstChild();
-    if (!is<RenderBoxModelObject>(base))
-        return nullptr;
-    return downcast<RenderBoxModelObject>(base);
-}
-
-void RenderMathMLScripts::fixAnonymousStyleForSubSupPair(RenderObject* subSupPair, bool isPostScript)
-{
-    ASSERT(subSupPair && subSupPair->style().refCount() == 1);
-    RenderStyle& scriptsStyle = subSupPair->style();
-
-    // subSup pairs are drawn in column from bottom (subscript) to top (superscript).
-    scriptsStyle.setFlexDirection(FlowColumnReverse);
-
-    // The MathML specification does not specify horizontal alignment of
-    // scripts. We align the bottom (respectively top) edge of the subscript
-    // (respectively superscript) with the bottom (respectively top) edge of
-    // the flex container. Note that for valid <msub> and <msup> elements, the
-    // subSupPair should actually have only one script.
-    if (m_kind == Sub)
-        scriptsStyle.setJustifyContentPosition(ContentPositionFlexStart);
-    else if (m_kind == Super)
-        scriptsStyle.setJustifyContentPosition(ContentPositionFlexEnd);
-    else
-        scriptsStyle.setJustifyContentDistribution(ContentDistributionSpaceBetween);
-
-    // The MathML specification does not specify vertical alignment of scripts.
-    // Let's right align prescripts and left align postscripts.
-    // See http://lists.w3.org/Archives/Public/www-math/2012Aug/0006.html
-    scriptsStyle.setAlignItemsPosition(isPostScript ? ItemPositionFlexStart : ItemPositionFlexEnd);
-
-    // We set the order property so that the prescripts are drawn before the base.
-    scriptsStyle.setOrder(isPostScript ? 0 : -1);
-
-    // We set this wrapper's font-size for its line-height.
-    LayoutUnit scriptSize = static_cast<int>(0.75 * style().fontSize());
-    scriptsStyle.setFontSize(scriptSize);
-}
-
-void RenderMathMLScripts::fixAnonymousStyles()
-{
-    // We set the base wrapper's style so that baseHeight in layout() will be an unstretched height.
-    ASSERT(m_baseWrapper && m_baseWrapper->style().hasOneRef());
-    m_baseWrapper->style().setAlignSelfPosition(ItemPositionFlexStart);
-
-    // This sets the style for postscript pairs.
-    RenderObject* subSupPair = m_baseWrapper;
-    for (subSupPair = subSupPair->nextSibling(); subSupPair && !isPrescript(*subSupPair); subSupPair = subSupPair->nextSibling())
-        fixAnonymousStyleForSubSupPair(subSupPair, true);
-
-    if (subSupPair && m_kind == Multiscripts) {
-        // This sets the style for prescript pairs.
-        for (subSupPair = subSupPair->nextSibling(); subSupPair && !isPrescript(*subSupPair); subSupPair = subSupPair->nextSibling())
-            fixAnonymousStyleForSubSupPair(subSupPair, false);
-    }
-
-    // This resets style for extra subSup pairs.
-    for (; subSupPair; subSupPair = subSupPair->nextSibling()) {
-        if (!isPrescript(*subSupPair)) {
-            ASSERT(subSupPair && subSupPair->style().refCount() == 1);
-            RenderStyle& scriptsStyle = subSupPair->style();
-            scriptsStyle.setFlexDirection(FlowRow);
-            scriptsStyle.setJustifyContentPosition(ContentPositionFlexStart);
-            scriptsStyle.setAlignItemsPosition(ItemPositionCenter);
-            scriptsStyle.setOrder(0);
-            scriptsStyle.setFontSize(style().fontSize());
-        }
-    }
-}
-
-void RenderMathMLScripts::addChildInternal(bool doNotRestructure, RenderObject* child, RenderObject* beforeChild)
-{
-    if (doNotRestructure) {
-        RenderMathMLBlock::addChild(child, beforeChild);
-        return;
-    }
-
-    if (beforeChild) {
-        // beforeChild may be a grandchild, so we call the addChild function of the corresponding wrapper instead.
-        RenderObject* parent = beforeChild->parent();
-        if (parent != this) {
-            RenderMathMLBlock& parentBlock = downcast<RenderMathMLBlock>(*parent);
-            if (is<RenderMathMLScriptsWrapper>(parentBlock)) {
-                RenderMathMLScriptsWrapper& wrapper = downcast<RenderMathMLScriptsWrapper>(parentBlock);
-                wrapper.addChildInternal(false, child, beforeChild);
-                return;
-            }
-        }
-    }
-
-    if (beforeChild == m_baseWrapper) {
-        // This is like inserting the child at the beginning of the base wrapper.
-        m_baseWrapper->addChildInternal(false, child, m_baseWrapper->firstChild());
-        return;
-    }
-    
-    if (isPrescript(*child)) {
-        // The new child becomes an <mprescripts/> separator.
-        RenderMathMLBlock::addChild(child, beforeChild);
-        return;
-    }
-
-    if (!beforeChild || isPrescript(*beforeChild)) {
-        // We are at the end of a sequence of subSup pairs.
-        RenderMathMLBlock* previousSibling = downcast<RenderMathMLBlock>(beforeChild ? beforeChild->previousSibling() : lastChild());
-        if (is<RenderMathMLScriptsWrapper>(previousSibling)) {
-            RenderMathMLScriptsWrapper& wrapper = downcast<RenderMathMLScriptsWrapper>(*previousSibling);
-            if ((wrapper.m_kind == RenderMathMLScriptsWrapper::Base && wrapper.isEmpty()) || (wrapper.m_kind == RenderMathMLScriptsWrapper::SubSupPair && !wrapper.firstChild()->nextSibling())) {
-                // The previous sibling is either an empty base or a SubSup pair with a single child so we can insert the new child into that wrapper.
-                wrapper.addChildInternal(true, child);
-                return;
-            }
-        }
-        // Otherwise we create a new subSupPair to store the new child.
-        RenderMathMLScriptsWrapper* subSupPair = RenderMathMLScriptsWrapper::createAnonymousWrapper(this, RenderMathMLScriptsWrapper::SubSupPair);
-        subSupPair->addChildInternal(true, child);
-        RenderMathMLBlock::addChild(subSupPair, beforeChild);
-        return;
-    }
-
-    // beforeChild is a subSup pair. This is like inserting the new child at the beginning of the subSup wrapper.
-    RenderMathMLScriptsWrapper& wrapper = downcast<RenderMathMLScriptsWrapper>(*beforeChild);
-    ASSERT(wrapper.m_kind == RenderMathMLScriptsWrapper::SubSupPair);
-    ASSERT(!(m_baseWrapper->isEmpty() && m_baseWrapper->nextSibling() == beforeChild));
-    wrapper.addChildInternal(false, child, wrapper.firstChild());
-}
-
-void RenderMathMLScripts::removeChildInternal(bool doNotRestructure, RenderObject& child)
-{
-    if (doNotRestructure) {
-        RenderMathMLBlock::removeChild(child);
-        return;
-    }
-
-    ASSERT(isPrescript(child));
-
-    RenderObject* previousSibling = child.previousSibling();
-    RenderObject* nextSibling = child.nextSibling();
-    ASSERT(previousSibling);
-
-    if (nextSibling && !isPrescript(*previousSibling) && !isPrescript(*nextSibling)) {
-        RenderMathMLScriptsWrapper& previousWrapper = downcast<RenderMathMLScriptsWrapper>(*previousSibling);
-        RenderMathMLScriptsWrapper& nextWrapper = downcast<RenderMathMLScriptsWrapper>(*nextSibling);
-        ASSERT(nextWrapper.m_kind == RenderMathMLScriptsWrapper::SubSupPair && !nextWrapper.isEmpty());
-        if ((previousWrapper.m_kind == RenderMathMLScriptsWrapper::Base && previousWrapper.isEmpty()) || (previousWrapper.m_kind == RenderMathMLScriptsWrapper::SubSupPair && !previousWrapper.firstChild()->nextSibling())) {
-            RenderObject* script = nextWrapper.firstChild();
-            nextWrapper.removeChildInternal(false, *script);
-            previousWrapper.addChildInternal(true, script);
-        }
-    }
-
-    RenderMathMLBlock::removeChild(child);
-}
-
-void RenderMathMLScripts::addChild(RenderObject* child, RenderObject* beforeChild)
-{
-    if (isEmpty()) {
-        m_baseWrapper = RenderMathMLScriptsWrapper::createAnonymousWrapper(this, RenderMathMLScriptsWrapper::Base);
-        RenderMathMLBlock::addChild(m_baseWrapper);
-    }
-
-    addChildInternal(false, child, beforeChild);
-
-    fixAnonymousStyles();
-}
-
-void RenderMathMLScripts::removeChild(RenderObject& child)
-{
-    if (beingDestroyed() || documentBeingDestroyed()) {
-        // The renderer is being destroyed so we remove the child normally.
-        RenderMathMLBlock::removeChild(child);
-        return;
-    }
-
-    removeChildInternal(false, child);
-    fixAnonymousStyles();
-}
-
-void RenderMathMLScripts::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
-{
-    RenderMathMLBlock::styleDidChange(diff, oldStyle);
-    
-    if (!isEmpty())
-        fixAnonymousStyles();
+    return static_cast<MathMLScriptsElement&>(nodeForNonAnonymous());
 }
 
 RenderMathMLOperator* RenderMathMLScripts::unembellishedOperator()
 {
-    RenderBoxModelObject* base = this->base();
+    auto base = firstChildBox();
     if (!is<RenderMathMLBlock>(base))
         return nullptr;
-    return downcast<RenderMathMLBlock>(*base).unembellishedOperator();
+    return downcast<RenderMathMLBlock>(base)->unembellishedOperator();
 }
 
-void RenderMathMLScripts::layout()
+std::optional<RenderMathMLScripts::ReferenceChildren> RenderMathMLScripts::validateAndGetReferenceChildren()
 {
-    RenderMathMLBlock::layout();
-
-    if (!m_baseWrapper)
-        return;
-    RenderBox* base = m_baseWrapper->firstChildBox();
+    // All scripted elements must have at least one child.
+    // The first child is the base.
+    auto base = firstChildBox();
     if (!base)
-        return;
+        return std::nullopt;
 
-    // Our layout rules include: Don't let the superscript go below the "axis" (half x-height above the
-    // baseline), or the subscript above the axis. Also, don't let the superscript's top edge be
-    // below the base's top edge, or the subscript's bottom edge above the base's bottom edge.
+    ReferenceChildren reference;
+    reference.base = base;
+    reference.firstPostScript = nullptr;
+    reference.firstPreScript = nullptr;
+    reference.prescriptDelimiter = nullptr;
 
-    LayoutUnit baseHeight = base->logicalHeight();
-    LayoutUnit baseBaseline = base->firstLineBaseline().valueOr(baseHeight);
-    LayoutUnit axis = style().fontMetrics().xHeight() / 2;
-    int fontSize = style().fontSize();
+    switch (m_scriptType) {
+    case Sub:
+    case Super:
+    case Under:
+    case Over: {
+        // These elements must have exactly two children.
+        // The second child is a postscript and there are no prescripts.
+        // <msub> base subscript </msub>
+        // <msup> base superscript </msup>
+        // <munder> base underscript </munder>
+        // <mover> base overscript </mover>
+        auto script = base->nextSiblingBox();
+        if (!script || isPrescriptDelimiter(*script) || script->nextSiblingBox())
+            return std::nullopt;
+        reference.firstPostScript = script;
+        return reference;
+    }
+    case SubSup:
+    case UnderOver: {
+        // These elements must have exactly three children.
+        // The second and third children are postscripts and there are no prescripts.
+        // <msubsup> base subscript superscript </msubsup>
+        // <munderover> base subscript superscript </munderover>
+        auto subScript = base->nextSiblingBox();
+        if (!subScript || isPrescriptDelimiter(*subScript))
+            return std::nullopt;
+        auto superScript = subScript->nextSiblingBox();
+        if (!superScript || isPrescriptDelimiter(*superScript) || superScript->nextSiblingBox())
+            return std::nullopt;
+        reference.firstPostScript = subScript;
+        return reference;
+    }
+    case Multiscripts: {
+        // This element accepts the following syntax:
+        //
+        // <mmultiscripts>
+        //   base
+        //   (subscript superscript)*
+        //   [ <mprescripts/> (presubscript presuperscript)* ]
+        // </mmultiscripts>
+        //
+        // https://www.w3.org/TR/MathML3/chapter3.html#presm.mmultiscripts
+        //
+        // We set the first postscript, unless (subscript superscript)* is empty.
+        if (base->nextSiblingBox() && !isPrescriptDelimiter(*base->nextSiblingBox()))
+            reference.firstPostScript = base->nextSiblingBox();
 
-    ASSERT(m_baseWrapper->style().hasOneRef());
-    bool needsSecondLayout = false;
-
-    LayoutUnit topPadding = 0;
-    LayoutUnit bottomPadding = 0;
-
-    Element* scriptElement = element();
-    LayoutUnit superscriptShiftValue = 0;
-    LayoutUnit subscriptShiftValue = 0;
-    if (m_kind == Sub || m_kind == SubSup || m_kind == Multiscripts)
-        parseMathMLLength(scriptElement->fastGetAttribute(MathMLNames::subscriptshiftAttr), subscriptShiftValue, &style(), false);
-    if (m_kind == Super || m_kind == SubSup || m_kind == Multiscripts)
-        parseMathMLLength(scriptElement->fastGetAttribute(MathMLNames::superscriptshiftAttr), superscriptShiftValue, &style(), false);
-
-    bool isPostScript = true;
-    RenderMathMLBlock* subSupPair = downcast<RenderMathMLBlock>(m_baseWrapper->nextSibling());
-    for (; subSupPair; subSupPair = downcast<RenderMathMLBlock>(subSupPair->nextSibling())) {
-
-        // We skip the base and <mprescripts/> elements.
-        if (isPrescript(*subSupPair)) {
-            if (!isPostScript)
-                break;
-            isPostScript = false;
-            continue;
+        // We browse the children in order to
+        // 1) Set the first prescript, unless (presubscript presuperscript)* is empty.
+        // 2) Ensure the validity of the element i.e.
+        //   a) That the list of postscripts can be grouped into pairs of subscript/superscript.
+        //   b) That the list of prescripts can be grouped into pairs of subscript/superscript.
+        //   c) That there is at most one <mprescripts/>.
+        bool numberOfScriptIsEven = true;
+        for (auto script = base->nextSiblingBox(); script; script = script->nextSiblingBox()) {
+            if (isPrescriptDelimiter(*script)) {
+                // This is a <mprescripts/>. Let's check 2a) and 2c).
+                if (!numberOfScriptIsEven || reference.firstPreScript)
+                    return std::nullopt;
+                reference.firstPreScript = script->nextSiblingBox(); // We do 1).
+                reference.prescriptDelimiter = script;
+                continue;
+            }
+            numberOfScriptIsEven = !numberOfScriptIsEven;
         }
+        return numberOfScriptIsEven ? std::optional<ReferenceChildren>(reference) : std::nullopt; // We verify 2b).
+    }
+    }
 
-        if (RenderBox* superscript = m_kind == Sub ? 0 : subSupPair->lastChildBox()) {
-            LayoutUnit superscriptHeight = superscript->logicalHeight();
-            LayoutUnit superscriptBaseline = superscript->firstLineBaseline().valueOr(superscriptHeight);
-            LayoutUnit minBaseline = std::max<LayoutUnit>(fontSize / 3 + 1 + superscriptBaseline, superscriptHeight + axis + superscriptShiftValue);
+    ASSERT_NOT_REACHED();
+    return std::nullopt;
+}
 
-            topPadding = std::max<LayoutUnit>(topPadding, minBaseline - baseBaseline);
+LayoutUnit RenderMathMLScripts::spaceAfterScript()
+{
+    const auto& primaryFont = style().fontCascade().primaryFont();
+    if (auto* mathData = primaryFont.mathData())
+        return mathData->getMathConstant(primaryFont, OpenTypeMathData::SpaceAfterScript);
+    return style().fontCascade().size() / 5;
+}
+
+LayoutUnit RenderMathMLScripts::italicCorrection(const ReferenceChildren& reference)
+{
+    if (is<RenderMathMLBlock>(*reference.base)) {
+        if (auto* renderOperator = downcast<RenderMathMLBlock>(*reference.base).unembellishedOperator())
+            return renderOperator->italicCorrection();
+    }
+    return 0;
+}
+
+void RenderMathMLScripts::computePreferredLogicalWidths()
+{
+    ASSERT(preferredLogicalWidthsDirty());
+
+    m_minPreferredLogicalWidth = 0;
+    m_maxPreferredLogicalWidth = 0;
+
+    auto possibleReference = validateAndGetReferenceChildren();
+    if (!possibleReference) {
+        setPreferredLogicalWidthsDirty(false);
+        return;
+    }
+    auto& reference = possibleReference.value();
+
+    LayoutUnit baseItalicCorrection = std::min(reference.base->maxPreferredLogicalWidth(), italicCorrection(reference));
+    LayoutUnit space = spaceAfterScript();
+
+    switch (m_scriptType) {
+    case Sub:
+    case Under:
+        m_maxPreferredLogicalWidth += reference.base->maxPreferredLogicalWidth();
+        m_maxPreferredLogicalWidth += std::max(LayoutUnit(0), reference.firstPostScript->maxPreferredLogicalWidth() - baseItalicCorrection + space);
+        break;
+    case Super:
+    case Over:
+        m_maxPreferredLogicalWidth += reference.base->maxPreferredLogicalWidth();
+        m_maxPreferredLogicalWidth += std::max(LayoutUnit(0), reference.firstPostScript->maxPreferredLogicalWidth() + space);
+        break;
+    case SubSup:
+    case UnderOver:
+    case Multiscripts: {
+        auto subScript = reference.firstPreScript;
+        while (subScript) {
+            auto supScript = subScript->nextSiblingBox();
+            ASSERT(supScript);
+            LayoutUnit subSupPairWidth = std::max(subScript->maxPreferredLogicalWidth(), supScript->maxPreferredLogicalWidth());
+            m_maxPreferredLogicalWidth += subSupPairWidth + space;
+            subScript = supScript->nextSiblingBox();
         }
+        m_maxPreferredLogicalWidth += reference.base->maxPreferredLogicalWidth();
+        subScript = reference.firstPostScript;
+        while (subScript && subScript != reference.prescriptDelimiter) {
+            auto supScript = subScript->nextSiblingBox();
+            ASSERT(supScript);
+            LayoutUnit subSupPairWidth = std::max(std::max(LayoutUnit(0), subScript->maxPreferredLogicalWidth() - baseItalicCorrection), supScript->maxPreferredLogicalWidth());
+            m_maxPreferredLogicalWidth += subSupPairWidth + space;
+            subScript = supScript->nextSiblingBox();
+        }
+    }
+    }
 
-        if (RenderBox* subscript = m_kind == Super ? 0 : subSupPair->firstChildBox()) {
-            LayoutUnit subscriptHeight = subscript->logicalHeight();
-            LayoutUnit subscriptBaseline = subscript->firstLineBaseline().valueOr(subscriptHeight);
-            LayoutUnit baseExtendUnderBaseline = baseHeight - baseBaseline;
-            LayoutUnit subscriptUnderItsBaseline = subscriptHeight - subscriptBaseline;
-            LayoutUnit minExtendUnderBaseline = std::max<LayoutUnit>(fontSize / 5 + 1 + subscriptUnderItsBaseline, subscriptHeight + subscriptShiftValue - axis);
+    m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth;
 
-            bottomPadding = std::max<LayoutUnit>(bottomPadding, minExtendUnderBaseline - baseExtendUnderBaseline);
+    setPreferredLogicalWidthsDirty(false);
+}
+
+auto RenderMathMLScripts::verticalParameters() const -> VerticalParameters
+{
+    VerticalParameters parameters;
+    const auto& primaryFont = style().fontCascade().primaryFont();
+    if (auto* mathData = primaryFont.mathData()) {
+        parameters.subscriptShiftDown = mathData->getMathConstant(primaryFont, OpenTypeMathData::SubscriptShiftDown);
+        parameters.superscriptShiftUp = mathData->getMathConstant(primaryFont, OpenTypeMathData::SuperscriptShiftUp);
+        parameters.subscriptBaselineDropMin = mathData->getMathConstant(primaryFont, OpenTypeMathData::SubscriptBaselineDropMin);
+        parameters.superScriptBaselineDropMax = mathData->getMathConstant(primaryFont, OpenTypeMathData::SuperscriptBaselineDropMax);
+        parameters.subSuperscriptGapMin = mathData->getMathConstant(primaryFont, OpenTypeMathData::SubSuperscriptGapMin);
+        parameters.superscriptBottomMin = mathData->getMathConstant(primaryFont, OpenTypeMathData::SuperscriptBottomMin);
+        parameters.subscriptTopMax = mathData->getMathConstant(primaryFont, OpenTypeMathData::SubscriptTopMax);
+        parameters.superscriptBottomMaxWithSubscript = mathData->getMathConstant(primaryFont, OpenTypeMathData::SuperscriptBottomMaxWithSubscript);
+    } else {
+        // Default heuristic values when you do not have a font.
+        parameters.subscriptShiftDown = style().fontMetrics().xHeight() / 3;
+        parameters.superscriptShiftUp = style().fontMetrics().xHeight();
+        parameters.subscriptBaselineDropMin = style().fontMetrics().xHeight() / 2;
+        parameters.superScriptBaselineDropMax = style().fontMetrics().xHeight() / 2;
+        parameters.subSuperscriptGapMin = style().fontCascade().size() / 5;
+        parameters.superscriptBottomMin = style().fontMetrics().xHeight() / 4;
+        parameters.subscriptTopMax = 4 * style().fontMetrics().xHeight() / 5;
+        parameters.superscriptBottomMaxWithSubscript = 4 * style().fontMetrics().xHeight() / 5;
+    }
+    return parameters;
+}
+
+RenderMathMLScripts::VerticalMetrics RenderMathMLScripts::verticalMetrics(const ReferenceChildren& reference)
+{
+    VerticalParameters parameters = verticalParameters();
+    VerticalMetrics metrics = { 0, 0, 0, 0 };
+
+    LayoutUnit baseAscent = ascentForChild(*reference.base);
+    LayoutUnit baseDescent = reference.base->logicalHeight() - baseAscent;
+    if (m_scriptType == Sub || m_scriptType == SubSup || m_scriptType == Multiscripts || m_scriptType == Under || m_scriptType == UnderOver) {
+        metrics.subShift = std::max(parameters.subscriptShiftDown, baseDescent + parameters.subscriptBaselineDropMin);
+        if (!isRenderMathMLUnderOver()) {
+            // It is not clear how to interpret the default shift and it is not available yet anyway.
+            // Hence we just pass 0 as the default value used by toUserUnits.
+            LayoutUnit specifiedMinSubShift = toUserUnits(element().subscriptShift(), style(), 0);
+            metrics.subShift = std::max(metrics.subShift, specifiedMinSubShift);
+        }
+    }
+    if (m_scriptType == Super || m_scriptType == SubSup || m_scriptType == Multiscripts  || m_scriptType == Over || m_scriptType == UnderOver) {
+        metrics.supShift = std::max(parameters.superscriptShiftUp, baseAscent - parameters.superScriptBaselineDropMax);
+        if (!isRenderMathMLUnderOver()) {
+            // It is not clear how to interpret the default shift and it is not available yet anyway.
+            // Hence we just pass 0 as the default value used by toUserUnits.
+            LayoutUnit specifiedMinSupShift = toUserUnits(element().superscriptShift(), style(), 0);
+            metrics.supShift = std::max(metrics.supShift, specifiedMinSupShift);
         }
     }
 
-    Length newPadding(topPadding, Fixed);
-    if (newPadding != m_baseWrapper->style().paddingTop()) {
-        m_baseWrapper->style().setPaddingTop(newPadding);
-        needsSecondLayout = true;
+    switch (m_scriptType) {
+    case Sub:
+    case Under: {
+        LayoutUnit subAscent = ascentForChild(*reference.firstPostScript);
+        LayoutUnit subDescent = reference.firstPostScript->logicalHeight() - subAscent;
+        metrics.descent = subDescent;
+        metrics.subShift = std::max(metrics.subShift, subAscent - parameters.subscriptTopMax);
     }
-
-    newPadding = Length(bottomPadding, Fixed);
-    if (newPadding != m_baseWrapper->style().paddingBottom()) {
-        m_baseWrapper->style().setPaddingBottom(newPadding);
-        needsSecondLayout = true;
+        break;
+    case Super:
+    case Over: {
+        LayoutUnit supAscent = ascentForChild(*reference.firstPostScript);
+        LayoutUnit supDescent = reference.firstPostScript->logicalHeight() - supAscent;
+        metrics.ascent = supAscent;
+        metrics.supShift = std::max(metrics.supShift, parameters.superscriptBottomMin + supDescent);
     }
+        break;
+    case SubSup:
+    case UnderOver:
+    case Multiscripts: {
+        // FIXME: We should move the code updating VerticalMetrics for each sub/sup pair in a helper
+        // function. That way, SubSup/UnderOver can just make one call and the loop for Multiscripts
+        // can be rewritten in a more readable.
+        auto subScript = reference.firstPostScript ? reference.firstPostScript : reference.firstPreScript;
+        while (subScript) {
+            auto supScript = subScript->nextSiblingBox();
+            ASSERT(supScript);
+            LayoutUnit subAscent = ascentForChild(*subScript);
+            LayoutUnit subDescent = subScript->logicalHeight() - subAscent;
+            LayoutUnit supAscent = ascentForChild(*supScript);
+            LayoutUnit supDescent = supScript->logicalHeight() - supAscent;
+            metrics.ascent = std::max(metrics.ascent, supAscent);
+            metrics.descent = std::max(metrics.descent, subDescent);
+            LayoutUnit subScriptShift = std::max(parameters.subscriptShiftDown, baseDescent + parameters.subscriptBaselineDropMin);
+            subScriptShift = std::max(subScriptShift, subAscent - parameters.subscriptTopMax);
+            LayoutUnit supScriptShift = std::max(parameters.superscriptShiftUp, baseAscent - parameters.superScriptBaselineDropMax);
+            supScriptShift = std::max(supScriptShift, parameters.superscriptBottomMin + supDescent);
 
-    if (!needsSecondLayout)
-        return;
+            LayoutUnit subSuperscriptGap = (subScriptShift - subAscent) + (supScriptShift - supDescent);
+            if (subSuperscriptGap < parameters.subSuperscriptGapMin) {
+                // First, we try and push the superscript up.
+                LayoutUnit delta = parameters.superscriptBottomMaxWithSubscript - (supScriptShift - supDescent);
+                if (delta > 0) {
+                    delta = std::min(delta, parameters.subSuperscriptGapMin - subSuperscriptGap);
+                    supScriptShift += delta;
+                    subSuperscriptGap += delta;
+                }
+                // If that is not enough, we push the subscript down.
+                if (subSuperscriptGap < parameters.subSuperscriptGapMin)
+                    subScriptShift += parameters.subSuperscriptGapMin - subSuperscriptGap;
+            }
 
-    setNeedsLayout(MarkOnlyThis);
-    m_baseWrapper->setChildNeedsLayout(MarkOnlyThis);
+            metrics.subShift = std::max(metrics.subShift, subScriptShift);
+            metrics.supShift = std::max(metrics.supShift, supScriptShift);
 
-    RenderMathMLBlock::layout();
-}
-
-Optional<int> RenderMathMLScripts::firstLineBaseline() const
-{
-    if (m_baseWrapper) {
-        if (Optional<int> baseline = m_baseWrapper->firstLineBaseline())
-            return baseline;
-    }
-    return RenderMathMLBlock::firstLineBaseline();
-}
-
-RenderMathMLScriptsWrapper* RenderMathMLScriptsWrapper::createAnonymousWrapper(RenderMathMLScripts* renderObject, WrapperType type)
-{
-    RenderMathMLScriptsWrapper* newBlock = new RenderMathMLScriptsWrapper(renderObject->document(), RenderStyle::createAnonymousStyleWithDisplay(&renderObject->style(), FLEX), type);
-    newBlock->initializeStyle();
-    return newBlock;
-}
-
-void RenderMathMLScriptsWrapper::addChildInternal(bool doNotRestructure, RenderObject* child, RenderObject* beforeChild)
-{
-    if (doNotRestructure) {
-        RenderMathMLBlock::addChild(child, beforeChild);
-        return;
-    }
-
-    RenderMathMLScripts* parentNode = downcast<RenderMathMLScripts>(parent());
-
-    if (m_kind == Base) {
-        RenderObject* sibling = nextSibling();
-
-        if (!isEmpty() && !beforeChild) {
-            // This is like inserting the child after the base wrapper.
-            parentNode->addChildInternal(false, sibling);
-            return;
+            subScript = supScript->nextSiblingBox();
+            if (subScript == reference.prescriptDelimiter)
+                subScript = reference.firstPreScript;
         }
-
-        // The old base (if any) becomes a script ; the new child becomes either the base or an <mprescripts> separator.
-        RenderObject* oldBase = firstChild();
-        if (oldBase)
-            RenderMathMLBlock::removeChild(*oldBase);
-        if (isPrescript(*child))
-            parentNode->addChildInternal(true, child, sibling);
-        else
-            RenderMathMLBlock::addChild(child);
-        if (oldBase)
-            parentNode->addChildInternal(false, oldBase, sibling);
-        return;
+    }
     }
 
-    if (isPrescript(*child)) {
-        // We insert an <mprescripts> element.
-        if (!beforeChild)
-            parentNode->addChildInternal(true, child, nextSibling());
-        else if (beforeChild == firstChild())
-            parentNode->addChildInternal(true, child, this);
-        else {
-            // We insert the <mprescripts> in the middle of a subSup pair so we must split that pair.
-            RenderObject* sibling = nextSibling();
-            parentNode->removeChildInternal(true, *this);
-            parentNode->addChildInternal(true, child, sibling);
+    return metrics;
+}
 
-            RenderObject* script = firstChild();
-            RenderMathMLBlock::removeChild(*script);
-            parentNode->addChildInternal(false, script, child);
+void RenderMathMLScripts::layoutBlock(bool relayoutChildren, LayoutUnit)
+{
+    ASSERT(needsLayout());
 
-            script = beforeChild;
-            RenderMathMLBlock::removeChild(*script);
-            parentNode->addChildInternal(false, script, sibling);
-            destroy();
+    if (!relayoutChildren && simplifiedLayout())
+        return;
+
+    auto possibleReference = validateAndGetReferenceChildren();
+    if (!possibleReference) {
+        layoutInvalidMarkup();
+        return;
+    }
+    auto& reference = possibleReference.value();
+
+    recomputeLogicalWidth();
+    for (auto child = firstChildBox(); child; child = child->nextSiblingBox())
+        child->layoutIfNeeded();
+
+    LayoutUnit space = spaceAfterScript();
+
+    // We determine the minimal shift/size of each script and take the maximum of the values.
+    VerticalMetrics metrics = verticalMetrics(reference);
+
+    LayoutUnit baseAscent = ascentForChild(*reference.base);
+    LayoutUnit baseDescent = reference.base->logicalHeight() - baseAscent;
+    LayoutUnit baseItalicCorrection = std::min(reference.base->logicalWidth(), italicCorrection(reference));
+    LayoutUnit horizontalOffset = 0;
+
+    LayoutUnit ascent = std::max(baseAscent, metrics.ascent + metrics.supShift);
+    LayoutUnit descent = std::max(baseDescent, metrics.descent + metrics.subShift);
+    setLogicalHeight(ascent + descent);
+
+    switch (m_scriptType) {
+    case Sub:
+    case Under: {
+        setLogicalWidth(reference.base->logicalWidth() + std::max(LayoutUnit(0), reference.firstPostScript->logicalWidth() - baseItalicCorrection + space));
+        LayoutPoint baseLocation(mirrorIfNeeded(horizontalOffset, *reference.base), ascent - baseAscent);
+        reference.base->setLocation(baseLocation);
+        horizontalOffset += reference.base->logicalWidth();
+        LayoutUnit scriptAscent = ascentForChild(*reference.firstPostScript);
+        LayoutPoint scriptLocation(mirrorIfNeeded(horizontalOffset - baseItalicCorrection, *reference.firstPostScript), ascent + metrics.subShift - scriptAscent);
+        reference.firstPostScript->setLocation(scriptLocation);
+    }
+        break;
+    case Super:
+    case Over: {
+        setLogicalWidth(reference.base->logicalWidth() + std::max(LayoutUnit(0), reference.firstPostScript->logicalWidth() + space));
+        LayoutPoint baseLocation(mirrorIfNeeded(horizontalOffset, *reference.base), ascent - baseAscent);
+        reference.base->setLocation(baseLocation);
+        horizontalOffset += reference.base->logicalWidth();
+        LayoutUnit scriptAscent = ascentForChild(*reference.firstPostScript);
+        LayoutPoint scriptLocation(mirrorIfNeeded(horizontalOffset, *reference.firstPostScript), ascent - metrics.supShift - scriptAscent);
+        reference.firstPostScript->setLocation(scriptLocation);
+    }
+        break;
+    case SubSup:
+    case UnderOver:
+    case Multiscripts: {
+        // Calculate the logical width.
+        LayoutUnit logicalWidth = 0;
+        auto subScript = reference.firstPreScript;
+        while (subScript) {
+            auto supScript = subScript->nextSiblingBox();
+            ASSERT(supScript);
+            LayoutUnit subSupPairWidth = std::max(subScript->logicalWidth(), supScript->logicalWidth());
+            logicalWidth += subSupPairWidth + space;
+            subScript = supScript->nextSiblingBox();
         }
-        return;
-    }
-
-    // We first move to the last subSup pair in the curent sequence of scripts.
-    RenderMathMLScriptsWrapper* subSupPair = this;
-    while (subSupPair->nextSibling() && !isPrescript(*subSupPair->nextSibling()))
-        subSupPair = downcast<RenderMathMLScriptsWrapper>(subSupPair->nextSibling());
-    if (subSupPair->firstChild()->nextSibling()) {
-        // The last pair has two children so we need to create a new pair to leave room for the new child.
-        RenderMathMLScriptsWrapper* newPair = createAnonymousWrapper(parentNode, RenderMathMLScriptsWrapper::SubSupPair);
-        parentNode->addChildInternal(true, newPair, subSupPair->nextSibling());
-        subSupPair = newPair;
-    }
-
-    // We shift the successors in the current sequence of scripts.
-    for (RenderObject* previousSibling = subSupPair->previousSibling(); subSupPair != this; previousSibling = previousSibling->previousSibling()) {
-        RenderMathMLScriptsWrapper& previousSubSupPair = downcast<RenderMathMLScriptsWrapper>(*previousSibling);
-        RenderObject* script = previousSubSupPair.lastChild();
-        previousSubSupPair.removeChildInternal(true, *script);
-        subSupPair->addChildInternal(true, script, subSupPair->firstChild());
-        subSupPair = downcast<RenderMathMLScriptsWrapper>(previousSibling);
-    }
-
-    // This subSup pair now contain one element which is either beforeChild or the script that was before. Hence we can insert the new child before of after that element.
-    RenderMathMLBlock::addChild(child, firstChild() == beforeChild ? beforeChild : nullptr);
-}
-
-void RenderMathMLScriptsWrapper::addChild(RenderObject* child, RenderObject* beforeChild)
-{
-    RenderMathMLScripts* parentNode = downcast<RenderMathMLScripts>(parent());
-
-    addChildInternal(false, child, beforeChild);
-
-    parentNode->fixAnonymousStyles();
-}
-
-void RenderMathMLScriptsWrapper::removeChildInternal(bool doNotRestructure, RenderObject& child)
-{
-    if (doNotRestructure) {
-        RenderMathMLBlock::removeChild(child);
-        return;
-    }
-
-    RenderMathMLScripts* parentNode = downcast<RenderMathMLScripts>(parent());
-
-    if (m_kind == Base) {
-        // We remove the child from the base wrapper.
-        RenderObject* sibling = nextSibling();
-        RenderMathMLBlock::removeChild(child);
-        if (sibling && !isPrescript(*sibling)) {
-            // If there are postscripts, the first one becomes the base.
-            RenderMathMLScriptsWrapper& wrapper = downcast<RenderMathMLScriptsWrapper>(*sibling);
-            RenderObject* script = wrapper.firstChild();
-            wrapper.removeChildInternal(false, *script);
-            RenderMathMLBlock::addChild(script);
+        logicalWidth += reference.base->logicalWidth();
+        subScript = reference.firstPostScript;
+        while (subScript && subScript != reference.prescriptDelimiter) {
+            auto supScript = subScript->nextSiblingBox();
+            ASSERT(supScript);
+            LayoutUnit subSupPairWidth = std::max(std::max(LayoutUnit(0), subScript->logicalWidth() - baseItalicCorrection), supScript->logicalWidth());
+            logicalWidth += subSupPairWidth + space;
+            subScript = supScript->nextSiblingBox();
         }
-        return;
+        setLogicalWidth(logicalWidth);
+
+        subScript = reference.firstPreScript;
+        while (subScript) {
+            auto supScript = subScript->nextSiblingBox();
+            ASSERT(supScript);
+            LayoutUnit subSupPairWidth = std::max(subScript->logicalWidth(), supScript->logicalWidth());
+            horizontalOffset += space + subSupPairWidth;
+            LayoutUnit subAscent = ascentForChild(*subScript);
+            LayoutPoint subScriptLocation(mirrorIfNeeded(horizontalOffset - subScript->logicalWidth(), *subScript), ascent + metrics.subShift - subAscent);
+            subScript->setLocation(subScriptLocation);
+            LayoutUnit supAscent = ascentForChild(*supScript);
+            LayoutPoint supScriptLocation(mirrorIfNeeded(horizontalOffset - supScript->logicalWidth(), *supScript), ascent - metrics.supShift - supAscent);
+            supScript->setLocation(supScriptLocation);
+            subScript = supScript->nextSiblingBox();
+        }
+        LayoutPoint baseLocation(mirrorIfNeeded(horizontalOffset, *reference.base), ascent - baseAscent);
+        reference.base->setLocation(baseLocation);
+        horizontalOffset += reference.base->logicalWidth();
+        subScript = reference.firstPostScript;
+        while (subScript && subScript != reference.prescriptDelimiter) {
+            auto supScript = subScript->nextSiblingBox();
+            ASSERT(supScript);
+            LayoutUnit subAscent = ascentForChild(*subScript);
+            LayoutPoint subScriptLocation(mirrorIfNeeded(horizontalOffset - baseItalicCorrection, *subScript), ascent + metrics.subShift - subAscent);
+            subScript->setLocation(subScriptLocation);
+            LayoutUnit supAscent = ascentForChild(*supScript);
+            LayoutPoint supScriptLocation(mirrorIfNeeded(horizontalOffset, *supScript), ascent - metrics.supShift - supAscent);
+            supScript->setLocation(supScriptLocation);
+
+            LayoutUnit subSupPairWidth = std::max(subScript->logicalWidth(), supScript->logicalWidth());
+            horizontalOffset += subSupPairWidth + space;
+            subScript = supScript->nextSiblingBox();
+        }
+    }
     }
 
-    // We remove the child and shift the successors in the current sequence of scripts.
-    RenderMathMLBlock::removeChild(child);
-    RenderMathMLScriptsWrapper* subSupPair = this;
-    for (RenderObject* nextSibling = subSupPair->nextSibling(); nextSibling && !isPrescript(*nextSibling); nextSibling = nextSibling->nextSibling()) {
-        RenderMathMLScriptsWrapper& nextSubSupPair = downcast<RenderMathMLScriptsWrapper>(*nextSibling);
-        RenderObject* script = nextSubSupPair.firstChild();
-        nextSubSupPair.removeChildInternal(true, *script);
-        subSupPair->addChildInternal(true, script);
-        subSupPair = downcast<RenderMathMLScriptsWrapper>(nextSibling);
-    }
-
-    // We remove the last subSup pair if it became empty.
-    if (subSupPair->isEmpty()) {
-        parentNode->removeChildInternal(true, *subSupPair);
-        subSupPair->destroy();
-    }
+    clearNeedsLayout();
 }
 
-void RenderMathMLScriptsWrapper::removeChild(RenderObject& child)
+std::optional<int> RenderMathMLScripts::firstLineBaseline() const
 {
-    if (beingDestroyed() || documentBeingDestroyed()) {
-        // The renderer is being destroyed so we remove the child normally.
-        RenderMathMLBlock::removeChild(child);
-        return;
-    }
-
-    RenderMathMLScripts* parentNode = downcast<RenderMathMLScripts>(parent());
-    removeChildInternal(false, child);
-    parentNode->fixAnonymousStyles();
+    ASSERT(!needsLayout());
+    auto* base = firstChildBox();
+    if (!base)
+        return std::optional<int>();
+    return std::optional<int>(static_cast<int>(lroundf(ascentForChild(*base) + base->logicalTop())));
 }
 
-}    
+}
 
 #endif // ENABLE(MATHML)

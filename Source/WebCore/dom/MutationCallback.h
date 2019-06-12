@@ -28,11 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MutationCallback_h
-#define MutationCallback_h
+#pragma once
 
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -44,10 +43,8 @@ class MutationCallback : public RefCounted<MutationCallback> {
 public:
     virtual ~MutationCallback() { }
 
-    virtual void call(const Vector<RefPtr<MutationRecord>>&, MutationObserver*) = 0;
-    virtual ScriptExecutionContext* scriptExecutionContext() const = 0;
+    virtual void call(const Vector<Ref<MutationRecord>>&, MutationObserver*) = 0;
+    virtual bool canInvokeCallback() const = 0;
 };
 
-}
-
-#endif // MutationCallback_h
+} // namespace WebCore

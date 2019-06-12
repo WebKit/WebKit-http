@@ -23,14 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSPromiseDeferred_h
-#define JSPromiseDeferred_h
+#pragma once
 
 #include "JSCell.h"
 #include "Structure.h"
 
 namespace JSC {
 
+class Exception;
 class JSPromiseConstructor;
 
 class JSPromiseDeferred : public JSCell {
@@ -54,6 +54,11 @@ public:
 
     JS_EXPORT_PRIVATE void resolve(ExecState*, JSValue);
     JS_EXPORT_PRIVATE void reject(ExecState*, JSValue);
+    JS_EXPORT_PRIVATE void reject(ExecState*, Exception*);
+
+#ifndef NDEBUG
+    void promiseAsyncPending() { m_promiseIsAsyncPending = true; }
+#endif
 
 protected:
     JSPromiseDeferred(VM&, Structure*);
@@ -63,6 +68,10 @@ protected:
 private:
     JSPromiseDeferred(VM&);
 
+#ifndef NDEBUG
+    bool m_promiseIsAsyncPending { false };
+#endif
+
     WriteBarrier<JSObject> m_promise;
     WriteBarrier<Unknown> m_resolve;
     WriteBarrier<Unknown> m_reject;
@@ -71,5 +80,3 @@ private:
 JSValue newPromiseCapability(ExecState*, JSGlobalObject*, JSPromiseConstructor*);
 
 } // namespace JSC
-
-#endif // JSPromiseDeferred_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UserMediaPermissionCheckProxy_h
-#define UserMediaPermissionCheckProxy_h
+#pragma once
 
 #include "APIObject.h"
-#include <WebCore/RealtimeMediaSource.h>
-#include <wtf/Vector.h>
+#include <WebCore/MediaConstraints.h>
+#include <wtf/Function.h>
 #include <wtf/text/WTFString.h>
+
+namespace WebCore {
+class SecurityOrigin;
+}
 
 namespace WebKit {
 
@@ -37,21 +40,31 @@ class UserMediaPermissionRequestManagerProxy;
 
 class UserMediaPermissionCheckProxy : public API::ObjectImpl<API::Object::Type::UserMediaPermissionCheck> {
 public:
-    static Ref<UserMediaPermissionCheckProxy> create(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID)
+
+    using CompletionHandler = WTF::Function<void(uint64_t, String&&, bool allowed)>;
+
+    static Ref<UserMediaPermissionCheckProxy> create(uint64_t userMediaID, uint64_t frameID, CompletionHandler&& handler, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin)
     {
-        return adoptRef(*new UserMediaPermissionCheckProxy(manager, userMediaID));
+        return adoptRef(*new UserMediaPermissionCheckProxy(userMediaID, frameID, WTFMove(handler), WTFMove(userMediaDocumentOrigin), WTFMove(topLevelDocumentOrigin)));
     }
 
-    void setHasPersistentPermission(bool allowed);
+    void setUserMediaAccessInfo(String&&, bool allowed);
     void invalidate();
 
+    uint64_t frameID() const { return m_frameID; }
+    WebCore::SecurityOrigin& userMediaDocumentSecurityOrigin() { return m_userMediaDocumentSecurityOrigin.get(); }
+    WebCore::SecurityOrigin& topLevelDocumentSecurityOrigin() { return m_topLevelDocumentSecurityOrigin.get(); }
+    
+    CompletionHandler& completionHandler() { return m_completionHandler; }
+    
 private:
-    UserMediaPermissionCheckProxy(UserMediaPermissionRequestManagerProxy&, uint64_t userMediaID);
+    UserMediaPermissionCheckProxy(uint64_t userMediaID, uint64_t frameID, CompletionHandler&&, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin);
 
-    UserMediaPermissionRequestManagerProxy* m_manager;
     uint64_t m_userMediaID;
+    uint64_t m_frameID;
+    CompletionHandler m_completionHandler;
+    Ref<WebCore::SecurityOrigin> m_userMediaDocumentSecurityOrigin;
+    Ref<WebCore::SecurityOrigin> m_topLevelDocumentSecurityOrigin;
 };
 
 } // namespace WebKit
-
-#endif // UserMediaPermissionCheckProxy_h

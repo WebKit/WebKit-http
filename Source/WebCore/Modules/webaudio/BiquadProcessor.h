@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BiquadProcessor_h
-#define BiquadProcessor_h
+#pragma once
 
 #include "AudioDSPKernel.h"
 #include "AudioDSPKernelProcessor.h"
@@ -37,26 +36,26 @@ namespace WebCore {
 
 // BiquadProcessor is an AudioDSPKernelProcessor which uses Biquad objects to implement several common filters.
 
+enum class BiquadFilterType {
+    Lowpass,
+    Highpass,
+    Bandpass,
+    Lowshelf,
+    Highshelf,
+    Peaking,
+    Notch,
+    Allpass
+};
+
 class BiquadProcessor : public AudioDSPKernelProcessor {
 public:
-    enum FilterType {
-        LowPass = 0,
-        HighPass = 1,
-        BandPass = 2,
-        LowShelf = 3,
-        HighShelf = 4,
-        Peaking = 5,
-        Notch = 6,
-        Allpass = 7
-    };
-
     BiquadProcessor(AudioContext&, float sampleRate, size_t numberOfChannels, bool autoInitialize);
 
     virtual ~BiquadProcessor();
     
-    virtual std::unique_ptr<AudioDSPKernel> createKernel() override;
+    std::unique_ptr<AudioDSPKernel> createKernel() override;
         
-    virtual void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess) override;
+    void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess) override;
 
     // Get the magnitude and phase response of the filter at the given
     // set of frequencies (in Hz). The phase response is in radians.
@@ -75,11 +74,11 @@ public:
     AudioParam* parameter3() { return m_parameter3.get(); }
     AudioParam* parameter4() { return m_parameter4.get(); }
 
-    FilterType type() const { return m_type; }
-    void setType(FilterType);
+    BiquadFilterType type() const { return m_type; }
+    void setType(BiquadFilterType);
 
 private:
-    FilterType m_type;
+    BiquadFilterType m_type;
 
     RefPtr<AudioParam> m_parameter1;
     RefPtr<AudioParam> m_parameter2;
@@ -94,5 +93,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // BiquadProcessor_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2009, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,20 +27,15 @@
  */
 
 [
-    GlobalContext=DOMWindow&WorkerGlobalScope,
-    CustomToJSObject,
-    // FIXME: Without [Default=Undefined] CodeGeneratorJS can't generate JSImageData. But with
-    // the extended attribute we accept a value of 0 for sh and don't throw.
-    // https://bugs.webkit.org/show_bug.cgi?id=130667
-    Constructor(Uint8ClampedArray data, unsigned long sw, [Default=Undefined] optional unsigned long sh),
+    Constructor(Uint8ClampedArray data, unsigned long sw, optional unsigned long sh = 0),
     Constructor(unsigned long sw, unsigned long sh),
-    ConstructorRaisesException,
-    ImplementationLacksVTable
+    ConstructorMayThrowException,
+    CustomToJSObject,
+    ExportMacro=WEBCORE_EXPORT,
+    Exposed=(Window,Worker),
+    ImplementationLacksVTable,
 ] interface ImageData {
-    readonly attribute long width;
-    readonly attribute long height;
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
+    readonly attribute unsigned long width;
+    readonly attribute unsigned long height;
     readonly attribute Uint8ClampedArray data;
-#endif
 };
-

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CodeProfile_h
-#define CodeProfile_h
+#pragma once
 
 #include "SourceCode.h"
 #include "TieredMMapArray.h"
@@ -37,7 +36,7 @@ class CodeProfile {
 public:
     CodeProfile(const SourceCode& source, CodeProfile* parent)
         : m_file(source.provider()->url().utf8())
-        , m_lineNumber(source.firstLine())
+        , m_lineNumber(source.firstLine().oneBasedInt())
         , m_parent(parent)
     {
         if (parent)
@@ -88,7 +87,4 @@ private:
     static const char* s_codeTypeNames[NumberOfCodeTypes];
 };
 
-}
-
-#endif // CodeProfile_h
-
+} // namespace JSC

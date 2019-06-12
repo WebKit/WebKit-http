@@ -1,3 +1,4 @@
+'use strict';
 
 class Metric extends LabeledObject {
     constructor(id, object)
@@ -7,6 +8,19 @@ class Metric extends LabeledObject {
         object.test.addMetric(this);
         this._test = object.test;
         this._platforms = [];
+
+        const suffix = this.name().match('([A-z][a-z]+|FrameRate)$')[0];
+        this._unit = {
+            'FrameRate': 'fps',
+            'Runs': '/s',
+            'Time': 'ms',
+            'Duration': 'ms',
+            'Malloc': 'B',
+            'Heap': 'B',
+            'Allocations': 'B',
+            'Size': 'B',
+            'Score': 'pt',
+        }[suffix];
     }
 
     aggregatorName() { return this._aggregatorName; }
@@ -32,57 +46,95 @@ class Metric extends LabeledObject {
 
     path() { return this._test.path().concat([this]); }
 
-    fullName()
+    fullName() { return this._test.fullName() + ' : ' + this.label(); }
+
+    relativeName(path)
     {
-        return this._test.path().map(function (test) { return test.label(); }).join(' \u220B ') + ' : ' + this.label();
+        const relativeTestName = this._test.relativeName(path);
+        if (relativeTestName == null)
+            return this.label();
+        return relativeTestName + ' : ' + this.label();
+    }
+
+    aggregatorLabel()
+    {
+        switch (this._aggregatorName) {
+        case 'Arithmetic':
+            return 'Arithmetic mean';
+        case 'Geometric':
+            return 'Geometric mean';
+        case 'Harmonic':
+            return 'Harmonic mean';
+        case 'Total':
+            return 'Total';
+        }
+        return null;
     }
 
     label()
     {
-        var suffix = '';
-        switch (this._aggregatorName) {
-        case null:
-            break;
-        case 'Arithmetic':
-            suffix = ' : Arithmetic mean';
-            break;
-        case 'Geometric':
-            suffix = ' : Geometric mean';
-            break;
-        case 'Harmonic':
-            suffix = ' : Harmonic mean';
-            break;
-        case 'Total':
-        default:
-            suffix = ' : ' + this._aggregatorName;
-        }
-        return this.name() + suffix;
+        const aggregatorLabel = this.aggregatorLabel();
+        return this.name() + (aggregatorLabel ? ` : ${aggregatorLabel}` : '');
     }
 
-    unit() { return RunsData.unitFromMetricName(this.name()); }
-    isSmallerBetter() { return RunsData.isSmallerBetter(this.unit()); }
+    unit() { return this._unit; }
 
-    makeFormatter(sigFig, alwaysShowSign)
+    isSmallerBetter()
     {
-        var unit = this.unit();
-        var isMiliseconds = false;
+        const unit = this._unit;
+        return unit != 'fps' && unit != '/s' && unit != 'pt';
+    }
+
+    makeFormatter(sigFig, alwaysShowSign) { return Metric.makeFormatter(this.unit(), sigFig, alwaysShowSign); }
+
+    static makeFormatter(unit, sigFig = 2, alwaysShowSign = false)
+    {
+        let isMiliseconds = false;
         if (unit == 'ms') {
             isMiliseconds = true;
             unit = 's';
         }
-        var divisor = unit == 'B' ? 1024 : 1000;
 
+        if (!unit)
+            return function (value) { return value.toFixed(2) + ' ' + (unit || ''); }
+
+        var divisor = unit == 'B' ? 1024 : 1000;
         var suffix = ['\u03BC', 'm', '', 'K', 'M', 'G', 'T', 'P', 'E'];
         var threshold = sigFig >= 3 ? divisor : (divisor / 10);
-        return function (value) {
+        let formatter = function (value, maxAbsValue = 0) {
             var i;
             var sign = value >= 0 ? (alwaysShowSign ? '+' : '') : '-';
             value = Math.abs(value);
-            for (i = isMiliseconds ? 1 : 2; value < 1 && i > 0; i--)
+            let sigFigForValue = sigFig;
+
+            // The number of sig-figs to reduce in order to match that of maxAbsValue
+            // e.g. 0.5 instead of 0.50 when maxAbsValue is 2.
+            let adjustment = 0;
+            if (maxAbsValue && value)
+                adjustment = Math.max(0, Math.floor(Math.log(maxAbsValue) / Math.log(10)) - Math.floor(Math.log(value) / Math.log(10)));
+
+            for (i = isMiliseconds ? 1 : 2; value && value < 1 && i > 0; i--)
                 value *= divisor;
             for (; value >= threshold; i++)
                 value /= divisor;
-            return sign + value.toPrecision(Math.max(2, sigFig)) + ' ' + suffix[i] + (unit || '');
+
+            if (adjustment) // Make the adjustment only for decimal positions below 1.
+                adjustment = Math.min(adjustment, Math.max(0, -Math.floor(Math.log(value) / Math.log(10))));
+
+            return sign + value.toPrecision(sigFig - adjustment) + ' ' + suffix[i] + (unit || '');
         }
+        formatter.divisor = divisor;
+        return formatter;
     };
+
+    static formatTime(utcTime)
+    {
+        // FIXME: This is incorrect when the offset cross day-life-saving change. It's good enough for now.
+        const offsetInMinutes = (new Date(utcTime)).getTimezoneOffset();
+        const timeInLocalTimeZone = new Date(utcTime - offsetInMinutes * 60 * 1000);
+        return timeInLocalTimeZone.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+    }
 }
+
+if (typeof module != 'undefined')
+    module.exports.Metric = Metric;

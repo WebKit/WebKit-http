@@ -23,9 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 .sidebar > .panel.navigation.debugger > :matches(.content, .empty-content-placeholder) {
-    top: 29px;
+    top: var(--navigation-bar-height);
 }
 
 .sidebar > .panel.navigation.debugger > .navigation-bar {
@@ -35,8 +34,61 @@
     right: 0;
 }
 
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-breakpoints {
+    fill: none;
+    stroke: var(--glyph-color);
+}
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-breakpoints.activated {
+    fill: var(--glyph-color-active);
+    stroke: var(--glyph-color-active);
+}
+
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-pause-resume {
+    fill: none;
+    stroke: var(--glyph-color);
+}
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-pause-resume.activated {
+    stroke: var(--glyph-color-active);
+}
+
+.sidebar > .panel.navigation.debugger .warning-banner {
+    text-align: center;
+    font-size: 11px;
+
+    padding: 11px 6px;
+    margin-bottom: 6px;
+
+    border-bottom: 1px solid var(--border-color);
+    background-color: hsl(50, 100%, 94%);
+}
+
+.sidebar > .panel.navigation.debugger .tree-outline.single-thread > .item.thread {
+    display: none;
+}
+
+.sidebar > .panel.navigation.debugger .tree-outline.single-thread {
+    --tree-outline-single-thread-margin-start: -10px;
+}
+
+body[dir=ltr] .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
+    margin-left: var(--tree-outline-single-thread-margin-start);
+}
+
+body[dir=rtl] .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
+    margin-right: var(--tree-outline-single-thread-margin-start);
+}
+
+.sidebar > .panel.navigation.debugger .warning-banner > a {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .sidebar > .panel.navigation.debugger .details-section {
     font-size: 11px;
+}
+
+.sidebar > .panel.navigation.debugger .details-section.paused-reason.collapsed > .header > .options {
+    display: block;
 }
 
 .sidebar > .panel.navigation.debugger .details-section > .content {
@@ -47,31 +99,27 @@
     display: none;
 }
 
-
 .sidebar > .panel.navigation.debugger .details-section > .content > .group {
     display: block;
 }
 
-.sidebar > .panel.navigation.debugger .details-section.scripts {
+.sidebar > .panel.navigation.debugger .details-section.scripts:not(.collapsed) {
     border-bottom: none;
 }
 
-.sidebar > .panel.navigation.debugger.paused .details-section.scripts {
-    border-bottom: 1px solid var(--border-color);
+.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .titles {
+    top: 3px;
+    font-family: Menlo, monospace;
 }
 
-.sidebar > .panel.navigation.debugger .details-section.scripts .header {
+.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .icon {
+    content: url(../Images/DOMElement.svg);
+}
+
+.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node:not(:hover, .selected) .status .go-to-arrow {
     display: none;
 }
 
-.sidebar > .panel.navigation.debugger.paused .details-section.scripts .header {
-    display: block;
-}
-
-.sidebar > .panel.navigation.debugger .details-section.scripts.collapsed > .content {
-    display: block;
-}
-
-.sidebar > .panel.navigation.debugger.paused .details-section.scripts.collapsed > .content {
-    display: none;
+.sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle {
+    font-family: Menlo, monospace;
 }

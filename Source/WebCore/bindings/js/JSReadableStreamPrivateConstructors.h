@@ -16,28 +16,26 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef JSReadableStreamPrivateConstructors_h
-#define JSReadableStreamPrivateConstructors_h
+#pragma once
 
 #if ENABLE(STREAMS_API)
 
 namespace JSC {
-
-struct ClassInfo;
 class JSObject;
 class VM;
-
 }
 
 namespace WebCore {
 
 class JSDOMGlobalObject;
 
-JSC::JSObject* createReadableStreamControllerPrivateConstructor(JSC::VM&, JSDOMGlobalObject&);
-JSC::JSObject* createReadableStreamReaderPrivateConstructor(JSC::VM&, JSDOMGlobalObject&);
+JSC::JSObject* createReadableStreamDefaultReaderPrivateConstructor(JSC::VM&, JSDOMGlobalObject&);
+JSC::JSObject* createReadableStreamDefaultControllerPrivateConstructor(JSC::VM&, JSDOMGlobalObject&);
+
+JSC::JSObject* createReadableByteStreamControllerPrivateConstructor(JSC::VM&, JSDOMGlobalObject&);
+JSC::JSObject* createReadableStreamBYOBReaderPrivateConstructor(JSC::VM&, JSDOMGlobalObject&);
+JSC::JSObject* createReadableStreamBYOBRequestPrivateConstructor(JSC::VM&, JSDOMGlobalObject&);
 
 } // namespace WebCore
 
-#endif
-
-#endif // ReadableStreamConstructors_h
+#endif // ENABLE(STREAMS_API)

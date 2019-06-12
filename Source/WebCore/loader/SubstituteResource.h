@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SubstituteResource_h
-#define SubstituteResource_h
+#pragma once
 
 #include "ResourceLoader.h"
 #include "ResourceResponse.h"
@@ -38,25 +37,22 @@ public:
 
     const URL& url() const { return m_url; }
     const ResourceResponse& response() const { return m_response; }
-    SharedBuffer* data() const { return m_data.get(); }
+    SharedBuffer& data() const { return static_reference_cast<SharedBuffer>(m_data); }
 
     virtual void deliver(ResourceLoader& loader) { loader.deliverResponseAndData(m_response, m_data->copy()); }
 
 protected:
-    SubstituteResource(const URL& url, const ResourceResponse& response, PassRefPtr<SharedBuffer> data)
+    SubstituteResource(const URL& url, const ResourceResponse& response, Ref<SharedBuffer>&& data)
         : m_url(url)
         , m_response(response)
-        , m_data(data)
+        , m_data(WTFMove(data))
     {
-        ASSERT(m_data);
     }
 
 private:
     URL m_url;
     ResourceResponse m_response;
-    RefPtr<SharedBuffer> m_data;
+    Ref<SharedBuffer> m_data;
 };
 
-}
-
-#endif // SubstituteResource_h
+} // namespace WebCore

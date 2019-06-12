@@ -23,21 +23,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PositionErrorCallback_h
-#define PositionErrorCallback_h
+#pragma once
 
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-    class PositionError;
+class PositionError;
 
-    class PositionErrorCallback : public RefCounted<PositionErrorCallback> {
-    public:
-        virtual ~PositionErrorCallback() { }
-        virtual bool handleEvent(PositionError*) = 0;
-    };
+class PositionErrorCallback : public RefCounted<PositionErrorCallback> {
+public:
+    virtual ~PositionErrorCallback() { }
+    virtual CallbackResult<void> handleEvent(PositionError&) = 0;
+};
 
 } // namespace WebCore
-
-#endif // PositionErrorCallback_h

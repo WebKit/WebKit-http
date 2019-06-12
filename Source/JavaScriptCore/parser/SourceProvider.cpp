@@ -28,13 +28,14 @@
 
 #include "JSCInlines.h"
 #include <wtf/Lock.h>
-#include <wtf/StdLibExtras.h>
 
 namespace JSC {
 
-SourceProvider::SourceProvider(const String& url, const TextPosition& startPosition)
-    : m_url(url)
+SourceProvider::SourceProvider(const SourceOrigin& sourceOrigin, const String& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
+    : m_sourceOrigin(sourceOrigin)
+    , m_url(url)
     , m_startPosition(startPosition)
+    , m_sourceType(sourceType)
     , m_validated(false)
     , m_id(0)
 {

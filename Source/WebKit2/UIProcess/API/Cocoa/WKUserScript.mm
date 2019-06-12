@@ -26,6 +26,8 @@
 #import "config.h"
 #import "WKUserScriptInternal.h"
 
+#import "_WKUserContentWorldInternal.h"
+
 #if WK_API_ENABLED
 
 @implementation WKUserScript
@@ -35,9 +37,16 @@
     if (!(self = [super init]))
         return nil;
 
-    API::Object::constructInWrapper<API::UserScript>(self, WebCore::UserScript { WTF::String(source), API::UserScript::generateUniqueURL(), { }, { }, API::toWebCoreUserScriptInjectionTime(injectionTime), forMainFrameOnly ? WebCore::InjectInTopFrameOnly : WebCore::InjectInAllFrames });
+    API::Object::constructInWrapper<API::UserScript>(self, WebCore::UserScript { WTF::String(source), API::UserScript::generateUniqueURL(), { }, { }, API::toWebCoreUserScriptInjectionTime(injectionTime), forMainFrameOnly ? WebCore::InjectInTopFrameOnly : WebCore::InjectInAllFrames }, API::UserContentWorld::normalWorld());
 
     return self;
+}
+
+- (void)dealloc
+{
+    _userScript->~UserScript();
+
+    [super dealloc];
 }
 
 - (NSString *)source
@@ -65,6 +74,35 @@
 - (API::Object&)_apiObject
 {
     return *_userScript;
+}
+
+@end
+
+@implementation WKUserScript (WKPrivate)
+
+- (instancetype)_initWithSource:(NSString *)source injectionTime:(WKUserScriptInjectionTime)injectionTime forMainFrameOnly:(BOOL)forMainFrameOnly legacyWhitelist:(NSArray *)legacyWhitelist legacyBlacklist:(NSArray *)legacyBlacklist userContentWorld:(_WKUserContentWorld *)userContentWorld
+{
+    if (!(self = [super init]))
+        return nil;
+
+    API::Object::constructInWrapper<API::UserScript>(self, WebCore::UserScript { WTF::String(source), API::UserScript::generateUniqueURL(), API::toStringVector(legacyWhitelist), API::toStringVector(legacyBlacklist), API::toWebCoreUserScriptInjectionTime(injectionTime), forMainFrameOnly ? WebCore::InjectInTopFrameOnly : WebCore::InjectInAllFrames }, *userContentWorld->_userContentWorld);
+
+    return self;
+}
+
+- (instancetype)_initWithSource:(NSString *)source injectionTime:(WKUserScriptInjectionTime)injectionTime forMainFrameOnly:(BOOL)forMainFrameOnly legacyWhitelist:(NSArray *)legacyWhitelist legacyBlacklist:(NSArray *)legacyBlacklist associatedURL:(NSURL *)associatedURL userContentWorld:(_WKUserContentWorld *)userContentWorld
+{
+    if (!(self = [super init]))
+        return nil;
+
+    API::Object::constructInWrapper<API::UserScript>(self, WebCore::UserScript { WTF::String(source), WebCore::URL(associatedURL), API::toStringVector(legacyWhitelist), API::toStringVector(legacyBlacklist), API::toWebCoreUserScriptInjectionTime(injectionTime), forMainFrameOnly ? WebCore::InjectInTopFrameOnly : WebCore::InjectInAllFrames }, *userContentWorld->_userContentWorld);
+
+    return self;
+}
+
+- (_WKUserContentWorld *)_userContentWorld
+{
+    return API::wrapper(_userScript->userContentWorld());
 }
 
 @end

@@ -51,12 +51,14 @@ class RemoteScrollingCoordinatorProxy {
 public:
     explicit RemoteScrollingCoordinatorProxy(WebPageProxy&);
     virtual ~RemoteScrollingCoordinatorProxy();
-    
+
+    bool visualViewportEnabled() const { return m_scrollingTree && m_scrollingTree->visualViewportEnabled(); }
+
     // Inform the web process that the scroll position changed (called from the scrolling tree)
-    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& newScrollPosition, WebCore::SetOrSyncScrollingLayerPosition);
+    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& newScrollPosition, const std::optional<WebCore::FloatPoint>& layoutViewportOrigin, WebCore::ScrollingLayerPositionAction);
     void scrollingTreeNodeRequestsScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, bool representsProgrammaticScroll);
 
-    bool isPointInNonFastScrollableRegion(const WebCore::IntPoint&) const;
+    WebCore::TrackingType eventTrackingTypeForPoint(const AtomicString& eventName, WebCore::IntPoint) const;
 
     // Called externally when native views move around.
     void viewportChangedViaDelegatedScrolling(WebCore::ScrollingNodeID, const WebCore::FloatRect& fixedPositionRect, double scale);
@@ -75,7 +77,7 @@ public:
         bool requestIsProgrammaticScroll { };
         WebCore::FloatPoint requestedScrollPosition;
     };
-    void updateScrollingTree(const RemoteScrollingCoordinatorTransaction&, RequestedScrollInfo&);
+    void commitScrollingTreeState(const RemoteScrollingCoordinatorTransaction&, RequestedScrollInfo&);
 
     void setPropagatesMainFrameScrolls(bool propagatesMainFrameScrolls) { m_propagatesMainFrameScrolls = propagatesMainFrameScrolls; }
     bool propagatesMainFrameScrolls() const { return m_propagatesMainFrameScrolls; }
@@ -93,6 +95,8 @@ public:
     bool shouldSetScrollViewDecelerationRateFast() const;
 #endif
 #endif
+
+    String scrollingTreeAsText() const;
 
 private:
     void connectStateNodeLayers(WebCore::ScrollingStateTree&, const RemoteLayerTreeHost&);

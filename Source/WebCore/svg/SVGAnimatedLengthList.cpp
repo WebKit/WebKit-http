@@ -27,13 +27,13 @@ namespace WebCore {
 
 SVGAnimatedLengthListAnimator::SVGAnimatedLengthListAnimator(SVGAnimationElement* animationElement, SVGElement* contextElement)
     : SVGAnimatedTypeAnimator(AnimatedLengthList, animationElement, contextElement)
-    , m_lengthMode(SVGLength::lengthModeForAnimatedLengthAttribute(animationElement->attributeName()))
+    , m_lengthMode(SVGLengthValue::lengthModeForAnimatedLengthAttribute(animationElement->attributeName()))
 {
 }
 
 std::unique_ptr<SVGAnimatedType> SVGAnimatedLengthListAnimator::constructFromString(const String& string)
 {
-    auto animatedType = SVGAnimatedType::createLengthList(std::make_unique<SVGLengthList>());
+    auto animatedType = SVGAnimatedType::createLengthList(std::make_unique<SVGLengthListValues>());
     animatedType->lengthList().parse(string, m_lengthMode);
     return animatedType;
 }
@@ -68,8 +68,8 @@ void SVGAnimatedLengthListAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGA
     ASSERT(from->type() == AnimatedLengthList);
     ASSERT(from->type() == to->type());
 
-    const SVGLengthList& fromLengthList = from->lengthList();
-    SVGLengthList& toLengthList = to->lengthList();
+    const auto& fromLengthList = from->lengthList();
+    auto& toLengthList = to->lengthList();
 
     unsigned fromLengthListSize = fromLengthList.size();
     if (!fromLengthListSize || fromLengthListSize != toLengthList.size())
@@ -77,13 +77,13 @@ void SVGAnimatedLengthListAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGA
 
     SVGLengthContext lengthContext(m_contextElement);
     for (unsigned i = 0; i < fromLengthListSize; ++i)
-        toLengthList[i].setValue(toLengthList[i].value(lengthContext) + fromLengthList[i].value(lengthContext), lengthContext, ASSERT_NO_EXCEPTION);
+        toLengthList[i].setValue(toLengthList[i].value(lengthContext) + fromLengthList[i].value(lengthContext), lengthContext);
 }
 
-static SVGLengthList parseLengthListFromString(SVGAnimationElement* animationElement, const String& string)
+static SVGLengthListValues parseLengthListFromString(SVGAnimationElement* animationElement, const String& string)
 {
-    SVGLengthList lengthList;
-    lengthList.parse(string, SVGLength::lengthModeForAnimatedLengthAttribute(animationElement->attributeName()));
+    SVGLengthListValues lengthList;
+    lengthList.parse(string, SVGLengthValue::lengthModeForAnimatedLengthAttribute(animationElement->attributeName()));
     return lengthList;
 }
 
@@ -92,16 +92,16 @@ void SVGAnimatedLengthListAnimator::calculateAnimatedValue(float percentage, uns
     ASSERT(m_animationElement);
     ASSERT(m_contextElement);
 
-    SVGLengthList fromLengthList = m_animationElement->animationMode() == ToAnimation ? animated->lengthList() : from->lengthList();
-    SVGLengthList toLengthList = to->lengthList();
-    const SVGLengthList& toAtEndOfDurationLengthList = toAtEndOfDuration->lengthList();
-    SVGLengthList& animatedLengthList = animated->lengthList();
+    auto fromLengthList = m_animationElement->animationMode() == ToAnimation ? animated->lengthList() : from->lengthList();
+    auto toLengthList = to->lengthList();
+    const auto& toAtEndOfDurationLengthList = toAtEndOfDuration->lengthList();
+    auto& animatedLengthList = animated->lengthList();
 
     // Apply CSS inheritance rules.
-    m_animationElement->adjustForInheritance<SVGLengthList>(parseLengthListFromString, m_animationElement->fromPropertyValueType(), fromLengthList, m_contextElement);
-    m_animationElement->adjustForInheritance<SVGLengthList>(parseLengthListFromString, m_animationElement->toPropertyValueType(), toLengthList, m_contextElement);
+    m_animationElement->adjustForInheritance<SVGLengthListValues>(parseLengthListFromString, m_animationElement->fromPropertyValueType(), fromLengthList, m_contextElement);
+    m_animationElement->adjustForInheritance<SVGLengthListValues>(parseLengthListFromString, m_animationElement->toPropertyValueType(), toLengthList, m_contextElement);
 
-    if (!m_animationElement->adjustFromToListValues<SVGLengthList>(fromLengthList, toLengthList, animatedLengthList, percentage))
+    if (!m_animationElement->adjustFromToListValues<SVGLengthListValues>(fromLengthList, toLengthList, animatedLengthList, percentage))
         return;
 
     unsigned fromLengthListSize = fromLengthList.size();
@@ -121,13 +121,13 @@ void SVGAnimatedLengthListAnimator::calculateAnimatedValue(float percentage, uns
         float effectiveToAtEnd = i < toAtEndOfDurationListSize ? toAtEndOfDurationLengthList[i].value(lengthContext) : 0;
 
         m_animationElement->animateAdditiveNumber(percentage, repeatCount, effectiveFrom, toLengthList[i].value(lengthContext), effectiveToAtEnd, animatedNumber);
-        animatedLengthList[i].setValue(lengthContext, animatedNumber, m_lengthMode, unitType, ASSERT_NO_EXCEPTION);
+        animatedLengthList[i].setValue(lengthContext, animatedNumber, m_lengthMode, unitType);
     }
 }
 
 float SVGAnimatedLengthListAnimator::calculateDistance(const String&, const String&)
 {
-    // FIXME: Distance calculation is not possible for SVGLengthList right now. We need the distance for every single value.
+    // FIXME: Distance calculation is not possible for SVGLengthListValues right now. We need the distance for every single value.
     return -1;
 }
 

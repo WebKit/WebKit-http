@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef ContextMenuContext_h
-#define ContextMenuContext_h
+#pragma once
 
 #if ENABLE(CONTEXT_MENUS)
 
@@ -51,7 +50,6 @@ public:
 #endif
 
 private:
-
     HitTestResult m_hitTestResult;
     String m_selectedText;
 
@@ -63,4 +61,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(CONTEXT_MENUS)
-#endif // ContextMenuContext_h

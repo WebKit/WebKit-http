@@ -19,16 +19,12 @@
  *
  */
 
-#ifndef NodeRareData_h
-#define NodeRareData_h
+#pragma once
 
 #include "ChildNodeList.h"
-#include "ClassCollection.h"
-#include "DOMTokenList.h"
 #include "HTMLCollection.h"
 #include "HTMLNames.h"
 #include "LiveNodeList.h"
-#include "MutationObserver.h"
 #include "MutationObserverRegistration.h"
 #include "Page.h"
 #include "QualifiedName.h"
@@ -36,13 +32,10 @@
 #include <wtf/HashSet.h>
 #include <wtf/text/AtomicString.h>
 
-#if ENABLE(VIDEO_TRACK)
-#include "TextTrack.h"
-#endif
-
 namespace WebCore {
 
 class LabelsNodeList;
+class NameNodeList;
 class RadioNodeList;
 class TreeScope;
 
@@ -113,7 +106,7 @@ public:
 
     typedef HashMap<std::pair<unsigned char, AtomicString>, LiveNodeList*, NodeListCacheMapEntryHash> NodeListAtomicNameCacheMap;
     typedef HashMap<std::pair<unsigned char, AtomicString>, HTMLCollection*, NodeListCacheMapEntryHash> CollectionCacheMap;
-    typedef HashMap<QualifiedName, TagCollection*> TagCollectionCacheNS;
+    typedef HashMap<QualifiedName, TagCollectionNS*> TagCollectionNSCache;
 
     template<typename T, typename ContainerType>
     ALWAYS_INLINE Ref<T> addCacheWithAtomicName(ContainerType& container, const AtomicString& name)
@@ -127,14 +120,14 @@ public:
         return list;
     }
 
-    ALWAYS_INLINE Ref<TagCollection> addCachedCollectionWithQualifiedName(ContainerNode& node, const AtomicString& namespaceURI, const AtomicString& localName)
+    ALWAYS_INLINE Ref<TagCollectionNS> addCachedTagCollectionNS(ContainerNode& node, const AtomicString& namespaceURI, const AtomicString& localName)
     {
-        QualifiedName name(nullAtom, localName, namespaceURI);
-        TagCollectionCacheNS::AddResult result = m_tagCollectionCacheNS.fastAdd(name, nullptr);
+        QualifiedName name(nullAtom(), localName, namespaceURI);
+        TagCollectionNSCache::AddResult result = m_tagCollectionNSCache.fastAdd(name, nullptr);
         if (!result.isNewEntry)
             return *result.iterator->value;
 
-        auto list = TagCollection::create(node, namespaceURI, localName);
+        auto list = TagCollectionNS::create(node, namespaceURI, localName);
         result.iterator->value = list.ptr();
         return list;
     }
@@ -154,7 +147,7 @@ public:
     template<typename T, typename ContainerType>
     ALWAYS_INLINE Ref<T> addCachedCollection(ContainerType& container, CollectionType collectionType)
     {
-        CollectionCacheMap::AddResult result = m_cachedCollections.fastAdd(namedCollectionKey(collectionType, starAtom), nullptr);
+        CollectionCacheMap::AddResult result = m_cachedCollections.fastAdd(namedCollectionKey(collectionType, starAtom()), nullptr);
         if (!result.isNewEntry)
             return static_cast<T&>(*result.iterator->value);
 
@@ -166,11 +159,11 @@ public:
     template<typename T>
     T* cachedCollection(CollectionType collectionType)
     {
-        return static_cast<T*>(m_cachedCollections.get(namedCollectionKey(collectionType, starAtom)));
+        return static_cast<T*>(m_cachedCollections.get(namedCollectionKey(collectionType, starAtom())));
     }
 
     template <class NodeListType>
-    void removeCacheWithAtomicName(NodeListType* list, const AtomicString& name = starAtom)
+    void removeCacheWithAtomicName(NodeListType* list, const AtomicString& name = starAtom())
     {
         ASSERT(list == m_atomicNameCaches.get(namedNodeListKey<NodeListType>(name)));
         if (deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(list->ownerNode()))
@@ -178,16 +171,16 @@ public:
         m_atomicNameCaches.remove(namedNodeListKey<NodeListType>(name));
     }
 
-    void removeCachedCollectionWithQualifiedName(HTMLCollection& collection, const AtomicString& namespaceURI, const AtomicString& localName)
+    void removeCachedTagCollectionNS(HTMLCollection& collection, const AtomicString& namespaceURI, const AtomicString& localName)
     {
-        QualifiedName name(nullAtom, localName, namespaceURI);
-        ASSERT(&collection == m_tagCollectionCacheNS.get(name));
+        QualifiedName name(nullAtom(), localName, namespaceURI);
+        ASSERT(&collection == m_tagCollectionNSCache.get(name));
         if (deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(collection.ownerNode()))
             return;
-        m_tagCollectionCacheNS.remove(name);
+        m_tagCollectionNSCache.remove(name);
     }
 
-    void removeCachedCollection(HTMLCollection* collection, const AtomicString& name = starAtom)
+    void removeCachedCollection(HTMLCollection* collection, const AtomicString& name = starAtom())
     {
         ASSERT(collection == m_cachedCollections.get(namedCollectionKey(collection->type(), name)));
         if (deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(collection->ownerNode()))
@@ -195,35 +188,31 @@ public:
         m_cachedCollections.remove(namedCollectionKey(collection->type(), name));
     }
 
-    void invalidateCaches(const QualifiedName* attrName = nullptr);
-    bool isEmpty() const
-    {
-        return m_atomicNameCaches.isEmpty() && m_cachedCollections.isEmpty() && m_tagCollectionCacheNS.isEmpty();
-    }
+    void invalidateCaches();
+    void invalidateCachesForAttribute(const QualifiedName& attrName);
 
     void adoptTreeScope()
     {
         invalidateCaches();
     }
 
-    void adoptDocument(Document* oldDocument, Document* newDocument)
+    void adoptDocument(Document& oldDocument, Document& newDocument)
     {
-        ASSERT(oldDocument);
-        if (oldDocument == newDocument) {
+        if (&oldDocument == &newDocument) {
             invalidateCaches();
             return;
         }
 
         for (auto& cache : m_atomicNameCaches.values())
-            cache->invalidateCache(*oldDocument);
+            cache->invalidateCacheForDocument(oldDocument);
 
-        for (auto& list : m_tagCollectionCacheNS.values()) {
+        for (auto& list : m_tagCollectionNSCache.values()) {
             ASSERT(!list->isRootedAtDocument());
-            list->invalidateCache(*oldDocument);
+            list->invalidateCacheForDocument(oldDocument);
         }
 
         for (auto& collection : m_cachedCollections.values())
-            collection->invalidateCache(*oldDocument);
+            collection->invalidateCacheForDocument(oldDocument);
     }
 
 private:
@@ -245,7 +234,7 @@ private:
     EmptyNodeList* m_emptyChildNodeList;
 
     NodeListAtomicNameCacheMap m_atomicNameCaches;
-    TagCollectionCacheNS m_tagCollectionCacheNS;
+    TagCollectionNSCache m_tagCollectionNSCache;
     CollectionCacheMap m_cachedCollections;
 };
 
@@ -306,7 +295,7 @@ inline bool NodeListsNodeData::deleteThisAndUpdateNodeRareDataIfAboutToRemoveLas
 {
     ASSERT(ownerNode.nodeLists() == this);
     if ((m_childNodeList ? 1 : 0) + (m_emptyChildNodeList ? 1 : 0) + m_atomicNameCaches.size()
-        + m_tagCollectionCacheNS.size() + m_cachedCollections.size() != 1)
+        + m_tagCollectionNSCache.size() + m_cachedCollections.size() != 1)
         return false;
     ownerNode.clearNodeLists();
     return true;
@@ -329,5 +318,3 @@ inline NodeRareData& Node::ensureRareData()
 static_assert(Page::maxNumberOfFrames < 1024, "Frame limit should fit in rare data count");
 
 } // namespace WebCore
-
-#endif // NodeRareData_h

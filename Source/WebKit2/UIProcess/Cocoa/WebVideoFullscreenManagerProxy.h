@@ -23,10 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebVideoFullscreenManagerProxy_h
-#define WebVideoFullscreenManagerProxy_h
+#pragma once
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
 #include "MessageReceiver.h"
 #include <WebCore/GraphicsLayer.h>
@@ -34,7 +33,7 @@
 #include <WebCore/WebVideoFullscreenChangeObserver.h>
 #include <WebCore/WebVideoFullscreenModel.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -53,15 +52,20 @@ typedef WebCore::WebVideoFullscreenInterfaceMac PlatformWebVideoFullscreenInterf
 namespace WebKit {
 
 class WebPageProxy;
+class WebPlaybackSessionManagerProxy;
+class WebPlaybackSessionModelContext;
 class WebVideoFullscreenManagerProxy;
 
-class WebVideoFullscreenModelContext final: public RefCounted<WebVideoFullscreenModelContext>, public WebCore::WebVideoFullscreenModel, public WebCore::WebVideoFullscreenChangeObserver  {
+class WebVideoFullscreenModelContext final
+    : public RefCounted<WebVideoFullscreenModelContext>
+    , public WebCore::WebVideoFullscreenModel
+    , public WebCore::WebVideoFullscreenChangeObserver  {
 public:
-    static Ref<WebVideoFullscreenModelContext> create(WebVideoFullscreenManagerProxy& manager, uint64_t contextId)
+    static Ref<WebVideoFullscreenModelContext> create(WebVideoFullscreenManagerProxy& manager, WebPlaybackSessionModelContext& playbackSessionModel, uint64_t contextId)
     {
-        return adoptRef(*new WebVideoFullscreenModelContext(manager, contextId));
+        return adoptRef(*new WebVideoFullscreenModelContext(manager, playbackSessionModel, contextId));
     }
-    virtual ~WebVideoFullscreenModelContext() { }
+    virtual ~WebVideoFullscreenModelContext();
 
     void invalidate() { m_manager = nullptr; }
 
@@ -69,46 +73,38 @@ public:
     void setLayerHostView(RetainPtr<PlatformView>&& layerHostView) { m_layerHostView = WTFMove(layerHostView); }
 
 private:
-    WebVideoFullscreenModelContext(WebVideoFullscreenManagerProxy& manager, uint64_t contextId)
-        : m_manager(&manager)
-        , m_contextId(contextId)
-    {
-    }
+    WebVideoFullscreenModelContext(WebVideoFullscreenManagerProxy&, WebPlaybackSessionModelContext&, uint64_t);
 
     // WebVideoFullscreenModel
-    virtual void play() override;
-    virtual void pause() override;
-    virtual void togglePlayState() override;
-    virtual void beginScrubbing() override;
-    virtual void endScrubbing() override;
-    virtual void seekToTime(double) override;
-    virtual void fastSeek(double time) override;
-    virtual void beginScanningForward() override;
-    virtual void beginScanningBackward() override;
-    virtual void endScanning() override;
-    virtual void requestFullscreenMode(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
-    virtual void setVideoLayerFrame(WebCore::FloatRect) override;
-    virtual void setVideoLayerGravity(VideoGravity) override;
-    virtual void selectAudioMediaOption(uint64_t) override;
-    virtual void selectLegibleMediaOption(uint64_t) override;
-    virtual void fullscreenModeChanged(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
-    virtual bool isVisible() const override;
+    void addClient(WebCore::WebVideoFullscreenModelClient&) override;
+    void removeClient(WebCore::WebVideoFullscreenModelClient&) override;
+    void requestFullscreenMode(WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool finishedWithMedia = false) override;
+    void setVideoLayerFrame(WebCore::FloatRect) override;
+    void setVideoLayerGravity(VideoGravity) override;
+    void fullscreenModeChanged(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
+    bool isVisible() const override;
+    bool hasVideo() const override { return m_hasVideo; }
+    WebCore::FloatSize videoDimensions() const override { return m_videoDimensions; }
 
     // WebVideoFullscreenChangeObserver
-    virtual void didSetupFullscreen() override;
-    virtual void didEnterFullscreen() override;
-    virtual void didExitFullscreen() override;
-    virtual void didCleanupFullscreen() override;
-    virtual void fullscreenMayReturnToInline() override;
+    void didSetupFullscreen() override;
+    void didEnterFullscreen() override;
+    void didExitFullscreen() override;
+    void didCleanupFullscreen() override;
+    void fullscreenMayReturnToInline() override;
 
     WebVideoFullscreenManagerProxy* m_manager;
+    Ref<WebPlaybackSessionModelContext> m_playbackSessionModel;
     uint64_t m_contextId;
     RetainPtr<PlatformView *> m_layerHostView;
+    HashSet<WebCore::WebVideoFullscreenModelClient*> m_clients;
+    WebCore::FloatSize m_videoDimensions;
+    bool m_hasVideo { false };
 };
 
 class WebVideoFullscreenManagerProxy : public RefCounted<WebVideoFullscreenManagerProxy>, private IPC::MessageReceiver {
 public:
-    static RefPtr<WebVideoFullscreenManagerProxy> create(WebPageProxy&);
+    static RefPtr<WebVideoFullscreenManagerProxy> create(WebPageProxy&, WebPlaybackSessionManagerProxy&);
     virtual ~WebVideoFullscreenManagerProxy();
 
     void invalidate();
@@ -119,67 +115,55 @@ public:
     void applicationDidBecomeActive();
     bool isVisible() const;
 
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    bool isPlayingVideoInEnhancedFullscreen() const;
+#endif
+
 private:
     friend class WebVideoFullscreenModelContext;
 
-    explicit WebVideoFullscreenManagerProxy(WebPageProxy&);
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    explicit WebVideoFullscreenManagerProxy(WebPageProxy&, WebPlaybackSessionManagerProxy&);
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     typedef std::tuple<RefPtr<WebVideoFullscreenModelContext>, RefPtr<PlatformWebVideoFullscreenInterface>> ModelInterfaceTuple;
     ModelInterfaceTuple createModelAndInterface(uint64_t contextId);
     ModelInterfaceTuple& ensureModelAndInterface(uint64_t contextId);
     WebVideoFullscreenModelContext& ensureModel(uint64_t contextId);
     PlatformWebVideoFullscreenInterface& ensureInterface(uint64_t contextId);
+    void addClientForContext(uint64_t contextId);
+    void removeClientForContext(uint64_t contextId);
 
     // Messages from WebVideoFullscreenManager
     void setupFullscreenWithID(uint64_t contextId, uint32_t videoLayerID, const WebCore::IntRect& initialRect, float hostingScaleFactor, WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool allowsPictureInPicture);
-    void resetMediaState(uint64_t contextId);
-    void setCurrentTime(uint64_t contextId, double currentTime, double hostTime);
-    void setBufferedTime(uint64_t contextId, double bufferedTime);
-    void setVideoDimensions(uint64_t contextId, bool hasVideo, unsigned width, unsigned height);
-    void setSeekableRangesVector(uint64_t contextId, Vector<std::pair<double, double>> ranges);
-    void setCanPlayFastReverse(uint64_t contextId, bool value);
-    void setAudioMediaSelectionOptions(uint64_t contextId, Vector<String> options, uint64_t selectedIndex);
-    void setLegibleMediaSelectionOptions(uint64_t contextId, Vector<String> options, uint64_t selectedIndex);
-    void setExternalPlaybackProperties(uint64_t contextId, bool enabled, uint32_t targetType, String localizedDeviceName);
-    void setWirelessVideoPlaybackDisabled(uint64_t contextId, bool);
-    void setDuration(uint64_t contextId, double duration);
-    void setRate(uint64_t contextId, bool isPlaying, double rate);
+    void setHasVideo(uint64_t contextId, bool);
+    void setVideoDimensions(uint64_t contextId, const WebCore::FloatSize&);
     void enterFullscreen(uint64_t contextId);
     void exitFullscreen(uint64_t contextId, WebCore::IntRect finalRect);
     void cleanupFullscreen(uint64_t contextId);
     void preparedToReturnToInline(uint64_t contextId, bool visible, WebCore::IntRect inlineRect);
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    void exitFullscreenWithoutAnimationToMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
+#endif
 
     // Messages to WebVideoFullscreenManager
-    void play(uint64_t contextId);
-    void pause(uint64_t contextId);
-    void togglePlayState(uint64_t contextId);
-    void beginScrubbing(uint64_t contextId);
-    void endScrubbing(uint64_t contextId);
-    void seekToTime(uint64_t contextId, double time);
-    void fastSeek(uint64_t contextId, double time);
-    void beginScanningForward(uint64_t contextId);
-    void beginScanningBackward(uint64_t contextId);
-    void endScanning(uint64_t contextId);
-    void requestFullscreenMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
+    void requestFullscreenMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool finishedWithMedia = false);
     void didSetupFullscreen(uint64_t contextId);
     void didExitFullscreen(uint64_t contextId);
     void didEnterFullscreen(uint64_t contextId);
     void didCleanupFullscreen(uint64_t contextId);
     void setVideoLayerFrame(uint64_t contextId, WebCore::FloatRect);
     void setVideoLayerGravity(uint64_t contextId, WebCore::WebVideoFullscreenModel::VideoGravity);
-    void selectAudioMediaOption(uint64_t contextId, uint64_t index);
-    void selectLegibleMediaOption(uint64_t contextId, uint64_t index);
     void fullscreenModeChanged(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
     void fullscreenMayReturnToInline(uint64_t contextId);
 
     WebPageProxy* m_page;
+    Ref<WebPlaybackSessionManagerProxy> m_playbackSessionManagerProxy;
     HashMap<uint64_t, ModelInterfaceTuple> m_contextMap;
-
+    uint64_t m_controlsManagerContextId { 0 };
+    HashMap<uint64_t, int> m_clientCounts;
 };
     
 } // namespace WebKit
 
 #endif // PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
-#endif // WebVideoFullscreenManagerProxy_h

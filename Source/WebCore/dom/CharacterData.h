@@ -20,11 +20,9 @@
  *
  */
 
-#ifndef CharacterData_h
-#define CharacterData_h
+#pragma once
 
-#include "Node.h"
-#include <wtf/text/WTFString.h>
+#include "ContainerNode.h"
 
 namespace WebCore {
 
@@ -35,11 +33,11 @@ public:
 
     WEBCORE_EXPORT void setData(const String&);
     unsigned length() const { return m_data.length(); }
-    String substringData(unsigned offset, unsigned count, ExceptionCode&);
-    void appendData(const String&);
-    void insertData(unsigned offset, const String&, ExceptionCode&);
-    void deleteData(unsigned offset, unsigned count, ExceptionCode&);
-    void replaceData(unsigned offset, unsigned count, const String&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<String> substringData(unsigned offset, unsigned count);
+    WEBCORE_EXPORT void appendData(const String&);
+    WEBCORE_EXPORT ExceptionOr<void> insertData(unsigned offset, const String&);
+    WEBCORE_EXPORT ExceptionOr<void> deleteData(unsigned offset, unsigned count);
+    WEBCORE_EXPORT ExceptionOr<void> replaceData(unsigned offset, unsigned count, const String&);
 
     bool containsOnlyWhitespace() const;
 
@@ -63,13 +61,13 @@ protected:
     void dispatchModifiedEvent(const String& oldValue);
 
 private:
-    virtual String nodeValue() const override final;
-    virtual void setNodeValue(const String&, ExceptionCode&) override final;
-    virtual bool isCharacterDataNode() const override final { return true; }
-    virtual int maxCharacterOffset() const override final;
-    virtual bool offsetInCharacters() const override final;
+    String nodeValue() const final;
+    ExceptionOr<void> setNodeValue(const String&) final;
+    bool isCharacterDataNode() const final { return true; }
+    int maxCharacterOffset() const final;
+    bool offsetInCharacters() const final;
     void setDataAndUpdate(const String&, unsigned offsetOfReplacedData, unsigned oldLength, unsigned newLength);
-    void checkCharDataOperation(unsigned offset, ExceptionCode&);
+    void notifyParentAfterChange(ContainerNode::ChildChangeSource);
 
     String m_data;
 };
@@ -79,5 +77,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::CharacterData)
     static bool isType(const WebCore::Node& node) { return node.isCharacterDataNode(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // CharacterData_h

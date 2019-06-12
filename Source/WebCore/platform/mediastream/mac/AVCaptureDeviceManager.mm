@@ -28,7 +28,6 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
-#import "AVAudioCaptureSource.h"
 #import "AVMediaCaptureSource.h"
 #import "AVVideoCaptureSource.h"
 #import "AudioSourceProvider.h"
@@ -38,14 +37,14 @@
 #import "RealtimeMediaSourceCenter.h"
 #import "RealtimeMediaSourceSettings.h"
 #import "RealtimeMediaSourceSupportedConstraints.h"
-#import "SoftLinking.h"
-#import "UUID.h"
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVCaptureDevice.h>
+#import <AVFoundation/AVCaptureSession.h>
 #import <objc/runtime.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/SoftLinking.h>
 
-typedef AVCaptureDevice AVCaptureDeviceType;
+typedef AVCaptureDevice AVCaptureDeviceTypedef;
 typedef AVCaptureSession AVCaptureSessionType;
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
@@ -91,63 +90,22 @@ using namespace WebCore;
 
 namespace WebCore {
 
-AVCaptureSessionInfo::AVCaptureSessionInfo(AVCaptureSessionType *platformSession)
-    : m_platformSession(platformSession)
+Vector<CaptureDevice>& AVCaptureDeviceManager::captureDevices()
 {
-}
+    if (!isAvailable())
+        return m_devices;
 
-bool AVCaptureSessionInfo::supportsVideoSize(const String& videoSize) const
-{
-    return [m_platformSession canSetSessionPreset:videoSize];
-}
-
-String AVCaptureSessionInfo::bestSessionPresetForVideoDimensions(int width, int height) const
-{
-    ASSERT(width >= 0);
-    ASSERT(height >= 0);
-
-    if (width > 1280 || height > 720) {
-        // FIXME: this restriction could be adjusted with the videoMaxScaleAndCropFactor property.
-        return emptyString();
-    }
-
-    if (width > 640 || height > 480) {
-        if (supportsVideoSize(AVCaptureSessionPreset1280x720))
-            return AVCaptureSessionPreset1280x720;
-
-        return emptyString();
-    }
-
-    if (width > 352 || height > 288) {
-        if (supportsVideoSize(AVCaptureSessionPreset640x480))
-            return AVCaptureSessionPreset640x480;
-
-        return emptyString();
-    }
-
-    if (supportsVideoSize(AVCaptureSessionPreset352x288))
-        return AVCaptureSessionPreset352x288;
-
-    if (supportsVideoSize(AVCaptureSessionPresetLow))
-        return AVCaptureSessionPresetLow;
-
-    return emptyString();
-}
-
-
-Vector<CaptureDeviceInfo>& AVCaptureDeviceManager::captureDeviceList()
-{
     static bool firstTime = true;
     if (firstTime && !m_devices.size()) {
         firstTime = false;
-        refreshCaptureDeviceList();
+        refreshCaptureDevices();
         registerForDeviceNotifications();
     }
 
     return m_devices;
 }
 
-inline static bool shouldConsiderDeviceInDeviceList(AVCaptureDeviceType *device)
+inline static bool deviceIsAvailable(AVCaptureDeviceTypedef *device)
 {
     if (![device isConnected])
         return false;
@@ -160,46 +118,32 @@ inline static bool shouldConsiderDeviceInDeviceList(AVCaptureDeviceType *device)
     return true;
 }
 
-void AVCaptureDeviceManager::refreshCaptureDeviceList()
+void AVCaptureDeviceManager::refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType type)
 {
-    for (AVCaptureDeviceType *platformDevice in [getAVCaptureDeviceClass() devices]) {
-        if (!shouldConsiderDeviceInDeviceList(platformDevice))
+    ASSERT(type == CaptureDevice::DeviceType::Video || type == CaptureDevice::DeviceType::Audio);
+
+    NSString *platformType = (type == CaptureDevice::DeviceType::Video) ? AVMediaTypeVideo : AVMediaTypeAudio;
+
+    for (AVCaptureDeviceTypedef *platformDevice in [getAVCaptureDeviceClass() devices]) {
+
+        bool hasMatchingType = [platformDevice hasMediaType:platformType] || [platformDevice hasMediaType:AVMediaTypeMuxed];
+        if (!hasMatchingType)
             continue;
 
-        CaptureDeviceInfo captureDevice;
-        if (!captureDeviceFromDeviceID(platformDevice.uniqueID, captureDevice)) {
-            // An AVCaptureDevice has a unique ID, but we can't use it for the source ID because:
-            // 1. if it provides both audio and video we will need to create two sources for it
-            // 2. the unique ID persists on one system across device connections, disconnections,
-            //    application restarts, and reboots, so it could be used to figerprint a user.
-            captureDevice.m_persistentDeviceID = platformDevice.uniqueID;
-            captureDevice.m_enabled = true;
-            captureDevice.m_groupID = createCanonicalUUIDString();
-            captureDevice.m_localizedName = platformDevice.localizedName;
-            if ([platformDevice position] == AVCaptureDevicePositionFront)
-                captureDevice.m_position = RealtimeMediaSourceSettings::User;
-            if ([platformDevice position] == AVCaptureDevicePositionBack)
-                captureDevice.m_position = RealtimeMediaSourceSettings::Environment;
+        std::optional<CaptureDevice> existingCaptureDevice = captureDeviceFromPersistentID(platformDevice.uniqueID);
+        if (existingCaptureDevice && existingCaptureDevice->type() == type)
+            continue;
 
-            bool hasAudio = [platformDevice hasMediaType:AVMediaTypeAudio] || [platformDevice hasMediaType:AVMediaTypeMuxed];
-            bool hasVideo = [platformDevice hasMediaType:AVMediaTypeVideo] || [platformDevice hasMediaType:AVMediaTypeMuxed];
-            if (!hasAudio && !hasVideo)
-                continue;
-
-            // FIXME: For a given device, the source ID should persist when visiting the same request origin,
-            // but differ across different request origins.
-            captureDevice.m_sourceId = createCanonicalUUIDString();
-            captureDevice.m_sourceType = hasVideo ? RealtimeMediaSource::Video : RealtimeMediaSource::Audio;
-            if (hasVideo && hasAudio) {
-                // Add the audio component as a separate device.
-                CaptureDeviceInfo audioCaptureDevice = captureDevice;
-                audioCaptureDevice.m_sourceId = createCanonicalUUIDString();
-                audioCaptureDevice.m_sourceType = RealtimeMediaSource::Audio;
-                m_devices.append(audioCaptureDevice);
-            }
-            m_devices.append(captureDevice);
-        }
+        CaptureDevice captureDevice(platformDevice.uniqueID, type, platformDevice.localizedName);
+        captureDevice.setEnabled(deviceIsAvailable(platformDevice));
+        m_devices.append(captureDevice);
     }
+}
+
+void AVCaptureDeviceManager::refreshCaptureDevices()
+{
+    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Video);
+    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Audio);
 }
 
 bool AVCaptureDeviceManager::isAvailable()
@@ -224,89 +168,20 @@ AVCaptureDeviceManager::~AVCaptureDeviceManager()
     [m_objcObserver disconnect];
 }
 
-Vector<RefPtr<RealtimeMediaSource>> AVCaptureDeviceManager::bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type type, PassRefPtr<MediaConstraints> constraints)
+Vector<CaptureDevice> AVCaptureDeviceManager::getAudioSourcesInfo()
 {
     if (!isAvailable())
-        return Vector<RefPtr<RealtimeMediaSource>>();
+        return Vector<CaptureDevice>();
 
-    return CaptureDeviceManager::bestSourcesForTypeAndConstraints(type, constraints);
+    return CaptureDeviceManager::getAudioSourcesInfo();
 }
 
-RefPtr<RealtimeMediaSource> AVCaptureDeviceManager::sourceWithUID(const String& deviceUID, RealtimeMediaSource::Type type, MediaConstraints* constraints)
+Vector<CaptureDevice> AVCaptureDeviceManager::getVideoSourcesInfo()
 {
     if (!isAvailable())
-        return nullptr;
+        return Vector<CaptureDevice>();
 
-    return CaptureDeviceManager::sourceWithUID(deviceUID, type, constraints);
-}
-
-TrackSourceInfoVector AVCaptureDeviceManager::getSourcesInfo(const String& requestOrigin)
-{
-    if (!isAvailable())
-        return TrackSourceInfoVector();
-
-    return CaptureDeviceManager::getSourcesInfo(requestOrigin);
-}
-
-bool AVCaptureDeviceManager::verifyConstraintsForMediaType(RealtimeMediaSource::Type type, MediaConstraints* constraints, const CaptureSessionInfo* session, String& invalidConstraint)
-{
-    if (!isAvailable())
-        return false;
-
-    return CaptureDeviceManager::verifyConstraintsForMediaType(type, constraints, session, invalidConstraint);
-}
-
-CaptureSessionInfo AVCaptureDeviceManager::defaultCaptureSession() const
-{
-    // FIXME: I don't know if it's safe to use a static var here, since the state of a newly
-    // initialized AVCaptureSession may be different. If not, this should be static and use a
-    // static NeverDestroyed<CaptureSessionInfo>.
-    return AVCaptureSessionInfo([allocAVCaptureSessionInstance() init]);
-}
-
-bool AVCaptureDeviceManager::sessionSupportsConstraint(const CaptureSessionInfo* session, RealtimeMediaSource::Type type, const String& name, const String& value)
-{
-    const RealtimeMediaSourceSupportedConstraints& supportedConstraints = RealtimeMediaSourceCenter::singleton().supportedConstraints();
-    MediaConstraintType constraint = supportedConstraints.constraintFromName(name);
-    if (!supportedConstraints.supportsConstraint(constraint))
-        return false;
-
-    CaptureSessionInfo defaultSession = defaultCaptureSession();
-    if (!session)
-        session = &defaultSession;
-
-    if (type == RealtimeMediaSource::Video) {
-        if (constraint == MediaConstraintType::Width)
-            return session->bestSessionPresetForVideoDimensions(value.toInt(), 0) != emptyString();
-
-        if (constraint == MediaConstraintType::Height)
-            return session->bestSessionPresetForVideoDimensions(0, value.toInt()) != emptyString();
-    }
-    return CaptureDeviceManager::sessionSupportsConstraint(session, type, name, value);
-}
-
-RealtimeMediaSource* AVCaptureDeviceManager::createMediaSourceForCaptureDeviceWithConstraints(const CaptureDeviceInfo& captureDevice, MediaConstraints* constraints)
-{
-    AVCaptureDeviceType *device = [getAVCaptureDeviceClass() deviceWithUniqueID:captureDevice.m_persistentDeviceID];
-    if (!device)
-        return nullptr;
-
-    RefPtr<AVMediaCaptureSource> captureSource;
-    if (captureDevice.m_sourceType == RealtimeMediaSource::Audio)
-        captureSource = AVAudioCaptureSource::create(device, captureDevice.m_sourceId, constraints);
-    else
-        captureSource = AVVideoCaptureSource::create(device, captureDevice.m_sourceId, constraints);
-
-    if (constraints) {
-        CaptureSessionInfo captureSession = defaultCaptureSession();
-        if (captureDevice.m_sourceType != RealtimeMediaSource::None)
-            captureSession = AVCaptureSessionInfo(captureSource->session());
-
-        String ignoredInvalidConstraints;
-        if (!verifyConstraintsForMediaType(captureDevice.m_sourceType, constraints, &captureSession, ignoredInvalidConstraints))
-            return nullptr;
-    }
-    return captureSource.leakRef();
+    return CaptureDeviceManager::getVideoSourcesInfo();
 }
 
 void AVCaptureDeviceManager::registerForDeviceNotifications()
@@ -317,12 +192,15 @@ void AVCaptureDeviceManager::registerForDeviceNotifications()
 
 void AVCaptureDeviceManager::deviceConnected()
 {
-    refreshCaptureDeviceList();
+    refreshCaptureDevices();
+
+    for (auto& observer : m_observers.values())
+        observer();
 }
 
-void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceType* device)
+void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
 {
-    Vector<CaptureDeviceInfo>& devices = captureDeviceList();
+    Vector<CaptureDevice>& devices = captureDevices();
 
     size_t count = devices.size();
     if (!count)
@@ -330,43 +208,14 @@ void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceType* device)
 
     String deviceID = device.uniqueID;
     for (size_t i = 0; i < count; ++i) {
-        if (devices[i].m_persistentDeviceID == deviceID) {
+        if (devices[i].persistentId() == deviceID) {
             LOG(Media, "AVCaptureDeviceManager::deviceDisconnected(%p), device %d disabled", this, i);
-            devices[i].m_enabled = false;
+            devices[i].setEnabled(false);
         }
     }
-}
 
-bool AVCaptureDeviceManager::isSupportedFrameRate(float frameRate) const
-{
-    // FIXME: We should use [AVCaptureConnection videoMinFrameDuration] and [AVCaptureConnection videoMaxFrameDuration],
-    // but they only work with a "live" AVCaptureConnection. For now, just use the default platform-independent behavior.
-    return CaptureDeviceManager::isSupportedFrameRate(frameRate);
-}
-
-const RealtimeMediaSourceSupportedConstraints& AVCaptureDeviceManager::supportedConstraints()
-{
-    if (m_supportedConstraints.supportsDeviceId())
-        return m_supportedConstraints;
-
-    m_supportedConstraints.setSupportsDeviceId(true);
-
-    Vector<CaptureDeviceInfo>& devices = captureDeviceList();
-
-    for (auto& captureDevice : devices) {
-        if (captureDevice.m_sourceType == RealtimeMediaSource::Audio)
-            m_supportedConstraints.setSupportsVolume(true);
-
-        if (captureDevice.m_sourceType == RealtimeMediaSource::Video) {
-            m_supportedConstraints.setSupportsWidth(true);
-            m_supportedConstraints.setSupportsHeight(true);
-            m_supportedConstraints.setSupportsAspectRatio(true);
-            m_supportedConstraints.setSupportsFrameRate(true);
-            m_supportedConstraints.setSupportsFacingMode(true);
-        }
-    }
-    
-    return m_supportedConstraints;
+    for (auto& observer : m_observers.values())
+        observer();
 }
 
 } // namespace WebCore
@@ -395,7 +244,7 @@ const RealtimeMediaSourceSupportedConstraints& AVCaptureDeviceManager::supported
 
     dispatch_async(dispatch_get_main_queue(), ^{
         if (m_callback) {
-            AVCaptureDeviceType *device = [notification object];
+            AVCaptureDeviceTypedef *device = [notification object];
             m_callback->deviceDisconnected(device);
         }
     });

@@ -25,7 +25,21 @@
 (deny default (with partial-symbolication))
 (allow system-audit file-read-metadata)
 
+(deny mach-lookup (xpc-service-name-prefix ""))
+
 (import "common.sb")
-(import "removed-dev-nodes.sb")
 
 (allow file-read* file-write* (extension "com.apple.app-sandbox.read-write"))
+
+(deny sysctl*)
+(allow sysctl-read
+    (sysctl-name
+        "hw.availcpu"
+        "hw.ncpu"
+        "hw.model"
+        "kern.memorystatus_level"
+        "vm.footprint_suspend"))
+
+;; Various services required by system frameworks
+(allow mach-lookup
+   (global-name "com.apple.analyticsd"))

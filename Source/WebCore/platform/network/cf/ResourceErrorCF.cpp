@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ResourceError.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "URL.h"
 #include <CoreFoundation/CFError.h>
@@ -40,17 +40,17 @@
 namespace WebCore {
 
 ResourceError::ResourceError(CFErrorRef cfError)
-    : m_dataIsUpToDate(false)
+    : ResourceErrorBase(Type::Null)
+    , m_dataIsUpToDate(false)
     , m_platformError(cfError)
 {
-    m_isNull = !cfError;
-    if (!m_isNull)
-        m_isTimeout = CFErrorGetCode(m_platformError.get()) == kCFURLErrorTimedOut;
+    if (cfError)
+        setType((CFErrorGetCode(m_platformError.get()) == kCFURLErrorTimedOut) ? Type::Timeout : Type::General);
 }
 
 #if PLATFORM(WIN)
 ResourceError::ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, CFDataRef certificate)
-    : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription)
+    : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription, Type::General)
     , m_dataIsUpToDate(true)
     , m_certificate(certificate)
 {
@@ -119,12 +119,13 @@ void ResourceError::platformLazyInit()
     m_dataIsUpToDate = true;
 }
 
-void ResourceError::platformCopy(ResourceError& errorCopy) const
+
+void ResourceError::doPlatformIsolatedCopy(const ResourceError& other)
 {
 #if PLATFORM(WIN)
-    errorCopy.m_certificate = m_certificate;
+    m_certificate = other.m_certificate;
 #else
-    UNUSED_PARAM(errorCopy);
+    UNUSED_PARAM(other);
 #endif
 }
 
@@ -135,7 +136,7 @@ bool ResourceError::platformCompare(const ResourceError& a, const ResourceError&
 
 CFErrorRef ResourceError::cfError() const
 {
-    if (m_isNull) {
+    if (isNull()) {
         ASSERT(!m_platformError);
         return 0;
     }
@@ -171,9 +172,9 @@ ResourceError::operator CFErrorRef() const
 
 // FIXME: Once <rdar://problem/5050841> is fixed we can remove this constructor.
 ResourceError::ResourceError(CFStreamError error)
-    : m_dataIsUpToDate(true)
+    : ResourceErrorBase(Type::General)
+    , m_dataIsUpToDate(true)
 {
-    m_isNull = false;
     m_errorCode = error.error;
 
     switch(error.domain) {
@@ -217,4 +218,4 @@ ResourceError::operator CFStreamError() const
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

@@ -9,6 +9,13 @@
 
             var pc = null;
 
+            // Let's ensure built-ins are shielded from user scripts
+            var thenPromise = Promise.prototype.then;
+            Promise.prototype.then = function() {
+                console.log("Promise.prototype.then is called internally");
+                return thenPromise.apply(this, arguments);
+            }
+
             function requestSucceeded2()
             {
                 testPassed('setRemoteDescription succeeded.');
@@ -20,7 +27,7 @@
             {
                 testPassed('setLocalDescription succeeded.');
                 check("offer", "local", "", "", '"have-local-offer"')
-                pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+                pc = new RTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
                 check("", "", "", "", '"stable"');
                 sessionDescription = new RTCSessionDescription({type:"offer", sdp:"remote"});
                 shouldNotThrow('pc.setRemoteDescription(sessionDescription, requestSucceeded2, finishIfFailed);');
@@ -95,7 +102,7 @@
                 shouldBe('pc.signalingState', signalingState);
             }
 
-            pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            pc = new RTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
             shouldBe('pc.signalingState', '"stable"');
             var sessionDescription = new RTCSessionDescription({type:"answer", sdp:"local"});
             shouldNotThrow('pc.setLocalDescription(sessionDescription, finishIfSucceeded, requestFailed1);');

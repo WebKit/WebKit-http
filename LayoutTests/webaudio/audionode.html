@@ -2,7 +2,7 @@
 
 <html>
 <head>
-<script src="../resources/js-test-pre.js"></script>
+<script src="../resources/js-test.js"></script>
 <script type="text/javascript" src="resources/audio-testing.js"></script>
 </head>
 
@@ -17,19 +17,8 @@ var context = 0;
 var context2 = 0;
 
 function runTest() {
-    if (window.testRunner) {
-        testRunner.dumpAsText();
-        testRunner.waitUntilDone();
-    }
-    
-    window.jsTestIsAsync = true;
-
     context = new webkitAudioContext();
     window.audioNode = context.createBufferSource();
-
-    shouldThrow("audioNode.noteOn()");
-    shouldThrow("audioNode.noteGrainOn()");
-    shouldThrow("audioNode.noteOff()");
 
     // Check input and output numbers of AudioSourceNode.
     if (audioNode.numberOfInputs === 0)
@@ -55,12 +44,8 @@ function runTest() {
 
     // Try calling connect() method with illegal values.
 
-    try {
-        audioNode.connect(0, 0, 0);
-        testFailed("connect() exception should be thrown for illegal destination AudioNode.");
-    } catch(e) {
-        testPassed("connect() exception thrown for illegal destination AudioNode.");
-    }
+    shouldThrowErrorName("audioNode.connect(0, 0, 0)", "TypeError");
+    shouldThrowErrorName("audioNode.connect(null, 0, 0)", "TypeError");
 
     try {
         audioNode.connect(context.destination, 5, 0);
@@ -93,12 +78,12 @@ function runTest() {
         testPassed("exception thrown when connecting to other context's node.");
     }
 
-    // Create a new context with not enough arguments
+    // Create a new context with too many arguments
     try {
         context2 = new webkitAudioContext(0, 0);
-        testFailed("exception should be thrown when creating audio context with not enough arguments.");
+        testPassed("exception should not be thrown when creating audio context with too many arguments.");
     } catch(e) {
-        testPassed("exception thrown when creating audio context with not enough arguments.");
+        testFailed("exception thrown when creating audio context with too many arguments.");
     }
 
     // Ensure it is an EventTarget
@@ -110,14 +95,10 @@ function runTest() {
     } catch(e) {
         testFailed("exception shouldn't be thrown when testing whether audio node is an event target");
     }
-
-    finishJSTest();
 }
 
 runTest();
 
 </script>
-
-<script src="../resources/js-test-post.js"></script>
 </body>
 </html>

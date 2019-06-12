@@ -64,118 +64,90 @@ static WebMouseEvent::Button currentMouseButton()
 static WebMouseEvent::Button mouseButtonForEvent(NSEvent *event)
 {
     switch ([event type]) {
-        case NSLeftMouseDown:
-        case NSLeftMouseUp:
-        case NSLeftMouseDragged:
-            return WebMouseEvent::LeftButton;
-        case NSRightMouseDown:
-        case NSRightMouseUp:
-        case NSRightMouseDragged:
-            return WebMouseEvent::RightButton;
-        case NSOtherMouseDown:
-        case NSOtherMouseUp:
-        case NSOtherMouseDragged:
-            return WebMouseEvent::MiddleButton;
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
-        case NSEventTypePressure:
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+        return WebMouseEvent::LeftButton;
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+        return WebMouseEvent::RightButton;
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+        return WebMouseEvent::MiddleButton;
+#if defined(__LP64__)
+    case NSEventTypePressure:
 #endif
-        case NSMouseEntered:
-        case NSMouseExited:
-            return currentMouseButton();
-        default:
-            return WebMouseEvent::NoButton;
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+        return currentMouseButton();
+    default:
+        return WebMouseEvent::NoButton;
     }
 }
 
 static WebEvent::Type mouseEventTypeForEvent(NSEvent* event)
 {
     switch ([event type]) {
-        case NSLeftMouseDragged:
-        case NSMouseEntered:
-        case NSMouseExited:
-        case NSMouseMoved:
-        case NSOtherMouseDragged:
-        case NSRightMouseDragged:
-            return WebEvent::MouseMove;
-        case NSLeftMouseDown:
-        case NSRightMouseDown:
-        case NSOtherMouseDown:
-            return WebEvent::MouseDown;
-        case NSLeftMouseUp:
-        case NSRightMouseUp:
-        case NSOtherMouseUp:
-            return WebEvent::MouseUp;
-        default:
-            return WebEvent::MouseMove;
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+    case NSEventTypeMouseMoved:
+    case NSEventTypeOtherMouseDragged:
+    case NSEventTypeRightMouseDragged:
+        return WebEvent::MouseMove;
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeOtherMouseDown:
+        return WebEvent::MouseDown;
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeOtherMouseUp:
+        return WebEvent::MouseUp;
+    default:
+        return WebEvent::MouseMove;
     }
 }
 
 static int clickCountForEvent(NSEvent *event)
 {
     switch ([event type]) {
-        case NSLeftMouseDown:
-        case NSLeftMouseUp:
-        case NSLeftMouseDragged:
-        case NSRightMouseDown:
-        case NSRightMouseUp:
-        case NSRightMouseDragged:
-        case NSOtherMouseDown:
-        case NSOtherMouseUp:
-        case NSOtherMouseDragged:
-            return [event clickCount];
-        default:
-            return 0;
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+        return [event clickCount];
+    default:
+        return 0;
     }
-}
-
-static NSScreen *screenForWindow(NSWindow *window)
-{
-    NSScreen *screen = [window screen]; // nil if the window is off-screen
-    if (screen)
-        return screen;
-    
-    NSArray *screens = [NSScreen screens];
-    if ([screens count] > 0)
-        return [screens objectAtIndex:0]; // screen containing the menubar
-    
-    return nil;
-}
-
-static NSPoint flipScreenPoint(const NSPoint& screenPoint, NSScreen *screen)
-{
-    NSPoint flippedPoint = screenPoint;
-    flippedPoint.y = NSMaxY([screen frame]) - flippedPoint.y;
-    return flippedPoint;
-}
-
-static NSPoint globalPoint(const NSPoint& windowPoint, NSWindow *window)
-{
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    return flipScreenPoint([window convertBaseToScreen:windowPoint], screenForWindow(window));
-#pragma clang diagnostic pop
 }
 
 static NSPoint globalPointForEvent(NSEvent *event)
 {
     switch ([event type]) {
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__)
     case NSEventTypePressure:
 #endif
-    case NSLeftMouseDown:
-    case NSLeftMouseDragged:
-    case NSLeftMouseUp:
-    case NSMouseEntered:
-    case NSMouseExited:
-    case NSMouseMoved:
-    case NSOtherMouseDown:
-    case NSOtherMouseDragged:
-    case NSOtherMouseUp:
-    case NSRightMouseDown:
-    case NSRightMouseDragged:
-    case NSRightMouseUp:
-    case NSScrollWheel:
-        return globalPoint([event locationInWindow], [event window]);
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+    case NSEventTypeMouseMoved:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeScrollWheel:
+        return WebCore::globalPoint([event locationInWindow], [event window]);
     default:
         return NSZeroPoint;
     }
@@ -184,22 +156,22 @@ static NSPoint globalPointForEvent(NSEvent *event)
 static NSPoint pointForEvent(NSEvent *event, NSView *windowView)
 {
     switch ([event type]) {
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__)
     case NSEventTypePressure:
 #endif
-    case NSLeftMouseDown:
-    case NSLeftMouseDragged:
-    case NSLeftMouseUp:
-    case NSMouseEntered:
-    case NSMouseExited:
-    case NSMouseMoved:
-    case NSOtherMouseDown:
-    case NSOtherMouseDragged:
-    case NSOtherMouseUp:
-    case NSRightMouseDown:
-    case NSRightMouseDragged:
-    case NSRightMouseUp:
-    case NSScrollWheel: {
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+    case NSEventTypeMouseMoved:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeScrollWheel: {
         // Note: This will have its origin at the bottom left of the window unless windowView is flipped.
         // In those cases, the Y coordinate gets flipped by Widget::convertFromContainingWindow.
         NSPoint location = [event locationInWindow];
@@ -249,16 +221,20 @@ static WebWheelEvent::Phase momentumPhaseForEvent(NSEvent *event)
     return static_cast<WebWheelEvent::Phase>(phase);
 }
 
-static inline String textFromEvent(NSEvent* event)
+static inline String textFromEvent(NSEvent* event, bool replacesSoftSpace)
 {
-    if ([event type] == NSFlagsChanged)
+    if (replacesSoftSpace)
+        return emptyString();
+    if ([event type] == NSEventTypeFlagsChanged)
         return emptyString();
     return String([event characters]);
 }
 
-static inline String unmodifiedTextFromEvent(NSEvent* event)
+static inline String unmodifiedTextFromEvent(NSEvent* event, bool replacesSoftSpace)
 {
-    if ([event type] == NSFlagsChanged)
+    if (replacesSoftSpace)
+        return emptyString();
+    if ([event type] == NSEventTypeFlagsChanged)
         return emptyString();
     return String([event charactersIgnoringModifiers]);
 }
@@ -267,67 +243,67 @@ static bool isKeypadEvent(NSEvent* event)
 {
     // Check that this is the type of event that has a keyCode.
     switch ([event type]) {
-        case NSKeyDown:
-        case NSKeyUp:
-        case NSFlagsChanged:
-            break;
-        default:
-            return false;
+    case NSEventTypeKeyDown:
+    case NSEventTypeKeyUp:
+    case NSEventTypeFlagsChanged:
+        break;
+    default:
+        return false;
     }
 
     switch ([event keyCode]) {
-        case 71: // Clear
-        case 81: // =
-        case 75: // /
-        case 67: // *
-        case 78: // -
-        case 69: // +
-        case 76: // Enter
-        case 65: // .
-        case 82: // 0
-        case 83: // 1
-        case 84: // 2
-        case 85: // 3
-        case 86: // 4
-        case 87: // 5
-        case 88: // 6
-        case 89: // 7
-        case 91: // 8
-        case 92: // 9
-            return true;
-     }
+    case 71: // Clear
+    case 81: // =
+    case 75: // /
+    case 67: // *
+    case 78: // -
+    case 69: // +
+    case 76: // Enter
+    case 65: // .
+    case 82: // 0
+    case 83: // 1
+    case 84: // 2
+    case 85: // 3
+    case 86: // 4
+    case 87: // 5
+    case 88: // 6
+    case 89: // 7
+    case 91: // 8
+    case 92: // 9
+        return true;
+    }
      
      return false;
 }
 
 static inline bool isKeyUpEvent(NSEvent *event)
 {
-    if ([event type] != NSFlagsChanged)
-        return [event type] == NSKeyUp;
+    if ([event type] != NSEventTypeFlagsChanged)
+        return [event type] == NSEventTypeKeyUp;
     // FIXME: This logic fails if the user presses both Shift keys at once, for example:
     // we treat releasing one of them as keyDown.
     switch ([event keyCode]) {
-        case 54: // Right Command
-        case 55: // Left Command
-            return ([event modifierFlags] & NSCommandKeyMask) == 0;
-            
-        case 57: // Capslock
-            return ([event modifierFlags] & NSAlphaShiftKeyMask) == 0;
-            
-        case 56: // Left Shift
-        case 60: // Right Shift
-            return ([event modifierFlags] & NSShiftKeyMask) == 0;
-            
-        case 58: // Left Alt
-        case 61: // Right Alt
-            return ([event modifierFlags] & NSAlternateKeyMask) == 0;
-            
-        case 59: // Left Ctrl
-        case 62: // Right Ctrl
-            return ([event modifierFlags] & NSControlKeyMask) == 0;
-            
-        case 63: // Function
-            return ([event modifierFlags] & NSFunctionKeyMask) == 0;
+    case 54: // Right Command
+    case 55: // Left Command
+        return !([event modifierFlags] & NSEventModifierFlagCommand);
+
+    case 57: // Capslock
+        return !([event modifierFlags] & NSEventModifierFlagCapsLock);
+
+    case 56: // Left Shift
+    case 60: // Right Shift
+        return !([event modifierFlags] & NSEventModifierFlagShift);
+
+    case 58: // Left Alt
+    case 61: // Right Alt
+        return !([event modifierFlags] & NSEventModifierFlagOption);
+
+    case 59: // Left Ctrl
+    case 62: // Right Ctrl
+        return !([event modifierFlags] & NSEventModifierFlagControl);
+
+    case 63: // Function
+        return !([event modifierFlags] & NSEventModifierFlagFunction);
     }
     return false;
 }
@@ -335,31 +311,24 @@ static inline bool isKeyUpEvent(NSEvent *event)
 static inline WebEvent::Modifiers modifiersForEvent(NSEvent *event)
 {
     unsigned modifiers = 0;
-    if ([event modifierFlags] & NSAlphaShiftKeyMask)
+
+    if ([event modifierFlags] & NSEventModifierFlagCapsLock)
         modifiers |= WebEvent::CapsLockKey;
-    if ([event modifierFlags] & NSShiftKeyMask)
+    if ([event modifierFlags] & NSEventModifierFlagShift)
         modifiers |= WebEvent::ShiftKey;
-    if ([event modifierFlags] & NSControlKeyMask)
+    if ([event modifierFlags] & NSEventModifierFlagControl)
         modifiers |= WebEvent::ControlKey;
-    if ([event modifierFlags] & NSAlternateKeyMask)
+    if ([event modifierFlags] & NSEventModifierFlagOption)
         modifiers |= WebEvent::AltKey;
-    if ([event modifierFlags] & NSCommandKeyMask)
+    if ([event modifierFlags] & NSEventModifierFlagCommand)
         modifiers |= WebEvent::MetaKey;
+
     return (WebEvent::Modifiers)modifiers;
 }
 
 static int typeForEvent(NSEvent *event)
 {
-    if ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)])
-        return static_cast<int>([NSMenu menuTypeForEvent:event]);
-    
-    if (mouseButtonForEvent(event) == WebMouseEvent::RightButton)
-        return static_cast<int>(NSMenuTypeContextMenu);
-    
-    if (mouseButtonForEvent(event) == WebMouseEvent::LeftButton && (modifiersForEvent(event) & WebEvent::ControlKey))
-        return static_cast<int>(NSMenuTypeContextMenu);
-    
-    return static_cast<int>(NSMenuTypeNone);
+    return static_cast<int>([NSMenu menuTypeForEvent:event]);
 }
 
 bool WebEventFactory::shouldBeHandledAsContextClick(const WebCore::PlatformMouseEvent& event)
@@ -373,7 +342,7 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(NSEvent *event, NSEvent *last
     NSPoint globalPosition = globalPointForEvent(event);
 
     WebEvent::Type type = mouseEventTypeForEvent(event);
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__)
     if ([event type] == NSEventTypePressure) {
         // Since AppKit doesn't send mouse events for force down or force up, we have to use the current pressure
         // event and lastPressureEvent to detect if this is MouseForceDown, MouseForceUp, or just MouseForceChanged.
@@ -397,13 +366,13 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(NSEvent *event, NSEvent *last
     int menuTypeForEvent = typeForEvent(event);
 
     double force = 0;
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+#if defined(__LP64__)
     int stage = [event type] == NSEventTypePressure ? event.stage : lastPressureEvent.stage;
     double pressure = [event type] == NSEventTypePressure ? event.pressure : lastPressureEvent.pressure;
     force = pressure + stage;
 #endif
 
-    return WebMouseEvent(type, button, IntPoint(position), IntPoint(globalPosition), deltaX, deltaY, deltaZ, clickCount, modifiers, timestamp, force, eventNumber, menuTypeForEvent);
+    return WebMouseEvent(type, button, IntPoint(position), IntPoint(globalPosition), deltaX, deltaY, deltaZ, clickCount, modifiers, timestamp, force, WebMouseEvent::SyntheticClickType::NoTap, eventNumber, menuTypeForEvent);
 }
 
 WebWheelEvent WebEventFactory::createWebWheelEvent(NSEvent *event, NSView *windowView)
@@ -455,16 +424,18 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(NSEvent *event, NSView *windo
     return WebWheelEvent(WebEvent::Wheel, IntPoint(position), IntPoint(globalPosition), FloatSize(deltaX, deltaY), FloatSize(wheelTicksX, wheelTicksY), granularity, directionInvertedFromDevice, phase, momentumPhase, hasPreciseScrollingDeltas, scrollCount, unacceleratedScrollingDelta, modifiers, timestamp);
 }
 
-WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool handledByInputMethod, const Vector<WebCore::KeypressCommand>& commands)
+WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool handledByInputMethod, bool replacesSoftSpace, const Vector<WebCore::KeypressCommand>& commands)
 {
     WebEvent::Type type             = isKeyUpEvent(event) ? WebEvent::KeyUp : WebEvent::KeyDown;
-    String text                     = textFromEvent(event);
-    String unmodifiedText           = unmodifiedTextFromEvent(event);
+    String text                     = textFromEvent(event, replacesSoftSpace);
+    String unmodifiedText           = unmodifiedTextFromEvent(event, replacesSoftSpace);
+    String key                      = keyForKeyEvent(event);
+    String code                     = codeForKeyEvent(event);
     String keyIdentifier            = keyIdentifierForKeyEvent(event);
     int windowsVirtualKeyCode       = windowsKeyCodeForKeyEvent(event);
     int nativeVirtualKeyCode        = [event keyCode];
     int macCharCode                 = WKGetNSEventKeyChar(event);
-    bool autoRepeat                 = ([event type] != NSFlagsChanged) && [event isARepeat];
+    bool autoRepeat                 = [event type] != NSEventTypeFlagsChanged && [event isARepeat];
     bool isKeypad                   = isKeypadEvent(event);
     bool isSystemKey                = false; // SystemKey is always false on the Mac.
     WebEvent::Modifiers modifiers   = modifiersForEvent(event);
@@ -488,7 +459,7 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool ha
         unmodifiedText = "\x9";
     }
 
-    return WebKeyboardEvent(type, text, unmodifiedText, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, handledByInputMethod, commands, autoRepeat, isKeypad, isSystemKey, modifiers, timestamp);
+    return WebKeyboardEvent(type, text, unmodifiedText, key, code, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, handledByInputMethod, commands, autoRepeat, isKeypad, isSystemKey, modifiers, timestamp);
 }
 
 } // namespace WebKit

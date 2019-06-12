@@ -22,15 +22,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AudioNodeOutput_h
-#define AudioNodeOutput_h
+#pragma once
 
 #include "AudioBus.h"
 #include "AudioNode.h"
 #include "AudioParam.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -149,5 +147,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // AudioNodeOutput_h

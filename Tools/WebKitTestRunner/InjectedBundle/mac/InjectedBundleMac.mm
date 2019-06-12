@@ -23,6 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "config.h"
 #import "InjectedBundle.h"
 
 #import <Foundation/Foundation.h>
@@ -37,13 +38,14 @@
 
 namespace WTR {
 
-void InjectedBundle::platformInitialize(WKTypeRef)
+void InjectedBundle::platformInitialize(WKTypeRef initializationUserData)
 {
     static const int NoFontSmoothing = 0;
     static const int BlueTintedAppearance = 1;
 
     // Work around missing /etc/catalog <rdar://problem/4292995>.
     setenv("XML_CATALOG_FILES", "", 0);
+    setenv("XTYPE_ALLOW_AUTOACTIVATION", "1", 0);
 
     // Language was set up earlier in main(). Don't clobber it.
     NSArray *languages = [[[NSUserDefaults standardUserDefaults] volatileDomainForName:NSArgumentDomain] valueForKey:@"AppleLanguages"];
@@ -74,17 +76,20 @@ void InjectedBundle::platformInitialize(WKTypeRef)
             @"wellcome": @"welcome",
             @"hellolfworld": @"hello\nworld"
         },
-#if __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
         @"AppleSystemFontOSSubversion": @(10),
 #endif
         @"AppleEnableSwipeNavigateWithScrolls": @YES,
         @"com.apple.swipescrolldirection": @1,
+        @"com.apple.trackpad.forceClick": @1,
     };
 
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:dict forName:NSArgumentDomain];
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
     // Make NSFont use the new defaults.
     [NSFont initialize];
+#endif
 
     // Underlying frameworks have already read AppleAntiAliasingThreshold default before we changed it.
     // A distributed notification is delivered to all applications, but it should be harmless, and it's the only way to update all underlying frameworks anyway.

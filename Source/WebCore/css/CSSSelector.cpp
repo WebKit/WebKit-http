@@ -26,13 +26,11 @@
 #include "config.h"
 #include "CSSSelector.h"
 
-#include "CSSOMUtils.h"
+#include "CSSMarkup.h"
 #include "CSSSelectorList.h"
 #include "HTMLNames.h"
 #include "SelectorPseudoTypeMap.h"
 #include <wtf/Assertions.h>
-#include <wtf/HashMap.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -47,10 +45,11 @@ struct SameSizeAsCSSSelector {
     void* unionPointer;
 };
 
+static_assert(CSSSelector::RelationType::Subselector == 0, "Subselector must be 0 for consumeCombinator.");
 static_assert(sizeof(CSSSelector) == sizeof(SameSizeAsCSSSelector), "CSSSelector should remain small.");
 
 CSSSelector::CSSSelector(const QualifiedName& tagQName, bool tagIsForNamespaceRule)
-    : m_relation(Descendant)
+    : m_relation(DescendantSpace)
     , m_match(Tag)
     , m_pseudoType(0)
     , m_parsedNth(false)
@@ -60,9 +59,6 @@ CSSSelector::CSSSelector(const QualifiedName& tagQName, bool tagIsForNamespaceRu
     , m_hasNameWithCase(false)
     , m_isForPage(false)
     , m_tagIsForNamespaceRule(tagIsForNamespaceRule)
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-    , m_descendantDoubleChildSyntax(false)
-#endif
     , m_caseInsensitiveAttributeValueMatching(false)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     , m_destructorHasBeenCalled(false)
@@ -87,7 +83,8 @@ void CSSSelector::createRareData()
     if (m_hasRareData)
         return;
     // Move the value to the rare data stucture.
-    m_data.m_rareData = &RareData::create(adoptRef(m_data.m_value)).leakRef();
+    AtomicString value { adoptRef(m_data.m_value) };
+    m_data.m_rareData = &RareData::create(WTFMove(value)).leakRef();
     m_hasRareData = true;
 }
 
@@ -143,7 +140,7 @@ static unsigned simpleSelectorSpecificityInternal(const CSSSelector& simpleSelec
     case CSSSelector::End:
         return static_cast<unsigned>(SelectorSpecificityIncrement::ClassB);
     case CSSSelector::Tag:
-        return (simpleSelector.tagQName().localName() != starAtom) ? static_cast<unsigned>(SelectorSpecificityIncrement::ClassC) : 0;
+        return (simpleSelector.tagQName().localName() != starAtom()) ? static_cast<unsigned>(SelectorSpecificityIncrement::ClassC) : 0;
     case CSSSelector::PseudoElement:
         return static_cast<unsigned>(SelectorSpecificityIncrement::ClassC);
     case CSSSelector::Unknown:
@@ -249,7 +246,7 @@ unsigned CSSSelector::specificityForPage() const
     for (const CSSSelector* component = this; component; component = component->tagHistory()) {
         switch (component->match()) {
         case Tag:
-            s += tagQName().localName() == starAtom ? 0 : 4;
+            s += tagQName().localName() == starAtom() ? 0 : 4;
             break;
         case PagePseudoClass:
             switch (component->pagePseudoClassType()) {
@@ -299,9 +296,11 @@ PseudoId CSSSelector::pseudoId(PseudoElementType type)
 #if ENABLE(VIDEO_TRACK)
     case PseudoElementCue:
 #endif
+    case PseudoElementSlotted:
     case PseudoElementUnknown:
     case PseudoElementUserAgentCustom:
     case PseudoElementWebKitCustom:
+    case PseudoElementWebKitCustomLegacyPrefixed:
         return NOPSEUDO;
     }
 
@@ -407,10 +406,10 @@ String CSSSelector::selectorText(const String& rightSide) const
     while (true) {
         if (cs->match() == CSSSelector::Id) {
             str.append('#');
-            serializeIdentifier(cs->value(), str);
+            serializeIdentifier(cs->serializingValue(), str);
         } else if (cs->match() == CSSSelector::Class) {
             str.append('.');
-            serializeIdentifier(cs->value(), str);
+            serializeIdentifier(cs->serializingValue(), str);
         } else if (cs->match() == CSSSelector::PseudoClass) {
             switch (cs->pseudoClassType()) {
 #if ENABLE(FULLSCREEN_API)
@@ -494,6 +493,9 @@ String CSSSelector::selectorText(const String& rightSide) const
                 break;
             case CSSSelector::PseudoClassFocus:
                 str.appendLiteral(":focus");
+                break;
+            case CSSSelector::PseudoClassFocusWithin:
+                str.appendLiteral(":focus-within");
                 break;
 #if ENABLE(VIDEO_TRACK)
             case CSSSelector::PseudoClassFuture:
@@ -635,21 +637,34 @@ String CSSSelector::selectorText(const String& rightSide) const
             case CSSSelector::PseudoClassWindowInactive:
                 str.appendLiteral(":window-inactive");
                 break;
-#if ENABLE(SHADOW_DOM)
             case CSSSelector::PseudoClassHost:
                 str.appendLiteral(":host");
                 break;
-#endif
+            case CSSSelector::PseudoClassDefined:
+                str.appendLiteral(":defined");
+                break;
             case CSSSelector::PseudoClassUnknown:
                 ASSERT_NOT_REACHED();
             }
         } else if (cs->match() == CSSSelector::PseudoElement) {
-            str.appendLiteral("::");
-            str.append(cs->value());
+            switch (cs->pseudoElementType()) {
+            case CSSSelector::PseudoElementSlotted:
+                str.appendLiteral("::slotted(");
+                cs->selectorList()->buildSelectorsText(str);
+                str.append(')');
+                break;
+            case CSSSelector::PseudoElementWebKitCustomLegacyPrefixed:
+                if (cs->value() == "placeholder")
+                    str.appendLiteral("::-webkit-input-placeholder");
+                break;
+            default:
+                str.appendLiteral("::");
+                str.append(cs->serializingValue());
+            }
         } else if (cs->isAttributeSelector()) {
             str.append('[');
             const AtomicString& prefix = cs->attribute().prefix();
-            if (!prefix.isNull()) {
+            if (!prefix.isEmpty()) {
                 str.append(prefix);
                 str.append('|');
             }
@@ -681,7 +696,7 @@ String CSSSelector::selectorText(const String& rightSide) const
                     break;
             }
             if (cs->match() != CSSSelector::Set) {
-                serializeString(cs->value(), str);
+                serializeString(cs->serializingValue(), str);
                 if (cs->attributeValueMatchingIsCaseInsensitive())
                     str.appendLiteral(" i]");
                 else
@@ -701,18 +716,14 @@ String CSSSelector::selectorText(const String& rightSide) const
             }
         }
 
-        if (cs->relation() != CSSSelector::SubSelector || !cs->tagHistory())
+        if (cs->relation() != CSSSelector::Subselector || !cs->tagHistory())
             break;
         cs = cs->tagHistory();
     }
 
     if (const CSSSelector* tagHistory = cs->tagHistory()) {
         switch (cs->relation()) {
-        case CSSSelector::Descendant:
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-            if (cs->m_descendantDoubleChildSyntax)
-                return tagHistory->selectorText(" >> " + str.toString() + rightSide);
-#endif
+        case CSSSelector::DescendantSpace:
             return tagHistory->selectorText(" " + str.toString() + rightSide);
         case CSSSelector::Child:
             return tagHistory->selectorText(" > " + str.toString() + rightSide);
@@ -720,7 +731,11 @@ String CSSSelector::selectorText(const String& rightSide) const
             return tagHistory->selectorText(" + " + str.toString() + rightSide);
         case CSSSelector::IndirectAdjacent:
             return tagHistory->selectorText(" ~ " + str.toString() + rightSide);
-        case CSSSelector::SubSelector:
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+        case CSSSelector::DescendantDoubleChild:
+            return tagHistory->selectorText(" >> " + str.toString() + rightSide);
+#endif
+        case CSSSelector::Subselector:
             ASSERT_NOT_REACHED();
 #if ASSERT_DISABLED
             FALLTHROUGH;
@@ -739,6 +754,14 @@ void CSSSelector::setAttribute(const QualifiedName& value, bool isCaseInsensitiv
     m_data.m_rareData->m_attributeCanonicalLocalName = isCaseInsensitive ? value.localName().convertToASCIILowercase() : value.localName();
 }
 
+void CSSSelector::setAttribute(const QualifiedName& value, bool convertToLowercase, AttributeMatchType matchType)
+{
+    createRareData();
+    m_data.m_rareData->m_attribute = value;
+    m_data.m_rareData->m_attributeCanonicalLocalName = convertToLowercase ? value.localName().convertToASCIILowercase() : value.localName();
+    m_caseInsensitiveAttributeValueMatching = matchType == CaseInsensitive;
+}
+    
 void CSSSelector::setArgument(const AtomicString& value)
 {
     createRareData();
@@ -757,6 +780,16 @@ void CSSSelector::setSelectorList(std::unique_ptr<CSSSelectorList> selectorList)
     m_data.m_rareData->m_selectorList = WTFMove(selectorList);
 }
 
+void CSSSelector::setNth(int a, int b)
+{
+    createRareData();
+    m_parsedNth = true; // FIXME-NEWPARSER: Can remove this parsed boolean once old parser is gone.
+    m_data.m_rareData->m_a = a;
+    m_data.m_rareData->m_b = b;
+}
+    
+// FIXME-NEWPARSER: All the code to parse nth-child stuff can be removed when
+// the new parser is enabled.
 bool CSSSelector::parseNth() const
 {
     if (!m_hasRareData)
@@ -787,19 +820,18 @@ int CSSSelector::nthB() const
     return m_data.m_rareData->m_b;
 }
 
-CSSSelector::RareData::RareData(PassRefPtr<AtomicStringImpl> value)
-    : m_value(value.leakRef())
+CSSSelector::RareData::RareData(AtomicString&& value)
+    : m_matchingValue(value)
+    , m_serializingValue(value)
     , m_a(0)
     , m_b(0)
     , m_attribute(anyQName())
-    , m_argument(nullAtom)
+    , m_argument(nullAtom())
 {
 }
 
 CSSSelector::RareData::~RareData()
 {
-    if (m_value)
-        m_value->deref();
 }
 
 // a helper function for parsing nth-arguments

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2007 Henry Mason <hmason@mac.com>
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,50 +27,25 @@
  */
 
 [
-    GlobalContext=DOMWindow&WorkerGlobalScope,
-    ConstructorTemplate=Event,
+    Constructor(DOMString type, optional MessageEventInit eventInitDict),
+    ConstructorCallWith=ScriptState,
+    Exposed=(Window,Worker),
 ] interface MessageEvent : Event {
-    [InitializedByEventConstructor] readonly attribute DOMString origin;
-    [InitializedByEventConstructor] readonly attribute DOMString lastEventId;
-    [InitializedByEventConstructor] readonly attribute EventTarget source; // May be a DOMWindow or a MessagePort.
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [InitializedByEventConstructor, CachedAttribute, CustomGetter] readonly attribute any data;
-    [InitializedByEventConstructor] readonly attribute MessagePort[] ports;
+    readonly attribute USVString origin;
+    readonly attribute DOMString lastEventId;
+    readonly attribute EventTarget? source;
+    [CachedAttribute, CustomGetter] readonly attribute any data;
+    readonly attribute FrozenArray<MessagePort> ports;
 
-    [Custom] void initMessageEvent([Default=Undefined] optional DOMString typeArg, 
-                                   [Default=Undefined] optional boolean canBubbleArg, 
-                                   [Default=Undefined] optional boolean cancelableArg, 
-                                   [Default=Undefined] optional any dataArg, 
-                                   [Default=Undefined] optional DOMString originArg, 
-                                   [Default=Undefined] optional DOMString lastEventIdArg, 
-                                   [Default=Undefined] optional DOMWindow sourceArg, 
-                                   [Default=Undefined] optional Array messagePorts);
-
-    [Custom] void webkitInitMessageEvent([Default=Undefined] optional DOMString typeArg,
-                                         [Default=Undefined] optional boolean canBubbleArg,
-                                         [Default=Undefined] optional boolean cancelableArg,
-                                         [Default=Undefined] optional any dataArg,
-                                         [Default=Undefined] optional DOMString originArg,
-                                         [Default=Undefined] optional DOMString lastEventIdArg,
-                                         [Default=Undefined] optional DOMWindow sourceArg,
-                                         [Default=Undefined] optional Array transferables);
-#else
-    // Code generator for ObjC bindings does not support custom bindings, thus there is no good way to
-    // return a variant value. As workaround, expose the data attribute as SerializedScriptValue.
-    readonly attribute SerializedScriptValue data;
-
-    // There's no good way to expose an array via the ObjC bindings, so for now just expose a single port.
-    readonly attribute MessagePort messagePort;
-
-    void initMessageEvent([Default=Undefined] optional DOMString typeArg, 
-                          [Default=Undefined] optional boolean canBubbleArg, 
-                          [Default=Undefined] optional boolean cancelableArg, 
-                          [Default=Undefined] optional SerializedScriptValue dataArg, 
-                          [Default=Undefined] optional DOMString originArg, 
-                          [Default=Undefined] optional DOMString lastEventIdArg, 
-                          [Default=Undefined] optional DOMWindow sourceArg, 
-                          [Default=Undefined] optional MessagePort messagePort);
-#endif
-
+    [CallWith=ScriptState] void initMessageEvent(DOMString type, optional boolean bubbles = false, optional boolean cancelable = false,
+        optional any data = null, optional USVString originArg = "", optional DOMString lastEventId = "", optional (DOMWindow or MessagePort)? source = null,
+        optional sequence<MessagePort> messagePorts = []);
 };
 
+dictionary MessageEventInit : EventInit {
+      any data = null;
+      USVString origin = "";
+      DOMString lastEventId = "";
+      (DOMWindow or MessagePort)? source = null;
+      sequence<MessagePort> ports = [];
+};

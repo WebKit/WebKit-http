@@ -28,11 +28,9 @@
 #include "config.h"
 #include "RenderSVGRect.h"
 
-#include "SVGNames.h"
-
 namespace WebCore {
 
-RenderSVGRect::RenderSVGRect(SVGRectElement& element, Ref<RenderStyle>&& style)
+RenderSVGRect::RenderSVGRect(SVGRectElement& element, RenderStyle&& style)
     : RenderSVGShape(element, WTFMove(style))
     , m_usePathFallback(false)
 {
@@ -122,7 +120,7 @@ void RenderSVGRect::fillShape(GraphicsContext& context) const
 
 void RenderSVGRect::strokeShape(GraphicsContext& context) const
 {
-    if (!style().svgStyle().hasVisibleStroke())
+    if (!style().hasVisibleStroke())
         return;
 
     if (m_usePathFallback) {

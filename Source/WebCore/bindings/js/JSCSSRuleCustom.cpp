@@ -26,21 +26,21 @@
 #include "config.h"
 #include "JSCSSRule.h"
 
-#include "CSSCharsetRule.h"
 #include "CSSFontFaceRule.h"
 #include "CSSImportRule.h"
 #include "CSSKeyframeRule.h"
 #include "CSSKeyframesRule.h"
 #include "CSSMediaRule.h"
+#include "CSSNamespaceRule.h"
 #include "CSSPageRule.h"
 #include "CSSStyleRule.h"
 #include "CSSSupportsRule.h"
-#include "JSCSSCharsetRule.h"
 #include "JSCSSFontFaceRule.h"
 #include "JSCSSImportRule.h"
 #include "JSCSSKeyframeRule.h"
 #include "JSCSSKeyframesRule.h"
 #include "JSCSSMediaRule.h"
+#include "JSCSSNamespaceRule.h"
 #include "JSCSSPageRule.h"
 #include "JSCSSStyleRule.h"
 #include "JSCSSSupportsRule.h"
@@ -60,58 +60,43 @@ void JSCSSRule::visitAdditionalChildren(SlotVisitor& visitor)
     visitor.addOpaqueRoot(root(&wrapped()));
 }
 
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, CSSRule* rule)
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<CSSRule>&& rule)
 {
-    if (!rule)
-        return jsNull();
-
-    JSObject* wrapper = getCachedWrapper(globalObject->world(), rule);
-    if (wrapper)
-        return wrapper;
-
     switch (rule->type()) {
-        case CSSRule::STYLE_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSStyleRule, rule);
-            break;
-        case CSSRule::MEDIA_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSMediaRule, rule);
-            break;
-        case CSSRule::FONT_FACE_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSFontFaceRule, rule);
-            break;
-        case CSSRule::PAGE_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSPageRule, rule);
-            break;
-        case CSSRule::IMPORT_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSImportRule, rule);
-            break;
-        case CSSRule::CHARSET_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSCharsetRule, rule);
-            break;
-        case CSSRule::KEYFRAME_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSKeyframeRule, rule);
-            break;
-        case CSSRule::KEYFRAMES_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSKeyframesRule, rule);
-            break;
-        case CSSRule::SUPPORTS_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSSupportsRule, rule);
-            break;
+    case CSSRule::STYLE_RULE:
+        return createWrapper<CSSStyleRule>(globalObject, WTFMove(rule));
+    case CSSRule::MEDIA_RULE:
+        return createWrapper<CSSMediaRule>(globalObject, WTFMove(rule));
+    case CSSRule::FONT_FACE_RULE:
+        return createWrapper<CSSFontFaceRule>(globalObject, WTFMove(rule));
+    case CSSRule::PAGE_RULE:
+        return createWrapper<CSSPageRule>(globalObject, WTFMove(rule));
+    case CSSRule::IMPORT_RULE:
+        return createWrapper<CSSImportRule>(globalObject, WTFMove(rule));
+    case CSSRule::NAMESPACE_RULE:
+        return createWrapper<CSSNamespaceRule>(globalObject, WTFMove(rule));
+    case CSSRule::KEYFRAME_RULE:
+        return createWrapper<CSSKeyframeRule>(globalObject, WTFMove(rule));
+    case CSSRule::KEYFRAMES_RULE:
+        return createWrapper<CSSKeyframesRule>(globalObject, WTFMove(rule));
+    case CSSRule::SUPPORTS_RULE:
+        return createWrapper<CSSSupportsRule>(globalObject, WTFMove(rule));
 #if ENABLE(CSS_DEVICE_ADAPTATION)
-        case CSSRule::WEBKIT_VIEWPORT_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, WebKitCSSViewportRule, rule);
-            break;
+    case CSSRule::WEBKIT_VIEWPORT_RULE:
+        return createWrapper<WebKitCSSViewportRule>(globalObject, WTFMove(rule));
 #endif
 #if ENABLE(CSS_REGIONS)
-        case CSSRule::WEBKIT_REGION_RULE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, WebKitCSSRegionRule, rule);
-            break;
+    case CSSRule::WEBKIT_REGION_RULE:
+        return createWrapper<WebKitCSSRegionRule>(globalObject, WTFMove(rule));
 #endif
-        default:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, CSSRule, rule);
+    default:
+        return createWrapper<CSSRule>(globalObject, WTFMove(rule));
     }
+}
 
-    return wrapper;
+JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, CSSRule& object)
+{
+    return wrap(state, globalObject, object);
 }
 
 } // namespace WebCore

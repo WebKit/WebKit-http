@@ -29,7 +29,6 @@
 #include "config.h"
 #include "DatabaseAuthorizer.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -283,29 +282,14 @@ int DatabaseAuthorizer::dropTempView(const String&)
     return SQLAuthAllow;
 }
 
-int DatabaseAuthorizer::createVTable(const String& tableName, const String& moduleName)
+int DatabaseAuthorizer::createVTable(const String&, const String&)
 {
-    if (!allowWrite())
-        return SQLAuthDeny;
-
-    // Allow only the FTS3 extension
-    if (!equalLettersIgnoringASCIICase(moduleName, "fts3"))
-        return SQLAuthDeny;
-
-    m_lastActionChangedDatabase = true;
-    return denyBasedOnTableName(tableName);
+    return SQLAuthDeny;
 }
 
-int DatabaseAuthorizer::dropVTable(const String& tableName, const String& moduleName)
+int DatabaseAuthorizer::dropVTable(const String&, const String&)
 {
-    if (!allowWrite())
-        return SQLAuthDeny;
-
-    // Allow only the FTS3 extension
-    if (!equalLettersIgnoringASCIICase(moduleName, "fts3"))
-        return SQLAuthDeny;
-
-    return updateDeletesBasedOnTableName(tableName);
+    return SQLAuthDeny;
 }
 
 int DatabaseAuthorizer::allowDelete(const String& tableName)
@@ -344,7 +328,7 @@ int DatabaseAuthorizer::allowRead(const String& tableName, const String&)
 {
     if (m_permissions & NoAccessMask && m_securityEnabled)
         return SQLAuthDeny;
-    
+
     return denyBasedOnTableName(tableName);
 }
 

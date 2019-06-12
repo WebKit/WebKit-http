@@ -36,15 +36,15 @@ namespace WebCore {
     
 class OutOfBandTextTrackPrivateAVF : public InbandTextTrackPrivateAVF {
 public:
-    static PassRefPtr<OutOfBandTextTrackPrivateAVF> create(AVFInbandTrackParent* player,  AVMediaSelectionOption* selection)
+    static Ref<OutOfBandTextTrackPrivateAVF> create(AVFInbandTrackParent* player,  AVMediaSelectionOption* selection)
     {
-        return adoptRef(new OutOfBandTextTrackPrivateAVF(player, selection));
+        return adoptRef(*new OutOfBandTextTrackPrivateAVF(player, selection));
     }
     
-    virtual void processCue(CFArrayRef, CFArrayRef, const MediaTime&) override { }
-    virtual void resetCueValues() override { }
+    void processCue(CFArrayRef, CFArrayRef, const MediaTime&) override { }
+    void resetCueValues() override { }
     
-    virtual Category textTrackCategory() const override { return OutOfBand; }
+    Category textTrackCategory() const override { return OutOfBand; }
     
     AVMediaSelectionOption* mediaSelectionOption() const { return m_mediaSelectionOption.get(); }
     

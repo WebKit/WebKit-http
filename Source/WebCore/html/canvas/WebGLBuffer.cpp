@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,28 +24,24 @@
  */
 
 #include "config.h"
+#include "WebGLBuffer.h"
 
 #if ENABLE(WEBGL)
-
-#include "WebGLBuffer.h"
 
 #include "WebGLContextGroup.h"
 #include "WebGLRenderingContextBase.h"
 
 namespace WebCore {
 
-Ref<WebGLBuffer> WebGLBuffer::create(WebGLRenderingContextBase* ctx)
+Ref<WebGLBuffer> WebGLBuffer::create(WebGLRenderingContextBase& ctx)
 {
     return adoptRef(*new WebGLBuffer(ctx));
 }
 
-WebGLBuffer::WebGLBuffer(WebGLRenderingContextBase* ctx)
+WebGLBuffer::WebGLBuffer(WebGLRenderingContextBase& ctx)
     : WebGLSharedObject(ctx)
-    , m_target(0)
-    , m_byteLength(0)
-    , m_nextAvailableCacheEntry(0)
 {
-    setObject(ctx->graphicsContext3D()->createBuffer());
+    setObject(ctx.graphicsContext3D()->createBuffer());
     clearCachedMaxIndices();
 }
 
@@ -56,7 +52,7 @@ WebGLBuffer::~WebGLBuffer()
 
 void WebGLBuffer::deleteObjectImpl(GraphicsContext3D* context3d, Platform3DObject object)
 {
-      context3d->deleteBuffer(object);
+    context3d->deleteBuffer(object);
 }
 
 bool WebGLBuffer::associateBufferDataImpl(const void* data, GC3Dsizeiptr byteLength)
@@ -69,7 +65,7 @@ bool WebGLBuffer::associateBufferDataImpl(const void* data, GC3Dsizeiptr byteLen
         m_byteLength = byteLength;
         clearCachedMaxIndices();
         if (byteLength) {
-            m_elementArrayBuffer = ArrayBuffer::create(byteLength, 1);
+            m_elementArrayBuffer = ArrayBuffer::tryCreate(byteLength, 1);
             if (!m_elementArrayBuffer) {
                 m_byteLength = 0;
                 return false;
@@ -87,13 +83,25 @@ bool WebGLBuffer::associateBufferDataImpl(const void* data, GC3Dsizeiptr byteLen
         m_byteLength = byteLength;
         return true;
     default:
+#if ENABLE(WEBGL2)
+        switch (m_target) {
+        case GraphicsContext3D::COPY_READ_BUFFER:
+        case GraphicsContext3D::COPY_WRITE_BUFFER:
+        case GraphicsContext3D::PIXEL_PACK_BUFFER:
+        case GraphicsContext3D::PIXEL_UNPACK_BUFFER:
+        case GraphicsContext3D::TRANSFORM_FEEDBACK_BUFFER:
+        case GraphicsContext3D::UNIFORM_BUFFER:
+            m_byteLength = byteLength;
+            return true;
+        }
+#endif
         return false;
     }
 }
 
 bool WebGLBuffer::associateBufferData(GC3Dsizeiptr size)
 {
-    return associateBufferDataImpl(0, size);
+    return associateBufferDataImpl(nullptr, size);
 }
 
 bool WebGLBuffer::associateBufferData(ArrayBuffer* array)
@@ -135,6 +143,17 @@ bool WebGLBuffer::associateBufferSubDataImpl(GC3Dintptr offset, const void* data
     case GraphicsContext3D::ARRAY_BUFFER:
         return true;
     default:
+#if ENABLE(WEBGL2)
+        switch (m_target) {
+        case GraphicsContext3D::COPY_READ_BUFFER:
+        case GraphicsContext3D::COPY_WRITE_BUFFER:
+        case GraphicsContext3D::PIXEL_PACK_BUFFER:
+        case GraphicsContext3D::PIXEL_UNPACK_BUFFER:
+        case GraphicsContext3D::TRANSFORM_FEEDBACK_BUFFER:
+        case GraphicsContext3D::UNIFORM_BUFFER:
+            return true;
+        }
+#endif
         return false;
     }
 }
@@ -153,6 +172,51 @@ bool WebGLBuffer::associateBufferSubData(GC3Dintptr offset, ArrayBufferView* arr
     return associateBufferSubDataImpl(offset, array->baseAddress(), array->byteLength());
 }
 
+bool WebGLBuffer::associateCopyBufferSubData(const WebGLBuffer& readBuffer, GC3Dintptr readOffset, GC3Dintptr writeOffset, GC3Dsizeiptr size)
+{
+    if (readOffset < 0 || writeOffset < 0 || size < 0)
+        return false;
+
+    if (size) {
+        Checked<GC3Dintptr, RecordOverflow> checkedReadBufferOffset(readOffset);
+        Checked<GC3Dsizeiptr, RecordOverflow> checkedDataLength(size);
+        Checked<GC3Dintptr, RecordOverflow> checkedReadBufferMax = checkedReadBufferOffset + checkedDataLength;
+        if (checkedReadBufferMax.hasOverflowed() || readOffset > readBuffer.byteLength() || checkedReadBufferMax.unsafeGet() > readBuffer.byteLength())
+            return false;
+
+        Checked<GC3Dintptr, RecordOverflow> checkedWriteBufferOffset(writeOffset);
+        Checked<GC3Dintptr, RecordOverflow> checkedWriteBufferMax = checkedWriteBufferOffset + checkedDataLength;
+        if (checkedWriteBufferMax.hasOverflowed() || writeOffset > m_byteLength || checkedWriteBufferMax.unsafeGet() > m_byteLength)
+            return false;
+    }
+
+    switch (m_target) {
+    case GraphicsContext3D::ELEMENT_ARRAY_BUFFER:
+        clearCachedMaxIndices();
+        if (size) {
+            if (!m_elementArrayBuffer)
+                return false;
+            memcpy(static_cast<unsigned char*>(m_elementArrayBuffer->data()) + writeOffset, static_cast<const unsigned char*>(readBuffer.elementArrayBuffer()->data()) + readOffset, size);
+        }
+        return true;
+    case GraphicsContext3D::ARRAY_BUFFER:
+        return true;
+    default:
+#if ENABLE(WEBGL2)
+        switch (m_target) {
+        case GraphicsContext3D::COPY_READ_BUFFER:
+        case GraphicsContext3D::COPY_WRITE_BUFFER:
+        case GraphicsContext3D::PIXEL_PACK_BUFFER:
+        case GraphicsContext3D::PIXEL_UNPACK_BUFFER:
+        case GraphicsContext3D::TRANSFORM_FEEDBACK_BUFFER:
+        case GraphicsContext3D::UNIFORM_BUFFER:
+            return true;
+        }
+#endif
+        return false;
+    }
+}
+
 void WebGLBuffer::disassociateBufferData()
 {
     m_byteLength = 0;
@@ -164,16 +228,16 @@ GC3Dsizeiptr WebGLBuffer::byteLength() const
     return m_byteLength;
 }
 
-int WebGLBuffer::getCachedMaxIndex(GC3Denum type)
+std::optional<unsigned> WebGLBuffer::getCachedMaxIndex(GC3Denum type)
 {
     for (auto& cache : m_maxIndexCache) {
         if (cache.type == type)
             return cache.maxIndex;
     }
-    return -1;
+    return std::nullopt;
 }
 
-void WebGLBuffer::setCachedMaxIndex(GC3Denum type, int value)
+void WebGLBuffer::setCachedMaxIndex(GC3Denum type, unsigned value)
 {
     for (auto& cache : m_maxIndexCache) {
         if (cache.type == type) {
@@ -186,13 +250,26 @@ void WebGLBuffer::setCachedMaxIndex(GC3Denum type, int value)
     m_nextAvailableCacheEntry = (m_nextAvailableCacheEntry + 1) % WTF_ARRAY_LENGTH(m_maxIndexCache);
 }
 
-void WebGLBuffer::setTarget(GC3Denum target)
+void WebGLBuffer::setTarget(GC3Denum target, bool forWebGL2)
 {
     // In WebGL, a buffer is bound to one target in its lifetime
     if (m_target)
         return;
     if (target == GraphicsContext3D::ARRAY_BUFFER || target == GraphicsContext3D::ELEMENT_ARRAY_BUFFER)
         m_target = target;
+    else if (forWebGL2) {
+#if ENABLE(WEBGL2)
+        switch (target) {
+        case GraphicsContext3D::COPY_READ_BUFFER:
+        case GraphicsContext3D::COPY_WRITE_BUFFER:
+        case GraphicsContext3D::PIXEL_PACK_BUFFER:
+        case GraphicsContext3D::PIXEL_UNPACK_BUFFER:
+        case GraphicsContext3D::TRANSFORM_FEEDBACK_BUFFER:
+        case GraphicsContext3D::UNIFORM_BUFFER:
+            m_target = target;
+        }
+#endif
+    }
 }
 
 void WebGLBuffer::clearCachedMaxIndices()

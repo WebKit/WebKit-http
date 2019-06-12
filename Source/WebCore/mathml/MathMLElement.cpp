@@ -2,6 +2,7 @@
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2010 François Sausset (sausset@gmail.com). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,192 +27,57 @@
  */
 
 #include "config.h"
+#include "MathMLElement.h"
 
 #if ENABLE(MATHML)
 
-#include "MathMLElement.h"
-
-#include "ElementIterator.h"
-#include "HTMLElement.h"
-#include "HTMLMapElement.h"
-#include "HTMLNames.h"
+#include "EventHandler.h"
+#include "FrameLoader.h"
+#include "HTMLAnchorElement.h"
+#include "HTMLParserIdioms.h"
 #include "MathMLNames.h"
-#include "MathMLSelectElement.h"
+#include "MouseEvent.h"
 #include "RenderTableCell.h"
-#include "SVGElement.h"
-#include "SVGNames.h"
 
 namespace WebCore {
-    
+
 using namespace MathMLNames;
-    
+
 MathMLElement::MathMLElement(const QualifiedName& tagName, Document& document)
     : StyledElement(tagName, document, CreateMathMLElement)
 {
 }
-    
+
 Ref<MathMLElement> MathMLElement::create(const QualifiedName& tagName, Document& document)
 {
     return adoptRef(*new MathMLElement(tagName, document));
 }
 
-bool MathMLElement::isPresentationMathML() const
-{
-    return hasTagName(MathMLNames::mtrTag)
-        || hasTagName(MathMLNames::mtdTag)
-        || hasTagName(MathMLNames::maligngroupTag)
-        || hasTagName(MathMLNames::malignmarkTag)
-        || hasTagName(MathMLNames::mencloseTag)
-        || hasTagName(MathMLNames::mglyphTag)
-        || hasTagName(MathMLNames::mlabeledtrTag)
-        || hasTagName(MathMLNames::mlongdivTag)
-        || hasTagName(MathMLNames::mpaddedTag)
-        || hasTagName(MathMLNames::msTag)
-        || hasTagName(MathMLNames::mscarriesTag)
-        || hasTagName(MathMLNames::mscarryTag)
-        || hasTagName(MathMLNames::msgroupTag)
-        || hasTagName(MathMLNames::mslineTag)
-        || hasTagName(MathMLNames::msrowTag)
-        || hasTagName(MathMLNames::mstackTag);
-}
-
-bool MathMLElement::isPhrasingContent(const Node& node) const
-{
-    // Phrasing content is described in the HTML 5 specification:
-    // http://www.w3.org/TR/html5/dom.html#phrasing-content.
-
-    if (!node.isElementNode())
-        return node.isTextNode();
-
-    if (is<MathMLElement>(node)) {
-        auto& mathmlElement = downcast<MathMLElement>(node);
-        return is<MathMLMathElement>(mathmlElement);
-    }
-
-    if (is<SVGElement>(node)) {
-        auto& svgElement = downcast<SVGElement>(node);
-        return is<SVGSVGElement>(svgElement);
-    }
-
-    if (is<HTMLElement>(node)) {
-        // FIXME: add the <data> and <time> tags when they are implemented.
-        auto& htmlElement = downcast<HTMLElement>(node);
-        return htmlElement.hasTagName(HTMLNames::aTag)
-            || htmlElement.hasTagName(HTMLNames::abbrTag)
-            || (htmlElement.hasTagName(HTMLNames::areaTag) && ancestorsOfType<HTMLMapElement>(htmlElement).first())
-            || htmlElement.hasTagName(HTMLNames::audioTag)
-            || htmlElement.hasTagName(HTMLNames::bTag)
-            || htmlElement.hasTagName(HTMLNames::bdiTag)
-            || htmlElement.hasTagName(HTMLNames::bdoTag)
-            || htmlElement.hasTagName(HTMLNames::brTag)
-            || htmlElement.hasTagName(HTMLNames::buttonTag)
-            || htmlElement.hasTagName(HTMLNames::canvasTag)
-            || htmlElement.hasTagName(HTMLNames::citeTag)
-            || htmlElement.hasTagName(HTMLNames::codeTag)
-            || htmlElement.hasTagName(HTMLNames::datalistTag)
-            || htmlElement.hasTagName(HTMLNames::delTag)
-            || htmlElement.hasTagName(HTMLNames::dfnTag)
-            || htmlElement.hasTagName(HTMLNames::emTag)
-            || htmlElement.hasTagName(HTMLNames::embedTag)
-            || htmlElement.hasTagName(HTMLNames::iTag)
-            || htmlElement.hasTagName(HTMLNames::iframeTag)
-            || htmlElement.hasTagName(HTMLNames::imgTag)
-            || htmlElement.hasTagName(HTMLNames::inputTag)
-            || htmlElement.hasTagName(HTMLNames::insTag)
-            || htmlElement.hasTagName(HTMLNames::kbdTag)
-            || htmlElement.hasTagName(HTMLNames::keygenTag)
-            || htmlElement.hasTagName(HTMLNames::labelTag)
-            || htmlElement.hasTagName(HTMLNames::mapTag)
-            || htmlElement.hasTagName(HTMLNames::markTag)
-            || htmlElement.hasTagName(HTMLNames::meterTag)
-            || htmlElement.hasTagName(HTMLNames::noscriptTag)
-            || htmlElement.hasTagName(HTMLNames::objectTag)
-            || htmlElement.hasTagName(HTMLNames::outputTag)
-            || htmlElement.hasTagName(HTMLNames::progressTag)
-            || htmlElement.hasTagName(HTMLNames::qTag)
-            || htmlElement.hasTagName(HTMLNames::rubyTag)
-            || htmlElement.hasTagName(HTMLNames::sTag)
-            || htmlElement.hasTagName(HTMLNames::sampTag)
-            || htmlElement.hasTagName(HTMLNames::scriptTag)
-            || htmlElement.hasTagName(HTMLNames::selectTag)
-            || htmlElement.hasTagName(HTMLNames::smallTag)
-            || htmlElement.hasTagName(HTMLNames::spanTag)
-            || htmlElement.hasTagName(HTMLNames::strongTag)
-            || htmlElement.hasTagName(HTMLNames::subTag)
-            || htmlElement.hasTagName(HTMLNames::supTag)
-            || htmlElement.hasTagName(HTMLNames::templateTag)
-            || htmlElement.hasTagName(HTMLNames::textareaTag)
-            || htmlElement.hasTagName(HTMLNames::uTag)
-            || htmlElement.hasTagName(HTMLNames::varTag)
-            || htmlElement.hasTagName(HTMLNames::videoTag)
-            || htmlElement.hasTagName(HTMLNames::wbrTag);
-    }
-
-    return false;
-}
-
-bool MathMLElement::isFlowContent(const Node& node) const
-{
-    // Flow content is described in the HTML 5 specification:
-    // http://www.w3.org/TR/html5/dom.html#flow-content
-
-    if (isPhrasingContent(node))
-        return true;
-
-    if (!is<HTMLElement>(node))
-        return false;
-
-    auto& htmlElement = downcast<HTMLElement>(node);
-    // FIXME add the <dialog> tag when it is implemented.
-    return htmlElement.hasTagName(HTMLNames::addressTag)
-        || htmlElement.hasTagName(HTMLNames::articleTag)
-        || htmlElement.hasTagName(HTMLNames::asideTag)
-        || htmlElement.hasTagName(HTMLNames::blockquoteTag)
-        || htmlElement.hasTagName(HTMLNames::detailsTag)
-        || htmlElement.hasTagName(HTMLNames::divTag)
-        || htmlElement.hasTagName(HTMLNames::dlTag)
-        || htmlElement.hasTagName(HTMLNames::fieldsetTag)
-        || htmlElement.hasTagName(HTMLNames::figureTag)
-        || htmlElement.hasTagName(HTMLNames::footerTag)
-        || htmlElement.hasTagName(HTMLNames::formTag)
-        || htmlElement.hasTagName(HTMLNames::h1Tag)
-        || htmlElement.hasTagName(HTMLNames::h2Tag)
-        || htmlElement.hasTagName(HTMLNames::h3Tag)
-        || htmlElement.hasTagName(HTMLNames::h4Tag)
-        || htmlElement.hasTagName(HTMLNames::h5Tag)
-        || htmlElement.hasTagName(HTMLNames::h6Tag)
-        || htmlElement.hasTagName(HTMLNames::headerTag)
-        || htmlElement.hasTagName(HTMLNames::hrTag)
-        || htmlElement.hasTagName(HTMLNames::mainTag)
-        || htmlElement.hasTagName(HTMLNames::navTag)
-        || htmlElement.hasTagName(HTMLNames::olTag)
-        || htmlElement.hasTagName(HTMLNames::pTag)
-        || htmlElement.hasTagName(HTMLNames::preTag)
-        || htmlElement.hasTagName(HTMLNames::sectionTag)
-        || (htmlElement.hasTagName(HTMLNames::styleTag) && htmlElement.hasAttribute("scoped"))
-        || htmlElement.hasTagName(HTMLNames::tableTag)
-        || htmlElement.hasTagName(HTMLNames::ulTag);
-}
-
-int MathMLElement::colSpan() const
+unsigned MathMLElement::colSpan() const
 {
     if (!hasTagName(mtdTag))
-        return 1;
-    const AtomicString& colSpanValue = fastGetAttribute(columnspanAttr);
-    return std::max(1, colSpanValue.toInt());
+        return 1u;
+    auto& colSpanValue = attributeWithoutSynchronization(columnspanAttr);
+    return std::max(1u, limitToOnlyHTMLNonNegative(colSpanValue, 1u));
 }
 
-int MathMLElement::rowSpan() const
+unsigned MathMLElement::rowSpan() const
 {
     if (!hasTagName(mtdTag))
-        return 1;
-    const AtomicString& rowSpanValue = fastGetAttribute(rowspanAttr);
-    return std::max(1, rowSpanValue.toInt());
+        return 1u;
+    auto& rowSpanValue = attributeWithoutSynchronization(rowspanAttr);
+    static const unsigned maxRowspan = 8190; // This constant comes from HTMLTableCellElement.
+    return std::max(1u, std::min(limitToOnlyHTMLNonNegative(rowSpanValue, 1u), maxRowspan));
 }
 
 void MathMLElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (name == rowspanAttr) {
+    if (name == hrefAttr) {
+        bool wasLink = isLink();
+        setIsLink(!value.isNull() && !shouldProhibitLinks(this));
+        if (wasLink != isLink())
+            invalidateStyleForSubtree();
+    } else if (name == rowspanAttr) {
         if (is<RenderTableCell>(renderer()) && hasTagName(mtdTag))
             downcast<RenderTableCell>(*renderer()).colSpanOrRowSpanChanged();
     } else if (name == columnspanAttr) {
@@ -263,41 +129,102 @@ void MathMLElement::collectStyleForPresentationAttribute(const QualifiedName& na
 
 bool MathMLElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (hasTagName(annotation_xmlTag)) {
-        const AtomicString& value = fastGetAttribute(MathMLNames::encodingAttr);
-
-        // See annotation-xml.model.mathml, annotation-xml.model.svg and annotation-xml.model.xhtml in the HTML5 RelaxNG schema.
-
-        if (is<MathMLElement>(child) && (MathMLSelectElement::isMathMLEncoding(value) || MathMLSelectElement::isHTMLEncoding(value))) {
-            auto& mathmlElement = downcast<MathMLElement>(child);
-            return is<MathMLMathElement>(mathmlElement);
-        }
-
-        if (is<SVGElement>(child) && (MathMLSelectElement::isSVGEncoding(value) || MathMLSelectElement::isHTMLEncoding(value))) {
-            auto& svgElement = downcast<SVGElement>(child);
-            return is<SVGSVGElement>(svgElement);
-        }
-
-        if (is<HTMLElement>(child) && MathMLSelectElement::isHTMLEncoding(value)) {
-            auto& htmlElement = downcast<HTMLElement>(child);
-            return is<HTMLHtmlElement>(htmlElement) || (isFlowContent(htmlElement) && StyledElement::childShouldCreateRenderer(child));
-        }
-
-        return false;
-    }
-
     // In general, only MathML children are allowed. Text nodes are only visible in token MathML elements.
     return is<MathMLElement>(child);
 }
 
-void MathMLElement::attributeChanged(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason reason)
+bool MathMLElement::willRespondToMouseClickEvents()
 {
-    if (isSemanticAnnotation() && (name == MathMLNames::srcAttr || name == MathMLNames::encodingAttr)) {
-        Element* parent = parentElement();
-        if (is<MathMLElement>(parent) && parent->hasTagName(semanticsTag))
-            downcast<MathMLElement>(*parent).updateSelectedChild();
+    return isLink() || StyledElement::willRespondToMouseClickEvents();
+}
+
+void MathMLElement::defaultEventHandler(Event& event)
+{
+    if (isLink()) {
+        if (focused() && isEnterKeyKeydownEvent(event)) {
+            event.setDefaultHandled();
+            dispatchSimulatedClick(&event);
+            return;
+        }
+        if (MouseEvent::canTriggerActivationBehavior(event)) {
+            auto& href = attributeWithoutSynchronization(hrefAttr);
+            const auto& url = stripLeadingAndTrailingHTMLSpaces(href);
+            event.setDefaultHandled();
+            if (auto* frame = document().frame())
+                frame->loader().urlSelected(document().completeURL(url), "_self", &event, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate());
+            return;
+        }
     }
-    StyledElement::attributeChanged(name, oldValue, newValue, reason);
+
+    StyledElement::defaultEventHandler(event);
+}
+
+bool MathMLElement::canStartSelection() const
+{
+    if (!isLink())
+        return StyledElement::canStartSelection();
+
+    return hasEditableStyle();
+}
+
+bool MathMLElement::isFocusable() const
+{
+    if (renderer() && renderer()->absoluteClippedOverflowRect().isEmpty())
+        return false;
+
+    return StyledElement::isFocusable();
+}
+
+bool MathMLElement::isKeyboardFocusable(KeyboardEvent& event) const
+{
+    if (isFocusable() && StyledElement::supportsFocus())
+        return StyledElement::isKeyboardFocusable(event);
+
+    if (isLink())
+        return document().frame()->eventHandler().tabsToLinks(event);
+
+    return StyledElement::isKeyboardFocusable(event);
+}
+
+bool MathMLElement::isMouseFocusable() const
+{
+    // Links are focusable by default, but only allow links with tabindex or contenteditable to be mouse focusable.
+    // https://bugs.webkit.org/show_bug.cgi?id=26856
+    if (isLink())
+        return StyledElement::supportsFocus();
+
+    return StyledElement::isMouseFocusable();
+}
+
+bool MathMLElement::isURLAttribute(const Attribute& attribute) const
+{
+    return attribute.name().localName() == hrefAttr || StyledElement::isURLAttribute(attribute);
+}
+
+bool MathMLElement::supportsFocus() const
+{
+    if (hasEditableStyle())
+        return StyledElement::supportsFocus();
+    // If not a link we should still be able to focus the element if it has tabIndex.
+    return isLink() || StyledElement::supportsFocus();
+}
+
+int MathMLElement::tabIndex() const
+{
+    // Skip the supportsFocus check in StyledElement.
+    return Element::tabIndex();
+}
+
+StringView MathMLElement::stripLeadingAndTrailingWhitespace(const StringView& stringView)
+{
+    unsigned start = 0, stringLength = stringView.length();
+    while (stringLength > 0 && isHTMLSpace(stringView[start])) {
+        start++;
+        stringLength--;
+    }
+    while (stringLength > 0 && isHTMLSpace(stringView[start + stringLength - 1]))
+        stringLength--;
+    return stringView.substring(start, stringLength);
 }
 
 }

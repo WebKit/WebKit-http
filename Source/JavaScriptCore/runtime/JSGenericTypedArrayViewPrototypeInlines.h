@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSGenericTypedArrayViewPrototypeInlines_h
-#define JSGenericTypedArrayViewPrototypeInlines_h
+#pragma once
 
 #include "JSGenericTypedArrayViewPrototype.h"
 
@@ -42,7 +41,7 @@ void JSGenericTypedArrayViewPrototype<ViewClass>::finishCreation(
 {
     Base::finishCreation(vm);
     
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     putDirect(vm, vm.propertyNames->BYTES_PER_ELEMENT, jsNumber(ViewClass::elementSize), DontEnum | ReadOnly | DontDelete);
 
@@ -69,5 +68,3 @@ Structure* JSGenericTypedArrayViewPrototype<ViewClass>::createStructure(
 }
 
 } // namespace JSC
-
-#endif // JSGenericTypedArrayViewPrototypeInlines_h

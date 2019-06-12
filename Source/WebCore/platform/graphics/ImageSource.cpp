@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006, 2010, 2011, 2012, 2014, 2016 Apple Inc.  All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp.toker@collabora.co.uk>
  * Copyright (C) 2008, Google Inc. All rights reserved.
  * Copyright (C) 2007-2009 Torch Mobile, Inc
@@ -29,21 +29,31 @@
 #include "config.h"
 #include "ImageSource.h"
 
-#if !USE(CG)
+#include "GraphicsContext.h"
 
+#if USE(CG)
+#include "ImageDecoderCG.h"
+#if PLATFORM(WIN)
+#include <WebKitSystemInterface/WebKitSystemInterface.h>
+#endif
+#elif USE(DIRECT2D)
+#include "ImageDecoderDirect2D.h"
+#else
 #include "ImageDecoder.h"
+#endif
 
 #include "ImageOrientation.h"
-#include "NotImplemented.h"
+#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
-#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
-unsigned ImageSource::s_maxPixelsPerDecodedImage = 1024 * 1024;
-#endif
-
-ImageSource::ImageSource(ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
-    : m_decoder(0)
+ImageSource::ImageSource(NativeImagePtr&& nativeImage)
+    : m_frameCache(ImageFrameCache::create(WTFMove(nativeImage)))
+{
+}
+    
+ImageSource::ImageSource(Image* image, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+    : m_frameCache(ImageFrameCache::create(image))
     , m_alphaOption(alphaOption)
     , m_gammaAndColorProfileOption(gammaAndColorProfileOption)
 {
@@ -51,169 +61,166 @@ ImageSource::ImageSource(ImageSource::AlphaOption alphaOption, ImageSource::Gamm
 
 ImageSource::~ImageSource()
 {
-    clear(true);
 }
 
-void ImageSource::clear(bool destroyAll, size_t clearBeforeFrame, SharedBuffer* data, bool allDataReceived)
+void ImageSource::clearFrameBufferCache(size_t clearBeforeFrame)
 {
-    if (!destroyAll) {
-        if (m_decoder)
-            m_decoder->clearFrameBufferCache(clearBeforeFrame);
+    if (!isDecoderAvailable())
         return;
-    }
-
-    delete m_decoder;
-    m_decoder = 0;
-    if (data)
-        setData(data, allDataReceived);
+    m_decoder->clearFrameBufferCache(clearBeforeFrame);
 }
 
-bool ImageSource::initialized() const
+bool ImageSource::ensureDecoderAvailable(SharedBuffer* data)
 {
-    return m_decoder;
+    if (!data || isDecoderAvailable())
+        return true;
+
+    m_decoder = ImageDecoder::create(*data, m_alphaOption, m_gammaAndColorProfileOption);
+    if (!isDecoderAvailable())
+        return false;
+
+    m_frameCache->setDecoder(m_decoder.get());
+    return true;
+}
+
+void ImageSource::setDecoderTargetContext(const GraphicsContext* targetContext)
+{
+#if USE(DIRECT2D)
+    if (!isDecoderAvailable())
+        return;
+
+    if (targetContext)
+        m_decoder->setTargetContext(targetContext->platformContext());
+#else
+    UNUSED_PARAM(targetContext);
+#endif
 }
 
 void ImageSource::setData(SharedBuffer* data, bool allDataReceived)
 {
-    // Make the decoder by sniffing the bytes.
-    // This method will examine the data and instantiate an instance of the appropriate decoder plugin.
-    // If insufficient bytes are available to determine the image type, no decoder plugin will be
-    // made.
-    if (!m_decoder) {
-        m_decoder = static_cast<NativeImageDecoderPtr>(NativeImageDecoder::create(*data, m_alphaOption, m_gammaAndColorProfileOption));
-#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
-        if (m_decoder && s_maxPixelsPerDecodedImage)
-            m_decoder->setMaxNumPixels(s_maxPixelsPerDecodedImage);
-#endif
+    if (!data || !ensureDecoderAvailable(data))
+        return;
+
+    m_decoder->setData(*data, allDataReceived);
+}
+
+void ImageSource::resetData(SharedBuffer* data)
+{
+    m_decoder = nullptr;
+    m_frameCache->setDecoder(nullptr);
+    setData(data, isAllDataReceived());
+}
+
+EncodedDataStatus ImageSource::dataChanged(SharedBuffer* data, bool allDataReceived)
+{
+#if PLATFORM(IOS)
+    // FIXME: We should expose a setting to enable/disable progressive loading and make this
+    // code conditional on it. Then we can remove the PLATFORM(IOS)-guard.
+    static const double chunkLoadIntervals[] = {0, 1, 3, 6, 15};
+    double interval = chunkLoadIntervals[std::min(m_progressiveLoadChunkCount, static_cast<uint16_t>(4))];
+
+    bool needsUpdate = false;
+
+    // The first time through, the chunk time will be 0 and the image will get an update.
+    if (currentTime() - m_progressiveLoadChunkTime > interval) {
+        needsUpdate = true;
+        m_progressiveLoadChunkTime = currentTime();
+        ASSERT(m_progressiveLoadChunkCount <= std::numeric_limits<uint16_t>::max());
+        ++m_progressiveLoadChunkCount;
     }
 
-    if (m_decoder)
-        m_decoder->setData(data, allDataReceived);
+    if (needsUpdate || allDataReceived)
+        setData(data, allDataReceived);
+#else
+    setData(data, allDataReceived);
+#endif
+
+    m_frameCache->clearMetadata();
+    EncodedDataStatus status = encodedDataStatus();
+    if (status < EncodedDataStatus::SizeAvailable)
+        return status;
+
+    m_frameCache->growFrames();
+    return status;
 }
 
-String ImageSource::filenameExtension() const
+bool ImageSource::isAllDataReceived()
 {
-    return m_decoder ? m_decoder->filenameExtension() : String();
+    return isDecoderAvailable() ? m_decoder->isAllDataReceived() : m_frameCache->frameCount();
 }
 
-SubsamplingLevel ImageSource::subsamplingLevelForScale(float) const
+bool ImageSource::shouldUseAsyncDecoding()
 {
-    return 0;
-}
-
-bool ImageSource::allowSubsamplingOfFrameAtIndex(size_t) const
-{
-    return false;
-}
-
-bool ImageSource::isSizeAvailable()
-{
-    return m_decoder && m_decoder->isSizeAvailable();
-}
-
-IntSize ImageSource::size(ImageOrientationDescription description) const
-{
-    return frameSizeAtIndex(0, 0, description);
-}
-
-IntSize ImageSource::frameSizeAtIndex(size_t index, SubsamplingLevel, ImageOrientationDescription description) const
-{
-    if (!m_decoder)
-        return IntSize();
-
-    IntSize size = m_decoder->frameSizeAtIndex(index);
-    if ((description.respectImageOrientation() == RespectImageOrientation) && m_decoder->orientation().usesWidthAsHeight())
-        return IntSize(size.height(), size.width());
-
-    return size;
-}
-
-bool ImageSource::getHotSpot(IntPoint& hotSpot) const
-{
-    return m_decoder ? m_decoder->hotSpot(hotSpot) : false;
-}
-
-size_t ImageSource::bytesDecodedToDetermineProperties() const
-{
-    return 0;
-}
-
-int ImageSource::repetitionCount()
-{
-    return m_decoder ? m_decoder->repetitionCount() : cAnimationNone;
-}
-
-size_t ImageSource::frameCount() const
-{
-    return m_decoder ? m_decoder->frameCount() : 0;
-}
-
-PassNativeImagePtr ImageSource::createFrameAtIndex(size_t index, SubsamplingLevel)
-{
-    if (!m_decoder)
-        return 0;
-
-    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
-    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
-        return 0;
-
-    // Zero-height images can cause problems for some ports.  If we have an
-    // empty image dimension, just bail.
-    if (size().isEmpty())
-        return 0;
-
-    // Return the buffer contents as a native image.  For some ports, the data
-    // is already in a native container, and this just increments its refcount.
-    return buffer->asNewNativeImage();
-}
-
-float ImageSource::frameDurationAtIndex(size_t index)
-{
-    if (!m_decoder)
-        return 0;
-
-    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
-    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
-        return 0;
-
-    // Many annoying ads specify a 0 duration to make an image flash as quickly as possible.
-    // We follow Firefox's behavior and use a duration of 100 ms for any frames that specify
-    // a duration of <= 10 ms. See <rdar://problem/7689300> and <http://webkit.org/b/36082>
-    // for more information.
-    const float duration = buffer->duration() / 1000.0f;
-    if (duration < 0.011f)
-        return 0.100f;
-    return duration;
-}
-
-ImageOrientation ImageSource::orientationAtIndex(size_t) const
-{
-    return m_decoder ? m_decoder->orientation() : DefaultImageOrientation;
-}
-
-bool ImageSource::frameHasAlphaAtIndex(size_t index)
-{
-    if (!m_decoder)
-        return true;
-    return m_decoder->frameHasAlphaAtIndex(index);
-}
-
-bool ImageSource::frameIsCompleteAtIndex(size_t index)
-{
-    if (!m_decoder)
+    if (!isDecoderAvailable())
         return false;
-
-    ImageFrame* buffer = m_decoder->frameBufferAtIndex(index);
-    return buffer && buffer->status() == ImageFrame::FrameComplete;
+    // FIXME: figure out the best heuristic for enabling async image decoding.
+    return size().area() * sizeof(RGBA32) >= (frameCount() > 1 ? 100 * KB : 500 * KB);
 }
 
-unsigned ImageSource::frameBytesAtIndex(size_t index, SubsamplingLevel) const
+SubsamplingLevel ImageSource::maximumSubsamplingLevel()
 {
-    if (!m_decoder)
-        return 0;
-    return m_decoder->frameBytesAtIndex(index);
+    if (m_maximumSubsamplingLevel)
+        return m_maximumSubsamplingLevel.value();
+
+    if (!isDecoderAvailable() || !m_decoder->frameAllowSubsamplingAtIndex(0))
+        return SubsamplingLevel::Default;
+
+    // FIXME: this value was chosen to be appropriate for iOS since the image
+    // subsampling is only enabled by default on iOS. Choose a different value
+    // if image subsampling is enabled on other platform.
+    const int maximumImageAreaBeforeSubsampling = 5 * 1024 * 1024;
+    SubsamplingLevel level = SubsamplingLevel::First;
+
+    for (; level < SubsamplingLevel::Last; ++level) {
+        if (frameSizeAtIndex(0, level).area().unsafeGet() < maximumImageAreaBeforeSubsampling)
+            break;
+    }
+
+    m_maximumSubsamplingLevel = level;
+    return m_maximumSubsamplingLevel.value();
+}
+
+SubsamplingLevel ImageSource::subsamplingLevelForScaleFactor(GraphicsContext& context, const FloatSize& scaleFactor)
+{
+#if USE(CG)
+    // Never use subsampled images for drawing into PDF contexts.
+    if (wkCGContextIsPDFContext(context.platformContext()))
+        return SubsamplingLevel::Default;
+
+    float scale = std::min(float(1), std::max(scaleFactor.width(), scaleFactor.height()));
+    if (!(scale > 0 && scale <= 1))
+        return SubsamplingLevel::Default;
+
+    int result = std::ceil(std::log2(1 / scale));
+    return static_cast<SubsamplingLevel>(std::min(result, static_cast<int>(maximumSubsamplingLevel())));
+#else
+    UNUSED_PARAM(context);
+    UNUSED_PARAM(scaleFactor);
+    return SubsamplingLevel::Default;
+#endif
+}
+
+NativeImagePtr ImageSource::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel)
+{
+    return isDecoderAvailable() ? m_decoder->createFrameImageAtIndex(index, subsamplingLevel) : nullptr;
+}
+
+NativeImagePtr ImageSource::frameImageAtIndexCacheIfNeeded(size_t index, SubsamplingLevel subsamplingLevel, const GraphicsContext* targetContext)
+{
+    setDecoderTargetContext(targetContext);
+    return m_frameCache->frameImageAtIndexCacheIfNeeded(index, subsamplingLevel);
+}
+
+void ImageSource::dump(TextStream& ts)
+{
+    ts.dumpProperty("type", filenameExtension());
+    ts.dumpProperty("frame-count", frameCount());
+    ts.dumpProperty("repetitions", repetitionCount());
+    ts.dumpProperty("solid-color", singlePixelSolidColor());
+
+    ImageOrientation orientation = frameOrientationAtIndex(0);
+    if (orientation != OriginTopLeft)
+        ts.dumpProperty("orientation", orientation);
 }
 
 }
-
-#endif // USE(CG)

@@ -20,10 +20,10 @@
 #include "config.h"
 #include "SVGTextMetricsBuilder.h"
 
+#include "RenderChildIterator.h"
 #include "RenderSVGInline.h"
 #include "RenderSVGInlineText.h"
 #include "RenderSVGText.h"
-#include "SVGTextRunRenderingContext.h"
 
 namespace WebCore {
 
@@ -67,11 +67,7 @@ void SVGTextMetricsBuilder::advanceSimpleText()
     float currentWidth = m_simpleWidthIterator->runWidthSoFar() - m_totalWidth;
     m_totalWidth = m_simpleWidthIterator->runWidthSoFar();
 
-#if ENABLE(SVG_FONTS)
-    m_currentMetrics = SVGTextMetrics(*m_text, m_textPosition, metricsLength, currentWidth, m_simpleWidthIterator->lastGlyphName());
-#else
-    m_currentMetrics = SVGTextMetrics(*m_text, m_textPosition, metricsLength, currentWidth, emptyString());
-#endif
+    m_currentMetrics = SVGTextMetrics(*m_text, metricsLength, currentWidth);
 }
 
 void SVGTextMetricsBuilder::advanceComplexText()
@@ -176,9 +172,9 @@ void SVGTextMetricsBuilder::measureTextRenderer(RenderSVGInlineText& text, Measu
 
 void SVGTextMetricsBuilder::walkTree(RenderElement& start, RenderSVGInlineText* stopAtLeaf, MeasureTextData* data)
 {
-    for (auto* child = start.firstChild(); child; child = child->nextSibling()) {
-        if (is<RenderSVGInlineText>(*child)) {
-            RenderSVGInlineText& text = downcast<RenderSVGInlineText>(*child);
+    for (auto& child : childrenOfType<RenderObject>(start)) {
+        if (is<RenderSVGInlineText>(child)) {
+            auto& text = downcast<RenderSVGInlineText>(child);
             if (stopAtLeaf && stopAtLeaf != &text) {
                 data->processRenderer = false;
                 measureTextRenderer(text, data);
@@ -193,10 +189,10 @@ void SVGTextMetricsBuilder::walkTree(RenderElement& start, RenderSVGInlineText* 
             continue;
         }
 
-        if (!is<RenderSVGInline>(*child))
+        if (!is<RenderSVGInline>(child))
             continue;
 
-        walkTree(downcast<RenderSVGInline>(*child), stopAtLeaf, data);
+        walkTree(downcast<RenderSVGInline>(child), stopAtLeaf, data);
     }
 }
 

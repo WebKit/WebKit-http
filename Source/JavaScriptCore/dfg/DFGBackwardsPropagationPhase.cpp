@@ -248,6 +248,7 @@ private:
         }
 
         case ArithAdd: {
+            flags &= ~NodeBytecodeUsesAsOther;
             if (isNotNegZero(node->child1().node()) || isNotNegZero(node->child2().node()))
                 flags &= ~NodeBytecodeNeedsNegZero;
             if (!isWithinPowerOfTwo<32>(node->child1()) && !isWithinPowerOfTwo<32>(node->child2()))
@@ -268,6 +269,7 @@ private:
         }
 
         case ArithSub: {
+            flags &= ~NodeBytecodeUsesAsOther;
             if (isNotNegZero(node->child1().node()) || isNotPosZero(node->child2().node()))
                 flags &= ~NodeBytecodeNeedsNegZero;
             if (!isWithinPowerOfTwo<32>(node->child1()) && !isWithinPowerOfTwo<32>(node->child2()))
@@ -358,7 +360,8 @@ private:
             break;
         }
             
-        case ToPrimitive: {
+        case ToPrimitive:
+        case ToNumber: {
             node->child1()->mergeFlags(flags);
             break;
         }
@@ -408,7 +411,7 @@ private:
             RELEASE_ASSERT_NOT_REACHED();
             break;
             
-        // Note: ArithSqrt, ArithSin, and ArithCos and other math intrinsics don't have special
+        // Note: ArithSqrt, ArithUnary and other math intrinsics don't have special
         // rules in here because they are always followed by Phantoms to signify that if the
         // method call speculation fails, the bytecode may use the arguments in arbitrary ways.
         // This corresponds to that possibility of someone doing something like:
@@ -426,7 +429,6 @@ private:
 
 bool performBackwardsPropagation(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Backwards Propagation Phase");
     return runPhase<BackwardsPropagationPhase>(graph);
 }
 

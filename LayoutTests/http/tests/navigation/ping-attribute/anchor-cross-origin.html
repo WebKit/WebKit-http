@@ -1,26 +1,24 @@
-<html><head>
+<!DOCTYPE html>
+<html>
+<head>
 <title>Ping</title>
+<script src="resources/utilities.js"></script>
 <script>
 
 var testCalled = false;
 
 function test() {
     if (!testCalled) {
-        if (window.testRunner) {
+        if (window.testRunner && window.internals) {
             testRunner.dumpAsText();
-            testRunner.overridePreference("WebKitHyperlinkAuditingEnabled", 1);
+            internals.settings.setHyperlinkAuditingEnabled(true);
             testRunner.waitUntilDone();
         }
         testCalled = true;
         return;
     }
 
-    if (window.eventSender) {
-        var a = document.getElementById("a");
-        eventSender.mouseMoveTo(a.offsetLeft + 2, a.offsetTop + 2);
-        eventSender.mouseDown();
-        eventSender.mouseUp();
-    }
+    clickElement(document.getElementById("a"));
 }
 
 </script>

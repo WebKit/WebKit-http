@@ -19,14 +19,14 @@
  *
  */
 
-#ifndef RuleFeature_h
-#define RuleFeature_h
+#pragma once
 
 #include "CSSSelector.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
 
@@ -51,32 +51,33 @@ struct RuleFeatureSet {
     void shrinkToFit();
     void collectFeatures(const RuleData&);
 
-    HashSet<AtomicStringImpl*> idsInRules;
-    HashSet<AtomicStringImpl*> idsMatchingAncestorsInRules;
-    HashSet<AtomicStringImpl*> classesInRules;
-    HashSet<AtomicStringImpl*> attributeCanonicalLocalNamesInRules;
-    HashSet<AtomicStringImpl*> attributeLocalNamesInRules;
+    HashSet<AtomicString> idsInRules;
+    HashSet<AtomicString> idsMatchingAncestorsInRules;
+    HashSet<AtomicString> classesInRules;
+    HashSet<AtomicString> attributeCanonicalLocalNamesInRules;
+    HashSet<AtomicString> attributeLocalNamesInRules;
     Vector<RuleFeature> siblingRules;
     Vector<RuleFeature> uncommonAttributeRules;
-    HashMap<AtomicStringImpl*, std::unique_ptr<Vector<RuleFeature>>> ancestorClassRules;
+    HashMap<AtomicString, std::unique_ptr<Vector<RuleFeature>>> ancestorClassRules;
 
     struct AttributeRules {
-        HashMap<std::pair<AtomicStringImpl*, unsigned>, const CSSSelector*> selectors;
+        WTF_MAKE_FAST_ALLOCATED;
+    public:
+        using SelectorKey = std::pair<AtomicStringImpl*, std::pair<AtomicStringImpl*, unsigned>>;
+        HashMap<SelectorKey, const CSSSelector*> selectors;
         Vector<RuleFeature> features;
     };
-    HashMap<AtomicStringImpl*, std::unique_ptr<AttributeRules>> ancestorAttributeRulesForHTML;
+    HashMap<AtomicString, std::unique_ptr<AttributeRules>> ancestorAttributeRulesForHTML;
     bool usesFirstLineRules { false };
     bool usesFirstLetterRules { false };
 
 private:
     struct SelectorFeatures {
         bool hasSiblingSelector { false };
-        Vector<AtomicStringImpl*> classesMatchingAncestors;
+        Vector<AtomicString, 32> classesMatchingAncestors;
         Vector<const CSSSelector*> attributeSelectorsMatchingAncestors;
     };
     void recursivelyCollectFeaturesFromSelector(SelectorFeatures&, const CSSSelector&, bool matchesAncestor = false);
 };
 
 } // namespace WebCore
-
-#endif // RuleFeature_h

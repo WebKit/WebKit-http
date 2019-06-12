@@ -91,7 +91,7 @@ using namespace WebCore;
     _inspectorController = inspectorController;
 
 #if !PLATFORM(IOS)
-    int styleMask = NSBorderlessWindowMask;
+    int styleMask = NSWindowStyleMaskBorderless;
     NSRect contentRect = [NSWindow contentRectForFrameRect:[self _computeHighlightWindowFrame] styleMask:styleMask];
     _highlightWindow = [[NSWindow alloc] initWithContentRect:contentRect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
     [_highlightWindow setBackgroundColor:[NSColor clearColor]];

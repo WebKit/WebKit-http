@@ -31,6 +31,7 @@
 #include "Logging.h"
 #include "NetworkCache.h"
 #include "NetworkLoad.h"
+#include "NetworkSession.h"
 #include <WebCore/SessionID.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
@@ -45,17 +46,20 @@ SpeculativeLoad::SpeculativeLoad(const GlobalFrameID& frameID, const ResourceReq
     , m_completionHandler(WTFMove(completionHandler))
     , m_originalRequest(request)
     , m_bufferedDataForCache(SharedBuffer::create())
-    , m_cacheEntryForValidation(WTFMove(cacheEntryForValidation))
+    , m_cacheEntry(WTFMove(cacheEntryForValidation))
 {
-    ASSERT(m_cacheEntryForValidation);
-    ASSERT(m_cacheEntryForValidation->needsValidation());
+    ASSERT(!m_cacheEntry || m_cacheEntry->needsValidation());
 
     NetworkLoadParameters parameters;
     parameters.sessionID = SessionID::defaultSessionID();
     parameters.allowStoredCredentials = AllowStoredCredentials;
     parameters.contentSniffingPolicy = DoNotSniffContent;
     parameters.request = m_originalRequest;
-    m_networkLoad = std::make_unique<NetworkLoad>(*this, parameters);
+#if USE(NETWORK_SESSION)
+    m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters), NetworkSession::defaultSession());
+#else
+    m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters));
+#endif
 }
 
 SpeculativeLoad::~SpeculativeLoad()
@@ -63,35 +67,38 @@ SpeculativeLoad::~SpeculativeLoad()
     ASSERT(!m_networkLoad);
 }
 
-void SpeculativeLoad::willSendRedirectedRequest(const ResourceRequest& request, const ResourceRequest& redirectRequest, const ResourceResponse& redirectResponse)
+void SpeculativeLoad::willSendRedirectedRequest(ResourceRequest&& request, ResourceRequest&& redirectRequest, ResourceResponse&& redirectResponse)
 {
-    updateRedirectChainStatus(m_redirectChainCacheStatus, redirectResponse);
+    LOG(NetworkCacheSpeculativePreloading, "Speculative redirect %s -> %s", request.url().string().utf8().data(), redirectRequest.url().string().utf8().data());
+
+    m_cacheEntry = NetworkCache::singleton().storeRedirect(request, redirectResponse, redirectRequest);
+    // Create a synthetic cache entry if we can't store.
+    if (!m_cacheEntry)
+        m_cacheEntry = NetworkCache::singleton().makeRedirectEntry(request, redirectResponse, redirectRequest);
+
+    // Don't follow the redirect. The redirect target will be registered for speculative load when it is loaded.
+    didComplete();
 }
 
-auto SpeculativeLoad::didReceiveResponse(const ResourceResponse& receivedResponse) -> ShouldContinueDidReceiveResponse
+auto SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse) -> ShouldContinueDidReceiveResponse
 {
     m_response = receivedResponse;
 
     if (m_response.isMultipart())
         m_bufferedDataForCache = nullptr;
 
-    ASSERT(m_cacheEntryForValidation);
-
     bool validationSucceeded = m_response.httpStatusCode() == 304; // 304 Not Modified
-    if (validationSucceeded) {
-        m_cacheEntryForValidation = NetworkCache::singleton().update(m_originalRequest, m_frameID, *m_cacheEntryForValidation, m_response);
-        didComplete();
-        return ShouldContinueDidReceiveResponse::No;
-    }
-
-    m_cacheEntryForValidation = nullptr;
+    if (validationSucceeded && m_cacheEntry)
+        m_cacheEntry = NetworkCache::singleton().update(m_originalRequest, m_frameID, *m_cacheEntry, m_response);
+    else
+        m_cacheEntry = nullptr;
 
     return ShouldContinueDidReceiveResponse::Yes;
 }
 
-void SpeculativeLoad::didReceiveBuffer(RefPtr<SharedBuffer>&& buffer, int reportedEncodedDataLength)
+void SpeculativeLoad::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedEncodedDataLength)
 {
-    ASSERT(!m_cacheEntryForValidation);
+    ASSERT(!m_cacheEntry);
 
     if (m_bufferedDataForCache) {
         // Prevent memory growth in case of streaming data.
@@ -103,32 +110,32 @@ void SpeculativeLoad::didReceiveBuffer(RefPtr<SharedBuffer>&& buffer, int report
     }
 }
 
-void SpeculativeLoad::didFinishLoading(double finishTime)
+void SpeculativeLoad::didFinishLoading(const WebCore::NetworkLoadMetrics&)
 {
-    ASSERT(!m_cacheEntryForValidation);
-
-    bool allowStale = m_originalRequest.cachePolicy() >= ReturnCacheDataElseLoad;
-    bool hasCacheableRedirect = m_response.isHTTP() && redirectChainAllowsReuse(m_redirectChainCacheStatus, allowStale ? ReuseExpiredRedirection : DoNotReuseExpiredRedirection);
-    if (hasCacheableRedirect && m_redirectChainCacheStatus.status == RedirectChainCacheStatus::CachedRedirection) {
-        // Maybe we should cache the actual redirects instead of the end result?
-        auto now = std::chrono::system_clock::now();
-        auto responseEndOfValidity = now + computeFreshnessLifetimeForHTTPFamily(m_response, now) - computeCurrentAge(m_response, now);
-        hasCacheableRedirect = responseEndOfValidity <= m_redirectChainCacheStatus.endOfValidity;
-    }
-
-    if (m_bufferedDataForCache && hasCacheableRedirect)
-        m_cacheEntryForValidation = NetworkCache::singleton().store(m_originalRequest, m_response, WTFMove(m_bufferedDataForCache), [](NetworkCache::MappedBody& mappedBody) { });
-    else if (!hasCacheableRedirect) {
-        // Make sure we don't keep a stale entry in the cache.
-        NetworkCache::singleton().remove(m_originalRequest);
+    if (m_didComplete)
+        return;
+    if (!m_cacheEntry && m_bufferedDataForCache) {
+        m_cacheEntry = NetworkCache::singleton().store(m_originalRequest, m_response, m_bufferedDataForCache.copyRef(), [](auto& mappedBody) { });
+        // Create a synthetic cache entry if we can't store.
+        if (!m_cacheEntry && isStatusCodeCacheableByDefault(m_response.httpStatusCode()))
+            m_cacheEntry = NetworkCache::singleton().makeEntry(m_originalRequest, m_response, WTFMove(m_bufferedDataForCache));
     }
 
     didComplete();
 }
 
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+void SpeculativeLoad::canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&)
+{
+    m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(false);
+}
+#endif
+
 void SpeculativeLoad::didFailLoading(const ResourceError&)
 {
-    m_cacheEntryForValidation = nullptr;
+    if (m_didComplete)
+        return;
+    m_cacheEntry = nullptr;
 
     didComplete();
 }
@@ -137,9 +144,16 @@ void SpeculativeLoad::didComplete()
 {
     RELEASE_ASSERT(RunLoop::isMain());
 
+    if (m_didComplete)
+        return;
+    m_didComplete = true;
     m_networkLoad = nullptr;
 
-    m_completionHandler(WTFMove(m_cacheEntryForValidation));
+    // Make sure speculatively revalidated resources do not get validated by the NetworkResourceLoader again.
+    if (m_cacheEntry)
+        m_cacheEntry->setNeedsValidation(false);
+
+    m_completionHandler(WTFMove(m_cacheEntry));
 }
 
 } // namespace NetworkCache

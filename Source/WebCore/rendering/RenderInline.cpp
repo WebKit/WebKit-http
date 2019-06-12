@@ -30,8 +30,8 @@
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
 #include "InlineTextBox.h"
-#include "Page.h"
 #include "RenderBlock.h"
+#include "RenderChildIterator.h"
 #include "RenderFullScreen.h"
 #include "RenderGeometryMap.h"
 #include "RenderIterator.h"
@@ -39,6 +39,7 @@
 #include "RenderLineBreak.h"
 #include "RenderListMarker.h"
 #include "RenderNamedFlowThread.h"
+#include "RenderTable.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -52,13 +53,13 @@
 
 namespace WebCore {
 
-RenderInline::RenderInline(Element& element, Ref<RenderStyle>&& style)
+RenderInline::RenderInline(Element& element, RenderStyle&& style)
     : RenderBoxModelObject(element, WTFMove(style), RenderInlineFlag)
 {
     setChildrenInline(true);
 }
 
-RenderInline::RenderInline(Document& document, Ref<RenderStyle>&& style)
+RenderInline::RenderInline(Document& document, RenderStyle&& style)
     : RenderBoxModelObject(document, WTFMove(style), RenderInlineFlag)
 {
     setChildrenInline(true);
@@ -83,7 +84,7 @@ void RenderInline::willBeDestroyed()
     // properly dirty line boxes that they are removed from.  Effects that do :before/:after only on hover could crash otherwise.
     destroyLeftoverChildren();
     
-    if (!documentBeingDestroyed()) {
+    if (!renderTreeBeingDestroyed()) {
         if (firstLineBox()) {
             // We can't wait for RenderBoxModelObject::destroy to clear the selection,
             // because by then we will have nuked the line boxes.
@@ -158,8 +159,8 @@ static void updateStyleOfAnonymousBlockContinuations(const RenderBlock& block, c
         RenderInline* continuation = block.inlineElementContinuation();
         if (oldStyle->hasInFlowPosition() && inFlowPositionedInlineAncestor(continuation))
             continue;
-        auto blockStyle = RenderStyle::createAnonymousStyleWithDisplay(&block.style(), BLOCK);
-        blockStyle.get().setPosition(newStyle->position());
+        auto blockStyle = RenderStyle::createAnonymousStyleWithDisplay(block.style(), BLOCK);
+        blockStyle.setPosition(newStyle->position());
         block.setStyle(WTFMove(blockStyle));
     }
 }
@@ -167,10 +168,9 @@ static void updateStyleOfAnonymousBlockContinuations(const RenderBlock& block, c
 void RenderInline::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
 {
     RenderBoxModelObject::styleWillChange(diff, newStyle);
-
-    // Check if this inline can hold absolute positioned elmements even after the style change.
+    // RenderInlines forward their absolute positioned descendants to their (non-anonymous) containing block.
+    // Check if this non-anonymous containing block can hold the absolute positioned elements when the inline is no longer positioned.
     if (canContainAbsolutelyPositionedObjects() && newStyle.position() == StaticPosition) {
-        // RenderInlines forward their absolute positioned descendants to their (non-anonymous) containing block.
         auto* container = containingBlockForAbsolutePosition();
         if (container && !container->canContainAbsolutelyPositionedObjects())
             container->removePositionedObjects(nullptr, NewContainingBlock);
@@ -187,13 +187,13 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
     // e.g., <font>foo <h4>goo</h4> moo</font>.  The <font> inlines before
     // and after the block share the same style, but the block doesn't
     // need to pass its style on to anyone else.
-    RenderStyle& newStyle = style();
+    auto& newStyle = style();
     RenderInline* continuation = inlineElementContinuation();
     if (continuation) {
         for (RenderInline* currCont = continuation; currCont; currCont = currCont->inlineElementContinuation()) {
             RenderBoxModelObject* nextCont = currCont->continuation();
             currCont->setContinuation(nullptr);
-            currCont->setStyle(newStyle);
+            currCont->setStyle(RenderStyle::clone(newStyle));
             currCont->setContinuation(nextCont);
         }
         // If an inline's in-flow positioning has changed and it is part of an active continuation as a descendant of an anonymous containing block,
@@ -204,7 +204,7 @@ void RenderInline::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
     }
 
     if (!alwaysCreateLineBoxes()) {
-        bool alwaysCreateLineBoxes = hasSelfPaintingLayer() || hasBoxDecorations() || newStyle.hasPadding() || newStyle.hasMargin() || hasOutline();
+        bool alwaysCreateLineBoxes = hasSelfPaintingLayer() || hasVisibleBoxDecorations() || newStyle.hasBorder() || newStyle.hasPadding() || newStyle.hasMargin() || hasOutline();
         if (oldStyle && alwaysCreateLineBoxes) {
             dirtyLineBoxes(false);
             setNeedsLayout();
@@ -220,7 +220,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
     if (alwaysCreateLineBoxes())
         return;
 
-    RenderStyle* parentStyle = &parent()->style();
+    auto* parentStyle = &parent()->style();
     RenderInline* parentRenderInline = is<RenderInline>(*parent()) ? downcast<RenderInline>(parent()) : nullptr;
     bool checkFonts = document().inNoQuirksMode();
     RenderFlowThread* flowThread = flowThreadContainingBlock();
@@ -235,7 +235,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
     if (!alwaysCreateLineBoxes && checkFonts && view().usesFirstLineRules()) {
         // Have to check the first line style as well.
         parentStyle = &parent()->firstLineStyle();
-        RenderStyle& childStyle = firstLineStyle();
+        auto& childStyle = firstLineStyle();
         alwaysCreateLineBoxes = !parentStyle->fontCascade().fontMetrics().hasIdenticalAscentDescentAndLineGap(childStyle.fontCascade().fontMetrics())
             || childStyle.verticalAlign() != BASELINE
             || parentStyle->lineHeight() != childStyle.lineHeight();
@@ -248,7 +248,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
     }
 }
 
-LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, int, LayoutUnit* extraWidthToEndOfLine)
+LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, unsigned, LayoutUnit* extraWidthToEndOfLine)
 {
     if (firstChild()) {
         // This condition is possible if the RenderInline is at an editing boundary,
@@ -274,9 +274,12 @@ LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, int, LayoutUnit* e
 
 void RenderInline::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
+    auto* beforeChildOrPlaceholder = beforeChild;
+    if (auto* flowThread = flowThreadContainingBlock())
+        beforeChildOrPlaceholder = flowThread->resolveMovedChild(beforeChild);
     if (continuation())
-        return addChildToContinuation(newChild, beforeChild);
-    return addChildIgnoringContinuation(newChild, beforeChild);
+        return addChildToContinuation(newChild, beforeChildOrPlaceholder);
+    return addChildIgnoringContinuation(newChild, beforeChildOrPlaceholder);
 }
 
 static RenderBoxModelObject* nextContinuation(RenderObject* renderer)
@@ -323,7 +326,7 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
     if (!beforeChild && isAfterContent(lastChild()))
         beforeChild = lastChild();
     
-    bool useNewBlockInsideInlineModel = document().settings()->newBlockInsideInlineModelEnabled();
+    bool useNewBlockInsideInlineModel = settings().newBlockInsideInlineModelEnabled();
     bool childInline = newChildIsInline(*newChild, *this);
     // This code is for the old block-inside-inline model that uses continuations.
     if (!useNewBlockInsideInlineModel && !childInline && !newChild->isFloatingOrOutOfFlowPositioned()) {
@@ -331,12 +334,12 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
         // inline into continuations.  This involves creating an anonymous block box to hold
         // |newChild|.  We then make that block box a continuation of this inline.  We take all of
         // the children after |beforeChild| and put them in a clone of this object.
-        auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(&style(), BLOCK);
+        auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK);
         
         // If inside an inline affected by in-flow positioning the block needs to be affected by it too.
         // Giving the block a layer like this allows it to collect the x/y offsets from inline parents later.
         if (auto positionedAncestor = inFlowPositionedInlineAncestor(this))
-            newStyle.get().setPosition(positionedAncestor->style().position());
+            newStyle.setPosition(positionedAncestor->style().position());
 
         RenderBlock* newBox = new RenderBlockFlow(document(), WTFMove(newStyle));
         newBox->initializeStyle();
@@ -397,7 +400,7 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
  
         if (!newChild->isFloatingOrOutOfFlowPositioned()) {
             // There was no suitable existing anonymous inline-block. Create a new one.
-            RenderBlockFlow* anonymousInlineBlock = new RenderBlockFlow(document(), RenderStyle::createAnonymousStyleWithDisplay(&style(), INLINE_BLOCK));
+            RenderBlockFlow* anonymousInlineBlock = new RenderBlockFlow(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), INLINE_BLOCK));
             anonymousInlineBlock->initializeStyle();
     
             RenderBoxModelObject::addChild(anonymousInlineBlock, beforeChild);
@@ -413,9 +416,10 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
 
 RenderPtr<RenderInline> RenderInline::clone() const
 {
-    RenderPtr<RenderInline> cloneInline = createRenderer<RenderInline>(*element(), style());
+    RenderPtr<RenderInline> cloneInline = createRenderer<RenderInline>(*element(), RenderStyle::clone(style()));
     cloneInline->initializeStyle();
     cloneInline->setFlowThreadState(flowThreadState());
+    cloneInline->setHasOutlineAutoAncestor(hasOutlineAutoAncestor());
     return cloneInline;
 }
 
@@ -520,7 +524,8 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
     }
 
     // Clear the flow thread containing blocks cached during the detached state insertions.
-    cloneInline->invalidateFlowThreadContainingBlockIncludingDescendants();
+    for (auto& cloneBlockChild : childrenOfType<RenderBlock>(*cloneInline))
+        cloneBlockChild.resetFlowThreadContainingBlockAndChildInfoIncludingDescendants();
 
     // Now we are at the block level. We need to put the clone into the toBlock.
     toBlock->insertChildInternal(cloneInline.leakPtr(), nullptr, NotifyChildren);
@@ -561,7 +566,7 @@ void RenderInline::splitFlow(RenderObject* beforeChild, RenderBlock* newBlockBox
         madeNewBeforeBlock = true;
     }
 
-    RenderBlock& post = downcast<RenderBlock>(*pre->createAnonymousBoxWithSameTypeAs(block));
+    auto& post = downcast<RenderBlock>(*pre->createAnonymousBoxWithSameTypeAs(*block).release());
 
     RenderObject* boxFirst = madeNewBeforeBlock ? block->firstChild() : pre->nextSibling();
     if (madeNewBeforeBlock)
@@ -600,30 +605,40 @@ void RenderInline::splitFlow(RenderObject* beforeChild, RenderBlock* newBlockBox
     post.setNeedsLayoutAndPrefWidthsRecalc();
 }
 
+static bool canUseAsParentForContinuation(const RenderObject* renderer)
+{
+    if (!renderer)
+        return false;
+    if (!is<RenderBlock>(renderer) && renderer->isAnonymous())
+        return false;
+    if (is<RenderTable>(renderer))
+        return false;
+    return true;
+}
+
 void RenderInline::addChildToContinuation(RenderObject* newChild, RenderObject* beforeChild)
 {
-    RenderBoxModelObject* flow = continuationBefore(beforeChild);
+    auto* flow = continuationBefore(beforeChild);
     // It may or may not be the direct parent of the beforeChild.
     RenderBoxModelObject* beforeChildAncestor = nullptr;
-    // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is
-    // the topmost wrapper.
-    if (beforeChild && !is<RenderBlock>(beforeChild->parent()) && beforeChild->parent()->isAnonymous()) {
-        RenderElement* anonymousParent = beforeChild->parent();
-        while (anonymousParent && anonymousParent->parent() && anonymousParent->parent()->isAnonymous())
-            anonymousParent = anonymousParent->parent();
-        ASSERT(anonymousParent && anonymousParent->parent());
-        beforeChildAncestor = downcast<RenderBoxModelObject>(anonymousParent->parent());
-    } else {
-        ASSERT(!beforeChild || is<RenderBlock>(*beforeChild->parent()) || is<RenderInline>(*beforeChild->parent()));
-        if (beforeChild)
-            beforeChildAncestor = downcast<RenderBoxModelObject>(beforeChild->parent());
-        else {
-            if (RenderBoxModelObject* continuation = nextContinuation(flow))
-                beforeChildAncestor = continuation;
-            else
-                beforeChildAncestor = flow;
+    if (!beforeChild) {
+        auto* continuation = nextContinuation(flow);
+        beforeChildAncestor = continuation ? continuation : flow;
+    } else if (canUseAsParentForContinuation(beforeChild->parent()))
+        beforeChildAncestor = downcast<RenderBoxModelObject>(beforeChild->parent());
+    else if (beforeChild->parent()) {
+        // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is the topmost wrapper.
+        auto* parent = beforeChild->parent();
+        while (parent && parent->parent() && parent->parent()->isAnonymous()) {
+            // The ancestor candidate needs to be inside the continuation.
+            if (parent->hasContinuation())
+                break;
+            parent = parent->parent();
         }
-    }
+        ASSERT(parent && parent->parent());
+        beforeChildAncestor = downcast<RenderBoxModelObject>(parent->parent());
+    } else
+        ASSERT_NOT_REACHED();
 
     if (newChild->isFloatingOrOutOfFlowPositioned())
         return beforeChildAncestor->addChildIgnoringContinuation(newChild, beforeChild);
@@ -669,14 +684,14 @@ void RenderInline::generateCulledLineBoxRects(GeneratorContext& context, const R
 
     bool isHorizontal = style().isHorizontalWritingMode();
 
-    for (RenderObject* current = firstChild(); current; current = current->nextSibling()) {
-        if (current->isFloatingOrOutOfFlowPositioned())
+    for (auto& current : childrenOfType<RenderObject>(*this)) {
+        if (current.isFloatingOrOutOfFlowPositioned())
             continue;
-            
+
         // We want to get the margin box in the inline direction, and then use our font ascent/descent in the block
         // direction (aligned to the root box's baseline).
-        if (is<RenderBox>(*current)) {
-            RenderBox& renderBox = downcast<RenderBox>(*current);
+        if (is<RenderBox>(current)) {
+            auto& renderBox = downcast<RenderBox>(current);
             if (renderBox.inlineBoxWrapper()) {
                 const RootInlineBox& rootBox = renderBox.inlineBoxWrapper()->root();
                 const RenderStyle& containerStyle = rootBox.isFirstLine() ? container->firstLineStyle() : container->style();
@@ -687,9 +702,9 @@ void RenderInline::generateCulledLineBoxRects(GeneratorContext& context, const R
                 else
                     context.addRect(FloatRect(logicalTop, renderBox.inlineBoxWrapper()->y() - renderBox.marginTop(), logicalHeight, renderBox.height() + renderBox.verticalMarginExtent()));
             }
-        } else if (is<RenderInline>(*current)) {
+        } else if (is<RenderInline>(current)) {
             // If the child doesn't need line boxes either, then we can recur.
-            RenderInline& renderInline = downcast<RenderInline>(*current);
+            auto& renderInline = downcast<RenderInline>(current);
             if (!renderInline.alwaysCreateLineBoxes())
                 renderInline.generateCulledLineBoxRects(context, container);
             else {
@@ -711,8 +726,8 @@ void RenderInline::generateCulledLineBoxRects(GeneratorContext& context, const R
                     }
                 }
             }
-        } else if (is<RenderText>(*current)) {
-            RenderText& currText = downcast<RenderText>(*current);
+        } else if (is<RenderText>(current)) {
+            auto& currText = downcast<RenderText>(current);
             for (InlineTextBox* childText = currText.firstTextBox(); childText; childText = childText->nextTextBox()) {
                 const RootInlineBox& rootBox = childText->root();
                 const RenderStyle& containerStyle = rootBox.isFirstLine() ? container->firstLineStyle() : container->style();
@@ -723,8 +738,8 @@ void RenderInline::generateCulledLineBoxRects(GeneratorContext& context, const R
                 else
                     context.addRect(FloatRect(logicalTop, childText->y(), logicalHeight, childText->logicalWidth()));
             }
-        } else if (is<RenderLineBreak>(*current)) {
-            if (InlineBox* inlineBox = downcast<RenderLineBreak>(*current).inlineBoxWrapper()) {
+        } else if (is<RenderLineBreak>(current)) {
+            if (auto* inlineBox = downcast<RenderLineBreak>(current).inlineBoxWrapper()) {
                 // FIXME: This could use a helper to share these with text path.
                 const RootInlineBox& rootBox = inlineBox->root();
                 const RenderStyle& containerStyle = rootBox.isFirstLine() ? container->firstLineStyle() : container->style();
@@ -1032,26 +1047,26 @@ IntRect RenderInline::linesBoundingBox() const
 
 InlineBox* RenderInline::culledInlineFirstLineBox() const
 {
-    for (RenderObject* current = firstChild(); current; current = current->nextSibling()) {
-        if (current->isFloatingOrOutOfFlowPositioned())
+    for (auto& current : childrenOfType<RenderObject>(*this)) {
+        if (current.isFloatingOrOutOfFlowPositioned())
             continue;
-            
+
         // We want to get the margin box in the inline direction, and then use our font ascent/descent in the block
         // direction (aligned to the root box's baseline).
-        if (is<RenderBox>(*current)) {
-            const auto& renderBox = downcast<RenderBox>(*current);
+        if (is<RenderBox>(current)) {
+            auto& renderBox = downcast<RenderBox>(current);
             if (renderBox.inlineBoxWrapper())
                 return renderBox.inlineBoxWrapper();
-        } else if (is<RenderLineBreak>(*current)) {
-            RenderLineBreak& renderBR = downcast<RenderLineBreak>(*current);
+        } else if (is<RenderLineBreak>(current)) {
+            auto& renderBR = downcast<RenderLineBreak>(current);
             if (renderBR.inlineBoxWrapper())
                 return renderBR.inlineBoxWrapper();
-        } else if (is<RenderInline>(*current)) {
-            RenderInline& renderInline = downcast<RenderInline>(*current);
+        } else if (is<RenderInline>(current)) {
+            auto& renderInline = downcast<RenderInline>(current);
             if (InlineBox* result = renderInline.firstLineBoxIncludingCulling())
                 return result;
-        } else if (is<RenderText>(*current)) {
-            RenderText& renderText = downcast<RenderText>(*current);
+        } else if (is<RenderText>(current)) {
+            auto& renderText = downcast<RenderText>(current);
             if (renderText.firstTextBox())
                 return renderText.firstTextBox();
         }
@@ -1095,13 +1110,13 @@ LayoutRect RenderInline::culledInlineVisualOverflowBoundingBox() const
     generateCulledLineBoxRects(context, this);
     LayoutRect result(enclosingLayoutRect(floatResult));
     bool isHorizontal = style().isHorizontalWritingMode();
-    for (RenderObject* current = firstChild(); current; current = current->nextSibling()) {
-        if (current->isFloatingOrOutOfFlowPositioned())
+    for (auto& current : childrenOfType<RenderObject>(*this)) {
+        if (current.isFloatingOrOutOfFlowPositioned())
             continue;
-            
+
         // For overflow we just have to propagate by hand and recompute it all.
-        if (is<RenderBox>(*current)) {
-            RenderBox& renderBox = downcast<RenderBox>(*current);
+        if (is<RenderBox>(current)) {
+            auto& renderBox = downcast<RenderBox>(current);
             if (!renderBox.hasSelfPaintingLayer() && renderBox.inlineBoxWrapper()) {
                 LayoutRect logicalRect = renderBox.logicalVisualOverflowRectForPropagation(&style());
                 if (isHorizontal) {
@@ -1112,17 +1127,17 @@ LayoutRect RenderInline::culledInlineVisualOverflowBoundingBox() const
                     result.uniteIfNonZero(logicalRect.transposedRect());
                 }
             }
-        } else if (is<RenderInline>(*current)) {
+        } else if (is<RenderInline>(current)) {
             // If the child doesn't need line boxes either, then we can recur.
-            RenderInline& renderInline = downcast<RenderInline>(*current);
+            auto& renderInline = downcast<RenderInline>(current);
             if (!renderInline.alwaysCreateLineBoxes())
                 result.uniteIfNonZero(renderInline.culledInlineVisualOverflowBoundingBox());
             else if (!renderInline.hasSelfPaintingLayer())
                 result.uniteIfNonZero(renderInline.linesVisualOverflowBoundingBox());
-        } else if (is<RenderText>(*current)) {
+        } else if (is<RenderText>(current)) {
             // FIXME; Overflow from text boxes is lost. We will need to cache this information in
             // InlineTextBoxes.
-            RenderText& renderText = downcast<RenderText>(*current);
+            auto& renderText = downcast<RenderText>(current);
             result.uniteIfNonZero(renderText.linesVisualOverflowBoundingBox());
         }
     }
@@ -1205,7 +1220,7 @@ LayoutRect RenderInline::linesVisualOverflowBoundingBoxInRegion(const RenderRegi
 LayoutRect RenderInline::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     // Only first-letter renderers are allowed in here during layout. They mutate the tree triggering repaints.
-    ASSERT(!view().layoutStateEnabled() || style().styleType() == FIRST_LETTER);
+    ASSERT(!view().layoutStateEnabled() || style().styleType() == FIRST_LETTER || hasSelfPaintingLayer());
 
     if (!firstLineBoxIncludingCulling() && !continuation())
         return LayoutRect();
@@ -1232,8 +1247,8 @@ LayoutRect RenderInline::clippedOverflowRectForRepaint(const RenderLayerModelObj
     if (hitRepaintContainer || !containingBlock)
         return repaintRect;
 
-    if (containingBlock->hasOverflowClip())
-        containingBlock->applyCachedClipAndScrollOffsetForRepaint(repaintRect);
+    if (containingBlock->hasOverflowClip() && containingBlock->shouldApplyClipAndScrollPositionForRepaint(repaintContainer))
+        containingBlock->applyCachedClipAndScrollPositionForRepaint(repaintRect);
 
     repaintRect = containingBlock->computeRectForRepaint(repaintRect, repaintContainer);
 
@@ -1258,7 +1273,7 @@ LayoutRect RenderInline::rectWithOutlineForRepaint(const RenderLayerModelObject*
     return r;
 }
 
-LayoutRect RenderInline::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, bool fixed) const
+LayoutRect RenderInline::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
 {
     // LayoutState is only valid for root-relative repainting
     LayoutRect adjustedRect = rect;
@@ -1276,7 +1291,7 @@ LayoutRect RenderInline::computeRectForRepaint(const LayoutRect& rect, const Ren
         return adjustedRect;
 
     bool containerSkipped;
-    RenderElement* container = this->container(repaintContainer, &containerSkipped);
+    RenderElement* container = this->container(repaintContainer, containerSkipped);
     if (!container)
         return adjustedRect;
 
@@ -1294,7 +1309,7 @@ LayoutRect RenderInline::computeRectForRepaint(const LayoutRect& rect, const Ren
     // its controlClipRect will be wrong. For overflow clip we use the values cached by the layer.
     adjustedRect.setLocation(topLeft);
     if (container->hasOverflowClip()) {
-        downcast<RenderBox>(*container).applyCachedClipAndScrollOffsetForRepaint(adjustedRect);
+        downcast<RenderBox>(*container).applyCachedClipAndScrollPositionForRepaint(adjustedRect);
         if (adjustedRect.isEmpty())
             return adjustedRect;
     }
@@ -1305,7 +1320,7 @@ LayoutRect RenderInline::computeRectForRepaint(const LayoutRect& rect, const Ren
         adjustedRect.move(-containerOffset);
         return adjustedRect;
     }
-    return container->computeRectForRepaint(adjustedRect, repaintContainer, fixed);
+    return container->computeRectForRepaint(adjustedRect, repaintContainer, context);
 }
 
 LayoutSize RenderInline::offsetFromContainer(RenderElement& container, const LayoutPoint&, bool* offsetDependsOnPoint) const
@@ -1317,7 +1332,7 @@ LayoutSize RenderInline::offsetFromContainer(RenderElement& container, const Lay
         offset += offsetForInFlowPosition();
 
     if (is<RenderBox>(container))
-        offset -= downcast<RenderBox>(container).scrolledContentOffset();
+        offset -= toLayoutSize(downcast<RenderBox>(container).scrollPosition());
 
     if (offsetDependsOnPoint)
         *offsetDependsOnPoint = (is<RenderBox>(container) && container.style().isFlippedBlocksWritingMode()) || is<RenderFlowThread>(container);
@@ -1340,7 +1355,7 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
     }
 
     bool containerSkipped;
-    RenderElement* container = this->container(repaintContainer, &containerSkipped);
+    RenderElement* container = this->container(repaintContainer, containerSkipped);
     if (!container)
         return;
 
@@ -1378,7 +1393,7 @@ const RenderObject* RenderInline::pushMappingToContainer(const RenderLayerModelO
     ASSERT(ancestorToStopAt != this);
 
     bool ancestorSkipped;
-    RenderElement* container = this->container(ancestorToStopAt, &ancestorSkipped);
+    RenderElement* container = this->container(ancestorToStopAt, ancestorSkipped);
     if (!container)
         return nullptr;
 
@@ -1457,24 +1472,24 @@ void RenderInline::dirtyLineBoxes(bool fullLayout)
 
     if (!alwaysCreateLineBoxes()) {
         // We have to grovel into our children in order to dirty the appropriate lines.
-        for (RenderObject* current = firstChild(); current; current = current->nextSibling()) {
-            if (current->isFloatingOrOutOfFlowPositioned())
+        for (auto& current : childrenOfType<RenderObject>(*this)) {
+            if (current.isFloatingOrOutOfFlowPositioned())
                 continue;
-            if (is<RenderBox>(*current) && !current->needsLayout()) {
-                RenderBox& renderBox = downcast<RenderBox>(*current);
+            if (is<RenderBox>(current) && !current.needsLayout()) {
+                auto& renderBox = downcast<RenderBox>(current);
                 if (renderBox.inlineBoxWrapper())
                     renderBox.inlineBoxWrapper()->root().markDirty();
-            } else if (!current->selfNeedsLayout()) {
-                if (is<RenderInline>(*current)) {
-                    RenderInline& renderInline = downcast<RenderInline>(*current);
+            } else if (!current.selfNeedsLayout()) {
+                if (is<RenderInline>(current)) {
+                    auto& renderInline = downcast<RenderInline>(current);
                     for (InlineFlowBox* childLine = renderInline.firstLineBox(); childLine; childLine = childLine->nextLineBox())
                         childLine->root().markDirty();
-                } else if (is<RenderText>(*current)) {
-                    RenderText& renderText = downcast<RenderText>(*current);
+                } else if (is<RenderText>(current)) {
+                    auto& renderText = downcast<RenderText>(current);
                     for (InlineTextBox* childText = renderText.firstTextBox(); childText; childText = childText->nextTextBox())
                         childText->root().markDirty();
-                } else if (is<RenderLineBreak>(*current)) {
-                    RenderLineBreak& renderBR = downcast<RenderLineBreak>(*current);
+                } else if (is<RenderLineBreak>(current)) {
+                    auto& renderBR = downcast<RenderLineBreak>(current);
                     if (renderBR.inlineBoxWrapper())
                         renderBR.inlineBoxWrapper()->root().markDirty();
                 }
@@ -1600,10 +1615,13 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
     if (!hasOutline())
         return;
 
-    RenderStyle& styleToUse = style();
+    auto& styleToUse = style();
     // Only paint the focus ring by hand if the theme isn't able to draw it.
-    if (styleToUse.outlineStyleIsAuto() && !theme().supportsFocusRing(styleToUse))
-        paintFocusRing(paintInfo, paintOffset, styleToUse);
+    if (styleToUse.outlineStyleIsAuto() && !theme().supportsFocusRing(styleToUse)) {
+        Vector<LayoutRect> focusRingRects;
+        addFocusRingRects(focusRingRects, paintOffset, paintInfo.paintContainer);
+        paintFocusRing(paintInfo, styleToUse, focusRingRects);
+    }
 
     if (hasOutlineAnnotation() && !styleToUse.outlineStyleIsAuto() && !theme().supportsFocusRing(styleToUse))
         addPDFURLRect(paintInfo, paintOffset);
@@ -1626,10 +1644,10 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
     rects.append(LayoutRect());
 
     Color outlineColor = styleToUse.visitedDependentColor(CSSPropertyOutlineColor);
-    bool useTransparencyLayer = outlineColor.hasAlpha();
+    bool useTransparencyLayer = !outlineColor.isOpaque();
     if (useTransparencyLayer) {
-        graphicsContext.beginTransparencyLayer(static_cast<float>(outlineColor.alpha()) / 255);
-        outlineColor = Color(outlineColor.red(), outlineColor.green(), outlineColor.blue());
+        graphicsContext.beginTransparencyLayer(outlineColor.alphaAsFloat());
+        outlineColor = outlineColor.opaqueColor();
     }
 
     for (unsigned i = 1; i < rects.size() - 1; i++)
@@ -1640,7 +1658,7 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
 }
 
 void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const LayoutPoint& paintOffset,
-    const LayoutRect& previousLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color outlineColor)
+    const LayoutRect& previousLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color& outlineColor)
 {
     const auto& styleToUse = style();
     float outlineOffset = styleToUse.outlineOffset();
@@ -1806,8 +1824,7 @@ void RenderInline::addAnnotatedRegions(Vector<AnnotatedRegionValue>& regions)
         if (!container)
             container = this;
 
-        region.clip = region.bounds;
-        container->computeAbsoluteRepaintRect(region.clip);
+        region.clip = container->computeAbsoluteRepaintRect(region.bounds);
         if (region.clip.height() < 0) {
             region.clip.setHeight(0);
             region.clip.setWidth(0);

@@ -35,32 +35,31 @@
 namespace WebCore {
 
 ScrollingThread::ScrollingThread()
-    : m_threadIdentifier(0)
 {
 }
 
 bool ScrollingThread::isCurrentThread()
 {
-    auto threadIdentifier = ScrollingThread::singleton().m_threadIdentifier;
-    return threadIdentifier && currentThread() == threadIdentifier;
+    RefPtr<Thread> thread = ScrollingThread::singleton().m_thread;
+    return thread && thread->id() == currentThread();
 }
 
-void ScrollingThread::dispatch(std::function<void ()> function)
+void ScrollingThread::dispatch(Function<void ()>&& function)
 {
     auto& scrollingThread = ScrollingThread::singleton();
     scrollingThread.createThreadIfNeeded();
 
     {
         std::lock_guard<Lock> lock(scrollingThread.m_functionsMutex);
-        scrollingThread.m_functions.append(function);
+        scrollingThread.m_functions.append(WTFMove(function));
     }
 
     scrollingThread.wakeUpRunLoop();
 }
 
-void ScrollingThread::dispatchBarrier(std::function<void ()> function)
+void ScrollingThread::dispatchBarrier(Function<void ()>&& function)
 {
-    dispatch([function]() mutable {
+    dispatch([function = WTFMove(function)]() mutable {
         callOnMainThread(WTFMove(function));
     });
 }
@@ -74,14 +73,17 @@ ScrollingThread& ScrollingThread::singleton()
 
 void ScrollingThread::createThreadIfNeeded()
 {
-    if (m_threadIdentifier)
+    if (m_thread)
         return;
 
     // Wait for the thread to initialize the run loop.
     {
         std::unique_lock<Lock> lock(m_initializeRunLoopMutex);
 
-        m_threadIdentifier = createThread(threadCallback, this, "WebCore: Scrolling");
+        m_thread = Thread::create("WebCore: Scrolling", [this] {
+            WTF::Thread::setCurrentThreadIsUserInteractive();
+            initializeRunLoop();
+        });
         
 #if PLATFORM(COCOA)
         m_initializeRunLoopConditionVariable.wait(lock, [this]{ return m_threadRunLoop; });
@@ -89,22 +91,11 @@ void ScrollingThread::createThreadIfNeeded()
     }
 }
 
-void ScrollingThread::threadCallback(void* scrollingThread)
-{
-    WTF::setCurrentThreadIsUserInteractive();
-    static_cast<ScrollingThread*>(scrollingThread)->threadBody();
-}
-
-void ScrollingThread::threadBody()
-{
-    initializeRunLoop();
-}
-
 void ScrollingThread::dispatchFunctionsFromScrollingThread()
 {
     ASSERT(isCurrentThread());
 
-    Vector<std::function<void ()>> functions;
+    Vector<Function<void ()>> functions;
     
     {
         std::lock_guard<Lock> lock(m_functionsMutex);

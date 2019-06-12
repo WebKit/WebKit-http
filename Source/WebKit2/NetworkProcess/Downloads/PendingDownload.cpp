@@ -28,6 +28,7 @@
 
 #if USE(NETWORK_SESSION)
 
+#include "DataReference.h"
 #include "DownloadProxyMessages.h"
 #include "NetworkLoad.h"
 #include "NetworkProcess.h"
@@ -37,23 +38,43 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PendingDownload::PendingDownload(const NetworkLoadParameters& parameters, DownloadID downloadID)
-    : m_networkLoad(std::make_unique<NetworkLoad>(*this, parameters))
+PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID downloadID, NetworkSession& networkSession, const String& suggestedName)
+    : m_networkLoad(std::make_unique<NetworkLoad>(*this, WTFMove(parameters), networkSession))
 {
     m_networkLoad->setPendingDownloadID(downloadID);
     m_networkLoad->setPendingDownload(*this);
+    m_networkLoad->setSuggestedFilename(suggestedName);
+
+    send(Messages::DownloadProxy::DidStart(m_networkLoad->currentRequest(), suggestedName));
 }
 
-void PendingDownload::willSendRedirectedRequest(const WebCore::ResourceRequest&, const WebCore::ResourceRequest& redirectRequest, const WebCore::ResourceResponse& redirectResponse)
+PendingDownload::PendingDownload(std::unique_ptr<NetworkLoad>&& networkLoad, DownloadID downloadID, const ResourceRequest& request, const ResourceResponse& response)
+    : m_networkLoad(WTFMove(networkLoad))
 {
-    send(Messages::DownloadProxy::WillSendRequest(redirectRequest, redirectResponse));
+    m_networkLoad->setPendingDownloadID(downloadID);
+    send(Messages::DownloadProxy::DidStart(request, String()));
+
+    m_networkLoad->convertTaskToDownload(*this, request, response);
+}
+
+void PendingDownload::willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse)
+{
+    send(Messages::DownloadProxy::WillSendRequest(WTFMove(redirectRequest), WTFMove(redirectResponse)));
 };
     
-void PendingDownload::continueWillSendRequest(const WebCore::ResourceRequest& newRequest)
+void PendingDownload::continueWillSendRequest(WebCore::ResourceRequest&& newRequest)
 {
-    m_networkLoad->continueWillSendRequest(newRequest);
+    m_networkLoad->continueWillSendRequest(WTFMove(newRequest));
 }
 
+void PendingDownload::cancel()
+{
+    ASSERT(m_networkLoad);
+    m_networkLoad->cancel();
+    send(Messages::DownloadProxy::DidCancel({ }));
+}
+
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 void PendingDownload::canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace& protectionSpace)
 {
     send(Messages::DownloadProxy::CanAuthenticateAgainstProtectionSpace(protectionSpace));
@@ -63,10 +84,11 @@ void PendingDownload::continueCanAuthenticateAgainstProtectionSpace(bool canAuth
 {
     m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(canAuthenticate);
 }
+#endif
 
-void PendingDownload::didConvertToDownload()
+void PendingDownload::didFailLoading(const WebCore::ResourceError& error)
 {
-    m_networkLoad = nullptr;
+    send(Messages::DownloadProxy::DidFail(error, { }));
 }
     
 IPC::Connection* PendingDownload::messageSenderConnection()

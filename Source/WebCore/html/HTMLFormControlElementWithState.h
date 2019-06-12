@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLFormControlElementWithState_h
-#define HTMLFormControlElementWithState_h
+#pragma once
 
 #include "HTMLFormControlElement.h"
 
@@ -34,7 +33,7 @@ class HTMLFormControlElementWithState : public HTMLFormControlElement {
 public:
     virtual ~HTMLFormControlElementWithState();
 
-    virtual bool canContainRangeEndPoint() const override { return false; }
+    bool canContainRangeEndPoint() const override { return false; }
 
     virtual bool shouldSaveAndRestoreFormControlState() const;
     virtual FormControlState saveFormControlState() const;
@@ -45,12 +44,10 @@ protected:
     HTMLFormControlElementWithState(const QualifiedName& tagName, Document&, HTMLFormElement*);
 
     virtual bool shouldAutocomplete() const;
-    virtual void finishParsingChildren() override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
-    virtual bool isFormControlElementWithState() const override;
+    void finishParsingChildren() override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void removedFrom(ContainerNode&) override;
+    bool isFormControlElementWithState() const override;
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore

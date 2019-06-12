@@ -36,6 +36,7 @@
     <script src="External/Esprima/esprima.js"></script>
 
     <script src="Base/WebInspector.js"></script>
+    <script src="Base/Platform.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
     <script src="Base/Object.js"></script>
@@ -49,21 +50,28 @@
     <script src="Base/DOMUtilities.js"></script>
     <script src="Base/EventListener.js"></script>
     <script src="Base/EventListenerSet.js"></script>
+    <script src="Base/TextUtilities.js"></script>
     <script src="Base/URLUtilities.js"></script>
     <script src="Base/Utilities.js"></script>
     <script src="Base/Setting.js"></script>
+    <script src="Base/YieldableTask.js"></script>
 
     <script src="Protocol/ProtocolTracer.js"></script>
     <script src="Protocol/LoggingProtocolTracer.js"></script>
-
     <script src="Protocol/InspectorBackend.js"></script>
+
+    <script src="Protocol/Connection.js"></script>
     <script src="Protocol/InspectorFrontendAPI.js"></script>
-    <script src="Protocol/InspectorFrontendHostStub.js"></script>
     <script src="Protocol/LoadInspectorBackendCommands.js"></script>
     <script src="Protocol/MessageDispatcher.js"></script>
+    <script src="Protocol/Target.js"></script>
+
+    <script src="Protocol/MainTarget.js"></script>
+    <script src="Protocol/WorkerTarget.js"></script>
 
     <script src="Protocol/InspectorObserver.js"></script>
     <script src="Protocol/CSSObserver.js"></script>
+    <script src="Protocol/CanvasObserver.js"></script>
     <script src="Protocol/ConsoleObserver.js"></script>
     <script src="Protocol/DOMObserver.js"></script>
     <script src="Protocol/DOMStorageObserver.js"></script>
@@ -72,9 +80,9 @@
     <script src="Protocol/NetworkObserver.js"></script>
     <script src="Protocol/PageObserver.js"></script>
     <script src="Protocol/RemoteObject.js"></script>
-    <script src="Protocol/ReplayObserver.js"></script>
     <script src="Protocol/RuntimeObserver.js"></script>
     <script src="Protocol/TimelineObserver.js"></script>
+    <script src="Protocol/WorkerObserver.js"></script>
 
     <script src="Models/BreakpointAction.js"></script>
     <script src="Models/ConsoleMessage.js"></script>
@@ -82,6 +90,7 @@
     <script src="Models/SourceCode.js"></script>
     <script src="Models/SourceCodeLocation.js"></script>
     <script src="Models/Timeline.js"></script>
+    <script src="Models/TimelineRange.js"></script>
     <script src="Models/TimelineRecord.js"></script>
 
     <script src="Models/Breakpoint.js"></script>
@@ -94,22 +103,31 @@
     <script src="Models/CSSStyleDeclaration.js"></script>
     <script src="Models/CSSStyleSheet.js"></script>
     <script src="Models/CallFrame.js"></script>
+    <script src="Models/CallingContextTree.js"></script>
+    <script src="Models/CallingContextTreeNode.js"></script>
+    <script src="Models/Canvas.js"></script>
+    <script src="Models/Collection.js"></script>
     <script src="Models/CollectionEntry.js"></script>
+    <script src="Models/CollectionEntryPreview.js"></script>
     <script src="Models/Color.js"></script>
-    <script src="Models/CookieStorageObject.js"></script>
     <script src="Models/ConsoleCommandResultMessage.js"></script>
     <script src="Models/ContentFlow.js"></script>
+    <script src="Models/CookieStorageObject.js"></script>
+    <script src="Models/DOMBreakpoint.js"></script>
     <script src="Models/DOMNode.js"></script>
     <script src="Models/DOMNodeStyles.js"></script>
     <script src="Models/DOMStorageObject.js"></script>
     <script src="Models/DOMTree.js"></script>
-    <script src="Models/CollectionEntryPreview.js"></script>
+    <script src="Models/DebuggerData.js"></script>
     <script src="Models/ExecutionContext.js"></script>
     <script src="Models/ExecutionContextList.js"></script>
-    <script src="Models/Frame.js"></script>
     <script src="Models/FPSInstrument.js"></script>
+    <script src="Models/Frame.js"></script>
     <script src="Models/GarbageCollection.js"></script>
     <script src="Models/Geometry.js"></script>
+    <script src="Models/Gradient.js"></script>
+    <script src="Models/HeapAllocationsInstrument.js"></script>
+    <script src="Models/HeapAllocationsTimelineRecord.js"></script>
     <script src="Models/IndexedDatabase.js"></script>
     <script src="Models/IndexedDatabaseObjectStore.js"></script>
     <script src="Models/IndexedDatabaseObjectStoreIndex.js"></script>
@@ -117,6 +135,10 @@
     <script src="Models/LayoutInstrument.js"></script>
     <script src="Models/LayoutTimelineRecord.js"></script>
     <script src="Models/LazySourceCodeLocation.js"></script>
+    <script src="Models/MemoryCategory.js"></script>
+    <script src="Models/MemoryInstrument.js"></script>
+    <script src="Models/MemoryTimeline.js"></script>
+    <script src="Models/MemoryTimelineRecord.js"></script>
     <script src="Models/NetworkInstrument.js"></script>
     <script src="Models/NetworkTimeline.js"></script>
     <script src="Models/ObjectPreview.js"></script>
@@ -130,18 +152,18 @@
     <script src="Models/PropertyDescriptor.js"></script>
     <script src="Models/PropertyPreview.js"></script>
     <script src="Models/RenderingFrameTimelineRecord.js"></script>
-    <script src="Models/ReplaySession.js"></script>
-    <script src="Models/ReplaySessionSegment.js"></script>
     <script src="Models/Resource.js"></script>
     <script src="Models/ResourceCollection.js"></script>
+    <script src="Models/ResourceQueryMatch.js"></script>
+    <script src="Models/ResourceQueryResult.js"></script>
     <script src="Models/ResourceTimelineRecord.js"></script>
+    <script src="Models/ResourceTimingData.js"></script>
     <script src="Models/Revision.js"></script>
     <script src="Models/ScopeChainNode.js"></script>
     <script src="Models/Script.js"></script>
     <script src="Models/ScriptInstrument.js"></script>
     <script src="Models/ScriptSyntaxTree.js"></script>
     <script src="Models/ScriptTimelineRecord.js"></script>
-    <script src="Models/SourceCodeLocation.js"></script>
     <script src="Models/SourceCodeRevision.js"></script>
     <script src="Models/SourceCodeTimeline.js"></script>
     <script src="Models/SourceMapResource.js"></script>
@@ -149,22 +171,38 @@
     <script src="Models/TextRange.js"></script>
     <script src="Models/TimelineMarker.js"></script>
     <script src="Models/TimelineRecording.js"></script>
+    <script src="Models/WebSocketResource.js"></script>
+    <script src="Models/WrappedPromise.js"></script>
+    <script src="Models/XHRBreakpoint.js"></script>
 
+    <script src="Proxies/FormatterWorkerProxy.js"></script>
+    <script src="Proxies/HeapSnapshotDiffProxy.js"></script>
+    <script src="Proxies/HeapSnapshotEdgeProxy.js"></script>
+    <script src="Proxies/HeapSnapshotNodeProxy.js"></script>
+    <script src="Proxies/HeapSnapshotProxy.js"></script>
+    <script src="Proxies/HeapSnapshotWorkerProxy.js"></script>
+
+    <script src="Controllers/BreakpointLogMessageLexer.js"></script>
     <script src="Controllers/CSSStyleManager.js"></script>
+    <script src="Controllers/CanvasManager.js"></script>
+    <script src="Controllers/DOMDebuggerManager.js"></script>
     <script src="Controllers/DOMTreeManager.js"></script>
     <script src="Controllers/DebuggerManager.js"></script>
     <script src="Controllers/FrameResourceManager.js"></script>
     <script src="Controllers/HeapManager.js"></script>
     <script src="Controllers/IssueManager.js"></script>
     <script src="Controllers/LogManager.js"></script>
+    <script src="Controllers/MemoryManager.js"></script>
     <script src="Controllers/ProbeManager.js"></script>
-    <script src="Controllers/ReplayManager.js"></script>
     <script src="Controllers/RuntimeManager.js"></script>
     <script src="Controllers/StorageManager.js"></script>
+    <script src="Controllers/TargetManager.js"></script>
     <script src="Controllers/TimelineManager.js"></script>
+    <script src="Controllers/WorkerManager.js"></script>
 
     <script src="Controllers/Formatter.js"></script>
-    <script src="Controllers/FormatterContentBuilder.js"></script>
+    <script src="Controllers/ResourceQueryController.js"></script>
+    <script src="Workers/Formatter/FormatterContentBuilder.js"></script>
     <script src="Views/CodeMirrorAdditions.js"></script>
     <script src="Views/CodeMirrorFormatters.js"></script>
 

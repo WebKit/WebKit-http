@@ -29,12 +29,8 @@
 #if ENABLE(SHAREABLE_RESOURCE)
 
 #include "SharedMemory.h"
-
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-#include <wtf/RetainPtr.h>
-
 
 namespace WebCore {
 class SharedBuffer;
@@ -53,10 +49,10 @@ public:
         bool isNull() const { return m_handle.isNull(); }
         unsigned size() const { return m_size; }
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Handle&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Handle&);
 
-        PassRefPtr<WebCore::SharedBuffer> tryWrapInSharedBuffer() const;
+        RefPtr<WebCore::SharedBuffer> tryWrapInSharedBuffer() const;
 
     private:
         friend class ShareableResource;
@@ -67,10 +63,10 @@ public:
     };
 
     // Create a shareable resource that uses malloced memory.
-    static Ref<ShareableResource> create(PassRefPtr<SharedMemory>, unsigned offset, unsigned size);
+    static Ref<ShareableResource> create(Ref<SharedMemory>&&, unsigned offset, unsigned size);
 
     // Create a shareable resource from a handle.
-    static PassRefPtr<ShareableResource> map(const Handle&);
+    static RefPtr<ShareableResource> map(const Handle&);
 
     // Create a handle.
     bool createHandle(Handle&);
@@ -81,10 +77,10 @@ public:
     unsigned size() const;
     
 private:
-    ShareableResource(PassRefPtr<SharedMemory>, unsigned offset, unsigned size);
-    PassRefPtr<WebCore::SharedBuffer> wrapInSharedBuffer();
+    ShareableResource(Ref<SharedMemory>&&, unsigned offset, unsigned size);
+    RefPtr<WebCore::SharedBuffer> wrapInSharedBuffer();
 
-    RefPtr<SharedMemory> m_sharedMemory;
+    Ref<SharedMemory> m_sharedMemory;
 
     unsigned m_offset;
     unsigned m_size;    

@@ -28,15 +28,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptGlobalObject_h
-#define ScriptGlobalObject_h
-
-namespace Deprecated {
-class ScriptObject;
-}
+#pragma once
 
 namespace JSC {
 class ExecState;
+class JSObject;
 }
 
 namespace WebCore {
@@ -45,15 +41,11 @@ class InspectorFrontendHost;
 
 class ScriptGlobalObject {
 public:
-    static bool set(JSC::ExecState*, const char* name, const Deprecated::ScriptObject&);
-    WEBCORE_EXPORT static bool set(JSC::ExecState*, const char* name, InspectorFrontendHost*);
+    WEBCORE_EXPORT static bool set(JSC::ExecState&, const char* name, InspectorFrontendHost&);
+    static bool get(JSC::ExecState&, const char* name, JSC::JSObject*&);
 
-    static bool get(JSC::ExecState*, const char* name, Deprecated::ScriptObject&);
-    static bool remove(JSC::ExecState*, const char* name);
 private:
-    ScriptGlobalObject() { }
+    ScriptGlobalObject() = delete;
 };
 
 } // namespace WebCore
-
-#endif // ScriptGlobalObject_h

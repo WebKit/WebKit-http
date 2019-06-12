@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DeviceMotionController_h
-#define DeviceMotionController_h
+#pragma once
 
 #include "DeviceController.h"
 #include <wtf/Noncopyable.h>
@@ -51,8 +50,8 @@ public:
     void didChangeDeviceMotion(DeviceMotionData*);
     DeviceMotionClient* deviceMotionClient();
 
-    virtual bool hasLastData() override;
-    virtual RefPtr<Event> getLastEvent() override;
+    bool hasLastData() override;
+    RefPtr<Event> getLastEvent() override;
 
     static const char* supplementName();
     static DeviceMotionController* from(Page*);
@@ -60,5 +59,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // DeviceMotionController_h

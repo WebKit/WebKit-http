@@ -23,18 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UserMessageHandler_h
-#define UserMessageHandler_h
+#pragma once
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 
+#include "ExceptionOr.h"
 #include "FrameDestructionObserver.h"
 #include "UserMessageHandlerDescriptor.h"
-#include <bindings/ScriptValue.h>
 
 namespace WebCore {
-
-typedef int ExceptionCode;
 
 class UserMessageHandler : public RefCounted<UserMessageHandler>, public FrameDestructionObserver {
 public:
@@ -44,18 +41,17 @@ public:
     }
     virtual ~UserMessageHandler();
 
-    void postMessage(PassRefPtr<SerializedScriptValue>, ExceptionCode&);
+    ExceptionOr<void> postMessage(RefPtr<SerializedScriptValue>&&);
 
-    const AtomicString& name();
-    DOMWrapperWorld& world();
+    UserMessageHandlerDescriptor* descriptor() { return m_descriptor.get(); }
+    void invalidateDescriptor() { m_descriptor = nullptr; }
 
 private:
     UserMessageHandler(Frame&, UserMessageHandlerDescriptor&);
     
-    Ref<UserMessageHandlerDescriptor> m_descriptor;
+    RefPtr<UserMessageHandlerDescriptor> m_descriptor;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(USER_MESSAGE_HANDLERS)
-#endif // UserMessageHandler_h

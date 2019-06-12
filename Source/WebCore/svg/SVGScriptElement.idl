@@ -24,7 +24,7 @@
  */
 
 interface SVGScriptElement : SVGElement {
-    [TreatNullAs=NullString, Reflect] attribute DOMString type;
+    [Reflect] attribute DOMString type;
 };
 
 SVGScriptElement implements SVGExternalResourcesRequired;

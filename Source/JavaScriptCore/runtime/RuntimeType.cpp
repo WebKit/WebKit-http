@@ -28,8 +28,7 @@
 #include "config.h"
 #include "RuntimeType.h"
 
-#include "JSCJSValue.h"
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -42,8 +41,8 @@ RuntimeType runtimeTypeForValue(JSValue value)
         return TypeUndefined;
     if (value.isNull())
         return TypeNull;
-    if (value.isMachineInt())
-        return TypeMachineInt;
+    if (value.isAnyInt())
+        return TypeAnyInt;
     if (value.isNumber())
         return TypeNumber;
     if (value.isString())
@@ -66,7 +65,7 @@ String runtimeTypeAsString(RuntimeType type)
         return ASCIILiteral("Undefined");
     if (type == TypeNull)
         return ASCIILiteral("Null");
-    if (type == TypeMachineInt)
+    if (type == TypeAnyInt)
         return ASCIILiteral("Integer");
     if (type == TypeNumber)
         return ASCIILiteral("Number");

@@ -23,18 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MediaCanStartListener_h
-#define MediaCanStartListener_h
+#pragma once
 
 namespace WebCore {
 
+class Document;
+
 class MediaCanStartListener {
 public:
-    virtual void mediaCanStart() = 0;
+    virtual void mediaCanStart(Document&) = 0;
 protected:
     virtual ~MediaCanStartListener() { }
 };
 
-}
-
-#endif
+} // namespace WebCore

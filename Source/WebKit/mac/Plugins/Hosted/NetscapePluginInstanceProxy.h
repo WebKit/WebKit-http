@@ -36,7 +36,7 @@
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
 #include "WebKitPluginHostTypes.h"
@@ -60,7 +60,7 @@ class ProxyInstance;
     
 class NetscapePluginInstanceProxy : public RefCounted<NetscapePluginInstanceProxy> {
 public:
-    static PassRefPtr<NetscapePluginInstanceProxy> create(NetscapePluginHostProxy*, WebHostedNetscapePluginView *, bool fullFramePlugin);
+    static Ref<NetscapePluginInstanceProxy> create(NetscapePluginHostProxy*, WebHostedNetscapePluginView *, bool fullFramePlugin);
     ~NetscapePluginInstanceProxy();
     
     uint32_t pluginID() const 
@@ -81,7 +81,7 @@ public:
     bool cancelStreamLoad(uint32_t streamID, NPReason);
     void disconnectStream(HostedNetscapePluginStream*);
     
-    void setManualStream(PassRefPtr<HostedNetscapePluginStream>);
+    void setManualStream(Ref<HostedNetscapePluginStream>&&);
     HostedNetscapePluginStream* manualStream() const { return m_manualStream.get(); }
     
     void pluginHostDied();
@@ -142,7 +142,7 @@ public:
     bool convertPoint(double sourceX, double sourceY, NPCoordinateSpace sourceSpace, 
                       double& destX, double& destY, NPCoordinateSpace destSpace);
 
-    PassRefPtr<JSC::Bindings::Instance> createBindingsInstance(PassRefPtr<JSC::Bindings::RootObject>);
+    RefPtr<JSC::Bindings::Instance> createBindingsInstance(Ref<JSC::Bindings::RootObject>&&);
     RetainPtr<NSData *> marshalValues(JSC::ExecState*, const JSC::ArgList& args);
     void marshalValue(JSC::ExecState*, JSC::JSValue, data_t& resultData, mach_msg_type_number_t& resultLength);
     JSC::JSValue demarshalValue(JSC::ExecState*, const char* valueData, mach_msg_type_number_t valueLength);
@@ -162,13 +162,7 @@ public:
     bool shouldStop();
     
     uint32_t nextRequestID();
-    
-    uint32_t checkIfAllowedToLoadURL(const char* url, const char* target);
-    void cancelCheckIfAllowedToLoadURL(uint32_t checkID);
-    void checkIfAllowedToLoadURLResult(uint32_t checkID, bool allowed);
 
-    void resolveURL(const char* url, const char* target, data_t& resolvedURLData, mach_msg_type_number_t& resolvedURLLength);
-    
     void didDraw();
     void privateBrowsingModeDidChange(bool isPrivateBrowsingEnabled);
     
@@ -343,10 +337,6 @@ private:
     typedef HashSet<ProxyInstance*> ProxyInstanceSet;
     ProxyInstanceSet m_instances;
 
-    uint32_t m_urlCheckCounter;
-    typedef HashMap<uint32_t, RetainPtr<id>> URLCheckMap;
-    URLCheckMap m_urlChecks;
-    
     unsigned m_pluginFunctionCallDepth;
     bool m_shouldStopSoon;
     uint32_t m_currentRequestID;

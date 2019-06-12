@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLSourceTracker_h
-#define HTMLSourceTracker_h
+#pragma once
 
 #include "SegmentedString.h"
 
@@ -37,7 +36,7 @@ class HTMLTokenizer;
 class HTMLSourceTracker {
     WTF_MAKE_NONCOPYABLE(HTMLSourceTracker);
 public:
-    HTMLSourceTracker();
+    HTMLSourceTracker() = default;
 
     void startToken(SegmentedString&, HTMLTokenizer&);
     void endToken(SegmentedString&, HTMLTokenizer&);
@@ -57,6 +56,4 @@ private:
     String m_cachedSourceForToken;
 };
 
-}
-
-#endif
+} // namespace WebCore

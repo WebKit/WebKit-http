@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SynchronousResourceHandleCFURLConnectionDelegate_h
-#define SynchronousResourceHandleCFURLConnectionDelegate_h
+#pragma once
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "ResourceHandleCFURLConnectionDelegate.h"
 
@@ -36,37 +35,32 @@ class SynchronousResourceHandleCFURLConnectionDelegate final : public ResourceHa
 public:
     SynchronousResourceHandleCFURLConnectionDelegate(ResourceHandle*);
 
-    virtual void didReceiveData(CFDataRef, CFIndex originalLength) override;
-    virtual void didFinishLoading() override;
-    virtual void didFail(CFErrorRef) override;
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    virtual void didReceiveDataArray(CFArrayRef dataArray) override;
-#endif // USE(NETWORK_CFDATA_ARRAY_CALLBACK)
+    void didReceiveData(CFDataRef, CFIndex originalLength) override;
+    void didFinishLoading() override;
+    void didFail(CFErrorRef) override;
 
 private:
-    virtual void setupRequest(CFMutableURLRequestRef) override;
-    virtual void setupConnectionScheduling(CFURLConnectionRef) override;
+    void setupRequest(CFMutableURLRequestRef) override;
+    void setupConnectionScheduling(CFURLConnectionRef) override;
 
-    virtual CFURLRequestRef willSendRequest(CFURLRequestRef, CFURLResponseRef) override;
-    virtual void didReceiveResponse(CFURLConnectionRef, CFURLResponseRef) override;
-    virtual CFCachedURLResponseRef willCacheResponse(CFCachedURLResponseRef) override;
-    virtual void didReceiveChallenge(CFURLAuthChallengeRef) override;
-    virtual void didSendBodyData(CFIndex totalBytesWritten, CFIndex totalBytesExpectedToWrite) override;
-    virtual Boolean shouldUseCredentialStorage() override;
+    CFURLRequestRef willSendRequest(CFURLRequestRef, CFURLResponseRef) override;
+    void didReceiveResponse(CFURLConnectionRef, CFURLResponseRef) override;
+    CFCachedURLResponseRef willCacheResponse(CFCachedURLResponseRef) override;
+    void didReceiveChallenge(CFURLAuthChallengeRef) override;
+    void didSendBodyData(CFIndex totalBytesWritten, CFIndex totalBytesExpectedToWrite) override;
+    Boolean shouldUseCredentialStorage() override;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    virtual Boolean canRespondToProtectionSpace(CFURLProtectionSpaceRef) override;
+    Boolean canRespondToProtectionSpace(CFURLProtectionSpaceRef) override;
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
 
-    virtual void continueWillSendRequest(CFURLRequestRef) override;
-    virtual void continueDidReceiveResponse() override;
-    virtual void continueWillCacheResponse(CFCachedURLResponseRef) override;
+    void continueWillSendRequest(CFURLRequestRef) override;
+    void continueDidReceiveResponse() override;
+    void continueWillCacheResponse(CFCachedURLResponseRef) override;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    virtual void continueCanAuthenticateAgainstProtectionSpace(bool) override;
+    void continueCanAuthenticateAgainstProtectionSpace(bool) override;
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
 };
 
 } // namespace WebCore.
 
-#endif // USE(CFNETWORK)
-
-#endif // ResourceHandleCFURLConnectionDelegate_h
+#endif // USE(CFURLCONNECTION)

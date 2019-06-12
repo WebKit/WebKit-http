@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2004, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLObjectElement_h
-#define HTMLObjectElement_h
+#pragma once
 
 #include "FormAssociatedElement.h"
 #include "HTMLPlugInImageElement.h"
@@ -39,45 +38,47 @@ public:
     bool containsJavaApplet() const;
 
     bool hasFallbackContent() const;
-    virtual bool useFallbackContent() const override { return m_useFallbackContent; }
+    bool useFallbackContent() const final { return m_useFallbackContent; }
     void renderFallbackContent();
 
-    virtual bool willValidate() const override { return false; }
+    bool willValidate() const final { return false; }
 
     // Implementation of constraint validation API.
     // Note that the object elements are always barred from constraint validation.
     static bool checkValidity() { return true; }
-    virtual void setCustomValidity(const String&) override { }
-    virtual String validationMessage() const override { return String(); }
+    static bool reportValidity() { return true; }
+
+    void setCustomValidity(const String&) final { }
+    String validationMessage() const final { return String(); }
 
     using HTMLPlugInImageElement::ref;
     using HTMLPlugInImageElement::deref;
 
-    using FormAssociatedElement::form;
+    HTMLFormElement* form() const final { return FormAssociatedElement::form(); }
 
 private:
     HTMLObjectElement(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void finishedInsertingSubtree() override final;
-    virtual void removedFrom(ContainerNode&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void finishedInsertingSubtree() final;
+    void removedFrom(ContainerNode&) final;
 
-    virtual void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) final;
 
-    virtual void childrenChanged(const ChildChange&) override;
+    void childrenChanged(const ChildChange&) final;
 
-    virtual bool isURLAttribute(const Attribute&) const override;
-    virtual const AtomicString& imageSourceURL() const override;
+    bool isURLAttribute(const Attribute&) const final;
+    const AtomicString& imageSourceURL() const final;
 
-    virtual RenderWidget* renderWidgetLoadingPlugin() const override;
+    RenderWidget* renderWidgetLoadingPlugin() const final;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
-    virtual void updateWidget(PluginCreationOption) override;
+    void updateWidget(CreatePlugins) final;
     void updateDocNamedItem();
 
     // FIXME: This function should not deal with url or serviceType
@@ -88,25 +89,22 @@ private:
     bool hasValidClassId();
     void clearUseFallbackContent() { m_useFallbackContent = false; }
 
-    virtual void refFormAssociatedElement() override { ref(); }
-    virtual void derefFormAssociatedElement() override { deref(); }
-    virtual HTMLFormElement* virtualForm() const override;
+    void refFormAssociatedElement() final { ref(); }
+    void derefFormAssociatedElement() final { deref(); }
 
-    virtual FormNamedItem* asFormNamedItem() override { return this; }
-    virtual HTMLObjectElement& asHTMLElement() override { return *this; }
-    virtual const HTMLObjectElement& asHTMLElement() const override { return *this; }
+    FormNamedItem* asFormNamedItem() final { return this; }
+    HTMLObjectElement& asHTMLElement() final { return *this; }
+    const HTMLObjectElement& asHTMLElement() const final { return *this; }
 
-    virtual bool isFormControlElement() const override { return false; }
+    bool isFormControlElement() const final { return false; }
 
-    virtual bool isEnumeratable() const override { return true; }
-    virtual bool appendFormData(FormDataList&, bool) override;
+    bool isEnumeratable() const final { return true; }
+    bool appendFormData(FormDataList&, bool) final;
 
-    virtual bool canContainRangeEndPoint() const override;
+    bool canContainRangeEndPoint() const final;
 
     bool m_docNamedItem : 1;
     bool m_useFallbackContent : 1;
 };
 
-}
-
-#endif
+} // namespace WebCore

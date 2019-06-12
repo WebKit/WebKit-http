@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebIconDatabase.h"
 
+#include "APIIconDatabaseClient.h"
 #include "Logging.h"
 #include "WebIconDatabaseMessages.h"
 #include "WebIconDatabaseProxyMessages.h"
@@ -39,9 +40,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<WebIconDatabase> WebIconDatabase::create(WebProcessPool* processPool)
+Ref<WebIconDatabase> WebIconDatabase::create(WebProcessPool* processPool)
 {
-    return adoptRef(new WebIconDatabase(*processPool));
+    return adoptRef(*new WebIconDatabase(*processPool));
 }
 
 WebIconDatabase::~WebIconDatabase()
@@ -53,6 +54,7 @@ WebIconDatabase::WebIconDatabase(WebProcessPool& processPool)
     , m_urlImportCompleted(false)
     , m_databaseCleanupDisabled(false)
     , m_shouldDerefWhenAppropriate(false)
+    , m_client(std::make_unique<API::IconDatabaseClient>())
 {
     m_processPool->addMessageReceiver(Messages::WebIconDatabase::messageReceiverName(), *this);
 }
@@ -130,7 +132,7 @@ void WebIconDatabase::setIconDataForIconURL(const IPC::DataReference& iconData, 
     LOG(IconDatabase, "WK2 UIProcess setting icon data (%i bytes) for page URL %s", (int)iconData.size(), iconURL.ascii().data());
     if (!m_iconDatabaseImpl)
         return;
-    m_iconDatabaseImpl->setIconDataForIconURL(SharedBuffer::create(iconData.data(), iconData.size()), iconURL);
+    m_iconDatabaseImpl->setIconDataForIconURL(SharedBuffer::create(iconData.data(), iconData.size()).ptr(), iconURL);
 }
 
 void WebIconDatabase::synchronousIconDataForPageURL(const String&, IPC::DataReference& iconData)
@@ -233,9 +235,12 @@ void WebIconDatabase::close()
         m_iconDatabaseImpl->close();
 }
 
-void WebIconDatabase::initializeIconDatabaseClient(const WKIconDatabaseClientBase* client)
+void WebIconDatabase::setClient(std::unique_ptr<API::IconDatabaseClient>&& client)
 {
-    m_iconDatabaseClient.initialize(client);
+    if (!client)
+        m_client = std::make_unique<API::IconDatabaseClient>();
+    else
+        m_client = WTFMove(client);
 }
 
 // WebCore::IconDatabaseClient
@@ -252,12 +257,12 @@ void WebIconDatabase::didImportIconDataForPageURL(const String& pageURL)
 
 void WebIconDatabase::didChangeIconForPageURL(const String& pageURL)
 {
-    m_iconDatabaseClient.didChangeIconForPageURL(this, API::URL::create(pageURL).ptr());
+    m_client->didChangeIconForPageURL(*this, pageURL);
 }
 
 void WebIconDatabase::didRemoveAllIcons()
 {
-    m_iconDatabaseClient.didRemoveAllIcons(this);
+    m_client->didRemoveAllIcons(*this);
 }
 
 void WebIconDatabase::didFinishURLImport()
@@ -305,7 +310,7 @@ void WebIconDatabase::derefWhenAppropriate()
 
 void WebIconDatabase::notifyIconDataReadyForPageURL(const String& pageURL)
 {
-    m_iconDatabaseClient.iconDataReadyForPageURL(this, API::URL::create(pageURL).ptr());
+    m_client->iconDataReadyForPageURL(*this, pageURL);
     didChangeIconForPageURL(pageURL);
 }
 
@@ -315,7 +320,7 @@ void WebIconDatabase::setPrivateBrowsingEnabled(bool privateBrowsingEnabled)
         m_iconDatabaseImpl->setPrivateBrowsingEnabled(privateBrowsingEnabled);
 }
 
-PassRefPtr<API::Data> WebIconDatabase::iconDataForPageURL(const String& pageURL)
+RefPtr<API::Data> WebIconDatabase::iconDataForPageURL(const String& pageURL)
 {
     auto* image = imageForPageURL(pageURL);
     if (!image)

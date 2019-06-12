@@ -37,7 +37,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderButton::RenderButton(HTMLFormControlElement& element, Ref<RenderStyle>&& style)
+RenderButton::RenderButton(HTMLFormControlElement& element, RenderStyle&& style)
     : RenderFlexibleBox(element, WTFMove(style))
     , m_buttonText(0)
     , m_inner(0)
@@ -69,7 +69,7 @@ void RenderButton::addChild(RenderObject* newChild, RenderObject* beforeChild)
         // Create an anonymous block.
         ASSERT(!firstChild());
         m_inner = createAnonymousBlock(style().display());
-        setupInnerStyle(&m_inner->style());
+        updateAnonymousChildStyle(*m_inner, m_inner->mutableStyle());
         RenderFlexibleBox::addChild(m_inner);
     }
     
@@ -88,43 +88,23 @@ void RenderButton::removeChild(RenderObject& oldChild)
     } else
         m_inner->removeChild(oldChild);
 }
-
-void RenderButton::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
+    
+void RenderButton::updateAnonymousChildStyle(const RenderObject& child, RenderStyle& childStyle) const
 {
-    if (m_inner) {
-        // RenderBlock::setStyle is going to apply a new style to the inner block, which
-        // will have the initial flex value, 0. The current value is 1, because we set
-        // it right below. Here we change it back to 0 to avoid getting a spurious layout hint
-        // because of the difference. Same goes for the other properties.
-        // FIXME: Make this hack unnecessary.
-        m_inner->style().setFlexGrow(newStyle.initialFlexGrow());
-        m_inner->style().setMarginTop(newStyle.initialMargin());
-        m_inner->style().setMarginBottom(newStyle.initialMargin());
-    }
-    RenderBlock::styleWillChange(diff, newStyle);
-}
-
-void RenderButton::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
-{
-    RenderBlock::styleDidChange(diff, oldStyle);
-
-    if (m_inner) // RenderBlock handled updating the anonymous block's style.
-        setupInnerStyle(&m_inner->style());
-}
-
-void RenderButton::setupInnerStyle(RenderStyle* innerStyle) 
-{
-    ASSERT(style().hasPseudoStyle(FIRST_LETTER) || innerStyle->refCount() == 1);
-    // RenderBlock::createAnonymousBlock creates a new RenderStyle, so this is
-    // safe to modify.
-    // FIXME: I don't see how the comment above is accurate when this is called
-    // from the RenderButton::styleDidChange function.
-    innerStyle->setFlexGrow(1.0f);
+    ASSERT_UNUSED(child, !m_inner || &child == m_inner);
+    
+    childStyle.setFlexGrow(1.0f);
+    // min-width: 0; is needed for correct shrinking.
+    childStyle.setMinWidth(Length(0, Fixed));
     // Use margin:auto instead of align-items:center to get safe centering, i.e.
     // when the content overflows, treat it the same as align-items: flex-start.
-    innerStyle->setMarginTop(Length());
-    innerStyle->setMarginBottom(Length());
-    innerStyle->setFlexDirection(style().flexDirection());
+    childStyle.setMarginTop(Length());
+    childStyle.setMarginBottom(Length());
+    childStyle.setFlexDirection(style().flexDirection());
+    childStyle.setJustifyContent(style().justifyContent());
+    childStyle.setFlexWrap(style().flexWrap());
+    childStyle.setAlignItems(style().alignItems());
+    childStyle.setAlignContent(style().alignContent());
 }
 
 void RenderButton::updateFromElement()
@@ -179,7 +159,7 @@ void RenderButton::layout()
     RenderFlexibleBox::layout();
 
     // FIXME: We should not be adjusting styles during layout. See <rdar://problem/7675493>.
-    RenderThemeIOS::adjustRoundBorderRadius(style(), *this);
+    RenderThemeIOS::adjustRoundBorderRadius(mutableStyle(), *this);
 }
 #endif
 

@@ -1,3 +1,151 @@
+2017-06-22  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        pretty patch doesn't show image diffs with newer versions of git
+        https://bugs.webkit.org/show_bug.cgi?id=173691
+
+        A new security check added in git >= 2.3.3 causes it to abort
+        when the tool runs "git apply" to generate the images.
+        Detect if git supports the flag --unsafe-paths and pass it.
+
+        Reviewed by Darin Adler.
+
+        * PrettyPatch/PrettyPatch.rb:
+
+2017-05-26  Devin Rousso  <drousso@apple.com>
+
+        Provide bug information when https://webkit.org/b/# URLs are added in comments
+        https://bugs.webkit.org/show_bug.cgi?id=169707
+
+        Reviewed by David Kilzer.
+
+        * Bugzilla/Template.pm:
+        (quoteUrls):
+
+2017-03-25  David Kilzer  <ddkilzer@apple.com>
+
+        [Bugzilla] Add a checkbox to add self to the CC list when creating or editing an attachment
+        <https://webkit.org/b/124047>
+
+        Original patch by Csaba Osztrogonác.
+
+        Reviewed by Daniel Bates.
+
+        * template/en/default/attachment/reviewform.html.tmpl:
+        Add template for "Add me to CC list" by default.  This
+        adds the reviewer to the CC list whether the "Preview"
+        or "Publish" button is used.  Only the "Preview" button
+        allows the checkbox to be unchecked, though.
+
+2017-03-23  David Kilzer  <ddkilzer@apple.com>
+
+        Fix Apache::SizeLimit unshared size limit in mod_perl.pl for bugs.webkit.org
+        <https://webkit.org/b/169926>
+
+        Reviewed by Brent Fulgham.
+
+        * mod_perl.pl: Update syntax for setting unshared size
+        limit, and bump it up another 100 Mb so children don't
+        respawn as quickly.
+
+2017-03-21  David Kilzer  <ddkilzer@apple.com>
+
+        Commit local changes for Bugzilla 5.0.3
+
+        * images/favicon.ico: Update favicon from Dec 11, 2015.
+        * data/params.json: Deleted.
+
+2017-03-21  David Kilzer  <ddkilzer@apple.com>
+
+        Upgrade to Bugzilla 5.0.3.
+
+2017-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Patch Details: EWS Bubbles wrap on Patch Details page
+        https://bugs.webkit.org/show_bug.cgi?id=167709
+
+        Reviewed by Ryosuke Niwa.
+
+        * template/en/default/attachment/edit.html.tmpl:
+        Match the iframe size in list.html.tmpl.
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Patch Review: EWS Bubbles wrap to multiple lines but can fit on one line
+        https://bugs.webkit.org/show_bug.cgi?id=167519
+
+        Reviewed by Ryosuke Niwa.
+
+        While we do post message to determine the size, the fact that we have
+        constrained the iframe to a size of 450px meant its body is 450px and
+        the div containing the bubbles wraps at 450px. Its full size (~458px)
+        is not returned. Although we solve this artifical constraint problem
+        inside of the bubble containerMetrics measuring, up this default value
+        from 450 to 460 to reduce UI jitter (the current measurement on my
+        machine is 458px).
+
+        * PrettyPatch/PrettyPatch.rb:
+
+2017-01-19  Timothy Hatcher  <timothy@hatcher.name>
+
+        Bugzilla email autocomplete does not work on third email field of advanced search page
+        https://bugs.webkit.org/show_bug.cgi?id=167204
+
+        Reviewed by Alexey Proskuryakov.
+
+        * committers-autocomplete.js: Added email3 to SINGLE_EMAIL_INPUTS list.
+
+2016-10-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert contributors.json to a flat list
+        https://bugs.webkit.org/show_bug.cgi?id=163183
+
+        Reviewed by Darin Adler.
+        
+        Make contributors.json easier to maintain by eliminating the big groupings ("Committers", "Reviewers" etc)
+        and moving that data to a "status" property on each contributor.
+        
+        Fix script that does bugzilla autocomplete.
+
+        * committers-autocomplete.js:
+        (statusToType):
+        (parseCommittersPy):
+        (parseType): Deleted.
+
+2016-07-16  David Kilzer  <ddkilzer@apple.com>
+
+        Use secure (https) links on enter_bug.cgi
+        <https://webkit.org/b/159853>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * template/en/default/global/choose-product.html.tmpl:
+        Use https instead of http for links to webkit.org.
+
+2016-05-18  David Kilzer  <ddkilzer@apple.com>
+
+        CVE-2016-2803: [SECURITY] XSS vulnerability in dependency graphs via bug summary
+        <https://bugzilla.mozilla.org/show_bug.cgi?id=1253263>
+
+        Merge Bugzilla upstream master dd61903154fd363fb4e763d60aa155a507c2c3fc.
+
+        * showdependencygraph.cgi:
+        (CreateImagemap): Fix XSS vulnerability.
+
+2016-05-05  David Kilzer  <ddkilzer@apple.com>
+
+        bugs.webkit.org: "See Also" field should support Chromium bugs
+
+        Merge Bugzilla upstream master 3af55bfe0bd10a85b7cd69e26a19034a6d2e78f5.
+        <https://bugzilla.mozilla.org/show_bug.cgi?id=1252782>
+
+        * Bugzilla/BugUrl.pm: Add Bugzilla::BugUrl::Chromium class to
+        list of classes that parse supported URLs.
+        * Bugzilla/BugUrl/Chromium.pm: Added.
+        (should_handle):
+        (_check_value):
+        * template/en/default/global/user-error.html.tmpl: Update error
+        message.
+
 2015-12-09  Daniel Bates  <dabates@apple.com>
 
         REGRESSION: code-review-tests.html fails with error "Received an error at line 214"

@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DOMURLMediaSource_h
-#define DOMURLMediaSource_h
+#pragma once
 
 #if ENABLE(MEDIA_SOURCE)
 
@@ -42,11 +41,9 @@ class ScriptExecutionContext;
 
 class DOMURLMediaSource {
 public:
-    static String createObjectURL(ScriptExecutionContext*, MediaSource*);
+    static String createObjectURL(ScriptExecutionContext&, MediaSource&);
 };
 
 } // namespace WebCore
 
-#endif
-
-#endif
+#endif // ENABLE(MEDIA_SOURCE)

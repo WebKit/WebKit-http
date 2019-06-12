@@ -23,13 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WriteBarrier_h
-#define WriteBarrier_h
+#pragma once
 
 #include "GCAssertions.h"
 #include "HandleTypes.h"
-#include "Heap.h"
-#include "SamplingCounter.h"
 
 namespace JSC {
 
@@ -224,5 +221,3 @@ template <typename U, typename V> inline bool operator==(const WriteBarrierBase<
 }
 
 } // namespace JSC
-
-#endif // WriteBarrier_h

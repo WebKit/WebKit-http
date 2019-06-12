@@ -40,7 +40,7 @@
 
 namespace WebCore {
 
-RenderSVGResourceClipper::RenderSVGResourceClipper(SVGClipPathElement& element, Ref<RenderStyle>&& style)
+RenderSVGResourceClipper::RenderSVGResourceClipper(SVGClipPathElement& element, RenderStyle&& style)
     : RenderSVGResourceContainer(element, WTFMove(style))
 {
 }
@@ -64,10 +64,10 @@ void RenderSVGResourceClipper::removeClientFromCache(RenderElement& client, bool
     markClientForInvalidation(client, markForInvalidation ? BoundariesInvalidation : ParentOnlyInvalidation);
 }
 
-bool RenderSVGResourceClipper::applyResource(RenderElement& renderer, const RenderStyle&, GraphicsContext*& context, unsigned short resourceMode)
+bool RenderSVGResourceClipper::applyResource(RenderElement& renderer, const RenderStyle&, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode)
 {
     ASSERT(context);
-    ASSERT_UNUSED(resourceMode, resourceMode == ApplyToDefaultMode);
+    ASSERT_UNUSED(resourceMode, resourceMode == RenderSVGResourceMode::ApplyToDefault);
 
     return applyClippingToContext(renderer, renderer.objectBoundingBox(), renderer.repaintRectInLocalCoordinates(), *context);
 }
@@ -215,7 +215,7 @@ bool RenderSVGResourceClipper::drawContentIntoMaskImage(const ClipperMaskImage& 
             renderer = useElement.rendererClipChild();
             if (!renderer)
                 continue;
-            if (!useElement.fastHasAttribute(SVGNames::clip_ruleAttr))
+            if (!useElement.hasAttributeWithoutSynchronization(SVGNames::clip_ruleAttr))
                 newClipRule = renderer->style().svgStyle().clipRule();
         }
 
@@ -267,10 +267,10 @@ bool RenderSVGResourceClipper::hitTestClipContent(const FloatRect& objectBoundin
         AffineTransform transform;
         transform.translate(objectBoundingBox.x(), objectBoundingBox.y());
         transform.scaleNonUniform(objectBoundingBox.width(), objectBoundingBox.height());
-        point = transform.inverse().valueOr(AffineTransform()).mapPoint(point);
+        point = transform.inverse().value_or(AffineTransform()).mapPoint(point);
     }
 
-    point = clipPathElement().animatedLocalTransform().inverse().valueOr(AffineTransform()).mapPoint(point);
+    point = clipPathElement().animatedLocalTransform().inverse().value_or(AffineTransform()).mapPoint(point);
 
     for (Node* childNode = clipPathElement().firstChild(); childNode; childNode = childNode->nextSibling()) {
         RenderObject* renderer = childNode->renderer();
@@ -280,7 +280,7 @@ bool RenderSVGResourceClipper::hitTestClipContent(const FloatRect& objectBoundin
             continue;
         IntPoint hitPoint;
         HitTestResult result(hitPoint);
-        if (renderer->nodeAtFloatPoint(HitTestRequest(HitTestRequest::SVGClipContent | HitTestRequest::DisallowShadowContent), result, point, HitTestForeground))
+        if (renderer->nodeAtFloatPoint(HitTestRequest(HitTestRequest::SVGClipContent | HitTestRequest::DisallowUserAgentShadowContent), result, point, HitTestForeground))
             return true;
     }
 

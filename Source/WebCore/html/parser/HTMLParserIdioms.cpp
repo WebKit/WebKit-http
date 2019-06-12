@@ -30,7 +30,8 @@
 #include "URL.h"
 #include <limits>
 #include <wtf/MathExtras.h>
-#include <wtf/text/StringBuilder.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/dtoa.h>
 
 namespace WebCore {
 
@@ -46,7 +47,7 @@ static String stripLeadingAndTrailingHTMLSpaces(String string, CharType characte
     }
 
     if (numLeadingSpaces == length)
-        return string.isNull() ? string : emptyAtom.string();
+        return string.isNull() ? string : emptyAtom().string();
 
     for (; numTrailingSpaces < length; ++numTrailingSpaces) {
         if (isNotHTMLSpace(characters[length - numTrailingSpaces - 1]))
@@ -66,7 +67,7 @@ String stripLeadingAndTrailingHTMLSpaces(const String& string)
     unsigned length = string.length();
 
     if (!length)
-        return string.isNull() ? string : emptyAtom.string();
+        return string.isNull() ? string : emptyAtom().string();
 
     if (string.is8Bit())
         return stripLeadingAndTrailingHTMLSpaces(string, string.characters8(), length);
@@ -152,128 +153,182 @@ double parseToDoubleForNumberType(const String& string)
 }
 
 template <typename CharacterType>
-static bool parseHTMLIntegerInternal(const CharacterType* position, const CharacterType* end, int& value)
+static Expected<int, HTMLIntegerParsingError> parseHTMLIntegerInternal(const CharacterType* position, const CharacterType* end)
 {
-    // Step 3
-    int sign = 1;
-
-    // Step 4
-    while (position < end) {
-        if (!isHTMLSpace(*position))
-            break;
+    while (position < end && isHTMLSpace(*position))
         ++position;
-    }
 
-    // Step 5
     if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
+        return makeUnexpected(HTMLIntegerParsingError::Other);
 
-    // Step 6
+    bool isNegative = false;
     if (*position == '-') {
-        sign = -1;
+        isNegative = true;
         ++position;
     } else if (*position == '+')
         ++position;
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
 
-    // Step 7
-    if (!isASCIIDigit(*position))
-        return false;
+    if (position == end || !isASCIIDigit(*position))
+        return makeUnexpected(HTMLIntegerParsingError::Other);
 
-    // Step 8
-    StringBuilder digits;
-    while (position < end) {
-        if (!isASCIIDigit(*position))
-            break;
-        digits.append(*position++);
-    }
+    constexpr int intMax = std::numeric_limits<int>::max();
+    constexpr int base = 10;
+    constexpr int maxMultiplier = intMax / base;
 
-    // Step 9
-    bool ok;
-    if (digits.is8Bit())
-        value = sign * charactersToIntStrict(digits.characters8(), digits.length(), &ok);
-    else
-        value = sign * charactersToIntStrict(digits.characters16(), digits.length(), &ok);
-    return ok;
+    unsigned result = 0;
+    do {
+        int digitValue = *position - '0';
+
+        if (result > maxMultiplier || (result == maxMultiplier && digitValue > (intMax % base) + isNegative))
+            return makeUnexpected(isNegative ? HTMLIntegerParsingError::NegativeOverflow : HTMLIntegerParsingError::PositiveOverflow);
+
+        result = base * result + digitValue;
+        ++position;
+    } while (position < end && isASCIIDigit(*position));
+
+    return isNegative ? -result : result;
 }
 
-// http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-integers
-bool parseHTMLInteger(const String& input, int& value)
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-integers
+Expected<int, HTMLIntegerParsingError> parseHTMLInteger(StringView input)
 {
-    // Step 1
-    // Step 2
     unsigned length = input.length();
-    if (!length || input.is8Bit()) {
-        const LChar* start = input.characters8();
-        return parseHTMLIntegerInternal(start, start + length, value);
+    if (!length)
+        return makeUnexpected(HTMLIntegerParsingError::Other);
+
+    if (LIKELY(input.is8Bit())) {
+        auto* start = input.characters8();
+        return parseHTMLIntegerInternal(start, start + length);
     }
 
-    const UChar* start = input.characters16();
-    return parseHTMLIntegerInternal(start, start + length, value);
+    auto* start = input.characters16();
+    return parseHTMLIntegerInternal(start, start + length);
+}
+
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-non-negative-integers
+Expected<unsigned, HTMLIntegerParsingError> parseHTMLNonNegativeInteger(StringView input)
+{
+    auto optionalSignedResult = parseHTMLInteger(input);
+    if (!optionalSignedResult)
+        return optionalSignedResult.getUnexpected();
+
+    if (optionalSignedResult.value() < 0)
+        return makeUnexpected(HTMLIntegerParsingError::NegativeOverflow);
+
+    return static_cast<unsigned>(optionalSignedResult.value());
 }
 
 template <typename CharacterType>
-static bool parseHTMLNonNegativeIntegerInternal(const CharacterType* position, const CharacterType* end, unsigned& value)
+static std::optional<int> parseValidHTMLNonNegativeIntegerInternal(const CharacterType* position, const CharacterType* end)
 {
-    // Step 3
-    while (position < end) {
-        if (!isHTMLSpace(*position))
-            break;
-        ++position;
+    // A string is a valid non-negative integer if it consists of one or more ASCII digits.
+    for (auto* c = position; c < end; ++c) {
+        if (!isASCIIDigit(*c))
+            return std::nullopt;
     }
 
-    // Step 4
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
+    auto optionalSignedValue = parseHTMLIntegerInternal(position, end);
+    if (!optionalSignedValue || optionalSignedValue.value() < 0)
+        return std::nullopt;
 
-    // Step 5
-    if (*position == '+')
-        ++position;
-
-    // Step 6
-    if (position == end)
-        return false;
-    ASSERT_WITH_SECURITY_IMPLICATION(position < end);
-
-    // Step 7
-    if (!isASCIIDigit(*position))
-        return false;
-
-    // Step 8
-    StringBuilder digits;
-    while (position < end) {
-        if (!isASCIIDigit(*position))
-            break;
-        digits.append(*position++);
-    }
-
-    // Step 9
-    bool ok;
-    if (digits.is8Bit())
-        value = charactersToUIntStrict(digits.characters8(), digits.length(), &ok);
-    else
-        value = charactersToUIntStrict(digits.characters16(), digits.length(), &ok);
-    return ok;
+    return optionalSignedValue.value();
 }
 
-
-// http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-non-negative-integers
-bool parseHTMLNonNegativeInteger(const String& input, unsigned& value)
+// https://html.spec.whatwg.org/#valid-non-negative-integer
+std::optional<int> parseValidHTMLNonNegativeInteger(StringView input)
 {
-    // Step 1
-    // Step 2
-    unsigned length = input.length();
-    if (!length || input.is8Bit()) {
-        const LChar* start = input.characters8();
-        return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
+    if (input.isEmpty())
+        return std::nullopt;
+
+    if (LIKELY(input.is8Bit())) {
+        auto* start = input.characters8();
+        return parseValidHTMLNonNegativeIntegerInternal(start, start + input.length());
     }
-    
-    const UChar* start = input.characters16();
-    return parseHTMLNonNegativeIntegerInternal(start, start + length, value);
+
+    auto* start = input.characters16();
+    return parseValidHTMLNonNegativeIntegerInternal(start, start + input.length());
+}
+
+template <typename CharacterType>
+static std::optional<double> parseValidHTMLFloatingPointNumberInternal(const CharacterType* position, size_t length)
+{
+    ASSERT(length > 0);
+
+    // parseDouble() allows the string to start with a '+' or to end with a '.' but those
+    // are not valid floating point numbers as per HTML.
+    if (*position == '+' || *(position + length - 1) == '.')
+        return std::nullopt;
+
+    size_t parsedLength = 0;
+    double number = parseDouble(position, length, parsedLength);
+    return parsedLength == length && std::isfinite(number) ? number : std::optional<double>();
+}
+
+// https://html.spec.whatwg.org/#valid-floating-point-number
+std::optional<double> parseValidHTMLFloatingPointNumber(StringView input)
+{
+    if (input.isEmpty())
+        return std::nullopt;
+
+    if (LIKELY(input.is8Bit())) {
+        auto* start = input.characters8();
+        return parseValidHTMLFloatingPointNumberInternal(start, input.length());
+    }
+
+    auto* start = input.characters16();
+    return parseValidHTMLFloatingPointNumberInternal(start, input.length());
+}
+
+static inline bool isHTMLSpaceOrDelimiter(UChar character)
+{
+    return isHTMLSpace(character) || character == ',' || character == ';';
+}
+
+static inline bool isNumberStart(UChar character)
+{
+    return isASCIIDigit(character) || character == '.' || character == '-';
+}
+
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-floating-point-number-values
+template <typename CharacterType>
+static Vector<double> parseHTMLListOfOfFloatingPointNumberValuesInternal(const CharacterType* position, const CharacterType* end)
+{
+    Vector<double> numbers;
+
+    // This skips past any leading delimiters.
+    while (position < end && isHTMLSpaceOrDelimiter(*position))
+        ++position;
+
+    while (position < end) {
+        // This skips past leading garbage.
+        while (position < end && !(isHTMLSpaceOrDelimiter(*position) || isNumberStart(*position)))
+            ++position;
+
+        const CharacterType* numberStart = position;
+        while (position < end && !isHTMLSpaceOrDelimiter(*position))
+            ++position;
+
+        size_t parsedLength = 0;
+        double number = parseDouble(numberStart, position - numberStart, parsedLength);
+        numbers.append(parsedLength > 0 && std::isfinite(number) ? number : 0);
+
+        // This skips past the delimiter.
+        while (position < end && isHTMLSpaceOrDelimiter(*position))
+            ++position;
+    }
+
+    return numbers;
+}
+
+Vector<double> parseHTMLListOfOfFloatingPointNumberValues(StringView input)
+{
+    if (LIKELY(input.is8Bit())) {
+        auto* start = input.characters8();
+        return parseHTMLListOfOfFloatingPointNumberValuesInternal(start, start + input.length());
+    }
+
+    auto* start = input.characters16();
+    return parseHTMLListOfOfFloatingPointNumberValuesInternal(start, start + input.length());
 }
 
 static bool threadSafeEqual(const StringImpl& a, const StringImpl& b)
@@ -288,6 +343,127 @@ static bool threadSafeEqual(const StringImpl& a, const StringImpl& b)
 bool threadSafeMatch(const QualifiedName& a, const QualifiedName& b)
 {
     return threadSafeEqual(*a.localName().impl(), *b.localName().impl());
+}
+
+String parseCORSSettingsAttribute(const AtomicString& value)
+{
+    if (value.isNull())
+        return String();
+    if (equalIgnoringASCIICase(value, "use-credentials"))
+        return ASCIILiteral("use-credentials");
+    return ASCIILiteral("anonymous");
+}
+
+// https://html.spec.whatwg.org/multipage/semantics.html#attr-meta-http-equiv-refresh
+template <typename CharacterType>
+static bool parseHTTPRefreshInternal(const CharacterType* position, const CharacterType* end, double& parsedDelay, String& parsedURL)
+{
+    while (position < end && isHTMLSpace(*position))
+        ++position;
+
+    const CharacterType* numberStart = position;
+    while (position < end && isASCIIDigit(*position))
+        ++position;
+
+    auto optionalNumber = parseHTMLNonNegativeInteger(StringView(numberStart, position - numberStart));
+    if (!optionalNumber)
+        return false;
+
+    while (position < end && (isASCIIDigit(*position) || *position == '.'))
+        ++position;
+
+    if (position == end) {
+        parsedDelay = optionalNumber.value();
+        return true;
+    }
+
+    if (*position != ';' && *position != ',' && !isHTMLSpace(*position))
+        return false;
+
+    parsedDelay = optionalNumber.value();
+
+    while (position < end && isHTMLSpace(*position))
+        ++position;
+
+    if (position < end && (*position == ';' || *position == ','))
+        ++position;
+
+    while (position < end && isHTMLSpace(*position))
+        ++position;
+
+    if (position == end)
+        return true;
+
+    if (*position == 'U' || *position == 'u') {
+        StringView url(position, end - position);
+
+        ++position;
+
+        if (position < end && (*position == 'R' || *position == 'r'))
+            ++position;
+        else {
+            parsedURL = url.toString();
+            return true;
+        }
+
+        if (position < end && (*position == 'L' || *position == 'l'))
+            ++position;
+        else {
+            parsedURL = url.toString();
+            return true;
+        }
+
+        while (position < end && isHTMLSpace(*position))
+            ++position;
+
+        if (position < end && *position == '=')
+            ++position;
+        else {
+            parsedURL = url.toString();
+            return true;
+        }
+
+        while (position < end && isHTMLSpace(*position))
+            ++position;
+    }
+
+    CharacterType quote;
+    if (position < end && (*position == '\'' || *position == '"')) {
+        quote = *position;
+        ++position;
+    } else
+        quote = '\0';
+
+    StringView url(position, end - position);
+
+    if (quote != '\0') {
+        size_t index = url.find(quote);
+        if (index != notFound)
+            url = url.substring(0, index);
+    }
+
+    parsedURL = url.toString();
+    return true;
+}
+
+bool parseMetaHTTPEquivRefresh(const StringView& input, double& delay, String& url)
+{
+    if (LIKELY(input.is8Bit())) {
+        auto* start = input.characters8();
+        return parseHTTPRefreshInternal(start, start + input.length(), delay, url);
+    }
+
+    auto* start = input.characters16();
+    return parseHTTPRefreshInternal(start, start + input.length(), delay, url);
+}
+
+// https://html.spec.whatwg.org/#rules-for-parsing-a-hash-name-reference
+AtomicString parseHTMLHashNameReference(StringView usemap)
+{
+    size_t numberSignIndex = usemap.find('#');
+    if (numberSignIndex == notFound)
+        return nullAtom();
+    return usemap.substring(numberSignIndex + 1).toAtomicString();
 }
 
 }

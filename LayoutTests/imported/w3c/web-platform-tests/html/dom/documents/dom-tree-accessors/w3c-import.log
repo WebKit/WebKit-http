@@ -1,12 +1,11 @@
 The tests in this directory were imported from the W3C repository.
-Do NOT modify these tests directly in Webkit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Do NOT modify these tests directly in WebKit.
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
-Then run the Tools/Scripts/import-w3c-tests in Webkit to reimport
+Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
 
-Do NOT modify or remove this file
+Do NOT modify or remove this file.
 
 ------------------------------------------------------------------------
 Properties requiring vendor prefixes:
@@ -15,11 +14,11 @@ Property values requiring vendor prefixes:
 None
 ------------------------------------------------------------------------
 List of files:
+/LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/Document.body.html
+/LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/Document.currentScript.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/Document.getElementsByClassName-null-undef.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/Element.getElementsByClassName-null-undef.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/cross-domain.js
-/LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/document.body-getter.html
-/LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/document.body-setter-01.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/document.embeds-document.plugins-01.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/document.forms.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByClassName-same.html
@@ -41,3 +40,5 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-04.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-05.html
 /LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-06.html
+/LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-07.html
+/LayoutTests/imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/nameditem-08.html

@@ -416,7 +416,6 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
         var bracketStack = [];
         var bracketOffsetStack = [];
-        var lastCloseBracketOffset = NaN;
 
         var startOffset = endOffset;
         var firstOffset = endOffset + direction;
@@ -538,6 +537,10 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
         if (mainToken.state.state === "media" || mainToken.state.state === "top" || mainToken.state.state === "parens")
             return [];
 
+        // Don't complete in the middle of a property name.
+        if (/^[a-z]/i.test(suffix))
+            return [];
+
         var token = mainToken;
         var lineNumber = this._lineNumber;
 
@@ -562,14 +565,24 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
             var propertyName = token.string;
 
             // If there is a suffix and it isn't a semicolon, then we should use a space since
-            // the user is editing in the middle.
-            this._implicitSuffix = suffix && suffix !== ";" ? " " : (this._noEndingSemicolon ? "" : ";");
+            // the user is editing in the middle. Likewise if the suffix starts with an open
+            // paren we are changing a function name so don't add a suffix.
+            this._implicitSuffix = " ";
+            if (suffix === ";")
+                this._implicitSuffix = this._noEndingSemicolon ? "" : ";";
+            else if (suffix.startsWith("("))
+                this._implicitSuffix = "";
 
             // Don't use an implicit suffix if it would be the same as the existing suffix.
             if (this._implicitSuffix === suffix)
                 this._implicitSuffix = "";
 
-            return WebInspector.CSSKeywordCompletions.forProperty(propertyName).startsWith(this._prefix);
+            let completions = WebInspector.CSSKeywordCompletions.forProperty(propertyName).startsWith(this._prefix);
+
+            if (suffix.startsWith("("))
+                completions = completions.map((x) => x.replace(/\(\)$/, ""));
+
+            return completions;
         }
 
         this._implicitSuffix = suffix !== ":" ? ": " : "";
@@ -598,13 +611,21 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
         var insideParenthesis = localState.lexical.type === ")";
         var insideBrackets = localState.lexical.type === "]";
 
-        var allKeywords = ["break", "case", "catch", "const", "continue", "debugger", "default", "delete", "do", "else", "false", "finally", "for", "function", "if", "in",
-            "Infinity", "instanceof", "NaN", "new", "null", "return", "switch", "this", "throw", "true", "try", "typeof", "undefined", "var", "void", "while", "with"];
+        // FIXME: Include module keywords if we know this is a module environment.
+        // var moduleKeywords = ["default", "export", "import"];
+
+        var allKeywords = [
+            "break", "case", "catch", "class", "const", "continue", "debugger", "default",
+            "delete", "do", "else", "extends", "false", "finally", "for", "function",
+            "if", "in", "Infinity", "instanceof", "let", "NaN", "new", "null", "of",
+            "return", "static", "super", "switch", "this", "throw", "true", "try",
+            "typeof", "undefined", "var", "void", "while", "with", "yield"
+        ];
         var valueKeywords = ["false", "Infinity", "NaN", "null", "this", "true", "undefined"];
 
         var allowedKeywordsInsideBlocks = allKeywords.keySet();
         var allowedKeywordsWhenDeclaringVariable = valueKeywords.keySet();
-        var allowedKeywordsInsideParenthesis = valueKeywords.concat(["function"]).keySet();
+        var allowedKeywordsInsideParenthesis = valueKeywords.concat(["class", "function"]).keySet();
         var allowedKeywordsInsideBrackets = allowedKeywordsInsideParenthesis;
         var allowedKeywordsOnlyInsideSwitch = ["case", "default"].keySet();
 
@@ -668,11 +689,11 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
         case "(":
             matchVariables();
-            matchKeywords(["catch", "else", "for", "function", "if", "return", "switch", "throw", "while", "with"]);
+            matchKeywords(["catch", "else", "for", "function", "if", "return", "switch", "throw", "while", "with", "yield"]);
             break;
 
         case "{":
-            matchKeywords(["do", "else", "finally", "return", "try"]);
+            matchKeywords(["do", "else", "finally", "return", "try", "yield"]);
             break;
 
         case ":":

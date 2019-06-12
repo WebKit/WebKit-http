@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef Attribute_h
-#define Attribute_h
+#pragma once
 
 #include "QualifiedName.h"
 
@@ -79,7 +78,7 @@ inline bool Attribute::nameMatchesFilter(const QualifiedName& name, const Atomic
 {
     if (filterLocalName != name.localName())
         return false;
-    return filterPrefix == starAtom || filterNamespaceURI == name.namespaceURI();
+    return filterPrefix == starAtom() || filterNamespaceURI == name.namespaceURI();
 }
 
 inline bool Attribute::matches(const AtomicString& prefix, const AtomicString& localName, const AtomicString& namespaceURI) const
@@ -88,5 +87,3 @@ inline bool Attribute::matches(const AtomicString& prefix, const AtomicString& l
 }
 
 } // namespace WebCore
-
-#endif // Attribute_h

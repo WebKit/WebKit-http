@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SandboxSPI_h
-#define SandboxSPI_h
+#pragma once
 
 #if OS(DARWIN)
 
@@ -41,11 +40,14 @@ enum sandbox_filter_type {
 #define SANDBOX_NAMED_EXTERNAL 0x0003
 #endif
 
-EXTERN_C const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT;
-EXTERN_C int sandbox_check(pid_t, const char *operation, enum sandbox_filter_type, ...);
-EXTERN_C int sandbox_container_path_for_pid(pid_t, char *buffer, size_t bufsize);
-EXTERN_C int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char *const parameters[], char **errorbuf);
+WTF_EXTERN_C_BEGIN
+
+extern const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT;
+int sandbox_check(pid_t, const char *operation, enum sandbox_filter_type, ...);
+int sandbox_check_by_audit_token(audit_token_t, const char *operation, enum sandbox_filter_type, ...);
+int sandbox_container_path_for_pid(pid_t, char *buffer, size_t bufsize);
+int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char *const parameters[], char **errorbuf);
+
+WTF_EXTERN_C_END
 
 #endif // OS(DARWIN)
-
-#endif // SandboxSPI_h

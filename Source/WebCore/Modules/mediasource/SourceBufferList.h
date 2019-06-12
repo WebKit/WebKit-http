@@ -28,14 +28,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SourceBufferList_h
-#define SourceBufferList_h
+#pragma once
 
 #if ENABLE(MEDIA_SOURCE)
 
+#include "ContextDestructionObserver.h"
 #include "EventTarget.h"
 #include "GenericEventQueue.h"
-#include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -43,7 +42,7 @@ namespace WebCore {
 
 class SourceBuffer;
 
-class SourceBufferList final : public RefCounted<SourceBufferList>, public EventTargetWithInlineData {
+class SourceBufferList final : public RefCounted<SourceBufferList>, public EventTargetWithInlineData, public ContextDestructionObserver {
 public:
     static Ref<SourceBufferList> create(ScriptExecutionContext* context)
     {
@@ -52,11 +51,11 @@ public:
     virtual ~SourceBufferList();
 
     unsigned long length() const { return m_list.size(); }
-    SourceBuffer* item(unsigned long index) const { return (index < m_list.size()) ? m_list[index].get() : 0; }
+    SourceBuffer* item(unsigned long index) const { return (index < m_list.size()) ? m_list[index].get() : nullptr; }
 
-    void add(PassRefPtr<SourceBuffer>);
-    void remove(SourceBuffer*);
-    bool contains(SourceBuffer* buffer) { return m_list.find(buffer) != notFound; }
+    void add(Ref<SourceBuffer>&&);
+    void remove(SourceBuffer&);
+    bool contains(SourceBuffer& buffer) { return m_list.find(&buffer) != notFound; }
     void clear();
     void swap(Vector<RefPtr<SourceBuffer>>&);
 
@@ -64,8 +63,8 @@ public:
     Vector<RefPtr<SourceBuffer>>::iterator end() { return m_list.end(); }
 
     // EventTarget interface
-    virtual EventTargetInterface eventTargetInterface() const override { return SourceBufferListEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return m_scriptExecutionContext; }
+    EventTargetInterface eventTargetInterface() const final { return SourceBufferListEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
     using RefCounted<SourceBufferList>::ref;
     using RefCounted<SourceBufferList>::deref;
@@ -75,10 +74,9 @@ private:
 
     void scheduleEvent(const AtomicString&);
 
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    void refEventTarget() override { ref(); }
+    void derefEventTarget() override { deref(); }
 
-    ScriptExecutionContext* m_scriptExecutionContext;
     GenericEventQueue m_asyncEventQueue;
 
     Vector<RefPtr<SourceBuffer>> m_list;
@@ -86,6 +84,4 @@ private:
 
 } // namespace WebCore
 
-#endif
-
-#endif
+#endif // ENABLE(MEDIA_SOURCE)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,19 +26,153 @@
 #include "config.h"
 #include "DFGWorklist.h"
 
-#if ENABLE(DFG_JIT)
-
 #include "CodeBlock.h"
-#include "DeferGC.h"
-#include "DFGLongLivedState.h"
 #include "DFGSafepoint.h"
+#include "DeferGC.h"
 #include "JSCInlines.h"
+#include "ReleaseHeapAccessScope.h"
 #include <mutex>
 
 namespace JSC { namespace DFG {
 
+#if ENABLE(DFG_JIT)
+
+class Worklist::ThreadBody : public AutomaticThread {
+public:
+    ThreadBody(const AbstractLocker& locker, Worklist& worklist, ThreadData& data, Box<Lock> lock, RefPtr<AutomaticThreadCondition> condition, int relativePriority)
+        : AutomaticThread(locker, lock, condition)
+        , m_worklist(worklist)
+        , m_data(data)
+        , m_relativePriority(relativePriority)
+    {
+    }
+    
+protected:
+    PollResult poll(const AbstractLocker& locker) override
+    {
+        if (m_worklist.m_queue.isEmpty())
+            return PollResult::Wait;
+        
+        m_plan = m_worklist.m_queue.takeFirst();
+        if (!m_plan) {
+            if (Options::verboseCompilationQueue()) {
+                m_worklist.dump(locker, WTF::dataFile());
+                dataLog(": Thread shutting down\n");
+            }
+            return PollResult::Stop;
+        }
+        RELEASE_ASSERT(m_plan->stage == Plan::Preparing);
+        m_worklist.m_numberOfActiveThreads++;
+        return PollResult::Work;
+    }
+    
+    class WorkScope;
+    friend class WorkScope;
+    class WorkScope {
+    public:
+        WorkScope(ThreadBody& thread)
+            : m_thread(thread)
+        {
+            RELEASE_ASSERT(m_thread.m_plan);
+            RELEASE_ASSERT(m_thread.m_worklist.m_numberOfActiveThreads);
+        }
+        
+        ~WorkScope()
+        {
+            LockHolder locker(*m_thread.m_worklist.m_lock);
+            m_thread.m_plan = nullptr;
+            m_thread.m_worklist.m_numberOfActiveThreads--;
+        }
+        
+    private:
+        ThreadBody& m_thread;
+    };
+    
+    WorkResult work() override
+    {
+        WorkScope workScope(*this);
+        
+        LockHolder locker(m_data.m_rightToRun);
+        {
+            LockHolder locker(*m_worklist.m_lock);
+            if (m_plan->stage == Plan::Cancelled)
+                return WorkResult::Continue;
+            m_plan->notifyCompiling();
+        }
+        
+        if (Options::verboseCompilationQueue())
+            dataLog(m_worklist, ": Compiling ", m_plan->key(), " asynchronously\n");
+        
+        // There's no way for the GC to be safepointing since we own rightToRun.
+        if (m_plan->vm->heap.collectorBelievesThatTheWorldIsStopped()) {
+            dataLog("Heap is stoped but here we are! (1)\n");
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+        m_plan->compileInThread(&m_data);
+        if (m_plan->stage != Plan::Cancelled) {
+            if (m_plan->vm->heap.collectorBelievesThatTheWorldIsStopped()) {
+                dataLog("Heap is stopped but here we are! (2)\n");
+                RELEASE_ASSERT_NOT_REACHED();
+            }
+        }
+        
+        {
+            LockHolder locker(*m_worklist.m_lock);
+            if (m_plan->stage == Plan::Cancelled)
+                return WorkResult::Continue;
+            
+            m_plan->notifyReady();
+            
+            if (Options::verboseCompilationQueue()) {
+                m_worklist.dump(locker, WTF::dataFile());
+                dataLog(": Compiled ", m_plan->key(), " asynchronously\n");
+            }
+            
+            m_worklist.m_readyPlans.append(m_plan);
+            
+            RELEASE_ASSERT(!m_plan->vm->heap.collectorBelievesThatTheWorldIsStopped());
+            m_worklist.m_planCompiled.notifyAll();
+        }
+        
+        return WorkResult::Continue;
+    }
+    
+    void threadDidStart() override
+    {
+        if (Options::verboseCompilationQueue())
+            dataLog(m_worklist, ": Thread started\n");
+        
+        if (m_relativePriority)
+            Thread::current().changePriority(m_relativePriority);
+        
+        m_compilationScope = std::make_unique<CompilationScope>();
+    }
+    
+    void threadIsStopping(const AbstractLocker&) override
+    {
+        // We're holding the Worklist::m_lock, so we should be careful not to deadlock.
+        
+        if (Options::verboseCompilationQueue())
+            dataLog(m_worklist, ": Thread will stop\n");
+        
+        ASSERT(!m_plan);
+        
+        m_compilationScope = nullptr;
+        m_plan = nullptr;
+    }
+    
+private:
+    Worklist& m_worklist;
+    ThreadData& m_data;
+    int m_relativePriority;
+    std::unique_ptr<CompilationScope> m_compilationScope;
+    RefPtr<Plan> m_plan;
+};
+
 Worklist::Worklist(CString worklistName)
     : m_threadName(toCString(worklistName, " Worker Thread"))
+    , m_lock(Box<Lock>::create())
+    , m_planEnqueued(AutomaticThreadCondition::create())
     , m_numberOfActiveThreads(0)
 {
 }
@@ -46,24 +180,23 @@ Worklist::Worklist(CString worklistName)
 Worklist::~Worklist()
 {
     {
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         for (unsigned i = m_threads.size(); i--;)
             m_queue.append(nullptr); // Use null plan to indicate that we want the thread to terminate.
-        m_planEnqueued.notifyAll();
+        m_planEnqueued->notifyAll(locker);
     }
     for (unsigned i = m_threads.size(); i--;)
-        waitForThreadCompletion(m_threads[i]->m_identifier);
+        m_threads[i]->m_thread->join();
     ASSERT(!m_numberOfActiveThreads);
 }
 
 void Worklist::finishCreation(unsigned numberOfThreads, int relativePriority)
 {
     RELEASE_ASSERT(numberOfThreads);
+    LockHolder locker(*m_lock);
     for (unsigned i = numberOfThreads; i--;) {
         std::unique_ptr<ThreadData> data = std::make_unique<ThreadData>(this);
-        data->m_identifier = createThread(threadFunction, data.get(), m_threadName.data());
-        if (relativePriority)
-            changeThreadPriority(data->m_identifier, relativePriority);
+        data->m_thread = adoptRef(new ThreadBody(locker, *this, *data, m_lock, m_planEnqueued, relativePriority));
         m_threads.append(WTFMove(data));
     }
 }
@@ -77,32 +210,31 @@ Ref<Worklist> Worklist::create(CString worklistName, unsigned numberOfThreads, i
 
 bool Worklist::isActiveForVM(VM& vm) const
 {
-    LockHolder locker(m_lock);
+    LockHolder locker(*m_lock);
     PlanMap::const_iterator end = m_plans.end();
     for (PlanMap::const_iterator iter = m_plans.begin(); iter != end; ++iter) {
-        if (&iter->value->vm == &vm)
+        if (iter->value->vm == &vm)
             return true;
     }
     return false;
 }
 
-void Worklist::enqueue(PassRefPtr<Plan> passedPlan)
+void Worklist::enqueue(Ref<Plan>&& plan)
 {
-    RefPtr<Plan> plan = passedPlan;
-    LockHolder locker(m_lock);
+    LockHolder locker(*m_lock);
     if (Options::verboseCompilationQueue()) {
         dump(locker, WTF::dataFile());
         dataLog(": Enqueueing plan to optimize ", plan->key(), "\n");
     }
     ASSERT(m_plans.find(plan->key()) == m_plans.end());
-    m_plans.add(plan->key(), plan);
-    m_queue.append(plan);
-    m_planEnqueued.notifyOne();
+    m_plans.add(plan->key(), plan.copyRef());
+    m_queue.append(WTFMove(plan));
+    m_planEnqueued->notifyOne(locker);
 }
 
 Worklist::State Worklist::compilationState(CompilationKey key)
 {
-    LockHolder locker(m_lock);
+    LockHolder locker(*m_lock);
     PlanMap::iterator iter = m_plans.find(key);
     if (iter == m_plans.end())
         return NotKnown;
@@ -112,13 +244,20 @@ Worklist::State Worklist::compilationState(CompilationKey key)
 void Worklist::waitUntilAllPlansForVMAreReady(VM& vm)
 {
     DeferGC deferGC(vm.heap);
+    
+    // While we are waiting for the compiler to finish, the collector might have already suspended
+    // the compiler and then it will be waiting for us to stop. That's a deadlock. We avoid that
+    // deadlock by relinquishing our heap access, so that the collector pretends that we are stopped
+    // even if we aren't.
+    ReleaseHeapAccessScope releaseHeapAccessScope(vm.heap);
+    
     // Wait for all of the plans for the given VM to complete. The idea here
     // is that we want all of the caller VM's plans to be done. We don't care
     // about any other VM's plans, and we won't attempt to wait on those.
     // After we release this lock, we know that although other VMs may still
     // be adding plans, our VM will not be.
     
-    LockHolder locker(m_lock);
+    LockHolder locker(*m_lock);
     
     if (Options::verboseCompilationQueue()) {
         dump(locker, WTF::dataFile());
@@ -129,7 +268,7 @@ void Worklist::waitUntilAllPlansForVMAreReady(VM& vm)
         bool allAreCompiled = true;
         PlanMap::iterator end = m_plans.end();
         for (PlanMap::iterator iter = m_plans.begin(); iter != end; ++iter) {
-            if (&iter->value->vm != &vm)
+            if (iter->value->vm != &vm)
                 continue;
             if (iter->value->stage != Plan::Ready) {
                 allAreCompiled = false;
@@ -140,17 +279,17 @@ void Worklist::waitUntilAllPlansForVMAreReady(VM& vm)
         if (allAreCompiled)
             break;
         
-        m_planCompiled.wait(m_lock);
+        m_planCompiled.wait(*m_lock);
     }
 }
 
 void Worklist::removeAllReadyPlansForVM(VM& vm, Vector<RefPtr<Plan>, 8>& myReadyPlans)
 {
     DeferGC deferGC(vm.heap);
-    LockHolder locker(m_lock);
+    LockHolder locker(*m_lock);
     for (size_t i = 0; i < m_readyPlans.size(); ++i) {
         RefPtr<Plan> plan = m_readyPlans[i];
-        if (&plan->vm != &vm)
+        if (plan->vm != &vm)
             continue;
         if (plan->stage != Plan::Ready)
             continue;
@@ -192,7 +331,7 @@ Worklist::State Worklist::completeAllReadyPlansForVM(VM& vm, CompilationKey requ
     }
     
     if (!!requestedKey && resultingState == NotKnown) {
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         if (m_plans.contains(requestedKey))
             resultingState = Compiling;
     }
@@ -205,17 +344,6 @@ void Worklist::completeAllPlansForVM(VM& vm)
     DeferGC deferGC(vm.heap);
     waitUntilAllPlansForVMAreReady(vm);
     completeAllReadyPlansForVM(vm);
-}
-
-void Worklist::rememberCodeBlocks(VM& vm)
-{
-    LockHolder locker(m_lock);
-    for (PlanMap::iterator iter = m_plans.begin(); iter != m_plans.end(); ++iter) {
-        Plan* plan = iter->value.get();
-        if (&plan->vm != &vm)
-            continue;
-        plan->rememberCodeBlocks();
-    }
 }
 
 void Worklist::suspendAllThreads()
@@ -236,10 +364,10 @@ void Worklist::visitWeakReferences(SlotVisitor& visitor)
 {
     VM* vm = visitor.heap()->vm();
     {
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         for (PlanMap::iterator iter = m_plans.begin(); iter != m_plans.end(); ++iter) {
             Plan* plan = iter->value.get();
-            if (&plan->vm != vm)
+            if (plan->vm != vm)
                 continue;
             plan->checkLivenessAndVisitChildren(visitor);
         }
@@ -251,7 +379,7 @@ void Worklist::visitWeakReferences(SlotVisitor& visitor)
     for (unsigned i = m_threads.size(); i--;) {
         ThreadData* data = m_threads[i].get();
         Safepoint* safepoint = data->m_safepoint;
-        if (safepoint && &safepoint->vm() == vm)
+        if (safepoint && safepoint->vm() == vm)
             safepoint->checkLivenessAndVisitChildren(visitor);
     }
 }
@@ -259,11 +387,11 @@ void Worklist::visitWeakReferences(SlotVisitor& visitor)
 void Worklist::removeDeadPlans(VM& vm)
 {
     {
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         HashSet<CompilationKey> deadPlanKeys;
         for (PlanMap::iterator iter = m_plans.begin(); iter != m_plans.end(); ++iter) {
             Plan* plan = iter->value.get();
-            if (&plan->vm != &vm)
+            if (plan->vm != &vm)
                 continue;
             if (plan->isKnownToBeLiveDuringGC())
                 continue;
@@ -284,7 +412,7 @@ void Worklist::removeDeadPlans(VM& vm)
             for (unsigned i = 0; i < m_readyPlans.size(); ++i) {
                 if (m_readyPlans[i]->stage != Plan::Cancelled)
                     continue;
-                m_readyPlans[i] = m_readyPlans.last();
+                m_readyPlans[i--] = m_readyPlans.last();
                 m_readyPlans.removeLast();
             }
         }
@@ -296,7 +424,7 @@ void Worklist::removeDeadPlans(VM& vm)
         Safepoint* safepoint = data->m_safepoint;
         if (!safepoint)
             continue;
-        if (&safepoint->vm() != &vm)
+        if (safepoint->vm() != &vm)
             continue;
         if (safepoint->isKnownToBeLiveDuringGC())
             continue;
@@ -304,19 +432,50 @@ void Worklist::removeDeadPlans(VM& vm)
     }
 }
 
+void Worklist::removeNonCompilingPlansForVM(VM& vm)
+{
+    LockHolder locker(*m_lock);
+    HashSet<CompilationKey> deadPlanKeys;
+    Vector<RefPtr<Plan>> deadPlans;
+    for (auto& entry : m_plans) {
+        Plan* plan = entry.value.get();
+        if (plan->vm != &vm)
+            continue;
+        if (plan->stage == Plan::Compiling)
+            continue;
+        deadPlanKeys.add(plan->key());
+        deadPlans.append(plan);
+    }
+    for (CompilationKey key : deadPlanKeys)
+        m_plans.remove(key);
+    Deque<RefPtr<Plan>> newQueue;
+    while (!m_queue.isEmpty()) {
+        RefPtr<Plan> plan = m_queue.takeFirst();
+        if (!deadPlanKeys.contains(plan->key()))
+            newQueue.append(WTFMove(plan));
+    }
+    m_queue = WTFMove(newQueue);
+    m_readyPlans.removeAllMatching(
+        [&] (RefPtr<Plan>& plan) -> bool {
+            return deadPlanKeys.contains(plan->key());
+        });
+    for (auto& plan : deadPlans)
+        plan->cancel();
+}
+
 size_t Worklist::queueLength()
 {
-    LockHolder locker(m_lock);
+    LockHolder locker(*m_lock);
     return m_queue.size();
 }
 
 void Worklist::dump(PrintStream& out) const
 {
-    LockHolder locker(m_lock);
+    LockHolder locker(*m_lock);
     dump(locker, out);
 }
 
-void Worklist::dump(const LockHolder&, PrintStream& out) const
+void Worklist::dump(const AbstractLocker&, PrintStream& out) const
 {
     out.print(
         "Worklist(", RawPointer(this), ")[Queue Length = ", m_queue.size(),
@@ -324,102 +483,15 @@ void Worklist::dump(const LockHolder&, PrintStream& out) const
         ", Num Active Threads = ", m_numberOfActiveThreads, "/", m_threads.size(), "]");
 }
 
-void Worklist::runThread(ThreadData* data)
-{
-    CompilationScope compilationScope;
-    
-    if (Options::verboseCompilationQueue())
-        dataLog(*this, ": Thread started\n");
-    
-    LongLivedState longLivedState;
-    
-    for (;;) {
-        RefPtr<Plan> plan;
-        {
-            LockHolder locker(m_lock);
-            while (m_queue.isEmpty())
-                m_planEnqueued.wait(m_lock);
-            
-            plan = m_queue.takeFirst();
-            if (plan)
-                m_numberOfActiveThreads++;
-        }
-        
-        if (!plan) {
-            if (Options::verboseCompilationQueue())
-                dataLog(*this, ": Thread shutting down\n");
-            return;
-        }
-        
-        {
-            LockHolder locker(data->m_rightToRun);
-            {
-                LockHolder locker(m_lock);
-                if (plan->stage == Plan::Cancelled) {
-                    m_numberOfActiveThreads--;
-                    continue;
-                }
-                plan->notifyCompiling();
-            }
-        
-            if (Options::verboseCompilationQueue())
-                dataLog(*this, ": Compiling ", plan->key(), " asynchronously\n");
-        
-            RELEASE_ASSERT(!plan->vm.heap.isCollecting());
-            plan->compileInThread(longLivedState, data);
-            RELEASE_ASSERT(!plan->vm.heap.isCollecting());
-            
-            {
-                LockHolder locker(m_lock);
-                if (plan->stage == Plan::Cancelled) {
-                    m_numberOfActiveThreads--;
-                    continue;
-                }
-                plan->notifyCompiled();
-            }
-            RELEASE_ASSERT(!plan->vm.heap.isCollecting());
-        }
-
-        {
-            LockHolder locker(m_lock);
-            
-            // We could have been cancelled between releasing rightToRun and acquiring m_lock.
-            // This would mean that we might be in the middle of GC right now.
-            if (plan->stage == Plan::Cancelled) {
-                m_numberOfActiveThreads--;
-                continue;
-            }
-            
-            plan->notifyReady();
-            
-            if (Options::verboseCompilationQueue()) {
-                dump(locker, WTF::dataFile());
-                dataLog(": Compiled ", plan->key(), " asynchronously\n");
-            }
-            
-            m_readyPlans.append(plan);
-            
-            m_planCompiled.notifyAll();
-            m_numberOfActiveThreads--;
-        }
-    }
-}
-
-void Worklist::threadFunction(void* argument)
-{
-    ThreadData* data = static_cast<ThreadData*>(argument);
-    data->m_worklist->runThread(data);
-}
-
 static Worklist* theGlobalDFGWorklist;
 
-Worklist* ensureGlobalDFGWorklist()
+Worklist& ensureGlobalDFGWorklist()
 {
     static std::once_flag initializeGlobalWorklistOnceFlag;
     std::call_once(initializeGlobalWorklistOnceFlag, [] {
         theGlobalDFGWorklist = &Worklist::create("DFG Worklist", Options::numberOfDFGCompilerThreads(), Options::priorityDeltaOfDFGCompilerThreads()).leakRef();
     });
-    return theGlobalDFGWorklist;
+    return *theGlobalDFGWorklist;
 }
 
 Worklist* existingGlobalDFGWorklistOrNull()
@@ -429,13 +501,13 @@ Worklist* existingGlobalDFGWorklistOrNull()
 
 static Worklist* theGlobalFTLWorklist;
 
-Worklist* ensureGlobalFTLWorklist()
+Worklist& ensureGlobalFTLWorklist()
 {
     static std::once_flag initializeGlobalWorklistOnceFlag;
     std::call_once(initializeGlobalWorklistOnceFlag, [] {
         theGlobalFTLWorklist = &Worklist::create("FTL Worklist", Options::numberOfFTLCompilerThreads(), Options::priorityDeltaOfFTLCompilerThreads()).leakRef();
     });
-    return theGlobalFTLWorklist;
+    return *theGlobalFTLWorklist;
 }
 
 Worklist* existingGlobalFTLWorklistOrNull()
@@ -443,12 +515,12 @@ Worklist* existingGlobalFTLWorklistOrNull()
     return theGlobalFTLWorklist;
 }
 
-Worklist* ensureGlobalWorklistFor(CompilationMode mode)
+Worklist& ensureGlobalWorklistFor(CompilationMode mode)
 {
     switch (mode) {
     case InvalidCompilationMode:
         RELEASE_ASSERT_NOT_REACHED();
-        return 0;
+        return ensureGlobalDFGWorklist();
     case DFGMode:
         return ensureGlobalDFGWorklist();
     case FTLMode:
@@ -456,26 +528,64 @@ Worklist* ensureGlobalWorklistFor(CompilationMode mode)
         return ensureGlobalFTLWorklist();
     }
     RELEASE_ASSERT_NOT_REACHED();
-    return 0;
+    return ensureGlobalDFGWorklist();
+}
+
+unsigned numberOfWorklists() { return 2; }
+
+Worklist& ensureWorklistForIndex(unsigned index)
+{
+    switch (index) {
+    case 0:
+        return ensureGlobalDFGWorklist();
+    case 1:
+        return ensureGlobalFTLWorklist();
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return ensureGlobalDFGWorklist();
+    }
+}
+
+Worklist* existingWorklistForIndexOrNull(unsigned index)
+{
+    switch (index) {
+    case 0:
+        return existingGlobalDFGWorklistOrNull();
+    case 1:
+        return existingGlobalFTLWorklistOrNull();
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return 0;
+    }
+}
+
+Worklist& existingWorklistForIndex(unsigned index)
+{
+    Worklist* result = existingWorklistForIndexOrNull(index);
+    RELEASE_ASSERT(result);
+    return *result;
 }
 
 void completeAllPlansForVM(VM& vm)
 {
     for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
+        if (DFG::Worklist* worklist = DFG::existingWorklistForIndexOrNull(i))
             worklist->completeAllPlansForVM(vm);
     }
 }
 
-void rememberCodeBlocks(VM& vm)
+#else // ENABLE(DFG_JIT)
+
+void completeAllPlansForVM(VM&)
 {
-    for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
-            worklist->rememberCodeBlocks(vm);
-    }
 }
+
+void markCodeBlocks(VM&, SlotVisitor&)
+{
+}
+
+#endif // ENABLE(DFG_JIT)
 
 } } // namespace JSC::DFG
 
-#endif // ENABLE(DFG_JIT)
 

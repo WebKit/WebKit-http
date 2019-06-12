@@ -30,13 +30,14 @@
 [
     Conditional=STREAMS_API,
     Constructor,
+    EnabledAtRuntime=WritableStreamAPI,
     JSBuiltin
-] interface WritableStream { 
-    Promise abort(optional any reason);
-    Promise close();
-    Promise write(any chunk);
+] interface WritableStream {
+    Promise<any> abort(optional any reason);
+    Promise<any> close();
+    Promise<any> write(any chunk);
 
-    readonly attribute Promise closed;
-    readonly attribute Promise ready;
+    readonly attribute Promise<boolean> closed;
+    readonly attribute Promise<boolean> ready;
     readonly attribute DOMString state;
 };

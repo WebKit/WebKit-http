@@ -35,18 +35,26 @@ void IDBGetResult::dataFromBuffer(SharedBuffer& buffer)
     Vector<uint8_t> data(buffer.size());
     memcpy(data.data(), buffer.data(), buffer.size());
 
-    m_valueBuffer = ThreadSafeDataBuffer::adoptVector(data);
+    m_value = ThreadSafeDataBuffer::create(WTFMove(data));
+}
+
+IDBGetResult::IDBGetResult(const IDBGetResult& that, IsolatedCopyTag)
+{
+    isolatedCopy(that, *this);
 }
 
 IDBGetResult IDBGetResult::isolatedCopy() const
 {
-    IDBGetResult result;
-    result.m_valueBuffer = m_valueBuffer;
-    result.m_keyData = m_keyData.isolatedCopy();
-    result.m_primaryKeyData = m_primaryKeyData.isolatedCopy();
-    result.m_keyPath = m_keyPath.isolatedCopy();
-    result.m_isDefined = m_isDefined;
-    return result;
+    return { *this, IsolatedCopy };
+}
+
+void IDBGetResult::isolatedCopy(const IDBGetResult& source, IDBGetResult& destination)
+{
+    destination.m_value = source.m_value.isolatedCopy();
+    destination.m_keyData = source.m_keyData.isolatedCopy();
+    destination.m_primaryKeyData = source.m_primaryKeyData.isolatedCopy();
+    destination.m_keyPath = WebCore::isolatedCopy(source.m_keyPath);
+    destination.m_isDefined = source.m_isDefined;
 }
 
 } // namespace WebCore

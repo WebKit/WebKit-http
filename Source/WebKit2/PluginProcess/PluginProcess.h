@@ -30,7 +30,6 @@
 
 #include "ChildProcess.h"
 #include <WebCore/CountedUserActivity.h>
-#include <WebCore/AudioHardwareListener.h>
 #include <wtf/Forward.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
@@ -45,7 +44,7 @@ class NetscapePluginModule;
 class WebProcessConnection;
 struct PluginProcessCreationParameters;
         
-class PluginProcess : public ChildProcess, private WebCore::AudioHardwareListener::Client
+class PluginProcess : public ChildProcess
 {
     WTF_MAKE_NONCOPYABLE(PluginProcess);
     friend class NeverDestroyed<PluginProcess>;
@@ -78,25 +77,22 @@ private:
     ~PluginProcess();
 
     // ChildProcess
-    virtual void initializeProcess(const ChildProcessInitializationParameters&) override;
-    virtual void initializeProcessName(const ChildProcessInitializationParameters&) override;
-    virtual void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) override;
-    virtual bool shouldTerminate() override;
+    void initializeProcess(const ChildProcessInitializationParameters&) override;
+    void initializeProcessName(const ChildProcessInitializationParameters&) override;
+    void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) override;
+    bool shouldTerminate() override;
     void platformInitializeProcess(const ChildProcessInitializationParameters&);
 
 #if USE(APPKIT)
-    virtual void stopRunLoop() override;
+    void stopRunLoop() override;
 #endif
 
     // IPC::Connection::Client
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didClose(IPC::Connection&) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Plugin; }
-    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didClose(IPC::Connection&) override;
 
     // Message handlers.
-    void didReceivePluginProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceivePluginProcessMessage(IPC::Connection&, IPC::Decoder&);
     void initializePluginProcess(PluginProcessCreationParameters&&);
     void createWebProcessConnection();
 
@@ -104,14 +100,9 @@ private:
     void deleteWebsiteData(std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
     void deleteWebsiteDataForHostNames(const Vector<String>& hostNames, uint64_t callbackID);
 
-    // AudioHardwareListenerClient
-    virtual void audioHardwareDidBecomeActive() override;
-    virtual void audioHardwareDidBecomeInactive() override;
-    virtual void audioOutputDeviceChanged() override { }
-
     void platformInitializePluginProcess(PluginProcessCreationParameters&&);
     
-    void setMinimumLifetime(double);
+    void setMinimumLifetime(Seconds);
     void minimumLifetimeTimerFired();
     // Our web process connections.
     Vector<RefPtr<WebProcessConnection>> m_webProcessConnections;
@@ -138,8 +129,6 @@ private:
 #endif
 
     CountedUserActivity m_connectionActivity;
-
-    RefPtr<WebCore::AudioHardwareListener> m_audioHardwareListener;
 };
 
 } // namespace WebKit

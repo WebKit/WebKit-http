@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -84,13 +84,13 @@ BuildbotCombinedQueueView.prototype = {
             // Show the revision for the slowest queue, because we don't know if any newer revisions are green on all queues.
             // This can be slightly misleading after fixing a problem, because we can show a known broken revision as green.
             var slowestQueue = this.queues.slice().sort(function(a, b) { return BuildbotQueue.prototype.compareIterationsByRevisions(a.mostRecentSuccessfulIteration, b.mostRecentSuccessfulIteration); }).pop();
-            this._appendPendingRevisionCount(slowestQueue);
+            this._appendPendingRevisionCount(slowestQueue, this._latestProductiveIteration.bind(this, slowestQueue));
 
             var message = this.revisionContentForIteration(slowestQueue.mostRecentSuccessfulIteration);
             var statusMessagePassed = "all " + (queue.builder ? "builds succeeded" : "tests passed");
-            var status = new StatusLineView(message, StatusLineView.Status.Good, statusMessagePassed, null, null);
-            new PopoverTracker(status.statusBubbleElement, this._presentPopoverForCombinedGreenBubble.bind(this));
-            this.element.appendChild(status.element);
+            var statusView = new StatusLineView(message, StatusLineView.Status.Good, statusMessagePassed, null, null);
+            new PopoverTracker(statusView.statusBubbleElement, this._presentPopoverForCombinedGreenBubble.bind(this));
+            this.element.appendChild(statusView.element);
         } else {
             this.appendBuildStyle.call(this, this.queues, null, function(queue) {
                 if (queue.buildbot.needsAuthentication && !queue.buildbot.isAuthenticated) {
@@ -98,7 +98,7 @@ BuildbotCombinedQueueView.prototype = {
                     return;
                 }
 
-                this._appendPendingRevisionCount(queue);
+                this._appendPendingRevisionCount(queue, this._latestProductiveIteration.bind(this, queue));
 
                 var firstRecentUnsuccessfulIteration = queue.firstRecentUnsuccessfulIteration;
                 var mostRecentFinishedIteration = queue.mostRecentFinishedIteration;
@@ -107,9 +107,16 @@ BuildbotCombinedQueueView.prototype = {
                 if (firstRecentUnsuccessfulIteration && firstRecentUnsuccessfulIteration.loaded && mostRecentFinishedIteration && mostRecentFinishedIteration.loaded) {
                     console.assert(!mostRecentFinishedIteration.successful);
                     var message = this.revisionContentForIteration(mostRecentFinishedIteration, mostRecentFinishedIteration.productive ? mostRecentSuccessfulIteration : null);
-                    if (!mostRecentFinishedIteration.productive)
+                    if (!mostRecentFinishedIteration.productive) {
                         var status = StatusLineView.Status.Danger;
-                    else {
+                    } else if (mostRecentFinishedIteration.failedTestSteps.length === 1 && /(?=.*test)(?=.*jsc)/.test(mostRecentFinishedIteration.failedTestSteps[0].name)) {
+                        var failedStep = mostRecentFinishedIteration.failedTestSteps[0];
+                        var URL = mostRecentFinishedIteration.queue.buildbot.javaScriptCoreTestStdioUrlForIteration(mostRecentFinishedIteration, failedStep.name);
+                        var statusView = new StatusLineView(message, StatusLineView.Status.Bad, this._testStepFailureDescription(failedStep), failedStep.failureCount, URL);
+                        this.element.appendChild(statusView.element);
+                        new PopoverTracker(statusView.statusBubbleElement, this._presentPopoverForJavaScriptCoreTestRegressions.bind(this, failedStep.name), mostRecentFinishedIteration);
+                        return;
+                    } else {
                         // Direct links to some common logs.
                         var url = mostRecentFinishedIteration.failureLogURL("build log");
                         if (!url)
@@ -123,22 +130,24 @@ BuildbotCombinedQueueView.prototype = {
                     // Some other step failed, link to main buildbot page for the iteration.
                     if (!url)
                         url = queue.buildbot.buildPageURLForIteration(mostRecentFinishedIteration);
-                    var status = new StatusLineView(message, status, mostRecentFinishedIteration.text, null, url);
-                    this.element.appendChild(status.element);
+                    var statusView = new StatusLineView(message, status, mostRecentFinishedIteration.text, null, url);
+                    this.element.appendChild(statusView.element);
 
                     if (needsPopover)
-                        new PopoverTracker(status.statusBubbleElement, this._presentIndividualQueuePopover.bind(this), mostRecentFinishedIteration);
+                        new PopoverTracker(statusView.statusBubbleElement, this._presentIndividualQueuePopover.bind(this), mostRecentFinishedIteration);
                 }
 
                 var statusMessagePassed = "all " + (queue.builder ? "builds succeeded" : "tests passed");
                 if (mostRecentSuccessfulIteration && mostRecentSuccessfulIteration.loaded) {
                     var message = this.revisionContentForIteration(mostRecentSuccessfulIteration);
                     var url = queue.buildbot.buildPageURLForIteration(mostRecentSuccessfulIteration);
-                    var status = new StatusLineView(message, StatusLineView.Status.Good, firstRecentUnsuccessfulIteration ? "last succeeded" : statusMessagePassed, null, url);
-                    this.element.appendChild(status.element);
+                    var label = firstRecentUnsuccessfulIteration ? "last succeeded" : statusMessagePassed;
+                    var statusView = new StatusLineView(message, StatusLineView.Status.Good, label, null, url);
+                    this.element.appendChild(statusView.element);
                 } else {
-                    var status = new StatusLineView("unknown", StatusLineView.Status.Neutral, firstRecentUnsuccessfulIteration ? "last succeeded" : statusMessagePassed);
-                    this.element.appendChild(status.element);
+                    var label = firstRecentUnsuccessfulIteration ? "last succeeded" : statusMessagePassed;
+                    var statusView = new StatusLineView("unknown", StatusLineView.Status.Neutral, label);
+                    this.element.appendChild(statusView.element);
 
                     if (firstRecentUnsuccessfulIteration) {
                         // We have a failed iteration but no successful. It might be further back in time.

@@ -47,7 +47,7 @@ void PropertyCondition::dumpInContext(PrintStream& out, DumpContext* context) co
         out.print(" at ", offset(), " with attributes ", attributes());
         return;
     case Absence:
-    case AbsenceOfSetter:
+    case AbsenceOfSetEffect:
         out.print(" with prototype ", inContext(JSValue(prototype()), context));
         return;
     case Equivalence:
@@ -124,7 +124,7 @@ bool PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(
         return true;
     }
     
-    case AbsenceOfSetter: {
+    case AbsenceOfSetEffect: {
         if (structure->isDictionary()) {
             if (verbose)
                 dataLog("Invalid because it's a dictionary.\n");
@@ -134,7 +134,7 @@ bool PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(
         unsigned currentAttributes;
         PropertyOffset currentOffset = structure->getConcurrently(uid(), currentAttributes);
         if (currentOffset != invalidOffset) {
-            if (currentAttributes & (Accessor | CustomAccessor)) {
+            if (currentAttributes & (ReadOnly | Accessor | CustomAccessor)) {
                 if (verbose) {
                     dataLog(
                         "Invalid because we expected not to have a setter, but we have one at offset ",
@@ -220,7 +220,7 @@ bool PropertyCondition::isStillValid(Structure* structure, JSObject* base) const
 
     // Currently we assume that an impure property can cause a property to appear, and can also
     // "shadow" an existing JS property on the same object. Hence it affects both presence and
-    // absence. It doesn't affect AbsenceOfSetter because impure properties aren't ever setters.
+    // absence. It doesn't affect AbsenceOfSetEffect because impure properties aren't ever setters.
     switch (m_kind) {
     case Absence:
         if (structure->typeInfo().getOwnPropertySlotIsImpure() || structure->typeInfo().getOwnPropertySlotIsImpureForPropertyAbsence())
@@ -254,7 +254,7 @@ bool PropertyCondition::isWatchableWhenValid(
         // shouldn't have a TOCTOU race either.
         RELEASE_ASSERT(offset != invalidOffset);
         
-        WatchpointSet* set;
+        WatchpointSet* set = nullptr;
         switch (effort) {
         case MakeNoChanges:
             set = structure->propertyReplacementWatchpointSet(offset);
@@ -315,25 +315,25 @@ void PropertyCondition::validateReferences(const TrackedReferences& tracked) con
         tracked.check(requiredValue());
 }
 
-bool PropertyCondition::isValidValueForAttributes(JSValue value, unsigned attributes)
+bool PropertyCondition::isValidValueForAttributes(VM& vm, JSValue value, unsigned attributes)
 {
     bool attributesClaimAccessor = !!(attributes & Accessor);
-    bool valueClaimsAccessor = !!jsDynamicCast<GetterSetter*>(value);
+    bool valueClaimsAccessor = !!jsDynamicCast<GetterSetter*>(vm, value);
     return attributesClaimAccessor == valueClaimsAccessor;
 }
 
-bool PropertyCondition::isValidValueForPresence(JSValue value) const
+bool PropertyCondition::isValidValueForPresence(VM& vm, JSValue value) const
 {
-    return isValidValueForAttributes(value, attributes());
+    return isValidValueForAttributes(vm, value, attributes());
 }
 
-PropertyCondition PropertyCondition::attemptToMakeEquivalenceWithoutBarrier(JSObject* base) const
+PropertyCondition PropertyCondition::attemptToMakeEquivalenceWithoutBarrier(VM& vm, JSObject* base) const
 {
     Structure* structure = base->structure();
     if (!structure->isValidOffset(offset()))
         return PropertyCondition();
     JSValue value = base->getDirect(offset());
-    if (!isValidValueForPresence(value))
+    if (!isValidValueForPresence(vm, value))
         return PropertyCondition();
     return equivalenceWithoutBarrier(uid(), value);
 }
@@ -351,7 +351,7 @@ void printInternal(PrintStream& out, JSC::PropertyCondition::Kind condition)
     case JSC::PropertyCondition::Absence:
         out.print("Absence");
         return;
-    case JSC::PropertyCondition::AbsenceOfSetter:
+    case JSC::PropertyCondition::AbsenceOfSetEffect:
         out.print("Absence");
         return;
     case JSC::PropertyCondition::Equivalence:

@@ -1,0 +1,46 @@
+The tests in this directory were imported from the W3C repository.
+Do NOT modify these tests directly in WebKit.
+Instead, create a pull request on the WPT github:
+	https://github.com/w3c/web-platform-tests
+
+Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
+
+Do NOT modify or remove this file.
+
+------------------------------------------------------------------------
+Properties requiring vendor prefixes:
+None
+Property values requiring vendor prefixes:
+None
+------------------------------------------------------------------------
+List of files:
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/OWNERS
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCCertificate.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCConfiguration-iceCandidatePoolSize.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCDataChannel-id.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCDataChannelEvent-constructor.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCIceCandidate-constructor.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-addTransceiver.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-canTrickleIceCandidates.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-constructor.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createAnswer.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createDataChannel.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createOffer.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-generateCertificate.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-getTransceivers.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-helper.js
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-iceGatheringState.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-onnegotiationneeded.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCPeerConnectionIceEvent-constructor.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/RTCSctpTransport-constructor.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/datachannel-idlharness.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/getstats.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/interfaces.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/no-media-call.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/promises-call.html
+/LayoutTests/imported/w3c/web-platform-tests/webrtc/simplecall.html

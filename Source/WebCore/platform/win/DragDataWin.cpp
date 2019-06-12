@@ -34,8 +34,7 @@
 #include <shlwapi.h>
 #include <wininet.h>
 #include <wtf/Forward.h>
-#include <wtf/Hashmap.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -194,7 +193,7 @@ bool DragData::canSmartReplace() const
     return m_dragDataMap.contains(smartPasteFormat()->cfFormat);
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(DraggingPurpose) const
 {
     return containsPlainText() || containsURL()
         || ((m_platformDragData) ? (containsHTML(m_platformDragData) || containsFilenames(m_platformDragData))

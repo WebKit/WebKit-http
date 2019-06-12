@@ -46,11 +46,11 @@ void NotificationPermissionRequestManagerProxy::invalidateRequests()
     m_pendingRequests.clear();
 }
 
-PassRefPtr<NotificationPermissionRequest> NotificationPermissionRequestManagerProxy::createRequest(uint64_t notificationID)
+Ref<NotificationPermissionRequest> NotificationPermissionRequestManagerProxy::createRequest(uint64_t notificationID)
 {
-    RefPtr<NotificationPermissionRequest> request = NotificationPermissionRequest::create(this, notificationID);
-    m_pendingRequests.add(notificationID, request.get());
-    return request.release();
+    auto request = NotificationPermissionRequest::create(this, notificationID);
+    m_pendingRequests.add(notificationID, request.ptr());
+    return request;
 }
 
 void NotificationPermissionRequestManagerProxy::didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allow)

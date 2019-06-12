@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSStringJoiner_h
-#define JSStringJoiner_h
+#pragma once
 
 #include "ExceptionHelpers.h"
 #include "JSCJSValue.h"
@@ -35,8 +34,10 @@ class JSStringJoiner {
 public:
     JSStringJoiner(ExecState&, LChar separator, unsigned stringCount);
     JSStringJoiner(ExecState&, StringView separator, unsigned stringCount);
+    ~JSStringJoiner();
 
     void append(ExecState&, JSValue);
+    bool appendWithoutSideEffects(ExecState&, JSValue);
     void appendEmptyString();
 
     JSValue join(ExecState&);
@@ -58,16 +59,20 @@ inline JSStringJoiner::JSStringJoiner(ExecState& state, StringView separator, un
     : m_separator(separator)
     , m_isAll8Bit(m_separator.is8Bit())
 {
-    if (!m_strings.tryReserveCapacity(stringCount))
-        throwOutOfMemoryError(&state);
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (UNLIKELY(!m_strings.tryReserveCapacity(stringCount)))
+        throwOutOfMemoryError(&state, scope);
 }
 
 inline JSStringJoiner::JSStringJoiner(ExecState& state, LChar separator, unsigned stringCount)
     : m_singleCharacterSeparator(separator)
     , m_separator { &m_singleCharacterSeparator, 1 }
 {
-    if (!m_strings.tryReserveCapacity(stringCount))
-        throwOutOfMemoryError(&state);
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (UNLIKELY(!m_strings.tryReserveCapacity(stringCount)))
+        throwOutOfMemoryError(&state, scope);
 }
 
 ALWAYS_INLINE void JSStringJoiner::append(StringViewWithUnderlyingString&& string)
@@ -96,7 +101,7 @@ ALWAYS_INLINE void JSStringJoiner::appendEmptyString()
     m_strings.uncheckedAppend({ { }, { } });
 }
 
-ALWAYS_INLINE void JSStringJoiner::append(ExecState& state, JSValue value)
+ALWAYS_INLINE bool JSStringJoiner::appendWithoutSideEffects(ExecState& state, JSValue value)
 {
     // The following code differs from using the result of JSValue::toString in the following ways:
     // 1) It's inlined more than JSValue::toString is.
@@ -104,36 +109,44 @@ ALWAYS_INLINE void JSStringJoiner::append(ExecState& state, JSValue value)
     // 3) It doesn't create a JSString for numbers, true, or false.
     // 4) It turns undefined and null into the empty string instead of "undefined" and "null".
     // 5) It uses optimized code paths for all the cases known to be 8-bit and for the empty string.
+    // If we might make an effectful calls, return false. Otherwise return true.
 
     if (value.isCell()) {
-        if (value.asCell()->isString()) {
-            append(asString(value)->viewWithUnderlyingString(state));
-            return;
-        }
-        append(value.toString(&state)->viewWithUnderlyingString(state));
-        return;
+        JSString* jsString;
+        if (!value.asCell()->isString())
+            return false;
+        jsString = asString(value);
+        append(jsString->viewWithUnderlyingString(&state));
+        return true;
     }
 
     if (value.isInt32()) {
         append8Bit(state.vm().numericStrings.add(value.asInt32()));
-        return;
+        return true;
     }
     if (value.isDouble()) {
         append8Bit(state.vm().numericStrings.add(value.asDouble()));
-        return;
+        return true;
     }
     if (value.isTrue()) {
         append8Bit(state.vm().propertyNames->trueKeyword.string());
-        return;
+        return true;
     }
     if (value.isFalse()) {
         append8Bit(state.vm().propertyNames->falseKeyword.string());
-        return;
+        return true;
     }
     ASSERT(value.isUndefinedOrNull());
     appendEmptyString();
+    return true;
 }
 
+ALWAYS_INLINE void JSStringJoiner::append(ExecState& state, JSValue value)
+{
+    if (!appendWithoutSideEffects(state, value)) {
+        JSString* jsString = value.toString(&state);
+        append(jsString->viewWithUnderlyingString(&state));
+    }
 }
 
-#endif
+} // namespace JSC

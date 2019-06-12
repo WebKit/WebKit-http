@@ -1,3 +1,1457 @@
+2017-07-10  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Link error when building WTF from WTF.proj project file.
+        https://bugs.webkit.org/show_bug.cgi?id=174316
+        <rdar://problem/33178200>
+
+        Reviewed by Brent Fulgham.
+
+        WTF_CPU_X86 cmake variable needs to be set for link libraries directories to be correct.
+
+        * WebKit.vcxproj/WebKit.proj:
+
+2017-07-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Consolidate CMake code related to CURL
+        https://bugs.webkit.org/show_bug.cgi?id=170860
+
+        Reviewed by Alex Christensen.
+
+        * PlatformWin.cmake:
+
+2017-06-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop Thread::create(obsolete things) API since we can use lambda
+        https://bugs.webkit.org/show_bug.cgi?id=173825
+
+        Reviewed by Saam Barati.
+
+        * Storage/StorageThread.cpp:
+        (WebCore::StorageThread::start):
+        (WebCore::StorageThread::threadEntryPointCallback): Deleted.
+        * Storage/StorageThread.h:
+
+2017-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Visual Studio 2017 64-bit build after r218258
+        https://bugs.webkit.org/show_bug.cgi?id=173308
+
+        * PlatformWin.cmake:
+        We still need the enable_language(ASM_MASM) even if we explicitly call ml64 with VS2017.
+        Otherwise CMake complains about a missing variable CMAKE_ASM_MASM_COMPILE_OBJECT.
+
+2017-06-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win64] Fails to build Asm.lib (PaintHooks.asm) since Bug 173132
+        https://bugs.webkit.org/show_bug.cgi?id=173308
+
+        Reviewed by Alex Christensen.
+
+        Use the same method to process asm file as well as JSC does (Bug 170833).
+
+        * PlatformWin.cmake: Use add_custom_command to assemble PaintHooks.asm.
+
+2017-06-09  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win64] Build error when compiling PaintHooks.asm.
+        https://bugs.webkit.org/show_bug.cgi?id=173132
+
+        Reviewed by Brent Fulgham.
+
+        There seems to be too many include paths on the command line for ml64. According to the documentation,
+        a maximum of 10 /I options is allowed. Create a separate static library for asm files, in order to
+        avoid all the include paths.
+        
+        * PlatformWin.cmake:
+
+2017-06-06  Yoav Weiss  <yoav@yoav.ws>
+
+        [preload] Conditional support for media preloading and align media `as` values.
+        https://bugs.webkit.org/show_bug.cgi?id=172501
+
+        Reviewed by Dean Jackson.
+
+        Add media preloading preference and hook it up to runtime enabled features.
+
+        * mac/WebView/WebPreferenceKeysPrivate.h: Added a media preloading preference.
+        * mac/WebView/WebPreferences.mm:
+        (WebKit::WebPreferences::setMediaPreloadingEnabled):
+        (WebKit::WebPreferences::mediaPreloadingEnabled):
+        * mac/WebView/WebPreferencesPrivate.h:
+        (WebKit::WebPreferences::setMediaPreloadingEnabled):
+        (WebKit::WebPreferences::mediaPreloadingEnabled):
+        * mac/WebView/WebView.mm: Set runtime enabled feature based on preference.
+        * win/Interfaces/IWebPreferencesPrivate.idl: define mediaPreloadEnabled and setMediaPreloadingEnabled
+        * win/WebPreferences.cpp: Initialize media preloading as false and define setter and getter.
+        (WebKit::WebPreferences::setMediaPreloadingEnabled):
+        (WebKit::WebPreferences::mediaPreloadingEnabled):
+        * win/WebPreferences.h:
+        * win/WebPreferenceKeysPrivate.h:
+        * win/WebView.cpp: Set runtime enabled feature based on preference.
+
+2017-05-22  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win][CMake] Move MSVC compiler options to a common location
+        https://bugs.webkit.org/show_bug.cgi?id=172230
+
+        Reviewed by Yusuke Suzuki.
+
+        * PlatformWin.cmake:
+
+2017-04-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Define FORWARDING_HEADERS_DIR in WebKitFS and use it everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=171071
+
+        Reviewed by Michael Catanzaro.
+
+        "${DERIVED_SOURCES_DIR}/ForwardingHeaders" path occurs very often in the
+        build system files. GTK-specifc FORWARDING_HEADERS_DIR variable should
+        be available for all ports.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+
+2017-04-12  Brady Eidson  <beidson@apple.com>
+
+        QuotaExceededError when saving to localStorage in private mode.
+        https://bugs.webkit.org/show_bug.cgi?id=157010
+
+        Reviewed by Alex Christensen.
+
+        * Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createEphemeralLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::StorageNamespaceImpl):
+        (WebKit::StorageNamespaceImpl::~StorageNamespaceImpl):
+        (WebKit::StorageNamespaceImpl::copy):
+        (WebKit::StorageNamespaceImpl::close):
+        * Storage/StorageNamespaceImpl.h:
+
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebKit::WebStorageNamespaceProvider::createEphemeralLocalStorageNamespace):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Thread class and use RefPtr<Thread> and align Windows Threading implementation semantics to Pthread one
+        https://bugs.webkit.org/show_bug.cgi?id=170502
+
+        Reviewed by Mark Lam.
+
+        Mechanical change. Use Thread:: APIs.
+
+        * Storage/StorageThread.cpp:
+        (WebCore::StorageThread::StorageThread):
+        (WebCore::StorageThread::~StorageThread):
+        (WebCore::StorageThread::start):
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        * Storage/StorageThread.h:
+
+2017-04-10  Chris Dumez  <cdumez@apple.com>
+
+        Drop Timer::startOneShot() overload taking a double
+        https://bugs.webkit.org/show_bug.cgi?id=170659
+
+        Reviewed by Yusuke Suzuki.
+
+        Drop Timer::startOneShot() overload taking a double as people should use Seconds type now.
+
+        * Storage/StorageAreaSync.cpp:
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::StorageTracker):
+        * Storage/StorageTracker.h:
+        (WebKit::StorageTracker::storageDatabaseIdleInterval):
+        (WebKit::StorageTracker::setStorageDatabaseIdleInterval):
+
+2017-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Start dropping Timer API dealing with double
+        https://bugs.webkit.org/show_bug.cgi?id=170649
+
+        Reviewed by Yusuke Suzuki.
+
+        Start dropping Timer API dealing with double as people should use Seconds now.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleServePendingRequests):
+
+2017-04-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Only Capture Extra Network Load Metrics when there is a Web Inspector Frontend
+        https://bugs.webkit.org/show_bug.cgi?id=170525
+
+        Reviewed by Youenn Fablet.
+
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2017-04-05  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Invalid address specified to RtlValidateHeap at std::ctype<char>::_Tidy() when finishing MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=157067
+
+        Reviewed by Per Arne Vollan.
+
+        WebKit is compiled with /MT switch to use static CRT on Windows.
+        But, WinCairo port does not link the static CRT by specifying
+        /NODEFAULTLIB:LIBCMT and /NODEFAULTLIB:LIBCMTD switches.
+        Eventually, a dynamically linked CRT is linked.  This causes
+        potential heap corruption.
+
+        * PlatformWin.cmake: Do not set /NODEFAULTLIB:LIBCMT and
+        /NODEFAULTLIB:LIBCMTD, but /NODEFAULTLIB:MSVCRT and
+        /NODEFAULTLIB:MSVCRTD as well as AppleWin port does
+
+2017-03-31  Brady Eidson  <beidson@apple.com>
+
+        Clean up the "StorageType" enum.
+        https://bugs.webkit.org/show_bug.cgi?id=170349
+
+        Reviewed by Tim Horton.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::dispatchStorageEvent):
+        
+        * Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createSessionStorageNamespace):
+        (WebKit::StorageNamespaceImpl::getOrCreateLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::StorageNamespaceImpl):
+        (WebKit::StorageNamespaceImpl::~StorageNamespaceImpl):
+        (WebKit::StorageNamespaceImpl::copy):
+        (WebKit::StorageNamespaceImpl::close):
+
+2017-03-27  JF Bastien  <jfbastien@apple.com>
+
+        make build fix for WebDefaultUIDelegate.m
+        https://bugs.webkit.org/show_bug.cgi?id=170163
+
+        Unreviewed build fix.
+
+        * PlatformMac.cmake: WebDefaultUIDelegate.m was renamed
+
+2017-03-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add a UI delegate SPI hook to enable or disable navigation on drop
+        https://bugs.webkit.org/show_bug.cgi?id=169168
+        <rdar://problem/30688374>
+
+        Reviewed by Tim Horton.
+
+        See WebKit ChangeLog for more details. Renames WebDefaultUIDelegate.m => WebDefaultUIDelegate.mm.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Incremental builds of WebKitLegacy are slow because of the Postprocess Headers phase
+        https://bugs.webkit.org/show_bug.cgi?id=169861
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj: Specified that the Postprocess Headers script build
+          phase has the Headers and PrivateHeaders directories as its inputs and a timestamp file as
+          its output.
+
+2017-03-15  Dean Jackson  <dino@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=169669
+
+        Reviewed by Antoine Quint.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-02-27  Aakash Jain  <aakash_jain@apple.com>
+
+        Enable SUPPORTS_TEXT_BASED_API in WebKitLegacy for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168919
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj: Run scripts which are run for installhdrs phase for installapi phase as well.
+
+2017-02-22  Aakash Jain  <aakash_jain@apple.com>
+
+        Export Objective-C symbols for variables in Webkit SPI
+        https://bugs.webkit.org/show_bug.cgi?id=168758
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.xcodeproj/project.pbxproj: Generating separate .exp file for i386 without _OBJC_IVAR symbols.
+
+2017-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Make WebKitStatisticsPrivate.h project header
+        https://bugs.webkit.org/show_bug.cgi?id=168686
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-02-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212768.
+        https://bugs.webkit.org/show_bug.cgi?id=168698
+
+        Rolling out since this would break other projects. (Requested
+        by aakashjain on #webkit).
+
+        Reverted changeset:
+
+        "[iOS] Remove old WebKit1 MemoryMeasure helper."
+        https://bugs.webkit.org/show_bug.cgi?id=168675
+        http://trac.webkit.org/changeset/212768
+
+2017-02-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] Remove old WebKit1 MemoryMeasure helper.
+        <https://webkit.org/b/168675>
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-02-21  JF Bastien  <jfbastien@apple.com>
+
+        Fix cmake build
+        https://bugs.webkit.org/show_bug.cgi?id=168665
+
+        Reviewed by Mark Lam.
+
+        It was broken by r212555 and r212681.
+
+        * PlatformMac.cmake:
+
+2017-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        List of WebCore symbols to re-export from WebKitLegacy should be built automatically
+        https://bugs.webkit.org/show_bug.cgi?id=168342
+        rdar://problem/26182266
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj: Append ReexportedWebCoreSymbols_${CURRENT_ARCH}.exp
+        to WebKitLegacy.generated.exp if it exists. Added it to build phase inputs for
+        dependency tracking.
+
+2017-02-20  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up how WebKit exports _WebCreateFragment
+        https://bugs.webkit.org/show_bug.cgi?id=168579
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj: Added WebCreateFragmentInternal.h.
+
+2017-02-15  Brady Eidson  <beidson@apple.com>
+
+        Stop backing up localStorage databases to iCloud by default.
+        <rdar://problem/29045531> and https://bugs.webkit.org/show_bug.cgi?id=168388
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-02-15  Aakash Jain  <aakash_jain@apple.com>
+
+        revert DOMTextEvent.h and DOMHTMLCanvasElement.h to private header
+        https://bugs.webkit.org/show_bug.cgi?id=168393
+
+        Reviewed by Dan Bernstein.
+        
+        Reverting a seemingly accidental change from r204717.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2017-02-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't migrate WebKit DOM headers in MigrateHeaders.make
+        https://bugs.webkit.org/show_bug.cgi?id=167608
+
+        Reviewed by Darin Adler.
+
+        Stop migrating DOM headers that are now in WebKit.
+
+        * WebKit.xcodeproj/project.pbxproj: Marked DOM headers as private, so that Xcode
+        takes care of making them available as SPI.
+
+2017-02-02  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        In iOS, we should take background assertion when accessing localstorage databases.
+        https://bugs.webkit.org/show_bug.cgi?id=165478
+
+        Reviewed by Brady Eidson.
+
+        * WebKit.xcodeproj/project.pbxproj: Moved WebSQLiteDatabaseTrackerClient to WebCore.
+
+2017-01-17  Antti Koivisto  <antti@apple.com>
+
+        Persist derived data
+        https://bugs.webkit.org/show_bug.cgi?id=167136
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2017-01-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=166726
+
+        Add include folder.
+
+        * CMakeLists.txt:
+
+2016-12-22  Andy Estes  <aestes@apple.com>
+
+        Reduce QuickLook.h include overhead
+        https://bugs.webkit.org/show_bug.cgi?id=166454
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp: Stopped including QuickLook.h.
+
+2016-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=165937
+
+        Reviewed by Simon Fraser.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed attempt to fix cmake build of Mac port after r209665.
+
+        * PlatformMac.cmake: Avoid using relative path in
+        WebKit_INCLUDE_DIRECTORIES.
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Include WTF, JSC, and WebCore headers automatically to targers using them
+        https://bugs.webkit.org/show_bug.cgi?id=165686
+
+        Reviewed by Michael Catanzaro.
+
+        This change reduces duplication of include path lists between modules,
+        and reduces future need for fixes like r209605 (broken build because of
+        WebCore header suddenly becoming used in WebKit2).
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+
+2016-12-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed cmake buildfix after r209252.
+
+        * PlatformMac.cmake:
+
+2016-12-02  Chris Dumez  <cdumez@apple.com>
+
+        [Mac][WK1] Implement new HTML interactive form validation user interface
+        https://bugs.webkit.org/show_bug.cgi?id=164483
+
+        Reviewed by Simon Fraser.
+
+        Add new files to xcode project.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-11-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] WTF::TemporaryChange with WTF::SetForScope
+        https://bugs.webkit.org/show_bug.cgi?id=164761
+
+        Reviewed by Saam Barati.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+
+2016-11-14  Alex Christensen  <achristensen@webkit.org>
+
+        Move SecurityOrigin::createFromDatabaseIdentifier to SecurityOriginData
+        https://bugs.webkit.org/show_bug.cgi?id=164720
+
+        Reviewed by Brady Eidson.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::StorageAreaImpl):
+        (WebKit::StorageAreaImpl::create):
+        (WebKit::StorageAreaImpl::dispatchStorageEvent):
+        * Storage/StorageAreaImpl.h:
+        * Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::storageArea):
+        (WebKit::StorageNamespaceImpl::clearOriginForDeletion):
+        * Storage/StorageNamespaceImpl.h:
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::origins):
+        (WebKit::StorageTracker::deleteOriginWithIdentifier):
+        (WebKit::StorageTracker::deleteOrigin):
+        * Storage/StorageTracker.h:
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebKit::WebStorageNamespaceProvider::clearLocalStorageForOrigin):
+        * Storage/WebStorageNamespaceProvider.h:
+
+2016-11-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] autocorrect and autocapitalize attributes do not work in contenteditable elements
+        https://bugs.webkit.org/show_bug.cgi?id=164538
+        <rdar://problem/8418711>
+
+        Reviewed by Ryosuke Niwa.
+
+        Introduce WebAutocapitalizeTypes.h to WebKit.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        Move SecurityOrigin::databaseIdentifier() to SecurityOriginData
+        https://bugs.webkit.org/show_bug.cgi?id=164573
+
+        Reviewed by Brady Eidson.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::create):
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::deleteOrigin):
+        (WebKit::StorageTracker::diskUsageForOrigin):
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up Storage code
+        https://bugs.webkit.org/show_bug.cgi?id=164562
+
+        Reviewed by Brady Eidson.
+
+        Some classes were in WebCore namespace instead of WebKit.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::StorageAreaImpl):
+        (WebKit::StorageAreaImpl::create):
+        (WebKit::StorageAreaImpl::copy):
+        (WebCore::StorageAreaImpl::~StorageAreaImpl): Deleted.
+        (WebCore::StorageAreaImpl::StorageAreaImpl): Deleted.
+        (WebCore::StorageAreaImpl::create): Deleted.
+        (WebCore::StorageAreaImpl::copy): Deleted.
+        (WebCore::StorageAreaImpl::canAccessStorage): Deleted.
+        (WebCore::StorageAreaImpl::storageType): Deleted.
+        (WebCore::StorageAreaImpl::length): Deleted.
+        (WebCore::StorageAreaImpl::key): Deleted.
+        (WebCore::StorageAreaImpl::item): Deleted.
+        (WebCore::StorageAreaImpl::setItem): Deleted.
+        (WebCore::StorageAreaImpl::removeItem): Deleted.
+        (WebCore::StorageAreaImpl::clear): Deleted.
+        (WebCore::StorageAreaImpl::contains): Deleted.
+        (WebCore::StorageAreaImpl::importItems): Deleted.
+        (WebCore::StorageAreaImpl::close): Deleted.
+        (WebCore::StorageAreaImpl::clearForOriginDeletion): Deleted.
+        (WebCore::StorageAreaImpl::sync): Deleted.
+        (WebCore::StorageAreaImpl::blockUntilImportComplete): Deleted.
+        (WebCore::StorageAreaImpl::memoryBytesUsedByCache): Deleted.
+        (WebCore::StorageAreaImpl::incrementAccessCount): Deleted.
+        (WebCore::StorageAreaImpl::decrementAccessCount): Deleted.
+        (WebCore::StorageAreaImpl::closeDatabaseTimerFired): Deleted.
+        (WebCore::StorageAreaImpl::closeDatabaseIfIdle): Deleted.
+        (WebCore::StorageAreaImpl::dispatchStorageEvent): Deleted.
+        * Storage/StorageAreaImpl.h:
+        * Storage/StorageAreaSync.cpp:
+        (WebKit::StorageAreaSync::StorageAreaSync):
+        (WebKit::StorageAreaSync::create):
+        (WebCore::StorageAreaSync::StorageAreaSync): Deleted.
+        (WebCore::StorageAreaSync::create): Deleted.
+        (WebCore::StorageAreaSync::~StorageAreaSync): Deleted.
+        (WebCore::StorageAreaSync::scheduleFinalSync): Deleted.
+        (WebCore::StorageAreaSync::scheduleItemForSync): Deleted.
+        (WebCore::StorageAreaSync::scheduleClear): Deleted.
+        (WebCore::StorageAreaSync::scheduleCloseDatabase): Deleted.
+        (WebCore::StorageAreaSync::syncTimerFired): Deleted.
+        (WebCore::StorageAreaSync::openDatabase): Deleted.
+        (WebCore::StorageAreaSync::migrateItemTableIfNeeded): Deleted.
+        (WebCore::StorageAreaSync::performImport): Deleted.
+        (WebCore::StorageAreaSync::markImported): Deleted.
+        (WebCore::StorageAreaSync::blockUntilImportComplete): Deleted.
+        (WebCore::StorageAreaSync::sync): Deleted.
+        (WebCore::StorageAreaSync::performSync): Deleted.
+        (WebCore::StorageAreaSync::deleteEmptyDatabase): Deleted.
+        (WebCore::StorageAreaSync::scheduleSync): Deleted.
+        * Storage/StorageAreaSync.h:
+        * Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createSessionStorageNamespace):
+        (WebKit::StorageNamespaceImpl::getOrCreateLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::storageArea):
+        (WebCore::localStorageNamespaceMap): Deleted.
+        (WebCore::StorageNamespaceImpl::createSessionStorageNamespace): Deleted.
+        (WebCore::StorageNamespaceImpl::getOrCreateLocalStorageNamespace): Deleted.
+        (WebCore::StorageNamespaceImpl::StorageNamespaceImpl): Deleted.
+        (WebCore::StorageNamespaceImpl::~StorageNamespaceImpl): Deleted.
+        (WebCore::StorageNamespaceImpl::copy): Deleted.
+        (WebCore::StorageNamespaceImpl::storageArea): Deleted.
+        (WebCore::StorageNamespaceImpl::close): Deleted.
+        (WebCore::StorageNamespaceImpl::clearOriginForDeletion): Deleted.
+        (WebCore::StorageNamespaceImpl::clearAllOriginsForDeletion): Deleted.
+        (WebCore::StorageNamespaceImpl::sync): Deleted.
+        (WebCore::StorageNamespaceImpl::closeIdleLocalStorageDatabases): Deleted.
+        * Storage/StorageNamespaceImpl.h:
+        * Storage/StorageTracker.cpp:
+        (WebCore::StorageTracker::initializeTracker): Deleted.
+        (WebCore::StorageTracker::internalInitialize): Deleted.
+        (WebCore::StorageTracker::tracker): Deleted.
+        (WebCore::StorageTracker::StorageTracker): Deleted.
+        (WebCore::StorageTracker::setDatabaseDirectoryPath): Deleted.
+        (WebCore::StorageTracker::databaseDirectoryPath): Deleted.
+        (WebCore::StorageTracker::trackerDatabasePath): Deleted.
+        (WebCore::ensureDatabaseFileExists): Deleted.
+        (WebCore::StorageTracker::openTrackerDatabase): Deleted.
+        (WebCore::StorageTracker::importOriginIdentifiers): Deleted.
+        (WebCore::StorageTracker::finishedImportingOriginIdentifiers): Deleted.
+        (WebCore::StorageTracker::syncImportOriginIdentifiers): Deleted.
+        (WebCore::StorageTracker::syncFileSystemAndTrackerDatabase): Deleted.
+        (WebCore::StorageTracker::setOriginDetails): Deleted.
+        (WebCore::StorageTracker::syncSetOriginDetails): Deleted.
+        (WebCore::StorageTracker::origins): Deleted.
+        (WebCore::StorageTracker::deleteAllOrigins): Deleted.
+        (WebCore::truncateDatabaseFile): Deleted.
+        (WebCore::StorageTracker::syncDeleteAllOrigins): Deleted.
+        (WebCore::StorageTracker::deleteOriginWithIdentifier): Deleted.
+        (WebCore::StorageTracker::deleteOrigin): Deleted.
+        (WebCore::StorageTracker::syncDeleteOrigin): Deleted.
+        (WebCore::StorageTracker::willDeleteAllOrigins): Deleted.
+        (WebCore::StorageTracker::willDeleteOrigin): Deleted.
+        (WebCore::StorageTracker::canDeleteOrigin): Deleted.
+        (WebCore::StorageTracker::cancelDeletingOrigin): Deleted.
+        (WebCore::StorageTracker::isActive): Deleted.
+        (WebCore::StorageTracker::setIsActive): Deleted.
+        (WebCore::StorageTracker::databasePathForOrigin): Deleted.
+        (WebCore::StorageTracker::diskUsageForOrigin): Deleted.
+        * Storage/StorageTracker.h:
+        (WebCore::StorageTracker::storageDatabaseIdleInterval): Deleted.
+        (WebCore::StorageTracker::setStorageDatabaseIdleInterval): Deleted.
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (storageNamespaceProviders): Deleted.
+        (WebStorageNamespaceProvider::create): Deleted.
+        (WebStorageNamespaceProvider::WebStorageNamespaceProvider): Deleted.
+        (WebStorageNamespaceProvider::~WebStorageNamespaceProvider): Deleted.
+        (WebStorageNamespaceProvider::closeLocalStorage): Deleted.
+        (WebStorageNamespaceProvider::clearLocalStorageForAllOrigins): Deleted.
+        (WebStorageNamespaceProvider::clearLocalStorageForOrigin): Deleted.
+        (WebStorageNamespaceProvider::closeIdleLocalStorageDatabases): Deleted.
+        (WebStorageNamespaceProvider::syncLocalStorage): Deleted.
+        (WebStorageNamespaceProvider::createSessionStorageNamespace): Deleted.
+        (WebStorageNamespaceProvider::createLocalStorageNamespace): Deleted.
+        (WebStorageNamespaceProvider::createTransientLocalStorageNamespace): Deleted.
+        * Storage/WebStorageNamespaceProvider.h:
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+        * WebCoreSupport/WebViewGroup.cpp:
+        (WebViewGroup::storageNamespaceProvider):
+
+2016-11-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Copy build results to AAS 'Program Files' folder.
+        https://bugs.webkit.org/show_bug.cgi?id=164273
+
+        Reviewed by Brent Fulgham.
+
+        The preferred location for the binaries is the AAS 'Program Files' folder.
+
+        * WebKit.vcxproj/WebKit.proj:
+
+2016-10-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Check if jscLib and WebKitGUID targets exist before using them
+        https://bugs.webkit.org/show_bug.cgi?id=163945
+
+        Reviewed by Alex Christensen.
+
+        Currently these targets are used under WIN32 condition, however they
+        are defined in PlatformWin.cmake, causing CMake warnings if port
+        supports WIN32 but does not use PlatformWin.cmake
+
+        * CMakeLists.txt:
+
+2016-10-24  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] CMake build type is not set.
+        https://bugs.webkit.org/show_bug.cgi?id=163917
+
+        Reviewed by Alex Christensen.
+
+        The CMAKE_BUILD_TYPE variable should be set to Debug or Release.
+
+        * WebKit.vcxproj/WebKit.proj:
+
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r207151
+        https://bugs.webkit.org/show_bug.cgi?id=163675
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleLoad):
+
+2016-10-14  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2016-10-13  Anders Carlsson  <andersca@apple.com>
+
+        Move BackForwardList from WebCore to WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=163418
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-10-12  Anders Carlsson  <andersca@apple.com>
+
+        Copy BackForwardList from WebCore to WebKit/win
+        https://bugs.webkit.org/show_bug.cgi?id=163360
+
+        Reviewed by Alex Christensen.
+
+        This is the first step towards getting rid of BackForwardList in WebCore.
+
+        * PlatformWin.cmake:
+        Add new files.
+
+2016-10-11  Alex Christensen  <achristensen@webkit.org>
+
+        Remove dead networking code
+        https://bugs.webkit.org/show_bug.cgi?id=163263
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleLoad):
+
+2016-10-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix when building with Direct2D.
+
+        * PlatformWin.cmake: Add missing library references.
+
+2016-10-05  Daniel Bates  <dabates@apple.com>
+
+        Do not follow redirects when sending violation report
+        https://bugs.webkit.org/show_bug.cgi?id=162520
+        <rdar://problem/27957639>
+
+        Reviewed by Alex Christensen.
+
+        Update implementation of legacy WebKit loader strategy to pass through a boolean,
+        shouldFollowRedirects, to PingHandle as to whether to follow redirect responses
+        for a ping request.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::createPingHandle):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2016-09-20  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WinCairo] Use find_package cairo in build
+        https://bugs.webkit.org/show_bug.cgi?id=162239
+
+        Reviewed by Alex Christensen.
+
+        * PlatformWin.cmake:
+
+2016-09-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win][Direct2D] Provide Direct2D-based geometry and transform cast operations
+        https://bugs.webkit.org/show_bug.cgi?id=161818
+
+        Reviewed by Dean Jackson.
+
+        * PlatformWin.cmake: Link to Direct2D on Windows.
+
+2016-09-06  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] WebKitLegacy.framework is re-signed on incremental build even if nothing’s changed
+        https://bugs.webkit.org/show_bug.cgi?id=161642
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:  Removed the output file listed under the
+        Symlink WebKitPluginHost script build phase, because it doesn’t produce that file on iOS.
+        With no outputs listed, the script will still run every time, but the fact that it has run
+        won’t trigger re-signing the framework.
+
+2016-08-25  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix.
+
+        * PlatformMac.cmake:
+        Availability was spelled wrong, resulting in a missing header.
+
+2016-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build after r204717.
+
+        * PlatformMac.cmake:
+
+2016-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Mostly fix Mac CMake build after r204717.
+
+        * PlatformMac.cmake:
+
+2016-08-22  Darin Adler  <darin@apple.com>
+
+        Move Objective-C DOM bindings from WebCore to legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=160654
+
+        Reviewed by Alex Christensen.
+
+        * WebKit.xcodeproj/project.pbxproj: Added the new source files to the project.
+        For now they all have project visibility, since MigrateHeaders.make takes care
+        of exporting them as public and private. Later, we can likely use the built-in
+        Xcode feature instead of that script. Also pass DOM as an acceptable prefix
+        when calling check-for-inappropriate-objc-class-names. Also sorted this file
+        with the sort-Xcode-project-file script.
+
+2016-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Migrate off of deprecated CoreGraphics API CGContextSelectFont() and CGContextShowTextAtPoint()
+        https://bugs.webkit.org/show_bug.cgi?id=160895
+
+        Reviewed by Dean Jackson.
+
+        Link to the existing CoreText framework.
+
+        * PlatformWin.cmake:
+
+2016-08-16  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed, CMake build fix
+
+        * PlatformMac.cmake:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove OldWebAssertions.c
+        https://bugs.webkit.org/show_bug.cgi?id=160862
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebKeyGenerator
+        https://bugs.webkit.org/show_bug.cgi?id=160854
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        * Storage/StorageThread.h:
+        * Storage/WebDatabaseProvider.cpp:
+
+2016-08-08  Anders Carlsson  <andersca@apple.com>
+
+        Add a new PluginInfoProvider class, to replace PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160670
+
+        Reviewed by Sam Weinig.
+
+        Add new files.
+
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        [Mac][cmake] Fix the build after Objective-C bindings generator removal
+        https://bugs.webkit.org/show_bug.cgi?id=160545
+
+        Reviewed by Alex Christensen.
+
+        * PlatformMac.cmake:
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the Windows debug build.
+        
+        WebResourceLoadScheduler's logging was a holdover from it being in WebCore,
+        and prior to r203749 WebKit was actually using a WebCore log channel.
+        
+        For some reason this doesn't build on Windows debug, so just remove
+        this logging for now.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleLoad): Deleted.
+        (WebResourceLoadScheduler::servePendingRequests): Deleted.
+        (WebResourceLoadScheduler::scheduleServePendingRequests): Deleted.
+        (WebResourceLoadScheduler::requestTimerFired): Deleted.
+        (WebResourceLoadScheduler::HostInformation::addLoadInProgress): Deleted.
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Sort the project files.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow LOG macros to be used outside the namespace, and other logging cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=160216
+
+        Reviewed by Anders Carlsson.
+
+        Fix some issues with the LOG macros.
+        
+        First, they were not usable outside the WebKit namespace in WebKit2 code. Fix by moving
+        its log channels outside of the namespace (they are protected by a unique prefix anyway).
+        
+        Second, allow LOG_WITH_STREAM to be used in WebKit2 by moving that and a helper macro
+        into LogMacros.h, which is exported from WebCore as a private header.
+        
+        Third, split the Logging.h header into two. Logging.h remains for framework-internal
+        log channels and log macros. Add LogInitialization.h which is external, and used to
+        initialize the channels.
+        
+        Finally unify "initializeLogChannels" and "initializeLoggingChannels" terminology everywhere.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=159774
+
+        Reviewed by Alex Christensen.
+
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix for build error when trying to version stamp dll.
+        https://bugs.webkit.org/show_bug.cgi?id=159692
+
+        Reviewed by Brent Fulgham.
+
+        Use correct path to version stamp script.
+
+        * CMakeLists.txt:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        Run perl version stamp utility.
+
+        * CMakeLists.txt:
+
+2016-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203064.
+        https://bugs.webkit.org/show_bug.cgi?id=159642
+
+        This change causes LayoutTest crashes on WK1 ASan (Requested
+        by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Use refs for ResourceLoaders"
+        https://bugs.webkit.org/show_bug.cgi?id=159592
+        http://trac.webkit.org/changeset/203064
+
+2016-07-08  Alex Christensen  <achristensen@webkit.org>
+
+        Use refs for ResourceLoaders
+        https://bugs.webkit.org/show_bug.cgi?id=159592
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (webResourceLoadScheduler):
+        (WebResourceLoadScheduler::hostForURL):
+        (WebResourceLoadScheduler::WebResourceLoadScheduler):
+        (WebResourceLoadScheduler::loadResource):
+        (WebResourceLoadScheduler::schedulePluginStreamLoad):
+        (WebResourceLoadScheduler::scheduleLoad):
+        (WebResourceLoadScheduler::remove):
+        (WebResourceLoadScheduler::setDefersLoading):
+        (WebResourceLoadScheduler::crossOriginRedirectReceived):
+        (WebResourceLoadScheduler::servePendingRequests):
+        (WebResourceLoadScheduler::resumePendingRequests):
+        (WebResourceLoadScheduler::HostInformation::priorityToIndex):
+        (WebResourceLoadScheduler::HostInformation::schedule):
+        (WebResourceLoadScheduler::HostInformation::addLoadInProgress):
+        (WebResourceLoadScheduler::HostInformation::remove):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+        (WebResourceLoadScheduler::HostInformation::name):
+        (WebResourceLoadScheduler::HostInformation::requestsPending):
+        m_nonHTTPProtocolHost used to be a leaked pointer, and now it's a member variable.
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202799.
+        https://bugs.webkit.org/show_bug.cgi?id=159568
+
+        Caused build failure (Requested by perarne on #webkit).
+
+        Reverted changeset:
+
+        "[Win] DLLs are missing version information."
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+        http://trac.webkit.org/changeset/202799
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create WebSocketChannels
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        Reviewed by Brent Fulgham.
+
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-03  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        WTF will generate autoversion.h in the prebuild step.
+        Run the perl version stamp utility.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * Storage/StorageSyncManager.cpp:
+        (WebCore::StorageSyncManager::dispatch):
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        * Storage/StorageThread.h:
+
+2016-06-22  Anders Carlsson  <andersca@apple.com>
+
+        Move the WebKitLegacy Apple Pay code to the open source repository
+        https://bugs.webkit.org/show_bug.cgi?id=159035
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-06-20  Keith Rollin  <krollin@apple.com>
+
+        Remove RefPtr::release() and change calls sites to use WTFMove()
+        https://bugs.webkit.org/show_bug.cgi?id=158369
+
+        Reviewed by Chris Dumez.
+
+        RefPtr::release() releases its managed pointer awkwardly. It's more
+        direct and clearer to use WTFMove to transfer ownership of the managed
+        pointer.
+
+        As part of this cleanup, also change a lot of explicit data types to
+        'auto'.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebCore::StorageAreaImpl::setItem):
+        (WebCore::StorageAreaImpl::removeItem):
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up WebKit.vcxproj directory after switching to CMake.
+
+        * PlatformWin.cmake:
+        * WebKit.vcxproj/Interfaces: Removed.
+        * WebKit.vcxproj/WebKit: Removed.
+        * WebKit.vcxproj/WebKit/resource.h: Removed.
+        * WebKit.vcxproj/WebKitGUID: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDCommon.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebug.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebugWinCairo.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDPostBuild.cmd: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDPreBuild.cmd: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDProduction.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDRelease.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDReleaseWinCairo.props: Removed.
+
+2016-06-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Mac][cmake] Unreviewed trivial buildfix after r201689. Just for fun.
+
+        * PlatformMac.cmake:
+
+2016-06-04  Anders Carlsson  <andersca@apple.com>
+
+        Remove NPSPI that is no longer used
+        https://bugs.webkit.org/show_bug.cgi?id=158384
+
+        Reviewed by Sam Weinig.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-06-03  Chris Dumez  <cdumez@apple.com>
+
+        Modernize a few more lambda captures
+        https://bugs.webkit.org/show_bug.cgi?id=158370
+
+        Reviewed by Brady Eidson.
+
+        * Storage/StorageTracker.cpp:
+        (WebCore::StorageTracker::deleteOrigin):
+
+2016-06-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201663.
+        https://bugs.webkit.org/show_bug.cgi?id=158374
+
+        Broke the Windows build (Requested by andersca on #webkit).
+
+        Reverted changeset:
+
+        "Rename NoncopyableFunction to Function"
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+        http://trac.webkit.org/changeset/201663
+
+2016-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * Storage/StorageSyncManager.cpp:
+        (WebCore::StorageSyncManager::dispatch):
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        * Storage/StorageThread.h:
+
+2016-06-02  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Use more references in ResourceLoader related code
+        https://bugs.webkit.org/show_bug.cgi?id=158222
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::loadResource):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2016-05-28  Chris Dumez  <cdumez@apple.com>
+
+        Templatize NoncopyableFunction class similarly to std::function
+        https://bugs.webkit.org/show_bug.cgi?id=158185
+
+        Reviewed by Darin Adler.
+
+        Templatize NoncopyableFunction class similarly to std::function, so
+        that it can be used as a std::function replacement in more places.
+
+        Previously, NoncopyableFunction could only support "void()" lambdas.
+
+        * Storage/StorageSyncManager.cpp:
+        (WebCore::StorageSyncManager::dispatch):
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        * Storage/StorageThread.h:
+
+2016-05-27  Chris Dumez  <cdumez@apple.com>
+
+        callOnMainThread() should not copy captured lambda variables
+        https://bugs.webkit.org/show_bug.cgi?id=158166
+
+        Reviewed by Brady Eidson.
+
+        callOnMainThread() should not copy captured lambda variables. This 
+        function is usually called cross-thread with a lambda and copying
+        the lambda (and its captured variables) can lead to thread-safety
+        issues.
+
+        This patch updates callOnMainThread() to take a NoncopyableFunction&&
+        in parameter instead of a std::function. The call sites of
+        callOnMainThread() have also been updated to use C++14's lambda
+        capture with initializer.
+
+        * Storage/StorageAreaSync.cpp:
+        (WebCore::StorageAreaSync::deleteEmptyDatabase):
+        * Storage/StorageSyncManager.cpp:
+        (WebCore::StorageSyncManager::dispatch):
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        (WebCore::StorageThread::dispatch):
+        (WebCore::StorageThread::terminate):
+        (WebCore::StorageThread::releaseFastMallocFreeMemoryInAllThreads):
+        * Storage/StorageThread.h:
+        * Storage/StorageTracker.cpp:
+        (WebCore::StorageTracker::syncFileSystemAndTrackerDatabase):
+        (WebCore::StorageTracker::setOriginDetails):
+
+2016-05-25  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2016-05-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Make TestRunner.clearAllDatabases also delete IndexedDB databases (once doing so is supported).
+        https://bugs.webkit.org/show_bug.cgi?id=157823
+
+        Reviewed by Alex Christensen.
+
+        * Storage/WebDatabaseProvider.cpp:
+        (WebDatabaseProvider::deleteAllDatabases):
+        * Storage/WebDatabaseProvider.h:
+
+2016-04-25  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win][IndexedDB] Fix build errors.
+        https://bugs.webkit.org/show_bug.cgi?id=156713
+
+        Reviewed by Alex Christensen.
+
+        Fix compile and link errors when building with IndexedDB enabled.
+
+        * PlatformWin.cmake:
+
+2016-04-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r199841.
+
+        * PlatformWin.cmake: Add missing WebApplicationCache.cpp buid directive.
+
+2016-04-11  Fujii Hironori  <Hironori.Fujii@jp.sony.com>
+
+        [CMake] Make FOLDER property INHERITED
+        https://bugs.webkit.org/show_bug.cgi?id=156460
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+        Set FOLDER property as a directory property not a target property
+
+2016-04-08  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards running CMake WebKit2 on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156426
+
+        Reviewed by Tim Horton.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+
+2016-04-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Use ICU include dirs in WebKit.
+        https://bugs.webkit.org/show_bug.cgi?id=156402
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+
+2016-04-07  Fujii Hironori  <Hironori.Fujii@jp.sony.com>
+
+        [CMake][Win] Generating autoversion.h of WebKitGUID is triggered again and again
+        https://bugs.webkit.org/show_bug.cgi?id=156332
+
+        Reviewed by Brent Fulgham.
+
+        * PlatformWin.cmake:
+        Correct the output path of autoversion.h.
+
+2016-04-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=156305
+
+        Reviewed by Daniel Bates.
+
+        * PlatformMac.cmake:
+
+2016-04-05  Alex Christensen  <achristensen@webkit.org>
+
+        Make CMake-generated binaries on Mac able to run
+        https://bugs.webkit.org/show_bug.cgi?id=156268
+
+        Reviewed by Daniel Bates.
+
+        * CMakeLists.txt:
+
+2016-04-01  Alex Christensen  <achristensen@webkit.org>
+
+        Compile DumpRenderTree with CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156088
+
+        Reviewed by Brent Fulgham.
+
+        * PlatformMac.cmake:
+
+2016-03-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Ninja build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=151399
+
+        Reviewed by Darin Adler.
+
+        * PlatformWin.cmake:
+
+2016-03-05  Chris Dumez  <cdumez@apple.com>
+
+        Consolidate RuntimeApplicationChecks and RuntimeApplicationChecksIOS
+        https://bugs.webkit.org/show_bug.cgi?id=155035
+
+        Reviewed by Darin Adler.
+
+        Update runtime application checks.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::servePendingRequests):
+
+2016-03-04  Alex Christensen  <achristensen@webkit.org>
+
+        Remove vcxproj build system
+        https://bugs.webkit.org/show_bug.cgi?id=154388
+
+        Rubber-stamped by Brent Fulgham.
+
+        * WebKit.vcxproj/Interfaces/FixMIDLHeaders.pl: Removed.
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj: Removed.
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesCommon.props: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesDebug.props: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesDebugWinCairo.props: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesPostBuild.cmd: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesPreBuild.cmd: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesProduction.props: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesRelease.props: Removed.
+        * WebKit.vcxproj/Interfaces/InterfacesReleaseWinCairo.props: Removed.
+        * WebKit.vcxproj/WebKit.sln: Removed.
+        * WebKit.vcxproj/WebKit.submit.sln: Removed.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj: Removed.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters: Removed.
+        * WebKit.vcxproj/WebKit/WebKitANGLE.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitApple.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitCFLite.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitCommon.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitDebug.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitDebugWinCairo.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitDirectX.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd: Removed.
+        * WebKit.vcxproj/WebKit/WebKitPreBuild.cmd: Removed.
+        * WebKit.vcxproj/WebKit/WebKitPreLink.cmd: Removed.
+        * WebKit.vcxproj/WebKit/WebKitProduction.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitRelease.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitReleaseWinCairo.props: Removed.
+        * WebKit.vcxproj/WebKit/WebKitVersion.cmd: Removed.
+
+2016-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce size of internal windows build output
+        https://bugs.webkit.org/show_bug.cgi?id=154763
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.proj:
+
+2016-02-26  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved WebKit/Storage sources and include dir to CMakeLists.txt.
+        https://bugs.webkit.org/show_bug.cgi?id=154722
+
+        Reviewed by Darin Adler.
+
+        This code provides port-independent layer used by all WK1 ports,
+        so it belongs to main CMakeLists.txt, not Platform files.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+
+2016-02-25  Brady Eidson  <beidson@apple.com>
+
+        Remove LegacyIDB.
+        https://bugs.webkit.org/show_bug.cgi?id=150854
+
+        Reviewed by Alex Christensen.
+
+        * Storage/WebDatabaseProvider.cpp:
+        (WebDatabaseProvider::createIDBFactoryBackend): Deleted.
+        * Storage/WebDatabaseProvider.h:
+
+2016-02-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win][CMake] Don't use incremental linking
+        https://bugs.webkit.org/show_bug.cgi?id=154684
+        <rdar://problem/24747822>
+
+        Reviewed by Alex Christensen.
+
+        * PlatformWin.cmake: Make sure the "/INCREMENTAL:NO" flag is used
+        (overriding "/INCREMENTAL:YES").
+
+2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Moved library setup code to WEBKIT_FRAMEWORK macro.
+        https://bugs.webkit.org/show_bug.cgi?id=154450
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
 2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] Moved library setup code to WEBKIT_FRAMEWORK macro.

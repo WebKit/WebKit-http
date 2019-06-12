@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Google Inc. All rights reserved.
- * Copyright (C) 2009, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2011, 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,155 +29,93 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Notification_h  
-#define Notification_h
-
-#include "ActiveDOMObject.h"
-#include "EventNames.h"
-#include "EventTarget.h"
-#include "NotificationClient.h"
-#include "ThreadableLoaderClient.h"
-#include "URL.h"
-#include "WritingMode.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/AtomicStringHash.h>
+#pragma once
 
 #if ENABLE(NOTIFICATIONS)
-#include "Timer.h"
-#endif
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#include "ActiveDOMObject.h"
+#include "EventTarget.h"
+#include "NotificationDirection.h"
+#include "NotificationPermission.h"
+#include "Timer.h"
+#include "URL.h"
+#include "WritingMode.h"
+
 namespace WebCore {
 
-class Dictionary;
-class NotificationCenter;
+class Document;
 class NotificationPermissionCallback;
-class ResourceError;
-class ResourceResponse;
-class ScriptExecutionContext;
-class ThreadableLoader;
-
-typedef int ExceptionCode;
 
 class Notification final : public RefCounted<Notification>, public ActiveDOMObject, public EventTargetWithInlineData {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT Notification();
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    static Ref<Notification> create(const String& title, const String& body, const String& iconURI, ScriptExecutionContext*, ExceptionCode&, PassRefPtr<NotificationCenter> provider);
-#endif
-#if ENABLE(NOTIFICATIONS)
-    static Ref<Notification> create(Document&, const String& title, const Dictionary& options);
-#endif
+    using Permission = NotificationPermission;
+    using Direction = NotificationDirection;
+
+    struct Options {
+        Direction dir;
+        String lang;
+        String body;
+        String tag;
+        String icon;
+    };
+    static Ref<Notification> create(Document&, const String& title, const Options&);
     
-    WEBCORE_EXPORT virtual ~Notification();
+    virtual ~Notification();
 
     void show();
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    void cancel() { close(); }
-#endif
     void close();
 
-    URL iconURL() const { return m_icon; }
-    void setIconURL(const URL& url) { m_icon = url; }
+    const String& title() const { return m_title; }
+    Direction dir() const { return m_direction; }
+    const String& body() const { return m_body; }
+    const String& lang() const { return m_lang; }
+    const String& tag() const { return m_tag; }
+    const URL& icon() const { return m_icon; }
 
-    String title() const { return m_title; }
-    String body() const { return m_body; }
-
-    String lang() const { return m_lang; }
-    void setLang(const String& lang) { m_lang = lang; }
-
-    String dir() const { return m_direction; }
-    void setDir(const String& dir) { m_direction = dir; }
-
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    String replaceId() const { return tag(); }
-    void setReplaceId(const String& replaceId) { setTag(replaceId); }
-#endif
-
-    String tag() const { return m_tag; }
-    void setTag(const String& tag) { m_tag = tag; }
-
-    TextDirection direction() const { return dir() == "rtl" ? RTL : LTR; }
+    TextDirection direction() const { return m_direction == Direction::Rtl ? RTL : LTR; }
 
     WEBCORE_EXPORT void dispatchClickEvent();
     WEBCORE_EXPORT void dispatchCloseEvent();
     WEBCORE_EXPORT void dispatchErrorEvent();
     WEBCORE_EXPORT void dispatchShowEvent();
 
-    using RefCounted<Notification>::ref;
-    using RefCounted<Notification>::deref;
-
-    // EventTarget interface
-    virtual EventTargetInterface eventTargetInterface() const override { return NotificationEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
-
-    void stopLoadingIcon();
-
-    // Deprecated. Use functions from NotificationCenter.
-    void detachPresenter() { }
-
     WEBCORE_EXPORT void finalize();
 
-#if ENABLE(NOTIFICATIONS)
-    static const String permission(ScriptExecutionContext*);
-    WEBCORE_EXPORT static const String permissionString(NotificationClient::Permission);
-    static void requestPermission(ScriptExecutionContext*, PassRefPtr<NotificationPermissionCallback> = nullptr);
-#endif
+    static Permission permission(Document&);
+    static void requestPermission(Document&, RefPtr<NotificationPermissionCallback>&&);
+
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
+
+    using RefCounted::ref;
+    using RefCounted::deref;
 
 private:
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    Notification(const String& title, const String& body, const String& iconURI, ScriptExecutionContext*, ExceptionCode&, PassRefPtr<NotificationCenter>);
-#endif
-#if ENABLE(NOTIFICATIONS)
-    Notification(ScriptExecutionContext&, const String& title);
-#endif
+    Notification(Document&, const String& title, const Options&);
 
-    void setBody(const String& body) { m_body = body; }
+    EventTargetInterface eventTargetInterface() const final { return NotificationEventTargetInterfaceType; }
 
-    // ActiveDOMObject API.
-    void contextDestroyed() override;
-    const char* activeDOMObjectName() const override;
-    bool canSuspendForDocumentSuspension() const override;
+    // ActiveDOMObject
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
 
-    // EventTarget API.
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
-    void startLoadingIcon();
-    void finishLoadingIcon();
-
-#if ENABLE(NOTIFICATIONS)
-    void taskTimerFired();
-#endif
-
-    // Text notifications.
-    URL m_icon;
     String m_title;
-    String m_body;
-    String m_direction;
+    Direction m_direction;
     String m_lang;
+    String m_body;
     String m_tag;
+    URL m_icon;
 
-    enum NotificationState {
-        Idle = 0,
-        Showing = 1,
-        Closed = 2,
-    };
+    enum State { Idle, Showing, Closed };
+    State m_state { Idle };
 
-    NotificationState m_state;
-
-    RefPtr<NotificationCenter> m_notificationCenter;
-
-#if ENABLE(NOTIFICATIONS)
     std::unique_ptr<Timer> m_taskTimer;
-#endif
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-
-#endif // Notifications_h
+#endif // ENABLE(NOTIFICATIONS)

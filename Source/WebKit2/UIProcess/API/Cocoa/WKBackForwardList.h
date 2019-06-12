@@ -34,7 +34,7 @@
  */
 NS_ASSUME_NONNULL_BEGIN
 
-WK_CLASS_AVAILABLE(10_10, 8_0)
+WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface WKBackForwardList : NSObject
 
 /*! @abstract The current item.
@@ -65,13 +65,13 @@ if there isn't one.
  @discussion The items are in the order in which they were originally
  visited.
  */
-@property (nonatomic, readonly, copy) WK_ARRAY(WKBackForwardListItem *) *backList;
+@property (nonatomic, readonly, copy) NSArray<WKBackForwardListItem *> *backList;
 
 /*! @abstract The portion of the list following the current item.
  @discussion The items are in the order in which they were originally
  visited.
  */
-@property (nonatomic, readonly, copy) WK_ARRAY(WKBackForwardListItem *) *forwardList;
+@property (nonatomic, readonly, copy) NSArray<WKBackForwardListItem *> *forwardList;
 
 @end
 

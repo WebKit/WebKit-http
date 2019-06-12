@@ -9,15 +9,15 @@
 #ifndef COMPILER_PREPROCESSOR_NUMERICLEX_H_
 #define COMPILER_PREPROCESSOR_NUMERICLEX_H_
 
+#include <cmath>
 #include <sstream>
 
-namespace pp {
+namespace pp
+{
 
 inline std::ios::fmtflags numeric_base_int(const std::string &str)
 {
-    if ((str.size() >= 2) &&
-        (str[0] == '0') &&
-        (str[1] == 'x' || str[1] == 'X'))
+    if ((str.size() >= 2) && (str[0] == '0') && (str[1] == 'x' || str[1] == 'X'))
     {
         return std::ios::hex;
     }
@@ -33,7 +33,7 @@ inline std::ios::fmtflags numeric_base_int(const std::string &str)
 // of the correct form. They can only fail if the parsed value is too big,
 // in which case false is returned.
 
-template<typename IntType>
+template <typename IntType>
 bool numeric_lex_int(const std::string &str, IntType *value)
 {
     std::istringstream stream(str);
@@ -45,18 +45,28 @@ bool numeric_lex_int(const std::string &str, IntType *value)
     return !stream.fail();
 }
 
-template<typename FloatType>
+template <typename FloatType>
 bool numeric_lex_float(const std::string &str, FloatType *value)
 {
+// On 64-bit Intel Android, istringstream is broken.  Until this is fixed in
+// a newer NDK, don't use it.  Android doesn't have locale support, so this
+// doesn't have to force the C locale.
+// TODO(thakis): Remove this once this bug has been fixed in the NDK and
+// that NDK has been rolled into chromium.
+#if defined(ANGLE_PLATFORM_ANDROID) && __x86_64__
+    *value = strtod(str.c_str(), nullptr);
+    return errno != ERANGE;
+#else
     std::istringstream stream(str);
     // Force "C" locale so that decimal character is always '.', and
     // not dependent on the current locale.
     stream.imbue(std::locale::classic());
 
     stream >> (*value);
-    return !stream.fail();
+    return !stream.fail() && std::isfinite(*value);
+#endif
 }
 
-} // namespace pp.
+}  // namespace pp.
 
-#endif // COMPILER_PREPROCESSOR_NUMERICLEX_H_
+#endif  // COMPILER_PREPROCESSOR_NUMERICLEX_H_

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -92,9 +92,10 @@ private:
                     break;
 
                 Value* functionAddress = nullptr;
-                if (m_value->type() == Double)
-                    functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, ceil);
-                else if (m_value->type() == Float)
+                if (m_value->type() == Double) {
+                    double (*ceilDouble)(double) = ceil;
+                    functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, ceilDouble);
+                } else if (m_value->type() == Float)
                     functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, ceilf);
                 else
                     RELEASE_ASSERT_NOT_REACHED();
@@ -113,9 +114,10 @@ private:
                     break;
 
                 Value* functionAddress = nullptr;
-                if (m_value->type() == Double)
-                    functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, floor);
-                else if (m_value->type() == Float)
+                if (m_value->type() == Double) {
+                    double (*floorDouble)(double) = floor;
+                    functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, floorDouble);
+                } else if (m_value->type() == Float)
                     functionAddress = m_insertionSet.insert<ConstPtrValue>(m_index, m_origin, floorf);
                 else
                     RELEASE_ASSERT_NOT_REACHED();
@@ -150,6 +152,18 @@ private:
                 m_value->replaceWithIdentity(result);
                 break;
             }
+
+            case RotL: {
+                // ARM64 doesn't have a rotate left.
+                if (isARM64()) {
+                    Value* newShift = m_insertionSet.insert<Value>(m_index, Neg, m_value->origin(), m_value->child(1));
+                    Value* rotate = m_insertionSet.insert<Value>(m_index, RotR, m_value->origin(), m_value->child(0), newShift);
+                    m_value->replaceWithIdentity(rotate);
+                    break;
+                }
+                break;
+            }
+                
             default:
                 break;
             }

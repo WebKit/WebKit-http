@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebGeolocationManagerProxy.h"
 
+#include "APIGeolocationProvider.h"
 #include "WebGeolocationManagerMessages.h"
 #include "WebGeolocationManagerProxyMessages.h"
 #include "WebProcessPool.h"
@@ -37,20 +38,24 @@ const char* WebGeolocationManagerProxy::supplementName()
     return "WebGeolocationManagerProxy";
 }
 
-PassRefPtr<WebGeolocationManagerProxy> WebGeolocationManagerProxy::create(WebProcessPool* processPool)
+Ref<WebGeolocationManagerProxy> WebGeolocationManagerProxy::create(WebProcessPool* processPool)
 {
-    return adoptRef(new WebGeolocationManagerProxy(processPool));
+    return adoptRef(*new WebGeolocationManagerProxy(processPool));
 }
 
 WebGeolocationManagerProxy::WebGeolocationManagerProxy(WebProcessPool* processPool)
     : WebContextSupplement(processPool)
+    , m_provider(std::make_unique<API::GeolocationProvider>())
 {
     WebContextSupplement::processPool()->addMessageReceiver(Messages::WebGeolocationManagerProxy::messageReceiverName(), *this);
 }
 
-void WebGeolocationManagerProxy::initializeProvider(const WKGeolocationProviderBase* provider)
+void WebGeolocationManagerProxy::setProvider(std::unique_ptr<API::GeolocationProvider>&& provider)
 {
-    m_provider.initialize(provider);
+    if (!provider)
+        m_provider = std::make_unique<API::GeolocationProvider>();
+    else
+        m_provider = WTFMove(provider);
 }
 
 // WebContextSupplement
@@ -62,7 +67,7 @@ void WebGeolocationManagerProxy::processPoolDestroyed()
 
     ASSERT(!isUpdating());
     if (wasUpdating)
-        m_provider.stopUpdating(this);
+        m_provider->stopUpdating(*this);
 }
 
 void WebGeolocationManagerProxy::processDidClose(WebProcessProxy* webProcessProxy)
@@ -106,16 +111,16 @@ void WebGeolocationManagerProxy::resetPermissions()
 void WebGeolocationManagerProxy::startUpdating(IPC::Connection& connection)
 {
     bool wasUpdating = isUpdating();
-    m_updateRequesters.add(connection.client());
+    m_updateRequesters.add(&connection.client());
     if (!wasUpdating) {
-        m_provider.setEnableHighAccuracy(this, isHighAccuracyEnabled());
-        m_provider.startUpdating(this);
+        m_provider->setEnableHighAccuracy(*this, isHighAccuracyEnabled());
+        m_provider->startUpdating(*this);
     }
 }
 
 void WebGeolocationManagerProxy::stopUpdating(IPC::Connection& connection)
 {
-    removeRequester(connection.client());
+    removeRequester(&connection.client());
 }
 
 void WebGeolocationManagerProxy::removeRequester(const IPC::Connection::Client* client)
@@ -127,11 +132,11 @@ void WebGeolocationManagerProxy::removeRequester(const IPC::Connection::Client* 
     m_updateRequesters.remove(client);
 
     if (wasUpdating && !isUpdating())
-        m_provider.stopUpdating(this);
+        m_provider->stopUpdating(*this);
     else {
         bool highAccuracyShouldBeEnabled = isHighAccuracyEnabled();
         if (highAccuracyShouldBeEnabled != highAccuracyWasEnabled)
-            m_provider.setEnableHighAccuracy(this, highAccuracyShouldBeEnabled);
+            m_provider->setEnableHighAccuracy(*this, highAccuracyShouldBeEnabled);
     }
 }
 
@@ -140,13 +145,13 @@ void WebGeolocationManagerProxy::setEnableHighAccuracy(IPC::Connection& connecti
     bool highAccuracyWasEnabled = isHighAccuracyEnabled();
 
     if (enabled)
-        m_highAccuracyRequesters.add(connection.client());
+        m_highAccuracyRequesters.add(&connection.client());
     else
-        m_highAccuracyRequesters.remove(connection.client());
+        m_highAccuracyRequesters.remove(&connection.client());
 
     bool highAccuracyShouldBeEnabled = isHighAccuracyEnabled();
     if (isUpdating() && highAccuracyWasEnabled != highAccuracyShouldBeEnabled)
-        m_provider.setEnableHighAccuracy(this, highAccuracyShouldBeEnabled);
+        m_provider->setEnableHighAccuracy(*this, highAccuracyShouldBeEnabled);
 }
 
 } // namespace WebKit

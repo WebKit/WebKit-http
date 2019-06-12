@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DirectArguments_h
-#define DirectArguments_h
+#pragma once
 
+#include "AuxiliaryBarrier.h"
 #include "DirectArgumentsOffset.h"
 #include "GenericArguments.h"
 
@@ -55,9 +55,9 @@ public:
     
     // Creates an arguments object by copying the argumnets from the stack.
     static DirectArguments* createByCopying(ExecState*);
-    
+
+    static size_t estimatedSize(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
-    static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
     
     uint32_t internalLength() const
     {
@@ -66,30 +66,30 @@ public:
     
     uint32_t length(ExecState* exec) const
     {
-        if (UNLIKELY(m_overrides))
+        if (UNLIKELY(m_mappedArguments))
             return get(exec, exec->propertyNames().length).toUInt32(exec);
         return m_length;
     }
     
-    bool canAccessIndexQuickly(uint32_t i) const
+    bool isMappedArgument(uint32_t i) const
     {
-        return i < m_length && (!m_overrides || !m_overrides.get(this)[i]);
+        return i < m_length && (!m_mappedArguments || !m_mappedArguments.get()[i]);
     }
 
-    bool canAccessArgumentIndexQuicklyInDFG(uint32_t i) const
+    bool isMappedArgumentInDFG(uint32_t i) const
     {
         return i < m_length && !overrodeThings();
     }
 
     JSValue getIndexQuickly(uint32_t i) const
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(canAccessIndexQuickly(i));
+        ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
         return const_cast<DirectArguments*>(this)->storage()[i].get();
     }
     
     void setIndexQuickly(VM& vm, uint32_t i, JSValue value)
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(canAccessIndexQuickly(i));
+        ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
         storage()[i].set(vm, this, value);
     }
     
@@ -106,11 +106,26 @@ public:
     }
     
     // Methods intended for use by the GenericArguments mixin.
-    bool overrodeThings() const { return !!m_overrides; }
+    bool overrodeThings() const { return !!m_mappedArguments; }
     void overrideThings(VM&);
     void overrideThingsIfNecessary(VM&);
-    void overrideArgument(VM&, unsigned index);
-    
+    void unmapArgument(VM&, unsigned index);
+
+    void initModifiedArgumentsDescriptorIfNecessary(VM& vm)
+    {
+        GenericArguments<DirectArguments>::initModifiedArgumentsDescriptorIfNecessary(vm, m_length);
+    }
+
+    void setModifiedArgumentDescriptor(VM& vm, unsigned index)
+    {
+        GenericArguments<DirectArguments>::setModifiedArgumentDescriptor(vm, index, m_length);
+    }
+
+    bool isModifiedArgumentDescriptor(unsigned index)
+    {
+        return GenericArguments<DirectArguments>::isModifiedArgumentDescriptor(index, m_length);
+    }
+
     void copyToArguments(ExecState*, VirtualRegister firstElementDest, unsigned offset, unsigned length);
 
     DECLARE_INFO;
@@ -120,19 +135,20 @@ public:
     static ptrdiff_t offsetOfCallee() { return OBJECT_OFFSETOF(DirectArguments, m_callee); }
     static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(DirectArguments, m_length); }
     static ptrdiff_t offsetOfMinCapacity() { return OBJECT_OFFSETOF(DirectArguments, m_minCapacity); }
-    static ptrdiff_t offsetOfOverrides() { return OBJECT_OFFSETOF(DirectArguments, m_overrides); }
+    static ptrdiff_t offsetOfMappedArguments() { return OBJECT_OFFSETOF(DirectArguments, m_mappedArguments); }
+    static ptrdiff_t offsetOfModifiedArgumentsDescriptor() { return OBJECT_OFFSETOF(DirectArguments, m_modifiedArgumentsDescriptor); }
     
     static size_t storageOffset()
     {
         return WTF::roundUpToMultipleOf<sizeof(WriteBarrier<Unknown>)>(sizeof(DirectArguments));
     }
     
-    static size_t offsetOfSlot(uint32_t index)
+    static size_t offsetOfSlot(Checked<size_t> index)
     {
-        return storageOffset() + sizeof(WriteBarrier<Unknown>) * index;
+        return (storageOffset() + sizeof(WriteBarrier<Unknown>) * index).unsafeGet();
     }
     
-    static size_t allocationSize(uint32_t capacity)
+    static size_t allocationSize(Checked<size_t> capacity)
     {
         return offsetOfSlot(capacity);
     }
@@ -143,15 +159,12 @@ private:
         return bitwise_cast<WriteBarrier<Unknown>*>(bitwise_cast<char*>(this) + storageOffset());
     }
     
-    unsigned overridesSize();
+    unsigned mappedArgumentsSize();
     
     WriteBarrier<JSFunction> m_callee;
     uint32_t m_length; // Always the actual length of captured arguments and never what was stored into the length property.
     uint32_t m_minCapacity; // The max of this and length determines the capacity of this object. It may be the actual capacity, or maybe something smaller. We arrange it this way to be kind to the JITs.
-    CopyBarrier<bool> m_overrides; // If non-null, it means that length, callee, and caller are fully materialized properties.
+    AuxiliaryBarrier<bool*> m_mappedArguments; // If non-null, it means that length, callee, and caller are fully materialized properties.
 };
 
 } // namespace JSC
-
-#endif // DirectArguments_h
-

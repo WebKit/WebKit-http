@@ -72,8 +72,6 @@ private:
     
     void freeUnnecessaryNodes()
     {
-        SamplingRegion samplingRegion("DFG CPS Rethreading: freeUnnecessaryNodes");
-        
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
@@ -92,7 +90,7 @@ private:
                     break;
                 case Phantom:
                     if (!node->child1()) {
-                        m_graph.m_allocator.free(node);
+                        m_graph.deleteNode(node);
                         continue;
                     }
                     switch (node->child1()->op()) {
@@ -114,7 +112,7 @@ private:
             block->resize(toIndex);
             
             for (unsigned phiIndex = block->phis.size(); phiIndex--;)
-                m_graph.m_allocator.free(block->phis[phiIndex]);
+                m_graph.deleteNode(block->phis[phiIndex]);
             block->phis.resize(0);
         }
     }
@@ -134,7 +132,7 @@ private:
     
     ALWAYS_INLINE Node* addPhiSilently(BasicBlock* block, const NodeOrigin& origin, VariableAccessData* variable)
     {
-        Node* result = m_graph.addNode(SpecNone, Phi, origin, OpInfo(variable));
+        Node* result = m_graph.addNode(Phi, origin, OpInfo(variable));
         block->phis.append(result);
         return result;
     }
@@ -293,9 +291,7 @@ private:
         // but not logicalRefCount == actualRefCount). Assumes that it can break ref
         // counts.
         
-        for (unsigned nodeIndex = 0; nodeIndex < m_block->size(); ++nodeIndex) {
-            Node* node = m_block->at(nodeIndex);
-            
+        for (auto* node : *m_block) {
             m_graph.performSubstitution(node);
             
             // The rules for threaded CPS form:
@@ -361,8 +357,6 @@ private:
     
     void canonicalizeLocalsInBlocks()
     {
-        SamplingRegion samplingRegion("DFG CPS Rethreading: canonicalizeLocalsInBlocks");
-        
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
             m_block = m_graph.block(blockIndex);
             canonicalizeLocalsInBlock();
@@ -383,8 +377,6 @@ private:
     void propagatePhis()
     {
         Vector<PhiStackEntry, 128>& phiStack = operandKind == ArgumentOperand ? m_argumentPhiStack : m_localPhiStack;
-        
-        SamplingRegion samplingRegion("DFG CPS Rethreading: propagatePhis");
         
         // Ensure that attempts to use this fail instantly.
         m_block = 0;
@@ -520,7 +512,6 @@ private:
 
 bool performCPSRethreading(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG CPS Rethreading Phase");
     return runPhase<CPSRethreadingPhase>(graph);
 }
 

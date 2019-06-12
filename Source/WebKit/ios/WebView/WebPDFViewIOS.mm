@@ -50,7 +50,6 @@
 #import <WebKitLegacy/WebNSViewExtras.h>
 #import <WebKitLegacy/WebViewPrivate.h>
 #import <wtf/Assertions.h>
-#import <wtf/RetainPtr.h>
 #import <wtf/StdLibExtras.h>
 
 using namespace WebCore;
@@ -68,7 +67,12 @@ static CGColorRef createCGColorWithDeviceWhite(CGFloat white, CGFloat alpha)
     return CGColorCreate(graySpace, components);
 }
 
-@implementation WebPDFView
+@implementation WebPDFView {
+    BOOL dataSourceHasBeenSet;
+    CGPDFDocumentRef _PDFDocument;
+    NSString *_title;
+    CGRect *_pageRects;
+}
 
 + (NSArray *)supportedMIMETypes
 {
@@ -118,8 +122,7 @@ static CGColorRef createCGColorWithDeviceWhite(CGFloat white, CGFloat alpha)
     
     // Draw page.
     CGContextSaveGState(context);
-    CGFloat height = WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_FLIPPED_SHADOWS) ? 2.0f : -2.0f;
-    CGContextSetShadowWithColor(context, CGSizeMake(0.0f, height), 3.0f, [[self class] shadowColor]);
+    CGContextSetShadowWithColor(context, CGSizeMake(0.0f, 2.0f), 3.0f, [[self class] shadowColor]);
     CGContextSetFillColorWithColor(context, cachedCGColor(Color::white));
     CGContextFillRect(context, pageRect);
     CGContextRestoreGState(context);    
@@ -296,7 +299,7 @@ static CGColorRef createCGColorWithDeviceWhite(CGFloat white, CGFloat alpha)
     if ([title length]) {
         [_title release];
         _title = [title copy];
-        core([self _frame])->loader().client().dispatchDidReceiveTitle(StringWithDirection(title, LTR));
+        core([self _frame])->loader().client().dispatchDidReceiveTitle({ title, LTR });
     }
 }
 

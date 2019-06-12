@@ -26,10 +26,11 @@
 #ifndef WebPrintOperationGtk_h
 #define WebPrintOperationGtk_h
 
+#include "CallbackID.h"
 #include "PrintInfo.h"
 #include <WebCore/RefPtrCairo.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 #include <wtf/glib/GRefPtr.h>
 
 typedef struct _GtkPrintSettings GtkPrintSettings;
@@ -48,7 +49,7 @@ class WebPage;
 
 class WebPrintOperationGtk : public RefCounted<WebPrintOperationGtk> {
 public:
-    static PassRefPtr<WebPrintOperationGtk> create(WebPage*, const PrintInfo&);
+    static RefPtr<WebPrintOperationGtk> create(WebPage*, const PrintInfo&);
     virtual ~WebPrintOperationGtk();
 
     WebCore::PrintContext* printContext() const { return m_printContext; }
@@ -75,7 +76,7 @@ public:
 
     void disconnectFromPage();
 
-    virtual void startPrint(WebCore::PrintContext*, uint64_t callbackID) = 0;
+    virtual void startPrint(WebCore::PrintContext*, CallbackID) = 0;
 
 protected:
     WebPrintOperationGtk(WebPage*, const PrintInfo&);
@@ -103,7 +104,7 @@ protected:
     GRefPtr<GtkPageSetup> m_pageSetup;
     PrintInfo::PrintMode m_printMode;
     WebCore::PrintContext* m_printContext;
-    uint64_t m_callbackID;
+    CallbackID m_callbackID;
     RefPtr<cairo_t> m_cairoContext;
     double m_xDPI;
     double m_yDPI;

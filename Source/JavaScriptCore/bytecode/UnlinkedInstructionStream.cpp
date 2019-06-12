@@ -26,6 +26,8 @@
 #include "config.h"
 #include "UnlinkedInstructionStream.h"
 
+#include "Opcode.h"
+
 namespace JSC {
 
 static void append8(unsigned char*& ptr, unsigned char value)
@@ -93,13 +95,18 @@ UnlinkedInstructionStream::UnlinkedInstructionStream(const Vector<UnlinkedInstru
         unsigned opLength = opcodeLength(opcode);
 
         for (unsigned j = 1; j < opLength; ++j)
-            append32(ptr, pc[j].u.index);
+            append32(ptr, pc[j].u.unsignedValue);
 
         i += opLength;
     }
 
     buffer.shrink(ptr - buffer.data());
     m_data = RefCountedArray<unsigned char>(buffer);
+}
+
+size_t UnlinkedInstructionStream::sizeInBytes() const
+{
+    return m_data.size() * sizeof(unsigned char);
 }
 
 #ifndef NDEBUG

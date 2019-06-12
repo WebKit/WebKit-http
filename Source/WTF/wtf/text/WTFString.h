@@ -1,6 +1,6 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,7 +25,9 @@
 // This file would be called String.h, but that conflicts with <string.h>
 // on systems without case-sensitive file systems.
 
+#include <wtf/Function.h>
 #include <wtf/text/ASCIIFastPath.h>
+#include <wtf/text/IntegerToStringConversion.h>
 #include <wtf/text/StringImpl.h>
 
 #ifdef __OBJC__
@@ -40,49 +42,45 @@ QT_END_NAMESPACE
 
 namespace WTF {
 
+class ASCIILiteral;
+
 // Declarations of string operations
 
-WTF_EXPORT_STRING_API int charactersToIntStrict(const LChar*, size_t, bool* ok = 0, int base = 10);
-WTF_EXPORT_STRING_API int charactersToIntStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
-WTF_EXPORT_STRING_API unsigned charactersToUIntStrict(const LChar*, size_t, bool* ok = 0, int base = 10);
-WTF_EXPORT_STRING_API unsigned charactersToUIntStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
-int64_t charactersToInt64Strict(const LChar*, size_t, bool* ok = 0, int base = 10);
-int64_t charactersToInt64Strict(const UChar*, size_t, bool* ok = 0, int base = 10);
-uint64_t charactersToUInt64Strict(const LChar*, size_t, bool* ok = 0, int base = 10);
-uint64_t charactersToUInt64Strict(const UChar*, size_t, bool* ok = 0, int base = 10);
-intptr_t charactersToIntPtrStrict(const LChar*, size_t, bool* ok = 0, int base = 10);
-intptr_t charactersToIntPtrStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
+WTF_EXPORT_STRING_API int charactersToIntStrict(const LChar*, size_t, bool* ok = nullptr, int base = 10);
+WTF_EXPORT_STRING_API int charactersToIntStrict(const UChar*, size_t, bool* ok = nullptr, int base = 10);
+WTF_EXPORT_STRING_API unsigned charactersToUIntStrict(const LChar*, size_t, bool* ok = nullptr, int base = 10);
+WTF_EXPORT_STRING_API unsigned charactersToUIntStrict(const UChar*, size_t, bool* ok = nullptr, int base = 10);
+int64_t charactersToInt64Strict(const LChar*, size_t, bool* ok = nullptr, int base = 10);
+int64_t charactersToInt64Strict(const UChar*, size_t, bool* ok = nullptr, int base = 10);
+uint64_t charactersToUInt64Strict(const LChar*, size_t, bool* ok = nullptr, int base = 10);
+uint64_t charactersToUInt64Strict(const UChar*, size_t, bool* ok = nullptr, int base = 10);
+intptr_t charactersToIntPtrStrict(const LChar*, size_t, bool* ok = nullptr, int base = 10);
+intptr_t charactersToIntPtrStrict(const UChar*, size_t, bool* ok = nullptr, int base = 10);
 
-WTF_EXPORT_STRING_API int charactersToInt(const LChar*, size_t, bool* ok = 0); // ignores trailing garbage
-WTF_EXPORT_STRING_API int charactersToInt(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-unsigned charactersToUInt(const LChar*, size_t, bool* ok = 0); // ignores trailing garbage
-unsigned charactersToUInt(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-int64_t charactersToInt64(const LChar*, size_t, bool* ok = 0); // ignores trailing garbage
-int64_t charactersToInt64(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-uint64_t charactersToUInt64(const LChar*, size_t, bool* ok = 0); // ignores trailing garbage
-uint64_t charactersToUInt64(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-intptr_t charactersToIntPtr(const LChar*, size_t, bool* ok = 0); // ignores trailing garbage
-intptr_t charactersToIntPtr(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
+WTF_EXPORT_STRING_API int charactersToInt(const LChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+WTF_EXPORT_STRING_API int charactersToInt(const UChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+unsigned charactersToUInt(const LChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+unsigned charactersToUInt(const UChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+int64_t charactersToInt64(const LChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+int64_t charactersToInt64(const UChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+uint64_t charactersToUInt64(const LChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+WTF_EXPORT_STRING_API uint64_t charactersToUInt64(const UChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+intptr_t charactersToIntPtr(const LChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
+intptr_t charactersToIntPtr(const UChar*, size_t, bool* ok = nullptr); // ignores trailing garbage
 
 // FIXME: Like the strict functions above, these give false for "ok" when there is trailing garbage.
 // Like the non-strict functions above, these return the value when there is trailing garbage.
 // It would be better if these were more consistent with the above functions instead.
-WTF_EXPORT_STRING_API double charactersToDouble(const LChar*, size_t, bool* ok = 0);
-WTF_EXPORT_STRING_API double charactersToDouble(const UChar*, size_t, bool* ok = 0);
-WTF_EXPORT_STRING_API float charactersToFloat(const LChar*, size_t, bool* ok = 0);
-WTF_EXPORT_STRING_API float charactersToFloat(const UChar*, size_t, bool* ok = 0);
+WTF_EXPORT_STRING_API double charactersToDouble(const LChar*, size_t, bool* ok = nullptr);
+WTF_EXPORT_STRING_API double charactersToDouble(const UChar*, size_t, bool* ok = nullptr);
+WTF_EXPORT_STRING_API float charactersToFloat(const LChar*, size_t, bool* ok = nullptr);
+WTF_EXPORT_STRING_API float charactersToFloat(const UChar*, size_t, bool* ok = nullptr);
 WTF_EXPORT_STRING_API float charactersToFloat(const LChar*, size_t, size_t& parsedLength);
 WTF_EXPORT_STRING_API float charactersToFloat(const UChar*, size_t, size_t& parsedLength);
 
-class ASCIILiteral;
+template<bool isSpecialCharacter(UChar), typename CharacterType> bool isAllSpecialCharacters(const CharacterType*, size_t);
 
-enum TrailingZerosTruncatingPolicy {
-    KeepTrailingZeros,
-    TruncateTrailingZeros
-};
-
-template<bool isSpecialCharacter(UChar), typename CharacterType>
-bool isAllSpecialCharacters(const CharacterType*, size_t);
+enum TrailingZerosTruncatingPolicy { KeepTrailingZeros, TruncateTrailingZeros };
 
 class String {
 public:
@@ -117,15 +115,17 @@ public:
     // Construct a string referencing an existing StringImpl.
     String(StringImpl&);
     String(StringImpl*);
-    String(PassRefPtr<StringImpl>);
     String(Ref<StringImpl>&&);
     String(RefPtr<StringImpl>&&);
 
     String(Ref<AtomicStringImpl>&&);
     String(RefPtr<AtomicStringImpl>&&);
 
+    String(StaticStringImpl&);
+    String(StaticStringImpl*);
+
     // Construct a string from a constant string literal.
-    WTF_EXPORT_STRING_API String(ASCIILiteral characters);
+    WTF_EXPORT_STRING_API String(ASCIILiteral);
 
     // Construct a string from a constant string literal.
     // This constructor is the "big" version, as it put the length in the function call and generate bigger code.
@@ -135,26 +135,30 @@ public:
 
     // We have to declare the copy constructor and copy assignment operator as well, otherwise
     // they'll be implicitly deleted by adding the move constructor and move assignment operator.
-    String(const String& other) : m_impl(other.m_impl) { }
-    String(String&& other) : m_impl(other.m_impl.release()) { }
+    String(const String& other)
+        : m_impl(other.m_impl)
+    { }
+    String(String&& other)
+        : m_impl(WTFMove(other.m_impl))
+    { }
     String& operator=(const String& other) { m_impl = other.m_impl; return *this; }
-    String& operator=(String&& other) { m_impl = other.m_impl.release(); return *this; }
+    String& operator=(String&& other) { m_impl = WTFMove(other.m_impl); return *this; }
 
     // Inline the destructor.
     ALWAYS_INLINE ~String() { }
 
     void swap(String& o) { m_impl.swap(o.m_impl); }
 
-    static String adopt(StringBuffer<LChar>& buffer) { return StringImpl::adopt(buffer); }
-    static String adopt(StringBuffer<UChar>& buffer) { return StringImpl::adopt(buffer); }
+    static String adopt(StringBuffer<LChar>&& buffer) { return StringImpl::adopt(WTFMove(buffer)); }
+    static String adopt(StringBuffer<UChar>&& buffer) { return StringImpl::adopt(WTFMove(buffer)); }
     template<typename CharacterType, size_t inlineCapacity, typename OverflowHandler>
-    static String adopt(Vector<CharacterType, inlineCapacity, OverflowHandler>& vector) { return StringImpl::adopt(vector); }
+    static String adopt(Vector<CharacterType, inlineCapacity, OverflowHandler>&& vector) { return StringImpl::adopt(WTFMove(vector)); }
 
     bool isNull() const { return !m_impl; }
     bool isEmpty() const { return !m_impl || !m_impl->length(); }
 
     StringImpl* impl() const { return m_impl.get(); }
-    PassRefPtr<StringImpl> releaseImpl() { return m_impl.release(); }
+    RefPtr<StringImpl> releaseImpl() { return WTFMove(m_impl); }
 
     unsigned length() const
     {
@@ -237,9 +241,6 @@ public:
     size_t find(const LChar* str, unsigned start = 0) const
         { return m_impl ? m_impl->find(str, start) : notFound; }
 
-    size_t findNextLineStart(unsigned start = 0) const
-        { return m_impl ? m_impl->findNextLineStart(start) : notFound; }
-
     // Find the last instance of a single character or string.
     size_t reverseFind(UChar c, unsigned start = UINT_MAX) const
         { return m_impl ? m_impl->reverseFind(c, start) : notFound; }
@@ -263,11 +264,11 @@ public:
         { return caseSensitive ? reverseFind(str, start) : reverseFindIgnoringCase(str, start); }
 
     WTF_EXPORT_STRING_API Vector<UChar> charactersWithNullTermination() const;
-    
+
     WTF_EXPORT_STRING_API UChar32 characterStartingAt(unsigned) const; // Ditto.
-    
+
     bool contains(UChar c) const { return find(c) != notFound; }
-    bool contains(const LChar* str, bool caseSensitive = true, unsigned startOffset = 0) const 
+    bool contains(const LChar* str, bool caseSensitive = true, unsigned startOffset = 0) const
         { return find(str, startOffset, caseSensitive) != notFound; }
     bool contains(const String& str) const
         { return find(str) != notFound; }
@@ -340,6 +341,7 @@ public:
     WTF_EXPORT_STRING_API String convertToASCIILowercase() const;
     WTF_EXPORT_STRING_API String convertToASCIIUppercase() const;
     WTF_EXPORT_STRING_API String convertToLowercaseWithoutLocale() const;
+    WTF_EXPORT_STRING_API String convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned) const;
     WTF_EXPORT_STRING_API String convertToUppercaseWithoutLocale() const;
     WTF_EXPORT_STRING_API String convertToLowercaseWithLocale(const AtomicString& localeIdentifier) const;
     WTF_EXPORT_STRING_API String convertToUppercaseWithLocale(const AtomicString& localeIdentifier) const;
@@ -369,29 +371,44 @@ public:
     {
         split(separator, false, result);
     }
+
+    using SplitFunctor = WTF::Function<void(const StringView&)>;
+    WTF_EXPORT_STRING_API void split(UChar separator, bool allowEmptyEntries, const SplitFunctor&) const;
     WTF_EXPORT_STRING_API void split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const;
     void split(UChar separator, Vector<String>& result) const
     {
         split(separator, false, result);
     }
+    Vector<String> split(UChar separator) const
+    {
+        Vector<String> result;
+        split(separator, false, result);
+        return result;
+    }
+    Vector<String> split(const String& separator) const
+    {
+        Vector<String> result;
+        split(separator, false, result);
+        return result;
+    }
 
-    WTF_EXPORT_STRING_API int toIntStrict(bool* ok = 0, int base = 10) const;
-    WTF_EXPORT_STRING_API unsigned toUIntStrict(bool* ok = 0, int base = 10) const;
-    WTF_EXPORT_STRING_API int64_t toInt64Strict(bool* ok = 0, int base = 10) const;
-    WTF_EXPORT_STRING_API uint64_t toUInt64Strict(bool* ok = 0, int base = 10) const;
-    WTF_EXPORT_STRING_API intptr_t toIntPtrStrict(bool* ok = 0, int base = 10) const;
+    WTF_EXPORT_STRING_API int toIntStrict(bool* ok = nullptr, int base = 10) const;
+    WTF_EXPORT_STRING_API unsigned toUIntStrict(bool* ok = nullptr, int base = 10) const;
+    WTF_EXPORT_STRING_API int64_t toInt64Strict(bool* ok = nullptr, int base = 10) const;
+    WTF_EXPORT_STRING_API uint64_t toUInt64Strict(bool* ok = nullptr, int base = 10) const;
+    WTF_EXPORT_STRING_API intptr_t toIntPtrStrict(bool* ok = nullptr, int base = 10) const;
 
-    WTF_EXPORT_STRING_API int toInt(bool* ok = 0) const;
-    WTF_EXPORT_STRING_API unsigned toUInt(bool* ok = 0) const;
-    WTF_EXPORT_STRING_API int64_t toInt64(bool* ok = 0) const;
-    WTF_EXPORT_STRING_API uint64_t toUInt64(bool* ok = 0) const;
-    WTF_EXPORT_STRING_API intptr_t toIntPtr(bool* ok = 0) const;
+    WTF_EXPORT_STRING_API int toInt(bool* ok = nullptr) const;
+    WTF_EXPORT_STRING_API unsigned toUInt(bool* ok = nullptr) const;
+    WTF_EXPORT_STRING_API int64_t toInt64(bool* ok = nullptr) const;
+    WTF_EXPORT_STRING_API uint64_t toUInt64(bool* ok = nullptr) const;
+    WTF_EXPORT_STRING_API intptr_t toIntPtr(bool* ok = nullptr) const;
 
     // FIXME: Like the strict functions above, these give false for "ok" when there is trailing garbage.
     // Like the non-strict functions above, these return the value when there is trailing garbage.
     // It would be better if these were more consistent with the above functions instead.
-    WTF_EXPORT_STRING_API double toDouble(bool* ok = 0) const;
-    WTF_EXPORT_STRING_API float toFloat(bool* ok = 0) const;
+    WTF_EXPORT_STRING_API double toDouble(bool* ok = nullptr) const;
+    WTF_EXPORT_STRING_API float toFloat(bool* ok = nullptr) const;
 
     bool percentage(int& percentage) const;
 
@@ -418,7 +435,7 @@ public:
 
 #ifdef __OBJC__
     WTF_EXPORT_STRING_API String(NSString *);
-    
+
     // This conversion converts the null string to an empty NSString rather than to nil.
     // Given Cocoa idioms, this is a more useful default. Clients that need to preserve the
     // null string can check isNull explicitly.
@@ -447,11 +464,12 @@ public:
     static String fromUTF8(const char* s, size_t length) { return fromUTF8(reinterpret_cast<const LChar*>(s), length); };
     static String fromUTF8(const char* s) { return fromUTF8(reinterpret_cast<const LChar*>(s)); };
     WTF_EXPORT_STRING_API static String fromUTF8(const CString&);
+    static String fromUTF8(const Vector<LChar>& characters);
 
     // Tries to convert the passed in string to UTF-8, but will fall back to Latin-1 if the string is not valid UTF-8.
     WTF_EXPORT_STRING_API static String fromUTF8WithLatin1Fallback(const LChar*, size_t);
     static String fromUTF8WithLatin1Fallback(const char* s, size_t length) { return fromUTF8WithLatin1Fallback(reinterpret_cast<const LChar*>(s), length); };
-    
+
     // Determines the writing direction using the Unicode Bidi Algorithm rules P2 and P3.
     UCharDirection defaultWritingDirection(bool* hasStrongDirectionality = nullptr) const
     {
@@ -484,6 +502,14 @@ public:
         return (*m_impl)[index];
     }
 
+    // Turns this String empty if the StringImpl is not referenced by anyone else.
+    // This is useful for clearing String-based caches.
+    void clearImplIfNotShared()
+    {
+        if (m_impl && m_impl->hasOneRef())
+            m_impl = nullptr;
+    }
+
 private:
     template <typename CharacterType>
     void removeInternal(const CharacterType*, unsigned, int);
@@ -493,6 +519,8 @@ private:
 
     RefPtr<StringImpl> m_impl;
 };
+
+static_assert(sizeof(String) == sizeof(void*), "String should effectively be a pointer to a StringImpl, and efficient to pass by value");
 
 inline bool operator==(const String& a, const String& b) { return equal(a.impl(), b.impl()); }
 inline bool operator==(const String& a, const LChar* b) { return equal(a.impl(), b); }
@@ -515,6 +543,7 @@ bool equalIgnoringASCIICase(const String&, const String&);
 bool equalIgnoringASCIICase(const String&, const char*);
 
 template<unsigned length> bool equalLettersIgnoringASCIICase(const String&, const char (&lowercaseLetters)[length]);
+template<unsigned length> bool startsWithLettersIgnoringASCIICase(const String&, const char (&lowercaseLetters)[length]);
 
 inline bool equalIgnoringNullity(const String& a, const String& b) { return equalIgnoringNullity(a.impl(), b.impl()); }
 template<size_t inlineCapacity> inline bool equalIgnoringNullity(const Vector<UChar, inlineCapacity>& a, const String& b) { return equalIgnoringNullity(a, b.impl()); }
@@ -542,11 +571,6 @@ inline String::String(StringImpl* impl)
 {
 }
 
-inline String::String(PassRefPtr<StringImpl> impl)
-    : m_impl(impl)
-{
-}
-
 inline String::String(Ref<StringImpl>&& impl)
     : m_impl(WTFMove(impl))
 {
@@ -564,6 +588,16 @@ inline String::String(Ref<AtomicStringImpl>&& impl)
 
 inline String::String(RefPtr<AtomicStringImpl>&& impl)
     : m_impl(WTFMove(impl))
+{
+}
+
+inline String::String(StaticStringImpl& impl)
+    : m_impl(reinterpret_cast<StringImpl*>(&impl))
+{
+}
+
+inline String::String(StaticStringImpl* impl)
+    : m_impl(reinterpret_cast<StringImpl*>(impl))
 {
 }
 
@@ -701,27 +735,15 @@ private:
     const char* m_characters;
 };
 
-// For thread-safe lambda capture:
-// StringCapture stringCapture(string);
-// auto lambdaThatRunsInOtherThread = [stringCapture] { String string = stringCapture.string(); ... }
-// FIXME: Remove when we can use C++14 initialized lambda capture: [string = string.isolatedCopy()].
-class StringCapture {
-public:
-    StringCapture() { }
-    StringCapture(const String& string) : m_string(string) { }
-    explicit StringCapture(String&& string) : m_string(string) { }
-    StringCapture(const StringCapture& other) : m_string(other.m_string.isolatedCopy()) { }
-    const String& string() const { return m_string; }
-    String releaseString() { return WTFMove(m_string); }
-
-    void operator=(const StringCapture& other) { m_string = other.m_string.isolatedCopy(); }
-
-private:
-    String m_string;
-};
-
 // Shared global empty string.
 WTF_EXPORT_STRING_API const String& emptyString();
+
+inline String String::fromUTF8(const Vector<LChar>& characters)
+{
+    if (characters.isEmpty())
+        return emptyString();
+    return fromUTF8(characters.data(), characters.size());
+}
 
 template<unsigned length> inline bool equalLettersIgnoringASCIICase(const String& string, const char (&lowercaseLetters)[length])
 {
@@ -738,7 +760,18 @@ inline bool equalIgnoringASCIICase(const String& a, const char* b)
     return equalIgnoringASCIICase(a.impl(), b);
 }
 
+template<unsigned length> inline bool startsWithLettersIgnoringASCIICase(const String& string, const char (&lowercaseLetters)[length])
+{
+    return startsWithLettersIgnoringASCIICase(string.impl(), lowercaseLetters);
 }
+
+template<> struct IntegerToStringConversionTrait<String> {
+    using ReturnType = String;
+    using AdditionalArgumentType = void;
+    static String flush(LChar* characters, unsigned length, void*) { return { characters, length }; }
+};
+
+} // namespace WTF
 
 using WTF::CString;
 using WTF::KeepTrailingZeros;
@@ -764,7 +797,6 @@ using WTF::isAllSpecialCharacters;
 using WTF::isSpaceOrNewline;
 using WTF::reverseFind;
 using WTF::ASCIILiteral;
-using WTF::StringCapture;
 
 #include <wtf/text/AtomicString.h>
 

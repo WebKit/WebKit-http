@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RenderMedia_h
-#define RenderMedia_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -35,35 +34,36 @@ namespace WebCore {
 
 class RenderMedia : public RenderImage {
 public:
-    RenderMedia(HTMLMediaElement&, Ref<RenderStyle>&&);
-    RenderMedia(HTMLMediaElement&, Ref<RenderStyle>&&, const IntSize& intrinsicSize);
+    RenderMedia(HTMLMediaElement&, RenderStyle&&);
+    RenderMedia(HTMLMediaElement&, RenderStyle&&, const IntSize& intrinsicSize);
     virtual ~RenderMedia();
 
     HTMLMediaElement& mediaElement() const { return downcast<HTMLMediaElement>(nodeForNonAnonymous()); }
 
 protected:
-    virtual void layout() override;
+    void layout() override;
 
 private:
     void element() const = delete;
 
-    virtual bool canHaveChildren() const override final { return true; }
+    bool canHaveChildren() const final { return true; }
 
-    virtual const char* renderName() const override { return "RenderMedia"; }
-    virtual bool isMedia() const override final { return true; }
-    virtual bool isImage() const override final { return false; }
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) override;
+    const char* renderName() const override { return "RenderMedia"; }
+    bool isMedia() const final { return true; }
+    bool isImage() const final { return false; }
+    void paintReplaced(PaintInfo&, const LayoutPoint&) override;
 
-    virtual bool requiresForcedStyleRecalcPropagation() const override final { return true; }
-
-    virtual bool shadowControlsNeedCustomLayoutMetrics() const override { return true; }
-    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override final;
+    bool shadowControlsNeedCustomLayoutMetrics() const override { return true; }
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
 };
+
+inline RenderMedia* HTMLMediaElement::renderer() const
+{
+    return downcast<RenderMedia>(HTMLElement::renderer());
+}
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMedia, isMedia())
 
 #endif // ENABLE(VIDEO)
-
-#endif // RenderMedia_h

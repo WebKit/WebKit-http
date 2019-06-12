@@ -17,14 +17,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGRenderingIntent_h
-#define SVGRenderingIntent_h
+#pragma once
 
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class SVGRenderingIntent : public RefCounted<SVGRenderingIntent> {
+class SVGRenderingIntent final : public RefCounted<SVGRenderingIntent> {
 public:
     enum SVGRenderingIntentType {
         RENDERING_INTENT_UNKNOWN                  = 0,
@@ -40,5 +39,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SVGRenderingIntent_h

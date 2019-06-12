@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLCompressedTexturePVRTC_h
-#define WebGLCompressedTexturePVRTC_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,13 +31,11 @@ namespace WebCore {
 
 class WebGLCompressedTexturePVRTC final : public WebGLExtension {
 public:
-    explicit WebGLCompressedTexturePVRTC(WebGLRenderingContextBase*);
+    explicit WebGLCompressedTexturePVRTC(WebGLRenderingContextBase&);
     virtual ~WebGLCompressedTexturePVRTC();
 
-    static bool supported(WebGLRenderingContextBase*);
-    virtual ExtensionName getName() const override;
+    static bool supported(WebGLRenderingContextBase&);
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // WebGLCompressedTexturePVRTC_h

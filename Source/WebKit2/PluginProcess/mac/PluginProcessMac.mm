@@ -30,7 +30,6 @@
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 #import "ArgumentCoders.h"
-#import "DyldSPI.h"
 #import "NetscapePlugin.h"
 #import "PluginProcessCreationParameters.h"
 #import "PluginProcessProxyMessages.h"
@@ -42,6 +41,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebKitSystemInterface.h>
 #import <dlfcn.h>
+#import <mach-o/dyld.h>
 #import <mach-o/getsect.h>
 #import <mach/mach_vm.h>
 #import <mach/vm_statistics.h>
@@ -70,8 +70,7 @@ public:
     template<typename T> void windowHidden(T window);
 
 private:
-    typedef HashSet<void*> WindowSet;
-    WindowSet m_windows;
+    HashSet<CGWindowID> m_windows;
 };
 
 static bool rectCoversAnyScreen(NSRect rect)
@@ -94,18 +93,33 @@ static bool windowCoversAnyScreen(WindowRef window)
 
     return rectCoversAnyScreen(NSRectFromCGRect(bounds));
 }
-#endif
 
-static bool windowCoversAnyScreen(NSWindow* window)
+static CGWindowID cgWindowID(WindowRef window)
 {
-    return rectCoversAnyScreen([window frame]);
+    return reinterpret_cast<CGWindowID>(WKGetNativeWindowFromWindowRef(window));
 }
 
-template<typename T> void FullscreenWindowTracker::windowShown(T window)
+#endif
+
+static bool windowCoversAnyScreen(NSWindow *window)
 {
+    return rectCoversAnyScreen(window.frame);
+}
+
+static CGWindowID cgWindowID(NSWindow *window)
+{
+    return window.windowNumber;
+}
+
+template<typename T>
+void FullscreenWindowTracker::windowShown(T window)
+{
+    CGWindowID windowID = cgWindowID(window);
+    if (!windowID)
+        return;
+
     // If this window is already visible then there is nothing to do.
-    WindowSet::iterator it = m_windows.find(window);
-    if (it != m_windows.end())
+    if (m_windows.contains(windowID))
         return;
     
     // If the window is not full-screen then we're not interested in it.
@@ -114,21 +128,23 @@ template<typename T> void FullscreenWindowTracker::windowShown(T window)
 
     bool windowSetWasEmpty = m_windows.isEmpty();
 
-    m_windows.add(window);
+    m_windows.add(windowID);
     
     // If this is the first full screen window to be shown, notify the UI process.
     if (windowSetWasEmpty)
         PluginProcess::singleton().setFullscreenWindowIsShowing(true);
 }
 
-template<typename T> void FullscreenWindowTracker::windowHidden(T window)
+template<typename T>
+void FullscreenWindowTracker::windowHidden(T window)
 {
-    // If this is not a window that we're tracking then there is nothing to do.
-    WindowSet::iterator it = m_windows.find(window);
-    if (it == m_windows.end())
+    CGWindowID windowID = cgWindowID(window);
+    if (!windowID)
         return;
 
-    m_windows.remove(it);
+    // If this is not a window that we're tracking then there is nothing to do.
+    if (!m_windows.remove(windowID))
+        return;
 
     // If this was the last full screen window that was visible, notify the UI process.
     if (m_windows.isEmpty())
@@ -238,7 +254,7 @@ static void setModal(bool modalWindowIsShowing)
     PluginProcess::singleton().setModalWindowIsShowing(modalWindowIsShowing);
 }
 
-static unsigned modalCount = 0;
+static unsigned modalCount;
 
 static void beginModal()
 {
@@ -271,11 +287,70 @@ static NSInteger replacedRunModalForWindow(id self, SEL _cmd, NSWindow* window)
     return result;
 }
 
-#if defined(__i386__)
+static bool oldPluginProcessNameShouldEqualNewPluginProcessNameForAdobeReader;
+
+static bool isAdobeAcrobatAddress(const void* address)
+{
+    Dl_info imageInfo;
+    if (!dladdr(address, &imageInfo))
+        return false;
+
+    const char* pathSuffix = "/Contents/Frameworks/Acrobat.framework/Acrobat";
+
+    int pathSuffixLength = strlen(pathSuffix);
+    int imageFilePathLength = strlen(imageInfo.dli_fname);
+
+    if (imageFilePathLength < pathSuffixLength)
+        return false;
+
+    if (strcmp(imageInfo.dli_fname + (imageFilePathLength - pathSuffixLength), pathSuffix))
+        return false;
+
+    return true;
+}
+
+static bool stringCompare(CFStringRef a, CFStringRef b, CFStringCompareFlags options, void* returnAddress, CFComparisonResult& result)
+{
+    if (pthread_main_np() != 1)
+        return false;
+
+    if (!oldPluginProcessNameShouldEqualNewPluginProcessNameForAdobeReader)
+        return false;
+
+    if (options != kCFCompareCaseInsensitive)
+        return false;
+
+    const char* aCString = CFStringGetCStringPtr(a, kCFStringEncodingASCII);
+    if (!aCString)
+        return false;
+
+    const char* bCString = CFStringGetCStringPtr(b, kCFStringEncodingASCII);
+    if (!bCString)
+        return false;
+
+    if (strcmp(aCString, "com.apple.WebKit.PluginProcess"))
+        return false;
+
+    if (strcmp(bCString, "com.apple.WebKit.Plugin.64"))
+        return false;
+
+    // Check if the LHS string comes from the Acrobat framework.
+    if (!isAdobeAcrobatAddress(a))
+        return false;
+
+    // Check if the return adress is part of the Acrobat framework as well.
+    if (!isAdobeAcrobatAddress(returnAddress))
+        return false;
+
+    result = kCFCompareEqualTo;
+    return true;
+}
+
 static void initializeShim()
 {
     // Initialize the shim for 32-bit only.
     const PluginProcessShimCallbacks callbacks = {
+#if defined(__i386__)
         shouldCallRealDebugger,
         isWindowActive,
         getCurrentEventButtonState,
@@ -286,12 +361,13 @@ static void initializeShim()
         setModal,
         openCFURLRef,
         shouldMapMemoryExecutable,
+#endif
+        stringCompare,
     };
 
     PluginProcessShimInitializeFunc initFunc = reinterpret_cast<PluginProcessShimInitializeFunc>(dlsym(RTLD_DEFAULT, "WebKitPluginProcessShimInitialize"));
     initFunc(callbacks);
 }
-#endif
 
 static void (*NSConcreteTask_launch)(NSTask *, SEL);
 
@@ -447,9 +523,7 @@ void PluginProcess::platformInitializePluginProcess(PluginProcessCreationParamet
 
 void PluginProcess::platformInitializeProcess(const ChildProcessInitializationParameters& parameters)
 {
-#if defined(__i386__)
     initializeShim();
-#endif
 
     initializeCocoaOverrides();
 
@@ -466,6 +540,9 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
         return;
 
     m_pluginBundleIdentifier = CFBundleGetIdentifier(pluginBundle.get());
+
+    if (m_pluginBundleIdentifier == "com.adobe.acrobat.pdfviewerNPAPI")
+        oldPluginProcessNameShouldEqualNewPluginProcessNameForAdobeReader = true;
 
 #if defined(__i386__)
     if (m_pluginBundleIdentifier == "com.microsoft.SilverlightPlugin") {
@@ -490,38 +567,38 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
         // Silverlight expects the data segment of its coreclr library to be executable.
         // Register with dyld to get notified when libraries are bound, then look for the
         // coreclr image and make its __DATA segment executable.
-        dyld_register_image_state_change_handler(dyld_image_state_bound, false, [](enum dyld_image_states state, uint32_t infoCount, const struct dyld_image_info info[]) -> const char* {
-            for (uint32_t i = 0; i < infoCount; ++i) {
-                const char* pathSuffix = "/Silverlight.plugin/Contents/MacOS/CoreCLR.bundle/Contents/MacOS/coreclr";
+        _dyld_register_func_for_add_image([](const struct mach_header* mh, intptr_t vmaddr_slide) {
+            Dl_info imageInfo;
+            if (!dladdr(mh, &imageInfo))
+                return;
 
-                int pathSuffixLength = strlen(pathSuffix);
-                int imageFilePathLength = strlen(info[i].imageFilePath);
+            const char* pathSuffix = "/Silverlight.plugin/Contents/MacOS/CoreCLR.bundle/Contents/MacOS/coreclr";
 
-                if (imageFilePathLength < pathSuffixLength)
-                    continue;
+            int pathSuffixLength = strlen(pathSuffix);
+            int imageFilePathLength = strlen(imageInfo.dli_fname);
 
-                if (strcmp(info[i].imageFilePath + (imageFilePathLength - pathSuffixLength), pathSuffix))
-                    continue;
+            if (imageFilePathLength < pathSuffixLength)
+                return;
 
-                unsigned long segmentSize;
-                const uint8_t* segmentData = getsegmentdata(info[i].imageLoadAddress, "__DATA", &segmentSize);
-                if (!segmentData)
+            if (strcmp(imageInfo.dli_fname + (imageFilePathLength - pathSuffixLength), pathSuffix))
+                return;
+
+            unsigned long segmentSize;
+            const uint8_t* segmentData = getsegmentdata(mh, "__DATA", &segmentSize);
+            if (!segmentData)
+                return;
+
+            mach_vm_size_t size;
+            uint32_t depth = 0;
+            struct vm_region_submap_info_64 info = { };
+            mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
+            for (mach_vm_address_t addr = reinterpret_cast<mach_vm_address_t>(segmentData); addr < reinterpret_cast<mach_vm_address_t>(segmentData) + segmentSize ; addr += size) {
+                kern_return_t kr = mach_vm_region_recurse(mach_task_self(), &addr, &size, &depth, (vm_region_recurse_info_64_t)&info, &count);
+                if (kr != KERN_SUCCESS)
                     break;
 
-                mach_vm_size_t size;
-                uint32_t depth = 0;
-                struct vm_region_submap_info_64 info = { };
-                mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
-                for (mach_vm_address_t addr = reinterpret_cast<mach_vm_address_t>(segmentData); addr < reinterpret_cast<mach_vm_address_t>(segmentData) + segmentSize ; addr += size) {
-                    kern_return_t kr = mach_vm_region_recurse(mach_task_self(), &addr, &size, &depth, (vm_region_recurse_info_64_t)&info, &count);
-                    if (kr != KERN_SUCCESS)
-                        break;
-
-                    mach_vm_protect(mach_task_self(), addr, size, false, info.protection | VM_PROT_EXECUTE);
-                }
+                mach_vm_protect(mach_task_self(), addr, size, false, info.protection | VM_PROT_EXECUTE);
             }
-
-            return nullptr;
         });
     }
 #endif
@@ -529,6 +606,11 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
     // FIXME: Workaround for Java not liking its plugin process to be suppressed - <rdar://problem/14267843>
     if (m_pluginBundleIdentifier == "com.oracle.java.JavaAppletPlugin")
         (new UserActivity("com.oracle.java.JavaAppletPlugin"))->start();
+    
+    if (!pluginHasSandboxProfile(m_pluginBundleIdentifier)) {
+        // Allow Apple Events from Citrix plugin. This can be removed when <rdar://problem/14012823> is fixed.
+        setenv("__APPLEEVENTSSERVICENAME", "com.apple.coreservices.appleevents", 1);
+    }
 }
 
 void PluginProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
@@ -543,13 +625,12 @@ void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters
 {
     // PluginProcess may already be sandboxed if its parent process was sandboxed, and launched a child process instead of an XPC service.
     // This is generally not expected, however we currently always spawn a child process to create a MIME type preferences file.
-    if (processIsSandboxed(getpid())) {
+    if (currentProcessIsSandboxed()) {
         RELEASE_ASSERT(!parameters.connectionIdentifier.xpcConnection);
-        RELEASE_ASSERT(processIsSandboxed(getppid()));
         return;
     }
 
-    bool parentIsSandboxed = parameters.connectionIdentifier.xpcConnection && processIsSandboxed(xpc_connection_get_pid(parameters.connectionIdentifier.xpcConnection.get()));
+    bool parentIsSandboxed = parameters.connectionIdentifier.xpcConnection && connectedProcessIsSandboxed(parameters.connectionIdentifier.xpcConnection.get());
 
     if (parameters.extraInitializationData.get("disable-sandbox") == "1") {
         if (parentIsSandboxed) {

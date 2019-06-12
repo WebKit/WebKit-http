@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(InspectorInstrumentationObject);
 
-const ClassInfo InspectorInstrumentationObject::s_info = { "InspectorInstrumentation", &Base::s_info, &inspectorInstrumentationObjectTable, CREATE_METHOD_TABLE(InspectorInstrumentationObject) };
+const ClassInfo InspectorInstrumentationObject::s_info = { "InspectorInstrumentation", &Base::s_info, &inspectorInstrumentationObjectTable, nullptr, CREATE_METHOD_TABLE(InspectorInstrumentationObject) };
 
 /* Source for InspectorInstrumentationObject.lut.h
 @begin inspectorInstrumentationObjectTable
@@ -60,13 +60,8 @@ InspectorInstrumentationObject::InspectorInstrumentationObject(VM& vm, Structure
 void InspectorInstrumentationObject::finishCreation(VM& vm, JSGlobalObject*)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     putDirectWithoutTransition(vm, vm.propertyNames->isEnabled, jsBoolean(false));
-}
-
-bool InspectorInstrumentationObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
-{
-    return getStaticFunctionSlot<Base>(exec, inspectorInstrumentationObjectTable, jsCast<InspectorInstrumentationObject*>(object), propertyName, slot);
 }
 
 bool InspectorInstrumentationObject::isEnabled(VM& vm) const
@@ -88,10 +83,11 @@ void InspectorInstrumentationObject::disable(VM& vm)
 
 EncodedJSValue JSC_HOST_CALL inspectorInstrumentationObjectLog(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue target = exec->argument(0);
-    String value = target.toString(exec)->value(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    String value = target.toWTFString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     dataLog(value, "\n");
     return JSValue::encode(jsUndefined());
 }

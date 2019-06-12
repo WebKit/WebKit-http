@@ -26,50 +26,61 @@
 #ifndef WebKitLogging_h
 #define WebKitLogging_h
 
+#include <WebCore/LogMacros.h>
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
 #ifndef LOG_CHANNEL_PREFIX
 #define LOG_CHANNEL_PREFIX WebKit2Log
 #endif
 
-namespace WebKit {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define WEBKIT2_LOG_CHANNELS(M) \
     M(ContextMenu) \
-    M(IDB) \
+    M(DragAndDrop) \
+    M(Gamepad) \
     M(IconDatabase) \
+    M(IDB) \
     M(IndexedDB) \
-    M(InspectorServer) \
+    M(IPC) \
     M(KeyHandling) \
+    M(Layers) \
     M(Network) \
     M(NetworkCache) \
-    M(NetworkCacheStorage) \
     M(NetworkCacheSpeculativePreloading) \
+    M(NetworkCacheStorage) \
     M(NetworkScheduling) \
+    M(NetworkSession) \
+    M(PerformanceLogging) \
     M(Plugins) \
     M(Printing) \
+    M(ProcessSuspension) \
     M(RemoteLayerTree) \
     M(Resize) \
+    M(ResourceLoadStatistics) \
+    M(Selection) \
     M(SessionState) \
     M(StorageAPI) \
     M(TextInput) \
     M(ViewGestures) \
-
-#define DECLARE_LOG_CHANNEL(name) \
-    extern WTFLogChannel JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, name);
+    M(ViewState) \
+    M(VirtualMemory) \
+    M(VisibleRects) \
+    M(WebRTC) \
 
 WEBKIT2_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 
 #undef DECLARE_LOG_CHANNEL
 
-void initializeLogChannelsIfNecessary(void);
-String logLevelString();
+#ifdef __cplusplus
+}
+#endif
 
-} // namespace WebKit
-
-#endif // !LOG_DISABLED
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
 #endif // Logging_h

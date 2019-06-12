@@ -33,8 +33,8 @@
 
 namespace IPC {
 
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 
 class Attachment {
 public:
@@ -81,8 +81,8 @@ public:
     HANDLE handle() const { return m_handle; }
 #endif
 
-    void encode(ArgumentEncoder&) const;
-    static bool decode(ArgumentDecoder&, Attachment&);
+    void encode(Encoder&) const;
+    static bool decode(Decoder&, Attachment&);
     
 private:
     Type m_type;

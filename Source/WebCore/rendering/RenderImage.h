@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef RenderImage_h
-#define RenderImage_h
+#pragma once
 
 #include "RenderImageResource.h"
 #include "RenderReplaced.h"
@@ -40,8 +39,8 @@ enum ImageSizeChangeType {
 
 class RenderImage : public RenderReplaced {
 public:
-    RenderImage(Element&, Ref<RenderStyle>&&, StyleImage* = nullptr, const float = 1.0f);
-    RenderImage(Document&, Ref<RenderStyle>&&, StyleImage* = nullptr);
+    RenderImage(Element&, RenderStyle&&, StyleImage* = nullptr, const float = 1.0f);
+    RenderImage(Document&, RenderStyle&&, StyleImage* = nullptr);
     virtual ~RenderImage();
 
     RenderImageResource& imageResource() { return *m_imageResource; }
@@ -56,7 +55,7 @@ public:
     void areaElementFocusChanged(HTMLAreaElement*);
     
 #if PLATFORM(IOS)
-    virtual void collectSelectionRects(Vector<SelectionRect>&, unsigned, unsigned) override;
+    void collectSelectionRects(Vector<SelectionRect>&, unsigned, unsigned) override;
 #endif
 
     void setIsGeneratedContent(bool generated = true) { m_isGeneratedContent = generated; }
@@ -70,44 +69,52 @@ public:
     float imageDevicePixelRatio() const { return m_imageDevicePixelRatio; }
 
     void setHasShadowControls(bool hasShadowControls) { m_hasShadowControls = hasShadowControls; }
+    
+    bool isShowingMissingOrImageError() const;
+    bool isShowingAltText() const;
+
+    bool hasNonBitmapImage() const;
 
 protected:
-    virtual bool needsPreferredWidthsRecalculation() const override final;
-    virtual RenderBox* embeddedContentBox() const override final;
-    virtual void computeIntrinsicRatioInformation(FloatSize& intrinsicSize, double& intrinsicRatio) const override final;
-    virtual bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const override;
+    void willBeDestroyed() override;
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle*) override;
+    bool needsPreferredWidthsRecalculation() const final;
+    RenderBox* embeddedContentBox() const final;
+    void computeIntrinsicRatioInformation(FloatSize& intrinsicSize, double& intrinsicRatio) const final;
+    bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const override;
 
-    virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) override;
+    void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
+    void styleDidChange(StyleDifference, const RenderStyle*) override;
 
-    void paintIntoRect(GraphicsContext&, const FloatRect&);
-    virtual void paint(PaintInfo&, const LayoutPoint&) override final;
-    virtual void layout() override;
+    void imageChanged(WrappedImagePtr, const IntRect* = nullptr) override;
 
-    virtual void intrinsicSizeChanged() override
+    ImageDrawResult paintIntoRect(PaintInfo&, const FloatRect&);
+    void paint(PaintInfo&, const LayoutPoint&) final;
+    void layout() override;
+
+    void intrinsicSizeChanged() override
     {
         imageChanged(imageResource().imagePtr());
     }
 
 private:
-    virtual const char* renderName() const override { return "RenderImage"; }
+    const char* renderName() const override { return "RenderImage"; }
 
-    virtual bool canHaveChildren() const override;
+    bool canHaveChildren() const override;
 
-    virtual bool isImage() const override { return true; }
-    virtual bool isRenderImage() const override final { return true; }
+    bool isImage() const override { return true; }
+    bool isRenderImage() const final { return true; }
 
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) override;
+    void paintReplaced(PaintInfo&, const LayoutPoint&) override;
 
-    virtual bool computeBackgroundIsKnownToBeObscured(const LayoutPoint& paintOffset) override final;
+    bool computeBackgroundIsKnownToBeObscured(const LayoutPoint& paintOffset) final;
 
-    virtual LayoutUnit minimumReplacedHeight() const override;
+    LayoutUnit minimumReplacedHeight() const override;
 
-    virtual void notifyFinished(CachedResource*) override final;
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override final;
+    void notifyFinished(CachedResource&) final;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) final;
 
-    virtual bool boxShadowShouldBeAppliedToBackground(const LayoutPoint& paintOffset, BackgroundBleedAvoidance, InlineFlowBox*) const override final;
+    bool boxShadowShouldBeAppliedToBackground(const LayoutPoint& paintOffset, BackgroundBleedAvoidance, InlineFlowBox*) const final;
 
     virtual bool shadowControlsNeedCustomLayoutMetrics() const { return false; }
 
@@ -117,18 +124,18 @@ private:
     // Update the size of the image to be rendered. Object-fit may cause this to be different from the CSS box's content rect.
     void updateInnerContentRect();
 
-    void paintAreaElementFocusRing(PaintInfo&);
+    void paintAreaElementFocusRing(PaintInfo&, const LayoutPoint& paintOffset);
     
     void layoutShadowControls(const LayoutSize& oldSize);
 
     // Text to display as long as the image isn't available.
     String m_altText;
     std::unique_ptr<RenderImageResource> m_imageResource;
-    bool m_needsToSetSizeForAltText;
-    bool m_didIncrementVisuallyNonEmptyPixelCount;
-    bool m_isGeneratedContent;
-    bool m_hasShadowControls;
-    float m_imageDevicePixelRatio;
+    bool m_needsToSetSizeForAltText { false };
+    bool m_didIncrementVisuallyNonEmptyPixelCount { false };
+    bool m_isGeneratedContent { false };
+    bool m_hasShadowControls { false };
+    float m_imageDevicePixelRatio { 1 };
 
     friend class RenderImageScaleObserver;
 };
@@ -136,5 +143,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderImage, isRenderImage())
-
-#endif // RenderImage_h

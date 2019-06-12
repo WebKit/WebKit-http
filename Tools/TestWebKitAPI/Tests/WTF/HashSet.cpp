@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,12 @@
 #include "config.h"
 
 #include "Counters.h"
+#include "DeletedAddressOfOperator.h"
 #include "MoveOnly.h"
+#include "RefLogger.h"
+#include <functional>
 #include <wtf/HashSet.h>
+#include <wtf/RefPtr.h>
 
 namespace TestWebKitAPI {
 
@@ -276,5 +280,181 @@ TEST(WTF_HashSet, CopyCapacityIsNotOnBoundary)
     }
 }
 
+TEST(WTF_HashSet, RefPtrNotZeroedBeforeDeref)
+{
+    struct DerefObserver {
+        NEVER_INLINE void ref()
+        {
+            ++count;
+        }
+        NEVER_INLINE void deref()
+        {
+            --count;
+            observedBucket = bucketAddress->get();
+        }
+        unsigned count { 1 };
+        const RefPtr<DerefObserver>* bucketAddress { nullptr };
+        const DerefObserver* observedBucket { nullptr };
+    };
+
+    auto observer = std::make_unique<DerefObserver>();
+
+    HashSet<RefPtr<DerefObserver>> set;
+    set.add(adoptRef(observer.get()));
+
+    auto iterator = set.find(observer.get());
+    EXPECT_TRUE(iterator != set.end());
+
+    observer->bucketAddress = iterator.get();
+
+    EXPECT_TRUE(observer->observedBucket == nullptr);
+    EXPECT_TRUE(set.remove(observer.get()));
+
+    // It if fine to either leave the old value intact at deletion or already set it to the deleted
+    // value.
+    // A zero would be a incorrect outcome as it would mean we nulled the bucket before an opaque
+    // call.
+    EXPECT_TRUE(observer->observedBucket == observer.get() || observer->observedBucket == RefPtr<DerefObserver>::hashTableDeletedValue());
+    EXPECT_EQ(observer->count, 0u);
+}
+
+
+TEST(WTF_HashSet, UniquePtrNotZeroedBeforeDestructor)
+{
+    struct DestructorObserver {
+        ~DestructorObserver()
+        {
+            observe();
+        }
+        std::function<void()> observe;
+    };
+
+    const std::unique_ptr<DestructorObserver>* bucketAddress = nullptr;
+    const DestructorObserver* observedBucket = nullptr;
+    std::unique_ptr<DestructorObserver> observer(new DestructorObserver { [&]() {
+        observedBucket = bucketAddress->get();
+    }});
+
+    const DestructorObserver* observerAddress = observer.get();
+
+    HashSet<std::unique_ptr<DestructorObserver>> set;
+    auto addResult = set.add(WTFMove(observer));
+
+    EXPECT_TRUE(addResult.isNewEntry);
+    EXPECT_TRUE(observedBucket == nullptr);
+
+    bucketAddress = addResult.iterator.get();
+
+    EXPECT_TRUE(observedBucket == nullptr);
+    EXPECT_TRUE(set.remove(*addResult.iterator));
+
+    EXPECT_TRUE(observedBucket == observerAddress || observedBucket == reinterpret_cast<const DestructorObserver*>(-1));
+}
+
+TEST(WTF_HashSet, Ref)
+{
+    {
+        RefLogger a("a");
+
+        HashSet<Ref<RefLogger>> set;
+
+        Ref<RefLogger> ref(a);
+        set.add(WTFMove(ref));
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashSet<Ref<RefLogger>> set;
+
+        Ref<RefLogger> ref(a);
+        set.add(ref.copyRef());
+    }
+
+    ASSERT_STREQ("ref(a) ref(a) deref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashSet<Ref<RefLogger>> set;
+
+        Ref<RefLogger> ref(a);
+        set.add(WTFMove(ref));
+        set.remove(&a);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashSet<Ref<RefLogger>> set;
+
+        Ref<RefLogger> ref(a);
+        set.add(WTFMove(ref));
+
+        auto aOut = set.take(&a);
+        ASSERT_TRUE(static_cast<bool>(aOut));
+        ASSERT_EQ(&a, aOut.value().ptr());
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashSet<Ref<RefLogger>> set;
+
+        Ref<RefLogger> ref(a);
+        set.add(WTFMove(ref));
+
+        auto aOut = set.takeAny();
+        ASSERT_TRUE(static_cast<bool>(aOut));
+        ASSERT_EQ(&a, aOut.value().ptr());
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashSet<Ref<RefLogger>> set;
+        auto emptyTake = set.takeAny();
+        ASSERT_FALSE(static_cast<bool>(emptyTake));
+    }
+
+    {
+        RefLogger a("a");
+
+        HashSet<Ref<RefLogger>> set;
+
+        Ref<RefLogger> ref(a);
+        set.add(WTFMove(ref));
+        
+        ASSERT_TRUE(set.contains(&a));
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashSet<Ref<RefLogger>> set;
+        for (int i = 0; i < 64; ++i) {
+            // FIXME: All of these RefLogger objects leak. No big deal for a test I guess.
+            Ref<RefLogger> ref = adoptRef(*new RefLogger("a"));
+            auto* pointer = ref.ptr();
+            set.add(WTFMove(ref));
+            ASSERT_TRUE(set.contains(pointer));
+        }
+    }
+    ASSERT_STREQ("deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) ", takeLogStr().c_str());
+}
+
+TEST(WTF_HashSet, DeletedAddressOfOperator)
+{
+    HashSet<DeletedAddressOfOperator> set1;
+    set1.add(10);
+
+    set1.remove(10);
+}
 
 } // namespace TestWebKitAPI

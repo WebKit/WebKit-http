@@ -33,7 +33,10 @@
 #import "WebCoreURLResponse.h"
 #import <Foundation/Foundation.h>
 #import <limits>
+#import <wtf/AutodrainedPool.h>
+#import <wtf/NeverDestroyed.h>
 #import <wtf/StdLibExtras.h>
+#import <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -65,9 +68,14 @@ void ResourceResponse::initNSURLResponse() const
     [m_nsResponse.get() _setMIMEType:(NSString *)m_mimeType];
 }
 
+void ResourceResponse::disableLazyInitialization()
+{
+    lazyInit(AllFields);
+}
+
 CertificateInfo ResourceResponse::platformCertificateInfo() const
 {
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     ASSERT(m_cfResponse);
     CFURLResponseRef cfResponse = m_cfResponse.get();
 #else
@@ -99,15 +107,14 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
             return { };
     }
 
-    CFIndex count = SecTrustGetCertificateCount(trust);
-    auto certificateChain = CFArrayCreateMutable(0, count, &kCFTypeArrayCallBacks);
-    for (CFIndex i = 0; i < count; i++)
-        CFArrayAppendValue(certificateChain, SecTrustGetCertificateAtIndex(trust, i));
-
-    return CertificateInfo(adoptCF(certificateChain));
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    return CertificateInfo(trust);
+#else
+    return CertificateInfo(CertificateInfo::certificateChainFromSecTrust(trust));
+#endif
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 NSURLResponse *ResourceResponse::nsURLResponse() const
 {
@@ -128,7 +135,6 @@ NSURLResponse *ResourceResponse::nsURLResponse() const
 
 ResourceResponse::ResourceResponse(NSURLResponse* nsResponse)
     : m_initLevel(Uninitialized)
-    , m_platformResponseIsUpToDate(true)
     , m_cfResponse([nsResponse _CFURLResponse])
     , m_nsResponse(nsResponse)
 {
@@ -147,78 +153,80 @@ NSURLResponse *ResourceResponse::nsURLResponse() const
         initNSURLResponse();
     return m_nsResponse.get();
 }
-    
-static NSString *copyNSURLResponseStatusLine(NSURLResponse *response)
+
+static void addToHTTPHeaderMap(const void* key, const void* value, void* context)
 {
-    CFURLResponseRef cfResponse = [response _CFURLResponse];
-    if (!cfResponse)
-        return nil;
+    HTTPHeaderMap* httpHeaderMap = (HTTPHeaderMap*)context;
+    httpHeaderMap->set((CFStringRef)key, (CFStringRef)value);
+}
 
-    CFHTTPMessageRef cfHTTPMessage = CFURLResponseGetHTTPResponse(cfResponse);
-    if (!cfHTTPMessage)
-        return nil;
+static inline AtomicString stripLeadingAndTrailingDoubleQuote(const String& value)
+{
+    unsigned length = value.length();
+    if (length < 2 || value[0u] != '"' || value[length - 1] != '"')
+        return value;
 
-    return (NSString *)CFHTTPMessageCopyResponseStatusLine(cfHTTPMessage);
+    return StringView(value).substring(1, length - 2).toAtomicString();
+}
+
+enum class OnlyCommonHeaders { No, Yes };
+static inline void initializeHTTPHeaders(OnlyCommonHeaders onlyCommonHeaders, NSHTTPURLResponse *httpResponse, HTTPHeaderMap& headersMap)
+{
+    headersMap.clear();
+    auto messageRef = CFURLResponseGetHTTPResponse([httpResponse _CFURLResponse]);
+
+    // Avoid calling [NSURLResponse allHeaderFields] to minimize copying (<rdar://problem/26778863>).
+    auto headers = adoptCF(CFHTTPMessageCopyAllHeaderFields(messageRef));
+    if (onlyCommonHeaders == OnlyCommonHeaders::Yes) {
+        for (auto& commonHeader : commonHeaderFields) {
+            const void* value;
+            if (CFDictionaryGetValueIfPresent(headers.get(), commonHeader, &value))
+                headersMap.set(commonHeader, (CFStringRef) value);
+        }
+        return;
+    }
+    CFDictionaryApplyFunction(headers.get(), addToHTTPHeaderMap, &headersMap);
+}
+
+static inline AtomicString extractHTTPStatusText(CFHTTPMessageRef messageRef)
+{
+    if (auto httpStatusLine = adoptCF(CFHTTPMessageCopyResponseStatusLine(messageRef)))
+        return extractReasonPhraseFromHTTPStatusLine(httpStatusLine.get());
+
+    static NeverDestroyed<AtomicString> defaultStatusText("OK", AtomicString::ConstructFromLiteral);
+    return defaultStatusText;
 }
 
 void ResourceResponse::platformLazyInit(InitLevel initLevel)
 {
+    ASSERT(initLevel >= CommonFieldsOnly);
+
     if (m_initLevel >= initLevel)
         return;
 
     if (m_isNull || !m_nsResponse)
         return;
     
-    if (m_initLevel < CommonFieldsOnly && initLevel >= CommonFieldsOnly) {
-        NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+    AutodrainedPool pool;
 
-        m_httpHeaderFields.clear();
+    NSHTTPURLResponse *httpResponse = [m_nsResponse.get() isKindOfClass:[NSHTTPURLResponse class]] ? (NSHTTPURLResponse *)m_nsResponse.get() : nullptr;
+
+    if (m_initLevel < CommonFieldsOnly) {
         m_url = [m_nsResponse.get() URL];
         m_mimeType = [m_nsResponse.get() MIMEType];
         m_expectedContentLength = [m_nsResponse.get() expectedContentLength];
-        m_textEncodingName = [m_nsResponse.get() textEncodingName];
-
-        // Workaround for <rdar://problem/8757088>, can be removed once that is fixed.
-        unsigned textEncodingNameLength = m_textEncodingName.length();
-        if (textEncodingNameLength >= 2 && m_textEncodingName[0U] == '"' && m_textEncodingName[textEncodingNameLength - 1] == '"')
-            m_textEncodingName = m_textEncodingName.string().substring(1, textEncodingNameLength - 2);
-
-        if ([m_nsResponse.get() isKindOfClass:[NSHTTPURLResponse class]]) {
-            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)m_nsResponse.get();
-
-            CFHTTPMessageRef messageRef = CFURLResponseGetHTTPResponse([httpResponse _CFURLResponse]);
-            m_httpVersion = String(adoptCF(CFHTTPMessageCopyVersion(messageRef)).get()).convertToASCIIUppercase();
-            m_httpStatusCode = [httpResponse statusCode];
-            
-            if (initLevel < AllFields) {
-                NSDictionary *headers = [httpResponse allHeaderFields];
-                for (NSString *name : commonHeaderFields) {
-                    if (NSString* headerValue = [headers objectForKey:name])
-                        m_httpHeaderFields.set(name, headerValue);
-                }
-            }
-        } else
-            m_httpStatusCode = 0;
-        
-        [pool drain];
+        // Stripping double quotes as a workaround for <rdar://problem/8757088>, can be removed once that is fixed.
+        m_textEncodingName = stripLeadingAndTrailingDoubleQuote([m_nsResponse.get() textEncodingName]);
+        m_httpStatusCode = httpResponse ? [httpResponse statusCode] : 0;
     }
-
-    if (m_initLevel < AllFields && initLevel == AllFields) {
-        if ([m_nsResponse.get() isKindOfClass:[NSHTTPURLResponse class]]) {
-            NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-
-            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)m_nsResponse.get();
-            if (RetainPtr<NSString> httpStatusLine = adoptNS(copyNSURLResponseStatusLine(httpResponse)))
-                m_httpStatusText = extractReasonPhraseFromHTTPStatusLine(httpStatusLine.get());
-            else
-                m_httpStatusText = AtomicString("OK", AtomicString::ConstructFromLiteral);
-
-            NSDictionary *headers = [httpResponse allHeaderFields];
-            for (NSString *name in headers)
-                m_httpHeaderFields.set(name, [headers objectForKey:name]);
-            
-            [pool drain];
-        }
+    if (httpResponse) {
+        if (initLevel == AllFields) {
+            auto messageRef = CFURLResponseGetHTTPResponse([httpResponse _CFURLResponse]);
+            m_httpStatusText = extractHTTPStatusText(messageRef);
+            m_httpVersion = String(adoptCF(CFHTTPMessageCopyVersion(messageRef)).get()).convertToASCIIUppercase();
+            initializeHTTPHeaders(OnlyCommonHeaders::No, httpResponse, m_httpHeaderFields);
+        } else
+            initializeHTTPHeaders(OnlyCommonHeaders::Yes, httpResponse, m_httpHeaderFields);
     }
 
     m_initLevel = initLevel;
@@ -234,7 +242,7 @@ bool ResourceResponse::platformCompare(const ResourceResponse& a, const Resource
     return a.nsURLResponse() == b.nsURLResponse();
 }
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 } // namespace WebCore
 

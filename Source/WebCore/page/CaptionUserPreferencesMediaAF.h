@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CaptionUserPreferencesMediaAF_h
-#define CaptionUserPreferencesMediaAF_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
 #include "CSSPropertyNames.h"
 #include "CaptionUserPreferences.h"
 #include "Color.h"
-#include <wtf/HashSet.h>
 
 namespace WebCore {
 
@@ -42,31 +40,32 @@ public:
     virtual ~CaptionUserPreferencesMediaAF();
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
-    virtual CaptionDisplayMode captionDisplayMode() const override;
-    virtual void setCaptionDisplayMode(CaptionDisplayMode) override;
+    CaptionDisplayMode captionDisplayMode() const override;
+    void setCaptionDisplayMode(CaptionDisplayMode) override;
 
-    virtual bool userPrefersCaptions() const override;
-    virtual bool userPrefersSubtitles() const override;
+    bool userPrefersCaptions() const override;
+    bool userPrefersSubtitles() const override;
 
-    virtual float captionFontSizeScaleAndImportance(bool&) const override;
+    float captionFontSizeScaleAndImportance(bool&) const override;
+    bool captionStrokeWidthForFont(float fontSize, const String& language, float& strokeWidth, bool& important) const override;
 
-    virtual void setInterestedInCaptionPreferenceChanges() override;
+    void setInterestedInCaptionPreferenceChanges() override;
 
-    virtual void setPreferredLanguage(const String&) override;
-    virtual Vector<String> preferredLanguages() const override;
+    void setPreferredLanguage(const String&) override;
+    Vector<String> preferredLanguages() const override;
 
-    virtual void setPreferredAudioCharacteristic(const String&) override;
-    virtual Vector<String> preferredAudioCharacteristics() const override;
+    void setPreferredAudioCharacteristic(const String&) override;
+    Vector<String> preferredAudioCharacteristics() const override;
 
-    virtual void captionPreferencesChanged() override;
+    void captionPreferencesChanged() override;
 
     bool shouldFilterTrackMenu() const { return true; }
 #else
     bool shouldFilterTrackMenu() const { return false; }
 #endif
 
-    virtual String captionsStyleSheetOverride() const override;
-    virtual int textTrackSelectionScore(TextTrack*, HTMLMediaElement*) const override;
+    String captionsStyleSheetOverride() const override;
+    int textTrackSelectionScore(TextTrack*, HTMLMediaElement*) const override;
     Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList*) override;
     Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList*) override;
     String displayNameForTrack(AudioTrack*) const override;
@@ -81,10 +80,8 @@ private:
     String captionsTextColorCSS() const;
     Color captionsTextColor(bool&) const;
     String captionsDefaultFontCSS() const;
-    Color captionsEdgeColorForTextColor(const Color&) const;
     String windowRoundedCornerRadiusCSS() const;
     String captionsTextEdgeCSS() const;
-    String cssPropertyWithTextEdgeColor(CSSPropertyID, const String&, const Color&, bool) const;
     String colorPropertyCSS(CSSPropertyID, const Color&, bool) const;
     Timer m_updateStyleSheetTimer;
 
@@ -93,7 +90,6 @@ private:
 #endif
 };
 
-}
-#endif
+} // namespace WebCore
 
-#endif
+#endif // ENABLE(VIDEO_TRACK)

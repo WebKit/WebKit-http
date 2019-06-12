@@ -27,15 +27,21 @@ WebKitWebContext
 WebKitCacheModel
 WebKitProcessModel
 WebKitTLSErrorsPolicy
+WebKitNetworkProxyMode
 webkit_web_context_get_default
 webkit_web_context_new
+webkit_web_context_new_ephemeral
 webkit_web_context_new_with_website_data_manager
+webkit_web_context_is_ephemeral
+webkit_web_context_is_automation_allowed
+webkit_web_context_set_automation_allowed
 webkit_web_context_get_website_data_manager
 webkit_web_context_get_cache_model
 webkit_web_context_set_cache_model
 webkit_web_context_get_web_process_count_limit
 webkit_web_context_set_web_process_count_limit
 webkit_web_context_clear_cache
+webkit_web_context_set_network_proxy_settings
 webkit_web_context_download_uri
 webkit_web_context_get_cookie_manager
 webkit_web_context_get_favicon_database
@@ -59,6 +65,7 @@ webkit_web_context_set_disk_cache_directory
 webkit_web_context_allow_tls_certificate_for_host
 webkit_web_context_get_process_model
 webkit_web_context_set_process_model
+webkit_web_context_initialize_notification_permissions
 
 <SUBSECTION URI Scheme>
 WebKitURISchemeRequestCallback
@@ -155,8 +162,11 @@ webkit_web_view_new_with_context
 webkit_web_view_new_with_related_view
 webkit_web_view_new_with_settings
 webkit_web_view_new_with_user_content_manager
+webkit_web_view_is_ephemeral
+webkit_web_view_is_controlled_by_automation
 webkit_web_view_get_context
 webkit_web_view_get_user_content_manager
+webkit_web_view_get_website_data_manager
 webkit_web_view_try_close
 webkit_web_view_load_uri
 webkit_web_view_load_html
@@ -352,6 +362,7 @@ webkit_back_forward_list_item_get_type
 <SECTION>
 <FILE>WebKitSettings</FILE>
 WebKitSettings
+WebKitHardwareAccelerationPolicy
 webkit_settings_new
 webkit_settings_new_with_settings
 webkit_settings_get_auto_load_images
@@ -453,6 +464,10 @@ webkit_settings_get_enable_mediasource
 webkit_settings_set_enable_mediasource
 webkit_settings_get_allow_file_access_from_file_urls
 webkit_settings_set_allow_file_access_from_file_urls
+webkit_settings_get_allow_universal_access_from_file_urls
+webkit_settings_set_allow_universal_access_from_file_urls
+webkit_settings_get_hardware_acceleration_policy
+webkit_settings_set_hardware_acceleration_policy
 
 <SUBSECTION Standard>
 WebKitSettingsClass
@@ -668,6 +683,7 @@ WebKitNotification
 webkit_notification_get_id
 webkit_notification_get_title
 webkit_notification_get_body
+webkit_notification_get_tag
 webkit_notification_close
 webkit_notification_clicked
 
@@ -1133,11 +1149,13 @@ webkit_context_menu_get_type
 WebKitContextMenuItem
 WebKitContextMenuAction
 webkit_context_menu_item_new
+webkit_context_menu_item_new_from_gaction
 webkit_context_menu_item_new_from_stock_action
 webkit_context_menu_item_new_from_stock_action_with_label
 webkit_context_menu_item_new_with_submenu
 webkit_context_menu_item_new_separator
 webkit_context_menu_item_get_action
+webkit_context_menu_item_get_gaction
 webkit_context_menu_item_get_stock_action
 webkit_context_menu_item_is_separator
 webkit_context_menu_item_set_submenu
@@ -1155,6 +1173,48 @@ WEBKIT_CONTEXT_MENU_ITEM_GET_CLASS
 <SUBSECTION Private>
 WebKitContextMenuItemPrivate
 webkit_context_menu_item_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitOptionMenu</FILE>
+WebKitOptionMenu
+webkit_option_menu_get_n_items
+webkit_option_menu_get_item
+webkit_option_menu_select_item
+webkit_option_menu_activate_item
+webkit_option_menu_close
+
+<SUBSECTION Standard>
+WebKitOptionMenuClass
+WEBKIT_TYPE_OPTION_MENU
+WEBKIT_OPTION_MENU
+WEBKIT_IS_OPTION_MENU
+WEBKIT_OPTION_MENU_CLASS
+WEBKIT_IS_OPTION_MENU_CLASS
+WEBKIT_OPTION_MENU_GET_CLASS
+
+<SUBSECTION Private>
+WebKitOptionMenuPrivate
+webkit_option_menu_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitOptionMenuItem</FILE>
+WebKitOptionMenuItem
+webkit_option_menu_item_copy
+webkit_option_menu_item_free
+webkit_option_menu_item_get_label
+webkit_option_menu_item_get_tooltip
+webkit_option_menu_item_is_group_label
+webkit_option_menu_item_is_group_child
+webkit_option_menu_item_is_enabled
+webkit_option_menu_item_is_selected
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_OPTION_MENU_ITEM
+
+<SUBSECTION Private>
+webkit_option_menu_item_get_type
 </SECTION>
 
 <SECTION>
@@ -1208,9 +1268,31 @@ webkit_security_manager_get_type
 </SECTION>
 
 <SECTION>
+<FILE>WebKitSecurityOrigin</FILE>
+WebKitSecurityOrigin
+webkit_security_origin_new
+webkit_security_origin_new_for_uri
+webkit_security_origin_ref
+webkit_security_origin_unref
+webkit_security_origin_get_protocol
+webkit_security_origin_get_host
+webkit_security_origin_get_port
+webkit_security_origin_is_opaque
+webkit_security_origin_to_string
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_SECURITY_ORIGIN
+
+<SUBSECTION Private>
+webkit_security_origin_get_type
+</SECTION>
+
+<SECTION>
 <FILE>WebKitWebsiteDataManager</FILE>
 WebKitWebsiteDataManager
 webkit_website_data_manager_new
+webkit_website_data_manager_new_ephemeral
+webkit_website_data_manager_is_ephemeral
 webkit_website_data_manager_get_base_data_directory
 webkit_website_data_manager_get_base_cache_directory
 webkit_website_data_manager_get_local_storage_directory
@@ -1218,6 +1300,13 @@ webkit_website_data_manager_get_disk_cache_directory
 webkit_website_data_manager_get_offline_application_cache_directory
 webkit_website_data_manager_get_indexeddb_directory
 webkit_website_data_manager_get_websql_directory
+webkit_website_data_manager_get_cookie_manager
+webkit_website_data_manager_fetch
+webkit_website_data_manager_fetch_finish
+webkit_website_data_manager_remove
+webkit_website_data_manager_remove_finish
+webkit_website_data_manager_clear
+webkit_website_data_manager_clear_finish
 
 <SUBSECTION Standard>
 WebKitWebsiteDataManagerClass
@@ -1231,6 +1320,57 @@ WEBKIT_WEBSITE_DATA_MANAGER_GET_CLASS
 <SUBSECTION Private>
 WebKitWebsiteDataManagerPrivate
 webkit_website_data_manager_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitWebsiteData</FILE>
+WebKitWebsiteData
+WebKitWebsiteDataTypes
+webkit_website_data_ref
+webkit_website_data_unref
+webkit_website_data_get_name
+webkit_website_data_get_types
+webkit_website_data_get_size
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_WEBSITE_DATA
+
+<SUBSECTION Private>
+webkit_website_data_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitNetworkProxySettings</FILE>
+WebKitNetworkProxySettings
+webkit_network_proxy_settings_new
+webkit_network_proxy_settings_copy
+webkit_network_proxy_settings_free
+webkit_network_proxy_settings_add_proxy_for_scheme
+
+<SUBSECTION Private>
+webkit_network_proxy_settings_get_type
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_NETWORK_NETWORK_PROXY_SETTINGS
+</SECTION>
+
+<SECTION>
+<FILE>WebKitAutomationSession</FILE>
+WebKitAutomationSession
+webkit_automation_session_get_id
+
+<SUBSECTION Private>
+WebKitAutomationSessionPrivate
+webkit_automation_session_get_type
+
+<SUBSECTION Standard>
+WebKitAutomationSessionClass
+WEBKIT_TYPE_AUTOMATION_SESSION
+WEBKIT_AUTOMATION_SESSION
+WEBKIT_IS_AUTOMATION_SESSION
+WEBKIT_AUTOMATION_SESSION_CLASS
+WEBKIT_IS_AUTOMATION_SESSION_CLASS
+WEBKIT_AUTOMATION_SESSION_GET_CLASS
 </SECTION>
 
 <SECTION>
@@ -1398,4 +1538,25 @@ WEBKIT_COLOR_CHOOSER_REQUEST_GET_CLASS
 <SUBSECTION Private>
 WebKitColorChooserRequestPrivate
 webkit_color_chooser_request_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitPrintCustomWidget</FILE>
+WebKitPrintCustomWidget
+webkit_print_custom_widget_new
+webkit_print_custom_widget_get_widget
+webkit_print_custom_widget_get_title
+
+<SUBSECTION Standard>
+WebKitPrintCustomWidgetClass
+WEBKIT_TYPE_PRINT_CUSTOM_WIDGET
+WEBKIT_PRINT_CUSTOM_WIDGET
+WEBKIT_IS_PRINT_CUSTOM_WIDGET
+WEBKIT_PRINT_CUSTOM_WIDGET_CLASS
+WEBKIT_IS_PRINT_CUSTOM_WIDGET_CLASS
+WEBKIT_PRINT_CUSTOM_WIDGET_GET_CLASS
+
+<SUBSECTION Private>
+WebKitPrintCustomWidgetPrivate
+webkit_print_custom_widget_get_type
 </SECTION>

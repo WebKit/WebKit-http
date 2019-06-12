@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Gurpreet Kaur (k.gurpreet@samsung.com). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,28 +24,41 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLMenclose_h
-#define RenderMathMLMenclose_h
+#pragma once
 
 #if ENABLE(MATHML)
+
+#include "MathMLMencloseElement.h"
 #include "RenderMathMLRow.h"
 
 namespace WebCore {
-    
+
 class RenderMathMLMenclose final: public RenderMathMLRow {
 public:
-    RenderMathMLMenclose(Element&, Ref<RenderStyle>&&);
+    RenderMathMLMenclose(MathMLMencloseElement&, RenderStyle&&);
 
 private:
-    virtual const char* renderName() const override { return "RenderMathMLMenclose"; }
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
-    virtual void updateLogicalHeight() override;
-    virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = nullptr) override;
-    virtual void computePreferredLogicalWidths() override;
-    bool checkNotationalValuesValidity(const Vector<String>&) const;
+    const char* renderName() const final { return "RenderMathMLMenclose"; }
+    void computePreferredLogicalWidths() final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
+    void paint(PaintInfo&, const LayoutPoint&) final;
+
+    LayoutUnit ruleThickness() const;
+    bool hasNotation(MathMLMencloseElement::MencloseNotationFlag notationFlag) const { return downcast<MathMLMencloseElement>(element()).hasNotation(notationFlag); }
+
+    struct SpaceAroundContent {
+        LayoutUnit left;
+        LayoutUnit right;
+        LayoutUnit top;
+        LayoutUnit bottom;
+    };
+    SpaceAroundContent spaceAroundContent(LayoutUnit contentWidth, LayoutUnit contentHeight) const;
+
+    LayoutRect m_contentRect;
 };
-    
+
 }
 
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLMenclose, isRenderMathMLMenclose())
+
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLMenclose_h

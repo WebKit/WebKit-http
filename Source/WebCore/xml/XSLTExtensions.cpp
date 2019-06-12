@@ -35,11 +35,11 @@
 #include <libxslt/extensions.h>
 #include <libxslt/extra.h>
 
-#if OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK) && !PLATFORM(QT)
-#include "SoftLinking.h"
+#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(QT)
+#include <wtf/SoftLinking.h>
 #endif
 
-#if OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK) && !PLATFORM(QT)
+#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(QT)
 SOFT_LINK_LIBRARY(libxslt)
 SOFT_LINK(libxslt, xsltRegisterExtFunction, int, (xsltTransformContextPtr ctxt, const xmlChar *name, const xmlChar *URI, xmlXPathFunction function), (ctxt, name, URI, function))
 SOFT_LINK(libxslt, xsltFunctionNodeSet, void, (xmlXPathParserContextPtr ctxt, int nargs), (ctxt, nargs))

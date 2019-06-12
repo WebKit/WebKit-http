@@ -49,6 +49,8 @@ WebInspector.ColorWheel = class ColorWheel extends WebInspector.Object
 
     set dimension(dimension)
     {
+        this._element.style.width = this.element.style.height = `${dimension}px`;
+
         this._finalCanvas.width = this._tintedCanvas.width = this._rawCanvas.width = dimension * window.devicePixelRatio;
         this._finalCanvas.height = this._tintedCanvas.height = this._rawCanvas.height = dimension * window.devicePixelRatio;
 
@@ -203,7 +205,6 @@ WebInspector.ColorWheel = class ColorWheel extends WebInspector.Object
         var ctx = this._rawCanvas.getContext("2d");
 
         var dimension = this._dimension * window.devicePixelRatio;
-        var center = dimension / 2;
 
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, dimension, dimension);

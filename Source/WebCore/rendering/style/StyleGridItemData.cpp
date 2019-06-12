@@ -27,29 +27,28 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include "config.h"
 #include "StyleGridItemData.h"
-
-#if ENABLE(CSS_GRID_LAYOUT)
 
 #include "RenderStyle.h"
 
 namespace WebCore {
 
 StyleGridItemData::StyleGridItemData()
-    : m_gridColumnStart(RenderStyle::initialGridItemColumnStart())
-    , m_gridColumnEnd(RenderStyle::initialGridItemColumnEnd())
-    , m_gridRowStart(RenderStyle::initialGridItemRowStart())
-    , m_gridRowEnd(RenderStyle::initialGridItemRowEnd())
+    : gridColumnStart(RenderStyle::initialGridItemColumnStart())
+    , gridColumnEnd(RenderStyle::initialGridItemColumnEnd())
+    , gridRowStart(RenderStyle::initialGridItemRowStart())
+    , gridRowEnd(RenderStyle::initialGridItemRowEnd())
 {
 }
 
 inline StyleGridItemData::StyleGridItemData(const StyleGridItemData& o)
     : RefCounted<StyleGridItemData>()
-    , m_gridColumnStart(o.m_gridColumnStart)
-    , m_gridColumnEnd(o.m_gridColumnEnd)
-    , m_gridRowStart(o.m_gridRowStart)
-    , m_gridRowEnd(o.m_gridRowEnd)
+    , gridColumnStart(o.gridColumnStart)
+    , gridColumnEnd(o.gridColumnEnd)
+    , gridRowStart(o.gridRowStart)
+    , gridRowEnd(o.gridRowEnd)
 {
 }
 
@@ -59,5 +58,3 @@ Ref<StyleGridItemData> StyleGridItemData::copy() const
 }
 
 } // namespace WebCore
-
-#endif /* ENABLE(CSS_GRID_LAYOUT) */

@@ -25,11 +25,12 @@
 
 #import "BrowserWindowController.h"
 
-@interface BrowserWindowController ()
-
+@interface BrowserWindowController () <NSSharingServicePickerDelegate, NSSharingServiceDelegate>
 @end
 
 @implementation BrowserWindowController
+
+@synthesize editable=_editable;
 
 - (id)initWithWindow:(NSWindow *)window
 {
@@ -39,7 +40,11 @@
 
 - (void)windowDidLoad
 {
-    self.window.styleMask |= NSFullSizeContentViewWindowMask;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    [share sendActionOn:NSEventMaskLeftMouseDown];
+#else
+    [share sendActionOn:NSLeftMouseDownMask];
+#endif
 
     [super windowDidLoad];
 }
@@ -53,7 +58,7 @@
 {
 }
 
-- (void)applicationTerminating
+- (void)loadHTMLString:(NSString *)HTMLString
 {
 }
 
@@ -66,6 +71,17 @@
         return address;
 
     return [@"http://" stringByAppendingString:address];
+}
+
+- (IBAction)share:(id)sender
+{
+    NSSharingServicePicker *picker = [[NSSharingServicePicker alloc] initWithItems:@[ self.currentURL ]];
+    picker.delegate = self;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    [picker showRelativeToRect:NSZeroRect ofView:sender preferredEdge:NSRectEdgeMinY];
+#else
+    [picker showRelativeToRect:NSZeroRect ofView:sender preferredEdge:NSMinYEdge];
+#endif
 }
 
 - (IBAction)fetch:(id)sender
@@ -95,12 +111,15 @@
 
 - (IBAction)showHideWebView:(id)sender
 {
-    [self doesNotRecognizeSelector:_cmd];
+    self.mainContentView.hidden = !self.mainContentView.isHidden;
 }
 
 - (IBAction)removeReinsertWebView:(id)sender
 {
-    [self doesNotRecognizeSelector:_cmd];
+    if (self.mainContentView.window)
+        [self.mainContentView removeFromSuperview];
+    else
+        [containerView addSubview:self.mainContentView];
 }
 
 - (IBAction)zoomIn:(id)sender
@@ -141,7 +160,26 @@
     [self doesNotRecognizeSelector:_cmd];
 }
 
-- (IBAction)setScale:(id)sender
+- (CGFloat)pageScaleForMenuItemTag:(NSInteger)tag
+{
+    if (tag == 1)
+        return 1;
+    if (tag == 2)
+        return 1.25;
+    if (tag == 3)
+        return 1.5;
+    if (tag == 4)
+        return 2.0;
+
+    return 1;
+}
+
+- (IBAction)setPageScale:(id)sender
+{
+    [self doesNotRecognizeSelector:_cmd];
+}
+
+- (IBAction)setViewScale:(id)sender
 {
     [self doesNotRecognizeSelector:_cmd];
 }
@@ -156,11 +194,6 @@
     [self doesNotRecognizeSelector:_cmd];
 }
 
-- (IBAction)find:(id)sender
-{
-    [self doesNotRecognizeSelector:_cmd];
-}
-
 - (void)didChangeSettings
 {
     [self doesNotRecognizeSelector:_cmd];
@@ -170,6 +203,72 @@
 {
     [self doesNotRecognizeSelector:_cmd];
     return nil;
+}
+
+- (NSView *)mainContentView
+{
+    [self doesNotRecognizeSelector:_cmd];
+    return nil;
+}
+
+- (IBAction)toggleEditable:(id)sender
+{
+    self.editable = !self.isEditable;
+}
+
+#pragma mark -
+#pragma mark NSSharingServicePickerDelegate
+
+- (NSArray *)sharingServicePicker:(NSSharingServicePicker *)sharingServicePicker sharingServicesForItems:(NSArray *)items proposedSharingServices:(NSArray *)proposedServices
+{
+    return proposedServices;
+}
+
+- (nullable id <NSSharingServiceDelegate>)sharingServicePicker:(NSSharingServicePicker *)sharingServicePicker delegateForSharingService:(NSSharingService *)sharingService
+{
+    return self;
+}
+
+- (void)sharingServicePicker:(NSSharingServicePicker *)sharingServicePicker didChooseSharingService:(nullable NSSharingService *)service
+{
+}
+
+#pragma mark -
+#pragma mark NSSharingServiceDelegate
+
+- (NSRect)sharingService:(NSSharingService *)sharingService sourceFrameOnScreenForShareItem:(id)item
+{
+    NSRect rect = [self.window convertRectToScreen:self.mainContentView.bounds];
+    
+    return rect;
+}
+
+static CGRect coreGraphicsScreenRectForAppKitScreenRect(NSRect rect)
+{
+    NSScreen *firstScreen = [NSScreen screens][0];
+    return CGRectMake(NSMinX(rect), NSHeight(firstScreen.frame) - NSMinY(rect) - NSHeight(rect), NSWidth(rect), NSHeight(rect));
+}
+
+- (NSImage *)sharingService:(NSSharingService *)sharingService transitionImageForShareItem:(id)item contentRect:(NSRect *)contentRect
+{
+    NSRect contentFrame = [self.window convertRectToScreen:self.mainContentView.bounds];
+
+    CGRect frame = coreGraphicsScreenRectForAppKitScreenRect(contentFrame);
+    CGImageRef imageRef = CGWindowListCreateImage(frame, kCGWindowListOptionIncludingWindow, (CGWindowID)[self.window windowNumber], kCGWindowImageBoundsIgnoreFraming);
+    
+    if (!imageRef)
+        return nil;
+    
+    NSImage *image = [[NSImage alloc] initWithCGImage:imageRef size:NSZeroSize];
+    CGImageRelease(imageRef);
+
+    return [image autorelease];
+}
+
+- (nullable NSWindow *)sharingService:(NSSharingService *)sharingService sourceWindowForShareItems:(NSArray *)items sharingContentScope:(NSSharingContentScope *)sharingContentScope
+{
+    *sharingContentScope = NSSharingContentScopeFull;
+    return self.window;
 }
 
 @end

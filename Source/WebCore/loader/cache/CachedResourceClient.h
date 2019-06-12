@@ -21,9 +21,7 @@
     This class provides all functionality needed for loading images, style sheets and html
     pages from the web. It has a memory cache for these objects.
 */
-
-#ifndef CachedResourceClient_h
-#define CachedResourceClient_h
+#pragma once
 
 namespace WebCore {
 
@@ -41,17 +39,16 @@ public:
     };
 
     virtual ~CachedResourceClient() { }
-    virtual void notifyFinished(CachedResource*) { }
-    virtual void deprecatedDidReceiveCachedResource(CachedResource*) { }
+    virtual void notifyFinished(CachedResource&) { }
+    virtual void deprecatedDidReceiveCachedResource(CachedResource&) { }
     virtual bool isXMLHttpRequest() const { return false; }
 
     static CachedResourceClientType expectedType() { return BaseResourceType; }
     virtual CachedResourceClientType resourceClientType() const { return expectedType(); }
+    virtual bool shouldMarkAsReferenced() const { return true; }
 
 protected:
     CachedResourceClient() { }
 };
 
 }
-
-#endif

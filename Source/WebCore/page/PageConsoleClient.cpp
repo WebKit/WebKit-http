@@ -33,14 +33,13 @@
 #include "ChromeClient.h"
 #include "Document.h"
 #include "Frame.h"
-#include "InspectorConsoleInstrumentation.h"
 #include "InspectorController.h"
+#include "InspectorInstrumentation.h"
 #include "JSMainThreadExecState.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "ScriptableDocumentParser.h"
 #include "Settings.h"
-#include <bindings/ScriptValue.h>
 #include <inspector/ConsoleMessage.h>
 #include <inspector/ScriptArguments.h>
 #include <inspector/ScriptCallStack.h>
@@ -106,6 +105,18 @@ static void getParserLocationForConsoleMessage(Document* document, String& url, 
     column = position.m_column.oneBasedInt();
 }
 
+void PageConsoleClient::addMessage(std::unique_ptr<Inspector::ConsoleMessage>&& consoleMessage)
+{
+    if (consoleMessage->source() != MessageSource::CSS && !m_page.usesEphemeralSession()) {
+        m_page.chrome().client().addMessageToConsole(consoleMessage->source(), consoleMessage->level(), consoleMessage->message(), consoleMessage->line(), consoleMessage->column(), consoleMessage->url());
+
+        if (m_page.settings().logsPageMessagesToSystemConsoleEnabled() || shouldPrintExceptions())
+            ConsoleClient::printConsoleMessage(MessageSource::ConsoleAPI, MessageType::Log, consoleMessage->level(), consoleMessage->message(), consoleMessage->url(), consoleMessage->line(), consoleMessage->column());
+    }
+
+    InspectorInstrumentation::addMessageToConsole(m_page, WTFMove(consoleMessage));
+}
+
 void PageConsoleClient::addMessage(MessageSource source, MessageLevel level, const String& message, unsigned long requestIdentifier, Document* document)
 {
     String url;
@@ -116,7 +127,7 @@ void PageConsoleClient::addMessage(MessageSource source, MessageLevel level, con
     addMessage(source, level, message, url, line, column, 0, JSMainThreadExecState::currentState(), requestIdentifier);
 }
 
-void PageConsoleClient::addMessage(MessageSource source, MessageLevel level, const String& message, RefPtr<ScriptCallStack>&& callStack)
+void PageConsoleClient::addMessage(MessageSource source, MessageLevel level, const String& message, Ref<ScriptCallStack>&& callStack)
 {
     addMessage(source, level, message, String(), 0, 0, WTFMove(callStack), 0);
 }
@@ -129,32 +140,15 @@ void PageConsoleClient::addMessage(MessageSource source, MessageLevel level, con
     std::unique_ptr<Inspector::ConsoleMessage> message;
 
     if (callStack)
-        message = std::make_unique<Inspector::ConsoleMessage>(source, MessageType::Log, level, messageText, WTFMove(callStack), requestIdentifier);
+        message = std::make_unique<Inspector::ConsoleMessage>(source, MessageType::Log, level, messageText, callStack.releaseNonNull(), requestIdentifier);
     else
         message = std::make_unique<Inspector::ConsoleMessage>(source, MessageType::Log, level, messageText, suggestedURL, suggestedLineNumber, suggestedColumnNumber, state, requestIdentifier);
 
-    String url = message->url();
-    unsigned lineNumber = message->line();
-    unsigned columnNumber = message->column();
-
-    InspectorInstrumentation::addMessageToConsole(m_page, WTFMove(message));
-
-    if (source == MessageSource::CSS)
-        return;
-
-    if (m_page.usesEphemeralSession())
-        return;
-
-    m_page.chrome().client().addMessageToConsole(source, level, messageText, lineNumber, columnNumber, url);
-
-    if (!m_page.settings().logsPageMessagesToSystemConsoleEnabled() && !shouldPrintExceptions())
-        return;
-
-    ConsoleClient::printConsoleMessage(MessageSource::ConsoleAPI, MessageType::Log, level, messageText, url, lineNumber, columnNumber);
+    addMessage(WTFMove(message));
 }
 
 
-void PageConsoleClient::messageWithTypeAndLevel(MessageType type, MessageLevel level, JSC::ExecState* exec, RefPtr<Inspector::ScriptArguments>&& arguments)
+void PageConsoleClient::messageWithTypeAndLevel(MessageType type, MessageLevel level, JSC::ExecState* exec, Ref<Inspector::ScriptArguments>&& arguments)
 {
     String messageText;
     bool gotMessage = arguments->getFirstArgumentAsString(messageText);
@@ -177,7 +171,7 @@ void PageConsoleClient::messageWithTypeAndLevel(MessageType type, MessageLevel l
         ConsoleClient::printConsoleMessageWithArguments(MessageSource::ConsoleAPI, type, level, exec, WTFMove(arguments));
 }
 
-void PageConsoleClient::count(JSC::ExecState* exec, RefPtr<ScriptArguments>&& arguments)
+void PageConsoleClient::count(JSC::ExecState* exec, Ref<ScriptArguments>&& arguments)
 {
     InspectorInstrumentation::consoleCount(m_page, exec, WTFMove(arguments));
 }
@@ -191,8 +185,12 @@ void PageConsoleClient::profile(JSC::ExecState* exec, const String& title)
 void PageConsoleClient::profileEnd(JSC::ExecState* exec, const String& title)
 {
     // FIXME: <https://webkit.org/b/153499> Web Inspector: console.profile should use the new Sampling Profiler
-    if (RefPtr<JSC::Profile> profile = InspectorInstrumentation::stopProfiling(m_page, exec, title))
-        m_profiles.append(WTFMove(profile));
+    InspectorInstrumentation::stopProfiling(m_page, exec, title);
+}
+
+void PageConsoleClient::takeHeapSnapshot(JSC::ExecState*, const String& title)
+{
+    InspectorInstrumentation::takeHeapSnapshot(m_page.mainFrame(), title);
 }
 
 void PageConsoleClient::time(JSC::ExecState*, const String& title)
@@ -202,18 +200,12 @@ void PageConsoleClient::time(JSC::ExecState*, const String& title)
 
 void PageConsoleClient::timeEnd(JSC::ExecState* exec, const String& title)
 {
-    RefPtr<ScriptCallStack> callStack(createScriptCallStackForConsole(exec, 1));
-    InspectorInstrumentation::stopConsoleTiming(m_page.mainFrame(), title, WTFMove(callStack));
+    InspectorInstrumentation::stopConsoleTiming(m_page.mainFrame(), title, createScriptCallStackForConsole(exec, 1));
 }
 
-void PageConsoleClient::timeStamp(JSC::ExecState*, RefPtr<ScriptArguments>&& arguments)
+void PageConsoleClient::timeStamp(JSC::ExecState*, Ref<ScriptArguments>&& arguments)
 {
     InspectorInstrumentation::consoleTimeStamp(m_page.mainFrame(), WTFMove(arguments));
-}
-
-void PageConsoleClient::clearProfiles()
-{
-    m_profiles.clear();
 }
 
 } // namespace WebCore

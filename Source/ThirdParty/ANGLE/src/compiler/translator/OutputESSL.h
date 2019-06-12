@@ -9,21 +9,29 @@
 
 #include "compiler/translator/OutputGLSLBase.h"
 
+namespace sh
+{
+
 class TOutputESSL : public TOutputGLSLBase
 {
-public:
-    TOutputESSL(TInfoSinkBase& objSink,
+  public:
+    TOutputESSL(TInfoSinkBase &objSink,
                 ShArrayIndexClampingStrategy clampingStrategy,
                 ShHashFunction64 hashFunction,
-                NameMap& nameMap,
-                TSymbolTable& symbolTable,
+                NameMap &nameMap,
+                TSymbolTable &symbolTable,
+                sh::GLenum shaderType,
                 int shaderVersion,
-                bool forceHighp);
+                bool forceHighp,
+                ShCompileOptions compileOptions);
 
-protected:
-    virtual bool writeVariablePrecision(TPrecision precision);
-private:
+  protected:
+    bool writeVariablePrecision(TPrecision precision) override;
+
+  private:
     bool mForceHighp;
 };
+
+}  // namespace sh
 
 #endif  // COMPILER_TRANSLATOR_OUTPUTESSL_H_

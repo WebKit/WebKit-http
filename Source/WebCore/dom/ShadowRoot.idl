@@ -24,12 +24,14 @@
 */
 
 [
-    Conditional=SHADOW_DOM,
+    EnabledAtRuntime=ShadowDOM,
     JSGenerateToJSObject
 ] interface ShadowRoot : DocumentFragment {
-    readonly attribute Element          activeElement;
-    readonly attribute Element          host;
+    readonly attribute ShadowRootMode mode;
+    readonly attribute Element host;
 
-    [TreatNullAs=NullString, SetterRaisesException]
-    attribute DOMString                 innerHTML;
+    // FIXME: Seems to have been dropped from the Shadow DOM API.
+    [CEReactions, SetterMayThrowException] attribute [TreatNullAs=EmptyString] DOMString innerHTML;
 };
+
+ShadowRoot implements DocumentOrShadowRoot;

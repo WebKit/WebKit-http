@@ -32,15 +32,22 @@
 
 namespace WebCore {
 
-RenderTextControlMultiLine::RenderTextControlMultiLine(HTMLTextAreaElement& element, Ref<RenderStyle>&& style)
+RenderTextControlMultiLine::RenderTextControlMultiLine(HTMLTextAreaElement& element, RenderStyle&& style)
     : RenderTextControl(element, WTFMove(style))
 {
 }
 
 RenderTextControlMultiLine::~RenderTextControlMultiLine()
 {
-    if (textAreaElement().inDocument())
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderTextControlMultiLine::willBeDestroyed()
+{
+    if (textAreaElement().isConnected())
         textAreaElement().rendererWillBeDestroyed();
+
+    RenderTextControl::willBeDestroyed();
 }
 
 HTMLTextAreaElement& RenderTextControlMultiLine::textAreaElement() const
@@ -87,33 +94,20 @@ int RenderTextControlMultiLine::baselinePosition(FontBaseline baselineType, bool
     return RenderBox::baselinePosition(baselineType, firstLine, direction, linePositionMode);
 }
 
-Ref<RenderStyle> RenderTextControlMultiLine::createInnerTextStyle(const RenderStyle* startStyle) const
+void RenderTextControlMultiLine::layoutExcludedChildren(bool relayoutChildren)
 {
-    auto textBlockStyle = RenderStyle::create();
-    textBlockStyle.get().inheritFrom(startStyle);
-    adjustInnerTextStyle(startStyle, textBlockStyle.get());
-    textBlockStyle.get().setDisplay(BLOCK);
-
-#if PLATFORM(IOS)
-    // We're adding three extra pixels of padding to line textareas up with text fields.  
-    textBlockStyle.get().setPaddingLeft(Length(3, Fixed));
-    textBlockStyle.get().setPaddingRight(Length(3, Fixed));
-#endif
-
-    return textBlockStyle;
-}
-
-RenderObject* RenderTextControlMultiLine::layoutSpecialExcludedChild(bool relayoutChildren)
-{
-    RenderObject* placeholderRenderer = RenderTextControl::layoutSpecialExcludedChild(relayoutChildren);
+    RenderTextControl::layoutExcludedChildren(relayoutChildren);
+    HTMLElement* placeholder = textFormControlElement().placeholderElement();
+    RenderElement* placeholderRenderer = placeholder ? placeholder->renderer() : 0;
+    if (!placeholderRenderer)
+        return;
     if (is<RenderBox>(placeholderRenderer)) {
         auto& placeholderBox = downcast<RenderBox>(*placeholderRenderer);
-        placeholderBox.style().setLogicalWidth(Length(contentLogicalWidth() - placeholderBox.borderAndPaddingLogicalWidth(), Fixed));
+        placeholderBox.mutableStyle().setLogicalWidth(Length(contentLogicalWidth() - placeholderBox.borderAndPaddingLogicalWidth(), Fixed));
         placeholderBox.layoutIfNeeded();
         placeholderBox.setX(borderLeft() + paddingLeft());
         placeholderBox.setY(borderTop() + paddingTop());
     }
-    return placeholderRenderer;
 }
     
 }

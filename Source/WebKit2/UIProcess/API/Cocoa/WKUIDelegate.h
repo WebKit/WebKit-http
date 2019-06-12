@@ -28,11 +28,15 @@
 #if WK_API_ENABLED
 
 #import <Foundation/Foundation.h>
+#import <WebKit/WKPreviewActionItem.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class WKFrameInfo;
 @class WKNavigationAction;
+@class WKOpenPanelParameters;
+@class WKPreviewElementInfo;
+@class WKWebView;
 @class WKWebViewConfiguration;
 @class WKWindowFeatures;
 
@@ -62,7 +66,7 @@ NS_ASSUME_NONNULL_BEGIN
   @discussion Your app should remove the web view from the view hierarchy and update
   the UI as needed, such as by closing the containing browser tab or window.
   */
-- (void)webViewDidClose:(WKWebView *)webView WK_AVAILABLE(10_11, 9_0);
+- (void)webViewDidClose:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 /*! @abstract Displays a JavaScript alert panel.
  @param webView The web view invoking the delegate method.
@@ -112,7 +116,58 @@ NS_ASSUME_NONNULL_BEGIN
 
  If you do not implement this method, the web view will behave as if the user selected the Cancel button.
  */
-- (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(nullable NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * WK_NULLABLE_SPECIFIER result))completionHandler;
+- (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(nullable NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString * _Nullable result))completionHandler;
+
+#if TARGET_OS_IPHONE
+
+/*! @abstract Allows your app to determine whether or not the given element should show a preview.
+ @param webView The web view invoking the delegate method.
+ @param elementInfo The elementInfo for the element the user has started touching.
+ @discussion To disable previews entirely for the given element, return NO. Returning NO will prevent 
+ webView:previewingViewControllerForElement:defaultActions: and webView:commitPreviewingViewController:
+ from being invoked.
+ 
+ This method will only be invoked for elements that have default preview in WebKit, which is
+ limited to links. In the future, it could be invoked for additional elements.
+ */
+- (BOOL)webView:(WKWebView *)webView shouldPreviewElement:(WKPreviewElementInfo *)elementInfo WK_API_AVAILABLE(ios(10.0));
+
+/*! @abstract Allows your app to provide a custom view controller to show when the given element is peeked.
+ @param webView The web view invoking the delegate method.
+ @param elementInfo The elementInfo for the element the user is peeking.
+ @param defaultActions An array of the actions that WebKit would use as previewActionItems for this element by 
+ default. These actions would be used if allowsLinkPreview is YES but these delegate methods have not been 
+ implemented, or if this delegate method returns nil.
+ @discussion Returning a view controller will result in that view controller being displayed as a peek preview.
+ To use the defaultActions, your app is responsible for returning whichever of those actions it wants in your 
+ view controller's implementation of -previewActionItems.
+ 
+ Returning nil will result in WebKit's default preview behavior. webView:commitPreviewingViewController: will only be invoked
+ if a non-nil view controller was returned.
+ */
+- (nullable UIViewController *)webView:(WKWebView *)webView previewingViewControllerForElement:(WKPreviewElementInfo *)elementInfo defaultActions:(NSArray<id <WKPreviewActionItem>> *)previewActions WK_API_AVAILABLE(ios(10.0));
+
+/*! @abstract Allows your app to pop to the view controller it created.
+ @param webView The web view invoking the delegate method.
+ @param previewingViewController The view controller that is being popped.
+ */
+- (void)webView:(WKWebView *)webView commitPreviewingViewController:(UIViewController *)previewingViewController WK_API_AVAILABLE(ios(10.0));
+
+#endif // TARGET_OS_IPHONE
+
+#if !TARGET_OS_IPHONE
+
+/*! @abstract Displays a file upload panel.
+ @param webView The web view invoking the delegate method.
+ @param parameters Parameters describing the file upload control.
+ @param frame Information about the frame whose file upload control initiated this call.
+ @param completionHandler The completion handler to call after open panel has been dismissed. Pass the selected URLs if the user chose OK, otherwise nil.
+
+ If you do not implement this method, the web view will behave as if the user selected the Cancel button.
+ */
+- (void)webView:(WKWebView *)webView runOpenPanelWithParameters:(WKOpenPanelParameters *)parameters initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSArray<NSURL *> * _Nullable URLs))completionHandler WK_API_AVAILABLE(macosx(10.12));
+
+#endif
 
 @end
 

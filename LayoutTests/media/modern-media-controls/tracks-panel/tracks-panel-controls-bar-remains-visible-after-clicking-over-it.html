@@ -1,0 +1,55 @@
+<script src="../../../resources/js-test-pre.js"></script>
+<script src="../resources/media-controls-loader.js" type="text/javascript"></script>
+<body>
+<style type="text/css" media="screen">
+    
+    .media-controls {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+    
+</style>
+<script type="text/javascript">
+
+window.jsTestIsAsync = true;
+
+description("Clicking on the controls bar to dismiss the tracks panel should not hide the controls bar, only the track panel.");
+
+const mediaControls = new MacOSInlineMediaControls({ width: 680, height: 300 });
+
+document.body.appendChild(mediaControls.element);
+
+let trackElement;
+
+mediaControls.controlsBar.autoHideDelay = 250;
+mediaControls.controlsBar.fadesWhileIdle = true;
+
+debug("mediaControls.showTracksPanel()");
+mediaControls.showTracksPanel();
+
+shouldBecomeEqual("mediaControls.tracksPanel.element.parentNode", "mediaControls.element", () => {
+    // Let's wait a while to see that the controls bar is still visible.
+    setTimeout(() => {
+        debug("");
+        debug("We've waited long enough so that the controls bar should be faded should the tracks panel not be visible");
+        shouldBeFalse("mediaControls.controlsBar.faded");
+
+        debug("");
+        debug("Click on the controls bar to dismiss the panel, the controls bar should remain visible");
+        eventSender.mouseMoveTo(670, 290);
+        eventSender.mouseDown();
+        eventSender.mouseUp();
+
+        shouldBeFalse("mediaControls.controlsBar.faded");
+        shouldBeFalse("mediaControls.tracksPanel.presented");
+
+        debug("");
+        mediaControls.element.remove();
+        finishJSTest();
+    }, mediaControls.controlsBar.autoHideDelay);
+});
+
+</script>
+<script src="../../../resources/js-test-post.js"></script>
+</body>

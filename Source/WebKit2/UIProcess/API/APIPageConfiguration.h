@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "APIObject.h"
 #include "WebPreferencesStore.h"
 #include <WebCore/SessionID.h>
+#include <wtf/Forward.h>
 #include <wtf/GetPtr.h>
 
 namespace WebKit {
@@ -79,6 +80,7 @@ public:
     WebsiteDataStore* websiteDataStore();
     void setWebsiteDataStore(WebsiteDataStore*);
 
+    // FIXME: Once PageConfigurations *always* have a data store, get rid of the separate sessionID.
     WebCore::SessionID sessionID();
     void setSessionID(WebCore::SessionID);
 
@@ -89,6 +91,20 @@ public:
     bool alwaysRunsAtForegroundPriority() { return m_alwaysRunsAtForegroundPriority; }
     void setAlwaysRunsAtForegroundPriority(bool alwaysRunsAtForegroundPriority) { m_alwaysRunsAtForegroundPriority = alwaysRunsAtForegroundPriority; } 
 #endif
+    bool initialCapitalizationEnabled() { return m_initialCapitalizationEnabled; }
+    void setInitialCapitalizationEnabled(bool initialCapitalizationEnabled) { m_initialCapitalizationEnabled = initialCapitalizationEnabled; }
+
+    std::optional<double> cpuLimit() const { return m_cpuLimit; }
+    void setCPULimit(double cpuLimit) { m_cpuLimit = cpuLimit; }
+
+    bool waitsForPaintAfterViewDidMoveToWindow() const { return m_waitsForPaintAfterViewDidMoveToWindow; }
+    void setWaitsForPaintAfterViewDidMoveToWindow(bool shouldSynchronize) { m_waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize; }
+
+    bool isControlledByAutomation() const { return m_controlledByAutomation; }
+    void setControlledByAutomation(bool controlledByAutomation) { m_controlledByAutomation = controlledByAutomation; }
+
+    const WTF::String& overrideContentSecurityPolicy() const { return m_overrideContentSecurityPolicy; }
+    void setOverrideContentSecurityPolicy(const WTF::String& overrideContentSecurityPolicy) { m_overrideContentSecurityPolicy = overrideContentSecurityPolicy; }
 
 private:
 
@@ -105,10 +121,16 @@ private:
     // Once we get rid of it we should get rid of this configuration parameter as well.
     WebCore::SessionID m_sessionID;
 
-    bool m_treatsSHA1SignedCertificatesAsInsecure = false;
+    bool m_treatsSHA1SignedCertificatesAsInsecure = true;
 #if PLATFORM(IOS)
     bool m_alwaysRunsAtForegroundPriority = false;
 #endif
+    bool m_initialCapitalizationEnabled = true;
+    bool m_waitsForPaintAfterViewDidMoveToWindow = true;
+    bool m_controlledByAutomation = false;
+    std::optional<double> m_cpuLimit;
+
+    WTF::String m_overrideContentSecurityPolicy;
 };
 
 } // namespace API

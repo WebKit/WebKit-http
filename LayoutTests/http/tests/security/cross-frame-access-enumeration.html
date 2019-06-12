@@ -1,14 +1,13 @@
 <html>
 <head>
+    <script src='/resources/js-test-pre.js'></script>
     <script src="resources/cross-frame-access.js"></script>
     <script>
+        description("Tests enumeration of Window / Location properties cross origin.");
+        jsTestIsAsync = true;
+
         window.onload = function()
         {
-            if (window.testRunner) {
-                testRunner.dumpAsText();
-                testRunner.waitUntilDone();
-            }
-
             if (window.testRunner) {
                 setTimeout(pollForTest, 1);
             } else {
@@ -27,13 +26,13 @@
                 return;
             }
             runTest();
-            testRunner.notifyDone();
+            finishJSTest();
         }
 
         runTest = function()
         {
             // Test enumerating the Window object
-            var b_win = document.getElementsByTagName("iframe")[0].contentWindow;
+            b_win = document.getElementsByTagName("iframe")[0].contentWindow;
             try {
                 for (var k in b_win) {
                     if (k == "customWindowProperty") {
@@ -85,12 +84,35 @@
                 return;
             }
             log("PASS: Cross frame access by getting the property names of the Location object was denied.");
+
+            // Window.
+            whitelistedWindowIndices = ['0', '1', '2'];
+            whitelistedWindowPropNames = ['blur', 'close', 'closed', 'focus', 'frames', 'length', 'location', 'opener', 'parent', 'postMessage', 'self', 'top', 'window'];
+            whitelistedLocationProperties = ['href', 'replace'];
+            whitelistedSymbols = [Symbol.toStringTag, Symbol.hasInstance, Symbol.isConcatSpreadable];
+            shouldBeTrue("areArraysEqual(Object.getOwnPropertyNames(b_win).sort(), whitelistedWindowIndices.concat(whitelistedWindowPropNames).sort())");
+            allWindowProps = Reflect.ownKeys(b_win);
+            indexedWindowProps = allWindowProps.slice(0, whitelistedWindowIndices.length);
+            stringWindowProps = allWindowProps.slice(whitelistedWindowIndices.length, -1 * whitelistedSymbols.length);
+            symbolWindowProps = allWindowProps.slice(-1 * whitelistedSymbols.length);
+            shouldBeTrue("areArraysEqual(indexedWindowProps, whitelistedWindowIndices)"); // Reflect.ownKeys should start with the indices exposed on the cross-origin window.
+            shouldBeTrue("areArraysEqual(stringWindowProps.sort(), whitelistedWindowPropNames)"); // Reflect.ownKeys should continue with the cross-origin window properties for a cross-origin Window.
+            shouldBeTrue("areArraysEqual(symbolWindowProps, whitelistedSymbols)"); // Reflect.ownKeys should end with the cross-origin symbols for a cross-origin Window.
+
+            // Location.
+            whitelistedLocationPropNames = ['href', 'replace'];
+            allLocationProps = Reflect.ownKeys(b_win.location);
+            stringLocationProps = allLocationProps.slice(0, -1 * whitelistedSymbols.length);
+            symbolLocationProps = allLocationProps.slice(-1 * whitelistedSymbols.length);
+
+            shouldBeTrue("areArraysEqual(Object.getOwnPropertyNames(b_win.location).sort(), whitelistedLocationPropNames.sort())");
+            shouldBeTrue("areArraysEqual(stringLocationProps.sort(), whitelistedLocationPropNames)"); // Reflect.ownKeys should start with the cross-origin window properties for a cross-origin Location.
+            shouldBeTrue("areArraysEqual(symbolLocationProps, whitelistedSymbols)"); // Reflect.ownKeys should end with the cross-origin symbols for a cross-origin Location.
         }
     </script>
 </head>
 <body>
-    <p>This tests that variable names can't be enumerated cross domain (see http://bugs.webkit.org/show_bug.cgi?id=16387)</p>
     <iframe src="http://localhost:8000/security/resources/cross-frame-iframe-for-enumeration-test.html"></iframe>
-    <pre id="console"></pre>
+    <script src='/resources/js-test-post.js'></script>
 </body>
 </html>

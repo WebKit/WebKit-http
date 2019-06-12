@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +28,9 @@
 
 #include "CodeBlock.h"
 #include "JSCInlines.h"
-#include "SlotVisitor.h"
 #include <wtf/CommaPrinter.h>
 
 namespace JSC {
-
-static const bool verbose = false;
 
 CodeBlockSet::CodeBlockSet()
 {
@@ -50,7 +47,7 @@ void CodeBlockSet::add(CodeBlock* codeBlock)
     ASSERT_UNUSED(isNewEntry, isNewEntry);
 }
 
-void CodeBlockSet::promoteYoungCodeBlocks(const LockHolder&)
+void CodeBlockSet::promoteYoungCodeBlocks(const AbstractLocker&)
 {
     ASSERT(m_lock.isLocked());
     m_oldCodeBlocks.add(m_newCodeBlocks.begin(), m_newCodeBlocks.end());
@@ -62,44 +59,51 @@ void CodeBlockSet::clearMarksForFullCollection()
     LockHolder locker(&m_lock);
     for (CodeBlock* codeBlock : m_oldCodeBlocks)
         codeBlock->clearVisitWeaklyHasBeenCalled();
-
-    // We promote after we clear marks on the old generation CodeBlocks because
-    // none of the young generations CodeBlocks need to be cleared.
-    promoteYoungCodeBlocks(locker);
 }
 
-void CodeBlockSet::lastChanceToFinalize()
+void CodeBlockSet::lastChanceToFinalize(VM& vm)
 {
     LockHolder locker(&m_lock);
     for (CodeBlock* codeBlock : m_newCodeBlocks)
-        codeBlock->classInfo()->methodTable.destroy(codeBlock);
+        codeBlock->structure(vm)->classInfo()->methodTable.destroy(codeBlock);
 
     for (CodeBlock* codeBlock : m_oldCodeBlocks)
-        codeBlock->classInfo()->methodTable.destroy(codeBlock);
+        codeBlock->structure(vm)->classInfo()->methodTable.destroy(codeBlock);
 }
 
-void CodeBlockSet::deleteUnmarkedAndUnreferenced(HeapOperation collectionType)
+void CodeBlockSet::deleteUnmarkedAndUnreferenced(VM& vm, CollectionScope scope)
 {
     LockHolder locker(&m_lock);
-    HashSet<CodeBlock*>& set = collectionType == EdenCollection ? m_newCodeBlocks : m_oldCodeBlocks;
     Vector<CodeBlock*> unmarked;
-    for (CodeBlock* codeBlock : set) {
-        if (Heap::isMarked(codeBlock))
-            continue;
-        unmarked.append(codeBlock);
-    }
+    
+    auto consider = [&] (HashSet<CodeBlock*>& set) {
+        for (CodeBlock* codeBlock : set) {
+            if (Heap::isMarked(codeBlock))
+                continue;;
+            unmarked.append(codeBlock);
+        }
+        for (CodeBlock* codeBlock : unmarked) {
+            codeBlock->structure(vm)->classInfo()->methodTable.destroy(codeBlock);
+            set.remove(codeBlock);
+        }
+        unmarked.resize(0);
+    };
 
-    for (CodeBlock* codeBlock : unmarked) {
-        codeBlock->classInfo()->methodTable.destroy(codeBlock);
-        set.remove(codeBlock);
+    switch (scope) {
+    case CollectionScope::Eden:
+        consider(m_newCodeBlocks);
+        break;
+    case CollectionScope::Full:
+        consider(m_oldCodeBlocks);
+        consider(m_newCodeBlocks);
+        break;
     }
 
     // Any remaining young CodeBlocks are live and need to be promoted to the set of old CodeBlocks.
-    if (collectionType == EdenCollection)
-        promoteYoungCodeBlocks(locker);
+    promoteYoungCodeBlocks(locker);
 }
 
-bool CodeBlockSet::contains(const LockHolder&, void* candidateCodeBlock)
+bool CodeBlockSet::contains(const AbstractLocker&, void* candidateCodeBlock)
 {
     RELEASE_ASSERT(m_lock.isLocked());
     CodeBlock* codeBlock = static_cast<CodeBlock*>(candidateCodeBlock);
@@ -108,16 +112,8 @@ bool CodeBlockSet::contains(const LockHolder&, void* candidateCodeBlock)
     return m_oldCodeBlocks.contains(codeBlock) || m_newCodeBlocks.contains(codeBlock) || m_currentlyExecuting.contains(codeBlock);
 }
 
-void CodeBlockSet::writeBarrierCurrentlyExecutingCodeBlocks(Heap* heap)
+void CodeBlockSet::clearCurrentlyExecuting()
 {
-    LockHolder locker(&m_lock);
-    if (verbose)
-        dataLog("Remembering ", m_currentlyExecuting.size(), " code blocks.\n");
-    for (CodeBlock* codeBlock : m_currentlyExecuting)
-        heap->writeBarrier(codeBlock);
-
-    // It's safe to clear this set because we won't delete the CodeBlocks
-    // in it until the next GC, and we'll recompute it at that time.
     m_currentlyExecuting.clear();
 }
 

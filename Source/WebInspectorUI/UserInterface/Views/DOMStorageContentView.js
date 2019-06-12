@@ -42,8 +42,9 @@ WebInspector.DOMStorageContentView = class DOMStorageContentView extends WebInsp
         columns.value = {title: WebInspector.UIString("Value"), sortable: true};
 
         this._dataGrid = new WebInspector.DataGrid(columns, this._editingCallback.bind(this), this._deleteCallback.bind(this));
-        this._dataGrid.sortOrderSetting = new WebInspector.Setting("dom-storage-content-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
-        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("dom-storage-content-view-sort", "key");
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
+        this._dataGrid.sortColumnIdentifier = "key";
+        this._dataGrid.createSettings("dom-storage-content-view");
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SortChanged, this._sortDataGrid, this);
 
         this.addSubview(this._dataGrid);
@@ -60,6 +61,11 @@ WebInspector.DOMStorageContentView = class DOMStorageContentView extends WebInsp
         cookie.host = this.representedObject.host;
     }
 
+    get scrollableElements()
+    {
+        return [this._dataGrid.scrollContainer];
+    }
+
     itemsCleared(event)
     {
         this._dataGrid.removeChildren();
@@ -72,6 +78,8 @@ WebInspector.DOMStorageContentView = class DOMStorageContentView extends WebInsp
             if (node.data.key === event.data.key)
                 return this._dataGrid.removeChild(node);
         }
+
+        return null;
     }
 
     itemAdded(event)
@@ -111,13 +119,6 @@ WebInspector.DOMStorageContentView = class DOMStorageContentView extends WebInsp
         this._sortDataGrid();
     }
 
-    get scrollableElements()
-    {
-        if (!this._dataGrid)
-            return [];
-        return [this._dataGrid.scrollContainer];
-    }
-
     // Private
 
     _truncateValue(value)
@@ -152,7 +153,7 @@ WebInspector.DOMStorageContentView = class DOMStorageContentView extends WebInsp
 
         function comparator(a, b)
         {
-            return a.data[sortColumnIdentifier].localeCompare(b.data[sortColumnIdentifier]);
+            return a.data[sortColumnIdentifier].extendedLocaleCompare(b.data[sortColumnIdentifier]);
         }
 
         this._dataGrid.sortNodesImmediately(comparator);
@@ -200,14 +201,6 @@ WebInspector.DOMStorageContentView = class DOMStorageContentView extends WebInsp
             editingNode.__originalValue = undefined;
         }
 
-        function restoreOriginalValues()
-        {
-            editingNode.data.key = editingNode.__originalKey;
-            editingNode.data.value = editingNode.__originalValue;
-            editingNode.refresh();
-            cleanup();
-        }
-
         // If the key/value field was cleared, add "missing" style.
         if (isEditingKey) {
             if (key.length)
@@ -244,7 +237,7 @@ WebInspector.DOMStorageContentView = class DOMStorageContentView extends WebInsp
         if (!key.length && !value.length && !editingNode.isPlaceholderNode) {
             this._dataGrid.removeChild(editingNode);
             domStorage.removeItem(editingNode.__originalKey);
-            return;                
+            return;
         }
 
         // Done editing but leaving the row in an invalid state. Leave in uncommitted state.

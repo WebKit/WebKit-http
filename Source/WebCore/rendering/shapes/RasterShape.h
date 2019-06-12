@@ -27,8 +27,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RasterShape_h
-#define RasterShape_h
+#pragma once
 
 #include "FloatRect.h"
 #include "Shape.h"
@@ -87,11 +86,11 @@ public:
         m_intervals->initializeBounds();
     }
 
-    virtual LayoutRect shapeMarginLogicalBoundingBox() const override { return static_cast<LayoutRect>(marginIntervals().bounds()); }
-    virtual bool isEmpty() const override { return m_intervals->isEmpty(); }
-    virtual LineSegment getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const override;
+    LayoutRect shapeMarginLogicalBoundingBox() const override { return static_cast<LayoutRect>(marginIntervals().bounds()); }
+    bool isEmpty() const override { return m_intervals->isEmpty(); }
+    LineSegment getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const override;
 
-    virtual void buildDisplayPaths(DisplayPaths& paths) const override
+    void buildDisplayPaths(DisplayPaths& paths) const override
     {
         m_intervals->buildBoundsPath(paths.shape);
         if (shapeMargin())
@@ -107,5 +106,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // RasterShape_h

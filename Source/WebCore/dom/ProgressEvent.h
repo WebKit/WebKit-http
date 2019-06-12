@@ -23,18 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ProgressEvent_h
-#define ProgressEvent_h
+#pragma once
 
 #include "Event.h"
 
 namespace WebCore {
-
-struct ProgressEventInit : public EventInit {
-    bool lengthComputable { false };
-    unsigned long long loaded { 0 };
-    unsigned long long total { 0 };
-};
 
 class ProgressEvent : public Event {
 public:
@@ -42,26 +35,32 @@ public:
     {
         return adoptRef(*new ProgressEvent(type, lengthComputable, loaded, total));
     }
-    static Ref<ProgressEvent> createForBindings(const AtomicString& type, const ProgressEventInit& initializer)
+
+    struct Init : EventInit {
+        bool lengthComputable { false };
+        unsigned long long loaded { 0 };
+        unsigned long long total { 0 };
+    };
+
+    static Ref<ProgressEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new ProgressEvent(type, initializer));
+        return adoptRef(*new ProgressEvent(type, initializer, isTrusted));
     }
 
     bool lengthComputable() const { return m_lengthComputable; }
     unsigned long long loaded() const { return m_loaded; }
     unsigned long long total() const { return m_total; }
 
-    virtual EventInterface eventInterface() const override;
+    EventInterface eventInterface() const override;
 
 protected:
     ProgressEvent(const AtomicString& type, bool lengthComputable, unsigned long long loaded, unsigned long long total);
-    ProgressEvent(const AtomicString&, const ProgressEventInit&);
+    ProgressEvent(const AtomicString&, const Init&, IsTrusted);
 
 private:
     bool m_lengthComputable;
     unsigned long long m_loaded;
     unsigned long long m_total;
 };
-}
 
-#endif // ProgressEvent_h
+} // namespace WebCore

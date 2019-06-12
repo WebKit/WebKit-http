@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StaticPropertyAnalyzer_h
-#define StaticPropertyAnalyzer_h
+#pragma once
 
 #include "StaticPropertyAnalysis.h"
 #include <wtf/HashMap.h>
@@ -72,7 +71,7 @@ inline void StaticPropertyAnalyzer::newObject(int dst, unsigned offsetOfInlineCa
     AnalysisMap::AddResult addResult = m_analyses.add(dst, analysis);
     if (!addResult.isNewEntry) {
         kill(addResult.iterator->value.get());
-        addResult.iterator->value = analysis.release();
+        addResult.iterator->value = WTFMove(analysis);
     }
 }
 
@@ -95,7 +94,7 @@ inline void StaticPropertyAnalyzer::mov(int dst, int src)
     AnalysisMap::AddResult addResult = m_analyses.add(dst, analysis);
     if (!addResult.isNewEntry) {
         kill(addResult.iterator->value.get());
-        addResult.iterator->value = analysis.release();
+        addResult.iterator->value = WTFMove(analysis);
     }
 }
 
@@ -166,5 +165,3 @@ inline void StaticPropertyAnalyzer::kill()
 }
 
 } // namespace JSC
-
-#endif // StaticPropertyAnalyzer_h

@@ -29,20 +29,25 @@ messages -> WebIDBConnectionToServer {
     DidCommitTransaction(WebCore::IDBResourceIdentifier transactionIdentifier, WebCore::IDBError error)
     DidCreateObjectStore(WebCore::IDBResultData result)
     DidDeleteObjectStore(WebCore::IDBResultData result)
+    DidRenameObjectStore(WebCore::IDBResultData result)
     DidClearObjectStore(WebCore::IDBResultData result)
     DidCreateIndex(WebCore::IDBResultData result)
     DidDeleteIndex(WebCore::IDBResultData result)
+    DidRenameIndex(WebCore::IDBResultData result)
     DidPutOrAdd(WebCore::IDBResultData result)
-    DidGetRecord(WebCore::IDBResultData result)
+    DidGetRecord(WebKit::WebIDBResult result)
+    DidGetAllRecords(WebKit::WebIDBResult result)
     DidGetCount(WebCore::IDBResultData result)
     DidDeleteRecord(WebCore::IDBResultData result)
-    DidOpenCursor(WebCore::IDBResultData result)
-    DidIterateCursor(WebCore::IDBResultData result)
+    DidOpenCursor(WebKit::WebIDBResult result)
+    DidIterateCursor(WebKit::WebIDBResult result)
 
     FireVersionChangeEvent(uint64_t databaseConnectionIdentifier, WebCore::IDBResourceIdentifier requestIdentifier, uint64_t requestedVersion)
     DidStartTransaction(WebCore::IDBResourceIdentifier transactionIdentifier, WebCore::IDBError error)
+    DidCloseFromServer(uint64_t databaseConnectionIdentifier, WebCore::IDBError error) final;
     NotifyOpenDBRequestBlocked(WebCore::IDBResourceIdentifier requestIdentifier, uint64_t oldVersion, uint64_t newVersion)
 
+    DidGetAllDatabaseNames(uint64_t callbackID, Vector<String> databaseNames)
 }
 
 #endif // ENABLE(INDEXED_DATABASE) && ENABLE(DATABASE_PROCESS)

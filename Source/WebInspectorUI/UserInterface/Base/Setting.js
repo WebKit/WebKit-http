@@ -61,7 +61,7 @@ WebInspector.Setting = class Setting extends WebInspector.Object
         if (!window.InspectorTest && window.localStorage && this._localStorageKey in window.localStorage) {
             try {
                 this._value = JSON.parse(window.localStorage[this._localStorageKey]);
-            } catch(e) {
+            } catch (e) {
                 delete window.localStorage[this._localStorageKey];
             }
         }
@@ -83,7 +83,7 @@ WebInspector.Setting = class Setting extends WebInspector.Object
                     delete window.localStorage[this._localStorageKey];
                 else
                     window.localStorage[this._localStorageKey] = JSON.stringify(this._value);
-            } catch(e) {
+            } catch (e) {
                 console.error("Error saving setting with name: " + this._name);
             }
         }
@@ -100,4 +100,28 @@ WebInspector.Setting = class Setting extends WebInspector.Object
 
 WebInspector.Setting.Event = {
     Changed: "setting-changed"
+};
+
+WebInspector.settings = {
+    autoLogProtocolMessages: new WebInspector.Setting("auto-collect-protocol-messages", false),
+    autoLogTimeStats: new WebInspector.Setting("auto-collect-time-stats", false),
+    enableUncaughtExceptionReporter: new WebInspector.Setting("enable-uncaught-exception-reporter", true),
+    enableLineWrapping: new WebInspector.Setting("enable-line-wrapping", false),
+    indentUnit: new WebInspector.Setting("indent-unit", 4),
+    tabSize: new WebInspector.Setting("tab-size", 4),
+    indentWithTabs: new WebInspector.Setting("indent-with-tabs", false),
+    showWhitespaceCharacters: new WebInspector.Setting("show-whitespace-characters", false),
+    showInvalidCharacters: new WebInspector.Setting("show-invalid-characters", false),
+    clearLogOnNavigate: new WebInspector.Setting("clear-log-on-navigate", true),
+    clearNetworkOnNavigate: new WebInspector.Setting("clear-network-on-navigate", true),
+    zoomFactor: new WebInspector.Setting("zoom-factor", 1),
+    layoutDirection: new WebInspector.Setting("layout-direction-override", "system"),
+    stylesShowInlineWarnings: new WebInspector.Setting("styles-show-inline-warning", true),
+    stylesInsertNewline: new WebInspector.Setting("styles-insert-newline", true),
+    stylesSelectOnFirstClick: new WebInspector.Setting("styles-select-on-first-click", true),
+    showScopeChainOnPause: new WebInspector.Setting("show-scope-chain-sidebar", true),
+    showImageGrid: new WebInspector.Setting("show-image-grid", false),
+
+    // Experimental
+    experimentalShowCanvasContextsInResources: new WebInspector.Setting("experimental-show-canvas-contexts-in-resources", false),
 };

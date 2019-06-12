@@ -34,12 +34,17 @@
 namespace WebCore {
 
 struct SameSizeAsElementRareData : NodeRareData {
-    short indices[2];
-    unsigned bitfields;
+    int tabIndex;
+    unsigned short childIndex;
+#if ENABLE(FULLSCREEN_API)
+    unsigned bitfields : 11;
+#else
+    unsigned bitfields : 10;
+#endif
     RegionOversetState regionOversetState;
     LayoutSize sizeForResizing;
-    IntSize scrollOffset;
-    void* pointers[7];
+    IntPoint savedLayerScrollPosition;
+    void* pointers[8];
 };
 
 static_assert(sizeof(ElementRareData) == sizeof(SameSizeAsElementRareData), "ElementRareData should stay small");

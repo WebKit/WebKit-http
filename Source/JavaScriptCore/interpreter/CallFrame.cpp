@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2013, 2014 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2013-2014, 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,12 +29,21 @@
 #include "CodeBlock.h"
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
-#include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "VMEntryScope.h"
+#include "WasmContext.h"
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
+
+void ExecState::initGlobalExec(ExecState* globalExec, JSCallee* globalCallee)
+{
+    globalExec->setCodeBlock(nullptr);
+    globalExec->setCallerFrame(noCaller());
+    globalExec->setReturnPC(0);
+    globalExec->setArgumentCountIncludingThis(0);
+    globalExec->setCallee(globalCallee);
+}
 
 bool CallFrame::callSiteBitsAreBytecodeOffset() const
 {
@@ -76,12 +85,12 @@ bool CallFrame::callSiteBitsAreCodeOriginIndex() const
 
 unsigned CallFrame::callSiteAsRawBits() const
 {
-    return this[JSStack::ArgumentCount].tag();
+    return this[CallFrameSlot::argumentCount].tag();
 }
 
 SUPPRESS_ASAN unsigned CallFrame::unsafeCallSiteAsRawBits() const
 {
-    return this[JSStack::ArgumentCount].unsafeTag();
+    return this[CallFrameSlot::argumentCount].unsafeTag();
 }
 
 CallSiteIndex CallFrame::callSiteIndex() const
@@ -94,14 +103,6 @@ SUPPRESS_ASAN CallSiteIndex CallFrame::unsafeCallSiteIndex() const
     return CallSiteIndex(unsafeCallSiteAsRawBits());
 }
 
-#ifndef NDEBUG
-JSStack* CallFrame::stack()
-{
-    return &interpreter()->stack();
-}
-
-#endif
-
 #if USE(JSVALUE32_64)
 Instruction* CallFrame::currentVPC() const
 {
@@ -111,7 +112,7 @@ Instruction* CallFrame::currentVPC() const
 void CallFrame::setCurrentVPC(Instruction* vpc)
 {
     CallSiteIndex callSite(vpc);
-    this[JSStack::ArgumentCount].tag() = callSite.bits();
+    this[CallFrameSlot::argumentCount].tag() = callSite.bits();
 }
 
 unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
@@ -131,7 +132,7 @@ Instruction* CallFrame::currentVPC() const
 void CallFrame::setCurrentVPC(Instruction* vpc)
 {
     CallSiteIndex callSite(vpc - codeBlock()->instructions().begin());
-    this[JSStack::ArgumentCount].tag() = static_cast<int32_t>(callSite.bits());
+    this[CallFrameSlot::argumentCount].tag() = static_cast<int32_t>(callSite.bits());
 }
 
 unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
@@ -185,13 +186,55 @@ Register* CallFrame::topOfFrameInternal()
 
 JSGlobalObject* CallFrame::vmEntryGlobalObject()
 {
-    if (this == lexicalGlobalObject()->globalExec())
-        return lexicalGlobalObject();
+    RELEASE_ASSERT(callee().isCell());
+    if (callee().asCell()->isObject()) { 
+        if (this == lexicalGlobalObject()->globalExec())
+            return lexicalGlobalObject();
+    }
+    // If we're not an object, we're wasm, and therefore we're executing code and the below is safe.
 
     // For any ExecState that's not a globalExec, the 
     // dynamic global object must be set since code is running
     ASSERT(vm().entryScope);
     return vm().entryScope->globalObject();
+}
+
+JSGlobalObject* CallFrame::vmEntryGlobalObject(VM& vm)
+{
+    if (callee().isCell() && callee().asCell()->isObject()) {
+        if (this == lexicalGlobalObject()->globalExec())
+            return lexicalGlobalObject();
+    }
+
+    // For any ExecState that's not a globalExec, the 
+    // dynamic global object must be set since code is running
+    ASSERT(vm.entryScope);
+    return vm.entryScope->globalObject();
+}
+
+JSGlobalObject* CallFrame::wasmAwareLexicalGlobalObject(VM& vm)
+{
+#if ENABLE(WEBASSEMBLY)
+    if (!callee().isWasm())
+        return lexicalGlobalObject();
+    return Wasm::loadContext(vm)->globalObject();
+#else
+    UNUSED_PARAM(vm);
+    return lexicalGlobalObject();
+#endif
+}
+
+bool CallFrame::isAnyWasmCallee()
+{
+    CalleeBits callee = this->callee();
+    if (callee.isWasm())
+        return true;
+
+    ASSERT(callee.isCell());
+    if (!!callee.rawPtr() && isWebAssemblyToJSCallee(callee.asCell()))
+        return true;
+
+    return false;
 }
 
 CallFrame* CallFrame::callerFrame(VMEntryFrame*& currVMEntryFrame)
@@ -214,6 +257,50 @@ SUPPRESS_ASAN CallFrame* CallFrame::unsafeCallerFrame(VMEntryFrame*& currVMEntry
     return static_cast<CallFrame*>(unsafeCallerFrameOrVMEntryFrame());
 }
 
+SourceOrigin CallFrame::callerSourceOrigin()
+{
+    RELEASE_ASSERT(callee().isCell());
+    VM* vm = &this->vm();
+    SourceOrigin sourceOrigin;
+    bool haveSkippedFirstFrame = false;
+    StackVisitor::visit(this, vm, [&](StackVisitor& visitor) {
+        if (!std::exchange(haveSkippedFirstFrame, true))
+            return StackVisitor::Status::Continue;
+
+        switch (visitor->codeType()) {
+        case StackVisitor::Frame::CodeType::Function:
+            // Skip the builtin functions since they should not pass the source origin to the dynamic code generation calls.
+            // Consider the following code.
+            //
+            // [ "42 + 44" ].forEach(eval);
+            //
+            // In the above case, the eval function will be interpreted as the indirect call to eval inside forEach function.
+            // At that time, the generated eval code should have the source origin to the original caller of the forEach function
+            // instead of the source origin of the forEach function.
+            if (static_cast<FunctionExecutable*>(visitor->codeBlock()->ownerScriptExecutable())->isBuiltinFunction())
+                return StackVisitor::Status::Continue;
+            FALLTHROUGH;
+
+        case StackVisitor::Frame::CodeType::Eval:
+        case StackVisitor::Frame::CodeType::Module:
+        case StackVisitor::Frame::CodeType::Global:
+            sourceOrigin = visitor->codeBlock()->ownerScriptExecutable()->sourceOrigin();
+            return StackVisitor::Status::Done;
+
+        case StackVisitor::Frame::CodeType::Native:
+            return StackVisitor::Status::Continue;
+
+        case StackVisitor::Frame::CodeType::Wasm:
+            // FIXME: Should return the source origin for WASM.
+            return StackVisitor::Status::Done;
+        }
+
+        RELEASE_ASSERT_NOT_REACHED();
+        return StackVisitor::Status::Done;
+    });
+    return sourceOrigin;
+}
+
 String CallFrame::friendlyFunctionName()
 {
     CodeBlock* codeBlock = this->codeBlock();
@@ -228,8 +315,8 @@ String CallFrame::friendlyFunctionName()
     case GlobalCode:
         return ASCIILiteral("global code");
     case FunctionCode:
-        if (callee())
-            return getCalculatedDisplayName(this, callee());
+        if (jsCallee())
+            return getCalculatedDisplayName(vm(), jsCallee());
         return emptyString();
     }
 

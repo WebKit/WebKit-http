@@ -20,29 +20,44 @@ class Renderer9;
 class Buffer9 : public BufferD3D
 {
   public:
-    Buffer9(Renderer9 *renderer);
+    Buffer9(const gl::BufferState &state, Renderer9 *renderer);
     virtual ~Buffer9();
 
     // BufferD3D implementation
     virtual size_t getSize() const { return mSize; }
     virtual bool supportsDirectBinding() const { return false; }
+    gl::Error getData(const uint8_t **outData) override;
 
     // BufferImpl implementation
-    virtual gl::Error setData(const void* data, size_t size, GLenum usage);
-    gl::Error getData(const uint8_t **outData) override;
-    virtual gl::Error setSubData(const void* data, size_t size, size_t offset);
-    virtual gl::Error copySubData(BufferImpl* source, GLintptr sourceOffset, GLintptr destOffset, GLsizeiptr size);
-    virtual gl::Error map(GLenum access, GLvoid **mapPtr);
-    virtual gl::Error mapRange(size_t offset, size_t length, GLbitfield access, GLvoid **mapPtr);
-    virtual gl::Error unmap(GLboolean *result);
-    virtual void markTransformFeedbackUsage();
+    gl::Error setData(ContextImpl *context,
+                      GLenum target,
+                      const void *data,
+                      size_t size,
+                      GLenum usage) override;
+    gl::Error setSubData(ContextImpl *context,
+                         GLenum target,
+                         const void *data,
+                         size_t size,
+                         size_t offset) override;
+    gl::Error copySubData(ContextImpl *context,
+                          BufferImpl *source,
+                          GLintptr sourceOffset,
+                          GLintptr destOffset,
+                          GLsizeiptr size) override;
+    gl::Error map(ContextImpl *context, GLenum access, GLvoid **mapPtr) override;
+    gl::Error mapRange(ContextImpl *context,
+                       size_t offset,
+                       size_t length,
+                       GLbitfield access,
+                       GLvoid **mapPtr) override;
+    gl::Error unmap(ContextImpl *context, GLboolean *result) override;
+    gl::Error markTransformFeedbackUsage() override;
 
   private:
-    Renderer9 *mRenderer;
-    MemoryBuffer mMemory;
+    angle::MemoryBuffer mMemory;
     size_t mSize;
 };
 
-}
+}  // namespace rx
 
 #endif // LIBANGLE_RENDERER_D3D_D3D9_BUFFER9_H_

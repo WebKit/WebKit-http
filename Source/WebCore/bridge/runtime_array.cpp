@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2008, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,7 +35,7 @@ using namespace WebCore;
 
 namespace JSC {
 
-const ClassInfo RuntimeArray::s_info = { "RuntimeArray", &Base::s_info, 0, CREATE_METHOD_TABLE(RuntimeArray) };
+const ClassInfo RuntimeArray::s_info = { "RuntimeArray", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(RuntimeArray) };
 
 RuntimeArray::RuntimeArray(ExecState* exec, Structure* structure)
     : JSArray(exec->vm(), structure, 0)
@@ -46,7 +46,7 @@ RuntimeArray::RuntimeArray(ExecState* exec, Structure* structure)
 void RuntimeArray::finishCreation(VM& vm, Bindings::Array* array)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     m_array = array;
 }
 
@@ -62,9 +62,12 @@ void RuntimeArray::destroy(JSCell* cell)
 
 EncodedJSValue RuntimeArray::lengthGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName)
 {
-    RuntimeArray* thisObject = jsDynamicCast<RuntimeArray*>(JSValue::decode(thisValue));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    RuntimeArray* thisObject = jsDynamicDowncast<RuntimeArray*>(vm, JSValue::decode(thisValue));
     if (!thisObject)
-        return throwVMTypeError(exec);
+        return throwVMTypeError(exec, scope);
     return JSValue::encode(jsNumber(thisObject->getLength()));
 }
 
@@ -89,7 +92,7 @@ bool RuntimeArray::getOwnPropertySlot(JSObject* object, ExecState* exec, Propert
         return true;
     }
     
-    Optional<uint32_t> index = parseIndex(propertyName);
+    std::optional<uint32_t> index = parseIndex(propertyName);
     if (index && index.value() < thisObject->getLength()) {
         slot.setValue(thisObject, DontDelete | DontEnum,
             thisObject->getConcreteArray()->valueAt(exec, index.value()));
@@ -111,31 +114,36 @@ bool RuntimeArray::getOwnPropertySlotByIndex(JSObject* object, ExecState *exec, 
     return JSObject::getOwnPropertySlotByIndex(thisObject, exec, index, slot);
 }
 
-void RuntimeArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool RuntimeArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     RuntimeArray* thisObject = jsCast<RuntimeArray*>(cell);
     if (propertyName == exec->propertyNames().length) {
-        exec->vm().throwException(exec, createRangeError(exec, "Range error"));
-        return;
+        throwException(exec, scope, createRangeError(exec, "Range error"));
+        return false;
     }
     
-    if (Optional<uint32_t> index = parseIndex(propertyName)) {
-        thisObject->getConcreteArray()->setValueAt(exec, index.value(), value);
-        return;
-    }
-    
-    JSObject::put(thisObject, exec, propertyName, value, slot);
+    if (std::optional<uint32_t> index = parseIndex(propertyName))
+        return thisObject->getConcreteArray()->setValueAt(exec, index.value(), value);
+
+    scope.release();
+    return JSObject::put(thisObject, exec, propertyName, value, slot);
 }
 
-void RuntimeArray::putByIndex(JSCell* cell, ExecState* exec, unsigned index, JSValue value, bool)
+bool RuntimeArray::putByIndex(JSCell* cell, ExecState* exec, unsigned index, JSValue value, bool)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     RuntimeArray* thisObject = jsCast<RuntimeArray*>(cell);
     if (index >= thisObject->getLength()) {
-        exec->vm().throwException(exec, createRangeError(exec, "Range error"));
-        return;
+        throwException(exec, scope, createRangeError(exec, "Range error"));
+        return false;
     }
     
-    thisObject->getConcreteArray()->setValueAt(exec, index, value);
+    return thisObject->getConcreteArray()->setValueAt(exec, index, value);
 }
 
 bool RuntimeArray::deleteProperty(JSCell*, ExecState*, PropertyName)

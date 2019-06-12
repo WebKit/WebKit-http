@@ -22,40 +22,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AudioBufferSourceNode_h
-#define AudioBufferSourceNode_h
+#pragma once
 
-#include "AudioBuffer.h"
-#include "AudioBus.h"
-#include "AudioParam.h"
 #include "AudioScheduledSourceNode.h"
-#include "ExceptionCode.h"
-#include "PannerNode.h"
-#include <memory>
 #include <wtf/Lock.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class AudioContext;
+class AudioBuffer;
+class PannerNode;
 
 // AudioBufferSourceNode is an AudioNode representing an audio source from an in-memory audio asset represented by an AudioBuffer.
 // It generally will be used for short sounds which require a high degree of scheduling flexibility (can playback in rhythmically perfect ways).
 
-class AudioBufferSourceNode : public AudioScheduledSourceNode {
+class AudioBufferSourceNode final : public AudioScheduledSourceNode {
 public:
     static Ref<AudioBufferSourceNode> create(AudioContext&, float sampleRate);
 
     virtual ~AudioBufferSourceNode();
 
     // AudioNode
-    virtual void process(size_t framesToProcess) override;
-    virtual void reset() override;
+    void process(size_t framesToProcess) final;
+    void reset() final;
 
     // setBuffer() is called on the main thread.  This is the buffer we use for playback.
     // returns true on success.
-    bool setBuffer(AudioBuffer*);
+    void setBuffer(RefPtr<AudioBuffer>&&);
     AudioBuffer* buffer() { return m_buffer.get(); }
 
     // numberOfChannels() returns the number of output channels.  This value equals the number of channels from the buffer.
@@ -63,14 +55,7 @@ public:
     unsigned numberOfChannels();
 
     // Play-state
-    void start(ExceptionCode&);
-    void start(double when, ExceptionCode&);
-    void start(double when, double grainOffset, ExceptionCode&);
-    void start(double when, double grainOffset, double grainDuration, ExceptionCode&);
-
-#if ENABLE(LEGACY_WEB_AUDIO)
-    void noteGrainOn(double when, double grainOffset, double grainDuration, ExceptionCode&);
-#endif
+    ExceptionOr<void> start(double when, double grainOffset, std::optional<double> grainDuration);
 
     // Note: the attribute was originally exposed as .looping, but to be more consistent in naming with <audio>
     // and with how it's described in the specification, the proper attribute name is .loop
@@ -96,23 +81,23 @@ public:
     void clearPannerNode();
 
     // If we are no longer playing, propogate silence ahead to downstream nodes.
-    virtual bool propagatesSilence() const override;
+    bool propagatesSilence() const final;
 
     // AudioScheduledSourceNode
-    virtual void finish() override;
+    void finish() final;
 
 private:
     AudioBufferSourceNode(AudioContext&, float sampleRate);
 
-    virtual double tailTime() const override { return 0; }
-    virtual double latencyTime() const override { return 0; }
+    double tailTime() const final { return 0; }
+    double latencyTime() const final { return 0; }
 
     enum BufferPlaybackMode {
         Entire,
         Partial
     };
 
-    void startPlaying(BufferPlaybackMode, double when, double grainOffset, double grainDuration, ExceptionCode&);
+    ExceptionOr<void> startPlaying(BufferPlaybackMode, double when, double grainOffset, double grainDuration);
 
     // Returns true on success.
     bool renderFromBuffer(AudioBus*, unsigned destinationFrameOffset, size_t numberOfFrames);
@@ -163,5 +148,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // AudioBufferSourceNode_h

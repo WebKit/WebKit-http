@@ -28,10 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WeekInputType_h
-#define WeekInputType_h
+#pragma once
 
 #if ENABLE(INPUT_TYPE_WEEK)
+
 #include "BaseChooserOnlyDateAndTimeInputType.h"
 
 namespace WebCore {
@@ -41,15 +41,14 @@ public:
     explicit WeekInputType(HTMLInputElement& element) : BaseChooserOnlyDateAndTimeInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual DateComponents::Type dateType() const override;
-    virtual StepRange createStepRange(AnyStepHandling) const override;
-    virtual bool parseToDateComponentsInternal(const UChar*, unsigned length, DateComponents*) const override;
-    virtual bool setMillisecondToDateComponents(double, DateComponents*) const override;
-    virtual bool isWeekField() const override;
+    const AtomicString& formControlType() const override;
+    DateComponents::Type dateType() const override;
+    StepRange createStepRange(AnyStepHandling) const override;
+    bool parseToDateComponentsInternal(const UChar*, unsigned length, DateComponents*) const override;
+    bool setMillisecondToDateComponents(double, DateComponents*) const override;
+    bool isWeekField() const override;
 };
 
 } // namespace WebCore
 
-#endif
-#endif // WeekInputType_h
+#endif // ENABLE(INPUT_TYPE_WEEK)

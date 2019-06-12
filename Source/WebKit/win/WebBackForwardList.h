@@ -23,26 +23,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebBackForwardList_H
-#define WebBackForwardList_H
+#pragma once
 
 #include "WebKit.h"
 
 #include "WebHistoryItem.h"
 
-#include <WTF/PassRefPtr.h>
 #include <WTF/RefPtr.h>
 
-namespace WebCore {
-    class BackForwardList;
-}
+class BackForwardList;
 
 class WebBackForwardList : public IWebBackForwardList, IWebBackForwardListPrivate
 {
 public:
-    static WebBackForwardList* createInstance(PassRefPtr<WebCore::BackForwardList>);
+    static WebBackForwardList* createInstance(RefPtr<BackForwardList>&&);
 protected:
-    WebBackForwardList(PassRefPtr<WebCore::BackForwardList>);
+    WebBackForwardList(RefPtr<BackForwardList>&&);
     ~WebBackForwardList();
 
 public:
@@ -73,7 +69,5 @@ public:
 
 protected:
     ULONG m_refCount { 0 };
-    RefPtr<WebCore::BackForwardList> m_backForwardList;
+    RefPtr<BackForwardList> m_backForwardList;
 };
-
-#endif

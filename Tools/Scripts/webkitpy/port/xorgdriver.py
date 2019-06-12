@@ -39,20 +39,16 @@ _log = logging.getLogger(__name__)
 class XorgDriver(Driver):
     @staticmethod
     def check_driver(port):
-        if "DISPLAY" not in os.environ:
-                _log.error("DISPLAY not found in the environment. Cannot run tests.")
+        if 'DISPLAY' not in os.environ:
+                _log.error('DISPLAY not found in the environment. Cannot run tests.')
                 return False
         return True
 
-    def _start(self, pixel_tests, per_test_args):
-        super(XorgDriver, self).stop()
-
-        server_name = self._port.driver_name()
-        self._driver_tempdir = self._port.host.filesystem.mkdtemp(prefix='%s-' % server_name)
-
-        # setup_environ_for_server() already takes care of copying the
-        # XAUTHORITY environment variable
-        server_environment = self._port.setup_environ_for_server(server_name)
+    def _setup_environ_for_test(self):
+        server_environment = self._port.setup_environ_for_server(self._server_name)
+        self._port._copy_value_from_environ_if_set(server_environment, 'DISPLAY')
+        self._port._copy_value_from_environ_if_set(server_environment, 'XAUTHORITY')
+        server_environment['GDK_BACKEND'] = 'x11'
         server_environment['LOCAL_RESOURCE_ROOT'] = self._port.layout_tests_dir()
         server_environment['DUMPRENDERTREE_TEMP'] = str(self._driver_tempdir)
         # Currently on WebKit2, there is no API for setting the application
@@ -60,8 +56,14 @@ class XorgDriver(Driver):
         # cleaned afterwards, so we set it to inside the temporary folder by
         # prepending XDG_CACHE_HOME with DUMPRENDERTREE_TEMP.
         server_environment['XDG_CACHE_HOME'] = self._port.host.filesystem.join(str(self._driver_tempdir), 'appcache')
+        return server_environment
+
+    def _start(self, pixel_tests, per_test_args):
+        super(XorgDriver, self).stop()
+
+        self._driver_tempdir = self._port.host.filesystem.mkdtemp(prefix='%s-' % self._server_name)
 
         self._crashed_process_name = None
         self._crashed_pid = None
-        self._server_process = self._port._server_process_constructor(self._port, server_name, self.cmd_line(pixel_tests, per_test_args), server_environment)
+        self._server_process = self._port._server_process_constructor(self._port, self._server_name, self.cmd_line(pixel_tests, per_test_args), self._setup_environ_for_test())
         self._server_process.start()

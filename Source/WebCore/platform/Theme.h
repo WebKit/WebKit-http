@@ -29,8 +29,6 @@
 #include "Color.h"
 #include "ControlStates.h"
 #include "FontCascade.h"
-#include "GraphicsTypes.h"
-#include "IntRect.h"
 #include "LengthBox.h"
 #include "LengthSize.h"
 #include "ThemeTypes.h"
@@ -76,7 +74,7 @@ public:
     virtual FontCascade systemFont(ThemeFont, FontDescription&) const { return FontCascade(); }
     
     // How fast the caret blinks in text fields.
-    virtual double caretBlinkInterval() const { return 0.5; }
+    virtual Seconds caretBlinkInterval() const { return 500_ms; }
 
     // Notification when the theme has changed
     virtual void themeChanged() { }
@@ -84,13 +82,13 @@ public:
     // Methods used to adjust the RenderStyles of controls.
     
     // The font description result should have a zoomed font size.
-    virtual Optional<FontCascadeDescription> controlFont(ControlPart, const FontCascade&, float /*zoomFactor*/) const { return Nullopt; }
+    virtual std::optional<FontCascadeDescription> controlFont(ControlPart, const FontCascade&, float /*zoomFactor*/) const { return std::nullopt; }
     
     // The size here is in zoomed coordinates already. If a new size is returned, it also needs to be in zoomed coordinates.
     virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize& zoomedSize, float /*zoomFactor*/) const { return zoomedSize; }
     
     // Returns the minimum size for a control in zoomed coordinates.  
-    virtual LengthSize minimumControlSize(ControlPart, const FontCascade&, float /*zoomFactor*/) const { return LengthSize(Length(0, Fixed), Length(0, Fixed)); }
+    virtual LengthSize minimumControlSize(ControlPart, const FontCascade&, float /*zoomFactor*/) const { return { { 0, Fixed }, { 0, Fixed } }; }
     
     // Allows the theme to modify the existing padding/border.
     virtual LengthBox controlPadding(ControlPart, const FontCascade&, const LengthBox& zoomedBox, float zoomFactor) const;
@@ -109,6 +107,8 @@ public:
     virtual void inflateControlPaintRect(ControlPart, const ControlStates&, FloatRect& /*zoomedRect*/, float /*zoomFactor*/) const { }
 
     virtual void drawNamedImage(const String&, GraphicsContext&, const FloatRect&) const;
+
+    virtual bool userPrefersReducedMotion() const { return false; }
 
     // This method is called once, from RenderTheme::adjustDefaultStyleSheet(), to let each platform adjust
     // the default CSS rules in html.css.

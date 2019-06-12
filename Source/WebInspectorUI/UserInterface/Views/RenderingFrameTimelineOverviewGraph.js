@@ -102,6 +102,9 @@ WebInspector.RenderingFrameTimelineOverviewGraph = class RenderingFrameTimelineO
 
     layout()
     {
+        if (!this.visible)
+            return;
+
         if (!this._renderingFrameTimeline.records.length)
             return;
 
@@ -175,7 +178,7 @@ WebInspector.RenderingFrameTimelineOverviewGraph = class RenderingFrameTimelineO
         if (this.graphHeightSeconds === 0)
             return;
 
-        var overviewGraphHeight = this.element.offsetHeight;
+        let overviewGraphHeight = this.height;
 
         function createDividerAtPosition(framesPerSecond)
         {
@@ -191,7 +194,7 @@ WebInspector.RenderingFrameTimelineOverviewGraph = class RenderingFrameTimelineO
 
                 var label = document.createElement("div");
                 label.classList.add("label");
-                label.innerText = framesPerSecond + " fps";
+                label.innerText = WebInspector.UIString("%d fps").format(framesPerSecond);
                 divider.appendChild(label);
 
                 this.element.appendChild(divider);
@@ -216,8 +219,6 @@ WebInspector.RenderingFrameTimelineOverviewGraph = class RenderingFrameTimelineO
         if (!this.selectedRecord) {
             if (this._selectedFrameMarker.parentElement)
                 this.element.removeChild(this._selectedFrameMarker);
-
-            this.dispatchSelectedRecordChangedEvent();
             return;
         }
 
@@ -225,7 +226,8 @@ WebInspector.RenderingFrameTimelineOverviewGraph = class RenderingFrameTimelineO
         this._selectedFrameMarker.style.width = frameWidth + "px";
 
         var markerLeftPosition = this.selectedRecord.frameIndex - this.startTime;
-        this._selectedFrameMarker.style.left = ((markerLeftPosition / this.timelineOverview.visibleDuration) * 100).toFixed(2) + "%";
+        let property = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "right" : "left";
+        this._selectedFrameMarker.style.setProperty(property, ((markerLeftPosition / this.timelineOverview.visibleDuration) * 100).toFixed(2) + "%");
 
         if (!this._selectedFrameMarker.parentElement)
             this.element.appendChild(this._selectedFrameMarker);
@@ -241,13 +243,16 @@ WebInspector.RenderingFrameTimelineOverviewGraph = class RenderingFrameTimelineO
 
         this._selectedTimelineRecordFrame = this._timelineRecordFrames[index];
         this._selectedTimelineRecordFrame.selected = true;
-
-        this.dispatchSelectedRecordChangedEvent();
     }
 
     _mouseClicked(event)
     {
-        var position = event.pageX - this.element.getBoundingClientRect().left;
+        let position = 0;
+        if (WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL)
+            position = this.element.totalOffsetRight - event.pageX;
+        else
+            position = event.pageX - this.element.totalOffsetLeft;
+
         var frameIndex = Math.floor(position * this.timelineOverview.secondsPerPixel + this.startTime);
         if (frameIndex < 0 || frameIndex >= this._renderingFrameTimeline.records.length)
             return;
@@ -256,9 +261,8 @@ WebInspector.RenderingFrameTimelineOverviewGraph = class RenderingFrameTimelineO
         if (newSelectedRecord[WebInspector.RenderingFrameTimelineOverviewGraph.RecordWasFilteredSymbol])
             return;
 
-        // Clicking the selected frame causes it to be deselected.
         if (this.selectedRecord === newSelectedRecord)
-            newSelectedRecord = null;
+            return;
 
         if (frameIndex >= this.timelineOverview.selectionStartTime && frameIndex < this.timelineOverview.selectionStartTime + this.timelineOverview.selectionDuration) {
             this.selectedRecord = newSelectedRecord;

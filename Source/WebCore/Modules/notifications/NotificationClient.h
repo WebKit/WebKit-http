@@ -29,29 +29,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NotificationClient_h
-#define NotificationClient_h
+#pragma once
 
-#include "NotificationPermissionCallback.h"
-#include "VoidCallback.h"
-#include <wtf/PassRefPtr.h>
+#include "NotificationPermission.h"
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
-class Document;
-class URL;
 class Notification;
+class NotificationPermissionCallback;
 class Page;
 class ScriptExecutionContext;
 
 class NotificationClient {
-
 public:
-    enum Permission {
-        PermissionAllowed, // User has allowed notifications
-        PermissionNotAllowed, // User has not yet allowed
-        PermissionDenied // User has explicitly denied permission
-    };
+    using Permission = NotificationPermission;
 
     // Requests that a notification be shown.
     virtual bool show(Notification*) = 0;
@@ -71,15 +63,10 @@ public:
     // Informs the presenter the controller attached to the page has been destroyed.
     virtual void notificationControllerDestroyed() = 0;
 
-#if ENABLE(LEGACY_NOTIFICATIONS)
     // Requests user permission to show desktop notifications from a particular
     // script context. The callback parameter should be run when the user has
     // made a decision.
-    virtual void requestPermission(ScriptExecutionContext*, PassRefPtr<VoidCallback>) = 0;
-#endif
-#if ENABLE(NOTIFICATIONS)
-    virtual void requestPermission(ScriptExecutionContext*, PassRefPtr<NotificationPermissionCallback>) = 0;
-#endif
+    virtual void requestPermission(ScriptExecutionContext*, RefPtr<NotificationPermissionCallback>&&) = 0;
 
     virtual bool hasPendingPermissionRequests(ScriptExecutionContext*) const = 0;
 
@@ -96,5 +83,3 @@ protected:
 WEBCORE_EXPORT void provideNotification(Page*, NotificationClient*);
 
 } // namespace WebCore
-
-#endif // NotificationClient_h

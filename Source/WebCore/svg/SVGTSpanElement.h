@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGTSpanElement_h
-#define SVGTSpanElement_h
+#pragma once
 
 #include "SVGTextPositioningElement.h"
 
@@ -32,11 +31,9 @@ public:
 private:
     SVGTSpanElement(const QualifiedName&, Document&);
             
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    bool childShouldCreateRenderer(const Node&) const override;
+    bool rendererIsNeeded(const RenderStyle&) override;
 };
 
 } // namespace WebCore
-
-#endif

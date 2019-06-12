@@ -23,19 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameNetworkingContext_h
-#define WebFrameNetworkingContext_h
+#pragma once
 
 #include <WebCore/FrameNetworkingContext.h>
 
 class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
-    static PassRefPtr<WebFrameNetworkingContext> create(WebCore::Frame* frame)
+    static Ref<WebFrameNetworkingContext> create(WebCore::Frame* frame)
     {
-        return adoptRef(new WebFrameNetworkingContext(frame));
+        return adoptRef(*new WebFrameNetworkingContext(frame));
     }
 
-    static void ensurePrivateBrowsingSession();
+    static WebCore::NetworkStorageSession& ensurePrivateBrowsingSession();
     static void destroyPrivateBrowsingSession();
 
 private:
@@ -45,13 +44,10 @@ private:
     {
     }
 
-    virtual bool localFileContentSniffingEnabled() const override;
-    virtual SchedulePairHashSet* scheduledRunLoopPairs() const override;
-    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
-    virtual String sourceApplicationIdentifier() const override;
-    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
-    virtual WebCore::NetworkStorageSession& storageSession() const override;
-
+    bool localFileContentSniffingEnabled() const override;
+    SchedulePairHashSet* scheduledRunLoopPairs() const override;
+    RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
+    String sourceApplicationIdentifier() const override;
+    WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
+    WebCore::NetworkStorageSession& storageSession() const override;
 };
-
-#endif

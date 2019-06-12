@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,6 +24,7 @@
 
 #include "Document.h"
 #include "SVGNames.h"
+#include "Text.h"
 
 namespace WebCore {
 
@@ -40,7 +42,7 @@ Ref<SVGTitleElement> SVGTitleElement::create(const QualifiedName& tagName, Docum
 Node::InsertionNotificationRequest SVGTitleElement::insertedInto(ContainerNode& rootParent)
 {
     SVGElement::insertedInto(rootParent);
-    if (!rootParent.inDocument())
+    if (!rootParent.isConnected())
         return InsertionDone;
 
     if (firstChild() && document().isSVGDocument())
@@ -51,7 +53,7 @@ Node::InsertionNotificationRequest SVGTitleElement::insertedInto(ContainerNode& 
 void SVGTitleElement::removedFrom(ContainerNode& rootParent)
 {
     SVGElement::removedFrom(rootParent);
-    if (rootParent.inDocument() && document().isSVGDocument())
+    if (rootParent.isConnected() && document().isSVGDocument())
         document().titleElementRemoved(*this);
 }
 

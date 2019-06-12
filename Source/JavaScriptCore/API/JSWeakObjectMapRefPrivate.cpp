@@ -33,8 +33,6 @@
 #include "JSCInlines.h"
 #include "Weak.h"
 #include "WeakGCMapInlines.h"
-#include <wtf/HashMap.h>
-#include <wtf/text/StringHash.h>
 
 using namespace WTF;
 using namespace JSC;
@@ -63,9 +61,9 @@ void JSWeakObjectMapSet(JSContextRef ctx, JSWeakObjectMapRef map, void* key, JSO
     JSObject* obj = toJS(object);
     if (!obj)
         return;
-    ASSERT(obj->inherits(JSProxy::info())
-        || obj->inherits(JSCallbackObject<JSGlobalObject>::info()) 
-        || obj->inherits(JSCallbackObject<JSDestructibleObject>::info()));
+    ASSERT(obj->inherits(exec->vm(), JSProxy::info())
+        || obj->inherits(exec->vm(), JSCallbackObject<JSGlobalObject>::info())
+        || obj->inherits(exec->vm(), JSCallbackObject<JSDestructibleObject>::info()));
     map->map().set(key, obj);
 }
 

@@ -22,15 +22,22 @@
 #define TextureMapperShaderProgram_h
 
 #if USE(TEXTURE_MAPPER_GL)
+
 #include "GraphicsContext3D.h"
 #include "TransformationMatrix.h"
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/Ref.h>
 #include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
-#define TEXMAP_DECLARE_VARIABLE(Accessor, Name, Type) GC3Duint Accessor##Location() { static const AtomicString name(Name); return getLocation(name, Type); }
+
+#define TEXMAP_DECLARE_VARIABLE(Accessor, Name, Type) \
+    GC3Duint Accessor##Location() { \
+        static NeverDestroyed<const AtomicString> name(Name, AtomicString::ConstructFromLiteral); \
+        return getLocation(name.get(), Type); \
+    }
+
 #define TEXMAP_DECLARE_UNIFORM(Accessor) TEXMAP_DECLARE_VARIABLE(Accessor, "u_"#Accessor, UniformVariable)
 #define TEXMAP_DECLARE_ATTRIBUTE(Accessor) TEXMAP_DECLARE_VARIABLE(Accessor, "a_"#Accessor, AttribVariable)
 #define TEXMAP_DECLARE_SAMPLER(Accessor) TEXMAP_DECLARE_VARIABLE(Accessor, "s_"#Accessor, UniformVariable)
@@ -53,21 +60,24 @@ public:
         OpacityFilter    = 1L << 13,
         BlurFilter       = 1L << 14,
         AlphaBlur        = 1L << 15,
-        ContentTexture   = 1L << 16
+        ContentTexture   = 1L << 16,
+        ManualRepeat     = 1L << 17
     };
 
     typedef unsigned Options;
 
-    static PassRefPtr<TextureMapperShaderProgram> create(PassRefPtr<GraphicsContext3D>, Options);
+    static Ref<TextureMapperShaderProgram> create(Ref<GraphicsContext3D>&&, Options);
     virtual ~TextureMapperShaderProgram();
+
     Platform3DObject programID() const { return m_id; }
-    GraphicsContext3D* context() { return m_context.get(); }
+    GraphicsContext3D& context() { return m_context; }
 
     TEXMAP_DECLARE_ATTRIBUTE(vertex)
 
     TEXMAP_DECLARE_UNIFORM(modelViewMatrix)
     TEXMAP_DECLARE_UNIFORM(projectionMatrix)
     TEXMAP_DECLARE_UNIFORM(textureSpaceMatrix)
+    TEXMAP_DECLARE_UNIFORM(textureColorSpaceMatrix)
     TEXMAP_DECLARE_UNIFORM(opacity)
     TEXMAP_DECLARE_UNIFORM(color)
     TEXMAP_DECLARE_UNIFORM(expandedQuadEdgesInScreenSpace)
@@ -83,14 +93,15 @@ public:
     void setMatrix(GC3Duint, const TransformationMatrix&);
 
 private:
-    TextureMapperShaderProgram(PassRefPtr<GraphicsContext3D>, const String& vertexShaderSource, const String& fragmentShaderSource);
+    TextureMapperShaderProgram(Ref<GraphicsContext3D>&&, const String& vertexShaderSource, const String& fragmentShaderSource);
+
     Platform3DObject m_vertexShader;
     Platform3DObject m_fragmentShader;
 
     enum VariableType { UniformVariable, AttribVariable };
     GC3Duint getLocation(const AtomicString&, VariableType);
 
-    RefPtr<GraphicsContext3D> m_context;
+    Ref<GraphicsContext3D> m_context;
     Platform3DObject m_id;
     HashMap<AtomicString, GC3Duint> m_variables;
 };

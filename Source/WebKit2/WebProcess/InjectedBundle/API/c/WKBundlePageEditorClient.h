@@ -52,12 +52,6 @@ enum {
 };
 typedef uint32_t WKInputFieldActionType;
 
-enum {
-    WKFullScreenNoKeyboard,
-    WKFullScreenKeyboard,
-};
-typedef uint32_t WKFullScreenKeyboardRequestType;
-
 typedef bool (*WKBundlePageShouldBeginEditingCallback)(WKBundlePageRef page, WKBundleRangeHandleRef range, const void* clientInfo);
 typedef bool (*WKBundlePageShouldEndEditingCallback)(WKBundlePageRef page, WKBundleRangeHandleRef range, const void* clientInfo);
 typedef bool (*WKBundlePageShouldInsertNodeCallback)(WKBundlePageRef page, WKBundleNodeHandleRef node, WKBundleRangeHandleRef rangeToReplace, WKInsertActionType action, const void* clientInfo);
@@ -69,6 +63,7 @@ typedef void (*WKBundlePageEditingNotification)(WKBundlePageRef page, WKStringRe
 typedef void (*WKBundlePageWillWriteToPasteboard)(WKBundlePageRef page, WKBundleRangeHandleRef range,  const void* clientInfo);
 typedef void (*WKBundlePageGetPasteboardDataForRange)(WKBundlePageRef page, WKBundleRangeHandleRef range, WKArrayRef* pasteboardTypes, WKArrayRef* pasteboardData, const void* clientInfo);
 typedef void (*WKBundlePageDidWriteToPasteboard)(WKBundlePageRef page, const void* clientInfo);
+typedef bool (*WKBundlePagePerformTwoStepDrop)(WKBundlePageRef page, WKBundleNodeHandleRef fragment, WKBundleRangeHandleRef destination, bool isMove, const void* clientInfo);
 
 typedef struct WKBundlePageEditorClientBase {
     int                                                                 version;
@@ -112,6 +107,7 @@ typedef struct WKBundlePageEditorClientV1 {
     WKBundlePageWillWriteToPasteboard                                   willWriteToPasteboard;
     WKBundlePageGetPasteboardDataForRange                               getPasteboardDataForRange;
     WKBundlePageDidWriteToPasteboard                                    didWriteToPasteboard;
+    WKBundlePagePerformTwoStepDrop                                      performTwoStepDrop;
 } WKBundlePageEditorClientV1;
 
 #endif // WKBundlePageEditorClient_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,7 +43,8 @@
 #import "FrameLoader.h"
 #import "HTMLAttachmentElement.h"
 #import "HTMLElement.h"
-#import "HTMLFrameElementBase.h"
+#import "HTMLFrameElement.h"
+#import "HTMLIFrameElement.h"
 #import "HTMLImageElement.h"
 #import "HTMLInputElement.h"
 #import "HTMLMetaElement.h"
@@ -57,12 +58,12 @@
 #import "RGBColor.h"
 #import "RenderImage.h"
 #import "RenderText.h"
-#import "SoftLinking.h"
 #import "StyleProperties.h"
 #import "StyledElement.h"
 #import "TextIterator.h"
 #import <objc/runtime.h>
 #import <wtf/ASCIICType.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS)
@@ -112,10 +113,6 @@ SOFT_LINK_CLASS(UIFoundation, NSTextTab)
 #define PlatformFont                NSFont
 #define PlatformFontClass           NSFont
 
-#define NSTextAlignmentLeft         NSLeftTextAlignment
-#define NSTextAlignmentRight        NSRightTextAlignment
-#define NSTextAlignmentCenter       NSCenterTextAlignment
-#define NSTextAlignmentJustified    NSJustifiedTextAlignment
 #endif
 
 using namespace WebCore;
@@ -183,10 +180,10 @@ typedef NS_ENUM(NSInteger, NSWritingDirection) {
     NSWritingDirectionRightToLeft   =  1     // Right to left writing direction
 } NS_ENUM_AVAILABLE_IOS(6_0);
 
-typedef NS_ENUM(NSInteger, NSTextWritingDirection) {
-    NSTextWritingDirectionEmbedding     = (0 << 1),
-    NSTextWritingDirectionOverride      = (1 << 1)
-} NS_ENUM_AVAILABLE_IOS(7_0);
+typedef NS_ENUM(NSInteger, NSWritingDirectionFormatType) {
+    NSWritingDirectionEmbedding     = (0 << 1),
+    NSWritingDirectionOverride      = (1 << 1)
+} NS_ENUM_AVAILABLE_IOS(9_0);
 
 enum {
     NSEnterCharacter                = 0x0003,
@@ -316,7 +313,7 @@ typedef NSUInteger NSTextTabType;
 
 #else
 static NSFileWrapper *fileWrapperForURL(DocumentLoader *, NSURL *);
-static NSFileWrapper *fileWrapperForElement(Element*);
+static RetainPtr<NSFileWrapper> fileWrapperForElement(HTMLImageElement&);
 
 @interface NSTextAttachment (WebCoreNSTextAttachment)
 - (void)setIgnoresOrientation:(BOOL)flag;
@@ -341,8 +338,8 @@ public:
     bool isBlockElement(Element&);
     bool elementHasOwnBackgroundColor(Element&);
 
-    PassRefPtr<CSSValue> computedStylePropertyForElement(Element&, CSSPropertyID);
-    PassRefPtr<CSSValue> inlineStylePropertyForElement(Element&, CSSPropertyID);
+    RefPtr<CSSValue> computedStylePropertyForElement(Element&, CSSPropertyID);
+    RefPtr<CSSValue> inlineStylePropertyForElement(Element&, CSSPropertyID);
 
     Node* cacheAncestorsOfStartToBeConverted(const Range&);
     bool isAncestorsOfStartToBeConverted(Node& node) const { return m_ancestorsUnderCommonAncestor.contains(&node); }
@@ -622,7 +619,7 @@ static NSParagraphStyle *defaultParagraphStyle()
     return defaultParagraphStyle;
 }
 
-PassRefPtr<CSSValue> HTMLConverterCaches::computedStylePropertyForElement(Element& element, CSSPropertyID propertyId)
+RefPtr<CSSValue> HTMLConverterCaches::computedStylePropertyForElement(Element& element, CSSPropertyID propertyId)
 {
     if (propertyId == CSSPropertyInvalid)
         return nullptr;
@@ -634,7 +631,7 @@ PassRefPtr<CSSValue> HTMLConverterCaches::computedStylePropertyForElement(Elemen
     return computedStyle.propertyValue(propertyId);
 }
 
-PassRefPtr<CSSValue> HTMLConverterCaches::inlineStylePropertyForElement(Element& element, CSSPropertyID propertyId)
+RefPtr<CSSValue> HTMLConverterCaches::inlineStylePropertyForElement(Element& element, CSSPropertyID propertyId)
 {
     if (propertyId == CSSPropertyInvalid || !is<StyledElement>(element))
         return nullptr;
@@ -786,22 +783,22 @@ static inline bool floatValueFromPrimitiveValue(CSSPrimitiveValue& primitiveValu
     // FIXME: Use CSSPrimitiveValue::computeValue.
     switch (primitiveValue.primitiveType()) {
     case CSSPrimitiveValue::CSS_PX:
-        result = primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PX);
+        result = primitiveValue.floatValue(CSSPrimitiveValue::CSS_PX);
         return true;
     case CSSPrimitiveValue::CSS_PT:
-        result = 4 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PT) / 3;
+        result = 4 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PT) / 3;
         return true;
     case CSSPrimitiveValue::CSS_PC:
-        result = 16 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC);
+        result = 16 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PC);
         return true;
     case CSSPrimitiveValue::CSS_CM:
-        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC) / 2.54;
+        result = 96 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PC) / 2.54;
         return true;
     case CSSPrimitiveValue::CSS_MM:
-        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_PC) / 25.4;
+        result = 96 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_PC) / 25.4;
         return true;
     case CSSPrimitiveValue::CSS_IN:
-        result = 96 * primitiveValue.getFloatValue(CSSPrimitiveValue::CSS_IN);
+        result = 96 * primitiveValue.floatValue(CSSPrimitiveValue::CSS_IN);
         return true;
     default:
         return false;
@@ -988,13 +985,13 @@ Color HTMLConverterCaches::colorPropertyValueForNode(Node& node, CSSPropertyID p
     Element& element = downcast<Element>(node);
     if (RefPtr<CSSValue> value = computedStylePropertyForElement(element, propertyId)) {
         if (is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).isRGBColor())
-            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).getRGBA32Value()), propertyId == CSSPropertyColor);
+            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).color().rgb()), propertyId == CSSPropertyColor);
     }
 
     bool inherit = false;
     if (RefPtr<CSSValue> value = inlineStylePropertyForElement(element, propertyId)) {
         if (is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).isRGBColor())
-            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).getRGBA32Value()), propertyId == CSSPropertyColor);
+            return normalizedColor(Color(downcast<CSSPrimitiveValue>(*value).color().rgb()), propertyId == CSSPropertyColor);
         if (value->isInheritedValue())
             inherit = true;
     }
@@ -1034,23 +1031,13 @@ PlatformColor *HTMLConverter::_colorForElement(Element& element, CSSPropertyID p
     return platformResult;
 }
 
-#if !PLATFORM(IOS)
 static PlatformFont *_font(Element& element)
 {
-    auto renderer = element.renderer();
-    if (!renderer)
-        return nil;
-    return renderer->style().fontCascade().primaryFont().getNSFont();
-}
-#else
-static PlatformFont *_font(Element& element)
-{
-    auto renderer = element.renderer();
+    auto* renderer = element.renderer();
     if (!renderer)
         return nil;
     return (PlatformFont *)renderer->style().fontCascade().primaryFont().getCTFont();
 }
-#endif
 
 #define UIFloatIsZero(number) (fabs(number - 0) < FLT_EPSILON)
 
@@ -1399,7 +1386,7 @@ BOOL HTMLConverter::_addAttachmentForElement(Element& element, NSURL *url, BOOL 
         if (path)
             fileWrapper = [[[NSFileWrapper alloc] initWithURL:url options:0 error:NULL] autorelease];
     }
-    if (!fileWrapper) {
+    if (!fileWrapper && dataSource) {
         RefPtr<ArchiveResource> resource = dataSource->subresource(url);
         if (!resource)
             resource = dataSource->subresource(url);
@@ -1408,7 +1395,7 @@ BOOL HTMLConverter::_addAttachmentForElement(Element& element, NSURL *url, BOOL 
         if (usePlaceholder && resource && mimeType == "text/html")
             notFound = YES;
         if (resource && !notFound) {
-            fileWrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:resource->data()->createNSData().get()] autorelease];
+            fileWrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:resource->data().createNSData().get()] autorelease];
             [fileWrapper setPreferredFilename:suggestedFilenameWithMIMEType(url, mimeType)];
         }
     }
@@ -1857,18 +1844,12 @@ BOOL HTMLConverter::_processElement(Element& element, NSInteger depth)
     else {
         String bidi = _caches->propertyValueForNode(element, CSSPropertyUnicodeBidi);
         if (bidi == "embed") {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            NSUInteger val = NSTextWritingDirectionEmbedding;
-#pragma clang diagnostic pop
+            NSUInteger val = NSWritingDirectionEmbedding;
             if (_caches->propertyValueForNode(element, CSSPropertyDirection) == "rtl")
                 val |= NSWritingDirectionRightToLeft;
             [_writingDirectionArray addObject:[NSNumber numberWithUnsignedInteger:val]];
         } else if (bidi == "bidi-override") {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            NSUInteger val = NSTextWritingDirectionOverride;
-#pragma clang diagnostic pop
+            NSUInteger val = NSWritingDirectionOverride;
             if (_caches->propertyValueForNode(element, CSSPropertyDirection) == "rtl")
                 val |= NSWritingDirectionRightToLeft;
             [_writingDirectionArray addObject:[NSNumber numberWithUnsignedInteger:val]];
@@ -1908,7 +1889,7 @@ BOOL HTMLConverter::_processElement(Element& element, NSInteger depth)
         retval = NO;
 #endif
     } else if (element.hasTagName(imgTag)) {
-        NSString *urlString = element.getAttribute(srcAttr);
+        NSString *urlString = element.imageSourceURL();
         if (urlString && [urlString length] > 0) {
             NSURL *url = element.document().completeURL(stripLeadingAndTrailingHTMLSpaces(urlString));
             if (!url)
@@ -2069,11 +2050,7 @@ void HTMLConverter::_addMarkersToList(NSTextList *list, NSRange range)
                     tab = [[PlatformNSTextTab alloc] initWithType:NSLeftTabStopType location:markerLocation];
                     [newStyle addTabStop:tab];
                     [tab release];
-#if PLATFORM(IOS)
                     tab = [[PlatformNSTextTab alloc] initWithTextAlignment:NSTextAlignmentNatural location:listLocation options:@{ }];
-#else
-                    tab = [[PlatformNSTextTab alloc] initWithTextAlignment:NSNaturalTextAlignment location:listLocation options:@{ }];
-#endif
                     [newStyle addTabStop:tab];
                     [tab release];
                     [_attrStr addAttribute:NSParagraphStyleAttributeName value:newStyle range:paragraphRange];
@@ -2259,6 +2236,7 @@ void HTMLConverter::_processText(CharacterData& characterData)
         unsigned count = originalString.length();
         bool wasLeading = true;
         StringBuilder builder;
+        LChar noBreakSpaceRepresentation = 0;
         for (unsigned i = 0; i < count; i++) {
             UChar c = originalString.at(i);
             bool isWhitespace = c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == 0xc || c == 0x200b;
@@ -2267,7 +2245,13 @@ void HTMLConverter::_processText(CharacterData& characterData)
             else {
                 if (wasSpace)
                     builder.append(' ');
-                builder.append(c);
+                if (c != noBreakSpace)
+                    builder.append(c);
+                else {
+                    if (!noBreakSpaceRepresentation)
+                        noBreakSpaceRepresentation = _caches->propertyValueForNode(characterData, CSSPropertyWebkitNbspMode) == "space" ? ' ' : noBreakSpace;
+                    builder.append(noBreakSpaceRepresentation);
+                }
                 wasSpace = false;
                 wasLeading = false;
             }
@@ -2350,7 +2334,7 @@ void HTMLConverter::_traverseNode(Node& node, unsigned depth, bool embedded)
                 _exitElement(element, depth, startIndex);
             }
         }
-    } else if (is<CharacterData>(node))
+    } else if (node.nodeType() == Node::TEXT_NODE)
         _processText(downcast<CharacterData>(node));
 
     if (isEnd)
@@ -2426,19 +2410,20 @@ Node* HTMLConverterCaches::cacheAncestorsOfStartToBeConverted(const Range& range
 
 #if !PLATFORM(IOS)
 
-static NSFileWrapper *fileWrapperForURL(DocumentLoader *dataSource, NSURL *URL)
+static NSFileWrapper *fileWrapperForURL(DocumentLoader* dataSource, NSURL *URL)
 {
     if ([URL isFileURL])
         return [[[NSFileWrapper alloc] initWithURL:[URL URLByResolvingSymlinksInPath] options:0 error:nullptr] autorelease];
 
-    RefPtr<ArchiveResource> resource = dataSource->subresource(URL);
-    if (resource) {
-        NSFileWrapper *wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:resource->data()->createNSData().get()] autorelease];
-        NSString *filename = resource->response().suggestedFilename();
-        if (!filename || ![filename length])
-            filename = suggestedFilenameWithMIMEType(resource->url(), resource->mimeType());
-        [wrapper setPreferredFilename:filename];
-        return wrapper;
+    if (dataSource) {
+        if (RefPtr<ArchiveResource> resource = dataSource->subresource(URL)) {
+            NSFileWrapper *wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:resource->data().createNSData().get()] autorelease];
+            NSString *filename = resource->response().suggestedFilename();
+            if (!filename || ![filename length])
+                filename = suggestedFilenameWithMIMEType(resource->url(), resource->mimeType());
+            [wrapper setPreferredFilename:filename];
+            return wrapper;
+        }
     }
     
     NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:URL];
@@ -2455,26 +2440,24 @@ static NSFileWrapper *fileWrapperForURL(DocumentLoader *dataSource, NSURL *URL)
     return nil;
 }
 
-static NSFileWrapper *fileWrapperForElement(Element* element)
+static RetainPtr<NSFileWrapper> fileWrapperForElement(HTMLImageElement& element)
 {
-    NSFileWrapper *wrapper = nil;
-    
-    const AtomicString& attr = element->getAttribute(srcAttr);
-    if (!attr.isEmpty()) {
-        NSURL *URL = element->document().completeURL(attr);
-        if (DocumentLoader* loader = element->document().loader())
-            wrapper = fileWrapperForURL(loader, URL);
+    if (CachedImage* cachedImage = element.cachedImage()) {
+        if (SharedBuffer* sharedBuffer = cachedImage->resourceBuffer())
+            return adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:sharedBuffer->createNSData().get()]);
     }
-    if (!wrapper) {
-        auto& renderer = downcast<RenderImage>(*element->renderer());
-        if (renderer.cachedImage() && !renderer.cachedImage()->errorOccurred()) {
-            wrapper = [[NSFileWrapper alloc] initRegularFileWithContents:(NSData *)(renderer.cachedImage()->imageForRenderer(&renderer)->getTIFFRepresentation())];
+
+    auto* renderer = element.renderer();
+    if (is<RenderImage>(renderer)) {
+        auto* image = downcast<RenderImage>(*renderer).cachedImage();
+        if (image && !image->errorOccurred()) {
+            RetainPtr<NSFileWrapper> wrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:(NSData *)image->imageForRenderer(renderer)->tiffRepresentation()]);
             [wrapper setPreferredFilename:@"image.tiff"];
-            [wrapper autorelease];
+            return wrapper;
         }
     }
 
-    return wrapper;
+    return nil;
 }
 
 #endif
@@ -2489,6 +2472,7 @@ NSAttributedString *attributedStringFromRange(Range& range)
 }
     
 #if !PLATFORM(IOS)
+
 // This function uses TextIterator, which makes offsets in its result compatible with HTML editing.
 NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImagesInAttributedString includeOrSkipImages)
 {
@@ -2508,8 +2492,8 @@ NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImages
             if (&startContainer == &endContainer && (startOffset == endOffset - 1)) {
                 Node* node = startContainer.traverseToChildAt(startOffset);
                 if (is<HTMLImageElement>(node)) {
-                    NSFileWrapper* fileWrapper = fileWrapperForElement(downcast<HTMLImageElement>(node));
-                    NSTextAttachment* attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper];
+                    RetainPtr<NSFileWrapper> fileWrapper = fileWrapperForElement(downcast<HTMLImageElement>(*node));
+                    NSTextAttachment *attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper.get()];
                     [string appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
                     [attachment release];
                 }
@@ -2529,8 +2513,8 @@ NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImages
             [attrs.get() setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
         if (style.textDecorationsInEffect() & TextDecorationLineThrough)
             [attrs.get() setObject:[NSNumber numberWithInteger:NSUnderlineStyleSingle] forKey:NSStrikethroughStyleAttributeName];
-        if (NSFont *font = style.fontCascade().primaryFont().getNSFont())
-            [attrs.get() setObject:font forKey:NSFontAttributeName];
+        if (auto font = style.fontCascade().primaryFont().getCTFont())
+            [attrs.get() setObject:toNSFont(font) forKey:NSFontAttributeName];
         else
             [attrs.get() setObject:[fontManager convertFont:WebDefaultFont() toSize:style.fontCascade().primaryFont().platformData().size()] forKey:NSFontAttributeName];
         if (style.visitedDependentColor(CSSPropertyColor).alpha())
@@ -2542,13 +2526,20 @@ NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImages
         else
             [attrs.get() removeObjectForKey:NSBackgroundColorAttributeName];
 
-        [string replaceCharactersInRange:NSMakeRange(stringLength, 0) withString:it.text().createNSStringWithoutCopying().get()];
+        RetainPtr<NSString> text;
+        if (style.nbspMode() == NBNORMAL)
+            text = it.text().createNSStringWithoutCopying();
+        else
+            text = it.text().toString().replace(noBreakSpace, ' ');
+
+        [string replaceCharactersInRange:NSMakeRange(stringLength, 0) withString:text.get()];
         [string setAttributes:attrs.get() range:NSMakeRange(stringLength, currentTextLength)];
         stringLength += currentTextLength;
     }
 
     return [string autorelease];
 }
+
 #endif
     
 }

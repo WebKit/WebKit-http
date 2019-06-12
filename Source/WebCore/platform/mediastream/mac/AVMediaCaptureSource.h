@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,8 +31,7 @@
 #include "GenericTaskQueue.h"
 #include "RealtimeMediaSource.h"
 #include "Timer.h"
-#include <wtf/RetainPtr.h>
-#include <wtf/WeakPtr.h>
+#include <wtf/Function.h>
 
 OBJC_CLASS AVCaptureAudioDataOutput;
 OBJC_CLASS AVCaptureConnection;
@@ -40,11 +39,15 @@ OBJC_CLASS AVCaptureDevice;
 OBJC_CLASS AVCaptureOutput;
 OBJC_CLASS AVCaptureSession;
 OBJC_CLASS AVCaptureVideoDataOutput;
+OBJC_CLASS NSError;
+OBJC_CLASS NSNotification;
 OBJC_CLASS WebCoreAVMediaCaptureSourceObserver;
 
 typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
 
 namespace WebCore {
+
+class AVMediaCaptureSource;
 
 class AVMediaCaptureSource : public RealtimeMediaSource {
 public:
@@ -52,24 +55,24 @@ public:
 
     virtual void captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef, AVCaptureConnection*) = 0;
 
-    virtual void captureSessionIsRunningDidChange(bool);
-    
+    void captureSessionIsRunningDidChange(bool);
+    void captureSessionRuntimeError(RetainPtr<NSError>);
+
+    enum class InterruptionReason { None, VideoNotAllowedInBackground, AudioInUse, VideoInUse, VideoNotAllowedInSideBySide };
+    void captureSessionBeginInterruption(RetainPtr<NSNotification>);
+    void captureSessionEndInterruption(RetainPtr<NSNotification>);
+
     AVCaptureSession *session() const { return m_session.get(); }
 
-    const RealtimeMediaSourceSettings& settings() override;
+    const RealtimeMediaSourceSettings& settings() const final;
 
-    void startProducingData() override;
-    void stopProducingData() override;
-    bool isProducingData() const override { return m_isRunning; }
-
-    WeakPtr<AVMediaCaptureSource> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    void startProducingData() final;
+    void stopProducingData() final;
 
 protected:
-    AVMediaCaptureSource(AVCaptureDevice*, const AtomicString&, RealtimeMediaSource::Type, PassRefPtr<MediaConstraints>);
+    AVMediaCaptureSource(AVCaptureDevice*, const AtomicString&, RealtimeMediaSource::Type);
 
-    AudioSourceProvider* audioSourceProvider() override;
-
-    virtual void setupCaptureSession() = 0;
+    virtual bool setupCaptureSession() = 0;
     virtual void shutdownCaptureSession() = 0;
     virtual void updateSettings(RealtimeMediaSourceSettings&) = 0;
     virtual void initializeCapabilities(RealtimeMediaSourceCapabilities&) = 0;
@@ -77,29 +80,33 @@ protected:
 
     AVCaptureDevice *device() const { return m_device.get(); }
 
-    MediaConstraints* constraints() { return m_constraints.get(); }
-
     RealtimeMediaSourceSupportedConstraints& supportedConstraints();
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() override;
+    const RealtimeMediaSourceCapabilities& capabilities() const final;
 
     void setVideoSampleBufferDelegate(AVCaptureVideoDataOutput*);
     void setAudioSampleBufferDelegate(AVCaptureAudioDataOutput*);
 
-    void scheduleDeferredTask(std::function<void ()>);
-
 private:
-    void setupSession();
-    void reset() override;
+    bool setupSession();
+
+    void beginConfiguration() final;
+    void commitConfiguration() final;
+
+    bool isCaptureSource() const final { return true; }
+
+    bool interrupted() const final;
+
+    void initializeSettings();
+    void initializeCapabilities();
 
     RealtimeMediaSourceSettings m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
-    WeakPtrFactory<AVMediaCaptureSource> m_weakPtrFactory;
     RetainPtr<WebCoreAVMediaCaptureSourceObserver> m_objcObserver;
-    RefPtr<MediaConstraints> m_constraints;
-    RefPtr<RealtimeMediaSourceCapabilities> m_capabilities;
+    std::unique_ptr<RealtimeMediaSourceCapabilities> m_capabilities;
     RetainPtr<AVCaptureSession> m_session;
     RetainPtr<AVCaptureDevice> m_device;
-    bool m_isRunning { false};
+    InterruptionReason m_interruption { InterruptionReason::None };
+    bool m_isRunning { false };
 };
 
 } // namespace WebCore

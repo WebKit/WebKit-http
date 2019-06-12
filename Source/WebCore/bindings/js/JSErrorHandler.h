@@ -28,14 +28,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSErrorHandler_h
-#define JSErrorHandler_h
+#pragma once
 
 #include "JSEventListener.h"
 
 namespace WebCore {
 
-class JSErrorHandler : public JSEventListener {
+class JSErrorHandler final : public JSEventListener {
 public:
     static Ref<JSErrorHandler> create(JSC::JSObject* listener, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld& world)
     {
@@ -46,7 +45,7 @@ public:
 
 private:
     JSErrorHandler(JSC::JSObject* function, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld&);
-    virtual void handleEvent(ScriptExecutionContext*, Event*);
+    void handleEvent(ScriptExecutionContext*, Event*) final;
 };
 
 // Creates a JS EventListener for "onerror" event handler in worker context. It has custom implementation because
@@ -60,5 +59,3 @@ inline RefPtr<JSErrorHandler> createJSErrorHandler(JSC::ExecState* exec, JSC::JS
 }
 
 } // namespace WebCore
-
-#endif // JSErrorHandler_h

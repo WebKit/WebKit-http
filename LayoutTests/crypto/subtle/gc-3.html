@@ -7,7 +7,7 @@
 <body>
 <script>
 
-description("Test that window.crypto wrapper protects all dependencies, so it can always be used to create crypto.subtle.");
+description("Test that window.crypto wrapper protects all dependencies, so it can always be used to get crypto.subtle.");
 jsTestIsAsync = true;
 
 var anotherWindowCrypto;
@@ -30,7 +30,7 @@ function continueTest()
 function finishTest()
 {
     gc();
-    shouldBeDefined(anotherWindowCrypto.webkitSubtle);
+    shouldBeDefined(anotherWindowCrypto.subtle);
     finishJSTest();
 }
 

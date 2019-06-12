@@ -39,25 +39,18 @@ WebInspector.CollectionEntry = class CollectionEntry extends WebInspector.Object
     // Static
 
     // Runtime.CollectionEntry.
-    static fromPayload(payload)
+    static fromPayload(payload, target)
     {
         if (payload.key)
-            payload.key = WebInspector.RemoteObject.fromPayload(payload.key);
+            payload.key = WebInspector.RemoteObject.fromPayload(payload.key, target);
         if (payload.value)
-            payload.value = WebInspector.RemoteObject.fromPayload(payload.value);
+            payload.value = WebInspector.RemoteObject.fromPayload(payload.value, target);
 
         return new WebInspector.CollectionEntry(payload.key, payload.value);
     }
 
     // Public
 
-    get key()
-    {
-        return this._key;
-    }
-
-    get value()
-    {
-        return this._value;
-    }
+    get key() { return this._key; }
+    get value() { return this._value; }
 };

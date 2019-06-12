@@ -9,75 +9,196 @@
 #ifndef LIBANGLE_RENDERER_GL_RENDERERGL_H_
 #define LIBANGLE_RENDERER_GL_RENDERERGL_H_
 
-#include "libANGLE/renderer/Renderer.h"
+#include "libANGLE/Caps.h"
+#include "libANGLE/Error.h"
+#include "libANGLE/Version.h"
+#include "libANGLE/renderer/gl/WorkaroundsGL.h"
+
+namespace gl
+{
+class ContextState;
+struct IndexRange;
+class Path;
+}
+
+namespace egl
+{
+class AttributeMap;
+}
+
+namespace sh
+{
+struct BlockMemberInfo;
+}
 
 namespace rx
 {
+class BlitGL;
+class ContextImpl;
 class FunctionsGL;
 class StateManagerGL;
 
-class RendererGL : public Renderer
+class RendererGL : angle::NonCopyable
 {
   public:
-    RendererGL(const FunctionsGL *functions);
-    ~RendererGL() override;
+    RendererGL(const FunctionsGL *functions, const egl::AttributeMap &attribMap);
+    ~RendererGL();
 
-    gl::Error flush() override;
-    gl::Error finish() override;
+    ContextImpl *createContext(const gl::ContextState &state);
 
-    gl::Error drawArrays(const gl::Data &data, GLenum mode,
-                         GLint first, GLsizei count, GLsizei instances) override;
-    gl::Error drawElements(const gl::Data &data, GLenum mode, GLsizei count, GLenum type,
-                           const GLvoid *indices, GLsizei instances,
-                           const RangeUI &indexRange) override;
+    gl::Error flush();
+    gl::Error finish();
 
-    // Shader creation
-    CompilerImpl *createCompiler(const gl::Data &data) override;
-    ShaderImpl *createShader(GLenum type) override;
-    ProgramImpl *createProgram() override;
+    gl::Error drawArrays(const gl::ContextState &data, GLenum mode, GLint first, GLsizei count);
+    gl::Error drawArraysInstanced(const gl::ContextState &data,
+                                  GLenum mode,
+                                  GLint first,
+                                  GLsizei count,
+                                  GLsizei instanceCount);
 
-    // Framebuffer creation
-    FramebufferImpl *createDefaultFramebuffer(const gl::Framebuffer::Data &data) override;
-    FramebufferImpl *createFramebuffer(const gl::Framebuffer::Data &data) override;
+    gl::Error drawElements(const gl::ContextState &data,
+                           GLenum mode,
+                           GLsizei count,
+                           GLenum type,
+                           const GLvoid *indices,
+                           const gl::IndexRange &indexRange);
+    gl::Error drawElementsInstanced(const gl::ContextState &data,
+                                    GLenum mode,
+                                    GLsizei count,
+                                    GLenum type,
+                                    const GLvoid *indices,
+                                    GLsizei instances,
+                                    const gl::IndexRange &indexRange);
+    gl::Error drawRangeElements(const gl::ContextState &data,
+                                GLenum mode,
+                                GLuint start,
+                                GLuint end,
+                                GLsizei count,
+                                GLenum type,
+                                const GLvoid *indices,
+                                const gl::IndexRange &indexRange);
+    gl::Error drawArraysIndirect(const gl::ContextState &data, GLenum mode, const GLvoid *indirect);
+    gl::Error drawElementsIndirect(const gl::ContextState &data,
+                                   GLenum mode,
+                                   GLenum type,
+                                   const GLvoid *indirect);
 
-    // Texture creation
-    TextureImpl *createTexture(GLenum target) override;
+    // CHROMIUM_path_rendering implementation
+    void stencilFillPath(const gl::ContextState &state,
+                         const gl::Path *path,
+                         GLenum fillMode,
+                         GLuint mask);
+    void stencilStrokePath(const gl::ContextState &state,
+                           const gl::Path *path,
+                           GLint reference,
+                           GLuint mask);
+    void coverFillPath(const gl::ContextState &state, const gl::Path *path, GLenum coverMode);
+    void coverStrokePath(const gl::ContextState &state, const gl::Path *path, GLenum coverMode);
+    void stencilThenCoverFillPath(const gl::ContextState &state,
+                                  const gl::Path *path,
+                                  GLenum fillMode,
+                                  GLuint mask,
+                                  GLenum coverMode);
+    void stencilThenCoverStrokePath(const gl::ContextState &state,
+                                    const gl::Path *path,
+                                    GLint reference,
+                                    GLuint mask,
+                                    GLenum coverMode);
+    void coverFillPathInstanced(const gl::ContextState &state,
+                                const std::vector<gl::Path *> &paths,
+                                GLenum coverMode,
+                                GLenum transformType,
+                                const GLfloat *transformValues);
+    void coverStrokePathInstanced(const gl::ContextState &state,
+                                  const std::vector<gl::Path *> &paths,
+                                  GLenum coverMode,
+                                  GLenum transformType,
+                                  const GLfloat *transformValues);
+    void stencilFillPathInstanced(const gl::ContextState &state,
+                                  const std::vector<gl::Path *> &paths,
+                                  GLenum fillMode,
+                                  GLuint mask,
+                                  GLenum transformType,
+                                  const GLfloat *transformValues);
+    void stencilStrokePathInstanced(const gl::ContextState &state,
+                                    const std::vector<gl::Path *> &paths,
+                                    GLint reference,
+                                    GLuint mask,
+                                    GLenum transformType,
+                                    const GLfloat *transformValues);
 
-    // Renderbuffer creation
-    RenderbufferImpl *createRenderbuffer() override;
+    void stencilThenCoverFillPathInstanced(const gl::ContextState &state,
+                                           const std::vector<gl::Path *> &paths,
+                                           GLenum coverMode,
+                                           GLenum fillMode,
+                                           GLuint mask,
+                                           GLenum transformType,
+                                           const GLfloat *transformValues);
+    void stencilThenCoverStrokePathInstanced(const gl::ContextState &state,
+                                             const std::vector<gl::Path *> &paths,
+                                             GLenum coverMode,
+                                             GLint reference,
+                                             GLuint mask,
+                                             GLenum transformType,
+                                             const GLfloat *transformValues);
 
-    // Buffer creation
-    BufferImpl *createBuffer() override;
+    GLenum getResetStatus();
 
-    // Vertex Array creation
-    VertexArrayImpl *createVertexArray() override;
+    // EXT_debug_marker
+    void insertEventMarker(GLsizei length, const char *marker);
+    void pushGroupMarker(GLsizei length, const char *marker);
+    void popGroupMarker();
 
-    // Query and Fence creation
-    QueryImpl *createQuery(GLenum type) override;
-    FenceNVImpl *createFenceNV() override;
-    FenceSyncImpl *createFenceSync() override;
+    std::string getVendorString() const;
+    std::string getRendererDescription() const;
 
-    // Transform Feedback creation
-    TransformFeedbackImpl *createTransformFeedback() override;
+    GLint getGPUDisjoint();
+    GLint64 getTimestamp();
 
-    // lost device
-    void notifyDeviceLost() override;
-    bool isDeviceLost() const override;
-    bool testDeviceLost() override;
-    bool testDeviceResettable() override;
+    const gl::Version &getMaxSupportedESVersion() const;
+    const FunctionsGL *getFunctions() const { return mFunctions; }
+    StateManagerGL *getStateManager() const { return mStateManager; }
+    const WorkaroundsGL &getWorkarounds() const { return mWorkarounds; }
+    BlitGL *getBlitter() const { return mBlitter; }
 
-    VendorID getVendorId() const override;
-    std::string getVendorString() const override;
-    std::string getRendererDescription() const override;
+    const gl::Caps &getNativeCaps() const;
+    const gl::TextureCapsMap &getNativeTextureCaps() const;
+    const gl::Extensions &getNativeExtensions() const;
+    const gl::Limitations &getNativeLimitations() const;
+
+    gl::Error dispatchCompute(const gl::ContextState &data,
+                              GLuint numGroupsX,
+                              GLuint numGroupsY,
+                              GLuint numGroupsZ);
 
   private:
-    void generateCaps(gl::Caps *outCaps, gl::TextureCapsMap* outTextureCaps, gl::Extensions *outExtensions) const override;
-    Workarounds generateWorkarounds() const override;
+    void ensureCapsInitialized() const;
+    void generateCaps(gl::Caps *outCaps,
+                      gl::TextureCapsMap *outTextureCaps,
+                      gl::Extensions *outExtensions,
+                      gl::Limitations *outLimitations) const;
+
+    mutable gl::Version mMaxSupportedESVersion;
 
     const FunctionsGL *mFunctions;
     StateManagerGL *mStateManager;
+
+    BlitGL *mBlitter;
+
+    WorkaroundsGL mWorkarounds;
+
+    bool mHasDebugOutput;
+
+    // For performance debugging
+    bool mSkipDrawCalls;
+
+    mutable bool mCapsInitialized;
+    mutable gl::Caps mNativeCaps;
+    mutable gl::TextureCapsMap mNativeTextureCaps;
+    mutable gl::Extensions mNativeExtensions;
+    mutable gl::Limitations mNativeLimitations;
 };
 
-}
+}  // namespace rx
 
 #endif // LIBANGLE_RENDERER_GL_RENDERERGL_H_

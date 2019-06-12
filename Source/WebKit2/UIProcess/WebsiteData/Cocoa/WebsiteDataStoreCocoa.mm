@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,10 @@
 #import "WebsiteDataStore.h"
 
 #import "StorageManager.h"
+#import "WebResourceLoadStatisticsStore.h"
+#import "WebsiteDataStoreParameters.h"
+#import <WebCore/CFNetworkSPI.h>
+#import <WebCore/FileSystem.h>
 #import <WebCore/SearchPopupMenuCocoa.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -45,6 +49,36 @@ static Vector<WebsiteDataStore*>& dataStoresWithStorageManagers()
     return dataStoresWithStorageManagers;
 }
 
+WebsiteDataStoreParameters WebsiteDataStore::parameters()
+{
+    resolveDirectoriesIfNecessary();
+
+    WebsiteDataStoreParameters parameters;
+    parameters.sessionID = m_sessionID;
+
+    auto cookieFile = resolvedCookieStorageFile();
+
+#if PLATFORM(COCOA)
+    if (m_uiProcessCookieStorageIdentifier.isEmpty()) {
+        auto utf8File = cookieFile.utf8();
+        auto url = adoptCF(CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (const UInt8 *)utf8File.data(), (CFIndex)utf8File.length(), true));
+        m_cfCookieStorage = adoptCF(CFHTTPCookieStorageCreateFromFile(kCFAllocatorDefault, url.get(), nullptr));
+        auto cfData = adoptCF(CFHTTPCookieStorageCreateIdentifyingData(kCFAllocatorDefault, m_cfCookieStorage.get()));
+
+        m_uiProcessCookieStorageIdentifier.append(CFDataGetBytePtr(cfData.get()), CFDataGetLength(cfData.get()));
+    }
+
+    parameters.uiProcessCookieStorageIdentifier = m_uiProcessCookieStorageIdentifier;
+#endif
+
+    copyToVector(m_pendingCookies, parameters.pendingCookies);
+
+    if (!cookieFile.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(WebCore::directoryName(cookieFile), parameters.cookieStoragePathExtensionHandle);
+
+    return parameters;
+}
+
 void WebsiteDataStore::platformInitialize()
 {
     if (!m_storageManager)
@@ -59,8 +93,11 @@ void WebsiteDataStore::platformInitialize()
         NSString *notificationName = UIApplicationWillTerminateNotification;
 #endif
         terminationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:notificationName object:nil queue:nil usingBlock:^(NSNotification *note) {
-            for (auto& dataStore : dataStoresWithStorageManagers())
+            for (auto& dataStore : dataStoresWithStorageManagers()) {
                 dataStore->m_storageManager->applicationWillTerminate();
+                if (dataStore->m_resourceLoadStatistics)
+                    dataStore->m_resourceLoadStatistics->applicationWillTerminate();
+            }
         }];
     }
 
@@ -70,6 +107,9 @@ void WebsiteDataStore::platformInitialize()
 
 void WebsiteDataStore::platformDestroy()
 {
+    if (m_resourceLoadStatistics)
+        m_resourceLoadStatistics->applicationWillTerminate();
+
     if (!m_storageManager)
         return;
 

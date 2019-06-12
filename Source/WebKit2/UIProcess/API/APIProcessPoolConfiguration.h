@@ -28,8 +28,11 @@
 
 #include "APIObject.h"
 #include "CacheModel.h"
+#include "WebsiteDataStore.h"
+#include <wtf/ProcessID.h>
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
 namespace API {
@@ -38,7 +41,8 @@ class ProcessPoolConfiguration final : public ObjectImpl<Object::Type::ProcessPo
 public:
     static Ref<ProcessPoolConfiguration> create();
     static Ref<ProcessPoolConfiguration> createWithLegacyOptions();
-    
+    static Ref<ProcessPoolConfiguration> createWithWebsiteDataStoreConfiguration(const WebKit::WebsiteDataStore::Configuration&);
+
     explicit ProcessPoolConfiguration();
     virtual ~ProcessPoolConfiguration();
     
@@ -50,6 +54,9 @@ public:
     unsigned maximumProcessCount() const { return m_maximumProcessCount; }
     void setMaximumProcessCount(unsigned maximumProcessCount) { m_maximumProcessCount = maximumProcessCount; } 
 
+    bool diskCacheSpeculativeValidationEnabled() const { return m_diskCacheSpeculativeValidationEnabled; }
+    void setDiskCacheSpeculativeValidationEnabled(bool enabled) { m_diskCacheSpeculativeValidationEnabled = enabled; }
+
     WebKit::CacheModel cacheModel() const { return m_cacheModel; }
     void setCacheModel(WebKit::CacheModel cacheModel) { m_cacheModel = cacheModel; }
 
@@ -59,9 +66,14 @@ public:
     const WTF::String& applicationCacheDirectory() const { return m_applicationCacheDirectory; }
     void setApplicationCacheDirectory(const WTF::String& applicationCacheDirectory) { m_applicationCacheDirectory = applicationCacheDirectory; }
 
+    const WTF::String& applicationCacheFlatFileSubdirectoryName() const { return m_applicationCacheFlatFileSubdirectoryName; }
+
     const WTF::String& diskCacheDirectory() const { return m_diskCacheDirectory; }
     void setDiskCacheDirectory(const WTF::String& diskCacheDirectory) { m_diskCacheDirectory = diskCacheDirectory; }
 
+    const WTF::String& mediaCacheDirectory() const { return m_mediaCacheDirectory; }
+    void setMediaCacheDirectory(const WTF::String& mediaCacheDirectory) { m_mediaCacheDirectory = mediaCacheDirectory; }
+    
     const WTF::String& indexedDBDatabaseDirectory() const { return m_indexedDBDatabaseDirectory; }
     void setIndexedDBDatabaseDirectory(const WTF::String& indexedDBDatabaseDirectory) { m_indexedDBDatabaseDirectory = indexedDBDatabaseDirectory; }
 
@@ -77,36 +89,91 @@ public:
     const WTF::String& mediaKeysStorageDirectory() const { return m_mediaKeysStorageDirectory; }
     void setMediaKeysStorageDirectory(const WTF::String& mediaKeysStorageDirectory) { m_mediaKeysStorageDirectory = mediaKeysStorageDirectory; }
 
+    const WTF::String& resourceLoadStatisticsDirectory() const { return m_resourceLoadStatisticsDirectory; }
+    void setResourceLoadStatisticsDirectory(const WTF::String& resourceLoadStatisticsDirectory) { m_resourceLoadStatisticsDirectory = resourceLoadStatisticsDirectory; }
+
+    const WTF::String& javaScriptConfigurationDirectory() const { return m_javaScriptConfigurationDirectory; }
+    void setJavaScriptConfigurationDirectory(const WTF::String& javaScriptConfigurationDirectory) { m_javaScriptConfigurationDirectory = javaScriptConfigurationDirectory; }
+
     const Vector<WTF::String>& cachePartitionedURLSchemes() { return m_cachePartitionedURLSchemes; }
     void setCachePartitionedURLSchemes(Vector<WTF::String>&& cachePartitionedURLSchemes) { m_cachePartitionedURLSchemes = WTFMove(cachePartitionedURLSchemes); }
 
     const Vector<WTF::String>& alwaysRevalidatedURLSchemes() { return m_alwaysRevalidatedURLSchemes; }
     void setAlwaysRevalidatedURLSchemes(Vector<WTF::String>&& alwaysRevalidatedURLSchemes) { m_alwaysRevalidatedURLSchemes = WTFMove(alwaysRevalidatedURLSchemes); }
 
+    const Vector<WTF::CString>& additionalReadAccessAllowedPaths() { return m_additionalReadAccessAllowedPaths; }
+    void setAdditionalReadAccessAllowedPaths(Vector<WTF::CString>&& additionalReadAccessAllowedPaths) { m_additionalReadAccessAllowedPaths = additionalReadAccessAllowedPaths; }
+
     bool fullySynchronousModeIsAllowedForTesting() const { return m_fullySynchronousModeIsAllowedForTesting; }
     void setFullySynchronousModeIsAllowedForTesting(bool allowed) { m_fullySynchronousModeIsAllowedForTesting = allowed; }
 
+    bool ignoreSynchronousMessagingTimeoutsForTesting() const { return m_ignoreSynchronousMessagingTimeoutsForTesting; }
+    void setIgnoreSynchronousMessagingTimeoutsForTesting(bool allowed) { m_ignoreSynchronousMessagingTimeoutsForTesting = allowed; }
+
     const Vector<WTF::String>& overrideLanguages() const { return m_overrideLanguages; }
     void setOverrideLanguages(Vector<WTF::String>&& languages) { m_overrideLanguages = WTFMove(languages); }
+
+    const WTF::String& sourceApplicationBundleIdentifier() const { return m_sourceApplicationBundleIdentifier; }
+    void setSourceApplicationBundleIdentifier(const WTF::String& sourceApplicationBundleIdentifier) { m_sourceApplicationBundleIdentifier = sourceApplicationBundleIdentifier; }
+
+    const WTF::String& sourceApplicationSecondaryIdentifier() const { return m_sourceApplicationSecondaryIdentifier; }
+    void setSourceApplicationSecondaryIdentifier(const WTF::String& sourceApplicationSecondaryIdentifier) { m_sourceApplicationSecondaryIdentifier = sourceApplicationSecondaryIdentifier; }
+
+    bool allowsCellularAccess() const { return m_allowsCellularAccess; }
+    void setAllowsCellularAccess(bool allowsCellularAccess) { m_allowsCellularAccess = allowsCellularAccess; }
+    
+    bool alwaysRunsAtBackgroundPriority() const { return m_alwaysRunsAtBackgroundPriority; }
+    void setAlwaysRunsAtBackgroundPriority(bool alwaysRunsAtBackgroundPriority) { m_alwaysRunsAtBackgroundPriority = alwaysRunsAtBackgroundPriority; }
+
+    bool shouldTakeUIBackgroundAssertion() const { return m_shouldTakeUIBackgroundAssertion; }
+    void setShouldTakeUIBackgroundAssertion(bool shouldTakeUIBackgroundAssertion) { m_shouldTakeUIBackgroundAssertion = shouldTakeUIBackgroundAssertion; }
+
+    bool shouldCaptureAudioInUIProcess() const { return m_shouldCaptureAudioInUIProcess; }
+    void setShouldCaptureAudioInUIProcess(bool shouldCaptureAudioInUIProcess) { m_shouldCaptureAudioInUIProcess = shouldCaptureAudioInUIProcess; }
+
+#if PLATFORM(IOS)
+    const WTF::String& ctDataConnectionServiceType() const { return m_ctDataConnectionServiceType; }
+    void setCTDataConnectionServiceType(const WTF::String& ctDataConnectionServiceType) { m_ctDataConnectionServiceType = ctDataConnectionServiceType; }
+#endif
+
+    pid_t presentingApplicationPID() const { return m_presentingApplicationPID; }
+    void setPresentingApplicationPID(pid_t pid) { m_presentingApplicationPID = pid; }
 
 private:
     bool m_shouldHaveLegacyDataStore { false };
 
     unsigned m_maximumProcessCount { 0 };
+    bool m_diskCacheSpeculativeValidationEnabled { false };
     WebKit::CacheModel m_cacheModel { WebKit::CacheModelPrimaryWebBrowser };
     int64_t m_diskCacheSizeOverride { -1 };
 
     WTF::String m_applicationCacheDirectory;
+    WTF::String m_applicationCacheFlatFileSubdirectoryName;
     WTF::String m_diskCacheDirectory;
+    WTF::String m_mediaCacheDirectory;
     WTF::String m_indexedDBDatabaseDirectory;
     WTF::String m_injectedBundlePath;
     WTF::String m_localStorageDirectory;
     WTF::String m_webSQLDatabaseDirectory;
     WTF::String m_mediaKeysStorageDirectory;
+    WTF::String m_resourceLoadStatisticsDirectory;
+    WTF::String m_javaScriptConfigurationDirectory;
     Vector<WTF::String> m_cachePartitionedURLSchemes;
     Vector<WTF::String> m_alwaysRevalidatedURLSchemes;
+    Vector<WTF::CString> m_additionalReadAccessAllowedPaths;
     bool m_fullySynchronousModeIsAllowedForTesting { false };
+    bool m_ignoreSynchronousMessagingTimeoutsForTesting { false };
     Vector<WTF::String> m_overrideLanguages;
+    WTF::String m_sourceApplicationBundleIdentifier;
+    WTF::String m_sourceApplicationSecondaryIdentifier;
+    bool m_allowsCellularAccess { true };
+    bool m_alwaysRunsAtBackgroundPriority { false };
+    bool m_shouldTakeUIBackgroundAssertion { true };
+    bool m_shouldCaptureAudioInUIProcess { false };
+    pid_t m_presentingApplicationPID { getCurrentProcessID() };
+#if PLATFORM(IOS)
+    WTF::String m_ctDataConnectionServiceType;
+#endif
 };
 
 } // namespace API

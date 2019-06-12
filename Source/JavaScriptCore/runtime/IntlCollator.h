@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IntlCollator_h
-#define IntlCollator_h
+#pragma once
 
 #if ENABLE(INTL)
 
@@ -41,7 +40,7 @@ class IntlCollator : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static IntlCollator* create(VM&, IntlCollatorConstructor*);
+    static IntlCollator* create(VM&, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
@@ -55,7 +54,6 @@ public:
 
 protected:
     IntlCollator(VM&, Structure*);
-    ~IntlCollator();
     void finishCreation(VM&);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
@@ -63,17 +61,24 @@ protected:
 private:
     enum class Usage { Sort, Search };
     enum class Sensitivity { Base, Accent, Case, Variant };
+    enum class CaseFirst { Upper, Lower, False };
+
+    struct UCollatorDeleter {
+        void operator()(UCollator*) const;
+    };
 
     void createCollator(ExecState&);
     static const char* usageString(Usage);
     static const char* sensitivityString(Sensitivity);
+    static const char* caseFirstString(CaseFirst);
 
     Usage m_usage;
     String m_locale;
     String m_collation;
     Sensitivity m_sensitivity;
+    CaseFirst m_caseFirst;
     WriteBarrier<JSBoundFunction> m_boundCompare;
-    UCollator* m_collator { nullptr };
+    std::unique_ptr<UCollator, UCollatorDeleter> m_collator;
     bool m_numeric;
     bool m_ignorePunctuation;
     bool m_initializedCollator { false };
@@ -82,5 +87,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(INTL)
-
-#endif // IntlCollator_h

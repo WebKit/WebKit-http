@@ -24,17 +24,15 @@
  */
 
 [
+    CustomGetOwnPropertyNames,
     GenerateIsReachable=ImplFrame,
-    CustomDeleteProperty,
-    CustomEnumerateProperty,
-    CustomNamedSetter,
     SkipVTableValidation,
 ] interface Storage {
-    [GetterRaisesException] readonly attribute unsigned long length;
-    [TreatReturnedNullStringAs=Null, RaisesException] DOMString key(unsigned long index);
-    [TreatReturnedNullStringAs=Null, RaisesException] getter DOMString getItem(DOMString key);
-    [RaisesException] void setItem(DOMString key, DOMString data);
-    [RaisesException] void removeItem(DOMString key);
-    [RaisesException] void clear();
+    [GetterMayThrowException] readonly attribute unsigned long length;
+    [MayThrowException] DOMString? key(unsigned long index);
+    [MayThrowException] getter DOMString? getItem(DOMString key);
+    [MayThrowException] setter void setItem(DOMString key, DOMString data);
+    [MayThrowException] deleter void removeItem(DOMString key);
+    [MayThrowException] void clear();
 };
 

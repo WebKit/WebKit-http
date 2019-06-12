@@ -30,7 +30,7 @@
 
 #include "AudioSourceProvider.h"
 #include "NotImplemented.h"
-#include "UUID.h"
+#include <wtf/UUID.h>
 
 namespace WebCore {
 
@@ -40,19 +40,19 @@ Ref<MediaStreamAudioSource> MediaStreamAudioSource::create()
 }
 
 MediaStreamAudioSource::MediaStreamAudioSource()
-    : RealtimeMediaSource(ASCIILiteral("WebAudio-") + createCanonicalUUIDString(), RealtimeMediaSource::Audio, "MediaStreamAudioDestinationNode")
+    : RealtimeMediaSource(ASCIILiteral("WebAudio-") + createCanonicalUUIDString(), RealtimeMediaSource::Type::Audio, "MediaStreamAudioDestinationNode")
 {
 }
 
-RefPtr<RealtimeMediaSourceCapabilities> MediaStreamAudioSource::capabilities()
+const RealtimeMediaSourceCapabilities& MediaStreamAudioSource::capabilities() const
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430
     notImplemented();
-    return nullptr;
+    return RealtimeMediaSourceCapabilities::emptyCapabilities();
 }
 
-const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings()
+const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings() const
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430
@@ -60,14 +60,7 @@ const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings()
     return m_currentSettings;
 }
 
-AudioSourceProvider* MediaStreamAudioSource::audioSourceProvider()
-{
-    // FIXME: implement this.
-    notImplemented();
-    return nullptr;
-}
-
-void MediaStreamAudioSource::addAudioConsumer(PassRefPtr<AudioDestinationConsumer> consumer)
+void MediaStreamAudioSource::addAudioConsumer(AudioDestinationConsumer* consumer)
 {
     LockHolder locker(m_audioConsumersLock);
     m_audioConsumers.append(consumer);

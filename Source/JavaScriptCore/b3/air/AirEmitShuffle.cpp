@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,8 +28,8 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirCode.h"
 #include "AirInstInlines.h"
-#include "AirRegisterPriority.h"
 #include <wtf/GraphNodeWorklist.h>
 #include <wtf/ListDump.h>
 
@@ -40,8 +40,8 @@ namespace {
 bool verbose = false;
 
 template<typename Functor>
-Tmp findPossibleScratch(Arg::Type type, const Functor& functor) {
-    for (Reg reg : regsInPriorityOrder(type)) {
+Tmp findPossibleScratch(Code& code, Bank bank, const Functor& functor) {
+    for (Reg reg : code.regsInPriorityOrder(bank)) {
         Tmp tmp(reg);
         if (functor(tmp))
             return tmp;
@@ -49,9 +49,9 @@ Tmp findPossibleScratch(Arg::Type type, const Functor& functor) {
     return Tmp();
 }
 
-Tmp findPossibleScratch(Arg::Type type, const Arg& arg1, const Arg& arg2) {
+Tmp findPossibleScratch(Code& code, Bank bank, const Arg& arg1, const Arg& arg2) {
     return findPossibleScratch(
-        type,
+        code, bank,
         [&] (Tmp tmp) -> bool {
             return !arg1.usesTmp(tmp) && !arg2.usesTmp(tmp);
         });
@@ -64,6 +64,49 @@ struct Rotate {
 };
 
 } // anonymous namespace
+
+Bank ShufflePair::bank() const
+{
+    if (src().isMemory() && dst().isMemory() && width() > pointerWidth()) {
+        // 8-byte memory-to-memory moves on a 32-bit platform are best handled as float moves.
+        return FP;
+    }
+    
+    if (src().isGP() && dst().isGP()) {
+        // This means that gpPairs gets memory-to-memory shuffles. The assumption is that we
+        // can do that more efficiently using GPRs, except in the special case above.
+        return GP;
+    }
+    
+    return FP;
+}
+
+Vector<Inst, 2> ShufflePair::insts(Code& code, Value* origin) const
+{
+    if (UNLIKELY(src().isMemory() && dst().isMemory()))
+        return { Inst(moveFor(bank(), width()), origin, src(), dst(), code.newTmp(bank())) };
+
+    if (isValidForm(moveFor(bank(), width()), src().kind(), dst().kind()))
+        return { Inst(moveFor(bank(), width()), origin, src(), dst()) };
+
+    // We must be a store immediate or a move immediate if we reach here. The reason:
+    // 1. We're not a mem->mem move, given the above check.
+    // 2. It's always valid to do a load from Addr into a tmp using Move/Move32/MoveFloat/MoveDouble.
+    ASSERT(isValidForm(moveFor(bank(), width()), Arg::Addr, Arg::Tmp));
+    // 3. It's also always valid to do a Tmp->Tmp move.
+    ASSERT(isValidForm(moveFor(bank(), width()), Arg::Tmp, Arg::Tmp));
+    // 4. It's always valid to do a Tmp->Addr store.
+    ASSERT(isValidForm(moveFor(bank(), width()), Arg::Tmp, Arg::Addr));
+
+    ASSERT(src().isSomeImm());
+    Tmp tmp = code.newTmp(bank());
+    ASSERT(isValidForm(Move, Arg::BigImm, Arg::Tmp));
+    ASSERT(isValidForm(moveFor(bank(), width()), Arg::Tmp, dst().kind()));
+    return {
+        Inst(Move, origin, Arg::bigImm(src().value()), tmp),
+        Inst(moveFor(bank(), width()), origin, tmp, dst()),
+    };
+}
 
 void ShufflePair::dump(PrintStream& out) const
 {
@@ -79,7 +122,8 @@ Inst createShuffle(Value* origin, const Vector<ShufflePair>& pairs)
 }
 
 Vector<Inst> emitShuffle(
-    Vector<ShufflePair> pairs, std::array<Arg, 2> scratches, Arg::Type type, Value* origin)
+    Code& code, Vector<ShufflePair> pairs, std::array<Arg, 2> scratches, Bank bank,
+    Value* origin)
 {
     if (verbose) {
         dataLog(
@@ -95,8 +139,8 @@ Vector<Inst> emitShuffle(
     // First validate that this is the kind of shuffle that we know how to deal with.
 #if !ASSERT_DISABLED
     for (const ShufflePair& pair : pairs) {
-        ASSERT(pair.src().isType(type));
-        ASSERT(pair.dst().isType(type));
+        ASSERT(pair.src().isBank(bank));
+        ASSERT(pair.dst().isBank(bank));
         ASSERT(pair.dst().isTmp() || pair.dst().isMemory());
     }
 #endif // !ASSERT_DISABLED
@@ -259,18 +303,11 @@ Vector<Inst> emitShuffle(
     // Lucky for us, we are guaranteed to have extra scratch registers anytime we have a Shift that
     // ends with a register. We search for such a register right now.
 
-    auto moveForWidth = [&] (Arg::Width width) -> Opcode {
-        switch (width) {
-        case Arg::Width32:
-            return type == Arg::GP ? Move32 : MoveFloat;
-        case Arg::Width64:
-            return type == Arg::GP ? Move : MoveDouble;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-        }
+    auto moveForWidth = [&] (Width width) -> Opcode {
+        return moveFor(bank, width);
     };
 
-    Opcode conservativeMove = moveForWidth(Arg::conservativeWidth(type));
+    Opcode conservativeMove = moveForWidth(conservativeWidth(bank));
 
     // We will emit things in reverse. We maintain a list of packs of instructions, and then we emit
     // append them together in reverse (for example the thing at the end of resultPacks is placed
@@ -303,7 +340,7 @@ Vector<Inst> emitShuffle(
         
         if (!isValidForm(move, pair.src().kind(), pair.dst().kind())) {
             Tmp scratch =
-                getScratch(scratchIndex, findPossibleScratch(type, pair.src(), pair.dst()));
+                getScratch(scratchIndex, findPossibleScratch(code, bank, pair.src(), pair.dst()));
             RELEASE_ASSERT(scratch);
             if (isValidForm(move, pair.src().kind(), Arg::Tmp))
                 result.append(Inst(moveForWidth(pair.width()), origin, pair.src(), scratch));
@@ -372,24 +409,24 @@ Vector<Inst> emitShuffle(
         
         bool canSwap = false;
         Opcode swap = Oops;
-        Arg::Width swapWidth = Arg::Width8; // bogus value
+        Width swapWidth = Width8; // bogus value
 
         // Currently, the swap instruction is not available for floating point on any architecture we
         // support.
-        if (type == Arg::GP) {
+        if (bank == GP) {
             // Figure out whether we will be doing 64-bit swaps or 32-bit swaps. If we have a mix of
             // widths we handle that by fixing up the relevant register with zero-extends.
             swap = Swap32;
-            swapWidth = Arg::Width32;
+            swapWidth = Width32;
             bool hasMemory = false;
             bool hasIndex = false;
             for (ShufflePair& pair : rotate.loop) {
                 switch (pair.width()) {
-                case Arg::Width32:
+                case Width32:
                     break;
-                case Arg::Width64:
+                case Width64:
                     swap = Swap64;
-                    swapWidth = Arg::Width64;
+                    swapWidth = Width64;
                     break;
                 default:
                     RELEASE_ASSERT_NOT_REACHED();
@@ -435,7 +472,7 @@ Vector<Inst> emitShuffle(
                     // Moving data between two spills is rare. To get here a lot of rare stuff has to
                     // all happen at once.
                     
-                    Tmp scratch = getScratch(0, findPossibleScratch(type, left, right));
+                    Tmp scratch = getScratch(0, findPossibleScratch(code, bank, left, right));
                     RELEASE_ASSERT(scratch);
                     result.append(Inst(moveForWidth(swapWidth), origin, left, scratch));
                     result.append(Inst(swap, origin, scratch, right));
@@ -454,8 +491,8 @@ Vector<Inst> emitShuffle(
                 if (pair.width() == swapWidth)
                     continue;
 
-                RELEASE_ASSERT(pair.width() == Arg::Width32);
-                RELEASE_ASSERT(swapWidth == Arg::Width64);
+                RELEASE_ASSERT(pair.width() == Width32);
+                RELEASE_ASSERT(swapWidth == Width64);
                 RELEASE_ASSERT(pair.dst().isTmp());
 
                 // Need to do an extra zero extension.
@@ -469,7 +506,7 @@ Vector<Inst> emitShuffle(
             // available register file.
 
             Tmp scratch = findPossibleScratch(
-                type,
+                code, bank,
                 [&] (Tmp tmp) -> bool {
                     for (ShufflePair pair : rotate.loop) {
                         if (pair.src().usesTmp(tmp))
@@ -512,27 +549,26 @@ Vector<Inst> emitShuffle(
 }
 
 Vector<Inst> emitShuffle(
-    const Vector<ShufflePair>& pairs,
+    Code& code, const Vector<ShufflePair>& pairs,
     const std::array<Arg, 2>& gpScratch, const std::array<Arg, 2>& fpScratch,
     Value* origin)
 {
     Vector<ShufflePair> gpPairs;
     Vector<ShufflePair> fpPairs;
     for (const ShufflePair& pair : pairs) {
-        if (pair.src().isMemory() && pair.dst().isMemory() && pair.width() > Arg::pointerWidth()) {
-            // 8-byte memory-to-memory moves on a 32-bit platform are best handled as float moves.
-            fpPairs.append(pair);
-        } else if (pair.src().isGP() && pair.dst().isGP()) {
-            // This means that gpPairs gets memory-to-memory shuffles. The assumption is that we
-            // can do that more efficiently using GPRs, except in the special case above.
+        switch (pair.bank()) {
+        case GP:
             gpPairs.append(pair);
-        } else
+            break;
+        case FP:
             fpPairs.append(pair);
+            break;
+        }
     }
 
     Vector<Inst> result;
-    result.appendVector(emitShuffle(gpPairs, gpScratch, Arg::GP, origin));
-    result.appendVector(emitShuffle(fpPairs, fpScratch, Arg::FP, origin));
+    result.appendVector(emitShuffle(code, gpPairs, gpScratch, GP, origin));
+    result.appendVector(emitShuffle(code, fpPairs, fpScratch, FP, origin));
     return result;
 }
 

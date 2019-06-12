@@ -8,104 +8,194 @@
 
 #include "libANGLE/Buffer.h"
 #include "libANGLE/Caps.h"
+#include "libANGLE/ContextState.h"
+#include "libANGLE/Program.h"
+#include "libANGLE/renderer/GLImplFactory.h"
 #include "libANGLE/renderer/TransformFeedbackImpl.h"
 
 namespace gl
 {
 
-TransformFeedback::TransformFeedback(rx::TransformFeedbackImpl* impl, GLuint id, const Caps &caps)
-    : RefCountObject(id),
-      mImplementation(impl),
+TransformFeedbackState::TransformFeedbackState(size_t maxIndexedBuffers)
+    : mLabel(),
       mActive(false),
       mPrimitiveMode(GL_NONE),
       mPaused(false),
+      mProgram(nullptr),
       mGenericBuffer(),
-      mIndexedBuffers(caps.maxTransformFeedbackSeparateAttributes)
+      mIndexedBuffers(maxIndexedBuffers)
 {
-    ASSERT(impl != NULL);
+}
+
+const BindingPointer<Buffer> &TransformFeedbackState::getGenericBuffer() const
+{
+    return mGenericBuffer;
+}
+
+const OffsetBindingPointer<Buffer> &TransformFeedbackState::getIndexedBuffer(size_t idx) const
+{
+    return mIndexedBuffers[idx];
+}
+
+const std::vector<OffsetBindingPointer<Buffer>> &TransformFeedbackState::getIndexedBuffers() const
+{
+    return mIndexedBuffers;
+}
+
+TransformFeedback::TransformFeedback(rx::GLImplFactory *implFactory, GLuint id, const Caps &caps)
+    : RefCountObject(id),
+      mState(caps.maxTransformFeedbackSeparateAttributes),
+      mImplementation(implFactory->createTransformFeedback(mState))
+{
+    ASSERT(mImplementation != nullptr);
+}
+
+void TransformFeedback::destroy(const Context *context)
+{
+    if (mState.mProgram)
+    {
+        mState.mProgram->release(context);
+        mState.mProgram = nullptr;
+    }
 }
 
 TransformFeedback::~TransformFeedback()
 {
-    mGenericBuffer.set(nullptr);
-    for (size_t i = 0; i < mIndexedBuffers.size(); i++)
+    ASSERT(!mState.mProgram);
+    mState.mGenericBuffer.set(nullptr);
+    for (size_t i = 0; i < mState.mIndexedBuffers.size(); i++)
     {
-        mIndexedBuffers[i].set(nullptr);
+        mState.mIndexedBuffers[i].set(nullptr);
     }
 
     SafeDelete(mImplementation);
 }
 
-void TransformFeedback::begin(GLenum primitiveMode)
+void TransformFeedback::setLabel(const std::string &label)
 {
-    mActive = true;
-    mPrimitiveMode = primitiveMode;
-    mPaused = false;
-    mImplementation->begin(primitiveMode);
+    mState.mLabel = label;
 }
 
-void TransformFeedback::end()
+const std::string &TransformFeedback::getLabel() const
 {
-    mActive = false;
-    mPrimitiveMode = GL_NONE;
-    mPaused = false;
+    return mState.mLabel;
+}
+
+void TransformFeedback::begin(const Context *context, GLenum primitiveMode, Program *program)
+{
+    mState.mActive        = true;
+    mState.mPrimitiveMode = primitiveMode;
+    mState.mPaused        = false;
+    mImplementation->begin(primitiveMode);
+    bindProgram(context, program);
+}
+
+void TransformFeedback::end(const Context *context)
+{
+    mState.mActive        = false;
+    mState.mPrimitiveMode = GL_NONE;
+    mState.mPaused        = false;
     mImplementation->end();
+    if (mState.mProgram)
+    {
+        mState.mProgram->release(context);
+        mState.mProgram = nullptr;
+    }
 }
 
 void TransformFeedback::pause()
 {
-    mPaused = true;
+    mState.mPaused = true;
     mImplementation->pause();
 }
 
 void TransformFeedback::resume()
 {
-    mPaused = false;
+    mState.mPaused = false;
     mImplementation->resume();
 }
 
 bool TransformFeedback::isActive() const
 {
-    return mActive;
+    return mState.mActive;
 }
 
 bool TransformFeedback::isPaused() const
 {
-    return mPaused;
+    return mState.mPaused;
 }
 
 GLenum TransformFeedback::getPrimitiveMode() const
 {
-    return mPrimitiveMode;
+    return mState.mPrimitiveMode;
+}
+
+void TransformFeedback::bindProgram(const Context *context, Program *program)
+{
+    if (mState.mProgram != program)
+    {
+        if (mState.mProgram != nullptr)
+        {
+            mState.mProgram->release(context);
+        }
+        mState.mProgram = program;
+        if (mState.mProgram != nullptr)
+        {
+            mState.mProgram->addRef();
+        }
+    }
+}
+
+bool TransformFeedback::hasBoundProgram(GLuint program) const
+{
+    return mState.mProgram != nullptr && mState.mProgram->id() == program;
 }
 
 void TransformFeedback::bindGenericBuffer(Buffer *buffer)
 {
-    mGenericBuffer.set(buffer);
-    mImplementation->bindGenericBuffer(mGenericBuffer);
+    mState.mGenericBuffer.set(buffer);
+    mImplementation->bindGenericBuffer(mState.mGenericBuffer);
+}
+
+void TransformFeedback::detachBuffer(GLuint bufferName)
+{
+    for (size_t index = 0; index < mState.mIndexedBuffers.size(); index++)
+    {
+        if (mState.mIndexedBuffers[index].id() == bufferName)
+        {
+            mState.mIndexedBuffers[index].set(nullptr);
+            mImplementation->bindIndexedBuffer(index, mState.mIndexedBuffers[index]);
+        }
+    }
+
+    if (mState.mGenericBuffer.id() == bufferName)
+    {
+        mState.mGenericBuffer.set(nullptr);
+        mImplementation->bindGenericBuffer(mState.mGenericBuffer);
+    }
 }
 
 const BindingPointer<Buffer> &TransformFeedback::getGenericBuffer() const
 {
-    return mGenericBuffer;
+    return mState.mGenericBuffer;
 }
 
 void TransformFeedback::bindIndexedBuffer(size_t index, Buffer *buffer, size_t offset, size_t size)
 {
-    ASSERT(index < mIndexedBuffers.size());
-    mIndexedBuffers[index].set(buffer, offset, size);
-    mImplementation->bindIndexedBuffer(index, mIndexedBuffers[index]);
+    ASSERT(index < mState.mIndexedBuffers.size());
+    mState.mIndexedBuffers[index].set(buffer, offset, size);
+    mImplementation->bindIndexedBuffer(index, mState.mIndexedBuffers[index]);
 }
 
 const OffsetBindingPointer<Buffer> &TransformFeedback::getIndexedBuffer(size_t index) const
 {
-    ASSERT(index < mIndexedBuffers.size());
-    return mIndexedBuffers[index];
+    ASSERT(index < mState.mIndexedBuffers.size());
+    return mState.mIndexedBuffers[index];
 }
 
 size_t TransformFeedback::getIndexedBufferCount() const
 {
-    return mIndexedBuffers.size();
+    return mState.mIndexedBuffers.size();
 }
 
 rx::TransformFeedbackImpl *TransformFeedback::getImplementation()

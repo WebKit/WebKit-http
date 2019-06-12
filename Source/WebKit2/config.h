@@ -28,12 +28,10 @@
 #include "cmakeconfig.h"
 #endif
 
-#include <wtf/Platform.h>
-
 #include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
 #include <runtime/JSExportMacros.h>
 #include <wtf/DisallowCType.h>
-#include <wtf/ExportMacros.h>
 
 #if defined(WIN32) || defined(_WIN32)
 
@@ -74,7 +72,7 @@
 #ifndef PLUGIN_ARCHITECTURE_UNSUPPORTED
 #if PLATFORM(MAC)
 #define PLUGIN_ARCHITECTURE_MAC 1
-#elif (PLATFORM(GTK) || PLATFORM(EFL)) && (OS(UNIX) && !OS(MAC_OS_X)) && PLATFORM(X11)
+#elif PLATFORM(GTK) && PLATFORM(X11) && OS(UNIX) && !OS(MAC_OS_X)
 #define PLUGIN_ARCHITECTURE_X11 1
 #else
 #define PLUGIN_ARCHITECTURE_UNSUPPORTED 1
@@ -83,11 +81,11 @@
 
 #define PLUGIN_ARCHITECTURE(ARCH) (defined PLUGIN_ARCHITECTURE_##ARCH && PLUGIN_ARCHITECTURE_##ARCH)
 
-#ifndef ENABLE_INSPECTOR_SERVER
-#if ENABLE(WEB_SOCKETS) && (PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL))
-#define ENABLE_INSPECTOR_SERVER 1
-#endif
-#endif
+// #ifndef ENABLE_INSPECTOR_SERVER
+// #if ENABLE(WEB_SOCKETS) && (PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL))
+// #define ENABLE_INSPECTOR_SERVER 1
+// #endif
+// #endif
 
 #ifndef ENABLE_SEC_ITEM_SHIM
 #if PLATFORM(MAC) || PLATFORM(IOS)
@@ -99,8 +97,22 @@
 #ifndef HAVE_WINDOW_SERVER_OCCLUSION_NOTIFICATIONS
 #define HAVE_WINDOW_SERVER_OCCLUSION_NOTIFICATIONS 1
 #endif
+#endif
+
+#if USE(CFURLCONNECTION)
 #ifndef USE_NETWORK_SESSION
 #define USE_NETWORK_SESSION 0
+#endif
+#endif
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS) || PLATFORM(APPLETV) || PLATFORM(WATCHOS) || USE(SOUP)
+#ifndef USE_NETWORK_SESSION
+#define USE_NETWORK_SESSION 1
+#endif
+
+// FIXME: We should work towards not using CredentialStorage in WebKit2 to not have problems with digest authentication.
+#ifndef USE_CREDENTIAL_STORAGE_WITH_NETWORK_SESSION
+#define USE_CREDENTIAL_STORAGE_WITH_NETWORK_SESSION 1
 #endif
 #endif
 
@@ -117,15 +129,21 @@
 #endif
 
 #ifndef ENABLE_NETWORK_CACHE
-#if PLATFORM(COCOA) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || USE(SOUP)
 #define ENABLE_NETWORK_CACHE 1
 #else
 #define ENABLE_NETWORK_CACHE 0
 #endif
 #endif
 
+#ifndef ENABLE_NETWORK_CAPTURE
+#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
+#define ENABLE_NETWORK_CAPTURE 1
+#endif
+#endif
+
 #ifndef ENABLE_NETWORK_CACHE_SPECULATIVE_REVALIDATION
-#if ENABLE(NETWORK_CACHE) && PLATFORM(COCOA)
+#if ENABLE(NETWORK_CACHE) && (PLATFORM(COCOA) || PLATFORM(GTK))
 #define ENABLE_NETWORK_CACHE_SPECULATIVE_REVALIDATION 1
 #else
 #define ENABLE_NETWORK_CACHE_SPECULATIVE_REVALIDATION 0

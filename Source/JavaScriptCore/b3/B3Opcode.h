@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,16 +23,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Opcode_h
-#define B3Opcode_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "B3Type.h"
+#include "B3Width.h"
 #include <wtf/Optional.h>
 #include <wtf/StdLibExtras.h>
 
 namespace JSC { namespace B3 {
+
+// Warning: In B3, an Opcode is just one part of a Kind. Kind is used the way that an opcode
+// would be used in simple IRs. See B3Kind.h.
 
 enum Opcode : int16_t {
     // A no-op that returns Void, useful for when you want to remove a value.
@@ -76,7 +79,9 @@ enum Opcode : int16_t {
     Sub,
     Mul,
     Div, // All bets are off as to what will happen when you execute this for -2^31/-1 and x/0.
+    UDiv,
     Mod, // All bets are off as to what will happen when you execute this for -2^31%-1 and x%0.
+    UMod,
 
     // Polymorphic negation. Note that we only need this for floating point, since integer negation
     // is exactly like Sub(0, x). But that's not true for floating point. Sub(0, 0) is 0, while
@@ -84,14 +89,14 @@ enum Opcode : int16_t {
     Neg,
 
     // Integer math.
-    ChillDiv, // doesn't trap ever, behaves like JS (x/y)|0.
-    ChillMod, // doesn't trap ever, behaves like JS (x%y)|0.
     BitAnd,
     BitOr,
     BitXor,
     Shl,
     SShr, // Arithmetic Shift.
     ZShr, // Logical Shift.
+    RotR, // Rotate Right.
+    RotL, // Rotate Left.
     Clz, // Count leading zeros.
 
     // Floating point math.
@@ -109,12 +114,13 @@ enum Opcode : int16_t {
     // Takes Int32 and returns Int64:
     SExt32,
     ZExt32,
-    // Takes Int64 and returns Int32:
+    // Does a bitwise truncation of Int64->Int32 and Double->Float:
     Trunc,
-    // Takes ints and returns Double. Note that we don't currently provide the opposite operation,
+    // Takes ints and returns floating point value. Note that we don't currently provide the opposite operation,
     // because double-to-int conversions have weirdly different semantics on different platforms. Use
     // a patchpoint if you need to do that.
     IToD,
+    IToF,
     // Convert between double and float.
     FloatToDouble,
     DoubleToFloat,
@@ -156,6 +162,122 @@ enum Opcode : int16_t {
     Store16,
     // This is a polymorphic store for Int32, Int64, Float, and Double.
     Store,
+    
+    // Atomic compare and swap that returns a boolean. May choose to do nothing and return false. You can
+    // usually assume that this is faster and results in less code than AtomicStrongCAS, though that's
+    // not necessarily true on Intel, if instruction selection does its job. Imagine that this opcode is
+    // as if you did this atomically:
+    //
+    // template<typename T>
+    // bool AtomicWeakCAS(T expectedValue, T newValue, T* ptr)
+    // {
+    //     if (!rand())
+    //         return false; // Real world example of this: context switch on ARM while doing CAS.
+    //     if (*ptr != expectedValue)
+    //         return false;
+    //     *ptr = newValue;
+    //     return true;
+    // }
+    //
+    // Note that all atomics put the pointer last to be consistent with how loads and stores work. This
+    // is a goofy tradition, but it's harmless, and better than being inconsistent.
+    //
+    // Note that weak CAS has no fencing guarantees when it fails. This means that the following
+    // transformation is always valid:
+    //
+    // Before:
+    //
+    //         Branch(AtomicWeakCAS(expected, new, ptr))
+    //       Successors: Then:#success, Else:#fail
+    //
+    // After:
+    //
+    //         Branch(Equal(Load(ptr), expected))
+    //       Successors: Then:#attempt, Else:#fail
+    //     BB#attempt:
+    //         Branch(AtomicWeakCAS(expected, new, ptr))
+    //       Successors: Then:#success, Else:#fail
+    //
+    // Both kinds of CAS for non-canonical widths (Width8 and Width16) ignore the irrelevant bits of the
+    // input.
+    AtomicWeakCAS,
+    
+    // Atomic compare and swap that returns the old value. Does not have the nondeterminism of WeakCAS.
+    // This is a bit more code and a bit slower in some cases, though not by a lot. Imagine that this
+    // opcode is as if you did this atomically:
+    //
+    // template<typename T>
+    // T AtomicStrongCAS(T expectedValue, T newValue, T* ptr)
+    // {
+    //     T oldValue = *ptr;
+    //     if (oldValue == expectedValue)
+    //         *ptr = newValue;
+    //     return oldValue
+    // }
+    //
+    // AtomicStrongCAS sign-extends its result for subwidth operations.
+    //
+    // Note that AtomicWeakCAS and AtomicStrongCAS sort of have this kind of equivalence:
+    //
+    // AtomicWeakCAS(@exp, @new, @ptr) == Equal(AtomicStrongCAS(@exp, @new, @ptr), @exp)
+    //
+    // Assuming that the WeakCAS does not spuriously fail, of course.
+    AtomicStrongCAS,
+    
+    // Atomically ___ a memory location and return the old value. Syntax:
+    //
+    // @oldValue = AtomicXchg___(@operand, @ptr)
+    //
+    // For non-canonical widths (Width8 and Width16), these return sign-extended results and ignore the
+    // irrelevant bits of their inputs.
+    AtomicXchgAdd,
+    AtomicXchgAnd,
+    AtomicXchgOr,
+    AtomicXchgSub,
+    AtomicXchgXor,
+    
+    // FIXME: Maybe we should have AtomicXchgNeg.
+    // https://bugs.webkit.org/show_bug.cgi?id=169252
+    
+    // Atomically exchange a value with a memory location. Syntax:
+    //
+    // @oldValue = AtomicXchg(@newValue, @ptr)
+    AtomicXchg,
+    
+    // Introduce an invisible dependency for blocking motion of loads with respect to each other. Syntax:
+    //
+    // @result = Depend(@phantom)
+    //
+    // This is eventually codegenerated to have local semantics as if we did:
+    //
+    // @result = $0
+    //
+    // But it ensures that the users of @result cannot execute until @phantom is computed.
+    //
+    // The compiler is not allowed to reason about the fact that Depend codegenerates this way. Any kind
+    // of transformation or analysis that relies on the insight that Depend is really zero is unsound,
+    // because it unlocks reordering of users of @result and @phantom.
+    //
+    // On X86, this is lowered to a load-load fence and @result uses @phantom directly.
+    //
+    // On ARM, this is lowered as if like:
+    //
+    // @result = BitXor(@phantom, @phantom)
+    //
+    // Except that the compiler never gets an opportunity to simplify out the BitXor.
+    Depend,
+
+    // This is used to compute the actual address of a Wasm memory operation. It takes an IntPtr
+    // and a pinned register then computes the appropriate IntPtr address. For the use-case of
+    // Wasm it is important that the first child initially be a ZExt32 so the top bits are cleared.
+    // We do WasmAddress(ZExt32(ptr), ...) so that we can avoid generating extraneous moves in Air.
+    WasmAddress,
+    
+    // This is used to represent standalone fences - i.e. fences that are not part of other
+    // instructions. It's expressive enough to expose mfence on x86 and dmb ish/ishst on ARM. On
+    // x86, it also acts as a compiler store-store fence in those cases where it would have been a
+    // dmb ishst on ARM.
+    Fence,
 
     // This is a regular ordinary C function call, using the system C calling convention. Make sure
     // that the arguments are passed using the right types. The first argument is the callee.
@@ -202,25 +324,36 @@ enum Opcode : int16_t {
     // WarmAny. It will not have an output constraint.
     Check,
 
+    // Special Wasm opcode that takes a Int32, a special pinned gpr and an offset. This node exists
+    // to allow us to CSE WasmBoundsChecks if both use the same pointer and one dominates the other.
+    // Without some such node B3 would not have enough information about the inner workings of wasm
+    // to be able to perform such optimizations.
+    WasmBoundsCheck,
+
     // SSA support, in the style of DFG SSA.
     Upsilon, // This uses the UpsilonValue class.
     Phi,
 
-    // Jump. Uses the ControlValue class.
+    // Jump.
     Jump,
     
-    // Polymorphic branch, usable with any integer type. Branches if not equal to zero. Uses the
-    // ControlValue class, with the 0-index successor being the true successor.
+    // Polymorphic branch, usable with any integer type. Branches if not equal to zero. The 0-index
+    // successor is the true successor.
     Branch,
 
     // Switch. Switches over either Int32 or Int64. Uses the SwitchValue class.
     Switch,
+    
+    // Multiple entrypoints are supported via the EntrySwitch operation. Place this in the root
+    // block and list the entrypoints as the successors. All blocks backwards-reachable from
+    // EntrySwitch are duplicated for each entrypoint.
+    EntrySwitch,
 
     // Return. Note that B3 procedures don't know their return type, so this can just return any
-    // type. Uses the ControlValue class.
+    // type.
     Return,
 
-    // This is a terminal that indicates that we will never get here. Uses the ControlValue class.
+    // This is a terminal that indicates that we will never get here.
     Oops
 };
 
@@ -236,7 +369,7 @@ inline bool isCheckMath(Opcode opcode)
     }
 }
 
-Optional<Opcode> invertedCompare(Opcode, Type);
+std::optional<Opcode> invertedCompare(Opcode, Type);
 
 inline Opcode constPtrOpcode()
 {
@@ -258,17 +391,146 @@ inline bool isConstant(Opcode opcode)
     }
 }
 
+inline Opcode opcodeForConstant(Type type)
+{
+    switch (type) {
+    case Int32: return Const32;
+    case Int64: return Const64;
+    case Float: return ConstFloat;
+    case Double: return ConstDouble;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+}
+
+inline bool isDefinitelyTerminal(Opcode opcode)
+{
+    switch (opcode) {
+    case Jump:
+    case Branch:
+    case Switch:
+    case Oops:
+    case Return:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isLoad(Opcode opcode)
+{
+    switch (opcode) {
+    case Load8Z:
+    case Load8S:
+    case Load16Z:
+    case Load16S:
+    case Load:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isStore(Opcode opcode)
+{
+    switch (opcode) {
+    case Store8:
+    case Store16:
+    case Store:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isLoadStore(Opcode opcode)
+{
+    switch (opcode) {
+    case Load8Z:
+    case Load8S:
+    case Load16Z:
+    case Load16S:
+    case Load:
+    case Store8:
+    case Store16:
+    case Store:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isAtomic(Opcode opcode)
+{
+    switch (opcode) {
+    case AtomicWeakCAS:
+    case AtomicStrongCAS:
+    case AtomicXchgAdd:
+    case AtomicXchgAnd:
+    case AtomicXchgOr:
+    case AtomicXchgSub:
+    case AtomicXchgXor:
+    case AtomicXchg:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isAtomicCAS(Opcode opcode)
+{
+    switch (opcode) {
+    case AtomicWeakCAS:
+    case AtomicStrongCAS:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isAtomicXchg(Opcode opcode)
+{
+    switch (opcode) {
+    case AtomicXchgAdd:
+    case AtomicXchgAnd:
+    case AtomicXchgOr:
+    case AtomicXchgSub:
+    case AtomicXchgXor:
+    case AtomicXchg:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isMemoryAccess(Opcode opcode)
+{
+    return isAtomic(opcode) || isLoadStore(opcode);
+}
+
+inline Opcode signExtendOpcode(Width width)
+{
+    switch (width) {
+    case Width8:
+        return SExt8;
+    case Width16:
+        return SExt16;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return Oops;
+    }
+}
+
+JS_EXPORT_PRIVATE Opcode storeOpcode(Bank bank, Width width);
+
 } } // namespace JSC::B3
 
 namespace WTF {
 
 class PrintStream;
 
-void printInternal(PrintStream&, JSC::B3::Opcode);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Opcode);
 
 } // namespace WTF
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Opcode_h
-

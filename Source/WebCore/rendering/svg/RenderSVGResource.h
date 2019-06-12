@@ -17,12 +17,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGResource_h
-#define RenderSVGResource_h
+#pragma once
 
 #include "RenderSVGShape.h"
 #include "RenderStyleConstants.h"
-#include "SVGDocumentExtensions.h"
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
@@ -39,11 +37,11 @@ enum RenderSVGResourceType {
 };
 
 // If this enum changes change the unsigned bitfields using it.
-enum RenderSVGResourceMode {
-    ApplyToDefaultMode = 1 << 0, // used for all resources except gradient/pattern
-    ApplyToFillMode    = 1 << 1,
-    ApplyToStrokeMode  = 1 << 2,
-    ApplyToTextMode    = 1 << 3 // used in combination with ApplyTo{Fill|Stroke}Mode
+enum class RenderSVGResourceMode {
+    ApplyToDefault = 1 << 0, // used for all resources except gradient/pattern
+    ApplyToFill    = 1 << 1,
+    ApplyToStroke  = 1 << 2,
+    ApplyToText    = 1 << 3 // used in combination with ApplyTo{Fill|Stroke}Mode
 };
 
 class Color;
@@ -62,8 +60,8 @@ public:
     virtual void removeAllClientsFromCache(bool markForInvalidation = true) = 0;
     virtual void removeClientFromCache(RenderElement&, bool markForInvalidation = true) = 0;
 
-    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) = 0;
-    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short, const Path*, const RenderSVGShape*) { }
+    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>) = 0;
+    virtual void postApplyResource(RenderElement&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>, const Path*, const RenderSVGShape*) { }
     virtual FloatRect resourceBoundingBox(const RenderObject&) = 0;
 
     virtual RenderSVGResourceType resourceType() const = 0;
@@ -76,11 +74,9 @@ public:
     static void markForLayoutAndParentResourceInvalidation(RenderObject&, bool needsLayout = true);
 };
 
-}
+} // namespace WebCore
 
 #define SPECIALIZE_TYPE_TRAITS_RENDER_SVG_RESOURCE(ToValueTypeName, ResourceType) \
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::RenderSVGResource& resource) { return resource.resourceType() == WebCore::ResourceType; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

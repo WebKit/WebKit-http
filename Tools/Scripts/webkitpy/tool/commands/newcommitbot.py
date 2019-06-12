@@ -113,6 +113,18 @@ class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
 
     @classmethod
     def _summarize_commit_log(self, commit_log, committer_list=CommitterList()):
+        for contributor in committer_list.contributors():
+            if not contributor.irc_nicknames:
+                continue
+            name_with_nick = "%s (%s)" % (contributor.full_name, contributor.irc_nicknames[0])
+            if contributor.full_name in commit_log:
+                commit_log = commit_log.replace(contributor.full_name, name_with_nick)
+                for email in contributor.emails:
+                    commit_log = commit_log.replace(' <' + email + '>', '')
+            else:
+                for email in contributor.emails:
+                    commit_log = commit_log.replace(' %s ' % email, ' %s ' % name_with_nick)
+
         patch_by = self._patch_by_regex.search(commit_log)
         commit_log = self._patch_by_regex.sub('', commit_log, count=1)
 
@@ -124,22 +136,11 @@ class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
         commit_log = self._bugzilla_url_regex.sub(r'https://webkit.org/b/\g<id>', commit_log)
         commit_log = self._trac_url_regex.sub(r'https://trac.webkit.org/r\g<revision>', commit_log)
 
-        for contributor in committer_list.contributors():
-            if not contributor.irc_nicknames:
-                continue
-            name_with_nick = "%s (%s)" % (contributor.full_name, contributor.irc_nicknames[0])
-            if contributor.full_name in commit_log:
-                commit_log = commit_log.replace(contributor.full_name, name_with_nick)
-                for email in contributor.emails:
-                    commit_log = commit_log.replace(' <' + email + '>', '')
-            else:
-                for email in contributor.emails:
-                    commit_log = commit_log.replace(email, name_with_nick)
-
         lines = commit_log.split('\n')[1:-2]  # Ignore lines with ----------.
 
         firstline = re.match(r'^(?P<revision>r\d+) \| (?P<email>[^\|]+) \| (?P<timestamp>[^|]+) \| [^\n]+', lines[0])
         assert firstline
+
         author = firstline.group('email')
         if patch_by:
             author = patch_by.group('author')

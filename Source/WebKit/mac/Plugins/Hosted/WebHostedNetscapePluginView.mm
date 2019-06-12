@@ -87,9 +87,9 @@ extern "C" {
       attributeKeys:(NSArray *)keys
     attributeValues:(NSArray *)values
        loadManually:(BOOL)loadManually
-            element:(PassRefPtr<WebCore::HTMLPlugInElement>)element
+            element:(RefPtr<WebCore::HTMLPlugInElement>&&)element
 {
-    self = [super initWithFrame:frame pluginPackage:pluginPackage URL:URL baseURL:baseURL MIMEType:MIME attributeKeys:keys attributeValues:values loadManually:loadManually element:element];
+    self = [super initWithFrame:frame pluginPackage:pluginPackage URL:URL baseURL:baseURL MIMEType:MIME attributeKeys:keys attributeValues:values loadManually:loadManually element:WTFMove(element)];
     if (!self)
         return nil;
     
@@ -168,7 +168,7 @@ extern "C" {
         // Eagerly enter compositing mode, since we know we'll need it. This avoids firing setNeedsStyleRecalc()
         // for iframes that contain composited plugins at bad times. https://bugs.webkit.org/show_bug.cgi?id=39033
         core([self webFrame])->view()->enterCompositingMode();
-        [self element]->setNeedsStyleRecalc(SyntheticStyleChange);
+        [self element]->invalidateStyleAndLayerComposition();
     } else
         self.wantsLayer = YES;
 }
@@ -443,7 +443,7 @@ extern "C" {
 {
     if (_cachedSnapshot) {
         NSRect sourceRect = { NSZeroPoint, [_cachedSnapshot.get() size] };
-        [_cachedSnapshot.get() drawInRect:[self bounds] fromRect:sourceRect operation:NSCompositeSourceOver fraction:1];
+        [_cachedSnapshot.get() drawInRect:[self bounds] fromRect:sourceRect operation:NSCompositingOperationSourceOver fraction:1];
         return;
     }
 
@@ -462,12 +462,12 @@ extern "C" {
     }
 }
 
-- (PassRefPtr<JSC::Bindings::Instance>)createPluginBindingsInstance:(PassRefPtr<JSC::Bindings::RootObject>)rootObject
+- (RefPtr<JSC::Bindings::Instance>)createPluginBindingsInstance:(Ref<JSC::Bindings::RootObject>&&)rootObject
 {
     if (!_proxy)
-        return 0;
+        return nullptr;
     
-    return _proxy->createBindingsInstance(rootObject);
+    return _proxy->createBindingsInstance(WTFMove(rootObject));
 }
 
 - (void)pluginView:(NSView *)pluginView receivedResponse:(NSURLResponse *)response
@@ -510,30 +510,6 @@ extern "C" {
     
     if (HostedNetscapePluginStream* manualStream = _proxy->manualStream())
         manualStream->didFinishLoading(0);
-}
-
-- (void)_webPluginContainerCancelCheckIfAllowedToLoadRequest:(id)webPluginContainerCheck
-{
-    ASSERT([webPluginContainerCheck isKindOfClass:[WebPluginContainerCheck class]]);
-    
-    id contextInfo = [webPluginContainerCheck contextInfo];
-    ASSERT([contextInfo isKindOfClass:[NSNumber class]]);
-
-    if (!_proxy)
-        return;
-
-    uint32_t checkID = [(NSNumber *)contextInfo unsignedIntValue];
-    _proxy->cancelCheckIfAllowedToLoadURL(checkID);
-}
-
-- (void)_containerCheckResult:(PolicyAction)policy contextInfo:(id)contextInfo
-{
-    ASSERT([contextInfo isKindOfClass:[NSNumber class]]);
-    if (!_proxy)
-        return;
-
-    uint32_t checkID = [(NSNumber *)contextInfo unsignedIntValue];
-    _proxy->checkIfAllowedToLoadURLResult(checkID, (policy == PolicyUse));
 }
 
 - (void)webFrame:(WebFrame *)webFrame didFinishLoadWithReason:(NPReason)reason

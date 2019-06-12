@@ -15,6 +15,7 @@ alt
 archive
 aria-activedescendant
 aria-atomic
+aria-autocomplete
 aria-busy
 aria-checked
 aria-colcount
@@ -23,8 +24,10 @@ aria-colspan
 aria-controls
 aria-current
 aria-describedby
+aria-details
 aria-disabled
 aria-dropeffect
+aria-errormessage
 aria-expanded
 aria-flowto
 aria-grabbed
@@ -59,6 +62,7 @@ aria-valuemax
 aria-valuemin
 aria-valuenow
 aria-valuetext
+as
 async
 autocomplete
 autofocus
@@ -115,6 +119,7 @@ end
 event
 expanded
 face
+filename
 focused
 for
 form
@@ -136,6 +141,7 @@ http_equiv
 id
 incremental
 indeterminate
+integrity
 is
 ismap
 itemid
@@ -163,6 +169,7 @@ marginheight
 marginwidth
 max
 maxlength
+minlength
 mayscript
 media
 mediagroup
@@ -172,6 +179,7 @@ multiple
 muted
 name
 nohref
+nomodule
 nonce
 noresize
 noshade
@@ -186,6 +194,7 @@ onautocomplete
 onautocompleteerror
 onbeforecopy
 onbeforecut
+onbeforeinput
 onbeforeload
 onbeforepaste
 onbeforeunload
@@ -198,6 +207,7 @@ oncontextmenu
 oncopy
 oncut
 ondblclick
+ondevicechange
 ondrag
 ondragend
 ondragenter
@@ -221,6 +231,7 @@ onkeyup
 ongesturestart
 ongesturechange
 ongestureend
+onlanguagechange
 onload
 onloadeddata
 onloadedmetadata
@@ -262,6 +273,8 @@ onstorage
 onsuspend
 onsubmit
 ontimeupdate
+ontoggle
+ontouchforcechange
 ontouchstart
 ontouchmove
 ontouchend
@@ -297,6 +310,7 @@ open
 optimum
 pattern
 placeholder
+playsinline
 pluginspage
 pluginurl
 ping
@@ -380,3 +394,9 @@ webkit-playsinline
 x-webkit-airplay
 x-webkit-wirelessvideoplaybackdisabled
 x-itunes-inherit-uri-query-component
+
+x-apple-data-detectors
+x-apple-data-detectors-type
+x-apple-data-detectors-result
+
+x-apple-pdf-annotation

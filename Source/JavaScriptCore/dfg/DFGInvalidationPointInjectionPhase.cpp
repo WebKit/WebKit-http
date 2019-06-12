@@ -58,6 +58,8 @@ public:
             if (!block)
                 continue;
             
+            m_originThatHadFire = CodeOrigin();
+            
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex)
                 handle(nodeIndex, block->at(nodeIndex));
             
@@ -101,7 +103,6 @@ private:
 
 bool performInvalidationPointInjection(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Invalidation Point Injection Phase");
     return runPhase<InvalidationPointInjectionPhase>(graph);
 }
 

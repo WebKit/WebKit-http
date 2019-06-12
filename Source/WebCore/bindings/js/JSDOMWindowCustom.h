@@ -16,11 +16,9 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef JSDOMWindowCustom_h
-#define JSDOMWindowCustom_h
+#pragma once
 
 #include "JSDOMWindow.h"
-#include "JSDOMWindowShell.h"
 
 namespace WebCore {
 
@@ -34,6 +32,4 @@ inline const JSDOMWindow* asJSDOMWindow(const JSC::JSGlobalObject* globalObject)
     return static_cast<const JSDOMWindow*>(globalObject);
 }
 
-}
-
-#endif // JSDOMWindowCustom_h
+} // namespace WebCore

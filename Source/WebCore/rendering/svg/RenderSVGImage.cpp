@@ -35,7 +35,6 @@
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceFilter.h"
 #include "SVGImageElement.h"
-#include "SVGLength.h"
 #include "SVGRenderingContext.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
@@ -43,7 +42,7 @@
 
 namespace WebCore {
 
-RenderSVGImage::RenderSVGImage(SVGImageElement& element, Ref<RenderStyle>&& style)
+RenderSVGImage::RenderSVGImage(SVGImageElement& element, RenderStyle&& style)
     : RenderSVGModelObject(element, WTFMove(style))
     , m_needsBoundariesUpdate(true)
     , m_needsTransformUpdate(true)
@@ -54,7 +53,12 @@ RenderSVGImage::RenderSVGImage(SVGImageElement& element, Ref<RenderStyle>&& styl
 
 RenderSVGImage::~RenderSVGImage()
 {
+}
+
+void RenderSVGImage::willBeDestroyed()
+{
     imageResource().shutdown();
+    RenderSVGModelObject::willBeDestroyed();
 }
 
 SVGImageElement& RenderSVGImage::imageElement() const
@@ -73,7 +77,7 @@ bool RenderSVGImage::updateImageViewport()
     // Images with preserveAspectRatio=none should force non-uniform scaling. This can be achieved
     // by setting the image's container size to its intrinsic size.
     // See: http://www.w3.org/TR/SVG/single-page.html, 7.8 The ‘preserveAspectRatio’ attribute.
-    if (imageElement().preserveAspectRatio().align() == SVGPreserveAspectRatio::SVG_PRESERVEASPECTRATIO_NONE) {
+    if (imageElement().preserveAspectRatio().align() == SVGPreserveAspectRatioValue::SVG_PRESERVEASPECTRATIO_NONE) {
         if (CachedImage* cachedImage = imageResource().cachedImage()) {
             LayoutSize intrinsicSize = cachedImage->imageSizeForRenderer(0, style().effectiveZoom());
             if (intrinsicSize != imageResource().imageSize(style().effectiveZoom())) {
@@ -132,7 +136,7 @@ void RenderSVGImage::layout()
 void RenderSVGImage::paint(PaintInfo& paintInfo, const LayoutPoint&)
 {
     if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhaseForeground
-        || style().visibility() == HIDDEN || !imageResource().hasImage())
+        || style().visibility() == HIDDEN || !imageResource().cachedImage())
         return;
 
     FloatRect boundingBox = repaintRectInLocalCoordinates();
@@ -186,7 +190,7 @@ bool RenderSVGImage::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_IMAGE_HITTESTING, request, style().pointerEvents());
     bool isVisible = (style().visibility() == VISIBLE);
     if (isVisible || !hitRules.requireVisible) {
-        FloatPoint localPoint = localToParentTransform().inverse().valueOr(AffineTransform()).mapPoint(pointInParent);
+        FloatPoint localPoint = localToParentTransform().inverse().value_or(AffineTransform()).mapPoint(pointInParent);
             
         if (!SVGRenderSupport::pointInClippingArea(*this, localPoint))
             return false;

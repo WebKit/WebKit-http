@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,58 +26,59 @@
 #include "config.h"
 #include "JSSet.h"
 
-#include "CopiedBlockInlines.h"
-#include "JSCJSValueInlines.h"
-#include "JSSetIterator.h"
-#include "MapDataInlines.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
+#include "SetPrototype.h"
 
 namespace JSC {
 
-const ClassInfo JSSet::s_info = { "Set", &Base::s_info, 0, CREATE_METHOD_TABLE(JSSet) };
+const ClassInfo JSSet::s_info = { "Set", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSSet) };
 
-void JSSet::destroy(JSCell* cell)
+String JSSet::toStringName(const JSObject*, ExecState*)
 {
-    JSSet* thisObject = jsCast<JSSet*>(cell);
-    thisObject->JSSet::~JSSet();
+    return ASCIILiteral("Object");
 }
 
-void JSSet::visitChildren(JSCell* cell, SlotVisitor& visitor)
+JSSet* JSSet::clone(ExecState* exec, VM& vm, Structure* structure)
 {
-    Base::visitChildren(cell, visitor);
-    jsCast<JSSet*>(cell)->m_setData.visitChildren(cell, visitor);
+    JSSet* instance = new (NotNull, allocateCell<JSSet>(vm.heap)) JSSet(vm, structure);
+    instance->finishCreation(exec, vm, this);
+    return instance;
 }
 
-void JSSet::copyBackingStore(JSCell* cell, CopyVisitor& visitor, CopyToken token)
+bool JSSet::isIteratorProtocolFastAndNonObservable()
 {
-    Base::copyBackingStore(cell, visitor, token);
-    jsCast<JSSet*>(cell)->m_setData.copyBackingStore(visitor, token);
+    JSGlobalObject* globalObject = this->globalObject();
+    if (!globalObject->isSetPrototypeIteratorProtocolFastAndNonObservable())
+        return false;
+
+    Structure* structure = this->structure();
+    // This is the fast case. Many sets will be an original set.
+    if (structure == globalObject->setStructure())
+        return true;
+
+    if (structure->storedPrototype() != globalObject->jsSetPrototype())
+        return false;
+
+    if (getDirectOffset(globalObject->vm(), globalObject->vm().propertyNames->iteratorSymbol) != invalidOffset)
+        return false;
+
+    return true;
 }
 
-bool JSSet::has(ExecState* exec, JSValue value)
+bool JSSet::canCloneFastAndNonObservable(Structure* structure)
 {
-    return m_setData.contains(exec, value);
-}
+    auto addFastAndNonObservable = [&] (Structure* structure) {
+        JSGlobalObject* globalObject = structure->globalObject();
+        if (!globalObject->isSetPrototypeAddFastAndNonObservable())
+            return false;
 
-size_t JSSet::size(ExecState* exec)
-{
-    return m_setData.size(exec);
-}
+        if (structure->storedPrototype() != globalObject->jsSetPrototype())
+            return false;
 
-void JSSet::add(ExecState* exec, JSValue value)
-{
-    m_setData.set(exec, this, value, value);
-}
+        return true;
+    };
 
-void JSSet::clear(ExecState*)
-{
-    m_setData.clear();
-}
-
-bool JSSet::remove(ExecState* exec, JSValue value)
-{
-    return m_setData.remove(exec, value);
+    return isIteratorProtocolFastAndNonObservable() && addFastAndNonObservable(structure);
 }
 
 }

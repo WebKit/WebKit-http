@@ -23,83 +23,116 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBObjectStore_h
-#define IDBObjectStore_h
-
-#include "Dictionary.h"
-#include "ExceptionCode.h"
-#include "ScriptWrappable.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
-namespace Deprecated {
-class ScriptValue;
-}
+#include "ActiveDOMObject.h"
+#include "ExceptionOr.h"
+#include "IDBCursorDirection.h"
+#include "IDBKeyPath.h"
+#include "IDBObjectStoreInfo.h"
 
 namespace JSC {
 class ExecState;
 class JSValue;
+class SlotVisitor;
 }
 
 namespace WebCore {
 
 class DOMStringList;
-class IDBAny;
 class IDBIndex;
-class IDBKeyPath;
+class IDBKey;
 class IDBKeyRange;
 class IDBRequest;
 class IDBTransaction;
-class ScriptExecutionContext;
 
-class IDBObjectStore : public RefCounted<IDBObjectStore> {
+struct IDBKeyRangeData;
+
+namespace IndexedDB {
+enum class ObjectStoreOverwriteMode;
+}
+
+class IDBObjectStore final : public ActiveDOMObject {
 public:
-    virtual ~IDBObjectStore() { }
+    IDBObjectStore(ScriptExecutionContext&, const IDBObjectStoreInfo&, IDBTransaction&);
+    ~IDBObjectStore();
 
-    // Implement the IDBObjectStore IDL
-    virtual const String name() const = 0;
-    virtual RefPtr<IDBAny> keyPathAny() const = 0;
-    virtual const IDBKeyPath keyPath() const = 0;
-    virtual RefPtr<DOMStringList> indexNames() const = 0;
-    virtual RefPtr<IDBTransaction> transaction() = 0;
-    virtual bool autoIncrement() const = 0;
+    const String& name() const;
+    ExceptionOr<void> setName(const String&);
+    const std::optional<IDBKeyPath>& keyPath() const;
+    RefPtr<DOMStringList> indexNames() const;
+    IDBTransaction& transaction();
+    bool autoIncrement() const;
 
-    virtual RefPtr<IDBRequest> add(JSC::ExecState&, JSC::JSValue, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> put(JSC::ExecState&, JSC::JSValue, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, const String& direction, ExceptionCodeWithMessage&) = 0;
+    struct IndexParameters {
+        bool unique;
+        bool multiEntry;
+    };
 
-    virtual RefPtr<IDBRequest> get(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> get(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> add(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> put(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> deleteFunction(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> deleteFunction(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> clear(ScriptExecutionContext*, ExceptionCodeWithMessage&) = 0;
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, RefPtr<IDBKeyRange>, IDBCursorDirection);
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, JSC::JSValue key, IDBCursorDirection);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, RefPtr<IDBKeyRange>, IDBCursorDirection);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, JSC::JSValue key, IDBCursorDirection);
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> add(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> put(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> deleteFunction(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> deleteFunction(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> clear(JSC::ExecState&);
+    ExceptionOr<Ref<IDBIndex>> createIndex(JSC::ExecState&, const String& name, IDBKeyPath&&, const IndexParameters&);
+    ExceptionOr<Ref<IDBIndex>> index(const String& name);
+    ExceptionOr<void> deleteIndex(const String& name);
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, RefPtr<IDBKeyRange>, std::optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, JSC::JSValue key, std::optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, RefPtr<IDBKeyRange>, std::optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, JSC::JSValue key, std::optional<uint32_t> count);
 
-    virtual RefPtr<IDBIndex> createIndex(ScriptExecutionContext*, const String& name, const IDBKeyPath&, bool unique, bool multiEntry, ExceptionCodeWithMessage&) = 0;
+    ExceptionOr<Ref<IDBRequest>> putForCursorUpdate(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
 
-    virtual RefPtr<IDBIndex> index(const String& name, ExceptionCodeWithMessage&) = 0;
-    virtual void deleteIndex(const String& name, ExceptionCodeWithMessage&) = 0;
+    void markAsDeleted();
+    bool isDeleted() const { return m_deleted; }
 
-    virtual RefPtr<IDBRequest> count(ScriptExecutionContext*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> count(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> count(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
+    const IDBObjectStoreInfo& info() const { return m_info; }
 
-    virtual bool isModern() const { return false; }
+    void rollbackForVersionChangeAbort();
 
-protected:
-    IDBObjectStore();
+    void ref();
+    void deref();
+
+    void visitReferencedIndexes(JSC::SlotVisitor&) const;
+    void renameReferencedIndex(IDBIndex&, const String& newName);
+
+private:
+    enum class InlineKeyCheck { Perform, DoNotPerform };
+    ExceptionOr<Ref<IDBRequest>> putOrAdd(JSC::ExecState&, JSC::JSValue, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, InlineKeyCheck);
+    ExceptionOr<Ref<IDBRequest>> doCount(JSC::ExecState&, const IDBKeyRangeData&);
+    ExceptionOr<Ref<IDBRequest>> doDelete(JSC::ExecState&, IDBKeyRange*);
+
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    bool hasPendingActivity() const final;
+
+    IDBObjectStoreInfo m_info;
+    IDBObjectStoreInfo m_originalInfo;
+
+    // IDBObjectStore objects are always owned by their referencing IDBTransaction.
+    // ObjectStores will never outlive transactions so its okay to keep a raw C++ reference here.
+    IDBTransaction& m_transaction;
+
+    bool m_deleted { false };
+
+    mutable Lock m_referencedIndexLock;
+    HashMap<String, std::unique_ptr<IDBIndex>> m_referencedIndexes;
+    HashMap<uint64_t, std::unique_ptr<IDBIndex>> m_deletedIndexes;
 };
 
 } // namespace WebCore
 
-#endif
-
-#endif // IDBObjectStore_h
+#endif // ENABLE(INDEXED_DATABASE)

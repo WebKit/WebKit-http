@@ -102,8 +102,10 @@ WebInspector.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeComple
         var activeCallFrame = WebInspector.debuggerManager.activeCallFrame;
         if (!base && activeCallFrame && !this._alwaysEvaluateInWindowContext)
             activeCallFrame.collectScopeChainVariableNames(receivedPropertyNames.bind(this));
-        else
-            WebInspector.runtimeManager.evaluateInInspectedWindow(base, "completion", true, true, false, false, false, evaluated.bind(this));
+        else {
+            let options = {objectGroup: "completion", includeCommandLineAPI: true, doNotPauseOnExceptionsAndMuteConsole: true, returnByValue: false, generatePreview: false, saveResult: false};
+            WebInspector.runtimeManager.evaluateInInspectedWindow(base, options, evaluated.bind(this));
+        }
 
         function updateLastPropertyNames(propertyNames)
         {
@@ -117,7 +119,7 @@ WebInspector.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeComple
         function evaluated(result, wasThrown)
         {
             if (wasThrown || !result || result.type === "undefined" || (result.type === "object" && result.subtype === "null")) {
-                RuntimeAgent.releaseObjectGroup("completion");
+                WebInspector.runtimeManager.activeExecutionContext.target.RuntimeAgent.releaseObjectGroup("completion");
 
                 updateLastPropertyNames.call(this, {});
                 completionController.updateCompletions(defaultCompletions);
@@ -125,7 +127,7 @@ WebInspector.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeComple
                 return;
             }
 
-            function getArrayCompletions(primitiveType)
+            function inspectedPage_evalResult_getArrayCompletions(primitiveType)
             {
                 var array = this;
                 var arrayLength;
@@ -153,7 +155,7 @@ WebInspector.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeComple
                 return resultSet;
             }
 
-            function getCompletions(primitiveType)
+            function inspectedPage_evalResult_getCompletions(primitiveType)
             {
                 var object;
                 if (primitiveType === "string")
@@ -182,12 +184,13 @@ WebInspector.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeComple
             }
 
             if (result.subtype === "array")
-                result.callFunctionJSON(getArrayCompletions, undefined, receivedArrayPropertyNames.bind(this));
+                result.callFunctionJSON(inspectedPage_evalResult_getArrayCompletions, undefined, receivedArrayPropertyNames.bind(this));
             else if (result.type === "object" || result.type === "function")
-                result.callFunctionJSON(getCompletions, undefined, receivedPropertyNames.bind(this));
-            else if (result.type === "string" || result.type === "number" || result.type === "boolean" || result.type === "symbol")
-                WebInspector.runtimeManager.evaluateInInspectedWindow("(" + getCompletions + ")(\"" + result.type + "\")", "completion", false, true, true, false, false, receivedPropertyNamesFromEvaluate.bind(this));
-            else
+                result.callFunctionJSON(inspectedPage_evalResult_getCompletions, undefined, receivedPropertyNames.bind(this));
+            else if (result.type === "string" || result.type === "number" || result.type === "boolean" || result.type === "symbol") {
+                let options = {objectGroup: "completion", includeCommandLineAPI: false, doNotPauseOnExceptionsAndMuteConsole: true, returnByValue: false, generatePreview: false, saveResult: false};
+                WebInspector.runtimeManager.evaluateInInspectedWindow("(" + inspectedPage_evalResult_getCompletions + ")(\"" + result.type + "\")", options, receivedPropertyNamesFromEvaluate.bind(this));
+            } else
                 console.error("Unknown result type: " + result.type);
         }
 
@@ -216,12 +219,15 @@ WebInspector.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeComple
 
             updateLastPropertyNames.call(this, propertyNames);
 
-            RuntimeAgent.releaseObjectGroup("completion");
+            WebInspector.runtimeManager.activeExecutionContext.target.RuntimeAgent.releaseObjectGroup("completion");
 
             if (!base) {
                 var commandLineAPI = ["$", "$$", "$x", "dir", "dirxml", "keys", "values", "profile", "profileEnd", "monitorEvents", "unmonitorEvents", "inspect", "copy", "clear", "getEventListeners", "$0", "$_"];
-                if (WebInspector.debuggerManager.paused && WebInspector.debuggerManager.pauseReason === WebInspector.DebuggerManager.PauseReason.Exception)
-                    commandLineAPI.push("$exception");
+                if (WebInspector.debuggerManager.paused) {
+                    let targetData = WebInspector.debuggerManager.dataForTarget(WebInspector.runtimeManager.activeExecutionContext.target);
+                    if (targetData.pauseReason === WebInspector.DebuggerManager.PauseReason.Exception)
+                        commandLineAPI.push("$exception");
+                }
                 for (var i = 0; i < commandLineAPI.length; ++i)
                     propertyNames[commandLineAPI[i]] = true;
 
@@ -276,7 +282,7 @@ WebInspector.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeComple
                     return -1;
 
                 // Not numbers, sort as strings.
-                return a.localeCompare(b);
+                return a.extendedLocaleCompare(b);
             }
 
             completions.sort(compare);

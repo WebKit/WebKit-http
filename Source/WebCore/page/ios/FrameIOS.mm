@@ -27,12 +27,8 @@
 
 #if PLATFORM(IOS)
 
-#import "AnimationController.h"
-#import "BlockExceptions.h"
-#import "DOMCSSStyleDeclarationInternal.h"
-#import "DOMCore.h"
-#import "DOMInternal.h"
-#import "DOMNodeInternal.h"
+#import "CSSAnimationController.h"
+#import "CommonVM.h"
 #import "DOMWindow.h"
 #import "Document.h"
 #import "DocumentMarkerController.h"
@@ -44,13 +40,13 @@
 #import "FrameSelection.h"
 #import "FrameView.h"
 #import "HTMLAreaElement.h"
+#import "HTMLBodyElement.h"
 #import "HTMLDocument.h"
-#import "HTMLElement.h"
+#import "HTMLHtmlElement.h"
 #import "HTMLNames.h"
 #import "HTMLObjectElement.h"
 #import "HitTestRequest.h"
 #import "HitTestResult.h"
-#import "JSDOMWindowBase.h"
 #import "MainFrame.h"
 #import "NodeRenderStyle.h"
 #import "NodeTraversal.h"
@@ -63,6 +59,7 @@
 #import "RenderTextControl.h"
 #import "RenderView.h"
 #import "RenderedDocumentMarker.h"
+#import "ShadowRoot.h"
 #import "TextBoundaries.h"
 #import "TextIterator.h"
 #import "VisiblePosition.h"
@@ -70,6 +67,7 @@
 #import "WAKWindow.h"
 #import "WebCoreSystemInterface.h"
 #import <runtime/JSLock.h>
+#import <wtf/BlockObjCExceptions.h>
 
 using namespace WebCore::HTMLNames;
 using namespace WTF::Unicode;
@@ -81,22 +79,21 @@ namespace WebCore {
 // Create <html><body (style="...")></body></html> doing minimal amount of work.
 void Frame::initWithSimpleHTMLDocument(const String& style, const URL& url)
 {
-    m_loader.initForSynthesizedDocument(url);
+    m_loader->initForSynthesizedDocument(url);
 
     RefPtr<HTMLDocument> document = HTMLDocument::createSynthesizedDocument(this, url);
     document->setCompatibilityMode(DocumentCompatibilityMode::LimitedQuirksMode);
     document->createDOMWindow();
     setDocument(document);
 
-    ExceptionCode ec;
-    RefPtr<Element> rootElement = document->createElementNS(xhtmlNamespaceURI, ASCIILiteral("html"), ec);
+    auto rootElement = HTMLHtmlElement::create(*document);
 
-    RefPtr<Element> body = document->createElementNS(xhtmlNamespaceURI, ASCIILiteral("body"), ec);
+    auto body = HTMLBodyElement::create(*document);
     if (!style.isEmpty())
         body->setAttribute(HTMLNames::styleAttr, style);
 
-    rootElement->appendChild(body.releaseNonNull(), ec);
-    document->appendChild(rootElement.releaseNonNull(), ec);
+    rootElement->appendChild(body);
+    document->appendChild(rootElement);
 }
 
 const ViewportArguments& Frame::viewportArguments() const
@@ -109,51 +106,6 @@ void Frame::setViewportArguments(const ViewportArguments& arguments)
     m_viewportArguments = arguments;
 }
 
-// FIXME: Extract the common code in indexCountOfWordPrecedingSelection() and wordsInCurrentParagraph() into a shared function.
-int Frame::indexCountOfWordPrecedingSelection(NSString *word) const
-{
-    int result = -1;
-
-    if (!page() || page()->selection().isNone())
-        return result;
-
-    RefPtr<Range> searchRange(rangeOfContents(*document()));
-    VisiblePosition start(page()->selection().start(), page()->selection().affinity());
-    VisiblePosition oneBeforeStart = start.previous();
-
-    setEnd(searchRange.get(), oneBeforeStart.isNotNull() ? oneBeforeStart : start);
-
-    if (searchRange->collapsed())
-        return result;
-
-    WordAwareIterator it(*searchRange);
-    while (!it.atEnd()) {
-        StringView text = it.text();
-        int length = text.length();
-        if (length > 1 || !isSpaceOrNewline(text[0])) {
-            int startOfWordBoundary = 0;
-            for (int i = 1; i < length; i++) {
-                if (isSpaceOrNewline(text[i]) || text[i] == 0xA0) {
-                    int wordLength = i - startOfWordBoundary;
-                    RetainPtr<NSString> chunk = text.substring(startOfWordBoundary, wordLength).createNSStringWithoutCopying();
-                    if ([chunk isEqualToString:word])
-                        ++result;
-                    startOfWordBoundary += wordLength + 1;
-                }
-            }
-            if (startOfWordBoundary < length) {
-                RetainPtr<NSString> chunk = text.substring(startOfWordBoundary, length - startOfWordBoundary).createNSStringWithoutCopying();
-                if ([chunk isEqualToString:word])
-                    ++result;
-            }
-        }
-        it.advance();
-    }
-
-    return result + 1;
-}
-
-// FIXME: Extract the common code in indexCountOfWordPrecedingSelection() and wordsInCurrentParagraph() into a shared function.
 NSArray *Frame::wordsInCurrentParagraph() const
 {
     document()->updateLayout();
@@ -287,7 +239,7 @@ static Node* ancestorRespondingToScrollWheelEvents(const HitTestResult& hitTestR
             continue;
         }
 
-        RenderStyle& style = renderer->style();
+        auto& style = renderer->style();
 
         if (renderer->hasOverflowClip() &&
             (style.overflowY() == OAUTO || style.overflowY() == OSCROLL || style.overflowY() == OOVERLAY ||
@@ -307,9 +259,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
         *nodeBounds = IntRect();
 
     Node* pointerCursorNode = nullptr;
-    for (Node* node = hitTestResult.innerNode(); node && node != terminationNode; node = node->parentNode()) {
-        ASSERT(!node->isInShadowTree());
-
+    for (Node* node = hitTestResult.innerNode(); node && node != terminationNode; node = node->parentInComposedTree()) {
         // We only accept pointer nodes before reaching the body tag.
         if (node->hasTagName(HTMLNames::bodyTag)) {
 #if USE(UIKIT_EDITING)
@@ -332,7 +282,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
         else if (pointerCursorNode)
             pointerCursorStillValid = false;
 
-        if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents()) {
+        if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents() || (is<Element>(*node) && downcast<Element>(*node).isMouseFocusable())) {
             // If we're at the body or higher, use the pointer cursor node (which may be null).
             if (bodyHasBeenReached)
                 node = pointerCursorNode;
@@ -454,7 +404,7 @@ Node* Frame::qualifyingNodeAtViewportLocation(const FloatPoint& viewportLocation
         Node* failedNode = candidate;
 
         while (candidate && !candidate->isElementNode())
-            candidate = candidate->parentNode();
+            candidate = candidate->parentInComposedTree();
 
         if (candidate)
             failedNode = candidate;
@@ -548,28 +498,6 @@ int Frame::preferredHeight() const
     return block.height() + block.marginTop() + block.marginBottom();
 }
 
-int Frame::innerLineHeight(DOMNode* domNode) const
-{
-    if (!domNode)
-        return 0;
-
-    Document* document = this->document();
-    if (!document)
-        return 0;
-
-    document->updateLayout();
-
-    Node* node = core(domNode);
-    if (!node)
-        return 0;
-
-    RenderObject* renderer = node->renderer();
-    if (!renderer)
-        return 0;
-
-    return renderer->innerLineHeight();
-}
-
 void Frame::updateLayout() const
 {
     Document* document = this->document();
@@ -582,7 +510,7 @@ void Frame::updateLayout() const
         view->adjustViewSize();
 }
 
-NSRect Frame::caretRect() const
+NSRect Frame::caretRect()
 {
     VisibleSelection visibleSelection = selection().selection();
     if (visibleSelection.isNone())
@@ -590,7 +518,7 @@ NSRect Frame::caretRect() const
     return visibleSelection.isCaret() ? selection().absoluteCaretBounds() : VisiblePosition(visibleSelection.end()).absoluteCaretBounds();
 }
 
-NSRect Frame::rectForScrollToVisible() const
+NSRect Frame::rectForScrollToVisible()
 {
     VisibleSelection selection(this->selection().selection());
 
@@ -601,16 +529,6 @@ NSRect Frame::rectForScrollToVisible() const
         return caretRect();
 
     return unionRect(selection.visibleStart().absoluteCaretBounds(), selection.visibleEnd().absoluteCaretBounds());
-}
-
-DOMCSSStyleDeclaration* Frame::styleAtSelectionStart() const
-{
-    RefPtr<EditingStyle> editingStyle = EditingStyle::styleAtSelectionStart(selection().selection());
-    if (!editingStyle)
-        return nullptr;
-    PropertySetCSSStyleDeclaration* propertySetCSSStyleDeclaration = new PropertySetCSSStyleDeclaration(editingStyle->style());
-    // The auto-generated code for DOMCSSStyleDeclaration derefs its pointer when it is deallocated.
-    return kit(static_cast<CSSStyleDeclaration*>(propertySetCSSStyleDeclaration));
 }
 
 unsigned Frame::formElementsCharacterCount() const
@@ -625,7 +543,7 @@ void Frame::setTimersPaused(bool paused)
 {
     if (!m_page)
         return;
-    JSLockHolder lock(JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
     if (paused)
         m_page->suspendActiveDOMObjectsAndAnimations();
     else
@@ -711,13 +629,13 @@ NSArray *Frame::interpretationsForCurrentRoot() const
 
     auto* root = selection().selection().selectionType() == VisibleSelection::NoSelection ? document()->bodyOrFrameset() : selection().selection().rootEditableElement();
     unsigned rootChildCount = root->countChildNodes();
-    RefPtr<Range> rangeOfRootContents = Range::create(*document(), createLegacyEditingPosition(root, 0), createLegacyEditingPosition(root, rootChildCount));
+    auto rangeOfRootContents = Range::create(*document(), createLegacyEditingPosition(root, 0), createLegacyEditingPosition(root, rootChildCount));
 
-    auto markersInRoot = document()->markers().markersInRange(rangeOfRootContents.get(), DocumentMarker::DictationPhraseWithAlternatives);
+    auto markersInRoot = document()->markers().markersInRange(rangeOfRootContents, DocumentMarker::DictationPhraseWithAlternatives);
 
     // There are no phrases with alternatives, so there is just one interpretation.
     if (markersInRoot.isEmpty())
-        return [NSArray arrayWithObject:plainText(rangeOfRootContents.get())];
+        return [NSArray arrayWithObject:plainText(rangeOfRootContents.ptr())];
 
     // The number of interpretations will be i1 * i2 * ... * iN, where iX is the number of interpretations for the Xth phrase with alternatives.
     size_t interpretationsCount = 1;

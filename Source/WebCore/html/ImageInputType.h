@@ -30,8 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageInputType_h
-#define ImageInputType_h
+#pragma once
 
 #include "BaseButtonInputType.h"
 #include "IntPoint.h"
@@ -43,26 +42,24 @@ public:
     explicit ImageInputType(HTMLInputElement&);
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual bool isFormDataAppendable() const override;
-    virtual bool appendFormData(FormDataList&, bool) const override;
-    virtual bool supportsValidation() const override;
-    virtual RenderPtr<RenderElement> createInputRenderer(Ref<RenderStyle>&&) override;
-    virtual void handleDOMActivateEvent(Event*) override;
-    virtual void altAttributeChanged() override;
-    virtual void srcAttributeChanged() override;
-    virtual void attach() override;
-    virtual bool shouldRespectAlignAttribute() override;
-    virtual bool canBeSuccessfulSubmitButton() override;
-    virtual bool isImageButton() const override;
-    virtual bool isEnumeratable() override;
-    virtual bool shouldRespectHeightAndWidthAttributes() override;
-    virtual unsigned height() const override;
-    virtual unsigned width() const override;
+    const AtomicString& formControlType() const override;
+    bool isFormDataAppendable() const override;
+    bool appendFormData(FormDataList&, bool) const override;
+    bool supportsValidation() const override;
+    RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) override;
+    void handleDOMActivateEvent(Event&) override;
+    void altAttributeChanged() override;
+    void srcAttributeChanged() override;
+    void attach() override;
+    bool shouldRespectAlignAttribute() override;
+    bool canBeSuccessfulSubmitButton() override;
+    bool isImageButton() const override;
+    bool isEnumeratable() override;
+    bool shouldRespectHeightAndWidthAttributes() override;
+    unsigned height() const override;
+    unsigned width() const override;
 
     IntPoint m_clickLocation; // Valid only during HTMLFormElement::prepareForSubmission().
 };
 
 } // namespace WebCore
-
-#endif // ImageInputType_h

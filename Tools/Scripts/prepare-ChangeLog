@@ -64,16 +64,17 @@ use List::Util qw/max/;
 use POSIX qw(strftime);
 use VCSUtils;
 
+sub actuallyGenerateFunctionLists($$$$$$);
 sub attributeCommand($$);
 sub changeLogDate($);
 sub changeLogEmailAddressFromArgs($$);
 sub changeLogNameFromArgs($$);
+sub computeModifiedFunctions($$$);
 sub createPatchCommand($$$$);
 sub decodeEntities($);
 sub determinePropertyChanges($$$);
 sub diffCommand($$$$);
 sub diffFromToString($$$);
-sub diffHeaderFormat();
 sub extractLineRangeAfterChange($);
 sub extractLineRangeBeforeChange($);
 sub fetchBugXMLData($$);
@@ -83,7 +84,6 @@ sub findChangeLogs($$);
 sub findOriginalFileFromSvn($);
 sub generateFileList(\%$$$);
 sub generateFunctionLists($$$$$);
-sub generateFunctionListsByRanges($$$$);
 sub generateNewChangeLogs($$$$$$$$$$$$$$);
 sub getLatestChangeLogs($);
 sub get_function_line_ranges($$);
@@ -124,6 +124,7 @@ use constant SVN => "svn";
 use constant GIT => "git";
 use constant SupportedTestExtensions => {map { $_ => 1 } qw(html shtml svg xml xhtml pl php)};
 
+my $devNull = File::Spec->devnull();
 my %attributeCache;
 
 exit(main());
@@ -139,7 +140,7 @@ sub main()
     my $gitCommit = 0;
     my $gitIndex = "";
     my $gitReviewer = "";
-    my $checkWebKitStyle;
+    my $checkWebKitStyle = 0;
     my $openChangeLogs = 0;
     my $writeChangeLogs = 1;
     my $delimiters = 0;
@@ -173,7 +174,7 @@ sub main()
         print STDERR "  --git-reviewer  When populating the ChangeLogs from a git commit claim that the spcified name reviewed the change.\n";
         print STDERR "                  This option is useful when the git commit lacks a Signed-Off-By: line\n";
         print STDERR "  -h|--help       Show this help message\n";
-        print STDERR "  --[no-]style    Run check-webkit-style script when done (default: style)\n";
+        print STDERR "  --[no-]style    Run check-webkit-style script when done (default: no-style)\n";
         print STDERR "  -o|--open       Open ChangeLogs in an editor when done\n";
         print STDERR "  --[no-]update   Update ChangeLogs from svn before adding entry (default: update)\n";
         print STDERR "  --[no-]write    Write ChangeLogs to disk (otherwise send new entries to stdout) (default: write)\n";
@@ -280,6 +281,33 @@ sub originalFile($$$$)
 sub generateFunctionLists($$$$$)
 {
     my ($changedFiles, $functionLists, $gitCommit, $gitIndex, $mergeBase) = @_;
+    my %delegateHash = (
+        openDiff => sub ($$$$) {
+            my ($changedFiles, $gitCommit, $gitIndex, $mergeBase) = @_;
+            return unless open(DIFF, "-|", diffCommand($changedFiles, $gitCommit, $gitIndex, $mergeBase));
+            return \*DIFF;
+        },
+        openFile => sub ($) {
+            my ($file) = @_;
+            return unless open(SOURCE, "<", $file);
+            return \*SOURCE;
+        },
+        openOriginalFile => sub ($) {
+            my ($file, $gitCommit, $gitIndex, $mergeBase) = @_;
+            return unless open(SOURCE, "-|", originalFile($file, $gitCommit, $gitIndex, $mergeBase));
+            return \*SOURCE;
+        },
+        normalizePath => sub ($) {
+            my ($path) = @_;
+            return normalizePath(makeFilePathRelative($path));
+        },
+    );
+    actuallyGenerateFunctionLists($changedFiles, $functionLists, $gitCommit, $gitIndex, $mergeBase, \%delegateHash);
+}
+
+sub actuallyGenerateFunctionLists($$$$$$)
+{
+    my ($changedFiles, $functionLists, $gitCommit, $gitIndex, $mergeBase, $delegateHashRef) = @_;
 
     my %line_ranges_after_changed;
     my %line_ranges_before_changed;
@@ -288,9 +316,13 @@ sub generateFunctionLists($$$$$)
         # Use line numbers from the "after" side of each diff.
         print STDERR "  Reviewing diff to determine which lines changed.\n";
         my $file;
-        open DIFF, "-|", diffCommand($changedFiles, $gitCommit, $gitIndex, $mergeBase) or die "The diff failed: $!.\n";
-        while (<DIFF>) {
-            $file = normalizePath(makeFilePathRelative($1)) if $_ =~ diffHeaderFormat();
+        my $diffFileHandle = $delegateHashRef->{openDiff}($changedFiles, $gitCommit, $gitIndex, $mergeBase);
+        if (!$diffFileHandle) {
+            die "The diff failed: $!.\n";
+        }
+        while (<$diffFileHandle>) {
+            my $filePath = parseDiffStartLine($_);
+            $file = $delegateHashRef->{normalizePath}($filePath) if $filePath;
             if (defined $file) {
                 my ($before_start, $before_end) = extractLineRangeBeforeChange($_);
                 if ($before_start >= 1 && $before_end >= 1) {
@@ -306,7 +338,7 @@ sub generateFunctionLists($$$$$)
                 }
             }
         }
-        close DIFF;
+        close($diffFileHandle);
     }
 
     # For each source file, convert line range to function list.
@@ -317,15 +349,19 @@ sub generateFunctionLists($$$$$)
         # and other code doesn't expect to see a trailing " character when sniffing a file extension.
         chomp $file;
         $file =~ s/ /\\ /g;
-        my %saw_function;
-        # Find all the functions in the file.
-        if ($line_ranges_after_changed{$file}) {
-            open(SOURCE, "<", $file) or next;
-            my @function_ranges = get_function_line_ranges(\*SOURCE, $file);
-            close SOURCE;
 
+        my %saw_function;
+
+        # Find all the functions in the file.
+        my $sourceFileHandle = $delegateHashRef->{openFile}($file);
+        next unless $sourceFileHandle;
+        my @afterChangeFunctionRanges = get_function_line_ranges($sourceFileHandle, $file);
+        close($sourceFileHandle);
+
+        # Find modified functions in the file.
+        if ($line_ranges_after_changed{$file}) {
             my @change_ranges = (@{$line_ranges_after_changed{$file}}, []);
-            my @functions = generateFunctionListsByRanges($file, \@change_ranges, \@function_ranges, \%saw_function);
+            my @functions = computeModifiedFunctions($file, \@change_ranges, \@afterChangeFunctionRanges);
 
             # Format the list of functions.
             if (@functions) {
@@ -334,13 +370,23 @@ sub generateFunctionLists($$$$$)
             }
         }
         # Find the deleted functions in the original file.
-        if($line_ranges_before_changed{$file}) {
-            open SOURCE, "-|", originalFile($file, $gitCommit, $gitIndex, $mergeBase) or next;
-                my @deleted_function_ranges = get_function_line_ranges(\*SOURCE, $file);
-            close SOURCE;
+        if ($line_ranges_before_changed{$file}) {
+            my $originalFileHandle = $delegateHashRef->{openOriginalFile}($file, $gitCommit, $gitIndex, $mergeBase);
+            next unless $originalFileHandle;
+            my @beforeChangeFunctionRanges = get_function_line_ranges($originalFileHandle, $file);
+            close($originalFileHandle);
 
-            my @change_ranges = (@{$line_ranges_before_changed{$file}}, []);
-            my @functions = generateFunctionListsByRanges($file, \@change_ranges, \@deleted_function_ranges, \%saw_function);
+            my %existsAfterChange = map { $_->[2] => 1 } @afterChangeFunctionRanges;
+
+            my @functions;
+            my %sawFunctions;
+            for my $functionRange (@beforeChangeFunctionRanges) {
+                my $functionName = $functionRange->[2];
+                if (!$existsAfterChange{$functionName} && !$sawFunctions{$functionName}) {
+                    push @functions, $functionName;
+                    $sawFunctions{$functionName} = 1;
+                }
+            }
 
             # Format the list of deleted functions.
             if (@functions) {
@@ -351,15 +397,17 @@ sub generateFunctionLists($$$$$)
     }
 }
 
-sub generateFunctionListsByRanges($$$$)
+sub computeModifiedFunctions($$$)
 {
-    my ($file, $changed_line_ranges, $function_ranges, $saw_function) = @_;
+    my ($file, $changedLineRanges, $functionRanges) = @_;
+
+    my %sawFunction;
 
     # Find all the modified functions.
     my @functions;
-    my @change_ranges = @{$changed_line_ranges};
+    my @change_ranges = @{$changedLineRanges};
     my @change_range = (0, 0);
-    FUNCTION: foreach my $function_range_ref (@{$function_ranges}) {
+    FUNCTION: foreach my $function_range_ref (@{$functionRanges}) {
         my @function_range = @{$function_range_ref};
 
         # FIXME: This is a hack. If the function name is empty, skip it.
@@ -380,8 +428,8 @@ sub generateFunctionListsByRanges($$$$)
             # If an overlap with this function range, record the function name.
             if ($change_range[1] >= $function_range[0]
                 and $change_range[0] <= $function_range[1]) {
-                if (!$saw_function->{$function_range[2]}) {
-                    $saw_function->{$function_range[2]} = 1;
+                if (!$sawFunction{$function_range[2]}) {
+                    $sawFunction{$function_range[2]} = 1;
                     push @functions, $function_range[2];
                 }
                 next FUNCTION;
@@ -486,7 +534,11 @@ sub findChangeLogs($$)
         my $prefix = $file;
         my $has_log = 0;
         while ($prefix) {
-            $prefix =~ s-/[^/]+/?$-/- or $prefix = "";
+            if ($^O eq "MSWin32") {
+                $prefix =~ s-\\[^\\]+\\?$-\\- or $prefix = "";
+            } else {
+                $prefix =~ s-/[^/]+/?$-/- or $prefix = "";
+            }
             $has_log = $has_log{$prefix};
             if (!defined $has_log) {
                 $has_log = -f "${prefix}ChangeLog";
@@ -609,6 +661,7 @@ sub generateNewChangeLogs($$$$$$$$$$$$$$)
                 $endl = "$1";
             }
             open CHANGE_LOG, "> ${changeLogPath}" or die "Could not write ${changeLogPath}\n.";
+            binmode(CHANGE_LOG);
         } else {
             open CHANGE_LOG, ">-" or die "Could not write to STDOUT\n.";
             print substr($prefix, 0, length($prefix) - 1) . ":\n\n" unless (scalar @$prefixes) == 1 && !$delimiters;
@@ -620,15 +673,20 @@ sub generateNewChangeLogs($$$$$$$$$$$$$$)
         my ($reviewer, $description) = reviewerAndDescriptionForGitCommit($gitCommit, $gitReviewer) if $gitCommit;
         $reviewer = "NOBODY (OO" . "PS!)" if !$reviewer;
 
-        print CHANGE_LOG normalizeLineEndings($description . "\n", $endl) if $description;
+        ($bugDescription, $description) =
+            ($description =~ /^(?:\s*(.*)\n)?(?:\s*\n)*((?:\n|.)*)/)
+            if !$bugDescription && $description;
 
-        $bugDescription = "Need a short description (OOPS!).\n        Need the bug URL (OOPS!)." unless $bugDescription;
+        $bugDescription = "Need a short description (OOPS!)." unless $bugDescription;
+        $bugURL = "Need the bug URL (OOPS!)." unless $bugURL;
+
         print CHANGE_LOG normalizeLineEndings("        $bugDescription\n", $endl) if $bugDescription;
         print CHANGE_LOG normalizeLineEndings("        $bugURL\n", $endl) if $bugURL;
         print CHANGE_LOG normalizeLineEndings("        $bugRadarURL\n", $endl) if $bugRadarURL;
         print CHANGE_LOG normalizeLineEndings("\n", $endl);
 
         print CHANGE_LOG normalizeLineEndings("        Reviewed by $reviewer.\n\n", $endl);
+        print CHANGE_LOG normalizeLineEndings($description . "\n", $endl) if $description;
 
         if ($prefix =~ m/WebCore/ || `pwd` =~ m/WebCore/ || @$requiresTests) {
             if (@$addedRegressionTests) {
@@ -1775,42 +1833,60 @@ sub get_selector_line_ranges_for_css($$)
 
     my @ranges;
 
-    my $currentSelector = "";
-    my $start = 0;
     my $inComment = 0;
     my $inBrace = 0;
+    my @stack;
+    my $context;
+    my @currentParseMode = ("global");
+    my $selectorBraces = 0;
 
     while (<$fileHandle>) {
         foreach my $token (split m-(\{|\}|/\*|\*/)-, $_) {
             if ($token eq "{") {
                 if (!$inComment) {
-                    warn "mismatched brace found in $fileName\n" if $inBrace;
-                    $inBrace = 1;
+                    $inBrace += 1;                    
+                    $selectorBraces += 1 if $currentParseMode[$#currentParseMode] eq "selector";
+                    warn "mismatched opening brace found in $fileName:$.\n" if $selectorBraces > 1;
                 }
             } elsif ($token eq "}") {
                 if (!$inComment) {
-                    warn "mismatched brace found in $fileName\n" if !$inBrace;
-                    $inBrace = 0;
-                    push(@ranges, [$start, $., $currentSelector]);
-                    $currentSelector = "";
-                    $start = 0;
+                    if (!$inBrace or $currentParseMode[$#currentParseMode] eq "global") {
+                        warn "mismatched closing brace found in $fileName:$.\n";
+                        next;
+                    }
+
+                    $inBrace -= 1;
+
+                    pop(@currentParseMode);
+                    my $name = pop(@stack);
+                    my $startLine = pop(@stack);
+                    my $endLine = $.;
+                    push(@ranges, [$startLine, $endLine, $name]);
+                    $selectorBraces = 0;
                 }
             } elsif ($token eq "/*") {
                 $inComment = 1;
             } elsif ($token eq "*/") {
-                warn "mismatched comment found in $fileName\n" if !$inComment;
+                warn "mismatched comment found in $fileName:$.\n" if !$inComment;
                 $inComment = 0;
             } else {
-                if (!$inComment and !$inBrace and $token !~ /^[\s\t]*$/) {
+                if (!$inComment and $currentParseMode[$#currentParseMode] ne "selector" and $token !~ /^[\s\t]*$/) {
                     $token =~ s/^[\s\t]*|[\s\t]*$//g;
-                    $currentSelector = $token;
-                    $start = $.;
+                    my $startLine = $.;
+                    if ($token =~ /^\@media/) {
+                        push(@currentParseMode, "media");
+                        push(@stack, ($startLine, $token));
+                    } else {
+                        push(@currentParseMode, "selector");
+                        push(@stack, ($startLine, $token));
+                    }
                 }
             }
         }
     }
 
-    return @ranges;
+    # Sort by start line.
+    return sort {$a->[0] <=> $b->[0]} @ranges;
 }
 
 # Read a file and get all the line ranges of the things that look like Swift classes, methods,
@@ -1939,11 +2015,13 @@ sub diffCommand($$$$)
 {
     my ($paths, $gitCommit, $gitIndex, $mergeBase) = @_;
 
+    # The function overlap detection logic in computeModifiedFunctions() assumes that its line
+    # ranges were from a unified diff without any context lines.
     my $command;
     if (isSVN()) {
         my @escapedPaths = map(escapeSubversionPath($_), @$paths);
         my $escapedPathsString = qq(") . join(qq(" "), @escapedPaths) . qq(");
-        $command = SVN . " diff --diff-cmd diff -x -u $escapedPathsString";
+        $command = SVN . " diff --diff-cmd diff -x -U0 $escapedPathsString";
     } elsif (isGit()) {
         my $pathsString = "'" . join("' '", @$paths) . "'"; 
         $command = GIT . " diff --no-ext-diff -U0 " . diffFromToString($gitCommit, $gitIndex, $mergeBase);
@@ -1992,7 +2070,7 @@ sub attributeCommand($$)
                 next;
             }
             my $command = SVN . " propget $attr '$subPath'";
-            my $attrib = $attributeCache{$attr}{$subPath} || `$command`;
+            my $attrib = $attributeCache{$attr}{$subPath} || `$command 2> $devNull`;
             chomp $attrib;
             if ($attrib eq "1") {
                 $foundAttribute = 1;
@@ -2024,12 +2102,6 @@ sub createPatchCommand($$$$)
     }
 
     return $command;
-}
-
-sub diffHeaderFormat()
-{
-    return qr/^Index: (\S+)[\r\n]*$/ if isSVN();
-    return qr/^diff --git a\/.+ b\/(.+)$/ if isGit();
 }
 
 sub findOriginalFileFromSvn($)
@@ -2272,21 +2344,23 @@ sub statusDescription($$$$)
     my $propertyDescription = defined $propertyChanges ? propertyChangeDescription($propertyChanges) : "";
 
     my %svn = (
-        "A" => defined $original ? " Copied from \%s." : " Added.",
+        "A" => defined $original ? sprintf(" Copied from \%s.", $original) : " Added.",
         "D" => " Removed.",
         "M" => "",
-        "R" => defined $original ? " Replaced with \%s." : " Replaced.",
+        "R" => defined $original ? sprintf(" Replaced with \%s.", $original) : " Replaced.",
         " " => "",
     );
 
     my %git = %svn;
     $git{"A"} = " Added.";
-    $git{"C"} = " Copied from \%s.";
-    $git{"R"} = " Renamed from \%s.";
+    if (defined $original) {
+        $git{"C"} = sprintf(" Copied from \%s.", $original);
+        $git{"R"} = sprintf(" Renamed from \%s.", $original);
+    }
 
     my $description;
-    $description = sprintf($svn{$status}, $original) if isSVN() && exists $svn{$status};
-    $description = sprintf($git{$status}, $original) if isGit() && exists $git{$status};
+    $description = $svn{$status} if isSVN() && exists $svn{$status};
+    $description = $git{$status} if isGit() && exists $git{$status};
     return unless defined $description;
 
     $description .= $propertyDescription unless isAddedStatus($status);
@@ -2317,9 +2391,12 @@ sub extractLineRangeAfterChange($)
 {
     my ($string) = @_;
     my $chunkRange = parseChunkRange($string);
-    if (!$chunkRange || !$chunkRange->{newStartingLine} || !$chunkRange->{newLineCount}) {
+    if (!$chunkRange) {
+        return (-1, -1); # Malformed
+    }
+    if (!$chunkRange->{newStartingLine} || !$chunkRange->{newLineCount}) {
          # Deletion; no lines exist after change.
-        return (-1, -1);
+        return ($chunkRange->{newStartingLine}, $chunkRange->{newStartingLine});
     }
     return ($chunkRange->{newStartingLine}, $chunkRange->{newStartingLine} + $chunkRange->{newLineCount} - 1);
 }
@@ -2328,9 +2405,12 @@ sub extractLineRangeBeforeChange($)
 {
     my ($string) = @_;
     my $chunkRange = parseChunkRange($string);
-    if (!$chunkRange || !$chunkRange->{startingLine} || !$chunkRange->{lineCount}) {
+    if (!$chunkRange) {
+        return (-1, -1); # Malformed
+    }
+    if (!$chunkRange->{startingLine} || !$chunkRange->{lineCount}) {
         # Addition; no lines existed before change.
-        return (-1, -1);
+        return ($chunkRange->{startingLine}, $chunkRange->{startingLine});
     }
     return ($chunkRange->{startingLine}, $chunkRange->{startingLine} + $chunkRange->{lineCount} - 1);
 }

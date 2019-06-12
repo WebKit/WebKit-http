@@ -26,8 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NetworkResourcesData_h
-#define NetworkResourcesData_h
+#pragma once
 
 #include "InspectorPageAgent.h"
 #include "TextResourceDecoder.h"
@@ -127,6 +126,7 @@ public:
     ResourceData const* data(const String& requestId);
     Vector<String> removeCachedResource(CachedResource*);
     void clear(const String& preservedLoaderId = String());
+    Vector<ResourceData*> resources();
 
 private:
     ResourceData* resourceDataForRequestId(const String& requestId);
@@ -143,5 +143,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(NetworkResourcesData_h)

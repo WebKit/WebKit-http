@@ -41,27 +41,13 @@ namespace WebKit {
 WebPopupMenuProxyGtk::WebPopupMenuProxyGtk(GtkWidget* webView, WebPopupMenuProxy::Client& client)
     : WebPopupMenuProxy(client)
     , m_webView(webView)
-    , m_popup(gtk_menu_new())
     , m_dismissMenuTimer(RunLoop::main(), this, &WebPopupMenuProxyGtk::dismissMenuTimerFired)
 {
-    g_signal_connect(m_popup, "key-press-event", G_CALLBACK(keyPressEventCallback), this);
-    g_signal_connect(m_popup, "unmap", G_CALLBACK(menuUnmappedCallback), this);
 }
 
 WebPopupMenuProxyGtk::~WebPopupMenuProxyGtk()
 {
     cancelTracking();
-}
-
-GtkAction* WebPopupMenuProxyGtk::createGtkActionForMenuItem(const WebPopupItem& item, int itemIndex)
-{
-    GUniquePtr<char> actionName(g_strdup_printf("popup-menu-action-%d", itemIndex));
-    GtkAction* action = gtk_action_new(actionName.get(), item.m_text.utf8().data(), item.m_toolTip.utf8().data(), 0);
-    g_object_set_data(G_OBJECT(action), "popup-menu-action-index", GINT_TO_POINTER(itemIndex));
-    g_signal_connect(action, "activate", G_CALLBACK(menuItemActivated), this);
-    gtk_action_set_sensitive(action, item.m_isEnabled);
-
-    return action;
 }
 
 void WebPopupMenuProxyGtk::populatePopupMenu(const Vector<WebPopupItem>& items)
@@ -73,14 +59,14 @@ void WebPopupMenuProxyGtk::populatePopupMenu(const Vector<WebPopupItem>& items)
             gtk_menu_shell_append(GTK_MENU_SHELL(m_popup), menuItem);
             gtk_widget_show(menuItem);
         } else {
-            GRefPtr<GtkAction> action = adoptGRef(createGtkActionForMenuItem(item, itemIndex));
-            GtkWidget* menuItem = gtk_action_create_menu_item(action.get());
-            gtk_widget_set_tooltip_text(menuItem, gtk_action_get_tooltip(action.get()));
+            GtkWidget* menuItem = gtk_menu_item_new_with_label(item.m_text.utf8().data());
+            gtk_widget_set_tooltip_text(menuItem, item.m_toolTip.utf8().data());
+            gtk_widget_set_sensitive(menuItem, item.m_isEnabled);
+            g_object_set_data(G_OBJECT(menuItem), "popup-menu-item-index", GINT_TO_POINTER(itemIndex));
+            g_signal_connect(menuItem, "activate", G_CALLBACK(menuItemActivated), this);
             g_signal_connect(menuItem, "select", G_CALLBACK(selectItemCallback), this);
             gtk_menu_shell_append(GTK_MENU_SHELL(m_popup), menuItem);
-
-            if (gtk_action_is_visible(action.get()))
-                gtk_widget_show(menuItem);
+            gtk_widget_show(menuItem);
         }
         itemIndex++;
     }
@@ -88,7 +74,10 @@ void WebPopupMenuProxyGtk::populatePopupMenu(const Vector<WebPopupItem>& items)
 
 void WebPopupMenuProxyGtk::showPopupMenu(const IntRect& rect, TextDirection, double /* pageScaleFactor */, const Vector<WebPopupItem>& items, const PlatformPopupMenuData&, int32_t selectedIndex)
 {
-    m_dismissMenuTimer.stop();
+    ASSERT(!m_popup);
+    m_popup = gtk_menu_new();
+    g_signal_connect(m_popup, "key-press-event", G_CALLBACK(keyPressEventCallback), this);
+    g_signal_connect(m_popup, "unmap", G_CALLBACK(menuUnmappedCallback), this);
 
     populatePopupMenu(items);
     gtk_menu_set_active(GTK_MENU(m_popup), selectedIndex);
@@ -122,6 +111,8 @@ void WebPopupMenuProxyGtk::showPopupMenu(const IntRect& rect, TextDirection, dou
         menuPosition.setY(menuPosition.y() - rect.height() / 2);
     }
 
+    gtk_menu_attach_to_widget(GTK_MENU(m_popup), GTK_WIDGET(m_webView), nullptr);
+
     const GdkEvent* event = m_client->currentlyProcessedMouseDownEvent() ? m_client->currentlyProcessedMouseDownEvent()->nativeEvent() : nullptr;
     gtk_menu_popup_for_device(GTK_MENU(m_popup), event ? gdk_event_get_device(event) : nullptr, nullptr, nullptr,
         [](GtkMenu*, gint* x, gint* y, gboolean* pushIn, gpointer userData) {
@@ -142,10 +133,19 @@ void WebPopupMenuProxyGtk::showPopupMenu(const IntRect& rect, TextDirection, dou
        m_client->failedToShowPopupMenu();
        return;
     }
+
+    // This ensures that the active item gets selected after popping up the menu, and
+    // as it says in "gtkcombobox.c" (line ~1606): it's ugly, but gets the job done.
+    GtkWidget* activeChild = gtk_menu_get_active(GTK_MENU(m_popup));
+    if (activeChild && gtk_widget_get_visible(activeChild))
+        gtk_menu_shell_select_item(GTK_MENU_SHELL(m_popup), activeChild);
 }
 
 void WebPopupMenuProxyGtk::hidePopupMenu()
 {
+    if (!m_popup)
+        return;
+
     gtk_menu_popdown(GTK_MENU(m_popup));
     resetTypeAheadFindState();
 }
@@ -240,11 +240,11 @@ void WebPopupMenuProxyGtk::resetTypeAheadFindState()
     m_currentSearchString = emptyString();
 }
 
-void WebPopupMenuProxyGtk::menuItemActivated(GtkAction* action, WebPopupMenuProxyGtk* popupMenu)
+void WebPopupMenuProxyGtk::menuItemActivated(GtkMenuItem* menuItem, WebPopupMenuProxyGtk* popupMenu)
 {
     popupMenu->m_dismissMenuTimer.stop();
     if (popupMenu->m_client)
-        popupMenu->m_client->valueChangedForPopupMenu(popupMenu, GPOINTER_TO_INT(g_object_get_data(G_OBJECT(action), "popup-menu-action-index")));
+        popupMenu->m_client->valueChangedForPopupMenu(popupMenu, GPOINTER_TO_INT(g_object_get_data(G_OBJECT(menuItem), "popup-menu-item-index")));
 }
 
 void WebPopupMenuProxyGtk::dismissMenuTimerFired()
@@ -261,7 +261,7 @@ void WebPopupMenuProxyGtk::menuUnmappedCallback(GtkWidget*, WebPopupMenuProxyGtk
     // When an item is activated, the menu is first hidden and then activate signal is emitted, so at this point we don't know
     // if the menu has been hidden because an item has been selected or because the menu has been dismissed. Wait until the next
     // main loop iteration to dismiss the menu, if an item is activated the timer will be cancelled.
-    popupMenu->m_dismissMenuTimer.startOneShot(0);
+    popupMenu->m_dismissMenuTimer.startOneShot(0_s);
 }
 
 void WebPopupMenuProxyGtk::selectItemCallback(GtkWidget* item, WebPopupMenuProxyGtk* popupMenu)

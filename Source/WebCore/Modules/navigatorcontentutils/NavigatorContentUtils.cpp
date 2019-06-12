@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011, Google Inc. All rights reserved.
  * Copyright (C) 2012, Samsung Electronics. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -39,16 +40,14 @@
 
 namespace WebCore {
 
-static bool verifyCustomHandlerURL(const URL& baseURL, const String& url, ExceptionCode& ec)
+static bool verifyCustomHandlerURL(const URL& baseURL, const String& url)
 {
     // The specification requires that it is a SYNTAX_ERR if the "%s" token is
     // not present.
     static const char token[] = "%s";
     int index = url.find(token);
-    if (-1 == index) {
-        ec = SYNTAX_ERR;
+    if (-1 == index)
         return false;
-    }
 
     // It is also a SYNTAX_ERR if the custom handler URL, as created by removing
     // the "%s" token and prepending the base url, does not resolve.
@@ -57,10 +56,8 @@ static bool verifyCustomHandlerURL(const URL& baseURL, const String& url, Except
 
     URL kurl(baseURL, newURL);
 
-    if (kurl.isEmpty() || !kurl.isValid()) {
-        ec = SYNTAX_ERR;
+    if (kurl.isEmpty() || !kurl.isValid())
         return false;
-    }
 
     return true;
 }
@@ -76,7 +73,7 @@ static inline bool isProtocolWhitelisted(const String& scheme)
     return protocolWhitelist.get().contains(scheme);
 }
 
-static bool verifyProtocolHandlerScheme(const String& scheme, ExceptionCode& ec)
+static bool verifyProtocolHandlerScheme(const String& scheme)
 {
     if (isProtocolWhitelisted(scheme))
         return true;
@@ -88,7 +85,6 @@ static bool verifyProtocolHandlerScheme(const String& scheme, ExceptionCode& ec)
             return true;
     }
 
-    ec = SECURITY_ERR;
     return false;
 }
 
@@ -101,28 +97,30 @@ NavigatorContentUtils::~NavigatorContentUtils()
 {
 }
 
-void NavigatorContentUtils::registerProtocolHandler(Navigator& navigator, const String& scheme, const String& url, const String& title, ExceptionCode& ec)
+ExceptionOr<void> NavigatorContentUtils::registerProtocolHandler(Navigator& navigator, const String& scheme, const String& url, const String& title)
 {
     if (!navigator.frame())
-        return;
+        return { };
 
     URL baseURL = navigator.frame()->document()->baseURL();
 
-    if (!verifyCustomHandlerURL(baseURL, url, ec))
-        return;
+    if (!verifyCustomHandlerURL(baseURL, url))
+        return Exception { SYNTAX_ERR };
 
-    if (!verifyProtocolHandlerScheme(scheme, ec))
-        return;
+    if (!verifyProtocolHandlerScheme(scheme))
+        return Exception { SECURITY_ERR };
 
     NavigatorContentUtils::from(navigator.frame()->page())->client()->registerProtocolHandler(scheme, baseURL, URL(ParsedURLString, url), navigator.frame()->displayStringModifiedByEncoding(title));
+    return { };
 }
 
 #if ENABLE(CUSTOM_SCHEME_HANDLER)
+
 static String customHandlersStateString(const NavigatorContentUtilsClient::CustomHandlersState state)
 {
-    static NeverDestroyed<String> newHandler(ASCIILiteral("new"));
-    static NeverDestroyed<String> registeredHandler(ASCIILiteral("registered"));
-    static NeverDestroyed<String> declinedHandler(ASCIILiteral("declined"));
+    static NeverDestroyed<String> newHandler(MAKE_STATIC_STRING_IMPL("new"));
+    static NeverDestroyed<String> registeredHandler(MAKE_STATIC_STRING_IMPL("registered"));
+    static NeverDestroyed<String> declinedHandler(MAKE_STATIC_STRING_IMPL("declined"));
 
     switch (state) {
     case NavigatorContentUtilsClient::CustomHandlersNew:
@@ -137,39 +135,41 @@ static String customHandlersStateString(const NavigatorContentUtilsClient::Custo
     return String();
 }
 
-String NavigatorContentUtils::isProtocolHandlerRegistered(Navigator& navigator, const String& scheme, const String& url, ExceptionCode& ec)
+ExceptionOr<String> NavigatorContentUtils::isProtocolHandlerRegistered(Navigator& navigator, const String& scheme, const String& url)
 {
-    static NeverDestroyed<String> declined(ASCIILiteral("declined"));
+    static NeverDestroyed<String> declined(MAKE_STATIC_STRING_IMPL("declined"));
 
     if (!navigator.frame())
-        return declined;
+        return String { declined };
 
     URL baseURL = navigator.frame()->document()->baseURL();
 
-    if (!verifyCustomHandlerURL(baseURL, url, ec))
-        return declined;
+    if (!verifyCustomHandlerURL(baseURL, url))
+        return Exception { SYNTAX_ERR };
 
-    if (!verifyProtocolHandlerScheme(scheme, ec))
-        return declined;
+    if (!verifyProtocolHandlerScheme(scheme))
+        return Exception { SECURITY_ERR };
 
     return customHandlersStateString(NavigatorContentUtils::from(navigator.frame()->page())->client()->isProtocolHandlerRegistered(scheme, baseURL, URL(ParsedURLString, url)));
 }
 
-void NavigatorContentUtils::unregisterProtocolHandler(Navigator& navigator, const String& scheme, const String& url, ExceptionCode& ec)
+ExceptionOr<void> NavigatorContentUtils::unregisterProtocolHandler(Navigator& navigator, const String& scheme, const String& url)
 {
     if (!navigator.frame())
-        return;
+        return { };
 
     URL baseURL = navigator.frame()->document()->baseURL();
 
-    if (!verifyCustomHandlerURL(baseURL, url, ec))
-        return;
+    if (!verifyCustomHandlerURL(baseURL, url))
+        return Exception { SYNTAX_ERR };
 
-    if (!verifyProtocolHandlerScheme(scheme, ec))
-        return;
+    if (!verifyProtocolHandlerScheme(scheme))
+        return Exception { SECURITY_ERR };
 
     NavigatorContentUtils::from(navigator.frame()->page())->client()->unregisterProtocolHandler(scheme, baseURL, URL(ParsedURLString, url));
+    return { };
 }
+
 #endif
 
 const char* NavigatorContentUtils::supplementName()
@@ -185,4 +185,3 @@ void provideNavigatorContentUtilsTo(Page* page, std::unique_ptr<NavigatorContent
 } // namespace WebCore
 
 #endif // ENABLE(NAVIGATOR_CONTENT_UTILS)
-

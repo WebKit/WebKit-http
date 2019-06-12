@@ -45,34 +45,42 @@ public:
 
 private:
 #if ENABLE(SMOOTH_SCROLLING)
-    virtual bool scroll(ScrollbarOrientation, ScrollGranularity, float step, float multiplier) override;
-    virtual void scrollToOffsetWithoutAnimation(const FloatPoint&) override;
-    virtual void willEndLiveResize() override;
+    bool scroll(ScrollbarOrientation, ScrollGranularity, float step, float multiplier) override;
 #endif
+    void scrollToOffsetWithoutAnimation(const FloatPoint&) override;
+    void willEndLiveResize() override;
 
-    virtual void didAddVerticalScrollbar(Scrollbar*) override;
-    virtual void didAddHorizontalScrollbar(Scrollbar*) override;
-    virtual void willRemoveVerticalScrollbar(Scrollbar*) override;
-    virtual void willRemoveHorizontalScrollbar(Scrollbar*) override;
+    bool handleWheelEvent(const PlatformWheelEvent&) override;
 
-    virtual void mouseEnteredContentArea() override;
-    virtual void mouseExitedContentArea() override;
-    virtual void mouseMovedInContentArea() override;
-    virtual void contentAreaDidShow() override;
-    virtual void contentAreaDidHide() override;
-    virtual void notifyContentAreaScrolled(const FloatSize& delta) override;
-    virtual void lockOverlayScrollbarStateToHidden(bool) override;
+    void didAddVerticalScrollbar(Scrollbar*) override;
+    void didAddHorizontalScrollbar(Scrollbar*) override;
+    void willRemoveVerticalScrollbar(Scrollbar*) override;
+    void willRemoveHorizontalScrollbar(Scrollbar*) override;
+
+    void mouseEnteredContentArea() override;
+    void mouseExitedContentArea() override;
+    void mouseMovedInContentArea() override;
+    void contentAreaDidShow() override;
+    void contentAreaDidHide() override;
+    void notifyContentAreaScrolled(const FloatSize& delta) override;
+    void lockOverlayScrollbarStateToHidden(bool) override;
+
+    void updatePosition(FloatPoint&&);
 
     void overlayScrollbarAnimationTimerFired();
     void showOverlayScrollbars();
     void hideOverlayScrollbars();
     void updateOverlayScrollbarsOpacity();
 
+    FloatPoint computeVelocity();
+
 #if ENABLE(SMOOTH_SCROLLING)
     void ensureSmoothScrollingAnimation();
 
-    std::unique_ptr<ScrollAnimation> m_animation;
+    std::unique_ptr<ScrollAnimation> m_smoothAnimation;
 #endif
+    std::unique_ptr<ScrollAnimation> m_kineticAnimation;
+    Vector<PlatformWheelEvent> m_scrollHistory;
     Scrollbar* m_horizontalOverlayScrollbar { nullptr };
     Scrollbar* m_verticalOverlayScrollbar { nullptr };
     bool m_overlayScrollbarsLocked { false };
@@ -80,8 +88,8 @@ private:
     double m_overlayScrollbarAnimationSource { 0 };
     double m_overlayScrollbarAnimationTarget { 0 };
     double m_overlayScrollbarAnimationCurrent { 0 };
-    double m_overlayScrollbarAnimationStartTime { 0 };
-    double m_overlayScrollbarAnimationEndTime { 0 };
+    MonotonicTime m_overlayScrollbarAnimationStartTime;
+    MonotonicTime m_overlayScrollbarAnimationEndTime;
 };
 
 } // namespace WebCore

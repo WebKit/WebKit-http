@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2013, 2015 Apple Inc.  All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,21 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Logging_h
-#define Logging_h
+#pragma once
 
-#include <functional>
+#include "LogMacros.h"
 #include <wtf/Assertions.h>
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
-#if LOG_DISABLED
-
-#define LOG_RESULT(channel, function) ((void)0)
-#define LOG_WITH_STREAM(channel, commands) ((void)0)
-
-#else
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
 #ifndef LOG_CHANNEL_PREFIX
 #define LOG_CHANNEL_PREFIX Log
@@ -52,69 +46,67 @@ namespace WebCore {
     M(DOMTimers) \
     M(Editing) \
     M(Events) \
-    M(FTP) \
     M(FileAPI) \
     M(Frames) \
+    M(FTP) \
     M(Fullscreen) \
     M(Gamepad) \
     M(History) \
+    M(IOSurface) \
     M(IconDatabase) \
+    M(Images) \
     M(IndexedDB) \
+    M(IndexedDBOperations) \
+    M(Layers) \
     M(Layout) \
     M(Loading) \
     M(Media) \
+    M(MediaCaptureSamples) \
     M(MediaSource) \
+    M(MediaStream) \
     M(MediaSourceSamples) \
     M(MemoryPressure) \
     M(Network) \
     M(NotYetImplemented) \
     M(PageCache) \
+    M(PerformanceLogging) \
     M(PlatformLeaks) \
     M(Plugins) \
     M(PopupBlocking) \
     M(Progress) \
     M(RemoteInspector) \
     M(ResourceLoading) \
-    M(SQLDatabase) \
-    M(SVG) \
-    M(Services) \
+    M(ResourceLoadObserver) \
+    M(ResourceLoadStatistics) \
     M(Scrolling) \
+    M(Services) \
     M(SpellingAndGrammar) \
+    M(SQLDatabase) \
     M(StorageAPI) \
+    M(SVG) \
+    M(TextAutosizing) \
+    M(Tiling) \
     M(Threading) \
+    M(URLParser) \
     M(WebAudio) \
     M(WebGL) \
-    M(WebReplay) \
+    M(WebGPU) \
+    M(WebRTC) \
     M(WheelEventTestTriggers) \
-    M(ResourceLoadObserver) \
 
+#undef DECLARE_LOG_CHANNEL
 #define DECLARE_LOG_CHANNEL(name) \
     WEBCORE_EXPORT extern WTFLogChannel JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, name);
 
 WEBCORE_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 
-#undef DECLARE_LOG_CHANNEL
-
 String logLevelString();
 bool isLogChannelEnabled(const String& name);
-WEBCORE_EXPORT void initializeLoggingChannelsIfNecessary();
+WEBCORE_EXPORT void setLogChannelToAccumulate(const String& name);
 #ifndef NDEBUG
-void registerNotifyCallback(const String& notifyID, std::function<void()> callback);
+void registerNotifyCallback(const String& notifyID, WTF::Function<void()>&& callback);
 #endif
 
-void logFunctionResult(WTFLogChannel*, std::function<const char*()>);
-
-#define LOG_RESULT(channel, function) logFunctionResult(&JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, channel), function)
-
-#define LOG_WITH_STREAM(channel, commands) logFunctionResult(&JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, channel), \
-    [&]() { \
-        TextStream stream(TextStream::LineMode::SingleLine); \
-        commands; \
-        return stream.release().utf8().data(); \
-    });
-
-#endif // !LOG_DISABLED
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
 } // namespace WebCore
-
-#endif // Logging_h

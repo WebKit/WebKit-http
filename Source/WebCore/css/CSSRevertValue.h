@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSRevertValue_h
-#define CSSRevertValue_h
+#pragma once
 
 #include "CSSValue.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-class CSSRevertValue : public CSSValue {
+class CSSRevertValue final : public CSSValue {
 public:
     String customCSSText() const;
 
@@ -53,5 +51,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSRevertValue, isRevertValue())
-
-#endif // CSSRevertValue_h

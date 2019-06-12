@@ -32,7 +32,6 @@
 #include "CSSPropertyNames.h"
 #include "CSSStyleDeclaration.h"
 #include "CSSValueKeywords.h"
-#include "HTMLNames.h"
 #include "HTMLSpanElement.h"
 #include "InbandTextTrackPrivateClient.h"
 #include "Logging.h"
@@ -54,7 +53,7 @@ public:
         return adoptRef(*new TextTrackCueGenericBoxElement(document, cue));
     }
     
-    virtual void applyCSSProperties(const IntSize&) override;
+    void applyCSSProperties(const IntSize&) override;
     
 private:
     TextTrackCueGenericBoxElement(Document&, VTTCue&);
@@ -68,10 +67,10 @@ TextTrackCueGenericBoxElement::TextTrackCueGenericBoxElement(Document& document,
 void TextTrackCueGenericBoxElement::applyCSSProperties(const IntSize& videoSize)
 {
     setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
-    setInlineStyleProperty(CSSPropertyUnicodeBidi, CSSValueWebkitPlaintext);
+    setInlineStyleProperty(CSSPropertyUnicodeBidi, CSSValuePlaintext);
     
     TextTrackCueGeneric* cue = static_cast<TextTrackCueGeneric*>(getCue());
-    RefPtr<HTMLSpanElement> cueElement = cue->element();
+    Ref<HTMLSpanElement> cueElement = cue->element();
 
     CSSValueID alignment = cue->getCSSAlignment();
     float size = static_cast<float>(cue->getCSSSize());
@@ -111,10 +110,10 @@ void TextTrackCueGenericBoxElement::applyCSSProperties(const IntSize& videoSize)
         maxSize = 100.0 - textPosition;
 
     if (cue->getWritingDirection() == VTTCue::Horizontal) {
-        setInlineStyleProperty(CSSPropertyMinWidth, "-webkit-min-content");
+        setInlineStyleProperty(CSSPropertyMinWidth, "min-content");
         setInlineStyleProperty(CSSPropertyMaxWidth, maxSize, CSSPrimitiveValue::CSS_PERCENTAGE);
     } else {
-        setInlineStyleProperty(CSSPropertyMinHeight, "-webkit-min-content");
+        setInlineStyleProperty(CSSPropertyMinHeight, "min-content");
         setInlineStyleProperty(CSSPropertyMaxHeight, maxSize, CSSPrimitiveValue::CSS_PERCENTAGE);
     }
 
@@ -140,33 +139,40 @@ void TextTrackCueGenericBoxElement::applyCSSProperties(const IntSize& videoSize)
 
     if (cue->backgroundColor().isValid())
         setInlineStyleProperty(CSSPropertyBackgroundColor, cue->backgroundColor().serialized());
-    setInlineStyleProperty(CSSPropertyWebkitWritingMode, cue->getCSSWritingMode(), false);
+    setInlineStyleProperty(CSSPropertyWritingMode, cue->getCSSWritingMode(), false);
     setInlineStyleProperty(CSSPropertyWhiteSpace, CSSValuePreWrap);
+
+    // Make sure shadow or stroke is not clipped.
+    setInlineStyleProperty(CSSPropertyOverflow, CSSValueVisible);
+    cueElement->setInlineStyleProperty(CSSPropertyOverflow, CSSValueVisible);
 }
 
 TextTrackCueGeneric::TextTrackCueGeneric(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)
     : VTTCue(context, start, end, content)
     , m_baseFontSizeRelativeToVideoHeight(0)
     , m_fontSizeMultiplier(0)
-    , m_defaultPosition(true)
 {
 }
 
-PassRefPtr<VTTCueBox> TextTrackCueGeneric::createDisplayTree()
+Ref<VTTCueBox> TextTrackCueGeneric::createDisplayTree()
 {
     return TextTrackCueGenericBoxElement::create(ownerDocument(), *this);
 }
 
-void TextTrackCueGeneric::setLine(double line, ExceptionCode& ec)
+ExceptionOr<void> TextTrackCueGeneric::setLine(double line)
 {
-    m_defaultPosition = false;
-    VTTCue::setLine(line, ec);
+    auto result = VTTCue::setLine(line);
+    if (!result.hasException())
+        m_useDefaultPosition = false;
+    return result;
 }
 
-void TextTrackCueGeneric::setPosition(double position, ExceptionCode& ec)
+ExceptionOr<void> TextTrackCueGeneric::setPosition(double position)
 {
-    m_defaultPosition = false;
-    VTTCue::setPosition(position, ec);
+    auto result = VTTCue::setPosition(position);
+    if (!result.hasException())
+        m_useDefaultPosition = false;
+    return result;
 }
 
 void TextTrackCueGeneric::setFontSize(int fontSize, const IntSize& videoSize, bool important)
@@ -182,7 +188,7 @@ void TextTrackCueGeneric::setFontSize(int fontSize, const IntSize& videoSize, bo
     double size = videoSize.height() * baseFontSizeRelativeToVideoHeight() / 100;
     if (fontSizeMultiplier())
         size *= fontSizeMultiplier() / 100;
-    displayTreeInternal()->setInlineStyleProperty(CSSPropertyFontSize, lround(size), CSSPrimitiveValue::CSS_PX);
+    displayTreeInternal().setInlineStyleProperty(CSSPropertyFontSize, lround(size), CSSPrimitiveValue::CSS_PX);
 
     LOG(Media, "TextTrackCueGeneric::setFontSize - setting cue font size to %li", lround(size));
 }

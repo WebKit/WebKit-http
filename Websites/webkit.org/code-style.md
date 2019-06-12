@@ -114,8 +114,8 @@ switch (condition) {
 
 ```cpp
 return attribute.name() == srcAttr
-        || attribute.name() == lowsrcAttr
-        || (attribute.name() == usemapAttr && attribute.value().string()[0] != '#');
+    || attribute.name() == lowsrcAttr
+    || (attribute.name() == usemapAttr && attribute.value().string()[0] != '#');
 ```
 
 
@@ -123,8 +123,8 @@ return attribute.name() == srcAttr
 
 ```cpp
 return attribute.name() == srcAttr ||
-        attribute.name() == lowsrcAttr ||
-        (attribute.name() == usemapAttr && attr->value().string()[0] != '#');
+    attribute.name() == lowsrcAttr ||
+    (attribute.name() == usemapAttr && attr->value().string()[0] != '#');
 ```
 
 
@@ -695,9 +695,16 @@ setResizable(NotResizable);
         NSLocalizedString(@"Stop", @"Stop button title")
 ```
 
-[](#names-header-guards) `#define`, `#ifdef` "header guards" should be named exactly the same as the file (including case), replacing the `.` with a `_`.
+[](#header-guards) Use `#pragma once` instead of `#define` and `#ifdef` for header guards.
 
 ###### Right:
+
+```cpp
+// HTMLDocument.h
+#pragma once
+```
+
+###### Wrong:
 
 ```cpp
 // HTMLDocument.h
@@ -705,12 +712,44 @@ setResizable(NotResizable);
 #define HTMLDocument_h
 ```
 
+[](#names-protectors-this) Ref and RefPtr objects meant to protect `this` from deletion should be named "protectedThis".
+
+###### Right:
+
+```cpp
+RefPtr<Node> protectedThis(this);
+Ref<Element> protectedThis(*this);
+RefPtr<Widget> protectedThis = this;
+```
+
 ###### Wrong:
 
 ```cpp
-// HTMLDocument.h
-#ifndef _HTML_DOCUMENT_H_
-#define _HTML_DOCUMENT_H_
+RefPtr<Node> protector(this);
+Ref<Node> protector = *this;
+RefPtr<Widget> self(this);
+Ref<Element> elementRef(*this);
+```
+
+[](#names-protectors) Ref and RefPtr objects meant to protect variables other than `this` from deletion should be named either "protector", or "protected" combined with the capitalized form of the variable name.
+
+###### Right:
+
+```cpp
+RefPtr<Element> protector(&element);
+RefPtr<Element> protector = &element;
+RefPtr<Node> protectedNode(node);
+RefPtr<Widget> protectedMainWidget(m_mainWidget);
+RefPtr<Loader> protectedFontLoader = m_fontLoader;
+```
+
+###### Wrong:
+
+```cpp
+RefPtr<Node> nodeRef(&rootNode);
+Ref<Element> protect(*element);
+RefPtr<Node> protectorNode(node);
+RefPtr<Widget> protected = widget;
 ```
 
 ### Other Punctuation
@@ -751,7 +790,7 @@ MyOtherClass::MyOtherClass() : MySuperClass() {}
 
 ```cpp
 for (auto& frameView : frameViews)
-        frameView->updateLayoutAndStyleIfNeededRecursive();
+    frameView->updateLayoutAndStyleIfNeededRecursive();
 ```
 
 
@@ -1187,4 +1226,74 @@ drawJpg(); // FIXME(joe): Make this code handle jpg in addition to the png suppo
 
 ```cpp
 drawJpg(); // TODO: Make this code handle jpg in addition to the png support.
+```
+
+### Overriding Virtual Methods
+
+[](#override-methods) The base level declaration of a virtual method inside a class must be declared with the `virtual` keyword. All subclasses of that class must either specify the `override` keyword when overriding the virtual method or the `final` keyword when overriding the virtual method and requiring that no further subclasses can override it. You never want to annotate a method with more than one of the `virtual`, `override`, or `final` keywords.
+
+###### Right:
+
+```cpp
+class Person {
+public:
+    virtual String description() { ... };
+}
+
+class Student : public Person {
+public:
+    String description() override { ... }; // This is correct because it only contains the "override" keyword to indicate that the method is overridden.
+}
+
+```
+
+```cpp
+class Person {
+public:
+    virtual String description() { ... };
+}
+
+class Student : public Person {
+public:
+    String description() final { ... }; // This is correct because it only contains the "final" keyword to indicate that the method is overridden and that no subclasses of "Student" can override "description".
+}
+
+```
+
+###### Wrong:
+
+```cpp
+class Person {
+public:
+    virtual String description() { ... };
+}
+
+class Student : public Person {
+public:
+    virtual String description() override { ... }; // This is incorrect because it uses both the "virtual" and "override" keywords to indicate that the method is overridden. Instead, it should only use the "override" keyword.
+}
+```
+
+```cpp
+class Person {
+public:
+    virtual String description() { ... };
+}
+
+class Student : public Person {
+public:
+    virtual String description() final { ... }; // This is incorrect because it uses both the "virtual" and "final" keywords to indicate that the method is overridden and final. Instead, it should only use the "final" keyword.
+}
+```
+
+```cpp
+class Person {
+public:
+    virtual String description() { ... };
+}
+
+class Student : public Person {
+public:
+    virtual String description() { ... }; // This is incorrect because it uses the "virtual" keyword to indicate that the method is overridden.
+}
 ```

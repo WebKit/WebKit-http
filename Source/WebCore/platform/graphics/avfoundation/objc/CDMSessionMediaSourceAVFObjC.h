@@ -26,12 +26,12 @@
 #ifndef CDMSessionMediaSourceAVFObjC_h
 #define CDMSessionMediaSourceAVFObjC_h
 
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 #include "SourceBufferPrivateAVFObjC.h"
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 OBJC_CLASS AVStreamDataParser;
 OBJC_CLASS NSError;
@@ -49,12 +49,12 @@ public:
     virtual void removeParser(AVStreamDataParser*) = 0;
 
     // CDMSession
-    virtual void setClient(CDMSessionClient* client) override { m_client = client; }
-    virtual const String& sessionId() const override { return m_sessionId; }
+    void setClient(CDMSessionClient* client) override { m_client = client; }
+    const String& sessionId() const override { return m_sessionId; }
 
     // SourceBufferPrivateAVFObjCErrorClient
-    virtual void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *, bool& shouldIgnore) override;
-    virtual void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *, bool& shouldIgnore) override;
+    void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *, bool& shouldIgnore) override;
+    void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *, bool& shouldIgnore) override;
 
     void addSourceBuffer(SourceBufferPrivateAVFObjC*);
     void removeSourceBuffer(SourceBufferPrivateAVFObjC*);
@@ -82,6 +82,6 @@ inline CDMSessionMediaSourceAVFObjC* toCDMSessionMediaSourceAVFObjC(CDMSession* 
 
 }
 
-#endif // ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 #endif // CDMSessionMediaSourceAVFObjC_h

@@ -14,6 +14,9 @@ const unusualEventNames = {
 
 const eventsInGlobalEventHandlers = [
     "abort",
+    "animationend",
+    "animationiteration",
+    "animationstart",
     "blur",
     "canplay",
     "canplaythrough",
@@ -65,6 +68,7 @@ const eventsInGlobalEventHandlers = [
     "submit",
     "suspend",
     "timeupdate",
+    "transitionend",
     "volumechange",
     "waiting",
     "search",
@@ -95,10 +99,6 @@ const elementAndDocumentEvents = [
 ];
 
 const elementAndWindowEvents = [
-    "animationend",
-    "animationiteration",
-    "animationstart",
-    "transitionend",
     "webkitanimationend",
     "webkitanimationiteration",
     "webkitanimationstart",
@@ -339,11 +339,6 @@ html/HTMLFrameSetElement.idl:    [Conditional=ORIENTATION_EVENTS, NotEnumerable,
 It would be good to extend this test to cover more objects.
 See list below of IDL files that indicate objects have these attributes as of the writing of this test.
 
-Modules/battery/BatteryManager.idl:    attribute EventListener onchargingchange;
-Modules/battery/BatteryManager.idl:    attribute EventListener onchargingtimechange;
-Modules/battery/BatteryManager.idl:    attribute EventListener ondischargingtimechange;
-Modules/battery/BatteryManager.idl:    attribute EventListener onlevelchange;
-
 Modules/encryptedmedia/MediaKeySession.idl:    attribute EventListener onwebkitkeyadded;
 Modules/encryptedmedia/MediaKeySession.idl:    attribute EventListener onwebkitkeyerror;
 Modules/encryptedmedia/MediaKeySession.idl:    attribute EventListener onwebkitkeymessage;
@@ -470,7 +465,6 @@ page/DOMWindow.idl:    [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute
 page/DOMWindow.idl:    [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforceup;
 page/DOMWindow.idl:    [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcewillbegin;
  
-dom/Document.idl:    [NotEnumerable, Conditional=CSP_NEXT] attribute EventHandler onsecuritypolicyviolation;
 dom/Document.idl:    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchcancel;
 dom/Document.idl:    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchend;
 dom/Document.idl:    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchmove;

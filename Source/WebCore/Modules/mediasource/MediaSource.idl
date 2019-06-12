@@ -33,12 +33,18 @@ enum EndOfStreamError {
     "decode"
 };
 
+enum ReadyState {
+    "closed",
+    "open",
+    "ended"
+};
+
 [
-    Conditional=MEDIA_SOURCE,
     ActiveDOMObject,
-    EnabledBySetting=MediaSource,
+    Conditional=MEDIA_SOURCE,
     Constructor,
     ConstructorCallWith=ScriptExecutionContext,
+    EnabledBySetting=MediaSource,
 ] interface MediaSource : EventTarget {
     // All the source buffers created by this object.
     readonly attribute SourceBufferList sourceBuffers;
@@ -46,14 +52,21 @@ enum EndOfStreamError {
     // Subset of sourceBuffers that provide data for the selected/enabled tracks.
     readonly attribute SourceBufferList activeSourceBuffers;
 
-    [SetterRaisesException] attribute unrestricted double duration;
+    [SetterMayThrowException] attribute unrestricted double duration;
 
-    [RaisesException] SourceBuffer addSourceBuffer(DOMString type);
-    [RaisesException] void removeSourceBuffer(SourceBuffer buffer);
+    [MayThrowException] SourceBuffer addSourceBuffer(DOMString type);
+    [MayThrowException] void removeSourceBuffer(SourceBuffer buffer);
 
-    readonly attribute DOMString readyState;
+    readonly attribute ReadyState readyState;
     
-    [RaisesException] void endOfStream(optional EndOfStreamError error);
+    [MayThrowException] void endOfStream(optional EndOfStreamError error);
 
     static boolean isTypeSupported (DOMString type);
+
+    [MayThrowException] void setLiveSeekableRange(double start, double end);
+    [MayThrowException] void clearLiveSeekableRange();
+
+    attribute EventHandler onsourceopen;
+    attribute EventHandler onsourceended;
+    attribute EventHandler onsourceclose;
 };

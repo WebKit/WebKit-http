@@ -30,7 +30,6 @@ function prepareDatabase()
 
     objectStore = evalAndLog("objectStore = db.createObjectStore('foo');");
 
-    setReadonlyProperty("objectStore.name", "'bar'");
     setReadonlyProperty("objectStore.keyPath", "'bar'");
 /* fails, split into separate test
     setReadonlyProperty("objectStore.indexNames", "['bar']");
@@ -64,7 +63,6 @@ function checkCursor()
     }
 
     index = evalAndLog("index = objectStore.createIndex('first', 'first');");
-    setReadonlyProperty("index.name", "'bar'");
     setReadonlyProperty("index.objectStore", "this");
     setReadonlyProperty("index.keyPath", "'bar'");
     setReadonlyProperty("index.unique", "true");

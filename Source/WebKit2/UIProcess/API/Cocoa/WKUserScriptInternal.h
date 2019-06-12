@@ -23,12 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKUserScript.h"
+#import "WKUserScriptPrivate.h"
 
 #if WK_API_ENABLED
 
 #import "APIUserScript.h"
-#import <wtf/RetainPtr.h>
 
 namespace API {
 

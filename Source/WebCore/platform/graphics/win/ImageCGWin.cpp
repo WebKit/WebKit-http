@@ -26,6 +26,8 @@
 #include "config.h"
 #include "Image.h"
 
+#if USE(CG)
+
 #include "BitmapImage.h"
 #include "BitmapInfo.h"
 #include "GraphicsContextCG.h"
@@ -36,7 +38,7 @@
 
 namespace WebCore {
 
-PassRefPtr<BitmapImage> BitmapImage::create(HBITMAP hBitmap)
+RefPtr<BitmapImage> BitmapImage::create(HBITMAP hBitmap)
 {
     DIBSECTION dibSection;
     if (!GetObject(hBitmap, sizeof(DIBSECTION), &dibSection))
@@ -54,9 +56,9 @@ PassRefPtr<BitmapImage> BitmapImage::create(HBITMAP hBitmap)
         dibSection.dsBm.bmWidthBytes, deviceRGBColorSpaceRef(), kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst));
 
     // The BitmapImage takes ownership of this.
-    CGImageRef cgImage = CGBitmapContextCreateImage(bitmapContext.get());
+    RetainPtr<CGImageRef> cgImage = adoptCF(CGBitmapContextCreateImage(bitmapContext.get()));
 
-    return adoptRef(new BitmapImage(cgImage));
+    return adoptRef(new BitmapImage(WTFMove(cgImage)));
 }
 
 bool BitmapImage::getHBITMAPOfSize(HBITMAP bmp, const IntSize* size)
@@ -78,7 +80,7 @@ bool BitmapImage::getHBITMAPOfSize(HBITMAP bmp, const IntSize* size)
     if (size)
         drawFrameMatchingSourceSize(gc, FloatRect(0.0f, 0.0f, bmpInfo.bmWidth, bmpInfo.bmHeight), *size, CompositeCopy);
     else
-        draw(gc, FloatRect(0.0f, 0.0f, bmpInfo.bmWidth, bmpInfo.bmHeight), FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), CompositeCopy, BlendModeNormal, ImageOrientationDescription());
+        draw(gc, FloatRect(0.0f, 0.0f, bmpInfo.bmWidth, bmpInfo.bmHeight), FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), CompositeCopy, BlendModeNormal, DecodingMode::Synchronous, ImageOrientationDescription());
 
     // Do cleanup
     CGContextRelease(cgContext);
@@ -90,11 +92,11 @@ void BitmapImage::drawFrameMatchingSourceSize(GraphicsContext& ctxt, const Float
 {
     size_t frames = frameCount();
     for (size_t i = 0; i < frames; ++i) {
-        CGImageRef image = frameAtIndex(i);
+        CGImageRef image = frameImageAtIndex(i).get();
         if (image && CGImageGetHeight(image) == static_cast<size_t>(srcSize.height()) && CGImageGetWidth(image) == static_cast<size_t>(srcSize.width())) {
             size_t currentFrame = m_currentFrame;
             m_currentFrame = i;
-            draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, srcSize.width(), srcSize.height()), compositeOp, BlendModeNormal, ImageOrientationDescription());
+            draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, srcSize.width(), srcSize.height()), compositeOp, BlendModeNormal, DecodingMode::Synchronous, ImageOrientationDescription());
             m_currentFrame = currentFrame;
             return;
         }
@@ -102,7 +104,9 @@ void BitmapImage::drawFrameMatchingSourceSize(GraphicsContext& ctxt, const Float
 
     // No image of the correct size was found, fallback to drawing the current frame
     FloatSize imageSize = BitmapImage::size();
-    draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), compositeOp, BlendModeNormal, ImageOrientationDescription());
+    draw(ctxt, dstRect, FloatRect(0.0f, 0.0f, imageSize.width(), imageSize.height()), compositeOp, BlendModeNormal, DecodingMode::Synchronous, ImageOrientationDescription());
 }
 
 } // namespace WebCore
+
+#endif

@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAnimatedRect_h
-#define SVGAnimatedRect_h
+#pragma once
 
 #include "SVGAnimatedPropertyMacros.h"
 #include "SVGAnimatedPropertyTearOff.h"
@@ -27,7 +26,9 @@
 
 namespace WebCore {
 
-typedef SVGAnimatedPropertyTearOff<FloatRect> SVGAnimatedRect;
+class SVGRect;
+
+using SVGAnimatedRect = SVGAnimatedPropertyTearOff<SVGRect>;
 
 // Helper macros to declare/define a SVGAnimatedRect object
 #define DECLARE_ANIMATED_RECT(UpperProperty, LowerProperty) \
@@ -42,20 +43,18 @@ class SVGAnimatedRectAnimator final : public SVGAnimatedTypeAnimator {
 public:
     SVGAnimatedRectAnimator(SVGAnimationElement*, SVGElement*);
 
-    virtual std::unique_ptr<SVGAnimatedType> constructFromString(const String&) override;
-    virtual std::unique_ptr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
-    virtual void stopAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
-    virtual void resetAnimValToBaseVal(const SVGElementAnimatedPropertyList&, SVGAnimatedType&) override;
-    virtual void animValWillChange(const SVGElementAnimatedPropertyList&) override;
-    virtual void animValDidChange(const SVGElementAnimatedPropertyList&) override;
+    std::unique_ptr<SVGAnimatedType> constructFromString(const String&) override;
+    std::unique_ptr<SVGAnimatedType> startAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
+    void stopAnimValAnimation(const SVGElementAnimatedPropertyList&) override;
+    void resetAnimValToBaseVal(const SVGElementAnimatedPropertyList&, SVGAnimatedType&) override;
+    void animValWillChange(const SVGElementAnimatedPropertyList&) override;
+    void animValDidChange(const SVGElementAnimatedPropertyList&) override;
 
-    virtual void addAnimatedTypes(SVGAnimatedType*, SVGAnimatedType*) override;
-    virtual void calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*) override;
-    virtual float calculateDistance(const String& fromString, const String& toString) override;
+    void addAnimatedTypes(SVGAnimatedType*, SVGAnimatedType*) override;
+    void calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*, SVGAnimatedType*) override;
+    float calculateDistance(const String& fromString, const String& toString) override;
 
     static bool parseSVGRect(const String&, FloatRect&);
 };
 
 } // namespace WebCore
-
-#endif

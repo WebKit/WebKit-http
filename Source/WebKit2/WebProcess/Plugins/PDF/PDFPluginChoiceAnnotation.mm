@@ -66,31 +66,34 @@ void PDFPluginChoiceAnnotation::commit()
     PDFPluginAnnotation::commit();
 }
 
-PassRefPtr<Element> PDFPluginChoiceAnnotation::createAnnotationElement()
+Ref<Element> PDFPluginChoiceAnnotation::createAnnotationElement()
 {
     Document& document = parent()->document();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     PDFAnnotationChoiceWidget *choiceAnnotation = this->choiceAnnotation();
+#pragma clang diagnostic pop
 
-    RefPtr<Element> element = document.createElement(selectTag, false);
+    auto element = document.createElement(selectTag, false);
 
-    StyledElement* styledElement = static_cast<StyledElement*>(element.get());
+    auto& styledElement = downcast<StyledElement>(element.get());
 
     // FIXME: Match font weight and style as well?
-    styledElement->setInlineStyleProperty(CSSPropertyColor, colorFromNSColor(choiceAnnotation.fontColor).serialized());
-    styledElement->setInlineStyleProperty(CSSPropertyFontFamily, choiceAnnotation.font.familyName);
+    styledElement.setInlineStyleProperty(CSSPropertyColor, colorFromNSColor(choiceAnnotation.fontColor).serialized());
+    styledElement.setInlineStyleProperty(CSSPropertyFontFamily, choiceAnnotation.font.familyName);
 
     NSArray *choices = choiceAnnotation.choices;
     NSString *selectedChoice = choiceAnnotation.stringValue;
 
     for (NSString *choice in choices) {
-        Ref<Element> choiceOption = document.createElement(optionTag, false);
-        choiceOption->setAttribute(valueAttr, choice);
-        choiceOption->setTextContent(choice, ASSERT_NO_EXCEPTION);
+        auto choiceOption = document.createElement(optionTag, false);
+        choiceOption->setAttributeWithoutSynchronization(valueAttr, choice);
+        choiceOption->setTextContent(choice);
 
         if (choice == selectedChoice)
-            choiceOption->setAttribute(selectedAttr, "selected");
+            choiceOption->setAttributeWithoutSynchronization(selectedAttr, AtomicString("selected", AtomicString::ConstructFromLiteral));
 
-        styledElement->appendChild(WTFMove(choiceOption));
+        styledElement.appendChild(choiceOption);
     }
 
     return element;

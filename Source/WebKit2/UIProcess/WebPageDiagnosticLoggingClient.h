@@ -35,7 +35,7 @@
 namespace API {
 
 template<> struct ClientTraits<WKPageDiagnosticLoggingClientBase> {
-    typedef std::tuple<WKPageDiagnosticLoggingClientV0> Versions;
+    typedef std::tuple<WKPageDiagnosticLoggingClientV0, WKPageDiagnosticLoggingClientV1> Versions;
 };
 
 } // namespace API
@@ -48,9 +48,10 @@ class WebPageDiagnosticLoggingClient final : public API::Client<WKPageDiagnostic
 public:
     explicit WebPageDiagnosticLoggingClient(const WKPageDiagnosticLoggingClientBase*);
 
-    virtual void logDiagnosticMessage(WebPageProxy*, const String& message, const String& description) override;
-    virtual void logDiagnosticMessageWithResult(WebPageProxy*, const String& message, const String& description, WebCore::DiagnosticLoggingResultType) override;
-    virtual void logDiagnosticMessageWithValue(WebPageProxy*, const String& message, const String& description, const String& value) override;
+    void logDiagnosticMessage(WebPageProxy*, const String& message, const String& description) override;
+    void logDiagnosticMessageWithResult(WebPageProxy*, const String& message, const String& description, WebCore::DiagnosticLoggingResultType) override;
+    void logDiagnosticMessageWithValue(WebPageProxy*, const String& message, const String& description, const String& value) override;
+    void logDiagnosticMessageWithEnhancedPrivacy(WebPageProxy*, const String& message, const String& description) override;
 };
 
 } // namespace WebKit

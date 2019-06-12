@@ -26,7 +26,6 @@
 #ifndef GSocketMonitor_h
 #define GSocketMonitor_h
 
-#include <functional>
 #include <glib.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
@@ -43,7 +42,7 @@ public:
     GSocketMonitor() = default;
     ~GSocketMonitor();
 
-    void start(GSocket*, GIOCondition, RunLoop&, std::function<gboolean (GIOCondition)>&&);
+    void start(GSocket*, GIOCondition, RunLoop&, Function<gboolean (GIOCondition)>&&);
     void stop();
 
 private:
@@ -51,7 +50,7 @@ private:
 
     GRefPtr<GSource> m_source;
     GRefPtr<GCancellable> m_cancellable;
-    std::function<gboolean (GIOCondition)> m_callback;
+    Function<gboolean (GIOCondition)> m_callback;
 };
 
 } // namespace IPC

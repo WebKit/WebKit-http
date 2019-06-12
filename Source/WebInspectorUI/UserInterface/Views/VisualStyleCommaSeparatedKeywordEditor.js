@@ -48,7 +48,7 @@ WebInspector.VisualStyleCommaSeparatedKeywordEditor = class VisualStyleCommaSepa
         addGlyphElement.addEventListener("click", this._addEmptyCommaSeparatedKeyword.bind(this));
         controlContainer.appendChild(addGlyphElement);
 
-        let removeGlyphElement = useSVGSymbol("Images/Minus.svg", "visual-style-remove-comma-separated-keyword", WebInspector.UIString("Click to remove the selected item."));
+        let removeGlyphElement = useSVGSymbol("Images/Minus.svg", "visual-style-remove-comma-separated-keyword", WebInspector.UIString("Remove selected item"));
         removeGlyphElement.addEventListener("click", this._removeSelectedCommaSeparatedKeyword.bind(this));
         controlContainer.appendChild(removeGlyphElement);
     }
@@ -69,7 +69,7 @@ WebInspector.VisualStyleCommaSeparatedKeywordEditor = class VisualStyleCommaSepa
     get value()
     {
         if (!this._commaSeparatedKeywords.hasChildren)
-            return;
+            return "";
 
         let value = "";
         for (let treeItem of this._commaSeparatedKeywords.children) {
@@ -111,7 +111,9 @@ WebInspector.VisualStyleCommaSeparatedKeywordEditor = class VisualStyleCommaSepa
             values[i] += (openParentheses - closedParenthesis === 1) ? ")" : "";
         }
 
-        if (values.length === 1 && !values[0].includes("(") && !values[0].includes(")"))
+        // Allow splitting with parenthesis if the parenthesis does not have any commas.
+        let hasParenthesis = values[0] && (values[0].includes("(") || values[0].includes(")"));
+        if (values.length === 1 && (!hasParenthesis || !/\([^\)]*,[^\)]*\)/.test(values[0])))
             values = values[0].split(/\s*,\s*/);
 
         for (let value of values)
@@ -125,7 +127,7 @@ WebInspector.VisualStyleCommaSeparatedKeywordEditor = class VisualStyleCommaSepa
         return this.value || null;
     }
 
-    set specifiedWidth(value)
+    recalculateWidth(value)
     {
         if (this._titleElement) {
             // 55px width and 4px margin on left and right for title element,
@@ -176,7 +178,7 @@ WebInspector.VisualStyleCommaSeparatedKeywordEditor = class VisualStyleCommaSepa
         let count = 0;
         while (count < valuesCount) {
             if (count > 0)
-                text += ",";
+                text += ", ";
 
             for (let valueList of valueLists)
                 text += valueList[count > valueList.length - 1 ? valueList.length - 1 : count] + " ";
@@ -286,4 +288,4 @@ WebInspector.VisualStyleCommaSeparatedKeywordEditor.ListItemClassName = "visual-
 WebInspector.VisualStyleCommaSeparatedKeywordEditor.Event = {
     TreeItemSelected: "visual-style-comma-separated-keyword-editor-tree-item-selected",
     NoRemainingTreeItems: "visual-style-comma-separated-keyword-editor-no-remaining-tree-items"
-}
+};

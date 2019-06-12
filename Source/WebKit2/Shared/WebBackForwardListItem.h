@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 
 #include "APIObject.h"
 #include "SessionState.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace API {
@@ -36,15 +36,15 @@ class Data;
 }
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 class WebBackForwardListItem : public API::ObjectImpl<API::Object::Type::BackForwardListItem> {
 public:
-    static PassRefPtr<WebBackForwardListItem> create(BackForwardListItemState, uint64_t pageID);
+    static Ref<WebBackForwardListItem> create(BackForwardListItemState&&, uint64_t pageID);
     virtual ~WebBackForwardListItem();
 
     uint64_t itemID() const { return m_itemState.identifier; }
@@ -52,6 +52,7 @@ public:
     uint64_t pageID() const { return m_pageID; }
 
     void setPageState(PageState pageState) { m_itemState.pageState = WTFMove(pageState); }
+    const PageState& pageState() const { return m_itemState.pageState; }
 
     const String& originalURL() const { return m_itemState.pageState.mainFrameState.originalURLString; }
     const String& url() const { return m_itemState.pageState.mainFrameState.urlString; }
@@ -61,13 +62,13 @@ public:
 
 #if PLATFORM(COCOA)
     ViewSnapshot* snapshot() const { return m_itemState.snapshot.get(); }
-    void setSnapshot(PassRefPtr<ViewSnapshot> snapshot) { m_itemState.snapshot = snapshot; }
+    void setSnapshot(RefPtr<ViewSnapshot>&& snapshot) { m_itemState.snapshot = WTFMove(snapshot); }
 #endif
 
-    static uint64_t highedUsedItemID();
+    static uint64_t highestUsedItemID();
 
 private:
-    explicit WebBackForwardListItem(BackForwardListItemState, uint64_t pageID);
+    explicit WebBackForwardListItem(BackForwardListItemState&&, uint64_t pageID);
 
     BackForwardListItemState m_itemState;
     uint64_t m_pageID;

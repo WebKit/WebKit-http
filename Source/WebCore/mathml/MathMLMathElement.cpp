@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,17 +26,21 @@
  */
 
 #include "config.h"
+#include "MathMLMathElement.h"
 
 #if ENABLE(MATHML)
 
-#include "MathMLMathElement.h"
+#include "MathMLNames.h"
 #include "RenderMathMLMath.h"
 
 namespace WebCore {
 
+using namespace MathMLNames;
+
 inline MathMLMathElement::MathMLMathElement(const QualifiedName& tagName, Document& document)
-    : MathMLInlineContainerElement(tagName, document)
+    : MathMLRowElement(tagName, document)
 {
+    setHasCustomStyleResolveCallbacks();
 }
 
 Ref<MathMLMathElement> MathMLMathElement::create(const QualifiedName& tagName, Document& document)
@@ -43,9 +48,43 @@ Ref<MathMLMathElement> MathMLMathElement::create(const QualifiedName& tagName, D
     return adoptRef(*new MathMLMathElement(tagName, document));
 }
 
-RenderPtr<RenderElement> MathMLMathElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> MathMLMathElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderMathMLMath>(*this, WTFMove(style));
+}
+
+std::optional<bool> MathMLMathElement::specifiedDisplayStyle()
+{
+    if (cachedBooleanAttribute(displaystyleAttr, m_displayStyle) == BooleanValue::Default) {
+        // The default displaystyle value of the <math> depends on the display attribute, so we parse it here.
+        auto& value = attributeWithoutSynchronization(displayAttr);
+        if (value == "block")
+            m_displayStyle = BooleanValue::True;
+        else if (value == "inline")
+            m_displayStyle = BooleanValue::False;
+    }
+    return toOptionalBool(m_displayStyle.value());
+}
+
+void MathMLMathElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+{
+    bool displayStyleAttribute = (name == displaystyleAttr || name == displayAttr);
+    bool mathVariantAttribute = name == mathvariantAttr;
+    if (displayStyleAttribute)
+        m_displayStyle = std::nullopt;
+    if (mathVariantAttribute)
+        m_mathVariant = std::nullopt;
+    if ((displayStyleAttribute || mathVariantAttribute) && renderer())
+        MathMLStyle::resolveMathMLStyleTree(renderer());
+
+    MathMLElement::parseAttribute(name, value);
+}
+
+void MathMLMathElement::didAttachRenderers()
+{
+    MathMLRowElement::didAttachRenderers();
+
+    MathMLStyle::resolveMathMLStyleTree(renderer());
 }
 
 }

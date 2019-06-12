@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,15 +26,16 @@
 #include "config.h"
 #include "PlatformCookieJar.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "CFNetworkSPI.h"
 #include "Cookie.h"
-#include "URL.h"
 #include "NetworkStorageSession.h"
-#include "SoftLinking.h"
+#include "NotImplemented.h"
+#include "URL.h"
 #include <CFNetwork/CFHTTPCookiesPriv.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <wtf/SoftLinking.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(WIN)
@@ -141,8 +142,9 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
     String cookieString = value.contains('=') ? value : value + "=";
 
     RetainPtr<CFStringRef> cookieStringCF = cookieString.createCFString();
+    auto cookieStringCFPtr = cookieStringCF.get();
     RetainPtr<CFDictionaryRef> headerFieldsCF = adoptCF(CFDictionaryCreate(kCFAllocatorDefault,
-        (const void**)&s_setCookieKeyCF, (const void**)&cookieStringCF, 1,
+        (const void**)&s_setCookieKeyCF, (const void**)&cookieStringCFPtr, 1,
         &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 
     RetainPtr<CFArrayRef> unfilteredCookies = adoptCF(createCookies(headerFieldsCF.get(), urlCF.get()));
@@ -179,19 +181,23 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, 
     rawCookies.reserveCapacity(count);
 
     for (CFIndex i = 0; i < count; i++) {
-       CFHTTPCookieRef cookie = (CFHTTPCookieRef)CFArrayGetValueAtIndex(cookiesCF.get(), i);
-       String name = cookieName(cookie).get();
-       String value = cookieValue(cookie).get();
-       String domain = cookieDomain(cookie).get();
-       String path = cookiePath(cookie).get();
+        CFHTTPCookieRef cookie = (CFHTTPCookieRef)CFArrayGetValueAtIndex(cookiesCF.get(), i);
+        String name = cookieName(cookie).get();
+        String value = cookieValue(cookie).get();
+        String domain = cookieDomain(cookie).get();
+        String path = cookiePath(cookie).get();
 
-       double expires = (cookieExpirationTime(cookie) + kCFAbsoluteTimeIntervalSince1970) * 1000;
+        double expires = (cookieExpirationTime(cookie) + kCFAbsoluteTimeIntervalSince1970) * 1000;
 
-       bool httpOnly = CFHTTPCookieIsHTTPOnly(cookie);
-       bool secure = CFHTTPCookieIsSecure(cookie);
-       bool session = false;    // FIXME: Need API for if a cookie is a session cookie.
+        bool httpOnly = CFHTTPCookieIsHTTPOnly(cookie);
+        bool secure = CFHTTPCookieIsSecure(cookie);
+        bool session = false; // FIXME: Need API for if a cookie is a session cookie.
 
-       rawCookies.uncheckedAppend(Cookie(name, value, domain, path, expires, httpOnly, secure, session));
+        String comment;
+        URL commentURL;
+        Vector<uint16_t> ports;
+
+        rawCookies.uncheckedAppend(Cookie(name, value, domain, path, expires, httpOnly, secure, session, comment, commentURL, ports));
     }
 
     return true;
@@ -247,4 +253,4 @@ void deleteAllCookiesModifiedSince(const NetworkStorageSession&, std::chrono::sy
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

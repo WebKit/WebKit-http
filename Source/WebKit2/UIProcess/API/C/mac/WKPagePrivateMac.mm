@@ -26,6 +26,7 @@
 #import "config.h"
 #import "WKPagePrivateMac.h"
 
+#import "FullscreenClient.h"
 #import "PageLoadStateObserver.h"
 #import "WKAPICast.h"
 #import "WKNSURLExtras.h"
@@ -87,7 +88,7 @@ using namespace WebKit;
 
 - (BOOL)_webProcessIsResponsive
 {
-    return _page->process().responsivenessTimer().isResponsive();
+    return _page->process().isResponsive();
 }
 
 - (double)estimatedProgress
@@ -98,6 +99,19 @@ using namespace WebKit;
 - (NSURL *)unreachableURL
 {
     return [NSURL _web_URLWithWTFString:_page->pageLoadState().unreachableURL()];
+}
+
+- (SecTrustRef)serverTrust
+{
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    auto certificateInfo = _page->pageLoadState().certificateInfo();
+    if (!certificateInfo)
+        return nil;
+
+    return certificateInfo->certificateInfo().trust();
+#else
+    return nil;
+#endif
 }
 
 @end
@@ -116,11 +130,6 @@ _WKRemoteObjectRegistry *WKPageGetObjectRegistry(WKPageRef pageRef)
 #endif
 }
 
-pid_t WKPageGetProcessIdentifier(WKPageRef pageRef)
-{
-    return toImpl(pageRef)->processIdentifier();
-}
-
 bool WKPageIsURLKnownHSTSHost(WKPageRef page, WKURLRef url)
 {
     WebPageProxy* webPageProxy = toImpl(page);
@@ -128,3 +137,27 @@ bool WKPageIsURLKnownHSTSHost(WKPageRef page, WKURLRef url)
 
     return webPageProxy->process().processPool().isURLKnownHSTSHost(toImpl(url)->string(), privateBrowsingEnabled);
 }
+
+#if PLATFORM(MAC)
+bool WKPageIsPlayingVideoInEnhancedFullscreen(WKPageRef pageRef)
+{
+    return toImpl(pageRef)->isPlayingVideoInEnhancedFullscreen();
+}
+#endif
+
+void WKPageSetFullscreenDelegate(WKPageRef page, id <_WKFullscreenDelegate> delegate)
+{
+#if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
+    static_cast<WebKit::FullscreenClient&>(toImpl(page)->fullscreenClient()).setDelegate(delegate);
+#endif
+}
+
+id <_WKFullscreenDelegate> WKPageGetFullscreenDelegate(WKPageRef page)
+{
+#if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
+    return static_cast<WebKit::FullscreenClient&>(toImpl(page)->fullscreenClient()).delegate().autorelease();
+#else
+    return nil;
+#endif
+}
+

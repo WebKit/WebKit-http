@@ -23,13 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFullScreenManagerProxy_h
-#define WebFullScreenManagerProxy_h
+#pragma once
 
 #if ENABLE(FULLSCREEN_API)
 
 #include "MessageReceiver.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -55,7 +53,7 @@ public:
 
 class WebFullScreenManagerProxy : public RefCounted<WebFullScreenManagerProxy>, public IPC::MessageReceiver {
 public:
-    static PassRefPtr<WebFullScreenManagerProxy> create(WebPageProxy&, WebFullScreenManagerProxyClient&);
+    static Ref<WebFullScreenManagerProxy> create(WebPageProxy&, WebFullScreenManagerProxyClient&);
     virtual ~WebFullScreenManagerProxy();
 
     void invalidate();
@@ -81,8 +79,8 @@ private:
     void beganEnterFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame);
     void beganExitFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame);
 
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     WebPageProxy* m_page;
     WebFullScreenManagerProxyClient* m_client;
@@ -91,5 +89,3 @@ private:
 } // namespace WebKit
 
 #endif // ENABLE(FULLSCREEN_API)
-
-#endif // WebFullScreenManagerProxy_h

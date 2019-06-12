@@ -42,6 +42,7 @@
 #include <webkit2/WebKitJavascriptResult.h>
 #include <webkit2/WebKitNavigationAction.h>
 #include <webkit2/WebKitNotification.h>
+#include <webkit2/WebKitOptionMenu.h>
 #include <webkit2/WebKitPermissionRequest.h>
 #include <webkit2/WebKitPolicyDecision.h>
 #include <webkit2/WebKitScriptDialog.h>
@@ -111,7 +112,7 @@ typedef enum {
  * @WEBKIT_LOAD_REDIRECTED: A provisional data source received
  * a server redirect.
  * @WEBKIT_LOAD_COMMITTED: The content started arriving for a page load.
- * The necessary transport requirements are stabilished, and the
+ * The necessary transport requirements are established, and the
  * load is being performed.
  * @WEBKIT_LOAD_FINISHED: Load completed. All resources are done loading
  * or there was an error during the load operation.
@@ -249,11 +250,13 @@ struct _WebKitWebViewClass {
                                                 WebKitNotification          *notification);
     gboolean   (* run_color_chooser)           (WebKitWebView               *web_view,
                                                 WebKitColorChooserRequest   *request);
+    gboolean   (* show_option_menu)            (WebKitWebView               *web_view,
+                                                GdkRectangle                *rectangle,
+                                                WebKitOptionMenu            *menu);
 
     void (*_webkit_reserved0) (void);
     void (*_webkit_reserved1) (void);
     void (*_webkit_reserved2) (void);
-    void (*_webkit_reserved3) (void);
 };
 
 WEBKIT_API GType
@@ -273,6 +276,15 @@ webkit_web_view_new_with_related_view                (WebKitWebView             
 
 WEBKIT_API GtkWidget *
 webkit_web_view_new_with_user_content_manager        (WebKitUserContentManager  *user_content_manager);
+
+WEBKIT_API gboolean
+webkit_web_view_is_ephemeral                         (WebKitWebView             *web_view);
+
+WEBKIT_API gboolean
+webkit_web_view_is_controlled_by_automation          (WebKitWebView             *web_view);
+
+WEBKIT_API WebKitWebsiteDataManager *
+webkit_web_view_get_website_data_manager             (WebKitWebView             *web_view);
 
 WEBKIT_API WebKitWebContext *
 webkit_web_view_get_context                          (WebKitWebView             *web_view);

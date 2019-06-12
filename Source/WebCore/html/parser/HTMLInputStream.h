@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLInputStream_h
-#define HTMLInputStream_h
+#pragma once
 
-#include "InputStreamPreprocessor.h"
 #include "SegmentedString.h"
-#include <wtf/text/TextPosition.h>
+#include <wtf/text/OrdinalNumber.h>
 
 namespace WebCore {
 
@@ -57,14 +55,14 @@ public:
     {
     }
 
-    void appendToEnd(const SegmentedString& string)
+    void appendToEnd(SegmentedString&& string)
     {
-        m_last->append(string);
+        m_last->append(WTFMove(string));
     }
 
-    void insertAtCurrentInsertionPoint(const SegmentedString& string)
+    void insertAtCurrentInsertionPoint(SegmentedString&& string)
     {
-        m_first.append(string);
+        m_first.append(WTFMove(string));
     }
 
     bool hasInsertionPoint() const
@@ -74,7 +72,7 @@ public:
 
     void markEndOfFile()
     {
-        m_last->append(SegmentedString(String(&kEndOfFileMarker, 1)));
+        m_last->append(String { &kEndOfFileMarker, 1 });
         m_last->close();
     }
 
@@ -93,8 +91,7 @@ public:
 
     void splitInto(SegmentedString& next)
     {
-        next = m_first;
-        m_first = SegmentedString();
+        next = WTFMove(m_first);
         if (m_last == &m_first) {
             // We used to only have one SegmentedString in the InputStream
             // but now we have two.  That means m_first is no longer also
@@ -155,6 +152,4 @@ private:
     OrdinalNumber m_column;
 };
 
-}
-
-#endif
+} // namespace WebCore

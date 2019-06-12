@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,8 +22,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PluginDocument_h
-#define PluginDocument_h
+#pragma once
 
 #include "HTMLDocument.h"
 
@@ -39,26 +38,23 @@ public:
         return adoptRef(*new PluginDocument(frame, url));
     }
 
-    void setPluginElement(PassRefPtr<HTMLPlugInElement>);
-
     WEBCORE_EXPORT Widget* pluginWidget();
     HTMLPlugInElement* pluginElement() { return m_pluginElement.get(); }
 
+    void setPluginElement(HTMLPlugInElement&);
     void detachFromPluginElement();
 
     void cancelManualPluginLoad();
 
-    bool shouldLoadPluginManually() { return m_shouldLoadPluginManually; }
+    bool shouldLoadPluginManually() const { return m_shouldLoadPluginManually; }
 
 private:
     PluginDocument(Frame*, const URL&);
 
-    virtual Ref<DocumentParser> createParser() override;
+    Ref<DocumentParser> createParser() final;
 
-    void setShouldLoadPluginManually(bool loadManually) { m_shouldLoadPluginManually = loadManually; }
-
-    bool m_shouldLoadPluginManually;
     RefPtr<HTMLPlugInElement> m_pluginElement;
+    bool m_shouldLoadPluginManually { true };
 };
 
 } // namespace WebCore
@@ -67,5 +63,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::PluginDocument)
     static bool isType(const WebCore::Document& document) { return document.isPluginDocument(); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::Document>(node) && isType(downcast<WebCore::Document>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // PluginDocument_h

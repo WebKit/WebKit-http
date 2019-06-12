@@ -29,18 +29,18 @@
 
 #import "WebDatabaseManagerInternal.h"
 #import "WebKitSystemInterface.h"
-#import "WebLocalizableStrings.h"
+#import "WebLocalizableStringsInternal.h"
 #import "WebPlatformStrategies.h"
 #import "WebSystemInterface.h"
 #import "WebViewPrivate.h"
-#import <WebCore/DynamicLinkerSPI.h>
+#import <WebCore/BreakLines.h>
 #import <WebCore/PathUtilities.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/Settings.h>
-#import <WebCore/TextBreakIterator.h>
+#import <WebCore/WebBackgroundTaskController.h>
 #import <WebCore/WebCoreSystemInterface.h>
 #import <WebCore/WebCoreThreadSystemInterface.h>
-#import <WebCore/break_lines.h>
+#import <wtf/spi/darwin/dyldSPI.h>
 
 #import <runtime/InitializeThreading.h>
 
@@ -50,6 +50,23 @@ static inline bool linkedOnOrAfterIOS5()
 {
     static bool s_linkedOnOrAfterIOS5 = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_5_0;
     return s_linkedOnOrAfterIOS5;
+}
+
+// See <rdar://problem/7902473> Optimize WebLocalizedString for why we do this on a background thread on a timer callback
+static void LoadWebLocalizedStringsTimerCallback(CFRunLoopTimerRef timer, void *info)
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^ {
+        // We don't care if we find this string, but searching for it will load the plist and save the results.
+        // FIXME: It would be nicer to do this in a more direct way.
+        UI_STRING_KEY_INTERNAL("Typing", "Typing (Undo action name)", "Undo action name");
+    });
+}
+
+static void LoadWebLocalizedStrings()
+{
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent(), 0, 0, 0, &LoadWebLocalizedStringsTimerCallback, NULL);
+    CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopCommonModes);
+    CFRelease(timer);
 }
 
 void WebKitInitialize(void)
@@ -70,7 +87,6 @@ void WebKitInitialize(void)
     // We'd rather eat this cost at startup than slow down situations that need to be responsive.
     // See <rdar://problem/6776301>.
     LoadWebLocalizedStrings();
-    [WebView registerForMemoryNotifications];
     
     // This needs to be called before any requests are made in the process, <rdar://problem/9691871>
     WebCore::initializeHTTPConnectionSettingsOnStartup();
@@ -84,17 +100,17 @@ void WebKitSetIsClassic(BOOL flag)
 
 float WebKitGetMinimumZoomFontSize(void)
 {
-    return Settings::defaultMinimumZoomFontSize();
+    return WebCore::Settings::defaultMinimumZoomFontSize();
 }
 
 int WebKitGetLastLineBreakInBuffer(UChar *characters, int position, int length)
 {
-    int lastBreakPos = position;
-    int breakPos = 0;
-    LazyLineBreakIterator breakIterator(String(characters, length));
-    while ((breakPos = nextBreakablePosition(breakIterator, breakPos)) < position)
+    unsigned lastBreakPos = position;
+    unsigned breakPos = 0;
+    LazyLineBreakIterator breakIterator(StringView(characters, length));
+    while (static_cast<int>(breakPos = nextBreakablePosition(breakIterator, breakPos)) < position)
         lastBreakPos = breakPos++;
-    return lastBreakPos < position ? (NSUInteger)lastBreakPos : INT_MAX;
+    return static_cast<int>(lastBreakPos) < position ? lastBreakPos : INT_MAX;
 }
 
 const char *WebKitPlatformSystemRootDirectory(void)
@@ -116,44 +132,19 @@ void WebKitSetBackgroundAndForegroundNotificationNames(NSString *didEnterBackgro
     // FIXME: Remove this function.
 }
 
-static WebBackgroundTaskIdentifier invalidTaskIdentifier = 0;
-static StartBackgroundTaskBlock startBackgroundTaskBlock = 0;
-static EndBackgroundTaskBlock endBackgroundTaskBlock = 0;
-
 void WebKitSetInvalidWebBackgroundTaskIdentifier(WebBackgroundTaskIdentifier taskIdentifier)
 {
-    invalidTaskIdentifier = taskIdentifier;
+    [[WebBackgroundTaskController sharedController] setInvalidBackgroundTaskIdentifier:taskIdentifier];
 }
 
 void WebKitSetStartBackgroundTaskBlock(StartBackgroundTaskBlock startBlock)
 {
-    Block_release(startBackgroundTaskBlock);
-    startBackgroundTaskBlock = Block_copy(startBlock);    
+    [[WebBackgroundTaskController sharedController] setBackgroundTaskStartBlock:startBlock];
 }
 
 void WebKitSetEndBackgroundTaskBlock(EndBackgroundTaskBlock endBlock)
 {
-    Block_release(endBackgroundTaskBlock);
-    endBackgroundTaskBlock = Block_copy(endBlock);    
-}
-
-WebBackgroundTaskIdentifier invalidWebBackgroundTaskIdentifier()
-{
-    return invalidTaskIdentifier;
-}
-
-WebBackgroundTaskIdentifier startBackgroundTask(VoidBlock expirationHandler)
-{
-    if (!startBackgroundTaskBlock)
-        return invalidTaskIdentifier;
-    return startBackgroundTaskBlock(expirationHandler);
-}
-
-void endBackgroundTask(WebBackgroundTaskIdentifier taskIdentifier)
-{
-    if (!endBackgroundTaskBlock)
-        return;
-    endBackgroundTaskBlock(taskIdentifier);
+    [[WebBackgroundTaskController sharedController] setBackgroundTaskEndBlock:endBlock];
 }
 
 CGPathRef WebKitCreatePathWithShrinkWrappedRects(NSArray* cgRects, CGFloat radius)

@@ -28,18 +28,16 @@ WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebIn
     constructor(identifier)
     {
         let {image, title} = WebInspector.ElementsTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.TabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.domNodeDetailsSidebarPanel, WebInspector.cssStyleDetailsSidebarPanel];
+        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
+        let detailsSidebarPanelConstructors = [WebInspector.DOMNodeDetailsSidebarPanel, WebInspector.CSSStyleDetailsSidebarPanel];
 
-        if (WebInspector.layerTreeDetailsSidebarPanel)
-            detailsSidebarPanels.push(WebInspector.layerTreeDetailsSidebarPanel);
+        if (window.LayerTreeAgent)
+            detailsSidebarPanelConstructors.push(WebInspector.LayerTreeDetailsSidebarPanel);
 
-        super(identifier || "elements", "elements", tabBarItem, null, detailsSidebarPanels, true);
+        super(identifier || "elements", "elements", tabBarItem, null, detailsSidebarPanelConstructors, true);
 
         WebInspector.frameResourceManager.addEventListener(WebInspector.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
-
-        this._showDOMTreeContentView();
     }
 
     static tabInfo()
@@ -62,6 +60,11 @@ WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebIn
         return WebInspector.ElementsTabContentView.Type;
     }
 
+    get supportsSplitContentBrowser()
+    {
+        return true;
+    }
+
     canShowRepresentedObject(representedObject)
     {
         return representedObject instanceof WebInspector.DOMTree;
@@ -69,21 +72,28 @@ WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebIn
 
     showRepresentedObject(representedObject, cookie)
     {
-        var domTreeContentView = this.contentBrowser.currentContentView;
-        console.assert(!domTreeContentView || domTreeContentView instanceof WebInspector.DOMTreeContentView);
-        if (!domTreeContentView || !(domTreeContentView instanceof WebInspector.DOMTreeContentView)) {
-            // FIXME: Remember inspected node for later when _mainFrameDidChange.
-            return;
-        }
+        if (!this.contentBrowser.currentContentView)
+            this._showDOMTreeContentView();
 
         if (!cookie || !cookie.nodeToSelect)
             return;
+
+        let domTreeContentView = this.contentBrowser.currentContentView;
+        console.assert(domTreeContentView instanceof WebInspector.DOMTreeContentView, "Unexpected DOMTreeContentView representedObject.", domTreeContentView);
 
         domTreeContentView.selectAndRevealDOMNode(cookie.nodeToSelect);
 
         // Because nodeToSelect is ephemeral, we don't want to keep
         // it around in the back-forward history entries.
         cookie.nodeToSelect = undefined;
+    }
+
+    shown()
+    {
+        super.shown();
+
+        if (!this.contentBrowser.currentContentView)
+            this._showDOMTreeContentView();
     }
 
     closed()

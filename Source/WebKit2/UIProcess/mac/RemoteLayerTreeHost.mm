@@ -26,6 +26,7 @@
 #import "config.h"
 #import "RemoteLayerTreeHost.h"
 
+#import "Logging.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteLayerTreePropertyApplier.h"
 #import "RemoteLayerTreeTransaction.h"
@@ -33,7 +34,10 @@
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
 #import <QuartzCore/QuartzCore.h>
+#import <WebCore/GraphicsContextCG.h>
+#import <WebCore/IOSurface.h>
 #import <WebCore/PlatformLayer.h>
+#import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
 #import <WebKitSystemInterface.h>
 
@@ -41,14 +45,11 @@
 #import <UIKit/UIView.h>
 #endif
 
-#if ENABLE(FILTERS_LEVEL_2)
-@interface CABackdropLayer : CALayer
-@end
-#endif
-
 using namespace WebCore;
 
 namespace WebKit {
+
+#define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(m_drawingArea.isAlwaysOnLoggingAllowed(), ViewState, __VA_ARGS__)
 
 RemoteLayerTreeHost::RemoteLayerTreeHost(RemoteLayerTreeDrawingAreaProxy& drawingArea)
     : m_drawingArea(drawingArea)
@@ -74,6 +75,10 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
 
     bool rootLayerChanged = false;
     LayerOrView *rootLayer = getLayer(transaction.rootLayerID());
+    
+    if (!rootLayer)
+        RELEASE_LOG_IF_ALLOWED("%p RemoteLayerTreeHost::updateLayerTree - failed to find root layer with ID %llu", this, transaction.rootLayerID());
+
     if (m_rootLayer != rootLayer) {
         m_rootLayer = rootLayer;
         rootLayerChanged = true;
@@ -81,6 +86,13 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
 
     typedef std::pair<GraphicsLayer::PlatformLayerID, GraphicsLayer::PlatformLayerID> LayerIDPair;
     Vector<LayerIDPair> clonesToUpdate;
+
+#if PLATFORM(MAC)
+    // Can't use the iOS code on macOS yet: rdar://problem/31247730
+    auto layerContentsType = RemoteLayerBackingStore::LayerContentsType::IOSurface;
+#else
+    auto layerContentsType = m_drawingArea.hasDebugIndicator() ? RemoteLayerBackingStore::LayerContentsType::IOSurface : RemoteLayerBackingStore::LayerContentsType::CAMachPort;
+#endif
     
     for (auto& changedLayer : transaction.changedLayerProperties()) {
         auto layerID = changedLayer.key;
@@ -102,13 +114,13 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
             clonesToUpdate.append(LayerIDPair(layerID, properties.clonedLayerID));
 
         if (m_isDebugLayerTreeHost) {
-            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers);
+            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers, layerContentsType);
 
             if (properties.changedProperties & RemoteLayerTreeTransaction::BorderWidthChanged)
                 asLayer(layer).borderWidth = properties.borderWidth / indicatorScaleFactor;
             asLayer(layer).masksToBounds = false;
         } else
-            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers);
+            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers, layerContentsType);
     }
     
     for (const auto& layerPair : clonesToUpdate) {
@@ -194,9 +206,12 @@ void RemoteLayerTreeHost::clearLayers()
     }
 
     m_layers.clear();
+    m_rootLayer = nullptr;
+}
 
-    if (m_rootLayer)
-        m_rootLayer = nullptr;
+LayerOrView* RemoteLayerTreeHost::layerWithIDForTesting(uint64_t layerID) const
+{
+    return getLayer(layerID);
 }
 
 static NSString* const WKLayerIDPropertyKey = @"WKLayerID";
@@ -244,7 +259,7 @@ LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::
         break;
     case PlatformCALayer::LayerTypeCustom:
     case PlatformCALayer::LayerTypeAVPlayerLayer:
-    case PlatformCALayer::LayerTypeWebGLLayer:
+    case PlatformCALayer::LayerTypeContentsProvidedLayer:
         if (!m_isDebugLayerTreeHost)
             layer = WKMakeRenderLayer(properties.hostingContextID);
         else
@@ -272,6 +287,27 @@ void RemoteLayerTreeHost::detachRootLayer()
     [asLayer(m_rootLayer) removeFromSuperlayer];
 #endif
     m_rootLayer = nullptr;
+}
+
+#if USE(IOSURFACE)
+static void recursivelyMapIOSurfaceBackingStore(CALayer *layer)
+{
+    if (layer.contents && CFGetTypeID(layer.contents) == CAMachPortGetTypeID()) {
+        MachSendRight port = MachSendRight::create(CAMachPortGetPort((CAMachPortRef)layer.contents));
+        auto surface = WebCore::IOSurface::createFromSendRight(WTFMove(port), sRGBColorSpaceRef());
+        layer.contents = surface ? surface->asLayerContents() : nil;
+    }
+
+    for (CALayer *sublayer in layer.sublayers)
+        recursivelyMapIOSurfaceBackingStore(sublayer);
+}
+#endif
+
+void RemoteLayerTreeHost::mapAllIOSurfaceBackingStore()
+{
+#if USE(IOSURFACE)
+    recursivelyMapIOSurfaceBackingStore(asLayer(m_rootLayer));
+#endif
 }
 
 } // namespace WebKit

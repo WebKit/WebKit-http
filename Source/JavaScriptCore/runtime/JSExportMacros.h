@@ -27,8 +27,7 @@
  * properly on all platforms and compilers that WebKit builds under.
  */
 
-#ifndef JSExportMacros_h
-#define JSExportMacros_h
+#pragma once
 
 #include <wtf/ExportMacros.h>
 
@@ -47,7 +46,7 @@
 
 #else // !USE(EXPORT_MACROS)
 
-#if OS(WINDOWS) && !COMPILER(GCC_OR_CLANG)
+#if USE(DECLSPEC_ATTRIBUTE)
 
 #if defined(BUILDING_JavaScriptCore) || defined(STATICALLY_LINKED_WITH_JavaScriptCore)
 #define JS_EXPORTDATA __declspec(dllexport)
@@ -68,5 +67,3 @@
 #define JS_EXPORT_HIDDEN
 
 #endif // USE(EXPORT_MACROS)
-
-#endif // JSExportMacros_h

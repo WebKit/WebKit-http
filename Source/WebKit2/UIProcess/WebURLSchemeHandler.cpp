@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebURLSchemeHandler.h"
 
-#include "WebURLSchemeHandlerTask.h"
+#include "WebURLSchemeTask.h"
 
 using namespace WebCore;
 
@@ -48,23 +48,23 @@ WebURLSchemeHandler::~WebURLSchemeHandler()
     ASSERT(m_tasks.isEmpty());
 }
 
-void WebURLSchemeHandler::startTask(WebPageProxy& page, uint64_t resourceIdentifier, const ResourceRequest& request)
+void WebURLSchemeHandler::startTask(WebPageProxy& page, uint64_t taskIdentifier, const ResourceRequest& request)
 {
-    auto result = m_tasks.add(resourceIdentifier, WebURLSchemeHandlerTask::create(*this, page, resourceIdentifier, request));
+    auto result = m_tasks.add(taskIdentifier, WebURLSchemeTask::create(*this, page, taskIdentifier, request));
     ASSERT(result.isNewEntry);
 
-    platformStartTask(page, *result.iterator->value);
+    platformStartTask(page, result.iterator->value);
 }
 
-void WebURLSchemeHandler::stopTask(WebPageProxy& page, uint64_t resourceIdentifier)
+void WebURLSchemeHandler::stopTask(WebPageProxy& page, uint64_t taskIdentifier)
 {
-    auto iterator = m_tasks.find(resourceIdentifier);
+    auto iterator = m_tasks.find(taskIdentifier);
     if (iterator == m_tasks.end())
         return;
 
     iterator->value->stop();
 
-    platformStopTask(page, *iterator->value);
+    platformStopTask(page, iterator->value);
 
     m_tasks.remove(iterator);
 }

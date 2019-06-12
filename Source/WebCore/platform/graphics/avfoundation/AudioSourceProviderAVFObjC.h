@@ -29,9 +29,9 @@
 #if ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
 
 #include "AudioSourceProvider.h"
+#include <atomic>
 #include <wtf/MediaTime.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS AVAssetTrack;
@@ -64,8 +64,8 @@ private:
     void createMix();
 
     // AudioSourceProvider
-    virtual void provideInput(AudioBus*, size_t framesToProcess) override;
-    virtual void setClient(AudioSourceProviderClient*) override;
+    void provideInput(AudioBus*, size_t framesToProcess) override;
+    void setClient(AudioSourceProviderClient*) override;
 
     static void initCallback(MTAudioProcessingTapRef, void*, void**);
     static void finalizeCallback(MTAudioProcessingTapRef);
@@ -77,7 +77,7 @@ private:
     void finalize();
     void prepare(CMItemCount maxFrames, const AudioStreamBasicDescription *processingFormat);
     void unprepare();
-    void process(CMItemCount numberFrames, MTAudioProcessingTapFlags flagsIn, AudioBufferList *bufferListInOut, CMItemCount *numberFramesOut, MTAudioProcessingTapFlags *flagsOut);
+    void process(MTAudioProcessingTapRef, CMItemCount numberFrames, MTAudioProcessingTapFlags flagsIn, AudioBufferList *bufferListInOut, CMItemCount *numberFramesOut, MTAudioProcessingTapFlags *flagsOut);
 
     RetainPtr<AVPlayerItem> m_avPlayerItem;
     RetainPtr<AVAssetTrack> m_avAssetTrack;
@@ -91,11 +91,15 @@ private:
 
     MediaTime m_startTimeAtLastProcess;
     MediaTime m_endTimeAtLastProcess;
-    uint64_t m_writeAheadCount;
-    uint64_t m_writeCount;
-    uint64_t m_readCount;
-    bool m_paused;
-    AudioSourceProviderClient* m_client;
+    std::atomic<uint64_t> m_writeAheadCount { 0 };
+    uint64_t m_readCount { 0 };
+    enum { NoSeek = std::numeric_limits<uint64_t>::max() };
+    std::atomic<uint64_t> m_seekTo { NoSeek };
+    bool m_paused { true };
+    AudioSourceProviderClient* m_client { nullptr };
+
+    struct TapStorage;
+    TapStorage* m_tapStorage { nullptr };
 };
     
 }

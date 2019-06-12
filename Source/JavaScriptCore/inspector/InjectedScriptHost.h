@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InjectedScriptHost_h
-#define InjectedScriptHost_h
+#pragma once
 
 #include "JSCJSValueInlines.h"
 #include "inspector/PerGlobalObjectWrapperWorld.h"
-#include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 
 namespace Inspector {
@@ -39,7 +37,7 @@ public:
     virtual ~InjectedScriptHost();
 
     virtual JSC::JSValue subtype(JSC::ExecState*, JSC::JSValue) { return JSC::jsUndefined(); }
-    virtual bool isHTMLAllCollection(JSC::JSValue) { return false; }
+    virtual bool isHTMLAllCollection(JSC::VM&, JSC::JSValue) { return false; }
 
     JSC::JSValue wrapper(JSC::ExecState*, JSC::JSGlobalObject*);
     void clearAllWrappers();
@@ -49,5 +47,3 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // !defined(InjectedScriptHost_h)

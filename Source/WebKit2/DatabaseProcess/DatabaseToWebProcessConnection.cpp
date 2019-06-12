@@ -26,8 +26,6 @@
 #include "config.h"
 #include "DatabaseToWebProcessConnection.h"
 
-#include "DatabaseProcessIDBConnection.h"
-#include "DatabaseProcessIDBConnectionMessages.h"
 #include "DatabaseToWebProcessConnectionMessages.h"
 #include "Logging.h"
 #include "WebIDBConnectionToClient.h"
@@ -44,8 +42,8 @@ Ref<DatabaseToWebProcessConnection> DatabaseToWebProcessConnection::create(IPC::
 }
 
 DatabaseToWebProcessConnection::DatabaseToWebProcessConnection(IPC::Connection::Identifier connectionIdentifier)
+    : m_connection(IPC::Connection::createServerConnection(connectionIdentifier, *this))
 {
-    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
     m_connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);
     m_connection->open();
 }
@@ -55,7 +53,7 @@ DatabaseToWebProcessConnection::~DatabaseToWebProcessConnection()
 
 }
 
-void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::DatabaseToWebProcessConnection::messageReceiverName()) {
         didReceiveDatabaseToWebProcessConnectionMessage(connection, decoder);
@@ -69,28 +67,17 @@ void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connecti
             iterator->value->didReceiveMessage(connection, decoder);
         return;
     }
-    
-    if (decoder.messageReceiverName() == Messages::DatabaseProcessIDBConnection::messageReceiverName()) {
-        IDBConnectionMap::iterator backendIterator = m_idbConnections.find(decoder.destinationID());
-        if (backendIterator != m_idbConnections.end())
-            backendIterator->value->didReceiveDatabaseProcessIDBConnectionMessage(connection, decoder);
-        return;
-    }
 #endif
 
     ASSERT_NOT_REACHED();
 }
 
-void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& reply)
+void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
-#if ENABLE(INDEXED_DATABASE)
-    if (decoder.messageReceiverName() == Messages::DatabaseProcessIDBConnection::messageReceiverName()) {
-        IDBConnectionMap::iterator backendIterator = m_idbConnections.find(decoder.destinationID());
-        if (backendIterator != m_idbConnections.end())
-            backendIterator->value->didReceiveSyncDatabaseProcessIDBConnectionMessage(connection, decoder, reply);
+    if (decoder.messageReceiverName() == Messages::DatabaseToWebProcessConnection::messageReceiverName()) {
+        didReceiveSyncDatabaseToWebProcessConnectionMessage(connection, decoder, replyEncoder);
         return;
     }
-#endif
 
     ASSERT_NOT_REACHED();
 }
@@ -98,9 +85,11 @@ void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection& conn
 void DatabaseToWebProcessConnection::didClose(IPC::Connection&)
 {
 #if ENABLE(INDEXED_DATABASE)
-    // The WebProcess has disconnected, close all of the connections associated with it
-    while (!m_idbConnections.isEmpty())
-        removeDatabaseProcessIDBConnection(m_idbConnections.begin()->key);
+    auto connections = m_webIDBConnections;
+    for (auto& connection : connections.values())
+        connection->disconnectedFromWebProcess();
+
+    m_webIDBConnections.clear();
 #endif
 }
 
@@ -110,26 +99,21 @@ void DatabaseToWebProcessConnection::didReceiveInvalidMessage(IPC::Connection&, 
 }
 
 #if ENABLE(INDEXED_DATABASE)
-void DatabaseToWebProcessConnection::establishIDBConnection(uint64_t serverConnectionIdentifier)
+
+static uint64_t generateConnectionToServerIdentifier()
 {
-    RefPtr<DatabaseProcessIDBConnection> idbConnection = DatabaseProcessIDBConnection::create(*this, serverConnectionIdentifier);
-    m_idbConnections.set(serverConnectionIdentifier, idbConnection.release());
+    ASSERT(RunLoop::isMain());
+    static uint64_t identifier = 0;
+    return ++identifier;
 }
 
-void DatabaseToWebProcessConnection::removeDatabaseProcessIDBConnection(uint64_t serverConnectionIdentifier)
+void DatabaseToWebProcessConnection::establishIDBConnectionToServer(WebCore::SessionID sessionID, uint64_t& serverConnectionIdentifier)
 {
-    ASSERT(m_idbConnections.contains(serverConnectionIdentifier));
-
-    RefPtr<DatabaseProcessIDBConnection> idbConnection = m_idbConnections.take(serverConnectionIdentifier);
-    idbConnection->disconnectedFromWebProcess();
-}
-
-void DatabaseToWebProcessConnection::establishIDBConnectionToServer(uint64_t serverConnectionIdentifier)
-{
+    serverConnectionIdentifier = generateConnectionToServerIdentifier();
     LOG(IndexedDB, "DatabaseToWebProcessConnection::establishIDBConnectionToServer - %" PRIu64, serverConnectionIdentifier);
     ASSERT(!m_webIDBConnections.contains(serverConnectionIdentifier));
 
-    m_webIDBConnections.set(serverConnectionIdentifier, WebIDBConnectionToClient::create(*this, serverConnectionIdentifier));
+    m_webIDBConnections.set(serverConnectionIdentifier, WebIDBConnectionToClient::create(*this, serverConnectionIdentifier, sessionID));
 }
 
 void DatabaseToWebProcessConnection::removeIDBConnectionToServer(uint64_t serverConnectionIdentifier)

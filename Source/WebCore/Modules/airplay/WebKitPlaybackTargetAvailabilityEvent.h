@@ -23,18 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebKitPlaybackTargetAvailabilityEvent_h
-#define WebKitPlaybackTargetAvailabilityEvent_h
+#pragma once
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 #include "Event.h"
 
 namespace WebCore {
-
-struct WebKitPlaybackTargetAvailabilityEventInit : public EventInit {
-    String availability;
-};
 
 class WebKitPlaybackTargetAvailabilityEvent : public Event {
 public:
@@ -45,18 +40,22 @@ public:
         return adoptRef(*new WebKitPlaybackTargetAvailabilityEvent(eventType, available));
     }
 
-    static Ref<WebKitPlaybackTargetAvailabilityEvent> createForBindings(const AtomicString& eventType, const WebKitPlaybackTargetAvailabilityEventInit& initializer)
+    struct Init : EventInit {
+        String availability;
+    };
+
+    static Ref<WebKitPlaybackTargetAvailabilityEvent> create(const AtomicString& eventType, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new WebKitPlaybackTargetAvailabilityEvent(eventType, initializer));
+        return adoptRef(*new WebKitPlaybackTargetAvailabilityEvent(eventType, initializer, isTrusted));
     }
 
     String availability() const { return m_availability; }
 
-    virtual EventInterface eventInterface() const override { return WebKitPlaybackTargetAvailabilityEventInterfaceType; }
+    EventInterface eventInterface() const override { return WebKitPlaybackTargetAvailabilityEventInterfaceType; }
 
 private:
     explicit WebKitPlaybackTargetAvailabilityEvent(const AtomicString& eventType, bool available);
-    WebKitPlaybackTargetAvailabilityEvent(const AtomicString& eventType, const WebKitPlaybackTargetAvailabilityEventInit&);
+    WebKitPlaybackTargetAvailabilityEvent(const AtomicString& eventType, const Init&, IsTrusted);
 
     String m_availability;
 };
@@ -64,5 +63,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
-
-#endif // WebKitPlaybackTargetAvailabilityEvent_h

@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ReplaceNodeWithSpanCommand_h
-#define ReplaceNodeWithSpanCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -40,27 +39,25 @@ class HTMLElement;
 // More accurately, this is ReplaceElementWithSpanPreservingChildrenAndAttributesCommand
 class ReplaceNodeWithSpanCommand : public SimpleEditCommand {
 public:
-    static Ref<ReplaceNodeWithSpanCommand> create(PassRefPtr<HTMLElement> element)
+    static Ref<ReplaceNodeWithSpanCommand> create(Ref<HTMLElement>&& element)
     {
-        return adoptRef(*new ReplaceNodeWithSpanCommand(element));
+        return adoptRef(*new ReplaceNodeWithSpanCommand(WTFMove(element)));
     }
 
     HTMLElement* spanElement() { return m_spanElement.get(); }
 
 private:
-    explicit ReplaceNodeWithSpanCommand(PassRefPtr<HTMLElement>);
+    explicit ReplaceNodeWithSpanCommand(Ref<HTMLElement>&&);
 
-    virtual void doApply() override;
-    virtual void doUnapply() override;
+    void doApply() override;
+    void doUnapply() override;
     
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override;
+    void getNodesInCommand(HashSet<Node*>&) override;
 #endif
 
-    RefPtr<HTMLElement> m_elementToReplace;
+    Ref<HTMLElement> m_elementToReplace;
     RefPtr<HTMLElement> m_spanElement;
 };
 
 } // namespace WebCore
-
-#endif // ReplaceNodeWithSpanCommand

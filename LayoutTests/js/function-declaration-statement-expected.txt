@@ -5,15 +5,11 @@ On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE
 
 PASS ifTest() is true
 PASS ifElseTest() is true
-PASS doWhileTest() is true
-PASS whileTest() is true
-PASS forTest() is true
-PASS forVarTest() is true
-PASS forInTest() is true
-PASS forInVarTest() is true
-PASS forInVarInitTest() is true
-PASS withTest() is true
 PASS labelTest() is true
+PASS deepNesting() is 'abc'
+PASS deepNestingForFunctionDeclaration() is 'abc'
+PASS deepNestingInEval() is 'abc'
+PASS deepNestingForFunctionDeclarationInEval() is 'abc'
 PASS successfullyParsed is true
 
 TEST COMPLETE

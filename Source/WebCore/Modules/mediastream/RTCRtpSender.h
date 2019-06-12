@@ -28,48 +28,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCRtpSender_h
-#define RTCRtpSender_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
 #include "PeerConnectionBackend.h"
 #include "RTCRtpSenderReceiverBase.h"
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class RTCRtpSenderClient {
-public:
-    virtual void replaceTrack(RTCRtpSender&, MediaStreamTrack&, PeerConnection::VoidPromise&&) = 0;
-
-    virtual ~RTCRtpSenderClient() { }
-};
-
 class RTCRtpSender : public RTCRtpSenderReceiverBase {
 public:
-    static Ref<RTCRtpSender> create(RefPtr<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, RTCRtpSenderClient& client)
-    {
-        return adoptRef(*new RTCRtpSender(WTFMove(track), WTFMove(mediaStreamIds), client));
-    }
+    class Backend {
+    public:
+        virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) = 0;
+        virtual RTCRtpParameters getParameters(RTCRtpSender&) const = 0;
+        virtual ~Backend() { }
+    };
 
-    const String& trackId() { return m_trackId; }
+    static Ref<RTCRtpSender> create(Ref<MediaStreamTrack>&&, Vector<String>&& mediaStreamIds, Backend&);
+    static Ref<RTCRtpSender> create(String&& trackKind, Vector<String>&& mediaStreamIds, Backend&);
+
+    const String& trackId() const { return m_trackId; }
+    const String& trackKind() const { return m_trackKind; }
+
     const Vector<String>& mediaStreamIds() const { return m_mediaStreamIds; }
+    void setMediaStreamIds(Vector<String>&& mediaStreamIds) { m_mediaStreamIds = WTFMove(mediaStreamIds); }
 
-    void stop() { m_client = nullptr; }
+    bool isStopped() const { return !m_backend; }
+    void stop() { m_backend = nullptr; }
+    void setTrack(Ref<MediaStreamTrack>&&);
+    void setTrackToNull();
 
-    void replaceTrack(MediaStreamTrack*, PeerConnection::VoidPromise&&, ExceptionCode&);
+    void replaceTrack(RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&);
+
+    RTCRtpParameters getParameters();
 
 private:
-    RTCRtpSender(RefPtr<MediaStreamTrack>&&, Vector<String>&& mediaStreamIds, RTCRtpSenderClient&);
+    RTCRtpSender(String&& trackKind, Vector<String>&& mediaStreamIds, Backend&);
 
     String m_trackId;
+    String m_trackKind;
     Vector<String> m_mediaStreamIds;
-    RTCRtpSenderClient* m_client;
+    Backend* m_backend;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCRtpSender_h
+#endif // ENABLE(WEB_RTC)

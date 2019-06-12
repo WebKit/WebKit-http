@@ -23,20 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoKeyType_h
-#define CryptoKeyType_h
+#pragma once
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace WebCore {
 
 enum class CryptoKeyType {
-    Secret,
     Public,
-    Private
+    Private,
+    Secret
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoKeyType_h

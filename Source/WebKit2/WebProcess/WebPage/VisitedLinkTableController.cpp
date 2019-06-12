@@ -44,16 +44,16 @@ static HashMap<uint64_t, VisitedLinkTableController*>& visitedLinkTableControlle
     return visitedLinkTableControllers;
 }
 
-PassRefPtr<VisitedLinkTableController> VisitedLinkTableController::getOrCreate(uint64_t identifier)
+Ref<VisitedLinkTableController> VisitedLinkTableController::getOrCreate(uint64_t identifier)
 {
     auto& visitedLinkTableControllerPtr = visitedLinkTableControllers().add(identifier, nullptr).iterator->value;
     if (visitedLinkTableControllerPtr)
-        return visitedLinkTableControllerPtr;
+        return *visitedLinkTableControllerPtr;
 
-    RefPtr<VisitedLinkTableController> visitedLinkTableController = adoptRef(new VisitedLinkTableController(identifier));
-    visitedLinkTableControllerPtr = visitedLinkTableController.get();
+    auto visitedLinkTableController = adoptRef(*new VisitedLinkTableController(identifier));
+    visitedLinkTableControllerPtr = visitedLinkTableController.ptr();
 
-    return visitedLinkTableController.release();
+    return visitedLinkTableController;
 }
 
 VisitedLinkTableController::VisitedLinkTableController(uint64_t identifier)
@@ -90,11 +90,11 @@ void VisitedLinkTableController::addVisitedLink(Page& page, LinkHash linkHash)
 
 void VisitedLinkTableController::setVisitedLinkTable(const SharedMemory::Handle& handle)
 {
-    RefPtr<SharedMemory> sharedMemory = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
+    auto sharedMemory = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     if (!sharedMemory)
         return;
 
-    m_visitedLinkTable.setSharedMemory(sharedMemory.release());
+    m_visitedLinkTable.setSharedMemory(sharedMemory.releaseNonNull());
 
     invalidateStylesForAllLinks();
 }

@@ -26,16 +26,12 @@
 #include "config.h"
 #include "DragController.h"
 
-#include "DataObjectGtk.h"
 #include "DataTransfer.h"
 #include "Document.h"
-#include "DocumentFragment.h"
 #include "DragData.h"
 #include "Editor.h"
 #include "Element.h"
 #include "Frame.h"
-#include "FrameView.h"
-#include "Page.h"
 #include "Pasteboard.h"
 #include "markup.h"
 
@@ -43,19 +39,18 @@ namespace WebCore {
 
 // FIXME: These values are straight out of DragControllerMac, so probably have
 // little correlation with Gdk standards...
-const int DragController::LinkDragBorderInset = 2;
 const int DragController::MaxOriginalImageArea = 1500 * 1500;
 const int DragController::DragIconRightInset = 7;
 const int DragController::DragIconBottomInset = 3;
 
 const float DragController::DragImageAlpha = 0.75f;
 
-bool DragController::isCopyKeyDown(DragData&)
+bool DragController::isCopyKeyDown(const DragData& dragData)
 {
-    return false;
+    return dragData.flags() & DragApplicationIsCopyKeyDown;
 }
 
-DragOperation DragController::dragOperation(DragData& dragData)
+DragOperation DragController::dragOperation(const DragData& dragData)
 {
     // FIXME: This logic is incomplete
     if (dragData.containsURL())

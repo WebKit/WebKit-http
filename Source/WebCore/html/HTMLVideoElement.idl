@@ -23,9 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-// FIXME: This should be Conditional=VIDEO_PRESENTATION_MODE.
-enum VideoPresentationMode { "fullscreen", "picture-in-picture", "inline" };
-
 [
     Conditional=VIDEO,
     JSGenerateToNativeObject,
@@ -34,17 +31,19 @@ enum VideoPresentationMode { "fullscreen", "picture-in-picture", "inline" };
     [Reflect] attribute unsigned long height;
     readonly attribute unsigned long videoWidth;
     readonly attribute unsigned long videoHeight;
-    [Reflect, URL] attribute DOMString poster;
+    [Reflect, URL] attribute USVString poster;
 
+    [Reflect] attribute boolean playsInline;
     readonly attribute boolean webkitSupportsFullscreen;
     readonly attribute boolean webkitDisplayingFullscreen;
 
-    [RaisesException] void webkitEnterFullscreen();
+    [MayThrowException] void webkitEnterFullscreen();
     void webkitExitFullscreen();
 
-    // Note the different capitalization of the "S" in FullScreen.
-    [RaisesException] void webkitEnterFullScreen();
-    void webkitExitFullScreen();
+    // Maintain "FullScreen" capitalization scheme for backwards compatibility.
+    // https://bugs.webkit.org/show_bug.cgi?id=36081
+    [ImplementedAs=webkitEnterFullscreen, MayThrowException] void webkitEnterFullScreen();
+    [ImplementedAs=webkitExitFullscreen] void webkitExitFullScreen();
 
     [Conditional=WIRELESS_PLAYBACK_TARGET] attribute boolean webkitWirelessVideoPlaybackDisabled;
 
@@ -54,9 +53,9 @@ enum VideoPresentationMode { "fullscreen", "picture-in-picture", "inline" };
     // The number of decoded frames that have been dropped by the player for performance reasons during playback.
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitDroppedFrameCount;
 
-#if !defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT // Work around shortcomings in the gobject binding generator handling of conditional features by turning these off for gobject.
     [Conditional=VIDEO_PRESENTATION_MODE] boolean webkitSupportsPresentationMode(VideoPresentationMode mode);
     [Conditional=VIDEO_PRESENTATION_MODE] readonly attribute VideoPresentationMode webkitPresentationMode;
     [Conditional=VIDEO_PRESENTATION_MODE] void webkitSetPresentationMode(VideoPresentationMode mode);
-#endif
 };
+
+[Conditional=VIDEO_PRESENTATION_MODE] enum VideoPresentationMode { "fullscreen", "picture-in-picture", "inline" };

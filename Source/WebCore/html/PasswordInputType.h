@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PasswordInputType_h
-#define PasswordInputType_h
+#pragma once
 
 #include "BaseTextInputType.h"
 
@@ -40,16 +39,14 @@ public:
     explicit PasswordInputType(HTMLInputElement& element) : BaseTextInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual bool shouldSaveAndRestoreFormControlState() const override;
-    virtual FormControlState saveFormControlState() const override;
-    virtual void restoreFormControlState(const FormControlState&) override;
-    virtual bool shouldUseInputMethod() const override;
-    virtual bool shouldResetOnDocumentActivation() override;
-    virtual bool shouldRespectListAttribute() override;
-    virtual bool isPasswordField() const override;
+    const AtomicString& formControlType() const override;
+    bool shouldSaveAndRestoreFormControlState() const override;
+    FormControlState saveFormControlState() const override;
+    void restoreFormControlState(const FormControlState&) override;
+    bool shouldUseInputMethod() const override;
+    bool shouldResetOnDocumentActivation() override;
+    bool shouldRespectListAttribute() override;
+    bool isPasswordField() const override;
 };
 
 } // namespace WebCore
-
-#endif // PasswordInputType_h

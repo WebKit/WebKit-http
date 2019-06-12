@@ -36,9 +36,6 @@ void InitWebCoreSystemInterface(void)
     static dispatch_once_t initOnce;
     
     dispatch_once(&initOnce, ^{
-#if !PLATFORM(IOS)
-        INIT(AdvanceDefaultButtonPulseAnimation);
-#endif
         INIT(CALayerEnumerateRectsBeingDrawnWithBlock);
         INIT(CGPatternCreateWithImageAndTransform);
 #if !PLATFORM(IOS)
@@ -52,7 +49,6 @@ void InitWebCoreSystemInterface(void)
         INIT(DrawCellFocusRingWithFrameAtTime);
         INIT(DrawMediaSliderTrack);
         INIT(DrawMediaUIPart);
-        INIT(SignedPublicKeyAndChallengeString);
 #endif
         INIT(GetWebDefaultCFStringEncoding);
         INIT(CGContextIsPDFContext);
@@ -83,7 +79,6 @@ void InitWebCoreSystemInterface(void)
         INIT(CopyRequestWithStorageSession);
         INIT(GetHTTPCookieAcceptPolicy);
         INIT(HTTPCookies);
-        INIT(HTTPCookiesForURL);
         INIT(SetHTTPCookiesForURL);
         INIT(DeleteAllHTTPCookies);
         INIT(DeleteHTTPCookie);
@@ -116,9 +111,7 @@ void InitWebCoreSystemInterface(void)
         INIT(IsPublicSuffix);
 #endif
 
-#if ENABLE(CACHE_PARTITIONING)
         INIT(CachePartitionKey);
-#endif
 
         INIT(ExernalDeviceTypeForPlayer);
         INIT(ExernalDeviceDisplayNameForPlayer);

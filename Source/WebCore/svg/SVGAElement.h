@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAElement_h
-#define SVGAElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGExternalResourcesRequired.h"
@@ -38,28 +37,28 @@ public:
 private:
     SVGAElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const override { return SVGTests::isValid(); }
+    bool isValid() const final { return SVGTests::isValid(); }
     
-    virtual String title() const override;
-    virtual String target() const override { return svgTarget(); }
+    String title() const final;
+    String target() const final { return svgTarget(); }
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void svgAttributeChanged(const QualifiedName&) final;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+    bool childShouldCreateRenderer(const Node&) const final;
 
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) final;
     
-    virtual bool supportsFocus() const override;
-    virtual bool isMouseFocusable() const override;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
-    virtual bool isFocusable() const override;
-    virtual bool isURLAttribute(const Attribute&) const override;
-    virtual bool canStartSelection() const override;
-    virtual short tabIndex() const override;
+    bool supportsFocus() const final;
+    bool isMouseFocusable() const final;
+    bool isKeyboardFocusable(KeyboardEvent&) const final;
+    bool isFocusable() const final;
+    bool isURLAttribute(const Attribute&) const final;
+    bool canStartSelection() const final;
+    int tabIndex() const final;
 
-    virtual bool willRespondToMouseClickEvents() override;
+    bool willRespondToMouseClickEvents() final;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGAElement)
         // This declaration used to define a non-virtual "String& target() const" method, that clashes with "virtual String Element::target() const".
@@ -71,5 +70,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SVGAElement_h

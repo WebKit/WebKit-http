@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGArgumentsUtilities_h
-#define DFGArgumentsUtilities_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 
 namespace JSC { namespace DFG {
@@ -42,6 +40,3 @@ Node* emitCodeToGetArgumentsArrayLength(
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGArgumentsUtilities_h
-

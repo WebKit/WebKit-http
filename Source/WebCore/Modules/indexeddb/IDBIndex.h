@@ -23,74 +23,86 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBIndex_h
-#define IDBIndex_h
-
-#include "IDBCursor.h"
-#include "IDBDatabase.h"
-#include "IDBDatabaseMetadata.h"
-#include "IDBKeyPath.h"
-#include "IDBKeyRange.h"
-#include "IDBObjectStore.h"
-#include "IDBRequest.h"
-#include "ScriptWrappable.h"
-#include <wtf/Forward.h>
-#include <wtf/text/WTFString.h>
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBCursor.h"
+#include "IDBIndexInfo.h"
+#include "IDBRequest.h"
+
+namespace JSC {
+class ExecState;
+}
+
 namespace WebCore {
 
-class IDBObjectStore;
+class IDBKeyRange;
 
-class IDBIndex {
+struct IDBKeyRangeData;
+
+class IDBIndex final : private ActiveDOMObject {
 public:
-    virtual ~IDBIndex() { }
+    IDBIndex(ScriptExecutionContext&, const IDBIndexInfo&, IDBObjectStore&);
 
-    // Implement the IDL
-    virtual const String& name() const = 0;
-    virtual RefPtr<IDBObjectStore> objectStore() = 0;
-    virtual RefPtr<IDBAny> keyPathAny() const = 0;
-    virtual const IDBKeyPath& keyPath() const = 0;
-    virtual bool unique() const = 0;
-    virtual bool multiEntry() const = 0;
+    virtual ~IDBIndex();
 
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, const String& direction, ExceptionCodeWithMessage&) = 0;
+    const String& name() const;
+    ExceptionOr<void> setName(const String&);
+    IDBObjectStore& objectStore();
+    const IDBKeyPath& keyPath() const;
+    bool unique() const;
+    bool multiEntry() const;
 
-    virtual RefPtr<IDBRequest> count(ScriptExecutionContext*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> count(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> count(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
+    void rollbackInfoForVersionChangeAbort();
 
-    virtual RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext*, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, const String& direction, ExceptionCodeWithMessage&) = 0;
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, IDBKeyRange*, IDBCursorDirection);
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, JSC::JSValue key, IDBCursorDirection);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, IDBKeyRange*, IDBCursorDirection);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, JSC::JSValue key, IDBCursorDirection);
 
-    virtual RefPtr<IDBRequest> get(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> get(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, JSC::JSValue key);
 
-    virtual RefPtr<IDBRequest> getKey(ScriptExecutionContext*, IDBKeyRange*, ExceptionCodeWithMessage&) = 0;
-    virtual RefPtr<IDBRequest> getKey(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage&) = 0;
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, JSC::JSValue key);
 
-    virtual bool isModern() const { return false; }
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, RefPtr<IDBKeyRange>, std::optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, JSC::JSValue key, std::optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, RefPtr<IDBKeyRange>, std::optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, JSC::JSValue key, std::optional<uint32_t> count);
 
-    // We use our own ref/deref function because Legacy IDB and Modern IDB have very different
-    // lifetime management of their indexes.
-    // This will go away once Legacy IDB is dropped.
-    virtual void ref() = 0;
-    virtual void deref() = 0;
+    const IDBIndexInfo& info() const { return m_info; }
 
-protected:
-    IDBIndex();
+    void markAsDeleted();
+    bool isDeleted() const { return m_deleted; }
+
+    void ref();
+    void deref();
+
+    void* objectStoreAsOpaqueRoot() { return &m_objectStore; }
+
+private:
+    ExceptionOr<Ref<IDBRequest>> doCount(JSC::ExecState&, const IDBKeyRangeData&);
+    ExceptionOr<Ref<IDBRequest>> doGet(JSC::ExecState&, const IDBKeyRangeData&);
+    ExceptionOr<Ref<IDBRequest>> doGetKey(JSC::ExecState&, const IDBKeyRangeData&);
+
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    bool hasPendingActivity() const final;
+
+    IDBIndexInfo m_info;
+    IDBIndexInfo m_originalInfo;
+
+    bool m_deleted { false };
+
+    // IDBIndex objects are always owned by their referencing IDBObjectStore.
+    // Indexes will never outlive ObjectStores so its okay to keep a raw C++ reference here.
+    IDBObjectStore& m_objectStore;
 };
 
 } // namespace WebCore
 
-#endif
-
-#endif // IDBIndex_h
+#endif // ENABLE(INDEXED_DATABASE)

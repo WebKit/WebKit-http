@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 Google, Inc. All Rights Reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,38 +24,35 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef XSSAuditorDelegate_h
-#define XSSAuditorDelegate_h
+#pragma once
 
 #include "URL.h"
-#include <wtf/Vector.h>
 #include <wtf/text/TextPosition.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Document;
 class FormData;
 
+// FIXME: Should change into a struct.
+// FIXME: Should return by value instead of using a unique_ptr.
 class XSSInfo {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    XSSInfo(const String& originalURL, bool didBlockEntirePage, bool didSendXSSProtectionHeader, bool didSendCSPHeader)
+    XSSInfo(const String& originalURL, bool didBlockEntirePage, bool didSendXSSProtectionHeader)
         : m_originalURL(originalURL.isolatedCopy())
         , m_didBlockEntirePage(didBlockEntirePage)
         , m_didSendXSSProtectionHeader(didSendXSSProtectionHeader)
-        , m_didSendCSPHeader(didSendCSPHeader)
     {
     }
 
     String m_originalURL;
     bool m_didBlockEntirePage;
     bool m_didSendXSSProtectionHeader;
-    bool m_didSendCSPHeader;
     TextPosition m_textPosition;
 };
 
 class XSSAuditorDelegate {
-    WTF_MAKE_NONCOPYABLE(XSSAuditorDelegate);
 public:
     explicit XSSAuditorDelegate(Document&);
 
@@ -62,13 +60,11 @@ public:
     void setReportURL(const URL& url) { m_reportURL = url; }
 
 private:
-    PassRefPtr<FormData> generateViolationReport(const XSSInfo&);
+    Ref<FormData> generateViolationReport(const XSSInfo&);
 
     Document& m_document;
-    bool m_didSendNotifications;
+    bool m_didSendNotifications { false };
     URL m_reportURL;
 };
 
-}
-
-#endif
+} // namespace WebCore

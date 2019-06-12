@@ -1,3 +1,320 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * WebKitPrivateFrameworkStubs/iOS/9: Add Mac architecture for Simulator.
+        * WebKitPrivateFrameworkStubs/iOS/10: Ditto..
+        * WebKitPrivateFrameworkStubs/iOS/11: Added.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * WebKitPrivateFrameworkStubs/iOS/9: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework/AppSupport.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework/AssertionServices.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework/CorePDF.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework/GraphicsServices.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework/IOSurface.tbd: Removed.
+
+2017-06-29  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitSystemInterface for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173936
+
+        Reviewed by Lucas Forschler.
+
+        * libWebKitSystemInterfaceIOSDevice11.a: Added.
+        * libWebKitSystemInterfaceIOSSimulator11.a: Added.
+
+2017-06-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] Ensure that GraphicsServices is initialized before calling GSFontPurgeFontCache().
+        https://bugs.webkit.org/show_bug.cgi?id=173616
+        <rdar://problem/30780050>
+
+        Reviewed by Chris Dumez.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/GraphicsServices.framework/GraphicsServices.tbd:
+
+2017-06-09  Lucas Forschler  <lforschler@apple.com>
+
+        <rdar://problem/32683422>
+        
+        Update existing WebKitSystemInterface libraries.
+        Add macOS 10.13 libraries.
+        Remove macOS 10.10 libraries.
+        Remove iOS 10.9 libraries.
+        
+        Reviewed by Conrad Schultz.
+
+        * libWebKitSystemInterfaceElCapitan.a:
+        * libWebKitSystemInterfaceIOSDevice10.a:
+        * libWebKitSystemInterfaceIOSDevice9.a: Removed.
+        * libWebKitSystemInterfaceIOSSimulator10.a:
+        * libWebKitSystemInterfaceIOSSimulator9.a: Removed.
+        * libWebKitSystemInterfaceOSX10.12.a:
+        * libWebKitSystemInterfaceOSX10.13.a: Added.
+        * libWebKitSystemInterfaceYosemite.a: Removed.
+
+2017-04-11  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] WebKit unnecessarily soft-links CorePrediction
+        https://bugs.webkit.org/show_bug.cgi?id=170644
+
+        Reviewed by Sam Weinig.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework: Added this framework stub.
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework/CorePrediction.tbd: Added.
+
+2017-04-08  Dan Bernstein  <mitz@apple.com>
+
+        Removed an empty directory left behind after r212841.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework: Removed.
+
+2017-02-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r212685.
+
+        This change broke the 32-bit Sierra build.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Add alternate classification
+        method"
+        https://bugs.webkit.org/show_bug.cgi?id=168347
+        http://trac.webkit.org/changeset/212685
+
+2017-02-20  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Add alternate classification method
+        https://bugs.webkit.org/show_bug.cgi?id=168347
+        <rdar://problem/30352793>
+
+        Reviewed by Alex Christensen.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework/CorePrediction.tbd: Added.
+            Stubs for private framework.
+
+2017-01-12  Andreas Kling  <akling@apple.com>
+
+        [iOS] Purge GraphicsServices font cache on memory warning.
+        <https://webkit.org/b/154343>
+
+        Reviewed by Antti Koivisto.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/GraphicsServices.framework/GraphicsServices.tbd: Add SPI.
+
+2017-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2017
+        https://bugs.webkit.org/show_bug.cgi?id=166278
+
+        Reviewed by Dan Bernstein.
+
+        * win/tools/scripts/COPYRIGHT-END-YEAR:
+
+2016-09-07  Daniel Bates  <dabates@apple.com>
+
+        Update WebKitSystemInterface
+
+        Rubber-stamped by Dean Jackson.
+
+        Additionally, add WebKitSystemInterface for iOS 10.
+
+        * libWebKitSystemInterfaceElCapitan.a:
+        * libWebKitSystemInterfaceIOSDevice10.a: Added.
+        * libWebKitSystemInterfaceIOSDevice9.a:
+        * libWebKitSystemInterfaceIOSSimulator10.a: Added.
+        * libWebKitSystemInterfaceIOSSimulator9.a:
+        * libWebKitSystemInterfaceOSX10.12.a:
+        * libWebKitSystemInterfaceYosemite.a:
+
+2016-08-19  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the iOS 9.3 build
+
+        Reorder the keys in the text-based stubs to make linker happy.
+
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework/AppSupport.tbd:
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework/AssertionServices.tbd:
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework/CorePDF.tbd:
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework/GraphicsServices.tbd:
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework/IOSurface.tbd:
+
+2016-08-16  Daniel Bates  <dabates@apple.com>
+
+        WKSI static library should be named by major iOS revision, not individual updates
+        https://bugs.webkit.org/show_bug.cgi?id=160727
+        <rdar://problem/22274848>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * libWebKitSystemInterfaceIOSDevice9.0.a: Removed.
+        * libWebKitSystemInterfaceIOSDevice9.2.a: Removed.
+        * libWebKitSystemInterfaceIOSDevice9.a: Renamed from WebKitLibraries/libWebKitSystemInterfaceIOSDevice9.3.a.
+        * libWebKitSystemInterfaceIOSSimulator9.0.a: Removed.
+        * libWebKitSystemInterfaceIOSSimulator9.2.a: Removed.
+        * libWebKitSystemInterfaceIOSSimulator9.a: Renamed from WebKitLibraries/libWebKitSystemInterfaceIOSSimulator9.3.a.
+
+2016-08-15  Daniel Bates  <dabates@apple.com>
+
+        Cannot build WebKit for iOS device using Xcode 7.3/iOS 9.3 public SDK due to missing
+        private frameworks and libraries
+        https://bugs.webkit.org/show_bug.cgi?id=155931
+        <rdar://problem/25807989>
+
+        Reviewed by Dan Bernstein.
+
+        Add text-based stubs for private frameworks in iOS 9 and iOS 10 beta.
+
+        * WebKitPrivateFrameworkStubs: Added.
+        * WebKitPrivateFrameworkStubs/iOS: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/AppSupport.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/AppSupport.framework/AppSupport.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/AssertionServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/AssertionServices.framework/AssertionServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePDF.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePDF.framework/CorePDF.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/GraphicsServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/GraphicsServices.framework/GraphicsServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/IOSurface.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/IOSurface.framework/IOSurface.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework/AppSupport.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework/AssertionServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework/CorePDF.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework/GraphicsServices.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework/IOSurface.tbd: Added.
+
+2016-07-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Alex Christensen.
+
+        Avoid using environment variable WEBKIT_LIBRARIES when finding version stamper utility,
+        in case it is not defined. Instead, use the location of the perl script to find the
+        utility.
+
+        * win/tools/scripts/version-stamp.pl:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        The version stamping will fail if the target path has forward slashes.
+
+        * win/tools/scripts/version-stamp.pl: Replace forward slashes with backslashes.
+
+2016-06-14  Lucas Forschler  <lforschler@apple.com>
+
+        Update existing WebKitSystemInterface Libraries.
+        Add macOS Sierra WebKitSystemInterface.
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * libWebKitSystemInterfaceElCapitan.a:
+        * libWebKitSystemInterfaceIOSDevice9.2.a:
+        * libWebKitSystemInterfaceIOSSimulator9.2.a:
+        * libWebKitSystemInterfaceOSX10.12.a: Added.
+        * libWebKitSystemInterfaceYosemite.a:
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up Visual Studio properties files after switching to CMake.
+
+        * win/tools/WinTools.make: Removed.
+        * win/tools/vsprops: Removed.
+        * win/tools/vsprops/FeatureDefines.props: Removed.
+        * win/tools/vsprops/FeatureDefinesCairo.props: Removed.
+        * win/tools/vsprops/GStreamer32.props: Removed.
+        * win/tools/vsprops/GStreamer64.props: Removed.
+        * win/tools/vsprops/GStreamerCommon.props: Removed.
+        * win/tools/vsprops/WinCairo.props: Removed.
+        * win/tools/vsprops/cURL.props: Removed.
+        * win/tools/vsprops/common.props: Removed.
+        * win/tools/vsprops/debug.props: Removed.
+        * win/tools/vsprops/debug_wincairo.props: Removed.
+        * win/tools/vsprops/debugsuffix.props: Removed.
+        * win/tools/vsprops/production.props: Removed.
+        * win/tools/vsprops/release.props: Removed.
+
+2016-04-28  Dean Jackson  <dino@apple.com>
+
+        Update WebKitSystemInterface to internal version 82799.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceElCapitan.a:
+        * libWebKitSystemInterfaceIOSDevice9.2.a:
+        * libWebKitSystemInterfaceIOSSimulator9.2.a:
+        * libWebKitSystemInterfaceYosemite.a:
+
+2016-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: make at the root should not create a WebKitLibraries/--lvm directory
+        https://bugs.webkit.org/show_bug.cgi?id=155918
+
+        Reviewed by Timothy Hatcher.
+
+        * Makefile:
+        Remove no longer used --llvm option.
+
+2016-03-25  Daniel Bates  <dabates@apple.com>
+
+        Add WebKitSystemInterface for iOS 9.3
+        https://bugs.webkit.org/show_bug.cgi?id=155893
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * libWebKitSystemInterfaceIOSDevice9.3.a: Added.
+        * libWebKitSystemInterfaceIOSSimulator9.3.a: Added.
+
+2016-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=155417
+
+        Reviewed by Yusuke Suzuki.
+
+        * win/tools/vsprops/FeatureDefines.props:
+        * win/tools/vsprops/FeatureDefinesCairo.props:
+
+2016-02-24  Nikos Andronikos  <nikos.andronikos-webkit@cisra.canon.com.au>
+
+        [web-animations] Add AnimationTimeline, DocumentTimeline and add extensions to Document interface
+        https://bugs.webkit.org/show_bug.cgi?id=151688
+
+        Reviewed by Dean Jackson.
+
+        Enables the WEB_ANIMATIONS compiler switch.
+
+        * win/tools/vsprops/FeatureDefines.props:
+        * win/tools/vsprops/FeatureDefinesCairo.props:
+
 2016-02-17  Filip Pizlo  <fpizlo@apple.com>
 
         Remove LLVM dependencies from WebKit

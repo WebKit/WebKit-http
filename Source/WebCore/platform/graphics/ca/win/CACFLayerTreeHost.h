@@ -32,7 +32,6 @@
 #include "Timer.h"
 
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
@@ -57,7 +56,7 @@ class TiledBacking;
 
 class CACFLayerTreeHost : public RefCounted<CACFLayerTreeHost>, private AbstractCACFLayerTreeHost {
 public:
-    static PassRefPtr<CACFLayerTreeHost> create();
+    static RefPtr<CACFLayerTreeHost> create();
     virtual ~CACFLayerTreeHost();
 
     static bool acceleratedCompositingAvailable();
@@ -69,6 +68,7 @@ public:
     void setPage(Page*);
     virtual void paint(HDC = nullptr);
     virtual void resize() = 0;
+    virtual void setScaleFactor(float) = 0;
     void flushPendingGraphicsLayerChangesSoon();
     virtual void setShouldInvertColors(bool);
 #if USE(AVFOUNDATION)
@@ -102,7 +102,7 @@ private:
     void initialize();
 
     // AbstractCACFLayerTreeHost
-    virtual void addPendingAnimatedLayer(PassRefPtr<PlatformCALayer>);
+    virtual void addPendingAnimatedLayer(PlatformCALayer&);
     virtual void layerTreeDidChange();
 
 

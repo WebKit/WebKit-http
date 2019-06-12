@@ -27,8 +27,8 @@
 #import "IntRect.h"
 #import "LocalCurrentGraphicsContext.h"
 #import "UTIUtilities.h"
-#import <wtf/PassRefPtr.h>
-#include <wtf/text/WTFString.h>
+#import <wtf/RefPtr.h>
+#import <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -47,7 +47,7 @@ Icon::~Icon()
 }
 
 // FIXME: Move the code to ChromeClient::iconForFiles().
-PassRefPtr<Icon> Icon::createIconForFiles(const Vector<String>& filenames)
+RefPtr<Icon> Icon::createIconForFiles(const Vector<String>& filenames)
 {
     if (filenames.isEmpty())
         return nullptr;
@@ -91,11 +91,6 @@ RefPtr<Icon> Icon::createIconForUTI(const String& UTI)
     return adoptRef(new Icon(image));
 }
 
-RefPtr<Icon> Icon::createIconForMIMEType(const String& MIMEType)
-{
-    return createIconForUTI(UTIFromMIMEType(MIMEType.createCFString().get()).get());
-}
-
 void Icon::paint(GraphicsContext& context, const FloatRect& rect)
 {
     if (context.paintingDisabled())
@@ -103,7 +98,7 @@ void Icon::paint(GraphicsContext& context, const FloatRect& rect)
 
     LocalCurrentGraphicsContext localCurrentGC(context);
 
-    [m_nsImage drawInRect:rect fromRect:NSMakeRect(0, 0, [m_nsImage size].width, [m_nsImage size].height) operation:NSCompositeSourceOver fraction:1.0f];
+    [m_nsImage drawInRect:rect fromRect:NSMakeRect(0, 0, [m_nsImage size].width, [m_nsImage size].height) operation:NSCompositingOperationSourceOver fraction:1.0f];
 }
 
 }

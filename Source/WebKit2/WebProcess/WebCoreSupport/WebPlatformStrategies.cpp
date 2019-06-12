@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,7 +40,6 @@
 #include "WebErrors.h"
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
-#include "WebIDBFactoryBackend.h"
 #include "WebLoaderStrategy.h"
 #include "WebPage.h"
 #include "WebPasteboardOverrides.h"
@@ -50,7 +49,6 @@
 #include <WebCore/Color.h>
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
-#include <WebCore/IDBFactoryBackendInterface.h>
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/NetworkStorageSession.h>
@@ -71,6 +69,10 @@
 #include "StringUtilities.h"
 #endif
 
+#if PLATFORM(GTK)
+#include "WebSelectionData.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -82,10 +84,6 @@ void WebPlatformStrategies::initialize()
 }
 
 WebPlatformStrategies::WebPlatformStrategies()
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    : m_pluginCacheIsPopulated(false)
-    , m_shouldRefreshPlugins(false)
-#endif // ENABLE(NETSCAPE_PLUGIN_API)
 {
 }
 
@@ -104,11 +102,6 @@ PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
     return this;
 }
 
-PluginStrategy* WebPlatformStrategies::createPluginStrategy()
-{
-    return this;
-}
-
 BlobRegistry* WebPlatformStrategies::createBlobRegistry()
 {
     return new BlobRegistryProxy;
@@ -119,237 +112,48 @@ BlobRegistry* WebPlatformStrategies::createBlobRegistry()
 String WebPlatformStrategies::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
     String result;
-    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesForDOM(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesForDOM::Reply(result), 0))
+    if (!WebProcess::singleton().networkConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::CookiesForDOM(session.sessionID(), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesForDOM::Reply(result), 0))
         return String();
     return result;
 }
 
 void WebPlatformStrategies::setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, const String& cookieString)
 {
-    WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::SetCookiesFromDOM(SessionTracker::sessionID(session), firstParty, url, cookieString), 0);
+    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::SetCookiesFromDOM(session.sessionID(), firstParty, url, cookieString), 0);
 }
 
 bool WebPlatformStrategies::cookiesEnabled(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
     bool result;
-    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesEnabled(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesEnabled::Reply(result), 0))
+    if (!WebProcess::singleton().networkConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::CookiesEnabled(session.sessionID(), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesEnabled::Reply(result), 0))
         return false;
     return result;
 }
 
 String WebPlatformStrategies::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
+    return cookieRequestHeaderFieldValue(session.sessionID(), firstParty, url);
+}
+
+String WebPlatformStrategies::cookieRequestHeaderFieldValue(SessionID sessionID, const URL& firstParty, const URL& url)
+{
     String result;
-    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue::Reply(result), 0))
+    if (!WebProcess::singleton().networkConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue(sessionID, firstParty, url), Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue::Reply(result), 0))
         return String();
     return result;
 }
 
 bool WebPlatformStrategies::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, Vector<Cookie>& rawCookies)
 {
-    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::GetRawCookies(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::GetRawCookies::Reply(rawCookies), 0))
+    if (!WebProcess::singleton().networkConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::GetRawCookies(session.sessionID(), firstParty, url), Messages::NetworkConnectionToWebProcess::GetRawCookies::Reply(rawCookies), 0))
         return false;
     return true;
 }
 
 void WebPlatformStrategies::deleteCookie(const NetworkStorageSession& session, const URL& url, const String& cookieName)
 {
-    WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::DeleteCookie(SessionTracker::sessionID(session), url, cookieName), 0);
+    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::DeleteCookie(session.sessionID(), url, cookieName), 0);
 }
-
-// PluginStrategy
-
-void WebPlatformStrategies::refreshPlugins()
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    m_cachedPlugins.clear();
-    m_pluginCacheIsPopulated = false;
-    m_shouldRefreshPlugins = true;
-#endif // ENABLE(NETSCAPE_PLUGIN_API)
-}
-
-void WebPlatformStrategies::getPluginInfo(const WebCore::Page* page, Vector<WebCore::PluginInfo>& plugins)
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    ASSERT_ARG(page, page);
-    populatePluginCache(*page);
-
-    if (page->mainFrame().loader().subframeLoader().allowPlugins()) {
-        plugins = m_cachedPlugins;
-        return;
-    }
-
-    plugins = m_cachedApplicationPlugins;
-#else
-    UNUSED_PARAM(page);
-    UNUSED_PARAM(plugins);
-#endif // ENABLE(NETSCAPE_PLUGIN_API)
-}
-
-void WebPlatformStrategies::getWebVisiblePluginInfo(const Page* page, Vector<PluginInfo>& plugins)
-{
-    ASSERT_ARG(page, page);
-    ASSERT_ARG(plugins, plugins.isEmpty());
-
-    getPluginInfo(page, plugins);
-
-#if PLATFORM(MAC)
-    if (Document* document = page->mainFrame().document()) {
-        if (SecurityOrigin* securityOrigin = document->securityOrigin()) {
-            if (securityOrigin->isLocal())
-                return;
-        }
-    }
-    
-    for (int32_t i = plugins.size() - 1; i >= 0; --i) {
-        PluginInfo& info = plugins.at(i);
-        PluginLoadClientPolicy clientPolicy = info.clientLoadPolicy;
-        // Allow built-in plugins. Also tentatively allow plugins that the client might later selectively permit.
-        if (info.isApplicationPlugin || clientPolicy == PluginLoadClientPolicyAsk)
-            continue;
-
-        if (clientPolicy == PluginLoadClientPolicyBlock)
-            plugins.remove(i);
-    }
-#endif
-}
-
-#if PLATFORM(MAC)
-void WebPlatformStrategies::setPluginLoadClientPolicy(PluginLoadClientPolicy clientPolicy, const String& host, const String& bundleIdentifier, const String& versionString)
-{
-    String hostToSet = host.isNull() || !host.length() ? "*" : host;
-    String bundleIdentifierToSet = bundleIdentifier.isNull() || !bundleIdentifier.length() ? "*" : bundleIdentifier;
-    String versionStringToSet = versionString.isNull() || !versionString.length() ? "*" : versionString;
-
-    PluginPolicyMapsByIdentifier policiesByIdentifier;
-    if (m_hostsToPluginIdentifierData.contains(hostToSet))
-        policiesByIdentifier = m_hostsToPluginIdentifierData.get(hostToSet);
-
-    PluginLoadClientPoliciesByBundleVersion versionsToPolicies;
-    if (policiesByIdentifier.contains(bundleIdentifierToSet))
-        versionsToPolicies = policiesByIdentifier.get(bundleIdentifierToSet);
-
-    versionsToPolicies.set(versionStringToSet, clientPolicy);
-    policiesByIdentifier.set(bundleIdentifierToSet, versionsToPolicies);
-    m_hostsToPluginIdentifierData.set(hostToSet, policiesByIdentifier);
-}
-
-void WebPlatformStrategies::clearPluginClientPolicies()
-{
-    m_hostsToPluginIdentifierData.clear();
-}
-
-#endif
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-#if PLATFORM(MAC)
-
-String WebPlatformStrategies::longestMatchedWildcardHostForHost(const String& host) const
-{
-    String longestMatchedHost;
-
-    for (auto& key : m_hostsToPluginIdentifierData.keys()) {
-        if (key.contains('*') && key != "*" && stringMatchesWildcardString(host, key)) {
-            if (key.length() > longestMatchedHost.length())
-                longestMatchedHost = key;
-            else if (key.length() == longestMatchedHost.length() && codePointCompareLessThan(key, longestMatchedHost))
-                longestMatchedHost = key;
-        }
-    }
-
-    return longestMatchedHost;
-}
-
-bool WebPlatformStrategies::replaceHostWithMatchedWildcardHost(String& host, const String& identifier) const
-{
-    String matchedWildcardHost = longestMatchedWildcardHostForHost(host);
-
-    if (matchedWildcardHost.isNull())
-        return false;
-
-    auto plugInIdentifierData = m_hostsToPluginIdentifierData.find(matchedWildcardHost);
-    if (plugInIdentifierData == m_hostsToPluginIdentifierData.end() || !plugInIdentifierData->value.contains(identifier))
-        return false;
-
-    host = matchedWildcardHost;
-    return true;
-}
-
-bool WebPlatformStrategies::pluginLoadClientPolicyForHost(const String& host, const PluginInfo& info, PluginLoadClientPolicy& policy) const
-{
-    String hostToLookUp = host;
-    String identifier = info.bundleIdentifier;
-
-    auto policiesByIdentifierIterator = m_hostsToPluginIdentifierData.find(hostToLookUp);
-
-    if (!identifier.isNull() && policiesByIdentifierIterator == m_hostsToPluginIdentifierData.end()) {
-        if (!replaceHostWithMatchedWildcardHost(hostToLookUp, identifier))
-            hostToLookUp = "*";
-        policiesByIdentifierIterator = m_hostsToPluginIdentifierData.find(hostToLookUp);
-        if (hostToLookUp != "*" && policiesByIdentifierIterator == m_hostsToPluginIdentifierData.end()) {
-            hostToLookUp = "*";
-            policiesByIdentifierIterator = m_hostsToPluginIdentifierData.find(hostToLookUp);
-        }
-    }
-    if (policiesByIdentifierIterator == m_hostsToPluginIdentifierData.end())
-        return false;
-
-    auto& policiesByIdentifier = policiesByIdentifierIterator->value;
-
-    if (!identifier)
-        identifier = "*";
-
-    auto identifierPolicyIterator = policiesByIdentifier.find(identifier);
-    if (identifier != "*" && identifierPolicyIterator == policiesByIdentifier.end()) {
-        identifier = "*";
-        identifierPolicyIterator = policiesByIdentifier.find(identifier);
-    }
-    if (identifierPolicyIterator == policiesByIdentifier.end())
-        return false;
-
-    auto& versionsToPolicies = identifierPolicyIterator->value;
-
-    String version = info.versionString;
-    if (!version)
-        version = "*";
-    auto policyIterator = versionsToPolicies.find(version);
-    if (version != "*" && policyIterator == versionsToPolicies.end()) {
-        version = "*";
-        policyIterator = versionsToPolicies.find(version);
-    }
-
-    if (policyIterator == versionsToPolicies.end())
-        return false;
-
-    policy = policyIterator->value;
-    return true;
-}
-#endif // PLATFORM(MAC)
-
-void WebPlatformStrategies::populatePluginCache(const WebCore::Page& page)
-{
-    if (!m_pluginCacheIsPopulated) {
-        HangDetectionDisabler hangDetectionDisabler;
-
-        if (!WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetPlugins(m_shouldRefreshPlugins), Messages::WebProcessProxy::GetPlugins::Reply(m_cachedPlugins, m_cachedApplicationPlugins), 0))
-            return;
-
-        m_shouldRefreshPlugins = false;
-        m_pluginCacheIsPopulated = true;
-    }
-
-#if PLATFORM(MAC)
-    String pageHost = page.mainFrame().loader().documentLoader()->responseURL().host();
-    for (PluginInfo& info : m_cachedPlugins) {
-        PluginLoadClientPolicy clientPolicy;
-        if (pluginLoadClientPolicyForHost(pageHost, info, clientPolicy))
-            info.clientLoadPolicy = clientPolicy;
-    }
-#else
-    UNUSED_PARAM(page);
-#endif // not PLATFORM(MAC)
-}
-#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if PLATFORM(COCOA)
 // PasteboardStrategy
@@ -366,19 +170,19 @@ void WebPlatformStrategies::getTypes(Vector<String>& types, const String& pasteb
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardTypes(pasteboardName), Messages::WebPasteboardProxy::GetPasteboardTypes::Reply(types), 0);
 }
 
-PassRefPtr<WebCore::SharedBuffer> WebPlatformStrategies::bufferForType(const String& pasteboardType, const String& pasteboardName)
+RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::bufferForType(const String& pasteboardType, const String& pasteboardName)
 {
     // First check the overrides.
     Vector<char> overrideBuffer;
     if (WebPasteboardOverrides::sharedPasteboardOverrides().getDataForOverride(pasteboardName, pasteboardType, overrideBuffer))
-        return SharedBuffer::adoptVector(overrideBuffer);
+        return SharedBuffer::create(WTFMove(overrideBuffer));
 
     // Fallback to messaging the UI process for native pasteboard content.
     SharedMemory::Handle handle;
     uint64_t size = 0;
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardBufferForType(pasteboardName, pasteboardType), Messages::WebPasteboardProxy::GetPasteboardBufferForType::Reply(handle, size), 0);
     if (handle.isNull())
-        return 0;
+        return nullptr;
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     return SharedBuffer::create(static_cast<unsigned char *>(sharedMemoryBuffer->data()), size);
 }
@@ -444,7 +248,7 @@ long WebPlatformStrategies::setTypes(const Vector<String>& pasteboardTypes, cons
     return newChangeCount;
 }
 
-long WebPlatformStrategies::setBufferForType(PassRefPtr<SharedBuffer> buffer, const String& pasteboardType, const String& pasteboardName)
+long WebPlatformStrategies::setBufferForType(SharedBuffer* buffer, const String& pasteboardType, const String& pasteboardName)
 {
     SharedMemory::Handle handle;
     if (buffer) {
@@ -475,45 +279,108 @@ long WebPlatformStrategies::setStringForType(const String& string, const String&
     return newChangeCount;
 }
 
+int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
+{
+    uint64_t numberOfFiles;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetNumberOfFiles(pasteboardName), Messages::WebPasteboardProxy::GetNumberOfFiles::Reply(numberOfFiles), 0);
+    return numberOfFiles;
+}
+
 #if PLATFORM(IOS)
-void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content)
+void WebPlatformStrategies::getTypesByFidelityForItemAtIndex(Vector<String>& types, uint64_t index, const String& pasteboardName)
 {
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteWebContentToPasteboard(content), 0);
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardTypesByFidelityForItemAtIndex(index, pasteboardName), Messages::WebPasteboardProxy::GetPasteboardTypesByFidelityForItemAtIndex::Reply(types), 0);
 }
 
-void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardImage& image)
+void WebPlatformStrategies::writeToPasteboard(const PasteboardURL& url, const String& pasteboardName)
 {
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteImageToPasteboard(image), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteURLToPasteboard(url, pasteboardName), 0);
 }
 
-void WebPlatformStrategies::writeToPasteboard(const String& pasteboardType, const String& text)
+void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content, const String& pasteboardName)
 {
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteStringToPasteboard(pasteboardType, text), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteWebContentToPasteboard(content, pasteboardName), 0);
 }
 
-int WebPlatformStrategies::getPasteboardItemsCount()
+void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardImage& image, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteImageToPasteboard(image, pasteboardName), 0);
+}
+
+void WebPlatformStrategies::writeToPasteboard(const String& pasteboardType, const String& text, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteStringToPasteboard(pasteboardType, text, pasteboardName), 0);
+}
+
+int WebPlatformStrategies::getPasteboardItemsCount(const String& pasteboardName)
 {
     uint64_t itemsCount;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardItemsCount(), Messages::WebPasteboardProxy::GetPasteboardItemsCount::Reply(itemsCount), 0);
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardItemsCount(pasteboardName), Messages::WebPasteboardProxy::GetPasteboardItemsCount::Reply(itemsCount), 0);
     return itemsCount;
 }
 
-PassRefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(int index, const String& pasteboardType)
+void WebPlatformStrategies::getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetFilenamesForDataInteraction(pasteboardName), Messages::WebPasteboardProxy::GetFilenamesForDataInteraction::Reply(filenames), 0);
+}
+
+void WebPlatformStrategies::updateSupportedTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::UpdateSupportedTypeIdentifiers(identifiers, pasteboardName), 0);
+}
+
+RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName)
 {
     SharedMemory::Handle handle;
     uint64_t size = 0;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadBufferFromPasteboard(index, pasteboardType), Messages::WebPasteboardProxy::ReadBufferFromPasteboard::Reply(handle, size), 0);
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadBufferFromPasteboard(index, pasteboardType, pasteboardName), Messages::WebPasteboardProxy::ReadBufferFromPasteboard::Reply(handle, size), 0);
     if (handle.isNull())
-        return 0;
+        return nullptr;
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
     return SharedBuffer::create(static_cast<unsigned char *>(sharedMemoryBuffer->data()), size);
 }
 
-WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& pasteboardType)
+WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName, String& title)
 {
     String urlString;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadURLFromPasteboard(index, pasteboardType), Messages::WebPasteboardProxy::ReadURLFromPasteboard::Reply(urlString), 0);
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadURLFromPasteboard(index, pasteboardType, pasteboardName), Messages::WebPasteboardProxy::ReadURLFromPasteboard::Reply(urlString, title), 0);
     return URL(ParsedURLString, urlString);
+}
+
+String WebPlatformStrategies::readStringFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName)
+{
+    String value;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadStringFromPasteboard(index, pasteboardType, pasteboardName), Messages::WebPasteboardProxy::ReadStringFromPasteboard::Reply(value), 0);
+    return value;
+}
+#endif // PLATFORM(IOS)
+
+#endif // PLATFORM(COCOA)
+
+#if PLATFORM(GTK)
+// PasteboardStrategy
+
+void WebPlatformStrategies::writeToClipboard(const String& pasteboardName, const SelectionData& selection)
+{
+    WebSelectionData selectionData(selection);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteToClipboard(pasteboardName, selectionData), 0);
+}
+
+Ref<SelectionData> WebPlatformStrategies::readFromClipboard(const String& pasteboardName)
+{
+    WebSelectionData selection;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadFromClipboard(pasteboardName), Messages::WebPasteboardProxy::ReadFromClipboard::Reply(selection), 0);
+    return WTFMove(selection.selectionData);
+}
+
+#endif // PLATFORM(GTK)
+
+#if PLATFORM(WPE)
+// PasteboardStrategy
+
+void WebPlatformStrategies::getTypes(Vector<String>& types)
+{
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardTypes(), Messages::WebPasteboardProxy::GetPasteboardTypes::Reply(types), 0);
 }
 
 String WebPlatformStrategies::readStringFromPasteboard(int index, const String& pasteboardType)
@@ -523,15 +390,16 @@ String WebPlatformStrategies::readStringFromPasteboard(int index, const String& 
     return value;
 }
 
-long WebPlatformStrategies::changeCount()
+void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content)
 {
-    uint64_t changeCount;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardChangeCount(String()), Messages::WebPasteboardProxy::GetPasteboardChangeCount::Reply(changeCount), 0);
-    return changeCount;
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteWebContentToPasteboard(content), 0);
 }
 
-#endif // PLATFORM(IOS)
+void WebPlatformStrategies::writeToPasteboard(const String& pasteboardType, const String& text)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteStringToPasteboard(pasteboardType, text), 0);
+}
 
-#endif // PLATFORM(COCOA)
+#endif // PLATFORM(WPE)
 
 } // namespace WebKit

@@ -27,8 +27,11 @@
 #include "cmakeconfig.h"
 #endif
 
-#include <WebCore/PlatformExportMacros.h>
 #include <runtime/JSExportMacros.h>
+#ifndef BUILDING_JSCONLY__
+#include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
+#endif
 
 #if defined(__APPLE__) && __APPLE__
 
@@ -42,13 +45,8 @@
 
 #elif PLATFORM(WIN)
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
 #if PLATFORM(WIN_CAIRO)
 #undef USE_CG
-#define USE_CAIRO 1
 #define USE_CURL 1
 #ifndef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
@@ -63,7 +61,7 @@
 
 #include <stdint.h>
 
-#if !PLATFORM(IOS) && !PLATFORM(WIN) && !(PLATFORM(QT) && !defined(HAVE_WEBKIT2))
+#if !PLATFORM(IOS) && !PLATFORM(WIN) && !(PLATFORM(QT) && !defined(BUILDING_JSCONLY__)
 #include <WebKit/WebKit2_C.h>
 #endif
 
@@ -89,6 +87,6 @@
 #endif
 #endif
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS) && !defined(BUILDING_JSCONLY__)
 #define WK_HAVE_C_SPI 1
 #endif

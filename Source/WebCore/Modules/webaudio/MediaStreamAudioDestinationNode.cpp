@@ -23,16 +23,14 @@
  */
 
 #include "config.h"
+#include "MediaStreamAudioDestinationNode.h"
 
 #if ENABLE(WEB_AUDIO) && ENABLE(MEDIA_STREAM)
-
-#include "MediaStreamAudioDestinationNode.h"
 
 #include "AudioContext.h"
 #include "AudioNodeInput.h"
 #include "MediaStream.h"
 #include "MediaStreamAudioSource.h"
-#include "RTCPeerConnectionHandler.h"
 #include <wtf/Locker.h>
 
 namespace WebCore {
@@ -49,8 +47,9 @@ MediaStreamAudioDestinationNode::MediaStreamAudioDestinationNode(AudioContext& c
     setNodeType(NodeTypeMediaStreamAudioDestination);
 
     m_source = MediaStreamAudioSource::create();
-    Vector<RefPtr<RealtimeMediaSource>> audioSources(1, m_source);
-    m_stream = MediaStream::create(*context.scriptExecutionContext(), MediaStreamPrivate::create(WTFMove(audioSources), Vector<RefPtr<RealtimeMediaSource>>()));
+    Vector<Ref<RealtimeMediaSource>> audioSources;
+    audioSources.append(*m_source);
+    m_stream = MediaStream::create(*context.scriptExecutionContext(), MediaStreamPrivate::create(audioSources, { }));
 
     m_source->setAudioFormat(numberOfChannels, context.sampleRate());
 

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ContentSecurityPolicyResponseHeaders_h
-#define ContentSecurityPolicyResponseHeaders_h
+#pragma once
 
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -43,7 +42,7 @@ enum class ContentSecurityPolicyHeaderType {
 
 class ContentSecurityPolicyResponseHeaders {
 public:
-    ContentSecurityPolicyResponseHeaders(const ResourceResponse&);
+    explicit ContentSecurityPolicyResponseHeaders(const ResourceResponse&);
 
     ContentSecurityPolicyResponseHeaders isolatedCopy() const;
 
@@ -56,5 +55,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif /* ContentSecurityPolicyResponseHeaders_h */

@@ -78,7 +78,7 @@ public:
                         Flush, node->origin, OpInfo(flushAccessData));
                 }
 
-                if (node->hasVariableAccessData(m_graph))
+                if (node->accessesStack(m_graph))
                     currentBlockAccessData.operand(node->local()) = node->variableAccessData();
             }
         }
@@ -108,9 +108,8 @@ public:
     {
         Operands<VariableAccessData*> initialAccessData(block->variablesAtTail.numberOfArguments(), block->variablesAtTail.numberOfLocals(), nullptr);
         Operands<Node*> initialAccessNodes(block->variablesAtTail.numberOfArguments(), block->variablesAtTail.numberOfLocals(), nullptr);
-        for (unsigned i = 0; i < block->size(); i++) {
-            Node* node = block->at(i);
-            if (!node->hasVariableAccessData(m_graph))
+        for (auto* node : *block) {
+            if (!node->accessesStack(m_graph))
                 continue;
 
             VirtualRegister operand = node->local();
@@ -150,7 +149,6 @@ public:
 
 bool performMaximalFlushInsertion(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Flush Everything Insertion Phase");
     return runPhase<MaximalFlushInsertionPhase>(graph);
 }
 

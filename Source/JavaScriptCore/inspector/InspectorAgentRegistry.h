@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorAgentRegistry_h
-#define InspectorAgentRegistry_h
+#pragma once
 
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -47,6 +46,7 @@ public:
 
     void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*);
     void willDestroyFrontendAndBackend(DisconnectReason);
+    void discardValues();
 
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
     void appendExtraAgent(std::unique_ptr<InspectorAgentBase>);
@@ -66,5 +66,3 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // !defined(InspectorAgentRegistry_h)

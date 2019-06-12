@@ -27,7 +27,7 @@ ControllerIOS.StartPlaybackControls = 2;
 
 ControllerIOS.prototype = {
     /* Constants */
-    MinimumTimelineWidth: 200,
+    MinimumTimelineWidth: 150,
     ButtonWidth: 42,
 
     get idiom()
@@ -47,10 +47,6 @@ ControllerIOS.prototype = {
         startPlaybackBackground.setAttribute('pseudo', '-webkit-media-controls-start-playback-background');
         startPlaybackBackground.classList.add('webkit-media-controls-start-playback-background');
         startPlaybackButton.appendChild(startPlaybackBackground);
-
-        var startPlaybackTint = document.createElement('div');
-        startPlaybackTint.setAttribute('pseudo', '-webkit-media-controls-start-playback-tint');
-        startPlaybackButton.appendChild(startPlaybackTint);
 
         var startPlaybackGlyph = document.createElement('div');
         startPlaybackGlyph.setAttribute('pseudo', '-webkit-media-controls-start-playback-glyph');
@@ -151,6 +147,7 @@ ControllerIOS.prototype = {
 
     addStartPlaybackControls: function() {
         this.base.appendChild(this.controls.startPlaybackButton);
+        this.showShowControlsButton(false);
     },
 
     removeStartPlaybackControls: function() {
@@ -434,17 +431,18 @@ ControllerIOS.prototype = {
 
     handleStartPlaybackButtonTouchStart: function(event) {
         this.controls.startPlaybackButton.classList.add('active');
-        this.controls.startPlaybackButton.querySelector('.webkit-media-controls-start-playback-background').classList.add('active');
+        this.controls.startPlaybackButton.querySelector('.webkit-media-controls-start-playback-glyph').classList.add('active');
     },
 
     handleStartPlaybackButtonTouchEnd: function(event) {
         this.controls.startPlaybackButton.classList.remove('active');
-        this.controls.startPlaybackButton.querySelector('.webkit-media-controls-start-playback-background').classList.remove('active');
+        this.controls.startPlaybackButton.querySelector('.webkit-media-controls-start-playback-glyph').classList.remove('active');
 
         if (this.video.error)
             return true;
 
         this.video.play();
+        this.canToggleShowControlsButton = true;
         this.updateControls();
 
         return true;
@@ -526,6 +524,7 @@ ControllerIOS.prototype = {
         if (this.shouldHaveControls() && !this.controls.panelContainer.parentElement) {
             this.base.appendChild(this.controls.inlinePlaybackPlaceholder);
             this.base.appendChild(this.controls.panelContainer);
+            this.showShowControlsButton(false);
         }
     },
 
@@ -537,7 +536,12 @@ ControllerIOS.prototype = {
         Controller.prototype.setShouldListenForPlaybackTargetAvailabilityEvent.call(this, shouldListen);
     },
 
-    handlePresentationModeChange: function(event)
+    shouldReturnVideoLayerToInline: function()
+    {
+        return this.presentationMode() === 'inline';
+    },
+
+    updatePictureInPicturePlaceholder: function(event)
     {
         var presentationMode = this.presentationMode();
 
@@ -553,7 +557,7 @@ ControllerIOS.prototype = {
                 break;
         }
 
-        Controller.prototype.handlePresentationModeChange.call(this, event);
+        Controller.prototype.updatePictureInPicturePlaceholder.call(this, event);
     },
 
     // Due to the bad way we are faking inheritance here, in particular the extends method
@@ -585,22 +589,30 @@ ControllerIOS.prototype = {
 
         var scaleValue = 1 / newScaleFactor;
         var scaleTransform = "scale(" + scaleValue + ")";
+
+        function applyScaleFactorToElement(element) {
+            if (scaleValue > 1) {
+                element.style.zoom = scaleValue;
+                element.style.webkitTransform = "scale(1)";
+            } else {
+                element.style.zoom = 1;
+                element.style.webkitTransform = scaleTransform;
+            }
+        }
+
         if (this.controls.startPlaybackButton)
-            this.controls.startPlaybackButton.style.webkitTransform = scaleTransform;
+            applyScaleFactorToElement(this.controls.startPlaybackButton);
         if (this.controls.panel) {
+            applyScaleFactorToElement(this.controls.panel);
             if (scaleValue > 1) {
                 this.controls.panel.style.width = "100%";
-                this.controls.panel.style.zoom = scaleValue;
-                this.controls.panel.style.webkitTransform = "scale(1)";
                 this.controls.timelineBox.style.webkitTextSizeAdjust = (100 * scaleValue) + "%";
             } else {
                 var bottomAligment = -2 * scaleValue;
                 this.controls.panel.style.bottom = bottomAligment + "px";
                 this.controls.panel.style.paddingBottom = -(newScaleFactor * bottomAligment) + "px";
                 this.controls.panel.style.width = Math.round(newScaleFactor * 100) + "%";
-                this.controls.panel.style.webkitTransform = scaleTransform;
                 this.controls.timelineBox.style.webkitTextSizeAdjust = "auto";
-                this.controls.panel.style.zoom = 1;
             }
             this.controls.panelBackground.style.height = (50 * scaleValue) + "px";
 

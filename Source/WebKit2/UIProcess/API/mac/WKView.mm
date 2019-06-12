@@ -29,14 +29,21 @@
 #if PLATFORM(MAC)
 
 #import "APIHitTestResult.h"
+#import "APIIconLoadingClient.h"
 #import "APIPageConfiguration.h"
 #import "WKBrowsingContextGroupPrivate.h"
+#import "WKDragDestinationAction.h"
+#import "WKNSData.h"
 #import "WKProcessGroupPrivate.h"
 #import "WebBackForwardListItem.h"
 #import "WebKit2Initialize.h"
 #import "WebPageGroup.h"
+#import "WebPreferencesKeys.h"
 #import "WebProcessPool.h"
 #import "WebViewImpl.h"
+#import "_WKLinkIconParametersInternal.h"
+#import <WebCore/AVKitSPI.h>
+#import <wtf/BlockPtr.h>
 
 using namespace WebKit;
 using namespace WebCore;
@@ -53,6 +60,11 @@ using namespace WebCore;
 
 @interface WKView () <WebViewImplDelegate>
 @end
+
+#if HAVE(TOUCH_BAR)
+@interface WKView () <NSTouchBarProvider>
+@end
+#endif
 
 @implementation WKView
 
@@ -72,6 +84,7 @@ using namespace WebCore;
 
 - (void)dealloc
 {
+    _data->_impl->page().setIconLoadingClient(nullptr);
     _data->_impl = nullptr;
 
     [_data release];
@@ -842,27 +855,49 @@ Some other editing-related methods still unimplemented:
     return _data->_impl->namesOfPromisedFilesDroppedAtDestination(dropDestination);
 }
 
-- (void)touchesBeganWithEvent:(NSEvent *)event
+- (void)maybeInstallIconLoadingClient
 {
-    _data->_impl->touchesBeganWithEvent(event);
+#if WK_API_ENABLED
+    class IconLoadingClient : public API::IconLoadingClient {
+    public:
+        explicit IconLoadingClient(WKView *wkView)
+            : m_wkView(wkView)
+        {
+        }
+
+        static SEL delegateSelector()
+        {
+            return sel_registerName("_shouldLoadIconWithParameters:completionHandler:");
+        }
+
+    private:
+        typedef void (^IconLoadCompletionHandler)(NSData*);
+
+        void getLoadDecisionForIcon(const WebCore::LinkIcon& linkIcon, WTF::Function<void (WTF::Function<void (API::Data*, WebKit::CallbackBase::Error)>&&)>&& completionHandler) override {
+            RetainPtr<_WKLinkIconParameters> parameters = adoptNS([[_WKLinkIconParameters alloc] _initWithLinkIcon:linkIcon]);
+
+            [m_wkView performSelector:delegateSelector() withObject:parameters.get() withObject:BlockPtr<void (IconLoadCompletionHandler)>::fromCallable([completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) {
+                if (loadCompletionHandler) {
+                    completionHandler([loadCompletionHandler = BlockPtr<void (NSData *)>(loadCompletionHandler)](API::Data* data, WebKit::CallbackBase::Error error) {
+                        if (error != CallbackBase::Error::None || !data)
+                            loadCompletionHandler(nil);
+                        else
+                            loadCompletionHandler(wrapper(*data));
+                    });
+                } else
+                    completionHandler(nullptr);
+            }).get()];
+        }
+
+        WKView *m_wkView;
+    };
+
+    if ([self respondsToSelector:IconLoadingClient::delegateSelector()])
+        _data->_impl->page().setIconLoadingClient(std::make_unique<IconLoadingClient>(self));
+#endif // WK_API_ENABLED
 }
 
-- (void)touchesMovedWithEvent:(NSEvent *)event
-{
-    _data->_impl->touchesMovedWithEvent(event);
-}
-
-- (void)touchesEndedWithEvent:(NSEvent *)event
-{
-    _data->_impl->touchesEndedWithEvent(event);
-}
-
-- (void)touchesCancelledWithEvent:(NSEvent *)event
-{
-    _data->_impl->touchesCancelledWithEvent(event);
-}
-
-- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView
+- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration
 {
     self = [super initWithFrame:frame];
     if (!self)
@@ -871,7 +906,9 @@ Some other editing-related methods still unimplemented:
     InitializeWebKit2();
 
     _data = [[WKViewData alloc] init];
-    _data->_impl = std::make_unique<WebViewImpl>(self, webView, processPool, WTFMove(configuration));
+    _data->_impl = std::make_unique<WebViewImpl>(self, nullptr, processPool, WTFMove(configuration));
+
+    [self maybeInstallIconLoadingClient];
 
     return self;
 }
@@ -973,6 +1010,15 @@ Some other editing-related methods still unimplemented:
     [self _didChangeContentSize:newSize];
 }
 
+#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+
+- (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+{
+    return WKDragDestinationActionAny;
+}
+
+#endif
+
 - (void)_web_dismissContentRelativeChildWindows
 {
     [self _dismissContentRelativeChildWindows];
@@ -987,6 +1033,40 @@ Some other editing-related methods still unimplemented:
 {
     [self _gestureEventWasNotHandledByWebCore:event];
 }
+
+- (void)_didHandleAcceptedCandidate
+{
+}
+
+- (void)_didUpdateCandidateListVisibility:(BOOL)visible
+{
+}
+
+#if HAVE(TOUCH_BAR)
+
+@dynamic touchBar;
+
+- (NSTouchBar *)makeTouchBar
+{
+    return _data->_impl->makeTouchBar();
+}
+
+- (NSCandidateListTouchBarItem *)candidateListTouchBarItem
+{
+    return _data->_impl->candidateListTouchBarItem();
+}
+
+- (void)_web_didAddMediaControlsManager:(id)controlsManager
+{
+    [self _addMediaPlaybackControlsView:controlsManager];
+}
+
+- (void)_web_didRemoveMediaControlsManager
+{
+    [self _removeMediaPlaybackControlsView];
+}
+
+#endif // HAVE(TOUCH_BAR)
 
 @end
 
@@ -1007,14 +1087,30 @@ Some other editing-related methods still unimplemented:
     return [self initWithFrame:frame contextRef:contextRef pageGroupRef:pageGroupRef relatedToPage:nil];
 }
 
+#if PLATFORM(MAC)
+static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUserInterfaceLayoutDirection direction)
+{
+    switch (direction) {
+    case NSUserInterfaceLayoutDirectionLeftToRight:
+        return WebCore::UserInterfaceLayoutDirection::LTR;
+    case NSUserInterfaceLayoutDirectionRightToLeft:
+        return WebCore::UserInterfaceLayoutDirection::RTL;
+    }
+    return WebCore::UserInterfaceLayoutDirection::LTR;
+}
+#endif
+
 - (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
 {
     auto configuration = API::PageConfiguration::create();
     configuration->setProcessPool(toImpl(contextRef));
     configuration->setPageGroup(toImpl(pageGroupRef));
     configuration->setRelatedPage(toImpl(relatedPage));
+#if PLATFORM(MAC)
+    configuration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(toUserInterfaceLayoutDirection(self.userInterfaceLayoutDirection))));
+#endif
 
-    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTFMove(configuration) webView:nil];
+    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTFMove(configuration)];
 }
 
 - (id)initWithFrame:(NSRect)frame configurationRef:(WKPageConfigurationRef)configurationRef
@@ -1022,7 +1118,7 @@ Some other editing-related methods still unimplemented:
     Ref<API::PageConfiguration> configuration = toImpl(configurationRef)->copy();
     auto& processPool = *configuration->processPool();
 
-    return [self initWithFrame:frame processPool:processPool configuration:WTFMove(configuration) webView:nil];
+    return [self initWithFrame:frame processPool:processPool configuration:WTFMove(configuration)];
 }
 
 - (BOOL)wantsUpdateLayer
@@ -1127,6 +1223,16 @@ Some other editing-related methods still unimplemented:
 }
 #endif
 
+- (BOOL)_requiresUserActionForEditingControlsManager
+{
+    return _data->_impl->requiresUserActionForEditingControlsManager();
+}
+
+- (void)_setRequiresUserActionForEditingControlsManager:(BOOL)requiresUserAction
+{
+    _data->_impl->setRequiresUserActionForEditingControlsManager(requiresUserAction);
+}
+
 - (NSView *)fullScreenPlaceholderView
 {
     return _data->_impl->fullScreenPlaceholderView();
@@ -1155,10 +1261,9 @@ Some other editing-related methods still unimplemented:
 
 - (void)_prepareForMoveToWindow:(NSWindow *)targetWindow withCompletionHandler:(void(^)(void))completionHandler
 {
-    auto copiedCompletionHandler = Block_copy(completionHandler);
-    _data->_impl->prepareForMoveToWindow(targetWindow, [copiedCompletionHandler] {
-        copiedCompletionHandler();
-        Block_release(copiedCompletionHandler);
+    auto completionHandlerCopy = makeBlockPtr(completionHandler);
+    _data->_impl->prepareForMoveToWindow(targetWindow, [completionHandlerCopy] {
+        completionHandlerCopy();
     });
 }
 
@@ -1283,7 +1388,7 @@ Some other editing-related methods still unimplemented:
     return _data->_impl->totalHeightOfBanners();
 }
 
-static WTF::Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollbarStyle scrollbarStyle)
+static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollbarStyle scrollbarStyle)
 {
     switch (scrollbarStyle) {
     case _WKOverlayScrollbarStyleDark:
@@ -1297,10 +1402,10 @@ static WTF::Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
         break;
     }
 
-    return Nullopt;
+    return std::nullopt;
 }
 
-static _WKOverlayScrollbarStyle toAPIScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle)
+static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle)
 {
     if (!coreScrollbarStyle)
         return _WKOverlayScrollbarStyleAutomatic;
@@ -1445,10 +1550,48 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(WTF::Optional<WebCore::Scrol
     return _data->_impl->automaticallyAdjustsContentInsets();
 }
 
-@end
+- (void)setUserInterfaceLayoutDirection:(NSUserInterfaceLayoutDirection)userInterfaceLayoutDirection
+{
+    [super setUserInterfaceLayoutDirection:userInterfaceLayoutDirection];
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKViewAdditions.mm>
+    _data->_impl->setUserInterfaceLayoutDirection(userInterfaceLayoutDirection);
+}
+
+- (BOOL)_wantsMediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    return _data->_impl->clientWantsMediaPlaybackControlsView();
+#else
+    return NO;
 #endif
+}
+
+- (void)_setWantsMediaPlaybackControlsView:(BOOL)wantsMediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    _data->_impl->setClientWantsMediaPlaybackControlsView(wantsMediaPlaybackControlsView);
+#endif
+}
+
+- (id)_mediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    return _data->_impl->clientWantsMediaPlaybackControlsView() ? _data->_impl->mediaPlaybackControlsView() : nil;
+#else
+    return nil;
+#endif
+}
+
+// This method is for subclasses to override.
+- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView
+{
+}
+
+// This method is for subclasses to override.
+- (void)_removeMediaPlaybackControlsView
+{
+}
+
+@end
 
 #endif // PLATFORM(MAC)

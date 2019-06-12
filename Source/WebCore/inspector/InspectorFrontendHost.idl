@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  * Copyright (C) 2009 Google Inc. All rights reserved.
  *
@@ -31,8 +31,8 @@
  */
 
 [
+    ImplementationLacksVTable,
     NoInterfaceObject,
-    ImplementationLacksVTable
 ] interface InspectorFrontendHost {
     void loaded();
     void closeWindow();
@@ -41,6 +41,8 @@
 
     void setZoomFactor(unrestricted float zoom);
     float zoomFactor();
+
+    DOMString userInterfaceLayoutDirection();
 
     void requestSetDockSide(DOMString side);
 
@@ -51,6 +53,7 @@
     void moveWindowBy(unrestricted float x, unrestricted float y);
 
     DOMString localizedStringsURL();
+    DOMString backendCommandsURL();
     DOMString debuggableType();
     unsigned long inspectionLevel();
 
@@ -66,7 +69,7 @@
     DOMString port();
 
     [Custom] void showContextMenu(MouseEvent event, any items);
-    void dispatchEventAsContextMenuEvent(Event event);
+    void dispatchEventAsContextMenuEvent(Event? event);
     void sendMessageToBackend(DOMString message);
     void unbufferedLog(DOMString message);
 

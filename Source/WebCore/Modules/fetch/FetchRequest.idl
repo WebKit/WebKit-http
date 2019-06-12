@@ -30,28 +30,46 @@ enum RequestType { "", "audio", "font", "image", "script", "style", "track", "vi
 enum RequestDestination { "", "document", "sharedworker", "subresource", "unknown", "worker" };
 enum RequestMode { "navigate", "same-origin", "no-cors", "cors" };
 enum RequestCredentials { "omit", "same-origin", "include" };
-enum RequestCache { "default", "no-store", "reload", "no-cache", "force-cache" };
+enum RequestCache { "default", "no-store", "reload", "no-cache", "force-cache", "only-if-cached" };
 enum RequestRedirect { "follow", "error", "manual" };
-enum ReferrerPolicy { "", "no-referrer",  "no-referrer-when-downgrade", "origin-only", "origin-when-cross-origin", "unsafe-url" };
+enum ReferrerPolicy { "", "no-referrer",  "no-referrer-when-downgrade", "origin", "origin-when-cross-origin", "unsafe-url" };
+
+typedef (ArrayBufferView or ArrayBuffer) BufferSource;
+typedef (Blob or BufferSource or DOMFormData or URLSearchParams or USVString) BodyInit;
+
+dictionary RequestInit {
+    ByteString method;
+    // FIXME: Should add: HeadersInit headers;
+    // FIXME: Should add: BodyInit? body;
+    USVString referrer;
+    ReferrerPolicy referrerPolicy;
+    RequestMode mode;
+    RequestCredentials credentials;
+    RequestCache cache;
+    RequestRedirect redirect;
+    DOMString integrity;
+    // FIXME: Should add: boolean keepalive;
+    any window; // can only be set to null
+};
 
 [
+    ActiveDOMObject,
     Conditional=FETCH_API,
-    ConstructorCallWith=ScriptExecutionContext,
-    ConstructorRaisesException,
-    Constructor(FetchRequest input, [Default=Undefined] optional Dictionary init),
-    Constructor(DOMString input, [Default=Undefined]  optional Dictionary init),
-    GlobalContext=DOMWindow&WorkerGlobalScope,
-    ImplementationLacksVTable,
-    InterfaceName=Request
-]
-interface FetchRequest {
-    readonly attribute DOMString method;
+    Constructor(any input, optional RequestInit init),
+    EnabledAtRuntime=FetchAPI,
+    Exposed=(Window,Worker),
+    InterfaceName=Request,
+    JSBuiltinConstructor,
+    PrivateIdentifier,
+    PublicIdentifier,
+] interface FetchRequest {
+    readonly attribute ByteString method;
     readonly attribute DOMString url;
     readonly attribute FetchHeaders headers;
 
     readonly attribute RequestType type;
     readonly attribute RequestDestination destination;
-    readonly attribute DOMString referrer;
+    readonly attribute USVString referrer;
     readonly attribute ReferrerPolicy referrerPolicy;
     readonly attribute RequestMode mode;
     readonly attribute RequestCredentials credentials;
@@ -59,6 +77,12 @@ interface FetchRequest {
     readonly attribute RequestRedirect redirect;
     readonly attribute DOMString integrity;
 
-    [RaisesException, NewObject] FetchRequest clone();
+    [CallWith=ScriptExecutionContext, MayThrowException, NewObject] FetchRequest clone();
+
+    [MayThrowException, NewObject, PrivateIdentifier] FetchHeaders initializeWith(FetchRequest input, RequestInit init);
+    [MayThrowException, NewObject, PrivateIdentifier] FetchHeaders initializeWith(DOMString input, RequestInit init);
+    [MayThrowException, PrivateIdentifier] void setBody(BodyInit body);
+    [MayThrowException, PrivateIdentifier] void setBodyFromInputRequest(FetchRequest? request);
 };
+
 FetchRequest implements FetchBody;

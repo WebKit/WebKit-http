@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DynamicsCompressorNode_h
-#define DynamicsCompressorNode_h
+#pragma once
 
 #include "AudioNode.h"
 #include "AudioParam.h"
@@ -43,10 +42,10 @@ public:
     virtual ~DynamicsCompressorNode();
 
     // AudioNode
-    virtual void process(size_t framesToProcess) override;
-    virtual void reset() override;
-    virtual void initialize() override;
-    virtual void uninitialize() override;
+    void process(size_t framesToProcess) override;
+    void reset() override;
+    void initialize() override;
+    void uninitialize() override;
 
     // Static compression curve parameters.
     AudioParam* threshold() { return m_threshold.get(); }
@@ -59,8 +58,8 @@ public:
     AudioParam* reduction() { return m_reduction.get(); }
 
 private:
-    virtual double tailTime() const override;
-    virtual double latencyTime() const override;
+    double tailTime() const override;
+    double latencyTime() const override;
 
     DynamicsCompressorNode(AudioContext&, float sampleRate);
 
@@ -74,5 +73,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // DynamicsCompressorNode_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,33 +23,43 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmParameters_h
-#define CryptoAlgorithmParameters_h
+#pragma once
 
-#include <wtf/Noncopyable.h>
+#include "CryptoAlgorithmIdentifier.h"
 #include <wtf/TypeCasts.h>
+#include <wtf/text/WTFString.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace WebCore {
 
 class CryptoAlgorithmParameters {
-    WTF_MAKE_NONCOPYABLE(CryptoAlgorithmParameters);
 public:
-    CryptoAlgorithmParameters() { }
-    virtual ~CryptoAlgorithmParameters() { }
-
     enum class Class {
         None,
-        AesCbcParams,
-        AesKeyGenParams,
+        AesCbcCfbParams,
+        AesCtrParams,
+        AesGcmParams,
+        AesKeyParams,
+        EcKeyParams,
+        EcdhKeyDeriveParams,
+        EcdsaParams,
+        HkdfParams,
         HmacKeyParams,
-        HmacParams,
+        Pbkdf2Params,
+        RsaHashedKeyGenParams,
+        RsaHashedImportParams,
         RsaKeyGenParams,
-        RsaKeyParamsWithHash,
         RsaOaepParams,
-        RsaSsaParams
+        RsaPssParams,
     };
+
+    // FIXME: Consider merging name and identifier.
+    String name;
+    CryptoAlgorithmIdentifier identifier;
+
+    virtual ~CryptoAlgorithmParameters() { }
+
     virtual Class parametersClass() const { return Class::None; }
 };
 
@@ -57,8 +67,7 @@ public:
 
 #define SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(ToClassName) \
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::CryptoAlgorithm##ToClassName) \
-    static bool isType(const WebCore::CryptoAlgorithmParameters& parameters) { return parameters.parametersClass() == WebCore::CryptoAlgorithmParameters::Class::ToClassName; } \
+static bool isType(const WebCore::CryptoAlgorithmParameters& parameters) { return parameters.parametersClass() == WebCore::CryptoAlgorithmParameters::Class::ToClassName; } \
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmParameters_h

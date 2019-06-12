@@ -19,16 +19,16 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGTSpan_h
-#define RenderSVGTSpan_h
+#pragma once
 
 #include "RenderSVGInline.h"
 #include "SVGTextPositioningElement.h"
 
 namespace WebCore {
+
 class RenderSVGTSpan final : public RenderSVGInline {
 public:
-    explicit RenderSVGTSpan(SVGTextPositioningElement& element, Ref<RenderStyle>&& style)
+    explicit RenderSVGTSpan(SVGTextPositioningElement& element, RenderStyle&& style)
         : RenderSVGInline(element, WTFMove(style))
     {
     }
@@ -37,8 +37,10 @@ public:
 
 private:
     void graphicsElement() const = delete;
-    virtual const char* renderName() const override { return "RenderSVGTSpan"; }
+    const char* renderName() const override { return "RenderSVGTSpan"; }
+    bool isSVGTSpan() const override { return true; }
 };
-}
 
-#endif // !RenderSVGTSpan_h
+} // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGTSpan, isSVGTSpan())

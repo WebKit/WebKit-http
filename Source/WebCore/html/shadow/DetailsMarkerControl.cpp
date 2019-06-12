@@ -30,7 +30,6 @@
  */
 
 #include "config.h"
-#if ENABLE(DETAILS_ELEMENT)
 #include "DetailsMarkerControl.h"
 
 #include "HTMLNames.h"
@@ -50,7 +49,7 @@ DetailsMarkerControl::DetailsMarkerControl(Document& document)
     setPseudo(AtomicString("-webkit-details-marker", AtomicString::ConstructFromLiteral));
 }
 
-RenderPtr<RenderElement> DetailsMarkerControl::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> DetailsMarkerControl::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderDetailsMarker>(*this, WTFMove(style));
 }
@@ -61,5 +60,3 @@ bool DetailsMarkerControl::rendererIsNeeded(const RenderStyle& style)
 }
 
 }
-
-#endif

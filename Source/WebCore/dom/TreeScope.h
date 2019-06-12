@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TreeScope_h
-#define TreeScope_h
+#pragma once
 
 #include "DocumentOrderedMap.h"
 #include <memory>
@@ -35,7 +34,6 @@
 namespace WebCore {
 
 class ContainerNode;
-class DOMSelection;
 class Document;
 class Element;
 class HTMLLabelElement;
@@ -47,31 +45,37 @@ class ShadowRoot;
 
 class TreeScope {
     friend class Document;
-    friend class TreeScopeAdopter;
 
 public:
     TreeScope* parentTreeScope() const { return m_parentTreeScope; }
-    void setParentTreeScope(TreeScope*);
+    void setParentTreeScope(TreeScope&);
 
-    Element* focusedElement();
-    Element* getElementById(const AtomicString&) const;
+    Element* focusedElementInScope();
+    Element* pointerLockElement() const;
+
+    WEBCORE_EXPORT Element* getElementById(const AtomicString&) const;
     WEBCORE_EXPORT Element* getElementById(const String&) const;
+    Element* getElementById(StringView) const;
     const Vector<Element*>* getAllElementsById(const AtomicString&) const;
     bool hasElementWithId(const AtomicStringImpl&) const;
     bool containsMultipleElementsWithId(const AtomicString& id) const;
     void addElementById(const AtomicStringImpl& elementId, Element&, bool notifyObservers = true);
     void removeElementById(const AtomicStringImpl& elementId, Element&, bool notifyObservers = true);
 
-    Element* getElementByName(const AtomicString&) const;
+    WEBCORE_EXPORT Element* getElementByName(const AtomicString&) const;
     bool hasElementWithName(const AtomicStringImpl&) const;
     bool containsMultipleElementsWithName(const AtomicString&) const;
     void addElementByName(const AtomicStringImpl&, Element&);
     void removeElementByName(const AtomicStringImpl&, Element&);
 
-    Document& documentScope() const { return *m_documentScope; }
+    Document& documentScope() const { return m_documentScope.get(); }
     static ptrdiff_t documentScopeMemoryOffset() { return OBJECT_OFFSETOF(TreeScope, m_documentScope); }
 
-    Node* ancestorInThisScope(Node*) const;
+    // https://dom.spec.whatwg.org/#retarget
+    Node& retargetToScope(Node&) const;
+
+    Node* ancestorNodeInThisScope(Node*) const;
+    WEBCORE_EXPORT Element* ancestorElementInThisScope(Element*) const;
 
     void addImageMap(HTMLMapElement&);
     void removeImageMap(HTMLMapElement&);
@@ -83,7 +87,7 @@ public:
     void removeLabel(const AtomicStringImpl& forAttributeValue, HTMLLabelElement&);
     HTMLLabelElement* labelElementForId(const AtomicString& forAttributeValue);
 
-    DOMSelection* getSelection() const;
+    WEBCORE_EXPORT Element* elementFromPoint(double x, double y);
 
     // Find first anchor with the given name.
     // First searches for an element with the given ID, but if that fails, then looks
@@ -91,9 +95,6 @@ public:
     // Anchor name matching is case sensitive in strict mode and not case sensitive in
     // quirks mode for historical compatibility reasons.
     Element* findAnchor(const String& name);
-
-    // Used by the basic DOM mutation methods (e.g., appendChild()).
-    void adoptIfNeeded(Node*);
 
     ContainerNode& rootNode() const { return m_rootNode; }
 
@@ -105,15 +106,17 @@ protected:
     ~TreeScope();
 
     void destroyTreeScopeData();
-    void setDocumentScope(Document* document)
+    void setDocumentScope(Document& document)
     {
-        ASSERT(document);
         m_documentScope = document;
     }
 
+    Node* nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint);
+
 private:
+
     ContainerNode& m_rootNode;
-    Document* m_documentScope;
+    std::reference_wrapper<Document> m_documentScope;
     TreeScope* m_parentTreeScope;
 
     std::unique_ptr<DocumentOrderedMap> m_elementsById;
@@ -122,8 +125,6 @@ private:
     std::unique_ptr<DocumentOrderedMap> m_labelsByForAttribute;
 
     std::unique_ptr<IdTargetObserverRegistry> m_idTargetObserverRegistry;
-
-    mutable RefPtr<DOMSelection> m_selection;
 };
 
 inline bool TreeScope::hasElementWithId(const AtomicStringImpl& id) const
@@ -149,5 +150,3 @@ inline bool TreeScope::containsMultipleElementsWithName(const AtomicString& name
 TreeScope* commonTreeScope(Node*, Node*);
 
 } // namespace WebCore
-
-#endif // TreeScope_h

@@ -57,14 +57,16 @@ Config::Config()
       transparentType(EGL_NONE),
       transparentRedValue(0),
       transparentGreenValue(0),
-      transparentBlueValue(0)
+      transparentBlueValue(0),
+      optimalOrientation(0),
+      colorComponentType(EGL_COLOR_COMPONENT_TYPE_FIXED_EXT)
 {
 }
 
 EGLint ConfigSet::add(const Config &config)
 {
     // Set the config's ID to a small number that starts at 1 ([EGL 1.5] section 3.4)
-    EGLint id = static_cast<EGLint>(mConfigs.size() + 1);
+    EGLint id = static_cast<EGLint>(mConfigs.size()) + 1;
 
     Config copyConfig(config);
     copyConfig.configID = id;
@@ -133,6 +135,10 @@ class ConfigSorter
         static_assert(EGL_NONE < EGL_SLOW_CONFIG && EGL_SLOW_CONFIG < EGL_NON_CONFORMANT_CONFIG, "Unexpected EGL enum value.");
         SORT(configCaveat);
 
+        static_assert(EGL_COLOR_COMPONENT_TYPE_FIXED_EXT < EGL_COLOR_COMPONENT_TYPE_FLOAT_EXT,
+                      "Unexpected order of EGL enums.");
+        SORT(colorComponentType);
+
         static_assert(EGL_RGB_BUFFER < EGL_LUMINANCE_BUFFER, "Unexpected EGL enum value.");
         SORT(colorBufferType);
 
@@ -166,8 +172,8 @@ class ConfigSorter
         // components that are 0 or don't-care.
         for (auto attribIter = attributeMap.begin(); attribIter != attributeMap.end(); attribIter++)
         {
-            EGLint attributeKey = attribIter->first;
-            EGLint attributeValue = attribIter->second;
+            EGLAttrib attributeKey   = attribIter->first;
+            EGLAttrib attributeValue = attribIter->second;
             if (attributeKey != 0 && attributeValue != EGL_DONT_CARE)
             {
                 switch (attributeKey)
@@ -214,8 +220,8 @@ std::vector<const Config*> ConfigSet::filter(const AttributeMap &attributeMap) c
 
         for (auto attribIter = attributeMap.begin(); attribIter != attributeMap.end(); attribIter++)
         {
-            EGLint attributeKey = attribIter->first;
-            EGLint attributeValue = attribIter->second;
+            EGLAttrib attributeKey   = attribIter->first;
+            EGLAttrib attributeValue = attribIter->second;
 
             switch (attributeKey)
             {
@@ -251,6 +257,12 @@ std::vector<const Config*> ConfigSet::filter(const AttributeMap &attributeMap) c
               case EGL_MAX_PBUFFER_WIDTH:         match = config.maxPBufferWidth >= attributeValue;                   break;
               case EGL_MAX_PBUFFER_HEIGHT:        match = config.maxPBufferHeight >= attributeValue;                  break;
               case EGL_MAX_PBUFFER_PIXELS:        match = config.maxPBufferPixels >= attributeValue;                  break;
+              case EGL_OPTIMAL_SURFACE_ORIENTATION_ANGLE:
+                  match = config.optimalOrientation == attributeValue;
+                  break;
+              case EGL_COLOR_COMPONENT_TYPE_EXT:
+                  match = config.colorComponentType == static_cast<EGLenum>(attributeValue);
+                  break;
               default: UNREACHABLE();
             }
 

@@ -44,25 +44,25 @@ namespace NetworkCache {
 class SpeculativeLoad final : public NetworkLoadClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    typedef std::function<void (std::unique_ptr<NetworkCache::Entry>)> RevalidationCompletionHandler;
+    typedef Function<void (std::unique_ptr<NetworkCache::Entry>)> RevalidationCompletionHandler;
     SpeculativeLoad(const GlobalFrameID&, const WebCore::ResourceRequest&, std::unique_ptr<NetworkCache::Entry>, RevalidationCompletionHandler&&);
 
     virtual ~SpeculativeLoad();
 
+    const WebCore::ResourceRequest& originalRequest() const { return m_originalRequest; }
+
 private:
     // NetworkLoadClient.
-    virtual void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override { }
-    virtual void canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&) override { }
-    virtual bool isSynchronous() const override { return false; }
-    virtual void willSendRedirectedRequest(const WebCore::ResourceRequest&, const WebCore::ResourceRequest& redirectRequest, const WebCore::ResourceResponse& redirectResponse) override;
-    virtual ShouldContinueDidReceiveResponse didReceiveResponse(const WebCore::ResourceResponse&) override;
-    virtual void didReceiveBuffer(RefPtr<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
-    virtual void didFinishLoading(double finishTime) override;
-    virtual void didFailLoading(const WebCore::ResourceError&) override;
-    virtual void didConvertToDownload() override { ASSERT_NOT_REACHED(); }
-#if PLATFORM(COCOA)
-    virtual void willCacheResponseAsync(CFCachedURLResponseRef) override { }
+    void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override { }
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    void canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&) override;
 #endif
+    bool isSynchronous() const override { return false; }
+    void willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse) override;
+    ShouldContinueDidReceiveResponse didReceiveResponse(WebCore::ResourceResponse&&) override;
+    void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
+    void didFinishLoading(const WebCore::NetworkLoadMetrics&) override;
+    void didFailLoading(const WebCore::ResourceError&) override;
 
     void didComplete();
 
@@ -75,9 +75,8 @@ private:
     WebCore::ResourceResponse m_response;
 
     RefPtr<WebCore::SharedBuffer> m_bufferedDataForCache;
-    std::unique_ptr<NetworkCache::Entry> m_cacheEntryForValidation;
-
-    WebCore::RedirectChainCacheStatus m_redirectChainCacheStatus;
+    std::unique_ptr<NetworkCache::Entry> m_cacheEntry;
+    bool m_didComplete { false };
 };
 
 } // namespace NetworkCache

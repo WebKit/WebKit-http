@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCDataChannelHandlerMock_h
-#define RTCDataChannelHandlerMock_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
 #include "RTCDataChannelHandler.h"
-#include "RTCPeerConnectionHandler.h"
 #include "TimerEventBasedMock.h"
 
 namespace WebCore {
@@ -37,37 +35,21 @@ namespace WebCore {
 class RTCDataChannelHandlerMock final : public RTCDataChannelHandler, public TimerEventBasedMock {
 public:
     RTCDataChannelHandlerMock(const String&, const RTCDataChannelInit&);
-    virtual ~RTCDataChannelHandlerMock() { }
-
-    virtual void setClient(RTCDataChannelHandlerClient*) override;
-
-    virtual String label() override { return m_label; }
-    virtual bool ordered() override { return m_ordered; }
-    virtual unsigned short maxRetransmitTime() override { return m_maxRetransmitTime; }
-    virtual unsigned short maxRetransmits() override { return m_maxRetransmits; }
-    virtual String protocol() override { return m_protocol; }
-    virtual bool negotiated() override { return m_negotiated; }
-    virtual unsigned short id() override { return m_id; }
-    virtual unsigned long bufferedAmount() override { return 0; }
-
-    virtual bool sendStringData(const String&) override;
-    virtual bool sendRawData(const char*, size_t) override;
-    virtual void close() override;
 
 private:
-    RTCDataChannelHandlerClient* m_client;
+    void setClient(RTCDataChannelHandlerClient&) final;
+
+    bool sendStringData(const String&) final;
+    bool sendRawData(const char*, size_t) final;
+    void close() final;
+    size_t bufferedAmount() const final { return 0; }
+
+    RTCDataChannelHandlerClient* m_client { nullptr };
 
     String m_label;
     String m_protocol;
-    unsigned short m_maxRetransmitTime;
-    unsigned short m_maxRetransmits;
-    unsigned short m_id;
-    bool m_ordered;
-    bool m_negotiated;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCDataChannelHandlerMock_h
+#endif // ENABLE(WEB_RTC)

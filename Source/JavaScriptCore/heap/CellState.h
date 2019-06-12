@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,38 +23,34 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CellState_h
-#define CellState_h
+#pragma once
+
+#include <wtf/Assertions.h>
 
 namespace JSC {
 
+// The CellState of a cell is a kind of hint about what the state of the cell is.
 enum class CellState : uint8_t {
-    // The object is black as far as this GC is concerned. When not in GC, this just means that it's an
-    // old gen object. Note that we deliberately arrange OldBlack to be zero, so that the store barrier on
-    // a target object "from" is just:
-    //
-    // if (!from->cellState())
-    //     slowPath(from);
-    //
-    // There is a bunch of code in the LLInt and JITs that rely on this being the case. You'd have to
-    // change a lot of code if you ever wanted the store barrier to be anything but a non-zero check on
-    // cellState.
-    OldBlack = 0,
+    // The object is either currently being scanned, or it has finished being scanned, or this
+    // is a full collection and it's actually a white object (you'd know because its mark bit
+    // would be clear).
+    PossiblyBlack = 0,
     
     // The object is in eden. During GC, this means that the object has not been marked yet.
-    NewWhite = 1,
+    DefinitelyWhite = 1,
 
-    // The object is grey - i.e. it will be scanned - but it either belongs to old gen (if this is eden
-    // GC) or it is grey a second time in this current GC (because a concurrent store barrier requested
-    // re-greying).
-    OldGrey = 2,
-
-    // The object is grey - i.e. it will be scanned - and this is the first time in this GC that we are
-    // going to scan it. If this is an eden GC, this also means that the object is in eden.
-    NewGrey = 3
+    // This sorta means that the object is grey - i.e. it will be scanned. Or it could be white
+    // during a full collection if its mark bit is clear. That would happen if it had been black,
+    // got barriered, and we did a full collection.
+    PossiblyGrey = 2
 };
 
+static const unsigned blackThreshold = 0; // x <= blackThreshold means x is PossiblyOldOrBlack.
+static const unsigned tautologicalThreshold = 100; // x <= tautologicalThreshold is always true.
+
+inline bool isWithinThreshold(CellState cellState, unsigned threshold)
+{
+    return static_cast<unsigned>(cellState) <= threshold;
+}
+
 } // namespace JSC
-
-#endif // CellState_h
-

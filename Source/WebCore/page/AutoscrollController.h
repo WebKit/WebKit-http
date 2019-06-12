@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AutoscrollController_h
-#define AutoscrollController_h
+#pragma once
 
 #include "IntPoint.h"
 #include "Timer.h"
@@ -49,8 +48,9 @@ enum AutoscrollType {
 #endif
 };
 
-// AutscrollController handels autoscroll and pan scroll for EventHandler.
+// AutscrollController handles autoscroll and pan scroll for EventHandler.
 class AutoscrollController {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     AutoscrollController();
     RenderBox* autoscrollRenderer() const;
@@ -86,5 +86,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // AutoscrollController_h

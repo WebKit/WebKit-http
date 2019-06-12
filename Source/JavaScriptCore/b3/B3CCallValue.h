@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3CCallValue_h
-#define B3CCallValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -35,11 +34,11 @@ namespace JSC { namespace B3 {
 
 class JS_EXPORT_PRIVATE CCallValue : public Value {
 public:
-    static bool accepts(Opcode opcode) { return opcode == CCall; }
+    static bool accepts(Kind kind) { return kind == CCall; }
 
     ~CCallValue();
 
-    Effects effects { Effects::forCall() };
+    Effects effects;
 
 protected:
     Value* cloneImpl() const override;
@@ -50,6 +49,7 @@ private:
     template<typename... Arguments>
     CCallValue(Type type, Origin origin, Arguments... arguments)
         : Value(CheckedOpcode, CCall, type, origin, arguments...)
+        , effects(Effects::forCall())
     {
         RELEASE_ASSERT(numChildren() >= 1);
     }
@@ -66,6 +66,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3CCallValue_h
-

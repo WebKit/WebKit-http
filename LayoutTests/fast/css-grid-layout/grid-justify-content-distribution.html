@@ -2,6 +2,7 @@
 <html>
 <head>
 <link href="resources/grid.css" rel="stylesheet">
+<link href="resources/grid-alignment.css" rel="stylesheet">
 <script src="../../resources/check-layout.js"></script>
 <style>
 body {
@@ -9,31 +10,15 @@ body {
 }
 
 .grid {
-    -webkit-grid-auto-columns: 20px;
-    -webkit-grid-auto-rows: 40px;
+    grid-auto-columns: 20px;
+    grid-auto-rows: 40px;
     position: relative;
     width: 300px;
     height: 200px;
 }
 
 .stretchedGrid {
-    -webkit-grid-auto-columns: auto;
-}
-
-.justifyContentSpaceBetween {
-    justify-content: space-between;
-}
-
-.justifyContentSpaceAround {
-    justify-content: space-around;
-}
-
-.justifyContentSpaceEvenly {
-    justify-content: space-evenly;
-}
-
-.justifyContentStretch {
-    justify-content: stretch;
+    grid-auto-columns: auto;
 }
 </style>
 </head>

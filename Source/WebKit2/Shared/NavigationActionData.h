@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,25 +27,29 @@
 #define NavigationActionData_h
 
 #include "WebEvent.h"
+#include <WebCore/FloatPoint.h>
 #include <WebCore/FrameLoaderTypes.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 struct NavigationActionData {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, NavigationActionData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, NavigationActionData&);
 
     WebCore::NavigationType navigationType { WebCore::NavigationType::Other };
     WebEvent::Modifiers modifiers { };
     WebMouseEvent::Button mouseButton { WebMouseEvent::NoButton };
-    bool isProcessingUserGesture { false };
+    WebMouseEvent::SyntheticClickType syntheticClickType { WebMouseEvent::NoTap };
+    uint64_t userGestureTokenIdentifier;
     bool canHandleRequest { false };
     WebCore::ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy { WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+    WTF::String downloadAttribute;
+    WebCore::FloatPoint clickLocationInRootViewCoordinates;
 };
 
 }

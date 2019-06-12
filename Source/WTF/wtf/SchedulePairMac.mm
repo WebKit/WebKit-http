@@ -29,7 +29,7 @@
 #include "config.h"
 #include "SchedulePair.h"
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 namespace WTF {
 

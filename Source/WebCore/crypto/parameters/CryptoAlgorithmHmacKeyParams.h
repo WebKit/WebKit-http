@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmHmacKeyParams_h
-#define CryptoAlgorithmHmacKeyParams_h
+#pragma once
 
-#include "CryptoAlgorithmIdentifier.h"
 #include "CryptoAlgorithmParameters.h"
+#include <runtime/JSCJSValue.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
@@ -35,20 +34,12 @@ namespace WebCore {
 
 class CryptoAlgorithmHmacKeyParams final : public CryptoAlgorithmParameters {
 public:
-    CryptoAlgorithmHmacKeyParams()
-        : hasLength(false)
-    {
-    }
+    // FIXME: Consider merging hash and hashIdentifier.
+    JSC::JSValue hash;
+    CryptoAlgorithmIdentifier hashIdentifier;
+    std::optional<size_t> length;
 
-    // The inner hash function to use.
-    CryptoAlgorithmIdentifier hash;
-
-    // The length (in bytes) of the key to generate. If unspecified, the recommended length will be used,
-    // which is the size of the associated hash function's block size.
-    bool hasLength;
-    unsigned length;
-
-    virtual Class parametersClass() const override { return Class::HmacKeyParams; }
+    Class parametersClass() const final { return Class::HmacKeyParams; }
 };
 
 } // namespace WebCore
@@ -56,4 +47,3 @@ public:
 SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(HmacKeyParams)
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmHmacKeyParams_h

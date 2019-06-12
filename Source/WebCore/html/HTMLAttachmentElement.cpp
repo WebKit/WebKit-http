@@ -51,7 +51,7 @@ Ref<HTMLAttachmentElement> HTMLAttachmentElement::create(const QualifiedName& ta
     return adoptRef(*new HTMLAttachmentElement(tagName, document));
 }
 
-RenderPtr<RenderElement> HTMLAttachmentElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> HTMLAttachmentElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderAttachment>(*this, WTFMove(style));
 }
@@ -65,18 +65,15 @@ void HTMLAttachmentElement::setFile(File* file)
 {
     m_file = file;
 
-    auto* renderer = this->renderer();
-    if (!is<RenderAttachment>(renderer))
-        return;
-
-    downcast<RenderAttachment>(*renderer).invalidate();
+    if (auto* renderer = this->renderer())
+        renderer->invalidate();
 }
 
 void HTMLAttachmentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if ((name == progressAttr || name == titleAttr || name == subtitleAttr || name == typeAttr) && is<RenderAttachment>(renderer())) {
-        downcast<RenderAttachment>(*renderer()).invalidate();
-        return;
+    if (name == progressAttr || name == subtitleAttr || name == titleAttr || name == typeAttr) {
+        if (auto* renderer = this->renderer())
+            renderer->invalidate();
     }
 
     HTMLElement::parseAttribute(name, value);
@@ -84,7 +81,7 @@ void HTMLAttachmentElement::parseAttribute(const QualifiedName& name, const Atom
 
 String HTMLAttachmentElement::attachmentTitle() const
 {
-    String title = fastGetAttribute(titleAttr);
+    auto& title = attributeWithoutSynchronization(titleAttr);
     if (!title.isEmpty())
         return title;
     return m_file ? m_file->name() : String();
@@ -92,7 +89,7 @@ String HTMLAttachmentElement::attachmentTitle() const
 
 String HTMLAttachmentElement::attachmentType() const
 {
-    return fastGetAttribute(typeAttr);
+    return attributeWithoutSynchronization(typeAttr);
 }
 
 } // namespace WebCore

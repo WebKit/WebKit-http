@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameProxy_h
-#define WebFrameProxy_h
+#pragma once
 
 #include "APIObject.h"
 #include "FrameLoadState.h"
@@ -32,7 +31,7 @@
 #include "WebFrameListenerProxy.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Function.h>
 #include <wtf/text/WTFString.h>
 
 #if ENABLE(CONTENT_FILTERING)
@@ -43,10 +42,9 @@ namespace API {
 class Navigation;
 }
 
-
 namespace IPC {
-    class ArgumentDecoder;
-    class Connection;
+class Connection;
+class Decoder;
 }
 
 namespace WebKit {
@@ -54,14 +52,15 @@ class WebCertificateInfo;
 class WebFormSubmissionListenerProxy;
 class WebFramePolicyListenerProxy;
 class WebPageProxy;
+struct WebsitePolicies;
 
 typedef GenericCallback<API::Data*> DataCallback;
 
 class WebFrameProxy : public API::ObjectImpl<API::Object::Type::Frame> {
 public:
-    static PassRefPtr<WebFrameProxy> create(WebPageProxy* page, uint64_t frameID)
+    static Ref<WebFrameProxy> create(WebPageProxy* page, uint64_t frameID)
     {
-        return adoptRef(new WebFrameProxy(page, frameID));
+        return adoptRef(*new WebFrameProxy(page, frameID));
     }
 
     virtual ~WebFrameProxy();
@@ -102,9 +101,9 @@ public:
     bool isDisplayingMarkupDocument() const;
     bool isDisplayingPDFDocument() const;
 
-    void getWebArchive(std::function<void (API::Data*, CallbackBase::Error)>);
-    void getMainResourceData(std::function<void (API::Data*, CallbackBase::Error)>);
-    void getResourceData(API::URL*, std::function<void (API::Data*, CallbackBase::Error)>);
+    void getWebArchive(Function<void (API::Data*, CallbackBase::Error)>&&);
+    void getMainResourceData(Function<void (API::Data*, CallbackBase::Error)>&&);
+    void getResourceData(API::URL*, Function<void (API::Data*, CallbackBase::Error)>&&);
 
     void didStartProvisionalLoad(const String& url);
     void didReceiveServerRedirectForProvisionalLoad(const String& url);
@@ -116,13 +115,17 @@ public:
     void didChangeTitle(const String&);
 
     // Policy operations.
-    void receivedPolicyDecision(WebCore::PolicyAction, uint64_t listenerID, API::Navigation* = nullptr);
+    void receivedPolicyDecision(WebCore::PolicyAction, uint64_t listenerID, API::Navigation*, const WebsitePolicies&);
     WebFramePolicyListenerProxy& setUpPolicyListenerProxy(uint64_t listenerID);
     WebFormSubmissionListenerProxy& setUpFormSubmissionListenerProxy(uint64_t listenerID);
 
 #if ENABLE(CONTENT_FILTERING)
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler contentFilterUnblockHandler) { m_contentFilterUnblockHandler = WTFMove(contentFilterUnblockHandler); }
     bool didHandleContentFilterUnblockNavigation(const WebCore::ResourceRequest&);
+#endif
+
+#if PLATFORM(GTK)
+    void collapseSelection();
 #endif
 
 private:
@@ -146,5 +149,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebFrameProxy_h

@@ -13,9 +13,7 @@
 #include "libANGLE/angletypes.h"
 #include "libANGLE/Error.h"
 
-#if !defined(ANGLE_ENABLE_WINDOWS_STORE)
-typedef void* EventRegistrationToken;
-#else
+#if defined(ANGLE_ENABLE_WINDOWS_STORE)
 #include <EventToken.h>
 #endif
 
@@ -31,7 +29,9 @@ class Trim11 : angle::NonCopyable
 
   private:
     Renderer11 *mRenderer;
+#if defined (ANGLE_ENABLE_WINDOWS_STORE)
     EventRegistrationToken mApplicationSuspendedEventToken;
+#endif
 
     void trim();
     bool registerForRendererTrimRequest();

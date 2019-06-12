@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,7 +35,7 @@
 
 namespace JSC { namespace DFG {
 
-ArrayMode ArrayMode::fromObserved(const ConcurrentJITLocker& locker, ArrayProfile* profile, Array::Action action, bool makeSafe)
+ArrayMode ArrayMode::fromObserved(const ConcurrentJSLocker& locker, ArrayProfile* profile, Array::Action action, bool makeSafe)
 {
     Array::Class nonArray;
     if (profile->usesOriginalArrayStructures(locker))
@@ -150,6 +150,14 @@ ArrayMode ArrayMode::fromObserved(const ConcurrentJITLocker& locker, ArrayProfil
     }
 }
 
+static bool canBecomeGetArrayLength(Graph& graph, Node* node)
+{
+    if (node->op() != GetById)
+        return false;
+    auto uid = graph.identifiers()[node->identifierNumber()];
+    return uid == graph.m_vm.propertyNames->length.impl();
+}
+
 ArrayMode ArrayMode::refine(
     Graph& graph, Node* node,
     SpeculatedType base, SpeculatedType index, SpeculatedType value) const
@@ -178,6 +186,16 @@ ArrayMode ArrayMode::refine(
     // don't want to). So, for now, we assume that if the base is not a cell according
     // to value profiling, but the array profile tells us something else, then we
     // should just trust the array profile.
+
+    auto typedArrayResult = [&] (ArrayMode result) -> ArrayMode {
+        if (node->op() == PutByValDirect) {
+            // This is semantically identical to defineOwnProperty({configurable: true, writable:true, enumerable:true}),
+            // which we can't model as a simple store to the typed array since typed array indexed properties
+            // are non-configurable.
+            return ArrayMode(Array::Generic);
+        }
+        return result;
+    };
     
     switch (type()) {
     case Array::SelectUsingArguments:
@@ -192,13 +210,14 @@ ArrayMode ArrayMode::refine(
         // If we have an OriginalArray and the JSArray prototype chain is sane,
         // any indexed access always return undefined. We have a fast path for that.
         JSGlobalObject* globalObject = graph.globalObjectFor(node->origin.semantic);
-        if (node->op() == GetByVal
+        if ((node->op() == GetByVal || canBecomeGetArrayLength(graph, node))
             && arrayClass() == Array::OriginalArray
             && globalObject->arrayPrototypeChainIsSane()
             && !graph.hasExitSite(node->origin.semantic, OutOfBounds)) {
             graph.watchpoints().addLazily(globalObject->arrayPrototype()->structure()->transitionWatchpointSet());
             graph.watchpoints().addLazily(globalObject->objectPrototype()->structure()->transitionWatchpointSet());
-            return withSpeculation(Array::SaneChain);
+            if (globalObject->arrayPrototypeChainIsSane())
+                return withSpeculation(Array::SaneChain);
         }
         return ArrayMode(Array::Generic);
     }
@@ -226,15 +245,11 @@ ArrayMode ArrayMode::refine(
     case Array::Uint32Array:
     case Array::Float32Array:
     case Array::Float64Array:
-        switch (node->op()) {
-        case PutByVal:
+        if (node->op() == PutByVal) {
             if (graph.hasExitSite(node->origin.semantic, OutOfBounds) || !isInBounds())
-                return withSpeculation(Array::OutOfBounds);
-            return withSpeculation(Array::InBounds);
-        default:
-            return withSpeculation(Array::InBounds);
+                return typedArrayResult(withSpeculation(Array::OutOfBounds));
         }
-        return *this;
+        return typedArrayResult(withSpeculation(Array::InBounds));
     case Array::Unprofiled:
     case Array::SelectUsingPredictions: {
         base &= ~SpecOther;
@@ -265,33 +280,33 @@ ArrayMode ArrayMode::refine(
             result = withSpeculation(Array::InBounds);
             break;
         }
-        
+
         if (isInt8ArraySpeculation(base))
-            return result.withType(Array::Int8Array);
+            return typedArrayResult(result.withType(Array::Int8Array));
         
         if (isInt16ArraySpeculation(base))
-            return result.withType(Array::Int16Array);
+            return typedArrayResult(result.withType(Array::Int16Array));
         
         if (isInt32ArraySpeculation(base))
-            return result.withType(Array::Int32Array);
+            return typedArrayResult(result.withType(Array::Int32Array));
         
         if (isUint8ArraySpeculation(base))
-            return result.withType(Array::Uint8Array);
+            return typedArrayResult(result.withType(Array::Uint8Array));
         
         if (isUint8ClampedArraySpeculation(base))
-            return result.withType(Array::Uint8ClampedArray);
+            return typedArrayResult(result.withType(Array::Uint8ClampedArray));
         
         if (isUint16ArraySpeculation(base))
-            return result.withType(Array::Uint16Array);
+            return typedArrayResult(result.withType(Array::Uint16Array));
         
         if (isUint32ArraySpeculation(base))
-            return result.withType(Array::Uint32Array);
+            return typedArrayResult(result.withType(Array::Uint32Array));
         
         if (isFloat32ArraySpeculation(base))
-            return result.withType(Array::Float32Array);
+            return typedArrayResult(result.withType(Array::Float32Array));
         
         if (isFloat64ArraySpeculation(base))
-            return result.withType(Array::Float64Array);
+            return typedArrayResult(result.withType(Array::Float64Array));
 
         if (type() == Array::Unprofiled)
             return ArrayMode(Array::ForceExit);
@@ -322,20 +337,20 @@ Structure* ArrayMode::originalArrayStructure(Graph& graph, const CodeOrigin& cod
             return globalObject->originalArrayStructureForIndexingType(ArrayWithArrayStorage);
         default:
             CRASH();
-            return 0;
+            return nullptr;
         }
     }
         
     case Array::OriginalNonArray: {
         TypedArrayType type = typedArrayType();
         if (type == NotTypedArray)
-            return 0;
+            return nullptr;
         
-        return globalObject->typedArrayStructure(type);
+        return globalObject->typedArrayStructureConcurrently(type);
     }
         
     default:
-        return 0;
+        return nullptr;
     }
 }
 
@@ -351,12 +366,12 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
         if (value.m_structure.isTop())
             return false;
         for (unsigned i = value.m_structure.size(); i--;) {
-            Structure* structure = value.m_structure[i];
+            RegisteredStructure structure = value.m_structure[i];
             if ((structure->indexingType() & IndexingShapeMask) != shape)
                 return false;
             if (!(structure->indexingType() & IsArray))
                 return false;
-            if (!graph.globalObjectFor(node->origin.semantic)->isOriginalArrayStructure(structure))
+            if (!graph.globalObjectFor(node->origin.semantic)->isOriginalArrayStructure(structure.get()))
                 return false;
         }
         return true;
@@ -368,7 +383,7 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
         if (value.m_structure.isTop())
             return false;
         for (unsigned i = value.m_structure.size(); i--;) {
-            Structure* structure = value.m_structure[i];
+            RegisteredStructure structure = value.m_structure[i];
             if ((structure->indexingType() & IndexingShapeMask) != shape)
                 return false;
             if (!(structure->indexingType() & IsArray))
@@ -383,7 +398,7 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
         if (value.m_structure.isTop())
             return false;
         for (unsigned i = value.m_structure.size(); i--;) {
-            Structure* structure = value.m_structure[i];
+            RegisteredStructure structure = value.m_structure[i];
             if ((structure->indexingType() & IndexingShapeMask) != shape)
                 return false;
         }
@@ -431,7 +446,7 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
             if (value.m_structure.isTop())
                 return false;
             for (unsigned i = value.m_structure.size(); i--;) {
-                Structure* structure = value.m_structure[i];
+                RegisteredStructure structure = value.m_structure[i];
                 if (!hasAnyArrayStorage(structure->indexingType()))
                     return false;
                 if (!(structure->indexingType() & IsArray))
@@ -446,7 +461,7 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& va
             if (value.m_structure.isTop())
                 return false;
             for (unsigned i = value.m_structure.size(); i--;) {
-                Structure* structure = value.m_structure[i];
+                RegisteredStructure structure = value.m_structure[i];
                 if (!hasAnyArrayStorage(structure->indexingType()))
                     return false;
             }
@@ -614,6 +629,8 @@ IndexingType toIndexingShape(Array::Type type)
         return DoubleShape;
     case Array::Contiguous:
         return ContiguousShape;
+    case Array::Undecided:
+        return UndecidedShape;
     case Array::ArrayStorage:
         return ArrayStorageShape;
     case Array::SlowPutArrayStorage:
@@ -697,6 +714,8 @@ bool permitsBoundsCheckLowering(Array::Type type)
     case Array::Int32:
     case Array::Double:
     case Array::Contiguous:
+    case Array::ArrayStorage:
+    case Array::SlowPutArrayStorage:
     case Array::Int8Array:
     case Array::Int16Array:
     case Array::Int32Array:
@@ -710,9 +729,7 @@ bool permitsBoundsCheckLowering(Array::Type type)
         return true;
     default:
         // These don't allow for bounds check lowering either because the bounds
-        // check involves something other than GetArrayLength (like ArrayStorage),
-        // or because the bounds check isn't a speculation (like String, sort of),
-        // or because the type implies an impure access.
+        // check isn't a speculation (like String, sort of) or because the type implies an impure access.
         return false;
     }
 }
@@ -724,7 +741,7 @@ bool ArrayMode::permitsBoundsCheckLowering() const
 
 void ArrayMode::dump(PrintStream& out) const
 {
-    out.print(type(), arrayClass(), speculation(), conversion());
+    out.print(type(), "+", arrayClass(), "+", speculation(), "+", conversion());
 }
 
 } } // namespace JSC::DFG

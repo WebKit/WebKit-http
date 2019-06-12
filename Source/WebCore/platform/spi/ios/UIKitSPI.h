@@ -25,17 +25,32 @@
 
 #if USE(APPLE_INTERNAL_SDK)
 
+#import <UIKit/UIApplicationSceneConstants.h>
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIInterface_Private.h>
 #import <UIKit/UIScreen_Private.h>
+#import <UIKit/UIViewController_Private.h>
+
+#if ENABLE(DATA_INTERACTION)
+#import <UIKit/UIItemProvider_Private.h>
+#endif
+
+@interface UIApplication ()
++ (UIApplicationSceneClassicMode)_classicMode;
+@end
 
 #else
 
 #import <UIKit/UIKit.h>
 
+typedef NS_ENUM(NSInteger, UIApplicationSceneClassicMode) {
+    UIApplicationSceneClassicModeOriginalPad = 4,
+};
+
 @interface UIApplication ()
 
 - (BOOL)_isClassic;
++ (UIApplicationSceneClassicMode)_classicMode;
 
 @end
 
@@ -55,6 +70,10 @@
 
 @property (nonatomic, readonly) CGRect _referenceBounds;
 
+@end
+
+@interface UIViewController ()
++ (UIViewController *)viewControllerForView:(UIView *)view;
 @end
 
 #endif

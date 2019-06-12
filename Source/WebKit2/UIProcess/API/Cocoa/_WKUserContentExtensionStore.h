@@ -29,7 +29,7 @@
 
 @class _WKUserContentFilter;
 
-WK_CLASS_AVAILABLE(10_11, 9_0)
+WK_CLASS_AVAILABLE(macosx(10.11), ios(9.0))
 @interface _WKUserContentExtensionStore : NSObject
 
 + (instancetype)defaultStore;
@@ -40,5 +40,14 @@ WK_CLASS_AVAILABLE(10_11, 9_0)
 - (void)removeContentExtensionForIdentifier:(NSString *)identifier completionHandler:(void (^)(NSError *))completionHandler;
 
 @end
+
+WK_EXTERN NSString * const _WKUserContentExtensionsDomain WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+
+typedef NS_ENUM(NSInteger, _WKUserContentExtensionStoreErrorCode) {
+    _WKUserContentExtensionStoreErrorLookupFailed,
+    _WKUserContentExtensionStoreErrorVersionMismatch,
+    _WKUserContentExtensionStoreErrorCompileFailed,
+    _WKUserContentExtensionStoreErrorRemoveFailed,
+} WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
 #endif // WK_API_ENABLED

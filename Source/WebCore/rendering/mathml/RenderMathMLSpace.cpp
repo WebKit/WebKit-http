@@ -29,71 +29,63 @@
 #if ENABLE(MATHML)
 
 #include "GraphicsContext.h"
-#include "MathMLNames.h"
-#include "PaintInfo.h"
 
 namespace WebCore {
-    
-using namespace MathMLNames;
 
-RenderMathMLSpace::RenderMathMLSpace(MathMLTextElement& element, Ref<RenderStyle>&& style)
+RenderMathMLSpace::RenderMathMLSpace(MathMLSpaceElement& element, RenderStyle&& style)
     : RenderMathMLBlock(element, WTFMove(style))
-    , m_width(0)
-    , m_height(0)
-    , m_depth(0)
 {
 }
 
-void RenderMathMLSpace::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
+void RenderMathMLSpace::computePreferredLogicalWidths()
 {
-    minLogicalWidth = m_width;
-    maxLogicalWidth = m_width;
+    ASSERT(preferredLogicalWidthsDirty());
+
+    m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = spaceWidth();
+
+    setPreferredLogicalWidthsDirty(false);
 }
 
-void RenderMathMLSpace::updateFromElement()
+LayoutUnit RenderMathMLSpace::spaceWidth() const
 {
-    const auto& spaceElement = element();
+    auto& spaceElement = element();
+    // FIXME: Negative width values are not supported yet.
+    return std::max<LayoutUnit>(0, toUserUnits(spaceElement.width(), style(), 0));
+}
 
-    // This parses the mspace attributes, using 0 as the default values.
-    m_width = 0;
-    m_height = 0;
-    m_depth = 0;
-    parseMathMLLength(spaceElement.getAttribute(MathMLNames::widthAttr), m_width, &style());
-    parseMathMLLength(spaceElement.getAttribute(MathMLNames::heightAttr), m_height, &style());
-    parseMathMLLength(spaceElement.getAttribute(MathMLNames::depthAttr), m_depth, &style());
-
-    // FIXME: Negative width values should be accepted.
-    if (m_width < 0)
-        m_width = 0;
+void RenderMathMLSpace::getSpaceHeightAndDepth(LayoutUnit& height, LayoutUnit& depth) const
+{
+    auto& spaceElement = element();
+    height = toUserUnits(spaceElement.height(), style(), 0);
+    depth = toUserUnits(spaceElement.depth(), style(), 0);
 
     // If the total height is negative, set vertical dimensions to 0.
-    if (m_height + m_depth < 0) {
-        m_height = 0;
-        m_depth = 0;
+    if (height + depth < 0) {
+        height = 0;
+        depth = 0;
     }
-
-    setNeedsLayoutAndPrefWidthsRecalc();
 }
 
-void RenderMathMLSpace::updateLogicalWidth()
+void RenderMathMLSpace::layoutBlock(bool relayoutChildren, LayoutUnit)
 {
-    setLogicalWidth(m_width);
+    ASSERT(needsLayout());
+
+    if (!relayoutChildren && simplifiedLayout())
+        return;
+
+    setLogicalWidth(spaceWidth());
+    LayoutUnit height, depth;
+    getSpaceHeightAndDepth(height, depth);
+    setLogicalHeight(height + depth);
+
+    clearNeedsLayout();
 }
 
-void RenderMathMLSpace::updateLogicalHeight()
+std::optional<int> RenderMathMLSpace::firstLineBaseline() const
 {
-    setLogicalHeight(m_height + m_depth);
-}
-
-void RenderMathMLSpace::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
-{
-    RenderMathMLBlock::styleDidChange(diff, oldStyle);
-    updateFromElement();
-}
-
-Optional<int> RenderMathMLSpace::firstLineBaseline() const
-{
-    return Optional<int>(m_height);
+    LayoutUnit height, depth;
+    getSpaceHeightAndDepth(height, depth);
+    return std::optional<int>(height);
 }
 
 }

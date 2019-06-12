@@ -28,18 +28,16 @@
 
 #include "Error.h"
 #include "JSCBuiltins.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSInternalPromise.h"
 #include "Microtask.h"
-#include "StructureInlines.h"
 
 namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSInternalPromisePrototype);
 
-const ClassInfo JSInternalPromisePrototype::s_info = { "InternalPromisePrototype", &Base::s_info, nullptr, CREATE_METHOD_TABLE(JSInternalPromisePrototype) };
+const ClassInfo JSInternalPromisePrototype::s_info = { "InternalPromisePrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInternalPromisePrototype) };
 
 JSInternalPromisePrototype* JSInternalPromisePrototype::create(VM& vm, JSGlobalObject*, Structure* structure)
 {

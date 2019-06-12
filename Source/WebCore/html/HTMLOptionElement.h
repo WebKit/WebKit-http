@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2010, 2011, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef HTMLOptionElement_h
-#define HTMLOptionElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -36,31 +35,31 @@ class HTMLOptionElement final : public HTMLElement {
 public:
     static Ref<HTMLOptionElement> create(Document&);
     static Ref<HTMLOptionElement> create(const QualifiedName&, Document&);
-    static RefPtr<HTMLOptionElement> createForJSConstructor(Document&, const String& data, const String& value,
-       bool defaultSelected, bool selected, ExceptionCode&);
+    static ExceptionOr<Ref<HTMLOptionElement>> createForJSConstructor(Document&, const String& text, const String& value, bool defaultSelected, bool selected);
 
     WEBCORE_EXPORT String text() const;
-    void setText(const String&, ExceptionCode&);
+    void setText(const String&);
 
-    int index() const;
+    WEBCORE_EXPORT int index() const;
 
-    String value() const;
-    void setValue(const String&);
+    WEBCORE_EXPORT String value() const;
+    WEBCORE_EXPORT void setValue(const String&);
 
     WEBCORE_EXPORT bool selected();
-    void setSelected(bool);
+    WEBCORE_EXPORT void setSelected(bool);
 
 #if ENABLE(DATALIST_ELEMENT)
     HTMLDataListElement* ownerDataListElement() const;
 #endif
     HTMLSelectElement* ownerSelectElement() const;
 
-    String label() const;
-    void setLabel(const String&);
+    WEBCORE_EXPORT String label() const;
+    String displayLabel() const;
+    WEBCORE_EXPORT void setLabel(const String&);
 
     bool ownElementDisabled() const { return m_disabled; }
 
-    virtual bool isDisabledFormControl() const override;
+    bool isDisabledFormControl() const final;
 
     String textIndentedToRespectGroupLabel() const;
 
@@ -69,17 +68,18 @@ public:
 private:
     HTMLOptionElement(const QualifiedName&, Document&);
 
-    virtual bool isFocusable() const override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool isFocusable() const final;
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
+    bool matchesDefaultPseudoClass() const final;
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void accessKeyAction(bool) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void accessKeyAction(bool) final;
 
-    virtual void childrenChanged(const ChildChange&) override;
+    void childrenChanged(const ChildChange&) final;
 
-    virtual void willResetComputedStyle() override;
+    void willResetComputedStyle() final;
 
     String collectOptionInnerText() const;
 
@@ -88,5 +88,3 @@ private:
 };
 
 } // namespace
-
-#endif

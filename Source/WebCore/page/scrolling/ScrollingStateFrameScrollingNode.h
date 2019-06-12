@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingStateFrameScrollingNode_h
-#define ScrollingStateFrameScrollingNode_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
-#include "Region.h"
+#include "EventTrackingRegions.h"
 #include "ScrollTypes.h"
 #include "ScrollbarThemeComposite.h"
 #include "ScrollingCoordinator.h"
@@ -42,13 +41,13 @@ class ScrollingStateFrameScrollingNode final : public ScrollingStateScrollingNod
 public:
     static Ref<ScrollingStateFrameScrollingNode> create(ScrollingStateTree&, ScrollingNodeID);
 
-    virtual Ref<ScrollingStateNode> clone(ScrollingStateTree&) override;
+    Ref<ScrollingStateNode> clone(ScrollingStateTree&) override;
 
     virtual ~ScrollingStateFrameScrollingNode();
 
     enum ChangedProperty {
         FrameScaleFactor = NumScrollingStateNodeBits,
-        NonFastScrollableRegion,
+        EventTrackingRegion,
         ReasonsForSynchronousScrolling,
         ScrolledContentsLayer,
         CounterScrollingLayer,
@@ -62,19 +61,32 @@ public:
         BehaviorForFixedElements,
         TopContentInset,
         FixedElementsLayoutRelativeToFrame,
+        VisualViewportEnabled,
+        LayoutViewport,
+        MinLayoutViewportOrigin,
+        MaxLayoutViewportOrigin,
     };
 
     float frameScaleFactor() const { return m_frameScaleFactor; }
     WEBCORE_EXPORT void setFrameScaleFactor(float);
 
-    const Region& nonFastScrollableRegion() const { return m_nonFastScrollableRegion; }
-    WEBCORE_EXPORT void setNonFastScrollableRegion(const Region&);
+    const EventTrackingRegions& eventTrackingRegions() const { return m_eventTrackingRegions; }
+    WEBCORE_EXPORT void setEventTrackingRegions(const EventTrackingRegions&);
 
     SynchronousScrollingReasons synchronousScrollingReasons() const { return m_synchronousScrollingReasons; }
     WEBCORE_EXPORT void setSynchronousScrollingReasons(SynchronousScrollingReasons);
 
     ScrollBehaviorForFixedElements scrollBehaviorForFixedElements() const { return m_behaviorForFixed; }
     WEBCORE_EXPORT void setScrollBehaviorForFixedElements(ScrollBehaviorForFixedElements);
+
+    FloatRect layoutViewport() const { return m_layoutViewport; };
+    WEBCORE_EXPORT void setLayoutViewport(const FloatRect&);
+
+    FloatPoint minLayoutViewportOrigin() const { return m_minLayoutViewportOrigin; }
+    WEBCORE_EXPORT void setMinLayoutViewportOrigin(const FloatPoint&);
+
+    FloatPoint maxLayoutViewportOrigin() const { return m_maxLayoutViewportOrigin; }
+    WEBCORE_EXPORT void setMaxLayoutViewportOrigin(const FloatPoint&);
 
     int headerHeight() const { return m_headerHeight; }
     WEBCORE_EXPORT void setHeaderHeight(int);
@@ -84,9 +96,6 @@ public:
 
     float topContentInset() const { return m_topContentInset; }
     WEBCORE_EXPORT void setTopContentInset(float);
-
-    const LayerRepresentation& scrolledContentsLayer() const { return m_scrolledContentsLayer; }
-    WEBCORE_EXPORT void setScrolledContentsLayer(const LayerRepresentation&);
 
     // This is a layer moved in the opposite direction to scrolling, for example for background-attachment:fixed
     const LayerRepresentation& counterScrollingLayer() const { return m_counterScrollingLayer; }
@@ -113,13 +122,16 @@ public:
     bool fixedElementsLayoutRelativeToFrame() const { return m_fixedElementsLayoutRelativeToFrame; }
     WEBCORE_EXPORT void setFixedElementsLayoutRelativeToFrame(bool);
 
-#if PLATFORM(MAC)
-    ScrollbarPainter verticalScrollbarPainter() const { return m_verticalScrollbarPainter.get(); }
-    ScrollbarPainter horizontalScrollbarPainter() const { return m_horizontalScrollbarPainter.get(); }
-#endif
-    void setScrollbarPaintersFromScrollbars(Scrollbar* verticalScrollbar, Scrollbar* horizontalScrollbar);
+    bool visualViewportEnabled() const { return m_visualViewportEnabled; };
+    WEBCORE_EXPORT void setVisualViewportEnabled(bool);
 
-    virtual void dumpProperties(TextStream&, int indent) const override;
+#if PLATFORM(MAC)
+    NSScrollerImp *verticalScrollerImp() const { return m_verticalScrollerImp.get(); }
+    NSScrollerImp *horizontalScrollerImp() const { return m_horizontalScrollerImp.get(); }
+#endif
+    void setScrollerImpsFromScrollbars(Scrollbar* verticalScrollbar, Scrollbar* horizontalScrollbar);
+
+    void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const override;
 
 private:
     ScrollingStateFrameScrollingNode(ScrollingStateTree&, ScrollingNodeID);
@@ -127,18 +139,22 @@ private:
 
     LayerRepresentation m_counterScrollingLayer;
     LayerRepresentation m_insetClipLayer;
-    LayerRepresentation m_scrolledContentsLayer;
     LayerRepresentation m_contentShadowLayer;
     LayerRepresentation m_headerLayer;
     LayerRepresentation m_footerLayer;
 
 #if PLATFORM(MAC)
-    RetainPtr<ScrollbarPainter> m_verticalScrollbarPainter;
-    RetainPtr<ScrollbarPainter> m_horizontalScrollbarPainter;
+    RetainPtr<NSScrollerImp> m_verticalScrollerImp;
+    RetainPtr<NSScrollerImp> m_horizontalScrollerImp;
 #endif
 
-    Region m_nonFastScrollableRegion;
+    EventTrackingRegions m_eventTrackingRegions;
     FloatPoint m_requestedScrollPosition;
+
+    FloatRect m_layoutViewport;
+    FloatPoint m_minLayoutViewportOrigin;
+    FloatPoint m_maxLayoutViewportOrigin;
+
     float m_frameScaleFactor { 1 };
     float m_topContentInset { 0 };
     int m_headerHeight { 0 };
@@ -147,6 +163,7 @@ private:
     ScrollBehaviorForFixedElements m_behaviorForFixed { StickToDocumentBounds };
     bool m_requestedScrollPositionRepresentsProgrammaticScroll { false };
     bool m_fixedElementsLayoutRelativeToFrame { false };
+    bool m_visualViewportEnabled { false };
 };
 
 } // namespace WebCore
@@ -154,5 +171,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_SCROLLING_STATE_NODE(ScrollingStateFrameScrollingNode, isFrameScrollingNode())
 
 #endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
-
-#endif // ScrollingStateFrameScrollingNode_h

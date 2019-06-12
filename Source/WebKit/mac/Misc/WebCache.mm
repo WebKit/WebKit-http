@@ -34,6 +34,7 @@
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/CredentialStorage.h>
 #import <WebCore/CrossOriginPreflightResultCache.h>
+#import <WebCore/Document.h>
 #import <WebCore/MemoryCache.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
@@ -46,10 +47,6 @@
 #import <WebCore/Frame.h>
 #import <WebCore/PageCache.h>
 #import <WebCore/WebCoreThreadRun.h>
-#endif
-
-#if ENABLE(CACHE_PARTITIONING)
-#import <WebCore/Document.h>
 #endif
 
 @implementation WebCache
@@ -168,11 +165,9 @@
     if (!image || !url || ![[url absoluteString] length])
         return false;
     WebCore::SecurityOrigin* topOrigin = nullptr;
-#if ENABLE(CACHE_PARTITIONING)
     if (frame)
-        topOrigin = core(frame)->document()->topOrigin();
-#endif
-    return WebCore::MemoryCache::singleton().addImageToCache(image, url, topOrigin ? topOrigin->domainForCachePartition() : emptyString());
+        topOrigin = &core(frame)->document()->topOrigin();
+    return WebCore::MemoryCache::singleton().addImageToCache(RetainPtr<CGImageRef>(image), url, topOrigin ? topOrigin->domainForCachePartition() : emptyString());
 }
 
 + (void)removeImageFromCacheForURL:(NSURL *)url
@@ -185,10 +180,8 @@
     if (!url)
         return;
     WebCore::SecurityOrigin* topOrigin = nullptr;
-#if ENABLE(CACHE_PARTITIONING)
     if (frame)
-        topOrigin = core(frame)->document()->topOrigin();
-#endif
+        topOrigin = &core(frame)->document()->topOrigin();
     WebCore::MemoryCache::singleton().removeImageFromCache(url, topOrigin ? topOrigin->domainForCachePartition() : emptyString());
 }
 
@@ -204,7 +197,7 @@
     WebCore::CachedImage& cachedImage = downcast<WebCore::CachedImage>(*cachedResource);
     if (!cachedImage.hasImage())
         return nullptr;
-    return cachedImage.image()->getCGImageRef();
+    return cachedImage.image()->nativeImage().get();
 }
 
 #endif // PLATFORM(IOS)

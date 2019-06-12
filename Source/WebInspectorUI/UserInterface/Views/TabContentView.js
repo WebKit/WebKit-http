@@ -25,13 +25,13 @@
 
 WebInspector.TabContentView = class TabContentView extends WebInspector.ContentView
 {
-    constructor(identifier, styleClassNames, tabBarItem, navigationSidebarPanel, detailsSidebarPanels)
+    constructor(identifier, styleClassNames, tabBarItem, navigationSidebarPanelConstructor, detailsSidebarPanelConstructors)
     {
         console.assert(typeof identifier === "string");
-        console.assert(typeof styleClassNames === "string" || styleClassNames.every(function(className) { return typeof className === "string"; }));
+        console.assert(typeof styleClassNames === "string" || styleClassNames.every((className) => typeof className === "string"));
         console.assert(tabBarItem instanceof WebInspector.TabBarItem);
-        console.assert(!navigationSidebarPanel || navigationSidebarPanel instanceof WebInspector.NavigationSidebarPanel);
-        console.assert(!detailsSidebarPanels || detailsSidebarPanels.every(function(detailsSidebarPanel) { return detailsSidebarPanel instanceof WebInspector.DetailsSidebarPanel; }));
+        console.assert(!navigationSidebarPanelConstructor || typeof navigationSidebarPanelConstructor === "function");
+        console.assert(!detailsSidebarPanelConstructors || detailsSidebarPanelConstructors.every((detailsSidebarPanelConstructor) => typeof detailsSidebarPanelConstructor === "function"));
 
         super(null);
 
@@ -44,13 +44,17 @@ WebInspector.TabContentView = class TabContentView extends WebInspector.ContentV
 
         this._identifier = identifier;
         this._tabBarItem = tabBarItem;
-        this._navigationSidebarPanel = navigationSidebarPanel || null;
-        this._detailsSidebarPanels = detailsSidebarPanels || [];
+        this._navigationSidebarPanelConstructor = navigationSidebarPanelConstructor || null;
+        this._detailsSidebarPanelConstructors = detailsSidebarPanelConstructors || [];
+
+        const defaultSidebarWidth = 300;
 
         this._navigationSidebarCollapsedSetting = new WebInspector.Setting(identifier + "-navigation-sidebar-collapsed", false);
+        this._navigationSidebarWidthSetting = new WebInspector.Setting(identifier + "-navigation-sidebar-width", defaultSidebarWidth);
 
         this._detailsSidebarCollapsedSetting = new WebInspector.Setting(identifier + "-details-sidebar-collapsed", true);
         this._detailsSidebarSelectedPanelSetting = new WebInspector.Setting(identifier + "-details-sidebar-selected-panel", null);
+        this._detailsSidebarWidthSetting = new WebInspector.Setting(identifier + "-details-sidebar-width", defaultSidebarWidth);
 
         this._cookieSetting = new WebInspector.Setting(identifier + "-tab-cookie", {});
     }
@@ -125,15 +129,14 @@ WebInspector.TabContentView = class TabContentView extends WebInspector.ContentV
 
     shown()
     {
+        super.shown();
+
         if (this._shouldRestoreStateWhenShown)
             this.restoreStateFromCookie(WebInspector.StateRestorationType.Delayed);
     }
 
     restoreStateFromCookie(restorationType)
     {
-        if (!this.navigationSidebarPanel)
-            return;
-
         if (!this.visible) {
             this._shouldRestoreStateWhenShown = true;
             return;
@@ -147,44 +150,48 @@ WebInspector.TabContentView = class TabContentView extends WebInspector.ContentV
         else if (restorationType === WebInspector.StateRestorationType.Navigation)
             relaxMatchDelay = 2000;
 
-        this.navigationSidebarPanel.restoreStateFromCookie(this._cookieSetting.value || {}, relaxMatchDelay);
+        let cookie = this._cookieSetting.value || {};
+
+        if (this.navigationSidebarPanel)
+            this.navigationSidebarPanel.restoreStateFromCookie(cookie, relaxMatchDelay);
+
+        this.restoreFromCookie(cookie);
     }
 
-    saveStateToCookie()
+    saveStateToCookie(cookie)
     {
-        if (!this.navigationSidebarPanel)
-            return;
-
         if (this._shouldRestoreStateWhenShown)
             return;
 
-        var cookie = {};
-        this.navigationSidebarPanel.saveStateToCookie(cookie);
+        cookie = cookie || {};
+
+        if (this.navigationSidebarPanel)
+            this.navigationSidebarPanel.saveStateToCookie(cookie);
+
+        this.saveToCookie(cookie);
+
         this._cookieSetting.value = cookie;
     }
 
     get navigationSidebarPanel()
     {
-        return this._navigationSidebarPanel;
+        if (!this._navigationSidebarPanelConstructor)
+            return null;
+        return WebInspector.instanceForClass(this._navigationSidebarPanelConstructor);
     }
 
-    get navigationSidebarCollapsedSetting()
-    {
-        return this._navigationSidebarCollapsedSetting;
-    }
+    get navigationSidebarCollapsedSetting() { return this._navigationSidebarCollapsedSetting; }
+    get navigationSidebarWidthSetting() { return this._navigationSidebarWidthSetting; }
 
     get detailsSidebarPanels()
     {
+        if (!this._detailsSidebarPanels)
+            this._detailsSidebarPanels = this._detailsSidebarPanelConstructors.map(constructor => WebInspector.instanceForClass(constructor));
+
         return this._detailsSidebarPanels;
     }
 
-    get detailsSidebarCollapsedSetting()
-    {
-        return this._detailsSidebarCollapsedSetting;
-    }
-
-    get detailsSidebarSelectedPanelSetting()
-    {
-        return this._detailsSidebarSelectedPanelSetting;
-    }
+    get detailsSidebarCollapsedSetting() { return this._detailsSidebarCollapsedSetting; }
+    get detailsSidebarSelectedPanelSetting() { return this._detailsSidebarSelectedPanelSetting; }
+    get detailsSidebarWidthSetting() { return this._detailsSidebarWidthSetting; }
 };

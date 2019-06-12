@@ -9,6 +9,7 @@
 
 #include <GLSLANG/ShaderLang.h>
 
+#include "compiler/translator/ExtensionBehavior.h"
 #include "compiler/translator/IntermNode.h"
 
 class TSymbolTable;
@@ -21,26 +22,31 @@ class CollectVariables : public TIntermTraverser
 {
   public:
     CollectVariables(std::vector<Attribute> *attribs,
-                     std::vector<Attribute> *outputVariables,
+                     std::vector<OutputVariable> *outputVariables,
                      std::vector<Uniform> *uniforms,
                      std::vector<Varying> *varyings,
                      std::vector<InterfaceBlock> *interfaceBlocks,
                      ShHashFunction64 hashFunction,
-                     const TSymbolTable &symbolTable);
+                     const TSymbolTable &symbolTable,
+                     const TExtensionBehavior &extensionBehavior);
 
-    virtual void visitSymbol(TIntermSymbol *symbol);
-    virtual bool visitAggregate(Visit, TIntermAggregate *node);
-    virtual bool visitBinary(Visit visit, TIntermBinary *binaryNode);
+    void visitSymbol(TIntermSymbol *symbol) override;
+    bool visitDeclaration(Visit, TIntermDeclaration *node) override;
+    bool visitBinary(Visit visit, TIntermBinary *binaryNode) override;
 
   private:
-    template <typename VarT>
-    void visitVariable(const TIntermSymbol *variable, std::vector<VarT> *infoList) const;
+    void setCommonVariableProperties(const TType &type,
+                                     const TString &name,
+                                     ShaderVariable *variableOut) const;
 
-    template <typename VarT>
-    void visitInfoList(const TIntermSequence &sequence, std::vector<VarT> *infoList) const;
+    Attribute recordAttribute(const TIntermSymbol &variable) const;
+    OutputVariable recordOutputVariable(const TIntermSymbol &variable) const;
+    Varying recordVarying(const TIntermSymbol &variable) const;
+    InterfaceBlock recordInterfaceBlock(const TIntermSymbol &variable) const;
+    Uniform recordUniform(const TIntermSymbol &variable) const;
 
     std::vector<Attribute> *mAttribs;
-    std::vector<Attribute> *mOutputVariables;
+    std::vector<OutputVariable> *mOutputVariables;
     std::vector<Uniform> *mUniforms;
     std::vector<Varying> *mVaryings;
     std::vector<InterfaceBlock> *mInterfaceBlocks;
@@ -53,19 +59,31 @@ class CollectVariables : public TIntermTraverser
     bool mFragCoordAdded;
 
     bool mInstanceIDAdded;
+    bool mVertexIDAdded;
     bool mPositionAdded;
     bool mPointSizeAdded;
     bool mLastFragDataAdded;
+    bool mFragColorAdded;
+    bool mFragDataAdded;
+    bool mFragDepthEXTAdded;
+    bool mFragDepthAdded;
+    bool mSecondaryFragColorEXTAdded;
+    bool mSecondaryFragDataEXTAdded;
 
     ShHashFunction64 mHashFunction;
 
     const TSymbolTable &mSymbolTable;
+    const TExtensionBehavior &mExtensionBehavior;
 };
 
-// Expand struct uniforms to flattened lists of split variables
-void ExpandUniforms(const std::vector<Uniform> &compact,
+void ExpandVariable(const ShaderVariable &variable,
+                    const std::string &name,
+                    const std::string &mappedName,
+                    bool markStaticUse,
                     std::vector<ShaderVariable> *expanded);
 
+// Expand struct uniforms to flattened lists of split variables
+void ExpandUniforms(const std::vector<Uniform> &compact, std::vector<ShaderVariable> *expanded);
 }
 
 #endif  // COMPILER_TRANSLATOR_VARIABLEINFO_H_

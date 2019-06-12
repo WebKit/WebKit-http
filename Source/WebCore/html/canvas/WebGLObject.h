@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,22 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLObject_h
-#define WebGLObject_h
+#pragma once
 
 #include "GraphicsContext3D.h"
 
-#include <wtf/RefCounted.h>
-
 namespace WebCore {
 
-class GraphicsContext3D;
 class WebGLContextGroup;
 class WebGLRenderingContextBase;
 
 class WebGLObject : public RefCounted<WebGLObject> {
 public:
-    virtual ~WebGLObject();
+    virtual ~WebGLObject() { }
 
     Platform3DObject object() const { return m_object; }
 
@@ -56,10 +52,10 @@ public:
     bool isDeleted() { return m_deleted; }
 
     // True if this object belongs to the group or context.
-    virtual bool validate(const WebGLContextGroup*, const WebGLRenderingContextBase*) const = 0;
+    virtual bool validate(const WebGLContextGroup*, const WebGLRenderingContextBase&) const = 0;
 
 protected:
-    WebGLObject(WebGLRenderingContextBase*);
+    WebGLObject() = default;
 
     // setObject should be only called once right after creating a WebGLObject.
     void setObject(Platform3DObject);
@@ -74,11 +70,9 @@ protected:
     virtual GraphicsContext3D* getAGraphicsContext3D() const = 0;
 
 private:
-    Platform3DObject m_object;
-    unsigned m_attachmentCount;
-    bool m_deleted;
+    Platform3DObject m_object { 0 };
+    unsigned m_attachmentCount { 0 };
+    bool m_deleted { false };
 };
 
 } // namespace WebCore
-
-#endif // WebGLObject_h

@@ -61,9 +61,9 @@ function createCodeMirrorTextMarkers(type, pattern, matchFunction, codeMirror, r
                 continue;
             }
 
-            var valueString = match[0];
-            var value = WebInspector[type].fromString(valueString);
-            if (!value) {
+            let valueString = match[1];
+            let value = WebInspector[type] ? WebInspector[type].fromString(valueString) : null;
+            if (WebInspector[type] && !value) {
                 match = pattern.exec(lineContent);
                 continue;
             }
@@ -194,4 +194,16 @@ function createCodeMirrorCubicBezierTextMarkers(codeMirror, range, callback)
 {
     var cubicBezierRegex = /(cubic-bezier\([^)]+\)|\b\w+\b(?:-\b\w+\b){0,2})/g;
     return createCodeMirrorTextMarkers("CubicBezier", cubicBezierRegex, null, codeMirror, range, callback);
+}
+
+function createCodeMirrorSpringTextMarkers(codeMirror, range, callback)
+{
+    const springRegex = /(spring\([^)]+\))/g;
+    return createCodeMirrorTextMarkers("Spring", springRegex, null, codeMirror, range, callback);
+}
+
+function createCodeMirrorVariableTextMarkers(codeMirror, range, callback)
+{
+    const variableRegex = /var\((--[\w-]+)\)/g;
+    return createCodeMirrorTextMarkers("Variable", variableRegex, null, codeMirror, range, callback);
 }

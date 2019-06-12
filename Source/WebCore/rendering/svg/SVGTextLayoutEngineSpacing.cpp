@@ -25,7 +25,6 @@
 #include "SVGRenderStyle.h"
 
 #if ENABLE(SVG_FONTS)
-#include "SVGFontData.h"
 #include "SVGFontElement.h"
 #include "SVGFontFaceElement.h"
 #endif
@@ -38,51 +37,10 @@ SVGTextLayoutEngineSpacing::SVGTextLayoutEngineSpacing(const FontCascade& font)
 {
 }
 
-float SVGTextLayoutEngineSpacing::calculateSVGKerning(bool isVerticalText, const SVGTextMetrics::Glyph& currentGlyph)
-{
-#if ENABLE(SVG_FONTS)
-    const Font& font = m_font.primaryFont();
-    if (!font.isSVGFont()) {
-        m_lastGlyph.isValid = false;
-        return 0;
-    }
-
-    ASSERT(font.isCustomFont());
-    ASSERT(font.isSVGFont());
-
-    auto* svgFontData = static_cast<const SVGFontData*>(font.svgData());
-    SVGFontFaceElement* svgFontFace = svgFontData->svgFontFaceElement();
-    ASSERT(svgFontFace);
-
-    SVGFontElement* svgFont = svgFontFace->associatedFontElement();
-    if (!svgFont) {
-        m_lastGlyph.isValid = false;
-        return 0;
-    }
-
-    float kerning = 0;
-    if (m_lastGlyph.isValid) {
-        if (isVerticalText)
-            kerning = svgFont->verticalKerningForPairOfStringsAndGlyphs(m_lastGlyph.unicodeString, m_lastGlyph.name, currentGlyph.unicodeString, currentGlyph.name);
-        else
-            kerning = svgFont->horizontalKerningForPairOfStringsAndGlyphs(m_lastGlyph.unicodeString, m_lastGlyph.name, currentGlyph.unicodeString, currentGlyph.name);
-    }
-
-    m_lastGlyph = currentGlyph;
-    m_lastGlyph.isValid = true;
-    kerning *= m_font.size() / m_font.fontMetrics().unitsPerEm();
-    return kerning;
-#else
-    UNUSED_PARAM(isVerticalText);
-    UNUSED_PARAM(currentGlyph);
-    return false;
-#endif
-}
-
 float SVGTextLayoutEngineSpacing::calculateCSSKerningAndSpacing(const SVGRenderStyle* style, SVGElement* contextElement, const UChar* currentCharacter)
 {
     float kerning = 0;
-    SVGLength kerningLength = style->kerning();
+    auto kerningLength = style->kerning();
     if (kerningLength.unitType() == LengthTypePercentage)
         kerning = kerningLength.valueAsPercentage() * m_font.pixelSize();
     else {

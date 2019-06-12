@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLLazySlowPathCall_h
-#define FTLLazySlowPathCall_h
+#pragma once
 
 #include "CodeBlock.h"
 #include "CodeLocation.h"
@@ -39,18 +38,15 @@ namespace JSC { namespace FTL {
 
 template<typename ResultType, typename... ArgumentTypes>
 RefPtr<LazySlowPath::Generator> createLazyCallGenerator(
-    FunctionPtr function, ResultType result, ArgumentTypes... arguments)
+    VM& vm, FunctionPtr function, ResultType result, ArgumentTypes... arguments)
 {
     return LazySlowPath::createGenerator(
-        [=] (CCallHelpers& jit, LazySlowPath::GenerationParams& params) {
+        [=, &vm] (CCallHelpers& jit, LazySlowPath::GenerationParams& params) {
             callOperation(
-                params.lazySlowPath->usedRegisters(), jit, params.lazySlowPath->callSiteIndex(),
+                vm, params.lazySlowPath->usedRegisters(), jit, params.lazySlowPath->callSiteIndex(),
                 params.exceptionJumps, function, result, arguments...);
             params.doneJumps.append(jit.jump());
         });
 }
 
 } } // namespace JSC::FTL
-
-#endif // FTLLazySlowPathCall_h
-

@@ -23,12 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLRenderbuffer_h
-#define WebGLRenderbuffer_h
+#pragma once
 
 #include "WebGLSharedObject.h"
-
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
@@ -36,7 +33,7 @@ class WebGLRenderbuffer final : public WebGLSharedObject {
 public:
     virtual ~WebGLRenderbuffer();
 
-    static Ref<WebGLRenderbuffer> create(WebGLRenderingContextBase*);
+    static Ref<WebGLRenderbuffer> create(WebGLRenderingContextBase&);
 
     void setInternalFormat(GC3Denum internalformat)
     {
@@ -64,12 +61,12 @@ public:
     void setHasEverBeenBound() { m_hasEverBeenBound = true; }
 
 protected:
-    WebGLRenderbuffer(WebGLRenderingContextBase*);
+    WebGLRenderbuffer(WebGLRenderingContextBase&);
 
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
+    void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 
 private:
-    virtual bool isRenderbuffer() const override { return true; }
+    bool isRenderbuffer() const override { return true; }
 
     GC3Denum m_internalFormat;
     bool m_initialized;
@@ -80,5 +77,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // WebGLRenderbuffer_h

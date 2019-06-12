@@ -12,12 +12,11 @@
 
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 #include "common/angleutils.h"
 #include "common/platform.h"
-
-// TODO: move out of D3D11
-#include "libANGLE/renderer/d3d/d3d11/NativeWindow.h"
+#include "libANGLE/Error.h"
 
 #if !defined(ANGLE_FORCE_VSYNC_OFF)
 #define ANGLE_FORCE_VSYNC_OFF 0
@@ -30,12 +29,11 @@ class RenderTargetD3D;
 class SwapChainD3D : angle::NonCopyable
 {
   public:
-    SwapChainD3D(rx::NativeWindow nativeWindow, HANDLE shareHandle, GLenum backBufferFormat, GLenum depthBufferFormat)
-        : mNativeWindow(nativeWindow), mShareHandle(shareHandle), mBackBufferFormat(backBufferFormat), mDepthBufferFormat(depthBufferFormat)
-    {
-    }
-
-    virtual ~SwapChainD3D() {};
+    SwapChainD3D(HANDLE shareHandle,
+                 IUnknown *d3dTexture,
+                 GLenum backBufferFormat,
+                 GLenum depthBufferFormat);
+    virtual ~SwapChainD3D();
 
     virtual EGLint resize(EGLint backbufferWidth, EGLint backbufferSize) = 0;
     virtual EGLint reset(EGLint backbufferWidth, EGLint backbufferHeight, EGLint swapInterval) = 0;
@@ -45,18 +43,21 @@ class SwapChainD3D : angle::NonCopyable
     virtual RenderTargetD3D *getColorRenderTarget() = 0;
     virtual RenderTargetD3D *getDepthStencilRenderTarget() = 0;
 
-    GLenum GetBackBufferInternalFormat() const { return mBackBufferFormat; }
-    GLenum GetDepthBufferInternalFormat() const { return mDepthBufferFormat; }
+    GLenum getRenderTargetInternalFormat() const { return mOffscreenRenderTargetFormat; }
+    GLenum getDepthBufferInternalFormat() const { return mDepthBufferFormat; }
 
     HANDLE getShareHandle() { return mShareHandle; }
+    virtual void *getKeyedMutex() = 0;
+
+    virtual egl::Error getSyncValues(EGLuint64KHR *ust, EGLuint64KHR *msc, EGLuint64KHR *sbc) = 0;
 
   protected:
-    rx::NativeWindow mNativeWindow;  // Handler for the Window that the surface is created for.
-    const GLenum mBackBufferFormat;
+    const GLenum mOffscreenRenderTargetFormat;
     const GLenum mDepthBufferFormat;
 
     HANDLE mShareHandle;
+    IUnknown *mD3DTexture;
 };
 
-}
+}  // namespace rx
 #endif // LIBANGLE_RENDERER_D3D_SWAPCHAIND3D_H_

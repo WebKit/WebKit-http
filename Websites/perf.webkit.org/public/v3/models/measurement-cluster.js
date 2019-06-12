@@ -1,3 +1,4 @@
+'use strict';
 
 class MeasurementCluster {
     constructor(response)
@@ -16,16 +17,16 @@ class MeasurementCluster {
             return;
 
         var self = this;
-        rawMeasurements.forEach(function (row) {
-            var id = self._adaptor.extractId(row);
-            if (id in idMap)
-                return;
-            if (row[self._markedOutlierIndex] && !includeOutliers)
-                return;
-
-            idMap[id] = true;
-
-            series._series.push(self._adaptor.adoptToSeries(row, series, series._series.length));
-        });
+        for (var row of rawMeasurements) {
+            var point = this._adaptor.applyTo(row);
+            if (point.id in idMap || (!includeOutliers && point.markedOutlier))
+                continue;
+            series.append(point);
+            idMap[point.id] = point.seriesIndex;
+            point.cluster = this;
+        }
     }
 }
+
+if (typeof module != 'undefined')
+    module.exports.MeasurementCluster = MeasurementCluster;

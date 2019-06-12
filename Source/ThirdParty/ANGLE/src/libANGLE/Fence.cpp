@@ -9,12 +9,11 @@
 
 #include "libANGLE/Fence.h"
 
+#include "angle_gl.h"
+
+#include "common/utilities.h"
 #include "libANGLE/renderer/FenceNVImpl.h"
 #include "libANGLE/renderer/FenceSyncImpl.h"
-#include "libANGLE/renderer/Renderer.h"
-#include "common/utilities.h"
-
-#include "angle_gl.h"
 
 namespace gl
 {
@@ -44,7 +43,7 @@ Error FenceNV::set(GLenum condition)
     mStatus = GL_FALSE;
     mIsSet = true;
 
-    return Error(GL_NO_ERROR);
+    return NoError();
 }
 
 Error FenceNV::test(GLboolean *outResult)
@@ -57,7 +56,7 @@ Error FenceNV::test(GLboolean *outResult)
     }
 
     *outResult = mStatus;
-    return Error(GL_NO_ERROR);
+    return NoError();
 }
 
 Error FenceNV::finish()
@@ -72,20 +71,27 @@ Error FenceNV::finish()
 
     mStatus = GL_TRUE;
 
-    return Error(GL_NO_ERROR);
+    return NoError();
 }
 
 FenceSync::FenceSync(rx::FenceSyncImpl *impl, GLuint id)
-    : RefCountObject(id),
-      mFence(impl),
-      mCondition(GL_NONE),
-      mFlags(0)
+    : RefCountObject(id), mFence(impl), mLabel(), mCondition(GL_SYNC_GPU_COMMANDS_COMPLETE), mFlags(0)
 {
 }
 
 FenceSync::~FenceSync()
 {
     SafeDelete(mFence);
+}
+
+void FenceSync::setLabel(const std::string &label)
+{
+    mLabel = label;
+}
+
+const std::string &FenceSync::getLabel() const
+{
+    return mLabel;
 }
 
 Error FenceSync::set(GLenum condition, GLbitfield flags)
@@ -98,7 +104,7 @@ Error FenceSync::set(GLenum condition, GLbitfield flags)
 
     mCondition = condition;
     mFlags = flags;
-    return Error(GL_NO_ERROR);
+    return NoError();
 }
 
 Error FenceSync::clientWait(GLbitfield flags, GLuint64 timeout, GLenum *outResult)

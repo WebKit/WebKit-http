@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DataTransferItem_h
-#define DataTransferItem_h
+#pragma once
 
 #if ENABLE(DATA_TRANSFER_ITEMS)
 
@@ -39,9 +38,7 @@
 namespace WebCore {
 
 class Blob;
-class File;
 class StringCallback;
-class ScriptExecutionContext;
 
 class DataTransferItem : public RefCounted<DataTransferItem> {
 public:
@@ -53,12 +50,10 @@ public:
     virtual String kind() const = 0;
     virtual String type() const = 0;
 
-    virtual void getAsString(PassRefPtr<StringCallback>) const = 0;
-    virtual PassRefPtr<Blob> getAsFile() const = 0;
+    virtual void getAsString(RefPtr<StringCallback>&&) const = 0;
+    virtual RefPtr<Blob> getAsFile() const = 0;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(DATA_TRANSFER_ITEMS)
-
-#endif // DataTransferItem_h

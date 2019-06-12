@@ -44,7 +44,6 @@
 #include <WebKit/WKPagePolicyClient.h>
 #include <WebKit/WKPageUIClient.h>
 #include <WebKit/WKPageVisibilityTypes.h>
-#include <WebKit/WKSessionRef.h>
 
 #ifndef __cplusplus
 #include <stdbool.h>
@@ -85,6 +84,7 @@ WK_EXPORT void WKPageStopLoading(WKPageRef page);
 WK_EXPORT void WKPageReload(WKPageRef page);
 WK_EXPORT void WKPageReloadWithoutContentBlockers(WKPageRef page);
 WK_EXPORT void WKPageReloadFromOrigin(WKPageRef page);
+WK_EXPORT void WKPageReloadExpiredOnly(WKPageRef page);
 
 WK_EXPORT bool WKPageTryClose(WKPageRef page);
 WK_EXPORT void WKPageClose(WKPageRef page);
@@ -98,7 +98,9 @@ WK_EXPORT void WKPageGoToBackForwardListItem(WKPageRef page, WKBackForwardListIt
 WK_EXPORT void WKPageTryRestoreScrollPosition(WKPageRef page);
 WK_EXPORT WKBackForwardListRef WKPageGetBackForwardList(WKPageRef page);
 WK_EXPORT bool WKPageWillHandleHorizontalScrollEvents(WKPageRef page);
-    
+
+WK_EXPORT void WKPageUpdateWebsitePolicies(WKPageRef, WKWebsitePoliciesRef);
+
 WK_EXPORT WKStringRef WKPageCopyTitle(WKPageRef page);
 
 WK_EXPORT WKURLRef WKPageCopyPendingAPIRequestURL(WKPageRef page);
@@ -115,8 +117,6 @@ WK_EXPORT double WKPageGetEstimatedProgress(WKPageRef page);
 WK_EXPORT uint64_t WKPageGetRenderTreeSize(WKPageRef page);
 
 WK_EXPORT WKInspectorRef WKPageGetInspector(WKPageRef page);
-
-WK_EXPORT WKVibrationRef WKPageGetVibration(WKPageRef page);
 
 WK_EXPORT WKStringRef WKPageCopyUserAgent(WKPageRef page);
 
@@ -228,8 +228,6 @@ WK_EXPORT void WKPageSetPageLoaderClient(WKPageRef page, const WKPageLoaderClien
 WK_EXPORT void WKPageSetPagePolicyClient(WKPageRef page, const WKPagePolicyClientBase* client);
 WK_EXPORT void WKPageSetPageNavigationClient(WKPageRef page, const WKPageNavigationClientBase* client);
 
-WK_EXPORT void WKPageSetSession(WKPageRef page, WKSessionRef session);
-
 typedef void (*WKPageRunJavaScriptFunction)(WKSerializedScriptValueRef, WKErrorRef, void*);
 WK_EXPORT void WKPageRunJavaScriptInMainFrame(WKPageRef page, WKStringRef script, void* context, WKPageRunJavaScriptFunction function);
 #ifdef __BLOCKS__
@@ -271,34 +269,6 @@ WK_EXPORT void WKPageExecuteCommand(WKPageRef page, WKStringRef command);
 WK_EXPORT void WKPagePostMessageToInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody);
 
 WK_EXPORT void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item);
-
-
-
-/* DEPRECATED -  Please use constants from WKPluginInformation instead. */
-
-/* Value type: WKStringRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationBundleIdentifierKey();
-
-/* Value type: WKStringRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationBundleVersionKey();
-
-/* Value type: WKStringRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationDisplayNameKey();
-
-/* Value type: WKURLRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationFrameURLKey();
-
-/* Value type: WKStringRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationMIMETypeKey();
-
-/* Value type: WKURLRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationPageURLKey();
-
-/* Value type: WKURLRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationPluginspageAttributeURLKey();
-
-/* Value type: WKURLRef */
-WK_EXPORT WKStringRef WKPageGetPluginInformationPluginURLKey();
 
 #ifdef __cplusplus
 }

@@ -6,52 +6,54 @@
 
 #include "compiler/translator/UnfoldShortCircuitAST.h"
 
+namespace sh
+{
+
 namespace
 {
 
 // "x || y" is equivalent to "x ? true : y".
-TIntermSelection *UnfoldOR(TIntermTyped *x, TIntermTyped *y)
+TIntermTernary *UnfoldOR(TIntermTyped *x, TIntermTyped *y)
 {
-    const TType boolType(EbtBool, EbpUndefined);
     TConstantUnion *u = new TConstantUnion;
     u->setBConst(true);
-    TIntermConstantUnion *trueNode = new TIntermConstantUnion(
-        u, TType(EbtBool, EbpUndefined, EvqConst, 1));
-    return new TIntermSelection(x, trueNode, y, boolType);
+    TIntermConstantUnion *trueNode =
+        new TIntermConstantUnion(u, TType(EbtBool, EbpUndefined, EvqConst, 1));
+    return new TIntermTernary(x, trueNode, y);
 }
 
 // "x && y" is equivalent to "x ? y : false".
-TIntermSelection *UnfoldAND(TIntermTyped *x, TIntermTyped *y)
+TIntermTernary *UnfoldAND(TIntermTyped *x, TIntermTyped *y)
 {
-    const TType boolType(EbtBool, EbpUndefined);
     TConstantUnion *u = new TConstantUnion;
     u->setBConst(false);
-    TIntermConstantUnion *falseNode = new TIntermConstantUnion(
-        u, TType(EbtBool, EbpUndefined, EvqConst, 1));
-    return new TIntermSelection(x, y, falseNode, boolType);
+    TIntermConstantUnion *falseNode =
+        new TIntermConstantUnion(u, TType(EbtBool, EbpUndefined, EvqConst, 1));
+    return new TIntermTernary(x, y, falseNode);
 }
 
 }  // namespace anonymous
 
 bool UnfoldShortCircuitAST::visitBinary(Visit visit, TIntermBinary *node)
 {
-    TIntermSelection *replacement = NULL;
+    TIntermTernary *replacement = nullptr;
 
     switch (node->getOp())
     {
-      case EOpLogicalOr:
-        replacement = UnfoldOR(node->getLeft(), node->getRight());
-        break;
-      case EOpLogicalAnd:
-        replacement = UnfoldAND(node->getLeft(), node->getRight());
-        break;
-      default:
-        break;
+        case EOpLogicalOr:
+            replacement = UnfoldOR(node->getLeft(), node->getRight());
+            break;
+        case EOpLogicalAnd:
+            replacement = UnfoldAND(node->getLeft(), node->getRight());
+            break;
+        default:
+            break;
     }
     if (replacement)
     {
-        mReplacements.push_back(
-            NodeUpdateEntry(getParentNode(), node, replacement, false));
+        queueReplacement(node, replacement, OriginalNode::IS_DROPPED);
     }
     return true;
 }
+
+}  // namespace sh

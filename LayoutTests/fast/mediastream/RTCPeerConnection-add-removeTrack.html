@@ -12,6 +12,8 @@
             var sender;
             var sender2;
             var senderFromPc2
+            var receiver;
+            var transceiver;
 
             description("Test basic behavior of RTCPeerConnection.add/removeTrack()");
 
@@ -22,13 +24,28 @@
                 finishJSTest();
             }
 
-            var pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
-            var pc2 = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            var pc = new RTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+            var pc2 = new RTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
 
             navigator.mediaDevices.getUserMedia({ "video": true })
             .then(function (s) {
                 stream = s;
                 track = stream.getTracks()[0];
+
+                debug("Test bad addTrack() arguments");
+                shouldThrow("pc.addTrack()");
+                shouldThrow("pc.addTrack(null)");
+                shouldThrow("pc.addTrack({})");
+                shouldThrow("pc.addTrack(track, null)");
+                shouldThrow("pc.addTrack(track, {})");
+                shouldThrow("pc.addTrack(track, stream, null)");
+                debug("");
+
+                debug("Test bad removeTrack() arguments");
+                shouldThrow("pc.removeTrack()");
+                shouldThrow("pc.removeTrack(null)");
+                shouldThrow("pc.removeTrack({})");
+                debug("");
 
                 shouldBe("pc.getSenders().length", "0");
 
@@ -37,6 +54,20 @@
                 shouldBe("sender.track", "track");
                 shouldBe("pc.getSenders().length", "1");
                 shouldBe("pc.getSenders()[0]", "sender");
+
+                shouldBe("pc.getReceivers().length", "1");
+                receiver = pc.getReceivers()[0];
+                shouldBeType("receiver.track", "MediaStreamTrack");
+                shouldBeTrue("receiver.track.muted");
+
+                shouldBe("receiver.track.kind", "sender.track.kind");
+
+                shouldBe("pc.getTransceivers().length", "1");
+                transceiver = pc.getTransceivers()[0];
+                shouldBeNull("transceiver.mid");
+                shouldBe("transceiver.sender", "sender");
+                shouldBe("transceiver.receiver", "receiver");
+                shouldBeFalse("transceiver.stopped");
 
                 debug("Try to add same track again");
                 shouldThrow("sender = pc.addTrack(track, stream)");
@@ -63,6 +94,11 @@
                 shouldNotThrow("senderFromPc2 = pc2.addTrack(track, stream)");
                 debug("removeTrack() with 'foreign' sender must be ignored (not throw)");
                 shouldNotThrow("pc.removeTrack(senderFromPc2)");
+
+                shouldThrow("pc.addTrack(null);");
+                shouldThrow("pc.addTrack(undefined);");
+                shouldThrow("pc.removeTrack(null);");
+                shouldThrow("pc.removeTrack(undefined);");
 
                 finishJSTest();
             })

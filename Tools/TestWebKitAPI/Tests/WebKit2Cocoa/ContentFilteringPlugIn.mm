@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,16 +59,21 @@ using DecisionPoint = MockContentFilterSettings::DecisionPoint;
     if (!(self = [super init]))
         return nil;
 
+#if ENABLE(CONTENT_FILTERING)
     auto& settings = MockContentFilterSettings::singleton();
     settings.setEnabled(true);
     settings.setDecision(static_cast<Decision>([decoder decodeIntForKey:@"Decision"]));
     settings.setDecisionPoint(static_cast<DecisionPoint>([decoder decodeIntForKey:@"DecisionPoint"]));
+    settings.setBlockedString(ASCIILiteral("blocked"));
+#endif
     return self;
 }
 
 - (void)dealloc
 {
+#if ENABLE(CONTENT_FILTERING)
     MockContentFilterSettings::singleton().setEnabled(false);
+#endif
     [super dealloc];
 }
 

@@ -45,12 +45,12 @@ String HTMLParamElement::name() const
 {
     if (hasName())
         return getNameAttribute();
-    return document().isHTMLDocument() ? emptyAtom : getIdAttribute();
+    return document().isHTMLDocument() ? emptyAtom() : getIdAttribute();
 }
 
 String HTMLParamElement::value() const
 {
-    return fastGetAttribute(valueAttr);
+    return attributeWithoutSynchronization(valueAttr);
 }
 
 bool HTMLParamElement::isURLParameter(const String& name)

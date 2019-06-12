@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FunctionCall_h
-#define FunctionCall_h
+#pragma once
 
 #if ENABLE(CSS_SELECTOR_JIT)
 
@@ -87,7 +86,7 @@ private:
     JSC::MacroAssembler::Jump callAndBranchOnCondition(JSC::MacroAssembler::ResultCondition condition, JSC::MacroAssembler::TrustedImm32 mask)
     {
         prepareAndCall();
-        m_assembler.test32(condition, JSC::GPRInfo::returnValueGPR, mask);
+        m_assembler.test32(JSC::GPRInfo::returnValueGPR, mask);
         cleanupPostCall();
         return m_assembler.branch(condition);
     }
@@ -193,5 +192,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(CSS_SELECTOR_JIT)
-
-#endif // FunctionCall_h

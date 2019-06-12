@@ -1,181 +1,114 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Metrological Group B.V.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials provided
+ *    with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
 #include "MediaKeys.h"
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
 
 #include "CDM.h"
-#include "EventNames.h"
-#include "HTMLMediaElement.h"
-#include "MediaKeyMessageEvent.h"
+#include "CDMInstance.h"
 #include "MediaKeySession.h"
-#include "UUID.h"
-#include <wtf/HashSet.h>
+#include "SharedBuffer.h"
 
 namespace WebCore {
 
-RefPtr<MediaKeys> MediaKeys::create(const String& keySystem, ExceptionCode& ec)
+MediaKeys::MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>& supportedSessionTypes, Ref<CDM>&& implementation, Ref<CDMInstance>&& instance)
+    : m_useDistinctiveIdentifier(useDistinctiveIdentifier)
+    , m_persistentStateAllowed(persistentStateAllowed)
+    , m_supportedSessionTypes(supportedSessionTypes)
+    , m_implementation(WTFMove(implementation))
+    , m_instance(WTFMove(instance))
 {
-    // From <http://dvcs.w3.org/hg/html-media/raw-file/tip/encrypted-media/encrypted-media.html#dom-media-keys-constructor>:
-    // The MediaKeys(keySystem) constructor must run the following steps:
+}
 
-    // 1. If keySystem is null or an empty string, throw an INVALID_ACCESS_ERR exception and abort these steps.
-    if (keySystem.isNull() || keySystem.isEmpty()) {
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
+MediaKeys::~MediaKeys() = default;
+
+ExceptionOr<Ref<MediaKeySession>> MediaKeys::createSession(ScriptExecutionContext& context, MediaKeySessionType sessionType)
+{
+    // https://w3c.github.io/encrypted-media/#dom-mediakeys-setservercertificate
+    // W3C Editor's Draft 09 November 2016
+
+    // When this method is invoked, the user agent must run the following steps:
+    // 1. If this object's supported session types value does not contain sessionType, throw [WebIDL] a NotSupportedError.
+    if (!m_supportedSessionTypes.contains(sessionType))
+        return Exception(NOT_SUPPORTED_ERR);
+
+    // 2. If the implementation does not support MediaKeySession operations in the current state, throw [WebIDL] an InvalidStateError.
+    if (!m_implementation->supportsSessions())
+        return Exception(INVALID_STATE_ERR);
+
+    // 3. Let session be a new MediaKeySession object, and initialize it as follows:
+    // NOTE: Continued in MediaKeySession.
+    // 4. Return session.
+    return MediaKeySession::create(context, sessionType, m_useDistinctiveIdentifier, m_implementation.copyRef(), m_instance.copyRef());
+}
+
+void MediaKeys::setServerCertificate(const BufferSource& serverCertificate, Ref<DeferredPromise>&& promise)
+{
+    // https://w3c.github.io/encrypted-media/#dom-mediakeys-setservercertificate
+    // W3C Editor's Draft 09 November 2016
+
+    // When this method is invoked, the user agent must run the following steps:
+    // 1. If the Key System implementation represented by this object's cdm implementation value does not support
+    //    server certificates, return a promise resolved with false.
+    if (!m_implementation->supportsServerCertificates()) {
+        promise->resolve<IDLBoolean>(false);
+        return;
     }
 
-    // 2. If keySystem is not one of the user agent's supported Key Systems, throw a NOT_SUPPORTED_ERR and abort these steps.
-    if (!CDM::supportsKeySystem(keySystem)) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
+    // 2. If serverCertificate is an empty array, return a promise rejected with a new a newly created TypeError.
+    if (!serverCertificate.length()) {
+        promise->reject(TypeError);
+        return;
     }
 
-    // 3. Let cdm be the content decryption module corresponding to keySystem.
-    // 4. Load cdm if necessary.
-    std::unique_ptr<CDM> cdm = CDM::create(keySystem);
+    // 3. Let certificate be a copy of the contents of the serverCertificate parameter.
+    auto certificate = SharedBuffer::create(serverCertificate.data(), serverCertificate.length());
 
-    // 5. Create a new MediaKeys object.
-    // 5.1 Let the keySystem attribute be keySystem.
-    // 6. Return the new object to the caller.
-    return adoptRef(*new MediaKeys(keySystem, WTFMove(cdm)));
+    // 4. Let promise be a new promise.
+    // 5. Run the following steps in parallel:
+
+    m_taskQueue.enqueueTask([this, certificate = WTFMove(certificate), promise = WTFMove(promise)] () mutable {
+        // 5.1. Use this object's cdm instance to process certificate.
+        if (m_instance->setServerCertificate(WTFMove(certificate)) == CDMInstance::Failed) {
+            // 5.2. If the preceding step failed, resolve promise with a new DOMException whose name is the appropriate error name.
+            promise->reject(INVALID_STATE_ERR);
+            return;
+        }
+
+        // 5.1. Resolve promise with true.
+        promise->resolve<IDLBoolean>(true);
+    });
+
+    // 6. Return promise.
 }
 
-MediaKeys::MediaKeys(const String& keySystem, std::unique_ptr<CDM> cdm)
-    : m_mediaElement(nullptr)
-    , m_keySystem(keySystem)
-    , m_cdm(WTFMove(cdm))
-{
-    m_cdm->setClient(this);
-}
+} // namespace WebCore
 
-MediaKeys::~MediaKeys()
-{
-    // From <http://dvcs.w3.org/hg/html-media/raw-file/tip/encrypted-media/encrypted-media.html#dom-media-keys-constructor>:
-    // When destroying a MediaKeys object, follow the steps in close().
-    for (auto& session : m_sessions) {
-        session->close();
-        session->setKeys(nullptr);
-    }
-}
-
-RefPtr<MediaKeySession> MediaKeys::createSession(ScriptExecutionContext* context, const String& type, Uint8Array* initData, ExceptionCode& ec)
-{
-    // From <http://www.w3.org/TR/2014/WD-encrypted-media-20140218/#dom-createsession>:
-    // The createSession(type, initData) method must run the following steps:
-    // Note: The contents of initData are container-specific Initialization Data.
-
-    // 1. If contentType is null or an empty string, throw an INVALID_ACCESS_ERR exception and abort these steps.
-    if (type.isEmpty()) {
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
-    }
-
-    // 2. If initData is null or an empty array, throw an INVALID_ACCESS_ERR exception and abort these steps.
-    if (!initData || !initData->length()) {
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
-    }
-
-    // 3. If type contains a MIME type that is not supported or is not supported by the keySystem, throw
-    // a NOT_SUPPORTED_ERR exception and abort these steps.
-    if (!type.isNull() && !type.isEmpty() && !m_cdm->supportsMIMEType(type)) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
-
-    // 4. Create a new MediaKeySession object.
-    // 4.1 Let the keySystem attribute be keySystem.
-    // 4.2 Let the sessionId attribute be a unique Session ID string. It may be generated by cdm.
-    RefPtr<MediaKeySession> session = MediaKeySession::create(context, this, keySystem());
-
-    m_sessions.append(session);
-
-    // 5. Schedule a task to initialize the session, providing contentType, initData, and the new object.
-    session->generateKeyRequest(type, initData);
-
-    // 6. Return the new object to the caller.
-    return session;
-}
-
-bool MediaKeys::isTypeSupported(const String& keySystem, const String& mimeType)
-{
-    // 1. If keySystem contains an unrecognized or unsupported Key System, return false and abort these steps.
-    // Key system string comparison is case-sensitive.
-    if (keySystem.isNull() || keySystem.isEmpty() || !CDM::supportsKeySystem(keySystem))
-        return false;
-
-    // 2. If type is null or an empty string, return true and abort these steps.
-    if (mimeType.isNull() || mimeType.isEmpty())
-        return true;
-
-    // 3. If the Key System specified by keySystem does not support decrypting the container and/or codec
-    // specified by type, return false and abort these steps.
-    if (!CDM::keySystemSupportsMimeType(keySystem, mimeType))
-        return false;
-
-    // 4. Return true;
-    return true;
-}
-
-void MediaKeys::setMediaElement(HTMLMediaElement* element)
-{
-    if (m_mediaElement && m_mediaElement->player())
-        m_mediaElement->player()->setCDMSession(nullptr);
-
-    m_mediaElement = element;
-
-    if (m_mediaElement && m_mediaElement->player() && !m_sessions.isEmpty())
-        m_mediaElement->player()->setCDMSession(m_sessions.last()->session());
-}
-
-MediaPlayer* MediaKeys::cdmMediaPlayer(const CDM*) const
-{
-    if (m_mediaElement)
-        return m_mediaElement->player();
-    return 0;
-}
-
-void MediaKeys::keyAdded()
-{
-    if (m_mediaElement)
-        m_mediaElement->keyAdded();
-
-}
-
-RefPtr<ArrayBuffer> MediaKeys::cachedKeyForKeyId(const String& keyId) const
-{
-    for (auto& session : m_sessions) {
-        if (RefPtr<ArrayBuffer> key = session->cachedKeyForKeyId(keyId))
-            return key;
-    }
-    return nullptr;
-}
-
-}
-
-#endif
+#endif // ENABLE(ENCRYPTED_MEDIA)

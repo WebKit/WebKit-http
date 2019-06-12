@@ -50,10 +50,7 @@ public:
     static Ref<NotificationPermissionRequestManager> create(WebPage*);
 
 #if ENABLE(NOTIFICATIONS)
-    void startRequest(WebCore::SecurityOrigin*, PassRefPtr<WebCore::NotificationPermissionCallback>);
-#endif
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    void startRequest(WebCore::SecurityOrigin*, PassRefPtr<WebCore::VoidCallback>);
+    void startRequest(WebCore::SecurityOrigin*, RefPtr<WebCore::NotificationPermissionCallback>&&);
 #endif
     void cancelRequest(WebCore::SecurityOrigin*);
     bool hasPendingPermissionRequests(WebCore::SecurityOrigin*) const;
@@ -72,13 +69,10 @@ private:
 #if ENABLE(NOTIFICATIONS)
     HashMap<uint64_t, RefPtr<WebCore::NotificationPermissionCallback>> m_idToCallbackMap;
 #endif
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    HashMap<uint64_t, RefPtr<WebCore::VoidCallback>> m_idToVoidCallbackMap;
-#endif
     HashMap<RefPtr<WebCore::SecurityOrigin>, uint64_t> m_originToIDMap;
     HashMap<uint64_t, RefPtr<WebCore::SecurityOrigin>> m_idToOriginMap;
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     WebPage* m_page;
 #endif
 };

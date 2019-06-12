@@ -27,14 +27,16 @@
 #define MediaSample_h
 
 #include "FloatSize.h"
+#include <runtime/TypedArrays.h>
 #include <wtf/MediaTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/AtomicString.h>
 
+typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
+
 namespace WebCore {
 
 class MockSampleBox;
-typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
 
 struct PlatformSample {
     enum {
@@ -53,24 +55,42 @@ public:
     virtual ~MediaSample() { }
 
     virtual MediaTime presentationTime() const = 0;
+    virtual MediaTime outputPresentationTime() const { return presentationTime(); }
     virtual MediaTime decodeTime() const = 0;
     virtual MediaTime duration() const = 0;
+    virtual MediaTime outputDuration() const { return duration(); }
     virtual AtomicString trackID() const = 0;
+    virtual void setTrackID(const String&) = 0;
     virtual size_t sizeInBytes() const = 0;
     virtual FloatSize presentationSize() const = 0;
     virtual void offsetTimestampsBy(const MediaTime&) = 0;
     virtual void setTimestamps(const MediaTime&, const MediaTime&) = 0;
+    virtual bool isDivisable() const = 0;
+    enum DivideFlags { BeforePresentationTime, AfterPresentationTime };
+    virtual std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> divide(const MediaTime& presentationTime) = 0;
+    virtual Ref<MediaSample> createNonDisplayingCopy() const = 0;
+
+    virtual RefPtr<JSC::Uint8ClampedArray> getRGBAImageData() const { return nullptr; }
 
     enum SampleFlags {
         None = 0,
         IsSync = 1 << 0,
-        NonDisplaying = 1 << 1,
+        IsNonDisplaying = 1 << 1,
     };
     virtual SampleFlags flags() const = 0;
     virtual PlatformSample platformSample() = 0;
 
+    enum class VideoRotation {
+        None = 0,
+        UpsideDown = 180,
+        Right = 90,
+        Left = 270,
+    };
+    virtual VideoRotation videoRotation() const { return VideoRotation::None; }
+    virtual bool videoMirrored() const { return false; }
+
     bool isSync() const { return flags() & IsSync; }
-    bool isNonDisplaying() const { return flags() & NonDisplaying; }
+    bool isNonDisplaying() const { return flags() & IsNonDisplaying; }
 
     virtual void dump(PrintStream&) const = 0;
 };

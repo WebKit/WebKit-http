@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,21 +28,29 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "EventNames.h"
-#include "IDBVersionChangeEventImpl.h"
-
 namespace WebCore {
 
-IDBVersionChangeEvent::IDBVersionChangeEvent(const AtomicString& name)
+IDBVersionChangeEvent::IDBVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion, const AtomicString& name)
     : Event(name, false /*canBubble*/, false /*cancelable*/)
+    , m_requestIdentifier(requestIdentifier)
+    , m_oldVersion(oldVersion)
+{
+    if (newVersion)
+        m_newVersion = newVersion;
+    else
+        m_newVersion = std::nullopt;
+}
+
+IDBVersionChangeEvent::IDBVersionChangeEvent(const AtomicString& name, const Init& init, IsTrusted isTrusted)
+    : Event(name, init, isTrusted)
+    , m_oldVersion(init.oldVersion)
+    , m_newVersion(init.newVersion)
 {
 }
 
-Ref<IDBVersionChangeEvent> IDBVersionChangeEvent::create()
+EventInterface IDBVersionChangeEvent::eventInterface() const
 {
-    // FIXME: This is called only by document.createEvent. I don't see how it's valuable to create an event with
-    // read-only oldVersion attribute of 0 and newVersion of null; preserving that behavior for now.
-    return IDBClient::IDBVersionChangeEvent::create(0, 0, eventNames().versionchangeEvent);
+    return IDBVersionChangeEventInterfaceType;
 }
 
 } // namespace WebCore

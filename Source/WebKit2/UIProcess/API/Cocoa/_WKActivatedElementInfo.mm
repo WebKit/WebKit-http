@@ -43,16 +43,55 @@
     RetainPtr<NSURL> _URL;
     RetainPtr<NSString> _title;
     CGPoint _interactionLocation;
+    RetainPtr<NSString> _ID;
     RefPtr<WebKit::ShareableBitmap> _image;
 #if PLATFORM(IOS)
     RetainPtr<UIImage> _uiImage;
+    RetainPtr<NSDictionary> _userInfo;
 #endif
 #if PLATFORM(MAC)
     RetainPtr<NSImage> _nsImage;
 #endif
 }
 
-- (instancetype)_initWithType:(_WKActivatedElementType)type URL:(NSURL *)url location:(CGPoint)location title:(NSString *)title rect:(CGRect)rect image:(WebKit::ShareableBitmap*)image
+#if PLATFORM(IOS)
++ (instancetype)activatedElementInfoWithInteractionInformationAtPosition:(const WebKit::InteractionInformationAtPosition&)information
+{
+    return [[[self alloc] _initWithInteractionInformationAtPosition:information] autorelease];
+}
+
+- (instancetype)_initWithInteractionInformationAtPosition:(const WebKit::InteractionInformationAtPosition&)information
+{
+    if (!(self = [super init]))
+        return nil;
+    
+    _URL = information.url;
+    _interactionLocation = information.request.point;
+    _title = information.title;
+    _boundingRect = information.bounds;
+    
+    if (information.isAttachment)
+        _type = _WKActivatedElementTypeAttachment;
+    else if (information.isImage)
+        _type = _WKActivatedElementTypeImage;
+    else if (information.isLink)
+        _type = _WKActivatedElementTypeLink;
+    else
+        _type = _WKActivatedElementTypeUnspecified;
+    
+    _image = information.image;
+    _ID = information.idAttribute;
+    
+    return self;
+}
+#endif
+
+- (instancetype)_initWithType:(_WKActivatedElementType)type URL:(NSURL *)url location:(CGPoint)location title:(NSString *)title ID:(NSString *)ID rect:(CGRect)rect image:(WebKit::ShareableBitmap*)image
+{
+    return [self _initWithType:type URL:url location:location title:title ID:ID rect:rect image:image userInfo:nil];
+}
+
+- (instancetype)_initWithType:(_WKActivatedElementType)type URL:(NSURL *)url location:(CGPoint)location title:(NSString *)title ID:(NSString *)ID rect:(CGRect)rect image:(WebKit::ShareableBitmap*)image userInfo:(NSDictionary *)userInfo
 {
     if (!(self = [super init]))
         return nil;
@@ -63,6 +102,10 @@
     _boundingRect = rect;
     _type = type;
     _image = image;
+    _ID = ID;
+#if PLATFORM(IOS)
+    _userInfo = adoptNS([userInfo copy]);
+#endif
 
     return self;
 }
@@ -77,12 +120,22 @@
     return _title.get();
 }
 
+- (NSString *)ID
+{
+    return _ID.get();
+}
+
 - (CGPoint)_interactionLocation
 {
     return _interactionLocation;
 }
 
 #if PLATFORM(IOS)
+- (NSDictionary *)userInfo
+{
+    return _userInfo.get();
+}
+
 - (UIImage *)image
 {
     if (_uiImage)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NavigationState_h
-#define NavigationState_h
+#pragma once
 
 #import "WKFoundation.h"
 
@@ -33,10 +32,11 @@
 #import "APIHistoryClient.h"
 #import "APINavigationClient.h"
 #import "PageLoadState.h"
+#import "ProcessTerminationReason.h"
 #import "ProcessThrottler.h"
 #import "WeakObjCPtr.h"
-#import <wtf/HashMap.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/RunLoop.h>
 
 @class WKWebView;
 @protocol WKHistoryDelegatePrivate;
@@ -76,6 +76,9 @@ public:
     void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&);
     void willRecordNavigationSnapshot(WebBackForwardListItem&);
     void navigationGestureSnapshotWasRemoved();
+#if USE(QUICK_LOOK)
+    void didRequestPasswordForQuickLookDocument();
+#endif
 
     void didFirstPaint();
 
@@ -86,33 +89,33 @@ private:
         ~NavigationClient();
 
     private:
-        virtual void didStartProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
-        virtual void didReceiveServerRedirectForProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
-        virtual void didFailProvisionalNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
-        virtual void didFailProvisionalLoadInSubframeWithError(WebPageProxy&, WebFrameProxy&, const WebCore::SecurityOriginData&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
-        virtual void didCommitNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
-        virtual void didFinishDocumentLoad(WebPageProxy&, API::Navigation*, API::Object*) override;
-        virtual void didFinishNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
-        virtual void didFailNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
-        virtual void didSameDocumentNavigation(WebPageProxy&, API::Navigation*, SameDocumentNavigationType, API::Object*) override;
+        void didStartProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
+        void didReceiveServerRedirectForProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
+        void didFailProvisionalNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
+        void didFailProvisionalLoadInSubframeWithError(WebPageProxy&, WebFrameProxy&, const WebCore::SecurityOriginData&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
+        void didCommitNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
+        void didFinishDocumentLoad(WebPageProxy&, API::Navigation*, API::Object*) override;
+        void didFinishNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
+        void didFailNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
+        void didSameDocumentNavigation(WebPageProxy&, API::Navigation*, SameDocumentNavigationType, API::Object*) override;
 
-        virtual void renderingProgressDidChange(WebPageProxy&, WebCore::LayoutMilestones) override;
+        void renderingProgressDidChange(WebPageProxy&, WebCore::LayoutMilestones) override;
 
-        virtual bool canAuthenticateAgainstProtectionSpace(WebPageProxy&, WebProtectionSpace*) override;
-        virtual void didReceiveAuthenticationChallenge(WebPageProxy&, AuthenticationChallengeProxy*) override;
-        virtual void processDidCrash(WebPageProxy&) override;
-        virtual void processDidBecomeResponsive(WebPageProxy&) override;
-        virtual void processDidBecomeUnresponsive(WebPageProxy&) override;
+        bool canAuthenticateAgainstProtectionSpace(WebPageProxy&, WebProtectionSpace*) override;
+        void didReceiveAuthenticationChallenge(WebPageProxy&, AuthenticationChallengeProxy*) override;
+        void processDidTerminate(WebPageProxy&, ProcessTerminationReason) override;
+        void processDidBecomeResponsive(WebPageProxy&) override;
+        void processDidBecomeUnresponsive(WebPageProxy&) override;
 
-        virtual RefPtr<API::Data> webCryptoMasterKey(WebPageProxy&) override;
+        RefPtr<API::Data> webCryptoMasterKey(WebPageProxy&) override;
 
 #if USE(QUICK_LOOK)
-        virtual void didStartLoadForQuickLookDocumentInMainFrame(const WTF::String& fileName, const WTF::String& uti) override;
-        virtual void didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData&) override;
+        void didStartLoadForQuickLookDocumentInMainFrame(const WTF::String& fileName, const WTF::String& uti) override;
+        void didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData&) override;
 #endif
 
-        virtual void decidePolicyForNavigationAction(WebPageProxy&, API::NavigationAction&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
-        virtual void decidePolicyForNavigationResponse(WebPageProxy&, API::NavigationResponse&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
+        void decidePolicyForNavigationAction(WebPageProxy&, API::NavigationAction&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
+        void decidePolicyForNavigationResponse(WebPageProxy&, API::NavigationResponse&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
 
         NavigationState& m_navigationState;
     };
@@ -123,41 +126,46 @@ private:
         ~HistoryClient();
         
     private:
-        virtual void didNavigateWithNavigationData(WebPageProxy&, const WebNavigationDataStore&) override;
-        virtual void didPerformClientRedirect(WebPageProxy&, const WTF::String&, const WTF::String&) override;
-        virtual void didPerformServerRedirect(WebPageProxy&, const WTF::String&, const WTF::String&) override;
-        virtual void didUpdateHistoryTitle(WebPageProxy&, const WTF::String&, const WTF::String&) override;
+        void didNavigateWithNavigationData(WebPageProxy&, const WebNavigationDataStore&) override;
+        void didPerformClientRedirect(WebPageProxy&, const WTF::String&, const WTF::String&) override;
+        void didPerformServerRedirect(WebPageProxy&, const WTF::String&, const WTF::String&) override;
+        void didUpdateHistoryTitle(WebPageProxy&, const WTF::String&, const WTF::String&) override;
         
         NavigationState& m_navigationState;
     };
 
     // PageLoadState::Observer
-    virtual void willChangeIsLoading() override;
-    virtual void didChangeIsLoading() override;
-    virtual void willChangeTitle() override;
-    virtual void didChangeTitle() override;
-    virtual void willChangeActiveURL() override;
-    virtual void didChangeActiveURL() override;
-    virtual void willChangeHasOnlySecureContent() override;
-    virtual void didChangeHasOnlySecureContent() override;
-    virtual void willChangeEstimatedProgress() override;
-    virtual void didChangeEstimatedProgress() override;
-    virtual void willChangeCanGoBack() override;
-    virtual void didChangeCanGoBack() override;
-    virtual void willChangeCanGoForward() override;
-    virtual void didChangeCanGoForward() override;
-    virtual void willChangeNetworkRequestsInProgress() override;
-    virtual void didChangeNetworkRequestsInProgress() override;
-    virtual void willChangeCertificateInfo() override;
-    virtual void didChangeCertificateInfo() override;
-    virtual void willChangeWebProcessIsResponsive() override;
-    virtual void didChangeWebProcessIsResponsive() override;
+    void willChangeIsLoading() override;
+    void didChangeIsLoading() override;
+    void willChangeTitle() override;
+    void didChangeTitle() override;
+    void willChangeActiveURL() override;
+    void didChangeActiveURL() override;
+    void willChangeHasOnlySecureContent() override;
+    void didChangeHasOnlySecureContent() override;
+    void willChangeEstimatedProgress() override;
+    void didChangeEstimatedProgress() override;
+    void willChangeCanGoBack() override;
+    void didChangeCanGoBack() override;
+    void willChangeCanGoForward() override;
+    void didChangeCanGoForward() override;
+    void willChangeNetworkRequestsInProgress() override;
+    void didChangeNetworkRequestsInProgress() override;
+    void willChangeCertificateInfo() override;
+    void didChangeCertificateInfo() override;
+    void willChangeWebProcessIsResponsive() override;
+    void didChangeWebProcessIsResponsive() override;
+
+#if PLATFORM(IOS)
+    void releaseNetworkActivityToken();
+#endif
 
     WKWebView *m_webView;
     WeakObjCPtr<id <WKNavigationDelegate> > m_navigationDelegate;
 
     struct {
         bool webViewDecidePolicyForNavigationActionDecisionHandler : 1;
+        bool webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies : 1;
         bool webViewDecidePolicyForNavigationResponseDecisionHandler : 1;
 
         bool webViewDidStartProvisionalNavigation : 1;
@@ -187,6 +195,7 @@ private:
 #if USE(QUICK_LOOK)
         bool webViewDidStartLoadForQuickLookDocumentInMainFrame : 1;
         bool webViewDidFinishLoadForQuickLookDocumentInMainFrame : 1;
+        bool webViewDidRequestPasswordForQuickLookDocument : 1;
 #endif
     } m_navigationDelegateMethods;
 
@@ -200,11 +209,10 @@ private:
 
 #if PLATFORM(IOS)
     ProcessThrottler::BackgroundActivityToken m_activityToken;
+    RunLoop::Timer<NavigationState> m_releaseActivityTimer;
 #endif
 };
 
 } // namespace WebKit
 
 #endif
-
-#endif // NavigationState_h

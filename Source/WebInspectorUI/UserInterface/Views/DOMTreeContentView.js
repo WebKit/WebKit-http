@@ -46,10 +46,16 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
         this._showsShadowDOMButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleShowsShadowDOMSetting, this);
         this._showShadowDOMSettingChanged();
 
+        WebInspector.showPrintStylesSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showPrintStylesSettingChanged, this);
+        this._showPrintStylesButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("print-styles", WebInspector.UIString("Force Print Media Styles"), WebInspector.UIString("Use Default Media Styles"), "Images/Printer.svg", 16, 16);
+        this._showPrintStylesButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._togglePrintStylesSetting, this);
+        this._showPrintStylesSettingChanged();
+
         this.element.classList.add("dom-tree");
         this.element.addEventListener("click", this._mouseWasClicked.bind(this), false);
 
         this._domTreeOutline = new WebInspector.DOMTreeOutline(true, true, true);
+        this._domTreeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementAdded, this._domTreeElementAdded, this);
         this._domTreeOutline.addEventListener(WebInspector.DOMTreeOutline.Event.SelectedNodeChanged, this._selectedNodeDidChange, this);
         this._domTreeOutline.wireToDomAgent();
         this._domTreeOutline.editable = true;
@@ -62,13 +68,28 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
         this._lastSelectedNodePathSetting = new WebInspector.Setting("last-selected-node-path", null);
 
         this._numberOfSearchResults = null;
+
+        this._breakpointGutterEnabled = false;
+        this._pendingBreakpointNodeIdentifiers = new Set;
+
+        if (WebInspector.domDebuggerManager.supported) {
+            WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.BreakpointsEnabledDidChange, this._breakpointsEnabledDidChange, this);
+
+            WebInspector.domDebuggerManager.addEventListener(WebInspector.DOMDebuggerManager.Event.DOMBreakpointAdded, this._domBreakpointAddedOrRemoved, this);
+            WebInspector.domDebuggerManager.addEventListener(WebInspector.DOMDebuggerManager.Event.DOMBreakpointRemoved, this._domBreakpointAddedOrRemoved, this);
+
+            WebInspector.DOMBreakpoint.addEventListener(WebInspector.DOMBreakpoint.Event.DisabledStateDidChange, this._domBreakpointDisabledStateDidChange, this);
+            WebInspector.DOMBreakpoint.addEventListener(WebInspector.DOMBreakpoint.Event.ResolvedStateDidChange, this._domBreakpointResolvedStateDidChange, this);
+
+            this._breakpointsEnabledDidChange();
+        }
     }
 
     // Public
 
     get navigationItems()
     {
-        return [this._showsShadowDOMButtonNavigationItem, this._compositingBordersButtonNavigationItem, this._paintFlashingButtonNavigationItem];
+        return [this._showPrintStylesButtonNavigationItem, this._showsShadowDOMButtonNavigationItem, this._compositingBordersButtonNavigationItem, this._paintFlashingButtonNavigationItem];
     }
 
     get domTreeOutline()
@@ -81,25 +102,54 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
         return [this.element];
     }
 
+    get breakpointGutterEnabled()
+    {
+        return this._breakpointGutterEnabled;
+    }
+
+    set breakpointGutterEnabled(flag)
+    {
+        if (this._breakpointGutterEnabled === flag)
+            return;
+
+        this._breakpointGutterEnabled = flag;
+        this.element.classList.toggle("show-gutter", this._breakpointGutterEnabled);
+    }
+
     shown()
     {
+        super.shown();
+
         this._domTreeOutline.setVisible(true, WebInspector.isConsoleFocused());
         this._updateCompositingBordersButtonToMatchPageSettings();
+
+        if (!this._domTreeOutline.rootDOMNode)
+            return;
+
+        this._restoreBreakpointsAfterUpdate();
     }
 
     hidden()
     {
+        super.hidden();
+
         WebInspector.domTreeManager.hideDOMNodeHighlight();
         this._domTreeOutline.setVisible(false);
     }
 
     closed()
     {
+        super.closed();
+
         WebInspector.showPaintRectsSetting.removeEventListener(null, null, this);
         WebInspector.showShadowDOMSetting.removeEventListener(null, null, this);
+        WebInspector.debuggerManager.removeEventListener(null, null, this);
         WebInspector.domTreeManager.removeEventListener(null, null, this);
+        WebInspector.domDebuggerManager.removeEventListener(null, null, this);
+        WebInspector.DOMBreakpoint.removeEventListener(null, null, this);
 
         this._domTreeOutline.close();
+        this._pendingBreakpointNodeIdentifiers.clear();
     }
 
     get selectionPathComponents()
@@ -165,7 +215,7 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
             WebInspector.archiveMainFrame();
         }
 
-        return { customSaveHandler: saveHandler };
+        return {customSaveHandler: saveHandler};
     }
 
     get supportsSearch()
@@ -357,11 +407,28 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
             selectNode.call(this);
     }
 
+    _domTreeElementAdded(event)
+    {
+        if (!this._pendingBreakpointNodeIdentifiers.size)
+            return;
+
+        let treeElement = event.data.element;
+        let node = treeElement.representedObject;
+        console.assert(node instanceof WebInspector.DOMNode);
+        if (!(node instanceof WebInspector.DOMNode))
+            return;
+
+        if (!this._pendingBreakpointNodeIdentifiers.delete(node.id))
+            return;
+
+        this._updateBreakpointStatus(node.id);
+    }
+
     _selectedNodeDidChange(event)
     {
         var selectedDOMNode = this._domTreeOutline.selectedDOMNode();
         if (selectedDOMNode && !this._dontSetLastSelectedNodePath)
-            this._lastSelectedNodePathSetting.value = {url: selectedDOMNode.ownerDocument.documentURL.hash, path: selectedDOMNode.path()};
+            this._lastSelectedNodePathSetting.value = {url: WebInspector.frameResourceManager.mainFrame.url.hash, path: selectedDOMNode.path()};
 
         if (selectedDOMNode)
             ConsoleAgent.addInspectedNode(selectedDOMNode.id);
@@ -371,6 +438,9 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
 
     _pathComponentSelected(event)
     {
+        if (!event.data.pathComponent)
+            return;
+
         console.assert(event.data.pathComponent instanceof WebInspector.DOMTreeElementPathComponent);
         console.assert(event.data.pathComponent.domTreeElement instanceof WebInspector.DOMTreeElement);
 
@@ -416,8 +486,13 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
             // Since followLink is delayed, the call to WebInspector.openURL can't look at window.event
             // to see if the command key is down like it normally would. So we need to do that check
             // before calling WebInspector.openURL.
-            var alwaysOpenExternally = event ? event.metaKey : false;
-            WebInspector.openURL(anchorElement.href, this._frame, alwaysOpenExternally, anchorElement.lineNumber);
+            const options = {
+                alwaysOpenExternally: event ? event.metaKey : false,
+                lineNumber: anchorElement.lineNumber,
+                ignoreNetworkTab: true,
+                ignoreSearchTab: true,
+            };
+            WebInspector.openURL(anchorElement.href, this._frame, options);
         }
 
         // Start a timeout since this is a single click, if the timeout is canceled before it fires,
@@ -471,6 +546,21 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
         WebInspector.showShadowDOMSetting.value = !WebInspector.showShadowDOMSetting.value;
     }
 
+    _showPrintStylesSettingChanged(event)
+    {
+        this._showPrintStylesButtonNavigationItem.activated = WebInspector.showPrintStylesSetting.value;
+    }
+
+    _togglePrintStylesSetting(event)
+    {
+        WebInspector.showPrintStylesSetting.value = !WebInspector.showPrintStylesSetting.value;
+
+        let mediaType = WebInspector.showPrintStylesSetting.value ? "print" : "";
+        PageAgent.setEmulatedMedia(mediaType);
+
+        WebInspector.cssStyleManager.mediaTypeChanged();
+    }
+
     _showSearchHighlights()
     {
         console.assert(this._searchIdentifier);
@@ -516,5 +606,68 @@ WebInspector.DOMTreeContentView = class DOMTreeContentView extends WebInspector.
         }
 
         delete this._searchResultNodes;
+    }
+
+    _domBreakpointAddedOrRemoved(event)
+    {
+        let breakpoint = event.data.breakpoint;
+        this._updateBreakpointStatus(breakpoint.domNodeIdentifier);
+    }
+
+    _domBreakpointDisabledStateDidChange(event)
+    {
+        let breakpoint = event.target;
+        this._updateBreakpointStatus(breakpoint.domNodeIdentifier);
+    }
+
+    _domBreakpointResolvedStateDidChange(event)
+    {
+        let breakpoint = event.target;
+        let nodeIdentifier = breakpoint.domNodeIdentifier || event.data.oldNodeIdentifier;
+        this._updateBreakpointStatus(nodeIdentifier);
+    }
+
+    _updateBreakpointStatus(nodeIdentifier)
+    {
+        let domNode = WebInspector.domTreeManager.nodeForId(nodeIdentifier);
+        if (!domNode)
+            return;
+
+        let treeElement = this._domTreeOutline.findTreeElement(domNode);
+        if (!treeElement) {
+            this._pendingBreakpointNodeIdentifiers.add(nodeIdentifier);
+            return;
+        }
+
+        let breakpoints = WebInspector.domDebuggerManager.domBreakpointsForNode(domNode);
+        if (!breakpoints.length) {
+            treeElement.breakpointStatus = WebInspector.DOMTreeElement.BreakpointStatus.None;
+            return;
+        }
+
+        this.breakpointGutterEnabled = true;
+
+        let disabled = breakpoints.some((item) => item.disabled);
+        treeElement.breakpointStatus = disabled ? WebInspector.DOMTreeElement.BreakpointStatus.DisabledBreakpoint : WebInspector.DOMTreeElement.BreakpointStatus.Breakpoint;
+    }
+
+    _restoreBreakpointsAfterUpdate()
+    {
+        this._pendingBreakpointNodeIdentifiers.clear();
+
+        this.breakpointGutterEnabled = false;
+
+        let updatedNodes = new Set;
+        for (let breakpoint of WebInspector.domDebuggerManager.domBreakpoints) {
+            if (updatedNodes.has(breakpoint.domNodeIdentifier))
+                continue;
+
+            this._updateBreakpointStatus(breakpoint.domNodeIdentifier);
+        }
+    }
+
+    _breakpointsEnabledDidChange(event)
+    {
+        this._domTreeOutline.element.classList.toggle("breakpoints-disabled", !WebInspector.debuggerManager.breakpointsEnabled);
     }
 };

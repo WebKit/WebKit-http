@@ -31,6 +31,7 @@
 #include "DOMWindow.h"
 #include "Document.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "SuspendableTimer.h"
 #include <wtf/Ref.h>
 
@@ -45,7 +46,7 @@ public:
     }
 
 private:
-    virtual void fired() override
+    void fired() override
     {
         ASSERT(!isSuspended());
         m_eventQueue.pendingEventTimerFired();
@@ -78,7 +79,7 @@ bool DocumentEventQueue::enqueueEvent(Ref<Event>&& event)
 
     m_queuedEvents.add(event.ptr());
     if (!m_pendingEventTimer->isActive())
-        m_pendingEventTimer->startOneShot(0);
+        m_pendingEventTimer->startOneShot(0_s);
     return true;
 }
 

@@ -25,12 +25,16 @@
 
 #include "config.h"
 
+#include "APIContentRuleList.h"
 #include "APIDictionary.h"
+#include "WKAPICast.h"
 #include "WKArray.h"
 #include "WKContextPrivate.h"
 #include "WKMutableDictionary.h"
+#include "WKPageGroup.h"
 #include "WKPreferencesRefPrivate.h"
-#include "WKSharedAPICast.h"
+#include "WebPageGroup.h"
+#include "WebUserContentControllerProxy.h"
 
 #if PLATFORM(MAC)
 #include "WKContextPrivateMac.h"
@@ -40,101 +44,6 @@
 
 using namespace WebKit;
 
-extern "C" {
-WK_EXPORT bool WKArrayIsMutable(WKArrayRef array);
-
-WK_EXPORT void WKPageSetVisibilityState(WKPageRef, WKPageVisibilityState, bool);
-
-WK_EXPORT bool WKDictionaryIsMutable(WKDictionaryRef dictionary);
-WK_EXPORT bool WKDictionaryAddItem(WKMutableDictionaryRef dictionary, WKStringRef key, WKTypeRef item);
-WK_EXPORT void WKDictionaryRemoveItem(WKMutableDictionaryRef dictionary, WKStringRef key);
-
-WK_EXPORT void WKPreferencesSetRegionBasedColumnsEnabled(WKPreferencesRef, bool flag);
-WK_EXPORT bool WKPreferencesGetRegionBasedColumnsEnabled(WKPreferencesRef);
-
-WK_EXPORT void WKPreferencesSetMultithreadedWebGLEnabled(WKPreferencesRef, bool);
-WK_EXPORT bool WKPreferencesGetMultithreadedWebGLEnabled(WKPreferencesRef);
-
-WK_EXPORT bool WKInspectorIsDebuggingJavaScript(WKInspectorRef);
-WK_EXPORT void WKInspectorToggleJavaScriptDebugging(WKInspectorRef);
-
-WK_EXPORT bool WKInspectorIsProfilingJavaScript(WKInspectorRef);
-WK_EXPORT void WKInspectorToggleJavaScriptProfiling(WKInspectorRef);
-
-#if PLATFORM(MAC)
-WK_EXPORT CGContextRef WKGraphicsContextGetCGContext(WKGraphicsContextRef graphicsContext);
-#endif
-}
-
-bool WKArrayIsMutable(WKArrayRef)
-{
-    return false;
-}
-
-void WKPageSetVisibilityState(WKPageRef, WKPageVisibilityState, bool)
-{
-}
-
-bool WKDictionaryIsMutable(WKDictionaryRef)
-{
-    return true;
-}
-
-bool WKDictionaryAddItem(WKMutableDictionaryRef dictionaryRef, WKStringRef keyRef, WKTypeRef itemRef)
-{
-    return toImpl(dictionaryRef)->add(toImpl(keyRef)->string(), toImpl(itemRef));
-}
-
-void WKDictionaryRemoveItem(WKMutableDictionaryRef dictionaryRef, WKStringRef keyRef)
-{
-    toImpl(dictionaryRef)->remove(toImpl(keyRef)->string());
-}
-
-void WKPreferencesSetRegionBasedColumnsEnabled(WKPreferencesRef, bool)
-{
-}
-
-bool WKPreferencesGetRegionBasedColumnsEnabled(WKPreferencesRef)
-{
-    return true;
-}
-
-void WKPreferencesSetMultithreadedWebGLEnabled(WKPreferencesRef, bool)
-{
-}
-
-bool WKPreferencesGetMultithreadedWebGLEnabled(WKPreferencesRef)
-{
-    return false;
-}
-
-void WKPreferencesSetScreenFontSubstitutionEnabled(WKPreferencesRef, bool)
-{
-}
-
-bool WKPreferencesGetScreenFontSubstitutionEnabled(WKPreferencesRef)
-{
-    return false;
-}
-
-bool WKInspectorIsDebuggingJavaScript(WKInspectorRef)
-{
-    return false;
-}
-
-void WKInspectorToggleJavaScriptDebugging(WKInspectorRef)
-{
-}
-
-bool WKInspectorIsProfilingJavaScript(WKInspectorRef)
-{
-    return false;
-}
-
-void WKInspectorToggleJavaScriptProfiling(WKInspectorRef)
-{
-}
-
 void WKContextSetUsesNetworkProcess(WKContextRef, bool)
 {
 }
@@ -143,23 +52,27 @@ void WKContextSetProcessModel(WKContextRef, WKProcessModel)
 {
 }
 
-WKProcessModel WKContextGetProcessModel(WKContextRef)
-{
-    return kWKProcessModelMultipleSecondaryProcesses;
-}
-
-#if PLATFORM(MAC)
-CGContextRef WKGraphicsContextGetCGContext(WKGraphicsContextRef graphicsContext)
+WKStringRef WKPageGroupCopyIdentifier(WKPageGroupRef)
 {
     return nullptr;
 }
 
-bool WKContextGetProcessSuppressionEnabled(WKContextRef)
+void WKPageGroupAddUserContentFilter(WKPageGroupRef pageGroupRef, WKUserContentFilterRef contentFilterRef)
 {
-    return true;
+#if ENABLE(CONTENT_EXTENSIONS)
+    toImpl(pageGroupRef)->userContentController().addContentRuleList(*toImpl(contentFilterRef));
+#else
+    UNUSED_PARAM(pageGroupRef);
+    UNUSED_PARAM(contentFilterRef);
+#endif
 }
 
-void WKContextSetProcessSuppressionEnabled(WKContextRef, bool)
+void WKPageGroupRemoveUserContentFilter(WKPageGroupRef pageGroupRef, WKStringRef contentFilterNameRef)
 {
-}
+#if ENABLE(CONTENT_EXTENSIONS)
+    toImpl(pageGroupRef)->userContentController().removeContentRuleList(toWTFString(contentFilterNameRef));
+#else
+    UNUSED_PARAM(pageGroupRef);
+    UNUSED_PARAM(contentFilterNameRef);
 #endif
+}

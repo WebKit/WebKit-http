@@ -44,6 +44,7 @@
 #include <WebCore/TextureMapperLayer.h>
 
 #if USE(OPENGL_ES_2)
+#define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #else
 #include <GL/gl.h>
@@ -102,7 +103,7 @@ void AcceleratedCompositingContext::initialize()
 
     // The creation of the TextureMapper needs an active OpenGL context.
     if (!m_context)
-        m_context = GLContext::createContextForWindow(m_window, GLContext::sharingContext());
+        m_context = GLContext::createContextForWindow(m_window);
 
     if (!m_context)
         return;
@@ -282,7 +283,7 @@ bool AcceleratedCompositingContext::acceleratedCompositingAvailable()
         return false;
 
     // Create GL context.
-    std::unique_ptr<WebCore::GLContext> context = GLContext::createContextForWindow(testWindow, GLContext::sharingContext());
+    std::unique_ptr<WebCore::GLContext> context = GLContext::createContextForWindow(testWindow);
 
     if (!context) {
         ::DestroyWindow(testWindow);
@@ -349,14 +350,14 @@ void AcceleratedCompositingContext::scheduleLayerFlush()
     if (m_layerFlushTimer.isActive())
         return;
 
-    m_layerFlushTimer.startOneShot(0.05);
+    m_layerFlushTimer.startOneShot(50_ms);
 }
 
 bool AcceleratedCompositingContext::flushPendingLayerChanges()
 {
     FrameView* frameView = core(&m_webView)->mainFrame().view();
-    m_rootLayer->flushCompositingStateForThisLayerOnly(frameView->viewportIsStable());
-    m_nonCompositedContentLayer->flushCompositingStateForThisLayerOnly(frameView->viewportIsStable());
+    m_rootLayer->flushCompositingStateForThisLayerOnly();
+    m_nonCompositedContentLayer->flushCompositingStateForThisLayerOnly();
     if (!frameView->flushCompositingStateIncludingSubframes())
         return false;
 
@@ -402,7 +403,7 @@ void AcceleratedCompositingContext::layerFlushTimerFired()
         scheduleLayerFlush();
 }
 
-void AcceleratedCompositingContext::paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& rectToPaint)
+void AcceleratedCompositingContext::paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& rectToPaint, GraphicsLayerPaintFlags)
 {
     context.save();
     context.clip(rectToPaint);

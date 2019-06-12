@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,8 +30,9 @@
  */
 
 #include "config.h"
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 #include "BaseDateAndTimeInputType.h"
+
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
@@ -54,9 +56,10 @@ double BaseDateAndTimeInputType::valueAsDate() const
     return valueAsDouble();
 }
 
-void BaseDateAndTimeInputType::setValueAsDate(double value, ExceptionCode&) const
+ExceptionOr<void> BaseDateAndTimeInputType::setValueAsDate(double value) const
 {
     element().setValue(serializeWithMilliseconds(value));
+    return { };
 }
 
 double BaseDateAndTimeInputType::valueAsDouble() const
@@ -65,9 +68,10 @@ double BaseDateAndTimeInputType::valueAsDouble() const
     return value.isFinite() ? value.toDouble() : DateComponents::invalidMilliseconds();
 }
 
-void BaseDateAndTimeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBehavior eventBehavior, ExceptionCode&) const
+ExceptionOr<void> BaseDateAndTimeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBehavior eventBehavior) const
 {
     element().setValue(serialize(newValue), eventBehavior);
+    return { };
 }
 
 bool BaseDateAndTimeInputType::typeMismatchFor(const String& value) const
@@ -90,6 +94,11 @@ Decimal BaseDateAndTimeInputType::defaultValueForStepUp() const
 bool BaseDateAndTimeInputType::isSteppable() const
 {
     return true;
+}
+
+void BaseDateAndTimeInputType::minOrMaxAttributeChanged()
+{
+    element().invalidateStyleForSubtree();
 }
 
 Decimal BaseDateAndTimeInputType::parseToNumber(const String& source, const Decimal& defaultValue) const
@@ -175,7 +184,7 @@ bool BaseDateAndTimeInputType::valueMissing(const String& value) const
 }
 
 #if PLATFORM(IOS)
-bool BaseDateAndTimeInputType::isKeyboardFocusable(KeyboardEvent*) const
+bool BaseDateAndTimeInputType::isKeyboardFocusable(KeyboardEvent&) const
 {
     return !element().isReadOnly() && element().isTextFormControlFocusable();
 }

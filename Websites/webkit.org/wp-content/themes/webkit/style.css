@@ -118,7 +118,7 @@ p > a[name]::before {
     margin-left: -1.7rem;
     position: relative;
     top: 3rem;
-    
+
 }
 
 a[name]:hover {
@@ -134,6 +134,41 @@ h5 a[name],
 h6 a[name] {
     display: block;
     visibility: hidden;
+}
+
+input[type=text] {
+    display: inline-block;
+    box-sizing: border-box;
+    vertical-align: top;
+    height: 4.2rem;
+    padding-top: 3px;
+    margin-bottom: 3rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    color: #333333;
+    text-align: left;
+    border: 1px solid #d6d6d6;
+    border-radius: 4px;
+    background: white;
+    background-clip: padding-box;
+    font-family: "Myriad Set Pro", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    line-height: 1.33333;
+    font-weight: 400;
+    letter-spacing: normal;
+    font-size: 2rem;
+}
+
+input[type=submit] {
+    background-color: #1d9bd9;
+    background: -webkit-linear-gradient(#3baee7, #0088cc);
+    background: linear-gradient(#3baee7, #0088cc);
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-size: 1.5rem;
+    font-weight: 500;
+    text-align: center;
+    border: 0;
 }
 
 .admin-bar a[name] {
@@ -398,6 +433,15 @@ footer .menu {
     background-position: 50% 79.45%;
 }
 
+.tile.category-safari-technology-preview .background-image {
+    background-color: #8e56b1;
+}
+
+.tile.category-accessibility .background-image {
+    background-color: #08c;
+    background-position: 50% 89.2%;
+}
+
 .tile.tag-console .background-image,
 .tile.tag-debugger .background-image,
 .tile.tag-shortcuts .background-image,
@@ -423,9 +467,9 @@ footer .menu {
 
 .tile .background-image.loaded {
     background: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     -webkit-filter: saturate(1);
             filter: saturate(1);
-    
 }
 
 .tile .featured-image::before {
@@ -439,6 +483,7 @@ footer .menu {
     max-height: 450px;
     background-size: cover;
     background-position: 50% 50%;
+    background-repeat: no-repeat;
 
     opacity: 0;
     -webkit-transition: opacity 0.4s ease-in;
@@ -455,7 +500,7 @@ footer .menu {
 .has-post-thumbnail .background-image {
     filter: saturate(0);
     -webkit-filter: saturate(0);
-    opacity: 0.1;    
+    opacity: 0.1;
 }
 
 .has-post-thumbnail .background-image.loaded,
@@ -516,6 +561,15 @@ footer .menu {
 
 .featured-tile.tag-dark .tile-content a {
     color: #6cf;
+}
+
+.tag-transparent:not(.featured-tile) .featured-image {
+    box-shadow: none;
+    background-size: contain;
+}
+
+.tag-transparent:not(.featured-tile) .background-image.loaded {
+    border-bottom: none;
 }
 
 .tile-content p {
@@ -603,12 +657,18 @@ footer .menu {
     position: relative;
     box-sizing: border-box;
     font-size: 2rem;
+    text-align: center;
 }
 
 .twitter-tile.text-only {
     display: -webkit-flex;
     display: flex;
     justify-content: center;
+    text-align: left;
+}
+
+.twitter-tile .media {
+    text-align: center;
 }
 
 .twitter-tile.text-only .tile-content {
@@ -616,11 +676,14 @@ footer .menu {
     font-weight: 400;
     line-height: 3rem;
     align-self: center;
+    padding-bottom: 6rem;
 }
 
 .twitter-tile img {
-    width: 100%;
+    display: inline-block;
+    width: auto;
     height: auto;
+    max-width: 100%;
     max-height: 256px;
 }
 
@@ -648,6 +711,7 @@ footer .menu {
     display: inline-block;
     margin: 0 1.3rem;
 }
+
 .twitter-controls a {
     opacity: 0.66;
     transition: opacity 300ms ease-out;
@@ -961,6 +1025,19 @@ article div.note {
     box-sizing: normal;
 }
 
+article .foreword {
+    padding: 1.6rem 2.2rem 1.6rem;
+    line-height: 2.6rem;
+    background-color: #f0f0f0;
+    border: 1px solid #e6e6e6;
+    color: #8E8E93;
+    border-radius: 3px;
+    margin-bottom: 3rem;
+    box-sizing: normal;
+    font-size: 1.6rem;
+    font-style: italic;
+}
+
 article .two-columns {
     columns: 2;
     column-gap: 6rem;
@@ -1040,6 +1117,10 @@ article .alignnone.size-full {
     transform: translate(-50vw, 0);
 }
 
+article .abovetitle {
+    margin-top: -0.4em;
+}
+
 article .pull-left {
     float: left;
     margin: 1.5rem 1.5rem 1.5rem -25%;
@@ -1096,6 +1177,7 @@ article figure > img {
     max-width: 100%;
     max-height: 540px;
     height: auto;
+    width: auto;
 }
 
 figure.widescreen {
@@ -1118,6 +1200,17 @@ figure.widescreen figcaption {
 figure.widescreen video {
     max-height: 420px;
     max-width: 66%;
+}
+
+article video.alignleft,
+article video.alignright {
+    max-width: 50%;
+}
+
+article .alignleft:first-child,
+article .alignright:first-child {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
 article figcaption {
@@ -1143,6 +1236,18 @@ article figcaption::before {
     display: inline-block;
     box-sizing: border-box;
     position: absolute;
+}
+
+figure.aligncenter figcaption {
+    text-align: center;
+    padding-left: 0;
+}
+
+figure.aligncenter figcaption::before {
+    margin: 0 auto;
+    width: 20%;
+    left: 50%;
+    transform: translate(-50%);
 }
 
 article .clipbottom + p + figcaption {
@@ -1235,7 +1340,7 @@ article,
     width: 252px;
     background: #ffffff;
     z-index: 5;
-    
+
 }
 
 .table-of-contents ul {
@@ -1300,14 +1405,6 @@ article,
     content: "";
     background: url('images/menu-down.svg') no-repeat 50%;
     background-size: 2rem;
-    width: 2rem;
-    height: 2rem;
-    position: absolute;
-    right: 0;
-    top: 0.5rem;
-    -webkit-transition: transform 0.3s ease-out;
-    -moz-transition: transform 0.3s ease-out;
-    transition: transform 0.3s ease-out;
 }
 
 .feature.opened .feature-header:after {
@@ -1378,7 +1475,7 @@ header .menu-item-has-children .label-toggle::after {
     margin-left: 0.5rem;
     margin-top: -0.1rem;
     content: '';
-    
+
     -webkit-transition: transform 0.3s ease-out;
     -moz-transition: transform 0.3s ease-out;
     transition: transform 0.3s ease-out;
@@ -1388,17 +1485,6 @@ header .menu-item { /* add bottom dimension to main menu items */
     padding-bottom: 3rem;
 }
 
-/* Improves mouse accessibility of menus */
-/*header .menu > .menu-item-has-children:hover > a::before {
-    position: absolute;
-    content: '';
-    width: 100%;
-    height: 100%;
-    padding: 0rem 10rem 1rem 0;
-    top: 2rem;
-    right: -3rem;
-}
-*/
 .sub-menu-layer {
     text-align: center;
     padding: 3rem;
@@ -1407,19 +1493,21 @@ header .menu-item { /* add bottom dimension to main menu items */
     width: 21rem;
     margin-left: -11rem;
     margin-top: -99rem;
-    
+
     position: absolute;
-    top: 7rem;    
-    
+    top: 8rem;
+    transform: translateY(-1rem);
+
     background: rgba(255,255,255,0.95);
     box-shadow: 0px 3px 20px 0px rgba(0, 0, 0, 0.10);
     border: 1px solid #e7e7e7;
     border-radius: 5px;
 
-    -webkit-transition: opacity 0.6s, top 0.6s;
-    -moz-transition: opacity 0.6s, top 0.6s;
-    transition: opacity 0.6s, top 0.6s;
+    -webkit-transition: opacity 0.6s, transform 0.6s;
+    -moz-transition: opacity 0.6s, transform 0.6s;
+    transition: opacity 0.6s, transform 0.6s;
     opacity: 0;
+
 }
 
 .sub-menu-layer:after, .sub-menu-layer:before {
@@ -1431,6 +1519,7 @@ header .menu-item { /* add bottom dimension to main menu items */
     width: 0;
     position: absolute;
     pointer-events: none;
+
 }
 
 .sub-menu-layer:after {
@@ -1447,7 +1536,7 @@ header .menu-item { /* add bottom dimension to main menu items */
 
 .sub-menu-layer .menu-item {
     padding: 1.5rem 0 0 0;
-    width: 100%;    
+    width: 100%;
 }
 
 .sub-menu-layer .menu-item:first-child {
@@ -1462,7 +1551,7 @@ header .menu-item { /* add bottom dimension to main menu items */
     box-sizing: border-box;
     z-index: 1;
     opacity: 1;
-    top: 8rem;    
+    transform: translateY(0);
     margin-top: 0;
 }
 
@@ -1691,7 +1780,6 @@ header .menu-item { /* add bottom dimension to main menu items */
 /** Screen Breakpoints **/
 
 @media only screen and (max-width: 1180px) {
-    
     .page-width {
         max-width: 1140px;
         padding-left: 2rem;
@@ -1704,29 +1792,25 @@ header .menu-item { /* add bottom dimension to main menu items */
         float: none;
         text-align: center;
         margin-bottom: 3rem;
-        padding-right: 0;
     }
 
     article .byline p {
         display: inline;
     }
-
 }
 
 @media only screen and (max-width: 1000px) {
-
     article.page h1 {
         width: 90%;
         margin-bottom: 3rem;
     }
-    
+
     article .byline {
         width: 60%;
         margin: 0 auto;
         float: none;
         text-align: center;
         margin-bottom: 3rem;
-        padding-right: 0;
     }
 
     article .byline p {
@@ -1736,11 +1820,9 @@ header .menu-item { /* add bottom dimension to main menu items */
     article .bodycopy {
         width: 90%;
     }
-
 }
 
 @media only screen and (max-width: 920px) {
-    
     .main-menu.label-toggle {
         display: inline-block;
         margin: 1.5rem 0 2.5rem;
@@ -1748,12 +1830,12 @@ header .menu-item { /* add bottom dimension to main menu items */
         width: 3rem;
         background: url('images/menu-down.svg') no-repeat 50%;
         cursor: pointer;
-        
+
         -webkit-transition: transform 0.3s ease-out;
         -moz-transition: transform 0.3s ease-out;
         transition: transform 0.3s ease-out;
     }
-    
+
     .menu-toggle:checked + .main-menu.label-toggle,
     header .menu-item > .menu-toggle:checked + a > .label-toggle::after {
         -webkit-transform: rotateX(-180deg);
@@ -1810,11 +1892,12 @@ header .menu-item { /* add bottom dimension to main menu items */
         border-left: none;
         border-right: none;
         opacity: 0;
+        transform: translateY(0);
         -webkit-transition: opacity 0.6s;
         -moz-transition: opacity 0.6s;
         transition: opacity 0.6s;
     }
-    
+
     header .sub-menu-layer:after, .sub-menu-layer:before {
         bottom: 100%;
         left: 71%;
@@ -1830,26 +1913,25 @@ header .menu-item { /* add bottom dimension to main menu items */
         border: none;
         margin-left: -10px;
     }
-    
+
     header .sub-menu-layer:before {
         border: none;
         margin-left: -11px;
     }
-    
+
     header .menu > .menu-item > .menu-toggle:checked ~ .sub-menu {
         position: relative;
         top: 1.5rem;
         margin-top: 0;
     }
-        
+
     footer nav li {
         padding: 0 3rem 3rem 0;
     }
-
+    
 }
 
 @media only screen and (max-width: 690px) {
-    
     .featured-tile {
         padding: 0;
     }
@@ -1869,7 +1951,7 @@ header .menu-item { /* add bottom dimension to main menu items */
     }
 
     .tile {
-        min-height: auto;
+        min-height: 320px;
     }
 
     .third-tile,
@@ -1894,23 +1976,23 @@ header .menu-item { /* add bottom dimension to main menu items */
         border-left: none;
         border-right: none;
     }
-   
+
     .table-of-contents { /* hug the edge */
         right: 0;
     }
-    
+
     .pagination .prev-post,
     .pagination .next-post {
         min-width: auto;
         width: 90%;
         text-align: right;
     }
-    
+
     .pagination .prev-post {
         margin-bottom: 1rem;
         text-align: left;
     }
-    
+
     article .scrollable {
         overflow: auto;
         -webkit-overflow-scrolling: touch;
@@ -1924,24 +2006,27 @@ header .menu-item { /* add bottom dimension to main menu items */
         border-right: none;
     }
 
+    article video.alignleft,
+    article video.alignright {
+        min-width: 30rem;
+    }
+
     .scrollable .scrollable-padding {
         display: inline-block;
         padding: 0 3rem;
     }
-
 }
 
 @media only screen and (max-width: 600px) {
-        
     header {
         padding-top: 1rem;
     }
-        
+
     .site-logo {
         font-size: 4rem;
         padding-left: 6rem;
     }
-    
+
     .site-logo .tagline {
         font-size: 1.6rem;
         line-height: 1;
@@ -1952,55 +2037,24 @@ header .menu-item { /* add bottom dimension to main menu items */
         margin-bottom: 2rem;
     }
 
-    .feature-filters {
-        height: 6rem;
-        overflow: hidden;
-    }
-
-    .feature-filters.opened {
-        height: auto;
-    }
-
-    .feature-filters:after {
-        display: inline-block;
-        content: "";
-        background: url('images/menu-down.svg') no-repeat 50%;
-        background-size: 2rem;
-        width: 2rem;
-        height: 2rem;
-        position: absolute;
-        right: 1rem;
-        top: 2rem;
-        -webkit-transition: transform 0.3s ease-out;
-        -moz-transition: transform 0.3s ease-out;
-        transition: transform 0.3s ease-out;
-        perspective: 600;
-    }
-
-    .feature-filters.opened:after {
-        -webkit-transform: rotateX(-180deg);
-        -moz-transform: rotateX(-180deg);
-        transform: rotateX(-180deg);
-    }
-    
     #wpadminbar {
         position: absolute;
     }
-    
+
     .table-of-contents {
         height: 9rem;
         overflow: hidden;
         margin-right: -10%;
     }
-    
+
     .menu-toggle:checked ~ .table-of-contents {
         height: auto;
     }
-    
+
     .table-of-contents label {
         display: block;
     }
-    
+
     .table-of-contents label:after {
         display: inline-block;
         content: "";
@@ -2016,27 +2070,38 @@ header .menu-item { /* add bottom dimension to main menu items */
         transition: transform 0.3s ease-out;
         perspective: 600;
     }
-    
+
     .menu-toggle:checked ~ .table-of-contents label:after {
         -webkit-transform: rotateX(-180deg);
         -moz-transform: rotateX(-180deg);
         transform: rotateX(-180deg);
     }
-    
+
     .table-of-contents h6 {
         margin-bottom: 3rem;
     }
-    
+
     .with-toc pre:nth-child(-n+6),
     #post-4132 pre:nth-child(-n+8) {
         width: 100vw;
     }
-        
+
+    article video.alignleft,
+    article video.alignright {
+        max-width: 100%;
+        min-width: none;
+        width: 100%;
+    }
+
+    article .alignleft:first-child,
+    article .alignright:first-child {
+        margin-bottom: 3rem;
+    }
+
 }
 
 @media only screen and (max-width: 415px) {
-    
-    .table-of-contents { 
+    .table-of-contents {
         /* Go one-column */
         width: 100vw;
         left: 50%;
@@ -2045,35 +2110,33 @@ header .menu-item { /* add bottom dimension to main menu items */
         float: none;
         margin: 0 0 3rem 0;
     }
-    
 }
 
 @media only screen and (max-height: 415px) {
-    
     .hero .logo,
     .hero .tagline,
     .hero .particle {
         display: none;
     }
-    
+
     .home .site-logo {
         opacity: 1;
         margin-top: 0;
     }
-    
+
     .home .hero {
         margin: 7rem 0 0;
     }
-    
+
     .home.admin-bar .hero {
         margin-top: 12rem;
     }
-    
+
     header,
     .home header {
         padding-top: 1rem;
     }
-    
+
     .home header {
         border-bottom: 1px solid #e7e7e7;
         background: rgba(255,255,255,0.9);
@@ -2086,17 +2149,17 @@ header .menu-item { /* add bottom dimension to main menu items */
             background: rgba(255,255,255,0.8);
         }
     }
-    
+
     .tile {
         min-height: 200px;
         max-height: 400px;
         overflow: hidden;
     }
-    
+
     .tile .background-image {
         padding-bottom: 33%;
     }
-    
+
     .tile.category-performance .background-image {
         background-position-y: 21.5%;
     }
@@ -2104,21 +2167,21 @@ header .menu-item { /* add bottom dimension to main menu items */
     .tile.category-web-inspector .background-image {
         background-position-y: 12.5%;
     }
-    
+
     .table-of-contents {
         height: 9rem;
         overflow: hidden;
         margin-right: -10%;
     }
-    
+
     .menu-toggle:checked ~ .table-of-contents {
         height: auto;
     }
-    
+
     .table-of-contents label {
         display: block;
     }
-    
+
     .table-of-contents label:after {
         display: inline-block;
         content: "";
@@ -2134,28 +2197,25 @@ header .menu-item { /* add bottom dimension to main menu items */
         transition: transform 0.3s ease-out;
         perspective: 600;
     }
-    
+
     .menu-toggle:checked ~ .table-of-contents label:after {
         -webkit-transform: rotateX(-180deg);
         -moz-transform: rotateX(-180deg);
         transform: rotateX(-180deg);
     }
-    
+
     .table-of-contents h6 {
         margin-bottom: 3rem;
     }
-    
+
     .with-toc pre:nth-child(-n+6),
     #post-4132 pre:nth-child(-n+8) {
         width: 100vw;
     }
-    
 }
 
 @media only screen and (max-width: 320px) {
-
     .home .hero {
         position: absolute;
     }
-    
 }

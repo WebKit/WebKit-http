@@ -37,16 +37,18 @@
 
 @class WKWebProcessPlugInFrame;
 
-WK_CLASS_AVAILABLE(10_10, 8_0)
+WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface WKWebProcessPlugInNodeHandle : NSObject
 
 + (WKWebProcessPlugInNodeHandle *)nodeHandleWithJSValue:(JSValue *)value inContext:(JSContext *)context;
 - (WKWebProcessPlugInFrame *)htmlIFrameElementContentFrame;
 
 #if TARGET_OS_IPHONE
-- (UIImage *)renderedImageWithOptions:(WKSnapshotOptions)options WK_AVAILABLE(10_11, 9_0);
+- (UIImage *)renderedImageWithOptions:(WKSnapshotOptions)options WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+- (UIImage *)renderedImageWithOptions:(WKSnapshotOptions)options width:(NSNumber *)width WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 #else
-- (NSImage *)renderedImageWithOptions:(WKSnapshotOptions)options WK_AVAILABLE(10_11, 9_0);
+- (NSImage *)renderedImageWithOptions:(WKSnapshotOptions)options WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+- (NSImage *)renderedImageWithOptions:(WKSnapshotOptions)options width:(NSNumber *)width WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 #endif
 
 @property (nonatomic, readonly) CGRect elementBounds;

@@ -27,10 +27,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef CSSBasicShapes_h
-#define CSSBasicShapes_h
+#pragma once
 
-#include "CSSPrimitiveValue.h"
 #include "WindRule.h"
 #include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
@@ -39,6 +37,7 @@
 
 namespace WebCore {
 
+class CSSPrimitiveValue;
 class SVGPathByteStream;
 
 class CSSBasicShape : public RefCounted<CSSBasicShape> {
@@ -77,45 +76,45 @@ public:
     CSSPrimitiveValue* bottomRightRadius() const { return m_bottomRightRadius.get(); }
     CSSPrimitiveValue* bottomLeftRadius() const { return m_bottomLeftRadius.get(); }
 
-    void setTop(PassRefPtr<CSSPrimitiveValue> top) { m_top = top; }
-    void setRight(PassRefPtr<CSSPrimitiveValue> right) { m_right = right; }
-    void setBottom(PassRefPtr<CSSPrimitiveValue> bottom) { m_bottom = bottom; }
-    void setLeft(PassRefPtr<CSSPrimitiveValue> left) { m_left = left; }
+    void setTop(Ref<CSSPrimitiveValue>&& top) { m_top = WTFMove(top); }
+    void setRight(Ref<CSSPrimitiveValue>&& right) { m_right = WTFMove(right); }
+    void setBottom(Ref<CSSPrimitiveValue>&& bottom) { m_bottom = WTFMove(bottom); }
+    void setLeft(Ref<CSSPrimitiveValue>&& left) { m_left = WTFMove(left); }
 
-    void updateShapeSize4Values(CSSPrimitiveValue* top, CSSPrimitiveValue* right, CSSPrimitiveValue* bottom, CSSPrimitiveValue* left)
+    void updateShapeSize4Values(Ref<CSSPrimitiveValue>&& top, Ref<CSSPrimitiveValue>&& right, Ref<CSSPrimitiveValue>&& bottom, Ref<CSSPrimitiveValue>&& left)
     {
-        setTop(top);
-        setRight(right);
-        setBottom(bottom);
-        setLeft(left);
+        setTop(WTFMove(top));
+        setRight(WTFMove(right));
+        setBottom(WTFMove(bottom));
+        setLeft(WTFMove(left));
     }
 
-    void updateShapeSize1Value(CSSPrimitiveValue* value1)
+    void updateShapeSize1Value(Ref<CSSPrimitiveValue>&& value1)
     {
-        updateShapeSize4Values(value1, value1, value1, value1);
+        updateShapeSize4Values(value1.copyRef(), value1.copyRef(), value1.copyRef(), value1.copyRef());
     }
 
-    void updateShapeSize2Values(CSSPrimitiveValue* value1,  CSSPrimitiveValue* value2)
+    void updateShapeSize2Values(Ref<CSSPrimitiveValue>&& value1, Ref<CSSPrimitiveValue>&& value2)
     {
-        updateShapeSize4Values(value1, value2, value1, value2);
+        updateShapeSize4Values(value1.copyRef(), value2.copyRef(), value1.copyRef(), value2.copyRef());
     }
 
-    void updateShapeSize3Values(CSSPrimitiveValue* value1, CSSPrimitiveValue* value2,  CSSPrimitiveValue* value3)
+    void updateShapeSize3Values(Ref<CSSPrimitiveValue>&& value1, Ref<CSSPrimitiveValue>&& value2,  Ref<CSSPrimitiveValue>&& value3)
     {
-        updateShapeSize4Values(value1, value2, value3, value2);
+        updateShapeSize4Values(WTFMove(value1), value2.copyRef(), WTFMove(value3), value2.copyRef());
     }
 
-    void setTopLeftRadius(PassRefPtr<CSSPrimitiveValue> radius) { m_topLeftRadius = radius; }
-    void setTopRightRadius(PassRefPtr<CSSPrimitiveValue> radius) { m_topRightRadius = radius; }
-    void setBottomRightRadius(PassRefPtr<CSSPrimitiveValue> radius) { m_bottomRightRadius = radius; }
-    void setBottomLeftRadius(PassRefPtr<CSSPrimitiveValue> radius) { m_bottomLeftRadius = radius; }
+    void setTopLeftRadius(RefPtr<CSSPrimitiveValue>&& radius) { m_topLeftRadius = WTFMove(radius); }
+    void setTopRightRadius(RefPtr<CSSPrimitiveValue>&& radius) { m_topRightRadius = WTFMove(radius); }
+    void setBottomRightRadius(RefPtr<CSSPrimitiveValue>&& radius) { m_bottomRightRadius = WTFMove(radius); }
+    void setBottomLeftRadius(RefPtr<CSSPrimitiveValue>&& radius) { m_bottomLeftRadius = WTFMove(radius); }
 
 private:
     CSSBasicShapeInset() { }
 
-    virtual Type type() const override { return CSSBasicShapeInsetType; }
-    virtual String cssText() const override;
-    virtual bool equals(const CSSBasicShape&) const override;
+    Type type() const final { return CSSBasicShapeInsetType; }
+    String cssText() const final;
+    bool equals(const CSSBasicShape&) const final;
 
     RefPtr<CSSPrimitiveValue> m_top;
     RefPtr<CSSPrimitiveValue> m_right;
@@ -136,16 +135,16 @@ public:
     CSSPrimitiveValue* centerY() const { return m_centerY.get(); }
     CSSPrimitiveValue* radius() const { return m_radius.get(); }
 
-    void setCenterX(PassRefPtr<CSSPrimitiveValue> centerX) { m_centerX = centerX; }
-    void setCenterY(PassRefPtr<CSSPrimitiveValue> centerY) { m_centerY = centerY; }
-    void setRadius(PassRefPtr<CSSPrimitiveValue> radius) { m_radius = radius; }
+    void setCenterX(Ref<CSSPrimitiveValue>&& centerX) { m_centerX = WTFMove(centerX); }
+    void setCenterY(Ref<CSSPrimitiveValue>&& centerY) { m_centerY = WTFMove(centerY); }
+    void setRadius(Ref<CSSPrimitiveValue>&& radius) { m_radius = WTFMove(radius); }
 
 private:
     CSSBasicShapeCircle() { }
 
-    virtual Type type() const override { return CSSBasicShapeCircleType; }
-    virtual String cssText() const override;
-    virtual bool equals(const CSSBasicShape&) const override;
+    Type type() const final { return CSSBasicShapeCircleType; }
+    String cssText() const final;
+    bool equals(const CSSBasicShape&) const final;
 
     RefPtr<CSSPrimitiveValue> m_centerX;
     RefPtr<CSSPrimitiveValue> m_centerY;
@@ -161,17 +160,17 @@ public:
     CSSPrimitiveValue* radiusX() const { return m_radiusX.get(); }
     CSSPrimitiveValue* radiusY() const { return m_radiusY.get(); }
 
-    void setCenterX(PassRefPtr<CSSPrimitiveValue> centerX) { m_centerX = centerX; }
-    void setCenterY(PassRefPtr<CSSPrimitiveValue> centerY) { m_centerY = centerY; }
-    void setRadiusX(PassRefPtr<CSSPrimitiveValue> radiusX) { m_radiusX = radiusX; }
-    void setRadiusY(PassRefPtr<CSSPrimitiveValue> radiusY) { m_radiusY = radiusY; }
+    void setCenterX(Ref<CSSPrimitiveValue>&& centerX) { m_centerX = WTFMove(centerX); }
+    void setCenterY(Ref<CSSPrimitiveValue>&& centerY) { m_centerY = WTFMove(centerY); }
+    void setRadiusX(Ref<CSSPrimitiveValue>&& radiusX) { m_radiusX = WTFMove(radiusX); }
+    void setRadiusY(Ref<CSSPrimitiveValue>&& radiusY) { m_radiusY = WTFMove(radiusY); }
 
 private:
     CSSBasicShapeEllipse() { }
 
-    virtual Type type() const override { return CSSBasicShapeEllipseType; }
-    virtual String cssText() const override;
-    virtual bool equals(const CSSBasicShape&) const override;
+    Type type() const final { return CSSBasicShapeEllipseType; }
+    String cssText() const final;
+    bool equals(const CSSBasicShape&) const final;
 
     RefPtr<CSSPrimitiveValue> m_centerX;
     RefPtr<CSSPrimitiveValue> m_centerY;
@@ -183,15 +182,13 @@ class CSSBasicShapePolygon final : public CSSBasicShape {
 public:
     static Ref<CSSBasicShapePolygon> create() { return adoptRef(*new CSSBasicShapePolygon); }
 
-    void appendPoint(PassRefPtr<CSSPrimitiveValue> x, PassRefPtr<CSSPrimitiveValue> y)
+    void appendPoint(Ref<CSSPrimitiveValue>&& x, Ref<CSSPrimitiveValue>&& y)
     {
-        m_values.append(x);
-        m_values.append(y);
+        m_values.append(WTFMove(x));
+        m_values.append(WTFMove(y));
     }
 
-    RefPtr<CSSPrimitiveValue> getXAt(unsigned i) const { return m_values.at(i * 2); }
-    RefPtr<CSSPrimitiveValue> getYAt(unsigned i) const { return m_values.at(i * 2 + 1); }
-    const Vector<RefPtr<CSSPrimitiveValue>>& values() const { return m_values; }
+    const Vector<Ref<CSSPrimitiveValue>>& values() const { return m_values; }
 
     void setWindRule(WindRule rule) { m_windRule = rule; }
     WindRule windRule() const { return m_windRule; }
@@ -202,11 +199,11 @@ private:
     {
     }
 
-    virtual Type type() const override { return CSSBasicShapePolygonType; }
-    virtual String cssText() const override;
-    virtual bool equals(const CSSBasicShape&) const override;
+    Type type() const final { return CSSBasicShapePolygonType; }
+    String cssText() const final;
+    bool equals(const CSSBasicShape&) const final;
 
-    Vector<RefPtr<CSSPrimitiveValue>> m_values;
+    Vector<Ref<CSSPrimitiveValue>> m_values;
     WindRule m_windRule;
 };
 
@@ -228,9 +225,9 @@ public:
 private:
     CSSBasicShapePath(std::unique_ptr<SVGPathByteStream>&&);
 
-    virtual Type type() const override { return CSSBasicShapePathType; }
-    virtual String cssText() const override;
-    virtual bool equals(const CSSBasicShape&) const override;
+    Type type() const final { return CSSBasicShapePathType; }
+    String cssText() const final;
+    bool equals(const CSSBasicShape&) const final;
 
     std::unique_ptr<SVGPathByteStream> m_byteStream;
     WindRule m_windRule { RULE_NONZERO };
@@ -248,5 +245,3 @@ SPECIALIZE_TYPE_TRAITS_CSS_BASIC_SHAPES(CSSBasicShapeCircle)
 SPECIALIZE_TYPE_TRAITS_CSS_BASIC_SHAPES(CSSBasicShapeEllipse)
 SPECIALIZE_TYPE_TRAITS_CSS_BASIC_SHAPES(CSSBasicShapePolygon)
 SPECIALIZE_TYPE_TRAITS_CSS_BASIC_SHAPES(CSSBasicShapePath)
-
-#endif // CSSBasicShapes_h

@@ -216,18 +216,54 @@ static uint64_t generateReplyIdentifier()
 
             RetainPtr<_WKRemoteObjectRegistry> remoteObjectRegistry = self;
             uint64_t replyID = replyInfo->replyID;
-            id replyBlock = __NSMakeSpecialForwardingCaptureBlock(wireBlockSignature._typeString.UTF8String, [interface, remoteObjectRegistry, replyID](NSInvocation *invocation) {
 
+            class ReplyBlockCallChecker : public WTF::ThreadSafeRefCounted<ReplyBlockCallChecker> {
+            public:
+                static Ref<ReplyBlockCallChecker> create(_WKRemoteObjectRegistry *registry, uint64_t replyID) { return adoptRef(*new ReplyBlockCallChecker(registry, replyID)); }
+
+                ~ReplyBlockCallChecker()
+                {
+                    if (m_didCallReplyBlock)
+                        return;
+
+                    // FIXME: Instead of not sending anything when the remote object registry is null, we should
+                    // keep track of all reply block checkers and invalidate them (sending the unused reply message) in
+                    // -[_WKRemoteObjectRegistry _invalidate].
+                    if (!m_remoteObjectRegistry->_remoteObjectRegistry)
+                        return;
+
+                    m_remoteObjectRegistry->_remoteObjectRegistry->sendUnusedReply(m_replyID);
+                }
+
+                void didCallReplyBlock() { m_didCallReplyBlock = true; }
+
+            private:
+                ReplyBlockCallChecker(_WKRemoteObjectRegistry *registry, uint64_t replyID)
+                    : m_remoteObjectRegistry(registry)
+                    , m_replyID(replyID)
+                {
+                }
+
+                RetainPtr<_WKRemoteObjectRegistry> m_remoteObjectRegistry;
+                uint64_t m_replyID = 0;
+                bool m_didCallReplyBlock = false;
+            };
+
+            RefPtr<ReplyBlockCallChecker> checker = ReplyBlockCallChecker::create(self, replyID);
+            id replyBlock = __NSMakeSpecialForwardingCaptureBlock(wireBlockSignature._typeString.UTF8String, [interface, remoteObjectRegistry, replyID, checker](NSInvocation *invocation) {
                 auto encoder = adoptNS([[WKRemoteObjectEncoder alloc] init]);
                 [encoder encodeObject:invocation forKey:invocationKey];
 
                 remoteObjectRegistry->_remoteObjectRegistry->sendReplyBlock(replyID, UserData([encoder rootObjectDictionary]));
+                checker->didCallReplyBlock();
             });
 
             [invocation setArgument:&replyBlock atIndex:i];
 
             // Make sure that the block won't be destroyed before the invocation.
             objc_setAssociatedObject(invocation, replyBlockKey, replyBlock, OBJC_ASSOCIATION_RETAIN);
+            [replyBlock release];
+
             break;
         }
     }
@@ -267,6 +303,11 @@ static uint64_t generateReplyIdentifier()
 
     [replyInvocation setTarget:pendingReply.block.get()];
     [replyInvocation invoke];
+}
+
+- (void)_releaseReplyWithID:(uint64_t)replyID
+{
+    _pendingReplies.remove(replyID);
 }
 
 @end

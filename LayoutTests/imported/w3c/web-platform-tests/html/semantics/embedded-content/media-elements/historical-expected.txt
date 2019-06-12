@@ -17,7 +17,6 @@ PASS audio.addCuePoint should not be supported
 PASS video.addCuePoint should not be supported 
 PASS audio.removeCuePoint should not be supported 
 PASS video.removeCuePoint should not be supported 
-FAIL source.media should not be supported assert_false: expected false got true
 PASS audio.playCount should not be supported 
 PASS video.playCount should not be supported 
 PASS audio.addCueRange should not be supported 
@@ -42,7 +41,10 @@ PASS video.initialTime should not be supported
 PASS video.audio should not be supported 
 PASS audio.startDate should not be supported 
 PASS video.startDate should not be supported 
-FAIL TextTrackCue constructor should not be supported assert_throws: function "function () {
-    new TextTrackCue(0, 0, '');
-  }" did not throw
+PASS TextTrackCue constructor should not be supported 
+FAIL audio.mediaGroup should not be supported assert_false: expected false got true
+FAIL video.mediaGroup should not be supported assert_false: expected false got true
+FAIL audio.controller should not be supported assert_false: expected false got true
+FAIL video.controller should not be supported assert_false: expected false got true
+FAIL MediaController constructor should not be supported assert_false: expected false got true
 

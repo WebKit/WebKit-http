@@ -74,16 +74,13 @@ void WebPopupMenuProxyMac::populate(const Vector<WebPopupItem>& items, NSFont *f
             RetainPtr<NSMutableParagraphStyle> paragraphStyle = adoptNS([[NSParagraphStyle defaultParagraphStyle] mutableCopy]);
             NSWritingDirection writingDirection = items[i].m_textDirection == LTR ? NSWritingDirectionLeftToRight : NSWritingDirectionRightToLeft;
             [paragraphStyle setBaseWritingDirection:writingDirection];
-            [paragraphStyle setAlignment:menuTextDirection == LTR ? NSLeftTextAlignment : NSRightTextAlignment];
+            [paragraphStyle setAlignment:menuTextDirection == LTR ? NSTextAlignmentLeft : NSTextAlignmentRight];
             RetainPtr<NSMutableDictionary> attributes = adoptNS([[NSMutableDictionary alloc] initWithObjectsAndKeys:
                 paragraphStyle.get(), NSParagraphStyleAttributeName,
                 font, NSFontAttributeName,
             nil]);
             if (items[i].m_hasTextDirectionOverride) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-                RetainPtr<NSNumber> writingDirectionValue = adoptNS([[NSNumber alloc] initWithInteger:writingDirection + NSTextWritingDirectionOverride]);
-#pragma clang diagnostic pop
+                RetainPtr<NSNumber> writingDirectionValue = adoptNS([[NSNumber alloc] initWithInteger:writingDirection + NSWritingDirectionOverride]);
                 RetainPtr<NSArray> writingDirectionArray = adoptNS([[NSArray alloc] initWithObjects:writingDirectionValue.get(), nil]);
                 [attributes setObject:writingDirectionArray.get() forKey:NSWritingDirectionAttributeName];
             }
@@ -115,9 +112,10 @@ void WebPopupMenuProxyMac::showPopupMenu(const IntRect& rect, TextDirection text
     [m_popup setUserInterfaceLayoutDirection:textDirection == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
 
     NSMenu *menu = [m_popup menu];
+    [menu setUserInterfaceLayoutDirection:textDirection == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
 
     // These values were borrowed from AppKit to match their placement of the menu.
-    const int popOverHorizontalAdjust = -10;
+    const int popOverHorizontalAdjust = -13;
     const int popUnderHorizontalAdjust = 6;
     const int popUnderVerticalAdjust = 6;
     
@@ -128,25 +126,41 @@ void WebPopupMenuProxyMac::showPopupMenu(const IntRect& rect, TextDirection text
         NSRect titleFrame = [m_popup  titleRectForBounds:rect];
         if (titleFrame.size.width <= 0 || titleFrame.size.height <= 0)
             titleFrame = rect;
-        float vertOffset = roundf((NSMaxY(rect) - NSMaxY(titleFrame)) + NSHeight(titleFrame));
-        location = NSMakePoint(NSMinX(rect) + popOverHorizontalAdjust, NSMaxY(rect) - vertOffset);
-    } else
-        location = NSMakePoint(NSMinX(rect) + popUnderHorizontalAdjust, NSMaxY(rect) + popUnderVerticalAdjust);  
+        float verticalOffset = roundf((NSMaxY(rect) - NSMaxY(titleFrame)) + NSHeight(titleFrame)) + 1;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+        if (textDirection == LTR)
+            location = NSMakePoint(NSMinX(rect) + popOverHorizontalAdjust, NSMaxY(rect) - verticalOffset);
+        else
+            location = NSMakePoint(NSMaxX(rect) - popOverHorizontalAdjust, NSMaxY(rect) - verticalOffset);
+#else
+        location = NSMakePoint(NSMinX(rect) + popOverHorizontalAdjust, NSMaxY(rect) - verticalOffset);
+#endif
 
+    } else {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+        if (textDirection == LTR)
+            location = NSMakePoint(NSMinX(rect) + popUnderHorizontalAdjust, NSMaxY(rect) + popUnderVerticalAdjust);
+        else
+            location = NSMakePoint(NSMaxX(rect) - popUnderHorizontalAdjust, NSMaxY(rect) + popUnderVerticalAdjust);
+#else
+        location = NSMakePoint(NSMinX(rect) + popUnderHorizontalAdjust, NSMaxY(rect) + popUnderVerticalAdjust);
+#endif
+    }
     RetainPtr<NSView> dummyView = adoptNS([[NSView alloc] initWithFrame:rect]);
+    [dummyView.get() setUserInterfaceLayoutDirection:textDirection == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
     [m_webView addSubview:dummyView.get()];
     location = [dummyView convertPoint:location fromView:m_webView];
 
     NSControlSize controlSize;
     switch (data.menuSize) {
     case WebCore::PopupMenuStyle::PopupMenuSizeNormal:
-        controlSize = NSRegularControlSize;
+        controlSize = NSControlSizeRegular;
         break;
     case WebCore::PopupMenuStyle::PopupMenuSizeSmall:
-        controlSize = NSSmallControlSize;
+        controlSize = NSControlSizeSmall;
         break;
     case WebCore::PopupMenuStyle::PopupMenuSizeMini:
-        controlSize = NSMiniControlSize;
+        controlSize = NSControlSizeMini;
         break;
     }
 
@@ -166,10 +180,10 @@ void WebPopupMenuProxyMac::showPopupMenu(const IntRect& rect, TextDirection text
         return;
     
     NSEvent* initiatingNSEvent = m_client->currentlyProcessedMouseDownEvent()->nativeEvent();
-    if ([initiatingNSEvent type] != NSLeftMouseDown)
+    if ([initiatingNSEvent type] != NSEventTypeLeftMouseDown)
         return;
-    
-    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSLeftMouseUp
+
+    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSEventTypeLeftMouseUp
                                             location:[initiatingNSEvent locationInWindow]
                                        modifierFlags:[initiatingNSEvent modifierFlags]
                                            timestamp:[initiatingNSEvent timestamp]
@@ -178,12 +192,14 @@ void WebPopupMenuProxyMac::showPopupMenu(const IntRect& rect, TextDirection text
                                          eventNumber:[initiatingNSEvent eventNumber]
                                           clickCount:[initiatingNSEvent clickCount]
                                             pressure:[initiatingNSEvent pressure]];
-    
+
     [NSApp postEvent:fakeEvent atStart:YES];
+    fakeEvent = [NSEvent mouseEventWithType:NSEventTypeMouseMoved
+                                   location:[[m_webView window]
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    fakeEvent = [NSEvent mouseEventWithType:NSMouseMoved
-                                   location:[[m_webView window] convertScreenToBase:[NSEvent mouseLocation]]
+                        convertScreenToBase:[NSEvent mouseLocation]]
+#pragma clang diagnostic pop
                               modifierFlags:[initiatingNSEvent modifierFlags]
                                   timestamp:[initiatingNSEvent timestamp]
                                windowNumber:[initiatingNSEvent windowNumber]
@@ -191,7 +207,6 @@ void WebPopupMenuProxyMac::showPopupMenu(const IntRect& rect, TextDirection text
                                 eventNumber:0
                                  clickCount:0
                                    pressure:0];
-#pragma clang diagnostic pop
     [NSApp postEvent:fakeEvent atStart:YES];
 }
 

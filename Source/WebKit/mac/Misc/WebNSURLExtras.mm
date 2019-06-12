@@ -57,10 +57,20 @@ using namespace WTF;
 
 + (NSURL *)_web_URLWithUserTypedString:(NSString *)string relativeToURL:(NSURL *)URL
 {
-    return URLWithUserTypedString(string, URL);
+    return URLWithUserTypedStringDeprecated(string, URL);
 }
 
 + (NSURL *)_web_URLWithUserTypedString:(NSString *)string
+{
+    return URLWithUserTypedStringDeprecated(string, nil);
+}
+
++ (NSURL *)_webkit_URLWithUserTypedString:(NSString *)string relativeToURL:(NSURL *)URL
+{
+    return URLWithUserTypedString(string, URL);
+}
+
++ (NSURL *)_webkit_URLWithUserTypedString:(NSString *)string
 {
     return URLWithUserTypedString(string, nil);
 }
@@ -255,10 +265,22 @@ using namespace WTF;
 
 - (NSString *)_web_decodeHostName
 {
-    return decodeHostName(self);
+    NSString *name = decodeHostName(self);
+    return !name ? self : name;
 }
 
 - (NSString *)_web_encodeHostName
+{
+    NSString *name = encodeHostName(self);
+    return !name ? self : name;
+}
+
+- (NSString *)_webkit_decodeHostName
+{
+    return decodeHostName(self);
+}
+
+- (NSString *)_webkit_encodeHostName
 {
     return encodeHostName(self);
 }
@@ -290,77 +312,5 @@ using namespace WTF;
     // Trim whitespace because _web_URLWithString allows whitespace.
     return [[self _webkit_stringByTrimmingWhitespace] _webkit_rangeOfURLScheme].location != NSNotFound;
 }
-
-#if PLATFORM(IOS)
-
-- (NSString *)_webkit_unescapedQueryValue
-{
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSMutableString *string = [[[self stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] mutableCopy] autorelease];
-    if (!string) // If we failed to decode the URL as UTF8, fall back to Latin1
-        string = [[[self stringByReplacingPercentEscapesUsingEncoding:NSISOLatin1StringEncoding] mutableCopy] autorelease];
-#pragma clang diagnostic pop
-    [string replaceOccurrencesOfString:@"+" withString:@" " options:NSLiteralSearch range:NSMakeRange(0, [string length])];
-    return string;
-}
-
-- (NSDictionary *)_webkit_queryKeysAndValues
-{
-    unsigned queryLength = [self length];
-    if (!queryLength)
-        return nil;
-
-    NSMutableDictionary *queryKeysAndValues = nil;
-    NSRange equalSearchRange = NSMakeRange(0, queryLength);
-
-    while (equalSearchRange.location < queryLength - 1 && equalSearchRange.length) {
-
-        // Search for "=".
-        NSRange equalRange = [self rangeOfString:@"=" options:NSLiteralSearch range:equalSearchRange];
-        if (equalRange.location == NSNotFound)
-            break;
-
-        unsigned indexAfterEqual = equalRange.location + 1;
-        if (indexAfterEqual > queryLength - 1)
-            break;
-
-        // Get the key before the "=".
-        NSRange keyRange = NSMakeRange(equalSearchRange.location, equalRange.location - equalSearchRange.location);
-
-        // Seach for the ampersand.
-        NSRange ampersandSearchRange = NSMakeRange(indexAfterEqual, queryLength - indexAfterEqual);
-        NSRange ampersandRange = [self rangeOfString:@"&" options:NSLiteralSearch range:ampersandSearchRange];
-
-        // Get the value after the "=", before the ampersand.
-        NSRange valueRange;
-        if (ampersandRange.location != NSNotFound)
-            valueRange = NSMakeRange(indexAfterEqual, ampersandRange.location - indexAfterEqual);
-        else
-            valueRange = NSMakeRange(indexAfterEqual, queryLength - indexAfterEqual);
-
-        // Save the key and the value.
-        if (keyRange.length && valueRange.length) {
-            if (queryKeysAndValues == nil)
-                queryKeysAndValues = [NSMutableDictionary dictionary];
-            NSString *key = [[self substringWithRange:keyRange] lowercaseString];
-            NSString *value = [[self substringWithRange:valueRange] _webkit_unescapedQueryValue];
-            if ([key length] && [value length])
-                [queryKeysAndValues setObject:value forKey:key];
-        }
-
-        // At the end.
-        if (ampersandRange.location == NSNotFound)
-            break;
-
-        // Continue searching after the ampersand.
-        unsigned indexAfterAmpersand = ampersandRange.location + 1;
-        equalSearchRange = NSMakeRange(indexAfterAmpersand, queryLength - indexAfterAmpersand);
-    }
-
-    return queryKeysAndValues;
-}
-
-#endif // PLATFORM(IOS)
 
 @end

@@ -26,11 +26,14 @@
 #include "config.h"
 #include "CACFLayerTreeHost.h"
 
+#if USE(CA)
+
 #include "CACFLayerTreeHostClient.h"
 #include "DebugPageOverlays.h"
 #include "DefWndProcWindowClass.h"
 #include "FrameView.h"
 #include "LayerChangesFlusher.h"
+#include "Logging.h"
 #include "MainFrame.h"
 #include "PlatformCALayerWin.h"
 #include "PlatformLayer.h"
@@ -104,6 +107,12 @@ bool CACFLayerTreeHost::acceleratedCompositingAvailable()
     }
 
     RefPtr<CACFLayerTreeHost> host = CACFLayerTreeHost::create();
+
+    if (!host) {
+        available = false;
+        return available;
+    }
+
     host->setWindow(testWindow);
     available = host->createRenderer();
     host->setWindow(0);
@@ -112,13 +121,17 @@ bool CACFLayerTreeHost::acceleratedCompositingAvailable()
     return available;
 }
 
-PassRefPtr<CACFLayerTreeHost> CACFLayerTreeHost::create()
+RefPtr<CACFLayerTreeHost> CACFLayerTreeHost::create()
 {
     if (!acceleratedCompositingAvailable())
         return nullptr;
     RefPtr<CACFLayerTreeHost> host = WKCACFViewLayerTreeHost::create();
+    if (!host) {
+        LOG_ERROR("Failed to create layer tree host for accelerated compositing.");
+        return nullptr;
+    }
     host->initialize();
-    return host.release();
+    return host;
 }
 
 CACFLayerTreeHost::CACFLayerTreeHost()
@@ -195,9 +208,9 @@ PlatformCALayer* CACFLayerTreeHost::rootLayer() const
     return m_rootLayer.get();
 }
 
-void CACFLayerTreeHost::addPendingAnimatedLayer(PassRefPtr<PlatformCALayer> layer)
+void CACFLayerTreeHost::addPendingAnimatedLayer(PlatformCALayer& layer)
 {
-    m_pendingAnimatedLayers.add(layer);
+    m_pendingAnimatedLayers.add(&layer);
 }
 
 void CACFLayerTreeHost::setRootChildLayer(PlatformCALayer* layer)
@@ -281,7 +294,7 @@ void CACFLayerTreeHost::setShouldInvertColors(bool)
 void CACFLayerTreeHost::flushPendingLayerChangesNow()
 {
     // Calling out to the client could cause our last reference to go away.
-    RefPtr<CACFLayerTreeHost> protector(this);
+    RefPtr<CACFLayerTreeHost> protectedThis(this);
 
     updateDebugInfoLayer(m_page->settings().showTiledScrollingIndicator());
 
@@ -369,3 +382,5 @@ void CACFLayerTreeHost::updateDebugInfoLayer(bool showLayer)
 }
 
 }
+
+#endif

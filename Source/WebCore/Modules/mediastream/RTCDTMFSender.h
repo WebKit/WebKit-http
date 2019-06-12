@@ -23,69 +23,56 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCDTMFSender_h
-#define RTCDTMFSender_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC_DTMF)
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
-#include "RTCDTMFSenderHandlerClient.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
 #include "Timer.h"
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class MediaStreamTrack;
-class RTCPeerConnectionHandler;
-class RTCDTMFSenderHandler;
 
-class RTCDTMFSender final : public RefCounted<RTCDTMFSender>, public EventTargetWithInlineData, public RTCDTMFSenderHandlerClient, public ActiveDOMObject {
+class RTCDTMFSender final : public RefCounted<RTCDTMFSender>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    static RefPtr<RTCDTMFSender> create(ScriptExecutionContext*, RTCPeerConnectionHandler*, PassRefPtr<MediaStreamTrack>, ExceptionCode&);
-    ~RTCDTMFSender();
+    virtual ~RTCDTMFSender();
 
     bool canInsertDTMF() const;
     MediaStreamTrack* track() const;
     String toneBuffer() const;
-    long duration() const { return m_duration; }
-    long interToneGap() const { return m_interToneGap; }
+    int duration() const { return m_duration; }
+    int interToneGap() const { return m_interToneGap; }
 
-    void insertDTMF(const String& tones, ExceptionCode&);
-    void insertDTMF(const String& tones, long duration, ExceptionCode&);
-    void insertDTMF(const String& tones, long duration, long interToneGap, ExceptionCode&);
+    ExceptionOr<void> insertDTMF(const String& tones, std::optional<int> duration, std::optional<int> interToneGap);
 
-    // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const override { return RTCDTMFSenderEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
-
-    using RefCounted<RTCDTMFSender>::ref;
-    using RefCounted<RTCDTMFSender>::deref;
+    using RefCounted::ref;
+    using RefCounted::deref;
 
 private:
-    RTCDTMFSender(ScriptExecutionContext*, PassRefPtr<MediaStreamTrack>, std::unique_ptr<RTCDTMFSenderHandler>);
+    RTCDTMFSender(ScriptExecutionContext&, RefPtr<MediaStreamTrack>&&);
 
-    // ActiveDOMObject
-    void stop() override;
-    const char* activeDOMObjectName() const override;
-    bool canSuspendForDocumentSuspension() const override;
+    void stop() final;
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+
+    EventTargetInterface eventTargetInterface() const final { return RTCDTMFSenderEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
+
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
+
+    void didPlayTone(const String&);
 
     void scheduleDispatchEvent(Ref<Event>&&);
     void scheduledEventTimerFired();
 
-    // EventTarget
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
-
-    // RTCDTMFSenderHandlerClient
-    virtual void didPlayTone(const String&) override;
-
     RefPtr<MediaStreamTrack> m_track;
-    long m_duration;
-    long m_interToneGap;
-
-    std::unique_ptr<RTCDTMFSenderHandler> m_handler;
+    int m_duration;
+    int m_interToneGap;
 
     bool m_stopped;
 
@@ -95,6 +82,4 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCDTMFSender_h
+#endif // ENABLE(WEB_RTC)

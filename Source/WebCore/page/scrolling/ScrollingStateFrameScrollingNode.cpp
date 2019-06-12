@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,11 +46,14 @@ ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(ScrollingStat
 ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(const ScrollingStateFrameScrollingNode& stateNode, ScrollingStateTree& adoptiveTree)
     : ScrollingStateScrollingNode(stateNode, adoptiveTree)
 #if PLATFORM(MAC)
-    , m_verticalScrollbarPainter(stateNode.verticalScrollbarPainter())
-    , m_horizontalScrollbarPainter(stateNode.horizontalScrollbarPainter())
+    , m_verticalScrollerImp(stateNode.verticalScrollerImp())
+    , m_horizontalScrollerImp(stateNode.horizontalScrollerImp())
 #endif
-    , m_nonFastScrollableRegion(stateNode.nonFastScrollableRegion())
+    , m_eventTrackingRegions(stateNode.eventTrackingRegions())
     , m_requestedScrollPosition(stateNode.requestedScrollPosition())
+    , m_layoutViewport(stateNode.layoutViewport())
+    , m_minLayoutViewportOrigin(stateNode.minLayoutViewportOrigin())
+    , m_maxLayoutViewportOrigin(stateNode.maxLayoutViewportOrigin())
     , m_frameScaleFactor(stateNode.frameScaleFactor())
     , m_topContentInset(stateNode.topContentInset())
     , m_headerHeight(stateNode.headerHeight())
@@ -59,10 +62,8 @@ ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(const Scrolli
     , m_behaviorForFixed(stateNode.scrollBehaviorForFixedElements())
     , m_requestedScrollPositionRepresentsProgrammaticScroll(stateNode.requestedScrollPositionRepresentsProgrammaticScroll())
     , m_fixedElementsLayoutRelativeToFrame(stateNode.fixedElementsLayoutRelativeToFrame())
+    , m_visualViewportEnabled(stateNode.visualViewportEnabled())
 {
-    if (hasChangedProperty(ScrolledContentsLayer))
-        setScrolledContentsLayer(stateNode.scrolledContentsLayer().toRepresentation(adoptiveTree.preferredLayerRepresentation()));
-
     if (hasChangedProperty(CounterScrollingLayer))
         setCounterScrollingLayer(stateNode.counterScrollingLayer().toRepresentation(adoptiveTree.preferredLayerRepresentation()));
 
@@ -98,13 +99,13 @@ void ScrollingStateFrameScrollingNode::setFrameScaleFactor(float scaleFactor)
     setPropertyChanged(FrameScaleFactor);
 }
 
-void ScrollingStateFrameScrollingNode::setNonFastScrollableRegion(const Region& nonFastScrollableRegion)
+void ScrollingStateFrameScrollingNode::setEventTrackingRegions(const EventTrackingRegions& eventTrackingRegions)
 {
-    if (m_nonFastScrollableRegion == nonFastScrollableRegion)
+    if (m_eventTrackingRegions == eventTrackingRegions)
         return;
 
-    m_nonFastScrollableRegion = nonFastScrollableRegion;
-    setPropertyChanged(NonFastScrollableRegion);
+    m_eventTrackingRegions = eventTrackingRegions;
+    setPropertyChanged(EventTrackingRegion);
 }
 
 void ScrollingStateFrameScrollingNode::setSynchronousScrollingReasons(SynchronousScrollingReasons reasons)
@@ -124,7 +125,34 @@ void ScrollingStateFrameScrollingNode::setScrollBehaviorForFixedElements(ScrollB
     m_behaviorForFixed = behaviorForFixed;
     setPropertyChanged(BehaviorForFixedElements);
 }
-    
+
+void ScrollingStateFrameScrollingNode::setLayoutViewport(const FloatRect& r)
+{
+    if (m_layoutViewport == r)
+        return;
+
+    m_layoutViewport = r;
+    setPropertyChanged(LayoutViewport);
+}
+
+void ScrollingStateFrameScrollingNode::setMinLayoutViewportOrigin(const FloatPoint& p)
+{
+    if (m_minLayoutViewportOrigin == p)
+        return;
+
+    m_minLayoutViewportOrigin = p;
+    setPropertyChanged(MinLayoutViewportOrigin);
+}
+
+void ScrollingStateFrameScrollingNode::setMaxLayoutViewportOrigin(const FloatPoint& p)
+{
+    if (m_maxLayoutViewportOrigin == p)
+        return;
+
+    m_maxLayoutViewportOrigin = p;
+    setPropertyChanged(MaxLayoutViewportOrigin);
+}
+
 void ScrollingStateFrameScrollingNode::setHeaderHeight(int headerHeight)
 {
     if (m_headerHeight == headerHeight)
@@ -150,15 +178,6 @@ void ScrollingStateFrameScrollingNode::setTopContentInset(float topContentInset)
 
     m_topContentInset = topContentInset;
     setPropertyChanged(TopContentInset);
-}
-
-void ScrollingStateFrameScrollingNode::setScrolledContentsLayer(const LayerRepresentation& layerRepresentation)
-{
-    if (layerRepresentation == m_scrolledContentsLayer)
-        return;
-    
-    m_scrolledContentsLayer = layerRepresentation;
-    setPropertyChanged(ScrolledContentsLayer);
 }
 
 void ScrollingStateFrameScrollingNode::setCounterScrollingLayer(const LayerRepresentation& layerRepresentation)
@@ -215,43 +234,89 @@ void ScrollingStateFrameScrollingNode::setFixedElementsLayoutRelativeToFrame(boo
     setPropertyChanged(FixedElementsLayoutRelativeToFrame);
 }
 
+// Only needed while visual viewports are runtime-switchable.
+void ScrollingStateFrameScrollingNode::setVisualViewportEnabled(bool visualViewportEnabled)
+{
+    if (visualViewportEnabled == m_visualViewportEnabled)
+        return;
+    
+    m_visualViewportEnabled = visualViewportEnabled;
+    setPropertyChanged(VisualViewportEnabled);
+}
+
 #if !PLATFORM(MAC)
-void ScrollingStateFrameScrollingNode::setScrollbarPaintersFromScrollbars(Scrollbar*, Scrollbar*)
+void ScrollingStateFrameScrollingNode::setScrollerImpsFromScrollbars(Scrollbar*, Scrollbar*)
 {
 }
 #endif
 
-void ScrollingStateFrameScrollingNode::dumpProperties(TextStream& ts, int indent) const
+void ScrollingStateFrameScrollingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
 {
-    ts << "(Frame scrolling node" << "\n";
+    ts << "Frame scrolling node";
     
-    ScrollingStateScrollingNode::dumpProperties(ts, indent);
+    ScrollingStateScrollingNode::dumpProperties(ts, behavior);
     
-    if (m_frameScaleFactor != 1) {
-        writeIndent(ts, indent + 1);
-        ts << "(frame scale factor " << m_frameScaleFactor << ")\n";
-    }
-    
-    if (!m_nonFastScrollableRegion.isEmpty()) {
-        ++indent;
-        writeIndent(ts, indent);
-        ts << "(non-fast-scrollable region";
-        ++indent;
-        for (auto rect : m_nonFastScrollableRegion.rects()) {
-            ts << "\n";
-            writeIndent(ts, indent);
-            ts << rect;
-        }
-        ts << ")\n";
-        indent -= 2;
+    if (behavior & ScrollingStateTreeAsTextBehaviorIncludeLayerIDs) {
+        ts.dumpProperty("counter scrolling layer ID", m_counterScrollingLayer.layerID());
+        ts.dumpProperty("inset clip layer ID", m_insetClipLayer.layerID());
+        ts.dumpProperty("content shadow layer ID", m_contentShadowLayer.layerID());
+        ts.dumpProperty("header layer ID", m_headerLayer.layerID());
+        ts.dumpProperty("footer layer ID", m_footerLayer.layerID());
     }
 
-    if (m_synchronousScrollingReasons) {
-        writeIndent(ts, indent + 1);
-        ts << "(Scrolling on main thread because: " << ScrollingCoordinator::synchronousScrollingReasonsAsText(m_synchronousScrollingReasons) << ")\n";
+    if (m_frameScaleFactor != 1)
+        ts.dumpProperty("frame scale factor", m_frameScaleFactor);
+    if (m_topContentInset)
+        ts.dumpProperty("top content inset", m_topContentInset);
+    if (m_headerHeight)
+        ts.dumpProperty("header height", m_headerHeight);
+    if (m_footerHeight)
+        ts.dumpProperty("footer height", m_footerHeight);
+    
+    if (m_visualViewportEnabled) {
+        ts.dumpProperty("visual viewport enabled", m_visualViewportEnabled);
+        ts.dumpProperty("layout viewport", m_layoutViewport);
+        ts.dumpProperty("min layout viewport origin", m_minLayoutViewportOrigin);
+        ts.dumpProperty("max layout viewport origin", m_maxLayoutViewportOrigin);
     }
     
-    // FIXME: dump more properties.
+    if (m_behaviorForFixed == StickToViewportBounds)
+        ts.dumpProperty("behavior for fixed", m_behaviorForFixed);
+
+    if (!m_eventTrackingRegions.asynchronousDispatchRegion.isEmpty()) {
+        TextStream::GroupScope scope(ts);
+        ts << "asynchronous event dispatch region";
+        for (auto rect : m_eventTrackingRegions.asynchronousDispatchRegion.rects()) {
+            ts << "\n";
+            ts.writeIndent();
+            ts << rect;
+        }
+    }
+
+    if (!m_eventTrackingRegions.eventSpecificSynchronousDispatchRegions.isEmpty()) {
+        for (const auto& synchronousEventRegion : m_eventTrackingRegions.eventSpecificSynchronousDispatchRegions) {
+            TextStream::GroupScope scope(ts);
+            ts << "synchronous event dispatch region for event " << synchronousEventRegion.key;
+            for (auto rect : synchronousEventRegion.value.rects()) {
+                ts << "\n";
+                ts.writeIndent();
+                ts << rect;
+            }
+        }
+    }
+
+    if (m_synchronousScrollingReasons)
+        ts.dumpProperty("Scrolling on main thread because:", ScrollingCoordinator::synchronousScrollingReasonsAsText(m_synchronousScrollingReasons));
+    
+    ts.dumpProperty("behavior for fixed", m_behaviorForFixed);
+
+    if (m_requestedScrollPosition != FloatPoint())
+        ts.dumpProperty("requested scroll position", m_requestedScrollPosition);
+    if (m_requestedScrollPositionRepresentsProgrammaticScroll)
+        ts.dumpProperty("requested scroll position represents programmatic scroll", m_requestedScrollPositionRepresentsProgrammaticScroll);
+
+    if (m_fixedElementsLayoutRelativeToFrame)
+        ts.dumpProperty("fixed elements lay out relative to frame", m_fixedElementsLayoutRelativeToFrame);
 }
 
 } // namespace WebCore

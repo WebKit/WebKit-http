@@ -27,15 +27,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RectangleShape_h
-#define RectangleShape_h
+#pragma once
 
-#include "FloatPoint.h"
 #include "FloatRect.h"
 #include "FloatSize.h"
 #include "Shape.h"
 #include <wtf/Assertions.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -47,11 +44,11 @@ public:
     {
     }
 
-    virtual LayoutRect shapeMarginLogicalBoundingBox() const override { return static_cast<LayoutRect>(shapeMarginBounds()); }
-    virtual bool isEmpty() const override { return m_bounds.isEmpty(); }
-    virtual LineSegment getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const override;
+    LayoutRect shapeMarginLogicalBoundingBox() const override { return static_cast<LayoutRect>(shapeMarginBounds()); }
+    bool isEmpty() const override { return m_bounds.isEmpty(); }
+    LineSegment getExcludedInterval(LayoutUnit logicalTop, LayoutUnit logicalHeight) const override;
 
-    virtual void buildDisplayPaths(DisplayPaths&) const override;
+    void buildDisplayPaths(DisplayPaths&) const override;
 
 private:
     FloatRect shapeMarginBounds() const;
@@ -68,5 +65,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // RectangleShape_h

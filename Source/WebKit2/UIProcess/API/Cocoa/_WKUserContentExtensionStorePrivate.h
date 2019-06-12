@@ -27,10 +27,15 @@
 
 #if WK_API_ENABLED
 
+@class WKContentRuleListStore;
+
 @interface _WKUserContentExtensionStore (WKPrivate)
 
 // For testing only.
 - (void)_removeAllContentExtensions;
+- (void)_invalidateContentExtensionVersionForIdentifier:(NSString *)identifier;
+
+- (id)_initWithWKContentRuleListStore:(WKContentRuleListStore*)contentRuleListStore WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 

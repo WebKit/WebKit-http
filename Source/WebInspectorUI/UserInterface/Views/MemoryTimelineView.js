@@ -29,6 +29,8 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
     {
         super(timeline, extraArguments);
 
+        this._recording = extraArguments.recording;
+
         console.assert(timeline.type === WebInspector.TimelineRecord.Type.Memory, timeline);
 
         this.element.classList.add("memory");
@@ -111,11 +113,6 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
 
     // Public
 
-    get navigationSidebarTreeOutlineLabel()
-    {
-        return WebInspector.UIString("Records");
-    }
-
     shown()
     {
         super.shown();
@@ -140,6 +137,10 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
 
         this._maxSize = 0;
 
+        this._cachedLegendRecord = null;
+        this._cachedLegendMaxSize = undefined;
+        this._cachedLegendCurrentSize = undefined;
+
         this._usageCircleChart.clear();
         this._usageCircleChart.needsLayout();
         this._clearUsageLegend();
@@ -152,12 +153,14 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
             categoryView.clear();
     }
 
+    get scrollableElements()
+    {
+        return [this.element];
+    }
+
     // Protected
 
-    treeElementPathComponentSelected(event)
-    {
-        // Nothing. The sidebar will soon be removed.
-    }
+    get showsFilterBar() { return false; }
 
     layout()
     {
@@ -171,10 +174,15 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
 
         let graphStartTime = this.startTime;
         let graphEndTime = this.endTime;
-        let graphCurrentTime = this.currentTime;
         let visibleEndTime = Math.min(this.endTime, this.currentTime);
 
-        let visibleRecords = this._visibleRecords(graphStartTime, visibleEndTime);
+        let discontinuities = this._recording.discontinuitiesInTimeRange(graphStartTime, visibleEndTime);
+
+        // Don't include the record before the graph start if the graph start is within a gap.
+        let includeRecordBeforeStart = !discontinuities.length || discontinuities[0].startTime > graphStartTime;
+
+        // FIXME: <https://webkit.org/b/153759> Web Inspector: Memory Timelines should better extend to future data
+        let visibleRecords = this.representedObject.recordsInTimeRange(graphStartTime, visibleEndTime, includeRecordBeforeStart);
         if (!visibleRecords.length)
             return;
 
@@ -204,13 +212,34 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
 
         for (let record of visibleRecords) {
             let time = record.startTime;
+            let discontinuity = null;
+            if (discontinuities.length && discontinuities[0].endTime < time)
+                discontinuity = discontinuities.shift();
+
             for (let category of record.categories) {
                 let categoryData = categoryDataMap[category.type];
+
+                if (discontinuity) {
+                    if (categoryData.dataPoints.length) {
+                        let previousDataPoint = categoryData.dataPoints.lastValue;
+                        categoryData.dataPoints.push({time: discontinuity.startTime, size: previousDataPoint.size});
+                    }
+
+                    categoryData.dataPoints.push({time: discontinuity.startTime, size: 0});
+                    categoryData.dataPoints.push({time: discontinuity.endTime, size: 0});
+                    categoryData.dataPoints.push({time: discontinuity.endTime, size: category.size});
+                }
+
                 categoryData.dataPoints.push({time, size: category.size});
                 categoryData.max = Math.max(categoryData.max, category.size);
                 categoryData.min = Math.min(categoryData.min, category.size);
             }
         }
+
+        // If the graph end time is inside a gap, the last data point should
+        // only be extended to the start of the discontinuity.
+        if (discontinuities.length)
+            visibleEndTime = discontinuities[0].startTime;
 
         function layoutCategoryView(categoryView, categoryData) {
             let {dataPoints, min, max} = categoryData;
@@ -254,6 +283,11 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
 
     _updateUsageLegend(record)
     {
+        if (this._cachedLegendRecord === record)
+            return;
+
+        this._cachedLegendRecord = record;
+
         for (let {type, size} of record.categories) {
             let sizeElement = this._usageLegendSizeElementMap.get(type);
             sizeElement.textContent = Number.isFinite(size) ? Number.bytesToString(size) : emDash;
@@ -286,6 +320,12 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
 
     _updateMaxComparisonLegend(currentSize)
     {
+        if (this._cachedLegendMaxSize === this._maxSize && this._cachedLegendCurrentSize === currentSize)
+            return;
+
+        this._cachedLegendMaxSize = this._maxSize;
+        this._cachedLegendCurrentSize = currentSize;
+
         this._maxComparisonMaximumSizeElement.textContent = Number.isFinite(this._maxSize) ? Number.bytesToString(this._maxSize) : emDash;
         this._maxComparisonCurrentSizeElement.textContent = Number.isFinite(currentSize) ? Number.bytesToString(currentSize) : emDash;
 
@@ -297,25 +337,9 @@ WebInspector.MemoryTimelineView = class MemoryTimelineView extends WebInspector.
         }
 
         // The chart will only show a perfect circle if the current and max are really the same value.
-        // So do a little massaging to ensure 99.95 doesn't get rounded up to 100.
-        let percent = ((currentSize / this._maxSize) * 100);
-        totalElement.textContent = (percent === 100 ? percent : (percent - 0.05).toFixed(1)) + "%";
-    }
-
-    _visibleRecords(startTime, endTime)
-    {
-        let records = this.representedObject.records;
-        let lowerIndex = records.lowerBound(startTime, (time, record) => time - record.timestamp);
-        let upperIndex = records.upperBound(endTime, (time, record) => time - record.timestamp);
-
-        // Include the record right before the start time in case it extends into this range.
-        if (lowerIndex > 0)
-            lowerIndex--;
-        // FIXME: <https://webkit.org/b/153759> Web Inspector: Memory Timelines should better extend to future data
-        // if (upperIndex !== records.length)
-        //     upperIndex++;
-
-        return records.slice(lowerIndex, upperIndex);
+        // So do a little massaging to ensure 0.9995 doesn't get rounded up to 1.
+        let percent = currentSize / this._maxSize;
+        totalElement.textContent = Number.percentageString(percent === 1 ? percent : (percent - 0.0005));
     }
 
     _initializeCategoryViews(record)

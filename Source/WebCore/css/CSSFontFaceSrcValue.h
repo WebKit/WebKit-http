@@ -23,12 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSFontFaceSrcValue_h
-#define CSSFontFaceSrcValue_h
+#pragma once
 
 #include "CSSValue.h"
 #include "CachedResourceHandle.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Function.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -37,7 +36,7 @@ class CachedFont;
 class Document;
 class SVGFontFaceElement;
 
-class CSSFontFaceSrcValue : public CSSValue {
+class CSSFontFaceSrcValue final : public CSSValue {
 public:
     static Ref<CSSFontFaceSrcValue> create(const String& resource)
     {
@@ -66,9 +65,7 @@ public:
 
     String customCSSText() const;
 
-    void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
-
-    bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
+    bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
 
     CachedFont* cachedFont(Document*, bool isSVG, bool isInitiatingElementInUserAgentShadowTree);
 
@@ -99,5 +96,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSFontFaceSrcValue, isFontFaceSrcValue())
-
-#endif

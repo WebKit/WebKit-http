@@ -33,11 +33,17 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-WK_CLASS_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA)
+WK_CLASS_AVAILABLE(macosx(10.12), ios(10.0))
 @interface _WKAutomationSession : NSObject
 
 @property (nonatomic, copy) NSString *sessionIdentifier;
 @property (nonatomic, weak) id <_WKAutomationSessionDelegate> delegate;
+@property (nonatomic, readonly, getter=isPaired) BOOL paired;
+
+#if !TARGET_OS_IPHONE
+- (BOOL)wasEventSynthesizedForAutomation:(NSEvent *)event;
+- (void)markEventAsSynthesizedForAutomation:(NSEvent *)event;
+#endif
 
 @end
 

@@ -26,8 +26,9 @@
 #include "config.h"
 #include "ResourceHandleCFURLConnectionDelegate.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
+#include "CFNetworkSPI.h"
 #include "FormDataStreamCFNet.h"
 #include "NetworkingContext.h"
 #include "ResourceHandle.h"
@@ -120,13 +121,6 @@ Boolean ResourceHandleCFURLConnectionDelegate::canRespondToProtectionSpaceCallba
 }
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
 
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-void ResourceHandleCFURLConnectionDelegate::didReceiveDataArrayCallback(CFURLConnectionRef, CFArrayRef dataArray, const void* clientInfo)
-{
-    static_cast<ResourceHandleCFURLConnectionDelegate*>(const_cast<void*>(clientInfo))->didReceiveDataArray(dataArray);
-}
-#endif // USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-
 RetainPtr<CFURLResponseRef> ResourceHandleCFURLConnectionDelegate::synthesizeRedirectResponseIfNecessary(CFURLRequestRef newRequest, CFURLResponseRef cfRedirectResponse)
 {
     if (cfRedirectResponse)
@@ -206,15 +200,11 @@ CFURLConnectionClient_V6 ResourceHandleCFURLConnectionDelegate::makeConnectionCl
         0,
 #endif
         0,
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-        &ResourceHandleCFURLConnectionDelegate::didReceiveDataArrayCallback
-#else
         0
-#endif
     };
     return client;
 }
 
 } // namespace WebCore.
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

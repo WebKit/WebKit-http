@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,7 +38,7 @@
 
 namespace JSC { namespace DFG {
 
-void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecovery>& operands, SpeculationRecovery* recovery)
+void OSRExitCompiler::compileExit(VM& vm, const OSRExit& exit, const Operands<ValueRecovery>& operands, SpeculationRecovery* recovery)
 {
     m_jit.jitAssertTagsInPlace();
 
@@ -49,9 +49,9 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         debugInfo->kind = exit.m_kind;
         debugInfo->bytecodeOffset = exit.m_codeOrigin.bytecodeIndex;
         
-        m_jit.debugCall(debugOperationPrintSpeculationFailure, debugInfo);
+        m_jit.debugCall(vm, debugOperationPrintSpeculationFailure, debugInfo);
     }
-    
+
     // Perform speculation recovery. This only comes into play when an operation
     // starts mutating state before verifying the speculation it has already made.
     
@@ -59,6 +59,11 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         switch (recovery->type()) {
         case SpeculativeAdd:
             m_jit.sub32(recovery->src(), recovery->dest());
+            m_jit.or64(GPRInfo::tagTypeNumberRegister, recovery->dest());
+            break;
+
+        case SpeculativeAddImmediate:
+            m_jit.sub32(AssemblyHelpers::Imm32(recovery->immediate()), recovery->dest());
             m_jit.or64(GPRInfo::tagTypeNumberRegister, recovery->dest());
             break;
             
@@ -114,7 +119,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
                 
                 m_jit.load32(AssemblyHelpers::Address(value, JSCell::structureIDOffset()), scratch1);
                 m_jit.store32(scratch1, arrayProfile->addressOfLastSeenStructureID());
-                m_jit.load8(AssemblyHelpers::Address(value, JSCell::indexingTypeOffset()), scratch1);
+                m_jit.load8(AssemblyHelpers::Address(value, JSCell::indexingTypeAndMiscOffset()), scratch1);
                 m_jit.move(AssemblyHelpers::TrustedImm32(1), scratch2);
                 m_jit.lshift32(scratch1, scratch2);
                 m_jit.or32(scratch2, AssemblyHelpers::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
@@ -129,17 +134,15 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             }
         }
         
-        if (!!exit.m_valueProfile) {
-            EncodedJSValue* bucket = exit.m_valueProfile.getSpecFailBucket(0);
-            
+        if (MethodOfGettingAValueProfile profile = exit.m_valueProfile) {
             if (exit.m_jsValueSource.isAddress()) {
                 // We can't be sure that we have a spare register. So use the tagTypeNumberRegister,
                 // since we know how to restore it.
                 m_jit.load64(AssemblyHelpers::Address(exit.m_jsValueSource.asAddress()), GPRInfo::tagTypeNumberRegister);
-                m_jit.store64(GPRInfo::tagTypeNumberRegister, bucket);
+                profile.emitReportValue(m_jit, JSValueRegs(GPRInfo::tagTypeNumberRegister));
                 m_jit.move(AssemblyHelpers::TrustedImm64(TagTypeNumber), GPRInfo::tagTypeNumberRegister);
             } else
-                m_jit.store64(exit.m_jsValueSource.gpr(), bucket);
+                profile.emitReportValue(m_jit, JSValueRegs(exit.m_jsValueSource.gpr()));
         }
     }
     
@@ -181,7 +184,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
 
     // Save all state from GPRs into the scratch buffer.
     
-    ScratchBuffer* scratchBuffer = m_jit.vm()->scratchBufferForSize(sizeof(EncodedJSValue) * operands.size());
+    ScratchBuffer* scratchBuffer = vm.scratchBufferForSize(sizeof(EncodedJSValue) * operands.size());
     EncodedJSValue* scratch = scratchBuffer ? static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer()) : 0;
     
     for (size_t index = 0; index < operands.size(); ++index) {
@@ -262,7 +265,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     m_jit.emitMaterializeTagCheckRegisters();
 
     if (exit.isExceptionHandler())
-        m_jit.copyCalleeSavesToVMCalleeSavesBuffer();
+        m_jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(vm);
 
     // Do all data format conversions and store the results into the stack.
     
@@ -387,7 +390,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     reifyInlinedCallFrames(m_jit, exit);
 
     // And finish.
-    adjustAndJumpToTarget(m_jit, exit);
+    adjustAndJumpToTarget(vm, m_jit, exit);
 }
 
 } } // namespace JSC::DFG

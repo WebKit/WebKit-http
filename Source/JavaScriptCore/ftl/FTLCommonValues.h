@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLCommonValues_h
-#define FTLCommonValues_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -46,13 +45,6 @@ public:
 
     void initializeConstants(B3::Procedure&, B3::BasicBlock*);
     
-    const LType voidType;
-    const LType boolean;
-    const LType int32;
-    const LType int64;
-    const LType intPtr;
-    const LType floatType;
-    const LType doubleType;
     LValue booleanTrue { nullptr };
     LValue booleanFalse { nullptr };
     LValue int32Zero { nullptr };
@@ -75,6 +67,3 @@ public:
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLCommonValues_h
-

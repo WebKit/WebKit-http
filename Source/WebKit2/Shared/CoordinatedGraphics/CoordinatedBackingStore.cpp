@@ -35,35 +35,28 @@ void CoordinatedBackingStoreTile::swapBuffers(TextureMapper& textureMapper)
     if (!m_surface)
         return;
 
-    FloatRect tileRect(m_tileRect);
-    tileRect.scale(1. / m_scale);
-    bool shouldReset = false;
-    if (tileRect != rect()) {
-        setRect(tileRect);
-        shouldReset = true;
-    }
-    RefPtr<BitmapTexture> texture = this->texture();
-    if (!texture) {
-        texture = textureMapper.createTexture();
-        setTexture(texture.get());
-        shouldReset = true;
-    }
-
     ASSERT(textureMapper.maxTextureSize().width() >= m_tileRect.size().width());
     ASSERT(textureMapper.maxTextureSize().height() >= m_tileRect.size().height());
-    if (shouldReset)
-        texture->reset(m_tileRect.size(), m_surface->supportsAlpha());
 
-    m_surface->copyToTexture(texture, m_sourceRect, m_surfaceOffset);
+    FloatRect unscaledTileRect(m_tileRect);
+    unscaledTileRect.scale(1. / m_scale);
+
+    if (!m_texture || unscaledTileRect != rect()) {
+        setRect(unscaledTileRect);
+        m_texture = textureMapper.acquireTextureFromPool(m_tileRect.size(), m_surface->supportsAlpha() ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
+    } else if (m_surface->supportsAlpha() == m_texture->isOpaque())
+        m_texture->reset(m_tileRect.size(), m_surface->supportsAlpha());
+
+    m_surface->copyToTexture(*m_texture, m_sourceRect, m_surfaceOffset);
     m_surface = nullptr;
 }
 
-void CoordinatedBackingStoreTile::setBackBuffer(const IntRect& tileRect, const IntRect& sourceRect, PassRefPtr<CoordinatedSurface> buffer, const IntPoint& offset)
+void CoordinatedBackingStoreTile::setBackBuffer(const IntRect& tileRect, const IntRect& sourceRect, RefPtr<CoordinatedSurface>&& buffer, const IntPoint& offset)
 {
     m_sourceRect = sourceRect;
     m_tileRect = tileRect;
     m_surfaceOffset = offset;
-    m_surface = buffer;
+    m_surface = WTFMove(buffer);
 }
 
 void CoordinatedBackingStore::createTile(uint32_t id, float scale)
@@ -84,11 +77,11 @@ void CoordinatedBackingStore::removeAllTiles()
         m_tilesToRemove.add(key);
 }
 
-void CoordinatedBackingStore::updateTile(uint32_t id, const IntRect& sourceRect, const IntRect& tileRect, PassRefPtr<CoordinatedSurface> backBuffer, const IntPoint& offset)
+void CoordinatedBackingStore::updateTile(uint32_t id, const IntRect& sourceRect, const IntRect& tileRect, RefPtr<CoordinatedSurface>&& backBuffer, const IntPoint& offset)
 {
     CoordinatedBackingStoreTileMap::iterator it = m_tiles.find(id);
     ASSERT(it != m_tiles.end());
-    it->value.setBackBuffer(tileRect, sourceRect, backBuffer, offset);
+    it->value.setBackBuffer(tileRect, sourceRect, WTFMove(backBuffer), offset);
 }
 
 RefPtr<BitmapTexture> CoordinatedBackingStore::texture() const

@@ -30,6 +30,8 @@
 #include "RenderSVGText.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGNames.h"
+#include "SVGPoint.h"
+#include "SVGRect.h"
 #include "SVGTextQuery.h"
 #include "XMLNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -77,7 +79,7 @@ void SVGTextContentElement::synchronizeTextLength(SVGElement* contextElement)
     SVGTextContentElement& ownerType = downcast<SVGTextContentElement>(*contextElement);
     if (!ownerType.m_textLength.shouldSynchronize)
         return;
-    AtomicString value(SVGPropertyTraits<SVGLength>::toString(ownerType.m_specifiedTextLength));
+    AtomicString value(SVGPropertyTraits<SVGLengthValue>::toString(ownerType.m_specifiedTextLength));
     ownerType.m_textLength.synchronize(&ownerType, textLengthPropertyInfo()->attributeName, value);
 }
 
@@ -85,19 +87,18 @@ Ref<SVGAnimatedProperty> SVGTextContentElement::lookupOrCreateTextLengthWrapper(
 {
     ASSERT(contextElement);
     SVGTextContentElement& ownerType = downcast<SVGTextContentElement>(*contextElement);
-    return SVGAnimatedProperty::lookupOrCreateWrapper<SVGTextContentElement, SVGAnimatedLength, SVGLength>
+    return SVGAnimatedProperty::lookupOrCreateWrapper<SVGTextContentElement, SVGAnimatedLength, SVGLengthValue>
         (&ownerType, textLengthPropertyInfo(), ownerType.m_textLength.value);
 }
 
 Ref<SVGAnimatedLength> SVGTextContentElement::textLengthAnimated()
 {
-    static NeverDestroyed<SVGLength> defaultTextLength(LengthModeOther);
+    static NeverDestroyed<SVGLengthValue> defaultTextLength(LengthModeOther);
     if (m_specifiedTextLength == defaultTextLength)
-        m_textLength.value.newValueSpecifiedUnits(LengthTypeNumber, getComputedTextLength(), ASSERT_NO_EXCEPTION);
+        m_textLength.value.newValueSpecifiedUnits(LengthTypeNumber, getComputedTextLength());
 
     m_textLength.shouldSynchronize = true;
     return static_reference_cast<SVGAnimatedLength>(lookupOrCreateTextLengthWrapper(this));
-
 }
 
 unsigned SVGTextContentElement::getNumberOfChars()
@@ -112,81 +113,59 @@ float SVGTextContentElement::getComputedTextLength()
     return SVGTextQuery(renderer()).textLength();
 }
 
-float SVGTextContentElement::getSubStringLength(unsigned charnum, unsigned nchars, ExceptionCode& ec)
+ExceptionOr<float> SVGTextContentElement::getSubStringLength(unsigned charnum, unsigned nchars)
 {
-    document().updateLayoutIgnorePendingStylesheets();
-
     unsigned numberOfChars = getNumberOfChars();
-    if (charnum >= numberOfChars) {
-        ec = INDEX_SIZE_ERR;
-        return 0.0f;
-    }
+    if (charnum >= numberOfChars)
+        return Exception { INDEX_SIZE_ERR };
 
     nchars = std::min(nchars, numberOfChars - charnum);
     return SVGTextQuery(renderer()).subStringLength(charnum, nchars);
 }
 
-SVGPoint SVGTextContentElement::getStartPositionOfChar(unsigned charnum, ExceptionCode& ec)
+ExceptionOr<Ref<SVGPoint>> SVGTextContentElement::getStartPositionOfChar(unsigned charnum)
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    if (charnum > getNumberOfChars())
+        return Exception { INDEX_SIZE_ERR };
 
-    if (charnum > getNumberOfChars()) {
-        ec = INDEX_SIZE_ERR;
-        return SVGPoint();
-    }
-
-    return SVGTextQuery(renderer()).startPositionOfCharacter(charnum);
+    return SVGPoint::create(SVGTextQuery(renderer()).startPositionOfCharacter(charnum));
 }
 
-SVGPoint SVGTextContentElement::getEndPositionOfChar(unsigned charnum, ExceptionCode& ec)
+ExceptionOr<Ref<SVGPoint>> SVGTextContentElement::getEndPositionOfChar(unsigned charnum)
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    if (charnum > getNumberOfChars())
+        return Exception { INDEX_SIZE_ERR };
 
-    if (charnum > getNumberOfChars()) {
-        ec = INDEX_SIZE_ERR;
-        return SVGPoint();
-    }
-
-    return SVGTextQuery(renderer()).endPositionOfCharacter(charnum);
+    return SVGPoint::create(SVGTextQuery(renderer()).endPositionOfCharacter(charnum));
 }
 
-FloatRect SVGTextContentElement::getExtentOfChar(unsigned charnum, ExceptionCode& ec)
+ExceptionOr<Ref<SVGRect>> SVGTextContentElement::getExtentOfChar(unsigned charnum)
 {
-    document().updateLayoutIgnorePendingStylesheets();
+    if (charnum > getNumberOfChars())
+        return Exception { INDEX_SIZE_ERR };
 
-    if (charnum > getNumberOfChars()) {
-        ec = INDEX_SIZE_ERR;
-        return FloatRect();
-    }
-
-    return SVGTextQuery(renderer()).extentOfCharacter(charnum);
+    return SVGRect::create(SVGTextQuery(renderer()).extentOfCharacter(charnum));
 }
 
-float SVGTextContentElement::getRotationOfChar(unsigned charnum, ExceptionCode& ec)
+ExceptionOr<float> SVGTextContentElement::getRotationOfChar(unsigned charnum)
 {
-    document().updateLayoutIgnorePendingStylesheets();
-
-    if (charnum > getNumberOfChars()) {
-        ec = INDEX_SIZE_ERR;
-        return 0.0f;
-    }
+    if (charnum > getNumberOfChars())
+        return Exception { INDEX_SIZE_ERR };
 
     return SVGTextQuery(renderer()).rotationOfCharacter(charnum);
 }
 
-int SVGTextContentElement::getCharNumAtPosition(const SVGPoint& point)
+int SVGTextContentElement::getCharNumAtPosition(SVGPoint& point)
 {
     document().updateLayoutIgnorePendingStylesheets();
-    return SVGTextQuery(renderer()).characterNumberAtPosition(point);
+    return SVGTextQuery(renderer()).characterNumberAtPosition(point.propertyReference());
 }
 
-void SVGTextContentElement::selectSubString(unsigned charnum, unsigned nchars, ExceptionCode& ec)
+ExceptionOr<void> SVGTextContentElement::selectSubString(unsigned charnum, unsigned nchars)
 {
     unsigned numberOfChars = getNumberOfChars();
-    if (charnum >= numberOfChars) {
-        ec = INDEX_SIZE_ERR;
-        return;
-    }
+    if (charnum >= numberOfChars)
+        return Exception { INDEX_SIZE_ERR };
 
     nchars = std::min(nchars, numberOfChars - charnum);
 
@@ -205,6 +184,8 @@ void SVGTextContentElement::selectSubString(unsigned charnum, unsigned nchars, E
         end = end.next();
 
     selection.setSelection(VisibleSelection(start, end));
+
+    return { };
 }
 
 bool SVGTextContentElement::isSupportedAttribute(const QualifiedName& attrName)
@@ -248,7 +229,7 @@ void SVGTextContentElement::parseAttribute(const QualifiedName& name, const Atom
         if (propertyValue > 0)
             setLengthAdjustBaseValue(propertyValue);
     } else if (name == SVGNames::textLengthAttr)
-        m_textLength.value = SVGLength::construct(LengthModeOther, value, parseError, ForbidNegativeLengths);
+        m_textLength.value = SVGLengthValue::construct(LengthModeOther, value, parseError, ForbidNegativeLengths);
 
     reportAttributeParsingError(parseError, name, value);
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,44 +29,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCConfiguration_h
-#define RTCConfiguration_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
+#include "RTCBundlePolicy.h"
 #include "RTCIceServer.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
+#include "RTCIceTransportPolicy.h"
 
 namespace WebCore {
 
-class Dictionary;
-
-typedef int ExceptionCode;
-
-class RTCConfiguration : public RefCounted<RTCConfiguration> {
-public:
-    static RefPtr<RTCConfiguration> create(const Dictionary& configuration, ExceptionCode&);
-    virtual ~RTCConfiguration() { }
-
-    const String& iceTransportPolicy() const { return m_iceTransportPolicy; }
-    const String& bundlePolicy() const { return m_bundlePolicy; }
-    Vector<RefPtr<RTCIceServer>> iceServers() const { return m_iceServers; }
-
-private:
-    RTCConfiguration();
-
-    void initialize(const Dictionary& configuration, ExceptionCode&);
-
-    Vector<RefPtr<RTCIceServer>> m_iceServers;
-    String m_iceTransportPolicy;
-    String m_bundlePolicy;
+struct RTCConfiguration {
+    std::optional<Vector<RTCIceServer>> iceServers;
+    RTCIceTransportPolicy iceTransportPolicy;
+    RTCBundlePolicy bundlePolicy;
+    unsigned short iceCandidatePoolSize;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCConfiguration_h
+#endif // ENABLE(WEB_RTC)

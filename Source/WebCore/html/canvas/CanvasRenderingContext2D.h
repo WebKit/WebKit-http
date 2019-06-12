@@ -23,22 +23,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CanvasRenderingContext2D_h
-#define CanvasRenderingContext2D_h
+#pragma once
 
 #include "AffineTransform.h"
-#include "CanvasPathMethods.h"
+#include "CanvasPath.h"
 #include "CanvasRenderingContext.h"
 #include "CanvasStyle.h"
 #include "Color.h"
 #include "FloatSize.h"
 #include "FontCascade.h"
+#include "FontSelectorClient.h"
 #include "GraphicsContext.h"
 #include "GraphicsTypes.h"
 #include "ImageBuffer.h"
 #include "Path.h"
 #include "PlatformLayer.h"
-#include "TextFlags.h"
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -55,18 +54,16 @@ class HTMLVideoElement;
 class ImageData;
 class TextMetrics;
 
-typedef int ExceptionCode;
+#if ENABLE(VIDEO)
+using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLVideoElement>, RefPtr<HTMLCanvasElement>>;
+#else
+using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>>;
+#endif
 
-class CanvasRenderingContext2D final : public CanvasRenderingContext, public CanvasPathMethods {
+class CanvasRenderingContext2D final : public CanvasRenderingContext, public CanvasPath {
 public:
-    CanvasRenderingContext2D(HTMLCanvasElement*, bool usesCSSCompatibilityParseMode, bool usesDashboardCompatibilityMode);
+    CanvasRenderingContext2D(HTMLCanvasElement&, bool usesCSSCompatibilityParseMode, bool usesDashboardCompatibilityMode);
     virtual ~CanvasRenderingContext2D();
-
-    const CanvasStyle& strokeStyle() const { return state().strokeStyle; }
-    void setStrokeStyle(CanvasStyle);
-
-    const CanvasStyle& fillStyle() const { return state().fillStyle; }
-    void setFillStyle(CanvasStyle);
 
     float lineWidth() const;
     void setLineWidth(float);
@@ -82,12 +79,11 @@ public:
 
     const Vector<float>& getLineDash() const;
     void setLineDash(const Vector<float>&);
+    const Vector<float>& webkitLineDash() const { return getLineDash(); }
     void setWebkitLineDash(const Vector<float>&);
 
     float lineDashOffset() const;
     void setLineDashOffset(float);
-    float webkitLineDashOffset() const;
-    void setWebkitLineDashOffset(float);
 
     float shadowOffsetX() const;
     void setShadowOffsetX(float);
@@ -110,95 +106,86 @@ public:
     void save() { ++m_unrealizedSaveCount; }
     void restore();
 
+    // This is a no-op in a direct-2d canvas.
+    void commit() { }
+
     void scale(float sx, float sy);
     void rotate(float angleInRadians);
     void translate(float tx, float ty);
     void transform(float m11, float m12, float m21, float m22, float dx, float dy);
     void setTransform(float m11, float m12, float m21, float m22, float dx, float dy);
+    void resetTransform();
 
-    void setStrokeColor(const String& color);
-    void setStrokeColor(float grayLevel);
-    void setStrokeColor(const String& color, float alpha);
-    void setStrokeColor(float grayLevel, float alpha);
+    void setStrokeColor(const String& color, std::optional<float> alpha = std::nullopt);
+    void setStrokeColor(float grayLevel, float alpha = 1.0);
     void setStrokeColor(float r, float g, float b, float a);
     void setStrokeColor(float c, float m, float y, float k, float a);
 
-    void setFillColor(const String& color);
-    void setFillColor(float grayLevel);
-    void setFillColor(const String& color, float alpha);
-    void setFillColor(float grayLevel, float alpha);
+    void setFillColor(const String& color, std::optional<float> alpha = std::nullopt);
+    void setFillColor(float grayLevel, float alpha = 1.0f);
     void setFillColor(float r, float g, float b, float a);
     void setFillColor(float c, float m, float y, float k, float a);
 
     void beginPath();
 
-    void fill(const String& winding = ASCIILiteral("nonzero"));
+    enum class WindingRule { Nonzero, Evenodd };
+
+    void fill(WindingRule = WindingRule::Nonzero);
     void stroke();
-    void clip(const String& winding = ASCIILiteral("nonzero"));
+    void clip(WindingRule = WindingRule::Nonzero);
 
-    void fill(DOMPath*, const String& winding = ASCIILiteral("nonzero"));
-    void stroke(DOMPath*);
-    void clip(DOMPath*, const String& winding = ASCIILiteral("nonzero"));
+    void fill(DOMPath&, WindingRule = WindingRule::Nonzero);
+    void stroke(DOMPath&);
+    void clip(DOMPath&, WindingRule = WindingRule::Nonzero);
 
-    bool isPointInPath(const float x, const float y, const String& winding = ASCIILiteral("nonzero"));
-    bool isPointInStroke(const float x, const float y);
+    bool isPointInPath(float x, float y, WindingRule = WindingRule::Nonzero);
+    bool isPointInStroke(float x, float y);
 
-    bool isPointInPath(DOMPath*, const float x, const float y, const String& winding = ASCIILiteral("nonzero"));
-    bool isPointInStroke(DOMPath*, const float x, const float y);
+    bool isPointInPath(DOMPath&, float x, float y, WindingRule = WindingRule::Nonzero);
+    bool isPointInStroke(DOMPath&, float x, float y);
 
     void clearRect(float x, float y, float width, float height);
     void fillRect(float x, float y, float width, float height);
     void strokeRect(float x, float y, float width, float height);
 
-    void setShadow(float width, float height, float blur);
-    void setShadow(float width, float height, float blur, const String& color);
-    void setShadow(float width, float height, float blur, float grayLevel);
-    void setShadow(float width, float height, float blur, const String& color, float alpha);
-    void setShadow(float width, float height, float blur, float grayLevel, float alpha);
+    void setShadow(float width, float height, float blur, const String& color = String(), std::optional<float> alpha = std::nullopt);
+    void setShadow(float width, float height, float blur, float grayLevel, float alpha = 1.0);
     void setShadow(float width, float height, float blur, float r, float g, float b, float a);
     void setShadow(float width, float height, float blur, float c, float m, float y, float k, float a);
 
     void clearShadow();
 
-    void drawImage(HTMLImageElement*, float x, float y, ExceptionCode&);
-    void drawImage(HTMLImageElement*, float x, float y, float width, float height, ExceptionCode&);
-    void drawImage(HTMLImageElement*, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, ExceptionCode&);
-    void drawImage(HTMLImageElement*, const FloatRect& srcRect, const FloatRect& dstRect, ExceptionCode&);
-    void drawImage(HTMLCanvasElement*, float x, float y, ExceptionCode&);
-    void drawImage(HTMLCanvasElement*, float x, float y, float width, float height, ExceptionCode&);
-    void drawImage(HTMLCanvasElement*, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, ExceptionCode&);
-    void drawImage(HTMLCanvasElement*, const FloatRect& srcRect, const FloatRect& dstRect, ExceptionCode&);
-    void drawImage(HTMLImageElement*, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator&, const BlendMode&, ExceptionCode&);
-#if ENABLE(VIDEO)
-    void drawImage(HTMLVideoElement*, float x, float y, ExceptionCode&);
-    void drawImage(HTMLVideoElement*, float x, float y, float width, float height, ExceptionCode&);
-    void drawImage(HTMLVideoElement*, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, ExceptionCode&);
-    void drawImage(HTMLVideoElement*, const FloatRect& srcRect, const FloatRect& dstRect, ExceptionCode&);
-#endif
+    ExceptionOr<void> drawImage(CanvasImageSource&&, float dx, float dy);
+    ExceptionOr<void> drawImage(CanvasImageSource&&, float dx, float dy, float dw, float dh);
+    ExceptionOr<void> drawImage(CanvasImageSource&&, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh);
 
-    void drawImageFromRect(HTMLImageElement*, float sx = 0, float sy = 0, float sw = 0, float sh = 0,
-                           float dx = 0, float dy = 0, float dw = 0, float dh = 0, const String& compositeOperation = emptyString());
+    void drawImageFromRect(HTMLImageElement&, float sx = 0, float sy = 0, float sw = 0, float sh = 0, float dx = 0, float dy = 0, float dw = 0, float dh = 0, const String& compositeOperation = emptyString());
 
     void setAlpha(float);
 
     void setCompositeOperation(const String&);
 
-    RefPtr<CanvasGradient> createLinearGradient(float x0, float y0, float x1, float y1, ExceptionCode&);
-    RefPtr<CanvasGradient> createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1, ExceptionCode&);
-    RefPtr<CanvasPattern> createPattern(HTMLImageElement*, const String& repetitionType, ExceptionCode&);
-    RefPtr<CanvasPattern> createPattern(HTMLCanvasElement*, const String& repetitionType, ExceptionCode&);
+    using Style = Variant<String, RefPtr<CanvasGradient>, RefPtr<CanvasPattern>>;
+    Style strokeStyle() const;
+    void setStrokeStyle(Style&&);
+    Style fillStyle() const;
+    void setFillStyle(Style&&);
 
-    RefPtr<ImageData> createImageData(RefPtr<ImageData>&&, ExceptionCode&) const;
-    RefPtr<ImageData> createImageData(float width, float height, ExceptionCode&) const;
-    RefPtr<ImageData> getImageData(float sx, float sy, float sw, float sh, ExceptionCode&) const;
-    RefPtr<ImageData> webkitGetImageDataHD(float sx, float sy, float sw, float sh, ExceptionCode&) const;
-    void putImageData(ImageData*, float dx, float dy, ExceptionCode&);
-    void putImageData(ImageData*, float dx, float dy, float dirtyX, float dirtyY, float dirtyWidth, float dirtyHeight, ExceptionCode&);
-    void webkitPutImageDataHD(ImageData*, float dx, float dy, ExceptionCode&);
-    void webkitPutImageDataHD(ImageData*, float dx, float dy, float dirtyX, float dirtyY, float dirtyWidth, float dirtyHeight, ExceptionCode&);
+    ExceptionOr<Ref<CanvasGradient>> createLinearGradient(float x0, float y0, float x1, float y1);
+    ExceptionOr<Ref<CanvasGradient>> createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1);
+    ExceptionOr<RefPtr<CanvasPattern>> createPattern(CanvasImageSource&&, const String& repetition);
 
-    void drawFocusIfNeeded(Element*);
-    void drawFocusIfNeeded(DOMPath*, Element*);
+    ExceptionOr<RefPtr<ImageData>> createImageData(ImageData*) const;
+    ExceptionOr<RefPtr<ImageData>> createImageData(float width, float height) const;
+    ExceptionOr<RefPtr<ImageData>> getImageData(float sx, float sy, float sw, float sh) const;
+    ExceptionOr<RefPtr<ImageData>> webkitGetImageDataHD(float sx, float sy, float sw, float sh) const;
+    void putImageData(ImageData&, float dx, float dy);
+    void putImageData(ImageData&, float dx, float dy, float dirtyX, float dirtyY, float dirtyWidth, float dirtyHeight);
+    void webkitPutImageDataHD(ImageData&, float dx, float dy);
+    void webkitPutImageDataHD(ImageData&, float dx, float dy, float dirtyX, float dirtyY, float dirtyWidth, float dirtyHeight);
+
+    void drawFocusIfNeeded(Element&);
+    void drawFocusIfNeeded(DOMPath&, Element&);
 
     float webkitBackingStorePixelRatio() const { return 1; }
 
@@ -216,10 +203,8 @@ public:
     String direction() const;
     void setDirection(const String&);
 
-    void fillText(const String& text, float x, float y);
-    void fillText(const String& text, float x, float y, float maxWidth);
-    void strokeText(const String& text, float x, float y);
-    void strokeText(const String& text, float x, float y, float maxWidth);
+    void fillText(const String& text, float x, float y, std::optional<float> maxWidth = std::nullopt);
+    void strokeText(const String& text, float x, float y, std::optional<float> maxWidth = std::nullopt);
     Ref<TextMetrics> measureText(const String& text);
 
     LineCap getLineCap() const { return state().lineCap; }
@@ -228,14 +213,9 @@ public:
     bool imageSmoothingEnabled() const;
     void setImageSmoothingEnabled(bool);
 
-    String imageSmoothingQuality() const;
-    void setImageSmoothingQuality(const String&);
-
-    enum class SmoothingQuality {
-        Low,
-        Medium,
-        High
-    };
+    enum class ImageSmoothingQuality { Low, Medium, High };
+    ImageSmoothingQuality imageSmoothingQuality() const;
+    void setImageSmoothingQuality(ImageSmoothingQuality);
 
     bool usesDisplayListDrawing() const { return m_usesDisplayListDrawing; };
     void setUsesDisplayListDrawing(bool flag) { m_usesDisplayListDrawing = flag; };
@@ -261,7 +241,7 @@ private:
         FontProxy& operator=(const FontProxy&);
 
         bool realized() const { return m_font.fontSelector(); }
-        void initialize(FontSelector&, RenderStyle&);
+        void initialize(FontSelector&, const RenderStyle&);
         FontMetrics fontMetrics() const;
         const FontCascadeDescription& fontDescription() const;
         float width(const TextRun&) const;
@@ -269,7 +249,7 @@ private:
 
     private:
         void update(FontSelector&);
-        virtual void fontsNeedUpdate(FontSelector&) override;
+        void fontsNeedUpdate(FontSelector&) override;
 
         FontCascade m_font;
     };
@@ -290,7 +270,7 @@ private:
         float miterLimit;
         FloatSize shadowOffset;
         float shadowBlur;
-        RGBA32 shadowColor;
+        Color shadowColor;
         float globalAlpha;
         CompositeOperator globalComposite;
         BlendMode globalBlend;
@@ -299,7 +279,7 @@ private:
         Vector<float> lineDash;
         float lineDashOffset;
         bool imageSmoothingEnabled;
-        SmoothingQuality imageSmoothingQuality;
+        ImageSmoothingQuality imageSmoothingQuality;
 
         // Text state.
         TextAlign textAlign;
@@ -318,11 +298,11 @@ private:
         CanvasDidDrawApplyAll = 0xffffffff
     };
 
-    State& modifiableState() { ASSERT(!m_unrealizedSaveCount); return m_stateStack.last(); }
+    State& modifiableState() { ASSERT(!m_unrealizedSaveCount || m_stateStack.size() >= MaxSaveCount); return m_stateStack.last(); }
     const State& state() const { return m_stateStack.last(); }
 
     void applyLineDash() const;
-    void setShadow(const FloatSize& offset, float blur, RGBA32 color);
+    void setShadow(const FloatSize& offset, float blur, const Color&);
     void applyShadow();
     bool shouldDrawShadows() const;
 
@@ -334,37 +314,47 @@ private:
     GraphicsContext* drawingContext() const;
 
     void unwindStateStack();
-    void realizeSaves()
-    {
-        if (m_unrealizedSaveCount)
-            realizeSavesLoop();
-    }
+    void realizeSaves();
     void realizeSavesLoop();
 
     void applyStrokePattern();
     void applyFillPattern();
 
-    void drawTextInternal(const String& text, float x, float y, bool fill, float maxWidth = 0, bool useMaxWidth = false);
+    void setStrokeStyle(CanvasStyle);
+    void setFillStyle(CanvasStyle);
+
+    ExceptionOr<RefPtr<CanvasPattern>> createPattern(HTMLImageElement&, bool repeatX, bool repeatY);
+    ExceptionOr<RefPtr<CanvasPattern>> createPattern(HTMLCanvasElement&, bool repeatX, bool repeatY);
+#if ENABLE(VIDEO)
+    ExceptionOr<RefPtr<CanvasPattern>> createPattern(HTMLVideoElement&, bool repeatX, bool repeatY);
+#endif
+
+    ExceptionOr<void> drawImage(HTMLImageElement&, const FloatRect& srcRect, const FloatRect& dstRect);
+    ExceptionOr<void> drawImage(HTMLImageElement&, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator&, const BlendMode&);
+    ExceptionOr<void> drawImage(HTMLCanvasElement&, const FloatRect& srcRect, const FloatRect& dstRect);
+#if ENABLE(VIDEO)
+    ExceptionOr<void> drawImage(HTMLVideoElement&, const FloatRect& srcRect, const FloatRect& dstRect);
+#endif
+
+    void drawTextInternal(const String& text, float x, float y, bool fill, std::optional<float> maxWidth = std::nullopt);
 
     // The relationship between FontCascade and CanvasRenderingContext2D::FontProxy must hold certain invariants.
     // Therefore, all font operations must pass through the State.
     const FontProxy& fontProxy();
 
-#if ENABLE(DASHBOARD_SUPPORT)
     void clearPathForDashboardBackwardCompatibilityMode();
-#endif
 
     void beginCompositeLayer();
     void endCompositeLayer();
 
-    void fillInternal(const Path&, const String& winding);
+    void fillInternal(const Path&, WindingRule);
     void strokeInternal(const Path&);
-    void clipInternal(const Path&, const String& winding);
+    void clipInternal(const Path&, WindingRule);
 
-    bool isPointInPathInternal(const Path&, float x, float y, const String& winding);
+    bool isPointInPathInternal(const Path&, float x, float y, WindingRule);
     bool isPointInStrokeInternal(const Path&, float x, float y);
 
-    void drawFocusIfNeededInternal(const Path&, Element*);
+    void drawFocusIfNeededInternal(const Path&, Element&);
 
     void clearCanvas();
     Path transformAreaToDevice(const Path&) const;
@@ -381,26 +371,26 @@ private:
 
     void prepareGradientForDashboard(CanvasGradient& gradient) const;
 
-    RefPtr<ImageData> getImageData(ImageBuffer::CoordinateSystem, float sx, float sy, float sw, float sh, ExceptionCode&) const;
-    void putImageData(ImageData*, ImageBuffer::CoordinateSystem, float dx, float dy, float dirtyX, float dirtyY, float dirtyWidth, float dirtyHeight, ExceptionCode&);
+    ExceptionOr<RefPtr<ImageData>> getImageData(ImageBuffer::CoordinateSystem, float sx, float sy, float sw, float sh) const;
+    void putImageData(ImageData&, ImageBuffer::CoordinateSystem, float dx, float dy, float dirtyX, float dirtyY, float dirtyWidth, float dirtyHeight);
 
-    virtual bool is2d() const override { return true; }
-    virtual bool isAccelerated() const override;
+    bool is2d() const override { return true; }
+    bool isAccelerated() const override;
 
-    virtual bool hasInvertibleTransform() const override { return state().hasInvertibleTransform; }
-    TextDirection toTextDirection(Direction, RenderStyle** computedStyle = nullptr) const;
+    bool hasInvertibleTransform() const override { return state().hasInvertibleTransform; }
+    TextDirection toTextDirection(Direction, const RenderStyle** computedStyle = nullptr) const;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    virtual PlatformLayer* platformLayer() const override;
+    PlatformLayer* platformLayer() const override;
 #endif
 
+    static const unsigned MaxSaveCount = 1024 * 16;
     Vector<State, 1> m_stateStack;
     unsigned m_unrealizedSaveCount { 0 };
     bool m_usesCSSCompatibilityParseMode;
 #if ENABLE(DASHBOARD_SUPPORT)
     bool m_usesDashboardCompatibilityMode;
 #endif
-
     bool m_usesDisplayListDrawing { false };
     bool m_tracksDisplayListReplay { false };
     mutable std::unique_ptr<struct DisplayListDrawingContext> m_recordingContext;
@@ -409,5 +399,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CANVASRENDERINGCONTEXT(WebCore::CanvasRenderingContext2D, is2d())
-
-#endif

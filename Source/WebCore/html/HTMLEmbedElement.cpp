@@ -54,6 +54,11 @@ Ref<HTMLEmbedElement> HTMLEmbedElement::create(const QualifiedName& tagName, Doc
     return adoptRef(*new HTMLEmbedElement(tagName, document, createdByParser));
 }
 
+Ref<HTMLEmbedElement> HTMLEmbedElement::create(Document& document)
+{
+    return adoptRef(*new HTMLEmbedElement(embedTag, document, false));
+}
+
 static inline RenderWidget* findWidgetRenderer(const Node* node)
 {
     if (!node->renderer()) {
@@ -71,7 +76,7 @@ static inline RenderWidget* findWidgetRenderer(const Node* node)
 RenderWidget* HTMLEmbedElement::renderWidgetLoadingPlugin() const
 {
     FrameView* view = document().view();
-    if (!view || (!view->isInLayout() && !view->isPainting())) {
+    if (!view || (!view->isInRenderTreeLayout() && !view->isPainting())) {
         // Needs to load the plugin immediatedly because this function is called
         // when JavaScript code accesses the plugin.
         // FIXME: <rdar://16893708> Check if dispatching events here is safe.
@@ -135,7 +140,7 @@ void HTMLEmbedElement::parametersForPlugin(Vector<String>& paramNames, Vector<St
 
 // FIXME: This should be unified with HTMLObjectElement::updateWidget and
 // moved down into HTMLPluginImageElement.cpp
-void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
+void HTMLEmbedElement::updateWidget(CreatePlugins createPlugins)
 {
     ASSERT(!renderEmbeddedObject()->isPluginUnavailable());
     ASSERT(needsWidgetUpdate());
@@ -152,7 +157,7 @@ void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
     // FIXME: It's sadness that we have this special case here.
     //        See http://trac.webkit.org/changeset/25128 and
     //        plugins/netscape-plugin-setwindow-size.html
-    if (pluginCreationOption == CreateOnlyNonNetscapePlugins && wouldLoadAsNetscapePlugin(m_url, m_serviceType)) {
+    if (createPlugins == CreatePlugins::No && wouldLoadAsPlugIn(m_url, m_serviceType)) {
         // Ensure updateWidget() is called again during layout to create the Netscape plug-in.
         setNeedsWidgetUpdate(true);
         return;
@@ -163,7 +168,7 @@ void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
     Vector<String> paramValues;
     parametersForPlugin(paramNames, paramValues);
 
-    Ref<HTMLEmbedElement> protect(*this); // Loading the plugin might remove us from the document.
+    Ref<HTMLEmbedElement> protectedThis(*this); // Loading the plugin might remove us from the document.
     bool beforeLoadAllowedLoad = guardedDispatchBeforeLoadEvent(m_url);
     if (!beforeLoadAllowedLoad) {
         if (is<PluginDocument>(document())) {
@@ -177,13 +182,17 @@ void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
     if (!renderer()) // Do not load the plugin if beforeload removed this element or its renderer.
         return;
 
+    // beforeLoad could have changed the document. Make sure the URL is still safe to load.
+    if (!allowedToLoadFrameURL(m_url))
+        return;
+
     // FIXME: beforeLoad could have detached the renderer!  Just like in the <object> case above.
     requestObject(m_url, m_serviceType, paramNames, paramValues);
 }
 
 bool HTMLEmbedElement::rendererIsNeeded(const RenderStyle& style)
 {
-    if (!fastHasAttribute(typeAttr) && !fastHasAttribute(srcAttr))
+    if (!hasAttributeWithoutSynchronization(typeAttr) && !hasAttributeWithoutSynchronization(srcAttr))
         return false;
 
     if (isImageType())
@@ -203,7 +212,7 @@ bool HTMLEmbedElement::rendererIsNeeded(const RenderStyle& style)
 
 #if ENABLE(DASHBOARD_SUPPORT)
     // Workaround for <rdar://problem/6642221>.
-    if (document().frame()->settings().usesDashboardBackwardCompatibilityMode())
+    if (document().settings().usesDashboardBackwardCompatibilityMode())
         return true;
 #endif
 
@@ -217,14 +226,14 @@ bool HTMLEmbedElement::isURLAttribute(const Attribute& attribute) const
 
 const AtomicString& HTMLEmbedElement::imageSourceURL() const
 {
-    return fastGetAttribute(srcAttr);
+    return attributeWithoutSynchronization(srcAttr);
 }
 
 void HTMLEmbedElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLPlugInImageElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document().completeURL(fastGetAttribute(srcAttr)));
+    addSubresourceURL(urls, document().completeURL(attributeWithoutSynchronization(srcAttr)));
 }
 
 }

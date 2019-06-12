@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014 Apple Inc. All rights reserved.
+# Copyright (c) 2014, 2016 Apple Inc. All rights reserved.
 # Copyright (c) 2014 University of Washington. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,17 +36,17 @@ from objc_generator_templates import ObjCGeneratorTemplates as ObjCTemplates
 log = logging.getLogger('global')
 
 
-class ObjCBackendDispatcherImplementationGenerator(Generator):
-    def __init__(self, model, input_filepath):
-        Generator.__init__(self, model, input_filepath)
+class ObjCConfigurationImplementationGenerator(ObjCGenerator):
+    def __init__(self, *args, **kwargs):
+        ObjCGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
-        return '%sConfiguration.mm' % ObjCGenerator.OBJC_PREFIX
+        return '%sConfiguration.mm' % self.protocol_name()
 
     def generate_output(self):
         secondary_headers = [
-            '"%sInternal.h"' % ObjCGenerator.OBJC_PREFIX,
-            '"%sBackendDispatchers.h"' % ObjCGenerator.OBJC_PREFIX,
+            '"%sInternal.h"' % self.protocol_name(),
+            '"%sBackendDispatchers.h"' % self.protocol_name(),
             '<JavaScriptCore/AlternateDispatchableAgent.h>',
             '<JavaScriptCore/AugmentableInspectorController.h>',
             '<JavaScriptCore/InspectorAlternateBackendDispatchers.h>',
@@ -54,12 +54,9 @@ class ObjCBackendDispatcherImplementationGenerator(Generator):
         ]
 
         header_args = {
-            'primaryInclude': '"%sConfiguration.h"' % ObjCGenerator.OBJC_PREFIX,
+            'primaryInclude': '"%sConfiguration.h"' % self.protocol_name(),
             'secondaryIncludes': '\n'.join(['#import %s' % header for header in secondary_headers]),
         }
-
-        self._command_filter = ObjCGenerator.should_generate_domain_command_handler_filter(self.model())
-        self._event_filter = ObjCGenerator.should_generate_domain_event_dispatcher_filter(self.model())
 
         domains = self.domains_to_generate()
         sections = []
@@ -71,7 +68,7 @@ class ObjCBackendDispatcherImplementationGenerator(Generator):
 
     def _generate_configuration_implementation_for_domains(self, domains):
         lines = []
-        lines.append('@implementation %sConfiguration' % ObjCGenerator.OBJC_PREFIX)
+        lines.append('@implementation %sConfiguration' % self.protocol_name())
         lines.append('{')
         lines.append('    AugmentableInspectorController* _controller;')
         lines.extend(self._generate_ivars(domains))
@@ -90,10 +87,10 @@ class ObjCBackendDispatcherImplementationGenerator(Generator):
         lines.extend(self._generate_dealloc(domains))
         lines.append('')
         for domain in domains:
-            if domain.commands and self._command_filter(domain):
+            if self.should_generate_commands_for_domain(domain):
                 lines.append(self._generate_handler_setter_for_domain(domain))
                 lines.append('')
-            if domain.events and self._event_filter(domain):
+            if self.should_generate_events_for_domain(domain):
                 lines.append(self._generate_event_dispatcher_getter_for_domain(domain))
                 lines.append('')
         lines.append('@end')
@@ -102,12 +99,12 @@ class ObjCBackendDispatcherImplementationGenerator(Generator):
     def _generate_ivars(self, domains):
         lines = []
         for domain in domains:
-            if domain.commands and self._command_filter(domain):
-                objc_class_name = '%s%sDomainHandler' % (ObjCGenerator.OBJC_PREFIX, domain.domain_name)
+            if self.should_generate_commands_for_domain(domain):
+                objc_class_name = '%s%sDomainHandler' % (self.objc_prefix(), domain.domain_name)
                 ivar_name = '_%sHandler' % ObjCGenerator.variable_name_prefix_for_domain(domain)
                 lines.append('    id<%s> %s;' % (objc_class_name, ivar_name))
-            if domain.events and self._event_filter(domain):
-                objc_class_name = '%s%sDomainEventDispatcher' % (ObjCGenerator.OBJC_PREFIX, domain.domain_name)
+            if self.should_generate_events_for_domain(domain):
+                objc_class_name = '%s%sDomainEventDispatcher' % (self.objc_prefix(), domain.domain_name)
                 ivar_name = '_%sEventDispatcher' % ObjCGenerator.variable_name_prefix_for_domain(domain)
                 lines.append('    %s *%s;' % (objc_class_name, ivar_name))
         return lines
@@ -117,9 +114,9 @@ class ObjCBackendDispatcherImplementationGenerator(Generator):
         lines.append('- (void)dealloc')
         lines.append('{')
         for domain in domains:
-            if domain.commands and self._command_filter(domain):
+            if self.should_generate_commands_for_domain(domain):
                 lines.append('    [_%sHandler release];' % ObjCGenerator.variable_name_prefix_for_domain(domain))
-            if domain.events and self._event_filter(domain):
+            if self.should_generate_events_for_domain(domain):
                 lines.append('    [_%sEventDispatcher release];' % ObjCGenerator.variable_name_prefix_for_domain(domain))
         lines.append('    [super dealloc];')
         lines.append('}')
@@ -127,7 +124,7 @@ class ObjCBackendDispatcherImplementationGenerator(Generator):
 
     def _generate_handler_setter_for_domain(self, domain):
         setter_args = {
-            'objcPrefix': ObjCGenerator.OBJC_PREFIX,
+            'objcPrefix': self.objc_prefix(),
             'domainName': domain.domain_name,
             'variableNamePrefix': ObjCGenerator.variable_name_prefix_for_domain(domain),
         }
@@ -135,7 +132,7 @@ class ObjCBackendDispatcherImplementationGenerator(Generator):
 
     def _generate_event_dispatcher_getter_for_domain(self, domain):
         getter_args = {
-            'objcPrefix': ObjCGenerator.OBJC_PREFIX,
+            'objcPrefix': self.objc_prefix(),
             'domainName': domain.domain_name,
             'variableNamePrefix': ObjCGenerator.variable_name_prefix_for_domain(domain),
         }

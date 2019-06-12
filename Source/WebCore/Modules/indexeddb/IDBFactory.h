@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,49 +23,52 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBFactory_h
-#define IDBFactory_h
-
-#include "IDBOpenDBRequest.h"
-#include "ScriptWrappable.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "ExceptionOr.h"
+#include <wtf/Function.h>
+#include <wtf/Forward.h>
+#include <wtf/Ref.h>
+#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/Vector.h>
+
+namespace JSC {
+class ExecState;
+class JSValue;
+}
+
 namespace WebCore {
 
-class IDBKey;
-class IDBKeyRange;
-class IDBFactoryBackendInterface;
+class IDBOpenDBRequest;
 class ScriptExecutionContext;
+class SecurityOrigin;
 
-struct ExceptionCodeWithMessage;
+namespace IDBClient {
+class IDBConnectionProxy;
+}
 
-typedef int ExceptionCode;
-
-class IDBFactory : public RefCounted<IDBFactory> {
+class IDBFactory : public ThreadSafeRefCounted<IDBFactory> {
 public:
-    virtual ~IDBFactory() { }
+    static Ref<IDBFactory> create(IDBClient::IDBConnectionProxy&);
+    ~IDBFactory();
 
-    // FIXME: getDatabaseNames is no longer a web-facing API, and should be removed from IDBFactory.
-    // The Web Inspector currently uses this to enumerate the list of databases, but is more complicated as a result.
-    // We should provide a simpler API to the Web Inspector then remove getDatabaseNames.
-    virtual RefPtr<IDBRequest> getDatabaseNames(ScriptExecutionContext*, ExceptionCode&) = 0;
+    ExceptionOr<Ref<IDBOpenDBRequest>> open(ScriptExecutionContext&, const String& name, std::optional<uint64_t> version);
+    ExceptionOr<Ref<IDBOpenDBRequest>> deleteDatabase(ScriptExecutionContext&, const String& name);
 
-    virtual RefPtr<IDBOpenDBRequest> open(ScriptExecutionContext*, const String& name, ExceptionCode&) = 0;
-    virtual RefPtr<IDBOpenDBRequest> open(ScriptExecutionContext*, const String& name, unsigned long long version, ExceptionCode&) = 0;
-    virtual RefPtr<IDBOpenDBRequest> deleteDatabase(ScriptExecutionContext*, const String& name, ExceptionCode&) = 0;
+    ExceptionOr<short> cmp(JSC::ExecState&, JSC::JSValue first, JSC::JSValue second);
 
-    virtual short cmp(ScriptExecutionContext*, const Deprecated::ScriptValue& first, const Deprecated::ScriptValue& second, ExceptionCodeWithMessage&) = 0;
+    WEBCORE_EXPORT void getAllDatabaseNames(const SecurityOrigin& mainFrameOrigin, const SecurityOrigin& openingOrigin, WTF::Function<void (const Vector<String>&)>&&);
 
-protected:
-    IDBFactory();
+private:
+    explicit IDBFactory(IDBClient::IDBConnectionProxy&);
+
+    ExceptionOr<Ref<IDBOpenDBRequest>> openInternal(ScriptExecutionContext&, const String& name, uint64_t version);
+
+    Ref<IDBClient::IDBConnectionProxy> m_connectionProxy;
 };
 
 } // namespace WebCore
 
-#endif
-
-#endif // LegacyFactory_h
+#endif // ENABLE(INDEXED_DATABASE)

@@ -27,8 +27,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMultiColumnSpannerPlaceholder_h
-#define RenderMultiColumnSpannerPlaceholder_h
+#pragma once
 
 #include "RenderBox.h"
 
@@ -38,18 +37,18 @@ class RenderMultiColumnFlowThread;
 
 class RenderMultiColumnSpannerPlaceholder final : public RenderBox {
 public:
-    static RenderMultiColumnSpannerPlaceholder* createAnonymous(RenderMultiColumnFlowThread*, RenderBox* spanner, RenderStyle* parentStyle);
+    static RenderMultiColumnSpannerPlaceholder* createAnonymous(RenderMultiColumnFlowThread*, RenderBox& spanner, const RenderStyle* parentStyle);
 
     RenderBox* spanner() const { return m_spanner; }
     RenderMultiColumnFlowThread* flowThread() const { return m_flowThread; }
 
 private:
-    RenderMultiColumnSpannerPlaceholder(RenderMultiColumnFlowThread*, RenderBox* spanner, Ref<RenderStyle>&&);
-    virtual bool isRenderMultiColumnSpannerPlaceholder() const override { return true; }
+    RenderMultiColumnSpannerPlaceholder(RenderMultiColumnFlowThread*, RenderBox& spanner, RenderStyle&&);
+    bool isRenderMultiColumnSpannerPlaceholder() const override { return true; }
 
-    virtual bool canHaveChildren() const override { return false; }
-    virtual void paint(PaintInfo&, const LayoutPoint&) override { }
-    virtual const char* renderName() const override;
+    bool canHaveChildren() const override { return false; }
+    void paint(PaintInfo&, const LayoutPoint&) override { }
+    const char* renderName() const override;
 
     RenderBox* m_spanner;
     RenderMultiColumnFlowThread* m_flowThread;
@@ -58,5 +57,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMultiColumnSpannerPlaceholder, isRenderMultiColumnSpannerPlaceholder())
-
-#endif // RenderMultiColumnSpannerPlaceholder_h

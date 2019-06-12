@@ -248,16 +248,22 @@ template<typename T> inline WKRetainPtr<T> adoptWK(T o)
     return WKRetainPtr<T>(AdoptWK, o);
 }
 
+template<typename T> inline WKRetainPtr<T> retainWK(T ptr)
+{
+    return ptr;
+}
+
 } // namespace WebKit
 
 using WebKit::WKRetainPtr;
 using WebKit::AdoptWK;
 using WebKit::adoptWK;
+using WebKit::retainWK;
 
 namespace WTF {
 
 template <typename T> struct IsSmartPtr<WKRetainPtr<T>> {
-    static const bool value = true;
+    WTF_INTERNAL static const bool value = true;
 };
 
 template<typename P> struct DefaultHash<WKRetainPtr<P>> {

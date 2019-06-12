@@ -24,8 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GCAssertions_h
-#define GCAssertions_h
+#pragma once
 
 #include <type_traits>
 #include <wtf/Assertions.h>
@@ -38,7 +37,7 @@
 
 #define ASSERT_GC_OBJECT_INHERITS(object, classInfo) do {\
     ASSERT_GC_OBJECT_LOOKS_VALID(object); \
-    RELEASE_ASSERT(object->inherits(classInfo)); \
+    RELEASE_ASSERT(object->inherits(*object->JSC::JSCell::vm(), classInfo)); \
 } while (0)
 
 // Used to avoid triggering -Wundefined-bool-conversion.
@@ -48,7 +47,7 @@
 
 #define ASSERT_THIS_GC_OBJECT_INHERITS(classInfo) do {\
     ASSERT_THIS_GC_OBJECT_LOOKS_VALID(); \
-    RELEASE_ASSERT(this->inherits(classInfo)); \
+    RELEASE_ASSERT(this->inherits(*this->vm(), classInfo)); \
 } while (0)
 
 #else
@@ -59,5 +58,3 @@
 #endif
 
 #define STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(klass) static_assert(std::is_trivially_destructible<klass>::value, #klass " must have a trivial destructor")
-
-#endif // GCAssertions_h

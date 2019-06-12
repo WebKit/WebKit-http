@@ -30,6 +30,7 @@
 #include <wtf/FastMalloc.h>
 #include <wtf/MallocPtr.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/NotFound.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/ValueCheck.h>
 #include <wtf/VectorTraits.h>
@@ -39,8 +40,6 @@ extern "C" void __sanitizer_annotate_contiguous_container(const void* begin, con
 #endif
 
 namespace WTF {
-
-const size_t notFound = static_cast<size_t>(-1);
 
 template <bool needsDestruction, typename T>
 struct VectorDestructor;
@@ -538,11 +537,7 @@ private:
     {
         // FIXME: We could make swap part of VectorTypeOperations
         // https://bugs.webkit.org/show_bug.cgi?id=128863
-        
-        if (std::is_pod<T>::value)
-            std::swap(m_inlineBuffer, other.m_inlineBuffer);
-        else
-            swapInlineBuffers(inlineBuffer(), other.inlineBuffer(), mySize, otherSize);
+        swapInlineBuffers(inlineBuffer(), other.inlineBuffer(), mySize, otherSize);
     }
     
     static void swapInlineBuffers(T* left, T* right, size_t leftSize, size_t rightSize)
@@ -632,9 +627,9 @@ public:
     ~Vector()
     {
         if (m_size)
-            shrink(0);
+            TypeOperations::destruct(begin(), end());
 
-        asanSetBufferSizeToFullCapacity();
+        asanSetBufferSizeToFullCapacity(0);
     }
 
     Vector(const Vector&);
@@ -709,7 +704,10 @@ public:
     
     template<typename U> bool contains(const U&) const;
     template<typename U> size_t find(const U&) const;
+    template<typename MatchFunction> size_t findMatching(const MatchFunction&) const;
     template<typename U> size_t reverseFind(const U&) const;
+    
+    template<typename U> bool appendIfNotContains(const U&);
 
     void shrink(size_t size);
     void grow(size_t size);
@@ -726,6 +724,7 @@ public:
     void append(ValueType&& value) { append<ValueType>(std::forward<ValueType>(value)); }
     template<typename U> void append(U&&);
     template<typename... Args> void constructAndAppend(Args&&...);
+    template<typename... Args> bool tryConstructAndAppend(Args&&...);
 
     void uncheckedAppend(ValueType&& value) { uncheckedAppend<ValueType>(std::forward<ValueType>(value)); }
     template<typename U> void uncheckedAppend(U&&);
@@ -741,9 +740,9 @@ public:
     void remove(size_t position);
     void remove(size_t position, size_t length);
     template<typename U> bool removeFirst(const U&);
-    template<typename MatchFunction> bool removeFirstMatching(const MatchFunction&);
+    template<typename MatchFunction> bool removeFirstMatching(const MatchFunction&, size_t startIndex = 0);
     template<typename U> unsigned removeAll(const U&);
-    template<typename MatchFunction> unsigned removeAllMatching(const MatchFunction&);
+    template<typename MatchFunction> unsigned removeAllMatching(const MatchFunction&, size_t startIndex = 0);
 
     void removeLast() 
     {
@@ -781,6 +780,8 @@ public:
 
     void checkConsistency();
 
+    template<typename MapFunction, typename R = typename std::result_of<MapFunction(const T&)>::type> Vector<R> map(MapFunction) const;
+
 private:
     void expandCapacity(size_t newMinCapacity);
     T* expandCapacity(size_t newMinCapacity, T*);
@@ -789,9 +790,12 @@ private:
     template<typename U> U* expandCapacity(size_t newMinCapacity, U*); 
     template<typename U> void appendSlowCase(U&&);
     template<typename... Args> void constructAndAppendSlowCase(Args&&...);
+    template<typename... Args> bool tryConstructAndAppendSlowCase(Args&&...);
 
     void asanSetInitialBufferSizeTo(size_t);
-    void asanSetBufferSizeToFullCapacity();
+    void asanSetBufferSizeToFullCapacity(size_t);
+    void asanSetBufferSizeToFullCapacity() { asanSetBufferSizeToFullCapacity(size()); }
+
     void asanBufferSizeWillChangeTo(size_t);
 
     using Base::m_size;
@@ -903,14 +907,23 @@ bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::contains(const U& 
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
-template<typename U>
-size_t Vector<T, inlineCapacity, OverflowHandler, minCapacity>::find(const U& value) const
+template<typename MatchFunction>
+size_t Vector<T, inlineCapacity, OverflowHandler, minCapacity>::findMatching(const MatchFunction& matches) const
 {
     for (size_t i = 0; i < size(); ++i) {
-        if (at(i) == value)
+        if (matches(at(i)))
             return i;
     }
     return notFound;
+}
+
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
+size_t Vector<T, inlineCapacity, OverflowHandler, minCapacity>::find(const U& value) const
+{
+    return findMatching([&](auto& item) {
+        return item == value;
+    });
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
@@ -923,6 +936,16 @@ size_t Vector<T, inlineCapacity, OverflowHandler, minCapacity>::reverseFind(cons
             return index;
     }
     return notFound;
+}
+
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
+bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::appendIfNotContains(const U& value)
+{
+    if (contains(value))
+        return false;
+    append(value);
+    return true;
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
@@ -1058,14 +1081,16 @@ inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::asanSetInit
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
-inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::asanSetBufferSizeToFullCapacity()
+inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::asanSetBufferSizeToFullCapacity(size_t size)
 {
 #if ASAN_ENABLED
     if (!buffer())
         return;
 
     // ASan requires that the annotation is returned to its initial state before deallocation.
-    __sanitizer_annotate_contiguous_container(buffer(), endOfBuffer(), buffer() + size(), endOfBuffer());
+    __sanitizer_annotate_contiguous_container(buffer(), endOfBuffer(), buffer() + size, endOfBuffer());
+#else
+    UNUSED_PARAM(size);
 #endif
 }
 
@@ -1165,9 +1190,6 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::shrinkCapacity(siz
     asanSetInitialBufferSizeTo(size());
 }
 
-// Templatizing these is better than just letting the conversion happen implicitly,
-// because for instance it allows a PassRefPtr to be appended to a RefPtr vector
-// without refcount thrash.
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
 void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::append(const U* data, size_t dataSize)
 {
@@ -1229,6 +1251,19 @@ ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::cons
     constructAndAppendSlowCase(std::forward<Args>(args)...);
 }
 
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename... Args>
+ALWAYS_INLINE bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryConstructAndAppend(Args&&... args)
+{
+    if (size() != capacity()) {
+        asanBufferSizeWillChangeTo(m_size + 1);
+        new (NotNull, end()) T(std::forward<Args>(args)...);
+        ++m_size;
+        return true;
+    }
+    
+    return tryConstructAndAppendSlowCase(std::forward<Args>(args)...);
+}
+
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
 void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::appendSlowCase(U&& value)
 {
@@ -1256,11 +1291,26 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::constructAndAppend
     ++m_size;
 }
 
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename... Args>
+bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryConstructAndAppendSlowCase(Args&&... args)
+{
+    ASSERT(size() == capacity());
+    
+    if (UNLIKELY(!tryExpandCapacity(size() + 1)))
+        return false;
+    ASSERT(begin());
+    
+    asanBufferSizeWillChangeTo(m_size + 1);
+    new (NotNull, end()) T(std::forward<Args>(args)...);
+    ++m_size;
+    return true;
+}
+
 // This version of append saves a branch in the case where you know that the
 // vector's capacity is large enough for the append to succeed.
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
-inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::uncheckedAppend(U&& value)
+ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::uncheckedAppend(U&& value)
 {
     ASSERT(size() < capacity());
 
@@ -1355,9 +1405,9 @@ inline bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::removeFirst
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
 template<typename MatchFunction>
-inline bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::removeFirstMatching(const MatchFunction& matches)
+inline bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::removeFirstMatching(const MatchFunction& matches, size_t startIndex)
 {
-    for (size_t i = 0; i < size(); ++i) {
+    for (size_t i = startIndex; i < size(); ++i) {
         if (matches(at(i))) {
             remove(i);
             return true;
@@ -1377,12 +1427,12 @@ inline unsigned Vector<T, inlineCapacity, OverflowHandler, minCapacity>::removeA
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
 template<typename MatchFunction>
-inline unsigned Vector<T, inlineCapacity, OverflowHandler, minCapacity>::removeAllMatching(const MatchFunction& matches)
+inline unsigned Vector<T, inlineCapacity, OverflowHandler, minCapacity>::removeAllMatching(const MatchFunction& matches, size_t startIndex)
 {
     iterator holeBegin = end();
     iterator holeEnd = end();
     unsigned matchCount = 0;
-    for (auto it = begin(), itEnd = end(); it != itEnd; ++it) {
+    for (auto it = begin() + startIndex, itEnd = end(); it < itEnd; ++it) {
         if (matches(*it)) {
             if (holeBegin == end())
                 holeBegin = it;
@@ -1407,6 +1457,16 @@ inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::reverse()
 {
     for (size_t i = 0; i < m_size / 2; ++i)
         std::swap(at(i), at(m_size - 1 - i));
+}
+
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename MapFunction, typename R>
+inline Vector<R> Vector<T, inlineCapacity, OverflowHandler, minCapacity>::map(MapFunction mapFunction) const
+{
+    Vector<R> result;
+    result.reserveInitialCapacity(size());
+    for (size_t i = 0; i < size(); ++i)
+        result.uncheckedAppend(mapFunction(at(i)));
+    return result;
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
@@ -1471,10 +1531,25 @@ template<typename T> struct ValueCheck<Vector<T>> {
 };
 #endif
 
+template<typename VectorType, typename Func>
+size_t removeRepeatedElements(VectorType& vector, const Func& func)
+{
+    auto end = std::unique(vector.begin(), vector.end(), func);
+    size_t newSize = end - vector.begin();
+    vector.resize(newSize);
+    return newSize;
+}
+
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+size_t removeRepeatedElements(Vector<T, inlineCapacity, OverflowHandler, minCapacity>& vector)
+{
+    return removeRepeatedElements(vector, [] (T& a, T& b) { return a == b; });
+}
+
 } // namespace WTF
 
 using WTF::Vector;
 using WTF::UnsafeVectorOverflow;
-using WTF::notFound;
+using WTF::removeRepeatedElements;
 
 #endif // WTF_Vector_h

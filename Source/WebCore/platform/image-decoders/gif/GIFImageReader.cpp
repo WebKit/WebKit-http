@@ -77,7 +77,6 @@ mailing address.
 
 #include <string.h>
 #include "GIFImageDecoder.h"
-#include "ImageSource.h"
 
 using WebCore::GIFImageDecoder;
 
@@ -447,7 +446,7 @@ bool GIFImageReader::parse(size_t dataPosition, size_t len, bool parseSizeOnly)
 
             // CALLBACK: Inform the decoderplugin of our size.
             // Note: A subsequent frame might have dimensions larger than the "screen" dimensions.
-            if (m_client && !m_client->setSize(m_screenWidth, m_screenHeight))
+            if (m_client && !m_client->setSize(WebCore::IntSize(m_screenWidth, m_screenHeight)))
                 return false;
 
             m_screenBgcolor = currentComponent[5];
@@ -568,14 +567,14 @@ bool GIFImageReader::parse(size_t dataPosition, size_t len, bool parseSizeOnly)
 
             // We ignore the "user input" bit.
 
-            // NOTE: This relies on the values in the FrameDisposalMethod enum
+            // NOTE: This relies on the values in the DisposalMethod enum
             // matching those in the GIF spec!
             int disposalMethod = ((*currentComponent) >> 2) & 0x7;
-            currentFrame->disposalMethod = static_cast<WebCore::ImageFrame::FrameDisposalMethod>(disposalMethod);
+            currentFrame->disposalMethod = static_cast<WebCore::ImageFrame::DisposalMethod>(disposalMethod);
             // Some specs say that disposal method 3 is "overwrite previous", others that setting
             // the third bit of the field (i.e. method 4) is. We map both to the same value.
             if (disposalMethod == 4)
-                currentFrame->disposalMethod = WebCore::ImageFrame::DisposeOverwritePrevious;
+                currentFrame->disposalMethod = WebCore::ImageFrame::DisposalMethod::RestoreToPrevious;
             currentFrame->delayTime = GETINT16(currentComponent + 1) * 10;
             GETN(1, GIFConsumeBlock);
             break;
@@ -624,7 +623,7 @@ bool GIFImageReader::parse(size_t dataPosition, size_t len, bool parseSizeOnly)
 
                 // Zero loop count is infinite animation loop request.
                 if (!m_loopCount)
-                    m_loopCount = WebCore::cAnimationLoopInfinite;
+                    m_loopCount = WebCore::RepetitionCountInfinite;
 
                 GETN(1, GIFNetscapeExtensionBlock);
             } else if (netscapeExtension == 2) {
@@ -664,7 +663,7 @@ bool GIFImageReader::parse(size_t dataPosition, size_t len, bool parseSizeOnly)
                 yOffset = 0;
 
                 // CALLBACK: Inform the decoderplugin of our size.
-                if (m_client && !m_client->setSize(m_screenWidth, m_screenHeight))
+                if (m_client && !m_client->setSize(WebCore::IntSize(m_screenWidth, m_screenHeight)))
                     return false;
             }
 

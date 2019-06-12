@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AugmentableInspectorControllerClient_h
-#define AugmentableInspectorControllerClient_h
+#pragma once
 
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 
@@ -33,6 +32,7 @@ namespace Inspector {
 class AugmentableInspectorControllerClient {
 public:
     virtual ~AugmentableInspectorControllerClient() { }
+    virtual void inspectorControllerDestroyed() = 0;
     virtual void inspectorConnected() = 0;
     virtual void inspectorDisconnected() = 0;
 };
@@ -40,5 +40,3 @@ public:
 } // namespace Inspector
 
 #endif // ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
-
-#endif // !defined(AugmentableInspectorControllerClient_h)

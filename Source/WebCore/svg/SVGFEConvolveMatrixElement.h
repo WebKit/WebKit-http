@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFEConvolveMatrixElement_h
-#define SVGFEConvolveMatrixElement_h
+#pragma once
 
 #include "FEConvolveMatrix.h"
 #include "SVGAnimatedBoolean.h"
@@ -40,11 +39,11 @@ struct SVGPropertyTraits<EdgeModeType> {
         case EDGEMODE_UNKNOWN:
             return emptyString();
         case EDGEMODE_DUPLICATE:
-            return "duplicate";
+            return ASCIILiteral("duplicate");
         case EDGEMODE_WRAP:
-            return "wrap";
+            return ASCIILiteral("wrap");
         case EDGEMODE_NONE:
-            return "none";
+            return ASCIILiteral("none");
         }
 
         ASSERT_NOT_REACHED();
@@ -73,10 +72,10 @@ public:
 private:
     SVGFEConvolveMatrixElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 
     static const AtomicString& orderXIdentifier();
     static const AtomicString& orderYIdentifier();
@@ -100,5 +99,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

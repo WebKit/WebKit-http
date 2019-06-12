@@ -38,18 +38,17 @@ namespace WebCore {
 
 class RenderImageControls final : public RenderBlockFlow {
 public:
-    RenderImageControls(HTMLElement&, Ref<RenderStyle>&&);
+    RenderImageControls(HTMLElement&, RenderStyle&&);
     virtual ~RenderImageControls();
 
 private:
-    virtual void updateLogicalWidth() override;
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    void updateLogicalWidth() override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
-    virtual const char* renderName() const override { return "RenderImageControls"; }
-    virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
+    const char* renderName() const override { return "RenderImageControls"; }
 };
 
-RenderImageControls::RenderImageControls(HTMLElement& element, Ref<RenderStyle>&& style)
+RenderImageControls::RenderImageControls(HTMLElement& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
 {
 }
@@ -69,27 +68,27 @@ void RenderImageControls::updateLogicalWidth()
     setLogicalWidth(downcast<RenderImage>(*renderer).logicalWidth());
 }
 
-void RenderImageControls::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderImageControls::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const
 {
-    RenderBox::computeLogicalHeight(logicalHeight, logicalTop, computedValues);
-
+    auto computedValues = RenderBox::computeLogicalHeight(logicalHeight, logicalTop);
     RenderElement* renderer = element()->shadowHost()->renderer();
     if (!is<RenderImage>(*renderer))
-        return;
+        return computedValues;
 
     computedValues.m_extent = downcast<RenderImage>(*renderer).logicalHeight();
+    return computedValues;
 }
 
-RefPtr<ImageControlsRootElement> ImageControlsRootElement::maybeCreate(Document& document)
+RefPtr<ImageControlsRootElement> ImageControlsRootElement::tryCreate(Document& document)
 {
     if (!document.page())
         return nullptr;
 
     Ref<ImageControlsRootElementMac> controls = adoptRef(*new ImageControlsRootElementMac(document));
-    controls->setAttribute(HTMLNames::classAttr, "x-webkit-image-controls");
+    controls->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("x-webkit-image-controls", AtomicString::ConstructFromLiteral));
 
-    if (RefPtr<ImageControlsButtonElementMac> button = ImageControlsButtonElementMac::maybeCreate(document))
-        controls->appendChild(button.releaseNonNull());
+    if (RefPtr<ImageControlsButtonElementMac> button = ImageControlsButtonElementMac::tryCreate(document))
+        controls->appendChild(*button);
 
     return WTFMove(controls);
 }
@@ -103,7 +102,7 @@ ImageControlsRootElementMac::~ImageControlsRootElementMac()
 {
 }
 
-RenderPtr<RenderElement> ImageControlsRootElementMac::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> ImageControlsRootElementMac::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderImageControls>(*this, WTFMove(style));
 }

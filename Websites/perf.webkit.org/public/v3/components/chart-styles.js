@@ -1,6 +1,6 @@
 
 class ChartStyles {
-    static createChartSourceList(platformId, metricId)
+    static resolveConfiguration(platformId, metricId)
     {
         var platform = Platform.findById(platformId);
         var metric = Metric.findById(metricId);
@@ -11,64 +11,91 @@ class ChartStyles {
         if (!lastModified)
             return {platform: platform, metric: metric, error: `No results on ${platform.name()}`};
 
-        var measurementSet = MeasurementSet.findSet(platform.id(), metric.id(), lastModified);
-        var sourceList = [
-            this.baselineStyle(measurementSet, 'baseline'),
-            this.targetStyle(measurementSet, 'target'),
-            this.currentStyle(measurementSet, 'current'),
-        ];
-
         return {
             platform: platform,
             metric: metric,
-            sourceList: sourceList,
         };
     }
 
-    static baselineStyle(measurementSet)
+    static createSourceList(platform, metric, disableSampling, includeOutlier, showPoint)
+    {
+        console.assert(platform instanceof Platform);
+        console.assert(metric instanceof Metric);
+
+        var lastModified = platform.lastModified(metric);
+        console.assert(lastModified);
+
+        var measurementSet = MeasurementSet.findSet(platform.id(), metric.id(), lastModified);
+        return [
+            this.baselineStyle(measurementSet, disableSampling, includeOutlier, showPoint),
+            this.targetStyle(measurementSet, disableSampling, includeOutlier, showPoint),
+            this.currentStyle(measurementSet, disableSampling, includeOutlier, showPoint),
+        ];
+    }
+
+    static baselineStyle(measurementSet, disableSampling, includeOutlier, showPoint)
     {
         return {
             measurementSet: measurementSet,
             extendToFuture: true,
-            sampleData: true,
+            sampleData: !disableSampling,
+            includeOutliers: includeOutlier,
             type: 'baseline',
             pointStyle: '#f33',
-            pointRadius: 2,
-            lineStyle: '#f99',
+            pointRadius: showPoint ? 2 : 0,
+            lineStyle: showPoint ? '#f99' : '#f66',
             lineWidth: 1.5,
-            intervalStyle: '#fdd',
-            intervalWidth: 2,
+            intervalStyle: 'rgba(255, 153, 153, 0.25)',
+            intervalWidth: 3,
+            foregroundLineStyle: '#f33',
+            foregroundPointRadius: 0,
+            backgroundIntervalStyle: 'rgba(255, 153, 153, 0.1)',
+            backgroundPointStyle: '#f99',
+            backgroundLineStyle: '#fcc',
+            interactive: true,
         };
     }
 
-    static targetStyle(measurementSet)
+    static targetStyle(measurementSet, disableSampling, includeOutlier, showPoint)
     {
         return {
             measurementSet: measurementSet,
             extendToFuture: true,
-            sampleData: true,
+            sampleData: !disableSampling,
+            includeOutliers: includeOutlier,
             type: 'target',
             pointStyle: '#33f',
-            pointRadius: 2,
-            lineStyle: '#99f',
+            pointRadius: showPoint ? 2 : 0,
+            lineStyle: showPoint ? '#99f' : '#66f',
             lineWidth: 1.5,
-            intervalStyle: '#ddf',
-            intervalWidth: 2,
+            intervalStyle: 'rgba(153, 153, 255, 0.25)',
+            intervalWidth: 3,
+            foregroundLineStyle: '#33f',
+            foregroundPointRadius: 0,
+            backgroundIntervalStyle: 'rgba(153, 153, 255, 0.1)',
+            backgroundPointStyle: '#99f',
+            backgroundLineStyle: '#ccf',
         };
     }
 
-    static currentStyle(measurementSet)
+    static currentStyle(measurementSet, disableSampling, includeOutlier, showPoint)
     {
         return {
             measurementSet: measurementSet,
-            sampleData: true,
+            sampleData: !disableSampling,
+            includeOutliers: includeOutlier,
             type: 'current',
             pointStyle: '#333',
-            pointRadius: 2,
-            lineStyle: '#999',
+            pointRadius: showPoint ? 2 : 0,
+            lineStyle: showPoint ? '#999' : '#666',
             lineWidth: 1.5,
-            intervalStyle: '#ddd',
-            intervalWidth: 2,
+            intervalStyle: 'rgba(153, 153, 153, 0.25)',
+            intervalWidth: 3,
+            foregroundLineStyle: '#333',
+            foregroundPointRadius: 0,
+            backgroundIntervalStyle: 'rgba(153, 153, 153, 0.1)',
+            backgroundPointStyle: '#999',
+            backgroundLineStyle: '#ccc',
             interactive: true,
         };
     }
@@ -76,7 +103,6 @@ class ChartStyles {
     static dashboardOptions(valueFormatter)
     {
         return {
-            updateOnRequestAnimationFrame: true,
             axis: {
                 yAxisWidth: 4, // rem
                 xAxisHeight: 2, // rem
@@ -92,9 +118,9 @@ class ChartStyles {
         var options = this.dashboardOptions(valueFormatter);
         options.axis.yAxisWidth = 0; // rem
         options.selection = {
-            lineStyle: '#f93',
+            lineStyle: 'rgba(51, 204, 255, .5)',
             lineWidth: 2,
-            fillStyle: 'rgba(153, 204, 102, .125)',
+            fillStyle: 'rgba(51, 204, 255, .125)',
         }
         return options;
     }
@@ -104,13 +130,20 @@ class ChartStyles {
         var options = this.dashboardOptions(valueFormatter);
         options.axis.xAxisEndPadding = 5;
         options.axis.yAxisWidth = 5;
+        options.zoomButton = true;
         options.selection = {
-            lineStyle: '#f93',
+            lineStyle: '#3cf',
             lineWidth: 2,
-            fillStyle: 'rgba(153, 204, 102, .125)',
+            fillStyle: 'rgba(51, 204, 255, .125)',
         }
         options.indicator = {
-            lineStyle: '#f93',
+            lineStyle: '#3cf',
+            lineWidth: 2,
+            pointRadius: 2,
+        };
+        options.lockedIndicator = {
+            fillStyle: '#fff',
+            lineStyle: '#36c',
             lineWidth: 2,
             pointRadius: 3,
         };

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -28,10 +29,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BaseDateAndTimeInputType_h
-#define BaseDateAndTimeInputType_h
+#pragma once
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
+
 #include "DateComponents.h"
 #include "InputType.h"
 
@@ -42,15 +43,15 @@ class BaseDateAndTimeInputType : public InputType {
 protected:
     BaseDateAndTimeInputType(HTMLInputElement& element) : InputType(element) { }
 
-    virtual Decimal parseToNumber(const String&, const Decimal&) const override;
-    virtual bool parseToDateComponents(const String&, DateComponents*) const override;
-    virtual String sanitizeValue(const String&) const override;
-    virtual String serialize(const Decimal&) const override;
+    Decimal parseToNumber(const String&, const Decimal&) const override;
+    bool parseToDateComponents(const String&, DateComponents*) const override;
+    String sanitizeValue(const String&) const override;
+    String serialize(const Decimal&) const override;
     String serializeWithComponents(const DateComponents&) const;
     virtual bool setMillisecondToDateComponents(double, DateComponents*) const = 0;
-    virtual String visibleValue() const override;
+    String visibleValue() const override;
 #if PLATFORM(IOS)
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
+    bool isKeyboardFocusable(KeyboardEvent&) const override;
 #endif
 
 private:
@@ -58,21 +59,22 @@ private:
 #if !PLATFORM(IOS)
     virtual DateComponents::Type dateType() const = 0;
 #endif
-    virtual double valueAsDate() const override;
-    virtual void setValueAsDate(double, ExceptionCode&) const override;
-    virtual double valueAsDouble() const override;
-    virtual void setValueAsDecimal(const Decimal&, TextFieldEventBehavior, ExceptionCode&) const override;
-    virtual bool typeMismatchFor(const String&) const override;
-    virtual bool typeMismatch() const override;
-    virtual bool valueMissing(const String&) const override;
-    virtual Decimal defaultValueForStepUp() const override;
-    virtual bool isSteppable() const override;
+    double valueAsDate() const override;
+    ExceptionOr<void> setValueAsDate(double) const override;
+    double valueAsDouble() const override;
+    ExceptionOr<void> setValueAsDecimal(const Decimal&, TextFieldEventBehavior) const override;
+    bool typeMismatchFor(const String&) const override;
+    bool typeMismatch() const override;
+    bool valueMissing(const String&) const override;
+    Decimal defaultValueForStepUp() const override;
+    void minOrMaxAttributeChanged() override;
+    bool isSteppable() const override;
     virtual String serializeWithMilliseconds(double) const;
-    virtual String localizeValue(const String&) const override;
-    virtual bool supportsReadOnly() const override;
-    virtual bool shouldRespectListAttribute() override;
+    String localizeValue(const String&) const override;
+    bool supportsReadOnly() const override;
+    bool shouldRespectListAttribute() override;
 };
 
 } // namespace WebCore
+
 #endif
-#endif // BaseDateAndTimeInputType_h

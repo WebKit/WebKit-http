@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGGenerationInfo_h
-#define DFGGenerationInfo_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGJITCompiler.h"
 #include "DFGMinifiedID.h"
 #include "DFGVariableEvent.h"
 #include "DFGVariableEventStream.h"
@@ -451,5 +449,4 @@ private:
 
 } } // namespace JSC::DFG
 
-#endif
 #endif

@@ -25,8 +25,14 @@
 #include "Version.xcconfig"
 
 INSTALL_PATH = $(JAVASCRIPTCORE_FRAMEWORKS_DIR)/$(JAVASCRIPTCORE_RESOURCES_DIR);
+
+OTHER_LDFLAGS = $(inherited) $(WK_RELOCATABLE_FRAMEWORKS_LDFLAGS);
+WK_RELOCATABLE_FRAMEWORKS_LDFLAGS = $(WK_RELOCATABLE_FRAMEWORKS_LDFLAGS_$(WK_RELOCATABLE_FRAMEWORKS));
+WK_RELOCATABLE_FRAMEWORKS_LDFLAGS_YES = -Wl,-dyld_env,DYLD_FRAMEWORK_PATH=@executable_path/../../../..;
+
 PRODUCT_NAME = jsc;
-CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*] = entitlements.plist;
+CODE_SIGN_ENTITLEMENTS[sdk=iphone*] = entitlements.plist;
+OTHER_CODE_SIGN_FLAGS[sdk=iphone*] = -i com.apple.jsc;
 
 // Explicitly add the PrivateHeaders directory to the search path so that generated header files can be found in production builds.
 HEADER_SEARCH_PATHS = "$(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/PrivateHeaders" $(inherited);

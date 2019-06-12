@@ -24,7 +24,6 @@ bool CoreWindowNativeWindow::initialize(EGLNativeWindowType window, IPropertySet
     ComPtr<IPropertySet> props = propertySet;
     ComPtr<IInspectable> win = window;
     SIZE swapChainSize = {};
-    bool swapChainSizeSpecified = false;
     HRESULT result = S_OK;
 
     // IPropertySet is an optional parameter and can be null.
@@ -33,12 +32,41 @@ bool CoreWindowNativeWindow::initialize(EGLNativeWindowType window, IPropertySet
     if (propertySet)
     {
         result = props.As(&mPropertyMap);
-        if (SUCCEEDED(result))
+        if (FAILED(result))
         {
-            // The EGLRenderSurfaceSizeProperty is optional and may be missing.  The IPropertySet
-            // was prevalidated to contain the EGLNativeWindowType before being passed to
-            // this host.
-            result = GetOptionalSizePropertyValue(mPropertyMap, EGLRenderSurfaceSizeProperty, &swapChainSize, &swapChainSizeSpecified);
+            return false;
+        }
+
+        // The EGLRenderSurfaceSizeProperty is optional and may be missing. The IPropertySet
+        // was prevalidated to contain the EGLNativeWindowType before being passed to
+        // this host.
+        result = GetOptionalSizePropertyValue(mPropertyMap, EGLRenderSurfaceSizeProperty, &swapChainSize, &mSwapChainSizeSpecified);
+        if (FAILED(result))
+        {
+            return false;
+        }
+
+        // The EGLRenderResolutionScaleProperty is optional and may be missing. The IPropertySet
+        // was prevalidated to contain the EGLNativeWindowType before being passed to
+        // this host.
+        result = GetOptionalSinglePropertyValue(mPropertyMap, EGLRenderResolutionScaleProperty, &mSwapChainScale, &mSwapChainScaleSpecified);
+        if (FAILED(result))
+        {
+            return false;
+        }
+
+        if (!mSwapChainScaleSpecified)
+        {
+            // Default value for the scale is 1.0f
+            mSwapChainScale = 1.0f;
+        }
+
+        // A EGLRenderSurfaceSizeProperty and a EGLRenderResolutionScaleProperty can't both be specified
+        if (mSwapChainScaleSpecified && mSwapChainSizeSpecified)
+        {
+            ERR() << "It is invalid to specify both an EGLRenderSurfaceSizeProperty and a "
+                     "EGLRenderResolutionScaleProperty.";
+            return false;
         }
     }
 
@@ -55,14 +83,19 @@ bool CoreWindowNativeWindow::initialize(EGLNativeWindowType window, IPropertySet
         // of the host.
         // Scaling of the swapchain output occurs automatically because if
         // the scaling mode setting DXGI_SCALING_STRETCH on the swapchain.
-        if (swapChainSizeSpecified)
+        if (mSwapChainSizeSpecified)
         {
             mClientRect = { 0, 0, swapChainSize.cx, swapChainSize.cy };
-            mSupportsSwapChainResize = false;
         }
         else
         {
-            result = GetCoreWindowSizeInPixels(mCoreWindow, &mClientRect);
+            Size coreWindowSize;
+            result = GetCoreWindowSizeInPixels(mCoreWindow, &coreWindowSize);
+
+            if (SUCCEEDED(result))
+            {
+                mClientRect = clientRect(coreWindowSize);
+            }
         }
     }
 
@@ -102,7 +135,13 @@ void CoreWindowNativeWindow::unregisterForSizeChangeEvents()
     mSizeChangedEventToken.value = 0;
 }
 
-HRESULT CoreWindowNativeWindow::createSwapChain(ID3D11Device *device, DXGIFactory *factory, DXGI_FORMAT format, unsigned int width, unsigned int height, DXGISwapChain **swapChain)
+HRESULT CoreWindowNativeWindow::createSwapChain(ID3D11Device *device,
+                                                IDXGIFactory2 *factory,
+                                                DXGI_FORMAT format,
+                                                unsigned int width,
+                                                unsigned int height,
+                                                bool containsAlpha,
+                                                IDXGISwapChain1 **swapChain)
 {
     if (device == NULL || factory == NULL || swapChain == NULL || width == 0 || height == 0)
     {
@@ -116,10 +155,12 @@ HRESULT CoreWindowNativeWindow::createSwapChain(ID3D11Device *device, DXGIFactor
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.SampleDesc.Quality = 0;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_BACK_BUFFER;
+    swapChainDesc.BufferUsage =
+        DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_BACK_BUFFER;
     swapChainDesc.BufferCount = 2;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
     swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+    swapChainDesc.AlphaMode             = DXGI_ALPHA_MODE_UNSPECIFIED;
 
     *swapChain = nullptr;
 
@@ -127,17 +168,6 @@ HRESULT CoreWindowNativeWindow::createSwapChain(ID3D11Device *device, DXGIFactor
     HRESULT result = factory->CreateSwapChainForCoreWindow(device, mCoreWindow.Get(), &swapChainDesc, nullptr, newSwapChain.ReleaseAndGetAddressOf());
     if (SUCCEEDED(result))
     {
-
-#if (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
-        // Test if swapchain supports resize.  On Windows Phone devices, this will return DXGI_ERROR_UNSUPPORTED.  On
-        // other devices DXGI_ERROR_INVALID_CALL should be returned because the combination of flags passed
-        // (DXGI_SWAP_CHAIN_FLAG_NONPREROTATED | DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE) are invalid flag combinations.
-        if (newSwapChain->ResizeBuffers(swapChainDesc.BufferCount, swapChainDesc.Width, swapChainDesc.Height, swapChainDesc.Format, DXGI_SWAP_CHAIN_FLAG_NONPREROTATED | DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE) == DXGI_ERROR_UNSUPPORTED)
-        {
-            mSupportsSwapChainResize = false;
-        }
-#endif // (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP)
-
         result = newSwapChain.CopyTo(swapChain);
     }
 
@@ -154,13 +184,22 @@ HRESULT CoreWindowNativeWindow::createSwapChain(ID3D11Device *device, DXGIFactor
     return result;
 }
 
-HRESULT GetCoreWindowSizeInPixels(const ComPtr<ABI::Windows::UI::Core::ICoreWindow>& coreWindow, RECT *windowSize)
+inline HRESULT CoreWindowNativeWindow::scaleSwapChain(const Size &windowSize,
+                                                      const RECT &clientRect)
+{
+    // We don't need to do any additional work to scale CoreWindow swapchains.
+    // Using DXGI_SCALING_STRETCH to create the swapchain above does all the necessary work.
+    return S_OK;
+}
+
+HRESULT GetCoreWindowSizeInPixels(const ComPtr<ABI::Windows::UI::Core::ICoreWindow> &coreWindow,
+                                  Size *windowSize)
 {
     ABI::Windows::Foundation::Rect bounds;
     HRESULT result = coreWindow->get_Bounds(&bounds);
     if (SUCCEEDED(result))
     {
-        *windowSize = { 0, 0, ConvertDipsToPixels(bounds.Width), ConvertDipsToPixels(bounds.Height) };
+        *windowSize = { ConvertDipsToPixels(bounds.Width), ConvertDipsToPixels(bounds.Height) };
     }
 
     return result;
@@ -169,21 +208,23 @@ HRESULT GetCoreWindowSizeInPixels(const ComPtr<ABI::Windows::UI::Core::ICoreWind
 static float GetLogicalDpi()
 {
     ComPtr<ABI::Windows::Graphics::Display::IDisplayPropertiesStatics> displayProperties;
-    float dpi = 96.0f;
 
     if (SUCCEEDED(GetActivationFactory(HStringReference(RuntimeClass_Windows_Graphics_Display_DisplayProperties).Get(), displayProperties.GetAddressOf())))
     {
+        float dpi = 96.0f;
         if (SUCCEEDED(displayProperties->get_LogicalDpi(&dpi)))
         {
             return dpi;
         }
     }
-    return dpi;
+
+    // Return 96 dpi as a default if display properties cannot be obtained.
+    return 96.0f;
 }
 
-long ConvertDipsToPixels(float dips)
+float ConvertDipsToPixels(float dips)
 {
     static const float dipsPerInch = 96.0f;
-    return lround((dips * GetLogicalDpi() / dipsPerInch));
+    return dips * GetLogicalDpi() / dipsPerInch;
 }
 }

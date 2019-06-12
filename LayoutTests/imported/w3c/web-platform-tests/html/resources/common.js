@@ -31,8 +31,8 @@ var HTML5_VOID_ELEMENTS = [ 'area', 'base', 'br', 'col', 'command', 'embed',
         'track', 'wbr' ];
 
 // https://html.spec.whatwg.org/multipage/multipage/forms.html#form-associated-element
-var HTML5_FORM_ASSOCIATED_ELEMENTS = [ 'button', 'fieldset', 'input', 'keygen',
-        'label', 'object', 'output', 'select', 'textarea' ];
+var HTML5_FORM_ASSOCIATED_ELEMENTS = [ 'button', 'fieldset', 'input',
+        'object', 'output', 'select', 'textarea' ];
 
 function newDocument() {
     var d = document.implementation.createDocument();
@@ -61,7 +61,6 @@ function newIFrame(context, src) {
     }
 
     var iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
 
     if (typeof (src) != 'undefined') {
         iframe.src = src;
@@ -155,10 +154,6 @@ function assert_nodelist_contents_equal_noorder(actual, expected, message) {
                     + expected[i]);
         }
     }
-}
-
-function isVisible(el) {
-    return el.offsetTop != 0;
 }
 
 function isVoidElement(elementName) {

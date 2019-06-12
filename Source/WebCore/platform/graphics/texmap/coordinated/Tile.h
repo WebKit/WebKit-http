@@ -31,7 +31,6 @@
 #include "IntPoint.h"
 #include "IntPointHash.h"
 #include "IntRect.h"
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
@@ -54,7 +53,7 @@ public:
     const IntRect& rect() const { return m_rect; }
     void resize(const IntSize&);
 
-    virtual void paintToSurfaceContext(GraphicsContext&) override;
+    void paintToSurfaceContext(GraphicsContext&) override;
 
 private:
     TiledBackingStore& m_tiledBackingStore;

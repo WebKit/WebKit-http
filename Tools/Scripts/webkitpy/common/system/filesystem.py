@@ -235,7 +235,9 @@ class FileSystem(object):
         # not being seekable. See http://stackoverflow.com/questions/1510188/can-seek-and-tell-work-with-utf-8-encoded-documents-in-python .
         return codecs.open(path, 'r', 'utf8', errors)
 
-    def open_text_file_for_writing(self, path):
+    def open_text_file_for_writing(self, path, should_append=False):
+        if should_append:
+            return codecs.open(path, 'a', 'utf8')
         return codecs.open(path, 'w', 'utf8')
 
     def open_stdin(self):
@@ -308,3 +310,34 @@ class FileSystem(object):
 
     def compare(self, path1, path2):
         return filecmp.cmp(path1, path2)
+
+    def map_base_host_path(self, path):
+        """Returns a path from the base host localized for this host. By default,
+        this host assumes it is the base host and maps the path to itself"""
+        return path
+
+    def move_to_base_host(self, source, destination):
+        """Moves a file from this host to the base host. By default, this host
+        assumes it is the base host and will just execute a move."""
+        self.move(source, destination)
+
+    def move_from_base_host(self, source, destination):
+        """Moves a file from the base host to this host. By default, this host
+        assumes it is the base host and will just execute a move."""
+        self.move(source, destination)
+
+    def copy_to_base_host(self, source, destination):
+        """Copy a file from this host to the base host. By default, this host
+        assumes it is the base host and will just execute a copytree/copyfile."""
+        if self.isdir(source):
+            self.copytree(source, destination)
+        else:
+            self.copyfile(source, destination)
+
+    def copy_from_base_host(self, source, destination):
+        """Copy a file from the base host to this host. By default, this host
+        assumes it is the base host and will just execute a copytree/copyfile."""
+        if self.isdir(source):
+            self.copytree(source, destination)
+        else:
+            self.copyfile(source, destination)

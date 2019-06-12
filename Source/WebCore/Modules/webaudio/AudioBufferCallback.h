@@ -22,11 +22,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AudioBufferCallback_h
-#define AudioBufferCallback_h
+#pragma once
 
 #if ENABLE(WEB_AUDIO)
 
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -36,11 +36,9 @@ class AudioBuffer;
 class AudioBufferCallback : public RefCounted<AudioBufferCallback> {
 public:
     virtual ~AudioBufferCallback() { }
-    virtual bool handleEvent(AudioBuffer*) = 0;
+    virtual CallbackResult<void> handleEvent(AudioBuffer*) = 0;
 };
 
-} // namespace
+} // namespace WebCore
 
 #endif // ENABLE(WEB_AUDIO)
-
-#endif // AudioBufferCallback_h

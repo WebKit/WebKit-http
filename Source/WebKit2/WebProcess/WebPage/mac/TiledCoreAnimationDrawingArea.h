@@ -57,51 +57,53 @@ public:
 
 private:
     // DrawingArea
-    virtual void setNeedsDisplay() override;
-    virtual void setNeedsDisplayInRect(const WebCore::IntRect&) override;
-    virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) override;
+    void setNeedsDisplay() override;
+    void setNeedsDisplayInRect(const WebCore::IntRect&) override;
+    void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) override;
 
-    virtual void forceRepaint() override;
-    virtual bool forceRepaintAsync(uint64_t callbackID) override;
-    virtual void setLayerTreeStateIsFrozen(bool) override;
-    virtual bool layerTreeStateIsFrozen() const override;
-    virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
-    virtual void scheduleCompositingLayerFlush() override;
-    virtual void scheduleCompositingLayerFlushImmediately() override;
+    void forceRepaint() override;
+    bool forceRepaintAsync(CallbackID) override;
+    void setLayerTreeStateIsFrozen(bool) override;
+    bool layerTreeStateIsFrozen() const override;
+    void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
+    void scheduleCompositingLayerFlush() override;
+    void scheduleCompositingLayerFlushImmediately() override;
 
-    virtual void updatePreferences(const WebPreferencesStore&) override;
-    virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) override;
+    void updatePreferences(const WebPreferencesStore&) override;
+    void mainFrameContentSizeChanged(const WebCore::IntSize&) override;
 
-    virtual void setExposedRect(const WebCore::FloatRect&) override;
-    virtual WebCore::FloatRect exposedRect() const override { return m_scrolledExposedRect; }
+    void setViewExposedRect(std::optional<WebCore::FloatRect>) override;
+    std::optional<WebCore::FloatRect> viewExposedRect() const override { return m_scrolledViewExposedRect; }
 
-    virtual bool supportsAsyncScrolling() override { return true; }
+    bool supportsAsyncScrolling() override { return true; }
 
-    virtual void dispatchAfterEnsuringUpdatedScrollPosition(std::function<void ()>) override;
+    void dispatchAfterEnsuringUpdatedScrollPosition(WTF::Function<void ()>&&) override;
 
-    virtual bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*) override;
+    bool shouldUseTiledBackingForFrameView(const WebCore::FrameView&) override;
 
-    virtual void viewStateDidChange(WebCore::ViewState::Flags changed, bool wantsDidUpdateViewState, const Vector<uint64_t>&) override;
-    void didUpdateViewStateTimerFired();
+    void activityStateDidChange(WebCore::ActivityState::Flags changed, bool wantsDidUpdateActivityState, const Vector<CallbackID>&) override;
+    void didUpdateActivityStateTimerFired();
 
-    virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
+    void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
+
+    bool dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) override;
 
     // WebCore::LayerFlushSchedulerClient
-    virtual bool flushLayers() override;
+    bool flushLayers() override;
 
     // Message handlers.
-    virtual void updateGeometry(const WebCore::IntSize& viewSize, const WebCore::IntSize& layerPosition, bool flushSynchronously, const WebCore::MachSendRight& fencePort) override;
-    virtual void setDeviceScaleFactor(float) override;
+    void updateGeometry(const WebCore::IntSize& viewSize, const WebCore::IntSize& layerPosition, bool flushSynchronously, const WebCore::MachSendRight& fencePort) override;
+    void setDeviceScaleFactor(float) override;
     void suspendPainting();
     void resumePainting();
     void setLayerHostingMode(LayerHostingMode) override;
-    virtual void setColorSpace(const ColorSpaceData&) override;
-    virtual void addFence(const WebCore::MachSendRight&) override;
+    void setColorSpace(const ColorSpaceData&) override;
+    void addFence(const WebCore::MachSendRight&) override;
 
-    virtual void setShouldScaleViewToFitDocument(bool) override;
+    void setShouldScaleViewToFitDocument(bool) override;
 
-    virtual void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
-    virtual void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
+    void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
+    void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
     void applyTransientZoomToPage(double scale, WebCore::FloatPoint origin);
     WebCore::PlatformCALayer* layerForTransientZoom() const;
     WebCore::PlatformCALayer* shadowLayerForTransientZoom() const;
@@ -120,6 +122,8 @@ private:
     void updateScrolledExposedRect();
     void scaleViewToFitDocumentIfNeeded();
 
+    void sendPendingNewlyReachedLayoutMilestones();
+
     bool m_layerTreeStateIsFrozen;
     WebCore::LayerFlushScheduler m_layerFlushScheduler;
 
@@ -133,8 +137,8 @@ private:
 
     bool m_isPaintingSuspended;
 
-    WebCore::FloatRect m_exposedRect;
-    WebCore::FloatRect m_scrolledExposedRect;
+    std::optional<WebCore::FloatRect> m_viewExposedRect;
+    std::optional<WebCore::FloatRect> m_scrolledViewExposedRect;
 
     WebCore::IntSize m_lastSentIntrinsicContentSize;
     bool m_inUpdateGeometry;
@@ -144,9 +148,9 @@ private:
 
     WebCore::TransformationMatrix m_transform;
 
-    RunLoop::Timer<TiledCoreAnimationDrawingArea> m_sendDidUpdateViewStateTimer;
-    Vector<uint64_t> m_nextViewStateChangeCallbackIDs;
-    bool m_wantsDidUpdateViewState;
+    RunLoop::Timer<TiledCoreAnimationDrawingArea> m_sendDidUpdateActivityStateTimer;
+    Vector<CallbackID> m_nextActivityStateChangeCallbackIDs;
+    bool m_wantsDidUpdateActivityState;
 
     WebCore::GraphicsLayer* m_viewOverlayRootLayer;
 
@@ -154,6 +158,8 @@ private:
     bool m_isScalingViewToFitDocument { false };
     WebCore::IntSize m_lastViewSizeForScaleToFit;
     WebCore::IntSize m_lastDocumentSizeForScaleToFit;
+
+    WebCore::LayoutMilestones m_pendingNewlyReachedLayoutMilestones { 0 };
 };
 
 } // namespace WebKit

@@ -26,29 +26,29 @@
 #ifndef NetworkLoadParameters_h
 #define NetworkLoadParameters_h
 
+#include <WebCore/BlobDataFileReference.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SessionID.h>
 
 namespace WebKit {
 
-class NetworkResourceLoadParameters;
-
 class NetworkLoadParameters {
 public:
-    NetworkLoadParameters() = default;
-    NetworkLoadParameters(const NetworkResourceLoadParameters&);
-
     uint64_t webPageID { 0 };
     uint64_t webFrameID { 0 };
     WebCore::SessionID sessionID { WebCore::SessionID::emptySessionID() };
     WebCore::ResourceRequest request;
     WebCore::ContentSniffingPolicy contentSniffingPolicy { WebCore::SniffContent };
     WebCore::StoredCredentials allowStoredCredentials { WebCore::DoNotAllowStoredCredentials };
-    WebCore::ClientCredentialPolicy clientCredentialPolicy { WebCore::DoNotAskClientForAnyCredentials };
+    WebCore::ClientCredentialPolicy clientCredentialPolicy { WebCore::ClientCredentialPolicy::CannotAskClientForCredentials };
+    bool shouldFollowRedirects { true };
     bool shouldClearReferrerOnHTTPSToHTTPRedirect { true };
     bool defersLoading { false };
     bool needsCertificateInfo { false };
+#if USE(NETWORK_SESSION)
+    Vector<RefPtr<WebCore::BlobDataFileReference>> blobFileReferences;
+#endif
 };
 
 } // namespace WebKit

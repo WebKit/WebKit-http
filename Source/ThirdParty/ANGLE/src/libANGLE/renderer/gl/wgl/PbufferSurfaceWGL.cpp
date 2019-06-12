@@ -9,24 +9,33 @@
 #include "libANGLE/renderer/gl/wgl/PbufferSurfaceWGL.h"
 
 #include "common/debug.h"
+#include "libANGLE/renderer/gl/RendererGL.h"
 #include "libANGLE/renderer/gl/wgl/FunctionsWGL.h"
 #include "libANGLE/renderer/gl/wgl/wgl_utils.h"
 
 namespace rx
 {
 
-PbufferSurfaceWGL::PbufferSurfaceWGL(EGLint width, EGLint height, EGLenum textureFormat, EGLenum textureTarget,
-                                     bool largest, int pixelFormat, HDC deviceContext, HGLRC wglContext,
+PbufferSurfaceWGL::PbufferSurfaceWGL(const egl::SurfaceState &state,
+                                     RendererGL *renderer,
+                                     EGLint width,
+                                     EGLint height,
+                                     EGLenum textureFormat,
+                                     EGLenum textureTarget,
+                                     bool largest,
+                                     int pixelFormat,
+                                     HDC deviceContext,
+                                     HGLRC wglContext,
                                      const FunctionsWGL *functions)
-    : SurfaceGL(),
+    : SurfaceGL(state, renderer),
       mWidth(width),
       mHeight(height),
       mLargest(largest),
       mTextureFormat(textureFormat),
       mTextureTarget(textureTarget),
       mPixelFormat(pixelFormat),
-      mParentDeviceContext(deviceContext),
       mShareWGLContext(wglContext),
+      mParentDeviceContext(deviceContext),
       mPbuffer(nullptr),
       mPbufferDeviceContext(nullptr),
       mFunctionsWGL(functions)
@@ -63,7 +72,7 @@ static int GetWGLTextureTarget(EGLenum eglTextureTarget)
     }
 }
 
-egl::Error PbufferSurfaceWGL::initialize()
+egl::Error PbufferSurfaceWGL::initialize(const DisplayImpl *displayImpl)
 {
     const int pbufferCreationAttributes[] =
     {
@@ -113,7 +122,7 @@ egl::Error PbufferSurfaceWGL::makeCurrent()
     return egl::Error(EGL_SUCCESS);
 }
 
-egl::Error PbufferSurfaceWGL::swap()
+egl::Error PbufferSurfaceWGL::swap(const DisplayImpl *displayImpl)
 {
     return egl::Error(EGL_SUCCESS);
 }
@@ -125,7 +134,7 @@ egl::Error PbufferSurfaceWGL::postSubBuffer(EGLint x, EGLint y, EGLint width, EG
 
 egl::Error PbufferSurfaceWGL::querySurfacePointerANGLE(EGLint attribute, void **value)
 {
-    UNIMPLEMENTED();
+    *value = nullptr;
     return egl::Error(EGL_SUCCESS);
 }
 
@@ -138,7 +147,7 @@ static int GetWGLBufferBindTarget(EGLint buffer)
     }
 }
 
-egl::Error PbufferSurfaceWGL::bindTexImage(EGLint buffer)
+egl::Error PbufferSurfaceWGL::bindTexImage(gl::Texture *texture, EGLint buffer)
 {
     if (!mFunctionsWGL->bindTexImageARB(mPbuffer, GetWGLBufferBindTarget(buffer)))
     {
@@ -177,6 +186,11 @@ EGLint PbufferSurfaceWGL::getHeight() const
 EGLint PbufferSurfaceWGL::isPostSubBufferSupported() const
 {
     return EGL_FALSE;
+}
+
+EGLint PbufferSurfaceWGL::getSwapBehavior() const
+{
+    return EGL_BUFFER_PRESERVED;
 }
 
 }

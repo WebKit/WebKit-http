@@ -213,16 +213,16 @@ class GlobalVariablesTest(unittest.TestCase):
 
         assertCheck("random_path.cpp",
                     "build/include")
-        assertNoCheck(os.path.join('Tools', 'WebKitAPITest', 'main.cpp'),
+        assertNoCheck(os.path.join('Tools', 'DumpRenderTree', 'TestNetscapePlugIn', 'main.cpp'),
                       "build/include")
+        assertNoCheck(os.path.join('Tools', 'DumpRenderTree', 'TestNetscapePlugIn', 'main.cpp'),
+                      "readability/naming")
+        assertCheck(os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'WTF', 'RefLogger.cpp'),
+                      "build/include")
+        assertNoCheck(os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'mac', 'WillSendSubmitEvent.mm'),
+                      "readability/naming")
         assertCheck("random_path.cpp",
                     "readability/naming")
-        assertNoCheck(os.path.join('Source', 'WebKit', 'gtk', 'webkit', 'webkit.h'),
-                      "readability/naming")
-        assertNoCheck(os.path.join('Tools', 'DumpRenderTree', 'gtk', 'DumpRenderTree.cpp'),
-                      "readability/null")
-        assertNoCheck(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'efl', 'ewk_view.h'),
-                      "readability/naming")
         assertNoCheck(os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp'),
                       "readability/naming")
 

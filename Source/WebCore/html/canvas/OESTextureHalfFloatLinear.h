@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OESTextureHalfFloatLinear_h
-#define OESTextureHalfFloatLinear_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class OESTextureHalfFloatLinear final : public WebGLExtension {
 public:
-    OESTextureHalfFloatLinear(WebGLRenderingContextBase*);
+    OESTextureHalfFloatLinear(WebGLRenderingContextBase&);
     virtual ~OESTextureHalfFloatLinear();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // OESTextureHalfFloatLinear_h

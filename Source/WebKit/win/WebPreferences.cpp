@@ -41,6 +41,8 @@
 #include <WebCore/FileSystem.h>
 #include <WebCore/FontCascade.h>
 #include <WebCore/LocalizedStrings.h>
+#include <WebCore/NetworkStorageSession.h>
+#include <WebCore/PlatformCookieJar.h>
 #include <limits>
 #include <shlobj.h>
 #include <wchar.h>
@@ -100,6 +102,8 @@ static bool booleanValueForPreferencesValue(CFPropertyListRef value)
 // WebPreferences ----------------------------------------------------------------
 
 static CFDictionaryRef defaultSettings;
+
+RetainPtr<CFStringRef> WebPreferences::m_applicationId = kCFPreferencesCurrentApplication;
 
 static HashMap<WTF::String, COMPtr<WebPreferences>>& webPreferencesInstances()
 {
@@ -181,6 +185,11 @@ void WebPreferences::removeReferenceForIdentifier(BSTR identifier)
     WebPreferences* webPreference = webPreferencesInstances().get(identifierString);
     if (webPreference && webPreference->m_refCount == 1)
         webPreferencesInstances().remove(identifierString);
+}
+
+CFStringRef WebPreferences::applicationId()
+{
+    return m_applicationId.get();
 }
 
 void WebPreferences::initializeDefaultSettings()
@@ -291,6 +300,24 @@ void WebPreferences::initializeDefaultSettings()
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitAllowDisplayAndRunningOfInsecureContentPreferenceKey), kCFBooleanTrue);
 
+    CFDictionaryAddValue(defaults, CFSTR(WebKitFetchAPIEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitShadowDOMEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitCustomElementsEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitUserTimingEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitResourceTimingEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitLinkPreloadEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitMediaPreloadingEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitIsSecureContextAttributeEnabledPreferenceKey), kCFBooleanFalse);
+
     defaultSettings = defaults;
 }
 
@@ -300,7 +327,7 @@ RetainPtr<CFPropertyListRef> WebPreferences::valueForKey(CFStringRef key)
     if (value)
         return value;
 
-    value = adoptCF(CFPreferencesCopyAppValue(key, kCFPreferencesCurrentApplication));
+    value = adoptCF(CFPreferencesCopyAppValue(key, applicationId()));
     if (value)
         return value;
 
@@ -311,7 +338,7 @@ void WebPreferences::setValueForKey(CFStringRef key, CFPropertyListRef value)
 {
     CFDictionarySetValue(m_privatePrefs.get(), key, value);
     if (m_autoSaves) {
-        CFPreferencesSetAppValue(key, value, kCFPreferencesCurrentApplication);
+        CFPreferencesSetAppValue(key, value, applicationId());
         save();
     }
 }
@@ -442,7 +469,7 @@ BSTR WebPreferences::webPreferencesRemovedNotification()
 
 void WebPreferences::save()
 {
-    CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
+    CFPreferencesAppSynchronize(applicationId());
 }
 
 void WebPreferences::load()
@@ -534,6 +561,10 @@ HRESULT WebPreferences::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppv
         *ppvObject = static_cast<IWebPreferencesPrivate2*>(this);
     else if (IsEqualGUID(riid, IID_IWebPreferencesPrivate3))
         *ppvObject = static_cast<IWebPreferencesPrivate3*>(this);
+    else if (IsEqualGUID(riid, IID_IWebPreferencesPrivate4))
+        *ppvObject = static_cast<IWebPreferencesPrivate4*>(this);
+    else if (IsEqualGUID(riid, IID_IWebPreferencesPrivate5))
+        *ppvObject = static_cast<IWebPreferencesPrivate5*>(this);
     else if (IsEqualGUID(riid, CLSID_WebPreferences))
         *ppvObject = this;
     else
@@ -1915,5 +1946,163 @@ HRESULT WebPreferences::showTiledScrollingIndicator(_Out_ BOOL* enabled)
 HRESULT WebPreferences::setShowTiledScrollingIndicator(BOOL enabled)
 {
     setBoolValue(WebKitShowTiledScrollingIndicatorPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::fetchAPIEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitFetchAPIEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setFetchAPIEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitFetchAPIEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::shadowDOMEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitShadowDOMEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setShadowDOMEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitShadowDOMEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::customElementsEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitCustomElementsEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setCustomElementsEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitCustomElementsEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setModernMediaControlsEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitModernMediaControlsEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::modernMediaControlsEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitModernMediaControlsEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setLinkPreloadEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitLinkPreloadEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::linkPreloadEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitLinkPreloadEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setMediaPreloadingEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitMediaPreloadingEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::mediaPreloadingEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitMediaPreloadingEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::clearNetworkLoaderSession()
+{
+    WebCore::deleteAllCookies(NetworkStorageSession::defaultStorageSession());
+    return S_OK;
+}
+
+HRESULT WebPreferences::switchNetworkLoaderToNewTestingSession()
+{
+    NetworkStorageSession::switchToNewTestingSession();
+    return S_OK;
+}
+
+HRESULT WebPreferences::setIsSecureContextAttributeEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitIsSecureContextAttributeEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::isSecureContextAttributeEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitIsSecureContextAttributeEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setApplicationId(BSTR applicationId)
+{
+    m_applicationId = String(applicationId).createCFString();
+    return S_OK;
+}
+
+HRESULT WebPreferences::setWebAnimationsEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitWebAnimationsEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::webAnimationsEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitWebAnimationsEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setUserTimingEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitUserTimingEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::userTimingEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitUserTimingEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setResourceTimingEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitResourceTimingEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::resourceTimingEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitResourceTimingEnabledPreferenceKey);
     return S_OK;
 }

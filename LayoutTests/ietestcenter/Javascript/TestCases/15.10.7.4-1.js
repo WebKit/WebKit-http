@@ -24,10 +24,11 @@ id: "15.10.7.4-1",
 
 path: "TestCases/chapter15/15.10/15.10.7/15.10.7.4/15.10.7.4-1.js",
 
-description: "RegExp.prototype.multiline is of type Boolean",
+description: "RegExp.prototype.multiline should throw because RegExp.prototype is not a RegExp",
 
 test: function testcase() {
-  if((typeof(RegExp.prototype.multiline)) === 'boolean')
-    return true;
+    if ((typeof(RegExp.prototype.multiline)) === 'undefined')
+        return true;
+    return false;
  }
 });

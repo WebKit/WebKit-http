@@ -24,28 +24,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ContentSecurityPolicySourceListDirective_h
-#define ContentSecurityPolicySourceListDirective_h
+#pragma once
 
 #include "ContentSecurityPolicyDirective.h"
 #include "ContentSecurityPolicySourceList.h"
 
 namespace WebCore {
 
-class ContentSecurityPolicy;
+class ContentSecurityPolicyDirectiveList;
 
 class ContentSecurityPolicySourceListDirective : public ContentSecurityPolicyDirective {
 public:
-    ContentSecurityPolicySourceListDirective(const String& name, const String& value, const ContentSecurityPolicy&);
+    ContentSecurityPolicySourceListDirective(const ContentSecurityPolicyDirectiveList&, const String& name, const String& value);
 
-    bool allows(const URL&);
+    enum class ShouldAllowEmptyURLIfSourceListIsNotNone { No, Yes };
+    bool allows(const URL&, bool didReceiveRedirectResponse, ShouldAllowEmptyURLIfSourceListIsNotNone);
+    bool allows(const ContentSecurityPolicyHash&) const;
+    bool allows(const String& nonce) const;
     bool allowInline() const { return m_sourceList.allowInline(); }
     bool allowEval() const { return m_sourceList.allowEval(); }
+
+    OptionSet<ContentSecurityPolicyHashAlgorithm> hashAlgorithmsUsed() const { return m_sourceList.hashAlgorithmsUsed(); }
 
 private:
     ContentSecurityPolicySourceList m_sourceList;
 };
 
 } // namespace WebCore
-
-#endif /* ContentSecurityPolicySourceListDirective_h */

@@ -32,9 +32,9 @@
 #import "Logging.h"
 #import "ResourceResponse.h"
 #import "SharedBuffer.h"
-#import "SoftLinking.h"
 #import "WebFilterEvaluatorSPI.h"
 #import <objc/runtime.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(WebContentAnalysis);
 SOFT_LINK_CLASS(WebContentAnalysis, WebFilterEvaluator);
@@ -93,9 +93,10 @@ void ParentalControlsContentFilter::finishedAddingData()
 Ref<SharedBuffer> ParentalControlsContentFilter::replacementData() const
 {
     ASSERT(didBlockData());
-    return adoptRef(*SharedBuffer::wrapNSData(m_replacementData.get()).leakRef());
+    return SharedBuffer::create(m_replacementData.get());
 }
 
+#if ENABLE(CONTENT_FILTERING)
 ContentFilterUnblockHandler ParentalControlsContentFilter::unblockHandler() const
 {
 #if PLATFORM(IOS)
@@ -104,6 +105,7 @@ ContentFilterUnblockHandler ParentalControlsContentFilter::unblockHandler() cons
     return { };
 #endif
 }
+#endif
 
 void ParentalControlsContentFilter::updateFilterState()
 {

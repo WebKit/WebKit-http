@@ -31,6 +31,11 @@ function main() {
             array('platform' => $platform_id, 'metric' => $metric_id));
     }
 
+    if ($fetcher->at_end()) {
+        header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+        exit(404);
+    }
+
     $cluster_count = 0;
     while (!$fetcher->at_end()) {
         $content = $fetcher->fetch_next_cluster();
@@ -164,14 +169,16 @@ class MeasurementSetFetcher {
 
     function execute_query($config_id) {
         return $this->db->query('
-            SELECT test_runs.*, builds.*,
-            array_agg((commit_repository, commit_revision, commit_time)) AS revisions,
-            max(commit_time) AS revision_time, max(commit_order) AS revision_order
+            SELECT test_runs.*, build_id, build_number, build_builder, build_time,
+            array_agg((commit_id, commit_repository, commit_revision, extract(epoch from commit_time at time zone \'utc\') * 1000)) AS revisions,
+            extract(epoch from max(commit_time at time zone \'utc\')) * 1000 AS revision_time
                 FROM builds
                     LEFT OUTER JOIN build_commits ON commit_build = build_id
                     LEFT OUTER JOIN commits ON build_commit = commit_id, test_runs
                 WHERE run_build = build_id AND run_config = $1 AND NOT EXISTS (SELECT * FROM build_requests WHERE request_build = build_id)
-                GROUP BY build_id, run_id ORDER BY revision_time, revision_order, build_time', array($config_id));
+                GROUP BY build_id, build_builder, build_number, build_time, build_latest_revision, build_slave,
+                    run_id, run_config, run_build, run_iteration_count_cache, run_mean_cache, run_sum_cache, run_square_sum_cache, run_marked_outlier
+                ORDER BY revision_time, build_time', array($config_id));
     }
 
     static function format_map()
@@ -180,8 +187,8 @@ class MeasurementSetFetcher {
             'commitTime', 'build', 'buildTime', 'buildNumber', 'builder');
     }
 
-    private static function format_run($run, &$commit_time) {
-        $commit_time = Database::to_js_time($run['revision_time']);
+    private static function format_run(&$run, &$commit_time) {
+        $commit_time = intval($run['revision_time']);
         $build_time = Database::to_js_time($run['build_time']);
         if (!$commit_time)
             $commit_time = $build_time;
@@ -200,16 +207,19 @@ class MeasurementSetFetcher {
             intval($run['build_builder']));
     }
 
-    private static function parse_revisions_array($postgres_array) {
-        // e.g. {"(WebKit,131456,\"2012-10-16 14:53:00\")","(Chromium,162004,)"}
+    private static function parse_revisions_array(&$postgres_array) {
+        // e.g. {"(<commit-id>,<repository-id>,<revision>,\"2012-10-16 14:53:00\")","(<commit-id>,<repository-id>,<revision>,)"}
         $outer_array = json_decode('[' . trim($postgres_array, '{}') . ']');
         $revisions = array();
         foreach ($outer_array as $item) {
             $name_and_revision = explode(',', trim($item, '()'));
             if (!$name_and_revision[0])
                 continue;
-            $time = Database::to_js_time(trim($name_and_revision[2], '"'));
-            array_push($revisions, array(intval(trim($name_and_revision[0], '"')), trim($name_and_revision[1], '"'), $time));
+            $commit_id = intval(trim($name_and_revision[0], '"'));
+            $repository_id = intval(trim($name_and_revision[1], '"'));
+            $revision = trim($name_and_revision[2], '"');
+            $time = intval(trim($name_and_revision[3], '"'));
+            array_push($revisions, array($commit_id, $repository_id, $revision, $time));
         }
         return $revisions;
     }
@@ -249,14 +259,14 @@ class AnalysisResultsFetcher {
 
     function fetch_commits()
     {
-        $query = $this->db->query('SELECT commit_build, commit_repository, commit_revision, commit_time
+        $query = $this->db->query('SELECT commit_id, commit_build, commit_repository, commit_revision, commit_time
             FROM commits, build_commits, build_requests, analysis_test_groups
             WHERE commit_id = build_commit AND commit_build = request_build
                 AND request_group = testgroup_id AND testgroup_task = $1', array($this->task_id));
         while ($row = $this->db->fetch_next_row($query)) {
             $commit_time = Database::to_js_time($row['commit_time']);
             array_push(array_ensure_item_has_array($this->build_to_commits, $row['commit_build']),
-                array($row['commit_repository'], $row['commit_revision'], $commit_time));
+                array($row['commit_id'], $row['commit_repository'], $row['commit_revision'], $commit_time));
         }
     }
 

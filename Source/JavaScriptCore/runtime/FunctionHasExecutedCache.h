@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FunctionHasExecutedCache_h
-#define FunctionHasExecutedCache_h
+#pragma once
 
 #include <unordered_map>
 #include <wtf/HashMethod.h>
@@ -54,12 +53,10 @@ public:
     void removeUnexecutedRange(intptr_t id, unsigned start, unsigned end);
     Vector<std::tuple<bool, unsigned, unsigned>> getFunctionRanges(intptr_t id);
 
-private:     
-    typedef std::unordered_map<FunctionRange, bool, HashMethod<FunctionRange>> RangeMap;
-    typedef std::unordered_map<intptr_t, RangeMap> SourceIDToRangeMap;
+private:
+    using RangeMap = std::unordered_map<FunctionRange, bool, HashMethod<FunctionRange>, std::equal_to<FunctionRange>, FastAllocator<std::pair<const FunctionRange, bool>>>;
+    using SourceIDToRangeMap = std::unordered_map<intptr_t, RangeMap, std::hash<intptr_t>, std::equal_to<intptr_t>, FastAllocator<std::pair<const intptr_t, RangeMap>>>;
     SourceIDToRangeMap m_rangeMap;
 };
 
 } // namespace JSC
-
-#endif // FunctionHasExecutedCache_h

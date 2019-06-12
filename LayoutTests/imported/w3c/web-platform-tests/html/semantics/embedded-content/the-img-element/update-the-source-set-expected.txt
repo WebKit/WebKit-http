@@ -1,94 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-foo
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-foo
-
-
-
-
-
-
-
-
-
-
-
 PASS <img data-expect=""> 
 FAIL <img src="" data-expect=""> assert_equals: expected "" but got "http://localhost:8800/html/semantics/embedded-content/the-img-element/update-the-source-set.html"
 PASS <img src="data:,a" data-expect="data:,a"> 
@@ -124,15 +34,15 @@ PASS <picture><source srcset="data:,b 1x 1x"><img src="data:,a" data-expect="dat
 PASS <picture><source srcset="data:,b" media=""><img src="data:,a" data-expect="data:,b"></picture> 
 PASS <picture><source srcset="data:,b" media="all"><img src="data:,a" data-expect="data:,b"></picture> 
 PASS <picture><source srcset="data:,b" media="all and (min-width:0)"><img src="data:,a" data-expect="data:,b"></picture> 
-FAIL <picture><source srcset="data:,b" media="all and !"><img src="data:,a" data-expect="data:,a"></picture> assert_equals: expected "data:,a" but got "data:,b"
-FAIL <picture><source srcset="data:,b" media="all and (!)"><img src="data:,a" data-expect="data:,a"></picture> assert_equals: expected "data:,a" but got "data:,b"
+PASS <picture><source srcset="data:,b" media="all and !"><img src="data:,a" data-expect="data:,a"></picture> 
+PASS <picture><source srcset="data:,b" media="all and (!)"><img src="data:,a" data-expect="data:,a"></picture> 
 PASS <picture><source srcset="data:,b" media="not all"><img src="data:,a" data-expect="data:,a"></picture> 
 PASS <picture><source srcset="data:,b" media="not all and (min-width:0)"><img src="data:,a" data-expect="data:,a"></picture> 
 PASS <picture><source srcset="data:,b" media="not all and (max-width:0)"><img src="data:,a" data-expect="data:,b"></picture> 
 PASS <picture><source srcset="data:,b" media="not all and !"><img src="data:,a" data-expect="data:,a"></picture> 
 PASS <picture><source srcset="data:,b" media="not all and (!)"><img src="data:,a" data-expect="data:,a"></picture> 
 PASS <picture><source srcset="data:,b" media="all, !"><img src="data:,a" data-expect="data:,b"></picture> 
-FAIL <picture><source srcset="data:,b" media=","><img src="data:,a" data-expect="data:,a"></picture> assert_equals: expected "data:,a" but got "data:,b"
+PASS <picture><source srcset="data:,b" media=","><img src="data:,a" data-expect="data:,a"></picture> 
 PASS <picture><source srcset="data:,b" media=", all"><img src="data:,a" data-expect="data:,b"></picture> 
 PASS <picture><source srcset="data:,b" type=""><img src="data:,a" data-expect="data:,b"></picture> 
 PASS <picture><source srcset="data:,b" type=" "><img src="data:,a" data-expect="data:,b"></picture> 
@@ -178,4 +88,93 @@ PASS <picture><span><source srcset="data:,b"><img data-expect=""></span></pictur
 PASS <picture><span><source srcset="data:,b"><img src="data:,a" data-expect="data:,a"></span></picture> 
 PASS <picture><source srcset="data:,b"><span><img src="data:,a" data-expect="data:,a"></span></picture> 
 PASS <picture><source srcset="data:,b"><img data-expect="data:,b"></picture> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+foo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+foo
+
+
+
+
+
+
+
+
+
 

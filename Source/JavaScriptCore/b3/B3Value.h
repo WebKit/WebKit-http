@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,26 +23,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Value_h
-#define B3Value_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
-#include "AirArg.h"
+#include "B3Bank.h"
 #include "B3Effects.h"
-#include "B3Opcode.h"
+#include "B3FrequentedBlock.h"
+#include "B3Kind.h"
 #include "B3Origin.h"
 #include "B3SparseCollection.h"
 #include "B3Type.h"
 #include "B3ValueKey.h"
+#include "B3Width.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/StdLibExtras.h>
+#include <wtf/TriState.h>
 
 namespace JSC { namespace B3 {
 
 class BasicBlock;
 class CheckValue;
+class InsertionSet;
 class PhiChildren;
 class Procedure;
 
@@ -53,14 +57,27 @@ public:
 
     static const char* const dumpPrefix;
 
-    static bool accepts(Opcode) { return true; }
+    static bool accepts(Kind) { return true; }
 
     virtual ~Value();
 
     unsigned index() const { return m_index; }
     
-    // Note that the opcode is immutable, except for replacing values with Identity or Nop.
-    Opcode opcode() const { return m_opcode; }
+    // Note that the kind is immutable, except for replacing values with:
+    // Identity, Nop, Oops, Jump, and Phi. See below for replaceWithXXX() methods.
+    Kind kind() const { return m_kind; }
+    
+    Opcode opcode() const { return kind().opcode(); }
+    
+    // Note that the kind is meant to be immutable. Do this when you know that this is safe. It's not
+    // usually safe.
+    void setKindUnsafely(Kind kind) { m_kind = kind; }
+    void setOpcodeUnsafely(Opcode opcode) { m_kind.setOpcode(opcode); }
+    
+    // It's good practice to mirror Kind methods here, so you can say value->isBlah()
+    // instead of value->kind().isBlah().
+    bool isChill() const { return kind().isChill(); }
+    bool traps() const { return kind().traps(); }
 
     Origin origin() const { return m_origin; }
     void setOrigin(Origin origin) { m_origin = origin; }
@@ -77,18 +94,52 @@ public:
     void setType(Type type) { m_type = type; }
 
     // This is useful when lowering. Note that this is only valid for non-void values.
-    Air::Arg::Type airType() const { return Air::Arg::typeForB3Type(type()); }
-    Air::Arg::Width airWidth() const { return Air::Arg::widthForB3Type(type()); }
+    Bank resultBank() const { return bankForType(type()); }
+    Width resultWidth() const { return widthForType(type()); }
 
     AdjacencyList& children() { return m_children; } 
     const AdjacencyList& children() const { return m_children; }
 
+    // If you want to replace all uses of this value with a different value, then replace this
+    // value with Identity. Then do a pass of performSubstitution() on all of the values that use
+    // this one. Usually we do all of this in one pass in pre-order, which ensures that the
+    // X->replaceWithIdentity() calls happen before the performSubstitution() calls on X's users.
     void replaceWithIdentity(Value*);
+    
+    // It's often necessary to kill a value. It's tempting to replace the value with Nop or to
+    // just remove it. But unless you are sure that the value is Void, you will probably still
+    // have other values that use this one. Sure, you may kill those later, or you might not. This
+    // method lets you kill a value safely. It will replace Void values with Nop and non-Void
+    // values with Identities on bottom constants. For this reason, this takes a callback that is
+    // responsible for creating bottoms. There's a utility for this, see B3BottomProvider.h. You
+    // can also access that utility using replaceWithBottom(InsertionSet&, size_t).
+    //
+    // You're guaranteed that bottom is zero.
+    template<typename BottomProvider>
+    void replaceWithBottom(const BottomProvider&);
+    
+    void replaceWithBottom(InsertionSet&, size_t index);
+
+    // Use this if you want to kill a value and you are sure that the value is Void.
     void replaceWithNop();
+    
+    // Use this if you want to kill a value and you are sure that nobody is using it anymore.
+    void replaceWithNopIgnoringType();
+    
     void replaceWithPhi();
+    
+    // These transformations are only valid for terminals.
+    void replaceWithJump(BasicBlock* owner, FrequentedBlock);
+    void replaceWithOops(BasicBlock* owner);
+    
+    // You can use this form if owners are valid. They're usually not valid.
+    void replaceWithJump(FrequentedBlock);
+    void replaceWithOops();
 
     void dump(PrintStream&) const;
     void deepDump(const Procedure*, PrintStream&) const;
+    
+    virtual void dumpSuccessors(const BasicBlock*, PrintStream&) const;
 
     // This is how you cast Values. For example, if you want to do something provided that we have a
     // ArgumentRegValue, you can do:
@@ -97,8 +148,8 @@ public:
     //     things
     // }
     //
-    // This will return null if this opcode() != ArgumentReg. This works because this returns nullptr
-    // if T::accepts(opcode()) returns false.
+    // This will return null if this kind() != ArgumentReg. This works because this returns nullptr
+    // if T::accepts(kind()) returns false.
     template<typename T>
     T* as();
     template<typename T>
@@ -107,7 +158,7 @@ public:
     // What follows are a bunch of helpers for inspecting and modifying values. Note that we have a
     // bunch of different idioms for implementing such helpers. You can use virtual methods, and
     // override from the various Value subclasses. You can put the method inside Value and make it
-    // non-virtual, and the implementation can switch on opcode. The method could be inline or not.
+    // non-virtual, and the implementation can switch on kind. The method could be inline or not.
     // If a method is specific to some Value subclass, you could put it in the subclass, or you could
     // put it on Value anyway. It's fine to pick whatever feels right, and we shouldn't restrict
     // ourselves to any particular idiom.
@@ -124,15 +175,21 @@ public:
     virtual Value* checkSubConstant(Procedure&, const Value* other) const;
     virtual Value* checkMulConstant(Procedure&, const Value* other) const;
     virtual Value* checkNegConstant(Procedure&) const;
-    virtual Value* divConstant(Procedure&, const Value* other) const; // This chooses ChillDiv semantics for integers.
-    virtual Value* modConstant(Procedure&, const Value* other) const; // This chooses ChillMod semantics.
+    virtual Value* divConstant(Procedure&, const Value* other) const; // This chooses Div<Chill> semantics for integers.
+    virtual Value* uDivConstant(Procedure&, const Value* other) const;
+    virtual Value* modConstant(Procedure&, const Value* other) const; // This chooses Mod<Chill> semantics.
+    virtual Value* uModConstant(Procedure&, const Value* other) const;
     virtual Value* bitAndConstant(Procedure&, const Value* other) const;
     virtual Value* bitOrConstant(Procedure&, const Value* other) const;
     virtual Value* bitXorConstant(Procedure&, const Value* other) const;
     virtual Value* shlConstant(Procedure&, const Value* other) const;
     virtual Value* sShrConstant(Procedure&, const Value* other) const;
     virtual Value* zShrConstant(Procedure&, const Value* other) const;
+    virtual Value* rotRConstant(Procedure&, const Value* other) const;
+    virtual Value* rotLConstant(Procedure&, const Value* other) const;
     virtual Value* bitwiseCastConstant(Procedure&) const;
+    virtual Value* iToDConstant(Procedure&) const;
+    virtual Value* iToFConstant(Procedure&) const;
     virtual Value* doubleToFloatConstant(Procedure&) const;
     virtual Value* floatToDoubleConstant(Procedure&) const;
     virtual Value* absConstant(Procedure&) const;
@@ -151,7 +208,7 @@ public:
     virtual TriState aboveEqualConstant(const Value* other) const;
     virtual TriState belowEqualConstant(const Value* other) const;
     virtual TriState equalOrUnorderedConstant(const Value* other) const;
-
+    
     // If the value is a comparison then this returns the inverted form of that comparison, if
     // possible. It can be impossible for double comparisons, where for example LessThan and
     // GreaterEqual behave differently. If this returns a value, it is a new value, which must be
@@ -182,7 +239,7 @@ public:
     float asFloat() const;
 
     bool hasNumber() const;
-    template<typename T> bool representableAs() const;
+    template<typename T> bool isRepresentableAs() const;
     template<typename T> T asNumber() const;
 
     // Booleans in B3 are Const32(0) or Const32(1). So this is true if the type is Int32 and the only
@@ -207,7 +264,12 @@ public:
     // Makes sure that none of the children are Identity's. If a child points to Identity, this will
     // repoint it at the Identity's child. For simplicity, this will follow arbitrarily long chains
     // of Identity's.
-    void performSubstitution();
+    bool performSubstitution();
+    
+    // Free values are those whose presence is guaranteed not to hurt code. We consider constants,
+    // Identities, and Nops to be free. Constants are free because we hoist them to an optimal place.
+    // Identities and Nops are free because we remove them.
+    bool isFree() const;
 
     // Walk the ancestors of this value (i.e. the graph of things it transitively uses). This
     // either walks phis or not, depending on whether PhiChildren is null. Your callback gets
@@ -222,6 +284,22 @@ public:
     template<typename Functor>
     void walk(const Functor& functor, PhiChildren* = nullptr);
 
+    // B3 purposefully only represents signed 32-bit offsets because that's what x86 can encode, and
+    // ARM64 cannot encode anything bigger. The IsLegalOffset type trait is then used on B3 Value
+    // methods to prevent implicit conversions by C++ from invalid offset types: these cause compilation
+    // to fail, instead of causing implementation-defined behavior (which often turns to exploit).
+    // OffsetType isn't sufficient to determine offset validity! Each Value opcode further has an
+    // isLegalOffset runtime method used to determine value legality at runtime. This is exposed to users
+    // of B3 to force them to reason about the target's offset.
+    typedef int32_t OffsetType;
+    template<typename Int>
+    struct IsLegalOffset : std::conjunction<
+        typename std::enable_if<std::is_integral<Int>::value>::type,
+        typename std::enable_if<std::is_signed<Int>::value>::type,
+        typename std::enable_if<sizeof(Int) <= sizeof(OffsetType)>::type
+    > { };
+
+
 protected:
     virtual Value* cloneImpl() const;
     
@@ -232,12 +310,83 @@ private:
     friend class Procedure;
     friend class SparseCollection<Value>;
 
-    // Checks that this opcode is valid for use with B3::Value.
-#if ASSERT_DISABLED
-    static void checkOpcode(Opcode) { }
-#else
-    static void checkOpcode(Opcode);
-#endif
+    // Checks that this kind is valid for use with B3::Value.
+    ALWAYS_INLINE static void checkKind(Kind kind, unsigned numArgs)
+    {
+        switch (kind.opcode()) {
+        case FramePointer:
+        case Nop:
+        case Phi:
+        case Jump:
+        case Oops:
+        case EntrySwitch:
+            if (UNLIKELY(numArgs))
+                badKind(kind, numArgs);
+            break;
+        case Return:
+            if (UNLIKELY(numArgs > 1))
+                badKind(kind, numArgs);
+            break;
+        case Identity:
+        case Neg:
+        case Clz:
+        case Abs:
+        case Ceil:
+        case Floor:
+        case Sqrt:
+        case SExt8:
+        case SExt16:
+        case Trunc:
+        case SExt32:
+        case ZExt32:
+        case FloatToDouble:
+        case IToD:
+        case DoubleToFloat:
+        case IToF:
+        case BitwiseCast:
+        case Branch:
+        case Depend:
+            if (UNLIKELY(numArgs != 1))
+                badKind(kind, numArgs);
+            break;
+        case Add:
+        case Sub:
+        case Mul:
+        case Div:
+        case UDiv:
+        case Mod:
+        case UMod:
+        case BitAnd:
+        case BitOr:
+        case BitXor:
+        case Shl:
+        case SShr:
+        case ZShr:
+        case RotR:
+        case RotL:
+        case Equal:
+        case NotEqual:
+        case LessThan:
+        case GreaterThan:
+        case LessEqual:
+        case GreaterEqual:
+        case Above:
+        case Below:
+        case AboveEqual:
+        case BelowEqual:
+        case EqualOrUnordered:
+            if (UNLIKELY(numArgs != 2))
+                badKind(kind, numArgs);
+            break;
+        case Select:
+            if (UNLIKELY(numArgs != 3))
+                badKind(kind, numArgs);
+            break;
+        default:
+            badKind(kind, numArgs);
+            break;
+        }
+    }
 
 protected:
     enum CheckedOpcodeTag { CheckedOpcode };
@@ -248,56 +397,56 @@ protected:
     // Instantiate values via Procedure.
     // This form requires specifying the type explicitly:
     template<typename... Arguments>
-    explicit Value(CheckedOpcodeTag, Opcode opcode, Type type, Origin origin, Value* firstChild, Arguments... arguments)
-        : m_opcode(opcode)
+    explicit Value(CheckedOpcodeTag, Kind kind, Type type, Origin origin, Value* firstChild, Arguments... arguments)
+        : m_kind(kind)
         , m_type(type)
         , m_origin(origin)
         , m_children{ firstChild, arguments... }
     {
     }
     // This form is for specifying the type explicitly when the opcode has no children:
-    explicit Value(CheckedOpcodeTag, Opcode opcode, Type type, Origin origin)
-        : m_opcode(opcode)
+    explicit Value(CheckedOpcodeTag, Kind kind, Type type, Origin origin)
+        : m_kind(kind)
         , m_type(type)
         , m_origin(origin)
     {
     }
     // This form is for those opcodes that can infer their type from the opcode and first child:
     template<typename... Arguments>
-    explicit Value(CheckedOpcodeTag, Opcode opcode, Origin origin, Value* firstChild)
-        : m_opcode(opcode)
-        , m_type(typeFor(opcode, firstChild))
+    explicit Value(CheckedOpcodeTag, Kind kind, Origin origin, Value* firstChild)
+        : m_kind(kind)
+        , m_type(typeFor(kind, firstChild))
         , m_origin(origin)
         , m_children{ firstChild }
     {
     }
     // This form is for those opcodes that can infer their type from the opcode and first and second child:
     template<typename... Arguments>
-    explicit Value(CheckedOpcodeTag, Opcode opcode, Origin origin, Value* firstChild, Value* secondChild, Arguments... arguments)
-        : m_opcode(opcode)
-        , m_type(typeFor(opcode, firstChild, secondChild))
+    explicit Value(CheckedOpcodeTag, Kind kind, Origin origin, Value* firstChild, Value* secondChild, Arguments... arguments)
+        : m_kind(kind)
+        , m_type(typeFor(kind, firstChild, secondChild))
         , m_origin(origin)
         , m_children{ firstChild, secondChild, arguments... }
     {
     }
     // This form is for those opcodes that can infer their type from the opcode alone, and that don't
     // take any arguments:
-    explicit Value(CheckedOpcodeTag, Opcode opcode, Origin origin)
-        : m_opcode(opcode)
-        , m_type(typeFor(opcode, nullptr))
+    explicit Value(CheckedOpcodeTag, Kind kind, Origin origin)
+        : m_kind(kind)
+        , m_type(typeFor(kind, nullptr))
         , m_origin(origin)
     {
     }
     // Use this form for varargs.
-    explicit Value(CheckedOpcodeTag, Opcode opcode, Type type, Origin origin, const AdjacencyList& children)
-        : m_opcode(opcode)
+    explicit Value(CheckedOpcodeTag, Kind kind, Type type, Origin origin, const AdjacencyList& children)
+        : m_kind(kind)
         , m_type(type)
         , m_origin(origin)
         , m_children(children)
     {
     }
-    explicit Value(CheckedOpcodeTag, Opcode opcode, Type type, Origin origin, AdjacencyList&& children)
-        : m_opcode(opcode)
+    explicit Value(CheckedOpcodeTag, Kind kind, Type type, Origin origin, AdjacencyList&& children)
+        : m_kind(kind)
         , m_type(type)
         , m_origin(origin)
         , m_children(WTFMove(children))
@@ -307,26 +456,52 @@ protected:
     // This is the constructor you end up actually calling, if you're instantiating Value
     // directly.
     template<typename... Arguments>
-    explicit Value(Opcode opcode, Arguments&&... arguments)
-        : Value(CheckedOpcode, opcode, std::forward<Arguments>(arguments)...)
+        explicit Value(Kind kind, Type type, Origin origin)
+        : Value(CheckedOpcode, kind, type, origin)
     {
-        checkOpcode(opcode);
+        checkKind(kind, 0);
+    }
+    template<typename... Arguments>
+        explicit Value(Kind kind, Type type, Origin origin, Value* firstChild, Arguments&&... arguments)
+        : Value(CheckedOpcode, kind, type, origin, firstChild, std::forward<Arguments>(arguments)...)
+    {
+        checkKind(kind, 1 + sizeof...(arguments));
+    }
+    template<typename... Arguments>
+        explicit Value(Kind kind, Type type, Origin origin, const AdjacencyList& children)
+        : Value(CheckedOpcode, kind, type, origin, children)
+    {
+        checkKind(kind, children.size());
+    }
+    template<typename... Arguments>
+        explicit Value(Kind kind, Type type, Origin origin, AdjacencyList&& children)
+        : Value(CheckedOpcode, kind, type, origin, WTFMove(children))
+    {
+        checkKind(kind, m_children.size());
+    }
+    template<typename... Arguments>
+        explicit Value(Kind kind, Origin origin, Arguments&&... arguments)
+        : Value(CheckedOpcode, kind, origin, std::forward<Arguments>(arguments)...)
+    {
+        checkKind(kind, sizeof...(arguments));
     }
 
 private:
-    friend class CheckValue; // CheckValue::convertToAdd() modifies m_opcode.
+    friend class CheckValue; // CheckValue::convertToAdd() modifies m_kind.
     
-    static Type typeFor(Opcode, Value* firstChild, Value* secondChild = nullptr);
+    static Type typeFor(Kind, Value* firstChild, Value* secondChild = nullptr);
 
     // This group of fields is arranged to fit in 64 bits.
 protected:
     unsigned m_index { UINT_MAX };
 private:
-    Opcode m_opcode;
+    Kind m_kind;
     Type m_type;
     
     Origin m_origin;
     AdjacencyList m_children;
+
+    NO_RETURN_DUE_TO_CRASH static void badKind(Kind, unsigned);
 
 public:
     BasicBlock* owner { nullptr }; // computed by Procedure::resetValueOwners().
@@ -365,6 +540,3 @@ inline DeepValueDump deepDump(const Value* value)
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Value_h
-

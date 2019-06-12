@@ -4,51 +4,58 @@ class CustomizableTestGroupForm extends TestGroupForm {
     constructor()
     {
         super('customizable-test-group-form');
-        this._rootSetMap = null;
-        this._disabled = true;
-        this._renderedRepositorylist = null;
-        this._customized = false;
-        this.content().querySelector('a').onclick = this._customize.bind(this);
+        this._commitSetMap = null;
+        this._name = null;
+        this._isCustomized = false;
+        this._revisionEditorMap = {};
+
+        this._renderCustomRevisionTableLazily = new LazilyEvaluatedFunction(this._renderCustomRevisionTable.bind(this));
     }
 
-    setRootSetMap(map)
+    setCommitSetMap(map)
     {
-        this._rootSetMap = map;
-        this._customized = false;
-        this.setDisabled(!map);
+        this._commitSetMap = map;
+        this._isCustomized = false;
+        this.enqueueToRender();
     }
 
-    _submitted()
+    startTesting()
     {
-        if (this._startCallback)
-            this._startCallback(this.content().querySelector('.name').value, this._repetitionCount, this._computeRootSetMap());
+        this.dispatchAction('startTesting', this._repetitionCount, this._name, this._computeCommitSetMap());
     }
 
-    _customize(event)
+    didConstructShadowTree()
     {
-        event.preventDefault();
-        this._customized = true;
-        this.render();
+        super.didConstructShadowTree();
+
+        const nameControl = this.content('name');
+        nameControl.oninput = () => {
+            this._name = nameControl.value;
+            this.enqueueToRender();
+        }
+
+        this.content('customize-link').onclick = this.createEventHandler(() => {
+            this._isCustomized = true;
+            this.enqueueToRender();
+        });
     }
 
-    _computeRootSetMap()
+    _computeCommitSetMap()
     {
-        console.assert(this._rootSetMap);
-        if (!this._customized)
-            return this._rootSetMap;
+        console.assert(this._commitSetMap);
+        if (!this._isCustomized)
+            return this._commitSetMap;
 
-        console.assert(this._renderedRepositorylist);
-        var map = {};
-        for (var label in this._rootSetMap) {
-            var customRootSet = new CustomRootSet;
-            for (var repository of this._renderedRepositorylist) {
-                var className = CustomizableTestGroupForm._classForLabelAndRepository(label, repository);
-                var revision = this.content().getElementsByClassName(className)[0].value;
-                console.assert(revision);
-                if (revision)
-                    customRootSet.setRevisionForRepository(repository, revision);
+        const map = {};
+        for (const label in this._commitSetMap) {
+            const originalCommitSet = this._commitSetMap;
+            const customCommitSet = new CustomCommitSet;
+            for (let repository of this._commitSetMap[label].repositories()) {
+                const revisionEditor = this._revisionEditorMap[label].get(repository);
+                console.assert(revisionEditor);
+                customCommitSet.setRevisionForRepository(repository, revisionEditor.value);
             }
-            map[label] = customRootSet;
+            map[label] = customCommitSet;
         }
         return map;
     }
@@ -56,56 +63,61 @@ class CustomizableTestGroupForm extends TestGroupForm {
     render()
     {
         super.render();
-        this.content().querySelector('.customize-link').style.display = this._disabled ? 'none' : null;
 
-        if (!this._customized) {
-            this.renderReplace(this.content().querySelector('.custom-table-container'), []);
-            return;
-        }
-        var map = this._rootSetMap;
-        console.assert(map);
+        this.content('start-button').disabled = !(this._commitSetMap && this._name);
+        this.content('customize-link-container').style.display = !this._commitSetMap ? 'none' : null;
 
-        var repositorySet = new Set;
-        var rootSetLabels = [];
-        for (var label in map) {
-            for (var repository of map[label].repositories())
-                repositorySet.add(repository);
-            rootSetLabels.push(label);
-        }
-
-        this._renderedRepositorylist = Repository.sortByNamePreferringOnesWithURL(Array.from(repositorySet.values()));
-
-        var element = ComponentBase.createElement;
-        this.renderReplace(this.content().querySelector('.custom-table-container'),
-            element('table', {class: 'custom-table'}, [
-                element('thead',
-                    element('tr',
-                        [element('td', 'Repository'), rootSetLabels.map(function (label) {
-                            return element('td', {colspan: rootSetLabels.length + 1}, label);
-                        })])),
-                element('tbody',
-                    this._renderedRepositorylist.map(function (repository) {
-                        var cells = [element('th', repository.label())];
-                        for (var label in map)
-                            cells.push(CustomizableTestGroupForm._constructRevisionRadioButtons(map, repository, label));
-                        return element('tr', cells);
-                    }))]));
+        this._renderCustomRevisionTableLazily.evaluate(this._commitSetMap, this._isCustomized);
     }
 
-    static _classForLabelAndRepository(label, repository) { return label + '-' + repository.id(); }
-
-    static _constructRevisionRadioButtons(rootSetMap, repository, rowLabel)
+    _renderCustomRevisionTable(commitSetMap, isCustomized)
     {
-        var className = this._classForLabelAndRepository(rowLabel, repository);
-        var groupName = className + '-group';
-        var element = ComponentBase.createElement;
-        var revisionEditor = element('input', {class: className});
+        if (!commitSetMap || !isCustomized) {
+            this.renderReplace(this.content('custom-table'), []);
+            return null;
+        }
 
-        var nodes = [];
-        for (var labelToChoose in rootSetMap) {
-            var commit = rootSetMap[labelToChoose].commitForRepository(repository);
-            var checked = labelToChoose == rowLabel;
-            var radioButton = this._createRadioButton(groupName, revisionEditor, commit, checked);
+        const repositorySet = new Set;
+        const commitSetLabels = [];
+        this._revisionEditorMap = {};
+        for (const label in commitSetMap) {
+            for (const repository of commitSetMap[label].repositories())
+                repositorySet.add(repository);
+            commitSetLabels.push(label);
+            this._revisionEditorMap[label] = new Map;
+        }
+
+        const repositoryList = Repository.sortByNamePreferringOnesWithURL(Array.from(repositorySet.values()));
+        const element = ComponentBase.createElement;
+        this.renderReplace(this.content('custom-table'), [
+            element('thead',
+                element('tr',
+                    [element('td', 'Repository'), commitSetLabels.map((label) => element('td', {colspan: commitSetLabels.length + 1}, label))])),
+            element('tbody',
+                repositoryList.map((repository) => {
+                    const cells = [element('th', repository.label())];
+                    for (const label in commitSetMap)
+                        cells.push(this._constructRevisionRadioButtons(commitSetMap, repository, label));
+                    return element('tr', cells);
+                }))]);
+
+        return repositoryList;
+    }
+
+    _constructRevisionRadioButtons(commitSetMap, repository, rowLabel)
+    {
+        const element = ComponentBase.createElement;
+        const revisionEditor = element('input');
+
+        this._revisionEditorMap[rowLabel].set(repository, revisionEditor);
+
+        const nodes = [];
+        for (let labelToChoose in commitSetMap) {
+            const commit = commitSetMap[labelToChoose].commitForRepository(repository);
+            const checked = labelToChoose == rowLabel;
+            const radioButton = element('input', {type: 'radio', name: `${rowLabel}-${repository.id()}-radio`, checked,
+                onchange: () => { revisionEditor.value = commit ? commit.revision() : ''; }});
+
             if (checked)
                 revisionEditor.value = commit ? commit.revision() : '';
             nodes.push(element('td', element('label', [radioButton, labelToChoose])));
@@ -115,36 +127,21 @@ class CustomizableTestGroupForm extends TestGroupForm {
         return nodes;
     }
 
-    static _createRadioButton(groupName, revisionEditor, commit, checked)
-    {
-        var button = ComponentBase.createElement('input', {
-            type: 'radio',
-            name: groupName + '-radio',
-            onchange: function () { revisionEditor.value = commit ? commit.revision() : ''; },
-        });
-        if (checked) // FIXME: createElement should be able to set boolean attribute properly.
-            button.checked = true;
-        return button;
-    }
-
     static cssTemplate()
     {
         return `
-            .customize-link {
+            #customize-link-container,
+            #customize-link {
                 color: #333;
             }
 
-            .customize-link a {
-                color: inherit;
-            }
-
-            .custom-table {
+            #custom-table:not(:empty) {
                 margin: 1rem 0;
             }
 
-            .custom-table,
-            .custom-table td,
-            .custom-table th {
+            #custom-table,
+            #custom-table td,
+            #custom-table th {
                 font-weight: inherit;
                 border-collapse: collapse;
                 border-top: solid 1px #ddd;
@@ -153,8 +150,8 @@ class CustomizableTestGroupForm extends TestGroupForm {
                 font-size: 0.9rem;
             }
 
-            .custom-table thead td,
-            .custom-table th {
+            #custom-table thead td,
+            #custom-table th {
                 text-align: center;
             }
             `;
@@ -163,10 +160,10 @@ class CustomizableTestGroupForm extends TestGroupForm {
     static formContent()
     {
         return `
-            <input class="name" type="text" placeholder="Test group name">
+            <input id="name" type="text" placeholder="Test group name">
             ${super.formContent()}
-            <span class="customize-link">(<a href="">Customize</a>)</span>
-            <div class="custom-table-container"></div>
+            <span id="customize-link-container">(<a id="customize-link" href="#">Customize</a>)</span>
+            <table id="custom-table"></table>
         `;
     }
 }

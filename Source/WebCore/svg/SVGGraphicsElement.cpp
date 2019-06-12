@@ -21,11 +21,14 @@
 #include "config.h"
 #include "SVGGraphicsElement.h"
 
-#include "AffineTransform.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
+#include "SVGMatrix.h"
 #include "SVGNames.h"
 #include "SVGPathData.h"
+#include "SVGRect.h"
+#include "SVGSVGElement.h"
+#include "SVGStringList.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -50,9 +53,19 @@ SVGGraphicsElement::~SVGGraphicsElement()
 {
 }
 
+Ref<SVGMatrix> SVGGraphicsElement::getCTMForBindings()
+{
+    return SVGMatrix::create(getCTM());
+}
+
 AffineTransform SVGGraphicsElement::getCTM(StyleUpdateStrategy styleUpdateStrategy)
 {
     return SVGLocatable::computeCTM(this, SVGLocatable::NearestViewportScope, styleUpdateStrategy);
+}
+
+Ref<SVGMatrix> SVGGraphicsElement::getScreenCTMForBindings()
+{
+    return SVGMatrix::create(getScreenCTM());
 }
 
 AffineTransform SVGGraphicsElement::getScreenCTM(StyleUpdateStrategy styleUpdateStrategy)
@@ -63,14 +76,30 @@ AffineTransform SVGGraphicsElement::getScreenCTM(StyleUpdateStrategy styleUpdate
 AffineTransform SVGGraphicsElement::animatedLocalTransform() const
 {
     AffineTransform matrix;
-    RenderStyle* style = renderer() ? &renderer()->style() : nullptr;
+    auto* style = renderer() ? &renderer()->style() : nullptr;
 
     // If CSS property was set, use that, otherwise fallback to attribute (if set).
     if (style && style->hasTransform()) {
+        
+        FloatRect boundingBox;
+        switch (style->transformBox()) {
+        case TransformBox::FillBox:
+            boundingBox = renderer()->objectBoundingBox();
+            break;
+        case TransformBox::BorderBox:
+            // For SVG elements without an associated CSS layout box, the used value for border-box is view-box.
+        case TransformBox::ViewBox: {
+            FloatSize viewportSize;
+            SVGLengthContext(this).determineViewport(viewportSize);
+            boundingBox.setSize(viewportSize);
+            break;
+            }
+        }
+        
         // Note: objectBoundingBox is an emptyRect for elements like pattern or clipPath.
         // See the "Object bounding box units" section of http://dev.w3.org/csswg/css3-transforms/
         TransformationMatrix transform;
-        style->applyTransform(transform, renderer()->objectBoundingBox());
+        style->applyTransform(transform, boundingBox);
 
         // Flatten any 3D transform.
         matrix = transform.toAffineTransform();
@@ -110,7 +139,7 @@ bool SVGGraphicsElement::isSupportedAttribute(const QualifiedName& attrName)
 void SVGGraphicsElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == SVGNames::transformAttr) {
-        SVGTransformList newList;
+        SVGTransformListValues newList;
         newList.parse(value);
         detachAnimatedTransformListWrappers(newList.size());
         setTransformBaseValue(newList);
@@ -156,14 +185,18 @@ SVGElement* SVGGraphicsElement::farthestViewportElement() const
     return SVGTransformable::farthestViewportElement(this);
 }
 
+Ref<SVGRect> SVGGraphicsElement::getBBoxForBindings()
+{
+    return SVGRect::create(getBBox());
+}
+
 FloatRect SVGGraphicsElement::getBBox(StyleUpdateStrategy styleUpdateStrategy)
 {
     return SVGTransformable::getBBox(this, styleUpdateStrategy);
 }
 
-RenderPtr<RenderElement> SVGGraphicsElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> SVGGraphicsElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
-    // By default, any subclass is expected to do path-based drawing
     return createRenderer<RenderSVGPath>(*this, WTFMove(style));
 }
 
@@ -172,6 +205,21 @@ void SVGGraphicsElement::toClipPath(Path& path)
     updatePathFromGraphicsElement(this, path);
     // FIXME: How do we know the element has done a layout?
     path.transform(animatedLocalTransform());
+}
+
+Ref<SVGStringList> SVGGraphicsElement::requiredFeatures()
+{
+    return SVGTests::requiredFeatures(*this);
+}
+
+Ref<SVGStringList> SVGGraphicsElement::requiredExtensions()
+{ 
+    return SVGTests::requiredExtensions(*this);
+}
+
+Ref<SVGStringList> SVGGraphicsElement::systemLanguage()
+{
+    return SVGTests::systemLanguage(*this);
 }
 
 }

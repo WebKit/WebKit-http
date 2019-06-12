@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,20 +27,16 @@
 #include "MainFrame.h"
 
 #include "Element.h"
-#include "EmptyClients.h"
 #include "PageConfiguration.h"
 #include "PageOverlayController.h"
+#include "PaymentCoordinator.h"
+#include "PerformanceLogging.h"
 #include "ScrollLatchingState.h"
-#include "Settings.h"
 #include "WheelEventDeltaFilter.h"
 #include <wtf/NeverDestroyed.h>
 
 #if PLATFORM(MAC)
 #include "ServicesOverlayController.h"
-#endif /* PLATFORM(MAC) */
-
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/MainFrameIncludes.h>
 #endif
 
 namespace WebCore {
@@ -48,24 +44,23 @@ namespace WebCore {
 inline MainFrame::MainFrame(Page& page, PageConfiguration& configuration)
     : Frame(page, nullptr, *configuration.loaderClientForMainFrame)
     , m_selfOnlyRefCount(0)
-#if PLATFORM(MAC)
-#if ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION)
+#if PLATFORM(MAC) && (ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION))
     , m_servicesOverlayController(std::make_unique<ServicesOverlayController>(*this))
-#endif
 #endif
     , m_recentWheelEventDeltaFilter(WheelEventDeltaFilter::create())
     , m_pageOverlayController(std::make_unique<PageOverlayController>(*this))
-    , m_diagnosticLoggingClient(configuration.diagnosticLoggingClient)
-{
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/MainFrameInitialization.cpp>
+#if ENABLE(APPLE_PAY)
+    , m_paymentCoordinator(std::make_unique<PaymentCoordinator>(*configuration.paymentCoordinatorClient))
 #endif
+    , m_performanceLogging(std::make_unique<PerformanceLogging>(*this))
+{
 }
 
 MainFrame::~MainFrame()
 {
-    if (m_diagnosticLoggingClient)
-        m_diagnosticLoggingClient->mainFrameDestroyed();
+    m_recentWheelEventDeltaFilter = nullptr;
+
+    setMainFrameWasDestroyed();
 }
 
 Ref<MainFrame> MainFrame::create(Page& page, PageConfiguration& configuration)
@@ -93,19 +88,15 @@ void MainFrame::selfOnlyDeref()
     deref();
 }
 
-DiagnosticLoggingClient& MainFrame::diagnosticLoggingClient() const
-{
-    static NeverDestroyed<EmptyDiagnosticLoggingClient> dummyClient;
-    if (!settings().diagnosticLoggingEnabled() || !m_diagnosticLoggingClient)
-        return dummyClient;
-
-    return *m_diagnosticLoggingClient;
-}
-
 void MainFrame::dropChildren()
 {
     while (Frame* child = tree().firstChild())
-        tree().removeChild(child);
+        tree().removeChild(*child);
+}
+
+void MainFrame::didCompleteLoad()
+{
+    performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadCompleted);
 }
 
 #if PLATFORM(MAC)

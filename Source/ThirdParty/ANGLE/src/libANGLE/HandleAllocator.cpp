@@ -20,13 +20,13 @@ struct HandleAllocator::HandleRangeComparator
 {
     bool operator()(const HandleRange &range, GLuint handle) const
     {
-        return (handle < range.begin);
+        return (range.end < handle);
     }
 };
 
 HandleAllocator::HandleAllocator() : mBaseValue(1), mNextValue(1)
 {
-    mUnallocatedList.push_back(HandleRange(1, std::numeric_limits<GLuint>::max() - 1));
+    mUnallocatedList.push_back(HandleRange(1, std::numeric_limits<GLuint>::max()));
 }
 
 HandleAllocator::HandleAllocator(GLuint maximumHandleValue) : mBaseValue(1), mNextValue(1)
@@ -63,10 +63,13 @@ GLuint HandleAllocator::allocate()
     GLuint freeListHandle = listIt->begin;
     ASSERT(freeListHandle > 0);
 
-    listIt->begin++;
     if (listIt->begin == listIt->end)
     {
         mUnallocatedList.erase(listIt);
+    }
+    else
+    {
+        listIt->begin++;
     }
 
     return freeListHandle;
@@ -101,7 +104,7 @@ void HandleAllocator::reserve(GLuint handle)
 
     if (handle == begin || handle == end)
     {
-        if (begin + 1 == end)
+        if (begin == end)
         {
             mUnallocatedList.erase(boundIt);
         }
@@ -117,17 +120,12 @@ void HandleAllocator::reserve(GLuint handle)
         return;
     }
 
+    ASSERT(begin < handle && handle < end);
+
     // need to split the range
     auto placementIt = mUnallocatedList.erase(boundIt);
-
-    if (begin != handle)
-    {
-        placementIt = mUnallocatedList.insert(placementIt, HandleRange(begin, handle));
-    }
-    if (handle + 1 != end)
-    {
-        mUnallocatedList.insert(placementIt, HandleRange(handle + 1, end));
-    }
+    placementIt      = mUnallocatedList.insert(placementIt, HandleRange(handle + 1, end));
+    mUnallocatedList.insert(placementIt, HandleRange(begin, handle - 1));
 }
 
-}
+}  // namespace gl

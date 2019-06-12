@@ -307,6 +307,11 @@ public:
             m_index = m_bitVector->findBit(m_index + 1, true);
             return *this;
         }
+
+        bool isAtEnd() const
+        {
+            return m_index >= m_bitVector->size();
+        }
         
         bool operator==(const iterator& other) const
         {
@@ -401,21 +406,6 @@ private:
             index++;
         }
         return size();
-    }
-    
-    static bool findBitInWord(uintptr_t word, size_t& index, size_t endIndex, bool value)
-    {
-        word >>= index;
-        
-        while (index < endIndex) {
-            if ((word & 1) == static_cast<uintptr_t>(value))
-                return true;
-            index++;
-            word >>= 1;
-        }
-
-        index = endIndex;
-        return false;
     }
     
     class OutOfLineBits {

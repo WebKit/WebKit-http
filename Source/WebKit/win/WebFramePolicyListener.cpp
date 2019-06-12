@@ -35,8 +35,8 @@ using namespace WebCore;
 
 // WebFramePolicyListener ----------------------------------------------------------------
 
-WebFramePolicyListener::WebFramePolicyListener(PassRefPtr<Frame> frame)
-    : m_frame(frame)
+WebFramePolicyListener::WebFramePolicyListener(RefPtr<Frame>&& frame)
+    : m_frame(WTFMove(frame))
 {
     gClassCount++;
     gClassNameCount().add("WebFramePolicyListener");
@@ -48,9 +48,9 @@ WebFramePolicyListener::~WebFramePolicyListener()
     gClassNameCount().remove("WebFramePolicyListener");
 }
 
-WebFramePolicyListener* WebFramePolicyListener::createInstance(PassRefPtr<Frame> frame)
+WebFramePolicyListener* WebFramePolicyListener::createInstance(RefPtr<Frame>&& frame)
 {
-    WebFramePolicyListener* instance = new WebFramePolicyListener(frame);
+    WebFramePolicyListener* instance = new WebFramePolicyListener(WTFMove(frame));
     instance->AddRef();
     return instance;
 }
@@ -120,7 +120,7 @@ HRESULT WebFramePolicyListener::continueSubmit()
 // WebFramePolicyListener ----------------------------------------------------------------
 void WebFramePolicyListener::receivedPolicyDecision(PolicyAction action)
 {
-    RefPtr<Frame> frame = m_frame.release();
+    RefPtr<Frame> frame = WTFMove(m_frame);
     if (frame)
         static_cast<WebFrameLoaderClient&>(frame->loader().client()).receivedPolicyDecision(action);
 }

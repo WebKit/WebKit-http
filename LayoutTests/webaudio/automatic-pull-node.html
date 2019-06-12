@@ -2,7 +2,7 @@
 
 <html>
 <head>
-<script src="../resources/js-test-pre.js"></script>
+<script src="../resources/js-test.js"></script>
 <script type="text/javascript" src="resources/audio-testing.js"></script>
 </head>
 
@@ -59,7 +59,7 @@ function test1Finished() {
 function test1() {
     constructCommonGraph();
 
-    bufferSource.noteOn(0);
+    bufferSource.start(0);
 
     context.oncomplete = test1Finished;
     context.startRendering();
@@ -84,7 +84,7 @@ function test2() {
 
     analyser.connect(context.destination);
 
-    bufferSource.noteOn(0);
+    bufferSource.start(0);
 
     context.oncomplete = test2Finished;
     context.startRendering();
@@ -108,21 +108,16 @@ function test3Finished() {
 function test3() {
     constructCommonGraph();
 
-    var gain = context.createGainNode();
+    var gain = context.createGain();
     analyser.connect(gain);
 
-    bufferSource.noteOn(0);
+    bufferSource.start(0);
 
     context.oncomplete = test3Finished;
     context.startRendering();
 }
 
 function runTest() {
-    if (window.testRunner) {
-        testRunner.dumpAsText();
-        testRunner.waitUntilDone();
-    }
-
     window.jsTestIsAsync = true;
 
     test1();
@@ -131,7 +126,5 @@ function runTest() {
 runTest();
 
 </script>
-
-<script src="../resources/js-test-post.js"></script>
 </body>
 </html>

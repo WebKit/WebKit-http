@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #include "JSValueRef.h"
 
 #include "APICast.h"
+#include "APIUtils.h"
 #include "DateInstance.h"
 #include "Exception.h"
 #include "JSAPIWrapperObject.h"
@@ -52,26 +53,6 @@
 #endif
 
 using namespace JSC;
-
-enum class ExceptionStatus {
-    DidThrow,
-    DidNotThrow
-};
-
-static ExceptionStatus handleExceptionIfNeeded(ExecState* exec, JSValueRef* returnedExceptionRef)
-{
-    if (exec->hadException()) {
-        Exception* exception = exec->exception();
-        if (returnedExceptionRef)
-            *returnedExceptionRef = toRef(exec, exception->value());
-        exec->clearException();
-#if ENABLE(REMOTE_INSPECTOR)
-        exec->vmEntryGlobalObject()->inspectorController().reportAPIException(exec, exception);
-#endif
-        return ExceptionStatus::DidThrow;
-    }
-    return ExceptionStatus::DidNotThrow;
-}
 
 #if PLATFORM(MAC)
 static bool evernoteHackNeeded()
@@ -188,9 +169,10 @@ bool JSValueIsArray(JSContextRef ctx, JSValueRef value)
         return false;
     }
     ExecState* exec = toJS(ctx);
+    VM& vm = exec->vm();
     JSLockHolder locker(exec);
 
-    return toJS(exec, value).inherits(JSArray::info());
+    return toJS(exec, value).inherits(vm, JSArray::info());
 }
 
 bool JSValueIsDate(JSContextRef ctx, JSValueRef value)
@@ -200,9 +182,10 @@ bool JSValueIsDate(JSContextRef ctx, JSValueRef value)
         return false;
     }
     ExecState* exec = toJS(ctx);
+    VM& vm = exec->vm();
     JSLockHolder locker(exec);
 
-    return toJS(exec, value).inherits(DateInstance::info());
+    return toJS(exec, value).inherits(vm, DateInstance::info());
 }
 
 bool JSValueIsObjectOfClass(JSContextRef ctx, JSValueRef value, JSClassRef jsClass)
@@ -212,20 +195,21 @@ bool JSValueIsObjectOfClass(JSContextRef ctx, JSValueRef value, JSClassRef jsCla
         return false;
     }
     ExecState* exec = toJS(ctx);
+    VM& vm = exec->vm();
     JSLockHolder locker(exec);
 
     JSValue jsValue = toJS(exec, value);
     
     if (JSObject* o = jsValue.getObject()) {
-        if (o->inherits(JSProxy::info()))
+        if (o->inherits(vm, JSProxy::info()))
             o = jsCast<JSProxy*>(o)->target();
 
-        if (o->inherits(JSCallbackObject<JSGlobalObject>::info()))
+        if (o->inherits(vm, JSCallbackObject<JSGlobalObject>::info()))
             return jsCast<JSCallbackObject<JSGlobalObject>*>(o)->inherits(jsClass);
-        if (o->inherits(JSCallbackObject<JSDestructibleObject>::info()))
+        if (o->inherits(vm, JSCallbackObject<JSDestructibleObject>::info()))
             return jsCast<JSCallbackObject<JSDestructibleObject>*>(o)->inherits(jsClass);
 #if JSC_OBJC_API_ENABLED
-        if (o->inherits(JSCallbackObject<JSAPIWrapperObject>::info()))
+        if (o->inherits(vm, JSCallbackObject<JSAPIWrapperObject>::info()))
             return jsCast<JSCallbackObject<JSAPIWrapperObject>*>(o)->inherits(jsClass);
 #endif
     }
@@ -420,10 +404,10 @@ JSStringRef JSValueToStringCopy(JSContextRef ctx, JSValueRef value, JSValueRef* 
 
     JSValue jsValue = toJS(exec, value);
     
-    RefPtr<OpaqueJSString> stringRef(OpaqueJSString::create(jsValue.toString(exec)->value(exec)));
+    auto stringRef(OpaqueJSString::create(jsValue.toWTFString(exec)));
     if (handleExceptionIfNeeded(exec, exception) == ExceptionStatus::DidThrow)
         stringRef = nullptr;
-    return stringRef.release().leakRef();
+    return stringRef.leakRef();
 }
 
 JSObjectRef JSValueToObject(JSContextRef ctx, JSValueRef value, JSValueRef* exception)

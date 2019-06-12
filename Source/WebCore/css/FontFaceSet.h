@@ -23,111 +23,94 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FontFaceSet_h
-#define FontFaceSet_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "CSSFontFaceSet.h"
-#include "DOMCoreException.h"
 #include "EventTarget.h"
-#include "JSDOMPromise.h"
-#include <wtf/Optional.h>
-#include <wtf/Ref.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
+#include "JSDOMPromiseDeferred.h"
 
 namespace WebCore {
 
-class Document;
-class FontFace;
+class DOMCoreException;
 
-class FontFaceSet final : public RefCounted<FontFaceSet>, public CSSFontFaceSetClient, public EventTargetWithInlineData, public ActiveDOMObject {
+class FontFaceSet final : public RefCounted<FontFaceSet>, private CSSFontFaceSetClient, public EventTargetWithInlineData, private ActiveDOMObject {
 public:
-    static Ref<FontFaceSet> create(JSC::ExecState& execState, Document& document, const Vector<RefPtr<FontFace>>& initialFaces)
-    {
-        Ref<FontFaceSet> result = adoptRef(*new FontFaceSet(execState, document, initialFaces));
-        result->suspendIfNeeded();
-        return result;
-    }
+    static Ref<FontFaceSet> create(Document&, const Vector<RefPtr<FontFace>>& initialFaces);
+    static Ref<FontFaceSet> create(Document&, CSSFontFaceSet& backing);
     virtual ~FontFaceSet();
 
-    bool has(FontFace*) const;
+    bool has(FontFace&) const;
     size_t size() const;
-    FontFaceSet& add(FontFace*);
-    bool remove(FontFace*);
+    FontFaceSet& add(FontFace&);
+    bool remove(FontFace&);
     void clear();
 
-    void load(const String& font, DeferredWrapper&& promise, ExceptionCode& ec) { load(font, String(" ", String::ConstructFromLiteral), WTFMove(promise), ec); }
-    void load(const String& font, const String& text, DeferredWrapper&& promise, ExceptionCode&);
-    bool check(const String& font, ExceptionCode& ec) { return check(font, String(" ", String::ConstructFromLiteral), ec); }
-    bool check(const String& font, const String& text, ExceptionCode&);
+    using LoadPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<FontFace>>>;
+    void load(const String& font, const String& text, LoadPromise&&);
+    ExceptionOr<bool> check(const String& font, const String& text);
 
-    String status() const;
+    enum class LoadStatus { Loading, Loaded };
+    LoadStatus status() const;
 
-    typedef DOMPromise<FontFaceSet&, DOMCoreException&> Promise;
-    Promise& promise(JSC::ExecState&);
+    using ReadyPromise = DOMPromiseDeferred<IDLInterface<FontFaceSet>>;
+    void registerReady(ReadyPromise&&);
+
+    CSSFontFaceSet& backing() { return m_backing; }
 
     class Iterator {
     public:
         explicit Iterator(FontFaceSet&);
-
-        using Key = RefPtr<FontFace>;
-        using Value = RefPtr<FontFace>;
-
-        bool next(Key& nextKey, Value& nextValue);
+        RefPtr<FontFace> next();
 
     private:
         Ref<FontFaceSet> m_target;
-        size_t m_index { 0 };
+        size_t m_index { 0 }; // FIXME: There needs to be a mechanism to handle when fonts are added or removed from the middle of the FontFaceSet.
     };
     Iterator createIterator() { return Iterator(*this); }
 
-    using RefCounted<FontFaceSet>::ref;
-    using RefCounted<FontFaceSet>::deref;
+    using RefCounted::ref;
+    using RefCounted::deref;
 
 private:
-    struct PendingPromise : public RefCounted<PendingPromise> {
-        typedef DOMPromise<Vector<RefPtr<FontFace>>&, DOMCoreException&> Promise;
-        static Ref<PendingPromise> create(Promise&& promise)
+    struct PendingPromise : RefCounted<PendingPromise> {
+        static Ref<PendingPromise> create(LoadPromise&& promise)
         {
             return adoptRef(*new PendingPromise(WTFMove(promise)));
         }
         ~PendingPromise();
 
     private:
-        PendingPromise(Promise&&);
+        PendingPromise(LoadPromise&&);
 
     public:
         Vector<RefPtr<FontFace>> faces;
-        Promise promise;
+        LoadPromise promise;
+        bool hasReachedTerminalState { false };
     };
 
-    FontFaceSet(JSC::ExecState&, Document&, const Vector<RefPtr<FontFace>>&);
-
-    void fulfillPromise();
+    FontFaceSet(Document&, const Vector<RefPtr<FontFace>>&);
+    FontFaceSet(Document&, CSSFontFaceSet&);
 
     // CSSFontFaceSetClient
-    virtual void startedLoading() override;
-    virtual void completedLoading() override;
-    virtual void faceFinished(CSSFontFace&, CSSFontFace::Status) override;
+    void startedLoading() final;
+    void completedLoading() final;
+    void faceFinished(CSSFontFace&, CSSFontFace::Status) final;
 
     // ActiveDOMObject
-    virtual const char* activeDOMObjectName() const override { return "FontFaceSet"; }
-    virtual bool canSuspendForDocumentSuspension() const override;
+    const char* activeDOMObjectName() const final { return "FontFaceSet"; }
+    bool canSuspendForDocumentSuspension() const final;
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const override { return FontFaceSetEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    EventTargetInterface eventTargetInterface() const final { return FontFaceSetEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
-    CSSFontFaceSet m_backing;
+    Ref<CSSFontFaceSet> m_backing;
     HashMap<RefPtr<FontFace>, Vector<Ref<PendingPromise>>> m_pendingPromises;
-    Optional<Promise> m_promise;
+    std::optional<ReadyPromise> m_promise;
+    bool m_isReady { true };
 };
 
 }
-
-#endif

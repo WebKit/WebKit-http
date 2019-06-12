@@ -24,11 +24,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ContentSecurityPolicySourceList_h
-#define ContentSecurityPolicySourceList_h
+#pragma once
 
+#include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicySource.h"
-#include <wtf/Vector.h>
+#include <wtf/HashSet.h>
+#include <wtf/OptionSet.h>
+#include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -41,29 +43,44 @@ public:
     ContentSecurityPolicySourceList(const ContentSecurityPolicy&, const String& directiveName);
 
     void parse(const String&);
-    bool matches(const URL&);
-    bool allowInline() const { return m_allowInline; }
+
+    bool matches(const URL&, bool didReceiveRedirectResponse);
+    bool matches(const ContentSecurityPolicyHash&) const;
+    bool matches(const String& nonce) const;
+
+    OptionSet<ContentSecurityPolicyHashAlgorithm> hashAlgorithmsUsed() const { return m_hashAlgorithmsUsed; }
+
+    bool allowInline() const { return m_allowInline && m_hashes.isEmpty() && m_nonces.isEmpty(); }
     bool allowEval() const { return m_allowEval; }
     bool allowSelf() const { return m_allowSelf; }
+    bool isNone() const { return m_isNone; }
 
 private:
     void parse(const UChar* begin, const UChar* end);
 
-    bool parseSource(const UChar* begin, const UChar* end, String& scheme, String& host, int& port, String& path, bool& hostHasWildcard, bool& portHasWildcard);
+    bool parseSource(const UChar* begin, const UChar* end, String& scheme, String& host, std::optional<uint16_t>& port, String& path, bool& hostHasWildcard, bool& portHasWildcard);
     bool parseScheme(const UChar* begin, const UChar* end, String& scheme);
     bool parseHost(const UChar* begin, const UChar* end, String& host, bool& hostHasWildcard);
-    bool parsePort(const UChar* begin, const UChar* end, int& port, bool& portHasWildcard);
+    bool parsePort(const UChar* begin, const UChar* end, std::optional<uint16_t>& port, bool& portHasWildcard);
     bool parsePath(const UChar* begin, const UChar* end, String& path);
+
+    bool parseNonceSource(const UChar* begin, const UChar* end);
+
+    bool isProtocolAllowedByStar(const URL&) const;
+
+    bool parseHashSource(const UChar* begin, const UChar* end);
 
     const ContentSecurityPolicy& m_policy;
     Vector<ContentSecurityPolicySource> m_list;
+    HashSet<String> m_nonces;
+    HashSet<ContentSecurityPolicyHash> m_hashes;
+    OptionSet<ContentSecurityPolicyHashAlgorithm> m_hashAlgorithmsUsed;
     String m_directiveName;
     bool m_allowSelf { false };
     bool m_allowStar { false };
     bool m_allowInline { false };
     bool m_allowEval { false };
+    bool m_isNone { false };
 };
 
 } // namespace WebCore
-
-#endif /* ContentSecurityPolicySourceList_h */

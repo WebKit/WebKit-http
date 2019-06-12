@@ -30,22 +30,25 @@ enum DeviceType {
 };
 
 [
-    NoInterfaceObject,
     Conditional=MEDIA_CONTROLS_SCRIPT,
     ImplementationLacksVTable,
+    NoInterfaceObject,
 ] interface MediaControlsHost {
-    TextTrack[] sortedTrackListForMenu(TextTrackList trackList);
-    AudioTrack[] sortedTrackListForMenu(AudioTrackList trackList);
-    DOMString displayNameForTrack(TextTrack track);
-    DOMString displayNameForTrack(AudioTrack track);
+    sequence<TextTrack> sortedTrackListForMenu(TextTrackList trackList);
+    sequence<AudioTrack> sortedTrackListForMenu(AudioTrackList trackList);
+    DOMString displayNameForTrack((TextTrack or AudioTrack)? track);
     readonly attribute TextTrack captionMenuOffItem;
     readonly attribute TextTrack captionMenuAutomaticItem;
     readonly attribute DOMString captionDisplayMode;
-    void setSelectedTextTrack(TextTrack track);
+    void setSelectedTextTrack(TextTrack? track);
+    void setPreparedToReturnVideoLayerToInline(boolean prepared);
     readonly attribute HTMLElement textTrackContainer;
     readonly attribute boolean allowsInlineMediaPlayback;
     readonly attribute boolean supportsFullscreen;
+    readonly attribute boolean isVideoLayerInline;
     readonly attribute boolean userGestureRequired;
+    readonly attribute boolean isInMediaDocument;
+    readonly attribute boolean shouldForceControlsDisplay;
 
     readonly attribute DOMString externalDeviceDisplayName;
     readonly attribute DeviceType externalDeviceType;
@@ -57,4 +60,8 @@ enum DeviceType {
     void exitedFullscreen();
 
     DOMString generateUUID();
+
+    [EnabledAtRuntime=ModernMediaControls] readonly attribute DOMString shadowRootCSSText;
+    [EnabledAtRuntime=ModernMediaControls] DOMString base64StringForIconNameAndType(DOMString iconName, DOMString iconType);
+    [EnabledAtRuntime=ModernMediaControls] DOMString formattedStringForDuration(unrestricted double durationInSeconds);
 };

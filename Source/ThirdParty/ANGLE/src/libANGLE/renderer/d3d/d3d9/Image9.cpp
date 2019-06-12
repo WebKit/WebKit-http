@@ -61,7 +61,7 @@ gl::Error Image9::generateMip(IDirect3DSurface9 *destSurface, IDirect3DSurface9 
     ASSERT(sourceDesc.Height == 1 || sourceDesc.Height / 2 == destDesc.Height);
 
     const d3d9::D3DFormat &d3dFormatInfo = d3d9::GetD3DFormatInfo(sourceDesc.Format);
-    ASSERT(d3dFormatInfo.mipGenerationFunction != NULL);
+    ASSERT(d3dFormatInfo.info().mipGenerationFunction != NULL);
 
     D3DLOCKED_RECT sourceLocked = {0};
     result = sourceSurface->LockRect(&sourceLocked, NULL, D3DLOCK_READONLY);
@@ -85,13 +85,14 @@ gl::Error Image9::generateMip(IDirect3DSurface9 *destSurface, IDirect3DSurface9 
 
     ASSERT(sourceData && destData);
 
-    d3dFormatInfo.mipGenerationFunction(sourceDesc.Width, sourceDesc.Height, 1, sourceData, sourceLocked.Pitch, 0,
-                                        destData, destLocked.Pitch, 0);
+    d3dFormatInfo.info().mipGenerationFunction(sourceDesc.Width, sourceDesc.Height, 1, sourceData,
+                                               sourceLocked.Pitch, 0, destData, destLocked.Pitch,
+                                               0);
 
     destSurface->UnlockRect();
     sourceSurface->UnlockRect();
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 gl::Error Image9::generateMipmap(Image9 *dest, Image9 *source)
@@ -118,7 +119,7 @@ gl::Error Image9::generateMipmap(Image9 *dest, Image9 *source)
 
     dest->markDirty();
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 gl::Error Image9::copyLockableSurfaces(IDirect3DSurface9 *dest, IDirect3DSurface9 *source)
@@ -161,7 +162,7 @@ gl::Error Image9::copyLockableSurfaces(IDirect3DSurface9 *dest, IDirect3DSurface
     source->UnlockRect();
     dest->UnlockRect();
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 bool Image9::redefine(GLenum target, GLenum internalformat, const gl::Extents &size, bool forceRelease)
@@ -201,7 +202,7 @@ gl::Error Image9::createSurface()
 {
     if (mSurface)
     {
-        return gl::Error(GL_NO_ERROR);
+        return gl::NoError();
     }
 
     IDirect3DTexture9 *newTexture = NULL;
@@ -263,7 +264,7 @@ gl::Error Image9::createSurface()
     mDirty = false;
     mD3DPool = poolToUse;
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 gl::Error Image9::lock(D3DLOCKED_RECT *lockedRect, const RECT &rect)
@@ -286,7 +287,7 @@ gl::Error Image9::lock(D3DLOCKED_RECT *lockedRect, const RECT &rect)
         mDirty = true;
     }
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 void Image9::unlock()
@@ -294,7 +295,6 @@ void Image9::unlock()
     if (mSurface)
     {
         HRESULT result = mSurface->UnlockRect();
-        UNUSED_ASSERTION_VARIABLE(result);
         ASSERT(SUCCEEDED(result));
     }
 }
@@ -324,14 +324,14 @@ gl::Error Image9::getSurface(IDirect3DSurface9 **outSurface)
     }
 
     *outSurface = mSurface;
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 gl::Error Image9::setManagedSurface2D(TextureStorage *storage, int level)
 {
     IDirect3DSurface9 *surface = NULL;
-    TextureStorage9_2D *storage9 = GetAs<TextureStorage9_2D>(storage);
-    gl::Error error = storage9->getSurfaceLevel(level, false, &surface);
+    TextureStorage9 *storage9  = GetAs<TextureStorage9>(storage);
+    gl::Error error = storage9->getSurfaceLevel(GL_TEXTURE_2D, level, false, &surface);
     if (error.isError())
     {
         return error;
@@ -342,8 +342,9 @@ gl::Error Image9::setManagedSurface2D(TextureStorage *storage, int level)
 gl::Error Image9::setManagedSurfaceCube(TextureStorage *storage, int face, int level)
 {
     IDirect3DSurface9 *surface = NULL;
-    TextureStorage9_Cube *storage9 = GetAs<TextureStorage9_Cube>(storage);
-    gl::Error error = storage9->getCubeMapSurface(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, false, &surface);
+    TextureStorage9 *storage9 = GetAs<TextureStorage9>(storage);
+    gl::Error error =
+        storage9->getSurfaceLevel(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, level, false, &surface);
     if (error.isError())
     {
         return error;
@@ -373,7 +374,7 @@ gl::Error Image9::setManagedSurface(IDirect3DSurface9 *surface)
         mD3DPool = desc.Pool;
     }
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 gl::Error Image9::copyToStorage(TextureStorage *storage, const gl::ImageIndex &index, const gl::Box &region)
@@ -384,12 +385,13 @@ gl::Error Image9::copyToStorage(TextureStorage *storage, const gl::ImageIndex &i
         return error;
     }
 
+    TextureStorage9 *storage9 = GetAs<TextureStorage9>(storage);
+
     IDirect3DSurface9 *destSurface = NULL;
 
     if (index.type == GL_TEXTURE_2D)
     {
-        TextureStorage9_2D *storage9 = GetAs<TextureStorage9_2D>(storage);
-        error = storage9->getSurfaceLevel(index.mipIndex, true, &destSurface);
+        error = storage9->getSurfaceLevel(GL_TEXTURE_2D, index.mipIndex, true, &destSurface);
         if (error.isError())
         {
             return error;
@@ -398,8 +400,7 @@ gl::Error Image9::copyToStorage(TextureStorage *storage, const gl::ImageIndex &i
     else
     {
         ASSERT(gl::IsCubeMapTextureTarget(index.type));
-        TextureStorage9_Cube *storage9 = GetAs<TextureStorage9_Cube>(storage);
-        error = storage9->getCubeMapSurface(index.type, index.mipIndex, true, &destSurface);
+        error = storage9->getSurfaceLevel(index.type, index.mipIndex, true, &destSurface);
         if (error.isError())
         {
             return error;
@@ -467,18 +468,28 @@ gl::Error Image9::copyToSurface(IDirect3DSurface9 *destSurface, const gl::Box &a
         }
     }
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 // Store the pixel rectangle designated by xoffset,yoffset,width,height with pixels stored as format/type at input
 // into the target pixel rectangle.
-gl::Error Image9::loadData(const gl::Box &area, const gl::PixelUnpackState &unpack, GLenum type, const void *input)
+gl::Error Image9::loadData(const gl::Box &area,
+                           const gl::PixelUnpackState &unpack,
+                           GLenum type,
+                           const void *input,
+                           bool applySkipImages)
 {
     // 3D textures are not supported by the D3D9 backend.
     ASSERT(area.z == 0 && area.depth == 1);
 
     const gl::InternalFormat &formatInfo = gl::GetInternalFormatInfo(mInternalFormat);
-    GLsizei inputRowPitch = formatInfo.computeRowPitch(type, area.width, unpack.alignment, unpack.rowLength);
+    GLuint inputRowPitch                 = 0;
+    ANGLE_TRY_RESULT(
+        formatInfo.computeRowPitch(type, area.width, unpack.alignment, unpack.rowLength),
+        inputRowPitch);
+    ASSERT(!applySkipImages);
+    ASSERT(unpack.skipPixels == 0);
+    ASSERT(unpack.skipRows == 0);
 
     const d3d9::TextureFormat &d3dFormatInfo = d3d9::GetTextureFormatInfo(mInternalFormat);
     ASSERT(d3dFormatInfo.loadFunction != NULL);
@@ -497,12 +508,12 @@ gl::Error Image9::loadData(const gl::Box &area, const gl::PixelUnpackState &unpa
     }
 
     d3dFormatInfo.loadFunction(area.width, area.height, area.depth,
-                               reinterpret_cast<const uint8_t*>(input), inputRowPitch, 0,
-                               reinterpret_cast<uint8_t*>(locked.pBits), locked.Pitch, 0);
+                               reinterpret_cast<const uint8_t *>(input), inputRowPitch, 0,
+                               reinterpret_cast<uint8_t *>(locked.pBits), locked.Pitch, 0);
 
     unlock();
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 gl::Error Image9::loadCompressedData(const gl::Box &area, const void *input)
@@ -511,8 +522,11 @@ gl::Error Image9::loadCompressedData(const gl::Box &area, const void *input)
     ASSERT(area.z == 0 && area.depth == 1);
 
     const gl::InternalFormat &formatInfo = gl::GetInternalFormatInfo(mInternalFormat);
-    GLsizei inputRowPitch = formatInfo.computeRowPitch(GL_UNSIGNED_BYTE, area.width, 1, 0);
-    GLsizei inputDepthPitch = formatInfo.computeDepthPitch(GL_UNSIGNED_BYTE, area.width, area.height, 1, 0);
+    GLsizei inputRowPitch                = 0;
+    ANGLE_TRY_RESULT(formatInfo.computeRowPitch(GL_UNSIGNED_BYTE, area.width, 1, 0), inputRowPitch);
+    GLsizei inputDepthPitch = 0;
+    ANGLE_TRY_RESULT(formatInfo.computeDepthPitch(area.height, 0, inputDepthPitch),
+                     inputDepthPitch);
 
     const d3d9::TextureFormat &d3d9FormatInfo = d3d9::GetTextureFormatInfo(mInternalFormat);
 
@@ -540,11 +554,13 @@ gl::Error Image9::loadCompressedData(const gl::Box &area, const void *input)
 
     unlock();
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
 // This implements glCopyTex[Sub]Image2D for non-renderable internal texture formats and incomplete textures
-gl::Error Image9::copy(const gl::Offset &destOffset, const gl::Rectangle &sourceArea, RenderTargetD3D *source)
+gl::Error Image9::copyFromRTInternal(const gl::Offset &destOffset,
+                                     const gl::Rectangle &sourceArea,
+                                     RenderTargetD3D *source)
 {
     ASSERT(source);
 
@@ -769,14 +785,38 @@ gl::Error Image9::copy(const gl::Offset &destOffset, const gl::Rectangle &source
     SafeRelease(surface);
 
     mDirty = true;
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
-gl::Error Image9::copy(const gl::Offset &destOffset, const gl::Box &area, const gl::ImageIndex &srcIndex, TextureStorage *srcStorage)
+gl::Error Image9::copyFromTexStorage(const gl::ImageIndex &imageIndex, TextureStorage *source)
 {
-    // Currently unreachable, due to only being used in a D3D11-only workaround
-    UNIMPLEMENTED();
-    return gl::Error(GL_INVALID_OPERATION);
+    RenderTargetD3D *renderTarget = nullptr;
+    gl::Error error = source->getRenderTarget(imageIndex, &renderTarget);
+    if (error.isError())
+    {
+        return error;
+    }
+
+    gl::Rectangle sourceArea(0, 0, mWidth, mHeight);
+    return copyFromRTInternal(gl::Offset(), sourceArea, renderTarget);
 }
 
+gl::Error Image9::copyFromFramebuffer(const gl::Offset &destOffset,
+                                      const gl::Rectangle &sourceArea,
+                                      const gl::Framebuffer *source)
+{
+    const gl::FramebufferAttachment *srcAttachment = source->getReadColorbuffer();
+    ASSERT(srcAttachment);
+
+    RenderTargetD3D *renderTarget = NULL;
+    gl::Error error = srcAttachment->getRenderTarget(&renderTarget);
+    if (error.isError())
+    {
+        return error;
+    }
+
+    ASSERT(renderTarget);
+    return copyFromRTInternal(destOffset, sourceArea, renderTarget);
 }
+
+}  // namespace rx

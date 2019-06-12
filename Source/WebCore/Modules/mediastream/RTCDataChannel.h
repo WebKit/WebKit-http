@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,16 +23,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCDataChannel_h
-#define RTCDataChannel_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
+#include "ActiveDOMObject.h"
+#include "Event.h"
 #include "EventTarget.h"
+#include "ExceptionOr.h"
+#include "RTCDataChannelHandler.h"
 #include "RTCDataChannelHandlerClient.h"
 #include "ScriptWrappable.h"
 #include "Timer.h"
-#include <wtf/RefCounted.h>
 
 namespace JSC {
     class ArrayBuffer;
@@ -41,80 +44,79 @@ namespace JSC {
 namespace WebCore {
 
 class Blob;
-class Dictionary;
-class RTCDataChannelHandler;
 class RTCPeerConnectionHandler;
 
-class RTCDataChannel final : public RefCounted<RTCDataChannel>, public EventTargetWithInlineData, public RTCDataChannelHandlerClient {
+class RTCDataChannel final : public ActiveDOMObject, public RTCDataChannelHandlerClient, public EventTargetWithInlineData {
 public:
-    static Ref<RTCDataChannel> create(ScriptExecutionContext*, std::unique_ptr<RTCDataChannelHandler>);
-    static RefPtr<RTCDataChannel> create(ScriptExecutionContext*, RTCPeerConnectionHandler*, const String& label, const Dictionary& options, ExceptionCode&);
-    ~RTCDataChannel();
+    static Ref<RTCDataChannel> create(ScriptExecutionContext&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
 
-    String label() const;
-    bool ordered() const;
-    unsigned short maxRetransmitTime() const;
-    unsigned short maxRetransmits() const;
-    String protocol() const;
-    bool negotiated() const;
-    unsigned short id() const;
-    AtomicString readyState() const;
-    unsigned long bufferedAmount() const;
+    bool ordered() const { return *m_options.ordered; }
+    std::optional<unsigned short> maxPacketLifeTime() const { return m_options.maxPacketLifeTime; }
+    std::optional<unsigned short> maxRetransmits() const { return m_options.maxRetransmits; }
+    String protocol() const { return m_options.protocol; }
+    bool negotiated() const { return *m_options.negotiated; };
+    std::optional<unsigned short> id() const { return m_options.id; };
 
-    AtomicString binaryType() const;
-    void setBinaryType(const AtomicString&, ExceptionCode&);
+    String label() const { return m_label; }
+    RTCDataChannelState readyState() const {return m_readyState; }
+    size_t bufferedAmount() const;
+    size_t bufferedAmountLowThreshold() const { return m_bufferedAmountLowThreshold; }
+    void setBufferedAmountLowThreshold(size_t value) { m_bufferedAmountLowThreshold = value; }
 
-    void send(const String&, ExceptionCode&);
-    void send(PassRefPtr<JSC::ArrayBuffer>, ExceptionCode&);
-    void send(PassRefPtr<JSC::ArrayBufferView>, ExceptionCode&);
-    void send(PassRefPtr<Blob>, ExceptionCode&);
+    const AtomicString& binaryType() const;
+    ExceptionOr<void> setBinaryType(const AtomicString&);
+
+    ExceptionOr<void> send(const String&);
+    ExceptionOr<void> send(JSC::ArrayBuffer&);
+    ExceptionOr<void> send(JSC::ArrayBufferView&);
+    ExceptionOr<void> send(Blob&);
 
     void close();
 
-    void stop();
-
-    // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const override { return RTCDataChannelEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return m_scriptExecutionContext; }
-
-    using RefCounted<RTCDataChannel>::ref;
-    using RefCounted<RTCDataChannel>::deref;
+    using RTCDataChannelHandlerClient::ref;
+    using RTCDataChannelHandlerClient::deref;
 
 private:
-    RTCDataChannel(ScriptExecutionContext*, std::unique_ptr<RTCDataChannelHandler>);
+    RTCDataChannel(ScriptExecutionContext&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
 
     void scheduleDispatchEvent(Ref<Event>&&);
     void scheduledEventTimerFired();
 
-    // EventTarget
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    EventTargetInterface eventTargetInterface() const final { return RTCDataChannelEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return m_scriptExecutionContext; }
 
-    ScriptExecutionContext* m_scriptExecutionContext;
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
-    // RTCDataChannelHandlerClient
-    virtual void didChangeReadyState(ReadyState) override;
-    virtual void didReceiveStringData(const String&) override;
-    virtual void didReceiveRawData(const char*, size_t) override;
-    virtual void didDetectError() override;
+    // ActiveDOMObject API
+    void stop() final;
+    const char* activeDOMObjectName() const final { return "RTCDataChannel"; }
+    bool canSuspendForDocumentSuspension() const final { return m_readyState == RTCDataChannelState::Closed; }
+
+    // RTCDataChannelHandlerClient API
+    void didChangeReadyState(RTCDataChannelState) final;
+    void didReceiveStringData(const String&) final;
+    void didReceiveRawData(const char*, size_t) final;
+    void didDetectError() final;
+    void bufferedAmountIsDecreasing(size_t) final;
 
     std::unique_ptr<RTCDataChannelHandler> m_handler;
 
-    bool m_stopped;
+    // FIXME: m_stopped is probably redundant with m_readyState.
+    bool m_stopped { false };
+    RTCDataChannelState m_readyState { RTCDataChannelState::Connecting };
 
-    ReadyState m_readyState;
-    enum BinaryType {
-        BinaryTypeBlob,
-        BinaryTypeArrayBuffer
-    };
-    BinaryType m_binaryType;
+    enum class BinaryType { Blob, ArrayBuffer };
+    BinaryType m_binaryType { BinaryType::ArrayBuffer };
 
     Timer m_scheduledEventTimer;
     Vector<Ref<Event>> m_scheduledEvents;
+
+    String m_label;
+    RTCDataChannelInit m_options;
+    size_t m_bufferedAmountLowThreshold { 0 };
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCDataChannel_h
+#endif // ENABLE(WEB_RTC)

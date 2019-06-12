@@ -1,3 +1,5 @@
+'use strict';
+
 class Instrumentation {
 
     static startMeasuringTime(domain, label)
@@ -35,13 +37,13 @@ class Instrumentation {
         if (!this._statistics)
             return;
         var maxKeyLength = 0;
-        for (var key in this._statistics)
+        for (let key in this._statistics)
             maxKeyLength = Math.max(key.length, maxKeyLength);
 
-        for (var key in this._statistics) {
-            var item = this._statistics[key];
-            var keySuffix = ' '.repeat(maxKeyLength - key.length);
-            var log = `${key}${keySuffix}: `;
+        for (let key of Object.keys(this._statistics).sort()) {
+            const item = this._statistics[key];
+            const keySuffix = ' '.repeat(maxKeyLength - key.length);
+            let log = `${key}${keySuffix}: `;
             log += ` mean = ${item.mean.toFixed(2)} ${item.unit}`;
             if (item.unit == 'ms')
                 log += ` total = ${item.value.toFixed(2)} ${item.unit}`;
@@ -53,3 +55,6 @@ class Instrumentation {
     }
 
 }
+
+if (typeof module != 'undefined')
+    module.exports.Instrumentation = Instrumentation;

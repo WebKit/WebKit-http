@@ -30,13 +30,13 @@
 #include "FrameSelection.h"
 #include "FrameTree.h"
 #include "HTMLAnchorElement.h"
-#include "HTMLAreaElement.h"
 #include "HTMLAttachmentElement.h"
-#include "HTMLAudioElement.h"
+#include "HTMLEmbedElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
+#include "HTMLObjectElement.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLPlugInImageElement.h"
 #include "HTMLTextAreaElement.h"
@@ -48,7 +48,6 @@
 #include "RenderInline.h"
 #include "SVGAElement.h"
 #include "SVGImageElement.h"
-#include "SVGNames.h"
 #include "Scrollbar.h"
 #include "ShadowRoot.h"
 #include "TextIterator.h"
@@ -121,16 +120,27 @@ HitTestResult& HitTestResult::operator=(const HitTestResult& other)
     return *this;
 }
 
-void HitTestResult::setToNonShadowAncestor()
+static Node* moveOutOfUserAgentShadowTree(Node& node)
 {
-    Node* node = innerNode();
-    if (node)
-        node = node->document().ancestorInThisScope(node);
-    setInnerNode(node);
-    node = innerNonSharedNode();
-    if (node)
-        node = node->document().ancestorInThisScope(node);
-    setInnerNonSharedNode(node);
+    if (node.isInShadowTree()) {
+        if (ShadowRoot* root = node.containingShadowRoot()) {
+            if (root->mode() == ShadowRootMode::UserAgent)
+                return root->host();
+        }
+    }
+    return &node;
+}
+
+void HitTestResult::setToNonUserAgentShadowAncestor()
+{
+    if (Node* node = innerNode()) {
+        node = moveOutOfUserAgentShadowTree(*node);
+        setInnerNode(node);
+    }
+    if (Node *node = innerNonSharedNode()) {
+        node = moveOutOfUserAgentShadowTree(*node);
+        setInnerNonSharedNode(node);
+    }
 }
 
 void HitTestResult::setInnerNode(Node* node)
@@ -246,7 +256,7 @@ String HitTestResult::title(TextDirection& dir) const
     dir = LTR;
     // Find the title in the nearest enclosing DOM node.
     // For <area> tags in image maps, walk the tree for the <area>, not the <img> using it.
-    for (Node* titleNode = m_innerNode.get(); titleNode; titleNode = titleNode->parentNode()) {
+    for (Node* titleNode = m_innerNode.get(); titleNode; titleNode = titleNode->parentInComposedTree()) {
         if (is<Element>(*titleNode)) {
             Element& titleElement = downcast<Element>(*titleNode);
             String title = titleElement.title();
@@ -262,7 +272,7 @@ String HitTestResult::title(TextDirection& dir) const
 
 String HitTestResult::innerTextIfTruncated(TextDirection& dir) const
 {
-    for (Node* truncatedNode = m_innerNode.get(); truncatedNode; truncatedNode = truncatedNode->parentNode()) {
+    for (Node* truncatedNode = m_innerNode.get(); truncatedNode; truncatedNode = truncatedNode->parentInComposedTree()) {
         if (!is<Element>(*truncatedNode))
             continue;
 
@@ -300,7 +310,7 @@ String HitTestResult::altDisplayString() const
     
     if (is<HTMLImageElement>(*m_innerNonSharedNode)) {
         HTMLImageElement& image = downcast<HTMLImageElement>(*m_innerNonSharedNode);
-        return displayString(image.fastGetAttribute(altAttr), m_innerNonSharedNode.get());
+        return displayString(image.attributeWithoutSynchronization(altAttr), m_innerNonSharedNode.get());
     }
     
     if (is<HTMLInputElement>(*m_innerNonSharedNode)) {
@@ -447,7 +457,7 @@ bool HitTestResult::mediaIsInFullscreen() const
 {
 #if ENABLE(VIDEO)
     if (HTMLMediaElement* mediaElement = this->mediaElement())
-        return mediaElement->isVideo() && mediaElement->isFullscreen();
+        return mediaElement->isVideo() && mediaElement->isStandardFullscreen();
 #endif
     return false;
 }
@@ -457,8 +467,8 @@ void HitTestResult::toggleMediaFullscreenState() const
 #if ENABLE(VIDEO)
     if (HTMLMediaElement* mediaElement = this->mediaElement()) {
         if (mediaElement->isVideo() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
-            mediaElement->toggleFullscreenState();
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
+            mediaElement->toggleStandardFullscreenState();
         }
     }
 #endif
@@ -471,7 +481,7 @@ void HitTestResult::enterFullscreenForVideo() const
     if (is<HTMLVideoElement>(mediaElement)) {
         HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
         if (!videoElement.isFullscreen() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
             videoElement.enterFullscreen();
         }
     }
@@ -657,8 +667,9 @@ bool HitTestResult::addNodeToRectBasedTestResult(Node* node, const HitTestReques
     if (!node)
         return true;
 
-    if (request.disallowsShadowContent())
-        node = node->document().ancestorInThisScope(node);
+    // FIXME: This moves out of a author shadow tree.
+    if (request.disallowsUserAgentShadowContent())
+        node = node->document().ancestorNodeInThisScope(node);
 
     mutableRectBasedTestResult().add(node);
 
@@ -677,8 +688,9 @@ bool HitTestResult::addNodeToRectBasedTestResult(Node* node, const HitTestReques
     if (!node)
         return true;
 
-    if (request.disallowsShadowContent())
-        node = node->document().ancestorInThisScope(node);
+    // FIXME: This moves out of a author shadow tree.
+    if (request.disallowsUserAgentShadowContent())
+        node = node->document().ancestorNodeInThisScope(node);
 
     mutableRectBasedTestResult().add(node);
 
@@ -735,7 +747,7 @@ Vector<String> HitTestResult::dictationAlternatives() const
     if (!frame)
         return Vector<String>();
 
-    return frame->editor().dictationAlternativesForMarker(marker);
+    return frame->editor().dictationAlternativesForMarker(*marker);
 }
 
 Node* HitTestResult::targetNode() const
@@ -743,24 +755,23 @@ Node* HitTestResult::targetNode() const
     Node* node = innerNode();
     if (!node)
         return 0;
-    if (node->inDocument())
+    if (node->isConnected())
         return node;
 
     Element* element = node->parentElement();
-    if (element && element->inDocument())
+    if (element && element->isConnected())
         return element;
 
     return node;
 }
 
-Element* HitTestResult::innerElement() const
+Element* HitTestResult::targetElement() const
 {
-    Node* node = m_innerNode.get();
-    if (!node)
-        return nullptr;
-    if (is<Element>(*node))
-        return downcast<Element>(node);
-    return node->parentElement();
+    for (Node* node = m_innerNode.get(); node; node = node->parentInComposedTree()) {
+        if (is<Element>(*node))
+            return downcast<Element>(node);
+    }
+    return nullptr;
 }
 
 Element* HitTestResult::innerNonSharedElement() const
@@ -771,6 +782,50 @@ Element* HitTestResult::innerNonSharedElement() const
     if (is<Element>(*node))
         return downcast<Element>(node);
     return node->parentElement();
+}
+
+String HitTestResult::linkSuggestedFilename() const
+{
+    auto* urlElement = URLElement();
+    if (!is<HTMLAnchorElement>(urlElement))
+        return nullAtom();
+    return ResourceResponse::sanitizeSuggestedFilename(urlElement->attributeWithoutSynchronization(HTMLNames::downloadAttr));
+}
+
+bool HitTestResult::mediaSupportsEnhancedFullscreen() const
+{
+#if PLATFORM(MAC) && ENABLE(VIDEO) && ENABLE(VIDEO_PRESENTATION_MODE)
+    HTMLMediaElement* mediaElt(mediaElement());
+    return is<HTMLVideoElement>(mediaElt) && mediaElt->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
+#else
+    return false;
+#endif
+}
+
+bool HitTestResult::mediaIsInEnhancedFullscreen() const
+{
+#if PLATFORM(MAC) && ENABLE(VIDEO) && ENABLE(VIDEO_PRESENTATION_MODE)
+    HTMLMediaElement* mediaElt(mediaElement());
+    return is<HTMLVideoElement>(mediaElt) && mediaElt->fullscreenMode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture;
+#else
+    return false;
+#endif
+}
+
+void HitTestResult::toggleEnhancedFullscreenForVideo() const
+{
+#if PLATFORM(MAC) && ENABLE(VIDEO) && ENABLE(VIDEO_PRESENTATION_MODE)
+    HTMLMediaElement* mediaElement(this->mediaElement());
+    if (!is<HTMLVideoElement>(mediaElement) || !mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture))
+        return;
+
+    HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
+    UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
+    if (videoElement.fullscreenMode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture)
+        videoElement.exitFullscreen();
+    else
+        videoElement.enterFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
+#endif
 }
 
 } // namespace WebCore

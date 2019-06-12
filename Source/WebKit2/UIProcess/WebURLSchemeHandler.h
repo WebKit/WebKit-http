@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "WebURLSchemeHandlerTask.h"
+#include "WebURLSchemeTask.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -45,19 +45,19 @@ public:
 
     uint64_t identifier() const { return m_identifier; }
 
-    void startTask(WebPageProxy&, uint64_t resourceIdentifier, const WebCore::ResourceRequest&);
-    void stopTask(WebPageProxy&, uint64_t resourceIdentifier);
+    void startTask(WebPageProxy&, uint64_t taskIdentifier, const WebCore::ResourceRequest&);
+    void stopTask(WebPageProxy&, uint64_t taskIdentifier);
 
 protected:
     WebURLSchemeHandler();
 
 private:
-    virtual void platformStartTask(WebPageProxy&, WebURLSchemeHandlerTask&) = 0;
-    virtual void platformStopTask(WebPageProxy&, WebURLSchemeHandlerTask&) = 0;
+    virtual void platformStartTask(WebPageProxy&, WebURLSchemeTask&) = 0;
+    virtual void platformStopTask(WebPageProxy&, WebURLSchemeTask&) = 0;
 
     uint64_t m_identifier;
 
-    HashMap<uint64_t, RefPtr<WebURLSchemeHandlerTask>> m_tasks;
+    HashMap<uint64_t, Ref<WebURLSchemeTask>> m_tasks;
 
 }; // class WebURLSchemeHandler
 

@@ -26,11 +26,10 @@
 #include "config.h"
 #include "JSDollarVM.h"
 
-#include "JSCJSValueInlines.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
-const ClassInfo JSDollarVM::s_info = { "DollarVM", &Base::s_info, 0, CREATE_METHOD_TABLE(JSDollarVM) };
+const ClassInfo JSDollarVM::s_info = { "DollarVM", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSDollarVM) };
 
 } // namespace JSC

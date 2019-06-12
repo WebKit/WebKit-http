@@ -26,16 +26,16 @@
 [
     Conditional=INDEXED_DATABASE,
     ImplementationLacksVTable,
-    EnabledAtRuntime=IndexedDB,
 ] interface IDBKeyRange {
-    [ImplementedAs=lowerValue,CallWith=ScriptExecutionContext] readonly attribute any lower;
-    [ImplementedAs=upperValue,CallWith=ScriptExecutionContext] readonly attribute any upper;
+    readonly attribute [OverrideIDLType=IDLIDBKey] any lower;
+    readonly attribute [OverrideIDLType=IDLIDBKey] any upper;
     readonly attribute boolean lowerOpen;
     readonly attribute boolean upperOpen;
 
-    [CallWith=ScriptExecutionContext, RaisesException] static IDBKeyRange only(any value);
-    [CallWith=ScriptExecutionContext, RaisesException] static IDBKeyRange lowerBound(any lower, optional boolean open);
-    [CallWith=ScriptExecutionContext, RaisesException] static IDBKeyRange upperBound(any upper, optional boolean open);
-    [CallWith=ScriptExecutionContext, RaisesException] static IDBKeyRange bound(any lower, any upper, optional boolean lowerOpen, optional boolean upperOpen);
-};
+    [CallWith=ScriptState, MayThrowException] static IDBKeyRange only(any value);
+    [CallWith=ScriptState, MayThrowException] static IDBKeyRange lowerBound(any lower, optional boolean open = false);
+    [CallWith=ScriptState, MayThrowException] static IDBKeyRange upperBound(any upper, optional boolean open = false);
+    [CallWith=ScriptState, MayThrowException] static IDBKeyRange bound(any lower, any upper, optional boolean lowerOpen = false, optional boolean upperOpen = false);
 
+    [CallWith=ScriptState, MayThrowException] boolean includes(any key);
+};

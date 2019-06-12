@@ -28,8 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorNodeFinder_h
-#define InspectorNodeFinder_h
+#pragma once
 
 #include <wtf/ListHashSet.h>
 #include <wtf/text/WTFString.h>
@@ -50,9 +49,9 @@ private:
     bool matchesAttribute(const Attribute&);
     bool matchesElement(const Element&);
 
-    void searchUsingDOMTreeTraversal(Node*);
-    void searchUsingXPath(Node*);
-    void searchUsingCSSSelectors(Node*);
+    void searchUsingDOMTreeTraversal(Node&);
+    void searchUsingXPath(Node&);
+    void searchUsingCSSSelectors(Node&);
 
     bool m_startTagFound;
     bool m_endTagFound;
@@ -66,5 +65,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // InspectorNodeFinder_h

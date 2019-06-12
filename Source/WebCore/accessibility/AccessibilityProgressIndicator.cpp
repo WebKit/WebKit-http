@@ -21,10 +21,12 @@
 #include "config.h"
 #include "AccessibilityProgressIndicator.h"
 
+#include "AXObjectCache.h"
 #include "FloatConversion.h"
 #include "HTMLMeterElement.h"
 #include "HTMLNames.h"
 #include "HTMLProgressElement.h"
+#include "LocalizedStrings.h"
 #include "RenderMeter.h"
 #include "RenderObject.h"
 #include "RenderProgress.h"
@@ -60,6 +62,36 @@ bool AccessibilityProgressIndicator::computeAccessibilityIsIgnored() const
     return accessibilityIsIgnoredByDefault();
 }
     
+String AccessibilityProgressIndicator::valueDescription() const
+{
+    // If the author has explicitly provided a value through aria-valuetext, use it.
+    String description = AccessibilityRenderObject::valueDescription();
+    if (!description.isEmpty())
+        return description;
+
+#if ENABLE(METER_ELEMENT)
+    if (!m_renderer->isMeter())
+        return String();
+
+    HTMLMeterElement* meter = meterElement();
+    if (!meter)
+        return String();
+
+    // The HTML spec encourages authors to include a textual representation of the meter's state in
+    // the element's contents. We'll fall back on that if there is not a more accessible alternative.
+    AccessibilityObject* axMeter = axObjectCache()->getOrCreate(meter);
+    if (is<AccessibilityNodeObject>(axMeter)) {
+        description = downcast<AccessibilityNodeObject>(axMeter)->accessibilityDescriptionForChildren();
+        if (!description.isEmpty())
+            return description;
+    }
+
+    return meter->textContent();
+#endif
+
+    return String();
+}
+
 float AccessibilityProgressIndicator::valueForRange() const
 {
     if (!m_renderer)
@@ -135,6 +167,32 @@ HTMLMeterElement* AccessibilityProgressIndicator::meterElement() const
         return nullptr;
 
     return downcast<RenderMeter>(*m_renderer).meterElement();
+}
+
+String AccessibilityProgressIndicator::gaugeRegionValueDescription() const
+{
+#if PLATFORM(COCOA)
+    if (!m_renderer || !m_renderer->isMeter())
+        return String();
+    
+    // Only expose this when the author has explicitly specified the following attributes.
+    if (!hasAttribute(lowAttr) && !hasAttribute(highAttr) && !hasAttribute(optimumAttr))
+        return String();
+    
+    if (HTMLMeterElement* element = meterElement()) {
+        switch (element->gaugeRegion()) {
+        case HTMLMeterElement::GaugeRegionOptimum:
+            return AXMeterGaugeRegionOptimumText();
+        case HTMLMeterElement::GaugeRegionSuboptimal:
+            return AXMeterGaugeRegionSuboptimalText();
+        case HTMLMeterElement::GaugeRegionEvenLessGood:
+            return AXMeterGaugeRegionLessGoodText();
+        default:
+            break;
+        }
+    }
+#endif
+    return String();
 }
 #endif
 

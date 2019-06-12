@@ -33,7 +33,6 @@
 #include "FloatPoint.h"
 #include "FloatRect.h"
 #include "PODIntervalTree.h"
-#include "ValueToString.h"
 #include "WindRule.h"
 #include <memory>
 #include <wtf/Vector.h>
@@ -94,13 +93,13 @@ public:
 class FloatPolygonEdge : public VertexPair {
     friend class FloatPolygon;
 public:
-    virtual const FloatPoint& vertex1() const override
+    const FloatPoint& vertex1() const override
     {
         ASSERT(m_polygon);
         return m_polygon->vertexAt(m_vertexIndex1);
     }
 
-    virtual const FloatPoint& vertex2() const override
+    const FloatPoint& vertex2() const override
     {
         ASSERT(m_polygon);
         return m_polygon->vertexAt(m_vertexIndex2);

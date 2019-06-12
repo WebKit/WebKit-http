@@ -37,17 +37,16 @@
 #include "ScrollingTreeScrollingNode.h"
 #include "ScrollingTreeStickyNode.h"
 #include <wtf/MainThread.h>
-#include <wtf/TemporaryChange.h>
 
 namespace WebCore {
 
-Ref<ScrollingTreeIOS> ScrollingTreeIOS::create(AsyncScrollingCoordinator* scrollingCoordinator)
+Ref<ScrollingTreeIOS> ScrollingTreeIOS::create(AsyncScrollingCoordinator& scrollingCoordinator)
 {
     return adoptRef(*new ScrollingTreeIOS(scrollingCoordinator));
 }
 
-ScrollingTreeIOS::ScrollingTreeIOS(AsyncScrollingCoordinator* scrollingCoordinator)
-    : m_scrollingCoordinator(scrollingCoordinator)
+ScrollingTreeIOS::ScrollingTreeIOS(AsyncScrollingCoordinator& scrollingCoordinator)
+    : m_scrollingCoordinator(&scrollingCoordinator)
 {
 }
 
@@ -67,18 +66,11 @@ void ScrollingTreeIOS::invalidate()
     // Since this can potentially be the last reference to the scrolling coordinator,
     // we need to release it on the main thread since it has member variables (such as timers)
     // that expect to be destroyed from the main thread.
-    ScrollingCoordinator* scrollingCoordinator = m_scrollingCoordinator.release().leakRef();
-    callOnMainThread([scrollingCoordinator] {
-        scrollingCoordinator->deref();
+    callOnMainThread([scrollingCoordinator = WTFMove(m_scrollingCoordinator)] {
     });
 }
 
-void ScrollingTreeIOS::commitNewTreeState(std::unique_ptr<ScrollingStateTree> scrollingStateTree)
-{
-    ScrollingTree::commitNewTreeState(WTFMove(scrollingStateTree));
-}
-
-void ScrollingTreeIOS::scrollingTreeNodeDidScroll(ScrollingNodeID nodeID, const FloatPoint& scrollPosition, SetOrSyncScrollingLayerPosition scrollingLayerPositionAction)
+void ScrollingTreeIOS::scrollingTreeNodeDidScroll(ScrollingNodeID nodeID, const FloatPoint& scrollPosition, const std::optional<FloatPoint>& layoutViewportOrigin, ScrollingLayerPositionAction scrollingLayerPositionAction)
 {
     if (!m_scrollingCoordinator)
         return;
@@ -86,28 +78,26 @@ void ScrollingTreeIOS::scrollingTreeNodeDidScroll(ScrollingNodeID nodeID, const 
     if (nodeID == rootNode()->scrollingNodeID())
         setMainFrameScrollPosition(scrollPosition);
 
-    RefPtr<AsyncScrollingCoordinator> scrollingCoordinator = m_scrollingCoordinator;
-    bool localIsHandlingProgrammaticScroll = isHandlingProgrammaticScroll();
-
-    callOnMainThread([scrollingCoordinator, nodeID, scrollPosition, localIsHandlingProgrammaticScroll, scrollingLayerPositionAction] {
-        scrollingCoordinator->scheduleUpdateScrollPositionAfterAsyncScroll(nodeID, scrollPosition, localIsHandlingProgrammaticScroll, scrollingLayerPositionAction);
+    callOnMainThread([scrollingCoordinator = m_scrollingCoordinator, nodeID, scrollPosition, layoutViewportOrigin, localIsHandlingProgrammaticScroll = isHandlingProgrammaticScroll(), scrollingLayerPositionAction] {
+        scrollingCoordinator->scheduleUpdateScrollPositionAfterAsyncScroll(nodeID, scrollPosition, layoutViewportOrigin, localIsHandlingProgrammaticScroll, scrollingLayerPositionAction);
     });
 }
 
-PassRefPtr<ScrollingTreeNode> ScrollingTreeIOS::createScrollingTreeNode(ScrollingNodeType nodeType, ScrollingNodeID nodeID)
+Ref<ScrollingTreeNode> ScrollingTreeIOS::createScrollingTreeNode(ScrollingNodeType nodeType, ScrollingNodeID nodeID)
 {
     switch (nodeType) {
     case FrameScrollingNode:
         return ScrollingTreeFrameScrollingNodeIOS::create(*this, nodeID);
     case OverflowScrollingNode:
         ASSERT_NOT_REACHED();
-        return nullptr;
+        break;
     case FixedNode:
         return ScrollingTreeFixedNode::create(*this, nodeID);
     case StickyNode:
         return ScrollingTreeStickyNode::create(*this, nodeID);
     }
-    return nullptr;
+    ASSERT_NOT_REACHED();
+    return ScrollingTreeFixedNode::create(*this, nodeID);
 }
 
 FloatRect ScrollingTreeIOS::fixedPositionRect()
@@ -123,8 +113,7 @@ void ScrollingTreeIOS::currentSnapPointIndicesDidChange(WebCore::ScrollingNodeID
     if (!m_scrollingCoordinator)
         return;
     
-    RefPtr<AsyncScrollingCoordinator> scrollingCoordinator = m_scrollingCoordinator;
-    callOnMainThread([scrollingCoordinator, nodeID, horizontal, vertical] {
+    callOnMainThread([scrollingCoordinator = m_scrollingCoordinator, nodeID, horizontal, vertical] {
         scrollingCoordinator->setActiveScrollSnapIndices(nodeID, horizontal, vertical);
     });
 }

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BackForwardController_h
-#define BackForwardController_h
+#pragma once
 
 #include <wtf/Noncopyable.h>
 #include <wtf/Forward.h>
@@ -39,7 +38,7 @@ class Page;
 class BackForwardController {
     WTF_MAKE_NONCOPYABLE(BackForwardController); WTF_MAKE_FAST_ALLOCATED;
 public:
-    BackForwardController(Page&, RefPtr<BackForwardClient>&&);
+    BackForwardController(Page&, Ref<BackForwardClient>&&);
     ~BackForwardController();
 
     BackForwardClient* client() const { return m_client.get(); }
@@ -71,5 +70,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // BackForwardController_h

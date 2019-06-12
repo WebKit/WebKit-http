@@ -26,16 +26,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FetchHeaders_h
-#define FetchHeaders_h
+#pragma once
 
 #if ENABLE(FETCH_API)
 
+#include "ExceptionOr.h"
 #include "HTTPHeaderMap.h"
+#include <wtf/HashTraits.h>
 
 namespace WebCore {
-
-typedef int ExceptionCode;
 
 class FetchHeaders : public RefCounted<FetchHeaders> {
 public:
@@ -47,17 +46,17 @@ public:
         Response
     };
 
-    static Ref<FetchHeaders> create(Guard guard = Guard::None) { return adoptRef(*new FetchHeaders(guard)); }
-    static Ref<FetchHeaders> create(const FetchHeaders& headers) { return adoptRef(*new FetchHeaders(headers.m_guard, headers.m_headers)); }
+    static Ref<FetchHeaders> create(Guard guard = Guard::None) { return adoptRef(*new FetchHeaders { guard }); }
+    static Ref<FetchHeaders> create(const FetchHeaders& headers) { return adoptRef(*new FetchHeaders { headers }); }
 
-    void append(const String& name, const String& value, ExceptionCode&);
-    void remove(const String&, ExceptionCode&);
-    String get(const String&, ExceptionCode&) const;
-    bool has(const String&, ExceptionCode&) const;
-    void set(const String& name, const String& value, ExceptionCode&);
+    ExceptionOr<void> append(const String& name, const String& value);
+    ExceptionOr<void> remove(const String&);
+    ExceptionOr<String> get(const String&) const;
+    ExceptionOr<bool> has(const String&) const;
+    ExceptionOr<void> set(const String& name, const String& value);
 
-    void initializeWith(const FetchHeaders*, ExceptionCode&);
     void fill(const FetchHeaders*);
+    void filterAndFill(const HTTPHeaderMap&, Guard);
 
     String fastGet(HTTPHeaderName name) const { return m_headers.get(name); }
     void fastSet(HTTPHeaderName name, const String& value) { m_headers.set(name, value); }
@@ -65,30 +64,40 @@ public:
     class Iterator {
     public:
         explicit Iterator(FetchHeaders&);
-
-        // FIXME: Binding generator should be able to generate iterator key and value types.
-        using Key = String;
-        using Value = String;
-
-        bool next(String& nextKey, String& nextValue);
+        std::optional<WTF::KeyValuePair<String, String>> next();
 
     private:
         Ref<FetchHeaders> m_headers;
-        size_t m_currentIndex = 0;
+        size_t m_currentIndex { 0 };
         Vector<String> m_keys;
     };
-    Iterator createIterator() { return Iterator(*this); }
+    Iterator createIterator() { return Iterator { *this }; }
+
+    const HTTPHeaderMap& internalHeaders() const { return m_headers; }
+
+    void setGuard(Guard);
 
 private:
     FetchHeaders(Guard guard) : m_guard(guard) { }
-    FetchHeaders(Guard guard, const HTTPHeaderMap& headers) : m_guard(guard), m_headers(headers) { }
+    FetchHeaders(const FetchHeaders&);
 
     Guard m_guard;
     HTTPHeaderMap m_headers;
 };
 
+inline FetchHeaders::FetchHeaders(const FetchHeaders& other)
+    : RefCounted()
+    , m_guard(other.m_guard)
+    , m_headers(other.m_headers)
+{
+}
+
+inline void FetchHeaders::setGuard(Guard guard)
+{
+    ASSERT(!m_headers.size());
+    m_guard = guard;
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(FETCH_API)
-
-#endif // FetchHeaders_h

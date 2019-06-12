@@ -38,7 +38,7 @@ import StringIO
 import socket
 import urllib
 
-from datetime import datetime # used in timestamp()
+from datetime import datetime  # used in timestamp()
 
 from .attachment import Attachment
 from .bug import Bug
@@ -291,6 +291,7 @@ class BugzillaQueries(object):
         results_page = self._load_query(review_queue_url)
         return bool(re.search("did not match anything", results_page.read()))
 
+
 class CommitQueueFlag(object):
     mark_for_nothing = 0
     mark_for_commit_queue = 1
@@ -485,12 +486,14 @@ class Bugzilla(object):
 
     def _parse_bug_id_from_attachment_page(self, page):
         # The "Up" relation happens to point to the bug.
-        up_link = BeautifulSoup(page).find('link', rel='Up')
-        if not up_link:
-            # This attachment does not exist (or you don't have permissions to
-            # view it).
+        title = BeautifulSoup(page).find('div', attrs={'id':'bug_title'})
+        if not title :
+            _log.warning("This attachment does not exist (or you don't have permissions to view it).")
             return None
-        match = re.search("show_bug.cgi\?id=(?P<bug_id>\d+)", up_link['href'])
+        match = re.search("show_bug.cgi\?id=(?P<bug_id>\d+)", str(title))
+        if not match:
+            _log.warning("Unable to parse bug id from attachment")
+            return None
         return int(match.group('bug_id'))
 
     def bug_id_for_attachment_id(self, attachment_id):
@@ -510,12 +513,14 @@ class Bugzilla(object):
         # so re-use that.
         bug_id = self.bug_id_for_attachment_id(attachment_id)
         if not bug_id:
+            _log.warning("Unable to parse bug_id from attachment {}".format(attachment_id))
             return None
         attachments = self.fetch_bug(bug_id).attachments(include_obsolete=True)
         for attachment in attachments:
             if attachment.id() == int(attachment_id):
                 return attachment
-        return None # This should never be hit.
+        _log.error("Error in fetching attachment {}, bug_id: {}".format(attachment_id, bug_id))
+        return None  # This should never be hit.
 
     def authenticate(self):
         if self.authenticated:

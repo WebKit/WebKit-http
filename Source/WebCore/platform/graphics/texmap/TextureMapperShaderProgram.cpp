@@ -24,13 +24,9 @@
 
 #if USE(TEXTURE_MAPPER_GL)
 
-#include "LengthFunctions.h"
 #include "Logging.h"
 #include "TextureMapperGL.h"
-
 #include <wtf/text/StringBuilder.h>
-
-#define STRINGIFY(...) #__VA_ARGS__
 
 namespace WebCore {
 
@@ -43,76 +39,7 @@ static inline bool compositingLogEnabled()
 #endif
 }
 
-TextureMapperShaderProgram::TextureMapperShaderProgram(PassRefPtr<GraphicsContext3D> context, const String& vertex, const String& fragment)
-    : m_context(context)
-{
-    m_vertexShader = m_context->createShader(GraphicsContext3D::VERTEX_SHADER);
-    m_fragmentShader = m_context->createShader(GraphicsContext3D::FRAGMENT_SHADER);
-    m_context->shaderSource(m_vertexShader, vertex);
-    m_context->shaderSource(m_fragmentShader, fragment);
-    m_id = m_context->createProgram();
-    m_context->compileShader(m_vertexShader);
-    m_context->compileShader(m_fragmentShader);
-    m_context->attachShader(m_id, m_vertexShader);
-    m_context->attachShader(m_id, m_fragmentShader);
-    m_context->linkProgram(m_id);
-
-    if (!compositingLogEnabled())
-        return;
-
-    if (m_context->getError() == GraphicsContext3D::NO_ERROR)
-        return;
-
-    String log = m_context->getShaderInfoLog(m_vertexShader);
-    LOG(Compositing, "Vertex shader log: %s\n", log.utf8().data());
-    log = m_context->getShaderInfoLog(m_fragmentShader);
-    LOG(Compositing, "Fragment shader log: %s\n", log.utf8().data());
-    log = m_context->getProgramInfoLog(m_id);
-    LOG(Compositing, "Program log: %s\n", log.utf8().data());
-}
-
-void TextureMapperShaderProgram::setMatrix(GC3Duint location, const TransformationMatrix& matrix)
-{
-    TransformationMatrix::FloatMatrix4 floatMatrix;
-    matrix.toColumnMajorFloatArray(floatMatrix);
-    m_context->uniformMatrix4fv(location, 1, false, floatMatrix);
-}
-
-GC3Duint TextureMapperShaderProgram::getLocation(const AtomicString& name, VariableType type)
-{
-    HashMap<AtomicString, GC3Duint>::iterator it = m_variables.find(name);
-    if (it != m_variables.end())
-        return it->value;
-
-    GC3Duint location = 0;
-    switch (type) {
-    case UniformVariable:
-        location = m_context->getUniformLocation(m_id, name);
-        break;
-    case AttribVariable:
-        location = m_context->getAttribLocation(m_id, name);
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-        break;
-    }
-
-    m_variables.add(name, location);
-    return location;
-}
-
-TextureMapperShaderProgram::~TextureMapperShaderProgram()
-{
-    Platform3DObject programID = m_id;
-    if (!programID)
-        return;
-
-    m_context->detachShader(programID, m_vertexShader);
-    m_context->deleteShader(m_vertexShader);
-    m_context->detachShader(programID, m_fragmentShader);
-    m_context->deleteShader(m_fragmentShader);
-    m_context->deleteProgram(programID);
-}
+#define STRINGIFY(...) #__VA_ARGS__
 
 #define GLSL_DIRECTIVE(...) "#"#__VA_ARGS__"\n"
 
@@ -217,6 +144,7 @@ static const char* fragmentTemplate =
     STRINGIFY(
         precision TextureSpaceMatrixPrecision float;
         uniform mat4 u_textureSpaceMatrix;
+        uniform mat4 u_textureColorSpaceMatrix;
         precision mediump float;
         uniform SamplerType s_sampler;
         uniform sampler2D s_contentTexture;
@@ -232,6 +160,7 @@ static const char* fragmentTemplate =
 
         void noop(inout vec4 dummyParameter) { }
         void noop(inout vec4 dummyParameter, vec2 texCoord) { }
+        void noop(inout vec2 dummyParameter) { }
 
         float antialias() { return smoothstep(0., 1., v_antialias); }
 
@@ -243,7 +172,9 @@ static const char* fragmentTemplate =
 
         vec2 vertexTransformTexCoord() { return v_transformedTexCoord; }
 
-        void applyTexture(inout vec4 color, vec2 texCoord) { color = SamplerFunction(s_sampler, texCoord); }
+        void applyManualRepeat(inout vec2 pos) { pos = fract(pos); }
+
+        void applyTexture(inout vec4 color, vec2 texCoord) { color = u_textureColorSpaceMatrix * SamplerFunction(s_sampler, texCoord); }
         void applyOpacity(inout vec4 color) { color *= u_opacity; }
         void applyAntialiasing(inout vec4 color) { color *= antialias(); }
 
@@ -354,6 +285,7 @@ static const char* fragmentTemplate =
         {
             vec4 color = vec4(1., 1., 1., 1.);
             vec2 texCoord = transformTexCoord();
+            applyManualRepeatIfNeeded(texCoord);
             applyTextureIfNeeded(color, texCoord);
             applySolidColorIfNeeded(color);
             applyAntialiasingIfNeeded(color);
@@ -373,13 +305,13 @@ static const char* fragmentTemplate =
         }
     );
 
-PassRefPtr<TextureMapperShaderProgram> TextureMapperShaderProgram::create(PassRefPtr<GraphicsContext3D> context, TextureMapperShaderProgram::Options options)
+Ref<TextureMapperShaderProgram> TextureMapperShaderProgram::create(Ref<GraphicsContext3D>&& context, TextureMapperShaderProgram::Options options)
 {
-    StringBuilder shaderBuilder;
 #define SET_APPLIER_FROM_OPTIONS(Applier) \
-    shaderBuilder.append(\
+    optionsApplierBuilder.append(\
         (options & TextureMapperShaderProgram::Applier) ? ENABLE_APPLIER(Applier) : DISABLE_APPLIER(Applier))
 
+    StringBuilder optionsApplierBuilder;
     SET_APPLIER_FROM_OPTIONS(Texture);
     SET_APPLIER_FROM_OPTIONS(Rect);
     SET_APPLIER_FROM_OPTIONS(SolidColor);
@@ -396,16 +328,84 @@ PassRefPtr<TextureMapperShaderProgram> TextureMapperShaderProgram::create(PassRe
     SET_APPLIER_FROM_OPTIONS(BlurFilter);
     SET_APPLIER_FROM_OPTIONS(AlphaBlur);
     SET_APPLIER_FROM_OPTIONS(ContentTexture);
-    StringBuilder vertexBuilder;
-    vertexBuilder.append(shaderBuilder.toString());
-    vertexBuilder.append(vertexTemplate);
-    shaderBuilder.append(fragmentTemplate);
+    SET_APPLIER_FROM_OPTIONS(ManualRepeat);
 
-    String vertexSource = vertexBuilder.toString();
-    String fragmentSource = shaderBuilder.toString();
+    StringBuilder vertexShaderBuilder;
+    vertexShaderBuilder.append(optionsApplierBuilder.toString());
+    vertexShaderBuilder.append(vertexTemplate);
 
-    return adoptRef(new TextureMapperShaderProgram(context, vertexSource, fragmentSource));
+    StringBuilder fragmentShaderBuilder;
+    fragmentShaderBuilder.append(optionsApplierBuilder.toString());
+    fragmentShaderBuilder.append(fragmentTemplate);
+
+    return adoptRef(*new TextureMapperShaderProgram(WTFMove(context), vertexShaderBuilder.toString(), fragmentShaderBuilder.toString()));
 }
 
+TextureMapperShaderProgram::TextureMapperShaderProgram(Ref<GraphicsContext3D>&& context, const String& vertex, const String& fragment)
+    : m_context(WTFMove(context))
+{
+    m_vertexShader = m_context->createShader(GraphicsContext3D::VERTEX_SHADER);
+    m_context->shaderSource(m_vertexShader, vertex);
+
+    m_fragmentShader = m_context->createShader(GraphicsContext3D::FRAGMENT_SHADER);
+    m_context->shaderSource(m_fragmentShader, fragment);
+
+    m_id = m_context->createProgram();
+    m_context->compileShader(m_vertexShader);
+    m_context->compileShader(m_fragmentShader);
+    m_context->attachShader(m_id, m_vertexShader);
+    m_context->attachShader(m_id, m_fragmentShader);
+    m_context->linkProgram(m_id);
+
+    if (!compositingLogEnabled())
+        return;
+
+    if (m_context->getError() == GraphicsContext3D::NO_ERROR)
+        return;
+
+    String log = m_context->getShaderInfoLog(m_vertexShader);
+    LOG(Compositing, "Vertex shader log: %s\n", log.utf8().data());
+    log = m_context->getShaderInfoLog(m_fragmentShader);
+    LOG(Compositing, "Fragment shader log: %s\n", log.utf8().data());
+    log = m_context->getProgramInfoLog(m_id);
+    LOG(Compositing, "Program log: %s\n", log.utf8().data());
 }
+
+TextureMapperShaderProgram::~TextureMapperShaderProgram()
+{
+    if (!m_id)
+        return;
+
+    m_context->detachShader(m_id, m_vertexShader);
+    m_context->deleteShader(m_vertexShader);
+    m_context->detachShader(m_id, m_fragmentShader);
+    m_context->deleteShader(m_fragmentShader);
+    m_context->deleteProgram(m_id);
+}
+
+void TextureMapperShaderProgram::setMatrix(GC3Duint location, const TransformationMatrix& matrix)
+{
+    TransformationMatrix::FloatMatrix4 floatMatrix;
+    matrix.toColumnMajorFloatArray(floatMatrix);
+    m_context->uniformMatrix4fv(location, 1, false, floatMatrix);
+}
+
+GC3Duint TextureMapperShaderProgram::getLocation(const AtomicString& name, VariableType type)
+{
+    auto addResult = m_variables.ensure(name,
+        [this, &name, type] {
+            switch (type) {
+            case UniformVariable:
+                return m_context->getUniformLocation(m_id, name);
+            case AttribVariable:
+                return m_context->getAttribLocation(m_id, name);
+            }
+            ASSERT_NOT_REACHED();
+            return 0;
+        });
+    return addResult.iterator->value;
+}
+
+} // namespace WebCore
+
 #endif // USE(TEXTURE_MAPPER_GL)

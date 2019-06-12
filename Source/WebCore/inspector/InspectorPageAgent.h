@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,11 +29,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorPageAgent_h
-#define InspectorPageAgent_h
+#pragma once
 
 #include "InspectorWebAgentBase.h"
-#include "IntSize.h"
 #include "LayoutRect.h"
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
@@ -41,7 +39,6 @@
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
-class InspectorArray;
 class InspectorObject;
 }
 
@@ -51,15 +48,14 @@ class CachedResource;
 class DOMWrapperWorld;
 class DocumentLoader;
 class Frame;
-class Frontend;
 class InspectorClient;
 class InspectorOverlay;
 class MainFrame;
-class URL;
 class Page;
 class RenderObject;
 class SharedBuffer;
 class TextResourceDecoder;
+class URL;
 
 typedef String ErrorString;
 
@@ -76,8 +72,9 @@ public:
         FontResource,
         ScriptResource,
         XHRResource,
+        FetchResource,
         WebSocketResource,
-        OtherResource
+        OtherResource,
     };
 
     static bool cachedResourceContent(CachedResource*, String* result, bool* base64Encoded);
@@ -85,66 +82,55 @@ public:
     static void resourceContent(ErrorString&, Frame*, const URL&, String* result, bool* base64Encoded);
     static String sourceMapURLForResource(CachedResource*);
 
-    static PassRefPtr<SharedBuffer> resourceData(Frame*, const URL&, String* textEncodingName);
     static CachedResource* cachedResource(Frame*, const URL&);
     static Inspector::Protocol::Page::ResourceType resourceTypeJson(ResourceType);
     static ResourceType cachedResourceType(const CachedResource&);
     static Inspector::Protocol::Page::ResourceType cachedResourceTypeJson(const CachedResource&);
+    static RefPtr<TextResourceDecoder> createTextDecoder(const String& mimeType, const String& textEncodingName);
 
     // Page API for InspectorFrontend
-    virtual void enable(ErrorString&) override;
-    virtual void disable(ErrorString&) override;
-    virtual void addScriptToEvaluateOnLoad(ErrorString&, const String& source, String* result) override;
-    virtual void removeScriptToEvaluateOnLoad(ErrorString&, const String& identifier) override;
-    virtual void reload(ErrorString&, const bool* optionalIgnoreCache, const String* optionalScriptToEvaluateOnLoad) override;
-    virtual void navigate(ErrorString&, const String& url) override;
-    virtual void getCookies(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>>& cookies) override;
-    virtual void deleteCookie(ErrorString&, const String& cookieName, const String& url) override;
-    virtual void getResourceTree(ErrorString&, RefPtr<Inspector::Protocol::Page::FrameResourceTree>&) override;
-    virtual void getResourceContent(ErrorString&, const String& frameId, const String& url, String* content, bool* base64Encoded) override;
-    virtual void searchInResource(ErrorString&, const String& frameId, const String& url, const String& query, const bool* optionalCaseSensitive, const bool* optionalIsRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>&) override;
-    virtual void searchInResources(ErrorString&, const String&, const bool* caseSensitive, const bool* isRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>>&) override;
-    virtual void setDocumentContent(ErrorString&, const String& frameId, const String& html) override;
-    virtual void setShowPaintRects(ErrorString&, bool show) override;
-    virtual void getScriptExecutionStatus(ErrorString&, Inspector::PageBackendDispatcherHandler::Result*) override;
-    virtual void setScriptExecutionDisabled(ErrorString&, bool) override;
-    virtual void setTouchEmulationEnabled(ErrorString&, bool) override;
-    virtual void setEmulatedMedia(ErrorString&, const String&) override;
-    virtual void getCompositingBordersVisible(ErrorString&, bool* out_param) override;
-    virtual void setCompositingBordersVisible(ErrorString&, bool) override;
-    virtual void snapshotNode(ErrorString&, int nodeId, String* outDataURL) override;
-    virtual void snapshotRect(ErrorString&, int x, int y, int width, int height, const String& coordinateSystem, String* outDataURL) override;
-    virtual void handleJavaScriptDialog(ErrorString&, bool accept, const String* promptText) override;
-    virtual void archive(ErrorString&, String* data) override;
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void reload(ErrorString&, const bool* const optionalIgnoreCache, const bool* const optionalRevalidateAllResources, const String* const optionalScriptToEvaluateOnLoad) override;
+    void navigate(ErrorString&, const String& url) override;
+    void getCookies(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>>& cookies) override;
+    void deleteCookie(ErrorString&, const String& cookieName, const String& url) override;
+    void getResourceTree(ErrorString&, RefPtr<Inspector::Protocol::Page::FrameResourceTree>&) override;
+    void getResourceContent(ErrorString&, const String& frameId, const String& url, String* content, bool* base64Encoded) override;
+    void searchInResource(ErrorString&, const String& frameId, const String& url, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, const String* const optionalRequestId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>&) override;
+    void searchInResources(ErrorString&, const String&, const bool* const caseSensitive, const bool* const isRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>>&) override;
+    void setShowPaintRects(ErrorString&, bool show) override;
+    void setEmulatedMedia(ErrorString&, const String&) override;
+    void getCompositingBordersVisible(ErrorString&, bool* out_param) override;
+    void setCompositingBordersVisible(ErrorString&, bool) override;
+    void snapshotNode(ErrorString&, int nodeId, String* outDataURL) override;
+    void snapshotRect(ErrorString&, int x, int y, int width, int height, const String& coordinateSystem, String* outDataURL) override;
+    void archive(ErrorString&, String* data) override;
 
-    // InspectorInstrumentation callbacks.
+    // InspectorInstrumentation
     void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld&);
     void domContentEventFired();
     void loadEventFired();
-    void frameNavigated(DocumentLoader*);
+    void frameNavigated(Frame&);
     void frameDetached(Frame&);
     void loaderDetachedFromFrame(DocumentLoader&);
     void frameStartedLoading(Frame&);
     void frameStoppedLoading(Frame&);
-    void frameScheduledNavigation(Frame&, double delay);
+    void frameScheduledNavigation(Frame&, Seconds delay);
     void frameClearedScheduledNavigation(Frame&);
-    void willRunJavaScriptDialog(const String& message);
-    void didRunJavaScriptDialog();
     void applyEmulatedMedia(String&);
-    void didPaint(RenderObject*, const LayoutRect&);
+    void didPaint(RenderObject&, const LayoutRect&);
     void didLayout();
     void didScroll();
     void didRecalculateStyle();
-    void scriptsEnabled(bool isEnabled);
 
     // Inspector Controller API
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     // Cross-agents API
     Page& page() { return m_page; }
     MainFrame& mainFrame();
-    String createIdentifier();
     Frame* frameForId(const String& frameId);
     WEBCORE_EXPORT String frameId(Frame*);
     bool hasIdForFrame(Frame*) const;
@@ -154,10 +140,6 @@ public:
     static DocumentLoader* assertDocumentLoader(ErrorString&, Frame*);
 
 private:
-#if ENABLE(TOUCH_EVENTS)
-    void updateTouchEventEmulationInPage(bool);
-#endif
-
     double timestamp();
 
     static bool mainResourceContent(Frame*, bool withBase64Encode, String* result);
@@ -173,7 +155,6 @@ private:
     InspectorClient* m_client { nullptr };
     InspectorOverlay* m_overlay { nullptr };
 
-    long m_lastScriptIdentifier { 0 };
     String m_pendingScriptToEvaluateOnLoadOnce;
     String m_scriptToEvaluateOnLoadOnce;
     HashMap<Frame*, String> m_frameToIdentifier;
@@ -181,14 +162,8 @@ private:
     HashMap<DocumentLoader*, String> m_loaderToIdentifier;
     bool m_enabled { false };
     bool m_isFirstLayoutAfterOnLoad { false };
-    bool m_originalScriptExecutionDisabled { false };
-    bool m_ignoreScriptsEnabledNotification { false };
     bool m_showPaintRects { false };
     String m_emulatedMedia;
-    RefPtr<Inspector::InspectorObject> m_scriptsToEvaluateOnLoad;
 };
 
-
 } // namespace WebCore
-
-#endif // !defined(InspectorPagerAgent_h)

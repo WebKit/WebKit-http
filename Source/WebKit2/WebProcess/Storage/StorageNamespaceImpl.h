@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebStorageNamespaceImpl_h
-#define WebStorageNamespaceImpl_h
+#pragma once
 
+#include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/StorageArea.h>
+#include <WebCore/StorageMap.h>
 #include <WebCore/StorageNamespace.h>
 #include <wtf/HashMap.h>
 
@@ -39,6 +40,7 @@ class WebPage;
 class StorageNamespaceImpl : public WebCore::StorageNamespace {
 public:
     static RefPtr<StorageNamespaceImpl> createSessionStorageNamespace(uint64_t identifier, unsigned quotaInBytes);
+    static RefPtr<StorageNamespaceImpl> createEphemeralLocalStorageNamespace(uint64_t identifier, unsigned quotaInBytes);
     static RefPtr<StorageNamespaceImpl> createLocalStorageNamespace(uint64_t identifier, unsigned quotaInBytes);
     static RefPtr<StorageNamespaceImpl> createTransientLocalStorageNamespace(uint64_t identifier, WebCore::SecurityOrigin& topLevelOrigin, uint64_t quotaInBytes);
 
@@ -54,8 +56,10 @@ public:
 private:
     explicit StorageNamespaceImpl(WebCore::StorageType, uint64_t storageNamespaceID, WebCore::SecurityOrigin* topLevelOrigin, unsigned quotaInBytes);
 
-    virtual RefPtr<WebCore::StorageArea> storageArea(RefPtr<WebCore::SecurityOrigin>&&) override;
-    virtual RefPtr<WebCore::StorageNamespace> copy(WebCore::Page*) override;
+    RefPtr<WebCore::StorageArea> storageArea(const WebCore::SecurityOriginData&) override;
+    RefPtr<WebCore::StorageNamespace> copy(WebCore::Page*) override;
+
+    RefPtr<WebCore::StorageArea> ephemeralLocalStorageArea(const WebCore::SecurityOriginData&);
 
     const WebCore::StorageType m_storageType;
     const uint64_t m_storageNamespaceID;
@@ -65,9 +69,10 @@ private:
 
     const unsigned m_quotaInBytes;
 
-    HashMap<RefPtr<WebCore::SecurityOrigin>, StorageAreaMap*> m_storageAreaMaps;
+    HashMap<WebCore::SecurityOriginData, StorageAreaMap*> m_storageAreaMaps;
+
+    class EphemeralStorageArea;
+    HashMap<WebCore::SecurityOriginData, RefPtr<EphemeralStorageArea>> m_ephemeralLocalStorageAreas;
 };
 
 } // namespace WebKit
-
-#endif // WebStorageNamespaceImpl_h

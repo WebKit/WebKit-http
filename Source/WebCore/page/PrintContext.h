@@ -18,20 +18,23 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef PrintContext_h
-#define PrintContext_h
+#pragma once
 
 #include <wtf/Forward.h>
+#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class Document;
 class Element;
 class Frame;
 class FloatRect;
 class FloatSize;
 class GraphicsContext;
 class IntRect;
+class Node;
 
 class PrintContext {
 public:
@@ -78,6 +81,19 @@ public:
     // The height of the graphics context should be
     // (pageSizeInPixels.height() + 1) * number-of-pages - 1
     WEBCORE_EXPORT static void spoolAllPagesWithBoundaries(Frame&, GraphicsContext&, const FloatSize& pageSizeInPixels);
+    
+    // By imaging to a width a little wider than the available pixels,
+    // thin pages will be scaled down a little, matching the way they
+    // print in IE and Camino. This lets them use fewer sheets than they
+    // would otherwise, which is presumably why other browsers do this.
+    // Wide pages will be scaled down more than this.
+    static constexpr float minimumShrinkFactor() { return 1.25; }
+
+    // This number determines how small we are willing to reduce the page content
+    // in order to accommodate the widest line. If the page would have to be
+    // reduced smaller to make the widest line fit, we just clip instead (this
+    // behavior matches MacIE and Mozilla, at least)
+    static constexpr float maximumShrinkFactor() { return 2; }
 
 protected:
     Frame* m_frame;
@@ -86,11 +102,13 @@ protected:
 private:
     void computePageRectsWithPageSizeInternal(const FloatSize& pageSizeInPixels, bool allowHorizontalTiling);
     bool beginAndComputePageRectsWithPageSize(Frame&, const FloatSize& pageSizeInPixels);
+    void collectLinkedDestinations(Document&);
+    void outputLinkedDestinations(GraphicsContext&, Document&, const IntRect& pageRect);
 
     // Used to prevent misuses of begin() and end() (e.g., call end without begin).
-    bool m_isPrinting;
+    bool m_isPrinting { false };
+
+    std::unique_ptr<HashMap<String, Ref<Element>>> m_linkedDestinations;
 };
 
-}
-
-#endif
+} // namespace WebCore

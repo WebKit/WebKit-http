@@ -23,16 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StructureChain_h
-#define StructureChain_h
+#pragma once
 
 #include "JSCell.h"
 #include "JSObject.h"
 #include "Structure.h"
-
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
@@ -74,11 +69,14 @@ protected:
         for (Structure* current = head; current; current = current->storedPrototype().isNull() ? 0 : asObject(current->storedPrototype())->structure())
             ++size;
 
-        m_vector = std::make_unique<WriteBarrier<Structure>[]>(size + 1);
+        std::unique_ptr<WriteBarrier<Structure>[]> vector = std::make_unique<WriteBarrier<Structure>[]>(size + 1);
 
         size_t i = 0;
         for (Structure* current = head; current; current = current->storedPrototype().isNull() ? 0 : asObject(current->storedPrototype())->structure())
-            m_vector[i++].set(vm, this, current);
+            vector[i++].set(vm, this, current);
+        
+        vm.heap.mutatorFence();
+        m_vector = WTFMove(vector);
     }
 
 private:
@@ -89,5 +87,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // StructureChain_h

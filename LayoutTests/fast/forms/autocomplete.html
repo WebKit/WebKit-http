@@ -12,7 +12,7 @@
         shouldBeNull("form.getAttribute('autocomplete')");
         shouldBeNull("field.getAttribute('autocomplete')");
 
-        shouldBeEqualToString("form.autocomplete", "");
+        shouldBeEqualToString("form.autocomplete", "on");
         shouldBeEqualToString("field.autocomplete", "");
 
         form.autocomplete = 'off';

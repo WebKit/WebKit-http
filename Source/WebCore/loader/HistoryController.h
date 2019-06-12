@@ -27,11 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HistoryController_h
-#define HistoryController_h
+#pragma once
 
 #include "FrameLoaderTypes.h"
-#include "SerializedScriptValue.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
@@ -41,7 +39,8 @@ namespace WebCore {
 class Frame;
 class HistoryItem;
 class SerializedScriptValue;
-class StringWithDirection;
+
+struct StringWithDirection;
 
 class HistoryController {
     WTF_MAKE_NONCOPYABLE(HistoryController);
@@ -85,8 +84,8 @@ public:
     HistoryItem* provisionalItem() const { return m_provisionalItem.get(); }
     void setProvisionalItem(HistoryItem*);
 
-    void pushState(PassRefPtr<SerializedScriptValue>, const String& title, const String& url);
-    void replaceState(PassRefPtr<SerializedScriptValue>, const String& title, const String& url);
+    void pushState(RefPtr<SerializedScriptValue>&&, const String& title, const String& url);
+    void replaceState(RefPtr<SerializedScriptValue>&&, const String& title, const String& url);
 
     void setDefersLoading(bool);
 
@@ -124,5 +123,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // HistoryController_h

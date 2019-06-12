@@ -18,7 +18,7 @@
  *
  */
 
-/* This prefix file should contain only: 
+/* This prefix file should contain only:
  *    1) files to precompile for faster builds
  *    2) in one case at least: OS-X-specific performance bug workarounds
  *    3) the special trick to catch us using new or delete without including "config.h"
@@ -43,14 +43,6 @@
 
 #if OS(WINDOWS)
 
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x601
-#endif
-
-#ifndef WINVER
-#define WINVER 0x0601
-#endif
-
 #if !USE(CURL)
 #ifndef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
@@ -68,7 +60,7 @@
 
 #include <sys/types.h>
 #include <fcntl.h>
-#if defined(__APPLE__)
+#if HAVE(REGEX_H)
 #include <regex.h>
 #endif
 
@@ -136,8 +128,8 @@
 #else
 
 #if OS(WINDOWS)
-#if USE(CG)
 
+#if USE(CG)
 // FIXME <rdar://problem/8208868> Remove support for obsolete ColorSync API, CoreServices header in CoreGraphics
 // We can remove this once the new ColorSync APIs are available in an internal Safari SDK.
 #include <ColorSync/ColorSync.h>
@@ -146,13 +138,13 @@
 #define OBSOLETE_COLORSYNC_API
 #endif
 #endif
-#if USE(CFNETWORK)
-/* Windows doesn't include CFNetwork.h via CoreServices.h, so we do
-   it explicitly here to make Windows more consistent with Mac. */
+
+#if USE(CFURLCONNECTION)
 #include <CFNetwork/CFNetwork.h>
 // On Windows, dispatch.h needs to be included before certain CFNetwork headers.
 #include <dispatch/dispatch.h>
 #endif
+
 #include <windows.h>
 #else
 #if !PLATFORM(IOS)
@@ -166,7 +158,10 @@
 #if PLATFORM(IOS)
 #import <Foundation/Foundation.h>
 #else
+#if USE(APPKIT)
 #import <Cocoa/Cocoa.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
+#endif
 #endif // PLATFORM(IOS)
 #endif
 
@@ -183,4 +178,3 @@
 #undef try
 #undef catch
 #endif
-

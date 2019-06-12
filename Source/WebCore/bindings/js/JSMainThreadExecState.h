@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +24,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSMainThreadExecState_h
-#define JSMainThreadExecState_h
+#pragma once
 
+#include "CustomElementReactionQueue.h"
 #include "JSDOMBinding.h"
+#include <runtime/CatchScope.h>
 #include <runtime/Completion.h>
 #include <runtime/Microtask.h>
 #include <wtf/MainThread.h>
-
-#if PLATFORM(IOS)
-#include "WebCoreThread.h"
-#endif
 
 namespace WebCore {
 
@@ -92,6 +90,33 @@ public:
         task.run(exec);
     }
 
+    static JSC::JSInternalPromise& loadModule(JSC::ExecState& state, const String& moduleName, JSC::JSValue scriptFetcher)
+    {
+        JSMainThreadExecState currentState(&state);
+        return *JSC::loadModule(&state, moduleName, scriptFetcher);
+    }
+
+    static JSC::JSInternalPromise& loadModule(JSC::ExecState& state, const JSC::SourceCode& sourceCode, JSC::JSValue scriptFetcher)
+    {
+        JSMainThreadExecState currentState(&state);
+        return *JSC::loadModule(&state, sourceCode, scriptFetcher);
+    }
+
+    static JSC::JSValue linkAndEvaluateModule(JSC::ExecState& state, const JSC::Identifier& moduleKey, JSC::JSValue scriptFetcher, NakedPtr<JSC::Exception>& returnedException)
+    {
+        JSC::VM& vm = state.vm();
+        auto scope = DECLARE_CATCH_SCOPE(vm);
+    
+        JSMainThreadExecState currentState(&state);
+        auto returnValue = JSC::linkAndEvaluateModule(&state, moduleKey, scriptFetcher);
+        if (UNLIKELY(scope.exception())) {
+            returnedException = scope.exception();
+            scope.clearException();
+            return JSC::jsUndefined();
+        }
+        return returnValue;
+    }
+
     static InspectorInstrumentationCookie instrumentFunctionCall(ScriptExecutionContext*, JSC::CallType, const JSC::CallData&);
     static InspectorInstrumentationCookie instrumentFunctionConstruct(ScriptExecutionContext*, JSC::ConstructType, const JSC::ConstructData&);
 
@@ -106,24 +131,27 @@ private:
 
     ~JSMainThreadExecState()
     {
+        JSC::VM& vm = s_mainThreadState->vm();
+        auto scope = DECLARE_CATCH_SCOPE(vm);
         ASSERT(isMainThread());
-        ASSERT(!s_mainThreadState->hadException());
+        scope.assertNoException();
 
+        JSC::ExecState* state = s_mainThreadState;
         bool didExitJavaScript = s_mainThreadState && !m_previousState;
 
         s_mainThreadState = m_previousState;
 
         if (didExitJavaScript)
-            didLeaveScriptContext();
+            didLeaveScriptContext(state);
     }
 
     template<typename Type, Type jsType, typename DataType> static InspectorInstrumentationCookie instrumentFunctionInternal(ScriptExecutionContext*, Type, const DataType&);
 
-    static JSC::ExecState* s_mainThreadState;
+    WEBCORE_EXPORT static JSC::ExecState* s_mainThreadState;
     JSC::ExecState* m_previousState;
     JSC::JSLockHolder m_lock;
 
-    static void didLeaveScriptContext();
+    static void didLeaveScriptContext(JSC::ExecState*);
 };
 
 // Null state prevents origin security checks.
@@ -146,11 +174,10 @@ public:
 
 private:
     JSC::ExecState* m_previousState;
+    CustomElementReactionStack m_customElementReactionStack;
 };
 
 JSC::JSValue functionCallHandlerFromAnyThread(JSC::ExecState*, JSC::JSValue functionObject, JSC::CallType, const JSC::CallData&, JSC::JSValue thisValue, const JSC::ArgList& args, NakedPtr<JSC::Exception>& returnedException);
 JSC::JSValue evaluateHandlerFromAnyThread(JSC::ExecState*, const JSC::SourceCode&, JSC::JSValue thisValue, NakedPtr<JSC::Exception>& returnedException);
 
 } // namespace WebCore
-
-#endif // JSMainThreadExecState_h

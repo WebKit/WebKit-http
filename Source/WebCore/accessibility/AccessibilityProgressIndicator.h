@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef AccessibilityProgressIndicator_h
-#define AccessibilityProgressIndicator_h
+#pragma once
 
 #include "AccessibilityRenderObject.h"
 
@@ -38,17 +37,19 @@ public:
     static Ref<AccessibilityProgressIndicator> create(RenderProgress*);
 #if ENABLE(METER_ELEMENT)
     static Ref<AccessibilityProgressIndicator> create(RenderMeter*);
+    String gaugeRegionValueDescription() const;
 #endif
-    virtual Element* element() const override;
+    Element* element() const override;
 
 private:
-    virtual AccessibilityRole roleValue() const override { return ProgressIndicatorRole; }
+    AccessibilityRole roleValue() const override { return ProgressIndicatorRole; }
 
-    virtual bool isProgressIndicator() const override { return true; }
+    bool isProgressIndicator() const override { return true; }
 
-    virtual float valueForRange() const override;
-    virtual float maxValueForRange() const override;
-    virtual float minValueForRange() const override;
+    String valueDescription() const override;
+    float valueForRange() const override;
+    float maxValueForRange() const override;
+    float minValueForRange() const override;
 
     explicit AccessibilityProgressIndicator(RenderProgress*);
     HTMLProgressElement* progressElement() const;
@@ -58,10 +59,9 @@ private:
     HTMLMeterElement* meterElement() const;
 #endif
     
-    virtual bool computeAccessibilityIsIgnored() const override;
+    bool computeAccessibilityIsIgnored() const override;
 };
-
 
 } // namespace WebCore
 
-#endif // AccessibilityProgressIndicator_h
+SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityProgressIndicator, isProgressIndicator())

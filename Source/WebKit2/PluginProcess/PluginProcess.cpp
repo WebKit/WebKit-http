@@ -36,8 +36,8 @@
 #include "PluginProcessCreationParameters.h"
 #include "PluginProcessProxyMessages.h"
 #include "WebProcessConnection.h"
-#include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/NotImplemented.h>
+#include <wtf/MemoryPressureHandler.h>
 #include <wtf/RunLoop.h>
 
 #if PLATFORM(MAC)
@@ -60,7 +60,6 @@ PluginProcess::PluginProcess()
     , m_connectionActivity("PluginProcess connection activity.")
 {
     NetscapePlugin::setSetExceptionFunction(WebProcessConnection::setGlobalException);
-    m_audioHardwareListener = AudioHardwareListener::create(*this);
 }
 
 PluginProcess::~PluginProcess()
@@ -71,13 +70,6 @@ void PluginProcess::initializeProcess(const ChildProcessInitializationParameters
 {
     m_pluginPath = parameters.extraInitializationData.get("plugin-path");
     platformInitializeProcess(parameters);
-
-    auto& memoryPressureHandler = MemoryPressureHandler::singleton();
-    memoryPressureHandler.setLowMemoryHandler([this] (Critical, Synchronous) {
-        if (shouldTerminate())
-            terminate();
-    });
-    memoryPressureHandler.install();
 }
 
 void PluginProcess::removeWebProcessConnection(WebProcessConnection* webProcessConnection)
@@ -117,7 +109,7 @@ bool PluginProcess::shouldTerminate()
     return m_webProcessConnections.isEmpty();
 }
 
-void PluginProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void PluginProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     didReceivePluginProcessMessage(connection, decoder);
 }
@@ -129,13 +121,20 @@ void PluginProcess::didClose(IPC::Connection&)
     stopRunLoop();
 }
 
-void PluginProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
-{
-}
-
 void PluginProcess::initializePluginProcess(PluginProcessCreationParameters&& parameters)
 {
     ASSERT(!m_pluginModule);
+
+    auto& memoryPressureHandler = MemoryPressureHandler::singleton();
+#if OS(LINUX)
+    if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
+        memoryPressureHandler.setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
+#endif
+    memoryPressureHandler.setLowMemoryHandler([this] (Critical, Synchronous) {
+        if (shouldTerminate())
+            terminate();
+    });
+    memoryPressureHandler.install();
 
     m_supportsAsynchronousPluginInitialization = parameters.supportsAsynchronousPluginInitialization;
     setMinimumLifetime(parameters.minimumLifetime);
@@ -151,8 +150,8 @@ void PluginProcess::createWebProcessConnection()
 #if USE(UNIX_DOMAIN_SOCKETS)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
 
-    RefPtr<WebProcessConnection> connection = WebProcessConnection::create(socketPair.server);
-    m_webProcessConnections.append(connection.release());
+    auto connection = WebProcessConnection::create(socketPair.server);
+    m_webProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientSocket(socketPair.client);
     parentProcessConnection()->send(Messages::PluginProcessProxy::DidCreateWebProcessConnection(clientSocket, m_supportsAsynchronousPluginInitialization), 0);
@@ -162,16 +161,9 @@ void PluginProcess::createWebProcessConnection()
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
 
     // Create a listening connection.
-    RefPtr<WebProcessConnection> connection = WebProcessConnection::create(IPC::Connection::Identifier(listeningPort));
+    auto connection = WebProcessConnection::create(IPC::Connection::Identifier(listeningPort));
 
-    if (m_audioHardwareListener) {
-        if (m_audioHardwareListener->hardwareActivity() == WebCore::AudioHardwareActivityType::IsActive)
-            connection->audioHardwareDidBecomeActive();
-        else if (m_audioHardwareListener->hardwareActivity() == WebCore::AudioHardwareActivityType::IsInactive)
-            connection->audioHardwareDidBecomeInactive();
-    }
-
-    m_webProcessConnections.append(connection.release());
+    m_webProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientPort(listeningPort, MACH_MSG_TYPE_MAKE_SEND);
     parentProcessConnection()->send(Messages::PluginProcessProxy::DidCreateWebProcessConnection(clientPort, m_supportsAsynchronousPluginInitialization), 0);
@@ -224,9 +216,9 @@ void PluginProcess::deleteWebsiteDataForHostNames(const Vector<String>& hostName
     parentProcessConnection()->send(Messages::PluginProcessProxy::DidDeleteWebsiteDataForHostNames(callbackID), 0);
 }
 
-void PluginProcess::setMinimumLifetime(double lifetime)
+void PluginProcess::setMinimumLifetime(Seconds lifetime)
 {
-    if (lifetime <= 0.0)
+    if (lifetime <= 0_s)
         return;
     
     disableTermination();
@@ -248,18 +240,6 @@ void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters
 {
 }
 #endif
-
-void PluginProcess::audioHardwareDidBecomeActive()
-{
-    for (auto& connection : m_webProcessConnections)
-        connection->audioHardwareDidBecomeActive();
-}
-    
-void PluginProcess::audioHardwareDidBecomeInactive()
-{
-    for (auto& connection : m_webProcessConnections)
-        connection->audioHardwareDidBecomeInactive();
-}
 
 } // namespace WebKit
 

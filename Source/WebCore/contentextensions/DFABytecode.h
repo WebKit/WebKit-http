@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DFABytecode_h
-#define DFABytecode_h
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
@@ -34,7 +33,7 @@ namespace ContentExtensions {
 
 typedef uint8_t DFABytecode;
 
-// Increment UserContentExtensionStore::CurrentContentExtensionFileVersion
+// Increment ContentExtensionStore::CurrentContentExtensionFileVersion
 // when making any non-backwards-compatible changes to the bytecode.
 // FIXME: Changes here should not require changes in WebKit2.  Move all versioning to WebCore.
 enum class DFABytecodeInstruction : uint8_t {
@@ -63,13 +62,13 @@ enum class DFABytecodeInstruction : uint8_t {
     // AppendAction has one argument:
     // The action to append (4 bytes).
     AppendAction = 0x6,
-    AppendActionWithIfDomain = 0x7,
+    AppendActionWithIfCondition = 0x7,
     
     // TestFlagsAndAppendAction has two arguments:
     // The flags to check before appending (2 bytes).
     // The action to append (4 bytes).
     TestFlagsAndAppendAction = 0x8,
-    TestFlagsAndAppendActionWithIfDomain = 0x9,
+    TestFlagsAndAppendActionWithIfCondition = 0x9,
 
     // Terminate has no arguments.
     Terminate = 0xA,
@@ -119,20 +118,17 @@ static inline size_t instructionSizeWithArguments(DFABytecodeInstruction instruc
     case DFABytecodeInstruction::Jump:
         RELEASE_ASSERT_NOT_REACHED(); // Variable instruction size.
     case DFABytecodeInstruction::AppendAction:
-    case DFABytecodeInstruction::AppendActionWithIfDomain:
+    case DFABytecodeInstruction::AppendActionWithIfCondition:
         return sizeof(DFABytecodeInstruction) + sizeof(uint32_t);
     case DFABytecodeInstruction::TestFlagsAndAppendAction:
-    case DFABytecodeInstruction::TestFlagsAndAppendActionWithIfDomain:
+    case DFABytecodeInstruction::TestFlagsAndAppendActionWithIfCondition:
         return sizeof(DFABytecodeInstruction) + sizeof(uint16_t) + sizeof(uint32_t);
     case DFABytecodeInstruction::Terminate:
         return sizeof(DFABytecodeInstruction);
     }
 }
     
-} // namespace ContentExtensions
-    
+} // namespace ContentExtensions    
 } // namespace WebCore
 
 #endif // ENABLE(CONTENT_EXTENSIONS)
-
-#endif // DFABytecode_h

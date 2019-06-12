@@ -43,16 +43,17 @@ static Vector<FlowContents::Segment> initializeSegments(const RenderBlockFlow& f
     Vector<FlowContents::Segment> segments;
     segments.reserveCapacity(numberOfChildren);
     unsigned startPosition = 0;
-    for (const auto& child : childrenOfType<RenderObject>(flow)) {
+    for (auto& child : childrenOfType<RenderObject>(flow)) {
         if (is<RenderText>(child)) {
-            const auto& textChild = downcast<RenderText>(child);
+            auto& textChild = downcast<RenderText>(child);
             unsigned textLength = textChild.text()->length();
-            segments.append(FlowContents::Segment { startPosition, startPosition + textLength, textChild.text(), textChild });
+            segments.append(FlowContents::Segment { startPosition, startPosition + textLength, textChild.text(),
+                textChild, textChild.canUseSimplifiedTextMeasuring() });
             startPosition += textLength;
             continue;
         }
         if (is<RenderLineBreak>(child)) {
-            segments.append(FlowContents::Segment { startPosition, startPosition, String(), child });
+            segments.append(FlowContents::Segment { startPosition, startPosition, String(), child, true });
             continue;
         }
         ASSERT_NOT_REACHED();
@@ -62,20 +63,20 @@ static Vector<FlowContents::Segment> initializeSegments(const RenderBlockFlow& f
 
 FlowContents::FlowContents(const RenderBlockFlow& flow)
     : m_segments(initializeSegments(flow))
-    , m_lastSegmentIndex(0)
 {
 }
 
 unsigned FlowContents::segmentIndexForRunSlow(unsigned start, unsigned end) const
 {
-    auto it = std::lower_bound(m_segments.begin(), m_segments.end(), start, [](const Segment& segment, unsigned start) {
-        return segment.end <= start;
+    auto isEmptyRange = start == end;
+    auto it = std::lower_bound(m_segments.begin(), m_segments.end(), start, [isEmptyRange](const Segment& segment, unsigned start) {
+        // FIXME: This always find the first empty run (.vs subsequent <br> elements)
+        return (isEmptyRange && segment.start == segment.end) ? segment.start < start : segment.end <= start;
     });
     ASSERT(it != m_segments.end());
-    ASSERT_UNUSED(end, end <= it->end);
-    auto index = it - m_segments.begin();
-    m_lastSegmentIndex = index;
-    return index;
+    ASSERT(end <= it->end);
+    m_lastSegmentIndex = it - m_segments.begin();
+    return m_lastSegmentIndex;
 }
 
 }

@@ -35,6 +35,10 @@
     content: url(../Images/MemoryInstrument.svg);
 }
 
+.heap-allocations-icon .icon {
+    content: url(../Images/HeapAllocationsInstrument.svg);
+}
+
 .layout-icon .icon {
     content: url(../Images/LayoutInstrument.svg);
 }
@@ -43,46 +47,14 @@
     content: url(../Images/RenderingFramesInstrument.svg);
 }
 
-/* FIXME: <https://webkit.org/b/153892> [GTK] Web Inspector: Add new GTK+ icons for instrument icons */
-body:not(.mac-platform, .windows-platform) .network-icon .icon {
-    content: -webkit-image-set(url(../Images/Network.png) 1x, url(../Images/Network@2x.png) 2x);
-}
-
-body:not(.mac-platform, .windows-platform) .network-icon.large .icon {
-    content: -webkit-image-set(url(../Images/NetworkLarge.png) 1x, url(../Images/NetworkLarge@2x.png) 2x);
-}
-
-body:not(.mac-platform, .windows-platform) .layout-icon .icon {
-    content: -webkit-image-set(url(../Images/Colors.png) 1x, url(../Images/Colors@2x.png) 2x);
-}
-
-body:not(.mac-platform, .windows-platform) .layout-icon.large .icon {
-    content: -webkit-image-set(url(../Images/ColorsLarge.png) 1x, url(../Images/ColorsLarge@2x.png) 2x);
-}
- 
-body:not(.mac-platform, .windows-platform) .script-icon .icon {
-    content: -webkit-image-set(url(../Images/Script.png) 1x, url(../Images/Script@2x.png) 2x);
-}
- 
-body:not(.mac-platform, .windows-platform) .script-icon.large .icon {
-    content: -webkit-image-set(url(../Images/ScriptLarge.png) 1x, url(../Images/ScriptLarge@2x.png) 2x);
-}
- 
-body:not(.mac-platform, .windows-platform) .rendering-frame-icon .icon {
-    content: -webkit-image-set(url(../Images/Frames.png) 1x, url(../Images/Frames@2x.png) 2x);
-}
-
 .stopwatch-icon .icon {
     content: url(../Images/Stopwatch.svg);
 }
 
-/* FIXME: <https://webkit.org/b/154088> [GTK] Web Inspector: Add new GTK+ icon for timeline recording stopwatch */
-body:not(.mac-platform, .windows-platform) .stopwatch-icon .icon {
-    content: -webkit-image-set(url(../Images/Stopwatch.png) 1x, url(../Images/Stopwatch@2x.png) 2x);
-}
-
-.profile-icon .icon {
-    content: -webkit-image-set(url(../Images/Profile.png) 1x, url(../Images/Profile@2x.png) 2x);
+.time-icon .icon {
+    content: url(../Images/Timeline.svg);
+    width: 13px;
+    opacity: 0.6;
 }
 
 .style-record .icon {
@@ -139,4 +111,8 @@ body:not(.mac-platform, .windows-platform) .stopwatch-icon .icon {
 
 .animation-record .icon {
     content: url(../Images/TimelineRecordAnimation.svg);
+}
+
+.heap-snapshot-record .icon {
+    content: url(../Images/HeapSnapshot.svg);
 }

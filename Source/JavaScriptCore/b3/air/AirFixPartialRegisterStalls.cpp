@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,9 +34,9 @@
 #include "AirInst.h"
 #include "AirInstInlines.h"
 #include "AirPhaseScope.h"
-#include "B3IndexMap.h"
-#include "B3IndexSet.h"
 #include "MacroAssembler.h"
+#include <wtf/IndexMap.h>
+#include <wtf/IndexSet.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace B3 { namespace Air {
@@ -45,11 +45,13 @@ namespace {
 
 bool hasPartialXmmRegUpdate(const Inst& inst)
 {
-    switch (inst.opcode) {
+    switch (inst.kind.opcode) {
     case ConvertDoubleToFloat:
     case ConvertFloatToDouble:
     case ConvertInt32ToDouble:
     case ConvertInt64ToDouble:
+    case ConvertInt32ToFloat:
+    case ConvertInt64ToFloat:
     case SqrtDouble:
     case SqrtFloat:
     case CeilDouble:
@@ -66,7 +68,7 @@ bool hasPartialXmmRegUpdate(const Inst& inst)
 bool isDependencyBreaking(const Inst& inst)
 {
     // "xorps reg, reg" is used by the frontend to remove the dependency on its argument.
-    return inst.opcode == MoveZeroToDouble;
+    return inst.kind.opcode == MoveZeroToDouble;
 }
 
 // FIXME: find a good distance per architecture experimentally.
@@ -118,7 +120,7 @@ void updateDistances(Inst& inst, FPDefDistance& localDistance, unsigned& distanc
         return;
     }
 
-    inst.forEachTmp([&] (Tmp& tmp, Arg::Role role, Arg::Type, Arg::Width) {
+    inst.forEachTmp([&] (Tmp& tmp, Arg::Role role, Bank, Width) {
         ASSERT_WITH_MESSAGE(tmp.isReg(), "This phase must be run after register allocation.");
 
         if (tmp.isFPR() && Arg::isAnyDef(role))
@@ -153,10 +155,10 @@ void fixPartialRegisterStalls(Code& code)
 
     // For each block, this provides the distance to the last instruction setting each register
     // on block *entry*.
-    IndexMap<BasicBlock, FPDefDistance> lastDefDistance(code.size());
+    IndexMap<BasicBlock*, FPDefDistance> lastDefDistance(code.size());
 
     // Blocks with dirty distance at head.
-    IndexSet<BasicBlock> dirty;
+    IndexSet<BasicBlock*> dirty;
 
     // First, we compute the local distance for each block and push it to the successors.
     for (BasicBlock* block : code) {
@@ -208,7 +210,7 @@ void fixPartialRegisterStalls(Code& code)
             if (hasPartialXmmRegUpdate(inst)) {
                 RegisterSet defs;
                 RegisterSet uses;
-                inst.forEachTmp([&] (Tmp& tmp, Arg::Role role, Arg::Type, Arg::Width) {
+                inst.forEachTmp([&] (Tmp& tmp, Arg::Role role, Bank, Width) {
                     if (tmp.isFPR()) {
                         if (Arg::isAnyDef(role))
                             defs.set(tmp.fpr());

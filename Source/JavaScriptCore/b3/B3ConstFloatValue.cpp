@@ -77,6 +77,22 @@ Value* ConstFloatValue::bitAndConstant(Procedure& proc, const Value* other) cons
     return proc.add<ConstFloatValue>(origin(), result);
 }
 
+Value* ConstFloatValue::bitOrConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasFloat())
+        return nullptr;
+    float result = bitwise_cast<float>(bitwise_cast<uint32_t>(m_value) | bitwise_cast<uint32_t>(other->asFloat()));
+    return proc.add<ConstFloatValue>(origin(), result);
+}
+
+Value* ConstFloatValue::bitXorConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasFloat())
+        return nullptr;
+    float result = bitwise_cast<float>(bitwise_cast<uint32_t>(m_value) ^ bitwise_cast<uint32_t>(other->asFloat()));
+    return proc.add<ConstFloatValue>(origin(), result);
+}
+
 Value* ConstFloatValue::bitwiseCastConstant(Procedure& proc) const
 {
     return proc.add<Const32Value>(origin(), bitwise_cast<int32_t>(m_value));
@@ -154,6 +170,17 @@ TriState ConstFloatValue::greaterEqualConstant(const Value* other) const
     if (!other->hasFloat())
         return MixedTriState;
     return triState(m_value >= other->asFloat());
+}
+
+TriState ConstFloatValue::equalOrUnorderedConstant(const Value* other) const
+{
+    if (std::isnan(m_value))
+        return TrueTriState;
+
+    if (!other->hasFloat())
+        return MixedTriState;
+    float otherValue = other->asFloat();
+    return triState(std::isunordered(m_value, otherValue) || m_value == otherValue);
 }
 
 void ConstFloatValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const

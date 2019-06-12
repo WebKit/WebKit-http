@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 
 namespace JSC {
 
-const ClassInfo StructureRareData::s_info = { "StructureRareData", 0, 0, CREATE_METHOD_TABLE(StructureRareData) };
+const ClassInfo StructureRareData::s_info = { "StructureRareData", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(StructureRareData) };
 
 Structure* StructureRareData::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
@@ -67,9 +67,9 @@ void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
     JSCell::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_previous);
-    visitor.append(&thisObject->m_objectToStringValue);
-    visitor.append(&thisObject->m_cachedPropertyNameEnumerator);
+    visitor.append(thisObject->m_previous);
+    visitor.append(thisObject->m_objectToStringValue);
+    visitor.append(thisObject->m_cachedPropertyNameEnumerator);
 }
 
 JSPropertyNameEnumerator* StructureRareData::cachedPropertyNameEnumerator() const
@@ -90,7 +90,8 @@ public:
     ObjectToStringAdaptiveInferredPropertyValueWatchpoint(const ObjectPropertyCondition&, StructureRareData*);
 
 private:
-    virtual void handleFire(const FireDetail&) override;
+    bool isValid() const override;
+    void handleFire(const FireDetail&) override;
 
     StructureRareData* m_structureRareData;
 };
@@ -102,7 +103,7 @@ public:
     void install();
 
 protected:
-    virtual void fireInternal(const FireDetail&) override;
+    void fireInternal(const FireDetail&) override;
     
 private:
     ObjectPropertyCondition m_key;
@@ -126,7 +127,7 @@ void StructureRareData::setObjectToStringValue(ExecState* exec, VM& vm, Structur
         // This will not create a condition for the current structure but that is good because we know the Symbol.toStringTag
         // is not on the ownStructure so we will transisition if one is added and this cache will no longer be used.
         conditionSet = generateConditionsForPrototypePropertyHit(vm, this, exec, ownStructure, toStringTagSymbolSlot.slotBase(), vm.propertyNames->toStringTagSymbol.impl());
-        ASSERT(conditionSet.hasOneSlotBaseCondition());
+        ASSERT(!conditionSet.isValid() || conditionSet.hasOneSlotBaseCondition());
     } else if (toStringTagSymbolSlot.isUnset())
         conditionSet = generateConditionsForPropertyMiss(vm, this, exec, ownStructure, vm.propertyNames->toStringTagSymbol.impl());
     else
@@ -142,7 +143,7 @@ void StructureRareData::setObjectToStringValue(ExecState* exec, VM& vm, Structur
         if (condition.condition().kind() == PropertyCondition::Presence) {
             ASSERT(isValidOffset(condition.offset()));
             condition.object()->structure(vm)->startWatchingPropertyForReplacements(vm, condition.offset());
-            equivCondition = condition.attemptToMakeEquivalenceWithoutBarrier();
+            equivCondition = condition.attemptToMakeEquivalenceWithoutBarrier(vm);
 
             // The equivalence condition won't be watchable if we have already seen a replacement.
             if (!equivCondition.isWatchable()) {
@@ -210,6 +211,11 @@ ObjectToStringAdaptiveInferredPropertyValueWatchpoint::ObjectToStringAdaptiveInf
     : Base(key)
     , m_structureRareData(structureRareData)
 {
+}
+
+bool ObjectToStringAdaptiveInferredPropertyValueWatchpoint::isValid() const
+{
+    return m_structureRareData->isLive();
 }
 
 void ObjectToStringAdaptiveInferredPropertyValueWatchpoint::handleFire(const FireDetail& detail)

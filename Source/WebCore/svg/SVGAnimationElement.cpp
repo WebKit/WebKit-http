@@ -2,7 +2,7 @@
  * Copyright (C) 2004, 2005 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007 Rob Buis <buis@kde.org>
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Cameron McCormack <cam@mcc.id.au>
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
  * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
@@ -27,15 +27,17 @@
 #include "SVGAnimationElement.h"
 
 #include "CSSComputedStyleDeclaration.h"
-#include "CSSParser.h"
 #include "CSSPropertyNames.h"
+#include "CSSPropertyParser.h"
 #include "Document.h"
 #include "FloatConversion.h"
 #include "RenderObject.h"
+#include "SVGAnimateColorElement.h"
 #include "SVGAnimateElement.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
+#include "SVGStringList.h"
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringView.h>
@@ -52,13 +54,6 @@ END_REGISTER_ANIMATED_PROPERTIES
 
 SVGAnimationElement::SVGAnimationElement(const QualifiedName& tagName, Document& document)
     : SVGSMILElement(tagName, document)
-    , m_fromPropertyValueType(RegularPropertyValue)
-    , m_toPropertyValueType(RegularPropertyValue)
-    , m_animationValid(false)
-    , m_attributeType(AttributeTypeAuto)
-    , m_hasInvalidCSSAttributeType(false)
-    , m_calcMode(CalcModeLinear)
-    , m_animationMode(NoAnimation)
 {
     registerAnimatedPropertiesForSVGAnimationElement();
 }
@@ -66,18 +61,17 @@ SVGAnimationElement::SVGAnimationElement(const QualifiedName& tagName, Document&
 static void parseKeyTimes(const String& parse, Vector<float>& result, bool verifyOrder)
 {
     result.clear();
-    Vector<String> parseList;
-    parse.split(';', parseList);
-    for (unsigned n = 0; n < parseList.size(); ++n) {
-        String timeString = parseList[n];
+    bool isFirst = true;
+    for (StringView timeString : StringView(parse).split(';')) {
         bool ok;
-        float time = timeString.toFloat(&ok);
+        float time = timeString.toFloat(ok);
         if (!ok || time < 0 || time > 1)
             goto fail;
         if (verifyOrder) {
-            if (!n) {
+            if (isFirst) {
                 if (time)
                     goto fail;
+                isFirst = false;
             } else if (time < result.last())
                 goto fail;
         }
@@ -240,7 +234,7 @@ float SVGAnimationElement::getCurrentTime() const
     return narrowPrecisionToFloat(elapsed().value());
 }
 
-float SVGAnimationElement::getSimpleDuration(ExceptionCode&) const
+float SVGAnimationElement::getSimpleDuration() const
 {
     return narrowPrecisionToFloat(simpleDuration().value());
 }    
@@ -291,15 +285,15 @@ void SVGAnimationElement::setCalcMode(const AtomicString& calcMode)
     static NeverDestroyed<const AtomicString> paced("paced", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<const AtomicString> spline("spline", AtomicString::ConstructFromLiteral);
     if (calcMode == discrete)
-        setCalcMode(CalcModeDiscrete);
+        setCalcMode(CalcMode::Discrete);
     else if (calcMode == linear)
-        setCalcMode(CalcModeLinear);
+        setCalcMode(CalcMode::Linear);
     else if (calcMode == paced)
-        setCalcMode(CalcModePaced);
+        setCalcMode(CalcMode::Paced);
     else if (calcMode == spline)
-        setCalcMode(CalcModeSpline);
+        setCalcMode(CalcMode::Spline);
     else
-        setCalcMode(hasTagName(SVGNames::animateMotionTag) ? CalcModePaced : CalcModeLinear);
+        setCalcMode(hasTagName(SVGNames::animateMotionTag) ? CalcMode::Paced : CalcMode::Linear);
 }
 
 void SVGAnimationElement::setAttributeType(const AtomicString& attributeType)
@@ -307,40 +301,40 @@ void SVGAnimationElement::setAttributeType(const AtomicString& attributeType)
     static NeverDestroyed<const AtomicString> css("CSS", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<const AtomicString> xml("XML", AtomicString::ConstructFromLiteral);
     if (attributeType == css)
-        m_attributeType = AttributeTypeCSS;
+        m_attributeType = AttributeType::CSS;
     else if (attributeType == xml)
-        m_attributeType = AttributeTypeXML;
+        m_attributeType = AttributeType::XML;
     else
-        m_attributeType = AttributeTypeAuto;
+        m_attributeType = AttributeType::Auto;
     checkInvalidCSSAttributeType(targetElement());
 }
 
 String SVGAnimationElement::toValue() const
 {    
-    return fastGetAttribute(SVGNames::toAttr);
+    return attributeWithoutSynchronization(SVGNames::toAttr);
 }
 
 String SVGAnimationElement::byValue() const
 {    
-    return fastGetAttribute(SVGNames::byAttr);
+    return attributeWithoutSynchronization(SVGNames::byAttr);
 }
 
 String SVGAnimationElement::fromValue() const
 {    
-    return fastGetAttribute(SVGNames::fromAttr);
+    return attributeWithoutSynchronization(SVGNames::fromAttr);
 }
 
 bool SVGAnimationElement::isAdditive() const
 {
     static NeverDestroyed<const AtomicString> sum("sum", AtomicString::ConstructFromLiteral);
-    const AtomicString& value = fastGetAttribute(SVGNames::additiveAttr);
+    const AtomicString& value = attributeWithoutSynchronization(SVGNames::additiveAttr);
     return value == sum || animationMode() == ByAnimation;
 }
 
 bool SVGAnimationElement::isAccumulated() const
 {
     static NeverDestroyed<const AtomicString> sum("sum", AtomicString::ConstructFromLiteral);
-    const AtomicString& value = fastGetAttribute(SVGNames::accumulateAttr);
+    const AtomicString& value = attributeWithoutSynchronization(SVGNames::accumulateAttr);
     return value == sum && animationMode() != ToAnimation;
 }
 
@@ -367,7 +361,7 @@ SVGAnimationElement::ShouldApplyAnimation SVGAnimationElement::shouldApplyAnimat
 
 
     // If attributeType="CSS" and attributeName doesn't point to a CSS property, ignore the animation.
-    if (attributeType() == AttributeTypeCSS)
+    if (attributeType() == AttributeType::CSS)
         return DontApplyAnimation;
 
     return ApplyXMLAnimation;
@@ -375,7 +369,7 @@ SVGAnimationElement::ShouldApplyAnimation SVGAnimationElement::shouldApplyAnimat
 
 void SVGAnimationElement::calculateKeyTimesForCalcModePaced()
 {
-    ASSERT(calcMode() == CalcModePaced);
+    ASSERT(calcMode() == CalcMode::Paced);
     ASSERT(animationMode() == ValuesAnimation);
 
     unsigned valuesCount = m_values.size();
@@ -427,7 +421,7 @@ unsigned SVGAnimationElement::calculateKeyTimesIndex(float percent) const
 
 float SVGAnimationElement::calculatePercentForSpline(float percent, unsigned splineIndex) const
 {
-    ASSERT(calcMode() == CalcModeSpline);
+    ASSERT(calcMode() == CalcMode::Spline);
     ASSERT_WITH_SECURITY_IMPLICATION(splineIndex < m_keySplines.size());
     UnitBezier bezier = m_keySplines[splineIndex];
     SMILTime duration = simpleDuration();
@@ -439,7 +433,7 @@ float SVGAnimationElement::calculatePercentForSpline(float percent, unsigned spl
 float SVGAnimationElement::calculatePercentFromKeyPoints(float percent) const
 {
     ASSERT(!m_keyPoints.isEmpty());
-    ASSERT(calcMode() != CalcModePaced);
+    ASSERT(calcMode() != CalcMode::Paced);
     ASSERT(m_keyTimes.size() > 1);
     ASSERT(m_keyPoints.size() == m_keyTimes.size());
 
@@ -452,12 +446,12 @@ float SVGAnimationElement::calculatePercentFromKeyPoints(float percent) const
     float fromKeyPoint = m_keyPoints[index];
     float toKeyPoint = m_keyPoints[index + 1];
     
-    if (calcMode() == CalcModeDiscrete)
+    if (calcMode() == CalcMode::Discrete)
         return fromKeyPoint;
     
     float keyPointPercent = (percent - fromPercent) / (toPercent - fromPercent);
     
-    if (calcMode() == CalcModeSpline) {
+    if (calcMode() == CalcMode::Spline) {
         ASSERT(m_keySplines.size() == m_keyPoints.size() - 1);
         keyPointPercent = calculatePercentForSpline(keyPointPercent, index);
     }
@@ -466,7 +460,7 @@ float SVGAnimationElement::calculatePercentFromKeyPoints(float percent) const
 
 float SVGAnimationElement::calculatePercentForFromTo(float percent) const
 {
-    if (calcMode() == CalcModeDiscrete && m_keyTimes.size() == 2)
+    if (calcMode() == CalcMode::Discrete && m_keyTimes.size() == 2)
         return percent > m_keyTimes[1] ? 1 : 0;
 
     return percent;
@@ -476,7 +470,7 @@ void SVGAnimationElement::currentValuesFromKeyPoints(float percent, float& effec
 {
     ASSERT(!m_keyPoints.isEmpty());
     ASSERT(m_keyPoints.size() == m_keyTimes.size());
-    ASSERT(calcMode() != CalcModePaced);
+    ASSERT(calcMode() != CalcMode::Paced);
     effectivePercent = calculatePercentFromKeyPoints(percent);
     unsigned index = effectivePercent == 1 ? m_values.size() - 2 : static_cast<unsigned>(effectivePercent * (m_values.size() - 1));
     from = m_values[index];
@@ -501,9 +495,9 @@ void SVGAnimationElement::currentValuesForValuesAnimation(float percent, float& 
         ASSERT(targetElement());
         AnimatedPropertyType type = downcast<SVGAnimateElementBase>(*this).determineAnimatedPropertyType(*targetElement());
         if (type == AnimatedBoolean || type == AnimatedEnumeration || type == AnimatedPreserveAspectRatio || type == AnimatedString)
-            calcMode = CalcModeDiscrete;
+            calcMode = CalcMode::Discrete;
     }
-    if (!m_keyPoints.isEmpty() && calcMode != CalcModePaced)
+    if (!m_keyPoints.isEmpty() && calcMode != CalcMode::Paced)
         return currentValuesFromKeyPoints(percent, effectivePercent, from, to);
     
     unsigned keyTimesCount = m_keyTimes.size();
@@ -511,7 +505,7 @@ void SVGAnimationElement::currentValuesForValuesAnimation(float percent, float& 
     ASSERT(!keyTimesCount || (keyTimesCount > 1 && !m_keyTimes[0]));
 
     unsigned index = calculateKeyTimesIndex(percent);
-    if (calcMode == CalcModeDiscrete) {
+    if (calcMode == CalcMode::Discrete) {
         if (!keyTimesCount) 
             index = static_cast<unsigned>(percent * valuesCount);
         from = m_values[index];
@@ -538,7 +532,7 @@ void SVGAnimationElement::currentValuesForValuesAnimation(float percent, float& 
     ASSERT_WITH_SECURITY_IMPLICATION(toPercent > fromPercent);
     effectivePercent = (percent - fromPercent) / (toPercent - fromPercent);
 
-    if (calcMode == CalcModeSpline) {
+    if (calcMode == CalcMode::Spline) {
         ASSERT(m_keySplines.size() == m_values.size() - 1);
         effectivePercent = calculatePercentForSpline(effectivePercent, index);
     }
@@ -552,17 +546,17 @@ void SVGAnimationElement::startedActiveInterval()
         return;
 
     // These validations are appropriate for all animation modes.
-    if (fastHasAttribute(SVGNames::keyPointsAttr) && m_keyPoints.size() != m_keyTimes.size())
+    if (hasAttributeWithoutSynchronization(SVGNames::keyPointsAttr) && m_keyPoints.size() != m_keyTimes.size())
         return;
 
     AnimationMode animationMode = this->animationMode();
     CalcMode calcMode = this->calcMode();
-    if (calcMode == CalcModeSpline) {
+    if (calcMode == CalcMode::Spline) {
         unsigned splinesCount = m_keySplines.size();
         if (!splinesCount
-            || (fastHasAttribute(SVGNames::keyPointsAttr) && m_keyPoints.size() - 1 != splinesCount)
+            || (hasAttributeWithoutSynchronization(SVGNames::keyPointsAttr) && m_keyPoints.size() - 1 != splinesCount)
             || (animationMode == ValuesAnimation && m_values.size() - 1 != splinesCount)
-            || (fastHasAttribute(SVGNames::keyTimesAttr) && m_keyTimes.size() - 1 != splinesCount))
+            || (hasAttributeWithoutSynchronization(SVGNames::keyTimesAttr) && m_keyTimes.size() - 1 != splinesCount))
             return;
     }
 
@@ -572,7 +566,7 @@ void SVGAnimationElement::startedActiveInterval()
     if (animationMode == NoAnimation)
         return;
     if ((animationMode == FromToAnimation || animationMode == FromByAnimation || animationMode == ToAnimation || animationMode == ByAnimation)
-        && (fastHasAttribute(SVGNames::keyPointsAttr) && fastHasAttribute(SVGNames::keyTimesAttr) && (m_keyTimes.size() < 2 || m_keyTimes.size() != m_keyPoints.size())))
+        && (hasAttributeWithoutSynchronization(SVGNames::keyPointsAttr) && hasAttributeWithoutSynchronization(SVGNames::keyTimesAttr) && (m_keyTimes.size() < 2 || m_keyTimes.size() != m_keyPoints.size())))
         return;
     if (animationMode == FromToAnimation)
         m_animationValid = calculateFromAndToValues(from, to);
@@ -586,16 +580,16 @@ void SVGAnimationElement::startedActiveInterval()
         m_animationValid = calculateFromAndByValues(emptyString(), by);
     else if (animationMode == ValuesAnimation) {
         m_animationValid = m_values.size() >= 1
-            && (calcMode == CalcModePaced || !fastHasAttribute(SVGNames::keyTimesAttr) || fastHasAttribute(SVGNames::keyPointsAttr) || (m_values.size() == m_keyTimes.size()))
-            && (calcMode == CalcModeDiscrete || !m_keyTimes.size() || m_keyTimes.last() == 1)
-            && (calcMode != CalcModeSpline || ((m_keySplines.size() && (m_keySplines.size() == m_values.size() - 1)) || m_keySplines.size() == m_keyPoints.size() - 1))
-            && (!fastHasAttribute(SVGNames::keyPointsAttr) || (m_keyTimes.size() > 1 && m_keyTimes.size() == m_keyPoints.size()));
+            && (calcMode == CalcMode::Paced || !hasAttributeWithoutSynchronization(SVGNames::keyTimesAttr) || hasAttributeWithoutSynchronization(SVGNames::keyPointsAttr) || (m_values.size() == m_keyTimes.size()))
+            && (calcMode == CalcMode::Discrete || !m_keyTimes.size() || m_keyTimes.last() == 1)
+            && (calcMode != CalcMode::Spline || ((m_keySplines.size() && (m_keySplines.size() == m_values.size() - 1)) || m_keySplines.size() == m_keyPoints.size() - 1))
+            && (!hasAttributeWithoutSynchronization(SVGNames::keyPointsAttr) || (m_keyTimes.size() > 1 && m_keyTimes.size() == m_keyPoints.size()));
         if (m_animationValid)
             m_animationValid = calculateToAtEndOfDurationValue(m_values.last());
-        if (calcMode == CalcModePaced && m_animationValid)
+        if (calcMode == CalcMode::Paced && m_animationValid)
             calculateKeyTimesForCalcModePaced();
     } else if (animationMode == PathAnimation)
-        m_animationValid = calcMode == CalcModePaced || !fastHasAttribute(SVGNames::keyPointsAttr) || (m_keyTimes.size() > 1 && m_keyTimes.size() == m_keyPoints.size());
+        m_animationValid = calcMode == CalcMode::Paced || !hasAttributeWithoutSynchronization(SVGNames::keyPointsAttr) || (m_keyTimes.size() > 1 && m_keyTimes.size() == m_keyPoints.size());
 }
 
 void SVGAnimationElement::updateAnimation(float percent, unsigned repeatCount, SVGSMILElement* resultElement)
@@ -617,9 +611,9 @@ void SVGAnimationElement::updateAnimation(float percent, unsigned repeatCount, S
             m_lastValuesAnimationFrom = from;
             m_lastValuesAnimationTo = to;
         }
-    } else if (!m_keyPoints.isEmpty() && calcMode != CalcModePaced)
+    } else if (!m_keyPoints.isEmpty() && calcMode != CalcMode::Paced)
         effectivePercent = calculatePercentFromKeyPoints(percent);
-    else if (m_keyPoints.isEmpty() && calcMode == CalcModeSpline && m_keyTimes.size() > 1)
+    else if (m_keyPoints.isEmpty() && calcMode == CalcMode::Spline && m_keyTimes.size() > 1)
         effectivePercent = calculatePercentForSpline(percent, calculateKeyTimesIndex(percent));
     else if (animationMode == FromToAnimation || animationMode == ToAnimation)
         effectivePercent = calculatePercentForFromTo(percent);
@@ -688,7 +682,22 @@ void SVGAnimationElement::setTargetElement(SVGElement* target)
 
 void SVGAnimationElement::checkInvalidCSSAttributeType(SVGElement* target)
 {
-    m_hasInvalidCSSAttributeType = target && hasValidAttributeName() && attributeType() == AttributeTypeCSS && !isTargetAttributeCSSProperty(target, attributeName());
+    m_hasInvalidCSSAttributeType = target && hasValidAttributeName() && attributeType() == AttributeType::CSS && !isTargetAttributeCSSProperty(target, attributeName());
+}
+
+Ref<SVGStringList> SVGAnimationElement::requiredFeatures()
+{
+    return SVGTests::requiredFeatures(*this);
+}
+
+Ref<SVGStringList> SVGAnimationElement::requiredExtensions()
+{ 
+    return SVGTests::requiredExtensions(*this);
+}
+
+Ref<SVGStringList> SVGAnimationElement::systemLanguage()
+{
+    return SVGTests::systemLanguage(*this);
 }
 
 }

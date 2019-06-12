@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef InsertIntoTextNodeCommand_h
-#define InsertIntoTextNodeCommand_h
+#pragma once
 
 #include "EditCommand.h"
 
@@ -34,7 +33,7 @@ class Text;
 
 class InsertIntoTextNodeCommand : public SimpleEditCommand {
 public:
-    static Ref<InsertIntoTextNodeCommand> create(RefPtr<Text>&& node, unsigned offset, const String& text, EditAction editingAction = EditActionInsert)
+    static Ref<InsertIntoTextNodeCommand> create(Ref<Text>&& node, unsigned offset, const String& text, EditAction editingAction = EditActionInsert)
     {
         return adoptRef(*new InsertIntoTextNodeCommand(WTFMove(node), offset, text, editingAction));
     }
@@ -42,20 +41,20 @@ public:
     const String& insertedText();
 
 protected:
-    InsertIntoTextNodeCommand(RefPtr<Text>&& node, unsigned offset, const String& text, EditAction editingAction);
+    InsertIntoTextNodeCommand(Ref<Text>&& node, unsigned offset, const String& text, EditAction editingAction);
 
 private:
-    virtual void doApply() override;
-    virtual void doUnapply() override;
+    void doApply() override;
+    void doUnapply() override;
 #if PLATFORM(IOS)
-    virtual void doReapply() override;
+    void doReapply() override;
 #endif
     
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override;
+    void getNodesInCommand(HashSet<Node*>&) override;
 #endif
     
-    RefPtr<Text> m_node;
+    Ref<Text> m_node;
     unsigned m_offset;
     String m_text;
 };
@@ -66,5 +65,3 @@ inline const String& InsertIntoTextNodeCommand::insertedText()
 }
 
 } // namespace WebCore
-
-#endif // InsertIntoTextNodeCommand_h

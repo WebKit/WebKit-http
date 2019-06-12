@@ -23,23 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderThemeIOS_h
-#define RenderThemeIOS_h
+#pragma once
 
 #if PLATFORM(IOS)
 
-#include "RenderTheme.h"
+#include "RenderThemeCocoa.h"
 
 namespace WebCore {
     
 class RenderStyle;
 class GraphicsContext;
-    
-class RenderThemeIOS final : public RenderTheme {
+struct AttachmentLayout;
+
+class RenderThemeIOS final : public RenderThemeCocoa {
 public:
     static Ref<RenderTheme> create();
-
-    LengthBox popupInternalPaddingBox(const RenderStyle&) const override;
 
     static void adjustRoundBorderRadius(RenderStyle&, RenderBox&);
 
@@ -48,84 +46,102 @@ public:
     WEBCORE_EXPORT static void setContentSizeCategory(const String&);
 
 protected:
-    virtual FontCascadeDescription& cachedSystemFontDescription(CSSValueID systemFontID) const override;
-    virtual void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
-    virtual int baselinePosition(const RenderBox&) const override;
+    LengthBox popupInternalPaddingBox(const RenderStyle&) const override;
+    
+    FontCascadeDescription& cachedSystemFontDescription(CSSValueID systemFontID) const override;
+    void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
+    int baselinePosition(const RenderBox&) const override;
 
-    virtual bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer& background, const Color& backgroundColor) const override;
+    bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer& background, const Color& backgroundColor) const override;
 
     // Methods for each appearance value.
-    virtual void adjustCheckboxStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintCheckboxDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustCheckboxStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    bool paintCheckboxDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustRadioStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintRadioDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustRadioStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    bool paintRadioDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintButtonDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    virtual bool paintPushButtonDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    virtual void setButtonSize(RenderStyle&) const override;
+    void adjustButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    bool paintButtonDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintPushButtonDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void setButtonSize(RenderStyle&) const override;
 
-    virtual bool paintFileUploadIconDecorations(const RenderObject& inputRenderer, const RenderObject& buttonRenderer, const PaintInfo&, const IntRect&, Icon*, FileUploadDecorations) override;
+    bool paintFileUploadIconDecorations(const RenderObject& inputRenderer, const RenderObject& buttonRenderer, const PaintInfo&, const IntRect&, Icon*, FileUploadDecorations) override;
 
-    virtual bool paintTextFieldDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) override;
-    virtual bool paintTextAreaDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    bool paintTextFieldDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    bool paintTextAreaDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    virtual void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
+    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
 
-    virtual void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual void adjustSliderThumbSize(RenderStyle&, Element*) const override;
-    virtual bool paintSliderThumbDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustSliderThumbSize(RenderStyle&, const Element*) const override;
+    bool paintSliderThumbDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
     // Returns the repeat interval of the animation for the progress bar.
-    virtual double animationRepeatIntervalForProgressBar(RenderProgress&) const override;
+    Seconds animationRepeatIntervalForProgressBar(RenderProgress&) const override;
     // Returns the duration of the animation for the progress bar.
-    virtual double animationDurationForProgressBar(RenderProgress&) const override;
+    double animationDurationForProgressBar(RenderProgress&) const override;
 
-    virtual bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
 #if ENABLE(DATALIST_ELEMENT)
-    virtual IntSize sliderTickSize() const override;
-    virtual int sliderTickOffsetFromTrackCenter() const override;
+    IntSize sliderTickSize() const override;
+    int sliderTickOffsetFromTrackCenter() const override;
 #endif
 
-    virtual void adjustSearchFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintSearchFieldDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustSearchFieldStyle(StyleResolver&, RenderStyle&, const Element*) const override;
+    bool paintSearchFieldDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual Color platformActiveSelectionBackgroundColor() const override;
-    virtual Color platformInactiveSelectionBackgroundColor() const override;
+    Color platformActiveSelectionBackgroundColor() const override;
+    Color platformInactiveSelectionBackgroundColor() const override;
 
 #if ENABLE(TOUCH_EVENTS)
-    virtual Color platformTapHighlightColor() const override { return 0x4D1A1A1A; }
+    Color platformTapHighlightColor() const override { return 0x4D1A1A1A; }
 #endif
 
-    virtual bool shouldHaveSpinButton(HTMLInputElement&) const override;
-    virtual bool shouldHaveCapsLockIndicator(HTMLInputElement&) const override;
+    bool shouldHaveSpinButton(const HTMLInputElement&) const override;
+    bool shouldHaveCapsLockIndicator(const HTMLInputElement&) const override;
 
 #if ENABLE(VIDEO)
-    virtual String mediaControlsStyleSheet() override;
-    virtual String mediaControlsScript() override;
+    String mediaControlsStyleSheet() override;
+    String modernMediaControlsStyleSheet() override;
+    String mediaControlsScript() override;
+    String mediaControlsBase64StringForIconNameAndType(const String&, const String&) override;
 #endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    LayoutSize attachmentIntrinsicSize(const RenderAttachment&) const override;
+    int attachmentBaseline(const RenderAttachment&) const override;
+    bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&) override;
+#endif
+
+    bool shouldMockBoldSystemFontForAccessibility() const override { return m_shouldMockBoldSystemFontForAccessibility; }
+    void setShouldMockBoldSystemFontForAccessibility(bool shouldMockBoldSystemFontForAccessibility) override { m_shouldMockBoldSystemFontForAccessibility = shouldMockBoldSystemFontForAccessibility; }
 
 private:
     RenderThemeIOS();
     virtual ~RenderThemeIOS() { }
 
+    void purgeCaches() override;
+
     const Color& shadowColor() const;
     FloatRect addRoundedBorderClip(const RenderObject& box, GraphicsContext&, const IntRect&);
 
-    virtual Color systemColor(CSSValueID) const override;
+    Color systemColor(CSSValueID) const override;
 
+    String m_legacyMediaControlsScript;
     String m_mediaControlsScript;
+    String m_legacyMediaControlsStyleSheet;
     String m_mediaControlsStyleSheet;
 
     mutable HashMap<int, Color> m_systemColorCache;
+
+    bool m_shouldMockBoldSystemFontForAccessibility { false };
 };
 
 }
 
 #endif // PLATFORM(IOS)
-#endif // RenderThemeIOS_h

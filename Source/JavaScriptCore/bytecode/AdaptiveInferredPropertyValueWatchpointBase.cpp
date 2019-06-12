@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,7 @@
 #include "config.h"
 #include "AdaptiveInferredPropertyValueWatchpointBase.h"
 
-#include "JSCellInlines.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -50,10 +49,6 @@ void AdaptiveInferredPropertyValueWatchpointBase::install()
 
 void AdaptiveInferredPropertyValueWatchpointBase::fire(const FireDetail& detail)
 {
-    // We need to defer GC here otherwise we might trigger a GC that could destroy the owner
-    // CodeBlock. In particular, this can happen when we add rare data to a structure when
-    // we EnsureWatchability.
-    DeferGCForAWhile defer(*Heap::heap(m_key.object()));
     // One of the watchpoints fired, but the other one didn't. Make sure that neither of them are
     // in any set anymore. This simplifies things by allowing us to reinstall the watchpoints
     // wherever from scratch.
@@ -62,12 +57,20 @@ void AdaptiveInferredPropertyValueWatchpointBase::fire(const FireDetail& detail)
     if (m_propertyWatchpoint.isOnList())
         m_propertyWatchpoint.remove();
 
+    if (!isValid())
+        return;
+
     if (m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
         install();
         return;
     }
 
     handleFire(detail);
+}
+
+bool AdaptiveInferredPropertyValueWatchpointBase::isValid() const
+{
+    return true;
 }
 
 void AdaptiveInferredPropertyValueWatchpointBase::StructureWatchpoint::fireInternal(const FireDetail& detail)

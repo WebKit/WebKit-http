@@ -35,36 +35,14 @@
 #include "AudioNodeOutput.h"
 #include "AudioProcessingEvent.h"
 #include "Document.h"
+#include "EventNames.h"
 #include <runtime/Float32Array.h>
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
-RefPtr<ScriptProcessorNode> ScriptProcessorNode::create(AudioContext& context, float sampleRate, size_t bufferSize, unsigned numberOfInputChannels, unsigned numberOfOutputChannels)
+Ref<ScriptProcessorNode> ScriptProcessorNode::create(AudioContext& context, float sampleRate, size_t bufferSize, unsigned numberOfInputChannels, unsigned numberOfOutputChannels)
 {
-    // Check for valid buffer size.
-    switch (bufferSize) {
-    case 256:
-    case 512:
-    case 1024:
-    case 2048:
-    case 4096:
-    case 8192:
-    case 16384:
-        break;
-    default:
-        return nullptr;
-    }
-
-    if (!numberOfInputChannels && !numberOfOutputChannels)
-        return nullptr;
-
-    if (numberOfInputChannels > AudioContext::maxNumberOfChannels())
-        return nullptr;
-
-    if (numberOfOutputChannels > AudioContext::maxNumberOfChannels())
-        return nullptr;
-
     return adoptRef(*new ScriptProcessorNode(context, sampleRate, bufferSize, numberOfInputChannels, numberOfOutputChannels));
 }
 
@@ -182,14 +160,14 @@ void ScriptProcessorNode::process(size_t framesToProcess)
         return;
 
     for (unsigned i = 0; i < numberOfInputChannels; i++)
-        m_internalInputBus->setChannelMemory(i, inputBuffer->getChannelData(i)->data() + m_bufferReadWriteIndex, framesToProcess);
+        m_internalInputBus->setChannelMemory(i, inputBuffer->channelData(i)->data() + m_bufferReadWriteIndex, framesToProcess);
 
     if (numberOfInputChannels)
         m_internalInputBus->copyFrom(*inputBus);
 
     // Copy from the output buffer to the output. 
     for (unsigned i = 0; i < numberOfOutputChannels; ++i)
-        memcpy(outputBus->channel(i)->mutableData(), outputBuffer->getChannelData(i)->data() + m_bufferReadWriteIndex, sizeof(float) * framesToProcess);
+        memcpy(outputBus->channel(i)->mutableData(), outputBuffer->channelData(i)->data() + m_bufferReadWriteIndex, sizeof(float) * framesToProcess);
 
     // Update the buffering index.
     m_bufferReadWriteIndex = (m_bufferReadWriteIndex + framesToProcess) % bufferSize();
@@ -212,6 +190,9 @@ void ScriptProcessorNode::process(size_t framesToProcess)
             m_isRequestOutstanding = true;
 
             callOnMainThread([this] {
+                if (!m_hasAudioProcessListener)
+                    return;
+
                 fireProcessEvent();
 
                 // De-reference to match the ref() call in process().
@@ -273,17 +254,17 @@ double ScriptProcessorNode::latencyTime() const
     return std::numeric_limits<double>::infinity();
 }
 
-bool ScriptProcessorNode::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
+bool ScriptProcessorNode::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, const AddEventListenerOptions& options)
 {
-    bool success = AudioNode::addEventListener(eventType, WTFMove(listener), useCapture);
+    bool success = AudioNode::addEventListener(eventType, WTFMove(listener), options);
     if (success && eventType == eventNames().audioprocessEvent)
         m_hasAudioProcessListener = hasEventListeners(eventNames().audioprocessEvent);
     return success;
 }
 
-bool ScriptProcessorNode::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
+bool ScriptProcessorNode::removeEventListener(const AtomicString& eventType, EventListener& listener, const ListenerOptions& options)
 {
-    bool success = AudioNode::removeEventListener(eventType, listener, useCapture);
+    bool success = AudioNode::removeEventListener(eventType, listener, options);
     if (success && eventType == eventNames().audioprocessEvent)
         m_hasAudioProcessListener = hasEventListeners(eventNames().audioprocessEvent);
     return success;

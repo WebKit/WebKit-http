@@ -39,10 +39,15 @@
 #include <wtf/RunLoop.h>
 #include <wtf/TypeCasts.h>
 
+#if PLATFORM(COCOA)
+namespace WebCore {
+class MachSendRight;
+}
+#endif
+
 namespace WebKit {
 
 class LayerTreeContext;
-class CoordinatedLayerTreeHostProxy;
 class UpdateInfo;
 class WebPageProxy;
 
@@ -62,12 +67,10 @@ public:
     virtual void waitForBackingStoreUpdateOnNextPaint() { }
 
     const WebCore::IntSize& size() const { return m_size; }
-    void setSize(const WebCore::IntSize&, const WebCore::IntSize&, const WebCore::IntSize& scrollOffset);
+    bool setSize(const WebCore::IntSize&, const WebCore::IntSize&, const WebCore::IntSize& scrollOffset);
 
     // The timeout we use when waiting for a DidUpdateGeometry message.
-    static constexpr std::chrono::milliseconds didUpdateBackingStoreStateTimeout() { return std::chrono::milliseconds(500); }
-
-    virtual void waitForPossibleGeometryUpdate(std::chrono::milliseconds = didUpdateBackingStoreStateTimeout()) { }
+    static constexpr Seconds didUpdateBackingStoreStateTimeout() { return Seconds::fromMilliseconds(500); }
 
     virtual void colorSpaceDidChange() { }
     virtual void minimumLayoutSizeDidChange() { }
@@ -76,18 +79,16 @@ public:
     virtual void commitTransientZoom(double, WebCore::FloatPoint) { }
 
 #if PLATFORM(MAC)
-    virtual void setExposedRect(const WebCore::FloatRect&);
-    WebCore::FloatRect exposedRect() const { return m_exposedRect; }
-#endif
-#if PLATFORM(COCOA)
-    void exposedRectChangedTimerFired();
+    virtual void setViewExposedRect(std::optional<WebCore::FloatRect>);
+    std::optional<WebCore::FloatRect> viewExposedRect() const { return m_viewExposedRect; }
+    void viewExposedRectChangedTimerFired();
 #endif
 
     virtual void updateDebugIndicator() { }
 
-    virtual void waitForDidUpdateViewState() { }
+    virtual void waitForDidUpdateActivityState() { }
     
-    virtual void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) { ASSERT_NOT_REACHED(); }
+    virtual void dispatchAfterEnsuringDrawing(WTF::Function<void (CallbackBase::Error)>&&) { ASSERT_NOT_REACHED(); }
 
     // Hide the content until the currently pending update arrives.
     virtual void hideContentUntilPendingUpdate() { ASSERT_NOT_REACHED(); }
@@ -98,6 +99,12 @@ public:
     virtual bool hasVisibleContent() const { return true; }
 
     virtual void willSendUpdateGeometry() { }
+
+    virtual void prepareForAppSuspension() { }
+
+#if PLATFORM(COCOA)
+    virtual WebCore::MachSendRight createFence();
+#endif
 
 protected:
     explicit DrawingAreaProxy(DrawingAreaType, WebPageProxy&);
@@ -110,7 +117,7 @@ protected:
     WebCore::IntSize m_scrollOffset;
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
 private:
     virtual void sizeDidChange() = 0;
@@ -122,15 +129,14 @@ private:
     virtual void enterAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
     virtual void exitAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const UpdateInfo&) { }
     virtual void updateAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
-    virtual void willEnterAcceleratedCompositingMode(uint64_t /* backingStoreStateID */) { }
 #if PLATFORM(COCOA)
     virtual void didUpdateGeometry() { }
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize&) { }
 
 #if PLATFORM(MAC)
-    RunLoop::Timer<DrawingAreaProxy> m_exposedRectChangedTimer;
-    WebCore::FloatRect m_exposedRect;
-    WebCore::FloatRect m_lastSentExposedRect;
+    RunLoop::Timer<DrawingAreaProxy> m_viewExposedRectChangedTimer;
+    std::optional<WebCore::FloatRect> m_viewExposedRect;
+    std::optional<WebCore::FloatRect> m_lastSentViewExposedRect;
 #endif // PLATFORM(MAC)
 #endif
 };

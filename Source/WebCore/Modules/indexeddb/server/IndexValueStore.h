@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IndexValueStore_h
-#define IndexValueStore_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBCursorInfo.h"
 #include "IDBKeyData.h"
 #include "IndexValueEntry.h"
-#include <set>
 #include <wtf/HashMap.h>
 
 namespace WebCore {
@@ -51,6 +49,7 @@ public:
     IndexValueStore(bool unique);
 
     const IDBKeyData* lowestValueForKey(const IDBKeyData&) const;
+    Vector<IDBKeyData> allValuesForKey(const IDBKeyData&, uint32_t limit) const;
     uint64_t countForKey(const IDBKeyData&) const;
     IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
     bool contains(const IDBKeyData&) const;
@@ -67,8 +66,8 @@ public:
         {
         }
 
-        Iterator(IndexValueStore&, std::set<IDBKeyData>::iterator, IndexValueEntry::Iterator);
-        Iterator(IndexValueStore&, CursorDuplicity, std::set<IDBKeyData>::reverse_iterator, IndexValueEntry::Iterator);
+        Iterator(IndexValueStore&, IDBKeyDataSet::iterator, IndexValueEntry::Iterator);
+        Iterator(IndexValueStore&, CursorDuplicity, IDBKeyDataSet::reverse_iterator, IndexValueEntry::Iterator);
 
         void invalidate();
         bool isValid();
@@ -84,8 +83,8 @@ public:
         IndexValueStore* m_store { nullptr };
         bool m_forward { true };
         CursorDuplicity m_duplicity { CursorDuplicity::Duplicates };
-        std::set<IDBKeyData>::iterator m_forwardIterator;
-        std::set<IDBKeyData>::reverse_iterator m_reverseIterator;
+        IDBKeyDataSet::iterator m_forwardIterator;
+        IDBKeyDataSet::reverse_iterator m_reverseIterator;
 
         IndexValueEntry::Iterator m_primaryKeyIterator;
     };
@@ -98,16 +97,16 @@ public:
     Iterator find(const IDBKeyData&, const IDBKeyData& primaryKey);
     Iterator reverseFind(const IDBKeyData&, const IDBKeyData& primaryKey, CursorDuplicity);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String loggingString() const;
 #endif
 
 private:
-    std::set<IDBKeyData>::iterator lowestIteratorInRange(const IDBKeyRangeData&) const;
-    std::set<IDBKeyData>::reverse_iterator highestReverseIteratorInRange(const IDBKeyRangeData&) const;
+    IDBKeyDataSet::iterator lowestIteratorInRange(const IDBKeyRangeData&) const;
+    IDBKeyDataSet::reverse_iterator highestReverseIteratorInRange(const IDBKeyRangeData&) const;
 
     IndexKeyValueMap m_records;
-    std::set<IDBKeyData> m_orderedKeys;
+    IDBKeyDataSet m_orderedKeys;
     
     bool m_unique;
 };
@@ -116,4 +115,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IndexValueStore_h

@@ -42,9 +42,9 @@ class WebFormSubmissionListenerProxy : public WebFrameListenerProxy {
 public:
     static const Type APIType = Type::FormSubmissionListener;
 
-    static PassRefPtr<WebFormSubmissionListenerProxy> create(WebFrameProxy* frame, uint64_t listenerID)
+    static Ref<WebFormSubmissionListenerProxy> create(WebFrameProxy* frame, uint64_t listenerID)
     {
-        return adoptRef(new WebFormSubmissionListenerProxy(frame, listenerID));
+        return adoptRef(*new WebFormSubmissionListenerProxy(frame, listenerID));
     }
 
     void continueSubmission();
@@ -52,7 +52,7 @@ public:
 private:
     WebFormSubmissionListenerProxy(WebFrameProxy*, uint64_t listenerID);
 
-    virtual Type type() const { return APIType; }
+    Type type() const override { return APIType; }
 
 #if DELEGATE_REF_COUNTING_TO_COCOA
     void* operator new(size_t size) { return newObject(size, APIType); }

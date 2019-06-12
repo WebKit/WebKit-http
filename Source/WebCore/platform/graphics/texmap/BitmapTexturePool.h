@@ -28,8 +28,8 @@
 #define BitmapTexturePool_h
 
 #include "BitmapTexture.h"
-#include "Timer.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/RunLoop.h>
 
 #if USE(TEXTURE_MAPPER_GL)
 #include "GraphicsContext3D.h"
@@ -51,7 +51,7 @@ public:
     explicit BitmapTexturePool(RefPtr<GraphicsContext3D>&&);
 #endif
 
-    RefPtr<BitmapTexture> acquireTexture(const IntSize&);
+    RefPtr<BitmapTexture> acquireTexture(const IntSize&, const BitmapTexture::Flags);
 
 private:
     struct Entry {
@@ -60,21 +60,23 @@ private:
         { }
 
         void markIsInUse() { m_lastUsedTime = monotonicallyIncreasingTime(); }
+        bool canBeReleased (double minUsedTime) const { return m_lastUsedTime < minUsedTime && m_texture->refCount() == 1; }
 
         RefPtr<BitmapTexture> m_texture;
-        double m_lastUsedTime;
+        double m_lastUsedTime { 0.0 };
     };
 
     void scheduleReleaseUnusedTextures();
     void releaseUnusedTexturesTimerFired();
-    RefPtr<BitmapTexture> createTexture();
+    RefPtr<BitmapTexture> createTexture(const BitmapTexture::Flags);
 
 #if USE(TEXTURE_MAPPER_GL)
     RefPtr<GraphicsContext3D> m_context3D;
 #endif
 
     Vector<Entry> m_textures;
-    Timer m_releaseUnusedTexturesTimer;
+    Vector<Entry> m_attachmentTextures;
+    RunLoop::Timer<BitmapTexturePool> m_releaseUnusedTexturesTimer;
 };
 
 } // namespace WebCore

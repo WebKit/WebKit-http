@@ -27,29 +27,38 @@
 #include "CSSKeyframeRule.h"
 
 #include "CSSKeyframesRule.h"
+#include "CSSParser.h"
 #include "PropertySetCSSStyleDeclaration.h"
 #include "StyleProperties.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-StyleKeyframe::StyleKeyframe(Ref<StyleProperties>&& properties)
-    : m_properties(WTFMove(properties))
+StyleRuleKeyframe::StyleRuleKeyframe(Ref<StyleProperties>&& properties)
+    : StyleRuleBase(Keyframe)
+    , m_properties(WTFMove(properties))
 {
 }
 
-StyleKeyframe::~StyleKeyframe()
+StyleRuleKeyframe::StyleRuleKeyframe(std::unique_ptr<Vector<double>> keys, Ref<StyleProperties>&& properties)
+    : StyleRuleBase(Keyframe)
+    , m_properties(WTFMove(properties))
+    , m_keys(*keys)
+{
+}
+    
+StyleRuleKeyframe::~StyleRuleKeyframe()
 {
 }
 
-MutableStyleProperties& StyleKeyframe::mutableProperties()
+MutableStyleProperties& StyleRuleKeyframe::mutableProperties()
 {
     if (!is<MutableStyleProperties>(m_properties.get()))
         m_properties = m_properties->mutableCopy();
     return downcast<MutableStyleProperties>(m_properties.get());
 }
 
-String StyleKeyframe::keyText() const
+String StyleRuleKeyframe::keyText() const
 {
     StringBuilder keyText;
 
@@ -62,8 +71,18 @@ String StyleKeyframe::keyText() const
 
     return keyText.toString();
 }
+    
+bool StyleRuleKeyframe::setKeyText(const String& keyText)
+{
+    ASSERT(!keyText.isNull());
+    auto keys = CSSParser::parseKeyframeKeyList(keyText);
+    if (!keys || keys->isEmpty())
+        return false;
+    m_keys = *keys;
+    return true;
+}
 
-String StyleKeyframe::cssText() const
+String StyleRuleKeyframe::cssText() const
 {
     StringBuilder result;
     result.append(keyText());
@@ -76,7 +95,7 @@ String StyleKeyframe::cssText() const
     return result.toString();
 }
 
-CSSKeyframeRule::CSSKeyframeRule(StyleKeyframe& keyframe, CSSKeyframesRule* parent)
+CSSKeyframeRule::CSSKeyframeRule(StyleRuleKeyframe& keyframe, CSSKeyframesRule* parent)
     : CSSRule(0)
     , m_keyframe(keyframe)
 {

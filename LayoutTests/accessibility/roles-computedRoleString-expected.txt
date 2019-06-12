@@ -1,4 +1,3 @@
- X
 This tests that native elements and ARIA overrides result in the same ARIA computed role, regardless of platform.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -42,7 +41,7 @@ PASS: input[type='text'] -> .
 PASS: input[type='time'] -> . 
 PASS: input[type='url'] -> . 
 PASS: input[type='week'] -> . 
-PASS: ins -> group. 
+PASS: ins -> . 
 PASS: math -> math. 
 PASS: meter -> progressbar. 
 PASS: nav -> navigation. 
@@ -51,14 +50,18 @@ PASS: li -> listitem.
 PASS: p -> . 
 PASS: pre -> group. 
 PASS: progress -> progressbar. 
-PASS: samp -> group. 
-PASS: section -> region. 
-PASS: select:not([multiple]) -> . 
+PASS: samp -> . 
+PASS: section:not([aria-label]:not([aria-labelledby]) -> group. 
+PASS: section[aria-label] -> region. 
+PASS: section[aria-labelledby] -> region. 
+PASS: select:not([multiple]) -> button. 
 PASS: select[multiple] -> listbox. 
 PASS: option -> option. 
 PASS: optgroup -> option. 
 PASS: option -> option. 
 PASS: option -> option. 
+PASS: sub -> . 
+PASS: sup -> . 
 PASS: table -> table. 
 PASS: tr -> row. 
 PASS: th -> columnheader. 
@@ -76,7 +79,7 @@ PASS: td[role="gridcell"] -> gridcell.
 PASS: textarea -> textbox. 
 PASS: ul -> list. 
 PASS: li -> listitem. 
-PASS: var -> group. 
+PASS: var -> . 
 PASS: div[role="command"] -> . 
 PASS: div[role="composite"] -> . 
 PASS: div[role="input"] -> . 

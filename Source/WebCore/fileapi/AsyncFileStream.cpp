@@ -35,7 +35,9 @@
 #include "FileStream.h"
 #include "FileStreamClient.h"
 #include "URL.h"
+#include <mutex>
 #include <wtf/AutodrainedPool.h>
+#include <wtf/Function.h>
 #include <wtf/MainThread.h>
 #include <wtf/MessageQueue.h>
 #include <wtf/NeverDestroyed.h>
@@ -63,16 +65,16 @@ inline AsyncFileStream::Internals::Internals(FileStreamClient& client)
 #endif
 }
 
-static void callOnFileThread(std::function<void()>&& function)
+static void callOnFileThread(Function<void ()>&& function)
 {
     ASSERT(isMainThread());
     ASSERT(function);
 
-    static NeverDestroyed<MessageQueue<std::function<void()>>> queue;
+    static NeverDestroyed<MessageQueue<Function<void ()>>> queue;
 
     static std::once_flag createFileThreadOnce;
     std::call_once(createFileThreadOnce, [] {
-        createThread("WebCore: AsyncFileStream", [] {
+        Thread::create("WebCore: AsyncFileStream", [] {
             for (;;) {
                 AutodrainedPool pool;
 
@@ -89,7 +91,7 @@ static void callOnFileThread(std::function<void()>&& function)
         });
     });
 
-    queue.get().append(std::make_unique<std::function<void()>>(WTFMove(function)));
+    queue.get().append(std::make_unique<Function<void ()>>(WTFMove(function)));
 }
 
 AsyncFileStream::AsyncFileStream(FileStreamClient& client)
@@ -102,33 +104,28 @@ AsyncFileStream::~AsyncFileStream()
 {
     ASSERT(isMainThread());
 
-    // Release so that we can control the timing of deletion below.
-    auto& internals = *m_internals.release();
-
     // Set flag to prevent client callbacks and also prevent queued operations from starting.
-    internals.destroyed = true;
+    m_internals->destroyed = true;
 
     // Call through file thread and back to main thread to make sure deletion happens
     // after all file thread functions and all main thread functions called from them.
-    callOnFileThread([&internals] {
-        callOnMainThread([&internals] {
-            delete &internals;
+    callOnFileThread([internals = WTFMove(m_internals)]() mutable {
+        callOnMainThread([internals = WTFMove(internals)] {
         });
     });
 }
 
-void AsyncFileStream::perform(std::function<std::function<void(FileStreamClient&)>(FileStream&)> operation)
+void AsyncFileStream::perform(WTF::Function<WTF::Function<void(FileStreamClient&)>(FileStream&)>&& operation)
 {
     auto& internals = *m_internals;
-    callOnFileThread([&internals, operation] {
+    callOnFileThread([&internals, operation = WTFMove(operation)] {
         // Don't do the operation if stop was already called on the main thread. Note that there is
         // a race here, but since skipping the operation is an optimization it's OK that we can't
         // guarantee exactly which operations are skipped. Note that this is also the only reason
         // we use an atomic_bool rather than just a bool for destroyed.
         if (internals.destroyed)
             return;
-        auto mainThreadWork = operation(internals.stream);
-        callOnMainThread([&internals, mainThreadWork] {
+        callOnMainThread([&internals, mainThreadWork = operation(internals.stream)] {
             if (internals.destroyed)
                 return;
             mainThreadWork(internals.client);
@@ -138,11 +135,10 @@ void AsyncFileStream::perform(std::function<std::function<void(FileStreamClient&
 
 void AsyncFileStream::getSize(const String& path, double expectedModificationTime)
 {
-    StringCapture capturedPath(path);
     // FIXME: Explicit return type here and in all the other cases like this below is a workaround for a deficiency
     // in the Windows compiler at the time of this writing. Could remove it if that is resolved.
-    perform([capturedPath, expectedModificationTime](FileStream& stream) -> std::function<void(FileStreamClient&)> {
-        long long size = stream.getSize(capturedPath.string(), expectedModificationTime);
+    perform([path = path.isolatedCopy(), expectedModificationTime](FileStream& stream) -> WTF::Function<void(FileStreamClient&)> {
+        long long size = stream.getSize(path, expectedModificationTime);
         return [size](FileStreamClient& client) {
             client.didGetSize(size);
         };
@@ -151,21 +147,9 @@ void AsyncFileStream::getSize(const String& path, double expectedModificationTim
 
 void AsyncFileStream::openForRead(const String& path, long long offset, long long length)
 {
-    StringCapture capturedPath(path);
     // FIXME: Explicit return type here is a workaround for a deficiency in the Windows compiler at the time of this writing.
-    perform([capturedPath, offset, length](FileStream& stream) -> std::function<void(FileStreamClient&)> {
-        bool success = stream.openForRead(capturedPath.string(), offset, length);
-        return [success](FileStreamClient& client) {
-            client.didOpen(success);
-        };
-    });
-}
-
-void AsyncFileStream::openForWrite(const String& path)
-{
-    StringCapture capturedPath(path);
-    perform([capturedPath](FileStream& stream) -> std::function<void(FileStreamClient&)> {
-        bool success = stream.openForWrite(capturedPath.string());
+    perform([path = path.isolatedCopy(), offset, length](FileStream& stream) -> WTF::Function<void(FileStreamClient&)> {
+        bool success = stream.openForRead(path, offset, length);
         return [success](FileStreamClient& client) {
             client.didOpen(success);
         };
@@ -182,31 +166,10 @@ void AsyncFileStream::close()
 
 void AsyncFileStream::read(char* buffer, int length)
 {
-    perform([buffer, length](FileStream& stream) -> std::function<void(FileStreamClient&)> {
+    perform([buffer, length](FileStream& stream) -> WTF::Function<void(FileStreamClient&)> {
         int bytesRead = stream.read(buffer, length);
         return [bytesRead](FileStreamClient& client) {
             client.didRead(bytesRead);
-        };
-    });
-}
-
-void AsyncFileStream::write(const URL& blobURL, long long position, int length)
-{
-    URLCapture capturedURL(blobURL);
-    perform([capturedURL, position, length](FileStream& stream) -> std::function<void(FileStreamClient&)> {
-        int bytesWritten = stream.write(capturedURL.url(), position, length);
-        return [bytesWritten](FileStreamClient& client) {
-            client.didWrite(bytesWritten);
-        };
-    });
-}
-
-void AsyncFileStream::truncate(long long position)
-{
-    perform([position](FileStream& stream) -> std::function<void(FileStreamClient&)> {
-        bool success = stream.truncate(position);
-        return [success](FileStreamClient& client) {
-            client.didTruncate(success);
         };
     });
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLJITFinalizer_h
-#define FTLJITFinalizer_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
 #include "DFGFinalizer.h"
 #include "FTLGeneratedFunction.h"
 #include "FTLJITCode.h"
-#include "FTLSlowPathCall.h"
 #include "LinkBuffer.h"
 #include "MacroAssembler.h"
 
@@ -57,6 +55,8 @@ public:
     size_t codeSize() override;
     bool finalize() override;
     bool finalizeFunction() override;
+    
+    bool finalizeCommon();
 
     std::unique_ptr<LinkBuffer> b3CodeLinkBuffer;
 
@@ -71,6 +71,3 @@ public:
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLJITFinalizer_h
-

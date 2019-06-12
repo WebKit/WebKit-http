@@ -27,17 +27,14 @@
 #ifndef ThreadGlobalData_h
 #define ThreadGlobalData_h
 
-#include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
-#include <wtf/Noncopyable.h>
 #include <wtf/text/StringHash.h>
 
 #include <wtf/ThreadSpecific.h>
-#include <wtf/Threading.h>
 using WTF::ThreadSpecific;
 
 namespace WebCore {
 
+    class QualifiedNameCache;
     class ThreadTimers;
 
     struct CachedResourceRequestInitiators;
@@ -55,6 +52,7 @@ namespace WebCore {
         const CachedResourceRequestInitiators& cachedResourceRequestInitiators() { return *m_cachedResourceRequestInitiators; }
         EventNames& eventNames() { return *m_eventNames; }
         ThreadTimers& threadTimers() { return *m_threadTimers; }
+        QualifiedNameCache& qualifiedNameCache() { return *m_qualifiedNameCache; }
 
         ICUConverterWrapper& cachedConverterICU() { return *m_cachedConverterICU; }
 
@@ -70,6 +68,7 @@ namespace WebCore {
         std::unique_ptr<CachedResourceRequestInitiators> m_cachedResourceRequestInitiators;
         std::unique_ptr<EventNames> m_eventNames;
         std::unique_ptr<ThreadTimers> m_threadTimers;
+        std::unique_ptr<QualifiedNameCache> m_qualifiedNameCache;
 
 #ifndef NDEBUG
         bool m_isMainThread;

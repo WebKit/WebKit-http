@@ -20,7 +20,7 @@ class SearchSymbol : public TIntermTraverser
     SearchSymbol(const TString &symbol);
 
     void traverse(TIntermNode *node);
-    void visitSymbol(TIntermSymbol *symbolNode);
+    void visitSymbol(TIntermSymbol *symbolNode) override;
 
     bool foundMatch() const;
 
@@ -30,4 +30,4 @@ class SearchSymbol : public TIntermTraverser
 };
 }
 
-#endif   // COMPILER_TRANSLATOR_SEARCHSYMBOL_H_
+#endif  // COMPILER_TRANSLATOR_SEARCHSYMBOL_H_

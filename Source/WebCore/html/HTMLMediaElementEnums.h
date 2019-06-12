@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLMediaElementEnums_h
-#define HTMLMediaElementEnums_h
+#pragma once
 
 #include "MediaPlayerEnums.h"
 
@@ -41,8 +40,10 @@ public:
         ConfigureTextTrackDisplay = 1 << 3,
         CheckPlaybackTargetCompatablity = 1 << 4,
         CheckMediaState = 1 << 5,
+        MediaEngineUpdated = 1 << 6,
+        UpdatePlayState = 1 << 7,
 
-        EveryDelayedAction = LoadMediaResource | ConfigureTextTracks | TextTrackChangesNotification | ConfigureTextTrackDisplay | CheckPlaybackTargetCompatablity | CheckMediaState,
+        EveryDelayedAction = LoadMediaResource | ConfigureTextTracks | TextTrackChangesNotification | ConfigureTextTrackDisplay | CheckPlaybackTargetCompatablity | CheckMediaState | UpdatePlayState,
     };
 
     enum ReadyState { HAVE_NOTHING, HAVE_METADATA, HAVE_CURRENT_DATA, HAVE_FUTURE_DATA, HAVE_ENOUGH_DATA };
@@ -57,6 +58,4 @@ public:
     } SeekType;
 };
 
-}
-
-#endif
+} // namespace WebCore

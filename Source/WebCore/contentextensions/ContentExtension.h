@@ -23,17 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ContentExtension_h
-#define ContentExtension_h
-
-#include <wtf/Ref.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "DFABytecodeInterpreter.h"
 #include "StyleSheetContents.h"
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -48,9 +46,9 @@ public:
     const String& identifier() const { return m_identifier; }
     const CompiledContentExtension& compiledExtension() const { return m_compiledExtension.get(); }
     StyleSheetContents* globalDisplayNoneStyleSheet();
-    const DFABytecodeInterpreter::Actions& cachedDomainActions(const String& domain);
-    const Vector<uint32_t>& universalActionsWithoutDomains() { return m_universalActionsWithoutDomains; }
-    const Vector<uint32_t>& universalActionsWithDomains(const String& domain);
+    const DFABytecodeInterpreter::Actions& topURLActions(const URL& topURL);
+    const Vector<uint32_t>& universalActionsWithoutConditions() { return m_universalActionsWithoutConditions; }
+    const Vector<uint32_t>& universalActionsWithConditions(const URL& topURL);
 
 private:
     ContentExtension(const String& identifier, Ref<CompiledContentExtension>&&);
@@ -62,17 +60,16 @@ private:
     RefPtr<StyleSheetContents> m_globalDisplayNoneStyleSheet;
     void compileGlobalDisplayNoneStyleSheet();
 
-    String m_cachedDomain;
-    void populateDomainCacheIfNeeded(const String& domain);
-    DFABytecodeInterpreter::Actions m_cachedDomainActions;
-    Vector<uint32_t> m_cachedUniversalDomainActions;
+    URL m_cachedTopURL;
+    void populateConditionCacheIfNeeded(const URL& topURL);
+    DFABytecodeInterpreter::Actions m_cachedTopURLActions;
+    Vector<uint32_t> m_cachedUniversalConditionedActions;
 
-    Vector<uint32_t> m_universalActionsWithoutDomains;
-    Vector<uint64_t> m_universalActionsWithDomains;
+    Vector<uint32_t> m_universalActionsWithoutConditions;
+    Vector<uint64_t> m_universalActionsWithConditions;
 };
 
 } // namespace ContentExtensions
 } // namespace WebCore
 
 #endif // ENABLE(CONTENT_EXTENSIONS)
-#endif // ContentExtension_h

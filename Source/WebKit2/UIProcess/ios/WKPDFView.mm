@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,13 +32,16 @@
 #import "APIUIClient.h"
 #import "ApplicationStateTracker.h"
 #import "CorePDFSPI.h"
+#import "DrawingAreaProxy.h"
 #import "SessionState.h"
 #import "UIKitSPI.h"
 #import "WKPDFPageNumberIndicator.h"
+#import "WKPasswordView.h"
 #import "WKWebViewInternal.h"
 #import "WeakObjCPtr.h"
 #import "WebPageProxy.h"
 #import "_WKFindDelegate.h"
+#import "_WKWebViewPrintFormatterInternal.h"
 #import <MobileCoreServices/UTCoreTypes.h>
 #import <WebCore/FloatRect.h>
 #import <WebCore/LocalizedStrings.h>
@@ -52,8 +55,6 @@ using namespace WebKit;
 const CGFloat pdfPageMargin = 8;
 const CGFloat pdfMinimumZoomScale = 1;
 const CGFloat pdfMaximumZoomScale = 5;
-
-const CGFloat passwordEntryFieldPadding = 10;
 
 const float overdrawHeightMultiplier = 1.5;
 
@@ -75,8 +76,6 @@ typedef struct {
     RetainPtr<UIPDFDocument> _pdfDocument;
     RetainPtr<NSString> _suggestedFilename;
     RetainPtr<WKPDFPageNumberIndicator> _pageNumberIndicator;
-
-    RetainPtr<UIDocumentPasswordView> _passwordView;
 
     Vector<PDFPageInfo> _pages;
     unsigned _centerPageNumber;
@@ -143,6 +142,7 @@ typedef struct {
     [self _clearPages];
     [_pageNumberIndicator removeFromSuperview];
     dispatch_release(_findQueue);
+    [_actionSheetAssistant cleanupSheet];
     [super dealloc];
 }
 
@@ -153,7 +153,7 @@ typedef struct {
 
 - (CGPDFDocumentRef)pdfDocument
 {
-    return [_pdfDocument CGDocument];
+    return _cgPDFDocument.get();
 }
 
 static void detachViewForPage(PDFPageInfo& page)
@@ -205,12 +205,12 @@ static void detachViewForPage(PDFPageInfo& page)
 
 - (void)web_setMinimumSize:(CGSize)size
 {
-    if (_passwordView) {
-        [self _updatePasswordEntryField];
+    _minimumSize = size;
+
+    if (_webView._passwordView) {
+        self.frame = { self.frame.origin, size };
         return;
     }
-
-    _minimumSize = size;
 
     CGFloat oldDocumentLeftFraction = 0;
     CGFloat oldDocumentTopFraction = 0;
@@ -281,6 +281,15 @@ static void detachViewForPage(PDFPageInfo& page)
             _centerPageNumber = pageInfo.index + 1;
 
         [self _ensureViewForPage:pageInfo];
+    }
+
+    if (!_centerPageNumber && _pages.size()) {
+        if (CGRectGetMinY(_pages.first().frame) > CGRectGetMaxY(targetRectForCenterPage))
+            _centerPageNumber = 1;
+        else {
+            ASSERT(CGRectGetMaxY(_pages.last().frame) < CGRectGetMinY(targetRectForCenterPage));
+            _centerPageNumber = _pages.size();
+        }
     }
 
     [self _updatePageNumberIndicator];
@@ -361,9 +370,6 @@ static void detachViewForPage(PDFPageInfo& page)
 
 - (void)_computePageAndDocumentFrames
 {
-    if (_passwordView)
-        return;
-
     NSUInteger pageCount = [_pdfDocument numberOfPages];
     [_pageNumberIndicator setPageCount:pageCount];
     
@@ -422,7 +428,7 @@ static void detachViewForPage(PDFPageInfo& page)
     [highlightView setCornerRadius:highlightBorderRadius];
     [highlightView setColor:highlightColor];
 
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
     [self addSubview:highlightView.get()];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         [highlightView removeFromSuperview];
@@ -610,7 +616,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
                 _currentFindMatchIndex = 0;
                 for (const auto& knownMatch : _cachedFindMatches) {
                     if (match.stringRange.location == [knownMatch stringRange].location && match.stringRange.length == [knownMatch stringRange].length) {
-                        page->findClient().didFindString(page.get(), string, { }, _cachedFindMatches.size(), _currentFindMatchIndex);
+                        page->findClient().didFindString(page.get(), string, { }, _cachedFindMatches.size(), _currentFindMatchIndex, false);
                         break;
                     }
                     _currentFindMatchIndex++;
@@ -689,8 +695,9 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
     if (!url)
         return;
 
-    _positionInformation.url = url.absoluteString;
-    _positionInformation.point = roundedIntPoint([controller.pageView convertPoint:point toView:self]);
+    _positionInformation.request.point = roundedIntPoint([controller.pageView convertPoint:point toView:self]);
+
+    _positionInformation.url = url;
     _positionInformation.bounds = roundedIntRect([self convertRect:[controller.pageView convertRectFromPDFPageSpace:annotation.Rect] fromView:controller.pageView]);
 
     [self _highlightLinkAnnotation:linkAnnotation forDuration:.75 completionHandler:^{
@@ -700,7 +707,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
 
 #pragma mark WKActionSheetAssistantDelegate
 
-- (const WebKit::InteractionInformationAtPosition&)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+- (std::optional<WebKit::InteractionInformationAtPosition>)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
 {
     return _positionInformation;
 }
@@ -711,8 +718,8 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
         return;
 
     NSDictionary *representations = @{
-        (NSString *)kUTTypeUTF8PlainText : _positionInformation.url,
-        (NSString *)kUTTypeURL : [NSURL URLWithString:_positionInformation.url]
+        (NSString *)kUTTypeUTF8PlainText : (NSString *)_positionInformation.url,
+        (NSString *)kUTTypeURL : (NSURL *)_positionInformation.url
     };
 
     [UIPasteboard generalPasteboard].items = @[ representations ];
@@ -745,106 +752,17 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
 
 #pragma mark Password protection UI
 
-- (void)_updatePasswordEntryField
-{
-    [_passwordView setFrame:CGRectMake(0, 0, _webView.bounds.size.width, _webView.bounds.size.height)];
-    [_scrollView setContentSize:[_passwordView bounds].size];
-}
-
-- (void)_keyboardDidShow:(NSNotification *)notification
-{
-    UITextField *passwordField = [_passwordView passwordField];
-    if (!passwordField.isEditing)
-        return;
-
-    CGRect keyboardRect = [UIPeripheralHost visiblePeripheralFrame];
-    if (CGRectIsEmpty(keyboardRect))
-        return;
-
-    UIWindow *window = _scrollView.window;
-    keyboardRect = [window convertRect:keyboardRect fromWindow:nil];
-    keyboardRect = [_scrollView convertRect:keyboardRect fromView:window];
-
-    CGRect passwordFieldFrame = [passwordField convertRect:passwordField.bounds toView:_scrollView];
-
-    CGSize contentSize = [_passwordView bounds].size;
-    contentSize.height += CGRectGetHeight(keyboardRect);
-    [_scrollView setContentSize:contentSize];
-
-    if (CGRectIntersectsRect(passwordFieldFrame, keyboardRect)) {
-        CGFloat yDelta = CGRectGetMaxY(passwordFieldFrame) - CGRectGetMinY(keyboardRect);
-
-        CGPoint contentOffset = _scrollView.contentOffset;
-        contentOffset.y += yDelta + passwordEntryFieldPadding;
-
-        [_scrollView setContentOffset:contentOffset animated:YES];
-    }
-}
-
 - (void)_showPasswordEntryField
 {
-    [_scrollView setMinimumZoomScale:1];
-    [_scrollView setMaximumZoomScale:1];
-    [_scrollView setBackgroundColor:[UIColor groupTableViewBackgroundColor]];
+    [_webView _showPasswordViewWithDocumentName:_suggestedFilename.get() passwordHandler:[retainedSelf = retainPtr(self), webView = retainPtr(_webView)](NSString *password) {
+        if (!CGPDFDocumentUnlockWithPassword(retainedSelf->_cgPDFDocument.get(), password.UTF8String)) {
+            [[webView _passwordView] showPasswordFailureAlert];
+            return;
+        }
 
-    _passwordView = adoptNS([[UIDocumentPasswordView alloc] initWithDocumentName:_suggestedFilename.get()]);
-    [_passwordView setPasswordDelegate:self];
-
-    [self _updatePasswordEntryField];
-
-    [self addSubview:_passwordView.get()];
-}
-
-- (void)_hidePasswordEntryField
-{
-    [_passwordView removeFromSuperview];
-    _passwordView = nil;
-
-    [_scrollView setMinimumZoomScale:pdfMinimumZoomScale];
-    [_scrollView setMaximumZoomScale:pdfMaximumZoomScale];
-    [_scrollView setBackgroundColor:[UIColor grayColor]];
-}
-
-- (void)userDidEnterPassword:(NSString *)password forPasswordView:(UIDocumentPasswordView *)passwordView
-{
-    [self _tryToUnlockWithPassword:password];
-}
-
-- (void)didBeginEditingPassword:(UITextField *)passwordField inView:(UIDocumentPasswordView *)passwordView
-{
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_keyboardDidShow:) name:UIKeyboardDidShowNotification object:nil];
-}
-
-- (void)didEndEditingPassword:(UITextField *)passwordField inView:(UIDocumentPasswordView *)passwordView
-{
-    [_scrollView setContentSize:[_passwordView frame].size];
-    [_scrollView setContentOffset:CGPointMake(-_scrollView.contentInset.left, -_scrollView.contentInset.top) animated:YES];
-
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardDidShowNotification object:nil];
-}
-
-- (void)_didFailToUnlock
-{
-    [[_passwordView passwordField] setText:@""];
-    UIAlertController* alert = [UIAlertController alertControllerWithTitle:WEB_UI_STRING("The document could not be opened with that password.", "PDF password failure alert message") message:@"" preferredStyle:UIAlertControllerStyleAlert];
-
-    UIAlertAction* defaultAction = [UIAlertAction actionWithTitle:WEB_UI_STRING_KEY("OK", "OK (PDF password failure alert)", "OK button label in PDF password failure alert") style:UIAlertActionStyleDefault handler:[](UIAlertAction *) { }];
-    
-    [alert addAction:defaultAction];
-
-    [self.window.rootViewController presentViewController:alert animated:YES completion:nil];
-}
-
-- (BOOL)_tryToUnlockWithPassword:(NSString *)password
-{
-    if (CGPDFDocumentUnlockWithPassword(_cgPDFDocument.get(), [password UTF8String])) {
-        [self _hidePasswordEntryField];
-        [self _didLoadPDFDocument];
-        return YES;
-    }
-
-    [self _didFailToUnlock];
-    return NO;
+        [webView _hidePasswordView];
+        [retainedSelf _didLoadPDFDocument];
+    }];
 }
 
 - (void)willMoveToWindow:(UIWindow *)newWindow
@@ -863,7 +781,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
         return;
 
     ASSERT(!_applicationStateTracker);
-    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationWillEnterForeground));
+    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationDidCreateWindowContext), @selector(_applicationDidFinishSnapshottingAfterEnteringBackground), @selector(_applicationWillEnterForeground));
 }
 
 - (BOOL)isBackground
@@ -877,7 +795,16 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
 - (void)_applicationDidEnterBackground
 {
     _webView->_page->applicationDidEnterBackground();
-    _webView->_page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
+    _webView->_page->activityStateDidChange(ActivityState::AllFlags & ~ActivityState::IsInWindow);
+}
+
+- (void)_applicationDidCreateWindowContext
+{
+}
+
+- (void)_applicationDidFinishSnapshottingAfterEnteringBackground
+{
+    _webView->_page->applicationDidFinishSnapshottingAfterEnteringBackground();
 }
 
 - (void)_applicationWillEnterForeground
@@ -885,7 +812,34 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
     _webView->_page->applicationWillEnterForeground();
     if (auto drawingArea = _webView->_page->drawingArea())
         drawingArea->hideContentUntilAnyUpdate();
-    _webView->_page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow, true, WebPageProxy::ViewStateChangeDispatchMode::Immediate);
+    _webView->_page->activityStateDidChange(ActivityState::AllFlags & ~ActivityState::IsInWindow, true, WebPageProxy::ActivityStateChangeDispatchMode::Immediate);
+}
+
+@end
+
+#pragma mark Printing
+
+@interface WKPDFView (_WKWebViewPrintFormatter) <_WKWebViewPrintProvider>
+@end
+
+@implementation WKPDFView (_WKWebViewPrintFormatter)
+
+- (NSUInteger)_wk_pageCountForPrintFormatter:(_WKWebViewPrintFormatter *)printFormatter
+{
+    CGPDFDocumentRef document = _cgPDFDocument.get();
+    if (!CGPDFDocumentAllowsPrinting(document))
+        return 0;
+
+    size_t numberOfPages = CGPDFDocumentGetNumberOfPages(document);
+    if (printFormatter.snapshotFirstPage)
+        return std::min<NSUInteger>(numberOfPages, 1);
+
+    return numberOfPages;
+}
+
+- (CGPDFDocumentRef)_wk_printedDocument
+{
+    return _cgPDFDocument.get();
 }
 
 @end

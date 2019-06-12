@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,7 +47,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(SymbolConstructor);
 
-const ClassInfo SymbolConstructor::s_info = { "Function", &Base::s_info, &symbolConstructorTable, CREATE_METHOD_TABLE(SymbolConstructor) };
+const ClassInfo SymbolConstructor::s_info = { "Function", &Base::s_info, &symbolConstructorTable, nullptr, CREATE_METHOD_TABLE(SymbolConstructor) };
 
 /* Source for SymbolConstructor.lut.h
 @begin symbolConstructorTable
@@ -66,16 +66,11 @@ SymbolConstructor::SymbolConstructor(VM& vm, Structure* structure)
 
 void SymbolConstructor::finishCreation(VM& vm, SymbolPrototype* prototype)
 {
-    Base::finishCreation(vm, prototype->classInfo()->className);
+    Base::finishCreation(vm, prototype->classInfo(vm)->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontDelete | ReadOnly | DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 
     JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(INITIALIZE_WELL_KNOWN_SYMBOLS)
-}
-
-bool SymbolConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
-{
-    return getStaticFunctionSlot<Base>(exec, symbolConstructorTable, jsCast<SymbolConstructor*>(object), propertyName, slot);
 }
 
 // ------------------------------ Functions ---------------------------
@@ -90,39 +85,45 @@ static EncodedJSValue JSC_HOST_CALL callSymbol(ExecState* exec)
 
 ConstructType SymbolConstructor::getConstructData(JSCell*, ConstructData&)
 {
-    return ConstructTypeNone;
+    return ConstructType::None;
 }
 
 CallType SymbolConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callSymbol;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 EncodedJSValue JSC_HOST_CALL symbolConstructorFor(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSString* stringKey = exec->argument(0).toString(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     String string = stringKey->value(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     return JSValue::encode(Symbol::create(exec->vm(), exec->vm().symbolRegistry().symbolForKey(string)));
 }
 
+const char* const SymbolKeyForTypeError = "Symbol.keyFor requires that the first argument be a symbol";
+
 EncodedJSValue JSC_HOST_CALL symbolConstructorKeyFor(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue symbolValue = exec->argument(0);
     if (!symbolValue.isSymbol())
-        return JSValue::encode(throwTypeError(exec));
+        return JSValue::encode(throwTypeError(exec, scope, ASCIILiteral(SymbolKeyForTypeError)));
 
-    SymbolImpl* uid = asSymbol(symbolValue)->privateName().uid();
-    if (!uid->symbolRegistry())
+    SymbolImpl& uid = asSymbol(symbolValue)->privateName().uid();
+    if (!uid.symbolRegistry())
         return JSValue::encode(jsUndefined());
 
-    ASSERT(uid->symbolRegistry() == &exec->vm().symbolRegistry());
-    return JSValue::encode(jsString(exec, exec->vm().symbolRegistry().keyForSymbol(*uid)));
+    ASSERT(uid.symbolRegistry() == &vm.symbolRegistry());
+    return JSValue::encode(jsString(exec, &uid));
 }
 
 } // namespace JSC

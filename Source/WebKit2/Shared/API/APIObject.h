@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
 #ifndef APIObject_h
 #define APIObject_h
 
-#include <functional>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -101,12 +100,14 @@ public:
         AutomationSession,
         BackForwardList,
         BackForwardListItem,
-        BatteryManager,
-        BatteryStatus,
         CacheManager,
         ColorPickerResultListener,
+        ContentRuleList,
+        ContentRuleListStore,
+        ContextMenuListener,
         CookieManager,
         Download,
+        ExperimentalFeature,
         FormSubmissionListener,
         Frame,
         FrameInfo,
@@ -114,6 +115,7 @@ public:
         FullScreenManager,
         GeolocationManager,
         GeolocationPermissionRequest,
+        HTTPCookieStore,
         HitTestResult,
         GeolocationPosition,
         GrammarDetail,
@@ -138,23 +140,24 @@ public:
         ProcessPoolConfiguration,
         PluginSiteDataManager,
         Preferences,
+        ResourceLoadStatisticsStore,
         RunBeforeUnloadConfirmPanelResultListener,
         RunJavaScriptAlertResultListener,
         RunJavaScriptConfirmResultListener,
         RunJavaScriptPromptResultListener,
-        Session,
         TextChecker,
-        URLSchemeHandlerTask,
+        URLSchemeTask,
         UserContentController,
-        UserContentExtension,
-        UserContentExtensionStore,
+        UserContentWorld,
+        UserInitiatedAction,
         UserMediaPermissionCheck,
         UserMediaPermissionRequest,
-        Vibration,
         ViewportAttributes,
         VisitedLinkStore,
+        WebResourceLoadStatisticsManager,
         WebsiteDataRecord,
         WebsiteDataStore,
+        WebsitePolicies,
         WindowFeatures,
 
 #if ENABLE(MEDIA_SESSION)
@@ -188,13 +191,6 @@ public:
 #if USE(SOUP)
         SoupRequestManager,
         SoupCustomProtocolRequestManager,
-#endif
-#if PLATFORM(EFL)
-        PopupMenuItem,
-#if ENABLE(TOUCH_EVENTS)
-        TouchPoint,
-        TouchEvent,
-#endif
 #endif
     };
 
@@ -253,7 +249,7 @@ protected:
     {
     }
 
-    virtual Type type() const override { return APIType; }
+    Type type() const override { return APIType; }
 
 #if DELEGATE_REF_COUNTING_TO_COCOA
     void* operator new(size_t size) { return newObject(size, APIType); }

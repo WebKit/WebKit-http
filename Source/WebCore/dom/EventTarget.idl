@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -18,15 +18,24 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// Introduced in DOM Level 2:
 [
-    ObjCProtocol,
-    CPPPureInterface,
     CustomToJSObject,
-    JSCustomToNativeObject,
+    Exposed=(Window,Worker),
+    IsImmutablePrototypeExoticObjectOnPrototype,
     JSCustomHeader,
+    JSCustomMarkFunction,
+    JSCustomToNativeObject,
 ] interface EventTarget {
-    [ObjCLegacyUnnamedParameters] void addEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    [ObjCLegacyUnnamedParameters] void removeEventListener(DOMString type, EventListener listener, optional boolean useCapture);
-    [ImplementedAs=dispatchEventForBindings, RaisesException] boolean dispatchEvent(Event event);
+    [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? callback, optional (AddEventListenerOptions or boolean) options = false);
+    [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? callback, optional (EventListenerOptions or boolean) options = false);
+    [ImplementedAs=dispatchEventForBindings, MayThrowException] boolean dispatchEvent(Event event);
+};
+
+dictionary EventListenerOptions {
+    boolean capture = false;
+};
+
+dictionary AddEventListenerOptions : EventListenerOptions {
+    boolean passive = false;
+    boolean once = false;
 };

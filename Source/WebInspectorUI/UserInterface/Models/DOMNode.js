@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2009, 2010 Google Inc. All rights reserved.
  * Copyright (C) 2009 Joseph Pecoraro
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -47,7 +47,9 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         this._localName = payload.localName;
         this._nodeValue = payload.nodeValue;
         this._pseudoType = payload.pseudoType;
+        this._shadowRootType = payload.shadowRootType;
         this._computedRole = payload.role;
+        this._contentSecurityPolicyHash = payload.contentSecurityPolicyHash;
 
         if (this._nodeType === Node.DOCUMENT_NODE)
             this.ownerDocument = this;
@@ -55,7 +57,7 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
             this.ownerDocument = doc;
 
         this._attributes = [];
-        this._attributesMap = {};
+        this._attributesMap = new Map;
         if (payload.attributes)
             this._setAttributesPayload(payload.attributes);
 
@@ -70,22 +72,34 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
 
         this._enabledPseudoClasses = [];
 
+        // FIXME: The logic around this._shadowRoots and this._children is very confusing.
+        // We eventually include shadow roots at the start of _children. However we might
+        // not have our actual children yet. So we try to defer initializing _children until
+        // we have both shadowRoots and child nodes.
         this._shadowRoots = [];
         if (payload.shadowRoots) {
             for (var i = 0; i < payload.shadowRoots.length; ++i) {
                 var root = payload.shadowRoots[i];
                 var node = new WebInspector.DOMNode(this._domTreeManager, this.ownerDocument, true, root);
+                node.parentNode = this;
                 this._shadowRoots.push(node);
             }
         }
 
-        if (payload.templateContent) {
-            this._templateContent = new WebInspector.DOMNode(this._domTreeManager, this.ownerDocument, true, payload.templateContent);
-            this._templateContent.parentNode = this;
-        }
-
         if (payload.children)
             this._setChildrenPayload(payload.children);
+        else if (this._shadowRoots.length && !this._childNodeCount)
+            this._children = this._shadowRoots.slice();
+
+        if (this._nodeType === Node.ELEMENT_NODE)
+            this._customElementState = payload.customElementState || WebInspector.DOMNode.CustomElementState.Builtin;
+        else
+            this._customElementState = null;
+
+        if (payload.templateContent) {
+            this._templateContent = new WebInspector.DOMNode(this._domTreeManager, this.ownerDocument, false, payload.templateContent);
+            this._templateContent.parentNode = this;
+        }
 
         this._pseudoElements = new Map;
         if (payload.pseudoElements) {
@@ -116,7 +130,6 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         } else if (this._nodeType === Node.DOCUMENT_TYPE_NODE) {
             this.publicId = payload.publicId;
             this.systemId = payload.systemId;
-            this.internalSubset = payload.internalSubset;
         } else if (this._nodeType === Node.DOCUMENT_NODE) {
             this.documentURL = payload.documentURL;
             this.xmlVersion = payload.xmlVersion;
@@ -228,6 +241,11 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         return this._computedRole;
     }
 
+    contentSecurityPolicyHash()
+    {
+        return this._contentSecurityPolicyHash;
+    }
+
     hasAttributes()
     {
         return this._attributes.length > 0;
@@ -246,6 +264,48 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
     isInShadowTree()
     {
         return this._isInShadowTree;
+    }
+
+    isInUserAgentShadowTree()
+    {
+        return this._isInShadowTree && this.ancestorShadowRoot().isUserAgentShadowRoot();
+    }
+
+    isCustomElement()
+    {
+        return this._customElementState === WebInspector.DOMNode.CustomElementState.Custom;
+    }
+
+    customElementState()
+    {
+        return this._customElementState;
+    }
+
+    isShadowRoot()
+    {
+        return !!this._shadowRootType;
+    }
+
+    isUserAgentShadowRoot()
+    {
+        return this._shadowRootType === WebInspector.DOMNode.ShadowRootType.UserAgent;
+    }
+
+    ancestorShadowRoot()
+    {
+        if (!this._isInShadowTree)
+            return null;
+
+        let node = this;
+        while (node && !node.isShadowRoot())
+            node = node.parentNode;
+        return node;
+    }
+
+    ancestorShadowHost()
+    {
+        let shadowRoot = this.ancestorShadowRoot();
+        return shadowRoot ? shadowRoot.parentNode : null;
     }
 
     isPseudoElement()
@@ -308,6 +368,16 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         return this._pseudoElements.get(WebInspector.DOMNode.PseudoElementType.After) || null;
     }
 
+    shadowRoots()
+    {
+        return this._shadowRoots;
+    }
+
+    shadowRootType()
+    {
+        return this._shadowRootType;
+    }
+
     nodeValue()
     {
         return this._nodeValue;
@@ -320,7 +390,7 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
 
     getAttribute(name)
     {
-        var attr = this._attributesMap[name];
+        let attr = this._attributesMap.get(name);
         return attr ? attr.value : undefined;
     }
 
@@ -344,8 +414,8 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         function mycallback(error, success)
         {
             if (!error) {
-                delete this._attributesMap[name];
-                for (var i = 0;  i < this._attributes.length; ++i) {
+                this._attributesMap.delete(name);
+                for (var i = 0; i < this._attributes.length; ++i) {
                     if (this._attributes[i].name === name) {
                         this._attributes.splice(i, 1);
                         break;
@@ -356,6 +426,36 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
             this._makeUndoableCallback(callback)(error);
         }
         DOMAgent.removeAttribute(this.id, name, mycallback.bind(this));
+    }
+
+    toggleClass(className, flag)
+    {
+        if (!className || !className.length)
+            return;
+
+        if (this.isPseudoElement()) {
+            this.parentNode.toggleClass(className, flag);
+            return;
+        }
+
+        if (this.nodeType() !== Node.ELEMENT_NODE)
+            return;
+
+        function resolvedNode(object)
+        {
+            if (!object)
+                return;
+
+            function inspectedPage_node_toggleClass(className, flag)
+            {
+                this.classList.toggle(className, flag);
+            }
+
+            object.callFunction(inspectedPage_node_toggleClass, [className, flag]);
+            object.release();
+        }
+
+        WebInspector.RemoteObject.resolveNode(this, "", resolvedNode);
     }
 
     getChildNodes(callback)
@@ -410,7 +510,7 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         DOMAgent.getOuterHTML(this.id, copy);
     }
 
-    eventListeners(callback)
+    getEventListeners(callback)
     {
         DOMAgent.getEventListenersForNode(this.id, callback);
     }
@@ -435,6 +535,9 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
                     ignored: accessibilityProperties.ignored,
                     ignoredByDefault: accessibilityProperties.ignoredByDefault,
                     invalid: accessibilityProperties.invalid,
+                    isPopupButton: accessibilityProperties.isPopUpButton,
+                    headingLevel: accessibilityProperties.headingLevel,
+                    hierarchyLevel: accessibilityProperties.hierarchyLevel,
                     hidden: accessibilityProperties.hidden,
                     label: accessibilityProperties.label,
                     liveRegionAtomic: accessibilityProperties.liveRegionAtomic,
@@ -468,28 +571,62 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         return path.join(",");
     }
 
+    get escapedIdSelector()
+    {
+        let id = this.getAttribute("id");
+        if (!id)
+            return "";
+
+        id = id.trim();
+        if (!id.length)
+            return "";
+
+        id = CSS.escape(id);
+        if (/[\s'"]/.test(id))
+            return `[id=\"${id}\"]`;
+
+        return `#${id}`;
+    }
+
+    get escapedClassSelector()
+    {
+        let classes = this.getAttribute("class");
+        if (!classes)
+            return "";
+
+        classes = classes.trim();
+        if (!classes.length)
+            return "";
+
+        let foundClasses = new Set;
+        return classes.split(/\s+/).reduce((selector, className) => {
+            if (!className.length || foundClasses.has(className))
+                return selector;
+
+            foundClasses.add(className);
+            return `${selector}.${CSS.escape(className)}`;
+        }, "");
+    }
+
+    get displayName()
+    {
+        return this.nodeNameInCorrectCase() + this.escapedIdSelector + this.escapedClassSelector;
+    }
+
     appropriateSelectorFor(justSelector)
     {
         if (this.isPseudoElement())
             return this.parentNode.appropriateSelectorFor() + "::" + this._pseudoType;
 
-        var lowerCaseName = this.localName() || this.nodeName().toLowerCase();
+        let lowerCaseName = this.localName() || this.nodeName().toLowerCase();
 
-        var id = this.getAttribute("id");
-        if (id) {
-            if (/[\s'"]/.test(id)) {
-                id = id.replace(/\\/g, "\\\\").replace(/\"/g, "\\\"");
-                selector = lowerCaseName + "[id=\"" + id + "\"]";
-            } else
-                selector = "#" + id;
-            return (justSelector ? selector : lowerCaseName + selector);
-        }
+        let id = this.escapedIdSelector;
+        if (id.length)
+            return justSelector ? id : lowerCaseName + id;
 
-        var className = this.getAttribute("class");
-        if (className) {
-            var selector = "." + className.trim().replace(/\s+/g, ".");
-            return (justSelector ? selector : lowerCaseName + selector);
-        }
+        let classes = this.escapedClassSelector;
+        if (classes.length)
+            return justSelector ? classes : lowerCaseName + classes;
 
         if (lowerCaseName === "input" && this.getAttribute("type"))
             return lowerCaseName + "[type=\"" + this.getAttribute("type") + "\"]";
@@ -516,10 +653,26 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
         return descendant !== null && descendant.isAncestor(this);
     }
 
+    get ownerSVGElement()
+    {
+        if (this._nodeName === "svg")
+            return this;
+
+        if (!this.parentNode)
+            return null;
+
+        return this.parentNode.ownerSVGElement;
+    }
+
+    isSVGElement()
+    {
+        return !!this.ownerSVGElement;
+    }
+
     _setAttributesPayload(attrs)
     {
         this._attributes = [];
-        this._attributesMap = {};
+        this._attributesMap = new Map;
         for (var i = 0; i < attrs.length; i += 2)
             this._addAttribute(attrs[i], attrs[i + 1]);
     }
@@ -585,14 +738,14 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
 
     _addAttribute(name, value)
     {
-        var attr = {name, value, _node: this};
-        this._attributesMap[name] = attr;
+        let attr = {name, value, _node: this};
+        this._attributesMap.set(name, attr);
         this._attributes.push(attr);
     }
 
     _setAttribute(name, value)
     {
-        var attr = this._attributesMap[name];
+        let attr = this._attributesMap.get(name);
         if (attr)
             attr.value = value;
         else
@@ -601,10 +754,10 @@ WebInspector.DOMNode = class DOMNode extends WebInspector.Object
 
     _removeAttribute(name)
     {
-        var attr = this._attributesMap[name];
+        let attr = this._attributesMap.get(name);
         if (attr) {
             this._attributes.remove(attr);
-            delete this._attributesMap[name];
+            this._attributesMap.delete(name);
         }
     }
 
@@ -667,4 +820,17 @@ WebInspector.DOMNode.Event = {
 WebInspector.DOMNode.PseudoElementType = {
     Before: "before",
     After: "after",
+};
+
+WebInspector.DOMNode.ShadowRootType = {
+    UserAgent: "user-agent",
+    Closed: "closed",
+    Open: "open",
+};
+
+WebInspector.DOMNode.CustomElementState = {
+    Builtin: "builtin",
+    Custom: "custom",
+    Waiting: "waiting",
+    Failed: "failed",
 };

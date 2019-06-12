@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef JSWrapperObject_h
-#define JSWrapperObject_h
+#pragma once
 
 #include "JSDestructibleObject.h"
 
@@ -32,7 +31,7 @@ class JSWrapperObject : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static size_t allocationSize(size_t inlineCapacity)
+    static size_t allocationSize(Checked<size_t> inlineCapacity)
     {
         ASSERT_UNUSED(inlineCapacity, !inlineCapacity);
         return sizeof(JSWrapperObject);
@@ -83,5 +82,3 @@ inline void JSWrapperObject::setInternalValue(VM& vm, JSValue value)
 }
 
 } // namespace JSC
-
-#endif // JSWrapperObject_h

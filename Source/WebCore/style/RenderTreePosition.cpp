@@ -27,7 +27,9 @@
 #include "RenderTreePosition.h"
 
 #include "ComposedTreeIterator.h"
+#include "FlowThreadController.h"
 #include "PseudoElement.h"
+#include "RenderNamedFlowThread.h"
 #include "RenderObject.h"
 #include "ShadowRoot.h"
 
@@ -66,7 +68,7 @@ RenderObject* RenderTreePosition::previousSiblingRenderer(const Text& textNode) 
     auto composedChildren = composedTreeChildren(*parentElement);
     for (auto it = composedChildren.at(textNode), end = composedChildren.end(); it != end; --it) {
         RenderObject* renderer = it->renderer();
-        if (renderer && !RenderTreePosition::isRendererReparented(*renderer))
+        if (renderer && !isRendererReparented(*renderer))
             return renderer;
     }
     if (auto* before = parentElement->beforePseudoElement())
@@ -82,19 +84,72 @@ RenderObject* RenderTreePosition::nextSiblingRenderer(const Node& node) const
     if (node.isAfterPseudoElement())
         return nullptr;
 
-    auto composedChildren = composedTreeChildren(*parentElement);
+    auto composedDescendants = composedTreeDescendants(*parentElement);
+    auto it = node.isBeforePseudoElement() ? composedDescendants.begin() : composedDescendants.at(node);
+    auto end = composedDescendants.end();
 
-    auto it = node.isBeforePseudoElement() ? composedChildren.begin() : composedChildren.at(node);
-    for (auto end = composedChildren.end(); it != end; ++it) {
-        RenderObject* renderer = it->renderer();
+    while (it != end) {
+        auto& node = *it;
+        bool hasDisplayContents = is<Element>(node) && downcast<Element>(node).hasDisplayContents();
+        if (hasDisplayContents) {
+            it.traverseNext();
+            continue;
+        }
+        RenderObject* renderer = node.renderer();
         if (renderer && !isRendererReparented(*renderer))
             return renderer;
+        
+        it.traverseNextSkippingChildren();
     }
     if (PseudoElement* after = parentElement->afterPseudoElement())
         return after->renderer();
     return nullptr;
 }
 
+#if ENABLE(CSS_REGIONS)
+RenderTreePosition RenderTreePosition::insertionPositionForFlowThread(Element* insertionParent, Element& element, const RenderStyle& style)
+{
+    ASSERT(element.shouldMoveToFlowThread(style));
+    auto& parentFlowThread = element.document().renderView()->flowThreadController().ensureRenderFlowThreadWithName(style.flowThread());
+
+    if (!insertionParent)
+        return { parentFlowThread, nullptr };
+
+    auto composedDescendants = composedTreeDescendants(*insertionParent);
+    auto it = element.isBeforePseudoElement() ? composedDescendants.begin() : composedDescendants.at(element);
+    auto end = composedDescendants.end();
+    while (it != end) {
+        auto& currentNode = *it;
+        bool hasDisplayContents = is<Element>(currentNode) && downcast<Element>(currentNode).hasDisplayContents();
+        if (hasDisplayContents) {
+            it.traverseNext();
+            continue;
+        }
+
+        auto* renderer = currentNode.renderer();
+        if (!renderer) {
+            it.traverseNextSkippingChildren();
+            continue;
+        }
+
+        if (!is<RenderElement>(*renderer)) {
+            it.traverseNext();
+            continue;
+        }
+
+        // We are the last child in this flow.
+        if (!isRendererReparented(*renderer))
+            return { parentFlowThread, nullptr };
+
+        if (renderer->style().hasFlowInto() && style.flowThread() == renderer->style().flowThread())
+            return { parentFlowThread, downcast<RenderElement>(renderer) };
+        // Nested flows, skip.
+        it.traverseNextSkippingChildren();
+    }
+    return { parentFlowThread, nullptr };
+}
+#endif
+    
 bool RenderTreePosition::isRendererReparented(const RenderObject& renderer)
 {
     if (!renderer.node()->isElementNode())

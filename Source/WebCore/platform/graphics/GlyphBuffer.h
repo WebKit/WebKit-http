@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2009, 2011, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2007-2008 Torch Mobile Inc.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -64,11 +64,17 @@ typedef Glyph GlyphBufferGlyph;
 struct GlyphBufferAdvance : CGSize {
 public:
     GlyphBufferAdvance() : CGSize(CGSizeZero) { }
-    GlyphBufferAdvance(CGSize size) : CGSize(size)
+    GlyphBufferAdvance(CGSize size)
+        : CGSize(size)
+    {
+    }
+    GlyphBufferAdvance(float width, float height)
+        : CGSize(CGSizeMake(width, height))
     {
     }
 
     void setWidth(CGFloat width) { this->CGSize::width = width; }
+    void setHeight(CGFloat height) { this->CGSize::height = height; }
     CGFloat width() const { return this->CGSize::width; }
     CGFloat height() const { return this->CGSize::height; }
 };
@@ -92,7 +98,7 @@ typedef FloatSize GlyphBufferAdvance;
 class GlyphBuffer {
 public:
     bool isEmpty() const { return m_font.isEmpty(); }
-    int size() const { return m_font.size(); }
+    unsigned size() const { return m_font.size(); }
     
     void clear()
     {
@@ -106,20 +112,18 @@ public:
 #endif
     }
 
-    GlyphBufferGlyph* glyphs(int from) { return m_glyphs.data() + from; }
-    GlyphBufferAdvance* advances(int from) { return m_advances.data() + from; }
-    const GlyphBufferGlyph* glyphs(int from) const { return m_glyphs.data() + from; }
-    const GlyphBufferAdvance* advances(int from) const { return m_advances.data() + from; }
+    GlyphBufferGlyph* glyphs(unsigned from) { return m_glyphs.data() + from; }
+    GlyphBufferAdvance* advances(unsigned from) { return m_advances.data() + from; }
+    const GlyphBufferGlyph* glyphs(unsigned from) const { return m_glyphs.data() + from; }
+    const GlyphBufferAdvance* advances(unsigned from) const { return m_advances.data() + from; }
+    size_t advancesCount() const { return m_advances.size(); }
 
-    const Font* fontAt(int index) const { return m_font[index]; }
+    const Font* fontAt(unsigned index) const { return m_font[index]; }
 
     void setInitialAdvance(GlyphBufferAdvance initialAdvance) { m_initialAdvance = initialAdvance; }
     const GlyphBufferAdvance& initialAdvance() const { return m_initialAdvance; }
-
-    void setLeadingExpansion(float leadingExpansion) { m_leadingExpansion = leadingExpansion; }
-    float leadingExpansion() const { return m_leadingExpansion; }
     
-    Glyph glyphAt(int index) const
+    Glyph glyphAt(unsigned index) const
     {
 #if USE(CAIRO)
         return m_glyphs[index].index;
@@ -128,12 +132,12 @@ public:
 #endif
     }
 
-    GlyphBufferAdvance advanceAt(int index) const
+    GlyphBufferAdvance advanceAt(unsigned index) const
     {
         return m_advances[index];
     }
 
-    FloatSize offsetAt(int index) const
+    FloatSize offsetAt(unsigned index) const
     {
 #if PLATFORM(WIN)
         return m_offsets[index];
@@ -197,9 +201,9 @@ public:
     }
 #endif
 
-    void reverse(int from, int length)
+    void reverse(unsigned from, unsigned length)
     {
-        for (int i = from, end = from + length - 1; i < end; ++i, --end)
+        for (unsigned i = from, end = from + length - 1; i < end; ++i, --end)
             swap(i, end);
     }
 
@@ -215,14 +219,13 @@ public:
         m_offsetsInString.reset(new Vector<unsigned, 2048>());
     }
 
-    // FIXME: This converts from an unsigned to an int
-    int offsetInString(int index) const
+    int offsetInString(unsigned index) const
     {
         ASSERT(m_offsetsInString);
         return (*m_offsetsInString)[index];
     }
 
-    void shrink(int truncationPoint)
+    void shrink(unsigned truncationPoint)
     {
         m_font.shrink(truncationPoint);
         m_glyphs.shrink(truncationPoint);
@@ -235,7 +238,7 @@ public:
     }
 
 private:
-    void swap(int index1, int index2)
+    void swap(unsigned index1, unsigned index2)
     {
         const Font* f = m_font[index1];
         m_font[index1] = m_font[index2];
@@ -264,7 +267,6 @@ private:
 #if PLATFORM(WIN)
     Vector<FloatSize, 2048> m_offsets;
 #endif
-    float m_leadingExpansion;
 };
 
 }

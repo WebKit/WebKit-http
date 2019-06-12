@@ -22,34 +22,28 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OfflineAudioCompletionEvent_h
-#define OfflineAudioCompletionEvent_h
+#pragma once
 
 #include "AudioBuffer.h"
 #include "Event.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class AudioBuffer;
-    
 class OfflineAudioCompletionEvent : public Event {
 public:
-    static Ref<OfflineAudioCompletionEvent> create(PassRefPtr<AudioBuffer> renderedBuffer);
+    static Ref<OfflineAudioCompletionEvent> create(RefPtr<AudioBuffer>&& renderedBuffer);
     
     virtual ~OfflineAudioCompletionEvent();
 
     AudioBuffer* renderedBuffer() { return m_renderedBuffer.get(); }
 
-    virtual EventInterface eventInterface() const override;
+    EventInterface eventInterface() const override;
 
 private:
-    explicit OfflineAudioCompletionEvent(PassRefPtr<AudioBuffer> renderedBuffer);
+    explicit OfflineAudioCompletionEvent(RefPtr<AudioBuffer>&& renderedBuffer);
 
     RefPtr<AudioBuffer> m_renderedBuffer;
 };
 
 } // namespace WebCore
-
-#endif // OfflineAudioCompletionEvent_h

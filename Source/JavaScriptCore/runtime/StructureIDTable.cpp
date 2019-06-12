@@ -28,7 +28,6 @@
 
 #include <limits.h>
 #include <wtf/Atomics.h>
-#include <wtf/DataLog.h>
 
 namespace JSC {
 
@@ -89,6 +88,7 @@ StructureID StructureIDTable::allocateID(Structure* structure)
         StructureID result = m_size;
         table()[result] = newEntry;
         m_size++;
+        ASSERT(!isNuked(result));
         return result;
     }
 
@@ -97,8 +97,10 @@ StructureID StructureIDTable::allocateID(Structure* structure)
     StructureID result = m_firstFreeOffset;
     m_firstFreeOffset = table()[m_firstFreeOffset].offset;
     table()[result].structure = structure;
+    ASSERT(!isNuked(result));
     return result;
 #else
+    ASSERT(!isNuked(structure));
     return structure;
 #endif
 }

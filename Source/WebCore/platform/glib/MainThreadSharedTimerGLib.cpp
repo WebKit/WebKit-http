@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc.  All rights reserved.
  * Copyright (C) 2006 Michael Emmel mike.emmel@gmail.com
  * All rights reserved.
  *
@@ -28,18 +28,18 @@
 #include "config.h"
 #include "MainThreadSharedTimer.h"
 
-#include <glib.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 
 namespace WebCore {
 
 MainThreadSharedTimer::MainThreadSharedTimer()
     : m_timer(RunLoop::main(), this, &MainThreadSharedTimer::fired)
 {
-    // This is GDK_PRIORITY_REDRAW, but we don't want to depend on GDK here just to use a constant.
-    m_timer.setPriority(G_PRIORITY_HIGH_IDLE + 20);
+    m_timer.setPriority(RunLoopSourcePriority::MainThreadDispatcherTimer);
+    m_timer.setName("[WebKit] MainThreadDispatcherTimer");
 }
 
-void MainThreadSharedTimer::setFireInterval(double interval)
+void MainThreadSharedTimer::setFireInterval(Seconds interval)
 {
     ASSERT(m_firedFunction);
     m_timer.startOneShot(interval);

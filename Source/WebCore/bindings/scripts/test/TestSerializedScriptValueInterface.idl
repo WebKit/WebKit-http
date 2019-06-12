@@ -24,13 +24,15 @@
  */
 
 // This IDL file is for testing the bindings code generator and for tracking
-// changes in its ouput.
+// changes in its output.
 [
     Conditional=Condition1|Condition2,
 ] interface TestSerializedScriptValueInterface {
     attribute SerializedScriptValue value;
     readonly attribute SerializedScriptValue readonlyValue;
     [CachedAttribute] attribute SerializedScriptValue cachedValue;
-    readonly attribute MessagePort[] ports;
+    readonly attribute sequence<MessagePort> ports;
     [CachedAttribute] readonly attribute SerializedScriptValue cachedReadonlyValue;
+    void function(SerializedScriptValue value);
+    SerializedScriptValue functionReturning();
 };

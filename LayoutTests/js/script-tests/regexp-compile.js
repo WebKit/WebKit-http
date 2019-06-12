@@ -31,14 +31,15 @@ shouldBe("re.toString()", "'/c/i'");
 
 shouldThrow("re.compile(new RegExp('+'));");
 
+re.compile();
+shouldBe("re.toString()", "'/(?:)/'");
 re.compile(undefined);
-shouldBe("re.toString()", "'/undefined/'");
+shouldBe("re.toString()", "'/(?:)/'");
+re.compile("");
+shouldBe("re.toString()", "'/(?:)/'");
 
 re.compile(null);
 shouldBe("re.toString()", "'/null/'");
-
-re.compile();
-shouldBe("re.toString()", "'/(?:)/'");
 
 re.compile("z", undefined);
 shouldBe("re.toString()", "'/z/'");
@@ -49,3 +50,8 @@ re.compile(/a/g);
 shouldBe("re.lastIndex", "0");
 re.exec("aaa");
 shouldBe("re.lastIndex", "1");
+
+// Compile returns the regexp itself.
+shouldBe("regexpWithUndefinedCompiledToValid = new RegExp(undefined), regexpWithUndefinedCompiledToValid.compile('abc')", "regexpWithUndefinedCompiledToValid");
+shouldBe("regexpValidPatternCompiledToValid = new RegExp('zyx'), regexpValidPatternCompiledToValid.compile('abc')", "regexpValidPatternCompiledToValid");
+shouldBe("regexpWithValidCompiledToUndefined = new RegExp('abc'), regexpWithValidCompiledToUndefined.compile(undefined)", "regexpWithValidCompiledToUndefined");

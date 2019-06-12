@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -28,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BlobRegistryImpl_h
-#define BlobRegistryImpl_h
+#pragma once
 
 #include "BlobData.h"
 #include "BlobRegistry.h"
@@ -53,23 +53,24 @@ public:
 
     BlobData* getBlobDataFromURL(const URL&) const;
 
-    RefPtr<ResourceHandle> createResourceHandle(const ResourceRequest&, ResourceHandleClient*);
+    Ref<ResourceHandle> createResourceHandle(const ResourceRequest&, ResourceHandleClient*);
 
 private:
     void appendStorageItems(BlobData*, const BlobDataItemList&, long long offset, long long length);
 
-    virtual void registerFileBlobURL(const URL&, RefPtr<BlobDataFileReference>&&, const String& contentType) override;
-    virtual void registerBlobURL(const URL&, Vector<BlobPart>, const String& contentType) override;
-    virtual void registerBlobURL(const URL&, const URL& srcURL) override;
-    virtual void registerBlobURLForSlice(const URL&, const URL& srcURL, long long start, long long end) override;
-    virtual void unregisterBlobURL(const URL&) override;
-    virtual bool isBlobRegistryImpl() const override { return true; }
+    void registerFileBlobURL(const URL&, Ref<BlobDataFileReference>&&, const String& contentType) override;
+    void registerBlobURL(const URL&, Vector<BlobPart>&&, const String& contentType) override;
+    void registerBlobURL(const URL&, const URL& srcURL) override;
+    void registerBlobURLOptionallyFileBacked(const URL&, const URL& srcURL, RefPtr<BlobDataFileReference>&&, const String& contentType) override;
+    void registerBlobURLForSlice(const URL&, const URL& srcURL, long long start, long long end) override;
+    void unregisterBlobURL(const URL&) override;
+    bool isBlobRegistryImpl() const override { return true; }
 
-    virtual unsigned long long blobSize(const URL&) override;
+    unsigned long long blobSize(const URL&) override;
+
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler) override;
 
     HashMap<String, RefPtr<BlobData>> m_blobs;
 };
 
 } // namespace WebCore
-
-#endif // BlobRegistryImpl_h

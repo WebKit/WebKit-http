@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,19 +23,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3BlockWorklist_h
-#define B3BlockWorklist_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
-#include "B3BasicBlock.h"
-#include "B3IndexSet.h"
 #include <wtf/GraphNodeWorklist.h>
+#include <wtf/IndexSet.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace B3 {
 
-typedef GraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> BlockWorklist;
+class BasicBlock;
+
+typedef GraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock*>> BlockWorklist;
 
 // When you say BlockWith<int> you should read it as "block with an int".
 template<typename T> using BlockWith = GraphNodeWith<BasicBlock*, T>;
@@ -44,17 +44,14 @@ template<typename T> using BlockWith = GraphNodeWith<BasicBlock*, T>;
 // permits forcibly enqueueing things even if the block has already been seen. It's useful for
 // things like building a spanning tree, in which case T (the auxiliary payload) would be the
 // successor index.
-template<typename T> using ExtendedBlockWorklist = ExtendedGraphNodeWorklist<BasicBlock*, T, IndexSet<BasicBlock>>;
+template<typename T> using ExtendedBlockWorklist = ExtendedGraphNodeWorklist<BasicBlock*, T, IndexSet<BasicBlock*>>;
 
 typedef GraphVisitOrder VisitOrder;
 
 typedef GraphNodeWithOrder<BasicBlock*> BlockWithOrder;
 
-typedef PostOrderGraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> PostOrderBlockWorklist;
+typedef PostOrderGraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock*>> PostOrderBlockWorklist;
 
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3BlockWorklist_h
-

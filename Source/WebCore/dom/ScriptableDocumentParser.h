@@ -23,11 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-#ifndef ScriptableDocumentParser_h
-#define ScriptableDocumentParser_h
+#pragma once
 
 #include "DecodedDataDocumentParser.h"
 #include "FragmentScriptingPermission.h"
+#include "Timer.h"
 #include <wtf/text/TextPosition.h>
 
 namespace WebCore {
@@ -38,13 +38,13 @@ public:
     // JavaScript document.open() call right now, or it should be ignored.
     virtual bool isExecutingScript() const { return false; }
 
-    // FIXME: Only the HTMLDocumentParser ever blocks script execution on
-    // stylesheet load, which is likely a bug in the XMLDocumentParser.
-    virtual void executeScriptsWaitingForStylesheets() { }
-
     virtual bool isWaitingForScripts() const = 0;
 
     virtual TextPosition textPosition() const = 0;
+
+    virtual bool hasScriptsWaitingForStylesheets() const { return false; }
+
+    void executeScriptsWaitingForStylesheetsSoon();
 
     // Returns true if the parser didn't yield or pause or synchronously execute a script,
     // so calls to PageConsoleClient should be associated with the parser's text position.
@@ -58,14 +58,19 @@ public:
 protected:
     explicit ScriptableDocumentParser(Document&, ParserContentPolicy = AllowScriptingContent);
 
+    virtual void executeScriptsWaitingForStylesheets() { }
+
+    void detach() override;
+
 private:
-    virtual ScriptableDocumentParser* asScriptableDocumentParser() override final { return this; }
+    ScriptableDocumentParser* asScriptableDocumentParser() final { return this; }
+
+    void scriptsWaitingForStylesheetsExecutionTimerFired();
 
     // http://www.whatwg.org/specs/web-apps/current-work/#script-created-parser
     bool m_wasCreatedByScript;
     ParserContentPolicy m_parserContentPolicy;
+    Timer m_scriptsWaitingForStylesheetsExecutionTimer;
 };
 
-}
-
-#endif // ScriptableDocumentParser_h
+} // namespace WebCore

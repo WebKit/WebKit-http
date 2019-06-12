@@ -48,7 +48,7 @@ static GSource* timeoutSource()
             g_source_set_ready_time(static_cast<GSource*>(userData), -1);
             fprintf(stderr, "FAIL: TestControllerRunLoop timed out.\n");
             RunLoop::main().stop();
-            return G_SOURCE_CONTINUE;
+            return G_SOURCE_REMOVE;
         }, source.get(), nullptr);
         g_source_attach(source.get(), nullptr);
     }
@@ -133,13 +133,19 @@ void TestController::runModal(PlatformWebView*)
     // FIXME: Need to implement this to test showModalDialog.
 }
 
+WKContextRef TestController::platformContext()
+{
+    return m_context.get();
+}
+
 const char* TestController::platformLibraryPathForTesting()
 {
-    return 0;
+    return nullptr;
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation&)
 {
+    WKPageSetApplicationNameForUserAgent(mainWebView()->page(), WKStringCreateWithUTF8CString("WebKitTestRunnerGTK"));
 }
 
 void TestController::platformResetPreferencesToConsistentValues()
@@ -149,8 +155,9 @@ void TestController::platformResetPreferencesToConsistentValues()
     m_mainWebView->dismissAllPopupMenus();
 }
 
-void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions&, const std::string&) const
+void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions& options, const std::string&) const
 {
+    options.enableModernMediaControls = false;
 }
 
 } // namespace WTR

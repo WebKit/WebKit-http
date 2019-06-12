@@ -31,12 +31,31 @@
 #include "Editor.h"
 #include "EditorClient.h"
 #include "Frame.h"
+#include <wtf/SoftLinking.h>
+
+#if PLATFORM(IOS)
+SOFT_LINK_FRAMEWORK(UIKit)
+SOFT_LINK(UIKit, UIAccessibilityIsReduceMotionEnabled, BOOL, (void), ())
+#endif
 
 namespace WebCore {
 
-String Internals::userVisibleString(const DOMURL* url)
+String Internals::userVisibleString(const DOMURL& url)
 {
-    return contextDocument()->frame()->editor().client()->userVisibleString(url->href());
+    return contextDocument()->frame()->editor().client()->userVisibleString(url.href());
 }
+
+#if PLATFORM(COCOA)
+bool Internals::userPrefersReducedMotion() const
+{
+#if PLATFORM(IOS)
+    return UIAccessibilityIsReduceMotionEnabled();
+#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
+#else
+    return false;
+#endif
+}
+#endif
 
 }

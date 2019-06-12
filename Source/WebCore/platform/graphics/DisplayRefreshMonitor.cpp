@@ -33,7 +33,7 @@
 
 #if PLATFORM(IOS)
 #include "DisplayRefreshMonitorIOS.h"
-#else
+#elif PLATFORM(MAC)
 #include "DisplayRefreshMonitorMac.h"
 #endif
 
@@ -47,6 +47,7 @@ RefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::createDefaultDisplayRefresh
 #if PLATFORM(IOS)
     return DisplayRefreshMonitorIOS::create(displayID);
 #endif
+    UNUSED_PARAM(displayID);
     return nullptr;
 }
 
@@ -56,8 +57,7 @@ RefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::create(DisplayRefreshMonito
 }
 
 DisplayRefreshMonitor::DisplayRefreshMonitor(PlatformDisplayID displayID)
-    : m_monotonicAnimationStartTime(0)
-    , m_active(true)
+    : m_active(true)
     , m_scheduled(false)
     , m_previousFrameDone(true)
     , m_unscheduledFireCount(0)
@@ -90,8 +90,6 @@ bool DisplayRefreshMonitor::removeClient(DisplayRefreshMonitorClient& client)
 
 void DisplayRefreshMonitor::displayDidRefresh()
 {
-    double monotonicAnimationStartTime;
-
     {
         LockHolder lock(m_mutex);
         if (!m_scheduled)
@@ -100,12 +98,11 @@ void DisplayRefreshMonitor::displayDidRefresh()
             m_unscheduledFireCount = 0;
 
         m_scheduled = false;
-        monotonicAnimationStartTime = m_monotonicAnimationStartTime;
     }
 
     // The call back can cause all our clients to be unregistered, so we need to protect
     // against deletion until the end of the method.
-    Ref<DisplayRefreshMonitor> protect(*this);
+    Ref<DisplayRefreshMonitor> protectedThis(*this);
 
     // Copy the hash table and remove clients from it one by one so we don't notify
     // any client twice, but can respond to removal of clients during the delivery process.
@@ -113,7 +110,7 @@ void DisplayRefreshMonitor::displayDidRefresh()
     m_clientsToBeNotified = &clientsToBeNotified;
     while (!clientsToBeNotified.isEmpty()) {
         DisplayRefreshMonitorClient* client = clientsToBeNotified.takeAny();
-        client->fireDisplayRefreshIfNeeded(monotonicAnimationStartTime);
+        client->fireDisplayRefreshIfNeeded();
 
         // This checks if this function was reentered. In that case, stop iterating
         // since it's not safe to use the set any more.

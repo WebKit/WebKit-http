@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EXTFragDepth_h
-#define EXTFragDepth_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class EXTFragDepth final : public WebGLExtension {
 public:
-    explicit EXTFragDepth(WebGLRenderingContextBase*);
+    explicit EXTFragDepth(WebGLRenderingContextBase&);
     virtual ~EXTFragDepth();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // EXTFragDepth_h

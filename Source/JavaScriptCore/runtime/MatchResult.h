@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MatchResult_h
-#define MatchResult_h
+#pragma once
+
+#include <wtf/NotFound.h>
+#include <wtf/PrintStream.h>
+
+namespace JSC {
 
 typedef uint64_t EncodedMatchResult;
 
 struct MatchResult {
+    MatchResult()
+        : start(WTF::notFound)
+        , end(0)
+    {
+    }
+    
     ALWAYS_INLINE MatchResult(size_t start, size_t end)
         : start(start)
         , end(end)
@@ -51,10 +61,10 @@ struct MatchResult {
 
     ALWAYS_INLINE static MatchResult failed()
     {
-        return MatchResult(WTF::notFound, 0);
+        return MatchResult();
     }
 
-    ALWAYS_INLINE operator bool()
+    ALWAYS_INLINE explicit operator bool() const
     {
         return start != WTF::notFound;
     }
@@ -63,9 +73,11 @@ struct MatchResult {
     {
         return start == end;
     }
+    
+    void dump(PrintStream&) const;
 
     size_t start;
     size_t end;
 };
 
-#endif
+} // namespace JSC

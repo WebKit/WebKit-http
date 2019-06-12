@@ -1,3 +1,4 @@
+<!-- webkit-test-runner [ enableModernMediaControls=false ] -->
 <html>
     <head>
         <script src="../resources/js-test-pre.js"></script>
@@ -5,10 +6,7 @@
             var vidAXObject;
             var indentLevel = 0;
 
-            if (window.testRunner) {
-                testRunner.dumpAsText();
-                testRunner.waitUntilDone();
-            }
+            jsTestIsAsync = true;
 
             function indent(count)
             {
@@ -18,7 +16,10 @@
 
             function dumpObject(axObject)
             {
-                debug(indent(indentLevel) + "description: " + axObject.description); 
+            if (accessibilityController.platformName == "atk")
+                debug(indent(indentLevel) + "title: " + axObject.title);
+            else
+                debug(indent(indentLevel) + "description: " + axObject.description);
                 debug(indent(indentLevel) + "role: " + axObject.role); 
                 if (axObject.subrole && axObject.subrole != 'AXSubrole: ') debug(indent(indentLevel) + "subrole: " + axObject.subrole);
                 debug("<br>");
@@ -58,8 +59,8 @@
                 
                 dumpChildren(vidAXObject);
 
-                if (window.testRunner && event.type == 'canplaythrough')
-                    testRunner.notifyDone();     
+                if (event.type == 'canplaythrough')
+                    finishJSTest();
             }
         </script>
     </head>
@@ -73,6 +74,7 @@
     
     <div id=console></div>
 
+    <script src="../resources/js-test-post.js"></script>
 </body>
 </html>
 

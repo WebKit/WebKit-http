@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SurroundingText_h
-#define SurroundingText_h
+#pragma once
 
 #include <wtf/text/WTFString.h>
 
@@ -46,14 +45,9 @@ public:
     String content() const;
     unsigned positionOffsetInContent() const;
 
-    PassRefPtr<Range> rangeFromContentOffsets(unsigned startOffsetInContent, unsigned endOffsetInContent);
-
 private:
     RefPtr<Range> m_contentRange;
     size_t m_positionOffsetInContent;
 };
 
 } // namespace WebCore
-
-#endif // SurroundingText_h
-

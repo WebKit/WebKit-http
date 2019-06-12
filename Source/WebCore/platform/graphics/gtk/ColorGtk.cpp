@@ -26,27 +26,27 @@
 namespace WebCore {
 
 Color::Color(const GdkColor& c)
-    : m_color(makeRGB(c.red >> 8, c.green >> 8, c.blue >> 8))
-    , m_valid(true)
 {
+    setRGB(makeRGB(c.red >> 8, c.green >> 8, c.blue >> 8));
 }
 
 #ifndef GTK_API_VERSION_2
 Color::Color(const GdkRGBA& c)
-    : m_color(makeRGBA(static_cast<int>(c.red * 255),
-                       static_cast<int>(c.green * 255),
-                       static_cast<int>(c.blue * 255),
-                       static_cast<int>(c.alpha * 255)))
-    , m_valid(true)
 {
+    setRGB(makeRGBA(static_cast<int>(c.red * 255),
+        static_cast<int>(c.green * 255),
+        static_cast<int>(c.blue * 255),
+        static_cast<int>(c.alpha * 255)));
 }
 
 Color::operator GdkRGBA() const
 {
+    if (isExtended())
+        return { asExtended().red(), asExtended().green(), asExtended().blue(), asExtended().alpha() };
+
     double red, green, blue, alpha;
     getRGBA(red, green, blue, alpha);
-    GdkRGBA rgba = { red, green, blue, alpha };
-    return rgba;
+    return { red, green, blue, alpha };
 }
 #endif
 

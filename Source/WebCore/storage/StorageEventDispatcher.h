@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StorageEventDispatcher_h
-#define StorageEventDispatcher_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
@@ -38,20 +37,18 @@ namespace WebCore {
 class Frame;
 class Page;
 class PageGroup;
-class SecurityOrigin;
+struct SecurityOriginData;
 
 class StorageEventDispatcher {
 public:
-    WEBCORE_EXPORT static void dispatchSessionStorageEvents(const String& key, const String& oldValue, const String& newValue, SecurityOrigin*, Frame* sourceFrame);
-    WEBCORE_EXPORT static void dispatchLocalStorageEvents(const String& key, const String& oldValue, const String& newValue, SecurityOrigin*, Frame* sourceFrame);
+    WEBCORE_EXPORT static void dispatchSessionStorageEvents(const String& key, const String& oldValue, const String& newValue, const SecurityOriginData&, Frame* sourceFrame);
+    WEBCORE_EXPORT static void dispatchLocalStorageEvents(const String& key, const String& oldValue, const String& newValue, const SecurityOriginData&, Frame* sourceFrame);
 
-    WEBCORE_EXPORT static void dispatchSessionStorageEventsToFrames(Page&, const Vector<RefPtr<Frame>>& frames, const String& key, const String& oldValue, const String& newValue, const String& url, SecurityOrigin*);
-    WEBCORE_EXPORT static void dispatchLocalStorageEventsToFrames(PageGroup&, const Vector<RefPtr<Frame>>& frames, const String& key, const String& oldValue, const String& newValue, const String& url, SecurityOrigin*);
+    WEBCORE_EXPORT static void dispatchSessionStorageEventsToFrames(Page&, const Vector<RefPtr<Frame>>& frames, const String& key, const String& oldValue, const String& newValue, const String& url, const SecurityOriginData&);
+    WEBCORE_EXPORT static void dispatchLocalStorageEventsToFrames(PageGroup&, const Vector<RefPtr<Frame>>& frames, const String& key, const String& oldValue, const String& newValue, const String& url, const SecurityOriginData&);
 private:
     // Do not instantiate.
     StorageEventDispatcher();
 };
 
 } // namespace WebCore
-
-#endif // StorageEventDispatcher_h

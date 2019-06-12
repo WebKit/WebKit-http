@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGJumpReplacement_h
-#define DFGJumpReplacement_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -41,6 +40,8 @@ public:
     }
     
     void fire();
+    void installVMTrapBreakpoint();
+    void* dataLocation() const { return m_source.dataLocation(); }
 
 private:
     CodeLocationLabel m_source;
@@ -50,6 +51,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGJumpReplacement_h
-

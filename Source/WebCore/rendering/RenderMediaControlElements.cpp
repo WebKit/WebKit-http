@@ -30,12 +30,13 @@
 #if ENABLE(VIDEO)
 #include "RenderMediaControlElements.h"
 
+#include "MediaControlElements.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 
 namespace WebCore {
 
-RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer(Element& element, Ref<RenderStyle>&& style)
+RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer(Element& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
 {
 }
@@ -59,7 +60,7 @@ void RenderMediaVolumeSliderContainer::layout()
 
 // ----------------------------
 
-RenderMediaControlTimelineContainer::RenderMediaControlTimelineContainer(Element& element, Ref<RenderStyle>&& style)
+RenderMediaControlTimelineContainer::RenderMediaControlTimelineContainer(Element& element, RenderStyle&& style)
     : RenderFlexibleBox(element, WTFMove(style))
 {
 }
@@ -81,7 +82,7 @@ void RenderMediaControlTimelineContainer::layout()
 
 #if ENABLE(VIDEO_TRACK)
 
-RenderTextTrackContainerElement::RenderTextTrackContainerElement(Element& element, Ref<RenderStyle>&& style)
+RenderTextTrackContainerElement::RenderTextTrackContainerElement(Element& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
 {
 }

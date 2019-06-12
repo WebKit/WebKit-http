@@ -28,13 +28,32 @@
 #include "ContentSecurityPolicySourceList.h"
 
 #include "ContentSecurityPolicy.h"
-#include "ContentSecurityPolicyDirectiveList.h"
+#include "ContentSecurityPolicyDirectiveNames.h"
 #include "ParsingUtilities.h"
-#include "SecurityOrigin.h"
 #include "URL.h"
 #include <wtf/ASCIICType.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/text/Base64.h>
 
 namespace WebCore {
+
+static bool isCSPDirectiveName(const String& name)
+{
+    return equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::baseURI)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::connectSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::defaultSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::fontSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::formAction)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::frameSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::imgSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::mediaSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::objectSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::pluginTypes)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::reportURI)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::sandbox)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::scriptSrc)
+        || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::styleSrc);
+}
 
 static bool isSourceCharacter(UChar c)
 {
@@ -88,30 +107,53 @@ ContentSecurityPolicySourceList::ContentSecurityPolicySourceList(const ContentSe
 
 void ContentSecurityPolicySourceList::parse(const String& value)
 {
-    // We represent 'none' as an empty m_list.
-    if (isSourceListNone(value))
+    if (isSourceListNone(value)) {
+        m_isNone = true;
         return;
+    }
     auto characters = StringView(value).upconvertedCharacters();
     parse(characters, characters + value.length());
 }
 
-bool ContentSecurityPolicySourceList::matches(const URL& url)
+bool ContentSecurityPolicySourceList::isProtocolAllowedByStar(const URL& url) const
 {
-    if (m_allowStar) {
-        // FIXME: Should only match for URLs whose scheme is not blob, data or filesystem.
-        // See <https://bugs.webkit.org/show_bug.cgi?id=154122> for more details.
+    if (m_policy.allowContentSecurityPolicySourceStarToMatchAnyProtocol())
         return true;
-    }
+
+    // Although not allowed by the Content Security Policy Level 3 spec., we allow a data URL to match
+    // "img-src *" and either a data URL or blob URL to match "media-src *" for web compatibility.
+    bool isAllowed = url.protocolIsInHTTPFamily() || url.protocolIs("ws") || url.protocolIs("wss") || m_policy.protocolMatchesSelf(url);
+    if (equalIgnoringASCIICase(m_directiveName, ContentSecurityPolicyDirectiveNames::imgSrc))
+        isAllowed |= url.protocolIsData();
+    else if (equalIgnoringASCIICase(m_directiveName, ContentSecurityPolicyDirectiveNames::mediaSrc))
+        isAllowed |= url.protocolIsData() || url.protocolIsBlob();
+    return isAllowed;
+}
+
+bool ContentSecurityPolicySourceList::matches(const URL& url, bool didReceiveRedirectResponse)
+{
+    if (m_allowStar && isProtocolAllowedByStar(url))
+        return true;
 
     if (m_allowSelf && m_policy.urlMatchesSelf(url))
         return true;
 
     for (auto& entry : m_list) {
-        if (entry.matches(url))
+        if (entry.matches(url, didReceiveRedirectResponse))
             return true;
     }
 
     return false;
+}
+
+bool ContentSecurityPolicySourceList::matches(const ContentSecurityPolicyHash& hash) const
+{
+    return m_hashes.contains(hash);
+}
+
+bool ContentSecurityPolicySourceList::matches(const String& nonce) const
+{
+    return m_nonces.contains(nonce);
 }
 
 // source-list       = *WSP [ source *( 1*WSP source ) *WSP ]
@@ -130,9 +172,15 @@ void ContentSecurityPolicySourceList::parse(const UChar* begin, const UChar* end
         skipWhile<UChar, isSourceCharacter>(position, end);
 
         String scheme, host, path;
-        int port = 0;
+        std::optional<uint16_t> port;
         bool hostHasWildcard = false;
         bool portHasWildcard = false;
+
+        if (parseNonceSource(beginSource, position))
+            continue;
+
+        if (parseHashSource(beginSource, position))
+            continue;
 
         if (parseSource(beginSource, position, scheme, host, port, path, hostHasWildcard, portHasWildcard)) {
             // Wildcard hosts and keyword sources ('self', 'unsafe-inline',
@@ -154,7 +202,7 @@ void ContentSecurityPolicySourceList::parse(const UChar* begin, const UChar* end
 //                   / ( [ scheme "://" ] host [ port ] [ path ] )
 //                   / "'self'"
 //
-bool ContentSecurityPolicySourceList::parseSource(const UChar* begin, const UChar* end, String& scheme, String& host, int& port, String& path, bool& hostHasWildcard, bool& portHasWildcard)
+bool ContentSecurityPolicySourceList::parseSource(const UChar* begin, const UChar* end, String& scheme, String& host, std::optional<uint16_t>& port, String& path, bool& hostHasWildcard, bool& portHasWildcard)
 {
     if (begin == end)
         return false;
@@ -243,7 +291,7 @@ bool ContentSecurityPolicySourceList::parseSource(const UChar* begin, const UCha
         return false;
 
     if (!beginPort)
-        port = 0;
+        port = std::nullopt;
     else {
         if (!parsePort(beginPort, beginPath, port, portHasWildcard))
             return false;
@@ -345,7 +393,7 @@ bool ContentSecurityPolicySourceList::parsePath(const UChar* begin, const UChar*
 
 // port              = ":" ( 1*DIGIT / "*" )
 //
-bool ContentSecurityPolicySourceList::parsePort(const UChar* begin, const UChar* end, int& port, bool& portHasWildcard)
+bool ContentSecurityPolicySourceList::parsePort(const UChar* begin, const UChar* end, std::optional<uint16_t>& port, bool& portHasWildcard)
 {
     ASSERT(begin <= end);
     ASSERT(!port);
@@ -358,7 +406,7 @@ bool ContentSecurityPolicySourceList::parsePort(const UChar* begin, const UChar*
         return false;
     
     if (end - begin == 1 && *begin == '*') {
-        port = 0;
+        port = std::nullopt;
         portHasWildcard = true;
         return true;
     }
@@ -370,8 +418,62 @@ bool ContentSecurityPolicySourceList::parsePort(const UChar* begin, const UChar*
         return false;
     
     bool ok;
-    port = charactersToIntStrict(begin, end - begin, &ok);
+    int portInt = charactersToIntStrict(begin, end - begin, &ok);
+    if (portInt < 0 || portInt > std::numeric_limits<uint16_t>::max())
+        return false;
+    port = portInt;
     return ok;
+}
+
+// Match Blink's behavior of allowing an equal sign to appear anywhere in the value of the nonce
+// even though this does not match the behavior of Content Security Policy Level 3 spec.,
+// <https://w3c.github.io/webappsec-csp/> (29 February 2016).
+static bool isNonceCharacter(UChar c)
+{
+    return isBase64OrBase64URLCharacter(c) || c == '=';
+}
+
+// nonce-source    = "'nonce-" nonce-value "'"
+// nonce-value     = base64-value
+bool ContentSecurityPolicySourceList::parseNonceSource(const UChar* begin, const UChar* end)
+{
+    static NeverDestroyed<String> noncePrefix("'nonce-", String::ConstructFromLiteral);
+    if (!StringView(begin, end - begin).startsWithIgnoringASCIICase(noncePrefix.get()))
+        return false;
+    const UChar* position = begin + noncePrefix.get().length();
+    const UChar* beginNonceValue = position;
+    skipWhile<UChar, isNonceCharacter>(position, end);
+    if (position >= end || position == beginNonceValue || *position != '\'')
+        return false;
+    m_nonces.add(String(beginNonceValue, position - beginNonceValue));
+    return true;
+}
+
+// hash-source    = "'" hash-algorithm "-" base64-value "'"
+// hash-algorithm = "sha256" / "sha384" / "sha512"
+// base64-value  = 1*( ALPHA / DIGIT / "+" / "/" / "-" / "_" )*2( "=" )
+bool ContentSecurityPolicySourceList::parseHashSource(const UChar* begin, const UChar* end)
+{
+    if (begin == end)
+        return false;
+
+    const UChar* position = begin;
+    if (!skipExactly<UChar>(position, end, '\''))
+        return false;
+
+    auto digest = parseCryptographicDigest(position, end);
+    if (!digest)
+        return false;
+
+    if (position >= end || *position != '\'')
+        return false;
+
+    if (digest->value.size() > ContentSecurityPolicyHash::maximumDigestLength)
+        return false;
+
+    m_hashAlgorithmsUsed |= digest->algorithm;
+    m_hashes.add(WTFMove(*digest));
+    return true;
 }
 
 } // namespace WebCore

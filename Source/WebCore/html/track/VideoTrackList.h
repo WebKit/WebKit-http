@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef VideoTrackList_h
-#define VideoTrackList_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -43,21 +42,19 @@ public:
     virtual ~VideoTrackList();
 
     VideoTrack* getTrackById(const AtomicString&) const;
-    long selectedIndex() const;
+    int selectedIndex() const;
 
     VideoTrack* item(unsigned) const;
     VideoTrack* lastItem() const { return item(length() - 1); }
-    void append(PassRefPtr<VideoTrack>);
+    void append(Ref<VideoTrack>&&);
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const override;
+    EventTargetInterface eventTargetInterface() const override;
 
 private:
     VideoTrackList(HTMLMediaElement*, ScriptExecutionContext*);
-
 };
 
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)

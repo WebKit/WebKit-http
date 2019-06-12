@@ -27,12 +27,13 @@
 #include "config.h"
 #include "XMLHttpRequestProgressEventThrottle.h"
 
+#include "EventNames.h"
 #include "EventTarget.h"
 #include "XMLHttpRequestProgressEvent.h"
 
 namespace WebCore {
 
-const double XMLHttpRequestProgressEventThrottle::minimumProgressEventDispatchingIntervalInSeconds = .05; // 50 ms per specification.
+const Seconds XMLHttpRequestProgressEventThrottle::minimumProgressEventDispatchingInterval { 50_ms }; // 50 ms per specification.
 
 XMLHttpRequestProgressEventThrottle::XMLHttpRequestProgressEventThrottle(EventTarget* target)
     : m_target(target)
@@ -72,12 +73,12 @@ void XMLHttpRequestProgressEventThrottle::dispatchThrottledProgressEvent(bool le
         ASSERT(!m_hasThrottledProgressEvent);
 
         dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().progressEvent, lengthComputable, loaded, total));
-        startRepeating(minimumProgressEventDispatchingIntervalInSeconds);
+        startRepeating(minimumProgressEventDispatchingInterval);
         m_hasThrottledProgressEvent = false;
         return;
     }
 
-    // The timer is already active so minimumProgressEventDispatchingIntervalInSeconds is the least frequent event.
+    // The timer is already active so minimumProgressEventDispatchingInterval is the least frequent event.
     m_hasThrottledProgressEvent = true;
 }
 
@@ -207,7 +208,7 @@ void XMLHttpRequestProgressEventThrottle::resume()
     // the list of active DOM objects to resume them, and any activated JS event-handler
     // could insert new active DOM objects to the list.
     // m_deferEvents is kept true until all deferred events have been dispatched.
-    m_dispatchDeferredEventsTimer.startOneShot(0);
+    m_dispatchDeferredEventsTimer.startOneShot(0_s);
 }
 
 } // namespace WebCore

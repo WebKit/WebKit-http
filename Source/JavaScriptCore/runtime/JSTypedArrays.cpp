@@ -26,8 +26,6 @@
 #include "config.h"
 #include "JSTypedArrays.h"
 
-#include "CopiedBlockInlines.h"
-#include "CopyVisitorInlines.h"
 #include "GenericTypedArrayViewInlines.h"
 #include "JSGenericTypedArrayViewInlines.h"
 #include "JSCInlines.h"
@@ -36,7 +34,7 @@ namespace JSC {
 
 #define MAKE_S_INFO(type) \
     template<> const ClassInfo JS##type##Array::s_info = { \
-        #type "Array", &JS##type##Array::Base::s_info, 0, \
+        #type "Array", &JS##type##Array::Base::s_info, nullptr, nullptr, \
         CREATE_METHOD_TABLE(JS##type##Array) \
     }; \
     const ClassInfo* get##type##ArrayClassInfo() { return &JS##type##Array::s_info; }
@@ -50,6 +48,12 @@ MAKE_S_INFO(Uint16);
 MAKE_S_INFO(Uint32);
 MAKE_S_INFO(Float32);
 MAKE_S_INFO(Float64);
+
+JSUint8Array* createUint8TypedArray(ExecState* exec, Structure* structure, RefPtr<ArrayBuffer>&& buffer, unsigned byteOffset, unsigned length)
+{
+    return JSUint8Array::create(exec, structure, WTFMove(buffer), byteOffset, length);
+}
+
 
 } // namespace JSC
 

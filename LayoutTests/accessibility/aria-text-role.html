@@ -2,6 +2,7 @@
 <html>
 <head>
 <script src="../resources/js-test-pre.js"></script>
+<script src="../resources/accessibility-helper.js"></script>
 </head>
 <body id="body">
 
@@ -22,7 +23,7 @@
 
         document.getElementById("textrole").focus();
         var textrole = accessibilityController.focusedElement;
-        shouldBe("textrole.role", "'AXRole: AXStaticText'");
+        shouldBe("textrole.role", "platformRoleForStaticText(textrole)");
         shouldBe("textrole.stringValue", "'AXValue: all at once'");
 
         // now check the hit-testing

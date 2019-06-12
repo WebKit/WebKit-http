@@ -125,20 +125,12 @@ def useX87
     end
 end
 
-def isCompilingOnWindows
-    ENV['OS'] == 'Windows_NT'
-end
-
-def isGCC
-    !isCompilingOnWindows
-end
-
 def isMSVC
-    isCompilingOnWindows
+    $options.has_key?(:assembler) && $options[:assembler] == "MASM"
 end
 
 def isIntelSyntax
-    isCompilingOnWindows
+    $options.has_key?(:assembler) && $options[:assembler] == "MASM"
 end
 
 def register(name)
@@ -520,7 +512,6 @@ class Sequence
 end
 
 class Instruction
-    @@floatingPointCompareImplicitOperand = isIntelSyntax ? "st(0), " : ""
     
     def x86Operands(*kinds)
         raise unless kinds.size == operands.size
@@ -573,6 +564,10 @@ class Instruction
         else
             raise
         end
+    end
+
+    def getImplicitOperandString
+        isIntelSyntax ? "st(0), " : ""
     end
     
     def handleX86OpWithNumOperands(opcode, kind, numOperands)
@@ -648,7 +643,7 @@ class Instruction
             $asm.puts "xchg#{x86Suffix(:ptr)} #{operand.x86Operand(:ptr)}, #{ax.x86Operand(:ptr)}"
             $asm.puts "#{setOpcode} #{ax.x86Operand(:byte)}"
             if !isIntelSyntax
-		$asm.puts "movzbl #{ax.x86Operand(:byte)}, #{ax.x86Operand(:int)}"
+                $asm.puts "movzbl #{ax.x86Operand(:byte)}, #{ax.x86Operand(:int)}"
             else
                 $asm.puts "movzx #{ax.x86Operand(:int)}, #{ax.x86Operand(:byte)}"
             end
@@ -808,20 +803,21 @@ class Instruction
     end
 
     def handleX87Compare(mode)
+        floatingPointCompareImplicitOperand = getImplicitOperandString
         case mode
         when :normal
             if (operands[0].x87DefaultStackPosition == 0)
-                $asm.puts "fucomi #{@@floatingPointCompareImplicitOperand}#{operands[1].x87Operand(0)}"
+                $asm.puts "fucomi #{floatingPointCompareImplicitOperand}#{operands[1].x87Operand(0)}"
             else
                 $asm.puts "fld #{operands[0].x87Operand(0)}"
-                $asm.puts "fucomip #{@@floatingPointCompareImplicitOperand}#{operands[1].x87Operand(1)}"
+                $asm.puts "fucomip #{floatingPointCompareImplicitOperand}#{operands[1].x87Operand(1)}"
             end
         when :reverse
             if (operands[1].x87DefaultStackPosition == 0)
-                $asm.puts "fucomi #{@@floatingPointCompareImplicitOperand}#{operands[0].x87Operand(0)}"
+                $asm.puts "fucomi #{floatingPointCompareImplicitOperand}#{operands[0].x87Operand(0)}"
             else
                 $asm.puts "fld #{operands[1].x87Operand(0)}"
-                $asm.puts "fucomip #{@@floatingPointCompareImplicitOperand}#{operands[0].x87Operand(1)}"
+                $asm.puts "fucomip #{floatingPointCompareImplicitOperand}#{operands[0].x87Operand(1)}"
             end
         else
             raise mode.inspect
@@ -954,7 +950,11 @@ class Instruction
                 $asm.puts "movzx #{orderOperands(operands[0].x86Operand(:byte), operands[1].x86Operand(:int))}"
             end
         when "loadbs"
-            $asm.puts "movsbl #{operands[0].x86Operand(:byte)}, #{operands[1].x86Operand(:int)}"
+            if !isIntelSyntax
+                $asm.puts "movsbl #{orderOperands(operands[0].x86Operand(:byte), operands[1].x86Operand(:int))}"
+            else
+                $asm.puts "movsx #{orderOperands(operands[0].x86Operand(:byte), operands[1].x86Operand(:int))}"
+            end
         when "loadh"
             if !isIntelSyntax
                 $asm.puts "movzwl #{orderOperands(operands[0].x86Operand(:half), operands[1].x86Operand(:int))}"
@@ -962,7 +962,11 @@ class Instruction
                 $asm.puts "movzx #{orderOperands(operands[0].x86Operand(:half), operands[1].x86Operand(:int))}"
             end
         when "loadhs"
-            $asm.puts "movswl #{operands[0].x86Operand(:half)}, #{operands[1].x86Operand(:int)}"
+            if !isIntelSyntax
+                $asm.puts "movswl #{orderOperands(operands[0].x86Operand(:half), operands[1].x86Operand(:int))}"
+            else
+                $asm.puts "movsx #{orderOperands(operands[0].x86Operand(:half), operands[1].x86Operand(:int))}"
+            end
         when "storeb"
             $asm.puts "mov#{x86Suffix(:byte)} #{x86Operands(:byte, :byte)}"
         when "loadd"
@@ -1108,6 +1112,7 @@ class Instruction
             $asm.puts "cvttsd2si #{operands[0].x86Operand(:double)}, #{operands[1].x86Operand(:int)}"
         when "bcd2i"
             if useX87
+                floatingPointCompareImplicitOperand = getImplicitOperandString
                 sp = RegisterID.new(nil, "sp")
                 if (operands[0].x87DefaultStackPosition == 0)
                     $asm.puts "fistl -4(#{sp.x86Operand(:ptr)})"
@@ -1119,7 +1124,7 @@ class Instruction
                 $asm.puts "test#{x86Suffix(:int)} #{operands[1].x86Operand(:int)}, #{operands[1].x86Operand(:int)}"
                 $asm.puts "je #{operands[2].asmLabel}"
                 $asm.puts "fild#{x86Suffix(:int)} #{getSizeString(:int)}#{offsetRegister(-4, sp.x86Operand(:ptr))}"
-                $asm.puts "fucomip #{@@floatingPointCompareImplicitOperand}#{operands[0].x87Operand(1)}"
+                $asm.puts "fucomip #{floatingPointCompareImplicitOperand}#{operands[0].x87Operand(1)}"
                 $asm.puts "jp #{operands[2].asmLabel}"
                 $asm.puts "jne #{operands[2].asmLabel}"
             else
@@ -1519,7 +1524,12 @@ class Instruction
         when "leap"
             $asm.puts "lea#{x86Suffix(:ptr)} #{orderOperands(operands[0].x86AddressOperand(:ptr), operands[1].x86Operand(:ptr))}"
         when "memfence"
-            $asm.puts "mfence"
+            sp = RegisterID.new(nil, "sp")
+            if isIntelSyntax
+                $asm.puts "mfence"
+            else
+                $asm.puts "lock; orl $0, (#{sp.x86Operand(:ptr)})"
+            end
         else
             lowerDefault
         end

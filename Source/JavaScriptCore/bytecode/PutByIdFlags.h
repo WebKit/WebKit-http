@@ -23,14 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PutByIdFlags_h
-#define PutByIdFlags_h
+#pragma once
 
 #include "StructureIDTable.h"
 
 namespace JSC {
 
-enum PutByIdFlags : intptr_t {
+enum PutByIdFlags : int32_t {
     PutByIdNone = 0,
 
     // This flag indicates that the put_by_id is direct. That means that we store the property without
@@ -100,6 +99,3 @@ class PrintStream;
 void printInternal(PrintStream&, JSC::PutByIdFlags);
 
 } // namespace WTF
-
-#endif // PutByIdFlags_h
-

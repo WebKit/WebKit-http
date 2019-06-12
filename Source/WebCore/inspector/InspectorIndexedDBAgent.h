@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorIndexedDBAgent_h
-#define InspectorIndexedDBAgent_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -54,16 +53,16 @@ public:
     InspectorIndexedDBAgent(WebAgentContext&, InspectorPageAgent*);
     virtual ~InspectorIndexedDBAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     // Called from the front-end.
-    virtual void enable(ErrorString&) override;
-    virtual void disable(ErrorString&) override;
-    virtual void requestDatabaseNames(ErrorString&, const String& securityOrigin, Ref<RequestDatabaseNamesCallback>&&) override;
-    virtual void requestDatabase(ErrorString&, const String& securityOrigin, const String& databaseName, Ref<RequestDatabaseCallback>&&) override;
-    virtual void requestData(ErrorString&, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const Inspector::InspectorObject* keyRange, Ref<RequestDataCallback>&&) override;
-    virtual void clearObjectStore(ErrorString&, const String& in_securityOrigin, const String& in_databaseName, const String& in_objectStoreName, Ref<ClearObjectStoreCallback>&&) override;
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void requestDatabaseNames(ErrorString&, const String& securityOrigin, Ref<RequestDatabaseNamesCallback>&&) override;
+    void requestDatabase(ErrorString&, const String& securityOrigin, const String& databaseName, Ref<RequestDatabaseCallback>&&) override;
+    void requestData(ErrorString&, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const Inspector::InspectorObject* keyRange, Ref<RequestDataCallback>&&) override;
+    void clearObjectStore(ErrorString&, const String& in_securityOrigin, const String& in_databaseName, const String& in_objectStoreName, Ref<ClearObjectStoreCallback>&&) override;
 
 private:
     Inspector::InjectedScriptManager& m_injectedScriptManager;
@@ -74,4 +73,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // !defined(InspectorIndexedDBAgent_h)

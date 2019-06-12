@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Simon Hausmann (hausmann@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2006, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,19 +25,19 @@
 #include "HTMLFrameElementBase.h"
 
 #include "Document.h"
-#include "EventNames.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
-#include "URL.h"
+#include "JSDOMBindingSecurity.h"
 #include "Page.h"
 #include "RenderWidget.h"
 #include "ScriptController.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
+#include "URL.h"
 
 namespace WebCore {
 
@@ -54,15 +54,21 @@ HTMLFrameElementBase::HTMLFrameElementBase(const QualifiedName& tagName, Documen
 
 bool HTMLFrameElementBase::isURLAllowed() const
 {
-    if (document().page() && document().page()->subframeCount() >= Page::maxNumberOfFrames)
-        return false;
-
     if (m_URL.isEmpty())
         return true;
 
-    const URL& completeURL = document().completeURL(m_URL);
+    return isURLAllowed(document().completeURL(m_URL));
+}
 
-    if (protocolIsJavaScript(completeURL)) { 
+bool HTMLFrameElementBase::isURLAllowed(const URL& completeURL) const
+{
+    if (document().page() && document().page()->subframeCount() >= Page::maxNumberOfFrames)
+        return false;
+
+    if (completeURL.isEmpty())
+        return true;
+
+    if (protocolIsJavaScript(completeURL)) {
         Document* contentDoc = this->contentDocument();
         if (contentDoc && !ScriptController::canAccessFromCurrentOrigin(contentDoc->frame()))
             return false;
@@ -94,12 +100,12 @@ void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const Atomi
 {
     if (name == srcdocAttr)
         setLocation("about:srcdoc");
-    else if (name == srcAttr && !fastHasAttribute(srcdocAttr))
+    else if (name == srcAttr && !hasAttributeWithoutSynchronization(srcdocAttr))
         setLocation(stripLeadingAndTrailingHTMLSpaces(value));
     else if (name == idAttr) {
         HTMLFrameOwnerElement::parseAttribute(name, value);
         // Falling back to using the 'id' attribute is not standard but some content relies on this behavior.
-        if (!hasAttribute(nameAttr))
+        if (!hasAttributeWithoutSynchronization(nameAttr))
             m_frameName = value;
     } else if (name == nameAttr) {
         m_frameName = value;
@@ -115,7 +121,7 @@ void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const Atomi
     } else if (name == scrollingAttr) {
         // Auto and yes both simply mean "allow scrolling." No means "don't allow scrolling."
         if (equalLettersIgnoringASCIICase(value, "auto") || equalLettersIgnoringASCIICase(value, "yes"))
-            m_scrolling = document().frameElementsShouldIgnoreScrolling() ? ScrollbarAlwaysOff : ScrollbarAuto;
+            m_scrolling = ScrollbarAuto;
         else if (equalLettersIgnoringASCIICase(value, "no"))
             m_scrolling = ScrollbarAlwaysOff;
         // FIXME: If we are already attached, this has no effect.
@@ -135,17 +141,17 @@ void HTMLFrameElementBase::setNameAndOpenURL()
 Node::InsertionNotificationRequest HTMLFrameElementBase::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLFrameOwnerElement::insertedInto(insertionPoint);
-    if (insertionPoint.inDocument())
+    if (insertionPoint.isConnected())
         return InsertionShouldCallFinishedInsertingSubtree;
     return InsertionDone;
 }
 
 void HTMLFrameElementBase::finishedInsertingSubtree()
 {
-    if (!inDocument())
+    if (!isConnected())
         return;
 
-    // DocumentFragments don't kick of any loads.
+    // DocumentFragments don't kick off any loads.
     if (!document().frame())
         return;
 
@@ -153,7 +159,7 @@ void HTMLFrameElementBase::finishedInsertingSubtree()
         return;
 
     if (!renderer())
-        setNeedsStyleRecalc(ReconstructRenderTree);
+        invalidateStyleAndRenderersForSubtree();
     setNameAndOpenURL();
 }
 
@@ -167,21 +173,30 @@ void HTMLFrameElementBase::didAttachRenderers()
 
 URL HTMLFrameElementBase::location() const
 {
-    if (fastHasAttribute(srcdocAttr))
+    if (hasAttributeWithoutSynchronization(srcdocAttr))
         return URL(ParsedURLString, "about:srcdoc");
-    return document().completeURL(fastGetAttribute(srcAttr));
+    return document().completeURL(attributeWithoutSynchronization(srcAttr));
 }
 
 void HTMLFrameElementBase::setLocation(const String& str)
 {
-    Settings* settings = document().settings();
-    if (settings && settings->needsAcrobatFrameReloadingQuirk() && m_URL == str)
+    if (document().settings().needsAcrobatFrameReloadingQuirk() && m_URL == str)
         return;
 
     m_URL = AtomicString(str);
 
-    if (inDocument())
+    if (isConnected())
         openURL(LockHistory::No, LockBackForwardList::No);
+}
+
+void HTMLFrameElementBase::setLocation(JSC::ExecState& state, const String& newLocation)
+{
+    if (protocolIsJavaScript(stripLeadingAndTrailingHTMLSpaces(newLocation))) {
+        if (!BindingSecurity::shouldAllowAccessToNode(state, contentDocument()))
+            return;
+    }
+
+    setLocation(newLocation);
 }
 
 bool HTMLFrameElementBase::supportsFocus() const
@@ -202,7 +217,7 @@ void HTMLFrameElementBase::setFocus(bool received)
 
 bool HTMLFrameElementBase::isURLAttribute(const Attribute& attribute) const
 {
-    return attribute.name() == srcAttr || HTMLFrameOwnerElement::isURLAttribute(attribute);
+    return attribute.name() == srcAttr || attribute.name() == longdescAttr || HTMLFrameOwnerElement::isURLAttribute(attribute);
 }
 
 bool HTMLFrameElementBase::isHTMLContentAttribute(const Attribute& attribute) const

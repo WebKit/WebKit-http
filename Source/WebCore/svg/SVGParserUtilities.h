@@ -19,11 +19,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGParserUtilities_h
-#define SVGParserUtilities_h
+#pragma once
 
 #include "ParserUtilities.h"
 #include <wtf/HashSet.h>
+#include <wtf/Vector.h>
 
 typedef std::pair<unsigned, unsigned> UnicodeRange;
 typedef Vector<UnicodeRange> UnicodeRanges;
@@ -32,7 +32,7 @@ namespace WebCore {
 
 class FloatPoint;
 class FloatRect;
-class SVGPointList;
+class SVGPointListValues;
 
 template <typename CharacterType>
 bool parseSVGNumber(CharacterType* ptr, size_t length, double& number);
@@ -81,11 +81,9 @@ inline bool skipOptionalSVGSpacesOrDelimiter(const CharacterType*& ptr, const Ch
     return ptr < end;
 }
 
-bool pointsListFromSVGData(SVGPointList& pointsList, const String& points);
+bool pointsListFromSVGData(SVGPointListValues&, const String& points);
 Vector<String> parseDelimitedString(const String& input, const char seperator);
 bool parseKerningUnicodeString(const String& input, UnicodeRanges&, HashSet<String>& stringList);
 bool parseGlyphName(const String& input, HashSet<String>& values);
 
 } // namespace WebCore
-
-#endif // SVGParserUtilities_h

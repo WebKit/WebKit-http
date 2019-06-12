@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGImageElement_h
-#define SVGImageElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedLength.h"
@@ -42,24 +41,24 @@ public:
 private:
     SVGImageElement(const QualifiedName&, Document&);
     
-    virtual bool isValid() const override { return SVGTests::isValid(); }
+    bool isValid() const final { return SVGTests::isValid(); }
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void svgAttributeChanged(const QualifiedName&) final;
 
-    virtual void didAttachRenderers() override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void didAttachRenderers() final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    virtual const AtomicString& imageSourceURL() const override;
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    const AtomicString& imageSourceURL() const final;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
-    virtual bool haveLoadedRequiredResources() override;
+    bool haveLoadedRequiredResources() final;
 
-    virtual bool selfHasRelativeLengths() const override { return true; }
-    virtual void didMoveToNewDocument(Document* oldDocument) override;
+    bool selfHasRelativeLengths() const final { return true; }
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) final;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGImageElement)
         DECLARE_ANIMATED_LENGTH(X, x)
@@ -75,5 +74,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

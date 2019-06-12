@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -81,16 +81,28 @@ Vector<BasicBlock*> blocksInOptimizedOrder(Code& code)
     SortedSuccessors sortedSuccessors;
     SortedSuccessors sortedSlowSuccessors;
     
-    fastWorklist.push(code[0]);
+    // We expect entrypoint lowering to have already happened.
+    RELEASE_ASSERT(code.numEntrypoints());
+
+    auto appendSuccessor = [&] (const FrequentedBlock& block) {
+        if (block.isRare())
+            sortedSlowSuccessors.append(block.block());
+        else
+            sortedSuccessors.append(block.block());
+    };
+    
+    // For everything but the first entrypoint, we push them in order of frequency and frequency
+    // class.
+    for (unsigned i = 1; i < code.numEntrypoints(); ++i)
+        appendSuccessor(code.entrypoint(i));
+    
+    // Always push the primary successor last so that it gets highest priority.
+    fastWorklist.push(code.entrypoint(0).block());
     
     while (BasicBlock* block = fastWorklist.pop()) {
         blocksInOrder.append(block);
-        for (FrequentedBlock& successor : block->successors()) {
-            if (successor.isRare())
-                sortedSlowSuccessors.append(successor.block());
-            else
-                sortedSuccessors.append(successor.block());
-        }
+        for (FrequentedBlock& successor : block->successors())
+            appendSuccessor(successor);
         sortedSuccessors.process(fastWorklist);
     }
 
@@ -148,7 +160,7 @@ void optimizeBlockOrder(Code& code)
         // optimization.  You'll probably realize that as soon as you look at the disassembly, and it
         // certainly won't cause any correctness issues.
         
-        switch (branch.opcode) {
+        switch (branch.kind.opcode) {
         case Branch8:
         case Branch32:
         case Branch64:
@@ -165,6 +177,10 @@ void optimizeBlockOrder(Code& code)
         case BranchSub64:
         case BranchNeg32:
         case BranchNeg64:
+        case BranchAtomicStrongCAS8:
+        case BranchAtomicStrongCAS16:
+        case BranchAtomicStrongCAS32:
+        case BranchAtomicStrongCAS64:
             if (code.findNextBlock(block) == block->successorBlock(0) && branch.args[0].isInvertible()) {
                 std::swap(block->successor(0), block->successor(1));
                 branch.args[0] = branch.args[0].inverted();

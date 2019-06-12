@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CairoUtilities_h
-#define CairoUtilities_h
+#pragma once
 
 #if USE(CAIRO)
 
@@ -36,6 +35,10 @@
 // This function was added pretty much simultaneous to when 1.13 was branched.
 #define HAVE_CAIRO_SURFACE_SET_DEVICE_SCALE CAIRO_VERSION_MAJOR > 1 || (CAIRO_VERSION_MAJOR == 1 && CAIRO_VERSION_MINOR >= 13)
 
+#if USE(FREETYPE)
+#include <cairo-ft.h>
+#endif
+
 namespace WebCore {
 class AffineTransform;
 class Color;
@@ -44,6 +47,32 @@ class FloatPoint;
 class IntSize;
 class IntRect;
 class Path;
+class Region;
+
+#if USE(FREETYPE)
+class CairoFtFaceLocker {
+public:
+    CairoFtFaceLocker(cairo_scaled_font_t* scaledFont)
+        : m_scaledFont(scaledFont)
+        , m_ftFace(cairo_ft_scaled_font_lock_face(scaledFont))
+    {
+    }
+
+    ~CairoFtFaceLocker()
+    {
+        if (m_ftFace)
+            cairo_ft_scaled_font_unlock_face(m_scaledFont);
+    }
+
+    FT_Face ftFace() const { return m_ftFace; }
+
+private:
+    cairo_scaled_font_t* m_scaledFont { nullptr };
+    FT_Face m_ftFace { nullptr };
+};
+
+const cairo_font_options_t* getDefaultCairoFontOptions();
+#endif
 
 void copyContextProperties(cairo_t* srcCr, cairo_t* dstCr);
 void setSourceRGBAFromColor(cairo_t*, const Color&);
@@ -51,11 +80,10 @@ void appendPathToCairoContext(cairo_t* to, cairo_t* from);
 void setPathOnCairoContext(cairo_t* to, cairo_t* from);
 void appendWebCorePathToCairoContext(cairo_t* context, const Path& path);
 void appendRegionToCairoContext(cairo_t*, const cairo_region_t*);
-cairo_operator_t toCairoOperator(CompositeOperator op);
-cairo_operator_t toCairoOperator(BlendMode blendOp);
+cairo_operator_t toCairoOperator(CompositeOperator, BlendMode = BlendModeNormal);
 void drawPatternToCairoContext(cairo_t* cr, cairo_surface_t* image, const IntSize& imageSize, const FloatRect& tileRect,
                                const AffineTransform& patternTransform, const FloatPoint& phase, cairo_operator_t op, const FloatRect& destRect);
-PassRefPtr<cairo_surface_t> copyCairoImageSurface(cairo_surface_t*);
+RefPtr<cairo_surface_t> copyCairoImageSurface(cairo_surface_t*);
 
 void copyRectFromCairoSurfaceToContext(cairo_surface_t* from, cairo_t* to, const IntSize& offset, const IntRect&);
 void copyRectFromOneSurfaceToAnother(cairo_surface_t* from, cairo_surface_t* to, const IntSize& offset, const IntRect&, const IntSize& = IntSize(), cairo_operator_t = CAIRO_OPERATOR_OVER);
@@ -65,8 +93,8 @@ void flipImageSurfaceVertically(cairo_surface_t*);
 void cairoSurfaceSetDeviceScale(cairo_surface_t*, double xScale, double yScale);
 void cairoSurfaceGetDeviceScale(cairo_surface_t*, double& xScale, double& yScale);
 
+RefPtr<cairo_region_t> toCairoRegion(const Region&);
+
 } // namespace WebCore
 
 #endif // USE(CAIRO)
-
-#endif // CairoUtilities_h

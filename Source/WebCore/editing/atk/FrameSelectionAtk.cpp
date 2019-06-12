@@ -25,6 +25,7 @@
 #include "AXObjectCache.h"
 #include "Document.h"
 #include "Frame.h"
+#include "RenderListItem.h"
 #include "WebKitAccessibleWrapperAtk.h"
 #include <glib.h>
 #include <wtf/NeverDestroyed.h>
@@ -38,19 +39,24 @@ static void emitTextSelectionChange(AccessibilityObject* object, VisibleSelectio
     if (!axObject || !ATK_IS_TEXT(axObject))
         return;
 
+    // We need to adjust the offset for the list item marker in Left-To-Right text because
+    // the list item marker is exposed through the text of the accessible list item rather
+    // than through a separate accessible object.
+    RenderObject* renderer = object->renderer();
+    if (is<RenderListItem>(renderer) && renderer->style().direction() == LTR)
+        offset += downcast<RenderListItem>(*renderer).markerTextWithSuffix().length();
+
     g_signal_emit_by_name(axObject, "text-caret-moved", offset);
     if (selection.isRange())
         g_signal_emit_by_name(axObject, "text-selection-changed");
 }
 
-static void maybeEmitTextFocusChange(PassRefPtr<AccessibilityObject> prpObject)
+static void maybeEmitTextFocusChange(RefPtr<AccessibilityObject>&& object)
 {
     // This static variable is needed to keep track of the old object
     // as per previous calls to this function, in order to properly
     // decide whether to emit some signals or not.
     static NeverDestroyed<RefPtr<AccessibilityObject>> oldObject;
-
-    RefPtr<AccessibilityObject> object = prpObject;
 
     // Ensure the oldObject belongs to the same document that the
     // current object so further comparisons make sense. Otherwise,
@@ -74,7 +80,7 @@ static void maybeEmitTextFocusChange(PassRefPtr<AccessibilityObject> prpObject)
     }
 
     // Update pointer to last focused object.
-    oldObject.get() = object;
+    oldObject.get() = WTFMove(object);
 }
 
 
@@ -86,12 +92,15 @@ void FrameSelection::notifyAccessibilityForSelectionChange(const AXTextStateChan
     if (!m_selection.start().isNotNull() || !m_selection.end().isNotNull())
         return;
 
-    RenderObject* focusedNode = m_selection.end().containerNode()->renderer();
+    Node* focusedNode = m_selection.end().containerNode();
+    if (!focusedNode)
+        return;
+
     AXObjectCache* cache = m_frame->document()->existingAXObjectCache();
     if (!cache)
         return;
 
-    AccessibilityObject* accessibilityObject = cache->getOrCreate(focusedNode);
+    AccessibilityObject* accessibilityObject = cache->getOrCreate(focusedNode->renderer());
     if (!accessibilityObject)
         return;
 
@@ -101,7 +110,7 @@ void FrameSelection::notifyAccessibilityForSelectionChange(const AXTextStateChan
         return;
 
     emitTextSelectionChange(object.get(), m_selection, offset);
-    maybeEmitTextFocusChange(object.release());
+    maybeEmitTextFocusChange(WTFMove(object));
 }
 
 } // namespace WebCore

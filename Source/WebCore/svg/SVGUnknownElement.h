@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SVGUnknownElement_h
-#define SVGUnknownElement_h
+#pragma once
 
 #include "SVGElement.h"
 
@@ -49,9 +48,7 @@ private:
     {
     }
 
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
 };
 
 } // namespace WebCore
-
-#endif // SVGUnknownElement_h

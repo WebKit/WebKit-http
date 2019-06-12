@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ApplyBlockElementCommand_h
-#define ApplyBlockElementCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 #include "QualifiedName.h"
@@ -42,13 +41,13 @@ protected:
     ApplyBlockElementCommand(Document&, const QualifiedName& tagName);
 
     virtual void formatSelection(const VisiblePosition& startOfSelection, const VisiblePosition& endOfSelection);
-    PassRefPtr<Element> createBlockElement();
+    Ref<HTMLElement> createBlockElement();
     const QualifiedName tagName() const { return m_tagName; }
 
 private:
-    virtual void doApply() override;
+    void doApply() override;
     virtual void formatRange(const Position& start, const Position& end, const Position& endOfSelection, RefPtr<Element>&) = 0;
-    RenderStyle* renderStyleOfEnclosingTextNode(const Position&);
+    const RenderStyle* renderStyleOfEnclosingTextNode(const Position&);
     void rangeForParagraphSplittingTextNodesIfNeeded(const VisiblePosition&, Position&, Position&);
     VisiblePosition endOfNextParagraphSplittingTextNodesIfNeeded(VisiblePosition&, Position&, Position&);
 
@@ -57,6 +56,4 @@ private:
     Position m_endOfLastParagraph;
 };
 
-}
-
-#endif
+} // namespace WebCore

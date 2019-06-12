@@ -18,36 +18,60 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGTransformList_h
-#define SVGTransformList_h
+#pragma once
 
-#include "SVGPropertyTraits.h"
-#include "SVGTransform.h"
-#include <wtf/Vector.h>
+#include "SVGAnimatedListPropertyTearOff.h"
+#include "SVGListPropertyTearOff.h"
+#include "SVGTransformListValues.h"
 
 namespace WebCore {
 
-class SVGTransformList : public Vector<SVGTransform, 1> {
+class SVGTransformList final : public SVGListPropertyTearOff<SVGTransformListValues> {
 public:
-    SVGTransformList() { }
+    using AnimatedListPropertyTearOff = SVGAnimatedListPropertyTearOff<SVGTransformListValues>;
+    using ListWrapperCache = AnimatedListPropertyTearOff::ListWrapperCache;
 
-    SVGTransform createSVGTransformFromMatrix(const SVGMatrix&) const;
-    SVGTransform consolidate();
+    static Ref<SVGTransformList> create(AnimatedListPropertyTearOff& animatedProperty, SVGPropertyRole role, SVGTransformListValues& values, ListWrapperCache& wrappers)
+    {
+        return adoptRef(*new SVGTransformList(animatedProperty, role, values, wrappers));
+    }
 
-    // Internal use only
-    bool concatenate(AffineTransform& result) const;
- 
-    String valueAsString() const;
-    void parse(const String&);
-};
+    ExceptionOr<Ref<SVGTransform>> createSVGTransformFromMatrix(SVGMatrix& matrix)
+    {
+        ASSERT(m_values);
+        return m_values->createSVGTransformFromMatrix(matrix);
+    }
 
-template<>
-struct SVGPropertyTraits<SVGTransformList> {
-    static SVGTransformList initialValue() { return SVGTransformList(); }
-    static String toString(const SVGTransformList& type) { return type.valueAsString(); }
-    typedef SVGTransform ListItemType;
+    ExceptionOr<RefPtr<SVGTransform>> consolidate()
+    {
+        ASSERT(m_values);
+        ASSERT(m_wrappers);
+
+        auto result = canAlterList();
+        if (result.hasException())
+            return result.releaseException();
+        ASSERT(result.releaseReturnValue());
+
+        ASSERT(m_values->size() == m_wrappers->size());
+
+        // Spec: If the list was empty, then a value of null is returned.
+        if (m_values->isEmpty())
+            return nullptr;
+
+        detachListWrappers(0);
+        
+        RefPtr<SVGTransform> wrapper = m_values->consolidate();
+        m_wrappers->append(wrapper.get());
+
+        ASSERT(m_values->size() == m_wrappers->size());
+        return WTFMove(wrapper);
+    }
+
+private:
+    SVGTransformList(AnimatedListPropertyTearOff& animatedProperty, SVGPropertyRole role, SVGTransformListValues& values, ListWrapperCache& wrappers)
+        : SVGListPropertyTearOff<SVGTransformListValues>(animatedProperty, role, values, wrappers)
+    {
+    }
 };
 
 } // namespace WebCore
-
-#endif // SVGTransformList_h

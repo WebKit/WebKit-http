@@ -26,158 +26,82 @@
 #include "AttributeChangeInvalidation.h"
 #include "Event.h"
 #include "ExceptionCode.h"
+#include "NoEventDispatchAssertion.h"
 #include "ScopedEventQueue.h"
 #include "StyleProperties.h"
 #include "StyledElement.h"
 #include "TextNodeTraversal.h"
 #include "XMLNSNames.h"
 #include <wtf/text/AtomicString.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
 
-Attr::Attr(Element* element, const QualifiedName& name)
-    : ContainerNode(element->document())
-    , m_element(element)
+Attr::Attr(Element& element, const QualifiedName& name)
+    : Node(element.document(), CreateOther)
+    , m_element(&element)
     , m_name(name)
 {
 }
 
 Attr::Attr(Document& document, const QualifiedName& name, const AtomicString& standaloneValue)
-    : ContainerNode(document)
+    : Node(document, CreateOther)
     , m_name(name)
     , m_standaloneValue(standaloneValue)
 {
 }
 
-RefPtr<Attr> Attr::create(Element* element, const QualifiedName& name)
+Ref<Attr> Attr::create(Element& element, const QualifiedName& name)
 {
-    RefPtr<Attr> attr = adoptRef(new Attr(element, name));
-    attr->createTextChild();
-    return attr.release();
+    return adoptRef(*new Attr(element, name));
 }
 
-RefPtr<Attr> Attr::create(Document& document, const QualifiedName& name, const AtomicString& value)
+Ref<Attr> Attr::create(Document& document, const QualifiedName& name, const AtomicString& value)
 {
-    RefPtr<Attr> attr = adoptRef(new Attr(document, name, value));
-    attr->createTextChild();
-    return attr.release();
+    return adoptRef(*new Attr(document, name, value));
 }
 
 Attr::~Attr()
 {
+    ASSERT_WITH_SECURITY_IMPLICATION(!isInShadowTree());
+    ASSERT_WITH_SECURITY_IMPLICATION(treeScope().rootNode().isDocumentNode());
 }
 
-void Attr::createTextChild()
+ExceptionOr<void> Attr::setPrefix(const AtomicString& prefix)
 {
-    ASSERT(refCount());
-    if (!value().isEmpty()) {
-        RefPtr<Text> textNode = document().createTextNode(value().string());
+    auto result = checkSetPrefix(prefix);
+    if (result.hasException())
+        return result.releaseException();
 
-        // This does everything appendChild() would do in this situation (assuming m_ignoreChildrenChanged was set),
-        // but much more efficiently.
-        textNode->setParentNode(this);
-        setFirstChild(textNode.get());
-        setLastChild(textNode.get());
-    }
-}
+    if ((prefix == xmlnsAtom() && namespaceURI() != XMLNSNames::xmlnsNamespaceURI) || qualifiedName() == xmlnsAtom())
+        return Exception { NAMESPACE_ERR };
 
-void Attr::setPrefix(const AtomicString& prefix, ExceptionCode& ec)
-{
-    ec = 0;
-    checkSetPrefix(prefix, ec);
-    if (ec)
-        return;
-
-    if ((prefix == xmlnsAtom && namespaceURI() != XMLNSNames::xmlnsNamespaceURI)
-        || static_cast<Attr*>(this)->qualifiedName() == xmlnsAtom) {
-        ec = NAMESPACE_ERR;
-        return;
-    }
-
-    const AtomicString& newPrefix = prefix.isEmpty() ? nullAtom : prefix;
-
+    const AtomicString& newPrefix = prefix.isEmpty() ? nullAtom() : prefix;
     if (m_element)
         elementAttribute().setPrefix(newPrefix);
     m_name.setPrefix(newPrefix);
+
+    return { };
 }
 
 void Attr::setValue(const AtomicString& value)
 {
-    EventQueueScope scope;
-    m_ignoreChildrenChanged++;
-    removeChildren();
-    if (m_element) {
-        Style::AttributeChangeInvalidation styleInvalidation(*m_element, qualifiedName(), elementAttribute().value(), value);
-        elementAttribute().setValue(value);
-    } else
+    if (m_element)
+        m_element->setAttribute(qualifiedName(), value);
+    else
         m_standaloneValue = value;
-    createTextChild();
-    m_ignoreChildrenChanged--;
-
-    invalidateNodeListAndCollectionCachesInAncestors(&m_name, m_element);
 }
 
-void Attr::setValue(const AtomicString& value, ExceptionCode&)
+ExceptionOr<void> Attr::setNodeValue(const String& value)
 {
-    AtomicString oldValue = this->value();
-    if (m_element)
-        m_element->willModifyAttribute(qualifiedName(), oldValue, value);
-
     setValue(value);
-
-    if (m_element)
-        m_element->didModifyAttribute(qualifiedName(), oldValue, value);
-}
-
-void Attr::setNodeValue(const String& v, ExceptionCode& ec)
-{
-    setValue(v, ec);
+    return { };
 }
 
 Ref<Node> Attr::cloneNodeInternal(Document& targetDocument, CloningOperation)
 {
-    Ref<Attr> clone = adoptRef(*new Attr(targetDocument, qualifiedName(), value()));
-    cloneChildNodes(clone);
-    return WTFMove(clone);
-}
-
-// DOM Section 1.1.1
-bool Attr::childTypeAllowed(NodeType type) const
-{
-    return type == TEXT_NODE;
-}
-
-void Attr::childrenChanged(const ChildChange&)
-{
-    if (m_ignoreChildrenChanged > 0)
-        return;
-
-    invalidateNodeListAndCollectionCachesInAncestors(&qualifiedName(), m_element);
-
-    StringBuilder valueBuilder;
-    TextNodeTraversal::appendContents(*this, valueBuilder);
-
-    AtomicString oldValue = value();
-    AtomicString newValue = valueBuilder.toAtomicString();
-    if (m_element)
-        m_element->willModifyAttribute(qualifiedName(), oldValue, newValue);
-
-    if (m_element) {
-        Style::AttributeChangeInvalidation styleInvalidation(*m_element, qualifiedName(), oldValue, newValue);
-        elementAttribute().setValue(newValue);
-    } else
-        m_standaloneValue = newValue;
-
-    if (m_element)
-        m_element->attributeChanged(qualifiedName(), oldValue, newValue);
-}
-
-bool Attr::isId() const
-{
-    return qualifiedName().matches(HTMLNames::idAttr);
+    return adoptRef(*new Attr(targetDocument, qualifiedName(), value()));
 }
 
 CSSStyleDeclaration* Attr::style()
@@ -187,7 +111,7 @@ CSSStyleDeclaration* Attr::style()
         return nullptr;
     m_style = MutableStyleProperties::create();
     downcast<StyledElement>(*m_element).collectStyleForPresentationAttribute(qualifiedName(), value(), *m_style);
-    return m_style->ensureCSSStyleDeclaration();
+    return &m_style->ensureCSSStyleDeclaration();
 }
 
 const AtomicString& Attr::value() const
@@ -210,13 +134,15 @@ void Attr::detachFromElementWithValue(const AtomicString& value)
     ASSERT(m_standaloneValue.isNull());
     m_standaloneValue = value;
     m_element = nullptr;
+    setTreeScopeRecursively(document());
 }
 
-void Attr::attachToElement(Element* element)
+void Attr::attachToElement(Element& element)
 {
     ASSERT(!m_element);
-    m_element = element;
-    m_standaloneValue = nullAtom;
+    m_element = &element;
+    m_standaloneValue = nullAtom();
+    setTreeScopeRecursively(element.treeScope());
 }
 
 }

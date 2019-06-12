@@ -32,6 +32,7 @@
 #include "config.h"
 #include "ScriptCachedFrameData.h"
 
+#include "CommonVM.h"
 #include "Document.h"
 #include "Frame.h"
 #include "GCController.h"
@@ -40,7 +41,6 @@
 #include "PageGroup.h"
 #include "ScriptController.h"
 #include <heap/StrongInlines.h>
-#include <profiler/Profile.h>
 #include <runtime/JSLock.h>
 #include <runtime/WeakGCMapInlines.h>
 
@@ -50,15 +50,13 @@ namespace WebCore {
 
 ScriptCachedFrameData::ScriptCachedFrameData(Frame& frame)
 {
-    JSLockHolder lock(JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
 
-    ScriptController& scriptController = frame.script();
-    Vector<JSC::Strong<JSDOMWindowShell>> windowShells = scriptController.windowShells();
+    auto& scriptController = frame.script();
 
-    for (size_t i = 0; i < windowShells.size(); ++i) {
-        JSDOMWindowShell* windowShell = windowShells[i].get();
-        JSDOMWindow* window = windowShell->window();
-        m_windows.add(&windowShell->world(), Strong<JSDOMWindow>(window->vm(), window));
+    for (auto windowProxy : scriptController.windowProxies()) {
+        auto* window = windowProxy->window();
+        m_windows.add(&windowProxy->world(), Strong<JSDOMWindow>(window->vm(), window));
         window->setConsoleClient(nullptr);
     }
 
@@ -72,33 +70,31 @@ ScriptCachedFrameData::~ScriptCachedFrameData()
 
 void ScriptCachedFrameData::restore(Frame& frame)
 {
-    JSLockHolder lock(JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
 
     Page* page = frame.page();
-    ScriptController& scriptController = frame.script();
-    Vector<JSC::Strong<JSDOMWindowShell>> windowShells = scriptController.windowShells();
+    auto& scriptController = frame.script();
 
-    for (size_t i = 0; i < windowShells.size(); ++i) {
-        JSDOMWindowShell* windowShell = windowShells[i].get();
-        DOMWrapperWorld* world = &windowShell->world();
+    for (auto windowProxy : scriptController.windowProxies()) {
+        auto* world = &windowProxy->world();
 
-        if (JSDOMWindow* window = m_windows.get(world).get())
-            windowShell->setWindow(window->vm(), window);
+        if (auto* window = m_windows.get(world).get())
+            windowProxy->setWindow(window->vm(), window);
         else {
-            DOMWindow* domWindow = frame.document()->domWindow();
-            if (&windowShell->window()->wrapped() == domWindow)
+            auto* domWindow = frame.document()->domWindow();
+            if (&windowProxy->window()->wrapped() == domWindow)
                 continue;
 
-            windowShell->setWindow(domWindow);
+            windowProxy->setWindow(domWindow);
 
             if (page) {
-                scriptController.attachDebugger(windowShell, page->debugger());
-                windowShell->window()->setProfileGroup(page->group().identifier());
+                scriptController.attachDebugger(windowProxy.get(), page->debugger());
+                windowProxy->window()->setProfileGroup(page->group().identifier());
             }
         }
 
         if (page)
-            windowShell->window()->setConsoleClient(&page->console());
+            windowProxy->window()->setConsoleClient(&page->console());
     }
 }
 
@@ -107,7 +103,7 @@ void ScriptCachedFrameData::clear()
     if (m_windows.isEmpty())
         return;
 
-    JSLockHolder lock(JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
     m_windows.clear();
     GCController::singleton().garbageCollectSoon();
 }

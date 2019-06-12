@@ -26,13 +26,15 @@
 #include "config.h"
 #include "SubimageCacheWithTimer.h"
 
+#if USE(CG)
+
 #include <wtf/Vector.h>
 
 #if CACHE_SUBIMAGES
 
 namespace WebCore {
 
-static const auto subimageCacheClearDelay = std::chrono::seconds { 1 };
+static const Seconds subimageCacheClearDelay { 1_s };
 static const int maxSubimageCacheSize = 300;
 
 struct SubimageRequest {
@@ -112,5 +114,7 @@ SubimageCacheWithTimer& subimageCache()
 }
 
 }
+
+#endif
 
 #endif

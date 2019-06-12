@@ -18,20 +18,23 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSCursorImageValue_h
-#define CSSCursorImageValue_h
+#pragma once
 
-#include "CSSImageValue.h"
+#include "CSSValue.h"
 #include "IntPoint.h"
 #include <wtf/HashSet.h>
 
 namespace WebCore {
 
+class CachedImage;
+class CachedResourceLoader;
 class Document;
 class Element;
+struct ResourceLoaderOptions;
+class SVGCursorElement;
 class SVGElement;
 
-class CSSCursorImageValue : public CSSValue {
+class CSSCursorImageValue final : public CSSValue {
 public:
     static Ref<CSSCursorImageValue> create(Ref<CSSValue>&& imageValue, bool hasHotSpot, const IntPoint& hotSpot)
     {
@@ -51,35 +54,28 @@ public:
 
     String customCSSText() const;
 
-    bool updateIfSVGCursorIsUsed(Element*);
-    StyleImage* cachedImage(CachedResourceLoader&, const ResourceLoaderOptions&);
-    StyleImage* cachedOrPendingImage(Document&);
+    std::pair<CachedImage*, float> loadImage(CachedResourceLoader&, const ResourceLoaderOptions&);
 
     void removeReferencedElement(SVGElement*);
 
     bool equals(const CSSCursorImageValue&) const;
 
+    void cursorElementRemoved(SVGCursorElement&);
+    void cursorElementChanged(SVGCursorElement&);
+
 private:
     CSSCursorImageValue(Ref<CSSValue>&& imageValue, bool hasHotSpot, const IntPoint& hotSpot);
 
-    void detachPendingImage();
+    SVGCursorElement* updateCursorElement(const Document&);
 
-    bool isSVGCursor() const;
-    String cachedImageURL();
-    void clearCachedImage();
-
+    URL m_originalURL;
     Ref<CSSValue> m_imageValue;
 
     bool m_hasHotSpot;
     IntPoint m_hotSpot;
-    RefPtr<StyleImage> m_image;
-    bool m_accessedImage;
-
-    HashSet<SVGElement*> m_referencedElements;
+    HashSet<SVGCursorElement*> m_cursorElements;
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSCursorImageValue, isCursorImageValue())
-
-#endif // CSSCursorImageValue_h

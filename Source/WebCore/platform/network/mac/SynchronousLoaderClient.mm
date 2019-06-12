@@ -26,7 +26,7 @@
 #include "config.h"
 #include "SynchronousLoaderClient.h"
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #include "AuthenticationChallenge.h"
 
@@ -38,7 +38,7 @@ void SynchronousLoaderClient::didReceiveAuthenticationChallenge(ResourceHandle*,
     [challenge.sender() continueWithoutCredentialForAuthenticationChallenge:challenge.nsURLAuthenticationChallenge()];
 }
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 ResourceError SynchronousLoaderClient::platformBadResponseError()
 {
     RetainPtr<NSError> error = adoptNS([[NSError alloc] initWithDomain:NSURLErrorDomain code:NSURLErrorBadServerResponse userInfo:nil]);
@@ -48,4 +48,4 @@ ResourceError SynchronousLoaderClient::platformBadResponseError()
 
 }
 
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)

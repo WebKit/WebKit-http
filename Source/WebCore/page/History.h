@@ -23,59 +23,59 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef History_h
-#define History_h
+#pragma once
 
 #include "DOMWindowProperty.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
 #include "SerializedScriptValue.h"
-#include "URL.h"
-#include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
+class Document;
 class Frame;
-class ScriptExecutionContext;
-struct ExceptionCodeWithMessage;
-typedef int ExceptionCode;
+class URL;
 
-class History : public ScriptWrappable, public RefCounted<History>, public DOMWindowProperty {
+class History final : public ScriptWrappable, public RefCounted<History>, public DOMWindowProperty {
 public:
-    static Ref<History> create(Frame* frame) { return adoptRef(*new History(frame)); }
+    static Ref<History> create(Frame& frame) { return adoptRef(*new History(frame)); }
 
     unsigned length() const;
-    PassRefPtr<SerializedScriptValue> state();
+    
+    enum class ScrollRestoration {
+        Auto,
+        Manual
+    };
+
+    ExceptionOr<ScrollRestoration> scrollRestoration() const;
+    ExceptionOr<void> setScrollRestoration(ScrollRestoration);
+
+    SerializedScriptValue* state();
     void back();
     void forward();
-    void go(int distance);
+    void go(int);
 
-    void back(ScriptExecutionContext*);
-    void forward(ScriptExecutionContext*);
-    void go(ScriptExecutionContext*, int distance);
+    void back(Document&);
+    void forward(Document&);
+    void go(Document&, int);
 
     bool stateChanged() const;
     bool isSameAsCurrentState(SerializedScriptValue*) const;
 
-    enum class StateObjectType {
-        Push,
-        Replace
-    };
-    void stateObjectAdded(PassRefPtr<SerializedScriptValue>, const String& title, const String& url, StateObjectType, ExceptionCodeWithMessage&);
+    enum class StateObjectType { Push, Replace };
+    ExceptionOr<void> stateObjectAdded(RefPtr<SerializedScriptValue>&&, const String& title, const String& url, StateObjectType);
 
 private:
-    explicit History(Frame*);
+    explicit History(Frame&);
 
     URL urlForState(const String& url);
 
-    PassRefPtr<SerializedScriptValue> stateInternal() const;
+    SerializedScriptValue* stateInternal() const;
 
     RefPtr<SerializedScriptValue> m_lastStateObjectRequested;
 
-    unsigned m_nonUserGestureObjectsAdded { 0 };
-    unsigned m_currentUserGestureObjectsAdded { 0 };
-    double m_currentUserGestureTimestamp { 0 };
+    unsigned m_currentStateObjectTimeSpanObjectsAdded { 0 };
+    double m_currentStateObjectTimeSpanStart { 0.0 };
 
     // For the main frame's History object to keep track of all state object usage.
     uint64_t m_totalStateObjectUsage { 0 };
@@ -85,5 +85,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // History_h

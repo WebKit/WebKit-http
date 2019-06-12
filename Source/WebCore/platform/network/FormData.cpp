@@ -20,7 +20,6 @@
  */
 
 #include "config.h"
-
 #include "FormData.h"
 
 #include "BlobRegistryImpl.h"
@@ -32,16 +31,12 @@
 #include "FileSystem.h"
 #include "FormDataBuilder.h"
 #include "FormDataList.h"
-#include "MIMETypeRegistry.h"
 #include "Page.h"
 #include "TextEncoding.h"
 
 namespace WebCore {
 
 inline FormData::FormData()
-    : m_identifier(0)
-    , m_alwaysStream(false)
-    , m_containsPasswordData(false)
 {
 }
 
@@ -115,27 +110,32 @@ Ref<FormData> FormData::copy() const
     return adoptRef(*new FormData(*this));
 }
 
-Ref<FormData> FormData::deepCopy() const
+Ref<FormData> FormData::isolatedCopy() const
 {
-    Ref<FormData> formData(create());
+    // FIXME: isolatedCopy() (historically deepCopy()) only copies certain values from `this`. Why is that?
+    auto formData = create();
 
     formData->m_alwaysStream = m_alwaysStream;
 
     formData->m_elements.reserveInitialCapacity(m_elements.size());
-    for (const FormDataElement& element : m_elements) {
-        switch (element.m_type) {
-        case FormDataElement::Type::Data:
-            formData->m_elements.uncheckedAppend(FormDataElement(element.m_data));
-            break;
-        case FormDataElement::Type::EncodedFile:
-            formData->m_elements.uncheckedAppend(FormDataElement(element.m_filename, element.m_fileStart, element.m_fileLength, element.m_expectedFileModificationTime, element.m_shouldGenerateFile));
-            break;
-        case FormDataElement::Type::EncodedBlob:
-            formData->m_elements.uncheckedAppend(FormDataElement(element.m_url));
-            break;
-        }
-    }
+    for (auto& element : m_elements)
+        formData->m_elements.uncheckedAppend(element.isolatedCopy());
+
     return formData;
+}
+
+FormDataElement FormDataElement::isolatedCopy() const
+{
+    switch (m_type) {
+    case Type::Data:
+        return FormDataElement(m_data);
+    case Type::EncodedFile:
+        return FormDataElement(m_filename.isolatedCopy(), m_fileStart, m_fileLength, m_expectedFileModificationTime, m_shouldGenerateFile);
+    case Type::EncodedBlob:
+        return FormDataElement(m_url.isolatedCopy());
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 void FormData::appendData(const void* data, size_t size)
@@ -232,14 +232,8 @@ void FormData::appendKeyValuePairItems(const FormDataList& list, const TextEncod
             } else
                 appendData(value.data().data(), value.data().length());
             appendData("\r\n", 2);
-        } else {
-            // Omit the name "isindex" if it's the first form data element.
-            // FIXME: Why is this a good rule? Is this obsolete now?
-            if (encodedData.isEmpty() && key.data() == "isindex")
-                FormDataBuilder::encodeStringAsFormData(encodedData, value.data());
-            else
-                FormDataBuilder::addKeyValuePairAsFormData(encodedData, key.data(), value.data(), encodingType);
-        }
+        } else
+            FormDataBuilder::addKeyValuePairAsFormData(encodedData, key.data(), value.data(), encodingType);
     }
 
     if (isMultiPartForm)
@@ -293,10 +287,11 @@ static void appendBlobResolved(FormData* formData, const URL& url)
     const BlobDataItemList::const_iterator itend = blobData->items().end();
     for (; it != itend; ++it) {
         const BlobDataItem& blobItem = *it;
-        if (blobItem.type == BlobDataItem::Data)
-            formData->appendData(blobItem.data->data() + static_cast<int>(blobItem.offset()), static_cast<int>(blobItem.length()));
-        else if (blobItem.type == BlobDataItem::File)
-            formData->appendFileRange(blobItem.file->path(), blobItem.offset(), blobItem.length(), blobItem.file->expectedModificationTime());
+        if (blobItem.type() == BlobDataItem::Type::Data) {
+            ASSERT(blobItem.data().data());
+            formData->appendData(blobItem.data().data()->data() + static_cast<int>(blobItem.offset()), static_cast<int>(blobItem.length()));
+        } else if (blobItem.type() == BlobDataItem::Type::File)
+            formData->appendFileRange(blobItem.file()->path(), blobItem.offset(), blobItem.length(), blobItem.file()->expectedModificationTime());
         else
             ASSERT_NOT_REACHED();
     }

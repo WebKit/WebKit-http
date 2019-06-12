@@ -97,10 +97,6 @@ private:
             }
             break;
             
-        case VarInjectionWatchpoint:
-            addLazily(globalObject()->varInjectionWatchpoint());
-            break;
-            
         default:
             break;
         }
@@ -131,7 +127,6 @@ private:
 
 bool performWatchpointCollection(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Watchpoint Collection Phase");
     return runPhase<WatchpointCollectionPhase>(graph);
 }
 

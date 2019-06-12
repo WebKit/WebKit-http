@@ -23,10 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-.data-grid.timeline th {
-    border-top: 1px solid var(--border-color);
-}
-
 .tree-outline.timeline-data-grid .item:hover {
     color: white;
     border-radius: 4px;
@@ -39,4 +35,26 @@
 
 .tree-outline.timeline-data-grid .item:hover .subtitle {
     color: white;
+}
+
+.data-grid.timeline th {
+    border-top: none;
+}
+
+.data-grid.timeline th.graph-column > .timeline-ruler {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+}
+
+.data-grid.timeline td.graph-column {
+    padding: 2px 0;
+}
+
+.data-grid.timeline td.graph-column > .cell-content {
+    position: relative;
+}
+
+.data-grid.timeline td.graph-column .timeline-record-bar {
+    top: 2px;
 }

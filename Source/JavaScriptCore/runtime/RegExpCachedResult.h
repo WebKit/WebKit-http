@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RegExpCachedResult_h
-#define RegExpCachedResult_h
+#pragma once
 
 #include "RegExpObject.h"
 
@@ -54,10 +53,9 @@ public:
 
     ALWAYS_INLINE void record(VM& vm, JSObject* owner, RegExp* regExp, JSString* input, MatchResult result)
     {
-        m_lastRegExp.set(vm, owner, regExp);
-        m_lastInput.set(vm, owner, input);
-        m_reifiedLeftContext.clear();
-        m_reifiedRightContext.clear();
+        vm.heap.writeBarrier(owner);
+        m_lastRegExp.setWithoutWriteBarrier(regExp);
+        m_lastInput.setWithoutWriteBarrier(input);
         m_result = result;
         m_reified = false;
     }
@@ -75,6 +73,11 @@ public:
 
     void visitChildren(SlotVisitor&);
 
+    static ptrdiff_t offsetOfLastRegExp() { return OBJECT_OFFSETOF(RegExpCachedResult, m_lastRegExp); }
+    static ptrdiff_t offsetOfLastInput() { return OBJECT_OFFSETOF(RegExpCachedResult, m_lastInput); }
+    static ptrdiff_t offsetOfResult() { return OBJECT_OFFSETOF(RegExpCachedResult, m_result); }
+    static ptrdiff_t offsetOfReified() { return OBJECT_OFFSETOF(RegExpCachedResult, m_reified); }
+
 private:
     MatchResult m_result;
     bool m_reified;
@@ -87,5 +90,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // RegExpCachedResult_h

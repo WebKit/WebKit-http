@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InjectedScriptBase_h
-#define InjectedScriptBase_h
+#pragma once
 
 #include "InspectorEnvironment.h"
 #include "InspectorProtocolObjects.h"
@@ -63,7 +62,7 @@ protected:
     bool hasAccessToInspectedScriptState() const;
 
     const Deprecated::ScriptObject& injectedScriptObject() const;
-    Deprecated::ScriptValue callFunctionWithEvalEnabled(Deprecated::ScriptFunctionCall&, bool& hadException) const;
+    JSC::JSValue callFunctionWithEvalEnabled(Deprecated::ScriptFunctionCall&, bool& hadException) const;
     void makeCall(Deprecated::ScriptFunctionCall&, RefPtr<InspectorValue>* result);
     void makeEvalCall(ErrorString&, Deprecated::ScriptFunctionCall&, RefPtr<Protocol::Runtime::RemoteObject>* result, Protocol::OptOutput<bool>* wasThrown, Protocol::OptOutput<int>* savedResult = nullptr);
 
@@ -74,5 +73,3 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // InjectedScriptBase_h

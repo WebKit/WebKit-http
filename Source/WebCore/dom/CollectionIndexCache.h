@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CollectionIndexCache_h
-#define CollectionIndexCache_h
+#pragma once
 
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-void reportExtraMemoryAllocatedForCollectionIndexCache(size_t);
+WEBCORE_EXPORT void reportExtraMemoryAllocatedForCollectionIndexCache(size_t);
 
 template <class Collection, class Iterator>
 class CollectionIndexCache {
@@ -44,7 +43,13 @@ public:
 
     bool hasValidCache(const Collection& collection) const { return m_current != collection.collectionEnd() || m_nodeCountValid || m_listValid; }
     void invalidate(const Collection&);
-    size_t memoryCost() { return m_cachedList.capacity() * sizeof(NodeType*); }
+    size_t memoryCost()
+    {
+        // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful
+        // about what data we access here and how. Accessing m_cachedList.capacity() is safe
+        // because it doesn't involve any pointer chasing.
+        return m_cachedList.capacity() * sizeof(NodeType*);
+    }
 
 private:
     unsigned computeNodeCountUpdatingListCache(const Collection&);
@@ -223,5 +228,3 @@ void CollectionIndexCache<Collection, Iterator>::invalidate(const Collection& co
 
 
 }
-
-#endif

@@ -23,14 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PutByIdStatus_h
-#define PutByIdStatus_h
+#pragma once
 
 #include "CallLinkStatus.h"
-#include "ExitingJITType.h"
 #include "PutByIdVariant.h"
-#include "StructureStubInfo.h"
-#include <wtf/text/StringImpl.h>
 
 namespace JSC {
 
@@ -39,6 +35,9 @@ class VM;
 class JSGlobalObject;
 class Structure;
 class StructureChain;
+class StructureStubInfo;
+
+typedef HashMap<CodeOrigin, StructureStubInfo*, CodeOriginApproximateHash> StubInfoMap;
 
 class PutByIdStatus {
 public:
@@ -76,7 +75,7 @@ public:
     static PutByIdStatus computeFor(CodeBlock* baselineBlock, CodeBlock* dfgBlock, StubInfoMap& baselineMap, StubInfoMap& dfgMap, CodeOrigin, UniquedStringImpl* uid);
 
 #if ENABLE(JIT)
-    static PutByIdStatus computeForStubInfo(const ConcurrentJITLocker&, CodeBlock* baselineBlock, StructureStubInfo*, CodeOrigin, UniquedStringImpl* uid);
+    static PutByIdStatus computeForStubInfo(const ConcurrentJSLocker&, CodeBlock* baselineBlock, StructureStubInfo*, CodeOrigin, UniquedStringImpl* uid);
 #endif
     
     State state() const { return m_state; }
@@ -96,11 +95,11 @@ public:
     
 private:
 #if ENABLE(DFG_JIT)
-    static bool hasExitSite(const ConcurrentJITLocker&, CodeBlock*, unsigned bytecodeIndex);
+    static bool hasExitSite(const ConcurrentJSLocker&, CodeBlock*, unsigned bytecodeIndex);
 #endif
 #if ENABLE(JIT)
     static PutByIdStatus computeForStubInfo(
-        const ConcurrentJITLocker&, CodeBlock*, StructureStubInfo*, UniquedStringImpl* uid,
+        const ConcurrentJSLocker&, CodeBlock*, StructureStubInfo*, UniquedStringImpl* uid,
         CallLinkStatus::ExitSiteData);
 #endif
     static PutByIdStatus computeFromLLInt(CodeBlock*, unsigned bytecodeIndex, UniquedStringImpl* uid);
@@ -112,6 +111,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // PutByIdStatus_h
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ExecutableAllocator_h
-#define ExecutableAllocator_h
+#pragma once
+
 #include "JITCompilationEffort.h"
 #include <stddef.h> // for ptrdiff_t
 #include <limits>
@@ -32,9 +32,6 @@
 #include <wtf/Lock.h>
 #include <wtf/MetaAllocatorHandle.h>
 #include <wtf/MetaAllocator.h>
-#include <wtf/PageAllocation.h>
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
 
 #if OS(IOS)
 #include <libkern/OSCacheControl.h>
@@ -48,20 +45,14 @@
 #include <sys/cachectl.h>
 #endif
 
-#if CPU(SH4) && OS(LINUX)
-#include <asm/cachectl.h>
-#include <asm/unistd.h>
-#include <sys/syscall.h>
-#include <unistd.h>
+#if ENABLE(FAST_JIT_PERMISSIONS)
+#include <os/thread_self_restrict.h> 
 #endif
-
 #define JIT_ALLOCATOR_LARGE_ALLOC_SIZE (pageSize() * 4)
 
 #define EXECUTABLE_POOL_WRITABLE true
 
 namespace JSC {
-
-class VM;
 
 static const unsigned jitAllocationGranule = 32;
 
@@ -69,36 +60,50 @@ typedef WTF::MetaAllocatorHandle ExecutableMemoryHandle;
 
 #if ENABLE(ASSEMBLER)
 
-#if ENABLE(EXECUTABLE_ALLOCATOR_DEMAND)
-class DemandExecutableAllocator;
+extern JS_EXPORTDATA uintptr_t startOfFixedExecutableMemoryPool;
+extern JS_EXPORTDATA uintptr_t endOfFixedExecutableMemoryPool;
+
+inline bool isJITPC(void* pc)
+{
+    return reinterpret_cast<void*>(startOfFixedExecutableMemoryPool) <= pc
+        && pc < reinterpret_cast<void*>(endOfFixedExecutableMemoryPool);
+}
+
+typedef void (*JITWriteSeparateHeapsFunction)(off_t, const void*, size_t);
+extern JS_EXPORTDATA JITWriteSeparateHeapsFunction jitWriteSeparateHeapsFunction;
+
+extern JS_EXPORTDATA bool useFastPermisionsJITCopy;
+
+static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
+{
+    if (reinterpret_cast<uintptr_t>(dst) >= startOfFixedExecutableMemoryPool && reinterpret_cast<uintptr_t>(dst) < endOfFixedExecutableMemoryPool) {
+#if ENABLE(FAST_JIT_PERMISSIONS)
+        if (useFastPermisionsJITCopy) {
+            os_thread_self_restrict_rwx_to_rw();
+            memcpy(dst, src, n);
+            os_thread_self_restrict_rwx_to_rx();
+            return dst;
+        }
 #endif
 
-#if ENABLE(EXECUTABLE_ALLOCATOR_FIXED)
-#if CPU(ARM)
-static const size_t fixedExecutableMemoryPoolSize = 16 * 1024 * 1024;
-#elif CPU(ARM64)
-static const size_t fixedExecutableMemoryPoolSize = 32 * 1024 * 1024;
-#elif CPU(X86_64)
-static const size_t fixedExecutableMemoryPoolSize = 1024 * 1024 * 1024;
-#else
-static const size_t fixedExecutableMemoryPoolSize = 32 * 1024 * 1024;
-#endif
-#if CPU(ARM)
-static const double executablePoolReservationFraction = 0.15;
-#else
-static const double executablePoolReservationFraction = 0.25;
-#endif
+        if (jitWriteSeparateHeapsFunction) {
+            // Use execute-only write thunk for writes inside the JIT region. This is a variant of
+            // memcpy that takes an offset into the JIT region as its destination (first) parameter.
+            off_t offset = (off_t)((uintptr_t)dst - startOfFixedExecutableMemoryPool);
+            jitWriteSeparateHeapsFunction(offset, src, n);
+            return dst;
+        }
+    }
 
-extern uintptr_t startOfFixedExecutableMemoryPool;
-#endif
+    // Use regular memcpy for writes outside the JIT region.
+    return memcpy(dst, src, n);
+}
 
 class ExecutableAllocator {
     enum ProtectionSetting { Writable, Executable };
 
 public:
-    ExecutableAllocator(VM&);
-    ~ExecutableAllocator();
-    
+    static ExecutableAllocator& singleton();
     static void initializeAllocator();
 
     bool isValid() const;
@@ -113,17 +118,22 @@ public:
     static void dumpProfile() { }
 #endif
 
-    RefPtr<ExecutableMemoryHandle> allocate(VM&, size_t sizeInBytes, void* ownerUID, JITCompilationEffort);
+    RefPtr<ExecutableMemoryHandle> allocate(size_t sizeInBytes, void* ownerUID, JITCompilationEffort);
 
-    bool isValidExecutableMemory(const LockHolder&, void* address);
+    bool isValidExecutableMemory(const AbstractLocker&, void* address);
 
     static size_t committedByteCount();
 
     Lock& getLock() const;
+private:
+
+    ExecutableAllocator();
+    ~ExecutableAllocator();
 };
 
+#else
+inline bool isJITPC(void*) { return false; }
 #endif // ENABLE(JIT) && ENABLE(ASSEMBLER)
 
-} // namespace JSC
 
-#endif // !defined(ExecutableAllocator)
+} // namespace JSC

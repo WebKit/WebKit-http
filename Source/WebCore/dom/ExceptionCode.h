@@ -16,10 +16,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef ExceptionCode_h
-#define ExceptionCode_h
-
-#include <wtf/text/WTFString.h>
+#pragma once
 
 namespace WebCore {
 
@@ -27,8 +24,7 @@ namespace WebCore {
 // In our DOM implementation we use int instead, and use different
 // numerical ranges for different types of DOM exception, so that
 // an exception of any type can be expressed with a single integer.
-typedef int ExceptionCode;
-
+using ExceptionCode = int;
 
 // Some of these are considered historical since they have been
 // changed or removed from the specifications.
@@ -64,17 +60,28 @@ enum {
     INVALID_NODE_TYPE_ERR = 24,
     DATA_CLONE_ERR = 25,
 
+    // Others introduced in https://heycam.github.io/webidl/#idl-exceptions
+    EncodingError,
+    NotReadableError,
+    UnknownError,
+    ConstraintError,
+    DataError,
+    TransactionInactiveError,
+    ReadonlyError,
+    VersionError,
+    OperationError,
+    NotAllowedError,
+
+    // Non-standard errors
+    StackOverflowError,
+
+    // Used to indicate to the bindings that a JS exception was thrown below and it should be propogated.
+    ExistingExceptionError,
+
     // WebIDL exception types, handled by the binding layer.
     // FIXME: Add GeneralError, EvalError, etc. when implemented in the bindings.
     TypeError = 105,
     RangeError = 106,
 };
 
-struct ExceptionCodeWithMessage {
-    ExceptionCode code { 0 };
-    String message;
-};
-
 } // namespace WebCore
-
-#endif // ExceptionCode_h

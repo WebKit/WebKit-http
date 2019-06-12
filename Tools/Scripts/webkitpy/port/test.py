@@ -105,6 +105,7 @@ TOTAL_RETRIES = 14
 UNEXPECTED_PASSES = 7
 UNEXPECTED_FAILURES = 17
 
+
 def unit_test_list():
     silent_audio = "RIFF2\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x22\x56\x00\x00\x44\xAC\x00\x00\x02\x00\x10\x00data\x0E\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
     silent_audio_with_single_bit_difference = "RIFF2\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x22\x56\x00\x00\x44\xAC\x00\x00\x02\x00\x10\x00data\x0E\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -456,11 +457,14 @@ class TestPort(Port):
     def default_results_directory(self):
         return '/tmp/layout-test-results'
 
-    def setup_test_run(self):
+    def setup_test_run(self, device_class=None):
         pass
 
     def _driver_class(self):
         return TestDriver
+
+    def path_to_crash_logs(self):
+        return self.results_directory()
 
     def start_http_server(self, additional_dirs=None):
         pass
@@ -524,6 +528,7 @@ class TestPort(Port):
     def all_baseline_variants(self):
         return self.ALL_BASELINE_VARIANTS
 
+
 class TestDriver(Driver):
     """Test/Dummy implementation of the DumpRenderTree interface."""
     next_pid = 1
@@ -577,7 +582,7 @@ class TestDriver(Driver):
 
         crash_log = ''
         if crashed_process_name:
-            crash_logs = CrashLogs(self._port.host)
+            crash_logs = CrashLogs(self._port.host, self._port.path_to_crash_logs())
             crash_log = crash_logs.find_newest_log(crashed_process_name, None) or ''
 
         if stop_when_done:

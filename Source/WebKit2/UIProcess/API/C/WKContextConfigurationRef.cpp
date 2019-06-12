@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WKContextConfigurationRef.h"
 
+#include "APIArray.h"
 #include "APIProcessPoolConfiguration.h"
 #include "WKAPICast.h"
 
@@ -40,6 +41,11 @@ WKContextConfigurationRef WKContextConfigurationCreate()
     configuration->setShouldHaveLegacyDataStore(true);
     
     return toAPI(&configuration.leakRef());
+}
+
+WKContextConfigurationRef WKContextConfigurationCreateWithLegacyOptions()
+{
+    return toAPI(&API::ProcessPoolConfiguration::createWithLegacyOptions().leakRef());
 }
 
 WKStringRef WKContextConfigurationCopyDiskCacheDirectory(WKContextConfigurationRef configuration)
@@ -112,6 +118,16 @@ void WKContextConfigurationSetMediaKeysStorageDirectory(WKContextConfigurationRe
     toImpl(configuration)->setMediaKeysStorageDirectory(toImpl(mediaKeysStorageDirectory)->string());
 }
 
+WKStringRef WKContextConfigurationCopyResourceLoadStatisticsDirectory(WKContextConfigurationRef configuration)
+{
+    return toCopiedAPI(toImpl(configuration)->resourceLoadStatisticsDirectory());
+}
+
+void WKContextConfigurationSetResourceLoadStatisticsDirectory(WKContextConfigurationRef configuration, WKStringRef resourceLoadStatisticsDirectory)
+{
+    toImpl(configuration)->setResourceLoadStatisticsDirectory(toImpl(resourceLoadStatisticsDirectory)->string());
+}
+
 bool WKContextConfigurationFullySynchronousModeIsAllowedForTesting(WKContextConfigurationRef configuration)
 {
     return toImpl(configuration)->fullySynchronousModeIsAllowedForTesting();
@@ -130,4 +146,14 @@ WKArrayRef WKContextConfigurationCopyOverrideLanguages(WKContextConfigurationRef
 void WKContextConfigurationSetOverrideLanguages(WKContextConfigurationRef configuration, WKArrayRef overrideLanguages)
 {
     toImpl(configuration)->setOverrideLanguages(toImpl(overrideLanguages)->toStringVector());
+}
+
+bool WKContextConfigurationShouldCaptureAudioInUIProcess(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->shouldCaptureAudioInUIProcess();
+}
+
+void WKContextConfigurationSetShouldCaptureAudioInUIProcess(WKContextConfigurationRef configuration, bool should)
+{
+    toImpl(configuration)->setShouldCaptureAudioInUIProcess(should);
 }

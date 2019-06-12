@@ -36,7 +36,7 @@ namespace WebCore {
 
 UserMessageHandler::UserMessageHandler(Frame& frame, UserMessageHandlerDescriptor& descriptor)
     : FrameDestructionObserver(&frame)
-    , m_descriptor(descriptor)
+    , m_descriptor(&descriptor)
 {
 }
 
@@ -44,26 +44,15 @@ UserMessageHandler::~UserMessageHandler()
 {
 }
 
-void UserMessageHandler::postMessage(PassRefPtr<SerializedScriptValue> value, ExceptionCode& ec)
+ExceptionOr<void> UserMessageHandler::postMessage(RefPtr<SerializedScriptValue>&& value)
 {
     // Check to see if the descriptor has been removed. This can happen if the host application has
     // removed the named message handler at the WebKit2 API level.
-    if (!m_descriptor->client()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!m_descriptor)
+        return Exception { INVALID_ACCESS_ERR };
 
-    m_descriptor->client()->didPostMessage(*this, value.get());
-}
-
-const AtomicString& UserMessageHandler::name()
-{
-    return m_descriptor->name();
-}
-
-DOMWrapperWorld& UserMessageHandler::world()
-{
-    return m_descriptor->world();
+    m_descriptor->didPostMessage(*this, value.get());
+    return { };
 }
 
 } // namespace WebCore

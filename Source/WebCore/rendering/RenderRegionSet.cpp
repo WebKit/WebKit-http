@@ -26,11 +26,12 @@
 #include "config.h"
 #include "RenderRegionSet.h"
 
+#include "RenderBoxRegionInfo.h"
 #include "RenderFlowThread.h"
 
 namespace WebCore {
 
-RenderRegionSet::RenderRegionSet(Document& document, Ref<RenderStyle>&& style, RenderFlowThread& flowThread)
+RenderRegionSet::RenderRegionSet(Document& document, RenderStyle&& style, RenderFlowThread& flowThread)
     : RenderRegion(document, WTFMove(style), &flowThread)
 {
 }

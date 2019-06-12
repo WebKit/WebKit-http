@@ -22,10 +22,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaStreamEvent_h
-#define MediaStreamEvent_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
 #include "Event.h"
 #include "MediaStream.h"
@@ -33,30 +32,28 @@
 
 namespace WebCore {
 
-struct MediaStreamEventInit : public EventInit {
-    RefPtr<MediaStream> stream;
-};
-
 class MediaStreamEvent : public Event {
 public:
     virtual ~MediaStreamEvent();
 
-    static Ref<MediaStreamEvent> create(const AtomicString& type, bool canBubble, bool cancelable, PassRefPtr<MediaStream>);
-    static Ref<MediaStreamEvent> createForBindings(const AtomicString& type, const MediaStreamEventInit& initializer);
+    static Ref<MediaStreamEvent> create(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<MediaStream>&&);
+
+    struct Init : EventInit {
+        RefPtr<MediaStream> stream;
+    };
+    static Ref<MediaStreamEvent> create(const AtomicString& type, const Init& initializer, IsTrusted = IsTrusted::No);
 
     MediaStream* stream() const;
 
     virtual EventInterface eventInterface() const;
 
 private:
-    MediaStreamEvent(const AtomicString& type, bool canBubble, bool cancelable, PassRefPtr<MediaStream>);
-    MediaStreamEvent(const AtomicString& type, const MediaStreamEventInit&);
+    MediaStreamEvent(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<MediaStream>&&);
+    MediaStreamEvent(const AtomicString& type, const Init&, IsTrusted);
 
     RefPtr<MediaStream> m_stream;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // MediaStreamEvent_h
+#endif // ENABLE(WEB_RTC)

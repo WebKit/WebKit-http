@@ -54,7 +54,7 @@ void HTMLBaseElement::parseAttribute(const QualifiedName& name, const AtomicStri
 Node::InsertionNotificationRequest HTMLBaseElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.inDocument())
+    if (insertionPoint.isConnected())
         document().processBaseElement();
     return InsertionDone;
 }
@@ -62,7 +62,7 @@ Node::InsertionNotificationRequest HTMLBaseElement::insertedInto(ContainerNode& 
 void HTMLBaseElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.inDocument())
+    if (insertionPoint.isConnected())
         document().processBaseElement();
 }
 
@@ -73,7 +73,7 @@ bool HTMLBaseElement::isURLAttribute(const Attribute& attribute) const
 
 String HTMLBaseElement::target() const
 {
-    return fastGetAttribute(targetAttr);
+    return attributeWithoutSynchronization(targetAttr);
 }
 
 URL HTMLBaseElement::href() const
@@ -82,7 +82,7 @@ URL HTMLBaseElement::href() const
     // base elements like this one can be used to set that base URL. Thus we need to resolve relative to the document's
     // URL and ignore the base URL.
 
-    const AtomicString& attributeValue = fastGetAttribute(hrefAttr);
+    const AtomicString& attributeValue = attributeWithoutSynchronization(hrefAttr);
     if (attributeValue.isNull())
         return document().url();
 
@@ -98,7 +98,7 @@ URL HTMLBaseElement::href() const
 
 void HTMLBaseElement::setHref(const AtomicString& value)
 {
-    setAttribute(hrefAttr, value);
+    setAttributeWithoutSynchronization(hrefAttr, value);
 }
 
 }

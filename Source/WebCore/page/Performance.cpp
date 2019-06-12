@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2012 Intel Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,211 +31,240 @@
  */
 
 #include "config.h"
+#include "Performance.h"
 
 #if ENABLE(WEB_TIMING)
-#include "Performance.h"
 
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "Event.h"
+#include "EventNames.h"
 #include "Frame.h"
 #include "PerformanceEntry.h"
 #include "PerformanceNavigation.h"
+#include "PerformanceObserver.h"
 #include "PerformanceResourceTiming.h"
 #include "PerformanceTiming.h"
 #include "PerformanceUserTiming.h"
 #include "ResourceResponse.h"
+#include "ScriptExecutionContext.h"
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
-#if ENABLE(RESOURCE_TIMING)
-static const size_t defaultResourceTimingBufferSize = 150;
-#endif
-
-Performance::Performance(Frame& frame)
-    : DOMWindowProperty(&frame)
-#if ENABLE(RESOURCE_TIMING)
-    , m_resourceTimingBufferSize(defaultResourceTimingBufferSize)
-#endif // ENABLE(RESOURCE_TIMING)
-    , m_referenceTime(frame.document()->loader() ? frame.document()->loader()->timing().referenceMonotonicTime() : monotonicallyIncreasingTime())
-#if ENABLE(USER_TIMING)
-    , m_userTiming(nullptr)
-#endif // ENABLE(USER_TIMING)
+Performance::Performance(ScriptExecutionContext& context, MonotonicTime timeOrigin)
+    : ContextDestructionObserver(&context)
+    , m_timeOrigin(timeOrigin)
+    , m_performanceTimelineTaskQueue(context)
 {
-    ASSERT(m_referenceTime);
+    ASSERT(m_timeOrigin);
 }
 
 Performance::~Performance()
 {
 }
 
-ScriptExecutionContext* Performance::scriptExecutionContext() const
+void Performance::contextDestroyed()
 {
-    if (!frame())
-        return nullptr;
-    return frame()->document();
+    m_performanceTimelineTaskQueue.close();
+
+    ContextDestructionObserver::contextDestroyed();
 }
 
-PerformanceNavigation* Performance::navigation() const
+double Performance::now() const
 {
-    if (!m_navigation)
-        m_navigation = PerformanceNavigation::create(m_frame);
+    Seconds now = MonotonicTime::now() - m_timeOrigin;
+    return reduceTimeResolution(now).milliseconds();
+}
 
+Seconds Performance::reduceTimeResolution(Seconds seconds)
+{
+    double resolution = (100_us).seconds();
+    double reduced = std::floor(seconds.seconds() / resolution) * resolution;
+    return Seconds(reduced);
+}
+
+PerformanceNavigation* Performance::navigation()
+{
+    if (!is<Document>(scriptExecutionContext()))
+        return nullptr;
+
+    ASSERT(isMainThread());
+    if (!m_navigation)
+        m_navigation = PerformanceNavigation::create(downcast<Document>(*scriptExecutionContext()).frame());
     return m_navigation.get();
 }
 
-PerformanceTiming* Performance::timing() const
+PerformanceTiming* Performance::timing()
 {
-    if (!m_timing)
-        m_timing = PerformanceTiming::create(m_frame);
+    if (!is<Document>(scriptExecutionContext()))
+        return nullptr;
 
+    ASSERT(isMainThread());
+    if (!m_timing)
+        m_timing = PerformanceTiming::create(downcast<Document>(*scriptExecutionContext()).frame());
     return m_timing.get();
 }
 
-#if ENABLE(PERFORMANCE_TIMELINE)
-PassRefPtr<PerformanceEntryList> Performance::webkitGetEntries() const
+Vector<RefPtr<PerformanceEntry>> Performance::getEntries() const
 {
-    RefPtr<PerformanceEntryList> entries = PerformanceEntryList::create();
+    Vector<RefPtr<PerformanceEntry>> entries;
 
-#if ENABLE(RESOURCE_TIMING)
-    entries->appendAll(m_resourceTimingBuffer);
-#endif // ENABLE(RESOURCE_TIMING)
+    entries.appendVector(m_resourceTimingBuffer);
 
-#if ENABLE(USER_TIMING)
     if (m_userTiming) {
-        entries->appendAll(m_userTiming->getMarks());
-        entries->appendAll(m_userTiming->getMeasures());
+        entries.appendVector(m_userTiming->getMarks());
+        entries.appendVector(m_userTiming->getMeasures());
     }
-#endif // ENABLE(USER_TIMING)
 
-    entries->sort();
+    std::sort(entries.begin(), entries.end(), PerformanceEntry::startTimeCompareLessThan);
     return entries;
 }
 
-PassRefPtr<PerformanceEntryList> Performance::webkitGetEntriesByType(const String& entryType)
+Vector<RefPtr<PerformanceEntry>> Performance::getEntriesByType(const String& entryType) const
 {
-    RefPtr<PerformanceEntryList> entries = PerformanceEntryList::create();
+    Vector<RefPtr<PerformanceEntry>> entries;
 
-#if ENABLE(RESOURCE_TIMING)
-    if (equalLettersIgnoringASCIICase(entryType, "resource")) {
-        for (auto& resource : m_resourceTimingBuffer)
-            entries->append(resource);
-    }
-#endif
+    if (equalLettersIgnoringASCIICase(entryType, "resource"))
+        entries.appendVector(m_resourceTimingBuffer);
 
-#if ENABLE(USER_TIMING)
     if (m_userTiming) {
         if (equalLettersIgnoringASCIICase(entryType, "mark"))
-            entries->appendAll(m_userTiming->getMarks());
+            entries.appendVector(m_userTiming->getMarks());
         else if (equalLettersIgnoringASCIICase(entryType, "measure"))
-            entries->appendAll(m_userTiming->getMeasures());
+            entries.appendVector(m_userTiming->getMeasures());
     }
-#endif
 
-    entries->sort();
+    std::sort(entries.begin(), entries.end(), PerformanceEntry::startTimeCompareLessThan);
     return entries;
 }
 
-PassRefPtr<PerformanceEntryList> Performance::webkitGetEntriesByName(const String& name, const String& entryType)
+Vector<RefPtr<PerformanceEntry>> Performance::getEntriesByName(const String& name, const String& entryType) const
 {
-    RefPtr<PerformanceEntryList> entries = PerformanceEntryList::create();
+    Vector<RefPtr<PerformanceEntry>> entries;
 
-#if ENABLE(RESOURCE_TIMING)
     if (entryType.isNull() || equalLettersIgnoringASCIICase(entryType, "resource")) {
         for (auto& resource : m_resourceTimingBuffer) {
             if (resource->name() == name)
-                entries->append(resource);
+                entries.append(resource);
         }
     }
-#endif
 
-#if ENABLE(USER_TIMING)
     if (m_userTiming) {
         if (entryType.isNull() || equalLettersIgnoringASCIICase(entryType, "mark"))
-            entries->appendAll(m_userTiming->getMarks(name));
+            entries.appendVector(m_userTiming->getMarks(name));
         if (entryType.isNull() || equalLettersIgnoringASCIICase(entryType, "measure"))
-            entries->appendAll(m_userTiming->getMeasures(name));
+            entries.appendVector(m_userTiming->getMeasures(name));
     }
-#endif
 
-    entries->sort();
+    std::sort(entries.begin(), entries.end(), PerformanceEntry::startTimeCompareLessThan);
     return entries;
 }
 
-#endif // ENABLE(PERFORMANCE_TIMELINE)
-
-#if ENABLE(RESOURCE_TIMING)
-
-void Performance::webkitClearResourceTimings()
+void Performance::clearResourceTimings()
 {
     m_resourceTimingBuffer.clear();
 }
 
-void Performance::webkitSetResourceTimingBufferSize(unsigned size)
+void Performance::setResourceTimingBufferSize(unsigned size)
 {
     m_resourceTimingBufferSize = size;
-    if (isResourceTimingBufferFull())
-        dispatchEvent(Event::create(eventNames().webkitresourcetimingbufferfullEvent, false, false));
 }
 
-void Performance::addResourceTiming(const String& initiatorName, Document* initiatorDocument, const ResourceRequest& request, const ResourceResponse& response, double initiationTime, double finishTime)
+void Performance::addResourceTiming(ResourceTiming&& resourceTiming)
 {
+    RefPtr<PerformanceResourceTiming> entry = PerformanceResourceTiming::create(m_timeOrigin, WTFMove(resourceTiming));
+
+    queueEntry(*entry);
+
     if (isResourceTimingBufferFull())
         return;
-
-    RefPtr<PerformanceEntry> entry = PerformanceResourceTiming::create(initiatorName, request, response, initiationTime, finishTime, initiatorDocument);
 
     m_resourceTimingBuffer.append(entry);
 
     if (isResourceTimingBufferFull())
-        dispatchEvent(Event::create(eventNames().webkitresourcetimingbufferfullEvent, false, false));
+        dispatchEvent(Event::create(eventNames().resourcetimingbufferfullEvent, true, false));
 }
 
-bool Performance::isResourceTimingBufferFull()
+bool Performance::isResourceTimingBufferFull() const
 {
     return m_resourceTimingBuffer.size() >= m_resourceTimingBufferSize;
 }
 
-#endif // ENABLE(RESOURCE_TIMING)
-
-#if ENABLE(USER_TIMING)
-void Performance::webkitMark(const String& markName, ExceptionCode& ec)
+ExceptionOr<void> Performance::mark(const String& markName)
 {
-    ec = 0;
     if (!m_userTiming)
-        m_userTiming = UserTiming::create(this);
-    m_userTiming->mark(markName, ec);
+        m_userTiming = std::make_unique<UserTiming>(*this);
+
+    auto result = m_userTiming->mark(markName);
+    if (result.hasException())
+        return result.releaseException();
+
+    queueEntry(result.releaseReturnValue());
+
+    return { };
 }
 
-void Performance::webkitClearMarks(const String& markName)
+void Performance::clearMarks(const String& markName)
 {
     if (!m_userTiming)
-        m_userTiming = UserTiming::create(this);
+        m_userTiming = std::make_unique<UserTiming>(*this);
     m_userTiming->clearMarks(markName);
 }
 
-void Performance::webkitMeasure(const String& measureName, const String& startMark, const String& endMark, ExceptionCode& ec)
+ExceptionOr<void> Performance::measure(const String& measureName, const String& startMark, const String& endMark)
 {
-    ec = 0;
     if (!m_userTiming)
-        m_userTiming = UserTiming::create(this);
-    m_userTiming->measure(measureName, startMark, endMark, ec);
+        m_userTiming = std::make_unique<UserTiming>(*this);
+
+    auto result = m_userTiming->measure(measureName, startMark, endMark);
+    if (result.hasException())
+        return result.releaseException();
+
+    queueEntry(result.releaseReturnValue());
+
+    return { };
 }
 
-void Performance::webkitClearMeasures(const String& measureName)
+void Performance::clearMeasures(const String& measureName)
 {
     if (!m_userTiming)
-        m_userTiming = UserTiming::create(this);
+        m_userTiming = std::make_unique<UserTiming>(*this);
     m_userTiming->clearMeasures(measureName);
 }
 
-#endif // ENABLE(USER_TIMING)
-
-double Performance::now() const
+void Performance::registerPerformanceObserver(PerformanceObserver& observer)
 {
-    double nowSeconds = monotonicallyIncreasingTime() - m_referenceTime;
-    const double resolutionSeconds = 0.000005;
-    return 1000.0 * floor(nowSeconds / resolutionSeconds) * resolutionSeconds;
+    m_observers.add(&observer);
+}
+
+void Performance::unregisterPerformanceObserver(PerformanceObserver& observer)
+{
+    m_observers.remove(&observer);
+}
+
+void Performance::queueEntry(PerformanceEntry& entry)
+{
+    bool shouldScheduleTask = false;
+    for (auto& observer : m_observers) {
+        if (observer->typeFilter().contains(entry.type())) {
+            observer->queueEntry(entry);
+            shouldScheduleTask = true;
+        }
+    }
+
+    if (!shouldScheduleTask)
+        return;
+
+    if (m_performanceTimelineTaskQueue.hasPendingTasks())
+        return;
+
+    m_performanceTimelineTaskQueue.enqueueTask([this] () {
+        Vector<RefPtr<PerformanceObserver>> observers;
+        copyToVector(m_observers, observers);
+        for (auto& observer : observers)
+            observer->deliver();
+    });
 }
 
 } // namespace WebCore

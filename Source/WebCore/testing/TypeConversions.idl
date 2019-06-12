@@ -25,25 +25,75 @@
 
 [
     NoInterfaceObject,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
 ] interface TypeConversions {
-    attribute long testLong;
-    [EnforceRange] attribute long testEnforceRangeLong;
-    attribute unsigned long testUnsignedLong;
-    [EnforceRange] attribute unsigned long testEnforceRangeUnsignedLong;
-
-    attribute long long testLongLong;
-    [EnforceRange] attribute long long testEnforceRangeLongLong;
-    attribute unsigned long long testUnsignedLongLong;
-    [EnforceRange] attribute unsigned long long testEnforceRangeUnsignedLongLong;
-
     attribute byte testByte;
-    [EnforceRange] attribute byte testEnforceRangeByte;
+    attribute [EnforceRange] byte testEnforceRangeByte;
+    attribute [Clamp] byte testClampByte;
     attribute octet testOctet;
-    [EnforceRange] attribute octet testEnforceRangeOctet;
+    attribute [EnforceRange] octet testEnforceRangeOctet;
+    attribute [Clamp] octet testClampOctet;
 
     attribute short testShort;
-    [EnforceRange] attribute short testEnforceRangeShort;
+    attribute [EnforceRange] short testEnforceRangeShort;
+    attribute [Clamp] short testClampShort;
     attribute unsigned short testUnsignedShort;
-    [EnforceRange] attribute unsigned short testEnforceRangeUnsignedShort;
+    attribute [EnforceRange] unsigned short testEnforceRangeUnsignedShort;
+    attribute [Clamp] unsigned short testClampUnsignedShort;
+
+    attribute long testLong;
+    attribute [EnforceRange] long testEnforceRangeLong;
+    attribute [Clamp] long testClampLong;
+    attribute unsigned long testUnsignedLong;
+    attribute [EnforceRange] unsigned long testEnforceRangeUnsignedLong;
+    attribute [Clamp] unsigned long testClampUnsignedLong;
+
+    attribute long long testLongLong;
+    attribute [EnforceRange] long long testEnforceRangeLongLong;
+    attribute [Clamp] long long testClampLongLong;
+    attribute unsigned long long testUnsignedLongLong;
+    attribute [EnforceRange] unsigned long long testEnforceRangeUnsignedLongLong;
+    attribute [Clamp] unsigned long long testClampUnsignedLongLong;
+
+    attribute DOMString testString;
+    attribute ByteString testByteString;
+    attribute USVString testUSVString;
+    attribute [TreatNullAs=EmptyString] DOMString testTreatNullAsEmptyString;
+
+    void setTestLongRecord(record<DOMString, long> record);
+    record<DOMString, long> testLongRecord();
+
+    void setTestNodeRecord(record<USVString, Node> record);
+    record<USVString, Node> testNodeRecord();
+
+    void setTestSequenceRecord(record<ByteString, sequence<DOMString>> record);
+    record<ByteString, sequence<DOMString>> testSequenceRecord();
+
+    attribute (DOMString or long or boolean or Node or sequence<long>) testUnion;
+
+    attribute TypeConversionsDictionary testDictionary;
+
+    attribute (DOMString or [Clamp] long or sequence<[Clamp] long>) testClampUnion;
+    attribute (DOMString or [EnforceRange] long or sequence<[EnforceRange] long>) testEnforceRangeUnion;
+    attribute ([TreatNullAs=EmptyString] DOMString or long or sequence<[TreatNullAs=EmptyString] DOMString>) testTreatNullAsEmptyStringUnion;
+};
+
+[
+    JSGenerateToJSObject
+] dictionary TypeConversionsOtherDictionary {
+    long longValue = 0;
+    DOMString stringValue = "";
+};
+
+[
+    JSGenerateToJSObject
+] dictionary TypeConversionsDictionary {
+    long longValue = 0;
+    DOMString stringValue = "";
+    [TreatNullAs=EmptyString] DOMString treatNullAsEmptyStringValue = "";
+    sequence<DOMString> sequenceValue = [];
+    (Node or sequence<DOMString> or TypeConversionsOtherDictionary) unionValue = null;
+    [Clamp] long clampLongValue = 0;
+    [EnforceRange] long enforceRangeLongValue = 0;
 };

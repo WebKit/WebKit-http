@@ -25,21 +25,20 @@
 
 WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
 {
-    constructor(identifier, displayName, element, role, label)
+    constructor(identifier, displayName)
     {
-        super(element);
+        super();
 
         this._identifier = identifier;
         this._displayName = displayName;
         this._selected = false;
 
-        this._widthSetting = new WebInspector.Setting(identifier + "-sidebar-panel-width", 300);
         this._savedScrollPosition = 0;
 
         this.element.classList.add("panel", identifier);
 
-        this.element.setAttribute("role", role || "group");
-        this.element.setAttribute("aria-label", label || displayName);
+        this.element.setAttribute("role", "group");
+        this.element.setAttribute("aria-label", displayName);
 
         this._contentView = new WebInspector.View;
         this._contentView.element.classList.add("content");
@@ -56,6 +55,11 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
     get contentView()
     {
         return this._contentView;
+    }
+
+    get displayName()
+    {
+        return this._displayName;
     }
 
     get visible()
@@ -88,11 +92,6 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
         return 0;
     }
 
-    get savedWidth()
-    {
-        return this._widthSetting.value;
-    }
-
     show()
     {
         if (!this.parentSidebar)
@@ -111,14 +110,6 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
         this.parentSidebar.selectedSidebarPanel = null;
     }
 
-    toggle()
-    {
-        if (this.visible)
-            this.hide();
-        else
-            this.show();
-    }
-
     added()
     {
         console.assert(this.parentSidebar);
@@ -133,14 +124,12 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
         // Implemented by subclasses.
     }
 
-    willRemove()
-    {
-        // Implemented by subclasses.
-    }
-
     shown()
     {
         this._contentView.element.scrollTop = this._savedScrollPosition;
+
+        // FIXME: remove once <https://webkit.org/b/150741> is fixed.
+        this.updateLayoutIfNeeded();
 
         // Implemented by subclasses.
     }
@@ -148,15 +137,6 @@ WebInspector.SidebarPanel = class SidebarPanel extends WebInspector.View
     hidden()
     {
         this._savedScrollPosition = this._contentView.element.scrollTop;
-
-        // Implemented by subclasses.
-    }
-
-    widthDidChange()
-    {
-        let width = this.element.realOffsetWidth;
-        if (width && width !== this._widthSetting.value)
-            this._widthSetting.value = width;
 
         // Implemented by subclasses.
     }

@@ -38,20 +38,21 @@ PASS testInitEvent('Keyboard', '"a", false, true, window, "b", 1001, false, fals
 PASS testInitEvent('Keyboard', '"a", false, true, window, "b", 1001, false, false, false, false, false').pageX is 0
 PASS testInitEvent('Keyboard', '"a", false, true, window, "b", 1001, false, false, false, false, false').pageY is 0
 PASS testInitEvent('Keyboard', '"a", false, true, window, "b", 1001, false, false, false, false, false').which is 0
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, null').type is 'a'
-PASS testInitEvent('Message', 'null, false, false, "b", "c", "d", window, null').type is 'null'
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, null').bubbles is false
-PASS testInitEvent('Message', '"a", true, false, "b", "c", "d", window, null').bubbles is true
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, null').cancelable is false
-PASS testInitEvent('Message', '"a", false, true, "b", "c", "d", window, null').cancelable is true
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, null').data is 'b'
-PASS testInitEvent('Message', '"a", false, false, null, "c", "d", window, null').data is null
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, null').origin is 'c'
-PASS testInitEvent('Message', '"a", false, false, "b", null, "d", window, null').origin is 'null'
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, null').lastEventId is 'd'
-PASS testInitEvent('Message', '"a", false, false, "b", "c", null, window, null').lastEventId is 'null'
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, null').source is window
-PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", null, null').source is null
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, []').type is 'a'
+PASS testInitEvent('Message', 'null, false, false, "b", "c", "d", window, []').type is 'null'
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, []').bubbles is false
+PASS testInitEvent('Message', '"a", true, false, "b", "c", "d", window, []').bubbles is true
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, []').cancelable is false
+PASS testInitEvent('Message', '"a", false, true, "b", "c", "d", window, []').cancelable is true
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, []').data is 'b'
+PASS testInitEvent('Message', '"a", false, false, null, "c", "d", window, []').data is null
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, []').origin is 'c'
+PASS testInitEvent('Message', '"a", false, false, "b", null, "d", window, []').origin is 'null'
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, []').lastEventId is 'd'
+PASS testInitEvent('Message', '"a", false, false, "b", "c", null, window, []').lastEventId is 'null'
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", window, []').source is window
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", null, []').source is null
+PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", null, []').ports is []
 PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", null, channelArray').ports[0] is channel.port1
 PASS testInitEvent('Message', '"a", false, false, "b", "c", "d", null, channelArray').ports[1] is channel.port2
 PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').type is 'a'
@@ -86,8 +87,8 @@ PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 
 PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, document').fromElement is document
 PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').toElement is null
 PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').dataTransfer is null
-PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').keyCode is 0
-PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').charCode is 0
+PASS 'keyCode' in testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null') is false
+PASS 'charCode' in testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null') is false
 PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').layerX is 1004
 PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').layerY is 1005
 PASS testInitEvent('Mouse', '"a", false, false, window, 1001, 1002, 1003, 1004, 1005, false, false, false, false, 1006, null').pageX is 1004
@@ -133,8 +134,8 @@ PASS testInitEvent('Text', '"a", false, false, null, "b"').view is null
 PASS testInitEvent('Text', '"a", false, false, window, "b"').data is 'b'
 PASS testInitEvent('Text', '"a", false, false, window, null').data is 'null'
 PASS testInitEvent('Text', '"a", false, false, window, "b"').detail is 0
-PASS testInitEvent('Text', '"a", false, false, window, "b"').keyCode is 0
-PASS testInitEvent('Text', '"a", false, false, window, "b"').charCode is 0
+PASS 'keyCode' in testInitEvent('Text', '"a", false, false, window, "b"') is false
+PASS 'charCode' in testInitEvent('Text', '"a", false, false, window, "b"') is false
 PASS testInitEvent('Text', '"a", false, false, window, "b"').layerX is 0
 PASS testInitEvent('Text', '"a", false, false, window, "b"').layerY is 0
 PASS testInitEvent('Text', '"a", false, false, window, "b"').pageX is 0
@@ -149,8 +150,8 @@ PASS testInitEvent('UI', '"a", false, true, window, 1001').cancelable is true
 PASS testInitEvent('UI', '"a", false, false, window, 1001').view is window
 PASS testInitEvent('UI', '"a", false, false, null, 1001').view is null
 PASS testInitEvent('UI', '"a", false, false, window, 1001').detail is 1001
-PASS testInitEvent('UI', '"a", false, false, window, 1001').keyCode is 0
-PASS testInitEvent('UI', '"a", false, false, window, 1001').charCode is 0
+PASS 'keyCode' in testInitEvent('UI', '"a", false, false, window, 1001') is false
+PASS 'charCode' in testInitEvent('UI', '"a", false, false, window, 1001') is false
 PASS testInitEvent('UI', '"a", false, false, window, 1001').layerX is 0
 PASS testInitEvent('UI', '"a", false, false, window, 1001').layerY is 0
 PASS testInitEvent('UI', '"a", false, false, window, 1001').pageX is 0

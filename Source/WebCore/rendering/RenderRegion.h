@@ -27,12 +27,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef RenderRegion_h
-#define RenderRegion_h
+#pragma once
 
 #include "LayerFragment.h"
 #include "RenderBlockFlow.h"
-#include "StyleInheritedData.h"
 #include "VisiblePosition.h"
 #include <memory>
 
@@ -46,7 +44,7 @@ class RenderNamedFlowThread;
 
 class RenderRegion : public RenderBlockFlow {
 public:
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
     void setFlowThreadPortionRect(const LayoutRect& rect) { m_flowThreadPortionRect = rect; }
     LayoutRect flowThreadPortionRect() const { return m_flowThreadPortionRect; }
@@ -68,7 +66,7 @@ public:
     RenderBoxRegionInfo* setRenderBoxRegionInfo(const RenderBox*, LayoutUnit logicalLeftInset, LayoutUnit logicalRightInset,
         bool containingBlockChainIsInset);
     std::unique_ptr<RenderBoxRegionInfo> takeRenderBoxRegionInfo(const RenderBox*);
-    void removeRenderBoxRegionInfo(const RenderBox*);
+    void removeRenderBoxRegionInfo(const RenderBox&);
 
     void deleteAllRenderBoxRegionInfo();
 
@@ -118,22 +116,22 @@ public:
     void setRegionObjectsRegionStyle();
     void restoreRegionObjectsOriginalStyle();
 
-    virtual bool canHaveChildren() const override { return false; }
-    virtual bool canHaveGeneratedChildren() const override { return true; }
-    virtual VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
+    bool canHaveChildren() const override { return false; }
+    bool canHaveGeneratedChildren() const override { return true; }
+    VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
 
     virtual bool hasAutoLogicalHeight() const { return false; }
 
     virtual void absoluteQuadsForBoxInRegion(Vector<FloatQuad>&, bool*, const RenderBox*, float, float) { }
 
 protected:
-    RenderRegion(Element&, Ref<RenderStyle>&&, RenderFlowThread*);
-    RenderRegion(Document&, Ref<RenderStyle>&&, RenderFlowThread*);
+    RenderRegion(Element&, RenderStyle&&, RenderFlowThread*);
+    RenderRegion(Document&, RenderStyle&&, RenderFlowThread*);
 
     void ensureOverflowForBox(const RenderBox*, RefPtr<RenderOverflow>&, bool);
 
-    virtual void computePreferredLogicalWidths() override;
-    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
+    void computePreferredLogicalWidths() override;
+    void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
 
     enum OverflowType {
         LayoutOverflow = 0,
@@ -146,11 +144,11 @@ protected:
     void computeOverflowFromFlowThread();
 
 private:
-    virtual bool isRenderRegion() const override final { return true; }
-    virtual const char* renderName() const override { return "RenderRegion"; }
+    bool isRenderRegion() const final { return true; }
+    const char* renderName() const override { return "RenderRegion"; }
 
-    virtual void insertedIntoTree() override;
-    virtual void willBeRemovedFromTree() override;
+    void insertedIntoTree() override;
+    void willBeRemovedFromTree() override;
 
     virtual void installFlowThread();
 
@@ -190,5 +188,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderRegion, isRenderRegion())
-
-#endif // RenderRegion_h

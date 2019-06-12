@@ -31,8 +31,8 @@
 #include <WebCore/StorageArea.h>
 #include <wtf/Forward.h>
 #include <wtf/HashCountedSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 class SecurityOrigin;
@@ -59,13 +59,13 @@ public:
     void clear(WebCore::Frame* sourceFrame, StorageAreaImpl* sourceArea);
     bool contains(const String& key);
 
-    WebCore::SecurityOrigin& securityOrigin() { return m_securityOrigin.get(); }
+    const WebCore::SecurityOrigin& securityOrigin() const { return m_securityOrigin.get(); }
 
 private:
     StorageAreaMap(StorageNamespaceImpl*, Ref<WebCore::SecurityOrigin>&&);
 
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     void didGetValues(uint64_t storageMapSeed);
     void didSetItem(uint64_t storageMapSeed, const String& key, bool quotaError);

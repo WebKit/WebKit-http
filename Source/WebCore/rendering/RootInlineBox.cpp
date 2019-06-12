@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -30,7 +30,6 @@
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
 #include "LogicalSelectionOffsetCaches.h"
-#include "Page.h"
 #include "PaintInfo.h"
 #include "RenderFlowThread.h"
 #include "RenderInline.h"
@@ -39,14 +38,9 @@
 #include "RenderRubyText.h"
 #include "RenderView.h"
 #include "VerticalPositionCache.h"
-#include <wtf/NeverDestroyed.h>
-
-#if PLATFORM(IOS)
-#include "Settings.h"
-#endif
 
 namespace WebCore {
-    
+
 struct SameSizeAsRootInlineBox : public InlineFlowBox {
     unsigned variables[7];
     void* pointers[3];
@@ -55,7 +49,7 @@ struct SameSizeAsRootInlineBox : public InlineFlowBox {
 COMPILE_ASSERT(sizeof(RootInlineBox) == sizeof(SameSizeAsRootInlineBox), RootInlineBox_should_stay_small);
 
 typedef WTF::HashMap<const RootInlineBox*, std::unique_ptr<EllipsisBox>> EllipsisBoxMap;
-static EllipsisBoxMap* gEllipsisBoxMap = 0;
+static EllipsisBoxMap* gEllipsisBoxMap;
 
 static ContainingRegionMap& containingRegionMap(RenderBlockFlow& block)
 {
@@ -132,13 +126,9 @@ float RootInlineBox::placeEllipsis(const AtomicString& ellipsisStr,  bool ltr, f
     if (!gEllipsisBoxMap)
         gEllipsisBoxMap = new EllipsisBoxMap();
 
-    // Create an ellipsis box.
-    auto newEllipsisBox = std::make_unique<EllipsisBox>(blockFlow(), ellipsisStr, this, ellipsisWidth - (markupBox ? markupBox->logicalWidth() : 0), logicalHeight(), y(), !prevRootBox(), isHorizontal(), markupBox);
-    auto ellipsisBox = newEllipsisBox.get();
-
-    gEllipsisBoxMap->add(this, WTFMove(newEllipsisBox));
+    ASSERT(!hasEllipsisBox());
+    auto* ellipsisBox = gEllipsisBoxMap->set(this, std::make_unique<EllipsisBox>(blockFlow(), ellipsisStr, this, ellipsisWidth - (markupBox ? markupBox->logicalWidth() : 0), logicalHeight(), y(), !prevRootBox(), isHorizontal(), markupBox)).iterator->value.get();
     setHasEllipsisBox(true);
-
     // FIXME: Do we need an RTL version of this?
     if (ltr && (x() + logicalWidth() + ellipsisWidth) <= blockRightEdge) {
         ellipsisBox->setX(x() + logicalWidth());
@@ -146,7 +136,7 @@ float RootInlineBox::placeEllipsis(const AtomicString& ellipsisStr,  bool ltr, f
     }
 
     // Now attempt to find the nearest glyph horizontally and place just to the right (or left in RTL)
-    // of that glyph.  Mark all of the objects that intersect the ellipsis box as not painting (as being
+    // of that glyph. Mark all of the objects that intersect the ellipsis box as not painting (as being
     // truncated).
     bool foundBox = false;
     float truncatedWidth = 0;
@@ -213,10 +203,10 @@ void RootInlineBox::adjustPosition(float dx, float dy)
 void RootInlineBox::childRemoved(InlineBox* box)
 {
     if (&box->renderer() == m_lineBreakObj)
-        setLineBreakInfo(0, 0, BidiStatus());
+        setLineBreakInfo(nullptr, 0, BidiStatus());
 
     for (RootInlineBox* prev = prevRootBox(); prev && prev->lineBreakObj() == &box->renderer(); prev = prev->prevRootBox()) {
-        prev->setLineBreakInfo(0, 0, BidiStatus());
+        prev->setLineBreakInfo(nullptr, 0, BidiStatus());
         prev->markDirty();
     }
 }
@@ -571,22 +561,20 @@ RenderObject::SelectionState RootInlineBox::selectionState()
 
 InlineBox* RootInlineBox::firstSelectedBox()
 {
-    for (InlineBox* box = firstLeafChild(); box; box = box->nextLeafChild()) {
+    for (auto* box = firstLeafChild(); box; box = box->nextLeafChild()) {
         if (box->selectionState() != RenderObject::SelectionNone)
             return box;
     }
-
-    return 0;
+    return nullptr;
 }
 
 InlineBox* RootInlineBox::lastSelectedBox()
 {
-    for (InlineBox* box = lastLeafChild(); box; box = box->prevLeafChild()) {
+    for (auto* box = lastLeafChild(); box; box = box->prevLeafChild()) {
         if (box->selectionState() != RenderObject::SelectionNone)
             return box;
     }
-
-    return 0;
+    return nullptr;
 }
 
 LayoutUnit RootInlineBox::selectionTop() const
@@ -635,10 +623,10 @@ LayoutUnit RootInlineBox::selectionTop() const
         // This line has actually been moved further down, probably from a large line-height, but possibly because the
         // line was forced to clear floats.  If so, let's check the offsets, and only be willing to use the previous
         // line's bottom if the offsets are greater on both sides.
-        LayoutUnit prevLeft = blockFlow().logicalLeftOffsetForLine(prevBottom, false);
-        LayoutUnit prevRight = blockFlow().logicalRightOffsetForLine(prevBottom, false);
-        LayoutUnit newLeft = blockFlow().logicalLeftOffsetForLine(selectionTop, false);
-        LayoutUnit newRight = blockFlow().logicalRightOffsetForLine(selectionTop, false);
+        LayoutUnit prevLeft = blockFlow().logicalLeftOffsetForLine(prevBottom, DoNotIndentText);
+        LayoutUnit prevRight = blockFlow().logicalRightOffsetForLine(prevBottom, DoNotIndentText);
+        LayoutUnit newLeft = blockFlow().logicalLeftOffsetForLine(selectionTop, DoNotIndentText);
+        LayoutUnit newRight = blockFlow().logicalRightOffsetForLine(selectionTop, DoNotIndentText);
         if (prevLeft > newLeft || prevRight < newRight)
             return selectionTop;
     }
@@ -646,29 +634,64 @@ LayoutUnit RootInlineBox::selectionTop() const
     return prevBottom;
 }
 
+static RenderBlock* blockBeforeWithinSelectionRoot(const RenderBlockFlow& blockFlow, LayoutSize& offset)
+{
+    if (blockFlow.isSelectionRoot())
+        return nullptr;
+
+    const RenderElement* object = &blockFlow;
+    RenderObject* sibling;
+    do {
+        sibling = object->previousSibling();
+        while (sibling && (!is<RenderBlock>(*sibling) || downcast<RenderBlock>(*sibling).isSelectionRoot()))
+            sibling = sibling->previousSibling();
+
+        offset -= LayoutSize(downcast<RenderBlock>(*object).logicalLeft(), downcast<RenderBlock>(*object).logicalTop());
+        object = object->parent();
+    } while (!sibling && is<RenderBlock>(object) && !downcast<RenderBlock>(*object).isSelectionRoot());
+
+    if (!sibling)
+        return nullptr;
+
+    RenderBlock* beforeBlock = downcast<RenderBlock>(sibling);
+
+    offset += LayoutSize(beforeBlock->logicalLeft(), beforeBlock->logicalTop());
+
+    RenderObject* child = beforeBlock->lastChild();
+    while (is<RenderBlock>(child)) {
+        beforeBlock = downcast<RenderBlock>(child);
+        offset += LayoutSize(beforeBlock->logicalLeft(), beforeBlock->logicalTop());
+        child = beforeBlock->lastChild();
+    }
+    return beforeBlock;
+}
+
 LayoutUnit RootInlineBox::selectionTopAdjustedForPrecedingBlock() const
 {
     const RootInlineBox& rootBox = root();
     LayoutUnit top = selectionTop();
 
-    RenderObject::SelectionState blockSelectionState = rootBox.blockFlow().selectionState();
+    auto blockSelectionState = rootBox.blockFlow().selectionState();
     if (blockSelectionState != RenderObject::SelectionInside && blockSelectionState != RenderObject::SelectionEnd)
         return top;
 
     LayoutSize offsetToBlockBefore;
-    if (RenderBlock* block = rootBox.blockFlow().blockBeforeWithinSelectionRoot(offsetToBlockBefore)) {
-        if (is<RenderBlockFlow>(*block)) {
-            if (RootInlineBox* lastLine = downcast<RenderBlockFlow>(*block).lastRootBox()) {
-                RenderObject::SelectionState lastLineSelectionState = lastLine->selectionState();
-                if (lastLineSelectionState != RenderObject::SelectionInside && lastLineSelectionState != RenderObject::SelectionStart)
-                    return top;
+    auto* blockBefore = blockBeforeWithinSelectionRoot(rootBox.blockFlow(), offsetToBlockBefore);
+    if (!is<RenderBlockFlow>(blockBefore))
+        return top;
 
-                LayoutUnit lastLineSelectionBottom = lastLine->selectionBottom() + offsetToBlockBefore.height();
-                top = std::max(top, lastLineSelectionBottom);
-            }
-        }
+    // Do not adjust blocks sharing the same line.
+    if (!offsetToBlockBefore.height())
+        return top;
+
+    if (auto* lastLine = downcast<RenderBlockFlow>(*blockBefore).lastRootBox()) {
+        RenderObject::SelectionState lastLineSelectionState = lastLine->selectionState();
+        if (lastLineSelectionState != RenderObject::SelectionInside && lastLineSelectionState != RenderObject::SelectionStart)
+            return top;
+
+        LayoutUnit lastLineSelectionBottom = lastLine->selectionBottom() + offsetToBlockBefore.height();
+        top = std::max(top, lastLineSelectionBottom);
     }
-
     return top;
 }
 
@@ -718,10 +741,10 @@ LayoutUnit RootInlineBox::selectionBottom() const
         // The next line has actually been moved further over, probably from a large line-height, but possibly because the
         // line was forced to clear floats.  If so, let's check the offsets, and only be willing to use the next
         // line's top if the offsets are greater on both sides.
-        LayoutUnit nextLeft = blockFlow().logicalLeftOffsetForLine(nextTop, false);
-        LayoutUnit nextRight = blockFlow().logicalRightOffsetForLine(nextTop, false);
-        LayoutUnit newLeft = blockFlow().logicalLeftOffsetForLine(selectionBottom, false);
-        LayoutUnit newRight = blockFlow().logicalRightOffsetForLine(selectionBottom, false);
+        LayoutUnit nextLeft = blockFlow().logicalLeftOffsetForLine(nextTop, DoNotIndentText);
+        LayoutUnit nextRight = blockFlow().logicalRightOffsetForLine(nextTop, DoNotIndentText);
+        LayoutUnit newLeft = blockFlow().logicalLeftOffsetForLine(selectionBottom, DoNotIndentText);
+        LayoutUnit newRight = blockFlow().logicalRightOffsetForLine(selectionBottom, DoNotIndentText);
         if (nextLeft > newLeft || nextRight < newRight)
             return selectionBottom;
     }
@@ -775,7 +798,7 @@ InlineBox* RootInlineBox::closestLeafChildForLogicalLeftPosition(int leftPositio
         // Return it.
         return lastLeaf;
 
-    InlineBox* closestLeaf = 0;
+    InlineBox* closestLeaf = nullptr;
     for (InlineBox* leaf = firstLeaf; leaf; leaf = leaf->nextLeafChildIgnoringLineBreak()) {
         if (!leaf->renderer().isListMarker() && (!onlyEditableLeaves || isEditableLeaf(leaf))) {
             closestLeaf = leaf;
@@ -791,13 +814,13 @@ InlineBox* RootInlineBox::closestLeafChildForLogicalLeftPosition(int leftPositio
 
 BidiStatus RootInlineBox::lineBreakBidiStatus() const
 { 
-    return BidiStatus(static_cast<UCharDirection>(m_lineBreakBidiStatusEor), static_cast<UCharDirection>(m_lineBreakBidiStatusLastStrong), static_cast<UCharDirection>(m_lineBreakBidiStatusLast), m_lineBreakContext);
+    return { static_cast<UCharDirection>(m_lineBreakBidiStatusEor), static_cast<UCharDirection>(m_lineBreakBidiStatusLastStrong), static_cast<UCharDirection>(m_lineBreakBidiStatusLast), m_lineBreakContext.copyRef() };
 }
 
-void RootInlineBox::setLineBreakInfo(RenderObject* obj, unsigned breakPos, const BidiStatus& status)
+void RootInlineBox::setLineBreakInfo(RenderObject* object, unsigned breakPosition, const BidiStatus& status)
 {
-    m_lineBreakObj = obj;
-    m_lineBreakPos = breakPos;
+    m_lineBreakObj = object;
+    m_lineBreakPos = breakPosition;
     m_lineBreakBidiStatusEor = status.eor;
     m_lineBreakBidiStatusLastStrong = status.lastStrong;
     m_lineBreakBidiStatusLast = status.last;
@@ -807,7 +830,7 @@ void RootInlineBox::setLineBreakInfo(RenderObject* obj, unsigned breakPos, const
 EllipsisBox* RootInlineBox::ellipsisBox() const
 {
     if (!hasEllipsisBox())
-        return 0;
+        return nullptr;
     return gEllipsisBoxMap->get(this);
 }
 
@@ -906,8 +929,8 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
     const RenderStyle& boxLineStyle = box.lineStyle();
     if (usedFonts && !usedFonts->isEmpty() && (includeFont || (boxLineStyle.lineHeight().isNegative() && includeLeading))) {
         usedFonts->append(&boxLineStyle.fontCascade().primaryFont());
-        for (size_t i = 0; i < usedFonts->size(); ++i) {
-            const FontMetrics& fontMetrics = usedFonts->at(i)->fontMetrics();
+        for (auto& font : *usedFonts) {
+            auto& fontMetrics = font->fontMetrics();
             int usedFontAscent = fontMetrics.ascent(baselineType());
             int usedFontDescent = fontMetrics.descent(baselineType());
             int halfLeading = (fontMetrics.lineSpacing() - fontMetrics.height()) / 2;
@@ -959,8 +982,7 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
     }
     
     if (includeInitialLetterForBox(box)) {
-        // FIXME: Can't use glyph bounds in vertical writing mode because they are garbage.
-        bool canUseGlyphs = isHorizontal() && glyphOverflow && glyphOverflow->computeBounds;
+        bool canUseGlyphs = glyphOverflow && glyphOverflow->computeBounds;
         int letterAscent = baselineType() == AlphabeticBaseline ? boxLineStyle.fontMetrics().capHeight() : (canUseGlyphs ? glyphOverflow->top : boxLineStyle.fontMetrics().ascent(baselineType()));
         int letterDescent = canUseGlyphs ? glyphOverflow->bottom : (box.isRootInlineBox() ? 0 : boxLineStyle.fontMetrics().descent(baselineType()));
         setAscentAndDescent(ascent, descent, letterAscent, letterDescent, ascentDescentSet);
@@ -1077,9 +1099,8 @@ bool RootInlineBox::includeFontForBox(InlineBox& box) const
     if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
-    // For now map "glyphs" to "font" in vertical text mode until the bounds returned by glyphs aren't garbage.
     LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return (lineBoxContain & LineBoxContainFont) || (!isHorizontal() && (lineBoxContain & LineBoxContainGlyphs));
+    return (lineBoxContain & LineBoxContainFont);
 }
 
 bool RootInlineBox::includeGlyphsForBox(InlineBox& box) const
@@ -1090,9 +1111,8 @@ bool RootInlineBox::includeGlyphsForBox(InlineBox& box) const
     if (!box.behavesLikeText() && is<InlineFlowBox>(box) && !downcast<InlineFlowBox>(box).hasTextChildren())
         return false;
 
-    // FIXME: We can't fit to glyphs yet for vertical text, since the bounds returned are garbage.
     LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return isHorizontal() && (lineBoxContain & LineBoxContainGlyphs);
+    return (lineBoxContain & LineBoxContainGlyphs);
 }
 
 bool RootInlineBox::includeInitialLetterForBox(InlineBox& box) const
@@ -1119,9 +1139,8 @@ bool RootInlineBox::includeMarginForBox(InlineBox& box) const
 
 bool RootInlineBox::fitsToGlyphs() const
 {
-    // FIXME: We can't fit to glyphs yet for vertical text, since the bounds returned are garbage.
     LineBoxContain lineBoxContain = renderer().style().lineBoxContain();
-    return isHorizontal() && ((lineBoxContain & LineBoxContainGlyphs) || (lineBoxContain & LineBoxContainInitialLetter));
+    return ((lineBoxContain & LineBoxContainGlyphs) || (lineBoxContain & LineBoxContainInitialLetter));
 }
 
 bool RootInlineBox::includesRootLineBoxFontOrLeading() const

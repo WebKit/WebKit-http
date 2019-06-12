@@ -81,15 +81,15 @@ void DFABytecodeCompiler::emitAppendAction(uint64_t action)
 {
     // High bits are used to store flags. See compileRuleList.
     if (action & ActionFlagMask) {
-        if (action & IfDomainFlag)
-            append<DFABytecodeInstruction>(m_bytecode, DFABytecodeInstruction::TestFlagsAndAppendActionWithIfDomain);
+        if (action & IfConditionFlag)
+            append<DFABytecodeInstruction>(m_bytecode, DFABytecodeInstruction::TestFlagsAndAppendActionWithIfCondition);
         else
             append<DFABytecodeInstruction>(m_bytecode, DFABytecodeInstruction::TestFlagsAndAppendAction);
         append<uint16_t>(m_bytecode, static_cast<uint16_t>(action >> 32));
         append<uint32_t>(m_bytecode, static_cast<uint32_t>(action));
     } else {
-        if (action & IfDomainFlag)
-            append<DFABytecodeInstruction>(m_bytecode, DFABytecodeInstruction::AppendActionWithIfDomain);
+        if (action & IfConditionFlag)
+            append<DFABytecodeInstruction>(m_bytecode, DFABytecodeInstruction::AppendActionWithIfCondition);
         else
             append<DFABytecodeInstruction>(m_bytecode, DFABytecodeInstruction::AppendAction);
         append<uint32_t>(m_bytecode, static_cast<uint32_t>(action));
@@ -218,7 +218,7 @@ DFABytecodeCompiler::JumpTable DFABytecodeCompiler::extractJumpTable(Vector<DFAB
         ASSERT(range.min >= jumpTable.min);
         ASSERT(range.min <= jumpTable.max);
 
-        jumpTable.destinations.append(range.destination);
+        jumpTable.destinations.uncheckedAppend(range.destination);
     }
 
     ranges.remove(firstRange, size);

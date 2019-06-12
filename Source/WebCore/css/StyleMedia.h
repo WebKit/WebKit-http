@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StyleMedia_h
-#define StyleMedia_h
+#pragma once
 
 #include "DOMWindowProperty.h"
 #include <wtf/RefCounted.h>
@@ -35,7 +34,7 @@ namespace WebCore {
 
 class Frame;
 
-class StyleMedia : public RefCounted<StyleMedia>, public DOMWindowProperty {
+class StyleMedia final : public RefCounted<StyleMedia>, public DOMWindowProperty {
 public:
     static Ref<StyleMedia> create(Frame* frame) { return adoptRef(*new StyleMedia(frame)); }
 
@@ -46,6 +45,4 @@ private:
     explicit StyleMedia(Frame*);
 };
 
-} // namespace
-
-#endif // StyleMedia_h
+} // namespace WebCore

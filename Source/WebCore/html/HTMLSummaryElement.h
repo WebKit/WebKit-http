@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef HTMLSummaryElement_h
-#define HTMLSummaryElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -32,24 +31,21 @@ public:
     static Ref<HTMLSummaryElement> create(const QualifiedName&, Document&);
 
     bool isActiveSummary() const;
-    virtual bool willRespondToMouseClickEvents() override;
+    bool willRespondToMouseClickEvents() final;
 
 private:
     HTMLSummaryElement(const QualifiedName&, Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual void defaultEventHandler(Event*) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+    void defaultEventHandler(Event&) final;
 
-    virtual void didAddUserAgentShadowRoot(ShadowRoot*) override;
+    void didAddUserAgentShadowRoot(ShadowRoot*) final;
 
-    // FIXME: Shadow DOM spec says we should be able to create shadow root on this element
-    virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
+    bool hasCustomFocusLogic() const final { return true; }
 
     HTMLDetailsElement* detailsElement() const;
 
-    virtual bool supportsFocus() const override;
+    bool supportsFocus() const final;
 };
 
-}
-
-#endif // HTMLSummaryElement_h
+} // namespace WebCore

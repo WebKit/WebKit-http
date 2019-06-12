@@ -19,14 +19,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathSegArcAbs_h
-#define SVGPathSegArcAbs_h
+#pragma once
 
 #include "SVGPathSegArc.h"
 
 namespace WebCore {
 
-class SVGPathSegArcAbs : public SVGPathSegArc {
+class SVGPathSegArcAbs final : public SVGPathSegArc {
 public:
     static Ref<SVGPathSegArcAbs> create(const SVGPathElement& element, SVGPathSegRole role, float x, float y, float r1, float r2, float angle, bool largeArcFlag, bool sweepFlag)
     {
@@ -39,10 +38,8 @@ private:
     {
     }
 
-    virtual unsigned short pathSegType() const override { return PATHSEG_ARC_ABS; }
-    virtual String pathSegTypeAsLetter() const override { return "A"; }
+    unsigned short pathSegType() const final { return PATHSEG_ARC_ABS; }
+    String pathSegTypeAsLetter() const final { return "A"; }
 };
 
 } // namespace WebCore
-
-#endif

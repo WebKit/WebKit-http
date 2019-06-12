@@ -2,6 +2,7 @@
 <html>
 <head>
 <script src="../resources/js-test-pre.js"></script>
+<script src="../resources/accessibility-helper.js"></script>
 </head>
 <body id="body">
 
@@ -20,7 +21,7 @@
 <div id="test11" class="test" role="article">article</div>
 <div id="test12" class="test" role="math">math</div>
 <div id="test13" class="test" role="note">note</div>
-<div id="test14" class="test" role="region">region</div>
+<div id="test14" class="test" role="table">table</div>
 <div id="test15" class="test" role="form">form</div>
 <div id="test16" class="test" role="grid">grid</div>
 <div id="test17" class="test" role="group">group</div>
@@ -58,7 +59,7 @@
 
 <script>
 
-    description("This tests all the cases where nameFrom: author is used instead of nameFrom: contents. This means that if these elements are used in aria-labelledby they should not return their inner text. The button should retain its aria-label as the description.");
+    description("This tests all the cases where nameFrom: author is used instead of nameFrom: contents. This means that if these elements are used in aria-labelledby they should not return their inner text. The button should retain its aria-label.");
 
     var labelledby = "";
     for (var k = 1; k < 42; k++) {
@@ -67,7 +68,11 @@
     document.getElementById("button").setAttribute("aria-labelledby", labelledby);
 
     if (window.accessibilityController) {
-        debug("Button description: " + accessibilityController.accessibleElementById("button").description);
+        var buttonAccName = platformValueForW3CName(accessibilityController.accessibleElementById("button"));
+        var button = document.getElementById("button");
+        shouldBeTrue("buttonAccName == button.getAttribute('aria-label')");
+        shouldBeTrue("buttonAccName != button.innerText");
+
         document.getElementById("content").style.visibility = "hidden";
     }
 

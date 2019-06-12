@@ -29,7 +29,8 @@
 #include "config.h"
 #include "TypeProfilerLog.h"
 
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
+#include "SlotVisitor.h"
 #include "TypeLocation.h"
 #include <wtf/CurrentTime.h>
 
@@ -81,17 +82,33 @@ void TypeProfilerLog::processLogEntries(const String& reason)
         TypeLocation* location = entry->location;
         location->m_lastSeenType = type;
         if (location->m_globalTypeSet)
-            location->m_globalTypeSet->addTypeInformation(type, shape, structure);
-        location->m_instructionTypeSet->addTypeInformation(type, shape, structure);
+            location->m_globalTypeSet->addTypeInformation(type, shape.copyRef(), structure);
+        location->m_instructionTypeSet->addTypeInformation(type, WTFMove(shape), structure);
 
         entry++;
     }
 
+    // Note that we don't update this cursor until we're done processing the log.
+    // This allows us to have a sane story in case we have to mark the log
+    // while processing through it. We won't be iterating over the log while
+    // marking it, but we may be in the middle of iterating over when the mutator
+    // pauses and causes the collector to mark the log.
     m_currentLogEntryPtr = m_logStartPtr;
 
     if (verbose) {
         double after = currentTimeMS();
         dataLogF(" Processing the log took: '%f' ms\n", after - before);
+    }
+}
+
+void TypeProfilerLog::visit(SlotVisitor& visitor)
+{
+    for (LogEntry* entry = m_logStartPtr; entry != m_currentLogEntryPtr; ++entry) {
+        visitor.appendUnbarriered(entry->value);
+        if (StructureID id = entry->structureID) {
+            Structure* structure = visitor.heap()->structureIDTable().get(id); 
+            visitor.appendUnbarriered(structure);
+        }
     }
 }
 

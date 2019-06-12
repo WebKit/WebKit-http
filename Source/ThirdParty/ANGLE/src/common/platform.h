@@ -65,6 +65,10 @@
 #       include <d3dcompiler.h>
 #   endif
 
+#if defined(ANGLE_ENABLE_D3D9) || defined(ANGLE_ENABLE_D3D11)
+#include <wrl.h>
+#endif
+
 #   if defined(ANGLE_ENABLE_WINDOWS_STORE)
 #       include <dxgi1_3.h>
 #       if defined(_DEBUG)
@@ -77,8 +81,16 @@
 #   undef far
 #endif
 
-#if !defined(_M_ARM) && !defined(ANGLE_PLATFORM_ANDROID)
-#   define ANGLE_USE_SSE
+#if defined(_MSC_VER) && !defined(_M_ARM)
+#include <intrin.h>
+#define ANGLE_USE_SSE
+#elif defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
+#include <x86intrin.h>
+#define ANGLE_USE_SSE
 #endif
+
+// The MemoryBarrier function name collides with a macro under Windows
+// We will undef the macro so that the function name does not get replaced
+#undef MemoryBarrier
 
 #endif // COMMON_PLATFORM_H_

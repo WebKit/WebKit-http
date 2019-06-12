@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -91,29 +91,29 @@ Vector<Action> ContentExtensionsBackend::actionsForResourceLoad(const ResourceLo
         RELEASE_ASSERT(contentExtension);
         const CompiledContentExtension& compiledExtension = contentExtension->compiledExtension();
         
-        DFABytecodeInterpreter withoutDomainsInterpreter(compiledExtension.filtersWithoutDomainsBytecode(), compiledExtension.filtersWithoutDomainsBytecodeLength());
-        DFABytecodeInterpreter::Actions withoutDomainsActions = withoutDomainsInterpreter.interpret(urlCString, flags);
+        DFABytecodeInterpreter withoutConditionsInterpreter(compiledExtension.filtersWithoutConditionsBytecode(), compiledExtension.filtersWithoutConditionsBytecodeLength());
+        DFABytecodeInterpreter::Actions withoutConditionsActions = withoutConditionsInterpreter.interpret(urlCString, flags);
         
-        String domain = resourceLoadInfo.mainDocumentURL.host();
-        DFABytecodeInterpreter withDomainsInterpreter(compiledExtension.filtersWithDomainsBytecode(), compiledExtension.filtersWithDomainsBytecodeLength());
-        DFABytecodeInterpreter::Actions withDomainsActions = withDomainsInterpreter.interpretWithDomains(urlCString, flags, contentExtension->cachedDomainActions(domain));
+        URL topURL = resourceLoadInfo.mainDocumentURL;
+        DFABytecodeInterpreter withConditionsInterpreter(compiledExtension.filtersWithConditionsBytecode(), compiledExtension.filtersWithConditionsBytecodeLength());
+        DFABytecodeInterpreter::Actions withConditionsActions = withConditionsInterpreter.interpretWithConditions(urlCString, flags, contentExtension->topURLActions(topURL));
         
         const SerializedActionByte* actions = compiledExtension.actions();
         const unsigned actionsLength = compiledExtension.actionsLength();
         
         bool sawIgnorePreviousRules = false;
-        const Vector<uint32_t>& universalWithDomains = contentExtension->universalActionsWithDomains(domain);
-        const Vector<uint32_t>& universalWithoutDomains = contentExtension->universalActionsWithoutDomains();
-        if (!withoutDomainsActions.isEmpty() || !withDomainsActions.isEmpty() || !universalWithDomains.isEmpty() || !universalWithoutDomains.isEmpty()) {
+        const Vector<uint32_t>& universalWithConditions = contentExtension->universalActionsWithConditions(topURL);
+        const Vector<uint32_t>& universalWithoutConditions = contentExtension->universalActionsWithoutConditions();
+        if (!withoutConditionsActions.isEmpty() || !withConditionsActions.isEmpty() || !universalWithConditions.isEmpty() || !universalWithoutConditions.isEmpty()) {
             Vector<uint32_t> actionLocations;
-            actionLocations.reserveInitialCapacity(withoutDomainsActions.size() + withDomainsActions.size() + universalWithoutDomains.size() + universalWithDomains.size());
-            for (uint64_t actionLocation : withoutDomainsActions)
+            actionLocations.reserveInitialCapacity(withoutConditionsActions.size() + withConditionsActions.size() + universalWithoutConditions.size() + universalWithConditions.size());
+            for (uint64_t actionLocation : withoutConditionsActions)
                 actionLocations.uncheckedAppend(static_cast<uint32_t>(actionLocation));
-            for (uint64_t actionLocation : withDomainsActions)
+            for (uint64_t actionLocation : withConditionsActions)
                 actionLocations.uncheckedAppend(static_cast<uint32_t>(actionLocation));
-            for (uint32_t actionLocation : universalWithoutDomains)
+            for (uint32_t actionLocation : universalWithoutConditions)
                 actionLocations.uncheckedAppend(actionLocation);
-            for (uint32_t actionLocation : universalWithDomains)
+            for (uint32_t actionLocation : universalWithConditions)
                 actionLocations.uncheckedAppend(actionLocation);
             std::sort(actionLocations.begin(), actionLocations.end());
 
@@ -146,8 +146,11 @@ StyleSheetContents* ContentExtensionsBackend::globalDisplayNoneStyleSheet(const 
     return contentExtension ? contentExtension->globalDisplayNoneStyleSheet() : nullptr;
 }
 
-BlockedStatus ContentExtensionsBackend::processContentExtensionRulesForLoad(ResourceRequest& request, ResourceType resourceType, DocumentLoader& initiatingDocumentLoader)
+BlockedStatus ContentExtensionsBackend::processContentExtensionRulesForLoad(const URL& url, ResourceType resourceType, DocumentLoader& initiatingDocumentLoader)
 {
+    if (m_contentExtensions.isEmpty())
+        return { };
+
     Document* currentDocument = nullptr;
     URL mainDocumentURL;
 
@@ -157,22 +160,24 @@ BlockedStatus ContentExtensionsBackend::processContentExtensionRulesForLoad(Reso
         if (initiatingDocumentLoader.isLoadingMainResource()
             && frame->isMainFrame()
             && resourceType == ResourceType::Document)
-            mainDocumentURL = request.url();
+            mainDocumentURL = url;
         else if (Document* mainDocument = frame->mainFrame().document())
             mainDocumentURL = mainDocument->url();
     }
 
-    ResourceLoadInfo resourceLoadInfo = { request.url(), mainDocumentURL, resourceType };
+    ResourceLoadInfo resourceLoadInfo = { url, mainDocumentURL, resourceType };
     Vector<ContentExtensions::Action> actions = actionsForResourceLoad(resourceLoadInfo);
 
     bool willBlockLoad = false;
+    bool willBlockCookies = false;
+    bool willMakeHTTPS = false;
     for (const auto& action : actions) {
         switch (action.type()) {
         case ContentExtensions::ActionType::BlockLoad:
             willBlockLoad = true;
             break;
         case ContentExtensions::ActionType::BlockCookies:
-            request.setAllowCookies(false);
+            willBlockCookies = true;
             break;
         case ContentExtensions::ActionType::CSSDisplayNoneSelector:
             if (resourceType == ResourceType::Document)
@@ -191,22 +196,9 @@ BlockedStatus ContentExtensionsBackend::processContentExtensionRulesForLoad(Reso
             break;
         }
         case ContentExtensions::ActionType::MakeHTTPS: {
-            const URL originalURL = request.url();
-            if (originalURL.protocolIs("http") && (!originalURL.hasPort() || isDefaultPortForProtocol(originalURL.port(), originalURL.protocol()))) {
-                URL newURL = originalURL;
-                newURL.setProtocol("https");
-                if (originalURL.hasPort())
-                    newURL.setPort(defaultPortForProtocol("https"));
-                request.setURL(newURL);
-
-                if (resourceType == ResourceType::Document && initiatingDocumentLoader.isLoadingMainResource()) {
-                    // This is to make sure the correct 'new' URL shows in the location bar.
-                    initiatingDocumentLoader.request().setURL(newURL);
-                    initiatingDocumentLoader.frameLoader()->client().dispatchDidChangeProvisionalURL();
-                }
-                if (currentDocument)
-                    currentDocument->addConsoleMessage(MessageSource::ContentBlocker, MessageLevel::Info, makeString("Content blocker promoted URL from ", originalURL.string(), " to ", newURL.string()));
-            }
+            if ((url.protocolIs("http") || url.protocolIs("ws"))
+                && (!url.port() || isDefaultPortForProtocol(url.port().value(), url.protocol())))
+                willMakeHTTPS = true;
             break;
         }
         case ContentExtensions::ActionType::IgnorePreviousRules:
@@ -215,20 +207,42 @@ BlockedStatus ContentExtensionsBackend::processContentExtensionRulesForLoad(Reso
         }
     }
 
-    if (willBlockLoad) {
-        if (currentDocument)
-            currentDocument->addConsoleMessage(MessageSource::ContentBlocker, MessageLevel::Info, makeString("Content blocker prevented frame displaying ", mainDocumentURL.string(), " from loading a resource from ", request.url().string()));
-        return BlockedStatus::Blocked;
+    if (currentDocument) {
+        if (willMakeHTTPS) {
+            ASSERT(url.protocolIs("http") || url.protocolIs("ws"));
+            String newProtocol = url.protocolIs("http") ? ASCIILiteral("https") : ASCIILiteral("wss");
+            currentDocument->addConsoleMessage(MessageSource::ContentBlocker, MessageLevel::Info, makeString("Content blocker promoted URL from ", url.string(), " to ", newProtocol));
+        }
+        if (willBlockLoad)
+            currentDocument->addConsoleMessage(MessageSource::ContentBlocker, MessageLevel::Info, makeString("Content blocker prevented frame displaying ", mainDocumentURL.string(), " from loading a resource from ", url.string()));
     }
-    return BlockedStatus::NotBlocked;
+    return { willBlockLoad, willBlockCookies, willMakeHTTPS };
 }
 
 const String& ContentExtensionsBackend::displayNoneCSSRule()
 {
-    static NeverDestroyed<const String> rule(ASCIILiteral("display:none !important;"));
+    static NeverDestroyed<const String> rule(MAKE_STATIC_STRING_IMPL("display:none !important;"));
     return rule;
 }
 
+void applyBlockedStatusToRequest(const BlockedStatus& status, ResourceRequest& request)
+{
+    if (status.blockedCookies)
+        request.setAllowCookies(false);
+
+    if (status.madeHTTPS) {
+        const URL& originalURL = request.url();
+        ASSERT(originalURL.protocolIs("http"));
+        ASSERT(!originalURL.port() || isDefaultPortForProtocol(originalURL.port().value(), originalURL.protocol()));
+
+        URL newURL = originalURL;
+        newURL.setProtocol("https");
+        if (originalURL.port())
+            newURL.setPort(defaultPortForProtocol("https").value());
+        request.setURL(newURL);
+    }
+}
+    
 } // namespace ContentExtensions
 
 } // namespace WebCore

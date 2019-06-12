@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EdenGCActivityCallback_h
-#define EdenGCActivityCallback_h
+#pragma once
 
 #include "GCActivityCallback.h"
 
@@ -34,19 +33,12 @@ class JS_EXPORT_PRIVATE EdenGCActivityCallback : public GCActivityCallback {
 public:
     EdenGCActivityCallback(Heap*);
 
-    virtual void doCollection() override;
+    void doCollection() override;
 
 protected:
-#if USE(CF)
-    EdenGCActivityCallback(Heap* heap, CFRunLoopRef runLoop)
-        : GCActivityCallback(heap, runLoop)
-    {
-    }
-#endif
-
-    virtual double lastGCLength() override;
-    virtual double gcTimeSlice(size_t bytes) override;
-    virtual double deathRate() override;
+    Seconds lastGCLength() override;
+    double gcTimeSlice(size_t bytes) override;
+    double deathRate() override;
 };
 
 inline RefPtr<GCActivityCallback> GCActivityCallback::createEdenTimer(Heap* heap)
@@ -55,5 +47,3 @@ inline RefPtr<GCActivityCallback> GCActivityCallback::createEdenTimer(Heap* heap
 }
 
 } // namespace JSC
-
-#endif // EdenGCActivityCallback_h

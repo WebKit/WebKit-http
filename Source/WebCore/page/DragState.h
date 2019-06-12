@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DragState_h
-#define DragState_h
+#pragma once
 
 #include "DataTransfer.h"
 #include "DragActions.h"
@@ -35,11 +34,10 @@ namespace WebCore {
 
 struct DragState {
     RefPtr<Element> source; // Element that may be a drag source, for the current mouse gesture.
+    RefPtr<Range> draggedContentRange;
     bool shouldDispatchEvents;
     DragSourceAction type;
     RefPtr<DataTransfer> dataTransfer; // Used on only the source side of dragging.
 };
 
 } // namespace WebCore
-
-#endif // DragState_h

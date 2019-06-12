@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGImageLoader_h
-#define SVGImageLoader_h
+#pragma once
 
 #include "ImageLoader.h"
 
@@ -32,10 +31,8 @@ public:
     virtual ~SVGImageLoader();
 
 private:
-    virtual void dispatchLoadEvent() override;
-    virtual String sourceURI(const AtomicString&) const override;
+    void dispatchLoadEvent() override;
+    String sourceURI(const AtomicString&) const override;
 };
 
 } // namespace WebCore
-
-#endif // SVGImageLoader_h

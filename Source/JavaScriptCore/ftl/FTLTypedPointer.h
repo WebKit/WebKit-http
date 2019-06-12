@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLTypedPointer_h
-#define FTLTypedPointer_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -47,13 +46,13 @@ public:
     {
     }
     
-    bool operator!() const
+    explicit operator bool() const
     {
         ASSERT(!m_heap == !m_value);
-        return !m_heap;
+        return !!m_heap;
     }
     
-    const AbstractHeap& heap() const { return *m_heap; }
+    const AbstractHeap* heap() const { return m_heap; }
     LValue value() const { return m_value; }
 
 private:
@@ -64,6 +63,3 @@ private:
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLTypedPointer_h
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3InsertionSet_h
-#define B3InsertionSet_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "B3Origin.h"
 #include "B3Type.h"
+#include "B3TypeMap.h"
 #include <wtf/Insertion.h>
 #include <wtf/Vector.h>
 
@@ -71,17 +71,18 @@ public:
 
     Value* insertBottom(size_t index, Origin, Type);
     Value* insertBottom(size_t index, Value*);
+    
+    Value* insertClone(size_t index, Value*);
 
     void execute(BasicBlock*);
 
 private:
     Procedure& m_procedure;
     Vector<Insertion, 8> m_insertions;
+
+    TypeMap<Value*> m_bottomForType;
 };
 
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3InsertionSet_h
-

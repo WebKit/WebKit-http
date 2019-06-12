@@ -20,8 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFilterElement_h
-#define SVGFilterElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedEnumeration.h"
@@ -29,7 +28,6 @@
 #include "SVGAnimatedLength.h"
 #include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGNames.h"
 #include "SVGURIReference.h"
 #include "SVGUnitTypes.h"
 
@@ -46,17 +44,17 @@ public:
 private:
     SVGFilterElement(const QualifiedName&, Document&);
 
-    virtual bool needsPendingResourceHandling() const override { return false; }
+    bool needsPendingResourceHandling() const final { return false; }
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void svgAttributeChanged(const QualifiedName&) final;
+    void childrenChanged(const ChildChange&) final;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+    bool childShouldCreateRenderer(const Node&) const final;
 
-    virtual bool selfHasRelativeLengths() const override { return true; }
+    bool selfHasRelativeLengths() const final { return true; }
 
     static const AtomicString& filterResXIdentifier();
     static const AtomicString& filterResYIdentifier();
@@ -75,6 +73,4 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 };
 
-}
-
-#endif
+} // namespace WebCore

@@ -23,7 +23,6 @@
  */
 
 #include "config.h"
-
 #include "ComplexTextController.h"
 
 #include "CoreTextSPI.h"
@@ -31,6 +30,7 @@
 #include "FontCascade.h"
 #include "TextRun.h"
 #include "WebCoreSystemInterface.h"
+#include <wtf/SoftLinking.h>
 #include <wtf/WeakPtr.h>
 
 #if PLATFORM(IOS)
@@ -99,77 +99,61 @@
 
 namespace WebCore {
 
-ComplexTextController::ComplexTextRun::ComplexTextRun(CTRunRef ctRun, const Font& font, const UChar* characters, unsigned stringLocation, size_t stringLength, CFRange runRange)
-    : m_font(font)
+ComplexTextController::ComplexTextRun::ComplexTextRun(CTRunRef ctRun, const Font& font, const UChar* characters, unsigned stringLocation, unsigned stringLength, unsigned indexBegin, unsigned indexEnd)
+    : m_initialAdvance(CTRunGetInitialAdvance(ctRun))
+    , m_font(font)
     , m_characters(characters)
-    , m_stringLocation(stringLocation)
     , m_stringLength(stringLength)
-    , m_indexBegin(runRange.location)
-    , m_indexEnd(runRange.location + runRange.length)
-    , m_initialAdvance(CTRunGetInitialAdvance(ctRun))
+    , m_indexBegin(indexBegin)
+    , m_indexEnd(indexEnd)
+    , m_glyphCount(CTRunGetGlyphCount(ctRun))
+    , m_stringLocation(stringLocation)
     , m_isLTR(!(CTRunGetStatus(ctRun) & kCTRunStatusRightToLeft))
-    , m_isMonotonic(true)
 {
-    m_glyphCount = CTRunGetGlyphCount(ctRun);
-    m_coreTextIndices = CTRunGetStringIndicesPtr(ctRun);
-    if (!m_coreTextIndices) {
-        m_coreTextIndicesVector.grow(m_glyphCount);
-        CTRunGetStringIndices(ctRun, CFRangeMake(0, 0), m_coreTextIndicesVector.data());
-        m_coreTextIndices = m_coreTextIndicesVector.data();
+    const CFIndex* coreTextIndicesPtr = CTRunGetStringIndicesPtr(ctRun);
+    Vector<CFIndex> coreTextIndices;
+    if (!coreTextIndicesPtr) {
+        coreTextIndices.grow(m_glyphCount);
+        CTRunGetStringIndices(ctRun, CFRangeMake(0, 0), coreTextIndices.data());
+        coreTextIndicesPtr = coreTextIndices.data();
     }
+    m_coreTextIndices.reserveInitialCapacity(m_glyphCount);
+    for (unsigned i = 0; i < m_glyphCount; ++i)
+        m_coreTextIndices.uncheckedAppend(coreTextIndicesPtr[i]);
 
-    m_glyphs = CTRunGetGlyphsPtr(ctRun);
-    if (!m_glyphs) {
-        m_glyphsVector.grow(m_glyphCount);
-        CTRunGetGlyphs(ctRun, CFRangeMake(0, 0), m_glyphsVector.data());
-        m_glyphs = m_glyphsVector.data();
+    const CGGlyph* glyphsPtr = CTRunGetGlyphsPtr(ctRun);
+    Vector<CGGlyph> glyphs;
+    if (!glyphsPtr) {
+        glyphs.grow(m_glyphCount);
+        CTRunGetGlyphs(ctRun, CFRangeMake(0, 0), glyphs.data());
+        glyphsPtr = glyphs.data();
     }
+    m_glyphs.reserveInitialCapacity(m_glyphCount);
+    for (unsigned i = 0; i < m_glyphCount; ++i)
+        m_glyphs.uncheckedAppend(glyphsPtr[i]);
 
-    m_advances = CTRunGetAdvancesPtr(ctRun);
-    if (!m_advances) {
-        m_advancesVector.grow(m_glyphCount);
-        CTRunGetAdvances(ctRun, CFRangeMake(0, 0), m_advancesVector.data());
-        m_advances = m_advancesVector.data();
+    if (CTRunGetStatus(ctRun) & kCTRunStatusHasOrigins) {
+        Vector<CGSize> baseAdvances(m_glyphCount);
+        Vector<CGPoint> glyphOrigins(m_glyphCount);
+        CTRunGetBaseAdvancesAndOrigins(ctRun, CFRangeMake(0, 0), baseAdvances.data(), glyphOrigins.data());
+        m_baseAdvances.reserveInitialCapacity(m_glyphCount);
+        m_glyphOrigins.reserveInitialCapacity(m_glyphCount);
+        for (unsigned i = 0; i < m_glyphCount; ++i) {
+            m_baseAdvances.uncheckedAppend(baseAdvances[i]);
+            m_glyphOrigins.uncheckedAppend(glyphOrigins[i]);
+        }
+    } else {
+        const CGSize* baseAdvances = CTRunGetAdvancesPtr(ctRun);
+        Vector<CGSize> baseAdvancesVector;
+        if (!baseAdvances) {
+            baseAdvancesVector.grow(m_glyphCount);
+            CTRunGetAdvances(ctRun, CFRangeMake(0, 0), baseAdvancesVector.data());
+            baseAdvances = baseAdvancesVector.data();
+        }
+        m_baseAdvances.reserveInitialCapacity(m_glyphCount);
+        for (unsigned i = 0; i < m_glyphCount; ++i)
+            m_baseAdvances.uncheckedAppend(baseAdvances[i]);
     }
-}
-
-// Missing glyphs run constructor. Core Text will not generate a run of missing glyphs, instead falling back on
-// glyphs from LastResort. We want to use the primary font's missing glyph in order to match the fast text code path.
-ComplexTextController::ComplexTextRun::ComplexTextRun(const Font& font, const UChar* characters, unsigned stringLocation, size_t stringLength, bool ltr)
-    : m_font(font)
-    , m_characters(characters)
-    , m_stringLocation(stringLocation)
-    , m_stringLength(stringLength)
-    , m_indexBegin(0)
-    , m_indexEnd(stringLength)
-    , m_initialAdvance(CGSizeZero)
-    , m_isLTR(ltr)
-    , m_isMonotonic(true)
-{
-    m_coreTextIndicesVector.reserveInitialCapacity(m_stringLength);
-    unsigned r = 0;
-    while (r < m_stringLength) {
-        m_coreTextIndicesVector.uncheckedAppend(r);
-        if (U_IS_SURROGATE(m_characters[r])) {
-            ASSERT(r + 1 < m_stringLength);
-            ASSERT(U_IS_SURROGATE_LEAD(m_characters[r]));
-            ASSERT(U_IS_TRAIL(m_characters[r + 1]));
-            r += 2;
-        } else
-            r++;
-    }
-    m_glyphCount = m_coreTextIndicesVector.size();
-    if (!ltr) {
-        for (unsigned r = 0, end = m_glyphCount - 1; r < m_glyphCount / 2; ++r, --end)
-            std::swap(m_coreTextIndicesVector[r], m_coreTextIndicesVector[end]);
-    }
-    m_coreTextIndices = m_coreTextIndicesVector.data();
-
-    // Synthesize a run of missing glyphs.
-    m_glyphsVector.fill(0, m_glyphCount);
-    m_glyphs = m_glyphsVector.data();
-    m_advancesVector.fill(CGSizeMake(m_font.widthForGlyph(0), 0), m_glyphCount);
-    m_advances = m_advancesVector.data();
 }
 
 struct ProviderInfo {
@@ -198,7 +182,7 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
 {
     if (!font) {
         // Create a run of missing glyphs from the primary font.
-        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFont(), cp, stringLocation, length, m_run.ltr()));
+        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFont(), cp, stringLocation, length, 0, length, m_run.ltr()));
         return;
     }
 
@@ -262,7 +246,7 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
         if (isSystemFallback) {
             CFDictionaryRef runAttributes = CTRunGetAttributes(ctRun);
             CTFontRef runCTFont = static_cast<CTFontRef>(CFDictionaryGetValue(runAttributes, kCTFontAttributeName));
-            ASSERT(CFGetTypeID(runCTFont) == CTFontGetTypeID());
+            ASSERT(runCTFont && CFGetTypeID(runCTFont) == CTFontGetTypeID());
             RetainPtr<CFTypeRef> runFontEqualityObject = FontPlatformData::objectForEqualityCheck(runCTFont);
             if (!safeCFEqual(runFontEqualityObject.get(), font->platformData().objectForEqualityCheck().get())) {
                 // Begin trying to see if runFont matches any of the fonts in the fallback list.
@@ -282,11 +266,11 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
                     // NSFontRenderingMode.
                     RetainPtr<CFStringRef> fontName = adoptCF(CTFontCopyPostScriptName(runCTFont));
                     if (CFEqual(fontName.get(), CFSTR("LastResort"))) {
-                        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFont(), cp, stringLocation + runRange.location, runRange.length, m_run.ltr()));
+                        m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFont(), cp, stringLocation, length, runRange.location, runRange.location + runRange.length, m_run.ltr()));
                         continue;
                     }
                     auto& fontCache = FontCache::singleton();
-                    runFont = fontCache.fontForFamily(m_font.fontDescription(), fontName.get(), false).get();
+                    runFont = fontCache.fontForFamily(m_font.fontDescription(), fontName.get()).get();
                     // Core Text may have used a font that our font lookup path cannot find. In that case, fall back on
                     // using the font as returned.
                     if (!runFont) {
@@ -301,7 +285,7 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
         if (m_fallbackFonts && runFont != &m_font.primaryFont())
             m_fallbackFonts->add(font);
 
-        m_complexTextRuns.append(ComplexTextRun::create(ctRun, *runFont, cp, stringLocation, length, runRange));
+        m_complexTextRuns.append(ComplexTextRun::create(ctRun, *runFont, cp, stringLocation, length, runRange.location, runRange.location + runRange.length));
     }
 }
 

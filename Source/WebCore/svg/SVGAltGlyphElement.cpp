@@ -55,34 +55,32 @@ Ref<SVGAltGlyphElement> SVGAltGlyphElement::create(const QualifiedName& tagName,
     return adoptRef(*new SVGAltGlyphElement(tagName, document));
 }
 
-void SVGAltGlyphElement::setGlyphRef(const AtomicString&, ExceptionCode& ec)
+ExceptionOr<void> SVGAltGlyphElement::setGlyphRef(const AtomicString&)
 {
-    ec = NO_MODIFICATION_ALLOWED_ERR;
+    return Exception { NO_MODIFICATION_ALLOWED_ERR };
 }
 
 const AtomicString& SVGAltGlyphElement::glyphRef() const
 {
-    return fastGetAttribute(SVGNames::glyphRefAttr);
+    return attributeWithoutSynchronization(SVGNames::glyphRefAttr);
 }
 
-void SVGAltGlyphElement::setFormat(const AtomicString&, ExceptionCode& ec)
+ExceptionOr<void> SVGAltGlyphElement::setFormat(const AtomicString&)
 {
-    ec = NO_MODIFICATION_ALLOWED_ERR;
+    return Exception { NO_MODIFICATION_ALLOWED_ERR };
 }
 
 const AtomicString& SVGAltGlyphElement::format() const
 {
-    return fastGetAttribute(SVGNames::formatAttr);
+    return attributeWithoutSynchronization(SVGNames::formatAttr);
 }
 
 bool SVGAltGlyphElement::childShouldCreateRenderer(const Node& child) const
 {
-    if (child.isTextNode())
-        return true;
-    return false;
+    return child.isTextNode();
 }
 
-RenderPtr<RenderElement> SVGAltGlyphElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> SVGAltGlyphElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderSVGTSpan>(*this, WTFMove(style));
 }
@@ -90,17 +88,14 @@ RenderPtr<RenderElement> SVGAltGlyphElement::createElementRenderer(Ref<RenderSty
 bool SVGAltGlyphElement::hasValidGlyphElements(Vector<String>& glyphNames) const
 {
     String target;
-    Element* element = targetElementFromIRIString(getAttribute(XLinkNames::hrefAttr), document(), &target);
-    if (!element)
-        return false;
+    auto* element = targetElementFromIRIString(getAttribute(XLinkNames::hrefAttr), document(), &target);
 
-    if (is<SVGGlyphElement>(*element)) {
+    if (is<SVGGlyphElement>(element)) {
         glyphNames.append(target);
         return true;
     }
 
-    if (is<SVGAltGlyphDefElement>(*element)
-        && downcast<SVGAltGlyphDefElement>(*element).hasValidGlyphElements(glyphNames))
+    if (is<SVGAltGlyphDefElement>(element) && downcast<SVGAltGlyphDefElement>(*element).hasValidGlyphElements(glyphNames))
         return true;
 
     return false;

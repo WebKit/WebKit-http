@@ -23,11 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SMILTime_h
-#define SMILTime_h
+#pragma once
 
 #include <algorithm>
 #include <cmath>
+#include <wtf/Seconds.h>
 
 namespace WebCore {
 
@@ -35,6 +35,7 @@ class SMILTime {
 public:
     SMILTime() : m_time(0) { }
     SMILTime(double time) : m_time(time) { ASSERT(!std::isnan(time)); }
+    SMILTime(Seconds time) : m_time(time.value()) { ASSERT(!std::isnan(time.value())); }
     SMILTime(const SMILTime& o) : m_time(o.m_time) { }
     
     static SMILTime unresolved() { return unresolvedValue; }
@@ -94,6 +95,4 @@ SMILTime operator-(const SMILTime&, const SMILTime&);
 // So multiplying times does not make too much sense but SMIL defines it for duration * repeatCount
 SMILTime operator*(const SMILTime&, const SMILTime&);
 
-}
-
-#endif // SMILTime_h
+} // namespace WebCore

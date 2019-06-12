@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +32,7 @@
 #include "Error.h"
 #include "IntlCollator.h"
 #include "JSBoundFunction.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
-#include "JSObject.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
 
 namespace JSC {
 
@@ -47,7 +45,7 @@ static EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeFuncResolvedOptions(Exe
 
 namespace JSC {
 
-const ClassInfo IntlCollatorPrototype::s_info = { "Object", &IntlCollator::s_info, &collatorPrototypeTable, CREATE_METHOD_TABLE(IntlCollatorPrototype) };
+const ClassInfo IntlCollatorPrototype::s_info = { "Object", &Base::s_info, &collatorPrototypeTable, nullptr, CREATE_METHOD_TABLE(IntlCollatorPrototype) };
 
 /* Source for IntlCollatorPrototype.lut.h
 @begin collatorPrototypeTable
@@ -69,7 +67,7 @@ Structure* IntlCollatorPrototype::createStructure(VM& vm, JSGlobalObject* global
 }
 
 IntlCollatorPrototype::IntlCollatorPrototype(VM& vm, Structure* structure)
-    : IntlCollator(vm, structure)
+    : Base(vm, structure)
 {
 }
 
@@ -78,13 +76,10 @@ void IntlCollatorPrototype::finishCreation(VM& vm)
     Base::finishCreation(vm);
 }
 
-bool IntlCollatorPrototype::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticFunctionSlot<JSObject>(state, collatorPrototypeTable, jsCast<IntlCollatorPrototype*>(object), propertyName, slot);
-}
-
 static EncodedJSValue JSC_HOST_CALL IntlCollatorFuncCompare(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     // 10.3.4 Collator Compare Functions (ECMA-402 2.0)
     // 1. Let collator be the this value.
     // 2. Assert: Type(collator) is Object and collator has an [[initializedCollator]] internal slot whose value is true.
@@ -95,41 +90,44 @@ static EncodedJSValue JSC_HOST_CALL IntlCollatorFuncCompare(ExecState* state)
     // 5. Let X be ToString(x).
     JSString* x = state->argument(0).toString(state);
     // 6. ReturnIfAbrupt(X).
-    if (state->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 7. Let Y be ToString(y).
     JSString* y = state->argument(1).toString(state);
     // 8. ReturnIfAbrupt(Y).
-    if (state->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 9. Return CompareStrings(collator, X, Y).
-    return JSValue::encode(collator->compareStrings(*state, x->view(state).get(), y->view(state).get()));
+    auto xViewWithString = x->viewWithUnderlyingString(state);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    auto yViewWithString = y->viewWithUnderlyingString(state);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
+    return JSValue::encode(collator->compareStrings(*state, xViewWithString.view, yViewWithString.view));
 }
 
 EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeGetterCompare(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // 10.3.3 Intl.Collator.prototype.compare (ECMA-402 2.0)
     // 1. Let collator be this Collator object.
-    IntlCollator* collator = jsDynamicCast<IntlCollator*>(state->thisValue());
+    IntlCollator* collator = jsDynamicCast<IntlCollator*>(vm, state->thisValue());
     if (!collator)
-        return JSValue::encode(throwTypeError(state, ASCIILiteral("Intl.Collator.prototype.compare called on value that's not an object initialized as a Collator")));
+        return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.Collator.prototype.compare called on value that's not an object initialized as a Collator")));
 
     JSBoundFunction* boundCompare = collator->boundCompare();
     // 2. If collator.[[boundCompare]] is undefined,
     if (!boundCompare) {
-        VM& vm = state->vm();
         JSGlobalObject* globalObject = collator->globalObject();
         // a. Let F be a new built-in function object as defined in 11.3.4.
         // b. The value of F’s length property is 2.
         JSFunction* targetObject = JSFunction::create(vm, globalObject, 2, ASCIILiteral("compare"), IntlCollatorFuncCompare, NoIntrinsic);
-        JSArray* boundArgs = JSArray::tryCreateUninitialized(vm, globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), 0);
-        if (!boundArgs)
-            return JSValue::encode(throwOutOfMemoryError(state));
 
         // c. Let bc be BoundFunctionCreate(F, «this value»).
-        boundCompare = JSBoundFunction::create(vm, globalObject, targetObject, collator, boundArgs, 2, ASCIILiteral("compare"));
+        boundCompare = JSBoundFunction::create(vm, state, globalObject, targetObject, collator, nullptr, 2, ASCIILiteral("compare"));
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
         // d. Set collator.[[boundCompare]] to bc.
         collator->setBoundCompare(vm, boundCompare);
     }
@@ -139,11 +137,15 @@ EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeGetterCompare(ExecState* state
 
 EncodedJSValue JSC_HOST_CALL IntlCollatorPrototypeFuncResolvedOptions(ExecState* state)
 {
-    // 10.3.5 Intl.Collator.prototype.resolvedOptions() (ECMA-402 2.0)
-    IntlCollator* collator = jsDynamicCast<IntlCollator*>(state->thisValue());
-    if (!collator)
-        return JSValue::encode(throwTypeError(state, ASCIILiteral("Intl.Collator.prototype.resolvedOptions called on value that's not an object initialized as a Collator")));
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
+    // 10.3.5 Intl.Collator.prototype.resolvedOptions() (ECMA-402 2.0)
+    IntlCollator* collator = jsDynamicCast<IntlCollator*>(vm, state->thisValue());
+    if (!collator)
+        return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.Collator.prototype.resolvedOptions called on value that's not an object initialized as a Collator")));
+
+    scope.release();
     return JSValue::encode(collator->resolvedOptions(*state));
 }
 

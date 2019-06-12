@@ -169,14 +169,21 @@ static OSStatus NSCarbonWindowHandleEvent(EventHandlerCallRef inEventHandlerCall
 	// But now the non-retained window class is a Carbon secret that's not even in
 	// WindowsPriv.h; maybe we'll have to revisit this if someone needs to use WebKit
 	// in a non-retained window.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     backingStoreType = NSBackingStoreRetained;
+#pragma clang diagnostic pop
 
     // Figure out the window's style mask.
     styleMask = WKCarbonWindowMask();
-    if (windowAttributes & kWindowCloseBoxAttribute) styleMask |= NSClosableWindowMask;
-    if (windowAttributes & kWindowResizableAttribute) styleMask |= NSResizableWindowMask;
-    if (windowFeatures & kWindowCanCollapse) styleMask |= NSMiniaturizableWindowMask;
-    if (windowFeatures & kWindowHasTitleBar) styleMask |= NSTitledWindowMask;
+    if (windowAttributes & kWindowCloseBoxAttribute)
+        styleMask |= NSWindowStyleMaskClosable;
+    if (windowAttributes & kWindowResizableAttribute)
+        styleMask |= NSWindowStyleMaskResizable;
+    if (windowFeatures & kWindowCanCollapse)
+        styleMask |= NSWindowStyleMaskMiniaturizable;
+    if (windowFeatures & kWindowHasTitleBar)
+        styleMask |= NSWindowStyleMaskTitled;
 
     osStatus = GetWindowModality(_windowRef, &windowModality, NULL);
     if (osStatus != noErr) {
@@ -390,12 +397,12 @@ static OSStatus NSCarbonWindowHandleEvent(EventHandlerCallRef inEventHandlerCall
     // Ignore some unknown event that gets sent when NSTextViews in printing accessory views are focused.  M.P. Notice - 12/7/00
     BOOL ignoreEvent = NO;
     NSEventType eventType = [inEvent type];
-    if (eventType==NSSystemDefined) {
+    if (eventType == NSEventTypeSystemDefined) {
         short eventSubtype = [inEvent subtype];
-        if (eventSubtype==7) {
+        if (eventSubtype == 7) {
             ignoreEvent = YES;
         }
-    } else if (eventType == NSKeyDown) {
+    } else if (eventType == NSEventTypeKeyDown) {
         // Handle command-space as [NSApp sendEvent:] does.
         if ([NSInputContext processInputKeyBindings:inEvent]) {
             return;
@@ -654,13 +661,12 @@ static OSStatus NSCarbonWindowHandleEvent(EventHandlerCallRef inEventHandlerCall
 	}
 }
 
-- (void)makeKeyWindow {
-	[NSApp _setMouseActivationInProgress:NO];
-	[NSApp setIsActive:YES];
-	[super makeKeyWindow];
-	WKShowKeyAndMain();
+- (void)makeKeyWindow
+{
+    [NSApp _setMouseActivationInProgress:NO];
+    [NSApp setIsActive:YES];
+    [super makeKeyWindow];
 }
-
 
 // Do the right thing for a Carbon window.
 - (BOOL)canBecomeKeyWindow {

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CredentialStorage.h"
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #include "AuthenticationMac.h"
 #include "Credential.h"
@@ -40,17 +40,6 @@ Credential CredentialStorage::getFromPersistentStorage(const ProtectionSpace& pr
     return credential ? Credential(credential) : Credential();
 }
 
-#if PLATFORM(IOS)
-void CredentialStorage::saveToPersistentStorage(const ProtectionSpace& protectionSpace, const Credential& credential)
-{
-    if (credential.persistence() == CredentialPersistenceNone) {
-        Credential sessionCredential(credential, CredentialPersistenceForSession);
-        [[NSURLCredentialStorage sharedCredentialStorage] setDefaultCredential:sessionCredential.nsCredential() forProtectionSpace:protectionSpace.nsSpace()];
-    } else
-        [[NSURLCredentialStorage sharedCredentialStorage] setDefaultCredential:credential.nsCredential() forProtectionSpace:protectionSpace.nsSpace()];
-}
-#endif
-
 } // namespace WebCore
 
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)

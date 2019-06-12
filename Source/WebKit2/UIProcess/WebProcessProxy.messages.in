@@ -24,14 +24,12 @@ messages -> WebProcessProxy LegacyReceiver {
     AddBackForwardItem(uint64_t itemID, uint64_t pageID, struct WebKit::PageState pageState)
     DidDestroyFrame(uint64_t frameID) 
 
+    DidDestroyUserGestureToken(uint64_t userGestureTokenID) 
+
     ShouldTerminate() -> (bool shouldTerminate)
 
     EnableSuddenTermination()
     DisableSuddenTermination()
-
-    DidFetchWebsiteData(uint64_t callbackID, struct WebKit::WebsiteData websiteData)
-    DidDeleteWebsiteData(uint64_t callbackID)
-    DidDeleteWebsiteDataForOrigins(uint64_t callbackID)
 
     # Plugin messages.
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -47,8 +45,18 @@ messages -> WebProcessProxy LegacyReceiver {
 
     SetIsHoldingLockedFiles(bool isHoldingLockedFiles)
 
+    DidExceedActiveMemoryLimit()
+    DidExceedInactiveMemoryLimit()
+    DidExceedCPULimit()
+
+    StopResponsivenessTimer()
+
     RetainIconForPageURL(String pageURL)
     ReleaseIconForPageURL(String pageURL)
 
     DidReceiveMainThreadPing()
+    DidReceiveBackgroundResponsivenessPing()
+
+    MemoryPressureStatusChanged(bool isUnderMemoryPressure)
+    DidExceedInactiveMemoryLimitWhileActive()
 }

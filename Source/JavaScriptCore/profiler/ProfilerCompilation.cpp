@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,6 +42,7 @@ Compilation::Compilation(Bytecodes* bytecodes, CompilationKind kind)
     , m_numInlinedGetByIds(0)
     , m_numInlinedPutByIds(0)
     , m_numInlinedCalls(0)
+    , m_uid(UID::create())
 {
 }
 
@@ -106,48 +107,80 @@ void Compilation::setJettisonReason(JettisonReason jettisonReason, const FireDet
         m_additionalJettisonReason = CString();
 }
 
+void Compilation::dump(PrintStream& out) const
+{
+    out.print("Comp", m_uid);
+}
+
 JSValue Compilation::toJS(ExecState* exec) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* result = constructEmptyObject(exec);
-    
-    result->putDirect(exec->vm(), exec->propertyNames().bytecodesID, jsNumber(m_bytecodes->id()));
-    result->putDirect(exec->vm(), exec->propertyNames().compilationKind, jsString(exec, String::fromUTF8(toCString(m_kind))));
+    RETURN_IF_EXCEPTION(scope, { });
+    result->putDirect(vm, exec->propertyNames().bytecodesID, jsNumber(m_bytecodes->id()));
+    result->putDirect(vm, exec->propertyNames().compilationKind, jsString(exec, String::fromUTF8(toCString(m_kind))));
     
     JSArray* profiledBytecodes = constructEmptyArray(exec, 0);
-    for (unsigned i = 0; i < m_profiledBytecodes.size(); ++i)
-        profiledBytecodes->putDirectIndex(exec, i, m_profiledBytecodes[i].toJS(exec));
-    result->putDirect(exec->vm(), exec->propertyNames().profiledBytecodes, profiledBytecodes);
+    RETURN_IF_EXCEPTION(scope, { });
+    for (unsigned i = 0; i < m_profiledBytecodes.size(); ++i) {
+        auto value = m_profiledBytecodes[i].toJS(exec);
+        RETURN_IF_EXCEPTION(scope, { });
+        profiledBytecodes->putDirectIndex(exec, i, value);
+        RETURN_IF_EXCEPTION(scope, { });
+    }
+    result->putDirect(vm, exec->propertyNames().profiledBytecodes, profiledBytecodes);
     
     JSArray* descriptions = constructEmptyArray(exec, 0);
-    for (unsigned i = 0; i < m_descriptions.size(); ++i)
-        descriptions->putDirectIndex(exec, i, m_descriptions[i].toJS(exec));
-    result->putDirect(exec->vm(), exec->propertyNames().descriptions, descriptions);
+    RETURN_IF_EXCEPTION(scope, { });
+    for (unsigned i = 0; i < m_descriptions.size(); ++i) {
+        auto value = m_descriptions[i].toJS(exec);
+        RETURN_IF_EXCEPTION(scope, { });
+        descriptions->putDirectIndex(exec, i, value);
+        RETURN_IF_EXCEPTION(scope, { });
+    }
+    result->putDirect(vm, exec->propertyNames().descriptions, descriptions);
     
     JSArray* counters = constructEmptyArray(exec, 0);
+    RETURN_IF_EXCEPTION(scope, { });
     for (auto it = m_counters.begin(), end = m_counters.end(); it != end; ++it) {
         JSObject* counterEntry = constructEmptyObject(exec);
-        counterEntry->putDirect(exec->vm(), exec->propertyNames().origin, it->key.toJS(exec));
-        counterEntry->putDirect(exec->vm(), exec->propertyNames().executionCount, jsNumber(it->value->count()));
+        RETURN_IF_EXCEPTION(scope, { });
+        auto value = it->key.toJS(exec);
+        RETURN_IF_EXCEPTION(scope, { });
+        counterEntry->putDirect(vm, exec->propertyNames().origin, value);
+        counterEntry->putDirect(vm, exec->propertyNames().executionCount, jsNumber(it->value->count()));
         counters->push(exec, counterEntry);
+        RETURN_IF_EXCEPTION(scope, { });
     }
-    result->putDirect(exec->vm(), exec->propertyNames().counters, counters);
+    result->putDirect(vm, exec->propertyNames().counters, counters);
     
     JSArray* exitSites = constructEmptyArray(exec, 0);
-    for (unsigned i = 0; i < m_osrExitSites.size(); ++i)
-        exitSites->putDirectIndex(exec, i, m_osrExitSites[i].toJS(exec));
-    result->putDirect(exec->vm(), exec->propertyNames().osrExitSites, exitSites);
+    RETURN_IF_EXCEPTION(scope, { });
+    for (unsigned i = 0; i < m_osrExitSites.size(); ++i) {
+        auto value = m_osrExitSites[i].toJS(exec);
+        RETURN_IF_EXCEPTION(scope, { });
+        exitSites->putDirectIndex(exec, i, value);
+        RETURN_IF_EXCEPTION(scope, { });
+    }
+    result->putDirect(vm, exec->propertyNames().osrExitSites, exitSites);
     
     JSArray* exits = constructEmptyArray(exec, 0);
-    for (unsigned i = 0; i < m_osrExits.size(); ++i)
+    RETURN_IF_EXCEPTION(scope, { });
+    for (unsigned i = 0; i < m_osrExits.size(); ++i) {
         exits->putDirectIndex(exec, i, m_osrExits[i].toJS(exec));
-    result->putDirect(exec->vm(), exec->propertyNames().osrExits, exits);
+        RETURN_IF_EXCEPTION(scope, { });
+    }
+    result->putDirect(vm, exec->propertyNames().osrExits, exits);
     
-    result->putDirect(exec->vm(), exec->propertyNames().numInlinedGetByIds, jsNumber(m_numInlinedGetByIds));
-    result->putDirect(exec->vm(), exec->propertyNames().numInlinedPutByIds, jsNumber(m_numInlinedPutByIds));
-    result->putDirect(exec->vm(), exec->propertyNames().numInlinedCalls, jsNumber(m_numInlinedCalls));
-    result->putDirect(exec->vm(), exec->propertyNames().jettisonReason, jsString(exec, String::fromUTF8(toCString(m_jettisonReason))));
+    result->putDirect(vm, exec->propertyNames().numInlinedGetByIds, jsNumber(m_numInlinedGetByIds));
+    result->putDirect(vm, exec->propertyNames().numInlinedPutByIds, jsNumber(m_numInlinedPutByIds));
+    result->putDirect(vm, exec->propertyNames().numInlinedCalls, jsNumber(m_numInlinedCalls));
+    result->putDirect(vm, exec->propertyNames().jettisonReason, jsString(exec, String::fromUTF8(toCString(m_jettisonReason))));
     if (!m_additionalJettisonReason.isNull())
-        result->putDirect(exec->vm(), exec->propertyNames().additionalJettisonReason, jsString(exec, String::fromUTF8(m_additionalJettisonReason)));
+        result->putDirect(vm, exec->propertyNames().additionalJettisonReason, jsString(exec, String::fromUTF8(m_additionalJettisonReason)));
+    
+    result->putDirect(vm, exec->propertyNames().uid, m_uid.toJS(exec));
     
     return result;
 }

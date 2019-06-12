@@ -14,15 +14,17 @@
 #include <set>
 #include <vector>
 
-#include "libANGLE/Error.h"
+#include "libANGLE/AttributeMap.h"
 #include "libANGLE/Caps.h"
 #include "libANGLE/Config.h"
-#include "libANGLE/AttributeMap.h"
-#include "libANGLE/renderer/Renderer.h"
+#include "libANGLE/Error.h"
+#include "libANGLE/LoggingAnnotator.h"
+#include "libANGLE/Version.h"
 
 namespace gl
 {
 class Context;
+class TextureManager;
 }
 
 namespace rx
@@ -32,8 +34,17 @@ class DisplayImpl;
 
 namespace egl
 {
-class Surface;
 class Device;
+class Image;
+class Surface;
+class Stream;
+
+using SurfaceSet = std::set<Surface *>;
+
+struct DisplayState final : angle::NonCopyable
+{
+    SurfaceSet surfaceSet;
+};
 
 class Display final : angle::NonCopyable
 {
@@ -43,21 +54,33 @@ class Display final : angle::NonCopyable
     Error initialize();
     void terminate();
 
-    static egl::Display *getDisplay(EGLNativeDisplayType displayId, const AttributeMap &attribMap);
+    static egl::Display *GetDisplayFromDevice(Device *device);
+    static egl::Display *GetDisplayFromNativeDisplay(EGLNativeDisplayType nativeDisplay,
+                                                     const AttributeMap &attribMap);
 
     static const ClientExtensions &getClientExtensions();
     static const std::string &getClientExtensionString();
 
     std::vector<const Config*> getConfigs(const egl::AttributeMap &attribs) const;
-    bool getConfigAttrib(const Config *configuration, EGLint attribute, EGLint *value);
 
     Error createWindowSurface(const Config *configuration, EGLNativeWindowType window, const AttributeMap &attribs,
                               Surface **outSurface);
     Error createPbufferSurface(const Config *configuration, const AttributeMap &attribs, Surface **outSurface);
-    Error createPbufferFromClientBuffer(const Config *configuration, EGLClientBuffer shareHandle, const AttributeMap &attribs,
+    Error createPbufferFromClientBuffer(const Config *configuration,
+                                        EGLenum buftype,
+                                        EGLClientBuffer clientBuffer,
+                                        const AttributeMap &attribs,
                                         Surface **outSurface);
     Error createPixmapSurface(const Config *configuration, NativePixmapType nativePixmap, const AttributeMap &attribs,
                               Surface **outSurface);
+
+    Error createImage(gl::Context *context,
+                      EGLenum target,
+                      EGLClientBuffer buffer,
+                      const AttributeMap &attribs,
+                      Image **outImage);
+
+    Error createStream(const AttributeMap &attribs, Stream **outStream);
 
     Error createContext(const Config *configuration, gl::Context *shareContext, const AttributeMap &attribs,
                         gl::Context **outContext);
@@ -65,20 +88,33 @@ class Display final : angle::NonCopyable
     Error makeCurrent(egl::Surface *drawSurface, egl::Surface *readSurface, gl::Context *context);
 
     void destroySurface(egl::Surface *surface);
+    void destroyImage(egl::Image *image);
+    void destroyStream(egl::Stream *stream);
     void destroyContext(gl::Context *context);
 
     bool isInitialized() const;
     bool isValidConfig(const Config *config) const;
-    bool isValidContext(gl::Context *context) const;
-    bool isValidSurface(egl::Surface *surface) const;
+    bool isValidContext(const gl::Context *context) const;
+    bool isValidSurface(const egl::Surface *surface) const;
+    bool isValidImage(const Image *image) const;
+    bool isValidStream(const Stream *stream) const;
     bool isValidNativeWindow(EGLNativeWindowType window) const;
 
+    Error validateClientBuffer(const Config *configuration,
+                               EGLenum buftype,
+                               EGLClientBuffer clientBuffer,
+                               const AttributeMap &attribs);
+
+    static bool isValidDisplay(const egl::Display *display);
     static bool isValidNativeDisplay(EGLNativeDisplayType display);
     static bool hasExistingWindowSurface(EGLNativeWindowType window);
 
     bool isDeviceLost() const;
     bool testDeviceLost();
     void notifyDeviceLost();
+
+    Error waitClient() const;
+    Error waitNative(EGLint engine, egl::Surface *drawSurface, egl::Surface *readSurface) const;
 
     const Caps &getCaps() const;
 
@@ -89,11 +125,16 @@ class Display final : angle::NonCopyable
     const AttributeMap &getAttributeMap() const { return mAttributeMap; }
     EGLNativeDisplayType getNativeDisplayId() const { return mDisplayId; }
 
-    rx::DisplayImpl *getImplementation() { return mImplementation; }
+    rx::DisplayImpl *getImplementation() const { return mImplementation; }
     Device *getDevice() const;
+    EGLenum getPlatform() const { return mPlatform; }
+
+    gl::Version getMaxSupportedESVersion() const;
+
+    const DisplayState &getState() const { return mState; }
 
   private:
-    Display(EGLNativeDisplayType displayId);
+    Display(EGLenum platform, EGLNativeDisplayType displayId, Device *eglDevice);
 
     void setAttributes(rx::DisplayImpl *impl, const AttributeMap &attribMap);
 
@@ -102,6 +143,7 @@ class Display final : angle::NonCopyable
     void initDisplayExtensions();
     void initVendorString();
 
+    DisplayState mState;
     rx::DisplayImpl *mImplementation;
 
     EGLNativeDisplayType mDisplayId;
@@ -112,7 +154,14 @@ class Display final : angle::NonCopyable
     typedef std::set<gl::Context*> ContextSet;
     ContextSet mContextSet;
 
+    typedef std::set<Image *> ImageSet;
+    ImageSet mImageSet;
+
+    typedef std::set<Stream *> StreamSet;
+    StreamSet mStreamSet;
+
     bool mInitialized;
+    bool mDeviceLost;
 
     Caps mCaps;
 
@@ -121,9 +170,14 @@ class Display final : angle::NonCopyable
 
     std::string mVendorString;
 
-    Device* mDevice;
+    Device *mDevice;
+    EGLenum mPlatform;
+    angle::LoggingAnnotator mAnnotator;
+
+    gl::TextureManager *mTextureManager;
+    size_t mGlobalTextureShareGroupUsers;
 };
 
-}
+}  // namespace egl
 
 #endif   // LIBANGLE_DISPLAY_H_

@@ -23,40 +23,34 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AccessibilityMenuList_h
-#define AccessibilityMenuList_h
+#pragma once
 
 #include "AccessibilityRenderObject.h"
 
 namespace WebCore {
 
-class AccessibilityMenuList;
-class AccessibilityMenuListPopup;
-class HTMLOptionElement;
 class RenderMenuList;
 
 class AccessibilityMenuList final : public AccessibilityRenderObject {
 public:
     static Ref<AccessibilityMenuList> create(RenderMenuList* renderer);
 
-    virtual bool isCollapsed() const override;
-    virtual bool press() override;
+    bool isCollapsed() const override;
+    bool press() override;
 
     void didUpdateActiveOption(int optionIndex);
 
 private:
     explicit AccessibilityMenuList(RenderMenuList*);
 
-    virtual bool isMenuList() const override { return true; }
-    virtual AccessibilityRole roleValue() const override { return PopUpButtonRole; }
-    virtual bool canSetFocusAttribute() const override;
+    bool isMenuList() const override { return true; }
+    AccessibilityRole roleValue() const override { return PopUpButtonRole; }
+    bool canSetFocusAttribute() const override;
 
-    virtual void addChildren() override;
-    virtual void childrenChanged() override;
+    void addChildren() override;
+    void childrenChanged() override;
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityMenuList, isMenuList())
-
-#endif // AccessibilityMenuList_h

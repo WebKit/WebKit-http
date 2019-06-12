@@ -21,10 +21,8 @@
  *
  */
 
-#ifndef InternalFunction_h
-#define InternalFunction_h
+#pragma once
 
-#include "Identifier.h"
 #include "JSDestructibleObject.h"
 
 namespace JSC {
@@ -38,33 +36,47 @@ public:
 
     DECLARE_EXPORT_INFO;
 
-    JS_EXPORT_PRIVATE const String& name(ExecState*);
-    const String displayName(ExecState*);
-    const String calculatedDisplayName(ExecState*);
+    JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
+
+    JS_EXPORT_PRIVATE const String& name();
+    const String displayName(VM&);
+    const String calculatedDisplayName(VM&);
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     { 
         return Structure::create(vm, globalObject, proto, TypeInfo(ObjectType, StructureFlags), info()); 
     }
 
-    JS_EXPORT_PRIVATE static Structure* createSubclassStructure(ExecState*, JSValue newTarget, Structure*);
+    static Structure* createSubclassStructure(ExecState*, JSValue newTarget, Structure*);
 
 protected:
     JS_EXPORT_PRIVATE InternalFunction(VM&, Structure*);
 
     JS_EXPORT_PRIVATE void finishCreation(VM&, const String& name);
 
+    JS_EXPORT_PRIVATE static Structure* createSubclassStructureSlow(ExecState*, JSValue newTarget, Structure*);
+
     static CallType getCallData(JSCell*, CallData&);
+    WriteBarrier<JSString> m_originalName;
 };
 
 InternalFunction* asInternalFunction(JSValue);
 
 inline InternalFunction* asInternalFunction(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(InternalFunction::info()));
+    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), InternalFunction::info()));
     return static_cast<InternalFunction*>(asObject(value));
 }
 
-} // namespace JSC
+ALWAYS_INLINE Structure* InternalFunction::createSubclassStructure(ExecState* exec, JSValue newTarget, Structure* baseClass)
+{
+    // We allow newTarget == JSValue() because the API needs to be able to create classes without having a real JS frame.
+    // Since we don't allow subclassing in the API we just treat newTarget == JSValue() as newTarget == exec->jsCallee()
+    ASSERT(!newTarget || newTarget.isConstructor());
 
-#endif // InternalFunction_h
+    if (newTarget && newTarget != exec->jsCallee())
+        return createSubclassStructureSlow(exec, newTarget, baseClass);
+    return baseClass;
+}
+
+} // namespace JSC

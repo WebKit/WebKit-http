@@ -44,7 +44,7 @@
 #include <WebCore/HTTPHeaderMap.h>
 #include <WebCore/IdentifierRep.h>
 #include <WebCore/NotImplemented.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
@@ -91,10 +91,10 @@ PluginControllerProxy::~PluginControllerProxy()
         releaseNPObject(m_pluginElementNPObject);
 }
 
-void PluginControllerProxy::setInitializationReply(PassRefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply> reply)
+void PluginControllerProxy::setInitializationReply(Ref<Messages::WebProcessConnection::CreatePlugin::DelayedReply>&& reply)
 {
     ASSERT(!m_initializationReply);
-    m_initializationReply = reply;
+    m_initializationReply = WTFMove(reply);
 }
 
 RefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply> PluginControllerProxy::takeInitializationReply()
@@ -107,7 +107,7 @@ bool PluginControllerProxy::initialize(const PluginCreationParameters& creationP
     ASSERT(!m_plugin);
 
     ASSERT(!m_isInitializing);
-    m_isInitializing = true; // Cannot use TemporaryChange here, because this object can be deleted before the function returns.
+    m_isInitializing = true; // Cannot use SetForScope here, because this object can be deleted before the function returns.
 
     m_plugin = NetscapePlugin::create(PluginProcess::singleton().netscapePluginModule());
     if (!m_plugin) {
@@ -147,7 +147,7 @@ void PluginControllerProxy::destroy()
     if (m_pluginDestructionProtectCount || m_connection->connection()->inSendSync()) {
         // We have plug-in code on the stack so we can't destroy it right now.
         // Destroy it later.
-        m_pluginDestroyTimer.startOneShot(0);
+        m_pluginDestroyTimer.startOneShot(0_s);
         return;
     }
 
@@ -188,7 +188,7 @@ void PluginControllerProxy::paint()
 #if PLATFORM(COCOA)
     // FIXME: We should really call applyDeviceScaleFactor instead of scale, but that ends up calling into WKSI
     // which we currently don't have initiated in the plug-in process.
-    graphicsContext->scale(FloatSize(m_contentsScaleFactor, m_contentsScaleFactor));
+    graphicsContext->scale(m_contentsScaleFactor);
 #endif
 
     if (m_plugin->isTransparent())
@@ -215,7 +215,7 @@ void PluginControllerProxy::startPaintTimer()
         return;
 
     // Start the timer.
-    m_paintTimer.startOneShot(0);
+    m_paintTimer.startOneShot(0_s);
 
     m_waitingForDidUpdate = true;
 }

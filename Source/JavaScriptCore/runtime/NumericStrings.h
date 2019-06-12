@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NumericStrings_h
-#define NumericStrings_h
+#pragma once
 
 #include <array>
 #include <wtf/HashFunctions.h>
@@ -34,7 +33,7 @@ namespace JSC {
 
 class NumericStrings {
 public:
-    ALWAYS_INLINE String add(double d)
+    ALWAYS_INLINE const String& add(double d)
     {
         CacheEntry<double>& entry = lookup(d);
         if (d == entry.key && !entry.value.isNull())
@@ -44,7 +43,7 @@ public:
         return entry.value;
     }
 
-    ALWAYS_INLINE String add(int i)
+    ALWAYS_INLINE const String& add(int i)
     {
         if (static_cast<unsigned>(i) < cacheSize)
             return lookupSmallString(static_cast<unsigned>(i));
@@ -56,7 +55,7 @@ public:
         return entry.value;
     }
 
-    ALWAYS_INLINE String add(unsigned i)
+    ALWAYS_INLINE const String& add(unsigned i)
     {
         if (i < cacheSize)
             return lookupSmallString(static_cast<unsigned>(i));
@@ -94,5 +93,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // NumericStrings_h

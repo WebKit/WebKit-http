@@ -27,12 +27,12 @@
 #define ViewSnapshotStore_h
 
 #include <WebCore/Color.h>
+#include <WebCore/IntPoint.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/IOSurface.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
 #if !defined(__OBJC__)
@@ -64,12 +64,16 @@ public:
     void clearImage();
     bool hasImage() const;
     id asLayerContents();
+    RetainPtr<CGImageRef> asImageForTesting();
 
     void setRenderTreeSize(uint64_t renderTreeSize) { m_renderTreeSize = renderTreeSize; }
     uint64_t renderTreeSize() const { return m_renderTreeSize; }
 
     void setBackgroundColor(WebCore::Color color) { m_backgroundColor = color; }
     WebCore::Color backgroundColor() const { return m_backgroundColor; }
+    
+    void setViewScrollPosition(WebCore::IntPoint scrollPosition) { m_viewScrollPosition = scrollPosition; }
+    WebCore::IntPoint viewScrollPosition() const { return m_viewScrollPosition; }
 
     void setDeviceScaleFactor(float deviceScaleFactor) { m_deviceScaleFactor = deviceScaleFactor; }
     float deviceScaleFactor() const { return m_deviceScaleFactor; }
@@ -81,6 +85,8 @@ public:
     WebCore::IntSize size() const { return m_surface ? m_surface->size() : WebCore::IntSize(); }
 
     void setSurface(std::unique_ptr<WebCore::IOSurface>);
+
+    WebCore::IOSurface::SurfaceState setVolatile(bool);
 #else
     WebCore::IntSize size() const { return m_size; }
     size_t imageSizeInBytes() const { return m_imageSizeInBytes; }
@@ -102,6 +108,7 @@ private:
     uint64_t m_renderTreeSize;
     float m_deviceScaleFactor;
     WebCore::Color m_backgroundColor;
+    WebCore::IntPoint m_viewScrollPosition; // Scroll position at snapshot time. Integral to make comparison reliable.
 };
 
 class ViewSnapshotStore {
@@ -117,6 +124,9 @@ public:
 
     void discardSnapshotImages();
 
+    void setDisableSnapshotVolatilityForTesting(bool disable) { m_disableSnapshotVolatility = disable; }
+    bool disableSnapshotVolatilityForTesting() const { return m_disableSnapshotVolatility; }
+
 #if !USE(IOSURFACE)
     static CAContext *snapshottingContext();
 #endif
@@ -126,9 +136,10 @@ private:
     void willRemoveImageFromSnapshot(ViewSnapshot&);
     void pruneSnapshots(WebPageProxy&);
 
-    size_t m_snapshotCacheSize;
+    size_t m_snapshotCacheSize { 0 };
 
     ListHashSet<ViewSnapshot*> m_snapshotsWithImages;
+    bool m_disableSnapshotVolatility { false };
 };
 
 } // namespace WebKit

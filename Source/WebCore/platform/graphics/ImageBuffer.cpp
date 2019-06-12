@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Dirk Schulze <krit@webkit.org>
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +37,26 @@ namespace WebCore {
 
 static const float MaxClampedLength = 4096;
 static const float MaxClampedArea = MaxClampedLength * MaxClampedLength;
+
+std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, RenderingMode renderingMode, float resolutionScale, ColorSpace colorSpace)
+{
+    bool success = false;
+    std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(size, resolutionScale, colorSpace, renderingMode, success));
+    if (!success)
+        return nullptr;
+    return buffer;
+}
+
+#if USE(DIRECT2D)
+std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, RenderingMode renderingMode, const GraphicsContext* targetContext, float resolutionScale, ColorSpace colorSpace)
+{
+    bool success = false;
+    std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(size, resolutionScale, colorSpace, renderingMode, targetContext, success));
+    if (!success)
+        return nullptr;
+    return buffer;
+}
+#endif
 
 bool ImageBuffer::sizeNeedsClamping(const FloatSize& size)
 {
@@ -81,7 +102,19 @@ FloatRect ImageBuffer::clampedRect(const FloatRect& rect)
     return FloatRect(rect.location(), clampedSize(rect.size()));
 }
 
-#if !USE(CG)
+Vector<uint8_t> ImageBuffer::toBGRAData() const
+{
+#if USE(CG)
+    if (context().isAcceleratedContext())
+        flushContext();
+    return m_data.toBGRAData(context().isAcceleratedContext(), m_size.width(), m_size.height());
+#else
+    // FIXME: Implement this for other backends.
+    return { };
+#endif
+}
+
+#if !(USE(CG) || USE(DIRECT2D))
 FloatSize ImageBuffer::sizeForDestinationSize(FloatSize size) const
 {
     return size;
@@ -166,9 +199,51 @@ bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum, Platform3D
 }
 #endif
 
-std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, float resolutionScale, ColorSpace colorSpace, const GraphicsContext& context, bool)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, ColorSpace colorSpace, const GraphicsContext& context)
+{
+    if (size.isEmpty())
+        return nullptr;
+
+    IntSize scaledSize = ImageBuffer::compatibleBufferSize(size, context);
+
+    auto buffer = ImageBuffer::createCompatibleBuffer(scaledSize, 1, colorSpace, context);
+    if (!buffer)
+        return nullptr;
+
+    // Set up a corresponding scale factor on the graphics context.
+    buffer->context().scale(FloatSize(scaledSize.width() / size.width(), scaledSize.height() / size.height()));
+    return buffer;
+}
+
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, float resolutionScale, ColorSpace colorSpace, const GraphicsContext& context)
 {
     return create(size, context.renderingMode(), resolutionScale, colorSpace);
 }
+
+IntSize ImageBuffer::compatibleBufferSize(const FloatSize& size, const GraphicsContext& context)
+{
+    // Enlarge the buffer size if the context's transform is scaling it so we need a higher
+    // resolution than one pixel per unit.
+    return expandedIntSize(size * context.scaleFactor());
+}
+
+bool ImageBuffer::isCompatibleWithContext(const GraphicsContext& context) const
+{
+    return areEssentiallyEqual(context.scaleFactor(), this->context().scaleFactor());
+}
+
+#if !USE(IOSURFACE_CANVAS_BACKING_STORE)
+size_t ImageBuffer::memoryCost() const
+{
+    // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful about what data we access here and how.
+    // It's safe to access internalSize() because it doesn't do any pointer chasing.
+    return 4 * internalSize().width() * internalSize().height();
+}
+
+size_t ImageBuffer::externalMemoryCost() const
+{
+    return 0;
+}
+#endif
 
 }

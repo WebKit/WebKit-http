@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,26 +23,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FTLOutput_h
-#define FTLOutput_h
+#pragma once
 
 #include "DFGCommon.h"
 
 #if ENABLE(FTL_JIT)
 
-#include "B3ArgumentRegValue.h"
 #include "B3BasicBlockInlines.h"
 #include "B3CCallValue.h"
 #include "B3Compilation.h"
-#include "B3Const32Value.h"
-#include "B3ConstPtrValue.h"
-#include "B3ControlValue.h"
-#include "B3MemoryValue.h"
+#include "B3FrequentedBlock.h"
 #include "B3Procedure.h"
-#include "B3SlotBaseValue.h"
 #include "B3SwitchValue.h"
-#include "B3UpsilonValue.h"
-#include "B3ValueInlines.h"
+#include "B3Width.h"
 #include "FTLAbbreviatedTypes.h"
 #include "FTLAbstractHeapRepository.h"
 #include "FTLCommonValues.h"
@@ -52,6 +45,7 @@
 #include "FTLValueFromBlock.h"
 #include "FTLWeight.h"
 #include "FTLWeightedTarget.h"
+#include "HeapCell.h"
 #include <wtf/OrderMaker.h>
 #include <wtf/StringPrintStream.h>
 
@@ -64,7 +58,14 @@
 
 namespace JSC {
 
-namespace DFG { struct Node; }
+namespace DFG {
+struct Node;
+} // namespace DFG
+
+namespace B3 {
+class FenceValue;
+class SlotBaseValue;
+} // namespace B3
 
 namespace FTL {
 
@@ -82,7 +83,7 @@ public:
         m_frequency = value;
     }
 
-    LBasicBlock newBlock(const char* name = "");
+    LBasicBlock newBlock();
 
     LBasicBlock insertNewBlocksBefore(LBasicBlock nextBlock)
     {
@@ -99,20 +100,50 @@ public:
     void setOrigin(DFG::Node* node) { m_origin = node; }
     B3::Origin origin() { return B3::Origin(m_origin); }
 
-    LValue framePointer() { return m_block->appendNew<B3::Value>(m_proc, B3::FramePointer, origin()); }
+    LValue framePointer();
 
     B3::SlotBaseValue* lockedStackSlot(size_t bytes);
 
-    LValue constBool(bool value) { return m_block->appendNew<B3::Const32Value>(m_proc, origin(), value); }
-    LValue constInt32(int32_t value) { return m_block->appendNew<B3::Const32Value>(m_proc, origin(), value); }
-    template<typename T>
-    LValue constIntPtr(T* value) { return m_block->appendNew<B3::ConstPtrValue>(m_proc, origin(), value); }
-    template<typename T>
-    LValue constIntPtr(T value) { return m_block->appendNew<B3::ConstPtrValue>(m_proc, origin(), value); }
-    LValue constInt64(int64_t value) { return m_block->appendNew<B3::Const64Value>(m_proc, origin(), value); }
-    LValue constDouble(double value) { return m_block->appendNew<B3::ConstDoubleValue>(m_proc, origin(), value); }
+    LValue constBool(bool value);
+    LValue constInt32(int32_t value);
 
-    LValue phi(LType type) { return m_block->appendNew<B3::Value>(m_proc, B3::Phi, type, origin()); }
+    LValue weakPointer(DFG::Graph& graph, JSCell* cell)
+    {
+        ASSERT(graph.m_plan.weakReferences.contains(cell));
+
+        if (sizeof(void*) == 8)
+            return constInt64(bitwise_cast<intptr_t>(cell));
+        return constInt32(bitwise_cast<intptr_t>(cell));
+    }
+
+    LValue weakPointer(DFG::FrozenValue* value)
+    {
+        RELEASE_ASSERT(value->value().isCell());
+
+        if (sizeof(void*) == 8)
+            return constInt64(bitwise_cast<intptr_t>(value->cell()));
+        return constInt32(bitwise_cast<intptr_t>(value->cell()));
+    }
+
+    template<typename T>
+    LValue constIntPtr(T* value)
+    {
+        static_assert(!std::is_base_of<HeapCell, T>::value, "To use a GC pointer, the graph must be aware of it. Use gcPointer instead and make sure the graph is aware of this reference.");
+        if (sizeof(void*) == 8)
+            return constInt64(bitwise_cast<intptr_t>(value));
+        return constInt32(bitwise_cast<intptr_t>(value));
+    }
+    template<typename T>
+    LValue constIntPtr(T value)
+    {
+        if (sizeof(void*) == 8)
+            return constInt64(static_cast<intptr_t>(value));
+        return constInt32(static_cast<intptr_t>(value));
+    }
+    LValue constInt64(int64_t value);
+    LValue constDouble(double value);
+
+    LValue phi(LType);
     template<typename... Params>
     LValue phi(LType, ValueFromBlock, Params... theRest);
     template<typename VectorType>
@@ -121,95 +152,64 @@ public:
     template<typename... Params>
     void addIncomingToPhi(LValue phi, ValueFromBlock, Params... theRest);
 
-    LValue add(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Add, origin(), left, right); }
-    LValue sub(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Sub, origin(), left, right); }
-    LValue mul(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Mul, origin(), left, right); }
-    LValue div(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Div, origin(), left, right); }
-    LValue chillDiv(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::ChillDiv, origin(), left, right); }
-    LValue mod(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Mod, origin(), left, right); }
-    LValue chillMod(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::ChillMod, origin(), left, right); }
+    LValue add(LValue, LValue);
+    LValue sub(LValue, LValue);
+    LValue mul(LValue, LValue);
+    LValue div(LValue, LValue);
+    LValue chillDiv(LValue, LValue);
+    LValue mod(LValue, LValue);
+    LValue chillMod(LValue, LValue);
     LValue neg(LValue);
 
-    LValue doubleAdd(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Add, origin(), left, right); }
-    LValue doubleSub(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Sub, origin(), left, right); }
-    LValue doubleMul(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Mul, origin(), left, right); }
-    LValue doubleDiv(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Div, origin(), left, right); }
-    LValue doubleMod(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Mod, origin(), left, right); }
+    LValue doubleAdd(LValue, LValue);
+    LValue doubleSub(LValue, LValue);
+    LValue doubleMul(LValue, LValue);
+    LValue doubleDiv(LValue, LValue);
+    LValue doubleMod(LValue, LValue);
     LValue doubleNeg(LValue value) { return neg(value); }
 
-    LValue bitAnd(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::BitAnd, origin(), left, right); }
-    LValue bitOr(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::BitOr, origin(), left, right); }
-    LValue bitXor(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::BitXor, origin(), left, right); }
-    LValue shl(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Shl, origin(), left, castToInt32(right)); }
-    LValue aShr(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::SShr, origin(), left, castToInt32(right)); }
-    LValue lShr(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::ZShr, origin(), left, castToInt32(right)); }
+    LValue bitAnd(LValue, LValue);
+    LValue bitOr(LValue, LValue);
+    LValue bitXor(LValue, LValue);
+    LValue shl(LValue, LValue shiftAmount);
+    LValue aShr(LValue, LValue shiftAmount);
+    LValue lShr(LValue, LValue shiftAmount);
     LValue bitNot(LValue);
     LValue logicalNot(LValue);
 
-    LValue ctlz32(LValue operand) { return m_block->appendNew<B3::Value>(m_proc, B3::Clz, origin(), operand); }
-    LValue addWithOverflow32(LValue left, LValue right) { CRASH(); }
-    LValue subWithOverflow32(LValue left, LValue right) { CRASH(); }
-    LValue mulWithOverflow32(LValue left, LValue right) { CRASH(); }
-    LValue addWithOverflow64(LValue left, LValue right) { CRASH(); }
-    LValue subWithOverflow64(LValue left, LValue right) { CRASH(); }
-    LValue mulWithOverflow64(LValue left, LValue right) { CRASH(); }
-    LValue doubleAbs(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::Abs, origin(), value); }
-    LValue doubleCeil(LValue operand) { return m_block->appendNew<B3::Value>(m_proc, B3::Ceil, origin(), operand); }
-    LValue doubleFloor(LValue operand) { return m_block->appendNew<B3::Value>(m_proc, B3::Floor, origin(), operand); }
+    LValue ctlz32(LValue);
+    LValue doubleAbs(LValue);
+    LValue doubleCeil(LValue);
+    LValue doubleFloor(LValue);
+    LValue doubleTrunc(LValue);
 
-    LValue doubleSin(LValue value)
-    {
-        double (*sinDouble)(double) = sin;
-        return callWithoutSideEffects(B3::Double, sinDouble, value);
-    }
-    LValue doubleCos(LValue value)
-    {
-        double (*cosDouble)(double) = cos;
-        return callWithoutSideEffects(B3::Double, cosDouble, value);
-    }
+    LValue doubleUnary(DFG::Arith::UnaryType, LValue);
 
-    LValue doublePow(LValue xOperand, LValue yOperand)
-    {
-        double (*powDouble)(double, double) = pow;
-        return callWithoutSideEffects(B3::Double, powDouble, xOperand, yOperand);
-    }
+    LValue doublePow(LValue base, LValue exponent);
+    LValue doublePowi(LValue base, LValue exponent);
 
-    LValue doublePowi(LValue xOperand, LValue yOperand);
+    LValue doubleSqrt(LValue);
 
-    LValue doubleSqrt(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::Sqrt, origin(), value); }
+    LValue doubleLog(LValue);
 
-    LValue doubleLog(LValue value)
-    {
-        double (*logDouble)(double) = log;
-        return callWithoutSideEffects(B3::Double, logDouble, value);
-    }
-
-    static bool hasSensibleDoubleToInt();
     LValue doubleToInt(LValue);
     LValue doubleToUInt(LValue);
 
-    LValue signExt32To64(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::SExt32, origin(), value); }
-    LValue zeroExt(LValue value, LType type)
-    {
-        if (value->type() == type)
-            return value;
-        return m_block->appendNew<B3::Value>(m_proc, B3::ZExt32, origin(), value);
-    }
+    LValue signExt32To64(LValue);
+    LValue signExt32ToPtr(LValue);
+    LValue zeroExt(LValue, LType);
     LValue zeroExtPtr(LValue value) { return zeroExt(value, B3::Int64); }
-    LValue intToDouble(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::IToD, origin(), value); }
+    LValue intToDouble(LValue);
     LValue unsignedToDouble(LValue);
-    LValue castToInt32(LValue value)
-    {
-        return value->type() == B3::Int32 ? value :
-            m_block->appendNew<B3::Value>(m_proc, B3::Trunc, origin(), value);
-    }
-    LValue doubleToFloat(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::DoubleToFloat, origin(), value); }
-    LValue floatToDouble(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::FloatToDouble, origin(), value); }
+    LValue castToInt32(LValue);
+    LValue doubleToFloat(LValue);
+    LValue floatToDouble(LValue);
     LValue bitCast(LValue, LType);
-    LValue fround(LValue doubleValue);
+    LValue fround(LValue);
 
     LValue load(TypedPointer, LType);
-    void store(LValue, TypedPointer);
+    LValue store(LValue, TypedPointer);
+    B3::FenceValue* fence(const AbstractHeap* read, const AbstractHeap* write);
 
     LValue load8SignExt32(TypedPointer);
     LValue load8ZeroExt32(TypedPointer);
@@ -220,32 +220,32 @@ public:
     LValue loadPtr(TypedPointer pointer) { return load(pointer, B3::pointerType()); }
     LValue loadFloat(TypedPointer pointer) { return load(pointer, B3::Float); }
     LValue loadDouble(TypedPointer pointer) { return load(pointer, B3::Double); }
-    void store32As8(LValue value, TypedPointer pointer);
-    void store32As16(LValue value, TypedPointer pointer);
-    void store32(LValue value, TypedPointer pointer)
+    LValue store32As8(LValue, TypedPointer);
+    LValue store32As16(LValue, TypedPointer);
+    LValue store32(LValue value, TypedPointer pointer)
     {
         ASSERT(value->type() == B3::Int32);
-        store(value, pointer);
+        return store(value, pointer);
     }
-    void store64(LValue value, TypedPointer pointer)
+    LValue store64(LValue value, TypedPointer pointer)
     {
         ASSERT(value->type() == B3::Int64);
-        store(value, pointer);
+        return store(value, pointer);
     }
-    void storePtr(LValue value, TypedPointer pointer)
+    LValue storePtr(LValue value, TypedPointer pointer)
     {
         ASSERT(value->type() == B3::pointerType());
-        store(value, pointer);
+        return store(value, pointer);
     }
-    void storeFloat(LValue value, TypedPointer pointer)
+    LValue storeFloat(LValue value, TypedPointer pointer)
     {
         ASSERT(value->type() == B3::Float);
-        store(value, pointer);
+        return store(value, pointer);
     }
-    void storeDouble(LValue value, TypedPointer pointer)
+    LValue storeDouble(LValue value, TypedPointer pointer)
     {
         ASSERT(value->type() == B3::Double);
-        store(value, pointer);
+        return store(value, pointer);
     }
 
     enum LoadType {
@@ -272,7 +272,7 @@ public:
         StoreDouble
     };
 
-    void store(LValue, TypedPointer, StoreType);
+    LValue store(LValue, TypedPointer, StoreType);
 
     LValue addPtr(LValue value, ptrdiff_t immediate = 0)
     {
@@ -290,7 +290,7 @@ public:
     // Construct an address by offsetting base by the amount specified by the field,
     // and optionally an additional amount (use this with care), and then creating
     // a TypedPointer with the given field as the heap.
-    TypedPointer address(LValue base, const AbstractField& field, ptrdiff_t offset = 0)
+    TypedPointer address(LValue base, const AbstractHeap& field, ptrdiff_t offset = 0)
     {
         return address(field, base, offset + field.offset());
     }
@@ -306,23 +306,20 @@ public:
         return heap.baseIndex(*this, base, index, indexAsConstant, offset);
     }
 
-    TypedPointer absolute(void* address)
-    {
-        return TypedPointer(m_heaps->absolute[address], constIntPtr(address));
-    }
+    TypedPointer absolute(const void* address);
 
-    LValue load8SignExt32(LValue base, const AbstractField& field) { return load8SignExt32(address(base, field)); }
-    LValue load8ZeroExt32(LValue base, const AbstractField& field) { return load8ZeroExt32(address(base, field)); }
-    LValue load16SignExt32(LValue base, const AbstractField& field) { return load16SignExt32(address(base, field)); }
-    LValue load16ZeroExt32(LValue base, const AbstractField& field) { return load16ZeroExt32(address(base, field)); }
-    LValue load32(LValue base, const AbstractField& field) { return load32(address(base, field)); }
-    LValue load64(LValue base, const AbstractField& field) { return load64(address(base, field)); }
-    LValue loadPtr(LValue base, const AbstractField& field) { return loadPtr(address(base, field)); }
-    LValue loadDouble(LValue base, const AbstractField& field) { return loadDouble(address(base, field)); }
-    void store32(LValue value, LValue base, const AbstractField& field) { store32(value, address(base, field)); }
-    void store64(LValue value, LValue base, const AbstractField& field) { store64(value, address(base, field)); }
-    void storePtr(LValue value, LValue base, const AbstractField& field) { storePtr(value, address(base, field)); }
-    void storeDouble(LValue value, LValue base, const AbstractField& field) { storeDouble(value, address(base, field)); }
+    LValue load8SignExt32(LValue base, const AbstractHeap& field) { return load8SignExt32(address(base, field)); }
+    LValue load8ZeroExt32(LValue base, const AbstractHeap& field) { return load8ZeroExt32(address(base, field)); }
+    LValue load16SignExt32(LValue base, const AbstractHeap& field) { return load16SignExt32(address(base, field)); }
+    LValue load16ZeroExt32(LValue base, const AbstractHeap& field) { return load16ZeroExt32(address(base, field)); }
+    LValue load32(LValue base, const AbstractHeap& field) { return load32(address(base, field)); }
+    LValue load64(LValue base, const AbstractHeap& field) { return load64(address(base, field)); }
+    LValue loadPtr(LValue base, const AbstractHeap& field) { return loadPtr(address(base, field)); }
+    LValue loadDouble(LValue base, const AbstractHeap& field) { return loadDouble(address(base, field)); }
+    void store32(LValue value, LValue base, const AbstractHeap& field) { store32(value, address(base, field)); }
+    void store64(LValue value, LValue base, const AbstractHeap& field) { store64(value, address(base, field)); }
+    void storePtr(LValue value, LValue base, const AbstractHeap& field) { storePtr(value, address(base, field)); }
+    void storeDouble(LValue value, LValue base, const AbstractHeap& field) { storeDouble(value, address(base, field)); }
 
     // FIXME: Explore adding support for value range constraints to B3. Maybe it could be as simple as having
     // a load instruction that guarantees that its result is non-negative.
@@ -330,36 +327,36 @@ public:
     void ascribeRange(LValue, const ValueRange&) { }
     LValue nonNegative32(LValue loadInstruction) { return loadInstruction; }
     LValue load32NonNegative(TypedPointer pointer) { return load32(pointer); }
-    LValue load32NonNegative(LValue base, const AbstractField& field) { return load32(base, field); }
+    LValue load32NonNegative(LValue base, const AbstractHeap& field) { return load32(base, field); }
 
-    LValue equal(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Equal, origin(), left, right); }
-    LValue notEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::NotEqual, origin(), left, right); }
-    LValue above(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Above, origin(), left, right); }
-    LValue aboveOrEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::AboveEqual, origin(), left, right); }
-    LValue below(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Below, origin(), left, right); }
-    LValue belowOrEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::BelowEqual, origin(), left, right); }
-    LValue greaterThan(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::GreaterThan, origin(), left, right); }
-    LValue greaterThanOrEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::GreaterEqual, origin(), left, right); }
-    LValue lessThan(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::LessThan, origin(), left, right); }
-    LValue lessThanOrEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::LessEqual, origin(), left, right); }
+    LValue equal(LValue, LValue);
+    LValue notEqual(LValue, LValue);
+    LValue above(LValue, LValue);
+    LValue aboveOrEqual(LValue, LValue);
+    LValue below(LValue, LValue);
+    LValue belowOrEqual(LValue, LValue);
+    LValue greaterThan(LValue, LValue);
+    LValue greaterThanOrEqual(LValue, LValue);
+    LValue lessThan(LValue, LValue);
+    LValue lessThanOrEqual(LValue, LValue);
 
-    LValue doubleEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::Equal, origin(), left, right); }
-    LValue doubleEqualOrUnordered(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::EqualOrUnordered, origin(), left, right); }
-    LValue doubleNotEqualOrUnordered(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::NotEqual, origin(), left, right); }
-    LValue doubleLessThan(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::LessThan, origin(), left, right); }
-    LValue doubleLessThanOrEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::LessEqual, origin(), left, right); }
-    LValue doubleGreaterThan(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::GreaterThan, origin(), left, right); }
-    LValue doubleGreaterThanOrEqual(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::GreaterEqual, origin(), left, right); }
-    LValue doubleNotEqualAndOrdered(LValue left, LValue right) { return logicalNot(doubleEqualOrUnordered(left, right)); }
-    LValue doubleLessThanOrUnordered(LValue left, LValue right) { return logicalNot(doubleGreaterThanOrEqual(left, right)); }
-    LValue doubleLessThanOrEqualOrUnordered(LValue left, LValue right) { return logicalNot(doubleGreaterThan(left, right)); }
-    LValue doubleGreaterThanOrUnordered(LValue left, LValue right) { return logicalNot(doubleLessThanOrEqual(left, right)); }
-    LValue doubleGreaterThanOrEqualOrUnordered(LValue left, LValue right) { return logicalNot(doubleLessThan(left, right)); }
+    LValue doubleEqual(LValue, LValue);
+    LValue doubleEqualOrUnordered(LValue, LValue);
+    LValue doubleNotEqualOrUnordered(LValue, LValue);
+    LValue doubleLessThan(LValue, LValue);
+    LValue doubleLessThanOrEqual(LValue, LValue);
+    LValue doubleGreaterThan(LValue, LValue);
+    LValue doubleGreaterThanOrEqual(LValue, LValue);
+    LValue doubleNotEqualAndOrdered(LValue, LValue);
+    LValue doubleLessThanOrUnordered(LValue, LValue);
+    LValue doubleLessThanOrEqualOrUnordered(LValue, LValue);
+    LValue doubleGreaterThanOrUnordered(LValue, LValue);
+    LValue doubleGreaterThanOrEqualOrUnordered(LValue, LValue);
 
-    LValue isZero32(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::Equal, origin(), value, int32Zero); }
-    LValue notZero32(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::NotEqual, origin(), value, int32Zero); }
-    LValue isZero64(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::Equal, origin(), value, int64Zero); }
-    LValue notZero64(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::NotEqual, origin(), value, int64Zero); }
+    LValue isZero32(LValue);
+    LValue notZero32(LValue);
+    LValue isZero64(LValue);
+    LValue notZero64(LValue);
     LValue isNull(LValue value) { return isZero64(value); }
     LValue notNull(LValue value) { return notZero64(value); }
 
@@ -370,8 +367,17 @@ public:
     LValue testIsZeroPtr(LValue value, LValue mask) { return isNull(bitAnd(value, mask)); }
     LValue testNonZeroPtr(LValue value, LValue mask) { return notNull(bitAnd(value, mask)); }
 
-    LValue select(LValue value, LValue taken, LValue notTaken) { return m_block->appendNew<B3::Value>(m_proc, B3::Select, origin(), value, taken, notTaken); }
-    LValue extractValue(LValue aggVal, unsigned index) { CRASH(); }
+    LValue select(LValue value, LValue taken, LValue notTaken);
+    
+    // These are relaxed atomics by default. Use AbstractHeapRepository::decorateFencedAccess() with a
+    // non-null heap to make them seq_cst fenced.
+    LValue atomicXchgAdd(LValue operand, TypedPointer pointer, B3::Width);
+    LValue atomicXchgAnd(LValue operand, TypedPointer pointer, B3::Width);
+    LValue atomicXchgOr(LValue operand, TypedPointer pointer, B3::Width);
+    LValue atomicXchgSub(LValue operand, TypedPointer pointer, B3::Width);
+    LValue atomicXchgXor(LValue operand, TypedPointer pointer, B3::Width);
+    LValue atomicXchg(LValue operand, TypedPointer pointer, B3::Width);
+    LValue atomicStrongCAS(LValue expected, LValue newValue, TypedPointer pointer, B3::Width);
 
     template<typename VectorType>
     LValue call(LType type, LValue function, const VectorType& vector)
@@ -385,10 +391,17 @@ public:
     template<typename... Args>
     LValue call(LType type, LValue function, LValue arg1, Args... args) { return m_block->appendNew<B3::CCallValue>(m_proc, type, origin(), function, arg1, args...); }
 
+    template<typename Function, typename... Args>
+    LValue callWithoutSideEffects(B3::Type type, Function function, LValue arg1, Args... args)
+    {
+        return m_block->appendNew<B3::CCallValue>(m_proc, type, origin(), B3::Effects::none(),
+            constIntPtr(bitwise_cast<void*>(function)), arg1, args...);
+    }
+
     template<typename FunctionType>
     LValue operation(FunctionType function) { return constIntPtr(bitwise_cast<void*>(function)); }
 
-    void jump(LBasicBlock destination) { m_block->appendNew<B3::ControlValue>(m_proc, B3::Jump, origin(), B3::FrequentedBlock(destination)); }
+    void jump(LBasicBlock);
     void branch(LValue condition, LBasicBlock taken, Weight takenWeight, LBasicBlock notTaken, Weight notTakenWeight);
     void branch(LValue condition, WeightedTarget taken, WeightedTarget notTaken)
     {
@@ -405,8 +418,8 @@ public:
     template<typename VectorType>
     void switchInstruction(LValue value, const VectorType& cases, LBasicBlock fallThrough, Weight fallThroughWeight)
     {
-        B3::SwitchValue* switchValue = m_block->appendNew<B3::SwitchValue>(
-            m_proc, origin(), value, B3::FrequentedBlock(fallThrough));
+        B3::SwitchValue* switchValue = m_block->appendNew<B3::SwitchValue>(m_proc, origin(), value);
+        switchValue->setFallThrough(B3::FrequentedBlock(fallThrough));
         for (const SwitchCase& switchCase : cases) {
             int64_t value = switchCase.value()->asInt();
             B3::FrequentedBlock target(switchCase.target(), switchCase.weight().frequencyClass());
@@ -414,45 +427,25 @@ public:
         }
     }
 
-    void ret(LValue value) { m_block->appendNew<B3::ControlValue>(m_proc, B3::Return, origin(), value); }
+    void ret(LValue);
 
-    void unreachable() { m_block->appendNew<B3::ControlValue>(m_proc, B3::Oops, origin()); }
+    void unreachable();
+    
+    void appendSuccessor(WeightedTarget);
 
-    B3::CheckValue* speculate(LValue value)
-    {
-        return m_block->appendNew<B3::CheckValue>(m_proc, B3::Check, origin(), value);
-    }
+    B3::CheckValue* speculate(LValue);
+    B3::CheckValue* speculateAdd(LValue, LValue);
+    B3::CheckValue* speculateSub(LValue, LValue);
+    B3::CheckValue* speculateMul(LValue, LValue);
 
-    B3::CheckValue* speculateAdd(LValue left, LValue right)
-    {
-        return m_block->appendNew<B3::CheckValue>(m_proc, B3::CheckAdd, origin(), left, right);
-    }
+    B3::PatchpointValue* patchpoint(LType);
 
-    B3::CheckValue* speculateSub(LValue left, LValue right)
-    {
-        return m_block->appendNew<B3::CheckValue>(m_proc, B3::CheckSub, origin(), left, right);
-    }
+    void trap();
 
-    B3::CheckValue* speculateMul(LValue left, LValue right)
-    {
-        return m_block->appendNew<B3::CheckValue>(m_proc, B3::CheckMul, origin(), left, right);
-    }
+    ValueFromBlock anchor(LValue);
 
-    B3::PatchpointValue* patchpoint(LType type)
-    {
-        return m_block->appendNew<B3::PatchpointValue>(m_proc, type, origin());
-    }
-
-    void trap()
-    {
-        m_block->appendNew<B3::ControlValue>(m_proc, B3::Oops, origin());
-    }
-
-    ValueFromBlock anchor(LValue value)
-    {
-        B3::UpsilonValue* upsilon = m_block->appendNew<B3::UpsilonValue>(m_proc, origin(), value);
-        return ValueFromBlock(upsilon, m_block);
-    }
+    void incrementSuperSamplerCount();
+    void decrementSuperSamplerCount();
 
 #if PLATFORM(COCOA)
 #pragma mark - States
@@ -469,15 +462,6 @@ public:
 
 private:
     OrderMaker<LBasicBlock> m_blockOrder;
-    
-    template<typename Function, typename... Args>
-    LValue callWithoutSideEffects(B3::Type type, Function function, LValue arg1, Args... args)
-    {
-        return m_block->appendNew<B3::CCallValue>(m_proc, type, origin(), B3::Effects::none(),
-            m_block->appendNew<B3::ConstPtrValue>(m_proc, origin(), bitwise_cast<void*>(function)),
-            arg1, args...);
-    }
-
 };
 
 template<typename... Params>
@@ -497,11 +481,6 @@ inline LValue Output::phi(LType type, const VectorType& vector)
     return phiNode;
 }
 
-inline void Output::addIncomingToPhi(LValue phi, ValueFromBlock value)
-{
-    value.value()->as<B3::UpsilonValue>()->setPhi(phi);
-}
-
 template<typename... Params>
 inline void Output::addIncomingToPhi(LValue phi, ValueFromBlock value, Params... theRest)
 {
@@ -509,28 +488,10 @@ inline void Output::addIncomingToPhi(LValue phi, ValueFromBlock value, Params...
     addIncomingToPhi(phi, theRest...);
 }
 
-inline LValue Output::bitCast(LValue value, LType type)
-{
-    ASSERT_UNUSED(type, type == int64 || type == doubleType);
-    return m_block->appendNew<B3::Value>(m_proc, B3::BitwiseCast, origin(), value);
-}
-
-inline LValue Output::fround(LValue doubleValue)
-{
-    return floatToDouble(doubleToFloat(doubleValue));
-}
-
 #if COMPILER(GCC_OR_CLANG)
 #pragma GCC diagnostic pop
 #endif // COMPILER(GCC_OR_CLANG)
 
-#define FTL_NEW_BLOCK(output, nameArguments) \
-    (LIKELY(!verboseCompilationEnabled()) \
-    ? (output).newBlock() \
-    : (output).newBlock((toCString nameArguments).data()))
-
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLOutput_h

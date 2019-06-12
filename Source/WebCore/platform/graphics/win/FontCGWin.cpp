@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2013 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2009, 2013, 2016 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,8 @@
 #include "config.h"
 #include "FontCascade.h"
 
+#if USE(CG)
+
 #include "AffineTransform.h"
 #include "FloatConversion.h"
 #include "Font.h"
@@ -39,8 +41,6 @@
 #include <wtf/MathExtras.h>
 
 namespace WebCore {
-
-const int syntheticObliqueAngle = 14;
 
 static inline CGFloat toCGFloat(FIXED f)
 {
@@ -128,7 +128,7 @@ static CGPathRef createPathForGlyph(HDC hdc, Glyph glyph)
 }
 
 void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font, const GlyphBuffer& glyphBuffer,
-    int from, int numGlyphs, const FloatPoint& point, FontSmoothingMode smoothingMode)
+    unsigned from, unsigned numGlyphs, const FloatPoint& point, FontSmoothingMode smoothingMode)
 {
     CGContextRef cgContext = graphicsContext.platformContext();
     bool shouldUseFontSmoothing = WebCoreShouldUseFontSmoothing();
@@ -168,10 +168,11 @@ void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
     matrix.d = -matrix.d;
 
     if (platformData.syntheticOblique()) {
-        static float skew = -tanf(syntheticObliqueAngle * piFloat / 180.0f);
+        static float skew = -tanf(syntheticObliqueAngle() * piFloat / 180.0f);
         matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, 0, skew, 1, 0, 0));
     }
 
+    CGAffineTransform savedMatrix = CGContextGetTextMatrix(cgContext);
     CGContextSetTextMatrix(cgContext, matrix);
 
     // Uniscribe gives us offsets to help refine the positioning of combining glyphs.
@@ -215,6 +216,9 @@ void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
         graphicsContext.setShadow(shadowOffset, shadowBlur, shadowColor);
 
     wkRestoreFontSmoothingStyle(cgContext, oldFontSmoothingStyle);
+    CGContextSetTextMatrix(cgContext, savedMatrix);
 }
 
 }
+
+#endif

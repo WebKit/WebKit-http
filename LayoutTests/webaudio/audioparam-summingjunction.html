@@ -9,7 +9,7 @@ and that these signals are summed, along with the AudioParams intrinsic value.
 <head>
 <script src="resources/audio-testing.js"></script>
 <script src="resources/mix-testing.js"></script>
-<script src="../resources/js-test-pre.js"></script>
+<script src="../resources/js-test.js"></script>
 
 </head>
 <body>
@@ -71,11 +71,6 @@ function checkResult(event) {
 }
 
 function runTest() {
-    if (window.testRunner) {
-        testRunner.dumpAsText();
-        testRunner.waitUntilDone();
-    }
-
     window.jsTestIsAsync = true;
 
     var sampleFrameLength = sampleRate * lengthInSeconds;
@@ -99,7 +94,7 @@ function runTest() {
     gainSource2.buffer = toneBuffer;
 
     // Create a gain node controlling the gain of constantSource and make the connections.
-    var gainNode = context.createGainNode();
+    var gainNode = context.createGain();
 
     // Intrinsic baseline gain.
     // This gain value should be summed with gainSource1 and gainSource2.
@@ -113,19 +108,16 @@ function runTest() {
     gainSource2.connect(gainNode.gain);
 
     // Start all sources at time 0.
-    constantSource.noteOn(0);
-    gainSource1.noteOn(0);
-    gainSource2.noteOn(0);
+    constantSource.start(0);
+    gainSource1.start(0);
+    gainSource2.start(0);
 
     context.oncomplete = checkResult;
     context.startRendering();
 }
 
 runTest();
-successfullyParsed = true;
 
 </script>
-<script src="../resources/js-test-post.js"></script>
-
 </body>
 </html>

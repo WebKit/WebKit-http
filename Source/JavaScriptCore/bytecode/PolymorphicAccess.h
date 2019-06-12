@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,21 +23,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PolymorphicAccess_h
-#define PolymorphicAccess_h
+#pragma once
 
 #if ENABLE(JIT)
 
-#include "CodeOrigin.h"
+#include "AccessCase.h"
+#include "JITStubRoutine.h"
 #include "JSFunctionInlines.h"
 #include "MacroAssembler.h"
-#include "ObjectPropertyConditionSet.h"
-#include "Opcode.h"
 #include "ScratchRegisterAllocator.h"
-#include "Structure.h"
 #include <wtf/Vector.h>
 
 namespace JSC {
+namespace DOMJIT {
+class GetterSetter;
+}
 
 class CodeBlock;
 class PolymorphicAccess;
@@ -45,267 +45,71 @@ class StructureStubInfo;
 class WatchpointsOnStructureStubInfo;
 class ScratchRegisterAllocator;
 
-struct AccessGenerationState;
-
-class AccessCase {
-    WTF_MAKE_NONCOPYABLE(AccessCase);
-    WTF_MAKE_FAST_ALLOCATED;
+class AccessGenerationResult {
 public:
-    enum AccessType {
-        Load,
-        Transition,
-        Replace,
-        Miss,
-        Getter,
-        Setter,
-        CustomValueGetter,
-        CustomAccessorGetter,
-        CustomValueSetter,
-        CustomAccessorSetter,
-        IntrinsicGetter,
-        InHit,
-        InMiss,
-        ArrayLength,
-        StringLength
+    enum Kind {
+        MadeNoChanges,
+        GaveUp,
+        Buffered,
+        GeneratedNewCode,
+        GeneratedFinalCode // Generated so much code that we never want to generate code again.
     };
-
-    static bool isGet(AccessType type)
-    {
-        switch (type) {
-        case Transition:
-        case Replace:
-        case Setter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-        case InHit:
-        case InMiss:
-            return false;
-        case Load:
-        case Miss:
-        case Getter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case IntrinsicGetter:
-        case ArrayLength:
-        case StringLength:
-            return true;
-        }
-    }
-
-    static bool isPut(AccessType type)
-    {
-        switch (type) {
-        case Load:
-        case Miss:
-        case Getter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case IntrinsicGetter:
-        case InHit:
-        case InMiss:
-        case ArrayLength:
-        case StringLength:
-            return false;
-        case Transition:
-        case Replace:
-        case Setter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-            return true;
-        }
-    }
-
-    static bool isIn(AccessType type)
-    {
-        switch (type) {
-        case Load:
-        case Miss:
-        case Getter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case IntrinsicGetter:
-        case Transition:
-        case Replace:
-        case Setter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-        case ArrayLength:
-        case StringLength:
-            return false;
-        case InHit:
-        case InMiss:
-            return true;
-        }
-    }
-
-    static std::unique_ptr<AccessCase> get(
-        VM&, JSCell* owner, AccessType, PropertyOffset, Structure*,
-        const ObjectPropertyConditionSet& = ObjectPropertyConditionSet(),
-        bool viaProxy = false,
-        WatchpointSet* additionalSet = nullptr,
-        PropertySlot::GetValueFunc = nullptr,
-        JSObject* customSlotBase = nullptr);
-
-    static std::unique_ptr<AccessCase> replace(VM&, JSCell* owner, Structure*, PropertyOffset);
-
-    static std::unique_ptr<AccessCase> transition(
-        VM&, JSCell* owner, Structure* oldStructure, Structure* newStructure, PropertyOffset,
-        const ObjectPropertyConditionSet& = ObjectPropertyConditionSet());
-
-    static std::unique_ptr<AccessCase> setter(
-        VM&, JSCell* owner, AccessType, Structure*, PropertyOffset,
-        const ObjectPropertyConditionSet&, PutPropertySlot::PutValueFunc = nullptr,
-        JSObject* customSlotBase = nullptr);
-
-    static std::unique_ptr<AccessCase> in(
-        VM&, JSCell* owner, AccessType, Structure*,
-        const ObjectPropertyConditionSet& = ObjectPropertyConditionSet());
-
-    static std::unique_ptr<AccessCase> getLength(VM&, JSCell* owner, AccessType);
-    static std::unique_ptr<AccessCase> getIntrinsic(VM&, JSCell* owner, JSFunction* intrinsic, PropertyOffset, Structure*, const ObjectPropertyConditionSet&);
     
-    static std::unique_ptr<AccessCase> fromStructureStubInfo(VM&, JSCell* owner, StructureStubInfo&);
-
-    ~AccessCase();
-    
-    std::unique_ptr<AccessCase> clone() const;
-    
-    AccessType type() const { return m_type; }
-    PropertyOffset offset() const { return m_offset; }
-    bool viaProxy() const { return m_rareData ? m_rareData->viaProxy : false; }
-    
-    Structure* structure() const
+    AccessGenerationResult()
     {
-        if (m_type == Transition)
-            return m_structure->previousID();
-        return m_structure.get();
-    }
-    bool guardedByStructureCheck() const;
-
-    Structure* newStructure() const
-    {
-        ASSERT(m_type == Transition);
-        return m_structure.get();
     }
     
-    ObjectPropertyConditionSet conditionSet() const { return m_conditionSet; }
-    JSFunction* intrinsicFunction() const
+    AccessGenerationResult(Kind kind)
+        : m_kind(kind)
     {
-        ASSERT(type() == IntrinsicGetter && m_rareData);
-        return m_rareData->intrinsicFunction.get();
+        RELEASE_ASSERT(kind != GeneratedNewCode);
+        RELEASE_ASSERT(kind != GeneratedFinalCode);
     }
-    Intrinsic intrinsic() const
-    {
-        return intrinsicFunction()->intrinsic();
-    }
-
-    WatchpointSet* additionalSet() const
-    {
-        return m_rareData ? m_rareData->additionalSet.get() : nullptr;
-    }
-
-    JSObject* customSlotBase() const
-    {
-        return m_rareData ? m_rareData->customSlotBase.get() : nullptr;
-    }
-
-    JSObject* alternateBase() const;
     
-    bool doesCalls() const
+    AccessGenerationResult(Kind kind, MacroAssemblerCodePtr code)
+        : m_kind(kind)
+        , m_code(code)
     {
-        switch (type()) {
-        case Getter:
-        case Setter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-            return true;
-        default:
-            return false;
-        }
+        RELEASE_ASSERT(kind == GeneratedNewCode || kind == GeneratedFinalCode);
+        RELEASE_ASSERT(code);
     }
-
-    bool isGetter() const
+    
+    bool operator==(const AccessGenerationResult& other) const
     {
-        switch (type()) {
-        case Getter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-            return true;
-        default:
-            return false;
-        }
+        return m_kind == other.m_kind && m_code == other.m_code;
     }
-
-    CallLinkInfo* callLinkInfo() const
+    
+    bool operator!=(const AccessGenerationResult& other) const
     {
-        if (!m_rareData)
-            return nullptr;
-        return m_rareData->callLinkInfo.get();
+        return !(*this == other);
     }
-
-    // Is it still possible for this case to ever be taken?
-    bool couldStillSucceed() const;
-
-    static bool canEmitIntrinsicGetter(JSFunction*, Structure*);
-
-    // If this method returns true, then it's a good idea to remove 'other' from the access once 'this'
-    // is added. This method assumes that in case of contradictions, 'this' represents a newer, and so
-    // more useful, truth. This method can be conservative; it will return false when it doubt.
-    bool canReplace(const AccessCase& other);
-
-    void dump(PrintStream& out) const;
+    
+    explicit operator bool() const
+    {
+        return *this != AccessGenerationResult();
+    }
+    
+    Kind kind() const { return m_kind; }
+    
+    const MacroAssemblerCodePtr& code() const { return m_code; }
+    
+    bool madeNoChanges() const { return m_kind == MadeNoChanges; }
+    bool gaveUp() const { return m_kind == GaveUp; }
+    bool buffered() const { return m_kind == Buffered; }
+    bool generatedNewCode() const { return m_kind == GeneratedNewCode; }
+    bool generatedFinalCode() const { return m_kind == GeneratedFinalCode; }
+    
+    // If we gave up on this attempt to generate code, or if we generated the "final" code, then we
+    // should give up after this.
+    bool shouldGiveUpNow() const { return gaveUp() || generatedFinalCode(); }
+    
+    bool generatedSomeCode() const { return generatedNewCode() || generatedFinalCode(); }
+    
+    void dump(PrintStream&) const;
     
 private:
-    friend class CodeBlock;
-    friend class PolymorphicAccess;
-
-    AccessCase();
-
-    bool visitWeak(VM&) const;
-
-    // Fall through on success. Two kinds of failures are supported: fall-through, which means that we
-    // should try a different case; and failure, which means that this was the right case but it needs
-    // help from the slow path.
-    void generateWithGuard(AccessGenerationState&, MacroAssembler::JumpList& fallThrough);
-
-    // Fall through on success, add a jump to the failure list on failure.
-    void generate(AccessGenerationState&);
-    void emitIntrinsicGetter(AccessGenerationState&);
-    
-    AccessType m_type { Load };
-    PropertyOffset m_offset { invalidOffset };
-
-    // Usually this is the structure that we expect the base object to have. But, this is the *new*
-    // structure for a transition and we rely on the fact that it has a strong reference to the old
-    // structure. For proxies, this is the structure of the object behind the proxy.
-    WriteBarrier<Structure> m_structure;
-
-    ObjectPropertyConditionSet m_conditionSet;
-
-    class RareData {
-        WTF_MAKE_FAST_ALLOCATED;
-    public:
-        RareData()
-            : viaProxy(false)
-        {
-            customAccessor.opaque = nullptr;
-        }
-        
-        bool viaProxy;
-        RefPtr<WatchpointSet> additionalSet;
-        std::unique_ptr<CallLinkInfo> callLinkInfo;
-        union {
-            PropertySlot::GetValueFunc getter;
-            PutPropertySlot::PutValueFunc setter;
-            void* opaque;
-        } customAccessor;
-        WriteBarrier<JSObject> customSlotBase;
-        WriteBarrier<JSFunction> intrinsicFunction;
-    };
-
-    std::unique_ptr<RareData> m_rareData;
+    Kind m_kind;
+    MacroAssemblerCodePtr m_code;
 };
 
 class PolymorphicAccess {
@@ -315,14 +119,15 @@ public:
     PolymorphicAccess();
     ~PolymorphicAccess();
 
-    // This may return null, in which case the old stub routine is left intact. You are required to
-    // pass a vector of non-null access cases. This will prune the access cases by rejecting any case
-    // in the list that is subsumed by a later case in the list.
-    MacroAssemblerCodePtr regenerateWithCases(
-        VM&, CodeBlock*, StructureStubInfo&, const Identifier&, Vector<std::unique_ptr<AccessCase>>);
+    // When this fails (returns GaveUp), this will leave the old stub intact but you should not try
+    // to call this method again for that PolymorphicAccess instance.
+    AccessGenerationResult addCases(
+        const GCSafeConcurrentJSLocker&, VM&, CodeBlock*, StructureStubInfo&, const Identifier&, Vector<std::unique_ptr<AccessCase>, 2>);
 
-    MacroAssemblerCodePtr regenerateWithCase(
-        VM&, CodeBlock*, StructureStubInfo&, const Identifier&, std::unique_ptr<AccessCase>);
+    AccessGenerationResult addCase(
+        const GCSafeConcurrentJSLocker&, VM&, CodeBlock*, StructureStubInfo&, const Identifier&, std::unique_ptr<AccessCase>);
+    
+    AccessGenerationResult regenerate(const GCSafeConcurrentJSLocker&, VM&, CodeBlock*, StructureStubInfo&, const Identifier&);
     
     bool isEmpty() const { return m_list.isEmpty(); }
     unsigned size() const { return m_list.size(); }
@@ -331,6 +136,10 @@ public:
 
     // If this returns false then we are requesting a reset of the owning StructureStubInfo.
     bool visitWeak(VM&) const;
+    
+    // This returns true if it has marked everything it will ever marked. This can be used as an
+    // optimization to then avoid calling this method again during the fixpoint.
+    bool propagateTransitions(SlotVisitor&) const;
 
     void aboutToDie();
 
@@ -350,9 +159,10 @@ private:
     friend struct AccessGenerationState;
     
     typedef Vector<std::unique_ptr<AccessCase>, 2> ListType;
-
-    MacroAssemblerCodePtr regenerate(
-        VM&, CodeBlock*, StructureStubInfo&, const Identifier&, ListType& cases);
+    
+    void commit(
+        const GCSafeConcurrentJSLocker&, VM&, std::unique_ptr<WatchpointsOnStructureStubInfo>&, CodeBlock*, StructureStubInfo&,
+        const Identifier&, AccessCase&);
 
     ListType m_list;
     RefPtr<JITStubRoutine> m_stubRoutine;
@@ -361,12 +171,14 @@ private:
 };
 
 struct AccessGenerationState {
-    AccessGenerationState()
-    : m_calculatedRegistersForCallAndExceptionHandling(false)
-    , m_needsToRestoreRegistersIfException(false)
-    , m_calculatedCallSiteIndex(false)
+    AccessGenerationState(VM& vm)
+        : m_vm(vm) 
+        , m_calculatedRegistersForCallAndExceptionHandling(false)
+        , m_needsToRestoreRegistersIfException(false)
+        , m_calculatedCallSiteIndex(false)
     {
     }
+    VM& m_vm;
     CCallHelpers* jit { nullptr };
     ScratchRegisterAllocator* allocator;
     ScratchRegisterAllocator::PreservedState preservedReusedRegisterState;
@@ -376,9 +188,9 @@ struct AccessGenerationState {
     MacroAssembler::JumpList failAndRepatch;
     MacroAssembler::JumpList failAndIgnore;
     GPRReg baseGPR { InvalidGPRReg };
+    GPRReg thisGPR { InvalidGPRReg };
     JSValueRegs valueRegs;
     GPRReg scratchGPR { InvalidGPRReg };
-    Vector<std::function<void(LinkBuffer&)>> callbacks;
     const Identifier* ident;
     std::unique_ptr<WatchpointsOnStructureStubInfo> watchpoints;
     Vector<WriteBarrier<JSCell>> weakReferences;
@@ -388,19 +200,28 @@ struct AccessGenerationState {
     void restoreScratch();
     void succeed();
 
-    void calculateLiveRegistersForCallAndExceptionHandling();
+    struct SpillState {
+        SpillState() = default;
+        SpillState(RegisterSet&& regs, unsigned usedStackBytes)
+            : spilledRegisters(WTFMove(regs))
+            , numberOfStackBytesUsedForRegisterPreservation(usedStackBytes)
+        {
+        }
 
-    void preserveLiveRegistersToStackForCall();
+        RegisterSet spilledRegisters { };
+        unsigned numberOfStackBytesUsedForRegisterPreservation { std::numeric_limits<unsigned>::max() };
 
-    void restoreLiveRegistersFromStackForCall(bool isGetter);
-    void restoreLiveRegistersFromStackForCallWithThrownException();
-    void restoreLiveRegistersFromStackForCall(const RegisterSet& dontRestore);
+        bool isEmpty() const { return numberOfStackBytesUsedForRegisterPreservation == std::numeric_limits<unsigned>::max(); }
+    };
 
-    const RegisterSet& liveRegistersForCall()
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_liveRegistersForCall;
-    }
+    const RegisterSet& calculateLiveRegistersForCallAndExceptionHandling();
+
+    SpillState preserveLiveRegistersToStackForCall(const RegisterSet& extra = RegisterSet());
+
+    void restoreLiveRegistersFromStackForCallWithThrownException(const SpillState&);
+    void restoreLiveRegistersFromStackForCall(const SpillState&, const RegisterSet& dontRestore = RegisterSet());
+
+    const RegisterSet& liveRegistersForCall();
 
     CallSiteIndex callSiteIndexForExceptionHandlingOrOriginal();
     CallSiteIndex callSiteIndexForExceptionHandling()
@@ -411,27 +232,30 @@ struct AccessGenerationState {
         return m_callSiteIndex;
     }
 
-    const HandlerInfo& originalExceptionHandler() const;
-    unsigned numberOfStackBytesUsedForRegisterPreservation() const
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_numberOfStackBytesUsedForRegisterPreservation;
-    }
+    const HandlerInfo& originalExceptionHandler();
 
     bool needsToRestoreRegistersIfException() const { return m_needsToRestoreRegistersIfException; }
     CallSiteIndex originalCallSiteIndex() const;
     
-private:
-    const RegisterSet& liveRegistersToPreserveAtExceptionHandlingCallSite()
+    void emitExplicitExceptionHandler();
+
+    void setSpillStateForJSGetterSetter(SpillState& spillState)
     {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_liveRegistersToPreserveAtExceptionHandlingCallSite;
+        if (!m_spillStateForJSGetterSetter.isEmpty()) {
+            ASSERT(m_spillStateForJSGetterSetter.numberOfStackBytesUsedForRegisterPreservation == spillState.numberOfStackBytesUsedForRegisterPreservation);
+            ASSERT(m_spillStateForJSGetterSetter.spilledRegisters == spillState.spilledRegisters);
+        }
+        m_spillStateForJSGetterSetter = spillState;
     }
+    SpillState spillStateForJSGetterSetter() const { return m_spillStateForJSGetterSetter; }
+    
+private:
+    const RegisterSet& liveRegistersToPreserveAtExceptionHandlingCallSite();
     
     RegisterSet m_liveRegistersToPreserveAtExceptionHandlingCallSite;
     RegisterSet m_liveRegistersForCall;
     CallSiteIndex m_callSiteIndex { CallSiteIndex(std::numeric_limits<unsigned>::max()) };
-    unsigned m_numberOfStackBytesUsedForRegisterPreservation { std::numeric_limits<unsigned>::max() };
+    SpillState m_spillStateForJSGetterSetter;
     bool m_calculatedRegistersForCallAndExceptionHandling : 1;
     bool m_needsToRestoreRegistersIfException : 1;
     bool m_calculatedCallSiteIndex : 1;
@@ -441,11 +265,10 @@ private:
 
 namespace WTF {
 
+void printInternal(PrintStream&, JSC::AccessGenerationResult::Kind);
 void printInternal(PrintStream&, JSC::AccessCase::AccessType);
+void printInternal(PrintStream&, JSC::AccessCase::State);
 
 } // namespace WTF
 
 #endif // ENABLE(JIT)
-
-#endif // PolymorphicAccess_h
-

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2011, 2013 Google Inc.  All rights reserved.
- * Copyright (C) 2012-2014 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011, 2013 Google Inc. All rights reserved.
+ * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,15 +29,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef VTTCue_h
-#define VTTCue_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "EventTarget.h"
 #include "HTMLElement.h"
 #include "TextTrackCue.h"
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
@@ -53,7 +50,7 @@ class WebVTTCueData;
 
 class VTTCueBox : public HTMLElement {
 public:
-    static PassRefPtr<VTTCueBox> create(Document&, VTTCue&);
+    static Ref<VTTCueBox> create(Document&, VTTCue&);
 
     VTTCue* getCue() const;
     virtual void applyCSSProperties(const IntSize& videoSize);
@@ -64,7 +61,7 @@ public:
 protected:
     VTTCueBox(Document&, VTTCue&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override final;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
     VTTCue& m_cue;
     int m_fontSizeFromCaptionUserPrefs;
@@ -91,22 +88,22 @@ public:
     virtual ~VTTCue();
 
     const String& vertical() const;
-    void setVertical(const String&, ExceptionCode&);
+    ExceptionOr<void> setVertical(const String&);
 
     bool snapToLines() const { return m_snapToLines; }
     void setSnapToLines(bool);
 
     double line() const { return m_linePosition; }
-    virtual void setLine(double, ExceptionCode&);
+    virtual ExceptionOr<void> setLine(double);
 
     double position() const { return m_textPosition; }
-    virtual void setPosition(double, ExceptionCode&);
+    virtual ExceptionOr<void> setPosition(double);
 
     int size() const { return m_cueSize; }
-    virtual void setSize(int, ExceptionCode&);
+    ExceptionOr<void> setSize(int);
 
     const String& align() const;
-    void setAlign(const String&, ExceptionCode&);
+    ExceptionOr<void> setAlign(const String&);
 
     const String& text() const { return m_content; }
     void setText(const String&);
@@ -114,18 +111,18 @@ public:
     const String& cueSettings() const { return m_settings; }
     void setCueSettings(const String&);
 
-    PassRefPtr<DocumentFragment> getCueAsHTML();
-    PassRefPtr<DocumentFragment> createCueRenderingTree();
+    RefPtr<DocumentFragment> getCueAsHTML();
+    RefPtr<DocumentFragment> createCueRenderingTree();
 
     const String& regionId() const { return m_regionId; }
     void setRegionId(const String&);
     void notifyRegionWhenRemovingDisplayTree(bool);
 
-    virtual void setIsActive(bool) override;
+    void setIsActive(bool) override;
 
     bool hasDisplayTree() const { return m_displayTree; }
-    VTTCueBox* getDisplayTree(const IntSize& videoSize, int fontSize);
-    HTMLSpanElement* element() const { return m_cueHighlightBox.get(); }
+    VTTCueBox& getDisplayTree(const IntSize& videoSize, int fontSize);
+    HTMLSpanElement& element() const { return *m_cueHighlightBox; }
 
     void updateDisplayTree(const MediaTime&);
     void removeDisplayTree();
@@ -161,21 +158,21 @@ public:
 
     virtual void setFontSize(int, const IntSize&, bool important);
 
-    virtual bool isEqual(const TextTrackCue&, CueMatchRules) const override;
-    virtual bool cueContentsMatch(const TextTrackCue&) const override;
-    virtual bool doesExtendCue(const TextTrackCue&) const override;
+    bool isEqual(const TextTrackCue&, CueMatchRules) const override;
+    bool cueContentsMatch(const TextTrackCue&) const override;
+    bool doesExtendCue(const TextTrackCue&) const override;
 
-    virtual CueType cueType() const override { return WebVTT; }
-    virtual bool isRenderable() const override final { return true; }
+    CueType cueType() const override { return WebVTT; }
+    bool isRenderable() const final { return true; }
 
-    virtual void didChange() override;
+    void didChange() override;
 
 protected:
     VTTCue(ScriptExecutionContext&, const MediaTime& start, const MediaTime& end, const String& content);
     VTTCue(ScriptExecutionContext&, const WebVTTCueData&);
 
-    virtual PassRefPtr<VTTCueBox> createDisplayTree();
-    VTTCueBox* displayTreeInternal();
+    virtual Ref<VTTCueBox> createDisplayTree();
+    VTTCueBox& displayTreeInternal();
 
 private:
     void initialize(ScriptExecutionContext&);
@@ -230,5 +227,4 @@ const VTTCue* toVTTCue(const TextTrackCue*);
 
 } // namespace WebCore
 
-#endif
 #endif

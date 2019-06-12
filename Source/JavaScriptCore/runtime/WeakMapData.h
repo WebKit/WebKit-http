@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WeakMapData_h
-#define WeakMapData_h
+#pragma once
 
 #include "JSCell.h"
 #include "Structure.h"
-#include <wtf/HashFunctions.h>
 #include <wtf/HashMap.h>
 #include <wtf/MathExtras.h>
 
@@ -70,6 +68,7 @@ public:
 private:
     WeakMapData(VM&);
     static void destroy(JSCell*);
+    static size_t estimatedSize(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
     void finishCreation(VM&);
 
@@ -80,8 +79,8 @@ private:
         {
         }
     private:
-        virtual void visitWeakReferences(SlotVisitor&) override;
-        virtual void finalizeUnconditionally() override;
+        void visitWeakReferences(SlotVisitor&) override;
+        void finalizeUnconditionally() override;
         unsigned m_liveKeyCount;
         WeakMapData* m_target;
     };
@@ -89,6 +88,4 @@ private:
     MapType m_map;
 };
 
-}
-
-#endif /* !defined(WeakMapData_h) */
+} // namespace JSC

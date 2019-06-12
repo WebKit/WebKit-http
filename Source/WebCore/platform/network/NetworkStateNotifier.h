@@ -26,8 +26,8 @@
 #ifndef NetworkStateNotifier_h
 #define NetworkStateNotifier_h
 
-#include <functional>
 #include <wtf/FastMalloc.h>
+#include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
@@ -64,10 +64,10 @@ class NetworkStateNotifier {
     WTF_MAKE_NONCOPYABLE(NetworkStateNotifier); WTF_MAKE_FAST_ALLOCATED;
 public:
     NetworkStateNotifier();
-#if PLATFORM(EFL) || PLATFORM(IOS)
+#if PLATFORM(IOS)
     ~NetworkStateNotifier();
 #endif
-    void addNetworkStateChangeListener(std::function<void (bool isOnLine)>);
+    void addNetworkStateChangeListener(WTF::Function<void (bool isOnLine)>&&);
 
     bool onLine() const;
 #if (PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
@@ -78,7 +78,7 @@ private:
 #if !PLATFORM(IOS)
     bool m_isOnLine;
 #endif
-    Vector<std::function<void (bool)>> m_listeners;
+    Vector<WTF::Function<void (bool)>> m_listeners;
 
     void notifyNetworkStateChange() const;
     void updateState();
@@ -99,13 +99,6 @@ private:
     HANDLE m_waitHandle;
     OVERLAPPED m_overlapped;
 
-#elif PLATFORM(EFL)
-    void networkInterfaceChanged();
-    static Eina_Bool readSocketCallback(void* userData, Ecore_Fd_Handler*);
-
-    int m_netlinkSocket;
-    Ecore_Fd_Handler* m_fdHandler;
-
 #elif PLATFORM(IOS)
     void registerObserverIfNecessary() const;
     friend void setOnLine(const NetworkStateNotifier*, bool);
@@ -120,7 +113,7 @@ private:
 #endif
 };
 
-#if !PLATFORM(COCOA) && !PLATFORM(WIN) && !PLATFORM(EFL) && !(PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
+#if !PLATFORM(COCOA) && !PLATFORM(WIN) && !(PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
 
 inline NetworkStateNotifier::NetworkStateNotifier()
     : m_isOnLine(true)

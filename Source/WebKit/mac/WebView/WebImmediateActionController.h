@@ -28,11 +28,19 @@
 #import "WebUIDelegatePrivate.h"
 #import <WebCore/HitTestResult.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
+#import <WebCore/TextIndicator.h>
 #import <wtf/RetainPtr.h>
 
 @class DDActionContext;
 @class QLPreviewMenuItem;
+@class NSDictionary;
 @class WebView;
+
+namespace WebCore {
+class Frame;
+class Range;
+struct DictionaryPopupInfo;
+};
 
 @interface WebImmediateActionController : NSObject <NSImmediateActionGestureRecognizerDelegate> {
 @private
@@ -43,7 +51,6 @@
 
     RetainPtr<QLPreviewMenuItem> _currentQLPreviewMenuItem;
     RetainPtr<DDActionContext> _currentActionContext;
-    BOOL _isShowingTextIndicator;
     BOOL _hasActivatedActionContext;
     BOOL _contentPreventsDefault;
 }
@@ -54,6 +61,8 @@
 - (void)webView:(WebView *)webView didHandleScrollWheel:(NSEvent *)event;
 
 - (NSImmediateActionGestureRecognizer *)immediateActionRecognizer;
+
++ (WebCore::DictionaryPopupInfo)_dictionaryPopupInfoForRange:(WebCore::Range&)range inFrame:(WebCore::Frame*)frame withLookupOptions:(NSDictionary *)lookupOptions indicatorOptions:(WebCore::TextIndicatorOptions)indicatorOptions transition:(WebCore::TextIndicatorPresentationTransition)presentationTransition;
 
 @end
 

@@ -1,124 +1,119 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Metrological Group B.V.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials provided
+ *    with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaKeySession_h
-#define MediaKeySession_h
+#pragma once
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
 
 #include "ActiveDOMObject.h"
-#include "CDMSession.h"
+#include "CDMInstance.h"
 #include "EventTarget.h"
-#include "ExceptionCode.h"
 #include "GenericEventQueue.h"
-#include "Timer.h"
-#include <runtime/Uint8Array.h>
-#include <wtf/Deque.h>
-#include <wtf/PassRefPtr.h>
+#include "GenericTaskQueue.h"
+#include "JSDOMPromiseDeferred.h"
+#include "MediaKeyMessageType.h"
+#include "MediaKeySessionType.h"
+#include "MediaKeyStatus.h"
 #include <wtf/RefCounted.h>
+#include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class MediaKeyError;
+class BufferSource;
+class CDM;
+class MediaKeyStatusMap;
 class MediaKeys;
+class SharedBuffer;
 
-class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject, public CDMSessionClient {
+class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    static Ref<MediaKeySession> create(ScriptExecutionContext*, MediaKeys*, const String& keySystem);
-    ~MediaKeySession();
-
-    const String& keySystem() const { return m_keySystem; }
-    CDMSession* session() { return m_session.get(); }
-    const String& sessionId() const;
-
-    void setError(MediaKeyError*);
-    MediaKeyError* error() { return m_error.get(); }
-
-    void setKeys(MediaKeys* keys) { m_keys = keys; }
-    MediaKeys* keys() const { return m_keys; }
-
-    void generateKeyRequest(const String& mimeType, Uint8Array* initData);
-    void update(Uint8Array* key, ExceptionCode&);
-
-    bool isClosed() const { return !m_session; }
-    void close();
-
-    RefPtr<ArrayBuffer> cachedKeyForKeyId(const String& keyId) const;
+    static Ref<MediaKeySession> create(ScriptExecutionContext&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
+    virtual ~MediaKeySession();
 
     using RefCounted<MediaKeySession>::ref;
     using RefCounted<MediaKeySession>::deref;
 
-    void enqueueEvent(PassRefPtr<Event>);
+    const String& sessionId() const;
+    double expiration() const;
+    Ref<MediaKeyStatusMap> keyStatuses() const;
 
-    virtual EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
+    void generateRequest(const AtomicString&, const BufferSource&, Ref<DeferredPromise>&&);
+    void load(const String&, Ref<DeferredPromise>&&);
+    void update(const BufferSource&, Ref<DeferredPromise>&&);
+    void close(Ref<DeferredPromise>&&);
+    void remove(Ref<DeferredPromise>&&);
 
-    // ActiveDOMObject API.
-    bool hasPendingActivity() const override;
+    using ClosedPromise = DOMPromiseDeferred<void>;
+    void registerClosedPromise(ClosedPromise&&);
 
-protected:
-    MediaKeySession(ScriptExecutionContext*, MediaKeys*, const String& keySystem);
-    void keyRequestTimerFired();
-    void addKeyTimerFired();
-
-    // CDMSessionClient
-    virtual void sendMessage(Uint8Array*, String destinationURL) override;
-    virtual void sendError(MediaKeyErrorCode, uint32_t systemCode) override;
-    virtual String mediaKeysStorageDirectory() const override;
-
-    MediaKeys* m_keys;
-    String m_keySystem;
-    String m_sessionId;
-    RefPtr<MediaKeyError> m_error;
-    GenericEventQueue m_asyncEventQueue;
-    std::unique_ptr<CDMSession> m_session;
-
-    struct PendingKeyRequest {
-        PendingKeyRequest(const String& mimeType, Uint8Array* initData) : mimeType(mimeType), initData(initData) { }
-        String mimeType;
-        RefPtr<Uint8Array> initData;
-    };
-    Deque<PendingKeyRequest> m_pendingKeyRequests;
-    Timer m_keyRequestTimer;
-
-    Deque<RefPtr<Uint8Array>> m_pendingKeys;
-    Timer m_addKeyTimer;
+    const Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>>& statuses() const { return m_statuses; }
 
 private:
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    MediaKeySession(ScriptExecutionContext&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
+    void enqueueMessage(MediaKeyMessageType, const SharedBuffer&);
+    void updateKeyStatuses(CDMInstance::KeyStatusVector&&);
+    void updateExpiration(double);
+    void sessionClosed();
 
-    // ActiveDOMObject API.
-    void stop() override;
-    bool canSuspendForDocumentSuspension() const override;
+    // EventTarget
+    EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
+    void refEventTarget() override { ref(); }
+    void derefEventTarget() override { deref(); }
+
+    // ActiveDOMObject
+    bool hasPendingActivity() const override;
     const char* activeDOMObjectName() const override;
+    bool canSuspendForDocumentSuspension() const override;
+    void stop() override;
+
+    String m_sessionId;
+    double m_expiration;
+    std::optional<ClosedPromise> m_closedPromise;
+    Ref<MediaKeyStatusMap> m_keyStatuses;
+    bool m_closed { false };
+    bool m_uninitialized { true };
+    bool m_callable { false };
+    bool m_useDistinctiveIdentifier;
+    MediaKeySessionType m_sessionType;
+    Ref<CDM> m_implementation;
+    Ref<CDMInstance> m_instance;
+    GenericEventQueue m_eventQueue;
+    GenericTaskQueue<Timer> m_taskQueue;
+    Vector<Ref<SharedBuffer>> m_recordOfKeyUsage;
+    double m_firstDecryptTime { 0 };
+    double m_latestDecryptTime { 0 };
+    Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>> m_statuses;
+    WeakPtrFactory<MediaKeySession> m_weakPtrFactory;
 };
 
-}
+} // namespace WebCore
 
-#endif // ENABLE(ENCRYPTED_MEDIA_V2)
-
-#endif // MediaKeySession_h
+#endif // ENABLE(ENCRYPTED_MEDIA)

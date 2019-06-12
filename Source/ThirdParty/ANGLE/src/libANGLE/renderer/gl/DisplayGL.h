@@ -12,6 +12,11 @@
 #include "libANGLE/renderer/DisplayImpl.h"
 #include "libANGLE/renderer/gl/FunctionsGL.h"
 
+namespace egl
+{
+class Surface;
+}
+
 namespace rx
 {
 
@@ -20,21 +25,36 @@ class RendererGL;
 class DisplayGL : public DisplayImpl
 {
   public:
-    DisplayGL();
+    DisplayGL(const egl::DisplayState &state);
     ~DisplayGL() override;
 
     egl::Error initialize(egl::Display *display) override;
     void terminate() override;
 
-    egl::Error createContext(const egl::Config *config, const gl::Context *shareContext, const egl::AttributeMap &attribs,
-                             gl::Context **outContext) override;
+    ImageImpl *createImage(EGLenum target,
+                           egl::ImageSibling *buffer,
+                           const egl::AttributeMap &attribs) override;
+
+    ContextImpl *createContext(const gl::ContextState &state) override;
+
+    StreamProducerImpl *createStreamProducerD3DTextureNV12(
+        egl::Stream::ConsumerType consumerType,
+        const egl::AttributeMap &attribs) override;
 
     egl::Error makeCurrent(egl::Surface *drawSurface, egl::Surface *readSurface, gl::Context *context) override;
 
+    gl::Version getMaxSupportedESVersion() const override;
+
+  protected:
+    RendererGL *getRenderer() const { return mRenderer; };
+
   private:
     virtual const FunctionsGL *getFunctionsGL() const = 0;
+    virtual egl::Error makeCurrentSurfaceless(gl::Context *context);
 
     RendererGL *mRenderer;
+
+    egl::Surface *mCurrentDrawSurface;
 };
 
 }

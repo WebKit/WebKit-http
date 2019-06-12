@@ -27,6 +27,7 @@
 
 #if PLATFORM(MAC)
 
+#import "PlatformWebView.h"
 #import "TestController.h"
 
 static void setDefaultsToConsistentValuesForTesting()
@@ -39,6 +40,8 @@ static void setDefaultsToConsistentValuesForTesting()
         @"NSFakeForceTouchDevice" : @YES,
         @"AppleEnableSwipeNavigateWithScrolls": @YES,
         @"com.apple.swipescrolldirection": @1,
+        @"com.apple.trackpad.forceClick": @1,
+        @"WebKitLinkedOnOrAfterEverything": @YES,
     };
 
     [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];
@@ -50,6 +53,7 @@ static void disableAppNapInUIProcess()
     static id assertion = [[[NSProcessInfo processInfo] beginActivityWithOptions:options reason:@"WebKitTestRunner should not be subject to process suppression"] retain];
     ASSERT_UNUSED(assertion, assertion);
 }
+
 
 int main(int argc, const char* argv[])
 {

@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WaveShaperProcessor_h
-#define WaveShaperProcessor_h
+#pragma once
 
 #include "AudioDSPKernel.h"
 #include "AudioDSPKernelProcessor.h"
@@ -49,9 +48,9 @@ public:
 
     virtual ~WaveShaperProcessor();
 
-    virtual std::unique_ptr<AudioDSPKernel> createKernel() override;
+    std::unique_ptr<AudioDSPKernel> createKernel() override;
 
-    virtual void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess) override;
+    void process(const AudioBus* source, AudioBus* destination, size_t framesToProcess) override;
 
     void setCurve(Float32Array*);
     Float32Array* curve() { return m_curve.get(); }
@@ -70,5 +69,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // WaveShaperProcessor_h

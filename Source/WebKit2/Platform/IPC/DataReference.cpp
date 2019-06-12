@@ -26,34 +26,29 @@
 #include "config.h"
 #include "DataReference.h"
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace IPC {
 
-void DataReference::encode(ArgumentEncoder& encoder) const
+void DataReference::encode(Encoder& encoder) const
 {
     encoder.encodeVariableLengthByteArray(*this);
 }
 
-bool DataReference::decode(ArgumentDecoder& decoder, DataReference& dataReference)
+bool DataReference::decode(Decoder& decoder, DataReference& dataReference)
 {
     return decoder.decodeVariableLengthByteArray(dataReference);
 }
 
-void SharedBufferDataReference::encode(ArgumentEncoder& encoder) const
+void SharedBufferDataReference::encode(Encoder& encoder) const
 {
     uint64_t bufferSize = static_cast<uint64_t>(m_buffer->size());
     encoder.reserve(bufferSize + sizeof(uint64_t));
     encoder << bufferSize;
 
-    const char* partialData;
-    unsigned position = 0;
-    while (position < bufferSize) {
-        unsigned bytesToWrite = m_buffer->getSomeData(partialData, position);
-        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(partialData), bytesToWrite, 1);
-        position += bytesToWrite;
-    }
+    for (const auto& element : *m_buffer)
+        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(element.segment->data()), element.segment->size(), 1);
 }
 
 } // namespace IPC

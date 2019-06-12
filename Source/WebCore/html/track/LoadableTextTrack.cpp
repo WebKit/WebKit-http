@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2011, 2013 Google Inc.  All rights reserved.
+ * Copyright (C) 2011, 2013 Google Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,35 +25,22 @@
  */
 
 #include "config.h"
+#include "LoadableTextTrack.h"
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "LoadableTextTrack.h"
-
-#include "Event.h"
 #include "HTMLTrackElement.h"
-#include "ScriptExecutionContext.h"
 #include "TextTrackCueList.h"
 #include "VTTRegionList.h"
 
 namespace WebCore {
 
-LoadableTextTrack::LoadableTextTrack(HTMLTrackElement* track, const String& kind, const String& label, const String& language)
-    : TextTrack(&track->document(), track, kind, emptyString(), label, language, TrackElement)
-    , m_trackElement(track)
+LoadableTextTrack::LoadableTextTrack(HTMLTrackElement& track, const String& kind, const String& label, const String& language)
+    : TextTrack(&track.document(), &track, kind, emptyString(), label, language, TrackElement)
+    , m_trackElement(&track)
     , m_loadTimer(*this, &LoadableTextTrack::loadTimerFired)
     , m_isDefault(false)
 {
-}
-
-LoadableTextTrack::~LoadableTextTrack()
-{
-}
-
-void LoadableTextTrack::clearClient()
-{
-    m_trackElement = 0;
-    TextTrack::clearClient();
 }
 
 void LoadableTextTrack::scheduleLoad(const URL& url)
@@ -68,18 +56,12 @@ void LoadableTextTrack::scheduleLoad(const URL& url)
     // 3. Asynchronously run the remaining steps, while continuing with whatever task 
     // was responsible for creating the text track or changing the text track mode.
     if (!m_loadTimer.isActive())
-        m_loadTimer.startOneShot(0);
+        m_loadTimer.startOneShot(0_s);
 }
 
 Element* LoadableTextTrack::element()
 {
     return m_trackElement;
-}
-    
-void LoadableTextTrack::setTrackElement(HTMLTrackElement* element)
-{
-    ASSERT(!m_trackElement || m_trackElement == element);
-    m_trackElement = element;
 }
 
 void LoadableTextTrack::loadTimerFired()
@@ -112,11 +94,11 @@ void LoadableTextTrack::newCuesAvailable(TextTrackLoader* loader)
 
     for (auto& newCue : newCues) {
         newCue->setTrack(this);
-        m_cues->add(newCue);
+        m_cues->add(newCue.releaseNonNull());
     }
 
     if (client())
-        client()->textTrackAddCues(this, m_cues.get());
+        client()->textTrackAddCues(*this, *m_cues);
 }
 
 void LoadableTextTrack::cueLoadingCompleted(TextTrackLoader* loader, bool loadingFailed)
@@ -138,15 +120,15 @@ void LoadableTextTrack::newRegionsAvailable(TextTrackLoader* loader)
 
     for (auto& newRegion : newRegions) {
         newRegion->setTrack(this);
-        regions()->add(newRegion);
+        regions()->add(newRegion.releaseNonNull());
     }
 }
 
 AtomicString LoadableTextTrack::id() const
 {
-    if (m_trackElement)
-        return m_trackElement->getAttribute("id");
-    return emptyString();
+    if (!m_trackElement)
+        return emptyAtom();
+    return m_trackElement->attributeWithoutSynchronization(idAttr);
 }
 
 size_t LoadableTextTrack::trackElementIndex()

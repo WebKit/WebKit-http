@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WorkerConsoleClient_h
-#define WorkerConsoleClient_h
+#pragma once
 
 #include "WorkerGlobalScope.h"
 #include <runtime/ConsoleClient.h>
@@ -43,18 +42,17 @@ public:
     virtual ~WorkerConsoleClient();
 
 protected:
-    virtual void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
-    virtual void count(JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
-    virtual void profile(JSC::ExecState*, const String& title) override;
-    virtual void profileEnd(JSC::ExecState*, const String& title) override;
-    virtual void time(JSC::ExecState*, const String& title) override;
-    virtual void timeEnd(JSC::ExecState*, const String& title) override;
-    virtual void timeStamp(JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
+    void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
+    void count(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
+    void profile(JSC::ExecState*, const String& title) override;
+    void profileEnd(JSC::ExecState*, const String& title) override;
+    void takeHeapSnapshot(JSC::ExecState*, const String& title) override;
+    void time(JSC::ExecState*, const String& title) override;
+    void timeEnd(JSC::ExecState*, const String& title) override;
+    void timeStamp(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
 
 private:
     WorkerGlobalScope& m_workerGlobalScope;
 };
 
 } // namespace WebCore
-
-#endif // WorkerConsoleClient_h

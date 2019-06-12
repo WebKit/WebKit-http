@@ -39,7 +39,7 @@
 #include "SchemeRegistry.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
-#include "Settings.h"
+#include "SecurityOriginData.h"
 
 namespace WebCore {
 
@@ -94,33 +94,21 @@ namespace WebCore {
 // DatabaseContext will outlive both regardless of which of the 2 destructs first.
 
 
-DatabaseContext::DatabaseContext(ScriptExecutionContext* context)
-    : ActiveDOMObject(context)
-    , m_hasOpenDatabases(false)
-    , m_isRegistered(true) // will register on construction below.
-    , m_hasRequestedTermination(false)
+DatabaseContext::DatabaseContext(ScriptExecutionContext& context)
+    : ActiveDOMObject(&context)
 {
     // ActiveDOMObject expects this to be called to set internal flags.
     suspendIfNeeded();
 
-    context->setDatabaseContext(this);
-
-    // For debug accounting only. We must do this before we register the
-    // instance. The assertions assume this.
-    auto& databaseManager = DatabaseManager::singleton();
-    databaseManager.didConstructDatabaseContext();
-
-    databaseManager.registerDatabaseContext(this);
+    ASSERT(!context.databaseContext());
+    context.setDatabaseContext(this);
 }
 
 DatabaseContext::~DatabaseContext()
 {
     stopDatabases();
     ASSERT(!m_databaseThread || m_databaseThread->terminationRequested());
-
-    // For debug accounting only. We must call this last. The assertions assume
-    // this.
-    DatabaseManager::singleton().didDestructDatabaseContext();
+    ASSERT(!scriptExecutionContext() || !scriptExecutionContext()->databaseContext());
 }
 
 // This is called if the associated ScriptExecutionContext is destroyed while
@@ -130,8 +118,8 @@ DatabaseContext::~DatabaseContext()
 // It is not safe to just delete the context here.
 void DatabaseContext::contextDestroyed()
 {
-    stopDatabases();
     ActiveDOMObject::contextDestroyed();
+    stopDatabases();
 }
 
 // stop() is from stopActiveDOMObjects() which indicates that the owner Frame
@@ -171,10 +159,8 @@ DatabaseThread* DatabaseContext::databaseThread()
 
 bool DatabaseContext::stopDatabases(DatabaseTaskSynchronizer* synchronizer)
 {
-    if (m_isRegistered) {
-        DatabaseManager::singleton().unregisterDatabaseContext(this);
-        m_isRegistered = false;
-    }
+    // FIXME: What guarantees this is never called after the script execution context is null?
+    ASSERT(scriptExecutionContext());
 
     // Though we initiate termination of the DatabaseThread here in
     // stopDatabases(), we can't clear the m_databaseThread ref till we get to
@@ -185,13 +171,19 @@ bool DatabaseContext::stopDatabases(DatabaseTaskSynchronizer* synchronizer)
     // why our ref count is 0 then and we're destructing). Then, the
     // m_databaseThread RefPtr destructor will deref and delete the
     // DatabaseThread.
-
-    if (m_databaseThread && !m_hasRequestedTermination) {
+    bool result = m_databaseThread && !m_hasRequestedTermination;
+    if (result) {
         m_databaseThread->requestTermination(synchronizer);
         m_hasRequestedTermination = true;
-        return true;
     }
-    return false;
+
+    auto& context = *scriptExecutionContext();
+    if (context.databaseContext()) {
+        ASSERT(context.databaseContext() == this);
+        context.setDatabaseContext(nullptr);
+    }
+
+    return result;
 }
 
 bool DatabaseContext::allowDatabaseAccess() const
@@ -202,7 +194,7 @@ bool DatabaseContext::allowDatabaseAccess() const
         if (document.page() && !document.page()->settings().offlineStorageDatabaseEnabled())
             return false;
 #endif
-        if (!document.page() || (document.page()->usesEphemeralSession() && !SchemeRegistry::allowsDatabaseAccessInPrivateBrowsing(document.securityOrigin()->protocol())))
+        if (!document.page() || (document.page()->usesEphemeralSession() && !SchemeRegistry::allowsDatabaseAccessInPrivateBrowsing(document.securityOrigin().protocol())))
             return false;
         return true;
     }
@@ -216,15 +208,15 @@ void DatabaseContext::databaseExceededQuota(const String& name, DatabaseDetails 
     if (is<Document>(*m_scriptExecutionContext)) {
         Document& document = downcast<Document>(*m_scriptExecutionContext);
         if (Page* page = document.page())
-            page->chrome().client().exceededDatabaseQuota(document.frame(), name, details);
+            page->chrome().client().exceededDatabaseQuota(*document.frame(), name, details);
         return;
     }
     ASSERT(m_scriptExecutionContext->isWorkerGlobalScope());
 }
 
-SecurityOrigin* DatabaseContext::securityOrigin() const
+SecurityOriginData DatabaseContext::securityOrigin() const
 {
-    return m_scriptExecutionContext->securityOrigin();
+    return SecurityOriginData::fromSecurityOrigin(*m_scriptExecutionContext->securityOrigin());
 }
 
 bool DatabaseContext::isContextThread() const

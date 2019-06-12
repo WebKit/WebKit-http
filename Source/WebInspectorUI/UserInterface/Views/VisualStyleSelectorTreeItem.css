@@ -34,8 +34,8 @@
 }
 
 .item.visual-style-selector-item.selected {
-    background-color: hsl(213, 92%, 55%) !important;
-    color: white;
+    background-color: var(--selected-background-color) !important;
+    color: var(--selected-foreground-color);
 }
 
 .item.visual-style-selector-item > .disclosure-button {
@@ -119,7 +119,6 @@ body:not(.window-inactive, .window-docked-inactive) .item.visual-style-selector-
 .item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title {
     cursor: text;
     -webkit-user-select: text;
-    -webkit-user-modify: read-write-plaintext-only;
 }
 
 .item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title:focus {

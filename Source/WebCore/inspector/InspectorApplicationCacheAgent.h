@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorApplicationCacheAgent_h
-#define InspectorApplicationCacheAgent_h
+#pragma once
 
 #include "ApplicationCacheHost.h"
 #include "InspectorWebAgentBase.h"
@@ -42,7 +41,6 @@ namespace WebCore {
 class Frame;
 class InspectorPageAgent;
 class Page;
-class ResourceResponse;
 
 typedef String ErrorString;
 
@@ -52,20 +50,20 @@ public:
     InspectorApplicationCacheAgent(WebAgentContext&, InspectorPageAgent*);
     virtual ~InspectorApplicationCacheAgent() { }
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     void updateApplicationCacheStatus(Frame*);
     void networkStateChanged();
 
-    virtual void enable(ErrorString&) override;
-    virtual void getFramesWithManifests(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::FrameWithManifest>>& result) override;
-    virtual void getManifestForFrame(ErrorString&, const String& frameId, String* manifestURL) override;
-    virtual void getApplicationCacheForFrame(ErrorString&, const String& frameId, RefPtr<Inspector::Protocol::ApplicationCache::ApplicationCache>&) override;
+    void enable(ErrorString&) override;
+    void getFramesWithManifests(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::FrameWithManifest>>& result) override;
+    void getManifestForFrame(ErrorString&, const String& frameId, String* manifestURL) override;
+    void getApplicationCacheForFrame(ErrorString&, const String& frameId, RefPtr<Inspector::Protocol::ApplicationCache::ApplicationCache>&) override;
 
 private:
-    Ref<Inspector::Protocol::ApplicationCache::ApplicationCache> buildObjectForApplicationCache(const ApplicationCacheHost::ResourceInfoList&, const ApplicationCacheHost::CacheInfo&);
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::ApplicationCacheResource>> buildArrayForApplicationCacheResources(const ApplicationCacheHost::ResourceInfoList&);
+    Ref<Inspector::Protocol::ApplicationCache::ApplicationCache> buildObjectForApplicationCache(const Vector<ApplicationCacheHost::ResourceInfo>&, const ApplicationCacheHost::CacheInfo&);
+    Ref<Inspector::Protocol::Array<Inspector::Protocol::ApplicationCache::ApplicationCacheResource>> buildArrayForApplicationCacheResources(const Vector<ApplicationCacheHost::ResourceInfo>&);
     Ref<Inspector::Protocol::ApplicationCache::ApplicationCacheResource> buildObjectForApplicationCacheResource(const ApplicationCacheHost::ResourceInfo&);
 
     DocumentLoader* assertFrameWithDocumentLoader(ErrorString&, const String& frameId);
@@ -77,4 +75,3 @@ private:
 
 } // namespace WebCore
 
-#endif // InspectorApplicationCacheAgent_h

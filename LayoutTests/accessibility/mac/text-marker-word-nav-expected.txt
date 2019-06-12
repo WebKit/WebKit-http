@@ -9,6 +9,8 @@ line breaks
 some
 text
 test audio file
+Edit text
+
 This tests that word navigation is working correctly.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -18,6 +20,11 @@ Current character is: w
 Left word is: word1
 Right word is: word1
 Pre word start to next word end: word1
+
+Current character is: t
+Left word is: test
+Right word is: 
+Pre word start to next word end: test'line break'Thisislongword
 
 Current character is: T
 Left word is: Thisislongword
@@ -54,6 +61,11 @@ Left word is: can't
 Right word is: can't
 Pre word start to next word end: can't
 
+Current character is: 
+Left word is: 巧克力
+Right word is: 巧克力
+Pre word start to next word end: select'line break'巧克力
+
 Current character is: 克
 Left word is: 巧克力
 Right word is: 巧克力
@@ -86,17 +98,17 @@ Pre word start to next word end: both
 
 Current character is: s
 Left word is: spaces
-Right word is: 'line break'
+Right word is: 
 Pre word start to next word end: spaces'line break'
 
 Current character is: e
 Left word is: some
-Right word is: 'line break'
+Right word is: 
 Pre word start to next word end: some'line break'
 
 Current character is: 'line break'
-Left word is: 'line break'
-Right word is: text
+Left word is: 
+Right word is: 
 Pre word start to next word end: 'line break'text
 
 Current character is:  
@@ -113,6 +125,11 @@ Current character is: f
 Left word is: file
 Right word is: file
 Pre word start to next word end: file
+
+Current character is: t
+Left word is: Edit
+Right word is:  
+Pre word start to next word end: Edit text
 
 Test going forward.
 End word: file

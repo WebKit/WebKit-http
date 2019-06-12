@@ -36,25 +36,6 @@ PlatformTimeRanges::PlatformTimeRanges(const MediaTime& start, const MediaTime& 
     add(start, end);
 }
 
-PlatformTimeRanges::PlatformTimeRanges(const PlatformTimeRanges& other)
-{
-    copy(other);
-}
-
-PlatformTimeRanges& PlatformTimeRanges::operator=(const PlatformTimeRanges& other)
-{
-    return copy(other);
-}
-
-PlatformTimeRanges& PlatformTimeRanges::copy(const PlatformTimeRanges& other)
-{
-    unsigned size = other.m_ranges.size();
-    for (unsigned i = 0; i < size; i++)
-        add(other.m_ranges[i].m_start, other.m_ranges[i].m_end);
-    
-    return *this;
-}
-
 void PlatformTimeRanges::invert()
 {
     PlatformTimeRanges inverted;
@@ -212,6 +193,9 @@ MediaTime PlatformTimeRanges::nearest(const MediaTime& time) const
     MediaTime closestDelta = MediaTime::positiveInfiniteTime();
     MediaTime closestTime = MediaTime::zeroTime();
     unsigned count = length();
+    if (!count)
+        return MediaTime::invalidTime();
+
     bool ignoreInvalid;
 
     for (unsigned ndx = 0; ndx < count; ndx++) {

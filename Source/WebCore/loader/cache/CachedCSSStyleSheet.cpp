@@ -3,7 +3,7 @@
     Copyright (C) 2001 Dirk Mueller (mueller@kde.org)
     Copyright (C) 2002 Waldo Bastian (bastian@kde.org)
     Copyright (C) 2006 Samuel Weinig (sam.weinig@gmail.com)
-    Copyright (C) 2004, 2005, 2006 Apple Inc.
+    Copyright (C) 2004-2017 Apple Inc. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -19,9 +19,6 @@
     along with this library; see the file COPYING.LIB.  If not, write to
     the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
     Boston, MA 02110-1301, USA.
-
-    This class provides all functionality needed for loading images, style sheets and html
-    pages from the web. It has a memory cache for these objects.
 */
 
 #include "config.h"
@@ -29,6 +26,7 @@
 
 #include "CSSStyleSheet.h"
 #include "CachedResourceClientWalker.h"
+#include "CachedResourceRequest.h"
 #include "CachedStyleSheetClient.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
@@ -37,17 +35,13 @@
 #include "StyleSheetContents.h"
 #include "TextResourceDecoder.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
-CachedCSSStyleSheet::CachedCSSStyleSheet(const ResourceRequest& resourceRequest, const String& charset, SessionID sessionID)
-    : CachedResource(resourceRequest, CSSStyleSheet, sessionID)
-    , m_decoder(TextResourceDecoder::create("text/css", charset))
+CachedCSSStyleSheet::CachedCSSStyleSheet(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), CSSStyleSheet, sessionID)
+    , m_decoder(TextResourceDecoder::create("text/css", request.charset()))
 {
-    // Prefer text/css but accept any type (dell.com serves a stylesheet
-    // as text/html; see <http://bugs.webkit.org/show_bug.cgi?id=11451>).
-    setAccept("text/css,*/*;q=0.1");
 }
 
 CachedCSSStyleSheet::~CachedCSSStyleSheet()
@@ -56,16 +50,16 @@ CachedCSSStyleSheet::~CachedCSSStyleSheet()
         m_parsedStyleSheetCache->removedFromMemoryCache();
 }
 
-void CachedCSSStyleSheet::didAddClient(CachedResourceClient* c)
+void CachedCSSStyleSheet::didAddClient(CachedResourceClient& client)
 {
-    ASSERT(c->resourceClientType() == CachedStyleSheetClient::expectedType());
+    ASSERT(client.resourceClientType() == CachedStyleSheetClient::expectedType());
     // CachedResource::didAddClient() must be before setCSSStyleSheet(),
     // because setCSSStyleSheet() may cause scripts to be executed, which could destroy 'c' if it is an instance of HTMLLinkElement.
     // see the comment of HTMLLinkElement::setCSSStyleSheet.
-    CachedResource::didAddClient(c);
+    CachedResource::didAddClient(client);
 
     if (!isLoading())
-        static_cast<CachedStyleSheetClient*>(c)->setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
+        static_cast<CachedStyleSheetClient&>(client).setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
 }
 
 void CachedCSSStyleSheet::setEncoding(const String& chs)
@@ -77,17 +71,30 @@ String CachedCSSStyleSheet::encoding() const
 {
     return m_decoder->encoding().name();
 }
-    
-const String CachedCSSStyleSheet::sheetText(MIMETypeCheck mimeTypeCheck, bool* hasValidMIMEType) const
-{ 
-    if (!m_data || m_data->isEmpty() || !canUseSheet(mimeTypeCheck, hasValidMIMEType))
+
+const String CachedCSSStyleSheet::sheetText(MIMETypeCheckHint mimeTypeCheckHint, bool* hasValidMIMEType) const
+{
+    if (!m_data || m_data->isEmpty() || !canUseSheet(mimeTypeCheckHint, hasValidMIMEType))
         return String();
-    
+
     if (!m_decodedSheetText.isNull())
         return m_decodedSheetText;
-    
+
     // Don't cache the decoded text, regenerating is cheap and it can use quite a bit of memory
     return m_decoder->decodeAndFlush(m_data->data(), m_data->size());
+}
+
+void CachedCSSStyleSheet::setBodyDataFrom(const CachedResource& resource)
+{
+    ASSERT(resource.type() == type());
+    const CachedCSSStyleSheet& sheet = static_cast<const CachedCSSStyleSheet&>(resource);
+
+    CachedResource::setBodyDataFrom(resource);
+
+    m_decoder = sheet.m_decoder;
+    m_decodedSheetText = sheet.m_decodedSheetText;
+    if (sheet.m_parsedStyleSheetCache)
+        saveParsedStyleSheet(*sheet.m_parsedStyleSheetCache);
 }
 
 void CachedCSSStyleSheet::finishLoading(SharedBuffer* data)
@@ -113,12 +120,28 @@ void CachedCSSStyleSheet::checkNotify()
         c->setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
 }
 
-bool CachedCSSStyleSheet::canUseSheet(MIMETypeCheck mimeTypeCheck, bool* hasValidMIMEType) const
+String CachedCSSStyleSheet::responseMIMEType() const
+{
+    return extractMIMETypeFromMediaType(m_response.httpHeaderField(HTTPHeaderName::ContentType));
+}
+
+bool CachedCSSStyleSheet::mimeTypeAllowedByNosniff() const
+{
+    return parseContentTypeOptionsHeader(m_response.httpHeaderField(HTTPHeaderName::XContentTypeOptions)) != ContentTypeOptionsNosniff || equalLettersIgnoringASCIICase(responseMIMEType(), "text/css");
+}
+
+bool CachedCSSStyleSheet::canUseSheet(MIMETypeCheckHint mimeTypeCheckHint, bool* hasValidMIMEType) const
 {
     if (errorOccurred())
         return false;
 
-    if (mimeTypeCheck == MIMETypeCheck::Lax)
+    if (!mimeTypeAllowedByNosniff()) {
+        if (hasValidMIMEType)
+            *hasValidMIMEType = false;
+        return false;
+    }
+
+    if (mimeTypeCheckHint == MIMETypeCheckHint::Lax)
         return true;
 
     // This check exactly matches Firefox.  Note that we grab the Content-Type
@@ -128,7 +151,7 @@ bool CachedCSSStyleSheet::canUseSheet(MIMETypeCheck mimeTypeCheck, bool* hasVali
     //
     // This code defaults to allowing the stylesheet for non-HTTP protocols so
     // folks can use standards mode for local HTML documents.
-    String mimeType = extractMIMETypeFromMediaType(response().httpHeaderField(HTTPHeaderName::ContentType));
+    String mimeType = responseMIMEType();
     bool typeOK = mimeType.isEmpty() || equalLettersIgnoringASCIICase(mimeType, "text/css") || equalLettersIgnoringASCIICase(mimeType, "application/x-unknown-content-type");
     if (hasValidMIMEType)
         *hasValidMIMEType = typeOK;
@@ -146,11 +169,11 @@ void CachedCSSStyleSheet::destroyDecodedData()
     setDecodedSize(0);
 }
 
-PassRefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context, CachePolicy cachePolicy)
+RefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context, CachePolicy cachePolicy, FrameLoader& loader)
 {
     if (!m_parsedStyleSheetCache)
         return nullptr;
-    if (!m_parsedStyleSheetCache->subresourcesAllowReuse(cachePolicy)) {
+    if (!m_parsedStyleSheetCache->subresourcesAllowReuse(cachePolicy, loader)) {
         m_parsedStyleSheetCache->removedFromMemoryCache();
         m_parsedStyleSheetCache = nullptr;
         return nullptr;
@@ -170,7 +193,7 @@ PassRefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(cons
 
 void CachedCSSStyleSheet::saveParsedStyleSheet(Ref<StyleSheetContents>&& sheet)
 {
-    ASSERT(sheet.get().isCacheable());
+    ASSERT(sheet->isCacheable());
 
     if (m_parsedStyleSheetCache)
         m_parsedStyleSheetCache->removedFromMemoryCache();

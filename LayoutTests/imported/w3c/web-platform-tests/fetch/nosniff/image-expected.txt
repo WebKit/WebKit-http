@@ -1,0 +1,9 @@
+
+PASS URL query:  
+PASS URL query: ?type= 
+PASS URL query: ?type=x 
+PASS URL query: ?type=x/x 
+PASS URL query: ?type=image/gif 
+PASS URL query: ?type=image/png 
+PASS URL query: ?type=image/png;blah 
+

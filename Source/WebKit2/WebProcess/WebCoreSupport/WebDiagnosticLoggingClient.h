@@ -39,11 +39,10 @@ public:
     virtual ~WebDiagnosticLoggingClient();
 
 private:
-    virtual void logDiagnosticMessage(const String& message, const String& description, WebCore::ShouldSample) override;
-    virtual void logDiagnosticMessageWithResult(const String& message, const String& description, WebCore::DiagnosticLoggingResultType, WebCore::ShouldSample) override;
-    virtual void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, WebCore::ShouldSample) override;
-
-    virtual void mainFrameDestroyed() override;
+    void logDiagnosticMessage(const String& message, const String& description, WebCore::ShouldSample) override;
+    void logDiagnosticMessageWithResult(const String& message, const String& description, WebCore::DiagnosticLoggingResultType, WebCore::ShouldSample) override;
+    void logDiagnosticMessageWithValue(const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample) override;
+    void logDiagnosticMessageWithEnhancedPrivacy(const String& message, const String& description, WebCore::ShouldSample) override;
 
     WebPage& m_page;
 };

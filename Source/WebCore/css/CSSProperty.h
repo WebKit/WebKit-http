@@ -19,14 +19,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSProperty_h
-#define CSSProperty_h
+#pragma once
 
 #include "CSSPropertyNames.h"
 #include "CSSValue.h"
-#include "RenderStyleConstants.h"
 #include "WritingMode.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -64,9 +61,9 @@ struct StylePropertyMetadata {
 
 class CSSProperty {
 public:
-    CSSProperty(CSSPropertyID propertyID, PassRefPtr<CSSValue> value, bool important = false, bool isSetFromShorthand = false, int indexInShorthandsVector = 0, bool implicit = false)
+    CSSProperty(CSSPropertyID propertyID, RefPtr<CSSValue>&& value, bool important = false, bool isSetFromShorthand = false, int indexInShorthandsVector = 0, bool implicit = false)
         : m_metadata(propertyID, isSetFromShorthand, indexInShorthandsVector, important, implicit, isInheritedProperty(propertyID))
-        , m_value(value)
+        , m_value(WTFMove(value))
     {
     }
 
@@ -82,6 +79,7 @@ public:
     static CSSPropertyID resolveDirectionAwareProperty(CSSPropertyID, TextDirection, WritingMode);
     static bool isInheritedProperty(CSSPropertyID);
     static bool isDirectionAwareProperty(CSSPropertyID);
+    static bool isDescriptorOnly(CSSPropertyID);
 
     const StylePropertyMetadata& metadata() const { return m_metadata; }
 
@@ -104,71 +102,7 @@ private:
     RefPtr<CSSValue> m_value;
 };
 
-inline CSSPropertyID prefixingVariantForPropertyId(CSSPropertyID propertyID)
-{
-    ASSERT(propertyID != CSSPropertyInvalid);
-
-    switch (propertyID) {
-    case CSSPropertyAnimation:
-        return CSSPropertyWebkitAnimation;
-    case CSSPropertyAnimationDelay:
-        return CSSPropertyWebkitAnimationDelay;
-    case CSSPropertyAnimationDirection:
-        return CSSPropertyWebkitAnimationDirection;
-    case CSSPropertyAnimationDuration:
-        return CSSPropertyWebkitAnimationDuration;
-    case CSSPropertyAnimationFillMode:
-        return CSSPropertyWebkitAnimationFillMode;
-    case CSSPropertyAnimationName:
-        return CSSPropertyWebkitAnimationName;
-    case CSSPropertyAnimationPlayState:
-        return CSSPropertyWebkitAnimationPlayState;
-    case CSSPropertyAnimationIterationCount:
-        return CSSPropertyWebkitAnimationIterationCount;
-    case CSSPropertyAnimationTimingFunction:
-        return CSSPropertyWebkitAnimationTimingFunction;
-    case CSSPropertyWebkitAnimation:
-        return CSSPropertyAnimation;
-    case CSSPropertyWebkitAnimationDelay:
-        return CSSPropertyAnimationDelay;
-    case CSSPropertyWebkitAnimationDirection:
-        return CSSPropertyAnimationDirection;
-    case CSSPropertyWebkitAnimationDuration:
-        return CSSPropertyAnimationDuration;
-    case CSSPropertyWebkitAnimationFillMode:
-        return CSSPropertyAnimationFillMode;
-    case CSSPropertyWebkitAnimationName:
-        return CSSPropertyAnimationName;
-    case CSSPropertyWebkitAnimationPlayState:
-        return CSSPropertyAnimationPlayState;
-    case CSSPropertyWebkitAnimationIterationCount:
-        return CSSPropertyAnimationIterationCount;
-    case CSSPropertyWebkitAnimationTimingFunction:
-        return CSSPropertyAnimationTimingFunction;
-    case CSSPropertyTransitionDelay:
-        return CSSPropertyWebkitTransitionDelay;
-    case CSSPropertyTransitionDuration:
-        return CSSPropertyWebkitTransitionDuration;
-    case CSSPropertyTransitionProperty:
-        return CSSPropertyWebkitTransitionProperty;
-    case CSSPropertyTransitionTimingFunction:
-        return CSSPropertyWebkitTransitionTimingFunction;
-    case CSSPropertyTransition:
-        return CSSPropertyWebkitTransition;
-    case CSSPropertyWebkitTransitionDelay:
-        return CSSPropertyTransitionDelay;
-    case CSSPropertyWebkitTransitionDuration:
-        return CSSPropertyTransitionDuration;
-    case CSSPropertyWebkitTransitionProperty:
-        return CSSPropertyTransitionProperty;
-    case CSSPropertyWebkitTransitionTimingFunction:
-        return CSSPropertyTransitionTimingFunction;
-    case CSSPropertyWebkitTransition:
-        return CSSPropertyTransition;
-    default:
-        return propertyID;
-    }
-}
+typedef Vector<CSSProperty, 256> ParsedPropertyVector;
 
 } // namespace WebCore
 
@@ -178,5 +112,3 @@ template <> struct VectorTraits<WebCore::CSSProperty> : VectorTraitsBase<false, 
     static const bool canMoveWithMemcpy = true;
 };
 }
-
-#endif // CSSProperty_h

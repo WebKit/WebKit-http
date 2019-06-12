@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.
+ * Copyright (C) 2006 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -16,17 +16,14 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
 [
-    Constructor([Default=NullString] optional DOMString data),
-    ConstructorCallWith=Document
+    Constructor(optional DOMString data = ""),
+    ConstructorCallWith=Document,
+    CustomToJSObject,
 ] interface Text : CharacterData {
-
-    // DOM Level 1
-
-    [RaisesException] Text splitText(unsigned long offset);
-
-    // Introduced in DOM Level 3:
-    readonly attribute DOMString       wholeText;
-    [RaisesException] Text               replaceWholeText([Default=Undefined] optional DOMString content);
+    [MayThrowException] Text splitText(unsigned long offset);
+    readonly attribute DOMString wholeText;
 };
 
+Text implements Slotable;

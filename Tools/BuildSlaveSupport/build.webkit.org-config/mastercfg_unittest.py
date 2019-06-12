@@ -140,6 +140,45 @@ class RunJavaScriptCoreTestsTest(unittest.TestCase):
     5 failures found.""")
 
 
+class RunTest262TestsTest(unittest.TestCase):
+    def assertResults(self, expected_result, expected_text, rc, stdio):
+        cmd = StubRemoteCommand(rc, stdio)
+        step = RunTest262Tests()
+        step.commandComplete(cmd)
+        actual_results = step.evaluateCommand(cmd)
+        actual_text = step.getText2(cmd, actual_results)
+
+        self.assertEqual(expected_result, actual_results)
+        self.assertEqual(actual_text, expected_text)
+
+    def test_no_regressions_output(self):
+        self.assertResults(SUCCESS, ["test262-test"], 0, """Using the following jsc path: /WebKitBuild/Release/jsc
+
+Running test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default
+Running test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default-strict
+""")
+
+    def test_failure_output(self):
+        self.assertResults(FAILURE, ["1 Test262 test failed"], 0, """Using the following jsc path: /WebKitBuild/Release/jsc
+
+Running test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default
+Running test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default-strict
+test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default-strict: ERROR: Unexpected exit code: 0
+FAIL: test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default-strict
+""")
+
+    def test_failures_output(self):
+        self.assertResults(FAILURE, ["2 Test262 tests failed"], 0, """Using the following jsc path: /WebKitBuild/Release/jsc
+
+Running test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default
+test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default: ERROR: Unexpected exit code: 0
+FAIL: test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default
+Running test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default-strict
+test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default-strict: ERROR: Unexpected exit code: 0
+FAIL: test262.yaml/test262/test/annexB/built-ins/Date/prototype/getYear/length.js.default-strict
+""")
+
+
 class RunLLINTCLoopTestsTest(unittest.TestCase):
     def assertResults(self, expected_result, expected_text, rc, stdio):
         cmd = StubRemoteCommand(rc, stdio)
@@ -322,7 +361,7 @@ class SVNMirrorTest(unittest.TestCase):
         SVNMirror = None
         for builder in self.config['builders']:
             if builder['name'] == builderName:
-                SVNMirror = builder.pop('SVNMirror', 'http://svn.webkit.org/repository/webkit/')
+                SVNMirror = builder.pop('SVNMirror', 'https://svn.webkit.org/repository/webkit/')
         return SVNMirror
 
     def test_CheckOutSource(self):
@@ -365,60 +404,68 @@ class BuildStepsConstructorTest(unittest.TestCase):
 
 
 expected_build_steps = {
-    'Apple Win 7 Debug (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple Win 7 Release (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple Win 7 Debug (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple Win 7 Release (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
     'Apple Win Debug (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
     'Apple Win Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
 
-    'Apple Yosemite 32-bit JSC (BuildAndTest)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'webkit-32bit-jsc-test'],
-    'Apple Yosemite (Leaks)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple Yosemite Debug (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
-    'Apple Yosemite Debug JSC (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'jscore-test'],
-    'Apple Yosemite Debug WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple Yosemite Debug WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple Yosemite LLINT CLoop (BuildAndTest)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'webkit-jsc-cloop-test'],
-    'Apple Yosemite Release (32-bit Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
-    'Apple Yosemite Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
-    'Apple Yosemite Release WK2 (Perf)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'perf-test'],
-    'Apple Yosemite Release JSC (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'jscore-test'],
-    'Apple Yosemite Release WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple Yosemite Release WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-
     'Apple El Capitan 32-bit JSC (BuildAndTest)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'webkit-32bit-jsc-test'],
-    'Apple El Capitan (Leaks)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'archive-test-results', 'upload', 'MasterShellCommand'],
     'Apple El Capitan CMake Debug (Build)' :['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
     'Apple El Capitan Debug (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
     'Apple El Capitan Debug JSC (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'jscore-test'],
-    'Apple El Capitan Debug WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple El Capitan Debug WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple El Capitan Debug Test262 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'test262-test'],
+    'Apple El Capitan Debug WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple El Capitan Debug WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
     'Apple El Capitan LLINT CLoop (BuildAndTest)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'webkit-jsc-cloop-test'],
     'Apple El Capitan Release (32-bit Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
     'Apple El Capitan Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
     'Apple El Capitan Release WK2 (Perf)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'perf-test'],
     'Apple El Capitan Release JSC (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'jscore-test'],
-    'Apple El Capitan Release WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple El Capitan Release WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple El Capitan Release Test262 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'test262-test'],
+    'Apple El Capitan Release WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple El Capitan Release WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
 
-    'Apple iOS 9 Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
-    'Apple iOS 9 Simulator Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
-    'Apple iOS 9 Simulator Release WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
-    'Apple iOS 9 Simulator Release WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple Sierra 32-bit JSC (BuildAndTest)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'webkit-32bit-jsc-test'],
+    'Apple Sierra (Leaks)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple Sierra Debug (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
+    'Apple Sierra Debug JSC (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'jscore-test'],
+    'Apple Sierra Debug WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple Sierra Debug WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple Sierra LLINT CLoop (BuildAndTest)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'webkit-jsc-cloop-test'],
+    'Apple Sierra Release (32-bit Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
+    'Apple Sierra Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
+    'Apple Sierra Release JSC (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'jscore-test'],
+    'Apple Sierra Release WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple Sierra Release WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
 
-    'EFL Linux 64-bit Release WK2' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests'],
-    'EFL Linux 64-bit Release WK2 (Perf)' : ['configure build', 'wait-for-svn-server', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'perf-test'],
-    'EFL Linux ARMv7 Thumb2 Release' : ['configure build', 'wait-for-svn-server', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test'],
-    'EFL Linux ARMv7 Traditional Release' : ['configure build', 'wait-for-svn-server', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test'],
-    'EFL Linux AArch64 Release' : ['configure build', 'wait-for-svn-server', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test'],
+    'Apple iOS 10 Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
+    'Apple iOS 10 Simulator Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
+    'Apple iOS 10 Simulator Release WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple iOS 10 Simulator Release WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
 
-    'GTK Linux 32-bit Release' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'API tests', 'WebKit GObject DOM bindings API break tests'],
+    'Apple iOS 10 Simulator Debug (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
+    'Apple iOS 10 Simulator Debug WK1 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+    'Apple iOS 10 Simulator Debug WK2 (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
+
+    'JSCOnly Linux ARMv7 Thumb2 Release' : ['configure build', 'wait-for-svn-server', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'jscore-test'],
+    'JSCOnly Linux ARMv7 Traditional Release' : ['configure build', 'wait-for-svn-server', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'jscore-test'],
+    'JSCOnly Linux AArch64 Release' : ['configure build', 'wait-for-svn-server', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'jscore-test'],
+
+    'GTK Linux 32-bit Release' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'API tests'],
     'GTK Linux 64-bit Debug (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
-    'GTK Linux 64-bit Debug (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests', 'WebKit GObject DOM bindings API break tests'],
+    'GTK Linux 64-bit Debug (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests'],
     'GTK Linux 64-bit Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
-    'GTK Linux 64-bit Release (Perf)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'perf-test'],
-    'GTK Linux 64-bit Release (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests', 'WebKit GObject DOM bindings API break tests'],
-    'GTK Linux ARM Release' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'API tests', 'WebKit GObject DOM bindings API break tests'],
+    'GTK Linux 64-bit Release (Perf)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'perf-test', 'benchmark-test'],
+    'GTK Linux 64-bit Release (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests'],
+    'GTK Linux 64-bit Release Wayland (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests'],
+    'GTK Linux 64-bit Release Ubuntu LTS (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
+    'GTK Linux 64-bit Release Debian Stable (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
+    'GTK Linux ARM Release' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'API tests'],
 
     'WinCairo 64-Bit Release' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit'],
+
+    'WPE Linux 64-bit Release (Build)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'trigger'],
+    'WPE Linux 64-bit Release (Tests)' : ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
 }
 
 
@@ -447,51 +494,6 @@ class BuildStepsTest(unittest.TestCase):
 
         for builder in expected_build_steps:
             self.assertTrue(builder in builders, "Builder %s doesn't exist, but has unnecessary expected results" % builder)
-
-
-class RunGtkWebKitGObjectDOMBindingsAPIBreakTestsTest(unittest.TestCase):
-    def assertResults(self, expected_missing, expected_new, stdio):
-        expected_text = ""
-        expected_results = SUCCESS
-        if expected_new:
-            expected_results = WARNINGS
-        if expected_missing:
-            expected_results = FAILURE
-
-        cmd = StubRemoteCommand(0, stdio)
-        step = RunGtkWebKitGObjectDOMBindingsAPIBreakTests()
-        step.commandComplete(cmd)
-
-        actual_results = step.evaluateCommand(cmd)
-        self.assertEqual(expected_results, actual_results)
-        self.assertEqual(expected_missing, step.missingAPI)
-        self.assertEqual(expected_new, step.newAPI)
-
-    def test_missing_and_new_api(self):
-        self.assertResults(expected_missing=True, expected_new=True, stdio="""Missing API (API break!) detected in GObject DOM bindings
-    gboolean webkit_dom_html_input_element_get_webkitdirectory(WebKitDOMHTMLInputElement*)
-    gchar* webkit_dom_text_track_cue_get_text(WebKitDOMTextTrackCue*)
-
-New API detected in GObject DOM bindings
-    void webkit_dom_html_input_element_set_capture(WebKitDOMHTMLInputElement*, gboolean)
-    gboolean webkit_dom_html_input_element_get_capture(WebKitDOMHTMLInputElement*)
-    void webkit_dom_text_track_add_cue(WebKitDOMTextTrack*, WebKitDOMTextTrackCue*, GError**)
-    gchar* webkit_dom_document_get_origin(WebKitDOMDocument*)""")
-
-    def test_missing_api(self):
-        self.assertResults(expected_missing=True, expected_new=False, stdio="""Missing API (API break!) detected in GObject DOM bindings
-    gboolean webkit_dom_html_input_element_get_webkitdirectory(WebKitDOMHTMLInputElement*)
-    gchar* webkit_dom_text_track_cue_get_text(WebKitDOMTextTrackCue*)""")
-
-    def test_new_api(self):
-        self.assertResults(expected_missing=False, expected_new=True, stdio="""New API detected in GObject DOM bindings
-    void webkit_dom_html_input_element_set_capture(WebKitDOMHTMLInputElement*, gboolean)
-    gboolean webkit_dom_html_input_element_get_capture(WebKitDOMHTMLInputElement*)
-    void webkit_dom_text_track_add_cue(WebKitDOMTextTrack*, WebKitDOMTextTrackCue*, GError**)
-    gchar* webkit_dom_document_get_origin(WebKitDOMDocument*)""")
-
-    def test_success(self):
-        self.assertResults(expected_missing=False, expected_new=False, stdio="")
 
 
 class RunAndUploadPerfTestsTest(unittest.TestCase):
@@ -526,6 +528,22 @@ class RunAndUploadPerfTestsTest(unittest.TestCase):
 
     def test_buildbot_timeout(self):
         self.assertResults(-1, "timeout")
+
+
+class RunBenchmarkTest(unittest.TestCase):
+    def assertResults(self, rc, expected_text):
+        cmd = StubRemoteCommand(rc, expected_text)
+        step = RunBenchmarkTests()
+        step.commandComplete(cmd)
+        actual_results = step.evaluateCommand(cmd)
+        actual_text = str(step.getText2(cmd, actual_results)[0])
+        self.assertEqual(expected_text, actual_text)
+
+    def test_success(self):
+        self.assertResults(0, "benchmark-test")
+
+    def test_tests_failed(self):
+        self.assertResults(7, "7 benchmark tests failed")
 
 
 # FIXME: We should run this file as part of test-webkitpy.

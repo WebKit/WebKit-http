@@ -38,7 +38,7 @@
 
                 pc.addStream(stream);
                 // FIXME: Test getStats error callback: https://webkit.org/b/129860
-                shouldNotThrow('pc.getStats(statsHandler2, statsError, pc.getLocalStreams()[0].getVideoTracks()[0])');
+                shouldNotThrow('pc.getStats(pc.getLocalStreams()[0].getVideoTracks()[0]).then(statsHandler2, statsError)');
             }
 
             function statsHandler2(status)
@@ -54,7 +54,7 @@
             }
 
             var startTime = new Date().getTime();
-            shouldNotThrow("pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]})");
+            shouldNotThrow("pc = new RTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]})");
             shouldNotThrow('getUserMedia({audio:true, video:true}, gotStream)');
 
             window.jsTestIsAsync = true;

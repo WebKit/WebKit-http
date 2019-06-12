@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebDebuggerAgent_h
-#define WebDebuggerAgent_h
+#pragma once
 
 #include "InspectorWebAgentBase.h"
 #include <inspector/agents/InspectorDebuggerAgent.h>
@@ -42,12 +41,10 @@ public:
     virtual ~WebDebuggerAgent() { }
 
 protected:
-    virtual void enable() override;
-    virtual void disable(bool isBeingDestroyed) override;
+    void enable() override;
+    void disable(bool isBeingDestroyed) override;
 
     InstrumentingAgents& m_instrumentingAgents;
 };
 
 } // namespace WebCore
-
-#endif // !defined(WebDebuggerAgent_h)

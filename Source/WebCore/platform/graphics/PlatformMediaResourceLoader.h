@@ -23,13 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformMediaResourceLoader_h
-#define PlatformMediaResourceLoader_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
 #include <wtf/Noncopyable.h>
 #include <wtf/RefCounted.h>
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
 
@@ -44,6 +44,7 @@ public:
 
     virtual void responseReceived(PlatformMediaResource&, const ResourceResponse&) { }
     virtual void redirectReceived(PlatformMediaResource&, ResourceRequest&, const ResourceResponse&) { }
+    virtual bool shouldCacheResponse(PlatformMediaResource&, const ResourceResponse&) { return true; }
     virtual void dataSent(PlatformMediaResource&, unsigned long long, unsigned long long) { }
     virtual void dataReceived(PlatformMediaResource&, const char*, int) { }
     virtual void accessControlCheckFailed(PlatformMediaResource&, const ResourceError&) { }
@@ -54,17 +55,18 @@ public:
 #endif
 };
 
-class PlatformMediaResourceLoader : public RefCounted<PlatformMediaResourceLoader> {
+class PlatformMediaResourceLoader : public ThreadSafeRefCounted<PlatformMediaResourceLoader> {
     WTF_MAKE_NONCOPYABLE(PlatformMediaResourceLoader); WTF_MAKE_FAST_ALLOCATED;
 public:
     enum LoadOption {
         BufferData = 1 << 0,
+        DisallowCaching = 1 << 1,
     };
     typedef unsigned LoadOptions;
 
     virtual ~PlatformMediaResourceLoader() { }
 
-    virtual RefPtr<PlatformMediaResource> requestResource(const ResourceRequest&, LoadOptions) = 0;
+    virtual RefPtr<PlatformMediaResource> requestResource(ResourceRequest&&, LoadOptions) = 0;
 
 protected:
     PlatformMediaResourceLoader() { }
@@ -87,5 +89,4 @@ protected:
 
 } // namespace WebCore
 
-#endif
 #endif

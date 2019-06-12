@@ -7,32 +7,37 @@
 #ifndef COMPILER_TRANSLATOR_VALIDATEOUTPUTS_H_
 #define COMPILER_TRANSLATOR_VALIDATEOUTPUTS_H_
 
+#include "compiler/translator/ExtensionBehavior.h"
 #include "compiler/translator/IntermNode.h"
 
 #include <set>
+
+namespace sh
+{
 
 class TInfoSinkBase;
 
 class ValidateOutputs : public TIntermTraverser
 {
   public:
-    ValidateOutputs(TInfoSinkBase& sink, int maxDrawBuffers);
+    ValidateOutputs(const TExtensionBehavior &extBehavior, int maxDrawBuffers);
 
-    int numErrors() const { return mNumErrors; }
+    void validate(TDiagnostics *diagnostics) const;
 
-    virtual void visitSymbol(TIntermSymbol*);
+    void visitSymbol(TIntermSymbol *) override;
 
   private:
-    TInfoSinkBase& mSink;
     int mMaxDrawBuffers;
-    int mNumErrors;
-    bool mHasUnspecifiedOutputLocation;
+    bool mAllowUnspecifiedOutputLocationResolution;
+    bool mUsesFragDepth;
 
-    typedef std::map<int, TIntermSymbol*> OutputMap;
-    OutputMap mOutputMap;
-    std::set<TString> mVisitedSymbols;
-
-    void error(TSourceLoc loc, const char *reason, const char* token);
+    typedef std::vector<TIntermSymbol *> OutputVector;
+    OutputVector mOutputs;
+    OutputVector mUnspecifiedLocationOutputs;
+    OutputVector mYuvOutputs;
+    std::set<std::string> mVisitedSymbols;
 };
 
-#endif // COMPILER_TRANSLATOR_VALIDATEOUTPUTS_H_
+}  // namespace sh
+
+#endif  // COMPILER_TRANSLATOR_VALIDATEOUTPUTS_H_

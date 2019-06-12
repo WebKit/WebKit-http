@@ -37,6 +37,7 @@
 #import "RemoteScrollingCoordinatorTransaction.h"
 #import "WebPage.h"
 #import "WebProcess.h"
+#import <QuartzCore/QuartzCore.h>
 #import <WebCore/DebugPageOverlays.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
@@ -48,7 +49,7 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TiledBacking.h>
-#import <QuartzCore/QuartzCore.h>
+#import <wtf/SystemTracing.h>
 
 using namespace WebCore;
 
@@ -58,26 +59,14 @@ RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage& webPage, const W
     : DrawingArea(DrawingAreaTypeRemoteLayerTree, webPage)
     , m_remoteLayerTreeContext(std::make_unique<RemoteLayerTreeContext>(webPage))
     , m_rootLayer(GraphicsLayer::create(graphicsLayerFactory(), *this))
-    , m_exposedRect(FloatRect::infiniteRect())
-    , m_scrolledExposedRect(FloatRect::infiniteRect())
     , m_layerFlushTimer(*this, &RemoteLayerTreeDrawingArea::flushLayers)
-    , m_isFlushingSuspended(false)
-    , m_hasDeferredFlush(false)
-    , m_isThrottlingLayerFlushes(false)
-    , m_isLayerFlushThrottlingTemporarilyDisabledForInteraction(false)
-    , m_isInitialThrottledLayerFlush(false)
-    , m_waitingForBackingStoreSwap(false)
-    , m_hadFlushDeferredWhileWaitingForBackingStoreSwap(false)
-    , m_displayRefreshMonitorsToNotify(nullptr)
-    , m_currentTransactionID(0)
-    , m_contentLayer(nullptr)
-    , m_viewOverlayRootLayer(nullptr)
     , m_weakPtrFactory(this)
 {
     webPage.corePage()->settings().setForceCompositingMode(true);
 #if PLATFORM(IOS)
     webPage.corePage()->settings().setDelegatesPageScaling(true);
 #endif
+    m_rootLayer->setName("drawing area root");
 
     m_commitQueue = dispatch_queue_create("com.apple.WebKit.WebContent.RemoteLayerTreeDrawingArea.CommitQueue", nullptr);
 
@@ -113,9 +102,9 @@ GraphicsLayerFactory* RemoteLayerTreeDrawingArea::graphicsLayerFactory()
 
 RefPtr<DisplayRefreshMonitor> RemoteLayerTreeDrawingArea::createDisplayRefreshMonitor(PlatformDisplayID displayID)
 {
-    RefPtr<RemoteLayerTreeDisplayRefreshMonitor> monitor = RemoteLayerTreeDisplayRefreshMonitor::create(displayID, *this);
-    m_displayRefreshMonitors.add(monitor.get());
-    return monitor.release();
+    auto monitor = RemoteLayerTreeDisplayRefreshMonitor::create(displayID, *this);
+    m_displayRefreshMonitors.add(monitor.ptr());
+    return WTFMove(monitor);
 }
 
 void RemoteLayerTreeDrawingArea::willDestroyDisplayRefreshMonitor(DisplayRefreshMonitor* monitor)
@@ -165,9 +154,9 @@ void RemoteLayerTreeDrawingArea::updateGeometry(const IntSize& viewSize, const I
     m_webPage.send(Messages::DrawingAreaProxy::DidUpdateGeometry());
 }
 
-bool RemoteLayerTreeDrawingArea::shouldUseTiledBackingForFrameView(const FrameView* frameView)
+bool RemoteLayerTreeDrawingArea::shouldUseTiledBackingForFrameView(const FrameView& frameView)
 {
-    return frameView && frameView->frame().isMainFrame();
+    return frameView.frame().isMainFrame();
 }
 
 void RemoteLayerTreeDrawingArea::updatePreferences(const WebPreferencesStore&)
@@ -177,7 +166,6 @@ void RemoteLayerTreeDrawingArea::updatePreferences(const WebPreferencesStore&)
     // Fixed position elements need to be composited and create stacking contexts
     // in order to be scrolled by the ScrollingCoordinator.
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
-    settings.setFixedPositionCreatesStackingContext(true);
 
     m_rootLayer->setShowDebugBorder(settings.showDebugBorders());
 
@@ -231,9 +219,9 @@ void RemoteLayerTreeDrawingArea::acceleratedAnimationDidEnd(uint64_t layerID, co
     m_remoteLayerTreeContext->animationDidEnd(layerID, key);
 }
 
-void RemoteLayerTreeDrawingArea::setExposedRect(const FloatRect& exposedRect)
+void RemoteLayerTreeDrawingArea::setViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
 {
-    m_exposedRect = exposedRect;
+    m_viewExposedRect = viewExposedRect;
     updateScrolledExposedRect();
 }
 
@@ -266,16 +254,16 @@ void RemoteLayerTreeDrawingArea::updateScrolledExposedRect()
     if (!frameView)
         return;
 
-    m_scrolledExposedRect = m_exposedRect;
+    m_scrolledViewExposedRect = m_viewExposedRect;
 
 #if !PLATFORM(IOS)
-    if (!m_exposedRect.isInfinite()) {
+    if (m_viewExposedRect) {
         ScrollOffset scrollOffset = frameView->scrollOffsetFromPosition(frameView->scrollPosition());
-        m_scrolledExposedRect.moveBy(scrollOffset);
+        m_scrolledViewExposedRect.value().moveBy(scrollOffset);
     }
 #endif
 
-    frameView->setExposedRect(m_scrolledExposedRect);
+    frameView->setViewExposedRect(m_scrolledViewExposedRect);
 }
 
 TiledBacking* RemoteLayerTreeDrawingArea::mainFrameTiledBacking() const
@@ -286,7 +274,7 @@ TiledBacking* RemoteLayerTreeDrawingArea::mainFrameTiledBacking() const
 
 void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlushImmediately()
 {
-    m_layerFlushTimer.startOneShot(0_ms);
+    m_layerFlushTimer.startOneShot(0_s);
 }
 
 void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlush()
@@ -305,9 +293,9 @@ void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlush()
     if (m_layerFlushTimer.isActive())
         return;
 
-    const auto initialFlushDelay = 500_ms;
-    const auto flushDelay = 1500_ms;
-    auto throttleDelay = m_isThrottlingLayerFlushes ? (m_isInitialThrottledLayerFlush ? initialFlushDelay : flushDelay) : 0_ms;
+    const Seconds initialFlushDelay = 500_ms;
+    const Seconds flushDelay = 1500_ms;
+    Seconds throttleDelay = m_isThrottlingLayerFlushes ? (m_isInitialThrottledLayerFlush ? initialFlushDelay : flushDelay) : 0_s;
     m_isInitialThrottledLayerFlush = false;
 
     m_layerFlushTimer.startOneShot(throttleDelay);
@@ -355,9 +343,9 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     m_webPage.layoutIfNeeded();
 
     FloatRect visibleRect(FloatPoint(), m_viewSize);
-    visibleRect.intersect(m_scrolledExposedRect);
+    if (m_scrolledViewExposedRect)
+        visibleRect.intersect(m_scrolledViewExposedRect.value());
 
-#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     RefPtr<WebPage> retainedPage = &m_webPage;
     [CATransaction addCommitHandler:[retainedPage] {
         if (Page* corePage = retainedPage->corePage()) {
@@ -365,21 +353,22 @@ void RemoteLayerTreeDrawingArea::flushLayers()
                 corePage->inspectorController().didComposite(*coreFrame);
         }
     } forPhase:kCATransactionPhasePostCommit];
-#endif
 
     m_webPage.mainFrameView()->flushCompositingStateIncludingSubframes();
 
     // Because our view-relative overlay root layer is not attached to the FrameView's GraphicsLayer tree, we need to flush it manually.
     if (m_viewOverlayRootLayer)
-        m_viewOverlayRootLayer->flushCompositingState(visibleRect, m_webPage.mainFrameView()->viewportIsStable());
+        m_viewOverlayRootLayer->flushCompositingState(visibleRect);
 
-    m_rootLayer->flushCompositingStateForThisLayerOnly(m_webPage.mainFrameView()->viewportIsStable());
+    m_rootLayer->flushCompositingStateForThisLayerOnly();
 
     // FIXME: Minimize these transactions if nothing changed.
     RemoteLayerTreeTransaction layerTransaction;
     layerTransaction.setTransactionID(takeNextTransactionID());
     layerTransaction.setCallbackIDs(WTFMove(m_pendingCallbackIDs));
+    m_remoteLayerTreeContext->setNextFlushIsForImmediatePaint(m_nextFlushIsForImmediatePaint);
     m_remoteLayerTreeContext->buildTransaction(layerTransaction, *downcast<GraphicsLayerCARemote>(*m_rootLayer).platformCALayer());
+    m_remoteLayerTreeContext->setNextFlushIsForImmediatePaint(false);
     backingStoreCollection.willCommitLayerTree(layerTransaction);
     m_webPage.willCommitLayerTree(layerTransaction);
 
@@ -392,12 +381,13 @@ void RemoteLayerTreeDrawingArea::flushLayers()
         downcast<RemoteScrollingCoordinator>(*m_webPage.scrollingCoordinator()).buildTransaction(scrollingTransaction);
 #endif
 
+    m_nextFlushIsForImmediatePaint = false;
     m_waitingForBackingStoreSwap = true;
 
     m_webPage.send(Messages::RemoteLayerTreeDrawingAreaProxy::WillCommitLayerTree(layerTransaction.transactionID()));
 
     Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree message(layerTransaction, scrollingTransaction);
-    auto commitEncoder = std::make_unique<IPC::MessageEncoder>(Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::receiverName(), Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::name(), m_webPage.pageID());
+    auto commitEncoder = std::make_unique<IPC::Encoder>(Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::receiverName(), Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::name(), m_webPage.pageID());
     commitEncoder->encode(message.arguments());
 
     // FIXME: Move all backing store flushing management to RemoteLayerBackingStoreCollection.
@@ -427,7 +417,7 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     dispatch_async(m_commitQueue, [backingStoreFlusher, pageID] {
         backingStoreFlusher->flush();
 
-        std::chrono::milliseconds timestamp = std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(monotonicallyIncreasingTime() * 1000));
+        MonotonicTime timestamp = MonotonicTime::now();
         dispatch_async(dispatch_get_main_queue(), [pageID, timestamp] {
             if (WebPage* webPage = WebProcess::singleton().webPage(pageID))
                 webPage->didFlushLayerTreeAtTime(timestamp);
@@ -469,12 +459,12 @@ bool RemoteLayerTreeDrawingArea::markLayersVolatileImmediatelyIfPossible()
     return m_remoteLayerTreeContext->backingStoreCollection().markAllBackingStoreVolatileImmediatelyIfPossible();
 }
 
-Ref<RemoteLayerTreeDrawingArea::BackingStoreFlusher> RemoteLayerTreeDrawingArea::BackingStoreFlusher::create(IPC::Connection* connection, std::unique_ptr<IPC::MessageEncoder> encoder, Vector<RetainPtr<CGContextRef>> contextsToFlush)
+Ref<RemoteLayerTreeDrawingArea::BackingStoreFlusher> RemoteLayerTreeDrawingArea::BackingStoreFlusher::create(IPC::Connection* connection, std::unique_ptr<IPC::Encoder> encoder, Vector<RetainPtr<CGContextRef>> contextsToFlush)
 {
     return adoptRef(*new RemoteLayerTreeDrawingArea::BackingStoreFlusher(connection, WTFMove(encoder), WTFMove(contextsToFlush)));
 }
 
-RemoteLayerTreeDrawingArea::BackingStoreFlusher::BackingStoreFlusher(IPC::Connection* connection, std::unique_ptr<IPC::MessageEncoder> encoder, Vector<RetainPtr<CGContextRef>> contextsToFlush)
+RemoteLayerTreeDrawingArea::BackingStoreFlusher::BackingStoreFlusher(IPC::Connection* connection, std::unique_ptr<IPC::Encoder> encoder, Vector<RetainPtr<CGContextRef>> contextsToFlush)
     : m_connection(connection)
     , m_commitEncoder(WTFMove(encoder))
     , m_contextsToFlush(WTFMove(contextsToFlush))
@@ -486,28 +476,36 @@ void RemoteLayerTreeDrawingArea::BackingStoreFlusher::flush()
 {
     ASSERT(!m_hasFlushed);
 
+    TraceScope tracingScope(BackingStoreFlushStart, BackingStoreFlushEnd);
+    
     for (auto& context : m_contextsToFlush)
         CGContextFlush(context.get());
     m_hasFlushed = true;
 
-    m_connection->sendMessage(WTFMove(m_commitEncoder));
+    m_connection->sendMessage(WTFMove(m_commitEncoder), { });
 }
 
-void RemoteLayerTreeDrawingArea::viewStateDidChange(ViewState::Flags, bool wantsDidUpdateViewState, const Vector<uint64_t>&)
+void RemoteLayerTreeDrawingArea::activityStateDidChange(ActivityState::Flags, bool wantsDidUpdateActivityState, const Vector<CallbackID>&)
 {
     // FIXME: Should we suspend painting while not visible, like TiledCoreAnimationDrawingArea? Probably.
 
-    if (wantsDidUpdateViewState)
+    if (wantsDidUpdateActivityState) {
+        m_nextFlushIsForImmediatePaint = true;
         scheduleCompositingLayerFlushImmediately();
+    }
 }
 
-void RemoteLayerTreeDrawingArea::addTransactionCallbackID(uint64_t callbackID)
+void RemoteLayerTreeDrawingArea::addTransactionCallbackID(CallbackID callbackID)
 {
+    // Assume that if someone is listening for this transaction's completion, that they want it to
+    // be a "complete" paint (including images that would normally be asynchronously decoding).
+    m_nextFlushIsForImmediatePaint = true;
+
     m_pendingCallbackIDs.append(static_cast<RemoteLayerTreeTransaction::TransactionCallbackID>(callbackID));
     scheduleCompositingLayerFlush();
 }
 
-bool RemoteLayerTreeDrawingArea::dispatchDidLayout(WebCore::LayoutMilestones layoutMilestones)
+bool RemoteLayerTreeDrawingArea::dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones layoutMilestones)
 {
     m_pendingNewlyReachedLayoutMilestones |= layoutMilestones;
     return true;

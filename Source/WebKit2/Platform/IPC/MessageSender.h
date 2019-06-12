@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MessageSender_h
-#define MessageSender_h
+#pragma once
 
 #include <wtf/Assertions.h>
 #include "Connection.h"
@@ -37,36 +36,36 @@ public:
 
     template<typename U> bool send(const U& message)
     {
-        return send(message, messageSenderDestinationID(), 0);
+        return send(message, messageSenderDestinationID(), { });
     }
 
-    template<typename U> bool send(const U& message, uint64_t destinationID, unsigned messageSendFlags = 0)
+    template<typename U> bool send(const U& message, uint64_t destinationID, OptionSet<SendOption> sendOptions = { })
     {
         static_assert(!U::isSync, "Message is sync!");
 
-        auto encoder = std::make_unique<MessageEncoder>(U::receiverName(), U::name(), destinationID);
+        auto encoder = std::make_unique<Encoder>(U::receiverName(), U::name(), destinationID);
         encoder->encode(message.arguments());
         
-        return sendMessage(WTFMove(encoder), messageSendFlags);
+        return sendMessage(WTFMove(encoder), sendOptions);
     }
 
     template<typename T>
-    bool sendSync(T&& message, typename T::Reply&& reply, std::chrono::milliseconds timeout = std::chrono::milliseconds::max(), unsigned syncSendFlags = 0)
+    bool sendSync(T&& message, typename T::Reply&& reply, Seconds timeout = Seconds::infinity(), OptionSet<SendSyncOption> sendSyncOptions = { })
     {
         static_assert(T::isSync, "Message is not sync!");
 
-        return sendSync(std::forward<T>(message), WTFMove(reply), messageSenderDestinationID(), timeout, syncSendFlags);
+        return sendSync(std::forward<T>(message), WTFMove(reply), messageSenderDestinationID(), timeout, sendSyncOptions);
     }
 
     template<typename T>
-    bool sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, std::chrono::milliseconds timeout = std::chrono::milliseconds::max(), unsigned syncSendFlags = 0)
+    bool sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, Seconds timeout = Seconds::infinity(), OptionSet<SendSyncOption> sendSyncOptions = { })
     {
         ASSERT(messageSenderConnection());
 
-        return messageSenderConnection()->sendSync(WTFMove(message), WTFMove(reply), destinationID, timeout, syncSendFlags);
+        return messageSenderConnection()->sendSync(WTFMove(message), WTFMove(reply), destinationID, timeout, sendSyncOptions);
     }
 
-    virtual bool sendMessage(std::unique_ptr<MessageEncoder>, unsigned messageSendFlags);
+    virtual bool sendMessage(std::unique_ptr<Encoder>, OptionSet<SendOption>);
 
 private:
     virtual Connection* messageSenderConnection() = 0;
@@ -74,5 +73,3 @@ private:
 };
 
 } // namespace IPC
-
-#endif // MessageSender_h

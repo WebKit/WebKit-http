@@ -26,15 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PeriodicWave_h
-#define PeriodicWave_h
+#pragma once
 
 #include "AudioArray.h"
 #include <memory>
 #include <runtime/Float32Array.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -47,7 +44,7 @@ public:
     static Ref<PeriodicWave> createTriangle(float sampleRate);
 
     // Creates an arbitrary wave given the frequency components (Fourier coefficients).
-    static RefPtr<PeriodicWave> create(float sampleRate, Float32Array* real, Float32Array* imag);
+    static Ref<PeriodicWave> create(float sampleRate, Float32Array& real, Float32Array& imag);
 
     // Returns pointers to the lower and higher wave data for the pitch range containing
     // the given fundamental frequency. These two tables are in adjacent "pitch" ranges
@@ -64,9 +61,16 @@ public:
     float sampleRate() const { return m_sampleRate; }
 
 private:
+    enum class Type {
+        Sine,
+        Square,
+        Sawtooth,
+        Triangle,
+    };
+
     explicit PeriodicWave(float sampleRate);
 
-    void generateBasicWaveform(int);
+    void generateBasicWaveform(Type);
 
     float m_sampleRate;
     unsigned m_periodicWaveSize;
@@ -93,5 +97,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // PeriodicWave_h

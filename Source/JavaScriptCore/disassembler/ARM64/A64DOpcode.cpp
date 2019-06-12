@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define __STDC_FORMAT_MACROS
 #include "config.h"
 
 #if USE(ARM64_DISASSEMBLER)
@@ -67,6 +66,7 @@ struct OpcodeGroupInitializer {
 
 static OpcodeGroupInitializer opcodeGroupList[] = {
     OPCODE_GROUP_ENTRY(0x08, A64DOpcodeLoadStoreRegisterPair),
+    OPCODE_GROUP_ENTRY(0x08, A64DOpcodeLoadStoreExclusive),
     OPCODE_GROUP_ENTRY(0x09, A64DOpcodeLoadStoreRegisterPair),
     OPCODE_GROUP_ENTRY(0x0a, A64DOpcodeLogicalShiftedRegister),
     OPCODE_GROUP_ENTRY(0x0b, A64DOpcodeAddSubtractExtendedRegister),
@@ -84,6 +84,9 @@ static OpcodeGroupInitializer opcodeGroupList[] = {
     OPCODE_GROUP_ENTRY(0x15, A64DOpcodeConditionalBranchImmediate),
     OPCODE_GROUP_ENTRY(0x15, A64DOpcodeCompareAndBranchImmediate),
     OPCODE_GROUP_ENTRY(0x15, A64DOpcodeHint),
+    OPCODE_GROUP_ENTRY(0x15, A64DOpcodeSystemSync),
+    OPCODE_GROUP_ENTRY(0x15, A64DOpcodeMSRImmediate),
+    OPCODE_GROUP_ENTRY(0x15, A64DOpcodeMSROrMRSRegister),
     OPCODE_GROUP_ENTRY(0x16, A64DOpcodeUnconditionalBranchImmediate),
     OPCODE_GROUP_ENTRY(0x16, A64DOpcodeUnconditionalBranchRegister),
     OPCODE_GROUP_ENTRY(0x16, A64DOpcodeTestAndBranchImmediate),
@@ -94,12 +97,14 @@ static OpcodeGroupInitializer opcodeGroupList[] = {
     OPCODE_GROUP_ENTRY(0x18, A64DOpcodeLoadStoreRegisterOffset),
     OPCODE_GROUP_ENTRY(0x19, A64DOpcodeLoadStoreUnsignedImmediate),
     OPCODE_GROUP_ENTRY(0x1a, A64DOpcodeConditionalSelect),
+    OPCODE_GROUP_ENTRY(0x1a, A64DOpcodeDataProcessing1Source),
     OPCODE_GROUP_ENTRY(0x1a, A64DOpcodeDataProcessing2Source),
     OPCODE_GROUP_ENTRY(0x1b, A64DOpcodeDataProcessing3Source),
     OPCODE_GROUP_ENTRY(0x1c, A64DOpcodeLoadStoreImmediate),
     OPCODE_GROUP_ENTRY(0x1c, A64DOpcodeLoadStoreRegisterOffset),
     OPCODE_GROUP_ENTRY(0x1d, A64DOpcodeLoadStoreUnsignedImmediate),
     OPCODE_GROUP_ENTRY(0x1e, A64DOpcodeFloatingPointCompare),
+    OPCODE_GROUP_ENTRY(0x1e, A64DOpcodeFloatingPointConditionalSelect),
     OPCODE_GROUP_ENTRY(0x1e, A64DOpcodeFloatingPointDataProcessing2Source),
     OPCODE_GROUP_ENTRY(0x1e, A64DOpcodeFloatingPointDataProcessing1Source),
     OPCODE_GROUP_ENTRY(0x1e, A64DOpcodeFloatingFixedPointConversions),
@@ -287,7 +292,7 @@ const char* const A64DOpcodeBitfield::s_opNames[3] = { "sbfm", "bfm", "ubfm" };
 const char* const A64DOpcodeBitfield::s_extendPseudoOpNames[3][3] = {
     { "sxtb", "sxth", "sxtw" }, { 0, 0, 0} , { "uxtb", "uxth", "uxtw" } };
 const char* const A64DOpcodeBitfield::s_insertOpNames[3] = { "sbfiz", "bfi", "ubfiz" };
-const char* const A64DOpcodeBitfield::s_extractOpNames[3] = { "sbfx", "bf", "ubfx" };
+const char* const A64DOpcodeBitfield::s_extractOpNames[3] = { "sbfx", "bfxil", "ubfx" };
 
 const char* A64DOpcodeBitfield::format()
 {
@@ -309,7 +314,7 @@ const char* A64DOpcodeBitfield::format()
         } else if (immediateS() == 15) {
             appendInstructionName(extendPseudoOpNames(1));
             isSTXType = true;
-        } else if (immediateS() == 31 && is64Bit()) {
+        } else if (immediateS() == 31 && is64Bit() && !opc()) {
             appendInstructionName(extendPseudoOpNames(2));
             isSTXType = true;
         }
@@ -323,63 +328,69 @@ const char* A64DOpcodeBitfield::format()
         }
     }
 
-    if (opc() == 0x2 && immediateS() == (immediateR() + 1)) {
+    if (!(opc() & 0x1) && ((immediateS() & 0x1f) == 0x1f) && (is64Bit() == (immediateS() >> 5))) {
+        // asr/lsr
+        appendInstructionName(!opc() ? "asr" : "lsr");
+
+        appendRegisterName(rd(), is64Bit());
+        appendSeparator();
+        appendRegisterName(rn(), is64Bit());
+        appendSeparator();
+        appendUnsignedImmediate(immediateR());
+
+        return m_formatBuffer;
+    }
+
+    if (opc() == 0x2 && (immediateS() + 1) == immediateR()) {
         // lsl
         appendInstructionName("lsl");
         appendRegisterName(rd(), is64Bit());
         appendSeparator();
         appendRegisterName(rn(), is64Bit());
         appendSeparator();
-        appendUnsignedImmediate((is64Bit() ? 63u : 31u) - immediateR());
-
-        return m_formatBuffer;
-    } else if (!(opc() & 0x1) && ((immediateS() & 0x1f) == 0x1f) && (is64Bit() == (immediateS() >> 5))) {
-        // asr/lsr
-        appendInstructionName(!opc() ? "ars" : "lsr");
-
-        appendRegisterName(rd(), is64Bit());
-        appendSeparator();
-        appendRegisterName(rn(), is64Bit());
-        appendSeparator();
-        appendUnsignedImmediate(immediateR());
-
-        return m_formatBuffer;
-    } else if (immediateS() < immediateR()) {
-        // bit field insert
-        appendInstructionName(insertOpNames());
-
-        appendRegisterName(rd(), is64Bit());
-        appendSeparator();
-        appendRegisterName(rn(), is64Bit());
-        appendSeparator();
         appendUnsignedImmediate((is64Bit() ? 64u : 32u) - immediateR());
-        appendSeparator();
-        appendUnsignedImmediate(immediateS() + 1);
-
-        return m_formatBuffer;
-    } else {
-        // bit field extract
-        appendInstructionName(extractOpNames());
-
-        appendRegisterName(rd(), is64Bit());
-        appendSeparator();
-        appendRegisterName(rn(), is64Bit());
-        appendSeparator();
-        appendUnsignedImmediate(immediateR());
-        appendSeparator();
-        appendUnsignedImmediate(immediateS() - immediateR() + 1);
-
+        
         return m_formatBuffer;
     }
+    
+    if (immediateS() < immediateR()) {
+        if (opc() != 1 || rn() != 0x1f) {
+            // bit field insert
+            appendInstructionName(insertOpNames());
 
-    appendInstructionName(opName());
+            appendRegisterName(rd(), is64Bit());
+            appendSeparator();
+            appendRegisterName(rn(), is64Bit());
+            appendSeparator();
+            appendUnsignedImmediate((is64Bit() ? 64u : 32u) - immediateR());
+            appendSeparator();
+            appendUnsignedImmediate(immediateS() + 1);
+
+            return m_formatBuffer;
+        }
+        
+        appendInstructionName(opName());
+        appendRegisterName(rd(), is64Bit());
+        appendSeparator();
+        appendRegisterName(rn(), is64Bit());
+        appendSeparator();
+        appendUnsignedImmediate(immediateR());
+        appendSeparator();
+        appendUnsignedImmediate(immediateS());
+        
+        return m_formatBuffer;
+    }
+    
+    // bit field extract
+    appendInstructionName(extractOpNames());
+
     appendRegisterName(rd(), is64Bit());
     appendSeparator();
     appendRegisterName(rn(), is64Bit());
     appendSeparator();
     appendUnsignedImmediate(immediateR());
     appendSeparator();
-    appendUnsignedImmediate(immediateS());
+    appendUnsignedImmediate(immediateS() - immediateR() + 1);
 
     return m_formatBuffer;
 }
@@ -441,6 +452,38 @@ const char* A64DOpcodeConditionalSelect::format()
 
 }
 
+const char* const A64DOpcodeDataProcessing1Source::s_opNames[8] = {
+    "rbit", "rev16", "rev32", "rev", "clz", "cls", 0, 0
+};
+
+const char* A64DOpcodeDataProcessing1Source::format()
+{
+    if (sBit())
+        return A64DOpcode::format();
+
+    if (opCode2())
+        return A64DOpcode::format();
+
+    if (opCode() & 0x38)
+        return A64DOpcode::format();
+
+    if ((opCode() & 0x3e) == 0x6)
+        return A64DOpcode::format();
+
+    if (is64Bit() && opCode() == 0x3)
+        return A64DOpcode::format();
+
+    if (!is64Bit() && opCode() == 0x2)
+        appendInstructionName("rev");
+    else
+        appendInstructionName(opName());
+    appendZROrRegisterName(rd(), is64Bit());
+    appendSeparator();
+    appendZROrRegisterName(rn(), is64Bit());
+    
+    return m_formatBuffer;
+}
+
 const char* const A64DOpcodeDataProcessing2Source::s_opNames[8] = {
     0, 0, "udiv", "sdiv", "lsl", "lsr", "asr", "ror" // We use the pseudo-op names for the shift/rotate instructions
 };
@@ -460,11 +503,11 @@ const char* A64DOpcodeDataProcessing2Source::format()
         return A64DOpcode::format();
 
     appendInstructionName(opName());
-    appendRegisterName(rd(), is64Bit());
+    appendZROrRegisterName(rd(), is64Bit());
     appendSeparator();
-    appendRegisterName(rn(), is64Bit());
+    appendZROrRegisterName(rn(), is64Bit());
     appendSeparator();
-    appendRegisterName(rm(), is64Bit());
+    appendZROrRegisterName(rm(), is64Bit());
 
     return m_formatBuffer;
 }
@@ -493,15 +536,18 @@ const char* A64DOpcodeDataProcessing3Source::format()
     if (!opName())
         return A64DOpcode::format();
 
+    if ((opNum() & 0x4) && (ra() != 31))
+        return A64DOpcode::format();
+
     appendInstructionName(opName());
-    appendRegisterName(rd(), is64Bit());
+    appendZROrRegisterName(rd(), is64Bit());
     appendSeparator();
     bool srcOneAndTwoAre64Bit = is64Bit() & !(opNum() & 0x2);
-    appendRegisterName(rn(), srcOneAndTwoAre64Bit);
+    appendZROrRegisterName(rn(), srcOneAndTwoAre64Bit);
     appendSeparator();
-    appendRegisterName(rm(), srcOneAndTwoAre64Bit);
+    appendZROrRegisterName(rm(), srcOneAndTwoAre64Bit);
 
-    if ((ra() != 31) || !(opNum() & 0x4)) {
+    if (ra() != 31) {
         appendSeparator();
         appendRegisterName(ra(), is64Bit());
     }
@@ -561,23 +607,26 @@ const char* A64OpcodeExceptionGeneration::format()
 
 const char* A64DOpcodeExtract::format()
 {
-    if (!op21() || !o0Bit())
+    if (op21() || o0Bit())
         return A64DOpcode::format();
 
     if (is64Bit() != nBit())
         return A64DOpcode::format();
 
-    if (is64Bit() && (immediateS() & 0x20))
+    if (!is64Bit() && (immediateS() & 0x20))
         return A64DOpcode::format();
 
-    const char* opName = (rn() == rm()) ? "ror" : "extr";
+    bool isROR = rn() == rm();
+    const char* opName = (isROR) ? "ror" : "extr";
 
     appendInstructionName(opName);
-    appendRegisterName(rd(), is64Bit());
+    appendZROrRegisterName(rd(), is64Bit());
     appendSeparator();
-    appendRegisterName(rn(), is64Bit());
-    appendSeparator();
-    appendRegisterName(rm(), is64Bit());
+    appendZROrRegisterName(rn(), is64Bit());
+    if (!isROR) {
+        appendSeparator();
+        appendZROrRegisterName(rm(), is64Bit());
+    }
     appendSeparator();
     appendUnsignedImmediate(immediateS());
 
@@ -609,6 +658,30 @@ const char* A64DOpcodeFloatingPointCompare::format()
         bufferPrintf("#0.0");
     else
         appendFPRegisterName(rm(), registerSize);
+    
+    return m_formatBuffer;
+}
+
+const char* A64DOpcodeFloatingPointConditionalSelect::format()
+{
+    if (mBit())
+        return A64DOpcode::format();
+    
+    if (sBit())
+        return A64DOpcode::format();
+    
+    if (type() & 0x2)
+        return A64DOpcode::format();
+
+    appendInstructionName(opName());
+    unsigned registerSize = type() + 2;
+    appendFPRegisterName(rd(), registerSize);
+    appendSeparator();
+    appendFPRegisterName(rn(), registerSize);
+    appendSeparator();
+    appendFPRegisterName(rm(), registerSize);
+    appendSeparator();
+    appendString(conditionName(condition()));
     
     return m_formatBuffer;
 }
@@ -781,10 +854,10 @@ const char* A64DOpcodeFloatingPointIntegerConversions::format()
             // fmov Vd.D[1], Xn
             bufferPrintf("V%u.D[1]", rd());
             appendSeparator();
-            appendRegisterName(rn());
+            appendZROrRegisterName(rn());
         } else {
             // fmov Xd, Vn.D[1]
-            appendRegisterName(rd());
+            appendZROrRegisterName(rd());
             appendSeparator();
             bufferPrintf("V%u.D[1]", rn());
         }
@@ -799,13 +872,89 @@ const char* A64DOpcodeFloatingPointIntegerConversions::format()
     if (destIsFP) {
         appendFPRegisterName(rd(), FPRegisterSize);
         appendSeparator();
-        appendRegisterName(rn(), is64Bit());
+        appendZROrRegisterName(rn(), is64Bit());
     } else {
-        appendRegisterName(rd(), is64Bit());
+        appendZROrRegisterName(rd(), is64Bit());
         appendSeparator();
         appendFPRegisterName(rn(), FPRegisterSize);
     }
 
+    return m_formatBuffer;
+}
+
+const char* A64DOpcodeMSRImmediate::format()
+{
+    const char* pstateField = nullptr;
+
+    if (!op1() && (op2() == 0x5))
+        pstateField = "spsel";
+
+    if ((op1() == 0x3) && (op2() == 0x6))
+        pstateField = "daifset";
+
+    if ((op1() == 0x3) && (op2() == 0x7))
+        pstateField = "daifclr";
+
+    if (!!op1() && !(op2() & 0x4))
+        return A64DOpcode::format();
+
+    if (!pstateField)
+        return A64DOpcode::format();
+
+    appendInstructionName("msr");
+    appendString(pstateField);
+    appendSeparator();
+    appendUnsignedImmediate(crM());
+
+    return m_formatBuffer;
+}
+
+const char* A64DOpcodeMSROrMRSRegister::format()
+{
+    appendInstructionName(opName());
+
+    if (lBit()) {
+        appendZROrRegisterName(rt());
+        appendSeparator();
+    }
+
+    bufferPrintf("S%u_%u_C%u_C%u_%u", op0(), op1(), crN(), crM(), op2());
+
+    if (!lBit()) {
+        appendSeparator();
+        appendZROrRegisterName(rt());
+    }
+
+    const char* systemRegisterName = nullptr;
+
+    switch (systemRegister()) {
+    case 0b1101100000000001:
+        systemRegisterName = "ctr_el0";
+        break;
+    case 0b1101101000010000:
+        systemRegisterName = "nzcv";
+        break;
+    case 0b1101101000010001:
+        systemRegisterName = "daif";
+        break;
+    case 0b1101101000100000:
+        systemRegisterName = "fpcr";
+        break;
+    case 0b1101101000100001:
+        systemRegisterName = "fpsr";
+        break;
+    case 0b1101111010000010:
+        systemRegisterName = "tpidr_el0";
+        break;
+    case 0b1101111010000011:
+        systemRegisterName = "tpidrr0_el0";
+        break;
+    }
+
+    if (systemRegisterName) {
+        appendString("  ; ");
+        appendString(systemRegisterName);
+    }
     return m_formatBuffer;
 }
 
@@ -819,6 +968,93 @@ const char* A64DOpcodeHint::format()
 
     if (immediate7() > 5)
         appendUnsignedImmediate(immediate7());
+
+    return m_formatBuffer;
+}
+
+const char* const A64DOpcodeSystemSync::s_opNames[8] = {
+    0, 0, "clrex", 0, "dsb", "dmb", "isb", 0
+};
+
+const char* const A64DOpcodeSystemSync::s_optionNames[16] = {
+    0, "oshld", "oshst", "osh", 0, "nshld", "nshst", "nsh",
+    0, "ishld", "ishst", "ish", 0, "ld", "st", "sy"
+};
+
+const char* A64DOpcodeSystemSync::format()
+{
+    const char* thisOpName = opName();
+
+    if (!thisOpName)
+        return A64DOpcode::format();
+
+    appendInstructionName(thisOpName);
+
+    if (op2() & 0x2) {
+        if (crM() != 0xf) {
+            appendCharacter('#');
+            appendUnsignedImmediate(crM());
+        }
+    } else {
+        const char* thisOption = option();
+        if (thisOption)
+            appendString(thisOption);
+        else
+            appendUnsignedImmediate(crM());
+    }
+
+    return m_formatBuffer;
+}
+
+const char* const A64DOpcodeLoadStoreExclusive::s_opNames[64] = {
+    "stxrb", "stlxrb", 0, 0, "ldxrb", "ldaxrb", 0, 0,
+    0, "stlrb", 0, 0, 0, "ldarb", 0, 0,
+    "stxrh", "stlxrh", 0, 0, "ldxrh", "ldaxrh", 0, 0,
+    0, "stlrh", 0, 0, 0, "ldarh", 0, 0,
+    "stxr", "stlxr", "stxp", "stlxp", "ldxr", "ldaxr", "ldxp", "ldaxp",
+    0, "stlr", 0, 0, 0, "ldar", 0, 0,
+    "stxr", "stlxr", "stxp", "stlxp", "ldxr", "ldaxr", "ldxp", "ldaxp",
+    0, "stlr", 0, 0, 0, "ldar", 0, 0
+};
+
+const char* A64DOpcodeLoadStoreExclusive::format()
+{
+    if (o2() && !o1() && !o0())
+        return A64DOpcode::format();
+
+    if (o2() && o1())
+        return A64DOpcode::format();
+
+    if ((size() < 2) && o1())
+        return A64DOpcode::format();
+
+    if (loadBit() && (rs() != 0x1f))
+        return A64DOpcode::format();
+
+    if (!isPairOp() && (rt2() != 0x1f))
+        return A64DOpcode::format();
+
+    const char* thisOpName = opName();
+
+    if (!thisOpName)
+        return A64DOpcode::format();
+
+    appendInstructionName(thisOpName);
+
+    if (!loadBit()) {
+        appendZROrRegisterName(rs(), size() == 0x3);
+        appendSeparator();
+    }
+
+    appendZROrRegisterName(rt(), size() == 0x3);
+    appendSeparator();
+    if (isPairOp()) {
+        appendZROrRegisterName(rt2(), size() == 0x3);
+        appendSeparator();
+    }
+    appendCharacter('[');
+    appendSPOrRegisterName(rn());
+    appendCharacter(']');
 
     return m_formatBuffer;
 }
@@ -864,6 +1100,8 @@ const char* A64DOpcodeLoadStoreImmediate::format()
     appendInstructionName(thisOpName);
     if (vBit())
         appendFPRegisterName(rt(), size());
+    else if (!opc())
+        appendZROrRegisterName(rt(), is64BitRT());
     else
         appendRegisterName(rt(), is64BitRT());
     appendSeparator();
@@ -921,28 +1159,33 @@ const char* A64DOpcodeLoadStoreRegisterOffset::format()
         appendFPRegisterName(rt(), size());
         scale = ((opc() & 2)<<1) | size();
     } else {
-        appendRegisterName(rt(), is64BitRT());
+        if (!opc())
+            appendZROrRegisterName(rt(), is64BitRT());
+        else
+            appendRegisterName(rt(), is64BitRT());
         scale = size();
     }
     appendSeparator();
     appendCharacter('[');
     appendSPOrRegisterName(rn());
-    appendSeparator();
-    appendZROrRegisterName(rm(), (option() & 0x3) == 0x3);
-
-    unsigned shift = sBit() ? scale : 0;
-
-    if (option() == 0x3) {
-        if (shift) {
-            appendSeparator();
-            appendString("lsl ");
-            appendUnsignedImmediate(shift);
-        }
-    } else {
+    if (rm() != 31) {
         appendSeparator();
-        appendString(optionName());
-        if (shift)
-            appendUnsignedImmediate(shift);
+        appendRegisterName(rm(), (option() & 0x3) == 0x3);
+
+        unsigned shift = sBit() ? scale : 0;
+
+        if (option() == 0x3) {
+            if (shift) {
+                appendSeparator();
+                appendString("lsl ");
+                appendUnsignedImmediate(shift);
+            }
+        } else {
+            appendSeparator();
+            appendString(optionName());
+            if (shift)
+                appendUnsignedImmediate(shift);
+        }
     }
 
     appendCharacter(']');
@@ -980,9 +1223,15 @@ const char* A64DOpcodeLoadStoreRegisterPair::format()
         appendFPRegisterName(rt2(), size());
         offsetShift = size() + 2;
     } else {
-        appendRegisterName(rt(), is64Bit());
+        if (!lBit())
+            appendZROrRegisterName(rt(), is64Bit());
+        else
+            appendRegisterName(rt(), is64Bit());
         appendSeparator();
-        appendRegisterName(rt2(), is64Bit());
+        if (!lBit())
+            appendZROrRegisterName(rt2(), is64Bit());
+        else
+            appendRegisterName(rt2(), is64Bit());
         offsetShift = (size() >> 1) + 2;
     }
 
@@ -1020,7 +1269,10 @@ const char* A64DOpcodeLoadStoreUnsignedImmediate::format()
         appendFPRegisterName(rt(), size());
         scale = ((opc() & 2)<<1) | size();
     } else {
-        appendRegisterName(rt(), is64BitRT());
+        if (!opc())
+            appendZROrRegisterName(rt(), is64BitRT());
+        else
+            appendRegisterName(rt(), is64BitRT());
         scale = size();
     }
     appendSeparator();
@@ -1051,15 +1303,15 @@ const char* A64DOpcodeLogicalShiftedRegister::format()
         appendInstructionName("tst");
     else {
         if (isMov())
-            appendInstructionName("mov");
+            appendInstructionName(nBit() ? "mvn" : "mov");
         else
             appendInstructionName(opName(opNumber()));
-        appendSPOrRegisterName(rd(), is64Bit());
+        appendZROrRegisterName(rd(), is64Bit());
         appendSeparator();
     }
 
     if (!isMov()) {
-        appendRegisterName(rn(), is64Bit());
+        appendZROrRegisterName(rn(), is64Bit());
         appendSeparator();
     }
 
@@ -1143,22 +1395,39 @@ const char* A64DOpcodeLogicalImmediate::format()
     return m_formatBuffer;
 }
 
-const char* const A64DOpcodeMoveWide::s_opNames[4] = { "movn", "", "movz", "movk" };
+const char* const A64DOpcodeMoveWide::s_opNames[4] = { "movn", 0, "movz", "movk" };
 
 const char* A64DOpcodeMoveWide::format()
 {
     if (opc() == 1)
         return A64DOpcode::format();
-    if (!size() && hw() >= 2)
+    if (!is64Bit() && hw() >= 2)
         return A64DOpcode::format();
 
-    appendInstructionName(opName());
-    appendRegisterName(rd(), is64Bit());
-    appendSeparator();
-    appendUnsignedImmediate(immediate16());
-    if (hw()) {
+    if (!opc() && (!immediate16() || !hw()) && (is64Bit() || immediate16() != 0xffff)) {
+        // MOV pseudo op for MOVN
+        appendInstructionName("mov");
+        appendRegisterName(rd(), is64Bit());
         appendSeparator();
-        appendShiftAmount(hw());
+
+        if (is64Bit()) {
+            int64_t amount = immediate16() << (hw() * 16);
+            amount = ~amount;
+            appendSignedImmediate64(amount);
+        } else {
+            int32_t amount = immediate16() << (hw() * 16);
+            amount = ~amount;
+            appendSignedImmediate(amount);
+        }
+    } else {
+        appendInstructionName(opName());
+        appendRegisterName(rd(), is64Bit());
+        appendSeparator();
+        appendUnsignedHexImmediate(immediate16());
+        if (hw()) {
+            appendSeparator();
+            appendShiftAmount(hw());
+        }
     }
 
     return m_formatBuffer;

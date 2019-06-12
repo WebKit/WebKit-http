@@ -111,7 +111,7 @@ class DefaultStyleErrorHandler(object):
 
     def _add_reportable_error(self, category):
         """Increment the error count and return the new category total."""
-        self._increment_error_count() # Increment the total.
+        self._increment_error_count()  # Increment the total.
 
         # Increment the category total.
         if not category in self._category_totals:
@@ -130,7 +130,7 @@ class DefaultStyleErrorHandler(object):
     def should_line_be_checked(self, line_number):
         "Returns if a particular line should be checked"
         # Was the line that was modified?
-        return self._line_numbers is None or line_number in self._line_numbers
+        return self._line_numbers is None or line_number in self._line_numbers or line_number == 0
 
     def turn_off_line_filtering(self):
         self._line_numbers = None

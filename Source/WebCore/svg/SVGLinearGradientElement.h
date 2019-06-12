@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGLinearGradientElement_h
-#define SVGLinearGradientElement_h
+#pragma once
 
 #include "SVGAnimatedLength.h"
 #include "SVGGradientElement.h"
@@ -39,12 +38,12 @@ private:
     SVGLinearGradientElement(const QualifiedName&, Document&);
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
-    virtual bool selfHasRelativeLengths() const override;
+    bool selfHasRelativeLengths() const override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGLinearGradientElement)
         DECLARE_ANIMATED_LENGTH(X1, x1)
@@ -55,5 +54,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

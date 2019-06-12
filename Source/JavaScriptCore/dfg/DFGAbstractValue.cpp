@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,8 +52,10 @@ void AbstractValue::set(Graph& graph, const FrozenValue& value, StructureClobber
 {
     if (!!value && value.value().isCell()) {
         Structure* structure = value.structure();
-        if (graph.registerStructure(structure) == StructureRegisteredAndWatched) {
-            m_structure = structure;
+        StructureRegistrationResult result;
+        RegisteredStructure RegisteredStructure = graph.registerStructure(structure, result);
+        if (result == StructureRegisteredAndWatched) {
+            m_structure = RegisteredStructure;
             if (clobberState == StructuresAreClobbered) {
                 m_arrayModes = ALL_ARRAY_MODES;
                 m_structure.clobber();
@@ -77,16 +79,23 @@ void AbstractValue::set(Graph& graph, const FrozenValue& value, StructureClobber
 
 void AbstractValue::set(Graph& graph, Structure* structure)
 {
+    set(graph, graph.registerStructure(structure));
+}
+
+void AbstractValue::set(Graph& graph, RegisteredStructure structure)
+{
+    RELEASE_ASSERT(structure);
+    
     m_structure = structure;
     m_arrayModes = asArrayModes(structure->indexingType());
-    m_type = speculationFromStructure(structure);
+    m_type = speculationFromStructure(structure.get());
     m_value = JSValue();
     
     checkConsistency();
     assertIsRegistered(graph);
 }
 
-void AbstractValue::set(Graph& graph, const StructureSet& set)
+void AbstractValue::set(Graph& graph, const RegisteredStructureSet& set)
 {
     m_structure = set;
     m_arrayModes = set.arrayModesFromStructures();
@@ -102,9 +111,9 @@ void AbstractValue::setType(Graph& graph, SpeculatedType type)
     SpeculatedType cellType = type & SpecCell;
     if (cellType) {
         if (!(cellType & ~SpecString))
-            m_structure = graph.m_vm.stringStructure.get();
+            m_structure = graph.stringStructure;
         else if (isSymbolSpeculation(cellType))
-            m_structure = graph.m_vm.symbolStructure.get();
+            m_structure = graph.symbolStructure;
         else
             m_structure.makeTop();
         m_arrayModes = ALL_ARRAY_MODES;
@@ -130,7 +139,7 @@ void AbstractValue::set(Graph& graph, const InferredType::Descriptor& descriptor
         setType(SpecOther);
         return;
     case InferredType::Int32:
-        setType(SpecInt32);
+        setType(SpecInt32Only);
         return;
     case InferredType::Number:
         setType(SpecBytecodeNumber);
@@ -178,23 +187,23 @@ void AbstractValue::fixTypeForRepresentation(Graph& graph, NodeFlags representat
             if (m_value.isInt32())
                 m_value = jsDoubleNumber(m_value.asNumber());
         }
-        if (m_type & SpecMachineInt) {
-            m_type &= ~SpecMachineInt;
-            m_type |= SpecInt52AsDouble;
+        if (m_type & SpecAnyInt) {
+            m_type &= ~SpecAnyInt;
+            m_type |= SpecAnyIntAsDouble;
         }
         if (m_type & ~SpecFullDouble)
             DFG_CRASH(graph, node, toCString("Abstract value ", *this, " for double node has type outside SpecFullDouble.\n").data());
     } else if (representation == NodeResultInt52) {
-        if (m_type & SpecInt52AsDouble) {
-            m_type &= ~SpecInt52AsDouble;
-            m_type |= SpecInt52;
+        if (m_type & SpecAnyIntAsDouble) {
+            m_type &= ~SpecAnyIntAsDouble;
+            m_type |= SpecInt52Only;
         }
-        if (m_type & ~SpecMachineInt)
-            DFG_CRASH(graph, node, toCString("Abstract value ", *this, " for int52 node has type outside SpecMachineInt.\n").data());
+        if (m_type & ~SpecAnyInt)
+            DFG_CRASH(graph, node, toCString("Abstract value ", *this, " for int52 node has type outside SpecAnyInt.\n").data());
     } else {
-        if (m_type & SpecInt52) {
-            m_type &= ~SpecInt52;
-            m_type |= SpecInt52AsDouble;
+        if (m_type & SpecInt52Only) {
+            m_type &= ~SpecInt52Only;
+            m_type |= SpecAnyIntAsDouble;
         }
         if (m_type & ~SpecBytecodeTop)
             DFG_CRASH(graph, node, toCString("Abstract value ", *this, " for value node has type outside SpecBytecodeTop.\n").data());
@@ -215,7 +224,7 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
     if (isClear()) {
         FrozenValue* frozenValue = graph.freeze(value);
         if (frozenValue->pointsToHeap()) {
-            m_structure = frozenValue->structure();
+            m_structure = graph.registerStructure(frozenValue->structure());
             m_arrayModes = asArrayModes(frozenValue->structure()->indexingType());
         } else {
             m_structure.clear();
@@ -227,10 +236,9 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
     } else {
         mergeSpeculation(m_type, speculationFromValue(value));
         if (!!value && value.isCell()) {
-            Structure* structure = value.asCell()->structure();
-            graph.registerStructure(structure);
+            RegisteredStructure structure = graph.registerStructure(value.asCell()->structure());
             mergeArrayModes(m_arrayModes, asArrayModes(structure->indexingType()));
-            m_structure.merge(StructureSet(structure));
+            m_structure.merge(RegisteredStructureSet(structure));
         }
         if (m_value != value)
             m_value = JSValue();
@@ -254,7 +262,7 @@ bool AbstractValue::isType(Graph& graph, const InferredType::Descriptor& inferre
 }
 
 FiltrationResult AbstractValue::filter(
-    Graph& graph, const StructureSet& other, SpeculatedType admittedTypes)
+    Graph& graph, const RegisteredStructureSet& other, SpeculatedType admittedTypes)
 {
     ASSERT(!(admittedTypes & SpecCell));
     
@@ -270,10 +278,10 @@ FiltrationResult AbstractValue::filter(
     m_structure.filter(other);
     
     // It's possible that prior to the above two statements we had (Foo, TOP), where
-    // Foo is a SpeculatedType that is disjoint with the passed StructureSet. In that
+    // Foo is a SpeculatedType that is disjoint with the passed RegisteredStructureSet. In that
     // case, we will now have (None, [someStructure]). In general, we need to make
     // sure that new information gleaned from the SpeculatedType needs to be fed back
-    // into the information gleaned from the StructureSet.
+    // into the information gleaned from the RegisteredStructureSet.
     m_structure.filter(m_type);
     
     filterArrayModesByType();
@@ -281,7 +289,7 @@ FiltrationResult AbstractValue::filter(
     return normalizeClarity(graph);
 }
 
-FiltrationResult AbstractValue::changeStructure(Graph& graph, const StructureSet& other)
+FiltrationResult AbstractValue::changeStructure(Graph& graph, const RegisteredStructureSet& other)
 {
     m_type &= other.speculationFromStructures();
     m_arrayModes = other.arrayModesFromStructures();
@@ -302,6 +310,23 @@ FiltrationResult AbstractValue::filterArrayModes(ArrayModes arrayModes)
     m_type &= SpecCell;
     m_arrayModes &= arrayModes;
     return normalizeClarity();
+}
+
+FiltrationResult AbstractValue::filterClassInfo(Graph& graph, const ClassInfo* classInfo)
+{
+    // FIXME: AI should track ClassInfo to leverage hierarchical class information.
+    // https://bugs.webkit.org/show_bug.cgi?id=162989
+    if (isClear())
+        return FiltrationOK;
+
+    m_type &= speculationFromClassInfo(classInfo);
+    m_structure.filterClassInfo(classInfo);
+
+    m_structure.filter(m_type);
+
+    filterArrayModesByType();
+    filterValueByType();
+    return normalizeClarity(graph);
 }
 
 FiltrationResult AbstractValue::filter(SpeculatedType type)
@@ -328,7 +353,7 @@ FiltrationResult AbstractValue::filter(SpeculatedType type)
     // the passed type is Array. At this point we'll have (None, TOP). The best way
     // to ensure that the structure filtering does the right thing is to filter on
     // the new type (None) rather than the one passed (Array).
-    m_structure.filter(type);
+    m_structure.filter(m_type);
     filterArrayModesByType();
     filterValueByType();
     return normalizeClarity();
@@ -342,10 +367,10 @@ FiltrationResult AbstractValue::filterByValue(const FrozenValue& value)
     return result;
 }
 
-bool AbstractValue::contains(Structure* structure) const
+bool AbstractValue::contains(RegisteredStructure structure) const
 {
-    return couldBeType(speculationFromStructure(structure))
-        && (m_arrayModes & arrayModeFromStructure(structure))
+    return couldBeType(speculationFromStructure(structure.get()))
+        && (m_arrayModes & arrayModeFromStructure(structure.get()))
         && m_structure.contains(structure);
 }
 
@@ -480,8 +505,8 @@ void AbstractValue::checkConsistency() const
         SpeculatedType type = m_type;
         // This relaxes the assertion below a bit, since we don't know the representation of the
         // node.
-        if (type & SpecInt52)
-            type |= SpecInt52AsDouble;
+        if (type & SpecInt52Only)
+            type |= SpecAnyIntAsDouble;
         ASSERT(mergeSpeculations(type, speculationFromValue(m_value)) == type);
     }
     
@@ -502,7 +527,7 @@ ResultType AbstractValue::resultType() const
     ASSERT(isType(SpecBytecodeTop));
     if (isType(SpecBoolean))
         return ResultType::booleanType();
-    if (isType(SpecInt32))
+    if (isType(SpecInt32Only))
         return ResultType::numberTypeIsInt32();
     if (isType(SpecBytecodeNumber))
         return ResultType::numberType();
@@ -536,6 +561,15 @@ void AbstractValue::validateReferences(const TrackedReferences& trackedReference
     trackedReferences.check(m_value);
     m_structure.validateReferences(trackedReferences);
 }
+
+#if USE(JSVALUE64) && !defined(NDEBUG)
+void AbstractValue::ensureCanInitializeWithZeros()
+{
+    std::aligned_storage<sizeof(AbstractValue), alignof(AbstractValue)>::type zeroFilledStorage;
+    memset(static_cast<void*>(&zeroFilledStorage), 0, sizeof(AbstractValue));
+    ASSERT(*this == *static_cast<AbstractValue*>(static_cast<void*>(&zeroFilledStorage)));
+}
+#endif
 
 } } // namespace JSC::DFG
 

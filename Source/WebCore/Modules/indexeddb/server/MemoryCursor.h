@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MemoryCursor_h
-#define MemoryCursor_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -43,7 +42,7 @@ public:
     virtual ~MemoryCursor();
 
     virtual void currentData(IDBGetResult&) = 0;
-    virtual void iterate(const IDBKeyData&, uint32_t count, IDBGetResult&) = 0;
+    virtual void iterate(const IDBKeyData&, const IDBKeyData& primaryKey, uint32_t count, IDBGetResult&) = 0;
 
     static MemoryCursor* cursorForIdentifier(const IDBResourceIdentifier&);
 
@@ -57,4 +56,3 @@ protected:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // MemoryCursor_h

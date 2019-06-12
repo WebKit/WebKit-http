@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,12 +47,15 @@ InspectorFrontendAPI = {
         if (WebInspector.timelineManager.isCapturing() === enabled)
             return;
 
-        if (enabled) {
-            WebInspector.showTimelineTab();
+        if (enabled)
             WebInspector.timelineManager.startCapturing();
-        } else {
+        else
             WebInspector.timelineManager.stopCapturing();
-        }
+    },
+
+    setElementSelectionEnabled: function(enabled)
+    {
+        WebInspector.domTreeManager.inspectModeEnabled = enabled;
     },
 
     setDockingUnavailable: function(unavailable)
@@ -65,6 +68,11 @@ InspectorFrontendAPI = {
         WebInspector.updateDockedState(side);
     },
 
+    setIsVisible: function(visible)
+    {
+        WebInspector.updateVisibilityState(visible);
+    },
+
     showConsole: function()
     {
         WebInspector.showConsoleTab();
@@ -75,7 +83,7 @@ InspectorFrontendAPI = {
         if (document.readyState !== "complete")
             document.addEventListener("readystatechange", this);
         if (document.visibilityState !== "visible")
-            document.addEventListener("visibilitychange", this);  
+            document.addEventListener("visibilitychange", this);
     },
 
     handleEvent: function(event)
@@ -94,14 +102,27 @@ InspectorFrontendAPI = {
         WebInspector.showResourcesTab();
     },
 
+    showTimelines: function()
+    {
+        WebInspector.showTimelineTab();
+    },
+
     showMainResourceForFrame: function(frameIdentifier)
     {
-        WebInspector.showSourceCodeForFrame(frameIdentifier);
+        const options = {
+            ignoreNetworkTab: true,
+            ignoreSearchTab: true,
+        };
+        WebInspector.showSourceCodeForFrame(frameIdentifier, options);
     },
 
     contextMenuItemSelected: function(id)
     {
-        WebInspector.ContextMenu.contextMenuItemSelected(id);
+        try {
+            WebInspector.ContextMenu.contextMenuItemSelected(id);
+        } catch (e) {
+            console.error("Uncaught exception in inspector page under contextMenuItemSelected", e);
+        }
     },
 
     contextMenuCleared: function()
@@ -129,7 +150,7 @@ InspectorFrontendAPI = {
         var methodName = signature.shift();
         console.assert(InspectorFrontendAPI[methodName], "Unexpected InspectorFrontendAPI method name: " + methodName);
         if (!InspectorFrontendAPI[methodName])
-            return;
+            return null;
 
         return InspectorFrontendAPI[methodName].apply(InspectorFrontendAPI, signature);
     },

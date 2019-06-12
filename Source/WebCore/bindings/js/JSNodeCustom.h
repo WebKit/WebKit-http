@@ -23,26 +23,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSNodeCustom_h
-#define JSNodeCustom_h
+#pragma once
 
 #include "JSDOMBinding.h"
 #include "JSNode.h"
-#include "ScriptState.h"
-#include "ShadowRoot.h"
 
 namespace WebCore {
 
-WEBCORE_EXPORT JSC::JSValue createWrapper(JSC::ExecState*, JSDOMGlobalObject*, Node*);
-WEBCORE_EXPORT JSC::JSObject* getOutOfLineCachedWrapper(JSDOMGlobalObject*, Node*);
+WEBCORE_EXPORT JSC::JSValue createWrapper(JSC::ExecState*, JSDOMGlobalObject*, Ref<Node>&&);
+WEBCORE_EXPORT JSC::JSObject* getOutOfLineCachedWrapper(JSDOMGlobalObject*, Node&);
 
-inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)
+inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, Node& node)
 {
-    if (!node)
-        return JSC::jsNull();
-
     if (LIKELY(globalObject->worldIsNormal())) {
-        if (auto* wrapper = node->wrapper())
+        if (auto* wrapper = node.wrapper())
             return wrapper;
     } else {
         if (auto* wrapper = getOutOfLineCachedWrapper(globalObject, node))
@@ -70,12 +64,7 @@ inline void willCreatePossiblyOrphanedTreeByRemoval(Node* root)
 
 inline void* root(Node* node)
 {
-    if (node->inDocument())
-        return &node->document();
-
-    while (node->parentOrShadowHostNode())
-        node = node->parentOrShadowHostNode();
-    return node;
+    return node->opaqueRoot();
 }
 
 inline void* root(Node& node)
@@ -83,13 +72,15 @@ inline void* root(Node& node)
     return root(&node);
 }
 
-ALWAYS_INLINE JSNode* jsNodeCast(JSC::JSValue value)
+template<typename From>
+ALWAYS_INLINE JSDynamicCastResult<JSNode, From> jsNodeCast(From* value)
 {
-    if (UNLIKELY(!value.isCell()))
-        return nullptr;
-    return value.asCell()->type() >= JSNodeType ? JSC::jsCast<JSNode*>(value) : nullptr;
+    return value->type() >= JSNodeType ? JSC::jsCast<JSDynamicCastResult<JSNode, From>>(value) : nullptr;
+}
+
+ALWAYS_INLINE JSC::JSValue JSNode::nodeType(JSC::ExecState&) const
+{
+    return JSC::jsNumber(static_cast<uint8_t>(type()) & JSNodeTypeMask);
 }
 
 } // namespace WebCore
-
-#endif // JSDOMNodeCustom_h

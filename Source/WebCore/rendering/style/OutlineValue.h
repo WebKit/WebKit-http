@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef OutlineValue_h
-#define OutlineValue_h
+#pragma once
 
 #include "BorderValue.h"
 
@@ -34,7 +33,7 @@ friend class RenderStyle;
 public:
     bool operator==(const OutlineValue& o) const
     {
-        return m_width == o.m_width && m_style == o.m_style && m_color == o.m_color && m_colorIsValid == o.m_colorIsValid && m_offset == o.m_offset && m_isAuto == o.m_isAuto;
+        return m_width == o.m_width && m_style == o.m_style && m_color == o.m_color && m_offset == o.m_offset && m_isAuto == o.m_isAuto;
     }
     
     bool operator!=(const OutlineValue& o) const
@@ -50,5 +49,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // OutlineValue_h

@@ -23,27 +23,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSBorderImageSliceValue_h
-#define CSSBorderImageSliceValue_h
+#pragma once
 
 #include "CSSPrimitiveValue.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
 class Rect;
 
-class CSSBorderImageSliceValue : public CSSValue {
+class CSSBorderImageSliceValue final : public CSSValue {
 public:
-    static Ref<CSSBorderImageSliceValue> create(PassRefPtr<CSSPrimitiveValue> slices, bool fill)
+    static Ref<CSSBorderImageSliceValue> create(RefPtr<CSSPrimitiveValue>&& slices, bool fill)
     {
-        return adoptRef(*new CSSBorderImageSliceValue(slices, fill));
+        return adoptRef(*new CSSBorderImageSliceValue(WTFMove(slices), fill));
     }
 
     String customCSSText() const;
 
-    Quad* slices() { return m_slices ? m_slices->getQuadValue() : 0; }
+    Quad* slices() const { return m_slices ? m_slices->quadValue() : nullptr; }
 
     bool equals(const CSSBorderImageSliceValue&) const;
 
@@ -53,11 +51,9 @@ public:
     bool m_fill;
 
 private:
-    CSSBorderImageSliceValue(PassRefPtr<CSSPrimitiveValue> slices, bool fill);
+    CSSBorderImageSliceValue(RefPtr<CSSPrimitiveValue>&& slices, bool fill);
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSBorderImageSliceValue, isBorderImageSliceValue())
-
-#endif // CSSBorderImageSliceValue_h

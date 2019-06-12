@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextTrackLoader_h
-#define TextTrackLoader_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -64,26 +63,25 @@ public:
 private:
 
     // CachedResourceClient
-    virtual void notifyFinished(CachedResource*) override;
-    virtual void deprecatedDidReceiveCachedResource(CachedResource*) override;
-    
+    void notifyFinished(CachedResource&) override;
+    void deprecatedDidReceiveCachedResource(CachedResource&) override;
+
     // WebVTTParserClient
-    virtual void newCuesParsed() override;
-    virtual void newRegionsParsed() override;
-    virtual void fileFailedToParse() override;
-    
-    void processNewCueData(CachedResource*);
+    void newCuesParsed() override;
+    void newRegionsParsed() override;
+    void fileFailedToParse() override;
+
+    void processNewCueData(CachedResource&);
     void cueLoadTimerFired();
     void corsPolicyPreventedLoad();
 
     enum State { Idle, Loading, Finished, Failed };
-    
+
     TextTrackLoaderClient& m_client;
     std::unique_ptr<WebVTTParser> m_cueParser;
     CachedResourceHandle<CachedTextTrack> m_resource;
     ScriptExecutionContext* m_scriptExecutionContext;
     Timer m_cueLoadTimer;
-    String m_crossOriginMode;
     State m_state;
     unsigned m_parseOffset;
     bool m_newCuesAvailable;
@@ -91,5 +89,4 @@ private:
 
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)

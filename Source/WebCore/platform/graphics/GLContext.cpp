@@ -19,14 +19,19 @@
 #include "config.h"
 
 #if ENABLE(GRAPHICS_CONTEXT_3D)
-
 #include "GLContext.h"
-
-#include "PlatformDisplay.h"
 #include <wtf/ThreadSpecific.h>
 
 #if USE(EGL)
 #include "GLContextEGL.h"
+#endif
+
+#if USE(LIBEPOXY)
+#include <epoxy/gl.h>
+#elif USE(OPENGL_ES_2)
+#define GL_GLEXT_PROTOTYPES 1
+#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 #endif
 
 #if USE(GLX)
@@ -57,106 +62,83 @@ inline ThreadGlobalGLContext* currentContext()
     return *ThreadGlobalGLContext::staticGLContext;
 }
 
-GLContext* GLContext::sharingContext()
+static bool initializeOpenGLShimsIfNeeded()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(std::unique_ptr<GLContext>, sharing, (createOffscreenContext()));
-    return sharing.get();
-}
-
-#if PLATFORM(X11)
-// Because of driver bugs, exiting the program when there are active pbuffers
-// can crash the X server (this has been observed with the official Nvidia drivers).
-// We need to ensure that we clean everything up on exit. There are several reasons
-// that GraphicsContext3Ds will still be alive at exit, including user error (memory
-// leaks) and the page cache. In any case, we don't want the X server to crash.
-typedef Vector<GLContext*> ActiveContextList;
-static ActiveContextList& activeContextList()
-{
-    DEPRECATED_DEFINE_STATIC_LOCAL(ActiveContextList, activeContexts, ());
-    return activeContexts;
-}
-
-void GLContext::addActiveContext(GLContext* context)
-{
-    static bool addedAtExitHandler = false;
-    if (!addedAtExitHandler) {
-        atexit(&GLContext::cleanupActiveContextsAtExit);
-        addedAtExitHandler = true;
+#if USE(OPENGL_ES_2) || USE(LIBEPOXY)
+    return true;
+#else
+    static bool initialized = false;
+    static bool success = true;
+    if (!initialized) {
+        success = initializeOpenGLShims();
+        initialized = true;
     }
-    activeContextList().append(context);
+    return success;
+#endif
 }
 
-static bool gCleaningUpAtExit = false;
-
-void GLContext::removeActiveContext(GLContext* context)
+std::unique_ptr<GLContext> GLContext::createContextForWindow(GLNativeWindowType windowHandle, PlatformDisplay* platformDisplay)
 {
-    // If we are cleaning up the context list at exit, don't bother removing the context
-    // from the list, since we don't want to modify the list while it's being iterated.
-    if (gCleaningUpAtExit)
-        return;
+    if (!initializeOpenGLShimsIfNeeded())
+        return nullptr;
 
-    ActiveContextList& contextList = activeContextList();
-    size_t i = contextList.find(context);
-    if (i != notFound)
-        contextList.remove(i);
-}
-
-void GLContext::cleanupActiveContextsAtExit()
-{
-    gCleaningUpAtExit = true;
-
-    ActiveContextList& contextList = activeContextList();
-    for (size_t i = 0; i < contextList.size(); ++i)
-        delete contextList[i];
-}
-#endif // PLATFORM(X11)
-
-
-std::unique_ptr<GLContext> GLContext::createContextForWindow(GLNativeWindowType windowHandle, GLContext* sharingContext)
-{
-#if PLATFORM(WAYLAND) && USE(EGL)
-    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland) {
-        if (auto eglContext = GLContextEGL::createContext(windowHandle, sharingContext))
+    PlatformDisplay& display = platformDisplay ? *platformDisplay : PlatformDisplay::sharedDisplay();
+#if PLATFORM(WAYLAND)
+    if (display.type() == PlatformDisplay::Type::Wayland) {
+        if (auto eglContext = GLContextEGL::createContext(windowHandle, display))
             return WTFMove(eglContext);
         return nullptr;
     }
 #endif
 
 #if USE(GLX)
-#if PLATFORM(WAYLAND) // Building both X11 and Wayland targets
-    XID GLXWindowHandle = reinterpret_cast<XID>(windowHandle);
-#else
-    XID GLXWindowHandle = static_cast<XID>(windowHandle);
-#endif
-    if (auto glxContext = GLContextGLX::createContext(GLXWindowHandle, sharingContext))
+    if (auto glxContext = GLContextGLX::createContext(windowHandle, display))
         return WTFMove(glxContext);
 #endif
 #if USE(EGL)
-    if (auto eglContext = GLContextEGL::createContext(windowHandle, sharingContext))
+    if (auto eglContext = GLContextEGL::createContext(windowHandle, display))
         return WTFMove(eglContext);
 #endif
     return nullptr;
 }
 
-GLContext::GLContext()
+std::unique_ptr<GLContext> GLContext::createOffscreenContext(PlatformDisplay* platformDisplay)
 {
-#if PLATFORM(X11)
-    addActiveContext(this);
-#endif
+    if (!initializeOpenGLShimsIfNeeded())
+        return nullptr;
+
+    return createContextForWindow(0, platformDisplay ? platformDisplay : &PlatformDisplay::sharedDisplay());
 }
 
-std::unique_ptr<GLContext> GLContext::createOffscreenContext(GLContext* sharingContext)
+std::unique_ptr<GLContext> GLContext::createSharingContext(PlatformDisplay& display)
 {
-    return createContextForWindow(0, sharingContext);
+    if (!initializeOpenGLShimsIfNeeded())
+        return nullptr;
+
+#if USE(GLX)
+    if (display.type() == PlatformDisplay::Type::X11) {
+        if (auto glxContext = GLContextGLX::createSharingContext(display))
+            return WTFMove(glxContext);
+    }
+#endif
+
+#if USE(EGL) || PLATFORM(WAYLAND) || PLATFORM(WPE)
+    if (auto eglContext = GLContextEGL::createSharingContext(display))
+        return WTFMove(eglContext);
+#endif
+
+    return nullptr;
+}
+
+GLContext::GLContext(PlatformDisplay& display)
+    : m_display(display)
+{
 }
 
 GLContext::~GLContext()
 {
     if (this == currentContext()->context())
-        currentContext()->setContext(0);
-#if PLATFORM(X11)
-    removeActiveContext(this);
-#endif
+        currentContext()->setContext(nullptr);
 }
 
 bool GLContext::makeContextCurrent()
@@ -165,9 +147,51 @@ bool GLContext::makeContextCurrent()
     return true;
 }
 
-GLContext* GLContext::getCurrent()
+GLContext* GLContext::current()
 {
     return currentContext()->context();
+}
+
+bool GLContext::isExtensionSupported(const char* extensionList, const char* extension)
+{
+    if (!extensionList)
+        return false;
+
+    ASSERT(extension);
+    int extensionLen = strlen(extension);
+    const char* extensionListPtr = extensionList;
+    while ((extensionListPtr = strstr(extensionListPtr, extension))) {
+        if (extensionListPtr[extensionLen] == ' ' || extensionListPtr[extensionLen] == '\0')
+            return true;
+        extensionListPtr += extensionLen;
+    }
+    return false;
+}
+
+unsigned GLContext::version()
+{
+    if (!m_version) {
+        // Version string can start with the version number (all versions except GLES 1 and 2) or with
+        // "OpenGL". Different fields inside the version string are separated by spaces.
+        String versionString = String(reinterpret_cast<const char*>(::glGetString(GL_VERSION)));
+        Vector<String> versionStringComponents;
+        versionString.split(' ', versionStringComponents);
+
+        Vector<String> versionDigits;
+        if (versionStringComponents[0] == "OpenGL") {
+            // If the version string starts with "OpenGL" it can be GLES 1 or 2. In GLES1 version string starts
+            // with "OpenGL ES-<profile> major.minor" and in GLES2 with "OpenGL ES major.minor". Version is the
+            // third component in both cases.
+            versionStringComponents[2].split('.', versionDigits);
+        } else {
+            // Version is the first component. The version number is always "major.minor" or
+            // "major.minor.release". Ignore the release number.
+            versionStringComponents[0].split('.', versionDigits);
+        }
+
+        m_version = versionDigits[0].toUInt() * 100 + versionDigits[1].toUInt() * 10;
+    }
+    return m_version;
 }
 
 } // namespace WebCore

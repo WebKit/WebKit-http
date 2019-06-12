@@ -1,5 +1,121 @@
+diff --git a/include/EGL/egl.h b/include/EGL/egl.h
+index 9f9e021..8ada051 100644
+--- a/include/EGL/egl.h
++++ b/include/EGL/egl.h
+@@ -38,6 +38,12 @@ extern "C" {
+ 
+ #include <EGL/eglplatform.h>
+ 
++#if defined(_MSC_VER) && !defined(ANGLE_WEBKIT_WIN)
++#define EGL_SOFT_LINKING 1
++#else
++#define EGL_SOFT_LINKING 0
++#endif
++
+ /* Generated on date 20150623 */
+ 
+ /* Generated C header for:
+@@ -118,6 +124,7 @@ typedef void (*__eglMustCastToProperFunctionPointerType)(void);
+ #define EGL_VERSION                       0x3054
+ #define EGL_WIDTH                         0x3057
+ #define EGL_WINDOW_BIT                    0x0004
++#if !EGL_SOFT_LINKING
+ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig (EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs, EGLint config_size, EGLint *num_config);
+ EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers (EGLDisplay dpy, EGLSurface surface, EGLNativePixmapType target);
+ EGLAPI EGLContext EGLAPIENTRY eglCreateContext (EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
+@@ -142,6 +149,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers (EGLDisplay dpy, EGLSurface surface
+ EGLAPI EGLBoolean EGLAPIENTRY eglTerminate (EGLDisplay dpy);
+ EGLAPI EGLBoolean EGLAPIENTRY eglWaitGL (void);
+ EGLAPI EGLBoolean EGLAPIENTRY eglWaitNative (EGLint engine);
++#endif
+ #endif /* EGL_VERSION_1_0 */
+ 
+ #ifndef EGL_VERSION_1_1
+@@ -160,10 +168,12 @@ EGLAPI EGLBoolean EGLAPIENTRY eglWaitNative (EGLint engine);
+ #define EGL_TEXTURE_RGB                   0x305D
+ #define EGL_TEXTURE_RGBA                  0x305E
+ #define EGL_TEXTURE_TARGET                0x3081
++#if !EGL_SOFT_LINKING
+ EGLAPI EGLBoolean EGLAPIENTRY eglBindTexImage (EGLDisplay dpy, EGLSurface surface, EGLint buffer);
+ EGLAPI EGLBoolean EGLAPIENTRY eglReleaseTexImage (EGLDisplay dpy, EGLSurface surface, EGLint buffer);
+ EGLAPI EGLBoolean EGLAPIENTRY eglSurfaceAttrib (EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint value);
+ EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval (EGLDisplay dpy, EGLint interval);
++#endif
+ #endif /* EGL_VERSION_1_1 */
+ 
+ #ifndef EGL_VERSION_1_2
+@@ -199,11 +209,13 @@ typedef void *EGLClientBuffer;
+ #define EGL_SWAP_BEHAVIOR                 0x3093
+ #define EGL_UNKNOWN                       ((EGLint)-1)
+ #define EGL_VERTICAL_RESOLUTION           0x3091
++#if !EGL_SOFT_LINKING
+ EGLAPI EGLBoolean EGLAPIENTRY eglBindAPI (EGLenum api);
+ EGLAPI EGLenum EGLAPIENTRY eglQueryAPI (void);
+ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferFromClientBuffer (EGLDisplay dpy, EGLenum buftype, EGLClientBuffer buffer, EGLConfig config, const EGLint *attrib_list);
+ EGLAPI EGLBoolean EGLAPIENTRY eglReleaseThread (void);
+ EGLAPI EGLBoolean EGLAPIENTRY eglWaitClient (void);
++#endif
+ #endif /* EGL_VERSION_1_2 */
+ 
+ #ifndef EGL_VERSION_1_3
+@@ -232,7 +244,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglWaitClient (void);
+ #define EGL_OPENGL_API                    0x30A2
+ #define EGL_OPENGL_BIT                    0x0008
+ #define EGL_SWAP_BEHAVIOR_PRESERVED_BIT   0x0400
++#if !EGL_SOFT_LINKING
+ EGLAPI EGLContext EGLAPIENTRY eglGetCurrentContext (void);
++#endif
+ #endif /* EGL_VERSION_1_4 */
+ 
+ #ifndef EGL_VERSION_1_5
+@@ -284,6 +298,7 @@ typedef void *EGLImage;
+ #define EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z 0x30B8
+ #define EGL_IMAGE_PRESERVED               0x30D2
+ #define EGL_NO_IMAGE                      ((EGLImage)0)
++#if !EGL_SOFT_LINKING
+ EGLAPI EGLSync EGLAPIENTRY eglCreateSync (EGLDisplay dpy, EGLenum type, const EGLAttrib *attrib_list);
+ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySync (EGLDisplay dpy, EGLSync sync);
+ EGLAPI EGLint EGLAPIENTRY eglClientWaitSync (EGLDisplay dpy, EGLSync sync, EGLint flags, EGLTime timeout);
+@@ -294,8 +309,13 @@ EGLAPI EGLDisplay EGLAPIENTRY eglGetPlatformDisplay (EGLenum platform, void *nat
+ EGLAPI EGLSurface EGLAPIENTRY eglCreatePlatformWindowSurface (EGLDisplay dpy, EGLConfig config, void *native_window, const EGLAttrib *attrib_list);
+ EGLAPI EGLSurface EGLAPIENTRY eglCreatePlatformPixmapSurface (EGLDisplay dpy, EGLConfig config, void *native_pixmap, const EGLAttrib *attrib_list);
+ EGLAPI EGLBoolean EGLAPIENTRY eglWaitSync (EGLDisplay dpy, EGLSync sync, EGLint flags);
++#endif
+ #endif /* EGL_VERSION_1_5 */
+ 
++#if EGL_SOFT_LINKING
++#include <EGL/eglsoftlinking.h>
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/include/GLES2/gl2.h b/include/GLES2/gl2.h
+index 027e1f7..4d710c2 100644
+--- a/include/GLES2/gl2.h
++++ b/include/GLES2/gl2.h
+@@ -520,6 +520,11 @@ typedef void (GL_APIENTRYP PFNGLVERTEXATTRIB4FPROC) (GLuint index, GLfloat x, GL
+ typedef void (GL_APIENTRYP PFNGLVERTEXATTRIB4FVPROC) (GLuint index, const GLfloat *v);
+ typedef void (GL_APIENTRYP PFNGLVERTEXATTRIBPOINTERPROC) (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
+ typedef void (GL_APIENTRYP PFNGLVIEWPORTPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
++
++#if defined(_MSC_VER) && !defined(ANGLE_WEBKIT_WIN)
++#include <GLES2/gl2softlinking.h>
++#else
++
+ #ifdef GL_GLEXT_PROTOTYPES
+ GL_APICALL void GL_APIENTRY glActiveTexture (GLenum texture);
+ GL_APICALL void GL_APIENTRY glAttachShader (GLuint program, GLuint shader);
+@@ -664,6 +669,7 @@ GL_APICALL void GL_APIENTRY glVertexAttrib4fv (GLuint index, const GLfloat *v);
+ GL_APICALL void GL_APIENTRY glVertexAttribPointer (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
+ GL_APICALL void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei height);
+ #endif
++#endif
+ #endif /* GL_ES_VERSION_2_0 */
+ 
+ #ifdef __cplusplus
 diff --git a/include/GLSLANG/ShaderLang.h b/include/GLSLANG/ShaderLang.h
-index e750e32..7d3f415 100644
+index 965f7ab..f7b0ef7 100644
 --- a/include/GLSLANG/ShaderLang.h
 +++ b/include/GLSLANG/ShaderLang.h
 @@ -25,7 +25,7 @@
@@ -9,23 +125,72 @@ index e750e32..7d3f415 100644
 -#include "KHR/khrplatform.h"
 +#include "khrplatform.h"
  
+ #include <array>
  #include <map>
- #include <string>
-diff --git a/src/common/mathutil.h b/src/common/mathutil.h
-index 9f5c9fd..7959da8 100644
---- a/src/common/mathutil.h
-+++ b/src/common/mathutil.h
-@@ -478,7 +478,7 @@ inline unsigned int average(unsigned int a, unsigned int b)
+diff --git a/src/common/angleutils.cpp b/src/common/angleutils.cpp
+index 7099c21..4641928 100644
+--- a/src/common/angleutils.cpp
++++ b/src/common/angleutils.cpp
+@@ -36,7 +36,10 @@ size_t FormatStringIntoVector(const char *fmt, va_list vararg, std::vector<char>
  
- inline signed int average(signed int a, signed int b)
+ std::string FormatString(const char *fmt, va_list vararg)
  {
--    return ((long long)a + (long long)b) / 2;
-+    return (signed int)((long long)a + (long long)b) / 2;
- }
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static std::vector<char> buffer(512);
++#pragma clang diagnostic pop
  
- inline float average(float a, float b)
+     size_t len = FormatStringIntoVector(fmt, vararg, buffer);
+     return std::string(&buffer[0], len);
+diff --git a/src/common/angleutils.h b/src/common/angleutils.h
+index f5ef7bd..4cb556c 100644
+--- a/src/common/angleutils.h
++++ b/src/common/angleutils.h
+@@ -116,7 +116,10 @@ inline bool IsMaskFlagSet(T mask, T flag)
+ 
+ inline const char* MakeStaticString(const std::string &str)
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static std::set<std::string> strings;
++#pragma clang diagnostic pop
+     std::set<std::string>::iterator it = strings.find(str);
+     if (it != strings.end())
+     {
+diff --git a/src/common/debug.cpp b/src/common/debug.cpp
+index 746da5e..47e1565 100644
+--- a/src/common/debug.cpp
++++ b/src/common/debug.cpp
+@@ -69,7 +69,10 @@ void output(bool traceInDebugOnly, MessageType messageType, DebugTraceOutputType
+ {
+     if (DebugAnnotationsActive())
+     {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+         static std::vector<char> buffer(512);
++#pragma clang diagnostic pop
+         size_t len = FormatStringIntoVector(format, vararg, buffer);
+         std::wstring formattedWideMessage(buffer.begin(), buffer.begin() + len);
+ 
+diff --git a/src/common/mathutil.cpp b/src/common/mathutil.cpp
+index acbcbdf..ba6da52 100644
+--- a/src/common/mathutil.cpp
++++ b/src/common/mathutil.cpp
+@@ -31,9 +31,12 @@ static const int g_sharedexp_mantissabits = 9;
+ // Emax is the maximum allowed biased exponent value (31)
+ static const int g_sharedexp_maxexponent = 31;
+ 
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wglobal-constructors"
+ static const float g_sharedexp_max = ((pow(2.0f, g_sharedexp_mantissabits) - 1) /
+                                        pow(2.0f, g_sharedexp_mantissabits)) *
+                                      pow(2.0f, g_sharedexp_maxexponent - g_sharedexp_bias);
++#pragma clang diagnostic pop
+ 
+ unsigned int convertRGBFloatsTo999E5(float red, float green, float blue)
+ {
 diff --git a/src/common/version.h b/src/common/version.h
-index 758c78d..2a44709 100644
+index e7ffa7c..b653ae3 100644
 --- a/src/common/version.h
 +++ b/src/common/version.h
 @@ -7,7 +7,7 @@
@@ -38,524 +203,399 @@ index 758c78d..2a44709 100644
  #define ANGLE_MAJOR_VERSION 2
  #define ANGLE_MINOR_VERSION 1
 diff --git a/src/compiler/preprocessor/ExpressionParser.cpp b/src/compiler/preprocessor/ExpressionParser.cpp
-index 683195c..851183e 100644
+index f737a2e..a8df235 100644
 --- a/src/compiler/preprocessor/ExpressionParser.cpp
 +++ b/src/compiler/preprocessor/ExpressionParser.cpp
 @@ -1,5 +1,7 @@
  /* A Bison parser, made by GNU Bison 3.0.4.  */
  
-+/* Apple Note: For the avoidance of doubt, Apple elects to distribute this file under the terms of the BSD license. */ 
++/* Apple Note: For the avoidance of doubt, Apple elects to distribute this file under the terms of the BSD license. */
 +
  /* Bison implementation for Yacc-like parsers in C
  
     Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 diff --git a/src/compiler/preprocessor/Tokenizer.cpp b/src/compiler/preprocessor/Tokenizer.cpp
-index 75df434..dd9d41a 100644
+index 40e910e..fee20c6 100644
 --- a/src/compiler/preprocessor/Tokenizer.cpp
 +++ b/src/compiler/preprocessor/Tokenizer.cpp
-@@ -6,6 +6,11 @@
- //
+@@ -969,7 +969,7 @@ static void yy_flex_strncpy (char *,yyconst char *,int ,yyscan_t yyscanner);
+ static int yy_flex_strlen (yyconst char * ,yyscan_t yyscanner);
+ #endif
  
- // This file is auto-generated by generate_parser.sh. DO NOT EDIT!
-+// This file was edited anyways to ignore clang warnings.
-+#if defined(__clang__)
-+#pragma clang diagnostic push
-+#pragma GCC diagnostic ignored "-Wunneeded-internal-declaration"
-+#endif
+-#ifndef YY_NO_INPUT
++#if 0
  
+ #ifdef __cplusplus
+ static int yyinput (yyscan_t yyscanner );
+@@ -1858,7 +1858,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
  
+ #endif
  
-diff --git a/src/compiler/translator/CallDAG.cpp b/src/compiler/translator/CallDAG.cpp
-index 1d1eb8b..95dbea1 100644
---- a/src/compiler/translator/CallDAG.cpp
-+++ b/src/compiler/translator/CallDAG.cpp
-@@ -71,10 +71,10 @@ class CallDAG::CallDAGCreator : public TIntermTraverser
-             record.callees.reserve(data.callees.size());
-             for (auto &callee : data.callees)
-             {
--                record.callees.push_back(callee->index);
-+                record.callees.push_back(static_cast<int>(callee->index));
-             }
+-#ifndef YY_NO_INPUT
++#if 0
+ #ifdef __cplusplus
+     static int yyinput (yyscan_t yyscanner)
+ #else
+@@ -1883,7 +1883,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
  
--            (*idToIndex)[data.node->getFunctionId()] = data.index;
-+            (*idToIndex)[data.node->getFunctionId()] = static_cast<int>(data.index);
-         }
+ 		else
+ 			{ /* need more input */
+-			int offset = yyg->yy_c_buf_p - yyg->yytext_ptr;
++			auto offset = yyg->yy_c_buf_p - yyg->yytext_ptr;
+ 			++yyg->yy_c_buf_p;
+ 
+ 			switch ( yy_get_next_buffer( yyscanner ) )
+@@ -2014,7 +2014,7 @@ static void pp_load_buffer_state  (yyscan_t yyscanner)
+ 	if ( ! b )
+ 		YY_FATAL_ERROR( "out of dynamic memory in pp_create_buffer()" );
+ 
+-	b->yy_buf_size = (yy_size_t)size;
++	b->yy_buf_size = size;
+ 
+ 	/* yy_ch_buf has to be 2 characters longer than the size given because
+ 	 * we need to put in 2 end-of-buffer characters.
+diff --git a/src/compiler/translator/Operator.cpp b/src/compiler/translator/Operator.cpp
+index 57878b9..0b693e2 100644
+--- a/src/compiler/translator/Operator.cpp
++++ b/src/compiler/translator/Operator.cpp
+@@ -224,4 +224,4 @@ bool IsAssignment(TOperator op)
+         default:
+             return false;
      }
+-}
+\ No newline at end of file
++}
+diff --git a/src/compiler/translator/OutputHLSL.h b/src/compiler/translator/OutputHLSL.h
+index db78859..f296dd9 100644
+--- a/src/compiler/translator/OutputHLSL.h
++++ b/src/compiler/translator/OutputHLSL.h
+@@ -56,21 +56,21 @@ class OutputHLSL : public TIntermTraverser
+     void header(TInfoSinkBase &out, const BuiltInFunctionEmulator *builtInFunctionEmulator);
  
-diff --git a/src/compiler/translator/Compiler.cpp b/src/compiler/translator/Compiler.cpp
-index 8b5b12f..5c029ba 100644
---- a/src/compiler/translator/Compiler.cpp
-+++ b/src/compiler/translator/Compiler.cpp
-@@ -528,15 +528,15 @@ bool TCompiler::checkCallDepth()
-             infoSink.info << "Call stack too deep (larger than " << maxCallStackDepth
-                           << ") with the following call chain: " << record.name;
+     // Visit AST nodes and output their code to the body stream
+-    void visitSymbol(TIntermSymbol*);
+-    void visitRaw(TIntermRaw*);
+-    void visitConstantUnion(TIntermConstantUnion*);
++    void visitSymbol(TIntermSymbol*) override;
++    void visitRaw(TIntermRaw*) override;
++    void visitConstantUnion(TIntermConstantUnion*) override;
+     bool visitSwizzle(Visit visit, TIntermSwizzle *node) override;
+-    bool visitBinary(Visit visit, TIntermBinary*);
+-    bool visitUnary(Visit visit, TIntermUnary*);
+-    bool visitTernary(Visit visit, TIntermTernary *);
+-    bool visitIfElse(Visit visit, TIntermIfElse *);
+-    bool visitSwitch(Visit visit, TIntermSwitch *);
+-    bool visitCase(Visit visit, TIntermCase *);
++    bool visitBinary(Visit visit, TIntermBinary*) override;
++    bool visitUnary(Visit visit, TIntermUnary*) override;
++    bool visitTernary(Visit visit, TIntermTernary *) override;
++    bool visitIfElse(Visit visit, TIntermIfElse *) override;
++    bool visitSwitch(Visit visit, TIntermSwitch *) override;
++    bool visitCase(Visit visit, TIntermCase *) override;
+     bool visitFunctionDefinition(Visit visit, TIntermFunctionDefinition *node) override;
+-    bool visitAggregate(Visit visit, TIntermAggregate*);
+-    bool visitBlock(Visit visit, TIntermBlock *node);
+-    bool visitLoop(Visit visit, TIntermLoop*);
+-    bool visitBranch(Visit visit, TIntermBranch*);
++    bool visitAggregate(Visit visit, TIntermAggregate*) override;
++    bool visitBlock(Visit visit, TIntermBlock *node) override;
++    bool visitLoop(Visit visit, TIntermLoop*) override;
++    bool visitBranch(Visit visit, TIntermBranch*) override;
  
--            int currentFunction = i;
-+            signed long long currentFunction = i;
-             int currentDepth = depth;
+     bool isSingleStatement(TIntermNode *node);
+     bool handleExcessiveLoop(TInfoSinkBase &out, TIntermLoop *node);
+diff --git a/src/compiler/translator/RewriteTexelFetchOffset.cpp b/src/compiler/translator/RewriteTexelFetchOffset.cpp
+index 487c909..6d0c866 100644
+--- a/src/compiler/translator/RewriteTexelFetchOffset.cpp
++++ b/src/compiler/translator/RewriteTexelFetchOffset.cpp
+@@ -167,4 +167,4 @@ void RewriteTexelFetchOffset(TIntermNode *root,
+     Traverser::Apply(root, symbolTable, shaderVersion);
+ }
  
-             while (currentFunction != -1)
-             {
--                infoSink.info << " -> " << mCallDag.getRecordFromIndex(currentFunction).name;
-+                infoSink.info << " -> " << mCallDag.getRecordFromIndex(static_cast<size_t>(currentFunction)).name;
+-}  // namespace sh
+\ No newline at end of file
++}  // namespace sh
+diff --git a/src/compiler/translator/RewriteTexelFetchOffset.h b/src/compiler/translator/RewriteTexelFetchOffset.h
+index 4218f0b..c6db664 100644
+--- a/src/compiler/translator/RewriteTexelFetchOffset.h
++++ b/src/compiler/translator/RewriteTexelFetchOffset.h
+@@ -27,4 +27,4 @@ void RewriteTexelFetchOffset(TIntermNode *root,
  
-                 int nextFunction = -1;
--                for (auto& calleeIndex : mCallDag.getRecordFromIndex(currentFunction).callees)
-+                for (auto& calleeIndex : mCallDag.getRecordFromIndex(static_cast<size_t>(currentFunction)).callees)
-                 {
-                     if (depths[calleeIndex] == currentDepth - 1)
-                     {
-@@ -558,7 +558,7 @@ bool TCompiler::checkCallDepth()
- bool TCompiler::tagUsedFunctions()
+ }  // namespace sh
+ 
+-#endif  // COMPILER_TRANSLATOR_REWRITE_TEXELFETCHOFFSET_H_
+\ No newline at end of file
++#endif  // COMPILER_TRANSLATOR_REWRITE_TEXELFETCHOFFSET_H_
+diff --git a/src/compiler/translator/RewriteUnaryMinusOperatorInt.cpp b/src/compiler/translator/RewriteUnaryMinusOperatorInt.cpp
+index ef708cb..d205805 100644
+--- a/src/compiler/translator/RewriteUnaryMinusOperatorInt.cpp
++++ b/src/compiler/translator/RewriteUnaryMinusOperatorInt.cpp
+@@ -109,4 +109,4 @@ void RewriteUnaryMinusOperatorInt(TIntermNode *root)
+     Traverser::Apply(root);
+ }
+ 
+-}  // namespace sh
+\ No newline at end of file
++}  // namespace sh
+diff --git a/src/compiler/translator/RewriteUnaryMinusOperatorInt.h b/src/compiler/translator/RewriteUnaryMinusOperatorInt.h
+index 50f0c44..802ed57 100644
+--- a/src/compiler/translator/RewriteUnaryMinusOperatorInt.h
++++ b/src/compiler/translator/RewriteUnaryMinusOperatorInt.h
+@@ -17,4 +17,4 @@ void RewriteUnaryMinusOperatorInt(TIntermNode *root);
+ 
+ }  // namespace sh
+ 
+-#endif  // COMPILER_TRANSLATOR_REWRITEUNARYMINUSOPERATORINT_H_
+\ No newline at end of file
++#endif  // COMPILER_TRANSLATOR_REWRITEUNARYMINUSOPERATORINT_H_
+diff --git a/src/compiler/translator/TranslatorHLSL.h b/src/compiler/translator/TranslatorHLSL.h
+index 213d860..d2add14 100644
+--- a/src/compiler/translator/TranslatorHLSL.h
++++ b/src/compiler/translator/TranslatorHLSL.h
+@@ -13,7 +13,9 @@ class TranslatorHLSL : public TCompiler
  {
-     // Search from main, starting from the end of the DAG as it usually is the root.
--    for (int i = mCallDag.size(); i-- > 0;)
-+    for (size_t i = mCallDag.size(); i--;)
-     {
-         if (mCallDag.getRecordFromIndex(i).name == "main(")
-         {
-diff --git a/src/compiler/translator/ParseContext.cpp b/src/compiler/translator/ParseContext.cpp
-index cd7ffc4..1cd787c 100644
---- a/src/compiler/translator/ParseContext.cpp
-+++ b/src/compiler/translator/ParseContext.cpp
-@@ -511,7 +511,7 @@ bool TParseContext::constructorErrorCheck(const TSourceLoc& line, TIntermNode* n
-     {
-         if (type->isUnsizedArray())
-         {
--            type->setArraySize(function.getParamCount());
-+            type->setArraySize(static_cast<int>(function.getParamCount()));
-         }
-         else if (static_cast<size_t>(type->getArraySize()) != function.getParamCount())
-         {
-diff --git a/src/compiler/translator/VariableInfo.cpp b/src/compiler/translator/VariableInfo.cpp
-index 808db95..1aa9e59 100644
---- a/src/compiler/translator/VariableInfo.cpp
-+++ b/src/compiler/translator/VariableInfo.cpp
-@@ -55,7 +55,7 @@ void ExpandVariable(const ShaderVariable &variable,
-     {
-         if (variable.isArray())
-         {
--            for (size_t elementIndex = 0; elementIndex < variable.elementCount(); elementIndex++)
-+            for (unsigned int elementIndex = 0; elementIndex < variable.elementCount(); elementIndex++)
-             {
-                 std::string lname = name + ::ArrayString(elementIndex);
-                 std::string lmappedName = mappedName + ::ArrayString(elementIndex);
-diff --git a/src/compiler/translator/blocklayout.cpp b/src/compiler/translator/blocklayout.cpp
-index 7c74105..7cc6315 100644
---- a/src/compiler/translator/blocklayout.cpp
-+++ b/src/compiler/translator/blocklayout.cpp
-@@ -27,7 +27,7 @@ BlockMemberInfo BlockLayoutEncoder::encodeType(GLenum type, unsigned int arraySi
+   public:
+     TranslatorHLSL(sh::GLenum type, ShShaderSpec spec, ShShaderOutput output);
++#ifdef ANGLE_ENABLE_HLSL
+     TranslatorHLSL *getAsTranslatorHLSL() override { return this; }
++#endif // ANGLE_ENABLE_HLSL
  
-     getBlockLayoutInfo(type, arraySize, isRowMajorMatrix, &arrayStride, &matrixStride);
- 
--    const BlockMemberInfo memberInfo(mCurrentOffset * BytesPerComponent, arrayStride * BytesPerComponent, matrixStride * BytesPerComponent, isRowMajorMatrix);
-+    const BlockMemberInfo memberInfo(static_cast<int>(mCurrentOffset * BytesPerComponent), arrayStride * BytesPerComponent, matrixStride * BytesPerComponent, isRowMajorMatrix);
- 
-     advanceOffset(type, arraySize, isRowMajorMatrix, arrayStride, matrixStride);
- 
+     bool hasInterfaceBlock(const std::string &interfaceBlockName) const;
+     unsigned int getInterfaceBlockRegister(const std::string &interfaceBlockName) const;
 diff --git a/src/compiler/translator/glslang_tab.cpp b/src/compiler/translator/glslang_tab.cpp
-index 03cef93..6fb0d46 100644
+index d9b8ada..3e50fbc 100644
 --- a/src/compiler/translator/glslang_tab.cpp
 +++ b/src/compiler/translator/glslang_tab.cpp
 @@ -1,5 +1,7 @@
  /* A Bison parser, made by GNU Bison 3.0.4.  */
  
-+/* Apple Note: For the avoidance of doubt, Apple elects to distribute this file under the terms of the BSD license. */ 
++/* Apple Note: For the avoidance of doubt, Apple elects to distribute this file under the terms of the BSD license. */
 +
  /* Bison implementation for Yacc-like parsers in C
  
     Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
-diff --git a/src/libANGLE/Config.cpp b/src/libANGLE/Config.cpp
-index 1b1fc50..2a68d5b 100644
---- a/src/libANGLE/Config.cpp
-+++ b/src/libANGLE/Config.cpp
-@@ -64,7 +64,7 @@ Config::Config()
- EGLint ConfigSet::add(const Config &config)
- {
-     // Set the config's ID to a small number that starts at 1 ([EGL 1.5] section 3.4)
--    EGLint id = mConfigs.size() + 1;
-+    EGLint id = static_cast<EGLint>(mConfigs.size() + 1);
+diff --git a/src/compiler/translator/glslang_tab.h b/src/compiler/translator/glslang_tab.h
+index d0e691d..74a56da 100644
+--- a/src/compiler/translator/glslang_tab.h
++++ b/src/compiler/translator/glslang_tab.h
+@@ -1,5 +1,7 @@
+ /* A Bison parser, made by GNU Bison 3.0.4.  */
  
-     Config copyConfig(config);
-     copyConfig.configID = id;
-diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
-index 545284a..c8ea993 100644
---- a/src/libANGLE/Context.cpp
-+++ b/src/libANGLE/Context.cpp
-@@ -838,7 +838,7 @@ void Context::getIntegerv(GLenum pname, GLint *params)
-       case GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS: *params = mCaps.maxTransformFeedbackInterleavedComponents; break;
-       case GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS:       *params = mCaps.maxTransformFeedbackSeparateAttributes;    break;
-       case GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS:    *params = mCaps.maxTransformFeedbackSeparateComponents;    break;
--      case GL_NUM_COMPRESSED_TEXTURE_FORMATS:           *params = mCaps.compressedTextureFormats.size();                break;
-+      case GL_NUM_COMPRESSED_TEXTURE_FORMATS:           *params = static_cast<GLint>(mCaps.compressedTextureFormats.size());  break;
-       case GL_MAX_SAMPLES_ANGLE:                        *params = mCaps.maxSamples;                                     break;
-       case GL_MAX_VIEWPORT_DIMS:
-         {
-@@ -853,13 +853,13 @@ void Context::getIntegerv(GLenum pname, GLint *params)
-         *params = mResetStrategy;
-         break;
-       case GL_NUM_SHADER_BINARY_FORMATS:
--        *params = mCaps.shaderBinaryFormats.size();
-+        *params = static_cast<GLint>(mCaps.shaderBinaryFormats.size());
-         break;
-       case GL_SHADER_BINARY_FORMATS:
-         std::copy(mCaps.shaderBinaryFormats.begin(), mCaps.shaderBinaryFormats.end(), params);
-         break;
-       case GL_NUM_PROGRAM_BINARY_FORMATS:
--        *params = mCaps.programBinaryFormats.size();
-+        *params = static_cast<GLint>(mCaps.programBinaryFormats.size());
-         break;
-       case GL_PROGRAM_BINARY_FORMATS:
-         std::copy(mCaps.programBinaryFormats.begin(), mCaps.programBinaryFormats.end(), params);
-@@ -939,19 +939,19 @@ bool Context::getQueryParameterInfo(GLenum pname, GLenum *type, unsigned int *nu
-       case GL_COMPRESSED_TEXTURE_FORMATS:
-         {
-             *type = GL_INT;
--            *numParams = mCaps.compressedTextureFormats.size();
-+            *numParams = static_cast<unsigned int>(mCaps.compressedTextureFormats.size());
-         }
-         return true;
-       case GL_PROGRAM_BINARY_FORMATS_OES:
-         {
-             *type = GL_INT;
--            *numParams = mCaps.programBinaryFormats.size();
-+            *numParams = static_cast<unsigned int>(mCaps.programBinaryFormats.size());
-         }
-         return true;
-       case GL_SHADER_BINARY_FORMATS:
-         {
-             *type = GL_INT;
--            *numParams = mCaps.shaderBinaryFormats.size();
-+            *numParams = static_cast<unsigned int>(mCaps.shaderBinaryFormats.size());
-         }
-         return true;
++/* Apple Note: For the avoidance of doubt, Apple elects to distribute this file under the terms of the BSD license. */
++
+ /* Bison interface for Yacc-like parsers in C
  
-diff --git a/src/libANGLE/Framebuffer.cpp b/src/libANGLE/Framebuffer.cpp
-index faee83c..3870e69 100644
---- a/src/libANGLE/Framebuffer.cpp
-+++ b/src/libANGLE/Framebuffer.cpp
-@@ -269,7 +269,7 @@ bool Framebuffer::hasEnabledColorAttachment() const
+    Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+diff --git a/src/libANGLE/Caps.cpp b/src/libANGLE/Caps.cpp
+index 47e1cf0..0f4d69d 100644
+--- a/src/libANGLE/Caps.cpp
++++ b/src/libANGLE/Caps.cpp
+@@ -77,7 +77,10 @@ void TextureCapsMap::clear()
+ 
+ const TextureCaps &TextureCapsMap::get(GLenum internalFormat) const
  {
-     for (size_t colorAttachment = 0; colorAttachment < mData.mColorAttachments.size(); ++colorAttachment)
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static TextureCaps defaultUnsupportedTexture;
++#pragma clang diagnostic pop
+     InternalFormatToCapsMap::const_iterator iter = mCapsMap.find(internalFormat);
+     return (iter != mCapsMap.end()) ? iter->second : defaultUnsupportedTexture;
+ }
+@@ -594,7 +597,10 @@ const ExtensionInfoMap &GetExtensionInfoMap()
+         return map;
+     };
+ 
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static const ExtensionInfoMap extensionInfo = buildExtensionInfoMap();
++#pragma clang diagnostic pop
+     return extensionInfo;
+ }
+ 
+diff --git a/src/libANGLE/Device.cpp b/src/libANGLE/Device.cpp
+index eb30b20..a94d500 100644
+--- a/src/libANGLE/Device.cpp
++++ b/src/libANGLE/Device.cpp
+@@ -38,7 +38,10 @@ static std::string GenerateExtensionsString(const T &extensions)
+ typedef std::set<egl::Device *> DeviceSet;
+ static DeviceSet *GetDeviceSet()
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static DeviceSet devices;
++#pragma clang diagnostic pop
+     return &devices;
+ }
+ 
+diff --git a/src/libANGLE/Display.cpp b/src/libANGLE/Display.cpp
+index 92d7dda..5711117 100644
+--- a/src/libANGLE/Display.cpp
++++ b/src/libANGLE/Display.cpp
+@@ -90,21 +90,30 @@ typedef std::map<EGLNativeWindowType, Surface*> WindowSurfaceMap;
+ // associated with it.
+ static WindowSurfaceMap *GetWindowSurfaces()
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static WindowSurfaceMap windowSurfaces;
++#pragma clang diagnostic pop
+     return &windowSurfaces;
+ }
+ 
+ typedef std::map<EGLNativeDisplayType, Display *> ANGLEPlatformDisplayMap;
+ static ANGLEPlatformDisplayMap *GetANGLEPlatformDisplayMap()
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static ANGLEPlatformDisplayMap displays;
++#pragma clang diagnostic pop
+     return &displays;
+ }
+ 
+ typedef std::map<Device *, Display *> DevicePlatformDisplayMap;
+ static DevicePlatformDisplayMap *GetDevicePlatformDisplayMap()
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static DevicePlatformDisplayMap displays;
++#pragma clang diagnostic pop
+     return &displays;
+ }
+ 
+@@ -921,7 +930,10 @@ const ClientExtensions &Display::getClientExtensions()
+ 
+ const std::string &Display::getClientExtensionString()
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static const std::string clientExtensionsString = GenerateExtensionsString(getClientExtensions());
++#pragma clang diagnostic pop
+     return clientExtensionsString;
+ }
+ 
+diff --git a/src/libANGLE/HandleRangeAllocator.cpp b/src/libANGLE/HandleRangeAllocator.cpp
+index f219f95..3831aca 100644
+--- a/src/libANGLE/HandleRangeAllocator.cpp
++++ b/src/libANGLE/HandleRangeAllocator.cpp
+@@ -223,4 +223,4 @@ bool HandleRangeAllocator::isUsed(GLuint handle) const
+     return current->second >= handle;
+ }
+ 
+-}  // namespace gl
+\ No newline at end of file
++}  // namespace gl
+diff --git a/src/libANGLE/HandleRangeAllocator.h b/src/libANGLE/HandleRangeAllocator.h
+index 20f9a11..1023a84 100644
+--- a/src/libANGLE/HandleRangeAllocator.h
++++ b/src/libANGLE/HandleRangeAllocator.h
+@@ -56,4 +56,4 @@ class HandleRangeAllocator final : angle::NonCopyable
+ 
+ }  // namespace gl
+ 
+-#endif  // LIBANGLE_HANDLERANGEALLOCATOR_H_
+\ No newline at end of file
++#endif  // LIBANGLE_HANDLERANGEALLOCATOR_H_
+diff --git a/src/libANGLE/Path.h b/src/libANGLE/Path.h
+index b103c84..85f49c1 100644
+--- a/src/libANGLE/Path.h
++++ b/src/libANGLE/Path.h
+@@ -68,4 +68,4 @@ class Path final : angle::NonCopyable
+ 
+ }  // namespace gl
+ 
+-#endif  // LIBANGLE_PATH_H_
+\ No newline at end of file
++#endif  // LIBANGLE_PATH_H_
+diff --git a/src/libANGLE/formatutils.cpp b/src/libANGLE/formatutils.cpp
+index ff285dd..55a5fc8 100644
+--- a/src/libANGLE/formatutils.cpp
++++ b/src/libANGLE/formatutils.cpp
+@@ -615,7 +615,10 @@ static InternalFormatInfoMap BuildInternalFormatInfoMap()
+ 
+ static const InternalFormatInfoMap &GetInternalFormatMap()
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static const InternalFormatInfoMap formatMap = BuildInternalFormatInfoMap();
++#pragma clang diagnostic pop
+     return formatMap;
+ }
+ 
+@@ -859,7 +862,10 @@ GLenum GetSizedInternalFormat(GLenum internalFormat, GLenum type)
+ 
+ const FormatSet &GetAllSizedInternalFormats()
+ {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static FormatSet formatSet = BuildAllSizedInternalFormatSet();
++#pragma clang diagnostic pop
+     return formatSet;
+ }
+ 
+diff --git a/src/libANGLE/renderer/PathImpl.h b/src/libANGLE/renderer/PathImpl.h
+index 3607f69..cb03ed6 100644
+--- a/src/libANGLE/renderer/PathImpl.h
++++ b/src/libANGLE/renderer/PathImpl.h
+@@ -33,4 +33,4 @@ class PathImpl : angle::NonCopyable
+ 
+ }  // namespace rx
+ 
+-#endif  // LIBANGLE_RENDERER_PATHIMPL_H_
+\ No newline at end of file
++#endif  // LIBANGLE_RENDERER_PATHIMPL_H_
+diff --git a/src/libANGLE/validationES3.cpp b/src/libANGLE/validationES3.cpp
+index 2f93651..49aa604 100644
+--- a/src/libANGLE/validationES3.cpp
++++ b/src/libANGLE/validationES3.cpp
+@@ -524,7 +524,10 @@ static bool IsValidES3CopyTexImageCombination(const Format &textureFormat,
+     const auto &textureFormatInfo     = *textureFormat.info;
+     const auto &framebufferFormatInfo = *framebufferFormat.info;
+ 
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wexit-time-destructors"
+     static const CopyConversionSet conversionSet = BuildValidES3CopyTexImageCombinations();
++#pragma clang diagnostic pop
+     if (conversionSet.find(CopyConversion(textureFormatInfo.format,
+                                           framebufferFormatInfo.format)) != conversionSet.end())
      {
--        if (isEnabledColorAttachment(colorAttachment))
-+        if (static_cast<unsigned int>(isEnabledColorAttachment(colorAttachment)))
-         {
-             return true;
-         }
-@@ -287,7 +287,7 @@ bool Framebuffer::usingExtendedDrawBuffers() const
- {
-     for (size_t colorAttachment = 1; colorAttachment < mData.mColorAttachments.size(); ++colorAttachment)
-     {
--        if (isEnabledColorAttachment(colorAttachment))
-+        if (static_cast<unsigned int>(isEnabledColorAttachment(colorAttachment)))
-         {
-             return true;
-         }
-diff --git a/src/libANGLE/ImageIndex.cpp b/src/libANGLE/ImageIndex.cpp
-index ac7302d..538258f 100644
---- a/src/libANGLE/ImageIndex.cpp
-+++ b/src/libANGLE/ImageIndex.cpp
-@@ -35,7 +35,7 @@ ImageIndex ImageIndex::Make2D(GLint mipIndex)
- ImageIndex ImageIndex::MakeCube(GLenum target, GLint mipIndex)
- {
-     ASSERT(gl::IsCubeMapTextureTarget(target));
--    return ImageIndex(target, mipIndex, CubeMapTextureTargetToLayerIndex(target));
-+    return ImageIndex(target, mipIndex, static_cast<int>(CubeMapTextureTargetToLayerIndex(target)));
- }
+diff --git a/include/EGL/eglplatform.h b/include/EGL/eglplatform.h
+index 9bb75910ac0..ccaf7e6f343 100644
+--- a/include/EGL/eglplatform.h
++++ b/include/EGL/eglplatform.h
+@@ -89,6 +89,12 @@ typedef int   EGLNativeDisplayType;
+ typedef void *EGLNativeWindowType;
+ typedef void *EGLNativePixmapType;
  
- ImageIndex ImageIndex::Make2DArray(GLint mipIndex, GLint layerIndex)
-@@ -50,7 +50,7 @@ ImageIndex ImageIndex::Make3D(GLint mipIndex, GLint layerIndex)
++#elif defined(WL_EGL_PLATFORM)
++
++typedef struct wl_display    *EGLNativeDisplayType;
++typedef struct wl_egl_pixmap *EGLNativePixmapType;
++typedef struct wl_egl_window *EGLNativeWindowType;
++
+ #elif defined(__ANDROID__) || defined(ANDROID)
  
- ImageIndex ImageIndex::MakeGeneric(GLenum target, GLint mipIndex)
- {
--    GLint layerIndex = IsCubeMapTextureTarget(target) ? CubeMapTextureTargetToLayerIndex(target) : ENTIRE_LEVEL;
-+    GLint layerIndex = IsCubeMapTextureTarget(target) ? static_cast<GLint>(CubeMapTextureTargetToLayerIndex(target)) : ENTIRE_LEVEL;
-     return ImageIndex(target, mipIndex, layerIndex);
- }
+ #include <android/native_window.h>
+@@ -107,6 +113,8 @@ typedef intptr_t EGLNativePixmapType;
  
-diff --git a/src/libANGLE/Program.cpp b/src/libANGLE/Program.cpp
-index e215379..42f09b9 100644
---- a/src/libANGLE/Program.cpp
-+++ b/src/libANGLE/Program.cpp
-@@ -483,7 +483,7 @@ Error Program::saveBinary(GLenum *binaryFormat, void *binary, GLsizei bufSize, G
-         return error;
-     }
+ #elif defined(__unix__)
  
--    GLsizei streamLength = stream.length();
-+    GLsizei streamLength = static_cast<GLsizei>(stream.length());
-     const void *streamData = stream.data();
++#if defined(ANGLE_USE_X11) && !defined(MESA_EGL_NO_X11_HEADERS)
++
+ /* X11 (tentative)  */
+ #include <X11/Xlib.h>
+ #include <X11/Xutil.h>
+@@ -116,6 +124,14 @@ typedef Pixmap   EGLNativePixmapType;
+ typedef Window   EGLNativeWindowType;
  
-     if (streamLength > bufSize)
-@@ -645,7 +645,7 @@ void Program::getActiveAttribute(GLuint index, GLsizei bufsize, GLsizei *length,
+ #else
++
++typedef void             *EGLNativeDisplayType;
++typedef khronos_uintptr_t EGLNativePixmapType;
++typedef khronos_uintptr_t EGLNativeWindowType;
++
++#endif /* ANGLE_USE_X11 && !MESA_EGL_NO_X11_HEADERS */
++
++#else
+ #error "Platform not recognized"
+ #endif
  
-             if (length)
-             {
--                *length = strlen(name);
-+                *length = static_cast<GLsizei>(strlen(name));
-             }
-         }
- 
-@@ -762,7 +762,7 @@ void Program::getActiveUniform(GLuint index, GLsizei bufsize, GLsizei *length, G
- 
-             if (length)
-             {
--                *length = strlen(name);
-+                *length = static_cast<GLsizei>(strlen(name));
-             }
-         }
- 
-@@ -790,7 +790,7 @@ GLint Program::getActiveUniformCount()
- {
-     if (mLinked)
-     {
--        return mProgram->getUniforms().size();
-+        return static_cast<GLint>(mProgram->getUniforms().size());
-     }
-     else
-     {
-@@ -804,7 +804,7 @@ GLint Program::getActiveUniformMaxLength()
- 
-     if (mLinked)
-     {
--        unsigned int numUniforms = mProgram->getUniforms().size();
-+        unsigned int numUniforms = static_cast<unsigned int>(mProgram->getUniforms().size());
-         for (unsigned int uniformIndex = 0; uniformIndex < numUniforms; uniformIndex++)
-         {
-             if (!mProgram->getUniforms()[uniformIndex]->name.empty())
-@@ -1042,7 +1042,7 @@ void Program::updateSamplerMapping()
- 
- GLuint Program::getActiveUniformBlockCount()
- {
--    return mProgram->getUniformBlocks().size();
-+    return static_cast<GLuint>(mProgram->getUniformBlocks().size());
- }
- 
- void Program::getActiveUniformBlockName(GLuint uniformBlockIndex, GLsizei bufSize, GLsizei *length, GLchar *uniformBlockName) const
-@@ -1065,7 +1065,7 @@ void Program::getActiveUniformBlockName(GLuint uniformBlockIndex, GLsizei bufSiz
- 
-         if (length)
-         {
--            *length = strlen(uniformBlockName);
-+            *length = static_cast<GLsizei>(strlen(uniformBlockName));
-         }
-     }
- }
-@@ -1111,13 +1111,13 @@ GLint Program::getActiveUniformBlockMaxLength()
- 
-     if (mLinked)
-     {
--        unsigned int numUniformBlocks = mProgram->getUniformBlocks().size();
-+        unsigned int numUniformBlocks = static_cast<unsigned int>(mProgram->getUniformBlocks().size());
-         for (unsigned int uniformBlockIndex = 0; uniformBlockIndex < numUniformBlocks; uniformBlockIndex++)
-         {
-             const UniformBlock &uniformBlock = *mProgram->getUniformBlocks()[uniformBlockIndex];
-             if (!uniformBlock.name.empty())
-             {
--                const int length = uniformBlock.name.length() + 1;
-+                const int length = static_cast<int>(uniformBlock.name.length() + 1);
- 
-                 // Counting in "[0]".
-                 const int arrayLength = (uniformBlock.isArrayElement() ? 3 : 0);
-@@ -1466,7 +1466,7 @@ bool Program::areMatchingInterfaceBlocks(gl::InfoLog &infoLog, const sh::Interfa
-         infoLog.append("Layout qualifiers differ for interface block '%s' between vertex and fragment shaders", blockName);
-         return false;
-     }
--    const unsigned int numBlockMembers = vertexInterfaceBlock.fields.size();
-+    const unsigned int numBlockMembers = static_cast<unsigned int>(vertexInterfaceBlock.fields.size());
-     for (unsigned int blockMemberIndex = 0; blockMemberIndex < numBlockMembers; blockMemberIndex++)
-     {
-         const sh::InterfaceBlockField &vertexMember = vertexInterfaceBlock.fields[blockMemberIndex];
-@@ -1510,7 +1510,7 @@ bool Program::linkValidateVariablesBase(InfoLog &infoLog, const std::string &var
-         infoLog.append("Structure lengths for %s differ between vertex and fragment shaders", variableName.c_str());
-         return false;
-     }
--    const unsigned int numMembers = vertexVariable.fields.size();
-+    const unsigned int numMembers = static_cast<unsigned int>(vertexVariable.fields.size());
-     for (unsigned int memberIndex = 0; memberIndex < numMembers; memberIndex++)
-     {
-         const sh::ShaderVariable &vertexMember = vertexVariable.fields[memberIndex];
-diff --git a/src/libANGLE/Renderbuffer.cpp b/src/libANGLE/Renderbuffer.cpp
-index 85b920b..34cc365 100644
---- a/src/libANGLE/Renderbuffer.cpp
-+++ b/src/libANGLE/Renderbuffer.cpp
-@@ -42,8 +42,8 @@ Error Renderbuffer::setStorage(GLenum internalformat, size_t width, size_t heigh
-         return error;
-     }
- 
--    mWidth = width;
--    mHeight = height;
-+    mWidth = static_cast<GLsizei>(width);
-+    mHeight = static_cast<GLsizei>(height);
-     mInternalFormat = internalformat;
-     mSamples = 0;
- 
-@@ -58,10 +58,10 @@ Error Renderbuffer::setStorageMultisample(size_t samples, GLenum internalformat,
-         return error;
-     }
- 
--    mWidth = width;
--    mHeight = height;
-+    mWidth = static_cast<GLsizei>(width);
-+    mHeight = static_cast<GLsizei>(height);
-     mInternalFormat = internalformat;
--    mSamples = samples;
-+    mSamples = static_cast<GLsizei>(samples);
- 
-     return Error(GL_NO_ERROR);
- }
-diff --git a/src/libANGLE/Shader.cpp b/src/libANGLE/Shader.cpp
-index 7af4ff3..5106e95 100644
---- a/src/libANGLE/Shader.cpp
-+++ b/src/libANGLE/Shader.cpp
-@@ -66,7 +66,7 @@ void Shader::setSource(GLsizei count, const char *const *string, const GLint *le
- 
- int Shader::getInfoLogLength() const
- {
--    return  mShader->getInfoLog().empty() ? 0 : (mShader->getInfoLog().length() + 1);
-+    return  mShader->getInfoLog().empty() ? 0 : static_cast<int>(mShader->getInfoLog().length() + 1);
- }
- 
- void Shader::getInfoLog(GLsizei bufSize, GLsizei *length, char *infoLog) const
-@@ -89,12 +89,12 @@ void Shader::getInfoLog(GLsizei bufSize, GLsizei *length, char *infoLog) const
- 
- int Shader::getSourceLength() const
- {
--    return mSource.empty() ? 0 : (mSource.length() + 1);
-+    return mSource.empty() ? 0 : static_cast<int>(mSource.length() + 1);
- }
- 
- int Shader::getTranslatedSourceLength() const
- {
--    return mShader->getTranslatedSource().empty() ? 0 : (mShader->getTranslatedSource().length() + 1);
-+    return mShader->getTranslatedSource().empty() ? 0 : static_cast<int>(mShader->getTranslatedSource().length() + 1);
- }
- 
- void Shader::getSourceImpl(const std::string &source, GLsizei bufSize, GLsizei *length, char *buffer)
-diff --git a/src/libANGLE/State.cpp b/src/libANGLE/State.cpp
-index f731774..f6837f4 100644
---- a/src/libANGLE/State.cpp
-+++ b/src/libANGLE/State.cpp
-@@ -569,7 +569,7 @@ void State::setActiveSampler(unsigned int active)
- 
- unsigned int State::getActiveSampler() const
- {
--    return mActiveSampler;
-+    return static_cast<unsigned int>(mActiveSampler);
- }
- 
- void State::setSamplerTexture(GLenum type, Texture *texture)
-@@ -1192,7 +1192,7 @@ void State::getIntegerv(const gl::Data &data, GLenum pname, GLint *params)
-       case GL_UNPACK_ROW_LENGTH:                        *params = mUnpack.rowLength;                              break;
-       case GL_GENERATE_MIPMAP_HINT:                     *params = mGenerateMipmapHint;                            break;
-       case GL_FRAGMENT_SHADER_DERIVATIVE_HINT_OES:      *params = mFragmentShaderDerivativeHint;                  break;
--      case GL_ACTIVE_TEXTURE:                           *params = (mActiveSampler + GL_TEXTURE0);                 break;
-+      case GL_ACTIVE_TEXTURE:                           *params = static_cast<GLint>(mActiveSampler + GL_TEXTURE0);     break;
-       case GL_STENCIL_FUNC:                             *params = mDepthStencil.stencilFunc;                      break;
-       case GL_STENCIL_REF:                              *params = mStencilRef;                                    break;
-       case GL_STENCIL_VALUE_MASK:                       *params = clampToInt(mDepthStencil.stencilMask);          break;
-@@ -1316,19 +1316,19 @@ void State::getIntegerv(const gl::Data &data, GLenum pname, GLint *params)
-         break;
-       case GL_TEXTURE_BINDING_2D:
-         ASSERT(mActiveSampler < mMaxCombinedTextureImageUnits);
--        *params = getSamplerTextureId(mActiveSampler, GL_TEXTURE_2D) ;
-+        *params = getSamplerTextureId(static_cast<unsigned int>(mActiveSampler), GL_TEXTURE_2D) ;
-         break;
-       case GL_TEXTURE_BINDING_CUBE_MAP:
-         ASSERT(mActiveSampler < mMaxCombinedTextureImageUnits);
--        *params = getSamplerTextureId(mActiveSampler, GL_TEXTURE_CUBE_MAP);
-+        *params = getSamplerTextureId(static_cast<unsigned int>(mActiveSampler), GL_TEXTURE_CUBE_MAP);
-         break;
-       case GL_TEXTURE_BINDING_3D:
-         ASSERT(mActiveSampler < mMaxCombinedTextureImageUnits);
--        *params = getSamplerTextureId(mActiveSampler, GL_TEXTURE_3D);
-+        *params = getSamplerTextureId(static_cast<unsigned int>(mActiveSampler), GL_TEXTURE_3D);
-         break;
-       case GL_TEXTURE_BINDING_2D_ARRAY:
-         ASSERT(mActiveSampler < mMaxCombinedTextureImageUnits);
--        *params = getSamplerTextureId(mActiveSampler, GL_TEXTURE_2D_ARRAY);
-+        *params = getSamplerTextureId(static_cast<unsigned int>(mActiveSampler), GL_TEXTURE_2D_ARRAY);
-         break;
-       case GL_UNIFORM_BUFFER_BINDING:
-         *params = mGenericUniformBuffer.id();
-diff --git a/src/libANGLE/Surface.cpp b/src/libANGLE/Surface.cpp
-index c42b69d..9742f5d 100644
---- a/src/libANGLE/Surface.cpp
-+++ b/src/libANGLE/Surface.cpp
-@@ -135,12 +135,12 @@ EGLint Surface::isFixedSize() const
- 
- EGLint Surface::getWidth() const
- {
--    return mFixedSize ? mFixedWidth : mImplementation->getWidth();
-+    return mFixedSize ? static_cast<EGLint>(mFixedWidth) : mImplementation->getWidth();
- }
- 
- EGLint Surface::getHeight() const
- {
--    return mFixedSize ? mFixedHeight : mImplementation->getHeight();
-+    return mFixedSize ? static_cast<EGLint>(mFixedHeight) : mImplementation->getHeight();
- }
- 
- Error Surface::bindTexImage(gl::Texture *texture, EGLint buffer)
-diff --git a/src/libANGLE/Texture.cpp b/src/libANGLE/Texture.cpp
-index 1ab5c7d..437ba0d 100644
---- a/src/libANGLE/Texture.cpp
-+++ b/src/libANGLE/Texture.cpp
-@@ -266,7 +266,7 @@ Error Texture::setStorage(GLenum target, size_t levels, GLenum internalFormat, c
- 
-     releaseTexImage();
- 
--    mImmutableLevelCount = levels;
-+    mImmutableLevelCount = static_cast<GLsizei>(levels);
-     clearImageDescs();
-     setImageDescChain(levels, size, internalFormat);
- 
-@@ -295,16 +295,16 @@ void Texture::setImageDescChain(size_t levels, Extents baseSize, GLenum sizedInt
- {
-     for (size_t level = 0; level < levels; level++)
-     {
--        Extents levelSize(std::max<size_t>(baseSize.width >> level, 1),
--                          std::max<size_t>(baseSize.height >> level, 1),
--                          (mTarget == GL_TEXTURE_2D_ARRAY) ? baseSize.depth : std::max<size_t>(baseSize.depth >> level, 1));
-+        Extents levelSize(std::max<int>(baseSize.width >> level, 1),
-+                          std::max<int>(baseSize.height >> level, 1),
-+                          (mTarget == GL_TEXTURE_2D_ARRAY) ? baseSize.depth : std::max<int>(baseSize.depth >> level, 1));
-         ImageDesc levelInfo(levelSize, sizedInternalFormat);
- 
-         if (mTarget == GL_TEXTURE_CUBE_MAP)
-         {
-             for (size_t face = FirstCubeMapTextureTarget; face <= LastCubeMapTextureTarget; face++)
-             {
--                setImageDesc(face, level, levelInfo);
-+                setImageDesc(static_cast<GLenum>(face), level, levelInfo);
-             }
-         }
-         else
-@@ -571,12 +571,12 @@ Texture::SamplerCompletenessCache::SamplerCompletenessCache()
- 
- GLsizei Texture::getAttachmentWidth(const gl::FramebufferAttachment::Target &target) const
- {
--    return getWidth(target.textureIndex().type, target.textureIndex().mipIndex);
-+    return static_cast<GLsizei>(getWidth(target.textureIndex().type, target.textureIndex().mipIndex));
- }
- 
- GLsizei Texture::getAttachmentHeight(const gl::FramebufferAttachment::Target &target) const
- {
--    return getHeight(target.textureIndex().type, target.textureIndex().mipIndex);
-+    return static_cast<GLsizei>(getHeight(target.textureIndex().type, target.textureIndex().mipIndex));
- }
- 
- GLenum Texture::getAttachmentInternalFormat(const gl::FramebufferAttachment::Target &target) const
-diff --git a/src/libANGLE/validationES.cpp b/src/libANGLE/validationES.cpp
-index 1896138..2a288a2 100644
---- a/src/libANGLE/validationES.cpp
-+++ b/src/libANGLE/validationES.cpp
-@@ -174,7 +174,7 @@ bool ValidMipLevel(const Context *context, GLenum target, GLint level)
-       default: UNREACHABLE();
-     }
- 
--    return level <= gl::log2(maxDimension);
-+    return level <= gl::log2(static_cast<int>(maxDimension));
- }
- 
- bool ValidImageSize(const Context *context, GLenum target, GLint level,

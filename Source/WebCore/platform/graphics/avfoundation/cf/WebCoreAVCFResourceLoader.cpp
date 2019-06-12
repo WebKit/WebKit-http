@@ -35,9 +35,9 @@
 #include "NotImplemented.h"
 #include "ResourceLoaderOptions.h"
 #include "SharedBuffer.h"
-#include "SoftLinking.h"
-#include <AVFoundationCF/AVFoundationCF.h>
 #include <AVFoundationCF/AVCFAssetResourceLoader.h>
+#include <AVFoundationCF/AVFoundationCF.h>
+#include <wtf/SoftLinking.h>
 #include <wtf/text/CString.h>
 
 // The softlink header files must be included after the AVCF and CoreMedia header files.
@@ -45,11 +45,11 @@
 
 namespace WebCore {
 
-PassRefPtr<WebCoreAVCFResourceLoader> WebCoreAVCFResourceLoader::create(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef avRequest)
+Ref<WebCoreAVCFResourceLoader> WebCoreAVCFResourceLoader::create(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef avRequest)
 {
     ASSERT(avRequest);
     ASSERT(parent);
-    return adoptRef(new WebCoreAVCFResourceLoader(parent, avRequest));
+    return adoptRef(*new WebCoreAVCFResourceLoader(parent, avRequest));
 }
 
 WebCoreAVCFResourceLoader::WebCoreAVCFResourceLoader(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef avRequest)
@@ -70,14 +70,16 @@ void WebCoreAVCFResourceLoader::startLoading()
 
     RetainPtr<CFURLRequestRef> urlRequest = AVCFAssetResourceLoadingRequestGetURLRequest(m_avRequest.get());
 
-    // ContentSecurityPolicyImposition::DoPolicyCheck is a placeholder value. It does not affect the request since Content Security Policy does not apply to raw resources.
-    CachedResourceRequest request(ResourceRequest(urlRequest.get()), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, ClientDidNotRequestCredentials, DoSecurityCheck, UseDefaultOriginRestrictionsForType, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
+    ResourceRequest resourceRequest(urlRequest.get());
+    resourceRequest.setPriority(ResourceLoadPriority::Low);
 
-    request.mutableResourceRequest().setPriority(ResourceLoadPriority::Low);
+    // ContentSecurityPolicyImposition::DoPolicyCheck is a placeholder value. It does not affect the request since Content Security Policy does not apply to raw resources.
+    CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
+
     CachedResourceLoader* loader = m_parent->player()->cachedResourceLoader();
-    m_resource = loader ? loader->requestRawResource(request) : 0;
+    m_resource = loader ? loader->requestRawResource(WTFMove(request)) : 0;
     if (m_resource)
-        m_resource->addClient(this);
+        m_resource->addClient(*this);
     else {
         LOG_ERROR("Failed to start load for media at url %s", URL(CFURLRequestGetURL(urlRequest.get())).string().ascii().data());
         RetainPtr<CFErrorRef> error = adoptCF(CFErrorCreate(kCFAllocatorDefault, kCFErrorDomainCFNetwork, kCFURLErrorUnknown, nullptr));
@@ -90,7 +92,7 @@ void WebCoreAVCFResourceLoader::stopLoading()
     if (!m_resource)
         return;
 
-    m_resource->removeClient(this);
+    m_resource->removeClient(*this);
     m_resource = 0;
 
     if (m_parent)
@@ -99,14 +101,19 @@ void WebCoreAVCFResourceLoader::stopLoading()
 
 void WebCoreAVCFResourceLoader::invalidate()
 {
+    if (!m_parent)
+        return;
+
     m_parent = nullptr;
-    stopLoading();
+
+    callOnMainThread([protectedThis = makeRef(*this)] () mutable {
+        protectedThis->stopLoading();
+    });
 }
 
-void WebCoreAVCFResourceLoader::responseReceived(CachedResource* resource, const ResourceResponse& response)
+void WebCoreAVCFResourceLoader::responseReceived(CachedResource& resource, const ResourceResponse& response)
 {
-    ASSERT(resource == m_resource);
-    UNUSED_PARAM(resource);
+    ASSERT_UNUSED(resource, &resource == m_resource);
 
     int status = response.httpStatusCode();
     if (status && (status < 200 || status > 299)) {
@@ -118,14 +125,14 @@ void WebCoreAVCFResourceLoader::responseReceived(CachedResource* resource, const
     notImplemented();
 }
 
-void WebCoreAVCFResourceLoader::dataReceived(CachedResource* resource, const char*, int)
+void WebCoreAVCFResourceLoader::dataReceived(CachedResource& resource, const char*, int)
 {
     fulfillRequestWithResource(resource);
 }
 
-void WebCoreAVCFResourceLoader::notifyFinished(CachedResource* resource)
+void WebCoreAVCFResourceLoader::notifyFinished(CachedResource& resource)
 {
-    if (resource->loadFailedOrCanceled()) {
+    if (resource.loadFailedOrCanceled()) {
         // <rdar://problem/13987417> Set the contentType of the contentInformationRequest to an empty
         // string to trigger AVAsset's playable value to complete loading.
         // FIXME: if ([m_avRequest.get() contentInformationRequest] && ![[m_avRequest.get() contentInformationRequest] contentType])
@@ -142,9 +149,9 @@ void WebCoreAVCFResourceLoader::notifyFinished(CachedResource* resource)
     stopLoading();
 }
 
-void WebCoreAVCFResourceLoader::fulfillRequestWithResource(CachedResource* resource)
+void WebCoreAVCFResourceLoader::fulfillRequestWithResource(CachedResource& resource)
 {
-    ASSERT(resource == m_resource);
+    ASSERT_UNUSED(resource, &resource == m_resource);
     notImplemented();
 }
 

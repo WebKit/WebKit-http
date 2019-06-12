@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageControlsRootElementMac_h
-#define ImageControlsRootElementMac_h
+#pragma once
 
 #include "ImageControlsRootElement.h"
 
@@ -40,10 +39,9 @@ public:
 private:
     ImageControlsRootElementMac(Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(SERVICE_CONTROLS)
-#endif // ImageControlsRootElementMac_h

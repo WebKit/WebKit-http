@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ViewportConfiguration.h"
 
-#include <WebCore/TextStream.h>
+#include "TextStream.h"
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/CString.h>
@@ -189,6 +189,9 @@ double ViewportConfiguration::minimumScale() const
 
     // If not, we still need to sanity check our value.
     double minimumScale = m_configuration.minimumScale;
+    
+    if (m_forceAlwaysUserScalable)
+        minimumScale = std::min(minimumScale, forceAlwaysUserScalableMinimumScale);
 
     const FloatSize& minimumLayoutSize = m_minimumLayoutSize;
     double contentWidth = m_contentSize.width();
@@ -206,7 +209,12 @@ double ViewportConfiguration::minimumScale() const
 
 bool ViewportConfiguration::allowsUserScaling() const
 {
-    return m_forceAlwaysUserScalable || shouldIgnoreScalingConstraints() || m_configuration.allowsUserScaling;
+    return m_forceAlwaysUserScalable || allowsUserScalingIgnoringAlwaysScalable();
+}
+    
+bool ViewportConfiguration::allowsUserScalingIgnoringAlwaysScalable() const
+{
+    return shouldIgnoreScalingConstraints() || m_configuration.allowsUserScaling;
 }
 
 ViewportConfiguration::Parameters ViewportConfiguration::webpageParameters()
@@ -328,6 +336,8 @@ void ViewportConfiguration::updateConfiguration()
 
     if (booleanViewportArgumentIsSet(m_viewportArguments.shrinkToFit))
         m_configuration.allowsShrinkToFit = m_viewportArguments.shrinkToFit != 0.;
+
+    m_configuration.avoidsUnsafeArea = m_viewportArguments.viewportFit != ViewportFit::Cover;
 }
 
 double ViewportConfiguration::viewportArgumentsLength(double length) const
@@ -431,6 +441,7 @@ TextStream& operator<<(TextStream& ts, const ViewportConfiguration::Parameters& 
     ts.dumpProperty("maximumScale", parameters.maximumScale);
     ts.dumpProperty("allowsUserScaling", parameters.allowsUserScaling);
     ts.dumpProperty("allowsShrinkToFit", parameters.allowsShrinkToFit);
+    ts.dumpProperty("avoidsUnsafeArea", parameters.avoidsUnsafeArea);
 
     return ts;
 }
@@ -464,6 +475,7 @@ CString ViewportConfiguration::description() const
     ts.dumpProperty("computed layout size", layoutSize());
     ts.dumpProperty("ignoring horizontal scaling constraints", shouldIgnoreHorizontalScalingConstraints() ? "true" : "false");
     ts.dumpProperty("ignoring vertical scaling constraints", shouldIgnoreVerticalScalingConstraints() ? "true" : "false");
+    ts.dumpProperty("avoids unsafe area", avoidsUnsafeArea() ? "true" : "false");
     
     ts.endGroup();
 

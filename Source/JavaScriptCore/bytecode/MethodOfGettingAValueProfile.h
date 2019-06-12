@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MethodOfGettingAValueProfile_h
-#define MethodOfGettingAValueProfile_h
+#pragma once
 
 // This is guarded by ENABLE_DFG_JIT only because it uses some value profiles
 // that are currently only used if the DFG is enabled (i.e. they are not
@@ -32,12 +31,14 @@
 // these #if's will disappear...
 #if ENABLE(DFG_JIT)
 
-#include "JSCJSValue.h"
+#include "GPRInfo.h"
 
 namespace JSC {
 
+class CCallHelpers;
 class CodeBlock;
 class LazyOperandValueProfileKey;
+struct ArithProfile;
 struct ValueProfile;
 
 class MethodOfGettingAValueProfile {
@@ -47,7 +48,7 @@ public:
     {
     }
     
-    explicit MethodOfGettingAValueProfile(ValueProfile* profile)
+    MethodOfGettingAValueProfile(ValueProfile* profile)
     {
         if (profile) {
             m_kind = Ready;
@@ -56,31 +57,34 @@ public:
             m_kind = None;
     }
     
+    MethodOfGettingAValueProfile(ArithProfile* profile)
+    {
+        if (profile) {
+            m_kind = ArithProfileReady;
+            u.arithProfile = profile;
+        } else
+            m_kind = None;
+    }
+    
     static MethodOfGettingAValueProfile fromLazyOperand(
         CodeBlock*, const LazyOperandValueProfileKey&);
     
-    bool operator!() const { return m_kind == None; }
+    explicit operator bool() const { return m_kind != None; }
     
-    // This logically has a pointer to a "There exists X such that
-    // ValueProfileBase<X>". But since C++ does not have existential
-    // templates, I cannot return it. So instead, for any methods that
-    // users of this class would like to call, we'll just have to provide
-    // a method here that does it through an indirection. Or we could
-    // possibly just make ValueProfile less template-based. But last I
-    // tried that, it felt more yucky than this class.
-    
-    EncodedJSValue* getSpecFailBucket(unsigned index) const;
+    void emitReportValue(CCallHelpers&, JSValueRegs) const;
     
 private:
     enum Kind {
         None,
         Ready,
+        ArithProfileReady,
         LazyOperand
     };
     
     Kind m_kind;
     union {
         ValueProfile* profile;
+        ArithProfile* arithProfile;
         struct {
             CodeBlock* codeBlock;
             unsigned bytecodeOffset;
@@ -92,6 +96,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // MethodOfGettingAValueProfile_h
-

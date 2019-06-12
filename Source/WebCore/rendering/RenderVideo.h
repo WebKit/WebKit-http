@@ -23,25 +23,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RenderVideo_h
-#define RenderVideo_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
+#include "HTMLVideoElement.h"
 #include "RenderMedia.h"
 
 namespace WebCore {
 
-class HTMLVideoElement;
-
 class RenderVideo final : public RenderMedia {
 public:
-    RenderVideo(HTMLVideoElement&, Ref<RenderStyle>&&);
+    RenderVideo(HTMLVideoElement&, RenderStyle&&);
     virtual ~RenderVideo();
 
     HTMLVideoElement& videoElement() const;
 
-    IntRect videoBox() const;
+    WEBCORE_EXPORT IntRect videoBox() const;
 
     static IntSize defaultSize();
 
@@ -52,47 +50,53 @@ public:
 
     bool shouldDisplayVideo() const;
 
+    void updateFromElement() final;
+
 private:
+    void willBeDestroyed() override;
     void mediaElement() const = delete;
 
-    virtual void updateFromElement() override;
-
-    virtual void intrinsicSizeChanged() override;
+    void intrinsicSizeChanged() final;
     LayoutSize calculateIntrinsicSize();
-    void updateIntrinsicSize();
+    bool updateIntrinsicSize();
 
-    virtual void imageChanged(WrappedImagePtr, const IntRect*) override;
+    void imageChanged(WrappedImagePtr, const IntRect*) final;
 
-    virtual const char* renderName() const override { return "RenderVideo"; }
+    const char* renderName() const final { return "RenderVideo"; }
 
-    virtual bool requiresLayer() const override { return true; }
-    virtual bool isVideo() const override { return true; }
+    bool requiresLayer() const final { return true; }
+    bool isVideo() const final { return true; }
 
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) override;
+    void paintReplaced(PaintInfo&, const LayoutPoint&) final;
 
-    virtual void layout() override;
+    void layout() final;
 
-    virtual LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const override;
-    virtual LayoutUnit computeReplacedLogicalHeight() const override;
-    virtual LayoutUnit minimumReplacedHeight() const override;
+    void visibleInViewportStateChanged() final;
+
+    LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const final;
+    LayoutUnit minimumReplacedHeight() const final;
 
 #if ENABLE(FULLSCREEN_API)
-    virtual LayoutUnit offsetLeft() const override;
-    virtual LayoutUnit offsetTop() const override;
-    virtual LayoutUnit offsetWidth() const override;
-    virtual LayoutUnit offsetHeight() const override;
+    LayoutUnit offsetLeft() const final;
+    LayoutUnit offsetTop() const final;
+    LayoutUnit offsetWidth() const final;
+    LayoutUnit offsetHeight() const final;
 #endif
 
     void updatePlayer();
 
-    virtual bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const override;
+    bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const final;
 
     LayoutSize m_cachedImageSize;
 };
+
+inline RenderVideo* HTMLVideoElement::renderer() const
+{
+    return downcast<RenderVideo>(HTMLMediaElement::renderer());
+}
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderVideo, isVideo())
 
 #endif // ENABLE(VIDEO)
-#endif // RenderVideo_h

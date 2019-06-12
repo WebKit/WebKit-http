@@ -40,10 +40,23 @@
 
 namespace WebCore {
 
-static PassRefPtr<SharedCursor> createSharedCursor(Image* img, const IntPoint& hotSpot)
+SharedCursor::SharedCursor(HCURSOR nativeCursor)
+    : m_nativeCursor(nativeCursor)
 {
-    RefPtr<SharedCursor> impl;
+}
 
+Ref<SharedCursor> SharedCursor::create(HCURSOR nativeCursor)
+{
+    return adoptRef(*new SharedCursor(nativeCursor));
+}
+
+SharedCursor::~SharedCursor()
+{
+    DestroyIcon(m_nativeCursor);
+}
+
+static Ref<SharedCursor> createSharedCursor(Image* img, const IntPoint& hotSpot)
+{
     IntPoint effectiveHotSpot = determineHotSpot(img, hotSpot);
     static bool doAlpha = windowsVersion() >= WindowsXP;
     BitmapInfo cursorImage = BitmapInfo::create(IntSize(img->width(), img->height()));
@@ -52,8 +65,6 @@ static PassRefPtr<SharedCursor> createSharedCursor(Image* img, const IntPoint& h
     auto workingDC = adoptGDIObject(::CreateCompatibleDC(dc));
     if (doAlpha) {
         auto hCursor = adoptGDIObject(::CreateDIBSection(dc, &cursorImage, DIB_RGB_COLORS, nullptr, 0, 0));
-        if (!hCursor)
-            return nullptr;
 
         img->getHBITMAP(hCursor.get()); 
         HBITMAP hOldBitmap = (HBITMAP)SelectObject(workingDC.get(), hCursor.get());
@@ -71,15 +82,13 @@ static PassRefPtr<SharedCursor> createSharedCursor(Image* img, const IntPoint& h
         ii.hbmMask = hMask.get();
         ii.hbmColor = hCursor.get();
 
-        impl = SharedCursor::create(::CreateIconIndirect(&ii));
+        return SharedCursor::create(::CreateIconIndirect(&ii));
     } else {
         // Platform doesn't support alpha blended cursors, so we need
         // to create the mask manually
         auto andMaskDC = adoptGDIObject(::CreateCompatibleDC(dc));
         auto xorMaskDC = adoptGDIObject(::CreateCompatibleDC(dc));
         auto hCursor = adoptGDIObject(::CreateDIBSection(dc, &cursorImage, DIB_RGB_COLORS, nullptr, 0, 0));
-        if (!hCursor)
-            return nullptr;
 
         img->getHBITMAP(hCursor.get()); 
         BITMAP cursor;
@@ -108,18 +117,16 @@ static PassRefPtr<SharedCursor> createSharedCursor(Image* img, const IntPoint& h
         icon.yHotspot = effectiveHotSpot.y();
         icon.hbmMask = andMask.get();
         icon.hbmColor = xorMask.get();
-        impl = SharedCursor::create(CreateIconIndirect(&icon));
+        return SharedCursor::create(CreateIconIndirect(&icon));
     }
-
-    return impl.release();
 }
 
-static PassRefPtr<SharedCursor> loadSharedCursor(HINSTANCE hInstance, LPCWSTR lpCursorName)
+static Ref<SharedCursor> loadSharedCursor(HINSTANCE hInstance, LPCWSTR lpCursorName)
 {
     return SharedCursor::create(::LoadCursorW(hInstance, lpCursorName));
 }
 
-static PassRefPtr<SharedCursor> loadCursorByName(char* name, int x, int y)
+static Ref<SharedCursor> loadCursorByName(char* name, int x, int y)
 {
     IntPoint hotSpot(x, y);
     RefPtr<Image> cursorImage(Image::loadPlatformResource(name));
@@ -250,47 +257,16 @@ void Cursor::ensurePlatformCursor() const
         m_platformCursor = loadCursorByName("zoomOutCursor", 7, 7);
         break;
     case Cursor::Custom:
-        m_platformCursor = createSharedCursor(m_image.get(), m_hotSpot);
-        if (!m_platformCursor)
+        if (m_image->isNull())
             m_platformCursor = loadSharedCursor(0, IDC_ARROW);
+        else
+            m_platformCursor = createSharedCursor(m_image.get(), m_hotSpot);
         break;
     default:
         ASSERT_NOT_REACHED();
         m_platformCursor = loadSharedCursor(0, IDC_ARROW);
         break;
     }
-}
-
-SharedCursor::~SharedCursor()
-{
-    DestroyIcon(m_nativeCursor);
-}
-
-Cursor::Cursor(const Cursor& other)
-    : m_type(other.m_type)
-    , m_image(other.m_image)
-    , m_hotSpot(other.m_hotSpot)
-#if ENABLE(MOUSE_CURSOR_SCALE)
-    , m_imageScaleFactor(other.m_imageScaleFactor)
-#endif
-    , m_platformCursor(other.m_platformCursor)
-{
-}
-
-Cursor& Cursor::operator=(const Cursor& other)
-{
-    m_type = other.m_type;
-    m_image = other.m_image;
-    m_hotSpot = other.m_hotSpot;
-#if ENABLE(MOUSE_CURSOR_SCALE)
-    m_imageScaleFactor = other.m_imageScaleFactor;
-#endif
-    m_platformCursor = other.m_platformCursor;
-    return *this;
-}
-
-Cursor::~Cursor()
-{
 }
 
 } // namespace WebCore

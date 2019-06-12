@@ -31,18 +31,24 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
 
         this.element.classList.add("memory");
 
+        console.assert(timeline instanceof WebInspector.MemoryTimeline);
+
         this._memoryTimeline = timeline;
         this._memoryTimeline.addEventListener(WebInspector.Timeline.Event.RecordAdded, this._memoryTimelineRecordAdded, this);
+        this._memoryTimeline.addEventListener(WebInspector.MemoryTimeline.Event.MemoryPressureEventAdded, this._memoryTimelineMemoryPressureEventAdded, this);
 
         this._didInitializeCategories = false;
 
         let size = new WebInspector.Size(0, this.height);
         this._chart = new WebInspector.StackedLineChart(size);
-
         this.element.appendChild(this._chart.element);
 
         this._legendElement = this.element.appendChild(document.createElement("div"));
         this._legendElement.classList.add("legend");
+
+        this._memoryPressureMarkersContainerElement = this.element.appendChild(document.createElement("div"));
+        this._memoryPressureMarkersContainerElement.classList.add("memory-pressure-markers-container");
+        this._memoryPressureMarkerElements = [];
 
         this.reset();
     }
@@ -59,14 +65,21 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
         super.reset();
 
         this._maxSize = 0;
+        this._cachedMaxSize = undefined;
 
         this._updateLegend();
         this._chart.clear();
         this._chart.needsLayout();
+
+        this._memoryPressureMarkersContainerElement.removeChildren();
+        this._memoryPressureMarkerElements = [];
     }
 
     layout()
     {
+        if (!this.visible)
+            return;
+
         this._updateLegend();
         this._chart.clear();
 
@@ -81,13 +94,7 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
             this._chart.size = new WebInspector.Size(graphWidth, this.height);
 
         let graphStartTime = this.startTime;
-        let graphEndTime = this.endTime;
-        let graphCurrentTime = this.currentTime;
         let visibleEndTime = Math.min(this.endTime, this.currentTime);
-
-        let visibleRecords = this._visibleRecords(graphStartTime, visibleEndTime);
-        if (!visibleRecords.length)
-            return;
 
         let secondsPerPixel = this.timelineOverview.secondsPerPixel;
         let maxCapacity = this._maxSize * 1.05; // Add 5% for padding.
@@ -101,6 +108,40 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
             return height - ((size / maxCapacity) * height);
         }
 
+        let visibleMemoryPressureEventMarkers = this._visibleMemoryPressureEvents(graphStartTime, visibleEndTime);
+
+        // Reuse existing marker elements.
+        for (let i = 0; i < visibleMemoryPressureEventMarkers.length; ++i) {
+            let markerElement = this._memoryPressureMarkerElements[i];
+            if (!markerElement) {
+                markerElement = this._memoryPressureMarkersContainerElement.appendChild(document.createElement("div"));
+                markerElement.classList.add("memory-pressure-event");
+                this._memoryPressureMarkerElements[i] = markerElement;
+            }
+
+            let memoryPressureEvent = visibleMemoryPressureEventMarkers[i];
+            let property = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "right" : "left";
+            markerElement.style.setProperty(property, `${xScale(memoryPressureEvent.timestamp)}px`);
+        }
+
+        // Remove excess marker elements.
+        let excess = this._memoryPressureMarkerElements.length - visibleMemoryPressureEventMarkers.length;
+        if (excess) {
+            let elementsToRemove = this._memoryPressureMarkerElements.splice(visibleMemoryPressureEventMarkers.length);
+            for (let element of elementsToRemove)
+                element.remove();
+        }
+
+        let discontinuities = this.timelineOverview.discontinuitiesInTimeRange(graphStartTime, visibleEndTime);
+
+        // Don't include the record before the graph start if the graph start is within a gap.
+        let includeRecordBeforeStart = !discontinuities.length || discontinuities[0].startTime > graphStartTime;
+
+        // FIXME: <https://webkit.org/b/153759> Web Inspector: Memory Timelines should better extend to future data
+        let visibleRecords = this._memoryTimeline.recordsInTimeRange(graphStartTime, visibleEndTime, includeRecordBeforeStart);
+        if (!visibleRecords.length)
+            return;
+
         function pointSetForRecord(record) {
             let size = 0;
             let ys = [];
@@ -112,19 +153,59 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
         }
 
         // Extend the first record to the start so it doesn't look like we originate at zero size.
-        if (visibleRecords[0] === this._memoryTimeline.records[0])
+        if (visibleRecords[0] === this._memoryTimeline.records[0] && (!discontinuities.length || discontinuities[0].startTime > visibleRecords[0].startTime))
             this._chart.addPointSet(0, pointSetForRecord(visibleRecords[0]));
 
-        // Points for visible records.
-        for (let record of visibleRecords) {
-            let x = xScale(record.startTime);
-            this._chart.addPointSet(x, pointSetForRecord(record));
+        function insertDiscontinuity(previousRecord, discontinuity, nextRecord)
+        {
+            console.assert(previousRecord || nextRecord);
+            if (!(previousRecord || nextRecord))
+                return;
+
+            let xStart = xScale(discontinuity.startTime);
+            let xEnd = xScale(discontinuity.endTime);
+
+            // Extend the previous record to the start of the discontinuity.
+            if (previousRecord)
+                this._chart.addPointSet(xStart, pointSetForRecord(previousRecord));
+
+            let zeroValues = Array((previousRecord || nextRecord).categories.length).fill(yScale(0));
+            this._chart.addPointSet(xStart, zeroValues);
+
+            if (nextRecord) {
+                this._chart.addPointSet(xEnd, zeroValues);
+                this._chart.addPointSet(xEnd, pointSetForRecord(nextRecord));
+            } else {
+                // Extend the discontinuity to the visible end time to prevent
+                // drawing artifacts when the next record arrives.
+                this._chart.addPointSet(xScale(visibleEndTime), zeroValues);
+            }
         }
 
-        // Extend the last value to current / end time.
-        let lastRecord = visibleRecords.lastValue;
-        let x = Math.floor(xScale(visibleEndTime));
-        this._chart.addPointSet(x, pointSetForRecord(lastRecord));
+        // Points for visible records.
+        let previousRecord = null;
+        for (let record of visibleRecords) {
+            if (discontinuities.length && discontinuities[0].endTime < record.startTime) {
+                let discontinuity = discontinuities.shift();
+                insertDiscontinuity.call(this, previousRecord, discontinuity, record);
+            }
+
+            let x = xScale(record.startTime);
+            this._chart.addPointSet(x, pointSetForRecord(record));
+
+            previousRecord = record;
+        }
+
+        if (discontinuities.length)
+            insertDiscontinuity.call(this, previousRecord, discontinuities[0], null);
+        else {
+            // Extend the last value to current / end time.
+            let lastRecord = visibleRecords.lastValue;
+            if (lastRecord.startTime <= visibleEndTime) {
+                let x = Math.floor(xScale(visibleEndTime));
+                this._chart.addPointSet(x, pointSetForRecord(lastRecord));
+            }
+        }
 
         this._chart.updateLayout();
     }
@@ -133,6 +214,11 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
 
     _updateLegend()
     {
+        if (this._cachedMaxSize === this._maxSize)
+            return;
+
+        this._cachedMaxSize = this._maxSize;
+
         if (!this._maxSize) {
             this._legendElement.hidden = true;
             this._legendElement.textContent = "";
@@ -142,20 +228,15 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
         }
     }
 
-    _visibleRecords(startTime, endTime)
+    _visibleMemoryPressureEvents(startTime, endTime)
     {
-        let records = this._memoryTimeline.records;
-        let lowerIndex = records.lowerBound(startTime, (time, record) => time - record.timestamp);
-        let upperIndex = records.upperBound(endTime, (time, record) => time - record.timestamp);
+        let events = this._memoryTimeline.memoryPressureEvents;
+        if (!events.length)
+            return [];
 
-        // Include the record right before the start time in case it extends into this range.
-        if (lowerIndex > 0)
-            lowerIndex--;
-        // FIXME: <https://webkit.org/b/153759> Web Inspector: Memory Timelines should better extend to future data
-        // if (upperIndex !== records.length)
-        //     upperIndex++;
-
-        return records.slice(lowerIndex, upperIndex);
+        let lowerIndex = events.lowerBound(startTime, (time, event) => time - event.timestamp);
+        let upperIndex = events.upperBound(endTime, (time, event) => time - event.timestamp);
+        return events.slice(lowerIndex, upperIndex);
     }
 
     _memoryTimelineRecordAdded(event)
@@ -172,6 +253,11 @@ WebInspector.MemoryTimelineOverviewGraph = class MemoryTimelineOverviewGraph ext
             this._chart.initializeSections(types);
         }
 
+        this.needsLayout();
+    }
+
+    _memoryTimelineMemoryPressureEventAdded(event)
+    {
         this.needsLayout();
     }
 };

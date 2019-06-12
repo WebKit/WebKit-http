@@ -39,7 +39,6 @@
 #include "JSDOMGlobalObject.h"
 #include "Pasteboard.h"
 #include "Storage.h"
-#include <bindings/ScriptValue.h>
 #include <inspector/InspectorValues.h>
 #include <inspector/agents/InspectorAgent.h>
 #include <inspector/agents/InspectorConsoleAgent.h>
@@ -107,9 +106,9 @@ void CommandLineAPIHost::copyText(const String& text)
     Pasteboard::createForCopyAndPaste()->writePlainText(text, Pasteboard::CannotSmartReplace);
 }
 
-Deprecated::ScriptValue CommandLineAPIHost::InspectableObject::get(JSC::ExecState*)
+JSC::JSValue CommandLineAPIHost::InspectableObject::get(JSC::ExecState&)
 {
-    return Deprecated::ScriptValue();
+    return { };
 }
 
 void CommandLineAPIHost::addInspectedObject(std::unique_ptr<CommandLineAPIHost::InspectableObject> object)
@@ -142,9 +141,9 @@ JSValue CommandLineAPIHost::wrapper(ExecState* exec, JSDOMGlobalObject* globalOb
     if (value)
         return value;
 
-    JSObject* prototype = JSCommandLineAPIHost::createPrototype(exec->vm(), globalObject);
+    JSObject* prototype = JSCommandLineAPIHost::createPrototype(exec->vm(), *globalObject);
     Structure* structure = JSCommandLineAPIHost::createStructure(exec->vm(), globalObject, prototype);
-    JSCommandLineAPIHost* commandLineAPIHost = JSCommandLineAPIHost::create(structure, globalObject, Ref<CommandLineAPIHost>(*this));
+    JSCommandLineAPIHost* commandLineAPIHost = JSCommandLineAPIHost::create(structure, globalObject, makeRef(*this));
     m_wrappers.addWrapper(globalObject, commandLineAPIHost);
 
     return commandLineAPIHost;

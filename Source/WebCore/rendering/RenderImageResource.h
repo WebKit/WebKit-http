@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef RenderImageResource_h
-#define RenderImageResource_h
+#pragma once
 
 #include "CachedImage.h"
 #include "CachedResourceHandle.h"
@@ -46,11 +45,10 @@ public:
 
     void setCachedImage(CachedImage*);
     CachedImage* cachedImage() const { return m_cachedImage.get(); }
-    virtual bool hasImage() const { return m_cachedImage; }
 
     void resetAnimation();
 
-    virtual RefPtr<Image> image(int width = 0, int height = 0) const;
+    virtual RefPtr<Image> image(const IntSize& size = { }) const;
     virtual bool errorOccurred() const;
 
     virtual void setContainerSizeForRenderer(const IntSize&);
@@ -63,7 +61,7 @@ public:
     virtual WrappedImagePtr imagePtr() const { return m_cachedImage.get(); }
 
 protected:
-    RenderElement* m_renderer;
+    RenderElement* m_renderer { nullptr };
     CachedResourceHandle<CachedImage> m_cachedImage;
 
 private:
@@ -71,5 +69,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // RenderImage_h

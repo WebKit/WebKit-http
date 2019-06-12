@@ -27,15 +27,16 @@
 #define PlatformWebView_h
 
 #include "TestOptions.h"
-#include <WebKit/WKRetainPtr.h>
 
 #if PLATFORM(COCOA) && !defined(BUILDING_GTK__)
 #include <WebKit/WKFoundation.h>
+#include <wtf/RetainPtr.h>
 OBJC_CLASS NSView;
 OBJC_CLASS UIView;
 OBJC_CLASS TestRunnerWKWebView;
 OBJC_CLASS WKWebViewConfiguration;
 OBJC_CLASS WebKitTestRunnerWindow;
+typedef struct CGImage *CGImageRef;
 
 #if WK_API_ENABLED
 typedef TestRunnerWKWebView *PlatformWKView;
@@ -43,6 +44,7 @@ typedef TestRunnerWKWebView *PlatformWKView;
 typedef NSView *PlatformWKView;
 #endif
 typedef WebKitTestRunnerWindow *PlatformWindow;
+typedef RetainPtr<CGImageRef> PlatformImage;
 #elif defined(BUILDING_QT__)
 QT_BEGIN_NAMESPACE
 class QQuickView;
@@ -55,9 +57,12 @@ typedef QQuickView* PlatformWindow;
 typedef struct _GtkWidget GtkWidget;
 typedef WKViewRef PlatformWKView;
 typedef GtkWidget* PlatformWindow;
-#elif PLATFORM(EFL)
-typedef Evas_Object* PlatformWKView;
-typedef Ecore_Evas* PlatformWindow;
+typedef cairo_surface_t *PlatformImage;
+#elif PLATFORM(WPE)
+class HeadlessViewBackend;
+typedef WKViewRef PlatformWKView;
+typedef HeadlessViewBackend* PlatformWindow;
+typedef cairo_surface_t* PlatformImage;
 #endif
 
 namespace WTR {
@@ -74,7 +79,14 @@ public:
     WKPageRef page();
     PlatformWKView platformView() { return m_view; }
     PlatformWindow platformWindow() { return m_window; }
-    void resizeTo(unsigned width, unsigned height);
+    static PlatformWindow keyWindow();
+
+    enum class WebViewSizingMode {
+        Default,
+        HeightRespectsStatusBar
+    };
+
+    void resizeTo(unsigned width, unsigned height, WebViewSizingMode = WebViewSizingMode::Default);
     void focus();
 
 #if PLATFORM(QT)
@@ -86,7 +98,7 @@ public:
 #endif
 
     WKRect windowFrame();
-    void setWindowFrame(WKRect);
+    void setWindowFrame(WKRect, WebViewSizingMode = WebViewSizingMode::Default);
 
     void didInitializeClients();
     
@@ -95,10 +107,13 @@ public:
     void makeWebViewFirstResponder();
     void setWindowIsKey(bool);
     bool windowIsKey() const { return m_windowIsKey; }
+    
+    void removeFromWindow();
+    void addToWindow();
 
-    bool viewSupportsOptions(const TestOptions&) const;
+    bool viewSupportsOptions(const TestOptions& options) const { return m_options.hasSameInitializationOptions(options); }
 
-    WKRetainPtr<WKImageRef> windowSnapshotImage();
+    PlatformImage windowSnapshotImage();
     const TestOptions& options() const { return m_options; }
 
     void changeWindowScaleIfNeeded(float newScale);
@@ -116,10 +131,8 @@ private:
     bool m_windowIsKey;
     const TestOptions m_options;
 
-#if PLATFORM(EFL) || PLATFORM(QT)
-    bool m_usingFixedLayout;
-#endif
 #if PLATFORM(QT)
+    bool m_usingFixedLayout;
     QEventLoop* m_modalEventLoop;
 #endif
 };

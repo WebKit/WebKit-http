@@ -20,17 +20,14 @@
  *
  */
 
-#ifndef XSLStyleSheet_h
-#define XSLStyleSheet_h
+#pragma once
 
 #if ENABLE(XSLT)
 
 #include "ProcessingInstruction.h"
 #include "StyleSheet.h"
-
 #include <libxml/parser.h>
 #include <libxslt/transform.h>
-
 #include <wtf/Ref.h>
 #include <wtf/TypeCasts.h>
 
@@ -75,7 +72,7 @@ public:
     CachedResourceLoader* cachedResourceLoader();
 
     Document* ownerDocument();
-    virtual XSLStyleSheet* parentStyleSheet() const override { return m_parentStyleSheet; }
+    XSLStyleSheet* parentStyleSheet() const override { return m_parentStyleSheet; }
     void setParentStyleSheet(XSLStyleSheet* parent);
 
     xmlDocPtr document();
@@ -87,38 +84,40 @@ public:
     void markAsProcessed();
     bool processed() const { return m_processed; }
     
-    virtual String type() const override { return "text/xml"; }
-    virtual bool disabled() const override { return m_isDisabled; }
-    virtual void setDisabled(bool b) override { m_isDisabled = b; }
-    virtual Node* ownerNode() const override { return m_ownerNode; }
-    virtual String href() const override { return m_originalURL; }
-    virtual String title() const override { return emptyString(); }
+    String type() const override { return "text/xml"; }
+    bool disabled() const override { return m_isDisabled; }
+    void setDisabled(bool b) override { m_isDisabled = b; }
+    Node* ownerNode() const override { return m_ownerNode; }
+    String href() const override { return m_originalURL; }
+    String title() const override { return emptyString(); }
 
-    virtual void clearOwnerNode() override { m_ownerNode = nullptr; }
-    virtual URL baseURL() const override { return m_finalURL; }
-    virtual bool isLoading() const override;
+    void clearOwnerNode() override { m_ownerNode = nullptr; }
+    URL baseURL() const override { return m_finalURL; }
+    bool isLoading() const override;
 
 private:
     XSLStyleSheet(Node* parentNode, const String& originalURL, const URL& finalURL, bool embedded);
     XSLStyleSheet(XSLImportRule* parentImport, const String& originalURL, const URL& finalURL);
 
-    virtual bool isXSLStyleSheet() const override { return true; }
-    
+    bool isXSLStyleSheet() const override { return true; }
+
+    void clearXSLStylesheetDocument();
+
     Node* m_ownerNode;
     String m_originalURL;
     URL m_finalURL;
-    bool m_isDisabled;
+    bool m_isDisabled { false };
 
     Vector<std::unique_ptr<XSLImportRule>> m_children;
 
     bool m_embedded;
     bool m_processed;
 
-    xmlDocPtr m_stylesheetDoc;
-    bool m_stylesheetDocTaken;
+    xmlDocPtr m_stylesheetDoc { nullptr };
+    bool m_stylesheetDocTaken { false };
     bool m_compilationFailed { false };
 
-    XSLStyleSheet* m_parentStyleSheet;
+    XSLStyleSheet* m_parentStyleSheet { nullptr };
 };
 
 } // namespace WebCore
@@ -128,5 +127,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::XSLStyleSheet)
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(XSLT)
-
-#endif // XSLStyleSheet_h

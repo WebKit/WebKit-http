@@ -31,6 +31,7 @@
 #include "FontSelector.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "GDIUtilities.h"
 #include "GraphicsContext.h"
 #include "HTMLNames.h"
 #include "HWndDC.h"
@@ -127,6 +128,9 @@ LPCWSTR PopupMenuWin::popupClassName()
 
 void PopupMenuWin::show(const IntRect& r, FrameView* view, int index)
 {
+    if (view && view->frame().page())
+        m_scaleFactor = view->frame().page()->deviceScaleFactor();
+
     calculatePositionAndSize(r, view);
     if (clientRect().isEmpty())
         return;
@@ -167,7 +171,7 @@ void PopupMenuWin::show(const IntRect& r, FrameView* view, int index)
     m_showPopup = true;
 
     // Protect the popup menu in case its owner is destroyed while we're running the message pump.
-    RefPtr<PopupMenu> protect(this);
+    RefPtr<PopupMenu> protectedThis(this);
 
     ::SetCapture(hostWindow);
 
@@ -315,9 +319,16 @@ void PopupMenuWin::calculatePositionAndSize(const IntRect& r, FrameView* v)
 
     rScreenCoords.setLocation(location);
 
+    m_font = client()->menuStyle().font();
+    auto d = m_font.fontDescription();
+    d.setComputedSize(d.computedSize() * m_scaleFactor);
+    m_font = FontCascade(d, m_font.letterSpacing(), m_font.wordSpacing());
+    m_font.update(m_popupClient->fontSelector());
+
     // First, determine the popup's height
     int itemCount = client()->listSize();
-    m_itemHeight = client()->menuStyle().font().fontMetrics().height() + optionSpacingMiddle;
+    m_itemHeight = m_font.fontMetrics().height() + optionSpacingMiddle;
+
     int naturalHeight = m_itemHeight * itemCount;
     int popupHeight = std::min(maxPopupHeight, naturalHeight);
     // The popup should show an integral number of items (i.e. no partial items should be visible)
@@ -330,7 +341,7 @@ void PopupMenuWin::calculatePositionAndSize(const IntRect& r, FrameView* v)
         if (text.isEmpty())
             continue;
 
-        FontCascade itemFont = client()->menuStyle().font();
+        FontCascade itemFont = m_font;
         if (client()->itemIsLabel(i)) {
             auto d = itemFont.fontDescription();
             d.setWeight(d.bolderWeight());
@@ -611,8 +622,8 @@ void PopupMenuWin::paint(const IntRect& damageRect, HDC hdc)
         Color optionBackgroundColor, optionTextColor;
         PopupMenuStyle itemStyle = client()->itemStyle(index);
         if (index == focusedIndex()) {
-            optionBackgroundColor = RenderTheme::defaultTheme()->activeListBoxSelectionBackgroundColor();
-            optionTextColor = RenderTheme::defaultTheme()->activeListBoxSelectionForegroundColor();
+            optionBackgroundColor = RenderTheme::singleton().activeListBoxSelectionBackgroundColor();
+            optionTextColor = RenderTheme::singleton().activeListBoxSelectionForegroundColor();
         } else {
             optionBackgroundColor = itemStyle.backgroundColor();
             optionTextColor = itemStyle.foregroundColor();
@@ -635,8 +646,8 @@ void PopupMenuWin::paint(const IntRect& damageRect, HDC hdc)
 
         TextRun textRun(itemText, 0, 0, AllowTrailingExpansion, itemStyle.textDirection(), itemStyle.hasTextDirectionOverride());
         context.setFillColor(optionTextColor);
-        
-        FontCascade itemFont = client()->menuStyle().font();
+
+        FontCascade itemFont = m_font;
         if (client()->itemIsLabel(index)) {
             auto d = itemFont.fontDescription();
             d.setWeight(d.bolderWeight());
@@ -649,12 +660,12 @@ void PopupMenuWin::paint(const IntRect& damageRect, HDC hdc)
             int textX = 0;
             if (client()->menuStyle().textDirection() == LTR) {
                 textX = std::max<int>(0, client()->clientPaddingLeft() - client()->clientInsetLeft());
-                if (RenderTheme::defaultTheme()->popupOptionSupportsTextIndent())
+                if (RenderTheme::singleton().popupOptionSupportsTextIndent())
                     textX += minimumIntValueForLength(itemStyle.textIndent(), itemRect.width());
             } else {
                 textX = itemRect.width() - client()->menuStyle().font().width(textRun);
                 textX = std::min<int>(textX, textX - client()->clientPaddingRight() + client()->clientInsetRight());
-                if (RenderTheme::defaultTheme()->popupOptionSupportsTextIndent())
+                if (RenderTheme::singleton().popupOptionSupportsTextIndent())
                     textX -= minimumIntValueForLength(itemStyle.textIndent(), itemRect.width());
             }
             int textY = itemRect.y() + itemFont.fontMetrics().ascent() + (itemRect.height() - itemFont.fontMetrics().height()) / 2;
@@ -720,10 +731,10 @@ void PopupMenuWin::scrollTo(int offset)
     ::UpdateWindow(m_popup);
 }
 
-void PopupMenuWin::invalidateScrollbarRect(Scrollbar* scrollbar, const IntRect& rect)
+void PopupMenuWin::invalidateScrollbarRect(Scrollbar& scrollbar, const IntRect& rect)
 {
     IntRect scrollRect = rect;
-    scrollRect.move(scrollbar->x(), scrollbar->y());
+    scrollRect.move(scrollbar.x(), scrollbar.y());
     RECT r = scrollRect;
     ::InvalidateRect(m_popup, &r, false);
 }
@@ -735,7 +746,7 @@ IntSize PopupMenuWin::visibleSize() const
 
 IntSize PopupMenuWin::contentsSize() const
 {
-    return m_windowRect.size();
+    return IntSize(m_windowRect.width(), m_scrollbar ? m_scrollbar->totalSize() : m_windowRect.height());
 }
 
 IntRect PopupMenuWin::scrollableAreaBoundingBox(bool*) const
@@ -958,7 +969,7 @@ LRESULT PopupMenuWin::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                 if (scrollbarCapturingMouse() || scrollBarRect.contains(mousePoint)) {
                     // Put the point into coordinates relative to the scroll bar
                     mousePoint.move(-scrollBarRect.x(), -scrollBarRect.y());
-                    PlatformMouseEvent event(hWnd, message, wParam, MAKELPARAM(mousePoint.x(), mousePoint.y()));
+                    PlatformMouseEvent event(hWnd, message, wParam, makeScaledPoint(mousePoint, m_scaleFactor));
                     scrollbar()->mouseMoved(event);
                     break;
                 }
@@ -995,7 +1006,7 @@ LRESULT PopupMenuWin::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                 if (scrollBarRect.contains(mousePoint)) {
                     // Put the point into coordinates relative to the scroll bar
                     mousePoint.move(-scrollBarRect.x(), -scrollBarRect.y());
-                    PlatformMouseEvent event(hWnd, message, wParam, MAKELPARAM(mousePoint.x(), mousePoint.y()));
+                    PlatformMouseEvent event(hWnd, message, wParam, makeScaledPoint(mousePoint, m_scaleFactor));
                     scrollbar()->mouseDown(event);
                     setScrollbarCapturingMouse(true);
                     break;
@@ -1022,7 +1033,7 @@ LRESULT PopupMenuWin::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                     setScrollbarCapturingMouse(false);
                     // Put the point into coordinates relative to the scroll bar
                     mousePoint.move(-scrollBarRect.x(), -scrollBarRect.y());
-                    PlatformMouseEvent event(hWnd, message, wParam, MAKELPARAM(mousePoint.x(), mousePoint.y()));
+                    PlatformMouseEvent event(hWnd, message, wParam, makeScaledPoint(mousePoint, m_scaleFactor));
                     scrollbar()->mouseUp(event);
                     // FIXME: This is a hack to work around Scrollbar not invalidating correctly when it doesn't have a parent widget
                     RECT r = scrollBarRect;

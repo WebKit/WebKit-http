@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WeakImpl_h
-#define WeakImpl_h
+#pragma once
 
 #include "JSCJSValue.h"
 
@@ -52,7 +51,9 @@ public:
     void setState(State);
 
     const JSValue& jsValue();
+    static ptrdiff_t offsetOfJSValue() { return OBJECT_OFFSETOF(WeakImpl, m_jsValue); }
     WeakHandleOwner* weakHandleOwner();
+    static ptrdiff_t offsetOfWeakHandleOwner() { return OBJECT_OFFSETOF(WeakImpl, m_weakHandleOwner); }
     void* context();
 
     static WeakImpl* asWeakImpl(JSValue*);
@@ -111,5 +112,3 @@ inline WeakImpl* WeakImpl::asWeakImpl(JSValue* slot)
 }
 
 } // namespace JSC
-
-#endif // WeakImpl_h

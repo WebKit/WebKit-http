@@ -32,10 +32,9 @@
 #include <wtf/HashSet.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
 OBJC_CLASS NSRunLoop;
 #endif
 
@@ -45,7 +44,7 @@ class SchedulePair : public ThreadSafeRefCounted<SchedulePair> {
 public:
     static Ref<SchedulePair> create(CFRunLoopRef runLoop, CFStringRef mode) { return adoptRef(*new SchedulePair(runLoop, mode)); }
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     static Ref<SchedulePair> create(NSRunLoop* runLoop, CFStringRef mode) { return adoptRef(*new SchedulePair(runLoop, mode)); }
     NSRunLoop* nsRunLoop() const { return m_nsRunLoop.get(); }
 #endif
@@ -63,7 +62,7 @@ private:
             m_mode = adoptCF(CFStringCreateCopy(0, mode));
     }
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     WTF_EXPORT_PRIVATE SchedulePair(NSRunLoop*, CFStringRef);
     RetainPtr<NSRunLoop*> m_nsRunLoop;
 #endif

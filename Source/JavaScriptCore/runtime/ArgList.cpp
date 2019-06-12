@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2009, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -21,7 +21,6 @@
 #include "config.h"
 #include "ArgList.h"
 
-#include "HeapRootVisitor.h"
 #include "JSCJSValue.h"
 #include "JSObject.h"
 #include "JSCInlines.h"
@@ -29,6 +28,19 @@
 using std::min;
 
 namespace JSC {
+
+void MarkedArgumentBuffer::addMarkSet(JSValue v)
+{
+    if (m_markSet)
+        return;
+
+    Heap* heap = Heap::heap(v);
+    if (!heap)
+        return;
+
+    m_markSet = &heap->markListSet();
+    m_markSet->add(this);
+}
 
 void ArgList::getSlice(int startIndex, ArgList& result) const
 {
@@ -41,50 +53,54 @@ void ArgList::getSlice(int startIndex, ArgList& result) const
     result.m_argCount =  m_argCount - startIndex;
 }
 
-void MarkedArgumentBuffer::markLists(HeapRootVisitor& heapRootVisitor, ListSet& markSet)
+void MarkedArgumentBuffer::markLists(SlotVisitor& visitor, ListSet& markSet)
 {
     ListSet::iterator end = markSet.end();
     for (ListSet::iterator it = markSet.begin(); it != end; ++it) {
         MarkedArgumentBuffer* list = *it;
         for (int i = 0; i < list->m_size; ++i)
-            heapRootVisitor.visit(reinterpret_cast<JSValue*>(&list->slotFor(i)));
+            visitor.appendUnbarriered(JSValue::decode(list->slotFor(i)));
     }
 }
 
-void MarkedArgumentBuffer::slowAppend(JSValue v)
+void MarkedArgumentBuffer::slowEnsureCapacity(size_t requestedCapacity)
+{
+    int newCapacity = Checked<int>(requestedCapacity).unsafeGet();
+    expandCapacity(newCapacity);
+}
+
+void MarkedArgumentBuffer::expandCapacity()
 {
     int newCapacity = (Checked<int>(m_capacity) * 2).unsafeGet();
+    expandCapacity(newCapacity);
+}
+
+void MarkedArgumentBuffer::expandCapacity(int newCapacity)
+{
+    ASSERT(m_capacity < newCapacity);
     size_t size = (Checked<size_t>(newCapacity) * sizeof(EncodedJSValue)).unsafeGet();
     EncodedJSValue* newBuffer = static_cast<EncodedJSValue*>(fastMalloc(size));
-    for (int i = 0; i < m_capacity; ++i)
+    for (int i = 0; i < m_size; ++i) {
         newBuffer[i] = m_buffer[i];
+        addMarkSet(JSValue::decode(m_buffer[i]));
+    }
 
     if (EncodedJSValue* base = mallocBase())
         fastFree(base);
 
     m_buffer = newBuffer;
     m_capacity = newCapacity;
+}
+
+void MarkedArgumentBuffer::slowAppend(JSValue v)
+{
+    ASSERT(m_size <= m_capacity);
+    if (m_size == m_capacity)
+        expandCapacity();
 
     slotFor(m_size) = JSValue::encode(v);
     ++m_size;
-
-    if (m_markSet)
-        return;
-
-    // As long as our size stays within our Vector's inline 
-    // capacity, all our values are allocated on the stack, and 
-    // therefore don't need explicit marking. Once our size exceeds
-    // our Vector's inline capacity, though, our values move to the 
-    // heap, where they do need explicit marking.
-    for (int i = 0; i < m_size; ++i) {
-        Heap* heap = Heap::heap(JSValue::decode(slotFor(i)));
-        if (!heap)
-            continue;
-
-        m_markSet = &heap->markListSet();
-        m_markSet->add(this);
-        break;
-    }
+    addMarkSet(v);
 }
 
 } // namespace JSC

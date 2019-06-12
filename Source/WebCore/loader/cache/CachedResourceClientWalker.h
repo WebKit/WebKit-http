@@ -22,8 +22,7 @@
     pages from the web. It has a memory cache for these objects.
 */
 
-#ifndef CachedResourceClientWalker_h
-#define CachedResourceClientWalker_h
+#pragma once
 
 #include "CachedResourceClient.h"
 #include <wtf/HashCountedSet.h>
@@ -33,16 +32,16 @@ namespace WebCore {
 
 // Call this "walker" instead of iterator so people won't expect Qt or STL-style iterator interface.
 // Just keep calling next() on this. It's safe from deletions of items.
-template<typename T> class CachedResourceClientWalker {
+template<typename T>
+class CachedResourceClientWalker {
 public:
-    CachedResourceClientWalker(const HashCountedSet<CachedResourceClient*>& set)
-        : m_clientSet(set), m_clientVector(set.size()), m_index(0)
+    CachedResourceClientWalker(const HashCountedSet<CachedResourceClient*>& clientSet)
+        : m_clientSet(clientSet)
+        , m_clientVector(clientSet.size())
     {
-        typedef HashCountedSet<CachedResourceClient*>::const_iterator Iterator;
-        Iterator end = set.end();
         size_t clientIndex = 0;
-        for (Iterator current = set.begin(); current != end; ++current)
-            m_clientVector[clientIndex++] = current->key;
+        for (const auto& client : clientSet)
+            m_clientVector[clientIndex++] = client.key;
     }
 
     T* next()
@@ -55,15 +54,12 @@ public:
                 return static_cast<T*>(next);
             }
         }
-        
         return nullptr;
     }
 private:
     const HashCountedSet<CachedResourceClient*>& m_clientSet;
     Vector<CachedResourceClient*> m_clientVector;
-    size_t m_index;
+    size_t m_index { 0 };
 };
 
-}
-
-#endif
+} // namespace WebCore

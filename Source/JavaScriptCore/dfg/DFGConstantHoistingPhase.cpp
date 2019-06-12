@@ -128,8 +128,9 @@ public:
         }
         
         // And finally free the constants that we removed.
+        m_graph.invalidateNodeLiveness();
         for (Node* node : toFree)
-            m_graph.m_allocator.free(node);
+            m_graph.deleteNode(node);
         
         return true;
     }
@@ -139,7 +140,6 @@ public:
     
 bool performConstantHoisting(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Constant Hoisting Phase");
     return runPhase<ConstantHoistingPhase>(graph);
 }
 

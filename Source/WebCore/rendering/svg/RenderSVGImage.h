@@ -21,13 +21,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGImage_h
-#define RenderSVGImage_h
+#pragma once
 
 #include "AffineTransform.h"
 #include "FloatRect.h"
 #include "RenderSVGModelObject.h"
-#include "SVGPreserveAspectRatio.h"
 
 namespace WebCore {
 
@@ -36,15 +34,15 @@ class SVGImageElement;
 
 class RenderSVGImage final : public RenderSVGModelObject {
 public:
-    RenderSVGImage(SVGImageElement&, Ref<RenderStyle>&&);
+    RenderSVGImage(SVGImageElement&, RenderStyle&&);
     virtual ~RenderSVGImage();
 
     SVGImageElement& imageElement() const;
 
     bool updateImageViewport();
-    virtual void setNeedsBoundariesUpdate() override { m_needsBoundariesUpdate = true; }
-    virtual bool needsBoundariesUpdate() override { return m_needsBoundariesUpdate; }
-    virtual void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
+    void setNeedsBoundariesUpdate() override { m_needsBoundariesUpdate = true; }
+    bool needsBoundariesUpdate() override { return m_needsBoundariesUpdate; }
+    void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
 
     RenderImageResource& imageResource() { return *m_imageResource; }
     const RenderImageResource& imageResource() const { return *m_imageResource; }
@@ -53,31 +51,33 @@ public:
     void paintForeground(PaintInfo&);
 
 private:
+    void willBeDestroyed() override;
+
     void element() const = delete;
 
-    virtual const char* renderName() const override { return "RenderSVGImage"; }
-    virtual bool isSVGImage() const override { return true; }
-    virtual bool canHaveChildren() const override { return false; }
+    const char* renderName() const override { return "RenderSVGImage"; }
+    bool isSVGImage() const override { return true; }
+    bool canHaveChildren() const override { return false; }
 
-    virtual const AffineTransform& localToParentTransform() const override { return m_localTransform; }
+    const AffineTransform& localToParentTransform() const override { return m_localTransform; }
 
-    virtual FloatRect objectBoundingBox() const override { return m_objectBoundingBox; }
-    virtual FloatRect strokeBoundingBox() const override { return m_objectBoundingBox; }
-    virtual FloatRect repaintRectInLocalCoordinates() const override { return m_repaintBoundingBox; }
-    virtual FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const override { return m_repaintBoundingBoxExcludingShadow; }
+    FloatRect objectBoundingBox() const override { return m_objectBoundingBox; }
+    FloatRect strokeBoundingBox() const override { return m_objectBoundingBox; }
+    FloatRect repaintRectInLocalCoordinates() const override { return m_repaintBoundingBox; }
+    FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const override { return m_repaintBoundingBoxExcludingShadow; }
 
-    virtual void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
+    void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
 
-    virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) override;
+    void imageChanged(WrappedImagePtr, const IntRect* = nullptr) override;
 
-    virtual void layout() override;
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    void layout() override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
 
     void invalidateBufferedForeground();
 
-    virtual bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) override;
+    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) override;
 
-    virtual AffineTransform localTransform() const override { return m_localTransform; }
+    AffineTransform localTransform() const override { return m_localTransform; }
     void calculateImageViewport();
 
     bool m_needsBoundariesUpdate : 1;
@@ -93,5 +93,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGImage, isSVGImage())
-
-#endif // RenderSVGImage_h

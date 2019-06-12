@@ -55,19 +55,32 @@
 
 .style-declaration-section > .header {
     position: relative;
-
-    padding: 4px 5px 3px 25px;
-
     font-size: 11px;
     line-height: 12px;
+
+    --style-declaration-section-header-padding-start: 25px;
+    --style-declaration-section-header-padding-end: 5px;
+}
+
+.style-declaration-section > .header {
+    padding: 4px var(--style-declaration-section-header-padding-end) 3px var(--style-declaration-section-header-padding-start);
+}
+
+.style-declaration-section.locked > .header > .locked-icon {
+    width: 8px;
+    height: 10px;
+    content: url(../Images/Locked.svg);
+}
+
+.style-declaration-section.locked > .header > .locked-icon {
+    float: right;
+    margin-left: 5px;
 }
 
 .style-declaration-section > .header > .icon {
     position: absolute;
-
     top: 2px;
     left: 4px;
-
     width: 16px;
     height: 16px;
 }
@@ -84,53 +97,47 @@
     opacity: 0.5;
 }
 
+.style-declaration-section > .header > textarea {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 0;
+    font-family: Menlo, monospace;
+    color: black;
+    background: transparent;
+    border: none;
+    outline: none;
+    opacity: 0;
+    resize: none;
+    -webkit-appearance: none;
+
+    --style-declaration-section-header-textarea-margin-start: var(--style-declaration-section-header-padding-start);
+    --style-declaration-section-header-textarea-margin-end: var(--style-declaration-section-header-padding-end);
+}
+
+.style-declaration-section > .header > textarea {
+    margin: 4px var(--style-declaration-section-header-textarea-margin-end) 3px var(--style-declaration-section-header-textarea-margin-start);
+}
+
+.style-declaration-section > .header > textarea:focus {
+    opacity: 1;
+}
+
+.style-declaration-section > .header > textarea:focus + .selector {
+    opacity: 0;
+}
+
 .style-declaration-section > .header > .selector {
     font-family: Menlo, monospace;
     color: hsl(0, 0%, 50%);
-
-    outline: none;
-
-    cursor: text;
-
     word-wrap: break-word;
-
-    -webkit-user-select: text;
-    -webkit-user-modify: read-write-plaintext-only;
-}
-
-.style-declaration-section > .header > .selector:empty {
-    /* This prevents the cursor from disappearing when empty. */
-    display: inline-block;
-    min-width: 1px;
-}
-
-.style-declaration-section > .header > .selector:empty::before {
-    /* This prevents the cursor from positioning badly when empty. */
-    content: "";
-}
-
-.style-declaration-section > .header > .selector:focus {
-    color: black;
 }
 
 .style-declaration-section:matches(.locked, .selector-locked) > .header > .selector {
-    -webkit-user-modify: read-only;
-}
-
-.style-declaration-section.locked > .header::before {
-    float: right;
-
-    content: "";
-
-    width: 8px;
-    height: 10px;
-
-    background-image: url(../Images/Locked.svg);
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 8px 10px;
-
-    margin-left: 5px;
+    -webkit-user-select: text;
 }
 
 .style-declaration-section > .header > .selector > .matched {
@@ -138,6 +145,9 @@
 }
 
 .style-declaration-section > .header > .origin {
+    position: relative;
+    z-index: 1;
+
     line-height: 10px;
 
     color: hsl(0, 0%, 50%);
@@ -163,7 +173,7 @@
 }
 
 .style-declaration-section.invalid-selector > .header > .selector,
-.style-declaration-section.invalid-selector > .header > .selector> * {
+.style-declaration-section.invalid-selector > .header > .selector > * {
     color: red;
 }
 

@@ -24,11 +24,12 @@
  *
  */
 
-#ifndef SuspendableTimer_h
-#define SuspendableTimer_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "Timer.h"
+
+#include <wtf/Seconds.h>
 
 namespace WebCore {
 
@@ -43,11 +44,15 @@ public:
     // Part of TimerBase interface used by SuspendableTimer clients, modified to work when suspended.
     bool isActive() const { return TimerBase::isActive() || (m_suspended && m_savedIsActive); }
     bool isSuspended() const { return m_suspended; }
-    void startRepeating(double repeatInterval);
-    void startOneShot(double interval);
-    double repeatInterval() const;
-    void augmentFireInterval(double delta);
-    void augmentRepeatInterval(double delta);
+
+    Seconds repeatInterval() const;
+
+    void startRepeating(Seconds repeatInterval);
+    void startOneShot(Seconds interval);
+
+    void augmentFireInterval(Seconds delta);
+    void augmentRepeatInterval(Seconds delta);
+
     using TimerBase::didChangeAlignmentInterval;
     using TimerBase::operator new;
     using TimerBase::operator delete;
@@ -55,23 +60,20 @@ public:
     void cancel(); // Equivalent to TimerBase::stop(), whose name conflicts with ActiveDOMObject::stop().
 
 private:
-    virtual void fired() override = 0;
+    void fired() override = 0;
 
     // ActiveDOMObject API.
-    bool hasPendingActivity() const override final;
-    void stop() override final;
-    bool canSuspendForDocumentSuspension() const override final;
-    void suspend(ReasonForSuspension) override final;
-    void resume() override final;
+    bool hasPendingActivity() const final;
+    void stop() final;
+    bool canSuspendForDocumentSuspension() const final;
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
 
-    bool m_suspended;
+    Seconds m_savedNextFireInterval;
+    Seconds m_savedRepeatInterval;
 
-    double m_savedNextFireInterval;
-    double m_savedRepeatInterval;
-    bool m_savedIsActive;
+    bool m_suspended { false };
+    bool m_savedIsActive { false };
 };
 
 } // namespace WebCore
-
-#endif // SuspendableTimer_h
-

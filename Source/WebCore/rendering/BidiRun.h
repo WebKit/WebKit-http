@@ -21,32 +21,30 @@
  *
  */
 
-#ifndef BidiRun_h
-#define BidiRun_h
+#pragma once
 
 #include <wtf/StdLibExtras.h>
 #include "BidiResolver.h"
-#include "RenderText.h"
 
 namespace WebCore {
 
 class BidiContext;
 class InlineBox;
+class RenderObject;
 
 struct BidiRun : BidiCharacterRun {
-    BidiRun(int start, int stop, RenderObject&, BidiContext*, UCharDirection);
+    BidiRun(unsigned start, unsigned stop, RenderObject&, BidiContext*, UCharDirection);
     ~BidiRun();
 
-    BidiRun* next() { return static_cast<BidiRun*>(m_next); }
+    BidiRun* next() { return static_cast<BidiRun*>(BidiCharacterRun::next()); }
+    std::unique_ptr<BidiRun> takeNext();
     RenderObject& renderer() { return m_renderer; }
     InlineBox* box() { return m_box; }
-    void setBox(InlineBox& box) { m_box = &box; }
+    void setBox(InlineBox* box) { m_box = box; }
 
 private:
     RenderObject& m_renderer;
     InlineBox* m_box;
 };
 
-}
-
-#endif // BidiRun_h
+} // namespace WebCore

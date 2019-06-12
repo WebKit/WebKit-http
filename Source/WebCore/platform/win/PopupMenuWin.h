@@ -28,8 +28,6 @@
 #include "ScrollableArea.h"
 #include "Scrollbar.h"
 #include <OleAcc.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/win/GDIObject.h>
 
@@ -91,23 +89,23 @@ private:
     void setScrollbarCapturingMouse(bool b) { m_scrollbarCapturingMouse = b; }
 
     // ScrollableArea
-    virtual int scrollSize(ScrollbarOrientation) const override;
-    virtual int scrollOffset(ScrollbarOrientation) const override;
-    virtual void setScrollOffset(const IntPoint&) override;
-    virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) override;
-    virtual void invalidateScrollCornerRect(const IntRect&) override { }
-    virtual bool isActive() const override { return true; }
+    int scrollSize(ScrollbarOrientation) const override;
+    int scrollOffset(ScrollbarOrientation) const override;
+    void setScrollOffset(const IntPoint&) override;
+    void invalidateScrollbarRect(Scrollbar&, const IntRect&) override;
+    void invalidateScrollCornerRect(const IntRect&) override { }
+    bool isActive() const override { return true; }
     ScrollableArea* enclosingScrollableArea() const override { return 0; }
-    virtual bool isScrollableOrRubberbandable() override { return true; }
-    virtual bool hasScrollableOrRubberbandableAncestor() override { return true; }
-    virtual bool isScrollCornerVisible() const override { return false; }
-    virtual IntRect scrollCornerRect() const override { return IntRect(); }
-    virtual Scrollbar* verticalScrollbar() const override { return m_scrollbar.get(); }
-    virtual IntSize visibleSize() const override;
-    virtual IntSize contentsSize() const override;
-    virtual IntRect scrollableAreaBoundingBox(bool* = nullptr) const override;
-    virtual bool updatesScrollLayerPositionOnMainThread() const override { return true; }
-    virtual bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const override { return false; }
+    bool isScrollableOrRubberbandable() override { return true; }
+    bool hasScrollableOrRubberbandableAncestor() override { return true; }
+    bool isScrollCornerVisible() const override { return false; }
+    IntRect scrollCornerRect() const override { return IntRect(); }
+    Scrollbar* verticalScrollbar() const override { return m_scrollbar.get(); }
+    IntSize visibleSize() const override;
+    IntSize contentsSize() const override;
+    IntRect scrollableAreaBoundingBox(bool* = nullptr) const override;
+    bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const override { return false; }
+    bool shouldPlaceBlockDirectionScrollbarOnLeft() const final { return false; }
 
     // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
     void scrollTo(int offset);
@@ -136,6 +134,8 @@ private:
     bool m_wasClicked { false };
     bool m_scrollbarCapturingMouse { false };
     bool m_showPopup { false };
+    float m_scaleFactor { 1 };
+    FontCascade m_font;
 
     friend class AccessiblePopupMenu;
 };

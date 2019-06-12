@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Inc. All rights reserved.
  * Copyright (C) 2008 Nikolas Zimmermann <zimmermann@kde.org>
  *
  * This library is free software; you can redistribute it and/or
@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLScriptElement_h
-#define HTMLScriptElement_h
+#pragma once
 
 #include "HTMLElement.h"
 #include "ScriptElement.h"
@@ -34,40 +33,45 @@ public:
     static Ref<HTMLScriptElement> create(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted = false);
 
     String text() const { return scriptContent(); }
-    void setText(const String&);
+    WEBCORE_EXPORT void setText(const String&);
 
     URL src() const;
 
-    void setAsync(bool);
-    bool async() const;
+    WEBCORE_EXPORT void setAsync(bool);
+    WEBCORE_EXPORT bool async() const;
+
+    WEBCORE_EXPORT void setCrossOrigin(const AtomicString&);
+    WEBCORE_EXPORT String crossOrigin() const;
+
+    using HTMLElement::ref;
+    using HTMLElement::deref;
 
 private:
     HTMLScriptElement(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void finishedInsertingSubtree() override;
-    virtual void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void finishedInsertingSubtree() final;
+    void childrenChanged(const ChildChange&) final;
 
-    virtual bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const final;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
-    virtual String sourceAttributeValue() const override;
-    virtual String charsetAttributeValue() const override;
-    virtual String typeAttributeValue() const override;
-    virtual String languageAttributeValue() const override;
-    virtual String forAttributeValue() const override;
-    virtual String eventAttributeValue() const override;
-    virtual bool asyncAttributeValue() const override;
-    virtual bool deferAttributeValue() const override;
-    virtual bool hasSourceAttribute() const override;
+    String sourceAttributeValue() const final;
+    String charsetAttributeValue() const final;
+    String typeAttributeValue() const final;
+    String languageAttributeValue() const final;
+    String forAttributeValue() const final;
+    String eventAttributeValue() const final;
+    bool hasAsyncAttribute() const final;
+    bool hasDeferAttribute() const final;
+    bool hasNoModuleAttribute() const final;
+    bool hasSourceAttribute() const final;
 
-    virtual void dispatchLoadEvent() override;
+    void dispatchLoadEvent() final;
 
-    virtual Ref<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
+    Ref<Element> cloneElementWithoutAttributesAndChildren(Document&) final;
 };
 
 } //namespace
-
-#endif

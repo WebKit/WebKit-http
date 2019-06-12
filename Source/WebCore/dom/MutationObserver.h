@@ -28,29 +28,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MutationObserver_h
-#define MutationObserver_h
+#pragma once
 
-#include <wtf/HashMap.h>
+#include "ExceptionOr.h"
+#include <wtf/Forward.h>
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/AtomicString.h>
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
-class Dictionary;
+class HTMLSlotElement;
 class MutationCallback;
 class MutationObserverRegistration;
 class MutationRecord;
 class Node;
 
-typedef int ExceptionCode;
-
-typedef unsigned char MutationObserverOptions;
-typedef unsigned char MutationRecordDeliveryOptions;
+using MutationObserverOptions = unsigned char;
+using MutationRecordDeliveryOptions = unsigned char;
 
 class MutationObserver : public RefCounted<MutationObserver> {
     friend class MutationObserverMicrotask;
@@ -73,36 +67,45 @@ public:
         CharacterDataOldValue = 1 << 6,
     };
 
-    static Ref<MutationObserver> create(PassRefPtr<MutationCallback>);
+    static Ref<MutationObserver> create(Ref<MutationCallback>&&);
 
     ~MutationObserver();
 
-    void observe(Node*, const Dictionary&, ExceptionCode&);
-    Vector<RefPtr<MutationRecord>> takeRecords();
+    struct Init {
+        bool childList;
+        std::optional<bool> attributes;
+        std::optional<bool> characterData;
+        bool subtree;
+        std::optional<bool> attributeOldValue;
+        std::optional<bool> characterDataOldValue;
+        std::optional<Vector<String>> attributeFilter;
+    };
+
+    ExceptionOr<void> observe(Node&, const Init&);
+    Vector<Ref<MutationRecord>> takeRecords();
     void disconnect();
-    void observationStarted(MutationObserverRegistration*);
-    void observationEnded(MutationObserverRegistration*);
-    void enqueueMutationRecord(PassRefPtr<MutationRecord>);
+
+    void observationStarted(MutationObserverRegistration&);
+    void observationEnded(MutationObserverRegistration&);
+    void enqueueMutationRecord(Ref<MutationRecord>&&);
     void setHasTransientRegistration();
     bool canDeliver();
 
-    HashSet<Node*> getObservedNodes() const;
+    HashSet<Node*> observedNodes() const;
+
+    static void enqueueSlotChangeEvent(HTMLSlotElement&);
 
 private:
-    struct ObserverLessThan;
-
-    explicit MutationObserver(PassRefPtr<MutationCallback>);
+    explicit MutationObserver(Ref<MutationCallback>&&);
     void deliver();
 
-    static void deliverAllMutations();
+    static void notifyMutationObservers();
     static bool validateOptions(MutationObserverOptions);
 
-    RefPtr<MutationCallback> m_callback;
-    Vector<RefPtr<MutationRecord>> m_records;
+    Ref<MutationCallback> m_callback;
+    Vector<Ref<MutationRecord>> m_records;
     HashSet<MutationObserverRegistration*> m_registrations;
     unsigned m_priority;
 };
 
-}
-
-#endif // MutationObserver_h
+} // namespace WebCore

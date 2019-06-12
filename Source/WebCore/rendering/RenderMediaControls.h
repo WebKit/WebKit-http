@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RenderMediaControls_h
-#define RenderMediaControls_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
-#include "MediaControlElements.h"
 
 namespace WebCore {
 
@@ -53,5 +51,3 @@ public:
 } // namespace WebCore
 
 #endif // ENABLE(VIDEO)
-
-#endif // RenderMediaControls_h

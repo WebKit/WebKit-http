@@ -38,6 +38,7 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
         this._textEditor.addEventListener(WebInspector.TextEditor.Event.FormattingDidChange, this._textEditorFormattingDidChange, this);
         this._textEditor.addEventListener(WebInspector.SourceCodeTextEditor.Event.ContentWillPopulate, this._contentWillPopulate, this);
         this._textEditor.addEventListener(WebInspector.SourceCodeTextEditor.Event.ContentDidPopulate, this._contentDidPopulate, this);
+        this._textEditor.readOnly = !this._shouldBeEditable();
 
         WebInspector.probeManager.addEventListener(WebInspector.ProbeManager.Event.ProbeSetAdded, this._probeSetsChanged, this);
         WebInspector.probeManager.addEventListener(WebInspector.ProbeManager.Event.ProbeSetRemoved, this._probeSetsChanged, this);
@@ -53,15 +54,21 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
         this._showTypesButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("show-types", toolTipTypes, activatedToolTipTypes, "Images/NavigationItemTypes.svg", 13, 14);
         this._showTypesButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleTypeAnnotations, this);
         this._showTypesButtonNavigationItem.enabled = false;
-
         WebInspector.showJavaScriptTypeInformationSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showJavaScriptTypeInformationSettingChanged, this);
+
+        let toolTipCodeCoverage = WebInspector.UIString("Fade unexecuted code");
+        let activatedToolTipCodeCoverage = WebInspector.UIString("Do not fade unexecuted code");
+        this._codeCoverageButtonNavigationItem = new WebInspector.ActivateButtonNavigationItem("code-coverage", toolTipCodeCoverage, activatedToolTipCodeCoverage, "Images/NavigationItemCodeCoverage.svg", 13, 14);
+        this._codeCoverageButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleUnexecutedCodeHighlights, this);
+        this._codeCoverageButtonNavigationItem.enabled = false;
+        WebInspector.enableControlFlowProfilerSetting.addEventListener(WebInspector.Setting.Event.Changed, this._enableControlFlowProfilerSettingChanged, this);
     }
 
     // Public
 
     get navigationItems()
     {
-        return [this._prettyPrintButtonNavigationItem, this._showTypesButtonNavigationItem];
+        return [this._prettyPrintButtonNavigationItem, this._showTypesButtonNavigationItem, this._codeCoverageButtonNavigationItem];
     }
 
     get managesOwnIssues()
@@ -78,7 +85,7 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
     get supplementalRepresentedObjects()
     {
         var objects = WebInspector.probeManager.probeSets.filter(function(probeSet) {
-            return this._resource.url === probeSet.breakpoint.url;
+            return this._resource.contentIdentifier === probeSet.breakpoint.contentIdentifier;
         }, this);
 
         // If the SourceCodeTextEditor has an executionLineNumber, we can assume
@@ -115,17 +122,20 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
         this.resource.removeEventListener(null, null, this);
         WebInspector.probeManager.removeEventListener(null, null, this);
         WebInspector.showJavaScriptTypeInformationSetting.removeEventListener(null, null, this);
+        WebInspector.enableControlFlowProfilerSetting.removeEventListener(null, null, this);
 
         this._textEditor.close();
     }
 
     get supportsSave()
     {
-        return true;
+        return super.supportsSave || this.resource instanceof WebInspector.CSSStyleSheet;
     }
 
     get saveData()
     {
+        if (this.resource instanceof WebInspector.CSSStyleSheet)
+            return {url: "web-inspector:///InspectorStyleSheet.css", content: this._textEditor.string, forceSaveAs: true};
         return {url: this.resource.url, content: this._textEditor.string};
     }
 
@@ -181,39 +191,52 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
         if (this._textEditor.parentView === this)
             return;
 
-        // Check the MIME-type for CSS since Resource.Type.Stylesheet also includes XSL, which we can't edit yet.
-        if (this.resource.type === WebInspector.Resource.Type.Stylesheet && this.resource.syntheticMIMEType === "text/css")
-            this._textEditor.readOnly = false;
+        this.removeLoadingIndicator();
 
-        // Allow editing any local file since edits can be saved and reloaded right from the Inspector.
-        if (this.resource.urlComponents.scheme === "file")
-            this._textEditor.readOnly = false;
-
-        this.element.removeChildren();
         this.addSubview(this._textEditor);
     }
 
     _contentDidPopulate(event)
     {
         this._prettyPrintButtonNavigationItem.enabled = this._textEditor.canBeFormatted();
+
         this._showTypesButtonNavigationItem.enabled = this._textEditor.canShowTypeAnnotations();
         this._showTypesButtonNavigationItem.activated = WebInspector.showJavaScriptTypeInformationSetting.value;
+
+        this._codeCoverageButtonNavigationItem.enabled = this._textEditor.canShowCoverageHints();
+        this._codeCoverageButtonNavigationItem.activated = WebInspector.enableControlFlowProfilerSetting.value;
     }
 
     _togglePrettyPrint(event)
     {
         var activated = !this._prettyPrintButtonNavigationItem.activated;
-        this._textEditor.formatted = activated;
+        this._textEditor.updateFormattedState(activated);
     }
 
     _toggleTypeAnnotations(event)
     {
-        this._textEditor.toggleTypeAnnotations();
+        this._showTypesButtonNavigationItem.enabled = false;
+        this._textEditor.toggleTypeAnnotations().then(() => {
+            this._showTypesButtonNavigationItem.enabled = true;
+        });
+    }
+
+    _toggleUnexecutedCodeHighlights(event)
+    {
+        this._codeCoverageButtonNavigationItem.enabled = false;
+        this._textEditor.toggleUnexecutedCodeHighlights().then(() => {
+            this._codeCoverageButtonNavigationItem.enabled = true;
+        });
     }
 
     _showJavaScriptTypeInformationSettingChanged(event)
     {
         this._showTypesButtonNavigationItem.activated = WebInspector.showJavaScriptTypeInformationSetting.value;
+    }
+
+    _enableControlFlowProfilerSettingChanged(event)
+    {
+        this._codeCoverageButtonNavigationItem.activated = WebInspector.enableControlFlowProfilerSetting.value;
     }
 
     _textEditorFormattingDidChange(event)
@@ -251,5 +274,21 @@ WebInspector.TextResourceContentView = class TextResourceContentView extends Web
         var breakpoint = event.data.probeSet.breakpoint;
         if (breakpoint.sourceCodeLocation.sourceCode === this.resource)
             this.dispatchEventToListeners(WebInspector.ContentView.Event.SupplementalRepresentedObjectsDidChange);
+    }
+
+    _shouldBeEditable()
+    {
+        if (this.resource instanceof WebInspector.CSSStyleSheet)
+            return true;
+
+        // Check the MIME-type for CSS since Resource.Type.Stylesheet also includes XSL, which we can't edit yet.
+        if (this.resource.type === WebInspector.Resource.Type.Stylesheet && this.resource.syntheticMIMEType === "text/css")
+            return true;
+
+        // Allow editing any local file since edits can be saved and reloaded right from the Inspector.
+        if (this.resource.urlComponents.scheme === "file")
+            return true;
+
+        return false;
     }
 };

@@ -33,6 +33,7 @@
 #import "WebCoreArgumentCoders.h"
 #import "WebPage.h"
 #import "WebPageProxyMessages.h"
+#import <WebCore/Editor.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/GraphicsContext.h>
@@ -89,15 +90,18 @@ void FindIndicatorOverlayClientIOS::drawRect(PageOverlay& overlay, GraphicsConte
 bool FindController::updateFindIndicator(Frame& selectedFrame, bool isShowingOverlay, bool shouldAnimate)
 {
     if (m_findIndicatorOverlay)
-        m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(m_findIndicatorOverlay.get(), PageOverlay::FadeMode::DoNotFade);
+        m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_findIndicatorOverlay, PageOverlay::FadeMode::DoNotFade);
 
     RefPtr<TextIndicator> textIndicator = TextIndicator::createWithSelectionInFrame(selectedFrame, findTextIndicatorOptions, TextIndicatorPresentationTransition::None, FloatSize(totalHorizontalMargin, totalVerticalMargin));
-    if (!textIndicator)
+    if (!textIndicator) {
+        m_findIndicatorOverlay = nullptr;
+        m_isShowingFindIndicator = false;
         return false;
+    }
 
     m_findIndicatorOverlayClient = std::make_unique<FindIndicatorOverlayClientIOS>(selectedFrame, textIndicator.get());
     m_findIndicatorOverlay = PageOverlay::create(*m_findIndicatorOverlayClient, PageOverlay::OverlayType::Document);
-    m_webPage->mainFrame()->pageOverlayController().installPageOverlay(m_findIndicatorOverlay, PageOverlay::FadeMode::DoNotFade);
+    m_webPage->mainFrame()->pageOverlayController().installPageOverlay(*m_findIndicatorOverlay, PageOverlay::FadeMode::DoNotFade);
 
     m_findIndicatorOverlay->setFrame(enclosingIntRect(textIndicator->textBoundingRectInRootViewCoordinates()));
     m_findIndicatorOverlay->setNeedsDisplay();
@@ -124,22 +128,22 @@ void FindController::hideFindIndicator()
     if (!m_isShowingFindIndicator)
         return;
 
-    m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(m_findIndicatorOverlay.get(), PageOverlay::FadeMode::DoNotFade);
+    m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_findIndicatorOverlay, PageOverlay::FadeMode::DoNotFade);
     m_findIndicatorOverlay = nullptr;
     m_isShowingFindIndicator = false;
     m_foundStringMatchIndex = -1;
     didHideFindIndicator();
 }
 
-static void setCompositionSelectionChangeEnabledInAllFrames(WebPage& page, bool enabled)
+static void setSelectionChangeUpdatesEnabledInAllFrames(WebPage& page, bool enabled)
 {
     for (Frame* coreFrame = page.mainFrame(); coreFrame; coreFrame = coreFrame->tree().traverseNext())
-        coreFrame->editor().setIgnoreCompositionSelectionChange(enabled);
+        coreFrame->editor().setIgnoreSelectionChanges(enabled);
 }
 
 void FindController::willFindString()
 {
-    setCompositionSelectionChangeEnabledInAllFrames(*m_webPage, true);
+    setSelectionChangeUpdatesEnabledInAllFrames(*m_webPage, true);
 }
 
 void FindController::didFindString()
@@ -157,12 +161,12 @@ void FindController::didFindString()
 
 void FindController::didFailToFindString()
 {
-    setCompositionSelectionChangeEnabledInAllFrames(*m_webPage, false);
+    setSelectionChangeUpdatesEnabledInAllFrames(*m_webPage, false);
 }
 
 void FindController::didHideFindIndicator()
 {
-    setCompositionSelectionChangeEnabledInAllFrames(*m_webPage, false);
+    setSelectionChangeUpdatesEnabledInAllFrames(*m_webPage, false);
 }
 
 } // namespace WebKit

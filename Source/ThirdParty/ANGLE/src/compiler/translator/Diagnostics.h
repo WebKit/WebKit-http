@@ -9,35 +9,47 @@
 
 #include "common/angleutils.h"
 #include "compiler/preprocessor/DiagnosticsBase.h"
+#include "compiler/translator/Severity.h"
 
-class TInfoSink;
+namespace sh
+{
+
+class TInfoSinkBase;
+struct TSourceLoc;
 
 class TDiagnostics : public pp::Diagnostics, angle::NonCopyable
 {
   public:
-    TDiagnostics(TInfoSink& infoSink);
-    virtual ~TDiagnostics();
-
-    TInfoSink& infoSink() { return mInfoSink; }
+    TDiagnostics(TInfoSinkBase &infoSink);
+    ~TDiagnostics() override;
 
     int numErrors() const { return mNumErrors; }
     int numWarnings() const { return mNumWarnings; }
 
-    void writeInfo(Severity severity,
-                   const pp::SourceLocation& loc,
-                   const std::string& reason,
-                   const std::string& token,
-                   const std::string& extra);
+    void error(const pp::SourceLocation &loc, const char *reason, const char *token);
+    void warning(const pp::SourceLocation &loc, const char *reason, const char *token);
+
+    void error(const TSourceLoc &loc, const char *reason, const char *token);
+    void warning(const TSourceLoc &loc, const char *reason, const char *token);
+
+    void globalError(const char *message);
+
+    void resetErrorCount();
 
   protected:
-    virtual void print(ID id,
-                       const pp::SourceLocation& loc,
-                       const std::string& text);
+    void writeInfo(Severity severity,
+                   const pp::SourceLocation &loc,
+                   const char *reason,
+                   const char *token);
+
+    void print(ID id, const pp::SourceLocation &loc, const std::string &text) override;
 
   private:
-    TInfoSink& mInfoSink;
+    TInfoSinkBase &mInfoSink;
     int mNumErrors;
     int mNumWarnings;
 };
+
+}  // namespace sh
 
 #endif  // COMPILER_TRANSLATOR_DIAGNOSTICS_H_

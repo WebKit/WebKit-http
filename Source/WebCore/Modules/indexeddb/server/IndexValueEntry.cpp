@@ -39,7 +39,7 @@ IndexValueEntry::IndexValueEntry(bool unique)
     if (m_unique)
         m_key = nullptr;
     else
-        m_orderedKeys = new std::set<IDBKeyData>;
+        m_orderedKeys = new IDBKeyDataSet;
 }
 
 IndexValueEntry::~IndexValueEntry()
@@ -101,13 +101,13 @@ IndexValueEntry::Iterator::Iterator(IndexValueEntry& entry)
     ASSERT(m_entry->m_key);
 }
 
-IndexValueEntry::Iterator::Iterator(IndexValueEntry& entry, std::set<IDBKeyData>::iterator iterator)
+IndexValueEntry::Iterator::Iterator(IndexValueEntry& entry, IDBKeyDataSet::iterator iterator)
     : m_entry(&entry)
     , m_forwardIterator(iterator)
 {
 }
 
-IndexValueEntry::Iterator::Iterator(IndexValueEntry& entry, std::set<IDBKeyData>::reverse_iterator iterator)
+IndexValueEntry::Iterator::Iterator(IndexValueEntry& entry, IDBKeyDataSet::reverse_iterator iterator)
     : m_entry(&entry)
     , m_forward(false)
     , m_reverseIterator(iterator)
@@ -127,7 +127,7 @@ const IDBKeyData& IndexValueEntry::Iterator::key() const
 
 bool IndexValueEntry::Iterator::isValid() const
 {
-#ifndef NDEBUG
+#if !LOG_DISABLED
     if (m_entry) {
         if (m_entry->m_unique)
             ASSERT(m_entry->m_key);
@@ -218,7 +218,7 @@ IndexValueEntry::Iterator IndexValueEntry::reverseFind(const IDBKeyData& key, Cu
     }
 
     ASSERT(m_orderedKeys);
-    auto iterator = std::set<IDBKeyData>::reverse_iterator(m_orderedKeys->upper_bound(key));
+    auto iterator = IDBKeyDataSet::reverse_iterator(m_orderedKeys->upper_bound(key));
     if (iterator == m_orderedKeys->rend())
         return { };
 

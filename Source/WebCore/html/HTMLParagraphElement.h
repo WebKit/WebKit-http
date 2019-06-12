@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLParagraphElement_h
-#define HTMLParagraphElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -35,10 +34,8 @@ public:
 private:
     HTMLParagraphElement(const QualifiedName&, Document&);
 
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 };
 
 } // namespace WebCore
-
-#endif // HTMLParagraphElement_h

@@ -82,7 +82,7 @@ class Printer(object):
             self._print_default("Placing new baselines in %s" % self._port.baseline_path())
 
         fs = self._port.host.filesystem
-        fallback_path = [fs.split(x)[1] for x in self._port.baseline_search_path()]
+        fallback_path = [fs.relpath(x, self._port.layout_tests_dir()).replace("../", "") for x in self._port.baseline_search_path()]
         self._print_default("Baseline search path: %s -> generic" % " -> ".join(fallback_path))
 
         self._print_default("Using %s build" % self._options.configuration)
@@ -94,7 +94,7 @@ class Printer(object):
         self._print_default("Regular timeout: %s, slow test timeout: %s" %
                   (self._options.time_out_ms, self._options.slow_time_out_ms))
 
-        self._print_default('Command line: ' + ' '.join(self._port.driver_cmd_line()))
+        self._print_default('Command line: ' + ' '.join(self._port.driver_cmd_line_for_logging()))
         self._print_default('')
 
     def print_found(self, num_all_test_files, num_to_run, repeat_each, iterations):
@@ -112,12 +112,14 @@ class Printer(object):
 
     def print_workers_and_shards(self, num_workers, num_shards):
         driver_name = self._port.driver_name()
+
+        device_suffix = ' for device "{}"'.format(self._options.device_class) if self._options.device_class else ''
         if num_workers == 1:
-            self._print_default("Running 1 %s." % driver_name)
-            self._print_debug("(%s)." % grammar.pluralize(num_shards, "shard"))
+            self._print_default('Running 1 {}{}.'.format(driver_name, device_suffix))
+            self._print_debug('({}).'.format(grammar.pluralize(num_shards, "shard")))
         else:
-            self._print_default("Running %s in parallel." % (grammar.pluralize(num_workers, driver_name)))
-            self._print_debug("(%d shards)." % num_shards)
+            self._print_default('Running {} in parallel{}.'.format(grammar.pluralize(num_workers, driver_name), device_suffix))
+            self._print_debug('({} shards).'.format(num_shards))
         self._print_default('')
 
     def _print_expected_results_of_type(self, run_results, result_type, result_type_str, tests_with_result_type_callback):
@@ -344,7 +346,6 @@ class Printer(object):
             return ' passed%s' % exp_string
         else:
             return ' failed%s (%s)' % (exp_string, ', '.join(failure.message() for failure in failures))
-
 
     def _print_test_trace(self, result, exp_str, got_str):
         test_name = result.test_name

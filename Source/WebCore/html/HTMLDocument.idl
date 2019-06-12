@@ -19,46 +19,9 @@
  */
 
 [
-    CustomGetOwnPropertySlot,
-    CustomNamedGetter,
+    CustomToJSObject,
     NewImpurePropertyFiresWatchpoints,
     OverrideBuiltins,
-] interface HTMLDocument : Document {
-    [Custom, ForwardDeclareInHeader] void open();
-    void close();
-    [Custom] void write([Default=Undefined] optional DOMString text);
-    [Custom] void writeln([Default=Undefined] optional DOMString text);
-
-    readonly attribute HTMLCollection embeds;
-    readonly attribute HTMLCollection plugins;
-    readonly attribute HTMLCollection scripts;
-
-    // Extensions
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // FIXME: This should eventually be available (if they are wanted) for all languages.
-    [Custom, Replaceable, Deletable] readonly attribute HTMLAllCollection all;
-#endif
-
-    void clear();
-
-    void captureEvents();
-    void releaseEvents();
-
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
-    readonly attribute long width;
-    readonly attribute long height;
-#endif
-
-             [TreatNullAs=NullString] attribute DOMString dir;
-             [TreatNullAs=NullString] attribute DOMString designMode;
-    readonly attribute DOMString compatMode;
-
-    // Deprecated attributes
-             [TreatNullAs=NullString] attribute DOMString bgColor;
-             [TreatNullAs=NullString] attribute DOMString fgColor;
-             [TreatNullAs=NullString] attribute DOMString alinkColor;
-             [TreatNullAs=NullString] attribute DOMString linkColor;
-             [TreatNullAs=NullString] attribute DOMString vlinkColor;
+] interface HTMLDocument : Document {    
+    getter (DOMWindow or Element or HTMLCollection) (DOMString name);
 };
-

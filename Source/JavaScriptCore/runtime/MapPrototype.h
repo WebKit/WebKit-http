@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MapPrototype_h
-#define MapPrototype_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -34,7 +33,7 @@ class MapPrototype : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
 
-    static const unsigned StructureFlags = OverridesGetOwnPropertySlot | Base::StructureFlags;
+    static const unsigned StructureFlags = HasStaticPropertyTable | Base::StructureFlags;
 
     static MapPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
     {
@@ -56,13 +55,9 @@ private:
     {
     }
     void finishCreation(VM&, JSGlobalObject*);
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 };
 
-EncodedJSValue JSC_HOST_CALL privateFuncIsMap(ExecState*);
 EncodedJSValue JSC_HOST_CALL privateFuncMapIterator(ExecState*);
 EncodedJSValue JSC_HOST_CALL privateFuncMapIteratorNext(ExecState*);
 
-}
-
-#endif // !defined(MapPrototype_h)
+} // namespace JSC

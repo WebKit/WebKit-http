@@ -18,11 +18,9 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSShadowValue_h
-#define CSSShadowValue_h
+#pragma once
 
 #include "CSSValue.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -30,16 +28,16 @@ namespace WebCore {
 class CSSPrimitiveValue;
 
 // Used for text-shadow and box-shadow
-class CSSShadowValue : public CSSValue {
+class CSSShadowValue final : public CSSValue {
 public:
-    static Ref<CSSShadowValue> create(PassRefPtr<CSSPrimitiveValue> x,
-        PassRefPtr<CSSPrimitiveValue> y,
-        PassRefPtr<CSSPrimitiveValue> blur,
-        PassRefPtr<CSSPrimitiveValue> spread,
-        PassRefPtr<CSSPrimitiveValue> style,
-        PassRefPtr<CSSPrimitiveValue> color)
+    static Ref<CSSShadowValue> create(RefPtr<CSSPrimitiveValue>&& x,
+        RefPtr<CSSPrimitiveValue>&& y,
+        RefPtr<CSSPrimitiveValue>&& blur,
+        RefPtr<CSSPrimitiveValue>&& spread,
+        RefPtr<CSSPrimitiveValue>&& style,
+        RefPtr<CSSPrimitiveValue>&& color)
     {
-        return adoptRef(*new CSSShadowValue(x, y, blur, spread, style, color));
+        return adoptRef(*new CSSShadowValue(WTFMove(x), WTFMove(y), WTFMove(blur), WTFMove(spread), WTFMove(style), WTFMove(color)));
     }
 
     String customCSSText() const;
@@ -54,16 +52,14 @@ public:
     RefPtr<CSSPrimitiveValue> color;
 
 private:
-    CSSShadowValue(PassRefPtr<CSSPrimitiveValue> x,
-        PassRefPtr<CSSPrimitiveValue> y,
-        PassRefPtr<CSSPrimitiveValue> blur,
-        PassRefPtr<CSSPrimitiveValue> spread,
-        PassRefPtr<CSSPrimitiveValue> style,
-        PassRefPtr<CSSPrimitiveValue> color);
+    CSSShadowValue(RefPtr<CSSPrimitiveValue>&& x,
+        RefPtr<CSSPrimitiveValue>&& y,
+        RefPtr<CSSPrimitiveValue>&& blur,
+        RefPtr<CSSPrimitiveValue>&& spread,
+        RefPtr<CSSPrimitiveValue>&& style,
+        RefPtr<CSSPrimitiveValue>&& color);
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSShadowValue, isShadowValue())
-
-#endif // CSSShadowValue_h

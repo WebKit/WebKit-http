@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ProxyConstructor_h
-#define ProxyConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
 
@@ -44,7 +43,7 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info()); 
     }
 
-    void finishCreation(VM&, const char* name);
+    void finishCreation(VM&, const char* name, JSGlobalObject*);
 
 private:
     ProxyConstructor(VM&, Structure*);
@@ -55,5 +54,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // ProxyConstructor_h

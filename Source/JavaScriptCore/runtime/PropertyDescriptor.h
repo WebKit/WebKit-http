@@ -23,17 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PropertyDescriptor_h
-#define PropertyDescriptor_h
+#pragma once
 
+#include "DefinePropertyAttributes.h"
 #include "JSCJSValue.h"
 
 namespace JSC {
 
 class GetterSetter;
-
-// See ES5.1 9.12
-bool sameValue(ExecState*, JSValue, JSValue);
 
 class PropertyDescriptor {
 public:
@@ -59,6 +56,7 @@ public:
     JS_EXPORT_PRIVATE bool isAccessorDescriptor() const;
     unsigned attributes() const { return m_attributes; }
     JSValue value() const { return m_value; }
+    GetterSetter* slowGetterSetter(ExecState*); // Be aware that this will lazily allocate a GetterSetter object. It's much better to use getter() and setter() individually if possible.
     JS_EXPORT_PRIVATE JSValue getter() const;
     JS_EXPORT_PRIVATE JSValue setter() const;
     JSObject* getterObject() const;
@@ -95,6 +93,30 @@ private:
     unsigned m_seenAttributes;
 };
 
+inline PropertyDescriptor toPropertyDescriptor(JSValue value, JSValue getter, JSValue setter, DefinePropertyAttributes attributes)
+{
+    // We assume that validation is already done.
+    PropertyDescriptor desc;
+
+    if (std::optional<bool> enumerable = attributes.enumerable())
+        desc.setEnumerable(enumerable.value());
+
+    if (std::optional<bool> configurable = attributes.configurable())
+        desc.setConfigurable(configurable.value());
+
+    if (attributes.hasValue())
+        desc.setValue(value);
+
+    if (std::optional<bool> writable = attributes.writable())
+        desc.setWritable(writable.value());
+
+    if (attributes.hasGet())
+        desc.setGetter(getter);
+
+    if (attributes.hasSet())
+        desc.setSetter(setter);
+
+    return desc;
 }
 
-#endif
+}

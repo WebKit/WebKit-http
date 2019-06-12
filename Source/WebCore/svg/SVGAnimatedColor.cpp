@@ -20,9 +20,9 @@
 #include "config.h"
 #include "SVGAnimatedColor.h"
 
+#include "CSSParser.h"
 #include "RenderElement.h"
 #include "SVGAnimateElementBase.h"
-#include "SVGColor.h"
 
 namespace WebCore {
 
@@ -33,7 +33,7 @@ SVGAnimatedColorAnimator::SVGAnimatedColorAnimator(SVGAnimationElement& animatio
 
 std::unique_ptr<SVGAnimatedType> SVGAnimatedColorAnimator::constructFromString(const String& string)
 {
-    return SVGAnimatedType::createColor(std::make_unique<Color>(SVGColor::colorFromRGBColorString(string)));
+    return SVGAnimatedType::createColor(std::make_unique<Color>(CSSParser::parseColor(string.stripWhiteSpace())));
 }
 
 void SVGAnimatedColorAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGAnimatedType* to)
@@ -61,7 +61,7 @@ static inline Color currentColor(SVGElement& targetElement)
 
 static Color parseColorFromString(SVGAnimationElement*, const String& string)
 {
-    return SVGColor::colorFromRGBColorString(string);
+    return CSSParser::parseColor(string.stripWhiteSpace());
 }
 
 void SVGAnimatedColorAnimator::calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType* from, SVGAnimatedType* to, SVGAnimatedType* toAtEndOfDuration, SVGAnimatedType* animated)
@@ -85,6 +85,8 @@ void SVGAnimatedColorAnimator::calculateAnimatedValue(float percentage, unsigned
     auto& toAtEndOfDurationColor = toAtEndOfDuration->color();
     auto& animatedColor = animated->color();
 
+    // FIXME: ExtendedColor - this will need to handle blending between colors in different color spaces,
+    // as well as work with non [0-255] Colors.
     float red = animatedColor.red();
     m_animationElement->animateAdditiveNumber(percentage, repeatCount, fromColor.red(), toColor.red(), toAtEndOfDurationColor.red(), red);
 
@@ -102,10 +104,10 @@ void SVGAnimatedColorAnimator::calculateAnimatedValue(float percentage, unsigned
 
 float SVGAnimatedColorAnimator::calculateDistance(const String& fromString, const String& toString)
 {
-    Color from = SVGColor::colorFromRGBColorString(fromString);
+    Color from = CSSParser::parseColor(fromString.stripWhiteSpace());
     if (!from.isValid())
         return -1;
-    Color to = SVGColor::colorFromRGBColorString(toString);
+    Color to = CSSParser::parseColor(toString.stripWhiteSpace());
     if (!to.isValid())
         return -1;
     float red = from.red() - to.red();

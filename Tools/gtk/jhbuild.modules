@@ -16,10 +16,9 @@
       <dep package="gtk+"/>
       <dep package="glib"/>
       <dep package="glib-networking"/>
-      <dep package="gnome-icon-theme"/>
-      <dep package="gnome-icon-theme-symbolic"/>
-      <dep package="gnome-themes-standard"/>
+      <dep package="adwaita-icon-theme"/>
       <dep package="gtk-doc"/>
+      <dep package="icu"/>
       <dep package="libsoup"/>
       <dep package="atk"/>
       <dep package="gstreamer"/>
@@ -28,14 +27,17 @@
       <dep package="gst-plugins-bad"/>
       <dep package="gst-libav"/>
       <dep package="openwebrtc"/>
+      <dep package="pango"/>
       <dep package="llvm"/>
       <dep package="shared-mime-info"/>
+      <dep package="libgpg-error"/>
+      <dep package="libgcrypt"/>
       <if condition-set="linux">
           <dep package="xserver"/>
           <dep package="mesa"/>
-          <dep package="libseccomp"/>
           <dep package="at-spi2-core"/>
           <dep package="at-spi2-atk"/>
+          <dep package="weston"/>
       </if>
       <if condition-set="macos">
           <dep package="gsettings-desktop-schemas"/>
@@ -46,6 +48,8 @@
   <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
   <repository type="git" name="github.com"
       href="https://github.com"/>
+  <repository type="tarball" name="github-tarball"
+      href="https://github.com/"/>
   <repository type="tarball" name="sourceware.org-mirror"
       href="http://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
@@ -66,10 +70,20 @@
       href="http://download.savannah.gnu.org/releases/"/>
   <repository type="git" name="freedesktop-git"
       href="http://anongit.freedesktop.org/git"/>
-  <repository type="tarball" name="people.freedesktop.org"
-      href="http://people.freedesktop.org"/>
+ <repository type="tarball" name="dri.freedesktop.org"
+      href="http://dri.freedesktop.org"/>
+  <repository type="tarball" name="mesa.freedesktop.org"
+      href="https://mesa.freedesktop.org"/>
+  <repository type="tarball" name="wayland.freedesktop.org"
+      href="http://wayland.freedesktop.org"/>
   <repository type="tarball" name="llvm.org"
       href="http://llvm.org"/>
+  <repository type="tarball" name="webkitgtk-jhbuild-mirror"
+      href="http://webkitgtk.org/jhbuild_mirror/"/>
+  <repository type="tarball" name="downloads.webmproject.org"
+      href="http://downloads.webmproject.org/releases/webm/"/>
+  <repository type="tarball" name="gnupg.org"
+      href="https://www.gnupg.org/ftp/gcrypt/"/>
 
   <autotools id="cairo">
     <if condition-set="linux">
@@ -83,21 +97,20 @@
       <dep package="pixman"/>
       <dep package="glib"/>
     </dependencies>
-    <branch module="releases/cairo-1.14.2.tar.xz" version="1.14.2"
+    <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
             repo="cairographics.org"
-            hash="sha1:c8da68aa66ca0855b5d0ff552766d3e8679e1d24"/>
+	    hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e"/>
   </autotools>
 
-  <!-- FIXME: Pixman 0.32.6 isn't buildable with Clang, but disable-mmx option fixes
-              the build. This workaround can be removed once the original bug is fixed.
-              Details can be found here: https://bugs.webkit.org/show_bug.cgi?id=151441 -->
+  <!-- FIXME: Pixman 0.32.6 ARM iwMMXt fast path isn't buildable with GCC 4.9 and
+              ARM traditional instruction set. It causes a build failure on Raspbian.
+              This workaround can be removed once we raise the minimum GCC version
+              for WebKitGTK+ above 4.9 -->
   <autotools id="pixman" autogen-sh="configure"
-             autogenargs="--enable-gtk=no --disable-mmx">
-    <branch module="releases/pixman-0.32.6.tar.gz" version="0.32.6"
+             autogenargs="--enable-gtk=no --disable-arm-iwmmxt">
+    <branch module="releases/pixman-0.34.0.tar.gz" version="0.34.0"
             repo="cairographics.org"
-            hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"
-            md5sum="3a30859719a41bd0f5cccffbfefdd4c2">
-    </branch>
+	    hash="sha1:a1b1683c1a55acce9d928fea1ab6ceb79142ddc7"/>
   </autotools>
 
   <autotools id="fonts" supports-non-srcdir-builds="no"
@@ -120,24 +133,14 @@
   </autotools>
 
   <autotools id="harfbuzz" autogen-sh="configure">
-    <branch module="software/harfbuzz/release/harfbuzz-0.9.35.tar.bz2"
-            version="0.9.35"
-            checkoutdir="harfbuzz-0.9.35"
+    <dependencies>
+      <dep package="icu"/>
+    </dependencies>
+    <branch module="software/harfbuzz/release/harfbuzz-1.4.2.tar.bz2"
+            version="1.4.2"
+            checkoutdir="harfbuzz-1.4.2"
             repo="freedesktop.org"
-            hash="sha256:0aa1a8aba6f502321cf6fef3c9d2c73dde48389c5ed1d3615a7691944c2a06ed"
-            md5sum="531ee8650626ecddcd90b2a4637e31d4">
-    </branch>
-  </autotools>
-
-  <autotools id="libffi" autogen-sh="configure">
-    <branch module="libffi/libffi-3.1.tar.gz" version="3.1"
-             repo="sourceware.org-mirror"
-             hash="sha256:97feeeadca5e21870fa4433bc953d1b3af3f698d5df8a428f68b73cd60aef6eb"
-             md5sum="f5898b29bbfd70502831a212d9249d10"/>
-  </autotools>
-
-  <autotools id="libseccomp" supports-non-srcdir-builds="no" autogen-sh="./autogen.sh; ./configure">
-    <branch repo="github.com" module="seccomp/libseccomp.git" tag="v2.2.3"/>
+            hash="sha256:8f234dcfab000fdec24d43674fffa2fdbdbd654eb176afbde30e8826339cb7b3"/>
   </autotools>
 
   <autotools id="gdk-pixbuf" autogen-sh="configure"
@@ -145,9 +148,9 @@
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/gdk-pixbuf/2.30/gdk-pixbuf-2.30.8.tar.xz" version="2.30.8"
+    <branch module="/pub/GNOME/sources/gdk-pixbuf/2.36/gdk-pixbuf-2.36.6.tar.xz" version="2.36.6"
             repo="ftp.gnome.org"
-            hash="sha256:4853830616113db4435837992c0aebd94cbb993c44dc55063cee7f72a7bef8be"/>
+            hash="sha256:455eb90c09ed1b71f95f3ebfe1c904c206727e0eeb34fc94e5aaf944663a820c"/>
   </autotools>
 
   <autotools id="librsvg" autogen-sh="configure"
@@ -160,12 +163,9 @@
       <dep package="glib"/>
       <dep package="cairo"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/librsvg/2.36/librsvg-2.36.1.tar.xz" version="2.36.1"
+    <branch module="/pub/GNOME/sources/librsvg/2.40/librsvg-2.40.16.tar.xz" version="2.40.16"
             repo="ftp.gnome.org"
-            hash="sha256:786b95e1a091375c5ef2997a21c69ff24d7077afeff18197355f54d9dcbcd8c5"
-            md5sum="89d483f30a7c77245b7ee02faaea5a5a">
-        <patch file="librsvg-2.36.1-bump-up-config.guess-to-support-aarch64.patch" strip="1"/>
-    </branch>
+            hash="sha256:d48bcf6b03fa98f07df10332fb49d8c010786ddca6ab34cbba217684f533ff2e"/>
   </autotools>
 
   <autotools id="gtk+" autogen-sh="configure"
@@ -180,13 +180,14 @@
       <dep package="atk"/>
       <if condition-set="linux">
         <dep package="at-spi2-atk"/>
+        <dep package="wayland"/>
       </if>
       <dep package="gdk-pixbuf"/>
       <dep package="pango"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/gtk+/3.16/gtk+-3.16.4.tar.xz" version="3.16.4"
+    <branch module="/pub/GNOME/sources/gtk+/3.22/gtk+-3.22.11.tar.xz" version="3.22.11"
             repo="ftp.gnome.org"
-            hash="sha256:1ee5dbd7a4cb81a91eaa1b7ae64ba5a3eab6a3c0a764155583ab96524590fc8e"/>
+            hash="sha256:db440670cb6f3c098b076df3735fbc4e69359bd605385e87c90ee48344a804ca"/>
   </autotools>
 
   <autotools id="glib"
@@ -195,10 +196,10 @@
     <dependencies>
       <dep package="libffi"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/glib/2.44/glib-2.44.1.tar.xz" version="2.44.1"
+    <branch module="/pub/GNOME/sources/glib/2.52/glib-2.52.1.tar.xz" version="2.52.1"
             repo="ftp.gnome.org"
-            hash="sha256:8811deacaf8a503d0a9b701777ea079ca6a4277be10e3d730d2112735d5eca07">
-      <patch file="glib-warning-fix.patch" strip="1"/>
+            hash="sha256:948c26b817f2d77e2a6cdd5082c60a51bf5dea854890286a1d5d4ccde5ce586f">
+      <patch file="gdate-suppress-string-format-literal-warning.patch" strip="1"/>
     </branch>
   </autotools>
 
@@ -209,28 +210,32 @@
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/glib-networking/2.41/glib-networking-2.41.4.tar.xz" version="2.41.4"
+    <branch module="/pub/GNOME/sources/glib-networking/2.50/glib-networking-2.50.0.tar.xz" version="2.50.0"
             repo="ftp.gnome.org"
-            hash="sha256:930ad618865dcf81765d0f48cb6f13e22d76203efa59d30604aed0384ce80fd7"
-            md5sum="f88e163322c0834f9781d6224771ab2e"/>
+            hash="sha256:3f1a442f3c2a734946983532ce59ed49120319fdb10c938447c373d5e5286bee"
+            md5sum="4d06d0224646f274918b1cb6da9a07f6"/>
   </autotools>
 
   <autotools id="libsoup"
-             autogenargs="--without-gnome --disable-introspection">
+             autogenargs="--disable-introspection">
     <if condition-set="macos">
       <autogenargs value="--disable-tls-check"/>
     </if>
     <dependencies>
       <dep package="glib-networking"/>
     </dependencies>
-    <branch module="libsoup" version="2.49.91.1"
-            repo="git.gnome.org"
-            tag="f7292448160128b3cb4b7cd06c2447f81fd8c6c9"/>
+    <branch module="/pub/GNOME/sources/libsoup/2.57/libsoup-2.57.1.tar.xz" version="2.57.1"
+            repo="ftp.gnome.org"
+            hash="sha256:ca1ca037e89e8bc7b782559f3ec5d89c9d0b836f505b2f95e008ed517fd6658f">
+      <patch file="libsoup-auth-Fix-async-authentication-when-flag-SOUP_MESSAGE.patch" strip="1"/>
+      <patch file="libsoup-auth-do-not-use-cached-credentials-in-lookup-method-.patch" strip="1"/>
+      <patch file="libsoup-soup-message-io-Do-not-fail-when-there-s-no-empty-li.patch" strip="1"/>
+    </branch>
   </autotools>
 
-  <autotools id="fontconfig" 
-             autogen-sh="configure"
-             autogenargs="--enable-libxml2">
+  <autotools id="fontconfig"
+             autogenargs="--enable-libxml2"
+             supports-non-srcdir-builds="no">
     <if condition-set="macos">
       <autogenargs value="--with-add-fonts=/System/Library/Fonts,/Library/Fonts,~/Library/Fonts"/>
     </if>
@@ -243,55 +248,42 @@
             hash="sha256:b6b066c7dce3f436fdc0dfbae9d36122b38094f4f53bd8dffd45e195b0540d8d"
             md5sum="e75e303b4f7756c2b16203a57ac87eba">
       <patch file="fontconfig-fix-osx-cache.diff" strip="1"/>
+
+      <!-- These will be in the next release after 2.12.1
+           https://cgit.freedesktop.org/fontconfig/commit/?id=1ab5258f7c2abfafcd63a760ca08bf93591912da
+           https://cgit.freedesktop.org/fontconfig/commit/?id=9878b306f6c673d3d6cd9db487f67eb426cc03df -->
+      <patch file="fontconfig-Avoid-conflicts-with-integer-width-macros-from-TS-18661-1-2014.patch" strip="1"/>
+      <patch file="fontconfig-Fix-the-build-issue-with-gperf-3.1.patch" strip="1"/>
+
+      <!-- The previous patch modifies "configure.ac", and tarballs don't
+           include the "autogen.sh" script, so let's re-add it here. -->
+      <patch file="fontconfig-2.11.1-add-autogen.patch" strip="0"/>
     </branch>
   </autotools>
 
-  <autotools id="gnome-icon-theme" autogen-sh="configure">
-    <dependencies>
-      <dep package="gtk+"/>
-    </dependencies>
-    <branch module="pub/GNOME/sources/gnome-icon-theme/3.2/gnome-icon-theme-3.2.1.tar.xz" version="3.2.1"
-            repo="ftp.gnome.org"
-            hash="sha256:a7f0a8b17e91ac338fdbc01ac59a8738e9c1e201de492c070d43aacf291a8959"
-            md5sum="40be1e5a6eae11181311a6fc432cf892">
-    </branch>
-  </autotools>
-
-  <autotools id="gnome-icon-theme-symbolic" supports-non-srcdir-builds="no" autogen-sh="configure">
-    <dependencies>
-      <dep package="gtk+"/>
-    </dependencies>
-    <branch module="pub/GNOME/sources/gnome-icon-theme-symbolic/3.2/gnome-icon-theme-symbolic-3.2.1.tar.xz" version="3.2.1"
-            repo="ftp.gnome.org"
-            hash="sha256:a558af2f87f761f00421f49c1addd2149b70228158e09327fa861219ac1a63cb"
-            md5sum="94137d3c256f2cc80298a9bef15d68c4">
-    </branch>
-  </autotools>
-
-  <autotools id="gnome-themes-standard" autogen-sh="configure">
+  <autotools id="adwaita-icon-theme" autogen-sh="configure">
     <dependencies>
       <dep package="gtk+"/>
       <dep package="librsvg"/>
     </dependencies>
-    <branch module="pub/GNOME/sources/gnome-themes-standard/3.6/gnome-themes-standard-3.6.0.tar.xz" version="3.6.0"
+    <branch module="pub/GNOME/sources/adwaita-icon-theme/3.24/adwaita-icon-theme-3.24.0.tar.xz" version="3.24.0"
             repo="ftp.gnome.org"
-            hash="sha256:d832fd38f7659f470df5ddc52131a59f989c75f3a70f8b3a514f89d90d4f43ec">
-    </branch>
+            hash="sha256:ccf79ff3bd340254737ce4d28b87f0ccee4b3358cd3cd5cd11dc7b42f41b272a"/>
   </autotools>
 
   <autotools id="atk"
              autogen-sh="configure"
              autogenargs="--disable-introspection">
-    <branch module="pub/GNOME/sources/atk/2.15/atk-2.15.4.tar.xz" version="2.15.4"
+    <branch module="pub/GNOME/sources/atk/2.25/atk-2.25.2.tar.xz" version="2.25.2"
             repo="ftp.gnome.org"
-            hash="sha256:0dddfa73a02178ca21a8de172c86d699aa887b4efeec736b4c8721eee4ac349c"/>
+            hash="sha256:75ac1f63e845f895dec8d72d4645ef5f362e32c921cc78987f2f19c2ce212a24"/>
   </autotools>
 
   <autotools id="at-spi2-core" 
              autogenargs="--disable-introspection">
-    <branch module="pub/GNOME/sources/at-spi2-core/2.10/at-spi2-core-2.10.0.tar.xz" version="2.10.0"
+    <branch module="pub/GNOME/sources/at-spi2-core/2.25/at-spi2-core-2.25.4.tar.xz" version="2.25.4"
             repo="ftp.gnome.org"
-            hash="sha256:964155c7574220a00e11e1c0d91f2d3017ed603920eb1333ff9cbdb6a22744db">
+            hash="sha256:baeccbf92e84e64bb4a853f076c27b78ab44edf1fa5414a9c6e59a9b180bc9d8">
     </branch>
     <dependencies>
       <dep package="glib"/>
@@ -299,9 +291,9 @@
   </autotools>
 
   <autotools id="at-spi2-atk">
-    <branch module="pub/GNOME/sources/at-spi2-atk/2.10/at-spi2-atk-2.10.0.tar.xz" version="2.10.0"
+    <branch module="pub/GNOME/sources/at-spi2-atk/2.25/at-spi2-atk-2.25.3.tar.xz" version="2.25.3"
             repo="ftp.gnome.org"
-            hash="sha256:dea7ff2f9bc9bbdb0351112616d738de718b55739cd2511afecac51604c31a94">
+            hash="sha256:b7aab1a4ee7182083fcfafb595b7b3fe4df34aa2230c775050fe6015b01f84e1">
     </branch>
     <dependencies>
       <dep package="glib"/>
@@ -318,83 +310,73 @@
             md5sum="9c0cfef285d5c4a5c80d00904ddab380"/>
   </autotools>
 
-  <autotools id="orc" autogenargs="--disable-gtk-doc" autogen-sh="configure">
-    <branch module="orc/orc-0.4.17.tar.gz" version="0.4.17"
-            repo="gstreamer"
-            hash="sha256:4fc7cca48c59fff23afee78fb642cdbde001f56401c8f47b95a16578d1d5d7e8"
-            md5sum="af1bf3dab9e69f3c36f389285e2a12a1"/>
-  </autotools>
-
-  <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
+  <autotools id="gstreamer" autogen-sh="configure" autogenargs="--disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="orc"/>
     </dependencies>
-    <branch module="gstreamer/gstreamer-${version}.tar.xz" version="1.6.3"
+    <branch module="gstreamer/gstreamer-${version}.tar.xz" version="1.10.5"
             repo="gstreamer"
-            hash="sha256:22f9568d67b87cf700a111f381144bd37cb93790a77e4e331db01fe854a37f24"
-            md5sum="b4cdeb2b9cb20dd6ac022a4f417eae0d"/>
+            hash="sha256:bc06243600817f637029da29d089d5908d1d266542f68bf6626a10c5f05f1f1d">
+      <patch file="gstreamer-0001-protection-added-function-to-filter-system-ids.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="gst-plugins-base"
-             autogen-sh="autogen.sh"
+             autogen-sh="configure"
              autogenargs="--disable-examples --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch module="gst-plugins-base/gst-plugins-base-${version}.tar.xz" version="1.6.3"
+    <branch module="gst-plugins-base/gst-plugins-base-${version}.tar.xz" version="1.10.5"
             repo="gstreamer"
-            hash="sha256:b6154f8fdba4877e95efd94610ef0ada4f0171cd12eb829a3c3c97345d9c7a75"
-            md5sum="3ddde0ad598ef69f58d6a2e87f8b460f"/>
+            hash="sha256:1c401a79bd1e4521c6ef1b66579bddedd9136e164e54792aab4bfcf3485bf9a7"/>
   </autotools>
 
-  <autotools id="gst-plugins-good" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
+  <autotools id="gst-plugins-good" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error  OBJCFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="gst-plugins-base"/>
+      <dep package="libvpx"/>
     </dependencies>
 
-    <branch module="gst-plugins-good/gst-plugins-good-${version}.tar.xz" version="1.6.3"
+    <branch module="gst-plugins-good/gst-plugins-good-${version}.tar.xz" version="1.10.5"
             repo="gstreamer"
-            hash="sha256:24b19db70b2a83461ebddfe20033db432dadfdb5d4b54ffb1dfa0d830134a177"
-            md5sum="a1958df7aa498b42793e2f2048673815"/>
+            hash="sha256:be053f6ed716eeb517cec148cec637cdce571c6e04d5c21409e2876fb76c7639">
+      <patch file="gst-plugins-good-0003-rtpbin-receive-bundle-support.patch" strip="1"/>
+      <patch file="gst-plugins-good-0005-souphttpsrc-cookie-jar-and-context-query-support.patch" strip="1"/>
+      <patch file="gst-plugins-good-0006-qtdemux-add-context-for-a-preferred-protection.patch" strip="1"/>
+      <patch file="gst-plugins-good-0008-qtdemux-also-push-buffers-without-encryption-info-in.patch" strip="1"/>
+    </branch>
   </autotools>
 
-  <autotools id="gst-plugins-bad" autogenargs="--disable-examples --disable-gtk-doc">
+  <autotools id="gst-plugins-bad" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc">
     <if condition-set="macos">
       <autogenargs value="--disable-introspection"/>
-      <makeargs value="CFLAGS+=-Wno-error CXXFLAGS+=-Wno-error OBJCFLAGS+=-Wno-error"/>
     </if>
     <dependencies>
       <dep package="gst-plugins-base"/>
+      <dep package="openh264"/>
     </dependencies>
-    <branch module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" version="1.6.3"
+    <branch module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" version="1.10.5"
             repo="gstreamer"
-            hash="sha256:971b29101d6a9c5e3fe94d99d977a227f58f0b2d29b6ca2c7f292052542b3a61"
-            md5sum="4857adcafe41e4b9b8805cf88303bd55"/>
+            hash="sha256:c5806040bb83b43be86ce592e6a19c5d83d7776f7d9f434eb4b911c4efff3573"/>
   </autotools>
 
-  <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
-    <if condition-set="macos">
-      <makeargs value="CFLAGS+=-Wno-error"/>
-    </if>
+  <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="gst-libav/gst-libav-${version}.tar.xz" version="1.6.3"
+    <branch module="gst-libav/gst-libav-${version}.tar.xz" version="1.10.5"
             repo="gstreamer"
-            hash="sha256:857b9c060a0337de38c6d26238c47352433c02eabf26c2f860c854dbc35bd4ab"
-            md5sum="cfe9a06913d4fd4067e9e47f6e05fac2"/>
+            hash="sha256:e4d2f315f478d47281fbfdfbd590a63d23704ca37911d7142d5992616f4b28d3"/>
   </autotools>
 
   <autotools id="xserver" autogenargs="--disable-xinerama --enable-glx --enable-composite --disable-xorg --disable-dmx --disable-xnest --disable-xquartz --disable-xwin --disable-xephyr --disable-xfake --disable-xfbdev --disable-install-setuid --disable-unit-tests --disable-present --enable-unix-transport --enable-tcp-transport --disable-local-transport --with-xkb-path=/usr/share/X11/xkb --with-xkb-output=/var/lib/xkb --with-xkb-bin-directory=/usr/bin --without-dtrace">
@@ -406,6 +388,40 @@
             hash="sha256:abb6e1cc9213a9915a121f48576ff6739a0b8cdb3d32796f9a7743c9a6efc871"
             md5sum="80d140f631d862b76dc67ae983151c77">
       <patch file="xserver-remove-bogus-dependencies.patch" strip="1"/>
+      <patch file="xserver-search-for-DRI-drivers-at-LIBGL_DRIVERS_PATH-environ.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="wayland" autogenargs="--disable-documentation">
+    <pkg-config>wayland-server.pc</pkg-config>
+    <branch module="releases/wayland-1.12.0.tar.xz"
+            version="1.12.0"
+            repo="wayland.freedesktop.org"
+            hash="sha256:d6b4135cba0188abcb7275513c72dede751d6194f6edc5b82183a3ba8b821ab1"/>
+  </autotools>
+
+  <autotools id="wayland-protocols">
+    <branch module="releases/wayland-protocols-1.7.tar.xz"
+            version="1.7"
+	    repo="wayland.freedesktop.org"
+	    hash="sha256:635f2a937d318f1fecb97b54074ca211486e38af943868dd0fa82ea38d091c1f"/>
+  </autotools>
+
+  <autotools id="weston" autogenargs="--enable-x11-compositor --disable-rpi-compositor --disable-fbdev-compositor --disable-setuid-install --disable-ivi-shell --disable-weston-launch --with-cairo=gl">
+    <pkg-config>weston.pc</pkg-config>
+    <dependencies>
+      <dep package="wayland"/>
+      <dep package="libdrm"/>
+      <dep package="xserver"/>
+      <dep package="cairo"/>
+      <dep package="libinput"/>
+      <dep package="wayland-protocols"/>
+    </dependencies>
+    <branch module="releases/weston-1.12.0.tar.xz"
+            version="1.12.0"
+            repo="wayland.freedesktop.org"
+            hash="sha256:ac7ac2a32e3b9f50131fccded5d2326bd36b2226712d90b61999118a09af5033">
+      <patch file="weston-libweston-include-weston-egl-ext.h-in-drm-x11-and-wa.patch" strip="1"/>
     </branch>
   </autotools>
 
@@ -416,59 +432,85 @@
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/gtk-doc/1.20/gtk-doc-1.20.tar.xz" version="1.20"
+    <branch module="/pub/GNOME/sources/gtk-doc/${version}/gtk-doc-${version}.tar.xz" version="1.25"
             repo="ftp.gnome.org"
-            hash="sha256:3e6ecf134dbf92a74c24d79848fea3a48e59ab95408a38c6405905d95a293011"/>
+            hash="sha256:1ea46ed400e6501f975acaafea31479cea8f32f911dca4dff036f59e6464fd42"/>
   </autotools>
 
-  <autotools id="mesa" autogenargs="--enable-xlib-glx --disable-dri --disable-egl --with-gallium-drivers=swrast" skip-install="true">
+  <autotools id="libdrm" autogen-sh="configure">
+    <pkg-config>libdrm.pc</pkg-config>
+    <branch module="/libdrm/libdrm-2.4.65.tar.bz2" version="2.4.65"
+            repo="dri.freedesktop.org"
+            hash="sha256:71960ac8bde7d710992b1bc8879935e8300a870c36bd06f22412d0447e3d96c4"/>
+  </autotools>
+
+  <autotools id="mesa"
+    autogen-template="%(srcdir)s/%(autogen-sh)s --prefix %(prefix)s/softGL %(autogenargs)s"
+    autogenargs="--disable-dri3 --enable-dri --enable-glx --enable-egl --with-egl-platforms=x11,wayland --with-dri-drivers=swrast --with-gallium-drivers=swrast">
     <!--- WARNING: At jhbuildrc, when we define the path to the Gallium llvmpipe software rasterizer (needed by XvfbDriver),
           we assume that the directory is named "Mesa". So, don't change the checkoutdir name even if you update the version.  -->
-    <branch module="/~brianp/mesa/11.0.6/mesa-11.0.6.tar.xz" version="11.0.6"
-            checkoutdir="Mesa"
-            repo="people.freedesktop.org"
+    <branch checkoutdir="Mesa"
+            version="11.0.6"
+            module="/archive/older-versions/11.x/${version}/mesa-${version}.tar.xz"
+            repo="mesa.freedesktop.org"
             hash="sha256:8340e64cdc91999840404c211496f3de38e7b4cb38db34e2f72f1642c5134760">
     </branch>
     <dependencies>
       <dep package="llvm"/>
+      <dep package="libdrm"/>
+      <dep package="wayland"/>
     </dependencies>
   </autotools>
 
   <autotools id="libusrsctp" supports-non-srcdir-builds="no" autogen-sh="./bootstrap; ./configure --disable-warnings-as-errors">
     <branch repo="github.com" module="sctplab/usrsctp.git" checkoutdir="usrsctp" tag="078ff3252f73327e0ac11d6fd5eff62011f6646e"/>
-   </autotools>
+  </autotools>
+
+  <autotools id="openh264" supports-non-srcdir-builds="no" autogen-sh="pseudo-configure">
+    <branch module="cisco/openh264/archive/v${version}.tar.gz" version="1.5.0"
+            checkoutdir="openh264-${version}" repo="github-tarball">
+      <patch file="openh264-configure.patch" strip="0"/>
+    </branch>
+  </autotools>
+
+  <autotools id="libvpx"
+    autogen-template="%(srcdir)s/configure --prefix=%(prefix)s --enable-pic --as=yasm --disable-unit-tests --size-limit=16384x16384 --enable-postproc --enable-multi-res-encoding --enable-temporal-denoising --enable-vp9-temporal-denoising --enable-vp9-postproc --enable-shared">
+    <branch version="1.6.0"
+            module="libvpx-${version}.tar.bz2"
+            repo="downloads.webmproject.org"
+            hash="sha256:d0afbb5eb1ecae68f8d578abace160a97e2e8a230e3028cf4db115d59a695aad"/>
+  </autotools>
 
    <autotools id="gst-plugins-openwebrtc" supports-parallel-builds="no" supports-non-srcdir-builds="no" autogen-sh="./autogen.sh; ./configure">
-     <if condition-set="macos">
-       <makeargs value="CFLAGS+=-Wno-error"/>
-     </if>
      <dependencies>
        <dep package="gst-plugins-base"/>
        <dep package="libusrsctp"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc-gst-plugins.git" checkoutdir="gst-plugins-openwebrtc" tag="e359b67484af90f416ea35e301205d2b53c77a14"/>
+    <branch repo="github.com" module="Igalia/openwebrtc-gst-plugins.git" checkoutdir="gst-plugins-openwebrtc" tag="9b2199ea970369dbf1d9ca2f8e61c95f21db2b6e"/>
    </autotools>
 
-   <autotools id="libnice" supports-non-srcdir-builds="no">
+  <autotools id="libnice" supports-non-srcdir-builds="no">
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch repo="freedesktop-git" module="libnice/libnice.git" tag="0.1.10" checkoutdir="libnice"/>
+    <branch module="libnice/libnice/archive/${version}.tar.gz" version="2803a0b4b70af9684e05ef5ed3f0c2fbca4b6c93"
+            checkoutdir="libnice-${version}" repo="github-tarball">
+      <patch file="libnice-0001-nicesrc-spin-the-agent-mainloop-in-a-separate-thread.patch" strip="1"/>
+      <patch file="libnice-0001-TURN-allow-REALM-to-be-empty.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes">
-     <if condition-set="macos">
-       <makeargs value="CFLAGS+=-Wno-error"/>
-     </if>
     <dependencies>
       <dep package="gst-plugins-openwebrtc"/>
+      <dep package="gst-plugins-bad"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="13516c7f79a0c48bb411464f7613d4b426c70f5b"/>
+    <branch repo="github.com" module="Igalia/openwebrtc.git" checkoutdir="openwebrtc" tag="7f3d23e034818893db198f4b56e41609abd8847b"/>
   </autotools>
 
   <autotools id="llvm"
-             autogenargs="--enable-optimized --disable-terminfo --disable-zlib --enable-targets=host --disable-backtraces --disable-crash-overrides --disable-expensive-checks --disable-debug-runtime --disable-assertions --enable-shared">
+             autogenargs="--enable-optimized --disable-terminfo --disable-zlib --enable-targets=host --disable-backtraces --disable-crash-overrides --disable-expensive-checks --disable-debug-runtime --disable-assertions --enable-shared --enable-bindings=none">
     <branch repo="llvm.org"
             module="/releases/3.7.0/llvm-3.7.0.src.tar.xz" version="3.7.0" checkoutdir="llvm-3.7.0"
             hash="sha256:ab45895f9dcdad1e140a3a79fd709f64b05ad7364e308c0e582c5b02e9cc3153"/>
@@ -497,20 +539,64 @@
       <patch file="shared-mime-info-xhtml-magic.patch" strip="1"/>
     </branch>
   </autotools>
-  
+
+  <autotools id="icu"
+             autogen-sh="./source/configure"
+             autogenargs="--disable-samples --enable-weak-threads">
+    <branch module="icu4c-57_1-src.tgz" version="57.1" checkoutdir="icu"
+            repo="webkitgtk-jhbuild-mirror"
+            hash="sha256:ff8c67cb65949b1e7808f2359f2b80f722697048e90e7cfc382ec1fe229e9581">
+      <patch file="icudata-stdlibs.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="libgpg-error" autogen-sh="configure">
+    <branch module="libgpg-error/libgpg-error-1.27.tar.bz2"
+            version="1.27"
+            repo="gnupg.org"
+            hash="sha256:4f93aac6fecb7da2b92871bb9ee33032be6a87b174f54abf8ddf0911a22d29d2">
+    </branch>
+  </autotools>
+
+  <autotools id="libgcrypt" autogen-sh="configure">
+    <branch module="libgcrypt/libgcrypt-1.7.6.tar.bz2"
+            version="1.7.6"
+            repo="gnupg.org"
+            hash="sha256:626aafee84af9d2ce253d2c143dc1c0902dda045780cc241f39970fc60be05bc">
+        <patch file="libgcrypt-use-only-dev-urandom-for-testing.patch" strip="1"/>
+    </branch>
+    <dependencies>
+      <dep package="libgpg-error"/>
+    </dependencies>
+  </autotools>
+
   <!-- Dependencies listed below this point are not thought to affect test results, and are only
        included because they themselves depend on other dependencies built by jhbuild. -->
 
-  <autotools id="pango" autogen-sh="configure"
-             autogenargs="--enable-cairo">
+  <autotools id="pango"
+	     autogen-sh="configure"
+	     autogenargs="--with-cairo --disable-introspection">
+    <branch module="pub/GNOME/sources/pango/1.40/pango-1.40.5.tar.xz" version="1.40.5"
+	    repo="ftp.gnome.org"
+	    hash="sha256:24748140456c42360b07b2c77a1a2e1216d07c056632079557cd4e815b9d01c9"/>
     <dependencies>
+      <dep package="glib"/>
       <dep package="cairo"/>
-      <dep package="fontconfig"/>
+      <if condition-unset="macos">
+        <dep package="harfbuzz"/>
+        <dep package="fontconfig"/>
+      </if>
     </dependencies>
-    <branch module="/pub/GNOME/sources/pango/1.36/pango-1.36.8.tar.xz" version="1.36.8"
-            repo="ftp.gnome.org"
-            hash="sha256:18dbb51b8ae12bae0ab7a958e7cf3317c9acfc8a1e1103ec2f147164a0fc2d07">
-    </branch>
+  </autotools>
+
+  <!-- libinput is only included because the version of libinput shipped with Debian Jessie
+    os too old for building Weston. This may be removed after Debian Strech is released -->
+  <autotools id="libinput" autogen-sh="configure"  autogenargs="--disable-libwacom --disable-tests --disable-documentation">
+    <pkg-config>libinput.pc</pkg-config>
+    <branch module="software/libinput/libinput-1.6.3.tar.xz"
+            version="1.6.3"
+            repo="freedesktop.org"
+            hash="sha256:74da2798728e79c3aedfffa268d8fe811c3766ca3708309c0dc45502be137da1"/>
   </autotools>
 
 </moduleset>

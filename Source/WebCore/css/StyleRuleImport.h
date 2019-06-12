@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef StyleRuleImport_h
-#define StyleRuleImport_h
+#pragma once
 
 #include "CachedResourceHandle.h"
 #include "CachedStyleSheetClient.h"
@@ -33,10 +32,10 @@ class CachedCSSStyleSheet;
 class MediaQuerySet;
 class StyleSheetContents;
 
-class StyleRuleImport : public StyleRuleBase {
+class StyleRuleImport final : public StyleRuleBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<StyleRuleImport> create(const String& href, PassRefPtr<MediaQuerySet>);
+    static Ref<StyleRuleImport> create(const String& href, Ref<MediaQuerySet>&&);
 
     ~StyleRuleImport();
     
@@ -51,15 +50,16 @@ public:
     MediaQuerySet* mediaQueries() const { return m_mediaQueries.get(); }
 
     void requestStyleSheet();
+    const CachedCSSStyleSheet* cachedCSSStyleSheet() const { return m_cachedSheet.get(); }
 
 private:
     // NOTE: We put the CachedStyleSheetClient in a member instead of inheriting from it
     // to avoid adding a vptr to StyleRuleImport.
-    class ImportedStyleSheetClient : public CachedStyleSheetClient {
+class ImportedStyleSheetClient final : public CachedStyleSheetClient {
     public:
         ImportedStyleSheetClient(StyleRuleImport* ownerRule) : m_ownerRule(ownerRule) { }
         virtual ~ImportedStyleSheetClient() { }
-        virtual void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet* sheet)
+        void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet* sheet) final
         {
             m_ownerRule->setCSSStyleSheet(href, baseURL, charset, sheet);
         }
@@ -70,7 +70,7 @@ private:
     void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet*);
     friend class ImportedStyleSheetClient;
 
-    StyleRuleImport(const String& href, PassRefPtr<MediaQuerySet>);
+    StyleRuleImport(const String& href, Ref<MediaQuerySet>&&);
 
     StyleSheetContents* m_parentStyleSheet;
 
@@ -87,5 +87,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRuleImport)
     static bool isType(const WebCore::StyleRuleBase& rule) { return rule.isImportRule(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

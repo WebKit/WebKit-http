@@ -32,6 +32,7 @@
 #include "InspectorValues.h"
 #include "RegularExpression.h"
 #include "Yarr.h"
+#include "YarrInterpreter.h"
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
@@ -103,12 +104,13 @@ std::unique_ptr<Vector<size_t>> lineEndings(const String& text)
 
     size_t start = 0;
     while (start < text.length()) {
-        size_t nextStart = text.findNextLineStart(start);
-        if (nextStart == notFound) {
+        size_t nextStart = text.find('\n', start);
+        if (nextStart == notFound || nextStart == (text.length() - 1)) {
             result->append(text.length());
             break;
         }
 
+        nextStart += 1;
         result->append(nextStart);
         start = nextStart;
     }
@@ -176,7 +178,7 @@ static String findMagicComment(const String& content, const String& patternStrin
 {
     ASSERT(!content.isNull());
     const char* error = nullptr;
-    JSC::Yarr::YarrPattern pattern(patternString, false, true, &error);
+    JSC::Yarr::YarrPattern pattern(patternString, JSC::RegExpFlags::FlagMultiline, &error);
     ASSERT(!error);
     BumpPointerAllocator regexAllocator;
     auto bytecodePattern = JSC::Yarr::byteCompile(pattern, &regexAllocator);

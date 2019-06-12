@@ -24,12 +24,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef XMLHttpRequestProgressEventThrottle_h
-#define XMLHttpRequestProgressEventThrottle_h
+#pragma once
 
 #include "Timer.h"
-#include "wtf/Vector.h"
 #include <wtf/Forward.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -56,9 +55,9 @@ public:
     void resume();
 
 private:
-    static const double minimumProgressEventDispatchingIntervalInSeconds;
+    static const Seconds minimumProgressEventDispatchingInterval;
 
-    virtual void fired();
+    void fired() override;
     void dispatchDeferredEvents();
     void flushProgressEvent();
     void dispatchEvent(Event&);
@@ -80,5 +79,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // XMLHttpRequestProgressEventThrottle_h

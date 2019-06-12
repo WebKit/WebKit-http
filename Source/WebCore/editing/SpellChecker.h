@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SpellChecker_h
-#define SpellChecker_h
+#pragma once
 
 #include "Element.h"
 #include "Range.h"
@@ -45,27 +44,27 @@ class SpellChecker;
 
 class SpellCheckRequest : public TextCheckingRequest {
 public:
-    static RefPtr<SpellCheckRequest> create(TextCheckingTypeMask, TextCheckingProcessType, PassRefPtr<Range> checkingRange, PassRefPtr<Range> paragraphRange);
+    static RefPtr<SpellCheckRequest> create(TextCheckingTypeMask, TextCheckingProcessType, Ref<Range>&& checkingRange, Ref<Range>&& paragraphRange);
     virtual ~SpellCheckRequest();
 
-    PassRefPtr<Range> checkingRange() const { return m_checkingRange; }
-    PassRefPtr<Range> paragraphRange() const { return m_paragraphRange; }
-    PassRefPtr<Element> rootEditableElement() const { return m_rootEditableElement; }
+    Range& checkingRange() const { return m_checkingRange.get(); }
+    Range& paragraphRange() const { return m_paragraphRange.get(); }
+    Element* rootEditableElement() const { return m_rootEditableElement.get(); }
 
     void setCheckerAndSequence(SpellChecker*, int sequence);
     void requesterDestroyed();
     bool isStarted() const { return m_checker; }
 
-    virtual const TextCheckingRequestData& data() const override;
-    virtual void didSucceed(const Vector<TextCheckingResult>&) override;
-    virtual void didCancel() override;
+    const TextCheckingRequestData& data() const override;
+    void didSucceed(const Vector<TextCheckingResult>&) override;
+    void didCancel() override;
 
 private:
-    SpellCheckRequest(PassRefPtr<Range> checkingRange, PassRefPtr<Range> paragraphRange, const String&, TextCheckingTypeMask, TextCheckingProcessType);
+    SpellCheckRequest(Ref<Range>&& checkingRange, Ref<Range>&& paragraphRange, const String&, TextCheckingTypeMask, TextCheckingProcessType);
 
     SpellChecker* m_checker { nullptr };
-    RefPtr<Range> m_checkingRange;
-    RefPtr<Range> m_paragraphRange;
+    Ref<Range> m_checkingRange;
+    Ref<Range> m_paragraphRange;
     RefPtr<Element> m_rootEditableElement;
     TextCheckingRequestData m_requestData;
 };
@@ -79,9 +78,9 @@ public:
     ~SpellChecker();
 
     bool isAsynchronousEnabled() const;
-    bool isCheckable(Range*) const;
+    bool isCheckable(Range&) const;
 
-    void requestCheckingFor(PassRefPtr<SpellCheckRequest>);
+    void requestCheckingFor(Ref<SpellCheckRequest>&&);
 
     int lastRequestSequence() const
     {
@@ -94,13 +93,13 @@ public:
     }
 
 private:
-    typedef Deque<RefPtr<SpellCheckRequest>> RequestQueue;
+    typedef Deque<Ref<SpellCheckRequest>> RequestQueue;
 
-    bool canCheckAsynchronously(Range*) const;
+    bool canCheckAsynchronously(Range&) const;
     TextCheckerClient* client() const;
     void timerFiredToProcessQueuedRequest();
-    void invokeRequest(PassRefPtr<SpellCheckRequest>);
-    void enqueueRequest(PassRefPtr<SpellCheckRequest>);
+    void invokeRequest(Ref<SpellCheckRequest>&&);
+    void enqueueRequest(Ref<SpellCheckRequest>&&);
     void didCheckSucceed(int sequence, const Vector<TextCheckingResult>&);
     void didCheckCancel(int sequence);
     void didCheck(int sequence, const Vector<TextCheckingResult>&);
@@ -116,5 +115,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SpellChecker_h

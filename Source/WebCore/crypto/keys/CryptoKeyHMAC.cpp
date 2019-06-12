@@ -28,17 +28,44 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmDescriptionBuilder.h"
+#include "CryptoAlgorithmHmacKeyParams.h"
 #include "CryptoAlgorithmRegistry.h"
 #include "CryptoKeyDataOctetSequence.h"
+#include "ExceptionCode.h"
+#include "ExceptionOr.h"
+#include "JsonWebKey.h"
+#include <wtf/text/Base64.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-CryptoKeyHMAC::CryptoKeyHMAC(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage usage)
+static size_t getKeyLengthFromHash(CryptoAlgorithmIdentifier hash)
+{
+    switch (hash) {
+    case CryptoAlgorithmIdentifier::SHA_1:
+    case CryptoAlgorithmIdentifier::SHA_224:
+    case CryptoAlgorithmIdentifier::SHA_256:
+        return 512;
+    case CryptoAlgorithmIdentifier::SHA_384:
+    case CryptoAlgorithmIdentifier::SHA_512:
+        return 1024;
+    default:
+        ASSERT_NOT_REACHED();
+        return 0;
+    }
+}
+
+CryptoKeyHMAC::CryptoKeyHMAC(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap usage)
     : CryptoKey(CryptoAlgorithmIdentifier::HMAC, CryptoKeyType::Secret, extractable, usage)
     , m_hash(hash)
     , m_key(key)
+{
+}
+
+CryptoKeyHMAC::CryptoKeyHMAC(Vector<uint8_t>&& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap usage)
+    : CryptoKey(CryptoAlgorithmIdentifier::HMAC, CryptoKeyType::Secret, extractable, usage)
+    , m_hash(hash)
+    , m_key(WTFMove(key))
 {
 }
 
@@ -46,36 +73,80 @@ CryptoKeyHMAC::~CryptoKeyHMAC()
 {
 }
 
-RefPtr<CryptoKeyHMAC> CryptoKeyHMAC::generate(size_t lengthBytes, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage usages)
+RefPtr<CryptoKeyHMAC> CryptoKeyHMAC::generate(size_t lengthBits, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    if (!lengthBytes) {
-        switch (hash) {
-        case CryptoAlgorithmIdentifier::SHA_1:
-        case CryptoAlgorithmIdentifier::SHA_224:
-        case CryptoAlgorithmIdentifier::SHA_256:
-            lengthBytes = 64;
-            break;
-        case CryptoAlgorithmIdentifier::SHA_384:
-        case CryptoAlgorithmIdentifier::SHA_512:
-            lengthBytes = 128;
-            break;
-        default:
+    if (!lengthBits) {
+        lengthBits = getKeyLengthFromHash(hash);
+        if (!lengthBits)
             return nullptr;
-        }
     }
+    // CommonHMAC only supports key length that is a multiple of 8. Therefore, here we are a little bit different
+    // from the spec as of 11 December 2014: https://www.w3.org/TR/WebCryptoAPI/#hmac-operations
+    if (lengthBits % 8)
+        return nullptr;
 
-    return adoptRef(new CryptoKeyHMAC(randomData(lengthBytes), hash, extractable, usages));
+    return adoptRef(new CryptoKeyHMAC(randomData(lengthBits / 8), hash, extractable, usages));
 }
 
-void CryptoKeyHMAC::buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder& builder) const
+RefPtr<CryptoKeyHMAC> CryptoKeyHMAC::importRaw(size_t lengthBits, CryptoAlgorithmIdentifier hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    CryptoKey::buildAlgorithmDescription(builder);
+    size_t length = keyData.size() * 8;
+    if (!length)
+        return nullptr;
+    // CommonHMAC only supports key length that is a multiple of 8. Therefore, here we are a little bit different
+    // from the spec as of 11 December 2014: https://www.w3.org/TR/WebCryptoAPI/#hmac-operations
+    if (lengthBits && lengthBits != length)
+        return nullptr;
 
-    auto hashDescriptionBuilder = builder.createEmptyClone();
-    hashDescriptionBuilder->add("name", CryptoAlgorithmRegistry::singleton().nameForIdentifier(m_hash));
-    builder.add("hash", *hashDescriptionBuilder);
+    return adoptRef(new CryptoKeyHMAC(WTFMove(keyData), hash, extractable, usages));
+}
 
-    builder.add("length", m_key.size());
+RefPtr<CryptoKeyHMAC> CryptoKeyHMAC::importJwk(size_t lengthBits, CryptoAlgorithmIdentifier hash, JsonWebKey&& keyData, bool extractable, CryptoKeyUsageBitmap usages, CheckAlgCallback&& callback)
+{
+    if (keyData.kty != "oct")
+        return nullptr;
+    if (keyData.k.isNull())
+        return nullptr;
+    Vector<uint8_t> octetSequence;
+    if (!base64URLDecode(keyData.k, octetSequence))
+        return nullptr;
+    if (!callback(hash, keyData.alg))
+        return nullptr;
+    if (usages && !keyData.use.isNull() && keyData.use != "sig")
+        return nullptr;
+    if (keyData.key_ops && ((keyData.usages & usages) != usages))
+        return nullptr;
+    if (keyData.ext && !keyData.ext.value() && extractable)
+        return nullptr;
+
+    return CryptoKeyHMAC::importRaw(lengthBits, hash, WTFMove(octetSequence), extractable, usages);
+}
+
+JsonWebKey CryptoKeyHMAC::exportJwk() const
+{
+    JsonWebKey result;
+    result.kty = "oct";
+    result.k = base64URLEncode(m_key);
+    result.key_ops = usages();
+    result.ext = extractable();
+    return result;
+}
+
+ExceptionOr<size_t> CryptoKeyHMAC::getKeyLength(const CryptoAlgorithmParameters& parameters)
+{
+    auto& aesParameters = downcast<CryptoAlgorithmHmacKeyParams>(parameters);
+
+    size_t result = aesParameters.length ? *(aesParameters.length) : getKeyLengthFromHash(aesParameters.hashIdentifier);
+    if (result)
+        return result;
+
+    return Exception { TypeError };
+}
+
+std::unique_ptr<KeyAlgorithm> CryptoKeyHMAC::buildAlgorithm() const
+{
+    return std::make_unique<HmacKeyAlgorithm>(CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier()),
+        CryptoAlgorithmRegistry::singleton().name(m_hash), m_key.size() * 8);
 }
 
 std::unique_ptr<CryptoKeyData> CryptoKeyHMAC::exportData() const

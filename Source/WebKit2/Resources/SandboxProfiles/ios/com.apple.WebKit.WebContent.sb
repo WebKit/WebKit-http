@@ -25,8 +25,9 @@
 (deny default (with partial-symbolication))
 (allow system-audit file-read-metadata)
 
+(deny mach-lookup (xpc-service-name-prefix ""))
+
 (import "UIKit-apps.sb")
-(import "removed-dev-nodes.sb")
 
 (uikit-app 'with-opengl 'with-location-services)
 
@@ -34,11 +35,22 @@
 (play-media)
 (media-remote)
 
+(deny sysctl*)
+(allow sysctl-read
+    (sysctl-name
+        "hw.availcpu"
+        "hw.ncpu"
+        "hw.model"
+        "kern.memorystatus_level"
+        "vm.footprint_suspend"))
+
 ;; Read-only preferences and data
 (mobile-preferences-read
     "com.apple.LaunchServices"
     "com.apple.WebFoundation"
-    "com.apple.mobileipod")
+    "com.apple.mobileipod"
+    "com.apple.avfoundation.videoperformancehud" ;; <rdar://problem/31594568>
+    "com.apple.voiceservices.logging")
 
 ;; Sandbox extensions
 (define (apply-read-and-issue-extension op path-filter)
@@ -61,9 +73,6 @@
     (extension "com.apple.app-sandbox.read-write")
     (extension-class "com.apple.nsurlstorage.extension-cache")))
 
-;; Allow the OpenGL Profiler to attach.
-(instruments-support)    ; For <rdar://problem/7931952>
-
 ;; MediaAccessibility
 (mobile-preferences-read "com.apple.mediaaccessibility")
 (mobile-preferences-read-write "com.apple.mediaaccessibility.public")
@@ -76,6 +85,7 @@
 (allow mach-lookup
     (global-name "com.apple.PowerManagement.control")
     (global-name "com.apple.accountsd.accountmanager")
+    (global-name "com.apple.analyticsd")
     (global-name "com.apple.coremedia.audiodeviceclock"))
 
 (deny file-write-create (vnode-type SYMLINK))
@@ -88,3 +98,37 @@
 (awd-log-directory "com.apple.WebKit.WebContent")
 
 (network-client (remote tcp) (remote udp))
+
+;; Allow ManagedPreference access
+(allow file-read* (literal "/private/var/Managed Preferences/mobile/com.apple.webcontentfilter.plist"))
+
+;; Allow mediaserverd to issue file extensions for the purposes of reading media
+(allow file-issue-extension (require-all
+    (extension "com.apple.app-sandbox.read")
+    (extension-class "com.apple.mediaserverd.read")))
+
+;; Allow CoreMedia to communicate with mediaserverd in order to implement custom media loading
+(allow mach-lookup
+    (global-name "com.apple.coremedia.customurlloader.xpc"))
+
+(allow iokit-open
+    (iokit-user-client-class "IOHIDEventServiceFastPathUserClient")) ; <rdar://problem/28893177>
+
+;; Media capture, microphone access
+(with-filter (extension "com.apple.webkit.microphone")
+    (allow device-microphone))
+
+;; Media capture, camera access
+(with-filter (extension "com.apple.webkit.camera")
+    (allow user-preference-read
+        (preference-domain "com.apple.coremedia"))
+    (allow file-read* (subpath "/Library/CoreMediaIO/Plug-Ins/DAL"))
+    (allow mach-lookup (extension "com.apple.app-sandbox.mach"))
+    (allow device-camera))
+
+;; Support incoming video connections
+(allow mach-lookup
+    (global-name "com.apple.audio.audiohald")
+    (global-name "com.apple.coremedia.compressionsession")
+    (global-name "com.apple.coremedia.decompressionsession")
+    (global-name "com.apple.coremedia.videoqueue"))

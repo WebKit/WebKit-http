@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Apple Inc. All rights reserved.
- * Copyright (C) 2015 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
+ * Copyright (C) 2015-2016 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,21 +38,29 @@
     background-size: 50%;
     background-position: top left, bottom right;
     background-repeat: no-repeat;
-    cursor: default;
+    border-radius: 2px;
     overflow: hidden;
+    cursor: default;
 }
 
-.inline-swatch.bezier {
-    margin-right: 2px;
+.inline-swatch:matches(.bezier, .spring) {
     content: url(../Images/CubicBezier.svg);
+}
+
+.inline-swatch.variable {
+    content: url(../Images/CSSVariable.svg);
+}
+
+.inline-swatch:matches(.bezier, .spring, .variable) {
+    margin-right: 2px;
     background: none;
 }
 
-.inline-swatch.bezier:hover {
+.inline-swatch:matches(.bezier, .spring, .variable):hover {
     filter: brightness(0.9);
 }
 
-.inline-swatch.bezier:active {
+.inline-swatch:matches(.bezier, .spring, .variable):active {
     filter: brightness(0.8);
 }
 
@@ -72,6 +80,7 @@
     bottom: 0;
     left: 0;
     border: 1px solid hsla(0, 0%, 25%, 0.4);
+    border-radius: 2px;
     pointer-events: none;
 }
 
@@ -83,7 +92,22 @@
     border-color: hsl(0, 0%, 25%);
 }
 
-.inline-swatch.bezier > span {
+.inline-swatch:matches(.bezier, .spring) > span {
     display: none;
 }
 
+.inline-swatch-variable-popover {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+    padding-top: 0.5px;
+}
+
+.inline-swatch-variable-popover .CodeMirror {
+    height: auto;
+    background-color: transparent;
+}
+
+.inline-swatch-variable-popover .CodeMirror pre {
+    padding: 0 3px;
+}

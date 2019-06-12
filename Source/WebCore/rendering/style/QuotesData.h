@@ -19,10 +19,8 @@
  *
  */
 
-#ifndef QuotesData_h
-#define QuotesData_h
+#pragma once
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -36,7 +34,7 @@ namespace WebCore {
 
 class QuotesData : public RefCounted<QuotesData> {
 public:
-    static PassRefPtr<QuotesData> create(const Vector<std::pair<String, String>>& quotes);
+    static Ref<QuotesData> create(const Vector<std::pair<String, String>>& quotes);
     ~QuotesData();
 
     friend bool operator==(const QuotesData&, const QuotesData&);
@@ -61,5 +59,3 @@ inline bool operator!=(const QuotesData& a, const QuotesData& b)
 }
 
 } // namespace WebCore
-
-#endif // QuotesData_h

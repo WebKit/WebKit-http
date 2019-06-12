@@ -45,9 +45,12 @@ typedef uint32_t WKCacheModel;
 
 // Context Client
 typedef void (*WKContextPlugInAutoStartOriginHashesChangedCallback)(WKContextRef context, const void *clientInfo);
-typedef void (*WKContextNetworkProcessDidCrashCallback)(WKContextRef context, const void *clientInfo);
 typedef void (*WKContextPlugInInformationBecameAvailableCallback)(WKContextRef context, WKArrayRef plugIn, const void *clientInfo);
 typedef WKDataRef (*WKContextCopyWebCryptoMasterKeyCallback)(WKContextRef context, const void *clientInfo);
+
+typedef void (*WKContextChildProcessDidCrashCallback)(WKContextRef context, const void *clientInfo);
+typedef WKContextChildProcessDidCrashCallback WKContextNetworkProcessDidCrashCallback;
+typedef WKContextChildProcessDidCrashCallback WKContextDatabaseProcessDidCrashCallback;
 
 typedef struct WKContextClientBase {
     int                                                                 version;
@@ -72,8 +75,23 @@ typedef struct WKContextClientV1 {
     WKContextPlugInInformationBecameAvailableCallback                   plugInInformationBecameAvailable;
 
     // Version 1.
-    WKContextCopyWebCryptoMasterKeyCallback                             copyWebCryptoMasterKey;
+    void                                                                (*copyWebCryptoMasterKey_unavailable)(void);
 } WKContextClientV1;
+
+typedef struct WKContextClientV2 {
+    WKContextClientBase                                                 base;
+
+    // Version 0.
+    WKContextPlugInAutoStartOriginHashesChangedCallback                 plugInAutoStartOriginHashesChanged;
+    WKContextNetworkProcessDidCrashCallback                             networkProcessDidCrash;
+    WKContextPlugInInformationBecameAvailableCallback                   plugInInformationBecameAvailable;
+
+    // Version 1.
+    void                                                                (*copyWebCryptoMasterKey_unavailable)(void);
+
+    // Version 2.
+    WKContextDatabaseProcessDidCrashCallback                            databaseProcessDidCrash;
+} WKContextClientV2;
 
 // FIXME: Remove these once support for Mavericks has been dropped.
 enum {
@@ -114,7 +132,6 @@ WK_EXPORT WKCacheModel WKContextGetCacheModel(WKContextRef context);
 
 // FIXME: Move these to WKDeprecatedFunctions.cpp once support for Mavericks has been dropped.
 WK_EXPORT void WKContextSetProcessModel(WKContextRef, WKProcessModel);
-WK_EXPORT WKProcessModel WKContextGetProcessModel(WKContextRef);
 
 WK_EXPORT void WKContextSetMaximumNumberOfProcesses(WKContextRef context, unsigned numberOfProcesses);
 WK_EXPORT unsigned WKContextGetMaximumNumberOfProcesses(WKContextRef context);
@@ -125,20 +142,20 @@ WK_EXPORT void WKContextStopMemorySampler(WKContextRef context);
 WK_EXPORT WKWebsiteDataStoreRef WKContextGetWebsiteDataStore(WKContextRef context);
 
 WK_EXPORT WKApplicationCacheManagerRef WKContextGetApplicationCacheManager(WKContextRef context);
-WK_EXPORT WKBatteryManagerRef WKContextGetBatteryManager(WKContextRef context);
 WK_EXPORT WKCookieManagerRef WKContextGetCookieManager(WKContextRef context);
 WK_EXPORT WKGeolocationManagerRef WKContextGetGeolocationManager(WKContextRef context);
 WK_EXPORT WKIconDatabaseRef WKContextGetIconDatabase(WKContextRef context);
 WK_EXPORT WKKeyValueStorageManagerRef WKContextGetKeyValueStorageManager(WKContextRef context);
 WK_EXPORT WKMediaSessionFocusManagerRef WKContextGetMediaSessionFocusManager(WKContextRef context);
 WK_EXPORT WKNotificationManagerRef WKContextGetNotificationManager(WKContextRef context);
-WK_EXPORT WKPluginSiteDataManagerRef WKContextGetPluginSiteDataManager(WKContextRef context);
 WK_EXPORT WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef context);
 
 typedef void (*WKContextGetStatisticsFunction)(WKDictionaryRef statistics, WKErrorRef error, void* functionContext);
 WK_EXPORT void WKContextGetStatistics(WKContextRef context, void* functionContext, WKContextGetStatisticsFunction function);
 WK_EXPORT void WKContextGetStatisticsWithOptions(WKContextRef context, WKStatisticsOptions statisticsMask, void* functionContext, WKContextGetStatisticsFunction function);
 
+WK_EXPORT bool WKContextJavaScriptConfigurationFileEnabled(WKContextRef context);
+WK_EXPORT void WKContextSetJavaScriptConfigurationFileEnabled(WKContextRef context, bool enable);
 WK_EXPORT void WKContextGarbageCollectJavaScriptObjects(WKContextRef context);
 WK_EXPORT void WKContextSetJavaScriptGarbageCollectorTimerEnabled(WKContextRef context, bool enable);
 
@@ -146,6 +163,7 @@ WK_EXPORT WKDictionaryRef WKContextCopyPlugInAutoStartOriginHashes(WKContextRef 
 WK_EXPORT void WKContextSetPlugInAutoStartOriginHashes(WKContextRef context, WKDictionaryRef dictionary);
 WK_EXPORT void WKContextSetPlugInAutoStartOrigins(WKContextRef contextRef, WKArrayRef arrayRef);
 WK_EXPORT void WKContextSetPlugInAutoStartOriginsFilteringOutEntriesAddedAfterTime(WKContextRef contextRef, WKDictionaryRef dictionaryRef, double time);
+WK_EXPORT void WKContextRefreshPlugIns(WKContextRef context);
 
 #ifdef __cplusplus
 }

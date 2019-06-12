@@ -25,13 +25,13 @@ PASS Math.clz32(Number.MIN_SAFE_INTEGER) is 31
 PASS Math.clz32(Math.PI) is 30
 PASS Math.clz32(Math.E) is 30
 PASS Math.clz32(NaN) is 32
-PASS Math.clz32(Number.POSITIVE_INFINITI) is 32
-PASS Math.clz32(Number.NEGATIVE_INFINITI) is 32
+PASS Math.clz32(Number.POSITIVE_INFINITY) is 32
+PASS Math.clz32(Number.NEGATIVE_INFINITY) is 32
 PASS Math.clz32() is 32
 PASS Math.clz32(undefined) is 32
 PASS Math.clz32(null) is 32
 PASS Math.clz32("WebKit") is 32
-PASS Math.clz32(Symbol("WebKit")) threw exception TypeError: Type error.
+PASS Math.clz32(Symbol("WebKit")) threw exception TypeError: Cannot convert a symbol to a number.
 PASS Math.clz32({ webkit: "awesome" }) is 32
 PASS Math.clz32(objectConvertToString) is 25
 PASS Math.clz32(objectRecordToStringCall) is 28

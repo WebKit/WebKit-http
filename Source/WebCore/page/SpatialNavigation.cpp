@@ -34,7 +34,7 @@
 #include "HTMLAreaElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLMapElement.h"
-#include "HTMLNames.h"
+#include "HTMLSelectElement.h"
 #include "IntRect.h"
 #include "MainFrame.h"
 #include "Node.h"
@@ -418,15 +418,11 @@ static void deflateIfOverlapped(LayoutRect& a, LayoutRect& b)
 
 bool isScrollableNode(const Node* node)
 {
-    ASSERT(!node->isDocumentNode());
-
     if (!node)
         return false;
-
-    if (RenderObject* renderer = node->renderer())
-        return is<RenderBox>(*renderer) && downcast<RenderBox>(*renderer).canBeScrolledAndHasScrollableArea() && node->hasChildNodes();
-
-    return false;
+    ASSERT(!node->isDocumentNode());
+    auto* renderer = node->renderer();
+    return is<RenderBox>(renderer) && downcast<RenderBox>(*renderer).canBeScrolledAndHasScrollableArea() && node->hasChildNodes();
 }
 
 Node* scrollableEnclosingBoxOrParentFrameForNodeInDirection(FocusDirection direction, Node* node)

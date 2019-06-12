@@ -38,7 +38,6 @@
 #include "JSDOMBinding.h"
 #include "JSHTMLElementWrapperFactory.h"
 #include "JSNodeList.h"
-#include "JSNodeOrString.h"
 #include "JSSVGElementWrapperFactory.h"
 #include "NodeList.h"
 #include "SVGElement.h"
@@ -49,71 +48,28 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Element* element)
+static JSValue createNewElementWrapper(JSDOMGlobalObject* globalObject, Ref<Element>&& element)
 {
-    if (!element)
-        return jsNull();
+    if (is<HTMLElement>(element.get()))
+        return createJSHTMLWrapper(globalObject, static_reference_cast<HTMLElement>(WTFMove(element)));
+    if (is<SVGElement>(element.get()))
+        return createJSSVGWrapper(globalObject, static_reference_cast<SVGElement>(WTFMove(element)));
+    return createWrapper<Element>(globalObject, WTFMove(element));
+}
 
-#if ENABLE(CUSTOM_ELEMENTS)
-    if (element->isCustomElement())
+JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, Element& element)
+{
+    if (auto* wrapper = getCachedWrapper(globalObject->world(), element))
+        return wrapper;
+    return createNewElementWrapper(globalObject, element);
+}
+
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<Element>&& element)
+{
+    if (element->isDefinedCustomElement())
         return getCachedWrapper(globalObject->world(), element);
-#endif
     ASSERT(!getCachedWrapper(globalObject->world(), element));
-
-    JSDOMObject* wrapper;        
-    if (is<HTMLElement>(*element))
-        wrapper = createJSHTMLWrapper(globalObject, downcast<HTMLElement>(element));
-    else if (is<SVGElement>(*element))
-        wrapper = createJSSVGWrapper(globalObject, downcast<SVGElement>(element));
-    else
-        wrapper = CREATE_DOM_WRAPPER(globalObject, Element, element);
-
-    return wrapper;    
-}
-
-JSValue JSElement::before(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().before(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::after(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().after(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::replaceWith(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().replaceWith(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::prepend(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().prepend(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::append(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().append(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
+    return createNewElementWrapper(globalObject, WTFMove(element));
 }
 
 } // namespace WebCore

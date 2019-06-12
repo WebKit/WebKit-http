@@ -29,41 +29,72 @@
 #include "config.h"
 #include "DOMCoreException.h"
 
+#include "ExceptionCode.h"
 #include "ExceptionCodeDescription.h"
 
 namespace WebCore {
 
+// http://heycam.github.io/webidl/#idl-DOMException-error-names
 static const struct CoreException {
     const char* const name;
     const char* const description;
+    ExceptionCode code;
 } coreExceptions[] = {
-    { "IndexSizeError", "Index or size was negative, or greater than the allowed value." },
-    { 0, 0 }, // DOMStringSizeError
-    { "HierarchyRequestError", "A Node was inserted somewhere it doesn't belong." },
-    { "WrongDocumentError", "A Node was used in a different document than the one that created it (that doesn't support it)." },
-    { "InvalidCharacterError", "An invalid or illegal character was specified, such as in an XML name." },
-    { 0, 0 }, // NoDataAllowedError
-    { "NoModificationAllowedError", "An attempt was made to modify an object where modifications are not allowed." },
-    { "NotFoundError", "An attempt was made to reference a Node in a context where it does not exist." },
-    { "NotSupportedError", "The implementation did not support the requested type of object or operation." },
-    { "InUseAttributeError", "An attempt was made to add an attribute that is already in use elsewhere." },
-    { "InvalidStateError", "An attempt was made to use an object that is not, or is no longer, usable." },
-    { "SyntaxError", "An invalid or illegal string was specified." },
-    { "InvalidModificationError", "An attempt was made to modify the type of the underlying object." },
-    { "NamespaceError", "An attempt was made to create or change an object in a way which is incorrect with regard to namespaces." },
-    { "InvalidAccessError", "A parameter or an operation was not supported by the underlying object." },
-    { 0, 0 }, // ValidationError
-    { "TypeMismatchError", "The type of an object was incompatible with the expected type of the parameter associated to the object." },
-    { "SecurityError", "An attempt was made to break through the security policy of the user agent." },
-    // FIXME: Couldn't find a description in the HTML/DOM specifications for NETWORK_ERR, ABORT_ERR, URL_MISMATCH_ERR, and QUOTA_EXCEEDED_ERR
-    { "NetworkError", "A network error occurred." },
-    { "AbortError", "The user aborted a request." },
-    { "URLMismatchError", "A worker global scope represented an absolute URL that is not equal to the resulting absolute URL." },
-    { "QuotaExceededError", "An attempt was made to add something to storage that exceeded the quota." },
-    { "TimeoutError", "A timeout occurred." },
-    { "InvalidNodeTypeError", "The supplied node is invalid or has an invalid ancestor for this operation." },
-    { "DataCloneError", "An object could not be cloned." }
+    { "IndexSizeError", "The index is not in the allowed range.", 1 },
+    { nullptr, nullptr, 0 }, // DOMStringSizeError
+    { "HierarchyRequestError", "The operation would yield an incorrect node tree.", 3 },
+    { "WrongDocumentError", "The object is in the wrong document.", 4 },
+    { "InvalidCharacterError", "The string contains invalid characters.", 5 },
+    { nullptr, nullptr, 0 }, // NoDataAllowedError
+    { "NoModificationAllowedError", "The object can not be modified.", 7 },
+    { "NotFoundError", "The object can not be found here.", 8 },
+    { "NotSupportedError", "The operation is not supported.", 9 },
+    { "InUseAttributeError", "The attribute is in use.", 10 },
+    { "InvalidStateError", "The object is in an invalid state.", 11 },
+    { "SyntaxError", "The string did not match the expected pattern.", 12 },
+    { "InvalidModificationError", " The object can not be modified in this way.", 13 },
+    { "NamespaceError", "The operation is not allowed by Namespaces in XML.", 14 },
+    { "InvalidAccessError", "The object does not support the operation or argument.", 15 },
+    { nullptr, nullptr, 0 }, // ValidationError
+    { "TypeMismatchError", "The type of an object was incompatible with the expected type of the parameter associated to the object.", 17 },
+    { "SecurityError", "The operation is insecure.", 18 },
+    { "NetworkError", " A network error occurred.", 19 },
+    { "AbortError", "The operation was aborted.", 20 },
+    { "URLMismatchError", "The given URL does not match another URL.", 21 },
+    { "QuotaExceededError", "The quota has been exceeded.", 22 },
+    { "TimeoutError", "The operation timed out.", 23 },
+    { "InvalidNodeTypeError", "The supplied node is incorrect or has an incorrect ancestor for this operation.", 24 },
+    { "DataCloneError", "The object can not be cloned.", 25 },
+    { "EncodingError", "The encoding operation (either encoded or decoding) failed.", 0 },
+    { "NotReadableError", "The I/O read operation failed.", 0 },
+    { "UnknownError", "The operation failed for an unknown transient reason (e.g. out of memory).", 0 },
+    { "ConstraintError", "A mutation operation in a transaction failed because a constraint was not satisfied.", 0 },
+    { "DataError", "Provided data is inadequate.", 0 },
+    { "TransactionInactiveError", "A request was placed against a transaction which is currently not active, or which is finished.", 0 },
+    { "ReadOnlyError", "The mutating operation was attempted in a \"readonly\" transaction.", 0 },
+    { "VersionError", "An attempt was made to open a database using a lower version than the existing version.", 0 },
+    { "OperationError", "The operation failed for an operation-specific reason.", 0 },
+    { "NotAllowedError", "The request is not allowed by the user agent or the platform in the current context, possibly because the user denied permission.", 0 }
 };
+
+static ExceptionCode errorCodeFromName(const String& name)
+{
+    for (auto& entry : coreExceptions) {
+        if (entry.name == name)
+            return entry.code;
+    }
+    return 0;
+}
+
+Ref<DOMCoreException> DOMCoreException::create(const String& message, const String& name)
+{
+    return adoptRef(*new DOMCoreException(errorCodeFromName(name), message, name));
+}
+
+DOMCoreException::DOMCoreException(ExceptionCode ec, const String& message, const String& name)
+    : ExceptionBase(ec, name, message, ASCIILiteral("DOM"))
+{
+}
 
 bool DOMCoreException::initializeDescription(ExceptionCode ec, ExceptionCodeDescription* description)
 {

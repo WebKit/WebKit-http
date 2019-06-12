@@ -28,8 +28,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef WebKitCSSRegionRule_h
-#define WebKitCSSRegionRule_h
+#pragma once
 
 #include "CSSGroupingRule.h"
 
@@ -43,8 +42,8 @@ class WebKitCSSRegionRule final : public CSSGroupingRule {
 public:
     static Ref<WebKitCSSRegionRule> create(StyleRuleRegion& rule, CSSStyleSheet* sheet) { return adoptRef(*new WebKitCSSRegionRule(rule, sheet)); }
 
-    virtual CSSRule::Type type() const override { return WEBKIT_REGION_RULE; }
-    virtual String cssText() const override;
+    CSSRule::Type type() const final { return WEBKIT_REGION_RULE; }
+    String cssText() const final;
 
 private:
     WebKitCSSRegionRule(StyleRuleRegion&, CSSStyleSheet* parent);
@@ -55,5 +54,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_CSS_RULE(WebKitCSSRegionRule, CSSRule::WEBKIT_REGION_RULE)
 
 #endif // ENABLE(CSS_REGIONS)
-
-#endif // WebKitCSSRegionRule_h

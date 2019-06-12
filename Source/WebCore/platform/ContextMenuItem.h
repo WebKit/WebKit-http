@@ -43,7 +43,7 @@ enum ContextMenuAction {
     ContextMenuItemTagOpenImageInNewWindow,
     ContextMenuItemTagDownloadImageToDisk,
     ContextMenuItemTagCopyImageToClipboard,
-#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT)
+#if PLATFORM(GTK) || PLATFORM(QT)
     ContextMenuItemTagCopyImageUrlToClipboard,
 #endif
     ContextMenuItemTagOpenFrameInNewWindow,
@@ -57,7 +57,7 @@ enum ContextMenuAction {
 #if PLATFORM(GTK)
     ContextMenuItemTagDelete,
 #endif
-#if PLATFORM(GTK) || PLATFORM (EFL) || PLATFORM(QT)
+#if PLATFORM(GTK) || PLATFORM(QT)
     ContextMenuItemTagSelectAll,
 #endif
 #if PLATFORM(GTK)
@@ -149,7 +149,8 @@ enum ContextMenuAction {
     ContextMenuItemTagOpenLinkInThisWindow,
 #endif
     ContextMenuItemTagToggleVideoFullscreen,
-    ContextMenuItemTagShareMenu, 
+    ContextMenuItemTagShareMenu,
+    ContextMenuItemTagToggleVideoEnhancedFullscreen,
     ContextMenuItemBaseCustomTag = 5000,
     ContextMenuItemLastCustomTag = 5999,
     ContextMenuItemBaseApplicationTag = 10000

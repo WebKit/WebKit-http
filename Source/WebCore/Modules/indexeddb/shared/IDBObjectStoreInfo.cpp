@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "IDBObjectStoreInfo.h"
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -34,17 +35,17 @@ IDBObjectStoreInfo::IDBObjectStoreInfo()
 {
 }
 
-IDBObjectStoreInfo::IDBObjectStoreInfo(uint64_t identifier, const String& name, const IDBKeyPath& keyPath, bool autoIncrement)
+IDBObjectStoreInfo::IDBObjectStoreInfo(uint64_t identifier, const String& name, std::optional<IDBKeyPath>&& keyPath, bool autoIncrement)
     : m_identifier(identifier)
     , m_name(name)
-    , m_keyPath(keyPath)
+    , m_keyPath(WTFMove(keyPath))
     , m_autoIncrement(autoIncrement)
 {
 }
 
-IDBIndexInfo IDBObjectStoreInfo::createNewIndex(const String& name, const IDBKeyPath& keyPath, bool unique, bool multiEntry)
+IDBIndexInfo IDBObjectStoreInfo::createNewIndex(const String& name, IDBKeyPath&& keyPath, bool unique, bool multiEntry)
 {
-    IDBIndexInfo info(++m_maxIndexID, m_identifier, name, keyPath, unique, multiEntry);
+    IDBIndexInfo info(++m_maxIndexID, m_identifier, name, WTFMove(keyPath), unique, multiEntry);
     m_indexMap.set(info.identifier(), info);
     return info;
 }
@@ -84,12 +85,26 @@ IDBIndexInfo* IDBObjectStoreInfo::infoForExistingIndex(const String& name)
     return nullptr;
 }
 
+IDBIndexInfo* IDBObjectStoreInfo::infoForExistingIndex(uint64_t identifier)
+{
+    auto iterator = m_indexMap.find(identifier);
+    if (iterator == m_indexMap.end())
+        return nullptr;
+
+    return &iterator->value;
+}
+
 IDBObjectStoreInfo IDBObjectStoreInfo::isolatedCopy() const
 {
-    IDBObjectStoreInfo result = { m_identifier, m_name.isolatedCopy(), m_keyPath.isolatedCopy(), m_autoIncrement };
+    IDBObjectStoreInfo result = { m_identifier, m_name.isolatedCopy(), WebCore::isolatedCopy(m_keyPath), m_autoIncrement };
 
-    for (auto& iterator : m_indexMap)
+    for (auto& iterator : m_indexMap) {
         result.m_indexMap.set(iterator.key, iterator.value.isolatedCopy());
+        if (iterator.key > result.m_maxIndexID)
+            result.m_maxIndexID = iterator.key;
+    }
+
+    ASSERT(result.m_maxIndexID == m_maxIndexID);
 
     return result;
 }
@@ -118,19 +133,29 @@ void IDBObjectStoreInfo::deleteIndex(uint64_t indexIdentifier)
     m_indexMap.remove(indexIdentifier);
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String IDBObjectStoreInfo::loggingString(int indent) const
 {
-    String indentString;
+    StringBuilder builder;
     for (int i = 0; i < indent; ++i)
-        indentString.append(" ");
+        builder.append(' ');
 
-    String top = makeString(indentString, "Object store: ", m_name, String::format(" (%" PRIu64 ") \n", m_identifier));
-    for (auto index : m_indexMap.values())
-        top.append(makeString(index.loggingString(indent + 1), "\n"));
+    builder.appendLiteral("Object store: ");
+    builder.append(m_name);
+    builder.appendNumber(m_identifier);
+    for (auto index : m_indexMap.values()) {
+        builder.append(index.loggingString(indent + 1));
+        builder.append('\n');
+    }
 
-    return top; 
+    return builder.toString();
 }
+
+String IDBObjectStoreInfo::condensedLoggingString() const
+{
+    return String::format("<OS: %s (%" PRIu64 ")>", m_name.utf8().data(), m_identifier);
+}
+
 #endif
 
 } // namespace WebCore

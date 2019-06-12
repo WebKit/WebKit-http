@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGLineElement_h
-#define SVGLineElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedLength.h"
@@ -36,15 +35,15 @@ public:
 private:
     SVGLineElement(const QualifiedName&, Document&);
     
-    virtual bool isValid() const override { return SVGTests::isValid(); }
+    bool isValid() const final { return SVGTests::isValid(); }
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void svgAttributeChanged(const QualifiedName&) final;
 
-    virtual bool supportsMarkers() const override { return true; }
+    bool supportsMarkers() const final { return true; }
 
-    virtual bool selfHasRelativeLengths() const override;
+    bool selfHasRelativeLengths() const final;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGLineElement)
         DECLARE_ANIMATED_LENGTH(X1, x1)
@@ -56,5 +55,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

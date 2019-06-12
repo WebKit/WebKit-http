@@ -29,59 +29,57 @@
 #if PLATFORM(IOS)
 
 #import "DrawingArea.h"
+#import "UIKitSPI.h"
 #import "WebCoreArgumentCoders.h"
 #import "WebFrame.h"
+#import "WebIconUtilities.h"
 #import "WebPage.h"
 #import "WebPageProxyMessages.h"
+#import <WebCore/Icon.h>
 #import <WebCore/NotImplemented.h>
+#import <wtf/RefPtr.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
 #if ENABLE(IOS_TOUCH_EVENTS)
+
 void WebChromeClient::didPreventDefaultForEvent()
 {
     notImplemented();
 }
+
 #endif
 
-void WebChromeClient::elementDidFocus(const WebCore::Node* node)
+void WebChromeClient::elementDidRefocus(WebCore::Element& element)
 {
-    m_page->elementDidFocus(const_cast<WebCore::Node*>(node));
-}
-
-void WebChromeClient::elementDidBlur(const WebCore::Node* node)
-{
-    m_page->elementDidBlur(const_cast<WebCore::Node*>(node));
-}
-
-void WebChromeClient::elementDidRefocus(const WebCore::Node* node)
-{
-    elementDidFocus(node);
+    elementDidFocus(element);
 }
 
 void WebChromeClient::didReceiveMobileDocType(bool isMobileDoctype)
 {
-    m_page->didReceiveMobileDocType(isMobileDoctype);
+    m_page.didReceiveMobileDocType(isMobileDoctype);
 }
 
-void WebChromeClient::setNeedsScrollNotifications(WebCore::Frame*, bool)
+void WebChromeClient::setNeedsScrollNotifications(WebCore::Frame&, bool)
 {
     notImplemented();
 }
 
-void WebChromeClient::observedContentChange(WebCore::Frame*)
+void WebChromeClient::observedContentChange(WebCore::Frame&)
 {
-    m_page->completePendingSyntheticClickForContentChangeObserver();
+    m_page.completePendingSyntheticClickForContentChangeObserver();
 }
 
-void WebChromeClient::clearContentChangeObservers(WebCore::Frame*)
+void WebChromeClient::clearContentChangeObservers(WebCore::Frame&)
 {
     notImplemented();
 }
 
-void WebChromeClient::notifyRevealedSelectionByScrollingFrame(WebCore::Frame*)
+void WebChromeClient::notifyRevealedSelectionByScrollingFrame(WebCore::Frame&)
 {
-    m_page->didChangeSelection();
+    m_page.didChangeSelection();
 }
 
 bool WebChromeClient::isStopping()
@@ -93,22 +91,22 @@ bool WebChromeClient::isStopping()
 void WebChromeClient::didLayout(LayoutType type)
 {
     if (type == Scroll)
-        m_page->didChangeSelection();
+        m_page.didChangeSelection();
 }
 
 void WebChromeClient::didStartOverflowScroll()
 {
-    m_page->send(Messages::WebPageProxy::OverflowScrollWillStartScroll());
+    m_page.send(Messages::WebPageProxy::OverflowScrollWillStartScroll());
 }
 
 void WebChromeClient::didEndOverflowScroll()
 {
-    m_page->send(Messages::WebPageProxy::OverflowScrollDidEndScroll());
+    m_page.send(Messages::WebPageProxy::OverflowScrollDidEndScroll());
 }
 
 bool WebChromeClient::hasStablePageScaleFactor() const
 {
-    return m_page->hasStablePageScaleFactor();
+    return m_page.hasStablePageScaleFactor();
 }
 
 void WebChromeClient::suppressFormNotifications()
@@ -138,17 +136,27 @@ void WebChromeClient::webAppOrientationsUpdated()
 
 void WebChromeClient::showPlaybackTargetPicker(bool hasVideo)
 {
-    m_page->send(Messages::WebPageProxy::ShowPlaybackTargetPicker(hasVideo, m_page->rectForElementAtInteractionLocation()));
+    m_page.send(Messages::WebPageProxy::ShowPlaybackTargetPicker(hasVideo, m_page.rectForElementAtInteractionLocation()));
 }
 
-std::chrono::milliseconds WebChromeClient::eventThrottlingDelay()
+Seconds WebChromeClient::eventThrottlingDelay()
 {
-    return m_page->eventThrottlingDelay();
+    return m_page.eventThrottlingDelay();
 }
 
 int WebChromeClient::deviceOrientation() const
 {
-    return m_page->deviceOrientation();
+    return m_page.deviceOrientation();
+}
+
+RefPtr<Icon> WebChromeClient::createIconForFiles(const Vector<String>& filenames)
+{
+    if (!filenames.size())
+        return nullptr;
+
+    // FIXME: We should generate an icon showing multiple files here, if applicable. Currently, if there are multiple
+    // files, we only use the first URL to generate an icon.
+    return Icon::createIconForImage(iconForFile([NSURL fileURLWithPath:filenames[0]]).CGImage);
 }
 
 } // namespace WebKit

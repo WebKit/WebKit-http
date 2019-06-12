@@ -23,14 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGMinifiedNode_h
-#define DFGMinifiedNode_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGCommon.h"
 #include "DFGMinifiedID.h"
 #include "DFGNodeType.h"
+#include "InlineCallFrame.h"
+#include "JSCJSValue.h"
 
 namespace JSC { namespace DFG {
 
@@ -98,6 +98,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGMinifiedNode_h
-

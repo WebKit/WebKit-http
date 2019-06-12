@@ -18,10 +18,10 @@
  *
  */
 
-#ifndef HTMLMeterElement_h
-#define HTMLMeterElement_h
+#pragma once
 
 #if ENABLE(METER_ELEMENT)
+
 #include "LabelableElement.h"
 
 namespace WebCore {
@@ -40,27 +40,27 @@ public:
     };
 
     double min() const;
-    void setMin(double, ExceptionCode&);
+    void setMin(double);
 
     double max() const;
-    void setMax(double, ExceptionCode&);
+    void setMax(double);
 
     double value() const;
-    void setValue(double, ExceptionCode&);
+    void setValue(double);
 
     double low() const;
-    void setLow(double, ExceptionCode&);
+    void setLow(double);
 
     double high() const;
-    void setHigh(double, ExceptionCode&);
+    void setHigh(double);
 
     double optimum() const;
-    void setOptimum(double, ExceptionCode&);
+    void setOptimum(double);
 
     double valueRatio() const;
     GaugeRegion gaugeRegion() const;
 
-    virtual bool canContainRangeEndPoint() const override { return false; }
+    bool canContainRangeEndPoint() const final { return false; }
 
 private:
     HTMLMeterElement(const QualifiedName&, Document&);
@@ -68,20 +68,18 @@ private:
 
     RenderMeter* renderMeter() const;
 
-    virtual bool supportLabels() const override { return true; }
+    bool supportLabels() const final { return true; }
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+    bool childShouldCreateRenderer(const Node&) const final;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
     void didElementStateChange();
-    virtual void didAddUserAgentShadowRoot(ShadowRoot*) override;
-    virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
+    void didAddUserAgentShadowRoot(ShadowRoot*) final;
 
-    RefPtr<MeterValueElement> m_value;
+    RefPtr<HTMLElement> m_value;
 };
 
-} // namespace
+} // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(METER_ELEMENT)

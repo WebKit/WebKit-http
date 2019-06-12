@@ -23,8 +23,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGShape_h
-#define RenderSVGShape_h
+#pragma once
 
 #include "AffineTransform.h"
 #include "FloatRect.h"
@@ -45,15 +44,15 @@ class SVGGraphicsElement;
 
 class RenderSVGShape : public RenderSVGModelObject {
 public:
-    RenderSVGShape(SVGGraphicsElement&, Ref<RenderStyle>&&);
+    RenderSVGShape(SVGGraphicsElement&, RenderStyle&&);
     virtual ~RenderSVGShape();
 
     SVGGraphicsElement& graphicsElement() const { return downcast<SVGGraphicsElement>(RenderSVGModelObject::element()); }
 
     void setNeedsShapeUpdate() { m_needsShapeUpdate = true; }
-    virtual void setNeedsBoundariesUpdate() override final { m_needsBoundariesUpdate = true; }
-    virtual bool needsBoundariesUpdate() override final { return m_needsBoundariesUpdate; }
-    virtual void setNeedsTransformUpdate() override final { m_needsTransformUpdate = true; }
+    void setNeedsBoundariesUpdate() final { m_needsBoundariesUpdate = true; }
+    bool needsBoundariesUpdate() final { return m_needsBoundariesUpdate; }
+    void setNeedsTransformUpdate() final { m_needsTransformUpdate = true; }
     virtual void fillShape(GraphicsContext&) const;
     virtual void strokeShape(GraphicsContext&) const;
     virtual bool isRenderingDisabled() const = 0;
@@ -69,7 +68,7 @@ protected:
     void element() const = delete;
 
     virtual void updateShapeFromElement();
-    virtual bool isEmpty() const override;
+    virtual bool isEmpty() const;
     virtual bool shapeDependentStrokeContains(const FloatPoint&);
     virtual bool shapeDependentFillContains(const FloatPoint&, const WindRule) const;
     float strokeWidth() const;
@@ -87,23 +86,23 @@ private:
     bool fillContains(const FloatPoint&, bool requiresFill = true, const WindRule fillRule = RULE_NONZERO);
     bool strokeContains(const FloatPoint&, bool requiresStroke = true);
 
-    virtual FloatRect repaintRectInLocalCoordinates() const override final { return m_repaintBoundingBox; }
-    virtual FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const override final { return m_repaintBoundingBoxExcludingShadow; }
-    virtual const AffineTransform& localToParentTransform() const override final { return m_localTransform; }
-    virtual AffineTransform localTransform() const override final { return m_localTransform; }
+    FloatRect repaintRectInLocalCoordinates() const final { return m_repaintBoundingBox; }
+    FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const final { return m_repaintBoundingBoxExcludingShadow; }
+    const AffineTransform& localToParentTransform() const final { return m_localTransform; }
+    AffineTransform localTransform() const final { return m_localTransform; }
 
-    virtual bool isSVGShape() const override final { return true; }
-    virtual bool canHaveChildren() const override final { return false; }
-    virtual const char* renderName() const override { return "RenderSVGShape"; }
+    bool isSVGShape() const final { return true; }
+    bool canHaveChildren() const final { return false; }
+    const char* renderName() const override { return "RenderSVGShape"; }
 
-    virtual void layout() override final;
-    virtual void paint(PaintInfo&, const LayoutPoint&) override final;
-    virtual void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override final;
+    void layout() final;
+    void paint(PaintInfo&, const LayoutPoint&) final;
+    void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) final;
 
-    virtual bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) override final;
+    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) final;
 
-    virtual FloatRect objectBoundingBox() const override final { return m_fillBoundingBox; }
-    virtual FloatRect strokeBoundingBox() const override final { return m_strokeBoundingBox; }
+    FloatRect objectBoundingBox() const final { return m_fillBoundingBox; }
+    FloatRect strokeBoundingBox() const final { return m_strokeBoundingBox; }
     FloatRect calculateObjectBoundingBox() const;
     FloatRect calculateStrokeBoundingBox() const;
     void updateRepaintBoundingBox();
@@ -135,5 +134,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGShape, isSVGShape())
-
-#endif // RenderSVGShape_h

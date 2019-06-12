@@ -70,7 +70,7 @@ public:
     WTF::String protocol() const
     {
         parseURLIfNecessary();
-        return m_parsedURL->isValid() ? m_parsedURL->protocol() : WTF::String();
+        return m_parsedURL->isValid() ? m_parsedURL->protocol().toString() : WTF::String();
     }
 
     WTF::String path() const
@@ -85,12 +85,12 @@ public:
         return m_parsedURL->isValid() ? m_parsedURL->lastPathComponent() : WTF::String();
     }
 
-    void encode(IPC::ArgumentEncoder& encoder) const
+    void encode(IPC::Encoder& encoder) const
     {
         encoder << m_string;
     }
 
-    static bool decode(IPC::ArgumentDecoder& decoder, RefPtr<Object>& result)
+    static bool decode(IPC::Decoder& decoder, RefPtr<Object>& result)
     {
         WTF::String string;
         if (!decoder.decode(string))

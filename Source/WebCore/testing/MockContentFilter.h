@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MockContentFilter_h
-#define MockContentFilter_h
+#pragma once
 
 #include "MockContentFilterSettings.h"
 #include "PlatformContentFilter.h"
@@ -43,7 +42,9 @@ public:
     void addData(const char* data, int length) override;
     void finishedAddingData() override;
     Ref<SharedBuffer> replacementData() const override;
+#if ENABLE(CONTENT_FILTERING)
     ContentFilterUnblockHandler unblockHandler() const override;
+#endif
     String unblockRequestDeniedScript() const override;
 
 private:
@@ -56,5 +57,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // MockContentFilter_h

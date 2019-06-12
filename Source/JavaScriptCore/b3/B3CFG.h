@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3CFG_h
-#define B3CFG_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "B3BasicBlock.h"
-#include "B3IndexMap.h"
-#include "B3IndexSet.h"
 #include "B3Procedure.h"
+#include <wtf/IndexMap.h>
+#include <wtf/IndexSet.h>
 
 namespace JSC { namespace B3 {
 
@@ -40,8 +39,8 @@ class CFG {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     typedef BasicBlock* Node;
-    typedef IndexSet<BasicBlock> Set;
-    template<typename T> using Map = IndexMap<BasicBlock, T>;
+    typedef IndexSet<BasicBlock*> Set;
+    template<typename T> using Map = IndexMap<BasicBlock*, T>;
     typedef Vector<BasicBlock*, 4> List;
 
     CFG(Procedure& proc)
@@ -52,7 +51,7 @@ public:
     Node root() { return m_proc[0]; }
 
     template<typename T>
-    Map<T> newMap() { return IndexMap<JSC::B3::BasicBlock, T>(m_proc.size()); }
+    Map<T> newMap() { return IndexMap<JSC::B3::BasicBlock*, T>(m_proc.size()); }
 
     SuccessorCollection<BasicBlock, BasicBlock::SuccessorList> successors(Node node) { return node->successorBlocks(); }
     BasicBlock::PredecessorList& predecessors(Node node) { return node->predecessors(); }
@@ -75,6 +74,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3CFG_h
-

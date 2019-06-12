@@ -20,17 +20,79 @@
 #include "config.h"
 
 #if USE(SOUP)
-
 #include "ResourceRequest.h"
 
+#include "BlobData.h"
+#include "BlobRegistryImpl.h"
 #include "GUniquePtrSoup.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
+#include "SharedBuffer.h"
 #include "WebKitSoupRequestGeneric.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+static uint64_t appendEncodedBlobItemToSoupMessageBody(SoupMessage* soupMessage, const BlobDataItem& blobItem)
+{
+    switch (blobItem.type()) {
+    case BlobDataItem::Type::Data:
+        soup_message_body_append(soupMessage->request_body, SOUP_MEMORY_TEMPORARY, blobItem.data().data()->data() + blobItem.offset(), blobItem.length());
+        return blobItem.length();
+    case BlobDataItem::Type::File: {
+        if (!isValidFileTime(blobItem.file()->expectedModificationTime()))
+            return 0;
+
+        time_t fileModificationTime;
+        if (!getFileModificationTime(blobItem.file()->path(), fileModificationTime)
+            || fileModificationTime != static_cast<time_t>(blobItem.file()->expectedModificationTime()))
+            return 0;
+
+        if (RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(blobItem.file()->path())) {
+            GUniquePtr<SoupBuffer> soupBuffer(buffer->createSoupBuffer(blobItem.offset(), blobItem.length() == BlobDataItem::toEndOfFile ? 0 : blobItem.length()));
+            soup_message_body_append_buffer(soupMessage->request_body, soupBuffer.get());
+            return soupBuffer->length;
+        }
+        break;
+    }
+    }
+
+    return 0;
+}
+
+void ResourceRequest::updateSoupMessageBody(SoupMessage* soupMessage) const
+{
+    auto* formData = httpBody();
+    if (!formData || formData->isEmpty())
+        return;
+
+    soup_message_body_set_accumulate(soupMessage->request_body, FALSE);
+    uint64_t bodySize = 0;
+    for (const auto& element : formData->elements()) {
+        switch (element.m_type) {
+        case FormDataElement::Type::Data:
+            bodySize += element.m_data.size();
+            soup_message_body_append(soupMessage->request_body, SOUP_MEMORY_TEMPORARY, element.m_data.data(), element.m_data.size());
+            break;
+        case FormDataElement::Type::EncodedFile:
+            if (RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(element.m_filename)) {
+                GUniquePtr<SoupBuffer> soupBuffer(buffer->createSoupBuffer());
+                bodySize += buffer->size();
+                soup_message_body_append_buffer(soupMessage->request_body, soupBuffer.get());
+            }
+            break;
+        case FormDataElement::Type::EncodedBlob:
+            if (auto* blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(element.m_url)) {
+                for (const auto& item : blobData->items())
+                    bodySize += appendEncodedBlobItemToSoupMessageBody(soupMessage, item);
+            }
+            break;
+        }
+    }
+
+    ASSERT(bodySize == static_cast<uint64_t>(soupMessage->request_body->length));
+}
 
 void ResourceRequest::updateSoupMessageMembers(SoupMessage* soupMessage) const
 {
@@ -77,25 +139,12 @@ void ResourceRequest::updateSoupMessage(SoupMessage* soupMessage) const
     soup_message_set_uri(soupMessage, uri.get());
 
     updateSoupMessageMembers(soupMessage);
-}
-
-SoupMessage* ResourceRequest::toSoupMessage() const
-{
-    SoupMessage* soupMessage = soup_message_new(httpMethod().ascii().data(), url().string().utf8().data());
-    if (!soupMessage)
-        return 0;
-
-    updateSoupMessageMembers(soupMessage);
-
-    // Body data is only handled at ResourceHandleSoup::startHttp for
-    // now; this is because this may not be a good place to go
-    // openning and mmapping files. We should maybe revisit this.
-    return soupMessage;
+    updateSoupMessageBody(soupMessage);
 }
 
 void ResourceRequest::updateFromSoupMessage(SoupMessage* soupMessage)
 {
-    bool shouldPortBeResetToZero = m_url.hasPort() && !m_url.port();
+    bool shouldPortBeResetToZero = m_url.port() && !m_url.port().value();
     m_url = URL(soup_message_get_uri(soupMessage));
 
     // SoupURI cannot differeniate between an explicitly specified port 0 and
@@ -159,13 +208,7 @@ GUniquePtr<SoupURI> ResourceRequest::createSoupURI() const
         return GUniquePtr<SoupURI>(soup_uri_new(urlString.utf8().data()));
     }
 
-    GUniquePtr<SoupURI> soupURI;
-    if (m_url.hasFragmentIdentifier()) {
-        URL url = m_url;
-        url.removeFragmentIdentifier();
-        soupURI.reset(soup_uri_new(url.string().utf8().data()));
-    } else
-        soupURI = m_url.createSoupURI();
+    GUniquePtr<SoupURI> soupURI = m_url.createSoupURI();
 
     // Versions of libsoup prior to 2.42 have a soup_uri_new that will convert empty passwords that are not
     // prefixed by a colon into null. Some parts of soup like the SoupAuthenticationManager will only be active

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ResourceResponse.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "CFNetworkSPI.h"
 
@@ -86,7 +86,6 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
 
         CFHTTPMessageRef httpResponse = CFURLResponseGetHTTPResponse(m_cfResponse.get());
         if (httpResponse) {
-            m_httpVersion = String(adoptCF(CFHTTPMessageCopyVersion(httpResponse)).get()).convertToASCIIUppercase();
             m_httpStatusCode = CFHTTPMessageGetResponseStatusCode(httpResponse);
             
             if (initLevel < AllFields) {
@@ -104,6 +103,8 @@ void ResourceResponse::platformLazyInit(InitLevel initLevel)
     if (m_initLevel < AllFields && initLevel == AllFields) {
         CFHTTPMessageRef httpResponse = CFURLResponseGetHTTPResponse(m_cfResponse.get());
         if (httpResponse) {
+            m_httpVersion = String(adoptCF(CFHTTPMessageCopyVersion(httpResponse)).get()).convertToASCIIUppercase();
+
             RetainPtr<CFStringRef> statusLine = adoptCF(CFHTTPMessageCopyResponseStatusLine(httpResponse));
             m_httpStatusText = extractReasonPhraseFromHTTPStatusLine(statusLine.get());
 
@@ -141,4 +142,4 @@ bool ResourceResponse::platformCompare(const ResourceResponse& a, const Resource
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

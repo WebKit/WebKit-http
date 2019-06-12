@@ -26,25 +26,21 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-#ifndef JSLexicalEnvironment_h
-#define JSLexicalEnvironment_h
+#pragma once
 
 #include "CodeBlock.h"
-#include "CopiedSpaceInlines.h"
 #include "JSEnvironmentRecord.h"
 #include "SymbolTable.h"
 
 namespace JSC {
 
-class Register;
-    
 class JSLexicalEnvironment : public JSEnvironmentRecord {
 protected:
     JSLexicalEnvironment(VM&, Structure*, JSScope*, SymbolTable*);
     
 public:
     typedef JSEnvironmentRecord Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames | OverridesToThis;
 
     static JSLexicalEnvironment* create(
         VM& vm, Structure* structure, JSScope* currentScope, SymbolTable* symbolTable, JSValue initialValue)
@@ -67,7 +63,7 @@ public:
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
 
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
@@ -75,7 +71,7 @@ public:
 
     DECLARE_INFO;
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject) { return Structure::create(vm, globalObject, jsNull(), TypeInfo(ClosureObjectType, StructureFlags), info()); }
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject) { return Structure::create(vm, globalObject, jsNull(), TypeInfo(LexicalEnvironmentType, StructureFlags), info()); }
 };
 
 inline JSLexicalEnvironment::JSLexicalEnvironment(VM& vm, Structure* structure, JSScope* currentScope, SymbolTable* symbolTable)
@@ -85,10 +81,8 @@ inline JSLexicalEnvironment::JSLexicalEnvironment(VM& vm, Structure* structure, 
 
 inline JSLexicalEnvironment* asActivation(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(JSLexicalEnvironment::info()));
+    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), JSLexicalEnvironment::info()));
     return jsCast<JSLexicalEnvironment*>(asObject(value));
 }
     
 } // namespace JSC
-
-#endif // JSLexicalEnvironment_h

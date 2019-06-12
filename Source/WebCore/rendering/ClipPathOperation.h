@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef ClipPathOperation_h
-#define ClipPathOperation_h
+#pragma once
 
 #include "BasicShapes.h"
 #include "Path.h"
@@ -75,7 +74,7 @@ public:
     const String& fragment() const { return m_fragment; }
 
 private:
-    virtual bool operator==(const ClipPathOperation& other) const override
+    bool operator==(const ClipPathOperation& other) const override
     {
         if (!isSameType(other))
             return false;
@@ -109,7 +108,7 @@ public:
     CSSBoxType referenceBox() const { return m_referenceBox; }
 
 private:
-    virtual bool operator==(const ClipPathOperation& other) const override
+    bool operator==(const ClipPathOperation& other) const override
     {
         if (!isSameType(other))
             return false;
@@ -145,7 +144,7 @@ public:
     CSSBoxType referenceBox() const { return m_referenceBox; }
 
 private:
-    virtual bool operator==(const ClipPathOperation& other) const override
+    bool operator==(const ClipPathOperation& other) const override
     {
         if (!isSameType(other))
             return false;
@@ -172,5 +171,3 @@ SPECIALIZE_TYPE_TRAITS_END()
 SPECIALIZE_TYPE_TRAITS_CLIP_PATH_OPERATION(ReferenceClipPathOperation, ClipPathOperation::Reference)
 SPECIALIZE_TYPE_TRAITS_CLIP_PATH_OPERATION(ShapeClipPathOperation, ClipPathOperation::Shape)
 SPECIALIZE_TYPE_TRAITS_CLIP_PATH_OPERATION(BoxClipPathOperation, ClipPathOperation::Box)
-
-#endif // ClipPathOperation_h

@@ -11,33 +11,30 @@
 #ifndef LIBANGLE_BUFFER_H_
 #define LIBANGLE_BUFFER_H_
 
-#include "libANGLE/Error.h"
-#include "libANGLE/RefCountObject.h"
-#include "libANGLE/renderer/IndexRangeCache.h"
-
 #include "common/angleutils.h"
+#include "libANGLE/Debug.h"
+#include "libANGLE/Error.h"
+#include "libANGLE/IndexRangeCache.h"
+#include "libANGLE/RefCountObject.h"
 
 namespace rx
 {
 class BufferImpl;
+class GLImplFactory;
 };
 
 namespace gl
 {
+class Buffer;
+class Context;
 
-class Buffer : public RefCountObject
+class BufferState final : angle::NonCopyable
 {
   public:
-    Buffer(rx::BufferImpl *impl, GLuint id);
+    BufferState();
+    ~BufferState();
 
-    virtual ~Buffer();
-
-    Error bufferData(const void *data, GLsizeiptr size, GLenum usage);
-    Error bufferSubData(const void *data, GLsizeiptr size, GLintptr offset);
-    Error copyBufferSubData(Buffer* source, GLintptr sourceOffset, GLintptr destOffset, GLsizeiptr size);
-    Error map(GLenum access);
-    Error mapRange(GLintptr offset, GLsizeiptr length, GLbitfield access);
-    Error unmap(GLboolean *result);
+    const std::string &getLabel();
 
     GLenum getUsage() const { return mUsage; }
     GLbitfield getAccessFlags() const { return mAccessFlags; }
@@ -48,13 +45,10 @@ class Buffer : public RefCountObject
     GLint64 getMapLength() const { return mMapLength; }
     GLint64 getSize() const { return mSize; }
 
-    rx::BufferImpl *getImplementation() const { return mBuffer; }
-
-    rx::IndexRangeCache *getIndexRangeCache() { return &mIndexRangeCache; }
-    const rx::IndexRangeCache *getIndexRangeCache() const { return &mIndexRangeCache; }
-
   private:
-    rx::BufferImpl *mBuffer;
+    friend class Buffer;
+
+    std::string mLabel;
 
     GLenum mUsage;
     GLint64 mSize;
@@ -64,10 +58,64 @@ class Buffer : public RefCountObject
     GLvoid *mMapPointer;
     GLint64 mMapOffset;
     GLint64 mMapLength;
-
-    rx::IndexRangeCache mIndexRangeCache;
 };
 
-}
+class Buffer final : public RefCountObject, public LabeledObject
+{
+  public:
+    Buffer(rx::GLImplFactory *factory, GLuint id);
+    ~Buffer() override;
+    void destroy(const Context *context) override;
+
+    void setLabel(const std::string &label) override;
+    const std::string &getLabel() const override;
+
+    Error bufferData(const Context *context,
+                     GLenum target,
+                     const void *data,
+                     GLsizeiptr size,
+                     GLenum usage);
+    Error bufferSubData(const Context *context,
+                        GLenum target,
+                        const void *data,
+                        GLsizeiptr size,
+                        GLintptr offset);
+    Error copyBufferSubData(const Context *context,
+                            Buffer *source,
+                            GLintptr sourceOffset,
+                            GLintptr destOffset,
+                            GLsizeiptr size);
+    Error map(const Context *context, GLenum access);
+    Error mapRange(const Context *context, GLintptr offset, GLsizeiptr length, GLbitfield access);
+    Error unmap(const Context *context, GLboolean *result);
+
+    void onTransformFeedback();
+    void onPixelUnpack();
+
+    Error getIndexRange(GLenum type,
+                        size_t offset,
+                        size_t count,
+                        bool primitiveRestartEnabled,
+                        IndexRange *outRange) const;
+
+    GLenum getUsage() const { return mState.mUsage; }
+    GLbitfield getAccessFlags() const { return mState.mAccessFlags; }
+    GLenum getAccess() const { return mState.mAccess; }
+    GLboolean isMapped() const { return mState.mMapped; }
+    GLvoid *getMapPointer() const { return mState.mMapPointer; }
+    GLint64 getMapOffset() const { return mState.mMapOffset; }
+    GLint64 getMapLength() const { return mState.mMapLength; }
+    GLint64 getSize() const { return mState.mSize; }
+
+    rx::BufferImpl *getImplementation() const { return mImpl; }
+
+  private:
+    BufferState mState;
+    rx::BufferImpl *mImpl;
+
+    mutable IndexRangeCache mIndexRangeCache;
+};
+
+}  // namespace gl
 
 #endif   // LIBANGLE_BUFFER_H_

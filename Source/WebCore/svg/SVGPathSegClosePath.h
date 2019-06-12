@@ -18,14 +18,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathSegClosePath_h
-#define SVGPathSegClosePath_h
+#pragma once
 
 #include "SVGPathSegWithContext.h"
 
 namespace WebCore {
 
-class SVGPathSegClosePath : public SVGPathSegWithContext {
+class SVGPathSegClosePath final : public SVGPathSegWithContext {
 public:
     static Ref<SVGPathSegClosePath> create(const SVGPathElement& element, SVGPathSegRole role)
     {
@@ -38,10 +37,8 @@ private:
     {
     }
 
-    virtual unsigned short pathSegType() const override { return PATHSEG_CLOSEPATH; }
-    virtual String pathSegTypeAsLetter() const override { return "Z"; }
+    unsigned short pathSegType() const final { return PATHSEG_CLOSEPATH; }
+    String pathSegTypeAsLetter() const final { return "Z"; }
 };
 
 } // namespace WebCore
-
-#endif

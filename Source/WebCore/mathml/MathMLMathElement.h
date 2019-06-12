@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,25 +25,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MathMLMathElement_h
-#define MathMLMathElement_h
+#pragma once
 
 #if ENABLE(MATHML)
-#include "MathMLInlineContainerElement.h"
+
+#include "MathMLRowElement.h"
 
 namespace WebCore {
 
-class MathMLMathElement : public MathMLInlineContainerElement {
+class MathMLMathElement final : public MathMLRowElement {
 public:
     static Ref<MathMLMathElement> create(const QualifiedName& tagName, Document&);
 
 private:
     MathMLMathElement(const QualifiedName& tagName, Document&);
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void didAttachRenderers() final;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    bool acceptsDisplayStyleAttribute() final { return true; }
+    bool acceptsMathVariantAttribute() final { return true; }
+    std::optional<bool> specifiedDisplayStyle() final;
+
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 };
-    
+
 }
 
 #endif // ENABLE(MATHML)
-#endif // MathMLMathElement_h

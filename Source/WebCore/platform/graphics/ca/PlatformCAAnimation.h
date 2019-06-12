@@ -41,7 +41,7 @@ class TimingFunction;
 
 class PlatformCAAnimation : public RefCounted<PlatformCAAnimation> {
 public:
-    enum AnimationType { Basic, Keyframe };
+    enum AnimationType { Basic, Keyframe, Spring };
     enum FillModeType { NoFillMode, Forwards, Backwards, Both };
     enum ValueFunctionType { NoValueFunction, RotateX, RotateY, RotateZ, ScaleX, ScaleY, ScaleZ, Scale, TranslateX, TranslateY, TranslateZ, Translate };
 
@@ -51,7 +51,7 @@ public:
     virtual bool isPlatformCAAnimationWin() const { return false; }
     virtual bool isPlatformCAAnimationRemote() const { return false; }
     
-    virtual PassRefPtr<PlatformCAAnimation> copy() const = 0;
+    virtual Ref<PlatformCAAnimation> copy() const = 0;
     
     AnimationType animationType() const { return m_type; }
     virtual String keyPath() const = 0;
@@ -123,6 +123,8 @@ public:
         if (beginTime() <= 0)
             setBeginTime(t);
     }
+
+    bool isBasicAnimation() const;
     
 protected:
     PlatformCAAnimation(AnimationType type = Basic)

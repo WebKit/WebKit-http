@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,20 +33,28 @@ namespace JSC {
 
 void RegExpCachedResult::visitChildren(SlotVisitor& visitor)
 {
-    visitor.append(&m_lastInput);
-    visitor.append(&m_lastRegExp);
-    visitor.append(&m_reifiedInput);
-    visitor.append(&m_reifiedResult);
-    visitor.append(&m_reifiedLeftContext);
-    visitor.append(&m_reifiedRightContext);
+    visitor.append(m_lastInput);
+    visitor.append(m_lastRegExp);
+    if (m_reified) {
+        visitor.append(m_reifiedInput);
+        visitor.append(m_reifiedResult);
+        visitor.append(m_reifiedLeftContext);
+        visitor.append(m_reifiedRightContext);
+    }
 }
 
 JSArray* RegExpCachedResult::lastResult(ExecState* exec, JSObject* owner)
 {
     if (!m_reified) {
         m_reifiedInput.set(exec->vm(), owner, m_lastInput.get());
-        m_reifiedResult.set(exec->vm(), owner, createRegExpMatchesArray(exec, m_lastInput.get(), m_lastRegExp.get(), m_result));
+        if (m_result)
+            m_reifiedResult.setWithoutWriteBarrier(createRegExpMatchesArray(exec, exec->lexicalGlobalObject(), m_lastInput.get(), m_lastRegExp.get(), m_result.start));
+        else
+            m_reifiedResult.setWithoutWriteBarrier(createEmptyRegExpMatchesArray(exec->lexicalGlobalObject(), m_lastInput.get(), m_lastRegExp.get()));
+        m_reifiedLeftContext.clear();
+        m_reifiedRightContext.clear();
         m_reified = true;
+        exec->vm().heap.writeBarrier(owner);
     }
     return m_reifiedResult.get();
 }
@@ -75,6 +83,8 @@ void RegExpCachedResult::setInput(ExecState* exec, JSObject* owner, JSString* in
 {
     // Make sure we're reified, otherwise m_reifiedInput will be ignored.
     lastResult(exec, owner);
+    leftContext(exec, owner);
+    rightContext(exec, owner);
     ASSERT(m_reified);
     m_reifiedInput.set(exec->vm(), owner, input);
 }

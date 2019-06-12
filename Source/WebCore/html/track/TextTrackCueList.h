@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,52 +24,47 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextTrackCueList_h
-#define TextTrackCueList_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
 #include "TextTrackCue.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class TextTrackCueList : public RefCounted<TextTrackCueList> {
 public:
-    static Ref<TextTrackCueList> create()
-    {
-        return adoptRef(*new TextTrackCueList);
-    }
+    static Ref<TextTrackCueList> create();
 
-    ~TextTrackCueList() { }
-
-    unsigned long length() const;
-    unsigned long getCueIndex(TextTrackCue*) const;
-
+    unsigned length() const;
     TextTrackCue* item(unsigned index) const;
     TextTrackCue* getCueById(const String&) const;
-    TextTrackCueList* activeCues();
 
-    bool add(PassRefPtr<TextTrackCue>);
-    bool remove(TextTrackCue*);
-    bool contains(TextTrackCue*) const;
-    
-    bool updateCueIndex(TextTrackCue*);
+    unsigned cueIndex(TextTrackCue&) const;
+
+    void add(Ref<TextTrackCue>&&);
+    void remove(TextTrackCue&);
+    void updateCueIndex(TextTrackCue&);
+
+    TextTrackCueList& activeCues();
 
 private:
-    TextTrackCueList();
-    bool add(PassRefPtr<TextTrackCue>, size_t, size_t);
-    void clear();
-    void invalidateCueIndexes(size_t);
+    TextTrackCueList() = default;
 
-    Vector<RefPtr<TextTrackCue>> m_list;
+    Vector<RefPtr<TextTrackCue>> m_vector;
     RefPtr<TextTrackCueList> m_activeCues;
-
 };
+
+inline Ref<TextTrackCueList> TextTrackCueList::create()
+{
+    return adoptRef(*new TextTrackCueList);
+}
+
+inline unsigned TextTrackCueList::length() const
+{
+    return m_vector.size();
+}
 
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)

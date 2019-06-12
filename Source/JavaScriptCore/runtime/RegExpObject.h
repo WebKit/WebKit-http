@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008, 2012, 2016 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2003, 2007-2008, 2012, 2016 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -18,11 +18,12 @@
  *
  */
 
-#ifndef RegExpObject_h
-#define RegExpObject_h
+#pragma once
 
 #include "JSObject.h"
 #include "RegExp.h"
+#include "ThrowScope.h"
+#include "TypeError.h"
 
 namespace JSC {
     
@@ -41,31 +42,44 @@ public:
     void setRegExp(VM& vm, RegExp* r) { m_regExp.set(vm, this, r); }
     RegExp* regExp() const { return m_regExp.get(); }
 
-    void setLastIndex(ExecState* exec, size_t lastIndex)
+    bool setLastIndex(ExecState* exec, size_t lastIndex)
     {
-        m_lastIndex.setWithoutWriteBarrier(jsNumber(lastIndex));
-        if (LIKELY(m_lastIndexIsWritable))
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
+        if (LIKELY(m_lastIndexIsWritable)) {
             m_lastIndex.setWithoutWriteBarrier(jsNumber(lastIndex));
-        else
-            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+            return true;
+        }
+        throwTypeError(exec, scope, ASCIILiteral(ReadonlyPropertyWriteError));
+        return false;
     }
-    void setLastIndex(ExecState* exec, JSValue lastIndex, bool shouldThrow)
+    bool setLastIndex(ExecState* exec, JSValue lastIndex, bool shouldThrow)
     {
-        if (LIKELY(m_lastIndexIsWritable))
-            m_lastIndex.set(exec->vm(), this, lastIndex);
-        else if (shouldThrow)
-            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
+        if (LIKELY(m_lastIndexIsWritable)) {
+            m_lastIndex.set(vm, this, lastIndex);
+            return true;
+        }
+
+        return typeError(exec, scope, shouldThrow, ASCIILiteral(ReadonlyPropertyWriteError));
     }
     JSValue getLastIndex() const
     {
         return m_lastIndex.get();
     }
 
-    bool test(ExecState* exec, JSString* string) { return match(exec, string); }
-    JSValue exec(ExecState*, JSString*);
+    bool test(ExecState* exec, JSGlobalObject* globalObject, JSString* string) { return !!match(exec, globalObject, string); }
+    bool testInline(ExecState* exec, JSGlobalObject* globalObject, JSString* string) { return !!matchInline(exec, globalObject, string); }
+    JSValue exec(ExecState*, JSGlobalObject*, JSString*);
+    JSValue execInline(ExecState*, JSGlobalObject*, JSString*);
+    MatchResult match(ExecState*, JSGlobalObject*, JSString*);
+    JSValue matchGlobal(ExecState*, JSGlobalObject*, JSString*);
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
     DECLARE_EXPORT_INFO;
 
@@ -84,6 +98,8 @@ public:
         return OBJECT_OFFSETOF(RegExpObject, m_lastIndexIsWritable);
     }
 
+    static unsigned advanceStringUnicode(String, unsigned length, unsigned currentIndex);
+
 protected:
     JS_EXPORT_PRIVATE RegExpObject(VM&, Structure*, RegExp*);
     JS_EXPORT_PRIVATE void finishCreation(VM&);
@@ -97,7 +113,7 @@ protected:
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
 private:
-    MatchResult match(ExecState*, JSString*);
+    MatchResult matchInline(ExecState*, JSGlobalObject*, JSString*);
 
     WriteBarrier<RegExp> m_regExp;
     WriteBarrier<Unknown> m_lastIndex;
@@ -108,10 +124,8 @@ RegExpObject* asRegExpObject(JSValue);
 
 inline RegExpObject* asRegExpObject(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(RegExpObject::info()));
+    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), RegExpObject::info()));
     return static_cast<RegExpObject*>(asObject(value));
 }
 
 } // namespace JSC
-
-#endif // RegExpObject_h

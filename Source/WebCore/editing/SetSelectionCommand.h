@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SetSelectionCommand_h
-#define SetSelectionCommand_h
+#pragma once
 
 #include "EditCommand.h"
 #include "FrameSelection.h"
@@ -41,11 +40,11 @@ public:
 private:
     SetSelectionCommand(const VisibleSelection&, FrameSelection::SetSelectionOptions);
 
-    virtual void doApply() override;
-    virtual void doUnapply() override;
+    void doApply() override;
+    void doUnapply() override;
 
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override { }
+    void getNodesInCommand(HashSet<Node*>&) override { }
 #endif
 
     FrameSelection::SetSelectionOptions m_options;
@@ -53,5 +52,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SetSelectionCommand_h

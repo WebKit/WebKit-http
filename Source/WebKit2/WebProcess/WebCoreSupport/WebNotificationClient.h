@@ -26,7 +26,7 @@
 #ifndef WebNotificationClient_h
 #define WebNotificationClient_h
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 
 #include <WebCore/NotificationClient.h>
 
@@ -46,26 +46,21 @@ public:
     virtual ~WebNotificationClient();
 
 private:
-    virtual bool show(WebCore::Notification*) override;
-    virtual void cancel(WebCore::Notification*) override;
-    virtual void clearNotifications(WebCore::ScriptExecutionContext*) override;
-    virtual void notificationObjectDestroyed(WebCore::Notification*) override;
-    virtual void notificationControllerDestroyed() override;
-#if ENABLE(LEGACY_NOTIFICATIONS)
-    virtual void requestPermission(WebCore::ScriptExecutionContext*, PassRefPtr<WebCore::VoidCallback>) override;
-#endif
-#if ENABLE(NOTIFICATIONS)
-    virtual void requestPermission(WebCore::ScriptExecutionContext*, PassRefPtr<WebCore::NotificationPermissionCallback>) override;
-#endif
-    virtual void cancelRequestsForPermission(WebCore::ScriptExecutionContext*) override;
-    virtual bool hasPendingPermissionRequests(WebCore::ScriptExecutionContext*) const override;
-    virtual NotificationClient::Permission checkPermission(WebCore::ScriptExecutionContext*) override;
+    bool show(WebCore::Notification*) override;
+    void cancel(WebCore::Notification*) override;
+    void clearNotifications(WebCore::ScriptExecutionContext*) override;
+    void notificationObjectDestroyed(WebCore::Notification*) override;
+    void notificationControllerDestroyed() override;
+    void requestPermission(WebCore::ScriptExecutionContext*, RefPtr<WebCore::NotificationPermissionCallback>&&) override;
+    void cancelRequestsForPermission(WebCore::ScriptExecutionContext*) override;
+    bool hasPendingPermissionRequests(WebCore::ScriptExecutionContext*) const override;
+    WebCore::NotificationClient::Permission checkPermission(WebCore::ScriptExecutionContext*) override;
     
     WebPage* m_page;
 };
 
 } // namespace WebKit
 
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 
 #endif // WebNotificationClient_h

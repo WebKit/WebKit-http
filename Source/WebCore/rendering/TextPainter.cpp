@@ -54,13 +54,13 @@ ShadowApplier::ShadowApplier(GraphicsContext& context, const ShadowData* shadow,
     // often draw the *last* shadow and the text itself in a single call.
     if (m_onlyDrawsShadow) {
         FloatRect shadowRect(textRect);
-        shadowRect.inflate(shadow->paintingExtent());
+        shadowRect.inflate(shadow->paintingExtent() + 3 * textRect.height());
         shadowRect.move(shadowOffset);
         context.save();
         context.clip(shadowRect);
 
         m_didSaveContext = true;
-        m_extraOffset = FloatSize(0, 2 * textRect.height() + std::max(0.0f, shadowOffset.height()) + shadowRadius);
+        m_extraOffset = FloatSize(0, 2 * shadowRect.height() + std::max(0.0f, shadowOffset.height()) + shadowRadius);
         shadowOffset -= m_extraOffset;
     }
 
@@ -84,17 +84,17 @@ TextPainter::TextPainter(GraphicsContext& context)
 }
 
 void TextPainter::drawTextOrEmphasisMarks(const FontCascade& font, const TextRun& textRun, const AtomicString& emphasisMark,
-    int emphasisMarkOffset, const FloatPoint& textOrigin, int startOffset, int endOffset)
+    float emphasisMarkOffset, const FloatPoint& textOrigin, unsigned startOffset, unsigned endOffset)
 {
     ASSERT(startOffset < endOffset);
     if (emphasisMark.isEmpty())
         m_context.drawText(font, textRun, textOrigin, startOffset, endOffset);
     else
-        m_context.drawEmphasisMarks(font, textRun, emphasisMark, textOrigin + IntSize(0, emphasisMarkOffset), startOffset, endOffset);
+        m_context.drawEmphasisMarks(font, textRun, emphasisMark, textOrigin + FloatSize(0, emphasisMarkOffset), startOffset, endOffset);
 }
 
 void TextPainter::paintTextWithShadows(const ShadowData* shadow, const FontCascade& font, const TextRun& textRun, const FloatRect& boxRect, const FloatPoint& textOrigin,
-    int startOffset, int endOffset, const AtomicString& emphasisMark, int emphasisMarkOffset, bool stroked)
+    unsigned startOffset, unsigned endOffset, const AtomicString& emphasisMark, float emphasisMarkOffset, bool stroked)
 {
     if (!shadow) {
         drawTextOrEmphasisMarks(font, textRun, emphasisMark, emphasisMarkOffset, textOrigin, startOffset, endOffset);
@@ -102,7 +102,7 @@ void TextPainter::paintTextWithShadows(const ShadowData* shadow, const FontCasca
     }
 
     Color fillColor = m_context.fillColor();
-    bool opaque = !fillColor.hasAlpha();
+    bool opaque = fillColor.isOpaque();
     bool lastShadowIterationShouldDrawText = !stroked && opaque;
     if (!opaque)
         m_context.setFillColor(Color::black);
@@ -120,12 +120,36 @@ void TextPainter::paintTextWithShadows(const ShadowData* shadow, const FontCasca
     }
 }
 
-void TextPainter::paintTextAndEmphasisMarksIfNeeded(const TextRun& textRun, const FloatRect& boxRect, const FloatPoint& textOrigin, int startOffset, int endOffset,
+void TextPainter::paintTextAndEmphasisMarksIfNeeded(const TextRun& textRun, const FloatRect& boxRect, const FloatPoint& textOrigin, unsigned startOffset, unsigned endOffset,
     const TextPaintStyle& paintStyle, const ShadowData* shadow)
 {
-    // FIXME: Truncate right-to-left text correctly.
-    paintTextWithShadows(shadow, *m_font, textRun, boxRect, textOrigin, startOffset, endOffset, nullAtom, 0, paintStyle.strokeWidth > 0);
-
+    if (paintStyle.paintOrder == PaintOrder::Normal) {
+        // FIXME: Truncate right-to-left text correctly.
+        paintTextWithShadows(shadow, *m_font, textRun, boxRect, textOrigin, startOffset, endOffset, nullAtom(), 0, paintStyle.strokeWidth > 0);
+    } else {
+        bool paintShadow = true;
+        auto textDrawingMode = m_context.textDrawingMode();
+        auto paintOrder = RenderStyle::paintTypesForPaintOrder(paintStyle.paintOrder);
+        for (auto order : paintOrder) {
+            switch (order) {
+            case PaintType::Fill:
+                m_context.setTextDrawingMode(textDrawingMode & ~TextModeStroke);
+                paintTextWithShadows(paintShadow ? shadow : nullptr, *m_font, textRun, boxRect, textOrigin, startOffset, endOffset, nullAtom(), 0, false);
+                paintShadow = false;
+                m_context.setTextDrawingMode(textDrawingMode);
+                break;
+            case PaintType::Stroke:
+                m_context.setTextDrawingMode(textDrawingMode & ~TextModeFill);
+                paintTextWithShadows(paintShadow ? shadow : nullptr, *m_font, textRun, boxRect, textOrigin, startOffset, endOffset, nullAtom(), 0, paintStyle.strokeWidth > 0);
+                paintShadow = false;
+                m_context.setTextDrawingMode(textDrawingMode);
+                break;
+            case PaintType::Markers:
+                continue;
+            }
+        }
+    }
+    
     if (m_emphasisMark.isEmpty())
         return;
 
@@ -144,9 +168,19 @@ void TextPainter::paintTextAndEmphasisMarksIfNeeded(const TextRun& textRun, cons
     if (m_combinedText)
         m_context.concatCTM(rotation(boxRect, Counterclockwise));
 }
+
+void TextPainter::paintTextInRange(const TextRun& textRun, const FloatRect& boxRect, const FloatPoint& textOrigin, unsigned start, unsigned end)
+{
+    ASSERT(m_font);
+    ASSERT(start < end);
+
+    GraphicsContextStateSaver stateSaver(m_context, m_textPaintStyle.strokeWidth > 0);
+    updateGraphicsContext(m_context, m_textPaintStyle);
+    paintTextAndEmphasisMarksIfNeeded(textRun, boxRect, textOrigin, start, end, m_textPaintStyle, m_textShadow);
+}
     
-void TextPainter::paintText(const TextRun& textRun, int length, const FloatRect& boxRect, const FloatPoint& textOrigin, int selectionStart, int selectionEnd,
-    bool paintSelectedTextOnly, bool paintSelectedTextSeparately)
+void TextPainter::paintText(const TextRun& textRun, unsigned length, const FloatRect& boxRect, const FloatPoint& textOrigin, unsigned selectionStart, unsigned selectionEnd,
+    bool paintSelectedTextOnly, bool paintSelectedTextSeparately, bool paintNonSelectedTextOnly)
 {
     ASSERT(m_font);
     if (!paintSelectedTextOnly) {
@@ -154,15 +188,20 @@ void TextPainter::paintText(const TextRun& textRun, int length, const FloatRect&
         // effect, so only when we know we're stroking, do a save/restore.
         GraphicsContextStateSaver stateSaver(m_context, m_textPaintStyle.strokeWidth > 0);
         updateGraphicsContext(m_context, m_textPaintStyle);
-        if (paintSelectedTextSeparately) {
+        bool fullPaint = !paintSelectedTextSeparately || selectionEnd <= selectionStart;
+        if (fullPaint)
+            paintTextAndEmphasisMarksIfNeeded(textRun, boxRect, textOrigin, 0, length, m_textPaintStyle, m_textShadow);
+        else {
             // Paint the before and after selection parts.
             if (selectionStart > 0)
                 paintTextAndEmphasisMarksIfNeeded(textRun, boxRect, textOrigin, 0, selectionStart, m_textPaintStyle, m_textShadow);
             if (selectionEnd < length)
                 paintTextAndEmphasisMarksIfNeeded(textRun, boxRect, textOrigin, selectionEnd, length, m_textPaintStyle, m_textShadow);
-        } else
-            paintTextAndEmphasisMarksIfNeeded(textRun, boxRect, textOrigin, 0, length, m_textPaintStyle, m_textShadow);
+        }
     }
+
+    if (paintNonSelectedTextOnly)
+        return;
 
     // Paint only the text that is selected.
     if ((paintSelectedTextOnly || paintSelectedTextSeparately) && selectionStart < selectionEnd) {

@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IOSurfacePool_h
-#define IOSurfacePool_h
+#pragma once
 
 #if USE(IOSURFACE)
 
-#include "ColorSpace.h"
 #include "IOSurface.h"
 #include "IntSize.h"
 #include "IntSizeHash.h"
@@ -36,7 +34,6 @@
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/RetainPtr.h>
 
 namespace WebCore {
 
@@ -48,14 +45,12 @@ class IOSurfacePool {
 public:
     WEBCORE_EXPORT static IOSurfacePool& sharedPool();
 
-    std::unique_ptr<IOSurface> takeSurface(IntSize, ColorSpace, IOSurface::Format);
+    std::unique_ptr<IOSurface> takeSurface(IntSize, CGColorSpaceRef, IOSurface::Format);
     WEBCORE_EXPORT void addSurface(std::unique_ptr<IOSurface>);
 
     void discardAllSurfaces();
 
     WEBCORE_EXPORT void setPoolSize(size_t);
-
-    void showPoolStatistics();
 
 private:
     IOSurfacePool();
@@ -65,9 +60,9 @@ private:
             : hasMarkedPurgeable(false)
         { }
 
-        void resetLastUseTime() { lastUseTime = std::chrono::steady_clock::now(); }
+        void resetLastUseTime() { lastUseTime = MonotonicTime::now(); }
 
-        std::chrono::steady_clock::time_point lastUseTime;
+        MonotonicTime lastUseTime;
         bool hasMarkedPurgeable;
     };
 
@@ -94,6 +89,8 @@ private:
 
     void platformGarbageCollectNow();
 
+    void showPoolStatistics(const char*);
+
     Timer m_collectionTimer;
     CachedSurfaceMap m_cachedSurfaces;
     CachedSurfaceQueue m_inUseSurfaces;
@@ -107,5 +104,3 @@ private:
 
 }
 #endif // USE(IOSURFACE)
-
-#endif // IOSurfacePool_h

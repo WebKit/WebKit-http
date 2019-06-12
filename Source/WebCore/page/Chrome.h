@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  * Copyright (C) 2012, Samsung Electronics. All rights reserved.
  *
@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef Chrome_h
-#define Chrome_h
+#pragma once
 
 #include "Cursor.h"
 #include "FocusDirection.h"
@@ -29,9 +28,7 @@
 #include <wtf/RefPtr.h>
 
 #if PLATFORM(COCOA)
-#ifndef __OBJC__
-class NSView;
-#endif
+OBJC_CLASS NSView;
 #endif
 
 namespace WebCore {
@@ -44,6 +41,7 @@ class DateTimeChooserClient;
 class FileChooser;
 class FileIconLoader;
 class FloatRect;
+class FrameLoadRequest;
 class Element;
 class Frame;
 class Geolocation;
@@ -58,7 +56,6 @@ class PopupOpeningObserver;
 class SearchPopupMenu;
 
 struct DateTimeChooserParameters;
-struct FrameLoadRequest;
 struct ViewportArguments;
 struct WindowFeatures;
     
@@ -70,37 +67,35 @@ public:
     ChromeClient& client() { return m_client; }
 
     // HostWindow methods.
-    virtual void invalidateRootView(const IntRect&) override;
-    virtual void invalidateContentsAndRootView(const IntRect&) override;
-    virtual void invalidateContentsForSlowScroll(const IntRect&) override;
-    virtual void scroll(const IntSize&, const IntRect&, const IntRect&) override;
+    void invalidateRootView(const IntRect&) override;
+    void invalidateContentsAndRootView(const IntRect&) override;
+    void invalidateContentsForSlowScroll(const IntRect&) override;
+    void scroll(const IntSize&, const IntRect&, const IntRect&) override;
 #if USE(COORDINATED_GRAPHICS)
-    virtual void delegatedScrollRequested(const IntPoint& scrollPoint) override;
+    void delegatedScrollRequested(const IntPoint& scrollPoint) override;
 #endif
-    virtual IntPoint screenToRootView(const IntPoint&) const override;
-    virtual IntRect rootViewToScreen(const IntRect&) const override;
+    IntPoint screenToRootView(const IntPoint&) const override;
+    IntRect rootViewToScreen(const IntRect&) const override;
 #if PLATFORM(IOS)
-    virtual IntPoint accessibilityScreenToRootView(const IntPoint&) const override;
-    virtual IntRect rootViewToAccessibilityScreen(const IntRect&) const override;
+    IntPoint accessibilityScreenToRootView(const IntPoint&) const override;
+    IntRect rootViewToAccessibilityScreen(const IntRect&) const override;
 #endif
-    virtual PlatformPageClient platformPageClient() const override;
-    virtual void scrollbarsModeDidChange() const override;
-    virtual void setCursor(const Cursor&) override;
-    virtual void setCursorHiddenUntilMouseMoves(bool) override;
+    PlatformPageClient platformPageClient() const override;
+    void scrollbarsModeDidChange() const override;
+    void setCursor(const Cursor&) override;
+    void setCursorHiddenUntilMouseMoves(bool) override;
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-    virtual void scheduleAnimation() override;
-#endif
+    void scheduleAnimation() override { }
 
-    virtual PlatformDisplayID displayID() const override;
-    virtual void windowScreenDidChange(PlatformDisplayID) override;
+    PlatformDisplayID displayID() const override;
+    void windowScreenDidChange(PlatformDisplayID) override;
 
     FloatSize screenSize() const override;
     FloatSize availableScreenSize() const override;
 
     void scrollRectIntoView(const IntRect&) const;
 
-    void contentsSizeChanged(Frame*, const IntSize&) const;
+    void contentsSizeChanged(Frame&, const IntSize&) const;
 
     WEBCORE_EXPORT void setWindowRect(const FloatRect&) const;
     WEBCORE_EXPORT FloatRect windowRect() const;
@@ -116,7 +111,7 @@ public:
     void focusedElementChanged(Element*) const;
     void focusedFrameChanged(Frame*) const;
 
-    WEBCORE_EXPORT Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) const;
+    WEBCORE_EXPORT Page* createWindow(Frame&, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) const;
     WEBCORE_EXPORT void show() const;
 
     bool canRunModal() const;
@@ -137,30 +132,30 @@ public:
     void setResizable(bool) const;
 
     bool canRunBeforeUnloadConfirmPanel();
-    bool runBeforeUnloadConfirmPanel(const String& message, Frame*);
+    bool runBeforeUnloadConfirmPanel(const String& message, Frame&);
 
     void closeWindowSoon();
 
-    void runJavaScriptAlert(Frame*, const String&);
-    bool runJavaScriptConfirm(Frame*, const String&);
-    bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result);
-    WEBCORE_EXPORT void setStatusbarText(Frame*, const String&);
+    void runJavaScriptAlert(Frame&, const String&);
+    bool runJavaScriptConfirm(Frame&, const String&);
+    bool runJavaScriptPrompt(Frame&, const String& message, const String& defaultValue, String& result);
+    WEBCORE_EXPORT void setStatusbarText(Frame&, const String&);
 
     void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags);
 
     void setToolTip(const HitTestResult&);
 
-    WEBCORE_EXPORT void print(Frame*);
+    WEBCORE_EXPORT void print(Frame&);
 
     WEBCORE_EXPORT void enableSuddenTermination();
     WEBCORE_EXPORT void disableSuddenTermination();
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color& initialColor);
+    std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient&, const Color& initialColor);
 #endif
 
-    void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
-    void loadIconForFiles(const Vector<String>&, FileIconLoader*);
+    void runOpenPanel(Frame&, FileChooser&);
+    void loadIconForFiles(const Vector<String>&, FileIconLoader&);
 
     void dispatchViewportPropertiesDidChange(const ViewportArguments&) const;
 
@@ -173,31 +168,29 @@ public:
     bool selectItemWritingDirectionIsNatural();
     bool selectItemAlignmentFollowsMenuWritingDirection();
     bool hasOpenedPopup() const;
-    RefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const;
-    RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const;
+    RefPtr<PopupMenu> createPopupMenu(PopupMenuClient&) const;
+    RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient&) const;
 
 #if PLATFORM(IOS)
     // FIXME: Can we come up with a better name for this setter?
     void setDispatchViewportDataDidChangeSuppressed(bool dispatchViewportDataDidChangeSuppressed) { m_isDispatchViewportDataDidChangeSuppressed = dispatchViewportDataDidChangeSuppressed; }
-
-    void didReceiveDocType(Frame*);
 #endif
 
-    void registerPopupOpeningObserver(PopupOpeningObserver*);
-    void unregisterPopupOpeningObserver(PopupOpeningObserver*);
+    void didReceiveDocType(Frame&);
+
+    void registerPopupOpeningObserver(PopupOpeningObserver&);
+    void unregisterPopupOpeningObserver(PopupOpeningObserver&);
 
 private:
     void notifyPopupOpeningObservers() const;
 
     Page& m_page;
     ChromeClient& m_client;
-    PlatformDisplayID m_displayID;
+    PlatformDisplayID m_displayID { 0 };
     Vector<PopupOpeningObserver*> m_popupOpeningObservers;
 #if PLATFORM(IOS)
-    bool m_isDispatchViewportDataDidChangeSuppressed;
+    bool m_isDispatchViewportDataDidChangeSuppressed { false };
 #endif
 };
 
-}
-
-#endif // Chrome_h
+} // namespace WebCore

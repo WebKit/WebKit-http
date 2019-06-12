@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PublicURLManager_h
-#define PublicURLManager_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include <memory>
@@ -47,7 +46,7 @@ public:
 
     static std::unique_ptr<PublicURLManager> create(ScriptExecutionContext*);
 
-    void registerURL(SecurityOrigin*, const URL&, URLRegistrable*);
+    void registerURL(SecurityOrigin*, const URL&, URLRegistrable&);
     void revoke(const URL&);
 
 private:
@@ -63,5 +62,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // PUBLICURLMANAGER_h

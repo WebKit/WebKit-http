@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,16 +39,18 @@
 #include "DFGSlowPathGenerator.h"
 #include "DFGSpeculativeJIT.h"
 #include "DFGThunks.h"
+#include "JSCInlines.h"
 #include "JSCJSValueInlines.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
-#include "JSCInlines.h"
+#include "StructureStubInfo.h"
+#include "ThunkGenerators.h"
 #include "VM.h"
 
 namespace JSC { namespace DFG {
 
 JITCompiler::JITCompiler(Graph& dfg)
-    : CCallHelpers(&dfg.m_vm, dfg.m_codeBlock)
+    : CCallHelpers(dfg.m_codeBlock)
     , m_graph(dfg)
     , m_jitCode(adoptRef(new JITCode()))
     , m_blockHeads(dfg.numBlocks())
@@ -56,6 +58,11 @@ JITCompiler::JITCompiler(Graph& dfg)
 {
     if (shouldDumpDisassembly() || m_graph.m_vm.m_perBytecodeProfiler)
         m_disassembler = std::make_unique<Disassembler>(dfg);
+#if ENABLE(FTL_JIT)
+    m_jitCode->tierUpInLoopHierarchy = WTFMove(m_graph.m_plan.tierUpInLoopHierarchy);
+    for (unsigned tierUpBytecode : m_graph.m_plan.tierUpAndOSREnterBytecodes)
+        m_jitCode->tierUpEntryTriggers.add(tierUpBytecode, JITCode::TriggerReason::DontTrigger);
+#endif
 }
 
 JITCompiler::~JITCompiler()
@@ -102,7 +109,7 @@ void JITCompiler::compileEntry()
     // check) which will be dependent on stack layout. (We'd need to account for this in
     // both normal return code and when jumping to an exception handler).
     emitFunctionPrologue();
-    emitPutToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
+    emitPutToCallFrameHeader(m_codeBlock, CallFrameSlot::codeBlock);
 }
 
 void JITCompiler::compileSetupRegistersForEntry()
@@ -114,7 +121,7 @@ void JITCompiler::compileSetupRegistersForEntry()
 void JITCompiler::compileEntryExecutionFlag()
 {
 #if ENABLE(FTL_JIT)
-    if (m_graph.m_plan.canTierUpAndOSREnter)
+    if (m_graph.m_plan.canTierUpAndOSREnter())
         store8(TrustedImm32(0), &m_jitCode->neverExecutedEntry);
 #endif // ENABLE(FTL_JIT)
 }
@@ -133,7 +140,7 @@ void JITCompiler::compileExceptionHandlers()
     if (!m_exceptionChecksWithCallFrameRollback.empty()) {
         m_exceptionChecksWithCallFrameRollback.link(this);
 
-        copyCalleeSavesToVMCalleeSavesBuffer();
+        copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(*vm());
 
         // lookupExceptionHandlerFromCallerFrame is passed two arguments, the VM and the exec (the CallFrame*).
         move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
@@ -147,13 +154,13 @@ void JITCompiler::compileExceptionHandlers()
 #endif
         m_calls.append(CallLinkRecord(call(), lookupExceptionHandlerFromCallerFrame));
 
-        jumpToExceptionHandler();
+        jumpToExceptionHandler(*vm());
     }
 
     if (!m_exceptionChecks.empty()) {
         m_exceptionChecks.link(this);
 
-        copyCalleeSavesToVMCalleeSavesBuffer();
+        copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(*vm());
 
         // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
         move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
@@ -166,7 +173,7 @@ void JITCompiler::compileExceptionHandlers()
 #endif
         m_calls.append(CallLinkRecord(call(), lookupExceptionHandler));
 
-        jumpToExceptionHandler();
+        jumpToExceptionHandler(*vm());
     }
 }
 
@@ -247,25 +254,53 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
 
     for (unsigned i = m_getByIds.size(); i--;)
         m_getByIds[i].finalize(linkBuffer);
+    for (unsigned i = m_getByIdsWithThis.size(); i--;)
+        m_getByIdsWithThis[i].finalize(linkBuffer);
     for (unsigned i = m_putByIds.size(); i--;)
         m_putByIds[i].finalize(linkBuffer);
 
     for (unsigned i = 0; i < m_ins.size(); ++i) {
         StructureStubInfo& info = *m_ins[i].m_stubInfo;
-        CodeLocationCall callReturnLocation = linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->call());
-        info.patch.deltaCallToDone = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_ins[i].m_done));
-        info.patch.deltaCallToJump = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_ins[i].m_jump));
-        info.callReturnLocation = callReturnLocation;
-        info.patch.deltaCallToSlowCase = differenceBetweenCodePtr(callReturnLocation, linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->label()));
+
+        CodeLocationLabel start = linkBuffer.locationOf(m_ins[i].m_jump);
+        info.patch.start = start;
+
+        ptrdiff_t inlineSize = MacroAssembler::differenceBetweenCodePtr(
+            start, linkBuffer.locationOf(m_ins[i].m_done));
+        RELEASE_ASSERT(inlineSize >= 0);
+        info.patch.inlineSize = inlineSize;
+
+        info.patch.deltaFromStartToSlowPathCallLocation = MacroAssembler::differenceBetweenCodePtr(
+            start, linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->call()));
+
+        info.patch.deltaFromStartToSlowPathStart = MacroAssembler::differenceBetweenCodePtr(
+            start, linkBuffer.locationOf(m_ins[i].m_slowPathGenerator->label()));
     }
     
-    for (unsigned i = 0; i < m_jsCalls.size(); ++i) {
-        JSCallRecord& record = m_jsCalls[i];
-        CallLinkInfo& info = *record.m_info;
-        linkBuffer.link(record.m_slowCall, FunctionPtr(m_vm->getCTIStub(linkCallThunkGenerator).code().executableAddress()));
-        info.setCallLocations(linkBuffer.locationOfNearCall(record.m_slowCall),
-            linkBuffer.locationOf(record.m_targetToCheck),
-            linkBuffer.locationOfNearCall(record.m_fastCall));
+    for (auto& record : m_jsCalls) {
+        CallLinkInfo& info = *record.info;
+        linkBuffer.link(record.slowCall, FunctionPtr(vm()->getCTIStub(linkCallThunkGenerator).code().executableAddress()));
+        info.setCallLocations(
+            CodeLocationLabel(linkBuffer.locationOfNearCall(record.slowCall)),
+            CodeLocationLabel(linkBuffer.locationOf(record.targetToCheck)),
+            linkBuffer.locationOfNearCall(record.fastCall));
+    }
+    
+    for (JSDirectCallRecord& record : m_jsDirectCalls) {
+        CallLinkInfo& info = *record.info;
+        linkBuffer.link(record.call, linkBuffer.locationOf(record.slowPath));
+        info.setCallLocations(
+            CodeLocationLabel(),
+            linkBuffer.locationOf(record.slowPath),
+            linkBuffer.locationOfNearCall(record.call));
+    }
+    
+    for (JSDirectTailCallRecord& record : m_jsDirectTailCalls) {
+        CallLinkInfo& info = *record.info;
+        info.setCallLocations(
+            linkBuffer.locationOf(record.patchableJump),
+            linkBuffer.locationOf(record.slowPath),
+            linkBuffer.locationOfNearCall(record.call));
     }
     
     MacroAssemblerCodeRef osrExitThunk = vm()->getCTIStub(osrExitGenerationThunkGenerator);
@@ -319,17 +354,26 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
         m_codeBlock->setPCToCodeOriginMap(std::make_unique<PCToCodeOriginMap>(WTFMove(m_pcToCodeOriginMapBuilder), linkBuffer));
 }
 
+static void emitStackOverflowCheck(JITCompiler& jit, MacroAssembler::JumpList& stackOverflow)
+{
+    int frameTopOffset = virtualRegisterForLocal(jit.graph().requiredRegisterCountForExecutionAndExit() - 1).offset() * sizeof(Register);
+    unsigned maxFrameSize = -frameTopOffset;
+
+    jit.addPtr(MacroAssembler::TrustedImm32(frameTopOffset), GPRInfo::callFrameRegister, GPRInfo::regT1);
+    if (UNLIKELY(maxFrameSize > Options::reservedZoneSize()))
+        stackOverflow.append(jit.branchPtr(MacroAssembler::Above, GPRInfo::regT1, GPRInfo::callFrameRegister));
+    stackOverflow.append(jit.branchPtr(MacroAssembler::Above, MacroAssembler::AbsoluteAddress(jit.vm()->addressOfSoftStackLimit()), GPRInfo::regT1));
+}
+
 void JITCompiler::compile()
 {
-    SamplingRegion samplingRegion("DFG Backend");
-
     setStartOfCode();
     compileEntry();
     m_speculative = std::make_unique<SpeculativeJIT>(*this);
 
     // Plant a check that sufficient space is available in the JSStack.
-    addPtr(TrustedImm32(virtualRegisterForLocal(m_graph.requiredRegisterCountForExecutionAndExit() - 1).offset() * sizeof(Register)), GPRInfo::callFrameRegister, GPRInfo::regT1);
-    Jump stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), GPRInfo::regT1);
+    JumpList stackOverflow;
+    emitStackOverflowCheck(*this, stackOverflow);
 
     addPtr(TrustedImm32(m_graph.stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
@@ -353,7 +397,7 @@ void JITCompiler::compile()
 
     // Generate slow path code.
     m_speculative->runSlowPathGenerators(m_pcToCodeOriginMapBuilder);
-    m_pcToCodeOriginMapBuilder.appendItem(label(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
+    m_pcToCodeOriginMapBuilder.appendItem(labelIgnoringWatchpoints(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
     
     compileExceptionHandlers();
     linkOSRExits();
@@ -362,7 +406,7 @@ void JITCompiler::compile()
     m_speculative->createOSREntries();
     setEndOfCode();
 
-    auto linkBuffer = std::make_unique<LinkBuffer>(*m_vm, *this, m_codeBlock, JITCompilationCanFail);
+    auto linkBuffer = std::make_unique<LinkBuffer>(*this, m_codeBlock, JITCompilationCanFail);
     if (linkBuffer->didFailToAllocate()) {
         m_graph.m_plan.finalizer = std::make_unique<FailedFinalizer>(m_graph.m_plan);
         return;
@@ -377,13 +421,11 @@ void JITCompiler::compile()
     disassemble(*linkBuffer);
     
     m_graph.m_plan.finalizer = std::make_unique<JITFinalizer>(
-        m_graph.m_plan, m_jitCode.release(), WTFMove(linkBuffer));
+        m_graph.m_plan, m_jitCode.releaseNonNull(), WTFMove(linkBuffer));
 }
 
 void JITCompiler::compileFunction()
 {
-    SamplingRegion samplingRegion("DFG Backend");
-    
     setStartOfCode();
     compileEntry();
 
@@ -393,8 +435,8 @@ void JITCompiler::compileFunction()
     // so enter after this.
     Label fromArityCheck(this);
     // Plant a check that sufficient space is available in the JSStack.
-    addPtr(TrustedImm32(virtualRegisterForLocal(m_graph.requiredRegisterCountForExecutionAndExit() - 1).offset() * sizeof(Register)), GPRInfo::callFrameRegister, GPRInfo::regT1);
-    Jump stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), GPRInfo::regT1);
+    JumpList stackOverflow;
+    emitStackOverflowCheck(*this, stackOverflow);
 
     // Move the stack pointer down to accommodate locals
     addPtr(TrustedImm32(m_graph.stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, stackPointerRegister);
@@ -432,7 +474,7 @@ void JITCompiler::compileFunction()
     m_arityCheck = label();
     compileEntry();
 
-    load32(AssemblyHelpers::payloadFor((VirtualRegister)JSStack::ArgumentCount), GPRInfo::regT1);
+    load32(AssemblyHelpers::payloadFor((VirtualRegister)CallFrameSlot::argumentCount), GPRInfo::regT1);
     branch32(AboveOrEqual, GPRInfo::regT1, TrustedImm32(m_codeBlock->numParameters())).linkTo(fromArityCheck, this);
     emitStoreCodeOrigin(CodeOrigin(0));
     if (maxFrameExtentForSlowPathCall)
@@ -448,7 +490,7 @@ void JITCompiler::compileFunction()
     
     // Generate slow path code.
     m_speculative->runSlowPathGenerators(m_pcToCodeOriginMapBuilder);
-    m_pcToCodeOriginMapBuilder.appendItem(label(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
+    m_pcToCodeOriginMapBuilder.appendItem(labelIgnoringWatchpoints(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
     
     compileExceptionHandlers();
     linkOSRExits();
@@ -458,7 +500,7 @@ void JITCompiler::compileFunction()
     setEndOfCode();
 
     // === Link ===
-    auto linkBuffer = std::make_unique<LinkBuffer>(*m_vm, *this, m_codeBlock, JITCompilationCanFail);
+    auto linkBuffer = std::make_unique<LinkBuffer>(*this, m_codeBlock, JITCompilationCanFail);
     if (linkBuffer->didFailToAllocate()) {
         m_graph.m_plan.finalizer = std::make_unique<FailedFinalizer>(m_graph.m_plan);
         return;
@@ -469,14 +511,14 @@ void JITCompiler::compileFunction()
     m_jitCode->shrinkToFit();
     codeBlock()->shrinkToFit(CodeBlock::LateShrink);
     
-    linkBuffer->link(m_callArityFixup, FunctionPtr((m_vm->getCTIStub(arityFixupGenerator)).code().executableAddress()));
+    linkBuffer->link(m_callArityFixup, FunctionPtr((vm()->getCTIStub(arityFixupGenerator)).code().executableAddress()));
     
     disassemble(*linkBuffer);
 
     MacroAssemblerCodePtr withArityCheck = linkBuffer->locationOf(m_arityCheck);
 
     m_graph.m_plan.finalizer = std::make_unique<JITFinalizer>(
-        m_graph.m_plan, m_jitCode.release(), WTFMove(linkBuffer), withArityCheck);
+        m_graph.m_plan, m_jitCode.releaseNonNull(), WTFMove(linkBuffer), withArityCheck);
 }
 
 void JITCompiler::disassemble(LinkBuffer& linkBuffer)
@@ -540,7 +582,7 @@ void JITCompiler::noticeOSREntry(BasicBlock& basicBlock, JITCompiler::Label bloc
                 entry->m_localsForcedDouble.set(local);
                 break;
             case FlushedInt52:
-                entry->m_localsForcedMachineInt.set(local);
+                entry->m_localsForcedAnyInt.set(local);
                 break;
             default:
                 break;
@@ -559,7 +601,7 @@ void JITCompiler::noticeOSREntry(BasicBlock& basicBlock, JITCompiler::Label bloc
 
 void JITCompiler::appendExceptionHandlingOSRExit(ExitKind kind, unsigned eventStreamIndex, CodeOrigin opCatchOrigin, HandlerInfo* exceptionHandler, CallSiteIndex callSite, MacroAssembler::JumpList jumpsToFail)
 {
-    OSRExit exit(kind, JSValueRegs(), graph().methodOfGettingAValueProfileFor(nullptr), m_speculative.get(), eventStreamIndex);
+    OSRExit exit(kind, JSValueRegs(), MethodOfGettingAValueProfile(), m_speculative.get(), eventStreamIndex);
     exit.m_codeOrigin = opCatchOrigin;
     exit.m_exceptionHandlerCallSiteIndex = callSite;
     OSRExitCompilationInfo& exitInfo = appendExitInfo(jumpsToFail);
@@ -593,12 +635,12 @@ void JITCompiler::exceptionCheck()
     HandlerInfo* exceptionHandler;
     bool willCatchException = m_graph.willCatchExceptionInMachineFrame(m_speculative->m_currentNode->origin.forExit, opCatchOrigin, exceptionHandler); 
     if (willCatchException) {
-        unsigned streamIndex = m_speculative->m_outOfLineStreamIndex != UINT_MAX ? m_speculative->m_outOfLineStreamIndex : m_speculative->m_stream->size();
-        MacroAssembler::Jump hadException = emitNonPatchableExceptionCheck();
+        unsigned streamIndex = m_speculative->m_outOfLineStreamIndex ? *m_speculative->m_outOfLineStreamIndex : m_speculative->m_stream->size();
+        MacroAssembler::Jump hadException = emitNonPatchableExceptionCheck(*vm());
         // We assume here that this is called after callOpeartion()/appendCall() is called.
         appendExceptionHandlingOSRExit(ExceptionCheck, streamIndex, opCatchOrigin, exceptionHandler, m_jitCode->common.lastCallSite(), hadException);
     } else
-        m_exceptionChecks.append(emitExceptionCheck());
+        m_exceptionChecks.append(emitExceptionCheck(*vm()));
 }
 
 CallSiteIndex JITCompiler::recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(const CodeOrigin& callSiteCodeOrigin, unsigned eventStreamIndex)

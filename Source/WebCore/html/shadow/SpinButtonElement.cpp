@@ -66,35 +66,35 @@ void SpinButtonElement::willDetachRenderers()
     releaseCapture();
 }
 
-void SpinButtonElement::defaultEventHandler(Event* event)
+void SpinButtonElement::defaultEventHandler(Event& event)
 {
-    if (!is<MouseEvent>(*event)) {
-        if (!event->defaultHandled())
+    if (!is<MouseEvent>(event)) {
+        if (!event.defaultHandled())
             HTMLDivElement::defaultEventHandler(event);
         return;
     }
 
     RenderBox* box = renderBox();
     if (!box) {
-        if (!event->defaultHandled())
+        if (!event.defaultHandled())
             HTMLDivElement::defaultEventHandler(event);
         return;
     }
 
     if (!shouldRespondToMouseEvents()) {
-        if (!event->defaultHandled())
+        if (!event.defaultHandled())
             HTMLDivElement::defaultEventHandler(event);
         return;
     }
 
-    MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
+    MouseEvent& mouseEvent = downcast<MouseEvent>(event);
     IntPoint local = roundedIntPoint(box->absoluteToLocal(mouseEvent.absoluteLocation(), UseTransforms));
     if (mouseEvent.type() == eventNames().mousedownEvent && mouseEvent.button() == LeftButton) {
         if (box->borderBoxRect().contains(local)) {
             // The following functions of HTMLInputElement may run JavaScript
             // code which detaches this shadow node. We need to take a reference
             // and check renderer() after such function calls.
-            Ref<SpinButtonElement> protect(*this);
+            Ref<SpinButtonElement> protectedThis(*this);
             if (m_spinButtonOwner)
                 m_spinButtonOwner->focusAndSelectSpinButtonOwner();
             if (renderer()) {
@@ -119,7 +119,7 @@ void SpinButtonElement::defaultEventHandler(Event* event)
                     frame->eventHandler().setCapturingMouseEventsElement(this);
                     m_capturing = true;
                     if (Page* page = document().page())
-                        page->chrome().registerPopupOpeningObserver(this);
+                        page->chrome().registerPopupOpeningObserver(*this);
                 }
             }
             UpDownState oldUpDownState = m_upDownState;
@@ -143,7 +143,7 @@ void SpinButtonElement::defaultEventHandler(Event* event)
     }
 
     if (!mouseEvent.defaultHandled())
-        HTMLDivElement::defaultEventHandler(&mouseEvent);
+        HTMLDivElement::defaultEventHandler(mouseEvent);
 }
 
 void SpinButtonElement::willOpenPopup()
@@ -152,12 +152,12 @@ void SpinButtonElement::willOpenPopup()
     m_upDownState = Indeterminate;
 }
 
-void SpinButtonElement::forwardEvent(Event* event)
+void SpinButtonElement::forwardEvent(Event& event)
 {
     if (!renderBox())
         return;
 
-    if (!is<WheelEvent>(*event))
+    if (!is<WheelEvent>(event))
         return;
 
     if (!m_spinButtonOwner)
@@ -166,8 +166,8 @@ void SpinButtonElement::forwardEvent(Event* event)
     if (!m_spinButtonOwner->shouldSpinButtonRespondToWheelEvents())
         return;
 
-    doStepAction(downcast<WheelEvent>(*event).wheelDeltaY());
-    event->setDefaultHandled();
+    doStepAction(downcast<WheelEvent>(event).wheelDeltaY());
+    event.setDefaultHandled();
 }
 
 bool SpinButtonElement::willRespondToMouseMoveEvents()
@@ -205,7 +205,7 @@ void SpinButtonElement::releaseCapture()
             frame->eventHandler().setCapturingMouseEventsElement(nullptr);
             m_capturing = false;
             if (Page* page = document().page())
-                page->chrome().unregisterPopupOpeningObserver(this);
+                page->chrome().unregisterPopupOpeningObserver(*this);
         }
     }
 }

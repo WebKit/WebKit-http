@@ -41,8 +41,8 @@ using namespace Inspector;
 
 namespace WebCore {
 
-PageConsoleAgent::PageConsoleAgent(WebAgentContext& context, InspectorDOMAgent* domAgent)
-    : WebConsoleAgent(context)
+PageConsoleAgent::PageConsoleAgent(WebAgentContext& context, InspectorHeapAgent* heapAgent, InspectorDOMAgent* domAgent)
+    : WebConsoleAgent(context, heapAgent)
     , m_inspectorDOMAgent(domAgent)
 {
 }
@@ -57,7 +57,7 @@ void PageConsoleAgent::clearMessages(ErrorString& errorString)
 class InspectableNode final : public CommandLineAPIHost::InspectableObject {
 public:
     explicit InspectableNode(Node* node) : m_node(node) { }
-    virtual Deprecated::ScriptValue get(JSC::ExecState* state) override
+    JSC::JSValue get(JSC::ExecState& state) final
     {
         return InspectorDOMAgent::nodeAsScriptValue(state, m_node.get());
     }
@@ -68,7 +68,7 @@ private:
 void PageConsoleAgent::addInspectedNode(ErrorString& errorString, int nodeId)
 {
     Node* node = m_inspectorDOMAgent->nodeForId(nodeId);
-    if (!node || node->isInShadowTree()) {
+    if (!node || node->isInUserAgentShadowTree()) {
         errorString = ASCIILiteral("nodeId is not valid");
         return;
     }

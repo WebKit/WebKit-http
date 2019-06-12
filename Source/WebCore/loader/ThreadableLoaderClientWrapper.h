@@ -28,21 +28,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThreadableLoaderClientWrapper_h
-#define ThreadableLoaderClientWrapper_h
+#pragma once
 
 #include "ThreadableLoaderClient.h"
-#include <wtf/Noncopyable.h>
 #include <wtf/Ref.h>
-#include <wtf/Threading.h>
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
 
 class ThreadableLoaderClientWrapper : public ThreadSafeRefCounted<ThreadableLoaderClientWrapper> {
 public:
-    static Ref<ThreadableLoaderClientWrapper> create(ThreadableLoaderClient* client)
+    static Ref<ThreadableLoaderClientWrapper> create(ThreadableLoaderClient& client, const String& initiator)
     {
-        return adoptRef(*new ThreadableLoaderClientWrapper(client));
+        return adoptRef(*new ThreadableLoaderClientWrapper(client, initiator));
     }
 
     void clearClient()
@@ -74,11 +72,11 @@ public:
             m_client->didReceiveData(data, dataLength);
     }
 
-    void didFinishLoading(unsigned long identifier, double finishTime)
+    void didFinishLoading(unsigned long identifier)
     {
         m_done = true;
         if (m_client)
-            m_client->didFinishLoading(identifier, finishTime);
+            m_client->didFinishLoading(identifier);
     }
 
     void didFail(const ResourceError& error)
@@ -88,37 +86,26 @@ public:
             m_client->didFail(error);
     }
 
-    void didFailAccessControlCheck(const ResourceError& error)
-    {
-        m_done = true;
-        if (m_client)
-            m_client->didFailAccessControlCheck(error);
-    }
-
-    void didFailRedirectCheck()
-    {
-        m_done = true;
-        if (m_client)
-            m_client->didFailRedirectCheck();
-    }
-
     void didReceiveAuthenticationCancellation(unsigned long identifier, const ResourceResponse& response)
     {
         if (m_client)
             m_client->didReceiveResponse(identifier, response);
     }
 
+    const String& initiator() const { return m_initiator; }
+
 protected:
-    explicit ThreadableLoaderClientWrapper(ThreadableLoaderClient* client)
-        : m_client(client)
-        , m_done(false)
-    {
-    }
+    explicit ThreadableLoaderClientWrapper(ThreadableLoaderClient&, const String&);
 
     ThreadableLoaderClient* m_client;
-    bool m_done;
+    String m_initiator;
+    bool m_done { false };
 };
 
-} // namespace WebCore
+inline ThreadableLoaderClientWrapper::ThreadableLoaderClientWrapper(ThreadableLoaderClient& client, const String& initiator)
+    : m_client(&client)
+    , m_initiator(initiator)
+{
+}
 
-#endif // ThreadableLoaderClientWrapper_h
+} // namespace WebCore

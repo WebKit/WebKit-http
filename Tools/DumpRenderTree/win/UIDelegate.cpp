@@ -313,22 +313,97 @@ HRESULT UIDelegate::webViewPrintingMarginRect(_In_opt_ IWebView*, _Out_ RECT*)
     return E_NOTIMPL;
 }
 
-HRESULT UIDelegate::canRunModal(_In_opt_ IWebView*, _Out_ BOOL* /*canRunBoolean*/)
+HRESULT UIDelegate::canRunModal(_In_opt_ IWebView*, _Out_ BOOL* canRunBoolean)
 {
-    return E_NOTIMPL;
+    if (!canRunBoolean)
+        return E_POINTER;
+    *canRunBoolean = TRUE;
+    return S_OK;
 }
 
-HRESULT UIDelegate::createModalDialog(_In_opt_ IWebView* /*sender*/, _In_opt_ IWebURLRequest* /*request*/, _COM_Outptr_opt_ IWebView** newWebView)
+static HWND getHandleFromWebView(IWebView* webView)
+{
+    COMPtr<IWebViewPrivate2> webViewPrivate;
+    HRESULT hr = webView->QueryInterface(&webViewPrivate);
+    if (FAILED(hr))
+        return nullptr;
+
+    HWND webViewWindow = nullptr;
+    hr = webViewPrivate->viewWindow(&webViewWindow);
+    if (FAILED(hr))
+        return nullptr;
+
+    return webViewWindow;
+}
+
+HRESULT UIDelegate::createModalDialog(_In_opt_ IWebView* sender, _In_opt_ IWebURLRequest*, _COM_Outptr_opt_ IWebView** newWebView)
 {
     if (!newWebView)
         return E_POINTER;
-    *newWebView = nullptr;
-    return E_NOTIMPL;
+
+    COMPtr<IWebView> webView;
+    HRESULT hr = WebKitCreateInstance(CLSID_WebView, 0, IID_IWebView, (void**)&webView);
+    if (FAILED(hr))
+        return hr;
+
+    m_modalDialogParent = ::CreateWindow(L"STATIC", L"ModalDialog", WS_OVERLAPPED | WS_VISIBLE, 0, 0, 0, 0, getHandleFromWebView(sender), nullptr, nullptr, nullptr);
+
+    hr = webView->setHostWindow(m_modalDialogParent);
+    if (FAILED(hr))
+        return hr;
+
+    RECT clientRect = { 0, 0, 0, 0 };
+    hr = webView->initWithFrame(clientRect, 0, _bstr_t(L""));
+    if (FAILED(hr))
+        return hr;
+
+    COMPtr<IWebUIDelegate> uiDelegate;
+    hr = sender->uiDelegate(&uiDelegate);
+    if (FAILED(hr))
+        return hr;
+
+    hr = webView->setUIDelegate(uiDelegate.get());
+    if (FAILED(hr))
+        return hr;
+
+    COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
+    hr = sender->frameLoadDelegate(&frameLoadDelegate);
+    if (FAILED(hr))
+        return hr;
+
+    hr = webView.get()->setFrameLoadDelegate(frameLoadDelegate.get());
+    if (FAILED(hr))
+        return hr;
+
+    *newWebView = webView.leakRef();
+
+    return S_OK;
 }
 
-HRESULT UIDelegate::runModal(_In_opt_ IWebView*)
+HRESULT UIDelegate::runModal(_In_opt_ IWebView* webView)
 {
-    return E_NOTIMPL;
+    COMPtr<IWebView> protector(webView);
+
+    auto modalDialogOwner = ::GetWindow(m_modalDialogParent, GW_OWNER);
+    auto topLevelParent = ::GetAncestor(modalDialogOwner, GA_ROOT);
+
+    ::EnableWindow(topLevelParent, FALSE);
+
+    while (::IsWindow(getHandleFromWebView(webView))) {
+#if USE(CF)
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, true);
+#endif
+        MSG msg;
+        if (!::GetMessage(&msg, 0, 0, 0))
+            break;
+
+        ::TranslateMessage(&msg);
+        ::DispatchMessage(&msg);
+    }
+
+    ::EnableWindow(topLevelParent, TRUE);
+
+    return S_OK;
 }
 
 HRESULT UIDelegate::isMenuBarVisible(_In_opt_ IWebView*, _Out_ BOOL* visible)
@@ -378,8 +453,8 @@ HRESULT UIDelegate::webViewFrame(_In_opt_ IWebView* /*sender*/, _Out_ RECT* fram
 HRESULT UIDelegate::runJavaScriptAlertPanelWithMessage(_In_opt_ IWebView* /*sender*/, _In_ BSTR message)
 {
     if (!done) {
-        printf("ALERT: %S\n", message ? message : L"");
-        fflush(stdout);
+        fprintf(testResult, "ALERT: %S\n", message ? message : L"");
+        fflush(testResult);
     }
 
     return S_OK;
@@ -388,7 +463,7 @@ HRESULT UIDelegate::runJavaScriptAlertPanelWithMessage(_In_opt_ IWebView* /*send
 HRESULT UIDelegate::runJavaScriptConfirmPanelWithMessage(_In_opt_ IWebView* /*sender*/, _In_ BSTR message, _Out_ BOOL* result)
 {
     if (!done)
-        printf("CONFIRM: %S\n", message ? message : L"");
+        fprintf(testResult, "CONFIRM: %S\n", message ? message : L"");
 
     *result = TRUE;
 
@@ -398,7 +473,7 @@ HRESULT UIDelegate::runJavaScriptConfirmPanelWithMessage(_In_opt_ IWebView* /*se
 HRESULT UIDelegate::runJavaScriptTextInputPanelWithPrompt(_In_opt_ IWebView* /*sender*/, _In_ BSTR message, _In_ BSTR defaultText, __deref_opt_out BSTR* result)
 {
     if (!done)
-        printf("PROMPT: %S, default text: %S\n", message ? message : L"", defaultText ? defaultText : L"");
+        fprintf(testResult, "PROMPT: %S, default text: %S\n", message ? message : L"", defaultText ? defaultText : L"");
 
     *result = SysAllocString(defaultText);
 
@@ -411,7 +486,7 @@ HRESULT UIDelegate::runBeforeUnloadConfirmPanelWithMessage(_In_opt_ IWebView* /*
         return E_POINTER;
 
     if (!done)
-        printf("CONFIRM NAVIGATION: %S\n", message ? message : L"");
+        fprintf(testResult, "CONFIRM NAVIGATION: %S\n", message ? message : L"");
 
     *result = !gTestRunner->shouldStayOnPageAfterHandlingBeforeUnload();
 
@@ -432,10 +507,11 @@ HRESULT UIDelegate::webViewAddMessageToConsole(_In_opt_ IWebView* /*sender*/, _I
             newMessage = newMessage.substr(0, fileProtocol) + lastPathComponent(newMessage.substr(fileProtocol + fileURL.size()));
     }
 
-    printf("CONSOLE MESSAGE: ");
+    auto out = gTestRunner->dumpJSConsoleLogInStdErr() ? stderr : testResult;
+    fprintf(out, "CONSOLE MESSAGE: ");
     if (lineNumber)
-        printf("line %d: ", lineNumber);
-    printf("%s\n", toUTF8(newMessage).c_str());
+        fprintf(out, "line %d: ", lineNumber);
+    fprintf(out, "%s\n", toUTF8(newMessage).c_str());
     return S_OK;
 }
 
@@ -483,6 +559,8 @@ HRESULT UIDelegate::webViewClose(_In_opt_ IWebView* sender)
     HWND hostWindow;
     sender->hostWindow(&hostWindow);
     DestroyWindow(hostWindow);
+    if (hostWindow == m_modalDialogParent)
+        m_modalDialogParent = nullptr;
     return S_OK;
 }
 
@@ -516,7 +594,7 @@ HRESULT UIDelegate::exceededDatabaseQuota(_In_opt_ IWebView* sender, _In_opt_ IW
     origin->port(&port);
 
     if (!done && gTestRunner->dumpDatabaseCallbacks())
-        printf("UI DELEGATE DATABASE CALLBACK: exceededDatabaseQuotaForSecurityOrigin:{%s, %s, %i} database:%S\n", static_cast<const char*>(protocol), static_cast<const char*>(host), port, databaseIdentifier);
+        fprintf(testResult, "UI DELEGATE DATABASE CALLBACK: exceededDatabaseQuotaForSecurityOrigin:{%s, %s, %i} database:%S\n", static_cast<const char*>(protocol), static_cast<const char*>(host), port, databaseIdentifier);
 
     unsigned long long defaultQuota = 5 * 1024 * 1024;
     double testDefaultQuota = gTestRunner->databaseDefaultQuota();
@@ -548,7 +626,7 @@ HRESULT UIDelegate::exceededDatabaseQuota(_In_opt_ IWebView* sender, _In_opt_ IW
     if (maxQuota >= 0) {
         if (defaultQuota < expectedSize && expectedSize <= maxQuota) {
             newQuota = expectedSize;
-            printf("UI DELEGATE DATABASE CALLBACK: increased quota to %llu\n", newQuota);
+            fprintf(testResult, "UI DELEGATE DATABASE CALLBACK: increased quota to %llu\n", newQuota);
         }
     }
     origin->setQuota(newQuota);
@@ -580,9 +658,9 @@ HRESULT UIDelegate::webViewDidInvalidate(_In_opt_ IWebView* /*sender*/)
 }
 
 HRESULT UIDelegate::setStatusText(_In_opt_ IWebView*, _In_ BSTR text)
-{ 
-    if (gTestRunner->dumpStatusCallbacks())
-        printf("UI DELEGATE STATUS CALLBACK: setStatusText:%S\n", text ? text : L"");
+{
+    if (!done && gTestRunner->dumpStatusCallbacks())
+        fprintf(testResult, "UI DELEGATE STATUS CALLBACK: setStatusText:%S\n", text ? text : L"");
     return S_OK;
 }
 
@@ -615,6 +693,6 @@ HRESULT UIDelegate::decidePolicyForGeolocationRequest(_In_opt_ IWebView* /*sende
 
 HRESULT UIDelegate::didPressMissingPluginButton(_In_opt_ IDOMElement* /*element*/)
 {
-    printf("MISSING PLUGIN BUTTON PRESSED\n");
+    fprintf(testResult, "MISSING PLUGIN BUTTON PRESSED\n");
     return S_OK;
 }

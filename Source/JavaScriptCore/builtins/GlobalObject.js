@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2015-2016 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,44 +24,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @internal
-
-function toInteger(target)
+@globalPrivate
+function isFinite(value)
 {
     "use strict";
 
-    var numberValue = @Number(target);
-
-    // isNaN(numberValue)
+    var numberValue = @toNumber(value);
+    // Return false if numberValue is |NaN|.
     if (numberValue !== numberValue)
-        return 0;
-
-    if (numberValue === 0 || !@isFinite(numberValue))
-        return numberValue;
-
-    return (numberValue > 0 ? 1 : -1) * @floor(@abs(numberValue));
+        return false;
+    return numberValue !== @Infinity && numberValue !== -@Infinity;
 }
 
-function toLength(target)
+@globalPrivate
+function isNaN(value)
 {
     "use strict";
 
-    var maxSafeInteger = 0x1FFFFFFFFFFFFF;
-    var length = @toInteger(target);
-    // originally Math.min(Math.max(length, 0), maxSafeInteger));
-    return length > 0 ? (length < maxSafeInteger ? length : maxSafeInteger) : 0;
-}
-
-function isDictionary(object)
-{
-    "use strict";
-
-    return object === @undefined || object == null || typeof object === "object";
-}
-
-// FIXME: this needs to have it's name changed to "get [Symbol.species]".
-// see: https://bugs.webkit.org/show_bug.cgi?id=151363
-function speciesGetter()
-{
-    return this;
+    var numberValue = @toNumber(value);
+    return numberValue !== numberValue;
 }

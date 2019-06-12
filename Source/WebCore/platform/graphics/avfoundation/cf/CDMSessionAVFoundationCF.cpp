@@ -26,17 +26,17 @@
 #include "config.h"
 #include "CDMSessionAVFoundationCF.h"
 
-#if HAVE(AVFOUNDATION_LOADER_DELEGATE) && ENABLE(ENCRYPTED_MEDIA_V2)
+#if HAVE(AVFOUNDATION_LOADER_DELEGATE) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
-#include "CDM.h"
-#include "CDMSession.h"
 #include "ExceptionCode.h"
+#include "LegacyCDM.h"
+#include "LegacyCDMSession.h"
 #include "MediaPlayer.h"
 #include "MediaPlayerPrivateAVFoundationCF.h"
 #include "NotImplemented.h"
-#include "SoftLinking.h"
-#include "UUID.h"
 #include <AVFoundationCF/AVFoundationCF.h>
+#include <wtf/SoftLinking.h>
+#include <wtf/UUID.h>
 #include <wtf/text/CString.h>
 
 // The softlink header files must be included after the AVCF and CoreMedia header files.
@@ -44,17 +44,22 @@
 
 namespace WebCore {
 
-CDMSessionAVFoundationCF::CDMSessionAVFoundationCF(MediaPlayerPrivateAVFoundationCF* parent, CDMSessionClient* client)
+CDMSessionAVFoundationCF::CDMSessionAVFoundationCF(MediaPlayerPrivateAVFoundationCF& parent, CDMSessionClient*)
     : m_parent(parent)
-    , m_client(client)
     , m_sessionId(createCanonicalUUIDString())
 {
 }
 
-RefPtr<Uint8Array> CDMSessionAVFoundationCF::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
+RefPtr<Uint8Array> CDMSessionAVFoundationCF::generateKeyRequest(const String&, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
-    UNUSED_PARAM(mimeType);
-
+#if USE(DIRECT2D)
+    UNUSED_PARAM(initData);
+    UNUSED_PARAM(destinationURL);
+    UNUSED_PARAM(errorCode);
+    UNUSED_PARAM(systemCode);
+    notImplemented();
+    return nullptr;
+#else
     String keyURI;
     String keyID;
     RefPtr<Uint8Array> certificate;
@@ -63,35 +68,30 @@ RefPtr<Uint8Array> CDMSessionAVFoundationCF::generateKeyRequest(const String& mi
         return nullptr;
     }
 
-    m_request = m_parent->takeRequestForKeyURI(keyURI);
+    m_request = m_parent.takeRequestForKeyURI(keyURI);
     if (!m_request) {
         errorCode = MediaPlayer::InvalidPlayerState;
         return nullptr;
     }
 
-    RetainPtr<CFMutableDataRef> certificateData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, certificate->byteLength()));
+    auto certificateData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, certificate->byteLength()));
     CFDataAppendBytes(certificateData.get(), reinterpret_cast<const UInt8*>(certificate->baseAddress()), certificate->byteLength());
 
-    CString assetStr = keyID.utf8();
-    RetainPtr<CFMutableDataRef> assetID = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, assetStr.length()));
+    auto assetStr = keyID.utf8();
+    auto assetID = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, assetStr.length()));
     CFDataAppendBytes(assetID.get(), reinterpret_cast<const UInt8*>(assetStr.data()), assetStr.length());
 
     CFErrorRef cfError = nullptr;
-    RetainPtr<CFDataRef> keyRequest = adoptCF(AVCFAssetResourceLoadingRequestCreateStreamingContentKeyRequestDataForApp(m_request.get(), certificateData.get(), assetID.get(), nullptr, &cfError));
+    auto keyRequest = adoptCF(AVCFAssetResourceLoadingRequestCreateStreamingContentKeyRequestDataForApp(m_request.get(), certificateData.get(), assetID.get(), nullptr, &cfError));
 
     if (!keyRequest) {
-        RetainPtr<CFDictionaryRef> userInfo;
         if (cfError) {
-            userInfo = adoptCF(CFErrorCopyUserInfo(cfError));
-
-            if (userInfo) {
-                if (CFErrorRef underlyingError = (CFErrorRef)CFDictionaryGetValue(userInfo.get(), kCFErrorUnderlyingErrorKey))
+            if (auto userInfo = adoptCF(CFErrorCopyUserInfo(cfError))) {
+                if (auto underlyingError = (CFErrorRef)CFDictionaryGetValue(userInfo.get(), kCFErrorUnderlyingErrorKey))
                     systemCode = CFErrorGetCode(underlyingError);
             }
-
             CFRelease(cfError);
         }
-
         return nullptr;
     }
 
@@ -99,8 +99,9 @@ RefPtr<Uint8Array> CDMSessionAVFoundationCF::generateKeyRequest(const String& mi
     systemCode = 0;
     destinationURL = String();
 
-    RefPtr<ArrayBuffer> keyRequestBuffer = ArrayBuffer::create(CFDataGetBytePtr(keyRequest.get()), CFDataGetLength(keyRequest.get()));
-    return Uint8Array::create(keyRequestBuffer, 0, keyRequestBuffer->byteLength());
+    auto keyRequestBuffer = ArrayBuffer::create(CFDataGetBytePtr(keyRequest.get()), CFDataGetLength(keyRequest.get()));
+    return Uint8Array::create(WTFMove(keyRequestBuffer), 0, keyRequestBuffer->byteLength());
+#endif
 }
 
 void CDMSessionAVFoundationCF::releaseKeys()
@@ -109,7 +110,7 @@ void CDMSessionAVFoundationCF::releaseKeys()
 
 bool CDMSessionAVFoundationCF::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode)
 {
-    RetainPtr<CFMutableDataRef> keyData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, key->byteLength()));
+    auto keyData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, key->byteLength()));
     CFDataAppendBytes(keyData.get(), reinterpret_cast<const UInt8*>(key->baseAddress()), key->byteLength());
 
     AVCFAssetResourceLoadingRequestFinishLoadingWithResponse(m_request.get(), nullptr, keyData.get(), nullptr);
@@ -117,7 +118,6 @@ bool CDMSessionAVFoundationCF::update(Uint8Array* key, RefPtr<Uint8Array>& nextM
     errorCode = MediaPlayer::NoError;
     systemCode = 0;
     nextMessage = nullptr;
-
     return true;
 }
 

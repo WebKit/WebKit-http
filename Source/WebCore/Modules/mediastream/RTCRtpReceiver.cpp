@@ -31,15 +31,26 @@
 #include "config.h"
 #include "RTCRtpReceiver.h"
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
+
+#include "RTCRtpParameters.h"
 
 namespace WebCore {
 
-RTCRtpReceiver::RTCRtpReceiver(RefPtr<MediaStreamTrack>&& track)
+RTCRtpReceiver::RTCRtpReceiver(Ref<MediaStreamTrack>&& track, Backend* backend)
     : RTCRtpSenderReceiverBase(WTFMove(track))
+    , m_backend(backend)
 {
+}
+
+void RTCRtpReceiver::stop()
+{
+    m_backend = nullptr;
+
+    if (m_track)
+        m_track->stopTrack(MediaStreamTrack::StopMode::PostEvent);
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(WEB_RTC)

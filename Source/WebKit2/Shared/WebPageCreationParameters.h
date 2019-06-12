@@ -23,22 +23,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPageCreationParameters_h
-#define WebPageCreationParameters_h
+#pragma once
 
 #include "DrawingAreaInfo.h"
 #include "LayerTreeContext.h"
 #include "SessionState.h"
+#include "WebCompiledContentRuleListData.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebPageGroupData.h"
 #include "WebPreferencesStore.h"
+#include "WebUserContentControllerDataTypes.h"
+#include <WebCore/ActivityState.h>
 #include <WebCore/Color.h>
 #include <WebCore/FloatSize.h>
 #include <WebCore/IntSize.h>
+#include <WebCore/LayoutMilestones.h>
+#include <WebCore/MediaProducer.h>
 #include <WebCore/Pagination.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/SessionID.h>
-#include <WebCore/ViewState.h>
+#include <WebCore/UserInterfaceLayoutDirection.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
@@ -47,19 +51,19 @@
 #endif
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 struct WebPageCreationParameters {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebPageCreationParameters&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebPageCreationParameters&);
 
     WebCore::IntSize viewSize;
 
-    WebCore::ViewState::Flags viewState;
+    WebCore::ActivityState::Flags activityState;
     
     WebPreferencesStore store;
     DrawingAreaType drawingAreaType;
@@ -99,23 +103,26 @@ struct WebPageCreationParameters {
     float topContentInset;
     
     float mediaVolume;
-    bool muted;
+    WebCore::MediaProducer::MutedStateFlags muted;
     bool mayStartMediaWhenInWindow;
 
     WebCore::IntSize minimumLayoutSize;
     bool autoSizingShouldExpandToViewHeight;
+    std::optional<WebCore::IntSize> viewportSizeForCSSViewportUnits;
     
     WebCore::ScrollPinningBehavior scrollPinningBehavior;
 
-    // FIXME: This should be WTF::Optional<WebCore::ScrollbarOverlayStyle>, but we would need to
+    // FIXME: This should be std::optional<WebCore::ScrollbarOverlayStyle>, but we would need to
     // correctly handle enums inside Optionals when encoding and decoding. 
-    WTF::Optional<uint32_t> scrollbarOverlayStyle;
+    std::optional<uint32_t> scrollbarOverlayStyle;
 
     bool backgroundExtendsBeyondPage;
 
     LayerHostingMode layerHostingMode;
 
     Vector<String> mimeTypesWithCustomContentProviders;
+
+    bool controlledByAutomation;
 
 #if ENABLE(REMOTE_INSPECTOR)
     bool allowsRemoteInspection;
@@ -129,13 +136,35 @@ struct WebPageCreationParameters {
     WebCore::FloatSize screenSize;
     WebCore::FloatSize availableScreenSize;
     float textAutosizingWidth;
+    bool ignoresViewportScaleLimits;
+    bool allowsBlockSelection;
+#endif
+#if PLATFORM(COCOA)
+    bool smartInsertDeleteEnabled;
 #endif
     bool appleMailPaginationQuirkEnabled;
     bool shouldScaleViewToFitDocument;
 
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection;
+    WebCore::LayoutMilestones observedLayoutMilestones;
+
+    String overrideContentSecurityPolicy;
+    std::optional<double> cpuLimit;
+
     HashMap<String, uint64_t> urlSchemeHandlers;
+
+    // WebRTC members.
+    bool iceCandidateFilteringEnabled { true };
+    bool enumeratingAllNetworkInterfacesEnabled { false };
+
+    // UserContentController members
+    Vector<std::pair<uint64_t, String>> userContentWorlds;
+    Vector<WebUserScriptData> userScripts;
+    Vector<WebUserStyleSheetData> userStyleSheets;
+    Vector<WebScriptMessageHandlerData> messageHandlers;
+#if ENABLE(CONTENT_EXTENSIONS)
+    Vector<std::pair<String, WebCompiledContentRuleListData>> contentRuleLists;
+#endif
 };
 
 } // namespace WebKit
-
-#endif // WebPageCreationParameters_h

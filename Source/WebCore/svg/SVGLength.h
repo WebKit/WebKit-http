@@ -1,45 +1,37 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
- * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Library General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details.
- *
- * You should have received a copy of the GNU Library General Public License
- * along with this library; see the file COPYING.LIB.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SVGLength_h
-#define SVGLength_h
+#pragma once
 
-#include "AnimationUtilities.h"
-#include "SVGLengthContext.h"
-#include "SVGParsingError.h"
-#include "SVGPropertyTraits.h"
+#include "ExceptionCode.h"
+#include "SVGLengthValue.h"
+#include "SVGPropertyTearOff.h"
 
 namespace WebCore {
 
-class CSSPrimitiveValue;
-class QualifiedName;
-
-typedef int ExceptionCode;
-
-enum SVGLengthNegativeValuesMode {
-    AllowNegativeLengths,
-    ForbidNegativeLengths
-};
-
-class SVGLength {
-    WTF_MAKE_FAST_ALLOCATED;
+class SVGLength : public SVGPropertyTearOff<SVGLengthValue> {
 public:
     // Forward declare these enums in the w3c naming scheme, for IDL generation
     enum {
@@ -56,120 +48,126 @@ public:
         SVG_LENGTHTYPE_PC = LengthTypePC
     };
 
-    // FIXME: Once all SVGLength users use Length internally, we make this a wrapper for Length.
-    SVGLength(SVGLengthMode = LengthModeOther, const String& valueAsString = String());
-    SVGLength(const SVGLengthContext&, float, SVGLengthMode = LengthModeOther, SVGLengthType = LengthTypeNumber);
-    SVGLength(const SVGLength&);
+    static Ref<SVGLength> create(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, SVGLengthValue& value)
+    {
+        return adoptRef(*new SVGLength(animatedProperty, role, value));
+    }
 
-    SVGLengthType unitType() const;
-    SVGLengthMode unitMode() const;
+    static Ref<SVGLength> create(const SVGLengthValue& initialValue = { })
+    {
+        return adoptRef(*new SVGLength(initialValue));
+    }
 
-    bool operator==(const SVGLength&) const;
-    bool operator!=(const SVGLength&) const;
+    static Ref<SVGLength> create(const SVGLengthValue* initialValue)
+    {
+        return adoptRef(*new SVGLength(initialValue));
+    }
 
-    static SVGLength construct(SVGLengthMode, const String&, SVGParsingError&, SVGLengthNegativeValuesMode = AllowNegativeLengths);
+    template<typename T> static ExceptionOr<Ref<SVGLength>> create(ExceptionOr<T>&& initialValue)
+    {
+        if (initialValue.hasException())
+            return initialValue.releaseException();
+        return create(initialValue.releaseReturnValue());
+    }
 
-    float value(const SVGLengthContext&) const;
-    float value(const SVGLengthContext&, ExceptionCode&) const;
-    void setValue(float, const SVGLengthContext&, ExceptionCode&);
-    void setValue(const SVGLengthContext&, float, SVGLengthMode, SVGLengthType, ExceptionCode&);
+    unsigned short unitType()
+    {
+        return propertyReference().unitType();
+    }
 
-    float valueInSpecifiedUnits() const { return m_valueInSpecifiedUnits; }
-    void setValueInSpecifiedUnits(float value) { m_valueInSpecifiedUnits = value; }
+    ExceptionOr<float> valueForBindings()
+    {
+        return propertyReference().valueForBindings(SVGLengthContext { contextElement() });
+    }
 
-    float valueAsPercentage() const;
+    ExceptionOr<void> setValueForBindings(float value)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
-    String valueAsString() const;
-    void setValueAsString(const String&, ExceptionCode&);
-    void setValueAsString(const String&, SVGLengthMode, ExceptionCode&);
+        auto result = propertyReference().setValue(value, SVGLengthContext { contextElement() });
+        if (result.hasException())
+            return result;
+        
+        commitChange();
+        return result;
+    }
     
-    void newValueSpecifiedUnits(unsigned short, float valueInSpecifiedUnits, ExceptionCode&);
-    void convertToSpecifiedUnits(unsigned short, const SVGLengthContext&, ExceptionCode&);
-
-    // Helper functions
-    inline bool isRelative() const
+    float valueInSpecifiedUnits()
     {
-        SVGLengthType type = unitType();
-        return type == LengthTypePercentage || type == LengthTypeEMS || type == LengthTypeEXS;
+        return propertyReference().valueInSpecifiedUnits();
     }
 
-    bool isZero() const 
-    { 
-        return !m_valueInSpecifiedUnits;
+    ExceptionOr<void> setValueInSpecifiedUnits(float valueInSpecifiedUnits)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+
+        propertyReference().setValueInSpecifiedUnits(valueInSpecifiedUnits);
+        commitChange();
+        
+        return { };
+    }
+    
+    String valueAsString()
+    {
+        return propertyReference().valueAsString();
     }
 
-    static SVGLength fromCSSPrimitiveValue(CSSPrimitiveValue&);
-    static Ref<CSSPrimitiveValue> toCSSPrimitiveValue(const SVGLength&);
-    static SVGLengthMode lengthModeForAnimatedLengthAttribute(const QualifiedName&);
-
-    SVGLength blend(const SVGLength& from, float progress) const
+    ExceptionOr<void> setValueAsString(const String& value)
     {
-        SVGLengthType toType = unitType();
-        SVGLengthType fromType = from.unitType();
-        if ((from.isZero() && isZero())
-            || fromType == LengthTypeUnknown
-            || toType == LengthTypeUnknown
-            || (!from.isZero() && fromType != LengthTypePercentage && toType == LengthTypePercentage)
-            || (!isZero() && fromType == LengthTypePercentage && toType != LengthTypePercentage)
-            || (!from.isZero() && !isZero() && (fromType == LengthTypeEMS || fromType == LengthTypeEXS) && fromType != toType))
-            return *this;
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
-        SVGLength length;
-        ExceptionCode ec = 0;
+        auto result = propertyReference().setValueAsString(value);
+        if (result.hasException())
+            return result;
+        
+        commitChange();
+        return result;
+    }
 
-        if (fromType == LengthTypePercentage || toType == LengthTypePercentage) {
-            float fromPercent = from.valueAsPercentage() * 100;
-            float toPercent = valueAsPercentage() * 100;
-            length.newValueSpecifiedUnits(LengthTypePercentage, WebCore::blend(fromPercent, toPercent, progress), ec);
-            if (ec)
-                return SVGLength();
-            return length;
-        }
+    ExceptionOr<void> newValueSpecifiedUnits(unsigned short unitType, float valueInSpecifiedUnits)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
-        if (fromType == toType || from.isZero() || isZero() || fromType == LengthTypeEMS || fromType == LengthTypeEXS) {
-            float fromValue = from.valueInSpecifiedUnits();
-            float toValue = valueInSpecifiedUnits();
-            if (isZero())
-                length.newValueSpecifiedUnits(fromType, WebCore::blend(fromValue, toValue, progress), ec);
-            else
-                length.newValueSpecifiedUnits(toType, WebCore::blend(fromValue, toValue, progress), ec);
-            if (ec)
-                return SVGLength();
-            return length;
-        }
+        auto result = propertyReference().newValueSpecifiedUnits(unitType, valueInSpecifiedUnits);
+        if (result.hasException())
+            return result;
+        
+        commitChange();
+        return result;
+    }
+    
+    ExceptionOr<void> convertToSpecifiedUnits(unsigned short unitType)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
-        ASSERT(!isRelative());
-        ASSERT(!from.isRelative());
-
-        SVGLengthContext nonRelativeLengthContext(nullptr);
-        float fromValueInUserUnits = nonRelativeLengthContext.convertValueToUserUnits(from.valueInSpecifiedUnits(), from.unitMode(), fromType, ec);
-        if (ec)
-            return SVGLength();
-
-        float fromValue = nonRelativeLengthContext.convertValueFromUserUnits(fromValueInUserUnits, unitMode(), toType, ec);
-        if (ec)
-            return SVGLength();
-
-        float toValue = valueInSpecifiedUnits();
-        length.newValueSpecifiedUnits(toType, WebCore::blend(fromValue, toValue, progress), ec);
-
-        if (ec)
-            return SVGLength();
-        return length;
+        auto result = propertyReference().convertToSpecifiedUnits(unitType, SVGLengthContext { contextElement() });
+        if (result.hasException())
+            return result;
+        
+        commitChange();
+        return result;
     }
 
 private:
-    float m_valueInSpecifiedUnits;
-    unsigned int m_unit;
-};
+    SVGLength(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, SVGLengthValue& value)
+        : SVGPropertyTearOff<SVGLengthValue>(&animatedProperty, role, value)
+    {
+    }
 
-template<>
-struct SVGPropertyTraits<SVGLength> {
-    static SVGLength initialValue() { return SVGLength(); }
-    static String toString(const SVGLength& type) { return type.valueAsString(); }
-};
+    explicit SVGLength(const SVGLengthValue& initialValue)
+        : SVGPropertyTearOff<SVGLengthValue>(initialValue)
+    {
+    }
 
+    explicit SVGLength(const SVGLengthValue* initialValue)
+        : SVGPropertyTearOff<SVGLengthValue>(initialValue)
+    {
+    }
+};
 
 } // namespace WebCore
-
-#endif // SVGLength_h

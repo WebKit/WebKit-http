@@ -20,17 +20,20 @@
  *
  */
 
-#ifndef TextPainter_h
-#define TextPainter_h
+#pragma once
 
 #include "AffineTransform.h"
-#include "RenderText.h"
+#include "FloatRect.h"
+#include "ShadowData.h"
 #include "TextFlags.h"
 #include "TextPaintStyle.h"
+#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
+class FontCascade;
 class RenderCombineText;
+class TextRun;
 
 struct TextPaintStyle;
 
@@ -50,18 +53,19 @@ public:
     void setSelectionPaintStyle(const TextPaintStyle& selectionPaintStyle) { m_selectionPaintStyle = selectionPaintStyle; }
     void setIsHorizontal(bool isHorizontal) { m_textBoxIsHorizontal = isHorizontal; }
     void setFont(const FontCascade& font) { m_font = &font; }
-    void addEmphasis(const AtomicString& emphasisMark, int emphasisMarkOffset, RenderCombineText*);
+    void addEmphasis(const AtomicString& emphasisMark, float emphasisMarkOffset, RenderCombineText*);
     void addTextShadow(const ShadowData* textShadow, const ShadowData* selectionShadow);
 
-    void paintText(const TextRun&, int length, const FloatRect& boxRect, const FloatPoint& textOrigin,
-        int selectionStart = 0, int selectionEnd = 0, bool paintSelectedTextOnly = false, bool paintSelectedTextSeparately = false);
+    void paintTextInRange(const TextRun&, const FloatRect& boxRect, const FloatPoint& textOrigin, unsigned start, unsigned end);
+    void paintText(const TextRun&, unsigned length, const FloatRect& boxRect, const FloatPoint& textOrigin,
+        unsigned selectionStart = 0, unsigned selectionEnd = 0, bool paintSelectedTextOnly = false, bool paintSelectedTextSeparately = false, bool paintNonSelectedTextOnly = false);
 
 private:
-    void drawTextOrEmphasisMarks(const FontCascade&, const TextRun&, const AtomicString& emphasisMark, int emphasisMarkOffset,
-        const FloatPoint& textOrigin, int startOffset, int endOffset);
+    void drawTextOrEmphasisMarks(const FontCascade&, const TextRun&, const AtomicString& emphasisMark, float emphasisMarkOffset,
+        const FloatPoint& textOrigin, unsigned startOffset, unsigned endOffset);
     void paintTextWithShadows(const ShadowData*, const FontCascade&, const TextRun&, const FloatRect& boxRect, const FloatPoint& textOrigin,
-        int startOffset, int endOffset, const AtomicString& emphasisMark, int emphasisMarkOffset, bool stroked);
-    void paintTextAndEmphasisMarksIfNeeded(const TextRun&, const FloatRect& boxRect, const FloatPoint& textOrigin, int startOffset, int endOffset,
+        unsigned startOffset, unsigned endOffset, const AtomicString& emphasisMark, float emphasisMarkOffset, bool stroked);
+    void paintTextAndEmphasisMarksIfNeeded(const TextRun&, const FloatRect& boxRect, const FloatPoint& textOrigin, unsigned startOffset, unsigned endOffset,
         const TextPaintStyle&, const ShadowData*);
 
     GraphicsContext& m_context;
@@ -72,11 +76,11 @@ private:
     const ShadowData* m_selectionShadow { nullptr };
     AtomicString m_emphasisMark;
     RenderCombineText* m_combinedText { nullptr };
-    int m_emphasisMarkOffset { 0 };
+    float m_emphasisMarkOffset { 0 };
     bool m_textBoxIsHorizontal { true };
 };
 
-inline void TextPainter::addEmphasis(const AtomicString& emphasisMark, int emphasisMarkOffset, RenderCombineText* combinedText)
+inline void TextPainter::addEmphasis(const AtomicString& emphasisMark, float emphasisMarkOffset, RenderCombineText* combinedText)
 {
     m_emphasisMark = emphasisMark;
     m_emphasisMarkOffset = emphasisMarkOffset;
@@ -121,5 +125,3 @@ inline bool ShadowApplier::shadowIsCompletelyCoveredByText(bool textIsOpaque)
 }
 
 } // namespace WebCore
-
-#endif // TextPainter_h

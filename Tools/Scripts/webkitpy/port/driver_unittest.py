@@ -32,13 +32,16 @@ from webkitpy.common.system.systemhost_mock import MockSystemHost
 
 from webkitpy.port import Port, Driver, DriverOutput
 from webkitpy.port.server_process_mock import MockServerProcess
+from webkitpy.thirdparty.mock import patch
 
 # FIXME: remove the dependency on TestWebKitPort
 from webkitpy.port.port_testcase import TestWebKitPort
 
 from webkitpy.tool.mocktool import MockOptions
 
+import os
 import sys
+
 
 class DriverOutputTest(unittest.TestCase):
     def test_strip_metrics(self):
@@ -115,6 +118,7 @@ class DriverTest(unittest.TestCase):
         self.assertEqual(driver.test_to_uri('http/tests/foo.html'), 'http://127.0.0.1:8000/foo.html')
         self.assertEqual(driver.test_to_uri('http/tests/ssl/bar.html'), 'https://127.0.0.1:8443/ssl/bar.html')
         self.assertEqual(driver.test_to_uri('imported/w3c/web-platform-tests/foo/bar.html'), 'http://localhost:8800/foo/bar.html')
+        self.assertEqual(driver.test_to_uri('http/wpt/bar2.html'), 'http://localhost:8800/WebKit/bar2.html')
 
     def test_uri_to_test(self):
         port = self.make_port()
@@ -123,6 +127,7 @@ class DriverTest(unittest.TestCase):
         self.assertEqual(driver.uri_to_test('http://127.0.0.1:8000/foo.html'), 'http/tests/foo.html')
         self.assertEqual(driver.uri_to_test('https://127.0.0.1:8443/ssl/bar.html'), 'http/tests/ssl/bar.html')
         self.assertEqual(driver.uri_to_test('http://localhost:8800/foo/bar.html'), 'imported/w3c/web-platform-tests/foo/bar.html')
+        self.assertEqual(driver.uri_to_test('http://localhost:8800/WebKit/bar2.html'), 'http/wpt/bar2.html')
 
     def test_read_block(self):
         port = TestWebKitPort()
@@ -133,10 +138,30 @@ class DriverTest(unittest.TestCase):
             'Content-Transfer-Encoding: none',
             "#EOF",
         ])
-        content_block = driver._read_block(0)
+        content_block = driver._read_block(0, "")
         self.assertEqual(content_block.content_type, 'my_type')
         self.assertEqual(content_block.encoding, 'none')
         self.assertEqual(content_block.content_hash, 'foobar')
+        # We should only poll once for each line.
+        self.assertEqual(driver._server_process.number_of_times_polled, 4)
+        driver._server_process = None
+
+    def test_read_block_crashed_process(self):
+        port = TestWebKitPort()
+        driver = Driver(port, 0, pixel_tests=False)
+        driver._server_process = MockServerProcess(
+            crashed=True,
+            lines=[
+                'ActualHash: foobar',
+                'Content-Type: my_type',
+                'Content-Transfer-Encoding: none',
+                '#EOF',
+            ])
+
+        content_block = driver._read_block(0, "")
+        self.assertEqual(content_block.content_type, None)
+        self.assertEqual(content_block.encoding, None)
+        self.assertEqual(content_block.content_hash, None)
         driver._server_process = None
 
     def test_read_binary_block(self):
@@ -150,7 +175,7 @@ class DriverTest(unittest.TestCase):
             "12345678",
             "#EOF",
         ])
-        content_block = driver._read_block(0)
+        content_block = driver._read_block(0, "")
         self.assertEqual(content_block.content_type, 'image/png')
         self.assertEqual(content_block.content_hash, 'actual')
         self.assertEqual(content_block.content, '12345678\n')
@@ -168,7 +193,7 @@ class DriverTest(unittest.TestCase):
             'Content-Length: 12',
             'MTIzNDU2NzgK#EOF',
         ])
-        content_block = driver._read_block(0)
+        content_block = driver._read_block(0, "")
         self.assertEqual(content_block.content_type, 'image/png')
         self.assertEqual(content_block.content_hash, 'actual')
         self.assertEqual(content_block.encoding, 'base64')
@@ -195,13 +220,16 @@ class DriverTest(unittest.TestCase):
             def pid(self):
                 return 1234
 
-            def name(self):
+            def process_name(self):
                 return 'FakeServerProcess'
 
             def has_crashed(self):
                 return self.crashed
 
             def stop(self, timeout):
+                pass
+
+            def write(self, bytes, ignore_crash=False):
                 pass
 
         def assert_crash(driver, error_line, crashed, name, pid, unresponsive=False):
@@ -258,7 +286,7 @@ class DriverTest(unittest.TestCase):
 
     def test_stop_cleans_up_properly(self):
         port = TestWebKitPort()
-        port._server_process_constructor = MockServerProcess
+        port._test_runner_process_constructor = MockServerProcess
         driver = Driver(port, 0, pixel_tests=True)
         driver.start(True, [])
         last_tmpdir = port._filesystem.last_tmpdir
@@ -268,7 +296,7 @@ class DriverTest(unittest.TestCase):
 
     def test_two_starts_cleans_up_properly(self):
         port = TestWebKitPort()
-        port._server_process_constructor = MockServerProcess
+        port._test_runner_process_constructor = MockServerProcess
         driver = Driver(port, 0, pixel_tests=True)
         driver.start(True, [])
         last_tmpdir = port._filesystem.last_tmpdir
@@ -277,7 +305,70 @@ class DriverTest(unittest.TestCase):
 
     def test_start_actually_starts(self):
         port = TestWebKitPort()
-        port._server_process_constructor = MockServerProcess
+        port._test_runner_process_constructor = MockServerProcess
         driver = Driver(port, 0, pixel_tests=True)
         driver.start(True, [])
         self.assertTrue(driver._server_process.started)
+
+    def test__append_environment_variable_path(self):
+        port = self.make_port()
+        driver = Driver(port, None, pixel_tests=False)
+
+        environment = {}
+        variable = 'DYLD_FAKE_PATH'
+        path = '/tmp/fake-dyld-path'
+        driver._append_environment_variable_path(environment, variable, path)
+        self.assertEqual(environment[variable], path)
+
+        base_value = ''
+        environment[variable] = base_value
+        driver._append_environment_variable_path(environment, variable, path)
+        self.assertEqual(environment[variable], base_value + os.pathsep + path)
+
+        base_value = '/usr/lib'
+        environment[variable] = base_value
+        driver._append_environment_variable_path(environment, variable, path)
+        self.assertEqual(environment[variable], base_value + os.pathsep + path)
+
+        base_value = os.pathsep.join(['/usr/lib', '/usr/local/lib'])
+        environment[variable] = base_value
+        driver._append_environment_variable_path(environment, variable, path)
+        self.assertEqual(environment[variable], base_value + os.pathsep + path)
+
+    def test_setup_environ_for_test(self):
+        environment_user = {}
+        environment_user['WEBKIT_OUTPUTDIR'] = '/opt/webkit/WebKitBuild/Release'
+        environment_user['FOO'] = 'BAR'
+        with patch('os.environ', environment_user):
+            port = self.make_port()
+            driver = Driver(port, None, pixel_tests=False)
+            environment_driver_test = driver._setup_environ_for_test()
+            self.assertNotIn('FOO', environment_driver_test)
+            self.assertIn('WEBKIT_OUTPUTDIR', environment_driver_test)
+            self.assertEqual(environment_user['WEBKIT_OUTPUTDIR'], environment_driver_test['WEBKIT_OUTPUTDIR'])
+
+    def test_setup_environ_base_vars(self):
+        # This are essential environment variables that should be copied
+        # as part of base:setup_environ_for_server for all drivers
+        environ_keep_yes = {'HOME': '/home/igalia',
+                           'PATH': '/bin:/usr/sbin:/usr/bin',
+                           'WEBKIT_TESTFONTS': '/opt/webkit/WebKitBuild/WKTestFonts',
+                           'WEBKIT_OUTPUTDIR': '/opt/webkit/WebKitBuild/Release',
+                           'LANG': 'en_US.utf8'}
+        # This are environment variables that should be copied
+        # on the driver (wayland, x11). But not in the base driver.
+        environ_keep_no = {'DISPLAY': ':0.0',
+                          'XAUTHORITY': '/home/igalia/.Xauthority',
+                          'WAYLAND_DISPLAY': 'wayland-0',
+                          'WAYLAND_SOCKET': 'wayland-socket-0',
+                          'GDK_BACKEND': 'x11'}
+        environment_user = dict(environ_keep_yes.items() + environ_keep_no.items())
+        with patch('os.environ', environment_user):
+            port = self.make_port()
+            driver = Driver(port, None, pixel_tests=False)
+            environment_driver_test = driver._setup_environ_for_test()
+            for var in environ_keep_no.keys():
+                    self.assertNotIn(var, environment_driver_test)
+            for var in environ_keep_yes.keys():
+                    self.assertIn(var, environment_driver_test)
+                    self.assertEqual(environment_driver_test[var], environ_keep_yes[var])

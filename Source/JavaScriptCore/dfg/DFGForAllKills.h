@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGForAllKills_h
-#define DFGForAllKills_h
+#pragma once
 
 #include "DFGCombinedLiveness.h"
 #include "DFGGraph.h"
@@ -76,11 +75,10 @@ void forAllKilledOperands(Graph& graph, Node* nodeBefore, Node* nodeAfter, const
         const FastBitVector& liveBefore = fullLiveness.getLiveness(before.bytecodeIndex);
         const FastBitVector& liveAfter = fullLiveness.getLiveness(after.bytecodeIndex);
         
-        for (unsigned relativeLocal = codeBlock->m_numCalleeLocals; relativeLocal--;) {
-            if (liveBefore.get(relativeLocal) && !liveAfter.get(relativeLocal))
+        (liveBefore & ~liveAfter).forEachSetBit(
+            [&] (size_t relativeLocal) {
                 functor(virtualRegisterForLocal(relativeLocal) + stackOffset);
-        }
-        
+            });
         return;
     }
     
@@ -155,7 +153,7 @@ void forAllKillsInBlock(
     for (Node* node : combinedLiveness.liveAtTail[block])
         functor(block->size(), node);
     
-    LocalOSRAvailabilityCalculator localAvailability;
+    LocalOSRAvailabilityCalculator localAvailability(graph);
     localAvailability.beginBlock(block);
     // Start at the second node, because the functor is expected to only inspect nodes from the start of
     // the block up to nodeIndex (exclusive), so if nodeIndex is zero then the functor has nothing to do.
@@ -170,6 +168,3 @@ void forAllKillsInBlock(
 }
 
 } } // namespace JSC::DFG
-
-#endif // DFGForAllKills_h
-

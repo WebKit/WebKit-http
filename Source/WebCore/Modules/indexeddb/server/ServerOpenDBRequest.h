@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ServerOpenDBRequest_h
-#define ServerOpenDBRequest_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -50,8 +49,7 @@ public:
     bool isOpenRequest() const;
     bool isDeleteRequest() const;
 
-    bool hasNotifiedBlocked() const { return m_notifiedBlocked; }
-    void notifyRequestBlocked(uint64_t currentVersion);
+    void maybeNotifyRequestBlocked(uint64_t currentVersion);
     void notifyDidDeleteDatabase(const IDBDatabaseInfo&);
 
     uint64_t versionChangeID() const;
@@ -78,4 +76,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // ServerOpenDBRequest_h

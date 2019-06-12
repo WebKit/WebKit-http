@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +32,8 @@
 #include "JSCJSValueInlines.h"
 #include "JSInterfaceJIT.h"
 #include "JSObject.h"
-#include "JSStackInlines.h"
 #include "LLIntCLoop.h"
+#include "LLIntData.h"
 #include "LinkBuffer.h"
 #include "LowLevelInterpreter.h"
 #include "ProtoCallFrame.h"
@@ -42,6 +42,11 @@
 
 namespace JSC {
 
+EncodedJSValue JS_EXPORT_PRIVATE vmEntryToWasm(void* code, VM* vm, ProtoCallFrame* frame)
+{
+    return vmEntryToJavaScript(code, vm, frame);
+}
+    
 #if ENABLE(JIT)
 
 namespace LLInt {
@@ -54,7 +59,7 @@ static MacroAssemblerCodeRef generateThunkWithJumpTo(VM* vm, void (*target)(), c
     jit.move(JSInterfaceJIT::TrustedImmPtr(bitwise_cast<void*>(target)), JSInterfaceJIT::regT0);
     jit.jump(JSInterfaceJIT::regT0);
     
-    LinkBuffer patchBuffer(*vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     return FINALIZE_CODE(patchBuffer, ("LLInt %s prologue thunk", thunkKind));
 }
 
@@ -116,7 +121,7 @@ extern "C" VMEntryRecord* vmEntryRecord(VMEntryFrame* entryFrame)
     // The C Loop doesn't have any callee save registers, so the VMEntryRecord is allocated at the base of the frame.
     intptr_t stackAlignment = stackAlignmentBytes();
     intptr_t VMEntryTotalFrameSize = (sizeof(VMEntryRecord) + (stackAlignment - 1)) & ~(stackAlignment - 1);
-    return reinterpret_cast<VMEntryRecord*>(static_cast<char*>(entryFrame) - VMEntryTotalFrameSize);
+    return reinterpret_cast<VMEntryRecord*>(reinterpret_cast<char*>(entryFrame) - VMEntryTotalFrameSize);
 }
 
 

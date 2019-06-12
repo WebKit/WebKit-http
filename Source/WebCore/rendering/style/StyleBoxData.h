@@ -22,13 +22,12 @@
  *
  */
 
-#ifndef StyleBoxData_h
-#define StyleBoxData_h
+#pragma once
 
 #include "Length.h"
 #include "RenderStyleConstants.h"
 #include <wtf/RefCounted.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -88,5 +87,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleBoxData_h

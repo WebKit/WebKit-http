@@ -1,3 +1,368 @@
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix compiler warnings when building with GCC 7
+        https://bugs.webkit.org/show_bug.cgi?id=174463
+
+        Reviewed by Darin Adler.
+
+        * brotli/CMakeLists.txt:
+
+2017-05-11  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE check for regex.h
+        https://bugs.webkit.org/show_bug.cgi?id=171950
+
+        Reviewed by Michael Catanzaro.
+
+        * gtest/include/gtest/internal/gtest-port.h:
+
+2017-04-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] ../../Source/ThirdParty/xdgmime/src/xdgmimecache.c:200:62: warning: pointer of type ‘void *’ used in arithmetic [-Wpointer-arith]
+        https://bugs.webkit.org/show_bug.cgi?id=171026
+
+        Reviewed by Carlos Garcia Campos.
+
+        * xdgmime/README.webkit:
+        * xdgmime/src/xdgmimecache.c:
+        (cache_magic_matchlet_compare_to_data):
+
+2017-03-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix the build after r214338.
+
+        Add missing files I forgot to git add again.
+
+        * xdgmime/CMakeLists.txt: Added.
+        * xdgmime/README: Added.
+        * xdgmime/README.webkit: Added.
+
+2017-03-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add MIMETypeRegistry implementation using xdgmime and remove the GTK+ one
+        https://bugs.webkit.org/show_bug.cgi?id=170001
+
+        Reviewed by Michael Catanzaro.
+
+        Add xdgmime to ThirdParty.
+
+        * xdgmime/CMakeLists.txt: Added.
+        * xdgmime/README: Added.
+        * xdgmime/README.webkit: Added.
+        * xdgmime/src/xdgmime.c: Added.
+        * xdgmime/src/xdgmime.h: Added.
+        * xdgmime/src/xdgmimealias.c: Added.
+        * xdgmime/src/xdgmimealias.h: Added.
+        * xdgmime/src/xdgmimecache.c: Added.
+        * xdgmime/src/xdgmimecache.h: Added.
+        * xdgmime/src/xdgmimeglob.c: Added.
+        * xdgmime/src/xdgmimeglob.h: Added.
+        * xdgmime/src/xdgmimeicon.c: Added.
+        * xdgmime/src/xdgmimeicon.h: Added.
+        * xdgmime/src/xdgmimeint.c: Added.
+        * xdgmime/src/xdgmimeint.h: Added.
+        * xdgmime/src/xdgmimemagic.c: Added.
+        * xdgmime/src/xdgmimemagic.h: Added.
+        * xdgmime/src/xdgmimeparent.c: Added.
+        * xdgmime/src/xdgmimeparent.h: Added.
+
+2017-03-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Add stubs for xdgmime sources to ThirdParty.
+
+        This is in preparation for bug #170001, to try to bypass the SVN hook that doesn't allow to commit source files
+        containing tabs. I'm committing empty files, so that once those files are known by SVN I can set the
+        allow-tabs property and then commit the actual contents.
+
+        * xdgmime/src/xdgmime.c: Added.
+        * xdgmime/src/xdgmime.h: Added.
+        * xdgmime/src/xdgmimealias.c: Added.
+        * xdgmime/src/xdgmimealias.h: Added.
+        * xdgmime/src/xdgmimecache.c: Added.
+        * xdgmime/src/xdgmimecache.h: Added.
+        * xdgmime/src/xdgmimeglob.c: Added.
+        * xdgmime/src/xdgmimeglob.h: Added.
+        * xdgmime/src/xdgmimeicon.c: Added.
+        * xdgmime/src/xdgmimeicon.h: Added.
+        * xdgmime/src/xdgmimeint.c: Added.
+        * xdgmime/src/xdgmimeint.h: Added.
+        * xdgmime/src/xdgmimemagic.c: Added.
+        * xdgmime/src/xdgmimemagic.h: Added.
+        * xdgmime/src/xdgmimeparent.c: Added.
+        * xdgmime/src/xdgmimeparent.h: Added.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Build libwebrtc on bots without using it yet
+        https://bugs.webkit.org/show_bug.cgi?id=168062
+
+        Reviewed by Brent Fulgham.
+
+        * Makefile:
+
+2017-01-23  Timothy Hatcher  <timothy@hatcher.name>
+
+        gtest fails to link on Linux due to missing -lpthread
+        https://bugs.webkit.org/show_bug.cgi?id=167313
+
+        * gtest/CMakeLists.txt: Remove find_package(Threads) that was added in my last commit.
+        This is assumed to already happen in the platform cmake options file.
+
+2017-01-23  Timothy Hatcher  <timothy@hatcher.name>
+
+        gtest fails to link on Linux due to missing -lpthread
+        https://bugs.webkit.org/show_bug.cgi?id=167313
+
+        Reviewed by Alex Christensen.
+
+        * gtest/CMakeLists.txt: Add call to find_package(Threads) before testing CMAKE_USE_PTHREADS_INIT.
+        Without the find_package call, CMAKE_USE_PTHREADS_INIT was always false for me. Also explicitly
+        define GTEST_HAS_PTHREAD to 0 when CMAKE_USE_PTHREADS_INIT is false to prevent gtest-port.h from
+        setting GTEST_HAS_PTHREAD based on the platform.
+
+2017-01-20  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Add libwebrtc build infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=167207
+
+        Reviewed by Alex Christensen.
+
+        Checking-in files used for building libwebrtc.
+        The principle is the following:
+        - Select a revision of libwebrtc
+        - Ask libwebrtc build system to generate the project.json (something like gn gen --ide json ...)
+        - Copy project.json here and the libwebrtc selected revision in a libwebrtc/libwebrtc folder.
+        - Call Tools/Scripts/generate-libwebrtc-cmake which will update CMakeLists.txt
+        - Build libwebrtc with CMake
+
+        * libwebrtc/CMakeLists.txt: Added (Generated by Tools/Scripts/generate-libwebrtc-cmake using project.json as input).
+        * libwebrtc/Makefile: Added.
+        * libwebrtc/WebKit/project.json: Added (Generated by libwebrtc build system).
+        * libwebrtc/WebKit/rtc_sdk_framework_objc_info_plist.plist: Added.
+        * libwebrtc/libwebrtc.xcodeproj/project.pbxproj: Added.
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Include WTF, JSC, and WebCore headers automatically to targers using them
+        https://bugs.webkit.org/show_bug.cgi?id=165686
+
+        Reviewed by Michael Catanzaro.
+
+        This change reduces duplication of include path lists between modules,
+        and reduces future need for fixes like r209605 (broken build because of
+        WebCore header suddenly becoming used in WebKit2).
+
+        * gtest/CMakeLists.txt:
+
+2016-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Correct SDKROOT values in xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=165487
+        rdar://problem/29539209
+
+        Reviewed by Dan Bernstein.
+
+        Fix suggested by Dan Bernstein.
+
+        * gtest/xcode/Config/DebugProject.xcconfig:
+        * gtest/xcode/Config/ReleaseProject.xcconfig:
+
+2016-09-28  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed, woff2 upgrade introduces compiler warnings
+        https://bugs.webkit.org/show_bug.cgi?id=162678
+
+        * woff2/CMakeLists.txt:
+
+2016-09-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        woff2 upgrade introduces compiler warnings
+        https://bugs.webkit.org/show_bug.cgi?id=162678
+
+        Reviewed by Alex Christensen.
+
+        * woff2/CMakeLists.txt:
+
+2016-09-28  Khaled Hosny  <khaledhosny@eglug.org>
+
+        Update woff2 to latest revision
+        https://bugs.webkit.org/show_bug.cgi?id=162608
+
+        Reviewed by Michael Catanzaro.
+
+        * woff2/CMakeLists.txt:
+        * woff2/README.webkit:
+        * woff2/src/file.h:
+        (woff2::GetFileContent):
+        (woff2::SetFileContents):
+        * woff2/src/font.cc:
+        * woff2/src/font.h:
+        * woff2/src/glyph.cc:
+        * woff2/src/store_bytes.h:
+        (woff2::Store16):
+        * woff2/src/transform.cc:
+        * woff2/src/woff2_common.cc:
+        * woff2/src/woff2_compress.cc:
+        * woff2/src/woff2_dec.cc:
+        * woff2/src/woff2_dec.h:
+        * woff2/src/woff2_decompress.cc:
+        * woff2/src/woff2_enc.cc:
+        * woff2/src/woff2_out.cc: Added.
+        * woff2/src/woff2_out.h: Added.
+        (woff2::WOFF2Out::~WOFF2Out):
+        (woff2::WOFF2StringOut::MaxSize):
+
+2016-09-28  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Suppress Clang warnings in brotli and woff2
+        https://bugs.webkit.org/show_bug.cgi?id=162663
+
+        Reviewed by Michael Catanzaro.
+
+        * brotli/CMakeLists.txt:
+        * woff2/CMakeLists.txt:
+
+2016-09-27  Konstantin Tokarev  <annulen@yandex.ru> and Vitaliy Slobodin  <vitaliy.slobodin@gmail.com>
+
+        Fixed compilation of WOFF2 on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=162570
+
+        Reviewed by Alex Christensen.
+
+        * woff2/CMakeLists.txt: Avoid passing GCC-specific flags to other
+        compilers.
+        * woff2/src/port.h: Include assert.h.
+
+2016-06-19  Frederic Wang  <fred.wang@free.fr>
+
+        Update Brotli to version 0.4.0
+        https://bugs.webkit.org/show_bug.cgi?id=158907
+
+        Reviewed by Michael Catanzaro.
+
+        * brotli/README.webkit:
+        * brotli/dec/bit_reader.h:
+        * brotli/dec/decode.c:
+        * brotli/dec/decode.h:
+        * brotli/dec/huffman.c:
+        * brotli/dec/huffman.h:
+        * brotli/dec/port.h:
+        (BrotliDump):
+        * brotli/dec/state.c:
+        * brotli/dec/state.h:
+
+2016-05-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        woff2_dec.cc triggers -Wsign-compare, -Wunused-but-set-variable
+        https://bugs.webkit.org/show_bug.cgi?id=157732
+
+        Reviewed by Darin Adler.
+
+        * woff2/CMakeLists.txt:
+
+2016-05-22  Brady Eidson  <beidson@apple.com>
+
+        Move to C++14.
+        https://bugs.webkit.org/show_bug.cgi?id=157948
+
+        Reviewed by Michael Catanzaro.
+
+        * gtest/xcode/Config/General.xcconfig:
+
+2016-03-17  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed, line ending fixes.
+
+        * gtest/codegear/gtest_all.cc:
+        * gtest/codegear/gtest_link.cc:
+
+2016-03-10  Frederic Wang  <fwang@igalia.com>
+
+        [GTK] Add support for WOFF2
+        https://bugs.webkit.org/show_bug.cgi?id=152616
+
+        Reviewed by Carlos Garcia Campos.
+
+        We import the source of the third-party brotli and woff2 libraries because release packages do not exist yet.
+        The script to update source from upstream as well as the makefile to compile relevant files are based on similar code from Mozilla.
+
+        * brotli/CMakeLists.txt: Added. We force BROTLI_BUILD_PORTABLE by default, see https://github.com/google/brotli/issues/307.
+        * brotli/LICENSE: Added.
+        * brotli/README.webkit: Added.
+        * brotli/dec/Makefile: Added.
+        * brotli/dec/bit_reader.c: Added.
+        * brotli/dec/bit_reader.h: Added.
+        * brotli/dec/context.h: Added.
+        * brotli/dec/decode.c: Added.
+        * brotli/dec/decode.h: Added.
+        * brotli/dec/dictionary.c: Added.
+        * brotli/dec/dictionary.h: Added.
+        * brotli/dec/huffman.c: Added.
+        * brotli/dec/huffman.h: Added.
+        * brotli/dec/port.h: Added.
+        (BrotliRBit):
+        * brotli/dec/prefix.h: Added.
+        * brotli/dec/state.c: Added.
+        * brotli/dec/state.h: Added.
+        * brotli/dec/transform.h: Added.
+        * brotli/dec/types.h: Added.
+        * brotli/update.sh: Added. This script helps to get the latest version of the decoder source code.
+        * woff2/CMakeLists.txt: Added. We only compile the decoder files.
+        * woff2/LICENSE: Added.
+        * woff2/README.webkit: Added.
+        * woff2/src/buffer.h: Added.
+        (woff2::Failure):
+        (woff2::Buffer::Buffer):
+        (woff2::Buffer::Skip):
+        (woff2::Buffer::Read):
+        (woff2::Buffer::ReadU8):
+        (woff2::Buffer::ReadU16):
+        (woff2::Buffer::ReadS16):
+        (woff2::Buffer::ReadU24):
+        (woff2::Buffer::ReadU32):
+        (woff2::Buffer::ReadS32):
+        (woff2::Buffer::ReadTag):
+        (woff2::Buffer::ReadR64):
+        (woff2::Buffer::buffer):
+        (woff2::Buffer::offset):
+        (woff2::Buffer::length):
+        (woff2::Buffer::set_offset):
+        * woff2/src/file.h: Added.
+        (woff2::GetFileContent):
+        (woff2::SetFileContents):
+        * woff2/src/font.cc: Added.
+        * woff2/src/font.h: Added.
+        * woff2/src/glyph.cc: Added.
+        * woff2/src/glyph.h: Added.
+        (woff2::Glyph::Glyph):
+        * woff2/src/normalize.cc: Added.
+        * woff2/src/normalize.h: Added.
+        * woff2/src/port.h: Added.
+        (woff2::Log2Floor):
+        * woff2/src/round.h: Added.
+        (woff2::Round4):
+        * woff2/src/store_bytes.h: Added.
+        (woff2::StoreU32):
+        (woff2::Store16):
+        (woff2::StoreBytes):
+        * woff2/src/table_tags.cc: Added.
+        * woff2/src/table_tags.h: Added.
+        * woff2/src/transform.cc: Added.
+        * woff2/src/transform.h: Added.
+        * woff2/src/variable_length.cc: Added.
+        * woff2/src/variable_length.h: Added.
+        * woff2/src/woff2_common.cc: Added.
+        * woff2/src/woff2_common.h: Added.
+        (woff2::Table::operator<):
+        * woff2/src/woff2_compress.cc: Added.
+        * woff2/src/woff2_dec.cc: Added.
+        * woff2/src/woff2_dec.h: Added.
+        * woff2/src/woff2_decompress.cc: Added.
+        * woff2/src/woff2_enc.cc: Added.
+        * woff2/src/woff2_enc.h: Added.
+        (woff2::WOFF2Params::WOFF2Params):
+        * woff2/update.sh: Added. This script helps to get the latest upstream version.
+
 2016-09-28  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] Suppress Clang warnings in brotli and woff2

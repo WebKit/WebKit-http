@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2016-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +27,12 @@
 #include "config.h"
 #include "TemplateRegistry.h"
 
-#include "JSCJSValueInlines.h"
+#include "BuiltinNames.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
+#include "JSTemplateRegistryKey.h"
 #include "ObjectConstructor.h"
-#include "StructureInlines.h"
+#include "TemplateRegistryKey.h"
 #include "WeakGCMapInlines.h"
 
 namespace JSC {
@@ -39,30 +42,46 @@ TemplateRegistry::TemplateRegistry(VM& vm)
 {
 }
 
-JSArray* TemplateRegistry::getTemplateObject(ExecState* exec, const TemplateRegistryKey& templateKey)
+JSArray* TemplateRegistry::getTemplateObject(ExecState* exec, JSTemplateRegistryKey* templateKeyObject)
 {
-    JSArray* cached = m_templateMap.get(templateKey);
+    auto& templateKey = templateKeyObject->templateRegistryKey();
+    JSArray* cached = m_templateMap.get(&templateKey);
     if (cached)
         return cached;
 
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     unsigned count = templateKey.cookedStrings().size();
     JSArray* templateObject = constructEmptyArray(exec, nullptr, count);
+    RETURN_IF_EXCEPTION(scope, nullptr);
     JSArray* rawObject = constructEmptyArray(exec, nullptr, count);
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     for (unsigned index = 0; index < count; ++index) {
-        templateObject->putDirectIndex(exec, index, jsString(exec, templateKey.cookedStrings()[index]), ReadOnly | DontDelete, PutDirectIndexLikePutDirect);
+        auto cooked = templateKey.cookedStrings()[index];
+        if (cooked)
+            templateObject->putDirectIndex(exec, index, jsString(exec, cooked.value()), ReadOnly | DontDelete, PutDirectIndexLikePutDirect);
+        else
+            templateObject->putDirectIndex(exec, index, jsUndefined(), ReadOnly | DontDelete, PutDirectIndexLikePutDirect);
+        RETURN_IF_EXCEPTION(scope, nullptr);
+
         rawObject->putDirectIndex(exec, index, jsString(exec, templateKey.rawStrings()[index]), ReadOnly | DontDelete, PutDirectIndexLikePutDirect);
+        RETURN_IF_EXCEPTION(scope, nullptr);
     }
 
     objectConstructorFreeze(exec, rawObject);
-    ASSERT(!exec->hadException());
+    scope.assertNoException();
 
-    templateObject->putDirect(exec->vm(), exec->propertyNames().raw, rawObject, ReadOnly | DontEnum | DontDelete);
+    templateObject->putDirect(vm, vm.propertyNames->raw, rawObject, ReadOnly | DontEnum | DontDelete);
+
+    // Template JSArray hold the reference to JSTemplateRegistryKey to make TemplateRegistryKey pointer live until this JSArray is collected.
+    // TemplateRegistryKey pointer is used for TemplateRegistry's key.
+    templateObject->putDirect(vm, vm.propertyNames->builtinNames().templateRegistryKeyPrivateName(), templateKeyObject, ReadOnly | DontEnum | DontDelete);
 
     objectConstructorFreeze(exec, templateObject);
-    ASSERT(!exec->hadException());
+    scope.assertNoException();
 
-    m_templateMap.set(templateKey, templateObject);
+    m_templateMap.set(&templateKey, templateObject);
 
     return templateObject;
 }

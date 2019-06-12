@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,49 +28,51 @@
 #include "UnlinkedCodeBlock.h"
 
 #include "BytecodeGenerator.h"
+#include "BytecodeRewriter.h"
 #include "ClassInfo.h"
 #include "CodeCache.h"
-#include "Executable.h"
 #include "ExecutableInfo.h"
 #include "FunctionOverrides.h"
-#include "JSString.h"
 #include "JSCInlines.h"
+#include "JSString.h"
 #include "Parser.h"
+#include "PreciseJumpTargetsInlines.h"
 #include "SourceProvider.h"
 #include "Structure.h"
 #include "SymbolTable.h"
+#include "UnlinkedEvalCodeBlock.h"
+#include "UnlinkedFunctionCodeBlock.h"
 #include "UnlinkedInstructionStream.h"
+#include "UnlinkedModuleProgramCodeBlock.h"
+#include "UnlinkedProgramCodeBlock.h"
 #include <wtf/DataLog.h>
 
 namespace JSC {
 
-const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", 0, 0, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
-const ClassInfo UnlinkedGlobalCodeBlock::s_info = { "UnlinkedGlobalCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedGlobalCodeBlock) };
-const ClassInfo UnlinkedProgramCodeBlock::s_info = { "UnlinkedProgramCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedProgramCodeBlock) };
-const ClassInfo UnlinkedModuleProgramCodeBlock::s_info = { "UnlinkedModuleProgramCodeBlock", &Base::s_info, nullptr, CREATE_METHOD_TABLE(UnlinkedModuleProgramCodeBlock) };
-const ClassInfo UnlinkedEvalCodeBlock::s_info = { "UnlinkedEvalCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedEvalCodeBlock) };
-const ClassInfo UnlinkedFunctionCodeBlock::s_info = { "UnlinkedFunctionCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedFunctionCodeBlock) };
+const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
 
-UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info)
+UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
     : Base(*vm, structure)
     , m_numVars(0)
     , m_numCalleeLocals(0)
     , m_numParameters(0)
-    , m_vm(vm)
     , m_globalObjectRegister(VirtualRegister())
     , m_usesEval(info.usesEval())
     , m_isStrictMode(info.isStrictMode())
     , m_isConstructor(info.isConstructor())
     , m_hasCapturedVariables(false)
     , m_isBuiltinFunction(info.isBuiltinFunction())
-    , m_constructorKind(static_cast<unsigned>(info.constructorKind()))
     , m_superBinding(static_cast<unsigned>(info.superBinding()))
-    , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
+    , m_scriptMode(static_cast<unsigned>(info.scriptMode()))
     , m_isArrowFunctionContext(info.isArrowFunctionContext())
     , m_isClassContext(info.isClassContext())
-    , m_firstLine(0)
+    , m_wasCompiledWithDebuggingOpcodes(debuggerMode == DebuggerMode::DebuggerOn || Options::forceDebuggerBytecodeGeneration())
+    , m_constructorKind(static_cast<unsigned>(info.constructorKind()))
+    , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
+    , m_evalContextType(static_cast<unsigned>(info.evalContextType()))
     , m_lineCount(0)
     , m_endColumn(UINT_MAX)
+    , m_didOptimize(MixedTriState)
     , m_parseMode(info.parseMode())
     , m_features(0)
     , m_codeType(codeType)
@@ -90,15 +92,25 @@ void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
     UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
+    auto locker = holdLock(*thisObject);
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionDecls.begin(), end = thisObject->m_functionDecls.end(); ptr != end; ++ptr)
-        visitor.append(ptr);
+        visitor.append(*ptr);
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionExprs.begin(), end = thisObject->m_functionExprs.end(); ptr != end; ++ptr)
-        visitor.append(ptr);
+        visitor.append(*ptr);
     visitor.appendValues(thisObject->m_constantRegisters.data(), thisObject->m_constantRegisters.size());
+    if (thisObject->m_unlinkedInstructions)
+        visitor.reportExtraMemoryVisited(thisObject->m_unlinkedInstructions->sizeInBytes());
     if (thisObject->m_rareData) {
         for (size_t i = 0, end = thisObject->m_rareData->m_regexps.size(); i != end; i++)
-            visitor.append(&thisObject->m_rareData->m_regexps[i]);
+            visitor.append(thisObject->m_rareData->m_regexps[i]);
     }
+}
+
+size_t UnlinkedCodeBlock::estimatedSize(JSCell* cell)
+{
+    UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
+    size_t extraSize = thisObject->m_unlinkedInstructions ? thisObject->m_unlinkedInstructions->sizeInBytes() : 0;
+    return Base::estimatedSize(cell) + extraSize;
 }
 
 int UnlinkedCodeBlock::lineNumberForBytecodeOffset(unsigned bytecodeOffset)
@@ -113,8 +125,8 @@ int UnlinkedCodeBlock::lineNumberForBytecodeOffset(unsigned bytecodeOffset)
     return line;
 }
 
-inline void UnlinkedCodeBlock::getLineAndColumn(ExpressionRangeInfo& info,
-    unsigned& line, unsigned& column)
+inline void UnlinkedCodeBlock::getLineAndColumn(const ExpressionRangeInfo& info,
+    unsigned& line, unsigned& column) const
 {
     switch (info.mode) {
     case ExpressionRangeInfo::FatLineMode:
@@ -147,6 +159,7 @@ static void dumpLineColumnEntry(size_t index, const UnlinkedInstructionStream& i
         case DidReachBreakpoint: event = " DidReachBreakpoint"; break;
         case WillLeaveCallFrame: event = " WillLeaveCallFrame"; break;
         case WillExecuteStatement: event = " WillExecuteStatement"; break;
+        case WillExecuteExpression: event = " WillExecuteExpression"; break;
         }
     }
     dataLogF("  [%zu] pc %u @ line %u col %u : %s%s\n", index, instructionOffset, line, column, opcodeNames[opcode], event);
@@ -170,7 +183,7 @@ void UnlinkedCodeBlock::dumpExpressionRangeInfo()
 #endif
 
 void UnlinkedCodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset,
-    int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column)
+    int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column) const
 {
     ASSERT(bytecodeOffset < instructions().count());
 
@@ -183,7 +196,7 @@ void UnlinkedCodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset
         return;
     }
 
-    Vector<ExpressionRangeInfo>& expressionInfo = m_expressionInfo;
+    const Vector<ExpressionRangeInfo>& expressionInfo = m_expressionInfo;
 
     int low = 0;
     int high = expressionInfo.size();
@@ -198,7 +211,7 @@ void UnlinkedCodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset
     if (!low)
         low = 1;
 
-    ExpressionRangeInfo& info = expressionInfo[low - 1];
+    const ExpressionRangeInfo& info = expressionInfo[low - 1];
     startOffset = info.startOffset;
     endOffset = info.endOffset;
     divot = info.divotPoint;
@@ -262,8 +275,16 @@ void UnlinkedCodeBlock::addExpressionInfo(unsigned instructionOffset,
 bool UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset(unsigned bytecodeOffset, unsigned& startDivot, unsigned& endDivot)
 {
     static const bool verbose = false;
-    auto iter = m_typeProfilerInfoMap.find(bytecodeOffset);
-    if (iter == m_typeProfilerInfoMap.end()) {
+    if (!m_rareData) {
+        if (verbose)
+            dataLogF("Don't have assignment info for offset:%u\n", bytecodeOffset);
+        startDivot = UINT_MAX;
+        endDivot = UINT_MAX;
+        return false;
+    }
+
+    auto iter = m_rareData->m_typeProfilerInfoMap.find(bytecodeOffset);
+    if (iter == m_rareData->m_typeProfilerInfoMap.end()) {
         if (verbose)
             dataLogF("Don't have assignment info for offset:%u\n", bytecodeOffset);
         startDivot = UINT_MAX;
@@ -271,7 +292,7 @@ bool UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset(unsigned byt
         return false;
     }
     
-    TypeProfilerExpressionRange& range = iter->value;
+    RareData::TypeProfilerExpressionRange& range = iter->value;
     startDivot = range.m_startDivot;
     endDivot = range.m_endDivot;
     return true;
@@ -279,58 +300,25 @@ bool UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset(unsigned byt
 
 void UnlinkedCodeBlock::addTypeProfilerExpressionInfo(unsigned instructionOffset, unsigned startDivot, unsigned endDivot)
 {
-    TypeProfilerExpressionRange range;
+    createRareDataIfNecessary();
+    RareData::TypeProfilerExpressionRange range;
     range.m_startDivot = startDivot;
     range.m_endDivot = endDivot;
-    m_typeProfilerInfoMap.set(instructionOffset, range);  
-}
-
-void UnlinkedProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    UnlinkedProgramCodeBlock* thisObject = jsCast<UnlinkedProgramCodeBlock*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Base::visitChildren(thisObject, visitor);
-}
-
-void UnlinkedModuleProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    UnlinkedModuleProgramCodeBlock* thisObject = jsCast<UnlinkedModuleProgramCodeBlock*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Base::visitChildren(thisObject, visitor);
+    m_rareData->m_typeProfilerInfoMap.set(instructionOffset, range);
 }
 
 UnlinkedCodeBlock::~UnlinkedCodeBlock()
 {
 }
 
-void UnlinkedProgramCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedProgramCodeBlock*>(cell)->~UnlinkedProgramCodeBlock();
-}
-
-void UnlinkedModuleProgramCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedModuleProgramCodeBlock*>(cell)->~UnlinkedModuleProgramCodeBlock();
-}
-
-void UnlinkedEvalCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedEvalCodeBlock*>(cell)->~UnlinkedEvalCodeBlock();
-}
-
-void UnlinkedFunctionCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedFunctionCodeBlock*>(cell)->~UnlinkedFunctionCodeBlock();
-}
-
-void UnlinkedFunctionExecutable::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedFunctionExecutable*>(cell)->~UnlinkedFunctionExecutable();
-}
-
 void UnlinkedCodeBlock::setInstructions(std::unique_ptr<UnlinkedInstructionStream> instructions)
 {
-    m_unlinkedInstructions = WTFMove(instructions);
+    ASSERT(instructions);
+    {
+        auto locker = holdLock(*this);
+        m_unlinkedInstructions = WTFMove(instructions);
+    }
+    Heap::heap(this)->reportExtraMemoryAllocated(m_unlinkedInstructions->sizeInBytes());
 }
 
 const UnlinkedInstructionStream& UnlinkedCodeBlock::instructions() const
@@ -339,5 +327,95 @@ const UnlinkedInstructionStream& UnlinkedCodeBlock::instructions() const
     return *m_unlinkedInstructions;
 }
 
+UnlinkedHandlerInfo* UnlinkedCodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler requiredHandler)
+{
+    return handlerForIndex(bytecodeOffset, requiredHandler);
 }
 
+UnlinkedHandlerInfo* UnlinkedCodeBlock::handlerForIndex(unsigned index, RequiredHandler requiredHandler)
+{
+    if (!m_rareData)
+        return nullptr;
+    return UnlinkedHandlerInfo::handlerForIndex(m_rareData->m_exceptionHandlers, index, requiredHandler);
+}
+
+void UnlinkedCodeBlock::applyModification(BytecodeRewriter& rewriter)
+{
+    // Before applying the changes, we adjust the jumps based on the original bytecode offset, the offset to the jump target, and
+    // the insertion information.
+
+    BytecodeGraph<UnlinkedCodeBlock>& graph = rewriter.graph();
+    UnlinkedInstruction* instructionsBegin = graph.instructions().begin();
+
+    for (int bytecodeOffset = 0, instructionCount = graph.instructions().size(); bytecodeOffset < instructionCount;) {
+        UnlinkedInstruction* current = instructionsBegin + bytecodeOffset;
+        OpcodeID opcodeID = current[0].u.opcode;
+        extractStoredJumpTargetsForBytecodeOffset(this, instructionsBegin, bytecodeOffset, [&](int32_t& relativeOffset) {
+            relativeOffset = rewriter.adjustJumpTarget(bytecodeOffset, bytecodeOffset + relativeOffset);
+        });
+        bytecodeOffset += opcodeLength(opcodeID);
+    }
+
+    // Then, exception handlers should be adjusted.
+    if (m_rareData) {
+        for (UnlinkedHandlerInfo& handler : m_rareData->m_exceptionHandlers) {
+            handler.target = rewriter.adjustAbsoluteOffset(handler.target);
+            handler.start = rewriter.adjustAbsoluteOffset(handler.start);
+            handler.end = rewriter.adjustAbsoluteOffset(handler.end);
+        }
+
+        for (size_t i = 0; i < m_rareData->m_opProfileControlFlowBytecodeOffsets.size(); ++i)
+            m_rareData->m_opProfileControlFlowBytecodeOffsets[i] = rewriter.adjustAbsoluteOffset(m_rareData->m_opProfileControlFlowBytecodeOffsets[i]);
+
+        if (!m_rareData->m_typeProfilerInfoMap.isEmpty()) {
+            HashMap<unsigned, RareData::TypeProfilerExpressionRange> adjustedTypeProfilerInfoMap;
+            for (auto& entry : m_rareData->m_typeProfilerInfoMap)
+                adjustedTypeProfilerInfoMap.set(rewriter.adjustAbsoluteOffset(entry.key), entry.value);
+            m_rareData->m_typeProfilerInfoMap.swap(adjustedTypeProfilerInfoMap);
+        }
+    }
+
+    for (size_t i = 0; i < m_propertyAccessInstructions.size(); ++i)
+        m_propertyAccessInstructions[i] = rewriter.adjustAbsoluteOffset(m_propertyAccessInstructions[i]);
+
+    for (size_t i = 0; i < m_expressionInfo.size(); ++i)
+        m_expressionInfo[i].instructionOffset = rewriter.adjustAbsoluteOffset(m_expressionInfo[i].instructionOffset);
+
+    // Then, modify the unlinked instructions.
+    rewriter.applyModification();
+
+    // And recompute the jump target based on the modified unlinked instructions.
+    m_jumpTargets.clear();
+    recomputePreciseJumpTargets(this, graph.instructions().begin(), graph.instructions().size(), m_jumpTargets);
+}
+
+void UnlinkedCodeBlock::shrinkToFit()
+{
+    auto locker = holdLock(*this);
+    
+    m_jumpTargets.shrinkToFit();
+    m_identifiers.shrinkToFit();
+    m_bitVectors.shrinkToFit();
+    m_constantRegisters.shrinkToFit();
+    m_constantsSourceCodeRepresentation.shrinkToFit();
+    m_functionDecls.shrinkToFit();
+    m_functionExprs.shrinkToFit();
+    m_propertyAccessInstructions.shrinkToFit();
+    m_expressionInfo.shrinkToFit();
+
+    if (m_rareData) {
+        m_rareData->m_exceptionHandlers.shrinkToFit();
+        m_rareData->m_regexps.shrinkToFit();
+        m_rareData->m_constantBuffers.shrinkToFit();
+        m_rareData->m_switchJumpTables.shrinkToFit();
+        m_rareData->m_stringSwitchJumpTables.shrinkToFit();
+        m_rareData->m_expressionInfoFatPositions.shrinkToFit();
+        m_rareData->m_opProfileControlFlowBytecodeOffsets.shrinkToFit();
+    }
+}
+
+void UnlinkedCodeBlock::dump(PrintStream&) const
+{
+}
+
+} // namespace JSC

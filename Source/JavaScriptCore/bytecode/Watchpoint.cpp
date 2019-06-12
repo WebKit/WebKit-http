@@ -26,8 +26,9 @@
 #include "config.h"
 #include "Watchpoint.h"
 
+#include "HeapInlines.h"
+#include "VM.h"
 #include <wtf/CompilationThread.h>
-#include <wtf/PassRefPtr.h>
 
 namespace JSC {
 
@@ -81,26 +82,33 @@ void WatchpointSet::add(Watchpoint* watchpoint)
     m_state = IsWatched;
 }
 
-void WatchpointSet::fireAllSlow(const FireDetail& detail)
+void WatchpointSet::fireAllSlow(VM& vm, const FireDetail& detail)
 {
     ASSERT(state() == IsWatched);
     
     WTF::storeStoreFence();
     m_state = IsInvalidated; // Do this first. Needed for adaptive watchpoints.
-    fireAllWatchpoints(detail);
+    fireAllWatchpoints(vm, detail);
     WTF::storeStoreFence();
 }
 
-void WatchpointSet::fireAllSlow(const char* reason)
+void WatchpointSet::fireAllSlow(VM& vm, const char* reason)
 {
-    fireAllSlow(StringFireDetail(reason));
+    fireAllSlow(vm, StringFireDetail(reason));
 }
 
-void WatchpointSet::fireAllWatchpoints(const FireDetail& detail)
+void WatchpointSet::fireAllWatchpoints(VM& vm, const FireDetail& detail)
 {
     // In case there are any adaptive watchpoints, we need to make sure that they see that this
     // watchpoint has been already invalidated.
     RELEASE_ASSERT(hasBeenInvalidated());
+
+    // Firing a watchpoint may cause a GC to happen. This GC could destroy various
+    // Watchpoints themselves while they're in the process of firing. It's not safe
+    // for most Watchpoints to be destructed while they're in the middle of firing.
+    // This GC could also destroy us, and we're not in a safe state to be destroyed.
+    // The safest thing to do is to DeferGCForAWhile to prevent this GC from happening.
+    DeferGCForAWhile deferGC(vm.heap);
     
     while (!m_set.isEmpty()) {
         Watchpoint* watchpoint = m_set.begin();
@@ -130,9 +138,9 @@ void InlineWatchpointSet::add(Watchpoint* watchpoint)
     inflate()->add(watchpoint);
 }
 
-void InlineWatchpointSet::fireAll(const char* reason)
+void InlineWatchpointSet::fireAll(VM& vm, const char* reason)
 {
-    fireAll(StringFireDetail(reason));
+    fireAll(vm, StringFireDetail(reason));
 }
 
 WatchpointSet* InlineWatchpointSet::inflateSlow()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,18 +28,19 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirArgInlines.h"
 #include "AirCCallingConvention.h"
 #include "AirCode.h"
 #include "AirEmitShuffle.h"
 #include "AirInsertionSet.h"
 #include "AirInstInlines.h"
-#include "AirLiveness.h"
+#include "AirRegLiveness.h"
 #include "AirPhaseScope.h"
-#include "AirRegisterPriority.h"
 #include "B3CCallValue.h"
 #include "B3ValueInlines.h"
 #include "RegisterSet.h"
 #include <wtf/HashMap.h>
+#include <wtf/ListDump.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -55,9 +56,27 @@ void lowerAfterRegAlloc(Code& code)
 
     if (verbose)
         dataLog("Code before lowerAfterRegAlloc:\n", code);
+    
+    auto isRelevant = [] (Inst& inst) -> bool {
+        return inst.kind.opcode == Shuffle || inst.kind.opcode == ColdCCall;
+    };
+    
+    bool haveAnyRelevant = false;
+    for (BasicBlock* block : code) {
+        for (Inst& inst : *block) {
+            if (isRelevant(inst)) {
+                haveAnyRelevant = true;
+                break;
+            }
+        }
+        if (haveAnyRelevant)
+            break;
+    }
+    if (!haveAnyRelevant)
+        return;
 
     HashMap<Inst*, RegisterSet> usedRegisters;
-
+    
     RegLiveness liveness(code);
     for (BasicBlock* block : code) {
         RegLiveness::LocalCalc localCalc(liveness, block);
@@ -67,26 +86,40 @@ void lowerAfterRegAlloc(Code& code)
             
             RegisterSet set;
 
-            bool isRelevant = inst.opcode == Shuffle || inst.opcode == ColdCCall;
-            
-            if (isRelevant) {
+            if (isRelevant(inst)) {
                 for (Reg reg : localCalc.live())
                     set.set(reg);
             }
             
             localCalc.execute(instIndex);
 
-            if (isRelevant)
+            if (isRelevant(inst))
                 usedRegisters.add(&inst, set);
         }
     }
+    
+    std::array<std::array<StackSlot*, 2>, numBanks> slots;
+    forEachBank(
+        [&] (Bank bank) {
+            for (unsigned i = 0; i < 2; ++i)
+                slots[bank][i] = nullptr;
+        });
 
-    auto getScratches = [&] (RegisterSet set, Arg::Type type) -> std::array<Arg, 2> {
+    // If we run after stack allocation then we cannot use those callee saves that aren't in
+    // the callee save list. Note that we are only run after stack allocation in -O1, so this
+    // kind of slop is OK.
+    RegisterSet blacklistedCalleeSaves;
+    if (code.stackIsAllocated()) {
+        blacklistedCalleeSaves = RegisterSet::calleeSaveRegisters();
+        blacklistedCalleeSaves.exclude(code.calleeSaveRegisters());
+    }
+    
+    auto getScratches = [&] (RegisterSet set, Bank bank) -> std::array<Arg, 2> {
         std::array<Arg, 2> result;
         for (unsigned i = 0; i < 2; ++i) {
             bool found = false;
-            for (Reg reg : regsInPriorityOrder(type)) {
-                if (!set.get(reg)) {
+            for (Reg reg : code.regsInPriorityOrder(bank)) {
+                if (!set.get(reg) && !blacklistedCalleeSaves.get(reg)) {
                     result[i] = Tmp(reg);
                     set.set(reg);
                     found = true;
@@ -94,10 +127,10 @@ void lowerAfterRegAlloc(Code& code)
                 }
             }
             if (!found) {
-                result[i] = Arg::stack(
-                    code.addStackSlot(
-                        Arg::bytes(Arg::conservativeWidth(type)),
-                        StackSlotKind::Spill));
+                StackSlot*& slot = slots[bank][i];
+                if (!slot)
+                    slot = code.addStackSlot(bytes(conservativeWidth(bank)), StackSlotKind::Spill);
+                result[i] = Arg::stack(slots[bank][i]);
             }
         }
         return result;
@@ -109,14 +142,14 @@ void lowerAfterRegAlloc(Code& code)
         for (unsigned instIndex = 0; instIndex < block->size(); ++instIndex) {
             Inst& inst = block->at(instIndex);
 
-            switch (inst.opcode) {
+            switch (inst.kind.opcode) {
             case Shuffle: {
                 RegisterSet set = usedRegisters.get(&inst);
                 Vector<ShufflePair> pairs;
                 for (unsigned i = 0; i < inst.args.size(); i += 3) {
                     Arg src = inst.args[i + 0];
                     Arg dst = inst.args[i + 1];
-                    Arg::Width width = inst.args[i + 2].width();
+                    Width width = inst.args[i + 2].width();
 
                     // The used register set contains things live after the shuffle. But
                     // emitShuffle() wants a scratch register that is not just dead but also does not
@@ -130,16 +163,17 @@ void lowerAfterRegAlloc(Code& code)
                     
                     pairs.append(ShufflePair(src, dst, width));
                 }
-                std::array<Arg, 2> gpScratch = getScratches(set, Arg::GP);
-                std::array<Arg, 2> fpScratch = getScratches(set, Arg::FP);
+                std::array<Arg, 2> gpScratch = getScratches(set, GP);
+                std::array<Arg, 2> fpScratch = getScratches(set, FP);
                 insertionSet.insertInsts(
-                    instIndex, emitShuffle(pairs, gpScratch, fpScratch, inst.origin));
+                    instIndex, emitShuffle(code, pairs, gpScratch, fpScratch, inst.origin));
                 inst = Inst();
                 break;
             }
 
             case ColdCCall: {
                 CCallValue* value = inst.origin->as<CCallValue>();
+                Kind oldKind = inst.kind;
 
                 RegisterSet liveRegs = usedRegisters.get(&inst);
                 RegisterSet regsToSave = liveRegs;
@@ -157,7 +191,7 @@ void lowerAfterRegAlloc(Code& code)
                     Value* child = value->child(i);
                     Arg src = inst.args[result ? (i >= 1 ? i + 1 : i) : i ];
                     Arg dst = destinations[i];
-                    Arg::Width width = Arg::widthForB3Type(child->type());
+                    Width width = widthForType(child->type());
                     pairs.append(ShufflePair(src, dst, width));
 
                     auto excludeRegisters = [&] (Tmp tmp) {
@@ -168,8 +202,8 @@ void lowerAfterRegAlloc(Code& code)
                     dst.forEachTmpFast(excludeRegisters);
                 }
 
-                std::array<Arg, 2> gpScratch = getScratches(preUsed, Arg::GP);
-                std::array<Arg, 2> fpScratch = getScratches(preUsed, Arg::FP);
+                std::array<Arg, 2> gpScratch = getScratches(preUsed, GP);
+                std::array<Arg, 2> fpScratch = getScratches(preUsed, FP);
                 
                 // Also need to save all live registers. Don't need to worry about the result
                 // register.
@@ -180,9 +214,9 @@ void lowerAfterRegAlloc(Code& code)
                     [&] (Reg reg) {
                         Tmp tmp(reg);
                         Arg arg(tmp);
-                        Arg::Width width = Arg::conservativeWidth(arg.type());
+                        Width width = conservativeWidth(arg.bank());
                         StackSlot* stackSlot =
-                            code.addStackSlot(Arg::bytes(width), StackSlotKind::Spill);
+                            code.addStackSlot(bytes(width), StackSlotKind::Spill);
                         pairs.append(ShufflePair(arg, Arg::stack(stackSlot), width));
                         stackSlots.append(stackSlot);
                     });
@@ -191,9 +225,11 @@ void lowerAfterRegAlloc(Code& code)
                     dataLog("Pre-call pairs for ", inst, ": ", listDump(pairs), "\n");
                 
                 insertionSet.insertInsts(
-                    instIndex, emitShuffle(pairs, gpScratch, fpScratch, inst.origin));
+                    instIndex, emitShuffle(code, pairs, gpScratch, fpScratch, inst.origin));
 
                 inst = buildCCall(code, inst.origin, destinations);
+                if (oldKind.effects)
+                    inst.kind.effects = true;
 
                 // Now we need to emit code to restore registers.
                 pairs.resize(0);
@@ -202,12 +238,12 @@ void lowerAfterRegAlloc(Code& code)
                     [&] (Reg reg) {
                         Tmp tmp(reg);
                         Arg arg(tmp);
-                        Arg::Width width = Arg::conservativeWidth(arg.type());
+                        Width width = conservativeWidth(arg.bank());
                         StackSlot* stackSlot = stackSlots[stackSlotIndex++];
                         pairs.append(ShufflePair(Arg::stack(stackSlot), arg, width));
                     });
                 if (result) {
-                    ShufflePair pair(result, originalResult, Arg::widthForB3Type(value->type()));
+                    ShufflePair pair(result, originalResult, widthForType(value->type()));
                     pairs.append(pair);
                 }
 
@@ -216,11 +252,11 @@ void lowerAfterRegAlloc(Code& code)
                 if (originalResult.isReg())
                     liveRegs.set(originalResult.reg());
 
-                gpScratch = getScratches(liveRegs, Arg::GP);
-                fpScratch = getScratches(liveRegs, Arg::FP);
+                gpScratch = getScratches(liveRegs, GP);
+                fpScratch = getScratches(liveRegs, FP);
                 
                 insertionSet.insertInsts(
-                    instIndex + 1, emitShuffle(pairs, gpScratch, fpScratch, inst.origin));
+                    instIndex + 1, emitShuffle(code, pairs, gpScratch, fpScratch, inst.origin));
                 break;
             }
 

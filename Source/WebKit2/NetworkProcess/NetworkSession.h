@@ -23,54 +23,47 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NetworkSession_h
-#define NetworkSession_h
+#pragma once
 
-#if PLATFORM(COCOA)
-OBJC_CLASS NSURLSession;
-OBJC_CLASS NSOperationQueue;
-OBJC_CLASS WKNetworkSessionDelegate;
-#endif
+#if USE(NETWORK_SESSION)
 
-#include "DownloadID.h"
-#include "NetworkDataTask.h"
 #include <WebCore/SessionID.h>
-#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
+namespace WebCore {
+class NetworkStorageSession;
+}
+
 namespace WebKit {
 
-class CustomProtocolManager;
+class LegacyCustomProtocolManager;
+class NetworkDataTask;
 
-class NetworkSession {
-    friend class NetworkDataTask;
+class NetworkSession : public RefCounted<NetworkSession> {
 public:
-    enum class Type {
-        Normal,
-        Ephemeral
-    };
-    NetworkSession(Type, WebCore::SessionID, CustomProtocolManager*);
-    ~NetworkSession();
-
+    static Ref<NetworkSession> create(WebCore::SessionID, LegacyCustomProtocolManager* = nullptr);
     static NetworkSession& defaultSession();
+    virtual ~NetworkSession();
 
-    NetworkDataTask* dataTaskForIdentifier(NetworkDataTask::TaskIdentifier);
+    virtual void invalidateAndCancel();
+    virtual void clearCredentials() { };
 
-    void addDownloadID(NetworkDataTask::TaskIdentifier, DownloadID);
-    DownloadID downloadID(NetworkDataTask::TaskIdentifier);
-    DownloadID takeDownloadID(NetworkDataTask::TaskIdentifier);
-    
-private:
-    HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMap;
-    HashMap<NetworkDataTask::TaskIdentifier, DownloadID> m_downloadMap;
-#if PLATFORM(COCOA)
-    RetainPtr<NSURLSession> m_sessionWithCredentialStorage;
-    RetainPtr<NSURLSession> m_sessionWithoutCredentialStorage;
-    RetainPtr<WKNetworkSessionDelegate> m_sessionDelegate;
-#endif
+    WebCore::SessionID sessionID() const { return m_sessionID; }
+    WebCore::NetworkStorageSession& networkStorageSession() const;
+
+    void registerNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.add(&task); }
+    void unregisterNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.remove(&task); }
+
+protected:
+    NetworkSession(WebCore::SessionID);
+
+    WebCore::SessionID m_sessionID;
+
+    HashSet<NetworkDataTask*> m_dataTaskSet;
 };
 
 } // namespace WebKit
 
-#endif // NetworkSession_h
+#endif // USE(NETWORK_SESSION)

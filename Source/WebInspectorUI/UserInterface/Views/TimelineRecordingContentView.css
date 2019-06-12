@@ -30,20 +30,59 @@
     right: 0;
 }
 
-.content-view.timeline-recording > .content-view-container {
+.content-view.timeline-recording.edit-instruments > .timeline-overview {
+    bottom: 0;
+}
+
+.content-view.timeline-recording.edit-instruments > .content-browser {
+    display: none;
+}
+
+.content-view.timeline-recording > .content-browser {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
     overflow: hidden;
+
+    border-top: 1px solid var(--border-color);
 }
 
-.content-view.timeline-recording > .content-view-container > .timeline-view > .data-grid td {
-    height: 16px;
-    line-height: 16px;
+.content-view.timeline-recording > .content-browser > .navigation-bar {
+    background-color: var(--panel-background-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
-.content-view.timeline-recording > .content-view-container > .timeline-view > .data-grid table.data {
-    background-image: linear-gradient(to bottom, white, white 50%, hsl(0, 0%, 95%) 50%, hsl(0, 0%, 95%));
-    background-size: 100% 40px;
+.content-view.timeline-recording > .content-browser > .navigation-bar > .item.scope-bar.default-item-selected > .multiple {
+    background-color: transparent;
+    color: black;
+}
+
+.content-view.timeline-recording > .content-browser > .navigation-bar > .item.scope-bar.default-item-selected > .multiple .arrows {
+    color: black;
+}
+
+.content-view.timeline-recording > .content-browser .recording-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--navigation-bar-height);
+    bottom: 0;
+    text-align: center;
+    background-color: var(--panel-background-color-light);
+}
+
+.content-view.timeline-recording > .content-browser .recording-progress > .status {
+    margin-top: 40px;
+    margin-bottom: 10px;
+    text-align: center;
+    font-size: 12px;
+    color: hsl(0, 0%, 12%);
+}
+
+.content-view.timeline-recording > .content-browser .recording-progress > .status > .indeterminate-progress-spinner {
+    display: inline-block;
+    margin-top: -1px;
+    margin-left: 8px;
+    vertical-align: middle;
 }

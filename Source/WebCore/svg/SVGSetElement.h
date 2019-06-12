@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGSetElement_h
-#define SVGSetElement_h
+#pragma once
 
 #include "SVGAnimateElementBase.h"
 
@@ -32,9 +31,7 @@ public:
 
 private:
     SVGSetElement(const QualifiedName&, Document&);
-    virtual void updateAnimationMode() override;
+    void updateAnimationMode() override;
 };
 
 } // namespace WebCore
-
-#endif

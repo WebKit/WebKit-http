@@ -10,88 +10,62 @@
 #ifndef LIBANGLE_RENDERER_D3D_D3D11_FORMATUTILS11_H_
 #define LIBANGLE_RENDERER_D3D_D3D11_FORMATUTILS11_H_
 
-#include "libANGLE/renderer/d3d/formatutilsD3D.h"
-#include "libANGLE/angletypes.h"
+#include <map>
 
 #include "common/platform.h"
-
-#include <map>
+#include "libANGLE/angletypes.h"
+#include "libANGLE/formatutils.h"
+#include "libANGLE/renderer/renderer_utils.h"
+#include "libANGLE/renderer/d3d/formatutilsD3D.h"
 
 namespace rx
 {
+struct Renderer11DeviceCaps;
 
 namespace d3d11
 {
 
-typedef std::map<std::pair<GLenum, GLenum>, ColorCopyFunction> FastCopyFunctionMap;
-typedef bool (*NativeMipmapGenerationSupportFunction)(D3D_FEATURE_LEVEL);
+// A texture might be stored as DXGI_FORMAT_R16_TYPELESS but store integer components,
+// which are accessed through an DXGI_FORMAT_R16_SINT view. It's easy to write code which queries
+// information about the wrong format. Therefore, use of this should be avoided where possible.
 
-struct DXGIFormat
+bool SupportsMipGen(DXGI_FORMAT dxgiFormat, D3D_FEATURE_LEVEL featureLevel);
+
+struct DXGIFormatSize
 {
-    DXGIFormat();
+    DXGIFormatSize(GLuint pixelBits, GLuint blockWidth, GLuint blockHeight);
 
     GLuint pixelBytes;
     GLuint blockWidth;
     GLuint blockHeight;
-
-    GLuint redBits;
-    GLuint greenBits;
-    GLuint blueBits;
-    GLuint alphaBits;
-    GLuint sharedBits;
-
-    GLuint depthBits;
-    GLuint depthOffset;
-    GLuint stencilBits;
-    GLuint stencilOffset;
-
-    GLenum internalFormat;
-    GLenum componentType;
-
-    MipGenerationFunction mipGenerationFunction;
-    ColorReadFunction colorReadFunction;
-
-    FastCopyFunctionMap fastCopyFunctions;
-
-    NativeMipmapGenerationSupportFunction nativeMipmapSupport;
-
-    ColorCopyFunction getFastCopyFunction(GLenum format, GLenum type) const;
 };
-const DXGIFormat &GetDXGIFormatInfo(DXGI_FORMAT format);
+const DXGIFormatSize &GetDXGIFormatSizeInfo(DXGI_FORMAT format);
 
-struct TextureFormat
+struct VertexFormat : angle::NonCopyable
 {
-    TextureFormat();
-
-    DXGI_FORMAT texFormat;
-    DXGI_FORMAT srvFormat;
-    DXGI_FORMAT rtvFormat;
-    DXGI_FORMAT dsvFormat;
-    DXGI_FORMAT renderFormat;
-
-    DXGI_FORMAT swizzleTexFormat;
-    DXGI_FORMAT swizzleSRVFormat;
-    DXGI_FORMAT swizzleRTVFormat;
-
-    InitializeTextureDataFunction dataInitializerFunction;
-
-    typedef std::map<GLenum, LoadImageFunction> LoadFunctionMap;
-    LoadFunctionMap loadFunctions;
-};
-const TextureFormat &GetTextureFormatInfo(GLenum internalFormat, D3D_FEATURE_LEVEL featureLevel);
-
-struct VertexFormat
-{
-    VertexFormat();
+    constexpr VertexFormat();
+    constexpr VertexFormat(VertexConversionType conversionType,
+                           DXGI_FORMAT nativeFormat,
+                           VertexCopyFunction copyFunction);
 
     VertexConversionType conversionType;
     DXGI_FORMAT nativeFormat;
     VertexCopyFunction copyFunction;
 };
-const VertexFormat &GetVertexFormatInfo(const gl::VertexFormat &vertexFormat, D3D_FEATURE_LEVEL featureLevel);
 
+const VertexFormat &GetVertexFormatInfo(gl::VertexFormatType vertexFormatType,
+                                        D3D_FEATURE_LEVEL featureLevel);
+
+// Auto-generated in dxgi_format_map_autogen.cpp.
+GLenum GetComponentType(DXGI_FORMAT dxgiFormat);
+
+}  // namespace d3d11
+
+namespace d3d11_angle
+{
+const angle::Format &GetFormat(DXGI_FORMAT dxgiFormat);
 }
 
-}
+}  // namespace rx
 
 #endif // LIBANGLE_RENDERER_D3D_D3D11_FORMATUTILS11_H_

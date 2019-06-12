@@ -24,26 +24,27 @@
  */
 
 #include "config.h"
+#include "WebVTTElement.h"
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "WebVTTElement.h"
-
-#include "HTMLElementFactory.h"
+#include "HTMLSpanElement.h"
+#include "RubyElement.h"
+#include "RubyTextElement.h"
 #include "TextTrack.h"
 
 namespace WebCore {
 
 static const QualifiedName& nodeTypeToTagName(WebVTTNodeType nodeType)
 {
-    static NeverDestroyed<QualifiedName> cTag(nullAtom, "c", nullAtom);
-    static NeverDestroyed<QualifiedName> vTag(nullAtom, "v", nullAtom);
-    static NeverDestroyed<QualifiedName> langTag(nullAtom, "lang", nullAtom);
-    static NeverDestroyed<QualifiedName> bTag(nullAtom, "b", nullAtom);
-    static NeverDestroyed<QualifiedName> uTag(nullAtom, "u", nullAtom);
-    static NeverDestroyed<QualifiedName> iTag(nullAtom, "i", nullAtom);
-    static NeverDestroyed<QualifiedName> rubyTag(nullAtom, "ruby", nullAtom);
-    static NeverDestroyed<QualifiedName> rtTag(nullAtom, "rt", nullAtom);
+    static NeverDestroyed<QualifiedName> cTag(nullAtom(), "c", nullAtom());
+    static NeverDestroyed<QualifiedName> vTag(nullAtom(), "v", nullAtom());
+    static NeverDestroyed<QualifiedName> langTag(nullAtom(), "lang", nullAtom());
+    static NeverDestroyed<QualifiedName> bTag(nullAtom(), "b", nullAtom());
+    static NeverDestroyed<QualifiedName> uTag(nullAtom(), "u", nullAtom());
+    static NeverDestroyed<QualifiedName> iTag(nullAtom(), "i", nullAtom());
+    static NeverDestroyed<QualifiedName> rubyTag(nullAtom(), "ruby", nullAtom());
+    static NeverDestroyed<QualifiedName> rtTag(nullAtom(), "rt", nullAtom());
     switch (nodeType) {
     case WebVTTNodeTypeClass:
         return cTag;
@@ -87,7 +88,7 @@ Ref<Element> WebVTTElement::cloneElementWithoutAttributesAndChildren(Document& t
     return WTFMove(clone);
 }
 
-PassRefPtr<HTMLElement> WebVTTElement::createEquivalentHTMLElement(Document& document)
+Ref<HTMLElement> WebVTTElement::createEquivalentHTMLElement(Document& document)
 {
     RefPtr<HTMLElement> htmlElement;
 
@@ -95,31 +96,31 @@ PassRefPtr<HTMLElement> WebVTTElement::createEquivalentHTMLElement(Document& doc
     case WebVTTNodeTypeClass:
     case WebVTTNodeTypeLanguage:
     case WebVTTNodeTypeVoice:
-        htmlElement = HTMLElementFactory::createElement(HTMLNames::spanTag, document);
-        htmlElement->setAttribute(HTMLNames::titleAttr, getAttribute(voiceAttributeName()));
-        htmlElement->setAttribute(HTMLNames::langAttr, getAttribute(langAttributeName()));
+        htmlElement = HTMLSpanElement::create(document);
+        htmlElement->setAttributeWithoutSynchronization(HTMLNames::titleAttr, attributeWithoutSynchronization(voiceAttributeName()));
+        htmlElement->setAttributeWithoutSynchronization(HTMLNames::langAttr, attributeWithoutSynchronization(langAttributeName()));
         break;
     case WebVTTNodeTypeItalic:
-        htmlElement = HTMLElementFactory::createElement(HTMLNames::iTag, document);
+        htmlElement = HTMLElement::create(HTMLNames::iTag, document);
         break;
     case WebVTTNodeTypeBold:
-        htmlElement = HTMLElementFactory::createElement(HTMLNames::bTag, document);
+        htmlElement = HTMLElement::create(HTMLNames::bTag, document);
         break;
     case WebVTTNodeTypeUnderline:
-        htmlElement = HTMLElementFactory::createElement(HTMLNames::uTag, document);
+        htmlElement = HTMLElement::create(HTMLNames::uTag, document);
         break;
     case WebVTTNodeTypeRuby:
-        htmlElement = HTMLElementFactory::createElement(HTMLNames::rubyTag, document);
+        htmlElement = RubyElement::create(document);
         break;
     case WebVTTNodeTypeRubyText:
-        htmlElement = HTMLElementFactory::createElement(HTMLNames::rtTag, document);
+        htmlElement = RubyTextElement::create(document);
         break;
     }
 
     ASSERT(htmlElement);
     if (htmlElement)
-        htmlElement->setAttribute(HTMLNames::classAttr, fastGetAttribute(HTMLNames::classAttr));
-    return htmlElement.release();
+        htmlElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, attributeWithoutSynchronization(HTMLNames::classAttr));
+    return htmlElement.releaseNonNull();
 }
 
 } // namespace WebCore

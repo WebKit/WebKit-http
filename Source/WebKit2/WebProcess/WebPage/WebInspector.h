@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInspector_h
-#define WebInspector_h
+#pragma once
 
 #include "APIObject.h"
 #include "Connection.h"
@@ -45,17 +44,15 @@ public:
 
     void updateDockingAvailability();
 
-    virtual bool sendMessageToFrontend(const String& message) override;
-    virtual ConnectionType connectionType() const override { return ConnectionType::Local; }
+    void sendMessageToFrontend(const String& message) override;
+    ConnectionType connectionType() const override { return ConnectionType::Local; }
 
     // Implemented in generated WebInspectorMessageReceiver.cpp
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // IPC::Connection::Client
     void didClose(IPC::Connection&) override { close(); }
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { close(); }
-    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
 
     // Called by WebInspector messages
     void connectionEstablished();
@@ -69,6 +66,7 @@ public:
 
     void showConsole();
     void showResources();
+    void showTimelines();
 
     void showMainResourceForFrame(uint64_t frameIdentifier);
 
@@ -79,12 +77,11 @@ public:
     void startPageProfiling();
     void stopPageProfiling();
 
-    void sendMessageToBackend(const String&);
+    void startElementSelection();
+    void stopElementSelection();
+    void elementSelectionChanged(bool);
 
-#if ENABLE(INSPECTOR_SERVER)
-    void remoteFrontendConnected();
-    void remoteFrontendDisconnected();
-#endif
+    void sendMessageToBackend(const String&);
 
     void disconnectFromPage() { close(); }
 
@@ -108,11 +105,6 @@ private:
 
     bool m_attached { false };
     bool m_previousCanAttach { false };
-#if ENABLE(INSPECTOR_SERVER)
-    bool m_remoteFrontendConnected { false };
-#endif
 };
 
 } // namespace WebKit
-
-#endif // WebInspector_h

@@ -23,6 +23,7 @@
 
 #include "RenderSVGResource.h"
 #include "RenderSVGTextPath.h"
+#include "SVGDocumentExtensions.h"
 #include "SVGNames.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
@@ -85,7 +86,7 @@ void SVGTextPathElement::parseAttribute(const QualifiedName& name, const AtomicS
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::startOffsetAttr)
-        setStartOffsetBaseValue(SVGLength::construct(LengthModeOther, value, parseError));
+        setStartOffsetBaseValue(SVGLengthValue::construct(LengthModeOther, value, parseError));
     else if (name == SVGNames::methodAttr) {
         SVGTextPathMethodType propertyValue = SVGPropertyTraits<SVGTextPathMethodType>::fromString(value);
         if (propertyValue > 0)
@@ -123,7 +124,7 @@ void SVGTextPathElement::svgAttributeChanged(const QualifiedName& attrName)
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
 }
 
-RenderPtr<RenderElement> SVGTextPathElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> SVGTextPathElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderSVGTextPath>(*this, WTFMove(style));
 }
@@ -152,7 +153,7 @@ bool SVGTextPathElement::rendererIsNeeded(const RenderStyle& style)
 void SVGTextPathElement::buildPendingResource()
 {
     clearResourceReferences();
-    if (!inDocument())
+    if (!isConnected())
         return;
 
     String id;
@@ -187,7 +188,7 @@ void SVGTextPathElement::finishedInsertingSubtree()
 void SVGTextPathElement::removedFrom(ContainerNode& rootParent)
 {
     SVGTextContentElement::removedFrom(rootParent);
-    if (rootParent.inDocument())
+    if (rootParent.isConnected())
         clearResourceReferences();
 }
 

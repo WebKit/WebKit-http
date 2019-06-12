@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef NumberConstructor_h
-#define NumberConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
 
@@ -31,7 +30,7 @@ class GetterSetter;
 class NumberConstructor : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | ImplementsHasInstance | ImplementsDefaultHasInstance;
+    static const unsigned StructureFlags = Base::StructureFlags | ImplementsHasInstance | HasStaticPropertyTable;
 
     static NumberConstructor* create(VM& vm, Structure* structure, NumberPrototype* numberPrototype, GetterSetter*)
     {
@@ -57,5 +56,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // NumberConstructor_h

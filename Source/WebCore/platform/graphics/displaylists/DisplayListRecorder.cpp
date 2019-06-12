@@ -100,7 +100,7 @@ void Recorder::setMiterLimit(float miterLimit)
     appendItem(SetMiterLimit::create(miterLimit));
 }
 
-void Recorder::drawGlyphs(const Font& font, const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& startPoint, FontSmoothingMode smoothingMode)
+void Recorder::drawGlyphs(const Font& font, const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs, const FloatPoint& startPoint, FontSmoothingMode smoothingMode)
 {
     DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawGlyphs::create(font, glyphBuffer.glyphs(from), glyphBuffer.advances(from), numGlyphs, FloatPoint(), toFloatSize(startPoint), smoothingMode)));
     updateItemExtent(newItem);
@@ -119,9 +119,9 @@ void Recorder::drawTiledImage(Image& image, const FloatRect& destination, const 
 }
 
 #if USE(CG) || USE(CAIRO)
-void Recorder::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
+void Recorder::drawNativeImage(const NativeImagePtr& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
 {
-    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawNativeImage::create(imagePtr, imageSize, destRect, srcRect, op, blendMode, orientation)));
+    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawNativeImage::create(image, imageSize, destRect, srcRect, op, blendMode, orientation)));
     updateItemExtent(newItem);
 }
 #endif
@@ -132,9 +132,9 @@ void Recorder::drawTiledImage(Image& image, const FloatRect& destination, const 
     updateItemExtent(newItem);
 }
 
-void Recorder::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void Recorder::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
-    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawPattern::create(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode)));
+    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawPattern::create(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode)));
     updateItemExtent(newItem);
 }
 
@@ -374,7 +374,7 @@ Item& Recorder::appendItem(Ref<Item>&& item)
 
 void Recorder::updateItemExtent(DrawingItem& item) const
 {
-    if (Optional<FloatRect> rect = item.localBounds(m_graphicsContext))
+    if (std::optional<FloatRect> rect = item.localBounds(m_graphicsContext))
         item.setExtent(extentFromLocalBounds(rect.value()));
 }
 
@@ -443,7 +443,7 @@ void Recorder::ContextState::rotate(float angleInRadians)
     AffineTransform rotation;
     rotation.rotate(angleInDegrees);
 
-    if (Optional<AffineTransform> inverse = rotation.inverse())
+    if (std::optional<AffineTransform> inverse = rotation.inverse())
         clipBounds = inverse.value().mapRect(clipBounds);
 }
 
@@ -457,7 +457,7 @@ void Recorder::ContextState::concatCTM(const AffineTransform& matrix)
 {
     ctm *= matrix;
 
-    if (Optional<AffineTransform> inverse = matrix.inverse())
+    if (std::optional<AffineTransform> inverse = matrix.inverse())
         clipBounds = inverse.value().mapRect(clipBounds);
 }
 

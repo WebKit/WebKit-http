@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoKeySerializationRaw_h
-#define CryptoKeySerializationRaw_h
+#pragma once
 
 #include "CryptoKeySerialization.h"
 #include <wtf/Vector.h>
@@ -51,12 +50,12 @@ public:
 private:
     CryptoKeySerializationRaw(const CryptoOperationData&);
 
-    virtual bool reconcileAlgorithm(std::unique_ptr<CryptoAlgorithm>&, std::unique_ptr<CryptoAlgorithmParameters>&) const override;
+    std::optional<CryptoAlgorithmPair> reconcileAlgorithm(CryptoAlgorithm*, CryptoAlgorithmParametersDeprecated*) const override;
 
-    virtual void reconcileUsages(CryptoKeyUsage&) const override;
-    virtual void reconcileExtractable(bool&) const override;
+    void reconcileUsages(CryptoKeyUsageBitmap&) const override;
+    void reconcileExtractable(bool&) const override;
 
-    virtual std::unique_ptr<CryptoKeyData> keyData() const override;
+    std::unique_ptr<CryptoKeyData> keyData() const override;
 
     Vector<uint8_t> m_data;
 };
@@ -64,4 +63,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoKeySerializationRaw_h

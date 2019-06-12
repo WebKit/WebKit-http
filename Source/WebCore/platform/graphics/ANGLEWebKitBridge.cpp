@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,11 +35,14 @@ namespace WebCore {
 
 // FIXME: This is awful. Get rid of ANGLEWebKitBridge completely and call the libANGLE API directly to validate shaders.
 
-static void appendSymbol(const sh::ShaderVariable& variable, ANGLEShaderSymbolType symbolType, Vector<ANGLEShaderSymbol>& symbols, const std::string& name, const std::string& mappedName)
+static void appendSymbol(const sh::ShaderVariable& variable, ANGLEShaderSymbolType symbolType, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, const std::string& name, const std::string& mappedName)
 {
     LOG(WebGL, "Map shader symbol %s -> %s\n", name.c_str(), mappedName.c_str());
     
-    symbols.append(ANGLEShaderSymbol({symbolType, name.c_str(), mappedName.c_str(), variable.type, variable.arraySize, variable.precision, variable.staticUse}));
+    sh::ShaderVariable variableToAppend = variable;
+    variableToAppend.name = name;
+    variableToAppend.mappedName = mappedName;
+    symbols.append(std::make_pair(symbolType, variableToAppend));
     
     if (variable.isArray()) {
         for (unsigned i = 0; i < variable.elementCount(); i++) {
@@ -47,13 +50,14 @@ static void appendSymbol(const sh::ShaderVariable& variable, ANGLEShaderSymbolTy
             std::string arrayName = name + arrayBrackets;
             std::string arrayMappedName = mappedName + arrayBrackets;
             LOG(WebGL, "Map shader symbol %s -> %s\n", arrayName.c_str(), arrayMappedName.c_str());
-            
-            symbols.append({symbolType, arrayName.c_str(), arrayMappedName.c_str(), variable.type, variable.arraySize, variable.precision, variable.staticUse});
+            variableToAppend.name = arrayName;
+            variableToAppend.mappedName = arrayMappedName;
+            symbols.append(std::make_pair(symbolType, variableToAppend));
         }
     }
 }
 
-static void getStructInfo(const sh::ShaderVariable& field, ANGLEShaderSymbolType symbolType, Vector<ANGLEShaderSymbol>& symbols, const std::string& namePrefix, const std::string& mappedNamePrefix)
+static void getStructInfo(const sh::ShaderVariable& field, ANGLEShaderSymbolType symbolType, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, const std::string& namePrefix, const std::string& mappedNamePrefix)
 {
     std::string name = namePrefix + '.' + field.name;
     std::string mappedName = mappedNamePrefix + '.' + field.mappedName;
@@ -67,7 +71,7 @@ static void getStructInfo(const sh::ShaderVariable& field, ANGLEShaderSymbolType
         appendSymbol(field, symbolType, symbols, name, mappedName);
 }
 
-static void getSymbolInfo(const sh::ShaderVariable& variable, ANGLEShaderSymbolType symbolType, Vector<ANGLEShaderSymbol>& symbols)
+static void getSymbolInfo(const sh::ShaderVariable& variable, ANGLEShaderSymbolType symbolType, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols)
 {
     if (variable.isStruct()) {
         if (variable.isArray()) {
@@ -86,11 +90,11 @@ static void getSymbolInfo(const sh::ShaderVariable& variable, ANGLEShaderSymbolT
         appendSymbol(variable, symbolType, symbols, variable.name, variable.mappedName);
 }
 
-static bool getSymbolInfo(ShHandle compiler, ANGLEShaderSymbolType symbolType, Vector<ANGLEShaderSymbol>& symbols)
+static bool getSymbolInfo(ShHandle compiler, ANGLEShaderSymbolType symbolType, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols)
 {
     switch (symbolType) {
     case SHADER_SYMBOL_TYPE_UNIFORM: {
-        auto uniforms = ShGetUniforms(compiler);
+        auto uniforms = sh::GetUniforms(compiler);
         if (!uniforms)
             return false;
         for (const auto& uniform : *uniforms)
@@ -98,7 +102,7 @@ static bool getSymbolInfo(ShHandle compiler, ANGLEShaderSymbolType symbolType, V
         break;
     }
     case SHADER_SYMBOL_TYPE_VARYING: {
-        auto varyings = ShGetVaryings(compiler);
+        auto varyings = sh::GetVaryings(compiler);
         if (!varyings)
             return false;
         for (const auto& varying : *varyings)
@@ -106,7 +110,7 @@ static bool getSymbolInfo(ShHandle compiler, ANGLEShaderSymbolType symbolType, V
         break;
     }
     case SHADER_SYMBOL_TYPE_ATTRIBUTE: {
-        auto attributes = ShGetAttributes(compiler);
+        auto attributes = sh::GetAttributes(compiler);
         if (!attributes)
             return false;
         for (const auto& attribute : *attributes)
@@ -128,7 +132,7 @@ ANGLEWebKitBridge::ANGLEWebKitBridge(ShShaderOutput shaderOutput, ShShaderSpec s
     , m_shaderSpec(shaderSpec)
 {
     // This is a no-op if it's already initialized.
-    ShInitialize();
+    sh::Initialize();
 }
 
 ANGLEWebKitBridge::~ANGLEWebKitBridge()
@@ -139,16 +143,16 @@ ANGLEWebKitBridge::~ANGLEWebKitBridge()
 void ANGLEWebKitBridge::cleanupCompilers()
 {
     if (m_fragmentCompiler)
-        ShDestruct(m_fragmentCompiler);
+        sh::Destruct(m_fragmentCompiler);
     m_fragmentCompiler = nullptr;
     if (m_vertexCompiler)
-        ShDestruct(m_vertexCompiler);
+        sh::Destruct(m_vertexCompiler);
     m_vertexCompiler = nullptr;
 
     builtCompilers = false;
 }
     
-void ANGLEWebKitBridge::setResources(ShBuiltInResources resources)
+void ANGLEWebKitBridge::setResources(const ShBuiltInResources& resources)
 {
     // Resources are (possibly) changing - cleanup compilers if we had them already
     cleanupCompilers();
@@ -156,11 +160,11 @@ void ANGLEWebKitBridge::setResources(ShBuiltInResources resources)
     m_resources = resources;
 }
 
-bool ANGLEWebKitBridge::compileShaderSource(const char* shaderSource, ANGLEShaderType shaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<ANGLEShaderSymbol>& symbols, int extraCompileOptions)
+bool ANGLEWebKitBridge::compileShaderSource(const char* shaderSource, ANGLEShaderType shaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, int extraCompileOptions)
 {
     if (!builtCompilers) {
-        m_fragmentCompiler = ShConstructCompiler(GL_FRAGMENT_SHADER, m_shaderSpec, m_shaderOutput, &m_resources);
-        m_vertexCompiler = ShConstructCompiler(GL_VERTEX_SHADER, m_shaderSpec, m_shaderOutput, &m_resources);
+        m_fragmentCompiler = sh::ConstructCompiler(GL_FRAGMENT_SHADER, m_shaderSpec, m_shaderOutput, &m_resources);
+        m_vertexCompiler = sh::ConstructCompiler(GL_VERTEX_SHADER, m_shaderSpec, m_shaderOutput, &m_resources);
         if (!m_fragmentCompiler || !m_vertexCompiler) {
             cleanupCompilers();
             return false;
@@ -178,15 +182,15 @@ bool ANGLEWebKitBridge::compileShaderSource(const char* shaderSource, ANGLEShade
 
     const char* const shaderSourceStrings[] = { shaderSource };
 
-    bool validateSuccess = ShCompile(compiler, shaderSourceStrings, 1, SH_OBJECT_CODE | SH_VARIABLES | extraCompileOptions);
+    bool validateSuccess = sh::Compile(compiler, shaderSourceStrings, 1, SH_OBJECT_CODE | SH_VARIABLES | extraCompileOptions);
     if (!validateSuccess) {
-        const std::string& log = ShGetInfoLog(compiler);
+        const std::string& log = sh::GetInfoLog(compiler);
         if (log.length())
             shaderValidationLog = log.c_str();
         return false;
     }
 
-    const std::string& objectCode = ShGetObjectCode(compiler);
+    const std::string& objectCode = sh::GetObjectCode(compiler);
     if (objectCode.length())
         translatedShaderSource = objectCode.c_str();
     

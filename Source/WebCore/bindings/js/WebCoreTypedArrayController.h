@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebCoreTypedArrayController_h
-#define WebCoreTypedArrayController_h
+#pragma once
 
 #include <runtime/JSGlobalObject.h>
 #include <runtime/TypedArrayController.h>
@@ -40,21 +39,20 @@ public:
     WebCoreTypedArrayController();
     virtual ~WebCoreTypedArrayController();
     
-    virtual JSC::JSArrayBuffer* toJS(JSC::ExecState*, JSC::JSGlobalObject*, JSC::ArrayBuffer*) override;
-    
+    JSC::JSArrayBuffer* toJS(JSC::ExecState*, JSC::JSGlobalObject*, JSC::ArrayBuffer*) override;
+    void registerWrapper(JSC::JSGlobalObject*, ArrayBuffer*, JSC::JSArrayBuffer*) override;
+    bool isAtomicsWaitAllowedOnCurrentThread() override;
+
     JSC::WeakHandleOwner* wrapperOwner() { return &m_owner; }
 
 private:
     class JSArrayBufferOwner : public JSC::WeakHandleOwner {
     public:
-        virtual bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&) override;
-        virtual void finalize(JSC::Handle<JSC::Unknown>, void* context) override;
+        bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&) override;
+        void finalize(JSC::Handle<JSC::Unknown>, void* context) override;
     };
 
     JSArrayBufferOwner m_owner;
 };
 
 } // namespace WebCore
-
-#endif // WebCoreTypedArrayController_h
-

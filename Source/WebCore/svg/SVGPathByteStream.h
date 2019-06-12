@@ -17,10 +17,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathByteStream_h
-#define SVGPathByteStream_h
+#pragma once
 
-#include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -86,5 +84,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SVGPathByteStream_h

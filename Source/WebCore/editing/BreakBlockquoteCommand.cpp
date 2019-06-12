@@ -26,12 +26,12 @@
 #include "config.h"
 #include "BreakBlockquoteCommand.h"
 
-#include "HTMLElement.h"
+#include "Editing.h"
+#include "HTMLBRElement.h"
 #include "HTMLNames.h"
 #include "NodeTraversal.h"
 #include "RenderListItem.h"
 #include "Text.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
@@ -70,25 +70,25 @@ void BreakBlockquoteCommand::doApply()
     if (!topBlockquote || !topBlockquote->parentNode() || !topBlockquote->isElementNode())
         return;
     
-    RefPtr<Element> breakNode = createBreakElement(document());
+    auto breakNode = HTMLBRElement::create(document());
 
     bool isLastVisPosInNode = isLastVisiblePositionInNode(visiblePos, topBlockquote);
 
     // If the position is at the beginning of the top quoted content, we don't need to break the quote.
     // Instead, insert the break before the blockquote, unless the position is as the end of the the quoted content.
     if (isFirstVisiblePositionInNode(visiblePos, topBlockquote) && !isLastVisPosInNode) {
-        insertNodeBefore(breakNode.get(), topBlockquote);
-        setEndingSelection(VisibleSelection(positionBeforeNode(breakNode.get()), DOWNSTREAM, endingSelection().isDirectional()));
+        insertNodeBefore(breakNode.copyRef(), *topBlockquote);
+        setEndingSelection(VisibleSelection(positionBeforeNode(breakNode.ptr()), DOWNSTREAM, endingSelection().isDirectional()));
         rebalanceWhitespace();   
         return;
     }
     
     // Insert a break after the top blockquote.
-    insertNodeAfter(breakNode.get(), topBlockquote);
+    insertNodeAfter(breakNode.copyRef(), *topBlockquote);
 
     // If we're inserting the break at the end of the quoted content, we don't need to break the quote.
     if (isLastVisPosInNode) {
-        setEndingSelection(VisibleSelection(positionBeforeNode(breakNode.get()), DOWNSTREAM, endingSelection().isDirectional()));
+        setEndingSelection(VisibleSelection(positionBeforeNode(breakNode.ptr()), DOWNSTREAM, endingSelection().isDirectional()));
         rebalanceWhitespace();
         return;
     }
@@ -112,7 +112,7 @@ void BreakBlockquoteCommand::doApply()
             startNode = NodeTraversal::next(*startNode);
             ASSERT(startNode);
         } else if (pos.deprecatedEditingOffset() > 0)
-            splitTextNode(&textNode, pos.deprecatedEditingOffset());
+            splitTextNode(textNode, pos.deprecatedEditingOffset());
     } else if (pos.deprecatedEditingOffset() > 0) {
         Node* childAtOffset = startNode->traverseToChildAt(pos.deprecatedEditingOffset());
         startNode = childAtOffset ? childAtOffset : NodeTraversal::next(*startNode);
@@ -120,7 +120,7 @@ void BreakBlockquoteCommand::doApply()
     }
     
     // If there's nothing inside topBlockquote to move, we're finished.
-    if (!startNode->isDescendantOf(topBlockquote)) {
+    if (!startNode->isDescendantOf(*topBlockquote)) {
         setEndingSelection(VisibleSelection(VisiblePosition(firstPositionInOrBeforeNode(startNode)), endingSelection().isDirectional()));
         return;
     }
@@ -131,16 +131,16 @@ void BreakBlockquoteCommand::doApply()
         ancestors.append(node);
     
     // Insert a clone of the top blockquote after the break.
-    RefPtr<Element> clonedBlockquote = downcast<Element>(*topBlockquote).cloneElementWithoutChildren(document());
-    insertNodeAfter(clonedBlockquote.get(), breakNode.get());
+    auto clonedBlockquote = downcast<Element>(*topBlockquote).cloneElementWithoutChildren(document());
+    insertNodeAfter(clonedBlockquote.copyRef(), breakNode);
     
     // Clone startNode's ancestors into the cloned blockquote.
     // On exiting this loop, clonedAncestor is the lowest ancestor
     // that was cloned (i.e. the clone of either ancestors.last()
     // or clonedBlockquote if ancestors is empty).
-    RefPtr<Element> clonedAncestor = clonedBlockquote;
+    RefPtr<Element> clonedAncestor = clonedBlockquote.copyRef();
     for (size_t i = ancestors.size(); i != 0; --i) {
-        RefPtr<Element> clonedChild = ancestors[i - 1]->cloneElementWithoutChildren(document());
+        auto clonedChild = ancestors[i - 1]->cloneElementWithoutChildren(document());
         // Preserve list item numbering in cloned lists.
         if (clonedChild->isElementNode() && clonedChild->hasTagName(olTag)) {
             Node* listChildNode = i > 1 ? ancestors[i - 2].get() : startNode;
@@ -152,11 +152,11 @@ void BreakBlockquoteCommand::doApply()
                 setNodeAttribute(clonedChild, startAttr, AtomicString::number(downcast<RenderListItem>(*listChildNode->renderer()).value()));
         }
             
-        appendNode(clonedChild.get(), clonedAncestor.get());
-        clonedAncestor = clonedChild;
+        appendNode(clonedChild.copyRef(), clonedAncestor.releaseNonNull());
+        clonedAncestor = WTFMove(clonedChild);
     }
 
-    moveRemainingSiblingsToNewParent(startNode, 0, clonedAncestor);
+    moveRemainingSiblingsToNewParent(startNode, 0, *clonedAncestor);
 
     if (!ancestors.isEmpty()) {
         // Split the tree up the ancestor chain until the topBlockquote
@@ -168,19 +168,19 @@ void BreakBlockquoteCommand::doApply()
         for (ancestor = ancestors.first(), clonedParent = clonedAncestor->parentElement();
              ancestor && ancestor != topBlockquote;
              ancestor = ancestor->parentElement(), clonedParent = clonedParent->parentElement())
-            moveRemainingSiblingsToNewParent(ancestor->nextSibling(), 0, clonedParent);
+            moveRemainingSiblingsToNewParent(ancestor->nextSibling(), 0, *clonedParent);
 
         // If the startNode's original parent is now empty, remove it
         Node* originalParent = ancestors.first().get();
         if (!originalParent->hasChildNodes())
-            removeNode(originalParent);
+            removeNode(*originalParent);
     }
     
     // Make sure the cloned block quote renders.
-    addBlockPlaceholderIfNeeded(clonedBlockquote.get());
+    addBlockPlaceholderIfNeeded(clonedBlockquote.ptr());
     
     // Put the selection right before the break.
-    setEndingSelection(VisibleSelection(positionBeforeNode(breakNode.get()), DOWNSTREAM, endingSelection().isDirectional()));
+    setEndingSelection(VisibleSelection(positionBeforeNode(breakNode.ptr()), DOWNSTREAM, endingSelection().isDirectional()));
     rebalanceWhitespace();
 }
 

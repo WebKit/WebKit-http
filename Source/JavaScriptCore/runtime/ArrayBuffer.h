@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,39 +23,61 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ArrayBuffer_h
-#define ArrayBuffer_h
+#pragma once
 
+#include "ArrayBufferSharingMode.h"
 #include "GCIncomingRefCounted.h"
 #include "Weak.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Function.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/Vector.h>
+#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/text/WTFString.h>
 
 namespace JSC {
 
+class VM;
 class ArrayBuffer;
 class ArrayBufferView;
 class JSArrayBuffer;
 
+typedef Function<void(void*)> ArrayBufferDestructorFunction;
+
+class SharedArrayBufferContents : public ThreadSafeRefCounted<SharedArrayBufferContents> {
+public:
+    SharedArrayBufferContents(void* data, ArrayBufferDestructorFunction&&);
+    ~SharedArrayBufferContents();
+    
+    void* data() const { return m_data; }
+    
+private:
+    void* m_data;
+    ArrayBufferDestructorFunction m_destructor;
+};
+
 class ArrayBufferContents {
     WTF_MAKE_NONCOPYABLE(ArrayBufferContents);
 public:
-    ArrayBufferContents() 
-        : m_data(0)
-        , m_sizeInBytes(0)
-    { }
-
-    inline ~ArrayBufferContents();
+    JS_EXPORT_PRIVATE ArrayBufferContents();
     
-    void* data() { return m_data; }
-    unsigned sizeInBytes() { return m_sizeInBytes; }
+    JS_EXPORT_PRIVATE ArrayBufferContents(ArrayBufferContents&&);
+    JS_EXPORT_PRIVATE ArrayBufferContents& operator=(ArrayBufferContents&&);
+
+    JS_EXPORT_PRIVATE ~ArrayBufferContents();
+    
+    JS_EXPORT_PRIVATE void clear();
+    
+    explicit operator bool() { return !!m_data; }
+    
+    void* data() const { return m_data; }
+    unsigned sizeInBytes() const { return m_sizeInBytes; }
+    
+    bool isShared() const { return m_shared; }
 
 private:
-    ArrayBufferContents(void* data, unsigned sizeInBytes) 
-        : m_data(data)
-        , m_sizeInBytes(sizeInBytes)
-    { }
+    ArrayBufferContents(void* data, unsigned sizeInBytes, ArrayBufferDestructorFunction&&);
+    
+    void destroy();
+    void reset();
 
     friend class ArrayBuffer;
 
@@ -64,70 +86,84 @@ private:
         DontInitialize
     };
 
-    static inline void tryAllocate(unsigned numElements, unsigned elementByteSize, InitializationPolicy, ArrayBufferContents&);
-    void transfer(ArrayBufferContents& other)
-    {
-        ASSERT(!other.m_data);
-        other.m_data = m_data;
-        other.m_sizeInBytes = m_sizeInBytes;
-        m_data = 0;
-        m_sizeInBytes = 0;
-    }
+    void tryAllocate(unsigned numElements, unsigned elementByteSize, InitializationPolicy);
+    
+    void makeShared();
+    void transferTo(ArrayBufferContents&);
+    void copyTo(ArrayBufferContents&);
+    void shareWith(ArrayBufferContents&);
 
-    void copyTo(ArrayBufferContents& other)
-    {
-        ASSERT(!other.m_data);
-        ArrayBufferContents::tryAllocate(m_sizeInBytes, sizeof(char), ArrayBufferContents::DontInitialize, other);
-        if (!other.m_data)
-            return;
-        memcpy(other.m_data, m_data, m_sizeInBytes);
-        other.m_sizeInBytes = m_sizeInBytes;
-    }
-
+    ArrayBufferDestructorFunction m_destructor;
+    RefPtr<SharedArrayBufferContents> m_shared;
     void* m_data;
     unsigned m_sizeInBytes;
 };
 
 class ArrayBuffer : public GCIncomingRefCounted<ArrayBuffer> {
 public:
-    static inline PassRefPtr<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize);
-    static inline PassRefPtr<ArrayBuffer> create(ArrayBuffer*);
-    static inline PassRefPtr<ArrayBuffer> create(const void* source, unsigned byteLength);
-    static inline PassRefPtr<ArrayBuffer> create(ArrayBufferContents&);
-    static inline PassRefPtr<ArrayBuffer> createAdopted(const void* data, unsigned byteLength);
+    JS_EXPORT_PRIVATE static Ref<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize);
+    JS_EXPORT_PRIVATE static Ref<ArrayBuffer> create(ArrayBuffer&);
+    JS_EXPORT_PRIVATE static Ref<ArrayBuffer> create(const void* source, unsigned byteLength);
+    JS_EXPORT_PRIVATE static Ref<ArrayBuffer> create(ArrayBufferContents&&);
+    JS_EXPORT_PRIVATE static Ref<ArrayBuffer> createAdopted(const void* data, unsigned byteLength);
+    JS_EXPORT_PRIVATE static Ref<ArrayBuffer> createFromBytes(const void* data, unsigned byteLength, ArrayBufferDestructorFunction&&);
+    JS_EXPORT_PRIVATE static RefPtr<ArrayBuffer> tryCreate(unsigned numElements, unsigned elementByteSize);
+    JS_EXPORT_PRIVATE static RefPtr<ArrayBuffer> tryCreate(ArrayBuffer&);
+    JS_EXPORT_PRIVATE static RefPtr<ArrayBuffer> tryCreate(const void* source, unsigned byteLength);
 
-    // Only for use by Uint8ClampedArray::createUninitialized and SharedBuffer::createArrayBuffer.
-    static inline PassRefPtr<ArrayBuffer> createUninitialized(unsigned numElements, unsigned elementByteSize);
+    // Only for use by Uint8ClampedArray::createUninitialized and SharedBuffer::tryCreateArrayBuffer.
+    JS_EXPORT_PRIVATE static Ref<ArrayBuffer> createUninitialized(unsigned numElements, unsigned elementByteSize);
+    JS_EXPORT_PRIVATE static RefPtr<ArrayBuffer> tryCreateUninitialized(unsigned numElements, unsigned elementByteSize);
 
     inline void* data();
     inline const void* data() const;
     inline unsigned byteLength() const;
     
+    void makeShared();
+    void setSharingMode(ArrayBufferSharingMode);
+    inline bool isShared() const;
+    inline ArrayBufferSharingMode sharingMode() const { return isShared() ? ArrayBufferSharingMode::Shared : ArrayBufferSharingMode::Default; }
+
     inline size_t gcSizeEstimateInBytes() const;
 
-    inline PassRefPtr<ArrayBuffer> slice(int begin, int end) const;
-    inline PassRefPtr<ArrayBuffer> slice(int begin) const;
+    JS_EXPORT_PRIVATE RefPtr<ArrayBuffer> slice(int begin, int end) const;
+    JS_EXPORT_PRIVATE RefPtr<ArrayBuffer> slice(int begin) const;
     
     inline void pin();
     inline void unpin();
+    inline void pinAndLock();
+    inline bool isLocked();
 
-    JS_EXPORT_PRIVATE bool transfer(ArrayBufferContents&);
+    void makeWasmMemory();
+    inline bool isWasmMemory();
+
+    JS_EXPORT_PRIVATE bool transferTo(VM&, ArrayBufferContents&);
+    JS_EXPORT_PRIVATE bool shareWith(ArrayBufferContents&);
+
+    void neuter(VM&);
     bool isNeutered() { return !m_contents.m_data; }
-    
+
     static ptrdiff_t offsetOfData() { return OBJECT_OFFSETOF(ArrayBuffer, m_contents) + OBJECT_OFFSETOF(ArrayBufferContents, m_data); }
 
     ~ArrayBuffer() { }
 
 private:
-    static inline PassRefPtr<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy);
-
-    inline ArrayBuffer(ArrayBufferContents&);
-    inline PassRefPtr<ArrayBuffer> sliceImpl(unsigned begin, unsigned end) const;
+    static Ref<ArrayBuffer> create(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy);
+    static Ref<ArrayBuffer> createInternal(ArrayBufferContents&&, const void*, unsigned);
+    static RefPtr<ArrayBuffer> tryCreate(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy);
+    ArrayBuffer(ArrayBufferContents&&);
+    RefPtr<ArrayBuffer> sliceImpl(unsigned begin, unsigned end) const;
     inline unsigned clampIndex(int index) const;
     static inline int clampValue(int x, int left, int right);
 
-    unsigned m_pinCount;
+    void notifyIncommingReferencesOfTransfer(VM&);
+
     ArrayBufferContents m_contents;
+    unsigned m_pinCount : 30;
+    bool m_isWasmMemory : 1;
+    // m_locked == true means that some API user fetched m_contents directly from a TypedArray object,
+    // the buffer is backed by a WebAssembly.Memory, or is a SharedArrayBuffer.
+    bool m_locked : 1;
 
 public:
     Weak<JSArrayBuffer> m_wrapper;
@@ -141,59 +177,6 @@ int ArrayBuffer::clampValue(int x, int left, int right)
     if (right < x)
         x = right;
     return x;
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(unsigned numElements, unsigned elementByteSize)
-{
-    return create(numElements, elementByteSize, ArrayBufferContents::ZeroInitialize);
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(ArrayBuffer* other)
-{
-    return ArrayBuffer::create(other->data(), other->byteLength());
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(const void* source, unsigned byteLength)
-{
-    ArrayBufferContents contents;
-    ArrayBufferContents::tryAllocate(byteLength, 1, ArrayBufferContents::ZeroInitialize, contents);
-    if (!contents.m_data)
-        return 0;
-    RefPtr<ArrayBuffer> buffer = adoptRef(new ArrayBuffer(contents));
-    ASSERT(!byteLength || source);
-    memcpy(buffer->data(), source, byteLength);
-    return buffer.release();
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(ArrayBufferContents& contents)
-{
-    return adoptRef(new ArrayBuffer(contents));
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::createAdopted(const void* data, unsigned byteLength)
-{
-    ArrayBufferContents contents(const_cast<void*>(data), byteLength);
-    return create(contents);
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::createUninitialized(unsigned numElements, unsigned elementByteSize)
-{
-    return create(numElements, elementByteSize, ArrayBufferContents::DontInitialize);
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::create(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy policy)
-{
-    ArrayBufferContents contents;
-    ArrayBufferContents::tryAllocate(numElements, elementByteSize, policy, contents);
-    if (!contents.m_data)
-        return 0;
-    return adoptRef(new ArrayBuffer(contents));
-}
-
-ArrayBuffer::ArrayBuffer(ArrayBufferContents& contents)
-    : m_pinCount(0)
-{
-    contents.transfer(m_contents);
 }
 
 void* ArrayBuffer::data()
@@ -211,25 +194,15 @@ unsigned ArrayBuffer::byteLength() const
     return m_contents.m_sizeInBytes;
 }
 
+bool ArrayBuffer::isShared() const
+{
+    return m_contents.isShared();
+}
+
 size_t ArrayBuffer::gcSizeEstimateInBytes() const
 {
+    // FIXME: We probably want to scale this by the shared ref count or something.
     return sizeof(ArrayBuffer) + static_cast<size_t>(byteLength());
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::slice(int begin, int end) const
-{
-    return sliceImpl(clampIndex(begin), clampIndex(end));
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::slice(int begin) const
-{
-    return sliceImpl(clampIndex(begin), byteLength());
-}
-
-PassRefPtr<ArrayBuffer> ArrayBuffer::sliceImpl(unsigned begin, unsigned end) const
-{
-    unsigned size = begin <= end ? end - begin : 0;
-    return ArrayBuffer::create(static_cast<const char*>(data()) + begin, size);
 }
 
 unsigned ArrayBuffer::clampIndex(int index) const
@@ -250,40 +223,23 @@ void ArrayBuffer::unpin()
     m_pinCount--;
 }
 
-void ArrayBufferContents::tryAllocate(unsigned numElements, unsigned elementByteSize, ArrayBufferContents::InitializationPolicy policy, ArrayBufferContents& result)
+void ArrayBuffer::pinAndLock()
 {
-    // Do not allow 31-bit overflow of the total size.
-    if (numElements) {
-        unsigned totalSize = numElements * elementByteSize;
-        if (totalSize / numElements != elementByteSize
-            || totalSize > static_cast<unsigned>(std::numeric_limits<int32_t>::max())) {
-            result.m_data = 0;
-            return;
-        }
-    }
-    bool allocationSucceeded = false;
-    if (policy == ZeroInitialize)
-        allocationSucceeded = WTF::tryFastCalloc(numElements, elementByteSize).getValue(result.m_data);
-    else {
-        ASSERT(policy == DontInitialize);
-        allocationSucceeded = WTF::tryFastMalloc(numElements * elementByteSize).getValue(result.m_data);
-    }
-
-    if (allocationSucceeded) {
-        result.m_sizeInBytes = numElements * elementByteSize;
-        return;
-    }
-    result.m_data = 0;
+    m_locked = true;
 }
 
-ArrayBufferContents::~ArrayBufferContents()
+bool ArrayBuffer::isLocked()
 {
-    WTF::fastFree(m_data);
+    return m_locked;
 }
+
+bool ArrayBuffer::isWasmMemory()
+{
+    return m_isWasmMemory;
+}
+
+JS_EXPORT_PRIVATE ASCIILiteral errorMesasgeForTransfer(ArrayBuffer*);
 
 } // namespace JSC
 
 using JSC::ArrayBuffer;
-
-#endif // ArrayBuffer_h
-

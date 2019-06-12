@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFEGaussianBlurElement_h
-#define SVGFEGaussianBlurElement_h
+#pragma once
 
 #include "FEGaussianBlur.h"
 #include "SVGAnimatedEnumeration.h"
@@ -38,9 +37,9 @@ public:
 private:
     SVGFEGaussianBlurElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 
     static const AtomicString& stdDeviationXIdentifier();
     static const AtomicString& stdDeviationYIdentifier();
@@ -54,5 +53,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

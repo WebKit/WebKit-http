@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FontVariantBuilder_h
-#define FontVariantBuilder_h
+#pragma once
 
 #include <wtf/Ref.h>
 
@@ -36,12 +35,10 @@ struct FontVariantLigaturesValues;
 struct FontVariantNumericValues;
 struct FontVariantEastAsianValues;
 
-FontVariantLigaturesValues extractFontVariantLigatures(CSSValue&);
-FontVariantNumericValues extractFontVariantNumeric(CSSValue&);
-FontVariantEastAsianValues extractFontVariantEastAsian(CSSValue&);
+FontVariantLigaturesValues extractFontVariantLigatures(const CSSValue&);
+FontVariantNumericValues extractFontVariantNumeric(const CSSValue&);
+FontVariantEastAsianValues extractFontVariantEastAsian(const CSSValue&);
 
 Ref<CSSValue> computeFontVariant(const FontVariantSettings&);
 
-}
-
-#endif
+} // namespace WebCore

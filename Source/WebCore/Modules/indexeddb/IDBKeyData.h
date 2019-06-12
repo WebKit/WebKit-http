@@ -23,12 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBKeyData_h
-#define IDBKeyData_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBKey.h"
+#include <set>
+#include <wtf/Variant.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
@@ -46,6 +47,9 @@ public:
 
     WEBCORE_EXPORT IDBKeyData(const IDBKey*);
 
+    enum IsolatedCopyTag { IsolatedCopy };
+    IDBKeyData(const IDBKeyData&, IsolatedCopyTag);
+
     static IDBKeyData minimum()
     {
         IDBKeyData result;
@@ -62,7 +66,7 @@ public:
         return result;
     }
 
-    WEBCORE_EXPORT PassRefPtr<IDBKey> maybeCreateIDBKey() const;
+    WEBCORE_EXPORT RefPtr<IDBKey> maybeCreateIDBKey() const;
 
     IDBKeyData isolatedCopy() const;
 
@@ -76,6 +80,7 @@ public:
     WEBCORE_EXPORT int compare(const IDBKeyData& other) const;
 
     void setArrayValue(const Vector<IDBKeyData>&);
+    void setBinaryValue(const ThreadSafeDataBuffer&);
     void setStringValue(const String&);
     void setDateValue(double);
     WEBCORE_EXPORT void setNumberValue(double);
@@ -83,7 +88,7 @@ public:
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBKeyData&);
     
-#ifndef NDEBUG
+#if !LOG_DISABLED
     WEBCORE_EXPORT String loggingString() const;
 #endif
 
@@ -92,6 +97,21 @@ public:
     KeyType type() const { return m_type; }
 
     bool operator<(const IDBKeyData&) const;
+    bool operator>(const IDBKeyData& other) const
+    {
+        return !(*this < other) && !(*this == other);
+    }
+
+    bool operator<=(const IDBKeyData& other) const
+    {
+        return !(*this > other);
+    }
+
+    bool operator>=(const IDBKeyData& other) const
+    {
+        return !(*this < other);
+    }
+
     bool operator==(const IDBKeyData& other) const;
     bool operator!=(const IDBKeyData& other) const
     {
@@ -111,13 +131,21 @@ public:
             break;
         case KeyType::Number:
         case KeyType::Date:
-            hashCodes.append(StringHasher::hashMemory<sizeof(double)>(&m_numberValue));
+            hashCodes.append(StringHasher::hashMemory<sizeof(double)>(&WTF::get<double>(m_value)));
             break;
         case KeyType::String:
-            hashCodes.append(StringHash::hash(m_stringValue));
+            hashCodes.append(StringHash::hash(WTF::get<String>(m_value)));
             break;
+        case KeyType::Binary: {
+            auto* data = WTF::get<ThreadSafeDataBuffer>(m_value).data();
+            if (!data)
+                hashCodes.append(0);
+            else
+                hashCodes.append(StringHasher::hashMemory(data->data(), data->size()));
+            break;
+        }
         case KeyType::Array:
-            for (auto& key : m_arrayValue)
+            for (auto& key : WTF::get<Vector<IDBKeyData>>(m_value))
                 hashCodes.append(key.hash());
             break;
         }
@@ -131,32 +159,39 @@ public:
     String string() const
     {
         ASSERT(m_type == KeyType::String);
-        return m_stringValue;
+        return WTF::get<String>(m_value);
     }
 
     double date() const
     {
         ASSERT(m_type == KeyType::Date);
-        return m_numberValue;
+        return WTF::get<double>(m_value);
     }
 
     double number() const
     {
         ASSERT(m_type == KeyType::Number);
-        return m_numberValue;
+        return WTF::get<double>(m_value);
+    }
+
+    const ThreadSafeDataBuffer& binary() const
+    {
+        ASSERT(m_type == KeyType::Binary);
+        return WTF::get<ThreadSafeDataBuffer>(m_value);
     }
 
     const Vector<IDBKeyData>& array() const
     {
         ASSERT(m_type == KeyType::Array);
-        return m_arrayValue;
+        return WTF::get<Vector<IDBKeyData>>(m_value);
     }
 
 private:
+    static void isolatedCopy(const IDBKeyData& source, IDBKeyData& destination);
+
     KeyType m_type;
-    Vector<IDBKeyData> m_arrayValue;
-    String m_stringValue;
-    double m_numberValue { 0 };
+    Variant<Vector<IDBKeyData>, String, double, ThreadSafeDataBuffer> m_value;
+
     bool m_isNull { false };
     bool m_isDeletedValue { false };
 };
@@ -203,22 +238,21 @@ void IDBKeyData::encode(Encoder& encoder) const
 
     switch (m_type) {
     case KeyType::Invalid:
+    case KeyType::Max:
+    case KeyType::Min:
         break;
     case KeyType::Array:
-        encoder << m_arrayValue;
+        encoder << WTF::get<Vector<IDBKeyData>>(m_value);
+        break;
+    case KeyType::Binary:
+        encoder << WTF::get<ThreadSafeDataBuffer>(m_value);
         break;
     case KeyType::String:
-        encoder << m_stringValue;
+        encoder << WTF::get<String>(m_value);
         break;
     case KeyType::Date:
     case KeyType::Number:
-        encoder << m_numberValue;
-        break;
-    case KeyType::Max:
-    case KeyType::Min:
-        // MaxType and MinType are only used for comparison to other keys.
-        // They should never be encoded/decoded.
-        ASSERT_NOT_REACHED();
+        encoder << WTF::get<double>(m_value);
         break;
     }
 }
@@ -237,33 +271,37 @@ bool IDBKeyData::decode(Decoder& decoder, IDBKeyData& keyData)
 
     switch (keyData.m_type) {
     case KeyType::Invalid:
+    case KeyType::Max:
+    case KeyType::Min:
         break;
     case KeyType::Array:
-        if (!decoder.decode(keyData.m_arrayValue))
+        keyData.m_value = Vector<IDBKeyData>();
+        if (!decoder.decode(WTF::get<Vector<IDBKeyData>>(keyData.m_value)))
+            return false;
+        break;
+    case KeyType::Binary:
+        keyData.m_value = ThreadSafeDataBuffer();
+        if (!decoder.decode(WTF::get<ThreadSafeDataBuffer>(keyData.m_value)))
             return false;
         break;
     case KeyType::String:
-        if (!decoder.decode(keyData.m_stringValue))
+        keyData.m_value = String();
+        if (!decoder.decode(WTF::get<String>(keyData.m_value)))
             return false;
         break;
     case KeyType::Date:
     case KeyType::Number:
-        if (!decoder.decode(keyData.m_numberValue))
+        keyData.m_value = 0.0;
+        if (!decoder.decode(WTF::get<double>(keyData.m_value)))
             return false;
         break;
-    case KeyType::Max:
-    case KeyType::Min:
-        // MaxType and MinType are only used for comparison to other keys.
-        // They should never be encoded/decoded.
-        ASSERT_NOT_REACHED();
-        decoder.markInvalid();
-        return false;
     }
 
     return true;
 }
 
+using IDBKeyDataSet = std::set<IDBKeyData, std::less<IDBKeyData>, FastAllocator<IDBKeyData>>;
+
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBKeyData_h

@@ -27,54 +27,22 @@
 #include "JSDocumentFragment.h"
 
 #include "ExceptionCode.h"
-#include "JSNodeOrString.h"
 #include "JSShadowRoot.h"
 
 using namespace JSC;
 
 namespace WebCore {
 
-JSValue JSDocumentFragment::prepend(ExecState& state)
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<DocumentFragment>&& impl)
 {
-    ExceptionCode ec = 0;
-    wrapped().prepend(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
+    if (impl->isShadowRoot())
+        return createWrapper<ShadowRoot>(globalObject, WTFMove(impl));
+    return createWrapper<DocumentFragment>(globalObject, WTFMove(impl));
 }
 
-JSValue JSDocumentFragment::append(ExecState& state)
+JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, DocumentFragment& impl)
 {
-    ExceptionCode ec = 0;
-    wrapped().append(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-static inline JSValue createNewDocumentFragmentWrapper(JSDOMGlobalObject& globalObject, DocumentFragment& impl)
-{
-#if ENABLE(SHADOW_DOM)
-    if (impl.isShadowRoot())
-        return createNewWrapper<JSShadowRoot>(&globalObject, &static_cast<ShadowRoot&>(impl));
-#endif
-    return createNewWrapper<JSDocumentFragment>(&globalObject, &impl);
-}
-
-JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, DocumentFragment* impl)
-{
-    return impl ? createNewDocumentFragmentWrapper(*globalObject, *impl) : jsNull();
-}
-
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, DocumentFragment* impl)
-{
-    if (!impl)
-        return jsNull();
-
-    if (JSValue result = getExistingWrapper<JSDocumentFragment>(globalObject, impl))
-        return result;
-
-    return createNewDocumentFragmentWrapper(*globalObject, *impl);
+    return wrap(state, globalObject, impl);
 }
 
 } // namespace WebCore

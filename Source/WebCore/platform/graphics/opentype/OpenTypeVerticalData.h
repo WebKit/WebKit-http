@@ -29,7 +29,6 @@
 
 #include "Glyph.h"
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -41,19 +40,15 @@ class GlyphPage;
 
 class OpenTypeVerticalData : public RefCounted<OpenTypeVerticalData> {
 public:
-    static PassRefPtr<OpenTypeVerticalData> create(const FontPlatformData& platformData)
-    {
-        return adoptRef(new OpenTypeVerticalData(platformData));
-    }
+    static RefPtr<OpenTypeVerticalData> create(const FontPlatformData&);
 
-    bool isOpenType() const { return !m_advanceWidths.isEmpty(); }
     bool hasVerticalMetrics() const { return !m_advanceHeights.isEmpty(); }
     float advanceHeight(const Font*, Glyph) const;
     void getVerticalTranslationsForGlyphs(const Font*, const Glyph*, size_t, float* outXYArray) const;
     void substituteWithVerticalGlyphs(const Font*, GlyphPage*) const;
 
 private:
-    explicit OpenTypeVerticalData(const FontPlatformData&);
+    explicit OpenTypeVerticalData(const FontPlatformData&, Vector<uint16_t>&& advanceWidths);
 
     void loadMetrics(const FontPlatformData&);
     void loadVerticalGlyphSubstitutions(const FontPlatformData&);
@@ -63,11 +58,8 @@ private:
     Vector<uint16_t> m_advanceWidths;
     Vector<uint16_t> m_advanceHeights;
     Vector<int16_t> m_topSideBearings;
-    int16_t m_defaultVertOriginY;
+    int16_t m_defaultVertOriginY { 0 };
     HashMap<Glyph, int16_t> m_vertOriginY;
-
-    friend class FontCache;
-    bool m_inFontCache; // for mark & sweep in FontCache::purgeInactiveFontData()
 };
 
 } // namespace WebCore

@@ -26,7 +26,6 @@
 #ifndef Plugin_h
 #define Plugin_h
 
-#include <WebCore/AudioHardwareListener.h>
 #include <WebCore/FindOptions.h>
 #include <WebCore/GraphicsLayer.h>
 #include <WebCore/URL.h>
@@ -38,6 +37,7 @@
 
 #if PLATFORM(COCOA)
 #include "LayerHostingContext.h"
+typedef struct objc_object* id;
 
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSObject;
@@ -48,8 +48,8 @@ OBJC_CLASS PDFSelection;
 struct NPObject;
 
 namespace IPC {
-    class ArgumentEncoder;
-    class ArgumentDecoder;
+class Encoder;
+class Decoder;
 }
 
 namespace WebCore {
@@ -92,8 +92,8 @@ public:
         LayerHostingMode layerHostingMode;
 #endif
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Parameters&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Parameters&);
     };
 
     // Sets the active plug-in controller and initializes the plug-in.
@@ -275,6 +275,7 @@ public:
 #if PLATFORM(COCOA)
     virtual RetainPtr<PDFDocument> pdfDocumentForPrinting() const { return 0; }
     virtual NSObject *accessibilityObject() const { return 0; }
+    virtual id accessibilityAssociatedPluginParentForElement(WebCore::Element*) const { return nullptr; }
 #endif
 
     virtual unsigned countFindMatches(const String& target, WebCore::FindOptions, unsigned maxMatchCount) = 0;
@@ -293,8 +294,6 @@ public:
     virtual String getSelectionForWordAtPoint(const WebCore::FloatPoint&) const = 0;
     virtual bool existingSelectionContainsPoint(const WebCore::FloatPoint&) const = 0;
 
-    virtual WebCore::AudioHardwareActivityType audioHardwareActivity() const { return WebCore::AudioHardwareActivityType::Unknown; }
-
     virtual void mutedStateChanged(bool) { }
 
     virtual bool canCreateTransientPaintingSnapshot() const { return true; }
@@ -302,6 +301,8 @@ public:
     virtual bool requiresUnifiedScaleFactor() const { return false; }
 
     virtual void willDetatchRenderer() { }
+
+    virtual bool pluginHandlesContentOffsetForAccessibilityHitTest() const { return false; }
 
 protected:
     Plugin(PluginType);

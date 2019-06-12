@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3LowerToAir_h
-#define B3LowerToAir_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -33,13 +32,11 @@ namespace JSC { namespace B3 {
 class Procedure;
 namespace Air { class Code; }
 
-// This lowers the current B3 procedure to an Air code.
+// This lowers the current B3 procedure to an Air code. Note that this assumes that the procedure is in
+// quirks mode, but it does not assert this, to simplify how we write tests.
 
-void lowerToAir(Procedure&);
+JS_EXPORT_PRIVATE void lowerToAir(Procedure&);
 
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3LowerToAir_h
-

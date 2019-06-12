@@ -215,10 +215,9 @@ FloatRect encloseRectToDevicePixels(const FloatRect& rect, float deviceScaleFact
 
 IntRect enclosingIntRect(const FloatRect& rect)
 {
-    IntPoint location = flooredIntPoint(rect.minXMinYCorner());
-    IntPoint maxPoint = ceiledIntPoint(rect.maxXMaxYCorner());
-
-    return IntRect(location, maxPoint - location);
+    FloatPoint location = flooredIntPoint(rect.minXMinYCorner());
+    FloatPoint maxPoint = ceiledIntPoint(rect.maxXMaxYCorner());
+    return IntRect(IntPoint(location), IntSize(maxPoint - location));
 }
 
 IntRect roundedIntRect(const FloatRect& rect)
@@ -228,8 +227,13 @@ IntRect roundedIntRect(const FloatRect& rect)
 
 TextStream& operator<<(TextStream& ts, const FloatRect &r)
 {
-    return ts << "at (" << TextStream::FormatNumberRespectingIntegers(r.x()) << "," << TextStream::FormatNumberRespectingIntegers(r.y())
-        << ") size " << TextStream::FormatNumberRespectingIntegers(r.width()) << "x" << TextStream::FormatNumberRespectingIntegers(r.height());
+    if (ts.hasFormattingFlag(TextStream::Formatting::SVGStyleRect)) {
+        // FIXME: callers should use the NumberRespectingIntegers flag.
+        return ts << "at (" << TextStream::FormatNumberRespectingIntegers(r.x()) << "," << TextStream::FormatNumberRespectingIntegers(r.y())
+            << ") size " << TextStream::FormatNumberRespectingIntegers(r.width()) << "x" << TextStream::FormatNumberRespectingIntegers(r.height());
+    }
+
+    return ts << r.location() << " " << r.size();
 }
 
 }

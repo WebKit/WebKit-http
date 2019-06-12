@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,30 +23,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLQuery_h
-#define WebGLQuery_h
+#pragma once
 
 #include "WebGLSharedObject.h"
-
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class WebGLQuery final : public WebGLSharedObject {
 public:
+    static Ref<WebGLQuery> create(WebGLRenderingContextBase&);
     virtual ~WebGLQuery();
 
-    static Ref<WebGLQuery> create(WebGLRenderingContextBase*);
-
 protected:
-    WebGLQuery(WebGLRenderingContextBase*);
-
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
-
-private:
-    virtual bool isQuery() const override { return true; }
+    explicit WebGLQuery(WebGLRenderingContextBase&);
+    void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 };
 
 } // namespace WebCore
-
-#endif // WebGLQuery_h

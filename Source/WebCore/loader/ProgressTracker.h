@@ -23,11 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ProgressTracker_h
-#define ProgressTracker_h
+#pragma once
 
 #include "Timer.h"
-#include <chrono>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
@@ -71,24 +69,25 @@ private:
     static unsigned long s_uniqueIdentifier;
     
     ProgressTrackerClient& m_client;
-    long long m_totalPageAndResourceBytesToLoad;
-    long long m_totalBytesReceived;
-    double m_lastNotifiedProgressValue;
-    std::chrono::steady_clock::time_point m_lastNotifiedProgressTime;
-    bool m_finalProgressChangedSent;    
-    double m_progressValue;
     RefPtr<Frame> m_originatingProgressFrame;
-    
-    int m_numProgressTrackedFrames;
     HashMap<unsigned long, std::unique_ptr<ProgressItem>> m_progressItems;
-
     Timer m_progressHeartbeatTimer;
-    unsigned m_heartbeatsWithNoProgress;
-    long long m_totalBytesReceivedBeforePreviousHeartbeat;
-    std::chrono::steady_clock::time_point m_mainLoadCompletionTime;
-    bool m_isMainLoad;
+
+    long long m_totalPageAndResourceBytesToLoad { 0 };
+    long long m_totalBytesReceived { 0 };
+    long long m_totalBytesReceivedBeforePreviousHeartbeat { 0 };
+
+    double m_lastNotifiedProgressValue { 0 };
+    double m_progressValue { 0 };
+
+    MonotonicTime m_mainLoadCompletionTime;
+    MonotonicTime m_lastNotifiedProgressTime;
+
+    int m_numProgressTrackedFrames { 0 };
+    unsigned m_heartbeatsWithNoProgress { 0 };
+
+    bool m_finalProgressChangedSent { false };
+    bool m_isMainLoad { false };
 };
     
-}
-
-#endif
+} // namespace WebCore

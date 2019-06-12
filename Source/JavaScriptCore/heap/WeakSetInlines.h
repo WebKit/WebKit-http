@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,16 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WeakSetInlines_h
-#define WeakSetInlines_h
+#pragma once
 
+#include "CellContainerInlines.h"
 #include "MarkedBlock.h"
 
 namespace JSC {
 
 inline WeakImpl* WeakSet::allocate(JSValue jsValue, WeakHandleOwner* weakHandleOwner, void* context)
 {
-    WeakSet& weakSet = MarkedBlock::blockFor(jsValue.asCell())->weakSet();
+    WeakSet& weakSet = jsValue.asCell()->cellContainer().weakSet();
     WeakBlock::FreeCell* allocator = weakSet.m_allocator;
     if (UNLIKELY(!allocator))
         allocator = weakSet.findAllocator();
@@ -53,5 +53,3 @@ inline void WeakBlock::finalize(WeakImpl* weakImpl)
 }
 
 } // namespace JSC
-
-#endif // WeakSetInlines_h

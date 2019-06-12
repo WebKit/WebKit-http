@@ -24,12 +24,20 @@
  */
 
 #import "config.h"
-#import "WebProcessProxy.h"
+#import "WebPageProxy.h"
 
+#import "APIUIClient.h"
 #import "DataDetectionResult.h"
-
+#import "LoadParameters.h"
+#import "PageClient.h"
+#import "WebProcessProxy.h"
+#import <WebCore/DragItem.h>
+#import <WebCore/NotImplemented.h>
 #import <WebCore/SearchPopupMenuCocoa.h>
+#import <WebCore/ValidationBubble.h>
 #import <wtf/cf/TypeCastsCF.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -67,5 +75,65 @@ void WebPageProxy::contentFilterDidBlockLoadForFrame(const WebCore::ContentFilte
         frame->contentFilterDidBlockLoad(unblockHandler);
 }
 #endif
+
+void WebPageProxy::addPlatformLoadParameters(LoadParameters& loadParameters)
+{
+    loadParameters.dataDetectionContext = m_uiClient->dataDetectionContext();
+}
+
+void WebPageProxy::createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle& fileReadHandle, SandboxExtension::HandleArray& fileUploadHandles)
+{
+    if (!files.size())
+        return;
+
+    if (files.size() == 1) {
+        BOOL isDirectory;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:files[0] isDirectory:&isDirectory] && !isDirectory) {
+            SandboxExtension::createHandle("/", SandboxExtension::ReadOnly, fileReadHandle);
+            process().willAcquireUniversalFileReadSandboxExtension();
+        }
+    }
+
+    fileUploadHandles.allocate(files.size());
+    for (size_t i = 0; i< files.size(); i++) {
+        NSString *file = files[i];
+        if (![[NSFileManager defaultManager] fileExistsAtPath:file])
+            continue;
+        SandboxExtension::createHandle(file, SandboxExtension::ReadOnly, fileUploadHandles[i]);
+    }
+}
+
+#if PLATFORM(IOS) && ENABLE(DRAG_SUPPORT)
+
+void WebPageProxy::startDrag(const DragItem& dragItem, const ShareableBitmap::Handle& dragImageHandle)
+{
+    m_pageClient.startDrag(dragItem, dragImageHandle);
+}
+
+void WebPageProxy::setPromisedDataForImage(const String&, const SharedMemory::Handle&, uint64_t, const String&, const String&, const String&, const String&, const String&, const SharedMemory::Handle&, uint64_t)
+{
+    notImplemented();
+}
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void WebPageProxy::setPromisedDataForAttachment(const String&, const String&, const String&, const String&, const String&, const String&)
+{
+    notImplemented();
+}
+
+#endif
+
+void WebPageProxy::setDragCaretRect(const IntRect& dragCaretRect)
+{
+    if (m_currentDragCaretRect == dragCaretRect)
+        return;
+
+    auto previousRect = m_currentDragCaretRect;
+    m_currentDragCaretRect = dragCaretRect;
+    m_pageClient.didChangeDataInteractionCaretRect(previousRect, dragCaretRect);
+}
+
+#endif // PLATFORM(IOS) && ENABLE(DRAG_SUPPORT)
 
 }

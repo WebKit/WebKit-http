@@ -33,18 +33,14 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
-#include "HTMLBodyElement.h"
 #include "HTMLDocument.h"
-#include "Page.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginPolicy.h"
 #include "Text.h"
 #include "TextResourceDecoder.h"
 #include "XMLDocument.h"
 #include "markup.h"
-
 #include <wtf/Assertions.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -95,7 +91,9 @@ Ref<Document> XSLTProcessor::createDocumentFromSource(const String& sourceString
             result->setSecurityOriginPolicy(oldDocument->securityOriginPolicy());
             result->setCookieURL(oldDocument->cookieURL());
             result->setFirstPartyForCookies(oldDocument->firstPartyForCookies());
+            result->setStrictMixedContentMode(oldDocument->isStrictMixedContentMode());
             result->contentSecurityPolicy()->copyStateFrom(oldDocument->contentSecurityPolicy());
+            result->contentSecurityPolicy()->copyUpgradeInsecureRequestStateFrom(*oldDocument->contentSecurityPolicy());
         }
 
         frame->setDocument(result.copyRef());
@@ -138,11 +136,14 @@ RefPtr<DocumentFragment> XSLTProcessor::transformToFragment(Node* sourceNode, Do
 
     if (!transformToString(*sourceNode, resultMIMEType, resultString, resultEncoding))
         return nullptr;
-    return createFragmentForTransformToFragment(resultString, resultMIMEType, outputDoc);
+    return createFragmentForTransformToFragment(*outputDoc, resultString, resultMIMEType);
 }
 
 void XSLTProcessor::setParameter(const String& /*namespaceURI*/, const String& localName, const String& value)
 {
+    if (localName.isNull() || value.isNull())
+        return;
+
     // FIXME: namespace support?
     // should make a QualifiedName here but we'd have to expose the impl
     m_parameters.set(localName, value);
@@ -150,6 +151,9 @@ void XSLTProcessor::setParameter(const String& /*namespaceURI*/, const String& l
 
 String XSLTProcessor::getParameter(const String& /*namespaceURI*/, const String& localName) const
 {
+    if (localName.isNull())
+        return { };
+
     // FIXME: namespace support?
     // should make a QualifiedName here but we'd have to expose the impl
     return m_parameters.get(localName);
@@ -157,6 +161,9 @@ String XSLTProcessor::getParameter(const String& /*namespaceURI*/, const String&
 
 void XSLTProcessor::removeParameter(const String& /*namespaceURI*/, const String& localName)
 {
+    if (localName.isNull())
+        return;
+
     // FIXME: namespace support?
     m_parameters.remove(localName);
 }

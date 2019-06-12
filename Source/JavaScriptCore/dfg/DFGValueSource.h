@@ -23,16 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGValueSource_h
-#define DFGValueSource_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGCommon.h"
 #include "DFGFlushFormat.h"
 #include "DFGMinifiedID.h"
 #include "DataFormat.h"
-#include "SpeculatedType.h"
 #include "ValueRecovery.h"
 
 namespace JSC { namespace DFG {
@@ -217,6 +214,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGValueSource_h
-

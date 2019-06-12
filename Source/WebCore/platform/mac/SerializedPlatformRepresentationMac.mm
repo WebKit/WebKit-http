@@ -28,17 +28,17 @@
 #if ENABLE(VIDEO_TRACK) && ENABLE(DATACUE_VALUE)
 #include "SerializedPlatformRepresentationMac.h"
 
-#import "JSDOMBinding.h"
-#import "SoftLinking.h"
+#import "JSDOMConvertBufferSource.h"
+#import <AVFoundation/AVMetadataItem.h>
+#import <Foundation/NSString.h>
+#import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/JSContextRef.h>
+#import <JavaScriptCore/JSObjectRef.h>
+#import <JavaScriptCore/JavaScriptCore.h>
 #import <objc/runtime.h>
 #import <runtime/ArrayBuffer.h>
 #import <runtime/JSArrayBuffer.h>
-#import <AVFoundation/AVFoundation.h>
-#import <Foundation/NSString.h>
-#import <JavaScriptCore/APICast.h>
-#import <JavaScriptCore/JavaScriptCore.h>
-#import <JavaScriptCore/JSContextRef.h>
-#import <JavaScriptCore/JSObjectRef.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/Base64.h>
 
 typedef AVMetadataItem AVMetadataItemType;
@@ -72,7 +72,7 @@ Ref<SerializedPlatformRepresentation> SerializedPlatformRepresentationMac::creat
     return adoptRef(*new SerializedPlatformRepresentationMac(nativeValue));
 }
 
-PassRefPtr<ArrayBuffer> SerializedPlatformRepresentationMac::data() const
+RefPtr<ArrayBuffer> SerializedPlatformRepresentationMac::data() const
 {
     return nullptr;
 }
@@ -135,21 +135,21 @@ static JSValue *jsValueWithValueInContext(id value, JSContext *context)
 
     if ([value isKindOfClass:[NSData class]])
         return jsValueWithDataInContext(value, context);
-    
+
     if ([value isKindOfClass:[AVMetadataItem class]])
         return jsValueWithAVMetadataItemInContext(value, context);
-    
+
     return nil;
 }
 
 static JSValue *jsValueWithDataInContext(NSData *data, JSContext *context)
 {
-    RefPtr<ArrayBuffer> dataArray = ArrayBuffer::create([data bytes], [data length]);
+    auto dataArray = ArrayBuffer::tryCreate([data bytes], [data length]);
 
-    JSC::ExecState* exec = toJS([context JSGlobalContextRef]);
-    JSC::JSValue array = toJS(exec, JSC::jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject()), dataArray.get());
+    auto* state = toJS([context JSGlobalContextRef]);
+    JSC::JSValue array = toJS(state, JSC::jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), dataArray.get());
 
-    return [JSValue valueWithJSValueRef:toRef(exec, array) inContext:context];
+    return [JSValue valueWithJSValueRef:toRef(state, array) inContext:context];
 }
 
 static JSValue *jsValueWithArrayInContext(NSArray *array, JSContext *context)

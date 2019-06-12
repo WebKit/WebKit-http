@@ -27,14 +27,11 @@
  */
 
 [
-    NoInterfaceObject,
+    Exposed=Worker,
     GenerateIsReachable=Impl,
 ] interface WorkerNavigator {
-    readonly attribute DOMString appName;
-    readonly attribute DOMString appVersion;
-    readonly attribute DOMString platform;
-    readonly attribute DOMString userAgent;
-
-    readonly attribute boolean onLine;
 };
 
+WorkerNavigator implements NavigatorID;
+WorkerNavigator implements NavigatorLanguage;
+WorkerNavigator implements NavigatorOnLine;

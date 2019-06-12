@@ -23,14 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MediaControlsHost_h
-#define MediaControlsHost_h
+#pragma once
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
 
-#include "ScriptState.h"
-#include <bindings/ScriptObject.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Variant.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -54,31 +52,43 @@ public:
     static const AtomicString& alwaysOnKeyword();
     static const AtomicString& manualKeyword();
 
-    Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList*);
-    Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList*);
-    String displayNameForTrack(TextTrack*);
-    String displayNameForTrack(AudioTrack*);
+    Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList&);
+    Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList&);
+
+    using TextOrAudioTrack = WTF::Variant<RefPtr<TextTrack>, RefPtr<AudioTrack>>;
+    String displayNameForTrack(const std::optional<TextOrAudioTrack>&);
+
     TextTrack* captionMenuOffItem();
     TextTrack* captionMenuAutomaticItem();
-    AtomicString captionDisplayMode();
+    AtomicString captionDisplayMode() const;
     void setSelectedTextTrack(TextTrack*);
     Element* textTrackContainer();
     void updateTextTrackContainer();
     bool allowsInlineMediaPlayback() const;
-    bool supportsFullscreen();
+    bool supportsFullscreen() const;
+    bool isVideoLayerInline() const;
+    bool isInMediaDocument() const;
     bool userGestureRequired() const;
+    bool shouldForceControlsDisplay() const;
+    void setPreparedToReturnVideoLayerToInline(bool);
 
     void updateCaptionDisplaySizes();
     void enteredFullscreen();
     void exitedFullscreen();
 
     String externalDeviceDisplayName() const;
-    String externalDeviceType() const;
+
+    enum class DeviceType { None, Airplay, Tvout };
+    DeviceType externalDeviceType() const;
 
     bool controlsDependOnPageScaleFactor() const;
     void setControlsDependOnPageScaleFactor(bool v);
 
     String generateUUID() const;
+
+    String shadowRootCSSText() const;
+    String base64StringForIconNameAndType(const String& iconName, const String& iconType) const;
+    String formattedStringForDuration(double) const;
 
 private:
     MediaControlsHost(HTMLMediaElement*);
@@ -88,7 +98,5 @@ private:
 };
 
 }
-
-#endif
 
 #endif

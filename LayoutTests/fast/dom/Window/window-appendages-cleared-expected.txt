@@ -4,6 +4,7 @@ PASS history.go == "LEFTOVER" is false
 PASS history.length == "LEFTOVER" is false
 PASS history.pushState == "LEFTOVER" is false
 PASS history.replaceState == "LEFTOVER" is false
+PASS history.scrollRestoration == "LEFTOVER" is false
 PASS history.state == "LEFTOVER" is false
 PASS location.ancestorOrigins == "LEFTOVER" is false
 PASS location.assign == "LEFTOVER" is false
@@ -18,6 +19,7 @@ PASS location.protocol == "LEFTOVER" is false
 PASS location.reload == "LEFTOVER" is false
 PASS location.replace == "LEFTOVER" is false
 PASS location.search == "LEFTOVER" is false
+PASS location.toString == "LEFTOVER" is false
 PASS locationbar.visible == "LEFTOVER" is false
 PASS menubar.visible == "LEFTOVER" is false
 PASS personalbar.visible == "LEFTOVER" is false

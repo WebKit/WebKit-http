@@ -23,57 +23,55 @@ set(DumpRenderTreeLib_SOURCES
     win/WorkQueueItemWin.cpp
 )
 
+list(APPEND TestNetscapePlugIn_LIBRARIES
+    WebKit
+)
+
 set(DumpRenderTree_SOURCES
     ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp
 )
 
-list(APPEND TestNetscapePlugin_SOURCES
-    DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.def
-    DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.rc
+list(APPEND TestNetscapePlugIn_SOURCES
+    win/TestNetscapePlugin.def
+    win/TestNetscapePlugin.rc
 
-    TestNetscapePlugin/Tests/win/CallJSThatDestroysPlugin.cpp
-    TestNetscapePlugin/Tests/win/DrawsGradient.cpp
-    TestNetscapePlugin/Tests/win/DumpWindowRect.cpp
-    TestNetscapePlugin/Tests/win/GetValueNetscapeWindow.cpp
-    TestNetscapePlugin/Tests/win/NPNInvalidateRectInvalidatesWindow.cpp
-    TestNetscapePlugin/Tests/win/WindowGeometryInitializedBeforeSetWindow.cpp
-    TestNetscapePlugin/Tests/win/WindowRegionIsSetToClipRect.cpp
-    TestNetscapePlugin/Tests/win/WindowlessPaintRectCoordinates.cpp
+    TestNetscapePlugIn/Tests/win/CallJSThatDestroysPlugin.cpp
+    TestNetscapePlugIn/Tests/win/DrawsGradient.cpp
+    TestNetscapePlugIn/Tests/win/DumpWindowRect.cpp
+    TestNetscapePlugIn/Tests/win/GetValueNetscapeWindow.cpp
+    TestNetscapePlugIn/Tests/win/NPNInvalidateRectInvalidatesWindow.cpp
+    TestNetscapePlugIn/Tests/win/WindowGeometryInitializedBeforeSetWindow.cpp
+    TestNetscapePlugIn/Tests/win/WindowRegionIsSetToClipRect.cpp
+    TestNetscapePlugIn/Tests/win/WindowlessPaintRectCoordinates.cpp
 
-    TestNetscapePlugin/win/WindowGeometryTest.cpp
-    TestNetscapePlugin/win/WindowedPluginTest.cpp
+    TestNetscapePlugIn/win/WindowGeometryTest.cpp
+    TestNetscapePlugIn/win/WindowedPluginTest.cpp
 )
 
 if (${WTF_PLATFORM_WIN_CAIRO})
     add_definitions(-DWIN_CAIRO)
 endif ()
 
-list(APPEND TestNetscapePlugin_LIBRARIES
+list(APPEND TestNetscapePlugIn_LIBRARIES
     Msimg32
     Shlwapi
-)
-
-set(ImageDiff_SOURCES
-    win/ImageDiffWin.cpp
-)
-
-set(ImageDiff_LIBRARIES
-   JavaScriptCore
-   WTF
-   WebKit
+    WebKit
 )
 
 list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     win
-    DumpRenderTree.vcxproj/TestNetscapePlugin
-    TestNetscapePlugin
-    TestNetscapePlugin/ForwardingHeaders
-    TestNetscapePlugin/Tests
-    TestNetscapePlugin/win
-    TestNetscapePlugin/Tests/win
+    TestNetscapePlugIn
+    TestNetscapePlugIn/ForwardingHeaders
+    TestNetscapePlugIn/Tests
+    TestNetscapePlugIn/win
+    TestNetscapePlugIn/Tests/win
+    ${WEBKIT_DIR}/win
+    ${DERIVED_SOURCES_DIR}/WebKit/Interfaces
 )
 
 list(APPEND DumpRenderTree_LIBRARIES
+    WTF
+    WebKit
     shlwapi
 )
 
@@ -87,16 +85,10 @@ set(DumpRenderTreeLib_LIBRARIES
 if (${WTF_PLATFORM_WIN_CAIRO})
     list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
         cairo
-        "${WEBKIT_LIBRARIES_DIR}/include/cairo"
+        ${CAIRO_INCLUDE_DIRS}
     )
     list(APPEND DumpRenderTreeLib_SOURCES
         cairo/PixelDumpSupportCairo.cpp
-    )
-    list(APPEND ImageDiff_SOURCES
-        win/ImageDiffCairo.cpp
-    )
-    list(APPEND ImageDiff_LIBRARIES
-        cairo
     )
 else ()
     list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
@@ -108,13 +100,7 @@ else ()
     list(APPEND DumpRenderTreeLib_LIBRARIES
         CFNetwork
         CoreGraphics
-    )
-    list(APPEND ImageDiff_SOURCES
-        cg/ImageDiffCG.cpp
-    )
-    list(APPEND ImageDiff_LIBRARIES
-       CoreFoundation
-       CoreGraphics
+        CoreText
     )
 endif ()
 
@@ -123,18 +109,6 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT
 add_definitions(-DUSE_CONSOLE_ENTRY_POINT)
 
 add_library(DumpRenderTreeLib SHARED ${DumpRenderTreeLib_SOURCES})
-set_target_properties(DumpRenderTreeLib PROPERTIES FOLDER "Tools")
 target_link_libraries(DumpRenderTreeLib ${DumpRenderTreeLib_LIBRARIES})
-
-add_executable(ImageDiff ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp)
-target_link_libraries(ImageDiff shlwapi)
-set_target_properties(ImageDiff PROPERTIES FOLDER "Tools")
-set_target_properties(ImageDiff PROPERTIES OUTPUT_NAME "ImageDiff")
-
-add_library(ImageDiffLib SHARED ${ImageDiff_SOURCES})
-set_target_properties(ImageDiffLib PROPERTIES FOLDER "Tools")
-target_link_libraries(ImageDiffLib ${ImageDiff_LIBRARIES})
-
-add_dependencies(ImageDiff ImageDiffLib)
 
 add_definitions(-D_UNICODE)

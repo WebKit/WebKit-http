@@ -31,13 +31,16 @@
 
 namespace WebCore {
 
-EllipsisBox::EllipsisBox(RenderBlockFlow& renderer, const AtomicString& ellipsisStr, InlineFlowBox* parent, int width, int height, int y, bool firstLine, bool isVertical, InlineBox* markupBox)
-    : InlineElementBox(renderer, FloatPoint(0, y), width, firstLine, true, false, false, isVertical, 0, 0, parent)
+EllipsisBox::EllipsisBox(RenderBlockFlow& renderer, const AtomicString& ellipsisStr, InlineFlowBox* parent, int width, int height, int y, bool firstLine, bool isHorizontal, InlineBox* markupBox)
+    : InlineElementBox(renderer, FloatPoint(0, y), width, firstLine, true, false, false, isHorizontal, 0, 0, parent)
     , m_shouldPaintMarkupBox(markupBox)
     , m_height(height)
     , m_str(ellipsisStr)
     , m_selectionState(RenderObject::SelectionNone)
 {
+#if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
+    m_isEverInChildList = false;
+#endif
 }
 
 void EllipsisBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, LayoutUnit lineTop, LayoutUnit lineBottom)
@@ -65,7 +68,7 @@ void EllipsisBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, La
     }
 
     // FIXME: Why is this always LTR? Fix by passing correct text run flags below.
-    context.drawText(font, RenderBlock::constructTextRun(&blockFlow(), font, m_str, lineStyle, AllowTrailingExpansion), LayoutPoint(x() + paintOffset.x(), y() + paintOffset.y() + lineStyle.fontMetrics().ascent()));
+    context.drawText(font, RenderBlock::constructTextRun(m_str, lineStyle, AllowTrailingExpansion), LayoutPoint(x() + paintOffset.x(), y() + paintOffset.y() + lineStyle.fontMetrics().ascent()));
 
     // Restore the regular fill color.
     if (textColor != context.fillColor())
@@ -114,7 +117,7 @@ IntRect EllipsisBox::selectionRect()
     const RootInlineBox& rootBox = root();
     // FIXME: Why is this always LTR? Fix by passing correct text run flags below.
     LayoutRect selectionRect = LayoutRect(x(), y() + rootBox.selectionTopAdjustedForPrecedingBlock(), 0, rootBox.selectionHeightAdjustedForPrecedingBlock());
-    font.adjustSelectionRectForText(RenderBlock::constructTextRun(&blockFlow(), font, m_str, lineStyle, AllowTrailingExpansion), selectionRect);
+    font.adjustSelectionRectForText(RenderBlock::constructTextRun(m_str, lineStyle, AllowTrailingExpansion), selectionRect);
     // FIXME: use directional pixel snapping instead.
     return enclosingIntRect(selectionRect);
 }
@@ -135,8 +138,8 @@ void EllipsisBox::paintSelection(GraphicsContext& context, const LayoutPoint& pa
     GraphicsContextStateSaver stateSaver(context);
     // FIXME: Why is this always LTR? Fix by passing correct text run flags below.
     LayoutRect selectionRect = LayoutRect(x() + paintOffset.x(), y() + paintOffset.y() + rootBox.selectionTop(), 0, rootBox.selectionHeight());
-    TextRun run = RenderBlock::constructTextRun(&blockFlow(), font, m_str, style, AllowTrailingExpansion);
-    font.adjustSelectionRectForText(run, selectionRect, 0, -1);
+    TextRun run = RenderBlock::constructTextRun(m_str, style, AllowTrailingExpansion);
+    font.adjustSelectionRectForText(run, selectionRect);
     context.fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), run.ltr()), c);
 }
 

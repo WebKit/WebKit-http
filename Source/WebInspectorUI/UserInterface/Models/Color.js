@@ -103,7 +103,7 @@ WebInspector.Color = class Color
                 ]);
             } else if (match[3]) { // keyword
                 let keyword = match[3].toLowerCase();
-                if (!WebInspector.Color.Keywords[keyword])
+                if (!WebInspector.Color.Keywords.hasOwnProperty(keyword))
                     return null;
                 let color = new WebInspector.Color(WebInspector.Color.Format.Keyword, WebInspector.Color.Keywords[keyword].concat(1));
                 color.keyword = keyword;
@@ -234,6 +234,8 @@ WebInspector.Color = class Color
 
         switch (format) {
         case WebInspector.Color.Format.Original:
+        case WebInspector.Color.Format.HEX:
+        case WebInspector.Color.Format.HEXAlpha:
             return this.simple ? WebInspector.Color.Format.RGB : WebInspector.Color.Format.RGBA;
 
         case WebInspector.Color.Format.RGB:
@@ -242,7 +244,7 @@ WebInspector.Color = class Color
 
         case WebInspector.Color.Format.HSL:
         case WebInspector.Color.Format.HSLA:
-            if (this.keyword)
+            if (this.isKeyword())
                 return WebInspector.Color.Format.Keyword;
             if (this.simple)
                 return this.canBeSerializedAsShortHEX() ? WebInspector.Color.Format.ShortHEX : WebInspector.Color.Format.HEX;
@@ -253,10 +255,6 @@ WebInspector.Color = class Color
 
         case WebInspector.Color.Format.ShortHEXAlpha:
             return WebInspector.Color.Format.HEXAlpha;
-
-        case WebInspector.Color.Format.HEX:
-        case WebInspector.Color.Format.HEXAlpha:
-            return WebInspector.Color.Format.Original;
 
         case WebInspector.Color.Format.Keyword:
             if (this.simple)
@@ -361,10 +359,10 @@ WebInspector.Color = class Color
             return true;
 
         if (!this.simple)
-            return Object.shallowEqual(this._rgba, [0, 0, 0, 0]) || Object.shallowEqual(this._hsla, [0, 0, 0, 0]);
+            return Array.shallowEqual(this._rgba, [0, 0, 0, 0]) || Array.shallowEqual(this._hsla, [0, 0, 0, 0]);
 
         let rgb = (this._rgba && this._rgba.slice(0, 3)) || this._hslToRGB(this._hsla);
-        return Object.keys(WebInspector.Color.Keywords).some(key => Object.shallowEqual(WebInspector.Color.Keywords[key], rgb));
+        return Object.keys(WebInspector.Color.Keywords).some(key => Array.shallowEqual(WebInspector.Color.Keywords[key], rgb));
     }
 
     canBeSerializedAsShortHEX()
@@ -484,12 +482,15 @@ WebInspector.Color = class Color
             return this._toRGBAString();
 
         let rgba = this.rgba.slice(0, -1);
+        rgba = rgba.map((value) => value.maxDecimals(2));
         return "rgb(" + rgba.join(", ") + ")";
     }
 
     _toRGBAString()
     {
-        return "rgba(" + this.rgba.join(", ") + ")";
+        let rgba = this.rgba;
+        rgba = rgba.map((value) => value.maxDecimals(2));
+        return "rgba(" + rgba.join(", ") + ")";
     }
 
     _toHSLString()
@@ -498,12 +499,14 @@ WebInspector.Color = class Color
             return this._toHSLAString();
 
         let hsla = this.hsla;
+        hsla = hsla.map((value) => value.maxDecimals(2));
         return "hsl(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%)";
     }
 
     _toHSLAString()
     {
         let hsla = this.hsla;
+        hsla = hsla.map((value) => value.maxDecimals(2));
         return "hsla(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%, " + hsla[3] + ")";
     }
 
@@ -635,6 +638,7 @@ WebInspector.Color.Keywords = {
     "darkgoldenrod": [184, 134, 11],
     "darkgray": [169, 169, 169],
     "darkgreen": [0, 100, 0],
+    "darkgrey": [169, 169, 169],
     "darkkhaki": [189, 183, 107],
     "darkmagenta": [139, 0, 139],
     "darkolivegreen": [85, 107, 47],
@@ -645,11 +649,13 @@ WebInspector.Color.Keywords = {
     "darkseagreen": [143, 188, 143],
     "darkslateblue": [72, 61, 139],
     "darkslategray": [47, 79, 79],
+    "darkslategrey": [47, 79, 79],
     "darkturquoise": [0, 206, 209],
     "darkviolet": [148, 0, 211],
     "deeppink": [255, 20, 147],
     "deepskyblue": [0, 191, 255],
     "dimgray": [105, 105, 105],
+    "dimgrey": [105, 105, 105],
     "dodgerblue": [30, 144, 255],
     "firebrick": [178, 34, 34],
     "floralwhite": [255, 250, 240],
@@ -661,6 +667,7 @@ WebInspector.Color.Keywords = {
     "gray": [128, 128, 128],
     "green": [0, 128, 0],
     "greenyellow": [173, 255, 47],
+    "grey": [128, 128, 128],
     "honeydew": [240, 255, 240],
     "hotpink": [255, 105, 180],
     "indianred": [205, 92, 92],
@@ -675,6 +682,7 @@ WebInspector.Color.Keywords = {
     "lightcoral": [240, 128, 128],
     "lightcyan": [224, 255, 255],
     "lightgoldenrodyellow": [250, 250, 210],
+    "lightgray": [211, 211, 211],
     "lightgreen": [144, 238, 144],
     "lightgrey": [211, 211, 211],
     "lightpink": [255, 182, 193],
@@ -682,6 +690,7 @@ WebInspector.Color.Keywords = {
     "lightseagreen": [32, 178, 170],
     "lightskyblue": [135, 206, 250],
     "lightslategray": [119, 136, 153],
+    "lightslategrey": [119, 136, 153],
     "lightsteelblue": [176, 196, 222],
     "lightyellow": [255, 255, 224],
     "lime": [0, 255, 0],
@@ -735,6 +744,7 @@ WebInspector.Color.Keywords = {
     "skyblue": [135, 206, 235],
     "slateblue": [106, 90, 205],
     "slategray": [112, 128, 144],
+    "slategrey": [112, 128, 144],
     "snow": [255, 250, 250],
     "springgreen": [0, 255, 127],
     "steelblue": [70, 130, 180],

@@ -25,11 +25,6 @@
 
 WebInspector.CodeMirrorColorEditingController = class CodeMirrorColorEditingController extends WebInspector.CodeMirrorEditingController
 {
-    constructor(codeMirror, marker)
-    {
-        super(codeMirror, marker);
-    }
-
     // Public
 
     get initialValue()
@@ -46,6 +41,7 @@ WebInspector.CodeMirrorColorEditingController = class CodeMirrorColorEditingCont
     {
         this._colorPicker = new WebInspector.ColorPicker;
         this._colorPicker.addEventListener(WebInspector.ColorPicker.Event.ColorChanged, this._colorPickerColorChanged, this);
+        this._colorPicker.addEventListener(WebInspector.ColorPicker.Event.FormatChanged, (event) => popover.update());
         popover.content = this._colorPicker.element;
     }
 

@@ -3,14 +3,17 @@
         <script src="media-file.js"></script>
         <script src="video-test.js"></script>
         <script>
+            if (window.internals)
+                internals.settings.setInvisibleAutoplayNotPermitted(true);
+
             function start()
             {
                 findMediaElement();
                 consoleWrite('** setting video.src');
                 video.src = findMediaFile('video', 'content/test');
+                video.muted = true;
 
                 waitForEventOnce('play', play1);
-                run('internals.setMediaElementRestrictions(video, "InvisibleAutoplayNotPermitted")');
                 consoleWrite('');
             }
 

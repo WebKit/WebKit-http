@@ -22,13 +22,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AsyncAudioDecoder_h
-#define AsyncAudioDecoder_h
+#pragma once
 
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/MessageQueue.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
 
@@ -51,17 +49,17 @@ public:
     ~AsyncAudioDecoder();
 
     // Must be called on the main thread.
-    void decodeAsync(JSC::ArrayBuffer* audioData, float sampleRate, PassRefPtr<AudioBufferCallback> successCallback, PassRefPtr<AudioBufferCallback> errorCallback);
+    void decodeAsync(Ref<JSC::ArrayBuffer>&& audioData, float sampleRate, RefPtr<AudioBufferCallback>&& successCallback, RefPtr<AudioBufferCallback>&& errorCallback);
 
 private:
     class DecodingTask {
         WTF_MAKE_NONCOPYABLE(DecodingTask);
     public:
-        DecodingTask(JSC::ArrayBuffer* audioData, float sampleRate, PassRefPtr<AudioBufferCallback> successCallback, PassRefPtr<AudioBufferCallback> errorCallback);
+        DecodingTask(Ref<JSC::ArrayBuffer>&& audioData, float sampleRate, RefPtr<AudioBufferCallback>&& successCallback, RefPtr<AudioBufferCallback>&& errorCallback);
         void decode();
         
     private:
-        JSC::ArrayBuffer* audioData() { return m_audioData.get(); }
+        JSC::ArrayBuffer& audioData() { return m_audioData; }
         float sampleRate() const { return m_sampleRate; }
         AudioBufferCallback* successCallback() { return m_successCallback.get(); }
         AudioBufferCallback* errorCallback() { return m_errorCallback.get(); }
@@ -69,21 +67,18 @@ private:
 
         void notifyComplete();
 
-        RefPtr<JSC::ArrayBuffer> m_audioData;
+        Ref<JSC::ArrayBuffer> m_audioData;
         float m_sampleRate;
         RefPtr<AudioBufferCallback> m_successCallback;
         RefPtr<AudioBufferCallback> m_errorCallback;
         RefPtr<AudioBuffer> m_audioBuffer;
     };
     
-    static void threadEntry(void* threadData);
     void runLoop();
 
-    WTF::ThreadIdentifier m_threadID;
+    RefPtr<Thread> m_thread;
     Lock m_threadCreationMutex;
     MessageQueue<DecodingTask> m_queue;
 };
 
 } // namespace WebCore
-
-#endif // AsyncAudioDecoder_h

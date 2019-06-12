@@ -42,7 +42,7 @@ public:
     class Client {
     public:
         virtual void createImageBacking(CoordinatedImageBackingID) = 0;
-        virtual void updateImageBacking(CoordinatedImageBackingID, PassRefPtr<CoordinatedSurface>) = 0;
+        virtual void updateImageBacking(CoordinatedImageBackingID, RefPtr<CoordinatedSurface>&&) = 0;
         virtual void clearImageBackingContents(CoordinatedImageBackingID) = 0;
         virtual void removeImageBacking(CoordinatedImageBackingID) = 0;
     };
@@ -52,7 +52,7 @@ public:
         virtual bool imageBackingVisible() = 0;
     };
 
-    static PassRefPtr<CoordinatedImageBacking> create(Client*, PassRefPtr<Image>);
+    static Ref<CoordinatedImageBacking> create(Client&, Ref<Image>&&);
     virtual ~CoordinatedImageBacking();
 
     static CoordinatedImageBackingID getCoordinatedImageBackingID(Image*);
@@ -68,7 +68,7 @@ public:
     void update();
 
 private:
-    CoordinatedImageBacking(Client*, PassRefPtr<Image>);
+    CoordinatedImageBacking(Client&, Ref<Image>&&);
 
     void releaseSurfaceIfNeeded();
     void updateVisibilityIfNeeded(bool& changedToVisible);

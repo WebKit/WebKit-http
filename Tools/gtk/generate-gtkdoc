@@ -26,7 +26,6 @@ import gtkdoc
 import logging
 import os.path
 import sys
-import webkitdom
 
 sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
 sys.stderr = codecs.getwriter("utf-8")(sys.stderr)
@@ -130,14 +129,12 @@ def get_generator_for_config(config_file, virtual_root, cross_reference_deps = [
     })
 
 def generate_doc(generator, skip_html):
-    print("\nGenerating {0} documentation...".format(generator.module_name))
     generator.generate(not skip_html)
     if generator.saw_warnings:
         print_missing_api(generator)
     return generator.saw_warnings
 
 def rebase_doc(generator):
-    print("\nRebasing {0} documentation...".format(generator.module_name))
     try:
         generator.rebase_installed_docs()
     except Exception:
@@ -197,7 +194,6 @@ if __name__ == "__main__":
     if not webkitdom_generator:
         print("gtkdoc-webkitdom.cfg does not exist! Skipping that documentation")
         sys.exit(1)
-    webkitdom.write_doc_files(webkitdom_generator.module_name)
     saw_warnings = generate_documentation(webkitdom_generator)
     if saw_warnings:
         sys.exit(saw_warnings)

@@ -23,38 +23,52 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaResourceLoader_h
-#define MediaResourceLoader_h
+#pragma once
 
 #if ENABLE(VIDEO)
+
 #include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
+#include "ContextDestructionObserver.h"
 #include "PlatformMediaResourceLoader.h"
+#include "ResourceResponse.h"
 #include <wtf/HashSet.h>
 #include <wtf/Ref.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class CachedRawResource;
 class Document;
+class HTMLMediaElement;
 class MediaResource;
 
-class MediaResourceLoader final : public PlatformMediaResourceLoader {
+class MediaResourceLoader final : public PlatformMediaResourceLoader, public ContextDestructionObserver {
 public:
-    WEBCORE_EXPORT MediaResourceLoader(Document&, const String& crossOriginMode);
+    WEBCORE_EXPORT MediaResourceLoader(Document&, HTMLMediaElement&, const String& crossOriginMode);
     WEBCORE_EXPORT virtual ~MediaResourceLoader();
 
-    RefPtr<PlatformMediaResource> requestResource(const ResourceRequest&, LoadOptions) override;
+    RefPtr<PlatformMediaResource> requestResource(ResourceRequest&&, LoadOptions) final;
     void removeResource(MediaResource&);
 
-    Document& document() { return m_document; }
+    Document* document() { return m_document; }
     const String& crossOriginMode() const { return m_crossOriginMode; }
 
+    Vector<ResourceResponse> responsesForTesting() const { return m_responsesForTesting; }
+    void addResponseForTesting(const ResourceResponse&);
+
+    WeakPtr<const MediaResourceLoader> createWeakPtr() const { return m_weakFactory.createWeakPtr(); }
+
 private:
-    Document& m_document;
+    void contextDestroyed() override;
+
+    Document* m_document;
+    WeakPtr<HTMLMediaElement> m_mediaElement;
     String m_crossOriginMode;
     HashSet<MediaResource*> m_resources;
+    WeakPtrFactory<const MediaResourceLoader> m_weakFactory;
+    Vector<ResourceResponse> m_responsesForTesting;
 };
 
 class MediaResource : public PlatformMediaResource, CachedRawResourceClient {
@@ -67,14 +81,15 @@ public:
     void setDefersLoading(bool) override;
     bool didPassAccessControlCheck() const override { return m_didPassAccessControlCheck; }
 
-    // CachedResourceClient
-    void responseReceived(CachedResource*, const ResourceResponse&) override;
-    void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
-    void dataSent(CachedResource*, unsigned long long, unsigned long long) override;
-    void dataReceived(CachedResource*, const char*, int) override;
-    void notifyFinished(CachedResource*) override;
+    // CachedRawResourceClient
+    void responseReceived(CachedResource&, const ResourceResponse&) override;
+    void redirectReceived(CachedResource&, ResourceRequest&, const ResourceResponse&) override;
+    bool shouldCacheResponse(CachedResource&, const ResourceResponse&) override;
+    void dataSent(CachedResource&, unsigned long long, unsigned long long) override;
+    void dataReceived(CachedResource&, const char*, int) override;
+    void notifyFinished(CachedResource&) override;
 #if USE(SOUP)
-    char* getOrCreateReadBuffer(CachedResource*, size_t /*requestedSize*/, size_t& /*actualSize*/) override;
+    char* getOrCreateReadBuffer(CachedResource&, size_t /*requestedSize*/, size_t& /*actualSize*/) override;
 #endif
 
 private:
@@ -84,8 +99,6 @@ private:
     CachedResourceHandle<CachedRawResource> m_resource;
 };
 
-
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO)

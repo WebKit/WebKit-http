@@ -22,10 +22,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PannerNode_h
-#define PannerNode_h
+#pragma once
 
-#include "AudioBus.h"
+#if ENABLE(WEB_AUDIO)
+
 #include "AudioListener.h"
 #include "AudioNode.h"
 #include "AudioParam.h"
@@ -49,21 +49,6 @@ namespace WebCore {
 
 class PannerNode : public AudioNode {
 public:
-    // These must be defined as in the .idl file and must match those in the Panner class.
-    enum {
-        EQUALPOWER = 0,
-        HRTF = 1,
-        SOUNDFIELD = 2,
-    };
-
-    // These must be defined as in the .idl file and must match those
-    // in the DistanceEffect class.
-    enum {
-        LINEAR_DISTANCE = 0,
-        INVERSE_DISTANCE = 1,
-        EXPONENTIAL_DISTANCE = 2,
-    };
-
     static Ref<PannerNode> create(AudioContext& context, float sampleRate)
     {
         return adoptRef(*new PannerNode(context, sampleRate));
@@ -72,19 +57,18 @@ public:
     virtual ~PannerNode();
 
     // AudioNode
-    virtual void process(size_t framesToProcess) override;
-    virtual void pullInputs(size_t framesToProcess) override;
-    virtual void reset() override;
-    virtual void initialize() override;
-    virtual void uninitialize() override;
+    void process(size_t framesToProcess) override;
+    void pullInputs(size_t framesToProcess) override;
+    void reset() override;
+    void initialize() override;
+    void uninitialize() override;
 
     // Listener
     AudioListener* listener();
 
     // Panning model
-    String panningModel() const;
-    bool setPanningModel(unsigned); // Returns true on success.
-    void setPanningModel(const String&);
+    PanningModelType panningModel() const { return m_panningModel; }
+    void setPanningModel(PanningModelType);
 
     // Position
     FloatPoint3D position() const { return m_position; }
@@ -99,9 +83,8 @@ public:
     void setVelocity(float x, float y, float z) { m_velocity = FloatPoint3D(x, y, z); }
 
     // Distance parameters
-    String distanceModel() const;
-    bool setDistanceModel(unsigned); // Returns true on success.
-    void setDistanceModel(const String&);
+    DistanceModelType distanceModel() const;
+    void setDistanceModel(DistanceModelType);
 
     double refDistance() { return m_distanceEffect.refDistance(); }
     void setRefDistance(double refDistance) { m_distanceEffect.setRefDistance(refDistance); }
@@ -129,8 +112,8 @@ public:
     AudioParam* distanceGain() { return m_distanceGain.get(); }
     AudioParam* coneGain() { return m_coneGain.get(); }
 
-    virtual double tailTime() const override { return m_panner ? m_panner->tailTime() : 0; }
-    virtual double latencyTime() const override { return m_panner ? m_panner->latencyTime() : 0; }
+    double tailTime() const override { return m_panner ? m_panner->tailTime() : 0; }
+    double latencyTime() const override { return m_panner ? m_panner->latencyTime() : 0; }
 
 private:
     PannerNode(AudioContext&, float sampleRate);
@@ -143,7 +126,7 @@ private:
     void notifyAudioSourcesConnectedToNode(AudioNode*, HashSet<AudioNode*>& visitedNodes);
 
     std::unique_ptr<Panner> m_panner;
-    unsigned m_panningModel;
+    PanningModelType m_panningModel;
 
     FloatPoint3D m_position;
     FloatPoint3D m_orientation;
@@ -167,4 +150,4 @@ private:
 
 } // namespace WebCore
 
-#endif // PannerNode_h
+#endif

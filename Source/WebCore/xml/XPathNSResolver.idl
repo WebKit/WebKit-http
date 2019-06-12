@@ -19,10 +19,10 @@
  */
 
 [
+    JSCustomToNativeObject,
     NoInterfaceObject,
-    ObjCProtocol,
     SkipVTableValidation,
 ] interface XPathNSResolver {
-    [TreatReturnedNullStringAs=Null] DOMString lookupNamespaceURI([Default=Undefined] optional DOMString prefix);
+    // FIXME: Using "undefined" as default parameter value is wrong.
+    DOMString? lookupNamespaceURI(optional DOMString prefix = "undefined");
 };
-

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Const32Value_h
-#define B3Const32Value_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,7 +33,7 @@ namespace JSC { namespace B3 {
 
 class JS_EXPORT_PRIVATE Const32Value : public Value {
 public:
-    static bool accepts(Opcode opcode) { return opcode == Const32; }
+    static bool accepts(Kind kind) { return kind == Const32; }
     
     ~Const32Value();
     
@@ -50,14 +49,20 @@ public:
     Value* checkMulConstant(Procedure&, const Value* other) const override;
     Value* checkNegConstant(Procedure&) const override;
     Value* divConstant(Procedure&, const Value* other) const override;
+    Value* uDivConstant(Procedure&, const Value* other) const override;
     Value* modConstant(Procedure&, const Value* other) const override;
+    Value* uModConstant(Procedure&, const Value* other) const override;
     Value* bitAndConstant(Procedure&, const Value* other) const override;
     Value* bitOrConstant(Procedure&, const Value* other) const override;
     Value* bitXorConstant(Procedure&, const Value* other) const override;
     Value* shlConstant(Procedure&, const Value* other) const override;
     Value* sShrConstant(Procedure&, const Value* other) const override;
     Value* zShrConstant(Procedure&, const Value* other) const override;
+    Value* rotRConstant(Procedure&, const Value* other) const override;
+    Value* rotLConstant(Procedure&, const Value* other) const override;
     Value* bitwiseCastConstant(Procedure&) const override;
+    Value* iToDConstant(Procedure&) const override;
+    Value* iToFConstant(Procedure&) const override;
 
     TriState equalConstant(const Value* other) const override;
     TriState notEqualConstant(const Value* other) const override;
@@ -90,6 +95,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Const32Value_h
-

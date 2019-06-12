@@ -23,13 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGMultiGetByOffsetData_h
-#define DFGMultiGetByOffsetData_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGRegisteredStructureSet.h"
 #include "DumpContext.h"
-#include "JSObject.h"
 #include "StructureSet.h"
 
 namespace JSC { namespace DFG {
@@ -40,6 +39,9 @@ class GetByOffsetMethod {
 public:
     enum Kind {
         Invalid,
+        // Constant might mean either that we have some fixed property or that the
+        // property is unset and we know the result is undefined. We don't distingish
+        // between these cases because no one cares about this distintion yet.
         Constant,
         Load,
         LoadFromPrototype
@@ -117,21 +119,21 @@ public:
     {
     }
     
-    MultiGetByOffsetCase(const StructureSet& set, const GetByOffsetMethod& method)
+    MultiGetByOffsetCase(const RegisteredStructureSet& set, const GetByOffsetMethod& method)
         : m_set(set)
         , m_method(method)
     {
     }
     
-    StructureSet& set() { return m_set; }
-    const StructureSet& set() const { return m_set; }
+    RegisteredStructureSet& set() { return m_set; }
+    const RegisteredStructureSet& set() const { return m_set; }
     const GetByOffsetMethod& method() const { return m_method; }
     
     void dumpInContext(PrintStream&, DumpContext*) const;
     void dump(PrintStream&) const;
 
 private:
-    StructureSet m_set;
+    RegisteredStructureSet m_set;
     GetByOffsetMethod m_method;
 };
 
@@ -149,6 +151,3 @@ void printInternal(PrintStream&, JSC::DFG::GetByOffsetMethod::Kind);
 } // namespace WTF
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGMultiGetByOffsetData_h
-

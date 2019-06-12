@@ -27,7 +27,6 @@
 #import "ThemeMac.h"
 
 #import "AXObjectCache.h"
-#import "BlockExceptions.h"
 #import "GraphicsContext.h"
 #import "ImageBuffer.h"
 #import "LocalCurrentGraphicsContext.h"
@@ -35,6 +34,7 @@
 #import "ScrollView.h"
 #import "WebCoreSystemInterface.h"
 #import <Carbon/Carbon.h>
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/StdLibExtras.h>
 
@@ -68,7 +68,7 @@ static BOOL themeWindowHasKeyAppearance;
     // Using defer:YES prevents us from wasting any window server resources for this window, since we're not actually
     // going to draw into it. The other arguments match what you get when calling -[NSWindow init].
     static WebCoreThemeWindow *window = [[WebCoreThemeWindow alloc] initWithContentRect:NSMakeRect(100, 100, 100, 100)
-        styleMask:NSTitledWindowMask backing:NSBackingStoreBuffered defer:YES];
+        styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:YES];
     return window;
 }
 
@@ -143,10 +143,10 @@ static NSControlSize controlSizeForFont(const FontCascade& font)
 {
     int fontSize = font.pixelSize();
     if (fontSize >= 16)
-        return NSRegularControlSize;
+        return NSControlSizeRegular;
     if (fontSize >= 11)
-        return NSSmallControlSize;
-    return NSMiniControlSize;
+        return NSControlSizeSmall;
+    return NSControlSizeMini;
 }
 
 static LengthSize sizeFromNSControlSize(NSControlSize nsControlSize, const LengthSize& zoomedSize, float zoomFactor, const std::array<IntSize, 3>& sizes)
@@ -155,10 +155,10 @@ static LengthSize sizeFromNSControlSize(NSControlSize nsControlSize, const Lengt
     if (zoomFactor != 1.0f)
         controlSize = IntSize(controlSize.width() * zoomFactor, controlSize.height() * zoomFactor);
     LengthSize result = zoomedSize;
-    if (zoomedSize.width().isIntrinsicOrAuto() && controlSize.width() > 0)
-        result.setWidth(Length(controlSize.width(), Fixed));
-    if (zoomedSize.height().isIntrinsicOrAuto() && controlSize.height() > 0)
-        result.setHeight(Length(controlSize.height(), Fixed));
+    if (zoomedSize.width.isIntrinsicOrAuto() && controlSize.width() > 0)
+        result.width = { controlSize.width(), Fixed };
+    if (zoomedSize.height.isIntrinsicOrAuto() && controlSize.height() > 0)
+        result.height = { controlSize.height(), Fixed };
     return result;
 }
 
@@ -169,13 +169,13 @@ static LengthSize sizeFromFont(const FontCascade& font, const LengthSize& zoomed
 
 static ControlSize controlSizeFromPixelSize(const std::array<IntSize, 3>& sizes, const IntSize& minZoomedSize, float zoomFactor)
 {
-    if (minZoomedSize.width() >= static_cast<int>(sizes[NSRegularControlSize].width() * zoomFactor) &&
-        minZoomedSize.height() >= static_cast<int>(sizes[NSRegularControlSize].height() * zoomFactor))
-        return NSRegularControlSize;
-    if (minZoomedSize.width() >= static_cast<int>(sizes[NSSmallControlSize].width() * zoomFactor) &&
-        minZoomedSize.height() >= static_cast<int>(sizes[NSSmallControlSize].height() * zoomFactor))
-        return NSSmallControlSize;
-    return NSMiniControlSize;
+    if (minZoomedSize.width() >= static_cast<int>(sizes[NSControlSizeRegular].width() * zoomFactor)
+        && minZoomedSize.height() >= static_cast<int>(sizes[NSControlSizeRegular].height() * zoomFactor))
+        return NSControlSizeRegular;
+    if (minZoomedSize.width() >= static_cast<int>(sizes[NSControlSizeSmall].width() * zoomFactor)
+        && minZoomedSize.height() >= static_cast<int>(sizes[NSControlSizeSmall].height() * zoomFactor))
+        return NSControlSizeSmall;
+    return NSControlSizeMini;
 }
 
 static void setControlSize(NSCell* cell, const std::array<IntSize, 3>& sizes, const IntSize& minZoomedSize, float zoomFactor)
@@ -280,7 +280,7 @@ static const int* checkboxMargins(NSControlSize controlSize)
 static LengthSize checkboxSize(const FontCascade& font, const LengthSize& zoomedSize, float zoomFactor)
 {
     // If the width and height are both specified, then we have nothing to do.
-    if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
+    if (!zoomedSize.width.isIntrinsicOrAuto() && !zoomedSize.height.isIntrinsicOrAuto())
         return zoomedSize;
 
     // Use the font size to determine the intrinsic width of the control.
@@ -310,7 +310,7 @@ static const int* radioMargins(NSControlSize controlSize)
 static LengthSize radioSize(const FontCascade& font, const LengthSize& zoomedSize, float zoomFactor)
 {
     // If the width and height are both specified, then we have nothing to do.
-    if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
+    if (!zoomedSize.width.isIntrinsicOrAuto() && !zoomedSize.height.isIntrinsicOrAuto())
         return zoomedSize;
 
     // Use the font size to determine the intrinsic width of the control.
@@ -402,7 +402,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates& controlStat
         inflatedRect.setWidth(inflatedRect.width() / zoomFactor);
         inflatedRect.setHeight(inflatedRect.height() / zoomFactor);
         context.translate(inflatedRect.x(), inflatedRect.y());
-        context.scale(FloatSize(zoomFactor, zoomFactor));
+        context.scale(zoomFactor);
         context.translate(-inflatedRect.x(), -inflatedRect.y());
     }
 
@@ -471,7 +471,7 @@ static void setUpButtonCell(NSButtonCell *cell, ControlPart part, const ControlS
 {
     // Set the control size based off the rectangle we're painting into.
     const std::array<IntSize, 3>& sizes = buttonSizes();
-    if (part == SquareButtonPart || zoomedSize.height() > buttonSizes()[NSRegularControlSize].height() * zoomFactor) {
+    if (part == SquareButtonPart || zoomedSize.height() > buttonSizes()[NSControlSizeRegular].height() * zoomFactor) {
         // Use the square button
         if ([cell bezelStyle] != NSShadowlessSquareBezelStyle)
             [cell setBezelStyle:NSShadowlessSquareBezelStyle];
@@ -527,7 +527,7 @@ static void paintButton(ControlPart part, ControlStates& controlStates, Graphics
             inflatedRect.setWidth(inflatedRect.width() / zoomFactor);
             inflatedRect.setHeight(inflatedRect.height() / zoomFactor);
             context.translate(inflatedRect.x(), inflatedRect.y());
-            context.scale(FloatSize(zoomFactor, zoomFactor));
+            context.scale(zoomFactor);
             context.translate(-inflatedRect.x(), -inflatedRect.y());
         }
     }
@@ -569,10 +569,10 @@ static NSControlSize stepperControlSizeForFont(const FontCascade& font)
 {
     int fontSize = font.pixelSize();
     if (fontSize >= 18)
-        return NSRegularControlSize;
+        return NSControlSizeRegular;
     if (fontSize >= 13)
-        return NSSmallControlSize;
-    return NSMiniControlSize;
+        return NSControlSizeSmall;
+    return NSControlSizeMini;
 }
 
 static void paintStepper(ControlStates& states, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView*)
@@ -585,9 +585,9 @@ static void paintStepper(ControlStates& states, GraphicsContext& context, const 
     drawInfo.state = convertControlStatesToThemeDrawState(kThemeIncDecButton, states);
     drawInfo.adornment = kThemeAdornmentDefault;
     ControlSize controlSize = controlSizeFromPixelSize(stepperSizes(), IntSize(zoomedRect.size()), zoomFactor);
-    if (controlSize == NSSmallControlSize)
+    if (controlSize == NSControlSizeSmall)
         drawInfo.kind = kThemeIncDecButtonSmall;
-    else if (controlSize == NSMiniControlSize)
+    else if (controlSize == NSControlSizeMini)
         drawInfo.kind = kThemeIncDecButtonMini;
     else
         drawInfo.kind = kThemeIncDecButton;
@@ -598,7 +598,7 @@ static void paintStepper(ControlStates& states, GraphicsContext& context, const 
         rect.setWidth(rect.width() / zoomFactor);
         rect.setHeight(rect.height() / zoomFactor);
         context.translate(rect.x(), rect.y());
-        context.scale(FloatSize(zoomFactor, zoomFactor));
+        context.scale(zoomFactor);
         context.translate(-rect.x(), -rect.y());
     }
     CGRect bounds(rect);
@@ -661,7 +661,7 @@ bool ThemeMac::drawCellOrFocusRingWithViewIntoContext(NSCell *cell, GraphicsCont
     bool needsRepaint = false;
     if (useImageBuffer) {
         NSRect imageBufferDrawRect = NSRect(FloatRect(buttonFocusRectOutlineWidth, buttonFocusRectOutlineWidth, rect.width(), rect.height()));
-        auto imageBuffer = ImageBuffer::createCompatibleBuffer(rect.size() + 2 * FloatSize(buttonFocusRectOutlineWidth, buttonFocusRectOutlineWidth), deviceScaleFactor, ColorSpaceSRGB, context, false);
+        auto imageBuffer = ImageBuffer::createCompatibleBuffer(rect.size() + 2 * FloatSize(buttonFocusRectOutlineWidth, buttonFocusRectOutlineWidth), deviceScaleFactor, ColorSpaceSRGB, context);
         if (!imageBuffer)
             return needsRepaint;
         {
@@ -686,7 +686,7 @@ int ThemeMac::baselinePositionAdjustment(ControlPart part) const
     return Theme::baselinePositionAdjustment(part);
 }
 
-Optional<FontCascadeDescription> ThemeMac::controlFont(ControlPart part, const FontCascade& font, float zoomFactor) const
+std::optional<FontCascadeDescription> ThemeMac::controlFont(ControlPart part, const FontCascade& font, float zoomFactor) const
 {
     switch (part) {
         case PushButtonPart: {
@@ -713,9 +713,9 @@ LengthSize ThemeMac::controlSize(ControlPart part, const FontCascade& font, cons
             return radioSize(font, zoomedSize, zoomFactor);
         case PushButtonPart:
             // Height is reset to auto so that specified heights can be ignored.
-            return sizeFromFont(font, LengthSize(zoomedSize.width(), Length()), zoomFactor, buttonSizes());
+            return sizeFromFont(font, { zoomedSize.width, { } }, zoomFactor, buttonSizes());
         case InnerSpinButtonPart:
-            if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
+            if (!zoomedSize.width.isIntrinsicOrAuto() && !zoomedSize.height.isIntrinsicOrAuto())
                 return zoomedSize;
             return sizeFromNSControlSize(stepperControlSizeForFont(font), zoomedSize, zoomFactor, stepperSizes());
         default:
@@ -726,17 +726,17 @@ LengthSize ThemeMac::controlSize(ControlPart part, const FontCascade& font, cons
 LengthSize ThemeMac::minimumControlSize(ControlPart part, const FontCascade& font, float zoomFactor) const
 {
     switch (part) {
-        case SquareButtonPart:
-        case DefaultButtonPart:
-        case ButtonPart:
-            return LengthSize(Length(0, Fixed), Length(static_cast<int>(15 * zoomFactor), Fixed));
-        case InnerSpinButtonPart:{
-            IntSize base = stepperSizes()[NSMiniControlSize];
-            return LengthSize(Length(static_cast<int>(base.width() * zoomFactor), Fixed),
-                              Length(static_cast<int>(base.height() * zoomFactor), Fixed));
-        }
-        default:
-            return Theme::minimumControlSize(part, font, zoomFactor);
+    case SquareButtonPart:
+    case DefaultButtonPart:
+    case ButtonPart:
+        return { { 0, Fixed }, { static_cast<int>(15 * zoomFactor), Fixed } };
+    case InnerSpinButtonPart: {
+        auto& base = stepperSizes()[NSControlSizeMini];
+        return { { static_cast<int>(base.width() * zoomFactor), Fixed },
+            { static_cast<int>(base.height() * zoomFactor), Fixed } };
+    }
+    default:
+        return Theme::minimumControlSize(part, font, zoomFactor);
     }
 }
 
@@ -847,6 +847,15 @@ void ThemeMac::paint(ControlPart part, ControlStates& states, GraphicsContext& c
         default:
             break;
     }
+}
+
+bool ThemeMac::userPrefersReducedMotion() const
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
+#else
+    return false;
+#endif
 }
 
 }

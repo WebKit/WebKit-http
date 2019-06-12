@@ -55,11 +55,6 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
 
     // Protected
 
-    oncontextmenu(event)
-    {
-        this._contextMenuHandler(event);
-    }
-
     resolvedValue()
     {
         console.assert(this._property);
@@ -124,17 +119,17 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
         }
 
         getterElement.title = WebInspector.UIString("Invoke getter");
-        getterElement.addEventListener("click", function(event) {
+        getterElement.addEventListener("click", (event) => {
             event.stopPropagation();
             var lastNonPrototypeObject = this._propertyPath.lastNonPrototypeObject;
             var getterObject = this._property.get;
-            lastNonPrototypeObject.invokeGetter(getterObject, function(error, result, wasThrown) {
+            lastNonPrototypeObject.invokeGetter(getterObject, (error, result, wasThrown) => {
                 this._getterHadError = !!(error || wasThrown);
                 this._getterValue = result;
                 if (this.invokedGetter && typeof this.invokedGetter === "function")
                     this.invokedGetter();
-            }.bind(this));
-        }.bind(this));
+            });
+        });
 
         return getterElement;
     }
@@ -149,6 +144,44 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
             setterElement.classList.add("disabled");
 
         return setterElement;
+    }
+
+    populateContextMenu(contextMenu, event)
+    {
+        if (event.__addedObjectPreviewContextMenuItems)
+            return;
+        if (event.__addedObjectTreeContextMenuItems)
+            return;
+
+        event.__addedObjectTreeContextMenuItems = true;
+
+        if (typeof this.treeOutline.objectTreeElementAddContextMenuItems === "function") {
+            this.treeOutline.objectTreeElementAddContextMenuItems(this, contextMenu);
+            if (!contextMenu.isEmpty())
+                contextMenu.appendSeparator();
+        }
+
+        let resolvedValue = this.resolvedValue();
+        if (!resolvedValue)
+            return;
+
+        if (this._property && this._property.symbol)
+            contextMenu.appendItem(WebInspector.UIString("Log Symbol"), this._logSymbolProperty.bind(this));
+
+        contextMenu.appendItem(WebInspector.UIString("Log Value"), this._logValue.bind(this));
+
+        let propertyPath = this.resolvedValuePropertyPath();
+        if (propertyPath && !propertyPath.isFullPathImpossible()) {
+            contextMenu.appendItem(WebInspector.UIString("Copy Path to Property"), () => {
+                InspectorFrontendHost.copyText(propertyPath.displayPath(WebInspector.PropertyPath.Type.Value));
+            });
+        }
+
+        contextMenu.appendSeparator();
+
+        this._appendMenusItemsForObject(contextMenu, resolvedValue);
+
+        super.populateContextMenu(contextMenu, event);
     }
 
     // Private
@@ -179,54 +212,28 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
         WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(text, resolvedValue, isImpossible);
     }
 
-    _contextMenuHandler(event)
-    {
-        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
-
-        if (typeof this.treeOutline.objectTreeElementAddContextMenuItems === "function") {
-            this.treeOutline.objectTreeElementAddContextMenuItems(this, contextMenu);
-            if (!contextMenu.isEmpty())
-                contextMenu.appendSeparator();
-        }             
-
-        let resolvedValue = this.resolvedValue();
-        if (!resolvedValue)
-            return;
-
-        if (this._property && this._property.symbol)
-            contextMenu.appendItem(WebInspector.UIString("Log Symbol"), this._logSymbolProperty.bind(this));
-
-        contextMenu.appendItem(WebInspector.UIString("Log Value"), this._logValue.bind(this));
-
-        let propertyPath = this.resolvedValuePropertyPath();
-        if (propertyPath && !propertyPath.isFullPathImpossible()) {
-            contextMenu.appendItem(WebInspector.UIString("Copy Path to Property"), () => {
-                InspectorFrontendHost.copyText(propertyPath.displayPath(WebInspector.PropertyPath.Type.Value));
-            });
-        }
-
-        contextMenu.appendSeparator();
-
-        this._appendMenusItemsForObject(contextMenu, resolvedValue);
-    }
-
     _appendMenusItemsForObject(contextMenu, resolvedValue)
     {
         if (resolvedValue.type === "function") {
             // FIXME: We should better handle bound functions.
             if (!isFunctionStringNativeCode(resolvedValue.description)) {
                 contextMenu.appendItem(WebInspector.UIString("Jump to Definition"), function() {
-                    DebuggerAgent.getFunctionDetails(resolvedValue.objectId, function(error, response) {
+                    resolvedValue.target.DebuggerAgent.getFunctionDetails(resolvedValue.objectId, function(error, response) {
                         if (error)
                             return;
 
                         let location = response.location;
-                        let sourceCode = WebInspector.debuggerManager.scriptForIdentifier(location.scriptId);
+                        let sourceCode = WebInspector.debuggerManager.scriptForIdentifier(location.scriptId, resolvedValue.target);
                         if (!sourceCode)
                             return;
 
                         let sourceCodeLocation = sourceCode.createSourceCodeLocation(location.lineNumber, location.columnNumber || 0);
-                        WebInspector.showSourceCodeLocation(sourceCodeLocation);
+
+                        const options = {
+                            ignoreNetworkTab: true,
+                            ignoreSearchTab: true,
+                        };
+                        WebInspector.showSourceCodeLocation(sourceCodeLocation, options);
                     });
                 });
             }

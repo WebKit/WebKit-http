@@ -5,7 +5,7 @@
 # (c) 2000-2002 by Harri Porten <porten@kde.org> and
 #                  David Faure <faure@kde.org>
 # Modified (c) 2004 by Nikolas Zimmermann <wildfox@kde.org>
-# Copyright (C) 2007, 2008, 2009, 2015 Apple Inc. All rights reserved.
+# Copyright (C) 2007, 2008, 2009, 2015-2016 Apple Inc. All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -76,11 +76,12 @@ while (<IN>) {
         $includeBuiltin = 0;
 
         $inside = 0;
-    } elsif (/^(\S+)\s*(\S+)\s*([\w\|]*)\s*(\w*)\s*$/ && $inside) {
+    } elsif (/^(\S+)\s*(\S+)\s*([\w\|]*)\s*(\w*)\s*(\w*)\s*$/ && $inside) {
         my $key = $1;
         my $val = $2;
         my $att = $3;
         my $param = $4;
+        my $intrinsic = $5;
 
         push(@keys, $key);
         push(@attrs, length($att) > 0 ? $att : "0");
@@ -90,13 +91,22 @@ while (<IN>) {
         }
 
         if ($att =~ m/Function/) {
-            push(@values, { "type" => "Function", "function" => $val, "params" => (length($param) ? $param : "") });
+            push(@values, { "type" => "Function", "function" => $val, "params" => (length($param) ? $param : ""), "intrinsic" => (length($intrinsic) ? $intrinsic : "NoIntrinsic") });
             #printf STDERR "WARNING: Number of arguments missing for $key/$val\n" if (length($param) == 0);
         } elsif ($att =~ m/Accessor/) {
             my $get = $val;
             my $put = "nullptr";
             $hasSetter = "true";
             push(@values, { "type" => "Accessor", "get" => $get, "put" => $put });
+        } elsif ($att =~ m/CellProperty/) {
+            my $property = $val;
+            push(@values, { "type" => "CellProperty", "property" => $property });
+        } elsif ($att =~ m/ClassStructure/) {
+            my $property = $val;
+            push(@values, { "type" => "ClassStructure", "property" => $property });
+        } elsif ($att =~ m/PropertyCallback/) {
+            my $cback = $val;
+            push(@values, { "type" => "PropertyCallback", "cback" => $cback });
         } elsif (length($att)) {
             my $get = $val;
             my $put = "0";
@@ -261,30 +271,44 @@ sub output() {
     print "\n";
     print "namespace JSC {\n";
     print "\n";
-    print "static const struct CompactHashIndex ${nameIndex}\[$compactSize\] = {\n";
-    for (my $i = 0; $i < $compactSize; $i++) {
-        my $T = -1;
-        if (defined($table[$i])) { $T = $table[$i]; }
-        my $L = -1;
-        if (defined($links[$i])) { $L = $links[$i]; }
-        print "    { $T, $L },\n";
+    if ($compactSize != 0) {
+        print "static const struct CompactHashIndex ${nameIndex}\[$compactSize\] = {\n";
+        for (my $i = 0; $i < $compactSize; $i++) {
+            my $T = -1;
+            if (defined($table[$i])) { $T = $table[$i]; }
+            my $L = -1;
+            if (defined($links[$i])) { $L = $links[$i]; }
+            print "    { $T, $L },\n";
+        }
+    } else {
+        # MSVC dislikes empty arrays.
+        print "static const struct CompactHashIndex ${nameIndex}\[1\] = {\n";
+        print "    { 0, 0 }\n";
     }
     print "};\n";
     print "\n";
 
     my $packedSize = scalar @keys;
-    print "static const struct HashTableValue ${nameEntries}\[$packedSize\] = {\n";
+    if ($packedSize != 0) {
+        print "static const struct HashTableValue ${nameEntries}\[$packedSize\] = {\n";
+    } else {
+        # MSVC dislikes empty arrays.
+        print "static const struct HashTableValue ${nameEntries}\[1\] = {\n";
+        print "    { nullptr, 0, NoIntrinsic, { 0, 0 } }\n";
+    }
     my $i = 0;
     foreach my $key (@keys) {
         my $firstValue = "";
         my $secondValue = "";
         my $firstCastStr = "";
         my $secondCastStr = "";
+        my $intrinsic = "NoIntrinsic";
 
         if ($values[$i]{"type"} eq "Function") {
             $firstCastStr = "static_cast<NativeFunction>";
             $firstValue = $values[$i]{"function"};
             $secondValue = $values[$i]{"params"};
+            $intrinsic = $values[$i]{"intrinsic"};
         } elsif ($values[$i]{"type"} eq "Accessor") {
             $firstCastStr = "static_cast<NativeFunction>";
             $secondCastStr = "static_cast<NativeFunction>";
@@ -298,17 +322,14 @@ sub output() {
         } elsif ($values[$i]{"type"} eq "Lexer") {
             $firstValue = $values[$i]{"value"};
             $secondValue = "0";
-        }
-
-        my $intrinsic = "NoIntrinsic";
-        $intrinsic = "FromCharCodeIntrinsic" if ($key eq "fromCharCode");
-        if ($name eq "arrayPrototypeTable") {
-            $intrinsic = "ArrayPushIntrinsic" if ($key eq "push");
-            $intrinsic = "ArrayPopIntrinsic" if ($key eq "pop");
-        }
-        if ($name eq "regExpPrototypeTable") {
-            $intrinsic = "RegExpExecIntrinsic" if ($key eq "exec");
-            $intrinsic = "RegExpTestIntrinsic" if ($key eq "test");
+        } elsif ($values[$i]{"type"} eq "CellProperty" || $values[$i]{"type"} eq "ClassStructure") {
+            $values[$i]{"property"} =~ /\A([a-zA-Z0-9_]+)::(.*)\Z/ or die;
+            $firstValue = "OBJECT_OFFSETOF($1, $2)";
+            $secondValue = "0";
+        } elsif ($values[$i]{"type"} eq "PropertyCallback") {
+            $firstCastStr = "static_cast<LazyPropertyCallback>";
+            $firstValue = $values[$i]{"cback"};
+            $secondValue = "0";
         }
 
         if ($values[$i]{"type"} eq "Function" && $firstValue eq "JSBuiltin")  {

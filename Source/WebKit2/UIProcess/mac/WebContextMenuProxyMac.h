@@ -23,14 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebContextMenuProxyMac_h
-#define WebContextMenuProxyMac_h
+#pragma once
 
 #if PLATFORM(MAC)
 
+#include "WKArray.h"
 #include "WebContextMenuProxy.h"
 #include <wtf/RetainPtr.h>
 
+OBJC_CLASS NSMenu;
+OBJC_CLASS NSMenuItem;
 OBJC_CLASS NSPopUpButtonCell;
 OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
@@ -40,14 +42,19 @@ namespace WebKit {
 class ShareableBitmap;
 class UserData;
 class WebContextMenuItemData;
+class WebContextMenuListenerProxy;
 class WebPageProxy;
 
 class WebContextMenuProxyMac : public WebContextMenuProxy {
 public:
-    WebContextMenuProxyMac(NSView*, WebPageProxy&, const ContextMenuContextData&, const UserData&);
+    static auto create(NSView* view, WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
+    {
+        return adoptRef(*new WebContextMenuProxyMac(view, page, context, userData));
+    }
     ~WebContextMenuProxyMac();
 
     void contextMenuItemSelected(const WebContextMenuItemData&);
+    void showContextMenuWithItems(const Vector<WebContextMenuItemData>&) override;
 
 #if ENABLE(SERVICE_CONTROLS)
     void clearServicesMenu();
@@ -57,8 +64,10 @@ public:
     NSWindow *window() const;
 
 private:
-    virtual void show() override;
+    WebContextMenuProxyMac(NSView*, WebPageProxy&, const ContextMenuContextData&, const UserData&);
+    void show() override;
 
+    RefPtr<WebContextMenuListenerProxy> m_contextMenuListener;
     RetainPtr<NSMenuItem> createContextMenuItem(const WebContextMenuItemData&);
     RetainPtr<NSMenu> createContextMenuFromItems(const Vector<WebContextMenuItemData>&);
     void showContextMenu();
@@ -78,5 +87,3 @@ private:
 } // namespace WebKit
 
 #endif // PLATFORM(MAC)
-
-#endif // WebContextMenuProxyMac_h

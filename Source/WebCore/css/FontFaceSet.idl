@@ -29,15 +29,14 @@ enum FontFaceSetLoadStatus {
 };
 
 [
-    ConstructorCallWith=ScriptState&Document,
-    Constructor(sequence<FontFace> initialFaces)
+    ConstructorCallWith=Document,
+    Constructor(sequence<FontFace> initialFaces),
 ] interface FontFaceSet : EventTarget {
-    [Custom] Object entries();
-    // forEach(): Maybe implement this in Javascript on top of keys().
     boolean has(FontFace font);
-    [Custom] Object keys();
-    [Custom] Object values();
-    // @iterator
+
+    // FIXME: We should add support for the setlike declaration.
+    iterable<FontFace>;
+
     readonly attribute long size;
 
     FontFaceSet add(FontFace font);
@@ -48,9 +47,9 @@ enum FontFaceSetLoadStatus {
     attribute EventHandler onloadingdone;
     attribute EventHandler onloadingerror;
 
-    [RaisesException] Promise load(DOMString font, optional DOMString text);
-    [RaisesException] boolean check(DOMString font, optional DOMString text);
+    Promise<sequence<FontFace>> load(DOMString font, optional DOMString text = " ");
+    [MayThrowException] boolean check(DOMString font, optional DOMString text = " ");
 
-    [Custom] readonly attribute Promise ready;
+    [CustomGetter, CachedAttribute] readonly attribute Promise<FontFaceSet> ready;
     readonly attribute FontFaceSetLoadStatus status;
 };

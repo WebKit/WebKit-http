@@ -27,15 +27,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptDebugListener_h
-#define ScriptDebugListener_h
+#pragma once
 
 #include "debugger/Debugger.h"
+#include "parser/SourceProvider.h"
 #include <wtf/text/WTFString.h>
-
-namespace Deprecated {
-class ScriptValue;
-}
 
 namespace Inspector {
 
@@ -48,6 +44,7 @@ public:
         String source;
         String sourceURL;
         String sourceMappingURL;
+        RefPtr<JSC::SourceProvider> sourceProvider;
         int startLine {0};
         int startColumn {0};
         int endLine {0};
@@ -59,14 +56,12 @@ public:
 
     virtual void didParseSource(JSC::SourceID, const Script&) = 0;
     virtual void failedToParseSource(const String& url, const String& data, int firstLine, int errorLine, const String& errorMessage) = 0;
-    virtual void didPause(JSC::ExecState*, const Deprecated::ScriptValue& callFrames, const Deprecated::ScriptValue& exception) = 0;
+    virtual void didPause(JSC::ExecState&, JSC::JSValue callFrames, JSC::JSValue exception) = 0;
     virtual void didContinue() = 0;
 
-    virtual void breakpointActionLog(JSC::ExecState*, const String&) = 0;
+    virtual void breakpointActionLog(JSC::ExecState&, const String&) = 0;
     virtual void breakpointActionSound(int breakpointActionIdentifier) = 0;
-    virtual void breakpointActionProbe(JSC::ExecState*, const ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, const Deprecated::ScriptValue& result) = 0;
+    virtual void breakpointActionProbe(JSC::ExecState&, const ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, JSC::JSValue result) = 0;
 };
 
 } // namespace Inspector
-
-#endif // ScriptDebugListener_h

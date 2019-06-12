@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008, 2011 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2007-2008, 2011, 2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2003 Peter Kelly (pmk@post.com)
  *  Copyright (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
@@ -26,20 +26,14 @@
 
 #include "ArrayPrototype.h"
 #include "ButterflyInlines.h"
-#include "CopiedSpaceInlines.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
 #include "GetterSetter.h"
 #include "JSArray.h"
 #include "JSFunction.h"
 #include "Lookup.h"
+#include "ProxyObject.h"
 #include "JSCInlines.h"
-
-namespace JSC {
-
-static EncodedJSValue JSC_HOST_CALL arrayConstructorIsArray(ExecState*);
-
-}
 
 #include "ArrayConstructor.lut.h"
 
@@ -47,11 +41,10 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ArrayConstructor);
 
-const ClassInfo ArrayConstructor::s_info = { "Function", &InternalFunction::s_info, &arrayConstructorTable, CREATE_METHOD_TABLE(ArrayConstructor) };
+const ClassInfo ArrayConstructor::s_info = { "Function", &InternalFunction::s_info, &arrayConstructorTable, nullptr, CREATE_METHOD_TABLE(ArrayConstructor) };
 
 /* Source for ArrayConstructor.lut.h
 @begin arrayConstructorTable
-  isArray   arrayConstructorIsArray     DontEnum|Function 1
   of        JSBuiltin                   DontEnum|Function 0
   from      JSBuiltin                   DontEnum|Function 0
 @end
@@ -62,35 +55,36 @@ ArrayConstructor::ArrayConstructor(VM& vm, Structure* structure)
 {
 }
 
-void ArrayConstructor::finishCreation(VM& vm, ArrayPrototype* arrayPrototype, GetterSetter* speciesSymbol)
+void ArrayConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject, ArrayPrototype* arrayPrototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, arrayPrototype->classInfo()->className);
+    Base::finishCreation(vm, arrayPrototype->classInfo(vm)->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, arrayPrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum | DontDelete);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum);
     putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
-}
-
-bool ArrayConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
-{
-    return getStaticFunctionSlot<InternalFunction>(exec, arrayConstructorTable, jsCast<ArrayConstructor*>(object), propertyName, slot);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->isArray, arrayConstructorIsArrayCodeGenerator, DontEnum);
 }
 
 // ------------------------------ Functions ---------------------------
 
-JSObject* constructArrayWithSizeQuirk(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, JSValue length, JSValue newTarget)
+JSValue constructArrayWithSizeQuirk(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, JSValue length, JSValue newTarget)
 {
-    if (!length.isNumber())
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (!length.isNumber()) {
+        scope.release();
         return constructArrayNegativeIndexed(exec, profile, globalObject, &length, 1, newTarget);
+    }
     
     uint32_t n = length.toUInt32(exec);
     if (n != length.toNumber(exec))
-        return exec->vm().throwException(exec, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer.")));
+        return throwException(exec, scope, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer.")));
+    scope.release();
     return constructEmptyArray(exec, profile, globalObject, n, newTarget);
 }
 
-static inline JSObject* constructArrayWithSizeQuirk(ExecState* exec, const ArgList& args, JSValue newTarget)
+static inline JSValue constructArrayWithSizeQuirk(ExecState* exec, const ArgList& args, JSValue newTarget)
 {
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
 
     // a single numeric argument denotes the array size (!)
     if (args.size() == 1)
@@ -109,7 +103,7 @@ static EncodedJSValue JSC_HOST_CALL constructWithArrayConstructor(ExecState* exe
 ConstructType ArrayConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructWithArrayConstructor;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 static EncodedJSValue JSC_HOST_CALL callArrayConstructor(ExecState* exec)
@@ -122,12 +116,50 @@ CallType ArrayConstructor::getCallData(JSCell*, CallData& callData)
 {
     // equivalent to 'new Array(....)'
     callData.native.function = callArrayConstructor;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
-EncodedJSValue JSC_HOST_CALL arrayConstructorIsArray(ExecState* exec)
+static ALWAYS_INLINE bool isArraySlowInline(ExecState* exec, ProxyObject* proxy)
 {
-    return JSValue::encode(jsBoolean(exec->argument(0).inherits(JSArray::info())));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    while (true) {
+        if (proxy->isRevoked()) {
+            throwTypeError(exec, scope, ASCIILiteral("Array.isArray cannot be called on a Proxy that has been revoked"));
+            return false;
+        }
+        JSObject* argument = proxy->target();
+
+        if (argument->type() == ArrayType ||  argument->type() == DerivedArrayType)
+            return true;
+
+        if (argument->type() != ProxyObjectType)
+            return false;
+
+        proxy = jsCast<ProxyObject*>(argument);
+    }
+
+    ASSERT_NOT_REACHED();
+}
+
+bool isArraySlow(ExecState* exec, ProxyObject* argument)
+{
+    return isArraySlowInline(exec, argument);
+}
+
+// ES6 7.2.2
+// https://tc39.github.io/ecma262/#sec-isarray
+EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArraySlow(ExecState* exec)
+{
+    ASSERT(jsDynamicCast<ProxyObject*>(exec->vm(), exec->argument(0)));
+    return JSValue::encode(jsBoolean(isArraySlowInline(exec, jsCast<ProxyObject*>(exec->uncheckedArgument(0)))));
+}
+
+EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArrayConstructor(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    return JSValue::encode(jsBoolean(jsDynamicCast<ArrayConstructor*>(vm, exec->uncheckedArgument(0))));
 }
 
 } // namespace JSC

@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EXTsRGB_h
-#define EXTsRGB_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class EXTsRGB final : public WebGLExtension {
 public:
-    explicit EXTsRGB(WebGLRenderingContextBase*);
+    explicit EXTsRGB(WebGLRenderingContextBase&);
     virtual ~EXTsRGB();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // EXTsRGB_h

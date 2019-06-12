@@ -20,34 +20,36 @@
  *
  */
 
-#ifndef RenderFrame_h
-#define RenderFrame_h
+#pragma once
 
+#include "HTMLFrameElement.h"
 #include "RenderFrameBase.h"
-#include "RenderFrameSet.h"
 
 namespace WebCore {
 
-class HTMLFrameElement;
+struct FrameEdgeInfo;
 
 class RenderFrame final : public RenderFrameBase {
 public:
-    RenderFrame(HTMLFrameElement&, Ref<RenderStyle>&&);
+    RenderFrame(HTMLFrameElement&, RenderStyle&&);
 
     HTMLFrameElement& frameElement() const;
     FrameEdgeInfo edgeInfo() const;
 
+    void updateFromElement() final;
+
 private:
     void frameOwnerElement() const = delete;
 
-    virtual const char* renderName() const override { return "RenderFrame"; }
-    virtual bool isFrame() const override { return true; }
-
-    virtual void updateFromElement() override;
+    const char* renderName() const final { return "RenderFrame"; }
+    bool isFrame() const final { return true; }
 };
+
+inline RenderFrame* HTMLFrameElement::renderer() const
+{
+    return downcast<RenderFrame>(HTMLFrameElementBase::renderer());
+}
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderFrame, isFrame())
-
-#endif // RenderFrame_h

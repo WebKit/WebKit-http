@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFitToViewBox_h
-#define SVGFitToViewBox_h
+#pragma once
 
 #include "FloatRect.h"
 #include "QualifiedName.h"
@@ -34,7 +33,7 @@ class Document;
 
 class SVGFitToViewBox {
 public:
-    static AffineTransform viewBoxToViewTransform(const FloatRect& viewBoxRect, const SVGPreserveAspectRatio&, float viewWidth, float viewHeight);
+    static AffineTransform viewBoxToViewTransform(const FloatRect& viewBoxRect, const SVGPreserveAspectRatioValue&, float viewWidth, float viewHeight);
 
     static bool isKnownAttribute(const QualifiedName&);
     static void addSupportedAttributes(HashSet<QualifiedName>&);
@@ -51,7 +50,7 @@ public:
         }
 
         if (name == SVGNames::preserveAspectRatioAttr) {
-            SVGPreserveAspectRatio preserveAspectRatio;
+            SVGPreserveAspectRatioValue preserveAspectRatio;
             preserveAspectRatio.parse(value);
             target->setPreserveAspectRatioBaseValue(preserveAspectRatio);
             return true;
@@ -67,5 +66,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SVGFitToViewBox_h

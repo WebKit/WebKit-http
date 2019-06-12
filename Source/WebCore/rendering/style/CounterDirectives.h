@@ -22,13 +22,11 @@
  *
  */
 
-#ifndef CounterDirectives_h
-#define CounterDirectives_h
+#pragma once
 
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/MathExtras.h>
-#include <wtf/RefPtr.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -108,5 +106,3 @@ typedef HashMap<AtomicString, CounterDirectives> CounterDirectiveMap;
 std::unique_ptr<CounterDirectiveMap> clone(const CounterDirectiveMap&);
 
 } // namespace WebCore
-
-#endif // CounterDirectives_h

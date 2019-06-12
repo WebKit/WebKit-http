@@ -30,7 +30,6 @@
 import logging
 
 from webkitpy.common.wavediff import WaveDiff
-from webkitpy.layout_tests.models import test_failures
 
 
 _log = logging.getLogger(__name__)
@@ -48,6 +47,7 @@ def write_test_result(filesystem, port, results_directory, test_name, driver_out
     for failure in failures:
         failure.write_failure(writer, driver_output, expected_driver_output, port)
 
+
 class TestResultWriter(object):
     """A class which handles all writing operations to the result directory."""
 
@@ -61,6 +61,16 @@ class TestResultWriter(object):
     FILENAME_SUFFIX_PRETTY_PATCH = "-pretty-diff.html"
     FILENAME_SUFFIX_IMAGE_DIFF = "-diff.png"
     FILENAME_SUFFIX_IMAGE_DIFFS_HTML = "-diffs.html"
+
+    @staticmethod
+    def expected_filename(test_name, filesystem, port_name=None, suffix='txt'):
+        if not port_name:
+            return filesystem.splitext(test_name)[0] + TestResultWriter.FILENAME_SUFFIX_EXPECTED + '.' + suffix
+        return filesystem.join("platform", port_name, filesystem.splitext(test_name)[0] + TestResultWriter.FILENAME_SUFFIX_EXPECTED + '.' + suffix)
+
+    @staticmethod
+    def actual_filename(test_name, filesystem, suffix='txt'):
+        return filesystem.splitext(test_name)[0] + TestResultWriter.FILENAME_SUFFIX_ACTUAL + '.' + suffix
 
     def __init__(self, filesystem, port, root_output_dir, test_name):
         self._filesystem = filesystem
@@ -88,6 +98,11 @@ class TestResultWriter(object):
         """
         fs = self._filesystem
         output_filename = fs.join(self._root_output_dir, self._test_name)
+
+        # Temporary fix, also in LayoutTests/fast/harness/results.html, line 275.
+        # FIXME: Refactor to avoid confusing reference to both test and process names.
+        if len(fs.splitext(output_filename)[1]) - 1 > 5:
+            return output_filename + modifier
         return fs.splitext(output_filename)[0] + modifier
 
     def _write_binary_file(self, path, contents):
@@ -174,7 +189,7 @@ class TestResultWriter(object):
         self._write_binary_file(diff_filename, image_diff)
 
         base_dir = self._port.path_from_webkit_base('LayoutTests', 'fast', 'harness')
-        
+
         image_diff_template = self._filesystem.join(base_dir, 'image-diff-template.html');
         image_diff_file = ""
         if self._filesystem.exists(image_diff_template):

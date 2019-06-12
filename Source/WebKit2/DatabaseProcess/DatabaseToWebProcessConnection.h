@@ -27,9 +27,9 @@
 #define DatabaseToWebProcessConnection_h
 
 #include "Connection.h"
-#include "DatabaseProcessIDBConnection.h"
 #include "MessageSender.h"
 
+#include <WebCore/SessionID.h>
 #include <wtf/HashMap.h>
 
 #if ENABLE(DATABASE_PROCESS)
@@ -43,40 +43,32 @@ public:
     static Ref<DatabaseToWebProcessConnection> create(IPC::Connection::Identifier);
     ~DatabaseToWebProcessConnection();
 
-    IPC::Connection* connection() const { return m_connection.get(); }
+    IPC::Connection& connection() { return m_connection.get(); }
 
 private:
     DatabaseToWebProcessConnection(IPC::Connection::Identifier);
 
     // IPC::Connection::Client
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
-    virtual void didClose(IPC::Connection&) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Database; }
-    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Web; }
-    void didReceiveDatabaseToWebProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
+    void didClose(IPC::Connection&) override;
+    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+    void didReceiveDatabaseToWebProcessConnectionMessage(IPC::Connection&, IPC::Decoder&);
+    void didReceiveSyncDatabaseToWebProcessConnectionMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
     // IPC::MessageSender
-    virtual IPC::Connection* messageSenderConnection() override { return m_connection.get(); }
-    virtual uint64_t messageSenderDestinationID() override { return 0; }
+    IPC::Connection* messageSenderConnection() override { return m_connection.ptr(); }
+    uint64_t messageSenderDestinationID() override { return 0; }
 
 #if ENABLE(INDEXED_DATABASE)
-    // Messages handlers (Legacy IDB)
-    void establishIDBConnection(uint64_t serverConnectionIdentifier);
-    void removeDatabaseProcessIDBConnection(uint64_t serverConnectionIdentifier);
-
-    typedef HashMap<uint64_t, RefPtr<DatabaseProcessIDBConnection>> IDBConnectionMap;
-    IDBConnectionMap m_idbConnections;
-
     // Messages handlers (Modern IDB)
-    void establishIDBConnectionToServer(uint64_t serverConnectionIdentifier);
+    void establishIDBConnectionToServer(WebCore::SessionID, uint64_t& serverConnectionIdentifier);
     void removeIDBConnectionToServer(uint64_t serverConnectionIdentifier);
 
     HashMap<uint64_t, RefPtr<WebIDBConnectionToClient>> m_webIDBConnections;
 #endif // ENABLE(INDEXED_DATABASE)
 
-    RefPtr<IPC::Connection> m_connection;
+    Ref<IPC::Connection> m_connection;
 };
 
 } // namespace WebKit

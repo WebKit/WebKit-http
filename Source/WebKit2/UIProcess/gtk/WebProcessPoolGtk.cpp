@@ -30,12 +30,10 @@
 
 #include "APIProcessPoolConfiguration.h"
 #include "Logging.h"
-#include "NetworkProcessMessages.h"
 #include "WebCookieManagerProxy.h"
-#include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
-#include "WebSoupCustomProtocolRequestManager.h"
+#include <JavaScriptCore/RemoteInspectorServer.h>
 #include <WebCore/FileSystem.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
@@ -44,40 +42,37 @@
 
 namespace WebKit {
 
-static void initInspectorServer()
+#if ENABLE(REMOTE_INSPECTOR)
+static bool initializeRemoteInspectorServer(const char* address)
 {
-#if ENABLE(INSPECTOR_SERVER)
-    static bool initialized = false;
-    if (initialized)
-        return;
+    if (Inspector::RemoteInspectorServer::singleton().isRunning())
+        return true;
 
-    initialized = true;
-    String serverAddress(g_getenv("WEBKIT_INSPECTOR_SERVER"));
+    if (!address[0])
+        return false;
 
-    if (!serverAddress.isNull()) {
-        String bindAddress = "127.0.0.1";
-        unsigned short port = 2999;
+    GUniquePtr<char> inspectorAddress(g_strdup(address));
+    char* portPtr = g_strrstr(inspectorAddress.get(), ":");
+    if (!portPtr)
+        return false;
 
-        Vector<String> result;
-        serverAddress.split(':', result);
+    *portPtr = '\0';
+    portPtr++;
+    guint64 port = g_ascii_strtoull(portPtr, nullptr, 10);
+    if (!port)
+        return false;
 
-        if (result.size() == 2) {
-            bindAddress = result[0];
-            bool ok = false;
-            port = result[1].toInt(&ok);
-            if (!ok) {
-                port = 2999;
-                LOG_ERROR("Couldn't parse the port. Use 2999 instead.");
-            }
-        } else
-            LOG_ERROR("Couldn't parse %s, wrong format? Use 127.0.0.1:2999 instead.", serverAddress.utf8().data());
+    return Inspector::RemoteInspectorServer::singleton().start(inspectorAddress.get(), port);
+}
+#endif
 
-        if (!WebInspectorServer::singleton().listen(bindAddress, port))
-            LOG_ERROR("Couldn't start listening on: IP address=%s, port=%d.", bindAddress.utf8().data(), port);
-        return;
+void WebProcessPool::platformInitialize()
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    if (const char* address = g_getenv("WEBKIT_INSPECTOR_SERVER")) {
+        if (!initializeRemoteInspectorServer(address))
+            g_unsetenv("WEBKIT_INSPECTOR_SERVER");
     }
-
-    LOG(InspectorServer, "To start inspector server set WEBKIT_INSPECTOR_SERVER to 127.0.0.1:2999 for example.");
 #endif
 }
 
@@ -86,16 +81,15 @@ WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
     return API::WebsiteDataStore::defaultApplicationCacheDirectory();
 }
 
+WTF::String WebProcessPool::legacyPlatformDefaultMediaCacheDirectory()
+{
+    return API::WebsiteDataStore::defaultMediaCacheDirectory();
+}
+
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
-    initInspectorServer();
-
-    if (!parameters.urlSchemesRegisteredAsLocal.contains("resource")) {
-        WebCore::SchemeRegistry::registerURLSchemeAsLocal("resource");
-        parameters.urlSchemesRegisteredAsLocal.append("resource");
-    }
-
     parameters.memoryCacheDisabled = m_memoryCacheDisabled || cacheModel() == CacheModelDocumentViewer;
+    parameters.proxySettings = m_networkProxySettings;
 }
 
 void WebProcessPool::platformInvalidateContext()
@@ -115,7 +109,7 @@ String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
     GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "icondatabase", nullptr));
-    return WebCore::filenameToString(databaseDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(databaseDirectory.get());
 }
 
 String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
@@ -133,11 +127,14 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
     return API::WebsiteDataStore::defaultNetworkCacheDirectory();
 }
 
-void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
+String WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory()
 {
-    m_ignoreTLSErrors = ignoreTLSErrors;
-    if (networkProcess())
-        networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
+    GUniquePtr<gchar> javaScriptCoreConfigDirectory(g_build_filename(g_get_user_data_dir(), "webkitgtk", "JavaScriptCoreDebug", nullptr));
+    return WebCore::stringFromFileSystemRepresentation(javaScriptCoreConfigDirectory.get());
+}
+
+void WebProcessPool::platformResolvePathsForSandboxExtensions()
+{
 }
 
 } // namespace WebKit

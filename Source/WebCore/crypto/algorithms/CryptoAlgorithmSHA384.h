@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmSHA384_h
-#define CryptoAlgorithmSHA384_h
+#pragma once
 
 #include "CryptoAlgorithm.h"
 
@@ -34,21 +33,17 @@ namespace WebCore {
 
 class CryptoAlgorithmSHA384 final : public CryptoAlgorithm {
 public:
-    static const char* const s_name;
-    static const CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::SHA_384;
-
-    static std::unique_ptr<CryptoAlgorithm> create();
-
-    virtual CryptoAlgorithmIdentifier identifier() const override;
-
-    virtual void digest(const CryptoAlgorithmParameters&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback, ExceptionCode&) override;
+    static constexpr const char* s_name = "SHA-384";
+    static constexpr CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::SHA_384;
+    static Ref<CryptoAlgorithm> create();
 
 private:
-    CryptoAlgorithmSHA384();
-    virtual ~CryptoAlgorithmSHA384();
+    CryptoAlgorithmSHA384() = default;
+    CryptoAlgorithmIdentifier identifier() const final;
+    void digest(Vector<uint8_t>&&, VectorCallback&&, ExceptionCallback&&, ScriptExecutionContext&, WorkQueue&) final;
+    ExceptionOr<void> digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback) final;
 };
 
-}
+} // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmSHA384_h

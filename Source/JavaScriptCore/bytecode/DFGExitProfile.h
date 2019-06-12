@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGExitProfile_h
-#define DFGExitProfile_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "ConcurrentJITLock.h"
+#include "ConcurrentJSLock.h"
 #include "ExitKind.h"
 #include "ExitingJITType.h"
 #include <wtf/HashSet.h>
@@ -116,6 +115,8 @@ public:
     {
         return m_kind == ExitKindUnset && m_bytecodeOffset;
     }
+    
+    void dump(PrintStream& out) const;
 
 private:
     unsigned m_bytecodeOffset;
@@ -159,7 +160,7 @@ public:
     // be called a fixed number of times per recompilation. Recompilation is
     // rare to begin with, and implies doing O(n) operations on the CodeBlock
     // anyway.
-    bool add(const ConcurrentJITLocker&, const FrequentExitSite&);
+    bool add(const ConcurrentJSLocker&, CodeBlock* owner, const FrequentExitSite&);
     
     // Get the frequent exit sites for a bytecode index. This is O(n), and is
     // meant to only be used from debugging/profiling code.
@@ -169,12 +170,12 @@ public:
     // in the compiler. It should be strictly cheaper than building a
     // QueryableExitProfile, if you really expect this to be called infrequently
     // and you believe that there are few exit sites.
-    bool hasExitSite(const ConcurrentJITLocker&, const FrequentExitSite&) const;
-    bool hasExitSite(const ConcurrentJITLocker& locker, ExitKind kind) const
+    bool hasExitSite(const ConcurrentJSLocker&, const FrequentExitSite&) const;
+    bool hasExitSite(const ConcurrentJSLocker& locker, ExitKind kind) const
     {
         return hasExitSite(locker, FrequentExitSite(kind));
     }
-    bool hasExitSite(const ConcurrentJITLocker& locker, unsigned bytecodeIndex, ExitKind kind) const
+    bool hasExitSite(const ConcurrentJSLocker& locker, unsigned bytecodeIndex, ExitKind kind) const
     {
         return hasExitSite(locker, FrequentExitSite(bytecodeIndex, kind));
     }
@@ -190,7 +191,7 @@ public:
     QueryableExitProfile();
     ~QueryableExitProfile();
     
-    void initialize(const ConcurrentJITLocker&, const ExitProfile&);
+    void initialize(const ConcurrentJSLocker&, const ExitProfile&);
 
     bool hasExitSite(const FrequentExitSite& site) const
     {
@@ -217,5 +218,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGExitProfile_h

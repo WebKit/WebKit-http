@@ -26,8 +26,12 @@
 #ifndef PlatformUtilities_h
 #define PlatformUtilities_h
 
+#ifndef BUILDING_JSCONLY__
 #include <WebKit/WKNativeEvent.h>
 #include <WebKit/WKRetainPtr.h>
+#endif
+
+#include "Utilities.h"
 #include <string>
 
 #if USE(FOUNDATION)

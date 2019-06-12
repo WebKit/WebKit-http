@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SQLiteDatabase_h
-#define SQLiteDatabase_h
+#pragma once
 
 #include <functional>
 #include <sqlite3.h>
@@ -68,7 +67,10 @@ public:
     int runIncrementalVacuumCommand();
     
     bool transactionInProgress() const { return m_transactionInProgress; }
-    
+
+    // Aborts the current database operation. This is thread safe.
+    void interrupt();
+
     int64_t lastInsertRowID();
     int lastChanges();
 
@@ -98,14 +100,15 @@ public:
     WEBCORE_EXPORT int lastError();
     WEBCORE_EXPORT const char* lastErrorMsg();
     
-    sqlite3* sqlite3Handle() const {
+    sqlite3* sqlite3Handle() const
+    {
 #if !PLATFORM(IOS)
         ASSERT(m_sharable || currentThread() == m_openingThread || !m_db);
 #endif
         return m_db;
     }
     
-    void setAuthorizer(PassRefPtr<DatabaseAuthorizer>);
+    void setAuthorizer(DatabaseAuthorizer&);
 
     Lock& databaseMutex() { return m_lockingMutex; }
     bool isAutoCommitOn() const;
@@ -122,7 +125,7 @@ public:
     enum AutoVacuumPragma { AutoVacuumNone = 0, AutoVacuumFull = 1, AutoVacuumIncremental = 2 };
     bool turnOnIncrementalAutoVacuum();
 
-    WEBCORE_EXPORT void setCollationFunction(const String& collationName, std::function<int(int, const void*, int, const void*)>);
+    WEBCORE_EXPORT void setCollationFunction(const String& collationName, WTF::Function<int(int, const void*, int, const void*)>&&);
     void removeCollationFunction(const String& collationName);
 
     // Set this flag to allow access from multiple threads.  Not all multi-threaded accesses are safe!
@@ -142,26 +145,24 @@ private:
 
     void overrideUnauthorizedFunctions();
 
-    sqlite3* m_db;
-    int m_pageSize;
+    sqlite3* m_db { nullptr };
+    int m_pageSize { -1 };
     
-    bool m_transactionInProgress;
-    bool m_sharable;
+    bool m_transactionInProgress { false };
+    bool m_sharable { false };
     
     Lock m_authorizerLock;
     RefPtr<DatabaseAuthorizer> m_authorizer;
 
     Lock m_lockingMutex;
-    ThreadIdentifier m_openingThread;
+    ThreadIdentifier m_openingThread { 0 };
 
     Lock m_databaseClosingMutex;
 
-    int m_openError;
+    int m_openError { SQLITE_ERROR };
     CString m_openErrorMessage;
 
-    int m_lastChangesCount;
+    int m_lastChangesCount { 0 };
 };
 
 } // namespace WebCore
-
-#endif

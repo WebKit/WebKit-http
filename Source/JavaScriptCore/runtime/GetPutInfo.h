@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GetPutInfo_h
-#define GetPutInfo_h
+#pragma once
 
 #include <wtf/text/UniquedStringImpl.h>
 
@@ -65,10 +64,11 @@ enum ResolveType {
     Dynamic
 };
 
-enum InitializationMode {
-    Initialization,   // "let x = 20;"
-    NotInitialization // "x = 20;"
-}; 
+enum class InitializationMode : unsigned {
+    Initialization,      // "let x = 20;"
+    ConstInitialization, // "const x = 20;"
+    NotInitialization    // "x = 20;"
+};
 
 ALWAYS_INLINE const char* resolveModeName(ResolveMode resolveMode)
 {
@@ -103,11 +103,24 @@ ALWAYS_INLINE const char* initializationModeName(InitializationMode initializati
 {
     static const char* const names[] = {
         "Initialization",
+        "ConstInitialization",
         "NotInitialization"
     };
-    return names[initializationMode];
+    return names[static_cast<unsigned>(initializationMode)];
 }
 
+ALWAYS_INLINE bool isInitialization(InitializationMode initializationMode)
+{
+    switch (initializationMode) {
+    case InitializationMode::Initialization:
+    case InitializationMode::ConstInitialization:
+        return true;
+    case InitializationMode::NotInitialization:
+        return false;
+    }
+    ASSERT_NOT_REACHED();
+    return false;
+}
 
 ALWAYS_INLINE ResolveType makeType(ResolveType type, bool needsVarInjectionChecks)
 {
@@ -198,7 +211,7 @@ public:
     static_assert((modeBits & initializationBits & typeBits) == 0x0, "There should be no intersection between ResolveMode ResolveType and InitializationMode");
 
     GetPutInfo(ResolveMode resolveMode, ResolveType resolveType, InitializationMode initializationMode)
-        : m_operand((resolveMode << modeShift) | (initializationMode << initializationShift) | resolveType)
+        : m_operand((resolveMode << modeShift) | (static_cast<unsigned>(initializationMode) << initializationShift) | resolveType)
     {
     }
 
@@ -219,5 +232,3 @@ private:
 enum GetOrPut { Get, Put };
 
 } // namespace JSC
-
-#endif // GetPutInfo_h

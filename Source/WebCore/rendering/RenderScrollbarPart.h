@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RenderScrollbarPart_h
-#define RenderScrollbarPart_h
+#pragma once
 
 #include "RenderBlock.h"
 #include "ScrollTypes.h"
@@ -35,33 +34,33 @@ class RenderScrollbar;
 
 class RenderScrollbarPart final : public RenderBlock {
 public:
-    RenderScrollbarPart(Document&, Ref<RenderStyle>&&, RenderScrollbar* = nullptr, ScrollbarPart = NoPart);
+    RenderScrollbarPart(Document&, RenderStyle&&, RenderScrollbar* = nullptr, ScrollbarPart = NoPart);
     
     virtual ~RenderScrollbarPart();
 
-    virtual const char* renderName() const override { return "RenderScrollbarPart"; }
+    const char* renderName() const override { return "RenderScrollbarPart"; }
     
-    virtual bool requiresLayer() const override { return false; }
+    bool requiresLayer() const override { return false; }
 
-    virtual void layout() override;
+    void layout() override;
     
     void paintIntoRect(GraphicsContext&, const LayoutPoint&, const LayoutRect&);
 
     // Scrollbar parts needs to be rendered at device pixel boundaries.
-    virtual LayoutUnit marginTop() const override { ASSERT(isIntegerValue(m_marginBox.top())); return m_marginBox.top(); }
-    virtual LayoutUnit marginBottom() const override { ASSERT(isIntegerValue(m_marginBox.bottom())); return m_marginBox.bottom(); }
-    virtual LayoutUnit marginLeft() const override { ASSERT(isIntegerValue(m_marginBox.left())); return m_marginBox.left(); }
-    virtual LayoutUnit marginRight() const override { ASSERT(isIntegerValue(m_marginBox.right())); return m_marginBox.right(); }
+    LayoutUnit marginTop() const override { ASSERT(isIntegerValue(m_marginBox.top())); return m_marginBox.top(); }
+    LayoutUnit marginBottom() const override { ASSERT(isIntegerValue(m_marginBox.bottom())); return m_marginBox.bottom(); }
+    LayoutUnit marginLeft() const override { ASSERT(isIntegerValue(m_marginBox.left())); return m_marginBox.left(); }
+    LayoutUnit marginRight() const override { ASSERT(isIntegerValue(m_marginBox.right())); return m_marginBox.right(); }
 
     RenderBox* rendererOwningScrollbar() const;
 
 protected:
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void imageChanged(WrappedImagePtr, const IntRect* = nullptr) override;
 
 private:
-    virtual bool isRenderScrollbarPart() const override { return true; }
-    virtual void computePreferredLogicalWidths() override;
+    bool isRenderScrollbarPart() const override { return true; }
+    void computePreferredLogicalWidths() override;
 
     void layoutHorizontalPart();
     void layoutVerticalPart();
@@ -76,5 +75,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderScrollbarPart, isRenderScrollbarPart())
-
-#endif // RenderScrollbarPart_h

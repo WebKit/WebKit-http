@@ -33,13 +33,17 @@
 #if ENABLE(GRAPHICS_CONTEXT_3D)
 #include "GraphicsContext3D.h"
 #include "NotImplemented.h"
+
+#if USE(LIBEPOXY)
+#include <epoxy/egl.h>
+#else
 #include <EGL/egl.h>
-#include <wtf/Vector.h>
+#endif
 
 namespace WebCore {
 
-Extensions3DOpenGLES::Extensions3DOpenGLES(GraphicsContext3D* context)
-    : Extensions3DOpenGLCommon(context)
+Extensions3DOpenGLES::Extensions3DOpenGLES(GraphicsContext3D* context, bool useIndexedGetString)
+    : Extensions3DOpenGLCommon(context, useIndexedGetString)
     , m_contextResetStatus(GL_NO_ERROR)
     , m_supportsOESvertexArrayObject(false)
     , m_supportsIMGMultisampledRenderToTexture(false)

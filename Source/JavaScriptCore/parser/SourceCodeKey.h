@@ -24,28 +24,65 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SourceCodeKey_h
-#define SourceCodeKey_h
+#pragma once
 
 #include "ParserModes.h"
-#include "SourceCode.h"
+#include "UnlinkedSourceCode.h"
 #include <wtf/HashTraits.h>
 
 namespace JSC {
 
+enum class SourceCodeType { EvalType, ProgramType, FunctionType, ModuleType };
+enum class TypeProfilerEnabled { No, Yes };
+enum class ControlFlowProfilerEnabled { No, Yes };
+
+class SourceCodeFlags {
+public:
+    SourceCodeFlags() = default;
+
+    SourceCodeFlags(
+        SourceCodeType codeType, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, 
+        DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext,
+        DebuggerMode debuggerMode, TypeProfilerEnabled typeProfilerEnabled, ControlFlowProfilerEnabled controlFlowProfilerEnabled)
+        : m_flags(
+            (static_cast<unsigned>(debuggerMode) << 8) |
+            (static_cast<unsigned>(typeProfilerEnabled) << 7) |
+            (static_cast<unsigned>(controlFlowProfilerEnabled) << 6) |
+            (static_cast<unsigned>(scriptMode) << 5) |
+            (static_cast<unsigned>(isArrowFunctionContext) << 4) |
+            (static_cast<unsigned>(evalContextType) << 3) |
+            (static_cast<unsigned>(derivedContextType) << 2) |
+            (static_cast<unsigned>(codeType) << 1) |
+            (static_cast<unsigned>(strictMode))
+        )
+    {
+    }
+
+    inline bool operator==(const SourceCodeFlags& rhs) const
+    {
+        return m_flags == rhs.m_flags;
+    }
+
+    unsigned bits() { return m_flags; }
+
+private:
+    unsigned m_flags { 0 };
+};
+
 class SourceCodeKey {
 public:
-    enum CodeType { EvalType, ProgramType, FunctionType, ModuleType };
-
     SourceCodeKey()
     {
     }
 
-    SourceCodeKey(const SourceCode& sourceCode, const String& name, CodeType codeType, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, ThisTDZMode thisTDZMode = ThisTDZMode::CheckIfNeeded)
-        : m_sourceCode(sourceCode)
-        , m_name(name)
-        , m_flags((static_cast<unsigned>(codeType) << 3) | (static_cast<unsigned>(builtinMode) << 2) | (static_cast<unsigned>(strictMode) << 1) | static_cast<unsigned>(thisTDZMode))
-        , m_hash(sourceCode.hash())
+    SourceCodeKey(
+        const UnlinkedSourceCode& sourceCode, const String& name, SourceCodeType codeType, JSParserStrictMode strictMode, 
+        JSParserScriptMode scriptMode, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext,
+        DebuggerMode debuggerMode, TypeProfilerEnabled typeProfilerEnabled, ControlFlowProfilerEnabled controlFlowProfilerEnabled)
+            : m_sourceCode(sourceCode)
+            , m_name(name)
+            , m_flags(codeType, strictMode, scriptMode, derivedContextType, evalContextType, isArrowFunctionContext, debuggerMode, typeProfilerEnabled, controlFlowProfilerEnabled)
+            , m_hash(sourceCode.hash() ^ m_flags.bits())
     {
     }
 
@@ -75,24 +112,22 @@ public:
             && string() == other.string();
     }
 
+    struct Hash {
+        static unsigned hash(const SourceCodeKey& key) { return key.hash(); }
+        static bool equal(const SourceCodeKey& a, const SourceCodeKey& b) { return a == b; }
+        static const bool safeToCompareToEmptyOrDeleted = false;
+    };
+
+    struct HashTraits : SimpleClassHashTraits<SourceCodeKey> {
+        static const bool hasIsEmptyValueFunction = true;
+        static bool isEmptyValue(const SourceCodeKey& key) { return key.isNull(); }
+    };
+
 private:
-    SourceCode m_sourceCode;
+    UnlinkedSourceCode m_sourceCode;
     String m_name;
-    unsigned m_flags;
+    SourceCodeFlags m_flags;
     unsigned m_hash;
 };
 
-struct SourceCodeKeyHash {
-    static unsigned hash(const SourceCodeKey& key) { return key.hash(); }
-    static bool equal(const SourceCodeKey& a, const SourceCodeKey& b) { return a == b; }
-    static const bool safeToCompareToEmptyOrDeleted = false;
-};
-
-struct SourceCodeKeyHashTraits : SimpleClassHashTraits<SourceCodeKey> {
-    static const bool hasIsEmptyValueFunction = true;
-    static bool isEmptyValue(const SourceCodeKey& sourceCodeKey) { return sourceCodeKey.isNull(); }
-};
-
-}
-
-#endif // SourceCodeKey_h
+} // namespace JSC

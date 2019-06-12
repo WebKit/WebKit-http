@@ -29,9 +29,12 @@
 #include "APIArray.h"
 #include "SessionState.h"
 #include "WebPageProxy.h"
+#include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/DiagnosticLoggingKeys.h>
 
 namespace WebKit {
+
+using namespace WebCore;
 
 // FIXME: Make this static once WebBackForwardListCF.cpp is no longer using it.
 uint64_t generateWebBackForwardItemID();
@@ -93,14 +96,14 @@ void WebBackForwardList::addItem(WebBackForwardListItem* newItem)
     Vector<RefPtr<WebBackForwardListItem>> removedItems;
     
     if (m_hasCurrentIndex) {
-        m_page->recordNavigationSnapshot();
+        m_page->recordAutomaticNavigationSnapshot();
 
         // Toss everything in the forward list.
         unsigned targetSize = m_currentIndex + 1;
         removedItems.reserveCapacity(m_entries.size() - targetSize);
         while (m_entries.size() > targetSize) {
             didRemoveItem(*m_entries.last());
-            removedItems.append(m_entries.last().release());
+            removedItems.append(WTFMove(m_entries.last()));
             m_entries.removeLast();
         }
 
@@ -108,7 +111,7 @@ void WebBackForwardList::addItem(WebBackForwardListItem* newItem)
         // (or even if we are, if we only want 1 entry).
         if (m_entries.size() == m_capacity && (m_currentIndex || m_capacity == 1)) {
             didRemoveItem(*m_entries[0]);
-            removedItems.append(m_entries[0].release());
+            removedItems.append(WTFMove(m_entries[0]));
             m_entries.remove(0);
 
             if (m_entries.isEmpty())
@@ -127,7 +130,7 @@ void WebBackForwardList::addItem(WebBackForwardListItem* newItem)
             if (!m_entries[i])
                 continue;
             didRemoveItem(*m_entries[i]);
-            removedItems.append(m_entries[i].release());
+            removedItems.append(WTFMove(m_entries[i]));
         }
         m_entries.clear();
     }
@@ -179,7 +182,7 @@ void WebBackForwardList::goToItem(WebBackForwardListItem* item)
     if (targetIndex < m_currentIndex) {
         unsigned delta = m_entries.size() - targetIndex - 1;
         String deltaValue = delta > 10 ? ASCIILiteral("over10") : String::number(delta);
-        m_page->logDiagnosticMessageWithValue(WebCore::DiagnosticLoggingKeys::backNavigationKey(), WebCore::DiagnosticLoggingKeys::deltaKey(), deltaValue, false /* shouldSample */);
+        m_page->logDiagnosticMessage(WebCore::DiagnosticLoggingKeys::backNavigationDeltaKey(), deltaValue, ShouldSample::No);
     }
 
     // If we're going to an item different from the current item, ask the client if the current
@@ -187,7 +190,7 @@ void WebBackForwardList::goToItem(WebBackForwardListItem* item)
     WebBackForwardListItem* currentItem = m_entries[m_currentIndex].get();
     bool shouldKeepCurrentItem = true;
     if (currentItem != item) {
-        m_page->recordNavigationSnapshot();
+        m_page->recordAutomaticNavigationSnapshot();
         shouldKeepCurrentItem = m_page->shouldKeepCurrentBackForwardListItemInList(m_entries[m_currentIndex].get());
     }
 
@@ -357,7 +360,7 @@ void WebBackForwardList::clear()
                 continue;
 
             didRemoveItem(*m_entries[i]);
-            removedItems.append(m_entries[i].release());
+            removedItems.append(WTFMove(m_entries[i]));
         }
 
         m_entries.clear();
@@ -376,14 +379,14 @@ void WebBackForwardList::clear()
     removedItems.reserveCapacity(size - 1);
     for (size_t i = 0; i < size; ++i) {
         if (i != m_currentIndex && m_hasCurrentIndex && m_entries[i])
-            removedItems.append(m_entries[i].release());
+            removedItems.append(WTFMove(m_entries[i]));
     }
 
     m_currentIndex = 0;
 
     if (currentItem) {
         m_entries.shrink(1);
-        m_entries[0] = currentItem.release();
+        m_entries[0] = WTFMove(currentItem);
     } else {
         m_entries.clear();
         m_hasCurrentIndex = false;
@@ -392,7 +395,7 @@ void WebBackForwardList::clear()
     m_page->didChangeBackForwardList(nullptr, WTFMove(removedItems));
 }
 
-BackForwardListState WebBackForwardList::backForwardListState(const std::function<bool (WebBackForwardListItem&)>& filter) const
+BackForwardListState WebBackForwardList::backForwardListState(WTF::Function<bool (WebBackForwardListItem&)>&& filter) const
 {
     ASSERT(!m_hasCurrentIndex || m_currentIndex < m_entries.size());
 
@@ -415,7 +418,9 @@ BackForwardListState WebBackForwardList::backForwardListState(const std::functio
     }
 
     if (backForwardListState.items.isEmpty())
-        backForwardListState.currentIndex = Nullopt;
+        backForwardListState.currentIndex = std::nullopt;
+    else if (backForwardListState.items.size() <= backForwardListState.currentIndex.value())
+        backForwardListState.currentIndex = backForwardListState.items.size() - 1;
 
     return backForwardListState;
 }
@@ -430,7 +435,7 @@ void WebBackForwardList::restoreFromState(BackForwardListState backForwardListSt
         items.uncheckedAppend(WebBackForwardListItem::create(WTFMove(backForwardListItemState), m_page->pageID()));
     }
     m_hasCurrentIndex = !!backForwardListState.currentIndex;
-    m_currentIndex = backForwardListState.currentIndex.valueOr(0);
+    m_currentIndex = backForwardListState.currentIndex.value_or(0);
     m_entries = WTFMove(items);
 }
 

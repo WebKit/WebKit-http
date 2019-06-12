@@ -26,17 +26,21 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorLayerTreeAgent_h
-#define InspectorLayerTreeAgent_h
+#pragma once
 
 #include "InspectorWebAgentBase.h"
-#include "RenderLayer.h"
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
 #include <inspector/InspectorProtocolObjects.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+class IntRect;
+class Node;
+class PseudoElement;
+class RenderElement;
+class RenderLayer;
 
 typedef String ErrorString;
 
@@ -46,27 +50,27 @@ public:
     explicit InspectorLayerTreeAgent(WebAgentContext&);
     virtual ~InspectorLayerTreeAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
     void reset();
 
-    // InspectorInstrumentation callbacks.
+    // InspectorInstrumentation
     void layerTreeDidChange();
     void renderLayerDestroyed(const RenderLayer&);
     void pseudoElementDestroyed(PseudoElement&);
 
     // Called from the front-end.
-    virtual void enable(ErrorString&) override;
-    virtual void disable(ErrorString&) override;
-    virtual void layersForNode(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>&) override;
-    virtual void reasonsForCompositingLayer(ErrorString&, const String& layerId, RefPtr<Inspector::Protocol::LayerTree::CompositingReasons>&) override;
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void layersForNode(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>&) override;
+    void reasonsForCompositingLayer(ErrorString&, const String& layerId, RefPtr<Inspector::Protocol::LayerTree::CompositingReasons>&) override;
 
 private:
     // RenderLayer-related methods.
     String bind(const RenderLayer*);
     void unbind(const RenderLayer*);
 
-    void gatherLayersUsingRenderObjectHierarchy(ErrorString&, RenderObject*, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>&);
+    void gatherLayersUsingRenderObjectHierarchy(ErrorString&, RenderElement&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>&);
     void gatherLayersUsingRenderLayerHierarchy(ErrorString&, RenderLayer*, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>&);
 
     Ref<Inspector::Protocol::LayerTree::Layer> buildObjectForLayer(ErrorString&, RenderLayer*);
@@ -88,5 +92,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(InspectorLayerTreeAgent_h)

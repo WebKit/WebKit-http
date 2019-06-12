@@ -24,18 +24,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaControls_h
-#define MediaControls_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
 #include "Chrome.h"
 #include "HTMLDivElement.h"
 #include "MediaControlElements.h"
-#include "MouseEvent.h"
-#include "Page.h"
-#include "RenderTheme.h"
-#include "Text.h"
 #include <wtf/RefPtr.h>
 
 #if ENABLE(VIDEO_TRACK)
@@ -46,7 +41,6 @@ namespace WebCore {
 
 class Document;
 class Event;
-class Page;
 class MediaPlayer;
 
 class RenderBox;
@@ -59,7 +53,7 @@ class MediaControls : public HTMLDivElement {
 
     // This function is to be implemented in your port-specific media
     // controls implementation since it will return a child instance.
-    static PassRefPtr<MediaControls> create(Document&);
+    static RefPtr<MediaControls> tryCreate(Document&);
 
     virtual void setMediaController(MediaControllerInterface*);
 
@@ -94,7 +88,7 @@ class MediaControls : public HTMLDivElement {
     virtual void exitedFullscreen();
 
 #if !PLATFORM(IOS)
-    virtual bool willRespondToMouseMoveEvents() override { return true; }
+    bool willRespondToMouseMoveEvents() override { return true; }
 #endif
 
     virtual void hideFullscreenControlsTimerFired();
@@ -112,9 +106,9 @@ class MediaControls : public HTMLDivElement {
 protected:
     explicit MediaControls(Document&);
 
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
-    virtual bool containsRelatedTarget(Event*);
+    virtual bool containsRelatedTarget(Event&);
 
     void setSliderVolume();
 
@@ -142,7 +136,7 @@ protected:
     bool m_isMouseOverControls;
 
 private:
-    virtual bool isMediaControls() const override final { return true; }
+    bool isMediaControls() const final { return true; }
 };
 
 inline MediaControls* toMediaControls(Node* node)
@@ -154,8 +148,6 @@ inline MediaControls* toMediaControls(Node* node)
 // This will catch anyone doing an unneccessary cast.
 void toMediaControls(const MediaControls*);
 
-}
+} // namespace WebCore
 
-#endif
-
-#endif
+#endif // ENABLE(VIDEO)

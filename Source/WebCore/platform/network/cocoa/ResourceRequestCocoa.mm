@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2014-2017 Apple, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,49 +28,91 @@
 
 #if PLATFORM(COCOA)
 
+#import "CFNetworkSPI.h"
+#import "FileSystem.h"
 #import "FormDataStreamMac.h"
 #import "HTTPHeaderNames.h"
 #import "ResourceRequestCFNet.h"
 #import "RuntimeApplicationChecks.h"
 #import "WebCoreSystemInterface.h"
-
 #import <Foundation/Foundation.h>
 #import <wtf/text/CString.h>
-
-@interface NSURLRequest (WebNSURLRequestDetails)
-- (NSArray *)contentDispositionEncodingFallbackArray;
-+ (void)setDefaultTimeoutInterval:(NSTimeInterval)seconds;
-- (CFURLRequestRef)_CFURLRequest;
-- (id)_initWithCFURLRequest:(CFURLRequestRef)request;
-@end
-
-@interface NSMutableURLRequest (WebMutableNSURLRequestDetails)
-- (void)setContentDispositionEncodingFallbackArray:(NSArray *)theEncodingFallbackArray;
-@end
 
 namespace WebCore {
 
 NSURLRequest *ResourceRequest::nsURLRequest(HTTPBodyUpdatePolicy bodyPolicy) const
 {
     updatePlatformRequest(bodyPolicy);
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     if (!m_nsRequest)
         const_cast<ResourceRequest*>(this)->updateNSURLRequest();
 #endif
     return [[m_nsRequest.get() retain] autorelease];
 }
 
-#if !USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
+
+void ResourceRequest::clearOrUpdateNSURLRequest()
+{
+    // There is client code that extends NSURLRequest and expects to get back, in the delegate
+    // callbacks, an object of the same type that they passed into WebKit. To keep then running, we
+    // create an object of the same type and return that. See <rdar://9843582>.
+    // Also, developers really really want an NSMutableURLRequest so try to create an
+    // NSMutableURLRequest instead of NSURLRequest.
+    static Class nsURLRequestClass = [NSURLRequest class];
+    static Class nsMutableURLRequestClass = [NSMutableURLRequest class];
+    Class requestClass = [m_nsRequest.get() class];
+    
+    if (!m_cfRequest)
+        return;
+    
+    if (requestClass && requestClass != nsURLRequestClass && requestClass != nsMutableURLRequestClass)
+        m_nsRequest = adoptNS([[requestClass alloc] _initWithCFURLRequest:m_cfRequest.get()]);
+    else
+        m_nsRequest = nullptr;
+}
+
+#else
 
 CFURLRequestRef ResourceRequest::cfURLRequest(HTTPBodyUpdatePolicy bodyPolicy) const
 {
     return [nsURLRequest(bodyPolicy) _CFURLRequest];
 }
 
+static inline ResourceRequestCachePolicy fromPlatformRequestCachePolicy(NSURLRequestCachePolicy policy)
+{
+    switch (policy) {
+    case NSURLRequestUseProtocolCachePolicy:
+        return UseProtocolCachePolicy;
+    case NSURLRequestReturnCacheDataElseLoad:
+        return ReturnCacheDataElseLoad;
+    case NSURLRequestReturnCacheDataDontLoad:
+        return ReturnCacheDataDontLoad;
+    default:
+        return ReloadIgnoringCacheData;
+    }
+}
+
+static inline NSURLRequestCachePolicy toPlatformRequestCachePolicy(ResourceRequestCachePolicy policy)
+{
+    switch (policy) {
+    case UseProtocolCachePolicy:
+        return NSURLRequestUseProtocolCachePolicy;
+    case ReturnCacheDataElseLoad:
+        return NSURLRequestReturnCacheDataElseLoad;
+    case ReturnCacheDataDontLoad:
+        return NSURLRequestReturnCacheDataDontLoad;
+    default:
+        return NSURLRequestReloadIgnoringLocalCacheData;
+    }
+}
+
 void ResourceRequest::doUpdateResourceRequest()
 {
     m_url = [m_nsRequest.get() URL];
-    m_cachePolicy = (ResourceRequestCachePolicy)[m_nsRequest.get() cachePolicy];
+
+    if (!m_cachePolicy)
+        m_cachePolicy = fromPlatformRequestCachePolicy([m_nsRequest.get() cachePolicy]);
     m_timeoutInterval = [m_nsRequest.get() timeoutInterval];
     m_firstPartyForCookies = [m_nsRequest.get() mainDocumentURL];
 
@@ -95,13 +137,11 @@ void ResourceRequest::doUpdateResourceRequest()
             m_responseContentDispositionEncodingFallbackArray.uncheckedAppend(CFStringConvertEncodingToIANACharSetName(encoding));
     }
 
-#if ENABLE(CACHE_PARTITIONING)
     if (m_nsRequest) {
         NSString* cachePartition = [NSURLProtocol propertyForKey:(NSString *)wkCachePartitionKey() inRequest:m_nsRequest.get()];
         if (cachePartition)
             m_cachePartition = cachePartition;
     }
-#endif
 }
 
 void ResourceRequest::doUpdateResourceHTTPBody()
@@ -138,7 +178,7 @@ void ResourceRequest::doUpdatePlatformRequest()
     if (ResourceRequest::resourcePrioritiesEnabled())
         CFURLRequestSetRequestPriority([nsRequest _CFURLRequest], toPlatformRequestPriority(priority()));
 
-    [nsRequest setCachePolicy:(NSURLRequestCachePolicy)cachePolicy()];
+    [nsRequest setCachePolicy:toPlatformRequestCachePolicy(cachePolicy())];
     _CFURLRequestSetProtocolProperty([nsRequest _CFURLRequest], kCFURLRequestAllowAllPOSTCaching, kCFBooleanTrue);
 
     double timeoutInterval = ResourceRequestBase::timeoutInterval();
@@ -165,11 +205,20 @@ void ResourceRequest::doUpdatePlatformRequest()
     }
     [nsRequest setContentDispositionEncodingFallbackArray:encodingFallbacks];
 
-#if ENABLE(CACHE_PARTITIONING)
     String partition = cachePartition();
     if (!partition.isNull() && !partition.isEmpty()) {
         NSString *partitionValue = [NSString stringWithUTF8String:partition.utf8().data()];
         [NSURLProtocol setProperty:partitionValue forKey:(NSString *)wkCachePartitionKey() inRequest:nsRequest];
+    }
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+    if (m_url.isLocalFile()) {
+        auto fsRepFile = fileSystemRepresentation(m_url.fileSystemPath());
+        if (!fsRepFile.isNull()) {
+            auto fileDevice = getFileDeviceId(fsRepFile);
+            if (fileDevice && fileDevice.value())
+                [nsRequest _setProperty:[NSNumber numberWithInteger:fileDevice.value()] forKey:@"NSURLRequestFileProtocolExpectedDevice"];
+        }
     }
 #endif
 
@@ -208,21 +257,13 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
     m_nsRequest = adoptNS(nsRequest);
 }
 
-#if !PLATFORM(IOS)
-void ResourceRequest::applyWebArchiveHackForMail()
-{
-    // Hack because Mail checks for this property to detect data / archive loads
-    [NSURLProtocol setProperty:@"" forKey:@"WebDataRequest" inRequest:(NSMutableURLRequest *)nsURLRequest(DoNotUpdateHTTPBody)];
-}
-#endif
-
 void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 {
     updatePlatformRequest();
     m_nsRequest = adoptNS(wkCopyRequestWithStorageSession(storageSession, m_nsRequest.get()));
 }
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 } // namespace WebCore
 

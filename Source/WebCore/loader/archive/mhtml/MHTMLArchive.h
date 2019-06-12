@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MHTMLArchive_h
-#define MHTMLArchive_h
+#pragma once
 
 #if ENABLE(MHTML)
 
@@ -41,25 +40,26 @@ class MHTMLParser;
 class Page;
 class SharedBuffer;
 
-class MHTMLArchive : public Archive {
+class MHTMLArchive final : public Archive {
 public:
-    virtual Type type() const { return MHTML; }
+    static Ref<MHTMLArchive> create();
+    static RefPtr<MHTMLArchive> create(const URL&, SharedBuffer&);
 
-    static PassRefPtr<MHTMLArchive> create();
-    static PassRefPtr<MHTMLArchive> create(const URL&, SharedBuffer*);
-
-    static PassRefPtr<SharedBuffer> generateMHTMLData(Page*);
+    static Ref<SharedBuffer> generateMHTMLData(Page*);
 
     virtual ~MHTMLArchive();
 
 private:
-    static PassRefPtr<SharedBuffer> generateMHTMLData(Page*, bool useBinaryEncoding);
-
     friend class MHTMLParser;
+
     MHTMLArchive();
+
+    bool shouldLoadFromArchiveOnly() const final { return true; }
+    bool shouldOverrideBaseURL() const final { return true; }
+    bool shouldUseMainResourceEncoding() const final { return false; }
+    bool shouldUseMainResourceURL() const final { return false; }
 };
 
-}
+} // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(MHTML)

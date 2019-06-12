@@ -29,6 +29,7 @@
 #include "APIObject.h"
 #include "MessageReceiver.h"
 #include "VisitedLinkTable.h"
+#include "WebPageProxy.h"
 #include "WebProcessLifetimeObserver.h"
 #include <WebCore/LinkHash.h>
 #include <wtf/Forward.h>
@@ -58,11 +59,11 @@ public:
 
 private:
     // IPC::MessageReceiver
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // WebProcessLifetimeObserver
-    virtual void webProcessWillOpenConnection(WebProcessProxy&, IPC::Connection&) override;
-    virtual void webProcessDidCloseConnection(WebProcessProxy&, IPC::Connection&) override;
+    void webProcessWillOpenConnection(WebProcessProxy&, IPC::Connection&) override;
+    void webProcessDidCloseConnection(WebProcessProxy&, IPC::Connection&) override;
 
     void addVisitedLinkHashFromPage(uint64_t pageID, WebCore::LinkHash);
 

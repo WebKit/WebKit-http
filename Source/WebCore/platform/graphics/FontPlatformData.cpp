@@ -23,13 +23,16 @@
 
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
-#include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 #if OS(DARWIN) && USE(CG)
 #include "SharedBuffer.h"
 #include <CoreGraphics/CGFont.h>
+#endif
+
+#if USE(DIRECT2D)
+#include <dwrite.h>
 #endif
 
 namespace WebCore {
@@ -44,49 +47,45 @@ FontPlatformData::FontPlatformData()
 }
 
 FontPlatformData::FontPlatformData(float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant, TextRenderingMode textRenderingMode)
-    : m_syntheticBold(syntheticBold)
-    , m_syntheticOblique(syntheticOblique)
+    : m_size(size)
     , m_orientation(orientation)
-    , m_size(size)
     , m_widthVariant(widthVariant)
     , m_textRenderingMode(textRenderingMode)
+    , m_syntheticBold(syntheticBold)
+    , m_syntheticOblique(syntheticOblique)
 {
 }
 
-#if USE(CG)
+#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200))
 FontPlatformData::FontPlatformData(CGFontRef cgFont, float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant, TextRenderingMode textRenderingMode)
     : FontPlatformData(size, syntheticBold, syntheticOblique, orientation, widthVariant, textRenderingMode)
 {
     m_cgFont = cgFont;
+    ASSERT(m_cgFont);
 }
 #endif
 
-FontPlatformData::FontPlatformData(const FontPlatformData& source)
-    : FontPlatformData(source.m_size, source.m_syntheticBold, source.m_syntheticOblique, source.m_orientation, source.m_widthVariant, source.m_textRenderingMode)
+#if !USE(FREETYPE)
+FontPlatformData FontPlatformData::cloneWithOrientation(const FontPlatformData& source, FontOrientation orientation)
 {
-    m_isHashTableDeletedValue = source.m_isHashTableDeletedValue;
-    m_isColorBitmapFont = source.m_isColorBitmapFont;
-    m_isSystemFont = source.m_isSystemFont;
-    platformDataInit(source);
+    FontPlatformData copy(source);
+    copy.m_orientation = orientation;
+    return copy;
 }
 
-const FontPlatformData& FontPlatformData::operator=(const FontPlatformData& other)
+FontPlatformData FontPlatformData::cloneWithSyntheticOblique(const FontPlatformData& source, bool syntheticOblique)
 {
-    // Check for self-assignment.
-    if (this == &other)
-        return *this;
-
-    m_isHashTableDeletedValue = other.m_isHashTableDeletedValue;
-    m_syntheticBold = other.m_syntheticBold;
-    m_syntheticOblique = other.m_syntheticOblique;
-    m_orientation = other.m_orientation;
-    m_size = other.m_size;
-    m_widthVariant = other.m_widthVariant;
-    m_isColorBitmapFont = other.m_isColorBitmapFont;
-    m_textRenderingMode = other.m_textRenderingMode;
-    m_isSystemFont = other.m_isSystemFont;
-
-    return platformDataAssign(other);
+    FontPlatformData copy(source);
+    copy.m_syntheticOblique = syntheticOblique;
+    return copy;
 }
+
+FontPlatformData FontPlatformData::cloneWithSize(const FontPlatformData& source, float size)
+{
+    FontPlatformData copy(source);
+    copy.m_size = size;
+    return copy;
+}
+#endif
 
 }

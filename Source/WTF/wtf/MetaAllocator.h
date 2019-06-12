@@ -36,7 +36,6 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/PageBlock.h>
 #include <wtf/RedBlackTree.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 namespace WTF {
@@ -68,7 +67,7 @@ public:
     
     WTF_EXPORT_PRIVATE virtual ~MetaAllocator();
     
-    WTF_EXPORT_PRIVATE PassRefPtr<MetaAllocatorHandle> allocate(size_t sizeInBytes, void* ownerUID);
+    WTF_EXPORT_PRIVATE RefPtr<MetaAllocatorHandle> allocate(size_t sizeInBytes, void* ownerUID);
 
     void trackAllocations(MetaAllocatorTracker* tracker)
     {
@@ -97,8 +96,8 @@ public:
     // builds.
     WTF_EXPORT_PRIVATE size_t debugFreeSpaceSize();
 
-    WTF_EXPORT_PRIVATE Lock& getLock() { return m_lock; }
-    WTF_EXPORT_PRIVATE bool isInAllocatedMemory(const LockHolder&, void* address);
+    Lock& getLock() { return m_lock; }
+    WTF_EXPORT_PRIVATE bool isInAllocatedMemory(const AbstractLocker&, void* address);
     
 #if ENABLE(META_ALLOCATOR_PROFILE)
     void dumpProfile();

@@ -23,21 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DatasetDOMStringMap_h
-#define DatasetDOMStringMap_h
+#pragma once
 
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
-#include <wtf/Forward.h>
-#include <wtf/Noncopyable.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class Element;
-typedef int ExceptionCode;
 
 class DatasetDOMStringMap final : public ScriptWrappable {
-    WTF_MAKE_NONCOPYABLE(DatasetDOMStringMap); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit DatasetDOMStringMap(Element& element)
         : m_element(element)
@@ -47,17 +43,19 @@ public:
     void ref();
     void deref();
 
-    void getNames(Vector<String>&);
-    const AtomicString& item(const String& name, bool& isValid);
-    void setItem(const String& name, const String& value, ExceptionCode&);
-    bool deleteItem(const String& name);
+    bool isSupportedPropertyName(const String& name) const;
+    Vector<String> supportedPropertyNames() const;
+
+    String namedItem(const AtomicString& name) const;
+    ExceptionOr<void> setNamedItem(const String& name, const String& value);
+    bool deleteNamedProperty(const String& name);
 
     Element& element() { return m_element; }
 
 private:
+    std::optional<const AtomicString&> item(const String& name) const;
+
     Element& m_element;
 };
 
 } // namespace WebCore
-
-#endif // DatasetDOMStringMap_h

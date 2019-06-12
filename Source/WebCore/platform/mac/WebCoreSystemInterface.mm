@@ -30,7 +30,6 @@
 
 #import <Foundation/Foundation.h>
 
-void (*wkAdvanceDefaultButtonPulseAnimation)(NSButtonCell *);
 void (*wkCALayerEnumerateRectsBeingDrawnWithBlock)(CALayer *, CGContextRef context, void (^block)(CGRect rect));
 bool (*wkCGContextDrawsWithCorrectShadowOffsets)(CGContextRef);
 CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
@@ -48,7 +47,6 @@ NSView *(*wkCreateMediaUIBackgroundView)(void);
 NSControl *(*wkCreateMediaUIControl)(int);
 void (*wkWindowSetAlpha)(NSWindow *, float);
 void (*wkWindowSetScaledFrame)(NSWindow *, NSRect, NSRect);
-CFStringRef (*wkSignedPublicKeyAndChallengeString)(unsigned keySize, CFStringRef challenge, CFStringRef keyDescription);
 NSTimeInterval (*wkGetNSURLResponseCalculatedExpiration)(NSURLResponse *response);
 BOOL (*wkGetNSURLResponseMustRevalidate)(NSURLResponse *response);
 void (*wkGetWheelEventDeltas)(NSEvent*, float* deltaX, float* deltaY, BOOL* continuous);
@@ -99,7 +97,6 @@ CFURLStorageSessionRef (*wkCreatePrivateStorageSession)(CFStringRef);
 NSURLRequest* (*wkCopyRequestWithStorageSession)(CFURLStorageSessionRef, NSURLRequest*);
 unsigned (*wkGetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef);
 NSArray *(*wkHTTPCookies)(CFHTTPCookieStorageRef);
-NSArray *(*wkHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSURL *, NSURL *);
 void (*wkSetHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
 void (*wkDeleteAllHTTPCookies)(CFHTTPCookieStorageRef);
 void (*wkDeleteHTTPCookie)(CFHTTPCookieStorageRef, NSHTTPCookie *);
@@ -116,9 +113,7 @@ CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
 bool (*wkIsPublicSuffix)(NSString *host);
 #endif
 
-#if ENABLE(CACHE_PARTITIONING)
 CFStringRef (*wkCachePartitionKey)(void);
-#endif
 
 int (*wkExernalDeviceTypeForPlayer)(AVPlayer *);
 NSString *(*wkExernalDeviceDisplayNameForPlayer)(AVPlayer *);

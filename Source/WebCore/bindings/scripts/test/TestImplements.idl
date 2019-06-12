@@ -28,7 +28,7 @@
  */
 
 // This IDL file is for testing the bindings code generator and for tracking
-// changes in its ouput.
+// changes in its output.
 [
     Conditional=Condition22|Condition23,
     NoInterfaceObject
@@ -41,7 +41,7 @@
     attribute Node implementsNode;
 
     void implementsMethod1();
-    [CallWith=ScriptExecutionContext, RaisesException] TestObj implementsMethod2(DOMString strArg, TestObj objArg);
+    [CallWith=ScriptExecutionContext, MayThrowException] TestObj implementsMethod2(DOMString strArg, TestObj objArg);
     [Custom] void implementsMethod3();
     static void implementsMethod4();
 

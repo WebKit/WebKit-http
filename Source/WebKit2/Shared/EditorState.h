@@ -27,6 +27,7 @@
 #define EditorState_h
 
 #include "ArgumentCoders.h"
+#include <WebCore/Color.h>
 #include <WebCore/IntRect.h>
 #include <wtf/text/WTFString.h>
 
@@ -44,8 +45,22 @@ enum TypingAttributes {
     AttributeStrikeThrough = 8
 };
 
+enum TextAlignment {
+    NoAlignment = 0,
+    LeftAlignment = 1,
+    RightAlignment = 2,
+    CenterAlignment = 3,
+    JustifiedAlignment = 4,
+};
+
+enum ListType {
+    NoList = 0,
+    OrderedList,
+    UnorderedList
+};
+
 struct EditorState {
-    bool shouldIgnoreCompositionSelectionChange { false };
+    bool shouldIgnoreSelectionChanges { false };
 
     bool selectionIsNone { true }; // This will be false when there is a caret selection.
     bool selectionIsRange { false };
@@ -79,13 +94,16 @@ struct EditorState {
 
 #if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
     struct PostLayoutData {
-#if PLATFORM(IOS) || PLATFORM(GTK)
         uint32_t typingAttributes { AttributeNone };
+#if PLATFORM(IOS) || PLATFORM(GTK)
         WebCore::IntRect caretRectAtStart;
 #endif
 #if PLATFORM(IOS) || PLATFORM(MAC)
         WebCore::IntRect selectionClipRect;
         uint64_t selectedTextLength { 0 };
+        uint32_t textAlignment { NoAlignment };
+        WebCore::Color textColor { WebCore::Color::black };
+        uint32_t enclosingListType { NoList };
 #endif
 #if PLATFORM(IOS)
         WebCore::IntRect caretRectAtEnd;
@@ -96,6 +114,8 @@ struct EditorState {
         UChar32 twoCharacterBeforeSelection { 0 };
         bool isReplaceAllowed { false };
         bool hasContent { false };
+        bool isStableStateUpdate { false };
+        bool insideFixedPosition { false };
 #endif
 #if PLATFORM(MAC)
         uint64_t candidateRequestStartPosition { 0 };
@@ -103,16 +123,16 @@ struct EditorState {
         String stringForCandidateRequest;
 #endif
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, PostLayoutData&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, PostLayoutData&);
     };
 
     const PostLayoutData& postLayoutData() const;
     PostLayoutData& postLayoutData();
 #endif // PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, EditorState&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, EditorState&);
 
 #if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 private:

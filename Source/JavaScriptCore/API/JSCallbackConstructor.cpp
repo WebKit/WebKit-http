@@ -33,11 +33,10 @@
 #include "JSLock.h"
 #include "ObjectPrototype.h"
 #include "JSCInlines.h"
-#include <wtf/Vector.h>
 
 namespace JSC {
 
-const ClassInfo JSCallbackConstructor::s_info = { "CallbackConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSCallbackConstructor) };
+const ClassInfo JSCallbackConstructor::s_info = { "CallbackConstructor", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSCallbackConstructor) };
 
 JSCallbackConstructor::JSCallbackConstructor(JSGlobalObject* globalObject, Structure* structure, JSClassRef jsClass, JSObjectCallAsConstructorCallback callback)
     : JSDestructibleObject(globalObject->vm(), structure)
@@ -49,7 +48,7 @@ JSCallbackConstructor::JSCallbackConstructor(JSGlobalObject* globalObject, Struc
 void JSCallbackConstructor::finishCreation(JSGlobalObject* globalObject, JSClassRef jsClass)
 {
     Base::finishCreation(globalObject->vm());
-    ASSERT(inherits(info()));
+    ASSERT(inherits(*vm(), info()));
     if (m_class)
         JSClassRetain(jsClass);
 }
@@ -68,7 +67,7 @@ void JSCallbackConstructor::destroy(JSCell* cell)
 ConstructType JSCallbackConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = APICallbackFunction::construct<JSCallbackConstructor>;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 } // namespace JSC

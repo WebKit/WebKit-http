@@ -48,24 +48,45 @@ namespace WebCore {
 
 class RealtimeMediaSourceCapabilities;
 
-class RealtimeMediaSourceOwr final : public RealtimeMediaSource {
+class RealtimeMediaSourceOwr : public RealtimeMediaSource {
 public:
 RealtimeMediaSourceOwr(OwrMediaSource* mediaSource, const String& id, RealtimeMediaSource::Type type, const String& name)
     : RealtimeMediaSource(id, type, name)
     , m_mediaSource(mediaSource)
     {
+        if (!mediaSource)
+            notifyMutedChange(true);
+    }
+
+RealtimeMediaSourceOwr(const String& id, RealtimeMediaSource::Type type, const String& name)
+    : RealtimeMediaSource(id, type, name)
+    , m_mediaSource(nullptr)
+    {
     }
 
     virtual ~RealtimeMediaSourceOwr() { }
 
-    virtual RefPtr<RealtimeMediaSourceCapabilities> capabilities() { return m_capabilities; }
-    virtual const RealtimeMediaSourceSettings& settings() { return m_currentSettings; }
+    void swapOutShallowSource(OwrMediaSource& realSource)
+    {
+        m_mediaSource = &realSource;
+        setMuted(false);
+    }
+
+    const RealtimeMediaSourceCapabilities& capabilities() const override { return m_capabilities; }
+    const RealtimeMediaSourceSettings& settings() const override;
 
     OwrMediaSource* mediaSource() const { return m_mediaSource; }
 
-private:
-    RefPtr<RealtimeMediaSourceCapabilities> m_capabilities;
+protected:
+    virtual void initializeSettings() { };
+    virtual void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) { };
+    RealtimeMediaSourceSupportedConstraints& supportedConstraints();
+
     RealtimeMediaSourceSettings m_currentSettings;
+
+private:
+    RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
+    RealtimeMediaSourceCapabilities m_capabilities;
     OwrMediaSource* m_mediaSource;
 };
 

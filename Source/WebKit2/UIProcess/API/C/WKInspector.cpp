@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -117,7 +117,18 @@ bool WKInspectorIsProfilingPage(WKInspectorRef inspectorRef)
 
 void WKInspectorTogglePageProfiling(WKInspectorRef inspectorRef)
 {
+    toImpl(inspectorRef)->showTimelines();
     toImpl(inspectorRef)->togglePageProfiling();
+}
+
+bool WKInspectorIsElementSelectionActive(WKInspectorRef inspectorRef)
+{
+    return toImpl(inspectorRef)->isElementSelectionActive();
+}
+
+void WKInspectorToggleElementSelection(WKInspectorRef inspectorRef)
+{
+    toImpl(inspectorRef)->toggleElementSelection();
 }
 
 #endif // !PLATFORM(IOS)

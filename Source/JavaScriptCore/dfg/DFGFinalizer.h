@@ -23,16 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGFinalizer_h
-#define DFGFinalizer_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "JITCode.h"
-#include "MacroAssemblerCodeRef.h"
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/RefPtr.h>
 
 namespace JSC { namespace DFG {
 
@@ -55,6 +51,3 @@ protected:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGFinalizer_h
-

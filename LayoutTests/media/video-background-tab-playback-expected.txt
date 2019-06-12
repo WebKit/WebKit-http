@@ -1,7 +1,7 @@
 
 Test tab with <video> moving to background when playback is not allowed in background.
 
-RUN(internals.setMediaSessionRestrictions('video', 'BackgroundTabPlaybackRestricted'))
+RUN(internals.setMediaSessionRestrictions('videoaudio', 'BackgroundTabPlaybackRestricted'))
 
 EVENT(canplaythrough)
 
@@ -16,7 +16,7 @@ RUN(testRunner.setPageVisibility('hidden'))
 EXPECTED (video.paused == 'true') OK
 
 ** Simulate switch back to foreground, video should remain paused.
-RUN(internals.applicationDidEnterForeground())
+RUN(internals.applicationWillEnterForeground())
 
 
 ** 100ms timer fired...

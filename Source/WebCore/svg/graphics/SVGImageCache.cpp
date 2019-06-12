@@ -25,7 +25,6 @@
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 #include "LayoutSize.h"
-#include "Page.h"
 #include "RenderSVGRoot.h"
 #include "SVGImage.h"
 #include "SVGImageForContainer.h"
@@ -79,7 +78,7 @@ Image* SVGImageCache::imageForRenderer(const RenderObject* renderer) const
 {
     auto* image = findImageForRenderer(renderer);
     if (!image)
-        return Image::nullImage();
+        return &Image::nullImage();
     ASSERT(!image->size().isEmpty());
     return image;
 }

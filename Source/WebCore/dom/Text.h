@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef Text_h
-#define Text_h
+#pragma once
 
 #include "CharacterData.h"
 #include "RenderPtr.h"
@@ -40,18 +39,20 @@ public:
 
     virtual ~Text();
 
-    RefPtr<Text> splitText(unsigned offset, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<Ref<Text>> splitText(unsigned offset);
 
     // DOM Level 3: http://www.w3.org/TR/DOM-Level-3-Core/core.html#ID-1312295772
 
-    String wholeText() const;
-    RefPtr<Text> replaceWholeText(const String&, ExceptionCode&);
+    WEBCORE_EXPORT String wholeText() const;
+    WEBCORE_EXPORT RefPtr<Text> replaceWholeText(const String&);
     
     RenderPtr<RenderText> createTextRenderer(const RenderStyle&);
     
-    virtual bool canContainRangeEndPoint() const override final { return true; }
+    bool canContainRangeEndPoint() const final { return true; }
 
     RenderText* renderer() const;
+
+    void updateRendererAfterContentChange(unsigned offsetOfReplacedData, unsigned lengthOfReplacedData);
 
 protected:
     Text(Document& document, const String& data, ConstructionType type)
@@ -60,15 +61,15 @@ protected:
     }
 
 private:
-    virtual String nodeName() const override;
-    virtual NodeType nodeType() const override;
-    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
-    virtual bool childTypeAllowed(NodeType) const override;
+    String nodeName() const override;
+    NodeType nodeType() const override;
+    Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    bool childTypeAllowed(NodeType) const override;
 
     virtual Ref<Text> virtualCreate(const String&);
 
 #if ENABLE(TREE_DEBUGGING)
-    virtual void formatForDebugger(char* buffer, unsigned length) const override;
+    void formatForDebugger(char* buffer, unsigned length) const override;
 #endif
 };
 
@@ -77,5 +78,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Text)
     static bool isType(const WebCore::Node& node) { return node.isTextNode(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // Text_h

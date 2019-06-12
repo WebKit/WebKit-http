@@ -25,9 +25,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef SQLStatementCallback_h
-#define SQLStatementCallback_h
 
+#pragma once
+
+#include "CallbackResult.h"
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
@@ -38,9 +39,7 @@ class SQLResultSet;
 class SQLStatementCallback : public ThreadSafeRefCounted<SQLStatementCallback> {
 public:
     virtual ~SQLStatementCallback() { }
-    virtual bool handleEvent(SQLTransaction*, SQLResultSet*) = 0;
+    virtual CallbackResult<void> handleEvent(SQLTransaction&, SQLResultSet&) = 0;
 };
 
-}
-
-#endif // SQLStatementErrorCallback_h
+} // namespace WebCore

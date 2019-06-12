@@ -1,6 +1,7 @@
 <html>
 <head>
 <script src="../resources/js-test-pre.js"></script>
+<script src="../resources/accessibility-helper.js"></script>
 </head>
 <body>
 
@@ -17,9 +18,6 @@
 
 <script>
     description("This tests that when an iframe finishes loading, it sends a notification.");
-
-    if (window.testRunner)
-        testRunner.waitUntilDone();
 
     window.jsTestIsAsync = true;
 
@@ -54,7 +52,9 @@
 
             window.accessibilityController.addNotificationListener(function (target, notification) {
                 // Ignore this notification if it's not on the iframe or not about the iframe being loaded.
-                if (target.description.indexOf("InnerFrame") == -1
+
+                var targetString = platformValueForW3CName(target);
+                if (targetString.indexOf("InnerFrame") == -1
                     || (notification != "AXLoadComplete" && notification != "AXLayoutComplete"))
                     return;
 

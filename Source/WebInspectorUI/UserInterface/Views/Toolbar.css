@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,38 +24,44 @@
  */
 
 .toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--toolbar-height);
+
     display: flex;
+    padding-top: 3px;
+    padding-bottom: 3px;
 
     white-space: nowrap;
     overflow: hidden;
 
     outline: none;
-
-    padding-top: 3px;
-    padding-bottom: 3px;
-    height: 36px;
 }
 
-body:not(.mavericks) .toolbar,
-body.mavericks.docked .toolbar {
+body .toolbar {
     background-image: linear-gradient(to bottom, hsl(0, 0%, 92%), hsl(0, 0%, 87%));
     box-shadow: inset hsla(0, 0%, 100%, 0.5) 0 1px 1px;
 }
 
-body.window-inactive:not(.mavericks) .toolbar {
+body.window-inactive .toolbar {
     background-image: none;
     background-color: hsl(0, 0%, 96%);
 }
 
-body.mac-platform:not(.docked, .mavericks) .toolbar {
+body.mac-platform:not(.docked) .toolbar {
     padding-top: 21px;
-    height: 54px;
+}
+
+body.mac-platform:not(.docked) {
+    --toolbar-height: 54px;
 }
 
 .toolbar .control-section {
     display: flex;
 
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
 
@@ -63,10 +69,19 @@ body.mac-platform:not(.docked, .mavericks) .toolbar {
     padding-right: 2px;
 
     min-width: -webkit-min-content;
+
+    --toolbar-control-section-padding-start: 6px;
+    --toolbar-control-section-padding-end: 2px;
 }
 
-.toolbar:matches(.icon-and-label-horizontal.small-size, .icon-only.small-size, .label-only) .control-section {
-    flex-direction: row;
+body[dir=ltr] .toolbar .control-section {
+    padding-left: var(--toolbar-control-section-padding-start);
+    padding-right: var(--toolbar-control-section-padding-end);
+}
+
+body[dir=rtl] .toolbar .control-section {
+    padding-left: var(--toolbar-control-section-padding-end);
+    padding-right: var(--toolbar-control-section-padding-start);
 }
 
 .toolbar .item-section {

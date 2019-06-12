@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GPRInfo_h
-#define GPRInfo_h
+#pragma once
 
 #include "MacroAssembler.h"
 #include <array>
 #include <wtf/PrintStream.h>
 
 namespace JSC {
+
+enum NoResultTag { NoResult };
 
 // We use the same conventions in the basline JIT as in the LLint. If you
 // change mappings in the GPRInfo, you should change them in the offlineasm
@@ -76,6 +77,8 @@ public:
     GPRReg payloadGPR() const { return m_gpr; }
     
     bool uses(GPRReg gpr) const { return m_gpr == gpr; }
+    
+    void dump(PrintStream&) const;
     
 private:
     GPRReg m_gpr;
@@ -135,6 +138,11 @@ public:
     {
         ASSERT(!isAddress());
         return m_base;
+    }
+    
+    JSValueRegs regs() const
+    {
+        return JSValueRegs(gpr());
     }
     
     MacroAssembler::Address asAddress() const { return MacroAssembler::Address(base(), offset()); }
@@ -201,6 +209,8 @@ public:
     }
 
     bool uses(GPRReg gpr) const { return m_tagGPR == gpr || m_payloadGPR == gpr; }
+    
+    void dump(PrintStream&) const;
     
 private:
     int8_t m_tagGPR;
@@ -300,6 +310,11 @@ public:
     uint32_t tag() const
     {
         return static_cast<int32_t>(m_tagType);
+    }
+    
+    JSValueRegs regs() const
+    {
+        return JSValueRegs(tagGPR(), payloadGPR());
     }
     
     MacroAssembler::Address asAddress(unsigned additionalOffset = 0) const { return MacroAssembler::Address(base(), offset() + additionalOffset); }
@@ -757,7 +772,7 @@ public:
     static const GPRReg argumentGPR1 = MIPSRegisters::a1;
     static const GPRReg argumentGPR2 = MIPSRegisters::a2;
     static const GPRReg argumentGPR3 = MIPSRegisters::a3;
-    static const GPRReg nonArgGPR0 = regT0;
+    static const GPRReg nonArgGPR0 = regT4;
     static const GPRReg returnValueGPR = regT0;
     static const GPRReg returnValueGPR2 = regT1;
     static const GPRReg nonPreservedNonReturnGPR = regT2;
@@ -808,88 +823,6 @@ public:
 
 #endif // CPU(MIPS)
 
-#if CPU(SH4)
-#define NUMBER_OF_ARGUMENT_REGISTERS 4u
-#define NUMBER_OF_CALLEE_SAVES_REGISTERS 0u
-
-class GPRInfo {
-public:
-    typedef GPRReg RegisterType;
-    static const unsigned numberOfRegisters = 10;
-
-    // Note: regT3 is required to be callee-preserved.
-
-    // Temporary registers.
-    static const GPRReg regT0 = SH4Registers::r0;
-    static const GPRReg regT1 = SH4Registers::r1;
-    static const GPRReg regT2 = SH4Registers::r6;
-    static const GPRReg regT3 = SH4Registers::r7;
-    static const GPRReg regT4 = SH4Registers::r2;
-    static const GPRReg regT5 = SH4Registers::r3;
-    static const GPRReg regT6 = SH4Registers::r4;
-    static const GPRReg regT7 = SH4Registers::r5;
-    static const GPRReg regT8 = SH4Registers::r8;
-    static const GPRReg regT9 = SH4Registers::r9;
-    // These registers match the baseline JIT.
-    static const GPRReg cachedResultRegister = regT0;
-    static const GPRReg cachedResultRegister2 = regT1;
-    static const GPRReg callFrameRegister = SH4Registers::fp;
-    // These constants provide the names for the general purpose argument & return value registers.
-    static const GPRReg argumentGPR0 = SH4Registers::r4; // regT6
-    static const GPRReg argumentGPR1 = SH4Registers::r5; // regT7
-    static const GPRReg argumentGPR2 = SH4Registers::r6; // regT2
-    static const GPRReg argumentGPR3 = SH4Registers::r7; // regT3
-    static const GPRReg nonArgGPR0 = regT4;
-    static const GPRReg returnValueGPR = regT0;
-    static const GPRReg returnValueGPR2 = regT1;
-    static const GPRReg nonPreservedNonReturnGPR = regT2;
-
-    static GPRReg toRegister(unsigned index)
-    {
-        ASSERT(index < numberOfRegisters);
-        static const GPRReg registerForIndex[numberOfRegisters] = { regT0, regT1, regT2, regT3, regT4, regT5, regT6, regT7, regT8, regT9 };
-        return registerForIndex[index];
-    }
-
-    static unsigned toIndex(GPRReg reg)
-    {
-        ASSERT(reg != InvalidGPRReg);
-        ASSERT(reg < 14);
-        static const unsigned indexForRegister[14] = { 0, 1, 4, 5, 6, 7, 2, 3, 8, 9, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex };
-        unsigned result = indexForRegister[reg];
-        return result;
-    }
-
-    static const char* debugName(GPRReg reg)
-    {
-        ASSERT(reg != InvalidGPRReg);
-        ASSERT(reg < 16);
-        static const char* nameForRegister[16] = {
-            "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
-            "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
-        };
-        return nameForRegister[reg];
-    }
-
-    static const unsigned InvalidIndex = 0xffffffff;
-};
-
-#endif // CPU(SH4)
-
-inline GPRReg argumentRegisterFor(unsigned argumentIndex)
-{
-#if USE(JSVALUE64)
-    if (argumentIndex >= NUMBER_OF_ARGUMENT_REGISTERS)
-        return InvalidGPRReg;
-
-    return GPRInfo::toArgumentRegister(argumentIndex);
-#else
-    UNUSED_PARAM(argumentIndex);
-
-    return InvalidGPRReg;
-#endif
-}
-
 // The baseline JIT uses "accumulator" style execution with regT0 (for 64-bit)
 // and regT0 + regT1 (for 32-bit) serving as the accumulator register(s) for
 // passing results of one opcode to the next. Hence:
@@ -897,6 +830,14 @@ COMPILE_ASSERT(GPRInfo::regT0 == GPRInfo::returnValueGPR, regT0_must_equal_retur
 #if USE(JSVALUE32_64)
 COMPILE_ASSERT(GPRInfo::regT1 == GPRInfo::returnValueGPR2, regT1_must_equal_returnValueGPR2);
 #endif
+
+inline GPRReg extractResult(GPRReg result) { return result; }
+#if USE(JSVALUE64)
+inline GPRReg extractResult(JSValueRegs result) { return result.gpr(); }
+#else
+inline JSValueRegs extractResult(JSValueRegs result) { return result; }
+#endif
+inline NoResultTag extractResult(NoResultTag) { return NoResult; }
 
 #endif // ENABLE(JIT)
 
@@ -914,5 +855,3 @@ inline void printInternal(PrintStream& out, JSC::GPRReg reg)
 }
 
 } // namespace WTF
-
-#endif

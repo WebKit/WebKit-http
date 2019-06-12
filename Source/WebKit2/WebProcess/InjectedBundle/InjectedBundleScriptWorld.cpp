@@ -30,6 +30,8 @@
 #include <WebCore/ScriptController.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/StringConcatenate.h>
+#include <wtf/text/WTFString.h>
 
 using namespace WebCore;
 
@@ -43,44 +45,61 @@ static WorldMap& allWorlds()
     return map;
 }
 
-Ref<InjectedBundleScriptWorld> InjectedBundleScriptWorld::create()
+static String uniqueWorldName()
 {
-    return adoptRef(*new InjectedBundleScriptWorld(ScriptController::createWorld()));
+    static uint64_t uniqueWorldNameNumber = 0;
+    return makeString(ASCIILiteral("UniqueWorld_"), String::number(uniqueWorldNameNumber++));
 }
 
-PassRefPtr<InjectedBundleScriptWorld> InjectedBundleScriptWorld::getOrCreate(DOMWrapperWorld& world)
+Ref<InjectedBundleScriptWorld> InjectedBundleScriptWorld::create()
+{
+    return adoptRef(*new InjectedBundleScriptWorld(ScriptController::createWorld(), uniqueWorldName()));
+}
+
+Ref<InjectedBundleScriptWorld> InjectedBundleScriptWorld::create(const String& name)
+{
+    return adoptRef(*new InjectedBundleScriptWorld(ScriptController::createWorld(), name));
+}
+
+Ref<InjectedBundleScriptWorld> InjectedBundleScriptWorld::getOrCreate(DOMWrapperWorld& world)
 {
     if (&world == &mainThreadNormalWorld())
         return normalWorld();
 
     if (InjectedBundleScriptWorld* existingWorld = allWorlds().get(&world))
-        return existingWorld;
+        return *existingWorld;
 
-    return adoptRef(new InjectedBundleScriptWorld(&world));
+    return adoptRef(*new InjectedBundleScriptWorld(world, uniqueWorldName()));
 }
 
-InjectedBundleScriptWorld* InjectedBundleScriptWorld::normalWorld()
+InjectedBundleScriptWorld& InjectedBundleScriptWorld::normalWorld()
 {
-    static InjectedBundleScriptWorld* world = adoptRef(new InjectedBundleScriptWorld(&mainThreadNormalWorld())).leakRef();
+    static InjectedBundleScriptWorld& world = adoptRef(*new InjectedBundleScriptWorld(mainThreadNormalWorld(), String())).leakRef();
     return world;
 }
 
-InjectedBundleScriptWorld::InjectedBundleScriptWorld(PassRefPtr<DOMWrapperWorld> world)
+InjectedBundleScriptWorld::InjectedBundleScriptWorld(DOMWrapperWorld& world, const String& name)
     : m_world(world)
+    , m_name(name)
 {
-    ASSERT(!allWorlds().contains(m_world.get()));
-    allWorlds().add(m_world.get(), this);
+    ASSERT(!allWorlds().contains(m_world.ptr()));
+    allWorlds().add(m_world.ptr(), this);
 }
 
 InjectedBundleScriptWorld::~InjectedBundleScriptWorld()
 {
-    ASSERT(allWorlds().contains(m_world.get()));
-    allWorlds().remove(m_world.get());
+    ASSERT(allWorlds().contains(m_world.ptr()));
+    allWorlds().remove(m_world.ptr());
 }
 
-DOMWrapperWorld& InjectedBundleScriptWorld::coreWorld() const
+const DOMWrapperWorld& InjectedBundleScriptWorld::coreWorld() const
 {
-    return *m_world.get();
+    return m_world;
+}
+
+DOMWrapperWorld& InjectedBundleScriptWorld::coreWorld()
+{
+    return m_world;
 }
     
 void InjectedBundleScriptWorld::clearWrappers()

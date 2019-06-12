@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Scrollbar_h
-#define Scrollbar_h
+#pragma once
 
 #include "ScrollTypes.h"
 #include "Timer.h"
 #include "Widget.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
@@ -47,7 +45,7 @@ class PlatformGestureEvent;
 class Scrollbar : public Widget {
 public:
     // Must be implemented by platforms that can't simply use the Scrollbar base class.  Right now the only platform that is not using the base class is GTK.
-    WEBCORE_EXPORT static PassRefPtr<Scrollbar> createNativeScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize);
+    WEBCORE_EXPORT static Ref<Scrollbar> createNativeScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize);
 
     virtual ~Scrollbar();
 
@@ -90,7 +88,7 @@ public:
     WEBCORE_EXPORT void setProportion(int visibleSize, int totalSize);
     void setPressedPos(int p) { m_pressedPos = p; }
 
-    virtual void paint(GraphicsContext&, const IntRect& damageRect) override;
+    void paint(GraphicsContext&, const IntRect& damageRect, Widget::SecurityOriginPaintPolicy = SecurityOriginPaintPolicy::AnyOrigin) override;
 
     bool enabled() const { return m_enabled; }
     virtual void setEnabled(bool);
@@ -120,18 +118,18 @@ public:
 
     ScrollbarTheme& theme() const { return m_theme; }
 
-    virtual void invalidateRect(const IntRect&) override;
+    void invalidateRect(const IntRect&) override;
 
     bool suppressInvalidation() const { return m_suppressInvalidation; }
     void setSuppressInvalidation(bool s) { m_suppressInvalidation = s; }
 
     virtual void styleChanged() { }
 
-    virtual IntRect convertToContainingView(const IntRect&) const override;
-    virtual IntRect convertFromContainingView(const IntRect&) const override;
+    IntRect convertToContainingView(const IntRect&) const override;
+    IntRect convertFromContainingView(const IntRect&) const override;
 
-    virtual IntPoint convertToContainingView(const IntPoint&) const override;
-    virtual IntPoint convertFromContainingView(const IntPoint&) const override;
+    IntPoint convertToContainingView(const IntPoint&) const override;
+    IntPoint convertFromContainingView(const IntPoint&) const override;
 
     void moveThumb(int pos, bool draggingDocument = false);
 
@@ -153,9 +151,9 @@ protected:
     virtual void updateThumbProportion();
 
     void autoscrollTimerFired();
-    void startTimerIfNeeded(double delay);
+    void startTimerIfNeeded(Seconds delay);
     void stopTimerIfNeeded();
-    void autoscrollPressedPart(double delay);
+    void autoscrollPressedPart(Seconds delay);
     ScrollDirection pressedPartScrollDirection();
     ScrollGranularity pressedPartScrollGranularity();
 
@@ -192,7 +190,7 @@ protected:
     float m_opacity { 1 };
 
 private:
-    virtual bool isScrollbar() const override { return true; }
+    bool isScrollbar() const override { return true; }
 
     WeakPtrFactory<Scrollbar> m_weakPtrFactory;
 };
@@ -201,4 +199,3 @@ private:
 
 SPECIALIZE_TYPE_TRAITS_WIDGET(Scrollbar, isScrollbar())
 
-#endif // Scrollbar_h

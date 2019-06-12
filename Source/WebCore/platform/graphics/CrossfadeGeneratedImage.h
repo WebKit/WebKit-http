@@ -29,7 +29,6 @@
 #include "FloatSize.h"
 #include "GeneratedImage.h"
 #include "Image.h"
-#include "ImageObserver.h"
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -41,22 +40,22 @@ public:
         return adoptRef(*new CrossfadeGeneratedImage(fromImage, toImage, percentage, crossfadeSize, size));
     }
 
-    virtual void setContainerSize(const FloatSize&) override { }
-    virtual bool usesContainerSize() const override { return false; }
-    virtual bool hasRelativeWidth() const override { return false; }
-    virtual bool hasRelativeHeight() const override { return false; }
+    void setContainerSize(const FloatSize&) override { }
+    bool usesContainerSize() const override { return false; }
+    bool hasRelativeWidth() const override { return false; }
+    bool hasRelativeHeight() const override { return false; }
 
-    virtual FloatSize size() const override { return m_crossfadeSize; }
+    FloatSize size() const override { return m_crossfadeSize; }
 
 protected:
-    virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
-    virtual void drawPattern(GraphicsContext&, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& dstRect, BlendMode) override;
+    ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) override;
+    void drawPattern(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode) override;
 
     CrossfadeGeneratedImage(Image& fromImage, Image& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize&);
 
 private:
-    virtual bool isCrossfadeGeneratedImage() const override { return true; }
-    virtual void dump(TextStream&) const override;
+    bool isCrossfadeGeneratedImage() const override { return true; }
+    void dump(TextStream&) const override;
     
     void drawCrossfade(GraphicsContext&);
 

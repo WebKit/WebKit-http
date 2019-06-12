@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MemoryBackingStoreTransaction_h
-#define MemoryBackingStoreTransaction_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -46,14 +45,14 @@ class MemoryObjectStore;
 typedef HashMap<IDBKeyData, ThreadSafeDataBuffer, IDBKeyDataHash, IDBKeyDataHashTraits> KeyValueMap;
 
 class MemoryBackingStoreTransaction {
-    friend std::unique_ptr<MemoryBackingStoreTransaction> std::make_unique<MemoryBackingStoreTransaction>(WebCore::IDBServer::MemoryIDBBackingStore&, const WebCore::IDBTransactionInfo&);
 public:
     static std::unique_ptr<MemoryBackingStoreTransaction> create(MemoryIDBBackingStore&, const IDBTransactionInfo&);
 
+    MemoryBackingStoreTransaction(MemoryIDBBackingStore&, const IDBTransactionInfo&);
     ~MemoryBackingStoreTransaction();
 
-    bool isVersionChange() const { return m_info.mode() == IndexedDB::TransactionMode::VersionChange; }
-    bool isWriting() const { return m_info.mode() != IndexedDB::TransactionMode::ReadOnly; }
+    bool isVersionChange() const { return m_info.mode() == IDBTransactionMode::Versionchange; }
+    bool isWriting() const { return m_info.mode() != IDBTransactionMode::Readonly; }
     bool isAborting() const { return m_isAborting; }
 
     const IDBDatabaseInfo& originalDatabaseInfo() const;
@@ -63,7 +62,9 @@ public:
     
     void recordValueChanged(MemoryObjectStore&, const IDBKeyData&, ThreadSafeDataBuffer*);
     void objectStoreDeleted(Ref<MemoryObjectStore>&&);
-    void objectStoreCleared(MemoryObjectStore&, std::unique_ptr<KeyValueMap>&&, std::unique_ptr<std::set<IDBKeyData>>&&);
+    void objectStoreCleared(MemoryObjectStore&, std::unique_ptr<KeyValueMap>&&, std::unique_ptr<IDBKeyDataSet>&&);
+    void objectStoreRenamed(MemoryObjectStore&, const String& oldName);
+    void indexRenamed(MemoryIndex&, const String& oldName);
     void indexCleared(MemoryIndex&, std::unique_ptr<IndexValueStore>&&);
 
     void addNewIndex(MemoryIndex&);
@@ -74,8 +75,6 @@ public:
     void commit();
 
 private:
-    MemoryBackingStoreTransaction(MemoryIDBBackingStore&, const IDBTransactionInfo&);
-
     void finish();
 
     MemoryIDBBackingStore& m_backingStore;
@@ -96,7 +95,9 @@ private:
     HashMap<String, RefPtr<MemoryIndex>> m_deletedIndexes;
     HashMap<MemoryObjectStore*, std::unique_ptr<KeyValueMap>> m_originalValues;
     HashMap<MemoryObjectStore*, std::unique_ptr<KeyValueMap>> m_clearedKeyValueMaps;
-    HashMap<MemoryObjectStore*, std::unique_ptr<std::set<IDBKeyData>>> m_clearedOrderedKeys;
+    HashMap<MemoryObjectStore*, std::unique_ptr<IDBKeyDataSet>> m_clearedOrderedKeys;
+    HashMap<MemoryObjectStore*, String> m_originalObjectStoreNames;
+    HashMap<MemoryIndex*, String> m_originalIndexNames;
     HashMap<MemoryIndex*, std::unique_ptr<IndexValueStore>> m_clearedIndexValueStores;
 };
 
@@ -104,4 +105,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // MemoryBackingStoreTransaction_h

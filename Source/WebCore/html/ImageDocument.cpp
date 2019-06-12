@@ -31,11 +31,11 @@
 #include "DocumentLoader.h"
 #include "EventListener.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
 #include "HTMLBodyElement.h"
+#include "HTMLHeadElement.h"
 #include "HTMLHtmlElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
@@ -64,8 +64,8 @@ private:
     {
     }
 
-    virtual bool operator==(const EventListener&) override;
-    virtual void handleEvent(ScriptExecutionContext*, Event*) override;
+    bool operator==(const EventListener&) const override;
+    void handleEvent(ScriptExecutionContext*, Event*) override;
 
     ImageDocument& m_document;
 };
@@ -86,8 +86,8 @@ private:
 
     ImageDocument& document() const;
 
-    virtual void appendBytes(DocumentWriter&, const char*, size_t) override;
-    virtual void finish() override;
+    void appendBytes(DocumentWriter&, const char*, size_t) override;
+    void finish() override;
 };
 
 class ImageDocumentElement final : public HTMLImageElement {
@@ -102,7 +102,7 @@ private:
     }
 
     virtual ~ImageDocumentElement();
-    virtual void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
     ImageDocument* m_imageDocument;
 };
@@ -128,7 +128,7 @@ LayoutSize ImageDocument::imageSize()
 
 void ImageDocument::updateDuringParsing()
 {
-    if (!frame()->settings().areImagesEnabled())
+    if (!settings().areImagesEnabled())
         return;
 
     if (!m_imageElement)
@@ -210,19 +210,23 @@ Ref<DocumentParser> ImageDocument::createParser()
 
 void ImageDocument::createDocumentStructure()
 {
-    Ref<Element> rootElement = Document::createElement(htmlTag, false);
-    appendChild(rootElement.copyRef());
-    downcast<HTMLHtmlElement>(rootElement.get()).insertedByParser();
+    auto rootElement = HTMLHtmlElement::create(*this);
+    appendChild(rootElement);
+    rootElement->insertedByParser();
 
     frame()->injectUserScripts(InjectAtDocumentStart);
 
-    Ref<Element> body = Document::createElement(bodyTag, false);
+    // We need a <head> so that the call to setTitle() later on actually has an <head> to append to <title> to.
+    auto head = HTMLHeadElement::create(*this);
+    rootElement->appendChild(head);
+
+    auto body = HTMLBodyElement::create(*this);
     body->setAttribute(styleAttr, "margin: 0px");
     if (MIMETypeRegistry::isPDFMIMEType(document().loader()->responseMIMEType()))
-        downcast<HTMLBodyElement>(body.get()).setInlineStyleProperty(CSSPropertyBackgroundColor, "white", CSSPrimitiveValue::CSS_IDENT);
-    rootElement->appendChild(body.copyRef());
+        body->setInlineStyleProperty(CSSPropertyBackgroundColor, "white");
+    rootElement->appendChild(body);
     
-    Ref<ImageDocumentElement> imageElement = ImageDocumentElement::create(*this);
+    auto imageElement = ImageDocumentElement::create(*this);
     if (m_shouldShrinkImage)
         imageElement->setAttribute(styleAttr, "-webkit-user-select:none; display:block; margin:auto;");
     else
@@ -230,14 +234,14 @@ void ImageDocument::createDocumentStructure()
     imageElement->setLoadManually(true);
     imageElement->setSrc(url().string());
     imageElement->cachedImage()->setResponse(loader()->response());
-    body->appendChild(imageElement.copyRef());
+    body->appendChild(imageElement);
     
     if (m_shouldShrinkImage) {
 #if PLATFORM(IOS)
         // Set the viewport to be in device pixels (rather than the default of 980).
         processViewport(ASCIILiteral("width=device-width"), ViewportArguments::ImageDocument);
 #else
-        RefPtr<EventListener> listener = ImageEventListener::create(*this);
+        auto listener = ImageEventListener::create(*this);
         if (DOMWindow* window = this->domWindow())
             window->addEventListener("resize", listener.copyRef(), false);
         imageElement->addEventListener("click", WTFMove(listener), false);
@@ -313,8 +317,8 @@ void ImageDocument::restoreImageSize()
         return;
 
     LayoutSize imageSize = this->imageSize();
-    m_imageElement->setWidth(imageSize.width());
-    m_imageElement->setHeight(imageSize.height());
+    m_imageElement->setWidth(imageSize.width().toUnsigned());
+    m_imageElement->setHeight(imageSize.height().toUnsigned());
 
     if (imageFitsInWindow())
         m_imageElement->removeInlineStyleProperty(CSSPropertyCursor);
@@ -407,7 +411,7 @@ void ImageEventListener::handleEvent(ScriptExecutionContext*, Event* event)
     }
 }
 
-bool ImageEventListener::operator==(const EventListener& other)
+bool ImageEventListener::operator==(const EventListener& other) const
 {
     // All ImageEventListener objects compare as equal; OK since there is only one per document.
     return other.type() == ImageEventListenerType;
@@ -422,13 +426,13 @@ ImageDocumentElement::~ImageDocumentElement()
         m_imageDocument->disconnectImageElement();
 }
 
-void ImageDocumentElement::didMoveToNewDocument(Document* oldDocument)
+void ImageDocumentElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
     if (m_imageDocument) {
         m_imageDocument->disconnectImageElement();
         m_imageDocument = nullptr;
     }
-    HTMLImageElement::didMoveToNewDocument(oldDocument);
+    HTMLImageElement::didMoveToNewDocument(oldDocument, newDocument);
 }
 
 }

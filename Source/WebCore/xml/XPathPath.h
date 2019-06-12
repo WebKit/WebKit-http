@@ -24,13 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef XPathPath_h
-#define XPathPath_h
+#pragma once
 
 #include "XPathExpressionNode.h"
 
 namespace WebCore {
-
     namespace XPath {
 
         class Step;
@@ -40,8 +38,8 @@ namespace WebCore {
             Filter(std::unique_ptr<Expression>, Vector<std::unique_ptr<Expression>> predicates);
 
         private:
-            virtual Value evaluate() const override;
-            virtual Value::Type resultType() const override { return Value::NodeSetValue; }
+            Value evaluate() const override;
+            Value::Type resultType() const override { return Value::NodeSetValue; }
 
             std::unique_ptr<Expression> m_expression;
             Vector<std::unique_ptr<Expression>> m_predicates;
@@ -59,8 +57,8 @@ namespace WebCore {
             void prependStep(std::unique_ptr<Step>);
 
         private:
-            virtual Value evaluate() const override;
-            virtual Value::Type resultType() const override { return Value::NodeSetValue; }
+            Value evaluate() const override;
+            Value::Type resultType() const override { return Value::NodeSetValue; }
 
             Vector<std::unique_ptr<Step>> m_steps;
             bool m_isAbsolute;
@@ -71,14 +69,12 @@ namespace WebCore {
             Path(std::unique_ptr<Expression> filter, std::unique_ptr<LocationPath>);
 
         private:
-            virtual Value evaluate() const override;
-            virtual Value::Type resultType() const override { return Value::NodeSetValue; }
+            Value evaluate() const override;
+            Value::Type resultType() const override { return Value::NodeSetValue; }
 
             std::unique_ptr<Expression> m_filter;
             std::unique_ptr<LocationPath> m_path;
         };
 
-    }
-}
-
-#endif // XPath_Path_H
+    } // namespace XPath
+} // namespace WebCore

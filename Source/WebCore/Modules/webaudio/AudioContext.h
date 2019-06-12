@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2010, Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,24 +23,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AudioContext_h
-#define AudioContext_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "AsyncAudioDecoder.h"
 #include "AudioBus.h"
 #include "AudioDestinationNode.h"
-#include "EventListener.h"
 #include "EventTarget.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "MediaCanStartListener.h"
 #include "MediaProducer.h"
 #include "PlatformMediaSession.h"
+#include "VisibilityChangeClient.h"
 #include <atomic>
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Threading.h>
@@ -48,39 +46,39 @@
 
 namespace WebCore {
 
+class AnalyserNode;
 class AudioBuffer;
 class AudioBufferCallback;
 class AudioBufferSourceNode;
-class MediaElementAudioSourceNode;
-class MediaStreamAudioDestinationNode;
-class MediaStreamAudioSourceNode;
-class HRTFDatabaseLoader;
-class HTMLMediaElement;
-class ChannelMergerNode;
-class ChannelSplitterNode;
-class GainNode;
-class GenericEventQueue;
-class PannerNode;
 class AudioListener;
 class AudioSummingJunction;
 class BiquadFilterNode;
+class ChannelMergerNode;
+class ChannelSplitterNode;
+class ConvolverNode;
 class DelayNode;
 class Document;
-class ConvolverNode;
 class DynamicsCompressorNode;
-class AnalyserNode;
-class WaveShaperNode;
-class ScriptProcessorNode;
+class GainNode;
+class GenericEventQueue;
+class HTMLMediaElement;
+class MediaElementAudioSourceNode;
+class MediaStream;
+class MediaStreamAudioDestinationNode;
+class MediaStreamAudioSourceNode;
 class OscillatorNode;
+class PannerNode;
 class PeriodicWave;
+class ScriptProcessorNode;
+class WaveShaperNode;
 
 // AudioContext is the cornerstone of the web audio API and all AudioNodes are created from it.
 // For thread safety between the audio thread and the main thread, it has a rendering graph locking mechanism. 
 
-class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public MediaProducer, private PlatformMediaSessionClient {
+class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public MediaProducer, private PlatformMediaSessionClient, private VisibilityChangeClient {
 public:
     // Create an AudioContext for rendering to the audio hardware.
-    static RefPtr<AudioContext> create(Document&, ExceptionCode&);
+    static RefPtr<AudioContext> create(Document&);
 
     virtual ~AudioContext();
 
@@ -101,52 +99,46 @@ public:
     void incrementActiveSourceCount();
     void decrementActiveSourceCount();
     
-    PassRefPtr<AudioBuffer> createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate, ExceptionCode&);
-    PassRefPtr<AudioBuffer> createBuffer(ArrayBuffer*, bool mixToMono, ExceptionCode&);
+    ExceptionOr<Ref<AudioBuffer>> createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
+    ExceptionOr<Ref<AudioBuffer>> createBuffer(ArrayBuffer&, bool mixToMono);
 
     // Asynchronous audio file data decoding.
-    void decodeAudioData(ArrayBuffer*, PassRefPtr<AudioBufferCallback>, PassRefPtr<AudioBufferCallback>, ExceptionCode& ec);
+    void decodeAudioData(Ref<ArrayBuffer>&&, RefPtr<AudioBufferCallback>&&, RefPtr<AudioBufferCallback>&&);
 
     AudioListener* listener() { return m_listener.get(); }
 
     using ActiveDOMObject::suspend;
     using ActiveDOMObject::resume;
 
-    typedef DOMPromise<std::nullptr_t, ExceptionCode> Promise;
+    void suspend(DOMPromiseDeferred<void>&&);
+    void resume(DOMPromiseDeferred<void>&&);
+    void close(DOMPromiseDeferred<void>&&);
 
-    void suspend(Promise&&);
-    void resume(Promise&&);
-    void close(Promise&&);
-
-    const AtomicString& state() const;
+    enum class State { Suspended, Running, Interrupted, Closed };
+    State state() const;
 
     // The AudioNode create methods are called on the main thread (from JavaScript).
-    PassRefPtr<AudioBufferSourceNode> createBufferSource();
+    Ref<AudioBufferSourceNode> createBufferSource();
 #if ENABLE(VIDEO)
-    PassRefPtr<MediaElementAudioSourceNode> createMediaElementSource(HTMLMediaElement*, ExceptionCode&);
+    ExceptionOr<Ref<MediaElementAudioSourceNode>> createMediaElementSource(HTMLMediaElement&);
 #endif
 #if ENABLE(MEDIA_STREAM)
-    PassRefPtr<MediaStreamAudioSourceNode> createMediaStreamSource(MediaStream*, ExceptionCode&);
-    PassRefPtr<MediaStreamAudioDestinationNode> createMediaStreamDestination();
+    ExceptionOr<Ref<MediaStreamAudioSourceNode>> createMediaStreamSource(MediaStream&);
+    Ref<MediaStreamAudioDestinationNode> createMediaStreamDestination();
 #endif
-    PassRefPtr<GainNode> createGain();
-    PassRefPtr<BiquadFilterNode> createBiquadFilter();
-    PassRefPtr<WaveShaperNode> createWaveShaper();
-    PassRefPtr<DelayNode> createDelay(ExceptionCode&);
-    PassRefPtr<DelayNode> createDelay(double maxDelayTime, ExceptionCode&);
-    PassRefPtr<PannerNode> createPanner();
-    PassRefPtr<ConvolverNode> createConvolver();
-    PassRefPtr<DynamicsCompressorNode> createDynamicsCompressor();    
-    PassRefPtr<AnalyserNode> createAnalyser();
-    PassRefPtr<ScriptProcessorNode> createScriptProcessor(size_t bufferSize, ExceptionCode&);
-    PassRefPtr<ScriptProcessorNode> createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, ExceptionCode&);
-    PassRefPtr<ScriptProcessorNode> createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, size_t numberOfOutputChannels, ExceptionCode&);
-    PassRefPtr<ChannelSplitterNode> createChannelSplitter(ExceptionCode&);
-    PassRefPtr<ChannelSplitterNode> createChannelSplitter(size_t numberOfOutputs, ExceptionCode&);
-    PassRefPtr<ChannelMergerNode> createChannelMerger(ExceptionCode&);
-    PassRefPtr<ChannelMergerNode> createChannelMerger(size_t numberOfInputs, ExceptionCode&);
-    PassRefPtr<OscillatorNode> createOscillator();
-    PassRefPtr<PeriodicWave> createPeriodicWave(Float32Array* real, Float32Array* imag, ExceptionCode&);
+    Ref<GainNode> createGain();
+    Ref<BiquadFilterNode> createBiquadFilter();
+    Ref<WaveShaperNode> createWaveShaper();
+    ExceptionOr<Ref<DelayNode>> createDelay(double maxDelayTime);
+    Ref<PannerNode> createPanner();
+    Ref<ConvolverNode> createConvolver();
+    Ref<DynamicsCompressorNode> createDynamicsCompressor();
+    Ref<AnalyserNode> createAnalyser();
+    ExceptionOr<Ref<ScriptProcessorNode>> createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, size_t numberOfOutputChannels);
+    ExceptionOr<Ref<ChannelSplitterNode>> createChannelSplitter(size_t numberOfOutputs);
+    ExceptionOr<Ref<ChannelMergerNode>> createChannelMerger(size_t numberOfInputs);
+    Ref<OscillatorNode> createOscillator();
+    ExceptionOr<Ref<PeriodicWave>> createPeriodicWave(Float32Array& real, Float32Array& imaginary);
 
     // When a source node has no more processing to do (has finished playing), then it tells the context to dereference it.
     void notifyNodeFinishedProcessing(AudioNode*);
@@ -204,8 +196,8 @@ public:
     // Returns true if this thread owns the context's lock.
     bool isGraphOwner() const;
 
-    // Returns the maximum numuber of channels we can support.
-    static unsigned maxNumberOfChannels() { return MaxNumberOfChannels;}
+    // Returns the maximum number of channels we can support.
+    static unsigned maxNumberOfChannels() { return MaxNumberOfChannels; }
 
     class AutoLocker {
     public:
@@ -240,12 +232,12 @@ public:
     void removeMarkedSummingJunction(AudioSummingJunction*);
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const override final { return AudioContextEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override final;
+    EventTargetInterface eventTargetInterface() const final { return AudioContextEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final;
 
     // Reconcile ref/deref which are defined both in ThreadSafeRefCounted and EventTarget.
-    using ThreadSafeRefCounted<AudioContext>::ref;
-    using ThreadSafeRefCounted<AudioContext>::deref;
+    using ThreadSafeRefCounted::ref;
+    using ThreadSafeRefCounted::deref;
 
     void startRendering();
     void fireCompletionEvent();
@@ -286,25 +278,24 @@ private:
     bool userGestureRequiredForAudioStart() const { return m_restrictions & RequireUserGestureForAudioStartRestriction; }
     bool pageConsentRequiredForAudioStart() const { return m_restrictions & RequirePageConsentForAudioStartRestriction; }
 
-    enum class State { Suspended, Running, Interrupted, Closed };
     void setState(State);
 
     void clear();
 
     void scheduleNodeDeletion();
 
-    virtual void mediaCanStart() override;
+    void mediaCanStart(Document&) override;
 
     // MediaProducer
-    virtual MediaProducer::MediaStateFlags mediaState() const override;
-    virtual void pageMutedStateDidChange() override;
+    MediaProducer::MediaStateFlags mediaState() const override;
+    void pageMutedStateDidChange() override;
 
     // The context itself keeps a reference to all source nodes.  The source nodes, then reference all nodes they're connected to.
     // In turn, these nodes reference all nodes they're connected to.  All nodes are ultimately connected to the AudioDestinationNode.
     // When the context dereferences a source node, it will be deactivated from the rendering graph along with all other nodes it is
     // uniquely connected to.  See the AudioNode::ref() and AudioNode::deref() methods for more details.
-    void refNode(AudioNode*);
-    void derefNode(AudioNode*);
+    void refNode(AudioNode&);
+    void derefNode(AudioNode&);
 
     // ActiveDOMObject API.
     void stop() override;
@@ -318,20 +309,28 @@ private:
     // PlatformMediaSessionClient
     PlatformMediaSession::MediaType mediaType() const override { return PlatformMediaSession::WebAudio; }
     PlatformMediaSession::MediaType presentationType() const override { return PlatformMediaSession::WebAudio; }
+    PlatformMediaSession::CharacteristicsFlags characteristics() const override { return m_state == State::Running ? PlatformMediaSession::HasAudio : PlatformMediaSession::HasNothing; }
     void mayResumePlayback(bool shouldResume) override;
     void suspendPlayback() override;
     bool canReceiveRemoteControlCommands() const override { return false; }
-    void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType) override { }
+    void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) override { }
+    bool supportsSeeking() const override { return false; }
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override { return false; }
+    String sourceApplicationIdentifier() const override;
+    bool canProduceAudio() const final { return true; }
+    bool isSuspended() const final;
+    bool processingUserGestureForMedia() const final;
+
+    void visibilityStateChanged() final;
 
     // EventTarget
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    void refEventTarget() override { ref(); }
+    void derefEventTarget() override { deref(); }
 
     void handleDirtyAudioSummingJunctions();
     void handleDirtyAudioNodeOutputs();
 
-    void addReaction(State, Promise&&);
+    void addReaction(State, DOMPromiseDeferred<void>&&);
     void updateAutomaticPullNodes();
 
     // Only accessed in the audio thread.
@@ -368,7 +367,7 @@ private:
     Vector<AudioNode*> m_renderingAutomaticPullNodes;
     // Only accessed in the audio thread.
     Vector<AudioNode*> m_deferredFinishDerefList;
-    Vector<Vector<Promise>> m_stateReactions;
+    Vector<Vector<DOMPromiseDeferred<void>>> m_stateReactions;
 
     std::unique_ptr<PlatformMediaSession> m_mediaSession;
     std::unique_ptr<GenericEventQueue> m_eventQueue;
@@ -398,14 +397,21 @@ private:
     State m_state { State::Suspended };
 };
 
-inline bool operator==(const AudioContext& lhs, const AudioContext& rhs) {
+// FIXME: Find out why these ==/!= functions are needed and remove them if possible.
+
+inline bool operator==(const AudioContext& lhs, const AudioContext& rhs)
+{
     return &lhs == &rhs;
 }
 
-inline bool operator!=(const AudioContext& lhs, const AudioContext& rhs) {
+inline bool operator!=(const AudioContext& lhs, const AudioContext& rhs)
+{
     return &lhs != &rhs;
 }
 
-} // WebCore
+inline AudioContext::State AudioContext::state() const
+{
+    return m_state;
+}
 
-#endif // AudioContext_h
+} // WebCore

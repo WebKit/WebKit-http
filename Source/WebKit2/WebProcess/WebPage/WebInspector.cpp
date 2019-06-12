@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include <WebCore/Chrome.h>
 #include <WebCore/Document.h>
 #include <WebCore/FrameLoadRequest.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/InspectorFrontendClient.h>
@@ -85,10 +86,15 @@ void WebInspector::openFrontendConnection(bool underTest)
     IPC::Attachment connectionClientPort(clientIdentifier);
 #elif OS(DARWIN)
     mach_port_t listeningPort;
-    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
+    if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort) != KERN_SUCCESS)
+        CRASH();
+
+    if (mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
+        CRASH();
 
     IPC::Connection::Identifier connectionIdentifier(listeningPort);
-    IPC::Attachment connectionClientPort(listeningPort, MACH_MSG_TYPE_MAKE_SEND);
+    IPC::Attachment connectionClientPort(listeningPort, MACH_MSG_TYPE_MOVE_SEND);
+
 #else
     notImplemented();
     return;
@@ -148,13 +154,14 @@ void WebInspector::openInNewTab(const String& urlString)
         return;
 
     Frame& inspectedMainFrame = inspectedPage->mainFrame();
-    FrameLoadRequest request(inspectedMainFrame.document()->securityOrigin(), ResourceRequest(urlString), "_blank", LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ReplaceDocumentIfJavaScriptURL, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    FrameLoadRequest frameLoadRequest { *inspectedMainFrame.document(), inspectedMainFrame.document()->securityOrigin(), { urlString }, ASCIILiteral("_blank"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
 
-    Page* newPage = inspectedPage->chrome().createWindow(&inspectedMainFrame, request, WindowFeatures(), NavigationAction(request.resourceRequest(), NavigationType::LinkClicked));
+    NavigationAction action { *inspectedMainFrame.document(), frameLoadRequest.resourceRequest(), frameLoadRequest.initiatedByMainFrame(), NavigationType::LinkClicked };
+    Page* newPage = inspectedPage->chrome().createWindow(inspectedMainFrame, frameLoadRequest, { }, action);
     if (!newPage)
         return;
 
-    newPage->mainFrame().loader().load(request);
+    newPage->mainFrame().loader().load(WTFMove(frameLoadRequest));
 }
 
 void WebInspector::evaluateScriptForTest(const String& script)
@@ -183,6 +190,15 @@ void WebInspector::showResources()
     m_frontendConnection->send(Messages::WebInspectorUI::ShowResources(), 0);
 }
 
+void WebInspector::showTimelines()
+{
+    if (!m_page->corePage())
+        return;
+
+    m_page->corePage()->inspectorController().show();
+    m_frontendConnection->send(Messages::WebInspectorUI::ShowTimelines(), 0);
+}
+
 void WebInspector::showMainResourceForFrame(uint64_t frameIdentifier)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameIdentifier);
@@ -203,7 +219,6 @@ void WebInspector::startPageProfiling()
     if (!m_page->corePage())
         return;
 
-    m_page->corePage()->inspectorController().show();
     m_frontendConnection->send(Messages::WebInspectorUI::StartPageProfiling(), 0);
 }
 
@@ -212,8 +227,28 @@ void WebInspector::stopPageProfiling()
     if (!m_page->corePage())
         return;
 
-    m_page->corePage()->inspectorController().show();
     m_frontendConnection->send(Messages::WebInspectorUI::StopPageProfiling(), 0);
+}
+
+void WebInspector::startElementSelection()
+{
+    if (!m_page->corePage())
+        return;
+
+    m_frontendConnection->send(Messages::WebInspectorUI::StartElementSelection(), 0);
+}
+
+void WebInspector::stopElementSelection()
+{
+    if (!m_page->corePage())
+        return;
+
+    m_frontendConnection->send(Messages::WebInspectorUI::StopElementSelection(), 0);
+}
+
+void WebInspector::elementSelectionChanged(bool active)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::ElementSelectionChanged(active), m_page->pageID());
 }
 
 bool WebInspector::canAttachWindow()
@@ -258,33 +293,9 @@ void WebInspector::sendMessageToBackend(const String& message)
     m_page->corePage()->inspectorController().dispatchMessageFromFrontend(message);
 }
 
-bool WebInspector::sendMessageToFrontend(const String& message)
+void WebInspector::sendMessageToFrontend(const String& message)
 {
-#if ENABLE(INSPECTOR_SERVER)
-    if (m_remoteFrontendConnected)
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::SendMessageToRemoteFrontend(message), m_page->pageID());
-    else
-#endif
-        m_frontendConnection->send(Messages::WebInspectorUI::SendMessageToFrontend(message), 0);
-    return true;
+    m_frontendConnection->send(Messages::WebInspectorUI::SendMessageToFrontend(message), 0);
 }
-
-#if ENABLE(INSPECTOR_SERVER)
-void WebInspector::remoteFrontendConnected()
-{
-    if (m_page->corePage()) {
-        m_remoteFrontendConnected = true;
-        m_page->corePage()->inspectorController().connectFrontend(this);
-    }
-}
-
-void WebInspector::remoteFrontendDisconnected()
-{
-    m_remoteFrontendConnected = false;
-
-    if (m_page->corePage())
-        m_page->corePage()->inspectorController().disconnectFrontend(this);
-}
-#endif
 
 } // namespace WebKit

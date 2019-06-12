@@ -20,11 +20,9 @@
  *
  */
 
-#ifndef RenderListItem_h
-#define RenderListItem_h
+#pragma once
 
 #include "RenderBlockFlow.h"
-#include "RenderPtr.h"
 
 namespace WebCore {
 
@@ -33,7 +31,7 @@ class RenderListMarker;
 
 class RenderListItem final : public RenderBlockFlow {
 public:
-    RenderListItem(Element&, Ref<RenderStyle>&&);
+    RenderListItem(Element&, RenderStyle&&);
     virtual ~RenderListItem();
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }
 
@@ -58,27 +56,30 @@ public:
 
     void didDestroyListMarker() { m_marker = nullptr; }
 
+#if !ASSERT_DISABLED
+    bool inLayout() const { return m_inLayout; }
+#endif
+
 private:
-    virtual const char* renderName() const override { return "RenderListItem"; }
+    void willBeDestroyed() override;
 
-    virtual bool isListItem() const override { return true; }
+    const char* renderName() const override { return "RenderListItem"; }
+
+    bool isListItem() const override { return true; }
     
-    virtual void insertedIntoTree() override;
-    virtual void willBeRemovedFromTree() override;
+    void insertedIntoTree() override;
+    void willBeRemovedFromTree() override;
 
-    virtual bool isEmpty() const override;
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
 
-    virtual void layout() override;
+    void layout() override;
 
     void positionListMarker();
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
-    virtual bool requiresForcedStyleRecalcPropagation() const override { return true; }
-
-    virtual void addOverflowFromChildren() override;
-    virtual void computePreferredLogicalWidths() override;
+    void addOverflowFromChildren() override;
+    void computePreferredLogicalWidths() override;
 
     void insertOrMoveMarkerRendererIfNeeded();
     inline int calcValue() const;
@@ -88,7 +89,9 @@ private:
     int m_explicitValue;
     RenderListMarker* m_marker;
     mutable int m_value;
-
+#if !ASSERT_DISABLED
+    bool m_inLayout { false };
+#endif
     bool m_hasExplicitValue : 1;
     mutable bool m_isValueUpToDate : 1;
     bool m_notInList : 1;
@@ -97,5 +100,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderListItem, isListItem())
-
-#endif // RenderListItem_h

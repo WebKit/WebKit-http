@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLImageElement_h
-#define HTMLImageElement_h
+#pragma once
 
 #include "FormNamedItem.h"
 #include "GraphicsTypes.h"
@@ -32,6 +31,7 @@
 namespace WebCore {
 
 class HTMLFormElement;
+
 struct ImageCandidate;
 
 class HTMLImageElement : public HTMLElement, public FormNamedItem {
@@ -39,15 +39,15 @@ class HTMLImageElement : public HTMLElement, public FormNamedItem {
 public:
     static Ref<HTMLImageElement> create(Document&);
     static Ref<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
-    static Ref<HTMLImageElement> createForJSConstructor(Document&, const int* optionalWidth, const int* optionalHeight);
+    static Ref<HTMLImageElement> createForJSConstructor(Document&, std::optional<unsigned> width, std::optional<unsigned> height);
 
     virtual ~HTMLImageElement();
 
-    int width(bool ignorePendingStylesheets = false);
-    int height(bool ignorePendingStylesheets = false);
+    WEBCORE_EXPORT unsigned width(bool ignorePendingStylesheets = false);
+    WEBCORE_EXPORT unsigned height(bool ignorePendingStylesheets = false);
 
-    int naturalWidth() const;
-    int naturalHeight() const;
+    WEBCORE_EXPORT int naturalWidth() const;
+    WEBCORE_EXPORT int naturalHeight() const;
     const AtomicString& currentSrc() const { return m_currentSrc; }
 
     bool isServerMap() const;
@@ -63,31 +63,34 @@ public:
 
     void setLoadManually(bool loadManually) { m_imageLoader.setLoadManually(loadManually); }
 
-    bool matchesCaseFoldedUsemap(const AtomicStringImpl&) const;
+    bool matchesUsemap(const AtomicStringImpl&) const;
 
-    const AtomicString& alt() const;
+    WEBCORE_EXPORT const AtomicString& alt() const;
 
-    void setHeight(int);
+    WEBCORE_EXPORT void setHeight(unsigned);
 
     URL src() const;
     void setSrc(const String&);
 
-    void setWidth(int);
+    WEBCORE_EXPORT void setCrossOrigin(const AtomicString&);
+    WEBCORE_EXPORT String crossOrigin() const;
 
-    int x() const;
-    int y() const;
+    WEBCORE_EXPORT void setWidth(unsigned);
 
-    bool complete() const;
+    WEBCORE_EXPORT int x() const;
+    WEBCORE_EXPORT int y() const;
+
+    WEBCORE_EXPORT bool complete() const;
 
 #if PLATFORM(IOS)
-    virtual bool willRespondToMouseClickEvents() override;
+    bool willRespondToMouseClickEvents() override;
 #endif
 
     bool hasPendingActivity() const { return m_imageLoader.hasPendingActivity(); }
 
-    virtual bool canContainRangeEndPoint() const override { return false; }
+    bool canContainRangeEndPoint() const override { return false; }
 
-    virtual const AtomicString& imageSourceURL() const override;
+    const AtomicString& imageSourceURL() const override;
 
     bool hasShadowControls() const { return m_experimentalImageMenuEnabled; }
     
@@ -97,34 +100,34 @@ public:
 protected:
     HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = 0);
 
-    virtual void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
 private:
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    bool isPresentationAttribute(const QualifiedName&) const override;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
-    virtual void didAttachRenderers() override;
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    void didAttachRenderers() override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
     void setBestFitURLAndDPRFromImageCandidate(const ImageCandidate&);
 
-    virtual bool canStartSelection() const override;
+    bool canStartSelection() const override;
 
-    virtual bool isURLAttribute(const Attribute&) const override;
-    virtual bool attributeContainsURL(const Attribute&) const override;
-    virtual String completeURLsInAttributeValue(const URL& base, const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const override;
+    bool attributeContainsURL(const Attribute&) const override;
+    String completeURLsInAttributeValue(const URL& base, const Attribute&) const override;
 
-    virtual bool draggable() const override;
+    bool draggable() const override;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void removedFrom(ContainerNode&) override;
 
-    virtual bool isFormAssociatedElement() const override final { return false; }
-    virtual FormNamedItem* asFormNamedItem() override final { return this; }
-    virtual HTMLImageElement& asHTMLElement() override final { return *this; }
-    virtual const HTMLImageElement& asHTMLElement() const override final { return *this; }
+    bool isFormAssociatedElement() const final { return false; }
+    FormNamedItem* asFormNamedItem() final { return this; }
+    HTMLImageElement& asHTMLElement() final { return *this; }
+    const HTMLImageElement& asHTMLElement() const final { return *this; }
 
     void selectImageSource();
 
@@ -137,22 +140,20 @@ private:
     CompositeOperator m_compositeOperator;
     AtomicString m_bestFitImageURL;
     AtomicString m_currentSrc;
-    AtomicString m_caseFoldedUsemap;
+    AtomicString m_parsedUsemap;
     float m_imageDevicePixelRatio;
     bool m_experimentalImageMenuEnabled;
     bool m_hadNameBeforeAttributeChanged { false }; // FIXME: We only need this because parseAttribute() can't see the old value.
 
 #if ENABLE(SERVICE_CONTROLS)
     void updateImageControls();
-    void createImageControls();
+    void tryCreateImageControls();
     void destroyImageControls();
     bool hasImageControls() const;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
+    bool childShouldCreateRenderer(const Node&) const override;
 #endif
 
     friend class HTMLPictureElement;
 };
 
 } //namespace
-
-#endif

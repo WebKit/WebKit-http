@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,20 +26,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSSegmentedVariableObject_h
-#define JSSegmentedVariableObject_h
+#pragma once
 
-#include "ConcurrentJITLock.h"
+#include "ConcurrentJSLock.h"
 #include "JSObject.h"
 #include "JSSymbolTableObject.h"
-#include "Register.h"
 #include "SymbolTable.h"
 #include <wtf/SegmentedVector.h>
 
 namespace JSC {
 
 class LLIntOffsetsExtractor;
-class Register;
 
 // This is a mostly drop-in replacement for JSEnvironmentRecord, except that it preserves
 // the invariant that after a variable is created, its address in memory will not change
@@ -49,6 +46,8 @@ class Register;
 // requires nor allows for the subclasses to manage that memory. Finally,
 // JSSegmentedVariableObject has its own GC tracing functionality, since it knows the
 // exact dimensions of the variables array at all times.
+
+// Except for JSGlobalObject, subclasses of this don't call the destructor and leak memory.
 
 class JSSegmentedVariableObject : public JSSymbolTableObject {
     friend class JIT;
@@ -85,24 +84,30 @@ public:
     JS_EXPORT_PRIVATE ScopeOffset addVariables(unsigned numberOfVariablesToAdd, JSValue);
     
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
-
-protected:
-    JSSegmentedVariableObject(VM& vm, Structure* structure, JSScope* scope)
-        : JSSymbolTableObject(vm, structure, scope)
+    JS_EXPORT_PRIVATE static void heapSnapshot(JSCell*, HeapSnapshotBuilder&);
+    
+    static void destroy(JSCell*);
+    
+    template<typename>
+    static Subspace* subspaceFor(VM& vm)
     {
-    }
-
-    void finishCreation(VM& vm)
-    {
-        Base::finishCreation(vm);
-        setSymbolTable(vm, SymbolTable::create(vm));
+        return &vm.segmentedVariableObjectSpace;
     }
     
+    const ClassInfo* classInfo() const { return m_classInfo; }
+    
+protected:
+    JSSegmentedVariableObject(VM&, Structure*, JSScope*);
+    
+    ~JSSegmentedVariableObject();
+
+    void finishCreation(VM&);
+    
+private:
     SegmentedVector<WriteBarrier<Unknown>, 16> m_variables;
-    ConcurrentJITLock m_lock;
+    ConcurrentJSLock m_lock;
+    bool m_alreadyDestroyed { false }; // We use these assertions to check that we aren't doing ancient hacks that result in this being destroyed more than once.
+    const ClassInfo* m_classInfo;
 };
 
 } // namespace JSC
-
-#endif // JSSegmentedVariableObject_h
-

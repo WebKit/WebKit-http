@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
  
-#ifndef SpinButtonElement_h
-#define SpinButtonElement_h
+#pragma once
 
 #include "HTMLDivElement.h"
 #include "PopupOpeningObserver.h"
@@ -61,27 +60,27 @@ public:
 
     void step(int amount);
     
-    virtual bool willRespondToMouseMoveEvents() override;
-    virtual bool willRespondToMouseClickEvents() override;
+    bool willRespondToMouseMoveEvents() override;
+    bool willRespondToMouseClickEvents() override;
 
-    void forwardEvent(Event*);
+    void forwardEvent(Event&);
 
 private:
     SpinButtonElement(Document&, SpinButtonOwner&);
 
-    virtual void willDetachRenderers() override;
-    virtual bool isSpinButtonElement() const override { return true; }
-    virtual bool isDisabledFormControl() const override { return shadowHost() && shadowHost()->isDisabledFormControl(); }
-    virtual bool matchesReadWritePseudoClass() const override;
-    virtual void defaultEventHandler(Event*) override;
-    virtual void willOpenPopup() override;
+    void willDetachRenderers() override;
+    bool isSpinButtonElement() const override { return true; }
+    bool isDisabledFormControl() const override { return shadowHost() && shadowHost()->isDisabledFormControl(); }
+    bool matchesReadWritePseudoClass() const override;
+    void defaultEventHandler(Event&) override;
+    void willOpenPopup() override;
     void doStepAction(int);
     void startRepeatingTimer();
     void stopRepeatingTimer();
     void repeatingTimerFired();
-    virtual void setHovered(bool = true) override;
+    void setHovered(bool = true) override;
     bool shouldRespondToMouseEvents();
-    virtual bool isMouseFocusable() const override { return false; }
+    bool isMouseFocusable() const override { return false; }
 
     SpinButtonOwner* m_spinButtonOwner;
     bool m_capturing;
@@ -96,5 +95,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SpinButtonElement)
     static bool isType(const WebCore::Element& element) { return element.isSpinButtonElement(); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // SpinButtonElement_h

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,19 +24,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBKeyPath_h
-#define IDBKeyPath_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "IndexedDB.h"
+#include <wtf/Variant.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class KeyedDecoder;
-class KeyedEncoder;
+using IDBKeyPath = WTF::Variant<String, Vector<String>>;
+bool isIDBKeyPathValid(const IDBKeyPath&);
 
 enum class IDBKeyPathParseError {
     None,
@@ -45,99 +45,18 @@ enum class IDBKeyPathParseError {
 };
 
 void IDBParseKeyPath(const String&, Vector<String>&, IDBKeyPathParseError&);
-
-class IDBKeyPath {
-public:
-    IDBKeyPath() { }
-    WEBCORE_EXPORT explicit IDBKeyPath(const String&);
-    WEBCORE_EXPORT explicit IDBKeyPath(const Vector<String>& array);
-
-    IndexedDB::KeyPathType type() const { return m_type; }
-
-    const Vector<String>& array() const
-    {
-        ASSERT(m_type == IndexedDB::KeyPathType::Array);
-        return m_array;
-    }
-
-    const String& string() const
-    {
-        ASSERT(m_type == IndexedDB::KeyPathType::String);
-        return m_string;
-    }
-
-    bool isNull() const { return m_type == IndexedDB::KeyPathType::Null; }
-    bool isValid() const;
-    bool operator==(const IDBKeyPath& other) const;
-
-    IDBKeyPath isolatedCopy() const;
-
-    template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static bool decode(Decoder&, IDBKeyPath&);
-    
-    WEBCORE_EXPORT void encode(KeyedEncoder&) const;
-    WEBCORE_EXPORT static bool decode(KeyedDecoder&, IDBKeyPath&);
-
-private:
-    IndexedDB::KeyPathType m_type { IndexedDB::KeyPathType::Null };
-    String m_string;
-    Vector<String> m_array;
-};
-
-template<class Encoder>
-void IDBKeyPath::encode(Encoder& encoder) const
+IDBKeyPath isolatedCopy(const IDBKeyPath&);
+inline std::optional<IDBKeyPath> isolatedCopy(const std::optional<IDBKeyPath>& variant)
 {
-    encoder.encodeEnum(m_type);
-
-    switch (m_type) {
-    case IndexedDB::KeyPathType::Null:
-        break;
-    case IndexedDB::KeyPathType::String:
-        encoder << m_string;
-        break;
-    case IndexedDB::KeyPathType::Array:
-        encoder << m_array;
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-    }
+    if (!variant)
+        return { };
+    return isolatedCopy(variant.value());
 }
 
-template<class Decoder>
-bool IDBKeyPath::decode(Decoder& decoder, IDBKeyPath& keyPath)
-{
-    IndexedDB::KeyPathType type;
-    if (!decoder.decodeEnum(type))
-        return false;
-
-    switch (type) {
-    case IndexedDB::KeyPathType::Null:
-        keyPath = IDBKeyPath();
-        return true;
-
-    case IndexedDB::KeyPathType::String: {
-        String string;
-        if (!decoder.decode(string))
-            return false;
-
-        keyPath = IDBKeyPath(string);
-        return true;
-    }
-    case IndexedDB::KeyPathType::Array: {
-        Vector<String> array;
-        if (!decoder.decode(array))
-            return false;
-
-        keyPath = IDBKeyPath(array);
-        return true;
-    }
-    default:
-        return true;
-    }
-}
+#ifndef NDEBUG
+String loggingString(const IDBKeyPath&);
+#endif
 
 } // namespace WebCore
 
 #endif
-
-#endif // IDBKeyPath_h

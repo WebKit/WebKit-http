@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLWeightedTarget_h
-#define FTLWeightedTarget_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -55,6 +54,11 @@ public:
     LBasicBlock target() const { return m_target; }
     Weight weight() const { return m_weight; }
     
+    B3::FrequentedBlock frequentedBlock() const
+    {
+        return B3::FrequentedBlock(target(), weight().frequencyClass());
+    }
+    
 private:
     LBasicBlock m_target;
     Weight m_weight;
@@ -83,6 +87,3 @@ inline WeightedTarget unsure(LBasicBlock block)
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLWeightedTarget_h
-

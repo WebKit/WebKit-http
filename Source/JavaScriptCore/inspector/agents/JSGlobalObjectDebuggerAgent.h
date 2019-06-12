@@ -23,11 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSGlobalObjectDebuggerAgent_h
-#define JSGlobalObjectDebuggerAgent_h
+#pragma once
 
 #include "InspectorDebuggerAgent.h"
-#include "JSGlobalObjectScriptDebugServer.h"
 
 namespace Inspector {
 
@@ -40,19 +38,17 @@ public:
     JSGlobalObjectDebuggerAgent(JSAgentContext&, InspectorConsoleAgent*);
     virtual ~JSGlobalObjectDebuggerAgent() { }
 
-    virtual InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) override;
+    InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) override;
 
-    virtual void breakpointActionLog(JSC::ExecState*, const String&) override;
+    void breakpointActionLog(JSC::ExecState&, const String&) final;
 
     // NOTE: JavaScript inspector does not yet need to mute a console because no messages
     // are sent to the console outside of the API boundary or console object.
-    virtual void muteConsole() override { }
-    virtual void unmuteConsole() override { }
+    void muteConsole() final { }
+    void unmuteConsole() final { }
 
 private:
     InspectorConsoleAgent* m_consoleAgent { nullptr };
 };
 
 } // namespace Inspector
-
-#endif // !defined(JSGlobalObjectDebuggerAgent_h)

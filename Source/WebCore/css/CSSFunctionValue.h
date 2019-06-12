@@ -23,48 +23,36 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSFunctionValue_h
-#define CSSFunctionValue_h
+#pragma once
 
-#include "CSSValue.h"
+#include "CSSValueKeywords.h"
+#include "CSSValueList.h"
 
 namespace WebCore {
 
-class CSSValueList;
-struct CSSParserFunction;
-struct CSSParserValue;
-
-class CSSFunctionValue : public CSSValue {
+class CSSFunctionValue final : public CSSValueList {
 public:
-    static Ref<CSSFunctionValue> create(CSSParserFunction* function)
+    static Ref<CSSFunctionValue> create(CSSValueID name)
     {
-        return adoptRef(*new CSSFunctionValue(function));
+        return adoptRef(*new CSSFunctionValue(name));
     }
-
-    static Ref<CSSFunctionValue> create(const String& name, PassRefPtr<CSSValueList> args)
-    {
-        return adoptRef(*new CSSFunctionValue(name, args));
-    }
-
+    
     String customCSSText() const;
 
-    bool equals(const CSSFunctionValue&) const;
+    CSSValueID name() const { return m_name; }
 
-    CSSValueList* arguments() const { return m_args.get(); }
+    bool equals(const CSSFunctionValue& other) const { return m_name == other.m_name && CSSValueList::equals(other); }
 
-    bool buildParserValueSubstitutingVariables(CSSParserValue*, const CustomPropertyValueMap& customProperties) const;
-    
 private:
-    explicit CSSFunctionValue(CSSParserFunction*);
-    CSSFunctionValue(const String&, PassRefPtr<CSSValueList>);
+    CSSFunctionValue(CSSValueID name)
+        : CSSValueList(FunctionClass, CommaSeparator)
+        , m_name(name)
+    {
+    }
 
-    String m_name;
-    RefPtr<CSSValueList> m_args;
+    CSSValueID m_name { CSSValueInvalid };
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSFunctionValue, isFunctionValue())
-
-#endif
-

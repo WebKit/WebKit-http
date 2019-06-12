@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GCIncomingRefCountedSetInlines_h
-#define GCIncomingRefCountedSetInlines_h
+#pragma once
 
 #include "GCIncomingRefCountedSet.h"
 #include "VM.h"
@@ -38,7 +37,7 @@ GCIncomingRefCountedSet<T>::GCIncomingRefCountedSet()
 }
 
 template<typename T>
-GCIncomingRefCountedSet<T>::~GCIncomingRefCountedSet()
+void GCIncomingRefCountedSet<T>::lastChanceToFinalize()
 {
     for (size_t i = m_vector.size(); i--;)
         m_vector[i]->filterIncomingReferences(removeAll);
@@ -88,5 +87,3 @@ bool GCIncomingRefCountedSet<T>::removeDead(JSCell* cell)
 }
 
 } // namespace JSC
-
-#endif // GCIncomingRefCountedSetInlines_h

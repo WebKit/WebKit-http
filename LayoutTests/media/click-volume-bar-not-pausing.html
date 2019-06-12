@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- webkit-test-runner [ enableModernMediaControls=false ] -->
 <html>
     <title>Click on volume bar on a MediaDocument does not pause.</title>
 
@@ -78,7 +78,7 @@
                 waitForEventOnce('playing', playing);
 
                 mediaElement.pause();
-                mediaElement.play();
+                handlePromise(mediaElement.play());
             }
 
             function playing()

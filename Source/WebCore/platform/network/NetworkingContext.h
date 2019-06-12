@@ -17,12 +17,11 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef NetworkingContext_h
-#define NetworkingContext_h
+#pragma once
 
-#include "NetworkStorageSession.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
 #include <wtf/SchedulePair.h>
@@ -46,6 +45,7 @@ typedef struct _SoupSession SoupSession;
 
 namespace WebCore {
 
+class NetworkStorageSession;
 class ResourceError;
 class ResourceRequest;
 
@@ -85,5 +85,3 @@ protected:
 };
 
 }
-
-#endif // NetworkingContext_h

@@ -112,11 +112,25 @@ Value* Const64Value::divConstant(Procedure& proc, const Value* other) const
     return proc.add<Const64Value>(origin(), chillDiv(m_value, other->asInt64()));
 }
 
+Value* Const64Value::uDivConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt64())
+        return nullptr;
+    return proc.add<Const64Value>(origin(), chillUDiv(m_value, other->asInt64()));
+}
+
 Value* Const64Value::modConstant(Procedure& proc, const Value* other) const
 {
     if (!other->hasInt64())
         return nullptr;
     return proc.add<Const64Value>(origin(), chillMod(m_value, other->asInt64()));
+}
+
+Value* Const64Value::uModConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt64())
+        return nullptr;
+    return proc.add<Const64Value>(origin(), chillUMod(m_value, other->asInt64()));
 }
 
 Value* Const64Value::bitAndConstant(Procedure& proc, const Value* other) const
@@ -161,9 +175,33 @@ Value* Const64Value::zShrConstant(Procedure& proc, const Value* other) const
     return proc.add<Const64Value>(origin(), static_cast<int64_t>(static_cast<uint64_t>(m_value) >> (other->asInt32() & 63)));
 }
 
+Value* Const64Value::rotRConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt32())
+        return nullptr;
+    return proc.add<Const64Value>(origin(), rotateRight(m_value, other->asInt32()));
+}
+
+Value* Const64Value::rotLConstant(Procedure& proc, const Value* other) const
+{
+    if (!other->hasInt32())
+        return nullptr;
+    return proc.add<Const64Value>(origin(), rotateLeft(m_value, other->asInt32()));
+}
+
 Value* Const64Value::bitwiseCastConstant(Procedure& proc) const
 {
     return proc.add<ConstDoubleValue>(origin(), bitwise_cast<double>(m_value));
+}
+
+Value* Const64Value::iToDConstant(Procedure& proc) const
+{
+    return proc.add<ConstDoubleValue>(origin(), static_cast<double>(m_value));
+}
+
+Value* Const64Value::iToFConstant(Procedure& proc) const
+{
+    return proc.add<ConstFloatValue>(origin(), static_cast<float>(m_value));
 }
 
 TriState Const64Value::equalConstant(const Value* other) const

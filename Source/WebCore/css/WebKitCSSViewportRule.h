@@ -28,8 +28,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef WebKitCSSViewportRule_h
-#define WebKitCSSViewportRule_h
+#pragma once
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
 
@@ -49,22 +48,20 @@ public:
     }
     virtual ~WebKitCSSViewportRule();
 
-    virtual String cssText() const override;
-    virtual void reattach(StyleRuleBase&) override;
+    String cssText() const final;
+    void reattach(StyleRuleBase&) final;
 
     CSSStyleDeclaration& style();
 
 private:
     WebKitCSSViewportRule(StyleRuleViewport&, CSSStyleSheet*);
 
-    virtual CSSRule::Type type() const override { return WEBKIT_VIEWPORT_RULE; }
+    CSSRule::Type type() const final { return WEBKIT_VIEWPORT_RULE; }
 
     Ref<StyleRuleViewport> m_viewportRule;
     mutable RefPtr<StyleRuleCSSStyleDeclaration> m_propertiesCSSOMWrapper;
 };
 
 } // namespace WebCore
-
-#endif // WebKitCSSViewportRule_h
 
 #endif // ENABLE(CSS_DEVICE_ADAPTATION)

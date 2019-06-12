@@ -23,6 +23,7 @@
 
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
+#include "SVGDocumentExtensions.h"
 #include "SVGMPathElement.h"
 #include "SVGNames.h"
 #include "SVGPathSegArcAbs.h"
@@ -43,10 +44,10 @@
 #include "SVGPathSegLinetoVerticalAbs.h"
 #include "SVGPathSegLinetoVerticalRel.h"
 #include "SVGPathSegList.h"
-#include "SVGPathSegListPropertyTearOff.h"
 #include "SVGPathSegMovetoAbs.h"
 #include "SVGPathSegMovetoRel.h"
 #include "SVGPathUtilities.h"
+#include "SVGPoint.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -99,11 +100,11 @@ float SVGPathElement::getTotalLength() const
     return totalLength;
 }
 
-SVGPoint SVGPathElement::getPointAtLength(float length) const
+Ref<SVGPoint> SVGPathElement::getPointAtLength(float length) const
 {
-    SVGPoint point;
+    FloatPoint point;
     getPointAtLengthOfSVGPathByteStream(pathByteStream(), length, point);
-    return point;
+    return SVGPoint::create(point);
 }
 
 unsigned SVGPathElement::getPathSegAtLength(float length) const
@@ -252,8 +253,8 @@ void SVGPathElement::svgAttributeChanged(const QualifiedName& attrName)
 
     if (attrName == SVGNames::dAttr) {
         if (m_pathSegList.shouldSynchronize && !SVGAnimatedProperty::lookupWrapper<SVGPathElement, SVGAnimatedPathSegListPropertyTearOff>(this, dPropertyInfo())->isAnimating()) {
-            SVGPathSegList newList(PathSegUnalteredRole);
-            buildSVGPathSegListFromByteStream(m_pathByteStream, *this, newList, UnalteredParsing);
+            SVGPathSegListValues newList(PathSegUnalteredRole);
+            buildSVGPathSegListValuesFromByteStream(m_pathByteStream, *this, newList, UnalteredParsing);
             m_pathSegList.value = newList;
         }
 
@@ -313,11 +314,10 @@ Ref<SVGAnimatedProperty> SVGPathElement::lookupOrCreateDWrapper(SVGElement* cont
     if (auto property = SVGAnimatedProperty::lookupWrapper<SVGPathElement, SVGAnimatedPathSegListPropertyTearOff>(&ownerType, dPropertyInfo()))
         return *property;
 
-    // Build initial SVGPathSegList.
-    buildSVGPathSegListFromByteStream(ownerType.m_pathByteStream, ownerType, ownerType.m_pathSegList.value, UnalteredParsing);
+    if (ownerType.m_pathSegList.value.isEmpty())
+        buildSVGPathSegListValuesFromByteStream(ownerType.m_pathByteStream, ownerType, ownerType.m_pathSegList.value, UnalteredParsing);
 
-    return SVGAnimatedProperty::lookupOrCreateWrapper<SVGPathElement, SVGAnimatedPathSegListPropertyTearOff, SVGPathSegList>
-        (&ownerType, dPropertyInfo(), ownerType.m_pathSegList.value);
+    return SVGAnimatedProperty::lookupOrCreateWrapper<SVGPathElement, SVGAnimatedPathSegListPropertyTearOff, SVGPathSegListValues>(&ownerType, dPropertyInfo(), ownerType.m_pathSegList.value);
 }
 
 void SVGPathElement::synchronizeD(SVGElement* contextElement)
@@ -329,29 +329,46 @@ void SVGPathElement::synchronizeD(SVGElement* contextElement)
     ownerType.m_pathSegList.synchronize(&ownerType, dPropertyInfo()->attributeName, ownerType.m_pathSegList.value.valueAsString());
 }
 
-RefPtr<SVGPathSegListPropertyTearOff> SVGPathElement::pathSegList()
+void SVGPathElement::animatedPropertyWillBeDeleted()
 {
-    m_pathSegList.shouldSynchronize = true;
-    return static_cast<SVGPathSegListPropertyTearOff*>(static_reference_cast<SVGAnimatedPathSegListPropertyTearOff>(lookupOrCreateDWrapper(this))->baseVal().get());
+    // m_pathSegList.shouldSynchronize is set to true when the 'd' wrapper for m_pathSegList
+    // is created and cached. We need to reset it back to false when this wrapper is deleted
+    // so we can be sure if shouldSynchronize is true, SVGAnimatedProperty::lookupWrapper()
+    // will return a valid cached 'd' wrapper for the m_pathSegList.
+    m_pathSegList.shouldSynchronize = false;
 }
 
-RefPtr<SVGPathSegListPropertyTearOff> SVGPathElement::normalizedPathSegList()
+Ref<SVGPathSegList> SVGPathElement::pathSegList()
+{
+    m_pathSegList.shouldSynchronize = true;
+    return static_reference_cast<SVGAnimatedPathSegListPropertyTearOff>(lookupOrCreateDWrapper(this))->baseVal();
+}
+
+RefPtr<SVGPathSegList> SVGPathElement::normalizedPathSegList()
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=15412 - Implement normalized path segment lists!
     return nullptr;
 }
 
-RefPtr<SVGPathSegListPropertyTearOff> SVGPathElement::animatedPathSegList()
+Ref<SVGPathSegList> SVGPathElement::animatedPathSegList()
 {
     m_pathSegList.shouldSynchronize = true;
     m_isAnimValObserved = true;
-    return static_cast<SVGPathSegListPropertyTearOff*>(static_reference_cast<SVGAnimatedPathSegListPropertyTearOff>(lookupOrCreateDWrapper(this))->animVal().get());
+    return static_reference_cast<SVGAnimatedPathSegListPropertyTearOff>(lookupOrCreateDWrapper(this))->animVal();
 }
 
-RefPtr<SVGPathSegListPropertyTearOff> SVGPathElement::animatedNormalizedPathSegList()
+RefPtr<SVGPathSegList> SVGPathElement::animatedNormalizedPathSegList()
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=15412 - Implement normalized path segment lists!
     return nullptr;
+}
+
+size_t SVGPathElement::approximateMemoryCost() const
+{
+    // This is an approximation for path memory cost since the path is parsed on demand.
+    size_t pathMemoryCost = (m_pathByteStream.size() / 10) * sizeof(FloatPoint);
+    // We need to account for the memory which is allocated by the RenderSVGPath::m_path.
+    return sizeof(*this) + (renderer() ? pathMemoryCost * 2 + sizeof(RenderSVGPath) : pathMemoryCost);
 }
 
 void SVGPathElement::pathSegListChanged(SVGPathSegRole role, ListModification listModification)
@@ -365,7 +382,7 @@ void SVGPathElement::pathSegListChanged(SVGPathSegRole role, ListModification li
             ASSERT(!m_pathSegList.value.isEmpty());
             appendSVGPathByteStreamFromSVGPathSeg(m_pathSegList.value.last().copyRef(), m_pathByteStream, UnalteredParsing);
         } else
-            buildSVGPathByteStreamFromSVGPathSegList(m_pathSegList.value, m_pathByteStream, UnalteredParsing);
+            buildSVGPathByteStreamFromSVGPathSegListValues(m_pathSegList.value, m_pathByteStream, UnalteredParsing);
         break;
     case PathSegUndefinedRole:
         return;
@@ -395,9 +412,8 @@ FloatRect SVGPathElement::getBBox(StyleUpdateStrategy styleUpdateStrategy)
     return renderer->path().boundingRect();
 }
 
-RenderPtr<RenderElement> SVGPathElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> SVGPathElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
-    // By default, any subclass is expected to do path-based drawing
     return createRenderer<RenderSVGPath>(*this, WTFMove(style));
 }
 

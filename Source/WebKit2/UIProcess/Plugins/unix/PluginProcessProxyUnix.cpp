@@ -33,11 +33,12 @@
 #include "PluginProcessCreationParameters.h"
 #include "ProcessExecutablePath.h"
 #include <WebCore/FileSystem.h>
+#include <WebCore/PlatformDisplay.h>
 #include <sys/wait.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
 #include <glib.h>
 #include <wtf/glib/GUniquePtr.h>
 #endif
@@ -53,12 +54,6 @@ namespace WebKit {
 void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
     launchOptions.processType = ProcessLauncher::ProcessType::Plugin64;
-
-#if PLATFORM(EFL) && !defined(NDEBUG)
-    const char* commandPrefix = getenv("PLUGIN_PROCESS_COMMAND_PREFIX");
-    if (commandPrefix && *commandPrefix)
-        launchOptions.processCmdPrefix = String::fromUTF8(commandPrefix);
-#endif
 
     launchOptions.extraInitializationData.add("plugin-path", pluginProcessAttributes.moduleInfo.path);
 #if PLATFORM(GTK)
@@ -84,17 +79,22 @@ static bool pluginRequiresGtk2(const String& pluginPath)
 #if PLUGIN_ARCHITECTURE(X11)
 bool PluginProcessProxy::scanPlugin(const String& pluginPath, RawPluginMetaData& result)
 {
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     String pluginProcessPath = executablePathOfPluginProcess();
 
 #if PLATFORM(GTK)
     bool requiresGtk2 = pluginRequiresGtk2(pluginPath);
-    if (requiresGtk2)
+    if (requiresGtk2) {
+        if (PlatformDisplay::sharedDisplay().type() != PlatformDisplay::Type::X11)
+            return false;
 #if ENABLE(PLUGIN_PROCESS_GTK2)
         pluginProcessPath.append('2');
+        if (!fileExists(pluginProcessPath))
+            return false;
 #else
         return false;
 #endif
+    }
 #endif
 
     CString binaryPath = fileSystemRepresentation(pluginProcessPath);
@@ -152,9 +152,9 @@ bool PluginProcessProxy::scanPlugin(const String& pluginPath, RawPluginMetaData&
     result.requiresGtk2 = requiresGtk2;
 #endif
     return !result.mimeDescription.isEmpty();
-#else // PLATFORM(GTK) || PLATFORM(EFL)
+#else // PLATFORM(GTK)
     return false;
-#endif // PLATFORM(GTK) || PLATFORM(EFL)
+#endif // PLATFORM(GTK)
 }
 #endif // PLUGIN_ARCHITECTURE(X11)
 

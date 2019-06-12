@@ -40,6 +40,8 @@ public:
 
         virtual void willChangeIsResponsive() = 0;
         virtual void didChangeIsResponsive() = 0;
+
+        virtual bool mayBecomeUnresponsive() = 0;
     };
 
     explicit ResponsivenessTimer(ResponsivenessTimer::Client&);
@@ -50,7 +52,7 @@ public:
 
     void invalidate();
     
-    bool isResponsive() { return m_isResponsive; }
+    bool isResponsive() const { return m_isResponsive; }
 
     void processTerminated();
 

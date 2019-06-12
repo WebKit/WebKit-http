@@ -34,8 +34,6 @@
 namespace WebCore {
 
 DisplayRefreshMonitorClient::DisplayRefreshMonitorClient()
-    : m_scheduled(false)
-    , m_displayIDIsSet(false)
 {
 }
 
@@ -44,13 +42,13 @@ DisplayRefreshMonitorClient::~DisplayRefreshMonitorClient()
     DisplayRefreshMonitorManager::sharedManager().unregisterClient(*this);
 }
 
-void DisplayRefreshMonitorClient::fireDisplayRefreshIfNeeded(double timestamp)
+void DisplayRefreshMonitorClient::fireDisplayRefreshIfNeeded()
 {
     if (!m_scheduled)
         return;
 
     m_scheduled = false;
-    displayRefreshFired(timestamp);
+    displayRefreshFired();
 }
 
 }

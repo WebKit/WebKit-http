@@ -72,19 +72,39 @@ WebInspector.GradientEditor = class GradientEditor extends WebInspector.Object
 
         this._colorPicker = new WebInspector.ColorPicker;
         this._colorPicker.colorWheel.dimension = 190;
+        this._colorPicker.enableColorComponentInputs = false;
         this._colorPicker.addEventListener(WebInspector.ColorPicker.Event.ColorChanged, this._colorPickerColorChanged, this);
 
-        let angleLabel = this._element.appendChild(document.createElement("label"));
-        angleLabel.classList.add("gradient-angle");
-        angleLabel.append(WebInspector.UIString("Angle"));
+        let angleContainerElement = this._element.appendChild(document.createElement("div"));
+        angleContainerElement.classList.add("gradient-angle");
+        angleContainerElement.append(WebInspector.UIString("Angle"));
 
-        this._angleInput = angleLabel.appendChild(document.createElement("input"));
-        this._angleInput.type = "text";
-        this._angleInput.addEventListener("input", this._angleChanged.bind(this));
+        let boundAngleValueChanged = this._angleValueChanged.bind(this);
 
-        let dragToAdjustController = new WebInspector.DragToAdjustController(this);
-        dragToAdjustController.element = angleLabel;
-        dragToAdjustController.enabled = true;
+        this._angleSliderElement = angleContainerElement.appendChild(document.createElement("input"));
+        this._angleSliderElement.type = "range";
+        this._angleSliderElement.addEventListener("input", boundAngleValueChanged);
+
+        this._angleInputElement = angleContainerElement.appendChild(document.createElement("input"));
+        this._angleInputElement.type = "number";
+        this._angleInputElement.addEventListener("input", boundAngleValueChanged);
+
+        this._angleUnitsSelectElement = angleContainerElement.appendChild(document.createElement("select"));
+        this._angleUnitsSelectElement.addEventListener("change", this._angleUnitsChanged.bind(this));
+
+        const angleUnitsData = [
+            {name: WebInspector.LinearGradient.AngleUnits.DEG, min: 0, max: 360, step: 1},
+            {name: WebInspector.LinearGradient.AngleUnits.RAD, min: 0, max: 2 * Math.PI, step: 0.01},
+            {name: WebInspector.LinearGradient.AngleUnits.GRAD, min: 0, max: 400, step: 1},
+            {name: WebInspector.LinearGradient.AngleUnits.TURN, min: 0, max: 1, step: 0.01}
+        ];
+
+        this._angleUnitsConfiguration = new Map(angleUnitsData.map(({name, min, max, step}) => {
+            let optionElement = this._angleUnitsSelectElement.appendChild(document.createElement("option"));
+            optionElement.value = optionElement.textContent = name;
+
+            return [name, {element: optionElement, min, max, step}];
+        }));
     }
 
     get element()
@@ -107,7 +127,8 @@ WebInspector.GradientEditor = class GradientEditor extends WebInspector.Object
         this._gradientSlider.stops = this._gradient.stops;
         if (isLinear) {
             this._gradientTypePicker.value = this._gradient.repeats ? "repeating-linear-gradient" : "linear-gradient";
-            this._angleInput.value = this._gradient.angle + "\u00B0";
+
+            this._angleUnitsChanged();
         } else
             this._gradientTypePicker.value = this._gradient.repeats ? "repeating-radial-gradient" : "radial-gradient";
 
@@ -144,24 +165,10 @@ WebInspector.GradientEditor = class GradientEditor extends WebInspector.Object
 
         // Ensure the angle input is not focused since, if it were, it'd make a scrollbar appear as we
         // animate the popover's frame to fit its new content.
-        this._angleInput.blur();
+        this._angleInputElement.blur();
 
         this.dispatchEventToListeners(WebInspector.GradientEditor.Event.ColorPickerToggled);
         this.dispatchEventToListeners(WebInspector.GradientEditor.Event.GradientChanged, {gradient: this._gradient});
-    }
-
-    dragToAdjustControllerWasAdjustedByAmount(dragToAdjustController, amount)
-    {
-        const angleInputValue = parseFloat(this._angleInput.value);
-        if (isNaN(angleInputValue))
-            return;
-
-        let angle = angleInputValue + amount;
-        if (Math.round(angle) !== angle)
-            angle = angle.toFixed(1);
-
-        this._angleInput.value = angle;
-        this._angleInputValueDidChange(angle);
     }
 
     // Private
@@ -179,8 +186,9 @@ WebInspector.GradientEditor = class GradientEditor extends WebInspector.Object
         const descriptor = this._gradientTypes[this._gradientTypePicker.value];
         if (!(this._gradient instanceof descriptor.type)) {
             if (descriptor.type === WebInspector.LinearGradient) {
-                this._gradient = new WebInspector.LinearGradient(180, this._gradient.stops);
-                this._angleInput.value = "180\u00B0";
+                this._gradient = new WebInspector.LinearGradient({value: 180, units: WebInspector.LinearGradient.AngleUnits.DEG}, this._gradient.stops);
+
+                this._angleUnitsChanged();
             } else
                 this._gradient = new WebInspector.RadialGradient("", this._gradient.stops);
 
@@ -199,29 +207,42 @@ WebInspector.GradientEditor = class GradientEditor extends WebInspector.Object
         this.dispatchEventToListeners(WebInspector.GradientEditor.Event.GradientChanged, {gradient: this._gradient});
     }
 
-    _angleChanged(event)
+    _angleValueChanged(event)
     {
-        const angle = parseFloat(this._angleInput.value) || 0;
-        if (isNaN(angle))
+        switch (event.target) {
+        case this._angleInputElement:
+            this._gradient.angleValue = this._angleSliderElement.value = parseFloat(this._angleInputElement.value) || 0;
+            break;
+        case this._angleSliderElement:
+            this._gradient.angleValue = this._angleInputElement.value = parseFloat(this._angleSliderElement.value) || 0;
+            break;
+        default:
+            WebInspector.reportInternalError("Input event fired for disabled color component input");
             return;
-
-        this._angleInputValueDidChange(angle);
-    }
-
-    _angleInputValueDidChange(angle)
-    {
-        this._gradient.angle = angle;
-        const matches = this._angleInput.value.match(/\u00B0/g);
-        if (!matches || matches.length !== 1) {
-            const savedStart = this._angleInput.selectionStart;
-            this._angleInput.value = angle + "\u00B0";
-            this._angleInput.selectionStart = savedStart;
-            this._angleInput.selectionEnd = savedStart;
         }
 
         this.dispatchEventToListeners(WebInspector.GradientEditor.Event.GradientChanged, {gradient: this._gradient});
     }
-}
+
+    _angleUnitsChanged(event)
+    {
+        let units = this._angleUnitsSelectElement.value;
+        let configuration = this._angleUnitsConfiguration.get(units);
+        if (!configuration) {
+            WebInspector.reportInternalError(`Missing configuration data for selected angle units "${units}"`);
+            return;
+        }
+
+        this._gradient.angleUnits = units;
+
+        this._angleInputElement.min = this._angleSliderElement.min = configuration.min;
+        this._angleInputElement.max = this._angleSliderElement.max = configuration.max;
+        this._angleInputElement.step = this._angleSliderElement.step = configuration.step;
+        this._angleInputElement.value = this._angleSliderElement.value = this._gradient.angleValue;
+
+        this.dispatchEventToListeners(WebInspector.GradientEditor.Event.GradientChanged, {gradient: this._gradient});
+    }
+};
 
 WebInspector.GradientEditor.Event = {
     GradientChanged: "gradient-editor-gradient-changed",

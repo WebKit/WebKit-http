@@ -29,34 +29,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PerformanceResourceTiming_h
-#define PerformanceResourceTiming_h
+#pragma once
 
-#if ENABLE(RESOURCE_TIMING)
+#if ENABLE(WEB_TIMING)
 
+#include "LoadTiming.h"
+#include "NetworkLoadMetrics.h"
 #include "PerformanceEntry.h"
-#include "ResourceLoadTiming.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class Document;
-class URL;
-class ResourceLoadTiming;
-class ResourceRequest;
-class ResourceResponse;
+class ResourceTiming;
 
-class PerformanceResourceTiming : public PerformanceEntry {
+class PerformanceResourceTiming final : public PerformanceEntry {
 public:
-    static Ref<PerformanceResourceTiming> create(const AtomicString& initiatorType, const ResourceRequest& request, const ResourceResponse& response, double initiationTime, double finishTime, Document* requestingDocument)
-    {
-        return adoptRef(*new PerformanceResourceTiming(initiatorType, request, response, initiationTime, finishTime, requestingDocument));
-    }
+    static Ref<PerformanceResourceTiming> create(MonotonicTime timeOrigin, ResourceTiming&&);
 
-    AtomicString initiatorType() const;
+    AtomicString initiatorType() const { return m_initiatorType; }
+    String nextHopProtocol() const;
 
+    double workerStart() const;
     double redirectStart() const;
     double redirectEnd() const;
     double fetchStart() const;
@@ -66,25 +60,26 @@ public:
     double connectEnd() const;
     double secureConnectionStart() const;
     double requestStart() const;
+    double responseStart() const;
     double responseEnd() const;
 
-    virtual bool isResource() { return true; }
-
 private:
-    PerformanceResourceTiming(const AtomicString& initatorType, const ResourceRequest&, const ResourceResponse&, double initiationTime, double finishTime, Document*);
+    PerformanceResourceTiming(MonotonicTime timeOrigin, ResourceTiming&&);
     ~PerformanceResourceTiming();
 
-    double resourceTimeToDocumentMilliseconds(int deltaMilliseconds) const;
+    double networkLoadTimeToDOMHighResTimeStamp(Seconds) const;
 
     AtomicString m_initiatorType;
-    ResourceLoadTiming m_timing;
-    double m_finishTime;
+    MonotonicTime m_timeOrigin;
+    LoadTiming m_loadTiming;
+    NetworkLoadMetrics m_networkLoadMetrics;
     bool m_shouldReportDetails;
-    RefPtr<Document> m_requestingDocument;
 };
 
-}
+} // namespace WebCore
 
-#endif // ENABLE(RESOURCE_TIMING)
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::PerformanceResourceTiming)
+    static bool isType(const WebCore::PerformanceEntry& entry) { return entry.isResource(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
-#endif // !defined(PerformanceResourceTiming_h)
+#endif // ENABLE(WEB_TIMING)

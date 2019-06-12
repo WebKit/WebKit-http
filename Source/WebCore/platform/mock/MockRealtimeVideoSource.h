@@ -46,40 +46,43 @@ class GraphicsContext;
 class MockRealtimeVideoSource : public MockRealtimeMediaSource {
 public:
 
-    static RefPtr<MockRealtimeVideoSource> create();
+    static CaptureSourceOrError create(const String&, const MediaConstraints*);
+    static Ref<MockRealtimeVideoSource> createMuted(const String& name);
 
-    virtual ~MockRealtimeVideoSource() { }
+    static VideoCaptureFactory& factory();
 
-    void setSize(const IntSize&);
-    const IntSize& size() const { return m_size; }
-
-    void setFrameRate(float);
+    virtual ~MockRealtimeVideoSource();
 
 protected:
-    MockRealtimeVideoSource();
-    virtual void updatePlatformLayer() const { }
+    MockRealtimeVideoSource(const String&);
+    virtual void updateSampleBuffer() { }
 
     ImageBuffer* imageBuffer() const;
+
+    double elapsedTime();
+    bool applySize(const IntSize&) override;
 
 private:
     void updateSettings(RealtimeMediaSourceSettings&) override;
     void initializeCapabilities(RealtimeMediaSourceCapabilities&) override;
     void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) override;
 
-    void startProducingData() override;
-    void stopProducingData() override;
+    void startProducingData() final;
+    void stopProducingData() final;
 
     void drawAnimation(GraphicsContext&);
     void drawText(GraphicsContext&);
     void drawBoxes(GraphicsContext&);
 
-    PlatformLayer* platformLayer() const override { return nullptr; }
-    RefPtr<Image> currentFrameImage() override;
-    void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
+    bool applyFrameRate(double) override;
+    bool applyFacingMode(RealtimeMediaSourceSettings::VideoFacingMode) override { return true; }
+    bool applyAspectRatio(double) override { return true; }
+
+    bool isCaptureSource() const final { return true; }
 
     void generateFrame();
 
-    double elapsedTime();
+    void delaySamples(float) override;
 
     float m_baseFontSize { 0 };
     FontCascade m_timeFont;
@@ -92,14 +95,13 @@ private:
 
     mutable std::unique_ptr<ImageBuffer> m_imageBuffer;
 
-    IntSize m_size;
     Path m_path;
     DashArray m_dashWidths;
 
     double m_startTime { NAN };
     double m_elapsedTime { 0 };
+    double m_delayUntil { 0 };
 
-    unsigned m_frameRate { 30 };
     unsigned m_frameNumber { 0 };
 
     RunLoop::Timer<MockRealtimeVideoSource> m_timer;

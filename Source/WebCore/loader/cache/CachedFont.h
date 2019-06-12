@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CachedFont_h
-#define CachedFont_h
+#pragma once
 
 #include "CachedResource.h"
 #include "CachedResourceClient.h"
@@ -35,39 +34,45 @@ namespace WebCore {
 
 class CachedResourceLoader;
 class FontDescription;
-class FontFeatureSettings;
 class FontPlatformData;
+struct FontSelectionSpecifiedCapabilities;
 class SVGDocument;
 class SVGFontElement;
 struct FontCustomPlatformData;
 
+template <typename T> class FontTaggedSettings;
+typedef FontTaggedSettings<int> FontFeatureSettings;
+
 class CachedFont : public CachedResource {
 public:
-    CachedFont(const ResourceRequest&, SessionID, Type = FontResource);
+    CachedFont(CachedResourceRequest&&, SessionID, Type = FontResource);
     virtual ~CachedFont();
 
     void beginLoadIfNeeded(CachedResourceLoader&);
-    virtual bool stillNeedsLoad() const override { return !m_loadInitiated; }
+    bool stillNeedsLoad() const override { return !m_loadInitiated; }
 
     virtual bool ensureCustomFontData(const AtomicString& remoteURI);
+    static std::unique_ptr<FontCustomPlatformData> createCustomFontData(SharedBuffer&, bool& wrapping);
+    static FontPlatformData platformDataFromCustomData(FontCustomPlatformData&, const FontDescription&, bool bold, bool italic, const FontFeatureSettings&, const FontVariantSettings&, FontSelectionSpecifiedCapabilities);
 
-    virtual RefPtr<Font> createFont(const FontDescription&, const AtomicString& remoteURI, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings&, const FontVariantSettings&);
+    virtual RefPtr<Font> createFont(const FontDescription&, const AtomicString& remoteURI, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings&, const FontVariantSettings&, FontSelectionSpecifiedCapabilities);
 
 protected:
-    FontPlatformData platformDataFromCustomData(const FontDescription&, bool bold, bool italic, const FontFeatureSettings&, const FontVariantSettings&);
+    FontPlatformData platformDataFromCustomData(const FontDescription&, bool bold, bool italic, const FontFeatureSettings&, const FontVariantSettings&, FontSelectionSpecifiedCapabilities);
 
     bool ensureCustomFontData(SharedBuffer* data);
 
 private:
-    virtual void checkNotify() override;
-    virtual bool mayTryReplaceEncodedData() const override;
+    void checkNotify() override;
+    bool mayTryReplaceEncodedData() const override;
 
-    virtual void load(CachedResourceLoader&, const ResourceLoaderOptions&) override;
+    void load(CachedResourceLoader&) override;
+    NO_RETURN_DUE_TO_ASSERT void setBodyDataFrom(const CachedResource&) final { ASSERT_NOT_REACHED(); }
 
-    virtual void didAddClient(CachedResourceClient*) override;
-    virtual void finishLoading(SharedBuffer*) override;
+    void didAddClient(CachedResourceClient&) override;
+    void finishLoading(SharedBuffer*) override;
 
-    virtual void allClientsRemoved() override;
+    void allClientsRemoved() override;
 
     std::unique_ptr<FontCustomPlatformData> m_fontCustomPlatformData;
     bool m_loadInitiated;
@@ -79,5 +84,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedFont, CachedResource::FontResource)
-
-#endif // CachedFont_h

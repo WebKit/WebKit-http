@@ -19,6 +19,78 @@
 #  include <windows.graphics.display.h>
 #endif
 
+namespace
+{
+
+template <class IndexType>
+gl::IndexRange ComputeTypedIndexRange(const IndexType *indices,
+                                      size_t count,
+                                      bool primitiveRestartEnabled,
+                                      GLuint primitiveRestartIndex)
+{
+    ASSERT(count > 0);
+
+    IndexType minIndex                = 0;
+    IndexType maxIndex                = 0;
+    size_t nonPrimitiveRestartIndices = 0;
+
+    if (primitiveRestartEnabled)
+    {
+        // Find the first non-primitive restart index to initialize the min and max values
+        size_t i = 0;
+        for (; i < count; i++)
+        {
+            if (indices[i] != primitiveRestartIndex)
+            {
+                minIndex = indices[i];
+                maxIndex = indices[i];
+                nonPrimitiveRestartIndices++;
+                break;
+            }
+        }
+
+        // Loop over the rest of the indices
+        for (; i < count; i++)
+        {
+            if (indices[i] != primitiveRestartIndex)
+            {
+                if (minIndex > indices[i])
+                {
+                    minIndex = indices[i];
+                }
+                if (maxIndex < indices[i])
+                {
+                    maxIndex = indices[i];
+                }
+                nonPrimitiveRestartIndices++;
+            }
+        }
+    }
+    else
+    {
+        minIndex                   = indices[0];
+        maxIndex                   = indices[0];
+        nonPrimitiveRestartIndices = count;
+
+        for (size_t i = 1; i < count; i++)
+        {
+            if (minIndex > indices[i])
+            {
+                minIndex = indices[i];
+            }
+            if (maxIndex < indices[i])
+            {
+                maxIndex = indices[i];
+            }
+        }
+    }
+
+    return gl::IndexRange(static_cast<size_t>(minIndex), static_cast<size_t>(maxIndex),
+                          nonPrimitiveRestartIndices);
+}
+
+}  // anonymous namespace
+
 namespace gl
 {
 
@@ -55,21 +127,37 @@ GLenum VariableComponentType(GLenum type)
       case GL_SAMPLER_3D:
       case GL_SAMPLER_CUBE:
       case GL_SAMPLER_2D_ARRAY:
+      case GL_SAMPLER_EXTERNAL_OES:
+      case GL_SAMPLER_2D_MULTISAMPLE:
       case GL_INT_SAMPLER_2D:
       case GL_INT_SAMPLER_3D:
       case GL_INT_SAMPLER_CUBE:
       case GL_INT_SAMPLER_2D_ARRAY:
+      case GL_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_UNSIGNED_INT_SAMPLER_2D:
       case GL_UNSIGNED_INT_SAMPLER_3D:
       case GL_UNSIGNED_INT_SAMPLER_CUBE:
       case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+      case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_SAMPLER_2D_SHADOW:
       case GL_SAMPLER_CUBE_SHADOW:
       case GL_SAMPLER_2D_ARRAY_SHADOW:
       case GL_INT_VEC2:
       case GL_INT_VEC3:
       case GL_INT_VEC4:
-        return GL_INT;
+      case GL_IMAGE_2D:
+      case GL_INT_IMAGE_2D:
+      case GL_UNSIGNED_INT_IMAGE_2D:
+      case GL_IMAGE_3D:
+      case GL_INT_IMAGE_3D:
+      case GL_UNSIGNED_INT_IMAGE_3D:
+      case GL_IMAGE_2D_ARRAY:
+      case GL_INT_IMAGE_2D_ARRAY:
+      case GL_UNSIGNED_INT_IMAGE_2D_ARRAY:
+      case GL_IMAGE_CUBE:
+      case GL_INT_IMAGE_CUBE:
+      case GL_UNSIGNED_INT_IMAGE_CUBE:
+          return GL_INT;
       case GL_UNSIGNED_INT:
       case GL_UNSIGNED_INT_VEC2:
       case GL_UNSIGNED_INT_VEC3:
@@ -163,18 +251,33 @@ int VariableRowCount(GLenum type)
       case GL_SAMPLER_2D_ARRAY:
       case GL_SAMPLER_EXTERNAL_OES:
       case GL_SAMPLER_2D_RECT_ARB:
+      case GL_SAMPLER_2D_MULTISAMPLE:
       case GL_INT_SAMPLER_2D:
       case GL_INT_SAMPLER_3D:
       case GL_INT_SAMPLER_CUBE:
       case GL_INT_SAMPLER_2D_ARRAY:
+      case GL_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_UNSIGNED_INT_SAMPLER_2D:
       case GL_UNSIGNED_INT_SAMPLER_3D:
       case GL_UNSIGNED_INT_SAMPLER_CUBE:
       case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+      case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_SAMPLER_2D_SHADOW:
       case GL_SAMPLER_CUBE_SHADOW:
       case GL_SAMPLER_2D_ARRAY_SHADOW:
-        return 1;
+      case GL_IMAGE_2D:
+      case GL_INT_IMAGE_2D:
+      case GL_UNSIGNED_INT_IMAGE_2D:
+      case GL_IMAGE_2D_ARRAY:
+      case GL_INT_IMAGE_2D_ARRAY:
+      case GL_UNSIGNED_INT_IMAGE_2D_ARRAY:
+      case GL_IMAGE_3D:
+      case GL_INT_IMAGE_3D:
+      case GL_UNSIGNED_INT_IMAGE_3D:
+      case GL_IMAGE_CUBE:
+      case GL_INT_IMAGE_CUBE:
+      case GL_UNSIGNED_INT_IMAGE_CUBE:
+          return 1;
       case GL_FLOAT_MAT2:
       case GL_FLOAT_MAT3x2:
       case GL_FLOAT_MAT4x2:
@@ -209,20 +312,35 @@ int VariableColumnCount(GLenum type)
       case GL_SAMPLER_3D:
       case GL_SAMPLER_CUBE:
       case GL_SAMPLER_2D_ARRAY:
+      case GL_SAMPLER_2D_MULTISAMPLE:
       case GL_INT_SAMPLER_2D:
       case GL_INT_SAMPLER_3D:
       case GL_INT_SAMPLER_CUBE:
       case GL_INT_SAMPLER_2D_ARRAY:
+      case GL_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_SAMPLER_EXTERNAL_OES:
       case GL_SAMPLER_2D_RECT_ARB:
       case GL_UNSIGNED_INT_SAMPLER_2D:
       case GL_UNSIGNED_INT_SAMPLER_3D:
       case GL_UNSIGNED_INT_SAMPLER_CUBE:
       case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+      case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_SAMPLER_2D_SHADOW:
       case GL_SAMPLER_CUBE_SHADOW:
       case GL_SAMPLER_2D_ARRAY_SHADOW:
-        return 1;
+      case GL_IMAGE_2D:
+      case GL_INT_IMAGE_2D:
+      case GL_UNSIGNED_INT_IMAGE_2D:
+      case GL_IMAGE_3D:
+      case GL_INT_IMAGE_3D:
+      case GL_UNSIGNED_INT_IMAGE_3D:
+      case GL_IMAGE_2D_ARRAY:
+      case GL_INT_IMAGE_2D_ARRAY:
+      case GL_UNSIGNED_INT_IMAGE_2D_ARRAY:
+      case GL_IMAGE_CUBE:
+      case GL_INT_IMAGE_CUBE:
+      case GL_UNSIGNED_INT_IMAGE_CUBE:
+          return 1;
       case GL_BOOL_VEC2:
       case GL_FLOAT_VEC2:
       case GL_INT_VEC2:
@@ -262,14 +380,18 @@ bool IsSamplerType(GLenum type)
       case GL_SAMPLER_3D:
       case GL_SAMPLER_CUBE:
       case GL_SAMPLER_2D_ARRAY:
+      case GL_SAMPLER_EXTERNAL_OES:
+      case GL_SAMPLER_2D_MULTISAMPLE:
       case GL_INT_SAMPLER_2D:
       case GL_INT_SAMPLER_3D:
       case GL_INT_SAMPLER_CUBE:
       case GL_INT_SAMPLER_2D_ARRAY:
+      case GL_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_UNSIGNED_INT_SAMPLER_2D:
       case GL_UNSIGNED_INT_SAMPLER_3D:
       case GL_UNSIGNED_INT_SAMPLER_CUBE:
       case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+      case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_SAMPLER_2D_SHADOW:
       case GL_SAMPLER_CUBE_SHADOW:
       case GL_SAMPLER_2D_ARRAY_SHADOW:
@@ -277,6 +399,75 @@ bool IsSamplerType(GLenum type)
     }
 
     return false;
+}
+
+bool IsImageType(GLenum type)
+{
+    switch (type)
+    {
+        case GL_IMAGE_2D:
+        case GL_INT_IMAGE_2D:
+        case GL_UNSIGNED_INT_IMAGE_2D:
+        case GL_IMAGE_3D:
+        case GL_INT_IMAGE_3D:
+        case GL_UNSIGNED_INT_IMAGE_3D:
+        case GL_IMAGE_2D_ARRAY:
+        case GL_INT_IMAGE_2D_ARRAY:
+        case GL_UNSIGNED_INT_IMAGE_2D_ARRAY:
+        case GL_IMAGE_CUBE:
+        case GL_INT_IMAGE_CUBE:
+        case GL_UNSIGNED_INT_IMAGE_CUBE:
+            return true;
+    }
+    return false;
+}
+
+bool IsOpaqueType(GLenum type)
+{
+    // ESSL 3.10 section 4.1.7 defines opaque types as: samplers, images and atomic counters.
+    // TODO(oetuaho): add atomic types
+    return IsImageType(type) || IsSamplerType(type);
+}
+
+GLenum SamplerTypeToTextureType(GLenum samplerType)
+{
+    switch (samplerType)
+    {
+      case GL_SAMPLER_2D:
+      case GL_INT_SAMPLER_2D:
+      case GL_UNSIGNED_INT_SAMPLER_2D:
+      case GL_SAMPLER_2D_SHADOW:
+        return GL_TEXTURE_2D;
+
+      case GL_SAMPLER_EXTERNAL_OES:
+          return GL_TEXTURE_EXTERNAL_OES;
+
+      case GL_SAMPLER_CUBE:
+      case GL_INT_SAMPLER_CUBE:
+      case GL_UNSIGNED_INT_SAMPLER_CUBE:
+      case GL_SAMPLER_CUBE_SHADOW:
+        return GL_TEXTURE_CUBE_MAP;
+
+      case GL_SAMPLER_2D_ARRAY:
+      case GL_INT_SAMPLER_2D_ARRAY:
+      case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+      case GL_SAMPLER_2D_ARRAY_SHADOW:
+        return GL_TEXTURE_2D_ARRAY;
+
+      case GL_SAMPLER_3D:
+      case GL_INT_SAMPLER_3D:
+      case GL_UNSIGNED_INT_SAMPLER_3D:
+        return GL_TEXTURE_3D;
+
+      case GL_SAMPLER_2D_MULTISAMPLE:
+      case GL_INT_SAMPLER_2D_MULTISAMPLE:
+      case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
+          return GL_TEXTURE_2D_MULTISAMPLE;
+
+      default:
+        UNREACHABLE();
+        return 0;
+    }
 }
 
 bool IsMatrixType(GLenum type)
@@ -366,6 +557,47 @@ GLenum LayerIndexToCubeMapTextureTarget(size_t index)
     return FirstCubeMapTextureTarget + static_cast<GLenum>(index);
 }
 
+IndexRange ComputeIndexRange(GLenum indexType,
+                             const GLvoid *indices,
+                             size_t count,
+                             bool primitiveRestartEnabled)
+{
+    switch (indexType)
+    {
+        case GL_UNSIGNED_BYTE:
+            return ComputeTypedIndexRange(static_cast<const GLubyte *>(indices), count,
+                                          primitiveRestartEnabled,
+                                          GetPrimitiveRestartIndex(indexType));
+        case GL_UNSIGNED_SHORT:
+            return ComputeTypedIndexRange(static_cast<const GLushort *>(indices), count,
+                                          primitiveRestartEnabled,
+                                          GetPrimitiveRestartIndex(indexType));
+        case GL_UNSIGNED_INT:
+            return ComputeTypedIndexRange(static_cast<const GLuint *>(indices), count,
+                                          primitiveRestartEnabled,
+                                          GetPrimitiveRestartIndex(indexType));
+        default:
+            UNREACHABLE();
+            return IndexRange();
+    }
+}
+
+GLuint GetPrimitiveRestartIndex(GLenum indexType)
+{
+    switch (indexType)
+    {
+        case GL_UNSIGNED_BYTE:
+            return 0xFF;
+        case GL_UNSIGNED_SHORT:
+            return 0xFFFF;
+        case GL_UNSIGNED_INT:
+            return 0xFFFFFFFF;
+        default:
+            UNREACHABLE();
+            return 0;
+    }
+}
+
 bool IsTriangleMode(GLenum drawMode)
 {
     switch (drawMode)
@@ -442,15 +674,18 @@ int VariableSortOrder(GLenum type)
       case GL_SAMPLER_EXTERNAL_OES:
       case GL_SAMPLER_2D_RECT_ARB:
       case GL_SAMPLER_2D_ARRAY:
+      case GL_SAMPLER_2D_MULTISAMPLE:
       case GL_SAMPLER_3D:
       case GL_INT_SAMPLER_2D:
       case GL_INT_SAMPLER_3D:
       case GL_INT_SAMPLER_CUBE:
       case GL_INT_SAMPLER_2D_ARRAY:
+      case GL_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_UNSIGNED_INT_SAMPLER_2D:
       case GL_UNSIGNED_INT_SAMPLER_3D:
       case GL_UNSIGNED_INT_SAMPLER_CUBE:
       case GL_UNSIGNED_INT_SAMPLER_2D_ARRAY:
+      case GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE:
       case GL_SAMPLER_2D_SHADOW:
       case GL_SAMPLER_2D_ARRAY_SHADOW:
       case GL_SAMPLER_CUBE_SHADOW:
@@ -462,7 +697,7 @@ int VariableSortOrder(GLenum type)
     }
 }
 
-std::string ParseUniformName(const std::string &name, size_t *outSubscript)
+std::string ParseResourceName(const std::string &name, size_t *outSubscript)
 {
     // Strip any trailing array operator and retrieve the subscript
     size_t open = name.find_last_of('[');
@@ -493,7 +728,158 @@ std::string ParseUniformName(const std::string &name, size_t *outSubscript)
     return name.substr(0, open);
 }
 
+template <>
+GLuint ConvertToGLuint(GLfloat param)
+{
+    return uiround<GLuint>(param);
 }
+
+template <>
+GLint ConvertToGLint(GLfloat param)
+{
+    return iround<GLint>(param);
+}
+
+template <>
+GLint ConvertFromGLfloat(GLfloat param)
+{
+    return iround<GLint>(param);
+}
+template <>
+GLuint ConvertFromGLfloat(GLfloat param)
+{
+    return uiround<GLuint>(param);
+}
+
+unsigned int ParseAndStripArrayIndex(std::string *name)
+{
+    unsigned int subscript = GL_INVALID_INDEX;
+
+    // Strip any trailing array operator and retrieve the subscript
+    size_t open  = name->find_last_of('[');
+    size_t close = name->find_last_of(']');
+    if (open != std::string::npos && close == name->length() - 1)
+    {
+        subscript = atoi(name->c_str() + open + 1);
+        name->erase(open);
+    }
+
+    return subscript;
+}
+
+}  // namespace gl
+
+namespace egl
+{
+static_assert(EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X_KHR - EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR == 1,
+              "Unexpected EGL cube map enum value.");
+static_assert(EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Y_KHR - EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR == 2,
+              "Unexpected EGL cube map enum value.");
+static_assert(EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y_KHR - EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR == 3,
+              "Unexpected EGL cube map enum value.");
+static_assert(EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z_KHR - EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR == 4,
+              "Unexpected EGL cube map enum value.");
+static_assert(EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_KHR - EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR == 5,
+              "Unexpected EGL cube map enum value.");
+
+bool IsCubeMapTextureTarget(EGLenum target)
+{
+    return (target >= FirstCubeMapTextureTarget && target <= LastCubeMapTextureTarget);
+}
+
+size_t CubeMapTextureTargetToLayerIndex(EGLenum target)
+{
+    ASSERT(IsCubeMapTextureTarget(target));
+    return target - static_cast<size_t>(FirstCubeMapTextureTarget);
+}
+
+EGLenum LayerIndexToCubeMapTextureTarget(size_t index)
+{
+    ASSERT(index <= (LastCubeMapTextureTarget - FirstCubeMapTextureTarget));
+    return FirstCubeMapTextureTarget + static_cast<GLenum>(index);
+}
+
+bool IsTextureTarget(EGLenum target)
+{
+    switch (target)
+    {
+        case EGL_GL_TEXTURE_2D_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Y_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_KHR:
+        case EGL_GL_TEXTURE_3D_KHR:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+bool IsRenderbufferTarget(EGLenum target)
+{
+    return target == EGL_GL_RENDERBUFFER_KHR;
+}
+}  // namespace egl
+
+namespace egl_gl
+{
+GLenum EGLCubeMapTargetToGLCubeMapTarget(EGLenum eglTarget)
+{
+    ASSERT(egl::IsCubeMapTextureTarget(eglTarget));
+    return gl::LayerIndexToCubeMapTextureTarget(egl::CubeMapTextureTargetToLayerIndex(eglTarget));
+}
+
+GLenum EGLImageTargetToGLTextureTarget(EGLenum eglTarget)
+{
+    switch (eglTarget)
+    {
+        case EGL_GL_TEXTURE_2D_KHR:
+            return GL_TEXTURE_2D;
+
+        case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Y_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z_KHR:
+        case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_KHR:
+            return EGLCubeMapTargetToGLCubeMapTarget(eglTarget);
+
+        case EGL_GL_TEXTURE_3D_KHR:
+            return GL_TEXTURE_3D;
+
+        default:
+            UNREACHABLE();
+            return GL_NONE;
+    }
+}
+
+GLuint EGLClientBufferToGLObjectHandle(EGLClientBuffer buffer)
+{
+    return static_cast<GLuint>(reinterpret_cast<uintptr_t>(buffer));
+}
+}  // namespace egl_gl
+
+namespace gl_egl
+{
+EGLenum GLComponentTypeToEGLColorComponentType(GLenum glComponentType)
+{
+    switch (glComponentType)
+    {
+        case GL_FLOAT:
+            return EGL_COLOR_COMPONENT_TYPE_FLOAT_EXT;
+
+        case GL_UNSIGNED_NORMALIZED:
+            return EGL_COLOR_COMPONENT_TYPE_FIXED_EXT;
+
+        default:
+            UNREACHABLE();
+            return EGL_NONE;
+    }
+}
+}  // namespace gl_egl
 
 #if !defined(ANGLE_ENABLE_WINDOWS_STORE)
 std::string getTempPath()
@@ -542,32 +928,7 @@ void writeFile(const char* path, const void* content, size_t size)
 // to run, the function returns immediately, and the thread continues execution.
 void ScheduleYield()
 {
-#if defined(ANGLE_ENABLE_WINDOWS_STORE)
-    // This implementation of Sleep exists because it is not available prior to Update 4.
-    static HANDLE singletonEvent = nullptr;
-    HANDLE sleepEvent = singletonEvent;
-    if (!sleepEvent)
-    {
-        sleepEvent = CreateEventEx(nullptr, nullptr, CREATE_EVENT_MANUAL_RESET, EVENT_ALL_ACCESS);
-
-        if (!sleepEvent)
-            return;
-
-        HANDLE previousEvent = InterlockedCompareExchangePointerRelease(&singletonEvent, sleepEvent, nullptr);
-
-        if (previousEvent)
-        {
-            // Back out if multiple threads try to demand create at the same time.
-            CloseHandle(sleepEvent);
-            sleepEvent = previousEvent;
-        }
-    }
-
-    // Emulate sleep by waiting with timeout on an event that is never signalled.
-    WaitForSingleObjectEx(sleepEvent, 0, false);
-#else
     Sleep(0);
-#endif
 }
 
 #endif

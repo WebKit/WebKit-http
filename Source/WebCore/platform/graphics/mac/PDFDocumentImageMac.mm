@@ -30,10 +30,10 @@
 
 #import "LocalCurrentGraphicsContext.h"
 #import "SharedBuffer.h"
-#import "SoftLinking.h"
 #import <Quartz/Quartz.h>
 #import <objc/objc-class.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #import <ApplicationServices/ApplicationServicesPriv.h>
@@ -76,7 +76,10 @@ void PDFDocumentImage::drawPDFPage(GraphicsContext& context)
     bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context.platformContext());
     bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context.platformContext());
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [[m_document pageAtIndex:0] drawWithBox:kPDFDisplayBoxCropBox];
+#pragma clang diagnostic pop
 
     CGContextSetAllowsFontSmoothing(context.platformContext(), allowsSmoothing);
     CGContextSetAllowsFontSubpixelQuantization(context.platformContext(), allowsSubpixelQuantization);

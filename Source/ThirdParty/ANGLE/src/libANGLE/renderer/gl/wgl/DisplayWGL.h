@@ -21,35 +21,53 @@ class FunctionsWGL;
 class DisplayWGL : public DisplayGL
 {
   public:
-    DisplayWGL();
+    DisplayWGL(const egl::DisplayState &state);
     ~DisplayWGL() override;
 
     egl::Error initialize(egl::Display *display) override;
     void terminate() override;
 
-    egl::Error createWindowSurface(const egl::Config *configuration, EGLNativeWindowType window, const egl::AttributeMap &attribs,
-                                   SurfaceImpl **outSurface) override;
-    egl::Error createPbufferSurface(const egl::Config *configuration, const egl::AttributeMap &attribs,
-                                    SurfaceImpl **outSurface) override;
-    egl::Error createPbufferFromClientBuffer(const egl::Config *configuration, EGLClientBuffer shareHandle,
-                                             const egl::AttributeMap &attribs, SurfaceImpl **outSurface) override;
-    egl::Error createPixmapSurface(const egl::Config *configuration, NativePixmapType nativePixmap,
-                                   const egl::AttributeMap &attribs, SurfaceImpl **outSurface) override;
+    // Surface creation
+    SurfaceImpl *createWindowSurface(const egl::SurfaceState &state,
+                                     EGLNativeWindowType window,
+                                     const egl::AttributeMap &attribs) override;
+    SurfaceImpl *createPbufferSurface(const egl::SurfaceState &state,
+                                      const egl::AttributeMap &attribs) override;
+    SurfaceImpl *createPbufferFromClientBuffer(const egl::SurfaceState &state,
+                                               EGLenum buftype,
+                                               EGLClientBuffer clientBuffer,
+                                               const egl::AttributeMap &attribs) override;
+    SurfaceImpl *createPixmapSurface(const egl::SurfaceState &state,
+                                     NativePixmapType nativePixmap,
+                                     const egl::AttributeMap &attribs) override;
 
-    egl::ConfigSet generateConfigs() const override;
+    egl::ConfigSet generateConfigs() override;
 
-    bool isDeviceLost() const override;
     bool testDeviceLost() override;
     egl::Error restoreLostDevice() override;
 
     bool isValidNativeWindow(EGLNativeWindowType window) const override;
+    egl::Error validateClientBuffer(const egl::Config *configuration,
+                                    EGLenum buftype,
+                                    EGLClientBuffer clientBuffer,
+                                    const egl::AttributeMap &attribs) const override;
 
     egl::Error getDevice(DeviceImpl **device) override;
 
     std::string getVendorString() const override;
 
+    egl::Error waitClient() const override;
+    egl::Error waitNative(EGLint engine,
+                          egl::Surface *drawSurface,
+                          egl::Surface *readSurface) const override;
+
+    egl::Error registerD3DDevice(IUnknown *device, HANDLE *outHandle);
+    void releaseD3DDevice(HANDLE handle);
+
   private:
     const FunctionsGL *getFunctionsGL() const override;
+
+    egl::Error initializeD3DDevice();
 
     void generateExtensions(egl::DisplayExtensions *outExtensions) const override;
     void generateCaps(egl::Caps *outCaps) const override;
@@ -59,11 +77,26 @@ class DisplayWGL : public DisplayGL
     FunctionsWGL *mFunctionsWGL;
     FunctionsGL *mFunctionsGL;
 
+    bool mHasRobustness;
+
     ATOM mWindowClass;
     HWND mWindow;
     HDC mDeviceContext;
     int mPixelFormat;
     HGLRC mWGLContext;
+
+    bool mUseDXGISwapChains;
+    HMODULE mDxgiModule;
+    HMODULE mD3d11Module;
+    HANDLE mD3D11DeviceHandle;
+    ID3D11Device *mD3D11Device;
+
+    struct D3DObjectHandle
+    {
+        HANDLE handle;
+        size_t refCount;
+    };
+    std::map<IUnknown *, D3DObjectHandle> mRegisteredD3DDevices;
 
     egl::Display *mDisplay;
 };

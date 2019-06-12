@@ -38,6 +38,11 @@ namespace WebCore {
     class KeyboardEvent;
 }
 
+#if PLATFORM(MAC)
+@interface WebHTMLView () <NSDraggingSource>
+@end
+#endif
+
 @interface WebHTMLView (WebInternal)
 - (void)_selectionChanged;
 #if !PLATFORM(IOS)
@@ -67,6 +72,7 @@ namespace WebCore {
 - (void)attachRootLayer:(CALayer*)layer;
 - (void)detachRootLayer;
 - (BOOL)_web_isDrawingIntoLayer;
+- (BOOL)_web_isDrawingIntoAcceleratedLayer;
 
 #if PLATFORM(IOS)
 - (void)_layoutIfNeeded;
@@ -76,10 +82,10 @@ namespace WebCore {
 #endif
 @end
 
-#if PLATFORM(IOS)
 @interface WebHTMLView (RemovedAppKitSuperclassMethods)
+#if PLATFORM(IOS)
 - (void)delete:(id)sender;
 - (void)transpose:(id)sender;
+#endif
 - (BOOL)hasMarkedText;
 @end
-#endif

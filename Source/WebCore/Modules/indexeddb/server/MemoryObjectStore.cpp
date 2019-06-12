@@ -31,12 +31,16 @@
 #include "IDBBindingUtilities.h"
 #include "IDBDatabaseException.h"
 #include "IDBError.h"
+#include "IDBGetAllResult.h"
 #include "IDBKeyRangeData.h"
+#include "IDBValue.h"
 #include "IndexKey.h"
 #include "Logging.h"
 #include "MemoryBackingStoreTransaction.h"
 #include "UniqueIDBDatabase.h"
-
+#include <runtime/JSCJSValue.h>
+#include <runtime/JSCJSValueInlines.h>
+#include <runtime/JSLock.h>
 #include <wtf/NeverDestroyed.h>
 
 using namespace JSC;
@@ -187,7 +191,7 @@ void MemoryObjectStore::clear()
         cursor->objectStoreCleared();
 }
 
-void MemoryObjectStore::replaceKeyValueStore(std::unique_ptr<KeyValueMap>&& store, std::unique_ptr<std::set<IDBKeyData>>&& orderedKeys)
+void MemoryObjectStore::replaceKeyValueStore(std::unique_ptr<KeyValueMap>&& store, std::unique_ptr<IDBKeyDataSet>&& orderedKeys)
 {
     ASSERT(m_writeTransaction);
     ASSERT(m_writeTransaction->isAborting());
@@ -247,7 +251,7 @@ void MemoryObjectStore::deleteRange(const IDBKeyRangeData& inputRange)
     }
 }
 
-IDBError MemoryObjectStore::addRecord(MemoryBackingStoreTransaction& transaction, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
+IDBError MemoryObjectStore::addRecord(MemoryBackingStoreTransaction& transaction, const IDBKeyData& keyData, const IDBValue& value)
 {
     LOG(IndexedDB, "MemoryObjectStore::addRecord");
 
@@ -259,16 +263,16 @@ IDBError MemoryObjectStore::addRecord(MemoryBackingStoreTransaction& transaction
     if (!m_keyValueStore) {
         ASSERT(!m_orderedKeys);
         m_keyValueStore = std::make_unique<KeyValueMap>();
-        m_orderedKeys = std::make_unique<std::set<IDBKeyData>>();
+        m_orderedKeys = std::make_unique<IDBKeyDataSet>();
     }
 
-    auto mapResult = m_keyValueStore->set(keyData, value);
+    auto mapResult = m_keyValueStore->set(keyData, value.data());
     ASSERT(mapResult.isNewEntry);
     auto listResult = m_orderedKeys->insert(keyData);
     ASSERT(listResult.second);
 
     // If there was an error indexing this addition, then revert it.
-    auto error = updateIndexesForPutRecord(keyData, value);
+    auto error = updateIndexesForPutRecord(keyData, value.data());
     if (!error.isNull()) {
         m_keyValueStore->remove(mapResult.iterator);
         m_orderedKeys->erase(listResult.first);
@@ -278,7 +282,7 @@ IDBError MemoryObjectStore::addRecord(MemoryBackingStoreTransaction& transaction
     return error;
 }
 
-void MemoryObjectStore::updateCursorsForPutRecord(std::set<IDBKeyData>::iterator iterator)
+void MemoryObjectStore::updateCursorsForPutRecord(IDBKeyDataSet::iterator iterator)
 {
     for (auto& cursor : m_cursors.values())
         cursor->keyAdded(iterator);
@@ -300,7 +304,7 @@ IDBError MemoryObjectStore::updateIndexesForPutRecord(const IDBKeyData& key, con
 {
     JSLockHolder locker(UniqueIDBDatabase::databaseThreadVM());
 
-    auto jsValue = idbValueDataToJSValue(UniqueIDBDatabase::databaseThreadExecState(), value);
+    auto jsValue = deserializeIDBValueToJSValue(UniqueIDBDatabase::databaseThreadExecState(), value);
     if (jsValue.isUndefinedOrNull())
         return { };
 
@@ -338,7 +342,7 @@ IDBError MemoryObjectStore::populateIndexWithExistingRecords(MemoryIndex& index)
     JSLockHolder locker(UniqueIDBDatabase::databaseThreadVM());
 
     for (auto iterator : *m_keyValueStore) {
-        auto jsValue = idbValueDataToJSValue(UniqueIDBDatabase::databaseThreadExecState(), iterator.value);
+        auto jsValue = deserializeIDBValueToJSValue(UniqueIDBDatabase::databaseThreadExecState(), iterator.value);
         if (jsValue.isUndefinedOrNull())
             return { };
 
@@ -402,6 +406,35 @@ ThreadSafeDataBuffer MemoryObjectStore::valueForKeyRange(const IDBKeyRangeData& 
 
     ASSERT(m_keyValueStore);
     return m_keyValueStore->get(key);
+}
+
+void MemoryObjectStore::getAllRecords(const IDBKeyRangeData& keyRangeData, std::optional<uint32_t> count, IndexedDB::GetAllType type, IDBGetAllResult& result) const
+{
+    result = { type };
+
+    uint32_t targetCount;
+    if (count && count.value())
+        targetCount = count.value();
+    else
+        targetCount = std::numeric_limits<uint32_t>::max();
+
+    IDBKeyRangeData range = keyRangeData;
+    uint32_t currentCount = 0;
+    while (currentCount < targetCount) {
+        IDBKeyData key = lowestKeyWithRecordInRange(range);
+        if (key.isNull())
+            return;
+
+        range.lowerKey = key;
+        range.lowerOpen = true;
+
+        if (type == IndexedDB::GetAllType::Keys)
+            result.addKey(WTFMove(key));
+        else
+            result.addValue(valueForKey(key));
+
+        ++currentCount;
+    }
 }
 
 IDBGetResult MemoryObjectStore::indexValueForKeyRange(uint64_t indexIdentifier, IndexedDB::IndexRecordType recordType, const IDBKeyRangeData& range) const
@@ -470,6 +503,17 @@ MemoryObjectStoreCursor* MemoryObjectStore::maybeOpenCursor(const IDBCursorInfo&
 
     result.iterator->value = std::make_unique<MemoryObjectStoreCursor>(*this, info);
     return result.iterator->value.get();
+}
+
+void MemoryObjectStore::renameIndex(MemoryIndex& index, const String& newName)
+{
+    ASSERT(m_indexesByName.get(index.info().name()) == &index);
+    ASSERT(!m_indexesByName.contains(newName));
+    ASSERT(m_info.infoForExistingIndex(index.info().name()));
+
+    m_info.infoForExistingIndex(index.info().name())->rename(newName);
+    m_indexesByName.set(newName, m_indexesByName.take(index.info().name()));
+    index.rename(newName);
 }
 
 } // namespace IDBServer

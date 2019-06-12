@@ -1,8 +1,5 @@
 //----------------------------------------------------------------------
 // Differences with respect to Khronos version of webgl-test.js
-if (window.testRunner)
-    testRunner.overridePreference("WebKitWebGLEnabled", "1");
-
 function assertMsg(assertion, msg) {
     if (assertion) {
         testPassed(msg);
@@ -12,8 +9,6 @@ function assertMsg(assertion, msg) {
 }
 
 function initNonKhronosFramework(waitUntilDone) {
-  if (window.testRunner)
-    testRunner.overridePreference("WebKitWebGLEnabled", "1");
   if (waitUntilDone)
     window.jsTestIsAsync = true;
 }
@@ -44,11 +39,16 @@ function webglTestLog(msg) {
 //
 // Returns the WebGLRenderingContext for any known implementation.
 //
-function create3DContext(canvas, attributes)
+function create3DContext(canvas, attributes, version2)
 {
     if (!canvas)
         canvas = document.createElement("canvas");
     var context = null;
+    if (version2) {
+        try {
+            context = canvas.getContext("webgl2", attributes);
+        } catch(e) {}
+    }
     try {
         context = canvas.getContext("experimental-webgl", attributes);
     } catch(e) {}
@@ -245,10 +245,10 @@ function createProgram(gl, vshaders, fshaders, attribs)
 // Set the clear color to the passed array (4 values) and set the clear depth to the passed value.
 // Enable depth testing and blending with a blend func of (SRC_ALPHA, ONE_MINUS_SRC_ALPHA)
 //
-function initWebGL(canvasName, vshader, fshader, attribs, clearColor, clearDepth, contextAttribs)
+function initWebGL(canvasName, vshader, fshader, attribs, clearColor, clearDepth, contextAttribs, version2)
 {
     var canvas = document.getElementById(canvasName);
-    var gl = create3DContext(canvas, contextAttribs);
+    var gl = create3DContext(canvas, contextAttribs, version2);
     if (!gl) {
         alert("No WebGL context found");
         return null;

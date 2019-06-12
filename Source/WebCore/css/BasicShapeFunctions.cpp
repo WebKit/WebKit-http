@@ -65,7 +65,7 @@ static Ref<CSSPrimitiveValue> basicShapeRadiusToCSSValue(const RenderStyle& styl
     return pool.createIdentifierValue(CSSValueClosestSide);
 }
 
-Ref<CSSValue> valueForBasicShape(const RenderStyle& style, const BasicShape& basicShape)
+Ref<CSSPrimitiveValue> valueForBasicShape(const RenderStyle& style, const BasicShape& basicShape)
 {
     auto& cssValuePool = CSSValuePool::singleton();
 
@@ -136,36 +136,35 @@ Ref<CSSValue> valueForBasicShape(const RenderStyle& style, const BasicShape& bas
     return cssValuePool.createValue(basicShapeValue.releaseNonNull());
 }
 
-static Length convertToLength(const CSSToLengthConversionData& conversionData, CSSPrimitiveValue* value)
+static Length convertToLength(const CSSToLengthConversionData& conversionData, const CSSPrimitiveValue* value)
 {
     return value->convertToLength<FixedIntegerConversion | FixedFloatConversion | PercentConversion | CalculatedConversion>(conversionData);
 }
 
-static LengthSize convertToLengthSize(const CSSToLengthConversionData& conversionData, CSSPrimitiveValue* value)
+static LengthSize convertToLengthSize(const CSSToLengthConversionData& conversionData, const CSSPrimitiveValue* value)
 {
     if (!value)
-        return LengthSize(Length(0, Fixed), Length(0, Fixed));
+        return { { 0, Fixed }, { 0, Fixed } };
 
-    Pair* pair = value->getPairValue();
-    return LengthSize(convertToLength(conversionData, pair->first()), convertToLength(conversionData, pair->second()));
+    auto& pair = *value->pairValue();
+    return { convertToLength(conversionData, pair.first()), convertToLength(conversionData, pair.second()) };
 }
 
 static BasicShapeCenterCoordinate convertToCenterCoordinate(const CSSToLengthConversionData& conversionData, CSSPrimitiveValue* value)
 {
-    BasicShapeCenterCoordinate::Direction direction;
-    Length offset = Length(0, Fixed);
-
     CSSValueID keyword = CSSValueTop;
+    Length offset { 0, Fixed };
     if (!value)
         keyword = CSSValueCenter;
     else if (value->isValueID())
-        keyword = value->getValueID();
-    else if (Pair* pair = value->getPairValue()) {
-        keyword = pair->first()->getValueID();
+        keyword = value->valueID();
+    else if (Pair* pair = value->pairValue()) {
+        keyword = pair->first()->valueID();
         offset = convertToLength(conversionData, pair->second());
     } else
         offset = convertToLength(conversionData, value);
 
+    BasicShapeCenterCoordinate::Direction direction;
     switch (keyword) {
     case CSSValueTop:
     case CSSValueLeft:
@@ -188,13 +187,13 @@ static BasicShapeCenterCoordinate convertToCenterCoordinate(const CSSToLengthCon
     return BasicShapeCenterCoordinate(direction, offset);
 }
 
-static BasicShapeRadius cssValueToBasicShapeRadius(const CSSToLengthConversionData& conversionData, PassRefPtr<CSSPrimitiveValue> radius)
+static BasicShapeRadius cssValueToBasicShapeRadius(const CSSToLengthConversionData& conversionData, CSSPrimitiveValue* radius)
 {
     if (!radius)
         return BasicShapeRadius(BasicShapeRadius::ClosestSide);
 
     if (radius->isValueID()) {
-        switch (radius->getValueID()) {
+        switch (radius->valueID()) {
         case CSSValueClosestSide:
             return BasicShapeRadius(BasicShapeRadius::ClosestSide);
         case CSSValueFarthestSide:
@@ -205,16 +204,16 @@ static BasicShapeRadius cssValueToBasicShapeRadius(const CSSToLengthConversionDa
         }
     }
 
-    return BasicShapeRadius(convertToLength(conversionData, radius.get()));
+    return BasicShapeRadius(convertToLength(conversionData, radius));
 }
 
-Ref<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conversionData, const CSSBasicShape* basicShapeValue)
+Ref<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conversionData, const CSSBasicShape& basicShapeValue)
 {
     RefPtr<BasicShape> basicShape;
 
-    switch (basicShapeValue->type()) {
+    switch (basicShapeValue.type()) {
     case CSSBasicShape::CSSBasicShapeCircleType: {
-        auto& circleValue = downcast<CSSBasicShapeCircle>(*basicShapeValue);
+        auto& circleValue = downcast<CSSBasicShapeCircle>(basicShapeValue);
         auto circle = BasicShapeCircle::create();
 
         circle->setCenterX(convertToCenterCoordinate(conversionData, circleValue.centerX()));
@@ -225,7 +224,7 @@ Ref<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conversionDa
         break;
     }
     case CSSBasicShape::CSSBasicShapeEllipseType: {
-        auto& ellipseValue = downcast<CSSBasicShapeEllipse>(*basicShapeValue);
+        auto& ellipseValue = downcast<CSSBasicShapeEllipse>(basicShapeValue);
         auto ellipse = BasicShapeEllipse::create();
 
         ellipse->setCenterX(convertToCenterCoordinate(conversionData, ellipseValue.centerX()));
@@ -238,19 +237,19 @@ Ref<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conversionDa
         break;
     }
     case CSSBasicShape::CSSBasicShapePolygonType: {
-        auto& polygonValue = downcast<CSSBasicShapePolygon>(*basicShapeValue);
+        auto& polygonValue = downcast<CSSBasicShapePolygon>(basicShapeValue);
         auto polygon = BasicShapePolygon::create();
 
         polygon->setWindRule(polygonValue.windRule());
-        const Vector<RefPtr<CSSPrimitiveValue>>& values = polygonValue.values();
+        auto& values = polygonValue.values();
         for (unsigned i = 0; i < values.size(); i += 2)
-            polygon->appendPoint(convertToLength(conversionData, values.at(i).get()), convertToLength(conversionData, values.at(i + 1).get()));
+            polygon->appendPoint(convertToLength(conversionData, values[i].ptr()), convertToLength(conversionData, values[i + 1].ptr()));
 
         basicShape = WTFMove(polygon);
         break;
     }
     case CSSBasicShape::CSSBasicShapeInsetType: {
-        auto& rectValue = downcast<CSSBasicShapeInset>(*basicShapeValue);
+        auto& rectValue = downcast<CSSBasicShapeInset>(basicShapeValue);
         auto rect = BasicShapeInset::create();
 
         rect->setTop(convertToLength(conversionData, rectValue.top()));
@@ -267,7 +266,7 @@ Ref<BasicShape> basicShapeForValue(const CSSToLengthConversionData& conversionDa
         break;
     }
     case CSSBasicShape::CSSBasicShapePathType: {
-        auto& pathValue = downcast<CSSBasicShapePath>(*basicShapeValue);
+        auto& pathValue = downcast<CSSBasicShapePath>(basicShapeValue);
         auto path = BasicShapePath::create(pathValue.pathData().copy());
         path->setWindRule(pathValue.windRule());
 

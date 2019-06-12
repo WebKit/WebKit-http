@@ -23,8 +23,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderTableCol_h
-#define RenderTableCol_h
+#pragma once
 
 #include "RenderBox.h"
 
@@ -35,7 +34,7 @@ class RenderTableCell;
 
 class RenderTableCol final : public RenderBox {
 public:
-    RenderTableCol(Element&, Ref<RenderStyle>&&);
+    RenderTableCol(Element&, RenderStyle&&);
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }
 
     void clearPreferredLogicalWidthsDirtyBits();
@@ -54,34 +53,34 @@ public:
     // Returns the next column or column-group.
     RenderTableCol* nextColumn() const;
 
-    const BorderValue& borderAdjoiningCellStartBorder(const RenderTableCell*) const;
-    const BorderValue& borderAdjoiningCellEndBorder(const RenderTableCell*) const;
-    const BorderValue& borderAdjoiningCellBefore(const RenderTableCell*) const;
-    const BorderValue& borderAdjoiningCellAfter(const RenderTableCell*) const;
+    const BorderValue& borderAdjoiningCellStartBorder() const;
+    const BorderValue& borderAdjoiningCellEndBorder() const;
+    const BorderValue& borderAdjoiningCellBefore(const RenderTableCell&) const;
+    const BorderValue& borderAdjoiningCellAfter(const RenderTableCell&) const;
 
-    virtual LayoutUnit offsetLeft() const override;
-    virtual LayoutUnit offsetTop() const override;
-    virtual LayoutUnit offsetWidth() const override;
-    virtual LayoutUnit offsetHeight() const override;
-    virtual void updateFromElement() override;
+    LayoutUnit offsetLeft() const override;
+    LayoutUnit offsetTop() const override;
+    LayoutUnit offsetWidth() const override;
+    LayoutUnit offsetHeight() const override;
+    void updateFromElement() override;
 
 private:
-    virtual const char* renderName() const override { return "RenderTableCol"; }
-    virtual bool isRenderTableCol() const override { return true; }
-    virtual void computePreferredLogicalWidths() override { ASSERT_NOT_REACHED(); }
+    const char* renderName() const override { return "RenderTableCol"; }
+    bool isRenderTableCol() const override { return true; }
+    void computePreferredLogicalWidths() override { ASSERT_NOT_REACHED(); }
 
-    virtual void insertedIntoTree() override;
-    virtual void willBeRemovedFromTree() override;
+    void insertedIntoTree() override;
+    void willBeRemovedFromTree() override;
 
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
-    virtual bool canHaveChildren() const override;
-    virtual bool requiresLayer() const override { return false; }
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
+    bool canHaveChildren() const override;
+    bool requiresLayer() const override { return false; }
 
-    virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
-    virtual void imageChanged(WrappedImagePtr, const IntRect* = 0) override;
+    LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
+    void imageChanged(WrappedImagePtr, const IntRect* = 0) override;
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    virtual void paint(PaintInfo&, const LayoutPoint&) override { }
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void paint(PaintInfo&, const LayoutPoint&) override { }
 
     RenderTable* table() const;
 
@@ -105,5 +104,3 @@ inline RenderTableCol* RenderTableCol::enclosingColumnGroupIfAdjacentAfter() con
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderTableCol, isRenderTableCol())
-
-#endif // RenderTableCol_h

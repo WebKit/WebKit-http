@@ -54,12 +54,15 @@ WebInspector.BreakpointActionView = class BreakpointActionView extends WebInspec
             picker.add(option);
         }
 
-        var appendActionButton = header.appendChild(document.createElement("button"));
+        let buttonContainerElement = header.appendChild(document.createElement("div"));
+        buttonContainerElement.classList.add("breakpoint-action-button-container");
+
+        let appendActionButton = buttonContainerElement.appendChild(document.createElement("button"));
         appendActionButton.className = "breakpoint-action-append-button";
         appendActionButton.addEventListener("click", this._appendActionButtonClicked.bind(this));
         appendActionButton.title = WebInspector.UIString("Add new breakpoint action after this action");
 
-        var removeActionButton = header.appendChild(document.createElement("button"));
+        let removeActionButton = buttonContainerElement.appendChild(document.createElement("button"));
         removeActionButton.className = "breakpoint-action-remove-button";
         removeActionButton.addEventListener("click", this._removeAction.bind(this));
         removeActionButton.title = WebInspector.UIString("Remove this breakpoint action");
@@ -139,6 +142,10 @@ WebInspector.BreakpointActionView = class BreakpointActionView extends WebInspec
             if (!omitFocus)
                 setTimeout(function() { input.focus(); }, 0);
 
+            var descriptionElement = this._bodyElement.appendChild(document.createElement("div"));
+            descriptionElement.classList.add("description");
+            descriptionElement.setAttribute("dir", "ltr");
+            descriptionElement.textContent = WebInspector.UIString("${expr} = expression");
             break;
 
         case WebInspector.BreakpointAction.Type.Evaluate:
@@ -167,11 +174,11 @@ WebInspector.BreakpointActionView = class BreakpointActionView extends WebInspec
             completionController.addExtendedCompletionProvider("javascript", WebInspector.javaScriptRuntimeCompletionProvider);
 
             // CodeMirror needs a refresh after the popover displays, to layout, otherwise it doesn't appear.
-            setTimeout(function() {
+            setTimeout(() => {
                 this._codeMirror.refresh();
                 if (!omitFocus)
                     this._codeMirror.focus();
-            }.bind(this), 0);
+            }, 0);
 
             break;
 

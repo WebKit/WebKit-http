@@ -1,9 +1,9 @@
 # Copyright (C) 2010 Google Inc. All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 # notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above
@@ -13,7 +13,7 @@
 #     * Neither the name of Google Inc. nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -53,7 +53,7 @@ class ConfirmDiff(AbstractStep):
             pretty_patch = PrettyPatch(self._tool.executive,
                                        self._tool.scm().checkout_root)
             pretty_diff_file = pretty_patch.pretty_diff_file(diff)
-            url = "file://%s" % urllib.quote(pretty_diff_file.name)
+            url = "file://%s" % urllib.pathname2url(pretty_diff_file.name)
             self._tool.user.open_url(url)
             # We return the pretty_diff_file here because we need to keep the
             # file alive until the user has had a chance to confirm the diff.

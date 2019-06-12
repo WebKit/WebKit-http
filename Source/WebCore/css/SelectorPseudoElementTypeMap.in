@@ -1,10 +1,12 @@
 after
 before
 #if ENABLE(VIDEO_TRACK)
-cue, PseudoElementWebKitCustom
+cue
 #endif
 first-letter
 first-line
+placeholder, PseudoElementWebKitCustom
+-webkit-input-placeholder, PseudoElementWebKitCustomLegacyPrefixed
 -webkit-resizer
 -webkit-scrollbar
 -webkit-scrollbar-button

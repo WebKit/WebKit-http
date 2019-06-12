@@ -36,24 +36,26 @@ namespace WebCore {
 
 class AudioTrackPrivateGStreamer final : public AudioTrackPrivate, public TrackPrivateBaseGStreamer {
 public:
-    static PassRefPtr<AudioTrackPrivateGStreamer> create(GRefPtr<GstElement> playbin, gint index, GRefPtr<GstPad> pad)
+    static RefPtr<AudioTrackPrivateGStreamer> create(GRefPtr<GstElement> playbin, gint index, GRefPtr<GstPad> pad)
     {
-        return adoptRef(new AudioTrackPrivateGStreamer(playbin, index, pad));
+        return adoptRef(*new AudioTrackPrivateGStreamer(playbin, index, pad));
     }
 
-    virtual void disconnect() override;
+    void disconnect() override;
 
-    virtual void setEnabled(bool) override;
-    virtual void setActive(bool enabled) override { setEnabled(enabled); }
+    void setEnabled(bool) override;
+    void setActive(bool enabled) override { setEnabled(enabled); }
 
-    virtual int trackIndex() const override { return m_index; }
+    int trackIndex() const override { return m_index; }
 
-    virtual AtomicString label() const override { return m_label; }
-    virtual AtomicString language() const override { return m_language; }
+    AtomicString id() const override { return m_id; }
+    AtomicString label() const override { return m_label; }
+    AtomicString language() const override { return m_language; }
 
 private:
     AudioTrackPrivateGStreamer(GRefPtr<GstElement> playbin, gint index, GRefPtr<GstPad>);
 
+    AtomicString m_id;
     GRefPtr<GstElement> m_playbin;
 };
 

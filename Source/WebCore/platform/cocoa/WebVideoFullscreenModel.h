@@ -24,41 +24,45 @@
  */
 
 
-#ifndef WebVideoFullscreenModel_h
-#define WebVideoFullscreenModel_h
+#pragma once
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
-#include <WebCore/FloatRect.h>
-#include <WebCore/HTMLMediaElementEnums.h>
+#include "FloatRect.h"
+#include "HTMLMediaElementEnums.h"
+#include "WebPlaybackSessionModel.h"
 
 namespace WebCore {
+
+class WebVideoFullscreenModelClient;
 
 class WebVideoFullscreenModel {
 public:
     virtual ~WebVideoFullscreenModel() { };
-    virtual void play() = 0;
-    virtual void pause() = 0;
-    virtual void togglePlayState() = 0;
-    virtual void beginScrubbing() = 0;
-    virtual void endScrubbing() = 0;
-    virtual void seekToTime(double time) = 0;
-    virtual void fastSeek(double time) = 0;
-    virtual void beginScanningForward() = 0;
-    virtual void beginScanningBackward() = 0;
-    virtual void endScanning() = 0;
-    virtual void requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode) = 0;
+    virtual void addClient(WebVideoFullscreenModelClient&) = 0;
+    virtual void removeClient(WebVideoFullscreenModelClient&)= 0;
+
+    virtual void requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode, bool finishedWithMedia = false) = 0;
     virtual void setVideoLayerFrame(FloatRect) = 0;
     enum VideoGravity { VideoGravityResize, VideoGravityResizeAspect, VideoGravityResizeAspectFill };
     virtual void setVideoLayerGravity(VideoGravity) = 0;
-    virtual void selectAudioMediaOption(uint64_t index) = 0;
-    virtual void selectLegibleMediaOption(uint64_t index) = 0;
     virtual void fullscreenModeChanged(HTMLMediaElementEnums::VideoFullscreenMode) = 0;
+
     virtual bool isVisible() const = 0;
+    virtual FloatSize videoDimensions() const = 0;
+    virtual bool hasVideo() const = 0;
 };
 
+class WebVideoFullscreenModelClient {
+public:
+    virtual ~WebVideoFullscreenModelClient() { }
+    virtual void hasVideoChanged(bool) = 0;
+    virtual void videoDimensionsChanged(const FloatSize&) = 0;
+};
+
+WEBCORE_EXPORT bool supportsPictureInPicture();
+    
 }
 
 #endif
 
-#endif

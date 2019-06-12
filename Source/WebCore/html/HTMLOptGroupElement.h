@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLOptGroupElement_h
-#define HTMLOptGroupElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -34,7 +33,7 @@ class HTMLOptGroupElement final : public HTMLElement {
 public:
     static Ref<HTMLOptGroupElement> create(const QualifiedName&, Document&);
 
-    virtual bool isDisabledFormControl() const override;
+    bool isDisabledFormControl() const final;
     HTMLSelectElement* ownerSelectElement() const;
     
     WEBCORE_EXPORT String groupLabelText() const;
@@ -43,17 +42,15 @@ private:
     HTMLOptGroupElement(const QualifiedName&, Document&);
 
     const AtomicString& formControlType() const;
-    virtual bool isFocusable() const override;
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool isFocusable() const final;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
 
-    virtual void childrenChanged(const ChildChange&) override;
+    void childrenChanged(const ChildChange&) final;
 
-    virtual void accessKeyAction(bool sendMouseEvents) override;
+    void accessKeyAction(bool sendMouseEvents) final;
 
     void recalcSelectOptions();
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

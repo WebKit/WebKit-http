@@ -23,21 +23,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PositionCallback_h
-#define PositionCallback_h
+#pragma once
 
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-    class Geoposition;
+class Geoposition;
 
-    class PositionCallback : public RefCounted<PositionCallback> {
-    public:
-        virtual ~PositionCallback() { }
-        virtual bool handleEvent(Geoposition*) = 0;
-    };
+class PositionCallback : public RefCounted<PositionCallback> {
+public:
+    virtual ~PositionCallback() { }
+    virtual CallbackResult<void> handleEvent(Geoposition*) = 0;
+};
 
 } // namespace WebCore
-
-#endif // PositionCallback_h

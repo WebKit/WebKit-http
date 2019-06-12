@@ -22,39 +22,24 @@
  *
  */
 
-#ifndef WheelEvent_h
-#define WheelEvent_h
+#pragma once
 
-#include "FloatPoint.h"
 #include "MouseEvent.h"
 #include "PlatformWheelEvent.h"
 
 namespace WebCore {
 
-class PlatformWheelEvent;
-
-struct WheelEventInit : public MouseEventInit {
-    WheelEventInit();
-
-    double deltaX;
-    double deltaY;
-    double deltaZ;
-    unsigned deltaMode;
-    int wheelDeltaX; // Deprecated.
-    int wheelDeltaY; // Deprecated.
-};
-
 class WheelEvent final : public MouseEvent {
 public:
     enum { TickMultiplier = 120 };
 
-    enum DeltaMode {
+    enum {
         DOM_DELTA_PIXEL = 0,
         DOM_DELTA_LINE,
         DOM_DELTA_PAGE
     };
 
-    static Ref<WheelEvent> create(const PlatformWheelEvent& event, AbstractView* view)
+    static Ref<WheelEvent> create(const PlatformWheelEvent& event, DOMWindow* view)
     {
         return adoptRef(*new WheelEvent(event, view));
     }
@@ -64,18 +49,23 @@ public:
         return adoptRef(*new WheelEvent);
     }
 
-    static Ref<WheelEvent> createForBindings(const AtomicString& type, const WheelEventInit& initializer)
+    struct Init : MouseEventInit {
+        double deltaX { 0 };
+        double deltaY { 0 };
+        double deltaZ { 0 };
+        unsigned deltaMode { DOM_DELTA_PIXEL };
+        int wheelDeltaX { 0 }; // Deprecated.
+        int wheelDeltaY { 0 }; // Deprecated.
+    };
+
+    static Ref<WheelEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new WheelEvent(type, initializer));
+        return adoptRef(*new WheelEvent(type, initializer, isTrusted));
     }
 
-    void initWheelEvent(int rawDeltaX, int rawDeltaY, AbstractView*,
-        int screenX, int screenY, int pageX, int pageY,
-        bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
+    WEBCORE_EXPORT void initWheelEvent(int rawDeltaX, int rawDeltaY, DOMWindow*, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
 
-    void initWebKitWheelEvent(int rawDeltaX, int rawDeltaY, AbstractView*,
-        int screenX, int screenY, int pageX, int pageY,
-        bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
+    void initWebKitWheelEvent(int rawDeltaX, int rawDeltaY, DOMWindow*,  int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
 
     const PlatformWheelEvent* wheelEvent() const { return m_initializedWithPlatformWheelEvent ? &m_wheelEvent : nullptr; }
     double deltaX() const { return m_deltaX; } // Positive when scrolling right.
@@ -87,10 +77,6 @@ public:
     unsigned deltaMode() const { return m_deltaMode; }
 
     bool webkitDirectionInvertedFromDevice() const { return m_wheelEvent.directionInvertedFromDevice(); }
-    // Needed for Objective-C legacy support
-    bool isHorizontal() const { return m_wheelDelta.x(); }
-
-    virtual EventInterface eventInterface() const override;
 
 #if PLATFORM(MAC)
     PlatformWheelEventPhase phase() const { return m_wheelEvent.phase(); }
@@ -99,22 +85,27 @@ public:
 
 private:
     WheelEvent();
-    WheelEvent(const AtomicString&, const WheelEventInit&);
-    WheelEvent(const PlatformWheelEvent&, AbstractView*);
+    WheelEvent(const AtomicString&, const Init&, IsTrusted);
+    WheelEvent(const PlatformWheelEvent&, DOMWindow*);
 
-    virtual bool isWheelEvent() const override;
+    EventInterface eventInterface() const final;
+
+    bool isWheelEvent() const final;
 
     IntPoint m_wheelDelta;
-    double m_deltaX;
-    double m_deltaY;
-    double m_deltaZ;
-    unsigned m_deltaMode;
+    double m_deltaX { 0 };
+    double m_deltaY { 0 };
+    double m_deltaZ { 0 };
+    unsigned m_deltaMode { DOM_DELTA_PIXEL };
     PlatformWheelEvent m_wheelEvent;
-    bool m_initializedWithPlatformWheelEvent;
+    bool m_initializedWithPlatformWheelEvent { false };
 };
+
+inline void WheelEvent::initWebKitWheelEvent(int rawDeltaX, int rawDeltaY, DOMWindow* view, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
+{
+    initWheelEvent(rawDeltaX, rawDeltaY, view, screenX, screenY, pageX, pageY, ctrlKey, altKey, shiftKey, metaKey);
+}
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_EVENT(WheelEvent)
-
-#endif // WheelEvent_h

@@ -28,10 +28,12 @@
  */
 
 [
-    NoInterfaceObject,
-    GenerateIsReachable=ImplDocument,
+    Exposed=(Window,Worker),
+    GenerateIsReachable=ImplScriptExecutionContext,
 ] interface Crypto {
-    [Custom, RaisesException] ArrayBufferView getRandomValues(ArrayBufferView array);
+    [Conditional=SUBTLE_CRYPTO] readonly attribute SubtleCrypto subtle;
+    [MayThrowException] ArrayBufferView getRandomValues([ReturnValue] ArrayBufferView array);
 
-    [Conditional=SUBTLE_CRYPTO, ImplementedAs=subtle] readonly attribute SubtleCrypto webkitSubtle;
+    // Will be deprecated.
+    [Conditional=SUBTLE_CRYPTO, GetterMayThrowException] readonly attribute WebKitSubtleCrypto webkitSubtle;
 };

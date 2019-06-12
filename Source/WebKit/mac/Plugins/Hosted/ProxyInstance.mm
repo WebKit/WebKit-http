@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2010 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2010, 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 #import "NetscapePluginHostProxy.h"
 #import "ProxyRuntimeObject.h"
+#import <WebCore/CommonVM.h>
 #import <WebCore/IdentifierRep.h>
 #import <WebCore/JSDOMWindow.h>
 #import <WebCore/npruntime_impl.h>
@@ -81,7 +82,7 @@ public:
 
 private:
     virtual JSValue valueFromInstance(ExecState*, const Instance*) const;
-    virtual void setValueToInstance(ExecState*, const Instance*, JSValue) const;
+    virtual bool setValueToInstance(ExecState*, const Instance*, JSValue) const;
     
     uint64_t m_serverIdentifier;
 };
@@ -91,9 +92,9 @@ JSValue ProxyField::valueFromInstance(ExecState* exec, const Instance* instance)
     return static_cast<const ProxyInstance*>(instance)->fieldValue(exec, this);
 }
     
-void ProxyField::setValueToInstance(ExecState* exec, const Instance* instance, JSValue value) const
+bool ProxyField::setValueToInstance(ExecState* exec, const Instance* instance, JSValue value) const
 {
-    static_cast<const ProxyInstance*>(instance)->setFieldValue(exec, this, value);
+    return static_cast<const ProxyInstance*>(instance)->setFieldValue(exec, this, value);
 }
 
 class ProxyMethod : public JSC::Bindings::Method {
@@ -111,8 +112,8 @@ private:
     uint64_t m_serverIdentifier;
 };
 
-ProxyInstance::ProxyInstance(PassRefPtr<RootObject> rootObject, NetscapePluginInstanceProxy* instanceProxy, uint32_t objectID)
-    : Instance(rootObject)
+ProxyInstance::ProxyInstance(Ref<RootObject>&& rootObject, NetscapePluginInstanceProxy* instanceProxy, uint32_t objectID)
+    : Instance(WTFMove(rootObject))
     , m_instanceProxy(instanceProxy)
     , m_objectID(objectID)
 {
@@ -132,7 +133,7 @@ ProxyInstance::~ProxyInstance()
 RuntimeObject* ProxyInstance::newRuntimeObject(ExecState* exec)
 {
     // FIXME: deprecatedGetDOMStructure uses the prototype off of the wrong global object.
-    return ProxyRuntimeObject::create(exec->vm(), WebCore::deprecatedGetDOMStructure<ProxyRuntimeObject>(exec), this);
+    return ProxyRuntimeObject::create(exec->vm(), WebCore::deprecatedGetDOMStructure<ProxyRuntimeObject>(exec), *this);
 }
 
 JSC::Bindings::Class* ProxyInstance::getClass() const
@@ -205,11 +206,11 @@ private:
     void finishCreation(VM& vm, const String& name)
     {
         Base::finishCreation(vm, name);
-        ASSERT(inherits(info()));
+        ASSERT(inherits(vm, info()));
     }
 };
 
-const ClassInfo ProxyRuntimeMethod::s_info = { "ProxyRuntimeMethod", &RuntimeMethod::s_info, 0, CREATE_METHOD_TABLE(ProxyRuntimeMethod) };
+const ClassInfo ProxyRuntimeMethod::s_info = { "ProxyRuntimeMethod", &RuntimeMethod::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ProxyRuntimeMethod) };
 
 JSValue ProxyInstance::getMethod(JSC::ExecState* exec, PropertyName propertyName)
 {
@@ -219,8 +220,11 @@ JSValue ProxyInstance::getMethod(JSC::ExecState* exec, PropertyName propertyName
 
 JSValue ProxyInstance::invokeMethod(ExecState* exec, JSC::RuntimeMethod* runtimeMethod)
 {
-    if (!asObject(runtimeMethod)->inherits(ProxyRuntimeMethod::info()))
-        return exec->vm().throwException(exec, createTypeError(exec, "Attempt to invoke non-plug-in method on plug-in object."));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (!asObject(runtimeMethod)->inherits(vm, ProxyRuntimeMethod::info()))
+        return throwTypeError(exec, scope, ASCIILiteral("Attempt to invoke non-plug-in method on plug-in object."));
 
     ProxyMethod* method = static_cast<ProxyMethod*>(runtimeMethod->method());
     ASSERT(method);
@@ -322,7 +326,7 @@ void ProxyInstance::getPropertyNames(ExecState* exec, PropertyNameArray& nameArr
 
         if (identifier->isString()) {
             const char* str = identifier->string();
-            nameArray.add(Identifier::fromString(&JSDOMWindow::commonVM(), String::fromUTF8WithLatin1Fallback(str, strlen(str))));
+            nameArray.add(Identifier::fromString(&commonVM(), String::fromUTF8WithLatin1Fallback(str, strlen(str))));
         } else
             nameArray.add(Identifier::from(exec, identifier->number()));
     }
@@ -416,10 +420,10 @@ JSC::JSValue ProxyInstance::fieldValue(ExecState* exec, const Field* field) cons
     return m_instanceProxy->demarshalValue(exec, (char*)CFDataGetBytePtr(reply->m_result.get()), CFDataGetLength(reply->m_result.get()));
 }
     
-void ProxyInstance::setFieldValue(ExecState* exec, const Field* field, JSValue value) const
+bool ProxyInstance::setFieldValue(ExecState* exec, const Field* field, JSValue value) const
 {
     if (!m_instanceProxy)
-        return;
+        return false;
     
     uint64_t serverIdentifier = static_cast<const ProxyField*>(field)->serverIdentifier();
     uint32_t requestID = m_instanceProxy->nextRequestID();
@@ -434,10 +438,11 @@ void ProxyInstance::setFieldValue(ExecState* exec, const Field* field, JSValue v
     if (m_instanceProxy)
         m_instanceProxy->releaseLocalObject(value);
     if (kr != KERN_SUCCESS)
-        return;
+        return false;
     
     waitForReply<NetscapePluginInstanceProxy::BooleanReply>(requestID);
     NetscapePluginInstanceProxy::moveGlobalExceptionToExecState(exec);
+    return true;
 }
 
 void ProxyInstance::invalidate()

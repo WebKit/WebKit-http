@@ -33,11 +33,14 @@
 
 #include "Blob.h"
 #include "BlobURL.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
+
+BlobData::BlobData(const String& contentType)
+    : m_contentType(contentType)
+{
+    ASSERT(Blob::isNormalizedContentType(contentType));
+}
 
 const long long BlobDataItem::toEndOfFile = -1;
 
@@ -46,39 +49,33 @@ long long BlobDataItem::length() const
     if (m_length != toEndOfFile)
         return m_length;
 
-    switch (type) {
-    case Data:
+    switch (m_type) {
+    case Type::Data:
         ASSERT_NOT_REACHED();
         return m_length;
-    case File:
-        return file->size();
+    case Type::File:
+        return m_file->size();
     }
 
     ASSERT_NOT_REACHED();
     return m_length;
 }
 
-void BlobData::setContentType(const String& contentType)
+void BlobData::appendData(const ThreadSafeDataBuffer& data)
 {
-    ASSERT(Blob::isNormalizedContentType(contentType));
-    m_contentType = contentType;
-}
-
-void BlobData::appendData(PassRefPtr<RawData> data)
-{
-    size_t dataSize = data->length();
+    size_t dataSize = data.data() ? data.data()->size() : 0;
     appendData(data, 0, dataSize);
 }
 
-void BlobData::appendData(PassRefPtr<RawData> data, long long offset, long long length)
+void BlobData::appendData(const ThreadSafeDataBuffer& data, long long offset, long long length)
 {
     m_items.append(BlobDataItem(data, offset, length));
 }
 
-void BlobData::appendFile(PassRefPtr<BlobDataFileReference> file)
+void BlobData::appendFile(Ref<BlobDataFileReference>&& file)
 {
     file->startTrackingModifications();
-    m_items.append(BlobDataItem(file));
+    m_items.append(BlobDataItem(WTFMove(file)));
 }
 
 void BlobData::appendFile(BlobDataFileReference* file, long long offset, long long length)

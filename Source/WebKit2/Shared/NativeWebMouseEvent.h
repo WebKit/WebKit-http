@@ -33,12 +33,6 @@
 OBJC_CLASS NSView;
 #endif
 
-#if PLATFORM(EFL)
-#include "WebEventFactory.h"
-#include <Evas.h>
-#include <WebCore/AffineTransform.h>
-#endif
-
 #if PLATFORM(GTK)
 #include <WebCore/GUniquePtrGtk.h>
 typedef union _GdkEvent GdkEvent;
@@ -46,6 +40,10 @@ typedef union _GdkEvent GdkEvent;
 
 #if PLATFORM(QT)
 #include <qevent.h>
+#endif
+
+#if PLATFORM(WPE)
+struct wpe_input_pointer_event;
 #endif
 
 namespace WebKit {
@@ -59,9 +57,8 @@ public:
 #elif PLATFORM(GTK)
     NativeWebMouseEvent(const NativeWebMouseEvent&);
     NativeWebMouseEvent(GdkEvent*, int);
-#elif PLATFORM(EFL)
-    template <typename EvasEventMouse>
-    NativeWebMouseEvent(const EvasEventMouse*, const WebCore::AffineTransform&, const WebCore::AffineTransform&);
+#elif PLATFORM(WPE)
+    NativeWebMouseEvent(struct wpe_input_pointer_event*, float deviceScaleFactor);
 #endif
 
 #if USE(APPKIT)
@@ -70,10 +67,10 @@ public:
     const QMouseEvent* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(GTK)
     const GdkEvent* nativeEvent() const { return m_nativeEvent.get(); }
-#elif PLATFORM(EFL)
-    const void* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(IOS)
     const void* nativeEvent() const { return 0; }
+#elif PLATFORM(WPE)
+    const void* nativeEvent() const { return nullptr; }
 #endif
 
 private:
@@ -83,19 +80,8 @@ private:
     QMouseEvent* m_nativeEvent;
 #elif PLATFORM(GTK)
     GUniquePtr<GdkEvent> m_nativeEvent;
-#elif PLATFORM(EFL)
-    const void* m_nativeEvent;
 #endif
 };
-
-#if PLATFORM(EFL)
-template <typename EvasEventMouse>
-NativeWebMouseEvent::NativeWebMouseEvent(const EvasEventMouse* event, const WebCore::AffineTransform& toWebContent, const WebCore::AffineTransform& toDeviceScreen)
-    : WebMouseEvent(WebEventFactory::createWebMouseEvent(event, toWebContent, toDeviceScreen))
-    , m_nativeEvent(event)
-{
-}
-#endif
 
 } // namespace WebKit
 

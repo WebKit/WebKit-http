@@ -1,9 +1,6 @@
 // Up-to-date as of 2013-04-12.
 var tabularElements = {
   table: {
-    // Conforming
-    sortable: "boolean",
-
     // Obsolete
     align: "string",
     border: "string",
@@ -20,7 +17,7 @@ var tabularElements = {
     align: "string",
   },
   colgroup: {
-    span: "limited unsigned long",
+    span: {type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000},
 
     // Obsolete
     align: "string",
@@ -31,7 +28,7 @@ var tabularElements = {
   },
   col: {
     // Conforming
-    span: "limited unsigned long",
+    span: {type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000},
 
     // Obsolete
     align: "string",
@@ -71,9 +68,11 @@ var tabularElements = {
   },
   td: {
     // HTMLTableCellElement (Conforming)
-    colSpan: {type: "unsigned long", defaultVal: 1},
-    rowSpan: {type: "unsigned long", defaultVal: 1},
+    colSpan: {type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000},
+    rowSpan: {type: "clamped unsigned long", defaultVal: 1, min: 0, max: 65534},
     headers: "settable tokenlist",
+    scope: {type: "enum", keywords: ["row", "col", "rowgroup", "colgroup"]},
+    abbr: "string",
 
     // HTMLTableCellElement (Obsolete)
     align: "string",
@@ -85,15 +84,14 @@ var tabularElements = {
     noWrap: "boolean",
     vAlign: "string",
     bgColor: {type: "string", treatNullAsEmptyString: true},
-
-    // HTMLTableDataCellElement (Obsolete)
-    abbr: "string",
   },
   th: {
     // HTMLTableCellElement (Conforming)
-    colSpan: {type: "unsigned long", defaultVal: 1},
-    rowSpan: {type: "unsigned long", defaultVal: 1},
+    colSpan: {type: "clamped unsigned long", defaultVal: 1, min: 1, max: 1000},
+    rowSpan: {type: "clamped unsigned long", defaultVal: 1, min: 0, max: 65534},
     headers: "settable tokenlist",
+    scope: {type: "enum", keywords: ["row", "col", "rowgroup", "colgroup"]},
+    abbr: "string",
 
     // HTMLTableCellElement (Obsolete)
     align: "string",
@@ -105,15 +103,6 @@ var tabularElements = {
     noWrap: "boolean",
     vAlign: "string",
     bgColor: {type: "string", treatNullAsEmptyString: true},
-
-    // HTMLTableHeaderCellElement (Conforming)
-    // TODO: double-check that the way we're treating missing value
-    // defaults is consistent here.  scope has an auto state with no
-    // associated keyword, which is the missing value default -- is this
-    // the right syntax for that?
-    scope: {type: "enum", keywords: ["row", "col", "rowgroup", "colgroup"]},
-    abbr: "string",
-    sorted: "string",
   },
 };
 

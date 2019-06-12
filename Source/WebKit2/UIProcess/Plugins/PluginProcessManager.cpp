@@ -43,7 +43,7 @@ PluginProcessManager& PluginProcessManager::singleton()
 
 PluginProcessManager::PluginProcessManager()
 #if PLATFORM(COCOA)
-    : m_processSuppressionDisabledForPageCounter([this](bool value) { updateProcessSuppressionDisabled(value); })
+    : m_processSuppressionDisabledForPageCounter([this](RefCounterEvent event) { updateProcessSuppressionDisabled(event); })
 #endif
 {
 }
@@ -79,12 +79,12 @@ uint64_t PluginProcessManager::pluginProcessToken(const PluginModuleInfo& plugin
     return token;
 }
 
-void PluginProcessManager::getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
+void PluginProcessManager::getPluginProcessConnection(uint64_t pluginProcessToken, Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&& reply)
 {
     ASSERT(pluginProcessToken);
 
     PluginProcessProxy* pluginProcess = getOrCreatePluginProcess(pluginProcessToken);
-    pluginProcess->getPluginProcessConnection(reply);
+    pluginProcess->getPluginProcessConnection(WTFMove(reply));
 }
 
 void PluginProcessManager::removePluginProcessProxy(PluginProcessProxy* pluginProcessProxy)
@@ -95,21 +95,21 @@ void PluginProcessManager::removePluginProcessProxy(PluginProcessProxy* pluginPr
     m_pluginProcesses.remove(vectorIndex);
 }
 
-void PluginProcessManager::fetchWebsiteData(const PluginModuleInfo& plugin, std::function<void (Vector<String>)> completionHandler)
+void PluginProcessManager::fetchWebsiteData(const PluginModuleInfo& plugin, WTF::Function<void (Vector<String>)>&& completionHandler)
 {
     PluginProcessProxy* pluginProcess = getOrCreatePluginProcess(pluginProcessToken(plugin, PluginProcessTypeNormal, PluginProcessSandboxPolicyNormal));
 
     pluginProcess->fetchWebsiteData(WTFMove(completionHandler));
 }
 
-void PluginProcessManager::deleteWebsiteData(const PluginModuleInfo& plugin, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+void PluginProcessManager::deleteWebsiteData(const PluginModuleInfo& plugin, std::chrono::system_clock::time_point modifiedSince, WTF::Function<void ()>&& completionHandler)
 {
     PluginProcessProxy* pluginProcess = getOrCreatePluginProcess(pluginProcessToken(plugin, PluginProcessTypeNormal, PluginProcessSandboxPolicyNormal));
 
     pluginProcess->deleteWebsiteData(modifiedSince, WTFMove(completionHandler));
 }
 
-void PluginProcessManager::deleteWebsiteDataForHostNames(const PluginModuleInfo& plugin, const Vector<String>& hostNames, std::function<void ()> completionHandler)
+void PluginProcessManager::deleteWebsiteDataForHostNames(const PluginModuleInfo& plugin, const Vector<String>& hostNames,WTF::Function<void ()>&& completionHandler)
 {
     PluginProcessProxy* pluginProcess = getOrCreatePluginProcess(pluginProcessToken(plugin, PluginProcessTypeNormal, PluginProcessSandboxPolicyNormal));
     pluginProcess->deleteWebsiteDataForHostNames(hostNames, WTFMove(completionHandler));
@@ -125,10 +125,10 @@ PluginProcessProxy* PluginProcessManager::getOrCreatePluginProcess(uint64_t plug
     for (size_t i = 0; i < m_pluginProcessTokens.size(); ++i) {
         auto& attributesAndToken = m_pluginProcessTokens[i];
         if (attributesAndToken.second == pluginProcessToken) {
-            RefPtr<PluginProcessProxy> pluginProcess = PluginProcessProxy::create(this, attributesAndToken.first, attributesAndToken.second);
-            PluginProcessProxy* pluginProcessPtr = pluginProcess.get();
+            auto pluginProcess = PluginProcessProxy::create(this, attributesAndToken.first, attributesAndToken.second);
+            PluginProcessProxy* pluginProcessPtr = pluginProcess.ptr();
 
-            m_pluginProcesses.append(pluginProcess.release());
+            m_pluginProcesses.append(WTFMove(pluginProcess));
             return pluginProcessPtr;
         }
     }

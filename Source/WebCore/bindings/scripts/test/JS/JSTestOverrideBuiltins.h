@@ -18,8 +18,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef JSTestOverrideBuiltins_h
-#define JSTestOverrideBuiltins_h
+#pragma once
 
 #include "JSDOMWrapper.h"
 #include "TestOverrideBuiltins.h"
@@ -29,7 +28,7 @@ namespace WebCore {
 
 class JSTestOverrideBuiltins : public JSDOMWrapper<TestOverrideBuiltins> {
 public:
-    typedef JSDOMWrapper<TestOverrideBuiltins> Base;
+    using Base = JSDOMWrapper<TestOverrideBuiltins>;
     static JSTestOverrideBuiltins* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestOverrideBuiltins>&& impl)
     {
         JSTestOverrideBuiltins* ptr = new (NotNull, JSC::allocateCell<JSTestOverrideBuiltins>(globalObject->vm().heap)) JSTestOverrideBuiltins(structure, *globalObject, WTFMove(impl));
@@ -37,13 +36,12 @@ public:
         return ptr;
     }
 
-    static const bool hasStaticPropertyTable = false;
-
-    static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static TestOverrideBuiltins* toWrapped(JSC::JSValue);
+    static JSC::JSObject* createPrototype(JSC::VM&, JSDOMGlobalObject&);
+    static JSC::JSObject* prototype(JSC::VM&, JSDOMGlobalObject&);
+    static TestOverrideBuiltins* toWrapped(JSC::VM&, JSC::JSValue);
     static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
     static bool getOwnPropertySlotByIndex(JSC::JSObject*, JSC::ExecState*, unsigned propertyName, JSC::PropertySlot&);
+    static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());
     static void destroy(JSC::JSCell*);
 
     DECLARE_INFO;
@@ -53,21 +51,13 @@ public:
         return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
     }
 
-    static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
 public:
     static const unsigned StructureFlags = JSC::GetOwnPropertySlotIsImpure | JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | JSC::OverridesGetOwnPropertySlot | JSC::OverridesGetPropertyNames | Base::StructureFlags;
 protected:
     JSTestOverrideBuiltins(JSC::Structure*, JSDOMGlobalObject&, Ref<TestOverrideBuiltins>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
-private:
-    bool nameGetter(JSC::ExecState*, JSC::PropertyName, JSC::JSValue&);
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestOverrideBuiltinsOwner : public JSC::WeakHandleOwner {
@@ -87,11 +77,14 @@ inline void* wrapperKey(TestOverrideBuiltins* wrappableObject)
     return wrappableObject;
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverrideBuiltins*);
-inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOverrideBuiltins& impl) { return toJS(state, globalObject, &impl); }
-JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, TestOverrideBuiltins*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestOverrideBuiltins&);
+inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOverrideBuiltins* impl) { return impl ? toJS(state, globalObject, *impl) : JSC::jsNull(); }
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestOverrideBuiltins>&&);
+inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestOverrideBuiltins>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestOverrideBuiltins> {
+    using WrapperClass = JSTestOverrideBuiltins;
+    using ToWrappedReturnType = TestOverrideBuiltins*;
+};
 
 } // namespace WebCore
-
-#endif

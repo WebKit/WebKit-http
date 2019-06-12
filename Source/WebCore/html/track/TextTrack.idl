@@ -23,8 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-enum TextTrackMode { "disabled",  "hidden",  "showing" };
-enum TextTrackKind { "subtitles",  "captions",  "descriptions",  "chapters", "metadata" };
+enum TextTrackMode { "disabled", "hidden", "showing" };
+enum TextTrackKind { "subtitles", "captions", "descriptions", "chapters", "metadata", "forced" };
 
 [
     Conditional=VIDEO_TRACK,
@@ -33,24 +33,23 @@ enum TextTrackKind { "subtitles",  "captions",  "descriptions",  "chapters", "me
     SkipVTableValidation,
 ] interface TextTrack : EventTarget {
     readonly attribute DOMString id;
-    [CustomSetter] attribute TextTrackKind kind;
+    [ImplementedAs=kindForBindings] attribute TextTrackKind kind;
     readonly attribute DOMString label;
-    [CustomSetter] attribute DOMString language;
+    [ConditionallyReadWrite=MEDIA_SOURCE] attribute DOMString language;
     readonly attribute DOMString inBandMetadataTrackDispatchType;
 
     attribute TextTrackMode mode;
 
-    readonly attribute TextTrackCueList cues;
-    readonly attribute TextTrackCueList activeCues;
+    readonly attribute TextTrackCueList? cues;
+    readonly attribute TextTrackCueList? activeCues;
 
-    [RaisesException] void addCue(TextTrackCue cue);
-    [RaisesException] void removeCue(TextTrackCue cue);
+    [MayThrowException] void addCue(TextTrackCue cue);
+    [MayThrowException] void removeCue(TextTrackCue cue);
 
     attribute EventHandler oncuechange;
 
-#if !defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT // Work around shortcomings in the gobject binding generator handling of conditional features by turning these off for gobject.
     readonly attribute VTTRegionList regions;
-    void addRegion(VTTRegion region);
-    [RaisesException] void removeRegion(VTTRegion region);
-#endif
+    // FIXME: region parameter should not be nullable in addRegion and removeRegion.
+    void addRegion(VTTRegion? region);
+    [MayThrowException] void removeRegion(VTTRegion? region);
 };

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef InferredValue_h
-#define InferredValue_h
+#pragma once
 
 #include "JSCell.h"
 #include "Watchpoint.h"
@@ -88,10 +87,10 @@ public:
         notifyWriteSlow(vm, value, reason);
     }
     
-    void invalidate(const FireDetail& detail)
+    void invalidate(VM& vm, const FireDetail& detail)
     {
         m_value.clear();
-        m_set.invalidate(detail);
+        m_set.invalidate(vm, detail);
     }
     
     static const unsigned StructureFlags = StructureIsImmortal | Base::StructureFlags;
@@ -133,6 +132,3 @@ private:
 // to die) when we get invalidated.
 
 } // namespace JSC
-
-#endif // InferredValue_h
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,22 +31,23 @@
 
 #import "WebVideoFullscreenHUDWindowController.h"
 #import "WebWindowAnimation.h"
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVPlayerLayer.h>
 #import <Carbon/Carbon.h>
-#import <QTKit/QTKit.h>
-#import <WebCore/DisplaySleepDisabler.h>
 #import <WebCore/HTMLVideoElement.h>
-#import <WebCore/SoftLinking.h>
+#import <WebCore/SleepDisabler.h>
 #import <objc/runtime.h>
+#import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
 
-using namespace WebCore;
-
+#if USE(QTKIT)
+#import "QTKitSPI.h"
 SOFT_LINK_FRAMEWORK(QTKit)
 SOFT_LINK_CLASS(QTKit, QTMovieLayer)
-
 SOFT_LINK_POINTER(QTKit, QTMovieRateDidChangeNotification, NSString *)
-
 #define QTMovieRateDidChangeNotification getQTMovieRateDidChangeNotification()
+#endif
+
+using namespace WebCore;
 
 SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
@@ -127,22 +128,25 @@ SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
         return;
 
     if ([self isWindowLoaded]) {
+#if USE(QTKIT)
         if (_videoElement->platformMedia().type == PlatformMedia::QTMovieType) {
             QTMovie *movie = _videoElement->platformMedia().media.qtMovie;
-            QTMovieLayer *layer = [allocQTMovieLayerInstance() init];
-            [layer setMovie:movie];
-            [self setupVideoOverlay:layer];
+            RetainPtr<QTMovieLayer> layer = adoptNS([allocQTMovieLayerInstance() init]);
+            [layer.get() setMovie:movie];
+            [self setupVideoOverlay:layer.get()];
 
             [[NSNotificationCenter defaultCenter] addObserver:self
                                                      selector:@selector(rateChanged:)
                                                          name:QTMovieRateDidChangeNotification
                                                        object:movie];
 
-        } else if (_videoElement->platformMedia().type == PlatformMedia::AVFoundationMediaPlayerType) {
+        } else
+#endif
+        if (_videoElement->platformMedia().type == PlatformMedia::AVFoundationMediaPlayerType) {
             AVPlayer *player = _videoElement->platformMedia().media.avfMediaPlayer;
-            AVPlayerLayer *layer = [allocAVPlayerLayerInstance() init];
-            [self setupVideoOverlay:layer];
-            [layer setPlayer:player];
+            RetainPtr<AVPlayerLayer> layer = adoptNS([allocAVPlayerLayerInstance() init]);
+            [self setupVideoOverlay:layer.get()];
+            [layer.get() setPlayer:player];
 
             [player addObserver:self forKeyPath:@"rate" options:0 context:nullptr];
         }
@@ -215,16 +219,13 @@ SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
 - (void)applicationDidResignActive:(NSNotification*)notification
 {   
     UNUSED_PARAM(notification);
-    // Check to see if the fullscreenWindow is on the active space; this function is available
-    // on 10.6 and later, so default to YES if the function is not available:
     NSWindow* fullscreenWindow = [self fullscreenWindow];
-    BOOL isOnActiveSpace = ([fullscreenWindow respondsToSelector:@selector(isOnActiveSpace)] ? [fullscreenWindow isOnActiveSpace] : YES);
 
     // Replicate the QuickTime Player (X) behavior when losing active application status:
     // Is the fullscreen screen the main screen? (Note: this covers the case where only a 
     // single screen is available.)  Is the fullscreen screen on the current space? IFF so, 
     // then exit fullscreen mode.    
-    if ([fullscreenWindow screen] == [[NSScreen screens] objectAtIndex:0] && isOnActiveSpace)
+    if (fullscreenWindow.screen == [NSScreen screens][0] && fullscreenWindow.onActiveSpace)
          [self requestExitFullscreenWithAnimation:NO];
 }
          
@@ -349,22 +350,21 @@ static NSWindow *createBackgroundFullscreenWindow(NSRect frame, int level)
             options |= NSApplicationPresentationAutoHideDock;
     }
 
-    if ([NSApp respondsToSelector:@selector(setPresentationOptions:)])
-        [NSApp setPresentationOptions:options];
-    else
-        SetSystemUIMode(_isEndingFullscreen ? kUIModeNormal : kUIModeAllHidden, 0);
+    NSApp.presentationOptions = options;
 }
 
 - (void)updatePowerAssertions
 {
+#if USE(QTKIT)
     float rate = 0;
     if (_videoElement && _videoElement->platformMedia().type == PlatformMedia::QTMovieType)
         rate = [_videoElement->platformMedia().media.qtMovie rate];
     
     if (rate && !_isEndingFullscreen) {
         if (!_displaySleepDisabler)
-            _displaySleepDisabler = DisplaySleepDisabler::create("com.apple.WebCore - Fullscreen video");
+            _displaySleepDisabler = SleepDisabler::create("com.apple.WebCore - Fullscreen video", SleepDisabler::Type::Display);
     } else
+#endif
         _displaySleepDisabler = nullptr;
 }
 

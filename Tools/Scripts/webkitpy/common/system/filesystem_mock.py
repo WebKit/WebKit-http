@@ -137,7 +137,6 @@ class MockFileSystem(object):
                 dirs.append(dirpath)
         return sorted(dirs)
 
-
     def files_under(self, path, dirs_to_skip=[], file_filter=None):
         def filter_all(fs, dirpath, basename):
             return True
@@ -338,7 +337,7 @@ class MockFileSystem(object):
             self._raise_not_found(path)
         return ReadableTextFileObject(self, path, self.files[path])
 
-    def open_text_file_for_writing(self, path):
+    def open_text_file_for_writing(self, path, should_append=False):
         return WritableTextFileObject(self, path)
 
     def read_text_file(self, path):
@@ -420,6 +419,21 @@ class MockFileSystem(object):
 
     def compare(self, path1, path2):
         return self.read_binary_file(path1) == self.read_binary_file(path2)
+
+    def map_base_host_path(self, path):
+        return path
+
+    def move_to_base_host(self, source, destination):
+        self.move(source, destination)
+
+    def move_from_base_host(self, source, destination):
+        self.move(source, destination)
+
+    def copy_to_base_host(self, source, destination):
+        self.move(source, destination)
+
+    def copy_from_base_host(self, source, destination):
+        self.move(source, destination)
 
 
 class WritableBinaryFileObject(object):

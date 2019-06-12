@@ -36,13 +36,13 @@ using namespace WebKit;
 
 + (WKWebProcessPlugInScriptWorld *)world
 {
-    RefPtr<InjectedBundleScriptWorld> scriptWorld = InjectedBundleScriptWorld::create();
-    return [wrapper(*scriptWorld.release().leakRef()) autorelease];
+    auto scriptWorld = InjectedBundleScriptWorld::create();
+    return [wrapper(scriptWorld.leakRef()) autorelease];
 }
 
 + (WKWebProcessPlugInScriptWorld *)normalWorld
 {
-    return wrapper(*InjectedBundleScriptWorld::normalWorld());
+    return wrapper(InjectedBundleScriptWorld::normalWorld());
 }
 
 - (void)dealloc
@@ -54,6 +54,16 @@ using namespace WebKit;
 - (void)clearWrappers
 {
     _world->clearWrappers();
+}
+
+- (void)makeAllShadowRootsOpen
+{
+    _world->makeAllShadowRootsOpen();
+}
+
+- (NSString *)name
+{
+    return _world->name();
 }
 
 - (InjectedBundleScriptWorld&)_scriptWorld

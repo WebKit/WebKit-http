@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef Comment_h
-#define Comment_h
+#pragma once
 
 #include "CharacterData.h"
 
@@ -34,10 +33,10 @@ public:
 private:
     Comment(Document&, const String&);
 
-    virtual String nodeName() const override;
-    virtual NodeType nodeType() const override;
-    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
-    virtual bool childTypeAllowed(NodeType) const override;
+    String nodeName() const override;
+    NodeType nodeType() const override;
+    Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    bool childTypeAllowed(NodeType) const override;
 };
 
 } // namespace WebCore
@@ -45,5 +44,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Comment)
     static bool isType(const WebCore::Node& node) { return node.nodeType() == WebCore::Node::COMMENT_NODE; }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // Comment_h

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ErrorHandlingScope_h
-#define ErrorHandlingScope_h
+#pragma once
 
 namespace JSC {
 
@@ -36,10 +35,7 @@ public:
     JS_EXPORT_PRIVATE ~ErrorHandlingScope();
 private:
     VM& m_vm;
-    size_t m_savedReservedZoneSize;
+    size_t m_savedSoftReservedZoneSize;
 };
 
 } // namespace JSC
-
-#endif // ErrorHandlingScope_h
-

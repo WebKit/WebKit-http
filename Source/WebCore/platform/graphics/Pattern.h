@@ -30,13 +30,15 @@
 
 #include "AffineTransform.h"
 
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 
 #if USE(CG)
 typedef struct CGPattern* CGPatternRef;
 typedef CGPatternRef PlatformPatternPtr;
+#elif USE(DIRECT2D)
+interface ID2D1BitmapBrush;
+typedef ID2D1BitmapBrush* PlatformPatternPtr;
 #elif USE(CAIRO)
 #include <cairo.h>
 typedef cairo_pattern_t* PlatformPatternPtr;
@@ -50,23 +52,26 @@ typedef void* PlatformPatternPtr;
 namespace WebCore {
 
 class AffineTransform;
+class GraphicsContext;
 class Image;
 
 class Pattern final : public RefCounted<Pattern> {
 public:
-    static Ref<Pattern> create(PassRefPtr<Image> tileImage, bool repeatX, bool repeatY);
+    static Ref<Pattern> create(Ref<Image>&& tileImage, bool repeatX, bool repeatY);
     ~Pattern();
 
-    Image* tileImage() const { return m_tileImage.get(); }
+    Image& tileImage() const { return m_tileImage.get(); }
 
     void platformDestroy();
 
-    // Pattern space is an abstract space that maps to the default user space by the transformation 'userSpaceTransformation' 
+    // Pattern space is an abstract space that maps to the default user space by the transformation 'userSpaceTransformation'
 #if PLATFORM(QT)
     // Qt ignores user space transformation and uses pattern's instead
     PlatformPatternPtr createPlatformPattern() const;
-#else
+#elif !USE(DIRECT2D)
     PlatformPatternPtr createPlatformPattern(const AffineTransform& userSpaceTransformation) const;
+#else
+    PlatformPatternPtr createPlatformPattern(const GraphicsContext&, float alpha, const AffineTransform& userSpaceTransformation) const;
 #endif
     void setPatternSpaceTransform(const AffineTransform& patternSpaceTransformation);
     const AffineTransform& getPatternSpaceTransform() { return m_patternSpaceTransformation; };
@@ -76,9 +81,9 @@ public:
     bool repeatY() const { return m_repeatY; }
 
 private:
-    Pattern(PassRefPtr<Image>, bool repeatX, bool repeatY);
+    Pattern(Ref<Image>&&, bool repeatX, bool repeatY);
 
-    RefPtr<Image> m_tileImage;
+    Ref<Image> m_tileImage;
     bool m_repeatX;
     bool m_repeatY;
     AffineTransform m_patternSpaceTransformation;

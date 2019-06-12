@@ -36,8 +36,8 @@ using namespace WebCore;
 
 namespace WebKit {
 
-NetscapePluginStream::NetscapePluginStream(PassRefPtr<NetscapePlugin> plugin, uint64_t streamID, const String& requestURLString, bool sendNotification, void* notificationData)
-    : m_plugin(plugin)
+NetscapePluginStream::NetscapePluginStream(Ref<NetscapePlugin>&& plugin, uint64_t streamID, const String& requestURLString, bool sendNotification, void* notificationData)
+    : m_plugin(WTFMove(plugin))
     , m_streamID(streamID)
     , m_requestURLString(requestURLString)
     , m_sendNotification(sendNotification)
@@ -222,7 +222,7 @@ void NetscapePluginStream::deliverDataToPlugin()
 
         if (numBytesPluginCanHandle <= 0) {
             // The plug-in can't handle more data, we'll send the rest later
-            m_deliveryDataTimer.startOneShot(0);
+            m_deliveryDataTimer.startOneShot(0_s);
             break;
         }
 

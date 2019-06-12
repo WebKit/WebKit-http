@@ -69,24 +69,24 @@ public:
 
 private:
     // WebProcessSupplement
-    virtual void initialize(const WebProcessCreationParameters&) override;
+    void initialize(const WebProcessCreationParameters&) override;
 
     // IPC::MessageReceiver
     // Implemented in generated WebNotificationManagerMessageReceiver.cpp
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     
     void didShowNotification(uint64_t notificationID);
     void didClickNotification(uint64_t notificationID);
     void didCloseNotifications(const Vector<uint64_t>& notificationIDs);
     void didRemoveNotificationDecisions(const Vector<String>& originStrings);
     
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     void removeNotificationFromContextMap(uint64_t notificationID, WebCore::Notification*);
 #endif
 
     WebProcess* m_process;
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     typedef HashMap<RefPtr<WebCore::Notification>, uint64_t> NotificationMap;
     NotificationMap m_notificationMap;
     

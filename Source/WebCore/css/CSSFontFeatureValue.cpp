@@ -26,13 +26,12 @@
 #include "config.h"
 #include "CSSFontFeatureValue.h"
 
-#include "CSSParser.h"
 #include "CSSValueKeywords.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-CSSFontFeatureValue::CSSFontFeatureValue(FontFeatureTag&& tag, int value)
+CSSFontFeatureValue::CSSFontFeatureValue(FontTag&& tag, int value)
     : CSSValue(FontFeatureClass)
     , m_tag(WTFMove(tag))
     , m_value(value)

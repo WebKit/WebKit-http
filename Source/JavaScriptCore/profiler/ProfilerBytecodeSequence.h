@@ -23,12 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ProfilerBytecodeSequence_h
-#define ProfilerBytecodeSequence_h
+#pragma once
 
-#include "JSCJSValue.h"
 #include "ProfilerBytecode.h"
-#include <wtf/PrintStream.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -60,6 +57,3 @@ private:
 };
 
 } } // namespace JSC::Profiler
-
-#endif // ProfilerBytecodeSequence_h
-

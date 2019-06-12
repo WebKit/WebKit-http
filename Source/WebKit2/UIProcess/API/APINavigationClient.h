@@ -23,14 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APINavigationClient_h
-#define APINavigationClient_h
+#pragma once
 
 #include "APIData.h"
 #include "PluginModuleInfo.h"
+#include "ProcessTerminationReason.h"
 #include "SameDocumentNavigationType.h"
 #include "WebEvent.h"
 #include "WebFramePolicyListenerProxy.h"
+#include "WebsitePolicies.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/LayoutMilestones.h>
 #include <wtf/Forward.h>
@@ -82,7 +83,7 @@ public:
     virtual void didReceiveAuthenticationChallenge(WebKit::WebPageProxy&, WebKit::AuthenticationChallengeProxy*) { }
 
     // FIXME: These function should not be part of this client.
-    virtual void processDidCrash(WebKit::WebPageProxy&) { }
+    virtual void processDidTerminate(WebKit::WebPageProxy&, WebKit::ProcessTerminationReason) { }
     virtual void processDidBecomeResponsive(WebKit::WebPageProxy&) { }
     virtual void processDidBecomeUnresponsive(WebKit::WebPageProxy&) { }
 
@@ -95,12 +96,12 @@ public:
 
     virtual void decidePolicyForNavigationAction(WebKit::WebPageProxy&, API::NavigationAction&, Ref<WebKit::WebFramePolicyListenerProxy>&& listener, API::Object*)
     {
-        listener->use();
+        listener->use({ });
     }
 
     virtual void decidePolicyForNavigationResponse(WebKit::WebPageProxy&, API::NavigationResponse&, Ref<WebKit::WebFramePolicyListenerProxy>&& listener, API::Object*)
     {
-        listener->use();
+        listener->use({ });
     }
     
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -117,5 +118,3 @@ public:
 };
 
 } // namespace API
-
-#endif // APINavigationClient_h

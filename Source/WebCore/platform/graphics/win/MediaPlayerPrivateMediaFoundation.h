@@ -24,12 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaPlayerPrivateMediaFoundation_h
-#define MediaPlayerPrivateMediaFoundation_h
+#pragma once
 
 #include "COMPtr.h"
 #include "MediaPlayerPrivate.h"
-#include "Win32Handle.h"
 
 #include <D3D9.h>
 #include <Dxva2api.h>
@@ -44,6 +42,7 @@
 #include <wtf/Lock.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/win/Win32Handle.h>
 
 namespace WebCore {
 
@@ -59,6 +58,8 @@ public:
 
     void load(const String& url) override;
     void cancelLoad() override;
+
+    void prepareToPlay() override;
 
     void play() override;
     void pause() override;
@@ -109,13 +110,19 @@ private:
     bool m_paused;
     bool m_hasAudio;
     bool m_hasVideo;
+    bool m_preparingToPlay;
+    float m_volume;
     HWND m_hwndVideo;
+    MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
     FloatRect m_lastPaintRect;
 
     class MediaPlayerListener;
     HashSet<MediaPlayerListener*> m_listeners;
     Lock m_mutexListeners;
+
+    FloatSize m_cachedNaturalSize;
+    mutable Lock m_cachedNaturalSizeLock;
 
     WeakPtrFactory<MediaPlayerPrivateMediaFoundation> m_weakPtrFactory;
     COMPtr<IMFMediaSession> m_mediaSession;
@@ -126,6 +133,7 @@ private:
     COMPtr<IMFVideoDisplayControl> m_videoDisplay;
 
     bool createSession();
+    bool startSession();
     bool endSession();
     bool startCreateMediaSource(const String& url);
     bool endCreatedMediaSource(IMFAsyncResult*);
@@ -135,8 +143,15 @@ private:
     bool createOutputNode(COMPtr<IMFStreamDescriptor> sourceSD, COMPtr<IMFTopologyNode>&);
     bool createSourceStreamNode(COMPtr<IMFStreamDescriptor> sourceSD, COMPtr<IMFTopologyNode>&);
 
+    void updateReadyState();
+
+    COMPtr<IMFVideoDisplayControl> videoDisplay();
+
     void onCreatedMediaSource();
     void onTopologySet();
+    void onBufferingStarted();
+    void onBufferingStopped();
+    void onSessionEnded();
 
     LPCWSTR registerVideoWindowClass();
     void createVideoWindow();
@@ -146,9 +161,12 @@ private:
 
     void addListener(MediaPlayerListener*);
     void removeListener(MediaPlayerListener*);
+    void setNaturalSize(const FloatSize&);
     void notifyDeleted();
 
     static LRESULT CALLBACK VideoViewWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+    bool setAllChannelVolumes(float);
 
     class MediaPlayerListener {
     public:
@@ -163,14 +181,14 @@ private:
         AsyncCallback(MediaPlayerPrivateMediaFoundation*, bool event);
         ~AsyncCallback();
 
-        virtual HRESULT STDMETHODCALLTYPE QueryInterface(_In_ REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject) override;
-        virtual ULONG STDMETHODCALLTYPE AddRef() override;
-        virtual ULONG STDMETHODCALLTYPE Release() override;
+        HRESULT STDMETHODCALLTYPE QueryInterface(_In_ REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject) override;
+        ULONG STDMETHODCALLTYPE AddRef() override;
+        ULONG STDMETHODCALLTYPE Release() override;
 
-        virtual HRESULT STDMETHODCALLTYPE GetParameters(__RPC__out DWORD *pdwFlags, __RPC__out DWORD *pdwQueue) override;
-        virtual HRESULT STDMETHODCALLTYPE Invoke(__RPC__in_opt IMFAsyncResult *pAsyncResult) override;
+        HRESULT STDMETHODCALLTYPE GetParameters(__RPC__out DWORD *pdwFlags, __RPC__out DWORD *pdwQueue) override;
+        HRESULT STDMETHODCALLTYPE Invoke(__RPC__in_opt IMFAsyncResult *pAsyncResult) override;
 
-        virtual void onMediaPlayerDeleted() override;
+        void onMediaPlayerDeleted() override;
 
     private:
         ULONG m_refCount;
@@ -234,9 +252,9 @@ private:
         Direct3DPresenter* m_presenter { nullptr };
 
         DWORD m_threadID { 0 };
-        Win32Handle m_schedulerThread;
-        Win32Handle m_threadReadyEvent;
-        Win32Handle m_flushEvent;
+        WTF::Win32Handle m_schedulerThread;
+        WTF::Win32Handle m_threadReadyEvent;
+        WTF::Win32Handle m_flushEvent;
 
         float m_playbackRate { 1.0f };
         MFTIME m_frameDuration { 0 };
@@ -317,27 +335,27 @@ private:
         CustomVideoPresenter(MediaPlayerPrivateMediaFoundation*);
         ~CustomVideoPresenter();
 
-        virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject) override;
-        virtual ULONG STDMETHODCALLTYPE AddRef() override;
-        virtual ULONG STDMETHODCALLTYPE Release() override;
+        HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, __RPC__deref_out void __RPC_FAR *__RPC_FAR *ppvObject) override;
+        ULONG STDMETHODCALLTYPE AddRef() override;
+        ULONG STDMETHODCALLTYPE Release() override;
 
         // IMFClockStateSink
-        virtual HRESULT STDMETHODCALLTYPE OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset) override;
-        virtual HRESULT STDMETHODCALLTYPE OnClockStop(MFTIME hnsSystemTime) override;
-        virtual HRESULT STDMETHODCALLTYPE OnClockPause(MFTIME hnsSystemTime) override;
-        virtual HRESULT STDMETHODCALLTYPE OnClockRestart(MFTIME hnsSystemTime) override;
-        virtual HRESULT STDMETHODCALLTYPE OnClockSetRate(MFTIME hnsSystemTime, float flRate) override;
+        HRESULT STDMETHODCALLTYPE OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset) override;
+        HRESULT STDMETHODCALLTYPE OnClockStop(MFTIME hnsSystemTime) override;
+        HRESULT STDMETHODCALLTYPE OnClockPause(MFTIME hnsSystemTime) override;
+        HRESULT STDMETHODCALLTYPE OnClockRestart(MFTIME hnsSystemTime) override;
+        HRESULT STDMETHODCALLTYPE OnClockSetRate(MFTIME hnsSystemTime, float flRate) override;
 
         // IMFVideoPresenter
-        virtual HRESULT STDMETHODCALLTYPE ProcessMessage(MFVP_MESSAGE_TYPE eMessage, ULONG_PTR ulParam) override;
-        virtual HRESULT STDMETHODCALLTYPE GetCurrentMediaType(_Outptr_  IMFVideoMediaType **ppMediaType) override;
+        HRESULT STDMETHODCALLTYPE ProcessMessage(MFVP_MESSAGE_TYPE eMessage, ULONG_PTR ulParam) override;
+        HRESULT STDMETHODCALLTYPE GetCurrentMediaType(_Outptr_  IMFVideoMediaType **ppMediaType) override;
 
         // IMFVideoDeviceID
-        virtual HRESULT STDMETHODCALLTYPE GetDeviceID(IID* pDeviceID) override;
+        HRESULT STDMETHODCALLTYPE GetDeviceID(IID* pDeviceID) override;
 
         // IMFTopologyServiceLookupClient
-        virtual HRESULT STDMETHODCALLTYPE InitServicePointers(_In_  IMFTopologyServiceLookup *pLookup) override;
-        virtual HRESULT STDMETHODCALLTYPE ReleaseServicePointers(void) override;
+        HRESULT STDMETHODCALLTYPE InitServicePointers(_In_  IMFTopologyServiceLookup *pLookup) override;
+        HRESULT STDMETHODCALLTYPE ReleaseServicePointers(void) override;
 
         // IMFGetService
         virtual HRESULT STDMETHODCALLTYPE GetService(REFGUID guidService, REFIID riid, LPVOID *ppvObject);
@@ -402,7 +420,7 @@ private:
         virtual HRESULT STDMETHODCALLTYPE Invoke(IMFAsyncResult* pAsyncResult);
 
         // MediaPlayerListener
-        virtual void onMediaPlayerDeleted() override;
+        void onMediaPlayerDeleted() override;
 
         void paintCurrentFrame(GraphicsContext&, const FloatRect&);
 
@@ -471,5 +489,3 @@ private:
 };
 
 }
-
-#endif

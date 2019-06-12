@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009, 2010 University of Szeged
+ * Copyright (C) 2017 Apple Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ARMAssembler_h
-#define ARMAssembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(ARM_TRADITIONAL)
 
@@ -216,6 +216,7 @@ namespace JSC {
 #endif
             NOP = 0xe1a00000,
             DMB_SY = 0xf57ff05f,
+            DMB_ISHST = 0xf57ff05a,
 #if HAVE(ARM_IDIV_INSTRUCTIONS)
             SDIV = 0x0710f010,
             UDIV = 0x0730f010,
@@ -701,14 +702,39 @@ namespace JSC {
             m_buffer.putInt(BKPT | ((value & 0xff0) << 4) | (value & 0xf));
         }
 
+        static bool isBkpt(void* address)
+        {
+            ARMWord expected = BKPT;
+            ARMWord immediateMask = (0xff0 << 4) | 0xf;
+            ARMWord candidateInstruction = *reinterpret_cast<ARMWord*>(address);
+            return (candidateInstruction & ~immediateMask) == expected;
+        }
+
         void nop()
         {
             m_buffer.putInt(NOP);
         }
 
+        static void fillNops(void* base, size_t size, bool isCopyingToExecutableMemory)
+        {
+            UNUSED_PARAM(isCopyingToExecutableMemory);
+            RELEASE_ASSERT(!(size % sizeof(int32_t)));
+
+            int32_t* ptr = static_cast<int32_t*>(base);
+            const size_t num32s = size / sizeof(int32_t);
+            const int32_t insn = NOP;
+            for (size_t i = 0; i < num32s; i++)
+                *ptr++ = insn;
+        }
+
         void dmbSY()
         {
             m_buffer.putInt(DMB_SY);
+        }
+
+        void dmbISHST()
+        {
+            m_buffer.putInt(DMB_ISHST);
         }
 
         void bx(int rm, Condition cc = AL)
@@ -949,6 +975,11 @@ namespace JSC {
             patchPointerInternal(getAbsoluteJumpAddress(from), to);
         }
 
+        static void relinkJumpToNop(void* from)
+        {
+            relinkJump(from, from);
+        }
+
         static void linkCall(void* code, AssemblerLabel from, void* to)
         {
             patchPointerInternal(getAbsoluteJumpAddress(code, from.m_offset), to);
@@ -988,6 +1019,11 @@ namespace JSC {
         static ptrdiff_t maxJumpReplacementSize()
         {
             return sizeof(ARMWord) * 2;
+        }
+
+        static constexpr ptrdiff_t patchableJumpSize()
+        {
+            return sizeof(ARMWord) * 3;
         }
 
         static void replaceWithLoad(void* instructionStart)
@@ -1183,5 +1219,3 @@ namespace JSC {
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(ARM_TRADITIONAL)
-
-#endif // ARMAssembler_h

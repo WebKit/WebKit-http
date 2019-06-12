@@ -3,7 +3,7 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 # notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above
@@ -13,7 +13,7 @@
 #     * Neither the name of Google Inc. nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -146,7 +146,7 @@ class QueueEngineTest(unittest.TestCase):
             engine = QueueEngine("test-queue", delegate, threading.Event())
         if not termination_message:
             termination_message = "Delegate terminated queue."
-        expected_logs = "\n%s\n" % termination_message
+        expected_logs = "%s\n" % termination_message
         OutputCapture().assert_outputs(self, engine.run, expected_logs=expected_logs)
 
     def _test_terminating_queue(self, exception, termination_message):

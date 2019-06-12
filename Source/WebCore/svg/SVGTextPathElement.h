@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGTextPathElement_h
-#define SVGTextPathElement_h
+#pragma once
 
 #include "SVGNames.h"
 #include "SVGTextContentElement.h"
@@ -48,9 +47,9 @@ struct SVGPropertyTraits<SVGTextPathMethodType> {
         case SVGTextPathMethodUnknown:
             return emptyString();
         case SVGTextPathMethodAlign:
-            return "align";
+            return ASCIILiteral("align");
         case SVGTextPathMethodStretch:
-            return "stretch";
+            return ASCIILiteral("stretch");
         }
     
         ASSERT_NOT_REACHED();
@@ -77,9 +76,9 @@ struct SVGPropertyTraits<SVGTextPathSpacingType> {
         case SVGTextPathSpacingUnknown:
             return emptyString();
         case SVGTextPathSpacingAuto:
-            return "auto";
+            return ASCIILiteral("auto");
         case SVGTextPathSpacingExact:
-            return "exact";
+            return ASCIILiteral("exact");
         }
 
         ASSERT_NOT_REACHED();
@@ -112,7 +111,7 @@ public:
     static Ref<SVGTextPathElement> create(const QualifiedName&, Document&);
 
 protected:
-    virtual void finishedInsertingSubtree() override;
+    void finishedInsertingSubtree() override;
 
 private:
     SVGTextPathElement(const QualifiedName&, Document&);
@@ -121,19 +120,19 @@ private:
 
     void clearResourceReferences();
 
-    virtual void buildPendingResource() override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    void buildPendingResource() override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void removedFrom(ContainerNode&) override;
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool childShouldCreateRenderer(const Node&) const override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    bool childShouldCreateRenderer(const Node&) const override;
+    bool rendererIsNeeded(const RenderStyle&) override;
 
-    virtual bool selfHasRelativeLengths() const override;
+    bool selfHasRelativeLengths() const override;
  
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGTextPathElement)
         DECLARE_ANIMATED_LENGTH(StartOffset, startOffset)
@@ -144,5 +143,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

@@ -26,6 +26,8 @@
 #include "config.h"
 #include "WebTiledBackingLayerWin.h"
 
+#if USE(CA)
+
 #include "GraphicsContext.h"
 #include "PlatformCALayer.h"
 #include "TileController.h"
@@ -93,7 +95,7 @@ void WebTiledBackingLayerWin::displayCallback(CACFLayerRef caLayer, CGContextRef
     // smaller than the layer bounds (e.g. tiled layers)
     CGRect clipBounds = CGContextGetClipBoundingBox(context);
     IntRect clip(enclosingIntRect(clipBounds));
-    client->platformCALayerPaintContents(owner(), graphicsContext, clip);
+    client->platformCALayerPaintContents(owner(), graphicsContext, clip, GraphicsLayerPaintFlags::None);
 
     if (client->platformCALayerShowRepaintCounter(owner())) {
         int drawCount = client->platformCALayerIncrementRepaintCount(owner());
@@ -180,3 +182,5 @@ void WebTiledBackingLayerWin::invalidate()
     ASSERT(m_tileController);
     m_tileController = nullptr;
 }
+
+#endif

@@ -23,13 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TypeSet_h
-#define TypeSet_h
+#pragma once
 
+#include "ConcurrentJSLock.h"
 #include "RuntimeType.h"
 #include "StructureSet.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Vector.h>
 
@@ -60,15 +61,15 @@ public:
     String stringRepresentation();
     String toJSONString() const;
     Ref<Inspector::Protocol::Runtime::StructureDescription> inspectorRepresentation();
-    void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? "Object" : name); }
+    void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? ASCIILiteral("Object") : name); }
     String constructorName() { return m_constructorName; }
-    void setProto(PassRefPtr<StructureShape> shape) { m_proto = shape; }
+    void setProto(Ref<StructureShape>&& shape) { m_proto = WTFMove(shape); }
     void enterDictionaryMode();
 
 private:
-    static String leastCommonAncestor(const Vector<RefPtr<StructureShape>>);
-    static PassRefPtr<StructureShape> merge(const PassRefPtr<StructureShape>, const PassRefPtr<StructureShape>);
-    bool hasSamePrototypeChain(PassRefPtr<StructureShape>);
+    static String leastCommonAncestor(const Vector<Ref<StructureShape>>&);
+    static Ref<StructureShape> merge(Ref<StructureShape>&&, Ref<StructureShape>&&);
+    bool hasSamePrototypeChain(const StructureShape&);
 
     HashSet<RefPtr<UniquedStringImpl>, IdentifierRepHash> m_fields;
     HashSet<RefPtr<UniquedStringImpl>, IdentifierRepHash> m_optionalFields;
@@ -79,12 +80,12 @@ private:
     bool m_isInDictionaryMode;
 };
 
-class TypeSet : public RefCounted<TypeSet> {
+class TypeSet : public ThreadSafeRefCounted<TypeSet> {
 
 public:
     static Ref<TypeSet> create() { return adoptRef(*new TypeSet); }
     TypeSet();
-    void addTypeInformation(RuntimeType, PassRefPtr<StructureShape>, Structure*);
+    void addTypeInformation(RuntimeType, RefPtr<StructureShape>&&, Structure*);
     void invalidateCache();
     String dumpTypes() const;
     String displayName() const;
@@ -96,15 +97,14 @@ public:
     bool isEmpty() const { return m_seenTypes == TypeNothing; }
     bool doesTypeConformTo(RuntimeTypeMask test) const;
     RuntimeTypeMask seenTypes() const { return m_seenTypes; }
-    StructureSet structureSet() const { return m_structureSet; };
+    StructureSet structureSet(const ConcurrentJSLocker&) const { return m_structureSet; }
 
+    ConcurrentJSLock m_lock;
 private:
-    RuntimeTypeMask m_seenTypes;
     bool m_isOverflown;
-    Vector<RefPtr<StructureShape>> m_structureHistory;
+    RuntimeTypeMask m_seenTypes;
+    Vector<Ref<StructureShape>> m_structureHistory;
     StructureSet m_structureSet;
 };
 
-} //namespace JSC
-
-#endif //TypeSet_h
+} // namespace JSC

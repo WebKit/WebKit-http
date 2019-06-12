@@ -67,7 +67,11 @@ WebInspector.BreakpointPopoverController = class BreakpointPopoverController ext
         };
 
         const revealOriginalSourceCodeLocation = () => {
-            WebInspector.showOriginalOrFormattedSourceCodeLocation(breakpoint.sourceCodeLocation);
+            const options = {
+                ignoreNetworkTab: true,
+                ignoreSearchTab: true,
+            };
+            WebInspector.showOriginalOrFormattedSourceCodeLocation(breakpoint.sourceCodeLocation, options);
         };
 
         if (WebInspector.debuggerManager.isBreakpointEditable(breakpoint))
@@ -161,10 +165,10 @@ WebInspector.BreakpointPopoverController = class BreakpointPopoverController ext
         completionController.addExtendedCompletionProvider("javascript", WebInspector.javaScriptRuntimeCompletionProvider);
 
         // CodeMirror needs a refresh after the popover displays, to layout, otherwise it doesn't appear.
-        setTimeout(function() {
+        setTimeout(() => {
             this._conditionCodeMirror.refresh();
             this._conditionCodeMirror.focus();
-        }.bind(this), 0);
+        }, 0);
 
         // COMPATIBILITY (iOS 7): Debugger.setBreakpoint did not support options.
         if (DebuggerAgent.setBreakpoint.supports("options")) {
@@ -214,7 +218,7 @@ WebInspector.BreakpointPopoverController = class BreakpointPopoverController ext
             let optionsLabel = optionsHeader.appendChild(document.createElement("label"));
             let optionsCheckbox = this._popoverOptionsCheckboxElement = optionsData.appendChild(document.createElement("input"));
             let optionsCheckboxLabel = optionsData.appendChild(document.createElement("label"));
-            optionsCheckbox.id = "edit-breakpoint-popoover-auto-continue";
+            optionsCheckbox.id = "edit-breakpoint-popover-auto-continue";
             optionsCheckbox.type = "checkbox";
             optionsCheckbox.checked = this._breakpoint.autoContinue;
             optionsCheckbox.addEventListener("change", this._popoverToggleAutoContinueCheckboxChanged.bind(this));
@@ -239,13 +243,19 @@ WebInspector.BreakpointPopoverController = class BreakpointPopoverController ext
 
     _conditionCodeMirrorBeforeChange(codeMirror, change)
     {
-        let newText = change.text.join("").replace(/\n/g, "");
-        change.update(change.from, change.to, [newText]);
+        if (change.update) {
+            let newText = change.text.join("").replace(/\n/g, "");
+            change.update(change.from, change.to, [newText]);
+        }
+
         return true;
     }
 
     _conditionCodeMirrorEscapeOrEnterKey()
     {
+        if (!this._popover)
+            return;
+
         this._popover.dismiss();
     }
 

@@ -30,6 +30,7 @@
 
 #include "DataReference.h"
 #include "SharedMemory.h"
+#include "UnixMessage.h"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
@@ -39,7 +40,7 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/UniStdExtras.h>
 
-#if PLATFORM(GTK)
+#if USE(GLIB)
 #include <gio/gio.h>
 #elif PLATFORM(QT)
 #include <QPointer>
@@ -51,7 +52,7 @@
 #if defined(SOCK_SEQPACKET) && !OS(DARWIN)
 #define SOCKET_TYPE SOCK_SEQPACKET
 #else
-#if PLATFORM(GTK)
+#if USE(GLIB)
 #define SOCKET_TYPE SOCK_STREAM
 #else
 #define SOCKET_TYPE SOCK_DGRAM
@@ -63,60 +64,20 @@ namespace IPC {
 static const size_t messageMaxSize = 4096;
 static const size_t attachmentMaxAmount = 255;
 
-enum {
-    MessageBodyIsOutOfLine = 1U << 31
-};
-
-class MessageInfo {
-public:
-    MessageInfo() { }
-
-    MessageInfo(size_t bodySize, size_t initialAttachmentCount)
-        : m_bodySize(bodySize)
-        , m_attachmentCount(initialAttachmentCount)
-        , m_isMessageBodyOutOfLine(false)
-    {
-    }
-
-    void setMessageBodyIsOutOfLine()
-    {
-        ASSERT(!isMessageBodyIsOutOfLine());
-
-        m_isMessageBodyOutOfLine = true;
-        m_attachmentCount++;
-    }
-
-    bool isMessageBodyIsOutOfLine() const { return m_isMessageBodyOutOfLine; }
-
-    size_t bodySize() const { return m_bodySize; }
-
-    size_t attachmentCount() const { return m_attachmentCount; }
-
-private:
-    size_t m_bodySize;
-    size_t m_attachmentCount;
-    bool m_isMessageBodyOutOfLine;
-};
-
 class AttachmentInfo {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    AttachmentInfo()
-        : m_type(Attachment::Uninitialized)
-        , m_size(0)
-        , m_isNull(false)
-    {
-    }
+    AttachmentInfo() = default;
 
     void setType(Attachment::Type type) { m_type = type; }
-    Attachment::Type getType() { return m_type; }
+    Attachment::Type type() const { return m_type; }
     void setSize(size_t size)
     {
         ASSERT(m_type == Attachment::MappedMemoryType);
         m_size = size;
     }
 
-    size_t getSize()
+    size_t size() const
     {
         ASSERT(m_type == Attachment::MappedMemoryType);
         return m_size;
@@ -124,17 +85,20 @@ public:
 
     // The attachment is not null unless explicitly set.
     void setNull() { m_isNull = true; }
-    bool isNull() { return m_isNull; }
+    bool isNull() const { return m_isNull; }
 
 private:
-    Attachment::Type m_type;
-    size_t m_size;
-    bool m_isNull;
+    Attachment::Type m_type { Attachment::Uninitialized };
+    size_t m_size { 0 };
+    bool m_isNull { false };
 };
 
 void Connection::platformInitialize(Identifier identifier)
 {
     m_socketDescriptor = identifier;
+#if USE(GLIB)
+    m_socket = adoptGRef(g_socket_new_from_fd(m_socketDescriptor, nullptr));
+#endif
     m_readBuffer.reserveInitialCapacity(messageMaxSize);
     m_fileDescriptors.reserveInitialCapacity(attachmentMaxAmount);
 
@@ -145,8 +109,10 @@ void Connection::platformInitialize(Identifier identifier)
 
 void Connection::platformInvalidate()
 {
-    // In GTK+ platform the socket is closed by the work queue.
-#if !PLATFORM(GTK)
+#if USE(GLIB)
+    // In the GLib platform the socket descriptor is owned by GSocket.
+    m_socket = nullptr;
+#else
     if (m_socketDescriptor != -1)
         closeWithRetry(m_socketDescriptor);
 #endif
@@ -154,10 +120,9 @@ void Connection::platformInvalidate()
     if (!m_isConnected)
         return;
 
-#if PLATFORM(GTK)
-    m_socketMonitor.stop();
-#elif PLATFORM(EFL)
-    m_connectionQueue->unregisterSocketEventHandler(m_socketDescriptor);
+#if USE(GLIB)
+    m_readSocketMonitor.stop();
+    m_writeSocketMonitor.stop();
 #endif
 
 #if PLATFORM(QT)
@@ -199,7 +164,12 @@ bool Connection::processMessage()
     memcpy(&messageInfo, messageData, sizeof(messageInfo));
     messageData += sizeof(messageInfo);
 
-    size_t messageLength = sizeof(MessageInfo) + messageInfo.attachmentCount() * sizeof(AttachmentInfo) + (messageInfo.isMessageBodyIsOutOfLine() ? 0 : messageInfo.bodySize());
+    if (messageInfo.attachmentCount() > attachmentMaxAmount || (!messageInfo.isBodyOutOfLine() && messageInfo.bodySize() > messageMaxSize)) {
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
+    size_t messageLength = sizeof(MessageInfo) + messageInfo.attachmentCount() * sizeof(AttachmentInfo) + (messageInfo.isBodyOutOfLine() ? 0 : messageInfo.bodySize());
     if (m_readBuffer.size() < messageLength)
         return false;
 
@@ -213,7 +183,7 @@ bool Connection::processMessage()
         messageData += sizeof(AttachmentInfo) * attachmentCount;
 
         for (size_t i = 0; i < attachmentCount; ++i) {
-            switch (attachmentInfo[i].getType()) {
+            switch (attachmentInfo[i].type()) {
             case Attachment::MappedMemoryType:
             case Attachment::SocketType:
                 if (!attachmentInfo[i].isNull())
@@ -225,7 +195,7 @@ bool Connection::processMessage()
             }
         }
 
-        if (messageInfo.isMessageBodyIsOutOfLine())
+        if (messageInfo.isBodyOutOfLine())
             attachmentCount--;
     }
 
@@ -235,11 +205,11 @@ bool Connection::processMessage()
     size_t fdIndex = 0;
     for (size_t i = 0; i < attachmentCount; ++i) {
         int fd = -1;
-        switch (attachmentInfo[i].getType()) {
+        switch (attachmentInfo[i].type()) {
         case Attachment::MappedMemoryType:
             if (!attachmentInfo[i].isNull())
                 fd = m_fileDescriptors[fdIndex++];
-            attachments[attachmentCount - i - 1] = Attachment(fd, attachmentInfo[i].getSize());
+            attachments[attachmentCount - i - 1] = Attachment(fd, attachmentInfo[i].size());
             break;
         case Attachment::SocketType:
             if (!attachmentInfo[i].isNull())
@@ -253,16 +223,16 @@ bool Connection::processMessage()
         }
     }
 
-    if (messageInfo.isMessageBodyIsOutOfLine()) {
+    if (messageInfo.isBodyOutOfLine()) {
         ASSERT(messageInfo.bodySize());
 
-        if (attachmentInfo[attachmentCount].isNull()) {
+        if (attachmentInfo[attachmentCount].isNull() || attachmentInfo[attachmentCount].size() != messageInfo.bodySize()) {
             ASSERT_NOT_REACHED();
             return false;
         }
 
         WebKit::SharedMemory::Handle handle;
-        handle.adoptAttachment(IPC::Attachment(m_fileDescriptors[attachmentFileDescriptorCount - 1], attachmentInfo[attachmentCount].getSize()));
+        handle.adoptAttachment(IPC::Attachment(m_fileDescriptors[attachmentFileDescriptorCount - 1], attachmentInfo[attachmentCount].size()));
 
         oolMessageBody = WebKit::SharedMemory::map(handle, WebKit::SharedMemory::Protection::ReadOnly);
         if (!oolMessageBody) {
@@ -271,13 +241,13 @@ bool Connection::processMessage()
         }
     }
 
-    ASSERT(attachments.size() == (messageInfo.isMessageBodyIsOutOfLine() ? messageInfo.attachmentCount() - 1 : messageInfo.attachmentCount()));
+    ASSERT(attachments.size() == (messageInfo.isBodyOutOfLine() ? messageInfo.attachmentCount() - 1 : messageInfo.attachmentCount()));
 
     uint8_t* messageBody = messageData;
-    if (messageInfo.isMessageBodyIsOutOfLine())
+    if (messageInfo.isBodyOutOfLine())
         messageBody = reinterpret_cast<uint8_t*>(oolMessageBody->data());
 
-    auto decoder = std::make_unique<MessageDecoder>(DataReference(messageBody, messageInfo.bodySize()), WTFMove(attachments));
+    auto decoder = std::make_unique<Decoder>(messageBody, messageInfo.bodySize(), nullptr, WTFMove(attachments));
 
     processIncomingMessage(WTFMove(decoder));
 
@@ -334,17 +304,19 @@ static ssize_t readBytesFromSocket(int socketDescriptor, Vector<uint8_t>& buffer
         struct cmsghdr* controlMessage;
         for (controlMessage = CMSG_FIRSTHDR(&message); controlMessage; controlMessage = CMSG_NXTHDR(&message, controlMessage)) {
             if (controlMessage->cmsg_level == SOL_SOCKET && controlMessage->cmsg_type == SCM_RIGHTS) {
+                if (controlMessage->cmsg_len < CMSG_LEN(0) || controlMessage->cmsg_len > attachmentMaxAmount) {
+                    ASSERT_NOT_REACHED();
+                    break;
+                }
                 size_t previousFileDescriptorsSize = fileDescriptors.size();
                 size_t fileDescriptorsCount = (controlMessage->cmsg_len - CMSG_LEN(0)) / sizeof(int);
                 fileDescriptors.grow(fileDescriptors.size() + fileDescriptorsCount);
                 memcpy(fileDescriptors.data() + previousFileDescriptorsSize, CMSG_DATA(controlMessage), sizeof(int) * fileDescriptorsCount);
 
                 for (size_t i = 0; i < fileDescriptorsCount; ++i) {
-                    while (fcntl(fileDescriptors[previousFileDescriptorsSize + i], F_SETFD, FD_CLOEXEC) == -1) {
-                        if (errno != EINTR) {
-                            ASSERT_NOT_REACHED();
-                            break;
-                        }
+                    if (!setCloseOnExec(fileDescriptors[previousFileDescriptorsSize + i])) {
+                        ASSERT_NOT_REACHED();
+                        break;
                     }
                 }
                 break;
@@ -408,9 +380,8 @@ bool Connection::open()
 
     RefPtr<Connection> protectedThis(this);
     m_isConnected = true;
-#if PLATFORM(GTK)
-    GRefPtr<GSocket> socket = adoptGRef(g_socket_new_from_fd(m_socketDescriptor, nullptr));
-    m_socketMonitor.start(socket.get(), G_IO_IN, m_connectionQueue->runLoop(), [protectedThis] (GIOCondition condition) -> gboolean {
+#if USE(GLIB)
+    m_readSocketMonitor.start(m_socket.get(), G_IO_IN, m_connectionQueue->runLoop(), [protectedThis] (GIOCondition condition) -> gboolean {
         if (condition & G_IO_HUP || condition & G_IO_ERR || condition & G_IO_NVAL) {
             protectedThis->connectionDidClose();
             return G_SOURCE_REMOVE;
@@ -429,11 +400,6 @@ bool Connection::open()
         [protectedThis] {
             protectedThis->readyReadHandler();
         });
-#elif PLATFORM(EFL)
-    m_connectionQueue->registerSocketEventHandler(m_socketDescriptor,
-        [protectedThis] {
-            protectedThis->readyReadHandler();
-        });
 #endif
 
     // Schedule a call to readyReadHandler. Data may have arrived before installation of the signal handler.
@@ -446,10 +412,10 @@ bool Connection::open()
 
 bool Connection::platformCanSendOutgoingMessages() const
 {
-    return m_isConnected;
+    return !m_pendingOutputMessage;
 }
 
-bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
+bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
 {
 #if PLATFORM(QT)
     ASSERT(m_socketNotifier);
@@ -457,15 +423,14 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
 
     COMPILE_ASSERT(sizeof(MessageInfo) + attachmentMaxAmount * sizeof(size_t) <= messageMaxSize, AttachmentsFitToMessageInline);
 
-    Vector<Attachment> attachments = encoder->releaseAttachments();
-    if (attachments.size() > (attachmentMaxAmount - 1)) {
+    UnixMessage outputMessage(*encoder);
+    if (outputMessage.attachments().size() > (attachmentMaxAmount - 1)) {
         ASSERT_NOT_REACHED();
         return false;
     }
 
-    MessageInfo messageInfo(encoder->bufferSize(), attachments.size());
-    size_t messageSizeWithBodyInline = sizeof(messageInfo) + (attachments.size() * sizeof(AttachmentInfo)) + encoder->bufferSize();
-    if (messageSizeWithBodyInline > messageMaxSize && encoder->bufferSize()) {
+    size_t messageSizeWithBodyInline = sizeof(MessageInfo) + (outputMessage.attachments().size() * sizeof(AttachmentInfo)) + outputMessage.bodySize();
+    if (messageSizeWithBodyInline > messageMaxSize && outputMessage.bodySize()) {
         RefPtr<WebKit::SharedMemory> oolMessageBody = WebKit::SharedMemory::allocate(encoder->bufferSize());
         if (!oolMessageBody)
             return false;
@@ -474,13 +439,21 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
         if (!oolMessageBody->createHandle(handle, WebKit::SharedMemory::Protection::ReadOnly))
             return false;
 
-        messageInfo.setMessageBodyIsOutOfLine();
+        outputMessage.messageInfo().setBodyOutOfLine();
 
-        memcpy(oolMessageBody->data(), encoder->buffer(), encoder->bufferSize());
+        memcpy(oolMessageBody->data(), outputMessage.body(), outputMessage.bodySize());
 
-        attachments.append(handle.releaseAttachment());
+        outputMessage.appendAttachment(handle.releaseAttachment());
     }
 
+    return sendOutputMessage(outputMessage);
+}
+
+bool Connection::sendOutputMessage(UnixMessage& outputMessage)
+{
+    ASSERT(!m_pendingOutputMessage);
+
+    auto& messageInfo = outputMessage.messageInfo();
     struct msghdr message;
     memset(&message, 0, sizeof(message));
 
@@ -496,6 +469,7 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
     std::unique_ptr<AttachmentInfo[]> attachmentInfo;
     MallocPtr<char> attachmentFDBuffer;
 
+    auto& attachments = outputMessage.attachments();
     if (!attachments.isEmpty()) {
         int* fdPtr = 0;
 
@@ -527,7 +501,7 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
             switch (attachments[i].type()) {
             case Attachment::MappedMemoryType:
                 attachmentInfo[i].setSize(attachments[i].size());
-                // Fall trhough, set file descriptor or null.
+                FALLTHROUGH;
             case Attachment::SocketType:
                 if (attachments[i].fileDescriptor() != -1) {
                     ASSERT(fdPtr);
@@ -546,9 +520,9 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
         ++iovLength;
     }
 
-    if (!messageInfo.isMessageBodyIsOutOfLine() && encoder->bufferSize()) {
-        iov[iovLength].iov_base = reinterpret_cast<void*>(encoder->buffer());
-        iov[iovLength].iov_len = encoder->bufferSize();
+    if (!messageInfo.isBodyOutOfLine() && outputMessage.bodySize()) {
+        iov[iovLength].iov_base = reinterpret_cast<void*>(outputMessage.body());
+        iov[iovLength].iov_len = outputMessage.bodySize();
         ++iovLength;
     }
 
@@ -558,6 +532,25 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
         if (errno == EINTR)
             continue;
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
+#if USE(GLIB)
+            m_pendingOutputMessage = std::make_unique<UnixMessage>(WTFMove(outputMessage));
+            m_writeSocketMonitor.start(m_socket.get(), G_IO_OUT, m_connectionQueue->runLoop(), [this, protectedThis = makeRef(*this)] (GIOCondition condition) -> gboolean {
+                if (condition & G_IO_OUT) {
+                    ASSERT(m_pendingOutputMessage);
+                    // We can't stop the monitor from this lambda, because stop destroys the lambda.
+                    m_connectionQueue->dispatch([this, protectedThis = makeRef(*this)] {
+                        m_writeSocketMonitor.stop();
+                        auto message = WTFMove(m_pendingOutputMessage);
+                        if (m_isConnected) {
+                            sendOutputMessage(*message);
+                            sendOutgoingMessages();
+                        }
+                    });
+                }
+                return G_SOURCE_REMOVE;
+            });
+            return false;
+#else
             struct pollfd pollfd;
 
             pollfd.fd = m_socketDescriptor;
@@ -565,6 +558,7 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
             pollfd.revents = 0;
             poll(&pollfd, 1, -1);
             continue;
+#endif
         }
 
         if (m_isConnected)
@@ -581,28 +575,26 @@ Connection::SocketPair Connection::createPlatformConnection(unsigned options)
 
     if (options & SetCloexecOnServer) {
         // Don't expose the child socket to the parent process.
-        while (fcntl(sockets[1], F_SETFD, FD_CLOEXEC)  == -1)
-            RELEASE_ASSERT(errno != EINTR);
+        if (!setCloseOnExec(sockets[1]))
+            RELEASE_ASSERT_NOT_REACHED();
     }
 
     if (options & SetCloexecOnClient) {
         // Don't expose the parent socket to potential future children.
-        while (fcntl(sockets[0], F_SETFD, FD_CLOEXEC) == -1)
-            RELEASE_ASSERT(errno != EINTR);
+        if (!setCloseOnExec(sockets[0]))
+            RELEASE_ASSERT_NOT_REACHED();
     }
 
     SocketPair socketPair = { sockets[0], sockets[1] };
     return socketPair;
 }
-    
-void Connection::willSendSyncMessage(unsigned flags)
+
+void Connection::willSendSyncMessage(OptionSet<SendSyncOption>)
 {
-    UNUSED_PARAM(flags);
 }
-    
-void Connection::didReceiveSyncReply(unsigned flags)
+
+void Connection::didReceiveSyncReply(OptionSet<SendSyncOption>)
 {
-    UNUSED_PARAM(flags);    
 }
 
 #if PLATFORM(QT)

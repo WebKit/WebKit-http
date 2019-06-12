@@ -41,7 +41,7 @@
 #include <wtf/Vector.h>
 
 namespace IPC {
-    class ArgumentEncoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -58,17 +58,17 @@ public:
 
     uint64_t pluginProcessToken(const PluginModuleInfo&, PluginProcessType, PluginProcessSandboxPolicy);
 
-    void getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>);
+    void getPluginProcessConnection(uint64_t pluginProcessToken, Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&&);
     void removePluginProcessProxy(PluginProcessProxy*);
 
-    void fetchWebsiteData(const PluginModuleInfo&, std::function<void (Vector<String>)> completionHandler);
-    void deleteWebsiteData(const PluginModuleInfo&, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);
-    void deleteWebsiteDataForHostNames(const PluginModuleInfo&, const Vector<String>& hostNames, std::function<void ()> completionHandler);
+    void fetchWebsiteData(const PluginModuleInfo&, WTF::Function<void (Vector<String>)>&& completionHandler);
+    void deleteWebsiteData(const PluginModuleInfo&, std::chrono::system_clock::time_point modifiedSince, WTF::Function<void ()>&& completionHandler);
+    void deleteWebsiteDataForHostNames(const PluginModuleInfo&, const Vector<String>& hostNames, WTF::Function<void ()>&& completionHandler);
 
 #if PLATFORM(COCOA)
     inline ProcessSuppressionDisabledToken processSuppressionDisabledToken();
     inline bool processSuppressionDisabled() const;
-    void updateProcessSuppressionDisabled(bool);
+    void updateProcessSuppressionDisabled(RefCounterEvent);
 #endif
 
     PluginProcessManager();
@@ -82,14 +82,14 @@ private:
     Vector<RefPtr<PluginProcessProxy>> m_pluginProcesses;
 
 #if PLATFORM(COCOA)
-    RefCounter m_processSuppressionDisabledForPageCounter;
+    ProcessSuppressionDisabledCounter m_processSuppressionDisabledForPageCounter;
 #endif
 };
 
 #if PLATFORM(COCOA)
 inline ProcessSuppressionDisabledToken PluginProcessManager::processSuppressionDisabledToken()
 {
-    return m_processSuppressionDisabledForPageCounter.token<ProcessSuppressionDisabledTokenType>();
+    return m_processSuppressionDisabledForPageCounter.count();
 }
 
 inline bool PluginProcessManager::processSuppressionDisabled() const

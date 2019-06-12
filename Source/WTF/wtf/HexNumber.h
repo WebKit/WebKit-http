@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -17,33 +18,29 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef HexNumber_h
-#define HexNumber_h
+#pragma once
 
 #include <wtf/text/StringConcatenate.h>
 
 namespace WTF {
 
-enum HexConversionMode {
-    Lowercase,
-    Uppercase
-};
+enum HexConversionMode { Lowercase, Uppercase };
 
 namespace Internal {
 
-const LChar lowerHexDigits[17] = "0123456789abcdef";
-const LChar upperHexDigits[17] = "0123456789ABCDEF";
 inline const LChar* hexDigitsForMode(HexConversionMode mode)
 {
-    return mode == Lowercase ? lowerHexDigits : upperHexDigits;
+    static const LChar lowercaseHexDigits[17] = "0123456789abcdef";
+    static const LChar uppercaseHexDigits[17] = "0123456789ABCDEF";
+    return mode == Lowercase ? lowercaseHexDigits : uppercaseHexDigits;
 }
 
-}; // namespace Internal
+} // namespace Internal
 
 template<typename T>
 inline void appendByteAsHex(unsigned char byte, T& destination, HexConversionMode mode = Uppercase)
 {
-    const LChar* hexDigits = Internal::hexDigitsForMode(mode);
+    auto* hexDigits = Internal::hexDigitsForMode(mode);
     destination.append(hexDigits[byte >> 4]);
     destination.append(hexDigits[byte & 0xF]);
 }
@@ -51,7 +48,7 @@ inline void appendByteAsHex(unsigned char byte, T& destination, HexConversionMod
 template<typename T>
 inline void placeByteAsHexCompressIfPossible(unsigned char byte, T& destination, unsigned& index, HexConversionMode mode = Uppercase)
 {
-    const LChar* hexDigits = Internal::hexDigitsForMode(mode);
+    auto* hexDigits = Internal::hexDigitsForMode(mode);
     if (byte >= 0x10)
         destination[index++] = hexDigits[byte >> 4];
     destination[index++] = hexDigits[byte & 0xF];
@@ -60,7 +57,7 @@ inline void placeByteAsHexCompressIfPossible(unsigned char byte, T& destination,
 template<typename T>
 inline void placeByteAsHex(unsigned char byte, T& destination, HexConversionMode mode = Uppercase)
 {
-    const LChar* hexDigits = Internal::hexDigitsForMode(mode);
+    auto* hexDigits = Internal::hexDigitsForMode(mode);
     *destination++ = hexDigits[byte >> 4];
     *destination++ = hexDigits[byte & 0xF];
 }
@@ -68,7 +65,7 @@ inline void placeByteAsHex(unsigned char byte, T& destination, HexConversionMode
 template<typename T>
 inline void appendUnsignedAsHex(unsigned number, T& destination, HexConversionMode mode = Uppercase)
 {
-    const LChar* hexDigits = Internal::hexDigitsForMode(mode);
+    auto* hexDigits = Internal::hexDigitsForMode(mode);
     Vector<LChar, 8> result;
     do {
         result.append(hexDigits[number % 16]);
@@ -82,7 +79,7 @@ inline void appendUnsignedAsHex(unsigned number, T& destination, HexConversionMo
 template<typename T>
 inline void appendUnsigned64AsHex(uint64_t number, T& destination, HexConversionMode mode = Uppercase)
 {
-    const LChar* hexDigits = Internal::hexDigitsForMode(mode);
+    auto* hexDigits = Internal::hexDigitsForMode(mode);
     Vector<LChar, 8> result;
     do {
         result.append(hexDigits[number % 16]);
@@ -99,7 +96,7 @@ inline void appendUnsignedAsHexFixedSize(unsigned number, T& destination, unsign
 {
     ASSERT(desiredDigits);
 
-    const LChar* hexDigits = Internal::hexDigitsForMode(mode);
+    auto* hexDigits = Internal::hexDigitsForMode(mode);
     Vector<LChar, 8> result;
     do {
         result.append(hexDigits[number % 16]);
@@ -119,5 +116,3 @@ using WTF::appendUnsignedAsHexFixedSize;
 using WTF::placeByteAsHex;
 using WTF::placeByteAsHexCompressIfPossible;
 using WTF::Lowercase;
-
-#endif // HexNumber_h

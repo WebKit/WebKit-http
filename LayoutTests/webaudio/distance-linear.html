@@ -2,7 +2,7 @@
 <html>
   <head>
     <script src="resources/audio-testing.js"></script>
-    <script src="../resources/js-test-pre.js"></script>
+    <script src="../resources/js-test.js"></script>
     <script src="resources/distance-model-testing.js"></script>
   </head>
 
@@ -14,26 +14,18 @@
       description("Test linear distance model of AudioPannerNode.");
 
       function runTest() {
-          if (window.testRunner) {
-              testRunner.dumpAsText();
-              testRunner.waitUntilDone();
-          }
-
           window.jsTestIsAsync = true;
 
           // Create offline audio context.
           context = new webkitOfflineAudioContext(2, sampleRate * renderLengthSeconds, sampleRate);
 
-          // Create temp panner to get LINEAR_DISTANCE value for testing.
+          // Create temp panner to get linear value for testing.
           var pannerModel = context.createPanner();
-          createTestAndRun(context, pannerModel.LINEAR_DISTANCE, 0);
+          createTestAndRun(context, "linear");
       }
 
       runTest();
-      successfullyParsed = true;
 
     </script>
-
-<script src="../resources/js-test-post.js"></script>
   </body>
 </html>

@@ -31,6 +31,10 @@
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
 
+#if PLATFORM(COCOA)
+#include <WebCore/MachSendRight.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -40,7 +44,7 @@ DrawingAreaProxy::DrawingAreaProxy(DrawingAreaType type, WebPageProxy& webPagePr
     , m_webPageProxy(webPageProxy)
     , m_size(webPageProxy.viewSize())
 #if PLATFORM(MAC)
-    , m_exposedRectChangedTimer(RunLoop::main(), this, &DrawingAreaProxy::exposedRectChangedTimerFired)
+    , m_viewExposedRectChangedTimer(RunLoop::main(), this, &DrawingAreaProxy::viewExposedRectChangedTimerFired)
 #endif
 {
     m_webPageProxy.process().addMessageReceiver(Messages::DrawingAreaProxy::messageReceiverName(), m_webPageProxy.pageID(), *this);
@@ -51,39 +55,47 @@ DrawingAreaProxy::~DrawingAreaProxy()
     m_webPageProxy.process().removeMessageReceiver(Messages::DrawingAreaProxy::messageReceiverName(), m_webPageProxy.pageID());
 }
 
-void DrawingAreaProxy::setSize(const IntSize& size, const IntSize& layerPosition, const IntSize& scrollOffset)
+bool DrawingAreaProxy::setSize(const IntSize& size, const IntSize& layerPosition, const IntSize& scrollOffset)
 { 
     if (m_size == size && m_layerPosition == layerPosition && scrollOffset.isZero())
-        return;
+        return false;
 
     m_size = size;
     m_layerPosition = layerPosition;
     m_scrollOffset += scrollOffset;
     sizeDidChange();
+    return true;
 }
+
+#if PLATFORM(COCOA)
+MachSendRight DrawingAreaProxy::createFence()
+{
+    return MachSendRight();
+}
+#endif
 
 #if PLATFORM(MAC)
-void DrawingAreaProxy::setExposedRect(const FloatRect& exposedRect)
+void DrawingAreaProxy::setViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
 {
     if (!m_webPageProxy.isValid())
         return;
 
-    m_exposedRect = exposedRect;
+    m_viewExposedRect = viewExposedRect;
 
-    if (!m_exposedRectChangedTimer.isActive())
-        m_exposedRectChangedTimer.startOneShot(0);
+    if (!m_viewExposedRectChangedTimer.isActive())
+        m_viewExposedRectChangedTimer.startOneShot(0_s);
 }
 
-void DrawingAreaProxy::exposedRectChangedTimerFired()
+void DrawingAreaProxy::viewExposedRectChangedTimerFired()
 {
     if (!m_webPageProxy.isValid())
         return;
 
-    if (m_exposedRect == m_lastSentExposedRect)
+    if (m_viewExposedRect == m_lastSentViewExposedRect)
         return;
 
-    m_webPageProxy.process().send(Messages::DrawingArea::SetExposedRect(m_exposedRect), m_webPageProxy.pageID());
-    m_lastSentExposedRect = m_exposedRect;
+    m_webPageProxy.process().send(Messages::DrawingArea::SetViewExposedRect(m_viewExposedRect), m_webPageProxy.pageID());
+    m_lastSentViewExposedRect = m_viewExposedRect;
 }
 #endif // PLATFORM(MAC)
 

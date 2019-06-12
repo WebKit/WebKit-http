@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #import "TestRunner.h"
 
 #import "DefaultPolicyDelegate.h"
+#import "DumpRenderTreeSpellChecker.h"
 #import "EditingDelegate.h"
 #import "MockGeolocationProvider.h"
 #import "MockWebNotificationProvider.h"
@@ -43,7 +44,6 @@
 #import <JavaScriptCore/JSStringRef.h>
 #import <JavaScriptCore/JSStringRefCF.h>
 #import <WebCore/GeolocationPosition.h>
-#import <WebCore/SoftLinking.h>
 #import <WebKit/DOMDocument.h>
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMHTMLInputElementPrivate.h>
@@ -80,6 +80,7 @@
 
 #if !PLATFORM(IOS)
 #import <WebKit/WebIconDatabasePrivate.h>
+#import <wtf/SoftLinking.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -89,9 +90,9 @@
 #import <WebKit/WebDOMOperationsPrivate.h>
 #endif
 
+#if !PLATFORM(IOS)
 SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
-#if !PLATFORM(IOS)
 @interface CommandValidationTarget : NSObject <NSValidatedUserInterfaceItem>
 {
     SEL _action;
@@ -125,11 +126,16 @@ SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 #endif
 
 @interface WebGeolocationPosition (Internal)
-- (id)initWithGeolocationPosition:(PassRefPtr<WebCore::GeolocationPosition>)coreGeolocationPosition;
+- (id)initWithGeolocationPosition:(RefPtr<WebCore::GeolocationPosition>)coreGeolocationPosition;
 @end
 
 TestRunner::~TestRunner()
 {
+}
+
+JSContextRef TestRunner::mainFrameJSContext()
+{
+    return [mainFrame globalContext];
 }
 
 void TestRunner::addDisallowedURL(JSStringRef url)
@@ -197,11 +203,17 @@ JSValueRef TestRunner::originsWithApplicationCache(JSContextRef context)
 void TestRunner::clearAllDatabases()
 {
     [[WebDatabaseManager sharedWebDatabaseManager] deleteAllDatabases];
+    [[WebDatabaseManager sharedWebDatabaseManager] deleteAllIndexedDatabases];
 }
 
 void TestRunner::setStorageDatabaseIdleInterval(double interval)
 {
     [WebStorageManager setStorageDatabaseIdleInterval:interval];
+}
+
+void TestRunner::setSpellCheckerLoggingEnabled(bool enabled)
+{
+    ::setSpellCheckerLoggingEnabled(enabled);
 }
 
 void TestRunner::closeIdleLocalStorageDatabases()
@@ -241,6 +253,11 @@ JSStringRef TestRunner::copyEncodedHostName(JSStringRef name)
 void TestRunner::display()
 {
     displayWebView();
+}
+
+void TestRunner::displayAndTrackRepaints()
+{
+    displayAndTrackRepaintsWebView();
 }
 
 void TestRunner::keepWebHistory()
@@ -426,8 +443,8 @@ void TestRunner::setMockGeolocationPosition(double latitude, double longitude, d
         // Test the exposed API.
         position = [[WebGeolocationPosition alloc] initWithTimestamp:currentTime() latitude:latitude longitude:longitude accuracy:accuracy];
     } else {
-        RefPtr<WebCore::GeolocationPosition> coreGeolocationPosition = WebCore::GeolocationPosition::create(currentTime(), latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed);
-        position = [[WebGeolocationPosition alloc] initWithGeolocationPosition:(coreGeolocationPosition.release())];
+        auto coreGeolocationPosition = WebCore::GeolocationPosition::create(currentTime(), latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed);
+        position = [[WebGeolocationPosition alloc] initWithGeolocationPosition:(WTFMove(coreGeolocationPosition))];
     }
     [[MockGeolocationProvider shared] setPosition:position];
     [position release];
@@ -448,18 +465,7 @@ void TestRunner::setGeolocationPermission(bool allow)
 
 void TestRunner::setIconDatabaseEnabled(bool iconDatabaseEnabled)
 {
-#if ENABLE(ICONDATABASE)
-    // FIXME: Workaround <rdar://problem/6480108>
-    static WebIconDatabase *sharedWebIconDatabase = NULL;
-    if (!sharedWebIconDatabase) {
-        if (!iconDatabaseEnabled)
-            return;
-        sharedWebIconDatabase = [WebIconDatabase sharedIconDatabase];
-        if ([sharedWebIconDatabase isEnabled] == iconDatabaseEnabled)
-            return;
-    }
-    [sharedWebIconDatabase setEnabled:iconDatabaseEnabled];
-#endif
+    [WebView _setIconLoadingEnabled:iconDatabaseEnabled];
 }
 
 void TestRunner::setMainFrameIsFirstResponder(bool flag)
@@ -495,6 +501,11 @@ void TestRunner::setAllowUniversalAccessFromFileURLs(bool enabled)
 void TestRunner::setAllowFileAccessFromFileURLs(bool enabled)
 {
     [[[mainFrame webView] preferences] setAllowFileAccessFromFileURLs:enabled];
+}
+
+void TestRunner::setNeedsStorageAccessFromFileURLsQuirk(bool needsQuirk)
+{
+    [[[mainFrame webView] preferences] setNeedsStorageAccessFromFileURLsQuirk:needsQuirk];
 }
 
 void TestRunner::setPopupBlockingEnabled(bool popupBlockingEnabled)
@@ -533,14 +544,6 @@ void TestRunner::setTelephoneNumberParsingEnabled(bool enabled)
 void TestRunner::setPagePaused(bool paused)
 {
     [gWebBrowserView setPaused:paused];
-}
-#endif
-
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-void TestRunner::setTextAutosizingEnabled(bool enabled)
-{
-    const float phoneMinimumZoomFontSize = 15;
-    [[[mainFrame webView] preferences] _setMinimumZoomFontSize:(enabled ? phoneMinimumZoomFontSize : 0)];
 }
 #endif
 
@@ -614,6 +617,11 @@ void TestRunner::setWindowIsKey(bool windowIsKey)
 {
     m_windowIsKey = windowIsKey;
     [[mainFrame webView] _updateActiveState];
+}
+
+void TestRunner::setViewSize(double width, double height)
+{
+    [[mainFrame webView] setFrameSize:NSMakeSize(width, height)];
 }
 
 static void waitUntilDoneWatchdogFired(CFRunLoopTimerRef timer, void* info)
@@ -785,6 +793,9 @@ void TestRunner::evaluateInWebInspector(JSStringRef script)
 
 JSStringRef TestRunner::inspectorTestStubURL()
 {
+#if PLATFORM(IOS)
+    return nullptr;
+#else
     // Call the soft link framework function to dlopen it, then CFBundleGetBundleWithIdentifier will work.
     WebInspectorUILibrary();
 
@@ -798,6 +809,7 @@ JSStringRef TestRunner::inspectorTestStubURL()
 
     CFStringRef urlString = CFURLGetString(url.get());
     return JSStringCreateWithCFString(urlString);
+#endif
 }
 
 typedef HashMap<unsigned, RetainPtr<WebScriptWorld> > WorldMap;
@@ -1223,3 +1235,33 @@ void TestRunner::simulateLegacyWebNotificationClick(JSStringRef jsTitle)
 {
 }
 
+static NSString * const WebArchivePboardType = @"Apple Web Archive pasteboard type";
+static NSString * const WebSubresourcesKey = @"WebSubresources";
+static NSString * const WebSubframeArchivesKey = @"WebResourceMIMEType like 'image*'";
+
+unsigned TestRunner::imageCountInGeneralPasteboard() const
+{
+#if PLATFORM(MAC)
+    NSData *data = [[NSPasteboard generalPasteboard] dataForType:WebArchivePboardType];
+#elif PLATFORM(IOS)
+    NSData *data = [[UIPasteboard generalPasteboard] valueForPasteboardType:WebArchivePboardType];
+#endif
+    if (!data)
+        return 0;
+    
+    NSError *error = nil;
+    id webArchive = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListImmutable format:NULL error:&error];
+    if (error) {
+        NSLog(@"Encountered error while serializing Web Archive pasteboard data: %@", error);
+        return 0;
+    }
+    
+    NSArray *subItems = [NSArray arrayWithArray:[webArchive objectForKey:WebSubresourcesKey]];
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:WebSubframeArchivesKey];
+    NSArray *imagesArray = [subItems filteredArrayUsingPredicate:predicate];
+    
+    if (!imagesArray)
+        return 0;
+    
+    return imagesArray.count;
+}

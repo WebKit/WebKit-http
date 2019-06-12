@@ -49,8 +49,12 @@ public:
 
     void setIsPixelTest(const std::string& expectedPixelHash);
 
+    // Milliseconds
     void setCustomTimeout(int duration) { m_timeout = duration; }
-    int customTimeout() const { return m_timeout; }
+    void setDumpJSConsoleLogInStdErr(bool value) { m_dumpJSConsoleLogInStdErr = value; }
+
+    // Seconds
+    double shortTimeout() const;
 
     void invoke();
     void didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
@@ -65,11 +69,15 @@ public:
     void didEndSwipe();
     void didRemoveSwipeSnapshot();
 
+    void notifyDownloadDone();
+
+    void didRemoveAllSessionCredentials();
+    
 private:
     void dumpResults();
     static void dump(const char* textToStdout, const char* textToStderr = 0, bool seenError = false);
     enum class SnapshotResultType { WebView, WebContents };
-    void dumpPixelsAndCompareWithExpected(WKImageRef, WKArrayRef repaintRects, SnapshotResultType);
+    void dumpPixelsAndCompareWithExpected(SnapshotResultType, WKArrayRef repaintRects, WKImageRef = nullptr);
     void dumpAudio(WKDataRef);
     bool compareActualHashToExpectedAndDumpResults(const char[33]);
 
@@ -87,7 +95,7 @@ private:
 
     void runUISideScript(WKStringRef, unsigned callbackID);
     // UIScriptContextDelegate
-    void uiScriptDidComplete(WKStringRef result, unsigned callbackID) override;
+    void uiScriptDidComplete(const String& result, unsigned callbackID) override;
 
     const TestOptions m_options;
     
@@ -97,6 +105,7 @@ private:
     std::string m_expectedPixelHash;
 
     int m_timeout { 0 };
+    bool m_dumpJSConsoleLogInStdErr { false };
 
     // Invocation state
     bool m_gotInitialResponse { false };

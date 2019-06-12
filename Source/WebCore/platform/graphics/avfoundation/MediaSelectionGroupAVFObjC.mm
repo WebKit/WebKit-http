@@ -29,13 +29,11 @@
 #if ENABLE(VIDEO_TRACK)
 
 #import "Language.h"
-#import "SoftLinking.h"
 #import <AVFoundation/AVAsset.h>
 #import <AVFoundation/AVMediaSelectionGroup.h>
 #import <AVFoundation/AVPlayerItem.h>
 #import <objc/runtime.h>
-#import <wtf/HashMap.h>
-#import <wtf/HashSet.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/WTFString.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
@@ -50,9 +48,9 @@ SOFT_LINK_CLASS(AVFoundation, AVMediaSelectionOption)
 
 namespace WebCore {
 
-PassRefPtr<MediaSelectionOptionAVFObjC> MediaSelectionOptionAVFObjC::create(MediaSelectionGroupAVFObjC& group, AVMediaSelectionOption *option)
+Ref<MediaSelectionOptionAVFObjC> MediaSelectionOptionAVFObjC::create(MediaSelectionGroupAVFObjC& group, AVMediaSelectionOption *option)
 {
-    return adoptRef(new MediaSelectionOptionAVFObjC(group, option));
+    return adoptRef(*new MediaSelectionOptionAVFObjC(group, option));
 }
 
 MediaSelectionOptionAVFObjC::MediaSelectionOptionAVFObjC(MediaSelectionGroupAVFObjC& group, AVMediaSelectionOption *option)
@@ -87,9 +85,9 @@ int MediaSelectionOptionAVFObjC::index() const
     return [[m_group->avMediaSelectionGroup() options] indexOfObject:m_mediaSelectionOption.get()];
 }
 
-PassRefPtr<MediaSelectionGroupAVFObjC> MediaSelectionGroupAVFObjC::create(AVPlayerItem *item, AVMediaSelectionGroup *group, const Vector<String>& characteristics)
+Ref<MediaSelectionGroupAVFObjC> MediaSelectionGroupAVFObjC::create(AVPlayerItem *item, AVMediaSelectionGroup *group, const Vector<String>& characteristics)
 {
-    return adoptRef(new MediaSelectionGroupAVFObjC(item, group, characteristics));
+    return adoptRef(*new MediaSelectionGroupAVFObjC(item, group, characteristics));
 }
 
 MediaSelectionGroupAVFObjC::MediaSelectionGroupAVFObjC(AVPlayerItem *item, AVMediaSelectionGroup *group, const Vector<String>& characteristics)
@@ -125,14 +123,15 @@ void MediaSelectionGroupAVFObjC::updateOptions(const Vector<String>& characteris
 
         m_options.remove(removedAVOption);
     }
-
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     AVMediaSelectionOption* selectedOption = [m_playerItem selectedMediaOptionInMediaSelectionGroup:m_mediaSelectionGroup.get()];
-
+#pragma clang diagnostic pop
     for (AVMediaSelectionOption* addedAVOption in addedAVOptions.get()) {
-        RefPtr<MediaSelectionOptionAVFObjC> addedOption = MediaSelectionOptionAVFObjC::create(*this, addedAVOption);
+        auto addedOption = MediaSelectionOptionAVFObjC::create(*this, addedAVOption);
         if (addedAVOption == selectedOption)
-            m_selectedOption = addedOption.get();
-        m_options.set(addedAVOption, addedOption.release());
+            m_selectedOption = addedOption.ptr();
+        m_options.set(addedAVOption, WTFMove(addedOption));
     }
 
     if (!m_shouldSelectOptionAutomatically)
@@ -167,7 +166,7 @@ void MediaSelectionGroupAVFObjC::updateOptions(const Vector<String>& characteris
 
     ASSERT(m_options.contains(preferredOption));
     m_selectedOption = m_options.get(preferredOption);
-    m_selectionTimer.startOneShot(0);
+    m_selectionTimer.startOneShot(0_s);
 }
 
 void MediaSelectionGroupAVFObjC::setSelectedOption(MediaSelectionOptionAVFObjC* option)
@@ -179,7 +178,7 @@ void MediaSelectionGroupAVFObjC::setSelectedOption(MediaSelectionOptionAVFObjC* 
     m_selectedOption = option;
     if (m_selectionTimer.isActive())
         m_selectionTimer.stop();
-    m_selectionTimer.startOneShot(0);
+    m_selectionTimer.startOneShot(0_s);
 }
 
 void MediaSelectionGroupAVFObjC::selectionTimerFired()

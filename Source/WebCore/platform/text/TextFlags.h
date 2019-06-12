@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TextFlags_h
-#define TextFlags_h
+#pragma once
 
 namespace WebCore {
 
@@ -52,16 +51,19 @@ enum ExpansionBehaviorFlags {
     AllowLeadingExpansion = 1 << 2,
     ForceLeadingExpansion = 2 << 2,
     LeadingExpansionMask = 3 << 2,
+
+    DefaultExpansion = AllowTrailingExpansion | ForbidLeadingExpansion,
 };
 typedef unsigned ExpansionBehavior;
 
 enum FontSynthesisValues {
     FontSynthesisNone = 0x0,
     FontSynthesisWeight = 0x1,
-    FontSynthesisStyle = 0x2
+    FontSynthesisStyle = 0x2,
+    FontSynthesisSmallCaps = 0x4
 };
 typedef unsigned FontSynthesis;
-const unsigned FontSynthesisWidth = 2;
+const unsigned FontSynthesisWidth = 3;
 
 enum class FontVariantLigatures {
     Normal,
@@ -212,7 +214,7 @@ struct FontVariantSettings {
             && eastAsianRuby == FontVariantEastAsianRuby::Normal;
     }
 
-    bool operator==(const FontVariantSettings& other)
+    bool operator==(const FontVariantSettings& other) const
     {
         return commonLigatures == other.commonLigatures
             && discretionaryLigatures == other.discretionaryLigatures
@@ -229,6 +231,27 @@ struct FontVariantSettings {
             && eastAsianVariant == other.eastAsianVariant
             && eastAsianWidth == other.eastAsianWidth
             && eastAsianRuby == other.eastAsianRuby;
+    }
+
+    bool operator!=(const FontVariantSettings& other) const { return !(*this == other); }
+
+    unsigned uniqueValue() const
+    {
+        return static_cast<unsigned>(commonLigatures) << 26
+            | static_cast<unsigned>(discretionaryLigatures) << 24
+            | static_cast<unsigned>(historicalLigatures) << 22
+            | static_cast<unsigned>(contextualAlternates) << 20
+            | static_cast<unsigned>(position) << 18
+            | static_cast<unsigned>(caps) << 15
+            | static_cast<unsigned>(numericFigure) << 13
+            | static_cast<unsigned>(numericSpacing) << 11
+            | static_cast<unsigned>(numericFraction) << 9
+            | static_cast<unsigned>(numericOrdinal) << 8
+            | static_cast<unsigned>(numericSlashedZero) << 7
+            | static_cast<unsigned>(alternates) << 6
+            | static_cast<unsigned>(eastAsianVariant) << 3
+            | static_cast<unsigned>(eastAsianWidth) << 1
+            | static_cast<unsigned>(eastAsianRuby) << 0;
     }
 
     FontVariantLigatures commonLigatures;
@@ -317,60 +340,9 @@ const unsigned FontWidthVariantWidth = 2;
 
 COMPILE_ASSERT(!(LastFontWidthVariant >> FontWidthVariantWidth), FontWidthVariantWidth_is_correct);
 
-enum FontWeight {
-    FontWeight100,
-    FontWeight200,
-    FontWeight300,
-    FontWeight400,
-    FontWeight500,
-    FontWeight600,
-    FontWeight700,
-    FontWeight800,
-    FontWeight900,
-    FontWeightNormal = FontWeight400,
-    FontWeightBold = FontWeight700
-};
-
-enum FontItalic {
-    FontItalicOff = 0,
-    FontItalicOn = 1
-};
-
 enum FontSmallCaps {
     FontSmallCapsOff = 0,
     FontSmallCapsOn = 1
-};
-
-enum {
-    FontStyleNormalBit = 0,
-    FontStyleItalicBit,
-    FontWeight100Bit,
-    FontWeight200Bit,
-    FontWeight300Bit,
-    FontWeight400Bit,
-    FontWeight500Bit,
-    FontWeight600Bit,
-    FontWeight700Bit,
-    FontWeight800Bit,
-    FontWeight900Bit,
-    FontTraitsMaskWidth
-};
-
-enum FontTraitsMask {
-    FontStyleNormalMask = 1 << FontStyleNormalBit,
-    FontStyleItalicMask = 1 << FontStyleItalicBit,
-    FontStyleMask = FontStyleNormalMask | FontStyleItalicMask,
-
-    FontWeight100Mask = 1 << FontWeight100Bit,
-    FontWeight200Mask = 1 << FontWeight200Bit,
-    FontWeight300Mask = 1 << FontWeight300Bit,
-    FontWeight400Mask = 1 << FontWeight400Bit,
-    FontWeight500Mask = 1 << FontWeight500Bit,
-    FontWeight600Mask = 1 << FontWeight600Bit,
-    FontWeight700Mask = 1 << FontWeight700Bit,
-    FontWeight800Mask = 1 << FontWeight800Bit,
-    FontWeight900Mask = 1 << FontWeight900Bit,
-    FontWeightMask = FontWeight100Mask | FontWeight200Mask | FontWeight300Mask | FontWeight400Mask | FontWeight500Mask | FontWeight600Mask | FontWeight700Mask | FontWeight800Mask | FontWeight900Mask
 };
 
 enum class Kerning {
@@ -379,6 +351,15 @@ enum class Kerning {
     NoShift
 };
 
-}
+enum class FontOpticalSizing {
+    Enabled,
+    Disabled
+};
 
-#endif
+// https://www.microsoft.com/typography/otspec/fvar.htm#VAT
+enum class FontStyleAxis {
+    slnt,
+    ital
+};
+
+}

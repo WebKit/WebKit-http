@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FormatBlockCommand_h
-#define FormatBlockCommand_h
+#pragma once
 
 #include "ApplyBlockElementCommand.h"
 #include "EditAction.h"
@@ -45,7 +44,7 @@ public:
         return adoptRef(*new FormatBlockCommand(document, tagName));
     }
     
-    virtual bool preservesTypingStyle() const { return true; }
+    bool preservesTypingStyle() const override { return true; }
 
     static Element* elementForFormatBlockCommand(Range*);
     bool didApply() const { return m_didApply; }
@@ -53,13 +52,11 @@ public:
 private:
     FormatBlockCommand(Document&, const QualifiedName& tagName);
 
-    void formatSelection(const VisiblePosition& startOfSelection, const VisiblePosition& endOfSelection);
-    void formatRange(const Position& start, const Position& end, const Position& endOfSelection, RefPtr<Element>&);
-    EditAction editingAction() const { return EditActionFormatBlock; }
+    void formatSelection(const VisiblePosition& startOfSelection, const VisiblePosition& endOfSelection) override;
+    void formatRange(const Position& start, const Position& end, const Position& endOfSelection, RefPtr<Element>&) override;
+    EditAction editingAction() const override { return EditActionFormatBlock; }
 
     bool m_didApply;
 };
 
 } // namespace WebCore
-
-#endif // FormatBlockCommand_h

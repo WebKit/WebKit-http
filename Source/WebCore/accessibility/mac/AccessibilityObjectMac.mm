@@ -86,13 +86,16 @@ AccessibilityObjectInclusion AccessibilityObject::accessibilityPlatformIncludesO
 
     if (roleValue() == CaptionRole)
         return IgnoreObject;
+    
+    if (roleValue() == MarkRole)
+        return IncludeObject;
 
     // Never expose an unknown object on the Mac. Clients of the AX API will not know what to do with it.
     // Special case is when the unknown object is actually an attachment.
     if (roleValue() == UnknownRole && !isAttachment())
         return IgnoreObject;
     
-    if (roleValue() == InlineRole)
+    if (roleValue() == InlineRole && !isStyleFormatGroup())
         return IgnoreObject;
 
     if (RenderObject* renderer = this->renderer()) {

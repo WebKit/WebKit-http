@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFEDistantLightElement_h
-#define SVGFEDistantLightElement_h
+#pragma once
 
 #include "SVGFELightElement.h"
 
@@ -31,9 +30,7 @@ public:
 private:
     SVGFEDistantLightElement(const QualifiedName&, Document&);
 
-    virtual Ref<LightSource> lightSource() const override;
+    Ref<LightSource> lightSource() const override;
 };
 
 } // namespace WebCore
-
-#endif

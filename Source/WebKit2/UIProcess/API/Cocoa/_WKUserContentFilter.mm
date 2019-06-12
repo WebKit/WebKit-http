@@ -28,25 +28,33 @@
 
 #if WK_API_ENABLED
 
-#include "WebCompiledContentExtension.h"
+#include "WebCompiledContentRuleList.h"
 #include <WebCore/ContentExtensionCompiler.h>
 #include <WebCore/ContentExtensionError.h>
 #include <string>
 
 @implementation _WKUserContentFilter
 
-- (void)dealloc
-{
-    _userContentExtension->~UserContentExtension();
-
-    [super dealloc];
-}
-
 #pragma mark WKObject protocol implementation
 
 - (API::Object&)_apiObject
 {
-    return *_userContentExtension;
+    return [_contentRuleList _apiObject];
+}
+
+@end
+
+@implementation _WKUserContentFilter (WKPrivate)
+
+- (id)_initWithWKContentRuleList:(WKContentRuleList*)contentRuleList
+{
+    self = [super init];
+    if (!self)
+        return nil;
+    
+    _contentRuleList = contentRuleList;
+    
+    return self;
 }
 
 @end

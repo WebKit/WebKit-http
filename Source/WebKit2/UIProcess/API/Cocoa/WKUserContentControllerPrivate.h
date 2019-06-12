@@ -29,20 +29,27 @@
 
 @class WKUserScript;
 @class _WKUserContentFilter;
+@class _WKUserContentWorld;
 @class _WKUserStyleSheet;
 
 @interface WKUserContentController (WKPrivate)
 
-- (void)_removeUserScript:(WKUserScript *)userScript WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+- (void)_removeUserScript:(WKUserScript *)userScript WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+- (void)_removeAllUserScriptsAssociatedWithUserContentWorld:(_WKUserContentWorld *)userContentWorld WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
-- (void)_addUserContentFilter:(_WKUserContentFilter *)userContentFilter WK_AVAILABLE(10_11, 9_0);
-- (void)_removeUserContentFilter:(NSString *)userContentFilterName WK_AVAILABLE(10_11, 9_0);
-- (void)_removeAllUserContentFilters WK_AVAILABLE(10_11, 9_0);
+- (void)_addUserContentFilter:(_WKUserContentFilter *)userContentFilter WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+- (void)_removeUserContentFilter:(NSString *)userContentFilterName WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+- (void)_removeAllUserContentFilters WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
-@property (nonatomic, readonly, copy) WK_ARRAY(_WKUserStyleSheet *) *_userStyleSheets WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
-- (void)_addUserStyleSheet:(_WKUserStyleSheet *)userStyleSheet WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
-- (void)_removeUserStyleSheet:(_WKUserStyleSheet *)userStyleSheet WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
-- (void)_removeAllUserStyleSheets WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+@property (nonatomic, readonly, copy) NSArray<_WKUserStyleSheet *> *_userStyleSheets WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+- (void)_addUserStyleSheet:(_WKUserStyleSheet *)userStyleSheet WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+- (void)_removeUserStyleSheet:(_WKUserStyleSheet *)userStyleSheet WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+- (void)_removeAllUserStyleSheets WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+- (void)_removeAllUserStyleSheetsAssociatedWithUserContentWorld:(_WKUserContentWorld *)userContentWorld WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+
+- (void)_addScriptMessageHandler:(id <WKScriptMessageHandler>)scriptMessageHandler name:(NSString *)name userContentWorld:(_WKUserContentWorld *)userContentWorld;
+- (void)_removeScriptMessageHandlerForName:(NSString *)name userContentWorld:(_WKUserContentWorld *)userContentWorld;
+- (void)_removeAllScriptMessageHandlersAssociatedWithUserContentWorld:(_WKUserContentWorld *)userContentWorld;
 
 @end
 

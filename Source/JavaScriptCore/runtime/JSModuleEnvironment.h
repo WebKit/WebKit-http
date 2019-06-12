@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,14 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSModuleEnvironment_h
-#define JSModuleEnvironment_h
+#pragma once
 
 #include "JSLexicalEnvironment.h"
-#include "JSModuleRecord.h"
 
 namespace JSC {
 
+class AbstractModuleRecord;
 class Register;
 
 class JSModuleEnvironment : public JSLexicalEnvironment {
@@ -43,9 +42,9 @@ public:
     typedef JSLexicalEnvironment Base;
     static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
 
-    static JSModuleEnvironment* create(VM&, Structure*, JSScope*, SymbolTable*, JSValue initialValue, JSModuleRecord*);
+    static JSModuleEnvironment* create(VM&, Structure*, JSScope*, SymbolTable*, JSValue initialValue, AbstractModuleRecord*);
 
-    static JSModuleEnvironment* create(VM& vm, JSGlobalObject* globalObject, JSScope* currentScope, SymbolTable* symbolTable, JSValue initialValue, JSModuleRecord* moduleRecord)
+    static JSModuleEnvironment* create(VM& vm, JSGlobalObject* globalObject, JSScope* currentScope, SymbolTable* symbolTable, JSValue initialValue, AbstractModuleRecord* moduleRecord)
     {
         Structure* structure = globalObject->moduleEnvironmentStructure();
         return create(vm, structure, currentScope, symbolTable, initialValue, moduleRecord);
@@ -55,39 +54,39 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject)
     {
-        return Structure::create(vm, globalObject, jsNull(), TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, jsNull(), TypeInfo(ModuleEnvironmentType, StructureFlags), info());
     }
 
     static size_t offsetOfModuleRecord(SymbolTable* symbolTable)
     {
         size_t offset = Base::allocationSize(symbolTable);
-        ASSERT(WTF::roundUpToMultipleOf<sizeof(WriteBarrier<JSModuleRecord>)>(offset) == offset);
+        ASSERT(WTF::roundUpToMultipleOf<sizeof(WriteBarrier<AbstractModuleRecord>)>(offset) == offset);
         return offset;
     }
 
     static size_t allocationSize(SymbolTable* symbolTable)
     {
-        return offsetOfModuleRecord(symbolTable) + sizeof(WriteBarrier<JSModuleRecord>);
+        return offsetOfModuleRecord(symbolTable) + sizeof(WriteBarrier<AbstractModuleRecord>);
     }
 
-    JSModuleRecord* moduleRecord()
+    AbstractModuleRecord* moduleRecord()
     {
         return moduleRecordSlot().get();
     }
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
 private:
     JSModuleEnvironment(VM&, Structure*, JSScope*, SymbolTable*);
 
-    void finishCreation(VM&, JSValue initialValue, JSModuleRecord*);
+    void finishCreation(VM&, JSValue initialValue, AbstractModuleRecord*);
 
-    WriteBarrierBase<JSModuleRecord>& moduleRecordSlot()
+    WriteBarrierBase<AbstractModuleRecord>& moduleRecordSlot()
     {
-        return *bitwise_cast<WriteBarrierBase<JSModuleRecord>*>(bitwise_cast<char*>(this) + offsetOfModuleRecord(symbolTable()));
+        return *bitwise_cast<WriteBarrierBase<AbstractModuleRecord>*>(bitwise_cast<char*>(this) + offsetOfModuleRecord(symbolTable()));
     }
 
     static void visitChildren(JSCell*, SlotVisitor&);
@@ -99,5 +98,3 @@ inline JSModuleEnvironment::JSModuleEnvironment(VM& vm, Structure* structure, JS
 }
 
 } // namespace JSC
-
-#endif // JSModuleEnvironment_h

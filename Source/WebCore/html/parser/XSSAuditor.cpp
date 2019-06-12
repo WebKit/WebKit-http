@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 Adam Barth. All Rights Reserved.
  * Copyright (C) 2011 Daniel Bates (dbates@intudata.com).
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,12 +28,12 @@
 #include "config.h"
 #include "XSSAuditor.h"
 
-#include "ContentSecurityPolicy.h"
 #include "DecodeEscapeSequences.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "FormData.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "HTMLDocumentParser.h"
 #include "HTMLNames.h"
 #include "HTMLParamElement.h"
@@ -44,6 +45,7 @@
 #include <wtf/ASCIICType.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -179,19 +181,27 @@ static void truncateForSrcLikeAttribute(String& decodedSnippet)
 {
     // In HTTP URLs, characters following the first ?, #, or third slash may come from
     // the page itself and can be merely ignored by an attacker's server when a remote
-    // script or script-like resource is requested. In DATA URLS, the payload starts at
-    // the first comma, and the the first /*, //, or <!-- may introduce a comment. Characters
-    // following this may come from the page itself and may be ignored when the script is
-    // executed. For simplicity, we don't differentiate based on URL scheme, and stop at
-    // the first # or ?, the third slash, or the first slash or < once a comma is seen.
+    // script or script-like resource is requested. In data URLs, the payload starts at
+    // the first comma, and the first /*, //, or <!-- may introduce a comment. Also
+    // data URLs may use the same string literal tricks as with script content itself.
+    // In either case, content following this may come from the page and may be ignored
+    // when the script is executed. Also, any of these characters may now be represented
+    // by the (enlarged) set of HTML5 entities.
+    // For simplicity, we don't differentiate based on URL scheme, and stop at the first
+    // & (since it might be part of an entity for any of the subsequent punctuation)
+    // the first # or ?, the third slash, or the first slash, <, ', or " once a comma
+    // is seen.
     int slashCount = 0;
     bool commaSeen = false;
     for (size_t currentLength = 0; currentLength < decodedSnippet.length(); ++currentLength) {
         UChar currentChar = decodedSnippet[currentLength];
-        if (currentChar == '?'
+        if (currentChar == '&'
+            || currentChar == '?'
             || currentChar == '#'
             || ((currentChar == '/' || currentChar == '\\') && (commaSeen || ++slashCount > 2))
-            || (currentChar == '<' && commaSeen)) {
+            || (currentChar == '<' && commaSeen)
+            || (currentChar == '\'' && commaSeen)
+            || (currentChar == '"' && commaSeen)) {
             decodedSnippet.truncate(currentLength);
             return;
         }
@@ -226,26 +236,14 @@ static void truncateForScriptLikeAttribute(String& decodedSnippet)
     }
 }
 
-static ContentSecurityPolicy::ReflectedXSSDisposition combineXSSProtectionHeaderAndCSP(ContentSecurityPolicy::ReflectedXSSDisposition xssProtection, ContentSecurityPolicy::ReflectedXSSDisposition reflectedXSS)
-{
-    ContentSecurityPolicy::ReflectedXSSDisposition result = std::max(xssProtection, reflectedXSS);
-
-    if (result == ContentSecurityPolicy::ReflectedXSSInvalid || result == ContentSecurityPolicy::FilterReflectedXSS || result == ContentSecurityPolicy::ReflectedXSSUnset)
-        return ContentSecurityPolicy::FilterReflectedXSS;
-
-    return result;
-}
-
 static bool isSemicolonSeparatedAttribute(const HTMLToken::Attribute& attribute)
 {
     return threadSafeMatch(attribute.name, SVGNames::valuesAttr);
 }
 
-static bool semicolonSeparatedValueContainsJavaScriptURL(const String& value)
+static bool semicolonSeparatedValueContainsJavaScriptURL(StringView semicolonSeparatedValue)
 {
-    Vector<String> valueList;
-    value.split(';', valueList);
-    for (auto& value : valueList) {
+    for (auto value : semicolonSeparatedValue.split(';')) {
         if (protocolIsJavaScript(value))
             return true;
     }
@@ -254,8 +252,7 @@ static bool semicolonSeparatedValueContainsJavaScriptURL(const String& value)
 
 XSSAuditor::XSSAuditor()
     : m_isEnabled(false)
-    , m_xssProtection(ContentSecurityPolicy::FilterReflectedXSS)
-    , m_didSendValidCSPHeader(false)
+    , m_xssProtection(XSSProtectionDisposition::Enabled)
     , m_didSendValidXSSProtectionHeader(false)
     , m_state(Uninitialized)
     , m_scriptTagNestingLevel(0)
@@ -321,34 +318,31 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
 
     String httpBodyAsString;
     if (DocumentLoader* documentLoader = document->frame()->loader().documentLoader()) {
-        static NeverDestroyed<String> XSSProtectionHeader(ASCIILiteral("X-XSS-Protection"));
+        static NeverDestroyed<String> XSSProtectionHeader(MAKE_STATIC_STRING_IMPL("X-XSS-Protection"));
         String headerValue = documentLoader->response().httpHeaderField(XSSProtectionHeader);
         String errorDetails;
         unsigned errorPosition = 0;
-        String reportURL;
-        URL xssProtectionReportURL;
+        String parsedReportURL;
+        URL reportURL;
+        m_xssProtection = parseXSSProtectionHeader(headerValue, errorDetails, errorPosition, parsedReportURL);
+        m_didSendValidXSSProtectionHeader = !headerValue.isNull() && m_xssProtection != XSSProtectionDisposition::Invalid;
 
-        // Process the X-XSS-Protection header, then mix in the CSP header's value.
-        ContentSecurityPolicy::ReflectedXSSDisposition xssProtectionHeader = parseXSSProtectionHeader(headerValue, errorDetails, errorPosition, reportURL);
-        m_didSendValidXSSProtectionHeader = xssProtectionHeader != ContentSecurityPolicy::ReflectedXSSUnset && xssProtectionHeader != ContentSecurityPolicy::ReflectedXSSInvalid;
-        if ((xssProtectionHeader == ContentSecurityPolicy::FilterReflectedXSS || xssProtectionHeader == ContentSecurityPolicy::BlockReflectedXSS) && !reportURL.isEmpty()) {
-            xssProtectionReportURL = document->completeURL(reportURL);
-            if (MixedContentChecker::isMixedContent(document->securityOrigin(), xssProtectionReportURL)) {
+        if ((m_xssProtection == XSSProtectionDisposition::Enabled || m_xssProtection == XSSProtectionDisposition::BlockEnabled) && !parsedReportURL.isEmpty()) {
+            reportURL = document->completeURL(parsedReportURL);
+            if (MixedContentChecker::isMixedContent(document->securityOrigin(), reportURL)) {
                 errorDetails = "insecure reporting URL for secure page";
-                xssProtectionHeader = ContentSecurityPolicy::ReflectedXSSInvalid;
-                xssProtectionReportURL = URL();
+                m_xssProtection = XSSProtectionDisposition::Invalid;
+                reportURL = URL();
+                m_didSendValidXSSProtectionHeader = false;
             }
         }
-        if (xssProtectionHeader == ContentSecurityPolicy::ReflectedXSSInvalid)
+        if (m_xssProtection == XSSProtectionDisposition::Invalid) {
             document->addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Error parsing header X-XSS-Protection: " + headerValue + ": "  + errorDetails + " at character position " + String::format("%u", errorPosition) + ". The default protections will be applied.");
+            m_xssProtection = XSSProtectionDisposition::Enabled;
+        }
 
-        ContentSecurityPolicy::ReflectedXSSDisposition cspHeader = document->contentSecurityPolicy()->reflectedXSSDisposition();
-        m_didSendValidCSPHeader = cspHeader != ContentSecurityPolicy::ReflectedXSSUnset && cspHeader != ContentSecurityPolicy::ReflectedXSSInvalid;
-
-        m_xssProtection = combineXSSProtectionHeaderAndCSP(xssProtectionHeader, cspHeader);
-        // FIXME: Combine the two report URLs in some reasonable way.
         if (auditorDelegate)
-            auditorDelegate->setReportURL(xssProtectionReportURL.isolatedCopy());
+            auditorDelegate->setReportURL(reportURL.isolatedCopy());
         FormData* httpBody = documentLoader->originalRequest().httpBody();
         if (httpBody && !httpBody->isEmpty()) {
             httpBodyAsString = httpBody->flattenToString();
@@ -371,7 +365,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
 std::unique_ptr<XSSInfo> XSSAuditor::filterToken(const FilterTokenRequest& request)
 {
     ASSERT(m_state == Initialized);
-    if (!m_isEnabled || m_xssProtection == ContentSecurityPolicy::AllowReflectedXSS)
+    if (!m_isEnabled || m_xssProtection == XSSProtectionDisposition::Disabled)
         return nullptr;
 
     bool didBlockScript = false;
@@ -387,8 +381,8 @@ std::unique_ptr<XSSInfo> XSSAuditor::filterToken(const FilterTokenRequest& reque
     if (!didBlockScript)
         return nullptr;
 
-    bool didBlockEntirePage = (m_xssProtection == ContentSecurityPolicy::BlockReflectedXSS);
-    return std::make_unique<XSSInfo>(m_documentURL, didBlockEntirePage, m_didSendValidXSSProtectionHeader, m_didSendValidCSPHeader);
+    bool didBlockEntirePage = m_xssProtection == XSSProtectionDisposition::BlockEnabled;
+    return std::make_unique<XSSInfo>(m_documentURL, didBlockEntirePage, m_didSendValidXSSProtectionHeader);
 }
 
 bool XSSAuditor::filterStartToken(const FilterTokenRequest& request)
@@ -571,7 +565,7 @@ bool XSSAuditor::filterButtonToken(const FilterTokenRequest& request)
 
 bool XSSAuditor::eraseDangerousAttributesIfInjected(const FilterTokenRequest& request)
 {
-    static NeverDestroyed<String> safeJavaScriptURL(ASCIILiteral("javascript:void(0)"));
+    static NeverDestroyed<String> safeJavaScriptURL(MAKE_STATIC_STRING_IMPL("javascript:void(0)"));
 
     bool didBlockScript = false;
     for (size_t i = 0; i < request.token.attributes().size(); ++i) {
@@ -695,7 +689,7 @@ String XSSAuditor::canonicalizedSnippetForJavaScript(const FilterTokenRequest& r
                 break;
 
             if (lastNonSpacePosition != notFound && startsOpeningScriptTagAt(string, foundPosition)) {
-                foundPosition = lastNonSpacePosition;
+                foundPosition = lastNonSpacePosition + 1;
                 break;
             }
             if (foundPosition > startPosition + kMaximumFragmentLengthTarget) {

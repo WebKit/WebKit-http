@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GenericTaskQueue_h
-#define GenericTaskQueue_h
+#pragma once
 
 #include "Timer.h"
 #include <wtf/Deque.h>
+#include <wtf/Function.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
@@ -40,9 +40,9 @@ public:
     {
     }
 
-    void postTask(std::function<void()> f)
+    void postTask(WTF::Function<void()>&& f)
     {
-        m_context.postTask(f);
+        m_context.postTask(WTFMove(f));
     }
 
 private:
@@ -52,27 +52,18 @@ private:
 template<>
 class TaskDispatcher<Timer> {
 public:
-    TaskDispatcher()
-        : m_timer(*this, &TaskDispatcher<Timer>::timerFired)
-    {
-    }
+    TaskDispatcher();
+    void postTask(WTF::Function<void()>&&);
 
-    void postTask(std::function<void()> function)
-    {
-        m_queue.append(function);
-        m_timer.startOneShot(0);
-    }
+private:
+    static Timer& sharedTimer();
+    static void sharedTimerFired();
+    static Deque<WeakPtr<TaskDispatcher<Timer>>>& pendingDispatchers();
 
-    void timerFired()
-    {
-        Deque<std::function<void()>> queue;
-        queue.swap(m_queue);
-        for (std::function<void()>& function : queue)
-            function();
-    }
+    void dispatchOneTask();
 
-    Timer m_timer;
-    Deque<std::function<void()>> m_queue;
+    WeakPtrFactory<TaskDispatcher> m_weakPtrFactory;
+    Deque<WTF::Function<void()>> m_pendingTasks;
 };
 
 template <typename T>
@@ -90,16 +81,16 @@ public:
     {
     }
 
-    typedef std::function<void()> TaskFunction;
+    typedef WTF::Function<void ()> TaskFunction;
 
-    void enqueueTask(TaskFunction task)
+    void enqueueTask(TaskFunction&& task)
     {
         if (m_isClosed)
             return;
 
         ++m_pendingTasks;
         auto weakThis = m_weakPtrFactory.createWeakPtr();
-        m_dispatcher.postTask([weakThis, task] {
+        m_dispatcher.postTask([weakThis, task = WTFMove(task)] {
             if (!weakThis)
                 return;
             ASSERT(weakThis->m_pendingTasks);
@@ -129,5 +120,3 @@ private:
 };
 
 }
-
-#endif

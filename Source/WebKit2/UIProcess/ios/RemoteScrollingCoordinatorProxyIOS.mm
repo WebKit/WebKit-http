@@ -39,6 +39,7 @@
 
 #if ENABLE(CSS_SCROLL_SNAP)
 #import <WebCore/AxisScrollSnapOffsets.h>
+#import <WebCore/ScrollSnapOffsetsInfo.h>
 #import <WebCore/ScrollTypes.h>
 #import <WebCore/ScrollingTreeFrameScrollingNode.h>
 #endif
@@ -62,7 +63,7 @@ void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree&
             if (scrollingStateNode.hasChangedProperty(ScrollingStateNode::ScrollLayer))
                 scrollingStateNode.setLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.layer())));
             
-            if (scrollingStateNode.hasChangedProperty(ScrollingStateOverflowScrollingNode::ScrolledContentsLayer))
+            if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrolledContentsLayer))
                 scrollingStateNode.setScrolledContentsLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.scrolledContentsLayer())));
             break;
         };
@@ -94,7 +95,8 @@ void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree&
 
 FloatRect RemoteScrollingCoordinatorProxy::customFixedPositionRect() const
 {
-    return m_webPageProxy.computeCustomFixedPositionRect(m_webPageProxy.unobscuredContentRect(), m_webPageProxy.displayedContentScale());
+    return m_webPageProxy.computeCustomFixedPositionRect(m_webPageProxy.unobscuredContentRect(), m_webPageProxy.unobscuredContentRectRespectingInputViewBounds(), m_webPageProxy.customFixedPositionRect(),
+        m_webPageProxy.displayedContentScale(), FrameView::LayoutViewportConstraint::Unconstrained, visualViewportEnabled());
 }
 
 void RemoteScrollingCoordinatorProxy::scrollingTreeNodeWillStartPanGesture()
@@ -124,7 +126,9 @@ void RemoteScrollingCoordinatorProxy::adjustTargetContentOffsetForSnapping(CGSiz
 
     if (shouldSnapForMainFrameScrolling(WebCore::ScrollEventAxis::Vertical)) {
         float potentialSnapPosition = closestSnapOffsetForMainFrameScrolling(WebCore::ScrollEventAxis::Vertical, targetContentOffset->y, velocity.y, m_currentVerticalSnapPointIndex);
-        potentialSnapPosition -= topInset;
+        if (m_currentVerticalSnapPointIndex != invalidSnapOffsetIndex)
+            potentialSnapPosition -= topInset;
+
         if (targetContentOffset->y > 0 && targetContentOffset->y < maxScrollOffsets.height)
             targetContentOffset->y = std::min<float>(maxScrollOffsets.height, potentialSnapPosition);
     }
@@ -142,7 +146,7 @@ bool RemoteScrollingCoordinatorProxy::shouldSnapForMainFrameScrolling(ScrollEven
         ScrollingTreeFrameScrollingNode* rootFrame = static_cast<ScrollingTreeFrameScrollingNode*>(root);
         const Vector<float>& snapOffsets = axis == ScrollEventAxis::Horizontal ? rootFrame->horizontalSnapOffsets() : rootFrame->verticalSnapOffsets();
         unsigned currentIndex = axis == ScrollEventAxis::Horizontal ? m_currentHorizontalSnapPointIndex : m_currentVerticalSnapPointIndex;
-        return (snapOffsets.size() > 0) && (currentIndex < snapOffsets.size());
+        return snapOffsets.size() && (currentIndex < snapOffsets.size() || currentIndex == invalidSnapOffsetIndex);
     }
     return false;
 }
@@ -153,9 +157,10 @@ float RemoteScrollingCoordinatorProxy::closestSnapOffsetForMainFrameScrolling(Sc
     ASSERT(root && root->isFrameScrollingNode());
     ScrollingTreeFrameScrollingNode* rootFrame = static_cast<ScrollingTreeFrameScrollingNode*>(root);
     const Vector<float>& snapOffsets = axis == ScrollEventAxis::Horizontal ? rootFrame->horizontalSnapOffsets() : rootFrame->verticalSnapOffsets();
+    const Vector<ScrollOffsetRange<float>>& snapOffsetRanges = axis == ScrollEventAxis::Horizontal ? rootFrame->horizontalSnapOffsetRanges() : rootFrame->verticalSnapOffsetRanges();
 
     float scaledScrollDestination = scrollDestination / m_webPageProxy.displayedContentScale();
-    float rawClosestSnapOffset = closestSnapOffset<float, float>(snapOffsets, scaledScrollDestination, velocity, currentIndex);
+    float rawClosestSnapOffset = closestSnapOffset(snapOffsets, snapOffsetRanges, scaledScrollDestination, velocity, currentIndex);
     return rawClosestSnapOffset * m_webPageProxy.displayedContentScale();
 }
 

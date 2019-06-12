@@ -27,7 +27,6 @@
 #include "CSSReflectValue.h"
 
 #include "CSSPrimitiveValue.h"
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -38,16 +37,10 @@ String CSSReflectValue::customCSSText() const
     return m_direction->cssText() + ' ' + m_offset->cssText();
 }
 
-void CSSReflectValue::addSubresourceStyleURLs(ListHashSet<URL>& urls, const StyleSheetContents* styleSheet) const
-{
-    if (m_mask)
-        m_mask->addSubresourceStyleURLs(urls, styleSheet);
-}
-
 bool CSSReflectValue::equals(const CSSReflectValue& other) const
 {
-    return m_direction == other.m_direction
-        && compareCSSValuePtr(m_offset, other.m_offset)
+    return m_direction.ptr() == other.m_direction.ptr()
+        && compareCSSValue(m_offset, other.m_offset)
         && compareCSSValuePtr(m_mask, other.m_mask);
 }
 

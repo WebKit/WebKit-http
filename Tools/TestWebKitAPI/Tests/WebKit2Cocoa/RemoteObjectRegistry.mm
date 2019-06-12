@@ -35,6 +35,7 @@
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/_WKRemoteObjectInterface.h>
 #import <WebKit/_WKRemoteObjectRegistry.h>
+#import <wtf/RefCounted.h>
 #import <wtf/RetainPtr.h>
 
 static bool isDone;
@@ -43,7 +44,7 @@ TEST(WebKit2, RemoteObjectRegistry)
 {
     @autoreleasepool {
         NSString * const testPlugInClassName = @"RemoteObjectRegistryPlugIn";
-        auto configuration = retainPtr([WKWebViewConfiguration testwebkitapi_configurationWithTestPlugInClassName:testPlugInClassName]);
+        auto configuration = retainPtr([WKWebViewConfiguration _test_configurationWithTestPlugInClassName:testPlugInClassName]);
         auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectZero configuration:configuration.get()]);
 
         isDone = false;
@@ -66,11 +67,44 @@ TEST(WebKit2, RemoteObjectRegistry)
             EXPECT_WK_STREQ(result, @"Your string was 'Hello Again!'");
             isDone = true;
         }];
+        TestWebKitAPI::Util::run(&isDone);
 
         isDone = false;
         [object selectionAndClickInformationForClickAtPoint:[NSValue valueWithPoint:NSMakePoint(12, 34)] completionHandler:^(NSDictionary *result) {
+            EXPECT_TRUE([result isEqual:@{ @"URL": [NSURL URLWithString:@"http://www.webkit.org/"] }]);
             isDone = true;
         }];
+        TestWebKitAPI::Util::run(&isDone);
+
+        isDone = false;
+        [object takeRange:NSMakeRange(345, 123) completionHandler:^(NSUInteger location, NSUInteger length) {
+            EXPECT_EQ(345U, location);
+            EXPECT_EQ(123U, length);
+            isDone = true;
+        }];
+        TestWebKitAPI::Util::run(&isDone);
+
+        isDone = false;
+        [object takeSize:CGSizeMake(123.45, 678.91) completionHandler:^(CGFloat width, CGFloat height) {
+            EXPECT_EQ(123.45, width);
+            EXPECT_EQ(678.91, height);
+            isDone = true;
+        }];
+        TestWebKitAPI::Util::run(&isDone);
+
+        isDone = false;
+
+        class DoneWhenDestroyed : public RefCounted<DoneWhenDestroyed> {
+        public:
+            ~DoneWhenDestroyed() { isDone = true; }
+        };
+
+        {
+            RefPtr<DoneWhenDestroyed> doneWhenDestroyed = adoptRef(*new DoneWhenDestroyed);
+            [object doNotCallCompletionHandler:[doneWhenDestroyed]() {
+            }];
+        }
+
         TestWebKitAPI::Util::run(&isDone);
     }
 }

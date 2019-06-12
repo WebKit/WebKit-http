@@ -40,7 +40,7 @@ WebInspector.ProbeSetDataGrid = class ProbeSetDataGrid extends WebInspector.Data
 
         this.probeSet = probeSet;
 
-        this.element.classList.add("inline");
+        this.inline = true;
 
         this._frameNodes = new Map;
         this._lastUpdatedFrame = null;
@@ -134,6 +134,9 @@ WebInspector.ProbeSetDataGrid = class ProbeSetDataGrid extends WebInspector.Data
                 this.insertChild(node, insertionIndex);
         }
         console.assert(node);
+
+        // FIXME: <https://webkit.org/b/152269> Web Inspector: Convert DetailsSection classes to use View
+        this.updateLayoutIfNeeded();
 
         node.element.classList.add("data-updated");
         window.setTimeout(function() {

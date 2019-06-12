@@ -28,6 +28,19 @@ use File::Spec;
 
 package CodeGeneratorTestRunner;
 
+use Carp qw<longmess>;
+use Data::Dumper;
+
+sub assert
+{
+    my $message = shift;
+    
+    my $mess = longmess();
+    print Dumper($mess);
+
+    die $message;
+}
+
 sub new
 {
     my ($class, $codeGenerator, $writeDependencies, $verbose, $idlFilePath) = @_;
@@ -50,23 +63,22 @@ sub WriteData
     my ($self, $interface, $outputDir) = @_;
 
     foreach my $file ($self->_generateHeaderFile($interface), $self->_generateImplementationFile($interface)) {
-        open(FILE, ">", File::Spec->catfile($outputDir, $$file{name})) or die "Failed to open $$file{name} for writing: $!";
-        print FILE @{$$file{contents}};
-        close(FILE) or die "Failed to close $$file{name} after writing: $!";
+        $$self{codeGenerator}->UpdateFile(File::Spec->catfile($outputDir, $$file{name}), join("", @{$$file{contents}}));
     }
 }
 
 sub _className
 {
-    my ($idlType) = @_;
+    my ($type) = @_;
 
-    return "JS" . _implementationClassName($idlType);
+    return "JS" . _implementationClassName($type);
 }
 
 sub _classRefGetter
 {
-    my ($self, $idlType) = @_;
-    return $$self{codeGenerator}->WK_lcfirst(_implementationClassName($idlType)) . "Class";
+    my ($self, $type) = @_;
+
+    return $$self{codeGenerator}->WK_lcfirst(_implementationClassName($type)) . "Class";
 }
 
 sub _parseLicenseBlock
@@ -144,9 +156,9 @@ sub _generateHeaderFile
 
     my @contents = ();
 
-    my $idlType = $interface->name;
-    my $className = _className($idlType);
-    my $implementationClassName = _implementationClassName($idlType);
+    my $type = $interface->type;
+    my $className = _className($type);
+    my $implementationClassName = _implementationClassName($type);
     my $filename = $className . ".h";
 
     push(@contents, $self->_licenseBlock());
@@ -168,17 +180,17 @@ class ${implementationClassName};
 
 class ${className} : public ${parentClassName} {
 public:
-    static JSClassRef @{[$self->_classRefGetter($idlType)]}();
+    static JSClassRef @{[$self->_classRefGetter($type)]}();
 
 private:
     static const JSStaticFunction* staticFunctions();
     static const JSStaticValue* staticValues();
 EOF
 
-    if (my @functions = @{$interface->functions}) {
+    if (my @operations = @{$interface->operations}) {
         push(@contents, "\n    // Functions\n\n");
-        foreach my $function (@functions) {
-            push(@contents, "    static JSValueRef @{[$function->signature->name]}(JSContextRef, JSObjectRef, JSObjectRef, size_t, const JSValueRef[], JSValueRef*);\n");
+        foreach my $operation (@operations) {
+            push(@contents, "    static JSValueRef @{[$operation->name]}(JSContextRef, JSObjectRef, JSObjectRef, size_t, const JSValueRef[], JSValueRef*);\n");
         }
     }
 
@@ -211,14 +223,14 @@ sub _generateImplementationFile
     my %contentsIncludes = ();
     my @contents = ();
 
-    my $idlType = $interface->name;
-    my $className = _className($idlType);
-    my $implementationClassName = _implementationClassName($idlType);
+    my $type = $interface->type;
+    my $className = _className($type);
+    my $implementationClassName = _implementationClassName($type);
     my $filename = $className . ".cpp";
 
     push(@contentsPrefix, $self->_licenseBlock());
 
-    my $classRefGetter = $self->_classRefGetter($idlType);
+    my $classRefGetter = $self->_classRefGetter($type);
     my $parentClassName = _parentClassName($interface);
 
     $contentsIncludes{"${className}.h"} = 1;
@@ -246,7 +258,7 @@ JSClassRef ${className}::${classRefGetter}()
     static JSClassRef jsClass;
     if (!jsClass) {
         JSClassDefinition definition = kJSClassDefinitionEmpty;
-        definition.className = "${idlType}";
+        definition.className = "@{[$type->name]}";
         definition.parentClass = @{[$self->_parentClassRefGetterExpression($interface)]};
         definition.staticValues = staticValues();
         definition.staticFunctions = staticFunctions();
@@ -266,13 +278,13 @@ EOF
     push(@contents, $self->_staticFunctionsGetterImplementation($interface), "\n");
     push(@contents, $self->_staticValuesGetterImplementation($interface));
 
-    if (my @functions = @{$interface->functions}) {
+    if (my @operations = @{$interface->operations}) {
         push(@contents, "\n// Functions\n");
 
-        foreach my $function (@functions) {
+        foreach my $operation (@operations) {
             push(@contents, <<EOF);
 
-JSValueRef ${className}::@{[$function->signature->name]}(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+JSValueRef ${className}::@{[$operation->name]}(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     ${implementationClassName}* impl = to${implementationClassName}(context, thisObject);
     if (!impl)
@@ -280,40 +292,40 @@ JSValueRef ${className}::@{[$function->signature->name]}(JSContextRef context, J
 
 EOF
             my $functionCall;
-            if ($function->signature->extendedAttributes->{"CustomArgumentHandling"}) {
-                $functionCall = "impl->" . $function->signature->name . "(context, argumentCount, arguments, exception)";
+            if ($operation->extendedAttributes->{"CustomArgumentHandling"}) {
+                $functionCall = "impl->" . $operation->name . "(context, argumentCount, arguments, exception)";
             } else {
-                my @parameters = ();
-                my @specifiedParameters = @{$function->parameters};
+                my @arguments = ();
+                my @specifiedArguments = @{$operation->arguments};
 
-                $self->_includeHeaders(\%contentsIncludes, $function->signature->type, $function->signature);
+                $self->_includeHeaders(\%contentsIncludes, $operation->type);
 
-                if ($function->signature->extendedAttributes->{"PassContext"}) {
-                    push(@parameters, "context");
+                if ($operation->extendedAttributes->{"PassContext"}) {
+                    push(@arguments, "context");
                 }
 
-                foreach my $i (0..$#specifiedParameters) {
-                    my $parameter = $specifiedParameters[$i];
+                foreach my $i (0..$#specifiedArguments) {
+                    my $argument = $specifiedArguments[$i];
 
-                    $self->_includeHeaders(\%contentsIncludes, $idlType, $parameter);
+                    $self->_includeHeaders(\%contentsIncludes, $type);
 
-                    push(@contents, "    " . $self->_platformTypeVariableDeclaration($parameter, $parameter->name, "arguments[$i]", "argumentCount > $i") . "\n");
+                    push(@contents, "    " . $self->_platformTypeVariableDeclaration($argument->type, $argument->name, "arguments[$i]", "argumentCount > $i") . "\n");
                     
-                    push(@parameters, $self->_parameterExpression($parameter));
+                    push(@arguments, $self->_argumentExpression($argument));
                 }
 
-                $functionCall = "impl->" . $function->signature->name . "(" . join(", ", @parameters) . ")";
+                $functionCall = "impl->" . $operation->name . "(" . join(", ", @arguments) . ")";
             }
             
-            push(@contents, "    ${functionCall};\n\n") if $function->signature->type eq "void";
-            push(@contents, "    return " . $self->_returnExpression($function->signature, $functionCall) . ";\n}\n");
+            push(@contents, "    ${functionCall};\n\n") if $operation->type->name eq "void";
+            push(@contents, "    return " . $self->_returnExpression($operation->type, $functionCall) . ";\n}\n");
         }
     }
 
     if (my @attributes = @{$interface->attributes}) {
         push(@contents, "\n// Attributes\n");
         foreach my $attribute (@attributes) {
-            $self->_includeHeaders(\%contentsIncludes, $attribute->signature->type, $attribute->signature);
+            $self->_includeHeaders(\%contentsIncludes, $attribute->type);
 
             my $getterName = $self->_getterName($attribute);
             my $getterExpression = "impl->${getterName}()";
@@ -326,7 +338,7 @@ JSValueRef ${className}::${getterName}(JSContextRef context, JSObjectRef object,
     if (!impl)
         return JSValueMakeUndefined(context);
 
-    return @{[$self->_returnExpression($attribute->signature, $getterExpression)]};
+    return @{[$self->_returnExpression($attribute->type, $getterExpression)]};
 }
 EOF
 
@@ -341,7 +353,7 @@ bool ${className}::@{[$self->_setterName($attribute)]}(JSContextRef context, JSO
 
 EOF
 
-                my $platformValue = $self->_platformTypeConstructor($attribute->signature, "value");
+                my $platformValue = $self->_platformTypeConstructor($attribute->type, "value");
 
                 push(@contents, <<EOF);
     impl->@{[$self->_setterName($attribute)]}(${platformValue});
@@ -370,31 +382,28 @@ sub _getterName
 {
     my ($self, $attribute) = @_;
 
-    my $signature = $attribute->signature;
-    my $name = $signature->name;
-
-    return $name;
+    return $attribute->name;
 }
 
 sub _includeHeaders
 {
-    my ($self, $headers, $idlType, $signature) = @_;
+    my ($self, $headers, $type) = @_;
 
-    return unless defined $idlType;
-    return if $idlType eq "boolean";
-    return if $idlType eq "object";
-    return if $$self{codeGenerator}->IsNonPointerType($idlType);
-    return if $$self{codeGenerator}->IsStringType($idlType);
+    return unless defined $type;
+    return if $type->name eq "boolean";
+    return if $type->name eq "object";
+    return if $$self{codeGenerator}->IsPrimitiveType($type);
+    return if $$self{codeGenerator}->IsStringType($type);
 
-    $$headers{_className($idlType) . ".h"} = 1;
-    $$headers{_implementationClassName($idlType) . ".h"} = 1;
+    $$headers{_className($type) . ".h"} = 1;
+    $$headers{_implementationClassName($type) . ".h"} = 1;
 }
 
 sub _implementationClassName
 {
-    my ($idlType) = @_;
+    my ($type) = @_;
 
-    return $idlType;
+    return $type->name;
 }
 
 sub _parentClassName
@@ -416,41 +425,40 @@ sub _parentClassRefGetterExpression
 sub _parentInterface
 {
     my ($interface) = @_;
-    return $interface->parent;
+    return $interface->parentType;
 }
 
 sub _platformType
 {
-    my ($self, $idlType, $signature) = @_;
+    my ($self, $type) = @_;
 
-    return undef unless defined $idlType;
+    return undef unless defined $type;
 
-    return "bool" if $idlType eq "boolean";
-    return "JSValueRef" if $idlType eq "object";
-    return "JSRetainPtr<JSStringRef>" if $$self{codeGenerator}->IsStringType($idlType);
-    return "double" if $$self{codeGenerator}->IsNonPointerType($idlType);
-    return _implementationClassName($idlType);
+    return "bool" if $type->name eq "boolean";
+    return "JSValueRef" if $type->name eq "object";
+    return "JSRetainPtr<JSStringRef>" if $$self{codeGenerator}->IsStringType($type);
+    return "double" if $$self{codeGenerator}->IsPrimitiveType($type);
+    return _implementationClassName($type);
 }
 
 sub _platformTypeConstructor
 {
-    my ($self, $signature, $argumentName) = @_;
+    my ($self, $type, $argumentName) = @_;
 
-    my $idlType = $signature->type;
-
-    return "JSValueToBoolean(context, $argumentName)" if $idlType eq "boolean";
-    return "$argumentName" if $idlType eq "object";
-    return "JSRetainPtr<JSStringRef>(Adopt, JSValueToStringCopy(context, $argumentName, 0))" if $$self{codeGenerator}->IsStringType($idlType);
-    return "JSValueToNumber(context, $argumentName, 0)" if $$self{codeGenerator}->IsNonPointerType($idlType);
-    return "to" . _implementationClassName($idlType) . "(context, $argumentName)";
+    return "JSValueToNullableBoolean(context, $argumentName)" if $type->name eq "boolean" && $type->isNullable;
+    return "JSValueToBoolean(context, $argumentName)" if $type->name eq "boolean";
+    return "$argumentName" if $type->name eq "object";
+    return "JSRetainPtr<JSStringRef>(Adopt, JSValueToStringCopy(context, $argumentName, 0))" if $$self{codeGenerator}->IsStringType($type);
+    return "JSValueToNumber(context, $argumentName, 0)" if $$self{codeGenerator}->IsPrimitiveType($type);
+    return "to" . _implementationClassName($type) . "(context, $argumentName)";
 }
 
 sub _platformTypeVariableDeclaration
 {
-    my ($self, $signature, $variableName, $argumentName, $condition) = @_;
+    my ($self, $type, $variableName, $argumentName, $condition) = @_;
 
-    my $platformType = $self->_platformType($signature->type, $signature);
-    my $constructor = $self->_platformTypeConstructor($signature, $argumentName);
+    my $platformType = $self->_platformType($type);
+    my $constructor = $self->_platformTypeConstructor($type, $argumentName);
 
     my %nonPointerTypes = (
         "bool" => 1,
@@ -475,26 +483,25 @@ sub _platformTypeVariableDeclaration
 
 sub _returnExpression
 {
-    my ($self, $signature, $expression) = @_;
+    my ($self, $returnType, $expression) = @_;
 
-    my $returnIDLType = $signature->type;
-
-    return "JSValueMakeUndefined(context)" if $returnIDLType eq "void";
-    return "JSValueMakeBoolean(context, ${expression})" if $returnIDLType eq "boolean";
-    return "${expression}" if $returnIDLType eq "object";
-    return "JSValueMakeNumber(context, ${expression})" if $$self{codeGenerator}->IsNonPointerType($returnIDLType);
-    return "JSValueMakeStringOrNull(context, ${expression}.get())" if $$self{codeGenerator}->IsStringType($returnIDLType);
+    return "JSValueMakeUndefined(context)" if $returnType->name eq "void";
+    return "JSValueMakeBooleanOrNull(context, ${expression})" if $returnType->name eq "boolean" && $returnType->isNullable;
+    return "JSValueMakeBoolean(context, ${expression})" if $returnType->name eq "boolean";
+    return "${expression}" if $returnType->name eq "object";
+    return "JSValueMakeNumber(context, ${expression})" if $$self{codeGenerator}->IsPrimitiveType($returnType);
+    return "JSValueMakeStringOrNull(context, ${expression}.get())" if $$self{codeGenerator}->IsStringType($returnType);
     return "toJS(context, WTF::getPtr(${expression}))";
 }
 
-sub _parameterExpression
+sub _argumentExpression
 {
-    my ($self, $parameter) = @_;
+    my ($self, $argument) = @_;
 
-    my $idlType = $parameter->type;
-    my $name = $parameter->name;
+    my $type = $argument->type;
+    my $name = $argument->name;
 
-    return "${name}.get()" if $$self{codeGenerator}->IsStringType($idlType);
+    return "${name}.get()" if $$self{codeGenerator}->IsStringType($type);
     return $name;
 }
 
@@ -502,7 +509,7 @@ sub _setterName
 {
     my ($self, $attribute) = @_;
 
-    my $name = $attribute->signature->name;
+    my $name = $attribute->name;
 
     return "set" . $$self{codeGenerator}->WK_ucfirst($name);
 }
@@ -512,21 +519,21 @@ sub _staticFunctionsGetterImplementation
     my ($self, $interface) = @_;
 
     my $mapFunction = sub {
-        my $name = $_->signature->name;
+        my $name = $_->name;
         my @attributes = qw(kJSPropertyAttributeDontDelete kJSPropertyAttributeReadOnly);
-        push(@attributes, "kJSPropertyAttributeDontEnum") if $_->signature->extendedAttributes->{"DontEnum"};
+        push(@attributes, "kJSPropertyAttributeDontEnum") if $_->extendedAttributes->{"DontEnum"};
 
         return  "{ \"$name\", $name, " . join(" | ", @attributes) . " }";
     };
 
-    return $self->_staticFunctionsOrValuesGetterImplementation($interface, "function", "{ 0, 0, 0 }", $mapFunction, $interface->functions);
+    return $self->_staticFunctionsOrValuesGetterImplementation($interface, "function", "{ 0, 0, 0 }", $mapFunction, $interface->operations);
 }
 
 sub _staticFunctionsOrValuesGetterImplementation
 {
-    my ($self, $interface, $functionOrValue, $arrayTerminator, $mapFunction, $functionsOrAttributes) = @_;
+    my ($self, $interface, $functionOrValue, $arrayTerminator, $mapFunction, $operationsOrAttributes) = @_;
 
-    my $className = _className($interface->name);
+    my $className = _className($interface->type);
     my $uppercaseFunctionOrValue = $$self{codeGenerator}->WK_ucfirst($functionOrValue);
 
     my $result = <<EOF;
@@ -534,7 +541,7 @@ const JSStatic${uppercaseFunctionOrValue}* ${className}::static${uppercaseFuncti
 {
 EOF
 
-    my @initializers = map(&$mapFunction, @{$functionsOrAttributes});
+    my @initializers = map(&$mapFunction, @{$operationsOrAttributes});
     return $result . "    return 0;\n}\n" unless @initializers;
 
     $result .= <<EOF
@@ -552,14 +559,14 @@ sub _staticValuesGetterImplementation
     my ($self, $interface) = @_;
 
     my $mapFunction = sub {
-        return if $_->signature->extendedAttributes->{"NoImplementation"};
+        return if $_->extendedAttributes->{"NoImplementation"};
 
-        my $attributeName = $_->signature->name;
+        my $attributeName = $_->name;
         my $getterName = $self->_getterName($_);
         my $setterName = $_->isReadOnly ? "0" : $self->_setterName($_);
         my @attributes = qw(kJSPropertyAttributeDontDelete);
         push(@attributes, "kJSPropertyAttributeReadOnly") if $_->isReadOnly;
-        push(@attributes, "kJSPropertyAttributeDontEnum") if $_->signature->extendedAttributes->{"DontEnum"};
+        push(@attributes, "kJSPropertyAttributeDontEnum") if $_->extendedAttributes->{"DontEnum"};
 
         return "{ \"$attributeName\", $getterName, $setterName, " . join(" | ", @attributes) . " }";
     };

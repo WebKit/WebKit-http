@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmSHA512_h
-#define CryptoAlgorithmSHA512_h
+#pragma once
 
 #include "CryptoAlgorithm.h"
 
@@ -34,21 +33,17 @@ namespace WebCore {
 
 class CryptoAlgorithmSHA512 final : public CryptoAlgorithm {
 public:
-    static const char* const s_name;
-    static const CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::SHA_512;
-
-    static std::unique_ptr<CryptoAlgorithm> create();
-
-    virtual CryptoAlgorithmIdentifier identifier() const override;
-
-    virtual void digest(const CryptoAlgorithmParameters&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback, ExceptionCode&) override;
+    static constexpr const char* s_name = "SHA-512";
+    static constexpr CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::SHA_512;
+    static Ref<CryptoAlgorithm> create();
 
 private:
-    CryptoAlgorithmSHA512();
-    virtual ~CryptoAlgorithmSHA512();
+    CryptoAlgorithmSHA512() = default;
+    CryptoAlgorithmIdentifier identifier() const final;
+    void digest(Vector<uint8_t>&&, VectorCallback&&, ExceptionCallback&&, ScriptExecutionContext&, WorkQueue&) final;
+    ExceptionOr<void> digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback) final;
 };
 
-}
+} // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmSHA512_h

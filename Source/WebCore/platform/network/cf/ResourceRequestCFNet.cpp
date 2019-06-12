@@ -34,7 +34,7 @@
 #include "PublicSuffix.h"
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include "FormDataStreamCFNet.h"
 #include <CFNetwork/CFURLRequestPriv.h>
 #include <wtf/text/CString.h>
@@ -59,7 +59,7 @@ bool ResourceRequest::s_httpPipeliningEnabled = true;
 bool ResourceRequest::s_httpPipeliningEnabled = false;
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 typedef void (*CFURLRequestSetContentDispositionEncodingFallbackArrayFunction)(CFMutableURLRequestRef, CFArrayRef);
 typedef CFArrayRef (*CFURLRequestCopyContentDispositionEncodingFallbackArrayFunction)(CFURLRequestRef);
@@ -139,14 +139,15 @@ void ResourceRequest::doUpdatePlatformRequest()
 
     RetainPtr<CFURLRef> url = ResourceRequest::url().createCFURL();
     RetainPtr<CFURLRef> firstPartyForCookies = ResourceRequest::firstPartyForCookies().createCFURL();
+    double timeoutInterval = ResourceRequestBase::timeoutInterval() ? ResourceRequestBase::timeoutInterval() : ResourceRequestBase::defaultTimeoutInterval();
     if (m_cfRequest) {
         cfRequest = CFURLRequestCreateMutableCopy(0, m_cfRequest.get());
         CFURLRequestSetURL(cfRequest, url.get());
         CFURLRequestSetMainDocumentURL(cfRequest, firstPartyForCookies.get());
         CFURLRequestSetCachePolicy(cfRequest, (CFURLRequestCachePolicy)cachePolicy());
-        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval());
+        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval);
     } else
-        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval(), firstPartyForCookies.get());
+        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval, firstPartyForCookies.get());
 
     CFURLRequestSetHTTPRequestMethod(cfRequest, httpMethod().createCFString().get());
 
@@ -189,20 +190,27 @@ void ResourceRequest::doUpdatePlatformRequest()
 #endif
 }
 
+// FIXME: We should use a switch based on ResourceRequestCachePolicy parameter
+static inline CFURLRequestCachePolicy toPlatformRequestCachePolicy(ResourceRequestCachePolicy policy)
+{
+    return static_cast<CFURLRequestCachePolicy>((policy <= ReturnCacheDataDontLoad) ? policy : ReloadIgnoringCacheData);
+}
+
 void ResourceRequest::doUpdatePlatformHTTPBody()
 {
     CFMutableURLRequestRef cfRequest;
 
     RetainPtr<CFURLRef> url = ResourceRequest::url().createCFURL();
     RetainPtr<CFURLRef> firstPartyForCookies = ResourceRequest::firstPartyForCookies().createCFURL();
+    double timeoutInterval = ResourceRequestBase::timeoutInterval() ? ResourceRequestBase::timeoutInterval() : ResourceRequestBase::defaultTimeoutInterval();
     if (m_cfRequest) {
         cfRequest = CFURLRequestCreateMutableCopy(0, m_cfRequest.get());
         CFURLRequestSetURL(cfRequest, url.get());
         CFURLRequestSetMainDocumentURL(cfRequest, firstPartyForCookies.get());
-        CFURLRequestSetCachePolicy(cfRequest, (CFURLRequestCachePolicy)cachePolicy());
-        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval());
+        CFURLRequestSetCachePolicy(cfRequest, toPlatformRequestCachePolicy(cachePolicy()));
+        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval);
     } else
-        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval(), firstPartyForCookies.get());
+        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval, firstPartyForCookies.get());
 
     FormData* formData = httpBody();
     if (formData && !formData->isEmpty())
@@ -248,7 +256,8 @@ void ResourceRequest::doUpdateResourceRequest()
 
     m_url = CFURLRequestGetURL(m_cfRequest.get());
 
-    m_cachePolicy = (ResourceRequestCachePolicy)CFURLRequestGetCachePolicy(m_cfRequest.get());
+    if (!m_cachePolicy)
+        m_cachePolicy = (ResourceRequestCachePolicy)CFURLRequestGetCachePolicy(m_cfRequest.get());
     m_timeoutInterval = CFURLRequestGetTimeoutInterval(m_cfRequest.get());
     m_firstPartyForCookies = CFURLRequestGetMainDocumentURL(m_cfRequest.get());
     if (CFStringRef method = CFURLRequestCopyHTTPRequestMethod(m_cfRequest.get())) {
@@ -322,7 +331,7 @@ void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 #endif
 }
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest)
 {
@@ -331,6 +340,7 @@ void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRe
     RefPtr<FormData> oldHTTPBody = httpBody();
     bool isHiddenFromInspector = hiddenFromInspector();
     auto oldRequester = requester();
+    auto oldInitiatorIdentifier = initiatorIdentifier();
 
     *this = delegateProvidedRequest;
 
@@ -338,6 +348,7 @@ void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRe
     setHTTPBody(WTFMove(oldHTTPBody));
     setHiddenFromInspector(isHiddenFromInspector);
     setRequester(oldRequester);
+    setInitiatorIdentifier(oldInitiatorIdentifier);
 }
 
 bool ResourceRequest::httpPipeliningEnabled()
@@ -348,39 +359,6 @@ bool ResourceRequest::httpPipeliningEnabled()
 void ResourceRequest::setHTTPPipeliningEnabled(bool flag)
 {
     s_httpPipeliningEnabled = flag;
-}
-
-#if ENABLE(CACHE_PARTITIONING)
-String ResourceRequest::partitionName(const String& domain)
-{
-    if (domain.isNull())
-        return emptyString();
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-    String highLevel = topPrivatelyControlledDomain(domain);
-    if (highLevel.isNull())
-        return emptyString();
-    return highLevel;
-#else
-    return domain;
-#endif
-}
-#endif
-
-std::unique_ptr<CrossThreadResourceRequestData> ResourceRequest::doPlatformCopyData(std::unique_ptr<CrossThreadResourceRequestData> data) const
-{
-#if ENABLE(CACHE_PARTITIONING)
-    data->m_cachePartition = m_cachePartition;
-#endif
-    return data;
-}
-
-void ResourceRequest::doPlatformAdopt(std::unique_ptr<CrossThreadResourceRequestData> data)
-{
-#if ENABLE(CACHE_PARTITIONING)
-    m_cachePartition = data->m_cachePartition;
-#else
-    UNUSED_PARAM(data);
-#endif
 }
 
 // FIXME: It is confusing that this function both sets connection count and determines maximum request count at network layer. This can and should be done separately.

@@ -4,7 +4,7 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 # notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above
@@ -14,7 +14,7 @@
 #     * Neither the name of Google Inc. nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -33,6 +33,8 @@ import traceback
 
 from datetime import datetime, timedelta
 
+from webkitpy.common.host import Host
+from webkitpy.common.system import logutils
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.system.outputtee import OutputTee
 
@@ -47,25 +49,25 @@ class TerminateQueue(Exception):
 
 class QueueEngineDelegate:
     def queue_log_path(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def work_item_log_path(self, work_item):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def begin_work_queue(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def should_continue_work_queue(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def next_work_item(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def process_work_item(self, work_item):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def handle_unexpected_error(self, work_item, message):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
 
 class QueueEngine:
@@ -124,14 +126,18 @@ class QueueEngine:
         return 0
 
     def _stopping(self, message):
-        _log.info("\n%s" % message)
+        _log.info(message)
         self._delegate.stop_work_queue(message)
+        logging.getLogger("webkitpy").removeHandler(self._log_handler)
         # Be careful to shut down our OutputTee or the unit tests will be unhappy.
         self._ensure_work_log_closed()
         self._output_tee.remove_log(self._queue_log)
 
     def _begin_logging(self):
-        self._queue_log = self._output_tee.add_log(self._delegate.queue_log_path())
+        _queue_log_path = self._delegate.queue_log_path()
+        # We are using logging.getLogger("webkitpy") instead of _log since we want to capture all messages logged from webkitpy modules.
+        self._log_handler = logutils.configure_logger_to_log_to_file(logging.getLogger("webkitpy"), _queue_log_path, Host().filesystem)
+        self._queue_log = self._output_tee.add_log(_queue_log_path)
         self._work_log = None
 
     def _open_work_log(self, work_item):

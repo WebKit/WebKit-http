@@ -2,7 +2,7 @@
  * This file is part of the internal font implementation.  It should not be included by anyone other than
  * FontMac.cpp, FontWin.cpp and Font.cpp.
  *
- * Copyright (C) 2006, 2007, 2008 Apple Inc.
+ * Copyright (C) 2006-2008, 2016 Apple Inc.
  * Copyright (C) 2007 Alp Toker
  * Copyright (C) 2008, 2010, 2011 Brent Fulgham
  *
@@ -46,37 +46,34 @@ void FontPlatformData::platformDataInit(HFONT font, float size, HDC hdc, WCHAR* 
     cairo_matrix_init_identity(&ctm);
     cairo_matrix_init_scale(&sizeMatrix, size, size);
 
-    static cairo_font_options_t* fontOptions = 0;
+    static cairo_font_options_t* fontOptions = nullptr;
     if (!fontOptions) {
        fontOptions = cairo_font_options_create();
        cairo_font_options_set_antialias(fontOptions, CAIRO_ANTIALIAS_SUBPIXEL);
     }
 
-    m_scaledFont = cairo_scaled_font_create(fontFace, &sizeMatrix, &ctm, fontOptions);
+    m_scaledFont = adoptRef(cairo_scaled_font_create(fontFace, &sizeMatrix, &ctm, fontOptions));
     cairo_font_face_destroy(fontFace);
+
+    if (!m_useGDI && m_size)
+        m_isSystemFont = !wcscmp(faceName, L"Lucida Grande");
 }
 
 FontPlatformData::FontPlatformData(GDIObject<HFONT> font, cairo_font_face_t* fontFace, float size, bool bold, bool oblique)
     : m_font(SharedGDIObject<HFONT>::create(WTFMove(font)))
     , m_size(size)
-    , m_orientation(Horizontal)
-    , m_widthVariant(RegularWidth)
-    , m_scaledFont(0)
-    , m_isColorBitmapFont(false)
-    , m_syntheticBold(bold)
     , m_syntheticOblique(oblique)
-    , m_useGDI(false)
 {
-   cairo_matrix_t fontMatrix;
-   cairo_matrix_init_scale(&fontMatrix, size, size);
-   cairo_matrix_t ctm;
-   cairo_matrix_init_identity(&ctm);
-   cairo_font_options_t* options = cairo_font_options_create();
+    cairo_matrix_t fontMatrix;
+    cairo_matrix_init_scale(&fontMatrix, size, size);
+    cairo_matrix_t ctm;
+    cairo_matrix_init_identity(&ctm);
+    cairo_font_options_t* options = cairo_font_options_create();
 
-   // We force antialiasing and disable hinting to provide consistent
-   // typographic qualities for custom fonts on all platforms.
-   cairo_font_options_set_hint_style(options, CAIRO_HINT_STYLE_NONE);
-   cairo_font_options_set_antialias(options, CAIRO_ANTIALIAS_BEST);
+    // We force antialiasing and disable hinting to provide consistent
+    // typographic qualities for custom fonts on all platforms.
+    cairo_font_options_set_hint_style(options, CAIRO_HINT_STYLE_NONE);
+    cairo_font_options_set_antialias(options, CAIRO_ANTIALIAS_BEST);
 
     if (syntheticOblique()) {
         static const float syntheticObliqueSkew = -tanf(14 * acosf(0) / 90);
@@ -84,37 +81,13 @@ FontPlatformData::FontPlatformData(GDIObject<HFONT> font, cairo_font_face_t* fon
         cairo_matrix_multiply(&fontMatrix, &skew, &fontMatrix);
     }
 
-   m_scaledFont = cairo_scaled_font_create(fontFace, &fontMatrix, &ctm, options);
-   cairo_font_options_destroy(options);
+    m_scaledFont = adoptRef(cairo_scaled_font_create(fontFace, &fontMatrix, &ctm, options));
+    cairo_font_options_destroy(options);
 }
 
-FontPlatformData::~FontPlatformData()
+unsigned FontPlatformData::hash() const
 {
-    if (m_scaledFont)
-        cairo_scaled_font_destroy(m_scaledFont);
-}
-
-void FontPlatformData::platformDataInit(const FontPlatformData& source)
-{
-    m_font = source.m_font;
-    m_useGDI = source.m_useGDI;
-    m_scaledFont = 0;
-
-    if (source.m_scaledFont)
-        m_scaledFont = cairo_scaled_font_reference(source.m_scaledFont);
-}
-
-const FontPlatformData& FontPlatformData::platformDataAssign(const FontPlatformData& other)
-{
-    m_font = other.m_font;
-    m_useGDI = other.m_useGDI;
-
-    if (m_scaledFont)
-        cairo_scaled_font_destroy(m_scaledFont);
-
-    m_scaledFont = cairo_scaled_font_reference(other.m_scaledFont);
-
-    return *this;
+    return PtrHash<cairo_scaled_font_t*>::hash(m_scaledFont.get());
 }
 
 bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const

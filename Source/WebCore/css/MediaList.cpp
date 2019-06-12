@@ -1,6 +1,6 @@
 /*
  * (C) 1999-2003 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2004, 2006, 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -17,19 +17,17 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
 #include "config.h"
 #include "MediaList.h"
 
 #include "CSSImportRule.h"
-#include "CSSParser.h"
 #include "CSSStyleSheet.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "ExceptionCode.h"
-#include "MediaFeatureNames.h"
 #include "MediaQuery.h"
-#include "MediaQueryExp.h"
-#include "ScriptableDocumentParser.h"
+#include "MediaQueryParser.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -63,135 +61,87 @@ namespace WebCore {
  * throw SYNTAX_ERR exception.
  */
     
-MediaQuerySet::MediaQuerySet()
-    : m_fallbackToDescriptor(false)
-    , m_lastLine(0)
+Ref<MediaQuerySet> MediaQuerySet::create(const String& mediaString)
 {
+    if (mediaString.isEmpty())
+        return MediaQuerySet::create();
+    
+    return MediaQueryParser::parseMediaQuerySet(mediaString).releaseNonNull();
 }
 
-MediaQuerySet::MediaQuerySet(const String& mediaString, bool fallbackToDescriptor)
-    : m_fallbackToDescriptor(fallbackToDescriptor)
-    , m_lastLine(0)
+MediaQuerySet::MediaQuerySet()
+    : m_lastLine(0)
 {
-    bool success = parse(mediaString);
-    // FIXME: parsing can fail. The problem with failing constructor is that
-    // we would need additional flag saying MediaList is not valid
-    // Parse can fail only when fallbackToDescriptor == false, i.e when HTML4 media descriptor
-    // forward-compatible syntax is not in use.
-    // DOMImplementationCSS seems to mandate that media descriptors are used
-    // for both html and svg, even though svg:style doesn't use media descriptors
-    // Currently the only places where parsing can fail are
-    // creating <svg:style>, creating css media / import rules from js
-    
-    // FIXME: This doesn't make much sense.
-    if (!success)
-        parse("invalid");
 }
 
 MediaQuerySet::MediaQuerySet(const MediaQuerySet& o)
-    : RefCounted<MediaQuerySet>()
-    , m_fallbackToDescriptor(o.m_fallbackToDescriptor)
+    : RefCounted()
     , m_lastLine(o.m_lastLine)
-    , m_queries(o.m_queries.size())
+    , m_queries(o.m_queries)
 {
-    for (unsigned i = 0; i < m_queries.size(); ++i)
-        m_queries[i] = o.m_queries[i]->copy();
 }
 
 MediaQuerySet::~MediaQuerySet()
 {
 }
 
-static String parseMediaDescriptor(const String& string)
+bool MediaQuerySet::set(const String& mediaString)
 {
-    // http://www.w3.org/TR/REC-html40/types.html#type-media-descriptors
-    // "Each entry is truncated just before the first character that isn't a
-    // US ASCII letter [a-zA-Z] (ISO 10646 hex 41-5a, 61-7a), digit [0-9] (hex 30-39),
-    // or hyphen (hex 2d)."
-    unsigned length = string.length();
-    unsigned i = 0;
-    for (; i < length; ++i) {
-        unsigned short c = string[i];
-        if (! ((c >= 'a' && c <= 'z')
-               || (c >= 'A' && c <= 'Z')
-               || (c >= '1' && c <= '9')
-               || (c == '-')))
-            break;
-    }
-    return string.left(i);
-}
-
-bool MediaQuerySet::parse(const String& mediaString)
-{
-    CSSParser parser(CSSStrictMode);
-    
-    Vector<std::unique_ptr<MediaQuery>> result;
-    Vector<String> list;
-    mediaString.split(',', list);
-    for (unsigned i = 0; i < list.size(); ++i) {
-        String medium = list[i].stripWhiteSpace();
-        if (medium.isEmpty()) {
-            if (!m_fallbackToDescriptor)
-                return false;
-            continue;
-        }
-        std::unique_ptr<MediaQuery> mediaQuery = parser.parseMediaQuery(medium);
-        if (!mediaQuery) {
-            if (!m_fallbackToDescriptor)
-                return false;
-            String mediaDescriptor = parseMediaDescriptor(medium);
-            if (mediaDescriptor.isNull())
-                continue;
-            mediaQuery = std::make_unique<MediaQuery>(MediaQuery::None, mediaDescriptor, nullptr);
-        }
-        result.append(WTFMove(mediaQuery));
-    }
-    // ",,,," falls straight through, but is not valid unless fallback
-    if (!m_fallbackToDescriptor && list.isEmpty()) {
-        String strippedMediaString = mediaString.stripWhiteSpace();
-        if (!strippedMediaString.isEmpty())
-            return false;
-    }
-    m_queries = WTFMove(result);
+    auto result = create(mediaString);
+    m_queries.swap(result->m_queries);
     return true;
 }
 
 bool MediaQuerySet::add(const String& queryString)
 {
-    CSSParser parser(CSSStrictMode);
-
-    std::unique_ptr<MediaQuery> parsedQuery = parser.parseMediaQuery(queryString);
-    if (!parsedQuery && m_fallbackToDescriptor) {
-        String medium = parseMediaDescriptor(queryString);
-        if (!medium.isNull())
-            parsedQuery = std::make_unique<MediaQuery>(MediaQuery::None, medium, nullptr);
+    // To "parse a media query" for a given string means to follow "the parse
+    // a media query list" steps and return "null" if more than one media query
+    // is returned, or else the returned media query.
+    auto result = create(queryString);
+    
+    // Only continue if exactly one media query is found, as described above.
+    if (result->m_queries.size() != 1)
+        return true;
+    
+    // If comparing with any of the media queries in the collection of media
+    // queries returns true terminate these steps.
+    for (size_t i = 0; i < m_queries.size(); ++i) {
+        if (m_queries[i] == result->m_queries[0])
+            return true;
     }
-    if (!parsedQuery)
-        return false;
-
-    m_queries.append(WTFMove(parsedQuery));
+    
+    m_queries.append(result->m_queries[0]);
     return true;
 }
 
 bool MediaQuerySet::remove(const String& queryStringToRemove)
 {
-    CSSParser parser(CSSStrictMode);
-
-    std::unique_ptr<MediaQuery> parsedQuery = parser.parseMediaQuery(queryStringToRemove);
-    if (!parsedQuery && m_fallbackToDescriptor) {
-        String medium = parseMediaDescriptor(queryStringToRemove);
-        if (!medium.isNull())
-            parsedQuery = std::make_unique<MediaQuery>(MediaQuery::None, medium, nullptr);
-    }
-    if (!parsedQuery)
-        return false;
+    // To "parse a media query" for a given string means to follow "the parse
+    // a media query list" steps and return "null" if more than one media query
+    // is returned, or else the returned media query.
+    auto result = create(queryStringToRemove);
     
-    return m_queries.removeFirstMatching([&parsedQuery] (const std::unique_ptr<MediaQuery>& query) {
-        return *query == *parsedQuery;
-    });
+    // Only continue if exactly one media query is found, as described above.
+    if (result->m_queries.size() != 1)
+        return true;
+    
+    // Remove any media query from the collection of media queries for which
+    // comparing with the media query returns true.
+    bool found = false;
+    
+    // Using signed int here, since for the first value, --i will result in -1.
+    for (int i = 0; i < (int)m_queries.size(); ++i) {
+        if (m_queries[i] == result->m_queries[0]) {
+            m_queries.remove(i);
+            --i;
+            found = true;
+        }
+    }
+    
+    return found;
 }
 
-void MediaQuerySet::addMediaQuery(std::unique_ptr<MediaQuery> mediaQuery)
+void MediaQuerySet::addMediaQuery(MediaQuery&& mediaQuery)
 {
     m_queries.append(WTFMove(mediaQuery));
 }
@@ -199,28 +149,31 @@ void MediaQuerySet::addMediaQuery(std::unique_ptr<MediaQuery> mediaQuery)
 String MediaQuerySet::mediaText() const
 {
     StringBuilder text;
-    
-    bool first = true;
-    for (size_t i = 0; i < m_queries.size(); ++i) {
-        if (!first)
+    bool needComma = false;
+    for (auto& query : m_queries) {
+        if (needComma)
             text.appendLiteral(", ");
-        else
-            first = false;
-        text.append(m_queries[i]->cssText());
+        text.append(query.cssText());
+        needComma = true;
     }
     return text.toString();
+}
+
+void MediaQuerySet::shrinkToFit()
+{
+    m_queries.shrinkToFit();
+    for (auto& query : m_queries)
+        query.shrinkToFit();
 }
 
 MediaList::MediaList(MediaQuerySet* mediaQueries, CSSStyleSheet* parentSheet)
     : m_mediaQueries(mediaQueries)
     , m_parentStyleSheet(parentSheet)
-    , m_parentRule(0)
 {
 }
 
 MediaList::MediaList(MediaQuerySet* mediaQueries, CSSRule* parentRule)
     : m_mediaQueries(mediaQueries)
-    , m_parentStyleSheet(0)
     , m_parentRule(parentRule)
 {
 }
@@ -229,52 +182,47 @@ MediaList::~MediaList()
 {
 }
 
-void MediaList::setMediaText(const String& value, ExceptionCode& ec)
+ExceptionOr<void> MediaList::setMediaText(const String& value)
 {
     CSSStyleSheet::RuleMutationScope mutationScope(m_parentRule);
-
-    bool success = m_mediaQueries->parse(value);
-    if (!success) {
-        ec = SYNTAX_ERR;
-        return;
-    }
+    m_mediaQueries->set(value);
     if (m_parentStyleSheet)
         m_parentStyleSheet->didMutate();
+    return { };
 }
 
 String MediaList::item(unsigned index) const
 {
     auto& queries = m_mediaQueries->queryVector();
     if (index < queries.size())
-        return queries[index]->cssText();
+        return queries[index].cssText();
     return String();
 }
 
-void MediaList::deleteMedium(const String& medium, ExceptionCode& ec)
+ExceptionOr<void> MediaList::deleteMedium(const String& medium)
 {
     CSSStyleSheet::RuleMutationScope mutationScope(m_parentRule);
 
     bool success = m_mediaQueries->remove(medium);
-    if (!success) {
-        ec = NOT_FOUND_ERR;
-        return;
-    }
+    if (!success)
+        return Exception { NOT_FOUND_ERR };
     if (m_parentStyleSheet)
         m_parentStyleSheet->didMutate();
+    return { };
 }
 
-void MediaList::appendMedium(const String& medium, ExceptionCode& ec)
+ExceptionOr<void> MediaList::appendMedium(const String& medium)
 {
     CSSStyleSheet::RuleMutationScope mutationScope(m_parentRule);
 
     bool success = m_mediaQueries->add(medium);
     if (!success) {
         // FIXME: Should this really be INVALID_CHARACTER_ERR?
-        ec = INVALID_CHARACTER_ERR;
-        return;
+        return Exception { INVALID_CHARACTER_ERR };
     }
     if (m_parentStyleSheet)
         m_parentStyleSheet->didMutate();
+    return { };
 }
 
 void MediaList::reattach(MediaQuerySet* mediaQueries)
@@ -284,28 +232,26 @@ void MediaList::reattach(MediaQuerySet* mediaQueries)
 }
 
 #if ENABLE(RESOLUTION_MEDIA_QUERY)
-static void addResolutionWarningMessageToConsole(Document* document, const String& serializedExpression, const CSSPrimitiveValue* value)
-{
-    ASSERT(document);
-    ASSERT(value);
 
-    static NeverDestroyed<String> mediaQueryMessage(ASCIILiteral("Consider using 'dppx' units instead of '%replacementUnits%', as in CSS '%replacementUnits%' means dots-per-CSS-%lengthUnit%, not dots-per-physical-%lengthUnit%, so does not correspond to the actual '%replacementUnits%' of a screen. In media query expression: "));
-    static NeverDestroyed<String> mediaValueDPI(ASCIILiteral("dpi"));
-    static NeverDestroyed<String> mediaValueDPCM(ASCIILiteral("dpcm"));
-    static NeverDestroyed<String> lengthUnitInch(ASCIILiteral("inch"));
-    static NeverDestroyed<String> lengthUnitCentimeter(ASCIILiteral("centimeter"));
+static void addResolutionWarningMessageToConsole(Document& document, const String& serializedExpression, const CSSPrimitiveValue& value)
+{
+    static NeverDestroyed<String> mediaQueryMessage(MAKE_STATIC_STRING_IMPL("Consider using 'dppx' units instead of '%replacementUnits%', as in CSS '%replacementUnits%' means dots-per-CSS-%lengthUnit%, not dots-per-physical-%lengthUnit%, so does not correspond to the actual '%replacementUnits%' of a screen. In media query expression: "));
+    static NeverDestroyed<String> mediaValueDPI(MAKE_STATIC_STRING_IMPL("dpi"));
+    static NeverDestroyed<String> mediaValueDPCM(MAKE_STATIC_STRING_IMPL("dpcm"));
+    static NeverDestroyed<String> lengthUnitInch(MAKE_STATIC_STRING_IMPL("inch"));
+    static NeverDestroyed<String> lengthUnitCentimeter(MAKE_STATIC_STRING_IMPL("centimeter"));
 
     String message;
-    if (value->isDotsPerInch())
-        message = String(mediaQueryMessage).replace("%replacementUnits%", mediaValueDPI).replace("%lengthUnit%", lengthUnitInch);
-    else if (value->isDotsPerCentimeter())
-        message = String(mediaQueryMessage).replace("%replacementUnits%", mediaValueDPCM).replace("%lengthUnit%", lengthUnitCentimeter);
+    if (value.isDotsPerInch())
+        message = mediaQueryMessage.get().replace("%replacementUnits%", mediaValueDPI).replace("%lengthUnit%", lengthUnitInch);
+    else if (value.isDotsPerCentimeter())
+        message = mediaQueryMessage.get().replace("%replacementUnits%", mediaValueDPCM).replace("%lengthUnit%", lengthUnitCentimeter);
     else
         ASSERT_NOT_REACHED();
 
     message.append(serializedExpression);
 
-    document->addConsoleMessage(MessageSource::CSS, MessageLevel::Debug, message);
+    document.addConsoleMessage(MessageSource::CSS, MessageLevel::Debug, message);
 }
 
 void reportMediaQueryWarningIfNeeded(Document* document, const MediaQuerySet* mediaQuerySet)
@@ -313,31 +259,23 @@ void reportMediaQueryWarningIfNeeded(Document* document, const MediaQuerySet* me
     if (!mediaQuerySet || !document)
         return;
 
-    auto& mediaQueries = mediaQuerySet->queryVector();
-    const size_t queryCount = mediaQueries.size();
-
-    if (!queryCount)
-        return;
-
-    for (size_t i = 0; i < queryCount; ++i) {
-        const MediaQuery* query = mediaQueries[i].get();
-        String mediaType = query->mediaType();
-        if (!query->ignored() && !equalLettersIgnoringASCIICase(mediaType, "print")) {
-            auto& expressions = query->expressions();
-            for (size_t j = 0; j < expressions.size(); ++j) {
-                const MediaQueryExp* exp = expressions.at(j).get();
-                if (exp->mediaFeature() == MediaFeatureNames::resolutionMediaFeature || exp->mediaFeature() == MediaFeatureNames::max_resolutionMediaFeature || exp->mediaFeature() == MediaFeatureNames::min_resolutionMediaFeature) {
-                    CSSValue* cssValue =  exp->value();
-                    if (is<CSSPrimitiveValue>(cssValue)) {
-                        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*cssValue);
+    for (auto& query : mediaQuerySet->queryVector()) {
+        if (!query.ignored() && !equalLettersIgnoringASCIICase(query.mediaType(), "print")) {
+            auto& expressions = query.expressions();
+            for (auto& expression : expressions) {
+                if (expression.mediaFeature() == MediaFeatureNames::resolution || expression.mediaFeature() == MediaFeatureNames::maxResolution || expression.mediaFeature() == MediaFeatureNames::minResolution) {
+                    auto* value = expression.value();
+                    if (is<CSSPrimitiveValue>(value)) {
+                        auto& primitiveValue = downcast<CSSPrimitiveValue>(*value);
                         if (primitiveValue.isDotsPerInch() || primitiveValue.isDotsPerCentimeter())
-                            addResolutionWarningMessageToConsole(document, mediaQuerySet->mediaText(), &primitiveValue);
+                            addResolutionWarningMessageToConsole(*document, mediaQuerySet->mediaText(), primitiveValue);
                     }
                 }
             }
         }
     }
 }
+
 #endif
 
 }

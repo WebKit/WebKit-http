@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,9 +28,10 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirArgInlines.h"
 #include "AirCode.h"
 #include "AirInstInlines.h"
-#include "AirLiveness.h"
+#include "AirRegLiveness.h"
 #include "AirPhaseScope.h"
 
 namespace JSC { namespace B3 { namespace Air {
@@ -52,7 +53,7 @@ void reportUsedRegisters(Code& code)
             if (!inst.hasNonArgEffects()) {
                 bool canDelete = true;
                 inst.forEachArg(
-                    [&] (Arg& arg, Arg::Role role, Arg::Type, Arg::Width) {
+                    [&] (Arg& arg, Arg::Role role, Bank, Width) {
                         if (Arg::isEarlyDef(role)) {
                             canDelete = false;
                             return;
@@ -72,7 +73,7 @@ void reportUsedRegisters(Code& code)
                     inst = Inst();
             }
             
-            if (inst.opcode == Patch) {
+            if (inst.kind.opcode == Patch) {
                 RegisterSet registerSet;
                 for (Reg reg : localCalc.live())
                     registerSet.set(reg);

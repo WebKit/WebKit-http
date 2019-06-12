@@ -42,9 +42,9 @@ Ref<WebArchiveResource> WebArchiveResource::create(API::Data* data, const String
     return adoptRef(*new WebArchiveResource(data, URL, MIMEType, textEncoding));
 }
 
-Ref<WebArchiveResource> WebArchiveResource::create(PassRefPtr<ArchiveResource> archiveResource)
+Ref<WebArchiveResource> WebArchiveResource::create(RefPtr<ArchiveResource>&& archiveResource)
 {
-    return adoptRef(*new WebArchiveResource(archiveResource));
+    return adoptRef(*new WebArchiveResource(WTFMove(archiveResource)));
 }
 
 WebArchiveResource::WebArchiveResource(API::Data* data, const String& URL, const String& MIMEType, const String& textEncoding)
@@ -52,8 +52,8 @@ WebArchiveResource::WebArchiveResource(API::Data* data, const String& URL, const
 {
 }
 
-WebArchiveResource::WebArchiveResource(PassRefPtr<ArchiveResource> archiveResource)
-    : m_archiveResource(archiveResource)
+WebArchiveResource::WebArchiveResource(RefPtr<ArchiveResource>&& archiveResource)
+    : m_archiveResource(WTFMove(archiveResource))
 {
 }
 
@@ -69,7 +69,7 @@ static void releaseCFData(unsigned char*, const void* data)
 
 Ref<API::Data> WebArchiveResource::data()
 {
-    RetainPtr<CFDataRef> cfData = m_archiveResource->data()->createCFData();
+    RetainPtr<CFDataRef> cfData = m_archiveResource->data().createCFData();
 
     // Balanced by CFRelease in releaseCFData.
     CFRetain(cfData.get());

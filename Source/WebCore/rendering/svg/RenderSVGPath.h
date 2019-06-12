@@ -23,8 +23,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGPath_h
-#define RenderSVGPath_h
+#pragma once
 
 #include "RenderSVGShape.h"
 
@@ -32,25 +31,25 @@ namespace WebCore {
 
 class RenderSVGPath final : public RenderSVGShape {
 public:
-    RenderSVGPath(SVGGraphicsElement&, Ref<RenderStyle>&&);
+    RenderSVGPath(SVGGraphicsElement&, RenderStyle&&);
     virtual ~RenderSVGPath();
 
 private:
-    virtual bool isSVGPath() const override { return true; }
-    virtual const char* renderName() const override { return "RenderSVGPath"; }
+    bool isSVGPath() const override { return true; }
+    const char* renderName() const override { return "RenderSVGPath"; }
 
-    virtual void updateShapeFromElement() override;
+    void updateShapeFromElement() override;
     FloatRect calculateUpdatedStrokeBoundingBox() const;
 
-    virtual void strokeShape(GraphicsContext&) const override;
-    virtual bool shapeDependentStrokeContains(const FloatPoint&) override;
+    void strokeShape(GraphicsContext&) const override;
+    bool shapeDependentStrokeContains(const FloatPoint&) override;
 
     bool shouldStrokeZeroLengthSubpath() const;
     Path* zeroLengthLinecapPath(const FloatPoint&) const;
     FloatRect zeroLengthSubpathRect(const FloatPoint&, float) const;
     void updateZeroLengthSubpaths();
 
-    virtual bool isRenderingDisabled() const override;
+    bool isRenderingDisabled() const override;
 
     Vector<FloatPoint> m_zeroLengthLinecapLocations;
 };
@@ -58,5 +57,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGPath, isSVGPath())
-
-#endif // RenderSVGPath_h

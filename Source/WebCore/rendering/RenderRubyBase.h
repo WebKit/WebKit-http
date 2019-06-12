@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderRubyBase_h
-#define RenderRubyBase_h
+#pragma once
 
 #include "RenderBlockFlow.h"
 
@@ -39,10 +38,10 @@ class RenderRubyRun;
 
 class RenderRubyBase final : public RenderBlockFlow {
 public:
-    RenderRubyBase(Document&, Ref<RenderStyle>&&);
+    RenderRubyBase(Document&, RenderStyle&&);
     virtual ~RenderRubyBase();
     
-    virtual const char* renderName() const override { return "RenderRubyBase (anonymous)"; }
+    const char* renderName() const override { return "RenderRubyBase (anonymous)"; }
     
     RenderRubyRun* rubyRun() const;
 
@@ -57,14 +56,14 @@ public:
         m_isAfterExpansion = true;
     }
     
-    virtual void cachePriorCharactersIfNeeded(const LazyLineBreakIterator&) override;
+    void cachePriorCharactersIfNeeded(const LazyLineBreakIterator&) override;
 
 private:
-    virtual bool isRubyBase() const override { return true; }
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
-    virtual ETextAlign textAlignmentForLine(bool endsWithSoftBreak) const override;
-    virtual void adjustInlineDirectionLineBounds(int expansionOpportunityCount, float& logicalLeft, float& logicalWidth) const override;
-    void mergeChildrenWithBase(RenderRubyBase* toBlock);
+    bool isRubyBase() const override { return true; }
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
+    ETextAlign textAlignmentForLine(bool endsWithSoftBreak) const override;
+    void adjustInlineDirectionLineBounds(int expansionOpportunityCount, float& logicalLeft, float& logicalWidth) const override;
+    void mergeChildrenWithBase(RenderRubyBase& toBlock);
 
     void moveChildren(RenderRubyBase* toBase, RenderObject* beforeChild = 0);
     void moveInlineChildren(RenderRubyBase* toBase, RenderObject* beforeChild = 0);
@@ -80,5 +79,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderRubyBase, isRubyBase())
-
-#endif // RenderRubyBase_h

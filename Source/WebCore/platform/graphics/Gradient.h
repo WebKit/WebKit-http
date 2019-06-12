@@ -29,9 +29,9 @@
 #define Gradient_h
 
 #include "AffineTransform.h"
+#include "Color.h"
 #include "FloatPoint.h"
 #include "GraphicsTypes.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -47,6 +47,10 @@ QT_BEGIN_NAMESPACE
 class QGradient;
 QT_END_NAMESPACE
 typedef QGradient* PlatformGradient;
+#elif USE(DIRECT2D)
+interface ID2D1Brush;
+interface ID2D1RenderTarget;
+typedef ID2D1Brush* PlatformGradient;
 #elif USE(CAIRO)
 typedef struct _cairo_pattern cairo_pattern_t;
 typedef cairo_pattern_t* PlatformGradient;
@@ -135,15 +139,16 @@ namespace WebCore {
         PlatformGradient platformGradient();
 #endif
 
+        // FIXME: ExtendedColor - A color stop needs a notion of color space.
         struct ColorStop {
-            float stop;
-            float red;
-            float green;
-            float blue;
-            float alpha;
+            float offset { 0 };
+            Color color;
 
-            ColorStop() : stop(0), red(0), green(0), blue(0), alpha(0) { }
-            ColorStop(float s, float r, float g, float b, float a) : stop(s), red(r), green(g), blue(b), alpha(a) { }
+            ColorStop() { }
+            ColorStop(float offset, const Color& color)
+                : offset(offset)
+                , color(color)
+                { }
         };
 
         void setStopsSorted(bool s) { m_stopsSorted = s; }
@@ -165,6 +170,8 @@ namespace WebCore {
 #if USE(CG)
         void paint(CGContextRef);
         void paint(GraphicsContext*);
+#elif USE(DIRECT2D)
+        PlatformGradient createPlatformGradientIfNecessary(ID2D1RenderTarget*);
 #elif USE(CAIRO)
         PlatformGradient platformGradient(float globalAlpha);
 #endif
@@ -173,10 +180,14 @@ namespace WebCore {
         WEBCORE_EXPORT Gradient(const FloatPoint& p0, const FloatPoint& p1);
         Gradient(const FloatPoint& p0, float r0, const FloatPoint& p1, float r1, float aspectRatio);
 
-        void platformInit() { m_gradient = 0; }
+        void platformInit() { m_gradient = nullptr; }
         void platformDestroy();
 
         void sortStopsIfNecessary();
+
+#if USE(DIRECT2D)
+        void generateGradient(ID2D1RenderTarget*);
+#endif
 
         // Keep any parameters relevant to rendering in sync with the structure in Gradient::hash().
         bool m_radial;

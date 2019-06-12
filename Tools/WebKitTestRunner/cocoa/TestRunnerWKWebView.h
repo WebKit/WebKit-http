@@ -31,17 +31,29 @@
 
 #if PLATFORM(IOS)
 
+@property (nonatomic, copy) void (^didStartFormControlInteractionCallback)(void);
+@property (nonatomic, copy) void (^didEndFormControlInteractionCallback)(void);
+@property (nonatomic, copy) void (^didShowForcePressPreviewCallback)(void);
+@property (nonatomic, copy) void (^didDismissForcePressPreviewCallback)(void);
 @property (nonatomic, copy) void (^willBeginZoomingCallback)(void);
 @property (nonatomic, copy) void (^didEndZoomingCallback)(void);
 @property (nonatomic, copy) void (^didShowKeyboardCallback)(void);
 @property (nonatomic, copy) void (^didHideKeyboardCallback)(void);
 @property (nonatomic, copy) void (^didEndScrollingCallback)(void);
-
-- (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration;
-- (void)dealloc;
+@property (nonatomic, copy) void (^rotationDidEndCallback)(void);
+@property (nonatomic, copy) NSString *accessibilitySpeakSelectionContent;
 
 - (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler;
+- (void)accessibilityRetrieveSpeakSelectionContentWithCompletionHandler:(void (^)(void))completionHandler;
+- (void)_didEndRotation;
+
+@property (nonatomic, assign) UIEdgeInsets overrideSafeAreaInsets;
+
+@property (nonatomic, assign) BOOL usesSafariLikeRotation;
+
 #endif
+
+@property (nonatomic, retain, setter=_setStableStateOverride:) NSNumber *_stableStateOverride;
 
 @end
 

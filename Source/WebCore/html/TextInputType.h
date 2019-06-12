@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextInputType_h
-#define TextInputType_h
+#pragma once
 
 #include "BaseTextInputType.h"
 
@@ -40,9 +39,7 @@ public:
     explicit TextInputType(HTMLInputElement& element) : BaseTextInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
+    const AtomicString& formControlType() const override;
 };
 
 } // namespace WebCore
-
-#endif // TextInputType_h

@@ -30,7 +30,6 @@
 
 #include "InbandTextTrackPrivate.h"
 #include "InbandTextTrackPrivateClient.h"
-#include <wtf/text/StringBuilder.h>
 
 typedef const struct opaqueCMFormatDescription* CMFormatDescriptionRef;
 
@@ -51,9 +50,9 @@ class InbandTextTrackPrivateAVF : public InbandTextTrackPrivate {
 public:
     virtual ~InbandTextTrackPrivateAVF();
 
-    virtual void setMode(InbandTextTrackPrivate::Mode) override;
+    void setMode(InbandTextTrackPrivate::Mode) override;
 
-    virtual int trackIndex() const override { return m_index; }
+    int trackIndex() const override { return m_index; }
     void setTextTrackIndex(int index) { m_index = index; }
 
     virtual void disconnect();
@@ -75,7 +74,7 @@ public:
     };
     virtual Category textTrackCategory() const = 0;
     
-    virtual MediaTime startTimeVariance() const override { return MediaTime(1, 4); }
+    MediaTime startTimeVariance() const override { return MediaTime(1, 4); }
 
     virtual bool readNativeSampleBuffer(CFArrayRef nativeSamples, CFIndex, RefPtr<JSC::ArrayBuffer>&, MediaTime&, CMFormatDescriptionRef&);
     

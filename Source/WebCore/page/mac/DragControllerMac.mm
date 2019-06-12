@@ -42,11 +42,15 @@
 #import "MainFrame.h"
 #import "Page.h"
 #import "Pasteboard.h"
+#import "PasteboardStrategy.h"
+#import "PlatformStrategies.h"
 #import "Range.h"
 
-namespace WebCore {
+#if ENABLE(DATA_INTERACTION)
+#import <MobileCoreServices/MobileCoreServices.h>
+#endif
 
-const int DragController::LinkDragBorderInset = -2;
+namespace WebCore {
 
 const int DragController::MaxOriginalImageArea = 1500 * 1500;
 const int DragController::DragIconRightInset = 7;
@@ -54,14 +58,23 @@ const int DragController::DragIconBottomInset = 3;
 
 const float DragController::DragImageAlpha = 0.75f;
 
-bool DragController::isCopyKeyDown(DragData& dragData)
+bool DragController::isCopyKeyDown(const DragData& dragData)
 {
     return dragData.flags() & DragApplicationIsCopyKeyDown;
 }
     
-DragOperation DragController::dragOperation(DragData& dragData)
+DragOperation DragController::dragOperation(const DragData& dragData)
 {
-    if ((dragData.flags() & DragApplicationIsModal) || !dragData.containsURL())
+    if (dragData.flags() & DragApplicationIsModal)
+        return DragOperationNone;
+
+    bool mayContainURL;
+    if (canLoadDataFromDraggingPasteboard())
+        mayContainURL = dragData.containsURL();
+    else
+        mayContainURL = dragData.containsURLTypeIdentifier();
+
+    if (!mayContainURL && !dragData.containsPromise())
         return DragOperationNone;
 
     if (!m_documentUnderMouse || (!(dragData.flags() & (DragApplicationHasAttachedSheet | DragApplicationIsSource))))
@@ -79,6 +92,7 @@ const IntSize& DragController::maxDragImageSize()
 
 void DragController::cleanupAfterSystemDrag()
 {
+#if PLATFORM(MAC)
     // Drag has ended, dragEnded *should* have been called, however it is possible
     // for the UIDelegate to take over the drag, and fail to send the appropriate
     // drag termination event.  As dragEnded just resets drag variables, we just
@@ -87,7 +101,42 @@ void DragController::cleanupAfterSystemDrag()
     // is asynchronous.
     if (m_page.mainFrame().view()->platformWidget())
         dragEnded();
+#endif
 }
+
+#if ENABLE(DATA_INTERACTION)
+
+DragOperation DragController::platformGenericDragOperation()
+{
+    // On iOS, UIKit skips the -performDrop invocation altogether if MOVE is forbidden.
+    // Thus, if MOVE is not allowed in the drag source operation mask, fall back to only other allowable action, COPY.
+    return DragOperationCopy;
+}
+
+void DragController::updateSupportedTypeIdentifiersForDragHandlingMethod(DragHandlingMethod dragHandlingMethod, const DragData& dragData) const
+{
+    Vector<String> supportedTypes;
+    switch (dragHandlingMethod) {
+    case DragHandlingMethod::PageLoad:
+        supportedTypes.append(kUTTypeURL);
+        break;
+    case DragHandlingMethod::EditPlainText:
+        supportedTypes.append(kUTTypeURL);
+        supportedTypes.append(kUTTypePlainText);
+        break;
+    case DragHandlingMethod::EditRichText:
+        for (NSString *type in Pasteboard::supportedWebContentPasteboardTypes())
+            supportedTypes.append(type);
+        break;
+    default:
+        for (NSString *type in Pasteboard::supportedFileUploadPasteboardTypes())
+            supportedTypes.append(type);
+        break;
+    }
+    platformStrategies()->pasteboardStrategy()->updateSupportedTypeIdentifiers(supportedTypes, dragData.pasteboardName());
+}
+
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 void DragController::declareAndWriteAttachment(DataTransfer& dataTransfer, Element& element, const URL& url)

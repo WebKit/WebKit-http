@@ -23,16 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSContentDistributionValue_h
-#define CSSContentDistributionValue_h
+#pragma once
 
 #include "CSSValue.h"
 #include "CSSValuePool.h"
-#include <wtf/RefPtr.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
-class CSSContentDistributionValue : public CSSValue {
+class CSSContentDistributionValue final : public CSSValue {
 public:
     static Ref<CSSContentDistributionValue> create(CSSValueID distribution, CSSValueID position, CSSValueID overflow)
     {
@@ -59,5 +58,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSContentDistributionValue, isContentDistributionValue())
-
-#endif // CSSContentDistributionValue_h

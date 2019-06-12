@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
  
-#ifndef BeforeTextInsertedEvent_h
-#define BeforeTextInsertedEvent_h
+#pragma once
 
 #include "Event.h"
 
@@ -39,14 +38,14 @@ public:
         return adoptRef(*new BeforeTextInsertedEvent(text));
     }
 
-    virtual EventInterface eventInterface() const override;
+    EventInterface eventInterface() const override;
 
     const String& text() const { return m_text; }
     void setText(const String& s) { m_text = s; }
 
 private:
     explicit BeforeTextInsertedEvent(const String&);
-    virtual bool isBeforeTextInsertedEvent() const override { return true; }
+    bool isBeforeTextInsertedEvent() const override { return true; }
 
     String m_text;
 };
@@ -54,5 +53,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_EVENT(BeforeTextInsertedEvent)
-
-#endif

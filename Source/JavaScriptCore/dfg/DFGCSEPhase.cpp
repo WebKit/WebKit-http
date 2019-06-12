@@ -38,7 +38,6 @@
 #include "DFGPhase.h"
 #include "JSCInlines.h"
 #include <array>
-#include <wtf/FastBitVector.h>
 
 namespace JSC { namespace DFG {
 
@@ -51,27 +50,232 @@ namespace {
 
 const bool verbose = false;
 
-class ClobberFilter {
+class ImpureDataSlot {
+    WTF_MAKE_NONCOPYABLE(ImpureDataSlot);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    ClobberFilter(AbstractHeap heap)
-        : m_heap(heap)
-    {
-    }
-    
-    bool operator()(const ImpureMap::KeyValuePairType& pair) const
-    {
-        return m_heap.overlaps(pair.key.heap());
-    }
-    
-private:
-    AbstractHeap m_heap;
+    ImpureDataSlot(HeapLocation key, LazyNode value, unsigned hash)
+        : key(key), value(value), hash(hash)
+    { }
+
+    HeapLocation key;
+    LazyNode value;
+    unsigned hash;
 };
 
-inline void clobber(ImpureMap& map, AbstractHeap heap)
-{
-    ClobberFilter filter(heap);
-    map.removeIf(filter);
-}
+struct ImpureDataSlotHash : public DefaultHash<std::unique_ptr<ImpureDataSlot>>::Hash {
+    static unsigned hash(const std::unique_ptr<ImpureDataSlot>& key)
+    {
+        return key->hash;
+    }
+
+    static bool equal(const std::unique_ptr<ImpureDataSlot>& a, const std::unique_ptr<ImpureDataSlot>& b)
+    {
+        // The ImpureDataSlot are unique per table per HeapLocation. This lets us compare the key
+        // by just comparing the pointers of the unique ImpureDataSlots.
+        ASSERT(a != b || a->key == b->key);
+        return a == b;
+    }
+};
+
+struct ImpureDataTranslator {
+    static unsigned hash(const HeapLocation& key)
+    {
+        return key.hash();
+    }
+
+    static bool equal(const std::unique_ptr<ImpureDataSlot>& slot, const HeapLocation& key)
+    {
+        if (!slot)
+            return false;
+        if (HashTraits<std::unique_ptr<ImpureDataSlot>>::isDeletedValue(slot))
+            return false;
+        return slot->key == key;
+    }
+
+    static void translate(std::unique_ptr<ImpureDataSlot>& slot, const HeapLocation& key, unsigned hashCode)
+    {
+        new (NotNull, std::addressof(slot)) std::unique_ptr<ImpureDataSlot>(new ImpureDataSlot {key, LazyNode(), hashCode});
+    }
+};
+
+class ImpureMap {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(ImpureMap);
+public:
+    ImpureMap() = default;
+
+    ImpureMap(ImpureMap&& other)
+    {
+        m_abstractHeapStackMap.swap(other.m_abstractHeapStackMap);
+        m_fallbackStackMap.swap(other.m_fallbackStackMap);
+        m_heapMap.swap(other.m_heapMap);
+#if !defined(NDEBUG)
+        m_debugImpureData.swap(other.m_debugImpureData);
+#endif
+    }
+
+    const ImpureDataSlot* add(const HeapLocation& location, const LazyNode& node)
+    {
+        const ImpureDataSlot* result = addImpl(location, node);
+
+#if !defined(NDEBUG)
+        auto addResult = m_debugImpureData.add(location, node);
+        ASSERT(!!result == !addResult.isNewEntry);
+#endif
+        return result;
+    }
+
+    LazyNode get(const HeapLocation& location) const
+    {
+        LazyNode result = getImpl(location);
+#if !defined(NDEBUG)
+        ASSERT(result == m_debugImpureData.get(location));
+#endif
+        return result;
+    }
+
+    void clobber(AbstractHeap heap)
+    {
+        switch (heap.kind()) {
+        case World: {
+            clear();
+            break;
+        }
+        case SideState:
+            break;
+        case Stack: {
+            ASSERT(!heap.payload().isTop());
+            ASSERT(heap.payload().value() == heap.payload().value32());
+            m_abstractHeapStackMap.remove(heap.payload().value32());
+            clobber(m_fallbackStackMap, heap);
+            break;
+        }
+        default:
+            clobber(m_heapMap, heap);
+            break;
+        }
+#if !defined(NDEBUG)
+        m_debugImpureData.removeIf([heap](const HashMap<HeapLocation, LazyNode>::KeyValuePairType& pair) -> bool {
+            return heap.overlaps(pair.key.heap());
+        });
+        ASSERT(m_debugImpureData.size()
+            == (m_heapMap.size()
+                + m_abstractHeapStackMap.size()
+                + m_fallbackStackMap.size()));
+
+        const bool verifyClobber = false;
+        if (verifyClobber) {
+            for (auto& pair : m_debugImpureData)
+                ASSERT(!!get(pair.key));
+        }
+#endif
+    }
+
+    void clear()
+    {
+        m_abstractHeapStackMap.clear();
+        m_fallbackStackMap.clear();
+        m_heapMap.clear();
+#if !defined(NDEBUG)
+        m_debugImpureData.clear();
+#endif
+    }
+
+private:
+    typedef HashSet<std::unique_ptr<ImpureDataSlot>, ImpureDataSlotHash> Map;
+
+    const ImpureDataSlot* addImpl(const HeapLocation& location, const LazyNode& node)
+    {
+        switch (location.heap().kind()) {
+        case World:
+        case SideState:
+            RELEASE_ASSERT_NOT_REACHED();
+        case Stack: {
+            AbstractHeap abstractHeap = location.heap();
+            if (abstractHeap.payload().isTop())
+                return add(m_fallbackStackMap, location, node);
+            ASSERT(abstractHeap.payload().value() == abstractHeap.payload().value32());
+            auto addResult = m_abstractHeapStackMap.add(abstractHeap.payload().value32(), nullptr);
+            if (addResult.isNewEntry) {
+                addResult.iterator->value.reset(new ImpureDataSlot {location, node, 0});
+                return nullptr;
+            }
+            if (addResult.iterator->value->key == location)
+                return addResult.iterator->value.get();
+            return add(m_fallbackStackMap, location, node);
+        }
+        default:
+            return add(m_heapMap, location, node);
+        }
+        return nullptr;
+    }
+
+    LazyNode getImpl(const HeapLocation& location) const
+    {
+        switch (location.heap().kind()) {
+        case World:
+        case SideState:
+            RELEASE_ASSERT_NOT_REACHED();
+        case Stack: {
+            ASSERT(location.heap().payload().value() == location.heap().payload().value32());
+            auto iterator = m_abstractHeapStackMap.find(location.heap().payload().value32());
+            if (iterator != m_abstractHeapStackMap.end()
+                && iterator->value->key == location)
+                return iterator->value->value;
+            return get(m_fallbackStackMap, location);
+        }
+        default:
+            return get(m_heapMap, location);
+        }
+        return LazyNode();
+    }
+
+    static const ImpureDataSlot* add(Map& map, const HeapLocation& location, const LazyNode& node)
+    {
+        auto result = map.add<ImpureDataTranslator>(location);
+        if (result.isNewEntry) {
+            (*result.iterator)->value = node;
+            return nullptr;
+        }
+        return result.iterator->get();
+    }
+
+    static LazyNode get(const Map& map, const HeapLocation& location)
+    {
+        auto iterator = map.find<ImpureDataTranslator>(location);
+        if (iterator != map.end())
+            return (*iterator)->value;
+        return LazyNode();
+    }
+
+    static void clobber(Map& map, AbstractHeap heap)
+    {
+        map.removeIf([heap](const std::unique_ptr<ImpureDataSlot>& slot) -> bool {
+            return heap.overlaps(slot->key.heap());
+        });
+    }
+
+    // The majority of Impure Stack Slotsare unique per value.
+    // This is very useful for fast clobber(), we can just remove the slot addressed by AbstractHeap
+    // in O(1).
+    //
+    // When there are conflict, any additional HeapLocation is added in the fallback map.
+    // This works well because fallbackStackMap remains tiny.
+    //
+    // One cannot assume a unique ImpureData is in m_abstractHeapStackMap. It may have been
+    // a duplicate in the past and now only live in m_fallbackStackMap.
+    //
+    // Obviously, TOP always goes into m_fallbackStackMap since it does not have a unique value.
+    HashMap<int32_t, std::unique_ptr<ImpureDataSlot>, DefaultHash<int32_t>::Hash, WTF::SignedWithZeroKeyHashTraits<int32_t>> m_abstractHeapStackMap;
+    Map m_fallbackStackMap;
+
+    Map m_heapMap;
+
+#if !defined(NDEBUG)
+    HashMap<HeapLocation, LazyNode> m_debugImpureData;
+#endif
+};
 
 class LocalCSEPhase : public Phase {
 public:
@@ -131,6 +335,9 @@ private:
     
         void write(AbstractHeap heap)
         {
+            if (heap.kind() == SideState)
+                return;
+
             for (unsigned i = 0; i < m_impureLength; ++i) {
                 if (heap.overlaps(m_impureMap[i].key.heap()))
                     m_impureMap[i--] = m_impureMap[--m_impureLength];
@@ -192,7 +399,7 @@ private:
     
         void write(AbstractHeap heap)
         {
-            clobber(m_impureMap, heap);
+            m_impureMap.clobber(heap);
         }
     
         Node* addPure(PureValue value, Node* node)
@@ -208,17 +415,16 @@ private:
             return m_impureMap.get(location);
         }
     
-        LazyNode addImpure(HeapLocation location, LazyNode node)
+        LazyNode addImpure(const HeapLocation& location, const LazyNode& node)
         {
-            auto result = m_impureMap.add(location, node);
-            if (result.isNewEntry)
-                return nullptr;
-            return result.iterator->value;
+            if (const ImpureDataSlot* slot = m_impureMap.add(location, node))
+                return slot->value;
+            return LazyNode();
         }
 
     private:
         HashMap<PureValue, Node*> m_pureMap;
-        HashMap<HeapLocation, LazyNode> m_impureMap;
+        ImpureMap m_impureMap;
     };
 
     template<typename Maps>
@@ -254,6 +460,7 @@ private:
                         
                         Node* base = m_graph.varArgChild(m_node, 0).node();
                         Node* index = m_graph.varArgChild(m_node, 1).node();
+                        LocationKind indexedPropertyLoc = indexedPropertyLocForResultType(m_node->result());
                         
                         ArrayMode mode = m_node->arrayMode();
                         switch (mode.type()) {
@@ -261,21 +468,21 @@ private:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, IndexedInt32Properties, base, index);
+                                indexedPropertyLoc, IndexedInt32Properties, base, index);
                             break;
                             
                         case Array::Double:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, IndexedDoubleProperties, base, index);
+                                indexedPropertyLoc, IndexedDoubleProperties, base, index);
                             break;
                             
                         case Array::Contiguous:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, IndexedContiguousProperties, base, index);
+                                indexedPropertyLoc, IndexedContiguousProperties, base, index);
                             break;
                             
                         case Array::Int8Array:
@@ -290,7 +497,7 @@ private:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, TypedArrayProperties, base, index);
+                                indexedPropertyLoc, TypedArrayProperties, base, index);
                             break;
                             
                         default:
@@ -327,7 +534,7 @@ private:
             m_changed = true;
         }
     
-        void def(HeapLocation location, LazyNode value)
+        void def(const HeapLocation& location, const LazyNode& value)
         {
             LazyNode match = m_maps.addImpure(location, value);
             if (!match)
@@ -461,10 +668,8 @@ public:
     
     void write(AbstractHeap heap)
     {
-        clobber(m_impureData->availableAtTail, heap);
+        m_impureData->availableAtTail.clobber(heap);
         m_writesSoFar.add(heap);
-        if (verbose)
-            dataLog("    Clobbered, new tail map: ", mapDump(m_impureData->availableAtTail), "\n");
     }
     
     void def(PureValue value)
@@ -579,8 +784,6 @@ public:
                     dataLog("        It strictly dominates.\n");
                 DFG_ASSERT(m_graph, m_node, data.didVisit);
                 DFG_ASSERT(m_graph, m_node, !match);
-                if (verbose)
-                    dataLog("        Availability map: ", mapDump(data.availableAtTail), "\n");
                 match = data.availableAtTail.get(location);
                 if (verbose)
                     dataLog("        Availability: ", match, "\n");
@@ -639,7 +842,7 @@ public:
             if (verbose)
                 dataLog("      Adding at-tail mapping: ", location, " -> ", value, "\n");
             auto result = m_impureData->availableAtTail.add(location, value);
-            ASSERT_UNUSED(result, result.isNewEntry);
+            ASSERT_UNUSED(result, !result);
             return;
         }
 
@@ -701,13 +904,11 @@ public:
 
 bool performLocalCSE(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG LocalCSE Phase");
     return runPhase<LocalCSEPhase>(graph);
 }
 
 bool performGlobalCSE(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG GlobalCSE Phase");
     return runPhase<GlobalCSEPhase>(graph);
 }
 

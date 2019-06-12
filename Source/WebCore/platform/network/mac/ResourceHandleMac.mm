@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #import "AuthenticationChallenge.h"
 #import "AuthenticationMac.h"
-#import "BlockExceptions.h"
 #import "CFNetworkSPI.h"
 #import "CookieStorage.h"
 #import "CredentialStorage.h"
@@ -40,11 +39,10 @@
 #import "Logging.h"
 #import "MIMETypeRegistry.h"
 #import "NSURLConnectionSPI.h"
+#import "NetworkStorageSession.h"
 #import "NetworkingContext.h"
-#import "Page.h"
 #import "ResourceError.h"
 #import "ResourceResponse.h"
-#import "Settings.h"
 #import "SharedBuffer.h"
 #import "SubresourceLoader.h"
 #import "WebCoreResourceHandleAsDelegate.h"
@@ -52,12 +50,13 @@
 #import "SynchronousLoaderClient.h"
 #import "WebCoreSystemInterface.h"
 #import "WebCoreURLResponse.h"
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/Ref.h>
 #import <wtf/SchedulePair.h>
 #import <wtf/text/Base64.h>
 #import <wtf/text/CString.h>
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #if USE(APPLE_INTERNAL_SDK)
 #import <CFNetwork/CFURLConnectionPriv.h>
 #endif
@@ -65,20 +64,12 @@ typedef struct _CFURLConnection* CFURLConnectionRef;
 extern "C" {
 CFDictionaryRef _CFURLConnectionCopyTimingData(CFURLConnectionRef);
 }
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 #if PLATFORM(IOS)
 #import "CFNetworkSPI.h"
-#import "RuntimeApplicationChecksIOS.h"
+#import "RuntimeApplicationChecks.h"
 #import "WebCoreThreadRun.h"
-
-@interface NSURLRequest ()
-- (CFURLRequestRef) _CFURLRequest;
-@end
-#endif
-
-#if USE(QUICK_LOOK)
-#import "QuickLook.h"
 #endif
 
 using namespace WebCore;
@@ -89,7 +80,7 @@ using namespace WebCore;
 
 namespace WebCore {
     
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
     
 static void applyBasicAuthorizationHeader(ResourceRequest& request, const Credential& credential)
 {
@@ -124,7 +115,12 @@ ResourceHandle::~ResourceHandle()
 #if PLATFORM(IOS)
 static bool synchronousWillSendRequestEnabled()
 {
+#if PLATFORM(IOS)
+    static bool disabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitDisableSynchronousWillSendRequestPreferenceKey"] || IOSApplication::isIBooks();
+#else
     static bool disabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitDisableSynchronousWillSendRequestPreferenceKey"];
+#endif
+
     return !disabled;
 }
 #endif
@@ -151,12 +147,12 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
         if (d->m_user.isEmpty() && d->m_pass.isEmpty()) {
             // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication, 
             // try and reuse the credential preemptively, as allowed by RFC 2617.
-            d->m_initialCredential = d->m_context->storageSession().credentialStorage().get(firstRequest().url());
+            d->m_initialCredential = d->m_context->storageSession().credentialStorage().get(firstRequest().cachePartition(), firstRequest().url());
         } else {
             // If there is already a protection space known for the URL, update stored credentials before sending a request.
             // This makes it possible to implement logout by sending an XMLHttpRequest with known incorrect credentials, and aborting it immediately
             // (so that an authentication dialog doesn't pop up).
-            d->m_context->storageSession().credentialStorage().set(Credential(d->m_user, d->m_pass, CredentialPersistenceNone), firstRequest().url());
+            d->m_context->storageSession().credentialStorage().set(firstRequest().cachePartition(), Credential(d->m_user, d->m_pass, CredentialPersistenceNone), firstRequest().url());
         }
     }
         
@@ -171,6 +167,15 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
         [mutableRequest _setProperty:@(NO) forKey:(NSString *)_kCFURLConnectionPropertyShouldSniff];
         nsRequest = mutableRequest;
     }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    String storagePartition = d->m_context->storageSession().cookieStoragePartition(firstRequest());
+    if (!storagePartition.isEmpty()) {
+        NSMutableURLRequest *mutableRequest = [[nsRequest mutableCopy] autorelease];
+        [mutableRequest _setProperty:storagePartition forKey:@"__STORAGE_PARTITION_IDENTIFIER"];
+        nsRequest = mutableRequest;
+    }
+#endif
 
     if (d->m_storageSession)
         nsRequest = [wkCopyRequestWithStorageSession(d->m_storageSession.get(), nsRequest) autorelease];
@@ -216,6 +221,11 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
 #if HAVE(TIMINGDATAOPTIONS)
     [propertyDictionary setObject:@{@"_kCFURLConnectionPropertyTimingDataOptions": @(_TimingDataOptionsEnableW3CNavigationTiming)} forKey:@"kCFURLConnectionURLConnectionProperties"];
 #endif
+
+    // This is used to signal that to CFNetwork that this connection should be considered
+    // web content for purposes of App Transport Security.
+    [propertyDictionary setObject:@{@"NSAllowsArbitraryLoadsInWebContent": @YES} forKey:@"_kCFURLConnectionPropertyATSFrameworkOverrides"];
+
     d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:usesCache maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
 }
 
@@ -314,7 +324,7 @@ void ResourceHandle::platformSetDefersLoading(bool defers)
         [d->m_connection setDefersCallbacks:defers];
 }
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 void ResourceHandle::schedule(SchedulePair& pair)
 {
@@ -430,7 +440,7 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     data.swap(client.mutableData());
 }
 
-void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceResponse& redirectResponse)
+ResourceRequest ResourceHandle::willSendRequest(ResourceRequest&& request, ResourceResponse&& redirectResponse)
 {
     ASSERT(!redirectResponse.isNull());
 
@@ -468,7 +478,7 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
         // Only consider applying authentication credentials if this is actually a redirect and the redirect
         // URL didn't include credentials of its own.
         if (d->m_user.isEmpty() && d->m_pass.isEmpty() && !redirectResponse.isNull()) {
-            Credential credential = d->m_context->storageSession().credentialStorage().get(request.url());
+            Credential credential = d->m_context->storageSession().credentialStorage().get(request.cachePartition(), request.url());
             if (!credential.isEmpty()) {
                 d->m_initialCredential = credential;
                 
@@ -479,23 +489,24 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
     }
 
     if (d->m_usesAsyncCallbacks) {
-        client()->willSendRequestAsync(this, request, redirectResponse);
-    } else {
-        Ref<ResourceHandle> protect(*this);
-        client()->willSendRequest(this, request, redirectResponse);
-
-        // Client call may not preserve the session, especially if the request is sent over IPC.
-        if (!request.isNull())
-            request.setStorageSession(d->m_storageSession.get());
+        client()->willSendRequestAsync(this, WTFMove(request), WTFMove(redirectResponse));
+        return { };
     }
+
+    Ref<ResourceHandle> protectedThis(*this);
+    auto newRequest = client()->willSendRequest(this, WTFMove(request), WTFMove(redirectResponse));
+
+    // Client call may not preserve the session, especially if the request is sent over IPC.
+    if (!newRequest.isNull())
+        newRequest.setStorageSession(d->m_storageSession.get());
+    return newRequest;
 }
 
-void ResourceHandle::continueWillSendRequest(const ResourceRequest& request)
+void ResourceHandle::continueWillSendRequest(ResourceRequest&& newRequest)
 {
     ASSERT(d->m_usesAsyncCallbacks);
 
     // Client call may not preserve the session, especially if the request is sent over IPC.
-    ResourceRequest newRequest = request;
     if (!newRequest.isNull())
         newRequest.setStorageSession(d->m_storageSession.get());
     [(id)delegate() continueWillSendRequest:newRequest.nsURLRequest(UpdateHTTPBody)];
@@ -586,16 +597,16 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
             // The stored credential wasn't accepted, stop using it.
             // There is a race condition here, since a different credential might have already been stored by another ResourceHandle,
             // but the observable effect should be very minor, if any.
-            d->m_context->storageSession().credentialStorage().remove(challenge.protectionSpace());
+            d->m_context->storageSession().credentialStorage().remove(d->m_partition, challenge.protectionSpace());
         }
 
         if (!challenge.previousFailureCount()) {
-            Credential credential = d->m_context->storageSession().credentialStorage().get(challenge.protectionSpace());
+            Credential credential = d->m_context->storageSession().credentialStorage().get(d->m_partition, challenge.protectionSpace());
             if (!credential.isEmpty() && credential != d->m_initialCredential) {
                 ASSERT(credential.persistence() == CredentialPersistenceNone);
                 if (challenge.failureResponse().httpStatusCode() == 401) {
                     // Store the credential back, possibly adding it as a default for this directory.
-                    d->m_context->storageSession().credentialStorage().set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                    d->m_context->storageSession().credentialStorage().set(d->m_partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
                 }
                 [challenge.sender() useCredential:credential.nsCredential() forAuthenticationChallenge:mac(challenge)];
                 return true;
@@ -604,16 +615,6 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
     }
 
     return false;
-}
-
-void ResourceHandle::didCancelAuthenticationChallenge(const AuthenticationChallenge& challenge)
-{
-    ASSERT(d->m_currentMacChallenge);
-    ASSERT(d->m_currentMacChallenge == challenge.nsURLAuthenticationChallenge());
-    ASSERT(!d->m_currentWebChallenge.isNull());
-
-    if (client())
-        client()->didCancelAuthenticationChallenge(this, challenge);
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -660,7 +661,7 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
         URL urlToStore;
         if (challenge.failureResponse().httpStatusCode() == 401)
             urlToStore = challenge.failureResponse().url();
-        d->m_context->storageSession().credentialStorage().set(webCredential, ProtectionSpace([d->m_currentMacChallenge protectionSpace]), urlToStore);
+        d->m_context->storageSession().credentialStorage().set(d->m_partition, webCredential, ProtectionSpace([d->m_currentMacChallenge protectionSpace]), urlToStore);
         [[d->m_currentMacChallenge sender] useCredential:webCredential.nsCredential() forAuthenticationChallenge:d->m_currentMacChallenge];
     } else
         [[d->m_currentMacChallenge sender] useCredential:credential.nsCredential() forAuthenticationChallenge:d->m_currentMacChallenge];
@@ -725,20 +726,20 @@ void ResourceHandle::continueWillCacheResponse(NSCachedURLResponse *response)
     [(id)delegate() continueWillCacheResponse:response];
 }
     
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)
     
 #if ENABLE(WEB_TIMING)
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     
-void ResourceHandle::getConnectionTimingData(CFURLConnectionRef connection, ResourceLoadTiming& timing)
+void ResourceHandle::getConnectionTimingData(CFURLConnectionRef connection, NetworkLoadMetrics& timing)
 {
     copyTimingData((__bridge NSDictionary*)adoptCF(_CFURLConnectionCopyTimingData(connection)).get(), timing);
 }
     
 #else
     
-void ResourceHandle::getConnectionTimingData(NSURLConnection *connection, ResourceLoadTiming& timing)
+void ResourceHandle::getConnectionTimingData(NSURLConnection *connection, NetworkLoadMetrics& timing)
 {
     copyTimingData([connection _timingData], timing);
 }

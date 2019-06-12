@@ -27,15 +27,15 @@
 #include "config.h"
 #include "WebFrameNetworkingContext.h"
 
+#include "NetworkSession.h"
 #include "SessionTracker.h"
 #include "WebFrame.h"
 #include "WebPage.h"
-#include <WebCore/CookieJarSoup.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/SessionID.h>
 #include <WebCore/Settings.h>
 #include <WebCore/SoupNetworkSession.h>
-#include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
@@ -43,39 +43,19 @@ namespace WebKit {
 
 void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID)
 {
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
+    ASSERT(sessionID.isEphemeral());
 
-    if (SessionTracker::storageSession(sessionID))
+    if (NetworkStorageSession::storageSession(sessionID))
         return;
 
-    SessionTracker::setSession(sessionID, NetworkStorageSession::createPrivateBrowsingSession(String::number(sessionID.sessionID())));
+    NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, String::number(sessionID.sessionID()));
+    SessionTracker::setSession(sessionID, NetworkSession::create(sessionID));
 }
 
-void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy policy)
+void WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&)
 {
-    SoupCookieJarAcceptPolicy soupPolicy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
-    switch (policy) {
-    case HTTPCookieAcceptPolicyAlways:
-        soupPolicy = SOUP_COOKIE_JAR_ACCEPT_ALWAYS;
-        break;
-    case HTTPCookieAcceptPolicyNever:
-        soupPolicy = SOUP_COOKIE_JAR_ACCEPT_NEVER;
-        break;
-    case HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain:
-        soupPolicy = SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY;
-        break;
-    }
-
-    SoupCookieJar* cookieJar = WebCore::soupCookieJar();
-    soup_cookie_jar_set_accept_policy(cookieJar, soupPolicy);
-
-    SoupNetworkSession& soupSession = NetworkStorageSession::defaultStorageSession().soupNetworkSession();
-    soup_cookie_jar_set_accept_policy(soupSession.cookieJar(), soupPolicy);
-
-    for (const auto& session : SessionTracker::storageSessionMap().values()) {
-        if (session)
-            soup_cookie_jar_set_accept_policy(session->soupNetworkSession().cookieJar(), soupPolicy);
-    }
+    // FIXME: Implement
 }
 
 WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
@@ -85,9 +65,10 @@ WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
 
 NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
-    if (frame() && frame()->page()->usesEphemeralSession())
-        return *SessionTracker::storageSession(SessionID::legacyPrivateSessionID());
-
+    if (frame()) {
+        if (auto* storageSession = NetworkStorageSession::storageSession(frame()->page()->sessionID()))
+            return *storageSession;
+    }
     return NetworkStorageSession::defaultStorageSession();
 }
 

@@ -27,10 +27,9 @@
 #import "InteractionInformationAtPosition.h"
 
 #import "ArgumentCodersCF.h"
-#import "Arguments.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/DataDetectorsCoreSPI.h>
-#import <WebCore/SoftLinking.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectorsCore)
 SOFT_LINK_CLASS(DataDetectorsCore, DDScannerResult)
@@ -39,21 +38,30 @@ namespace WebKit {
 
 #if PLATFORM(IOS)
 
-void InteractionInformationAtPosition::encode(IPC::ArgumentEncoder& encoder) const
+void InteractionInformationAtPosition::encode(IPC::Encoder& encoder) const
 {
-    encoder << point;
+    encoder << request;
+
     encoder << nodeAtPositionIsAssistedNode;
+#if ENABLE(DATA_INTERACTION)
+    encoder << hasSelectionAtPosition;
+#endif
     encoder << isSelectable;
     encoder << isNearMarkedText;
     encoder << touchCalloutEnabled;
     encoder << isLink;
     encoder << isImage;
+    encoder << isAttachment;
     encoder << isAnimatedImage;
     encoder << isElement;
+    encoder << adjustedPointForNodeRespondingToClickEvents;
     encoder << url;
     encoder << imageURL;
     encoder << title;
+    encoder << idAttribute;
     encoder << bounds;
+    encoder << textBefore;
+    encoder << textAfter;
     encoder << linkIndicator;
 
     ShareableBitmap::Handle handle;
@@ -75,13 +83,18 @@ void InteractionInformationAtPosition::encode(IPC::ArgumentEncoder& encoder) con
 #endif
 }
 
-bool InteractionInformationAtPosition::decode(IPC::ArgumentDecoder& decoder, InteractionInformationAtPosition& result)
+bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, InteractionInformationAtPosition& result)
 {
-    if (!decoder.decode(result.point))
+    if (!decoder.decode(result.request))
         return false;
 
     if (!decoder.decode(result.nodeAtPositionIsAssistedNode))
         return false;
+
+#if ENABLE(DATA_INTERACTION)
+    if (!decoder.decode(result.hasSelectionAtPosition))
+        return false;
+#endif
 
     if (!decoder.decode(result.isSelectable))
         return false;
@@ -98,10 +111,16 @@ bool InteractionInformationAtPosition::decode(IPC::ArgumentDecoder& decoder, Int
     if (!decoder.decode(result.isImage))
         return false;
 
+    if (!decoder.decode(result.isAttachment))
+        return false;
+    
     if (!decoder.decode(result.isAnimatedImage))
         return false;
     
     if (!decoder.decode(result.isElement))
+        return false;
+
+    if (!decoder.decode(result.adjustedPointForNodeRespondingToClickEvents))
         return false;
 
     if (!decoder.decode(result.url))
@@ -113,9 +132,18 @@ bool InteractionInformationAtPosition::decode(IPC::ArgumentDecoder& decoder, Int
     if (!decoder.decode(result.title))
         return false;
 
+    if (!decoder.decode(result.idAttribute))
+        return false;
+    
     if (!decoder.decode(result.bounds))
         return false;
 
+    if (!decoder.decode(result.textBefore))
+        return false;
+    
+    if (!decoder.decode(result.textAfter))
+        return false;
+    
     if (!decoder.decode(result.linkIndicator))
         return false;
 
@@ -152,6 +180,19 @@ bool InteractionInformationAtPosition::decode(IPC::ArgumentDecoder& decoder, Int
 
     return true;
 }
-#endif
+
+void InteractionInformationAtPosition::mergeCompatibleOptionalInformation(const InteractionInformationAtPosition& oldInformation)
+{
+    if (oldInformation.request.point != request.point)
+        return;
+
+    if (oldInformation.request.includeSnapshot && !request.includeSnapshot)
+        image = oldInformation.image;
+
+    if (oldInformation.request.includeLinkIndicator && !request.includeLinkIndicator)
+        linkIndicator = oldInformation.linkIndicator;
+}
+
+#endif // PLATFORM(IOS)
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,13 +24,17 @@
  */
 
 interface TestRunner {
+    readonly attribute boolean isWebKit2;
+
     // The basics.
     void dumpAsText(boolean dumpPixels);
     void dumpChildFramesAsText();
     void waitForPolicyDelegate();
     void waitUntilDone();
+    void waitUntilDownloadFinished();
     void notifyDone();
     double preciseTime();
+    readonly attribute double timeout;
 
     // Other dumping.
     void dumpBackForwardList();
@@ -58,9 +62,11 @@ interface TestRunner {
     void setXSSAuditorEnabled(boolean value);
     void setAllowUniversalAccessFromFileURLs(boolean value);
     void setAllowFileAccessFromFileURLs(boolean value);
+    void setNeedsStorageAccessFromFileURLsQuirk(boolean value);
     void setPluginsEnabled(boolean value);
     void setJavaScriptCanAccessClipboard(boolean value);
     void setPrivateBrowsingEnabled(boolean value);
+    void setUseDashboardCompatibilityMode(boolean value);
     void setPopupBlockingEnabled(boolean value);
     void setAuthorAndUserStylesEnabled(boolean value);
     void setCustomPolicyDelegate(boolean enabled, boolean permissive);
@@ -72,11 +78,13 @@ interface TestRunner {
     void setTabKeyCyclesThroughElements(boolean enabled);
     void setSerializeHTTPLoads();
     void dispatchPendingLoadRequests();
-    void setCacheModel(int model);
+    void setCacheModel(long model);
     void setAsynchronousSpellCheckingEnabled(boolean value);
     void setPrinting();
     void setShouldDecideNavigationPolicyAfterDelay(boolean value);
     void setNavigationGesturesEnabled(boolean value);
+    void setIgnoresViewportScaleLimits(boolean value);
+    void setShouldDownloadUndisplayableMIMETypes(boolean value);
 
     // Special DOM functions.
     void clearBackForwardList();
@@ -91,9 +99,10 @@ interface TestRunner {
     void testRepaint();
     void repaintSweepHorizontally();
     void display();
+    void displayAndTrackRepaints();
 
     // Printing
-    boolean isPageBoxVisible(int pageIndex);
+    boolean isPageBoxVisible(long pageIndex);
 
     [PassContext] void setValueForUser(object element, DOMString value);
 
@@ -147,14 +156,15 @@ interface TestRunner {
     void removeChromeInputField(object callback);
     void focusWebView(object callback);
 
-    void clearTestRunnerCallbacks();
-
+    // Window/view state
     void setBackingScaleFactor(double backingScaleFactor, object callback);
 
     void setWindowIsKey(boolean isKey);
+    void setViewSize(double width, double height);
 
     // Cookies testing
     void setAlwaysAcceptCookies(boolean accept);
+    void setCookieStoragePartitioningEnabled(boolean enabled);
 
     void overridePreference(DOMString preference, DOMString value);
 
@@ -173,13 +183,16 @@ interface TestRunner {
 
     // Geolocation
     void setGeolocationPermission(boolean value);
-    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, [Default=Undefined] optional object altitude, optional object altitudeAccuracy, optional object heading, optional object speed);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, optional object altitude, optional object altitudeAccuracy, optional object heading, optional object speed);
     void setMockGeolocationPositionUnavailableError(DOMString errorMessage);
     boolean isGeolocationProviderActive();
 
     // MediaStream
     void setUserMediaPermission(boolean value);
-    void setUserMediaPermissionForOrigin(boolean permission, DOMString url);
+    void resetUserMediaPermission();
+    void setUserMediaPersistentPermissionForOrigin(boolean permission, DOMString origin, DOMString parentOrigin);
+    unsigned long userMediaPermissionRequestCountForOrigin(DOMString origin, DOMString parentOrigin);
+    void resetUserMediaPermissionRequestCountForOrigin(DOMString origin, DOMString parentOrigin);
 
     // Audio testing.
     [PassContext] void setAudioResult(object data);
@@ -196,9 +209,13 @@ interface TestRunner {
     void queueNonLoadingScript(DOMString script);
 
     // Authentication
+    void setRejectsProtectionSpaceAndContinueForAuthenticationChallenges(boolean value);
     void setHandlesAuthenticationChallenges(boolean value);
+    void setShouldLogCanAuthenticateAgainstProtectionSpace(boolean value);
     void setAuthenticationUsername(DOMString username);
     void setAuthenticationPassword(DOMString password);
+
+    void setAllowsAnySSLCertificate(boolean value);
 
     // Secure text input mode (Mac only)
     readonly attribute boolean secureEventInputIsEnabled;
@@ -217,7 +234,59 @@ interface TestRunner {
     void installDidEndSwipeCallback(object callback);
     void installDidRemoveSwipeSnapshotCallback(object callback);
 
+    unsigned long imageCountInGeneralPasteboard();
+
     // UI Process Testing
     void runUIScript(DOMString script, object callback);
-};
 
+    void clearTestRunnerCallbacks();
+
+    void accummulateLogsForChannel(DOMString channel);
+
+    // Gamepad
+    void setMockGamepadDetails(unsigned long index, DOMString id, unsigned long axisCount, unsigned long buttonCount);
+    void setMockGamepadAxisValue(unsigned long index, unsigned long axisIndex, double value);
+    void setMockGamepadButtonValue(unsigned long index, unsigned long buttonIndex, double value);
+    void connectMockGamepad(unsigned long index);
+    void disconnectMockGamepad(unsigned long index);
+
+    // Resource Load Statistics
+    void installStatisticsDidModifyDataRecordsCallback(object callback);
+    void installStatisticsDidScanDataRecordsCallback(object callback);
+    void installStatisticsDidRunTelemetryCallback(object callback);
+    void setStatisticsLastSeen(DOMString hostName, double seconds);
+    void setStatisticsPrevalentResource(DOMString hostName, boolean value);
+    boolean isStatisticsPrevalentResource(DOMString hostName);
+    void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value);
+    boolean isStatisticsHasHadUserInteraction(DOMString hostName);
+    void setStatisticsGrandfathered(DOMString hostName, boolean value);
+    boolean isStatisticsGrandfathered(DOMString hostName);
+    void setStatisticsSubframeUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
+    void setStatisticsSubresourceUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
+    void setStatisticsSubresourceUniqueRedirectTo(DOMString hostName, DOMString hostNameRedirectedTo);
+    void setStatisticsTimeToLiveUserInteraction(double seconds);
+    void setStatisticsTimeToLiveCookiePartitionFree(double seconds);
+    void statisticsProcessStatisticsAndDataRecords();
+    void statisticsUpdateCookiePartitioning();
+    void statisticsSetShouldPartitionCookiesForHost(DOMString hostName, boolean value);
+    void statisticsSubmitTelemetry();
+    void setStatisticsNotifyPagesWhenDataRecordsWereScanned(boolean value);
+    void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(boolean value);
+    void setStatisticsNotifyPagesWhenTelemetryWasCaptured(boolean value);
+    void setStatisticsMinimumTimeBetweenDataRecordsRemoval(double seconds);
+    void setStatisticsGrandfatheringTime(double seconds);
+    void setStatisticsMaxStatisticsEntries(unsigned long entries);
+    void setStatisticsPruneEntriesDownTo(unsigned long entries);
+    void statisticsClearInMemoryAndPersistentStore();
+    void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned long hours);
+    void statisticsResetToConsistentState();
+
+    // Open panel
+    void setOpenPanelFiles(object filesArray);
+
+    void setWebRTCLegacyAPIEnabled(boolean value);
+
+    void terminateNetworkProcess();
+
+    void removeAllSessionCredentials(object callback);
+};

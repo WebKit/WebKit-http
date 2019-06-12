@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceLoadStatistics_h
-#define ResourceLoadStatistics_h
+#pragma once
 
+#include "URL.h"
 #include <wtf/HashCountedSet.h>
+#include <wtf/WallTime.h>
+#include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -35,50 +37,51 @@ class KeyedDecoder;
 class KeyedEncoder;
 
 struct ResourceLoadStatistics {
-    bool checkAndSetAsPrevalentResourceIfNecessary(unsigned originsVisitedSoFar);
+    explicit ResourceLoadStatistics(const String& primaryDomain)
+        : highLevelDomain(primaryDomain)
+    {
+    }
 
-    bool hasPrevalentRedirection() const;
-    bool hasPrevalentResourceCharacteristics() const;
+    ResourceLoadStatistics() = default;
 
-    void encode(KeyedEncoder&, const String& origin) const;
-    bool decode(KeyedDecoder&, const String& origin);
+    ResourceLoadStatistics(const ResourceLoadStatistics&) = delete;
+    ResourceLoadStatistics& operator=(const ResourceLoadStatistics&) = delete;
+    ResourceLoadStatistics(ResourceLoadStatistics&&) = default;
+    ResourceLoadStatistics& operator=(ResourceLoadStatistics&&) = default;
+
+    WEBCORE_EXPORT static String primaryDomain(const URL&);
+    WEBCORE_EXPORT static String primaryDomain(const String& host);
+
+    WEBCORE_EXPORT void encode(KeyedEncoder&) const;
+    WEBCORE_EXPORT bool decode(KeyedDecoder&);
 
     String toString() const;
 
+    WEBCORE_EXPORT void merge(const ResourceLoadStatistics&);
+
+    String highLevelDomain;
+
+    WallTime lastSeen;
+    
     // User interaction
     bool hadUserInteraction { false };
-    
-    // Top frame stats
-    unsigned topFrameHasBeenRedirectedTo { 0 };
-    unsigned topFrameHasBeenRedirectedFrom { 0 };
-    unsigned topFrameInitialLoadCount { 0 };
-    unsigned topFrameHasBeenNavigatedTo { 0 };
-    unsigned topFrameHasBeenNavigatedFrom { 0 };
-    bool topFrameHasBeenNavigatedToBefore { false };
+    // Timestamp. Default value is negative, 0 means it was reset.
+    WallTime mostRecentUserInteractionTime { WallTime::fromRawSeconds(-1) };
+    bool grandfathered { false };
     
     // Subframe stats
     HashCountedSet<String> subframeUnderTopFrameOrigins;
-    unsigned subframeHasBeenRedirectedTo { 0 };
-    unsigned subframeHasBeenRedirectedFrom { 0 };
-    HashCountedSet<String> subframeUniqueRedirectsTo;
-    unsigned subframeSubResourceCount { 0 };
-    unsigned subframeHasBeenNavigatedTo { 0 };
-    unsigned subframeHasBeenNavigatedFrom { 0 };
-    bool subframeHasBeenLoadedBefore { false };
     
     // Subresource stats
     HashCountedSet<String> subresourceUnderTopFrameOrigins;
-    unsigned subresourceHasBeenSubresourceCount { 0 };
-    double subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited { 0.0 };
-    unsigned subresourceHasBeenRedirectedFrom { 0 };
-    unsigned subresourceHasBeenRedirectedTo { 0 };
     HashCountedSet<String> subresourceUniqueRedirectsTo;
     
     // Prevalent resource stats
-    HashCountedSet<String> redirectedToOtherPrevalentResourceOrigins;
     bool isPrevalentResource { false };
+    unsigned dataRecordsRemoved { 0 };
+
+    // In-memory only
+    bool isMarkedForCookiePartitioning { false };
 };
 
 } // namespace WebCore
-
-#endif // ResourceLoadStatistics_h

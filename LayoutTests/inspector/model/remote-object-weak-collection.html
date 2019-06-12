@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<script type="text/javascript" src="../../http/tests/inspector/resources/inspector-test.js"></script>
+<script src="../../http/tests/inspector/resources/inspector-test.js"></script>
 <script>
 strongKey1 = {id:1};
 strongKey2 = {id:2};
@@ -32,9 +32,10 @@ function test()
 
     function remoteObjectJSONFilter(key, value)
     {
-        if (key === "_objectId")
+        if (key === "_target" || key === "_hasChildren" || key === "_listeners")
+            return undefined;
+        if (key === "_objectId" || key === "_stackTrace")
             return "<filtered>";
-
         return value;
     }
 
@@ -53,13 +54,13 @@ function test()
 
         // Run the expression, and then run a garbage collection on a different
         // event loop so no objects are kept alive by the stack.
-        WebInspector.runtimeManager.evaluateInInspectedWindow(step.expression, "test", false, true, false, true, false, function(remoteObject, wasThrown) {
-            WebInspector.runtimeManager.evaluateInInspectedWindow("GCController.collect()", "test", false, true, false, false, false, function() {
+        WebInspector.runtimeManager.evaluateInInspectedWindow(step.expression, {objectGroup: "test", doNotPauseOnExceptionsAndMuteConsole: true, generatePreview: true}, function(remoteObject, wasThrown) {
+            WebInspector.runtimeManager.evaluateInInspectedWindow("GCController.collect()", {objectGroup: "test", doNotPauseOnExceptionsAndMuteConsole: true}, function() {
                 InspectorTest.assert(remoteObject instanceof WebInspector.RemoteObject);
                 remoteObject.getCollectionEntries(0, 100, function(entries) {
                     InspectorTest.log("ENTRIES:");
-                    entries.sort(function(a, b) { return a.value.value - b.value.value; });
-                    for (var entry of entries)
+                    entries.sort((a, b) => a.value.value - b.value.value);
+                    for (let entry of entries)
                         InspectorTest.assert(entry instanceof WebInspector.CollectionEntry);
                     InspectorTest.log(JSON.stringify(entries, remoteObjectJSONFilter, "  "));
                     remoteObject.releaseWeakCollectionEntries();

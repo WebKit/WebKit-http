@@ -29,6 +29,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "config.h"
+
 #if !PLATFORM(IOS)
 
 #import <AppKit/AppKit.h>
@@ -45,7 +47,8 @@
 // running layout tests.
 
 static int installColorProfile = false;
-static uint32_t assertionID = 0;
+static uint32_t assertionIDForDisplaySleep = 0;
+static uint32_t assertionIDForSystemSleep = 0;
 
 static NSMutableDictionary *originalColorProfileURLs()
 {
@@ -169,16 +172,11 @@ static void installLayoutTestColorProfile()
     NSArray *displays = displayUUIDStrings();
     saveDisplayColorProfiles(displays);
 
-    ColorSyncProfileRef sRGBProfile = ColorSyncProfileCreateWithName(kColorSyncSRGBProfile);
-    CFErrorRef error;
-    CFURLRef profileURL = ColorSyncProfileGetURL(sRGBProfile, &error);
-    if (!profileURL) {
-        NSLog(@"Failed to get URL of Generic RGB color profile! Many pixel tests may fail as a result. Error: %@", error);
-        return;
-    }
+    // Profile path needs to be hardcoded because of <rdar://problem/28392768>.
+    NSURL *sRGBProfileURL = [NSURL fileURLWithPath:@"/System/Library/ColorSync/Profiles/sRGB Profile.icc"];
     
     for (NSString *displayUUIDString in displays)
-        setDisplayColorProfile(displayUUIDString, (NSURL *)profileURL);
+        setDisplayColorProfile(displayUUIDString, sRGBProfileURL);
 }
 
 static void restoreUserColorProfile(void)
@@ -193,16 +191,17 @@ static void restoreUserColorProfile(void)
     restoreDisplayColorProfiles(displays);
 }
 
-static void releaseDisplaySleepAssertion()
+static void releaseSleepAssertions()
 {
-    IOPMAssertionRelease(assertionID);
+    IOPMAssertionRelease(assertionIDForDisplaySleep);
+    IOPMAssertionRelease(assertionIDForSystemSleep);
 }
 
 static void simpleSignalHandler(int sig)
 {
     // Try to restore the color profile and try to go down cleanly
     restoreUserColorProfile();
-    releaseDisplaySleepAssertion();
+    releaseSleepAssertions();
     exit(128 + sig);
 }
 
@@ -238,12 +237,14 @@ void lockDownDiscreteGraphics()
         NSLog(@"IOObjectRelease() failed in %s with kernResult = %d", __FUNCTION__, kernResult);
 }
 
-void addDisplaySleepAssertion() 
+void addSleepAssertions()
 {
     CFStringRef assertionName = CFSTR("WebKit LayoutTestHelper");
     CFStringRef assertionDetails = CFSTR("WebKit layout-test helper tool is preventing sleep.");
     IOPMAssertionCreateWithDescription(kIOPMAssertionTypePreventUserIdleDisplaySleep,
-        assertionName, assertionDetails, assertionDetails, NULL, 0, NULL, &assertionID);
+        assertionName, assertionDetails, assertionDetails, NULL, 0, NULL, &assertionIDForDisplaySleep);
+    IOPMAssertionCreateWithDescription(kIOPMAssertionTypePreventUserIdleSystemSleep,
+        assertionName, assertionDetails, assertionDetails, NULL, 0, NULL, &assertionIDForSystemSleep);
 }
 
 int main(int argc, char* argv[])
@@ -267,7 +268,7 @@ int main(int argc, char* argv[])
     signal(SIGHUP, simpleSignalHandler);
     signal(SIGTERM, simpleSignalHandler);
 
-    addDisplaySleepAssertion();
+    addSleepAssertions();
     lockDownDiscreteGraphics();
 
     // Save off the current profile, and then install the layout test profile.
@@ -282,7 +283,7 @@ int main(int argc, char* argv[])
 
     // Restore the profile
     restoreUserColorProfile();
-    releaseDisplaySleepAssertion();
+    releaseSleepAssertions();
 
     return 0;
 }

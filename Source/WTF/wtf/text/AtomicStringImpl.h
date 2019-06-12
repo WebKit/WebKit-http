@@ -29,14 +29,8 @@ class AtomicStringTable;
 
 class AtomicStringImpl : public UniquedStringImpl {
 public:
-    static RefPtr<AtomicStringImpl> lookUp(LChar* characters, unsigned length)
-    {
-        return lookUpInternal(characters, length);
-    }
-    static RefPtr<AtomicStringImpl> lookUp(UChar* characters, unsigned length)
-    {
-        return lookUpInternal(characters, length);
-    }
+    WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> lookUp(const LChar*, unsigned length);
+    WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> lookUp(const UChar*, unsigned length);
     static RefPtr<AtomicStringImpl> lookUp(StringImpl* string)
     {
         if (!string || string->isAtomic())
@@ -51,7 +45,6 @@ public:
     WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> add(const LChar*, unsigned length);
     WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> add(const UChar*, unsigned length);
     ALWAYS_INLINE static RefPtr<AtomicStringImpl> add(const char* s, unsigned length) { return add(reinterpret_cast<const LChar*>(s), length); };
-    WTF_EXPORT_STRING_API static Ref<AtomicStringImpl> add(const UChar*, unsigned length, unsigned existingHash);
     WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> add(const UChar*);
     WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> add(StringImpl*, unsigned offset, unsigned length);
     ALWAYS_INLINE static RefPtr<AtomicStringImpl> add(StringImpl* string)
@@ -105,13 +98,10 @@ private:
     WTF_EXPORT_STRING_API static Ref<AtomicStringImpl> addSlowCase(AtomicStringTable&, StringImpl&);
 
     WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> lookUpSlowCase(StringImpl&);
-
-    WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> lookUpInternal(const LChar*, unsigned length);
-    WTF_EXPORT_STRING_API static RefPtr<AtomicStringImpl> lookUpInternal(const UChar*, unsigned length);
 };
 
 #if !ASSERT_DISABLED
-// AtomicStringImpls created from StaticASCIILiteral will ASSERT
+// AtomicStringImpls created from StaticStringImpl will ASSERT
 // in the generic ValueCheck<T>::checkConsistency
 // as they are not allocated by fastMalloc.
 // We don't currently have any way to detect that case

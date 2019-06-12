@@ -46,6 +46,7 @@ iPhone 6 (com.apple.CoreSimulator.SimDeviceType.iPhone-6)
 iPad 2 (com.apple.CoreSimulator.SimDeviceType.iPad-2)
 iPad Retina (com.apple.CoreSimulator.SimDeviceType.iPad-Retina)
 iPad Air (com.apple.CoreSimulator.SimDeviceType.iPad-Air)
+iPad Pro (9.7-inch) (com.apple.CoreSimulator.SimDeviceType.iPad-Pro--9-7-inch-)
 Apple TV 1080p (com.apple.CoreSimulator.SimDeviceType.Apple-TV-1080p)
 Apple Watch - 38mm (com.apple.CoreSimulator.SimDeviceType.Apple-Watch-38mm)
 Apple Watch - 42mm (com.apple.CoreSimulator.SimDeviceType.Apple-Watch-42mm)
@@ -55,6 +56,7 @@ iOS 8.0 Internal (8.0 - Unknown) (com.apple.CoreSimulator.SimRuntime.iOS-8-0-Int
 iOS 8.4 (8.4.1 - 12H321) (com.apple.CoreSimulator.SimRuntime.iOS-8-4)
 tvOS 9.0 (9.0 - 13T5347l) (com.apple.CoreSimulator.SimRuntime.tvOS-9-0)
 watchOS 2.0 (2.0 - 13S343) (com.apple.CoreSimulator.SimRuntime.watchOS-2-0)
+iOS 10.0 (10.0 - 14280) - com.apple.CoreSimulator.SimRuntime.iOS-10-0
 == Devices ==
 -- iOS 8.0 --
     iPhone 4s (68D9A792-E3A9-462B-B211-762C6A5D3779) (Shutdown)
@@ -66,6 +68,8 @@ watchOS 2.0 (2.0 - 13S343) (com.apple.CoreSimulator.SimRuntime.watchOS-2-0)
     iPad 2 (2967C54F-A499-4043-A82C-8C1F5ADBB4A9) (Shutdown)
     iPad Retina (733FC71E-22F4-4077-BF79-25C27EA881FC) (Shutdown)
     iPad Air (67266841-82F3-4545-AED6-568B117E41A8) (Shutdown)
+    iPad Pro (9.7 inch) (DEBD50B8-0566-4D7A-BCDB-4134CFE5DA40) (Shutdown)
+    iPhone 7 (2AE58BBE-0995-4326-9B65-2F413E2E33DC) (Shutdown) (unavailable, runtime profile not found)
 -- iOS 8.0 Internal --
 -- tvOS 9.0 --
 Apple TV 1080p (55281ABE-9C27-438B-AD50-C540D7BC4BAC) (Shutdown)
@@ -74,7 +78,7 @@ Apple TV 1080p (55281ABE-9C27-438B-AD50-C540D7BC4BAC) (Shutdown)
     Apple Watch - 42mm (186AD85E-9BE5-4734-BC33-DF50484AAFF0) (Shutdown)
 ''')
         simulator = Simulator(host=self._host)
-        self.assertEqual(11, len(simulator.device_types))
+        self.assertEqual(12, len(simulator.device_types))
 
         device_type_iphone_4s = simulator.device_types[0]
         self.assertEqual('iPhone 4s', device_type_iphone_4s.name)
@@ -108,26 +112,30 @@ Apple TV 1080p (55281ABE-9C27-438B-AD50-C540D7BC4BAC) (Shutdown)
         self.assertEqual('iPad Air', device_type_ipad_air.name)
         self.assertEqual('com.apple.CoreSimulator.SimDeviceType.iPad-Air', device_type_ipad_air.identifier)
 
-        device_type_apple_tv_1080p = simulator.device_types[8]
+        device_type_ipad_pro = simulator.device_types[8]
+        self.assertEqual('iPad Pro (9.7-inch)', device_type_ipad_pro.name)
+        self.assertEqual('com.apple.CoreSimulator.SimDeviceType.iPad-Pro--9-7-inch-', device_type_ipad_pro.identifier)
+
+        device_type_apple_tv_1080p = simulator.device_types[9]
         self.assertEqual('Apple TV 1080p', device_type_apple_tv_1080p.name)
         self.assertEqual('com.apple.CoreSimulator.SimDeviceType.Apple-TV-1080p', device_type_apple_tv_1080p.identifier)
 
-        device_type_apple_watch_38mm = simulator.device_types[9]
+        device_type_apple_watch_38mm = simulator.device_types[10]
         self.assertEqual('Apple Watch - 38mm', device_type_apple_watch_38mm.name)
         self.assertEqual('com.apple.CoreSimulator.SimDeviceType.Apple-Watch-38mm', device_type_apple_watch_38mm.identifier)
 
-        device_type_apple_watch_42mm = simulator.device_types[10]
+        device_type_apple_watch_42mm = simulator.device_types[11]
         self.assertEqual('Apple Watch - 42mm', device_type_apple_watch_42mm.name)
         self.assertEqual('com.apple.CoreSimulator.SimDeviceType.Apple-Watch-42mm', device_type_apple_watch_42mm.identifier)
 
-        self.assertEqual(5, len(simulator.runtimes))
+        self.assertEqual(6, len(simulator.runtimes))
 
         runtime_ios_8 = simulator.runtimes[0]
         self.assertEqual('com.apple.CoreSimulator.SimRuntime.iOS-8-0', runtime_ios_8.identifier)
         self.assertEqual(True, runtime_ios_8.available)
         self.assertEqual(False, runtime_ios_8.is_internal_runtime)
         self.assertEqual(tuple([8, 0]), runtime_ios_8.version)
-        self.assertEqual(9, len(runtime_ios_8.devices))
+        self.assertEqual(11, len(runtime_ios_8.devices))
 
         device_iphone_4s = runtime_ios_8.devices[0]
         self.assertEqual('iPhone 4s', device_iphone_4s.name)
@@ -183,6 +191,18 @@ Apple TV 1080p (55281ABE-9C27-438B-AD50-C540D7BC4BAC) (Shutdown)
         self.assertEqual(True, device_ipad_air.available)
         self.assertEqual(runtime_ios_8, device_ipad_air.runtime)
 
+        device_ipad_pro = runtime_ios_8.devices[9]
+        self.assertEqual('iPad Pro (9.7 inch)', device_ipad_pro.name)
+        self.assertEqual('DEBD50B8-0566-4D7A-BCDB-4134CFE5DA40', device_ipad_pro.udid)
+        self.assertEqual(True, device_ipad_pro.available)
+        self.assertEqual(runtime_ios_8, device_ipad_pro.runtime)
+
+        device_iphone_7 = runtime_ios_8.devices[10]
+        self.assertEqual('iPhone 7', device_iphone_7.name)
+        self.assertEqual('2AE58BBE-0995-4326-9B65-2F413E2E33DC', device_iphone_7.udid)
+        self.assertEqual(False, device_iphone_7.available)
+        self.assertEqual(runtime_ios_8, device_iphone_7.runtime)
+
         runtime_ios_8_internal = simulator.runtimes[1]
         self.assertEqual('com.apple.CoreSimulator.SimRuntime.iOS-8-0-Internal', runtime_ios_8_internal.identifier)
         self.assertEqual(False, runtime_ios_8_internal.available)
@@ -216,6 +236,13 @@ Apple TV 1080p (55281ABE-9C27-438B-AD50-C540D7BC4BAC) (Shutdown)
         self.assertEqual(False, runtime_watchos_2.is_internal_runtime)
         self.assertEqual(tuple([2, 0]), runtime_watchos_2.version)
         self.assertEqual(2, len(runtime_watchos_2.devices))
+
+        runtime_ios_10 = simulator.runtimes[5]
+        self.assertEqual('com.apple.CoreSimulator.SimRuntime.iOS-10-0', runtime_ios_10.identifier)
+        self.assertEqual(True, runtime_ios_10.available)
+        self.assertEqual(False, runtime_ios_10.is_internal_runtime)
+        self.assertEqual(tuple([10, 0]), runtime_ios_10.version)
+        self.assertEqual(0, len(runtime_ios_10.devices))
 
         device_apple_watch_38mm = runtime_watchos_2.devices[0]
         self.assertEqual('Apple Watch - 38mm', device_apple_watch_38mm.name)

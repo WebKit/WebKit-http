@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.
+ *  Copyright (C) 2007-2008, 2011, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -18,10 +18,10 @@
  *
  */
 
-#ifndef ArrayConstructor_h
-#define ArrayConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
+#include "ProxyObject.h"
 
 namespace JSC {
 
@@ -33,12 +33,12 @@ class GetterSetter;
 class ArrayConstructor : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = OverridesGetOwnPropertySlot | InternalFunction::StructureFlags;
+    static const unsigned StructureFlags = HasStaticPropertyTable | InternalFunction::StructureFlags;
 
-    static ArrayConstructor* create(VM& vm, Structure* structure, ArrayPrototype* arrayPrototype, GetterSetter* speciesSymbol)
+    static ArrayConstructor* create(VM& vm, JSGlobalObject* globalObject, Structure* structure, ArrayPrototype* arrayPrototype, GetterSetter* speciesSymbol)
     {
         ArrayConstructor* constructor = new (NotNull, allocateCell<ArrayConstructor>(vm.heap)) ArrayConstructor(vm, structure);
-        constructor->finishCreation(vm, arrayPrototype, speciesSymbol);
+        constructor->finishCreation(vm, globalObject, arrayPrototype, speciesSymbol);
         return constructor;
     }
 
@@ -50,18 +50,35 @@ public:
     }
 
 protected:
-    void finishCreation(VM&, ArrayPrototype*, GetterSetter* speciesSymbol);
+    void finishCreation(VM&, JSGlobalObject*, ArrayPrototype*, GetterSetter* speciesSymbol);
 
 private:
     ArrayConstructor(VM&, Structure*);
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 
     static ConstructType getConstructData(JSCell*, ConstructData&);
     static CallType getCallData(JSCell*, CallData&);
 };
 
-JSObject* constructArrayWithSizeQuirk(ExecState*, ArrayAllocationProfile*, JSGlobalObject*, JSValue length, JSValue prototype = JSValue());
+JSValue constructArrayWithSizeQuirk(ExecState*, ArrayAllocationProfile*, JSGlobalObject*, JSValue length, JSValue prototype = JSValue());
+
+EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArrayConstructor(ExecState*);
+EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArraySlow(ExecState*);
+bool isArraySlow(ExecState*, ProxyObject* argument);
+
+// ES6 7.2.2
+// https://tc39.github.io/ecma262/#sec-isarray
+inline bool isArray(ExecState* exec, JSValue argumentValue)
+{
+    if (!argumentValue.isObject())
+        return false;
+
+    JSObject* argument = jsCast<JSObject*>(argumentValue);
+    if (argument->type() == ArrayType || argument->type() == DerivedArrayType)
+        return true;
+
+    if (argument->type() != ProxyObjectType)
+        return false;
+    return isArraySlow(exec, jsCast<ProxyObject*>(argument));
+}
 
 } // namespace JSC
-
-#endif // ArrayConstructor_h

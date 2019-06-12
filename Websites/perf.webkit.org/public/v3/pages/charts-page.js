@@ -7,6 +7,7 @@ class ChartsPage extends PageWithHeading {
         this._paneList = [];
         this._paneListChanged = false;
         this._mainDomain = null;
+        this._currentRepositoryId = null;
 
         toolbar.setAddPaneCallback(this.insertPaneAfter.bind(this));
     }
@@ -36,6 +37,13 @@ class ChartsPage extends PageWithHeading {
         return state;
     }
 
+    static createStateForConfigurationList(configurationList, startTime)
+    {
+        console.assert(configurationList instanceof Array);
+        var state = {paneList: configurationList};
+        return state;
+    }
+
     open(state)
     {
         this.toolbar().setNumberOfDaysCallback(this.setNumberOfDaysFromToolbar.bind(this));
@@ -54,6 +62,10 @@ class ChartsPage extends PageWithHeading {
         if (serializedPaneList.length)
             state['paneList'] = serializedPaneList;
 
+        var repository = this._currentRepositoryId;
+        if (repository)
+            state['repository'] = this._currentRepositoryId;
+
         return state;
     }
 
@@ -67,14 +79,19 @@ class ChartsPage extends PageWithHeading {
         if (newPaneList) {
             this._paneList = newPaneList;
             this._paneListChanged = true;
-            this.render();
+            this.enqueueToRender();
         }
 
         this._updateDomainsFromSerializedState(state);
 
+        this._currentRepositoryId = parseInt(state['repository']);
+        var currentRepository = Repository.findById(this._currentRepositoryId);
+
         console.assert(this._paneList.length == paneList.length);
-        for (var i = 0; i < this._paneList.length; i++)
+        for (var i = 0; i < this._paneList.length; i++) {
             this._paneList[i].updateFromSerializedState(state.paneList[i], isOpen);
+            this._paneList[i].setOpenRepository(currentRepository);
+        }
     }
 
     _updateDomainsFromSerializedState(state)
@@ -92,7 +109,7 @@ class ChartsPage extends PageWithHeading {
             since = zoom[0] - (zoom[1] - zoom[0]) / 2;
 
         this.toolbar().setStartTime(since);
-        this.toolbar().render();
+        this.toolbar().enqueueToRender();
 
         this._mainDomain = zoom || null;
 
@@ -134,7 +151,7 @@ class ChartsPage extends PageWithHeading {
     setNumberOfDaysFromToolbar(numberOfDays, shouldUpdateState)
     {
         this.toolbar().setNumberOfDays(numberOfDays, true);
-        this.toolbar().render();
+        this.toolbar().enqueueToRender();
         this._updateOverviewDomain();
         this._updateMainDomain();
         if (shouldUpdateState)
@@ -166,6 +183,19 @@ class ChartsPage extends PageWithHeading {
     {
         if (shouldUpdateState)
             this.scheduleUrlStateUpdate();
+    }
+
+    graphOptionsDidChange(pane)
+    {
+        this.scheduleUrlStateUpdate();
+    }
+
+    setOpenRepository(repository)
+    {
+        this._currentRepositoryId = repository ? repository.id() : null;
+        for (var pane of this._paneList)
+            pane.setOpenRepository(repository);
+        this.scheduleUrlStateUpdate();
     }
 
     _updateOverviewDomain()
@@ -268,7 +298,7 @@ class ChartsPage extends PageWithHeading {
             this._updateOverviewDomain();
             this._updateMainDomain();
         }
-        this.render();
+        this.enqueueToRender();
         this.scheduleUrlStateUpdate();
     }
 
@@ -280,7 +310,7 @@ class ChartsPage extends PageWithHeading {
             this.renderReplace(this.content().querySelector('.pane-list'), this._paneList);
 
         for (var pane of this._paneList)
-            pane.render();
+            pane.enqueueToRender();
 
         this._paneListChanged = false;
     }

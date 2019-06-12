@@ -1,6 +1,7 @@
 /*
     Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies)
     Copyright (C) 2012 Company 100, Inc.
+    Copyright (C) 2017 Sony Interactive Entertainment Inc.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -29,26 +30,33 @@
 #include <WebCore/TextureMapperGL.h>
 #include <WebCore/TextureMapperLayer.h>
 #include <wtf/Atomics.h>
-#include <wtf/MainThread.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void CoordinatedGraphicsScene::dispatchOnMainThread(std::function<void()> function)
+void CoordinatedGraphicsScene::dispatchOnMainThread(Function<void()>&& function)
 {
-    if (isMainThread())
+    if (RunLoop::isMain()) {
         function();
-    else
-        callOnMainThread(WTFMove(function));
+        return;
+    }
+
+    RunLoop::main().dispatch([protectedThis = makeRef(*this), function = WTFMove(function)] {
+        function();
+    });
 }
 
-void CoordinatedGraphicsScene::dispatchOnClientRunLoop(std::function<void()> function)
+void CoordinatedGraphicsScene::dispatchOnClientRunLoop(Function<void()>&& function)
 {
-    if (&m_clientRunLoop == &RunLoop::current())
+    if (&m_clientRunLoop == &RunLoop::current()) {
         function();
-    else
-        m_clientRunLoop.dispatch(WTFMove(function));
+        return;
+    }
+
+    m_clientRunLoop.dispatch([protectedThis = makeRef(*this), function = WTFMove(function)] {
+        function();
+    });
 }
 
 static bool layerShouldHaveBackingStore(TextureMapperLayer* layer)
@@ -114,38 +122,8 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations()) {
-        RefPtr<CoordinatedGraphicsScene> protector(this);
-        dispatchOnClientRunLoop([=] {
-            protector->updateViewport();
-        });
-    }
-}
-
-void CoordinatedGraphicsScene::paintToGraphicsContext(PlatformGraphicsContext* platformContext, const Color& backgroundColor, bool drawsBackground)
-{
-    if (!m_textureMapper)
-        m_textureMapper = TextureMapper::create();
-    syncRemoteContent();
-    TextureMapperLayer* layer = rootLayer();
-
-    if (!layer)
-        return;
-
-    GraphicsContext graphicsContext(platformContext);
-    m_textureMapper->setGraphicsContext(&graphicsContext);
-    m_textureMapper->beginPainting();
-
-    IntRect clipRect = graphicsContext.clipBounds();
-    if (drawsBackground)
-        m_textureMapper->drawSolidColor(clipRect, TransformationMatrix(), backgroundColor);
-    else
-        m_textureMapper->drawSolidColor(clipRect, TransformationMatrix(), m_viewBackgroundColor);
-
-    layer->paint();
-    m_fpsCounter.updateFPSAndDisplay(*m_textureMapper, clipRect.location());
-    m_textureMapper->endPainting();
-    m_textureMapper->setGraphicsContext(0);
+    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations())
+        updateViewport();
 }
 
 #if PLATFORM(QT)
@@ -157,7 +135,6 @@ void CoordinatedGraphicsScene::setScrollPosition(const FloatPoint& scrollPositio
 
 void CoordinatedGraphicsScene::updateViewport()
 {
-    ASSERT(&m_clientRunLoop == &RunLoop::current());
     if (m_client)
         m_client->updateViewport();
 }
@@ -182,21 +159,7 @@ void CoordinatedGraphicsScene::adjustPositionForFixedLayers(const FloatPoint& co
 
 void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
 {
-#if USE(GRAPHICS_SURFACE)
-    ASSERT(m_textureMapper);
-
-    if (state.platformLayerChanged) {
-        destroyPlatformLayerIfNeeded(layer, state);
-        createPlatformLayerIfNeeded(layer, state);
-    }
-
-    if (state.platformLayerShouldSwapBuffers) {
-        ASSERT(m_surfaceBackingStores.contains(layer));
-        SurfaceBackingStoreMap::iterator it = m_surfaceBackingStores.find(layer);
-        RefPtr<TextureMapperSurfaceBackingStore> platformLayerBackingStore = it->value;
-        platformLayerBackingStore->swapBuffersIfNeeded(state.platformLayerFrontBuffer);
-    }
-#elif USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS_THREADED)
     if (!state.platformLayerChanged)
         return;
 
@@ -214,32 +177,15 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
-    RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnClientRunLoop([=] {
-        protector->updateViewport();
-    });
-}
-#endif
-
-#if USE(GRAPHICS_SURFACE)
-void CoordinatedGraphicsScene::createPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-    if (!state.platformLayerToken.isValid())
-        return;
-
-    RefPtr<TextureMapperSurfaceBackingStore> platformLayerBackingStore(TextureMapperSurfaceBackingStore::create());
-    m_surfaceBackingStores.set(layer, platformLayerBackingStore);
-    platformLayerBackingStore->setGraphicsSurface(GraphicsSurface::create(state.platformLayerSize, state.platformLayerSurfaceFlags, state.platformLayerToken));
-    layer->setContentsLayer(platformLayerBackingStore.get());
+    updateViewport();
 }
 
-void CoordinatedGraphicsScene::destroyPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+TextureMapperGL* CoordinatedGraphicsScene::texmapGL()
 {
-    if (state.platformLayerToken.isValid())
-        return;
+    if (!m_textureMapper)
+        return nullptr;
 
-    m_surfaceBackingStores.remove(layer);
-    layer->setContentsLayer(0);
+    return static_cast<TextureMapperGL*>(m_textureMapper.get());
 }
 #endif
 
@@ -306,8 +252,8 @@ void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const Coordi
     if (layerState.solidColorChanged)
         layer->setSolidColor(layerState.solidColor);
 
-    if (layerState.debugBorderColorChanged || layerState.debugBorderWidthChanged)
-        layer->setDebugVisuals(layerState.showDebugBorders, layerState.debugBorderColor, layerState.debugBorderWidth, layerState.showRepaintCounter);
+    if (layerState.debugVisualsChanged)
+        layer->setDebugVisuals(layerState.debugVisuals.showDebugBorders, layerState.debugVisuals.debugBorderColor, layerState.debugVisuals.debugBorderWidth, layerState.debugVisuals.showRepaintCounter);
 
     if (layerState.replicaChanged)
         layer->setReplicaLayer(getLayerByIDIfExists(layerState.replica));
@@ -388,9 +334,6 @@ void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
 
     m_backingStores.remove(layer.get());
     m_fixedLayers.remove(layerID);
-#if USE(GRAPHICS_SURFACE)
-    m_surfaceBackingStores.remove(layer.get());
-#endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (auto platformLayerProxy = m_platformLayerProxies.take(layer.get()))
         platformLayerProxy->invalidate();
@@ -425,9 +368,9 @@ void CoordinatedGraphicsScene::createBackingStoreIfNeeded(TextureMapperLayer* la
     if (m_backingStores.contains(layer))
         return;
 
-    RefPtr<CoordinatedBackingStore> backingStore(CoordinatedBackingStore::create());
-    m_backingStores.add(layer, backingStore);
-    layer->setBackingStore(backingStore);
+    auto backingStore = CoordinatedBackingStore::create();
+    m_backingStores.add(layer, backingStore.copyRef());
+    layer->setBackingStore(WTFMove(backingStore));
 }
 
 void CoordinatedGraphicsScene::removeBackingStoreIfNeeded(TextureMapperLayer* layer)
@@ -436,7 +379,7 @@ void CoordinatedGraphicsScene::removeBackingStoreIfNeeded(TextureMapperLayer* la
     if (!backingStore)
         return;
 
-    layer->setBackingStore(0);
+    layer->setBackingStore(nullptr);
 }
 
 void CoordinatedGraphicsScene::resetBackingStoreSizeToLayerSize(TextureMapperLayer* layer)
@@ -453,7 +396,9 @@ void CoordinatedGraphicsScene::createTilesIfNeeded(TextureMapperLayer* layer, co
         return;
 
     RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    ASSERT(backingStore);
+    ASSERT(backingStore || !layerShouldHaveBackingStore(layer));
+    if (!backingStore)
+        return;
 
     for (auto& tile : state.tilesToCreate)
         backingStore->createTile(tile.tileID, tile.scale);
@@ -480,15 +425,17 @@ void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, co
         return;
 
     RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    ASSERT(backingStore);
+    ASSERT(backingStore || !layerShouldHaveBackingStore(layer));
+    if (!backingStore)
+        return;
 
     for (auto& tile : state.tilesToUpdate) {
         const SurfaceUpdateInfo& surfaceUpdateInfo = tile.updateInfo;
 
-        SurfaceMap::iterator surfaceIt = m_surfaces.find(surfaceUpdateInfo.atlasID);
+        auto surfaceIt = m_surfaces.find(surfaceUpdateInfo.atlasID);
         ASSERT(surfaceIt != m_surfaces.end());
 
-        backingStore->updateTile(tile.tileID, surfaceUpdateInfo.updateRect, tile.tileRect, surfaceIt->value, surfaceUpdateInfo.surfaceOffset);
+        backingStore->updateTile(tile.tileID, surfaceUpdateInfo.updateRect, tile.tileRect, surfaceIt->value.copyRef(), surfaceUpdateInfo.surfaceOffset);
         m_backingStoresWithPendingBuffers.add(backingStore);
     }
 }
@@ -496,22 +443,25 @@ void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, co
 void CoordinatedGraphicsScene::syncUpdateAtlases(const CoordinatedGraphicsState& state)
 {
     for (auto& atlas : state.updateAtlasesToCreate)
-        createUpdateAtlas(atlas.first, atlas.second);
-
-    for (auto& atlas : state.updateAtlasesToRemove)
-        removeUpdateAtlas(atlas);
+        createUpdateAtlas(atlas.first, atlas.second.copyRef());
 }
 
-void CoordinatedGraphicsScene::createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface> surface)
+void CoordinatedGraphicsScene::createUpdateAtlas(uint32_t atlasID, RefPtr<CoordinatedSurface>&& surface)
 {
     ASSERT(!m_surfaces.contains(atlasID));
-    m_surfaces.add(atlasID, surface);
+    m_surfaces.add(atlasID, WTFMove(surface));
 }
 
 void CoordinatedGraphicsScene::removeUpdateAtlas(uint32_t atlasID)
 {
     ASSERT(m_surfaces.contains(atlasID));
     m_surfaces.remove(atlasID);
+}
+
+void CoordinatedGraphicsScene::releaseUpdateAtlases(const Vector<uint32_t>& atlasesToRemove)
+{
+    for (auto& atlas : atlasesToRemove)
+        removeUpdateAtlas(atlas);
 }
 
 void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState& state)
@@ -523,7 +473,7 @@ void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState&
         createImageBacking(image);
 
     for (auto& image : state.imagesToUpdate)
-        updateImageBacking(image.first, image.second);
+        updateImageBacking(image.first, image.second.copyRef());
 
     for (auto& image : state.imagesToClear)
         clearImageBackingContents(image);
@@ -532,14 +482,13 @@ void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState&
 void CoordinatedGraphicsScene::createImageBacking(CoordinatedImageBackingID imageID)
 {
     ASSERT(!m_imageBackings.contains(imageID));
-    RefPtr<CoordinatedBackingStore> backingStore(CoordinatedBackingStore::create());
-    m_imageBackings.add(imageID, backingStore.release());
+    m_imageBackings.add(imageID, CoordinatedBackingStore::create());
 }
 
-void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imageID, PassRefPtr<CoordinatedSurface> surface)
+void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<CoordinatedSurface>&& surface)
 {
     ASSERT(m_imageBackings.contains(imageID));
-    ImageBackingMap::iterator it = m_imageBackings.find(imageID);
+    auto it = m_imageBackings.find(imageID);
     RefPtr<CoordinatedBackingStore> backingStore = it->value;
 
     // CoordinatedImageBacking is realized to CoordinatedBackingStore with only one tile in UI Process.
@@ -548,7 +497,7 @@ void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imag
     // See CoordinatedGraphicsLayer::shouldDirectlyCompositeImage()
     ASSERT(2000 >= std::max(rect.width(), rect.height()));
     backingStore->setSize(rect.size());
-    backingStore->updateTile(1 /* id */, rect, rect, surface, rect.location());
+    backingStore->updateTile(1 /* id */, rect, rect, WTFMove(surface), rect.location());
 
     m_backingStoresWithPendingBuffers.add(backingStore);
 }
@@ -556,7 +505,7 @@ void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imag
 void CoordinatedGraphicsScene::clearImageBackingContents(CoordinatedImageBackingID imageID)
 {
     ASSERT(m_imageBackings.contains(imageID));
-    ImageBackingMap::iterator it = m_imageBackings.find(imageID);
+    auto it = m_imageBackings.find(imageID);
     RefPtr<CoordinatedBackingStore> backingStore = it->value;
     backingStore->removeAllTiles();
     m_backingStoresWithPendingBuffers.add(backingStore);
@@ -572,17 +521,12 @@ void CoordinatedGraphicsScene::removeImageBacking(CoordinatedImageBackingID imag
 
 void CoordinatedGraphicsScene::assignImageBackingToLayer(TextureMapperLayer* layer, CoordinatedImageBackingID imageID)
 {
-#if USE(GRAPHICS_SURFACE)
-    if (m_surfaceBackingStores.contains(layer))
-        return;
-#endif
-
     if (imageID == InvalidCoordinatedImageBackingID) {
         layer->setContentsLayer(0);
         return;
     }
 
-    ImageBackingMap::iterator it = m_imageBackings.find(imageID);
+    auto it = m_imageBackings.find(imageID);
     ASSERT(it != m_imageBackings.end());
     layer->setContentsLayer(it->value.get());
 }
@@ -602,6 +546,9 @@ void CoordinatedGraphicsScene::commitPendingBackingStoreOperations()
 
 void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& state)
 {
+    if (!m_client)
+        return;
+
     m_renderedContentsScrollPosition = state.scrollPosition;
 
     createLayers(state.layersToCreate);
@@ -618,18 +565,16 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 
     commitPendingBackingStoreOperations();
     removeReleasedImageBackingsIfNeeded();
-
-    // The pending tiles state is on its way for the screen, tell the web process to render the next one.
-    RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
-        protector->renderNextFrame();
-    });
 }
 
 void CoordinatedGraphicsScene::renderNextFrame()
 {
-    if (m_client)
-        m_client->renderNextFrame();
+    if (!m_client)
+        return;
+    dispatchOnMainThread([this] {
+        if (m_client)
+            m_client->renderNextFrame();
+    });
 }
 
 void CoordinatedGraphicsScene::ensureRootLayer()
@@ -654,8 +599,8 @@ void CoordinatedGraphicsScene::syncRemoteContent()
     // We enqueue messages and execute them during paint, as they require an active GL context.
     ensureRootLayer();
 
-    Vector<std::function<void()>> renderQueue;
-    bool calledOnMainThread = WTF::isMainThread();
+    Vector<Function<void()>> renderQueue;
+    bool calledOnMainThread = RunLoop::isMain();
     if (!calledOnMainThread)
         m_renderQueueMutex.lock();
     renderQueue = WTFMove(m_renderQueue);
@@ -668,12 +613,13 @@ void CoordinatedGraphicsScene::syncRemoteContent()
 
 void CoordinatedGraphicsScene::purgeGLResources()
 {
+    ASSERT(!m_client);
+
     m_imageBackings.clear();
     m_releasedImageBackings.clear();
-#if USE(GRAPHICS_SURFACE)
-    m_surfaceBackingStores.clear();
-#endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
+    for (auto& proxy : m_platformLayerProxies.values())
+        proxy->invalidate();
     m_platformLayerProxies.clear();
 #endif
     m_surfaces.clear();
@@ -685,32 +631,16 @@ void CoordinatedGraphicsScene::purgeGLResources()
     m_textureMapper = nullptr;
     m_backingStores.clear();
     m_backingStoresWithPendingBuffers.clear();
-
-    setActive(false);
-
-    RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
-        protector->purgeBackingStores();
-    });
-}
-
-void CoordinatedGraphicsScene::dispatchCommitScrollOffset(uint32_t layerID, const IntSize& offset)
-{
-    m_client->commitScrollOffset(layerID, offset);
 }
 
 void CoordinatedGraphicsScene::commitScrollOffset(uint32_t layerID, const IntSize& offset)
 {
-    RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
-        protector->dispatchCommitScrollOffset(layerID, offset);
+    if (!m_client)
+        return;
+    dispatchOnMainThread([this, layerID, offset] {
+        if (m_client)
+            m_client->commitScrollOffset(layerID, offset);
     });
-}
-
-void CoordinatedGraphicsScene::purgeBackingStores()
-{
-    if (m_client)
-        m_client->purgeBackingStores();
 }
 
 void CoordinatedGraphicsScene::setLayerAnimationsIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
@@ -723,23 +653,28 @@ void CoordinatedGraphicsScene::setLayerAnimationsIfNeeded(TextureMapperLayer* la
 
 void CoordinatedGraphicsScene::detach()
 {
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
+    m_isActive = false;
+    m_client = nullptr;
+    LockHolder locker(m_renderQueueMutex);
     m_renderQueue.clear();
-    m_client = 0;
 }
 
-void CoordinatedGraphicsScene::appendUpdate(std::function<void()> function)
+void CoordinatedGraphicsScene::appendUpdate(Function<void()>&& function)
 {
     if (!m_isActive)
         return;
 
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
     LockHolder locker(m_renderQueueMutex);
     m_renderQueue.append(WTFMove(function));
 }
 
 void CoordinatedGraphicsScene::setActive(bool active)
 {
+    if (!m_client)
+        return;
+
     if (m_isActive == active)
         return;
 
@@ -748,12 +683,8 @@ void CoordinatedGraphicsScene::setActive(bool active)
     // and cannot be applied to the newly created instance.
     m_renderQueue.clear();
     m_isActive = active;
-    if (m_isActive) {
-        RefPtr<CoordinatedGraphicsScene> protector(this);
-        dispatchOnMainThread([=] {
-            protector->renderNextFrame();
-        });
-    }
+    if (m_isActive)
+        renderNextFrame();
 }
 
 TextureMapperLayer* CoordinatedGraphicsScene::findScrollableContentsLayerAt(const FloatPoint& point)

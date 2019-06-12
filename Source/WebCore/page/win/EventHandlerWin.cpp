@@ -73,7 +73,7 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
     return true;
 }
 
-bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& wheelEvent, Widget& widget)
+bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& wheelEvent, Widget& widget)
 {
     if (!is<FrameView>(widget))
         return false;
@@ -81,7 +81,7 @@ bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& wheelEvent, 
     return downcast<FrameView>(widget).frame().eventHandler().handleWheelEvent(wheelEvent);
 }
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent&) const
 {
     return true;
 }
@@ -92,10 +92,12 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
 }
 
 #if ENABLE(DRAG_SUPPORT)
-PassRefPtr<DataTransfer> EventHandler::createDraggingDataTransfer() const
+
+Ref<DataTransfer> EventHandler::createDraggingDataTransfer() const
 {
-    return DataTransfer::createForDragAndDrop();
+    return DataTransfer::createForDrag();
 }
+
 #endif
 
 void EventHandler::focusDocumentView()
@@ -112,9 +114,9 @@ bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestR
     return false;
 }
 
-unsigned EventHandler::accessKeyModifiers()
+OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
-    return PlatformEvent::AltKey;
+    return PlatformEvent::Modifier::AltKey;
 }
 
 }

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef NativeXPathNSResolver_h
-#define NativeXPathNSResolver_h
+#pragma once
 
 #include "XPathNSResolver.h"
 #include <wtf/RefPtr.h>
@@ -38,7 +37,7 @@ public:
     static Ref<NativeXPathNSResolver> create(RefPtr<Node>&& node) { return adoptRef(*new NativeXPathNSResolver(WTFMove(node))); }
     virtual ~NativeXPathNSResolver();
 
-    virtual String lookupNamespaceURI(const String& prefix);
+    String lookupNamespaceURI(const String& prefix) override;
 
 private:
     explicit NativeXPathNSResolver(RefPtr<Node>&&);
@@ -46,5 +45,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // NativeXPathNSResolver_h

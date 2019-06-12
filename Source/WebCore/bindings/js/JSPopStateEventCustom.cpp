@@ -33,6 +33,7 @@
 
 #include "DOMWrapperWorld.h"
 #include "JSHistory.h"
+#include <heap/HeapInlines.h>
 #include <runtime/JSCJSValueInlines.h>
 
 using namespace JSC;
@@ -58,17 +59,15 @@ JSValue JSPopStateEvent::state(ExecState& state) const
 
     PopStateEvent& event = wrapped();
 
-    if (!event.state().hasNoValue()) {
+    if (auto eventState = event.state()) {
         // We need to make sure a PopStateEvent does not leak objects in its state property across isolated DOM worlds.
         // Ideally, we would check that the worlds have different privileges but that's not possible yet.
-        JSValue eventState = event.state().jsValue();
         if (eventState.isObject() && &worldForDOMObject(eventState.getObject()) != &currentWorld(&state)) {
-            if (RefPtr<SerializedScriptValue> serializedValue = event.trySerializeState(&state))
-                eventState = serializedValue->deserialize(&state, globalObject(), nullptr);
+            if (auto serializedValue = event.trySerializeState(state))
+                eventState = serializedValue->deserialize(state, globalObject());
             else
                 eventState = jsNull();
         }
-        
         return cacheState(state, this, eventState);
     }
     
@@ -82,14 +81,14 @@ JSValue JSPopStateEvent::state(ExecState& state) const
     // The current history state object might've changed in the meantime, so we need to take care
     // of using the correct one, and always share the same deserialization with history.state.
 
-    bool isSameState = history->isSameAsCurrentState(event.serializedState().get());
+    bool isSameState = history->isSameAsCurrentState(event.serializedState());
     JSValue result;
 
     if (isSameState) {
-        JSHistory* jsHistory = jsCast<JSHistory*>(toJS(&state, globalObject(), history).asCell());
+        JSHistory* jsHistory = jsCast<JSHistory*>(toJS(&state, globalObject(), *history).asCell());
         result = jsHistory->state(state);
     } else
-        result = event.serializedState()->deserialize(&state, globalObject(), 0);
+        result = event.serializedState()->deserialize(state, globalObject());
 
     return cacheState(state, this, result);
 }

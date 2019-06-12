@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,21 +27,25 @@
 #include "JSDollarVMPrototype.h"
 
 #include "CodeBlock.h"
+#include "FunctionCodeBlock.h"
 #include "Heap.h"
 #include "HeapIterationScope.h"
 #include "JSCInlines.h"
 #include "JSFunction.h"
+#include "MarkedSpaceInlines.h"
 #include "StackVisitor.h"
 #include <wtf/DataLog.h>
+#include <wtf/ProcessID.h>
+#include <wtf/StringPrintStream.h>
 
 namespace JSC {
 
-const ClassInfo JSDollarVMPrototype::s_info = { "DollarVMPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSDollarVMPrototype) };
+const ClassInfo JSDollarVMPrototype::s_info = { "DollarVMPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSDollarVMPrototype) };
     
     
 bool JSDollarVMPrototype::currentThreadOwnsJSLock(ExecState* exec)
 {
-    return exec->vm().apiLock().currentThreadIsHoldingLock();
+    return exec->vm().currentThreadIsHoldingAPILock();
 }
 
 static bool ensureCurrentThreadOwnsJSLock(ExecState* exec)
@@ -77,7 +81,7 @@ public:
     {
     }
 
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         if (m_currentFrame++ > 1) {
             m_jitType = visitor->codeBlock()->jitType();
@@ -89,8 +93,8 @@ public:
     JITCode::JITType jitType() { return m_jitType; }
 
 private:
-    unsigned m_currentFrame;
-    JITCode::JITType m_jitType;
+    mutable unsigned m_currentFrame;
+    mutable JITCode::JITType m_jitType;
 };
 
 static EncodedJSValue JSC_HOST_CALL functionLLintTrue(ExecState* exec)
@@ -115,7 +119,7 @@ void JSDollarVMPrototype::gc(ExecState* exec)
 {
     if (!ensureCurrentThreadOwnsJSLock(exec))
         return;
-    exec->heap()->collectAllGarbage();
+    exec->heap()->collectNow(Sync, CollectionScope::Full);
 }
     
 static EncodedJSValue JSC_HOST_CALL functionGC(ExecState* exec)
@@ -128,7 +132,7 @@ void JSDollarVMPrototype::edenGC(ExecState* exec)
 {
     if (!ensureCurrentThreadOwnsJSLock(exec))
         return;
-    exec->heap()->collectAndSweep(EdenCollection);
+    exec->heap()->collectSync(CollectionScope::Eden);
 }
 
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState* exec)
@@ -145,13 +149,20 @@ bool JSDollarVMPrototype::isInHeap(Heap* heap, void* ptr)
 bool JSDollarVMPrototype::isInObjectSpace(Heap* heap, void* ptr)
 {
     MarkedBlock* candidate = MarkedBlock::blockFor(ptr);
-    return heap->objectSpace().blocks().set().contains(candidate);
+    if (heap->objectSpace().blocks().set().contains(candidate))
+        return true;
+    for (LargeAllocation* allocation : heap->objectSpace().largeAllocations()) {
+        if (allocation->contains(ptr))
+            return true;
+    }
+    return false;
 }
 
-bool JSDollarVMPrototype::isInStorageSpace(Heap* heap, void* ptr)
+bool JSDollarVMPrototype::isInStorageSpace(Heap*, void*)
 {
-    CopiedBlock* candidate = CopiedSpace::blockFor(ptr);
-    return heap->storageSpace().contains(candidate);
+    // FIXME: Do something with this.
+    // https://bugs.webkit.org/show_bug.cgi?id=161753
+    return false;
 }
 
 struct CellAddressCheckFunctor : MarkedBlock::CountFunctor {
@@ -160,7 +171,7 @@ struct CellAddressCheckFunctor : MarkedBlock::CountFunctor {
     {
     }
 
-    IterationStatus operator()(JSCell* cell)
+    IterationStatus operator()(HeapCell* cell, HeapCell::Kind) const
     {
         if (cell == candidate) {
             found = true;
@@ -170,7 +181,7 @@ struct CellAddressCheckFunctor : MarkedBlock::CountFunctor {
     }
 
     JSCell* candidate;
-    bool found { false };
+    mutable bool found { false };
 };
 
 bool JSDollarVMPrototype::isValidCell(Heap* heap, JSCell* candidate)
@@ -192,7 +203,7 @@ bool JSDollarVMPrototype::isValidCodeBlock(ExecState* exec, CodeBlock* candidate
         {
         }
         
-        bool operator()(CodeBlock* codeBlock)
+        bool operator()(CodeBlock* codeBlock) const
         {
             if (codeBlock == candidate)
                 found = true;
@@ -200,7 +211,7 @@ bool JSDollarVMPrototype::isValidCodeBlock(ExecState* exec, CodeBlock* candidate
         }
         
         CodeBlock* candidate;
-        bool found { false };
+        mutable bool found { false };
     };
     
     VM& vm = exec->vm();
@@ -224,7 +235,7 @@ CodeBlock* JSDollarVMPrototype::codeBlockForFrame(CallFrame* topCallFrame, unsig
         {
         }
         
-        StackVisitor::Status operator()(StackVisitor& visitor)
+        StackVisitor::Status operator()(StackVisitor& visitor) const
         {
             currentFrame++;
             if (currentFrame == targetFrame) {
@@ -235,8 +246,8 @@ CodeBlock* JSDollarVMPrototype::codeBlockForFrame(CallFrame* topCallFrame, unsig
         }
         
         unsigned targetFrame;
-        unsigned currentFrame { 0 };
-        CodeBlock* codeBlock { nullptr };
+        mutable unsigned currentFrame { 0 };
+        mutable CodeBlock* codeBlock { nullptr };
     };
     
     FetchCodeBlockFunctor functor(frameNumber);
@@ -258,28 +269,54 @@ static EncodedJSValue JSC_HOST_CALL functionCodeBlockForFrame(ExecState* exec)
     // function.
     unsigned frameNumber = value.asUInt32() + 1;
     CodeBlock* codeBlock = JSDollarVMPrototype::codeBlockForFrame(exec, frameNumber);
-    return JSValue::encode(JSValue(bitwise_cast<double>(reinterpret_cast<uint64_t>(codeBlock))));
+    // Though CodeBlock is a JSCell, it is not safe to return it directly back to JS code
+    // as it is an internal type that the JS code cannot handle. Hence, we first encode the
+    // CodeBlock* as a double token (which is safe for JS code to handle) before returning it.
+    return JSValue::encode(JSValue(bitwise_cast<double>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(codeBlock)))));
 }
 
 static CodeBlock* codeBlockFromArg(ExecState* exec)
 {
+    VM& vm = exec->vm();
     if (exec->argumentCount() < 1)
         return nullptr;
 
     JSValue value = exec->uncheckedArgument(0);
-    if (!value.isDouble()) {
-        dataLog("Invalid codeBlock: ", value, "\n");
-        return nullptr;
+    CodeBlock* candidateCodeBlock = nullptr;
+    if (value.isCell()) {
+        JSFunction* func = jsDynamicCast<JSFunction*>(vm, value.asCell());
+        if (func) {
+            if (func->isHostFunction())
+                candidateCodeBlock = nullptr;
+            else
+                candidateCodeBlock = func->jsExecutable()->eitherCodeBlock();
+        }
+    } else if (value.isDouble()) {
+        // If the value is a double, it may be an encoded CodeBlock* that came from
+        // $vm.codeBlockForFrame(). We'll treat it as a candidate codeBlock and check if it's
+        // valid below before using.
+        candidateCodeBlock = reinterpret_cast<CodeBlock*>(bitwise_cast<uint64_t>(value.asDouble()));
     }
 
-    CodeBlock* codeBlock = reinterpret_cast<CodeBlock*>(bitwise_cast<uint64_t>(value.asDouble()));
-    if (JSDollarVMPrototype::isValidCodeBlock(exec, codeBlock))
-        return codeBlock;
+    if (candidateCodeBlock && JSDollarVMPrototype::isValidCodeBlock(exec, candidateCodeBlock))
+        return candidateCodeBlock;
 
-    dataLogF("Invalid codeBlock: %p ", codeBlock);
-    dataLog(value, "\n");
+    if (candidateCodeBlock)
+        dataLog("Invalid codeBlock: ", RawPointer(candidateCodeBlock), " ", value, "\n");
+    else
+        dataLog("Invalid codeBlock: ", value, "\n");
     return nullptr;
-    
+}
+
+static EncodedJSValue JSC_HOST_CALL functionCodeBlockFor(ExecState* exec)
+{
+    CodeBlock* codeBlock = codeBlockFromArg(exec);
+    WTF::StringPrintStream stream;
+    if (codeBlock) {
+        stream.print(*codeBlock);
+        return JSValue::encode(jsString(exec, stream.toString()));
+    }
+    return JSValue::encode(jsUndefined());
 }
 
 static EncodedJSValue JSC_HOST_CALL functionPrintSourceFor(ExecState* exec)
@@ -300,12 +337,10 @@ static EncodedJSValue JSC_HOST_CALL functionPrintByteCodeFor(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
 {
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
-        if (i)
-            dataLog(" ");
-        String argStr = exec->uncheckedArgument(i).toString(exec)->value(exec);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        String argStr = exec->uncheckedArgument(i).toWTFString(exec);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
         dataLog(argStr);
     }
     return JSValue::encode(jsUndefined());
@@ -324,12 +359,14 @@ public:
     {
     }
     
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         m_currentFrame++;
-        if (m_currentFrame > m_framesToSkip)
-            visitor->print(2);
-        
+        if (m_currentFrame > m_framesToSkip) {
+            visitor->dump(WTF::dataFile(), Indenter(2), [&] (PrintStream& out) {
+                out.print("[", (m_currentFrame - m_framesToSkip - 1), "] ");
+            });
+        }
         if (m_action == PrintOne && m_currentFrame > m_framesToSkip)
             return StackVisitor::Done;
         return StackVisitor::Continue;
@@ -338,7 +375,7 @@ public:
 private:
     Action m_action;
     unsigned m_framesToSkip;
-    unsigned m_currentFrame { 0 };
+    mutable unsigned m_currentFrame { 0 };
 };
 
 static void printCallFrame(CallFrame* callFrame, unsigned framesToSkip)
@@ -390,14 +427,21 @@ void JSDollarVMPrototype::printValue(JSValue value)
     dataLog(value);
 }
 
-static EncodedJSValue JSC_HOST_CALL functionPrintValue(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL functionValue(ExecState* exec)
 {
+    WTF::StringPrintStream stream;
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
         if (i)
-            dataLog(" ");
-        dataLog(exec->uncheckedArgument(i));
+            stream.print(", ");
+        stream.print(exec->uncheckedArgument(i));
     }
-    return JSValue::encode(jsUndefined());
+    
+    return JSValue::encode(jsString(exec, stream.toString()));
+}
+
+static EncodedJSValue JSC_HOST_CALL functionGetPID(ExecState*)
+{
+    return JSValue::encode(jsNumber(getCurrentProcessID()));
 }
 
 void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
@@ -414,6 +458,7 @@ void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     addFunction(vm, globalObject, "gc", functionGC, 0);
     addFunction(vm, globalObject, "edenGC", functionEdenGC, 0);
     
+    addFunction(vm, globalObject, "codeBlockFor", functionCodeBlockFor, 1);
     addFunction(vm, globalObject, "codeBlockForFrame", functionCodeBlockForFrame, 1);
     addFunction(vm, globalObject, "printSourceFor", functionPrintSourceFor, 1);
     addFunction(vm, globalObject, "printByteCodeFor", functionPrintByteCodeFor, 1);
@@ -422,7 +467,8 @@ void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     addFunction(vm, globalObject, "printCallFrame", functionPrintCallFrame, 0);
     addFunction(vm, globalObject, "printStack", functionPrintStack, 0);
 
-    addFunction(vm, globalObject, "printValue", functionPrintValue, 1);
+    addFunction(vm, globalObject, "value", functionValue, 1);
+    addFunction(vm, globalObject, "getpid", functionGetPID, 0);
 }
 
 } // namespace JSC

@@ -23,6 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+typedef (ArrayBuffer or ArrayBufferView) BinaryData;
+
 enum FontFaceLoadStatus {
     "unloaded",
     "loading",
@@ -30,21 +32,30 @@ enum FontFaceLoadStatus {
     "error"
 };
 
+dictionary FontFaceDescriptors {
+    DOMString style = "normal";
+    DOMString weight = "normal";
+    DOMString stretch = "normal";
+    DOMString unicodeRange = "U+0-10FFFF";
+    DOMString variant = "normal";
+    DOMString featureSettings = "normal";
+};
+
 [
-    ConstructorCallWith=ScriptExecutionContext&ScriptState,
-    ConstructorRaisesException,
-    Constructor(DOMString family, any source, Dictionary descriptors)
+    ConstructorCallWith=Document,
+    ConstructorMayThrowException,
+    Constructor(DOMString family, (DOMString or BinaryData) source, optional FontFaceDescriptors descriptors)
 ] interface FontFace {
-    [SetterRaisesException] attribute DOMString family;
-    [SetterRaisesException] attribute DOMString style;
-    [SetterRaisesException] attribute DOMString weight;
-    [SetterRaisesException] attribute DOMString stretch;
-    [SetterRaisesException] attribute DOMString unicodeRange;
-    [SetterRaisesException] attribute DOMString variant;
-    [SetterRaisesException] attribute DOMString featureSettings;
+    [SetterMayThrowException] attribute DOMString family;
+    [SetterMayThrowException] attribute DOMString style;
+    [SetterMayThrowException] attribute DOMString weight;
+    [SetterMayThrowException] attribute DOMString stretch;
+    [SetterMayThrowException] attribute DOMString unicodeRange;
+    [SetterMayThrowException] attribute DOMString variant;
+    [SetterMayThrowException] attribute DOMString featureSettings;
 
     readonly attribute FontFaceLoadStatus status;
 
-    [Custom] Promise load();
-    [CachedAttribute, CustomGetter] readonly attribute Object loaded;
+    [Custom, ReturnsOwnPromise] Promise<FontFace> load();
+    [CachedAttribute, CustomGetter] readonly attribute Promise<FontFace> loaded;
 };

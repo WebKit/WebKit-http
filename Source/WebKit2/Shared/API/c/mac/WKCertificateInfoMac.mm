@@ -32,13 +32,32 @@
 using namespace WebCore;
 using namespace WebKit;
 
+WKCertificateInfoRef WKCertificateInfoCreateWithServerTrust(SecTrustRef serverTrust)
+{
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    RefPtr<WebCertificateInfo> certificateInfo = WebCertificateInfo::create(CertificateInfo(serverTrust));
+    return toAPI(certificateInfo.leakRef());
+#else
+    return nullptr;
+#endif
+}
+
 WKCertificateInfoRef WKCertificateInfoCreateWithCertficateChain(CFArrayRef certificateChain)
 {
     RefPtr<WebCertificateInfo> certificateInfo = WebCertificateInfo::create(CertificateInfo(certificateChain));
-    return toAPI(certificateInfo.release().leakRef());
+    return toAPI(certificateInfo.leakRef());
 }
 
 CFArrayRef WKCertificateInfoGetCertificateChain(WKCertificateInfoRef certificateInfoRef)
 {
     return toImpl(certificateInfoRef)->certificateInfo().certificateChain();
+}
+
+SecTrustRef WKCertificateInfoGetServerTrust(WKCertificateInfoRef certificateInfoRef)
+{
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    return toImpl(certificateInfoRef)->certificateInfo().trust();
+#else
+    return nullptr;
+#endif
 }

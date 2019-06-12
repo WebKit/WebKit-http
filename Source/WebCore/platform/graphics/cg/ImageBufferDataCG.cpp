@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,9 +26,14 @@
 #include "config.h"
 #include "ImageBufferData.h"
 
+#if USE(CG)
+
 #include "GraphicsContext.h"
 #include "IntRect.h"
 #include <CoreGraphics/CoreGraphics.h>
+#include <runtime/JSCInlines.h>
+#include <runtime/TypedArrayInlines.h>
+#include <runtime/Uint8ClampedArray.h>
 #include <wtf/Assertions.h>
 
 #if USE(ACCELERATE)
@@ -61,7 +66,6 @@ static void unpremultiplyBufferData(const vImage_Buffer& src, const vImage_Buffe
     vImagePermuteChannels_ARGB8888(&dest, &dest, map, kvImageNoFlags);
 }
 
-#if !PLATFORM(IOS_SIMULATOR)
 static void premultiplyBufferData(const vImage_Buffer& src, const vImage_Buffer& dest)
 {
     ASSERT(src.data);
@@ -74,18 +78,69 @@ static void premultiplyBufferData(const vImage_Buffer& src, const vImage_Buffer&
     const uint8_t map[4] = { 2, 1, 0, 3 };
     vImagePermuteChannels_ARGB8888(&dest, &dest, map, kvImageNoFlags);
 }
-#endif // !PLATFORM(IOS_SIMULATOR)
 #endif // USE_ARGB32 || USE(IOSURFACE_CANVAS_BACKING_STORE)
 
 #if !PLATFORM(IOS_SIMULATOR)
 static void affineWarpBufferData(const vImage_Buffer& src, const vImage_Buffer& dest, float scale)
 {
+    ASSERT(src.data);
+    ASSERT(dest.data);
+
     vImage_AffineTransform scaleTransform = { scale, 0, 0, scale, 0, 0 }; // FIXME: Add subpixel translation.
     Pixel_8888 backgroundColor;
     vImageAffineWarp_ARGB8888(&src, &dest, 0, &scaleTransform, backgroundColor, kvImageEdgeExtend);
 }
 #endif // !PLATFORM(IOS_SIMULATOR)
 #endif // USE(ACCELERATE)
+
+static inline void transferData(void* output, void* input, int width, int height, size_t inputBytesPerRow)
+{
+#if USE(ACCELERATE)
+    ASSERT(input);
+    ASSERT(output);
+
+    vImage_Buffer src;
+    src.width = width;
+    src.height = height;
+    src.rowBytes = inputBytesPerRow;
+    src.data = input;
+
+    vImage_Buffer dest;
+    dest.width = width;
+    dest.height = height;
+    dest.rowBytes = width * 4;
+    dest.data = output;
+
+    vImageUnpremultiplyData_BGRA8888(&src, &dest, kvImageNoFlags);
+#else
+    UNUSED_PARAM(output);
+    UNUSED_PARAM(input);
+    UNUSED_PARAM(width);
+    UNUSED_PARAM(height);
+    // FIXME: Add support for not ACCELERATE.
+    ASSERT_NOT_REACHED();
+#endif
+}
+
+Vector<uint8_t> ImageBufferData::toBGRAData(bool accelerateRendering, int width, int height) const
+{
+    Vector<uint8_t> result(4 * width * height);
+
+    if (!accelerateRendering) {
+        transferData(result.data(), data, width, height, 4 * backingStoreSize.width());
+        return result;
+    }
+#if USE(IOSURFACE_CANVAS_BACKING_STORE)
+    IOSurfaceRef surfaceRef = surface->surface();
+    IOSurfaceLock(surfaceRef, kIOSurfaceLockReadOnly, nullptr);
+    transferData(result.data(), IOSurfaceGetBaseAddress(surfaceRef), width, height, IOSurfaceGetBytesPerRow(surfaceRef));
+    IOSurfaceUnlock(surfaceRef, kIOSurfaceLockReadOnly, nullptr);
+#else
+    ASSERT_NOT_REACHED();
+#endif
+    return result;
+}
+
 
 RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const IntSize& size, bool accelerateRendering, bool unmultiplied, float resolutionScale) const
 {
@@ -95,12 +150,10 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const In
     if (area.hasOverflowed())
         return nullptr;
 
-    RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(area.unsafeGet());
-    unsigned char* resultData = result->data();
-    if (!resultData) {
-        WTFLogAlways("ImageBufferData: Unable to create buffer. Requested size was %d x %d = %u\n", rect.width(), rect.height(), area.unsafeGet());
+    auto result = Uint8ClampedArray::createUninitialized(area.unsafeGet());
+    unsigned char* resultData = result ? result->data() : nullptr;
+    if (!resultData)
         return nullptr;
-    }
 
     Checked<int> endx = rect.maxX();
     endx *= ceilf(resolutionScale);
@@ -138,7 +191,7 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const In
     Checked<int> height = endy - originy;
     
     if (width.unsafeGet() <= 0 || height.unsafeGet() <= 0)
-        return result.release();
+        return result;
     
     unsigned destBytesPerRow = 4 * rect.width();
     unsigned char* destRows = resultData + desty * destBytesPerRow + destx * 4;
@@ -147,6 +200,9 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const In
     unsigned char* srcRows;
     
     if (!accelerateRendering) {
+        if (!data)
+            return result;
+
         srcBytesPerRow = bytesPerRow.unsafeGet();
         srcRows = reinterpret_cast<unsigned char*>(data) + originy * srcBytesPerRow + originx * 4;
 
@@ -390,6 +446,9 @@ void ImageBufferData::putData(Uint8ClampedArray*& source, const IntSize& sourceS
     unsigned char* destRows;
     
     if (!accelerateRendering) {
+        if (!data)
+            return;
+
         destBytesPerRow = bytesPerRow.unsafeGet();
         destRows = reinterpret_cast<unsigned char*>(data) + (desty * destBytesPerRow + destx * 4).unsafeGet();
 
@@ -409,7 +468,7 @@ void ImageBufferData::putData(Uint8ClampedArray*& source, const IntSize& sourceS
             dest.data = destRows;
 
 #if USE_ARGB32
-            unpremultiplyBufferData(src, dest);
+            premultiplyBufferData(src, dest);
 #else
             if (resolutionScale != 1) {
                 affineWarpBufferData(src, dest, resolutionScale);
@@ -545,3 +604,5 @@ void ImageBufferData::putData(Uint8ClampedArray*& source, const IntSize& sourceS
 }
 
 } // namespace WebCore
+
+#endif

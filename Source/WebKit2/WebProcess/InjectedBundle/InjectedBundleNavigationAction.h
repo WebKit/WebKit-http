@@ -31,7 +31,7 @@
 #include "InjectedBundleNodeHandle.h"
 #include "WebEvent.h"
 #include <WebCore/FrameLoaderTypes.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -45,28 +45,36 @@ class WebFrame;
 
 class InjectedBundleNavigationAction : public API::ObjectImpl<API::Object::Type::BundleNavigationAction> {
 public:
-    static Ref<InjectedBundleNavigationAction> create(WebFrame*, const WebCore::NavigationAction&, PassRefPtr<WebCore::FormState>);
+    static Ref<InjectedBundleNavigationAction> create(WebFrame*, const WebCore::NavigationAction&, RefPtr<WebCore::FormState>&&);
 
     static WebEvent::Modifiers modifiersForNavigationAction(const WebCore::NavigationAction&);
     static WebMouseEvent::Button mouseButtonForNavigationAction(const WebCore::NavigationAction&);
-
+    static WebMouseEvent::SyntheticClickType syntheticClickTypeForNavigationAction(const WebCore::NavigationAction&);
+    static WebCore::FloatPoint clickLocationInRootViewCoordinatesForNavigationAction(const WebCore::NavigationAction&);
+    
     WebCore::NavigationType navigationType() const { return m_navigationType; }
     WebEvent::Modifiers modifiers() const { return m_modifiers; }
     WebMouseEvent::Button mouseButton() const { return m_mouseButton; }
     InjectedBundleHitTestResult* hitTestResult() const { return m_hitTestResult.get(); }
     InjectedBundleNodeHandle* formElement() const { return m_formElement.get(); }
+    WebMouseEvent::SyntheticClickType syntheticClickType() const { return m_syntheticClickType; }
+    WebCore::FloatPoint clickLocationInRootViewCoordinates() const { return m_clickLocationInRootViewCoordinates; }
 
     bool shouldOpenExternalURLs() const { return m_shouldOpenExternalURLs; }
     bool shouldTryAppLinks() const { return m_shouldTryAppLinks; }
+    AtomicString downloadAttribute() const { return m_downloadAttribute; }
 
 private:
-    InjectedBundleNavigationAction(WebFrame*, const WebCore::NavigationAction&, PassRefPtr<WebCore::FormState>);
+    InjectedBundleNavigationAction(WebFrame*, const WebCore::NavigationAction&, RefPtr<WebCore::FormState>&&);
 
     WebCore::NavigationType m_navigationType;
     WebEvent::Modifiers m_modifiers;
     WebMouseEvent::Button m_mouseButton;
+    WebMouseEvent::SyntheticClickType m_syntheticClickType { WebMouseEvent::NoTap };
+    WebCore::FloatPoint m_clickLocationInRootViewCoordinates;
     RefPtr<InjectedBundleHitTestResult> m_hitTestResult;
     RefPtr<InjectedBundleNodeHandle> m_formElement;
+    AtomicString m_downloadAttribute;
     bool m_shouldOpenExternalURLs;
     bool m_shouldTryAppLinks;
 };

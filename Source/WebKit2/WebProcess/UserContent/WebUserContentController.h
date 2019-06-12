@@ -23,59 +23,110 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebUserContentController_h
-#define WebUserContentController_h
+#pragma once
 
 #include "MessageReceiver.h"
 #include "WebScriptMessageHandler.h"
-#include <WebCore/UserContentController.h>
+#include "WebUserContentControllerDataTypes.h"
+#include <WebCore/UserContentProvider.h>
 #include <wtf/HashMap.h>
-#include <wtf/RefCounted.h>
+
+#if ENABLE(CONTENT_EXTENSIONS)
+#include <WebCore/ContentExtensionsBackend.h>
+#endif
+
+namespace WebCore {
+namespace ContentExtensions {
+class CompiledContentExtension;
+}
+}
 
 namespace WebKit {
 
-class WebCompiledContentExtensionData;
+class InjectedBundleScriptWorld;
+class WebCompiledContentRuleListData;
 class WebUserMessageHandlerDescriptorProxy;
 
-class WebUserContentController final : public RefCounted<WebUserContentController>, private IPC::MessageReceiver  {
+class WebUserContentController final : public WebCore::UserContentProvider, private IPC::MessageReceiver {
 public:
-    static PassRefPtr<WebUserContentController> getOrCreate(uint64_t identifier);
+    static Ref<WebUserContentController> getOrCreate(uint64_t identifier);
     virtual ~WebUserContentController();
 
-    WebCore::UserContentController& userContentController() { return m_userContentController; }
-
     uint64_t identifier() { return m_identifier; } 
+
+    void addUserScript(InjectedBundleScriptWorld&, WebCore::UserScript&&);
+    void removeUserScriptWithURL(InjectedBundleScriptWorld&, const WebCore::URL&);
+    void removeUserScripts(InjectedBundleScriptWorld&);
+    void addUserStyleSheet(InjectedBundleScriptWorld&, WebCore::UserStyleSheet&&);
+    void removeUserStyleSheetWithURL(InjectedBundleScriptWorld&, const WebCore::URL&);
+    void removeUserStyleSheets(InjectedBundleScriptWorld&);
+    void removeAllUserContent();
+
+    void addUserContentWorlds(const Vector<std::pair<uint64_t, String>>&);
+    void addUserScripts(const Vector<WebUserScriptData>&);
+    void addUserStyleSheets(const Vector<WebUserStyleSheetData>&);
+    void addUserScriptMessageHandlers(const Vector<WebScriptMessageHandlerData>&);
+#if ENABLE(CONTENT_EXTENSIONS)
+    void addContentRuleLists(const Vector<std::pair<String, WebCompiledContentRuleListData>>&);
+#endif
 
 private:
     explicit WebUserContentController(uint64_t identifier);
 
+    // WebCore::UserContentProvider
+    void forEachUserScript(Function<void(WebCore::DOMWrapperWorld&, const WebCore::UserScript&)>&&) const final;
+    void forEachUserStyleSheet(Function<void(const WebCore::UserStyleSheet&)>&&) const final;
+#if ENABLE(USER_MESSAGE_HANDLERS)
+    void forEachUserMessageHandler(Function<void(const WebCore::UserMessageHandlerDescriptor&)>&&) const final;
+#endif
+#if ENABLE(CONTENT_EXTENSIONS)
+    WebCore::ContentExtensions::ContentExtensionsBackend& userContentExtensionBackend() override { return m_contentExtensionBackend; }
+#endif
+
     // IPC::MessageReceiver.
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    void addUserScripts(const Vector<WebCore::UserScript>&);
-    void removeUserScript(const String& urlString);
-    void removeAllUserScripts();
+    void removeUserContentWorlds(const Vector<uint64_t>&);
 
-    void addUserStyleSheets(const Vector<WebCore::UserStyleSheet>&);
-    void removeUserStyleSheet(const String& urlString);
-    void removeAllUserStyleSheets();
+    void removeUserScript(uint64_t worldIdentifier, uint64_t userScriptIdentifier);
+    void removeAllUserScripts(const Vector<uint64_t>&);
 
-    void addUserScriptMessageHandlers(const Vector<WebScriptMessageHandlerHandle>&);
-    void removeUserScriptMessageHandler(uint64_t);
+    void removeUserStyleSheet(uint64_t worldIdentifier, uint64_t userScriptIdentifier);
+    void removeAllUserStyleSheets(const Vector<uint64_t>&);
+
+    void removeUserScriptMessageHandler(uint64_t worldIdentifier, uint64_t userScriptIdentifier);
+    void removeAllUserScriptMessageHandlers(const Vector<uint64_t>&);
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    void addUserContentExtensions(const Vector<std::pair<String, WebCompiledContentExtensionData>>&);
-    void removeUserContentExtension(const String& name);
-    void removeAllUserContentExtensions();
+    void removeContentRuleList(const String& name);
+    void removeAllContentRuleLists();
+#endif
+
+    void addUserScriptInternal(InjectedBundleScriptWorld&, uint64_t userScriptIdentifier, WebCore::UserScript&&);
+    void removeUserScriptInternal(InjectedBundleScriptWorld&, uint64_t userScriptIdentifier);
+    void addUserStyleSheetInternal(InjectedBundleScriptWorld&, uint64_t userStyleSheetIdentifier, WebCore::UserStyleSheet&&);
+    void removeUserStyleSheetInternal(InjectedBundleScriptWorld&, uint64_t userStyleSheetIdentifier);
+#if ENABLE(USER_MESSAGE_HANDLERS)
+    void addUserScriptMessageHandlerInternal(InjectedBundleScriptWorld&, uint64_t userScriptMessageHandlerIdentifier, const String& name);
+    void removeUserScriptMessageHandlerInternal(InjectedBundleScriptWorld&, uint64_t userScriptMessageHandlerIdentifier);
 #endif
 
     uint64_t m_identifier;
-    Ref<WebCore::UserContentController> m_userContentController;
+
+    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<std::pair<uint64_t, WebCore::UserScript>>> WorldToUserScriptMap;
+    WorldToUserScriptMap m_userScripts;
+
+    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<std::pair<uint64_t, WebCore::UserStyleSheet>>> WorldToUserStyleSheetMap;
+    WorldToUserStyleSheetMap m_userStyleSheets;
+
 #if ENABLE(USER_MESSAGE_HANDLERS)
-    HashMap<uint64_t, RefPtr<WebUserMessageHandlerDescriptorProxy>> m_userMessageHandlerDescriptors;
+    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<RefPtr<WebUserMessageHandlerDescriptorProxy>>> WorldToUserMessageHandlerVectorMap;
+    WorldToUserMessageHandlerVectorMap m_userMessageHandlers;
 #endif
+#if ENABLE(CONTENT_EXTENSIONS)
+    WebCore::ContentExtensions::ContentExtensionsBackend m_contentExtensionBackend;
+#endif
+
 };
 
 } // namespace WebKit
-
-#endif // WebUserContentController_h

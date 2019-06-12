@@ -1,0 +1,36 @@
+The tests in this directory were imported from the W3C repository.
+Do NOT modify these tests directly in WebKit.
+Instead, create a pull request on the WPT github:
+	https://github.com/w3c/web-platform-tests
+
+Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
+
+Do NOT modify or remove this file.
+
+------------------------------------------------------------------------
+Properties requiring vendor prefixes:
+None
+Property values requiring vendor prefixes:
+None
+------------------------------------------------------------------------
+List of files:
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/OWNERS
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/SyntheticResponse.py
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/idlharness.html
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/iframe-setdomain.sub.html
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource-timing.html
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource-timing.js
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_match_origin.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_match_wildcard.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_multi.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_null.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_origin.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_origin_uppercase.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_space.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_wildcard.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_TAO_zero.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_cached.htm
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_connection_reuse.html
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/resource_dynamic_insertion.html
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html
+/LayoutTests/imported/w3c/web-platform-tests/resource-timing/test_resource_timing.js

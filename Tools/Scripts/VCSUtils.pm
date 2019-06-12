@@ -59,22 +59,27 @@ BEGIN {
         &escapeSubversionPath
         &exitStatus
         &fixChangeLogPatch
+        &fixSVNPatchForAdditionWithHistory
         &gitBranch
+        &gitCommitForSVNRevision
         &gitDirectory
+        &gitHashForDirectory
         &gitTreeDirectory
         &gitdiff2svndiff
         &isGit
-        &isGitSVN
         &isGitBranchBuild
         &isGitDirectory
+        &isGitSVN
         &isGitSVNDirectory
         &isSVN
         &isSVNDirectory
         &isSVNVersion16OrNewer
+        &listOfChangedFilesBetweenRevisions
         &makeFilePathRelative
         &mergeChangeLogs
         &normalizePath
         &parseChunkRange
+        &parseDiffStartLine
         &parseFirstEOL
         &parsePatch
         &pathRelativeToSVNRepositoryRootForPath
@@ -86,11 +91,13 @@ BEGIN {
         &scmMoveOrRenameFile
         &scmToggleExecutableBit
         &setChangeLogDateAndReviewer
+        &svnIdentifierForPath
+        &svnInfoForPath
+        &svnRepositoryRootForPath
         &svnRevisionForDirectory
         &svnStatus
+        &svnURLForPath
         &toWindowsLineEndings
-        &gitCommitForSVNRevision
-        &listOfChangedFilesBetweenRevisions
         &unixPath
     );
     %EXPORT_TAGS = ( );
@@ -216,8 +223,8 @@ sub scmRemoveExecutableBit($)
 
 sub isGitDirectory($)
 {
-    my ($dir) = @_;
-    return system("cd $dir && git rev-parse > " . File::Spec->devnull() . " 2>&1") == 0;
+    my ($directory) = @_;
+    return system("git -C \"$directory\" rev-parse > " . File::Spec->devnull() . " 2>&1") == 0;
 }
 
 sub isGit()
@@ -232,15 +239,11 @@ sub isGitSVNDirectory($)
 {
     my ($directory) = @_;
 
-    my $savedWorkingDirectory = Cwd::getcwd();
-    chdir($directory);
-
     # There doesn't seem to be an officially documented way to determine
     # if you're in a git-svn checkout. The best suggestions seen so far
     # all use something like the following:
-    my $output = `git config --get svn-remote.svn.fetch 2>& 1`;
+    my $output = `git -C \"$directory\" config --get svn-remote.svn.fetch 2>&1`;
     $isGitSVN = exitStatus($?) == 0 && $output ne "";
-    chdir($savedWorkingDirectory);
     return $isGitSVN;
 }
 
@@ -256,6 +259,24 @@ sub gitDirectory()
 {
     chomp(my $result = `git rev-parse --git-dir`);
     return $result;
+}
+
+sub gitHashForDirectory($)
+{
+    my ($directory) = @_;
+    my $hash;
+
+    if (isGitDirectory($directory)) {
+        my $command = "git -C \"$directory\" rev-parse HEAD";
+        $command = "LC_ALL=C $command" if !isWindows();
+        $hash = `$command`;
+        chomp($hash);
+    }
+    if (!defined($hash)) {
+        $hash = "unknown";
+        warn "Unable to determine current Git hash in $directory";
+    }
+    return $hash;
 }
 
 sub gitTreeDirectory()
@@ -420,54 +441,84 @@ sub isWindows()
 
 sub svnRevisionForDirectory($)
 {
-    my ($dir) = @_;
+    my ($directory) = @_;
     my $revision;
 
-    if (isSVNDirectory($dir)) {
-        my $escapedDir = escapeSubversionPath($dir);
+    if (isSVNDirectory($directory)) {
+        my $escapedDir = escapeSubversionPath($directory);
         my $command = "svn info $escapedDir | grep Revision:";
         $command = "LC_ALL=C $command" if !isWindows();
         my $svnInfo = `$command`;
         ($revision) = ($svnInfo =~ m/Revision: (\d+).*/g);
-    } elsif (isGitDirectory($dir)) {
-        my $command = "git log --grep=\"git-svn-id: \" -n 1 | grep git-svn-id:";
+    } elsif (isGitDirectory($directory)) {
+        my $command = "git -C \"$directory\" log --grep=\"git-svn-id: \" -n 1 | grep git-svn-id:";
         $command = "LC_ALL=C $command" if !isWindows();
-        $command = "cd $dir && $command";
         my $gitLog = `$command`;
         ($revision) = ($gitLog =~ m/ +git-svn-id: .+@(\d+) /g);
     }
     if (!defined($revision)) {
         $revision = "unknown";
-        warn "Unable to determine current SVN revision in $dir";
+        warn "Unable to determine current SVN revision in $directory";
     }
     return $revision;
 }
 
-sub pathRelativeToSVNRepositoryRootForPath($)
+sub svnInfoForPath($)
 {
     my ($file) = @_;
     my $relativePath = File::Spec->abs2rel($file);
 
     my $svnInfo;
-    if (isSVN()) {
+    if (isSVNDirectory($file)) {
         my $escapedRelativePath = escapeSubversionPath($relativePath);
         my $command = "svn info $escapedRelativePath";
         $command = "LC_ALL=C $command" if !isWindows();
         $svnInfo = `$command`;
-    } elsif (isGit()) {
-        my $command = "git svn info $relativePath";
+    } elsif (isGitDirectory($file)) {
+        my $command = "git -C \"$file\" svn info";
         $command = "LC_ALL=C $command" if !isWindows();
         $svnInfo = `$command`;
     }
 
+    return $svnInfo;
+}
+
+sub svnURLForPath($)
+{
+    my ($file) = @_;
+    my $svnInfo = svnInfoForPath($file);
+
     $svnInfo =~ /.*^URL: (.*?)$/m;
-    my $svnURL = $1;
+    return $1;
+}
+
+sub svnRepositoryRootForPath($)
+{
+    my ($file) = @_;
+    my $svnInfo = svnInfoForPath($file);
 
     $svnInfo =~ /.*^Repository Root: (.*?)$/m;
-    my $repositoryRoot = $1;
+    return $1;
+}
 
-    $svnURL =~ s/$repositoryRoot\///;
+sub pathRelativeToSVNRepositoryRootForPath($)
+{
+    my ($file) = @_;
+
+    my $svnURL = svnURLForPath($file);
+    my $svnRepositoryRoot = svnRepositoryRootForPath($file);
+
+    $svnURL =~ s/$svnRepositoryRoot\///;
     return $svnURL;
+}
+
+sub svnIdentifierForPath($)
+{
+    my ($file) = @_;
+    my $path = pathRelativeToSVNRepositoryRootForPath($file);
+
+    $path =~ /^(trunk)|tags\/([\w\.\-]*)|branches\/([\w\.\-]*).*$/m;
+    return $1 || $2 || $3;
 }
 
 sub makeFilePathRelative($)
@@ -667,6 +718,19 @@ sub isExecutable($)
     my $fileMode = shift;
 
     return $fileMode % 2;
+}
+
+# Parses an SVN or Git diff header start line.
+#
+# Args:
+#   $line: "Index: " line or "diff --git" line
+#
+# Returns the path of the target file or undef if the $line is unrecognized.
+sub parseDiffStartLine($)
+{
+    my ($line) = @_;
+    return $1 if $line =~ /$svnDiffStartRegEx/;
+    return parseGitDiffStartLine($line) if $line =~ /$gitDiffStartRegEx/;
 }
 
 # Parse the Git diff header start line.
@@ -1516,7 +1580,7 @@ sub parseSvnPropertyValue($$)
     }
 
     while (<$fileHandle>) {
-        if (/^[\r\n]+$/ || /$svnPropertyValueStartRegEx/ || /$svnPropertyStartRegEx/ || /$svnPropertyValueNoNewlineRegEx/) {
+        if (/^[\r\n]+$/ || /$svnPropertyValueStartRegEx/ || /$svnPropertyStartRegEx/ || /$svnPropertyValueNoNewlineRegEx/ || /$svnDiffStartRegEx/) {
             # Note, we may encounter an empty line before the contents of a binary patch.
             # Also, we check for $svnPropertyValueStartRegEx because a '-' property may be
             # followed by a '+' property in the case of a "Modified" or "Name" property.
@@ -1685,6 +1749,51 @@ sub setChangeLogDateAndReviewer($$$)
     }
 
     return $patch;
+}
+
+# Removes a leading Subversion header without an associated diff if one exists.
+#
+# This subroutine dies if the specified patch does not begin with an "Index:" line.
+#
+# In SVN 1.9 or newer, "svn diff" of a moved/copied file without post changes always
+# emits a leading header without an associated diff:
+#     Index: B.txt
+#     ===================================================================
+# (end of file or next header)
+#
+# If the same file has a property change then the patch has the form:
+#     Index: B.txt
+#     ===================================================================
+#     Index: B.txt
+#     ===================================================================
+#     --- B.txt    (revision 1)
+#     +++ B.txt    (working copy)
+#
+#     Property change on B.txt
+#     ___________________________________________________________________
+#     Added: svn:executable
+#     ## -0,0 +1 ##
+#     +*
+#     \ No newline at end of property
+#
+# We need to apply this function to the ouput of "svn diff" for an addition with history
+# to remove a duplicate header so that svn-apply can apply the resulting patch.
+sub fixSVNPatchForAdditionWithHistory($)
+{
+    my ($patch) = @_;
+
+    $patch =~ /(\r?\n)/;
+    my $lineEnding = $1;
+    my @lines = split(/$lineEnding/, $patch);
+
+    if ($lines[0] !~ /$svnDiffStartRegEx/) {
+        die("First line of SVN diff does not begin with \"Index \": \"$lines[0]\"");
+    }
+    if (@lines <= 2) {
+        return "";
+    }
+    splice(@lines, 0, 2) if $lines[2] =~ /$svnDiffStartRegEx/;
+    return join($lineEnding, @lines) . "\n"; # patch(1) expects an extra trailing newline.
 }
 
 # If possible, returns a ChangeLog patch equivalent to the given one,

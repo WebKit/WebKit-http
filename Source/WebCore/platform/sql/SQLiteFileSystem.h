@@ -31,7 +31,6 @@
 #ifndef SQLiteFileSystem_h
 #define SQLiteFileSystem_h
 
-#include <wtf/Threading.h>
 #include <wtf/text/WTFString.h>
 
 struct sqlite3;
@@ -88,7 +87,7 @@ public:
     // Deletes a database file.
     //
     // fileName - The file name.
-    static bool deleteDatabaseFile(const String& fileName);
+    WEBCORE_EXPORT static bool deleteDatabaseFile(const String& fileName);
 
 #if PLATFORM(IOS)
     // Truncates a database file. Used when MobileSafariSettings deletes a database file,

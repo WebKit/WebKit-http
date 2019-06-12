@@ -23,20 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IntlDateTimeFormatPrototype_h
-#define IntlDateTimeFormatPrototype_h
+#pragma once
 
 #if ENABLE(INTL)
 
-#include "IntlDateTimeFormat.h"
 #include "JSObject.h"
 
 namespace JSC {
 
-class IntlDateTimeFormatPrototype : public IntlDateTimeFormat {
+class IntlDateTimeFormatPrototype : public JSNonFinalObject {
 public:
-    typedef IntlDateTimeFormat Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    typedef JSNonFinalObject Base;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static IntlDateTimeFormatPrototype* create(VM&, JSGlobalObject*, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
@@ -44,15 +42,12 @@ public:
     DECLARE_INFO;
 
 protected:
-    void finishCreation(VM&, Structure*);
+    void finishCreation(VM&, JSGlobalObject*, Structure*);
 
 private:
     IntlDateTimeFormatPrototype(VM&, Structure*);
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 };
 
 } // namespace JSC
 
 #endif // ENABLE(INTL)
-
-#endif // IntlDateTimeFormatPrototype_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,65 +30,60 @@
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "NetworkStorageSession.h"
 #include "NetworkingContext.h"
 #include "PlatformCookieJar.h"
 #include "PlatformStrategies.h"
+#include <wtf/SystemTracing.h>
 
 namespace WebCore {
 
-static NetworkingContext* networkingContext(const Document* document)
+static NetworkingContext* networkingContext(const Document& document)
 {
     // FIXME: Returning 0 means falling back to default context. That's not a choice that is appropriate to do at runtime
-    if (!document)
-        return nullptr;
-    Frame* frame = document->frame();
+    Frame* frame = document.frame();
     if (!frame)
         return nullptr;
 
     return frame->loader().networkingContext();
 }
 
-inline NetworkStorageSession& storageSession(const Document* document)
+inline NetworkStorageSession& storageSession(const Document& document)
 {
     NetworkingContext* context = networkingContext(document);
     return context ? context->storageSession() : NetworkStorageSession::defaultStorageSession();
 }
-#define LOCAL_SESSION(document) NetworkStorageSession& session = storageSession(document);
 
-String cookies(const Document* document, const URL& url)
+String cookies(const Document& document, const URL& url)
 {
-    LOCAL_SESSION(document)
-    return platformStrategies()->cookiesStrategy()->cookiesForDOM(session, document->firstPartyForCookies(), url);
+    TraceScope scope(FetchCookiesStart, FetchCookiesEnd);
+
+    return platformStrategies()->cookiesStrategy()->cookiesForDOM(storageSession(document), document.firstPartyForCookies(), url);
 }
 
-void setCookies(Document* document, const URL& url, const String& cookieString)
+void setCookies(Document& document, const URL& url, const String& cookieString)
 {
-    LOCAL_SESSION(document)
-    platformStrategies()->cookiesStrategy()->setCookiesFromDOM(session, document->firstPartyForCookies(), url, cookieString);
+    platformStrategies()->cookiesStrategy()->setCookiesFromDOM(storageSession(document), document.firstPartyForCookies(), url, cookieString);
 }
 
-bool cookiesEnabled(const Document* document)
+bool cookiesEnabled(const Document& document)
 {
-    LOCAL_SESSION(document)
-    return platformStrategies()->cookiesStrategy()->cookiesEnabled(session, document->firstPartyForCookies(), document->cookieURL());
+    return platformStrategies()->cookiesStrategy()->cookiesEnabled(storageSession(document), document.firstPartyForCookies(), document.cookieURL());
 }
 
-String cookieRequestHeaderFieldValue(const Document* document, const URL& url)
+String cookieRequestHeaderFieldValue(const Document& document, const URL& url)
 {
-    LOCAL_SESSION(document)
-    return platformStrategies()->cookiesStrategy()->cookieRequestHeaderFieldValue(session, document->firstPartyForCookies(), url);
+    return platformStrategies()->cookiesStrategy()->cookieRequestHeaderFieldValue(storageSession(document), document.firstPartyForCookies(), url);
 }
 
-bool getRawCookies(const Document* document, const URL& url, Vector<Cookie>& cookies)
+bool getRawCookies(const Document& document, const URL& url, Vector<Cookie>& cookies)
 {
-    LOCAL_SESSION(document)
-    return platformStrategies()->cookiesStrategy()->getRawCookies(session, document->firstPartyForCookies(), url, cookies);
+    return platformStrategies()->cookiesStrategy()->getRawCookies(storageSession(document), document.firstPartyForCookies(), url, cookies);
 }
 
-void deleteCookie(const Document* document, const URL& url, const String& cookieName)
+void deleteCookie(const Document& document, const URL& url, const String& cookieName)
 {
-    LOCAL_SESSION(document)
-    platformStrategies()->cookiesStrategy()->deleteCookie(session, url, cookieName);
+    platformStrategies()->cookiesStrategy()->deleteCookie(storageSession(document), url, cookieName);
 }
 
 }

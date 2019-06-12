@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSRExitJumpPlaceholder_h
-#define DFGOSRExitJumpPlaceholder_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "DFGCommon.h"
 #include "MacroAssembler.h"
 
 namespace JSC { namespace DFG {
@@ -64,6 +62,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOSRExitJumpPlaceholder_h
-

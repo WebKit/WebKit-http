@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGMaskElement_h
-#define SVGMaskElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedEnumeration.h"
@@ -31,26 +30,29 @@
 
 namespace WebCore {
 
-class SVGMaskElement final : public SVGElement,
-                             public SVGTests,
-                             public SVGExternalResourcesRequired {
+class SVGMaskElement final : public SVGElement, public SVGTests, public SVGExternalResourcesRequired {
 public:
     static Ref<SVGMaskElement> create(const QualifiedName&, Document&);
+
+    // SVGTests
+    Ref<SVGStringList> requiredFeatures();
+    Ref<SVGStringList> requiredExtensions();
+    Ref<SVGStringList> systemLanguage();
 
 private:
     SVGMaskElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const override { return SVGTests::isValid(); }
-    virtual bool needsPendingResourceHandling() const override { return false; }
+    bool isValid() const final { return SVGTests::isValid(); }
+    bool needsPendingResourceHandling() const final { return false; }
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void svgAttributeChanged(const QualifiedName&) final;
+    void childrenChanged(const ChildChange&) final;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    virtual bool selfHasRelativeLengths() const override { return true; }
+    bool selfHasRelativeLengths() const final { return true; }
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGMaskElement)
         DECLARE_ANIMATED_ENUMERATION(MaskUnits, maskUnits, SVGUnitTypes::SVGUnitType)
@@ -63,11 +65,9 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 
     // SVGTests
-    virtual void synchronizeRequiredFeatures() override { SVGTests::synchronizeRequiredFeatures(this); }
-    virtual void synchronizeRequiredExtensions() override { SVGTests::synchronizeRequiredExtensions(this); }
-    virtual void synchronizeSystemLanguage() override { SVGTests::synchronizeSystemLanguage(this); }
+    void synchronizeRequiredFeatures() final { SVGTests::synchronizeRequiredFeatures(*this); }
+    void synchronizeRequiredExtensions() final { SVGTests::synchronizeRequiredExtensions(*this); }
+    void synchronizeSystemLanguage() final { SVGTests::synchronizeSystemLanguage(*this); }
 };
 
-}
-
-#endif
+} // namespace WebCore

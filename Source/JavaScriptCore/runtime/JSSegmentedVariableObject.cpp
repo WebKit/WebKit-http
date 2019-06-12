@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,13 +29,14 @@
 #include "config.h"
 #include "JSSegmentedVariableObject.h"
 
+#include "HeapSnapshotBuilder.h"
 #include "JSCInlines.h"
 
 namespace JSC {
 
 ScopeOffset JSSegmentedVariableObject::findVariableIndex(void* variableAddress)
 {
-    ConcurrentJITLocker locker(m_lock);
+    ConcurrentJSLocker locker(m_lock);
     
     for (unsigned i = m_variables.size(); i--;) {
         if (&m_variables[i] != variableAddress)
@@ -48,7 +49,7 @@ ScopeOffset JSSegmentedVariableObject::findVariableIndex(void* variableAddress)
 
 ScopeOffset JSSegmentedVariableObject::addVariables(unsigned numberOfVariablesToAdd, JSValue initialValue)
 {
-    ConcurrentJITLocker locker(m_lock);
+    ConcurrentJSLocker locker(m_lock);
     
     size_t oldSize = m_variables.size();
     m_variables.grow(oldSize + numberOfVariablesToAdd);
@@ -63,10 +64,56 @@ void JSSegmentedVariableObject::visitChildren(JSCell* cell, SlotVisitor& slotVis
 {
     JSSegmentedVariableObject* thisObject = jsCast<JSSegmentedVariableObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    JSSymbolTableObject::visitChildren(thisObject, slotVisitor);
+    Base::visitChildren(thisObject, slotVisitor);
     
+    // FIXME: We could avoid locking here if SegmentedVector was lock-free. It could be made lock-free
+    // relatively easily.
+    auto locker = holdLock(thisObject->m_lock);
     for (unsigned i = thisObject->m_variables.size(); i--;)
-        slotVisitor.append(&thisObject->m_variables[i]);
+        slotVisitor.appendHidden(thisObject->m_variables[i]);
+}
+
+void JSSegmentedVariableObject::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
+{
+    JSSegmentedVariableObject* thisObject = jsCast<JSSegmentedVariableObject*>(cell);
+    Base::heapSnapshot(cell, builder);
+
+    ConcurrentJSLocker locker(thisObject->symbolTable()->m_lock);
+    SymbolTable::Map::iterator end = thisObject->symbolTable()->end(locker);
+    for (SymbolTable::Map::iterator it = thisObject->symbolTable()->begin(locker); it != end; ++it) {
+        SymbolTableEntry::Fast entry = it->value;
+        ASSERT(!entry.isNull());
+        ScopeOffset offset = entry.scopeOffset();
+        if (!thisObject->isValidScopeOffset(offset))
+            continue;
+
+        JSValue toValue = thisObject->variableAt(offset).get();
+        if (toValue && toValue.isCell())
+            builder.appendVariableNameEdge(thisObject, toValue.asCell(), it->key.get());
+    }
+}
+
+void JSSegmentedVariableObject::destroy(JSCell* cell)
+{
+    static_cast<JSSegmentedVariableObject*>(cell)->JSSegmentedVariableObject::~JSSegmentedVariableObject();
+}
+
+JSSegmentedVariableObject::JSSegmentedVariableObject(VM& vm, Structure* structure, JSScope* scope)
+    : JSSymbolTableObject(vm, structure, scope)
+    , m_classInfo(structure->classInfo())
+{
+}
+
+JSSegmentedVariableObject::~JSSegmentedVariableObject()
+{
+    RELEASE_ASSERT(!m_alreadyDestroyed);
+    m_alreadyDestroyed = true;
+}
+
+void JSSegmentedVariableObject::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    setSymbolTable(vm, SymbolTable::create(vm));
 }
 
 } // namespace JSC

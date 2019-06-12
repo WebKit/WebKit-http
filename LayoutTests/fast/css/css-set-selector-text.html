@@ -90,12 +90,12 @@ testSelectorRoundTrip('[a*="b" i]');
 
 debug('');
 
-testSelectorRoundTrip('*|a');
-testSelectorRoundTrip('n|a');
-testSelectorRoundTrip('*|*');
-testSelectorRoundTrip('n|*');
+shouldBe("setThenReadSelectorText('*|a')", "'a'");
+shouldBe("setThenReadSelectorText('*|*')", "'*'");
 testSelectorRoundTrip('[*|a]');
-testSelectorRoundTrip('[n|a]');
+testSelectorRoundTrip('|*');
+testSelectorRoundTrip('[*|a]');
+shouldBe("setThenReadSelectorText('[|a]')", "'[a]'");
 
 debug('');
 
@@ -272,24 +272,24 @@ testSelectorRoundTrip('a:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) b
 
 debug('');
 
-shouldBe("setThenReadSelectorText('::-webkit-file-upload-button')", "'*::-webkit-file-upload-button'");
-shouldBe("setThenReadSelectorText('::-webkit-search-cancel-button')", "'*::-webkit-search-cancel-button'");
-shouldBe("setThenReadSelectorText('::-webkit-search-decoration')", "'*::-webkit-search-decoration'");
-shouldBe("setThenReadSelectorText('::-webkit-search-results-button')", "'*::-webkit-search-results-button'");
-shouldBe("setThenReadSelectorText('::-webkit-search-results-decoration')", "'*::-webkit-search-results-decoration'");
-shouldBe("setThenReadSelectorText('::-webkit-slider-thumb')", "'*::-webkit-slider-thumb'");
+shouldBe("setThenReadSelectorText('::-webkit-file-upload-button')", "'::-webkit-file-upload-button'");
+shouldBe("setThenReadSelectorText('::-webkit-search-cancel-button')", "'::-webkit-search-cancel-button'");
+shouldBe("setThenReadSelectorText('::-webkit-search-decoration')", "'::-webkit-search-decoration'");
+shouldBe("setThenReadSelectorText('::-webkit-search-results-button')", "'::-webkit-search-results-button'");
+shouldBe("setThenReadSelectorText('::-webkit-search-results-decoration')", "'::-webkit-search-results-decoration'");
+shouldBe("setThenReadSelectorText('::-webkit-slider-thumb')", "'::-webkit-slider-thumb'");
 
 debug('');
 
 testSelectorRoundTrip("a::-webkit-slider-thumb");
-shouldBe("setThenReadSelectorText('a ::-webkit-slider-thumb')", "'a *::-webkit-slider-thumb'");
+shouldBe("setThenReadSelectorText('a ::-webkit-slider-thumb')", "'a ::-webkit-slider-thumb'");
 testSelectorRoundTrip("[a]::-webkit-slider-thumb");
-shouldBe("setThenReadSelectorText('[a] ::-webkit-slider-thumb')", "'[a] *::-webkit-slider-thumb'");
+shouldBe("setThenReadSelectorText('[a] ::-webkit-slider-thumb')", "'[a] ::-webkit-slider-thumb'");
 testSelectorRoundTrip(".a::-webkit-slider-thumb");
-shouldBe("setThenReadSelectorText('.a ::-webkit-slider-thumb')", "'.a *::-webkit-slider-thumb'");
+shouldBe("setThenReadSelectorText('.a ::-webkit-slider-thumb')", "'.a ::-webkit-slider-thumb'");
 testSelectorRoundTrip("#a::-webkit-slider-thumb");
-shouldBe("setThenReadSelectorText('#a ::-webkit-slider-thumb')", "'#a *::-webkit-slider-thumb'");
-shouldBe("setThenReadSelectorText('* ::-webkit-slider-thumb')", "'* *::-webkit-slider-thumb'");
+shouldBe("setThenReadSelectorText('#a ::-webkit-slider-thumb')", "'#a ::-webkit-slider-thumb'");
+shouldBe("setThenReadSelectorText('* ::-webkit-slider-thumb')", "'* ::-webkit-slider-thumb'");
 
 debug('');
 
@@ -297,6 +297,45 @@ testSelectorRoundTrip("a[b]::-webkit-slider-thumb");
 testSelectorRoundTrip("a.b::-webkit-slider-thumb");
 testSelectorRoundTrip("a#b::-webkit-slider-thumb");
 testSelectorRoundTrip("a[b].c#d::-webkit-slider-thumb");
+
+debug('');
+
+testSelectorRoundTrip("a[b]::placeholder");
+testSelectorRoundTrip("a.b::placeholder");
+testSelectorRoundTrip("a#b::placeholder");
+testSelectorRoundTrip("a[b].c#d::placeholder");
+testSelectorRoundTrip("a[b]::-webkit-input-placeholder");
+testSelectorRoundTrip("a.b::-webkit-input-placeholder");
+testSelectorRoundTrip("a#b::-webkit-input-placeholder");
+testSelectorRoundTrip("a[b].c#d::-webkit-input-placeholder");
+
+debug('');
+
+testSelectorRoundTrip("a[b]:default");
+testSelectorRoundTrip("a.b:default");
+testSelectorRoundTrip("a#b:default");
+testSelectorRoundTrip("a[b].c#d:default");
+
+debug('');
+
+testSelectorRoundTrip("a[b]:in-range");
+testSelectorRoundTrip("a.b:in-range");
+testSelectorRoundTrip("a#b:in-range");
+testSelectorRoundTrip("a[b].c#d:in-range");
+
+debug('');
+
+testSelectorRoundTrip("a[b]:out-of-range");
+testSelectorRoundTrip("a.b:out-of-range");
+testSelectorRoundTrip("a#b:out-of-range");
+testSelectorRoundTrip("a[b].c#d:out-of-range");
+
+debug('');
+
+testSelectorRoundTrip("a[b]:focus-within");
+testSelectorRoundTrip("a.b:focus-within");
+testSelectorRoundTrip("a#b:focus-within");
+testSelectorRoundTrip("a[b].c#d:focus-within");
 
 debug('');
 
@@ -312,7 +351,6 @@ testSelectorRoundTrip(':-webkit-any(a.class1.class2.class3:hover)');
 debug('');
 
 shouldBe("setThenReadSelectorText('*:active')", "':active'");
-shouldBe("setThenReadSelectorText('|a')", "'a'");
 
 debug('');
 

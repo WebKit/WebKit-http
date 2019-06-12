@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SecurityOrigin_h
-#define SecurityOrigin_h
+#pragma once
 
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -53,14 +52,8 @@ public:
     WEBCORE_EXPORT static Ref<SecurityOrigin> create(const URL&);
     static Ref<SecurityOrigin> createUnique();
 
-    WEBCORE_EXPORT static Ref<SecurityOrigin> createFromDatabaseIdentifier(const String&);
-    // Alternate form of createFromDatabaseIdentifier that returns a nullptr on failure, instead of an empty origin.
-    // FIXME: Many users of createFromDatabaseIdentifier seem to expect maybeCreateFromDatabaseIdentifier behavior,
-    // but they aren't getting it so they might be buggy.
-    WEBCORE_EXPORT static RefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
-
     WEBCORE_EXPORT static Ref<SecurityOrigin> createFromString(const String&);
-    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, int port);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, std::optional<uint16_t> port);
 
     // Some URL schemes use nested URLs for their security context. For example,
     // filesystem URLs look like the following:
@@ -85,10 +78,10 @@ public:
     void setDomainFromDOM(const String& newDomain);
     bool domainWasSetInDOM() const { return m_domainWasSetInDOM; }
 
-    String protocol() const { return m_protocol; }
-    String host() const { return m_host; }
-    String domain() const { return m_domain; }
-    unsigned short port() const { return m_port; }
+    const String& protocol() const { return m_protocol; }
+    const String& host() const { return m_host; }
+    const String& domain() const { return m_domain; }
+    std::optional<uint16_t> port() const { return m_port; }
 
     // Returns true if a given URL is secure, based either directly on its
     // own protocol, or, when relevant, on the protocol of its "inner URL"
@@ -99,22 +92,17 @@ public:
     // SecurityOrigin. For example, call this function before allowing
     // script from one security origin to read or write objects from
     // another SecurityOrigin.
-    WEBCORE_EXPORT bool canAccess(const SecurityOrigin*) const;
+    WEBCORE_EXPORT bool canAccess(const SecurityOrigin&) const;
 
     // Returns true if this SecurityOrigin can read content retrieved from
     // the given URL. For example, call this function before issuing
     // XMLHttpRequests.
     bool canRequest(const URL&) const;
 
-    // Returns true if drawing an image from this URL taints a canvas from
-    // this security origin. For example, call this function before
-    // drawing an image onto an HTML canvas element with the drawImage API.
-    bool taintsCanvas(const URL&) const;
-
     // Returns true if this SecurityOrigin can receive drag content from the
     // initiator. For example, call this function before allowing content to be
     // dropped onto a target.
-    bool canReceiveDragData(const SecurityOrigin* dragInitiator) const;    
+    bool canReceiveDragData(const SecurityOrigin& dragInitiator) const;
 
     // Returns true if |document| can display content from the given URL (e.g.,
     // in an iframe or as an image). For example, web sites generally cannot
@@ -143,18 +131,20 @@ public:
     //
     // WARNING: This is an extremely powerful ability. Use with caution!
     void grantUniversalAccess();
+    bool hasUniversalAccess() const { return m_universalAccess; }
 
     void setStorageBlockingPolicy(StorageBlockingPolicy policy) { m_storageBlockingPolicy = policy; }
 
-#if ENABLE(CACHE_PARTITIONING)
-    WEBCORE_EXPORT String domainForCachePartition() const;
-#endif
+    void grantStorageAccessFromFileURLsQuirk();
+    bool needsStorageAccessFromFileURLsQuirk() const { return m_needsStorageAccessFromFileURLsQuirk; }
 
-    bool canAccessDatabase(const SecurityOrigin* topOrigin = nullptr) const { return canAccessStorage(topOrigin); };
-    bool canAccessSessionStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin, AlwaysAllowFromThirdParty); }
+    WEBCORE_EXPORT String domainForCachePartition() const;
+
+    bool canAccessDatabase(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin); };
+    bool canAccessSessionStorage(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin, AlwaysAllowFromThirdParty); }
     bool canAccessLocalStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); };
-    bool canAccessPluginStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
-    bool canAccessApplicationCache(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
+    bool canAccessPluginStorage(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin); }
+    bool canAccessApplicationCache(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin); }
     bool canAccessCookies() const { return !isUnique(); }
     bool canRequestGeolocation() const { return !isUnique(); }
     Policy canShowNotifications() const;
@@ -193,10 +183,6 @@ public:
     // could make the string return "null".
     WEBCORE_EXPORT String toRawString() const;
 
-    // Serialize the security origin to a string that could be used as part of
-    // file names. This format should be used in storage APIs only.
-    WEBCORE_EXPORT String databaseIdentifier() const;
-
     // This method checks for equality between SecurityOrigins, not whether
     // one origin can access another. It is used for hash table keys.
     // For access checks, use canAccess().
@@ -206,9 +192,15 @@ public:
 
     // This method checks for equality, ignoring the value of document.domain
     // (and whether it was set) but considering the host. It is used for postMessage.
-    WEBCORE_EXPORT bool isSameSchemeHostPort(const SecurityOrigin*) const;
+    WEBCORE_EXPORT bool isSameSchemeHostPort(const SecurityOrigin&) const;
+
+    // This method implements the "same origin" algorithm from the HTML Standard:
+    // https://html.spec.whatwg.org/multipage/browsers.html#same-origin
+    WEBCORE_EXPORT bool isSameOriginAs(const SecurityOrigin&) const;
 
     static URL urlWithUniqueSecurityOrigin();
+
+    bool isPotentionallyTrustworthy() const { return m_isPotentionallyTrustworthy; }
 
 private:
     SecurityOrigin();
@@ -216,8 +208,7 @@ private:
     explicit SecurityOrigin(const SecurityOrigin*);
 
     // FIXME: Rename this function to something more semantic.
-    bool passesFileCheck(const SecurityOrigin*) const;
-    bool isThirdParty(const SecurityOrigin*) const;
+    bool passesFileCheck(const SecurityOrigin&) const;
 
     // This method checks that the scheme for this origin is an HTTP-family
     // scheme, e.g. HTTP and HTTPS.
@@ -230,16 +221,19 @@ private:
     String m_host;
     String m_domain;
     String m_filePath;
-    unsigned short m_port;
-    bool m_isUnique;
-    bool m_universalAccess;
-    bool m_domainWasSetInDOM;
-    bool m_canLoadLocalResources;
-    StorageBlockingPolicy m_storageBlockingPolicy;
-    bool m_enforceFilePathSeparation;
-    bool m_needsDatabaseIdentifierQuirkForFiles;
+    std::optional<uint16_t> m_port;
+    bool m_isUnique { false };
+    bool m_universalAccess { false };
+    bool m_domainWasSetInDOM { false };
+    bool m_canLoadLocalResources { false };
+    StorageBlockingPolicy m_storageBlockingPolicy { AllowAllStorage };
+    bool m_enforceFilePathSeparation { false };
+    bool m_needsStorageAccessFromFileURLsQuirk { false };
+    bool m_isPotentionallyTrustworthy { false };
 };
 
-} // namespace WebCore
+// Returns true if the Origin header values serialized from these two origins would be the same.
+bool originsMatch(const SecurityOrigin&, const SecurityOrigin&);
+bool originsMatch(const SecurityOrigin*, const SecurityOrigin*);
 
-#endif // SecurityOrigin_h
+} // namespace WebCore

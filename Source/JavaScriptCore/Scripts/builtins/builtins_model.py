@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2015 Apple Inc. All rights reserved.
+# Copyright (c) 2015-2016 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,6 +27,8 @@ import logging
 import re
 import os
 
+from builtins_templates import BuiltinsGeneratorTemplates as Templates
+
 log = logging.getLogger('global')
 
 _FRAMEWORK_CONFIG_MAP = {
@@ -40,18 +42,20 @@ _FRAMEWORK_CONFIG_MAP = {
     },
 }
 
-functionHeadRegExp = re.compile(r"(?:function|constructor)\s+\w+\s*\(.*?\)", re.MULTILINE | re.S)
-functionNameRegExp = re.compile(r"(?:function|constructor)\s+(\w+)\s*\(", re.MULTILINE | re.S)
-functionIsConstructorRegExp = re.compile(r"^constructor", re.MULTILINE | re.S)
-functionParameterFinder = re.compile(r"^(?:function|constructor)\s+(?:\w+)\s*\(((?:\s*\w+)?\s*(?:\s*,\s*\w+)*)?\s*\)", re.MULTILINE | re.S)
+functionHeadRegExp = re.compile(r"(?:@[\w|=]+\s*\n)*function\s+\w+\s*\(.*?\)", re.MULTILINE | re.DOTALL)
+functionGlobalPrivateRegExp = re.compile(r".*^@globalPrivate", re.MULTILINE | re.DOTALL)
+functionIntrinsicRegExp = re.compile(r".*^@intrinsic=(\w+)", re.MULTILINE | re.DOTALL)
+functionIsConstructorRegExp = re.compile(r".*^@constructor", re.MULTILINE | re.DOTALL)
+functionNameRegExp = re.compile(r"function\s+(\w+)\s*\(", re.MULTILINE | re.DOTALL)
+functionParameterFinder = re.compile(r"^function\s+(?:\w+)\s*\(((?:\s*\w+)?\s*(?:\s*,\s*\w+)*)?\s*\)", re.MULTILINE | re.DOTALL)
 
-multilineCommentRegExp = re.compile(r"\/\*.*?\*\/", re.MULTILINE | re.S)
-singleLineCommentRegExp = re.compile(r"\/\/.*?\n", re.MULTILINE | re.S)
-keyValueAnnotationCommentRegExp = re.compile(r"^\/\/ @(\w+)=([^=]+?)\n", re.MULTILINE | re.S)
-flagAnnotationCommentRegExp = re.compile(r"^\/\/ @(\w+)[^=]*?\n", re.MULTILINE | re.S)
-lineWithOnlySingleLineCommentRegExp = re.compile(r"^\s*\/\/\n", re.MULTILINE | re.S)
-lineWithTrailingSingleLineCommentRegExp = re.compile(r"\s*\/\/\n", re.MULTILINE | re.S)
-multipleEmptyLinesRegExp = re.compile(r"\n{2,}", re.MULTILINE | re.S)
+multilineCommentRegExp = re.compile(r"\/\*.*?\*\/", re.MULTILINE | re.DOTALL)
+singleLineCommentRegExp = re.compile(r"\/\/.*?\n", re.MULTILINE | re.DOTALL)
+keyValueAnnotationCommentRegExp = re.compile(r"^\/\/ @(\w+)=([^=]+?)\n", re.MULTILINE | re.DOTALL)
+flagAnnotationCommentRegExp = re.compile(r"^\/\/ @(\w+)[^=]*?\n", re.MULTILINE | re.DOTALL)
+lineWithOnlySingleLineCommentRegExp = re.compile(r"^\s*\/\/\n", re.MULTILINE | re.DOTALL)
+lineWithTrailingSingleLineCommentRegExp = re.compile(r"\s*\/\/\n", re.MULTILINE | re.DOTALL)
+multipleEmptyLinesRegExp = re.compile(r"\n{2,}", re.MULTILINE | re.DOTALL)
 
 class ParseException(Exception):
     pass
@@ -93,16 +97,25 @@ class BuiltinObject:
 
 
 class BuiltinFunction:
-    def __init__(self, function_name, function_source, is_constructor, parameters):
+    def __init__(self, function_name, function_source, parameters, is_constructor, is_global_private, intrinsic):
         self.function_name = function_name
         self.function_source = function_source
-        self.is_constructor = is_constructor
         self.parameters = parameters
+        self.is_constructor = is_constructor
+        self.is_global_private = is_global_private
+        self.intrinsic = intrinsic
         self.object = None  # Set by the owning BuiltinObject
 
     @staticmethod
     def fromString(function_string):
         function_source = multilineCommentRegExp.sub("", function_string)
+
+        intrinsic = "NoIntrinsic"
+        intrinsicMatch = functionIntrinsicRegExp.search(function_source)
+        if intrinsicMatch:
+            intrinsic = intrinsicMatch.group(1)
+            function_source = functionIntrinsicRegExp.sub("", function_source)
+
         if os.getenv("CONFIGURATION", "Debug").startswith("Debug"):
             function_source = lineWithOnlySingleLineCommentRegExp.sub("", function_source)
             function_source = lineWithTrailingSingleLineCommentRegExp.sub("\n", function_source)
@@ -110,11 +123,12 @@ class BuiltinFunction:
 
         function_name = functionNameRegExp.findall(function_source)[0]
         is_constructor = functionIsConstructorRegExp.match(function_source) != None
+        is_global_private = functionGlobalPrivateRegExp.match(function_source) != None
         parameters = [s.strip() for s in functionParameterFinder.findall(function_source)[0].split(',')]
         if len(parameters[0]) == 0:
             parameters = []
 
-        return BuiltinFunction(function_name, function_source, is_constructor, parameters)
+        return BuiltinFunction(function_name, function_source, parameters, is_constructor, is_global_private, intrinsic)
 
     def __str__(self):
         interface = "%s(%s)" % (self.function_name, ', '.join(self.parameters))
@@ -207,7 +221,7 @@ class BuiltinsCollection:
         licenseBlock = multilineCommentRegExp.findall(text)[0]
         licenseBlock = licenseBlock[:licenseBlock.index("Redistribution")]
 
-        copyrightLines = []
+        copyrightLines = [Templates.DefaultCopyright]
         for line in licenseBlock.split("\n"):
             line = line.replace("/*", "")
             line = line.replace("*/", "")

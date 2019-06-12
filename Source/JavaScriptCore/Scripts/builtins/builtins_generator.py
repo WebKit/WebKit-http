@@ -38,7 +38,7 @@ log = logging.getLogger('global')
 # These match WK_lcfirst and WK_ucfirst defined in CodeGenerator.pm.
 def WK_lcfirst(str):
     str = str[:1].lower() + str[1:]
-    str = str.replace('hTML', 'html')
+    str = str.replace('dOM', 'dom')
     str = str.replace('uRL', 'url')
     str = str.replace('jS', 'js')
     str = str.replace('xML', 'xml')
@@ -129,16 +129,28 @@ class BuiltinsGenerator:
             'codeName': BuiltinsGenerator.mangledNameForFunction(function) + 'Code',
             'embeddedSource': embeddedSource,
             'embeddedSourceLength': embeddedSourceLength,
-            'canConstruct': constructAbility
+            'canConstruct': constructAbility,
+            'intrinsic': function.intrinsic
         }
 
         lines = []
         lines.append("const JSC::ConstructAbility s_%(codeName)sConstructAbility = JSC::ConstructAbility::%(canConstruct)s;" % args);
         lines.append("const int s_%(codeName)sLength = %(embeddedSourceLength)d;" % args);
+        lines.append("static const JSC::Intrinsic s_%(codeName)sIntrinsic = JSC::%(intrinsic)s;" % args);
         lines.append("const char* s_%(codeName)s =\n%(embeddedSource)s\n;" % args);
         return '\n'.join(lines)
 
     # Helper methods.
+
+    @staticmethod
+    def wrap_with_guard(guard, text):
+        if not guard:
+            return text
+        return '\n'.join([
+            '#if %s' % guard,
+            text,
+            '#endif // %s' % guard,
+        ])
 
     @staticmethod
     def mangledNameForObject(object):

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef LLIntOfflineAsmConfig_h
-#define LLIntOfflineAsmConfig_h
+#pragma once
 
 #include "LLIntCommon.h"
 #include <wtf/Assertions.h>
-#include <wtf/InlineASM.h>
 
 #if !ENABLE(JIT)
 #define OFFLINE_ASM_C_LOOP 1
@@ -38,12 +36,12 @@
 #define OFFLINE_ASM_ARMv7 0
 #define OFFLINE_ASM_ARMv7_TRADITIONAL 0
 #define OFFLINE_ASM_ARM64 0
+#define OFFLINE_ASM_ARM64E 0
 #define OFFLINE_ASM_X86_64 0
 #define OFFLINE_ASM_X86_64_WIN 0
 #define OFFLINE_ASM_ARMv7k 0
 #define OFFLINE_ASM_ARMv7s 0
 #define OFFLINE_ASM_MIPS 0
-#define OFFLINE_ASM_SH4 0
 
 #else // ENABLE(JIT)
 
@@ -110,16 +108,16 @@
 #define OFFLINE_ASM_MIPS 0
 #endif
 
-#if CPU(SH4)
-#define OFFLINE_ASM_SH4 1
-#else
-#define OFFLINE_ASM_SH4 0
-#endif
-
 #if CPU(ARM64)
 #define OFFLINE_ASM_ARM64 1
 #else
 #define OFFLINE_ASM_ARM64 0
+#endif
+
+#if CPU(ARM64E)
+#define OFFLINE_ASM_ARM64E 1
+#else
+#define OFFLINE_ASM_ARM64E 0
 #endif
 
 #if CPU(MIPS)
@@ -155,10 +153,14 @@
 #define OFFLINE_ASM_BIG_ENDIAN 0
 #endif
 
+#if ENABLE(LLINT_STATS)
+#define OFFLINE_ASM_COLLECT_STATS 1
+#else
+#define OFFLINE_ASM_COLLECT_STATS 0
+#endif
+
 #if LLINT_EXECUTION_TRACING
 #define OFFLINE_ASM_EXECUTION_TRACING 1
 #else
 #define OFFLINE_ASM_EXECUTION_TRACING 0
 #endif
-
-#endif // LLIntOfflineAsmConfig_h

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInjectedScriptManager_h
-#define WebInjectedScriptManager_h
+#pragma once
 
 #include "CommandLineAPIHost.h"
 #include <inspector/InjectedScriptManager.h>
@@ -36,23 +35,21 @@ class DOMWindow;
 
 class WebInjectedScriptManager final : public Inspector::InjectedScriptManager {
 public:
-    WebInjectedScriptManager(Inspector::InspectorEnvironment&, RefPtr<Inspector::InjectedScriptHost>&&);
+    WebInjectedScriptManager(Inspector::InspectorEnvironment&, Ref<Inspector::InjectedScriptHost>&&);
     virtual ~WebInjectedScriptManager() { }
 
     CommandLineAPIHost* commandLineAPIHost() const { return m_commandLineAPIHost.get(); }
 
-    virtual void disconnect() override;
-    virtual void discardInjectedScripts() override;
+    void disconnect() override;
+    void discardInjectedScripts() override;
 
     void discardInjectedScriptsFor(DOMWindow*);
 
 protected:
-    virtual void didCreateInjectedScript(const Inspector::InjectedScript&) override;
+    void didCreateInjectedScript(const Inspector::InjectedScript&) override;
 
 private:
     RefPtr<CommandLineAPIHost> m_commandLineAPIHost;
 };
 
 } // namespace WebCore
-
-#endif // !defined(WebInjectedScriptManager_h)

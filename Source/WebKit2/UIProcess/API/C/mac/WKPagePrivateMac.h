@@ -48,16 +48,24 @@ extern "C" {
 
 // Not KVO compliant.
 @property (nonatomic, readonly) NSURL *unreachableURL;
+@property (nonatomic, readonly) SecTrustRef serverTrust;
 
 @end
 
 WK_EXPORT id <_WKObservablePageState> WKPageCreateObservableState(WKPageRef page) NS_RETURNS_RETAINED;
 WK_EXPORT _WKRemoteObjectRegistry *WKPageGetObjectRegistry(WKPageRef page);
 
+@protocol _WKFullscreenDelegate;
+WK_EXPORT void WKPageSetFullscreenDelegate(WKPageRef page, id <_WKFullscreenDelegate>);
+WK_EXPORT id <_WKFullscreenDelegate> WKPageGetFullscreenDelegate(WKPageRef page);
+
 #endif
 
-WK_EXPORT pid_t WKPageGetProcessIdentifier(WKPageRef page);
 WK_EXPORT bool WKPageIsURLKnownHSTSHost(WKPageRef page, WKURLRef url);
+
+#if !TARGET_OS_IPHONE
+WK_EXPORT bool WKPageIsPlayingVideoInEnhancedFullscreen(WKPageRef page);
+#endif
 
 #ifdef __cplusplus
 }

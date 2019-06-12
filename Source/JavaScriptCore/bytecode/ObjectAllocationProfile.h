@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ObjectAllocationProfile_h
-#define ObjectAllocationProfile_h
+#pragma once
 
 #include "VM.h"
 #include "JSGlobalObject.h"
@@ -39,18 +38,21 @@ class ObjectAllocationProfile {
 public:
     static ptrdiff_t offsetOfAllocator() { return OBJECT_OFFSETOF(ObjectAllocationProfile, m_allocator); }
     static ptrdiff_t offsetOfStructure() { return OBJECT_OFFSETOF(ObjectAllocationProfile, m_structure); }
+    static ptrdiff_t offsetOfInlineCapacity() { return OBJECT_OFFSETOF(ObjectAllocationProfile, m_inlineCapacity); }
 
     ObjectAllocationProfile()
         : m_allocator(0)
+        , m_inlineCapacity(0)
     {
     }
 
-    bool isNull() { return !m_allocator; }
+    bool isNull() { return !m_structure; }
 
-    void initialize(VM& vm, JSCell* owner, JSObject* prototype, unsigned inferredInlineCapacity)
+    void initialize(VM& vm, JSGlobalObject* globalObject, JSCell* owner, JSObject* prototype, unsigned inferredInlineCapacity)
     {
         ASSERT(!m_allocator);
         ASSERT(!m_structure);
+        ASSERT(!m_inlineCapacity);
 
         unsigned inlineCapacity = 0;
         if (inferredInlineCapacity < JSFinalObject::defaultInlineCapacity()) {
@@ -80,22 +82,24 @@ public:
         ASSERT(inlineCapacity <= JSFinalObject::maxInlineCapacity());
 
         size_t allocationSize = JSFinalObject::allocationSize(inlineCapacity);
-        MarkedAllocator* allocator = &vm.heap.allocatorForObjectWithoutDestructor(allocationSize);
-        ASSERT(allocator->cellSize());
-
+        MarkedAllocator* allocator = vm.cellSpace.allocatorFor(allocationSize);
+        
         // Take advantage of extra inline capacity available in the size class.
-        size_t slop = (allocator->cellSize() - allocationSize) / sizeof(WriteBarrier<Unknown>);
-        inlineCapacity += slop;
-        if (inlineCapacity > JSFinalObject::maxInlineCapacity())
-            inlineCapacity = JSFinalObject::maxInlineCapacity();
+        if (allocator) {
+            size_t slop = (allocator->cellSize() - allocationSize) / sizeof(WriteBarrier<Unknown>);
+            inlineCapacity += slop;
+            if (inlineCapacity > JSFinalObject::maxInlineCapacity())
+                inlineCapacity = JSFinalObject::maxInlineCapacity();
+        }
 
-        Structure* structure = vm.prototypeMap.emptyObjectStructureForPrototype(prototype, inlineCapacity);
+        Structure* structure = vm.prototypeMap.emptyObjectStructureForPrototype(globalObject, prototype, inlineCapacity);
 
         // Ensure that if another thread sees the structure, it will see it properly created
         WTF::storeStoreFence();
 
         m_allocator = allocator;
         m_structure.set(vm, owner, structure);
+        m_inlineCapacity = inlineCapacity;
     }
 
     Structure* structure()
@@ -105,18 +109,19 @@ public:
         WTF::loadLoadFence();
         return structure;
     }
-    unsigned inlineCapacity() { return structure()->inlineCapacity(); }
+    unsigned inlineCapacity() { return m_inlineCapacity; }
 
     void clear()
     {
         m_allocator = 0;
         m_structure.clear();
+        m_inlineCapacity = 0;
         ASSERT(isNull());
     }
 
     void visitAggregate(SlotVisitor& visitor)
     {
-        visitor.append(&m_structure);
+        visitor.append(m_structure);
     }
 
 private:
@@ -134,7 +139,7 @@ private:
             JSValue value = prototype->getDirect(vm, propertyNameVector[i]);
 
             // Functions are common, and are usually class-level objects that are not overridden.
-            if (jsDynamicCast<JSFunction*>(value))
+            if (jsDynamicCast<JSFunction*>(vm, value))
                 continue;
 
             ++count;
@@ -145,8 +150,7 @@ private:
 
     MarkedAllocator* m_allocator; // Precomputed to make things easier for generated code.
     WriteBarrier<Structure> m_structure;
+    unsigned m_inlineCapacity;
 };
 
 } // namespace JSC
-
-#endif // ObjectAllocationProfile_h

@@ -25,7 +25,6 @@
 
 #include "CSSStyleSheet.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "SVGNames.h"
 #include <wtf/StdLibExtras.h>
 
@@ -41,7 +40,7 @@ inline SVGStyleElement::SVGStyleElement(const QualifiedName& tagName, Document& 
 
 SVGStyleElement::~SVGStyleElement()
 {
-    m_styleSheetOwner.clearDocumentData(document(), *this);
+    m_styleSheetOwner.clearDocumentData(*this);
 }
 
 Ref<SVGStyleElement> SVGStyleElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
@@ -67,7 +66,7 @@ const AtomicString& SVGStyleElement::type() const
     return n.isNull() ? defaultValue.get() : n;
 }
 
-void SVGStyleElement::setType(const AtomicString& type, ExceptionCode&)
+void SVGStyleElement::setType(const AtomicString& type)
 {
     setAttribute(SVGNames::typeAttr, type);
 }
@@ -75,23 +74,18 @@ void SVGStyleElement::setType(const AtomicString& type, ExceptionCode&)
 const AtomicString& SVGStyleElement::media() const
 {
     static NeverDestroyed<const AtomicString> defaultValue("all", AtomicString::ConstructFromLiteral);
-    const AtomicString& n = fastGetAttribute(SVGNames::mediaAttr);
+    const AtomicString& n = attributeWithoutSynchronization(SVGNames::mediaAttr);
     return n.isNull() ? defaultValue.get() : n;
 }
 
-void SVGStyleElement::setMedia(const AtomicString& media, ExceptionCode&)
+void SVGStyleElement::setMedia(const AtomicString& media)
 {
-    setAttribute(SVGNames::mediaAttr, media);
+    setAttributeWithoutSynchronization(SVGNames::mediaAttr, media);
 }
 
 String SVGStyleElement::title() const
 {
-    return fastGetAttribute(SVGNames::titleAttr);
-}
-
-void SVGStyleElement::setTitle(const AtomicString& title, ExceptionCode&)
-{
-    setAttribute(SVGNames::titleAttr, title);
+    return attributeWithoutSynchronization(SVGNames::titleAttr);
 }
 
 void SVGStyleElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -121,17 +115,18 @@ void SVGStyleElement::finishParsingChildren()
 
 Node::InsertionNotificationRequest SVGStyleElement::insertedInto(ContainerNode& rootParent)
 {
-    SVGElement::insertedInto(rootParent);
-    if (rootParent.inDocument())
-        m_styleSheetOwner.insertedIntoDocument(document(), *this);
-    return InsertionDone;
+    bool wasInDocument = isConnected();
+    auto result = SVGElement::insertedInto(rootParent);
+    if (rootParent.isConnected() && !wasInDocument)
+        m_styleSheetOwner.insertedIntoDocument(*this);
+    return result;
 }
 
 void SVGStyleElement::removedFrom(ContainerNode& rootParent)
 {
     SVGElement::removedFrom(rootParent);
-    if (rootParent.inDocument())
-        m_styleSheetOwner.removedFromDocument(document(), *this);
+    if (rootParent.isConnected() && !isConnected())
+        m_styleSheetOwner.removedFromDocument(*this);
 }
 
 void SVGStyleElement::childrenChanged(const ChildChange& change)

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StorageNamespaceProvider_h
-#define StorageNamespaceProvider_h
+#pragma once
 
 #include "SecurityOriginHash.h"
 #include <wtf/Forward.h>
@@ -46,6 +45,8 @@ public:
     WEBCORE_EXPORT virtual ~StorageNamespaceProvider();
 
     virtual RefPtr<StorageNamespace> createSessionStorageNamespace(Page&, unsigned quota) = 0;
+    virtual RefPtr<StorageNamespace> createEphemeralLocalStorageNamespace(Page&, unsigned quota) = 0;
+
     RefPtr<StorageArea> localStorageArea(Document&);
 
     void addPage(Page&);
@@ -67,6 +68,4 @@ private:
     HashMap<RefPtr<SecurityOrigin>, RefPtr<StorageNamespace>> m_transientLocalStorageMap;
 };
 
-}
-
-#endif // StorageNamespaceProvider_h
+} // namespace WebCore

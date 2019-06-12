@@ -34,7 +34,7 @@ namespace WebCore {
 
 class WKCACFViewLayerTreeHost : public CACFLayerTreeHost {
 public:
-    static PassRefPtr<WKCACFViewLayerTreeHost> create();
+    static RefPtr<WKCACFViewLayerTreeHost> create();
 
     virtual bool createRenderer();
 
@@ -46,6 +46,7 @@ private:
 
     virtual void initializeContext(void* userData, PlatformCALayer*);
     virtual void resize();
+    virtual void setScaleFactor(float);
     virtual void destroyRenderer();
     virtual void flushContext();
     virtual void contextDidChange();
@@ -54,7 +55,7 @@ private:
     virtual CFTimeInterval lastCommitTime() const;
     virtual void setShouldInvertColors(bool);
 #if USE(AVFOUNDATION)
-    virtual GraphicsDeviceAdapter* graphicsDeviceAdapter() const override;
+    GraphicsDeviceAdapter* graphicsDeviceAdapter() const override;
 #endif
 
     RetainPtr<WKCACFViewRef> m_view;

@@ -28,6 +28,7 @@
 
 #if ENABLE(FULLSCREEN_API)
 
+#include "APIFullscreenClient.h"
 #include "WebFullScreenManagerMessages.h"
 #include "WebFullScreenManagerProxyMessages.h"
 #include "WebPageProxy.h"
@@ -38,9 +39,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<WebFullScreenManagerProxy> WebFullScreenManagerProxy::create(WebPageProxy& page, WebFullScreenManagerProxyClient& client)
+Ref<WebFullScreenManagerProxy> WebFullScreenManagerProxy::create(WebPageProxy& page, WebFullScreenManagerProxyClient& client)
 {
-    return adoptRef(new WebFullScreenManagerProxy(page, client));
+    return adoptRef(*new WebFullScreenManagerProxy(page, client));
 }
 
 WebFullScreenManagerProxy::WebFullScreenManagerProxy(WebPageProxy& page, WebFullScreenManagerProxyClient& client)
@@ -56,21 +57,25 @@ WebFullScreenManagerProxy::~WebFullScreenManagerProxy()
 
 void WebFullScreenManagerProxy::willEnterFullScreen()
 {
+    m_page->fullscreenClient().willEnterFullscreen(m_page);
     m_page->process().send(Messages::WebFullScreenManager::WillEnterFullScreen(), m_page->pageID());
 }
 
 void WebFullScreenManagerProxy::didEnterFullScreen()
 {
+    m_page->fullscreenClient().didEnterFullscreen(m_page);
     m_page->process().send(Messages::WebFullScreenManager::DidEnterFullScreen(), m_page->pageID());
 }
 
 void WebFullScreenManagerProxy::willExitFullScreen()
 {
+    m_page->fullscreenClient().willExitFullscreen(m_page);
     m_page->process().send(Messages::WebFullScreenManager::WillExitFullScreen(), m_page->pageID());
 }
 
 void WebFullScreenManagerProxy::didExitFullScreen()
 {
+    m_page->fullscreenClient().didExitFullscreen(m_page);
     m_page->process().send(Messages::WebFullScreenManager::DidExitFullScreen(), m_page->pageID());
 }
 
@@ -86,7 +91,7 @@ void WebFullScreenManagerProxy::requestExitFullScreen()
 
 void WebFullScreenManagerProxy::supportsFullScreen(bool withKeyboard, bool& supports)
 {
-    supports = !withKeyboard;
+    supports = true;
 }
 
 void WebFullScreenManagerProxy::saveScrollPosition()

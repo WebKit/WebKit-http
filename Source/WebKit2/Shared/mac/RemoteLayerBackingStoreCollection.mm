@@ -30,9 +30,11 @@
 #import "RemoteLayerBackingStore.h"
 #import "RemoteLayerTreeContext.h"
 
-const std::chrono::seconds volatileBackingStoreAgeThreshold = 1_s;
-const std::chrono::milliseconds volatileSecondaryBackingStoreAgeThreshold = 200_ms;
-const std::chrono::milliseconds volatilityTimerInterval = 200_ms;
+using namespace std::literals::chrono_literals;
+
+const std::chrono::seconds volatileBackingStoreAgeThreshold = 1s;
+const std::chrono::milliseconds volatileSecondaryBackingStoreAgeThreshold = 200ms;
+const Seconds volatilityTimerInterval = 200_ms;
 
 namespace WebKit {
 

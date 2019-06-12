@@ -17,7 +17,8 @@ set(test_main_SOURCES
 
 include_directories(
     ${DERIVED_SOURCES_DIR}
-    ${DERIVED_SOURCES_DIR}/ForwardingHeaders
+    ${FORWARDING_HEADERS_DIR}
+    ${FORWARDING_HEADERS_DIR}/JavaScriptCore
     ${TESTWEBKITAPI_DIR}/win
     ${DERIVED_SOURCES_DIR}/WebKit/Interfaces
 )
@@ -26,29 +27,51 @@ add_definitions(-DWEBCORE_EXPORT=)
 
 set(test_webcore_LIBRARIES
     Crypt32
+    D2d1
+    Dwrite
+    dxguid
     Iphlpapi
     Psapi
     Shlwapi
     Usp10
     WebCore${DEBUG_SUFFIX}
-    WebKit${DEBUG_SUFFIX}
+    WebCoreDerivedSources${DEBUG_SUFFIX}
+    WindowsCodecs
     gtest
 )
 
 set(TestWebCoreLib_SOURCES
     ${test_main_SOURCES}
+    win/TestWebCoreStubs.cpp
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/AffineTransform.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/CalculationValue.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/ComplexTextController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/CSSParser.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatRect.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatPoint.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatSize.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/GridPosition.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/HTMLParserIdioms.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntRect.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntPoint.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntSize.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/ParsedContentRange.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SecurityOrigin.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBufferTest.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/TimeRanges.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/TransformationMatrix.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/URLParser.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/win/DIBPixelData.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/win/LinkedFonts.cpp
 )
 
 if (${WTF_PLATFORM_WIN_CAIRO})
     list(APPEND test_webcore_LIBRARIES
-        cairo
+        ${CAIRO_LIBRARIES}
         libANGLE
         libeay32
         mfuuid
@@ -65,6 +88,7 @@ else ()
         CFNetwork${DEBUG_SUFFIX}
         CoreFoundation${DEBUG_SUFFIX}
         CoreGraphics${DEBUG_SUFFIX}
+        CoreText${DEBUG_SUFFIX}
         QuartzCore${DEBUG_SUFFIX}
         SQLite3${DEBUG_SUFFIX}
         WebKitSystemInterface${DEBUG_SUFFIX}
@@ -85,6 +109,7 @@ add_library(TestWTFLib SHARED
 )
 set_target_properties(TestWTFLib PROPERTIES OUTPUT_NAME "TestWTFLib")
 target_link_libraries(TestWTFLib ${test_wtf_LIBRARIES})
+add_dependencies(TestWTFLib ${ForwardingHeadersForTestWebKitAPI_NAME})
 
 set(test_wtf_LIBRARIES
     shlwapi
@@ -103,24 +128,38 @@ add_executable(TestWebCore
     ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp
 )
 target_link_libraries(TestWebCore shlwapi)
+add_dependencies(TestWebCore ${ForwardingHeadersForTestWebKitAPI_NAME})
 
 
 add_test(TestWebCore ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/TestWebCore)
 set_tests_properties(TestWebCore PROPERTIES TIMEOUT 60)
 
+if (${WTF_PLATFORM_WIN_CAIRO})
+    include_directories(
+        ${CAIRO_INCLUDE_DIRS}
+    )
+endif ()
+
+set(test_webkit_LIBRARIES
+    WebCoreTestSupport
+    WebKit${DEBUG_SUFFIX}
+    gtest
+)
 add_library(TestWebKitLib SHARED
     ${test_main_SOURCES}
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit/win/ScaleWebView.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit/win/WebViewDestruction.cpp
     ${TESTWEBKITAPI_DIR}/win/HostWindow.cpp
 )
 
-target_link_libraries(TestWebKitLib ${test_webcore_LIBRARIES})
+target_link_libraries(TestWebKitLib ${test_webkit_LIBRARIES})
 
 add_executable(TestWebKit
     ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cpp
 )
 target_link_libraries(TestWebKit shlwapi)
+add_dependencies(TestWebKit ${ForwardingHeadersForTestWebKitAPI_NAME})
 
 add_test(TestWebKit ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/TestWebKit)
 set_tests_properties(TestWebKit PROPERTIES TIMEOUT 60)

@@ -20,9 +20,7 @@
 #ifndef TextureMapperPlatformLayer_h
 #define TextureMapperPlatformLayer_h
 
-#if USE(GRAPHICS_SURFACE)
-#include "GraphicsSurface.h"
-#endif
+#if USE(TEXTURE_MAPPER)
 
 #include "TextureMapper.h"
 #include "TransformationMatrix.h"
@@ -49,12 +47,6 @@ public:
     {
         m_client = client;
     }
-#if USE(GRAPHICS_SURFACE)
-    virtual IntSize platformLayerSize() const { return IntSize(); }
-    virtual uint32_t copyToGraphicsSurface() { return 0; }
-    virtual GraphicsSurfaceToken graphicsSurfaceToken() const { return GraphicsSurfaceToken(); }
-    virtual GraphicsSurface::Flags graphicsSurfaceFlags() const { return  GraphicsSurface::SupportsTextureTarget | GraphicsSurface::SupportsSharing; }
-#endif
 
 protected:
     TextureMapperPlatformLayer::Client* client() { return m_client; }
@@ -64,5 +56,7 @@ private:
 };
 
 };
+
+#endif // USE(TEXTURE_MAPPER)
 
 #endif // TextureMapperPlatformLayer_h

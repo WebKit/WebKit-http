@@ -34,7 +34,7 @@
 
 namespace WebKit {
 
-void FontInfo::encode(IPC::ArgumentEncoder& encoder) const
+void FontInfo::encode(IPC::Encoder& encoder) const
 {
 #if PLATFORM(COCOA)
     encoder << static_cast<bool>(fontAttributeDictionary);
@@ -45,7 +45,7 @@ void FontInfo::encode(IPC::ArgumentEncoder& encoder) const
 #endif
 }
 
-bool FontInfo::decode(IPC::ArgumentDecoder& decoder, FontInfo& fontInfo)
+bool FontInfo::decode(IPC::Decoder& decoder, FontInfo& fontInfo)
 {    
 #if PLATFORM(COCOA)
     bool hasFontAttributeDictionary;

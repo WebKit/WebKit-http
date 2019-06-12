@@ -26,73 +26,96 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FetchBody_h
-#define FetchBody_h
+#pragma once
 
 #if ENABLE(FETCH_API)
 
-#include "Blob.h"
 #include "DOMFormData.h"
-#include "JSDOMPromise.h"
-
-namespace JSC {
-class ExecState;
-class JSValue;
-};
+#include "FetchBodyConsumer.h"
+#include "FormData.h"
+#include "JSDOMPromiseDeferred.h"
+#include "URLSearchParams.h"
+#include <wtf/Variant.h>
 
 namespace WebCore {
 
-class Dictionary;
-typedef int ExceptionCode;
+class FetchBodyOwner;
+class FetchResponseSource;
+class ScriptExecutionContext;
 
 class FetchBody {
 public:
-    typedef DOMPromise<Vector<unsigned char>, ExceptionCode> ArrayBufferPromise;
-    void arrayBuffer(ArrayBufferPromise&&);
+    void arrayBuffer(FetchBodyOwner&, Ref<DeferredPromise>&&);
+    void blob(FetchBodyOwner&, Ref<DeferredPromise>&&, const String&);
+    void json(FetchBodyOwner&, Ref<DeferredPromise>&&);
+    void text(FetchBodyOwner&, Ref<DeferredPromise>&&);
+    void formData(FetchBodyOwner&, Ref<DeferredPromise>&& promise) { promise.get().reject(0); }
 
-    typedef DOMPromise<RefPtr<DOMFormData>, ExceptionCode> FormDataPromise;
-    void formData(FormDataPromise&&);
+#if ENABLE(STREAMS_API)
+    void consumeAsStream(FetchBodyOwner&, FetchResponseSource&);
+#endif
 
-    typedef DOMPromise<RefPtr<Blob>, ExceptionCode> BlobPromise;
-    void blob(BlobPromise&&);
+    bool isBlob() const { return WTF::holds_alternative<Ref<const Blob>>(m_data); }
+    bool isFormData() const { return WTF::holds_alternative<Ref<FormData>>(m_data); }
+    bool isArrayBuffer() const { return WTF::holds_alternative<Ref<const ArrayBuffer>>(m_data); }
+    bool isArrayBufferView() const { return WTF::holds_alternative<Ref<const ArrayBufferView>>(m_data); }
+    bool isURLSearchParams() const { return WTF::holds_alternative<Ref<const URLSearchParams>>(m_data); }
+    bool isText() const { return WTF::holds_alternative<String>(m_data); }
+    bool isReadableStream() const { return m_isReadableStream; }
 
-    typedef DOMPromise<JSC::JSValue, ExceptionCode> JSONPromise;
-    void json(JSC::ExecState&, JSONPromise&&);
+    using BindingDataType = Variant<RefPtr<Blob>, RefPtr<ArrayBufferView>, RefPtr<ArrayBuffer>, RefPtr<DOMFormData>, RefPtr<URLSearchParams>, String>;
+    static FetchBody extract(ScriptExecutionContext&, BindingDataType&&, String&);
+    static FetchBody loadingBody() { return { }; }
+    static FetchBody readableStreamBody();
 
-    typedef DOMPromise<String, ExceptionCode> TextPromise;
-    void text(TextPromise&&);
+    void loadingFailed();
+    void loadingSucceeded();
 
-    bool isDisturbed() const { return m_isDisturbed; }
-    bool isEmpty() const { return m_type == Type::None; }
+    RefPtr<FormData> bodyForInternalRequest(ScriptExecutionContext&) const;
 
-    void setMimeType(const String& mimeType) { m_mimeType = mimeType; }
-    String mimeType() const { return m_mimeType; }
+    FetchBodyConsumer& consumer() { return m_consumer; }
 
-    static FetchBody fromJSValue(JSC::ExecState&, JSC::JSValue);
-    static FetchBody fromRequestBody(FetchBody*);
+    void consumeOnceLoadingFinished(FetchBodyConsumer::Type, Ref<DeferredPromise>&&, const String&);
+    void cleanConsumePromise() { m_consumePromise = nullptr; }
+
+    FetchBody clone() const;
 
 private:
-    template<typename T> bool processIfEmptyOrDisturbed(DOMPromise<T, ExceptionCode>&);
+    explicit FetchBody(Ref<const Blob>&& data) : m_data(WTFMove(data)) { }
+    explicit FetchBody(Ref<const ArrayBuffer>&& data) : m_data(WTFMove(data)) { }
+    explicit FetchBody(Ref<const ArrayBufferView>&& data) : m_data(WTFMove(data)) { }
+    explicit FetchBody(Ref<FormData>&& data) : m_data(WTFMove(data)) { }
+    explicit FetchBody(String&& data) : m_data(WTFMove(data)) { }
+    explicit FetchBody(Ref<const URLSearchParams>&& data) : m_data(WTFMove(data)) { }
+    explicit FetchBody(const FetchBodyConsumer& consumer) : m_consumer(consumer) { }
+    FetchBody() = default;
 
-    enum class Type { None, Text, Blob, FormData };
+    void consume(FetchBodyOwner&, Ref<DeferredPromise>&&);
 
-    FetchBody(Ref<Blob>&&);
-    FetchBody(Ref<DOMFormData>&&);
-    FetchBody(String&&);
-    FetchBody() { }
+    void consumeArrayBuffer(Ref<DeferredPromise>&&);
+    void consumeArrayBufferView(Ref<DeferredPromise>&&);
+    void consumeText(Ref<DeferredPromise>&&, const String&);
+    void consumeBlob(FetchBodyOwner&, Ref<DeferredPromise>&&);
 
-    Type m_type = Type::None;
-    String m_mimeType;
-    bool m_isDisturbed = false;
+    const Blob& blobBody() const { return WTF::get<Ref<const Blob>>(m_data).get(); }
+    FormData& formDataBody() { return WTF::get<Ref<FormData>>(m_data).get(); }
+    const FormData& formDataBody() const { return WTF::get<Ref<FormData>>(m_data).get(); }
+    const ArrayBuffer& arrayBufferBody() const { return WTF::get<Ref<const ArrayBuffer>>(m_data).get(); }
+    const ArrayBufferView& arrayBufferViewBody() const { return WTF::get<Ref<const ArrayBufferView>>(m_data).get(); }
+    String& textBody() { return WTF::get<String>(m_data); }
+    const String& textBody() const { return WTF::get<String>(m_data); }
+    const URLSearchParams& urlSearchParamsBody() const { return WTF::get<Ref<const URLSearchParams>>(m_data).get(); }
 
-    // FIXME: Add support for BufferSource and URLSearchParams.
-    RefPtr<Blob> m_blob;
-    RefPtr<DOMFormData> m_formData;
-    String m_text;
+    using Data = Variant<std::nullptr_t, Ref<const Blob>, Ref<FormData>, Ref<const ArrayBuffer>, Ref<const ArrayBufferView>, Ref<const URLSearchParams>, String>;
+    Data m_data { nullptr };
+
+    FetchBodyConsumer m_consumer { FetchBodyConsumer::Type::None };
+    RefPtr<DeferredPromise> m_consumePromise;
+
+    // FIXME: We probably want to keep the stream as a specific field in m_data when we will support stream data upload.
+    bool m_isReadableStream { false };
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(FETCH_API)
-
-#endif // FetchBody_h

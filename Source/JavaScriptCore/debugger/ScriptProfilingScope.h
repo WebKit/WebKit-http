@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptProfilingScope_h
-#define ScriptProfilingScope_h
+#pragma once
 
 #include "Debugger.h"
 #include "JSGlobalObject.h"
@@ -84,10 +83,8 @@ private:
     }
 
     JSGlobalObject* m_globalObject { nullptr };
-    Optional<double> m_startTime;
+    std::optional<double> m_startTime;
     ProfilingReason m_reason;
 };
 
-}
-
-#endif // ScriptProfilingScope_h
+} // namespace JSC

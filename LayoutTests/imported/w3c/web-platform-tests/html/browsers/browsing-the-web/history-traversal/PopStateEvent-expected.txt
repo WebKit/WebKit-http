@@ -1,0 +1,5 @@
+
+PASS document.createEvent 
+PASS initPopStateEvent 
+PASS Dispatching a synthetic PopStateEvent 
+

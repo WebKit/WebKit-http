@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2009, 2015-2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -24,9 +24,11 @@
 #include "BuiltinExecutables.h"
 #include "BuiltinNames.h"
 #include "Error.h"
+#include "GetterSetter.h"
 #include "JSArray.h"
-#include "JSBoundFunction.h"
+#include "JSAsyncFunction.h"
 #include "JSFunction.h"
+#include "JSGlobalObjectFunctions.h"
 #include "JSString.h"
 #include "JSStringBuilder.h"
 #include "Interpreter.h"
@@ -37,10 +39,9 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(FunctionPrototype);
 
-const ClassInfo FunctionPrototype::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(FunctionPrototype) };
+const ClassInfo FunctionPrototype::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(FunctionPrototype) };
 
 static EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState*);
-static EncodedJSValue JSC_HOST_CALL functionProtoFuncBind(ExecState*);
 
 FunctionPrototype::FunctionPrototype(VM& vm, Structure* structure)
     : InternalFunction(vm, structure)
@@ -62,10 +63,18 @@ void FunctionPrototype::addFunctionProperties(ExecState* exec, JSGlobalObject* g
 
     *applyFunction = putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->builtinNames().applyPublicName(), functionPrototypeApplyCodeGenerator(vm), DontEnum);
     *callFunction = putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->builtinNames().callPublicName(), functionPrototypeCallCodeGenerator(vm), DontEnum);
-    *hasInstanceSymbolFunction = putDirectBuiltinFunction(vm, globalObject, vm.propertyNames->hasInstanceSymbol, functionPrototypeSymbolHasInstanceCodeGenerator(vm), DontDelete | ReadOnly | DontEnum);
+    putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->bind, functionPrototypeBindCodeGenerator(vm), DontEnum);
 
-    JSFunction* bindFunction = JSFunction::create(vm, globalObject, 1, vm.propertyNames->bind.string(), functionProtoFuncBind);
-    putDirectWithoutTransition(vm, vm.propertyNames->bind, bindFunction, DontEnum);
+    *hasInstanceSymbolFunction = JSFunction::createBuiltinFunction(vm, functionPrototypeSymbolHasInstanceCodeGenerator(vm), globalObject, ASCIILiteral("[Symbol.hasInstance]"));
+    putDirectWithoutTransition(vm, vm.propertyNames->hasInstanceSymbol, *hasInstanceSymbolFunction, DontDelete | ReadOnly | DontEnum);
+}
+    
+void FunctionPrototype::initRestrictedProperties(ExecState* exec, JSGlobalObject* globalObject)
+{
+    VM& vm = exec->vm();
+    GetterSetter* errorGetterSetter = globalObject->throwTypeErrorArgumentsCalleeAndCallerGetterSetter();
+    putDirectAccessor(exec, vm.propertyNames->caller, errorGetterSetter, DontEnum | Accessor);
+    putDirectAccessor(exec, vm.propertyNames->arguments, errorGetterSetter, DontEnum | Accessor);
 }
 
 static EncodedJSValue JSC_HOST_CALL callFunctionPrototype(ExecState*)
@@ -77,98 +86,66 @@ static EncodedJSValue JSC_HOST_CALL callFunctionPrototype(ExecState*)
 CallType FunctionPrototype::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callFunctionPrototype;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue thisValue = exec->thisValue();
-    if (thisValue.inherits(JSFunction::info())) {
+    if (thisValue.inherits(vm, JSFunction::info())) {
         JSFunction* function = jsCast<JSFunction*>(thisValue);
         if (function->isHostOrBuiltinFunction()) {
-            String name;
-            if (JSBoundFunction* boundFunction = jsDynamicCast<JSBoundFunction*>(function))
-                name = boundFunction->toStringName(exec);
-            else
-                name = function->name(exec);
-            return JSValue::encode(jsMakeNontrivialString(exec, "function ", name, "() {\n    [native code]\n}"));
+            scope.release();
+            return JSValue::encode(jsMakeNontrivialString(exec, "function ", function->name(vm), "() {\n    [native code]\n}"));
         }
 
         FunctionExecutable* executable = function->jsExecutable();
-        
+        if (executable->isClass()) {
+            StringView classSource = executable->classSource().view();
+            return JSValue::encode(jsString(exec, classSource.toStringWithoutCopying()));
+        }
+
+        if (thisValue.inherits(vm, JSAsyncFunction::info())) {
+            String functionHeader = executable->isArrowFunction() ? "async " : "async function ";
+
+            StringView source = executable->source().provider()->getRange(
+                executable->parametersStartOffset(),
+                executable->parametersStartOffset() + executable->source().length());
+            return JSValue::encode(jsMakeNontrivialString(exec, functionHeader, function->name(vm), source));
+        }
+
         String functionHeader = executable->isArrowFunction() ? "" : "function ";
         
         StringView source = executable->source().provider()->getRange(
             executable->parametersStartOffset(),
             executable->parametersStartOffset() + executable->source().length());
-        return JSValue::encode(jsMakeNontrivialString(exec, functionHeader, function->name(exec), source));
+        scope.release();
+        return JSValue::encode(jsMakeNontrivialString(exec, functionHeader, function->name(vm), source));
     }
 
-    if (thisValue.inherits(InternalFunction::info())) {
+    if (thisValue.inherits(vm, InternalFunction::info())) {
         InternalFunction* function = asInternalFunction(thisValue);
-        return JSValue::encode(jsMakeNontrivialString(exec, "function ", function->name(exec), "() {\n    [native code]\n}"));
+        scope.release();
+        return JSValue::encode(jsMakeNontrivialString(exec, "function ", function->name(), "() {\n    [native code]\n}"));
     }
 
     if (thisValue.isObject()) {
         JSObject* object = asObject(thisValue);
         if (object->inlineTypeFlags() & TypeOfShouldCallGetCallData) {
             CallData callData;
-            if (object->methodTable(exec->vm())->getCallData(object, callData) != CallTypeNone) {
-                if (auto* classInfo = object->classInfo())
+            if (object->methodTable(vm)->getCallData(object, callData) != CallType::None) {
+                if (auto* classInfo = object->classInfo(vm)) {
+                    scope.release();
                     return JSValue::encode(jsMakeNontrivialString(exec, "function ", classInfo->className, "() {\n    [native code]\n}"));
+                }
             }
         }
     }
 
-    return throwVMTypeError(exec);
-}
-
-// 15.3.4.5 Function.prototype.bind (thisArg [, arg1 [, arg2, ...]])
-EncodedJSValue JSC_HOST_CALL functionProtoFuncBind(ExecState* exec)
-{
-    JSGlobalObject* globalObject = exec->callee()->globalObject();
-
-    // Let Target be the this value.
-    JSValue target = exec->thisValue();
-
-    // If IsCallable(Target) is false, throw a TypeError exception.
-    CallData callData;
-    CallType callType = getCallData(target, callData);
-    if (callType == CallTypeNone)
-        return throwVMTypeError(exec);
-    // Primitive values are not callable.
-    ASSERT(target.isObject());
-    JSObject* targetObject = asObject(target);
-    VM& vm = exec->vm();
-
-    // Let A be a new (possibly empty) internal list of all of the argument values provided after thisArg (arg1, arg2 etc), in order.
-    size_t numBoundArgs = exec->argumentCount() > 1 ? exec->argumentCount() - 1 : 0;
-    JSArray* boundArgs = JSArray::tryCreateUninitialized(vm, globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), numBoundArgs);
-    if (!boundArgs)
-        return JSValue::encode(throwOutOfMemoryError(exec));
-
-    for (size_t i = 0; i < numBoundArgs; ++i)
-        boundArgs->initializeIndex(vm, i, exec->argument(i + 1));
-
-    // If the [[Class]] internal property of Target is "Function", then ...
-    // Else set the length own property of F to 0.
-    unsigned length = 0;
-    if (targetObject->hasOwnProperty(exec, exec->propertyNames().length)) {
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-
-        // a. Let L be the length property of Target minus the length of A.
-        // b. Set the length own property of F to either 0 or L, whichever is larger.
-        JSValue lengthValue = target.get(exec, exec->propertyNames().length);
-        if (lengthValue.isNumber()) {
-            unsigned targetLength = (unsigned)lengthValue.asNumber();
-            if (targetLength > numBoundArgs)
-                length = targetLength - numBoundArgs;
-        }
-    }
-
-    JSString* name = target.get(exec, exec->propertyNames().name).toString(exec);
-    return JSValue::encode(JSBoundFunction::create(vm, globalObject, targetObject, exec->argument(0), boundArgs, length, name->value(exec)));
+    return throwVMTypeError(exec, scope);
 }
 
 } // namespace JSC

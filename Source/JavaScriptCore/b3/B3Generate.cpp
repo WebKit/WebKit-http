@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,12 +36,14 @@
 #include "B3EliminateCommonSubexpressions.h"
 #include "B3FixSSA.h"
 #include "B3FoldPathConstants.h"
+#include "B3InferSwitches.h"
 #include "B3LegalizeMemoryOffsets.h"
 #include "B3LowerMacros.h"
 #include "B3LowerMacrosAfterOptimizations.h"
 #include "B3LowerToAir.h"
 #include "B3MoveConstants.h"
 #include "B3Procedure.h"
+#include "B3PureCSE.h"
 #include "B3ReduceDoubleToFloat.h"
 #include "B3ReduceStrength.h"
 #include "B3TimingScope.h"
@@ -50,11 +52,11 @@
 
 namespace JSC { namespace B3 {
 
-void prepareForGeneration(Procedure& procedure, unsigned optLevel)
+void prepareForGeneration(Procedure& procedure)
 {
     TimingScope timingScope("prepareForGeneration");
 
-    generateToAir(procedure, optLevel);
+    generateToAir(procedure);
     Air::prepareForGeneration(procedure.code());
 }
 
@@ -63,7 +65,7 @@ void generate(Procedure& procedure, CCallHelpers& jit)
     Air::generate(procedure.code(), jit);
 }
 
-void generateToAir(Procedure& procedure, unsigned optLevel)
+void generateToAir(Procedure& procedure)
 {
     TimingScope timingScope("generateToAir");
     
@@ -78,21 +80,26 @@ void generateToAir(Procedure& procedure, unsigned optLevel)
     if (shouldValidateIR())
         validate(procedure);
 
-    if (optLevel >= 1) {
+    if (procedure.optLevel() >= 2) {
         reduceDoubleToFloat(procedure);
         reduceStrength(procedure);
         eliminateCommonSubexpressions(procedure);
+        inferSwitches(procedure);
         duplicateTails(procedure);
         fixSSA(procedure);
         foldPathConstants(procedure);
         
         // FIXME: Add more optimizations here.
         // https://bugs.webkit.org/show_bug.cgi?id=150507
+    } else if (procedure.optLevel() >= 1) {
+        // FIXME: Explore better "quick mode" optimizations.
+        reduceStrength(procedure);
     }
 
+    // This puts the IR in quirks mode.
     lowerMacros(procedure);
 
-    if (optLevel >= 1) {
+    if (procedure.optLevel() >= 2) {
         reduceStrength(procedure);
 
         // FIXME: Add more optimizations here.
@@ -102,6 +109,9 @@ void generateToAir(Procedure& procedure, unsigned optLevel)
     lowerMacrosAfterOptimizations(procedure);
     legalizeMemoryOffsets(procedure);
     moveConstants(procedure);
+
+    // FIXME: We should run pureCSE here to clean up some platform specific changes from the previous phases.
+    // https://bugs.webkit.org/show_bug.cgi?id=164873
 
     if (shouldValidateIR())
         validate(procedure);

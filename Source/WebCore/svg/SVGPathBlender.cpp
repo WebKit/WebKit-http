@@ -24,7 +24,7 @@
 #include "AnimationUtilities.h"
 #include "SVGPathSeg.h"
 #include "SVGPathSource.h"
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 
 namespace WebCore {
 
@@ -88,7 +88,7 @@ FloatPoint SVGPathBlender::blendAnimatedFloatPoint(const FloatPoint& fromPoint, 
     if (m_addTypesCount) {
         ASSERT(m_fromMode == m_toMode);
         FloatPoint repeatedToPoint = toPoint;
-        repeatedToPoint.scale(m_addTypesCount, m_addTypesCount);
+        repeatedToPoint.scale(m_addTypesCount);
         return fromPoint + repeatedToPoint;
     }
 
@@ -291,7 +291,7 @@ bool SVGPathBlender::blendArcToSegment(float progress)
     if (m_addTypesCount) {
         ASSERT(m_fromMode == m_toMode);
         FloatPoint scaledToTargetPoint = toTargetPoint;
-        scaledToTargetPoint.scale(m_addTypesCount, m_addTypesCount);
+        scaledToTargetPoint.scale(m_addTypesCount);
         m_consumer->arcTo(fromRx + toRx * m_addTypesCount,
             fromRy + toRy * m_addTypesCount,
             fromAngle + toAngle * m_addTypesCount,
@@ -341,7 +341,7 @@ static inline bool isSegmentEqual(const SVGPathSegType& fromType, const SVGPathS
 
 bool SVGPathBlender::addAnimatedPath(unsigned repeatCount)
 {
-    TemporaryChange<unsigned> change(m_addTypesCount, repeatCount);
+    SetForScope<unsigned> change(m_addTypesCount, repeatCount);
     return blendAnimatedPath(0);
 }
 

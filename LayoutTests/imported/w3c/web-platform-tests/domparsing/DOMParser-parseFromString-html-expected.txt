@@ -3,8 +3,10 @@ PASS Parsing of id attribute
 PASS contentType 
 PASS characterSet 
 PASS inputEncoding 
-FAIL charset assert_equals: expected (string) "UTF-8" but got (undefined) undefined
-FAIL URL value assert_equals: The document must have a URL value equal to the URL of the active document. expected (string) "http://localhost:8800/domparsing/DOMParser-parseFromString-html.html" but got (object) null
+PASS charset 
+PASS URL value 
+PASS baseURI value 
 PASS Location value 
 PASS DOMParser parses HTML tag soup with no problems 
+PASS DOMParser throws on an invalid enum value 
 

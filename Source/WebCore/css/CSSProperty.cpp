@@ -22,11 +22,9 @@
 #include "CSSProperty.h"
 
 #include "CSSValueList.h"
-#include "RenderStyleConstants.h"
 #include "StylePropertyShorthand.h"
-
+#include "StylePropertyShorthandFunctions.h"
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -42,7 +40,7 @@ CSSPropertyID StylePropertyMetadata::shorthandID() const
     if (!m_isSetFromShorthand)
         return CSSPropertyInvalid;
 
-    Vector<StylePropertyShorthand> shorthands = matchingShorthandsForLonghand(static_cast<CSSPropertyID>(m_propertyID));
+    auto shorthands = matchingShorthandsForLonghand(static_cast<CSSPropertyID>(m_propertyID));
     ASSERT(shorthands.size() && m_indexInShorthandsVector >= 0 && m_indexInShorthandsVector < shorthands.size());
     return shorthands[m_indexInShorthandsVector].id();
 }
@@ -152,6 +150,23 @@ CSSPropertyID CSSProperty::resolveDirectionAwareProperty(CSSPropertyID propertyI
     }
     default:
         return propertyID;
+    }
+}
+
+bool CSSProperty::isDescriptorOnly(CSSPropertyID propertyID)
+{
+    switch (propertyID) {
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+    case CSSPropertyMinZoom:
+    case CSSPropertyMaxZoom:
+    case CSSPropertyOrientation:
+    case CSSPropertyUserZoom:
+#endif
+    case CSSPropertySrc:
+    case CSSPropertyUnicodeRange:
+        return true;
+    default:
+        return false;
     }
 }
 

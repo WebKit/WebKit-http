@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2009, 2015-2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SmallStrings_h
-#define SmallStrings_h
+#pragma once
 
+#include "CollectionScope.h"
 #include "TypeofType.h"
-#include "WriteBarrier.h"
 #include <wtf/Noncopyable.h>
 
 #define JSC_COMMON_STRINGS_EACH_NAME(macro) \
+    macro(default) \
     macro(boolean) \
     macro(false) \
     macro(function) \
@@ -71,7 +71,7 @@ public:
         return m_singleCharacterStrings[character];
     }
 
-    JS_EXPORT_PRIVATE WTF::StringImpl* singleCharacterStringRep(unsigned char character);
+    JS_EXPORT_PRIVATE WTF::StringImpl& singleCharacterStringRep(unsigned char character);
 
     JSString** singleCharacterStrings() { return &m_singleCharacterStrings[0]; }
 
@@ -113,9 +113,9 @@ public:
     JSString* nullObjectString() const { return m_nullObjectString; }
     JSString* undefinedObjectString() const { return m_undefinedObjectString; }
 
-    bool needsToBeVisited(HeapOperation collectionType) const
+    bool needsToBeVisited(CollectionScope scope) const
     {
-        if (collectionType == FullCollection)
+        if (scope == CollectionScope::Full)
             return true;
         return m_needsToBeVisited;
     }
@@ -141,5 +141,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // SmallStrings_h

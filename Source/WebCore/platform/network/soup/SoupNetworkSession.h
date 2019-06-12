@@ -26,57 +26,51 @@
 #ifndef SoupNetworkSession_h
 #define SoupNetworkSession_h
 
+#include <glib-object.h>
+#include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/Vector.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 typedef struct _SoupCache SoupCache;
 typedef struct _SoupCookieJar SoupCookieJar;
+typedef struct _SoupMessage SoupMessage;
+typedef struct _SoupRequest SoupRequest;
 typedef struct _SoupSession SoupSession;
 
 namespace WebCore {
 
+class CertificateInfo;
+class ResourceError;
+struct SoupNetworkProxySettings;
+
 class SoupNetworkSession {
     WTF_MAKE_NONCOPYABLE(SoupNetworkSession); WTF_MAKE_FAST_ALLOCATED;
 public:
+    explicit SoupNetworkSession(SoupCookieJar* = nullptr);
     ~SoupNetworkSession();
-
-    static SoupNetworkSession& defaultSession();
-    static std::unique_ptr<SoupNetworkSession> createPrivateBrowsingSession();
-    static std::unique_ptr<SoupNetworkSession> createTestingSession();
-    static std::unique_ptr<SoupNetworkSession> createForSoupSession(SoupSession*);
-
-    enum SSLPolicyFlags {
-        SSLStrict = 1 << 0,
-        SSLUseSystemCAFile = 1 << 1
-    };
-    typedef unsigned SSLPolicy;
 
     SoupSession* soupSession() const { return m_soupSession.get(); }
 
     void setCookieJar(SoupCookieJar*);
     SoupCookieJar* cookieJar() const;
 
-    void setCache(SoupCache*);
-    SoupCache* cache() const;
-    static void clearCache(const String& cacheDirectory);
+    static void clearOldSoupCache(const String& cacheDirectory);
 
-    void setSSLPolicy(SSLPolicy);
-    SSLPolicy sslPolicy() const;
+    static void setProxySettings(const SoupNetworkProxySettings&);
+    void setupProxy();
 
-    void setupHTTPProxyFromEnvironment();
+    static void setInitialAcceptLanguages(const CString&);
+    void setAcceptLanguages(const CString&);
 
-    void setAcceptLanguages(const Vector<String>&);
+    static void setShouldIgnoreTLSErrors(bool);
+    static void checkTLSErrors(SoupRequest*, SoupMessage*, WTF::Function<void (const ResourceError&)>&&);
+    static void allowSpecificHTTPSCertificateForHost(const CertificateInfo&, const String& host);
+
+    static void setCustomProtocolRequestType(GType);
+    void setupCustomProtocols();
 
 private:
-    friend class NeverDestroyed<SoupNetworkSession>;
-
-    SoupNetworkSession(SoupCookieJar*);
-    SoupNetworkSession(SoupSession*);
-
-    void setHTTPProxy(const char* httpProxy, const char* httpProxyExceptions);
-
     void setupLogger();
 
     GRefPtr<SoupSession> m_soupSession;

@@ -24,12 +24,11 @@
  *
  */
 
-#ifndef SecurityContext_h
-#define SecurityContext_h
+#pragma once
 
 #include <memory>
+#include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -40,17 +39,18 @@ class URL;
 
 enum SandboxFlag {
     // See http://www.whatwg.org/specs/web-apps/current-work/#attr-iframe-sandbox for a list of the sandbox flags.
-    SandboxNone = 0,
-    SandboxNavigation = 1,
-    SandboxPlugins = 1 << 1,
-    SandboxOrigin = 1 << 2,
-    SandboxForms = 1 << 3,
-    SandboxScripts = 1 << 4,
-    SandboxTopNavigation = 1 << 5,
-    SandboxPopups = 1 << 6, // See https://www.w3.org/Bugs/Public/show_bug.cgi?id=12393
-    SandboxAutomaticFeatures = 1 << 7,
-    SandboxPointerLock = 1 << 8,
-    SandboxAll = -1 // Mask with all bits set to 1.
+    SandboxNone                 = 0,
+    SandboxNavigation           = 1,
+    SandboxPlugins              = 1 << 1,
+    SandboxOrigin               = 1 << 2,
+    SandboxForms                = 1 << 3,
+    SandboxScripts              = 1 << 4,
+    SandboxTopNavigation        = 1 << 5,
+    SandboxPopups               = 1 << 6, // See https://www.w3.org/Bugs/Public/show_bug.cgi?id=12393
+    SandboxAutomaticFeatures    = 1 << 7,
+    SandboxPointerLock          = 1 << 8,
+    SandboxPropagatesToAuxiliaryBrowsingContexts = 1 << 9,
+    SandboxAll                  = -1 // Mask with all bits set to 1.
 };
 
 typedef int SandboxFlags;
@@ -75,6 +75,19 @@ public:
     WEBCORE_EXPORT SecurityOrigin* securityOrigin() const;
 
     static SandboxFlags parseSandboxPolicy(const String& policy, String& invalidTokensErrorMessage);
+    static bool isSupportedSandboxPolicy(StringView);
+
+    bool foundMixedContent() const { return m_foundMixedContent; }
+    void setFoundMixedContent() { m_foundMixedContent = true; }
+    bool geolocationAccessed() const { return m_geolocationAccessed; }
+    void setGeolocationAccessed() { m_geolocationAccessed = true; }
+
+    bool isStrictMixedContentMode() const { return m_isStrictMixedContentMode; }
+    void setStrictMixedContentMode(bool strictMixedContentMode) { m_isStrictMixedContentMode = strictMixedContentMode; }
+
+    // This method implements the "Is the environment settings object settings a secure context?" algorithm from
+    // the Secure Context spec: https://w3c.github.io/webappsec-secure-contexts/#settings-object (Editor's Draft, 17 November 2016)
+    virtual bool isSecureContext() const = 0;
 
 protected:
     SecurityContext();
@@ -86,12 +99,13 @@ protected:
     bool haveInitializedSecurityOrigin() const { return m_haveInitializedSecurityOrigin; }
 
 private:
-    bool m_haveInitializedSecurityOrigin;
-    SandboxFlags m_sandboxFlags;
     RefPtr<SecurityOriginPolicy> m_securityOriginPolicy;
     std::unique_ptr<ContentSecurityPolicy> m_contentSecurityPolicy;
+    SandboxFlags m_sandboxFlags { SandboxNone };
+    bool m_haveInitializedSecurityOrigin { false };
+    bool m_foundMixedContent { false };
+    bool m_geolocationAccessed { false };
+    bool m_isStrictMixedContentMode { false };
 };
 
 } // namespace WebCore
-
-#endif // SecurityContext_h

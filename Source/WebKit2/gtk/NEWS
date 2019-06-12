@@ -27,6 +27,187 @@ What's new in WebKitGTK+ 2.11.90?
   - Fix several memory leaks.
 
 =================
+WebKitGTK+ 2.17.4
+=================
+
+What's new in WebKitGTK+ 2.17.4?
+
+  - Add API to allow overriding popup menus.
+  - Add kinetic scrolling support.
+  - Improve theme rendering performance when using GTK+ >= 3.20.
+  - Improve error message when webkit_web_view_run_javascript() fails due to a JavaScript exception.
+  - Fix artifacts when rendering large images.
+  - Fix blob downloads.
+  - Fix web process deadlock when seeking youtube videos.
+  - Fix alpha premultiplying when using cairo to draw the video frames.
+  - Fix web process deadlock when closing the remote inspector frontend.
+  - Update several web inspector icons.
+  - Fix several crashes and rendering issues.
+  - Translation updates: Spanish.
+
+=================
+WebKitGTK+ 2.17.3
+=================
+
+What's new in WebKitGTK+ 2.17.3?
+
+  - Add new API to create a WebKitContextMenuItem from a GAction.
+  - Fix graphics repaint hungs in accelerated compositing mode after a resize.
+  - Fix rendering glitches in HiDPI in long GitHub Gist pages when focusing the comments textarea.
+  - Remove Firefox user agent quirk for Google domains.
+  - Remove LATEST_RECORD_VERSION from GnuTLS priority string.
+  - Improve colors of inspector SVG icons.
+  - Fix several crashes and rendering issues.
+  - Translation updates: French.
+
+=================
+WebKitGTK+ 2.17.2
+=================
+
+What's new in WebKitGTK+ 2.17.2?
+
+  - Update user agent quirks to make Youtube and new Google login page work.
+  - Fix URL shown in the title of beforeunload dialogs.
+  - Focus first input field of HTTP authentication dialog.
+  - Fix rendering of PNG images when decoded in more than one chunk.
+  - Update several web inspector icons.
+  - Fix the build with OpenGL disabled.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.17.1
+=================
+
+What's new in WebKitGTK+ 2.17.1?
+
+  - Switch to use new remote inspector infraestructure instead of legacy Web Sockets based one.
+  - Add API to enable and handle Web Automation.
+  - Load large images asynchronously off the main theead.
+  - Use GtkFileChooserNative for open/save dialogs when available.
+  - Make file chooser run as modal by default if possible.
+  - Fix position of dropdown menus in Wayland.
+  - Keep URI fragments after a server redirection.
+  - Implement support for aria-haspopup and aria-autocomplete.
+  - Implement aria-value support for focusable separators.
+  - Fix playing of some live streams.
+
+=================
+WebKitGTK+ 2.15.4
+=================
+
+What's new in WebKitGTK+ 2.15.4?
+
+  - Make accelerating compositing mode on-demand again. By default it will only be used for websites
+    that require it, saving a lot of memory on websites that don't need it.
+  - Add API to manage hardware acceleration policy.
+  - Enable CSS Grid Layout by default.
+  - Add API to create ephemeral WebViews to replace the legacy private browsing setting that is now
+    deprecated.
+  - Handle HTTP authentication for downloads having a WebView associated.
+  - Add API to WebKitWebsiteDataManager to handle websites data.
+  - Fix BadDamage X errors happening when resizing the WebView.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.15.3
+=================
+
+What's new in WebKitGTK+ 2.15.3?
+
+  - Add API to set network proxy settings.
+  - Add API to set initial notification permissions.
+  - Add WebKitSecurityOrigin to the API.
+  - Add tag property to WebKitNotification.
+  - Create GLX OpenGL contexts using version 3.2 (core profile) when available to reduce the memory
+    consumption on Mesa based drivers.
+  - Improve memory pressure handler to reduce the CPU usage on memory pressure situations.
+  - Add support for key and code properties on keyboard events.
+  - More user agent string improvements to improve compatibility with several websites.
+  - Fix network process crashes when loading custom URI schemes.
+  - Fix web process crash when closing the web view in X11.
+  - Fix several crashes and rendering issues.
+  - Translation updates: German.
+
+=================
+WebKitGTK+ 2.15.2
+=================
+
+What's new in WebKitGTK+ 2.15.2?
+
+  - Add new API to notify about dynamically added forms to Web Extensions.
+  - Implement selection interface and states for elements supporting aria-selected and for menu roles.
+  - Expose STATE_SINGLE_LINE and STATE_MULTI_LINE for ARIA searchbox role.
+  - Enable WebMemorySampler.
+  - Downloads started by context menu actions now have a web view associated.
+  - Fix a network process crash when main resource load is converted into a download.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.15.1
+=================
+
+What's new in WebKitGTK+ 2.15.1?
+
+  - GObject DOM bindings API marked as unstable has been removed.
+  - Expose WebKitDOMHTMLInputElement APIs for form autofill.
+  - Properly update WebKitWebView and WebKitWebPage URI properties when request is modified by
+    WebKitWebPage:send-request signal.
+  - Switch to use GMenu internally in the context menu implementation.
+  - Dot not leak the default WebKitWebsiteDataManager in WebKitWebContext.
+  - The network backend now always sniff contents for Downloads.
+  - Use eglGetPlatformDisplay when available instead of eglGetDisplay.
+  - Avoid strstr() when checking (E)GL extensions.
+  - Fix the build with ENABLE_OPENGL=OFF and allow to build on Wayland without OpenGL again.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.13.4
+=================
+
+What's new in WebKitGTK+ 2.13.4?
+
+  - Switched to use the threaded compositor. Accelerated compositing mode is now always enabled by default
+    and happens in a separate thread in the web process.
+  - Make web view background colors work in accelerated compositing mode.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.13.3
+=================
+
+What's new in WebKitGTK+ 2.13.3?
+
+  - Fix Web Process deadlocks when loading HLS videos.
+  - Make videos work when painted into a canvas when accelerated compositing is enabled.
+  - Fix flickering with animated GIFs.
+  - Fix a Web Process crash when video repaint is requested with GStreamer GL enabled.
+  - Reduce the amount of file descriptors that the Web Process keeps open.
+  - Make memory pressure handler work when cgroups are not available.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.13.2
+=================
+
+What's new in WebKitGTK+ 2.13.2?
+
+  - Properly redraw the web view when reparented in force compositing mode.
+  - Flip the volume control layout in media controls on RTL.
+  - Add support for video orientation to the GStreamer media backend.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.13.1
+=================
+
+What's new in WebKitGTK+ 2.13.1?
+
+  - CSS Grid Layout has been unprefixed and can be enabled as an experimental feature at runtime.
+  - The HTTP disk cache implements speculative resources revalidation.
+  - Add a new WebKitSetting to allow universal access from file URLs.
+  - Fix several crashes and rendering issues.
+
+=================
 WebKitGTK+ 2.11.5
 =================
 

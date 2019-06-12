@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorInstrumentationObject_h
-#define InspectorInstrumentationObject_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -36,7 +35,7 @@ private:
 
 public:
     typedef JSNonFinalObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static InspectorInstrumentationObject* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
     {
@@ -52,8 +51,6 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-
     void enable(VM&);
     void disable(VM&);
     bool isEnabled(VM&) const;
@@ -63,5 +60,3 @@ protected:
 };
 
 } // namespace JSC
-
-#endif // InspectorInstrumentationObject_h

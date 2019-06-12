@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,19 +30,19 @@
 
 namespace WebKit {
 
-static uint64_t highestUsedItemID = 0;
+static uint64_t highestItemID = 0;
 
-PassRefPtr<WebBackForwardListItem> WebBackForwardListItem::create(BackForwardListItemState backForwardListItemState, uint64_t pageID)
+Ref<WebBackForwardListItem> WebBackForwardListItem::create(BackForwardListItemState&& backForwardListItemState, uint64_t pageID)
 {
-    return adoptRef(new WebBackForwardListItem(WTFMove(backForwardListItemState), pageID));
+    return adoptRef(*new WebBackForwardListItem(WTFMove(backForwardListItemState), pageID));
 }
 
-WebBackForwardListItem::WebBackForwardListItem(BackForwardListItemState backForwardListItemState, uint64_t pageID)
+WebBackForwardListItem::WebBackForwardListItem(BackForwardListItemState&& backForwardListItemState, uint64_t pageID)
     : m_itemState(WTFMove(backForwardListItemState))
     , m_pageID(pageID)
 {
-    if (m_itemState.identifier > highestUsedItemID)
-        highestUsedItemID = m_itemState.identifier;
+    if (m_itemState.identifier > highestItemID)
+        highestItemID = m_itemState.identifier;
 }
 
 WebBackForwardListItem::~WebBackForwardListItem()
@@ -98,9 +98,9 @@ bool WebBackForwardListItem::itemIsInSameDocument(const WebBackForwardListItem& 
     return documentTreesAreEqual(mainFrameState, otherMainFrameState);
 }
 
-uint64_t WebBackForwardListItem::highedUsedItemID()
+uint64_t WebBackForwardListItem::highestUsedItemID()
 {
-    return highestUsedItemID;
+    return highestItemID;
 }
 
 } // namespace WebKit

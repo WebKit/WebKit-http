@@ -44,12 +44,11 @@ WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.
         var scriptSyntaxTree = this._script.scriptSyntaxTree;
 
         if (!scriptSyntaxTree) {
-            this._script.requestScriptSyntaxTree(function(syntaxTree) {
+            this._script.requestScriptSyntaxTree((syntaxTree) => {
                 // After requesting the tree, we still might get a null tree from a parse error.
                 if (syntaxTree)
                     this.insertAnnotations();
-            }.bind(this));
-
+            });
             return;
         }
 
@@ -60,20 +59,20 @@ WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.
 
         var startTime = Date.now();
         var allNodesInRange = scriptSyntaxTree.filterByRange(startOffset, endOffset);
-        scriptSyntaxTree.updateTypes(allNodesInRange, function afterTypeUpdates(nodesWithUpdatedTypes) {
+        scriptSyntaxTree.updateTypes(allNodesInRange, (nodesWithUpdatedTypes) => {
             // Because this is an asynchronous call, we could have been deactivated before the callback function is called.
             if (!this.isActive())
                 return;
 
             nodesWithUpdatedTypes.forEach(this._insertTypeToken, this);
 
-            var totalTime = Date.now() - startTime;
-            var timeoutTime = Number.constrain(8 * totalTime, 500, 2000);
-            this._timeoutIdentifier = setTimeout(function timeoutUpdate() {
+            let totalTime = Date.now() - startTime;
+            let timeoutTime = Number.constrain(8 * totalTime, 500, 2000);
+            this._timeoutIdentifier = setTimeout(() => {
                 this._timeoutIdentifier = null;
                 this.insertAnnotations();
-            }.bind(this), timeoutTime);
-        }.bind(this));
+            }, timeoutTime);
+        });
     }
 
     clearAnnotations()
@@ -101,7 +100,7 @@ WebInspector.TypeTokenAnnotator = class TypeTokenAnnotator extends WebInspector.
         if (!functionReturnType || !functionReturnType.valid)
             return;
 
-        // If a function does not have an explicit return statement with an argument (i.e, "return x;" instead of "return;") 
+        // If a function does not have an explicit return statement with an argument (i.e, "return x;" instead of "return;")
         // then don't show a return type unless we think it's a constructor.
         var scriptSyntaxTree = this._script._scriptSyntaxTree;
         if (!node.attachments.__typeToken && (scriptSyntaxTree.containsNonEmptyReturnStatement(node.body) || !functionReturnType.typeSet.isContainedIn(WebInspector.TypeSet.TypeBit.Undefined))) {

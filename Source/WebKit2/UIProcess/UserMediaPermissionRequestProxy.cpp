@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -20,17 +21,25 @@
 #include "UserMediaPermissionRequestProxy.h"
 
 #include "UserMediaPermissionRequestManagerProxy.h"
-#include <WebCore/MediaStreamTrackSourcesRequestClient.h>
 #include <WebCore/RealtimeMediaSourceCenter.h>
+#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <wtf/text/StringHash.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
-UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID, const Vector<String>& audioDeviceUIDs, const Vector<String>& videoDeviceUIDs)
+UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID, uint64_t mainFrameID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, Vector<String>&& audioDeviceUIDs, Vector<String>&& videoDeviceUIDs, String&& deviceIDHashSalt)
     : m_manager(&manager)
     , m_userMediaID(userMediaID)
-    , m_videoDeviceUIDs(videoDeviceUIDs)
-    , m_audioDeviceUIDs(audioDeviceUIDs)
+    , m_mainFrameID(mainFrameID)
+    , m_frameID(frameID)
+    , m_userMediaDocumentSecurityOrigin(WTFMove(userMediaDocumentOrigin))
+    , m_topLevelDocumentSecurityOrigin(WTFMove(topLevelDocumentOrigin))
+    , m_videoDeviceUIDs(WTFMove(videoDeviceUIDs))
+    , m_audioDeviceUIDs(WTFMove(audioDeviceUIDs))
+    , m_deviceIdentifierHashSalt(WTFMove(deviceIDHashSalt))
 {
 }
 
@@ -40,18 +49,17 @@ void UserMediaPermissionRequestProxy::allow(const String& audioDeviceUID, const 
     if (!m_manager)
         return;
 
-    m_manager->didReceiveUserMediaPermissionDecision(m_userMediaID, true, audioDeviceUID, videoDeviceUID);
-    m_manager = nullptr;
+    m_manager->userMediaAccessWasGranted(m_userMediaID, audioDeviceUID, videoDeviceUID);
+    invalidate();
 }
 
-void UserMediaPermissionRequestProxy::deny()
+void UserMediaPermissionRequestProxy::deny(UserMediaAccessDenialReason reason)
 {
-    ASSERT(m_manager);
     if (!m_manager)
         return;
 
-    m_manager->didReceiveUserMediaPermissionDecision(m_userMediaID, false, emptyString(), emptyString());
-    m_manager = nullptr;
+    m_manager->userMediaAccessWasDenied(m_userMediaID, reason);
+    invalidate();
 }
 
 void UserMediaPermissionRequestProxy::invalidate()
@@ -60,4 +68,3 @@ void UserMediaPermissionRequestProxy::invalidate()
 }
 
 } // namespace WebKit
-

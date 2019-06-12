@@ -10,29 +10,28 @@ list(APPEND JavaScriptCore_SOURCES
     API/ObjCCallbackFunction.mm
 
     inspector/remote/RemoteAutomationTarget.cpp
-    inspector/remote/RemoteConnectionToTarget.mm
     inspector/remote/RemoteControllableTarget.cpp
     inspector/remote/RemoteInspectionTarget.cpp
-    inspector/remote/RemoteInspector.mm
-    inspector/remote/RemoteInspectorXPCConnection.mm
-)
-add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
+    inspector/remote/RemoteInspector.cpp
 
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/TracingDtrace.h
-    DEPENDS ${JAVASCRIPTCORE_DIR}/runtime/Tracing.d
-    WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
-    COMMAND dtrace -h -o "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/TracingDtrace.h" -s "${JAVASCRIPTCORE_DIR}/runtime/Tracing.d"
-    VERBATIM)
+    inspector/remote/cocoa/RemoteConnectionToTargetCocoa.mm
+    inspector/remote/cocoa/RemoteInspectorCocoa.mm
+    inspector/remote/cocoa/RemoteInspectorXPCConnection.mm
+)
+add_definitions(-DSTATICALLY_LINKED_WITH_WTF -D__STDC_WANT_LIB_EXT1__)
+
+find_library(SECURITY_LIBRARY Security)
+list(APPEND JavaScriptCore_LIBRARIES
+    ${SECURITY_LIBRARY}
+)
 
 list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
-    ${WTF_DIR}
     ${JAVASCRIPTCORE_DIR}/disassembler/udis86
     ${JAVASCRIPTCORE_DIR}/icu
+    ${JAVASCRIPTCORE_DIR}/inspector/remote/cocoa
 )
-list(APPEND JavaScriptCore_HEADERS
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/TracingDtrace.h
-)
+
+set(CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS} "-compatibility_version 1 -current_version ${WEBKIT_MAC_VERSION}")
 
 # FIXME: Make including these files consistent in the source so these forwarding headers are not needed.
 if (NOT EXISTS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InspectorBackendDispatchers.h)

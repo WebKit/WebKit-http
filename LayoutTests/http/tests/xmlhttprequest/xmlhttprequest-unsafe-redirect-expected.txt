@@ -1,10 +1,11 @@
-CONSOLE MESSAGE: XMLHttpRequest cannot load http://localhost:8080/xmlhttprequest/resources/forbidden.txt. Origin http://127.0.0.1:8000 is not allowed by Access-Control-Allow-Origin.
+CONSOLE MESSAGE: Origin http://127.0.0.1:8000 is not allowed by Access-Control-Allow-Origin.
+CONSOLE MESSAGE: XMLHttpRequest cannot load http://localhost:8080/xmlhttprequest/resources/forbidden.txt due to access control checks.
 This tests that unsafe redirects won't be allowed when making an XMLHttpRequest.
 Sync XHR started.
 readyState change 1
 readyState change 4
 Error event.
-Exception: Error: NetworkError: DOM Exception 19
+Exception: NetworkError (DOM Exception 19): A network error occurred.
 Async XHR started.
 readyState change 1
 readyState change 4

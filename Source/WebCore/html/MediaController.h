@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MediaController_h
-#define MediaController_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -32,96 +31,56 @@
 #include "EventTarget.h"
 #include "MediaControllerInterface.h"
 #include "Timer.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 class Clock;
 class HTMLMediaElement;
-class Event;
-class ScriptExecutionContext;
 
 class MediaController final : public RefCounted<MediaController>, public MediaControllerInterface, public EventTargetWithInlineData {
 public:
     static Ref<MediaController> create(ScriptExecutionContext&);
     virtual ~MediaController();
 
-    void addMediaElement(HTMLMediaElement*);
-    void removeMediaElement(HTMLMediaElement*);
-    bool containsMediaElement(HTMLMediaElement*) const;
+    Ref<TimeRanges> buffered() const final;
+    Ref<TimeRanges> seekable() const final;
+    Ref<TimeRanges> played() final;
 
-    const String& mediaGroup() const { return m_mediaGroup; }
-    
-    virtual PassRefPtr<TimeRanges> buffered() const override;
-    virtual PassRefPtr<TimeRanges> seekable() const override;
-    virtual PassRefPtr<TimeRanges> played() override;
-    
-    virtual double duration() const override;
-    virtual double currentTime() const override;
-    virtual void setCurrentTime(double) override;
-    
-    virtual bool paused() const override { return m_paused; }
-    virtual void play() override;
-    virtual void pause() override;
+    double duration() const final;
+    double currentTime() const final;
+    void setCurrentTime(double) final;
+
+    bool paused() const final { return m_paused; }
+    void play() final;
+    void pause() final;
     void unpause();
-    
-    virtual double defaultPlaybackRate() const override { return m_defaultPlaybackRate; }
-    virtual void setDefaultPlaybackRate(double) override;
-    
-    virtual double playbackRate() const override;
-    virtual void setPlaybackRate(double) override;
-    
-    virtual double volume() const override { return m_volume; }
-    virtual void setVolume(double, ExceptionCode&) override;
-    
-    virtual bool muted() const override { return m_muted; }
-    virtual void setMuted(bool) override;
-    
-    virtual ReadyState readyState() const override { return m_readyState; }
 
-    enum PlaybackState { WAITING, PLAYING, ENDED };
+    double defaultPlaybackRate() const final { return m_defaultPlaybackRate; }
+    void setDefaultPlaybackRate(double) final;
+    
+    double playbackRate() const final;
+    void setPlaybackRate(double) final;
+
+    double volume() const final { return m_volume; }
+    ExceptionOr<void> setVolume(double) final;
+
+    bool muted() const final { return m_muted; }
+    void setMuted(bool) final;
+
     const AtomicString& playbackState() const;
 
-    virtual bool supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenMode) const override { return false; }
-    virtual bool isFullscreen() const override { return false; }
-    virtual void enterFullscreen() override { }
-
-    virtual bool hasAudio() const override;
-    virtual bool hasVideo() const override;
-    virtual bool hasClosedCaptions() const override;
-    virtual void setClosedCaptionsVisible(bool) override;
-    virtual bool closedCaptionsVisible() const override { return m_closedCaptionsVisible; }
-    
-    virtual bool supportsScanning() const override;
-    
-    virtual void beginScrubbing() override;
-    virtual void endScrubbing() override;
-    virtual void beginScanning(ScanDirection) override;
-    virtual void endScanning() override;
-    
-    virtual bool canPlay() const override;
-    
-    virtual bool isLiveStream() const override;
-    
-    virtual bool hasCurrentSrc() const override;
-    
-    virtual void returnToRealtime() override;
-
-    bool isBlocked() const;
-
-    // EventTarget
-    using RefCounted<MediaController>::ref;
-    using RefCounted<MediaController>::deref;
+    using RefCounted::ref;
+    using RefCounted::deref;
 
 private:
     explicit MediaController(ScriptExecutionContext&);
+
     void reportControllerState();
     void updateReadyState();
     void updatePlaybackState();
     void updateMediaElements();
-    void bringElementUpToSpeed(HTMLMediaElement*);
+    void bringElementUpToSpeed(HTMLMediaElement&);
     void scheduleEvent(const AtomicString& eventName);
     void asyncEventTimerFired();
     void clearPositionTimerFired();
@@ -129,14 +88,47 @@ private:
     void scheduleTimeupdateEvent();
     void startTimeupdateTimer();
 
-    // EventTarget
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
-    virtual EventTargetInterface eventTargetInterface() const override { return MediaControllerEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return &m_scriptExecutionContext; };
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
+    EventTargetInterface eventTargetInterface() const final { return MediaControllerEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return &m_scriptExecutionContext; };
+
+    void addMediaElement(HTMLMediaElement&);
+    void removeMediaElement(HTMLMediaElement&);
+    bool containsMediaElement(HTMLMediaElement&) const;
+
+    const String& mediaGroup() const { return m_mediaGroup; }
+
+    bool supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenMode) const final { return false; }
+    bool isFullscreen() const final { return false; }
+    void enterFullscreen() final { }
+
+    bool hasAudio() const final;
+    bool hasVideo() const final;
+    bool hasClosedCaptions() const final;
+    void setClosedCaptionsVisible(bool) final;
+    bool closedCaptionsVisible() const final { return m_closedCaptionsVisible; }
+
+    bool supportsScanning() const final;
+    void beginScrubbing() final;
+    void endScrubbing() final;
+    void beginScanning(ScanDirection) final;
+    void endScanning() final;
+
+    bool canPlay() const final;
+    bool isLiveStream() const final;
+    bool hasCurrentSrc() const final;
+    bool isBlocked() const;
+
+    void returnToRealtime() final;
+
+    ReadyState readyState() const final { return m_readyState; }
+
+    enum PlaybackState { WAITING, PLAYING, ENDED };
 
     friend class HTMLMediaElement;
     friend class MediaControllerEventListener;
+
     Vector<HTMLMediaElement*> m_mediaElements;
     bool m_paused;
     double m_defaultPlaybackRate;
@@ -153,11 +145,10 @@ private:
     std::unique_ptr<Clock> m_clock;
     ScriptExecutionContext& m_scriptExecutionContext;
     Timer m_timeupdateTimer;
-    double m_previousTimeupdateTime;
+    MonotonicTime m_previousTimeupdateTime;
     bool m_resetCurrentTimeInNextPlay { false };
 };
 
 } // namespace WebCore
 
-#endif
 #endif

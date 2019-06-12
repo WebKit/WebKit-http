@@ -33,12 +33,15 @@ typedef const struct __CTFontDescriptor* CTFontDescriptorRef;
 namespace WebCore {
 
 class FontDescription;
-class FontFeatureSettings;
 class FontPlatformData;
+struct FontSelectionSpecifiedCapabilities;
 class SharedBuffer;
 
+template <typename T> class FontTaggedSettings;
+typedef FontTaggedSettings<int> FontFeatureSettings;
+
 struct FontCustomPlatformData {
-    WTF_MAKE_NONCOPYABLE(FontCustomPlatformData);
+    WTF_MAKE_NONCOPYABLE(FontCustomPlatformData); WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit FontCustomPlatformData(CTFontDescriptorRef fontDescriptor)
         : m_fontDescriptor(fontDescriptor)
@@ -47,7 +50,7 @@ public:
 
     ~FontCustomPlatformData();
 
-    FontPlatformData fontPlatformData(const FontDescription&, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings);
+    FontPlatformData fontPlatformData(const FontDescription&, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities);
 
     static bool supportsFormat(const String&);
 

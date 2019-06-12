@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGURIReference_h
-#define SVGURIReference_h
+#pragma once
 
 #include "Document.h"
 #include "QualifiedName.h"
@@ -34,10 +33,10 @@ public:
     static bool isKnownAttribute(const QualifiedName&);
     static void addSupportedAttributes(HashSet<QualifiedName>&);
 
-    static String fragmentIdentifierFromIRIString(const String&, Document&);
-    static Element* targetElementFromIRIString(const String&, Document&, String* = nullptr, Document* = nullptr);
+    static String fragmentIdentifierFromIRIString(const String&, const Document&);
+    static Element* targetElementFromIRIString(const String&, const Document&, String* fragmentIdentifier = nullptr, const Document* externalDocument = nullptr);
 
-    static bool isExternalURIReference(const String& uri, Document& document)
+    static bool isExternalURIReference(const String& uri, const Document& document)
     {
         // Fragment-only URIs are always internal
         if (uri.startsWith('#'))
@@ -55,5 +54,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // SVGURIReference_h

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +27,13 @@
 #include "config.h"
 
 #include "Counters.h"
+#include "DeletedAddressOfOperator.h"
 #include "MoveOnly.h"
 #include "RefLogger.h"
+#include "Test.h"
 #include <string>
 #include <wtf/HashMap.h>
+#include <wtf/Ref.h>
 #include <wtf/text/StringHash.h>
 
 namespace TestWebKitAPI {
@@ -203,14 +207,14 @@ TEST(WTF_HashMap, UniquePtrKey_CustomDeleter)
     EXPECT_EQ(1u, ConstructorDestructorCounter::constructionCount);
     EXPECT_EQ(0u, ConstructorDestructorCounter::destructionCount);
 
-    EXPECT_EQ(0u, DeleterCounter<ConstructorDestructorCounter>::deleterCount);
+    EXPECT_EQ(0u, DeleterCounter<ConstructorDestructorCounter>::deleterCount());
 
     map.clear();
     
     EXPECT_EQ(1u, ConstructorDestructorCounter::constructionCount);
     EXPECT_EQ(1u, ConstructorDestructorCounter::destructionCount);
 
-    EXPECT_EQ(1u, DeleterCounter<ConstructorDestructorCounter>::deleterCount);
+    EXPECT_EQ(1u, DeleterCounter<ConstructorDestructorCounter>::deleterCount());
 }
 
 TEST(WTF_HashMap, UniquePtrKey_FindUsingRawPointer)
@@ -292,9 +296,10 @@ TEST(WTF_HashMap, UniquePtrKey_TakeUsingRawPointer)
 
 TEST(WTF_HashMap, RefPtrKey_Add)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
     map.add(ptr, 0);
 
@@ -303,20 +308,22 @@ TEST(WTF_HashMap, RefPtrKey_Add)
 
 TEST(WTF_HashMap, RefPtrKey_AddUsingRelease)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
-    map.add(ptr.release(), 0);
+    map.add(WTFMove(ptr), 0);
 
     EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
 }
 
 TEST(WTF_HashMap, RefPtrKey_AddUsingMove)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
     map.add(WTFMove(ptr), 0);
 
@@ -325,9 +332,10 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingMove)
 
 TEST(WTF_HashMap, RefPtrKey_AddUsingRaw)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
     map.add(ptr.get(), 0);
 
@@ -336,9 +344,9 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingRaw)
 
 TEST(WTF_HashMap, RefPtrKey_AddKeyAlreadyPresent)
 {
-    HashMap<RefPtr<RefLogger>, int> map;
-
     DerivedRefLogger a("a");
+
+    HashMap<RefPtr<RefLogger>, int> map;
 
     {
         RefPtr<RefLogger> ptr(&a);
@@ -358,9 +366,9 @@ TEST(WTF_HashMap, RefPtrKey_AddKeyAlreadyPresent)
 
 TEST(WTF_HashMap, RefPtrKey_AddUsingReleaseKeyAlreadyPresent)
 {
-    HashMap<RefPtr<RefLogger>, int> map;
-
     DerivedRefLogger a("a");
+
+    HashMap<RefPtr<RefLogger>, int> map;
 
     {
         RefPtr<RefLogger> ptr(&a);
@@ -371,7 +379,7 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingReleaseKeyAlreadyPresent)
 
     {
         RefPtr<RefLogger> ptr2(&a);
-        auto addResult = map.add(ptr2.release(), 0);
+        auto addResult = map.add(WTFMove(ptr2), 0);
         EXPECT_FALSE(addResult.isNewEntry);
     }
 
@@ -380,9 +388,9 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingReleaseKeyAlreadyPresent)
 
 TEST(WTF_HashMap, RefPtrKey_AddUsingMoveKeyAlreadyPresent)
 {
-    HashMap<RefPtr<RefLogger>, int> map;
-
     DerivedRefLogger a("a");
+
+    HashMap<RefPtr<RefLogger>, int> map;
 
     {
         RefPtr<RefLogger> ptr(&a);
@@ -402,9 +410,10 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingMoveKeyAlreadyPresent)
 
 TEST(WTF_HashMap, RefPtrKey_Set)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
     map.set(ptr, 0);
 
@@ -413,11 +422,12 @@ TEST(WTF_HashMap, RefPtrKey_Set)
 
 TEST(WTF_HashMap, RefPtrKey_SetUsingRelease)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
-    map.set(ptr.release(), 0);
+    map.set(WTFMove(ptr), 0);
 
     EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
 }
@@ -425,9 +435,10 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingRelease)
 
 TEST(WTF_HashMap, RefPtrKey_SetUsingMove)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
     map.set(WTFMove(ptr), 0);
 
@@ -436,9 +447,10 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingMove)
 
 TEST(WTF_HashMap, RefPtrKey_SetUsingRaw)
 {
+    DerivedRefLogger a("a");
+
     HashMap<RefPtr<RefLogger>, int> map;
 
-    DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
     map.set(ptr.get(), 0);
 
@@ -447,9 +459,9 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingRaw)
 
 TEST(WTF_HashMap, RefPtrKey_SetKeyAlreadyPresent)
 {
-    HashMap<RefPtr<RefLogger>, int> map;
-
     DerivedRefLogger a("a");
+
+    HashMap<RefPtr<RefLogger>, int> map;
 
     RefPtr<RefLogger> ptr(&a);
     map.set(ptr, 0);
@@ -468,9 +480,9 @@ TEST(WTF_HashMap, RefPtrKey_SetKeyAlreadyPresent)
 
 TEST(WTF_HashMap, RefPtrKey_SetUsingReleaseKeyAlreadyPresent)
 {
-    HashMap<RefPtr<RefLogger>, int> map;
-
     DerivedRefLogger a("a");
+
+    HashMap<RefPtr<RefLogger>, int> map;
 
     RefPtr<RefLogger> ptr(&a);
     map.set(ptr, 0);
@@ -479,7 +491,7 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingReleaseKeyAlreadyPresent)
 
     {
         RefPtr<RefLogger> ptr2(&a);
-        auto addResult = map.set(ptr2.release(), 1);
+        auto addResult = map.set(WTFMove(ptr2), 1);
         EXPECT_FALSE(addResult.isNewEntry);
         EXPECT_EQ(1, map.get(ptr.get()));
     }
@@ -489,9 +501,9 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingReleaseKeyAlreadyPresent)
 
 TEST(WTF_HashMap, RefPtrKey_SetUsingMoveKeyAlreadyPresent)
 {
-    HashMap<RefPtr<RefLogger>, int> map;
-
     DerivedRefLogger a("a");
+
+    HashMap<RefPtr<RefLogger>, int> map;
 
     RefPtr<RefLogger> ptr(&a);
     map.set(ptr, 0);
@@ -512,10 +524,14 @@ TEST(WTF_HashMap, Ensure)
 {
     HashMap<unsigned, unsigned> map;
     {
-        auto value = map.ensure(1, [] { return 1; });
-        EXPECT_EQ(1u, value);
-        value = map.ensure(1, [] { return 2; });
-        EXPECT_EQ(1u, value);
+        auto addResult = map.ensure(1, [] { return 1; });
+        EXPECT_EQ(1u, addResult.iterator->value);
+        EXPECT_EQ(1u, addResult.iterator->key);
+        EXPECT_TRUE(addResult.isNewEntry);
+        auto addResult2 = map.ensure(1, [] { return 2; });
+        EXPECT_EQ(1u, addResult2.iterator->value);
+        EXPECT_EQ(1u, addResult2.iterator->key);
+        EXPECT_FALSE(addResult2.isNewEntry);
     }
 }
 
@@ -523,10 +539,14 @@ TEST(WTF_HashMap, Ensure_MoveOnlyValues)
 {
     HashMap<unsigned, MoveOnly> moveOnlyValues;
     {
-        auto& value = moveOnlyValues.ensure(1, [] { return MoveOnly(1); });
-        EXPECT_EQ(1u, value.value());
-        auto& value2 = moveOnlyValues.ensure(1, [] { return MoveOnly(2); });
-        EXPECT_EQ(1u, value2.value());
+        auto addResult = moveOnlyValues.ensure(1, [] { return MoveOnly(1); });
+        EXPECT_EQ(1u, addResult.iterator->value.value());
+        EXPECT_EQ(1u, addResult.iterator->key);
+        EXPECT_TRUE(addResult.isNewEntry);
+        auto addResult2 = moveOnlyValues.ensure(1, [] { return MoveOnly(2); });
+        EXPECT_EQ(1u, addResult2.iterator->value.value());
+        EXPECT_EQ(1u, addResult2.iterator->key);
+        EXPECT_FALSE(addResult2.isNewEntry);
     }
 }
 
@@ -534,28 +554,395 @@ TEST(WTF_HashMap, Ensure_UniquePointer)
 {
     HashMap<unsigned, std::unique_ptr<unsigned>> map;
     {
-        auto& value = map.ensure(1, [] { return std::make_unique<unsigned>(1); });
+        auto addResult = map.ensure(1, [] { return std::make_unique<unsigned>(1); });
         EXPECT_EQ(1u, *map.get(1));
-        EXPECT_EQ(1u, *value.get());
-        auto& value2 = map.ensure(1, [] { return std::make_unique<unsigned>(2); });
+        EXPECT_EQ(1u, *addResult.iterator->value.get());
+        EXPECT_EQ(1u, addResult.iterator->key);
+        EXPECT_TRUE(addResult.isNewEntry);
+        auto addResult2 = map.ensure(1, [] { return std::make_unique<unsigned>(2); });
         EXPECT_EQ(1u, *map.get(1));
-        EXPECT_EQ(1u, *value2.get());
+        EXPECT_EQ(1u, *addResult2.iterator->value.get());
+        EXPECT_EQ(1u, addResult2.iterator->key);
+        EXPECT_FALSE(addResult2.isNewEntry);
     }
 }
 
 TEST(WTF_HashMap, Ensure_RefPtr)
 {
+    DerivedRefLogger a("a");
+
     HashMap<unsigned, RefPtr<RefLogger>> map;
+
+    map.ensure(1, [&] { return RefPtr<RefLogger>(&a); });
+    EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
+
+    map.ensure(1, [&] { return RefPtr<RefLogger>(&a); });
+    EXPECT_STREQ("", takeLogStr().c_str());
+}
+
+class ObjectWithRefLogger {
+public:
+    ObjectWithRefLogger(Ref<RefLogger>&& logger)
+        : m_logger(WTFMove(logger))
+    {
+    }
+
+    Ref<RefLogger> m_logger;
+};
+
+
+void testMovingUsingEnsure(Ref<RefLogger>&& logger)
+{
+    HashMap<unsigned, std::unique_ptr<ObjectWithRefLogger>> map;
+    
+    map.ensure(1, [&] { return std::make_unique<ObjectWithRefLogger>(WTFMove(logger)); });
+}
+
+void testMovingUsingAdd(Ref<RefLogger>&& logger)
+{
+    HashMap<unsigned, std::unique_ptr<ObjectWithRefLogger>> map;
+
+    auto& slot = map.add(1, nullptr).iterator->value;
+    slot = std::make_unique<ObjectWithRefLogger>(WTFMove(logger));
+}
+
+TEST(WTF_HashMap, Ensure_LambdasCapturingByReference)
+{
+    {
+        DerivedRefLogger a("a");
+        Ref<RefLogger> ref(a);
+        testMovingUsingEnsure(WTFMove(ref));
+
+        EXPECT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+    }
 
     {
         DerivedRefLogger a("a");
+        Ref<RefLogger> ref(a);
+        testMovingUsingAdd(WTFMove(ref));
 
-        map.ensure(1, [&] { return RefPtr<RefLogger>(&a); });
-        EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
-
-        map.ensure(1, [&] { return RefPtr<RefLogger>(&a); });
-        EXPECT_STREQ("", takeLogStr().c_str());
+        EXPECT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
     }
+}
+
+
+TEST(WTF_HashMap, ValueIsDestructedOnRemove)
+{
+    struct DestructorObserver {
+        DestructorObserver() = default;
+
+        DestructorObserver(bool* destructed)
+            : destructed(destructed)
+        {
+        }
+
+        ~DestructorObserver()
+        {
+            if (destructed)
+                *destructed = true;
+        }
+
+        DestructorObserver(DestructorObserver&& other)
+            : destructed(other.destructed)
+        {
+            other.destructed = nullptr;
+        }
+
+        DestructorObserver& operator=(DestructorObserver&& other)
+        {
+            destructed = other.destructed;
+            other.destructed = nullptr;
+            return *this;
+        }
+
+        bool* destructed { nullptr };
+    };
+
+    HashMap<int, DestructorObserver> map;
+
+    bool destructed = false;
+    map.add(5, DestructorObserver { &destructed });
+
+    EXPECT_FALSE(destructed);
+
+    bool removeResult = map.remove(5);
+
+    EXPECT_TRUE(removeResult);
+    EXPECT_TRUE(destructed);
+}
+
+TEST(WTF_HashMap, RefPtrNotZeroedBeforeDeref)
+{
+    struct DerefObserver {
+        NEVER_INLINE void ref()
+        {
+            ++count;
+        }
+        NEVER_INLINE void deref()
+        {
+            --count;
+            observedBucket = bucketAddress->get();
+        }
+        unsigned count { 1 };
+        const RefPtr<DerefObserver>* bucketAddress { nullptr };
+        const DerefObserver* observedBucket { nullptr };
+    };
+
+    auto observer = std::make_unique<DerefObserver>();
+
+    HashMap<RefPtr<DerefObserver>, int> map;
+    map.add(adoptRef(observer.get()), 5);
+
+    auto iterator = map.find(observer.get());
+    EXPECT_TRUE(iterator != map.end());
+
+    observer->bucketAddress = &iterator->key;
+
+    EXPECT_TRUE(observer->observedBucket == nullptr);
+    EXPECT_TRUE(map.remove(observer.get()));
+
+    // It if fine to either leave the old value intact at deletion or already set it to the deleted
+    // value.
+    // A zero would be a incorrect outcome as it would mean we nulled the bucket before an opaque
+    // call.
+    EXPECT_TRUE(observer->observedBucket == observer.get() || observer->observedBucket == RefPtr<DerefObserver>::hashTableDeletedValue());
+    EXPECT_EQ(observer->count, 0u);
+}
+
+TEST(WTF_HashMap, Ref_Key)
+{
+    {
+        RefLogger a("a");
+
+        HashMap<Ref<RefLogger>, int> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<Ref<RefLogger>, int> map;
+
+        Ref<RefLogger> ref(a);
+        map.set(WTFMove(ref), 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<Ref<RefLogger>, int> map;
+
+        Ref<RefLogger> refA(a);
+        map.add(WTFMove(refA), 1);
+
+        Ref<RefLogger> refA2(a);
+        map.set(WTFMove(refA2), 1);
+    }
+
+    ASSERT_STREQ("ref(a) ref(a) deref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<Ref<RefLogger>, int> map;
+
+        Ref<RefLogger> ref(a);
+        map.ensure(WTFMove(ref), []() { 
+            return 1; 
+        });
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<Ref<RefLogger>, int> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+        
+        auto it = map.find(&a);
+        ASSERT_TRUE(it != map.end());
+        
+        ASSERT_EQ(it->key.ptr(), &a);
+        ASSERT_EQ(it->value, 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<Ref<RefLogger>, int> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+
+        map.remove(&a);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<Ref<RefLogger>, int> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+
+        int i = map.take(&a);
+        ASSERT_EQ(i, 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<Ref<RefLogger>, int> map;
+        for (int i = 0; i < 64; ++i) {
+            // FIXME: All of these RefLogger objects leak. No big deal for a test I guess.
+            Ref<RefLogger> ref = adoptRef(*new RefLogger("a"));
+            auto* pointer = ref.ptr();
+            map.add(WTFMove(ref), i + 1);
+            ASSERT_TRUE(map.contains(pointer));
+        }
+    }
+
+    ASSERT_STREQ("deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) ", takeLogStr().c_str());
+}
+
+TEST(WTF_HashMap, Ref_Value)
+{
+    {
+        RefLogger a("a");
+
+        HashMap<int, Ref<RefLogger>> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<int, Ref<RefLogger>> map;
+
+        Ref<RefLogger> ref(a);
+        map.set(1, WTFMove(ref));
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+        RefLogger b("b");
+
+        HashMap<int, Ref<RefLogger>> map;
+
+        Ref<RefLogger> refA(a);
+        map.add(1, WTFMove(refA));
+
+        Ref<RefLogger> refB(b);
+        map.set(1, WTFMove(refB));
+    }
+
+    ASSERT_STREQ("ref(a) ref(b) deref(a) deref(b) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<int, Ref<RefLogger>> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+        
+        auto aGet = map.get(1);
+        ASSERT_EQ(aGet, &a);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+        
+        auto emptyGet = map.get(1);
+        ASSERT_TRUE(emptyGet == nullptr);
+    }
+
+    {
+        RefLogger a("a");
+
+        HashMap<int, Ref<RefLogger>> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+        
+        auto aOut = map.take(1);
+        ASSERT_TRUE(static_cast<bool>(aOut));
+        ASSERT_EQ(&a, aOut.value().ptr());
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+        
+        auto emptyTake = map.take(1);
+        ASSERT_FALSE(static_cast<bool>(emptyTake));
+    }
+
+    {
+        RefLogger a("a");
+
+        HashMap<int, Ref<RefLogger>> map;
+
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+        map.remove(1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        RefLogger a("a");
+
+        HashMap<int, Ref<RefLogger>> map;
+
+        map.ensure(1, [&]() mutable {
+            Ref<RefLogger> ref(a);
+            return ref; 
+        });
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+        for (int i = 0; i < 64; ++i) {
+            // FIXME: All of these RefLogger objects leak. No big deal for a test I guess.
+            Ref<RefLogger> ref = adoptRef(*new RefLogger("a"));
+            map.add(i + 1, WTFMove(ref));
+            ASSERT_TRUE(map.contains(i + 1));
+        }
+    }
+
+    ASSERT_STREQ("deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) deref(a) ", takeLogStr().c_str());
+}
+
+TEST(WTF_HashMap, DeletedAddressOfOperator)
+{
+    HashMap<int, DeletedAddressOfOperator> map1;
+    for (auto& value : map1.values())
+        (void)value;
 }
 
 } // namespace TestWebKitAPI

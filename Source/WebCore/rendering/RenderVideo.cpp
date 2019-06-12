@@ -48,7 +48,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderVideo::RenderVideo(HTMLVideoElement& element, Ref<RenderStyle>&& style)
+RenderVideo::RenderVideo(HTMLVideoElement& element, RenderStyle&& style)
     : RenderMedia(element, WTFMove(style))
 {
     setIntrinsicSize(calculateIntrinsicSize());
@@ -56,8 +56,20 @@ RenderVideo::RenderVideo(HTMLVideoElement& element, Ref<RenderStyle>&& style)
 
 RenderVideo::~RenderVideo()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderVideo::willBeDestroyed()
+{
     if (MediaPlayer* player = videoElement().player())
         player->setVisible(false);
+
+    RenderMedia::willBeDestroyed();
+}
+
+void RenderVideo::visibleInViewportStateChanged()
+{
+    videoElement().isVisibleInViewportChanged();
 }
 
 IntSize RenderVideo::defaultSize()
@@ -76,21 +88,22 @@ void RenderVideo::intrinsicSizeChanged()
     updateIntrinsicSize(); 
 }
 
-void RenderVideo::updateIntrinsicSize()
+bool RenderVideo::updateIntrinsicSize()
 {
     LayoutSize size = calculateIntrinsicSize();
     size.scale(style().effectiveZoom());
 
     // Never set the element size to zero when in a media document.
     if (size.isEmpty() && document().isMediaDocument())
-        return;
+        return false;
 
     if (size == intrinsicSize())
-        return;
+        return false;
 
     setIntrinsicSize(size);
     setPreferredLogicalWidthsDirty(true);
     setNeedsLayout();
+    return true;
 }
     
 LayoutSize RenderVideo::calculateIntrinsicSize()
@@ -159,24 +172,22 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     MediaPlayer* mediaPlayer = videoElement().player();
     bool displayingPoster = videoElement().shouldDisplayPosterImage();
 
-    Page* page = frame().page();
-
     if (!displayingPoster && !mediaPlayer) {
-        if (page && paintInfo.phase == PaintPhaseForeground)
-            page->addRelevantUnpaintedObject(this, visualOverflowRect());
+        if (paintInfo.phase == PaintPhaseForeground)
+            page().addRelevantUnpaintedObject(this, visualOverflowRect());
         return;
     }
 
     LayoutRect rect = videoBox();
     if (rect.isEmpty()) {
-        if (page && paintInfo.phase == PaintPhaseForeground)
-            page->addRelevantUnpaintedObject(this, visualOverflowRect());
+        if (paintInfo.phase == PaintPhaseForeground)
+            page().addRelevantUnpaintedObject(this, visualOverflowRect());
         return;
     }
     rect.moveBy(paintOffset);
 
-    if (page && paintInfo.phase == PaintPhaseForeground)
-        page->addRelevantRepaintedObject(this, rect);
+    if (paintInfo.phase == PaintPhaseForeground)
+        page().addRelevantRepaintedObject(this, rect);
 
     LayoutRect contentRect = contentBoxRect();
     contentRect.moveBy(paintOffset);
@@ -187,9 +198,9 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
         context.clip(contentRect);
 
     if (displayingPoster)
-        paintIntoRect(context, rect);
+        paintIntoRect(paintInfo, rect);
     else if (!videoElement().isFullscreen() || !mediaPlayer->supportsAcceleratedRendering()) {
-        if (view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers)
+        if (paintInfo.paintBehavior & PaintBehaviorFlattenCompositingLayers)
             mediaPlayer->paintCurrentFrameInContext(context, rect);
         else
             mediaPlayer->paint(context, rect);
@@ -199,6 +210,7 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 void RenderVideo::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
+    updateIntrinsicSize();
     RenderMedia::layout();
     updatePlayer();
 }
@@ -216,10 +228,12 @@ void RenderVideo::updateFromElement()
 
 void RenderVideo::updatePlayer()
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
 
-    updateIntrinsicSize();
+    bool intrinsicSizeChanged;
+    intrinsicSizeChanged = updateIntrinsicSize();
+    ASSERT_UNUSED(intrinsicSizeChanged, !intrinsicSizeChanged || !view().frameView().isInRenderTreeLayout());
 
     MediaPlayer* mediaPlayer = videoElement().player();
     if (!mediaPlayer)
@@ -234,18 +248,13 @@ void RenderVideo::updatePlayer()
     
     IntRect videoBounds = videoBox(); 
     mediaPlayer->setSize(IntSize(videoBounds.width(), videoBounds.height()));
-    mediaPlayer->setVisible(true);
+    mediaPlayer->setVisible(!videoElement().elementIsHidden());
     mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFitFill);
 }
 
 LayoutUnit RenderVideo::computeReplacedLogicalWidth(ShouldComputePreferred shouldComputePreferred) const
 {
     return RenderReplaced::computeReplacedLogicalWidth(shouldComputePreferred);
-}
-
-LayoutUnit RenderVideo::computeReplacedLogicalHeight() const
-{
-    return RenderReplaced::computeReplacedLogicalHeight();
 }
 
 LayoutUnit RenderVideo::minimumReplacedHeight() const 
@@ -273,39 +282,41 @@ bool RenderVideo::requiresImmediateCompositing() const
 }
 
 #if ENABLE(FULLSCREEN_API)
-static const RenderBlock* rendererPlaceholder(const RenderObject* renderer)
+
+static const RenderBlock* placeholder(const RenderVideo& renderer)
 {
-    RenderObject* parent = renderer->parent();
+    auto* parent = renderer.parent();
     return is<RenderFullScreen>(parent) ? downcast<RenderFullScreen>(*parent).placeholder() : nullptr;
 }
 
 LayoutUnit RenderVideo::offsetLeft() const
 {
-    if (const RenderBlock* block = rendererPlaceholder(this))
+    if (auto* block = placeholder(*this))
         return block->offsetLeft();
     return RenderMedia::offsetLeft();
 }
 
 LayoutUnit RenderVideo::offsetTop() const
 {
-    if (const RenderBlock* block = rendererPlaceholder(this))
+    if (auto* block = placeholder(*this))
         return block->offsetTop();
     return RenderMedia::offsetTop();
 }
 
 LayoutUnit RenderVideo::offsetWidth() const
 {
-    if (const RenderBlock* block = rendererPlaceholder(this))
+    if (auto* block = placeholder(*this))
         return block->offsetWidth();
     return RenderMedia::offsetWidth();
 }
 
 LayoutUnit RenderVideo::offsetHeight() const
 {
-    if (const RenderBlock* block = rendererPlaceholder(this))
+    if (auto* block = placeholder(*this))
         return block->offsetHeight();
     return RenderMedia::offsetHeight();
 }
+
 #endif
 
 bool RenderVideo::foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const

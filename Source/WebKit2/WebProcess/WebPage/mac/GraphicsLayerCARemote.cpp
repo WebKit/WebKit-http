@@ -27,6 +27,7 @@
 #include "GraphicsLayerCARemote.h"
 #include "PlatformCAAnimationRemote.h"
 #include "PlatformCALayerRemote.h"
+#include <WebCore/PlatformScreen.h>
 
 using namespace WebCore;
 
@@ -41,17 +42,22 @@ bool GraphicsLayerCARemote::filtersCanBeComposited(const FilterOperations& filte
     return PlatformCALayerRemote::filtersCanBeComposited(filters);
 }
 
-PassRefPtr<PlatformCALayer> GraphicsLayerCARemote::createPlatformCALayer(PlatformCALayer::LayerType layerType, PlatformCALayerClient* owner)
+Ref<PlatformCALayer> GraphicsLayerCARemote::createPlatformCALayer(PlatformCALayer::LayerType layerType, PlatformCALayerClient* owner)
 {
-    return PlatformCALayerRemote::create(layerType, owner, m_context);
+    auto result = PlatformCALayerRemote::create(layerType, owner, m_context);
+
+    if (result->canHaveBackingStore())
+        result->setWantsDeepColorBackingStore(screenSupportsExtendedColor());
+
+    return WTFMove(result);
 }
 
-PassRefPtr<PlatformCALayer> GraphicsLayerCARemote::createPlatformCALayer(PlatformLayer* platformLayer, PlatformCALayerClient* owner)
+Ref<PlatformCALayer> GraphicsLayerCARemote::createPlatformCALayer(PlatformLayer* platformLayer, PlatformCALayerClient* owner)
 {
     return PlatformCALayerRemote::create(platformLayer, owner, m_context);
 }
 
-PassRefPtr<PlatformCAAnimation> GraphicsLayerCARemote::createPlatformCAAnimation(PlatformCAAnimation::AnimationType type, const String& keyPath)
+Ref<PlatformCAAnimation> GraphicsLayerCARemote::createPlatformCAAnimation(PlatformCAAnimation::AnimationType type, const String& keyPath)
 {
     return PlatformCAAnimationRemote::create(type, keyPath);
 }

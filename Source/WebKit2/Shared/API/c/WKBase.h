@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  * Portions Copyright (c) 2010 Motorola Mobility, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,16 +34,12 @@
 #include <WebKit/WKBaseGtk.h>
 #endif
 
-#if defined(USE_SOUP)
-#include <WebKit/WKBaseSoup.h>
-#endif
-
-#if defined(BUILDING_EFL__)
-#include <WebKit/WKBaseEfl.h>
-#endif
-
 #if defined(__APPLE__) && !defined(BUILDING_GTK__) && !defined(BUILDING_QT__)
 #include <WebKit/WKBaseMac.h>
+#endif
+
+#if defined(BUILDING_WPE__)
+#include <WebKit/WKBaseWPE.h>
 #endif
 
 /* WebKit2 shared types */
@@ -89,16 +85,16 @@ typedef const struct OpaqueWKAuthenticationChallenge* WKAuthenticationChallengeR
 typedef const struct OpaqueWKAuthenticationDecisionListener* WKAuthenticationDecisionListenerRef;
 typedef const struct OpaqueWKBackForwardList* WKBackForwardListRef;
 typedef const struct OpaqueWKBackForwardListItem* WKBackForwardListItemRef;
-typedef const struct OpaqueWKBatteryManager* WKBatteryManagerRef;
-typedef const struct OpaqueWKBatteryStatus* WKBatteryStatusRef;
 typedef const struct OpaqueWKResourceCacheManager* WKResourceCacheManagerRef;
 typedef const struct OpaqueWKColorPickerResultListener* WKColorPickerResultListenerRef;
 typedef const struct OpaqueWKContext* WKContextRef;
 typedef const struct OpaqueWKContextConfiguration* WKContextConfigurationRef;
+typedef const struct OpaqueWKContextMenuListener* WKContextMenuListenerRef;
 typedef const struct OpaqueWKCookieManager* WKCookieManagerRef;
 typedef const struct OpaqueWKCredential* WKCredentialRef;
 typedef const struct OpaqueWKDownload* WKDownloadRef;
 typedef const struct OpaqueWKFormSubmissionListener* WKFormSubmissionListenerRef;
+typedef const struct OpaqueWKFrameHandle* WKFrameHandleRef;
 typedef const struct OpaqueWKFrameInfo* WKFrameInfoRef;
 typedef const struct OpaqueWKFrame* WKFrameRef;
 typedef const struct OpaqueWKFramePolicyListener* WKFramePolicyListenerRef;
@@ -125,13 +121,13 @@ typedef const struct OpaqueWKOpenPanelResultListener* WKOpenPanelResultListenerR
 typedef const struct OpaqueWKPage* WKPageRef;
 typedef const struct OpaqueWKPageConfiguration* WKPageConfigurationRef;
 typedef const struct OpaqueWKPageGroup* WKPageGroupRef;
-typedef const struct OpaqueWKPluginSiteDataManager* WKPluginSiteDataManagerRef;
 typedef const struct OpaqueWKPreferences* WKPreferencesRef;
 typedef const struct OpaqueWKProtectionSpace* WKProtectionSpaceRef;
 typedef const struct OpaqueWKPageRunBeforeUnloadConfirmPanelResultListener* WKPageRunBeforeUnloadConfirmPanelResultListenerRef;
 typedef const struct OpaqueWKPageRunJavaScriptAlertResultListener* WKPageRunJavaScriptAlertResultListenerRef;
 typedef const struct OpaqueWKPageRunJavaScriptConfirmResultListener* WKPageRunJavaScriptConfirmResultListenerRef;
 typedef const struct OpaqueWKPageRunJavaScriptPromptResultListener* WKPageRunJavaScriptPromptResultListenerRef;
+typedef const struct OpaqueWKResourceLoadStatisticsManager* WKResourceLoadStatisticsManagerRef;
 typedef const struct OpaqueWKTextChecker* WKTextCheckerRef;
 typedef const struct OpaqueWKSession* WKSessionRef;
 typedef const struct OpaqueWKSessionState* WKSessionStateRef;
@@ -141,9 +137,9 @@ typedef const struct OpaqueWKUserContentFilter* WKUserContentFilterRef;
 typedef const struct OpaqueWKUserMediaPermissionCheck* WKUserMediaPermissionCheckRef;
 typedef const struct OpaqueWKUserMediaPermissionRequest* WKUserMediaPermissionRequestRef;
 typedef const struct OpaqueWKUserScript* WKUserScriptRef;
-typedef const struct OpaqueWKVibration* WKVibrationRef;
 typedef const struct OpaqueWKViewportAttributes* WKViewportAttributesRef;
 typedef const struct OpaqueWKWebsiteDataStore* WKWebsiteDataStoreRef;
+typedef const struct OpaqueWKWebsitePolicies* WKWebsitePoliciesRef;
 typedef const struct OpaqueWKWindowFeatures* WKWindowFeaturesRef;
 
 /* WebKit2 Bundle types */

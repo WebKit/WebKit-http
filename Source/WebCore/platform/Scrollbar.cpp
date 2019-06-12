@@ -47,9 +47,9 @@
 
 namespace WebCore {
 
-PassRefPtr<Scrollbar> Scrollbar::createNativeScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize size)
+Ref<Scrollbar> Scrollbar::createNativeScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize size)
 {
-    return adoptRef(new Scrollbar(scrollableArea, orientation, size));
+    return adoptRef(*new Scrollbar(scrollableArea, orientation, size));
 }
 
 int Scrollbar::maxOverlapBetweenPages()
@@ -161,7 +161,7 @@ void Scrollbar::updateThumbProportion()
     updateThumb();
 }
 
-void Scrollbar::paint(GraphicsContext& context, const IntRect& damageRect)
+void Scrollbar::paint(GraphicsContext& context, const IntRect& damageRect, Widget::SecurityOriginPaintPolicy)
 {
     if (context.updatingControlTints() && theme().supportsControlTints()) {
         invalidate();
@@ -187,7 +187,7 @@ static bool thumbUnderMouse(Scrollbar* scrollbar)
     return scrollbar->pressedPos() >= thumbPos && scrollbar->pressedPos() < thumbPos + thumbLength;
 }
 
-void Scrollbar::autoscrollPressedPart(double delay)
+void Scrollbar::autoscrollPressedPart(Seconds delay)
 {
     // Don't do anything for the thumb or if nothing was pressed.
     if (m_pressedPart == ThumbPart || m_pressedPart == NoPart)
@@ -205,7 +205,7 @@ void Scrollbar::autoscrollPressedPart(double delay)
         startTimerIfNeeded(delay);
 }
 
-void Scrollbar::startTimerIfNeeded(double delay)
+void Scrollbar::startTimerIfNeeded(Seconds delay)
 {
     // Don't do anything for the thumb.
     if (m_pressedPart == ThumbPart)
@@ -476,27 +476,27 @@ void Scrollbar::invalidateRect(const IntRect& rect)
     if (suppressInvalidation())
         return;
 
-    m_scrollableArea.invalidateScrollbar(this, rect);
+    m_scrollableArea.invalidateScrollbar(*this, rect);
 }
 
 IntRect Scrollbar::convertToContainingView(const IntRect& localRect) const
 {
-    return m_scrollableArea.convertFromScrollbarToContainingView(this, localRect);
+    return m_scrollableArea.convertFromScrollbarToContainingView(*this, localRect);
 }
 
 IntRect Scrollbar::convertFromContainingView(const IntRect& parentRect) const
 {
-    return m_scrollableArea.convertFromContainingViewToScrollbar(this, parentRect);
+    return m_scrollableArea.convertFromContainingViewToScrollbar(*this, parentRect);
 }
 
 IntPoint Scrollbar::convertToContainingView(const IntPoint& localPoint) const
 {
-    return m_scrollableArea.convertFromScrollbarToContainingView(this, localPoint);
+    return m_scrollableArea.convertFromScrollbarToContainingView(*this, localPoint);
 }
 
 IntPoint Scrollbar::convertFromContainingView(const IntPoint& parentPoint) const
 {
-    return m_scrollableArea.convertFromContainingViewToScrollbar(this, parentPoint);
+    return m_scrollableArea.convertFromContainingViewToScrollbar(*this, parentPoint);
 }
 
 bool Scrollbar::supportsUpdateOnSecondaryThread() const

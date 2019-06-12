@@ -1,28 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script src="../resources/js-test-pre.js"></script>
+<script src="../resources/js-test.js"></script>
 <script type="text/javascript" src="resources/audio-testing.js"></script>
 </head>
 <body>
 <script>
 description("Basic tests for decodeAudioData function.");
-
-if (window.testRunner) {
-    testRunner.dumpAsText();
-    testRunner.waitUntilDone();
-}
     
 window.jsTestIsAsync = true;
 
 var context = new webkitAudioContext();
 
-try {
-    context.decodeAudioData(null, function(){}, function(){});
-    testFailed("decodeAudioData should raise exception when arraybuffer parameter is null.");
-} catch(e) {
-    testPassed("decodeAudioData raises exception correctly when arraybuffer parameter is null.");
-}
+// decodeAudioData should raise exception when arraybuffer parameter is null.
+shouldThrow("context.decodeAudioData(null, function(){}, function(){});", "'TypeError: Argument 1 (\\'audioData\\') to webkitAudioContext.decodeAudioData must be an instance of ArrayBuffer'");
 
 var decodeCaseArray = [{url: "resources/media/24bit-44khz.wav", result: true},
                        {url: "resources/media/invalid-audio-file.txt", result: false}];
@@ -64,6 +55,5 @@ function runDecodeTest(index) {
 runDecodeTest(0);
 
 </script>
-<script src="../resources/js-test-post.js"></script>
 </body>
 </html>

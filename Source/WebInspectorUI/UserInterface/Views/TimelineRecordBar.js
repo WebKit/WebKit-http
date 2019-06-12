@@ -31,6 +31,7 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
 
         this._element = document.createElement("div");
         this._element.classList.add("timeline-record-bar");
+        this._element[WebInspector.TimelineRecordBar.ElementReferenceSymbol] = this;
 
         this.renderMode = renderMode;
         this.records = records;
@@ -51,7 +52,8 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
 
         // FIXME: Do a binary search for records that fall inside start and current time.
 
-        for (var record of records) {
+        for (var i = 0; i < records.length; ++i) {
+            var record = records[i];
             if (isNaN(record.startTime))
                 continue;
 
@@ -99,7 +101,9 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
             var inactiveEndTime = NaN;
             var inactiveRecords = [];
 
-            for (var record of visibleRecords) {
+            for (var i = 0; i < visibleRecords.length; ++i) {
+                var record = visibleRecords[i];
+
                 // Check if the previous record is far enough away to create the inactive bar.
                 if (!isNaN(inactiveStartTime) && inactiveStartTime + Math.max(inactiveEndTime - inactiveStartTime, minimumDuration) + minimumMargin <= record.startTime) {
                     createBarCallback(inactiveRecords, WebInspector.TimelineRecordBar.RenderMode.InactiveOnly);
@@ -131,7 +135,8 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
 
         var startTimeProperty = usesActiveStartTime ? "activeStartTime" : "startTime";
 
-        for (var record of visibleRecords) {
+        for (var i = 0; i < visibleRecords.length; ++i) {
+            var record = visibleRecords[i];
             var startTime = record[startTimeProperty];
 
             // Check if the previous record is far enough away to create the active bar. We also create it now if the current record has no active state time.
@@ -162,6 +167,11 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
             createBarCallback(activeRecords, WebInspector.TimelineRecordBar.RenderMode.ActiveOnly);
     }
 
+    static fromElement(element)
+    {
+        return element[WebInspector.TimelineRecordBar.ElementReferenceSymbol] || null;
+    }
+
     // Public
 
     get element()
@@ -186,30 +196,50 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
 
     set records(records)
     {
+        let oldRecordType;
+        let oldRecordEventType;
+        let oldRecordUsesActiveStartTime = false;
         if (this._records && this._records.length) {
-            this._element.classList.remove(this._records[0].type);
-            if (this._records[0].eventType)
-                this._element.classList.remove(this._records[0].eventType);
+            let oldRecord = this._records[0];
+            oldRecordType = oldRecord.type;
+            oldRecordEventType = oldRecord.eventType;
+            oldRecordUsesActiveStartTime = oldRecord.usesActiveStartTime;
         }
 
         records = records || [];
 
-        console.assert(records instanceof Array, "records should be an array");
-
         this._records = records;
 
-        // Assume all records are the same type.
+        // Assume all records in the group are the same type.
         if (this._records.length) {
-            this._element.classList.add(this._records[0].type);
+            let newRecord = this._records[0];
+            if (newRecord.type !== oldRecordType) {
+                this._element.classList.remove(oldRecordType);
+                this._element.classList.add(newRecord.type);
+            }
             // Although all records may not have the same event type, the first record is
             // sufficient to determine the correct style for the record bar.
-            if (this._records[0].eventType)
-                this._element.classList.add(this._records[0].eventType);
-        }
+            if (newRecord.eventType !== oldRecordEventType) {
+                this._element.classList.remove(oldRecordEventType);
+                this._element.classList.add(newRecord.eventType);
+            }
+            if (newRecord.usesActiveStartTime !== oldRecordUsesActiveStartTime)
+                this._element.classList.toggle("has-inactive-segment", newRecord.usesActiveStartTime);
+        } else
+            this._element.classList.remove(oldRecordType, oldRecordEventType, "has-inactive-segment");
     }
 
     refresh(graphDataSource)
     {
+        if (isNaN(graphDataSource.secondsPerPixel))
+            return;
+
+        console.assert(graphDataSource.zeroTime);
+        console.assert(graphDataSource.startTime);
+        console.assert(graphDataSource.currentTime);
+        console.assert(graphDataSource.endTime);
+        console.assert(graphDataSource.secondsPerPixel);
+
         if (!this._records || !this._records.length)
             return false;
 
@@ -240,12 +270,11 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
 
         var graphDuration = graphEndTime - graphStartTime;
 
-        this._element.classList.toggle("unfinished", barUnfinished);
+        let newBarPosition = (barStartTime - graphStartTime) / graphDuration;
+        let property = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "right" : "left";
+        this._updateElementPosition(this._element, newBarPosition, property);
 
-        var newBarLeftPosition = (barStartTime - graphStartTime) / graphDuration;
-        this._updateElementPosition(this._element, newBarLeftPosition, "left");
-
-        var newBarWidth = ((barEndTime - graphStartTime) / graphDuration) - newBarLeftPosition;
+        var newBarWidth = ((barEndTime - graphStartTime) / graphDuration) - newBarPosition;
         this._updateElementPosition(this._element, newBarWidth, "width");
 
         if (!this._activeBarElement && this._renderMode !== WebInspector.TimelineRecordBar.RenderMode.InactiveOnly) {
@@ -254,7 +283,7 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
         }
 
         if (!firstRecord.usesActiveStartTime) {
-            this._element.classList.remove("has-inactive-segment");
+            this._element.classList.toggle("unfinished", barUnfinished);
 
             if (this._inactiveBarElement)
                 this._inactiveBarElement.remove();
@@ -267,7 +296,7 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
             }
 
             // If this TimelineRecordBar is reused and had an inactive bar previously, clean it up.
-            this._activeBarElement.style.removeProperty("left");
+            this._activeBarElement.style.removeProperty(WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "right" : "left");
             this._activeBarElement.style.removeProperty("width");
 
             if (!this._activeBarElement.parentNode)
@@ -275,8 +304,6 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
 
             return true;
         }
-
-        this._element.classList.add("has-inactive-segment");
 
         // Find the earliest active start time for active only rendering, and the latest for the other modes.
         // This matches the values that TimelineRecordBar.createCombinedBars uses when combining.
@@ -292,17 +319,29 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
 
         if (inactiveUnfinished)
             barActiveStartTime = graphCurrentTime;
+        else if (this._renderMode === WebInspector.TimelineRecordBar.RenderMode.Normal) {
+            // Hide the inactive segment when its duration is less than the minimum displayable size.
+            let minimumSegmentDuration = graphDataSource.secondsPerPixel * WebInspector.TimelineRecordBar.MinimumWidthPixels;
+            if (barActiveStartTime - barStartTime < minimumSegmentDuration) {
+                barActiveStartTime = barStartTime;
+                if (this._inactiveBarElement)
+                    this._inactiveBarElement.remove();
+            }
+        }
 
-        var middlePercentage = (barActiveStartTime - barStartTime) / barDuration;
+        let showInactiveSegment = barActiveStartTime > barStartTime;
+        this._element.classList.toggle("has-inactive-segment", showInactiveSegment);
 
-        if (this._renderMode !== WebInspector.TimelineRecordBar.RenderMode.ActiveOnly) {
+        let middlePercentage = (barActiveStartTime - barStartTime) / barDuration;
+        if (showInactiveSegment && this._renderMode !== WebInspector.TimelineRecordBar.RenderMode.ActiveOnly) {
             if (!this._inactiveBarElement) {
                 this._inactiveBarElement = document.createElement("div");
                 this._inactiveBarElement.classList.add("segment");
                 this._inactiveBarElement.classList.add("inactive");
             }
 
-            this._updateElementPosition(this._inactiveBarElement, 1 - middlePercentage, "right");
+            let property = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "left" : "right";
+            this._updateElementPosition(this._inactiveBarElement, 1 - middlePercentage, property);
             this._updateElementPosition(this._inactiveBarElement, middlePercentage, "width");
 
             if (!this._inactiveBarElement.parentNode)
@@ -310,7 +349,8 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
         }
 
         if (!inactiveUnfinished && this._renderMode !== WebInspector.TimelineRecordBar.RenderMode.InactiveOnly) {
-            this._updateElementPosition(this._activeBarElement, middlePercentage, "left");
+            let property = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL ? "right" : "left";
+            this._updateElementPosition(this._activeBarElement, middlePercentage, property);
             this._updateElementPosition(this._activeBarElement, 1 - middlePercentage, "width");
 
             if (!this._activeBarElement.parentNode)
@@ -326,13 +366,15 @@ WebInspector.TimelineRecordBar = class TimelineRecordBar extends WebInspector.Ob
     _updateElementPosition(element, newPosition, property)
     {
         newPosition *= 100;
-        newPosition = newPosition.toFixed(2);
 
-        var currentPosition = parseFloat(element.style[property]).toFixed(2);
-        if (currentPosition !== newPosition)
-            element.style[property] = newPosition + "%";
+        let newPositionAprox = Math.round(newPosition * 100);
+        let currentPositionAprox = Math.round(parseFloat(element.style[property]) * 100);
+        if (currentPositionAprox !== newPositionAprox)
+            element.style[property] = (newPositionAprox / 100) + "%";
     }
 };
+
+WebInspector.TimelineRecordBar.ElementReferenceSymbol = Symbol("timeline-record-bar");
 
 WebInspector.TimelineRecordBar.MinimumWidthPixels = 4;
 WebInspector.TimelineRecordBar.MinimumMarginPixels = 1;

@@ -23,16 +23,19 @@
 messages -> WebInspectorProxy {
     CreateInspectorPage(IPC::Attachment connectionIdentifier, bool canAttach, bool underTest)
 
+    FrontendLoaded()
     DidClose()
     BringToFront()
 
     InspectedURLChanged(String urlString)
+    ElementSelectionChanged(bool active)
 
     Save(String filename, String content, bool base64Encoded, bool forceSaveAs)
     Append(String filename, String content)
 
     AttachBottom()
     AttachRight()
+    AttachLeft()
     Detach()
 
     AttachAvailabilityChanged(bool available)
@@ -41,8 +44,4 @@ messages -> WebInspectorProxy {
     SetAttachedWindowWidth(unsigned width)
 
     StartWindowDrag()
-
-#if ENABLE(INSPECTOR_SERVER)
-    SendMessageToRemoteFrontend(String message)
-#endif
 }

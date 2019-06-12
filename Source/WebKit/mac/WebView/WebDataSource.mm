@@ -79,35 +79,35 @@ using namespace WebCore;
 class WebDataSourcePrivate
 {
 public:
-    WebDataSourcePrivate(PassRefPtr<WebDocumentLoaderMac> loader)
-        : loader(loader)
+    WebDataSourcePrivate(Ref<WebDocumentLoaderMac>&& loader)
+        : loader(WTFMove(loader))
         , representationFinishedLoading(NO)
         , includedInWebKitStatistics(NO)
 #if PLATFORM(IOS)
         , _dataSourceDelegate(nil)
 #endif
     {
-        ASSERT(this->loader);
     }
     ~WebDataSourcePrivate()
     {
-        if (loader) {
-            // We might run in to infinite recursion if we're stopping loading as the result of detaching from the frame.
-            // Therefore, DocumentLoader::detachFromFrame() did some smart things to stop the recursion.
-            // As a result of breaking the resursion, DocumentLoader::m_subresourceLoader
-            // and DocumentLoader::m_plugInStreamLoaders might not be empty at this time.
-            // See <rdar://problem/9673866> for more details.
-            ASSERT(!loader->isLoading() || loader->isStopping());
-            loader->detachDataSource();
-        }
+        // We might run in to infinite recursion if we're stopping loading as the result of detaching from the frame.
+        // Therefore, DocumentLoader::detachFromFrame() did some smart things to stop the recursion.
+        // As a result of breaking the resursion, DocumentLoader::m_subresourceLoader
+        // and DocumentLoader::m_plugInStreamLoaders might not be empty at this time.
+        // See <rdar://problem/9673866> for more details.
+        ASSERT(!loader->isLoading() || loader->isStopping());
+        loader->detachDataSource();
     }
 
-    RefPtr<WebDocumentLoaderMac> loader;
+    Ref<WebDocumentLoaderMac> loader;
     RetainPtr<id<WebDocumentRepresentation> > representation;
     BOOL representationFinishedLoading;
     BOOL includedInWebKitStatistics;
 #if PLATFORM(IOS)
     NSObject<WebDataSourcePrivateDelegate> *_dataSourceDelegate;
+#endif
+#if USE(QUICK_LOOK)
+    RetainPtr<NSDictionary> _quickLookContent;
 #endif
 };
 
@@ -166,25 +166,22 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
 - (void)_addSubframeArchives:(NSArray *)subframeArchives
 {
-    // FIXME: This SPI is poor, poor design.  Can we come up with another solution for those who need it?
-    NSEnumerator *enumerator = [subframeArchives objectEnumerator];
-    WebArchive *archive;
-    while ((archive = [enumerator nextObject]) != nil)
-        toPrivate(_private)->loader->addAllArchiveResources([archive _coreLegacyWebArchive]);
+    // FIXME: This SPI is poor, poor design. Can we come up with another solution for those who need it?
+    for (WebArchive *archive in subframeArchives)
+        toPrivate(_private)->loader->addAllArchiveResources(*[archive _coreLegacyWebArchive]);
 }
 
 #if !PLATFORM(IOS)
+
 - (NSFileWrapper *)_fileWrapperForURL:(NSURL *)URL
 {
     if ([URL isFileURL])
         return [[[NSFileWrapper alloc] initWithURL:[URL URLByResolvingSymlinksInPath] options:0 error:nullptr] autorelease];
 
-    WebResource *resource = [self subresourceForURL:URL];
-    if (resource)
+    if (auto resource = [self subresourceForURL:URL])
         return [resource _fileWrapperRepresentation];
-    
-    NSCachedURLResponse *cachedResponse = [[self _webView] _cachedResponseForURL:URL];
-    if (cachedResponse) {
+
+    if (auto cachedResponse = [[self _webView] _cachedResponseForURL:URL]) {
         NSFileWrapper *wrapper = [[[NSFileWrapper alloc] initRegularFileWithContents:[cachedResponse data]] autorelease];
         [wrapper setPreferredFilename:[[cachedResponse response] suggestedFilename]];
         return wrapper;
@@ -192,6 +189,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     
     return nil;
 }
+
 #endif
 
 - (NSString *)_responseMIMEType
@@ -201,9 +199,6 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
 - (void)_setDeferMainResourceDataLoad:(BOOL)flag
 {
-    if (!toPrivate(_private)->loader)
-        return;
-
     toPrivate(_private)->loader->setDeferMainResourceDataLoad(flag);
 }
 
@@ -226,6 +221,17 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 {
     return nullptr;
 }
+
+#if PLATFORM(IOS)
+- (NSDictionary *)_quickLookContent
+{
+#if USE(QUICK_LOOK)
+    return toPrivate(_private)->_quickLookContent.get();
+#else
+    return nil;
+#endif
+}
+#endif
 
 @end
 
@@ -305,9 +311,9 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
         NSString *MIMEType = [mainResource MIMEType];
         if ([WebView canShowMIMETypeAsHTML:MIMEType]) {
             NSString *markupString = [[NSString alloc] initWithData:[mainResource data] encoding:NSUTF8StringEncoding];
+
             // FIXME: seems poor form to do this as a side effect of getting a document fragment
-            if (toPrivate(_private)->loader)
-                toPrivate(_private)->loader->addAllArchiveResources([archive _coreLegacyWebArchive]);
+            toPrivate(_private)->loader->addAllArchiveResources(*[archive _coreLegacyWebArchive]);
 
             DOMDocumentFragment *fragment = [[self webFrame] _documentFragmentWithMarkupString:markupString baseURLString:[[mainResource URL] _web_originalDataAsString]];
             [markupString release];
@@ -324,7 +330,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 {
     DOMElement *imageElement = [self _imageElementWithImageResource:resource];
     if (!imageElement)
-        return 0;
+        return nil;
     DOMDocumentFragment *fragment = [[[self webFrame] DOMDocument] createDocumentFragment];
     [fragment appendChild:imageElement];
     return fragment;
@@ -391,17 +397,16 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
 - (DocumentLoader*)_documentLoader
 {
-    return toPrivate(_private)->loader.get();
+    return toPrivate(_private)->loader.ptr();
 }
 
-- (id)_initWithDocumentLoader:(PassRefPtr<WebDocumentLoaderMac>)loader
+- (id)_initWithDocumentLoader:(Ref<WebDocumentLoaderMac>&&)loader
 {
     self = [super init];
     if (!self)
         return nil;
 
-    ASSERT(loader);
-    _private = static_cast<void*>(new WebDataSourcePrivate(loader));
+    _private = static_cast<void*>(new WebDataSourcePrivate(WTFMove(loader)));
         
     LOG(Loading, "creating datasource for %@", static_cast<NSURL *>(toPrivate(_private)->loader->request().url()));
 
@@ -410,6 +415,13 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
     return self;
 }
+
+#if USE(QUICK_LOOK)
+- (void)_setQuickLookContent:(NSDictionary *)quickLookContent
+{
+    toPrivate(_private)->_quickLookContent = adoptNS([quickLookContent copy]);
+}
+#endif
 
 @end
 
@@ -513,33 +525,32 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     if (!toPrivate(_private)->loader->isCommitted())
         return nil;
         
-    return [[[WebArchive alloc] _initWithCoreLegacyWebArchive:LegacyWebArchive::create(core([self webFrame]))] autorelease];
+    return [[[WebArchive alloc] _initWithCoreLegacyWebArchive:LegacyWebArchive::create(*core([self webFrame]))] autorelease];
 }
 
 - (WebResource *)mainResource
 {
-    RefPtr<ArchiveResource> coreResource = toPrivate(_private)->loader->mainResource();
-    return [[[WebResource alloc] _initWithCoreResource:coreResource.release()] autorelease];
+    auto coreResource = toPrivate(_private)->loader->mainResource();
+    if (!coreResource)
+        return nil;
+    return [[[WebResource alloc] _initWithCoreResource:coreResource.releaseNonNull()] autorelease];
 }
 
 - (NSArray *)subresources
 {
     auto coreSubresources = toPrivate(_private)->loader->subresources();
-
     auto subresources = adoptNS([[NSMutableArray alloc] initWithCapacity:coreSubresources.size()]);
-    for (const auto& coreSubresource : coreSubresources) {
-        if (auto resource = adoptNS([[WebResource alloc] _initWithCoreResource:coreSubresource]))
+    for (auto& coreSubresource : coreSubresources) {
+        if (auto resource = adoptNS([[WebResource alloc] _initWithCoreResource:coreSubresource.copyRef()]))
             [subresources addObject:resource.get()];
     }
-
     return subresources.autorelease();
 }
 
 - (WebResource *)subresourceForURL:(NSURL *)URL
 {
-    RefPtr<ArchiveResource> subresource = toPrivate(_private)->loader->subresource(URL);
-    
-    return subresource ? [[[WebResource alloc] _initWithCoreResource:subresource.get()] autorelease] : nil;
+    auto subresource = toPrivate(_private)->loader->subresource(URL);
+    return subresource ? [[[WebResource alloc] _initWithCoreResource:subresource.releaseNonNull()] autorelease] : nil;
 }
 
 - (void)addSubresource:(WebResource *)subresource

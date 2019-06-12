@@ -24,29 +24,27 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSCustomElementInterface_h
-#define JSCustomElementInterface_h
-
-#if ENABLE(CUSTOM_ELEMENTS)
+#pragma once
 
 #include "ActiveDOMCallback.h"
+#include "QualifiedName.h"
 #include <heap/Weak.h>
 #include <heap/WeakInlines.h>
 #include <runtime/JSObject.h>
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#include <wtf/text/AtomicStringHash.h>
 
 namespace JSC {
-
 class JSObject;
 class PrivateName;
-
 }
 
 namespace WebCore {
 
 class DOMWrapperWorld;
+class Document;
 class Element;
 class JSDOMGlobalObject;
 class MathMLElement;
@@ -54,27 +52,59 @@ class SVGElement;
 
 class JSCustomElementInterface : public RefCounted<JSCustomElementInterface>, public ActiveDOMCallback {
 public:
-    static Ref<JSCustomElementInterface> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
+    static Ref<JSCustomElementInterface> create(const QualifiedName& name, JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
-        return adoptRef(*new JSCustomElementInterface(callback, globalObject));
+        return adoptRef(*new JSCustomElementInterface(name, callback, globalObject));
     }
 
-    RefPtr<Element> constructElement(const AtomicString&);
+    Ref<Element> constructElementWithFallback(Document&, const AtomicString&);
+    Ref<Element> constructElementWithFallback(Document&, const QualifiedName&);
+
+    void upgradeElement(Element&);
+
+    void setConnectedCallback(JSC::JSObject*);
+    bool hasConnectedCallback() const { return !!m_connectedCallback; }
+    void invokeConnectedCallback(Element&);
+
+    void setDisconnectedCallback(JSC::JSObject*);
+    bool hasDisconnectedCallback() const { return !!m_disconnectedCallback; }
+    void invokeDisconnectedCallback(Element&);
+
+    void setAdoptedCallback(JSC::JSObject*);
+    bool hasAdoptedCallback() const { return !!m_adoptedCallback; }
+    void invokeAdoptedCallback(Element&, Document& oldDocument, Document& newDocument);
+
+    void setAttributeChangedCallback(JSC::JSObject* callback, const Vector<String>& observedAttributes);
+    bool observesAttribute(const AtomicString& name) const { return m_observedAttributes.contains(name); }
+    void invokeAttributeChangedCallback(Element&, const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
 
     ScriptExecutionContext* scriptExecutionContext() const { return ContextDestructionObserver::scriptExecutionContext(); }
     JSC::JSObject* constructor() { return m_constructor.get(); }
 
+    const QualifiedName& name() const { return m_name; }
+
+    bool isUpgradingElement() const { return !m_constructionStack.isEmpty(); }
+    Element* lastElementInConstructionStack() const { return m_constructionStack.last().get(); }
+    void didUpgradeLastElementInConstructionStack();
+
     virtual ~JSCustomElementInterface();
 
 private:
-    JSCustomElementInterface(JSC::JSObject* callback, JSDOMGlobalObject*);
+    JSCustomElementInterface(const QualifiedName&, JSC::JSObject* callback, JSDOMGlobalObject*);
 
-    mutable JSC::Weak<JSC::JSObject> m_constructor;
-    RefPtr<DOMWrapperWorld> m_isolatedWorld;
+    RefPtr<Element> tryToConstructCustomElement(Document&, const AtomicString&);
+
+    void invokeCallback(Element&, JSC::JSObject* callback, const WTF::Function<void(JSC::ExecState*, JSDOMGlobalObject*, JSC::MarkedArgumentBuffer&)>& addArguments = { });
+
+    QualifiedName m_name;
+    JSC::Weak<JSC::JSObject> m_constructor;
+    JSC::Weak<JSC::JSObject> m_connectedCallback;
+    JSC::Weak<JSC::JSObject> m_disconnectedCallback;
+    JSC::Weak<JSC::JSObject> m_adoptedCallback;
+    JSC::Weak<JSC::JSObject> m_attributeChangedCallback;
+    Ref<DOMWrapperWorld> m_isolatedWorld;
+    Vector<RefPtr<Element>, 1> m_constructionStack;
+    HashSet<AtomicString> m_observedAttributes;
 };
 
 } // namespace WebCore
-
-#endif
-
-#endif

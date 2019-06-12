@@ -28,10 +28,12 @@
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
+#import "Color.h"
 #import "QuartzCoreSPI.h"
 #import "WebCoreCALayerExtras.h"
 #import <mach/mach_init.h>
 #import <mach/mach_port.h>
+#import <wtf/BlockPtr.h>
 
 @interface WebVideoContainerLayer : CALayer
 @end
@@ -85,36 +87,50 @@ void VideoFullscreenLayerManager::setVideoLayer(PlatformLayer *videoLayer, IntSi
     }
 }
 
-void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer)
+void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, WTF::Function<void()>&& completionHandler)
 {
-    if (m_videoFullscreenLayer == videoFullscreenLayer)
+    if (m_videoFullscreenLayer == videoFullscreenLayer) {
+        completionHandler();
         return;
+    }
 
     m_videoFullscreenLayer = videoFullscreenLayer;
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
 
-    CAContext *oldContext = [m_videoLayer context];
-    CAContext *newContext = nil;
+    if (m_videoLayer) {
+        CAContext *oldContext = [m_videoLayer context];
 
-    if (m_videoFullscreenLayer && m_videoLayer) {
-        [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
-        [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
-        newContext = [m_videoFullscreenLayer context];
-    } else if (m_videoInlineLayer && m_videoLayer) {
-        [m_videoLayer setFrame:[m_videoInlineLayer bounds]];
-        [m_videoLayer removeFromSuperlayer];
-        [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
-        newContext = [m_videoInlineLayer context];
-    } else if (m_videoLayer)
-        [m_videoLayer removeFromSuperlayer];
+        if (m_videoFullscreenLayer) {
+            [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
+            [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
+        } else if (m_videoInlineLayer) {
+            [m_videoLayer setFrame:[m_videoInlineLayer bounds]];
+            [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
+        } else
+            [m_videoLayer removeFromSuperlayer];
 
-    if (oldContext && newContext && oldContext != newContext) {
-        mach_port_t fencePort = [oldContext createFencePort];
-        [newContext setFencePort:fencePort];
-        mach_port_deallocate(mach_task_self(), fencePort);
+        CAContext *newContext = [m_videoLayer context];
+        if (oldContext && newContext && oldContext != newContext) {
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+            oldContext.commitPriority = 0;
+            newContext.commitPriority = 1;
+#endif
+            mach_port_t fencePort = [oldContext createFencePort];
+            [newContext setFencePort:fencePort];
+            mach_port_deallocate(mach_task_self(), fencePort);
+        }
+
+        [CATransaction setCompletionBlock:BlockPtr<void ()>::fromCallable([completionHandler = WTFMove(completionHandler)] {
+            completionHandler();
+        }).get()];
+    } else {
+        [CATransaction setCompletionBlock:BlockPtr<void ()>::fromCallable([completionHandler = WTFMove(completionHandler)] {
+            completionHandler();
+        }).get()];
     }
+
     [CATransaction commit];
 }
 
@@ -124,14 +140,12 @@ void VideoFullscreenLayerManager::setVideoFullscreenFrame(FloatRect videoFullscr
     if (!m_videoFullscreenLayer)
         return;
 
-    if (m_videoLayer)
-        [m_videoLayer setFrame:CGRectMake(0, 0, videoFullscreenFrame.width(), videoFullscreenFrame.height())];
+    [m_videoLayer setFrame:CGRectMake(0, 0, videoFullscreenFrame.width(), videoFullscreenFrame.height())];
 }
 
 void VideoFullscreenLayerManager::didDestroyVideoLayer()
 {
-    if (m_videoFullscreenLayer)
-        [m_videoLayer removeFromSuperlayer];
+    [m_videoLayer removeFromSuperlayer];
 
     m_videoInlineLayer = nil;
     m_videoLayer = nil;

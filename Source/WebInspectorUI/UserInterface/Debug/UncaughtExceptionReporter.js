@@ -50,13 +50,30 @@ function unblockEventHandlers() {
         document.removeEventListener(name, stopEventPropagation, true);
 }
 
+function handleError(error) {
+    handleUncaughtExceptionRecord({
+        message: error.message,
+        url: parseURL(error.sourceURL).lastPathComponent,
+        lineNumber: error.line,
+        columnNumber: error.column,
+        stack: error.stack,
+        details: error.details,
+    });
+}
+
 function handleUncaughtException(event) {
-    let exceptionRecord = {
+    handleUncaughtExceptionRecord({
         message: event.message,
         url: parseURL(event.filename).lastPathComponent,
         lineNumber: event.lineno,
-        columnNumber: event.colno
-    };
+        columnNumber: event.colno,
+        stack: typeof event.error === "object" && event.error !== null ? event.error.stack : null,
+    });
+}
+
+function handleUncaughtExceptionRecord(exceptionRecord) {
+    if (!WebInspector.settings.enableUncaughtExceptionReporter.value)
+        return;
 
     if (!window.__uncaughtExceptions)
         window.__uncaughtExceptions = [];
@@ -136,21 +153,77 @@ function createErrorSheet() {
             dismissErrorSheet();
     }
 
-    let inspectedPageURL = "(unknown)";
+    function formattedEntry(entry) {
+        const indent = "    ";
+        let lines = [`${entry.message} (at ${entry.url}:${entry.lineNumber}:${entry.columnNumber})`];
+        if (entry.stack) {
+            let stackLines = entry.stack.split(/\n/g);
+            for (let stackLine of stackLines) {
+                let atIndex = stackLine.indexOf("@");
+                let slashIndex = Math.max(stackLine.lastIndexOf("/"), atIndex);
+                let functionName = stackLine.substring(0, atIndex) || "?";
+                let location = stackLine.substring(slashIndex + 1, stackLine.length);
+                lines.push(`${indent}${functionName} @ ${location}`);
+            }
+        }
+
+        if (entry.details) {
+            lines.push("");
+            lines.push("Additional Details:");
+            for (let key in entry.details) {
+                let value = entry.details[key];
+                lines.push(`${indent}${key} --> ${value}`);
+            }
+        }
+
+        return lines.join("\n");
+    }
+
+    let inspectedPageURL = null;
     try {
         inspectedPageURL = WebInspector.frameResourceManager.mainFrame.url;
     } catch (e) { }
 
-    let formattedErrorDetails = window.__uncaughtExceptions.map((entry) => `${entry.message} (at ${entry.url}:${entry.lineNumber}:${entry.columnNumber})`);
-    let detailsForBugReport = formattedErrorDetails.map((line) => ` - ${line}`).join("\n");
-    let encodedBugDescription = encodeURIComponent(`-------
-Auto-generated details:
+    let topLevelItems = [
+        `Inspected URL:        ${inspectedPageURL || "(unknown)"}`,
+        `Loading completed:    ${!!loadCompleted}`,
+        `Frontend User Agent:  ${window.navigator.userAgent}`,
+    ];
 
-Inspected URL:        ${inspectedPageURL}
-Loading completed:    ${!!loadCompleted}
-Frontend User Agent:  ${window.navigator.userAgent}
-Uncaught exceptions:
-${detailsForBugReport}
+    function stringifyAndTruncateObject(object) {
+        let string = JSON.stringify(object);
+        return string.length > 500 ? string.substr(0, 500) + "…" : string;
+    }
+
+    if (InspectorBackend && InspectorBackend.currentDispatchState) {
+        let state = InspectorBackend.currentDispatchState;
+        if (state.event) {
+            topLevelItems.push("Dispatch Source:      Protocol Event");
+            topLevelItems.push("");
+            topLevelItems.push("Protocol Event:");
+            topLevelItems.push(stringifyAndTruncateObject(state.event));
+        }
+        if (state.response) {
+            topLevelItems.push("Dispatch Source:      Protocol Command Response");
+            topLevelItems.push("");
+            topLevelItems.push("Protocol Command Response:");
+            topLevelItems.push(stringifyAndTruncateObject(state.response));
+        }
+        if (state.request) {
+            topLevelItems.push("");
+            topLevelItems.push("Protocol Command Request:");
+            topLevelItems.push(stringifyAndTruncateObject(state.request));
+        }
+    }
+
+    let formattedErrorDetails = window.__uncaughtExceptions.map((entry) => formattedEntry(entry));
+    let detailsForBugReport = formattedErrorDetails.map((line) => ` - ${line}`).join("\n");
+    topLevelItems.push("");
+    topLevelItems.push("Uncaught Exceptions:");
+    topLevelItems.push(detailsForBugReport);
+
+    let encodedBugDescription = encodeURIComponent(`-------
+${topLevelItems.join("\n")}
 -------
 
 * STEPS TO REPRODUCE
@@ -161,7 +234,8 @@ ${detailsForBugReport}
 Document any additional information that might be useful in resolving the problem, such as screen shots or other included attachments.
 `);
     let encodedBugTitle = encodeURIComponent(`Uncaught Exception: ${firstException.message}`);
-    let prefilledBugReportLink = `https://bugs.webkit.org/enter_bug.cgi?alias=&assigned_to=webkit-unassigned%40lists.webkit.org&attach_text=&blocked=&bug_file_loc=http%3A%2F%2F&bug_severity=Normal&bug_status=NEW&comment=${encodedBugDescription}&component=Web%20Inspector&contenttypeentry=&contenttypemethod=autodetect&contenttypeselection=text%2Fplain&data=&dependson=&description=&flag_type-1=X&flag_type-3=X&form_name=enter_bug&keywords=&op_sys=All&priority=P2&product=WebKit&rep_platform=All&short_desc=${encodedBugTitle}&version=WebKit%20Nightly%20Build`;
+    let encodedInspectedURL = encodeURIComponent(inspectedPageURL || "http://");
+    let prefilledBugReportLink = `https://bugs.webkit.org/enter_bug.cgi?alias=&assigned_to=webkit-unassigned%40lists.webkit.org&attach_text=&blocked=&bug_file_loc=${encodedInspectedURL}&bug_severity=Normal&bug_status=NEW&comment=${encodedBugDescription}&component=Web%20Inspector&contenttypeentry=&contenttypemethod=autodetect&contenttypeselection=text%2Fplain&data=&dependson=&description=&flag_type-1=X&flag_type-3=X&form_name=enter_bug&keywords=&op_sys=All&priority=P2&product=WebKit&rep_platform=All&short_desc=${encodedBugTitle}&version=WebKit%20Nightly%20Build`;
     let detailsForHTML = formattedErrorDetails.map((line) => `<li>${insertWordBreakCharacters(line)}</li>`).join("\n");
 
     let dismissOptionHTML = !loadCompleted ? "" : `<dt>A frivolous exception will not stop me!</dt>
@@ -180,7 +254,7 @@ Document any additional information that might be useful in resolving the proble
         UI, or running an updated frontend with out-of-date WebKit build.</dt>
         <dt>I didn't do anything...?</dt>
         <dd>If you don't think you caused this error to happen,
-        <a href="${prefilledBugReportLink}">click to file a pre-populated
+        <a href="${prefilledBugReportLink}" target="_blank">click to file a pre-populated
         bug with this information</a>. It is possible that someone else broke it by accident.</dd>
         <dt>Oops, can I try again?</dt>
         <dd><a href="javascript:window.location.reload()">Click to reload the Inspector</a>
@@ -199,5 +273,6 @@ Document any additional information that might be useful in resolving the proble
 }
 
 window.addEventListener("error", handleUncaughtException);
+window.handlePromiseException = window.handleInternalException = handleError;
 
 })();

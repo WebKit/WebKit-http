@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2003, 2008, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -21,13 +21,12 @@
  *
  */
 
-#ifndef HTMLLinkElement_h
-#define HTMLLinkElement_h
+#pragma once
 
-#include "AttributeDOMTokenList.h"
 #include "CSSStyleSheet.h"
 #include "CachedStyleSheetClient.h"
 #include "CachedResourceHandle.h"
+#include "DOMTokenList.h"
 #include "HTMLElement.h"
 #include "LinkLoader.h"
 #include "LinkLoaderClient.h"
@@ -35,7 +34,7 @@
 
 namespace WebCore {
 
-class AttributeDOMTokenList;
+class DOMTokenList;
 class HTMLLinkElement;
 class URL;
 
@@ -50,14 +49,11 @@ public:
     URL href() const;
     const AtomicString& rel() const;
 
-    virtual String target() const override;
+    String target() const final;
 
     const AtomicString& type() const;
 
-    IconType iconType() const;
-
-    // the icon size string as parsed from the HTML attribute
-    String iconSizes();
+    std::optional<LinkIconType> iconType() const;
 
     CSSStyleSheet* sheet() const { return m_sheet.get(); }
 
@@ -67,57 +63,61 @@ public:
     bool isEnabledViaScript() const { return m_disabledState == EnabledViaScript; }
     DOMTokenList& sizes();
 
+    WEBCORE_EXPORT void setCrossOrigin(const AtomicString&);
+    WEBCORE_EXPORT String crossOrigin() const;
+    WEBCORE_EXPORT void setAs(const AtomicString&);
+    WEBCORE_EXPORT String as() const;
+
     void dispatchPendingEvent(LinkEventSender*);
     static void dispatchPendingLoadEvents();
 
-    DOMTokenList& relList();
+    WEBCORE_EXPORT DOMTokenList& relList();
 
 private:
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    virtual bool shouldLoadLink() override;
+    bool shouldLoadLink() final;
     void process();
     static void processCallback(Node*);
     void clearSheet();
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void finishedInsertingSubtree() final;
+    void removedFrom(ContainerNode&) final;
+
+    void initializeStyleSheet(Ref<StyleSheetContents>&&, const CachedCSSStyleSheet&);
 
     // from CachedResourceClient
-    virtual void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet* sheet) override;
-    virtual bool sheetLoaded() override;
-    virtual void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred) override;
-    virtual void startLoadingDynamicSheet() override;
+    void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet*) final;
+    bool sheetLoaded() final;
+    void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred) final;
+    void startLoadingDynamicSheet() final;
 
-    virtual void linkLoaded() override;
-    virtual void linkLoadingErrored() override;
+    void linkLoaded() final;
+    void linkLoadingErrored() final;
 
     bool isAlternate() const { return m_disabledState == Unset && m_relAttribute.isAlternate; }
     
     void setDisabledState(bool);
 
-    virtual bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const final;
 
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) final;
     void handleClick(Event&);
 
     HTMLLinkElement(const QualifiedName&, Document&, bool createdByParser);
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
-    virtual void finishParsingChildren() override;
+    void finishParsingChildren() final;
 
     enum PendingSheetType { Unknown, ActiveSheet, InactiveSheet };
     void addPendingSheet(PendingSheetType);
 
-    enum RemovePendingSheetNotificationType {
-        RemovePendingSheetNotifyImmediately,
-        RemovePendingSheetNotifyLater
-    };
-
-    void removePendingSheet(RemovePendingSheetNotificationType = RemovePendingSheetNotifyImmediately);
+    void removePendingSheet();
 
     LinkLoader m_linkLoader;
+    Style::Scope* m_styleScope { nullptr };
     CachedResourceHandle<CachedCSSStyleSheet> m_cachedSheet;
     RefPtr<CSSStyleSheet> m_sheet;
     enum DisabledState {
@@ -128,20 +128,19 @@ private:
 
     String m_type;
     String m_media;
-    std::unique_ptr<AttributeDOMTokenList> m_sizes;
+    std::unique_ptr<DOMTokenList> m_sizes;
     DisabledState m_disabledState;
     LinkRelAttribute m_relAttribute;
     bool m_loading;
     bool m_createdByParser;
-    bool m_isInShadowTree;
     bool m_firedLoad;
-    bool m_loadedSheet;
+    bool m_loadedResource;
+    bool m_isHandlingBeforeLoad { false };
 
     PendingSheetType m_pendingSheetType;
+    String m_integrityMetadataForPendingSheetRequest;
 
-    std::unique_ptr<AttributeDOMTokenList> m_relList;
+    std::unique_ptr<DOMTokenList> m_relList;
 };
 
-} //namespace
-
-#endif
+}

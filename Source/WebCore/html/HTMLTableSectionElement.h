@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef HTMLTableSectionElement_h
-#define HTMLTableSectionElement_h
+#pragma once
 
 #include "HTMLNames.h"
 #include "HTMLTablePartElement.h"
@@ -35,30 +34,17 @@ class HTMLTableSectionElement final : public HTMLTablePartElement {
 public:
     static Ref<HTMLTableSectionElement> create(const QualifiedName&, Document&);
 
-    RefPtr<HTMLElement> insertRow(ExceptionCode& ec) { return insertRow(-1, ec); }
-    RefPtr<HTMLElement> insertRow(int index, ExceptionCode&);
-    void deleteRow(int index, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<Ref<HTMLElement>> insertRow(int index = -1);
+    WEBCORE_EXPORT ExceptionOr<void> deleteRow(int index);
 
     int numRows() const;
 
-    const AtomicString& align() const;
-    void setAlign(const AtomicString&);
-
-    const AtomicString& ch() const;
-    void setCh(const AtomicString&);
-
-    const AtomicString& chOff() const;
-    void setChOff(const AtomicString&);
-
-    const AtomicString& vAlign() const;
-    void setVAlign(const AtomicString&);
-
-    Ref<HTMLCollection> rows();
+    WEBCORE_EXPORT Ref<HTMLCollection> rows();
 
 private:
     HTMLTableSectionElement(const QualifiedName& tagName, Document&);
 
-    virtual const StyleProperties* additionalPresentationAttributeStyle() override;
+    const StyleProperties* additionalPresentationAttributeStyle() const final;
 };
 
 } // namespace WebCore
@@ -67,5 +53,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLTableSectionElement)
     static bool isType(const WebCore::HTMLElement& element) { return element.hasTagName(WebCore::HTMLNames::theadTag) || element.hasTagName(WebCore::HTMLNames::tfootTag) || element.hasTagName(WebCore::HTMLNames::tbodyTag); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

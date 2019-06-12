@@ -83,15 +83,15 @@ RenderLayer::FilterInfo::~FilterInfo()
 }
 
 void RenderLayer::FilterInfo::setRenderer(RefPtr<FilterEffectRenderer>&& renderer)
-{ 
-    m_renderer = renderer; 
+{
+    m_renderer = renderer;
 }
 
-void RenderLayer::FilterInfo::notifyFinished(CachedResource*)
+void RenderLayer::FilterInfo::notifyFinished(CachedResource&)
 {
     m_layer.filterNeedsRepaint();
 }
-    
+
 void RenderLayer::FilterInfo::updateReferenceFilterClients(const FilterOperations& operations)
 {
     removeReferenceFilterClients();
@@ -102,14 +102,17 @@ void RenderLayer::FilterInfo::updateReferenceFilterClients(const FilterOperation
         auto* documentReference = referenceOperation.cachedSVGDocumentReference();
         if (auto* cachedSVGDocument = documentReference ? documentReference->document() : nullptr) {
             // Reference is external; wait for notifyFinished().
-            cachedSVGDocument->addClient(this);
+            cachedSVGDocument->addClient(*this);
             m_externalSVGReferences.append(cachedSVGDocument);
         } else {
             // Reference is internal; add layer as a client so we can trigger filter repaint on SVG attribute change.
-            Element* filter = m_layer.renderer().document().getElementById(referenceOperation.fragment());
-            if (!filter || !is<RenderSVGResourceFilter>(filter->renderer()))
+            auto* filter = m_layer.renderer().document().getElementById(referenceOperation.fragment());
+            if (!filter)
                 continue;
-            downcast<RenderSVGResourceFilter>(*filter->renderer()).addClientRenderLayer(&m_layer);
+            auto* renderer = filter->renderer();
+            if (!is<RenderSVGResourceFilter>(renderer))
+                continue;
+            downcast<RenderSVGResourceFilter>(*renderer).addClientRenderLayer(&m_layer);
             m_internalSVGReferences.append(filter);
         }
     }
@@ -118,7 +121,7 @@ void RenderLayer::FilterInfo::updateReferenceFilterClients(const FilterOperation
 void RenderLayer::FilterInfo::removeReferenceFilterClients()
 {
     for (auto& resourceHandle : m_externalSVGReferences)
-        resourceHandle->removeClient(this);
+        resourceHandle->removeClient(*this);
     m_externalSVGReferences.clear();
 
     for (auto& filter : m_internalSVGReferences) {

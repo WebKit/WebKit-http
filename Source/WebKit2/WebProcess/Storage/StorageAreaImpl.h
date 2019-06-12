@@ -41,32 +41,32 @@ class StorageAreaMap;
 
 class StorageAreaImpl final : public WebCore::StorageArea {
 public:
-    static Ref<StorageAreaImpl> create(PassRefPtr<StorageAreaMap>);
+    static Ref<StorageAreaImpl> create(Ref<StorageAreaMap>&&);
     virtual ~StorageAreaImpl();
 
     uint64_t storageAreaID() const { return m_storageAreaID; }
 
 private:
-    StorageAreaImpl(PassRefPtr<StorageAreaMap>);
+    StorageAreaImpl(Ref<StorageAreaMap>&&);
 
     // WebCore::StorageArea.
-    virtual unsigned length() override;
-    virtual String key(unsigned index) override;
-    virtual String item(const String& key) override;
-    virtual void setItem(WebCore::Frame* sourceFrame, const String& key, const String& value, bool& quotaException) override;
-    virtual void removeItem(WebCore::Frame* sourceFrame, const String& key) override;
-    virtual void clear(WebCore::Frame* sourceFrame) override;
-    virtual bool contains(const String& key) override;
-    virtual bool canAccessStorage(WebCore::Frame*) override;
-    virtual WebCore::StorageType storageType() const override;
-    virtual size_t memoryBytesUsedByCache() override;
-    virtual void incrementAccessCount() override;
-    virtual void decrementAccessCount() override;
-    virtual void closeDatabaseIfIdle() override;
-    WebCore::SecurityOrigin& securityOrigin() override;
+    unsigned length() override;
+    String key(unsigned index) override;
+    String item(const String& key) override;
+    void setItem(WebCore::Frame* sourceFrame, const String& key, const String& value, bool& quotaException) override;
+    void removeItem(WebCore::Frame* sourceFrame, const String& key) override;
+    void clear(WebCore::Frame* sourceFrame) override;
+    bool contains(const String& key) override;
+    bool canAccessStorage(WebCore::Frame*) override;
+    WebCore::StorageType storageType() const override;
+    size_t memoryBytesUsedByCache() override;
+    void incrementAccessCount() override;
+    void decrementAccessCount() override;
+    void closeDatabaseIfIdle() override;
+    WebCore::SecurityOriginData securityOrigin() const override;
 
     uint64_t m_storageAreaID;
-    RefPtr<StorageAreaMap> m_storageAreaMap;
+    Ref<StorageAreaMap> m_storageAreaMap;
 };
 
 } // namespace WebKit

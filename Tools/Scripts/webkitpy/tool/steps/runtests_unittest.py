@@ -34,12 +34,13 @@ from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.tool.mocktool import MockOptions, MockTool
 from webkitpy.tool.steps.runtests import RunTests
 
+
 class RunTestsTest(unittest.TestCase):
     def test_webkit_run_unit_tests(self):
         tool = MockTool(log_executive=True)
         tool._deprecated_port.run_python_unittests_command = lambda: None
         tool._deprecated_port.run_perl_unittests_command = lambda: None
-        step = RunTests(tool, MockOptions(test=True, non_interactive=True, quiet=False, build_style="release", iterate_on_new_tests=0))
+        step = RunTests(tool, MockOptions(test=True, non_interactive=True, quiet=False, build_style="release", iterate_on_new_tests=0, group=None))
 
         if sys.platform != "cygwin":
             expected_logs = """Running bindings generation tests

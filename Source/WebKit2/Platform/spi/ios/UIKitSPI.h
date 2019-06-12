@@ -30,6 +30,7 @@
 #import <UIKit/UIAlertController_Private.h>
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIBarButtonItem_Private.h>
+#import <UIKit/UICalloutBar.h>
 #import <UIKit/UIDatePicker_Private.h>
 #import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIDocumentMenuViewController_Private.h>
@@ -54,6 +55,7 @@
 #import <UIKit/UIStringDrawing_Private.h>
 #import <UIKit/UITableViewCell_Private.h>
 #import <UIKit/UITapGestureRecognizer_Private.h>
+#import <UIKit/UITextEffectsWindow.h>
 #import <UIKit/UITextInput_Private.h>
 #import <UIKit/UITextInteractionAssistant_Private.h>
 #import <UIKit/UIViewControllerTransitioning_Private.h>
@@ -79,6 +81,11 @@
 #import <UIKit/UIPreviewItemController.h>
 #endif
 
+#if ENABLE(DRAG_SUPPORT)
+#import <UIKit/NSItemProvider+UIKitAdditions_Private.h>
+#import <UIKit/UIItemProvider_Private.h>
+#endif
+
 #else
 
 #if HAVE(LINK_PREVIEW)
@@ -88,6 +95,7 @@ typedef NS_ENUM(NSInteger, UIPreviewItemType) {
     UIPreviewItemTypeLink,
     UIPreviewItemTypeImage,
     UIPreviewItemTypeText,
+    UIPreviewItemTypeAttachment,
 };
 
 @class UIPreviewItemController;
@@ -205,8 +213,12 @@ typedef enum {
 - (void)candidateListShouldBeDismissed:(id)candidateList;
 @end
 
+// FIXME: https://bugs.webkit.org/show_bug.cgi?id=173341
+#ifndef _WEBKIT_UIKITSPI_UIKEYBOARD
+#define _WEBKIT_UIKITSPI_UIKEYBOARD 1
 @interface UIKeyboard : UIView <UIKeyboardImplGeometryDelegate>
 @end
+#endif
 
 @interface UIKeyboard ()
 + (CGSize)defaultSizeForInterfaceOrientation:(UIInterfaceOrientation)orientation;
@@ -223,18 +235,12 @@ typedef enum {
 + (UIKeyboardImpl *)sharedInstance;
 + (CGSize)defaultSizeForInterfaceOrientation:(UIInterfaceOrientation)orientation;
 - (void)addInputString:(NSString *)string withFlags:(NSUInteger)flags;
+- (void)addInputString:(NSString *)string withFlags:(NSUInteger)flags withInputManagerHint:(NSString *)hint;
 - (BOOL)autocorrectSpellingEnabled;
 - (void)deleteFromInput;
 - (void)deleteFromInputWithFlags:(NSUInteger)flags;
 - (void)replaceText:(id)replacement;
 @property (nonatomic, readwrite, retain) UIResponder <UIKeyInput> *delegate;
-@end
-
-@interface UIGestureRecognizer ()
-- (void)requireOtherGestureToFail:(UIGestureRecognizer *)gestureRecognizer;
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90200
-@property(nonatomic, copy) NSArray<NSNumber *> *allowedTouchTypes;
-#endif
 @end
 
 @interface UILongPressGestureRecognizer ()
@@ -288,16 +294,6 @@ typedef enum {
 - (CADisplay *)_display;
 @end
 
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90100
-typedef enum {
-    UITouchTypeDirect
-} UITouchType;
-
-@interface UITouch ()
-@property(nonatomic,readonly) UITouchType type;
-@end
-#endif
-
 @interface UIScrollView ()
 - (void)_stopScrollingAndZoomingAnimations;
 - (void)_zoomToCenter:(CGPoint)center scale:(CGFloat)scale duration:(CFTimeInterval)duration force:(BOOL)force;
@@ -307,6 +303,10 @@ typedef enum {
 @property (nonatomic, readonly, getter=_isAnimatingScroll) BOOL isAnimatingScroll;
 @property (nonatomic) CGFloat horizontalScrollDecelerationFactor;
 @property (nonatomic) CGFloat verticalScrollDecelerationFactor;
+@property (nonatomic, readonly) BOOL _isInterruptingDeceleration;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+@property (nonatomic, readonly) UIEdgeInsets _systemContentInset;
+#endif
 @end
 
 @interface NSString (UIKitDetails)
@@ -315,7 +315,10 @@ typedef enum {
 @end
 
 @interface UITapGestureRecognizer ()
+@property (nonatomic, getter=_allowableSeparation, setter=_setAllowableSeparation:) CGFloat allowableSeparation; 
 @property (nonatomic, readonly) CGPoint location;
+@property (nonatomic) CGFloat allowableMovement;
+@property (nonatomic, readonly) CGPoint centroid;
 @end
 
 @class WebEvent;
@@ -365,6 +368,12 @@ typedef enum {
 - (void)selectionChanged;
 - (void)setGestureRecognizers;
 - (void)willStartScrollingOverflow;
+@end
+
+@class UITextSuggestion;
+
+@protocol UITextInputSuggestionDelegate <UITextInputDelegate>
+- (void)setSuggestions:(NSArray <UITextSuggestion*> *)suggestions;
 @end
 
 @interface UIViewController ()
@@ -436,9 +445,20 @@ typedef NS_ENUM (NSInteger, _UIBackdropMaskViewFlags) {
 - (void)setFrameOrigin:(CGPoint)origin;
 - (void)setSize:(CGSize)size;
 @property (nonatomic, assign, setter=_setBackdropMaskViewFlags:) NSInteger _backdropMaskViewFlags;
+- (void)_populateArchivedSubviews:(NSMutableSet *)encodedViews;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
+- (void)safeAreaInsetsDidChange;
+#endif
+@end
+
+@interface UIWebSelectionView : UIView
 @end
 
 @interface UIWebSelectionAssistant : NSObject <UIGestureRecognizerDelegate>
+@end
+
+@protocol UISelectionInteractionAssistant
+- (void)showSelectionCommands;
 @end
 
 @interface UIWebSelectionAssistant ()
@@ -452,6 +472,7 @@ typedef NS_ENUM (NSInteger, _UIBackdropMaskViewFlags) {
 - (void)setGestureRecognizers;
 - (void)willStartScrollingOrZoomingPage;
 - (void)willStartScrollingOverflow;
+@property (nonatomic, retain) UIWebSelectionView *selectionView;
 @property (nonatomic, readonly) CGRect selectionFrame;
 @end
 
@@ -500,6 +521,8 @@ typedef NS_ENUM(NSInteger, UIWKGestureType) {
 - (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch;
 - (void)showDictionaryFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)showShareSheetFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
+- (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
+- (void)lookup:(NSString *)textWithContext withRange:(NSRange)range fromRect:(CGRect)presentationRect;
 @property (nonatomic, readonly) UILongPressGestureRecognizer *selectionLongPressRecognizer;
 @end
 
@@ -529,18 +552,23 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 @property (nonatomic, assign) NSRange rangeInMarkedText;
 @end
 
-@interface UIWKTextInteractionAssistant : UITextInteractionAssistant
+@interface UIWKTextInteractionAssistant : UITextInteractionAssistant <UIResponderStandardEditActions>
 @end
 
-@interface UIWKTextInteractionAssistant (UIWKTextInteractionAssistantDetails)
+@interface UIWKTextInteractionAssistant ()
 - (void)selectionChangedWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState withFlags:(UIWKSelectionFlags)flags;
 - (void)showDictionaryFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch;
 - (void)showTextStyleOptions;
 - (void)hideTextStyleOptions;
+- (void)lookup:(NSString *)textWithContext withRange:(NSRange)range fromRect:(CGRect)presentationRect;
+- (void)showShareSheetFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
+- (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
+- (void)scheduleReplacementsForText:(NSString *)text;
+- (void)scheduleChineseTransliterationForText:(NSString *)text;
 
-@property (nonatomic, readonly, retain) UITapGestureRecognizer *singleTapGesture;
-@property (nonatomic, readonly, retain) UILongPressGestureRecognizer *loupeGesture;
+@property (nonatomic, readonly, assign) UILongPressGestureRecognizer *loupeGesture;
+@property (nonatomic, readonly, assign) UITapGestureRecognizer *singleTapGesture;
 @end
 
 @protocol UIWKInteractionViewProtocol
@@ -626,12 +654,23 @@ typedef enum {
     UIWebTouchEventTouchCancel = 3,
 } UIWebTouchEventType;
 
+typedef enum {
+    UIWebTouchPointTypeDirect = 0,
+    UIWebTouchPointTypeStylus
+} UIWebTouchPointType;
+
 struct _UIWebTouchPoint {
     CGPoint locationInScreenCoordinates;
     CGPoint locationInDocumentCoordinates;
     unsigned identifier;
     UITouchPhase phase;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED > 100000
     CGFloat majorRadiusInScreenCoordinates;
+    CGFloat force;
+    CGFloat altitudeAngle;
+    CGFloat azimuthAngle;
+    UIWebTouchPointType touchType;
+#endif
 };
 
 struct _UIWebTouchEvent {
@@ -650,9 +689,12 @@ struct _UIWebTouchEvent {
     bool isPotentialTap;
 };
 
-@protocol UIWebTouchEventsGestureRecognizerDelegate
+@class UIWebTouchEventsGestureRecognizer;
+
+@protocol UIWebTouchEventsGestureRecognizerDelegate <NSObject>
 - (BOOL)isAnyTouchOverActiveArea:(NSSet *)touches;
-- (BOOL)shouldIgnoreWebTouch;
+@optional
+- (BOOL)gestureRecognizer:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer shouldIgnoreWebTouchWithEvent:(UIEvent *)event;
 @end
 
 @interface UIWebTouchEventsGestureRecognizer : UIGestureRecognizer
@@ -706,6 +748,7 @@ typedef NS_ENUM(NSInteger, _UIBackdropViewStylePrivate) {
 
 @interface _UINavigationInteractiveTransitionBase ()
 - (id)initWithGestureRecognizerView:(UIView *)gestureRecognizerView animator:(id<UIViewControllerAnimatedTransitioning>)animator delegate:(id<_UINavigationInteractiveTransitionBaseDelegate>)delegate;
+@property (nonatomic, weak) UIPanGestureRecognizer *gestureRecognizer;
 @property (nonatomic, assign) BOOL shouldReverseTranslation;
 @property (nonatomic, retain) _UINavigationParallaxTransition *animationController;
 @end
@@ -807,10 +850,24 @@ typedef enum {
 
 #endif // USE(APPLE_INTERNAL_SDK)
 
+@interface UIColor (IPI)
++ (UIColor *)insertionPointColor;
+@end
+
 @interface UIView (IPI)
 - (UIScrollView *)_scroller;
 - (CGPoint)accessibilityConvertPointFromSceneReferenceCoordinates:(CGPoint)point;
 - (CGRect)accessibilityConvertRectToSceneReferenceCoordinates:(CGRect)rect;
+@end
+
+@interface UIPeripheralHost (IPI)
+- (void)_beginIgnoringReloadInputViews;
+- (int)_endIgnoringReloadInputViews;
+- (void)forceReloadInputViews;
+@end
+
+@interface UIResponder ()
+- (UIResponder *)firstResponder;
 @end
 
 WTF_EXTERN_C_BEGIN
@@ -849,5 +906,8 @@ extern NSString *const UIKeyInputPageDown;
 extern const NSString *UIPreviewDataLink;
 extern const NSString *UIPreviewDataDDResult;
 extern const NSString *UIPreviewDataDDContext;
+
+extern const NSString *UIPreviewDataAttachmentList;
+extern const NSString *UIPreviewDataAttachmentIndex;
 
 WTF_EXTERN_C_END

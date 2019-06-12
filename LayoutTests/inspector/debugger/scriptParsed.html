@@ -46,20 +46,20 @@ function test()
     }
 
     function isEvalScript(params) {
-        return params.hasSourceURL && params.url === "eval.js";
+        return params.sourceURL === "eval.js";
     }
 
     function isInjectedScriptSourceScript(params) {
-        return params.hasSourceURL && params.url === "__WebInspectorInjectedScript__";
+        return params.sourceURL.startsWith("__InjectedScript_") && params.sourceURL.endsWith(".js");
     }
 
     function isCommandLineAPISourceScript(params) {
-        return params.hasSourceURL && params.url === "__WebInspectorCommandLineAPIModuleSource__";
+        return params.sourceURL.indexOf("CommandLineAPIModuleSource") !== -1;
     }
 
     suite.addTestCase({
         name: "EnableDebuggerDomainAndCheckInitialScripts",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
 
             let initialScriptParsedMessages = [];
             let receivingInitialScripts = true;
@@ -79,10 +79,10 @@ function test()
                         foundInlineAttributeEventListenerScript = true;
                     else if (!foundEvalScript && isEvalScript(params))
                         foundEvalScript = true;
-                    else if (!foundInjectedScriptSourceScript && isInjectedScriptSourceScript(params))
-                        foundInjectedScriptSourceScript = true;
                     else if (!foundCommandLineAPISourceScript && isCommandLineAPISourceScript(params))
                         foundCommandLineAPISourceScript = true;
+                    else if (!foundInjectedScriptSourceScript && isInjectedScriptSourceScript(params))
+                        foundInjectedScriptSourceScript = true;
                     else {
                         ProtocolTest.log("UNEXPECTED SCRIPT: " + JSON.stringify(messageObject));
                         foundUnexpectedScript = true;

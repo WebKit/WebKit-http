@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef Rect_h
-#define Rect_h
+#pragma once
 
 #include "CSSPrimitiveValue.h"
 #include <wtf/RefPtr.h>
@@ -34,10 +33,10 @@ public:
     CSSPrimitiveValue* bottom() const { return m_bottom.get(); }
     CSSPrimitiveValue* left() const { return m_left.get(); }
 
-    void setTop(PassRefPtr<CSSPrimitiveValue> top) { m_top = top; }
-    void setRight(PassRefPtr<CSSPrimitiveValue> right) { m_right = right; }
-    void setBottom(PassRefPtr<CSSPrimitiveValue> bottom) { m_bottom = bottom; }
-    void setLeft(PassRefPtr<CSSPrimitiveValue> left) { m_left = left; }
+    void setTop(RefPtr<CSSPrimitiveValue>&& top) { m_top = WTFMove(top); }
+    void setRight(RefPtr<CSSPrimitiveValue>&& right) { m_right = WTFMove(right); }
+    void setBottom(RefPtr<CSSPrimitiveValue>&& bottom) { m_bottom = WTFMove(bottom); }
+    void setLeft(RefPtr<CSSPrimitiveValue>&& left) { m_left = WTFMove(left); }
 
     bool equals(const RectBase& other) const
     {
@@ -49,14 +48,6 @@ public:
 
 protected:
     RectBase() { }
-    RectBase(const RectBase& cloneFrom)
-        : m_top(cloneFrom.m_top ? cloneFrom.m_top->cloneForCSSOM() : 0)
-        , m_right(cloneFrom.m_right ? cloneFrom.m_right->cloneForCSSOM() : 0)
-        , m_bottom(cloneFrom.m_bottom ? cloneFrom.m_bottom->cloneForCSSOM() : 0)
-        , m_left(cloneFrom.m_left ? cloneFrom.m_left->cloneForCSSOM() : 0)
-    {
-    }
-
     ~RectBase() { }
 
 private:
@@ -66,11 +57,9 @@ private:
     RefPtr<CSSPrimitiveValue> m_left;
 };
 
-class Rect : public RectBase, public RefCounted<Rect> {
+class Rect final : public RectBase, public RefCounted<Rect> {
 public:
     static Ref<Rect> create() { return adoptRef(*new Rect); }
-    
-    Ref<Rect> cloneForCSSOM() const { return adoptRef(*new Rect(*this)); }
 
     String cssText() const
     {
@@ -79,18 +68,15 @@ public:
 
 private:
     Rect() { }
-    Rect(const Rect& cloneFrom) : RectBase(cloneFrom), RefCounted<Rect>() { }
     static String generateCSSString(const String& top, const String& right, const String& bottom, const String& left)
     {
         return "rect(" + top + ", " + right + ", " + bottom + ", " + left + ')';
     }
 };
 
-class Quad : public RectBase, public RefCounted<Quad> {
+class Quad final : public RectBase, public RefCounted<Quad> {
 public:
     static Ref<Quad> create() { return adoptRef(*new Quad); }
-    
-    Ref<Quad> cloneForCSSOM() const { return adoptRef(*new Quad(*this)); }
 
     String cssText() const
     {
@@ -99,7 +85,6 @@ public:
 
 private:
     Quad() { }
-    Quad(const Quad& cloneFrom) : RectBase(cloneFrom), RefCounted<Quad>() { }
     static String generateCSSString(const String& top, const String& right, const String& bottom, const String& left)
     {
         StringBuilder result;
@@ -123,5 +108,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // Rect_h

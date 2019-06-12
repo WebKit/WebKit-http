@@ -33,6 +33,14 @@ namespace WTF {
         return value.isNull();
     }
 
+    inline void HashTraits<String>::customDeleteBucket(String& value)
+    {
+        // See unique_ptr's customDeleteBucket() for an explanation.
+        ASSERT(!isDeletedValue(value));
+        String valueToBeDestroyed = WTFMove(value);
+        constructDeletedValue(value);
+    }
+
     // The hash() functions on StringHash and ASCIICaseInsensitiveHash do not support
     // null strings. get(), contains(), and add() on HashMap<String,..., StringHash>
     // cause a null-pointer dereference when passed null strings.
@@ -71,8 +79,7 @@ namespace WTF {
         static const bool safeToCompareToEmptyOrDeleted = false;
     };
 
-    class ASCIICaseInsensitiveHash {
-    public:
+    struct ASCIICaseInsensitiveHash {
         template<typename T> static inline UChar foldCase(T character)
         {
             return toASCIILower(character);
@@ -168,9 +175,26 @@ namespace WTF {
         }
     };
 
+    // FIXME: Find a way to incorporate this functionality into ASCIICaseInsensitiveHash and allow
+    // a HashMap whose keys are type String to perform operations when given a key of type StringView.
+    struct ASCIICaseInsensitiveStringViewHashTranslator {
+        static unsigned hash(StringView key)
+        {
+            if (key.is8Bit())
+                return ASCIICaseInsensitiveHash::hash(key.characters8(), key.length());
+            return ASCIICaseInsensitiveHash::hash(key.characters16(), key.length());
+        }
+
+        static bool equal(const String& a, StringView b)
+        {
+            return equalIgnoringASCIICaseCommon(a, b);
+        }
+    };
+
 }
 
 using WTF::ASCIICaseInsensitiveHash;
+using WTF::ASCIICaseInsensitiveStringViewHashTranslator;
 using WTF::AlreadyHashed;
 using WTF::StringHash;
 

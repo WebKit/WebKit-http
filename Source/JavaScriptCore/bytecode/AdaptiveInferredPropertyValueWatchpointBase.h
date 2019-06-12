@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AdaptiveInferredPropertyValueWatchpointBase_h
-#define AdaptiveInferredPropertyValueWatchpointBase_h
+#pragma once
 
 #include "ObjectPropertyCondition.h"
 #include "Watchpoint.h"
@@ -47,6 +46,7 @@ public:
     virtual ~AdaptiveInferredPropertyValueWatchpointBase() = default;
 
 protected:
+    virtual bool isValid() const;
     virtual void handleFire(const FireDetail&) = 0;
 
 private:
@@ -54,13 +54,13 @@ private:
     public:
         StructureWatchpoint() { }
     protected:
-        virtual void fireInternal(const FireDetail&) override;
+        void fireInternal(const FireDetail&) override;
     };
     class PropertyWatchpoint : public Watchpoint {
     public:
         PropertyWatchpoint() { }
     protected:
-        virtual void fireInternal(const FireDetail&) override;
+        void fireInternal(const FireDetail&) override;
     };
 
     void fire(const FireDetail&);
@@ -71,5 +71,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif /* AdaptiveInferredPropertyValueWatchpointBase_h */

@@ -1,40 +1,41 @@
 <!DOCTYPE html>
 <head>
 <link href="resources/grid.css" rel="stylesheet"/>
+<link href="resources/grid-alignment.css" rel="stylesheet"/>
 <style>
  .grid { font: 10px/1 Ahem; }
 
  .gridAutoAndMaxContent {
-    -webkit-grid-template-columns: auto -webkit-max-content;
+    grid-template-columns: auto max-content;
  }
  .gridFixedMinContentAndFixedMaxContent {
-    -webkit-grid-template-columns: minmax(10px, -webkit-min-content) minmax(10px, -webkit-max-content);
+    grid-template-columns: minmax(10px, min-content) minmax(10px, max-content);
  }
  .gridMinContentAndMaxContent {
-    -webkit-grid-template-columns: -webkit-min-content -webkit-max-content;
+    grid-template-columns: min-content max-content;
  }
 
  .gridMinContentAndFixedAndMaxContent {
-    -webkit-grid-template-columns: -webkit-min-content 20px -webkit-max-content;
+    grid-template-columns: min-content 20px max-content;
  }
 
  .gridMaxContentAndFixedAndAuto {
-    -webkit-grid-template-columns: -webkit-max-content 20px auto;
+    grid-template-columns: max-content 20px auto;
  }
 
  .gridRepeatTwoMaxContentAndMinContent {
-    -webkit-grid-template-columns: repeat(2, -webkit-max-content -webkit-min-content);
+    grid-template-columns: repeat(2, max-content min-content);
  }
 
  .gridRepeatTwoAutoAndMaxContent {
-    -webkit-grid-template-columns: repeat(2, auto -webkit-max-content);
+    grid-template-columns: repeat(2, auto max-content);
  }
 
- .columns1And2 { -webkit-grid-column: 1 / span 2; }
- .columns2And3 { -webkit-grid-column: 2 / span 2; }
- .columns3And4 { -webkit-grid-column: 3 / span 2; }
- .columns1To3 { -webkit-grid-column: 1 / span 3; }
- .columns1To4 { -webkit-grid-column: 1 / span 4; }
+ .columns1And2 { grid-column: 1 / span 2; }
+ .columns2And3 { grid-column: 2 / span 2; }
+ .columns3And4 { grid-column: 3 / span 2; }
+ .columns1To3 { grid-column: 1 / span 3; }
+ .columns1To4 { grid-column: 1 / span 4; }
 </style>
 <script src="../../resources/js-test.js"></script>
 </head>
@@ -62,7 +63,7 @@
     <div class="columns1To3">XXXXX XXX XXXX</div>
 </div>
 
-<div class="grid gridMaxContentAndFixedAndAuto" id="gridMaxContentAndFixedAndAuto">
+<div class="grid gridMaxContentAndFixedAndAuto justifyContentStart" id="gridMaxContentAndFixedAndAuto">
     <div class="columns1To3">XXXX XXXX</div>
     <div class="columns1To3">XXXXX XXX XXXX</div>
 </div>
@@ -89,20 +90,20 @@
     <div class="columns1And2">XXXXXX</div>
 </div>
 
-<div class="grid gridRepeatTwoAutoAndMaxContent" id="gridRepeatTwoAutoAndMaxContentTwoOverlapping">
+<div class="grid gridRepeatTwoAutoAndMaxContent justifyContentStart" id="gridRepeatTwoAutoAndMaxContentTwoOverlapping">
     <div class="columns1And2">XXXX XXXX</div>
     <div class="columns3And4">XX XX</div>
     <div class="columns1And2">XXXXX XXX XXXX</div>
     <div class="columns3And4">XXX XX XXX</div>
 </div>
 
-<div class="grid gridRepeatTwoAutoAndMaxContent" id="gridRepeatTwoAutoAndMaxContentThreeOverlapping">
+<div class="grid gridRepeatTwoAutoAndMaxContent justifyContentStart" id="gridRepeatTwoAutoAndMaxContentThreeOverlapping">
     <div class="columns2And3">XXXXX XXX XXXX</div>
     <div class="columns3And4">XXX XX XXX</div>
     <div class="columns1And2">XXXX XXXX</div>
 </div>
 
-<div class="grid gridRepeatTwoAutoAndMaxContent" id="gridRepeatTwoAutoAndMaxContentTwoAndFourOverlapping">
+<div class="grid gridRepeatTwoAutoAndMaxContent justifyContentStart" id="gridRepeatTwoAutoAndMaxContentTwoAndFourOverlapping">
     <div class="columns1To4">XXXX XXXX</div>
     <div class="columns3And4">XX XX</div>
     <div class="columns1To4">XXXXX XXX XXXX</div>
@@ -114,7 +115,7 @@
 <script>
 function testGridColumnsValues(id, computedColumnValue)
 {
-    shouldBeEqualToString("window.getComputedStyle(" + id + ", '').getPropertyValue('-webkit-grid-template-columns')", computedColumnValue);
+    shouldBeEqualToString("window.getComputedStyle(" + id + ", '').getPropertyValue('grid-template-columns')", computedColumnValue);
 }
 
 debug("Check that tracks are updated after distributing the extra space for all the items in the same group span.");

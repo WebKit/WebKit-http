@@ -26,6 +26,8 @@
 #include "config.h"
 #include "SimpleLineLayoutTextFragmentIterator.h"
 
+#include "FontCascade.h"
+#include "Hyphenation.h"
 #include "RenderBlockFlow.h"
 #include "RenderChildIterator.h"
 #include "SimpleLineLayoutFlowContents.h"
@@ -33,26 +35,34 @@
 namespace WebCore {
 namespace SimpleLineLayout {
 
-TextFragmentIterator::Style::Style(const RenderStyle& style)
+TextFragmentIterator::Style::Style(const RenderStyle& style, bool useSimplifiedTextMeasuring)
     : font(style.fontCascade())
     , textAlign(style.textAlign())
+    , hasKerningOrLigatures(font.enableKerning() || font.requiresShaping())
     , collapseWhitespace(style.collapseWhiteSpace())
     , preserveNewline(style.preserveNewline())
     , wrapLines(style.autoWrap())
     , breakAnyWordOnOverflow(style.wordBreak() == BreakAllWordBreak && wrapLines)
     , breakFirstWordOnOverflow(breakAnyWordOnOverflow || (style.breakWords() && (wrapLines || preserveNewline)))
-    , spaceWidth(font.width(TextRun(StringView(&space, 1))))
+    , breakNBSP(wrapLines && style.nbspMode() == SPACE)
+    , keepAllWordsForCJK(style.wordBreak() == KeepAllWordBreak)
     , wordSpacing(font.wordSpacing())
     , tabWidth(collapseWhitespace ? 0 : style.tabSize())
+    , shouldHyphenate(style.hyphens() == HyphensAuto && canHyphenate(style.locale()))
+    , hyphenStringWidth(shouldHyphenate ? (useSimplifiedTextMeasuring ? font.widthForSimpleText(style.hyphenString()) : font.width(TextRun(style.hyphenString()))) : 0)
+    , hyphenLimitBefore(style.hyphenationLimitBefore() < 0 ? 2 : style.hyphenationLimitBefore())
+    , hyphenLimitAfter(style.hyphenationLimitAfter() < 0 ? 2 : style.hyphenationLimitAfter())
     , locale(style.locale())
 {
+    if (style.hyphenationLimitLines() > -1)
+        hyphenLimitLines = style.hyphenationLimitLines();
 }
 
 TextFragmentIterator::TextFragmentIterator(const RenderBlockFlow& flow)
     : m_flowContents(flow)
     , m_currentSegment(m_flowContents.begin())
     , m_lineBreakIterator(m_currentSegment->text, flow.style().locale())
-    , m_style(flow.style())
+    , m_style(flow.style(), m_currentSegment->canUseSimplifiedTextMeasuring)
 {
 }
 
@@ -110,32 +120,46 @@ void TextFragmentIterator::revertToEndOfFragment(const TextFragment& fragment)
     m_atEndOfSegment = false;
 }
 
-template <typename CharacterType>
+static inline unsigned nextBreakablePositionInSegment(LazyLineBreakIterator& lineBreakIterator, unsigned startPosition, bool breakNBSP, bool keepAllWordsForCJK)
+{
+    if (keepAllWordsForCJK) {
+        if (breakNBSP)
+            return nextBreakablePositionKeepingAllWords(lineBreakIterator, startPosition);
+        return nextBreakablePositionKeepingAllWordsIgnoringNBSP(lineBreakIterator, startPosition);
+    }
+
+    if (lineBreakIterator.mode() == LineBreakIteratorMode::Default) {
+        if (breakNBSP)
+            return WebCore::nextBreakablePosition(lineBreakIterator, startPosition);
+        return nextBreakablePositionIgnoringNBSP(lineBreakIterator, startPosition);
+    }
+
+    if (breakNBSP)
+        return nextBreakablePositionWithoutShortcut(lineBreakIterator, startPosition);
+    return nextBreakablePositionIgnoringNBSPWithoutShortcut(lineBreakIterator, startPosition);
+}
+
 unsigned TextFragmentIterator::nextBreakablePosition(const FlowContents::Segment& segment, unsigned startPosition)
 {
     ASSERT(startPosition < segment.end);
-    if (segment.text.impl() != m_lineBreakIterator.string().impl()) {
-        const String& currentText = m_lineBreakIterator.string();
+    StringView currentText = m_lineBreakIterator.stringView();
+    StringView segmentText = StringView(segment.text);
+    if (segmentText != currentText) {
         unsigned textLength = currentText.length();
         UChar lastCharacter = textLength > 0 ? currentText[textLength - 1] : 0;
         UChar secondToLastCharacter = textLength > 1 ? currentText[textLength - 2] : 0;
         m_lineBreakIterator.setPriorContext(lastCharacter, secondToLastCharacter);
-        m_lineBreakIterator.resetStringAndReleaseIterator(segment.text, m_style.locale, LineBreakIteratorModeUAX14);
+        m_lineBreakIterator.resetStringAndReleaseIterator(segment.text, m_style.locale, LineBreakIteratorMode::Default);
     }
-    const auto* characters = segment.text.characters<CharacterType>();
-    unsigned segmentLength = segment.end - segment.start;
-    unsigned segmentPosition = startPosition - segment.start;
-    return segment.start + nextBreakablePositionNonLoosely<CharacterType, NBSPBehavior::IgnoreNBSP>(m_lineBreakIterator, characters, segmentLength, segmentPosition);
+    return segment.toRenderPosition(nextBreakablePositionInSegment(m_lineBreakIterator, segment.toSegmentPosition(startPosition), m_style.breakNBSP, m_style.keepAllWordsForCJK));
 }
 
-template <typename CharacterType>
 unsigned TextFragmentIterator::nextNonWhitespacePosition(const FlowContents::Segment& segment, unsigned startPosition)
 {
     ASSERT(startPosition < segment.end);
-    const auto* text = segment.text.characters<CharacterType>();
     unsigned position = startPosition;
     for (; position < segment.end; ++position) {
-        auto character = text[position - segment.start];
+        auto character = segment.text[segment.toSegmentPosition(position)];
         bool isWhitespace = character == ' ' || character == '\t' || (!m_style.preserveNewline && character == '\n');
         if (!isWhitespace)
             return position;
@@ -143,14 +167,30 @@ unsigned TextFragmentIterator::nextNonWhitespacePosition(const FlowContents::Seg
     return position;
 }
 
-float TextFragmentIterator::textWidth(unsigned from, unsigned to, float xPosition) const
+std::optional<unsigned> TextFragmentIterator::lastHyphenPosition(const TextFragmentIterator::TextFragment& run, unsigned before) const
 {
+    ASSERT(run.start() < before);
     auto& segment = *m_currentSegment;
-    ASSERT(segment.start <= from && from <= segment.end && segment.start <= to && to <= segment.end);
+    ASSERT(segment.start <= before && before <= segment.end);
     ASSERT(is<RenderText>(segment.renderer));
-    if (m_style.font.isFixedPitch() || (from == segment.start && to == segment.end))
-        return downcast<RenderText>(segment.renderer).width(from - segment.start, to - from, m_style.font, xPosition, nullptr, nullptr);
-    return segment.text.is8Bit() ? runWidth<LChar>(segment, from, to, xPosition) : runWidth<UChar>(segment, from, to, xPosition);
+    if (!m_style.shouldHyphenate || run.type() != TextFragment::NonWhitespace)
+        return std::nullopt;
+    // Check if there are enough characters in the run.
+    unsigned runLength = run.end() - run.start();
+    if (m_style.hyphenLimitBefore >= runLength || m_style.hyphenLimitAfter >= runLength || m_style.hyphenLimitBefore + m_style.hyphenLimitAfter > runLength)
+        return std::nullopt;
+    auto runStart = segment.toSegmentPosition(run.start());
+    auto beforeIndex = segment.toSegmentPosition(before) - runStart;
+    if (beforeIndex <= m_style.hyphenLimitBefore)
+        return std::nullopt;
+    // Adjust before index to accommodate the limit-after value (this is the last potential hyphen location).
+    beforeIndex = std::min(beforeIndex, runLength - m_style.hyphenLimitAfter + 1);
+    auto substringForHyphenation = StringView(segment.text).substring(runStart, run.end() - run.start());
+    auto hyphenLocation = lastHyphenLocation(substringForHyphenation, beforeIndex, m_style.locale);
+    // Check if there are enough characters before and after the hyphen.
+    if (hyphenLocation && hyphenLocation >= m_style.hyphenLimitBefore && m_style.hyphenLimitAfter <= (runLength - hyphenLocation))
+        return segment.toRenderPosition(hyphenLocation + runStart);
+    return std::nullopt;
 }
 
 unsigned TextFragmentIterator::skipToNextPosition(PositionType positionType, unsigned startPosition, float& width, float xPosition, bool& overlappingFragment)
@@ -160,9 +200,9 @@ unsigned TextFragmentIterator::skipToNextPosition(PositionType positionType, uns
     unsigned nextPosition = currentPosition;
     // Collapsed whitespace has constant width. Do not measure it.
     if (positionType == NonWhitespace)
-        nextPosition = m_currentSegment->text.is8Bit() ? nextNonWhitespacePosition<LChar>(*m_currentSegment, currentPosition) : nextNonWhitespacePosition<UChar>(*m_currentSegment, currentPosition);
+        nextPosition = nextNonWhitespacePosition(*m_currentSegment, currentPosition);
     else if (positionType == Breakable) {
-        nextPosition = m_currentSegment->text.is8Bit() ? nextBreakablePosition<LChar>(*m_currentSegment, currentPosition) : nextBreakablePosition<UChar>(*m_currentSegment, currentPosition);
+        nextPosition = nextBreakablePosition(*m_currentSegment, currentPosition);
         // nextBreakablePosition returns the same position for certain characters such as hyphens. Call next again with modified position unless we are at the end of the segment.
         bool skipCurrentPosition = nextPosition == currentPosition;
         if (skipCurrentPosition) {
@@ -171,13 +211,13 @@ unsigned TextFragmentIterator::skipToNextPosition(PositionType positionType, uns
             if (currentPosition == m_currentSegment->end - 1)
                 nextPosition = m_currentSegment->end;
             else
-                nextPosition = m_currentSegment->text.is8Bit() ? nextBreakablePosition<LChar>(*m_currentSegment, currentPosition + 1) : nextBreakablePosition<UChar>(*m_currentSegment, currentPosition + 1);
+                nextPosition = nextBreakablePosition(*m_currentSegment, currentPosition + 1);
         }
         // We need to know whether the word actually finishes at the end of this renderer or not.
         if (nextPosition == m_currentSegment->end) {
             const auto nextSegment = m_currentSegment + 1;
             if (nextSegment != m_flowContents.end() && !isHardLineBreak(nextSegment))
-                overlappingFragment = nextPosition < (nextSegment->text.is8Bit() ? nextBreakablePosition<LChar>(*nextSegment, nextPosition) : nextBreakablePosition<UChar>(*nextSegment, nextPosition));
+                overlappingFragment = nextPosition < nextBreakablePosition(*nextSegment, nextPosition);
         }
     }
     width = 0;
@@ -188,27 +228,38 @@ unsigned TextFragmentIterator::skipToNextPosition(PositionType positionType, uns
     if (measureText)
         width = this->textWidth(currentPosition, nextPosition, xPosition);
     else if (startPosition < nextPosition)
-        width = m_style.spaceWidth + m_style.wordSpacing;
+        width = m_style.font.spaceWidth() + m_style.wordSpacing;
     return nextPosition;
 }
 
-template <typename CharacterType>
-float TextFragmentIterator::runWidth(const FlowContents::Segment& segment, unsigned startPosition, unsigned endPosition, float xPosition) const
+float TextFragmentIterator::textWidth(unsigned from, unsigned to, float xPosition) const
 {
-    ASSERT(startPosition <= endPosition);
-    if (startPosition == endPosition)
+    auto& segment = *m_currentSegment;
+    ASSERT(segment.start <= from && from <= segment.end && segment.start <= to && to <= segment.end);
+    ASSERT(is<RenderText>(segment.renderer));
+    if (!m_style.font.size() || from == to)
         return 0;
-    unsigned segmentFrom = startPosition - segment.start;
-    unsigned segmentTo = endPosition - segment.start;
-    bool measureWithEndSpace = m_style.collapseWhitespace && segmentTo < segment.text.length() && segment.text[segmentTo] == ' ';
+
+    unsigned segmentFrom = segment.toSegmentPosition(from);
+    unsigned segmentTo = segment.toSegmentPosition(to);
+    if (m_style.font.isFixedPitch())
+        return downcast<RenderText>(segment.renderer).width(segmentFrom, segmentTo - segmentFrom, m_style.font, xPosition, nullptr, nullptr);
+
+    bool measureWithEndSpace = m_style.hasKerningOrLigatures && m_style.collapseWhitespace
+        && segmentTo < segment.text.length() && segment.text[segmentTo] == ' ';
     if (measureWithEndSpace)
         ++segmentTo;
-    TextRun run(StringView(segment.text).substring(segmentFrom, segmentTo - segmentFrom));
-    run.setXPos(xPosition);
-    run.setTabSize(!!m_style.tabWidth, m_style.tabWidth);
-    float width = m_style.font.width(run);
+    float width = 0;
+    if (segment.canUseSimplifiedTextMeasuring)
+        width = m_style.font.widthForSimpleText(StringView(segment.text).substring(segmentFrom, segmentTo - segmentFrom));
+    else {
+        TextRun run(StringView(segment.text).substring(segmentFrom, segmentTo - segmentFrom), xPosition);
+        if (m_style.tabWidth)
+            run.setTabSize(true, m_style.tabWidth);
+        width = m_style.font.width(run);
+    }
     if (measureWithEndSpace)
-        width -= (m_style.spaceWidth + m_style.wordSpacing);
+        width -= (m_style.font.spaceWidth() + m_style.wordSpacing);
     return std::max<float>(0, width);
 }
 

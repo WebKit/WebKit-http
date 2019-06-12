@@ -32,6 +32,7 @@
 #import "PluginSandboxProfile.h"
 #import <wtf/HashSet.h>
 #import <wtf/MainThread.h>
+#import <wtf/spi/cf/CFBundleSPI.h>
 
 using namespace WebCore;
 
@@ -77,50 +78,9 @@ static bool getPluginArchitecture(CFBundleRef bundle, PluginModuleInfo& plugin)
     return false;
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-static RetainPtr<CFDictionaryRef> contentsOfPropertyListAtURL(CFURLRef propertyListURL)
-{
-    RetainPtr<NSData> propertyListData = adoptNS([[NSData alloc] initWithContentsOfURL:(NSURL *)propertyListURL]);
-    if (!propertyListData)
-        return 0;
-
-    RetainPtr<CFPropertyListRef> propertyList = adoptCF(CFPropertyListCreateWithData(kCFAllocatorDefault, (CFDataRef)propertyListData.get(), kCFPropertyListImmutable, 0, 0));
-    if (!propertyList)
-        return 0;
-
-    if (CFGetTypeID(propertyList.get()) != CFDictionaryGetTypeID())
-        return 0;
-
-    return static_cast<CFDictionaryRef>(propertyList.get());
-}
-#endif
-
-static RetainPtr<CFDictionaryRef> getMIMETypesFromPluginBundle(CFBundleRef bundle, const PluginModuleInfo& plugin)
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-    CFStringRef propertyListFilename = static_cast<CFStringRef>(CFBundleGetValueForInfoDictionaryKey(bundle, CFSTR("WebPluginMIMETypesFilename")));
-    if (propertyListFilename) {
-        RetainPtr<CFStringRef> propertyListPath = adoptCF(CFStringCreateWithFormat(kCFAllocatorDefault, 0, CFSTR("%@/Library/Preferences/%@"), NSHomeDirectory(), propertyListFilename));
-        RetainPtr<CFURLRef> propertyListURL = adoptCF(CFURLCreateWithFileSystemPath(kCFAllocatorDefault, propertyListPath.get(), kCFURLPOSIXPathStyle, FALSE));
-
-        RetainPtr<CFDictionaryRef> propertyList = contentsOfPropertyListAtURL(propertyListURL.get());
-
-        if (!propertyList && PluginProcessProxy::createPropertyListFile(plugin))
-            propertyList = contentsOfPropertyListAtURL(propertyListURL.get());
-
-        if (!propertyList)
-            return 0;
-        
-        return static_cast<CFDictionaryRef>(CFDictionaryGetValue(propertyList.get(), CFSTR("WebPluginMIMETypes")));
-    }
-#endif
-    
-    return static_cast<CFDictionaryRef>(CFBundleGetValueForInfoDictionaryKey(bundle, CFSTR("WebPluginMIMETypes")));
-}
-
 static bool getPluginInfoFromPropertyLists(CFBundleRef bundle, PluginModuleInfo& plugin)
 {
-    RetainPtr<CFDictionaryRef> mimeTypes = getMIMETypesFromPluginBundle(bundle, plugin);
+    RetainPtr<CFDictionaryRef> mimeTypes = static_cast<CFDictionaryRef>(CFBundleGetValueForInfoDictionaryKey(bundle, CFSTR("WebPluginMIMETypes")));
     if (!mimeTypes || CFGetTypeID(mimeTypes.get()) != CFDictionaryGetTypeID())
         return false;
 
@@ -208,7 +168,7 @@ bool NetscapePluginModule::getPluginInfo(const String& pluginPath, PluginModuleI
     RetainPtr<CFURLRef> bundleURL = adoptCF(CFURLCreateWithFileSystemPath(kCFAllocatorDefault, pluginPath.createCFString().get(), kCFURLPOSIXPathStyle, false));
     
     // Try to initialize the bundle.
-    RetainPtr<CFBundleRef> bundle = adoptCF(CFBundleCreate(kCFAllocatorDefault, bundleURL.get()));
+    RetainPtr<CFBundleRef> bundle = adoptCF(_CFBundleCreateUnique(kCFAllocatorDefault, bundleURL.get()));
     if (!bundle)
         return false;
     

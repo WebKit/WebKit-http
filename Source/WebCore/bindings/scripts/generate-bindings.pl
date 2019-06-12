@@ -29,12 +29,16 @@
 # <rdar://problems/4251781&4251785>
 
 use strict;
+use FindBin;
+use lib '.', $FindBin::Bin;
 
+use English;
 use File::Path;
 use File::Basename;
 use Getopt::Long;
 use Text::ParseWords;
 use Cwd;
+use JSON::PP;
 
 use IDLParser;
 use CodeGenerator;
@@ -72,6 +76,7 @@ my $targetIdlFile = $ARGV[0];
 die('Must specify input file.') unless defined($targetIdlFile);
 die('Must specify generator') unless defined($generator);
 die('Must specify output directory.') unless defined($outputDirectory);
+die('Must specify IDL attributes file.') unless defined($idlAttributesFile);
 
 if (!$outputHeadersDirectory) {
     $outputHeadersDirectory = $outputDirectory;
@@ -80,7 +85,7 @@ $targetIdlFile = Cwd::realpath($targetIdlFile);
 if ($verbose) {
     print "$generator: $targetIdlFile\n";
 }
-my $targetInterfaceName = fileparse(basename($targetIdlFile), ".idl");
+my $targetInterfaceName = fileparse($targetIdlFile, ".idl");
 
 my $idlFound = 0;
 my @supplementedIdlFiles;
@@ -98,7 +103,7 @@ if ($supplementalDependencyFile) {
     open FH, "< $supplementalDependencyFile" or die "Cannot open $supplementalDependencyFile\n";
     while (my $line = <FH>) {
         my ($idlFile, @followingIdlFiles) = split(/\s+/, $line);
-        if ($idlFile and basename($idlFile) eq basename($targetIdlFile)) {
+        if ($idlFile and fileparse($idlFile) eq fileparse($targetIdlFile)) {
             $idlFound = 1;
             @supplementedIdlFiles = sort @followingIdlFiles;
         }
@@ -110,7 +115,7 @@ if ($supplementalDependencyFile) {
     # dependency file) but should generate .h and .cpp files.
     if (!$idlFound and $additionalIdlFiles) {
         my @idlFiles = shellwords($additionalIdlFiles);
-        $idlFound = grep { $_ and basename($_) eq basename($targetIdlFile) } @idlFiles;
+        $idlFound = grep { $_ and fileparse($_) eq fileparse($targetIdlFile) } @idlFiles;
     }
 
     if (!$idlFound) {
@@ -122,28 +127,39 @@ if ($supplementalDependencyFile) {
     }
 }
 
+my $input;
+{
+    local $INPUT_RECORD_SEPARATOR;
+    open(JSON, "<", $idlAttributesFile) or die "Couldn't open $idlAttributesFile: $!";
+    $input = <JSON>;
+    close(JSON);
+}
+
+my $jsonDecoder = JSON::PP->new->utf8;
+my $jsonHashRef = $jsonDecoder->decode($input);
+my $idlAttributes = $jsonHashRef->{attributes};
+
 # Parse the target IDL file.
 my $targetParser = IDLParser->new(!$verbose);
-my $targetDocument = $targetParser->Parse($targetIdlFile, $defines, $preprocessor);
-
-if ($idlAttributesFile) {
-    my $idlAttributes = loadIDLAttributes($idlAttributesFile);
-    checkIDLAttributes($idlAttributes, $targetDocument, basename($targetIdlFile));
-}
+my $targetDocument = $targetParser->Parse($targetIdlFile, $defines, $preprocessor, $idlAttributes);
 
 foreach my $idlFile (@supplementedIdlFiles) {
     next if $idlFile eq $targetIdlFile;
 
-    my $interfaceName = fileparse(basename($idlFile), ".idl");
+    my $interfaceName = fileparse($idlFile, ".idl");
     my $parser = IDLParser->new(!$verbose);
-    my $document = $parser->Parse($idlFile, $defines, $preprocessor);
+    my $document = $parser->Parse($idlFile, $defines, $preprocessor, $idlAttributes);
 
     foreach my $interface (@{$document->interfaces}) {
-        if (!$interface->isPartial || $interface->name eq $targetInterfaceName) {
+        if (!$interface->isPartial || $interface->type->name eq $targetInterfaceName) {
             my $targetDataNode;
+            my @targetGlobalContexts;
             foreach my $interface (@{$targetDocument->interfaces}) {
-                if ($interface->name eq $targetInterfaceName) {
+                if ($interface->type->name eq $targetInterfaceName) {
                     $targetDataNode = $interface;
+                    my $exposedAttribute = $targetDataNode->extendedAttributes->{"Exposed"} || "Window";
+                    $exposedAttribute = substr($exposedAttribute, 1, -1) if substr($exposedAttribute, 0, 1) eq "(";
+                    @targetGlobalContexts = split(",", $exposedAttribute);
                     last;
                 }
             }
@@ -151,30 +167,36 @@ foreach my $idlFile (@supplementedIdlFiles) {
 
             # Support for attributes of partial interfaces.
             foreach my $attribute (@{$interface->attributes}) {
+                next unless shouldPropertyBeExposed($attribute, \@targetGlobalContexts);
+
                 # Record that this attribute is implemented by $interfaceName.
-                $attribute->signature->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
+                $attribute->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
 
                 # Add interface-wide extended attributes to each attribute.
                 foreach my $extendedAttributeName (keys %{$interface->extendedAttributes}) {
-                    $attribute->signature->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
+                    $attribute->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
                 }
                 push(@{$targetDataNode->attributes}, $attribute);
             }
 
             # Support for methods of partial interfaces.
-            foreach my $function (@{$interface->functions}) {
+            foreach my $operation (@{$interface->operations}) {
+                next unless shouldPropertyBeExposed($operation, \@targetGlobalContexts);
+
                 # Record that this method is implemented by $interfaceName.
-                $function->signature->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
+                $operation->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
 
                 # Add interface-wide extended attributes to each method.
                 foreach my $extendedAttributeName (keys %{$interface->extendedAttributes}) {
-                    $function->signature->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
+                    $operation->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
                 }
-                push(@{$targetDataNode->functions}, $function);
+                push(@{$targetDataNode->operations}, $operation);
             }
 
             # Support for constants of partial interfaces.
             foreach my $constant (@{$interface->constants}) {
+                next unless shouldPropertyBeExposed($constant, \@targetGlobalContexts);
+
                 # Record that this constant is implemented by $interfaceName.
                 $constant->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
 
@@ -191,8 +213,27 @@ foreach my $idlFile (@supplementedIdlFiles) {
 }
 
 # Generate desired output for the target IDL file.
-my $codeGen = CodeGenerator->new(\@idlDirectories, $generator, $outputDirectory, $outputHeadersDirectory, $preprocessor, $writeDependencies, $verbose, $targetIdlFile);
+my $codeGen = CodeGenerator->new(\@idlDirectories, $generator, $outputDirectory, $outputHeadersDirectory, $preprocessor, $writeDependencies, $verbose, $targetIdlFile, $idlAttributes);
 $codeGen->ProcessDocument($targetDocument, $defines);
+
+# Attributes / Operations / Constants of supplemental interfaces can have an [Exposed=XX] attribute which restricts
+# on which global contexts they should be exposed.
+sub shouldPropertyBeExposed
+{
+    my ($context, $targetGlobalContexts) = @_;
+
+    my $exposed = $context->extendedAttributes->{Exposed};
+
+    return 1 unless $exposed;
+
+    $exposed = substr($exposed, 1, -1) if substr($exposed, 0, 1) eq "(";
+    my @sourceGlobalContexts = split(",", $exposed);
+
+    for my $targetGlobalContext (@$targetGlobalContexts) {
+        return 1 if grep(/^$targetGlobalContext$/, @sourceGlobalContexts);
+    }
+    return 0;
+}
 
 sub generateEmptyHeaderAndCpp
 {
@@ -214,87 +255,4 @@ sub generateEmptyHeaderAndCpp
     open FH, "> ${outputDirectory}/${cppName}" or die "Cannot open $cppName\n";
     print FH $contents;
     close FH;
-}
-
-sub loadIDLAttributes
-{
-    my $idlAttributesFile = shift;
-
-    my %idlAttributes;
-    open FH, "<", $idlAttributesFile or die "Couldn't open $idlAttributesFile: $!";
-    while (my $line = <FH>) {
-        chomp $line;
-        next if $line =~ /^\s*#/;
-        next if $line =~ /^\s*$/;
-
-        if ($line =~ /^\s*([^=\s]*)\s*=?\s*(.*)/) {
-            my $name = $1;
-            $idlAttributes{$name} = {};
-            if ($2) {
-                foreach my $rightValue (split /\|/, $2) {
-                    $rightValue =~ s/^\s*|\s*$//g;
-                    $rightValue = "VALUE_IS_MISSING" unless $rightValue;
-                    $idlAttributes{$name}{$rightValue} = 1;
-                }
-            } else {
-                $idlAttributes{$name}{"VALUE_IS_MISSING"} = 1;
-            }
-        } else {
-            die "The format of " . basename($idlAttributesFile) . " is wrong: line $.\n";
-        }
-    }
-    close FH;
-
-    return \%idlAttributes;
-}
-
-sub checkIDLAttributes
-{
-    my $idlAttributes = shift;
-    my $document = shift;
-    my $idlFile = shift;
-
-    foreach my $interface (@{$document->interfaces}) {
-        checkIfIDLAttributesExists($idlAttributes, $interface->extendedAttributes, $idlFile);
-
-        foreach my $attribute (@{$interface->attributes}) {
-            checkIfIDLAttributesExists($idlAttributes, $attribute->signature->extendedAttributes, $idlFile);
-        }
-
-        foreach my $function (@{$interface->functions}) {
-            checkIfIDLAttributesExists($idlAttributes, $function->signature->extendedAttributes, $idlFile);
-            foreach my $parameter (@{$function->parameters}) {
-                checkIfIDLAttributesExists($idlAttributes, $parameter->extendedAttributes, $idlFile);
-            }
-        }
-    }
-}
-
-sub checkIfIDLAttributesExists
-{
-    my $idlAttributes = shift;
-    my $extendedAttributes = shift;
-    my $idlFile = shift;
-
-    my $error;
-    OUTER: for my $name (keys %$extendedAttributes) {
-        if (!exists $idlAttributes->{$name}) {
-            $error = "Unknown IDL attribute [$name] is found at $idlFile.";
-            last OUTER;
-        }
-        if ($idlAttributes->{$name}{"*"}) {
-            next;
-        }
-        for my $rightValue (split /\s*[|&]\s*/, $extendedAttributes->{$name}) {
-            if (!exists $idlAttributes->{$name}{$rightValue}) {
-                $error = "Unknown IDL attribute [$name=" . $extendedAttributes->{$name} . "] is found at $idlFile.";
-                last OUTER;
-            }
-        }
-    }
-    if ($error) {
-        die "IDL ATTRIBUTE CHECKER ERROR: $error
-If you want to add a new IDL attribute, you need to add it to WebCore/bindings/scripts/IDLAttributes.txt and add explanations to the WebKit IDL document (https://trac.webkit.org/wiki/WebKitIDL).
-";
-    }
 }

@@ -2,8 +2,9 @@
 class AnalysisCategoryPage extends PageWithHeading {
     constructor()
     {
-        super('Analysis', new AnalysisCategoryToolbar);
-        this.toolbar().setFilterCallback(this.render.bind(this));
+        super('Analysis');
+        this._categoryToolbar = this.content().querySelector('analysis-category-toolbar').component();
+        this._categoryToolbar.setCategoryPage(this);
         this._renderedList = false;
         this._renderedFilter = false;
         this._fetched = false;
@@ -12,7 +13,7 @@ class AnalysisCategoryPage extends PageWithHeading {
 
     title()
     {
-        var category = this.toolbar().currentCategory();
+        var category = this._categoryToolbar.currentCategory();
         return (category ? category.charAt(0).toUpperCase() + category.slice(1) + ' ' : '') + 'Analysis Tasks';
     }
     routeName() { return 'analysis'; }
@@ -22,31 +23,58 @@ class AnalysisCategoryPage extends PageWithHeading {
         var self = this;
         AnalysisTask.fetchAll().then(function () {
             self._fetched = true;
-            self.render();
+            self.enqueueToRender();
         }, function (error) {
             self._errorMessage = 'Failed to fetch the list of analysis tasks: ' + error;
-            self.render();
+            self.enqueueToRender();
         });
         super.open(state);
     }
 
+    serializeState()
+    {
+        return this.stateForCategory(this._categoryToolbar.currentCategory());
+    }
+
+    stateForCategory(category)
+    {
+        var state = {category: category};
+        var filter = this._categoryToolbar.filter();
+        if (filter)
+            state.filter = filter;
+        return state;
+    }
+
     updateFromSerializedState(state, isOpen)
     {
-        if (this.toolbar().setCategoryIfValid(state.category))
+        if (state.category instanceof Set)
+            state.category = Array.from(state.category.values())[0];
+        if (state.filter instanceof Set)
+            state.filter = Array.from(state.filter.values())[0];
+
+        if (this._categoryToolbar.setCategoryIfValid(state.category))
             this._renderedList = false;
 
+        if (state.filter)
+            this._categoryToolbar.setFilter(state.filter);
+
         if (!isOpen)
-            this.render();
+            this.enqueueToRender();
+    }
+
+    filterDidChange(shouldUpdateState)
+    {
+        this.enqueueToRender();
+        if (shouldUpdateState)
+            this.scheduleUrlStateUpdate();
     }
 
     render()
     {
         Instrumentation.startMeasuringTime('AnalysisCategoryPage', 'render');
 
-        if (!this._renderedList) {
-            super.render();
-            this.toolbar().render();
-        }
+        super.render();
+        this._categoryToolbar.enqueueToRender();
 
         if (this._errorMessage) {
             console.assert(!this._fetched);
@@ -66,7 +94,7 @@ class AnalysisCategoryPage extends PageWithHeading {
             this._renderedList = true;
         }
 
-        var filter = this.toolbar().filter();
+        var filter = this._categoryToolbar.filter();
         if (filter || this._renderedFilter) {
             Instrumentation.startMeasuringTime('AnalysisCategoryPage', 'filterByKeywords');
             var keywordList = filter ? filter.toLowerCase().split(/\s+/) : [];
@@ -95,11 +123,9 @@ class AnalysisCategoryPage extends PageWithHeading {
         Instrumentation.startMeasuringTime('AnalysisCategoryPage', 'reconstructTaskList');
 
         console.assert(this.router());
-        var currentCategory = this.toolbar().currentCategory();
+        const currentCategory = this._categoryToolbar.currentCategory();
 
-        var tasks = AnalysisTask.all().filter(function (task) {
-            return task.category() == currentCategory;
-        }).sort(function (a, b) {
+        const tasks = AnalysisTask.all().filter((task) => task.category() == currentCategory).sort((a, b) => {
             if (a.hasPendingRequests() == b.hasPendingRequests())
                 return b.createdAt() - a.createdAt();
             else if (a.hasPendingRequests()) // a < b
@@ -109,25 +135,25 @@ class AnalysisCategoryPage extends PageWithHeading {
             return 0;
         });
 
-        var element = ComponentBase.createElement;
-        var link = ComponentBase.createLink;
-        var router = this.router();
+        const element = ComponentBase.createElement;
+        const link = ComponentBase.createLink;
+        const router = this.router();
         this.renderReplace(this.content().querySelector('tbody.analysis-tasks'),
-            tasks.map(function (task) {
-                var status = AnalysisCategoryPage._computeStatus(task);
+            tasks.map((task) => {
+                const status = AnalysisCategoryPage._computeStatus(task);
                 return element('tr', [
                     element('td', {class: 'status'},
                         element('span', {class: status.class}, status.label)),
                     element('td', link(task.label(), router.url(`analysis/task/${task.id()}`))),    
                     element('td', {class: 'bugs'},
-                        element('ul', task.bugs().map(function (bug) {
-                            var url = bug.url();
-                            var title = bug.title();
+                        element('ul', task.bugs().map((bug) => {
+                            const url = bug.url();
+                            const title = bug.title();
                             return element('li', url ? link(bug.label(), title, url, true) : title);
                         }))),
                     element('td', {class: 'author'}, task.author()),
-                    element('td', {class: 'platform'}, task.platform().label()),
-                    element('td', task.metric().fullName()),
+                    element('td', {class: 'platform'}, task.platform() ? task.platform().label() : null),
+                    element('td', task.metric() ? task.metric().fullName() : null),
                     ]);
             }));
 
@@ -161,6 +187,7 @@ class AnalysisCategoryPage extends PageWithHeading {
     static htmlTemplate()
     {
         return `
+            <div class="toolbar-container"><analysis-category-toolbar></analysis-category-toolbar></div>
             <div class="analysis-task-category">
                 <table>
                     <thead>
@@ -181,6 +208,10 @@ class AnalysisCategoryPage extends PageWithHeading {
     static cssTemplate()
     {
         return `
+            .toolbar-container {
+                text-align: center;
+            }
+
             .analysis-task-category {
                 width: calc(100% - 2rem);
                 margin: 1rem;

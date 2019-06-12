@@ -28,6 +28,8 @@
 
 #if USE(CG)
 #include "GraphicsContextPlatformPrivateCG.h"
+#elif USE(DIRECT2D)
+#include "GraphicsContextPlatformPrivateDirect2D.h"
 #elif USE(CAIRO)
 #include "GraphicsContextPlatformPrivateCairo.h"
 #endif
@@ -144,7 +146,7 @@ HDC GraphicsContext::hdc() const
     return m_data->m_hdc;
 }
 
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) && !USE(DIRECT2D)
 void GraphicsContextPlatformPrivate::save()
 {
     if (!m_hdc)
@@ -163,7 +165,8 @@ void GraphicsContextPlatformPrivate::clip(const FloatRect& clipRect)
 {
     if (!m_hdc)
         return;
-    IntersectClipRect(m_hdc, clipRect.x(), clipRect.y(), clipRect.maxX(), clipRect.maxY());
+    auto clip = enclosingIntRect(clipRect);
+    IntersectClipRect(m_hdc, clip.x(), clip.y(), clip.maxX(), clip.maxY());
 }
 
 void GraphicsContextPlatformPrivate::clip(const Path&)

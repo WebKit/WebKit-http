@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,42 +23,33 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef IncrementalSweeper_h
-#define IncrementalSweeper_h
+#pragma once
 
-#include "HeapTimer.h"
-#include <wtf/Vector.h>
+#include "JSRunLoopTimer.h"
 
 namespace JSC {
 
 class Heap;
-class MarkedBlock;
+class MarkedAllocator;
 
-class IncrementalSweeper : public HeapTimer {
-    WTF_MAKE_FAST_ALLOCATED;
+class IncrementalSweeper : public JSRunLoopTimer {
 public:
-#if USE(CF)
-    JS_EXPORT_PRIVATE IncrementalSweeper(Heap*, CFRunLoopRef);
-#else
-    explicit IncrementalSweeper(Heap*);
-#endif
+    using Base = JSRunLoopTimer;
+    JS_EXPORT_PRIVATE explicit IncrementalSweeper(Heap*);
 
-    void startSweeping();
+    JS_EXPORT_PRIVATE void startSweeping();
+    void freeFastMallocMemoryAfterSweeping() { m_shouldFreeFastMallocMemoryAfterSweeping = true; }
 
-    JS_EXPORT_PRIVATE virtual void doWork() override;
+    JS_EXPORT_PRIVATE void doWork() override;
     bool sweepNextBlock();
-    void willFinishSweeping();
+    JS_EXPORT_PRIVATE void stopSweeping();
 
-#if USE(CF) || PLATFORM(EFL) || USE(GLIB) || PLATFORM(QT)
 private:
-    void doSweep(double startTime);
+    void doSweep(MonotonicTime startTime);
     void scheduleTimer();
-    void cancelTimer();
     
-    Vector<MarkedBlock*>& m_blocksToSweep;
-#endif
+    MarkedAllocator* m_currentAllocator;
+    bool m_shouldFreeFastMallocMemoryAfterSweeping { false };
 };
 
 } // namespace JSC
-
-#endif

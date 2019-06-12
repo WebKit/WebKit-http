@@ -22,8 +22,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TextDocument_h
-#define TextDocument_h
+#pragma once
 
 #include "HTMLDocument.h"
 
@@ -39,9 +38,7 @@ public:
 private:
     TextDocument(Frame*, const URL&);
     
-    virtual Ref<DocumentParser> createParser() override;
+    Ref<DocumentParser> createParser() override;
 };
 
-}
-
-#endif
+} // namespace WebCore

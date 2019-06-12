@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Register_h
-#define Register_h
+#pragma once
 
 #include "JSCJSValue.h"
 #include <wtf/Assertions.h>
@@ -76,6 +75,8 @@ namespace JSC {
         int32_t unsafeTag() const;
         int32_t& payload();
         int32_t& tag();
+
+        void* pointer() const;
 
         static Register withInt(int32_t i)
         {
@@ -196,6 +197,15 @@ namespace JSC {
 #endif
     }
 
+    ALWAYS_INLINE void* Register::pointer() const
+    {
+#if USE(JSVALUE64)
+        return u.encodedValue.ptr;
+#else
+        return bitwise_cast<void*>(payload());
+#endif
+    }
+
     ALWAYS_INLINE int32_t Register::payload() const
     {
         return u.encodedValue.asBits.payload;
@@ -228,5 +238,3 @@ namespace WTF {
     template<> struct VectorTraits<JSC::Register> : VectorTraitsBase<true, JSC::Register> { };
 
 } // namespace WTF
-
-#endif // Register_h

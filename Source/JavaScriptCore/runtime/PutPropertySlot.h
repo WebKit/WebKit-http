@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PutPropertySlot_h
-#define PutPropertySlot_h
+#pragma once
 
 #include "JSCJSValue.h"
-#include "PropertyOffset.h"
-
+#include "PropertySlot.h"
 #include <wtf/Assertions.h>
 
 namespace JSC {
@@ -40,7 +38,7 @@ class PutPropertySlot {
 public:
     enum Type { Uncachable, ExistingProperty, NewProperty, SetterProperty, CustomValue, CustomAccessor };
     enum Context { UnknownContext, PutById, PutByIdEval };
-    typedef void (*PutValueFunc)(ExecState*, EncodedJSValue thisObject, EncodedJSValue value);
+    typedef bool (*PutValueFunc)(ExecState*, EncodedJSValue thisObject, EncodedJSValue value);
 
     PutPropertySlot(JSValue thisValue, bool isStrictMode = false, Context context = UnknownContext, bool isInitialization = false)
         : m_type(Uncachable)
@@ -50,6 +48,7 @@ public:
         , m_isStrictMode(isStrictMode)
         , m_isInitialization(isInitialization)
         , m_context(context)
+        , m_cacheability(CachingAllowed)
         , m_putFunction(nullptr)
     {
     }
@@ -94,6 +93,11 @@ public:
         m_thisValue = thisValue;
     }
 
+    void setStrictMode(bool value)
+    {
+        m_isStrictMode = value;
+    }
+
     PutValueFunc customSetter() const
     {
         ASSERT(isCacheableCustom());
@@ -107,10 +111,10 @@ public:
     JSValue thisValue() const { return m_thisValue; }
 
     bool isStrictMode() const { return m_isStrictMode; }
-    bool isCacheablePut() const { return m_type == NewProperty || m_type == ExistingProperty; }
-    bool isCacheableSetter() const { return m_type == SetterProperty; }
-    bool isCacheableCustom() const { return m_type == CustomValue || m_type == CustomAccessor; }
-    bool isCustomAccessor() const { return m_type == CustomAccessor; }
+    bool isCacheablePut() const { return isCacheable() && (m_type == NewProperty || m_type == ExistingProperty); }
+    bool isCacheableSetter() const { return isCacheable() && m_type == SetterProperty; }
+    bool isCacheableCustom() const { return isCacheable() && (m_type == CustomValue || m_type == CustomAccessor); }
+    bool isCustomAccessor() const { return isCacheable() && m_type == CustomAccessor; }
     bool isInitialization() const { return m_isInitialization; }
 
     PropertyOffset cachedOffset() const
@@ -118,7 +122,14 @@ public:
         return m_offset;
     }
 
+    void disableCaching()
+    {
+        m_cacheability = CachingDisallowed;
+    }
+
 private:
+    bool isCacheable() const { return m_cacheability == CachingAllowed; }
+
     Type m_type;
     JSObject* m_base;
     JSValue m_thisValue;
@@ -126,9 +137,8 @@ private:
     bool m_isStrictMode;
     bool m_isInitialization;
     uint8_t m_context;
+    CacheabilityType m_cacheability;
     PutValueFunc m_putFunction;
 };
 
 } // namespace JSC
-
-#endif // PutPropertySlot_h

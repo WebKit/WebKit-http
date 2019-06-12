@@ -30,7 +30,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderMeter::RenderMeter(HTMLElement& element, Ref<RenderStyle>&& style)
+RenderMeter::RenderMeter(HTMLElement& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
 {
 }
@@ -58,10 +58,9 @@ void RenderMeter::updateLogicalWidth()
     setLogicalWidth(isHorizontalWritingMode() ? frameSize.width() : frameSize.height());
 }
 
-void RenderMeter::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderMeter::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const
 {
-    RenderBox::computeLogicalHeight(logicalHeight, logicalTop, computedValues);
-
+    auto computedValues = RenderBox::computeLogicalHeight(logicalHeight, logicalTop);
     LayoutRect frame = frameRect();
     if (isHorizontalWritingMode())
         frame.setHeight(computedValues.m_extent);
@@ -69,6 +68,7 @@ void RenderMeter::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logi
         frame.setWidth(computedValues.m_extent);
     IntSize frameSize = theme().meterSizeForBounds(*this, snappedIntRect(frame));
     computedValues.m_extent = isHorizontalWritingMode() ? frameSize.height() : frameSize.width();
+    return computedValues;
 }
 
 void RenderMeter::updateFromElement()

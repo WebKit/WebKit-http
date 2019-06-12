@@ -54,20 +54,22 @@ public:
     }
     ~NetworkProcessConnection();
     
-    IPC::Connection* connection() const { return m_connection.get(); }
+    IPC::Connection& connection() { return m_connection.get(); }
 
-    void didReceiveNetworkProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveNetworkProcessConnectionMessage(IPC::Connection&, IPC::Decoder&);
+
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler);
 
 private:
     NetworkProcessConnection(IPC::Connection::Identifier);
 
     // IPC::Connection::Client
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
-    virtual void didClose(IPC::Connection&) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Network; }
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
+    void didClose(IPC::Connection&) override;
+    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
+
+    void didWriteBlobsToTemporaryFiles(uint64_t requestIdentifier, const Vector<String>& filenames);
 
 #if ENABLE(SHAREABLE_RESOURCE)
     // Message handlers.
@@ -75,7 +77,9 @@ private:
 #endif
 
     // The connection from the web process to the network process.
-    RefPtr<IPC::Connection> m_connection;
+    Ref<IPC::Connection> m_connection;
+
+    HashMap<uint64_t, Function<void (const Vector<String>&)>> m_writeBlobToFileCompletionHandlers;
 };
 
 } // namespace WebKit

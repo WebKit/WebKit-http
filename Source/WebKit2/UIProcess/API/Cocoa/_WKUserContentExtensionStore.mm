@@ -28,93 +28,76 @@
 
 #if WK_API_ENABLED
 
+#import "WKContentRuleListStoreInternal.h"
+#import "WKContentRuleListStorePrivate.h"
 #import "WKErrorInternal.h"
+#import "_WKUserContentExtensionStorePrivate.h"
 #import "_WKUserContentFilterInternal.h"
+#import "_WKUserContentFilterPrivate.h"
 #import <string>
+
+NSString * const _WKUserContentExtensionsDomain = @"WKErrorDomain";
+
+static NSError *toUserContentRuleListStoreError(const NSError *error)
+{
+    if (!error)
+        return nil;
+
+    ASSERT(error.domain == WKErrorDomain);
+    switch (error.code) {
+    case WKErrorContentRuleListStoreLookUpFailed:
+        return [NSError errorWithDomain:_WKUserContentExtensionsDomain code:_WKUserContentExtensionStoreErrorLookupFailed userInfo:error.userInfo];
+    case WKErrorContentRuleListStoreVersionMismatch:
+        return [NSError errorWithDomain:_WKUserContentExtensionsDomain code:_WKUserContentExtensionStoreErrorVersionMismatch userInfo:error.userInfo];
+    case WKErrorContentRuleListStoreCompileFailed:
+        return [NSError errorWithDomain:_WKUserContentExtensionsDomain code:_WKUserContentExtensionStoreErrorCompileFailed userInfo:error.userInfo];
+    case WKErrorContentRuleListStoreRemoveFailed:
+        return [NSError errorWithDomain:_WKUserContentExtensionsDomain code:_WKUserContentExtensionStoreErrorRemoveFailed userInfo:error.userInfo];
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+}
 
 @implementation _WKUserContentExtensionStore
 
-- (void)dealloc
-{
-    _userContentExtensionStore->~UserContentExtensionStore();
-
-    [super dealloc];
-}
-
 + (instancetype)defaultStore
 {
-    return WebKit::wrapper(API::UserContentExtensionStore::defaultStore());
+    return [[[_WKUserContentExtensionStore alloc] _initWithWKContentRuleListStore:[WKContentRuleListStore defaultStoreWithLegacyFilename]] autorelease];
 }
 
 + (instancetype)storeWithURL:(NSURL *)url
 {
-    Ref<API::UserContentExtensionStore> store = API::UserContentExtensionStore::storeWithPath(url.absoluteURL.fileSystemRepresentation);
-    return WebKit::wrapper(store.leakRef());
+    return [[[_WKUserContentExtensionStore alloc] _initWithWKContentRuleListStore:[WKContentRuleListStore storeWithURLAndLegacyFilename:url]] autorelease];
 }
 
-- (void)compileContentExtensionForIdentifier:(NSString *)identifier encodedContentExtension:(NSString *)encodedContentExtension completionHandler:(void (^)(_WKUserContentFilter *, NSError *))completionHandler
+- (void)compileContentExtensionForIdentifier:(NSString *)identifier encodedContentExtension:(NSString *)encodedContentRuleList completionHandler:(void (^)(_WKUserContentFilter *, NSError *))completionHandler
 {
-    auto handler = adoptNS([completionHandler copy]);
-
-    String json(encodedContentExtension);
-    [encodedContentExtension release];
-    encodedContentExtension = nil;
-
-    _userContentExtensionStore->compileContentExtension(identifier, WTFMove(json), [handler](RefPtr<API::UserContentExtension> contentExtension, std::error_code error) {
-        if (error) {
-            auto rawHandler = (void (^)(_WKUserContentFilter *, NSError *))handler.get();
-            
-            auto userInfo = @{NSHelpAnchorErrorKey: [NSString stringWithFormat:@"Extension compilation failed: %s", error.message().c_str()]};
-            rawHandler(nil, [NSError errorWithDomain:@"ContentExtensionsDomain" code:error.value() userInfo:userInfo]);
-            return;
-        }
-
-        auto rawHandler = (void (^)(_WKUserContentFilter *, NSError *))handler.get();
-        rawHandler(WebKit::wrapper(*contentExtension.get()), nil);
-    });
+    [_contentRuleListStore _compileContentRuleListForIdentifier:identifier encodedContentRuleList:encodedContentRuleList completionHandler:^(WKContentRuleList *contentRuleList, NSError *error) {
+        _WKUserContentFilter *contentFilter = contentRuleList ? [[[_WKUserContentFilter alloc] _initWithWKContentRuleList:contentRuleList] autorelease] : nil;
+        completionHandler(contentFilter, toUserContentRuleListStoreError(error));
+    }];
 }
 
 - (void)lookupContentExtensionForIdentifier:(NSString *)identifier completionHandler:(void (^)(_WKUserContentFilter *, NSError *))completionHandler
 {
-    auto handler = adoptNS([completionHandler copy]);
-
-    _userContentExtensionStore->lookupContentExtension(identifier, [handler](RefPtr<API::UserContentExtension> contentExtension, std::error_code error) {
-        if (error) {
-            auto rawHandler = (void (^)(_WKUserContentFilter *, NSError *))handler.get();
-
-            auto userInfo = @{NSHelpAnchorErrorKey: [NSString stringWithFormat:@"Extension lookup failed: %s", error.message().c_str()]};
-            rawHandler(nil, [NSError errorWithDomain:@"ContentExtensionsDomain" code:error.value() userInfo:userInfo]);
-            return;
-        }
-
-        auto rawHandler = (void (^)(_WKUserContentFilter *, NSError *))handler.get();
-        rawHandler(WebKit::wrapper(*contentExtension.get()), nil);
-    });
+    [_contentRuleListStore lookUpContentRuleListForIdentifier:identifier completionHandler:^(WKContentRuleList *contentRuleList, NSError *error) {
+        _WKUserContentFilter *contentFilter = contentRuleList ? [[[_WKUserContentFilter alloc] _initWithWKContentRuleList:contentRuleList] autorelease] : nil;
+        completionHandler(contentFilter, toUserContentRuleListStoreError(error));
+    }];
 }
 
 - (void)removeContentExtensionForIdentifier:(NSString *)identifier completionHandler:(void (^)(NSError *))completionHandler
 {
-    auto handler = adoptNS([completionHandler copy]);
-
-    _userContentExtensionStore->removeContentExtension(identifier, [handler](std::error_code error) {
-        if (error) {
-            auto rawHandler = (void (^)(NSError *))handler.get();
-
-            auto userInfo = @{NSHelpAnchorErrorKey: [NSString stringWithFormat:@"Extension removal failed: %s", error.message().c_str()]};
-            rawHandler([NSError errorWithDomain:@"ContentExtensionsDomain" code:error.value() userInfo:userInfo]);
-            return;
-        }
-
-        auto rawHandler = (void (^)(NSError *))handler.get();
-        rawHandler(nil);
-    });
+    [_contentRuleListStore removeContentRuleListForIdentifier:identifier completionHandler:^(NSError *error) {
+        completionHandler(toUserContentRuleListStoreError(error));
+    }];
 }
 
 #pragma mark WKObject protocol implementation
 
 - (API::Object&)_apiObject
 {
-    return *_userContentExtensionStore;
+    return [_contentRuleListStore _apiObject];
 }
 
 @end
@@ -125,7 +108,23 @@
 
 - (void)_removeAllContentExtensions
 {
-    _userContentExtensionStore->synchronousRemoveAllContentExtensions();
+    [_contentRuleListStore _removeAllContentRuleLists];
+}
+
+- (void)_invalidateContentExtensionVersionForIdentifier:(NSString *)identifier
+{
+    [_contentRuleListStore _invalidateContentRuleListVersionForIdentifier:identifier];
+}
+
+- (id)_initWithWKContentRuleListStore:(WKContentRuleListStore*)contentRuleListStore
+{
+    self = [super init];
+    if (!self)
+        return nil;
+    
+    _contentRuleListStore = contentRuleListStore;
+    
+    return self;
 }
 
 @end

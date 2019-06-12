@@ -34,8 +34,8 @@
  view. The preferences object associated with a web view is specified by
  its web view configuration.
  */
-WK_CLASS_AVAILABLE(10_10, 8_0)
-@interface WKPreferences : NSObject
+WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+@interface WKPreferences : NSObject <NSCoding>
 
 /*! @abstract The minimum font size in points.
  @discussion The default value is 0.
@@ -63,6 +63,13 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  @discussion The default value is NO.
  */
 @property (nonatomic) BOOL plugInsEnabled;
+
+/*!
+ @property tabFocusesLinks
+ @abstract If tabFocusesLinks is YES, the tab key will focus links and form controls.
+ The Option key temporarily reverses this preference.
+ */
+@property (nonatomic) BOOL tabFocusesLinks WK_API_AVAILABLE(macosx(10.12.3));
 #endif
 
 @end

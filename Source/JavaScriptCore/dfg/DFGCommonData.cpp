@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +36,8 @@
 #include "TrackedReferences.h"
 #include "VM.h"
 
+#include <wtf/NeverDestroyed.h>
+
 namespace JSC { namespace DFG {
 
 void CommonData::notifyCompilingStructureTransition(Plan& plan, CodeBlock* codeBlock, Node* node)
@@ -43,8 +45,8 @@ void CommonData::notifyCompilingStructureTransition(Plan& plan, CodeBlock* codeB
     plan.transitions.addLazily(
         codeBlock,
         node->origin.semantic.codeOriginOwner(),
-        node->transition()->previous,
-        node->transition()->next);
+        node->transition()->previous.get(),
+        node->transition()->next.get());
 }
 
 CallSiteIndex CommonData::addCodeOrigin(CodeOrigin codeOrigin)
@@ -87,14 +89,87 @@ void CommonData::shrinkToFit()
     transitions.shrinkToFit();
 }
 
+static StaticLock pcCodeBlockMapLock;
+inline HashMap<void*, CodeBlock*>& pcCodeBlockMap(AbstractLocker&)
+{
+    static NeverDestroyed<HashMap<void*, CodeBlock*>> pcCodeBlockMap;
+    return pcCodeBlockMap;
+}
+
 bool CommonData::invalidate()
 {
     if (!isStillValid)
         return false;
+
+    if (UNLIKELY(hasVMTrapsBreakpointsInstalled)) {
+        LockHolder locker(pcCodeBlockMapLock);
+        auto& map = pcCodeBlockMap(locker);
+        for (auto& jumpReplacement : jumpReplacements)
+            map.remove(jumpReplacement.dataLocation());
+        hasVMTrapsBreakpointsInstalled = false;
+    }
+
     for (unsigned i = jumpReplacements.size(); i--;)
         jumpReplacements[i].fire();
     isStillValid = false;
     return true;
+}
+
+CommonData::~CommonData()
+{
+    if (UNLIKELY(hasVMTrapsBreakpointsInstalled)) {
+        LockHolder locker(pcCodeBlockMapLock);
+        auto& map = pcCodeBlockMap(locker);
+        for (auto& jumpReplacement : jumpReplacements)
+            map.remove(jumpReplacement.dataLocation());
+    }
+}
+
+void CommonData::installVMTrapBreakpoints(CodeBlock* owner)
+{
+    LockHolder locker(pcCodeBlockMapLock);
+    if (!isStillValid || hasVMTrapsBreakpointsInstalled)
+        return;
+    hasVMTrapsBreakpointsInstalled = true;
+
+    auto& map = pcCodeBlockMap(locker);
+#if !defined(NDEBUG)
+    // We need to be able to handle more than one invalidation point at the same pc
+    // but we want to make sure we don't forget to remove a pc from the map.
+    HashSet<void*> newReplacements;
+#endif
+    for (auto& jumpReplacement : jumpReplacements) {
+        jumpReplacement.installVMTrapBreakpoint();
+        void* source = jumpReplacement.dataLocation();
+        auto result = map.add(source, owner);
+        UNUSED_PARAM(result);
+#if !defined(NDEBUG)
+        ASSERT(result.isNewEntry || newReplacements.contains(source));
+        newReplacements.add(source);
+#endif
+    }
+}
+
+CodeBlock* codeBlockForVMTrapPC(void* pc)
+{
+    ASSERT(isJITPC(pc));
+    LockHolder locker(pcCodeBlockMapLock);
+    auto& map = pcCodeBlockMap(locker);
+    auto result = map.find(pc);
+    if (result == map.end())
+        return nullptr;
+    return result->value;
+}
+
+bool CommonData::isVMTrapBreakpoint(void* address)
+{
+    if (!isStillValid)
+        return false;
+    for (unsigned i = jumpReplacements.size(); i--;) {
+        if (address == jumpReplacements[i].dataLocation())
+            return true;
+    }
+    return false;
 }
 
 void CommonData::validateReferences(const TrackedReferences& trackedReferences)

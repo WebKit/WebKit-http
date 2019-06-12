@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,9 +28,20 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "CCallHelpers.h"
+#include "DFGGraph.h"
 #include "JSCInlines.h"
+#include "LinkBuffer.h"
 
 namespace JSC { namespace DFG {
+
+LazyJSValue LazyJSValue::newString(Graph& graph, const String& string)
+{
+    LazyJSValue result;
+    result.m_kind = NewStringImpl;
+    result.u.stringImpl = graph.m_localStrings.add(string).iterator->impl();
+    return result;
+}
 
 JSValue LazyJSValue::getValue(VM& vm) const
 {
@@ -41,6 +52,8 @@ JSValue LazyJSValue::getValue(VM& vm) const
         return jsSingleCharacterString(&vm, u.character);
     case KnownStringImpl:
         return jsString(&vm, u.stringImpl);
+    case NewStringImpl:
+        return jsString(&vm, AtomicStringImpl::add(u.stringImpl));
     }
     RELEASE_ASSERT_NOT_REACHED();
     return JSValue();
@@ -75,6 +88,48 @@ static TriState equalToStringImpl(JSValue value, StringImpl* stringImpl)
     return triState(WTF::equal(stringImpl, string));
 }
 
+const StringImpl* LazyJSValue::tryGetStringImpl(VM& vm) const
+{
+    switch (m_kind) {
+    case KnownStringImpl:
+    case NewStringImpl:
+        return u.stringImpl;
+
+    case KnownValue:
+        if (JSString* string = value()->dynamicCast<JSString*>(vm))
+            return string->tryGetValueImpl();
+        return nullptr;
+
+    default:
+        return nullptr;
+    }
+}
+
+String LazyJSValue::tryGetString(Graph& graph) const
+{
+    switch (m_kind) {
+    case NewStringImpl:
+        return u.stringImpl;
+
+    case SingleCharacterString:
+        return String(&u.character, 1);
+
+    default:
+        if (const StringImpl* string = tryGetStringImpl(graph.m_vm)) {
+            unsigned ginormousStringLength = 10000;
+            if (string->length() > ginormousStringLength)
+                return String();
+            
+            auto result = graph.m_copiedStrings.add(string, String());
+            if (result.isNewEntry)
+                result.iterator->value = string->isolatedCopy();
+            return result.iterator->value;
+        }
+        
+        return String();
+    }
+}
+
 TriState LazyJSValue::strictEqual(const LazyJSValue& other) const
 {
     switch (m_kind) {
@@ -85,6 +140,7 @@ TriState LazyJSValue::strictEqual(const LazyJSValue& other) const
         case SingleCharacterString:
             return equalToSingleCharacter(value()->value(), other.character());
         case KnownStringImpl:
+        case NewStringImpl:
             return equalToStringImpl(value()->value(), other.stringImpl());
         }
         break;
@@ -93,6 +149,7 @@ TriState LazyJSValue::strictEqual(const LazyJSValue& other) const
         case SingleCharacterString:
             return triState(character() == other.character());
         case KnownStringImpl:
+        case NewStringImpl:
             if (other.stringImpl()->length() != 1)
                 return FalseTriState;
             return triState(other.stringImpl()->at(0) == character());
@@ -101,8 +158,10 @@ TriState LazyJSValue::strictEqual(const LazyJSValue& other) const
         }
         break;
     case KnownStringImpl:
+    case NewStringImpl:
         switch (other.m_kind) {
         case KnownStringImpl:
+        case NewStringImpl:
             return triState(WTF::equal(stringImpl(), other.stringImpl()));
         default:
             return other.strictEqual(*this);
@@ -143,6 +202,45 @@ uintptr_t LazyJSValue::switchLookupValue(SwitchKind kind) const
     }
 }
 
+void LazyJSValue::emit(CCallHelpers& jit, JSValueRegs result) const
+{
+    if (m_kind == KnownValue) {
+        jit.moveValue(value()->value(), result);
+        return;
+    }
+
+    // It must be some kind of cell.
+#if USE(JSVALUE32_64)
+    jit.move(CCallHelpers::TrustedImm32(JSValue::CellTag), result.tagGPR());
+#endif
+    CCallHelpers::DataLabelPtr label = jit.moveWithPatch(
+        CCallHelpers::TrustedImmPtr(static_cast<size_t>(0xd1e7beeflu)),
+        result.payloadGPR());
+
+    LazyJSValue thisValue = *this;
+
+    // Once we do this, we're committed. Otherwise we leak memory. Note that we call ref/deref
+    // manually to ensure that there is no concurrency shadiness. We are doing something here
+    // that might be rather brutal: transfering ownership of this string.
+    if (m_kind == NewStringImpl)
+        thisValue.u.stringImpl->ref();
+
+    CodeBlock* codeBlock = jit.codeBlock();
+    
+    jit.addLinkTask(
+        [codeBlock, label, thisValue] (LinkBuffer& linkBuffer) {
+            JSValue realValue = thisValue.getValue(*codeBlock->vm());
+            RELEASE_ASSERT(realValue.isCell());
+
+            codeBlock->addConstant(realValue);
+            
+            if (thisValue.m_kind == NewStringImpl)
+                thisValue.u.stringImpl->deref();
+
+            linkBuffer.patch(label, realValue.asCell());
+        });
+}
+
 void LazyJSValue::dumpInContext(PrintStream& out, DumpContext* context) const
 {
     switch (m_kind) {
@@ -155,7 +253,10 @@ void LazyJSValue::dumpInContext(PrintStream& out, DumpContext* context) const
         out.print(" / ", StringImpl::utf8ForCharacters(&u.character, 1), ")");
         return;
     case KnownStringImpl:
-        out.print("Lazy:String(", stringImpl(), ")");
+        out.print("Lazy:KnownString(", stringImpl(), ")");
+        return;
+    case NewStringImpl:
+        out.print("Lazy:NewString(", stringImpl(), ")");
         return;
     }
     RELEASE_ASSERT_NOT_REACHED();

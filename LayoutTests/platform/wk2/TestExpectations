@@ -42,9 +42,8 @@
 ########################################
 ### START OF (1) Classified failures with bug reports
 
-# WebKitTestRunner needs to implement testRunner.dumpIconChanges().
-webkit.org/b/44046 http/tests/security/contentSecurityPolicy/icon-allowed.html
-webkit.org/b/44046 http/tests/security/contentSecurityPolicy/icon-blocked.html
+webkit.org/b/156612 http/tests/security/contentSecurityPolicy/embed-redirect-blocked3.html [ Failure ]
+webkit.org/b/156612 http/tests/security/contentSecurityPolicy/object-redirect-blocked3.html [ Failure ]
 
 # AX tests that require hit testing do not work in WK2.
 webkit.org/b/71298 accessibility/loading-iframe-updates-axtree.html
@@ -54,9 +53,6 @@ webkit.org/b/71298 accessibility/mac/iframe-with-title-correct-hierarchy.html
 
 # This test has been skipped for a long time. Temporarily marking as flaky to see what bots think.
 webkit.org/b/48354 compositing/iframes/iframe-src-change.html [ Pass Failure ]
-
-# Perhaps this test just needs new expectations?
-webkit.org/b/48354 compositing/iframes/iframe-size-from-zero.html [ Failure ]
 
 # This test has been skipped for a long time. Temporarily marking as flaky to see what bots think.
 webkit.org/b/58183 editing/execCommand/convert-style-elements-to-spans.html [ Pass Failure ]
@@ -68,9 +64,6 @@ webkit.org/b/60648 fast/frames/flattening/frameset-flattening-subframesets.html 
 # (zero-font-size.html passes because overridePreference does not work)
 webkit.org/b/42197 fast/harness/override-preferences-2.html [ Failure ]
 webkit.org/b/42197 fast/text/zero-font-size.html [ Pass ]
-
-# setIconDatabaseEnabled not implemented in WebKitTestRunner.
-webkit.org/b/115809 webarchive/test-link-rel-icon-beforeload.html [ Skip ]
 
 webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding.html [ Skip ]
 webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding-shift-jis.html [ Skip ]
@@ -117,16 +110,6 @@ platform/mac/fast/text/attributed-substring-from-range-in-textfield.html
 platform/mac/fast/text/attributed-substring-from-range.html
 platform/mac/fast/text/justified-text-rect.html
 
-# WebKitTestRunner needs testRunner.setDashboardCompatibilityMode
-# <https://bugs.webkit.org/show_bug.cgi?id=42547>
-fast/canvas/canvas-gradient-addStop-error.html
-http/tests/xmlhttprequest/default-content-type-dashboard.html
-http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html
-svg/custom/embedded-svg-allowed-in-dashboard.xml
-svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html
-svg/custom/manually-parsed-svg-allowed-in-dashboard.html
-svg/custom/svg-allowed-in-dashboard-object.html
-
 # WebKitTestRunner needs testRunner.setMainFrameIsFirstResponder
 # <https://bugs.webkit.org/show_bug.cgi?id=42685>
 editing/selection/caret-and-focus-ring.html
@@ -153,10 +136,6 @@ http/tests/security/no-referrer.html
 # WebKitTestRunner needs testRunner.setDomainRelaxationForbiddenForURLScheme
 # <https://bugs.webkit.org/show_bug.cgi?id=42700>
 http/tests/security/setDomainRelaxationForbiddenForURLScheme.html
-
-# WebKit2 needs testRunner.setDeferMainResourceDataLoad
-# <https://bugs.webkit.org/show_bug.cgi?id=42777>
-fast/loader/non-deferred-substitute-load.html
 
 # WebKitTestRunner needs testRunner.removeAllVisitedLinks
 http/tests/globalhistory/history-delegate-basic-visited-links.html
@@ -198,10 +177,6 @@ fast/selectors/selection-window-inactive.html
 fast/dom/Window/window-focus-self.html
 scrollbars/corner-resizer-window-inactive.html
 
-# Text Autosizing is not yet enabled.
-# https://bugs.webkit.org/show_bug.cgi?id=84186
-fast/text-autosizing
-
 # WebKitTestRunner needs to implement testRunner.closeIdleLocalStorageDatabases().
 # https://bugs.webkit.org/show_bug.cgi?id=103861
 storage/domstorage/localstorage/close-idle-localstorage-databases-immediately.html
@@ -218,8 +193,6 @@ webkit.org/b/105952 fast/loader/submit-form-while-parsing-2.html [ Pass Failure 
 
 webkit.org/b/127683 http/tests/navigation/new-window-redirect-history.html [ Skip ]
 
-webkit.org/b/132297 svg/custom/bug79798.html [ Skip ]
-
 # Causes next test to crash only on WebKit2
 webkit.org/b/98345 fast/parser/document-open-in-unload.html [ Skip ]
 
@@ -229,9 +202,40 @@ webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeou
 
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-cancel.html [ Pass Failure ]
 
-webkit.org/b/148890 http/tests/contentfiltering/load-substitute-data-from-appcache.html [ Pass Crash ]
-# One the bug is fixed, the below test will need a Pass expectation, because it's skipped in root TestExpectations.
-webkit.org/b/148890 http/tests/appcache/decide-navigation-policy-after-delay.html [ Pass Crash ]
+http/tests/appcache/decide-navigation-policy-after-delay.html [ Pass ]
+
+# DatabaseProcess cannot open some of these database filenames (DRT can open the exact same database filenames)
+webkit.org/b/154681 storage/indexeddb/database-odd-names.html
+webkit.org/b/154681 storage/indexeddb/odd-strings.html
+
+# WKTR does not support overriding WebKitUsesPageCachePreferenceKey.
+# https://bugs.webkit.org/show_bug.cgi?id=114153
+fast/harness/use-page-cache.html
+
+# eventSender.dragMode is unimplemented in WKTR
+# Mac: https://bugs.webkit.org/show_bug.cgi?id=68552
+fast/events/controlclick-no-onclick.html
+fast/events/moving-text-should-fire-drop-and-dragend-events.html
+fast/events/moving-text-should-fire-drop-and-dragend-events-2.html
+fast/events/ondrop-text-html.html
+editing/pasteboard/drag-drop-url-with-style.html
+
+# WTR needs an implementation for eventSender.continuousMouseScrollBy
+# https://bugs.webkit.org/show_bug.cgi?id=69417
+fast/events/wheelevent-direction-inverted-from-device.html
+
+# This should only be a layer change.
+# http://webkit.org/b/82129
+fast/box-shadow/shadow-buffer-partial.html
+fast/block/lineboxcontain/block-font.html
+fast/block/lineboxcontain/block-glyphs.html
+fast/block/lineboxcontain/font.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=115203
+# Downloaded file name tests fail because of incorrect custom policy delegate implementation
+http/tests/download/default-encoding.html
+http/tests/download/inherited-encoding-form-submission-result.html
+http/tests/download/inherited-encoding.html
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -248,10 +252,12 @@ webarchive/doctype.html
 webarchive/archive-empty-frame-source.html
 
 # WebKitTestRunner needs testRunner.setIconDatabaseEnabled
-webarchive/test-link-rel-icon.html
-http/tests/misc/favicon-loads-with-images-disabled.html
-http/tests/misc/favicon-loads-with-icon-loading-override.html
-http/tests/misc/link-rel-icon-beforeload.html
+webkit.org/b/115809 webarchive/test-link-rel-icon.html
+webkit.org/b/115809 http/tests/misc/favicon-loads-with-images-disabled.html
+webkit.org/b/115809 http/tests/misc/favicon-loads-with-icon-loading-override.html
+webkit.org/b/115809 http/tests/misc/link-rel-icon-beforeload.html
+webkit.org/b/115809 http/tests/security/contentSecurityPolicy/allow-favicon.html
+webkit.org/b/115809 http/tests/security/contentSecurityPolicy/block-favicon.html
 
 # WebKitTestRunner should dump text/plain content as text
 http/tests/incremental/slow-utf8-text.pl
@@ -275,16 +281,13 @@ printing/page-rule-selection.html
 fast/frames/location-redirect-user-gesture.html
 fast/frames/meta-refresh-user-gesture.html
 
-# WebKitTestRunner needs testRunner.setUseDashboardCompatibilityMode
-platform/mac/fast/dom/HTMLImageElement/dashboard-src-quirk.html [ Skip ]
-mathml/mathml-in-dashboard.html [ Skip ]
-
 # WebKitTestRunner needs testRunner.addURLToRedirect
 http/tests/loading/cross-origin-XHR-willLoadRequest.html
 
 # WebKit2 needs showModalDialog
 fast/events/scroll-event-during-modal-dialog.html
 fast/harness/show-modal-dialog.html
+http/tests/security/cross-origin-modal-dialog-base.html [ Skip ]
 
 # WebKit2 needs to support synchronous creation of about:blank/data:url frames
 fast/dom/HTMLDocument/hasFocus.html
@@ -297,7 +300,6 @@ http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-sub-frame-2-leve
 
 # These tests use Flash, which is not a good idea, because it is not installed on all machines that run tests.
 # WebKitTestRunner detects attempts to use Flash, and raises an assertion.
-editing/pasteboard/paste-noplugin.html [ Skip ]
 fast/dom/beforeload/flash-before-load.html [ Skip ]
 fast/dom/beforeload/remove-flash-in-beforeload-listener.html [ Skip ]
 fast/loader/sandboxed-plugin-crash.html [ Skip ]
@@ -307,7 +309,8 @@ plugins/plugin-document-willSendRequest-null.html [ Skip ]
 plugins/plugin-remove-readystatechange.html [ Skip ]
 
 # This test checks that NPN_GetURL with a blank target will return an error if the window isn't opened. This behavior doesn't
-# match Firefox or Chrome. We should either fix the test, or get rid of it.
+# match Firefox or Chrome. We should either fix the test, or get rid of it. This test also depends on implementing
+# testRunner::setCanOpenWindows() such that opening windows are forbidden by default.
 plugins/get-url-with-blank-target.html
 
 # requires video.buffered to be able to return multiple timeranges
@@ -318,7 +321,6 @@ dom/html/level2/html/HTMLAppletElement01.html
 dom/html/level2/html/HTMLAppletElement02.html
 dom/html/level2/html/HTMLAppletElement03.html
 dom/html/level2/html/HTMLAppletElement04.html
-dom/html/level2/html/HTMLAppletElement05.html
 dom/html/level2/html/HTMLAppletElement06.html
 dom/html/level2/html/HTMLAppletElement07.html
 dom/html/level2/html/HTMLAppletElement08.html
@@ -328,7 +330,6 @@ dom/xhtml/level2/html/HTMLAppletElement01.xhtml
 dom/xhtml/level2/html/HTMLAppletElement02.xhtml
 dom/xhtml/level2/html/HTMLAppletElement03.xhtml
 dom/xhtml/level2/html/HTMLAppletElement04.xhtml
-dom/xhtml/level2/html/HTMLAppletElement05.xhtml
 dom/xhtml/level2/html/HTMLAppletElement06.xhtml
 dom/xhtml/level2/html/HTMLAppletElement07.xhtml
 dom/xhtml/level2/html/HTMLAppletElement08.xhtml
@@ -337,49 +338,18 @@ dom/xhtml/level2/html/HTMLAppletElement10.xhtml
 editing/selection/selection-applet.html
 fast/replaced/applet-disabled-positioned.html
 fast/replaced/applet-rendering-java-disabled.html
-java
 
 # WebKitTestRunner needs testRunner.displayInvalidatedRegion
 compositing/plugins/invalidate_rect.html
 plugins/windowless_plugin_paint_test.html
 
-# WKTR does not support overriding WebKitUsesPageCachePreferenceKey.
-# https://bugs.webkit.org/show_bug.cgi?id=114153
-fast/harness/use-page-cache.html
-
-# eventSender.dragMode is unimplemented in WKTR
-# Mac: https://bugs.webkit.org/show_bug.cgi?id=68552
-# Qt: https://bugs.webkit.org/show_bug.cgi?id=69946
-fast/events/controlclick-no-onclick.html
-fast/events/moving-text-should-fire-drop-and-dragend-events.html
-fast/events/moving-text-should-fire-drop-and-dragend-events-2.html
-editing/pasteboard/drag-drop-url-with-style.html
-
-# WTR needs an implementation for eventSender.continuousMouseScrollBy
-# https://bugs.webkit.org/show_bug.cgi?id=69417
-fast/events/wheelevent-direction-inverted-from-device.html
-
 # eventSender.clearKillRing() is unimplemented
 editing/pasteboard/emacs-cntl-y-001.html
 
-# This should only be a layer change.
-# http://webkit.org/b/82129
-fast/box-shadow/shadow-buffer-partial.html
-fast/block/lineboxcontain/block-font.html
-fast/block/lineboxcontain/block-glyphs.html
-fast/block/lineboxcontain/font.html
-
-# WTR needs an implementation of setAutomaticLinkDetectionEnabled.
-# https://bugs.webkit.org/show_bug.cgi?id=87162
-editing/inserting/smart-link-when-caret-is-moved-before-URL.html
-editing/inserting/smart-quote-with-all-configurations.html
-editing/inserting/typing-space-to-trigger-smart-link.html
-
 # No CORS support for media elements is implemented yet.
+http/tests/security/canvas-remote-read-remote-video-allowed-anonymous.html [ Failure ]
+http/tests/security/canvas-remote-read-remote-video-allowed-with-credentials.html [ Failure ]
 http/tests/security/video-cross-origin-readback.html
-
-# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
-http/tests/security/contentTypeOptions
 
 # Unexpected redirection happens.
 http/tests/loading/redirect-methods.html
@@ -395,12 +365,6 @@ fast/spatial-navigation/snav-fully-aligned-horizontally.html
 fast/spatial-navigation/snav-fully-aligned-vertically.html
 fast/spatial-navigation/snav-iframe-no-scrollable-content.html
 fast/spatial-navigation/snav-imagemap-overlapped-areas.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=115203
-# Downloaded file name tests fail because of incorrect custom policy delegate implementation
-http/tests/download/default-encoding.html
-http/tests/download/inherited-encoding-form-submission-result.html
-http/tests/download/inherited-encoding.html
 
 # WebFrameLoaderClient::canHandleRequest() has to be implemented.
 http/tests/misc/redirect-to-external-url.html
@@ -464,8 +428,6 @@ http/tests/security/frameNavigation/xss-DENIED-targeted-link-navigation.html
 http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-window-open.html
 http/tests/security/javascriptURL/xss-DENIED-from-javascript-url-in-foreign-domain-window-open.html
 http/tests/security/javascriptURL/xss-DENIED-to-javascript-url-in-foreign-domain-window-open.html
-http/tests/security/popup-blocked-from-fake-event.html
-http/tests/security/popup-blocked-from-window-open.html
 
 # Unexplained failures that were formerly in the "unsafe access" list.
 http/tests/security/cross-frame-access-enumeration.html
@@ -493,7 +455,6 @@ plugins/plugin-initiate-popup-window.html
 storage/websql/open-database-while-transaction-in-progress.html
 svg/hixie/cascade/002.xml
 transitions/font-family-during-transition.html
-
 
 # [WK2] http/tests/navigation/anchor-frames-cross-origin.html fails.
 # https://bugs.webkit.org/show_bug.cgi?id=83581
@@ -527,8 +488,9 @@ http/tests/navigation/redirect-on-back-updates-history-item.html
 http/tests/navigation/redirect-on-reload-updates-history-item.html
 
 # Newly added test fails in WebKit2 for mysterious reasons
-userscripts/window-onerror-for-isolated-world-1.html
-userscripts/window-onerror-for-isolated-world-2.html
+webkit.org/b/158703 userscripts/window-onerror-for-isolated-world-1.html [ Skip ]
+webkit.org/b/158703 userscripts/window-onerror-for-isolated-world-2.html [ Skip ]
+webkit.org/b/158703 userscripts/window-onerror-for-isolated-world-3.html [ Skip ]
 
 # These transition tests are flaky, sometimes it seems like the transition timing
 # is off when the test completes
@@ -538,9 +500,6 @@ transitions/text-indent-transition.html
 
 # These storage tests fail in WebKit2 on the bot, but not running locally
 storage/websql/multiple-databases-garbage-collection.html
-
-# Crashes the WebProcess
-editing/pasteboard/copy-standalone-image.html
 
 # Mysterious failure after enabling paste tests
 editing/mac/pasteboard/text-precomposed.html
@@ -572,31 +531,22 @@ http/tests/security/feed-urls-from-remote.html
 # First two lines are reversed when test is flaky.
 fast/preloader/document-write-2.html [ Pass Failure ]
 
-# Test crashes from initial import of w3c IndexedDB tests
-imported/w3c/indexeddb/idbfactory_open10.htm [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex4-deleteIndex-event_order.htm [ Skip ]
-imported/w3c/indexeddb/key_valid.html [ Skip ]
-
-# Test timeouts from initial import of w3c IndexedDB tests
-imported/w3c/indexeddb/interfaces.html [ Pass Timeout ]
-
-# Flaky tests from initial import of w3c IndexedDB tests
-imported/w3c/indexeddb/transaction-lifetime.htm [ Pass Failure ]
-imported/w3c/indexeddb/idbobjectstore_deleteIndex.htm [ Pass Failure ]
-imported/w3c/indexeddb/idbcursor-direction.htm [ Pass Failure ]
-imported/w3c/indexeddb/idbcursor-key.htm [ Pass Failure ]
-
-# Additional flaky idb test:
-imported/w3c/indexeddb/idbfactory_open5.htm [ Pass Failure ]
-
-# Don't run Modern IDB tests while the feature is under development
-storage/indexeddb/modern [ Skip ]
-
 ### END OF (3) Unclassified failures
 ########################################
 
 ########################################
 ### START OF (4) Features that are not supported in WebKit2 and likely never will be
+
+# Internals.registerDefaultPortForProtocol() does not affect NetworkProcess. We should
+# look to remove it and write these test to make use of an HTTP server running on port 80.
+http/tests/security/contentSecurityPolicy/script-src-parsing-implicit-and-explicit-port-number.html
+http/tests/security/http-0.9/default-port-plugin-blocked.html
+http/tests/security/http-0.9/default-port-script-blocked.html
+http/tests/security/http-0.9/image-default-port-allowed.html
+http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed-ref-test.html
+http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed.html
+http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked.html
+http/tests/security/http-0.9/sandbox-should-not-persist-on-navigation.html
 
 # WebKitTestRunner doesn't have appleScriptController
 platform/mac/fast/AppleScript/001.html
@@ -611,6 +561,7 @@ platform/mac/fast/objc/dom-html-select-activate.html
 platform/mac/fast/objc/dom-html-select-live-pseudo-selectors.html
 platform/mac/fast/objc/longlongTest.html
 platform/mac/fast/objc/webScriptObject-hasWebScriptKey.html
+platform/mac/fast/objc/webScriptObject-does-not-call-description-on-nsobject.html
 platform/mac/plugins/bindings-array-apply-crash.html
 platform/mac/plugins/bindings-objc-long-method-name.html
 platform/mac/plugins/bindings-objc-method-name-conversion.html
@@ -638,6 +589,7 @@ platform/mac/fast/events/objc-event-api.html
 # https://bugs.webkit.org/show_bug.cgi?id=64285
 editing/pasteboard/file-drag-to-editable.html
 editing/pasteboard/file-input-files-access.html
+fast/dom/FileList-iterator.html
 fast/dom/Window/window-postmessage-clone-frames.html
 fast/dom/Window/window-postmessage-clone.html
 fast/events/data-transfer-files-attribute-identity.html
@@ -690,9 +642,14 @@ http/tests/local/formdata/send-form-data.html
 http/tests/local/formdata/send-form-data-with-empty-file-filename.html
 http/tests/local/formdata/upload-events.html
 http/tests/security/clipboard/clipboard-file-access.html
+imported/blink/storage/indexeddb/blob-basics-metadata.html
+imported/blink/storage/indexeddb/empty-blob-file.html
 media/video-src-blob.html
-storage/indexeddb/noblobs.html
+security/contentSecurityPolicy/image-with-blob-url-allowed-by-img-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html
+security/contentSecurityPolicy/image-with-blob-url-blocked-by-img-src-star.html
+security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html
 storage/indexeddb/structured-clone.html
+storage/indexeddb/structured-clone-private.html
 
 # WebKitTestRunner doesn't have eventSender.fireKeyboardEventsToElement
 platform/mac/fast/events/objc-keyboard-event-creation.html
@@ -708,480 +665,13 @@ fast/events/drag-display-none-element.html
 # Skip tests in fast/text/shaping
 fast/text/shaping
 
-# WebKit2 should always have IndexedDB enabled
-storage/indexeddb/properties-disabled-at-runtime.html [ Skip ]
-
 # WebKitTestRunner testRunner.setPrivateBrowsingEnabled doesn't work with NetworkProcess.
 # We explicitly Skip the following tests instead of marking them as Failure because some of these tests will naturally pass
 # as a consequence of testRunner.setPrivateBrowsingEnabled() effectively being a no-op as of the time of writing (07/08/2015).
-webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.html [ Skip ]
-webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.html [ Skip ]
-webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.html [ Skip ]
-webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.html [ Skip ]
-
-# Legacy IndexedDB will never properly support IDB in private browsing
-imported/w3c/indexeddb/abort-in-initial-upgradeneeded-private.html [ Skip ]
-imported/w3c/indexeddb/close-in-upgradeneeded-private.html [ Skip ]
-imported/w3c/indexeddb/cursor-overloads-private.html [ Skip ]
-imported/w3c/indexeddb/idb_webworkers-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-advance-continue-async-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-advance-invalid-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-advance-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-continue-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-direction-index-keyrange-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-direction-index-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-direction-objectstore-keyrange-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-direction-objectstore-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-direction-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-key-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-primarykey-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-reused-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor-source-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index6-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index7-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index8-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_index9-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_objectstore-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_objectstore2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_objectstore3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_objectstore4-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_advance_objectstore5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index4-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index6-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index7-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_index8-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_invalid-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_objectstore-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_objectstore2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_objectstore3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_objectstore4-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_objectstore5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_continue_objectstore6-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_index-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_index2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_index3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_index4-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_index5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_objectstore-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_objectstore2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_objectstore3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_objectstore4-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_delete_objectstore5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_iterating-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_iterating_index-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_iterating_index2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_iterating_objectstore-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_iterating_objectstore2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_index-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_index2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_index3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_index4-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_index5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_index6-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_index7-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore2-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore3-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore4-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore5-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore6-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore7-private.html [ Skip ]
-imported/w3c/indexeddb/idbcursor_update_objectstore8-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_close-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_close2-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore-createIndex-emptyname-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore10-1000ends-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore10-emptyname-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore11-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore2-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore3-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore4-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore5-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore6-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore7-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore8-parameters-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_createObjectStore9-invalidparameters-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_deleteObjectStore-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_deleteObjectStore2-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_deleteObjectStore3-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_deleteObjectStore4-not_reused-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_transaction-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_transaction2-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_transaction3-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_transaction4-private.html [ Skip ]
-imported/w3c/indexeddb/idbdatabase_transaction5-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_cmp-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_cmp2-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_deleteDatabase-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_deleteDatabase2-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_deleteDatabase3-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_deleteDatabase4-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open10-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open11-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open12-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open2-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open3-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open4-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open5-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open6-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open7-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open8-private.html [ Skip ]
-imported/w3c/indexeddb/idbfactory_open9-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex-multientry-arraykeypath-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex-multientry-big-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex-multientry-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_count-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_count2-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_count3-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_count4-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_get-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_get2-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_get3-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_get4-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_get5-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_get6-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_get7-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_getKey-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_getKey2-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_getKey3-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_getKey4-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_getKey5-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_getKey6-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_getKey7-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_indexNames-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_openCursor-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_openCursor2-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_openKeyCursor-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_openKeyCursor2-private.html [ Skip ]
-imported/w3c/indexeddb/idbindex_openKeyCursor3-private.html [ Skip ]
-imported/w3c/indexeddb/idbkeyrange-private.html [ Skip ]
-imported/w3c/indexeddb/idbkeyrange_incorrect-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add10-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add11-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add12-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add13-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add14-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add15-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add16-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add2-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add3-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add4-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add5-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add6-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add7-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add8-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_add9-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_clear-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_clear2-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_clear3-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_clear4-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_count-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_count2-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_count3-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_count4-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex10-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex11-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex12-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex13-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex2-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex3-usable-right-away-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex4-deleteIndex-event_order-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex5-emptykeypath-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex6-event_order-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex7-event_order-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex8-valid_keys-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_createIndex9-emptyname-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_delete-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_delete2-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_delete3-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_delete4-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_delete5-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_delete6-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_delete7-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_deleteIndex-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_deleted-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_get-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_get2-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_get3-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_get4-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_get5-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_get6-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_get7-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_index-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_openCursor-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_openCursor_invalid-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put10-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put11-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put12-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put13-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put14-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put15-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put16-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put2-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put3-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put4-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put5-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put6-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put7-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put8-private.html [ Skip ]
-imported/w3c/indexeddb/idbobjectstore_put9-private.html [ Skip ]
-imported/w3c/indexeddb/idbtransaction-oncomplete-private.html [ Skip ]
-imported/w3c/indexeddb/idbtransaction-private.html [ Skip ]
-imported/w3c/indexeddb/idbtransaction_abort-private.html [ Skip ]
-imported/w3c/indexeddb/idbversionchangeevent-private.html [ Skip ]
-imported/w3c/indexeddb/index_sort_order-private.html [ Skip ]
-imported/w3c/indexeddb/key_invalid-private.html [ Skip ]
-imported/w3c/indexeddb/key_valid-private.html [ Skip ]
-imported/w3c/indexeddb/keygenerator-constrainterror-private.html [ Skip ]
-imported/w3c/indexeddb/keygenerator-overflow-private.html [ Skip ]
-imported/w3c/indexeddb/keygenerator-private.html [ Skip ]
-imported/w3c/indexeddb/keyorder-private.html [ Skip ]
-imported/w3c/indexeddb/keypath-private.html [ Skip ]
-imported/w3c/indexeddb/keypath_invalid-private.html [ Skip ]
-imported/w3c/indexeddb/keypath_maxsize-private.html [ Skip ]
-imported/w3c/indexeddb/list_ordering-private.html [ Skip ]
-imported/w3c/indexeddb/objectstore_keyorder-private.html [ Skip ]
-imported/w3c/indexeddb/request_bubble-and-capture-private.html [ Skip ]
-imported/w3c/indexeddb/string-list-ordering-private.html [ Skip ]
-imported/w3c/indexeddb/transaction-create_in_versionchange-private.html [ Skip ]
-imported/w3c/indexeddb/transaction-lifetime-blocked-private.html [ Skip ]
-imported/w3c/indexeddb/transaction-lifetime-private.html [ Skip ]
-imported/w3c/indexeddb/transaction-requestqueue-private.html [ Skip ]
-imported/w3c/indexeddb/transaction_bubble-and-capture-private.html [ Skip ]
-imported/w3c/indexeddb/value-private.html [ Skip ]
-imported/w3c/indexeddb/value_recursive-private.html [ Skip ]
-imported/w3c/indexeddb/writer-starvation-private.html [ Skip ]
-storage/indexeddb/aborted-versionchange-closes-private.html
-storage/indexeddb/basics-private.html
-storage/indexeddb/clone-exception-private.html
-storage/indexeddb/closed-cursor-private.html
-storage/indexeddb/connection-leak-private.html
-storage/indexeddb/create-and-remove-object-store-private.html
-storage/indexeddb/create-object-store-options-private.html
-storage/indexeddb/createIndex-after-failure-private.html
-storage/indexeddb/createObjectStore-name-argument-required-private.html
-storage/indexeddb/createObjectStore-null-name-private.html
-storage/indexeddb/cursor-added-bug-private.html
-storage/indexeddb/cursor-advance-private.html
-storage/indexeddb/cursor-basics-private.html
-storage/indexeddb/cursor-cast-private.html
-storage/indexeddb/cursor-continue-dir-private.html
-storage/indexeddb/cursor-continue-private.html
-storage/indexeddb/cursor-continue-validity-private.html
-storage/indexeddb/cursor-delete-private.html
-storage/indexeddb/cursor-finished-private.html
-storage/indexeddb/cursor-inconsistency-private.html
-storage/indexeddb/cursor-index-delete-private.html
-storage/indexeddb/cursor-key-order-private.html
-storage/indexeddb/cursor-leak-private.html
-storage/indexeddb/cursor-overloads-private.html
-storage/indexeddb/cursor-prev-no-duplicate-private.html
-storage/indexeddb/cursor-primary-key-order-private.html
-storage/indexeddb/cursor-properties-private.html
-storage/indexeddb/cursor-request-cycle-private.html
-storage/indexeddb/cursor-reverse-bug-private.html
-storage/indexeddb/cursor-skip-deleted-private.html
-storage/indexeddb/cursor-update-private.html
-storage/indexeddb/cursor-update-value-argument-required-private.html
-storage/indexeddb/cursor-value-private.html
-storage/indexeddb/database-basics-private.html
-storage/indexeddb/database-close-private.html
-storage/indexeddb/database-closepending-flag-private.html
-storage/indexeddb/database-deletepending-flag-private.html
-storage/indexeddb/database-name-undefined-private.html
-storage/indexeddb/database-odd-names-private.html
-storage/indexeddb/database-quota-private.html
-storage/indexeddb/database-wrapper-private.html
-storage/indexeddb/delete-closed-database-object-private.html
-storage/indexeddb/delete-in-upgradeneeded-close-in-open-success-private.html
-storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange-private.html
-storage/indexeddb/delete-range-private.html
-storage/indexeddb/deleted-objects-private.html
-storage/indexeddb/deletedatabase-blocked-private.html
-storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-private.html
-storage/indexeddb/deletedatabase-not-blocked-private.html
-storage/indexeddb/deletedatabase-transaction-private.html
-storage/indexeddb/deleteIndex-bug110792-private.html
-storage/indexeddb/deleteIndex-private.html
-storage/indexeddb/deleteObjectStore-name-argument-required-private.html
-storage/indexeddb/deleteObjectStore-null-name-private.html
-storage/indexeddb/dont-commit-on-blocked-private.html
-storage/indexeddb/dont-wedge-private.html
-storage/indexeddb/duplicates-private.html
-storage/indexeddb/error-causes-abort-by-default-private.html
-storage/indexeddb/events-private.html
-storage/indexeddb/exception-in-event-aborts-private.html
-storage/indexeddb/exceptions-private.html
-storage/indexeddb/factory-cmp-private.html
-storage/indexeddb/factory-deletedatabase-private.html
-storage/indexeddb/get-keyrange-private.html
-storage/indexeddb/index-basics-private.html
-storage/indexeddb/index-count-private.html
-storage/indexeddb/index-cursor-private.html
-storage/indexeddb/index-duplicate-keypaths-private.html
-storage/indexeddb/index-get-key-argument-required-private.html
-storage/indexeddb/index-multientry-private.html
-storage/indexeddb/index-population-private.html
-storage/indexeddb/index-unique-private.html
-storage/indexeddb/interfaces-private.html
-storage/indexeddb/intversion-abort-in-initial-upgradeneeded-private.html
-storage/indexeddb/intversion-bad-parameters-private.html
-storage/indexeddb/intversion-blocked-private.html
-storage/indexeddb/intversion-close-between-events-private.html
-storage/indexeddb/intversion-close-in-oncomplete-private.html
-storage/indexeddb/intversion-close-in-upgradeneeded-private.html
-storage/indexeddb/intversion-encoding-private.html
-storage/indexeddb/intversion-gated-on-delete-private.html
-storage/indexeddb/intversion-long-queue-private.html
-storage/indexeddb/intversion-omit-parameter-private.html
-storage/indexeddb/intversion-open-in-upgradeneeded-private.html
-storage/indexeddb/intversion-open-with-version-private.html
-storage/indexeddb/intversion-pending-version-changes-ascending-private.html
-storage/indexeddb/intversion-pending-version-changes-descending-private.html
-storage/indexeddb/intversion-pending-version-changes-same-private.html
-storage/indexeddb/intversion-persistence-private.html
-storage/indexeddb/intversion-revert-on-abort-private.html
-storage/indexeddb/intversion-two-opens-no-versions-private.html
-storage/indexeddb/intversion-upgrades-private.html
-storage/indexeddb/invalid-keys-private.html
-storage/indexeddb/key-generator-private.html
-storage/indexeddb/key-sort-order-across-types-private.html
-storage/indexeddb/key-sort-order-date-private.html
-storage/indexeddb/key-type-array-private.html
-storage/indexeddb/key-type-binary-private.html
-storage/indexeddb/key-type-infinity-private.html
-storage/indexeddb/keypath-arrays-private.html
-storage/indexeddb/keypath-basics-private.html
-storage/indexeddb/keypath-edges-private.html
-storage/indexeddb/keypath-fetch-key-private.html
-storage/indexeddb/keypath-intrinsic-properties-private.html
-storage/indexeddb/keyrange-private.html
-storage/indexeddb/keyrange-required-arguments-private.html
-storage/indexeddb/lazy-index-population-private.html
-storage/indexeddb/lazy-index-types-private.html
-storage/indexeddb/legacy-constants-private.html
-storage/indexeddb/list-ordering-private.html
-storage/indexeddb/metadata-private.html
-storage/indexeddb/metadata-race-private.html
-storage/indexeddb/mozilla/add-twice-failure-private.html
-storage/indexeddb/mozilla/autoincrement-indexes-private.html
-storage/indexeddb/mozilla/bad-keypath-private.html
-storage/indexeddb/mozilla/clear-private.html
-storage/indexeddb/mozilla/create-index-unique-private.html
-storage/indexeddb/mozilla/create-index-with-integer-keys-private.html
-storage/indexeddb/mozilla/create-objectstore-basics-private.html
-storage/indexeddb/mozilla/create-objectstore-null-name-private.html
-storage/indexeddb/mozilla/cursor-mutation-objectstore-only-private.html
-storage/indexeddb/mozilla/cursor-mutation-private.html
-storage/indexeddb/mozilla/cursor-update-updates-indexes-private.html
-storage/indexeddb/mozilla/cursors-private.html
-storage/indexeddb/mozilla/delete-result-private.html
-storage/indexeddb/mozilla/event-source-private.html
-storage/indexeddb/mozilla/global-data-private.html
-storage/indexeddb/mozilla/index-prev-no-duplicate-private.html
-storage/indexeddb/mozilla/indexes-private.html
-storage/indexeddb/mozilla/key-requirements-delete-null-key-private.html
-storage/indexeddb/mozilla/key-requirements-inline-and-passed-private.html
-storage/indexeddb/mozilla/key-requirements-private.html
-storage/indexeddb/mozilla/key-requirements-put-no-key-private.html
-storage/indexeddb/mozilla/key-requirements-put-null-key-private.html
-storage/indexeddb/mozilla/object-cursors-private.html
-storage/indexeddb/mozilla/object-identity-private.html
-storage/indexeddb/mozilla/object-store-inline-autoincrement-key-added-on-put-private.html
-storage/indexeddb/mozilla/object-store-remove-values-private.html
-storage/indexeddb/mozilla/objectstorenames-private.html
-storage/indexeddb/mozilla/odd-result-order-private.html
-storage/indexeddb/mozilla/open-database-null-name-private.html
-storage/indexeddb/mozilla/put-get-values-private.html
-storage/indexeddb/mozilla/readonly-transactions-private.html
-storage/indexeddb/mozilla/readwrite-transactions-private.html
-storage/indexeddb/mozilla/readyState-private.html
-storage/indexeddb/mozilla/remove-index-private.html
-storage/indexeddb/mozilla/remove-objectstore-private.html
-storage/indexeddb/mozilla/versionchange-abort-private.html
-storage/indexeddb/mutating-cursor-private.html
-storage/indexeddb/noblobs-private.html
-storage/indexeddb/object-lookups-in-versionchange-private.html
-storage/indexeddb/objectstore-autoincrement-private.html
-storage/indexeddb/objectstore-basics-private.html
-storage/indexeddb/objectstore-clear-private.html
-storage/indexeddb/objectstore-count-private.html
-storage/indexeddb/objectstore-cursor-private.html
-storage/indexeddb/objectstore-removeobjectstore-private.html
-storage/indexeddb/objectStore-required-arguments-private.html
-storage/indexeddb/odd-strings-private.html
-storage/indexeddb/open-bad-versions-private.html
-storage/indexeddb/open-cursor-private.html
-storage/indexeddb/open-db-private-browsing.html
-storage/indexeddb/open-during-transaction-private.html
-storage/indexeddb/open-ordering-private.html
-storage/indexeddb/opencursor-key-private.html
-storage/indexeddb/optional-arguments-private.html
-storage/indexeddb/pending-activity-private.html
-storage/indexeddb/pending-version-change-on-exit-private.html
-storage/indexeddb/pending-version-change-stuck-private.html
-storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html
-storage/indexeddb/persistence-private.html
-storage/indexeddb/prefetch-bugfix-108071-private.html
-storage/indexeddb/prefetch-invalidation-private.html
-storage/indexeddb/prefetch-race-private.html
-storage/indexeddb/primary-key-unique-to-objectstore-private.html
-storage/indexeddb/queued-commands-private.html
-storage/indexeddb/readonly-private.html
-storage/indexeddb/readonly-properties-private.html
-storage/indexeddb/removed-private.html
-storage/indexeddb/request-continue-abort-private.html
-storage/indexeddb/request-event-propagation-private.html
-storage/indexeddb/request-leak-private.html
-storage/indexeddb/request-result-cache-private.html
-storage/indexeddb/set_version_blocked-private.html
-storage/indexeddb/setversion-blocked-by-versionchange-close-private.html
-storage/indexeddb/setversion-not-blocked-private.html
-storage/indexeddb/structured-clone-private.html
-storage/indexeddb/transaction-abort-private.html
-storage/indexeddb/transaction-active-flag-private.html
-storage/indexeddb/transaction-after-close-private.html
-storage/indexeddb/transaction-and-objectstore-calls-private.html
-storage/indexeddb/transaction-basics-private.html
-storage/indexeddb/transaction-complete-with-js-recursion-cross-frame-private.html
-storage/indexeddb/transaction-complete-with-js-recursion-private.html
-storage/indexeddb/transaction-complete-workers-private.html
-storage/indexeddb/transaction-coordination-across-databases-private.html
-storage/indexeddb/transaction-coordination-within-database-private.html
-storage/indexeddb/transaction-crash-in-tasks-private.html
-storage/indexeddb/transaction-crash-on-abort-private.html
-storage/indexeddb/transaction-error-private.html
-storage/indexeddb/transaction-event-propagation-private.html
-storage/indexeddb/transaction-ordering-private.html
-storage/indexeddb/transaction-overlapping-private.html
-storage/indexeddb/transaction-read-only-private.html
-storage/indexeddb/transaction-readwrite-exclusive-private.html
-storage/indexeddb/transaction-rollback-private.html
-storage/indexeddb/transaction-scope-sequencing-private.html
-storage/indexeddb/transaction-storeNames-required-private.html
-storage/indexeddb/unblocked-version-changes-private.html
-storage/indexeddb/unprefix-private.html
-storage/indexeddb/value-undefined-private.html
-storage/indexeddb/values-odd-types-private.html
-storage/indexeddb/version-change-abort-private.html
-storage/indexeddb/version-change-event-basic-private.html
-storage/indexeddb/version-change-event-private.html
-storage/indexeddb/version-change-exclusive-private.html
-storage/indexeddb/versionchangerequest-activedomobject-private.html
-
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.php [ Skip ]
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.php [ Skip ]
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.php [ Skip ]
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.php [ Skip ]
 
 ### END OF (4) Features that are not supported in WebKit2 and likely never will be
 ########################################
@@ -1196,6 +686,28 @@ fast/images/gif-loop-count.html [ Pass ]
 # DumpRenderTree does not implement setWillSendRequestHTTPBody
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
 
+# bug 162281
+imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
+
+# Resource Load Statistics are only supported in WebKit2.
+http/tests/loading/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html [ Pass Timeout ]
+http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html [ Pass ]
+webkit.org/b/171785 http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html [ Pass Failure ]
+webkit.org/b/171756 http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html [ Pass Failure ]
+http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
+http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
+webkit.org/b/172452 http/tests/loading/resourceLoadStatistics/grandfathering.html [ Pass Failure Timeout ]
+webkit.org/b/173499 http/tests/loading/resourceLoadStatistics/telemetry-generation.html [ Pass Failure ]
+http/tests/loading/resourceLoadStatistics/prune-statistics.html [ Pass ]
+
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################
 
@@ -1207,3 +719,6 @@ http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
 ### (3) Unclassified failures
 ### (4) Features that are not supported in WebKit2 and likely never will be
 ### (5) Progressions, expected successes that are expected failures in WebKit1.
+
+webkit.org/b/168092 media/track/track-cues-sorted-before-dispatch.html [ Pass Failure ]
+

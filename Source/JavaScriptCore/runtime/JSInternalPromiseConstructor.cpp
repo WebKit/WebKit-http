@@ -27,11 +27,9 @@
 #include "JSInternalPromiseConstructor.h"
 
 #include "JSCBuiltins.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSInternalPromise.h"
 #include "JSInternalPromisePrototype.h"
-#include "StructureInlines.h"
 
 #include "JSInternalPromiseConstructor.lut.h"
 
@@ -39,7 +37,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSInternalPromiseConstructor);
 
-const ClassInfo JSInternalPromiseConstructor::s_info = { "Function", &Base::s_info, &internalPromiseConstructorTable, CREATE_METHOD_TABLE(JSInternalPromiseConstructor) };
+const ClassInfo JSInternalPromiseConstructor::s_info = { "Function", &Base::s_info, &internalPromiseConstructorTable, nullptr, CREATE_METHOD_TABLE(JSInternalPromiseConstructor) };
 
 /* Source for JSInternalPromiseConstructor.lut.h
 @begin internalPromiseConstructorTable
@@ -66,7 +64,7 @@ JSInternalPromiseConstructor::JSInternalPromiseConstructor(VM& vm, Structure* st
 
 static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
 {
-    JSGlobalObject* globalObject = exec->callee()->globalObject();
+    JSGlobalObject* globalObject = exec->jsCallee()->globalObject();
     VM& vm = exec->vm();
     JSInternalPromise* promise = JSInternalPromise::create(vm, globalObject->internalPromiseStructure());
     promise->initialize(exec, globalObject, exec->argument(0));
@@ -76,18 +74,13 @@ static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
 ConstructType JSInternalPromiseConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructPromise;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 CallType JSInternalPromiseConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = constructPromise;
-    return CallTypeHost;
-}
-
-bool JSInternalPromiseConstructor::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticFunctionSlot<Base>(exec, internalPromiseConstructorTable, jsCast<JSInternalPromiseConstructor*>(object), propertyName, slot);
+    return CallType::Host;
 }
 
 } // namespace JSC

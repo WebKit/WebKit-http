@@ -22,7 +22,7 @@
 
 #include "MediaPlayerPrivateGStreamerOwr.h"
 
-#if ENABLE(MEDIA_STREAM) && USE(GSTREAMER) && USE(OPENWEBRTC)
+#if ENABLE(VIDEO) && ENABLE(MEDIA_STREAM) && USE(GSTREAMER) && USE(OPENWEBRTC)
 
 #include "GStreamerUtilities.h"
 #include "MediaPlayer.h"
@@ -30,10 +30,10 @@
 #include "NotImplemented.h"
 #include "RealtimeMediaSourceOwr.h"
 #include "URL.h"
-#include <gst/audio/streamvolume.h>
 #include <owr/owr.h>
 #include <owr/owr_gst_audio_renderer.h>
 #include <owr/owr_gst_video_renderer.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
 GST_DEBUG_CATEGORY(webkit_openwebrtc_debug);
@@ -44,24 +44,27 @@ namespace WebCore {
 MediaPlayerPrivateGStreamerOwr::MediaPlayerPrivateGStreamerOwr(MediaPlayer* player)
     : MediaPlayerPrivateGStreamerBase(player)
 {
-    if (initializeGStreamerAndGStreamerDebugging()) {
-        LOG_MEDIA_MESSAGE("Creating MediaPlayerPrivateGStreamerOwr");
-
-        createVideoSink();
-        createGSTAudioSinkBin();
-    }
+    initializeGStreamerAndGStreamerDebugging();
 }
 
 MediaPlayerPrivateGStreamerOwr::~MediaPlayerPrivateGStreamerOwr()
 {
-    LOG_MEDIA_MESSAGE("Destroying");
+    GST_TRACE("Destroying");
+
+    if (hasAudio())
+        m_audioTrack->removeObserver(*this);
+    if (hasVideo())
+        m_videoTrack->removeObserver(*this);
+
+    m_audioTrackMap.clear();
+    m_videoTrackMap.clear();
 
     stop();
 }
 
 void MediaPlayerPrivateGStreamerOwr::play()
 {
-    LOG_MEDIA_MESSAGE("Play");
+    GST_DEBUG("Play");
 
     if (!m_streamPrivate || !m_streamPrivate->active()) {
         m_readyState = MediaPlayer::HaveNothing;
@@ -69,25 +72,59 @@ void MediaPlayerPrivateGStreamerOwr::play()
         return;
     }
 
+    m_ended = false;
     m_paused = false;
-    internalLoad();
+
+    GST_DEBUG("Connecting to live stream, descriptor: %p", m_streamPrivate.get());
+
+    if (m_videoTrack)
+        maybeHandleChangeMutedState(*m_videoTrack.get());
+
+    if (m_audioTrack)
+        maybeHandleChangeMutedState(*m_audioTrack.get());
 }
 
 void MediaPlayerPrivateGStreamerOwr::pause()
 {
-    LOG_MEDIA_MESSAGE("Pause");
+    GST_DEBUG("Pause");
     m_paused = true;
-    stop();
+    disableMediaTracks();
 }
 
 bool MediaPlayerPrivateGStreamerOwr::hasVideo() const
 {
-    return m_videoSource;
+    return m_videoTrack;
 }
 
 bool MediaPlayerPrivateGStreamerOwr::hasAudio() const
 {
-    return m_audioSource;
+    return m_audioTrack;
+}
+
+void MediaPlayerPrivateGStreamerOwr::setVolume(float volume)
+{
+    if (!m_audioTrack)
+        return;
+
+    auto& realTimeMediaSource = static_cast<RealtimeMediaSourceOwr&>(m_audioTrack->source());
+    auto mediaSource = OWR_MEDIA_SOURCE(realTimeMediaSource.mediaSource());
+
+    GST_DEBUG("Setting volume: %f", volume);
+    g_object_set(mediaSource, "volume", static_cast<gdouble>(volume), nullptr);
+}
+
+void MediaPlayerPrivateGStreamerOwr::setMuted(bool muted)
+{
+    if (!m_audioTrack)
+        return;
+
+    auto& realTimeMediaSource = static_cast<RealtimeMediaSourceOwr&>(m_audioTrack->source());
+    auto mediaSource = OWR_MEDIA_SOURCE(realTimeMediaSource.mediaSource());
+    if (!mediaSource)
+        return;
+
+    GST_DEBUG("Setting mute: %s", muted ? "on":"off");
+    g_object_set(mediaSource, "mute", muted, nullptr);
 }
 
 float MediaPlayerPrivateGStreamerOwr::currentTime() const
@@ -95,16 +132,16 @@ float MediaPlayerPrivateGStreamerOwr::currentTime() const
     gint64 position = GST_CLOCK_TIME_NONE;
     GstQuery* query = gst_query_new_position(GST_FORMAT_TIME);
 
-    if (m_videoSource && gst_element_query(m_videoSink.get(), query))
+    if (m_videoTrack && gst_element_query(m_videoSink.get(), query))
         gst_query_parse_position(query, 0, &position);
-    else if (m_audioSource && gst_element_query(m_audioSink.get(), query))
+    else if (m_audioTrack && gst_element_query(m_audioSink.get(), query))
         gst_query_parse_position(query, 0, &position);
 
     float result = 0;
     if (static_cast<GstClockTime>(position) != GST_CLOCK_TIME_NONE)
         result = static_cast<double>(position) / GST_SECOND;
 
-    LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
+    GST_LOG("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
     gst_query_unref(query);
 
     return result;
@@ -112,15 +149,24 @@ float MediaPlayerPrivateGStreamerOwr::currentTime() const
 
 void MediaPlayerPrivateGStreamerOwr::load(const String &)
 {
-    notImplemented();
+    // Properly fail so the global MediaPlayer tries to fallback to the next MediaPlayerPrivate.
+    m_networkState = MediaPlayer::FormatError;
+    m_player->networkStateChanged();
 }
+
+#if ENABLE(MEDIA_SOURCE)
+void MediaPlayerPrivateGStreamerOwr::load(const String&, MediaSourcePrivateClient*)
+{
+    // Properly fail so the global MediaPlayer tries to fallback to the next MediaPlayerPrivate.
+    m_networkState = MediaPlayer::FormatError;
+    m_player->networkStateChanged();
+}
+#endif
 
 void MediaPlayerPrivateGStreamerOwr::load(MediaStreamPrivate& streamPrivate)
 {
     if (!initializeGStreamer())
         return;
-
-    LOG_MEDIA_MESSAGE("Loading MediaStreamPrivate %p", &streamPrivate);
 
     m_streamPrivate = &streamPrivate;
     if (!m_streamPrivate->active()) {
@@ -128,25 +174,73 @@ void MediaPlayerPrivateGStreamerOwr::load(MediaStreamPrivate& streamPrivate)
         return;
     }
 
+    if (streamPrivate.hasVideo() && !m_videoSink)
+        createVideoSink();
+
+    if (streamPrivate.hasAudio() && !m_audioSink)
+        createGSTAudioSinkBin();
+
+    GST_DEBUG("Loading MediaStreamPrivate %p video: %s, audio: %s", &streamPrivate, streamPrivate.hasVideo() ? "yes":"no", streamPrivate.hasAudio() ? "yes":"no");
+
     m_readyState = MediaPlayer::HaveNothing;
     m_networkState = MediaPlayer::Loading;
     m_player->networkStateChanged();
     m_player->readyStateChanged();
 
-    if (!internalLoad())
-        return;
+    for (auto track : m_streamPrivate->tracks()) {
+        if (!track->enabled()) {
+            GST_DEBUG("Track %s disabled", track->label().ascii().data());
+            continue;
+        }
 
-    // If the stream contains video, wait for first video frame before setting
-    // HaveEnoughData.
-    if (!hasVideo())
-        m_readyState = MediaPlayer::HaveEnoughData;
+        GST_DEBUG("Processing track %s", track->label().ascii().data());
 
+        bool observeTrack = false;
+
+        // TODO: Support for multiple tracks of the same type.
+
+        switch (track->type()) {
+        case RealtimeMediaSource::Type::Audio:
+            if (!m_audioTrack) {
+                String preSelectedDevice = getenv("WEBKIT_AUDIO_DEVICE");
+                if (!preSelectedDevice || (preSelectedDevice == track->label())) {
+                    m_audioTrack = track;
+                    auto audioTrack = AudioTrackPrivateMediaStream::create(*m_audioTrack.get());
+                    m_player->addAudioTrack(*audioTrack);
+                    m_audioTrackMap.add(track->id(), audioTrack);
+                    observeTrack = true;
+                }
+            }
+            break;
+        case RealtimeMediaSource::Type::Video:
+            if (!m_videoTrack) {
+                String preSelectedDevice = getenv("WEBKIT_VIDEO_DEVICE");
+                if (!preSelectedDevice || (preSelectedDevice == track->label())) {
+                    m_videoTrack = track;
+                    auto videoTrack = VideoTrackPrivateMediaStream::create(*m_videoTrack.get());
+                    m_player->addVideoTrack(*videoTrack);
+                    videoTrack->setSelected(true);
+                    m_videoTrackMap.add(track->id(), videoTrack);
+                    observeTrack = true;
+                }
+            }
+            break;
+        case RealtimeMediaSource::Type::None:
+            GST_WARNING("Loading a track with None type");
+        }
+
+        if (observeTrack)
+            track->addObserver(*this);
+    }
+
+    m_readyState = MediaPlayer::HaveEnoughData;
     m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivateGStreamerOwr::loadingFailed(MediaPlayer::NetworkState error)
 {
     if (m_networkState != error) {
+        GST_WARNING("Loading failed, error: %d", error);
         m_networkState = error;
         m_player->networkStateChanged();
     }
@@ -162,71 +256,28 @@ bool MediaPlayerPrivateGStreamerOwr::didLoadingProgress() const
     return true;
 }
 
-bool MediaPlayerPrivateGStreamerOwr::internalLoad()
+void MediaPlayerPrivateGStreamerOwr::disableMediaTracks()
 {
-    if (!m_stopped)
-        return false;
-
-    m_stopped = false;
-    if (!m_streamPrivate || !m_streamPrivate->active()) {
-        loadingFailed(MediaPlayer::NetworkError);
-        return false;
+    if (m_audioTrack) {
+        GST_DEBUG("Stop: disconnecting audio");
+        g_object_set(m_audioRenderer.get(), "disabled", true, nullptr);
+        owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_audioRenderer.get()), nullptr);
     }
 
-    LOG_MEDIA_MESSAGE("Connecting to live stream, descriptor: %p", m_streamPrivate.get());
-
-    for (auto track : m_streamPrivate->tracks()) {
-        if (!track->enabled()) {
-            LOG_MEDIA_MESSAGE("Track %s disabled", track->label().ascii().data());
-            continue;
-        }
-
-        RealtimeMediaSourceOwr* source = reinterpret_cast<RealtimeMediaSourceOwr*>(&track->source());
-        OwrMediaSource* mediaSource = OWR_MEDIA_SOURCE(source->mediaSource());
-
-        switch (track->type()) {
-        case RealtimeMediaSource::Audio:
-            if (m_audioSource && (m_audioSource.get() == source))
-                g_object_set(m_audioRenderer.get(), "disabled", FALSE, nullptr);
-
-            owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_audioRenderer.get()), mediaSource);
-            m_audioSource = source;
-            source->addObserver(this);
-            break;
-        case RealtimeMediaSource::Video:
-            if (m_videoSource && (m_videoSource.get() == source))
-                g_object_set(m_videoRenderer.get(), "disabled", FALSE, nullptr);
-
-            // FIXME: Remove hardcoded video dimensions when the rendering performance:
-            // https://webkit.org/b/153826.
-            g_object_set(m_videoRenderer.get(), "width", 640, "height", 480, nullptr);
-            owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_videoRenderer.get()), mediaSource);
-            m_videoSource = source;
-            source->addObserver(this);
-            break;
-        case RealtimeMediaSource::None:
-            WARN_MEDIA_MESSAGE("Loading a track with None type");
-        }
+    if (m_videoTrack) {
+        GST_DEBUG("Stop: disconnecting video");
+        g_object_set(m_videoRenderer.get(), "disabled", true, nullptr);
+        owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_videoRenderer.get()), nullptr);
     }
-
-    m_readyState = MediaPlayer::HaveEnoughData;
-    m_player->readyStateChanged();
-    return true;
 }
 
 void MediaPlayerPrivateGStreamerOwr::stop()
 {
-    if (m_stopped)
-        return;
-
-    m_stopped = true;
-    if (m_audioSource) {
-        LOG_MEDIA_MESSAGE("Stop: disconnecting audio");
-        g_object_set(m_audioRenderer.get(), "disabled", TRUE, nullptr);
-    }
-    if (m_videoSource) {
-        LOG_MEDIA_MESSAGE("Stop: disconnecting video");
-        g_object_set(m_videoRenderer.get(), "disabled", TRUE, nullptr);
+    disableMediaTracks();
+    if (m_videoTrack) {
+        auto videoTrack = m_videoTrackMap.get(m_videoTrack->id());
+        if (videoTrack)
+            videoTrack->setSelected(false);
     }
 }
 
@@ -235,17 +286,21 @@ void MediaPlayerPrivateGStreamerOwr::registerMediaEngine(MediaEngineRegistrar re
     if (initializeGStreamerAndGStreamerDebugging()) {
         registrar([](MediaPlayer* player) {
             return std::make_unique<MediaPlayerPrivateGStreamerOwr>(player);
-        }, getSupportedTypes, supportsType, 0, 0, 0, 0);
+        }, getSupportedTypes, supportsType, nullptr, nullptr, nullptr, nullptr);
     }
 }
 
-void MediaPlayerPrivateGStreamerOwr::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&)
+void MediaPlayerPrivateGStreamerOwr::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
 {
     // Not supported in this media player.
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache;
+    types = cache;
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateGStreamerOwr::supportsType(const MediaEngineSupportParameters&)
+MediaPlayer::SupportsType MediaPlayerPrivateGStreamerOwr::supportsType(const MediaEngineSupportParameters& parameters)
 {
+    if (parameters.isMediaStream)
+        return MediaPlayer::IsSupported;
     return MediaPlayer::IsNotSupported;
 }
 
@@ -265,60 +320,182 @@ bool MediaPlayerPrivateGStreamerOwr::initializeGStreamerAndGStreamerDebugging()
 void MediaPlayerPrivateGStreamerOwr::createGSTAudioSinkBin()
 {
     ASSERT(!m_audioSink);
-    LOG_MEDIA_MESSAGE("Creating audio sink");
+    GST_DEBUG("Creating audio sink");
     // FIXME: volume/mute support: https://webkit.org/b/153828.
 
-    GRefPtr<GstElement> sink = gst_element_factory_make("autoaudiosink", 0);
+    // Pre-roll an autoaudiosink so that the platform audio sink is created and
+    // can be retrieved from the autoaudiosink bin.
+    GRefPtr<GstElement> sink = gst_element_factory_make("autoaudiosink", nullptr);
     GstChildProxy* childProxy = GST_CHILD_PROXY(sink.get());
-    m_audioSink = adoptGRef(GST_ELEMENT(gst_child_proxy_get_child_by_index(childProxy, 0)));
+    gst_element_set_state(sink.get(), GST_STATE_READY);
+    GRefPtr<GstElement> platformSink = adoptGRef(GST_ELEMENT(gst_child_proxy_get_child_by_index(childProxy, 0)));
+    GstElementFactory* factory = gst_element_get_factory(platformSink.get());
+
+    // Dispose now un-needed autoaudiosink.
     gst_element_set_state(sink.get(), GST_STATE_NULL);
 
+    // Create a fresh new audio sink compatible with the platform.
+    m_audioSink = gst_element_factory_create(factory, nullptr);
     m_audioRenderer = adoptGRef(owr_gst_audio_renderer_new(m_audioSink.get()));
 }
 
-void MediaPlayerPrivateGStreamerOwr::sourceStopped()
+void MediaPlayerPrivateGStreamerOwr::trackEnded(MediaStreamTrackPrivate& track)
 {
-    LOG_MEDIA_MESSAGE("Source stopped");
+    GST_DEBUG("Track ended");
 
     if (!m_streamPrivate || !m_streamPrivate->active()) {
         stop();
         return;
     }
 
-    for (auto& track : m_streamPrivate->tracks()) {
-        auto* source = reinterpret_cast<RealtimeMediaSourceOwr*>(&track->source());
-        if (track->enabled())
-            continue;
-        if (source == m_audioSource)
-            g_object_set(m_audioRenderer.get(), "disabled", TRUE, nullptr);
-        else if (source == m_videoSource)
-            g_object_set(m_videoRenderer.get(), "disabled", TRUE, nullptr);
+    if (&track == m_audioTrack)
+        g_object_set(m_audioRenderer.get(), "disabled", true, nullptr);
+    else if (&track == m_videoTrack) {
+        g_object_set(m_videoRenderer.get(), "disabled", true, nullptr);
+        auto& realTimeMediaSource = static_cast<RealtimeMediaSourceOwr&>(m_videoTrack->source());
+        realTimeMediaSource.setWidth(0);
+        realTimeMediaSource.setHeight(0);
+        auto videoTrack = m_videoTrackMap.get(m_videoTrack->id());
+        if (videoTrack)
+            videoTrack->setSelected(false);
+    }
+
+    gboolean audioDisabled;
+    gboolean videoDisabled;
+    g_object_get(m_audioRenderer.get(), "disabled", &audioDisabled, nullptr);
+    g_object_get(m_videoRenderer.get(), "disabled", &videoDisabled, nullptr);
+    if (audioDisabled && videoDisabled) {
+        m_ended = true;
+        m_player->timeChanged();
     }
 }
 
-void MediaPlayerPrivateGStreamerOwr::sourceMutedChanged()
+void MediaPlayerPrivateGStreamerOwr::trackMutedChanged(MediaStreamTrackPrivate& track)
 {
-    LOG_MEDIA_MESSAGE("Source muted state changed");
+    GST_DEBUG("Track muted state changed");
+
+    maybeHandleChangeMutedState(track);
 }
 
-void MediaPlayerPrivateGStreamerOwr::sourceSettingsChanged()
+void MediaPlayerPrivateGStreamerOwr::maybeHandleChangeMutedState(MediaStreamTrackPrivate& track)
 {
-    LOG_MEDIA_MESSAGE("Source settings changed");
+    auto& realTimeMediaSource = static_cast<RealtimeMediaSourceOwr&>(track.source());
+    auto mediaSource = OWR_MEDIA_SOURCE(realTimeMediaSource.mediaSource());
+
+    GST_DEBUG("%s track now %s", track.type() == RealtimeMediaSource::Type::Audio ? "audio":"video", realTimeMediaSource.muted() ? "muted":"un-muted");
+    switch (track.type()) {
+    case RealtimeMediaSource::Type::Audio:
+        if (!realTimeMediaSource.muted()) {
+            g_object_set(m_audioRenderer.get(), "disabled", false, nullptr);
+            owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_audioRenderer.get()), mediaSource);
+        } else {
+            g_object_set(m_audioRenderer.get(), "disabled", true, nullptr);
+            owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_audioRenderer.get()), nullptr);
+        }
+        if (mediaSource)
+            g_object_set(mediaSource, "mute", !track.enabled(), nullptr);
+        break;
+    case RealtimeMediaSource::Type::Video:
+        if (!realTimeMediaSource.muted()) {
+            g_object_set(m_videoRenderer.get(), "disabled", false, nullptr);
+            owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_videoRenderer.get()), mediaSource);
+        } else {
+            g_object_set(m_videoRenderer.get(), "disabled", true, nullptr);
+            owr_media_renderer_set_source(OWR_MEDIA_RENDERER(m_videoRenderer.get()), nullptr);
+        }
+        break;
+    case RealtimeMediaSource::Type::None:
+        GST_WARNING("Trying to change mute state of a track with None type");
+    }
 }
 
-bool MediaPlayerPrivateGStreamerOwr::preventSourceFromStopping()
+void MediaPlayerPrivateGStreamerOwr::trackSettingsChanged(MediaStreamTrackPrivate&)
 {
-    LOG_MEDIA_MESSAGE("Prevent source from stopping");
-    return false;
+    GST_DEBUG("Track settings changed");
+}
+
+void MediaPlayerPrivateGStreamerOwr::trackEnabledChanged(MediaStreamTrackPrivate& track)
+{
+    GST_DEBUG("%s track now %s", track.type() == RealtimeMediaSource::Type::Audio ? "audio":"video", track.enabled() ? "enabled":"disabled");
+
+    switch (track.type()) {
+    case RealtimeMediaSource::Type::Audio:
+        g_object_set(m_audioRenderer.get(), "disabled", !track.enabled(), nullptr);
+        break;
+    case RealtimeMediaSource::Type::Video:
+        g_object_set(m_videoRenderer.get(), "disabled", !track.enabled(), nullptr);
+        break;
+    case RealtimeMediaSource::Type::None:
+        GST_WARNING("Trying to change enabled state of a track with None type");
+    }
 }
 
 GstElement* MediaPlayerPrivateGStreamerOwr::createVideoSink()
 {
-    GstElement* sink = MediaPlayerPrivateGStreamerBase::createVideoSink();
-    m_videoRenderer = adoptGRef(owr_gst_video_renderer_new(sink));
+    GstElement* sink;
+#if USE(GSTREAMER_GL)
+    // No need to create glupload and glcolorconvert here because they are
+    // already created by the video renderer.
+    // FIXME: This should probably return a RefPtr. See https://bugs.webkit.org/show_bug.cgi?id=164709.
+    sink = MediaPlayerPrivateGStreamerBase::createGLAppSink();
+    m_videoSink = sink;
+#else
+    if (m_streamPrivate->getVideoRenderer()) {
+        m_videoRenderer = m_streamPrivate->getVideoRenderer();
+        m_videoSink = m_streamPrivate->getVideoSinkElement();
+        g_signal_connect_swapped(m_videoSink.get(), "repaint-requested", G_CALLBACK(MediaPlayerPrivateGStreamerBase::repaintCallback), this);
+        g_object_get(m_videoRenderer.get(), "sink", &sink, nullptr);
+    } else {
+        GstElement* gldownload = gst_element_factory_make("gldownload", nullptr);
+        GstElement* videoconvert = gst_element_factory_make("videoconvert", nullptr);
+        GstElement* webkitSink = MediaPlayerPrivateGStreamerBase::createVideoSink();
+        sink = gst_bin_new(nullptr);
+        gst_bin_add_many(GST_BIN(sink), gldownload, videoconvert, webkitSink, nullptr);
+        gst_element_link_many(gldownload, videoconvert, webkitSink, nullptr);
+        GRefPtr<GstPad> pad = adoptGRef(gst_element_get_static_pad(gldownload, "sink"));
+        gst_element_add_pad(sink, gst_ghost_pad_new("sink", pad.get()));
+    }
+#endif
+    if (!m_videoRenderer) {
+        m_videoRenderer = adoptGRef(owr_gst_video_renderer_new(sink));
+#if USE(GSTREAMER_GL)
+        owr_video_renderer_set_request_context_callback(OWR_VIDEO_RENDERER(m_videoRenderer.get()), (OwrVideoRendererRequestContextCallback) MediaPlayerPrivateGStreamerBase::requestGLContext, this, nullptr);
+#endif
+        m_streamPrivate->setVideoRenderer(m_videoRenderer.get(), videoSink());
+    }
     return sink;
+}
+
+void MediaPlayerPrivateGStreamerOwr::setSize(const IntSize& size)
+{
+    if (size == m_size)
+        return;
+
+    MediaPlayerPrivateGStreamerBase::setSize(size);
+    if (m_videoRenderer)
+        g_object_set(m_videoRenderer.get(), "width", size.width(), "height", size.height(), nullptr);
+
+    if (!m_videoTrack)
+        return;
+
+    auto& realTimeMediaSource = static_cast<RealtimeMediaSourceOwr&>(m_videoTrack->source());
+    realTimeMediaSource.setWidth(size.width());
+    realTimeMediaSource.setHeight(size.height());
+}
+
+FloatSize MediaPlayerPrivateGStreamerOwr::naturalSize() const
+{
+    auto size = MediaPlayerPrivateGStreamerBase::naturalSize();
+
+    // In case we are not playing the video we return the size we set to the media source.
+    if (m_videoTrack && size.isZero()) {
+        auto& realTimeMediaSource = static_cast<RealtimeMediaSourceOwr&>(m_videoTrack->source());
+        return realTimeMediaSource.size();
+    }
+
+    return size;
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM) && USE(GSTREAMER) && USE(OPENWEBRTC)
+#endif // ENABLE(VIDEO) && ENABLE(MEDIA_STREAM) && USE(GSTREAMER) && USE(OPENWEBRTC)

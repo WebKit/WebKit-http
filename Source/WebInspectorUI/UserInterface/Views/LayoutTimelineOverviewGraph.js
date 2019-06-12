@@ -53,7 +53,6 @@ WebInspector.LayoutTimelineOverviewGraph = class LayoutTimelineOverviewGraph ext
 
         this.element.removeChildren();
 
-        this._timelineRecordBarMap = new Map;
         this._timelineLayoutRecordRow = createRecordRow.call(this);
         this._timelinePaintRecordRow = createRecordRow.call(this);
     }
@@ -62,6 +61,9 @@ WebInspector.LayoutTimelineOverviewGraph = class LayoutTimelineOverviewGraph ext
 
     layout()
     {
+        if (!this.visible)
+            return;
+
         this._updateRowLayout(this._timelinePaintRecordRow);
         this._updateRowLayout(this._timelineLayoutRecordRow);
     }

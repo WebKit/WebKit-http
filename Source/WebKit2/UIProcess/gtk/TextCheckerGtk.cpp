@@ -28,12 +28,13 @@
 #include "config.h"
 #include "TextChecker.h"
 
-#include "TextBreakIterator.h"
 #include "TextCheckerState.h"
 #include "WebProcessPool.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/TextCheckerEnchant.h>
+#include <unicode/ubrk.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/TextBreakIterator.h>
 
 using namespace WebCore;
 
@@ -62,6 +63,18 @@ TextCheckerState& checkerState()
 const TextCheckerState& TextChecker::state()
 {
     return checkerState();
+}
+    
+static bool testingModeEnabled = false;
+    
+void TextChecker::setTestingMode(bool enabled)
+{
+    testingModeEnabled = enabled;
+}
+
+bool TextChecker::isTestingMode()
+{
+    return testingModeEnabled;
 }
 
 #if ENABLE(SPELLCHECK)
@@ -166,7 +179,7 @@ void TextChecker::updateSpellingUIWithGrammarString(int64_t /* spellDocumentTag 
 {
 }
 
-void TextChecker::getGuessesForWord(int64_t /* spellDocumentTag */, const String& word, const String& /* context */, Vector<String>& guesses)
+void TextChecker::getGuessesForWord(int64_t /* spellDocumentTag */, const String& word, const String& /* context */, int32_t /* insertionPoint */, Vector<String>& guesses, bool)
 {
 #if ENABLE(SPELLCHECK)
     guesses = enchantTextChecker().getGuessesForWord(word);
@@ -194,17 +207,14 @@ void TextChecker::ignoreWord(int64_t /* spellDocumentTag */, const String& word)
 #endif
 }
 
-void TextChecker::requestCheckingOfString(PassRefPtr<TextCheckerCompletion> completion)
+void TextChecker::requestCheckingOfString(Ref<TextCheckerCompletion>&& completion, int32_t insertionPoint)
 {
 #if ENABLE(SPELLCHECK)
-    if (!completion)
-        return;
-
     TextCheckingRequestData request = completion->textCheckingRequestData();
     ASSERT(request.sequence() != unrequestedTextCheckingSequence);
     ASSERT(request.mask() != TextCheckingTypeNone);
 
-    completion->didFinishCheckingText(checkTextOfParagraph(completion->spellDocumentTag(), request.text(), request.mask()));
+    completion->didFinishCheckingText(checkTextOfParagraph(completion->spellDocumentTag(), request.text(), insertionPoint, request.mask(), false));
 #else
     UNUSED_PARAM(completion);
 #endif
@@ -214,16 +224,16 @@ void TextChecker::requestCheckingOfString(PassRefPtr<TextCheckerCompletion> comp
 static unsigned nextWordOffset(StringView text, unsigned currentOffset)
 {
     // FIXME: avoid creating textIterator object here, it could be passed as a parameter.
-    //        isTextBreak() leaves the iterator pointing to the first boundary position at
+    //        ubrk_isBoundary() leaves the iterator pointing to the first boundary position at
     //        or after "offset" (ubrk_isBoundary side effect).
     //        For many word separators, the method doesn't properly determine the boundaries
     //        without resetting the iterator.
-    TextBreakIterator* textIterator = wordBreakIterator(text);
+    UBreakIterator* textIterator = wordBreakIterator(text);
     if (!textIterator)
         return currentOffset;
 
     unsigned wordOffset = currentOffset;
-    while (wordOffset < text.length() && isTextBreak(textIterator, wordOffset))
+    while (wordOffset < text.length() && ubrk_isBoundary(textIterator, wordOffset))
         ++wordOffset;
 
     // Do not treat the word's boundary as a separator.
@@ -239,13 +249,14 @@ static unsigned nextWordOffset(StringView text, unsigned currentOffset)
 #endif
 
 #if USE(UNIFIED_TEXT_CHECKING)
-Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocumentTag, StringView text, uint64_t checkingTypes)
+Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocumentTag, StringView text, int32_t insertionPoint, uint64_t checkingTypes, bool)
 {
+    UNUSED_PARAM(insertionPoint);
 #if ENABLE(SPELLCHECK)
     if (!(checkingTypes & TextCheckingTypeSpelling))
         return Vector<TextCheckingResult>();
 
-    TextBreakIterator* textIterator = wordBreakIterator(text);
+    UBreakIterator* textIterator = wordBreakIterator(text);
     if (!textIterator)
         return Vector<TextCheckingResult>();
 
@@ -253,7 +264,7 @@ Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocume
     // involve the client to check spelling for them.
     unsigned offset = nextWordOffset(text, 0);
     unsigned lengthStrip = text.length();
-    while (lengthStrip > 0 && isTextBreak(textIterator, lengthStrip - 1))
+    while (lengthStrip > 0 && ubrk_isBoundary(textIterator, lengthStrip - 1))
         --lengthStrip;
 
     Vector<TextCheckingResult> paragraphCheckingResult;

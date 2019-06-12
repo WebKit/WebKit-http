@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef TextDecorationPainter_h
-#define TextDecorationPainter_h
+#pragma once
 
 #include "Color.h"
 #include "FloatPoint.h"
@@ -30,8 +29,10 @@
 namespace WebCore {
 
 class FontCascade;
+class FloatRect;
 class GraphicsContext;
 class InlineTextBox;
+class RenderObject;
 class RenderStyle;
 class RenderText;
 class ShadowData;
@@ -45,10 +46,20 @@ public:
     void setFont(const FontCascade& font) { m_font = &font; }
     void setIsHorizontal(bool isHorizontal) { m_isHorizontal = isHorizontal; }
     void setWidth(float width) { m_width = width; }
-    void setBaseline(int baseline) { m_baseline = baseline; }
+    void setBaseline(float baseline) { m_baseline = baseline; }
     void addTextShadow(const ShadowData* textShadow) { m_shadow = textShadow; }
 
     void paintTextDecoration(const TextRun&, const FloatPoint& textOrigin, const FloatPoint& boxOrigin);
+
+    struct Styles {
+        Color underlineColor;
+        Color overlineColor;
+        Color linethroughColor;
+        TextDecorationStyle underlineStyle;
+        TextDecorationStyle overlineStyle;
+        TextDecorationStyle linethroughStyle;
+    };
+    static Styles stylesForRenderer(const RenderObject&, unsigned requestedDecorations, bool firstLineStyle = false);
         
 private:
     GraphicsContext& m_context;
@@ -56,22 +67,15 @@ private:
     int m_wavyOffset { 0 };
     bool m_isPrinting { false };
     float m_width { 0 };
-    int m_baseline { 0 };
+    float m_baseline { 0 };
     FloatPoint m_boxOrigin;
     bool m_isHorizontal { true };
     const ShadowData* m_shadow { nullptr };
     const InlineTextBox* m_inlineTextBox { nullptr };
     const FontCascade* m_font { nullptr };
     
-    Color m_underlineColor;
-    Color m_overlineColor;
-    Color m_linethroughColor;
-    TextDecorationStyle m_underlineStyle;
-    TextDecorationStyle m_overlineStyle;
-    TextDecorationStyle m_linethroughStyle;
+    Styles m_styles;
     const RenderStyle& m_lineStyle;
 };
     
 } // namespace WebCore
-
-#endif // TextDecorationPainter_h

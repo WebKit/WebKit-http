@@ -19,7 +19,7 @@ function main($path) {
         if (!$group)
             exit_with_error('GroupNotFound', array('id' => $group_id));
         $test_groups = array($group);
-        $build_requests_fetcher->fetch_for_group($group_id);
+        $build_requests_fetcher->fetch_for_group($group['testgroup_task'], $group_id);
     } else {
         $task_id = array_get($_GET, 'task');
         if (!$task_id)
@@ -38,24 +38,23 @@ function main($path) {
     foreach ($test_groups as &$group) {
         $group_id = $group['id'];
         $group_by_id[$group_id] = &$group;
-        $platforms = $db->query_and_fetch_all('SELECT DISTINCT(config_platform)
-            FROM test_configurations, test_runs, build_requests
-            WHERE run_config = config_id AND run_build = request_build AND request_group = $1', array($group_id));
-        if ($platforms)
-            $group['platform'] = $platforms[0]['config_platform'];
+        $first_request = $db->select_first_row('build_requests', 'request', array('group' => $group_id), 'order');
+        if ($first_request)
+            $group['platform'] = $first_request['request_platform'];
     }
 
     $build_requests = $build_requests_fetcher->results();
     foreach ($build_requests as $request) {
         $request_group = &$group_by_id[$request['testGroup']];
         array_push($request_group['buildRequests'], $request['id']);
-        array_push($request_group['rootSets'], $request['rootSet']);
+        array_push($request_group['commitSets'], $request['commitSet']);
     }
 
     exit_with_success(array('testGroups' => $test_groups,
         'buildRequests' => $build_requests,
-        'rootSets' => $build_requests_fetcher->root_sets(),
-        'roots' => $build_requests_fetcher->roots()));
+        'commitSets' => $build_requests_fetcher->commit_sets(),
+        'commits' => $build_requests_fetcher->commits(),
+        'uploadedFiles' => $build_requests_fetcher->uploaded_files()));
 }
 
 function format_test_group($group_row) {
@@ -67,7 +66,7 @@ function format_test_group($group_row) {
         'createdAt' => strtotime($group_row['testgroup_created_at']) * 1000,
         'hidden' => Database::is_true($group_row['testgroup_hidden']),
         'buildRequests' => array(),
-        'rootSets' => array(),
+        'commitSets' => array(),
     );
 }
 

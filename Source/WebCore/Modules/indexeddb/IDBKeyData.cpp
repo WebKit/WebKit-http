@@ -46,18 +46,24 @@ IDBKeyData::IDBKeyData(const IDBKey* key)
     switch (m_type) {
     case KeyType::Invalid:
         break;
-    case KeyType::Array:
+    case KeyType::Array: {
+        m_value = Vector<IDBKeyData>();
+        auto& array = WTF::get<Vector<IDBKeyData>>(m_value);
         for (auto& key2 : key->array())
-            m_arrayValue.append(IDBKeyData(key2.get()));
+            array.append(IDBKeyData(key2.get()));
+        break;
+    }
+    case KeyType::Binary:
+        m_value = key->binary();
         break;
     case KeyType::String:
-        m_stringValue = key->string();
+        m_value = key->string();
         break;
     case KeyType::Date:
-        m_numberValue = key->date();
+        m_value = key->date();
         break;
     case KeyType::Number:
-        m_numberValue = key->number();
+        m_value = key->number();
         break;
     case KeyType::Max:
     case KeyType::Min:
@@ -65,7 +71,7 @@ IDBKeyData::IDBKeyData(const IDBKey* key)
     }
 }
 
-PassRefPtr<IDBKey> IDBKeyData::maybeCreateIDBKey() const
+RefPtr<IDBKey> IDBKeyData::maybeCreateIDBKey() const
 {
     if (m_isNull)
         return nullptr;
@@ -73,21 +79,22 @@ PassRefPtr<IDBKey> IDBKeyData::maybeCreateIDBKey() const
     switch (m_type) {
     case KeyType::Invalid:
         return IDBKey::createInvalid();
-    case KeyType::Array:
-        {
-            Vector<RefPtr<IDBKey>> array;
-            for (auto& keyData : m_arrayValue) {
-                array.append(keyData.maybeCreateIDBKey());
-                ASSERT(array.last());
-            }
-            return IDBKey::createArray(array);
+    case KeyType::Array: {
+        Vector<RefPtr<IDBKey>> array;
+        for (auto& keyData : WTF::get<Vector<IDBKeyData>>(m_value)) {
+            array.append(keyData.maybeCreateIDBKey());
+            ASSERT(array.last());
         }
+        return IDBKey::createArray(array);
+    }
+    case KeyType::Binary:
+        return IDBKey::createBinary(WTF::get<ThreadSafeDataBuffer>(m_value));
     case KeyType::String:
-        return IDBKey::createString(m_stringValue);
+        return IDBKey::createString(WTF::get<String>(m_value));
     case KeyType::Date:
-        return IDBKey::createDate(m_numberValue);
+        return IDBKey::createDate(WTF::get<double>(m_value));
     case KeyType::Number:
-        return IDBKey::createNumber(m_numberValue);
+        return IDBKey::createNumber(WTF::get<double>(m_value));
     case KeyType::Max:
     case KeyType::Min:
         ASSERT_NOT_REACHED();
@@ -98,33 +105,47 @@ PassRefPtr<IDBKey> IDBKeyData::maybeCreateIDBKey() const
     return nullptr;
 }
 
+IDBKeyData::IDBKeyData(const IDBKeyData& that, IsolatedCopyTag)
+{
+    isolatedCopy(that, *this);
+}
+
 IDBKeyData IDBKeyData::isolatedCopy() const
 {
-    IDBKeyData result;
-    result.m_type = m_type;
-    result.m_isNull = m_isNull;
+    return { *this, IsolatedCopy };
+}
 
-    switch (m_type) {
+void IDBKeyData::isolatedCopy(const IDBKeyData& source, IDBKeyData& destination)
+{
+    destination.m_type = source.m_type;
+    destination.m_isNull = source.m_isNull;
+
+    switch (source.m_type) {
     case KeyType::Invalid:
-        return result;
-    case KeyType::Array:
-        for (auto& key : m_arrayValue)
-            result.m_arrayValue.append(key.isolatedCopy());
-        return result;
+        return;
+    case KeyType::Array: {
+        destination.m_value = Vector<IDBKeyData>();
+        auto& destinationArray = WTF::get<Vector<IDBKeyData>>(destination.m_value);
+        for (auto& key : WTF::get<Vector<IDBKeyData>>(source.m_value))
+            destinationArray.append(key.isolatedCopy());
+        return;
+    }
+    case KeyType::Binary:
+        destination.m_value = WTF::get<ThreadSafeDataBuffer>(source.m_value);
+        return;
     case KeyType::String:
-        result.m_stringValue = m_stringValue.isolatedCopy();
-        return result;
+        destination.m_value = WTF::get<String>(source.m_value).isolatedCopy();
+        return;
     case KeyType::Date:
     case KeyType::Number:
-        result.m_numberValue = m_numberValue;
-        return result;
+        destination.m_value = WTF::get<double>(source.m_value);
+        return;
     case KeyType::Max:
     case KeyType::Min:
-        return result;
+        return;
     }
 
     ASSERT_NOT_REACHED();
-    return result;
 }
 
 void IDBKeyData::encode(KeyedEncoder& encoder) const
@@ -133,22 +154,31 @@ void IDBKeyData::encode(KeyedEncoder& encoder) const
     if (m_isNull)
         return;
 
-    encoder.encodeEnum("m_type", m_type);
+    encoder.encodeEnum("type", m_type);
 
     switch (m_type) {
     case KeyType::Invalid:
         return;
-    case KeyType::Array:
-        encoder.encodeObjects("array", m_arrayValue.begin(), m_arrayValue.end(), [](KeyedEncoder& encoder, const IDBKeyData& key) {
+    case KeyType::Array: {
+        auto& array = WTF::get<Vector<IDBKeyData>>(m_value);
+        encoder.encodeObjects("array", array.begin(), array.end(), [](KeyedEncoder& encoder, const IDBKeyData& key) {
             key.encode(encoder);
         });
         return;
+    }
+    case KeyType::Binary: {
+        auto* data = WTF::get<ThreadSafeDataBuffer>(m_value).data();
+        encoder.encodeBool("hasBinary", !!data);
+        if (data)
+            encoder.encodeBytes("binary", data->data(), data->size());
+        return;
+    }
     case KeyType::String:
-        encoder.encodeString("string", m_stringValue);
+        encoder.encodeString("string", WTF::get<String>(m_value));
         return;
     case KeyType::Date:
     case KeyType::Number:
-        encoder.encodeDouble("number", m_numberValue);
+        encoder.encodeDouble("number", WTF::get<double>(m_value));
         return;
     case KeyType::Max:
     case KeyType::Min:
@@ -170,12 +200,13 @@ bool IDBKeyData::decode(KeyedDecoder& decoder, IDBKeyData& result)
         return value == KeyType::Max
             || value == KeyType::Invalid
             || value == KeyType::Array
+            || value == KeyType::Binary
             || value == KeyType::String
             || value == KeyType::Date
             || value == KeyType::Number
             || value == KeyType::Min;
     };
-    if (!decoder.decodeEnum("m_type", result.m_type, enumFunction))
+    if (!decoder.decodeEnum("type", result.m_type, enumFunction))
         return false;
 
     if (result.m_type == KeyType::Invalid)
@@ -187,11 +218,33 @@ bool IDBKeyData::decode(KeyedDecoder& decoder, IDBKeyData& result)
     if (result.m_type == KeyType::Min)
         return true;
 
-    if (result.m_type == KeyType::String)
-        return decoder.decodeString("string", result.m_stringValue);
+    if (result.m_type == KeyType::String) {
+        result.m_value = String();
+        return decoder.decodeString("string", WTF::get<String>(result.m_value));
+    }
 
-    if (result.m_type == KeyType::Number || result.m_type == KeyType::Date)
-        return decoder.decodeDouble("number", result.m_numberValue);
+    if (result.m_type == KeyType::Number || result.m_type == KeyType::Date) {
+        result.m_value = 0.0;
+        return decoder.decodeDouble("number", WTF::get<double>(result.m_value));
+    }
+
+    if (result.m_type == KeyType::Binary) {
+        result.m_value = ThreadSafeDataBuffer();
+
+        bool hasBinaryData;
+        if (!decoder.decodeBool("hasBinary", hasBinaryData))
+            return false;
+
+        if (!hasBinaryData)
+            return true;
+
+        Vector<uint8_t> bytes;
+        if (!decoder.decodeBytes("binary", bytes))
+            return false;
+
+        result.m_value = ThreadSafeDataBuffer::create(WTFMove(bytes));
+        return true;
+    }
 
     ASSERT(result.m_type == KeyType::Array);
 
@@ -199,8 +252,8 @@ bool IDBKeyData::decode(KeyedDecoder& decoder, IDBKeyData& result)
         return decode(decoder, result);
     };
     
-    result.m_arrayValue.clear();
-    return decoder.decodeObjects("array", result.m_arrayValue, arrayFunction);
+    result.m_value = Vector<IDBKeyData>();
+    return decoder.decodeObjects("array", WTF::get<Vector<IDBKeyData>>(result.m_value), arrayFunction);
 }
 
 int IDBKeyData::compare(const IDBKeyData& other) const
@@ -223,23 +276,32 @@ int IDBKeyData::compare(const IDBKeyData& other) const
         // Invalid type should have been fully handled above
         ASSERT_NOT_REACHED();
         return 0;
-    case KeyType::Array:
-        for (size_t i = 0; i < m_arrayValue.size() && i < other.m_arrayValue.size(); ++i) {
-            if (int result = m_arrayValue[i].compare(other.m_arrayValue[i]))
+    case KeyType::Array: {
+        auto& array = WTF::get<Vector<IDBKeyData>>(m_value);
+        auto& otherArray = WTF::get<Vector<IDBKeyData>>(other.m_value);
+        for (size_t i = 0; i < array.size() && i < otherArray.size(); ++i) {
+            if (int result = array[i].compare(otherArray[i]))
                 return result;
         }
-        if (m_arrayValue.size() < other.m_arrayValue.size())
+        if (array.size() < otherArray.size())
             return -1;
-        if (m_arrayValue.size() > other.m_arrayValue.size())
+        if (array.size() > otherArray.size())
             return 1;
         return 0;
+    }
+    case KeyType::Binary:
+        return compareBinaryKeyData(WTF::get<ThreadSafeDataBuffer>(m_value), WTF::get<ThreadSafeDataBuffer>(other.m_value));
     case KeyType::String:
-        return codePointCompare(m_stringValue, other.m_stringValue);
+        return codePointCompare(WTF::get<String>(m_value), WTF::get<String>(other.m_value));
     case KeyType::Date:
-    case KeyType::Number:
-        if (m_numberValue == other.m_numberValue)
+    case KeyType::Number: {
+        auto number = WTF::get<double>(m_value);
+        auto otherNumber = WTF::get<double>(other.m_value);
+
+        if (number == otherNumber)
             return 0;
-        return m_numberValue > other.m_numberValue ? 1 : -1;
+        return number > otherNumber ? 1 : -1;
+    }
     case KeyType::Max:
     case KeyType::Min:
         return 0;
@@ -249,7 +311,7 @@ int IDBKeyData::compare(const IDBKeyData& other) const
     return 0;
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String IDBKeyData::loggingString() const
 {
     if (m_isNull)
@@ -263,28 +325,48 @@ String IDBKeyData::loggingString() const
     case KeyType::Array: {
         StringBuilder builder;
         builder.appendLiteral("<array> - { ");
-        for (size_t i = 0; i < m_arrayValue.size(); ++i) {
-            builder.append(m_arrayValue[i].loggingString());
-            if (i < m_arrayValue.size() - 1)
+        auto& array = WTF::get<Vector<IDBKeyData>>(m_value);
+        for (size_t i = 0; i < array.size(); ++i) {
+            builder.append(array[i].loggingString());
+            if (i < array.size() - 1)
                 builder.appendLiteral(", ");
         }
         builder.appendLiteral(" }");
         result = builder.toString();
         break;
     }
+    case KeyType::Binary: {
+        StringBuilder builder;
+        builder.append("<binary> - ");
+
+        auto* data = WTF::get<ThreadSafeDataBuffer>(m_value).data();
+        if (!data) {
+            builder.append("(null)");
+            result = builder.toString();
+            break;
+        }
+
+        size_t i = 0;
+        for (; i < 8 && i < data->size(); ++i)
+            builder.append(String::format("%02x", data->at(i)));
+
+        if (data->size() > 8)
+            builder.append("...");
+
+        result = builder.toString();
+        break;
+    }
     case KeyType::String:
-        result = "<string> - " + m_stringValue;
+        result = "<string> - " + WTF::get<String>(m_value);
         break;
     case KeyType::Date:
-        return String::format("<date> - %f", m_numberValue);
+        return String::format("<date> - %f", WTF::get<double>(m_value));
     case KeyType::Number:
-        return String::format("<number> - %f", m_numberValue);
+        return String::format("<number> - %f", WTF::get<double>(m_value));
     case KeyType::Max:
         return "<maximum>";
     case KeyType::Min:
         return "<minimum>";
-    default:
-        return String();
     }
 
     if (result.length() > 150) {
@@ -299,15 +381,23 @@ String IDBKeyData::loggingString() const
 void IDBKeyData::setArrayValue(const Vector<IDBKeyData>& value)
 {
     *this = IDBKeyData();
-    m_arrayValue = value;
+    m_value = value;
     m_type = KeyType::Array;
+    m_isNull = false;
+}
+
+void IDBKeyData::setBinaryValue(const ThreadSafeDataBuffer& value)
+{
+    *this = IDBKeyData();
+    m_value = value;
+    m_type = KeyType::Binary;
     m_isNull = false;
 }
 
 void IDBKeyData::setStringValue(const String& value)
 {
     *this = IDBKeyData();
-    m_stringValue = value;
+    m_value = value;
     m_type = KeyType::String;
     m_isNull = false;
 }
@@ -315,7 +405,7 @@ void IDBKeyData::setStringValue(const String& value)
 void IDBKeyData::setDateValue(double value)
 {
     *this = IDBKeyData();
-    m_numberValue = value;
+    m_value = value;
     m_type = KeyType::Date;
     m_isNull = false;
 }
@@ -323,7 +413,7 @@ void IDBKeyData::setDateValue(double value)
 void IDBKeyData::setNumberValue(double value)
 {
     *this = IDBKeyData();
-    m_numberValue = value;
+    m_value = value;
     m_type = KeyType::Number;
     m_isNull = false;
 }
@@ -352,11 +442,13 @@ bool IDBKeyData::operator==(const IDBKeyData& other) const
         return true;
     case KeyType::Number:
     case KeyType::Date:
-        return m_numberValue == other.m_numberValue;
+        return WTF::get<double>(m_value) == WTF::get<double>(other.m_value);
     case KeyType::String:
-        return m_stringValue == other.m_stringValue;
+        return WTF::get<String>(m_value) == WTF::get<String>(other.m_value);
+    case KeyType::Binary:
+        return WTF::get<ThreadSafeDataBuffer>(m_value) == WTF::get<ThreadSafeDataBuffer>(other.m_value);
     case KeyType::Array:
-        return m_arrayValue == other.m_arrayValue;
+        return WTF::get<Vector<IDBKeyData>>(m_value) == WTF::get<Vector<IDBKeyData>>(other.m_value);
     }
     RELEASE_ASSERT_NOT_REACHED();
 }

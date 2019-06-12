@@ -17,15 +17,14 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGUnitTypes_h
-#define SVGUnitTypes_h
+#pragma once
 
 #include "SVGPropertyTraits.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class SVGUnitTypes : public RefCounted<SVGUnitTypes> {
+class SVGUnitTypes final : public RefCounted<SVGUnitTypes> {
 public:
     enum SVGUnitType {
         SVG_UNIT_TYPE_UNKNOWN               = 0,
@@ -47,9 +46,9 @@ struct SVGPropertyTraits<SVGUnitTypes::SVGUnitType> {
         case SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN:
             return emptyString();
         case SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE:
-            return "userSpaceOnUse";
+            return ASCIILiteral("userSpaceOnUse");
         case SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX:
-            return "objectBoundingBox";
+            return ASCIILiteral("objectBoundingBox");
         }
 
         ASSERT_NOT_REACHED();
@@ -66,6 +65,4 @@ struct SVGPropertyTraits<SVGUnitTypes::SVGUnitType> {
     }
 };
 
-}
-
-#endif
+} // namespace WebCore

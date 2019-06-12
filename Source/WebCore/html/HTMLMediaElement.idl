@@ -23,18 +23,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+
+typedef (
+#if defined(ENABLE_MEDIA_STREAM) && ENABLE_MEDIA_STREAM
+    MediaStream or
+#endif
+#if defined(ENABLE_MEDIA_SOURCE) && ENABLE_MEDIA_SOURCE
+    MediaSource or
+#endif
+    Blob) MediaProvider;
+
 [
-    Conditional=VIDEO,
-    JSGenerateToNativeObject,
     ActiveDOMObject,
+    Conditional=VIDEO,
+    ExportMacro=WEBCORE_EXPORT,
+    JSGenerateToNativeObject,
 ] interface HTMLMediaElement : HTMLElement {
 
     // error state
     readonly attribute MediaError error;
 
     // network state
-    [Reflect, URL] attribute DOMString src;
-    [URL] readonly attribute DOMString currentSrc;
+    [Reflect, URL] attribute USVString src;
+    attribute MediaProvider? srcObject;
+    [URL] readonly attribute USVString currentSrc;
+    attribute DOMString? crossOrigin;
 
     const unsigned short NETWORK_EMPTY = 0;
     const unsigned short NETWORK_IDLE = 1;
@@ -45,13 +58,8 @@
 
     readonly attribute TimeRanges buffered;
     void load();
-#if defined(ENABLE_ENCRYPTED_MEDIA) && ENABLE_ENCRYPTED_MEDIA
-    DOMString canPlayType([Default=Undefined] optional DOMString type, [Default=Undefined, TreatNullAs=NullString, TreatUndefinedAs=NullString] optional DOMString keySystem);
-#elif defined(ENABLE_ENCRYPTED_MEDIA_V2) && ENABLE_ENCRYPTED_MEDIA_V2
-    DOMString canPlayType([Default=Undefined] optional DOMString type, [Default=Undefined, TreatNullAs=NullString, TreatUndefinedAs=NullString] optional DOMString keySystem);
-#else
-    DOMString canPlayType([Default=Undefined] optional DOMString type);
-#endif
+
+    DOMString canPlayType(DOMString type);
 
     // ready state
     const unsigned short HAVE_NOTHING = 0;
@@ -63,9 +71,9 @@
     readonly attribute boolean seeking;
 
     // playback state
-    [SetterRaisesException] attribute unrestricted double currentTime;
+    [ImplementedAs=currentTimeForBindings, SetterMayThrowException] attribute unrestricted double currentTime;
     readonly attribute unrestricted double duration;
-    [TreatReturnedNaNDateAs=NaN] Date getStartDate();
+    Date getStartDate();
     readonly attribute boolean paused;
     attribute unrestricted double defaultPlaybackRate;
     attribute unrestricted double playbackRate;
@@ -74,13 +82,13 @@
     readonly attribute boolean ended;
     [Reflect] attribute boolean autoplay;
     [Reflect] attribute boolean loop;
-    void play();
+    Promise<void> play();
     void pause();
     void fastSeek(unrestricted double time);
 
     // controls
     attribute boolean controls;
-    [SetterRaisesException] attribute unrestricted double volume;
+    [SetterMayThrowException] attribute double volume;
     attribute boolean muted;
     [Reflect=muted] attribute boolean defaultMuted;
 
@@ -94,26 +102,23 @@
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitAudioDecodedByteCount;
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitVideoDecodedByteCount;
 
-#if !defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT // Work around shortcomings in the gobject binding generator handling of conditional features by turning these off for gobject.
-    [Conditional=ENCRYPTED_MEDIA, RaisesException] void webkitGenerateKeyRequest([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString keySystem, optional Uint8Array initData);
-    [Conditional=ENCRYPTED_MEDIA, RaisesException] void webkitAddKey([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString keySystem, Uint8Array key, optional Uint8Array initData, [Default=NullString] optional DOMString sessionId);
-    [Conditional=ENCRYPTED_MEDIA, RaisesException] void webkitCancelKeyRequest([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString keySystem, [Default=NullString] optional DOMString sessionId);
+    [Conditional=LEGACY_ENCRYPTED_MEDIA, EnabledAtRuntime=LegacyEncryptedMediaAPI] readonly attribute WebKitMediaKeys webkitKeys;
+    [Conditional=LEGACY_ENCRYPTED_MEDIA, EnabledAtRuntime=LegacyEncryptedMediaAPI] void webkitSetMediaKeys(WebKitMediaKeys? mediaKeys);
+    [Conditional=ENCRYPTED_MEDIA, EnabledAtRuntime=EncryptedMediaAPI] readonly attribute MediaKeys mediaKeys;
+    [Conditional=ENCRYPTED_MEDIA, EnabledAtRuntime=EncryptedMediaAPI] attribute EventHandler onencrypted;
+    [Conditional=ENCRYPTED_MEDIA, EnabledAtRuntime=EncryptedMediaAPI] attribute EventHandler onwaitingforkey;
+    [Conditional=ENCRYPTED_MEDIA, EnabledAtRuntime=EncryptedMediaAPI] Promise<void> setMediaKeys(MediaKeys? mediaKeys);
 
-    [Conditional=ENCRYPTED_MEDIA_V2, ImplementedAs=keys] readonly attribute MediaKeys webkitKeys;
-    [Conditional=ENCRYPTED_MEDIA_V2, ImplementedAs=setMediaKeys] void webkitSetMediaKeys(MediaKeys mediaKeys);
-
-    [Conditional=VIDEO_TRACK, RaisesException] TextTrack addTextTrack(DOMString kind, optional DOMString label, optional DOMString language);
+    [Conditional=VIDEO_TRACK, MayThrowException] TextTrack addTextTrack(DOMString kind, optional DOMString label = "", optional DOMString language = "");
     [Conditional=VIDEO_TRACK] readonly attribute AudioTrackList audioTracks;
     [Conditional=VIDEO_TRACK] readonly attribute TextTrackList textTracks;
     [Conditional=VIDEO_TRACK] readonly attribute VideoTrackList videoTracks;
-#endif
 
-    [Reflect, TreatNullAs=NullString] attribute DOMString mediaGroup;
-    [CustomSetter] attribute MediaController controller;
+    [Reflect] attribute DOMString mediaGroup;
 
-#if !defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT
+    [ImplementedAs=controllerForBindings] attribute MediaController? controller;
+
     [Conditional=MEDIA_SOURCE] VideoPlaybackQuality getVideoPlaybackQuality();
-#endif
 
     [Conditional=WIRELESS_PLAYBACK_TARGET] void webkitShowPlaybackTargetPicker();
     [Conditional=WIRELESS_PLAYBACK_TARGET] readonly attribute boolean webkitCurrentPlaybackTargetIsWireless;

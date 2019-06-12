@@ -24,26 +24,26 @@
  */
 
 #include "config.h"
+#include "RenderMathMLFenced.h"
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLFenced.h"
-
 #include "FontSelector.h"
 #include "MathMLNames.h"
+#include "MathMLRowElement.h"
 #include "RenderInline.h"
-#include "RenderMathMLOperator.h"
+#include "RenderMathMLFencedOperator.h"
 #include "RenderText.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
-    
+
 using namespace MathMLNames;
-    
+
 static const char* gOpeningBraceChar = "(";
 static const char* gClosingBraceChar = ")";
 
-RenderMathMLFenced::RenderMathMLFenced(MathMLInlineContainerElement& element, Ref<RenderStyle>&& style)
+RenderMathMLFenced::RenderMathMLFenced(MathMLRowElement& element, RenderStyle&& style)
     : RenderMathMLRow(element, WTFMove(style))
     , m_closeFenceRenderer(nullptr)
 {
@@ -52,16 +52,16 @@ RenderMathMLFenced::RenderMathMLFenced(MathMLInlineContainerElement& element, Re
 void RenderMathMLFenced::updateFromElement()
 {
     const auto& fenced = element();
- 
+
     // The open operator defaults to a left parenthesis.
-    AtomicString open = fenced.fastGetAttribute(MathMLNames::openAttr);
+    auto& open = fenced.attributeWithoutSynchronization(MathMLNames::openAttr);
     m_open = open.isNull() ? gOpeningBraceChar : open;
 
     // The close operator defaults to a right parenthesis.
-    AtomicString close = fenced.fastGetAttribute(MathMLNames::closeAttr);
+    auto& close = fenced.attributeWithoutSynchronization(MathMLNames::closeAttr);
     m_close = close.isNull() ? gClosingBraceChar : close;
 
-    AtomicString separators = fenced.fastGetAttribute(MathMLNames::separatorsAttr);
+    auto& separators = fenced.attributeWithoutSynchronization(MathMLNames::separatorsAttr);
     if (!separators.isNull()) {
         StringBuilder characters;
         for (unsigned int i = 0; i < separators.length(); i++) {
@@ -73,29 +73,30 @@ void RenderMathMLFenced::updateFromElement()
         // The separator defaults to a single comma.
         m_separators = StringImpl::create(",");
     }
-    
-    if (isEmpty())
+
+    if (!firstChild())
         makeFences();
     else {
         // FIXME: The mfenced element fails to update dynamically when its open, close and separators attributes are changed (https://bugs.webkit.org/show_bug.cgi?id=57696).
-        downcast<RenderMathMLOperator>(*firstChild()).updateTokenContent(m_open);
-        m_closeFenceRenderer->updateTokenContent(m_close);
+        if (is<RenderMathMLFencedOperator>(*firstChild()))
+            downcast<RenderMathMLFencedOperator>(*firstChild()).updateOperatorContent(m_open);
+        m_closeFenceRenderer->updateOperatorContent(m_close);
     }
 }
 
-RenderPtr<RenderMathMLOperator> RenderMathMLFenced::createMathMLOperator(const String& operatorString, MathMLOperatorDictionary::Form form, MathMLOperatorDictionary::Flag flag)
+RenderPtr<RenderMathMLFencedOperator> RenderMathMLFenced::createMathMLOperator(const String& operatorString, MathMLOperatorDictionary::Form form, MathMLOperatorDictionary::Flag flag)
 {
-    RenderPtr<RenderMathMLOperator> newOperator = createRenderer<RenderMathMLOperator>(document(), RenderStyle::createAnonymousStyleWithDisplay(&style(), FLEX), operatorString, form, flag);
+    RenderPtr<RenderMathMLFencedOperator> newOperator = createRenderer<RenderMathMLFencedOperator>(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK), operatorString, form, flag);
     newOperator->initializeStyle();
     return newOperator;
 }
 
 void RenderMathMLFenced::makeFences()
 {
-    RenderPtr<RenderMathMLOperator> openFence = createMathMLOperator(m_open, MathMLOperatorDictionary::Prefix, MathMLOperatorDictionary::Fence);
+    RenderPtr<RenderMathMLFencedOperator> openFence = createMathMLOperator(m_open, MathMLOperatorDictionary::Prefix, MathMLOperatorDictionary::Fence);
     RenderMathMLRow::addChild(openFence.leakPtr(), firstChild());
 
-    RenderPtr<RenderMathMLOperator> closeFence = createMathMLOperator(m_close, MathMLOperatorDictionary::Postfix, MathMLOperatorDictionary::Fence);
+    RenderPtr<RenderMathMLFencedOperator> closeFence = createMathMLOperator(m_close, MathMLOperatorDictionary::Postfix, MathMLOperatorDictionary::Fence);
     m_closeFenceRenderer = closeFence.get();
     RenderMathMLRow::addChild(closeFence.leakPtr());
 }
@@ -103,12 +104,12 @@ void RenderMathMLFenced::makeFences()
 void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild)
 {
     // make the fences if the render object is empty
-    if (isEmpty())
+    if (!firstChild())
         updateFromElement();
-    
+
     // FIXME: Adding or removing a child should possibly cause all later separators to shift places if they're different, as later child positions change by +1 or -1. This should also handle surrogate pairs. See https://bugs.webkit.org/show_bug.cgi?id=125938.
-    
-    RenderPtr<RenderMathMLOperator> separatorRenderer;
+
+    RenderPtr<RenderMathMLFencedOperator> separatorRenderer;
     if (m_separators.get()) {
         unsigned int count = 0;
         for (Node* position = child->node(); position; position = position->previousSibling()) {
@@ -120,22 +121,22 @@ void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild
             --count;
         }
         // |count| is now the number of element children that will be before our new separator, i.e. it's the 1-based index of the separator.
-        
+
         if (count > 0) {
             UChar separator;
-            
+
             // Use the last separator if we've run out of specified separators.
             if (count > m_separators.get()->length())
                 separator = (*m_separators.get())[m_separators.get()->length() - 1];
             else
                 separator = (*m_separators.get())[count - 1];
-                
+
             StringBuilder builder;
             builder.append(separator);
             separatorRenderer = createMathMLOperator(builder.toString(), MathMLOperatorDictionary::Infix, MathMLOperatorDictionary::Separator);
         }
     }
-    
+
     if (beforeChild) {
         // Adding |x| before an existing |y| e.g. in element (y) - first insert our new child |x|, then its separator, to get (x, y).
         RenderMathMLRow::addChild(child, beforeChild);
@@ -149,6 +150,6 @@ void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild
     }
 }
 
-}    
+}
 
 #endif

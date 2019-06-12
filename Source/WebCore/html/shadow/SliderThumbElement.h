@@ -29,11 +29,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SliderThumbElement_h
-#define SliderThumbElement_h
+#pragma once
 
 #include "HTMLDivElement.h"
-#include "HTMLNames.h"
 #include "RenderBlockFlow.h"
 #include <wtf/Forward.h>
 
@@ -53,31 +51,33 @@ public:
     void setPositionFromPoint(const LayoutPoint&);
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    void handleTouchEvent(TouchEvent*);
+    void handleTouchEvent(TouchEvent&);
+#endif
 
     void disabledAttributeChanged();
-#endif
 
 private:
     SliderThumbElement(Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual Ref<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
-    virtual bool isDisabledFormControl() const override;
-    virtual bool matchesReadWritePseudoClass() const override;
-    virtual Element* focusDelegate() override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+
+    Ref<Element> cloneElementWithoutAttributesAndChildren(Document&) override;
+    bool isDisabledFormControl() const override;
+    bool matchesReadWritePseudoClass() const override;
+    Element* focusDelegate() override;
 #if !PLATFORM(IOS)
-    virtual void defaultEventHandler(Event*) override;
-    virtual bool willRespondToMouseMoveEvents() override;
-    virtual bool willRespondToMouseClickEvents() override;
+    void defaultEventHandler(Event&) override;
+    bool willRespondToMouseMoveEvents() override;
+    bool willRespondToMouseClickEvents() override;
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    virtual void didAttachRenderers() override;
+    void didAttachRenderers() override;
 #endif
-    virtual void willDetachRenderers() override;
+    void willDetachRenderers() override;
 
-    virtual const AtomicString& shadowPseudoId() const override;
+    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) override;
+    const AtomicString& shadowPseudoId() const override;
 
     void startDragging();
     void stopDragging();
@@ -87,15 +87,16 @@ private:
     void setExclusiveTouchIdentifier(unsigned);
     void clearExclusiveTouchIdentifier();
 
-    void handleTouchStart(TouchEvent*);
-    void handleTouchMove(TouchEvent*);
-    void handleTouchEndAndCancel(TouchEvent*);
+    void handleTouchStart(TouchEvent&);
+    void handleTouchMove(TouchEvent&);
+    void handleTouchEndAndCancel(TouchEvent&);
 
     bool shouldAcceptTouchEvents();
     void registerForTouchEvents();
     void unregisterForTouchEvents();
 #endif
 
+    AtomicString m_shadowPseudoId;
     bool m_inDragMode;
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -116,11 +117,11 @@ inline Ref<SliderThumbElement> SliderThumbElement::create(Document& document)
 
 class RenderSliderThumb final : public RenderBlockFlow {
 public:
-    RenderSliderThumb(SliderThumbElement&, Ref<RenderStyle>&&);
-    void updateAppearance(RenderStyle* parentStyle);
+    RenderSliderThumb(SliderThumbElement&, RenderStyle&&);
+    void updateAppearance(const RenderStyle* parentStyle);
 
 private:
-    virtual bool isSliderThumb() const override;
+    bool isSliderThumb() const override;
 };
 
 // --------------------------------
@@ -131,10 +132,17 @@ public:
 
 private:
     SliderContainerElement(Document&);
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual const AtomicString& shadowPseudoId() const override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) override;
+    const AtomicString& shadowPseudoId() const override;
+    bool isSliderContainerElement() const override { return true; }
+
+    AtomicString m_shadowPseudoId;
 };
 
-}
+} // namespace WebCore
 
-#endif
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SliderContainerElement)
+    static bool isType(const WebCore::Element& element) { return element.isSliderContainerElement(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()

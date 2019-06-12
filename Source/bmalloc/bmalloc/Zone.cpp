@@ -78,7 +78,7 @@ static void statistics(malloc_zone_t*, malloc_statistics_t* statistics)
     memset(statistics, 0, sizeof(malloc_statistics_t));
 }
 
-static size_t size(malloc_zone_t*, const void*)
+static size_t zoneSize(malloc_zone_t*, const void*)
 {
     // Our zone is not public API, so no pointer can belong to us.
     return 0;
@@ -88,14 +88,14 @@ static size_t size(malloc_zone_t*, const void*)
 static kern_return_t enumerator(task_t task, void* context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
 {
     Zone remoteZone(task, reader, zone_address);
-    for (auto* superChunk : remoteZone.superChunks()) {
-        vm_range_t range = { reinterpret_cast<vm_address_t>(superChunk), superChunkSize };
+    for (auto& range : remoteZone.ranges()) {
+        vm_range_t vmRange = { reinterpret_cast<vm_address_t>(range.begin()), range.size() };
 
         if ((type_mask & MALLOC_PTR_REGION_RANGE_TYPE))
-            (*recorder)(task, context, MALLOC_PTR_REGION_RANGE_TYPE, &range, 1);
+            (*recorder)(task, context, MALLOC_PTR_REGION_RANGE_TYPE, &vmRange, 1);
 
         if ((type_mask & MALLOC_PTR_IN_USE_RANGE_TYPE))
-            (*recorder)(task, context, MALLOC_PTR_IN_USE_RANGE_TYPE, &range, 1);
+            (*recorder)(task, context, MALLOC_PTR_IN_USE_RANGE_TYPE, &vmRange, 1);
     }
 
     return 0;
@@ -104,7 +104,7 @@ static kern_return_t enumerator(task_t task, void* context, unsigned type_mask, 
 // The memory analysis API requires the contents of this struct to be a static
 // constant in the program binary. The leaks process will load this struct
 // out of the program binary (and not out of the running process).
-static malloc_introspection_t introspect = {
+static const malloc_introspection_t zoneIntrospect = {
     .enumerator = bmalloc::enumerator,
     .good_size = bmalloc::good_size,
     .check = bmalloc::check,
@@ -117,9 +117,9 @@ static malloc_introspection_t introspect = {
 
 Zone::Zone()
 {
-    malloc_zone_t::size = &bmalloc::size;
+    malloc_zone_t::size = &bmalloc::zoneSize;
     malloc_zone_t::zone_name = "WebKit Malloc";
-    malloc_zone_t::introspect = &bmalloc::introspect;
+    malloc_zone_t::introspect = const_cast<malloc_introspection_t*>(&bmalloc::zoneIntrospect);
     malloc_zone_t::version = 4;
     malloc_zone_register(this);
 }

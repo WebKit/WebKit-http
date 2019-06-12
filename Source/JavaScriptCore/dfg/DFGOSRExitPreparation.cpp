@@ -29,9 +29,9 @@
 #if ENABLE(DFG_JIT)
 
 #include "CodeBlock.h"
-#include "Executable.h"
 #include "JIT.h"
 #include "JITCode.h"
+#include "JITWorklist.h"
 #include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
@@ -43,12 +43,7 @@ void prepareCodeOriginForOSRExit(ExecState* exec, CodeOrigin codeOrigin)
     
     for (; codeOrigin.inlineCallFrame; codeOrigin = codeOrigin.inlineCallFrame->directCaller) {
         CodeBlock* codeBlock = codeOrigin.inlineCallFrame->baselineCodeBlock.get();
-        if (codeBlock->jitType() == JSC::JITCode::BaselineJIT)
-            continue;
-
-        ASSERT(codeBlock->jitType() == JSC::JITCode::InterpreterThunk);
-        JIT::compile(&vm, codeBlock, JITCompilationMustSucceed);
-        codeBlock->ownerScriptExecutable()->installCode(codeBlock);
+        JITWorklist::instance()->compileNow(codeBlock);
     }
 }
 

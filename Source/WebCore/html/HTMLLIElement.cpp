@@ -28,6 +28,8 @@
 #include "CSSValueKeywords.h"
 #include "ElementAncestorIterator.h"
 #include "HTMLNames.h"
+#include "HTMLOListElement.h"
+#include "HTMLUListElement.h"
 #include "RenderListItem.h"
 
 namespace WebCore {
@@ -106,7 +108,7 @@ void HTMLLIElement::didAttachRenderers()
     if (!isInList)
         listItemRenderer.setNotInList(true);
 
-    parseValue(fastGetAttribute(valueAttr));
+    parseValue(attributeWithoutSynchronization(valueAttr));
 }
 
 inline void HTMLLIElement::parseValue(const AtomicString& value)

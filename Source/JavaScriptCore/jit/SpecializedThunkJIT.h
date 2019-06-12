@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,16 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SpecializedThunkJIT_h
-#define SpecializedThunkJIT_h
+#pragma once
 
 #if ENABLE(JIT)
 
-#include "Executable.h"
 #include "JIT.h"
 #include "JITInlines.h"
 #include "JSInterfaceJIT.h"
-#include "JSStack.h"
 #include "LinkBuffer.h"
 
 namespace JSC {
@@ -46,7 +43,7 @@ namespace JSC {
             emitFunctionPrologue();
             emitSaveThenMaterializeTagRegisters();
             // Check that we have the expected number of arguments
-            m_failures.append(branch32(NotEqual, payloadFor(JSStack::ArgumentCount), TrustedImm32(expectedArgCount + 1)));
+            m_failures.append(branch32(NotEqual, payloadFor(CallFrameSlot::argumentCount), TrustedImm32(expectedArgCount + 1)));
         }
         
         explicit SpecializedThunkJIT(VM* vm)
@@ -79,7 +76,7 @@ namespace JSC {
         void loadArgumentWithSpecificClass(const ClassInfo* classInfo, int argument, RegisterID dst, RegisterID scratch)
         {
             loadCellArgument(argument, dst);
-            emitLoadStructure(dst, scratch, dst);
+            emitLoadStructure(*vm(), dst, scratch, dst);
             appendFailure(branchPtr(NotEqual, Address(scratch, Structure::classInfoOffset()), TrustedImmPtr(classInfo)));
             // We have to reload the argument since emitLoadStructure clobbered it.
             loadCellArgument(argument, dst);
@@ -169,7 +166,7 @@ namespace JSC {
         
         MacroAssemblerCodeRef finalize(MacroAssemblerCodePtr fallback, const char* thunkKind)
         {
-            LinkBuffer patchBuffer(*m_vm, *this, GLOBAL_THUNK_ID);
+            LinkBuffer patchBuffer(*this, GLOBAL_THUNK_ID);
             patchBuffer.link(m_failures, CodeLocationLabel(fallback));
             for (unsigned i = 0; i < m_calls.size(); i++)
                 patchBuffer.link(m_calls[i].first, m_calls[i].second);
@@ -193,31 +190,6 @@ namespace JSC {
         }
 
     private:
-        void emitSaveThenMaterializeTagRegisters()
-        {
-#if USE(JSVALUE64)
-#if CPU(ARM64)
-            pushPair(tagTypeNumberRegister, tagMaskRegister);
-#else
-            push(tagTypeNumberRegister);
-            push(tagMaskRegister);
-#endif
-            emitMaterializeTagCheckRegisters();
-#endif
-        }
-
-        void emitRestoreSavedTagRegisters()
-        {
-#if USE(JSVALUE64)
-#if CPU(ARM64)
-            popPair(tagTypeNumberRegister, tagMaskRegister);
-#else
-            pop(tagMaskRegister);
-            pop(tagTypeNumberRegister);
-#endif
-#endif
-        }
-        
         void tagReturnAsInt32()
         {
 #if USE(JSVALUE64)
@@ -241,5 +213,3 @@ namespace JSC {
 }
 
 #endif // ENABLE(JIT)
-
-#endif // SpecializedThunkJIT_h

@@ -20,8 +20,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef CachedRawResourceClient_h
-#define CachedRawResourceClient_h
+#pragma once
 
 #include "CachedResourceClient.h"
 
@@ -30,22 +29,23 @@ namespace WebCore {
 class CachedResource;
 class ResourceRequest;
 class ResourceResponse;
+class ResourceTiming;
 
 class CachedRawResourceClient : public CachedResourceClient {
 public:
     virtual ~CachedRawResourceClient() { }
     static CachedResourceClientType expectedType() { return RawResourceType; }
-    virtual CachedResourceClientType resourceClientType() const override { return expectedType(); }
+    CachedResourceClientType resourceClientType() const override { return expectedType(); }
 
-    virtual void dataSent(CachedResource*, unsigned long long /* bytesSent */, unsigned long long /* totalBytesToBeSent */) { }
-    virtual void responseReceived(CachedResource*, const ResourceResponse&) { }
-    virtual void dataReceived(CachedResource*, const char* /* data */, int /* length */) { }
-    virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) { }
+    virtual void dataSent(CachedResource&, unsigned long long /* bytesSent */, unsigned long long /* totalBytesToBeSent */) { }
+    virtual void responseReceived(CachedResource&, const ResourceResponse&) { }
+    virtual bool shouldCacheResponse(CachedResource&, const ResourceResponse&) { return true; }
+    virtual void dataReceived(CachedResource&, const char* /* data */, int /* length */) { }
+    virtual void redirectReceived(CachedResource&, ResourceRequest&, const ResourceResponse&) { }
+    virtual void finishedTimingForWorkerLoad(CachedResource&, const ResourceTiming&) { }
 #if USE(SOUP)
-    virtual char* getOrCreateReadBuffer(CachedResource*, size_t /* requestedSize */, size_t& /* actualSize */) { return nullptr; }
+    virtual char* getOrCreateReadBuffer(CachedResource&, size_t /* requestedSize */, size_t& /* actualSize */) { return nullptr; }
 #endif
 };
 
 }
-
-#endif // CachedRawResourceClient_h

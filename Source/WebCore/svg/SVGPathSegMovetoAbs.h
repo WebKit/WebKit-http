@@ -19,14 +19,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathSegMovetoAbs_h
-#define SVGPathSegMovetoAbs_h
+#pragma once
 
 #include "SVGPathSegWithContext.h"
 
 namespace WebCore {
 
-class SVGPathSegMovetoAbs : public SVGPathSegSingleCoordinate {
+class SVGPathSegMovetoAbs final : public SVGPathSegSingleCoordinate {
 public:
     static Ref<SVGPathSegMovetoAbs> create(const SVGPathElement& element, SVGPathSegRole role, float x, float y)
     {
@@ -39,10 +38,8 @@ private:
     {
     }
 
-    virtual unsigned short pathSegType() const override { return PATHSEG_MOVETO_ABS; }
-    virtual String pathSegTypeAsLetter() const override { return "M"; }
+    unsigned short pathSegType() const final { return PATHSEG_MOVETO_ABS; }
+    String pathSegTypeAsLetter() const final { return "M"; }
 };
 
 } // namespace WebCore
-
-#endif

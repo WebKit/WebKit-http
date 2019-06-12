@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,15 +26,18 @@
 #include "config.h"
 #include "APIWebsiteDataStore.h"
 
+#include "WebKit2Initialize.h"
 #include "WebsiteDataStore.h"
 
 namespace API {
 
-RefPtr<WebsiteDataStore> WebsiteDataStore::defaultDataStore()
+Ref<WebsiteDataStore> WebsiteDataStore::defaultDataStore()
 {
-    static WebsiteDataStore* defaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration())).leakRef();
+    WebKit::InitializeWebKit2();
 
-    return defaultDataStore;
+    static WebsiteDataStore* defaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration(), WebCore::SessionID::defaultSessionID())).leakRef();
+
+    return *defaultDataStore;
 }
 
 Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
@@ -42,9 +45,9 @@ Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
     return adoptRef(*new WebsiteDataStore);
 }
 
-Ref<WebsiteDataStore> WebsiteDataStore::create(WebKit::WebsiteDataStore::Configuration configuration)
+Ref<WebsiteDataStore> WebsiteDataStore::createLegacy(WebKit::WebsiteDataStore::Configuration configuration)
 {
-    return adoptRef(*new WebsiteDataStore(WTFMove(configuration)));
+    return adoptRef(*new WebsiteDataStore(WTFMove(configuration), WebCore::SessionID::defaultSessionID()));
 }
 
 WebsiteDataStore::WebsiteDataStore()
@@ -52,8 +55,8 @@ WebsiteDataStore::WebsiteDataStore()
 {
 }
 
-WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration configuration)
-    : m_websiteDataStore(WebKit::WebsiteDataStore::create(WTFMove(configuration)))
+WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration configuration, WebCore::SessionID sessionID)
+    : m_websiteDataStore(WebKit::WebsiteDataStore::create(WTFMove(configuration), sessionID))
 {
 }
 
@@ -61,12 +64,30 @@ WebsiteDataStore::~WebsiteDataStore()
 {
 }
 
+HTTPCookieStore& WebsiteDataStore::httpCookieStore()
+{
+    if (!m_apiHTTPCookieStore)
+        m_apiHTTPCookieStore = HTTPCookieStore::create(*this);
+
+    return *m_apiHTTPCookieStore;
+}
+
 bool WebsiteDataStore::isPersistent()
 {
     return m_websiteDataStore->isPersistent();
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(EFL) && !PLATFORM(GTK) && !PLATFORM(QT)
+bool WebsiteDataStore::resourceLoadStatisticsEnabled() const
+{
+    return m_websiteDataStore->resourceLoadStatisticsEnabled();
+}
+
+void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
+{
+    m_websiteDataStore->setResourceLoadStatisticsEnabled(enabled);
+}
+
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(QT)
 WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfiguration()
 {
     // FIXME: Fill everything in.
@@ -117,6 +138,26 @@ String WebsiteDataStore::defaultIndexedDBDatabaseDirectory()
     return String();
 }
 
+String WebsiteDataStore::defaultResourceLoadStatisticsDirectory()
+{
+    // FIXME: Implement.
+    return String();
+}
+
+#endif
+    
+#if !PLATFORM(COCOA)
+String WebsiteDataStore::defaultMediaCacheDirectory()
+{
+    // FIXME: Implement. https://bugs.webkit.org/show_bug.cgi?id=156369 and https://bugs.webkit.org/show_bug.cgi?id=156370
+    return String();
+}
+
+String WebsiteDataStore::defaultJavaScriptConfigurationDirectory()
+{
+    // FIXME: Implement.
+    return String();
+}
 #endif
 
 }

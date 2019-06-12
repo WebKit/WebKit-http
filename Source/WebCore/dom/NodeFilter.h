@@ -22,11 +22,10 @@
  *
  */
 
-#ifndef NodeFilter_h
-#define NodeFilter_h
+#pragma once
 
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -35,7 +34,7 @@ class Node;
 class NodeFilter : public RefCounted<NodeFilter> {
 public:
     virtual ~NodeFilter() { }
-    virtual uint16_t acceptNode(Node*) = 0;
+    virtual CallbackResult<unsigned short> acceptNode(Node&) = 0;
 
     /*
      * The following constants are returned by the acceptNode()
@@ -71,5 +70,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // NodeFilter_h

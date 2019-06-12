@@ -40,7 +40,7 @@
 
 #import "WebTypesInternal.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #import <CFNetwork/CFNetwork.h>
 #import <CFNetwork/CFURLConnection.h>
 #endif
@@ -61,12 +61,8 @@ using namespace WebCore;
               delegate:(id)delegate
              directory:(NSString *)directory;
 
-#if USE(CFNETWORK)
-- (id)_initWithLoadingCFURLConnection:(CFURLConnectionRef)connection
-                              request:(CFURLRequestRef)request
-                             response:(CFURLResponseRef)response
-                             delegate:(id)delegate
-                                proxy:(NSURLConnectionDelegateProxy *)proxy;
+#if USE(CFURLCONNECTION)
+- (id)_initWithLoadingCFURLConnection:(CFURLConnectionRef)connection request:(CFURLRequestRef)request response:(CFURLResponseRef)response delegate:(id)delegate proxy:(NSURLConnectionDelegateProxy *)proxy;
 #endif
 
 @end
@@ -128,7 +124,7 @@ using namespace WebCore;
 #if !PLATFORM(IOS)
     // Try previously stored credential first.
     if (![challenge previousFailureCount]) {
-        NSURLCredential *credential = CredentialStorage::defaultCredentialStorage().get(ProtectionSpace([challenge protectionSpace])).nsCredential();
+        NSURLCredential *credential = CredentialStorage::defaultCredentialStorage().get(emptyString(), ProtectionSpace([challenge protectionSpace])).nsCredential();
         if (credential) {
             [[challenge sender] useCredential:credential forAuthenticationChallenge:challenge];
             return;
@@ -144,17 +140,6 @@ using namespace WebCore;
         }
 
         [[WebPanelAuthenticationHandler sharedHandler] startAuthentication:challenge window:window];
-    }
-#endif
-}
-
-- (void)download:(NSURLDownload *)download didCancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-{
-#if !PLATFORM(IOS)
-    if ([realDelegate respondsToSelector:@selector(download:didCancelAuthenticationChallenge:)]) {
-        [realDelegate download:download didCancelAuthenticationChallenge:challenge];
-    } else {
-        [[WebPanelAuthenticationHandler sharedHandler] cancelAuthentication:challenge];
     }
 #endif
 }
@@ -242,12 +227,8 @@ using namespace WebCore;
     return [super _initWithLoadingConnection:connection request:request response:response delegate:_webInternal proxy:proxy];
 }
 
-#if USE(CFNETWORK)
-- (id)_initWithLoadingCFURLConnection:(CFURLConnectionRef)connection
-                              request:(CFURLRequestRef)request
-                             response:(CFURLResponseRef)response
-                             delegate:(id)delegate
-                                proxy:(NSURLConnectionDelegateProxy *)proxy
+#if USE(CFURLCONNECTION)
+- (id)_initWithLoadingCFURLConnection:(CFURLConnectionRef)connection request:(CFURLRequestRef)request response:(CFURLResponseRef)response delegate:(id)delegate proxy:(NSURLConnectionDelegateProxy *)proxy
 {
     [self _setRealDelegate:delegate];
     return [super _initWithLoadingCFURLConnection:connection request:request response:response delegate:_webInternal proxy:proxy];

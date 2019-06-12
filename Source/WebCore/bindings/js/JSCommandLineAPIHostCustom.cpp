@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2008, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  * Copyright (C) 2010-2011 Google Inc. All rights reserved.
  *
@@ -35,6 +35,7 @@
 
 #include "CommandLineAPIHost.h"
 #include "Database.h"
+#include "Document.h"
 #include "InspectorDOMAgent.h"
 #include "JSDatabase.h"
 #include "JSEventListener.h"
@@ -50,7 +51,6 @@
 #include <runtime/JSLock.h>
 #include <runtime/ObjectConstructor.h>
 
-
 using namespace JSC;
 
 namespace WebCore {
@@ -62,19 +62,19 @@ JSValue JSCommandLineAPIHost::inspectedObject(ExecState& state)
         return jsUndefined();
 
     JSLockHolder lock(&state);
-    Deprecated::ScriptValue scriptValue = object->get(&state);
-    if (scriptValue.hasNoValue())
-        return jsUndefined();
-
-    return scriptValue.jsValue();
+    auto scriptValue = object->get(state);
+    return scriptValue ? scriptValue : jsUndefined();
 }
 
 static JSArray* getJSListenerFunctions(ExecState& state, Document* document, const EventListenerInfo& listenerInfo)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSArray* result = constructEmptyArray(&state, nullptr);
+    RETURN_IF_EXCEPTION(scope, nullptr);
     size_t handlersCount = listenerInfo.eventListenerVector.size();
     for (size_t i = 0, outputIndex = 0; i < handlersCount; ++i) {
-        const JSEventListener* jsListener = JSEventListener::cast(listenerInfo.eventListenerVector[i].listener.get());
+        const JSEventListener* jsListener = JSEventListener::cast(&listenerInfo.eventListenerVector[i]->callback());
         if (!jsListener) {
             ASSERT_NOT_REACHED();
             continue;
@@ -89,9 +89,10 @@ static JSArray* getJSListenerFunctions(ExecState& state, Document* document, con
             continue;
 
         JSObject* listenerEntry = constructEmptyObject(&state);
-        listenerEntry->putDirect(state.vm(), Identifier::fromString(&state, "listener"), function);
-        listenerEntry->putDirect(state.vm(), Identifier::fromString(&state, "useCapture"), jsBoolean(listenerInfo.eventListenerVector[i].useCapture));
+        listenerEntry->putDirect(vm, Identifier::fromString(&state, "listener"), function);
+        listenerEntry->putDirect(vm, Identifier::fromString(&state, "useCapture"), jsBoolean(listenerInfo.eventListenerVector[i]->useCapture()));
         result->putDirectIndex(&state, outputIndex++, JSValue(listenerEntry));
+        RETURN_IF_EXCEPTION(scope, nullptr);
     }
     return result;
 }
@@ -101,11 +102,12 @@ JSValue JSCommandLineAPIHost::getEventListeners(ExecState& state)
     if (state.argumentCount() < 1)
         return jsUndefined();
 
+    VM& vm = state.vm();
     JSValue value = state.uncheckedArgument(0);
     if (!value.isObject() || value.isNull())
         return jsUndefined();
 
-    Node* node = JSNode::toWrapped(value);
+    Node* node = JSNode::toWrapped(vm, value);
     if (!node)
         return jsUndefined();
 
@@ -126,12 +128,10 @@ JSValue JSCommandLineAPIHost::getEventListeners(ExecState& state)
 
 JSValue JSCommandLineAPIHost::inspect(ExecState& state)
 {
-    if (state.argumentCount() >= 2) {
-        Deprecated::ScriptValue object(state.vm(), state.uncheckedArgument(0));
-        Deprecated::ScriptValue hints(state.vm(), state.uncheckedArgument(1));
-        wrapped().inspectImpl(object.toInspectorValue(&state), hints.toInspectorValue(&state));
-    }
-
+    if (state.argumentCount() < 2)
+        return jsUndefined();
+    wrapped().inspectImpl(Inspector::toInspectorValue(state, state.uncheckedArgument(0)),
+        Inspector::toInspectorValue(state, state.uncheckedArgument(1)));
     return jsUndefined();
 }
 
@@ -140,7 +140,8 @@ JSValue JSCommandLineAPIHost::databaseId(ExecState& state)
     if (state.argumentCount() < 1)
         return jsUndefined();
 
-    Database* database = JSDatabase::toWrapped(state.uncheckedArgument(0));
+    VM& vm = state.vm();
+    Database* database = JSDatabase::toWrapped(vm, state.uncheckedArgument(0));
     if (database)
         return jsStringWithCache(&state, wrapped().databaseIdImpl(database));
 
@@ -152,7 +153,8 @@ JSValue JSCommandLineAPIHost::storageId(ExecState& state)
     if (state.argumentCount() < 1)
         return jsUndefined();
 
-    Storage* storage = JSStorage::toWrapped(state.uncheckedArgument(0));
+    VM& vm = state.vm();
+    Storage* storage = JSStorage::toWrapped(vm, state.uncheckedArgument(0));
     if (storage)
         return jsStringWithCache(&state, wrapped().storageIdImpl(storage));
 

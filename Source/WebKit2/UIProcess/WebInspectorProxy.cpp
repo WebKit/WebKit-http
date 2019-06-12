@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,13 +27,15 @@
 #include "config.h"
 #include "WebInspectorProxy.h"
 
+#include "APINavigationAction.h"
 #include "APIProcessPoolConfiguration.h"
-#include "APIURLRequest.h"
 #include "WKArray.h"
 #include "WKContextMenuItem.h"
 #include "WKMutableArray.h"
+#include "WebAutomationSession.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebFrameProxy.h"
+#include "WebInspectorInterruptDispatcherMessages.h"
 #include "WebInspectorMessages.h"
 #include "WebInspectorProxyMessages.h"
 #include "WebInspectorUIMessages.h"
@@ -43,11 +45,10 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <WebCore/NotImplemented.h>
-#include <WebCore/SchemeRegistry.h>
 #include <wtf/NeverDestroyed.h>
 
-#if ENABLE(INSPECTOR_SERVER)
-#include "WebInspectorServer.h"
+#if PLATFORM(GTK)
+#include "WebInspectorProxyClient.h"
 #endif
 
 using namespace WebCore;
@@ -59,14 +60,6 @@ const unsigned WebInspectorProxy::minimumWindowHeight = 400;
 
 const unsigned WebInspectorProxy::initialWindowWidth = 1000;
 const unsigned WebInspectorProxy::initialWindowHeight = 650;
-
-typedef HashMap<WebPageProxy*, unsigned> PageLevelMap;
-
-static PageLevelMap& pageLevelMap()
-{
-    static NeverDestroyed<PageLevelMap> map;
-    return map;
-}
 
 WebInspectorProxy::WebInspectorProxy(WebPageProxy* inspectedPage)
     : m_inspectedPage(inspectedPage)
@@ -83,16 +76,7 @@ WebInspectorProxy::~WebInspectorProxy()
 
 unsigned WebInspectorProxy::inspectionLevel() const
 {
-    auto findResult = pageLevelMap().find(inspectedPage());
-    if (findResult != pageLevelMap().end())
-        return findResult->value + 1;
-
-    return 1;
-}
-
-String WebInspectorProxy::inspectorPageGroupIdentifier() const
-{
-    return String::format("__WebInspectorPageGroupLevel%u__", inspectionLevel());
+    return inspectorLevelForPage(inspectedPage());
 }
 
 WebPreferences& WebInspectorProxy::inspectorPagePreferences() const
@@ -103,17 +87,11 @@ WebPreferences& WebInspectorProxy::inspectorPagePreferences() const
 
 void WebInspectorProxy::invalidate()
 {
-#if ENABLE(INSPECTOR_SERVER)
-    if (m_remoteInspectionPageId)
-        WebInspectorServer::singleton().unregisterPage(m_remoteInspectionPageId);
-#endif
-
     m_inspectedPage->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID());
 
     didClose();
     platformInvalidate();
 
-    pageLevelMap().remove(m_inspectedPage);
     m_inspectedPage = nullptr;
 }
 
@@ -139,6 +117,7 @@ void WebInspectorProxy::connect()
 
     eagerlyCreateInspectorPage();
 
+    m_inspectedPage->process().send(Messages::WebInspectorInterruptDispatcher::NotifyNeedDebuggerBreak(), 0);
     m_inspectedPage->process().send(Messages::WebInspector::Show(), m_inspectedPage->pageID());
 }
 
@@ -178,15 +157,11 @@ void WebInspectorProxy::close()
     didClose();
 }
 
-void WebInspectorProxy::didRelaunchInspectorPageProcess()
+void WebInspectorProxy::closeForCrash()
 {
-    m_inspectorPage->process().addMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID(), *this);
-    m_inspectorPage->process().assumeReadAccessToBaseURL(WebInspectorProxy::inspectorBaseURL());
+    close();
 
-    // When didRelaunchInspectorPageProcess is called we can assume it is during a load request.
-    // Any messages we would have sent to a terminated process need to be re-sent.
-
-    m_inspectorPage->process().send(Messages::WebInspectorUI::EstablishConnection(m_connectionIdentifier, m_inspectedPage->pageID(), m_underTest, inspectionLevel()), m_inspectorPage->pageID());
+    platformDidCloseForCrash();
 }
 
 void WebInspectorProxy::showConsole()
@@ -209,6 +184,16 @@ void WebInspectorProxy::showResources()
     m_inspectedPage->process().send(Messages::WebInspector::ShowResources(), m_inspectedPage->pageID());
 }
 
+void WebInspectorProxy::showTimelines()
+{
+    if (!m_inspectedPage)
+        return;
+
+    eagerlyCreateInspectorPage();
+
+    m_inspectedPage->process().send(Messages::WebInspector::ShowTimelines(), m_inspectedPage->pageID());
+}
+
 void WebInspectorProxy::showMainResourceForFrame(WebFrameProxy* frame)
 {
     if (!m_inspectedPage)
@@ -227,6 +212,11 @@ void WebInspectorProxy::attachBottom()
 void WebInspectorProxy::attachRight()
 {
     attach(AttachmentSide::Right);
+}
+
+void WebInspectorProxy::attachLeft()
+{
+    attach(AttachmentSide::Left);
 }
 
 void WebInspectorProxy::attach(AttachmentSide side)
@@ -251,6 +241,10 @@ void WebInspectorProxy::attach(AttachmentSide side)
 
     case AttachmentSide::Right:
         m_inspectorPage->process().send(Messages::WebInspectorUI::AttachedRight(), m_inspectorPage->pageID());
+        break;
+
+    case AttachmentSide::Left:
+        m_inspectorPage->process().send(Messages::WebInspectorUI::AttachedLeft(), m_inspectorPage->pageID());
         break;
     }
 
@@ -304,42 +298,25 @@ void WebInspectorProxy::togglePageProfiling()
     m_isProfilingPage = !m_isProfilingPage;
 }
 
-static WebProcessPool* s_mainInspectorProcessPool;
-static WebProcessPool* s_nestedInspectorProcessPool;
-
-WebProcessPool& WebInspectorProxy::inspectorProcessPool(unsigned inspectionLevel)
+void WebInspectorProxy::toggleElementSelection()
 {
-    // Having our own process pool removes us from the main process pool and
-    // guarantees no process sharing for our user interface.
-    WebProcessPool*& pool = inspectionLevel == 1 ? s_mainInspectorProcessPool : s_nestedInspectorProcessPool;
-    if (!pool) {
-        auto configuration = API::ProcessPoolConfiguration::createWithLegacyOptions();
-        pool = &WebProcessPool::create(configuration.get()).leakRef();
+    if (!m_inspectedPage)
+        return;
+
+    if (m_elementSelectionActive) {
+        m_ignoreElementSelectionChange = true;
+        m_inspectedPage->process().send(Messages::WebInspector::StopElementSelection(), m_inspectedPage->pageID());
+    } else {
+        connect();
+        m_inspectedPage->process().send(Messages::WebInspector::StartElementSelection(), m_inspectedPage->pageID());
     }
-    return *pool;
 }
 
-bool WebInspectorProxy::isInspectorProcessPool(WebProcessPool& processPool)
+bool WebInspectorProxy::isMainOrTestInspectorPage(const URL& url)
 {
-    return (s_mainInspectorProcessPool && s_mainInspectorProcessPool == &processPool)
-        || (s_nestedInspectorProcessPool && s_nestedInspectorProcessPool == &processPool);
-}
-
-bool WebInspectorProxy::isInspectorPage(WebPageProxy& webPage)
-{
-    return pageLevelMap().contains(&webPage);
-}
-
-static bool isMainOrTestInspectorPage(WKURLRequestRef requestRef)
-{
-    URL requestURL(URL(), toImpl(requestRef)->resourceRequest().url());
-    if (!WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(requestURL.protocol()))
-        return false;
-
-    // Use URL so we can compare just the paths.
+    // Use URL so we can compare the paths and protocols.
     URL mainPageURL(URL(), WebInspectorProxy::inspectorPageURL());
-    ASSERT(WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(mainPageURL.protocol()));
-    if (decodeURLEscapeSequences(requestURL.path()) == decodeURLEscapeSequences(mainPageURL.path()))
+    if (url.protocol() == mainPageURL.protocol() && decodeURLEscapeSequences(url.path()) == decodeURLEscapeSequences(mainPageURL.path()))
         return true;
 
     // We might not have a Test URL in Production builds.
@@ -348,31 +325,33 @@ static bool isMainOrTestInspectorPage(WKURLRequestRef requestRef)
         return false;
 
     URL testPageURL(URL(), testPageURLString);
-    ASSERT(WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(testPageURL.protocol()));
-    return decodeURLEscapeSequences(requestURL.path()) == decodeURLEscapeSequences(testPageURL.path());
+    return url.protocol() == testPageURL.protocol() && decodeURLEscapeSequences(url.path()) == decodeURLEscapeSequences(testPageURL.path());
 }
 
-static void processDidCrash(WKPageRef, const void* clientInfo)
+static void webProcessDidCrash(WKPageRef, const void* clientInfo)
 {
     WebInspectorProxy* webInspectorProxy = static_cast<WebInspectorProxy*>(const_cast<void*>(clientInfo));
     ASSERT(webInspectorProxy);
-    webInspectorProxy->close();
+    webInspectorProxy->closeForCrash();
 }
 
-static void decidePolicyForNavigationAction(WKPageRef, WKFrameRef frameRef, WKFrameNavigationType, WKEventModifiers, WKEventMouseButton, WKFrameRef, WKURLRequestRef requestRef, WKFramePolicyListenerRef listenerRef, WKTypeRef, const void* clientInfo)
+static void decidePolicyForNavigationAction(WKPageRef pageRef, WKNavigationActionRef navigationActionRef, WKFramePolicyListenerRef listenerRef, WKTypeRef, const void* clientInfo)
 {
     // Allow non-main frames to navigate anywhere.
-    if (!toImpl(frameRef)->isMainFrame()) {
-        toImpl(listenerRef)->use();
+    API::FrameInfo* sourceFrame = toImpl(navigationActionRef)->sourceFrame();
+    if (sourceFrame && !sourceFrame->isMainFrame()) {
+        toImpl(listenerRef)->use({ });
         return;
     }
 
     const WebInspectorProxy* webInspectorProxy = static_cast<const WebInspectorProxy*>(clientInfo);
     ASSERT(webInspectorProxy);
 
+    WebCore::ResourceRequest request = toImpl(navigationActionRef)->request();
+
     // Allow loading of the main inspector file.
-    if (isMainOrTestInspectorPage(requestRef)) {
-        toImpl(listenerRef)->use();
+    if (WebInspectorProxy::isMainOrTestInspectorPage(request.url())) {
+        toImpl(listenerRef)->use({ });
         return;
     }
 
@@ -380,7 +359,7 @@ static void decidePolicyForNavigationAction(WKPageRef, WKFrameRef frameRef, WKFr
     toImpl(listenerRef)->ignore();
 
     // And instead load it in the inspected page.
-    webInspectorProxy->inspectedPage()->loadRequest(toImpl(requestRef)->resourceRequest());
+    webInspectorProxy->inspectedPage()->loadRequest(request);
 }
 
 static void getContextMenuFromProposedMenu(WKPageRef pageRef, WKArrayRef proposedMenuRef, WKArrayRef* newMenuRef, WKHitTestResultRef, WKTypeRef, const void*)
@@ -407,29 +386,6 @@ static void getContextMenuFromProposedMenu(WKPageRef pageRef, WKArrayRef propose
     *newMenuRef = menuItems;
 }
 
-#if ENABLE(INSPECTOR_SERVER)
-void WebInspectorProxy::enableRemoteInspection()
-{
-    if (!m_remoteInspectionPageId)
-        m_remoteInspectionPageId = WebInspectorServer::singleton().registerPage(this);
-}
-
-void WebInspectorProxy::remoteFrontendConnected()
-{
-    m_inspectedPage->process().send(Messages::WebInspector::RemoteFrontendConnected(), m_inspectedPage->pageID());
-}
-
-void WebInspectorProxy::remoteFrontendDisconnected()
-{
-    m_inspectedPage->process().send(Messages::WebInspector::RemoteFrontendDisconnected(), m_inspectedPage->pageID());
-}
-
-void WebInspectorProxy::dispatchMessageFromRemoteFrontend(const String& message)
-{
-    m_inspectedPage->process().send(Messages::WebInspector::SendMessageToBackend(message), m_inspectedPage->pageID());
-}
-#endif
-
 void WebInspectorProxy::eagerlyCreateInspectorPage()
 {
     if (m_inspectorPage)
@@ -440,73 +396,45 @@ void WebInspectorProxy::eagerlyCreateInspectorPage()
     if (!m_inspectorPage)
         return;
 
-    pageLevelMap().set(m_inspectorPage, inspectionLevel());
+    trackInspectorPage(m_inspectorPage);
 
-    WKPagePolicyClientV1 policyClient = {
-        { 1, this },
-        nullptr, // decidePolicyForNavigationAction_deprecatedForUseWithV0
-        nullptr, // decidePolicyForNewWindowAction
-        nullptr, // decidePolicyForResponse_deprecatedForUseWithV0
-        nullptr, // unableToImplementPolicy
+    WKPageNavigationClientV0 navigationClient = {
+        { 0, this },
         decidePolicyForNavigationAction,
-        nullptr, // decidePolicyForResponse
-    };
+        nullptr, // decidePolicyForNavigationResponse
+        nullptr, // decidePolicyForPluginLoad
+        nullptr, // didStartProvisionalNavigation
+        nullptr, // didReceiveServerRedirectForProvisionalNavigation
+        nullptr, // didFailProvisionalNavigation
+        nullptr, // didCommitNavigation
+        nullptr, // didFinishNavigation
+        nullptr, // didFailNavigation
+        nullptr, // didFailProvisionalLoadInSubframe
+        nullptr, // didFinishDocumentLoad
+        nullptr, // didSameDocumentNavigation
+        nullptr, // renderingProgressDidChange
+        nullptr, // canAuthenticateAgainstProtectionSpace
+        nullptr, // didReceiveAuthenticationChallenge
+        webProcessDidCrash,
+        nullptr, // copyWebCryptoMasterKey
 
-    WKPageLoaderClientV5 loaderClient = {
-        { 5, this },
-        nullptr, // didStartProvisionalLoadForFrame
-        nullptr, // didReceiveServerRedirectForProvisionalLoadForFrame
-        nullptr, // didFailProvisionalLoadWithErrorForFrame
-        nullptr, // didCommitLoadForFrame
-        nullptr, // didFinishDocumentLoadForFrame
-        nullptr, // didFinishLoadForFrame
-        nullptr, // didFailLoadWithErrorForFrame
-        nullptr, // didSameDocumentNavigationForFrame
-        nullptr, // didReceiveTitleForFrame
-        nullptr, // didFirstLayoutForFrame
-        nullptr, // didFirstVisuallyNonEmptyLayoutForFrame
-        nullptr, // didRemoveFrameFromHierarchy
-        nullptr, // didDisplayInsecureContentForFrame
-        nullptr, // didRunInsecureContentForFrame
-        nullptr, // canAuthenticateAgainstProtectionSpaceInFrame
-        nullptr, // didReceiveAuthenticationChallengeInFrame
-        nullptr, // didStartProgress
-        nullptr, // didChangeProgress
-        nullptr, // didFinishProgress
-        nullptr, // didBecomeUnresponsive
-        nullptr, // didBecomeResponsive
-        processDidCrash,
-        nullptr, // didChangeBackForwardList
-        nullptr, // shouldGoToBackForwardListItem
-        nullptr, // didFailToInitializePlugin_deprecatedForUseWithV0
-        nullptr, // didDetectXSSForFrame
-        nullptr, // didNewFirstVisuallyNonEmptyLayout_unavailable
-        nullptr, // willGoToBackForwardListItem
-        nullptr, // interactionOccurredWhileProcessUnresponsive
-        nullptr, // pluginDidFail_deprecatedForUseWithV1
-        nullptr, // didReceiveIntentForFrame_unavailable
-        nullptr, // registerIntentServiceForFrame_unavailable
-        nullptr, // didLayout
-        nullptr, // pluginLoadPolicy_deprecatedForUseWithV2
-        nullptr, // pluginDidFail
-        nullptr, // pluginLoadPolicy
-        nullptr, // webGLLoadPolicy
-        nullptr, // resolveWebGLLoadPolicy
-        nullptr, // shouldKeepCurrentBackForwardListItemInList
+        nullptr, // didBeginNavigationGesture
+        nullptr, // willEndNavigationGesture
+        nullptr, // didEndNavigationGesture
+        nullptr, // didRemoveNavigationGestureSnapshot
     };
 
     WKPageContextMenuClientV3 contextMenuClient = {
         { 3, this },
-        0, // getContextMenuFromProposedMenu_deprecatedForUseWithV0
-        0, // customContextMenuItemSelected
-        0, // contextMenuDismissed
+        nullptr, // getContextMenuFromProposedMenu_deprecatedForUseWithV0
+        nullptr, // customContextMenuItemSelected
+        nullptr, // contextMenuDismissed
         getContextMenuFromProposedMenu,
-        0, // showContextMenu
-        0, // hideContextMenu
+        nullptr, // showContextMenu
+        nullptr, // hideContextMenu
     };
 
-    WKPageSetPagePolicyClient(toAPI(m_inspectorPage), &policyClient.base);
-    WKPageSetPageLoaderClient(toAPI(m_inspectorPage), &loaderClient.base);
+    WKPageSetPageNavigationClient(toAPI(m_inspectorPage), &navigationClient.base);
     WKPageSetPageContextMenuClient(toAPI(m_inspectorPage), &contextMenuClient.base);
 
     m_inspectorPage->process().addMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID(), *this);
@@ -546,6 +474,10 @@ void WebInspectorProxy::createInspectorPage(IPC::Attachment connectionIdentifier
             case AttachmentSide::Right:
                 m_inspectorPage->process().send(Messages::WebInspectorUI::AttachedRight(), m_inspectorPage->pageID());
                 break;
+
+            case AttachmentSide::Left:
+                m_inspectorPage->process().send(Messages::WebInspectorUI::AttachedLeft(), m_inspectorPage->pageID());
+                break;
             }
         } else
             m_inspectorPage->process().send(Messages::WebInspectorUI::Detached(), m_inspectorPage->pageID());
@@ -561,7 +493,11 @@ void WebInspectorProxy::open()
     if (m_underTest)
         return;
 
+    if (!m_inspectorPage)
+        return;
+
     m_isVisible = true;
+    m_inspectorPage->process().send(Messages::WebInspectorUI::SetIsVisible(m_isVisible), m_inspectorPage->pageID());
 
     platformOpen();
 }
@@ -571,12 +507,15 @@ void WebInspectorProxy::didClose()
     if (!m_inspectorPage)
         return;
 
-    m_inspectorPage->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID());
-
     m_isVisible = false;
     m_isProfilingPage = false;
     m_showMessageSent = false;
     m_ignoreFirstBringToFront = false;
+
+    untrackInspectorPage(m_inspectorPage);
+
+    m_inspectorPage->process().send(Messages::WebInspectorUI::SetIsVisible(m_isVisible), m_inspectorPage->pageID());
+    m_inspectorPage->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID());
 
     if (m_isAttached)
         platformDetach();
@@ -591,6 +530,12 @@ void WebInspectorProxy::didClose()
     m_connectionIdentifier = IPC::Attachment();
 
     platformDidClose();
+}
+
+void WebInspectorProxy::frontendLoaded()
+{
+    if (auto* automationSession = m_inspectedPage->process().processPool().automationSession())
+        automationSession->inspectorFrontendLoaded(*m_inspectedPage);
 }
 
 void WebInspectorProxy::bringToFront()
@@ -629,6 +574,23 @@ void WebInspectorProxy::inspectedURLChanged(const String& urlString)
     platformInspectedURLChanged(urlString);
 }
 
+void WebInspectorProxy::elementSelectionChanged(bool active)
+{
+    m_elementSelectionActive = active;
+
+    if (m_ignoreElementSelectionChange) {
+        m_ignoreElementSelectionChange = false;
+        if (!m_isVisible)
+            close();
+        return;
+    }
+
+    if (active)
+        platformBringInspectedPageToFront();
+    else if (isConnected())
+        bringToFront();
+}
+
 void WebInspectorProxy::save(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs)
 {
     platformSave(filename, content, base64Encoded, forceSaveAs);
@@ -643,14 +605,6 @@ bool WebInspectorProxy::shouldOpenAttached()
 {
     return inspectorPagePreferences().inspectorStartsAttached() && canAttach();
 }
-
-#if ENABLE(INSPECTOR_SERVER)
-void WebInspectorProxy::sendMessageToRemoteFrontend(const String& message)
-{
-    ASSERT(m_remoteInspectionPageId);
-    WebInspectorServer::singleton().sendMessageOverConnection(m_remoteInspectionPageId, message);
-}
-#endif
 
 // Unsupported configurations can use the stubs provided here.
 
@@ -672,12 +626,22 @@ void WebInspectorProxy::platformDidClose()
     notImplemented();
 }
 
+void WebInspectorProxy::platformDidCloseForCrash()
+{
+    notImplemented();
+}
+
 void WebInspectorProxy::platformInvalidate()
 {
     notImplemented();
 }
 
 void WebInspectorProxy::platformBringToFront()
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformBringInspectedPageToFront()
 {
     notImplemented();
 }

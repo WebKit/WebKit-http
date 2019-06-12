@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +24,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLTrackElement_h
-#define HTMLTrackElement_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
+
 #include "HTMLElement.h"
 #include "LoadableTextTrack.h"
-#include "TextTrack.h"
 
 namespace WebCore {
 
@@ -39,23 +39,18 @@ class HTMLTrackElement final : public HTMLElement, public TextTrackClient {
 public:
     static Ref<HTMLTrackElement> create(const QualifiedName&, Document&);
 
-    String kind();
-    void setKind(const String&);
+    const AtomicString& kind();
+    void setKind(const AtomicString&);
 
-    String srclang() const;
-    void setSrclang(const String&);
-
-    String label() const;
-    void setLabel(const String&);
-
+    const AtomicString& srclang() const;
+    const AtomicString& label() const;
     bool isDefault() const;
-    void setIsDefault(bool);
 
     enum ReadyState { NONE = 0, LOADING = 1, LOADED = 2, TRACK_ERROR = 3 };
     ReadyState readyState();
     void setReadyState(ReadyState);
 
-    TextTrack* track();
+    LoadableTextTrack& track();
 
     void scheduleLoad();
 
@@ -68,26 +63,25 @@ private:
     HTMLTrackElement(const QualifiedName&, Document&);
     virtual ~HTMLTrackElement();
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
 
-    virtual bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const final;
 
     void loadTimerFired();
 
     HTMLMediaElement* mediaElement() const;
 
     // TextTrackClient
-    virtual void textTrackModeChanged(TextTrack*) override;
-    virtual void textTrackKindChanged(TextTrack*) override;
-    virtual void textTrackAddCues(TextTrack*, const TextTrackCueList*) override;
-    virtual void textTrackRemoveCues(TextTrack*, const TextTrackCueList*) override;
-    virtual void textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue>) override;
-    virtual void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>) override;
+    void textTrackModeChanged(TextTrack&) final;
+    void textTrackKindChanged(TextTrack&) final;
+    void textTrackAddCues(TextTrack&, const TextTrackCueList&) final;
+    void textTrackRemoveCues(TextTrack&, const TextTrackCueList&) final;
+    void textTrackAddCue(TextTrack&, TextTrackCue&) final;
+    void textTrackRemoveCue(TextTrack&, TextTrackCue&) final;
 
-    LoadableTextTrack& ensureTrack();
     bool canLoadURL(const URL&);
 
     RefPtr<LoadableTextTrack> m_track;
@@ -96,5 +90,4 @@ private:
 
 }
 
-#endif
 #endif

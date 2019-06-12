@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLKeygenElement_h
-#define HTMLKeygenElement_h
+#pragma once
 
 #include "HTMLFormControlElementWithState.h"
 
@@ -34,29 +33,30 @@ class HTMLKeygenElement final : public HTMLFormControlElementWithState {
 public:
     static Ref<HTMLKeygenElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
+    void setKeytype(const AtomicString&);
+    String keytype() const;
+
 private:
     HTMLKeygenElement(const QualifiedName&, Document&, HTMLFormElement*);
 
-    virtual bool computeWillValidate() const override { return false; }
-    virtual bool canStartSelection() const override { return false; }
+    bool computeWillValidate() const final { return false; }
+    bool canStartSelection() const final { return false; }
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    virtual bool appendFormData(FormDataList&, bool) override;
-    virtual const AtomicString& formControlType() const override;
-    virtual bool isOptionalFormControl() const override { return false; }
+    bool appendFormData(FormDataList&, bool) final;
+    const AtomicString& formControlType() const final;
+    bool isOptionalFormControl() const final { return false; }
 
-    virtual bool isEnumeratable() const override { return true; }
-    virtual bool supportLabels() const override { return true; }
+    bool isEnumeratable() const final { return true; }
+    bool supportLabels() const final { return true; }
 
-    virtual void reset() override;
-    virtual bool shouldSaveAndRestoreFormControlState() const override;
+    void reset() final;
+    bool shouldSaveAndRestoreFormControlState() const final;
 
-    virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
+    bool isKeytypeRSA() const;
 
     HTMLSelectElement* shadowSelect() const;
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

@@ -28,9 +28,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FileReaderLoader_h
-#define FileReaderLoader_h
+#pragma once
 
+#include "BlobResourceHandle.h"
 #include "FileError.h"
 #include "URL.h"
 #include "TextEncoding.h"
@@ -64,14 +64,14 @@ public:
     FileReaderLoader(ReadType, FileReaderLoaderClient*);
     ~FileReaderLoader();
 
-    void start(ScriptExecutionContext*, Blob*);
+    void start(ScriptExecutionContext*, Blob&);
     void cancel();
 
     // ThreadableLoaderClient
-    virtual void didReceiveResponse(unsigned long, const ResourceResponse&);
-    virtual void didReceiveData(const char*, int);
-    virtual void didFinishLoading(unsigned long, double);
-    virtual void didFail(const ResourceError&);
+    void didReceiveResponse(unsigned long, const ResourceResponse&) override;
+    void didReceiveData(const char*, int) override;
+    void didFinishLoading(unsigned long) override;
+    void didFail(const ResourceError&) override;
 
     String stringResult();
     RefPtr<JSC::ArrayBuffer> arrayBufferResult() const;
@@ -92,6 +92,7 @@ private:
     bool isCompleted() const;
 
     static FileError::ErrorCode httpStatusCodeToErrorCode(int);
+    static FileError::ErrorCode toErrorCode(BlobResourceHandle::Error);
 
     ReadType m_readType;
     FileReaderLoaderClient* m_client;
@@ -114,13 +115,7 @@ private:
     unsigned m_bytesLoaded;
     unsigned m_totalBytes;
 
-    bool m_hasRange;
-    unsigned m_rangeStart;
-    unsigned m_rangeEnd;
-
     int m_errorCode;
 };
 
 } // namespace WebCore
-
-#endif // FileReaderLoader_h

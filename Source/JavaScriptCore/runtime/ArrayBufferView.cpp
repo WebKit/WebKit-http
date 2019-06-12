@@ -26,16 +26,14 @@
 #include "config.h"
 #include "ArrayBufferView.h"
 
-#include "ArrayBuffer.h"
-
 namespace JSC {
 
 ArrayBufferView::ArrayBufferView(
-    PassRefPtr<ArrayBuffer> buffer,
+    RefPtr<ArrayBuffer>&& buffer,
     unsigned byteOffset)
         : m_byteOffset(byteOffset)
         , m_isNeuterable(true)
-        , m_buffer(buffer)
+        , m_buffer(WTFMove(buffer))
 {
     m_baseAddress = m_buffer ? (static_cast<char*>(m_buffer->data()) + m_byteOffset) : 0;
 }

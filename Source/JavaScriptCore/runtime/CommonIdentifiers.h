@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003, 2007, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -18,47 +18,116 @@
  *
  */
 
-#ifndef CommonIdentifiers_h
-#define CommonIdentifiers_h
+#pragma once
 
-#include "BytecodeIntrinsicRegistry.h"
 #include "Identifier.h"
 #include <wtf/Noncopyable.h>
 
 // MarkedArgumentBuffer of property names, passed to a macro so we can do set them up various
 // ways without repeating the list.
 #define JSC_COMMON_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
+    macro(Animation) \
+    macro(AnimationEffectReadOnly) \
+    macro(AnimationTimeline) \
     macro(Array) \
     macro(ArrayBuffer) \
     macro(ArrayIterator) \
+    macro(Audio) \
     macro(BYTES_PER_ELEMENT) \
     macro(Boolean) \
     macro(Collator) \
+    macro(Credential) \
+    macro(CredentialsContainer) \
+    macro(CustomElementRegistry) \
     macro(Date) \
     macro(DateTimeFormat) \
+    macro(DocumentTimeline) \
     macro(Error) \
     macro(EvalError) \
+    macro(FederatedCredential) \
     macro(Function) \
+    macro(Gamepad) \
+    macro(GamepadButton) \
+    macro(GamepadEvent) \
     macro(GeneratorFunction) \
+    macro(Headers) \
+    macro(HTMLAudioElement) \
+    macro(HTMLSlotElement) \
+    macro(IDBCursor) \
+    macro(IDBCursorWithValue) \
+    macro(IDBDatabase) \
+    macro(IDBFactory) \
+    macro(IDBIndex) \
+    macro(IDBKeyRange) \
+    macro(IDBObjectStore) \
+    macro(IDBOpenDBRequest) \
+    macro(IDBRequest) \
+    macro(IDBTransaction) \
+    macro(IDBVersionChangeEvent) \
     macro(Infinity) \
+    macro(InputEvent) \
+    macro(IntersectionObserver) \
+    macro(IntersectionObserverEntry) \
     macro(Intl) \
     macro(JSON) \
     macro(Loader) \
     macro(Map)\
     macro(MapIterator)\
     macro(Math) \
+    macro(MediaEncryptedEvent) \
+    macro(MediaKeyMessageEvent) \
+    macro(MediaKeySession) \
+    macro(MediaKeyStatusMap) \
+    macro(MediaKeySystemAccess) \
+    macro(MediaKeys) \
+    macro(WebKitMediaKeyError) \
+    macro(WebKitMediaKeyNeededEvent) \
+    macro(WebKitMediaKeySession) \
+    macro(WebKitMediaKeys) \
+    macro(WebKitMediaKeyMessageEvent) \
+    macro(MediaStreamEvent) \
+    macro(ModernMediaControls) \
     macro(NaN) \
+    macro(NavigatorCredentials) \
+    macro(NavigatorMediaDevices) \
+    macro(NavigatorUserMedia) \
     macro(Number) \
     macro(NumberFormat) \
     macro(Object) \
+    macro(PasswordCredential) \
+    macro(PerformanceEntry) \
+    macro(PerformanceEntryList) \
+    macro(PerformanceMark) \
+    macro(PerformanceMeasure) \
+    macro(PerformanceObserver) \
+    macro(PerformanceObserverEntryList) \
+    macro(PerformanceResourceTiming) \
     macro(Promise) \
     macro(Proxy) \
     macro(RangeError) \
     macro(ReferenceError) \
     macro(Reflect) \
     macro(RegExp) \
+    macro(Request) \
+    macro(Response) \
+    macro(RTCDataChannel) \
+    macro(RTCDataChannelEvent) \
+    macro(RTCDTMFSender) \
+    macro(RTCDTMFToneChangeEvent) \
+    macro(RTCIceCandidate) \
+    macro(RTCIceTransport) \
+    macro(RTCPeerConnection) \
+    macro(RTCRtpReceiver) \
+    macro(RTCRtpSender) \
+    macro(RTCRtpTransceiver) \
+    macro(RTCSessionDescription) \
+    macro(RTCStatsReport) \
+    macro(RTCTrackEvent) \
     macro(Set)\
     macro(SetIterator)\
+    macro(ShadowRoot) \
+    macro(SharedArrayBuffer) \
+    macro(StaticRange) \
     macro(String) \
     macro(Symbol) \
     macro(SyntaxError) \
@@ -67,6 +136,32 @@
     macro(UTC) \
     macro(WeakMap)\
     macro(WeakSet)\
+    macro(WebGL2RenderingContext) \
+    macro(WebGLVertexArrayObject) \
+    macro(WebGPUBuffer) \
+    macro(WebGPUCommandBuffer) \
+    macro(WebGPUCommandQueue) \
+    macro(WebGPUComputeCommandEncoder) \
+    macro(WebGPUComputePipelineState) \
+    macro(WebGPUDepthStencilDescriptor) \
+    macro(WebGPUDepthStencilState) \
+    macro(WebGPUDrawable) \
+    macro(WebGPUFunction) \
+    macro(WebGPULibrary) \
+    macro(WebGPURenderCommandEncoder) \
+    macro(WebGPURenderPassAttachmentDescriptor) \
+    macro(WebGPURenderPassColorAttachmentDescriptor) \
+    macro(WebGPURenderPassDepthAttachmentDescriptor) \
+    macro(WebGPURenderPassDescriptor) \
+    macro(WebGPURenderPipelineColorAttachmentDescriptor) \
+    macro(WebGPURenderPipelineDescriptor) \
+    macro(WebGPURenderPipelineState) \
+    macro(WebGPURenderingContext) \
+    macro(WebGPUSize) \
+    macro(WebGPUTexture) \
+    macro(WebGPUTextureDescriptor) \
+    macro(WebSocket) \
+    macro(WritableStream) \
     macro(__defineGetter__) \
     macro(__defineSetter__) \
     macro(__lookupGetter__) \
@@ -97,30 +192,35 @@
     macro(collation) \
     macro(column) \
     macro(compilationKind) \
+    macro(compilationUID) \
     macro(compilations) \
     macro(compile) \
     macro(configurable) \
     macro(constructor) \
     macro(count) \
     macro(counters) \
+    macro(customElements) \
     macro(day) \
     macro(defineProperty) \
     macro(description) \
     macro(descriptions) \
+    macro(detail) \
     macro(displayName) \
     macro(document) \
     macro(done) \
-    macro(entries) \
     macro(enumerable) \
     macro(era) \
     macro(eval) \
+    macro(events) \
     macro(exec) \
     macro(executionCount) \
     macro(exitKind) \
+    macro(fetch) \
     macro(flags) \
     macro(focus) \
     macro(forEach) \
     macro(formatMatcher) \
+    macro(formatToParts) \
     macro(forward) \
     macro(frames) \
     macro(from) \
@@ -146,11 +246,12 @@
     macro(isArray) \
     macro(isEnabled) \
     macro(isPrototypeOf) \
+    macro(isSecureContext) \
     macro(isView) \
     macro(isWatchpoint) \
     macro(jettisonReason) \
     macro(join) \
-    macro(keys) \
+    macro(KeyframeEffect) \
     macro(lastIndex) \
     macro(length) \
     macro(line) \
@@ -178,6 +279,7 @@
     macro(parent) \
     macro(parse) \
     macro(parseInt) \
+    macro(parseFloat) \
     macro(postMessage) \
     macro(profiledBytecodes) \
     macro(propertyIsEnumerable) \
@@ -197,10 +299,14 @@
     macro(sourceCode) \
     macro(sourceURL) \
     macro(stack) \
+    macro(stackTraceLimit) \
+    macro(sticky) \
     macro(subarray) \
+    macro(summary) \
     macro(target) \
     macro(test) \
     macro(then) \
+    macro(time) \
     macro(timeZone) \
     macro(timeZoneName) \
     macro(toExponential) \
@@ -211,11 +317,22 @@
     macro(toPrecision) \
     macro(toString) \
     macro(top) \
+    macro(uid) \
+    macro(unicode) \
     macro(usage) \
     macro(value) \
     macro(valueOf) \
-    macro(values) \
     macro(webkit) \
+    macro(collectMatchingElementsInFlatTree) \
+    macro(matchingElementInFlatTree) \
+    macro(webkitIDBCursor) \
+    macro(webkitIDBDatabase) \
+    macro(webkitIDBFactory) \
+    macro(webkitIDBIndex) \
+    macro(webkitIDBKeyRange) \
+    macro(webkitIDBObjectStore) \
+    macro(webkitIDBRequest) \
+    macro(webkitIDBTransaction) \
     macro(webkitIndexedDB) \
     macro(weekday) \
     macro(window) \
@@ -223,6 +340,8 @@
     macro(year)
 
 #define JSC_COMMON_IDENTIFIERS_EACH_KEYWORD(macro) \
+    macro(async) \
+    macro(await) \
     macro(break) \
     macro(case) \
     macro(catch) \
@@ -270,105 +389,18 @@
     macro(with) \
     macro(yield)
 
-#define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL_NOT_IMPLEMENTED_YET(macro)\
-    macro(isConcatSpreadable) \
-    macro(match) \
-    macro(replace) \
-    macro(split) \
-    macro(toPrimitive)
-
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(hasInstance) \
+    macro(isConcatSpreadable) \
     macro(iterator) \
+    macro(match) \
+    macro(replace) \
     macro(search) \
     macro(species) \
+    macro(split) \
+    macro(toPrimitive) \
     macro(toStringTag) \
     macro(unscopables)
-
-#define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
-    JSC_COMMON_BYTECODE_INTRINSIC_FUNCTIONS_EACH_NAME(macro) \
-    JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
-    macro(iteratedObject) \
-    macro(arrayIteratorNextIndex) \
-    macro(arrayIterationKind) \
-    macro(charCodeAt) \
-    macro(iteratedString) \
-    macro(stringIteratorNextIndex) \
-    macro(promise) \
-    macro(fulfillmentHandler) \
-    macro(rejectionHandler) \
-    macro(index) \
-    macro(values) \
-    macro(deferred) \
-    macro(countdownHolder) \
-    macro(Object) \
-    macro(ownEnumerablePropertyKeys) \
-    macro(Number) \
-    macro(Array) \
-    macro(String) \
-    macro(RegExp) \
-    macro(Map) \
-    macro(Promise) \
-    macro(InternalPromise) \
-    macro(abs) \
-    macro(floor) \
-    macro(isFinite) \
-    macro(isNaN) \
-    macro(getPrototypeOf) \
-    macro(getOwnPropertyNames) \
-    macro(RangeError) \
-    macro(TypeError) \
-    macro(typedArrayLength) \
-    macro(typedArraySort) \
-    macro(BuiltinLog) \
-    macro(homeObject) \
-    macro(getTemplateObject) \
-    macro(enqueueJob) \
-    macro(handler) \
-    macro(promiseState) \
-    macro(promiseFulfillReactions) \
-    macro(promiseRejectReactions) \
-    macro(promiseResult) \
-    macro(push) \
-    macro(capabilities) \
-    macro(starDefault) \
-    macro(InspectorInstrumentation) \
-    macro(get) \
-    macro(set) \
-    macro(shift) \
-    macro(allocateTypedArray) \
-    macro(Int8Array) \
-    macro(Int16Array) \
-    macro(Int32Array) \
-    macro(Uint8Array) \
-    macro(Uint8ClampedArray) \
-    macro(Uint16Array) \
-    macro(Uint32Array) \
-    macro(Float32Array) \
-    macro(Float64Array) \
-    macro(generator) \
-    macro(generatorNext) \
-    macro(generatorState) \
-    macro(generatorFrame) \
-    macro(generatorValue) \
-    macro(generatorThis) \
-    macro(generatorResumeMode) \
-    macro(Collator) \
-    macro(DateTimeFormat) \
-    macro(NumberFormat) \
-    macro(thisTimeValue) \
-    macro(newTargetLocal) \
-    macro(derivedConstructor) \
-    macro(isBoundFunction) \
-    macro(hasInstanceBoundFunction) \
-    macro(instanceOf) \
-    macro(isSet) \
-    macro(isMap) \
-    macro(SetIterator) \
-    macro(setIteratorNext) \
-    macro(MapIterator) \
-    macro(mapIteratorNext) \
-
 
 namespace JSC {
     
@@ -402,10 +434,6 @@ namespace JSC {
         JSC_COMMON_IDENTIFIERS_EACH_PROPERTY_NAME(JSC_IDENTIFIER_DECLARE_PROPERTY_NAME_GLOBAL)
 #undef JSC_IDENTIFIER_DECLARE_PROPERTY_NAME_GLOBAL
 
-#define JSC_IDENTIFIER_DECLARE_PRIVATE_PROPERTY_NAME_GLOBAL(name) const Identifier name##PrivateName;
-        JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(JSC_IDENTIFIER_DECLARE_PRIVATE_PROPERTY_NAME_GLOBAL)
-#undef JSC_IDENTIFIER_DECLARE_PRIVATE_PROPERTY_NAME_GLOBAL
-
 #define JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL(name) const Identifier name##Symbol;
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL)
 #undef JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL
@@ -423,5 +451,3 @@ namespace JSC {
     };
 
 } // namespace JSC
-
-#endif // CommonIdentifiers_h

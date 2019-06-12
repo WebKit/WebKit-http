@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010, Google Inc. All rights reserved.
+ * Copyright (C) 2016, Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,12 +30,9 @@
 #include "ConvolverNode.h"
 
 #include "AudioBuffer.h"
-#include "AudioContext.h"
 #include "AudioNodeInput.h"
 #include "AudioNodeOutput.h"
-#include "ExceptionCode.h"
 #include "Reverb.h"
-#include <wtf/MainThread.h>
 
 // Note about empirical tuning:
 // The maximum FFT size affects reverb performance and accuracy.
@@ -48,7 +46,6 @@ namespace WebCore {
 
 ConvolverNode::ConvolverNode(AudioContext& context, float sampleRate)
     : AudioNode(context, sampleRate)
-    , m_normalize(true)
 {
     addInput(std::make_unique<AudioNodeInput>(this));
     addOutput(std::make_unique<AudioNodeOutput>(this, 2));
@@ -103,7 +100,7 @@ void ConvolverNode::initialize()
 {
     if (isInitialized())
         return;
-        
+
     AudioNode::initialize();
 }
 
@@ -116,32 +113,31 @@ void ConvolverNode::uninitialize()
     AudioNode::uninitialize();
 }
 
-void ConvolverNode::setBuffer(AudioBuffer* buffer, ExceptionCode& ec)
+ExceptionOr<void> ConvolverNode::setBuffer(AudioBuffer* buffer)
 {
     ASSERT(isMainThread());
     
     if (!buffer)
-        return;
+        return { };
 
-    if (buffer->sampleRate() != context().sampleRate()) {
-        ec = NOT_SUPPORTED_ERR;
-        return;
-    }
+    if (buffer->sampleRate() != context().sampleRate())
+        return Exception { NOT_SUPPORTED_ERR };
 
     unsigned numberOfChannels = buffer->numberOfChannels();
     size_t bufferLength = buffer->length();
 
-    // The current implementation supports up to four channel impulse responses, which are interpreted as true-stereo (see Reverb class).
-    bool isBufferGood = numberOfChannels > 0 && numberOfChannels <= 4 && bufferLength;
-    ASSERT(isBufferGood);
-    if (!isBufferGood)
-        return;
+    // The current implementation supports only 1-, 2-, or 4-channel impulse responses, with the
+    // 4-channel response being interpreted as true-stereo (see Reverb class).
+    bool isChannelCountGood = (numberOfChannels == 1 || numberOfChannels == 2 || numberOfChannels == 4) && bufferLength;
+
+    if (!isChannelCountGood)
+        return Exception { NOT_SUPPORTED_ERR };
 
     // Wrap the AudioBuffer by an AudioBus. It's an efficient pointer set and not a memcpy().
     // This memory is simply used in the Reverb constructor and no reference to it is kept for later use in that class.
-    RefPtr<AudioBus> bufferBus = AudioBus::create(numberOfChannels, bufferLength, false);
+    auto bufferBus = AudioBus::create(numberOfChannels, bufferLength, false);
     for (unsigned i = 0; i < numberOfChannels; ++i)
-        bufferBus->setChannelMemory(i, buffer->getChannelData(i)->data(), bufferLength);
+        bufferBus->setChannelMemory(i, buffer->channelData(i)->data(), bufferLength);
 
     bufferBus->setSampleRate(buffer->sampleRate());
 
@@ -155,6 +151,8 @@ void ConvolverNode::setBuffer(AudioBuffer* buffer, ExceptionCode& ec)
         m_reverb = WTFMove(reverb);
         m_buffer = buffer;
     }
+
+    return { };
 }
 
 AudioBuffer* ConvolverNode::buffer()

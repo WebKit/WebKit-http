@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BuiltinExecutables_h
-#define BuiltinExecutables_h
+#pragma once
 
 #include "JSCBuiltins.h"
 #include "ParserModes.h"
@@ -52,6 +51,7 @@ const SourceCode& name##Source() { return m_##name##Source; }
 
     UnlinkedFunctionExecutable* createDefaultConstructor(ConstructorKind, const Identifier& name);
 
+    static UnlinkedFunctionExecutable* createExecutable(VM&, const SourceCode&, const Identifier&, ConstructorKind, ConstructAbility);
 private:
     void finalize(Handle<Unknown>, void* context) override;
 
@@ -67,5 +67,3 @@ private:
 };
 
 }
-
-#endif

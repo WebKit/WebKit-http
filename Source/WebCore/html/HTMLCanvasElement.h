@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  *
@@ -25,42 +25,41 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLCanvasElement_h
-#define HTMLCanvasElement_h
+#pragma once
 
 #include "FloatRect.h"
 #include "HTMLElement.h"
 #include "IntSize.h"
 #include <memory>
 #include <wtf/Forward.h>
+#include <wtf/HashSet.h>
 
-#if PLATFORM(QT)
-#define DefaultInterpolationQuality InterpolationMedium
-#elif USE(CG)
-#define DefaultInterpolationQuality InterpolationLow
-#else
-#define DefaultInterpolationQuality InterpolationDefault
+#if ENABLE(WEBGL)
+#include "WebGLContextAttributes.h"
 #endif
 
 namespace WebCore {
 
-class CanvasContextAttributes;
+class BlobCallback;
 class CanvasRenderingContext;
 class GraphicsContext;
 class GraphicsContextStateSaver;
 class HTMLCanvasElement;
 class Image;
-class ImageData;
 class ImageBuffer;
-class IntSize;
+class ImageData;
+class MediaSample;
+class MediaStream;
 
 namespace DisplayList {
-typedef unsigned AsTextFlags;
+using AsTextFlags = unsigned;
 }
 
 class CanvasObserver {
 public:
     virtual ~CanvasObserver() { }
+
+    virtual bool isCanvasObserverProxy() const { return false; }
 
     virtual void canvasChanged(HTMLCanvasElement&, const FloatRect& changedRect) = 0;
     virtual void canvasResized(HTMLCanvasElement&) = 0;
@@ -75,15 +74,15 @@ public:
 
     void addObserver(CanvasObserver&);
     void removeObserver(CanvasObserver&);
+    HashSet<Element*> cssCanvasClients() const;
 
-    // Attributes and functions exposed to script
-    int width() const { return size().width(); }
-    int height() const { return size().height(); }
+    unsigned width() const { return size().width(); }
+    unsigned height() const { return size().height(); }
 
     const IntSize& size() const { return m_size; }
 
-    void setWidth(int);
-    void setHeight(int);
+    WEBCORE_EXPORT void setWidth(unsigned);
+    WEBCORE_EXPORT void setHeight(unsigned);
 
     void setSize(const IntSize& newSize)
     { 
@@ -96,16 +95,24 @@ public:
         reset();
     }
 
-    CanvasRenderingContext* getContext(const String&, CanvasContextAttributes* attributes = 0);
-    bool probablySupportsContext(const String&, CanvasContextAttributes* = 0);
+    CanvasRenderingContext* getContext(const String&);
+
     static bool is2dType(const String&);
+    CanvasRenderingContext* getContext2d(const String&);
+
 #if ENABLE(WEBGL)
     static bool is3dType(const String&);
+    CanvasRenderingContext* getContextWebGL(const String&, WebGLContextAttributes&& = { });
+#endif
+#if ENABLE(WEBGPU)
+    static bool isWebGPUType(const String&);
+    CanvasRenderingContext* getContextWebGPU(const String&);
 #endif
 
     static String toEncodingMimeType(const String& mimeType);
-    String toDataURL(const String& mimeType, const double* quality, ExceptionCode&);
-    String toDataURL(const String& mimeType, ExceptionCode& ec) { return toDataURL(mimeType, 0, ec); }
+    WEBCORE_EXPORT ExceptionOr<String> toDataURL(const String& mimeType, std::optional<double> quality);
+    ExceptionOr<String> toDataURL(const String& mimeType) { return toDataURL(mimeType, std::nullopt); }
+    ExceptionOr<void> toBlob(ScriptExecutionContext&, Ref<BlobCallback>&&, const String& mimeType, JSC::JSValue qualityValue);
 
     // Used for rendering
     void didDraw(const FloatRect&);
@@ -118,17 +125,17 @@ public:
 
     CanvasRenderingContext* renderingContext() const { return m_context.get(); }
 
+#if ENABLE(MEDIA_STREAM)
+    RefPtr<MediaSample> toMediaSample();
+    ExceptionOr<Ref<MediaStream>> captureStream(ScriptExecutionContext&, std::optional<double>&& frameRequestRate);
+#endif
+
     ImageBuffer* buffer() const;
     Image* copiedImage() const;
     void clearCopiedImage();
     RefPtr<ImageData> getImageData();
     void makePresentationCopy();
     void clearPresentationCopy();
-
-    FloatRect convertLogicalToDevice(const FloatRect&) const;
-    FloatSize convertLogicalToDevice(const FloatSize&) const;
-
-    FloatSize convertDeviceToLogical(const FloatSize&) const;
 
     SecurityOrigin* securityOrigin() const;
     void setOriginTainted() { m_originClean = false; }
@@ -147,15 +154,16 @@ public:
     WEBCORE_EXPORT String replayDisplayListAsText(DisplayList::AsTextFlags) const;
 
     size_t memoryCost() const;
+    size_t externalMemoryCost() const;
 
 private:
     HTMLCanvasElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    virtual bool canContainRangeEndPoint() const override;
-    virtual bool canStartSelection() const override;
+    bool canContainRangeEndPoint() const final;
+    bool canStartSelection() const final;
 
     void reset();
 
@@ -168,9 +176,7 @@ private:
 
     bool paintsIntoCanvasBuffer() const;
 
-#if ENABLE(WEBGL)
-    bool is3D() const;
-#endif
+    bool isGPUBased() const;
 
     HashSet<CanvasObserver*> m_observers;
     std::unique_ptr<CanvasRenderingContext> m_context;
@@ -179,12 +185,13 @@ private:
     IntSize m_size;
 
     bool m_originClean { true };
-    bool m_rendererIsCanvas { false };
     bool m_ignoreReset { false };
 
     bool m_usesDisplayListDrawing { false };
     bool m_tracksDisplayListReplay { false };
 
+    mutable Lock m_imageBufferAssignmentLock;
+    
     // m_createdImageBuffer means we tried to malloc the buffer.  We didn't necessarily get it.
     mutable bool m_hasCreatedImageBuffer { false };
     mutable bool m_didClearImageBuffer { false };
@@ -195,6 +202,4 @@ private:
     mutable RefPtr<Image> m_copiedImage; // FIXME: This is temporary for platforms that have to copy the image buffer to render (and for CSSCanvasValue).
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

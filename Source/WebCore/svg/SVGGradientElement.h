@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGGradientElement_h
-#define SVGGradientElement_h
+#pragma once
 
 #include "Gradient.h"
 #include "SVGAnimatedBoolean.h"
@@ -50,11 +49,11 @@ struct SVGPropertyTraits<SVGSpreadMethodType> {
         case SVGSpreadMethodUnknown:
             return emptyString();
         case SVGSpreadMethodPad:
-            return "pad";
+            return ASCIILiteral("pad");
         case SVGSpreadMethodReflect:
-            return "reflect";
+            return ASCIILiteral("reflect");
         case SVGSpreadMethodRepeat:
-            return "repeat";
+            return ASCIILiteral("repeat");
         }
 
         ASSERT_NOT_REACHED();
@@ -90,13 +89,13 @@ protected:
     SVGGradientElement(const QualifiedName&, Document&);
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
 
 private:
-    virtual bool needsPendingResourceHandling() const override { return false; }
+    bool needsPendingResourceHandling() const override { return false; }
 
-    virtual void childrenChanged(const ChildChange&) override;
+    void childrenChanged(const ChildChange&) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGGradientElement)
         DECLARE_ANIMATED_ENUMERATION(SpreadMethod, spreadMethod, SVGSpreadMethodType)
@@ -119,5 +118,3 @@ static bool isType(const WebCore::Node& node)
     return is<WebCore::SVGElement>(node) && isType(downcast<WebCore::SVGElement>(node));
 }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

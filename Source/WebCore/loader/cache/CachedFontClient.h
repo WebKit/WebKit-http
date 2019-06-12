@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CachedFontClient_h
-#define CachedFontClient_h
+#pragma once
 
 #include "CachedResourceClient.h"
 
@@ -36,10 +35,8 @@ class CachedFontClient : public CachedResourceClient {
 public:
     virtual ~CachedFontClient() { }
     static CachedResourceClientType expectedType() { return FontType; }
-    virtual CachedResourceClientType resourceClientType() const override { return expectedType(); }
+    CachedResourceClientType resourceClientType() const override { return expectedType(); }
     virtual void fontLoaded(CachedFont&) { }
 };
 
 } // namespace WebCore
-
-#endif // CachedFontClient_h

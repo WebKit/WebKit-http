@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2005-2009, 2015-2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -27,6 +27,10 @@
 
 namespace WTF {
 
+#if !defined(NDEBUG)
+WTF_EXPORT_PRIVATE void fastSetMaxSingleAllocationSize(size_t);
+#endif
+
 class TryMallocReturnValue {
 public:
     TryMallocReturnValue(void*);
@@ -38,12 +42,14 @@ private:
     mutable void* m_data;
 };
 
+WTF_EXPORT_PRIVATE bool isFastMallocEnabled();
+
 // These functions call CRASH() if an allocation fails.
-WTF_EXPORT_PRIVATE void* fastMalloc(size_t);
-WTF_EXPORT_PRIVATE void* fastZeroedMalloc(size_t);
-WTF_EXPORT_PRIVATE void* fastCalloc(size_t numElements, size_t elementSize);
-WTF_EXPORT_PRIVATE void* fastRealloc(void*, size_t);
-WTF_EXPORT_PRIVATE char* fastStrDup(const char*);
+WTF_EXPORT_PRIVATE void* fastMalloc(size_t) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE void* fastZeroedMalloc(size_t) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE void* fastCalloc(size_t numElements, size_t elementSize) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE void* fastRealloc(void*, size_t) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE char* fastStrDup(const char*) RETURNS_NONNULL;
 
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastMalloc(size_t);
 TryMallocReturnValue tryFastZeroedMalloc(size_t);
@@ -52,7 +58,8 @@ WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastCalloc(size_t numElements, size_t
 WTF_EXPORT_PRIVATE void fastFree(void*);
 
 // Allocations from fastAlignedMalloc() must be freed using fastAlignedFree().
-WTF_EXPORT_PRIVATE void* fastAlignedMalloc(size_t alignment, size_t);
+WTF_EXPORT_PRIVATE void* fastAlignedMalloc(size_t alignment, size_t) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE void* tryFastAlignedMalloc(size_t alignment, size_t);
 WTF_EXPORT_PRIVATE void fastAlignedFree(void*);
 
 WTF_EXPORT_PRIVATE size_t fastMallocSize(const void*);
@@ -97,8 +104,39 @@ template<typename T> inline bool TryMallocReturnValue::getValue(T*& data)
     return data;
 }
 
+// C++ STL allocator implementation. You can integrate fastMalloc into STL containers.
+// e.g. std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>, FastAllocator<std::pair<const Key, Value>>>.
+template<typename T>
+class FastAllocator {
+public:
+    using value_type = T;
+
+    FastAllocator() = default;
+
+    template<typename U> FastAllocator(const FastAllocator<U>&) { }
+
+    T* allocate(size_t count)
+    {
+        return reinterpret_cast<T*>(fastMalloc(sizeof(T) * count));
+    }
+
+    void deallocate(T* pointer, size_t)
+    {
+        fastFree(pointer);
+    }
+};
+
+template<typename T, typename U> bool operator==(const FastAllocator<T>&, const FastAllocator<U>&) { return true; }
+template<typename T, typename U> bool operator!=(const FastAllocator<T>&, const FastAllocator<U>&) { return false; }
+
+
 } // namespace WTF
 
+#if !defined(NDEBUG)
+using WTF::fastSetMaxSingleAllocationSize;
+#endif
+
+using WTF::isFastMallocEnabled;
 using WTF::fastCalloc;
 using WTF::fastFree;
 using WTF::fastMalloc;
@@ -107,11 +145,13 @@ using WTF::fastMallocSize;
 using WTF::fastRealloc;
 using WTF::fastStrDup;
 using WTF::fastZeroedMalloc;
+using WTF::tryFastAlignedMalloc;
 using WTF::tryFastCalloc;
 using WTF::tryFastMalloc;
 using WTF::tryFastZeroedMalloc;
 using WTF::fastAlignedMalloc;
 using WTF::fastAlignedFree;
+using WTF::FastAllocator;
 
 #if COMPILER(GCC_OR_CLANG) && OS(DARWIN)
 #define WTF_PRIVATE_INLINE __private_extern__ inline __attribute__((always_inline))

@@ -27,12 +27,13 @@
 #include "ResourceRequestBase.h"
 
 #include "HTTPHeaderNames.h"
+#include "PublicSuffix.h"
 #include "ResourceRequest.h"
 #include <wtf/PointerComparison.h>
 
 namespace WebCore {
 
-#if !USE(SOUP) && (!PLATFORM(COCOA) || USE(CFNETWORK)) && !PLATFORM(QT)
+#if !USE(SOUP) && (!PLATFORM(MAC) || USE(CFURLCONNECTION)) && !PLATFORM(QT)
 double ResourceRequestBase::s_defaultTimeoutInterval = INT_MAX;
 #else
 // Will use NSURLRequest default timeout unless set to a non-zero value with setDefaultTimeoutInterval().
@@ -49,60 +50,44 @@ inline const ResourceRequest& ResourceRequestBase::asResourceRequest() const
     return *static_cast<const ResourceRequest*>(this);
 }
 
-std::unique_ptr<ResourceRequest> ResourceRequestBase::adopt(std::unique_ptr<CrossThreadResourceRequestData> data)
+ResourceRequest ResourceRequestBase::isolatedCopy() const
 {
-    auto request = std::make_unique<ResourceRequest>();
-    request->setURL(data->url);
-    request->setCachePolicy(data->cachePolicy);
-    request->setTimeoutInterval(data->timeoutInterval);
-    request->setFirstPartyForCookies(data->firstPartyForCookies);
-    request->setHTTPMethod(data->httpMethod);
-    request->setPriority(data->priority);
-    request->setRequester(data->requester);
-
-    request->updateResourceRequest();
-    request->m_httpHeaderFields.adopt(WTFMove(data->httpHeaders));
-
-    size_t encodingCount = data->responseContentDispositionEncodingFallbackArray.size();
-    if (encodingCount > 0) {
-        String encoding1 = data->responseContentDispositionEncodingFallbackArray[0];
-        String encoding2;
-        String encoding3;
-        if (encodingCount > 1) {
-            encoding2 = data->responseContentDispositionEncodingFallbackArray[1];
-            if (encodingCount > 2)
-                encoding3 = data->responseContentDispositionEncodingFallbackArray[2];
-        }
-        ASSERT(encodingCount <= 3);
-        request->setResponseContentDispositionEncodingFallbackArray(encoding1, encoding2, encoding3);
-    }
-    request->setHTTPBody(data->httpBody.copyRef());
-    request->setAllowCookies(data->allowCookies);
-    request->doPlatformAdopt(WTFMove(data));
+    ResourceRequest request;
+    request.setAsIsolatedCopy(asResourceRequest());
     return request;
 }
 
-std::unique_ptr<CrossThreadResourceRequestData> ResourceRequestBase::copyData() const
+void ResourceRequestBase::setAsIsolatedCopy(const ResourceRequest& other)
 {
-    auto data = std::make_unique<CrossThreadResourceRequestData>();
-    data->url = url().isolatedCopy();
-    data->cachePolicy = m_cachePolicy;
-    data->timeoutInterval = timeoutInterval();
-    data->firstPartyForCookies = firstPartyForCookies().isolatedCopy();
-    data->httpMethod = httpMethod().isolatedCopy();
-    data->httpHeaders = httpHeaderFields().copyData();
-    data->priority = m_priority;
-    data->requester = m_requester;
+    setURL(other.url().isolatedCopy());
+    setCachePolicy(other.cachePolicy());
+    setTimeoutInterval(other.timeoutInterval());
+    setFirstPartyForCookies(other.firstPartyForCookies().isolatedCopy());
+    setHTTPMethod(other.httpMethod().isolatedCopy());
+    setPriority(other.priority());
+    setRequester(other.requester());
+    setInitiatorIdentifier(other.initiatorIdentifier().isolatedCopy());
+    setCachePartition(other.cachePartition());
 
-    data->responseContentDispositionEncodingFallbackArray.reserveInitialCapacity(m_responseContentDispositionEncodingFallbackArray.size());
-    size_t encodingArraySize = m_responseContentDispositionEncodingFallbackArray.size();
-    for (size_t index = 0; index < encodingArraySize; ++index) {
-        data->responseContentDispositionEncodingFallbackArray.append(m_responseContentDispositionEncodingFallbackArray[index].isolatedCopy());
+    updateResourceRequest();
+    m_httpHeaderFields = other.httpHeaderFields().isolatedCopy();
+
+    size_t encodingCount = other.m_responseContentDispositionEncodingFallbackArray.size();
+    if (encodingCount > 0) {
+        String encoding1 = other.m_responseContentDispositionEncodingFallbackArray[0].isolatedCopy();
+        String encoding2;
+        String encoding3;
+        if (encodingCount > 1) {
+            encoding2 = other.m_responseContentDispositionEncodingFallbackArray[1].isolatedCopy();
+            if (encodingCount > 2)
+                encoding3 = other.m_responseContentDispositionEncodingFallbackArray[2].isolatedCopy();
+        }
+        ASSERT(encodingCount <= 3);
+        setResponseContentDispositionEncodingFallbackArray(encoding1, encoding2, encoding3);
     }
-    if (m_httpBody)
-        data->httpBody = m_httpBody->deepCopy();
-    data->allowCookies = m_allowCookies;
-    return asResourceRequest().doPlatformCopyData(WTFMove(data));
+    if (other.m_httpBody)
+        setHTTPBody(other.m_httpBody->isolatedCopy());
+    setAllowCookies(other.m_allowCookies);
 }
 
 bool ResourceRequestBase::isEmpty() const
@@ -304,6 +289,11 @@ String ResourceRequestBase::httpReferrer() const
     return httpHeaderField(HTTPHeaderName::Referer);
 }
 
+bool ResourceRequestBase::hasHTTPReferrer() const
+{
+    return m_httpHeaderFields.contains(HTTPHeaderName::Referer);
+}
+
 void ResourceRequestBase::setHTTPReferrer(const String& httpReferrer)
 {
     setHTTPHeaderField(HTTPHeaderName::Referer, httpReferrer);
@@ -329,14 +319,24 @@ void ResourceRequestBase::setHTTPOrigin(const String& httpOrigin)
     setHTTPHeaderField(HTTPHeaderName::Origin, httpOrigin);
 }
 
+bool ResourceRequestBase::hasHTTPOrigin() const
+{
+    return m_httpHeaderFields.contains(HTTPHeaderName::Origin);
+}
+
 void ResourceRequestBase::clearHTTPOrigin()
 {
-    updateResourceRequest(); 
+    updateResourceRequest();
 
     m_httpHeaderFields.remove(HTTPHeaderName::Origin);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
+}
+
+bool ResourceRequestBase::hasHTTPHeader(HTTPHeaderName name) const
+{
+    return m_httpHeaderFields.contains(name);
 }
 
 String ResourceRequestBase::httpUserAgent() const
@@ -465,7 +465,18 @@ void ResourceRequestBase::setPriority(ResourceLoadPriority priority)
         m_platformRequestUpdated = false;
 }
 
-void ResourceRequestBase::addHTTPHeaderField(const String& name, const String& value) 
+void ResourceRequestBase::addHTTPHeaderFieldIfNotPresent(HTTPHeaderName name, const String& value)
+{
+    updateResourceRequest();
+
+    if (!m_httpHeaderFields.addIfNotPresent(name, value))
+        return;
+
+    if (url().protocolIsInHTTPFamily())
+        m_platformRequestUpdated = false;
+}
+
+void ResourceRequestBase::addHTTPHeaderField(HTTPHeaderName name, const String& value)
 {
     updateResourceRequest();
 
@@ -473,6 +484,21 @@ void ResourceRequestBase::addHTTPHeaderField(const String& name, const String& v
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
+}
+
+void ResourceRequestBase::addHTTPHeaderField(const String& name, const String& value)
+{
+    updateResourceRequest();
+
+    m_httpHeaderFields.add(name, value);
+
+    if (url().protocolIsInHTTPFamily())
+        m_platformRequestUpdated = false;
+}
+
+bool ResourceRequestBase::hasHTTPHeaderField(HTTPHeaderName headerName) const
+{
+    return m_httpHeaderFields.contains(headerName);
 }
 
 void ResourceRequestBase::setHTTPHeaderFields(HTTPHeaderMap headerFields)
@@ -535,6 +561,8 @@ static const HTTPHeaderName conditionalHeaderNames[] = {
 
 bool ResourceRequestBase::isConditional() const
 {
+    updateResourceRequest();
+
     for (auto headerName : conditionalHeaderNames) {
         if (m_httpHeaderFields.contains(headerName))
             return true;
@@ -545,6 +573,8 @@ bool ResourceRequestBase::isConditional() const
 
 void ResourceRequestBase::makeUnconditional()
 {
+    updateResourceRequest();
+
     for (auto headerName : conditionalHeaderNames)
         m_httpHeaderFields.remove(headerName);
 }
@@ -589,7 +619,7 @@ void ResourceRequestBase::updateResourceRequest(HTTPBodyUpdatePolicy bodyPolicy)
     }
 }
 
-#if !PLATFORM(COCOA) && !USE(CFNETWORK) && !USE(SOUP) && !PLATFORM(QT)
+#if !PLATFORM(COCOA) && !USE(CFURLCONNECTION) && !USE(SOUP) && !PLATFORM(QT)
 unsigned initializeMaximumHTTPConnectionCountPerHost()
 {
     // This is used by the loader to control the number of issued parallel load requests. 
@@ -609,5 +639,34 @@ bool ResourceRequestBase::defaultAllowCookies()
     return s_defaultAllowCookies;
 }
 #endif
+
+void ResourceRequestBase::setCachePartition(const String& cachePartition)
+{
+#if ENABLE(CACHE_PARTITIONING)
+    ASSERT(!cachePartition.isNull());
+    ASSERT(cachePartition == partitionName(cachePartition));
+    m_cachePartition = cachePartition;
+#else
+    UNUSED_PARAM(cachePartition);
+#endif
+}
+
+String ResourceRequestBase::partitionName(const String& domain)
+{
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    if (domain.isNull())
+        return emptyString();
+    String highLevel = topPrivatelyControlledDomain(domain);
+    if (highLevel.isNull())
+        return emptyString();
+    return highLevel;
+#else
+    UNUSED_PARAM(domain);
+#if ENABLE(CACHE_PARTITIONING)
+#error Cache partitioning requires PUBLIC_SUFFIX_LIST
+#endif
+    return emptyString();
+#endif
+}
 
 }

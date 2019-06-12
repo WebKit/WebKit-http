@@ -26,8 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSSupportsRule_h
-#define CSSSupportsRule_h
+#pragma once
 
 #include "CSSGroupingRule.h"
 
@@ -45,18 +44,16 @@ public:
 
     virtual ~CSSSupportsRule() { }
 
-    virtual String cssText() const override;
+    String cssText() const final;
 
     String conditionText() const;
 
 private:
     CSSSupportsRule(StyleRuleSupports&, CSSStyleSheet*);
 
-    virtual CSSRule::Type type() const override { return SUPPORTS_RULE; }
+    CSSRule::Type type() const final { return SUPPORTS_RULE; }
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_RULE(CSSSupportsRule, CSSRule::SUPPORTS_RULE)
-
-#endif // CSSSupportsRule_h

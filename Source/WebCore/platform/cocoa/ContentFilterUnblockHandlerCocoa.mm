@@ -28,10 +28,10 @@
 
 #if ENABLE(CONTENT_FILTERING)
 
-#import "BlockExceptions.h"
 #import "ContentFilter.h"
 #import "Logging.h"
 #import "ResourceRequest.h"
+#import <wtf/BlockObjCExceptions.h>
 
 #if !LOG_DISABLED
 #import <wtf/text/CString.h>
@@ -41,8 +41,8 @@
 #import "WebCoreThreadRun.h"
 
 #if HAVE(PARENTAL_CONTROLS)
-#import "SoftLinking.h"
 #import "WebFilterEvaluatorSPI.h"
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(WebContentAnalysis);
 SOFT_LINK_CLASS(WebContentAnalysis, WebFilterEvaluator);

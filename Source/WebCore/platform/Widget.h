@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc.  All rights reserved.
  * Copyright (C) 2008 Collabora Ltd.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Widget_h
-#define Widget_h
+#pragma once
 
 #if PLATFORM(IOS)
 #ifndef NSView
@@ -38,6 +37,7 @@
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
+#include <wtf/WeakPtr.h>
 
 #if PLATFORM(COCOA)
 #include <wtf/RetainPtr.h>
@@ -72,8 +72,8 @@ QT_END_NAMESPACE
 typedef QObject* PlatformWidget;
 #endif
 
-#if PLATFORM(EFL)
-typedef Evas_Object* PlatformWidget;
+#if PLATFORM(WPE)
+typedef void* PlatformWidget;
 #endif
 
 #if PLATFORM(QT)
@@ -134,7 +134,9 @@ public:
     void move(int x, int y) { setFrameRect(IntRect(x, y, width(), height())); }
     void move(const IntPoint& p) { setFrameRect(IntRect(p, size())); }
 
-    WEBCORE_EXPORT virtual void paint(GraphicsContext&, const IntRect&);
+    enum class SecurityOriginPaintPolicy { AnyOrigin, AccessibleOriginOnly };
+
+    WEBCORE_EXPORT virtual void paint(GraphicsContext&, const IntRect&, SecurityOriginPaintPolicy = SecurityOriginPaintPolicy::AnyOrigin);
     void invalidate() { invalidateRect(boundsRect()); }
     virtual void invalidateRect(const IntRect&) = 0;
 
@@ -213,6 +215,8 @@ public:
     WEBCORE_EXPORT virtual IntPoint convertToContainingView(const IntPoint&) const;
     WEBCORE_EXPORT virtual IntPoint convertFromContainingView(const IntPoint&) const;
 
+    WeakPtr<Widget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+
 private:
     void init(PlatformWidget); // Must be called by all Widget constructors to initialize cross-platform data.
 
@@ -234,6 +238,7 @@ private:
 #else
     RetainPtr<NSView> m_widget;
 #endif
+    WeakPtrFactory<Widget> m_weakPtrFactory { this };
     bool m_selfVisible;
     bool m_parentVisible;
 
@@ -281,4 +286,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::Widget& widget) { return widget.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
 
-#endif // Widget_h

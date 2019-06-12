@@ -26,19 +26,19 @@
 #include "config.h"
 #include "MoveSelectionCommand.h"
 
+#include "DeleteSelectionCommand.h"
 #include "DocumentFragment.h"
 #include "ReplaceSelectionCommand.h"
 
 namespace WebCore {
 
-MoveSelectionCommand::MoveSelectionCommand(PassRefPtr<DocumentFragment> fragment, const Position& position, bool smartInsert, bool smartDelete) 
+MoveSelectionCommand::MoveSelectionCommand(Ref<DocumentFragment>&& fragment, const Position& position, bool smartInsert, bool smartDelete)
     : CompositeEditCommand(position.anchorNode()->document())
-    , m_fragment(fragment)
+    , m_fragment(WTFMove(fragment))
     , m_position(position)
     , m_smartInsert(smartInsert)
     , m_smartDelete(smartDelete)
 {
-    ASSERT(m_fragment);
 }
 
 void MoveSelectionCommand::doApply()
@@ -60,31 +60,43 @@ void MoveSelectionCommand::doApply()
             pos.moveToOffset(pos.offsetInContainerNode() + selectionStart.offsetInContainerNode());
     }
 
-    deleteSelection(m_smartDelete);
+    {
+        auto deleteSelection = DeleteSelectionCommand::create(document(), m_smartDelete, true, false, true, true, EditActionDeleteByDrag);
+        deleteSelection->setParent(this);
+        deleteSelection->apply();
+        m_commands.append(WTFMove(deleteSelection));
+    }
 
     // If the node for the destination has been removed as a result of the deletion,
     // set the destination to the ending point after the deletion.
     // Fixes: <rdar://problem/3910425> REGRESSION (Mail): Crash in ReplaceSelectionCommand; 
     //        selection is empty, leading to null deref
-    if (!pos.anchorNode()->inDocument())
+    if (!pos.anchorNode()->isConnected())
         pos = endingSelection().start();
 
     cleanupAfterDeletion(pos);
 
     setEndingSelection(VisibleSelection(pos, endingSelection().affinity(), endingSelection().isDirectional()));
-    if (!pos.anchorNode()->inDocument()) {
+    setStartingSelection(endingSelection());
+    if (!pos.anchorNode()->isConnected()) {
         // Document was modified out from under us.
         return;
     }
     ReplaceSelectionCommand::CommandOptions options = ReplaceSelectionCommand::SelectReplacement | ReplaceSelectionCommand::PreventNesting;
     if (m_smartInsert)
         options |= ReplaceSelectionCommand::SmartReplace;
-    applyCommandToComposite(ReplaceSelectionCommand::create(document(), WTFMove(m_fragment), options));
+
+    {
+        auto replaceSelection = ReplaceSelectionCommand::create(document(), WTFMove(m_fragment), options, EditActionInsertFromDrop);
+        replaceSelection->setParent(this);
+        replaceSelection->apply();
+        m_commands.append(WTFMove(replaceSelection));
+    }
 }
 
 EditAction MoveSelectionCommand::editingAction() const
 {
-    return EditActionDrag;
+    return EditActionDeleteByDrag;
 }
 
 } // namespace WebCore

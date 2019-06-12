@@ -26,6 +26,7 @@
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "RenderListItem.h"
 
 namespace WebCore {
@@ -34,9 +35,7 @@ using namespace HTMLNames;
 
 HTMLOListElement::HTMLOListElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
-    , m_start(0xBADBEEF)
     , m_itemCount(0)
-    , m_hasExplicitStart(false)
     , m_isReversed(false)
     , m_shouldRecalculateItemCount(false)
 {
@@ -81,10 +80,8 @@ void HTMLOListElement::parseAttribute(const QualifiedName& name, const AtomicStr
 {
     if (name == startAttr) {
         int oldStart = start();
-        bool canParse;
-        int parsedStart = value.toInt(&canParse);
-        m_hasExplicitStart = canParse;
-        m_start = canParse ? parsedStart : 0xBADBEEF;
+        auto optionalStart = parseHTMLInteger(value);
+        m_start = optionalStart ? std::optional<int>(optionalStart.value()) : std::nullopt;
         if (oldStart == start())
             return;
         updateItemValues();
@@ -98,7 +95,7 @@ void HTMLOListElement::parseAttribute(const QualifiedName& name, const AtomicStr
         HTMLElement::parseAttribute(name, value);
 }
 
-void HTMLOListElement::setStart(int start)
+void HTMLOListElement::setStartForBindings(int start)
 {
     setIntegralAttribute(startAttr, start);
 }
@@ -106,6 +103,20 @@ void HTMLOListElement::setStart(int start)
 void HTMLOListElement::updateItemValues()
 {
     RenderListItem::updateItemValuesForOrderedList(*this);
+}
+
+unsigned HTMLOListElement::itemCount() const
+{
+    if (m_shouldRecalculateItemCount)
+        const_cast<HTMLOListElement*>(this)->recalculateItemCount();
+    return m_itemCount;
+}
+
+unsigned HTMLOListElement::itemCountAfterLayout() const
+{
+    document().updateLayoutIgnorePendingStylesheets();
+
+    return itemCount();
 }
 
 void HTMLOListElement::recalculateItemCount()

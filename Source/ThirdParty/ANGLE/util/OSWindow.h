@@ -7,14 +7,17 @@
 #ifndef SAMPLE_UTIL_WINDOW_H
 #define SAMPLE_UTIL_WINDOW_H
 
-#include "Event.h"
-
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
 #include <list>
+#include <stdint.h>
 #include <string>
 
-class OSWindow
+#include <export.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
+#include "Event.h"
+
+class ANGLE_EXPORT OSWindow
 {
   public:
     OSWindow();
@@ -27,6 +30,12 @@ class OSWindow
     int getY() const;
     int getWidth() const;
     int getHeight() const;
+
+    // Takes a screenshot of the window, returning the result as a mWidth * mHeight * 4
+    // normalized unsigned byte BGRA array. Note that it will be used to test the window
+    // manager's behavior so it needs to take an actual screenshot of the screen and not
+    // just grab the pixels of the window. Returns if it was successful.
+    virtual bool takeScreenshot(uint8_t *pixelData) { return false; }
 
     virtual EGLNativeWindowType getNativeWindow() const = 0;
     virtual EGLNativeDisplayType getNativeDisplay() const = 0;
@@ -55,6 +64,6 @@ class OSWindow
     std::list<Event> mEvents;
 };
 
-OSWindow *CreateOSWindow();
+ANGLE_EXPORT OSWindow *CreateOSWindow();
 
 #endif // SAMPLE_UTIL_WINDOW_H

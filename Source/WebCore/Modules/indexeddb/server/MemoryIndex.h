@@ -23,35 +23,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MemoryIndex_h
-#define MemoryIndex_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "IDBGetResult.h"
 #include "IDBIndexInfo.h"
-#include "IDBKeyData.h"
-#include "IndexValueStore.h"
-#include "MemoryIndexCursor.h"
-#include <set>
+#include "IDBResourceIdentifier.h"
 #include <wtf/HashMap.h>
-#include <wtf/RefCounted.h>
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 
+class IDBCursorInfo;
 class IDBError;
+class IDBGetAllResult;
+class IDBGetResult;
+class IDBKeyData;
 class IndexKey;
 class ThreadSafeDataBuffer;
 
 struct IDBKeyRangeData;
 
 namespace IndexedDB {
+enum class GetAllType;
 enum class IndexRecordType;
 }
 
 namespace IDBServer {
 
+class IndexValueStore;
 class MemoryBackingStoreTransaction;
+class MemoryIndexCursor;
 class MemoryObjectStore;
 
 class MemoryIndex : public RefCounted<MemoryIndex> {
@@ -62,8 +64,11 @@ public:
 
     const IDBIndexInfo& info() const { return m_info; }
 
+    void rename(const String& newName) { m_info.rename(newName); }
+
     IDBGetResult getResultForKeyRange(IndexedDB::IndexRecordType, const IDBKeyRangeData&) const;
     uint64_t countForKeyRange(const IDBKeyRangeData&);
+    void getAllRecords(const IDBKeyRangeData&, std::optional<uint32_t> count, IndexedDB::GetAllType, IDBGetAllResult&) const;
 
     IDBError putIndexKey(const IDBKeyData&, const IndexKey&);
 
@@ -105,4 +110,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // MemoryIndex_h

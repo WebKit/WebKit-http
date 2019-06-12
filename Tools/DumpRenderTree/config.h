@@ -18,13 +18,12 @@
  *
  */
 
-#define Config_H
-
 #if defined(HAVE_CONFIG_H) && HAVE_CONFIG_H && defined(BUILDING_WITH_CMAKE)
 #include "cmakeconfig.h"
 #endif
 
 #include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
 #include <runtime/JSExportMacros.h>
 
 #ifdef __cplusplus
@@ -40,18 +39,11 @@
 #if PLATFORM(WIN)
 #define USE_CF 1 
 #if PLATFORM(WIN_CAIRO)
-#define USE_CAIRO 1
 #define USE_CURL 1
 #else
 #define USE_CG 1
-#define USE_CFNETWORK 1
+#define USE_CFURLCONNECTION 1
 #endif
-
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x601
-
-#undef WINVER
-#define WINVER 0x0601
 
 #undef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h

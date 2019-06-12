@@ -29,11 +29,14 @@
 #if PLATFORM(MAC)
 
 #include "PluginComplexTextInputState.h"
+#include "WKDragDestinationAction.h"
 #include "WKLayoutMode.h"
 #include "WebPageProxy.h"
 #include "_WKOverlayScrollbarStyle.h"
+#include <WebCore/AVKitSPI.h>
 #include <WebCore/TextIndicatorWindow.h>
-#include <functional>
+#include <WebCore/UserInterfaceLayoutDirection.h>
+#include <wtf/BlockPtr.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
@@ -41,6 +44,7 @@
 OBJC_CLASS NSImmediateActionGestureRecognizer;
 OBJC_CLASS NSTextInputContext;
 OBJC_CLASS NSView;
+OBJC_CLASS WKAccessibilitySettingsObserver;
 OBJC_CLASS WKBrowsingContextController;
 OBJC_CLASS WKEditorUndoTargetObjC;
 OBJC_CLASS WKFullScreenWindowController;
@@ -50,9 +54,15 @@ OBJC_CLASS WKWebView;
 OBJC_CLASS WKWindowVisibilityObserver;
 OBJC_CLASS _WKThumbnailView;
 
-#if USE(APPLE_INTERNAL_SDK) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-#import <WebKitAdditions/WebViewImplAdditionsDeclarations.h>
-#endif
+#if HAVE(TOUCH_BAR)
+OBJC_CLASS NSCandidateListTouchBarItem;
+OBJC_CLASS NSCustomTouchBarItem;
+OBJC_CLASS NSTouchBar;
+OBJC_CLASS NSTouchBarItem;
+OBJC_CLASS NSPopoverTouchBarItem;
+OBJC_CLASS WKTextTouchBarItemController;
+OBJC_CLASS WebPlaybackControlsManager;
+#endif // HAVE(TOUCH_BAR)
 
 @protocol WebViewImplDelegate
 
@@ -79,6 +89,16 @@ OBJC_CLASS _WKThumbnailView;
 - (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event;
 
 - (void)_web_didChangeContentSize:(NSSize)newSize;
+
+#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+- (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo;
+#endif
+
+@optional
+- (void)_web_didAddMediaControlsManager:(id)controlsManager;
+- (void)_web_didRemoveMediaControlsManager;
+- (void)_didHandleAcceptedCandidate;
+- (void)_didUpdateCandidateListVisibility:(BOOL)visible;
 
 @end
 
@@ -119,6 +139,7 @@ public:
     bool drawsBackground() const;
     bool isOpaque() const;
 
+    void setShouldSuppressFirstResponderChanges(bool);
     bool acceptsFirstMouse(NSEvent *);
     bool acceptsFirstResponder();
     bool becomeFirstResponder();
@@ -153,7 +174,7 @@ public:
     bool automaticallyAdjustsContentInsets() const { return m_automaticallyAdjustsContentInsets; }
     void updateContentInsetsIfAutomatic();
     void setTopContentInset(CGFloat);
-    CGFloat topContentInset() const { return m_topContentInset; }
+    CGFloat topContentInset() const;
 
     void prepareContentInRect(CGRect);
     void updateViewExposedRect();
@@ -192,6 +213,8 @@ public:
     bool shouldDelayWindowOrderingForEvent(NSEvent *);
     bool windowResizeMouseLocationIsInVisibleScrollerThumb(CGPoint);
 
+    void accessibilitySettingsDidChange();
+
     // -[NSView mouseDownCanMoveWindow] returns YES when the NSView is transparent,
     // but we don't want a drag in the NSView to move the window, even if it's transparent.
     static bool mouseDownCanMoveWindow() { return false; }
@@ -211,8 +234,8 @@ public:
     NSColor *underlayColor() const;
     NSColor *pageExtendedBackgroundColor() const;
 
-    void setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
+    void setOverlayScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
+    std::optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
 
     void beginDeferringViewInWindowChanges();
     // FIXME: Merge these two?
@@ -223,7 +246,7 @@ public:
     void setWindowOcclusionDetectionEnabled(bool enabled) { m_windowOcclusionDetectionEnabled = enabled; }
     bool windowOcclusionDetectionEnabled() const { return m_windowOcclusionDetectionEnabled; }
 
-    void prepareForMoveToWindow(NSWindow *targetWindow, std::function<void()> completionHandler);
+    void prepareForMoveToWindow(NSWindow *targetWindow, WTF::Function<void()>&& completionHandler);
     NSWindow *targetWindowForMovePreparation() const { return m_targetWindowForMovePreparation; }
 
     void updateSecureInputState();
@@ -256,17 +279,18 @@ public:
     bool isEditable() const;
     bool executeSavedCommandBySelector(SEL);
     void executeEditCommandForSelector(SEL, const String& argument = String());
-    void registerEditCommand(RefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo);
+    void registerEditCommand(Ref<WebEditCommandProxy>&&, WebPageProxy::UndoOrRedo);
     void clearAllEditCommands();
     bool writeSelectionToPasteboard(NSPasteboard *, NSArray *types);
     bool readSelectionFromPasteboard(NSPasteboard *);
     id validRequestorForSendAndReturnTypes(NSString *sendType, NSString *returnType);
     void centerSelectionInVisibleArea();
     void selectionDidChange();
-    void startObservingFontPanel();
+    void didBecomeEditable();
     void updateFontPanelIfNeeded();
     void changeFontFromFontPanel();
     bool validateUserInterfaceItem(id <NSValidatedUserInterfaceItem>);
+    void setEditableElementIsFocused(bool);
 
     void startSpeaking();
     void stopSpeaking(id);
@@ -307,7 +331,6 @@ public:
     void setTextIndicator(WebCore::TextIndicator&, WebCore::TextIndicatorWindowLifetime = WebCore::TextIndicatorWindowLifetime::Permanent);
     void clearTextIndicatorWithAnimation(WebCore::TextIndicatorWindowDismissalAnimation);
     void setTextIndicatorAnimationProgress(float);
-    void dismissContentRelativeChildWindows();
     void dismissContentRelativeChildWindowsFromViewOnly();
     void dismissContentRelativeChildWindowsWithAnimation(bool);
     void dismissContentRelativeChildWindowsWithAnimationFromViewOnly(bool);
@@ -324,6 +347,7 @@ public:
     void completeImmediateActionAnimation();
     void didChangeContentSize(CGSize);
     void didHandleAcceptedCandidate();
+    void videoControlsManagerDidChange();
 
     void setIgnoresNonWheelEvents(bool);
     bool ignoresNonWheelEvents() const { return m_ignoresNonWheelEvents; }
@@ -378,9 +402,7 @@ public:
     void registerDraggedTypes();
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     void startWindowDrag();
-#endif
 
     void dragImageForView(NSView *, NSImage *, CGPoint clientPoint, bool linkDrag);
     void setFileAndURLTypes(NSString *filename, NSString *extension, NSString *title, NSString *url, NSString *visibleURL, NSPasteboard *);
@@ -409,18 +431,13 @@ public:
     void setCustomSwipeViews(NSArray *);
     void setCustomSwipeViewsTopContentInset(float);
     bool tryToSwipeWithEvent(NSEvent *, bool ignoringPinnedState);
-    void setDidMoveSwipeSnapshotCallback(void(^)(CGRect));
+    void setDidMoveSwipeSnapshotCallback(BlockPtr<void (CGRect)>&&);
 
     void scrollWheel(NSEvent *);
     void swipeWithEvent(NSEvent *);
     void magnifyWithEvent(NSEvent *);
     void rotateWithEvent(NSEvent *);
     void smartMagnifyWithEvent(NSEvent *);
-
-    void touchesBeganWithEvent(NSEvent *);
-    void touchesMovedWithEvent(NSEvent *);
-    void touchesEndedWithEvent(NSEvent *);
-    void touchesCancelledWithEvent(NSEvent *);
 
     void setLastMouseDownEvent(NSEvent *);
 
@@ -475,17 +492,80 @@ public:
     void rightMouseDragged(NSEvent *);
     void rightMouseUp(NSEvent *);
 
-    void updateWebViewImplAdditions();
-    void showCandidates(NSArray *candidates, NSString *, NSRect rectOfTypedString, NSView *, void (^completionHandler)(NSTextCheckingResult *acceptedCandidate));
-    void webViewImplAdditionsWillDestroyView();
+    void forceRequestCandidatesForTesting();
+    bool shouldRequestCandidates() const;
 
     bool windowIsFrontWindowUnderMouse(NSEvent *);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebViewImplAdditions.h>
+    void setRequiresUserActionForEditingControlsManager(bool requiresUserActionForEditingControlsManager) { m_requiresUserActionForEditingControlsManager = requiresUserActionForEditingControlsManager; }
+    bool requiresUserActionForEditingControlsManager() const { return m_requiresUserActionForEditingControlsManager; }
+
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection();
+    void setUserInterfaceLayoutDirection(NSUserInterfaceLayoutDirection);
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 
+    void handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidate);
 #endif
 
+#if HAVE(TOUCH_BAR)
+    NSTouchBar *makeTouchBar();
+    void updateTouchBar();
+    NSTouchBar *currentTouchBar() const { return m_currentTouchBar.get(); }
+    NSCandidateListTouchBarItem *candidateListTouchBarItem() const;
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    AVTouchBarScrubber *mediaPlaybackControlsView() const;
+#else
+    AVFunctionBarScrubber *mediaPlaybackControlsView() const;
+#endif
+#endif
+    NSTouchBar *textTouchBar() const;
+    void dismissTextTouchBarPopoverItemWithIdentifier(NSString *);
+
+    bool clientWantsMediaPlaybackControlsView() const { return m_clientWantsMediaPlaybackControlsView; }
+    void setClientWantsMediaPlaybackControlsView(bool clientWantsMediaPlaybackControlsView) { m_clientWantsMediaPlaybackControlsView = clientWantsMediaPlaybackControlsView; }
+
+    void updateTouchBarAndRefreshTextBarIdentifiers();
+    void setIsCustomizingTouchBar(bool isCustomizingTouchBar) { m_isCustomizingTouchBar = isCustomizingTouchBar; };
+#endif // HAVE(TOUCH_BAR)
+
 private:
+#if HAVE(TOUCH_BAR)
+    void setUpTextTouchBar(NSTouchBar *);
+    void updateTextTouchBar();
+    void updateMediaTouchBar();
+
+    bool useMediaPlaybackControlsView() const;
+    bool isRichlyEditable() const;
+
+    bool m_clientWantsMediaPlaybackControlsView { false };
+    bool m_canCreateTouchBars { false };
+    bool m_startedListeningToCustomizationEvents { false };
+    bool m_isUpdatingTextTouchBar { false };
+    bool m_isCustomizingTouchBar { false };
+
+    RetainPtr<NSTouchBar> m_currentTouchBar;
+    RetainPtr<NSTouchBar> m_richTextTouchBar;
+    RetainPtr<NSTouchBar> m_plainTextTouchBar;
+    RetainPtr<NSTouchBar> m_passwordTextTouchBar;
+    RetainPtr<WKTextTouchBarItemController> m_textTouchBarItemController;
+    RetainPtr<NSCandidateListTouchBarItem> m_richTextCandidateListTouchBarItem;
+    RetainPtr<NSCandidateListTouchBarItem> m_plainTextCandidateListTouchBarItem;
+    RetainPtr<NSCandidateListTouchBarItem> m_passwordTextCandidateListTouchBarItem;
+    RetainPtr<WebPlaybackControlsManager> m_playbackControlsManager;
+    RetainPtr<NSCustomTouchBarItem> m_exitFullScreenButton;
+
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    RetainPtr<AVTouchBarPlaybackControlsProvider> m_mediaTouchBarProvider;
+    RetainPtr<AVTouchBarScrubber> m_mediaPlaybackControlsView;
+#else
+    RetainPtr<AVFunctionBarPlaybackControlsProvider> m_mediaTouchBarProvider;
+    RetainPtr<AVFunctionBarScrubber> m_mediaPlaybackControlsView;
+#endif
+#endif // ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#endif // HAVE(TOUCH_BAR)
+
     WeakPtr<WebViewImpl> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
     bool supportsArbitraryLayoutModes() const;
@@ -515,11 +595,8 @@ private:
     bool mightBeginDragWhileInactive();
     bool mightBeginScrollWhileInactive();
 
-    Vector<NSTouch *> touchesOrderedByAge();
-
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
-    void handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidate);
 #endif
 
     NSView <WebViewImplDelegate> *m_view;
@@ -537,11 +614,10 @@ private:
     bool m_clipsToVisibleRect { false };
     bool m_needsViewFrameInWindowCoordinates;
     bool m_didScheduleWindowAndViewFrameUpdate { false };
-    bool m_isDeferringViewInWindowChanges { false };
     bool m_windowOcclusionDetectionEnabled { true };
 
     bool m_automaticallyAdjustsContentInsets { false };
-    CGFloat m_topContentInset { 0 };
+    CGFloat m_pendingTopContentInset { 0 };
     bool m_didScheduleSetTopContentInset { false };
 
     CGSize m_resizeScrollOffset { 0, 0 };
@@ -552,6 +628,7 @@ private:
     RetainPtr<WKViewLayoutStrategy> m_layoutStrategy;
     WKLayoutMode m_lastRequestedLayoutMode { kWKLayoutModeViewSize };
     CGFloat m_lastRequestedViewScale { 1 };
+    CGSize m_lastRequestedFixedLayoutSize { 0, 0 };
 
     bool m_inSecureInputState { false };
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
@@ -569,6 +646,7 @@ private:
 #endif
 
     RetainPtr<WKWindowVisibilityObserver> m_windowVisibilityObserver;
+    RetainPtr<WKAccessibilitySettingsObserver> m_accessibilitySettingsObserver;
 
     bool m_shouldDeferViewInWindowChanges { false };
     bool m_viewInWindowChangeWasDeferred { false };
@@ -620,7 +698,7 @@ private:
     String m_promisedFilename;
     String m_promisedURL;
 
-    WTF::Optional<NSInteger> m_spellCheckerDocumentTag;
+    std::optional<NSInteger> m_spellCheckerDocumentTag;
 
     CGFloat m_totalHeightOfBanners { 0 };
 
@@ -632,14 +710,20 @@ private:
     RetainPtr<NSEvent> m_keyDownEventBeingResent;
     Vector<WebCore::KeypressCommand>* m_collectedKeypressCommands { nullptr };
 
-    Vector<RetainPtr<id <NSObject, NSCopying>>> m_activeTouchIdentities;
-    RetainPtr<NSArray> m_lastTouches;
-
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     String m_lastStringForCandidateRequest;
+    NSInteger m_lastCandidateRequestSequenceNumber;
 #endif
     NSRange m_softSpaceRange { NSNotFound, 0 };
     bool m_isHandlingAcceptedCandidate { false };
+    bool m_requiresUserActionForEditingControlsManager { false };
+    bool m_editableElementIsFocused { false };
+    bool m_isTextInsertionReplacingSoftSpace { false };
+    
+#if ENABLE(DRAG_SUPPORT)
+    NSInteger m_initialNumberOfValidItemsForDrop { 0 };
+#endif
+
 };
     
 } // namespace WebKit

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016 Canon Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,11 +21,10 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceErrorBase_h
-#define ResourceErrorBase_h
+#pragma once
 
 #include "URL.h"
 #include <wtf/text/WTFString.h>
@@ -37,41 +37,41 @@ extern const char* const errorDomainWebKitInternal; // Used for errors that won'
 
 class ResourceErrorBase {
 public:
-    // Makes a deep copy. Useful for when you need to use a ResourceError on another thread.
-    ResourceError copy() const;
-
-    bool isNull() const { return m_isNull; }
+    ResourceError isolatedCopy() const;
 
     const String& domain() const { lazyInit(); return m_domain; }
     int errorCode() const { lazyInit(); return m_errorCode; }
     const URL& failingURL() const { lazyInit(); return m_failingURL; }
     const String& localizedDescription() const { lazyInit(); return m_localizedDescription; }
 
-    void setIsCancellation(bool isCancellation) { m_isCancellation = isCancellation; }
-    bool isCancellation() const { return m_isCancellation; }
+    enum class Type {
+        Null,
+        General,
+        AccessControl,
+        Cancellation,
+        Timeout
+    };
 
-    void setIsTimeout(bool isTimeout) { m_isTimeout = isTimeout; }
-    bool isTimeout() const { return m_isTimeout; }
+    bool isNull() const { return m_type == Type::Null; }
+    bool isGeneral() const { return m_type == Type::General; }
+    bool isAccessControl() const { return m_type == Type::AccessControl; }
+    bool isCancellation() const { return m_type == Type::Cancellation; }
+    bool isTimeout() const { return m_type == Type::Timeout; }
 
     static bool compare(const ResourceError&, const ResourceError&);
 
-protected:
-    ResourceErrorBase()
-        : m_errorCode(0)
-        , m_isNull(true)
-        , m_isCancellation(false)
-        , m_isTimeout(false)
-    {
-    }
+    void setType(Type);
+    Type type() const { return m_type; }
 
-    ResourceErrorBase(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription)
+protected:
+    ResourceErrorBase(Type type) : m_type(type) { }
+
+    ResourceErrorBase(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, Type type)
         : m_domain(domain)
         , m_failingURL(failingURL)
         , m_localizedDescription(localizedDescription)
         , m_errorCode(errorCode)
-        , m_isNull(false)
-        , m_isCancellation(false)
-        , m_isTimeout(false)
+        , m_type(type)
     {
     }
 
@@ -80,24 +80,20 @@ protected:
     // The ResourceError subclass may "shadow" this method to lazily initialize platform specific fields
     void platformLazyInit() {}
 
-    // The ResourceError subclass may "shadow" this method to copy platform specific fields
-    void platformCopy(ResourceError&) const {}
-
     // The ResourceError subclass may "shadow" this method to compare platform specific fields
     static bool platformCompare(const ResourceError&, const ResourceError&) { return true; }
 
     String m_domain;
     URL m_failingURL;
     String m_localizedDescription;
-    int m_errorCode;
-    bool m_isNull : 1;
-    bool m_isCancellation : 1;
-    bool m_isTimeout : 1;
+    int m_errorCode { 0 };
+    Type m_type { Type::General };
+
+private:
+    const ResourceError& asResourceError() const;
 };
 
 inline bool operator==(const ResourceError& a, const ResourceError& b) { return ResourceErrorBase::compare(a, b); }
 inline bool operator!=(const ResourceError& a, const ResourceError& b) { return !(a == b); }
 
 } // namespace WebCore
-
-#endif // ResourceErrorBase_h

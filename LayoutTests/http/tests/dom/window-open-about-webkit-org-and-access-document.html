@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Tests opening a new about://webkit.org window and accessing its document</title>
+    <script src="../resources/js-test-pre.js"></script>
+    <script>
+        var newWindow;
+
+        if (window.testRunner) {
+            testRunner.setCanOpenWindows();
+            testRunner.waitUntilDone();
+            testRunner.setPopupBlockingEnabled(false);
+        }
+
+        function checkNewWindowDocumentIsUndefined () {
+            shouldThrowErrorName("newWindow.document", "SecurityError");
+            if (window.testRunner)
+                testRunner.notifyDone();
+        }
+
+        function run() {
+            newWindow = window.open("about://webkit.org");
+            try {
+                newWindow.document.write("<scri" + "pt>console.log('Injected script running.')</sc" + "ript>");
+                testFailed("Was able to write to the new window's document.");
+                if (window.testRunner)
+                    testRunner.notifyDone();
+            } catch (e) {
+                console.log(e);
+                setTimeout(checkNewWindowDocumentIsUndefined, 500);
+            }
+        }
+    </script>
+</head>
+<body onload="run()">
+<div id="console"></div>
+</body>
+</html>

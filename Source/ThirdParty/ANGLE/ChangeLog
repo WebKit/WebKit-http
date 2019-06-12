@@ -1,3 +1,580 @@
+2017-07-13  Adrian Perez de Castro  <aperez@igalia.com>
+
+        eglplatform.h does not support Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=163482
+
+        This makes it possible to build WebKitGTK+ when the target system has only Wayland support,
+        but no X11 (and therefore the X11 headers are not present).
+
+        Reviewed by Alex Christensen.
+
+        * include/EGL/eglplatform.h: Add Wayland typedefs when WL_EGL_PLATFORM is defined (for example
+        by including wayland-egl.h before including EGL/egl.h). Also, include the X11 headers only
+        when ANGLE_USE_X11 is defined and, for consistency with Mesa's version of the header, when
+        MESA_EGL_NO_X11_HEADERS is not defined.
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
+2017-05-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Upstream the WPE port
+        https://bugs.webkit.org/show_bug.cgi?id=171110
+
+        Reviewed by Alex Christensen.
+
+        * include/EGL/eglplatform.h:
+        Allow building WPE on platforms that don't provide X11 libraries.
+
+2017-05-04  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Remove redundant macros that are set in the CMake config
+        https://bugs.webkit.org/show_bug.cgi?id=171571
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+
+2017-04-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Define FORWARDING_HEADERS_DIR in WebKitFS and use it everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=171071
+
+        Reviewed by Michael Catanzaro.
+
+        "${DERIVED_SOURCES_DIR}/ForwardingHeaders" path occurs very often in the
+        build system files. GTK-specifc FORWARDING_HEADERS_DIR variable should
+        be available for all ports.
+
+        * CMakeLists.txt:
+
+2017-04-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Fix build break after updating ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=170980
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt: Added some new source files.
+        * PlatformMac.cmake: Ditto.
+        * PlatformWin.cmake: Ditto. Remove a macro 'ANGLE_WEBKIT_WIN'
+        because SoftLinking is not used anymore.
+        * src/third_party/systeminfo/: Restored.
+
+2017-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove executable property from a header file.
+
+        * include/KHR/khrplatform.h: Removed property svn:executable.
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Add the actual content to the files, now that
+        SVN knows they can have tabs.
+
+        * src/third_party/murmurhash/MurmurHash3.cpp:
+        * src/third_party/murmurhash/MurmurHash3.h:
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        WinCairo needs these files I recently removed
+        from our copy of ANGLE.
+
+        * src/third_party/murmurhash/LICENSE: Added.
+        * src/third_party/murmurhash/MurmurHash3.cpp: Added.
+        * src/third_party/murmurhash/MurmurHash3.h: Added.
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Still trying to fix Windows.
+
+        * PlatformWin.cmake:
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Attempt to fix the Windows build.
+
+        * PlatformWin.cmake:
+
+2017-04-18  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=170941
+        <rdar://problem/31633999>
+
+        Reviewed by Alex Christensen.
+
+        Huge list of changed files omitted.
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2016-12-20  Tim Horton  <timothy_horton@apple.com>
+
+        Remove an ANGLE Markdown file from the ANGLE target
+        https://bugs.webkit.org/show_bug.cgi?id=166279
+
+        Reviewed by Alex Christensen.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        We don't need to build this, it's not source code.
+
+2016-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=165937
+
+        Reviewed by Simon Fraser.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+
+2016-12-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows WebGL build after r209832
+
+        * CMakeLists.txt:
+        * include/EGL/egl.h:
+        * include/GLES2/gl2.h:
+
+2016-12-14  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards using ANGLE to do WebGL rendering
+        https://bugs.webkit.org/show_bug.cgi?id=165864
+
+        Reviewed by Dean Jackson.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        Compile more files, and add some more "public" headers.
+        ANGLE is not a public framework, so these headers just go in 
+        WebKitBuild/Release/usr/local/include/ANGLE to be included when compiling WebCore.
+        * ANGLE/egl.h: Added.
+        * ANGLE/eglext.h: Added.
+        * ANGLE/eglplatform.h: Added.
+        * ANGLE/entry_points_gles_2_0.h: Added.
+        * ANGLE/entry_points_gles_2_0_ext.h: Added.
+        * ANGLE/entry_points_gles_3_0.h: Added.
+        * ANGLE/export.h: Added.
+        * ANGLE/gl2.h: Added.
+        * ANGLE/gl2ext.h: Added.
+        * ANGLE/gl2platform.h: Added.
+        * ANGLE/gl3.h: Added.
+        * ANGLE/gl31.h: Added.
+        * ANGLE/gl3platform.h: Added.
+        * ANGLE/khrplatform.h: Added.
+        Add more forwarding headers.  There are already a few, but we need more.
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        Make the frameworks linked to by ANGLE be private so frameworks that link with 
+        ANGLE don't automatically link with them. This allows me to switch ANGLE from a 
+        static library to a dynamic library to make sure WebCore isn't directly using OpenGL.
+        * PlatformWin.cmake:
+        Move HLSL-specific files to only be built on Windows.
+        * include/EGL/egl.h:
+        * include/EGL/eglplatform.h:
+        * include/GLES2/gl2.h:
+        * include/GLES2/gl2platform.h:
+        * include/GLES3/gl3.h:
+        * include/GLES3/gl31.h:
+        * include/GLES3/gl32.h:
+        * include/GLES3/gl3platform.h:
+        * src/libGLESv2/entry_points_egl.h:
+        * src/libGLESv2/entry_points_egl_ext.h:
+        * src/libGLESv2/entry_points_gles_2_0.h:
+        * src/libGLESv2/entry_points_gles_2_0_ext.h:
+        * src/libGLESv2/entry_points_gles_3_0.h:
+        * src/libGLESv2/entry_points_gles_3_1.h:
+        Include ANGLE headers as #include <ANGLE/*> instead of #include <KHR/*> or #include <GLES/*>
+        This is needed to distinguish the ANGLE headers from any system OpenGL/OpenGLES headers.
+        We will eventually only include ANGLE's entry_points_*.h directly from WebCore.
+
+2016-12-07  Alex Christensen  <achristensen@webkit.org>
+
+        Build more of ANGLE on Mac and Windows
+        https://bugs.webkit.org/show_bug.cgi?id=165543
+
+        Reviewed by Dean Jackson.
+
+        We will need to compile these files to use ANGLE's GLESv2 implementation instead of 
+        using OpenGL directly. No functional change.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * CMakeLists.txt:
+        Move platform-specific files to Platform*.cmake.
+        * PlatformMac.cmake: Added.
+        * PlatformWin.cmake: Added.
+        * src/libANGLE/renderer/Format.cpp:
+        * src/libANGLE/renderer/Format_autogen.cpp:
+        (angle::Format::Get):
+        * src/libANGLE/renderer/gl/PathGL.cpp:
+        * src/libANGLE/renderer/gl/cgl/WindowSurfaceCGL.h:
+        * src/libANGLE/renderer/gl/cgl/WindowSurfaceCGL.mm:
+        Rename SwapLayer to WebSwapLayer.  Otherwise, WebCore complains about improperly named ObjC classes.
+        Since this is the only one, let's just rename it instead of adding an exception.
+        (rx::WindowSurfaceCGL::initialize):
+        (-[SwapLayer initWithSharedState:withContext:withFunctions:]): Deleted.
+        * src/libANGLE/renderer/gl/formatutilsgl.cpp:
+        (rx::nativegl::GetInternalFormatMap):
+        (rx::nativegl::GetInternalFormatInfo):
+        * src/libANGLE/renderer/renderer_utils.cpp:
+        (rx::GetColorWriteFunction):
+        * src/libGLESv2/entry_points_egl.cpp:
+        (egl::GetProcAddress):
+
+2016-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Correct SDKROOT values in xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=165487
+        rdar://problem/29539209
+
+        Reviewed by Dan Bernstein.
+
+        Fix suggested by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        -Wpragmas warning spam from angleutils.h
+        https://bugs.webkit.org/show_bug.cgi?id=164207
+
+        Reviewed by Darin Adler.
+
+        Use #pragma clang instead of #pragma GCC since all of the warnings we need to suppress are
+        Clang-specific warnings. GCC ignores unknown pragmas and does not warn, but it does warn if
+        any GCC pragma is invalid.
+
+        Note that this might still be broken for MSVCC, as MSVCC warns when it sees unknown pragmas.
+
+        * changes.diff:
+        * src/common/angleutils.cpp:
+        (FormatString):
+        * src/common/angleutils.h:
+        (MakeStaticString):
+        * src/common/debug.cpp:
+        * src/common/mathutil.cpp:
+        * src/libANGLE/Caps.cpp:
+        (gl::TextureCapsMap::get):
+        (gl::GetExtensionInfoMap):
+        * src/libANGLE/Device.cpp:
+        (egl::GetDeviceSet):
+        * src/libANGLE/Display.cpp:
+        (egl::Display::getClientExtensionString):
+        * src/libANGLE/formatutils.cpp:
+        (gl::GetInternalFormatMap):
+        (gl::GetAllSizedInternalFormats):
+        * src/libANGLE/validationES3.cpp:
+        (gl::IsValidES3CopyTexImageCombination):
+
+2016-10-28  Alex Christensen  <achristensen@webkit.org>
+
+        Another build fix.
+
+        * CMakeLists.txt:
+
+2016-10-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows WebGL build after r208036
+        https://bugs.webkit.org/show_bug.cgi?id=164101
+
+        * CMakeLists.txt:
+
+2016-10-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows WebGL build after r208036
+        https://bugs.webkit.org/show_bug.cgi?id=164101
+
+        * CMakeLists.txt:
+        Add new files, remove deleted files.
+
+2016-10-27  Alex Christensen  <achristensen@webkit.org>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=164101
+
+        Reviewed by Darin Adler.
+
+        Updated to f01731530e7f754e5ebaf32d00f3e23b62376424
+        Differences between upstream ANGLE and WebKit's copy of ANGLE are in changes.diff
+
+2016-10-24  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused ANGLE.vcxproj after switching to CMake on Windows
+
+        * ANGLE.vcxproj: Removed.
+        * ANGLE.vcxproj/ANGLERelease.props: Removed.
+        * ANGLE.vcxproj/DirectX32.props: Removed.
+        * ANGLE.vcxproj/DirectX64.props: Removed.
+        * ANGLE.vcxproj/libEGL.vcxproj: Removed.
+        * ANGLE.vcxproj/libEGL.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/libEGLCommon.props: Removed.
+        * ANGLE.vcxproj/libGLESv2.vcxproj: Removed.
+        * ANGLE.vcxproj/libGLESv2.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/libGLESv2Common.props: Removed.
+        * ANGLE.vcxproj/preprocessor.vcxproj: Removed.
+        * ANGLE.vcxproj/preprocessor.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/translatorCommon.props: Removed.
+        * ANGLE.vcxproj/translator_common.vcxproj: Removed.
+        * ANGLE.vcxproj/translator_common.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/translator_glsl.vcxproj: Removed.
+        * ANGLE.vcxproj/translator_glsl.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/translator_hlsl.vcxproj: Removed.
+        * ANGLE.vcxproj/translator_hlsl.vcxproj.filters: Removed.
+
+2016-09-09  Dean Jackson  <dino@apple.com>
+
+        [ANGLE] instantiation of variable 'gl::GLTypeToGLenum<float>::value' required here, but no definition is available
+        https://bugs.webkit.org/show_bug.cgi?id=161829
+        <rdar://problem/28051244>
+
+        Reviewed by Alex Christensen.
+
+        Newer versions of clang require explicit definition of some template types
+        if they are in another translation unit.
+
+        * src/libANGLE/Program.cpp: Add definitions for GLTypeToGLenum.
+
+2016-07-29  David Kilzer  <ddkilzer@apple.com>
+
+        ANGLE: Fix global constructors and exit-time destructors
+        <https://webkit.org/b/160332>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+        - Add warning flags.
+
+        * src/common/angleutils.cpp:
+        (FormatString):
+        * src/common/angleutils.h:
+        (MakeStaticString):
+        * src/common/debug.cpp:
+        * src/common/mathutil.cpp:
+        (gl::g_sharedexp_max):
+        (gl::convertRGBFloatsTo999E5):
+        * src/compiler/translator/ShaderLang.cpp:
+        (ShGetUniformRegisterMap):
+        * src/libANGLE/Caps.cpp:
+        (gl::TextureCapsMap::get):
+        * src/libANGLE/Device.cpp:
+        (egl::GetDeviceSet):
+        * src/libANGLE/Display.cpp:
+        (egl::Display::getClientExtensionString):
+        * src/libANGLE/formatutils.cpp:
+        (gl::BuildFormatMap):
+        (gl::BuildInternalFormatInfoMap):
+        (gl::GetInternalFormatMap):
+        (gl::BuildAllSizedInternalFormatSet):
+        (gl::GetSizedInternalFormat):
+        (gl::GetAllSizedInternalFormats):
+        * src/libANGLE/validationES3.cpp:
+        (gl::BuildES3FormatSet):
+        (gl::ValidateTexImageFormatCombination):
+        (gl::BuildSizedEffectiveInternalFormatList):
+        (gl::BuildUnsizedEffectiveInternalFormatList):
+        (gl::GetEffectiveInternalFormat):
+        (gl::BuildValidES3CopyTexImageCombinations):
+        (gl::IsValidES3CopyTexImageCombination):
+        - Fix global constructors and exit-time destructors.
+
+2016-07-13  Enrica Casucci  <enrica@apple.com>
+
+        Update supported platforms in xcconfig files to match the sdk names.
+        https://bugs.webkit.org/show_bug.cgi?id=159728
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2016-05-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS WebGL after r199738
+        https://bugs.webkit.org/show_bug.cgi?id=158024
+        rdar://problem/26446679
+
+        Reviewed by Myles Maxfield.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        iOS needs the ESSL translator.
+
+2016-05-22  Brady Eidson  <beidson@apple.com>
+
+        Move to C++14.
+        https://bugs.webkit.org/show_bug.cgi?id=157948
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/Base.xcconfig:
+
+2016-04-26  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][ANGLE] Display object is not created.
+        https://bugs.webkit.org/show_bug.cgi?id=157042
+
+        Reviewed by Alex Christensen.
+
+        The CreateDisplayFromAttribs function will not create a DisplayD3D object when the requested
+        type is EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE, because ANGLE_ENABLE_OPENGL is not defined.
+        We should be able to create a DisplayD3D object without defining ANGLE_ENABLE_OPENGL.
+
+        * src/libANGLE/Display.cpp:
+
+2016-04-26  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][WebGL] Enable ESSL and GLSL translators.
+        https://bugs.webkit.org/show_bug.cgi?id=157002
+
+        Reviewed by Darin Adler.
+
+        Enable support for ESSL and GLSL translators, and add missing files.
+
+        * CMakeLists.txt:
+
+2016-04-22  Joonghun Park  <jh718.park@samsung.com>
+
+        [ANGLE] Remove deprecated auto_ptr warning. Unreviewed.
+        https://bugs.webkit.org/show_bug.cgi?id=156894
+
+        * src/compiler/preprocessor/MacroExpander.h: Use std::unique_ptr instead of std::auto_ptr.
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r199738
+
+        * CMakeLists.txt:
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r199738
+
+        * CMakeLists.txt:
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix.
+
+        * src/compiler/translator/Intermediate.h: Added.
+        (TIntermediate::TIntermediate):
+        * src/compiler/translator/intermediate.h: Removed.
+        Changed case of Intermediate.h file name for case sensitive file systems.
+
+2016-04-19  Alex Christensen  <achristensen@webkit.org>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=156755
+
+        Reviewed by Dean Jackson.
+
+        Huge list of changed files omitted.
+
+2016-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Remove failing assertion in ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=156485
+
+        Reviewed by Dean Jackson.
+
+        * src/compiler/translator/glslang.l:
+        * src/compiler/translator/glslang_lex.cpp:
+
+2016-04-11  Fujii Hironori  <Hironori.Fujii@jp.sony.com>
+
+        [CMake] Make FOLDER property INHERITED
+        https://bugs.webkit.org/show_bug.cgi?id=156460
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Set FOLDER property as a directory property not a target property
+
+2016-03-22  Alberto Garcia  <berto@igalia.com>
+
+        Unreviewed typo fix.
+
+        * src/compiler/translator/InfoSink.cpp:
+        (TInfoSinkBase::prefix): "UNKOWN" => "UNKOWN".
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Determine TARGET_MAC_OS_X_VERSION_MAJOR from MACOSX_DEPLOYMENT_TARGET rather than from MAC_OS_X_VERSION_MAJOR
+        https://bugs.webkit.org/show_bug.cgi?id=155707
+        <rdar://problem/24980691>
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Set TARGET_MAC_OS_X_VERSION_MAJOR based on the last
+          component of MACOSX_DEPLOYMENT_TARGET.
+        * Configurations/DebugRelease.xcconfig: For engineering builds, preserve the behavior of
+          TARGET_MAC_OS_X_VERSION_MAJOR being the host’s OS version.
+
+2016-03-20  Dan Bernstein  <mitz@apple.com>
+
+        Update build settings
+
+        Rubber-stamped by Andy Estes.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-02-23  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Linker errors display mangled names, but no longer should
+        https://bugs.webkit.org/show_bug.cgi?id=154632
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Stop setting LINKER_DISPLAYS_MANGLED_NAMES to YES.
+
 2016-01-08  Brent Fulgham  <bfulgham@apple.com>
 
         [ANGLE] Correct UNREACHABLE runtime assertion for void constructors

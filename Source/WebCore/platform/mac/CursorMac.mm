@@ -26,8 +26,8 @@
 #import "config.h"
 #import "Cursor.h"
 
-#import "BlockExceptions.h"
 #import "WebCoreSystemInterface.h"
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/StdLibExtras.h>
 
 @interface WebCoreCursorBundle : NSObject { }
@@ -48,9 +48,9 @@ static RetainPtr<NSCursor> createCustomCursor(Image* image, const IntPoint& hotS
 #endif
 {
     // FIXME: The cursor won't animate.  Not sure if that's a big deal.
-    NSImage* nsImage = image->getNSImage();
+    auto nsImage = image->snapshotNSImage();
     if (!nsImage)
-        return 0;
+        return nullptr;
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
 #if ENABLE(MOUSE_CURSOR_SCALE)
@@ -64,7 +64,7 @@ static RetainPtr<NSCursor> createCustomCursor(Image* image, const IntPoint& hotS
         NSRect fromRect = NSMakeRect(0, 0, image->width(), image->height());
 
         [expandedImage lockFocus];
-        [nsImage drawInRect:toRect fromRect:fromRect operation:NSCompositeSourceOver fraction:1];
+        [nsImage drawInRect:toRect fromRect:fromRect operation:NSCompositingOperationSourceOver fraction:1];
         [expandedImage unlockFocus];
 
         return adoptNS([[NSCursor alloc] initWithImage:expandedImage.get() hotSpot:hotSpot]);
@@ -75,7 +75,7 @@ static RetainPtr<NSCursor> createCustomCursor(Image* image, const IntPoint& hotS
     [[[nsImage representations] objectAtIndex:0] setSize:expandedSize];
 #endif
 
-    return adoptNS([[NSCursor alloc] initWithImage:nsImage hotSpot:hotSpot]);
+    return adoptNS([[NSCursor alloc] initWithImage:nsImage.get() hotSpot:hotSpot]);
     END_BLOCK_OBJC_EXCEPTIONS;
     return nullptr;
 }
@@ -239,33 +239,6 @@ void Cursor::ensurePlatformCursor() const
 #endif
         break;
     }
-}
-
-Cursor::Cursor(const Cursor& other)
-    : m_type(other.m_type)
-    , m_image(other.m_image)
-    , m_hotSpot(other.m_hotSpot)
-#if ENABLE(MOUSE_CURSOR_SCALE)
-    , m_imageScaleFactor(other.m_imageScaleFactor)
-#endif
-    , m_platformCursor(other.m_platformCursor)
-{
-}
-
-Cursor& Cursor::operator=(const Cursor& other)
-{
-    m_type = other.m_type;
-    m_image = other.m_image;
-    m_hotSpot = other.m_hotSpot;
-#if ENABLE(MOUSE_CURSOR_SCALE)
-    m_imageScaleFactor = other.m_imageScaleFactor;
-#endif
-    m_platformCursor = other.m_platformCursor;
-    return *this;
-}
-
-Cursor::~Cursor()
-{
 }
 
 NSCursor *Cursor::platformCursor() const

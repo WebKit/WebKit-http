@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HiddenInputType_h
-#define HiddenInputType_h
+#pragma once
 
 #include "InputType.h"
 
@@ -40,21 +39,19 @@ public:
     explicit HiddenInputType(HTMLInputElement& element) : InputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual FormControlState saveFormControlState() const override;
-    virtual void restoreFormControlState(const FormControlState&) override;
-    virtual bool supportsValidation() const override;
-    virtual RenderPtr<RenderElement> createInputRenderer(Ref<RenderStyle>&&) override;
-    virtual void accessKeyAction(bool sendMouseEvents) override;
-    virtual bool rendererIsNeeded() override;
-    virtual bool storesValueSeparateFromAttribute() override;
-    virtual bool isHiddenType() const override;
-    virtual bool supportLabels() const override { return false; }
-    virtual bool shouldRespectHeightAndWidthAttributes() override;
-    virtual void setValue(const String&, bool, TextFieldEventBehavior) override;
-    virtual bool appendFormData(FormDataList&, bool) const override;
+    const AtomicString& formControlType() const override;
+    FormControlState saveFormControlState() const override;
+    void restoreFormControlState(const FormControlState&) override;
+    bool supportsValidation() const override;
+    RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) override;
+    void accessKeyAction(bool sendMouseEvents) override;
+    bool rendererIsNeeded() override;
+    bool storesValueSeparateFromAttribute() override;
+    bool isHiddenType() const override;
+    bool supportLabels() const override { return false; }
+    bool shouldRespectHeightAndWidthAttributes() override;
+    void setValue(const String&, bool, TextFieldEventBehavior) override;
+    bool appendFormData(FormDataList&, bool) const override;
 };
 
 } // namespace WebCore
-
-#endif // HiddenInputType_h

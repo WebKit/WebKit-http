@@ -25,19 +25,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef DatabaseTask_h
-#define DatabaseTask_h
 
-#include "DatabaseBasicTypes.h"
-#include "DatabaseError.h"
-#include "SQLTransactionBackend.h"
+#pragma once
+
+#include "ExceptionOr.h"
 #include <wtf/Condition.h>
 #include <wtf/Lock.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+class Database;
+class SQLTransaction;
 
 // Can be used to wait until DatabaseTask is completed.
 // Has to be passed into DatabaseTask::create to be associated with the task.
@@ -58,23 +57,24 @@ public:
 #endif
 
 private:
-    bool m_taskCompleted;
+    bool m_taskCompleted { false };
     Lock m_synchronousMutex;
     Condition m_synchronousCondition;
 #ifndef NDEBUG
-    bool m_hasCheckedForTermination;
+    bool m_hasCheckedForTermination { false };
 #endif
 };
 
 class DatabaseTask {
-    WTF_MAKE_NONCOPYABLE(DatabaseTask); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     virtual ~DatabaseTask();
 
     void performTask();
 
     Database& database() const { return m_database; }
-#ifndef NDEBUG
+
+#if !ASSERT_DISABLED
     bool hasSynchronizer() const { return m_synchronizer; }
     bool hasCheckedForTermination() const { return m_synchronizer->hasCheckedForTermination(); }
 #endif
@@ -90,67 +90,70 @@ private:
 
 #if !LOG_DISABLED
     virtual const char* debugTaskName() const = 0;
-    bool m_complete;
+#endif
+
+#if !ASSERT_DISABLED
+    bool m_complete { false };
 #endif
 };
 
-class DatabaseOpenTask : public DatabaseTask {
+class DatabaseOpenTask final : public DatabaseTask {
 public:
-    DatabaseOpenTask(Database&, bool setVersionInNewDatabase, DatabaseTaskSynchronizer&, DatabaseError&, String& errorMessage, bool& success);
+    DatabaseOpenTask(Database&, bool setVersionInNewDatabase, DatabaseTaskSynchronizer&, ExceptionOr<void>& result);
 
 private:
-    virtual void doPerformTask() override;
+    void doPerformTask() final;
+
 #if !LOG_DISABLED
-    virtual const char* debugTaskName() const override;
+    const char* debugTaskName() const final;
 #endif
 
     bool m_setVersionInNewDatabase;
-    DatabaseError& m_error;
-    String& m_errorMessage;
-    bool& m_success;
+    ExceptionOr<void>& m_result;
 };
 
-class DatabaseCloseTask : public DatabaseTask {
+class DatabaseCloseTask final : public DatabaseTask {
 public:
     DatabaseCloseTask(Database&, DatabaseTaskSynchronizer&);
 
 private:
-    virtual void doPerformTask() override;
+    void doPerformTask() final;
+
 #if !LOG_DISABLED
-    virtual const char* debugTaskName() const override;
+    const char* debugTaskName() const final;
 #endif
 };
 
-class DatabaseTransactionTask : public DatabaseTask {
+class DatabaseTransactionTask final : public DatabaseTask {
 public:
-    explicit DatabaseTransactionTask(PassRefPtr<SQLTransactionBackend>);
+    explicit DatabaseTransactionTask(RefPtr<SQLTransaction>&&);
     virtual ~DatabaseTransactionTask();
 
-    SQLTransactionBackend* transaction() const { return m_transaction.get(); }
+    SQLTransaction* transaction() const { return m_transaction.get(); }
 
 private:
-    virtual void doPerformTask() override;
+    void doPerformTask() final;
+
 #if !LOG_DISABLED
-    virtual const char* debugTaskName() const override;
+    const char* debugTaskName() const final;
 #endif
 
-    RefPtr<SQLTransactionBackend> m_transaction;
+    RefPtr<SQLTransaction> m_transaction;
     bool m_didPerformTask;
 };
 
-class DatabaseTableNamesTask : public DatabaseTask {
+class DatabaseTableNamesTask final : public DatabaseTask {
 public:
-    DatabaseTableNamesTask(Database&, DatabaseTaskSynchronizer&, Vector<String>& names);
+    DatabaseTableNamesTask(Database&, DatabaseTaskSynchronizer&, Vector<String>& result);
 
 private:
-    virtual void doPerformTask() override;
+    void doPerformTask() final;
+
 #if !LOG_DISABLED
-    virtual const char* debugTaskName() const override;
+    const char* debugTaskName() const override;
 #endif
 
-    Vector<String>& m_tableNames;
+    Vector<String>& m_result;
 };
 
 } // namespace WebCore
-
-#endif // DatabaseTask_h

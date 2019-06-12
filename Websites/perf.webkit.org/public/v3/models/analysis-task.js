@@ -1,3 +1,4 @@
+'use strict';
 
 class AnalysisTask extends LabeledObject {
     constructor(id, object)
@@ -6,10 +7,10 @@ class AnalysisTask extends LabeledObject {
         this._author = object.author;
         this._createdAt = object.createdAt;
 
-        console.assert(object.platform instanceof Platform);
+        console.assert(!object.platform || object.platform instanceof Platform);
         this._platform = object.platform;
 
-        console.assert(object.metric instanceof Metric);
+        console.assert(!object.metric || object.metric instanceof Metric);
         this._metric = object.metric;
 
         this._startMeasurementId = object.startRun;
@@ -20,13 +21,19 @@ class AnalysisTask extends LabeledObject {
         this._changeType = object.result; // Can't change due to v2 compatibility.
         this._needed = object.needed;
         this._bugs = object.bugs || [];
-        this._buildRequestCount = object.buildRequestCount;
-        this._finishedBuildRequestCount = object.finishedBuildRequestCount;
+        this._causes = object.causes || [];
+        this._fixes = object.fixes || [];
+        this._buildRequestCount = +object.buildRequestCount;
+        this._finishedBuildRequestCount = +object.finishedBuildRequestCount;
     }
 
     static findByPlatformAndMetric(platformId, metricId)
     {
-        return this.all().filter(function (task) { return task._platform.id() == platformId && task._metric.id() == metricId; });
+        return this.all().filter((task) => {
+            const platform = task._platform;
+            const metric = task._metric;
+            return platform && metric && platform.id() == platformId && metric.id() == metricId;
+        });
     }
 
     updateSingleton(object)
@@ -46,10 +53,13 @@ class AnalysisTask extends LabeledObject {
         this._changeType = object.result; // Can't change due to v2 compatibility.
         this._needed = object.needed;
         this._bugs = object.bugs || [];
-        this._buildRequestCount = object.buildRequestCount;
-        this._finishedBuildRequestCount = object.finishedBuildRequestCount;
+        this._causes = object.causes || [];
+        this._fixes = object.fixes || [];
+        this._buildRequestCount = +object.buildRequestCount;
+        this._finishedBuildRequestCount = +object.finishedBuildRequestCount;
     }
 
+    isCustom() { return !this._platform; }
     hasResults() { return this._finishedBuildRequestCount; }
     hasPendingRequests() { return this._finishedBuildRequestCount < this._buildRequestCount; }
     requestLabel() { return `${this._finishedBuildRequestCount} of ${this._buildRequestCount}`; }
@@ -62,9 +72,11 @@ class AnalysisTask extends LabeledObject {
     author() { return this._author || ''; }
     createdAt() { return this._createdAt; }
     bugs() { return this._bugs; }
+    causes() { return this._causes; }
+    fixes() { return this._fixes; }
     platform() { return this._platform; }
     metric() { return this._metric; }
-    category() { return this._category; }
+
     changeType() { return this._changeType; }
 
     updateName(newName) { return this._updateRemoteState({name: newName}); }
@@ -74,7 +86,7 @@ class AnalysisTask extends LabeledObject {
     {
         param.task = this.id();
         return PrivilegedAPI.sendRequest('update-analysis-task', param).then(function (data) {
-            return AnalysisTask.cachedFetch('../api/analysis-tasks', {id: param.task}, true)
+            return AnalysisTask.cachedFetch('/api/analysis-tasks', {id: param.task}, true)
                 .then(AnalysisTask._constructAnalysisTasksFromRawData.bind(AnalysisTask));
         });
     }
@@ -89,12 +101,12 @@ class AnalysisTask extends LabeledObject {
             bugTracker: tracker.id(),
             number: bugNumber,
         }).then(function (data) {
-            return AnalysisTask.cachedFetch('../api/analysis-tasks', {id: id}, true)
+            return AnalysisTask.cachedFetch('/api/analysis-tasks', {id: id}, true)
                 .then(AnalysisTask._constructAnalysisTasksFromRawData.bind(AnalysisTask));
         });
     }
 
-    disassociateBug(bug)
+    dissociateBug(bug)
     {
         console.assert(bug instanceof Bug);
         console.assert(this.bugs().includes(bug));
@@ -105,17 +117,61 @@ class AnalysisTask extends LabeledObject {
             number: bug.bugNumber(),
             shouldDelete: true,
         }).then(function (data) {
-            return AnalysisTask.cachedFetch('../api/analysis-tasks', {id: id}, true)
+            return AnalysisTask.cachedFetch('/api/analysis-tasks', {id: id}, true)
                 .then(AnalysisTask._constructAnalysisTasksFromRawData.bind(AnalysisTask));
         });
+    }
+
+    associateCommit(kind, repository, revision)
+    {
+        console.assert(kind == 'cause' || kind == 'fix');
+        console.assert(repository instanceof Repository);
+        if (revision.startsWith('r'))
+            revision = revision.substring(1);
+        const id = this.id();
+        return PrivilegedAPI.sendRequest('associate-commit', {
+            task: id,
+            repository: repository.id(),
+            revision: revision,
+            kind: kind,
+        }).then((data) => {
+            return AnalysisTask.cachedFetch('/api/analysis-tasks', {id}, true)
+                .then(AnalysisTask._constructAnalysisTasksFromRawData.bind(AnalysisTask));
+        });
+    }
+
+    dissociateCommit(commit)
+    {
+        console.assert(commit instanceof CommitLog);
+        var id = this.id();
+        return PrivilegedAPI.sendRequest('associate-commit', {
+            task: id,
+            commit: commit.id(),
+        }).then(function (data) {
+            return AnalysisTask.cachedFetch('/api/analysis-tasks', {id: id}, true)
+                .then(AnalysisTask._constructAnalysisTasksFromRawData.bind(AnalysisTask));
+        });
+    }
+
+    category()
+    {
+        var category = 'unconfirmed';
+
+        if (this._changeType == 'unchanged' || this._changeType == 'inconclusive'
+            || (this._changeType == 'regression' && this._fixes.length)
+            || (this._changeType == 'progression' && (this._causes.length || this._fixes.length)))
+            category = 'closed';
+        else if (this._causes.length || this._fixes.length || this._changeType == 'regression' || this._changeType == 'progression')
+            category = 'investigated';
+
+        return category;
     }
 
     static categories()
     {
         return [
             'unconfirmed',
-            'bisecting',
-            'identified',
+            'investigated',
             'closed'
         ];
     }
@@ -130,9 +186,9 @@ class AnalysisTask extends LabeledObject {
         return this._fetchSubset({buildRequest: id}).then(function (tasks) { return tasks[0]; });
     }
 
-    static fetchByPlatformAndMetric(platformId, metricId)
+    static fetchByPlatformAndMetric(platformId, metricId, noCache)
     {
-        return this._fetchSubset({platform: platformId, metric: metricId}).then(function (data) {
+        return this._fetchSubset({platform: platformId, metric: metricId}, noCache).then(function (data) {
             return AnalysisTask.findByPlatformAndMetric(platformId, metricId);
         });
     }
@@ -152,6 +208,8 @@ class AnalysisTask extends LabeledObject {
                 }
             }
             for (var otherTask of AnalysisTask.all()) {
+                if (task.isCustom())
+                    continue;
                 if (task.endTime() < otherTask.startTime()
                     || otherTask.endTime() < task.startTime()
                     || task.metric() != otherTask.metric())
@@ -162,17 +220,17 @@ class AnalysisTask extends LabeledObject {
         });
     }
 
-    static _fetchSubset(params)
+    static _fetchSubset(params, noCache)
     {
         if (this._fetchAllPromise)
             return this._fetchAllPromise;
-        return this.cachedFetch('../api/analysis-tasks', params).then(this._constructAnalysisTasksFromRawData.bind(this));
+        return this.cachedFetch('/api/analysis-tasks', params, noCache).then(this._constructAnalysisTasksFromRawData.bind(this));
     }
 
     static fetchAll()
     {
         if (!this._fetchAllPromise)
-            this._fetchAllPromise = getJSONWithStatus('../api/analysis-tasks').then(this._constructAnalysisTasksFromRawData.bind(this));
+            this._fetchAllPromise = RemoteAPI.getJSONWithStatus('/api/analysis-tasks').then(this._constructAnalysisTasksFromRawData.bind(this));
         return this._fetchAllPromise;
     }
 
@@ -193,14 +251,24 @@ class AnalysisTask extends LabeledObject {
             taskToBug[rawData.task].push(bug);
         }
 
+        for (var rawData of data.commits) {
+            rawData.repository = Repository.findById(rawData.repository);
+            if (!rawData.repository)
+                continue;
+            CommitLog.ensureSingleton(rawData.id, rawData);
+        }
+
+        function resolveCommits(commits) {
+            return commits.map(function (id) { return CommitLog.findById(id); }).filter(function (commit) { return !!commit; });
+        }
+
         var results = [];
         for (var rawData of data.analysisTasks) {
             rawData.platform = Platform.findById(rawData.platform);
             rawData.metric = Metric.findById(rawData.metric);
-            if (!rawData.platform || !rawData.metric)
-                continue;
-
             rawData.bugs = taskToBug[rawData.id];
+            rawData.causes = resolveCommits(rawData.causes);
+            rawData.fixes = resolveCommits(rawData.fixes);
             results.push(AnalysisTask.ensureSingleton(rawData.id, rawData));
         }
 
@@ -218,3 +286,6 @@ class AnalysisTask extends LabeledObject {
         });
     }
 }
+
+if (typeof module != 'undefined')
+    module.exports.AnalysisTask = AnalysisTask;

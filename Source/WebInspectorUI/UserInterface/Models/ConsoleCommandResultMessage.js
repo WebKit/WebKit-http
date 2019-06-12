@@ -29,16 +29,16 @@
 
 WebInspector.ConsoleCommandResultMessage = class ConsoleCommandResult extends WebInspector.ConsoleMessage
 {
-    constructor(result, wasThrown, savedResultIndex, synthetic)
+    constructor(target, result, wasThrown, savedResultIndex, shouldRevealConsole = true)
     {
         let source = WebInspector.ConsoleMessage.MessageSource.JS;
-        let level = (wasThrown ? WebInspector.ConsoleMessage.MessageLevel.Error : WebInspector.ConsoleMessage.MessageLevel.Log);
+        let level = wasThrown ? WebInspector.ConsoleMessage.MessageLevel.Error : WebInspector.ConsoleMessage.MessageLevel.Log;
         let type = WebInspector.ConsoleMessage.MessageType.Result;
 
-        super(source, level, "", type, undefined, undefined, undefined, 0, [result], undefined, undefined);
+        super(target, source, level, "", type, undefined, undefined, undefined, 0, [result], undefined, undefined);
 
         this._savedResultIndex = savedResultIndex;
-        this._synthetic = synthetic || false;
+        this._shouldRevealConsole = shouldRevealConsole;
 
         if (this._savedResultIndex && this._savedResultIndex > WebInspector.ConsoleCommandResultMessage.maximumSavedResultIndex)
             WebInspector.ConsoleCommandResultMessage.maximumSavedResultIndex = this._savedResultIndex;
@@ -58,9 +58,9 @@ WebInspector.ConsoleCommandResultMessage = class ConsoleCommandResult extends We
         return this._savedResultIndex;
     }
 
-    get synthetic()
+    get shouldRevealConsole()
     {
-        return this._synthetic;
+        return this._shouldRevealConsole;
     }
 };
 

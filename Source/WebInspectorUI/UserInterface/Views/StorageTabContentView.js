@@ -28,10 +28,10 @@ WebInspector.StorageTabContentView = class StorageTabContentView extends WebInsp
     constructor(identifier)
     {
         let {image, title} = WebInspector.StorageTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.TabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.applicationCacheDetailsSidebarPanel];
+        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
+        let detailsSidebarPanelConstructors = [WebInspector.ApplicationCacheDetailsSidebarPanel, WebInspector.IndexedDatabaseDetailsSidebarPanel];
 
-        super(identifier || "storage", "storage", tabBarItem, WebInspector.StorageSidebarPanel, detailsSidebarPanels);
+        super(identifier || "storage", "storage", tabBarItem, WebInspector.StorageSidebarPanel, detailsSidebarPanelConstructors);
     }
 
     static tabInfo()
@@ -54,12 +54,17 @@ WebInspector.StorageTabContentView = class StorageTabContentView extends WebInsp
         return WebInspector.StorageTabContentView.Type;
     }
 
+    get supportsSplitContentBrowser()
+    {
+        return true;
+    }
+
     canShowRepresentedObject(representedObject)
     {
         return representedObject instanceof WebInspector.DOMStorageObject || representedObject instanceof WebInspector.CookieStorageObject ||
             representedObject instanceof WebInspector.DatabaseTableObject || representedObject instanceof WebInspector.DatabaseObject ||
             representedObject instanceof WebInspector.ApplicationCacheFrame || representedObject instanceof WebInspector.IndexedDatabaseObjectStore ||
-            representedObject instanceof WebInspector.IndexedDatabaseObjectStoreIndex;
+            representedObject instanceof WebInspector.IndexedDatabase || representedObject instanceof WebInspector.IndexedDatabaseObjectStoreIndex;
     }
 };
 

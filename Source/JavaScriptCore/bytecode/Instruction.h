@@ -26,12 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Instruction_h
-#define Instruction_h
+#pragma once
 
 #include "BasicBlockLocation.h"
-#include "MacroAssembler.h"
-#include "Opcode.h"
 #include "PutByIdFlags.h"
 #include "SymbolTable.h"
 #include "TypeLocation.h"
@@ -40,7 +37,6 @@
 #include "Structure.h"
 #include "StructureChain.h"
 #include "ToThisStatus.h"
-#include "VirtualRegister.h"
 #include <wtf/VectorTraits.h>
 
 namespace JSC {
@@ -51,6 +47,12 @@ class ObjectAllocationProfile;
 class WatchpointSet;
 struct LLIntCallLinkInfo;
 struct ValueProfile;
+
+#if ENABLE(COMPUTED_GOTO_OPCODES)
+typedef void* Opcode;
+#else
+typedef OpcodeID Opcode;
+#endif
 
 struct Instruction {
     Instruction()
@@ -155,5 +157,3 @@ namespace WTF {
 template<> struct VectorTraits<JSC::Instruction> : VectorTraitsBase<true, JSC::Instruction> { };
 
 } // namespace WTF
-
-#endif // Instruction_h

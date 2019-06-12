@@ -46,73 +46,85 @@ namespace Sizes {
     static const size_t alignment = 8;
     static const size_t alignmentMask = alignment - 1ul;
 
-#if BPLATFORM(IOS)
-    static const size_t vmPageSize = 16 * kB;
-#else
-    static const size_t vmPageSize = 4 * kB;
-#endif
-    static const size_t vmPageMask = ~(vmPageSize - 1);
-    
-    static const size_t superChunkSize = 2 * MB;
+    static const size_t chunkSize = 1 * MB;
+    static const size_t chunkMask = ~(chunkSize - 1ul);
 
-    static const size_t smallMax = 256;
     static const size_t smallLineSize = 256;
-    static const size_t smallLineMask = ~(smallLineSize - 1ul);
+    static const size_t smallPageSize = 4 * kB;
+    static const size_t smallPageLineCount = smallPageSize / smallLineSize;
 
-    static const size_t smallChunkSize = superChunkSize / 4;
-    static const size_t smallChunkOffset = superChunkSize * 3 / 4;
-    static const size_t smallChunkMask = ~(smallChunkSize - 1ul);
+    static const size_t maskSizeClassMax = 512;
+    static const size_t smallMax = 32 * kB;
 
-    static const size_t mediumMax = 1024;
-    static const size_t mediumLineSize = 1024;
-    static const size_t mediumLineMask = ~(mediumLineSize - 1ul);
+    static const size_t pageSizeMax = smallMax * 2;
+    static const size_t pageClassCount = pageSizeMax / smallPageSize;
 
-    static const size_t mediumChunkSize = superChunkSize / 4;
-    static const size_t mediumChunkOffset = superChunkSize * 2 / 4;
-    static const size_t mediumChunkMask = ~(mediumChunkSize - 1ul);
+    static const size_t pageSizeWasteFactor = 8;
+    static const size_t logWasteFactor = 8;
 
-    static const size_t largeChunkSize = superChunkSize / 2;
-#if BPLATFORM(IOS)
-    static const size_t largeChunkMetadataSize = 16 * kB;
-#else
-    static const size_t largeChunkMetadataSize = 4 * kB;
-#endif
-    static const size_t largeChunkOffset = 0;
-    static const size_t largeChunkMask = ~(largeChunkSize - 1ul);
+    static const size_t largeAlignment = smallMax / pageSizeWasteFactor;
+    static const size_t largeAlignmentMask = largeAlignment - 1;
 
-    static const size_t largeAlignment = 64;
-    static const size_t largeMax = largeChunkSize - largeChunkMetadataSize;
-    static const size_t largeMin = mediumMax;
-    
-    static const size_t xLargeAlignment = vmPageSize;
-    static const size_t xLargeMax = std::numeric_limits<size_t>::max() - xLargeAlignment; // Make sure that rounding up to xLargeAlignment does not overflow.
-
-    static const size_t freeListSearchDepth = 16;
-    static const size_t freeListGrowFactor = 2;
-
-    static const uintptr_t typeMask = (superChunkSize - 1) & ~((superChunkSize / 4) - 1); // 4 taggable chunks
-    static const uintptr_t smallType = (superChunkSize + smallChunkOffset) & typeMask;
-    static const uintptr_t mediumType = (superChunkSize + mediumChunkOffset) & typeMask;
-    static const uintptr_t largeTypeMask = ~(mediumType & smallType);
-    static const uintptr_t smallOrMediumTypeMask = mediumType & smallType;
-    static const uintptr_t smallOrMediumSmallTypeMask = smallType ^ mediumType; // Only valid if object is known to be small or medium.
-
-    static const size_t deallocatorLogCapacity = 256;
+    static const size_t deallocatorLogCapacity = 512;
     static const size_t bumpRangeCacheCapacity = 3;
     
-    static const std::chrono::milliseconds scavengeSleepDuration = std::chrono::milliseconds(512);
+    static const size_t scavengerBytesPerMemoryPressureCheck = 16 * MB;
+    static const double memoryPressureThreshold = 0.75;
+    
+    static const std::chrono::milliseconds asyncTaskSleepDuration = std::chrono::milliseconds(2000);
+    
+    static const size_t maskSizeClassCount = maskSizeClassMax / alignment;
+
+    inline constexpr size_t maskSizeClass(size_t size)
+    {
+        // We mask to accommodate zero.
+        return mask((size - 1) / alignment, maskSizeClassCount - 1);
+    }
+
+    inline size_t maskObjectSize(size_t maskSizeClass)
+    {
+        return (maskSizeClass + 1) * alignment;
+    }
+
+    static const size_t logAlignmentMin = maskSizeClassMax / logWasteFactor;
+
+    static const size_t logSizeClassCount = (log2(smallMax) - log2(maskSizeClassMax)) * logWasteFactor;
+
+    inline size_t logSizeClass(size_t size)
+    {
+        size_t base = log2(size - 1) - log2(maskSizeClassMax);
+        size_t offset = (size - 1 - (maskSizeClassMax << base));
+        return base * logWasteFactor + offset / (logAlignmentMin << base);
+    }
+
+    inline size_t logObjectSize(size_t logSizeClass)
+    {
+        size_t base = logSizeClass / logWasteFactor;
+        size_t offset = logSizeClass % logWasteFactor;
+        return (maskSizeClassMax << base) + (offset + 1) * (logAlignmentMin << base);
+    }
+
+    static const size_t sizeClassCount = maskSizeClassCount + logSizeClassCount;
 
     inline size_t sizeClass(size_t size)
     {
-        static const size_t sizeClassMask = (mediumMax / alignment) - 1;
-        return mask((size - 1) / alignment, sizeClassMask);
+        if (size <= maskSizeClassMax)
+            return maskSizeClass(size);
+        return maskSizeClassCount + logSizeClass(size);
     }
 
     inline size_t objectSize(size_t sizeClass)
     {
-        return (sizeClass + 1) * alignment;
+        if (sizeClass < maskSizeClassCount)
+            return maskObjectSize(sizeClass);
+        return logObjectSize(sizeClass - maskSizeClassCount);
     }
-};
+    
+    inline size_t pageSize(size_t pageClass)
+    {
+        return (pageClass + 1) * smallPageSize;
+    }
+}
 
 using namespace Sizes;
 

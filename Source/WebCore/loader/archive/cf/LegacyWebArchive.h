@@ -26,11 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LegacyWebArchive_h
-#define LegacyWebArchive_h
+#pragma once
 
 #include "Archive.h"
-#include <functional>
+#include <wtf/Function.h>
 
 namespace WebCore {
 
@@ -38,37 +37,38 @@ class Frame;
 class Node;
 class Range;
 
-class LegacyWebArchive : public Archive {
+class LegacyWebArchive final : public Archive {
 public:
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> create();
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> create(SharedBuffer*);
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> create(const URL&, SharedBuffer*);
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> create(PassRefPtr<ArchiveResource> mainResource, Vector<RefPtr<ArchiveResource>> subresources, Vector<RefPtr<LegacyWebArchive>> subframeArchives);
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> create(Node*, std::function<bool(Frame&)> frameFilter = nullptr);
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> create(Frame*);
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> createFromSelection(Frame*);
-    WEBCORE_EXPORT static PassRefPtr<LegacyWebArchive> create(Range*);
-
-    virtual Type type() const override;
+    WEBCORE_EXPORT static Ref<LegacyWebArchive> create();
+    WEBCORE_EXPORT static RefPtr<LegacyWebArchive> create(SharedBuffer&);
+    WEBCORE_EXPORT static RefPtr<LegacyWebArchive> create(const URL&, SharedBuffer&);
+    WEBCORE_EXPORT static Ref<LegacyWebArchive> create(Ref<ArchiveResource>&& mainResource, Vector<Ref<ArchiveResource>>&& subresources, Vector<Ref<LegacyWebArchive>>&& subframeArchives);
+    WEBCORE_EXPORT static RefPtr<LegacyWebArchive> create(Node&, WTF::Function<bool(Frame&)>&& frameFilter = { });
+    WEBCORE_EXPORT static RefPtr<LegacyWebArchive> create(Frame&);
+    WEBCORE_EXPORT static RefPtr<LegacyWebArchive> createFromSelection(Frame*);
+    WEBCORE_EXPORT static RefPtr<LegacyWebArchive> create(Range*);
 
     WEBCORE_EXPORT RetainPtr<CFDataRef> rawDataRepresentation();
 
 private:
-    LegacyWebArchive() { }
+    LegacyWebArchive() = default;
+
+    bool shouldLoadFromArchiveOnly() const final { return false; }
+    bool shouldOverrideBaseURL() const final { return false; }
+    bool shouldUseMainResourceEncoding() const final { return true; }
+    bool shouldUseMainResourceURL() const final { return true; }
 
     enum MainResourceStatus { Subresource, MainResource };
 
-    static PassRefPtr<LegacyWebArchive> create(const String& markupString, Frame*, const Vector<Node*>& nodes, std::function<bool (Frame&)> frameFilter);
-    static PassRefPtr<ArchiveResource> createResource(CFDictionaryRef);
+    static RefPtr<LegacyWebArchive> create(const String& markupString, Frame&, const Vector<Node*>& nodes, WTF::Function<bool (Frame&)>&& frameFilter);
+    static RefPtr<ArchiveResource> createResource(CFDictionaryRef);
     static ResourceResponse createResourceResponseFromMacArchivedData(CFDataRef);
     static ResourceResponse createResourceResponseFromPropertyListData(CFDataRef, CFStringRef responseDataType);
     static RetainPtr<CFDataRef> createPropertyListRepresentation(const ResourceResponse&);
-    static RetainPtr<CFDictionaryRef> createPropertyListRepresentation(Archive*);
+    static RetainPtr<CFDictionaryRef> createPropertyListRepresentation(Archive&);
     static RetainPtr<CFDictionaryRef> createPropertyListRepresentation(ArchiveResource*, MainResourceStatus);
 
     bool extract(CFDictionaryRef);
 };
 
-}
-
-#endif // Archive
+} // namespace WebCore

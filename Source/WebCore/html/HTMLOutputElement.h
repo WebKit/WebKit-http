@@ -28,10 +28,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLOutputElement_h
-#define HTMLOutputElement_h
+#pragma once
 
-#include "AttributeDOMTokenList.h"
+#include "DOMTokenList.h"
 #include "HTMLFormControlElement.h"
 
 namespace WebCore {
@@ -46,28 +45,26 @@ public:
     void setDefaultValue(const String&);
     DOMTokenList& htmlFor();
     
-    virtual bool canContainRangeEndPoint() const override { return false; }
+    bool canContainRangeEndPoint() const final { return false; }
 
 private:
     HTMLOutputElement(const QualifiedName&, Document&, HTMLFormElement*);
 
-    virtual bool computeWillValidate() const override { return false; }
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual const AtomicString& formControlType() const override;
-    virtual bool isEnumeratable() const override { return true; }
-    virtual bool supportLabels() const override { return true; }
-    virtual bool supportsFocus() const override;
-    virtual void childrenChanged(const ChildChange&) override;
-    virtual void reset() override;
+    bool computeWillValidate() const final { return false; }
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    const AtomicString& formControlType() const final;
+    bool isEnumeratable() const final { return true; }
+    bool supportLabels() const final { return true; }
+    bool supportsFocus() const final;
+    void childrenChanged(const ChildChange&) final;
+    void reset() final;
 
     void setTextContentInternal(const String&);
 
     bool m_isDefaultValueMode;
     bool m_isSetTextContentInProgress;
     String m_defaultValue;
-    std::unique_ptr<AttributeDOMTokenList> m_tokens;
+    std::unique_ptr<DOMTokenList> m_tokens;
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore

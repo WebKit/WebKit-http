@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageDebuggerAgent_h
-#define PageDebuggerAgent_h
+#pragma once
 
 #include "WebDebuggerAgent.h"
 
@@ -54,19 +53,19 @@ public:
     void mainFrameNavigated();
 
 protected:
-    virtual void enable() override;
-    virtual void disable(bool isBeingDestroyed) override;
+    void enable() override;
+    void disable(bool isBeingDestroyed) override;
 
-    virtual String sourceMapURLForScript(const Script&) override;
+    String sourceMapURLForScript(const Script&) override;
 
 private:
-    virtual void muteConsole() override;
-    virtual void unmuteConsole() override;
+    void muteConsole() override;
+    void unmuteConsole() override;
 
-    virtual void breakpointActionLog(JSC::ExecState*, const String&) override;
+    void breakpointActionLog(JSC::ExecState&, const String&) override;
 
-    virtual Inspector::InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) override;
-    virtual void setOverlayMessage(ErrorString&, const String*) override;
+    Inspector::InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) override;
+    void setOverlayMessage(ErrorString&, const String* const) final;
 
     Page& m_page;
 
@@ -75,5 +74,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(PageDebuggerAgent_h)

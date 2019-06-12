@@ -27,8 +27,8 @@
 #include "ColorSpaceData.h"
 
 #include "ArgumentCodersCF.h"
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace WebKit {
 
@@ -38,7 +38,7 @@ enum EncodedDataType {
     Data,
 };
 
-void ColorSpaceData::encode(IPC::ArgumentEncoder& encoder) const
+void ColorSpaceData::encode(IPC::Encoder& encoder) const
 {
 #if !PLATFORM(IOS)
     if (cgColorSpace) {
@@ -50,7 +50,12 @@ void ColorSpaceData::encode(IPC::ArgumentEncoder& encoder) const
         }
 
         // Failing that, just encode the ICC data.
-        if (RetainPtr<CFDataRef> profileData = adoptCF(CGColorSpaceCopyICCProfile(cgColorSpace.get()))) {
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+        RetainPtr<CFDataRef> profileData = adoptCF(CGColorSpaceCopyICCData(cgColorSpace.get()));
+#else
+        RetainPtr<CFDataRef> profileData = adoptCF(CGColorSpaceCopyICCProfile(cgColorSpace.get()));
+#endif
+        if (profileData) {
             encoder.encodeEnum(Data);
             IPC::encode(encoder, profileData.get());
             return;
@@ -62,7 +67,7 @@ void ColorSpaceData::encode(IPC::ArgumentEncoder& encoder) const
     encoder.encodeEnum(Null);
 }
 
-bool ColorSpaceData::decode(IPC::ArgumentDecoder& decoder, ColorSpaceData& colorSpaceData)
+bool ColorSpaceData::decode(IPC::Decoder& decoder, ColorSpaceData& colorSpaceData)
 {
     EncodedDataType dataType;
     if (!decoder.decodeEnum(dataType))
@@ -85,7 +90,10 @@ bool ColorSpaceData::decode(IPC::ArgumentDecoder& decoder, ColorSpaceData& color
         if (!IPC::decode(decoder, data))
             return false;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         colorSpaceData.cgColorSpace = adoptCF(CGColorSpaceCreateWithICCProfile(data.get()));
+#pragma clang diagnostic pop
         return true;
     }
 

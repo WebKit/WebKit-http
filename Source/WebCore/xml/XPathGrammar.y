@@ -32,7 +32,13 @@
 #include "XPathFunctions.h"
 #include "XPathParser.h"
 #include "XPathPath.h"
+#include "XPathStep.h"
 #include "XPathVariableReference.h"
+
+#if COMPILER(MSVC)
+// See https://msdn.microsoft.com/en-us/library/1wea5zwe.aspx
+#pragma warning(disable: 4701)
+#endif
 
 #define YYMALLOC fastMalloc
 #define YYFREE fastFree
@@ -76,7 +82,7 @@ using namespace XPath;
 %token <axis> AXISNAME
 %type <axis> AxisSpecifier
 
-%token COMMENT DOTDOT PI NODE SLASHSLASH TEXT XPATH_ERROR
+%token COMMENT DOTDOT PI NODE SLASHSLASH TEXT_ XPATH_ERROR
 
 %type <locationPath> LocationPath AbsoluteLocationPath RelativeLocationPath
 %destructor { delete $$; } LocationPath AbsoluteLocationPath RelativeLocationPath
@@ -240,7 +246,7 @@ NodeTest:
         $$ = new Step::NodeTest(Step::NodeTest::AnyNodeTest);
     }
     |
-    TEXT '(' ')'
+    TEXT_ '(' ')'
     {
         $$ = new Step::NodeTest(Step::NodeTest::TextNodeTest);
     }

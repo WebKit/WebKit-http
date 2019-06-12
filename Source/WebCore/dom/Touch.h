@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Touch_h
-#define Touch_h
+#pragma once
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/TouchIOS.h>
@@ -32,7 +31,6 @@
 
 #include "EventTarget.h"
 #include "LayoutPoint.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -92,5 +90,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(TOUCH_EVENTS)
-
-#endif /* Touch_h */

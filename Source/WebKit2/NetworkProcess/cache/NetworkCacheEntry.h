@@ -59,14 +59,14 @@ public:
     const Vector<std::pair<String, String>>& varyingRequestHeaders() const { return m_varyingRequestHeaders; }
 
     WebCore::SharedBuffer* buffer() const;
-    const WebCore::ResourceRequest* redirectRequest() const { return m_redirectRequest.get(); }
+    const std::optional<WebCore::ResourceRequest>& redirectRequest() const { return m_redirectRequest; }
 
 #if ENABLE(SHAREABLE_RESOURCE)
     ShareableResource::Handle& shareableResourceHandle() const;
 #endif
 
     bool needsValidation() const;
-    void setNeedsValidation();
+    void setNeedsValidation(bool);
 
     const Storage::Record& sourceStorageRecord() const { return m_sourceStorageRecord; }
 
@@ -83,7 +83,7 @@ private:
     WebCore::ResourceResponse m_response;
     Vector<std::pair<String, String>> m_varyingRequestHeaders;
 
-    std::unique_ptr<WebCore::ResourceRequest> m_redirectRequest;
+    std::optional<WebCore::ResourceRequest> m_redirectRequest;
     mutable RefPtr<WebCore::SharedBuffer> m_buffer;
 #if ENABLE(SHAREABLE_RESOURCE)
     mutable ShareableResource::Handle m_shareableResourceHandle;

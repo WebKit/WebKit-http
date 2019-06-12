@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Canon Inc.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,24 +26,24 @@
 
 // @conditional=ENABLE(MEDIA_STREAM)
 
-function webkitGetUserMedia(options, successCallback, errorCallback)
+function getUserMedia(options, successCallback, errorCallback)
 {
     "use strict";
 
     // FIXME: We should raise a DOM unsupported exception if there is no navigator and properly detect whether method is not called on a Navigator object.
-    if (!(this.mediaDevices && this.mediaDevices.@getUserMediaFromJS))
-        throw new @TypeError("The implementation did not support the requested type of object or operation.");
+    if (!(this.mediaDevices && this.mediaDevices.@getUserMedia))
+        throw @makeThisTypeError("Navigator", "getUserMedia");
 
     if (arguments.length < 3)
-        throw new @TypeError("Not enough arguments");
+        @throwTypeError("Not enough arguments");
 
     if (options !== @Object(options))
-        throw new @TypeError("Argument 1 (options) to Navigator.webkitGetUserMedia must be an object");
+        @throwTypeError("Argument 1 (options) to Navigator.getUserMedia must be an object");
 
     if (typeof successCallback !== "function")
-        throw new @TypeError("Argument 2 ('successCallback') to Navigator.webkitGetUserMedia must be a function");
+        @throwTypeError("Argument 2 ('successCallback') to Navigator.getUserMedia must be a function");
     if (typeof errorCallback !== "function")
-        throw new @TypeError("Argument 3 ('errorCallback') to Navigator.webkitGetUserMedia must be a function");
+        @throwTypeError("Argument 3 ('errorCallback') to Navigator.getUserMedia must be a function");
 
-    this.mediaDevices.@getUserMediaFromJS(options).@then(successCallback, errorCallback);
+    this.mediaDevices.@getUserMedia(options).@then(successCallback, errorCallback);
 }

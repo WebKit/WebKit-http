@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGLazyJSValue_h
-#define DFGLazyJSValue_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -32,19 +31,26 @@
 #include "DFGFrozenValue.h"
 #include <wtf/text/StringImpl.h>
 
-namespace JSC { namespace DFG {
+namespace JSC {
+
+class CCallHelpers;
+
+namespace DFG {
+
+class Graph;
 
 // Represents either a JSValue, or for JSValues that require allocation in the heap,
 // it tells you everything you'd need to know in order to allocate it.
 
-enum LazinessKind {
-    KnownValue,
-    SingleCharacterString,
-    KnownStringImpl
-};
-
 class LazyJSValue {
 public:
+    enum LazinessKind {
+        KnownValue,
+        SingleCharacterString,
+        KnownStringImpl,
+        NewStringImpl
+    };
+
     LazyJSValue(FrozenValue* value = FrozenValue::emptySingleton())
         : m_kind(KnownValue)
     {
@@ -66,6 +72,10 @@ public:
         result.u.stringImpl = string;
         return result;
     }
+
+    static LazyJSValue newString(Graph&, const String&);
+
+    LazinessKind kind() const { return m_kind; }
     
     FrozenValue* tryGetValue(Graph&) const
     {
@@ -87,16 +97,22 @@ public:
         ASSERT(m_kind == SingleCharacterString);
         return u.character;
     }
+
+    const StringImpl* tryGetStringImpl(VM&) const;
+    
+    String tryGetString(Graph&) const;
     
     StringImpl* stringImpl() const
     {
-        ASSERT(m_kind == KnownStringImpl);
+        ASSERT(m_kind == KnownStringImpl || m_kind == NewStringImpl);
         return u.stringImpl;
     }
-    
+
     TriState strictEqual(const LazyJSValue& other) const;
     
     uintptr_t switchLookupValue(SwitchKind) const;
+
+    void emit(CCallHelpers&, JSValueRegs) const;
     
     void dump(PrintStream&) const;
     void dumpInContext(PrintStream&, DumpContext*) const;
@@ -113,6 +129,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGLazyJSValue_h
-

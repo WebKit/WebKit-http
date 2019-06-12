@@ -2,7 +2,7 @@
 <html>
 <head>
 <script src="resources/audio-testing.js"></script>
-<script src="../resources/js-test-pre.js"></script>
+<script src="../resources/js-test.js"></script>
 </head>
 
 <body>
@@ -25,11 +25,6 @@ function checkResult(e)
 
 function runTest()
 {
-    if (window.testRunner) {
-        testRunner.dumpAsText();
-        testRunner.waitUntilDone();
-    }
-
     window.jsTestIsAsync = true;
 
     var context = new webkitOfflineAudioContext(1, renderLengthInFrames, sampleRate);
@@ -37,7 +32,7 @@ function runTest()
     var node;
 
     try {  
-        node = context.createJavaScriptNode(bufferSize, 0, 1);
+        node = context.createScriptProcessor(bufferSize, 0, 1);
         testPassed("Successfully created JavaScriptAudioNode.");
     } catch (e) {
         testFailed("Failed to create JavaScriptAudioNode.");
@@ -53,16 +48,13 @@ function runTest()
     node.onaudioprocess = function(e) { };
     source.connect(node);
     node.connect(context.destination);
-    source.noteOn(0);
+    source.start(0);
 
     context.oncomplete = checkResult;
     context.startRendering();
 }
 
 runTest();
-successfullyParsed = true;
 </script>
-    
-<script src="../resources/js-test-post.js"></script>
 </body>
 </html>

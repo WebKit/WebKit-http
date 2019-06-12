@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,55 +23,43 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DOMApplicationCache_h
-#define DOMApplicationCache_h
+#pragma once
 
-#include "ApplicationCacheHost.h"
 #include "DOMWindowProperty.h"
 #include "EventTarget.h"
-#include "ScriptWrappable.h"
-#include <wtf/Forward.h>
-#include <wtf/HashMap.h>
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
-#include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
 
+class ApplicationCacheHost;
 class Frame;
-class URL;
 
 class DOMApplicationCache final : public RefCounted<DOMApplicationCache>, public EventTargetWithInlineData, public DOMWindowProperty {
 public:
-    static Ref<DOMApplicationCache> create(Frame* frame) { return adoptRef(*new DOMApplicationCache(frame)); }
+    static Ref<DOMApplicationCache> create(Frame& frame) { return adoptRef(*new DOMApplicationCache(frame)); }
     virtual ~DOMApplicationCache() { ASSERT(!m_frame); }
 
-    virtual void disconnectFrameForDocumentSuspension() override;
-    virtual void reconnectFrameFromDocumentSuspension(Frame*) override;
-    virtual void willDestroyGlobalObjectInFrame() override;
-
     unsigned short status() const;
-    void update(ExceptionCode&);
-    void swapCache(ExceptionCode&);
+    ExceptionOr<void> update();
+    ExceptionOr<void> swapCache();
     void abort();
 
-    using RefCounted<DOMApplicationCache>::ref;
-    using RefCounted<DOMApplicationCache>::deref;
-
-    virtual EventTargetInterface eventTargetInterface() const override { return DOMApplicationCacheEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override;
-
-    static const AtomicString& toEventType(ApplicationCacheHost::EventID id);
+    using RefCounted::ref;
+    using RefCounted::deref;
 
 private:
-    explicit DOMApplicationCache(Frame*);
+    explicit DOMApplicationCache(Frame&);
 
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
+
+    EventTargetInterface eventTargetInterface() const final { return DOMApplicationCacheEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final;
+
+    void disconnectFrameForDocumentSuspension() final;
+    void reconnectFrameFromDocumentSuspension(Frame*) final;
+    void willDestroyGlobalObjectInFrame() final;
 
     ApplicationCacheHost* applicationCacheHost() const;
 };
 
 } // namespace WebCore
-
-#endif // DOMApplicationCache_h

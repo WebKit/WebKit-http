@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FunctionRareData_h
-#define FunctionRareData_h
+#pragma once
 
 #include "InternalFunctionAllocationProfile.h"
 #include "JSCell.h"
@@ -80,15 +79,23 @@ public:
 
     void clear(const char* reason);
 
-    void initializeObjectAllocationProfile(VM&, JSObject* prototype, size_t inlineCapacity);
+    void initializeObjectAllocationProfile(VM&, JSGlobalObject*, JSObject* prototype, size_t inlineCapacity);
 
     bool isObjectAllocationProfileInitialized() { return !m_objectAllocationProfile.isNull(); }
 
     Structure* internalFunctionAllocationStructure() { return m_internalFunctionAllocationProfile.structure(); }
-    Structure* createInternalFunctionAllocationStructureFromBase(VM& vm, JSObject* prototype, Structure* baseStructure)
+    Structure* createInternalFunctionAllocationStructureFromBase(VM& vm, JSGlobalObject* globalObject, JSObject* prototype, Structure* baseStructure)
     {
-        return m_internalFunctionAllocationProfile.createAllocationStructureFromBase(vm, this, prototype, baseStructure);
+        return m_internalFunctionAllocationProfile.createAllocationStructureFromBase(vm, globalObject, this, prototype, baseStructure);
     }
+
+    Structure* getBoundFunctionStructure() { return m_boundFunctionStructure.get(); }
+    void setBoundFunctionStructure(VM& vm, Structure* structure) { m_boundFunctionStructure.set(vm, this, structure); }
+
+    bool hasReifiedLength() const { return m_hasReifiedLength; }
+    void setHasReifiedLength() { m_hasReifiedLength = true; }
+    bool hasReifiedName() const { return m_hasReifiedName; }
+    void setHasReifiedName() { m_hasReifiedName = true; }
 
 protected:
     FunctionRareData(VM&);
@@ -114,8 +121,9 @@ private:
     ObjectAllocationProfile m_objectAllocationProfile;
     InlineWatchpointSet m_objectAllocationProfileWatchpoint;
     InternalFunctionAllocationProfile m_internalFunctionAllocationProfile;
+    WriteBarrier<Structure> m_boundFunctionStructure;
+    bool m_hasReifiedLength { false };
+    bool m_hasReifiedName { false };
 };
 
 } // namespace JSC
-
-#endif // FunctionRareData_h

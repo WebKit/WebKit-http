@@ -23,25 +23,69 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "UIKitSPI.h"
+#import "UIKitTestSPI.h"
 
 #import <CoreGraphics/CGGeometry.h>
+
+// Keys for sendEventStream:completionBlock:.
+extern NSString* const TopLevelEventInfoKey;
+extern NSString* const HIDEventInputType;
+extern NSString* const HIDEventTimeOffsetKey;
+extern NSString* const HIDEventTouchesKey;
+extern NSString* const HIDEventPhaseKey;
+extern NSString* const HIDEventInterpolateKey;
+extern NSString* const HIDEventTimestepKey;
+extern NSString* const HIDEventCoordinateSpaceKey;
+extern NSString* const HIDEventStartEventKey;
+extern NSString* const HIDEventEndEventKey;
+extern NSString* const HIDEventTouchIDKey;
+extern NSString* const HIDEventPressureKey;
+extern NSString* const HIDEventXKey;
+extern NSString* const HIDEventYKey;
+extern NSString* const HIDEventTwistKey;
+extern NSString* const HIDEventMajorRadiusKey;
+extern NSString* const HIDEventMinorRadiusKey;
+
+// Values for HIDEventInputType.
+extern NSString* const HIDEventInputTypeHand;
+extern NSString* const HIDEventInputTypeFinger;
+extern NSString* const HIDEventInputTypeStylus;
+
+// Values for HIDEventCoordinateSpaceKey.
+extern NSString* const HIDEventCoordinateSpaceTypeGlobal;
+extern NSString* const HIDEventCoordinateSpaceTypeContent;
+
+extern NSString* const HIDEventInterpolationTypeLinear;
+extern NSString* const HIDEventInterpolationTypeSimpleCurve;
+
+// Values for HIDEventPhaseKey.
+extern NSString* const HIDEventPhaseBegan;
+extern NSString* const HIDEventPhaseMoved;
+extern NSString* const HIDEventPhaseEnded;
+extern NSString* const HIDEventPhaseCanceled;
+
 
 @interface HIDEventGenerator : NSObject
 
 + (HIDEventGenerator *)sharedHIDEventGenerator;
 
 // Touches
-- (void)touchDown:(CGPoint)location;
-- (void)liftUp:(CGPoint)location;
-- (void)moveToPoints:(CGPoint*)locations touchCount:(NSUInteger)count duration:(NSTimeInterval)seconds;
 - (void)touchDown:(CGPoint)location touchCount:(NSUInteger)count completionBlock:(void (^)(void))completionBlock;
 - (void)liftUp:(CGPoint)location touchCount:(NSUInteger)count completionBlock:(void (^)(void))completionBlock;
+
+// Stylus
+- (void)stylusDownAtPoint:(CGPoint)location azimuthAngle:(CGFloat)azimuthAngle altitudeAngle:(CGFloat)altitudeAngle pressure:(CGFloat)pressure completionBlock:(void (^)(void))completionBlock;
+- (void)stylusMoveToPoint:(CGPoint)location azimuthAngle:(CGFloat)azimuthAngle altitudeAngle:(CGFloat)altitudeAngle pressure:(CGFloat)pressure completionBlock:(void (^)(void))completionBlock;
+- (void)stylusUpAtPoint:(CGPoint)location completionBlock:(void (^)(void))completionBlock;
+- (void)stylusTapAtPoint:(CGPoint)location azimuthAngle:(CGFloat)azimuthAngle altitudeAngle:(CGFloat)altitudeAngle pressure:(CGFloat)pressure completionBlock:(void (^)(void))completionBlock;
 
 // Taps
 - (void)tap:(CGPoint)location completionBlock:(void (^)(void))completionBlock;
 - (void)doubleTap:(CGPoint)location completionBlock:(void (^)(void))completionBlock;
 - (void)twoFingerTap:(CGPoint)location completionBlock:(void (^)(void))completionBlock;
+
+// Long Press
+- (void)longPress:(CGPoint)location completionBlock:(void (^)(void))completionBlock;
 
 // Drags
 - (void)dragWithStartPoint:(CGPoint)startLocation endPoint:(CGPoint)endLocation duration:(double)seconds completionBlock:(void (^)(void))completionBlock;
@@ -50,7 +94,11 @@
 - (void)pinchCloseWithStartPoint:(CGPoint)startLocation endPoint:(CGPoint)endLocation duration:(double)seconds completionBlock:(void (^)(void))completionBlock;
 - (void)pinchOpenWithStartPoint:(CGPoint)startLocation endPoint:(CGPoint)endLocation duration:(double)seconds completionBlock:(void (^)(void))completionBlock;
 
+// Event stream
+- (void)sendEventStream:(NSDictionary *)eventInfo completionBlock:(void (^)(void))completionBlock;
+
 - (void)markerEventReceived:(IOHIDEventRef)event;
+- (BOOL)checkForOutstandingCallbacks;
 
 // Keyboard
 - (void)keyPress:(NSString *)character completionBlock:(void (^)(void))completionBlock;

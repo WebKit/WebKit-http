@@ -45,7 +45,10 @@ std::unique_ptr<TextCodec> TextCodecUTF8::create(const TextEncoding&, const void
 
 void TextCodecUTF8::registerEncodingNames(EncodingNameRegistrar registrar)
 {
+    // From https://encoding.spec.whatwg.org.
     registrar("UTF-8", "UTF-8");
+    registrar("utf8", "UTF-8");
+    registrar("unicode-1-1-utf-8", "UTF-8");
 
     // Additional aliases that originally were present in the encoding
     // table in WebKit on Macintosh, and subsequently added by
@@ -53,7 +56,6 @@ void TextCodecUTF8::registerEncodingNames(EncodingNameRegistrar registrar)
     // and remove them.
     registrar("unicode11utf8", "UTF-8");
     registrar("unicode20utf8", "UTF-8");
-    registrar("utf8", "UTF-8");
     registrar("x-unicode20utf8", "UTF-8");
 }
 
@@ -341,7 +343,7 @@ String TextCodecUTF8::decode(const char* bytes, size_t length, bool flush, bool 
 
     buffer.shrink(destination - buffer.characters());
 
-    return String::adopt(buffer);
+    return String::adopt(WTFMove(buffer));
 
 upConvertTo16Bit:
     StringBuffer<UChar> buffer16(m_partialSequenceSize + length);
@@ -417,7 +419,7 @@ upConvertTo16Bit:
     
     buffer16.shrink(destination16 - buffer16.characters());
     
-    return String::adopt(buffer16);
+    return String::adopt(WTFMove(buffer16));
 }
 
 CString TextCodecUTF8::encode(const UChar* characters, size_t length, UnencodableHandling)

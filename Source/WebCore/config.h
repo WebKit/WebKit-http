@@ -30,12 +30,11 @@
 #endif
 
 #if PLATFORM(WIN) && !USE(WINGDI)
-#include <WebCore/WebCoreHeaderDetection.h>
+#include "WebCoreHeaderDetection.h"
 #endif
 
-#include <wtf/ExportMacros.h>
 #include "PlatformExportMacros.h"
-
+#include <pal/ExportMacros.h>
 #include <runtime/JSExportMacros.h>
 
 #ifdef __APPLE__
@@ -43,14 +42,6 @@
 #endif /* __APPLE__ */
 
 #if OS(WINDOWS)
-
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x601
-#endif
-
-#ifndef WINVER
-#define WINVER 0x0601
-#endif
 
 // CURL needs winsock, so don't prevent inclusion of it
 #if !USE(CURL)
@@ -89,11 +80,13 @@
 #if PLATFORM(WIN)
 #if PLATFORM(WIN_CAIRO)
 #undef USE_CG
-#define USE_CAIRO 1
 #define USE_CURL 1
 #ifndef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
 #endif
+#elif USE(DIRECT2D)
+#undef USE_CA
+#undef USE_CG
 #elif !USE(WINGDI)
 #define USE_CG 1
 #undef USE_CAIRO
@@ -101,7 +94,7 @@
 #endif
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(WPE)
 #define USE_NEW_THEME 1
 #endif
 
@@ -129,4 +122,3 @@ typedef float CGFloat;
 #endif
 
 #endif
-

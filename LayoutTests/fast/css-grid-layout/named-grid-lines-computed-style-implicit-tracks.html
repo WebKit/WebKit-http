@@ -1,72 +1,73 @@
 <!DOCTYPE HTML>
 <link href="resources/grid.css" rel="stylesheet">
+<link href="resources/grid-alignment.css" rel="stylesheet">
 <style>
 .grid {
     font: 50px/1 Ahem;
 }
 
 .singleNamedGridLines {
-    -webkit-grid-template-columns: [a] auto [b];
-    -webkit-grid-template-rows: [x] auto [y];
+    grid-template-columns: [a] auto [b];
+    grid-template-rows: [x] auto [y];
 }
 
 .multipleNamedGridLines {
-    -webkit-grid-template-columns: [a b c] auto [d e];
-    -webkit-grid-template-rows: [x y z] auto [v w];
+    grid-template-columns: [a b c] auto [d e];
+    grid-template-rows: [x y z] auto [v w];
 }
 </style>
 <script src="../../resources/js-test.js"></script>
 
-<div class="grid singleNamedGridLines" id="gridOneColumnSingle">
+<div class="grid singleNamedGridLines justifyContentStart" id="gridOneColumnSingle">
     <div>XXXX</div>
     <div>XXX</div>
     <div>XX</div>
     <div>X</div>
 </div>
 
-<div class="grid singleNamedGridLines" id="gridTwoColumnsSingle">
+<div class="grid singleNamedGridLines justifyContentStart" id="gridTwoColumnsSingle">
     <div class="firstRowAutoColumn">XXXX</div>
     <div class="firstRowAutoColumn">XXX</div>
     <div>XX</div>
     <div>X</div>
 </div>
 
-<div class="grid singleNamedGridLines" id="gridThreeColumnsSingle">
+<div class="grid singleNamedGridLines justifyContentStart" id="gridThreeColumnsSingle">
     <div class="firstRowAutoColumn">XXXX</div>
     <div class="firstRowAutoColumn">XXX</div>
     <div class="firstRowAutoColumn">XX</div>
     <div>X</div>
 </div>
 
-<div class="grid singleNamedGridLines" id="gridFourColumnsSingle">
+<div class="grid singleNamedGridLines justifyContentStart" id="gridFourColumnsSingle">
     <div class="firstRowAutoColumn">XXXX</div>
     <div class="firstRowAutoColumn">XXX</div>
     <div class="firstRowAutoColumn">XX</div>
     <div class="firstRowAutoColumn">X</div>
 </div>
 
-<div class="grid multipleNamedGridLines" id="gridOneColumnMultiple">
+<div class="grid multipleNamedGridLines justifyContentStart" id="gridOneColumnMultiple">
     <div>XXXX</div>
     <div>XXX</div>
     <div>XX</div>
     <div>X</div>
 </div>
 
-<div class="grid multipleNamedGridLines" id="gridTwoColumnsMultiple">
+<div class="grid multipleNamedGridLines justifyContentStart" id="gridTwoColumnsMultiple">
     <div class="firstRowAutoColumn">XXXX</div>
     <div class="firstRowAutoColumn">XXX</div>
     <div>XX</div>
     <div>X</div>
 </div>
 
-<div class="grid multipleNamedGridLines" id="gridThreeColumnsMultiple">
+<div class="grid multipleNamedGridLines justifyContentStart" id="gridThreeColumnsMultiple">
     <div class="firstRowAutoColumn">XXXX</div>
     <div class="firstRowAutoColumn">XXX</div>
     <div class="firstRowAutoColumn">XX</div>
     <div>X</div>
 </div>
 
-<div class="grid multipleNamedGridLines" id="gridFourColumnsMultiple">
+<div class="grid multipleNamedGridLines justifyContentStart" id="gridFourColumnsMultiple">
     <div class="firstRowAutoColumn">XXXX</div>
     <div class="firstRowAutoColumn">XXX</div>
     <div class="firstRowAutoColumn">XX</div>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2008, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -94,6 +94,9 @@ ObjcField::ObjcField(CFStringRef name)
 
 JSValue ObjcField::valueFromInstance(ExecState* exec, const Instance* instance) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue result = jsUndefined();
     
     id targetObject = (static_cast<const ObjcInstance*>(instance))->getObject();
@@ -109,7 +112,7 @@ JSValue ObjcField::valueFromInstance(ExecState* exec, const Instance* instance) 
         }
     } @catch(NSException* localException) {
         JSLockHolder lock(exec);
-        throwError(exec, [localException reason]);
+        throwError(exec, scope, [localException reason]);
     }
 
     // Work around problem in some versions of GCC where result gets marked volatile and
@@ -125,8 +128,11 @@ static id convertValueToObjcObject(ExecState* exec, JSValue value)
     return [webScriptObjectClass() _convertValueToObjcValue:value originRootObject:rootObject.get() rootObject:rootObject.get()];
 }
 
-void ObjcField::setValueToInstance(ExecState* exec, const Instance* instance, JSValue aValue) const
+bool ObjcField::setValueToInstance(ExecState* exec, const Instance* instance, JSValue aValue) const
 {
+    JSC::VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     id targetObject = (static_cast<const ObjcInstance*>(instance))->getObject();
     id value = convertValueToObjcObject(exec, aValue);
 
@@ -138,9 +144,11 @@ void ObjcField::setValueToInstance(ExecState* exec, const Instance* instance, JS
             JSLockHolder lock(exec);
             ObjcInstance::moveGlobalExceptionToExecState(exec);
         }
+        return true;
     } @catch(NSException* localException) {
         JSLockHolder lock(exec);
-        throwError(exec, [localException reason]);
+        throwError(exec, scope, [localException reason]);
+        return false;
     }
 }
 
@@ -152,16 +160,19 @@ ObjcArray::ObjcArray(ObjectStructPtr a, RefPtr<RootObject>&& rootObject)
 {
 }
 
-void ObjcArray::setValueAt(ExecState* exec, unsigned int index, JSValue aValue) const
+bool ObjcArray::setValueAt(ExecState* exec, unsigned int index, JSValue aValue) const
 {
+    JSC::VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (![_array.get() respondsToSelector:@selector(insertObject:atIndex:)]) {
-        exec->vm().throwException(exec, createTypeError(exec, "Array is not mutable."));
-        return;
+        throwTypeError(exec, scope, ASCIILiteral("Array is not mutable."));
+        return false;
     }
 
     if (index > [_array.get() count]) {
-        exec->vm().throwException(exec, createRangeError(exec, "Index exceeds array size."));
-        return;
+        throwException(exec, scope, createRangeError(exec, "Index exceeds array size."));
+        return false;
     }
     
     // Always try to convert the value to an ObjC object, so it can be placed in the
@@ -170,21 +181,26 @@ void ObjcArray::setValueAt(ExecState* exec, unsigned int index, JSValue aValue) 
 
     @try {
         [_array.get() insertObject:oValue.objectValue atIndex:index];
+        return true;
     } @catch(NSException* localException) {
-        exec->vm().throwException(exec, createError(exec, "Objective-C exception."));
+        throwException(exec, scope, createError(exec, "Objective-C exception."));
+        return false;
     }
 }
 
 JSValue ObjcArray::valueAt(ExecState* exec, unsigned int index) const
 {
+    JSC::VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (index > [_array.get() count])
-        return exec->vm().throwException(exec, createRangeError(exec, "Index exceeds array size."));
+        return throwException(exec, scope, createRangeError(exec, "Index exceeds array size."));
     @try {
         id obj = [_array.get() objectAtIndex:index];
         if (obj)
             return convertObjcValueToValue (exec, &obj, ObjcObjectType, m_rootObject.get());
     } @catch(NSException* localException) {
-        return exec->vm().throwException(exec, createError(exec, "Objective-C exception."));
+        return throwException(exec, scope, createError(exec, "Objective-C exception."));
     }
     return jsUndefined();
 }
@@ -194,7 +210,7 @@ unsigned int ObjcArray::getLength() const
     return [_array.get() count];
 }
 
-const ClassInfo ObjcFallbackObjectImp::s_info = { "ObjcFallbackObject", &Base::s_info, 0, CREATE_METHOD_TABLE(ObjcFallbackObjectImp) };
+const ClassInfo ObjcFallbackObjectImp::s_info = { "ObjcFallbackObject", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ObjcFallbackObjectImp) };
 
 ObjcFallbackObjectImp::ObjcFallbackObjectImp(JSGlobalObject* globalObject, Structure* structure, ObjcInstance* i, const String& propertyName)
     : JSDestructibleObject(globalObject->vm(), structure)
@@ -210,8 +226,9 @@ void ObjcFallbackObjectImp::destroy(JSCell* cell)
 
 void ObjcFallbackObjectImp::finishCreation(JSGlobalObject* globalObject)
 {
-    Base::finishCreation(globalObject->vm());
-    ASSERT(inherits(info()));
+    VM& vm = globalObject->vm();
+    Base::finishCreation(vm);
+    ASSERT(inherits(vm, info()));
 }
 
 bool ObjcFallbackObjectImp::getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot& slot)
@@ -221,15 +238,19 @@ bool ObjcFallbackObjectImp::getOwnPropertySlot(JSObject*, ExecState*, PropertyNa
     return true;
 }
 
-void ObjcFallbackObjectImp::put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&)
+bool ObjcFallbackObjectImp::put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&)
 {
+    return false;
 }
 
 static EncodedJSValue JSC_HOST_CALL callObjCFallbackObject(ExecState* exec)
 {
+    JSC::VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(ObjCRuntimeObject::info()))
-        return throwVMTypeError(exec);
+    if (!thisValue.inherits(vm, ObjCRuntimeObject::info()))
+        return throwVMTypeError(exec, scope);
 
     JSValue result = jsUndefined();
 
@@ -237,7 +258,7 @@ static EncodedJSValue JSC_HOST_CALL callObjCFallbackObject(ExecState* exec)
     ObjcInstance* objcInstance = runtimeObject->getInternalObjCInstance();
 
     if (!objcInstance)
-        return JSValue::encode(RuntimeObject::throwInvalidAccessError(exec));
+        return JSValue::encode(RuntimeObject::throwInvalidAccessError(exec, scope));
     
     objcInstance->begin();
 
@@ -246,7 +267,7 @@ static EncodedJSValue JSC_HOST_CALL callObjCFallbackObject(ExecState* exec)
     if ([targetObject respondsToSelector:@selector(invokeUndefinedMethodFromWebScript:withArguments:)]){
         ObjcClass* objcClass = static_cast<ObjcClass*>(objcInstance->getClass());
         std::unique_ptr<ObjcMethod> fallbackMethod(std::make_unique<ObjcMethod>(objcClass->isa(), @selector(invokeUndefinedMethodFromWebScript:withArguments:)));
-        const String& nameIdentifier = static_cast<ObjcFallbackObjectImp*>(exec->callee())->propertyName();
+        const String& nameIdentifier = static_cast<ObjcFallbackObjectImp*>(exec->jsCallee())->propertyName();
         fallbackMethod->setJavaScriptName(nameIdentifier.createCFString().get());
         result = objcInstance->invokeObjcMethod(exec, fallbackMethod.get());
     }
@@ -261,9 +282,9 @@ CallType ObjcFallbackObjectImp::getCallData(JSCell* cell, CallData& callData)
     ObjcFallbackObjectImp* thisObject = jsCast<ObjcFallbackObjectImp*>(cell);
     id targetObject = thisObject->_instance->getObject();
     if (![targetObject respondsToSelector:@selector(invokeUndefinedMethodFromWebScript:withArguments:)])
-        return CallTypeNone;
+        return CallType::None;
     callData.native.function = callObjCFallbackObject;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 bool ObjcFallbackObjectImp::deleteProperty(JSCell*, ExecState*, PropertyName)

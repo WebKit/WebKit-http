@@ -29,7 +29,6 @@
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 #import "WebBaseNetscapePluginView.h"
-#import "WebNetscapeContainerCheckPrivate.h"
 #import <WebKitLegacy/npfunctions.h>
 #import <WebKitLegacy/npapi.h>
 #import <wtf/HashMap.h>
@@ -53,14 +52,16 @@ typedef union PluginPort {
 // for the plug-in to function correctly. (rdar://problem/4699455)
 #define WebNetscapePluginView WebNetscapePluginDocumentView
 
-@interface WebNetscapePluginView : WebBaseNetscapePluginView<WebPluginManualLoader, WebPluginContainerCheckController>
+@interface WebNetscapePluginView : WebBaseNetscapePluginView<WebPluginManualLoader>
 {
 @package
     RefPtr<WebNetscapePluginStream> _manualStream;
     RetainPtr<CALayer> _pluginLayer;
     unsigned _dataLengthReceived;
     RetainPtr<NSError> _error;
-        
+
+    NPObject* _elementNPObject;
+
     unsigned argsCount;
     char **cAttributes;
     char **cValues;
@@ -96,9 +97,6 @@ typedef union PluginPort {
     
     BOOL _isFlash;
     BOOL _isSilverlight;
-    
-    NSMutableDictionary *_containerChecksInProgress;
-    uint32_t _currentContainerCheckRequestID;
 }
 
 + (WebNetscapePluginView *)currentPluginView;
@@ -112,7 +110,7 @@ typedef union PluginPort {
       attributeKeys:(NSArray *)keys
     attributeValues:(NSArray *)values
        loadManually:(BOOL)loadManually
-            element:(PassRefPtr<WebCore::HTMLPlugInElement>)element;
+            element:(RefPtr<WebCore::HTMLPlugInElement>&&)element;
 
 
 - (NPP)plugin;
@@ -143,9 +141,6 @@ typedef union PluginPort {
 - (void)handleMouseEntered:(NSEvent *)event;
 - (void)handleMouseExited:(NSEvent *)event;
 
-- (uint32_t)checkIfAllowedToLoadURL:(const char*)urlCString frame:(const char*)frameNameCString callbackFunc:(void (*)(NPP npp, uint32_t checkID, NPBool allowed, void* context))callbackFunc context:(void*)context;
-- (void)cancelCheckIfAllowedToLoadURL:(uint32_t)checkID;
-
 @end
 
 @interface WebNetscapePluginView (WebInternal)
@@ -175,10 +170,7 @@ typedef union PluginPort {
 - (NPError)getAuthenticationInfoWithProtocol:(const char*) protocol host:(const char*)host port:(int32_t)port scheme:(const char*)scheme realm:(const char*)realm
                                     username:(char**)username usernameLength:(uint32_t*)usernameLength 
                                     password:(char**)password passwordLength:(uint32_t*)passwordLength;
-- (char*)resolveURL:(const char*)url forTarget:(const char*)target;
 @end
-
-WKNBrowserContainerCheckFuncs *browserContainerCheckFuncs();
 
 #endif
 

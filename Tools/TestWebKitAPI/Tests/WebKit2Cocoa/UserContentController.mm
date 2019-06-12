@@ -27,10 +27,14 @@
 
 #import "PlatformUtilities.h"
 #import "Test.h"
-#import <WebKit/WebKit.h>
+#import "TestNavigationDelegate.h"
 #import <WebKit/WKProcessPoolPrivate.h>
 #import <WebKit/WKUserContentControllerPrivate.h>
+#import <WebKit/WKUserScript.h>
+#import <WebKit/WKUserScriptPrivate.h>
+#import <WebKit/WebKit.h>
 #import <WebKit/_WKProcessPoolConfiguration.h>
+#import <WebKit/_WKUserContentWorld.h>
 #import <WebKit/_WKUserStyleSheet.h>
 #import <wtf/RetainPtr.h>
 
@@ -74,14 +78,10 @@ TEST(WKUserContentController, ScriptMessageHandlerBasicPost)
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
 
     [webView loadRequest:request];
-
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
+    [webView _test_waitForDidFinishNavigation];
 
     [webView evaluateJavaScript:@"window.webkit.messageHandlers.testHandler.postMessage('Hello')" completionHandler:nil];
 
@@ -89,6 +89,55 @@ TEST(WKUserContentController, ScriptMessageHandlerBasicPost)
     receivedScriptMessage = false;
 
     EXPECT_WK_STREQ(@"Hello", (NSString *)[lastScriptMessage body]);
+}
+
+TEST(WKUserContentController, ScriptMessageHandlerBasicPostIsolatedWorld)
+{
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+
+    RetainPtr<ScriptMessageHandler> handler = adoptNS([[ScriptMessageHandler alloc] init]);
+    RetainPtr<WKUserScript> userScript = adoptNS([[WKUserScript alloc] _initWithSource:@"window.webkit.messageHandlers.testHandler.postMessage('Hello')" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [[configuration userContentController] _addScriptMessageHandler:handler.get() name:@"testHandler" userContentWorld:world.get()];
+    [[configuration userContentController] addUserScript:userScript.get()];
+
+    RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+
+    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
+    [webView setNavigationDelegate:delegate.get()];
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+
+    isDoneWithNavigation = false;
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    receivedScriptMessage = false;
+
+    EXPECT_WK_STREQ(@"Hello", (NSString *)[lastScriptMessage body]);
+
+    if (!isDoneWithNavigation)
+        TestWebKitAPI::Util::run(&isDoneWithNavigation);
+
+    __block bool isDoneEvaluatingScript = false;
+    __block NSString *resultValue = @"";
+    [webView evaluateJavaScript:
+        @"var result;"
+         "if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.testHandler) {"
+         "    result = { 'result': 'FAIL' };"
+         "} else {"
+         "    result = { 'result': 'PASS' };"
+         "} " 
+         "result;"
+         completionHandler:^(id value, NSError *error) {
+            resultValue = [((NSDictionary *)value)[@"result"] copy];
+            isDoneEvaluatingScript = true;
+        }];
+
+    TestWebKitAPI::Util::run(&isDoneEvaluatingScript);
+
+    EXPECT_WK_STREQ(@"PASS", resultValue);
 }
 
 TEST(WKUserContentController, ScriptMessageHandlerBasicRemove)
@@ -101,14 +150,10 @@ TEST(WKUserContentController, ScriptMessageHandlerBasicRemove)
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
 
     [webView loadRequest:request];
-
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
+    [webView _test_waitForDidFinishNavigation];
 
     // Test that handlerToRemove was succesfully added.
     [webView evaluateJavaScript:
@@ -149,14 +194,10 @@ TEST(WKUserContentController, ScriptMessageHandlerCallRemovedHandler)
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
 
     [webView loadRequest:request];
-
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
+    [webView _test_waitForDidFinishNavigation];
 
     [webView evaluateJavaScript:@"var handlerToRemove = window.webkit.messageHandlers.handlerToRemove;" completionHandler:nil];
 
@@ -184,12 +225,9 @@ static RetainPtr<WKWebView> webViewForScriptMessageHandlerMultipleHandlerRemoval
     [[configurationCopy userContentController] addScriptMessageHandler:handler.get() name:@"handlerToRemove"];
     [[configurationCopy userContentController] addScriptMessageHandler:handler.get() name:@"handlerToPost"];
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configurationCopy.get()]);
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
     [webView loadRequest:request];
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
-    isDoneWithNavigation = false;
+    [webView _test_waitForDidFinishNavigation];
 
     return webView;
 }
@@ -229,14 +267,9 @@ TEST(WKUserContentController, ScriptMessageHandlerWithNavigation)
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
     [webView loadRequest:request];
-
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
-    isDoneWithNavigation = false;
+    [webView _test_waitForDidFinishNavigation];
 
     [webView evaluateJavaScript:@"window.webkit.messageHandlers.testHandler.postMessage('First Message')" completionHandler:nil];
 
@@ -247,10 +280,8 @@ TEST(WKUserContentController, ScriptMessageHandlerWithNavigation)
     receivedScriptMessage = false;
     lastScriptMessage = nullptr;
 
-
     [webView loadRequest:request];
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
-    isDoneWithNavigation = false;
+    [webView _test_waitForDidFinishNavigation];
 
     [webView evaluateJavaScript:@"window.webkit.messageHandlers.testHandler.postMessage('Second Message')" completionHandler:nil];
 
@@ -259,6 +290,40 @@ TEST(WKUserContentController, ScriptMessageHandlerWithNavigation)
     EXPECT_WK_STREQ(@"Second Message", (NSString *)[lastScriptMessage body]);    
 }
 #endif
+
+TEST(WKUserContentController, ScriptMessageHandlerReplaceWithSameName)
+{
+    RetainPtr<ScriptMessageHandler> handler = adoptNS([[ScriptMessageHandler alloc] init]);
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    RetainPtr<WKUserContentController> userContentController = [configuration userContentController];
+    [userContentController addScriptMessageHandler:handler.get() name:@"handlerToReplace"];
+
+    RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+
+    // Test that handlerToReplace was succesfully added.
+    [webView evaluateJavaScript:@"window.webkit.messageHandlers.handlerToReplace.postMessage('PASS1');" completionHandler:nil];
+
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    receivedScriptMessage = false;
+
+    EXPECT_WK_STREQ(@"PASS1", (NSString *)[lastScriptMessage body]);
+
+    [userContentController removeScriptMessageHandlerForName:@"handlerToReplace"];
+    [userContentController addScriptMessageHandler:handler.get() name:@"handlerToReplace"];
+
+    // Test that handlerToReplace still works.
+    [webView evaluateJavaScript:@"window.webkit.messageHandlers.handlerToReplace.postMessage('PASS2');" completionHandler:nil];
+
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    receivedScriptMessage = false;
+
+    EXPECT_WK_STREQ(@"PASS2", (NSString *)[lastScriptMessage body]);
+}
 
 static NSString *styleSheetSource = @"body { background-color: green !important; }";
 static NSString *backgroundColorScript = @"window.getComputedStyle(document.body, null).getPropertyValue('background-color')";
@@ -290,26 +355,24 @@ TEST(WKUserContentController, AddUserStyleSheetBeforeCreatingView)
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     [webView loadHTMLString:@"<body style='background-color: red;'></body>" baseURL:nil];
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
-    isDoneWithNavigation = false;
+    [webView _test_waitForDidFinishNavigation];
 
     expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, greenInRGB);
+}
+
+TEST(WKUserContentController, NonCanonicalizedURL)
+{
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] baseURL:[[NSURL alloc] initWithString:@"http://CamelCase/"] userContentWorld:world.get()]);
 }
 
 TEST(WKUserContentController, AddUserStyleSheetAfterCreatingView)
 {
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     [webView loadHTMLString:@"<body style='background-color: red;'></body>" baseURL:nil];
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
-    isDoneWithNavigation = false;
+    [webView _test_waitForDidFinishNavigation];
 
     expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, redInRGB);
 
@@ -328,12 +391,8 @@ TEST(WKUserContentController, UserStyleSheetAffectingOnlyMainFrame)
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     [webView loadHTMLString:@"<body style='background-color: red;'><iframe></iframe></body>" baseURL:nil];
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
-    isDoneWithNavigation = false;
+    [webView _test_waitForDidFinishNavigation];
 
     // The main frame should be affected.
     expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, greenInRGB);
@@ -351,18 +410,186 @@ TEST(WKUserContentController, UserStyleSheetAffectingAllFrames)
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
-    RetainPtr<SimpleNavigationDelegate> delegate = adoptNS([[SimpleNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     [webView loadHTMLString:@"<body style='background-color: red;'><iframe></iframe></body>" baseURL:nil];
-    TestWebKitAPI::Util::run(&isDoneWithNavigation);
-    isDoneWithNavigation = false;
+    [webView _test_waitForDidFinishNavigation];
 
     // The main frame should be affected.
     expectScriptEvaluatesToColor(webView.get(), backgroundColorScript, greenInRGB);
 
     // The subframe should also be affected.
     expectScriptEvaluatesToColor(webView.get(), frameBackgroundColorScript, greenInRGB);
+}
+
+TEST(WKUserContentController, UserStyleSheetRemove)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO]);
+    [userContentController _addUserStyleSheet:styleSheet.get()];
+    
+    EXPECT_EQ(1u, [userContentController _userStyleSheets].count);
+    EXPECT_EQ(styleSheet.get(), [userContentController _userStyleSheets][0]);
+
+    [userContentController _removeUserStyleSheet:styleSheet.get()];
+
+    EXPECT_EQ(0u, [userContentController _userStyleSheets].count);
+}
+
+TEST(WKUserContentController, UserStyleSheetRemoveAll)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO]);
+    RetainPtr<_WKUserStyleSheet> styleSheetAssociatedWithWorld = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    
+    [userContentController _addUserStyleSheet:styleSheet.get()];
+    [userContentController _addUserStyleSheet:styleSheetAssociatedWithWorld.get()];
+    
+    EXPECT_EQ(2u, [userContentController _userStyleSheets].count);
+    EXPECT_EQ(styleSheet.get(), [userContentController _userStyleSheets][0]);
+    EXPECT_EQ(styleSheetAssociatedWithWorld.get(), [userContentController _userStyleSheets][1]);
+
+    [userContentController _removeAllUserStyleSheets];
+
+    EXPECT_EQ(0u, [userContentController _userStyleSheets].count);
+}
+
+TEST(WKUserContentController, UserStyleSheetRemoveAllByWorld)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO]);
+    RetainPtr<_WKUserStyleSheet> styleSheetAssociatedWithWorld = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    RetainPtr<_WKUserStyleSheet> styleSheetAssociatedWithWorld2 = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    
+    [userContentController _addUserStyleSheet:styleSheet.get()];
+    [userContentController _addUserStyleSheet:styleSheetAssociatedWithWorld.get()];
+    [userContentController _addUserStyleSheet:styleSheetAssociatedWithWorld2.get()];
+    
+    EXPECT_EQ(3u, [userContentController _userStyleSheets].count);
+    EXPECT_EQ(styleSheet.get(), [userContentController _userStyleSheets][0]);
+    EXPECT_EQ(styleSheetAssociatedWithWorld.get(), [userContentController _userStyleSheets][1]);
+    EXPECT_EQ(styleSheetAssociatedWithWorld2.get(), [userContentController _userStyleSheets][2]);
+
+    [userContentController _removeAllUserStyleSheetsAssociatedWithUserContentWorld:world.get()];
+
+    EXPECT_EQ(1u, [userContentController _userStyleSheets].count);
+    EXPECT_EQ(styleSheet.get(), [userContentController _userStyleSheets][0]);
+}
+
+TEST(WKUserContentController, UserStyleSheetRemoveAllByNormalWorld)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+
+    RetainPtr<_WKUserStyleSheet> styleSheet = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO]);
+    RetainPtr<_WKUserStyleSheet> styleSheetAssociatedWithWorld = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    RetainPtr<_WKUserStyleSheet> styleSheetAssociatedWithWorld2 = adoptNS([[_WKUserStyleSheet alloc] initWithSource:styleSheetSource forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    
+    [userContentController _addUserStyleSheet:styleSheet.get()];
+    [userContentController _addUserStyleSheet:styleSheetAssociatedWithWorld.get()];
+    [userContentController _addUserStyleSheet:styleSheetAssociatedWithWorld2.get()];
+    
+    EXPECT_EQ(3u, [userContentController _userStyleSheets].count);
+    EXPECT_EQ(styleSheet.get(), [userContentController _userStyleSheets][0]);
+    EXPECT_EQ(styleSheetAssociatedWithWorld.get(), [userContentController _userStyleSheets][1]);
+    EXPECT_EQ(styleSheetAssociatedWithWorld2.get(), [userContentController _userStyleSheets][2]);
+
+    [userContentController _removeAllUserStyleSheetsAssociatedWithUserContentWorld:[_WKUserContentWorld normalWorld]];
+
+    EXPECT_EQ(2u, [userContentController _userStyleSheets].count);
+    EXPECT_EQ(styleSheetAssociatedWithWorld.get(), [userContentController _userStyleSheets][0]);
+    EXPECT_EQ(styleSheetAssociatedWithWorld2.get(), [userContentController _userStyleSheets][1]);
+}
+
+TEST(WKUserContentController, UserScriptRemove)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+    RetainPtr<WKUserScript> userScript = adoptNS([[WKUserScript alloc] initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO]);
+    [userContentController addUserScript:userScript.get()];
+    
+    EXPECT_EQ(1u, [userContentController userScripts].count);
+    EXPECT_EQ(userScript.get(), [userContentController userScripts][0]);
+
+    [userContentController _removeUserScript:userScript.get()];
+
+    EXPECT_EQ(0u, [userContentController userScripts].count);
+}
+
+TEST(WKUserContentController, UserScriptRemoveAll)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+
+    RetainPtr<WKUserScript> userScript = adoptNS([[WKUserScript alloc] initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO]);
+    RetainPtr<WKUserScript> userScriptAssociatedWithWorld = adoptNS([[WKUserScript alloc] _initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    
+    [userContentController addUserScript:userScript.get()];
+    [userContentController addUserScript:userScriptAssociatedWithWorld.get()];
+    
+    EXPECT_EQ(2u, [userContentController userScripts].count);
+    EXPECT_EQ(userScript.get(), [userContentController userScripts][0]);
+    EXPECT_EQ(userScriptAssociatedWithWorld.get(), [userContentController userScripts][1]);
+
+    [userContentController removeAllUserScripts];
+
+    EXPECT_EQ(0u, [userContentController userScripts].count);
+}
+
+TEST(WKUserContentController, UserScriptRemoveAllByWorld)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+
+    RetainPtr<WKUserScript> userScript = adoptNS([[WKUserScript alloc] initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO]);
+    RetainPtr<WKUserScript> userScriptAssociatedWithWorld = adoptNS([[WKUserScript alloc] _initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    RetainPtr<WKUserScript> userScriptAssociatedWithWorld2 = adoptNS([[WKUserScript alloc] _initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    
+    [userContentController addUserScript:userScript.get()];
+    [userContentController addUserScript:userScriptAssociatedWithWorld.get()];
+    [userContentController addUserScript:userScriptAssociatedWithWorld2.get()];
+    
+    EXPECT_EQ(3u, [userContentController userScripts].count);
+    EXPECT_EQ(userScript.get(), [userContentController userScripts][0]);
+    EXPECT_EQ(userScriptAssociatedWithWorld.get(), [userContentController userScripts][1]);
+    EXPECT_EQ(userScriptAssociatedWithWorld2.get(), [userContentController userScripts][2]);
+
+    [userContentController _removeAllUserScriptsAssociatedWithUserContentWorld:world.get()];
+
+    EXPECT_EQ(1u, [userContentController userScripts].count);
+    EXPECT_EQ(userScript.get(), [userContentController userScripts][0]);
+}
+
+TEST(WKUserContentController, UserScriptRemoveAllByNormalWorld)
+{
+    RetainPtr<WKUserContentController> userContentController = adoptNS([[WKUserContentController alloc] init]);
+
+    RetainPtr<_WKUserContentWorld> world = [_WKUserContentWorld worldWithName:@"TestWorld"];
+
+    RetainPtr<WKUserScript> userScript = adoptNS([[WKUserScript alloc] initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO]);
+    RetainPtr<WKUserScript> userScriptAssociatedWithWorld = adoptNS([[WKUserScript alloc] _initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    RetainPtr<WKUserScript> userScriptAssociatedWithWorld2 = adoptNS([[WKUserScript alloc] _initWithSource:@"" injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:NO legacyWhitelist:@[] legacyBlacklist:@[] userContentWorld:world.get()]);
+    
+    [userContentController addUserScript:userScript.get()];
+    [userContentController addUserScript:userScriptAssociatedWithWorld.get()];
+    [userContentController addUserScript:userScriptAssociatedWithWorld2.get()];
+    
+    EXPECT_EQ(3u, [userContentController userScripts].count);
+    EXPECT_EQ(userScript.get(), [userContentController userScripts][0]);
+    EXPECT_EQ(userScriptAssociatedWithWorld.get(), [userContentController userScripts][1]);
+    EXPECT_EQ(userScriptAssociatedWithWorld2.get(), [userContentController userScripts][2]);
+
+    [userContentController _removeAllUserScriptsAssociatedWithUserContentWorld:[_WKUserContentWorld normalWorld]];
+
+    EXPECT_EQ(2u, [userContentController userScripts].count);
+    EXPECT_EQ(userScriptAssociatedWithWorld.get(), [userContentController userScripts][0]);
+    EXPECT_EQ(userScriptAssociatedWithWorld2.get(), [userContentController userScripts][1]);
 }
 
 #endif

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
- * Copyright (C) 2015 Ericsson AB. All rights reserved.
+ * Copyright (C) 2015, 2016 Ericsson AB. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,61 +31,34 @@
  */
 
 #include "config.h"
-
-#if ENABLE(MEDIA_STREAM)
-
 #include "RTCIceCandidate.h"
 
-#include "Dictionary.h"
+#if ENABLE(WEB_RTC)
+
 #include "ExceptionCode.h"
 
 namespace WebCore {
 
-RefPtr<RTCIceCandidate> RTCIceCandidate::create(const Dictionary& dictionary, ExceptionCode& ec)
-{
-    String candidate;
-    bool ok = dictionary.get("candidate", candidate);
-    if (ok && candidate.isEmpty()) {
-        ec = TYPE_MISMATCH_ERR;
-        return nullptr;
-    }
-
-    String sdpMid;
-    ok = dictionary.get("sdpMid", sdpMid);
-    if (ok && sdpMid.isEmpty()) {
-        ec = TYPE_MISMATCH_ERR;
-        return nullptr;
-    }
-
-    String tempLineIndex;
-    unsigned short sdpMLineIndex = 0;
-    // First we check if the property exists in the Dictionary.
-    ok = dictionary.get("sdpMLineIndex", tempLineIndex);
-    // Then we try to convert it to a number and check if it was successful.
-    if (ok) {
-        bool intConversionOk;
-        sdpMLineIndex = tempLineIndex.toUIntStrict(&intConversionOk);
-        if (!intConversionOk) {
-            ec = TYPE_MISMATCH_ERR;
-            return nullptr;
-        }
-    }
-
-    return adoptRef(new RTCIceCandidate(candidate, sdpMid, sdpMLineIndex));
-}
-
-Ref<RTCIceCandidate> RTCIceCandidate::create(const String& candidate, const String& sdpMid, unsigned short sdpMLineIndex)
-{
-    return adoptRef(*new RTCIceCandidate(candidate, sdpMid, sdpMLineIndex));
-}
-
-RTCIceCandidate::RTCIceCandidate(const String& candidate, const String& sdpMid, unsigned short sdpMLineIndex)
+inline RTCIceCandidate::RTCIceCandidate(const String& candidate, const String& sdpMid, std::optional<unsigned short> sdpMLineIndex)
     : m_candidate(candidate)
     , m_sdpMid(sdpMid)
     , m_sdpMLineIndex(sdpMLineIndex)
 {
+    ASSERT(!sdpMid.isNull() || sdpMLineIndex);
+}
+
+ExceptionOr<Ref<RTCIceCandidate>> RTCIceCandidate::create(const Init& dictionary)
+{
+    if (dictionary.sdpMid.isNull() && !dictionary.sdpMLineIndex)
+        return Exception { TypeError };
+    return create(dictionary.candidate, dictionary.sdpMid, dictionary.sdpMLineIndex);
+}
+
+Ref<RTCIceCandidate> RTCIceCandidate::create(const String& candidate, const String& sdpMid, std::optional<unsigned short> sdpMLineIndex)
+{
+    return adoptRef(*new RTCIceCandidate(candidate, sdpMid, sdpMLineIndex));
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(WEB_RTC)

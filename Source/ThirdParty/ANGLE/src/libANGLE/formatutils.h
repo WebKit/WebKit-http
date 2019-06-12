@@ -9,16 +9,32 @@
 #ifndef LIBANGLE_FORMATUTILS_H_
 #define LIBANGLE_FORMATUTILS_H_
 
-#include "libANGLE/Caps.h"
-#include "libANGLE/angletypes.h"
+#include <cstddef>
+#include <ostream>
+#include <stdint.h>
 
 #include "angle_gl.h"
-
-#include <cstddef>
-#include <stdint.h>
+#include "libANGLE/Caps.h"
+#include "libANGLE/Error.h"
+#include "libANGLE/Version.h"
+#include "libANGLE/angletypes.h"
 
 namespace gl
 {
+struct VertexAttribute;
+
+struct FormatType final
+{
+    FormatType();
+    FormatType(GLenum format_, GLenum type_);
+    FormatType(const FormatType &other) = default;
+    FormatType &operator=(const FormatType &other) = default;
+
+    bool operator<(const FormatType &other) const;
+
+    GLenum format;
+    GLenum type;
+};
 
 struct Type
 {
@@ -33,6 +49,44 @@ const Type &GetTypeInfo(GLenum type);
 struct InternalFormat
 {
     InternalFormat();
+
+    GLuint computePixelBytes(GLenum formatType) const;
+
+    ErrorOrResult<GLuint> computeRowPitch(GLenum formatType,
+                                          GLsizei width,
+                                          GLint alignment,
+                                          GLint rowLength) const;
+    ErrorOrResult<GLuint> computeDepthPitch(GLsizei height,
+                                            GLint imageHeight,
+                                            GLuint rowPitch) const;
+    ErrorOrResult<GLuint> computeDepthPitch(GLenum formatType,
+                                            GLsizei width,
+                                            GLsizei height,
+                                            GLint alignment,
+                                            GLint rowLength,
+                                            GLint imageHeight) const;
+
+    ErrorOrResult<GLuint> computeCompressedImageSize(GLenum formatType,
+                                                     const Extents &size) const;
+
+    ErrorOrResult<GLuint> computeSkipBytes(GLuint rowPitch,
+                                           GLuint depthPitch,
+                                           const PixelStoreStateBase &state,
+                                           bool is3D) const;
+
+    ErrorOrResult<GLuint> computePackUnpackEndByte(GLenum formatType,
+                                                       const Extents &size,
+                                                       const PixelStoreStateBase &state,
+                                                       bool is3D) const;
+
+    bool isLUMA() const;
+    GLenum getReadPixelsFormat() const;
+    GLenum getReadPixelsType() const;
+
+    bool operator==(const InternalFormat &other) const;
+    bool operator!=(const InternalFormat &other) const;
+
+    GLenum internalFormat;
 
     GLuint redBits;
     GLuint greenBits;
@@ -60,15 +114,40 @@ struct InternalFormat
     GLenum componentType;
     GLenum colorEncoding;
 
-    typedef bool (*SupportCheckFunction)(GLuint, const Extensions &);
+    typedef bool (*SupportCheckFunction)(const Version &, const Extensions &);
     SupportCheckFunction textureSupport;
     SupportCheckFunction renderSupport;
     SupportCheckFunction filterSupport;
-
-    GLuint computeRowPitch(GLenum formatType, GLsizei width, GLint alignment, GLint rowLength) const;
-    GLuint computeDepthPitch(GLenum formatType, GLsizei width, GLsizei height, GLint alignment, GLint rowLength) const;
-    GLuint computeBlockSize(GLenum formatType, GLsizei width, GLsizei height) const;
 };
+
+// A "Format" is either a sized format, or an {unsized format, type} combination.
+struct Format
+{
+    // Sized types only.
+    explicit Format(GLenum internalFormat);
+    explicit Format(const InternalFormat &internalFormat);
+
+    // Sized or unsized types.
+    Format(GLenum internalFormat, GLenum format, GLenum type);
+
+    Format(const Format &other);
+    Format &operator=(const Format &other);
+
+    GLenum asSized() const;
+    bool valid() const;
+
+    static Format Invalid();
+    static bool SameSized(const Format &a, const Format &b);
+
+    friend std::ostream &operator<<(std::ostream &os, const Format &fmt);
+
+    // This is the sized info.
+    const InternalFormat *info;
+    GLenum format;
+    GLenum type;
+    bool sized;
+};
+
 const InternalFormat &GetInternalFormatInfo(GLenum internalFormat);
 
 GLenum GetSizedInternalFormat(GLenum internalFormat, GLenum type);
@@ -76,6 +155,158 @@ GLenum GetSizedInternalFormat(GLenum internalFormat, GLenum type);
 typedef std::set<GLenum> FormatSet;
 const FormatSet &GetAllSizedInternalFormats();
 
-}
+// From the ESSL 3.00.4 spec:
+// Vertex shader inputs can only be float, floating-point vectors, matrices, signed and unsigned
+// integers and integer vectors. Vertex shader inputs cannot be arrays or structures.
+
+enum AttributeType
+{
+    ATTRIBUTE_FLOAT,
+    ATTRIBUTE_VEC2,
+    ATTRIBUTE_VEC3,
+    ATTRIBUTE_VEC4,
+    ATTRIBUTE_INT,
+    ATTRIBUTE_IVEC2,
+    ATTRIBUTE_IVEC3,
+    ATTRIBUTE_IVEC4,
+    ATTRIBUTE_UINT,
+    ATTRIBUTE_UVEC2,
+    ATTRIBUTE_UVEC3,
+    ATTRIBUTE_UVEC4,
+    ATTRIBUTE_MAT2,
+    ATTRIBUTE_MAT3,
+    ATTRIBUTE_MAT4,
+    ATTRIBUTE_MAT2x3,
+    ATTRIBUTE_MAT2x4,
+    ATTRIBUTE_MAT3x2,
+    ATTRIBUTE_MAT3x4,
+    ATTRIBUTE_MAT4x2,
+    ATTRIBUTE_MAT4x3,
+};
+
+AttributeType GetAttributeType(GLenum enumValue);
+
+enum VertexFormatType
+{
+    VERTEX_FORMAT_INVALID,
+    VERTEX_FORMAT_SBYTE1,
+    VERTEX_FORMAT_SBYTE1_NORM,
+    VERTEX_FORMAT_SBYTE2,
+    VERTEX_FORMAT_SBYTE2_NORM,
+    VERTEX_FORMAT_SBYTE3,
+    VERTEX_FORMAT_SBYTE3_NORM,
+    VERTEX_FORMAT_SBYTE4,
+    VERTEX_FORMAT_SBYTE4_NORM,
+    VERTEX_FORMAT_UBYTE1,
+    VERTEX_FORMAT_UBYTE1_NORM,
+    VERTEX_FORMAT_UBYTE2,
+    VERTEX_FORMAT_UBYTE2_NORM,
+    VERTEX_FORMAT_UBYTE3,
+    VERTEX_FORMAT_UBYTE3_NORM,
+    VERTEX_FORMAT_UBYTE4,
+    VERTEX_FORMAT_UBYTE4_NORM,
+    VERTEX_FORMAT_SSHORT1,
+    VERTEX_FORMAT_SSHORT1_NORM,
+    VERTEX_FORMAT_SSHORT2,
+    VERTEX_FORMAT_SSHORT2_NORM,
+    VERTEX_FORMAT_SSHORT3,
+    VERTEX_FORMAT_SSHORT3_NORM,
+    VERTEX_FORMAT_SSHORT4,
+    VERTEX_FORMAT_SSHORT4_NORM,
+    VERTEX_FORMAT_USHORT1,
+    VERTEX_FORMAT_USHORT1_NORM,
+    VERTEX_FORMAT_USHORT2,
+    VERTEX_FORMAT_USHORT2_NORM,
+    VERTEX_FORMAT_USHORT3,
+    VERTEX_FORMAT_USHORT3_NORM,
+    VERTEX_FORMAT_USHORT4,
+    VERTEX_FORMAT_USHORT4_NORM,
+    VERTEX_FORMAT_SINT1,
+    VERTEX_FORMAT_SINT1_NORM,
+    VERTEX_FORMAT_SINT2,
+    VERTEX_FORMAT_SINT2_NORM,
+    VERTEX_FORMAT_SINT3,
+    VERTEX_FORMAT_SINT3_NORM,
+    VERTEX_FORMAT_SINT4,
+    VERTEX_FORMAT_SINT4_NORM,
+    VERTEX_FORMAT_UINT1,
+    VERTEX_FORMAT_UINT1_NORM,
+    VERTEX_FORMAT_UINT2,
+    VERTEX_FORMAT_UINT2_NORM,
+    VERTEX_FORMAT_UINT3,
+    VERTEX_FORMAT_UINT3_NORM,
+    VERTEX_FORMAT_UINT4,
+    VERTEX_FORMAT_UINT4_NORM,
+    VERTEX_FORMAT_SBYTE1_INT,
+    VERTEX_FORMAT_SBYTE2_INT,
+    VERTEX_FORMAT_SBYTE3_INT,
+    VERTEX_FORMAT_SBYTE4_INT,
+    VERTEX_FORMAT_UBYTE1_INT,
+    VERTEX_FORMAT_UBYTE2_INT,
+    VERTEX_FORMAT_UBYTE3_INT,
+    VERTEX_FORMAT_UBYTE4_INT,
+    VERTEX_FORMAT_SSHORT1_INT,
+    VERTEX_FORMAT_SSHORT2_INT,
+    VERTEX_FORMAT_SSHORT3_INT,
+    VERTEX_FORMAT_SSHORT4_INT,
+    VERTEX_FORMAT_USHORT1_INT,
+    VERTEX_FORMAT_USHORT2_INT,
+    VERTEX_FORMAT_USHORT3_INT,
+    VERTEX_FORMAT_USHORT4_INT,
+    VERTEX_FORMAT_SINT1_INT,
+    VERTEX_FORMAT_SINT2_INT,
+    VERTEX_FORMAT_SINT3_INT,
+    VERTEX_FORMAT_SINT4_INT,
+    VERTEX_FORMAT_UINT1_INT,
+    VERTEX_FORMAT_UINT2_INT,
+    VERTEX_FORMAT_UINT3_INT,
+    VERTEX_FORMAT_UINT4_INT,
+    VERTEX_FORMAT_FIXED1,
+    VERTEX_FORMAT_FIXED2,
+    VERTEX_FORMAT_FIXED3,
+    VERTEX_FORMAT_FIXED4,
+    VERTEX_FORMAT_HALF1,
+    VERTEX_FORMAT_HALF2,
+    VERTEX_FORMAT_HALF3,
+    VERTEX_FORMAT_HALF4,
+    VERTEX_FORMAT_FLOAT1,
+    VERTEX_FORMAT_FLOAT2,
+    VERTEX_FORMAT_FLOAT3,
+    VERTEX_FORMAT_FLOAT4,
+    VERTEX_FORMAT_SINT210,
+    VERTEX_FORMAT_UINT210,
+    VERTEX_FORMAT_SINT210_NORM,
+    VERTEX_FORMAT_UINT210_NORM,
+    VERTEX_FORMAT_SINT210_INT,
+    VERTEX_FORMAT_UINT210_INT,
+};
+
+typedef std::vector<VertexFormatType> InputLayout;
+
+struct VertexFormat : angle::NonCopyable
+{
+    VertexFormat(GLenum typeIn, GLboolean normalizedIn, GLuint componentsIn, bool pureIntegerIn);
+
+    GLenum type;
+    GLboolean normalized;
+    GLuint components;
+    bool pureInteger;
+};
+
+VertexFormatType GetVertexFormatType(GLenum type, GLboolean normalized, GLuint components, bool pureInteger);
+VertexFormatType GetVertexFormatType(const VertexAttribute &attrib);
+VertexFormatType GetVertexFormatType(const VertexAttribute &attrib, GLenum currentValueType);
+const VertexFormat &GetVertexFormatFromType(VertexFormatType vertexFormatType);
+size_t GetVertexFormatTypeSize(VertexFormatType vertexFormatType);
+
+// Implemented in format_map_autogen.cpp
+bool ValidES3Format(GLenum format);
+bool ValidES3Type(GLenum type);
+bool ValidES3FormatCombination(GLenum format, GLenum type, GLenum internalFormat);
+
+// Implemented in es3_copy_conversion_table_autogen.cpp
+bool ValidES3CopyConversion(GLenum textureFormat, GLenum framebufferFormat);
+
+}  // namespace gl
 
 #endif // LIBANGLE_FORMATUTILS_H_

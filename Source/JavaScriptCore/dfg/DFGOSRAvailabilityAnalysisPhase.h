@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSRAvailabilityAnalysisPhase_h
-#define DFGOSRAvailabilityAnalysisPhase_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DFGBasicBlock.h"
-#include "DFGCommon.h"
 
 namespace JSC { namespace DFG {
 
@@ -47,7 +45,7 @@ bool performOSRAvailabilityAnalysis(Graph&);
 // having run the availability analysis.
 class LocalOSRAvailabilityCalculator {
 public:
-    LocalOSRAvailabilityCalculator();
+    LocalOSRAvailabilityCalculator(Graph&);
     ~LocalOSRAvailabilityCalculator();
     
     void beginBlock(BasicBlock*);
@@ -55,11 +53,9 @@ public:
     void executeNode(Node*);
     
     AvailabilityMap m_availability;
+    Graph& m_graph;
 };
 
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOSRAvailabilityAnalysisPhase_h
-

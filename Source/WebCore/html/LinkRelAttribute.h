@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,19 +30,21 @@
  *
  */
 
-#ifndef LinkRelAttribute_h
-#define LinkRelAttribute_h
+#pragma once
 
-#include "IconURL.h"
 #include <wtf/Forward.h>
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
+enum class LinkIconType;
+
 struct LinkRelAttribute {
     bool isStyleSheet { false };
-    IconType iconType { InvalidIcon };
+    std::optional<LinkIconType> iconType;
     bool isAlternate { false };
     bool isDNSPrefetch { false };
+    bool isLinkPreload { false };
 #if ENABLE(LINK_PREFETCH)
     bool isLinkPrefetch { false };
     bool isLinkSubresource { false };
@@ -49,8 +52,8 @@ struct LinkRelAttribute {
 
     LinkRelAttribute();
     explicit LinkRelAttribute(const String&);
+
+    static bool isSupported(StringView);
 };
 
 }
-
-#endif

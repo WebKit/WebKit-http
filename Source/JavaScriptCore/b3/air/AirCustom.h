@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirCustom_h
-#define AirCustom_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
+#include "AirCode.h"
+#include "AirGenerationContext.h"
 #include "AirInst.h"
 #include "AirSpecial.h"
-#include "B3Value.h"
+#include "B3ValueInlines.h"
+#include "B3WasmBoundsCheckValue.h"
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -55,14 +57,13 @@ namespace JSC { namespace B3 { namespace Air {
 // Definition of Patch instruction. Patch is used to delegate the behavior of the instruction to the
 // Special object, which will be the first argument to the instruction.
 struct PatchCustom {
-    template<typename Functor>
-    static void forEachArg(Inst& inst, const Functor& functor)
+    static void forEachArg(Inst& inst, ScopedLambda<Inst::EachArgCallback> lambda)
     {
         // This is basically bogus, but it works for analyses that model Special as an
         // immediate.
-        functor(inst.args[0], Arg::Use, Arg::GP, Arg::pointerWidth());
+        lambda(inst.args[0], Arg::Use, GP, pointerWidth());
         
-        inst.args[0].special()->forEachArg(inst, scopedLambda<Inst::EachArgCallback>(functor));
+        inst.args[0].special()->forEachArg(inst, lambda);
     }
 
     template<typename... Arguments>
@@ -80,14 +81,31 @@ struct PatchCustom {
         return inst.args[0].special()->admitsStack(inst, argIndex);
     }
 
-    static Optional<unsigned> shouldTryAliasingDef(Inst& inst)
+    static bool admitsExtendedOffsetAddr(Inst& inst, unsigned argIndex)
+    {
+        if (!argIndex)
+            return false;
+        return inst.args[0].special()->admitsExtendedOffsetAddr(inst, argIndex);
+    }
+
+    static std::optional<unsigned> shouldTryAliasingDef(Inst& inst)
     {
         return inst.args[0].special()->shouldTryAliasingDef(inst);
+    }
+    
+    static bool isTerminal(Inst& inst)
+    {
+        return inst.args[0].special()->isTerminal(inst);
+    }
+
+    static bool hasNonArgEffects(Inst& inst)
+    {
+        return inst.args[0].special()->hasNonArgEffects(inst);
     }
 
     static bool hasNonArgNonControlEffects(Inst& inst)
     {
-        return inst.args[0].special()->hasNonArgNonControlEffects();
+        return inst.args[0].special()->hasNonArgNonControlEffects(inst);
     }
 
     static CCallHelpers::Jump generate(
@@ -97,10 +115,18 @@ struct PatchCustom {
     }
 };
 
+template<typename Subtype>
+struct CommonCustomBase {
+    static bool hasNonArgEffects(Inst& inst)
+    {
+        return Subtype::isTerminal(inst) || Subtype::hasNonArgNonControlEffects(inst);
+    }
+};
+
 // Definition of CCall instruction. CCall is used for hot path C function calls. It's lowered to a
 // Patch with an Air CCallSpecial along with code to marshal instructions. The lowering happens
 // before register allocation, so that the register allocator sees the clobbers.
-struct CCallCustom {
+struct CCallCustom : public CommonCustomBase<CCallCustom> {
     template<typename Functor>
     static void forEachArg(Inst& inst, const Functor& functor)
     {
@@ -108,21 +134,21 @@ struct CCallCustom {
 
         unsigned index = 0;
 
-        functor(inst.args[index++], Arg::Use, Arg::GP, Arg::pointerWidth()); // callee
+        functor(inst.args[index++], Arg::Use, GP, pointerWidth()); // callee
         
         if (value->type() != Void) {
             functor(
                 inst.args[index++], Arg::Def,
-                Arg::typeForB3Type(value->type()),
-                Arg::widthForB3Type(value->type()));
+                bankForType(value->type()),
+                widthForType(value->type()));
         }
 
         for (unsigned i = 1; i < value->numChildren(); ++i) {
             Value* child = value->child(i);
             functor(
                 inst.args[index++], Arg::Use,
-                Arg::typeForB3Type(child->type()),
-                Arg::widthForB3Type(child->type()));
+                bankForType(child->type()),
+                widthForType(child->type()));
         }
     }
 
@@ -137,6 +163,16 @@ struct CCallCustom {
     static bool admitsStack(Inst&, unsigned)
     {
         return true;
+    }
+
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
+    {
+        return false;
+    }
+    
+    static bool isTerminal(Inst&)
+    {
+        return false;
     }
 
     static bool hasNonArgNonControlEffects(Inst&)
@@ -155,13 +191,13 @@ struct ColdCCallCustom : CCallCustom {
         // This is just like a call, but uses become cold.
         CCallCustom::forEachArg(
             inst,
-            [&] (Arg& arg, Arg::Role role, Arg::Type type, Arg::Width width) {
-                functor(arg, Arg::cooled(role), type, width);
+            [&] (Arg& arg, Arg::Role role, Bank bank, Width width) {
+                functor(arg, Arg::cooled(role), bank, width);
             });
     }
 };
 
-struct ShuffleCustom {
+struct ShuffleCustom : public CommonCustomBase<ShuffleCustom> {
     template<typename Functor>
     static void forEachArg(Inst& inst, const Functor& functor)
     {
@@ -170,11 +206,11 @@ struct ShuffleCustom {
             Arg& src = inst.args[i + 0];
             Arg& dst = inst.args[i + 1];
             Arg& widthArg = inst.args[i + 2];
-            Arg::Width width = widthArg.width();
-            Arg::Type type = src.isGP() && dst.isGP() ? Arg::GP : Arg::FP;
-            functor(src, Arg::Use, type, width);
-            functor(dst, Arg::Def, type, width);
-            functor(widthArg, Arg::Use, Arg::GP, Arg::Width8);
+            Width width = widthArg.width();
+            Bank bank = src.isGP() && dst.isGP() ? GP : FP;
+            functor(src, Arg::Use, bank, width);
+            functor(dst, Arg::Def, bank, width);
+            functor(widthArg, Arg::Use, GP, Width8);
         }
     }
 
@@ -197,6 +233,16 @@ struct ShuffleCustom {
         }
     }
 
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
+    {
+        return false;
+    }
+
+    static bool isTerminal(Inst&)
+    {
+        return false;
+    }
+
     static bool hasNonArgNonControlEffects(Inst&)
     {
         return false;
@@ -205,9 +251,112 @@ struct ShuffleCustom {
     static CCallHelpers::Jump generate(Inst&, CCallHelpers&, GenerationContext&);
 };
 
+struct EntrySwitchCustom : public CommonCustomBase<EntrySwitchCustom> {
+    template<typename Func>
+    static void forEachArg(Inst&, const Func&)
+    {
+    }
+    
+    template<typename... Arguments>
+    static bool isValidFormStatic(Arguments...)
+    {
+        return !sizeof...(Arguments);
+    }
+    
+    static bool isValidForm(Inst& inst)
+    {
+        return inst.args.isEmpty();
+    }
+    
+    static bool admitsStack(Inst&, unsigned)
+    {
+        return false;
+    }
+
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
+    {
+        return false;
+    }
+    
+    static bool isTerminal(Inst&)
+    {
+        return true;
+    }
+    
+    static bool hasNonArgNonControlEffects(Inst&)
+    {
+        return false;
+    }
+
+    static CCallHelpers::Jump generate(Inst&, CCallHelpers&, GenerationContext&)
+    {
+        // This should never be reached because we should have lowered EntrySwitch before
+        // generation.
+        UNREACHABLE_FOR_PLATFORM();
+        return CCallHelpers::Jump();
+    }
+};
+
+struct WasmBoundsCheckCustom : public CommonCustomBase<WasmBoundsCheckCustom> {
+    template<typename Func>
+    static void forEachArg(Inst& inst, const Func& functor)
+    {
+        functor(inst.args[0], Arg::Use, GP, Width64);
+        functor(inst.args[1], Arg::Use, GP, Width64);
+    }
+
+    template<typename... Arguments>
+    static bool isValidFormStatic(Arguments...)
+    {
+        return false;
+    }
+
+    static bool isValidForm(Inst&);
+
+    static bool admitsStack(Inst&, unsigned)
+    {
+        return false;
+    }
+
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
+    {
+        return false;
+    }
+
+    static bool isTerminal(Inst&)
+    {
+        return false;
+    }
+    
+    static bool hasNonArgNonControlEffects(Inst&)
+    {
+        return true;
+    }
+
+    static CCallHelpers::Jump generate(Inst& inst, CCallHelpers& jit, GenerationContext& context)
+    {
+        WasmBoundsCheckValue* value = inst.origin->as<WasmBoundsCheckValue>();
+        CCallHelpers::Jump outOfBounds = Inst(Air::Branch64, value, Arg::relCond(CCallHelpers::AboveOrEqual), inst.args[0], inst.args[1]).generate(jit, context);
+
+        context.latePaths.append(createSharedTask<GenerationContext::LatePathFunction>(
+            [outOfBounds, value] (CCallHelpers& jit, Air::GenerationContext& context) {
+                outOfBounds.link(&jit);
+                switch (value->boundsType()) {
+                case WasmBoundsCheckValue::Type::Pinned:
+                    context.code->wasmBoundsCheckGenerator()->run(jit, value->bounds().pinned);
+                    break;
+
+                case WasmBoundsCheckValue::Type::Maximum:
+                    context.code->wasmBoundsCheckGenerator()->run(jit, InvalidGPRReg);
+                    break;
+                }
+            }));
+
+        // We said we were not a terminal.
+        return CCallHelpers::Jump();
+    }
+};
+
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirCustom_h
-

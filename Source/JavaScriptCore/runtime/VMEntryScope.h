@@ -23,12 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef VMEntryScope_h
-#define VMEntryScope_h
+#pragma once
 
-#include "Interpreter.h"
-#include <wtf/StackBounds.h>
-#include <wtf/StackStats.h>
+#include <functional>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -41,6 +38,7 @@ public:
     JS_EXPORT_PRIVATE VMEntryScope(VM&, JSGlobalObject*);
     JS_EXPORT_PRIVATE ~VMEntryScope();
 
+    VM& vm() const { return m_vm; }
     JSGlobalObject* globalObject() const { return m_globalObject; }
 
     void addDidPopListener(std::function<void ()>);
@@ -52,5 +50,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // VMEntryScope_h

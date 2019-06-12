@@ -40,35 +40,17 @@ HTTPHeaderMap::HTTPHeaderMap()
 {
 }
 
-HTTPHeaderMap::~HTTPHeaderMap()
+HTTPHeaderMap HTTPHeaderMap::isolatedCopy() const
 {
-}
+    HTTPHeaderMap map;
 
-std::unique_ptr<CrossThreadHTTPHeaderMapData> HTTPHeaderMap::copyData() const
-{
-    auto data = std::make_unique<CrossThreadHTTPHeaderMapData>();
+    for (auto& header : m_commonHeaders)
+        map.m_commonHeaders.set(header.key, header.value.isolatedCopy());
 
-    data->commonHeaders.reserveInitialCapacity(m_commonHeaders.size());
-    for (const auto& header : m_commonHeaders)
-        data->commonHeaders.uncheckedAppend(std::make_pair(header.key, header.value.isolatedCopy()));
+    for (auto& header : m_uncommonHeaders)
+        map.m_uncommonHeaders.set(header.key.isolatedCopy(), header.value.isolatedCopy());
 
-    data->uncommonHeaders.reserveInitialCapacity(m_uncommonHeaders.size());
-    for (const auto& header : m_uncommonHeaders)
-        data->uncommonHeaders.uncheckedAppend(std::make_pair(header.key.isolatedCopy(), header.value.isolatedCopy()));
-
-    return data;
-}
-
-void HTTPHeaderMap::adopt(std::unique_ptr<CrossThreadHTTPHeaderMapData> data)
-{
-    m_commonHeaders.clear();
-    m_uncommonHeaders.clear();
-
-    for (auto& header : data->commonHeaders)
-        m_commonHeaders.add(header.first, WTFMove(header.second));
-
-    for (auto& header : data->uncommonHeaders)
-        m_uncommonHeaders.add(WTFMove(header.first), WTFMove(header.second));
+    return map;
 }
 
 String HTTPHeaderMap::get(const String& name) const
@@ -78,6 +60,26 @@ String HTTPHeaderMap::get(const String& name) const
         return m_uncommonHeaders.get(name);
     return m_commonHeaders.get(headerName);
 }
+
+#if USE(CF)
+
+void HTTPHeaderMap::set(CFStringRef name, const String& value)
+{
+    // Fast path: avoid constructing a temporary String in the common header case.
+    if (auto* nameCharacters = CFStringGetCStringPtr(name, kCFStringEncodingASCII)) {
+        unsigned length = CFStringGetLength(name);
+        HTTPHeaderName headerName;
+        if (findHTTPHeaderName(StringView(reinterpret_cast<const LChar*>(nameCharacters), length), headerName))
+            m_commonHeaders.set(headerName, value);
+        else
+            m_uncommonHeaders.set(String(nameCharacters, length), value);
+        return;
+    }
+
+    set(String(name), value);
+}
+
+#endif // USE(CF)
 
 void HTTPHeaderMap::set(const String& name, const String& value)
 {
@@ -99,6 +101,11 @@ void HTTPHeaderMap::add(const String& name, const String& value)
         return;
     }
     add(headerName, value);
+}
+
+bool HTTPHeaderMap::addIfNotPresent(HTTPHeaderName headerName, const String& value)
+{
+    return m_commonHeaders.add(headerName, value).isNewEntry;
 }
 
 bool HTTPHeaderMap::contains(const String& name) const

@@ -42,8 +42,10 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         this.element.addEventListener("keydown", this._keyDown.bind(this), false);
         this.element.addEventListener("mousedown", this._mouseDown.bind(this), false);
 
+        this._forceLayout = false;
         this._minimumWidth = NaN;
         this._navigationItems = [];
+        this._selectedNavigationItem = null;
 
         if (navigationItems) {
             for (var i = 0; i < navigationItems.length; ++i)
@@ -91,10 +93,17 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         return navigationItem;
     }
 
-    removeNavigationItem(navigationItemOrIdentifierOrIndex)
+    removeNavigationItem(navigationItem)
     {
-        var navigationItem = this._findNavigationItem(navigationItemOrIdentifierOrIndex);
-        if (!navigationItem)
+        console.assert(navigationItem instanceof WebInspector.NavigationItem);
+        if (!(navigationItem instanceof WebInspector.NavigationItem))
+            return null;
+
+        if (!navigationItem._parentNavigationBar)
+            return null;
+
+        console.assert(navigationItem._parentNavigationBar === this, "Cannot remove item with unexpected parent bar.", navigationItem);
+        if (navigationItem._parentNavigationBar !== this)
             return null;
 
         navigationItem._parentNavigationBar = null;
@@ -114,12 +123,15 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
 
     get selectedNavigationItem()
     {
-        return this._selectedNavigationItem || null;
+        return this._selectedNavigationItem;
     }
 
-    set selectedNavigationItem(navigationItemOrIdentifierOrIndex)
+    set selectedNavigationItem(navigationItem)
     {
-        var navigationItem = this._findNavigationItem(navigationItemOrIdentifierOrIndex);
+        let navigationItemHasOtherParent = navigationItem && navigationItem.parentNavigationBar !== this;
+        console.assert(!navigationItemHasOtherParent, "Cannot select item with unexpected parent bar.", navigationItem);
+        if (navigationItemHasOtherParent)
+            return;
 
         // Only radio navigation items can be selected.
         if (!(navigationItem instanceof WebInspector.RadioButtonNavigationItem))
@@ -160,8 +172,25 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         return false;
     }
 
+    findNavigationItem(identifier)
+    {
+        return this._navigationItems.find((item) => item.identifier === identifier) || null;
+    }
+
+    needsLayout()
+    {
+        this._forceLayout = true;
+
+        super.needsLayout();
+    }
+
     layout()
     {
+        if (this.layoutReason !== WebInspector.View.LayoutReason.Resize && !this._forceLayout)
+            return;
+
+        this._forceLayout = false;
+
         // Remove the collapsed style class to test if the items can fit at full width.
         this.element.classList.remove(WebInspector.NavigationBar.CollapsedStyleClassName);
 
@@ -190,27 +219,6 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
     }
 
     // Private
-
-    _findNavigationItem(navigationItemOrIdentifierOrIndex)
-    {
-        var navigationItem = null;
-
-        if (navigationItemOrIdentifierOrIndex instanceof WebInspector.NavigationItem) {
-            if (this._navigationItems.includes(navigationItemOrIdentifierOrIndex))
-                navigationItem = navigationItemOrIdentifierOrIndex;
-        } else if (typeof navigationItemOrIdentifierOrIndex === "number") {
-            navigationItem = this._navigationItems[navigationItemOrIdentifierOrIndex];
-        } else if (typeof navigationItemOrIdentifierOrIndex === "string") {
-            for (var i = 0; i < this._navigationItems.length; ++i) {
-                if (this._navigationItems[i].identifier === navigationItemOrIdentifierOrIndex) {
-                    navigationItem = this._navigationItems[i];
-                    break;
-                }
-            }
-        }
-
-        return navigationItem;
-    }
 
     _mouseDown(event)
     {

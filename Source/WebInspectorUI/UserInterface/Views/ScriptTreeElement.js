@@ -33,7 +33,7 @@ WebInspector.ScriptTreeElement = class ScriptTreeElement extends WebInspector.So
 
         this.mainTitle = script.displayName;
 
-        if (script.url) {
+        if (script.url && !script.dynamicallyAddedScriptElement) {
             // Show the host as the subtitle if it is different from the main title.
             var subtitle = WebInspector.displayNameForHost(script.urlComponents.host);
             this.subtitle = this.mainTitle !== subtitle ? subtitle : null;
@@ -44,6 +44,11 @@ WebInspector.ScriptTreeElement = class ScriptTreeElement extends WebInspector.So
             this.addClassName(WebInspector.Resource.Type.Script);
         } else
             this.addClassName(WebInspector.ScriptTreeElement.AnonymousScriptIconStyleClassName);
+
+        if (script.isMainResource()) {
+            console.assert(script.target.type === WebInspector.Target.Type.Worker);
+            this.addClassName("worker-icon");
+        }
 
         this._script = script;
     }

@@ -28,34 +28,8 @@
 
 #include <wtf/MathExtras.h>
 #include <wtf/Threading.h>
-#include <wtf/win/WorkItemWin.h>
 
 namespace WTF {
-
-void WorkQueue::handleCallback(void* context, BOOLEAN timerOrWaitFired)
-{
-    ASSERT_ARG(context, context);
-    ASSERT_ARG(timerOrWaitFired, !timerOrWaitFired);
-
-    WorkItemWin* item = static_cast<WorkItemWin*>(context);
-    RefPtr<WorkQueue> queue = item->queue();
-
-    {
-        MutexLocker lock(queue->m_workItemQueueLock);
-        queue->m_workItemQueue.append(item);
-
-        // If no other thread is performing work, we can do it on this thread.
-        if (!queue->tryRegisterAsWorkThread()) {
-            // Some other thread is performing work. Since we hold the queue lock, we can be sure
-            // that the work thread is not exiting due to an empty queue and will process the work
-            // item we just added to it. If we weren't holding the lock we'd have to signal
-            // m_performWorkEvent to make sure the work item got picked up.
-            return;
-        }
-    }
-
-    queue->performWorkOnRegisteredWorkThread();
-}
 
 DWORD WorkQueue::workThreadCallback(void* context)
 {
@@ -74,20 +48,19 @@ void WorkQueue::performWorkOnRegisteredWorkThread()
 {
     ASSERT(m_isWorkThreadRegistered);
 
-    m_workItemQueueLock.lock();
+    m_functionQueueLock.lock();
 
-    while (!m_workItemQueue.isEmpty()) {
-        Vector<RefPtr<WorkItemWin>> workItemQueue;
-        m_workItemQueue.swap(workItemQueue);
+    while (!m_functionQueue.isEmpty()) {
+        Vector<Function<void()>> functionQueue;
+        m_functionQueue.swap(functionQueue);
 
         // Allow more work to be scheduled while we're not using the queue directly.
-        m_workItemQueueLock.unlock();
-        for (auto& workItem : workItemQueue) {
-            workItem->function()();
-            // QTFIMXE: Fix reference leak https://bugs.webkit.org/show_bug.cgi?id=142471
-            //deref();
+        m_functionQueueLock.unlock();
+        for (auto& function : functionQueue) {
+            function();
+            deref();
         }
-        m_workItemQueueLock.lock();
+        m_functionQueueLock.lock();
     }
 
     // One invariant we maintain is that any work scheduled while a work thread is registered will
@@ -95,7 +68,7 @@ void WorkQueue::performWorkOnRegisteredWorkThread()
     // held so that no work can be scheduled while we're still registered.
     unregisterAsWorkThread();
 
-    m_workItemQueueLock.unlock();
+    m_functionQueueLock.unlock();
 }
 
 void WorkQueue::platformInitialize(const char* name, Type, QOS)
@@ -120,21 +93,16 @@ void WorkQueue::unregisterAsWorkThread()
 
 void WorkQueue::platformInvalidate()
 {
-#if !ASSERT_DISABLED
-    MutexLocker lock(m_handlesLock);
-    ASSERT(m_handles.isEmpty());
-#endif
-
     // FIXME: We need to ensure that any timer-queue timers that fire after this point don't try to
     // access this WorkQueue <http://webkit.org/b/44690>.
     ::DeleteTimerQueueEx(m_timerQueue, 0);
 }
 
-void WorkQueue::dispatch(std::function<void()> function)
+void WorkQueue::dispatch(Function<void()>&& function)
 {
-    MutexLocker locker(m_workItemQueueLock);
+    MutexLocker locker(m_functionQueueLock);
     ref();
-    m_workItemQueue.append(WorkItemWin::create(function, this));
+    m_functionQueue.append(WTFMove(function));
 
     // Spawn a work thread to perform the work we just added. As an optimization, we avoid
     // spawning the thread if a work thread is already registered. This prevents multiple work
@@ -150,7 +118,7 @@ struct TimerContext : public ThreadSafeRefCounted<TimerContext> {
     static RefPtr<TimerContext> create() { return adoptRef(new TimerContext); }
 
     WorkQueue* queue;
-    std::function<void()> function;
+    Function<void()> function;
     Mutex timerMutex;
     HANDLE timer;
 
@@ -170,7 +138,7 @@ void WorkQueue::timerCallback(void* context, BOOLEAN timerOrWaitFired)
     // Balanced by leakRef in scheduleWorkAfterDelay.
     RefPtr<TimerContext> timerContext = adoptRef(static_cast<TimerContext*>(context));
 
-    timerContext->queue->dispatch(timerContext->function);
+    timerContext->queue->dispatch(WTFMove(timerContext->function));
 
     MutexLocker lock(timerContext->timerMutex);
     ASSERT(timerContext->timer);
@@ -181,14 +149,14 @@ void WorkQueue::timerCallback(void* context, BOOLEAN timerOrWaitFired)
     }
 }
 
-void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<void()> function)
+void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
 {
     ASSERT(m_timerQueue);
     ref();
 
     RefPtr<TimerContext> context = TimerContext::create();
     context->queue = this;
-    context->function = function;
+    context->function = WTFMove(function);
 
     {
         // The timer callback could fire before ::CreateTimerQueueTimer even returns, so we protect
@@ -196,7 +164,7 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<v
         // timer handle has been stored in it.
         MutexLocker lock(context->timerMutex);
 
-        int64_t milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        int64_t milliseconds = duration.milliseconds();
 
         // From empirical testing, we've seen CreateTimerQueueTimer() sometimes fire up to 5+ ms early.
         // This causes havoc for clients of this code that expect to not be called back until the
@@ -219,32 +187,7 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<v
     }
 
     // The timer callback will handle destroying context.
-    context.release().leakRef();
-}
-
-void WorkQueue::unregisterWaitAndDestroyItemSoon(PassRefPtr<HandleWorkItem> item)
-{
-    // We're going to make a blocking call to ::UnregisterWaitEx before closing the handle. (The
-    // blocking version of ::UnregisterWaitEx is much simpler than the non-blocking version.) If we
-    // do this on the current thread, we'll deadlock if we're currently in a callback function for
-    // the wait we're unregistering. So instead we do it asynchronously on some other worker thread.
-
-    ::QueueUserWorkItem(unregisterWaitAndDestroyItemCallback, item.leakRef(), WT_EXECUTEDEFAULT);
-}
-
-DWORD WINAPI WorkQueue::unregisterWaitAndDestroyItemCallback(void* context)
-{
-    ASSERT_ARG(context, context);
-    RefPtr<HandleWorkItem> item = adoptRef(static_cast<HandleWorkItem*>(context));
-
-    // Now that we know we're not in a callback function for the wait we're unregistering, we can
-    // make a blocking call to ::UnregisterWaitEx.
-    if (!::UnregisterWaitEx(item->waitHandle(), INVALID_HANDLE_VALUE)) {
-        DWORD error = ::GetLastError();
-        ASSERT_NOT_REACHED();
-    }
-
-    return 0;
+    context.leakRef();
 }
 
 #if PLATFORM(QT)

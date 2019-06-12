@@ -24,14 +24,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLToken_h
-#define HTMLToken_h
+#pragma once
 
 #include "Attribute.h"
 
 namespace WebCore {
 
 struct DoctypeData {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
     bool hasPublicIdentifier { false };
     bool hasSystemIdentifier { false };
     Vector<UChar> publicIdentifier;
@@ -112,6 +113,9 @@ public:
 
     void setSelfClosing();
 
+    // Used by HTMLTokenizer on behalf of HTMLSourceTracker.
+    void setAttributeBaseOffset(unsigned attributeBaseOffset) { m_attributeBaseOffset = attributeBaseOffset; }
+
 public:
     // Used by the XSSAuditor to nuke XSS-laden attributes.
     void eraseValueOfAttribute(unsigned index);
@@ -151,6 +155,8 @@ private:
 
     // For DOCTYPE
     std::unique_ptr<DoctypeData> m_doctypeData;
+
+    unsigned m_attributeBaseOffset { 0 }; // Changes across document.write() boundaries.
 };
 
 const HTMLToken::Attribute* findAttribute(const Vector<HTMLToken::Attribute>&, StringView name);
@@ -313,14 +319,14 @@ inline void HTMLToken::beginAttribute(unsigned offset)
     m_attributes.grow(m_attributes.size() + 1);
     m_currentAttribute = &m_attributes.last();
 
-    m_currentAttribute->startOffset = offset;
+    m_currentAttribute->startOffset = offset - m_attributeBaseOffset;
 }
 
 inline void HTMLToken::endAttribute(unsigned offset)
 {
     ASSERT(offset);
     ASSERT(m_currentAttribute);
-    m_currentAttribute->endOffset = offset;
+    m_currentAttribute->endOffset = offset - m_attributeBaseOffset;
 #if !ASSERT_DISABLED
     m_currentAttribute = nullptr;
 #endif
@@ -445,6 +451,4 @@ inline const HTMLToken::Attribute* findAttribute(const HTMLToken::AttributeList&
     return nullptr;
 }
 
-}
-
-#endif
+} // namespace WebCore

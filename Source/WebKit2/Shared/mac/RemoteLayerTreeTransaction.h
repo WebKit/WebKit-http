@@ -26,6 +26,7 @@
 #ifndef RemoteLayerTreeTransaction_h
 #define RemoteLayerTreeTransaction_h
 
+#include "GenericCallback.h"
 #include "PlatformCAAnimationRemote.h"
 #include "RemoteLayerBackingStore.h"
 #include <WebCore/Color.h>
@@ -41,8 +42,8 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -69,33 +70,35 @@ public:
         DoubleSidedChanged              = 1LLU << 14,
         MasksToBoundsChanged            = 1LLU << 15,
         OpaqueChanged                   = 1LLU << 16,
-        MaskLayerChanged                = 1LLU << 17,
-        ClonedContentsChanged           = 1LLU << 18,
-        ContentsRectChanged             = 1LLU << 19,
-        ContentsScaleChanged            = 1LLU << 20,
-        CornerRadiusChanged             = 1LLU << 21,
-        ShapeRoundedRectChanged         = 1LLU << 22,
-        ShapePathChanged                = 1LLU << 23,
-        MinificationFilterChanged       = 1LLU << 24,
-        MagnificationFilterChanged      = 1LLU << 25,
-        BlendModeChanged                = 1LLU << 26,
-        WindRuleChanged                 = 1LLU << 27,
-        SpeedChanged                    = 1LLU << 28,
-        TimeOffsetChanged               = 1LLU << 29,
-        BackingStoreChanged             = 1LLU << 30,
-        BackingStoreAttachmentChanged   = 1LLU << 31,
-        FiltersChanged                  = 1LLU << 32,
-        AnimationsChanged               = 1LLU << 33,
-        EdgeAntialiasingMaskChanged     = 1LLU << 34,
-        CustomAppearanceChanged         = 1LLU << 35,
+        ContentsHiddenChanged           = 1LLU << 17,
+        MaskLayerChanged                = 1LLU << 18,
+        ClonedContentsChanged           = 1LLU << 19,
+        ContentsRectChanged             = 1LLU << 20,
+        ContentsScaleChanged            = 1LLU << 21,
+        CornerRadiusChanged             = 1LLU << 22,
+        ShapeRoundedRectChanged         = 1LLU << 23,
+        ShapePathChanged                = 1LLU << 24,
+        MinificationFilterChanged       = 1LLU << 25,
+        MagnificationFilterChanged      = 1LLU << 26,
+        BlendModeChanged                = 1LLU << 27,
+        WindRuleChanged                 = 1LLU << 28,
+        SpeedChanged                    = 1LLU << 29,
+        TimeOffsetChanged               = 1LLU << 30,
+        BackingStoreChanged             = 1LLU << 31,
+        BackingStoreAttachmentChanged   = 1LLU << 32,
+        FiltersChanged                  = 1LLU << 33,
+        AnimationsChanged               = 1LLU << 34,
+        EdgeAntialiasingMaskChanged     = 1LLU << 35,
+        CustomAppearanceChanged         = 1LLU << 36,
+        UserInteractionEnabledChanged   = 1LLU << 37,
     };
     typedef uint64_t LayerChange;
 
     struct LayerCreationProperties {
         LayerCreationProperties();
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, LayerCreationProperties&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, LayerCreationProperties&);
 
         WebCore::GraphicsLayer::PlatformLayerID layerID;
         WebCore::PlatformCALayer::LayerType type;
@@ -108,8 +111,8 @@ public:
         LayerProperties();
         LayerProperties(const LayerProperties& other);
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, LayerProperties&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, LayerProperties&);
 
         void notePropertiesChanged(LayerChange changeFlags)
         {
@@ -164,13 +167,15 @@ public:
         bool doubleSided;
         bool masksToBounds;
         bool opaque;
+        bool contentsHidden;
+        bool userInteractionEnabled;
     };
 
     explicit RemoteLayerTreeTransaction();
     ~RemoteLayerTreeTransaction();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RemoteLayerTreeTransaction&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RemoteLayerTreeTransaction&);
 
     WebCore::GraphicsLayer::PlatformLayerID rootLayerID() const { return m_rootLayerID; }
     void setRootLayerID(WebCore::GraphicsLayer::PlatformLayerID);
@@ -200,6 +205,15 @@ public:
 
     WebCore::IntPoint scrollOrigin() const { return m_scrollOrigin; }
     void setScrollOrigin(const WebCore::IntPoint& origin) { m_scrollOrigin = origin; };
+
+    WebCore::LayoutSize baseLayoutViewportSize() const { return m_baseLayoutViewportSize; }
+    void setBaseLayoutViewportSize(const WebCore::LayoutSize& size) { m_baseLayoutViewportSize = size; };
+    
+    WebCore::LayoutPoint minStableLayoutViewportOrigin() const { return m_minStableLayoutViewportOrigin; }
+    void setMinStableLayoutViewportOrigin(const WebCore::LayoutPoint& point) { m_minStableLayoutViewportOrigin = point; };
+    
+    WebCore::LayoutPoint maxStableLayoutViewportOrigin() const { return m_maxStableLayoutViewportOrigin; }
+    void setMaxStableLayoutViewportOrigin(const WebCore::LayoutPoint& point) { m_maxStableLayoutViewportOrigin = point; };
     
     WebCore::Color pageExtendedBackgroundColor() const { return m_pageExtendedBackgroundColor; }
     void setPageExtendedBackgroundColor(WebCore::Color color) { m_pageExtendedBackgroundColor = color; }
@@ -236,13 +250,19 @@ public:
     bool viewportMetaTagCameFromImageDocument() const { return m_viewportMetaTagCameFromImageDocument; }
     void setViewportMetaTagCameFromImageDocument(bool cameFromImageDocument) { m_viewportMetaTagCameFromImageDocument = cameFromImageDocument; }
 
+    bool isInStableState() const { return m_isInStableState; }
+    void setIsInStableState(bool isInStableState) { m_isInStableState = isInStableState; }
+
     bool allowsUserScaling() const { return m_allowsUserScaling; }
     void setAllowsUserScaling(bool allowsUserScaling) { m_allowsUserScaling = allowsUserScaling; }
+
+    bool avoidsUnsafeArea() const { return m_avoidsUnsafeArea; }
+    void setAvoidsUnsafeArea(bool avoidsUnsafeArea) { m_avoidsUnsafeArea = avoidsUnsafeArea; }
 
     uint64_t transactionID() const { return m_transactionID; }
     void setTransactionID(uint64_t transactionID) { m_transactionID = transactionID; }
 
-    typedef uint64_t TransactionCallbackID;
+    typedef CallbackID TransactionCallbackID;
     const Vector<TransactionCallbackID>& callbackIDs() const { return m_callbackIDs; }
     void setCallbackIDs(Vector<TransactionCallbackID>&& callbackIDs) { m_callbackIDs = WTFMove(callbackIDs); }
 
@@ -263,6 +283,9 @@ private:
 
     WebCore::IntSize m_contentsSize;
     WebCore::IntPoint m_scrollOrigin;
+    WebCore::LayoutSize m_baseLayoutViewportSize;
+    WebCore::LayoutPoint m_minStableLayoutViewportOrigin;
+    WebCore::LayoutPoint m_maxStableLayoutViewportOrigin;
 #if PLATFORM(MAC)
     WebCore::IntPoint m_scrollPosition;
 #endif
@@ -277,8 +300,10 @@ private:
     WebCore::LayoutMilestones m_newlyReachedLayoutMilestones { 0 };
     bool m_scaleWasSetByUIProcess { false };
     bool m_allowsUserScaling { false };
+    bool m_avoidsUnsafeArea { true };
     bool m_viewportMetaTagWidthWasExplicit { false };
     bool m_viewportMetaTagCameFromImageDocument { false };
+    bool m_isInStableState { false };
 };
 
 } // namespace WebKit

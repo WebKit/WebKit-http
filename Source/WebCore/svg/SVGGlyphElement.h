@@ -19,45 +19,27 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGGlyphElement_h
-#define SVGGlyphElement_h
+#pragma once
 
 #if ENABLE(SVG_FONTS)
+
 #include "SVGElement.h"
-#include "SVGGlyph.h"
 
 namespace WebCore {
-
-class SVGFontData;
 
 class SVGGlyphElement final : public SVGElement {
 public:
     static Ref<SVGGlyphElement> create(const QualifiedName&, Document&);
 
-    SVGGlyph buildGlyphIdentifier() const;
-
     // Helper function used by SVGFont
-    static void inheritUnspecifiedAttributes(SVGGlyph&, const SVGFontData*);
     static String querySVGFontLanguage(const SVGElement*);
-
-    // Helper function shared between SVGGlyphElement & SVGMissingGlyphElement
-    static SVGGlyph buildGenericGlyphIdentifier(const SVGElement*);
 
 private:
     SVGGlyphElement(const QualifiedName&, Document&);
 
-    // FIXME: svgAttributeChanged missing.
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
-
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
-
-    void invalidateGlyphCache();
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(SVG_FONTS)
-#endif

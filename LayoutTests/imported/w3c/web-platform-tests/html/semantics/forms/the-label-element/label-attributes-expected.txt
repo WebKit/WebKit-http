@@ -9,7 +9,7 @@ PASS A form control has multiple labels.
 PASS A form control has an implicit label. 
 PASS A form control has no label 1. 
 PASS A form control has no label 2. 
-PASS A label's form attribute should return its form owner. 
-PASS Check that the labels property of a form control with no label returns a zero-length NodeList. 
+PASS A label in a form without a control 
+PASS A label outside a form with a control inside the form 
 PASS A label's htmlFor attribute must reflect the for content attribute 
 

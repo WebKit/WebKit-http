@@ -264,6 +264,43 @@ TEST(WTF, StringHasher_addCharacters)
     hasher.addCharacters(testBUChars + 3);
     ASSERT_EQ(testBHash5, hasher.hash());
     ASSERT_EQ(testBHash5 & 0xFFFFFF, hasher.hashWithTop8BitsMasked());
+
+    // Hashing zero characters after hashing other characters.
+    hasher = StringHasher();
+    hasher.addCharacters(nullLChars, 0);
+    hasher.addCharacters(nullLChars, 0);
+    ASSERT_EQ(emptyStringHash, hasher.hash());
+    ASSERT_EQ(emptyStringHash & 0xFFFFFF, hasher.hashWithTop8BitsMasked());
+    
+    hasher = StringHasher();
+    hasher.addCharacters(testALChars, 1);
+    hasher.addCharacters(nullLChars, 0);
+    ASSERT_EQ(testAHash1, hasher.hash());
+    ASSERT_EQ(testAHash1 & 0xFFFFFF, hasher.hashWithTop8BitsMasked());
+    
+    hasher = StringHasher();
+    hasher.addCharacters(testALChars, 2);
+    hasher.addCharacters(nullLChars, 0);
+    ASSERT_EQ(testAHash2, hasher.hash());
+    ASSERT_EQ(testAHash2 & 0xFFFFFF, hasher.hashWithTop8BitsMasked());
+
+    hasher = StringHasher();
+    hasher.addCharacters(testAUChars, 3);
+    hasher.addCharacters(nullLChars, 0);
+    ASSERT_EQ(testAHash3, hasher.hash());
+    ASSERT_EQ(testAHash3 & 0xFFFFFF, hasher.hashWithTop8BitsMasked());
+
+    hasher = StringHasher();
+    hasher.addCharacters(testALChars, 4);
+    hasher.addCharacters(nullLChars, 0);
+    ASSERT_EQ(testAHash4, hasher.hash());
+    ASSERT_EQ(testAHash4 & 0xFFFFFF, hasher.hashWithTop8BitsMasked());
+    
+    hasher = StringHasher();
+    hasher.addCharacters(testALChars, 5);
+    hasher.addCharacters(nullLChars, 0);
+    ASSERT_EQ(testAHash5, hasher.hash());
+    ASSERT_EQ(testAHash5 & 0xFFFFFF, hasher.hashWithTop8BitsMasked());
 }
 
 TEST(WTF, StringHasher_addCharactersAssumingAligned)
@@ -427,18 +464,18 @@ TEST(WTF, StringHasher_computeHashAndMaskTop8Bits)
 
 TEST(WTF, StringHasher_hashMemory)
 {
-    ASSERT_EQ(emptyStringHash & 0xFFFFFF, StringHasher::hashMemory(0, 0));
-    ASSERT_EQ(emptyStringHash & 0xFFFFFF, StringHasher::hashMemory(nullUChars, 0));
-    ASSERT_EQ(emptyStringHash & 0xFFFFFF, StringHasher::hashMemory<0>(0));
-    ASSERT_EQ(emptyStringHash & 0xFFFFFF, StringHasher::hashMemory<0>(nullUChars));
+    ASSERT_EQ(emptyStringHash, StringHasher::hashMemory(0, 0));
+    ASSERT_EQ(emptyStringHash, StringHasher::hashMemory(nullUChars, 0));
+    ASSERT_EQ(emptyStringHash, StringHasher::hashMemory<0>(0));
+    ASSERT_EQ(emptyStringHash, StringHasher::hashMemory<0>(nullUChars));
 
-    ASSERT_EQ(singleNullCharacterHash & 0xFFFFFF, StringHasher::hashMemory(nullUChars, 2));
-    ASSERT_EQ(singleNullCharacterHash & 0xFFFFFF, StringHasher::hashMemory<2>(nullUChars));
+    ASSERT_EQ(singleNullCharacterHash, StringHasher::hashMemory(nullUChars, 2));
+    ASSERT_EQ(singleNullCharacterHash, StringHasher::hashMemory<2>(nullUChars));
 
-    ASSERT_EQ(testAHash5 & 0xFFFFFF, StringHasher::hashMemory(testAUChars, 10));
-    ASSERT_EQ(testAHash5 & 0xFFFFFF, StringHasher::hashMemory<10>(testAUChars));
-    ASSERT_EQ(testBHash5 & 0xFFFFFF, StringHasher::hashMemory(testBUChars, 10));
-    ASSERT_EQ(testBHash5 & 0xFFFFFF, StringHasher::hashMemory<10>(testBUChars));
+    ASSERT_EQ(testAHash5, StringHasher::hashMemory(testAUChars, 10));
+    ASSERT_EQ(testAHash5, StringHasher::hashMemory<10>(testAUChars));
+    ASSERT_EQ(testBHash5, StringHasher::hashMemory(testBUChars, 10));
+    ASSERT_EQ(testBHash5, StringHasher::hashMemory<10>(testBUChars));
 }
 
 } // namespace TestWebKitAPI

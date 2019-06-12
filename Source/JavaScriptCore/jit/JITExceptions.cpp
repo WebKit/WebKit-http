@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,20 +27,24 @@
 #include "JITExceptions.h"
 
 #include "CallFrame.h"
+#include "CatchScope.h"
 #include "CodeBlock.h"
+#include "Disassembler.h"
 #include "Interpreter.h"
+#include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "LLIntData.h"
 #include "LLIntOpcode.h"
 #include "LLIntThunks.h"
 #include "Opcode.h"
-#include "JSCInlines.h"
+#include "ShadowChicken.h"
 #include "VM.h"
 
 namespace JSC {
 
 void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
 {
+    auto scope = DECLARE_CATCH_SCOPE(*vm);
     if (Options::breakOnThrow()) {
         CodeBlock* codeBlock = callFrame->codeBlock();
         if (codeBlock)
@@ -50,7 +54,14 @@ void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
         CRASH();
     }
     
-    Exception* exception = vm->exception();
+    ExecState* shadowChickenTopFrame = callFrame;
+    if (unwindStart == UnwindFromCallerFrame) {
+        VMEntryFrame* topVMEntryFrame = vm->topVMEntryFrame;
+        shadowChickenTopFrame = callFrame->callerFrame(topVMEntryFrame);
+    }
+    vm->shadowChicken().log(*vm, shadowChickenTopFrame, ShadowChicken::Packet::throwPacket());
+    
+    Exception* exception = scope.exception();
     RELEASE_ASSERT(exception);
     HandlerInfo* handler = vm->interpreter->unwind(*vm, callFrame, exception, unwindStart); // This may update callFrame.
 
@@ -73,11 +84,18 @@ void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
     } else
         catchRoutine = LLInt::getCodePtr(handleUncaughtException);
     
+    ASSERT(bitwise_cast<uintptr_t>(callFrame) < bitwise_cast<uintptr_t>(vm->topVMEntryFrame));
+
     vm->callFrameForCatch = callFrame;
     vm->targetMachinePCForThrow = catchRoutine;
     vm->targetInterpreterPCForThrow = catchPCForInterpreter;
     
     RELEASE_ASSERT(catchRoutine);
+}
+
+void genericUnwind(VM* vm, ExecState* callFrame)
+{
+    genericUnwind(vm, callFrame, UnwindFromCurrentFrame);
 }
 
 } // namespace JSC

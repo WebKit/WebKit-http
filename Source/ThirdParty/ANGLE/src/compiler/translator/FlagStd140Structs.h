@@ -18,11 +18,13 @@ namespace sh
 class FlagStd140Structs : public TIntermTraverser
 {
   public:
+    FlagStd140Structs() : TIntermTraverser(true, false, false) {}
+
     const std::vector<TIntermTyped *> getFlaggedNodes() const { return mFlaggedNodes; }
 
   protected:
-    virtual bool visitBinary(Visit visit, TIntermBinary *binaryNode);
-    virtual void visitSymbol(TIntermSymbol *symbol);
+    bool visitBinary(Visit visit, TIntermBinary *binaryNode) override;
+    void visitSymbol(TIntermSymbol *symbol) override;
 
   private:
     bool isInStd140InterfaceBlock(TIntermTyped *node) const;
@@ -31,7 +33,6 @@ class FlagStd140Structs : public TIntermTraverser
 };
 
 std::vector<TIntermTyped *> FlagStd140ValueStructs(TIntermNode *node);
-
 }
 
-#endif // COMPILER_TRANSLATOR_FLAGSTD140STRUCTS_H_
+#endif  // COMPILER_TRANSLATOR_FLAGSTD140STRUCTS_H_

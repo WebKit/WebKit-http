@@ -29,14 +29,92 @@
 #include "AXObjectCache.h"
 #include "CompositeEditCommand.h"
 #include "Document.h"
+#include "Editing.h"
 #include "Editor.h"
 #include "Element.h"
-#include "EventNames.h"
 #include "Frame.h"
+#include "HTMLInputElement.h"
+#include "HTMLTextAreaElement.h"
 #include "NodeTraversal.h"
-#include "htmlediting.h"
 
 namespace WebCore {
+
+String inputTypeNameForEditingAction(EditAction action)
+{
+    switch (action) {
+    case EditActionJustify:
+    case EditActionAlignLeft:
+        return ASCIILiteral("formatJustifyLeft");
+    case EditActionAlignRight:
+        return ASCIILiteral("formatJustifyRight");
+    case EditActionCenter:
+        return ASCIILiteral("formatJustifyCenter");
+    case EditActionSubscript:
+        return ASCIILiteral("formatSubscript");
+    case EditActionSuperscript:
+        return ASCIILiteral("formatSuperscript");
+    case EditActionUnderline:
+        return ASCIILiteral("formatUnderline");
+    case EditActionSetColor:
+        return ASCIILiteral("formatForeColor");
+    case EditActionDeleteByDrag:
+        return ASCIILiteral("deleteByDrag");
+    case EditActionCut:
+        return ASCIILiteral("deleteByCut");
+    case EditActionBold:
+        return ASCIILiteral("formatBold");
+    case EditActionItalics:
+        return ASCIILiteral("formatItalic");
+    case EditActionPaste:
+        return ASCIILiteral("insertFromPaste");
+    case EditActionDelete:
+    case EditActionTypingDeleteSelection:
+        return ASCIILiteral("deleteContent");
+    case EditActionTypingDeleteBackward:
+        return ASCIILiteral("deleteContentBackward");
+    case EditActionTypingDeleteForward:
+        return ASCIILiteral("deleteContentForward");
+    case EditActionTypingDeleteWordBackward:
+        return ASCIILiteral("deleteWordBackward");
+    case EditActionTypingDeleteWordForward:
+        return ASCIILiteral("deleteWordForward");
+    case EditActionTypingDeleteLineBackward:
+        return ASCIILiteral("deleteHardLineBackward");
+    case EditActionTypingDeleteLineForward:
+        return ASCIILiteral("deleteHardLineForward");
+    case EditActionTypingDeletePendingComposition:
+        return ASCIILiteral("deleteCompositionText");
+    case EditActionTypingDeleteFinalComposition:
+        return ASCIILiteral("deleteByComposition");
+    case EditActionInsert:
+    case EditActionTypingInsertText:
+        return ASCIILiteral("insertText");
+    case EditActionInsertReplacement:
+        return ASCIILiteral("insertReplacementText");
+    case EditActionInsertFromDrop:
+        return ASCIILiteral("insertFromDrop");
+    case EditActionTypingInsertLineBreak:
+        return ASCIILiteral("insertLineBreak");
+    case EditActionTypingInsertParagraph:
+        return ASCIILiteral("insertParagraph");
+    case EditActionInsertOrderedList:
+        return ASCIILiteral("insertOrderedList");
+    case EditActionInsertUnorderedList:
+        return ASCIILiteral("insertUnorderedList");
+    case EditActionTypingInsertPendingComposition:
+        return ASCIILiteral("insertCompositionText");
+    case EditActionTypingInsertFinalComposition:
+        return ASCIILiteral("insertFromComposition");
+    case EditActionIndent:
+        return ASCIILiteral("formatIndent");
+    case EditActionOutdent:
+        return ASCIILiteral("formatOutdent");
+    case EditActionSetWritingDirection:
+        return ASCIILiteral("formatSetInlineTextDirection");
+    default:
+        return emptyString();
+    }
+}
 
 EditCommand::EditCommand(Document& document, EditAction editingAction)
     : m_document(document)
@@ -65,6 +143,12 @@ Frame& EditCommand::frame()
     return *document().frame();
 }
 
+const Frame& EditCommand::frame() const
+{
+    ASSERT(document().frame());
+    return *document().frame();
+}
+
 EditAction EditCommand::editingAction() const
 {
     return m_editingAction;
@@ -77,13 +161,28 @@ static inline EditCommandComposition* compositionIfPossible(EditCommand* command
     return toCompositeEditCommand(command)->composition();
 }
 
+bool EditCommand::isEditingTextAreaOrTextInput() const
+{
+    auto* frame = m_document->frame();
+    if (!frame)
+        return false;
+
+    auto* container = frame->selection().selection().start().containerNode();
+    if (!container)
+        return false;
+
+    auto* ancestor = container->shadowHost();
+    if (!ancestor)
+        return false;
+
+    return is<HTMLTextAreaElement>(*ancestor) || (is<HTMLInputElement>(*ancestor) && downcast<HTMLInputElement>(*ancestor).isText());
+}
+
 void EditCommand::setStartingSelection(const VisibleSelection& s)
 {
     for (EditCommand* cmd = this; ; cmd = cmd->m_parent) {
-        if (EditCommandComposition* composition = compositionIfPossible(cmd)) {
-            ASSERT(cmd->isTopLevelCommand());
+        if (auto* composition = compositionIfPossible(cmd))
             composition->setStartingSelection(s);
-        }
         cmd->m_startingSelection = s;
         if (!cmd->m_parent || cmd->m_parent->isFirstCommand(cmd))
             break;
@@ -93,10 +192,8 @@ void EditCommand::setStartingSelection(const VisibleSelection& s)
 void EditCommand::setEndingSelection(const VisibleSelection &s)
 {
     for (EditCommand* cmd = this; cmd; cmd = cmd->m_parent) {
-        if (EditCommandComposition* composition = compositionIfPossible(cmd)) {
-            ASSERT(cmd->isTopLevelCommand());
+        if (auto* composition = compositionIfPossible(cmd))
             composition->setEndingSelection(s);
-        }
         cmd->m_endingSelection = s;
     }
 }
@@ -104,7 +201,6 @@ void EditCommand::setEndingSelection(const VisibleSelection &s)
 void EditCommand::setParent(CompositeEditCommand* parent)
 {
     ASSERT((parent && !m_parent) || (!parent && m_parent));
-    ASSERT(!parent || !isCompositeEditCommand() || !toCompositeEditCommand(this)->composition());
     m_parent = parent;
     if (parent) {
         m_startingSelection = parent->m_endingSelection;
@@ -112,80 +208,24 @@ void EditCommand::setParent(CompositeEditCommand* parent)
     }
 }
 
-AXTextEditType EditCommand::applyEditType() const
+void EditCommand::postTextStateChangeNotification(AXTextEditType type, const String& text)
 {
-    switch (editingAction()) {
-    case EditActionCut:
-        return AXTextEditTypeCut;
-    case EditActionDelete:
-        return AXTextEditTypeDelete;
-    case EditActionDictation:
-        return AXTextEditTypeDictation;
-    case EditActionInsert:
-        return AXTextEditTypeInsert;
-    case EditActionPaste:
-        return AXTextEditTypePaste;
-    case EditActionTyping:
-        return AXTextEditTypeTyping;
-    case EditActionSetColor:
-    case EditActionSetBackgroundColor:
-    case EditActionTurnOffKerning:
-    case EditActionTightenKerning:
-    case EditActionLoosenKerning:
-    case EditActionUseStandardKerning:
-    case EditActionTurnOffLigatures:
-    case EditActionUseStandardLigatures:
-    case EditActionUseAllLigatures:
-    case EditActionRaiseBaseline:
-    case EditActionLowerBaseline:
-    case EditActionSetTraditionalCharacterShape:
-    case EditActionSetFont:
-    case EditActionChangeAttributes:
-    case EditActionAlignLeft:
-    case EditActionAlignRight:
-    case EditActionCenter:
-    case EditActionJustify:
-    case EditActionSetWritingDirection:
-    case EditActionSubscript:
-    case EditActionSuperscript:
-    case EditActionUnderline:
-    case EditActionOutline:
-    case EditActionUnscript:
-    case EditActionBold:
-    case EditActionItalics:
-    case EditActionFormatBlock:
-    case EditActionIndent:
-    case EditActionOutdent:
-        return AXTextEditTypeAttributesChange;
-    // Include default case for unhandled EditAction cases.
-    default:
-        break;
-    }
-    return AXTextEditTypeUnknown;
+    if (!AXObjectCache::accessibilityEnabled())
+        return;
+    postTextStateChangeNotification(type, text, frame().selection().selection().start());
 }
 
-AXTextEditType EditCommand::unapplyEditType() const
+void EditCommand::postTextStateChangeNotification(AXTextEditType type, const String& text, const VisiblePosition& position)
 {
-    switch (applyEditType()) {
-    case AXTextEditTypeUnknown:
-        return AXTextEditTypeUnknown;
-    case AXTextEditTypeDelete:
-    case AXTextEditTypeCut:
-        return AXTextEditTypeInsert;
-    case AXTextEditTypeInsert:
-    case AXTextEditTypeTyping:
-    case AXTextEditTypeDictation:
-    case AXTextEditTypePaste:
-        return AXTextEditTypeDelete;
-    case AXTextEditTypeAttributesChange:
-        return AXTextEditTypeAttributesChange;
-    }
-    return AXTextEditTypeUnknown;
-}
-
-bool EditCommand::shouldPostAccessibilityNotification() const
-{
-    return AXObjectCache::accessibilityEnabled() && editingAction() != EditActionUnspecified;
+    if (!AXObjectCache::accessibilityEnabled())
+        return;
+    if (!text.length())
+        return;
+    auto* cache = document().existingAXObjectCache();
+    if (!cache)
+        return;
+    auto* node = highestEditableRoot(position.deepEquivalent(), HasEditableAXRole);
+    cache->postTextStateChangeNotification(node, type, text, position);
 }
 
 SimpleEditCommand::SimpleEditCommand(Document& document, EditAction editingAction)
@@ -205,15 +245,5 @@ void SimpleEditCommand::addNodeAndDescendants(Node* startNode, HashSet<Node*>& n
         nodes.add(node);
 }
 #endif
-
-void SimpleEditCommand::notifyAccessibilityForTextChange(Node* node, AXTextEditType type, const String& text, const VisiblePosition& position)
-{
-    if (!AXObjectCache::accessibilityEnabled())
-        return;
-    AXObjectCache* cache = document().existingAXObjectCache();
-    if (!cache)
-        return;
-    cache->postTextStateChangeNotification(node, type, text, position);
-}
 
 } // namespace WebCore

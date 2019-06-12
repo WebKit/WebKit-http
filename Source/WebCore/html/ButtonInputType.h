@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ButtonInputType_h
-#define ButtonInputType_h
+#pragma once
 
 #include "BaseButtonInputType.h"
 
@@ -40,11 +39,9 @@ public:
     explicit ButtonInputType(HTMLInputElement& element) : BaseButtonInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual bool supportsValidation() const override;
-    virtual bool isTextButton() const override;
+    const AtomicString& formControlType() const override;
+    bool supportsValidation() const override;
+    bool isTextButton() const override;
 };
 
 } // namespace WebCore
-
-#endif // ButtonInputType_h

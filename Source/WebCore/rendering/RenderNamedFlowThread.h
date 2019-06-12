@@ -23,9 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef RenderNamedFlowThread_h
-#define RenderNamedFlowThread_h
+#pragma once
 
 #include "RenderFlowThread.h"
 #include "SelectionSubtreeRoot.h"
@@ -46,30 +44,21 @@ typedef ListHashSet<Element*> NamedFlowContentElements;
 
 class RenderNamedFlowThread final : public RenderFlowThread, public SelectionSubtreeRoot {
 public:
-    RenderNamedFlowThread(Document&, Ref<RenderStyle>&&, Ref<WebKitNamedFlow>&&);
+    RenderNamedFlowThread(Document&, RenderStyle&&, Ref<WebKitNamedFlow>&&);
     virtual ~RenderNamedFlowThread();
 
     const AtomicString& flowThreadName() const;
 
     const RenderRegionList& invalidRenderRegionList() const { return m_invalidRegionList; }
 
-    RenderElement* nextRendererForElement(Element&) const;
-
-    void addFlowChild(RenderElement&);
-    void removeFlowChild(RenderElement&);
-    bool hasChildren() const { return !m_flowThreadChildList.isEmpty(); }
-#ifndef NDEBUG
-    bool hasChild(RenderElement& child) const { return m_flowThreadChildList.contains(&child); }
-#endif
-
     static RenderBlock* fragmentFromRenderBoxAsRenderBlock(RenderBox*, const IntPoint& absolutePoint, const RenderBox& flowedBox);
 
     void pushDependencies(RenderNamedFlowThreadList&);
 
-    virtual void addRegionToThread(RenderRegion*) override;
-    virtual void removeRegionFromThread(RenderRegion*) override;
+    void addRegionToThread(RenderRegion*) override;
+    void removeRegionFromThread(RenderRegion*) override;
 
-    virtual void regionChangedWritingMode(RenderRegion*) override;
+    void regionChangedWritingMode(RenderRegion*) override;
 
     LayoutRect decorationsClipRectForBoxInNamedFlowFragment(const RenderBox&, RenderNamedFlowFragment&) const;
 
@@ -83,35 +72,36 @@ public:
     bool isMarkedForDestruction() const;
     void getRanges(Vector<RefPtr<Range>>&, const RenderNamedFlowFragment*) const;
 
-    virtual void applyBreakAfterContent(LayoutUnit) override;
+    void applyBreakAfterContent(LayoutUnit) override;
 
-    virtual bool collectsGraphicsLayersUnderRegions() const override;
+    bool collectsGraphicsLayersUnderRegions() const override;
 
     // Check if the content is flown into at least a region with region styling rules.
     bool hasRegionsWithStyling() const { return m_hasRegionsWithStyling; }
     void checkRegionsWithStyling();
 
-    void clearRenderObjectCustomStyle(const RenderObject*);
+    void clearRenderObjectCustomStyle(const RenderElement&);
 
-    virtual void removeFlowChildInfo(RenderObject*) override;
+    void removeFlowChildInfo(RenderElement&) override;
 
     LayoutUnit flowContentBottom() const { return m_flowContentBottom; }
     void dispatchNamedFlowEvents();
 
     void setDispatchRegionOversetChangeEvent(bool value) { m_dispatchRegionOversetChangeEvent = value; }
 
-    virtual bool absoluteQuadsForBox(Vector<FloatQuad>&, bool*, const RenderBox*, float, float) const override;
+    bool absoluteQuadsForBox(Vector<FloatQuad>&, bool*, const RenderBox*, float, float) const override;
 
 protected:
     void setMarkForDestruction();
     void resetMarkForDestruction();
 
 private:
-    virtual const char* renderName() const override;
-    virtual bool isRenderNamedFlowThread() const override { return true; }
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
-    virtual void computeOverflow(LayoutUnit, bool = false) override;
-    virtual void layout() override;
+    void willBeDestroyed() override;
+    const char* renderName() const override;
+    bool isRenderNamedFlowThread() const override { return true; }
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
+    void computeOverflow(LayoutUnit, bool = false) override;
+    void layout() override;
 
     void dispatchRegionOversetChangeEventIfNeeded();
 
@@ -141,9 +131,6 @@ private:
     // easy to sort the order of threads layout.
     RenderNamedFlowThreadCountedSet m_layoutBeforeThreadsSet;
 
-    // Holds the sorted children of a named flow. This is the only way we can get the ordering right.
-    ListHashSet<RenderElement*> m_flowThreadChildList;
-
     NamedFlowContentElements m_contentElements;
 
     RenderRegionList m_invalidRegionList;
@@ -162,5 +149,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderNamedFlowThread, isRenderNamedFlowThread())
-
-#endif // RenderNamedFlowThread_h

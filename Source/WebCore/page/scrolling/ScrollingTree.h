@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingTree_h
-#define ScrollingTree_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
@@ -60,6 +59,8 @@ public:
     virtual bool isRemoteScrollingTree() const { return false; }
     virtual bool isScrollingTreeIOS() const { return false; }
 
+    bool visualViewportEnabled() const { return m_visualViewportEnabled; }
+
     virtual EventResult tryToHandleWheelEvent(const PlatformWheelEvent&) = 0;
     WEBCORE_EXPORT bool shouldHandleWheelEventSynchronously(const PlatformWheelEvent&);
     
@@ -69,15 +70,15 @@ public:
     bool isScrollSnapInProgress();
 
     virtual void invalidate() { }
-    WEBCORE_EXPORT virtual void commitNewTreeState(std::unique_ptr<ScrollingStateTree>);
+    WEBCORE_EXPORT virtual void commitTreeState(std::unique_ptr<ScrollingStateTree>);
 
     void setMainFramePinState(bool pinnedToTheLeft, bool pinnedToTheRight, bool pinnedToTheTop, bool pinnedToTheBottom);
 
-    virtual PassRefPtr<ScrollingTreeNode> createScrollingTreeNode(ScrollingNodeType, ScrollingNodeID) = 0;
+    virtual Ref<ScrollingTreeNode> createScrollingTreeNode(ScrollingNodeType, ScrollingNodeID) = 0;
 
     // Called after a scrolling tree node has handled a scroll and updated its layers.
     // Updates FrameView/RenderLayer scrolling state and GraphicsLayers.
-    virtual void scrollingTreeNodeDidScroll(ScrollingNodeID, const FloatPoint& scrollPosition, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition) = 0;
+    virtual void scrollingTreeNodeDidScroll(ScrollingNodeID, const FloatPoint& scrollPosition, const std::optional<FloatPoint>& layoutViewportOrigin, ScrollingLayerPositionAction = ScrollingLayerPositionAction::Sync) = 0;
 
     // Called for requested scroll position updates.
     virtual void scrollingTreeNodeRequestsScroll(ScrollingNodeID, const FloatPoint& /*scrollPosition*/, bool /*representsProgrammaticScroll*/) { }
@@ -92,6 +93,9 @@ public:
 
     WEBCORE_EXPORT virtual void currentSnapPointIndicesDidChange(ScrollingNodeID, unsigned horizontal, unsigned vertical) = 0;
 
+    WEBCORE_EXPORT virtual void reportSynchronousScrollingReasonsChanged(MonotonicTime, SynchronousScrollingReasons) { }
+    WEBCORE_EXPORT virtual void reportExposedUnfilledArea(MonotonicTime, unsigned /* unfilledArea */) { }
+
     FloatPoint mainFrameScrollPosition();
     
 #if PLATFORM(IOS)
@@ -101,7 +105,7 @@ public:
     virtual void scrollingTreeNodeDidEndScroll() { }
 #endif
 
-    WEBCORE_EXPORT bool isPointInNonFastScrollableRegion(IntPoint);
+    WEBCORE_EXPORT TrackingType eventTrackingTypeForPoint(const AtomicString& eventName, IntPoint);
     
 #if PLATFORM(MAC)
     virtual void handleWheelEventPhase(PlatformWheelEventPhase) = 0;
@@ -144,8 +148,12 @@ public:
         --m_fixedOrStickyNodeCount;
     }
     
+    WEBCORE_EXPORT String scrollingTreeAsText();
+    
 protected:
     void setMainFrameScrollPosition(FloatPoint);
+    void setVisualViewportEnabled(bool b) { m_visualViewportEnabled = b; }
+
     WEBCORE_EXPORT virtual void handleWheelEvent(const PlatformWheelEvent&);
 
 private:
@@ -162,7 +170,7 @@ private:
     ScrollingTreeNodeMap m_nodeMap;
 
     Lock m_mutex;
-    Region m_nonFastScrollableRegion;
+    EventTrackingRegions m_eventTrackingRegions;
     FloatPoint m_mainFrameScrollPosition;
 
     Lock m_swipeStateMutex;
@@ -183,6 +191,7 @@ private:
     bool m_mainFrameIsScrollSnapping { false };
     bool m_scrollingPerformanceLoggingEnabled { false };
     bool m_isHandlingProgrammaticScroll { false };
+    bool m_visualViewportEnabled { false };
 };
     
 } // namespace WebCore
@@ -192,5 +201,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
     static bool isType(const WebCore::ScrollingTree& tree) { return tree.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ScrollingTree_h

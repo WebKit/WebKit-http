@@ -23,12 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebsiteDataRecord_h
-#define WebsiteDataRecord_h
+#pragma once
 
-#include "WebsiteDataTypes.h"
+#include "WebsiteDataType.h"
+#include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
+#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/OptionSet.h>
+#include <wtf/Optional.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
@@ -43,23 +46,33 @@ struct WebsiteDataRecord {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     static String displayNameForPluginDataHostName(const String& hostName);
 #endif
-    static String displayNameForOrigin(const WebCore::SecurityOrigin&);
+    static String displayNameForOrigin(const WebCore::SecurityOriginData&);
 
-    void add(WebsiteDataTypes, RefPtr<WebCore::SecurityOrigin>&&);
+    void add(WebsiteDataType, const WebCore::SecurityOriginData&);
     void addCookieHostName(const String& hostName);
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void addPluginDataHostName(const String& hostName);
 #endif
+    void addOriginWithCredential(const String&);
 
     String displayName;
-    unsigned types { 0 };
-    HashSet<RefPtr<WebCore::SecurityOrigin>> origins;
+    OptionSet<WebsiteDataType> types;
+
+    struct Size {
+        uint64_t totalSize;
+        HashMap<unsigned, uint64_t> typeSizes;
+    };
+    std::optional<Size> size;
+
+    HashSet<WebCore::SecurityOriginData> origins;
     HashSet<String> cookieHostNames;
 #if ENABLE(NETSCAPE_PLUGIN_API)
     HashSet<String> pluginDataHostNames;
 #endif
+    HashSet<String> originsWithCredentials;
+
+    bool matchesTopPrivatelyControlledDomain(const String&) const;
+    String topPrivatelyControlledDomain();
 };
 
 }
-
-#endif // WebsiteDataRecord_h

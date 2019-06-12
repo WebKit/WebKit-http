@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebVTTToken_h
-#define WebVTTToken_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -59,7 +58,7 @@ public:
         return WebVTTToken(Type::Character, characterData);
     }
 
-    static WebVTTToken StartTag(const String& tagName, const AtomicString& classes = emptyAtom, const AtomicString& annotation = emptyAtom)
+    static WebVTTToken StartTag(const String& tagName, const AtomicString& classes = emptyAtom(), const AtomicString& annotation = emptyAtom())
     {
         WebVTTToken token(Type::StartTag, tagName);
         token.m_classes = classes;
@@ -94,7 +93,6 @@ private:
     AtomicString m_classes;
 };
 
-}
+} // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)

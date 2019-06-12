@@ -26,14 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AudioParamTimeline_h
-#define AudioParamTimeline_h
+#pragma once
 
 #include "AudioContext.h"
 #include <runtime/Float32Array.h>
 #include <wtf/Lock.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -76,13 +73,13 @@ private:
             LastType
         };
 
-        ParamEvent(Type type, float value, float time, float timeConstant, float duration, PassRefPtr<Float32Array> curve)
+        ParamEvent(Type type, float value, float time, float timeConstant, float duration, RefPtr<Float32Array>&& curve)
             : m_type(type)
             , m_value(value)
             , m_time(time)
             , m_timeConstant(timeConstant)
             , m_duration(duration)
-            , m_curve(curve)
+            , m_curve(WTFMove(curve))
         {
         }
 
@@ -111,5 +108,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // AudioParamTimeline_h

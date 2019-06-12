@@ -22,8 +22,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextDocumentParser_h
-#define TextDocumentParser_h
+#pragma once
 
 #include "HTMLDocumentParser.h"
 
@@ -39,13 +38,11 @@ public:
 private:
     explicit TextDocumentParser(HTMLDocument&);
 
-    virtual void append(RefPtr<StringImpl>&&) override;
+    void append(RefPtr<StringImpl>&&) override;
 
     void insertFakePreElement();
 
     bool m_haveInsertedFakePreElement { false };
 };
 
-}
-
-#endif
+} // namespace WebCore

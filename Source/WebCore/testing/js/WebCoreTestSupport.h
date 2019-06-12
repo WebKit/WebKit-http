@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, 2015 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +24,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebCoreTestSupport_h
-#define WebCoreTestSupport_h
+#pragma once
 
 typedef const struct OpaqueJSContext* JSContextRef;
+typedef struct OpaqueJSString* JSStringRef;
 typedef struct OpaqueJSValue* JSObjectRef;
 
 #if PLATFORM(COCOA)
@@ -34,6 +35,10 @@ typedef struct OpaqueJSValue* JSObjectRef;
 #else
 #define TEST_SUPPORT_EXPORT
 #endif
+
+namespace WTF {
+class String;
+}
 
 namespace WebCore {
 class Frame;
@@ -47,6 +52,15 @@ void monitorWheelEvents(WebCore::Frame&) TEST_SUPPORT_EXPORT;
 void setTestCallbackAndStartNotificationTimer(WebCore::Frame&, JSContextRef, JSObjectRef) TEST_SUPPORT_EXPORT;
 void clearWheelEventTestTrigger(WebCore::Frame&) TEST_SUPPORT_EXPORT;
 
-} // namespace WebCore
+void setLogChannelToAccumulate(const WTF::String& name) TEST_SUPPORT_EXPORT;
+void initializeLogChannelsIfNecessary() TEST_SUPPORT_EXPORT;
+void setAllowsAnySSLCertificate(bool) TEST_SUPPORT_EXPORT;
 
-#endif
+void installMockGamepadProvider() TEST_SUPPORT_EXPORT;
+void connectMockGamepad(unsigned index) TEST_SUPPORT_EXPORT;
+void disconnectMockGamepad(unsigned index) TEST_SUPPORT_EXPORT;
+void setMockGamepadDetails(unsigned index, const WTF::String& gamepadID, unsigned axisCount, unsigned buttonCount) TEST_SUPPORT_EXPORT;
+void setMockGamepadAxisValue(unsigned index, unsigned axisIndex, double value) TEST_SUPPORT_EXPORT;
+void setMockGamepadButtonValue(unsigned index, unsigned buttonIndex, double value) TEST_SUPPORT_EXPORT;
+
+} // namespace WebCoreTestSupport

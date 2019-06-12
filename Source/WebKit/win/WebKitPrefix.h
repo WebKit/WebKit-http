@@ -26,14 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x601
-#endif
-
-#ifndef WINVER
-#define WINVER 0x0601
-#endif
-
 #ifndef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
 #endif
@@ -48,11 +40,10 @@
 #endif
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <WebKit/WebKit.h>
+#include <WebKit.h>
 #include "config.h"
 
 // WebKit.dll is expected to export the symbols in WebCore that have been marked
 // as WEBCORE_EXPORT
 #undef WEBCORE_EXPORT
 #define WEBCORE_EXPORT WTF_EXPORT_DECLARATION
-

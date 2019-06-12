@@ -1,5 +1,6 @@
 /*
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -17,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAnimatedListPropertyTearOff_h
-#define SVGAnimatedListPropertyTearOff_h
+#pragma once
 
 #include "SVGAnimatedProperty.h"
 #include "SVGListPropertyTearOff.h"
@@ -32,56 +32,61 @@ class SVGPropertyTearOff;
 template<typename PropertyType>
 class SVGAnimatedListPropertyTearOff : public SVGAnimatedProperty {
 public:
-    typedef typename SVGPropertyTraits<PropertyType>::ListItemType ListItemType;
-    typedef SVGPropertyTearOff<ListItemType> ListItemTearOff;
-    typedef Vector<RefPtr<ListItemTearOff>> ListWrapperCache;
-    typedef SVGListProperty<PropertyType> ListProperty;
-    typedef SVGListPropertyTearOff<PropertyType> ListPropertyTearOff;
-    typedef PropertyType ContentType;
+    using ListItemType = typename SVGPropertyTraits<PropertyType>::ListItemType;
+    using ListItemTearOff = typename SVGPropertyTraits<PropertyType>::ListItemTearOff;
+    using ListWrapperCache = Vector<RefPtr<ListItemTearOff>>;
+    using ListProperty = SVGListProperty<PropertyType>;
+    using ListPropertyTearOff = typename SVGPropertyTraits<PropertyType>::ListPropertyTearOff;
+    using ContentType = PropertyType;
 
-    virtual RefPtr<ListProperty> baseVal()
+    static Ref<SVGAnimatedListPropertyTearOff<PropertyType>> create(SVGElement* contextElement, const QualifiedName& attributeName, AnimatedPropertyType animatedPropertyType, PropertyType& values)
+    {
+        ASSERT(contextElement);
+        return adoptRef(*new SVGAnimatedListPropertyTearOff<PropertyType>(contextElement, attributeName, animatedPropertyType, values));
+    }
+
+    virtual Ref<ListPropertyTearOff> baseVal()
     {
         if (m_baseVal)
-            return m_baseVal;
+            return *m_baseVal;
 
-        auto property = ListPropertyTearOff::create(this, BaseValRole, m_values, m_wrappers);
+        auto property = ListPropertyTearOff::create(*this, BaseValRole, m_values, m_wrappers);
         m_baseVal = property.ptr();
-        return WTFMove(property);
+        return property;
     }
 
-    virtual RefPtr<ListProperty> animVal()
+    virtual Ref<ListPropertyTearOff> animVal()
     {
         if (m_animVal)
-            return m_animVal;
+            return *m_animVal;
 
-        auto property = ListPropertyTearOff::create(this, AnimValRole, m_values, m_wrappers);
+        auto property = ListPropertyTearOff::create(*this, AnimValRole, m_values, m_wrappers);
         m_animVal = property.ptr();
-        return WTFMove(property);
+        return property;
     }
-
-    void propertyWillBeDeleted(const ListProperty& property)
+    
+    bool isAnimating() const override { return m_animatedProperty; }
+    bool isAnimatedListTearOff() const override { return true; }
+    void propertyWillBeDeleted(const SVGProperty& property) override
     {
         if (&property == m_baseVal)
             m_baseVal = nullptr;
         else if (&property == m_animVal)
             m_animVal = nullptr;
+        if (!m_baseVal && !m_animVal)
+            detachListWrappers(m_values.size());
     }
-
-    virtual bool isAnimatedListTearOff() const override { return true; }
 
     int findItem(SVGProperty* property)
     {
         // This should ever be called for our baseVal, as animVal can't modify the list.
-        // It's safe to cast to ListPropertyTearOff here as all classes inheriting from us supply their own removeItemFromList() method.
-        typedef SVGPropertyTearOff<typename SVGPropertyTraits<PropertyType>::ListItemType> ListItemTearOff;
-        return static_pointer_cast<ListPropertyTearOff>(baseVal())->findItem(static_cast<ListItemTearOff*>(property));
+        return baseVal()->findItem(static_cast<ListItemTearOff*>(property));
     }
 
     void removeItemFromList(size_t itemIndex, bool shouldSynchronizeWrappers)
     {
         // This should ever be called for our baseVal, as animVal can't modify the list.
-        // It's safe to cast to ListPropertyTearOff here as all classes inheriting from us supply their own removeItemFromList() method.
-        static_pointer_cast<ListPropertyTearOff>(baseVal())->removeItemFromList(itemIndex, shouldSynchronizeWrappers);
+        baseVal()->removeItemFromList(itemIndex, shouldSynchronizeWrappers);
     }
 
     void detachListWrappers(unsigned newListSize)
@@ -91,9 +96,8 @@ public:
 
     PropertyType& currentAnimatedValue()
     {
-        ASSERT(m_isAnimating);
-        ASSERT(m_animatingAnimVal);
-        return static_pointer_cast<ListProperty>(m_animatingAnimVal)->values();
+        ASSERT(isAnimating());
+        return m_animatedProperty->values();
     }
 
     const PropertyType& currentBaseValue() const
@@ -103,8 +107,7 @@ public:
 
     void animationStarted(PropertyType* newAnimVal, bool shouldOwnValues = false)
     {
-        ASSERT(!m_isAnimating);
-        ASSERT(!m_animatingAnimVal);
+        ASSERT(!isAnimating());
         ASSERT(newAnimVal);
         ASSERT(m_values.size() == m_wrappers.size());
         ASSERT(m_animatedWrappers.isEmpty());
@@ -113,45 +116,41 @@ public:
         if (!newAnimVal->isEmpty())
             m_animatedWrappers.fill(0, newAnimVal->size());
 
-        m_animatingAnimVal = animVal();
-        m_animatingAnimVal->setValuesAndWrappers(newAnimVal, &m_animatedWrappers, shouldOwnValues);
-        ASSERT(m_animatingAnimVal->values().size() == m_animatingAnimVal->wrappers().size());
-        ASSERT(m_animatingAnimVal->wrappers().size() == m_animatedWrappers.size());
-        m_isAnimating = true;
+        m_animatedProperty = animVal();
+        m_animatedProperty->setValuesAndWrappers(newAnimVal, &m_animatedWrappers, shouldOwnValues);
+        ASSERT(m_animatedProperty->values().size() == m_animatedProperty->wrappers().size());
+        ASSERT(m_animatedProperty->wrappers().size() == m_animatedWrappers.size());
     }
 
     void animationEnded()
     {
-        ASSERT(m_isAnimating);
-        ASSERT(m_animatingAnimVal);
+        ASSERT(isAnimating());
         ASSERT(m_values.size() == m_wrappers.size());
 
-        ASSERT(m_animatingAnimVal->values().size() == m_animatingAnimVal->wrappers().size());
-        ASSERT(m_animatingAnimVal->wrappers().size() == m_animatedWrappers.size());
+        ASSERT(m_animatedProperty->values().size() == m_animatedProperty->wrappers().size());
+        ASSERT(m_animatedProperty->wrappers().size() == m_animatedWrappers.size());
 
-        m_animatingAnimVal->setValuesAndWrappers(&m_values, &m_wrappers, false);
-        ASSERT(m_animatingAnimVal->values().size() == m_animatingAnimVal->wrappers().size());
-        ASSERT(m_animatingAnimVal->wrappers().size() == m_wrappers.size());
+        m_animatedProperty->setValuesAndWrappers(&m_values, &m_wrappers, false);
+        ASSERT(m_animatedProperty->values().size() == m_animatedProperty->wrappers().size());
+        ASSERT(m_animatedProperty->wrappers().size() == m_wrappers.size());
 
         m_animatedWrappers.clear();
-        m_animatingAnimVal = nullptr;
-        m_isAnimating = false;
+        m_animatedProperty = nullptr;
     }
 
     void synchronizeWrappersIfNeeded()
     {
-        ASSERT(m_isAnimating);
-        ASSERT(m_animatingAnimVal);
+        ASSERT(isAnimating());
 
         // Eventually the wrapper list needs synchronization because any SVGAnimateLengthList::calculateAnimatedValue() call may
         // mutate the length of our values() list, and thus the wrapper() cache needs synchronization, to have the same size.
-        // Also existing wrappers which point directly at elements in the existing SVGLengthList have to be detached (so a copy
+        // Also existing wrappers which point directly at elements in the existing SVGLengthListValues have to be detached (so a copy
         // of them is created, so existing animVal variables in JS are kept-alive). If we'd detach them later the underlying
-        // SVGLengthList was already mutated, and our list item wrapper tear offs would point nowhere. Assertions would fire.
-        m_animatingAnimVal->detachListWrappers(m_animatingAnimVal->values().size());
+        // SVGLengthListValues was already mutated, and our list item wrapper tear offs would point nowhere. Assertions would fire.
+        m_animatedProperty->detachListWrappers(m_animatedProperty->values().size());
 
-        ASSERT(m_animatingAnimVal->values().size() == m_animatingAnimVal->wrappers().size());
-        ASSERT(m_animatingAnimVal->wrappers().size() == m_animatedWrappers.size());
+        ASSERT(m_animatedProperty->values().size() == m_animatedProperty->wrappers().size());
+        ASSERT(m_animatedProperty->wrappers().size() == m_animatedWrappers.size());
     }
 
     void animValWillChange()
@@ -164,12 +163,6 @@ public:
     {
         ASSERT(m_values.size() == m_wrappers.size());
         synchronizeWrappersIfNeeded();
-    }
-
-    static Ref<SVGAnimatedListPropertyTearOff<PropertyType>> create(SVGElement* contextElement, const QualifiedName& attributeName, AnimatedPropertyType animatedPropertyType, PropertyType& values)
-    {
-        ASSERT(contextElement);
-        return adoptRef(*new SVGAnimatedListPropertyTearOff<PropertyType>(contextElement, attributeName, animatedPropertyType, values));
     }
 
 protected:
@@ -189,12 +182,10 @@ protected:
     // Cache the raw pointer but return a RefPtr<>. This will break the cyclic reference
     // between SVGListPropertyTearOff and SVGAnimatedListPropertyTearOff once the property
     // pointer is not needed.
-    ListProperty* m_baseVal { nullptr };
-    ListProperty* m_animVal { nullptr };
+    ListPropertyTearOff* m_baseVal { nullptr };
+    ListPropertyTearOff* m_animVal { nullptr };
 
-    RefPtr<ListProperty> m_animatingAnimVal;
+    RefPtr<ListProperty> m_animatedProperty;
 };
 
-}
-
-#endif // SVGAnimatedListPropertyTearOff_h
+} // namespace WebCore

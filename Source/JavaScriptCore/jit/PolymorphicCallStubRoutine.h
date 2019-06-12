@@ -23,16 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PolymorphicCallStubRoutine_h
-#define PolymorphicCallStubRoutine_h
+#pragma once
 
 #if ENABLE(JIT)
 
 #include "CallEdge.h"
 #include "CallVariant.h"
-#include "CodeOrigin.h"
 #include "GCAwareJITStubRoutine.h"
-#include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
@@ -99,7 +96,7 @@ public:
     bool visitWeak(VM&) override;
 
 protected:
-    virtual void markRequiredObjectsInternal(SlotVisitor&) override;
+    void markRequiredObjectsInternal(SlotVisitor&) override;
 
 private:
     Vector<WriteBarrier<JSCell>, 2> m_variants;
@@ -110,6 +107,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // PolymorphicCallStubRoutine_h
-

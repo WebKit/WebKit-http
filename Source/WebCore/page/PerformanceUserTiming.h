@@ -23,55 +23,46 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PerformanceUserTiming_h
-#define PerformanceUserTiming_h
+#pragma once
 
-#if ENABLE(USER_TIMING)
+#if ENABLE(WEB_TIMING)
 
-#include "ExceptionCode.h"
-#include "Performance.h"
-#include "PerformanceTiming.h"
+#include "ExceptionOr.h"
+#include "PerformanceMark.h"
+#include "PerformanceMeasure.h"
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/text/StringHash.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Performance;
-class PerformanceEntry;
 
-typedef unsigned long long (PerformanceTiming::*NavigationTimingFunction)() const;
-typedef HashMap<String, Vector<RefPtr<PerformanceEntry> > > PerformanceEntryMap;
+using PerformanceEntryMap = HashMap<String, Vector<RefPtr<PerformanceEntry>>>;
 
-class UserTiming : public RefCounted<UserTiming> {
+class UserTiming {
 public:
-    static Ref<UserTiming> create(Performance* performance) { return adoptRef(*new UserTiming(performance)); }
+    explicit UserTiming(Performance&);
 
-    void mark(const String& markName, ExceptionCode&);
+    ExceptionOr<Ref<PerformanceMark>> mark(const String& markName);
     void clearMarks(const String& markName);
 
-    void measure(const String& measureName, const String& startMark, const String& endMark, ExceptionCode&);
+    ExceptionOr<Ref<PerformanceMeasure>> measure(const String& measureName, const String& startMark, const String& endMark);
     void clearMeasures(const String& measureName);
 
-    Vector<RefPtr<PerformanceEntry> > getMarks() const;
-    Vector<RefPtr<PerformanceEntry> > getMeasures() const;
+    Vector<RefPtr<PerformanceEntry>> getMarks() const;
+    Vector<RefPtr<PerformanceEntry>> getMeasures() const;
 
-    Vector<RefPtr<PerformanceEntry> > getMarks(const String& name) const;
-    Vector<RefPtr<PerformanceEntry> > getMeasures(const String& name) const;
+    Vector<RefPtr<PerformanceEntry>> getMarks(const String& name) const;
+    Vector<RefPtr<PerformanceEntry>> getMeasures(const String& name) const;
 
 private:
-    explicit UserTiming(Performance*);
+    ExceptionOr<double> findExistingMarkStartTime(const String& markName);
 
-    double findExistingMarkStartTime(const String& markName, ExceptionCode&);
-    Performance* m_performance;
+    Performance& m_performance;
     PerformanceEntryMap m_marksMap;
     PerformanceEntryMap m_measuresMap;
 };
 
 }
 
-#endif // ENABLE(USER_TIMING)
-
-#endif // !defined(PerformanceUserTiming_h)
+#endif // ENABLE(WEB_TIMING)

@@ -26,8 +26,11 @@
 #include "config.h"
 #include "WKNotificationManager.h"
 
+#include "APIArray.h"
 #include "WKAPICast.h"
+#include "WebNotification.h"
 #include "WebNotificationManagerProxy.h"
+#include "WebNotificationProvider.h"
 
 using namespace WebKit;
 
@@ -38,7 +41,7 @@ WKTypeID WKNotificationManagerGetTypeID()
 
 void WKNotificationManagerSetProvider(WKNotificationManagerRef managerRef, const WKNotificationProviderBase* wkProvider)
 {
-    toImpl(managerRef)->initializeProvider(wkProvider);
+    toImpl(managerRef)->setProvider(std::make_unique<WebNotificationProvider>(wkProvider));
 }
 
 void WKNotificationManagerProviderDidShowNotification(WKNotificationManagerRef managerRef, uint64_t notificationID)
@@ -64,4 +67,9 @@ void WKNotificationManagerProviderDidUpdateNotificationPolicy(WKNotificationMana
 void WKNotificationManagerProviderDidRemoveNotificationPolicies(WKNotificationManagerRef managerRef, WKArrayRef origins)
 {
     toImpl(managerRef)->providerDidRemoveNotificationPolicies(toImpl(origins));
+}
+
+uint64_t WKNotificationManagerGetLocalIDForTesting(WKNotificationManagerRef manager, WKNotificationRef notification)
+{
+    return toImpl(manager)->notificationLocalIDForTesting(toImpl(notification));
 }

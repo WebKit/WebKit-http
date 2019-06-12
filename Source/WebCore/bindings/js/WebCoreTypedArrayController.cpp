@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebCoreTypedArrayController.h"
 
-#include "JSDOMBinding.h"
+#include "JSDOMConvertBufferSource.h"
 #include "JSDOMGlobalObject.h"
 #include <runtime/ArrayBuffer.h>
 #include <runtime/JSArrayBuffer.h>
@@ -47,20 +47,26 @@ JSC::JSArrayBuffer* WebCoreTypedArrayController::toJS(JSC::ExecState* state, JSC
     return JSC::jsCast<JSC::JSArrayBuffer*>(WebCore::toJS(state, JSC::jsCast<JSDOMGlobalObject*>(globalObject), buffer));
 }
 
+void WebCoreTypedArrayController::registerWrapper(JSC::JSGlobalObject* globalObject, JSC::ArrayBuffer* native, JSC::JSArrayBuffer* wrapper)
+{
+    cacheWrapper(JSC::jsCast<JSDOMGlobalObject*>(globalObject)->world(), native, wrapper);
+}
+
+bool WebCoreTypedArrayController::isAtomicsWaitAllowedOnCurrentThread()
+{
+    return !isMainThread();
+}
+
 bool WebCoreTypedArrayController::JSArrayBufferOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, JSC::SlotVisitor& visitor)
 {
     auto& wrapper = *JSC::jsCast<JSC::JSArrayBuffer*>(handle.slot()->asCell());
-    if (!wrapper.hasCustomProperties())
-        return false;
     return visitor.containsOpaqueRoot(wrapper.impl());
 }
 
 void WebCoreTypedArrayController::JSArrayBufferOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
     auto& wrapper = *static_cast<JSC::JSArrayBuffer*>(handle.slot()->asCell());
-    auto& buffer = *wrapper.impl();
-    uncacheWrapper(*static_cast<DOMWrapperWorld*>(context), &buffer, &wrapper);
-    buffer.deref();
+    uncacheWrapper(*static_cast<DOMWrapperWorld*>(context), wrapper.impl(), &wrapper);
 }
 
 } // namespace WebCore

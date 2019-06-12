@@ -38,14 +38,14 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderTableRow::RenderTableRow(Element& element, Ref<RenderStyle>&& style)
+RenderTableRow::RenderTableRow(Element& element, RenderStyle&& style)
     : RenderBox(element, WTFMove(style), 0)
     , m_rowIndex(unsetRowIndex)
 {
     setInline(false);
 }
 
-RenderTableRow::RenderTableRow(Document& document, Ref<RenderStyle>&& style)
+RenderTableRow::RenderTableRow(Document& document, RenderStyle&& style)
     : RenderBox(document, WTFMove(style), 0)
     , m_rowIndex(unsetRowIndex)
 {
@@ -92,16 +92,16 @@ void RenderTableRow::styleDidChange(StyleDifference diff, const RenderStyle* old
     }
 }
 
-const BorderValue& RenderTableRow::borderAdjoiningStartCell(const RenderTableCell* cell) const
+const BorderValue& RenderTableRow::borderAdjoiningStartCell(const RenderTableCell& cell) const
 {
-    ASSERT_UNUSED(cell, cell->isFirstOrLastCellInRow());
+    ASSERT_UNUSED(cell, cell.isFirstOrLastCellInRow());
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderStart();
 }
 
-const BorderValue& RenderTableRow::borderAdjoiningEndCell(const RenderTableCell* cell) const
+const BorderValue& RenderTableRow::borderAdjoiningEndCell(const RenderTableCell& cell) const
 {
-    ASSERT_UNUSED(cell, cell->isFirstOrLastCellInRow());
+    ASSERT_UNUSED(cell, cell.isFirstOrLastCellInRow());
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderEnd();
 }
@@ -128,13 +128,23 @@ void RenderTableRow::addChild(RenderObject* child, RenderObject* beforeChild)
             }
         }
 
-        // If beforeChild is inside an anonymous cell, insert into the cell.
-        if (last && !is<RenderTableCell>(*last) && last->parent() && last->parent()->isAnonymous() && !last->parent()->isBeforeOrAfterContent()) {
-            last->parent()->addChild(child, beforeChild);
-            return;
+        // Try to find an anonymous container for the child.
+        if (last && last->parent() && last->parent()->isAnonymous() && !last->parent()->isBeforeOrAfterContent()) {
+            // If beforeChild is inside an anonymous cell, insert into the cell.
+            if (!is<RenderTableCell>(*last)) {
+                last->parent()->addChild(child, beforeChild);
+                return;
+            }
+            // If beforeChild is inside an anonymous row, insert into the row.
+            auto& parent = *last->parent();
+            if (is<RenderTableRow>(parent)) {
+                auto* cell = RenderTableCell::createAnonymousWithParentRenderer(*this).release();
+                parent.addChild(cell, beforeChild);
+                cell->addChild(child);
+                return;
+            }
         }
-
-        RenderTableCell* cell = RenderTableCell::createAnonymousWithParentRenderer(this);
+        auto* cell = RenderTableCell::createAnonymousWithParentRenderer(*this).release();
         addChild(cell, beforeChild);
         cell->addChild(child);
         return;
@@ -173,7 +183,7 @@ void RenderTableRow::layout()
             cell->setChildNeedsLayout(MarkOnlyThis);
 
         if (cell->needsLayout()) {
-            cell->computeAndSetBlockDirectionMargins(table());
+            cell->computeAndSetBlockDirectionMargins(*table());
             cell->layout();
         }
     }
@@ -260,11 +270,56 @@ void RenderTableRow::imageChanged(WrappedImagePtr, const IntRect*)
     repaint();
 }
 
-RenderTableRow* RenderTableRow::createAnonymousWithParentRenderer(const RenderObject* parent)
+std::unique_ptr<RenderTableRow> RenderTableRow::createTableRowWithStyle(Document& document, const RenderStyle& style)
 {
-    auto newRow = new RenderTableRow(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(&parent->style(), TABLE_ROW));
-    newRow->initializeStyle();
-    return newRow;
+    auto row = std::make_unique<RenderTableRow>(document, RenderStyle::createAnonymousStyleWithDisplay(style, TABLE_ROW));
+    row->initializeStyle();
+    return row;
+}
+
+std::unique_ptr<RenderTableRow> RenderTableRow::createAnonymousWithParentRenderer(const RenderTableSection& parent)
+{
+    return RenderTableRow::createTableRowWithStyle(parent.document(), parent.style());
+}
+
+void RenderTableRow::destroyAndCollapseAnonymousSiblingRows()
+{
+    auto collapseAnonymousSiblingRows = [&] {
+        auto* section = this->section();
+        if (!section)
+            return;
+
+        // All siblings generated?
+        for (auto* current = section->firstRow(); current; current = current->nextRow()) {
+            if (current == this)
+                continue;
+            if (!current->isAnonymous())
+                return;
+        }
+
+        RenderTableRow* rowToInsertInto = nullptr;
+        auto* currentRow = section->firstRow();
+        while (currentRow) {
+            if (currentRow == this) {
+                currentRow = currentRow->nextRow();
+                continue;
+            }
+            if (!rowToInsertInto) {
+                rowToInsertInto = currentRow;
+                currentRow = currentRow->nextRow();
+                continue;
+            }
+            currentRow->moveAllChildrenTo(rowToInsertInto);
+            auto* destroyThis = currentRow;
+            currentRow = currentRow->nextRow();
+            destroyThis->destroy();
+        }
+        if (rowToInsertInto)
+            rowToInsertInto->setNeedsLayout();
+    };
+
+    collapseAnonymousSiblingRows();
+    destroy();
 }
 
 } // namespace WebCore

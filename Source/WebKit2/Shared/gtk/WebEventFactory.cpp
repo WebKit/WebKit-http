@@ -63,6 +63,8 @@ static inline WebEvent::Modifiers modifiersForEvent(const GdkEvent* event)
         modifiers |= WebEvent::AltKey;
     if (state & GDK_META_MASK)
         modifiers |= WebEvent::MetaKey;
+    if (PlatformKeyboardEvent::modifiersContainCapsLock(state))
+        modifiers |= WebEvent::CapsLockKey;
 
     return static_cast<WebEvent::Modifiers>(modifiers);
 }
@@ -143,6 +145,27 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(const GdkEvent* event, int cu
 
 WebWheelEvent WebEventFactory::createWebWheelEvent(const GdkEvent* event)
 {
+#ifndef GTK_API_VERSION_2
+#if GTK_CHECK_VERSION(3, 20, 0)
+    WebWheelEvent::Phase phase = gdk_event_is_scroll_stop_event(event) ?
+        WebWheelEvent::Phase::PhaseEnded :
+        WebWheelEvent::Phase::PhaseChanged;
+#else
+    double deltaX, deltaY;
+    gdk_event_get_scroll_deltas(event, &deltaX, &deltaY);
+    WebWheelEvent::Phase phase = event->scroll.direction == GDK_SCROLL_SMOOTH && !deltaX && !deltaY ?
+        WebWheelEvent::Phase::PhaseEnded :
+        WebWheelEvent::Phase::PhaseChanged;
+#endif
+#else
+    WebWheelEvent::Phase phase = WebWheelEvent::Phase::PhaseChanged;
+#endif // GTK_API_VERSION_2
+
+    return createWebWheelEvent(event, phase, WebWheelEvent::Phase::PhaseNone);
+}
+
+WebWheelEvent WebEventFactory::createWebWheelEvent(const GdkEvent* event, WebWheelEvent::Phase phase, WebWheelEvent::Phase momentumPhase)
+{
     double x, y, xRoot, yRoot;
     gdk_event_get_coords(event, &x, &y);
     gdk_event_get_root_coords(event, &xRoot, &yRoot);
@@ -179,13 +202,15 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(const GdkEvent* event)
     FloatSize delta(wheelTicks.width() * step, wheelTicks.height() * step);
 
     return WebWheelEvent(WebEvent::Wheel,
-                         IntPoint(x, y),
-                         IntPoint(xRoot, yRoot),
-                         delta,
-                         wheelTicks,
-                         WebWheelEvent::ScrollByPixelWheelEvent,
-                         modifiersForEvent(event),
-                         gdk_event_get_time(event));
+        IntPoint(x, y),
+        IntPoint(xRoot, yRoot),
+        delta,
+        wheelTicks,
+        phase,
+        momentumPhase,
+        WebWheelEvent::ScrollByPixelWheelEvent,
+        modifiersForEvent(event),
+        gdk_event_get_time(event));
 }
 
 WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(const GdkEvent* event, const WebCore::CompositionResults& compositionResults, Vector<String>&& commands)
@@ -193,6 +218,8 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(const GdkEvent* event, 
     return WebKeyboardEvent(
         event->type == GDK_KEY_RELEASE ? WebEvent::KeyUp : WebEvent::KeyDown,
         compositionResults.simpleString.length() ? compositionResults.simpleString : PlatformKeyboardEvent::singleCharacterString(event->key.keyval),
+        PlatformKeyboardEvent::keyValueForGdkKeyCode(event->key.keyval),
+        PlatformKeyboardEvent::keyCodeForHardwareKeyCode(event->key.hardware_keycode),
         PlatformKeyboardEvent::keyIdentifierForGdkKeyCode(event->key.keyval),
         PlatformKeyboardEvent::windowsKeyCodeForGdkKeyCode(event->key.keyval),
         static_cast<int>(event->key.keyval),

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirCCallSpecial_h
-#define AirCCallSpecial_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -53,16 +52,17 @@ public:
     static const GPRReg scratchRegister = GPRInfo::nonArgGPR0;
 
 protected:
-    void forEachArg(Inst&, const ScopedLambda<Inst::EachArgCallback>&) override;
-    bool isValid(Inst&) override;
-    bool admitsStack(Inst&, unsigned argIndex) override;
-    void reportUsedRegisters(Inst&, const RegisterSet&) override;
-    CCallHelpers::Jump generate(Inst&, CCallHelpers&, GenerationContext&) override;
-    const RegisterSet& extraEarlyClobberedRegs(Inst&) override;
-    const RegisterSet& extraClobberedRegs(Inst&) override;
+    void forEachArg(Inst&, const ScopedLambda<Inst::EachArgCallback>&) final;
+    bool isValid(Inst&) final;
+    bool admitsStack(Inst&, unsigned argIndex) final;
+    bool admitsExtendedOffsetAddr(Inst&, unsigned) final;
+    void reportUsedRegisters(Inst&, const RegisterSet&) final;
+    CCallHelpers::Jump generate(Inst&, CCallHelpers&, GenerationContext&) final;
+    RegisterSet extraEarlyClobberedRegs(Inst&) final;
+    RegisterSet extraClobberedRegs(Inst&) final;
 
-    void dumpImpl(PrintStream&) const override;
-    void deepDumpImpl(PrintStream&) const override;
+    void dumpImpl(PrintStream&) const final;
+    void deepDumpImpl(PrintStream&) const final;
 
 private:
     static const unsigned specialArgOffset = 0;
@@ -83,6 +83,3 @@ private:
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirCCallSpecial_h
-

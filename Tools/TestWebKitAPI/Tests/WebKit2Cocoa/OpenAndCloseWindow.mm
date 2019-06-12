@@ -30,24 +30,40 @@
 #import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/WKWebView.h>
 #import <WebKit/WKWebViewConfiguration.h>
+#import <WebKit/WKWindowFeaturesPrivate.h>
 #import <wtf/RetainPtr.h>
 
 #if WK_API_ENABLED
 
 @class OpenAndCloseWindowUIDelegate;
+@class OpenAndCloseWindowUIDelegateAsync;
+@class CheckWindowFeaturesUIDelegate;
 
 static bool isDone;
 static RetainPtr<WKWebView> openedWebView;
+static RetainPtr<WKWindowFeatures> openWindowFeatures;
 static RetainPtr<OpenAndCloseWindowUIDelegate> sharedUIDelegate;
+static RetainPtr<OpenAndCloseWindowUIDelegateAsync> sharedUIDelegateAsync;
+static RetainPtr<CheckWindowFeaturesUIDelegate> sharedCheckWindowFeaturesUIDelegate;
+
+static void resetToConsistentState()
+{
+    isDone = false;
+    openedWebView = nil;
+    sharedUIDelegate = nil;
+    sharedUIDelegateAsync = nil;
+    sharedCheckWindowFeaturesUIDelegate = nil;
+}
 
 @interface OpenAndCloseWindowUIDelegate : NSObject <WKUIDelegate>
+@property (nonatomic, assign) WKWebView *expectedClosingView;
 @end
 
 @implementation OpenAndCloseWindowUIDelegate
 
 - (void)webViewDidClose:(WKWebView *)webView
 {
-    EXPECT_EQ(openedWebView, webView);
+    EXPECT_EQ(_expectedClosingView, webView);
     isDone = true;
 }
 
@@ -55,6 +71,7 @@ static RetainPtr<OpenAndCloseWindowUIDelegate> sharedUIDelegate;
 {
     openedWebView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration]);
     [openedWebView setUIDelegate:sharedUIDelegate.get()];
+    _expectedClosingView = openedWebView.get();
     return openedWebView.get();
 }
 
@@ -62,6 +79,8 @@ static RetainPtr<OpenAndCloseWindowUIDelegate> sharedUIDelegate;
 
 TEST(WebKit2, OpenAndCloseWindow)
 {
+    resetToConsistentState();
+
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
 
     sharedUIDelegate = adoptNS([[OpenAndCloseWindowUIDelegate alloc] init]);
@@ -73,6 +92,197 @@ TEST(WebKit2, OpenAndCloseWindow)
     [webView loadRequest:request];
 
     TestWebKitAPI::Util::run(&isDone);
+}
+
+@interface OpenAndCloseWindowUIDelegateAsync : OpenAndCloseWindowUIDelegate
+@property (nonatomic) BOOL shouldCallback;
+@property (nonatomic, assign) id savedCompletionHandler;
+@property (nonatomic) BOOL shouldCallbackWithNil;
+@end
+
+@implementation OpenAndCloseWindowUIDelegateAsync
+
+- (void)dealloc
+{
+    [_savedCompletionHandler release];
+    [super dealloc];
+}
+
+- (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures
+{
+    ASSERT_NOT_REACHED();
+    return nil;
+}
+
+- (void)_webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures completionHandler:(void (^)(WKWebView *webView))completionHandler
+{
+    if (_shouldCallback) {
+        if (!_shouldCallbackWithNil) {
+            dispatch_async(dispatch_get_main_queue(), ^ {
+                openedWebView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration]);
+                [openedWebView setUIDelegate:sharedUIDelegateAsync.get()];
+                self.expectedClosingView = openedWebView.get();
+                completionHandler(openedWebView.get());
+            });
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^ {
+                self.expectedClosingView = webView;
+                completionHandler(nil);
+            });
+        }
+        return;
+    }
+
+    _savedCompletionHandler = [completionHandler copy];
+    isDone = true;
+}
+
+@end
+
+TEST(WebKit2, OpenAndCloseWindowAsync)
+{
+    resetToConsistentState();
+
+    RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+
+    sharedUIDelegateAsync = adoptNS([[OpenAndCloseWindowUIDelegateAsync alloc] init]);
+    sharedUIDelegateAsync.get().shouldCallback = YES;
+    [webView setUIDelegate:sharedUIDelegateAsync.get()];
+
+    [webView configuration].preferences.javaScriptCanOpenWindowsAutomatically = YES;
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"open-and-close-window" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&isDone);
+}
+
+TEST(WebKit2, OpenAsyncWithNil)
+{
+    resetToConsistentState();
+
+    RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+
+    sharedUIDelegateAsync = adoptNS([[OpenAndCloseWindowUIDelegateAsync alloc] init]);
+    sharedUIDelegateAsync.get().shouldCallback = YES;
+    sharedUIDelegateAsync.get().shouldCallbackWithNil = YES;
+    [webView setUIDelegate:sharedUIDelegateAsync.get()];
+
+    [webView configuration].preferences.javaScriptCanOpenWindowsAutomatically = YES;
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"open-and-close-window" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&isDone);
+}
+
+// https://bugs.webkit.org/show_bug.cgi?id=171083 - Try to figure out why this fails for some configs but not others, and resolve.
+//TEST(WebKit2, OpenAndCloseWindowAsyncCallbackException)
+//{
+//    resetToConsistentState();
+//
+//    RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+//
+//    sharedUIDelegateAsync = adoptNS([[OpenAndCloseWindowUIDelegateAsync alloc] init]);
+//    sharedUIDelegateAsync.get().shouldCallback = NO;
+//    [webView setUIDelegate:sharedUIDelegateAsync.get()];
+//
+//    [webView configuration].preferences.javaScriptCanOpenWindowsAutomatically = YES;
+//
+//    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"open-and-close-window" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+//    [webView loadRequest:request];
+//
+//    TestWebKitAPI::Util::run(&isDone);
+//
+//    bool caughtException = false;
+//    @try {
+//        sharedUIDelegateAsync = nil;
+//        openedWebView = nil;
+//        webView = nil;
+//    }
+//    @catch (NSException *) {
+//        caughtException = true;
+//    }
+//
+//    EXPECT_EQ(caughtException, true);
+//}
+
+
+@interface CheckWindowFeaturesUIDelegate : NSObject <WKUIDelegate>
+
+@property (nullable, nonatomic, readonly) NSNumber *menuBarVisibility;
+@property (nullable, nonatomic, readonly) NSNumber *statusBarVisibility;
+@property (nullable, nonatomic, readonly) NSNumber *toolbarsVisibility;
+
+@end
+
+@implementation CheckWindowFeaturesUIDelegate
+
+- (WKWebView *)webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures
+{
+    openWindowFeatures = windowFeatures;
+    isDone = true;
+
+    return nil;
+}
+
+@end
+
+TEST(WebKit2, OpenWindowFeatures)
+{
+    resetToConsistentState();
+
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+
+    sharedCheckWindowFeaturesUIDelegate = adoptNS([[CheckWindowFeaturesUIDelegate alloc] init]);
+    [webView setUIDelegate:sharedCheckWindowFeaturesUIDelegate.get()];
+    [webView configuration].preferences.javaScriptCanOpenWindowsAutomatically = YES;
+    NSString *windowOpenFormatString = @"window.open(\"about:blank\", \"_blank\", \"%@\")";
+
+    [webView evaluateJavaScript:@"window.open(\"about:blank\")" completionHandler:nil];
+    TestWebKitAPI::Util::run(&isDone);
+    isDone = false;
+
+//  https://bugs.webkit.org/show_bug.cgi?id=174271 - WebCore currently doesn't distinguish between unspecified (nil) and false
+//  for the following window features.
+//  EXPECT_TRUE([openWindowFeatures menuBarVisibility] == nil);
+//  EXPECT_TRUE([openWindowFeatures statusBarVisibility] == nil);
+//  EXPECT_TRUE([openWindowFeatures toolbarsVisibility] == nil);
+//  EXPECT_TRUE([openWindowFeatures allowsResizing] == nil);
+//  EXPECT_TRUE([openWindowFeatures _locationBarVisibility] == nil);
+//  EXPECT_TRUE([openWindowFeatures _scrollbarsVisibility] == nil);
+//  EXPECT_TRUE([openWindowFeatures _fullscreenDisplay] == nil);
+//  EXPECT_TRUE([openWindowFeatures _dialogDisplay] == nil);
+    openWindowFeatures = nullptr;
+
+    NSString *featuresStringAllSpecifiedAndTrue = @"menubar=yes,status=yes,toolbar=yes,resizable=yes,location=yes,scrollbars=yes,fullscreen=yes";
+    [webView evaluateJavaScript:[NSString stringWithFormat:windowOpenFormatString, featuresStringAllSpecifiedAndTrue] completionHandler:nil];
+    TestWebKitAPI::Util::run(&isDone);
+    isDone = false;
+
+    EXPECT_TRUE([openWindowFeatures menuBarVisibility].boolValue);
+    EXPECT_TRUE([openWindowFeatures statusBarVisibility].boolValue);
+    EXPECT_TRUE([openWindowFeatures toolbarsVisibility].boolValue);
+    EXPECT_TRUE([openWindowFeatures allowsResizing].boolValue);
+    EXPECT_TRUE([openWindowFeatures _locationBarVisibility].boolValue);
+    EXPECT_TRUE([openWindowFeatures _scrollbarsVisibility].boolValue);
+    EXPECT_TRUE([openWindowFeatures _fullscreenDisplay].boolValue);
+    openWindowFeatures = nullptr;
+
+    NSString *featuresStringAllSpecifiedAndFalse = @"menubar=no,status=no,toolbar=no,resizable=no,location=no,scrollbars=no,fullscreen=no";
+    [webView evaluateJavaScript:[NSString stringWithFormat:windowOpenFormatString, featuresStringAllSpecifiedAndFalse] completionHandler:nil];
+    TestWebKitAPI::Util::run(&isDone);
+    isDone = false;
+
+    EXPECT_FALSE([openWindowFeatures menuBarVisibility].boolValue);
+    EXPECT_FALSE([openWindowFeatures statusBarVisibility ].boolValue);
+    EXPECT_FALSE([openWindowFeatures toolbarsVisibility].boolValue);
+//  https://bugs.webkit.org/show_bug.cgi?id=174388 - This property doesn't accurately reflect the parameters passed by the webpage.
+//  EXPECT_FALSE([openWindowFeatures allowsResizing].boolValue);
+    EXPECT_FALSE([openWindowFeatures _locationBarVisibility].boolValue);
+    EXPECT_FALSE([openWindowFeatures _scrollbarsVisibility].boolValue);
+    EXPECT_FALSE([openWindowFeatures _fullscreenDisplay].boolValue);
+    openWindowFeatures = nullptr;
 }
 
 #endif

@@ -27,6 +27,8 @@
 
 #include "PlatformCALayerWinInternal.h"
 
+#if USE(CA)
+
 #include "FontCascade.h"
 #include "GraphicsContext.h"
 #include "PlatformCALayer.h"
@@ -102,7 +104,7 @@ void PlatformCALayerWinInternal::displayCallback(CACFLayerRef caLayer, CGContext
     // smaller than the layer bounds (e.g. tiled layers)
     CGRect clipBounds = CGContextGetClipBoundingBox(context);
     IntRect clip(enclosingIntRect(clipBounds));
-    client->platformCALayerPaintContents(owner(), graphicsContext, clip);
+    client->platformCALayerPaintContents(owner(), graphicsContext, clip, GraphicsLayerPaintFlags::None);
 
     if (client->platformCALayerShowRepaintCounter(owner())
         && !repaintCountersAreDrawnByGridController(layerType)) {
@@ -323,3 +325,5 @@ void PlatformCALayerWinInternal::setBorderColor(const Color& value)
 
     CACFLayerSetBorderColor(owner()->platformLayer(), color.get());
 }
+
+#endif

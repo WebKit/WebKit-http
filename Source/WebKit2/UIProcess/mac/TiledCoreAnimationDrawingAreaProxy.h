@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TiledCoreAnimationDrawingAreaProxy_h
-#define TiledCoreAnimationDrawingAreaProxy_h
+#pragma once
 
 #if !PLATFORM(IOS)
 
@@ -39,30 +38,30 @@ public:
 
 private:
     // DrawingAreaProxy
-    virtual void deviceScaleFactorDidChange() override;
-    virtual void sizeDidChange() override;
-    virtual void waitForPossibleGeometryUpdate(std::chrono::milliseconds timeout = didUpdateBackingStoreStateTimeout()) override;
-    virtual void colorSpaceDidChange() override;
-    virtual void minimumLayoutSizeDidChange() override;
+    void deviceScaleFactorDidChange() override;
+    void sizeDidChange() override;
+    void colorSpaceDidChange() override;
+    void minimumLayoutSizeDidChange() override;
 
-    virtual void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-    virtual void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    virtual void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
+    void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
+    void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
+    void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
 
-    virtual void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
-    virtual void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
+    void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
+    void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
 
-    virtual void waitForDidUpdateViewState() override;
-    virtual void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) override;
+    void waitForDidUpdateActivityState() override;
+    void dispatchAfterEnsuringDrawing(WTF::Function<void (CallbackBase::Error)>&&) override;
 
-    virtual void willSendUpdateGeometry() override;
+    void willSendUpdateGeometry() override;
+
+    WebCore::MachSendRight createFence() override;
 
     // Message handlers.
-    virtual void didUpdateGeometry() override;
-    virtual void intrinsicContentSizeDidChange(const WebCore::IntSize&) override;
+    void didUpdateGeometry() override;
+    void intrinsicContentSizeDidChange(const WebCore::IntSize&) override;
 
     void sendUpdateGeometry();
-    WebCore::MachSendRight createFenceForGeometryUpdate();
 
     // Whether we're waiting for a DidUpdateGeometry message from the web process.
     bool m_isWaitingForDidUpdateGeometry;
@@ -79,5 +78,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_DRAWING_AREA_PROXY(TiledCoreAnimationDrawingAreaProxy, DrawingAreaTypeTiledCoreAnimation)
 
 #endif // !PLATFORM(IOS)
-
-#endif // TiledCoreAnimationDrawingAreaProxy_h

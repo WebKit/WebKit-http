@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaControlElementTypes_h
-#define MediaControlElementTypes_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -36,7 +35,7 @@
 #include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
 #include "MediaControllerInterface.h"
-#include "RenderBlock.h"
+#include "RenderObject.h"
 
 namespace WebCore {
 
@@ -112,7 +111,7 @@ protected:
     explicit MediaControlDivElement(Document&, MediaControlElementType);
 
 private:
-    virtual bool isMediaControlElement() const override final { return MediaControlElement::isMediaControlElement(); }
+    bool isMediaControlElement() const final { return MediaControlElement::isMediaControlElement(); }
 };
 
 // ----------------------------
@@ -122,7 +121,7 @@ protected:
     explicit MediaControlInputElement(Document&, MediaControlElementType);
 
 private:
-    virtual bool isMediaControlElement() const override final { return MediaControlElement::isMediaControlElement(); }
+    bool isMediaControlElement() const final { return MediaControlElement::isMediaControlElement(); }
     virtual void updateDisplayType() { }
 };
 
@@ -146,46 +145,46 @@ class MediaControlMuteButtonElement : public MediaControlInputElement {
 public:
     void changedMute();
 
-    virtual bool willRespondToMouseClickEvents() override { return true; }
+    bool willRespondToMouseClickEvents() override { return true; }
 
 protected:
     explicit MediaControlMuteButtonElement(Document&, MediaControlElementType);
 
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
 private:
-    virtual void updateDisplayType() override;
+    void updateDisplayType() override;
 };
 
 // ----------------------------
 
 class MediaControlSeekButtonElement : public MediaControlInputElement {
 public:
-    virtual bool willRespondToMouseClickEvents() override { return true; }
+    bool willRespondToMouseClickEvents() override { return true; }
 
 protected:
     explicit MediaControlSeekButtonElement(Document&, MediaControlElementType);
 
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
     virtual bool isForwardButton() const = 0;
 
 private:
-    virtual void setActive(bool /*flag*/ = true, bool /*pause*/ = false) override final;
+    void setActive(bool /*flag*/ = true, bool /*pause*/ = false) final;
 };
 
 // ----------------------------
 
 class MediaControlVolumeSliderElement : public MediaControlInputElement {
 public:
-    virtual bool willRespondToMouseMoveEvents() override;
-    virtual bool willRespondToMouseClickEvents() override;
+    bool willRespondToMouseMoveEvents() override;
+    bool willRespondToMouseClickEvents() override;
     void setVolume(double);
     void setClearMutedOnUserInteraction(bool);
 
 protected:
     explicit MediaControlVolumeSliderElement(Document&);
 
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
 private:
     bool m_clearMutedOnUserInteraction;
@@ -194,5 +193,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(VIDEO)
-
-#endif // MediaControlElementTypes_h

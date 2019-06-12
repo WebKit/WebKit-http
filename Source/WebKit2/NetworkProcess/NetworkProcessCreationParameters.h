@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NetworkProcessCreationParameters_h
-#define NetworkProcessCreationParameters_h
+#pragma once
 
+#include "Attachment.h"
 #include "CacheModel.h"
 #include "SandboxExtension.h"
 #include <wtf/Vector.h>
@@ -33,11 +33,12 @@
 
 #if USE(SOUP) || PLATFORM(QT)
 #include "HTTPCookieAcceptPolicy.h"
+#include <WebCore/SoupNetworkProxySettings.h>
 #endif
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -45,27 +46,24 @@ namespace WebKit {
 struct NetworkProcessCreationParameters {
     NetworkProcessCreationParameters();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, NetworkProcessCreationParameters&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, NetworkProcessCreationParameters&);
 
-    bool privateBrowsingEnabled;
-    CacheModel cacheModel;
+    bool privateBrowsingEnabled { false };
+    CacheModel cacheModel { CacheModelDocumentViewer };
     int64_t diskCacheSizeOverride { -1 };
-    bool canHandleHTTPSServerTrustEvaluation;
+    bool canHandleHTTPSServerTrustEvaluation { true };
 
     String diskCacheDirectory;
     SandboxExtension::Handle diskCacheDirectoryExtensionHandle;
 #if ENABLE(NETWORK_CACHE)
-    bool shouldEnableNetworkCache;
-    bool shouldEnableNetworkCacheEfficacyLogging;
+    bool shouldEnableNetworkCache { false };
+    bool shouldEnableNetworkCacheEfficacyLogging { false };
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-    bool shouldEnableNetworkCacheSpeculativeRevalidation;
+    bool shouldEnableNetworkCacheSpeculativeRevalidation { false };
 #endif
 #endif
-#if ENABLE(SECCOMP_FILTERS)
-    String cookieStorageDirectory;
-#endif
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+#if PLATFORM(MAC)
     Vector<uint8_t> uiProcessCookieStorageIdentifier;
 #endif
 #if PLATFORM(IOS)
@@ -73,32 +71,49 @@ struct NetworkProcessCreationParameters {
     SandboxExtension::Handle containerCachesDirectoryExtensionHandle;
     SandboxExtension::Handle parentBundleDirectoryExtensionHandle;
 #endif
-    bool shouldUseTestingNetworkSession;
+    bool shouldSuppressMemoryPressureHandler { false };
+    bool shouldUseTestingNetworkSession { false };
+    Seconds loadThrottleLatency;
 
     Vector<String> urlSchemesRegisteredForCustomProtocols;
+    pid_t presentingApplicationPID { 0 };
 
 #if PLATFORM(COCOA)
     String parentProcessName;
     String uiProcessBundleIdentifier;
     uint64_t nsURLCacheMemoryCapacity;
     uint64_t nsURLCacheDiskCapacity;
-
+    String sourceApplicationBundleIdentifier;
+    String sourceApplicationSecondaryIdentifier;
+    bool allowsCellularAccess { true };
+#if PLATFORM(IOS)
+    String ctDataConnectionServiceType;
+#endif
     String httpProxy;
     String httpsProxy;
-#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+#if PLATFORM(COCOA)
     RetainPtr<CFDataRef> networkATSContext;
 #endif
+    bool cookieStoragePartitioningEnabled;
 #endif
 
 #if USE(SOUP) || PLATFORM(QT)
     String cookiePersistentStoragePath;
-    uint32_t cookiePersistentStorageType;
-    HTTPCookieAcceptPolicy cookieAcceptPolicy;
-    bool ignoreTLSErrors;
+    uint32_t cookiePersistentStorageType { 0 };
+    HTTPCookieAcceptPolicy cookieAcceptPolicy { HTTPCookieAcceptPolicyAlways };
+    bool ignoreTLSErrors { false };
     Vector<String> languages;
+    WebCore::SoupNetworkProxySettings proxySettings;
+#endif
+
+#if OS(LINUX)
+    IPC::Attachment memoryPressureMonitorHandle;
+#endif
+
+#if ENABLE(NETWORK_CAPTURE)
+    String recordReplayMode;
+    String recordReplayCacheLocation;
 #endif
 };
 
 } // namespace WebKit
-
-#endif // NetworkProcessCreationParameters_h

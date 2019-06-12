@@ -37,6 +37,7 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "KeyboardEvent.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -60,9 +61,9 @@ bool BaseCheckableInputType::appendFormData(FormDataList& encoding, bool) const
     return true;
 }
 
-void BaseCheckableInputType::handleKeydownEvent(KeyboardEvent* event)
+void BaseCheckableInputType::handleKeydownEvent(KeyboardEvent& event)
 {
-    const String& key = event->keyIdentifier();
+    const String& key = event.keyIdentifier();
     if (key == "U+0020") {
         element().setActive(true, true);
         // No setDefaultHandled(), because IE dispatches a keypress in this case
@@ -70,11 +71,11 @@ void BaseCheckableInputType::handleKeydownEvent(KeyboardEvent* event)
     }
 }
 
-void BaseCheckableInputType::handleKeypressEvent(KeyboardEvent* event)
+void BaseCheckableInputType::handleKeypressEvent(KeyboardEvent& event)
 {
-    if (event->charCode() == ' ') {
+    if (event.charCode() == ' ') {
         // Prevent scrolling down the page.
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
 }
 
@@ -93,7 +94,8 @@ void BaseCheckableInputType::accessKeyAction(bool sendMouseEvents)
 
 String BaseCheckableInputType::fallbackValue() const
 {
-    return ASCIILiteral("on");
+    static NeverDestroyed<const AtomicString> on("on", AtomicString::ConstructFromLiteral);
+    return on.get();
 }
 
 bool BaseCheckableInputType::storesValueSeparateFromAttribute()
@@ -103,7 +105,7 @@ bool BaseCheckableInputType::storesValueSeparateFromAttribute()
 
 void BaseCheckableInputType::setValue(const String& sanitizedValue, bool, TextFieldEventBehavior)
 {
-    element().setAttribute(valueAttr, sanitizedValue);
+    element().setAttributeWithoutSynchronization(valueAttr, sanitizedValue);
 }
 
 bool BaseCheckableInputType::isCheckable()

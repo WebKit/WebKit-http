@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGResourceGradient_h
-#define RenderSVGResourceGradient_h
+#pragma once
 
 #include "Gradient.h"
 #include "ImageBuffer.h"
@@ -44,15 +43,15 @@ class RenderSVGResourceGradient : public RenderSVGResourceContainer {
 public:
     SVGGradientElement& gradientElement() const { return static_cast<SVGGradientElement&>(RenderSVGResourceContainer::element()); }
 
-    virtual void removeAllClientsFromCache(bool markForInvalidation = true) override final;
-    virtual void removeClientFromCache(RenderElement&, bool markForInvalidation = true) override final;
+    void removeAllClientsFromCache(bool markForInvalidation = true) final;
+    void removeClientFromCache(RenderElement&, bool markForInvalidation = true) final;
 
-    virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, unsigned short resourceMode) override final;
-    virtual void postApplyResource(RenderElement&, GraphicsContext*&, unsigned short resourceMode, const Path*, const RenderSVGShape*) override final;
-    virtual FloatRect resourceBoundingBox(const RenderObject&) override final { return FloatRect(); }
+    bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>) final;
+    void postApplyResource(RenderElement&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>, const Path*, const RenderSVGShape*) final;
+    FloatRect resourceBoundingBox(const RenderObject&) final { return FloatRect(); }
 
 protected:
-    RenderSVGResourceGradient(SVGGradientElement&, Ref<RenderStyle>&&);
+    RenderSVGResourceGradient(SVGGradientElement&, RenderStyle&&);
 
     void element() const = delete;
 
@@ -75,6 +74,4 @@ private:
 #endif
 };
 
-}
-
-#endif
+} // namespace WebCore

@@ -1,68 +1,69 @@
 <!DOCTYPE html>
 <head>
 <link href="resources/grid.css" rel="stylesheet"/>
+<link href="resources/grid-alignment.css" rel="stylesheet"/>
 <style>
 .grid {
     font: 10px/1 Ahem;
 }
 .gridMinContentFixedAndAuto {
-    -webkit-grid-template-columns: minmax(-webkit-min-content, 15px) auto;
+    grid-template-columns: minmax(min-content, 15px) auto;
 }
 .gridMaxContentFixedAndAuto {
-    -webkit-grid-template-columns: minmax(-webkit-max-content, 15px) auto;
+    grid-template-columns: minmax(max-content, 15px) auto;
 }
 .gridAutoAndAuto {
-    -webkit-grid-template-columns: auto auto;
+    grid-template-columns: auto auto;
 }
 .gridMinContentAndMinContentFixed {
-    -webkit-grid-template-columns: -webkit-min-content minmax(-webkit-min-content, 30px);
+    grid-template-columns: min-content minmax(min-content, 30px);
 }
 .gridMinContentAndMaxContentFixed {
-    -webkit-grid-template-columns: -webkit-min-content minmax(-webkit-max-content, 30px);
+    grid-template-columns: min-content minmax(max-content, 30px);
 }
 .gridMaxContentAndMinContent {
-    -webkit-grid-template-columns: -webkit-max-content -webkit-min-content;
+    grid-template-columns: max-content min-content;
 }
 .gridFixedMinContentAndMaxContent {
-    -webkit-grid-template-columns: minmax(10px, -webkit-min-content) -webkit-max-content;
+    grid-template-columns: minmax(10px, min-content) max-content;
 }
 .gridFixedMaxContentAndMinContent {
-    -webkit-grid-template-columns: minmax(10px, -webkit-max-content) -webkit-min-content;
+    grid-template-columns: minmax(10px, max-content) min-content;
 }
 .gridAutoMinContent {
-    -webkit-grid-template-columns: auto -webkit-min-content;
+    grid-template-columns: auto min-content;
 }
 .gridAutoMaxContent {
-    -webkit-grid-template-columns: auto -webkit-max-content;
+    grid-template-columns: auto max-content;
 }
 .gridMaxContentAndMinContentFixed {
-    -webkit-grid-template-columns: -webkit-max-content minmax(-webkit-min-content, 35px);
+    grid-template-columns: max-content minmax(min-content, 35px);
 }
 .gridMaxContentAndMaxContentFixed {
-    -webkit-grid-template-columns: -webkit-max-content minmax(-webkit-max-content, 35px);
+    grid-template-columns: max-content minmax(max-content, 35px);
 }
 .gridMinContentFixedAndFixedFixedAndAuto {
-    -webkit-grid-template-columns: minmax(-webkit-min-content, 20px) minmax(20px, 30px) auto;
+    grid-template-columns: minmax(min-content, 20px) minmax(20px, 30px) auto;
 }
 .gridAutoAndFixedFixedAndMaxContentFixed {
-    -webkit-grid-template-columns: auto minmax(20px, 30px) minmax(-webkit-max-content, 20px);
+    grid-template-columns: auto minmax(20px, 30px) minmax(max-content, 20px);
 }
 .gridMaxContentAndMaxContentFixedAndMaxContent {
-    -webkit-grid-template-columns: -webkit-max-content minmax(-webkit-max-content, 20px) -webkit-max-content;
+    grid-template-columns: max-content minmax(max-content, 20px) max-content;
 }
 .gridAutoAndMinContentFixedAndMinContent {
-    -webkit-grid-template-columns: auto minmax(-webkit-min-content, 30px) -webkit-min-content;
+    grid-template-columns: auto minmax(min-content, 30px) min-content;
 }
 
 </style>
 <script src="../../resources/js-test.js"></script>
 </head>
 <body>
-<div class="grid gridMinContentFixedAndAuto" id="gridMinContentFixedAndAuto">
+<div class="grid gridMinContentFixedAndAuto justifyContentStart" id="gridMinContentFixedAndAuto">
     <div class="firstRowBothColumn">XXXX XXXX</div>
 </div>
 
-<div class="grid gridAutoAndAuto" id="gridAutoAndAuto">
+<div class="grid gridAutoAndAuto justifyContentStart" id="gridAutoAndAuto">
     <div class="firstRowBothColumn">XXXX XXXX</div>
 </div>
 
@@ -92,11 +93,11 @@
     </div>
 </div>
 
-<div class="grid gridAutoMinContent" id="gridAutoMinContent">
+<div class="grid gridAutoMinContent justifyContentStart" id="gridAutoMinContent">
     <div class="firstRowBothColumn">XXXX XXXX</div>
 </div>
 
-<div class="grid gridAutoMaxContent" id="gridAutoMaxContent">
+<div class="grid gridAutoMaxContent justifyContentStart" id="gridAutoMaxContent">
     <div class="firstRowBothColumn">XXXX XXXX</div>
 </div>
 
@@ -204,12 +205,12 @@
 </div>
 
 <!-- Check that items are processed by ascending span instead of going track by track allowing extra space distribution. -->
-<div class="grid gridMinContentFixedAndAuto" id="gridMinContentFixedAndAutoUnsorted">
+<div class="grid gridMinContentFixedAndAuto justifyContentStart" id="gridMinContentFixedAndAutoUnsorted">
     <div class="firstRowBothColumn">XXXX XXXX</div>
     <div class="firstRowSecondColumn">XXXX XXXX</div>
 </div>
 
-<div class="grid gridAutoAndAuto" id="gridAutoAndAutoUnsorted">
+<div class="grid gridAutoAndAuto justifyContentStart" id="gridAutoAndAutoUnsorted">
     <div class="firstRowBothColumn">XXXX XXXX</div>
     <div class="firstRowSecondColumn">XXX</div>
 </div>
@@ -242,18 +243,18 @@
     <div class="firstRowSecondColumn">XXXX XXXX</div>
 </div>
 
-<div class="grid gridMaxContentFixedAndAuto" id="gridMaxContentFixedAndAutoUnsorted">
+<div class="grid gridMaxContentFixedAndAuto justifyContentStart" id="gridMaxContentFixedAndAutoUnsorted">
     <div class="firstRowBothColumn">XX XX</div>
     <div class="firstRowSecondColumn">XXXX</div>
     <div class="firstRowSecondColumn">XXX XXX</div>
 </div>
 
-<div class="grid gridAutoMinContent" id="gridAutoMinContentUnsorted">
+<div class="grid gridAutoMinContent justifyContentStart" id="gridAutoMinContentUnsorted">
     <div class="firstRowBothColumn">XX XX XX XX</div>
     <div class="firstRowSecondColumn">XXXXXX XXXXXX</div>
 </div>
 
-<div class="grid gridAutoMaxContent" id="gridAutoMaxContentUnsorted">
+<div class="grid gridAutoMaxContent justifyContentStart" id="gridAutoMaxContentUnsorted">
     <div class="firstRowBothColumn">XXXX XXXX</div>
     <div class="firstRowBothColumn">XXX XXX</div>
     <div class="firstRowSecondColumn">XXXXX</div>
@@ -274,7 +275,7 @@
 
 <!-- The next four force the grid to grow only a particular subset of tracks above the limits -->
 <div class="constrainedContainer">
-    <div class="grid gridMinContentFixedAndAuto" id="gridMinContentFixedAndAutoAboveLimits">
+    <div class="grid gridMinContentFixedAndAuto justifyContentStart" id="gridMinContentFixedAndAutoAboveLimits">
 	<div class="firstRowBothColumn">XXXX XXXX</div>
 	<div class="firstRowBothColumn">XXXXXXXXXXX</div>
     </div>
@@ -303,20 +304,20 @@
 
 <div class="grid gridMaxContentAndMaxContentFixedAndMaxContent" id="gridMaxContentAndMaxContentFixedAndMaxContent">
     <div class="firstRowFirstColumn">X X X</div>
-    <div style="-webkit-grid-row: 1; -webkit-grid-column: 3;">X X</div>
+    <div style="grid-row: 1; grid-column: 3;">X X</div>
     <div class="firstRowBothColumn">XX XX XX XX XX</div>
 </div>
 
-<div class="grid gridAutoAndMinContentFixedAndMinContent" id="gridAutoAndMinContentFixedAndMinContent">
+<div class="grid gridAutoAndMinContentFixedAndMinContent justifyContentStart" id="gridAutoAndMinContentFixedAndMinContent">
     <div class="firstRowFirstColumn">XX</div>
     <div class="firstRowBothColumn">XXXXXXXXXXXXXXX</div>
-    <div style="-webkit-grid-row: 1; -webkit-grid-column: 3;">XXX XXX</div>
+    <div style="grid-row: 1; grid-column: 3;">XXX XXX</div>
 </div>
 
 <script>
 function testGridColumnsValues(id, computedColumnValue)
 {
-    shouldBeEqualToString("window.getComputedStyle(" + id + ", '').getPropertyValue('-webkit-grid-template-columns')", computedColumnValue);
+    shouldBeEqualToString("window.getComputedStyle(" + id + ", '').getPropertyValue('grid-template-columns')", computedColumnValue);
 }
 
 testGridColumnsValues("gridMinContentFixedAndAuto", "15px 75px");

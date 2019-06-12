@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef IdentifierInlines_h
-#define IdentifierInlines_h
+#pragma once
 
 #include "CallFrame.h"
 #include "Identifier.h"
@@ -85,7 +84,7 @@ inline Identifier Identifier::fromUid(ExecState* exec, UniquedStringImpl* uid)
 
 inline Identifier Identifier::fromUid(const PrivateName& name)
 {
-    return *name.uid();
+    return name.uid();
 }
 
 template<unsigned charactersCount>
@@ -150,5 +149,3 @@ inline JSValue identifierToSafePublicJSValue(VM& vm, const Identifier& identifie
 }
 
 } // namespace JSC
-
-#endif // IdentifierInlines_h

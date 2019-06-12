@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DOMWindowExtension_h
-#define DOMWindowExtension_h
+#pragma once
 
 #include "DOMWindowProperty.h"
 #include <wtf/RefCounted.h>
@@ -43,22 +42,20 @@ public:
         return adoptRef(*new DOMWindowExtension(frame, world));
     }
 
-    virtual void disconnectFrameForDocumentSuspension() override;
-    virtual void reconnectFrameFromDocumentSuspension(Frame*) override;
-    virtual void willDestroyGlobalObjectInCachedFrame() override;
-    virtual void willDestroyGlobalObjectInFrame() override;
-    virtual void willDetachGlobalObjectFromFrame() override;
+    void disconnectFrameForDocumentSuspension() override;
+    void reconnectFrameFromDocumentSuspension(Frame*) override;
+    void willDestroyGlobalObjectInCachedFrame() override;
+    void willDestroyGlobalObjectInFrame() override;
+    void willDetachGlobalObjectFromFrame() override;
 
-    DOMWrapperWorld& world() const { return *m_world; }
+    DOMWrapperWorld& world() const { return m_world; }
 
 private:
     WEBCORE_EXPORT DOMWindowExtension(Frame*, DOMWrapperWorld&);
 
-    RefPtr<DOMWrapperWorld> m_world;
+    Ref<DOMWrapperWorld> m_world;
     RefPtr<Frame> m_disconnectedFrame;
     bool m_wasDetached;
 };
 
-}
-
-#endif // DOMWindowExtension_h
+} // namespace WebCore

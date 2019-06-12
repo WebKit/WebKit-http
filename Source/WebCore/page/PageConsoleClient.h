@@ -26,13 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageConsoleClient_h
-#define PageConsoleClient_h
+#pragma once
 
 #include <inspector/ScriptCallStack.h>
-#include <profiler/Profile.h>
 #include <runtime/ConsoleClient.h>
 #include <wtf/Forward.h>
+
+namespace Inspector {
+class ConsoleMessage;
+}
 
 namespace JSC {
 class ExecState;
@@ -42,8 +44,6 @@ namespace WebCore {
 
 class Document;
 class Page;
-
-typedef Vector<RefPtr<JSC::Profile>> ProfilesArray;
 
 class WEBCORE_EXPORT PageConsoleClient final : public JSC::ConsoleClient {
     WTF_MAKE_FAST_ALLOCATED;
@@ -57,27 +57,26 @@ public:
     static void mute();
     static void unmute();
 
+    void addMessage(std::unique_ptr<Inspector::ConsoleMessage>&&);
+
+    // The following addMessage function are deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&& = nullptr, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0);
-    void addMessage(MessageSource, MessageLevel, const String& message, RefPtr<Inspector::ScriptCallStack>&&);
+    void addMessage(MessageSource, MessageLevel, const String& message, Ref<Inspector::ScriptCallStack>&&);
     void addMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0, Document* = nullptr);
 
-    const ProfilesArray& profiles() const { return m_profiles; }
-    void clearProfiles();
-
 protected:
-    virtual void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
-    virtual void count(JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
-    virtual void profile(JSC::ExecState*, const String& title) override;
-    virtual void profileEnd(JSC::ExecState*, const String& title) override;
-    virtual void time(JSC::ExecState*, const String& title) override;
-    virtual void timeEnd(JSC::ExecState*, const String& title) override;
-    virtual void timeStamp(JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
+    void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
+    void count(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
+    void profile(JSC::ExecState*, const String& title) override;
+    void profileEnd(JSC::ExecState*, const String& title) override;
+    void takeHeapSnapshot(JSC::ExecState*, const String& title) override;
+    void time(JSC::ExecState*, const String& title) override;
+    void timeEnd(JSC::ExecState*, const String& title) override;
+    void timeStamp(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
 
 private:
     Page& m_page;
-    ProfilesArray m_profiles;
 };
 
 } // namespace WebCore
-
-#endif // PageConsoleClient_h

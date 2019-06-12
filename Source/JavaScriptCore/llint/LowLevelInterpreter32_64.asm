@@ -1,4 +1,4 @@
-# Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@ macro dispatchAfterCall()
 end
 
 macro cCall2(function)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
         call function
     elsif X86 or X86_WIN
         subp 8, sp
@@ -73,7 +73,7 @@ macro cCall2Void(function)
 end
 
 macro cCall4(function)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS or SH4
+    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
         call function
     elsif X86 or X86_WIN
         push a3
@@ -148,11 +148,16 @@ macro doVMEntry(makeCall)
     addp CallFrameHeaderSlots, t4, t4
     lshiftp 3, t4
     subp sp, t4, t3
+    bpa t3, sp, .throwStackOverflow
 
     # Ensure that we have enough additional stack capacity for the incoming args,
     # and the frame for the JS code we're executing. We need to do this check
     # before we start copying the args from the protoCallFrame below.
-    bpaeq t3, VM::m_jsStackLimit[vm], .stackHeightOK
+    if C_LOOP
+        bpaeq t3, VM::m_cloopStackLimit[vm], .stackHeightOK
+    else
+        bpaeq t3, VM::m_softStackLimit[vm], .stackHeightOK
+    end
 
     if C_LOOP
         move entry, t4
@@ -168,6 +173,7 @@ macro doVMEntry(makeCall)
         move t5, vm
     end
 
+.throwStackOverflow:
     subp 8, sp # Align stack for cCall2() to make a call.
     move vm, a0
     move protoCallFrame, a1
@@ -301,8 +307,8 @@ end
 _handleUncaughtException:
     loadp Callee + PayloadOffset[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-    restoreCalleeSavesFromVMCalleeSavesBuffer(t3, t0)
+    loadp MarkedBlock::m_vm[t3], t3
+    restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
     storep 0, VM::callFrameForCatch[t3]
 
@@ -373,11 +379,11 @@ macro callCallSlowPath(slowPath, action)
     action(r0, r1)
 end
 
-macro callWatchdogTimerHandler(throwHandler)
+macro callTrapHandler(throwHandler)
     storei PC, ArgumentCount + TagOffset[cfr]
     move cfr, a0
     move PC, a1
-    cCall2(_llint_slow_path_handle_watchdog_timer)
+    cCall2(_llint_slow_path_handle_traps)
     btpnz r0, throwHandler
     loadi ArgumentCount + TagOffset[cfr], PC
 end
@@ -486,19 +492,12 @@ macro loadConstantOrVariablePayloadUnchecked(index, payload)
         payload)
 end
 
-macro storeStructureWithTypeInfo(cell, structure, scratch)
-    storep structure, JSCell::m_structureID[cell]
-
-    loadi Structure::m_blob + StructureIDBlob::u.words.word2[structure], scratch
-    storei scratch, JSCell::m_indexingType[cell]
-end
-
 macro writeBarrierOnOperand(cellOperand)
     loadisFromInstruction(cellOperand, t1)
     loadConstantOrVariablePayload(t1, CellTag, t2, .writeBarrierDone)
-    skipIfIsRememberedOrInEden(t2, t1, t3, 
-        macro(cellState)
-            btbnz cellState, .writeBarrierDone
+    skipIfIsRememberedOrInEden(
+        t2, 
+        macro()
             push cfr, PC
             # We make two extra slots because cCall2 will poke.
             subp 8, sp
@@ -507,8 +506,7 @@ macro writeBarrierOnOperand(cellOperand)
             cCall2Void(_llint_write_barrier_slow)
             addp 8, sp
             pop PC, cfr
-        end
-    )
+        end)
 .writeBarrierDone:
 end
 
@@ -528,9 +526,9 @@ macro writeBarrierOnGlobal(valueOperand, loadHelper)
 
     loadHelper(t3)
 
-    skipIfIsRememberedOrInEden(t3, t1, t2,
-        macro(gcData)
-            btbnz gcData, .writeBarrierDone
+    skipIfIsRememberedOrInEden(
+        t3,
+        macro()
             push cfr, PC
             # We make two extra slots because cCall2 will poke.
             subp 8, sp
@@ -539,8 +537,7 @@ macro writeBarrierOnGlobal(valueOperand, loadHelper)
             cCall2Void(_llint_write_barrier_slow)
             addp 8, sp
             pop PC, cfr
-        end
-    )
+        end)
 .writeBarrierDone:
 end
 
@@ -618,6 +615,10 @@ macro functionArityCheck(doneLabel, slowPath)
     // Move frame up t1 slots
     negi t1
     move cfr, t3
+    move t1, t0
+    lshiftp 3, t0
+    addp t0, cfr
+    addp t0, sp
 .copyLoop:
     loadi PayloadOffset[t3], t0
     storei t0, PayloadOffset[t3, t1, 8]
@@ -636,9 +637,6 @@ macro functionArityCheck(doneLabel, slowPath)
     addp 8, t3
     baddinz 1, t2, .fillLoop
 
-    lshiftp 3, t1
-    addp t1, cfr
-    addp t1, sp
 .continue:
     # Reload CodeBlock and PC, since the slow_path clobbered it.
     loadp CodeBlock[cfr], t1
@@ -649,7 +647,7 @@ end
 macro branchIfException(label)
     loadp Callee + PayloadOffset[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+    loadp MarkedBlock::m_vm[t3], t3
     btiz VM::m_exception[t3], .noException
     jmp label
 .noException:
@@ -673,8 +671,39 @@ _llint_op_enter:
     addi 1, t2
     btinz t2, .opEnterLoop
 .opEnterDone:
-    callSlowPath(_slow_path_enter)
+    callOpcodeSlowPath(_slow_path_enter)
     dispatch(1)
+
+
+_llint_op_get_argument:
+    traceExecution()
+    loadisFromInstruction(1, t1)
+    loadisFromInstruction(2, t2)
+    loadi PayloadOffset + ArgumentCount[cfr], t0
+    bilteq t0, t2, .opGetArgumentOutOfBounds
+    loadi ThisArgumentOffset + TagOffset[cfr, t2, 8], t0
+    loadi ThisArgumentOffset + PayloadOffset[cfr, t2, 8], t3
+    storei t0, TagOffset[cfr, t1, 8]
+    storei t3, PayloadOffset[cfr, t1, 8]
+    valueProfile(t0, t3, 12, t1)
+    dispatch(4)
+
+.opGetArgumentOutOfBounds:
+    storei UndefinedTag, TagOffset[cfr, t1, 8]
+    storei 0, PayloadOffset[cfr, t1, 8]
+    valueProfile(UndefinedTag, 0, 12, t1)
+    dispatch(4)
+
+
+_llint_op_argument_count:
+    traceExecution()
+    loadisFromInstruction(1, t2)
+    loadi PayloadOffset + ArgumentCount[cfr], t0
+    subi 1, t0
+    move Int32Tag, t1
+    storei t1, TagOffset[cfr, t2, 8]
+    storei t0, PayloadOffset[cfr, t2, 8]
+    dispatch(2)
 
 
 _llint_op_get_scope:
@@ -685,30 +714,6 @@ _llint_op_get_scope:
     storei CellTag, TagOffset[cfr, t1, 8]
     storei t0, PayloadOffset[cfr, t1, 8]
     dispatch(2)
-
-
-_llint_op_create_this:
-    traceExecution()
-    loadi 8[PC], t0
-    loadp PayloadOffset[cfr, t0, 8], t0
-    loadp JSFunction::m_rareData[t0], t5
-    btpz t5, .opCreateThisSlow
-    loadp FunctionRareData::m_objectAllocationProfile + ObjectAllocationProfile::m_allocator[t5], t1
-    loadp FunctionRareData::m_objectAllocationProfile + ObjectAllocationProfile::m_structure[t5], t2
-    btpz t1, .opCreateThisSlow
-    loadpFromInstruction(4, t5)
-    bpeq t5, 1, .hasSeenMultipleCallee
-    bpneq t5, t0, .opCreateThisSlow
-.hasSeenMultipleCallee:
-    allocateJSObject(t1, t2, t0, t3, .opCreateThisSlow)
-    loadi 4[PC], t1
-    storei CellTag, TagOffset[cfr, t1, 8]
-    storei t0, PayloadOffset[cfr, t1, 8]
-    dispatch(5)
-
-.opCreateThisSlow:
-    callSlowPath(_slow_path_create_this)
-    dispatch(5)
 
 
 _llint_op_to_this:
@@ -722,23 +727,7 @@ _llint_op_to_this:
     dispatch(4)
 
 .opToThisSlow:
-    callSlowPath(_slow_path_to_this)
-    dispatch(4)
-
-
-_llint_op_new_object:
-    traceExecution()
-    loadpFromInstruction(3, t0)
-    loadp ObjectAllocationProfile::m_allocator[t0], t1
-    loadp ObjectAllocationProfile::m_structure[t0], t2
-    allocateJSObject(t1, t2, t0, t3, .opNewObjectSlow)
-    loadi 4[PC], t1
-    storei CellTag, TagOffset[cfr, t1, 8]
-    storei t0, PayloadOffset[cfr, t1, 8]
-    dispatch(4)
-
-.opNewObjectSlow:
-    callSlowPath(_llint_slow_path_new_object)
+    callOpcodeSlowPath(_slow_path_to_this)
     dispatch(4)
 
 
@@ -747,7 +736,7 @@ _llint_op_check_tdz:
     loadisFromInstruction(1, t0)
     loadConstantOrVariableTag(t0, t1)
     bineq t1, EmptyValueTag, .opNotTDZ
-    callSlowPath(_slow_path_throw_tdz_error)
+    callOpcodeSlowPath(_slow_path_throw_tdz_error)
 
 .opNotTDZ:
     dispatch(2)
@@ -775,7 +764,7 @@ _llint_op_not:
     dispatch(3)
 
 .opNotSlow:
-    callSlowPath(_slow_path_not)
+    callOpcodeSlowPath(_slow_path_not)
     dispatch(3)
 
 
@@ -795,7 +784,7 @@ _llint_op_eq:
     dispatch(4)
 
 .opEqSlow:
-    callSlowPath(_slow_path_eq)
+    callOpcodeSlowPath(_slow_path_eq)
     dispatch(4)
 
 
@@ -842,7 +831,7 @@ _llint_op_neq:
     dispatch(4)
 
 .opNeqSlow:
-    callSlowPath(_slow_path_neq)
+    callOpcodeSlowPath(_slow_path_neq)
     dispatch(4)
     
 
@@ -891,7 +880,7 @@ macro strictEq(equalityOperation, slowPath)
     dispatch(4)
 
 .slow:
-    callSlowPath(slowPath)
+    callOpcodeSlowPath(slowPath)
     dispatch(4)
 end
 
@@ -915,7 +904,7 @@ _llint_op_inc:
     dispatch(2)
 
 .opIncSlow:
-    callSlowPath(_slow_path_inc)
+    callOpcodeSlowPath(_slow_path_inc)
     dispatch(2)
 
 
@@ -929,7 +918,7 @@ _llint_op_dec:
     dispatch(2)
 
 .opDecSlow:
-    callSlowPath(_slow_path_dec)
+    callOpcodeSlowPath(_slow_path_dec)
     dispatch(2)
 
 
@@ -943,11 +932,12 @@ _llint_op_to_number:
 .opToNumberIsInt:
     storei t2, TagOffset[cfr, t1, 8]
     storei t3, PayloadOffset[cfr, t1, 8]
-    dispatch(3)
+    valueProfile(t2, t3, 12, t1)
+    dispatch(4)
 
 .opToNumberSlow:
-    callSlowPath(_slow_path_to_number)
-    dispatch(3)
+    callOpcodeSlowPath(_slow_path_to_number)
+    dispatch(4)
 
 
 _llint_op_to_string:
@@ -963,7 +953,7 @@ _llint_op_to_string:
     dispatch(3)
 
 .opToStringSlow:
-    callSlowPath(_slow_path_to_string)
+    callOpcodeSlowPath(_slow_path_to_string)
     dispatch(3)
 
 
@@ -972,22 +962,27 @@ _llint_op_negate:
     loadi 8[PC], t0
     loadi 4[PC], t3
     loadConstantOrVariable(t0, t1, t2)
+    loadisFromInstruction(3, t0)
     bineq t1, Int32Tag, .opNegateSrcNotInt
     btiz t2, 0x7fffffff, .opNegateSlow
     negi t2
+    ori ArithProfileInt, t0
     storei Int32Tag, TagOffset[cfr, t3, 8]
+    storeisToInstruction(t0, 3)
     storei t2, PayloadOffset[cfr, t3, 8]
-    dispatch(3)
+    dispatch(4)
 .opNegateSrcNotInt:
     bia t1, LowestTag, .opNegateSlow
     xori 0x80000000, t1
-    storei t1, TagOffset[cfr, t3, 8]
+    ori ArithProfileNumber, t0
     storei t2, PayloadOffset[cfr, t3, 8]
-    dispatch(3)
+    storeisToInstruction(t0, 3)
+    storei t1, TagOffset[cfr, t3, 8]
+    dispatch(4)
 
 .opNegateSlow:
-    callSlowPath(_slow_path_negate)
-    dispatch(3)
+    callOpcodeSlowPath(_slow_path_negate)
+    dispatch(4)
 
 
 macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
@@ -997,6 +992,9 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     loadConstantOrVariable2Reg(t0, t2, t0)
     bineq t2, Int32Tag, .op1NotInt
     bineq t3, Int32Tag, .op2NotInt
+    loadisFromInstruction(4, t5)
+    ori ArithProfileIntInt, t5
+    storeisToInstruction(t5, 4)
     loadi 4[PC], t2
     integerOperationAndStore(t3, t1, t0, .slow, t2)
     dispatch(5)
@@ -1006,10 +1004,16 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     bia t2, LowestTag, .slow
     bib t3, LowestTag, .op1NotIntOp2Double
     bineq t3, Int32Tag, .slow
+    loadisFromInstruction(4, t5)
+    ori ArithProfileNumberInt, t5
+    storeisToInstruction(t5, 4)
     ci2d t1, ft1
     jmp .op1NotIntReady
 .op1NotIntOp2Double:
     fii2d t1, t3, ft1
+    loadisFromInstruction(4, t5)
+    ori ArithProfileNumberNumber, t5
+    storeisToInstruction(t5, 4)
 .op1NotIntReady:
     loadi 4[PC], t1
     fii2d t0, t2, ft0
@@ -1021,6 +1025,9 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     # First operand is definitely an int, the second operand is definitely not.
     loadi 4[PC], t2
     bia t3, LowestTag, .slow
+    loadisFromInstruction(4, t5)
+    ori ArithProfileIntNumber, t5
+    storeisToInstruction(t5, 4)
     ci2d t0, ft0
     fii2d t1, t3, ft1
     doubleOperation(ft1, ft0)
@@ -1028,7 +1035,7 @@ macro binaryOpCustomStore(integerOperationAndStore, doubleOperation, slowPath)
     dispatch(5)
 
 .slow:
-    callSlowPath(slowPath)
+    callOpcodeSlowPath(slowPath)
     dispatch(5)
 end
 
@@ -1109,7 +1116,7 @@ macro bitOp(operation, slowPath, advance)
     dispatch(advance)
 
 .slow:
-    callSlowPath(slowPath)
+    callOpcodeSlowPath(slowPath)
     dispatch(advance)
 end
 
@@ -1147,7 +1154,7 @@ _llint_op_unsigned:
     storei Int32Tag, TagOffset[cfr, t0, 8]
     dispatch(3)
 .opUnsignedSlow:
-    callSlowPath(_slow_path_unsigned)
+    callOpcodeSlowPath(_slow_path_unsigned)
     dispatch(3)
 
 
@@ -1205,38 +1212,21 @@ _llint_op_overrides_has_instance:
     storei 1, PayloadOffset[cfr, t3, 8]
     dispatch(4)
 
-_llint_op_instanceof:
-    traceExecution()
-    # Actually do the work.
-    loadi 12[PC], t0
-    loadi 4[PC], t3
-    loadConstantOrVariablePayload(t0, CellTag, t1, .opInstanceofSlow)
-    bbb JSCell::m_type[t1], ObjectType, .opInstanceofSlow
-    loadi 8[PC], t0
-    loadConstantOrVariablePayload(t0, CellTag, t2, .opInstanceofSlow)
-    
-    # Register state: t1 = prototype, t2 = value
-    move 1, t0
-.opInstanceofLoop:
-    loadp JSCell::m_structureID[t2], t2
-    loadi Structure::m_prototype + PayloadOffset[t2], t2
-    bpeq t2, t1, .opInstanceofDone
-    btinz t2, .opInstanceofLoop
-
-    move 0, t0
-.opInstanceofDone:
-    storei BooleanTag, TagOffset[cfr, t3, 8]
-    storei t0, PayloadOffset[cfr, t3, 8]
-    dispatch(4)
-
-.opInstanceofSlow:
-    callSlowPath(_llint_slow_path_instanceof)
-    dispatch(4)
-
 _llint_op_instanceof_custom:
     traceExecution()
-    callSlowPath(_llint_slow_path_instanceof_custom)
+    callOpcodeSlowPath(_llint_slow_path_instanceof_custom)
     dispatch(5)
+
+
+_llint_op_is_empty:
+    traceExecution()
+    loadi 8[PC], t1
+    loadi 4[PC], t0
+    loadConstantOrVariable(t1, t2, t3)
+    cieq t2, EmptyValueTag, t3
+    storei BooleanTag, TagOffset[cfr, t0, 8]
+    storei t3, PayloadOffset[cfr, t0, 8]
+    dispatch(3)
 
 
 _llint_op_is_undefined:
@@ -1286,19 +1276,20 @@ _llint_op_is_number:
     dispatch(3)
 
 
-_llint_op_is_string:
+_llint_op_is_cell_with_type:
     traceExecution()
     loadi 8[PC], t1
     loadi 4[PC], t2
     loadConstantOrVariable(t1, t0, t3)
     storei BooleanTag, TagOffset[cfr, t2, 8]
-    bineq t0, CellTag, .opIsStringNotCell
-    cbeq JSCell::m_type[t3], StringType, t1
+    bineq t0, CellTag, .notCellCase
+    loadi 12[PC], t0
+    cbeq JSCell::m_type[t3], t0, t1
     storei t1, PayloadOffset[cfr, t2, 8]
-    dispatch(3)
-.opIsStringNotCell:
+    dispatch(4)
+.notCellCase:
     storep 0, PayloadOffset[cfr, t2, 8]
-    dispatch(3)
+    dispatch(4)
 
 
 _llint_op_is_object:
@@ -1350,10 +1341,12 @@ end
 
 
 # We only do monomorphic get_by_id caching for now, and we do not modify the
-# opcode. We do, however, allow for the cache to change anytime if fails, since
-# ping-ponging is free. At best we get lucky and the get_by_id will continue
+# opcode for own properties. We also allow for the cache to change anytime it fails,
+# since ping-ponging is free. At best we get lucky and the get_by_id will continue
 # to take fast path on the new cache. At worst we take slow path, which is what
-# we would have been doing anyway.
+# we would have been doing anyway. For prototype/unset properties, we will attempt to
+# convert opcode into a get_by_id_proto_load/get_by_id_unset, respectively, after an
+# execution counter hits zero.
 
 _llint_op_get_by_id:
     traceExecution()
@@ -1370,7 +1363,44 @@ _llint_op_get_by_id:
     dispatch(9)
 
 .opGetByIdSlow:
-    callSlowPath(_llint_slow_path_get_by_id)
+    callOpcodeSlowPath(_llint_slow_path_get_by_id)
+    dispatch(9)
+
+
+_llint_op_get_by_id_proto_load:
+    traceExecution()
+    loadi 8[PC], t0
+    loadi 16[PC], t1
+    loadConstantOrVariablePayload(t0, CellTag, t3, .opGetByIdProtoSlow)
+    loadi 20[PC], t2
+    bineq JSCell::m_structureID[t3], t1, .opGetByIdProtoSlow
+    loadpFromInstruction(6, t3)
+    loadPropertyAtVariableOffset(t2, t3, t0, t1)
+    loadi 4[PC], t2
+    storei t0, TagOffset[cfr, t2, 8]
+    storei t1, PayloadOffset[cfr, t2, 8]
+    valueProfile(t0, t1, 32, t2)
+    dispatch(9)
+
+.opGetByIdProtoSlow:
+    callOpcodeSlowPath(_llint_slow_path_get_by_id)
+    dispatch(9)
+
+
+_llint_op_get_by_id_unset:
+    traceExecution()
+    loadi 8[PC], t0
+    loadi 16[PC], t1
+    loadConstantOrVariablePayload(t0, CellTag, t3, .opGetByIdUnsetSlow)
+    bineq JSCell::m_structureID[t3], t1, .opGetByIdUnsetSlow
+    loadi 4[PC], t2
+    storei UndefinedTag, TagOffset[cfr, t2, 8]
+    storei 0, PayloadOffset[cfr, t2, 8]
+    valueProfile(UndefinedTag, 0, 32, t2)
+    dispatch(9)
+
+.opGetByIdUnsetSlow:
+    callOpcodeSlowPath(_llint_slow_path_get_by_id)
     dispatch(9)
 
 
@@ -1393,7 +1423,7 @@ _llint_op_get_array_length:
     dispatch(9)
 
 .opGetArrayLengthSlow:
-    callSlowPath(_llint_slow_path_get_by_id)
+    callOpcodeSlowPath(_llint_slow_path_get_by_id)
     dispatch(9)
 
 
@@ -1514,6 +1544,12 @@ _llint_op_put_by_id:
 
 .opPutByIdTransitionDirect:
     storei t1, JSCell::m_structureID[t0]
+    loadi 12[PC], t1
+    loadConstantOrVariable(t1, t2, t3)
+    loadi 20[PC], t1
+    storePropertyAtVariableOffset(t1, t0, t2, t3)
+    writeBarrierOnOperand(1)
+    dispatch(9)
 
 .opPutByIdNotTransition:
     # The only thing live right now is t0, which holds the base.
@@ -1524,7 +1560,7 @@ _llint_op_put_by_id:
     dispatch(9)
 
 .opPutByIdSlow:
-    callSlowPath(_llint_slow_path_put_by_id)
+    callOpcodeSlowPath(_llint_slow_path_put_by_id)
     dispatch(9)
 
 
@@ -1578,7 +1614,7 @@ _llint_op_get_by_val:
     loadpFromInstruction(4, t0)
     storeb 1, ArrayProfile::m_outOfBounds[t0]
 .opGetByValSlow:
-    callSlowPath(_llint_slow_path_get_by_val)
+    callOpcodeSlowPath(_llint_slow_path_get_by_val)
     dispatch(6)
 
 
@@ -1670,7 +1706,7 @@ macro putByVal(slowPath)
     loadpFromInstruction(4, t0)
     storeb 1, ArrayProfile::m_outOfBounds[t0]
 .opPutByValSlow:
-    callSlowPath(slowPath)
+    callOpcodeSlowPath(slowPath)
     dispatch(5)
 end
 
@@ -1695,7 +1731,7 @@ macro jumpTrueOrFalse(conditionOp, slow)
     dispatchBranch(8[PC])
 
 .slow:
-    callSlowPath(slow)
+    callOpcodeSlowPath(slow)
     dispatch(0)
 end
 
@@ -1754,9 +1790,10 @@ _llint_op_jneq_ptr:
     loadp JSGlobalObject::m_specialPointers[t2, t1, 4], t1
     bpeq PayloadOffset[cfr, t0, 8], t1, .opJneqPtrFallThrough
 .opJneqPtrBranch:
+    storei 1, 16[PC]
     dispatchBranch(12[PC])
 .opJneqPtrFallThrough:
-    dispatch(4)
+    dispatch(5)
 
 
 macro compare(integerCompare, doubleCompare, slowPath)
@@ -1793,7 +1830,7 @@ macro compare(integerCompare, doubleCompare, slowPath)
     dispatchBranch(12[PC])
 
 .slow:
-    callSlowPath(slowPath)
+    callOpcodeSlowPath(slowPath)
     dispatch(0)
 end
 
@@ -1822,7 +1859,7 @@ _llint_op_switch_imm:
     dispatchBranch(8[PC])
 
 .opSwitchImmSlow:
-    callSlowPath(_llint_slow_path_switch_imm)
+    callOpcodeSlowPath(_llint_slow_path_switch_imm)
     dispatch(0)
 
 
@@ -1859,7 +1896,7 @@ _llint_op_switch_char:
     dispatchBranch(8[PC])
 
 .opSwitchOnRope:
-    callSlowPath(_llint_slow_path_switch_char)
+    callOpcodeSlowPath(_llint_slow_path_switch_char)
     dispatch(0)
 
 
@@ -1918,7 +1955,7 @@ _llint_op_to_primitive:
     dispatch(3)
 
 .opToPrimitiveSlowCase:
-    callSlowPath(_slow_path_to_primitive)
+    callOpcodeSlowPath(_slow_path_to_primitive)
     dispatch(3)
 
 
@@ -1930,22 +1967,22 @@ _llint_op_catch:
     # and have set VM::targetInterpreterPCForThrow.
     loadp Callee + PayloadOffset[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
-    restoreCalleeSavesFromVMCalleeSavesBuffer(t3, t0)
+    loadp MarkedBlock::m_vm[t3], t3
+    restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
     storep 0, VM::callFrameForCatch[t3]
     restoreStackPointerAfterCall()
 
     loadi VM::targetInterpreterPCForThrow[t3], PC
 
-    callSlowPath(_llint_slow_path_check_if_exception_is_uncatchable_and_notify_profiler)
+    callOpcodeSlowPath(_llint_slow_path_check_if_exception_is_uncatchable_and_notify_profiler)
     bpeq r1, 0, .isCatchableException
     jmp _llint_throw_from_slow_path_trampoline
 
 .isCatchableException:
     loadp Callee + PayloadOffset[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+    loadp MarkedBlock::m_vm[t3], t3
 
     loadi VM::m_exception[t3], t0
     storei 0, VM::m_exception[t3]
@@ -1980,8 +2017,8 @@ _llint_throw_from_slow_path_trampoline:
     # This essentially emulates the JIT's throwing protocol.
     loadp Callee[cfr], t1
     andp MarkedBlockMask, t1
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t1
-    copyCalleeSavesToVMCalleeSavesBuffer(t1, t2)
+    loadp MarkedBlock::m_vm[t1], t1
+    copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(t1, t2)
     jmp VM::targetMachinePCForThrow[t1]
 
 
@@ -1999,7 +2036,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     if X86 or X86_WIN
         subp 8, sp # align stack pointer
         andp MarkedBlockMask, t1
-        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t3
+        loadp MarkedBlock::m_vm[t1], t3
         storep cfr, VM::topCallFrame[t3]
         move cfr, a0  # a0 = ecx
         storep a0, [sp]
@@ -2009,13 +2046,13 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         call executableOffsetToFunction[t1]
         loadp Callee + PayloadOffset[cfr], t3
         andp MarkedBlockMask, t3
-        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+        loadp MarkedBlock::m_vm[t3], t3
         addp 8, sp
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or C_LOOP or MIPS or SH4
+    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or C_LOOP or MIPS
         subp 8, sp # align stack pointer
         # t1 already contains the Callee.
         andp MarkedBlockMask, t1
-        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t1
+        loadp MarkedBlock::m_vm[t1], t1
         storep cfr, VM::topCallFrame[t1]
         move cfr, a0
         loadi Callee + PayloadOffset[cfr], t1
@@ -2028,19 +2065,19 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         end
         loadp Callee + PayloadOffset[cfr], t3
         andp MarkedBlockMask, t3
-        loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+        loadp MarkedBlock::m_vm[t3], t3
         addp 8, sp
     else
         error
     end
     
-    functionEpilogue()
     btinz VM::m_exception[t3], .handleException
+
+    functionEpilogue()
     ret
 
 .handleException:
     storep cfr, VM::topCallFrame[t3]
-    restoreStackPointerAfterCall()
     jmp _llint_throw_from_slow_path_trampoline
 end
 
@@ -2133,7 +2170,7 @@ _llint_op_resolve_scope:
     dispatch(7)
 
 .rDynamic:
-    callSlowPath(_slow_path_resolve_scope)
+    callOpcodeSlowPath(_slow_path_resolve_scope)
     dispatch(7)
 
 
@@ -2233,7 +2270,7 @@ _llint_op_get_from_scope:
     dispatch(8)
 
 .gDynamic:
-    callSlowPath(_llint_slow_path_get_from_scope)
+    callOpcodeSlowPath(_llint_slow_path_get_from_scope)
     dispatch(8)
 
 
@@ -2344,11 +2381,11 @@ _llint_op_put_to_scope:
 
 .pModuleVar:
     bineq t0, ModuleVar, .pDynamic
-    callSlowPath(_slow_path_throw_strict_mode_readonly_property_write_error)
+    callOpcodeSlowPath(_slow_path_throw_strict_mode_readonly_property_write_error)
     dispatch(7)
 
 .pDynamic:
-    callSlowPath(_llint_slow_path_put_to_scope)
+    callOpcodeSlowPath(_llint_slow_path_put_to_scope)
     dispatch(7)
 
 
@@ -2428,7 +2465,7 @@ _llint_op_profile_type:
 
     loadp TypeProfilerLog::m_logEndPtr[t1], t1
     bpneq t2, t1, .opProfileTypeDone
-    callSlowPath(_slow_path_profile_type_clear_log)
+    callOpcodeSlowPath(_slow_path_profile_type_clear_log)
 
 .opProfileTypeDone:
     dispatch(6)
@@ -2459,4 +2496,41 @@ _llint_op_get_rest_length:
     loadisFromInstruction(1, t1)
     storei t0, PayloadOffset[cfr, t1, 8]
     storei Int32Tag, TagOffset[cfr, t1, 8]
+    dispatch(3)
+
+
+_llint_op_log_shadow_chicken_prologue:
+    traceExecution()
+    acquireShadowChickenPacket(.opLogShadowChickenPrologueSlow)
+    storep cfr, ShadowChicken::Packet::frame[t0]
+    loadp CallerFrame[cfr], t1
+    storep t1, ShadowChicken::Packet::callerFrame[t0]
+    loadp Callee + PayloadOffset[cfr], t1
+    storep t1, ShadowChicken::Packet::callee[t0]
+    loadisFromInstruction(1, t1)
+    loadi PayloadOffset[cfr, t1, 8], t1
+    storep t1, ShadowChicken::Packet::scope[t0]
+    dispatch(2)
+.opLogShadowChickenPrologueSlow:
+    callOpcodeSlowPath(_llint_slow_path_log_shadow_chicken_prologue)
+    dispatch(2)
+
+
+_llint_op_log_shadow_chicken_tail:
+    traceExecution()
+    acquireShadowChickenPacket(.opLogShadowChickenTailSlow)
+    storep cfr, ShadowChicken::Packet::frame[t0]
+    storep ShadowChickenTailMarker, ShadowChicken::Packet::callee[t0]
+    loadVariable(1, t3, t2, t1)
+    storei t2, TagOffset + ShadowChicken::Packet::thisValue[t0]
+    storei t1, PayloadOffset + ShadowChicken::Packet::thisValue[t0]
+    loadisFromInstruction(2, t1)
+    loadi PayloadOffset[cfr, t1, 8], t1
+    storep t1, ShadowChicken::Packet::scope[t0]
+    loadp CodeBlock[cfr], t1
+    storep t1, ShadowChicken::Packet::codeBlock[t0]
+    storei PC, ShadowChicken::Packet::callSiteIndex[t0]
+    dispatch(3)
+.opLogShadowChickenTailSlow:
+    callOpcodeSlowPath(_llint_slow_path_log_shadow_chicken_tail)
     dispatch(3)

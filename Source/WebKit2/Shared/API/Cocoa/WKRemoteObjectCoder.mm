@@ -37,7 +37,7 @@
 #import "_WKRemoteObjectInterfaceInternal.h"
 #import <objc/runtime.h>
 #import <wtf/RetainPtr.h>
-#import <wtf/TemporaryChange.h>
+#import <wtf/SetForScope.h>
 #import <wtf/text/CString.h>
 
 static const char* const classNameKey = "$class";
@@ -108,9 +108,9 @@ static void encodeToObjectStream(WKRemoteObjectEncoder *encoder, id value)
     size_t position = encoder->_objectStream->size();
     encoder->_objectStream->elements().append(nullptr);
 
-    RefPtr<API::Dictionary> encodedObject = createEncodedObject(encoder, value);
+    auto encodedObject = createEncodedObject(encoder, value);
     ASSERT(!encoder->_objectStream->elements()[position]);
-    encoder->_objectStream->elements()[position] = encodedObject.release();
+    encoder->_objectStream->elements()[position] = WTFMove(encodedObject);
 }
 
 static void encodeInvocationArguments(WKRemoteObjectEncoder *encoder, NSInvocation *invocation, NSUInteger firstArgument)
@@ -205,6 +205,24 @@ static void encodeInvocationArguments(WKRemoteObjectEncoder *encoder, NSInvocati
             break;
         }
 
+        // struct
+        case '{':
+            if (!strcmp(type, @encode(NSRange))) {
+                NSRange value;
+                [invocation getArgument:&value atIndex:i];
+
+                encodeToObjectStream(encoder, [NSValue valueWithRange:value]);
+                break;
+            } else if (!strcmp(type, @encode(CGSize))) {
+                CGSize value;
+                [invocation getArgument:&value atIndex:i];
+
+                encodeToObjectStream(encoder, @(value.width));
+                encodeToObjectStream(encoder, @(value.height));
+                break;
+            }
+            FALLTHROUGH;
+
         default:
             [NSException raise:NSInvalidArgumentException format:@"Unsupported invocation argument type '%s'", type];
         }
@@ -266,7 +284,7 @@ static RefPtr<API::Dictionary> createEncodedObject(WKRemoteObjectEncoder *encode
         return nil;
 
     Ref<API::Dictionary> dictionary = API::Dictionary::create();
-    TemporaryChange<API::Dictionary*> dictionaryChange(encoder->_currentDictionary, dictionary.ptr());
+    SetForScope<API::Dictionary*> dictionaryChange(encoder->_currentDictionary, dictionary.ptr());
 
     encodeObject(encoder, object);
 
@@ -538,6 +556,21 @@ static void decodeInvocationArguments(WKRemoteObjectDecoder *decoder, NSInvocati
             break;
         }
 
+        // struct
+        case '{':
+            if (!strcmp(type, @encode(NSRange))) {
+                NSRange value = [decodeObjectFromObjectStream(decoder, { [NSValue class] }) rangeValue];
+                [invocation setArgument:&value atIndex:i];
+                break;
+            } else if (!strcmp(type, @encode(CGSize))) {
+                CGSize value;
+                value.width = [decodeObjectFromObjectStream(decoder, { [NSNumber class] }) doubleValue];
+                value.height = [decodeObjectFromObjectStream(decoder, { [NSNumber class] }) doubleValue];
+                [invocation setArgument:&value atIndex:i];
+                break;
+            }
+            FALLTHROUGH;
+
         default:
             [NSException raise:NSInvalidArgumentException format:@"Unsupported invocation argument type '%s' for argument %zu", type, (unsigned long)i];
         }
@@ -647,13 +680,13 @@ static id decodeObject(WKRemoteObjectDecoder *decoder, const API::Dictionary* di
     if (!dictionary)
         return nil;
 
-    TemporaryChange<const API::Dictionary*> dictionaryChange(decoder->_currentDictionary, dictionary);
+    SetForScope<const API::Dictionary*> dictionaryChange(decoder->_currentDictionary, dictionary);
 
     // If no allowed classes were listed, just use the currently allowed classes.
     if (allowedClasses.isEmpty())
         return decodeObject(decoder);
 
-    TemporaryChange<const HashSet<Class>*> allowedClassesChange(decoder->_allowedClasses, &allowedClasses);
+    SetForScope<const HashSet<Class>*> allowedClassesChange(decoder->_allowedClasses, &allowedClasses);
     return decodeObject(decoder);
 }
 

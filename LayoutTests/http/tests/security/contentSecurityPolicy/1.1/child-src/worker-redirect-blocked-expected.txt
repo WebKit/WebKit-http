@@ -1,4 +1,4 @@
-CONSOLE MESSAGE: Refused to create a child context containing 'http://localhost:8000/security/contentSecurityPolicy/resources/alert-fail.js' because it violates the following Content Security Policy directive: "child-src http://127.0.0.1:8000/security/contentSecurityPolicy/resources/redir.php".
+CONSOLE MESSAGE: Unsafe attempt to load URL http://localhost:8000/security/contentSecurityPolicy/resources/alert-fail.js from frame with URL http://127.0.0.1:8000/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked.html. Domains, protocols and ports must match.
 
 This tests that the Content Security Policy of the page blocks loading a Web Worker's script from a different origin through a redirect.
 

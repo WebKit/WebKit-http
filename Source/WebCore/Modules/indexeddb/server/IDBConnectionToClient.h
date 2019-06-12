@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBConnectionToClient_h
-#define IDBConnectionToClient_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBConnectionToClientDelegate.h"
+#include <wtf/HashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
@@ -54,11 +54,14 @@ public:
     void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
     void didCreateObjectStore(const IDBResultData&);
     void didDeleteObjectStore(const IDBResultData&);
+    void didRenameObjectStore(const IDBResultData&);
     void didClearObjectStore(const IDBResultData&);
     void didCreateIndex(const IDBResultData&);
     void didDeleteIndex(const IDBResultData&);
+    void didRenameIndex(const IDBResultData&);
     void didPutOrAdd(const IDBResultData&);
     void didGetRecord(const IDBResultData&);
+    void didGetAllRecords(const IDBResultData&);
     void didGetCount(const IDBResultData&);
     void didDeleteRecord(const IDBResultData&);
     void didOpenCursor(const IDBResultData&);
@@ -66,17 +69,24 @@ public:
 
     void fireVersionChangeEvent(UniqueIDBDatabaseConnection&, const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion);
     void didStartTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
+    void didCloseFromServer(UniqueIDBDatabaseConnection&, const IDBError&);
 
     void notifyOpenDBRequestBlocked(const IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion);
+
+    void didGetAllDatabaseNames(uint64_t callbackID, const Vector<String>& databaseNames);
+
+    void registerDatabaseConnection(UniqueIDBDatabaseConnection&);
+    void unregisterDatabaseConnection(UniqueIDBDatabaseConnection&);
+    void connectionToClientClosed();
 
 private:
     IDBConnectionToClient(IDBConnectionToClientDelegate&);
     
     Ref<IDBConnectionToClientDelegate> m_delegate;
+    HashSet<UniqueIDBDatabaseConnection*> m_databaseConnections;
 };
 
 } // namespace IDBServer
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBConnectionToClient_h

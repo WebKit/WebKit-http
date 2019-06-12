@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ArchiveResource_h
-#define ArchiveResource_h
+#pragma once
 
 #include "SubstituteResource.h"
 
@@ -35,8 +34,8 @@ namespace WebCore {
 
 class ArchiveResource : public SubstituteResource {
 public:
-    static RefPtr<ArchiveResource> create(PassRefPtr<SharedBuffer>, const URL&, const ResourceResponse&);
-    WEBCORE_EXPORT static RefPtr<ArchiveResource> create(PassRefPtr<SharedBuffer>, const URL&,
+    static RefPtr<ArchiveResource> create(RefPtr<SharedBuffer>&&, const URL&, const ResourceResponse&);
+    WEBCORE_EXPORT static RefPtr<ArchiveResource> create(RefPtr<SharedBuffer>&&, const URL&,
         const String& mimeType, const String& textEncoding, const String& frameName,
         const ResourceResponse& = ResourceResponse());
 
@@ -48,7 +47,7 @@ public:
     bool shouldIgnoreWhenUnarchiving() const { return m_shouldIgnoreWhenUnarchiving; }
 
 private:
-    ArchiveResource(PassRefPtr<SharedBuffer>, const URL&, const String& mimeType, const String& textEncoding, const String& frameName, const ResourceResponse&);
+    ArchiveResource(Ref<SharedBuffer>&&, const URL&, const String& mimeType, const String& textEncoding, const String& frameName, const ResourceResponse&);
 
     String m_mimeType;
     String m_textEncoding;
@@ -57,6 +56,4 @@ private:
     bool m_shouldIgnoreWhenUnarchiving;
 };
 
-}
-
-#endif // ArchiveResource_h
+} // namespace WebCore

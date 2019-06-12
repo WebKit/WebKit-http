@@ -20,7 +20,6 @@
 #include "config.h"
 #include "SVGResourcesCache.h"
 
-#include "HTMLNames.h"
 #include "RenderSVGResourceContainer.h"
 #include "SVGResources.h"
 #include "SVGResourcesCycleSolver.h"
@@ -121,7 +120,7 @@ void SVGResourcesCache::clientStyleChanged(RenderElement& renderer, StyleDiffere
     RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer, false);
 
     if (renderer.element() && !renderer.element()->isSVGElement())
-        renderer.element()->setNeedsStyleRecalc(SyntheticStyleChange);
+        renderer.element()->invalidateStyleAndLayerComposition();
 }
 
 void SVGResourcesCache::clientWasAddedToTree(RenderObject& renderer)

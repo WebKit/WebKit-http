@@ -20,11 +20,10 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Breakpoint_h
-#define Breakpoint_h
+#pragma once
 
 #include "DebuggerPrimitives.h"
 #include <wtf/DoublyLinkedList.h>
@@ -57,6 +56,7 @@ struct Breakpoint : public DoublyLinkedListNode<Breakpoint> {
         , autoContinue(other.autoContinue)
         , ignoreCount(other.ignoreCount)
         , hitCount(other.hitCount)
+        , resolved(other.resolved)
     {
     }
 
@@ -68,6 +68,7 @@ struct Breakpoint : public DoublyLinkedListNode<Breakpoint> {
     bool autoContinue { false };
     unsigned ignoreCount { 0 };
     unsigned hitCount { 0 };
+    bool resolved { false };
 
     static const unsigned unspecifiedColumn = UINT_MAX;
 
@@ -91,5 +92,3 @@ public:
 };
 
 } // namespace JSC
-
-#endif // Breakpoint_h

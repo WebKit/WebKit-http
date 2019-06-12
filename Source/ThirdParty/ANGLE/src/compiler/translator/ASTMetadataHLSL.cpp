@@ -11,6 +11,9 @@
 #include "compiler/translator/CallDAG.h"
 #include "compiler/translator/SymbolTable.h"
 
+namespace sh
+{
+
 namespace
 {
 
@@ -29,9 +32,22 @@ class PullGradient : public TIntermTraverser
           mDag(dag)
     {
         ASSERT(index < metadataList->size());
+
+        // ESSL 100 builtin gradient functions
+        mGradientBuiltinFunctions.insert("texture2D");
+        mGradientBuiltinFunctions.insert("texture2DProj");
+        mGradientBuiltinFunctions.insert("textureCube");
+
+        // ESSL 300 builtin gradient functions
+        mGradientBuiltinFunctions.insert("texture");
+        mGradientBuiltinFunctions.insert("textureProj");
+        mGradientBuiltinFunctions.insert("textureOffset");
+        mGradientBuiltinFunctions.insert("textureProjOffset");
+
+        // ESSL 310 doesn't add builtin gradient functions
     }
 
-    void traverse(TIntermAggregate *node)
+    void traverse(TIntermFunctionDefinition *node)
     {
         node->traverse(this);
         ASSERT(mParents.empty());
@@ -59,7 +75,7 @@ class PullGradient : public TIntermTraverser
             ASSERT(mParents.back() == node);
             mParents.pop_back();
             // A control flow's using a gradient means its parents are too.
-            if (mMetadata->mControlFlowsContainingGradient.count(node)> 0 && !mParents.empty())
+            if (mMetadata->mControlFlowsContainingGradient.count(node) > 0 && !mParents.empty())
             {
                 mMetadata->mControlFlowsContainingGradient.insert(mParents.back());
             }
@@ -72,9 +88,9 @@ class PullGradient : public TIntermTraverser
         return true;
     }
 
-    bool visitSelection(Visit visit, TIntermSelection *selection) override
+    bool visitIfElse(Visit visit, TIntermIfElse *ifElse) override
     {
-        visitControlFlow(visit, selection);
+        visitControlFlow(visit, ifElse);
         return true;
     }
 
@@ -84,11 +100,12 @@ class PullGradient : public TIntermTraverser
         {
             switch (node->getOp())
             {
-              case EOpDFdx:
-              case EOpDFdy:
-                onGradient();
-              default:
-                break;
+                case EOpDFdx:
+                case EOpDFdy:
+                case EOpFwidth:
+                    onGradient();
+                default:
+                    break;
             }
         }
 
@@ -99,27 +116,22 @@ class PullGradient : public TIntermTraverser
     {
         if (visit == PreVisit)
         {
-            if (node->getOp() == EOpFunctionCall)
+            if (node->getOp() == EOpCallFunctionInAST)
             {
-                if (node->isUserDefined())
-                {
-                    size_t calleeIndex = mDag.findIndex(node);
-                    ASSERT(calleeIndex != CallDAG::InvalidIndex && calleeIndex < mIndex);
+                size_t calleeIndex = mDag.findIndex(node->getFunctionSymbolInfo());
+                ASSERT(calleeIndex != CallDAG::InvalidIndex && calleeIndex < mIndex);
 
-                    if ((*mMetadataList)[calleeIndex].mUsesGradient) {
-                        onGradient();
-                    }
+                if ((*mMetadataList)[calleeIndex].mUsesGradient)
+                {
+                    onGradient();
                 }
-                else
+            }
+            else if (node->getOp() == EOpCallBuiltInFunction)
+            {
+                if (mGradientBuiltinFunctions.find(node->getFunctionSymbolInfo()->getName()) !=
+                    mGradientBuiltinFunctions.end())
                 {
-                    TString name = TFunction::unmangleName(node->getName());
-
-                    if (name == "texture2D" ||
-                        name == "texture2DProj" ||
-                        name == "textureCube")
-                    {
-                        onGradient();
-                    }
+                    onGradient();
                 }
             }
         }
@@ -135,16 +147,22 @@ class PullGradient : public TIntermTraverser
 
     // Contains a stack of the control flow nodes that are parents of the node being
     // currently visited. It is used to mark control flows using a gradient.
-    std::vector<TIntermNode*> mParents;
+    std::vector<TIntermNode *> mParents;
+
+    // A list of builtin functions that use gradients
+    std::set<TString> mGradientBuiltinFunctions;
 };
 
-// Traverses the AST of a function definition, assuming it has already been used to
-// traverse the callees of that function; computes the discontinuous loops and the if
-// statements that contain a discontinuous loop in their call graph.
-class PullComputeDiscontinuousLoops : public TIntermTraverser
+// Traverses the AST of a function definition to compute the the discontinuous loops
+// and the if statements containing gradient loops. It assumes that the gradient loops
+// (loops that contain a gradient) have already been computed and that it has already
+// traversed the current function's callees.
+class PullComputeDiscontinuousAndGradientLoops : public TIntermTraverser
 {
   public:
-    PullComputeDiscontinuousLoops(MetadataList *metadataList, size_t index, const CallDAG &dag)
+    PullComputeDiscontinuousAndGradientLoops(MetadataList *metadataList,
+                                             size_t index,
+                                             const CallDAG &dag)
         : TIntermTraverser(true, false, true),
           mMetadataList(metadataList),
           mMetadata(&(*metadataList)[index]),
@@ -153,22 +171,22 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
     {
     }
 
-    void traverse(TIntermAggregate *node)
+    void traverse(TIntermFunctionDefinition *node)
     {
         node->traverse(this);
         ASSERT(mLoopsAndSwitches.empty());
         ASSERT(mIfs.empty());
     }
 
-    // Called when a discontinuous loop or a call to a function with a discontinuous loop
-    // in its call graph is found.
-    void onDiscontinuousLoop()
+    // Called when traversing a gradient loop or a call to a function with a
+    // gradient loop in its call graph.
+    void onGradientLoop()
     {
-        mMetadata->mHasDiscontinuousLoopInCallGraph = true;
+        mMetadata->mHasGradientLoopInCallGraph = true;
         // Mark the latest if as using a discontinuous loop.
         if (!mIfs.empty())
         {
-            mMetadata->mIfsContainingDiscontinuousLoop.insert(mIfs.back());
+            mMetadata->mIfsContainingGradientLoop.insert(mIfs.back());
         }
     }
 
@@ -177,6 +195,11 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
         if (visit == PreVisit)
         {
             mLoopsAndSwitches.push_back(loop);
+
+            if (mMetadata->hasGradientInCallGraph(loop))
+            {
+                onGradientLoop();
+            }
         }
         else if (visit == PostVisit)
         {
@@ -187,7 +210,7 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
         return true;
     }
 
-    bool visitSelection(Visit visit, TIntermSelection *node) override
+    bool visitIfElse(Visit visit, TIntermIfElse *node) override
     {
         if (visit == PreVisit)
         {
@@ -198,9 +221,9 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
             ASSERT(mIfs.back() == node);
             mIfs.pop_back();
             // An if using a discontinuous loop means its parents ifs are also discontinuous.
-            if (mMetadata->mIfsContainingDiscontinuousLoop.count(node) > 0 && !mIfs.empty())
+            if (mMetadata->mIfsContainingGradientLoop.count(node) > 0 && !mIfs.empty())
             {
-                mMetadata->mIfsContainingDiscontinuousLoop.insert(mIfs.back());
+                mMetadata->mIfsContainingGradientLoop.insert(mIfs.back());
             }
         }
 
@@ -213,22 +236,21 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
         {
             switch (node->getFlowOp())
             {
-              case EOpBreak:
+                case EOpBreak:
                 {
                     ASSERT(!mLoopsAndSwitches.empty());
                     TIntermLoop *loop = mLoopsAndSwitches.back()->getAsLoopNode();
                     if (loop != nullptr)
                     {
                         mMetadata->mDiscontinuousLoops.insert(loop);
-                        onDiscontinuousLoop();
                     }
                 }
                 break;
-              case EOpContinue:
+                case EOpContinue:
                 {
                     ASSERT(!mLoopsAndSwitches.empty());
                     TIntermLoop *loop = nullptr;
-                    size_t i = mLoopsAndSwitches.size();
+                    size_t i          = mLoopsAndSwitches.size();
                     while (loop == nullptr && i > 0)
                     {
                         --i;
@@ -236,27 +258,25 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
                     }
                     ASSERT(loop != nullptr);
                     mMetadata->mDiscontinuousLoops.insert(loop);
-                    onDiscontinuousLoop();
                 }
                 break;
-              case EOpKill:
-              case EOpReturn:
-                // A return or discard jumps out of all the enclosing loops
-                if (!mLoopsAndSwitches.empty())
-                {
-                    for (TIntermNode* node : mLoopsAndSwitches)
+                case EOpKill:
+                case EOpReturn:
+                    // A return or discard jumps out of all the enclosing loops
+                    if (!mLoopsAndSwitches.empty())
                     {
-                        TIntermLoop *loop = node->getAsLoopNode();
-                        if (loop)
+                        for (TIntermNode *intermNode : mLoopsAndSwitches)
                         {
-                            mMetadata->mDiscontinuousLoops.insert(loop);
+                            TIntermLoop *loop = intermNode->getAsLoopNode();
+                            if (loop)
+                            {
+                                mMetadata->mDiscontinuousLoops.insert(loop);
+                            }
                         }
                     }
-                    onDiscontinuousLoop();
-                }
-                break;
-              default:
-                UNREACHABLE();
+                    break;
+                default:
+                    UNREACHABLE();
             }
         }
 
@@ -265,17 +285,14 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
 
     bool visitAggregate(Visit visit, TIntermAggregate *node) override
     {
-        if (visit == PreVisit && node->getOp() == EOpFunctionCall)
+        if (visit == PreVisit && node->getOp() == EOpCallFunctionInAST)
         {
-            if (node->isUserDefined())
-            {
-                size_t calleeIndex = mDag.findIndex(node);
-                ASSERT(calleeIndex != CallDAG::InvalidIndex && calleeIndex < mIndex);
+            size_t calleeIndex = mDag.findIndex(node->getFunctionSymbolInfo());
+            ASSERT(calleeIndex != CallDAG::InvalidIndex && calleeIndex < mIndex);
 
-                if ((*mMetadataList)[calleeIndex].mHasDiscontinuousLoopInCallGraph)
-                {
-                    onDiscontinuousLoop();
-                }
+            if ((*mMetadataList)[calleeIndex].mHasGradientLoopInCallGraph)
+            {
+                onGradientLoop();
             }
         }
 
@@ -302,8 +319,8 @@ class PullComputeDiscontinuousLoops : public TIntermTraverser
     size_t mIndex;
     const CallDAG &mDag;
 
-    std::vector<TIntermNode*> mLoopsAndSwitches;
-    std::vector<TIntermSelection*> mIfs;
+    std::vector<TIntermNode *> mLoopsAndSwitches;
+    std::vector<TIntermIfElse *> mIfs;
 };
 
 // Tags all the functions called in a discontinuous loop
@@ -320,7 +337,7 @@ class PushDiscontinuousLoops : public TIntermTraverser
     {
     }
 
-    void traverse(TIntermAggregate *node)
+    void traverse(TIntermFunctionDefinition *node)
     {
         node->traverse(this);
         ASSERT(mNestedDiscont == (mMetadata->mCalledInDiscontinuousLoop ? 1 : 0));
@@ -346,17 +363,17 @@ class PushDiscontinuousLoops : public TIntermTraverser
     {
         switch (node->getOp())
         {
-          case EOpFunctionCall:
-            if (visit == PreVisit && node->isUserDefined() && mNestedDiscont > 0)
-            {
-                size_t calleeIndex = mDag.findIndex(node);
-                ASSERT(calleeIndex != CallDAG::InvalidIndex && calleeIndex < mIndex);
+            case EOpCallFunctionInAST:
+                if (visit == PreVisit && mNestedDiscont > 0)
+                {
+                    size_t calleeIndex = mDag.findIndex(node->getFunctionSymbolInfo());
+                    ASSERT(calleeIndex != CallDAG::InvalidIndex && calleeIndex < mIndex);
 
-                (*mMetadataList)[calleeIndex].mCalledInDiscontinuousLoop = true;
-            }
-            break;
-          default:
-            break;
+                    (*mMetadataList)[calleeIndex].mCalledInDiscontinuousLoop = true;
+                }
+                break;
+            default:
+                break;
         }
         return true;
     }
@@ -369,12 +386,6 @@ class PushDiscontinuousLoops : public TIntermTraverser
 
     int mNestedDiscont;
 };
-
-}
-
-bool ASTMetadataHLSL::hasGradientInCallGraph(TIntermSelection *node)
-{
-    return mControlFlowsContainingGradient.count(node) > 0;
 }
 
 bool ASTMetadataHLSL::hasGradientInCallGraph(TIntermLoop *node)
@@ -382,9 +393,9 @@ bool ASTMetadataHLSL::hasGradientInCallGraph(TIntermLoop *node)
     return mControlFlowsContainingGradient.count(node) > 0;
 }
 
-bool ASTMetadataHLSL::hasDiscontinuousLoop(TIntermSelection *node)
+bool ASTMetadataHLSL::hasGradientLoop(TIntermIfElse *node)
 {
-    return mIfsContainingDiscontinuousLoop.count(node) > 0;
+    return mIfsContainingGradientLoop.count(node) > 0;
 }
 
 MetadataList CreateASTMetadataHLSL(TIntermNode *root, const CallDAG &callDag)
@@ -421,10 +432,10 @@ MetadataList CreateASTMetadataHLSL(TIntermNode *root, const CallDAG &callDag)
     // of callgraph analysis as for the gradient.
 
     // First compute which loops are discontinuous (no specific order) and pull
-    // the ifs and functions using a discontinuous loop.
+    // the ifs and functions using a gradient loop.
     for (size_t i = 0; i < callDag.size(); i++)
     {
-        PullComputeDiscontinuousLoops pull(&metadataList, i, callDag);
+        PullComputeDiscontinuousAndGradientLoops pull(&metadataList, i, callDag);
         pull.traverse(callDag.getRecordFromIndex(i).node);
     }
 
@@ -446,3 +457,5 @@ MetadataList CreateASTMetadataHLSL(TIntermNode *root, const CallDAG &callDag)
 
     return metadataList;
 }
+
+}  // namespace sh

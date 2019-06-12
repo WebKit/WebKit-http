@@ -19,17 +19,16 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGLocatable_h
-#define SVGLocatable_h
+#pragma once
 
 #include "AffineTransform.h"
+#include "ExceptionOr.h"
 
 namespace WebCore {
 
 class FloatRect;
 class SVGElement;
-
-typedef int ExceptionCode;
+class SVGMatrix;
 
 class SVGLocatable {
 public:
@@ -44,7 +43,8 @@ public:
     virtual FloatRect getBBox(StyleUpdateStrategy) = 0;
     virtual AffineTransform getCTM(StyleUpdateStrategy) = 0;
     virtual AffineTransform getScreenCTM(StyleUpdateStrategy) = 0;
-    AffineTransform getTransformToElement(SVGElement*, ExceptionCode&, StyleUpdateStrategy = AllowStyleUpdate);
+
+    ExceptionOr<Ref<SVGMatrix>> getTransformToElement(SVGElement*, StyleUpdateStrategy = AllowStyleUpdate);
 
     static SVGElement* nearestViewportElement(const SVGElement*);
     static SVGElement* farthestViewportElement(const SVGElement*);
@@ -62,5 +62,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // SVGLocatable_h

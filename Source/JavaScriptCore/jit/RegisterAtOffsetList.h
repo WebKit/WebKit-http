@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RegisterAtOffsetList_h
-#define RegisterAtOffsetList_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -39,7 +38,7 @@ public:
     enum OffsetBaseType { FramePointerBased, ZeroBased };
 
     RegisterAtOffsetList();
-    RegisterAtOffsetList(RegisterSet, OffsetBaseType = FramePointerBased);
+    explicit RegisterAtOffsetList(RegisterSet, OffsetBaseType = FramePointerBased);
 
     void dump(PrintStream&) const;
 
@@ -58,12 +57,6 @@ public:
         return m_registers.at(index);
     }
     
-    void append(RegisterAtOffset registerAtOffset)
-    {
-        m_registers.append(registerAtOffset);
-    }
-
-    void sort();
     RegisterAtOffset* find(Reg) const;
     unsigned indexOf(Reg) const; // Returns UINT_MAX if not found.
 
@@ -77,6 +70,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // RegisterAtOffsetList_h
-

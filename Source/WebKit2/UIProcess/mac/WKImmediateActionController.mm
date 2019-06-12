@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,9 +42,9 @@
 #import <WebCore/NSMenuSPI.h>
 #import <WebCore/NSPopoverSPI.h>
 #import <WebCore/QuickLookMacSPI.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/URL.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, QuickLookUI)
 SOFT_LINK_CLASS(QuickLookUI, QLPreviewMenuItem)
@@ -55,8 +55,7 @@ using namespace WebKit;
 @interface WKImmediateActionController () <QLPreviewMenuItemDelegate>
 @end
 
-@interface WKAnimationController : NSObject <NSImmediateActionAnimationController> {
-}
+@interface WKAnimationController : NSObject <NSImmediateActionAnimationController>
 @end
 
 @implementation WKAnimationController
@@ -122,7 +121,8 @@ using namespace WebKit;
 
     if (_currentActionContext && _hasActivatedActionContext) {
         _hasActivatedActionContext = NO;
-        [getDDActionsManagerClass() didUseActions];
+        if (DataDetectorsLibrary())
+            [getDDActionsManagerClass() didUseActions];
     }
 
     _state = ImmediateActionState::None;
@@ -196,7 +196,7 @@ using namespace WebKit;
     // FIXME: Connection can be null if the process is closed; we should clean up better in that case.
     if (_state == ImmediateActionState::Pending) {
         if (auto* connection = _page->process().connection()) {
-            bool receivedReply = connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformImmediateActionHitTest>(_page->pageID(), std::chrono::milliseconds(500));
+            bool receivedReply = connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformImmediateActionHitTest>(_page->pageID(), Seconds::fromMilliseconds(500));
             if (!receivedReply)
                 _state = ImmediateActionState::TimedOut;
         }
@@ -209,8 +209,10 @@ using namespace WebKit;
 
     if (_currentActionContext) {
         _hasActivatedActionContext = YES;
-        if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()])
-            [self _cancelImmediateAction];
+        if (DataDetectorsLibrary()) {
+            if (![getDDActionsManagerClass() shouldUseActionsWithContext:_currentActionContext.get()])
+                [self _cancelImmediateAction];
+        }
     }
 }
 
@@ -252,7 +254,7 @@ using namespace WebKit;
     _page->setTextIndicatorAnimationProgress(1);
 }
 
-- (PassRefPtr<API::HitTestResult>)_webHitTestResult
+- (RefPtr<API::HitTestResult>)_webHitTestResult
 {
     RefPtr<API::HitTestResult> hitTestResult;
     if (_state == ImmediateActionState::Ready)
@@ -260,17 +262,15 @@ using namespace WebKit;
     else
         hitTestResult = _page->lastMouseMoveHitTestResult();
 
-    return hitTestResult.release();
+    return hitTestResult;
 }
 
 #pragma mark Immediate actions
 
 - (id <NSImmediateActionAnimationController>)_defaultAnimationController
 {
-    if (_contentPreventsDefault) {
-        RetainPtr<WKAnimationController> dummyController = [[WKAnimationController alloc] init];
-        return dummyController.get();
-    }
+    if (_contentPreventsDefault)
+        return [[[WKAnimationController alloc] init] autorelease];
 
     RefPtr<API::HitTestResult> hitTestResult = [self _webHitTestResult];
 
@@ -392,16 +392,17 @@ using namespace WebKit;
 
 - (id<NSImmediateActionAnimationController>)_animationControllerForDataDetectedText
 {
+    if (!DataDetectorsLibrary())
+        return nil;
+
     DDActionContext *actionContext = _hitTestResultData.detectedDataActionContext.get();
     if (!actionContext)
         return nil;
 
     actionContext.altMode = YES;
     actionContext.immediate = YES;
-    if ([[getDDActionsManagerClass() sharedManager] respondsToSelector:@selector(hasActionsForResult:actionContext:)]) {
-        if (![[getDDActionsManagerClass() sharedManager] hasActionsForResult:actionContext.mainResult actionContext:actionContext])
-            return nil;
-    }
+    if (![[getDDActionsManagerClass() sharedManager] hasActionsForResult:actionContext.mainResult actionContext:actionContext])
+        return nil;
 
     RefPtr<WebPageProxy> page = _page;
     PageOverlay::PageOverlayID overlayID = _hitTestResultData.detectedDataOriginatingPageOverlay;
@@ -428,6 +429,9 @@ using namespace WebKit;
 
 - (id<NSImmediateActionAnimationController>)_animationControllerForDataDetectedLink
 {
+    if (!DataDetectorsLibrary())
+        return nil;
+
     RetainPtr<DDActionContext> actionContext = adoptNS([allocDDActionContextInstance() init]);
 
     if (!actionContext)

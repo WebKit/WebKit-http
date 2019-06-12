@@ -23,14 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceUsageOverlay_h
-#define ResourceUsageOverlay_h
+#pragma once
 
 #if ENABLE(RESOURCE_USAGE)
 
 #include "FloatRect.h"
+#include "GraphicsLayer.h"
 #include "IntRect.h"
-#include "MainFrame.h"
 #include "PageOverlay.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RetainPtr.h>
@@ -62,7 +61,6 @@ public:
     static const int normalHeight = 160;
 
 private:
-    void pageOverlayDestroyed(PageOverlay&) override { }
     void willMoveToPage(PageOverlay&, Page*) override { }
     void didMoveToPage(PageOverlay&, Page*) override { }
     void drawRect(PageOverlay&, GraphicsContext&, const IntRect&) override { }
@@ -84,10 +82,13 @@ private:
     RetainPtr<CALayer> m_layer;
     RetainPtr<CALayer> m_containerLayer;
 #endif
+
+#if OS(LINUX)
+    std::unique_ptr<GraphicsLayer> m_paintLayer;
+    std::unique_ptr<GraphicsLayerClient> m_overlayPainter;
+#endif
 };
 
-}
+} // namespace WebCore
 
-#endif
-
-#endif
+#endif // ENABLE(RESOURCE_USAGE)

@@ -18,13 +18,16 @@ add_custom_command(
     DEPENDS ${potfiles_file}
     COMMAND xgettext
             --default-domain=${domain}
-            --add-comments=TRANSLATORS:
+            --add-comments
             --msgid-bugs-address="http://bugs.webkit.org"
             --files-from=${potfiles_file}
             --package-version=${PROJECT_VERSION}
             --package-name="webkitgtk"
             --keyword=_
             --keyword=N_
+            --keyword=WEB_UI_STRING:1
+            --keyword=WEB_UI_STRING_KEY:3c,1
+            --keyword=WEB_UI_STRING_WITH_MNEMONIC:2
             --from-code=UTF-8
             -o ${pot_file}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..

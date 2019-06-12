@@ -23,11 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSTypedArrayPrototypes_h
-#define JSTypedArrayPrototypes_h
+#pragma once
 
 #include "JSGenericTypedArrayViewPrototype.h"
-#include "JSTypedArrayViewPrototype.h"
 #include "JSTypedArrays.h"
 
 namespace JSC {
@@ -43,5 +41,3 @@ typedef JSGenericTypedArrayViewPrototype<JSFloat32Array> JSFloat32ArrayPrototype
 typedef JSGenericTypedArrayViewPrototype<JSFloat64Array> JSFloat64ArrayPrototype;
 
 } // namespace JSC
-
-#endif // JSTypedArrayPrototypes_h

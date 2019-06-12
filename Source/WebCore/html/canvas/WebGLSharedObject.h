@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLSharedObject_h
-#define WebGLSharedObject_h
+#pragma once
 
 #include "WebGLObject.h"
 
@@ -34,26 +33,17 @@ class GraphicsContext3D;
 class WebGLContextGroup;
 class WebGLRenderingContextBase;
 
-// WebGLSharedObject the base class for objects that can be shared by multiple
-// WebGLRenderingContexts.
+// WebGLSharedObject the base class for objects that can be shared by multiple WebGLRenderingContexts.
 class WebGLSharedObject : public WebGLObject {
 public:
     virtual ~WebGLSharedObject();
 
     WebGLContextGroup* contextGroup() const { return m_contextGroup; }
 
-    virtual bool isBuffer() const { return false; }
-    virtual bool isProgram() const { return false; }
-    virtual bool isQuery() const { return false; }
     virtual bool isRenderbuffer() const { return false; }
-    virtual bool isSampler() const { return false; }
-    virtual bool isShader() const { return false; }
-    virtual bool isSync() const { return false; }
     virtual bool isTexture() const { return false; }
-    virtual bool isTransformFeedback() const { return false; }
-    virtual bool isVertexArrayObject() const { return false; }
 
-    virtual bool validate(const WebGLContextGroup* contextGroup, const WebGLRenderingContextBase*) const override
+    bool validate(const WebGLContextGroup* contextGroup, const WebGLRenderingContextBase&) const override
     {
         return contextGroup == m_contextGroup;
     }
@@ -61,19 +51,17 @@ public:
     void detachContextGroup();
 
 protected:
-    WebGLSharedObject(WebGLRenderingContextBase*);
+    WebGLSharedObject(WebGLRenderingContextBase&);
 
-    virtual bool hasGroupOrContext() const override
+    bool hasGroupOrContext() const override
     {
         return m_contextGroup;
     }
 
-    virtual GraphicsContext3D* getAGraphicsContext3D() const override;
+    GraphicsContext3D* getAGraphicsContext3D() const override;
 
 private:
     WebGLContextGroup* m_contextGroup;
 };
 
 } // namespace WebCore
-
-#endif // WebGLSharedObject_h

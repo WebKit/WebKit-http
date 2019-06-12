@@ -23,11 +23,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilitySpinButton_h
-#define AccessibilitySpinButton_h
+#pragma once
 
 #include "AccessibilityMockObject.h"
-
 #include "SpinButtonElement.h"
 
 namespace WebCore {
@@ -47,11 +45,11 @@ public:
 private:
     AccessibilitySpinButton();
 
-    virtual AccessibilityRole roleValue() const override { return SpinButtonRole; }
-    virtual bool isSpinButton() const override { return true; }
-    virtual bool isNativeSpinButton() const override { return true; }
-    virtual void addChildren() override;
-    virtual LayoutRect elementRect() const override;
+    AccessibilityRole roleValue() const override { return SpinButtonRole; }
+    bool isSpinButton() const override { return true; }
+    bool isNativeSpinButton() const override { return true; }
+    void addChildren() override;
+    LayoutRect elementRect() const override;
     
     SpinButtonElement* m_spinButtonElement;
 }; 
@@ -67,10 +65,10 @@ public:
 private:
     AccessibilitySpinButtonPart();
     
-    virtual bool press() override;
-    virtual AccessibilityRole roleValue() const override { return ButtonRole; }
-    virtual bool isSpinButtonPart() const override { return true; }
-    virtual LayoutRect elementRect() const override;
+    bool press() override;
+    AccessibilityRole roleValue() const override { return ButtonRole; }
+    bool isSpinButtonPart() const override { return true; }
+    LayoutRect elementRect() const override;
 
     unsigned m_isIncrementor : 1;
 };
@@ -79,5 +77,3 @@ private:
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilitySpinButton, isNativeSpinButton())
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilitySpinButtonPart, isSpinButtonPart())
-
-#endif // AccessibilitySpinButton_h

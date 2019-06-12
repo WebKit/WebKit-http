@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,79 +23,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AbstractMacroAssembler_h
-#define AbstractMacroAssembler_h
+#pragma once
 
 #include "AbortReason.h"
 #include "AssemblerBuffer.h"
+#include "AssemblerCommon.h"
+#include "CPU.h"
 #include "CodeLocation.h"
 #include "MacroAssemblerCodeRef.h"
+#include "MacroAssemblerHelpers.h"
 #include "Options.h"
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/SharedTask.h>
+#include <wtf/Vector.h>
 #include <wtf/WeakRandom.h>
-
-#if ENABLE(ASSEMBLER)
 
 namespace JSC {
 
-inline bool isARMv7IDIVSupported()
-{
-#if HAVE(ARM_IDIV_INSTRUCTIONS)
-    return true;
-#else
-    return false;
+#if ENABLE(ASSEMBLER)
+
+#if ENABLE(MASM_PROBE)
+struct ProbeContext;
+typedef void (*ProbeFunction)(struct ProbeContext*);
 #endif
-}
-
-inline bool isARM64()
-{
-#if CPU(ARM64)
-    return true;
-#else
-    return false;
-#endif
-}
-
-inline bool isX86()
-{
-#if CPU(X86_64) || CPU(X86)
-    return true;
-#else
-    return false;
-#endif
-}
-
-inline bool isX86_64()
-{
-#if CPU(X86_64)
-    return true;
-#else
-    return false;
-#endif
-}
-
-inline bool optimizeForARMv7IDIVSupported()
-{
-    return isARMv7IDIVSupported() && Options::useArchitectureSpecificOptimizations();
-}
-
-inline bool optimizeForARM64()
-{
-    return isARM64() && Options::useArchitectureSpecificOptimizations();
-}
-
-inline bool optimizeForX86()
-{
-    return isX86() && Options::useArchitectureSpecificOptimizations();
-}
-
-inline bool optimizeForX86_64()
-{
-    return isX86_64() && Options::useArchitectureSpecificOptimizations();
-}
-
+    
 class AllowMacroScratchRegisterUsage;
 class DisallowMacroScratchRegisterUsage;
 class LinkBuffer;
@@ -104,11 +56,30 @@ namespace DFG {
 struct OSRExit;
 }
 
-template <class AssemblerType, class MacroAssemblerType>
-class AbstractMacroAssembler {
+class AbstractMacroAssemblerBase {
 public:
-    friend class JITWriteBarrierBase;
-    typedef AbstractMacroAssembler<AssemblerType, MacroAssemblerType> AbstractMacroAssemblerType;
+    enum StatusCondition {
+        Success,
+        Failure
+    };
+    
+    static StatusCondition invert(StatusCondition condition)
+    {
+        switch (condition) {
+        case Success:
+            return Failure;
+        case Failure:
+            return Success;
+        }
+        RELEASE_ASSERT_NOT_REACHED();
+        return Success;
+    }
+};
+
+template <class AssemblerType>
+class AbstractMacroAssembler : public AbstractMacroAssemblerBase {
+public:
+    typedef AbstractMacroAssembler<AssemblerType> AbstractMacroAssemblerType;
     typedef AssemblerType AssemblerType_T;
 
     typedef MacroAssemblerCodePtr CodePtr;
@@ -143,7 +114,18 @@ public:
             return TimesFour;
         return TimesEight;
     }
-
+    
+    struct BaseIndex;
+    
+    static RegisterID withSwappedRegister(RegisterID original, RegisterID left, RegisterID right)
+    {
+        if (original == left)
+            return right;
+        if (original == right)
+            return left;
+        return original;
+    }
+    
     // Address:
     //
     // Describes a simple base-offset address.
@@ -158,6 +140,13 @@ public:
         {
             return Address(base, offset + additionalOffset);
         }
+        
+        Address withSwappedRegister(RegisterID left, RegisterID right)
+        {
+            return Address(AbstractMacroAssembler::withSwappedRegister(base, left, right), offset);
+        }
+        
+        BaseIndex indexedBy(RegisterID index, Scale) const;
         
         RegisterID base;
         int32_t offset;
@@ -216,7 +205,7 @@ public:
             , offset(offset)
         {
         }
-
+        
         RegisterID base;
         RegisterID index;
         Scale scale;
@@ -225,6 +214,11 @@ public:
         BaseIndex withOffset(int32_t additionalOffset)
         {
             return BaseIndex(base, index, scale, offset + additionalOffset);
+        }
+
+        BaseIndex withSwappedRegister(RegisterID left, RegisterID right)
+        {
+            return BaseIndex(AbstractMacroAssembler::withSwappedRegister(base, left, right), AbstractMacroAssembler::withSwappedRegister(index, left, right), scale, offset);
         }
     };
 
@@ -377,8 +371,7 @@ public:
     // A Label records a point in the generated instruction stream, typically such that
     // it may be used as a destination for a jump.
     class Label {
-        template<class TemplateAssemblerType, class TemplateMacroAssemblerType>
-        friend class AbstractMacroAssembler;
+        friend class AbstractMacroAssembler<AssemblerType>;
         friend struct DFG::OSRExit;
         friend class Jump;
         friend class MacroAssemblerCodeRef;
@@ -414,8 +407,7 @@ public:
     //
     // addPtr(TrustedImmPtr(i), a, b)
     class ConvertibleLoadLabel {
-        template<class TemplateAssemblerType, class TemplateMacroAssemblerType>
-        friend class AbstractMacroAssembler;
+        friend class AbstractMacroAssembler<AssemblerType>;
         friend class LinkBuffer;
         
     public:
@@ -438,8 +430,7 @@ public:
     // A DataLabelPtr is used to refer to a location in the code containing a pointer to be
     // patched after the code has been generated.
     class DataLabelPtr {
-        template<class TemplateAssemblerType, class TemplateMacroAssemblerType>
-        friend class AbstractMacroAssembler;
+        friend class AbstractMacroAssembler<AssemblerType>;
         friend class LinkBuffer;
     public:
         DataLabelPtr()
@@ -462,8 +453,7 @@ public:
     // A DataLabel32 is used to refer to a location in the code containing a 32-bit constant to be
     // patched after the code has been generated.
     class DataLabel32 {
-        template<class TemplateAssemblerType, class TemplateMacroAssemblerType>
-        friend class AbstractMacroAssembler;
+        friend class AbstractMacroAssembler<AssemblerType>;
         friend class LinkBuffer;
     public:
         DataLabel32()
@@ -486,8 +476,7 @@ public:
     // A DataLabelCompact is used to refer to a location in the code containing a
     // compact immediate to be patched after the code has been generated.
     class DataLabelCompact {
-        template<class TemplateAssemblerType, class TemplateMacroAssemblerType>
-        friend class AbstractMacroAssembler;
+        friend class AbstractMacroAssembler<AssemblerType>;
         friend class LinkBuffer;
     public:
         DataLabelCompact()
@@ -517,8 +506,7 @@ public:
     // relative offset such that when executed it will call to the desired
     // destination.
     class Call {
-        template<class TemplateAssemblerType, class TemplateMacroAssemblerType>
-        friend class AbstractMacroAssembler;
+        friend class AbstractMacroAssembler<AssemblerType>;
 
     public:
         enum Flags {
@@ -563,8 +551,7 @@ public:
     // relative offset such that when executed it will jump to the desired
     // destination.
     class Jump {
-        template<class TemplateAssemblerType, class TemplateMacroAssemblerType>
-        friend class AbstractMacroAssembler;
+        friend class AbstractMacroAssembler<AssemblerType>;
         friend class Call;
         friend struct DFG::OSRExit;
         friend class LinkBuffer;
@@ -608,12 +595,6 @@ public:
         {
             ASSERT((type == ARM64Assembler::JumpTestBit) || (type == ARM64Assembler::JumpTestBitFixedSize));
         }
-#elif CPU(SH4)
-        Jump(AssemblerLabel jmp, SH4Assembler::JumpType type = SH4Assembler::JumpFar)
-            : m_label(jmp)
-            , m_type(type)
-        {
-        }
 #else
         Jump(AssemblerLabel jmp)    
             : m_label(jmp)
@@ -645,8 +626,6 @@ public:
                 masm->m_assembler.linkJump(m_label, masm->m_assembler.label(), m_type, m_condition, m_bitNumber, m_compareRegister);
             else
                 masm->m_assembler.linkJump(m_label, masm->m_assembler.label(), m_type, m_condition);
-#elif CPU(SH4)
-            masm->m_assembler.linkJump(m_label, masm->m_assembler.label(), m_type);
 #else
             masm->m_assembler.linkJump(m_label, masm->m_assembler.label());
 #endif
@@ -686,9 +665,6 @@ public:
         unsigned m_bitNumber;
         ARM64Assembler::RegisterID m_compareRegister;
 #endif
-#if CPU(SH4)
-        SH4Assembler::JumpType m_type;
-#endif
     };
 
     struct PatchableJump {
@@ -711,8 +687,6 @@ public:
     // A JumpList is a set of Jump objects.
     // All jumps in the set will be linked to the same destination.
     class JumpList {
-        friend class LinkBuffer;
-
     public:
         typedef Vector<Jump, 2> JumpVector;
         
@@ -724,25 +698,24 @@ public:
                 append(jump);
         }
 
-        void link(AbstractMacroAssemblerType* masm)
+        void link(AbstractMacroAssemblerType* masm) const
         {
             size_t size = m_jumps.size();
             for (size_t i = 0; i < size; ++i)
                 m_jumps[i].link(masm);
-            m_jumps.clear();
         }
         
-        void linkTo(Label label, AbstractMacroAssemblerType* masm)
+        void linkTo(Label label, AbstractMacroAssemblerType* masm) const
         {
             size_t size = m_jumps.size();
             for (size_t i = 0; i < size; ++i)
                 m_jumps[i].linkTo(label, masm);
-            m_jumps.clear();
         }
         
         void append(Jump jump)
         {
-            m_jumps.append(jump);
+            if (jump.isSet())
+                m_jumps.append(jump);
         }
         
         void append(const JumpList& other)
@@ -862,106 +835,6 @@ public:
         AssemblerType::cacheFlush(code, size);
     }
 
-#if ENABLE(MASM_PROBE)
-
-    struct CPUState {
-        #define DECLARE_REGISTER(_type, _regName) \
-            _type _regName;
-        FOR_EACH_CPU_REGISTER(DECLARE_REGISTER)
-        #undef DECLARE_REGISTER
-
-        static const char* gprName(RegisterID regID)
-        {
-            switch (regID) {
-                #define DECLARE_REGISTER(_type, _regName) \
-                case RegisterID::_regName: \
-                    return #_regName;
-                FOR_EACH_CPU_GPREGISTER(DECLARE_REGISTER)
-                #undef DECLARE_REGISTER
-            default:
-                RELEASE_ASSERT_NOT_REACHED();
-            }
-        }
-
-        static const char* fprName(FPRegisterID regID)
-        {
-            switch (regID) {
-                #define DECLARE_REGISTER(_type, _regName) \
-                case FPRegisterID::_regName: \
-                    return #_regName;
-                FOR_EACH_CPU_FPREGISTER(DECLARE_REGISTER)
-                #undef DECLARE_REGISTER
-            default:
-                RELEASE_ASSERT_NOT_REACHED();
-            }
-        }
-
-        void*& gpr(RegisterID regID)
-        {
-            switch (regID) {
-                #define DECLARE_REGISTER(_type, _regName) \
-                case RegisterID::_regName: \
-                    return _regName;
-                FOR_EACH_CPU_GPREGISTER(DECLARE_REGISTER)
-                #undef DECLARE_REGISTER
-            default:
-                RELEASE_ASSERT_NOT_REACHED();
-            }
-        }
-
-        double& fpr(FPRegisterID regID)
-        {
-            switch (regID) {
-                #define DECLARE_REGISTER(_type, _regName) \
-                case FPRegisterID::_regName: \
-                    return _regName;
-                FOR_EACH_CPU_FPREGISTER(DECLARE_REGISTER)
-                #undef DECLARE_REGISTER
-            default:
-                RELEASE_ASSERT_NOT_REACHED();
-            }
-        }
-    };
-
-    struct ProbeContext;
-    typedef void (*ProbeFunction)(struct ProbeContext*);
-
-    struct ProbeContext {
-        ProbeFunction probeFunction;
-        void* arg1;
-        void* arg2;
-        CPUState cpu;
-
-        // Convenience methods:
-        void*& gpr(RegisterID regID) { return cpu.gpr(regID); }
-        double& fpr(FPRegisterID regID) { return cpu.fpr(regID); }
-        const char* gprName(RegisterID regID) { return cpu.gprName(regID); }
-        const char* fprName(FPRegisterID regID) { return cpu.fprName(regID); }
-    };
-
-    // This function emits code to preserve the CPUState (e.g. registers),
-    // call a user supplied probe function, and restore the CPUState before
-    // continuing with other JIT generated code.
-    //
-    // The user supplied probe function will be called with a single pointer to
-    // a ProbeContext struct (defined above) which contains, among other things,
-    // the preserved CPUState. This allows the user probe function to inspect
-    // the CPUState at that point in the JIT generated code.
-    //
-    // If the user probe function alters the register values in the ProbeContext,
-    // the altered values will be loaded into the CPU registers when the probe
-    // returns.
-    //
-    // The ProbeContext is stack allocated and is only valid for the duration
-    // of the call to the user probe function.
-    //
-    // Note: probe() should be implemented by the target specific MacroAssembler.
-    // This prototype is only provided here to document the interface.
-
-    void probe(ProbeFunction, void* arg1, void* arg2);
-
-#endif // ENABLE(MASM_PROBE)
-
     AssemblerType m_assembler;
     
     static void linkJump(void* code, Jump jump, CodeLocationLabel target)
@@ -988,12 +861,17 @@ public:
     {
         AssemblerType::relinkJump(jump.dataLocation(), destination.dataLocation());
     }
+    
+    static void repatchJumpToNop(CodeLocationJump jump)
+    {
+        AssemblerType::relinkJumpToNop(jump.dataLocation());
+    }
 
     static void repatchNearCall(CodeLocationNearCall nearCall, CodeLocationLabel destination)
     {
         switch (nearCall.callMode()) {
         case NearCallMode::Tail:
-            AssemblerType::relinkJump(nearCall.dataLocation(), destination.executableAddress());
+            AssemblerType::relinkJump(nearCall.dataLocation(), destination.dataLocation());
             return;
         case NearCallMode::Regular:
             AssemblerType::relinkCall(nearCall.dataLocation(), destination.executableAddress());
@@ -1038,18 +916,34 @@ public:
         m_linkTasks.append(createSharedTask<void(LinkBuffer&)>(functor));
     }
 
+    void emitNops(size_t memoryToFillWithNopsInBytes)
+    {
+        AssemblerBuffer& buffer = m_assembler.buffer();
+        size_t startCodeSize = buffer.codeSize();
+        size_t targetCodeSize = startCodeSize + memoryToFillWithNopsInBytes;
+        buffer.ensureSpace(memoryToFillWithNopsInBytes);
+        bool isCopyingToExecutableMemory = false;
+        AssemblerType::fillNops(static_cast<char*>(buffer.data()) + startCodeSize, memoryToFillWithNopsInBytes, isCopyingToExecutableMemory);
+        buffer.setCodeSize(targetCodeSize);
+    }
+
 protected:
     AbstractMacroAssembler()
-        : m_randomSource(cryptographicallyRandomNumber())
+        : m_randomSource(0)
     {
         invalidateAllTempRegisters();
     }
 
     uint32_t random()
     {
+        if (!m_randomSourceIsInitialized) {
+            m_randomSourceIsInitialized = true;
+            m_randomSource.setSeed(cryptographicallyRandomNumber());
+        }
         return m_randomSource.getUint32();
     }
 
+    bool m_randomSourceIsInitialized { false };
     WeakRandom m_randomSource;
 
 #if ENABLE(DFG_REGISTER_ALLOCATION_VALIDATION)
@@ -1132,6 +1026,7 @@ protected:
     }
 
     friend class AllowMacroScratchRegisterUsage;
+    friend class AllowMacroScratchRegisterUsageIf;
     friend class DisallowMacroScratchRegisterUsage;
     unsigned m_tempRegistersValidBits;
     bool m_allowScratchRegister { true };
@@ -1141,8 +1036,28 @@ protected:
     friend class LinkBuffer;
 }; // class AbstractMacroAssembler
 
-} // namespace JSC
+template <class AssemblerType>
+inline typename AbstractMacroAssembler<AssemblerType>::BaseIndex
+AbstractMacroAssembler<AssemblerType>::Address::indexedBy(
+    typename AbstractMacroAssembler<AssemblerType>::RegisterID index,
+    typename AbstractMacroAssembler<AssemblerType>::Scale scale) const
+{
+    return BaseIndex(base, index, scale, offset);
+}
 
 #endif // ENABLE(ASSEMBLER)
 
-#endif // AbstractMacroAssembler_h
+} // namespace JSC
+
+#if ENABLE(ASSEMBLER)
+
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream& out, JSC::AbstractMacroAssemblerBase::StatusCondition);
+
+} // namespace WTF
+
+#endif // ENABLE(ASSEMBLER)
+

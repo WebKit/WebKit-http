@@ -3,13 +3,13 @@
 <link href="resources/grid.css" rel="stylesheet">
 <style>
 .gridMinMaxContent {
-    -webkit-grid-template-columns: minmax(-webkit-max-content, 50px);
-    -webkit-grid-template-rows: 60px;
+    grid-template-columns: minmax(max-content, 50px);
+    grid-template-rows: 60px;
 }
 
 .gridMaxMaxContent {
-    -webkit-grid-template-columns: minmax(30px, -webkit-max-content);
-    -webkit-grid-template-rows: 20px;
+    grid-template-columns: minmax(30px, max-content);
+    grid-template-rows: 20px;
 }
 
 .firstRowFirstColumn {
@@ -17,10 +17,6 @@
     /* Make us fit our grid area. */
     width: 100%;
     height: 100%;
-}
-
-.verticalRL {
-    -webkit-writing-mode: vertical-rl;
 }
 </style>
 <script src="../../resources/check-layout.js"></script>

@@ -1,5 +1,6 @@
 /*
- *  Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,10 +25,9 @@
  */
 
 #include "config.h"
-
-#if ENABLE(MEDIA_STREAM)
-
 #include "RTCDataChannelHandlerMock.h"
+
+#if ENABLE(WEB_RTC)
 
 #include "RTCDataChannelHandlerClient.h"
 #include "RTCNotifiersMock.h"
@@ -37,22 +37,15 @@ namespace WebCore {
 RTCDataChannelHandlerMock::RTCDataChannelHandlerMock(const String& label, const RTCDataChannelInit& init)
     : m_label(label)
     , m_protocol(init.protocol)
-    , m_maxRetransmitTime(init.maxRetransmitTime)
-    , m_maxRetransmits(init.maxRetransmits)
-    , m_id(init.id)
-    , m_ordered(init.ordered)
-    , m_negotiated(init.negotiated)
 {
 }
 
-void RTCDataChannelHandlerMock::setClient(RTCDataChannelHandlerClient* client)
+void RTCDataChannelHandlerMock::setClient(RTCDataChannelHandlerClient& client)
 {
-    if (!client)
-        return;
-
-    m_client = client;
-    RefPtr<DataChannelStateNotifier> notifier = adoptRef(new DataChannelStateNotifier(m_client, RTCDataChannelHandlerClient::ReadyStateOpen));
-    m_timerEvents.append(adoptRef(new TimerEvent(this, notifier)));
+    ASSERT(!m_client);
+    m_client = &client;
+    auto notifier = adoptRef(*new DataChannelStateNotifier(m_client, RTCDataChannelState::Open));
+    m_timerEvents.append(adoptRef(new TimerEvent(this, WTFMove(notifier))));
 }
 
 bool RTCDataChannelHandlerMock::sendStringData(const String& string)
@@ -69,10 +62,10 @@ bool RTCDataChannelHandlerMock::sendRawData(const char* data, size_t size)
 
 void RTCDataChannelHandlerMock::close()
 {
-    RefPtr<DataChannelStateNotifier> notifier = adoptRef(new DataChannelStateNotifier(m_client, RTCDataChannelHandlerClient::ReadyStateClosed));
-    m_timerEvents.append(adoptRef(new TimerEvent(this, notifier)));
+    auto notifier = adoptRef(*new DataChannelStateNotifier(m_client, RTCDataChannelState::Closed));
+    m_timerEvents.append(adoptRef(new TimerEvent(this, WTFMove(notifier))));
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(WEB_RTC)

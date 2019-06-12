@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGTextPositioningElement_h
-#define SVGTextPositioningElement_h
+#pragma once
 
 #include "SVGAnimatedLengthList.h"
 #include "SVGAnimatedNumberList.h"
@@ -34,12 +33,12 @@ public:
 protected:
     SVGTextPositioningElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
 
 private:
-    virtual bool isPresentationAttribute(const QualifiedName&) const override final;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGTextPositioningElement)
         DECLARE_ANIMATED_LENGTH_LIST(X, x)
@@ -51,5 +50,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

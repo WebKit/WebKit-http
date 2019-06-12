@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3SparseCollection_h
-#define B3SparseCollection_h
+#pragma once
 
-#if ENABLE(B3_JIT)
+#if ENABLE(DFG_JIT)
 
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
@@ -57,8 +56,8 @@ public:
             index = m_indexFreeList.takeLast();
 
         value->m_index = index;
-
-        m_vector[index] = WTFMove(value);
+        ASSERT(!m_vector[index]);
+        new (NotNull, &m_vector[index]) std::unique_ptr<T>(WTFMove(value));
 
         return result;
     }
@@ -74,6 +73,42 @@ public:
         RELEASE_ASSERT(m_vector[value->m_index].get() == value);
         m_indexFreeList.append(value->m_index);
         m_vector[value->m_index] = nullptr;
+    }
+
+    void packIndices()
+    {
+        if (m_indexFreeList.isEmpty())
+            return;
+
+        unsigned holeIndex = 0;
+        unsigned endIndex = m_vector.size();
+
+        while (true) {
+            while (holeIndex < endIndex && m_vector[holeIndex])
+                ++holeIndex;
+
+            if (holeIndex == endIndex)
+                break;
+            ASSERT(holeIndex < m_vector.size());
+            ASSERT(!m_vector[holeIndex]);
+
+            do {
+                --endIndex;
+            } while (!m_vector[endIndex] && endIndex > holeIndex);
+
+            if (holeIndex == endIndex)
+                break;
+            ASSERT(endIndex > holeIndex);
+            ASSERT(m_vector[endIndex]);
+
+            auto& value = m_vector[endIndex];
+            value->m_index = holeIndex;
+            m_vector[holeIndex] = WTFMove(value);
+            ++holeIndex;
+        }
+
+        m_indexFreeList.resize(0);
+        m_vector.resize(endIndex);
     }
 
     unsigned size() const { return m_vector.size(); }
@@ -134,13 +169,10 @@ public:
     iterator end() const { return iterator(*this, size()); }
 
 private:
-    Vector<std::unique_ptr<T>> m_vector;
-    Vector<size_t> m_indexFreeList;
+    Vector<std::unique_ptr<T>, 0, UnsafeVectorOverflow> m_vector;
+    Vector<size_t, 0, UnsafeVectorOverflow> m_indexFreeList;
 };
 
 } } // namespace JSC::B3
 
-#endif // ENABLE(B3_JIT)
-
-#endif // B3SparseCollection_h
-
+#endif // ENABLE(DFG_JIT)

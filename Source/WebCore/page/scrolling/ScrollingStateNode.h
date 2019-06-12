@@ -23,13 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingStateNode_h
-#define ScrollingStateNode_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #include "GraphicsLayer.h"
 #include "ScrollingCoordinator.h"
+#include <stdint.h>
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/Vector.h>
@@ -198,24 +198,24 @@ public:
     bool isOverflowScrollingNode() const { return m_nodeType == OverflowScrollingNode; }
 
     virtual Ref<ScrollingStateNode> clone(ScrollingStateTree& adoptiveTree) = 0;
-    PassRefPtr<ScrollingStateNode> cloneAndReset(ScrollingStateTree& adoptiveTree);
+    Ref<ScrollingStateNode> cloneAndReset(ScrollingStateTree& adoptiveTree);
     void cloneAndResetChildren(ScrollingStateNode&, ScrollingStateTree& adoptiveTree);
 
     enum {
         ScrollLayer = 0,
-        NumStateNodeBits = 1
+        NumStateNodeBits // This must remain at the last position.
     };
-    typedef unsigned ChangedProperties;
+    typedef uint64_t ChangedProperties;
 
     bool hasChangedProperties() const { return m_changedProperties; }
-    bool hasChangedProperty(unsigned propertyBit) const { return m_changedProperties & (1 << propertyBit); }
+    bool hasChangedProperty(unsigned propertyBit) const { return m_changedProperties & (static_cast<ChangedProperties>(1) << propertyBit); }
     void resetChangedProperties() { m_changedProperties = 0; }
     void setPropertyChanged(unsigned propertyBit);
 
     ChangedProperties changedProperties() const { return m_changedProperties; }
     void setChangedProperties(ChangedProperties changedProperties) { m_changedProperties = changedProperties; }
     
-    virtual void syncLayerPositionForViewportRect(const LayoutRect& /*viewportRect*/) { }
+    virtual void reconcileLayerPositionForViewportRect(const LayoutRect& /*viewportRect*/, ScrollingLayerPositionAction) { }
 
     const LayerRepresentation& layer() const { return m_layer; }
     WEBCORE_EXPORT void setLayer(const LayerRepresentation&);
@@ -230,17 +230,17 @@ public:
 
     Vector<RefPtr<ScrollingStateNode>>* children() const { return m_children.get(); }
 
-    void appendChild(PassRefPtr<ScrollingStateNode>);
+    void appendChild(Ref<ScrollingStateNode>&&);
 
-    String scrollingStateTreeAsText() const;
+    String scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior = ScrollingStateTreeAsTextBehaviorNormal) const;
 
 protected:
     ScrollingStateNode(const ScrollingStateNode&, ScrollingStateTree&);
 
+    virtual void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const;
+    
 private:
-    void dump(TextStream&, int indent) const;
-
-    virtual void dumpProperties(TextStream&, int indent) const = 0;
+    void dump(TextStream&, ScrollingStateTreeAsTextBehavior) const;
 
     const ScrollingNodeType m_nodeType;
     ScrollingNodeID m_nodeID;
@@ -262,5 +262,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
-
-#endif // ScrollingStateNode_h

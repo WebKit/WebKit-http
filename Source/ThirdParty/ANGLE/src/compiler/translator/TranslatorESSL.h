@@ -9,18 +9,25 @@
 
 #include "compiler/translator/Compiler.h"
 
+namespace sh
+{
+
 class TranslatorESSL : public TCompiler
 {
   public:
     TranslatorESSL(sh::GLenum type, ShShaderSpec spec);
 
   protected:
-    void initBuiltInFunctionEmulator(BuiltInFunctionEmulator *emu, int compileOptions) override;
+    void initBuiltInFunctionEmulator(BuiltInFunctionEmulator *emu,
+                                     ShCompileOptions compileOptions) override;
 
-    virtual void translate(TIntermNode *root, int compileOptions) override;
+    void translate(TIntermNode *root, ShCompileOptions compileOptions) override;
+    bool shouldFlattenPragmaStdglInvariantAll() override;
 
   private:
-    void writeExtensionBehavior();
+    void writeExtensionBehavior(ShCompileOptions compileOptions);
 };
+
+}  // namespace sh
 
 #endif  // COMPILER_TRANSLATOR_TRANSLATORESSL_H_

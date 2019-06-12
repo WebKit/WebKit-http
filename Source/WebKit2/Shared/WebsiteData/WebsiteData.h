@@ -23,28 +23,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebsiteData_h
-#define WebsiteData_h
+#pragma once
 
-#include "WebsiteDataTypes.h"
-#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
+#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
+enum class WebsiteDataType;
+
 struct WebsiteData {
     struct Entry {
-        RefPtr<WebCore::SecurityOrigin> origin;
-        WebsiteDataTypes type;
+        WebCore::SecurityOriginData origin;
+        WebsiteDataType type;
+        uint64_t size;
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, WebsiteData::Entry&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, WebsiteData::Entry&);
     };
 
     Vector<Entry> entries;
@@ -54,10 +56,10 @@ struct WebsiteData {
     HashSet<String> hostNamesWithPluginData;
 #endif
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebsiteData&);
+    HashSet<String> originsWithCredentials;
+
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebsiteData&);
 };
 
 }
-
-#endif // WebsiteData_h

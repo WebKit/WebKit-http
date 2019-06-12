@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SourceBufferPrivateAVFObjC_h
-#define SourceBufferPrivateAVFObjC_h
+#pragma once
 
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
 #include "SourceBufferPrivate.h"
+#include <dispatch/group.h>
 #include <dispatch/semaphore.h>
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
@@ -62,6 +62,7 @@ class AudioTrackPrivate;
 class VideoTrackPrivate;
 class AudioTrackPrivateMediaSourceAVFObjC;
 class VideoTrackPrivateMediaSourceAVFObjC;
+class WebCoreDecompressionSession;
 
 class SourceBufferPrivateAVFObjCErrorClient {
 public:
@@ -88,11 +89,13 @@ public:
     bool processCodedFrame(int trackID, CMSampleBufferRef, const String& mediaType);
 
     bool hasVideo() const;
+    bool hasSelectedVideo() const;
     bool hasAudio() const;
 
     void trackDidChangeEnabled(VideoTrackPrivateMediaSourceAVFObjC*);
     void trackDidChangeEnabled(AudioTrackPrivateMediaSourceAVFObjC*);
 
+    void willSeek();
     void seekToTime(MediaTime);
     MediaTime fastSeekTimeForMediaTime(MediaTime, MediaTime negativeThreshold, MediaTime positiveThreshold);
     FloatSize naturalSize();
@@ -108,29 +111,35 @@ public:
     void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *);
     void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *);
 
+    void setVideoLayer(AVSampleBufferDisplayLayer*);
+    void setDecompressionSession(WebCoreDecompressionSession*);
+
+    void bufferWasConsumed();
+
 private:
     explicit SourceBufferPrivateAVFObjC(MediaSourcePrivateAVFObjC*);
 
     // SourceBufferPrivate overrides
-    virtual void setClient(SourceBufferPrivateClient*) override;
-    virtual void append(const unsigned char* data, unsigned length) override;
-    virtual void abort() override;
-    virtual void removedFromMediaSource() override;
-    virtual MediaPlayer::ReadyState readyState() const override;
-    virtual void setReadyState(MediaPlayer::ReadyState) override;
-    virtual void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString trackID) override;
-    virtual void enqueueSample(PassRefPtr<MediaSample>, AtomicString trackID) override;
-    virtual bool isReadyForMoreSamples(AtomicString trackID) override;
-    virtual void setActive(bool) override;
-    virtual void notifyClientWhenReadyForMoreSamples(AtomicString trackID) override;
-
-    void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AVSampleBufferAudioRenderer*);
-    void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AVSampleBufferDisplayLayer*);
+    void setClient(SourceBufferPrivateClient*) final;
+    void append(const unsigned char* data, unsigned length) final;
+    void abort() final;
+    void resetParserState() final;
+    void removedFromMediaSource() final;
+    MediaPlayer::ReadyState readyState() const final;
+    void setReadyState(MediaPlayer::ReadyState) final;
+    void flush(const AtomicString& trackID) final;
+    void enqueueSample(Ref<MediaSample>&&, const AtomicString& trackID) final;
+    bool isReadyForMoreSamples(const AtomicString& trackID) final;
+    void setActive(bool) final;
+    void notifyClientWhenReadyForMoreSamples(const AtomicString& trackID) final;
 
     void didBecomeReadyForMoreSamples(int trackID);
     void appendCompleted();
     void destroyParser();
     void destroyRenderers();
+
+    void flushVideo();
+    void flush(AVSampleBufferAudioRenderer *);
 
     WeakPtr<SourceBufferPrivateAVFObjC> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
@@ -139,6 +148,7 @@ private:
     Vector<SourceBufferPrivateAVFObjCErrorClient*> m_errorClients;
 
     WeakPtrFactory<SourceBufferPrivateAVFObjC> m_weakFactory;
+    WeakPtrFactory<SourceBufferPrivateAVFObjC> m_appendWeakFactory;
 
     RetainPtr<AVStreamDataParser> m_parser;
     RetainPtr<AVAsset> m_asset;
@@ -146,20 +156,25 @@ private:
     HashMap<int, RetainPtr<AVSampleBufferAudioRenderer>> m_audioRenderers;
     RetainPtr<WebAVStreamDataParserListener> m_delegate;
     RetainPtr<WebAVSampleBufferErrorListener> m_errorListener;
+    RetainPtr<NSError> m_hdcpError;
     OSObjectPtr<dispatch_semaphore_t> m_hasSessionSemaphore;
+    OSObjectPtr<dispatch_group_t> m_isAppendingGroup;
+    RefPtr<WebCoreDecompressionSession> m_decompressionSession;
 
     MediaSourcePrivateAVFObjC* m_mediaSource;
-    SourceBufferPrivateClient* m_client;
+    SourceBufferPrivateClient* m_client { nullptr };
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     CDMSessionMediaSourceAVFObjC* m_session { nullptr };
+#endif
 
-    FloatSize m_cachedSize;
-    bool m_parsingSucceeded;
-    int m_enabledVideoTrackID;
-    int m_protectedTrackID;
+    std::optional<FloatSize> m_cachedSize;
+    FloatSize m_currentSize;
+    bool m_parsingSucceeded { true };
+    bool m_parserStateWasReset { false };
+    int m_enabledVideoTrackID { -1 };
+    int m_protectedTrackID { -1 };
 };
 
 }
 
 #endif // ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
-
-#endif

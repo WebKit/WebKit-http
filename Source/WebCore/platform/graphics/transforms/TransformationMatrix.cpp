@@ -33,6 +33,7 @@
 #include "IntRect.h"
 #include "LayoutRect.h"
 #include "TextStream.h"
+#include <cmath>
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
 
@@ -41,13 +42,6 @@
 #endif
 
 namespace WebCore {
-
-//
-// Supporting Math Functions
-//
-// This is a set of function from various places (attributed inline) to do things like
-// inversion and decomposition of a 4x4 matrix. They are used throughout the code
-//
 
 //
 // Adapted from Matrix Inversion by Richard Carling, Graphics Gems <http://tog.acm.org/GraphicsGems/index.html>.
@@ -703,6 +697,25 @@ LayoutRect TransformationMatrix::clampedBoundsOfProjectedQuad(const FloatQuad& q
         bottom = clampEdgeValue(ceilf(mappedQuadBounds.maxY()));
 
     return LayoutRect(LayoutUnit::clamp(left), LayoutUnit::clamp(top),  LayoutUnit::clamp(right - left), LayoutUnit::clamp(bottom - top));
+}
+
+void TransformationMatrix::map4ComponentPoint(double& x, double& y, double& z, double& w) const
+{
+    if (isIdentityOrTranslation()) {
+        x += m_matrix[3][0];
+        y += m_matrix[3][1];
+        z += m_matrix[3][2];
+        return;
+    }
+
+    Vector4 input = { x, y, z, w };
+    Vector4 result;
+    v4MulPointByMatrix(input, m_matrix, result);
+
+    x = result[0];
+    y = result[1];
+    z = result[2];
+    w = result[3];
 }
 
 FloatPoint TransformationMatrix::mapPoint(const FloatPoint& p) const
@@ -1445,7 +1458,7 @@ bool TransformationMatrix::isInvertible() const
     return true;
 }
 
-Optional<TransformationMatrix> TransformationMatrix::inverse() const
+std::optional<TransformationMatrix> TransformationMatrix::inverse() const
 {
     if (isIdentityOrTranslation()) {
         // identity matrix
@@ -1463,7 +1476,7 @@ Optional<TransformationMatrix> TransformationMatrix::inverse() const
     // FIXME: Use LU decomposition to apply the inverse instead of calculating the inverse explicitly.
     // Calculating the inverse of a 4x4 matrix using cofactors is numerically unstable and unnecessary to apply the inverse transformation to a point.
     if (!WebCore::inverse(m_matrix, invMat.m_matrix))
-        return Nullopt;
+        return std::nullopt;
 
     return invMat;
 }
@@ -1501,8 +1514,11 @@ void TransformationMatrix::blend2(const TransformationMatrix& from, double progr
 {
     Decomposed2Type fromDecomp;
     Decomposed2Type toDecomp;
-    from.decompose2(fromDecomp);
-    decompose2(toDecomp);
+    if (!from.decompose2(fromDecomp) || !decompose2(toDecomp)) {
+        if (progress < 0.5)
+            *this = from;
+        return;
+    }
 
     // If x-axis of one is flipped, and y-axis of the other, convert to an unflipped rotation.
     if ((fromDecomp.scaleX < 0 && toDecomp.scaleY < 0) || (fromDecomp.scaleY < 0 && toDecomp.scaleX < 0)) {
@@ -1541,8 +1557,11 @@ void TransformationMatrix::blend4(const TransformationMatrix& from, double progr
 {
     Decomposed4Type fromDecomp;
     Decomposed4Type toDecomp;
-    from.decompose4(fromDecomp);
-    decompose4(toDecomp);
+    if (!from.decompose4(fromDecomp) || !decompose4(toDecomp)) {
+        if (progress < 0.5)
+            *this = from;
+        return;
+    }
 
     blendFloat(fromDecomp.scaleX, toDecomp.scaleX, progress);
     blendFloat(fromDecomp.scaleY, toDecomp.scaleY, progress);
@@ -1685,6 +1704,14 @@ bool TransformationMatrix::isIntegerTranslation() const
         return false;
 
     return true;
+}
+
+bool TransformationMatrix::containsOnlyFiniteValues() const
+{
+    return std::isfinite(m_matrix[0][0]) && std::isfinite(m_matrix[0][1]) && std::isfinite(m_matrix[0][2]) && std::isfinite(m_matrix[0][3])
+        && std::isfinite(m_matrix[1][0]) && std::isfinite(m_matrix[1][1]) && std::isfinite(m_matrix[1][2]) && std::isfinite(m_matrix[1][3])
+        && std::isfinite(m_matrix[2][0]) && std::isfinite(m_matrix[2][1]) && std::isfinite(m_matrix[2][2]) && std::isfinite(m_matrix[2][3])
+        && std::isfinite(m_matrix[3][0]) && std::isfinite(m_matrix[3][1]) && std::isfinite(m_matrix[3][2]) && std::isfinite(m_matrix[3][3]);
 }
 
 TransformationMatrix TransformationMatrix::to2dTransform() const

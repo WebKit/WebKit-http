@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,11 +27,24 @@
 #import "WebProcessProxy.h"
 
 #import "ObjCObjectGraph.h"
+#import "SandboxUtilities.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextHandleInternal.h"
 #import "WKTypeRefWrapper.h"
+#import <sys/sysctl.h>
+#import <wtf/NeverDestroyed.h>
 
 namespace WebKit {
+
+const HashSet<String>& WebProcessProxy::platformPathsWithAssumedReadAccess()
+{
+    static NeverDestroyed<HashSet<String>> platformPathsWithAssumedReadAccess(std::initializer_list<String> {
+        [NSBundle bundleWithIdentifier:@"com.apple.WebCore"].resourcePath.stringByStandardizingPath,
+        [NSBundle bundleWithIdentifier:@"com.apple.WebKit"].resourcePath.stringByStandardizingPath
+    });
+
+    return platformPathsWithAssumedReadAccess;
+}
 
 RefPtr<ObjCObjectGraph> WebProcessProxy::transformHandlesToObjects(ObjCObjectGraph& objectGraph)
 {
@@ -41,7 +54,7 @@ RefPtr<ObjCObjectGraph> WebProcessProxy::transformHandlesToObjects(ObjCObjectGra
         {
         }
 
-        virtual bool shouldTransformObject(id object) const override
+        bool shouldTransformObject(id object) const override
         {
 #if WK_API_ENABLED
             if (dynamic_objc_cast<WKBrowsingContextHandle>(object))
@@ -53,7 +66,7 @@ RefPtr<ObjCObjectGraph> WebProcessProxy::transformHandlesToObjects(ObjCObjectGra
             return false;
         }
 
-        virtual RetainPtr<id> transformObject(id object) const override
+        RetainPtr<id> transformObject(id object) const override
         {
 #if WK_API_ENABLED
             if (auto* handle = dynamic_objc_cast<WKBrowsingContextHandle>(object)) {
@@ -79,7 +92,7 @@ RefPtr<ObjCObjectGraph> WebProcessProxy::transformHandlesToObjects(ObjCObjectGra
 RefPtr<ObjCObjectGraph> WebProcessProxy::transformObjectsToHandles(ObjCObjectGraph& objectGraph)
 {
     struct Transformer final : ObjCObjectGraph::Transformer {
-        virtual bool shouldTransformObject(id object) const override
+        bool shouldTransformObject(id object) const override
         {
 #if WK_API_ENABLED
             if (dynamic_objc_cast<WKBrowsingContextController>(object))
@@ -91,7 +104,7 @@ RefPtr<ObjCObjectGraph> WebProcessProxy::transformObjectsToHandles(ObjCObjectGra
             return false;
         }
 
-        virtual RetainPtr<id> transformObject(id object) const override
+        RetainPtr<id> transformObject(id object) const override
         {
 #if WK_API_ENABLED
             if (auto* controller = dynamic_objc_cast<WKBrowsingContextController>(object))
@@ -107,6 +120,21 @@ RefPtr<ObjCObjectGraph> WebProcessProxy::transformObjectsToHandles(ObjCObjectGra
     };
 
     return ObjCObjectGraph::create(ObjCObjectGraph::transform(objectGraph.rootObject(), Transformer()).get());
+}
+
+bool WebProcessProxy::platformIsBeingDebugged() const
+{
+    // If the UI process is sandboxed, it cannot find out whether other processes are being debugged.
+    if (currentProcessIsSandboxed())
+        return false;
+
+    struct kinfo_proc info;
+    int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, processIdentifier() };
+    size_t size = sizeof(info);
+    if (sysctl(mib, WTF_ARRAY_LENGTH(mib), &info, &size, nullptr, 0) == -1)
+        return false;
+
+    return info.kp_proc.p_flag & P_TRACED;
 }
 
 }

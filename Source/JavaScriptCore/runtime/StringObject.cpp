@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2008, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -30,7 +30,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(StringObject);
 
-const ClassInfo StringObject::s_info = { "String", &JSWrapperObject::s_info, 0, CREATE_METHOD_TABLE(StringObject) };
+const ClassInfo StringObject::s_info = { "String", &JSWrapperObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(StringObject) };
 
 StringObject::StringObject(VM& vm, Structure* structure)
     : JSWrapperObject(vm, structure)
@@ -40,7 +40,7 @@ StringObject::StringObject(VM& vm, Structure* structure)
 void StringObject::finishCreation(VM& vm, JSString* string)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     setInternalValue(vm, string);
 }
 
@@ -60,66 +60,73 @@ bool StringObject::getOwnPropertySlotByIndex(JSObject* object, ExecState* exec, 
     return JSObject::getOwnPropertySlot(thisObject, exec, Identifier::from(exec, propertyName), slot);
 }
 
-void StringObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool StringObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    if (propertyName == exec->propertyNames().length) {
-        if (slot.isStrictMode())
-            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-        return;
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    StringObject* thisObject = jsCast<StringObject*>(cell);
+
+    if (UNLIKELY(isThisValueAltered(slot, thisObject))) {
+        scope.release();
+        return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
     }
-    JSObject::put(cell, exec, propertyName, value, slot);
+
+    if (propertyName == vm.propertyNames->length)
+        return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
+    if (std::optional<uint32_t> index = parseIndex(propertyName)) {
+        scope.release();
+        return putByIndex(cell, exec, index.value(), value, slot.isStrictMode());
+    }
+    scope.release();
+    return JSObject::put(cell, exec, propertyName, value, slot);
 }
 
-void StringObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
+bool StringObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     StringObject* thisObject = jsCast<StringObject*>(cell);
-    if (thisObject->internalValue()->canGetIndex(propertyName)) {
-        if (shouldThrow)
-            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-        return;
+    if (thisObject->internalValue()->canGetIndex(propertyName))
+        return typeError(exec, scope, shouldThrow, ASCIILiteral(ReadonlyPropertyWriteError));
+    scope.release();
+    return JSObject::putByIndex(cell, exec, propertyName, value, shouldThrow);
+}
+
+static bool isStringOwnProperty(ExecState* exec, StringObject* object, PropertyName propertyName)
+{
+    if (propertyName == exec->propertyNames().length)
+        return true;
+    if (std::optional<uint32_t> index = parseIndex(propertyName)) {
+        if (object->internalValue()->canGetIndex(index.value()))
+            return true;
     }
-    JSObject::putByIndex(cell, exec, propertyName, value, shouldThrow);
+    return false;
 }
 
 bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     StringObject* thisObject = jsCast<StringObject*>(object);
 
-    if (propertyName == exec->propertyNames().length) {
-        if (!object->isExtensible()) {
-            if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to define property on object that is not extensible.")));
-            return false;
-        }
-        if (descriptor.configurablePresent() && descriptor.configurable()) {
-            if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change configurable attribute of unconfigurable property.")));
-            return false;
-        }
-        if (descriptor.enumerablePresent() && descriptor.enumerable()) {
-            if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change enumerable attribute of unconfigurable property.")));
-            return false;
-        }
-        if (descriptor.isAccessorDescriptor()) {
-            if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change access mechanism for an unconfigurable property.")));
-            return false;
-        }
-        if (descriptor.writablePresent() && descriptor.writable()) {
-            if (throwException)
-                exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change writable attribute of unconfigurable property.")));
-            return false;
-        }
-        if (!descriptor.value())
-            return true;
-        if (propertyName == exec->propertyNames().length && sameValue(exec, descriptor.value(), jsNumber(thisObject->internalValue()->length())))
-            return true;
-        if (throwException)
-            exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Attempting to change value of a readonly property.")));
-        return false;
+    if (isStringOwnProperty(exec, thisObject, propertyName)) {
+        // The current PropertyDescriptor is always
+        // PropertyDescriptor{[[Value]]: value, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}.
+        // This ensures that any property descriptor cannot change the existing one.
+        // Here, simply return the result of validateAndApplyPropertyDescriptor.
+        // https://tc39.github.io/ecma262/#sec-string-exotic-objects-getownproperty-p
+        PropertyDescriptor current;
+        bool isCurrentDefined = thisObject->getOwnPropertyDescriptor(exec, propertyName, current);
+        ASSERT(isCurrentDefined);
+        bool isExtensible = thisObject->isExtensible(exec);
+        RETURN_IF_EXCEPTION(scope, false);
+        scope.release();
+        return validateAndApplyPropertyDescriptor(exec, nullptr, propertyName, isExtensible, descriptor, isCurrentDefined, current, throwException);
     }
 
+    scope.release();
     return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
 }
 
@@ -128,10 +135,9 @@ bool StringObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName pr
     StringObject* thisObject = jsCast<StringObject*>(cell);
     if (propertyName == exec->propertyNames().length)
         return false;
-    Optional<uint32_t> index = parseIndex(propertyName);
-    if (index && thisObject->internalValue()->canGetIndex(index.value())) {
+    std::optional<uint32_t> index = parseIndex(propertyName);
+    if (index && thisObject->internalValue()->canGetIndex(index.value()))
         return false;
-    }
     return JSObject::deleteProperty(thisObject, exec, propertyName);
 }
 
@@ -151,9 +157,15 @@ void StringObject::getOwnPropertyNames(JSObject* object, ExecState* exec, Proper
         for (int i = 0; i < size; ++i)
             propertyNames.add(Identifier::from(exec, i));
     }
+    return JSObject::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
+}
+
+void StringObject::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
+{
+    StringObject* thisObject = jsCast<StringObject*>(object);
     if (mode.includeDontEnumProperties())
         propertyNames.add(exec->propertyNames().length);
-    return JSObject::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
+    return JSObject::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
 StringObject* constructString(VM& vm, JSGlobalObject* globalObject, JSValue string)

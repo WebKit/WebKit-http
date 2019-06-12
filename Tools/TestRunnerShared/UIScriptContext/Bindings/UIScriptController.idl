@@ -1,0 +1,249 @@
+/*
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+ 
+enum DeviceOrientation {
+    "portrait",
+    "portrait-upsidedown",
+    "landscape-left",
+    "landscape-right"
+};
+
+interface UIScriptController {
+
+    void doAsyncTask(object callback); // Used to test the harness.
+    void uiScriptComplete(DOMString result);
+
+    void doAfterPresentationUpdate(object callback); // Call the callback after sending a message to the WebProcess and receiving a subsequent update.
+    void doAfterNextStablePresentationUpdate(object callback);
+
+    void doAfterVisibleContentRectUpdate(object callback);
+
+    void simulateAccessibilitySettingsChangeNotification(object callback);
+
+    // Interaction.
+    // These functions post events asynchronously. The callback is fired when the events have been dispatched, but any
+    // resulting behavior may also be asynchronous.
+    void touchDownAtPoint(long x, long y, long touchCount, object callback);
+    void liftUpAtPoint(long x, long y, long touchCount, object callback);
+    void singleTapAtPoint(long x, long y, object callback);
+    void doubleTapAtPoint(long x, long y, object callback);
+    void dragFromPointToPoint(long startX, long startY, long endX, long endY, double durationSeconds, object callback);
+
+    void longPressAtPoint(long x, long y, object callback);
+
+    void stylusDownAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object callback);
+    void stylusMoveToPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object callback);
+    void stylusUpAtPoint(long x, long y, object callback);
+    void stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object callback);
+
+    void typeCharacterUsingHardwareKeyboard(DOMString character, object callback);
+    void keyDownUsingHardwareKeyboard(DOMString character, object callback);
+    void keyUpUsingHardwareKeyboard(DOMString character, object callback);
+
+    void selectTextCandidateAtIndex(long index, object callback);
+
+    // eventsJSON describes a series of user events in JSON form. For the keys, see HIDEventGenerator.mm.
+    // For example, this JSON describes a touch down followed by a touch up (i.e. a single tap).
+    //  {
+    //      "events" : [
+    //          {
+    //              "inputType" : "hand",
+    //              "timeOffset" : 0,
+    //              "coordinateSpace" : "content",
+    //              "touches" : [
+    //                  {
+    //                      "inputType" : "finger",
+    //                      "phase" : "began",
+    //                      "id" : 1,
+    //                      "x" : 100,
+    //                      "y" : 120
+    //                  }
+    //              ]
+    //          },
+    //          // This is a basic force press
+    //          {
+    //              "interpolate" : "linear",
+    //              "timestep" : 0.025,
+    //              "coordinateSpace" : "global",
+    //              "startEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 0.025,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "began",
+    //                          "id" : 1,
+    //                          "x" : 100,
+    //                          "y" : 120,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              },
+    //              "endEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 3.0,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "stationary",
+    //                          "id" : 1,
+    //                          "x" : 100,
+    //                          "y" : 120,
+    //                          "pressure" : 500
+    //                      }
+    //                  ]
+    //              }
+    //          },
+    //          //This is a basic drag
+    //          {
+    //              "interpolate" : "linear",
+    //              "timestep" : 0.025,
+    //              "coordinateSpace" : "content",
+    //              "startEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 3.025,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "moved",
+    //                          "id" : 1,
+    //                          "x" : 100,
+    //                          "y" : 120,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              },
+    //              "endEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 4.0,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "moved",
+    //                          "id" : 1,
+    //                          "x" : 20,
+    //                          "y" : 40,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              }
+    //          },
+    //          //ending lift
+    //          {
+    //              "inputType" : "hand",
+    //              "timeOffset" : 4.025, // seconds relative to the first event
+    //              "coordinateSpace" : "content",
+    //              "touches" : [
+    //                  {
+    //                      "inputType" : "finger",
+    //                      "phase" : "ended",
+    //                      "id" : 1,
+    //                      "x" : 20,
+    //                      "y" : 40
+    //                  }
+    //              ]
+    //          },
+    //      ]
+    //  }
+    void sendEventStream(DOMString eventsJSON, object callback);
+
+    void beginBackSwipe(object callback);
+    void completeBackSwipe(object callback);
+
+    void playBackEventStream(DOMString eventStream, object callback);
+
+    // Equivalent of pressing the Done button in the form accessory bar.
+    void dismissFormAccessoryView();
+
+    // Form control handling
+    attribute object didStartFormControlInteractionCallback;
+    attribute object didEndFormControlInteractionCallback;
+
+    // Force press preview handling
+    attribute object didShowForcePressPreviewCallback;
+    attribute object didDismissForcePressPreviewCallback;
+
+    // <select> picker
+    void selectFormAccessoryPickerRow(long rowIndex);
+
+    void keyboardAccessoryBarNext();
+    void keyboardAccessoryBarPrevious();
+
+    void applyAutocorrection(DOMString newString, DOMString oldString, object callback);
+
+    // Returned object is a dictionary with the passed in string as a key for returned object
+    object contentsOfUserInterfaceItem(DOMString interfaceItem);
+
+    // These callbacks also work for the form accessory views.
+    attribute object didShowKeyboardCallback;
+    attribute object didHideKeyboardCallback;
+
+    attribute object willBeginZoomingCallback;
+    attribute object didEndZoomingCallback;
+
+    void zoomToScale(double scale, object callback);
+
+    void scrollToOffset(long x, long y); // Initiate an animated scroll in the UI process.
+    attribute object didEndScrollingCallback;
+
+    void immediateScrollToOffset(long x, long y); // Set the scroll position in the UI process without animation.
+    void immediateZoomToScale(double scale); // Set the zoom scale in the UI process without animation.
+
+    // View state
+    readonly attribute double zoomScale;
+    readonly attribute double minimumZoomScale;
+    readonly attribute double maximumZoomScale;
+
+    // Overides the "in stable state" behavior of WKWebView (only applies to iOS)
+    // When false, content rect updates to the web process have inStableState=false, as if a scroll or zoom were in progress.
+    attribute boolean? stableStateOverride;
+
+    readonly attribute object contentVisibleRect; // Returned object has 'left', 'top', 'width', 'height' properties.
+
+    readonly attribute object selectionRangeViewRects; // An array of objects with 'left', 'top', 'width', and 'height' properties.
+    readonly attribute object textSelectionCaretRect; // An object with 'left', 'top', 'width', 'height' properties.
+    readonly attribute object inputViewBounds;
+
+    void insertText(DOMString text, long location, long length);
+    void removeAllDynamicDictionaries();
+
+    readonly attribute DOMString scrollingTreeAsText;
+
+    object propertiesOfLayerWithID(unsigned long long layerID);
+
+    void retrieveSpeakSelectionContent(object callback);
+    readonly attribute DOMString accessibilitySpeakSelectionContent;
+    
+    void simulateRotation(DeviceOrientation orientation, object callback);
+    void simulateRotationLikeSafari(DeviceOrientation orientation, object callback);
+
+    // Unparent and parent the web view, simulating, for example, tab switching.
+    void removeViewFromWindow(object callback);
+    void addViewToWindow(object callback);
+
+    void overridePreference(DOMString preference, DOMString value);
+
+    void setSafeAreaInsets(double top, double right, double bottom, double left);
+};

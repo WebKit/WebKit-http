@@ -57,6 +57,16 @@
     bottom: 0;
 }
 
+body[dir=ltr] .scope-bar > li.multiple > select {
+    top: -5px;
+    left: -4px;
+}
+
+body[dir=rtl] .scope-bar > li.multiple > select {
+    top: -6px;
+    left: -10px;
+}
+
 .scope-bar > li.multiple.selected > select {
     display: block;
 }
@@ -66,13 +76,21 @@
     height: 12px;
     display: inline-block;
     vertical-align: -2px;
-    margin-left: 6px;
     margin-top: -1px;
     margin-bottom: -1px;
+    --scope-bar-select-arrows-margin-start: 6px;
+}
+
+body[dir=ltr] .scope-bar > li.multiple > .arrows {
+    margin-left: var(--scope-bar-select-arrows-margin-start);
+}
+
+body[dir=rtl] .scope-bar > li.multiple > .arrows {
+    margin-right: var(--scope-bar-select-arrows-margin-start);
 }
 
 .scope-bar > li.multiple:matches(.selected, :hover, :active) > .arrows {
-    color: white;
+    color: var(--selected-foreground-color);
 }
 
 .scope-bar > li:matches(.selected, :active) {
@@ -80,20 +98,20 @@
 }
 
 .scope-bar > li:hover {
-    color: white;
-    background-color: hsla(212, 92%, 54%, 0.5);
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color-hover);
 }
 
 .scope-bar > li.selected {
-    color: white;
-    background-color: hsl(212, 92%, 54%);
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color);
 }
 
 .scope-bar > li:active {
-    color: white;
+    color: var(--selected-foreground-color);
     background-color: hsla(212, 92%, 54%, 0.55);
 }
 
 .scope-bar > li.selected:active {
-    background-color: hsl(218, 85%, 52%);
+    background-color: var(--selected-background-color-active);
 }

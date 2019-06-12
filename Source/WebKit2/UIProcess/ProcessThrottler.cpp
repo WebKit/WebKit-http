@@ -26,18 +26,19 @@
 #include "config.h"
 #include "ProcessThrottler.h"
 
+#include "Logging.h"
 #include "ProcessThrottlerClient.h"
 
 namespace WebKit {
     
-static const unsigned processSuspensionTimeout = 30;
+static const Seconds processSuspensionTimeout { 30_s };
     
-ProcessThrottler::ProcessThrottler(ProcessThrottlerClient& process)
+ProcessThrottler::ProcessThrottler(ProcessThrottlerClient& process, bool shouldTakeUIBackgroundAssertion)
     : m_process(process)
     , m_suspendTimer(RunLoop::main(), this, &ProcessThrottler::suspendTimerFired)
-    , m_foregroundCounter([this](bool) { updateAssertion(); })
-    , m_backgroundCounter([this](bool) { updateAssertion(); })
-    , m_suspendMessageCount(0)
+    , m_foregroundCounter([this](RefCounterEvent) { updateAssertion(); })
+    , m_backgroundCounter([this](RefCounterEvent) { updateAssertion(); })
+    , m_shouldTakeUIBackgroundAssertion(shouldTakeUIBackgroundAssertion)
 {
 }
     
@@ -56,6 +57,8 @@ void ProcessThrottler::updateAssertionNow()
 {
     m_suspendTimer.stop();
     if (m_assertion) {
+        if (m_assertion->state() != assertionState())
+            RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::updateAssertionNow() updating process assertion state to %u (foregroundActivities: %lu, backgroundActivities: %lu)", this, assertionState(), m_foregroundCounter.value(), m_backgroundCounter.value());
         m_assertion->setState(assertionState());
         m_process.didSetAssertionState(assertionState());
     }
@@ -68,13 +71,14 @@ void ProcessThrottler::updateAssertion()
     // in the background for too long.
     if (m_assertion && m_assertion->state() != AssertionState::Suspended && !m_foregroundCounter.value() && !m_backgroundCounter.value()) {
         ++m_suspendMessageCount;
+        RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::updateAssertion() sending PrepareToSuspend IPC", this);
         m_process.sendPrepareToSuspend();
         m_suspendTimer.startOneShot(processSuspensionTimeout);
         m_assertion->setState(AssertionState::Background);
         m_process.didSetAssertionState(AssertionState::Background);
         return;
     }
-    
+
     bool shouldBeRunnable = m_foregroundCounter.value() || m_backgroundCounter.value();
 
     // If we're currently waiting for the Web process to do suspension cleanup, but no longer need to be suspended, tell the Web process to cancel the cleanup.
@@ -89,8 +93,13 @@ void ProcessThrottler::updateAssertion()
 
 void ProcessThrottler::didConnectToProcess(PlatformProcessIdentifier pid)
 {
+    RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::didConnectToProcess(%d)", this, pid);
+
     m_suspendTimer.stop();
-    m_assertion = std::make_unique<ProcessAndUIAssertion>(pid, assertionState());
+    if (m_shouldTakeUIBackgroundAssertion)
+        m_assertion = std::make_unique<ProcessAndUIAssertion>(pid, assertionState());
+    else
+        m_assertion = std::make_unique<ProcessAssertion>(pid, assertionState());
     m_process.didSetAssertionState(assertionState());
     m_assertion->setClient(*this);
 }

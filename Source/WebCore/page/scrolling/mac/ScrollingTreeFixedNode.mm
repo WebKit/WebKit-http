@@ -30,6 +30,7 @@
 
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingTree.h"
+#include "TextStream.h"
 #include <QuartzCore/CALayer.h>
 
 namespace WebCore {
@@ -50,7 +51,7 @@ ScrollingTreeFixedNode::~ScrollingTreeFixedNode()
     scrollingTree().fixedOrStickyNodeRemoved();
 }
 
-void ScrollingTreeFixedNode::updateBeforeChildren(const ScrollingStateNode& stateNode)
+void ScrollingTreeFixedNode::commitStateBeforeChildren(const ScrollingStateNode& stateNode)
 {
     const ScrollingStateFixedNode& fixedStateNode = downcast<ScrollingStateFixedNode>(stateNode);
 
@@ -74,7 +75,15 @@ void ScrollingTreeFixedNode::updateLayersAfterAncestorChange(const ScrollingTree
     CGRect layerBounds = [m_layer bounds];
     CGPoint anchorPoint = [m_layer anchorPoint];
     CGPoint newPosition = layerPosition - m_constraints.alignmentOffset() + anchorPoint * layerBounds.size;
-    
+
+    if (isnan(newPosition.x) || isnan(newPosition.y)) {
+        WTFLogAlways("Attempt to call [CALayer setPosition] with NaN: newPosition=(%f, %f) layerPosition=(%f, %f) alignmentOffset=(%f, %f)",
+            newPosition.x, newPosition.y, layerPosition.x(), layerPosition.y(),
+            m_constraints.alignmentOffset().width(), m_constraints.alignmentOffset().height());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
     [m_layer setPosition:newPosition];
 
     if (!m_children)
@@ -84,6 +93,21 @@ void ScrollingTreeFixedNode::updateLayersAfterAncestorChange(const ScrollingTree
 
     for (auto& child : *m_children)
         child->updateLayersAfterAncestorChange(changedNode, fixedPositionRect, newDelta);
+}
+
+void ScrollingTreeFixedNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
+{
+    ts << "fixed node";
+    ScrollingTreeNode::dumpProperties(ts, behavior);
+    ts.dumpProperty("fixed constraints", m_constraints);
+    
+    if (behavior & ScrollingStateTreeAsTextBehaviorIncludeLayerPositions) {
+        FloatRect layerBounds = [m_layer bounds];
+        FloatPoint anchorPoint = [m_layer anchorPoint];
+        FloatPoint position = [m_layer position];
+        FloatPoint layerTopLeft = position - toFloatSize(anchorPoint) * layerBounds.size() + m_constraints.alignmentOffset();
+        ts.dumpProperty("layer top left", layerTopLeft);
+    }
 }
 
 } // namespace WebCore

@@ -54,28 +54,27 @@
 #include "HTMLDocument.h"
 
 #include "CSSPropertyNames.h"
+#include "CommonVM.h"
 #include "CookieJar.h"
 #include "DocumentLoader.h"
 #include "DocumentType.h"
 #include "ElementChildIterator.h"
-#include "ExceptionCode.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameTree.h"
 #include "FrameView.h"
-#include "HashTools.h"
-#include "HTMLDocumentParser.h"
 #include "HTMLBodyElement.h"
+#include "HTMLCollection.h"
+#include "HTMLDocumentParser.h"
 #include "HTMLElementFactory.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLFrameSetElement.h"
 #include "HTMLHtmlElement.h"
+#include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
-#include "JSDOMBinding.h"
-#include "Page.h"
+#include "HashTools.h"
 #include "ScriptController.h"
-#include "Settings.h"
 #include "StyleResolver.h"
 #include <wtf/text/CString.h>
 
@@ -107,124 +106,10 @@ int HTMLDocument::height()
     return frameView ? frameView->contentsHeight() : 0;
 }
 
-const AtomicString& HTMLDocument::dir() const
-{
-    auto* documentElement = this->documentElement();
-    if (!is<HTMLHtmlElement>(documentElement))
-        return nullAtom;
-    return downcast<HTMLHtmlElement>(*documentElement).dir();
-}
-
-void HTMLDocument::setDir(const AtomicString& value)
-{
-    auto* documentElement = this->documentElement();
-    if (is<HTMLHtmlElement>(documentElement))
-        downcast<HTMLHtmlElement>(*documentElement).setDir(value);
-}
-
-String HTMLDocument::designMode() const
-{
-    return inDesignMode() ? ASCIILiteral("on") : ASCIILiteral("off");
-}
-
-void HTMLDocument::setDesignMode(const String& value)
-{
-    InheritedBool mode;
-    if (equalLettersIgnoringASCIICase(value, "on"))
-        mode = on;
-    else if (equalLettersIgnoringASCIICase(value, "off"))
-        mode = off;
-    else
-        mode = inherit;
-    Document::setDesignMode(mode);
-}
-
-const AtomicString& HTMLDocument::bgColor() const
-{
-    auto* bodyElement = body();
-    if (!bodyElement)
-        return emptyAtom;
-    return bodyElement->fastGetAttribute(bgcolorAttr);
-}
-
-void HTMLDocument::setBgColor(const String& value)
-{
-    if (auto* bodyElement = body())
-        bodyElement->setAttribute(bgcolorAttr, value);
-}
-
-const AtomicString& HTMLDocument::fgColor() const
-{
-    auto* bodyElement = body();
-    if (!bodyElement)
-        return emptyAtom;
-    return bodyElement->fastGetAttribute(textAttr);
-}
-
-void HTMLDocument::setFgColor(const String& value)
-{
-    if (auto* bodyElement = body())
-        bodyElement->setAttribute(textAttr, value);
-}
-
-const AtomicString& HTMLDocument::alinkColor() const
-{
-    auto* bodyElement = body();
-    if (!bodyElement)
-        return emptyAtom;
-    return bodyElement->fastGetAttribute(alinkAttr);
-}
-
-void HTMLDocument::setAlinkColor(const String& value)
-{
-    if (auto* bodyElement = body())
-        bodyElement->setAttribute(alinkAttr, value);
-}
-
-const AtomicString& HTMLDocument::linkColor() const
-{
-    auto* bodyElement = body();
-    if (!bodyElement)
-        return emptyAtom;
-    return bodyElement->fastGetAttribute(linkAttr);
-}
-
-void HTMLDocument::setLinkColor(const String& value)
-{
-    if (auto* bodyElement = body())
-        bodyElement->setAttribute(linkAttr, value);
-}
-
-const AtomicString& HTMLDocument::vlinkColor() const
-{
-    auto* bodyElement = body();
-    if (!bodyElement)
-        return emptyAtom;
-    return bodyElement->fastGetAttribute(vlinkAttr);
-}
-
-void HTMLDocument::setVlinkColor(const String& value)
-{
-    if (auto* bodyElement = body())
-        bodyElement->setAttribute(vlinkAttr, value);
-}
-
-void HTMLDocument::captureEvents()
-{
-}
-
-void HTMLDocument::releaseEvents()
-{
-}
-
 Ref<DocumentParser> HTMLDocument::createParser()
 {
     return HTMLDocumentParser::create(*this);
 }
-
-// --------------------------------------------------------------------------
-// not part of the DOM
-// --------------------------------------------------------------------------
 
 static void addLocalNameToSet(HashSet<AtomicStringImpl*>* set, const QualifiedName& qName)
 {
@@ -286,6 +171,47 @@ static HashSet<AtomicStringImpl*>* createHtmlCaseInsensitiveAttributesSet()
     return attrSet;
 }
 
+// https://html.spec.whatwg.org/multipage/dom.html#dom-document-nameditem
+std::optional<Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>>> HTMLDocument::namedItem(const AtomicString& name)
+{
+    if (name.isNull() || !hasDocumentNamedItem(*name.impl()))
+        return std::nullopt;
+
+    if (UNLIKELY(documentNamedItemContainsMultipleElements(*name.impl()))) {
+        auto collection = documentNamedItems(name);
+        ASSERT(collection->length() > 1);
+        return Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<HTMLCollection> { WTFMove(collection) } };
+    }
+
+    auto& element = *documentNamedItem(*name.impl());
+    if (UNLIKELY(is<HTMLIFrameElement>(element))) {
+        if (auto* domWindow = downcast<HTMLIFrameElement>(element).contentWindow())
+            return Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<DOMWindow> { domWindow } };
+    }
+
+    return Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<Element> { &element } };
+}
+
+Vector<AtomicString> HTMLDocument::supportedPropertyNames() const
+{
+    // https://html.spec.whatwg.org/multipage/dom.html#dom-document-namedItem-which
+    //
+    // ... The supported property names of a Document object document at any moment consist of the following, in
+    // tree order according to the element that contributed them, ignoring later duplicates, and with values from
+    // id attributes coming before values from name attributes when the same element contributes both:
+    //
+    // - the value of the name content attribute for all applet, exposed embed, form, iframe, img, and exposed
+    //   object elements that have a non-empty name content attribute and are in a document tree with document
+    //   as their root;
+    // - the value of the id content attribute for all applet and exposed object elements that have a non-empty
+    //   id content attribute and are in a document tree with document as their root; and
+    // - the value of the id content attribute for all img elements that have both a non-empty id content attribute
+    //   and a non-empty name content attribute, and are in a document tree with document as their root.
+
+    // FIXME: Implement.
+    return { };
+}
+
 void HTMLDocument::addDocumentNamedItem(const AtomicStringImpl& name, Element& item)
 {
     m_documentNamedItem.add(name, item, *this);
@@ -310,15 +236,8 @@ void HTMLDocument::removeWindowNamedItem(const AtomicStringImpl& name, Element& 
 bool HTMLDocument::isCaseSensitiveAttribute(const QualifiedName& attributeName)
 {
     static HashSet<AtomicStringImpl*>* htmlCaseInsensitiveAttributesSet = createHtmlCaseInsensitiveAttributesSet();
-    bool isPossibleHTMLAttr = !attributeName.hasPrefix() && (attributeName.namespaceURI() == nullAtom);
+    bool isPossibleHTMLAttr = !attributeName.hasPrefix() && (attributeName.namespaceURI() == nullAtom());
     return !isPossibleHTMLAttr || !htmlCaseInsensitiveAttributesSet->contains(attributeName.localName().impl());
-}
-
-void HTMLDocument::clear()
-{
-    // FIXME: This does nothing, and that seems unlikely to be correct.
-    // We've long had a comment saying that IE doesn't support this.
-    // But I do see it in the documentation for Mozilla.
 }
 
 bool HTMLDocument::isFrameSet() const

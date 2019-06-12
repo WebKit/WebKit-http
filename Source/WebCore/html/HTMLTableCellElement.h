@@ -23,41 +23,44 @@
  *
  */
 
-#ifndef HTMLTableCellElement_h
-#define HTMLTableCellElement_h
+#pragma once
 
 #include "HTMLTablePartElement.h"
 
 namespace WebCore {
 
-class HTMLTableCellElement : public HTMLTablePartElement {
+class HTMLTableCellElement final : public HTMLTablePartElement {
 public:
-    int cellIndex() const;
-    int colSpan() const;
-    int rowSpan() const;
+    static Ref<HTMLTableCellElement> create(const QualifiedName&, Document&);
+
+    WEBCORE_EXPORT int cellIndex() const;
+    WEBCORE_EXPORT unsigned colSpan() const;
+    unsigned rowSpan() const;
+    WEBCORE_EXPORT unsigned rowSpanForBindings() const;
 
     void setCellIndex(int);
-    void setColSpan(int);
-    void setRowSpan(int);
+    WEBCORE_EXPORT void setColSpan(unsigned);
+    WEBCORE_EXPORT void setRowSpanForBindings(unsigned);
 
     String abbr() const;
     String axis() const;
     String headers() const;
-    String scope() const;
+    WEBCORE_EXPORT const AtomicString& scope() const;
+    WEBCORE_EXPORT void setScope(const AtomicString&);
 
     WEBCORE_EXPORT HTMLTableCellElement* cellAbove() const;
 
-protected:
+private:
     HTMLTableCellElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
-    virtual const StyleProperties* additionalPresentationAttributeStyle() override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    bool isPresentationAttribute(const QualifiedName&) const override;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    const StyleProperties* additionalPresentationAttributeStyle() const override;
 
-    virtual bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const override;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 };
 
 } // namespace WebCore
@@ -66,5 +69,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLTableCellElement)
     static bool isType(const WebCore::HTMLElement& element) { return element.hasTagName(WebCore::HTMLNames::tdTag) || element.hasTagName(WebCore::HTMLNames::thTag); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

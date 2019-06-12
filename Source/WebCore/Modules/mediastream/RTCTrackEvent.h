@@ -28,44 +28,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCTrackEvent_h
-#define RTCTrackEvent_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
 #include "Event.h"
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
+class MediaStream;
 class MediaStreamTrack;
 class RTCRtpReceiver;
+class RTCRtpTransceiver;
 
-struct RTCTrackEventInit : public EventInit {
-    RefPtr<RTCRtpReceiver> receiver;
-    RefPtr<MediaStreamTrack> track;
-};
+typedef Vector<RefPtr<MediaStream>> MediaStreamArray;
 
 class RTCTrackEvent : public Event {
 public:
-    static Ref<RTCTrackEvent> create(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<RTCRtpReceiver>&&, RefPtr<MediaStreamTrack>&&);
-    static Ref<RTCTrackEvent> createForBindings(const AtomicString& type, const RTCTrackEventInit&);
+    static Ref<RTCTrackEvent> create(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<RTCRtpReceiver>&&, RefPtr<MediaStreamTrack>&&, MediaStreamArray&&, RefPtr<RTCRtpTransceiver>&&);
+
+    struct Init : EventInit {
+        RefPtr<RTCRtpReceiver> receiver;
+        RefPtr<MediaStreamTrack> track;
+        MediaStreamArray streams;
+        RefPtr<RTCRtpTransceiver> transceiver;
+    };
+    static Ref<RTCTrackEvent> create(const AtomicString& type, const Init&, IsTrusted = IsTrusted::No);
 
     RTCRtpReceiver* receiver() const { return m_receiver.get(); }
     MediaStreamTrack* track() const  { return m_track.get(); }
+    const MediaStreamArray& streams() const  { return m_streams; }
+    RTCRtpTransceiver* transceiver() const  { return m_transceiver.get(); }
 
     virtual EventInterface eventInterface() const { return RTCTrackEventInterfaceType; }
 
 private:
-    RTCTrackEvent(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<RTCRtpReceiver>&&, RefPtr<MediaStreamTrack>&&);
-    RTCTrackEvent(const AtomicString& type, const RTCTrackEventInit&);
+    RTCTrackEvent(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<RTCRtpReceiver>&&, RefPtr<MediaStreamTrack>&&, MediaStreamArray&&, RefPtr<RTCRtpTransceiver>&&);
+    RTCTrackEvent(const AtomicString& type, const Init&, IsTrusted);
 
     RefPtr<RTCRtpReceiver> m_receiver;
     RefPtr<MediaStreamTrack> m_track;
+    MediaStreamArray m_streams;
+    RefPtr<RTCRtpTransceiver> m_transceiver;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCTrackEvent_h
+#endif // ENABLE(WEB_RTC)

@@ -18,7 +18,11 @@
 #include "common/debug.h"
 #include "compiler/translator/PoolAlloc.h"
 
-struct TSourceLoc {
+namespace sh
+{
+
+struct TSourceLoc
+{
     int first_file;
     int first_line;
     int last_file;
@@ -29,25 +33,25 @@ struct TSourceLoc {
 // Put POOL_ALLOCATOR_NEW_DELETE in base classes to make them use this scheme.
 //
 #define POOL_ALLOCATOR_NEW_DELETE()                                                  \
-    void* operator new(size_t s) { return GetGlobalPoolAllocator()->allocate(s); }   \
-    void* operator new(size_t, void *_Where) { return (_Where); }                    \
-    void operator delete(void*) { }                                                  \
-    void operator delete(void *, void *) { }                                         \
-    void* operator new[](size_t s) { return GetGlobalPoolAllocator()->allocate(s); } \
-    void* operator new[](size_t, void *_Where) { return (_Where); }                  \
-    void operator delete[](void*) { }                                                \
-    void operator delete[](void *, void *) { }
+    void *operator new(size_t s) { return GetGlobalPoolAllocator()->allocate(s); }   \
+    void *operator new(size_t, void *_Where) { return (_Where); }                    \
+    void operator delete(void *) {}                                                  \
+    void operator delete(void *, void *) {}                                          \
+    void *operator new[](size_t s) { return GetGlobalPoolAllocator()->allocate(s); } \
+    void *operator new[](size_t, void *_Where) { return (_Where); }                  \
+    void operator delete[](void *) {}                                                \
+    void operator delete[](void *, void *) {}
 
 //
 // Pool version of string.
 //
 typedef pool_allocator<char> TStringAllocator;
-typedef std::basic_string <char, std::char_traits<char>, TStringAllocator> TString;
+typedef std::basic_string<char, std::char_traits<char>, TStringAllocator> TString;
 typedef std::basic_ostringstream<char, std::char_traits<char>, TStringAllocator> TStringStream;
-inline TString* NewPoolTString(const char* s)
+inline TString *NewPoolTString(const char *s)
 {
-	void* memory = GetGlobalPoolAllocator()->allocate(sizeof(TString));
-	return new(memory) TString(s);
+    void *memory = GetGlobalPoolAllocator()->allocate(sizeof(TString));
+    return new (memory) TString(s);
 }
 
 //
@@ -60,22 +64,31 @@ inline TString* NewPoolTString(const char* s)
 //
 // Pool allocator versions of vectors, lists, and maps
 //
-template <class T> class TVector : public std::vector<T, pool_allocator<T> > {
-public:
-    typedef typename std::vector<T, pool_allocator<T> >::size_type size_type;
-    TVector() : std::vector<T, pool_allocator<T> >() {}
-    TVector(const pool_allocator<T>& a) : std::vector<T, pool_allocator<T> >(a) {}
-    TVector(size_type i): std::vector<T, pool_allocator<T> >(i) {}
+template <class T>
+class TVector : public std::vector<T, pool_allocator<T>>
+{
+  public:
+    POOL_ALLOCATOR_NEW_DELETE();
+
+    typedef typename std::vector<T, pool_allocator<T>>::size_type size_type;
+    TVector() : std::vector<T, pool_allocator<T>>() {}
+    TVector(const pool_allocator<T> &a) : std::vector<T, pool_allocator<T>>(a) {}
+    TVector(size_type i) : std::vector<T, pool_allocator<T>>(i) {}
 };
 
-template <class K, class D, class CMP = std::less<K> > 
-class TMap : public std::map<K, D, CMP, pool_allocator<std::pair<const K, D> > > {
-public:
-    typedef pool_allocator<std::pair<const K, D> > tAllocator;
+template <class K, class D, class CMP = std::less<K>>
+class TMap : public std::map<K, D, CMP, pool_allocator<std::pair<const K, D>>>
+{
+  public:
+    POOL_ALLOCATOR_NEW_DELETE();
+    typedef pool_allocator<std::pair<const K, D>> tAllocator;
 
     TMap() : std::map<K, D, CMP, tAllocator>() {}
     // use correct two-stage name lookup supported in gcc 3.4 and above
-    TMap(const tAllocator& a) : std::map<K, D, CMP, tAllocator>(std::map<K, D, CMP, tAllocator>::key_compare(), a) {}
+    TMap(const tAllocator &a)
+        : std::map<K, D, CMP, tAllocator>(std::map<K, D, CMP, tAllocator>::key_compare(), a)
+    {
+    }
 };
 
 // Integer to TString conversion
@@ -89,4 +102,6 @@ inline TString str(T i)
     return buffer;
 }
 
-#endif // COMPILER_TRANSLATOR_COMMON_H_
+}  // namespace sh
+
+#endif  // COMPILER_TRANSLATOR_COMMON_H_

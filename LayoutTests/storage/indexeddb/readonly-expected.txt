@@ -16,9 +16,6 @@ transaction.db = this
 PASS transaction.db is still [object IDBDatabase]
 Deleted all object stores.
 objectStore = db.createObjectStore('foo');
-trying to set readonly property objectStore.name
-objectStore.name = 'bar'
-PASS objectStore.name is still foo
 trying to set readonly property objectStore.keyPath
 objectStore.keyPath = 'bar'
 PASS objectStore.keyPath is still null
@@ -38,9 +35,6 @@ trying to set readonly property cursor.primaryKey
 cursor.primaryKey = Infinity
 PASS cursor.primaryKey is still first
 index = objectStore.createIndex('first', 'first');
-trying to set readonly property index.name
-index.name = 'bar'
-PASS index.name is still first
 trying to set readonly property index.objectStore
 index.objectStore = this
 PASS index.objectStore is still [object IDBObjectStore]

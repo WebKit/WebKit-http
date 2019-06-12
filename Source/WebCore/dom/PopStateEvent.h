@@ -24,18 +24,12 @@
  *
  */
 
-#ifndef PopStateEvent_h
-#define PopStateEvent_h
+#pragma once
 
 #include "Event.h"
-#include "SerializedScriptValue.h"
 #include <bindings/ScriptValue.h>
 
 namespace WebCore {
-
-struct PopStateEventInit : public EventInit {
-    Deprecated::ScriptValue state;
-};
 
 class History;
 class SerializedScriptValue;
@@ -43,21 +37,28 @@ class SerializedScriptValue;
 class PopStateEvent final : public Event {
 public:
     virtual ~PopStateEvent();
-    static Ref<PopStateEvent> create(RefPtr<SerializedScriptValue>&&, PassRefPtr<History>);
-    static Ref<PopStateEvent> createForBindings(const AtomicString&, const PopStateEventInit&);
+    static Ref<PopStateEvent> create(RefPtr<SerializedScriptValue>&&, History*);
 
-    PassRefPtr<SerializedScriptValue> serializedState() const { ASSERT(m_serializedState); return m_serializedState; }
+    struct Init : EventInit {
+        JSC::JSValue state;
+    };
+
+    static Ref<PopStateEvent> create(JSC::ExecState&, const AtomicString&, const Init&, IsTrusted = IsTrusted::No);
+    static Ref<PopStateEvent> createForBindings();
+
+    JSC::JSValue state() const { return m_state; }
+    SerializedScriptValue* serializedState() const { return m_serializedState.get(); }
+
+    RefPtr<SerializedScriptValue> trySerializeState(JSC::ExecState&);
     
-    RefPtr<SerializedScriptValue> trySerializeState(JSC::ExecState*);
-    
-    const Deprecated::ScriptValue& state() const { return m_state; }
     History* history() const { return m_history.get(); }
 
-    virtual EventInterface eventInterface() const override;
-
 private:
-    PopStateEvent(const AtomicString&, const PopStateEventInit&);
-    explicit PopStateEvent(PassRefPtr<SerializedScriptValue>, PassRefPtr<History>);
+    PopStateEvent() = default;
+    PopStateEvent(JSC::ExecState&, const AtomicString&, const Init&, IsTrusted);
+    PopStateEvent(RefPtr<SerializedScriptValue>&&, History*);
+
+    EventInterface eventInterface() const final;
 
     Deprecated::ScriptValue m_state;
     RefPtr<SerializedScriptValue> m_serializedState;
@@ -66,5 +67,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // PopStateEvent_h

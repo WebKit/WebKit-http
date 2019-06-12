@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -45,7 +45,6 @@
 #include <inspector/InjectedScriptManager.h>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
-#include <profiler/Profile.h>
 #include <wtf/NeverDestroyed.h>
 
 using namespace Inspector;
@@ -74,8 +73,8 @@ void PageDebuggerAgent::disable(bool isBeingDestroyed)
 
 String PageDebuggerAgent::sourceMapURLForScript(const Script& script)
 {
-    static NeverDestroyed<String> sourceMapHTTPHeader(ASCIILiteral("SourceMap"));
-    static NeverDestroyed<String> sourceMapHTTPHeaderDeprecated(ASCIILiteral("X-SourceMap"));
+    static NeverDestroyed<String> sourceMapHTTPHeader(MAKE_STATIC_STRING_IMPL("SourceMap"));
+    static NeverDestroyed<String> sourceMapHTTPHeaderDeprecated(MAKE_STATIC_STRING_IMPL("X-SourceMap"));
 
     if (!script.url.isEmpty()) {
         CachedResource* resource = m_pageAgent->cachedResource(&m_page.mainFrame(), URL(ParsedURLString, script.url));
@@ -103,9 +102,9 @@ void PageDebuggerAgent::unmuteConsole()
     PageConsoleClient::unmute();
 }
 
-void PageDebuggerAgent::breakpointActionLog(JSC::ExecState* exec, const String& message)
+void PageDebuggerAgent::breakpointActionLog(JSC::ExecState& state, const String& message)
 {
-    m_pageAgent->page().console().addMessage(MessageSource::JS, MessageLevel::Log, message, createScriptCallStack(exec, ScriptCallStack::maxCallStackSizeToCapture));
+    m_pageAgent->page().console().addMessage(MessageSource::JS, MessageLevel::Log, message, createScriptCallStack(&state, ScriptCallStack::maxCallStackSizeToCapture));
 }
 
 InjectedScript PageDebuggerAgent::injectedScriptForEval(ErrorString& errorString, const int* executionContextId)

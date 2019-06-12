@@ -25,8 +25,7 @@
  *
  */
 
-#ifndef DocumentEventQueue_h
-#define DocumentEventQueue_h
+#pragma once
 
 #include "EventQueue.h"
 #include <memory>
@@ -44,9 +43,9 @@ public:
     explicit DocumentEventQueue(Document&);
     virtual ~DocumentEventQueue();
 
-    virtual bool enqueueEvent(Ref<Event>&&) override;
-    virtual bool cancelEvent(Event&) override;
-    virtual void close() override;
+    bool enqueueEvent(Ref<Event>&&) override;
+    bool cancelEvent(Event&) override;
+    void close() override;
 
     void enqueueOrDispatchScrollEvent(Node&);
 
@@ -63,6 +62,4 @@ private:
     bool m_isClosed;
 };
 
-}
-
-#endif // DocumentEventQueue_h
+} // namespace WebCore

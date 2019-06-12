@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SnippetOperand_h
-#define SnippetOperand_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -70,6 +69,14 @@ public:
         return m_val.doubleVal;
     }
 
+    double asConstNumber() const
+    {
+        if (isConstInt32())
+            return asConstInt32();
+        ASSERT(isConstDouble());
+        return asConstDouble();
+    }
+
     void setConstInt32(int32_t value)
     {
         m_type = ConstInt32;
@@ -95,7 +102,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // SnippetOperand_h
-    
-

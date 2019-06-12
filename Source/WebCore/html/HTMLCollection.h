@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,13 +20,11 @@
  *
  */
 
-#ifndef HTMLCollection_h
-#define HTMLCollection_h
+#pragma once
 
 #include "CollectionIndexCache.h"
 #include "HTMLNames.h"
 #include "LiveNodeList.h"
-#include "ScriptWrappable.h"
 #include <wtf/HashMap.h>
 
 namespace WebCore {
@@ -34,11 +32,12 @@ namespace WebCore {
 class Element;
 
 class CollectionNamedElementCache {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     const Vector<Element*>* findElementsWithId(const AtomicString& id) const;
     const Vector<Element*>* findElementsWithName(const AtomicString& name) const;
     const Vector<AtomicString>& propertyNames() const { return m_propertyNames; }
-
+    
     void appendToIdCache(const AtomicString& id, Element&);
     void appendToNameCache(const AtomicString& name, Element&);
     void didPopulate();
@@ -66,22 +65,23 @@ public:
     virtual ~HTMLCollection();
 
     // DOM API
-    virtual Element* item(unsigned index) const override = 0; // Tighten return type from NodeList::item().
+    Element* item(unsigned index) const override = 0; // Tighten return type from NodeList::item().
     virtual Element* namedItem(const AtomicString& name) const = 0;
     const Vector<AtomicString>& supportedPropertyNames();
-    RefPtr<NodeList> tags(const String&);
+    bool isSupportedPropertyName(const String& name);
 
     // Non-DOM API
     Vector<Ref<Element>> namedItems(const AtomicString& name) const;
-    virtual size_t memoryCost() const override;
+    size_t memoryCost() const override;
 
     bool isRootedAtDocument() const;
     NodeListInvalidationType invalidationType() const;
     CollectionType type() const;
     ContainerNode& ownerNode() const;
     ContainerNode& rootNode() const;
-    void invalidateCacheForAttribute(const QualifiedName* attributeName);
-    virtual void invalidateCache(Document&);
+    void invalidateCacheForAttribute(const QualifiedName& attributeName);
+    virtual void invalidateCacheForDocument(Document&);
+    void invalidateCache() { invalidateCacheForDocument(document()); }
 
     bool hasNamedElementCache() const;
 
@@ -89,7 +89,7 @@ protected:
     HTMLCollection(ContainerNode& base, CollectionType);
 
     virtual void updateNamedElementCache() const;
-    Element* namedItemSlow(const AtomicString& name) const;
+    WEBCORE_EXPORT Element* namedItemSlow(const AtomicString& name) const;
 
     void setNamedItemCache(std::unique_ptr<CollectionNamedElementCache>) const;
     const CollectionNamedElementCache& namedItemCaches() const;
@@ -104,7 +104,8 @@ protected:
     Ref<ContainerNode> m_ownerNode;
 
     mutable std::unique_ptr<CollectionNamedElementCache> m_namedElementCache;
-
+    mutable Lock m_namedElementCacheAssignmentLock;
+    
     const unsigned m_collectionType : 5;
     const unsigned m_invalidationType : 4;
     const unsigned m_rootType : 1;
@@ -112,7 +113,7 @@ protected:
 
 inline ContainerNode& HTMLCollection::rootNode() const
 {
-    if (isRootedAtDocument() && ownerNode().inDocument())
+    if (isRootedAtDocument() && ownerNode().isConnected())
         return ownerNode().document();
 
     return ownerNode();
@@ -140,6 +141,8 @@ inline void CollectionNamedElementCache::appendToNameCache(const AtomicString& n
 
 inline size_t CollectionNamedElementCache::memoryCost() const
 {
+    // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful about what data we access here and how.
+    // It is safe to access m_idMap.size(), m_nameMap.size(), and m_propertyNames.size() because they don't chase pointers.
     return (m_idMap.size() + m_nameMap.size()) * sizeof(Element*) + m_propertyNames.size() * sizeof(AtomicString);
 }
 
@@ -168,6 +171,9 @@ inline void CollectionNamedElementCache::append(StringToElementsMap& map, const 
 
 inline size_t HTMLCollection::memoryCost() const
 {
+    // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful about what data we access here and how.
+    // Hence, we need to guard m_namedElementCache from being replaced while accessing it.
+    auto locker = holdLock(m_namedElementCacheAssignmentLock);
     return m_namedElementCache ? m_namedElementCache->memoryCost() : 0;
 }
 
@@ -188,7 +194,7 @@ inline CollectionType HTMLCollection::type() const
 
 inline ContainerNode& HTMLCollection::ownerNode() const
 {
-    return const_cast<ContainerNode&>(m_ownerNode.get());
+    return m_ownerNode;
 }
 
 inline Document& HTMLCollection::document() const
@@ -196,11 +202,11 @@ inline Document& HTMLCollection::document() const
     return m_ownerNode->document();
 }
 
-inline void HTMLCollection::invalidateCacheForAttribute(const QualifiedName* attributeName)
+inline void HTMLCollection::invalidateCacheForAttribute(const QualifiedName& attributeName)
 {
-    if (!attributeName || shouldInvalidateTypeOnAttributeChange(invalidationType(), *attributeName))
-        invalidateCache(document());
-    else if (hasNamedElementCache() && (*attributeName == HTMLNames::idAttr || *attributeName == HTMLNames::nameAttr))
+    if (shouldInvalidateTypeOnAttributeChange(invalidationType(), attributeName))
+        invalidateCache();
+    else if (hasNamedElementCache() && (attributeName == HTMLNames::idAttr || attributeName == HTMLNames::nameAttr))
         invalidateNamedElementCache(document());
 }
 
@@ -214,7 +220,10 @@ inline void HTMLCollection::setNamedItemCache(std::unique_ptr<CollectionNamedEle
     ASSERT(cache);
     ASSERT(!m_namedElementCache);
     cache->didPopulate();
-    m_namedElementCache = WTFMove(cache);
+    {
+        auto locker = holdLock(m_namedElementCacheAssignmentLock);
+        m_namedElementCache = WTFMove(cache);
+    }
     document().collectionCachedIdNameMap(*this);
 }
 
@@ -230,5 +239,3 @@ inline const CollectionNamedElementCache& HTMLCollection::namedItemCaches() cons
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ClassName) \
     static bool isType(const WebCore::HTMLCollection& collection) { return collection.type() == WebCore::Type; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // HTMLCollection_h

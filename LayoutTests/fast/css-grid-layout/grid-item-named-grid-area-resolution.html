@@ -2,54 +2,55 @@
 <html>
 <head>
 <link href="resources/grid.css" rel="stylesheet"/>
+<link href="resources/grid-alignment.css" rel="stylesheet">
 <style>
 .grid {
-    -webkit-grid-template-rows: [before] 50px [middle] 100px [after] 150px;
-    -webkit-grid-template-columns: 40px 80px 160px;
+    grid-template-rows: [before] 50px [middle] 100px [after] 150px;
+    grid-template-columns: 40px 80px 160px;
 }
 
 .gridWithoutRepeat {
-    -webkit-grid-template-areas: "first second third"
+    grid-template-areas: "first second third"
                                  "fourth fifth sixth";
 }
 
 .gridWithRepeat {
-    -webkit-grid-template-areas: "first  second third"
+    grid-template-areas: "first  second third"
                                  "fourth fourth third";
 }
 
 .gridItemFirstArea {
-    -webkit-grid-area: first;
+    grid-area: first;
 }
 
 .gridItemSecondArea {
-    -webkit-grid-area: second;
+    grid-area: second;
 }
 
 .gridItemThirdArea {
-    -webkit-grid-area: third;
+    grid-area: third;
 }
 
 .gridItemFourthArea {
-    -webkit-grid-area: fourth;
+    grid-area: fourth;
 }
 
 .gridItemFifthArea {
-    -webkit-grid-area: fifth;
+    grid-area: fifth;
 }
 
 .gridItemSixthArea {
-    -webkit-grid-area: sixth;
+    grid-area: sixth;
 }
 
 .gridItemSpan2ThirdArea {
-    -webkit-grid-row: fourth;
-    -webkit-grid-column: span 2 / third;
+    grid-row: fourth;
+    grid-column: span 2 / third;
 }
 
 .gridItemNamedGridLineWithArea {
-    -webkit-grid-row: third / after;
-    -webkit-grid-column: 1;
+    grid-row: third / after;
+    grid-column: 1;
 }
 </style>
 <script src="../../resources/check-layout.js"></script>
@@ -73,10 +74,10 @@
 </div>
 
 <div style="position: relative">
-    <div class="grid gridWithRepeat">
+    <div class="grid gridWithRepeat justifyContentStart">
         <!-- fifth and sixth are invalid named grid areas. -->
-        <div class="sizedToGridArea gridItemSixthArea" data-offset-x="0" data-offset-y="150" data-expected-width="40" data-expected-height="150"></div>
-        <div class="sizedToGridArea gridItemFifthArea" data-offset-x="40" data-offset-y="150" data-expected-width="80" data-expected-height="150"></div>
+        <div class="sizedToGridArea gridItemSixthArea" data-offset-x="280" data-offset-y="300" data-expected-width="0" data-expected-height="0"></div>
+        <div class="sizedToGridArea gridItemFifthArea" data-offset-x="280" data-offset-y="300" data-expected-width="0" data-expected-height="0"></div>
 
         <div class="sizedToGridArea gridItemFourthArea" data-offset-x="0" data-offset-y="50" data-expected-width="120" data-expected-height="100"></div>
         <div class="sizedToGridArea gridItemThirdArea" data-offset-x="120" data-offset-y="0" data-expected-width="160" data-expected-height="150"></div>

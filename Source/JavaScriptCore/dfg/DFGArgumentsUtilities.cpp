@@ -38,11 +38,11 @@ bool argumentsInvolveStackSlot(InlineCallFrame* inlineCallFrame, VirtualRegister
         return (reg.isArgument() && reg.toArgument()) || reg.isHeader();
     
     if (inlineCallFrame->isClosureCall
-        && reg == VirtualRegister(inlineCallFrame->stackOffset + JSStack::Callee))
+        && reg == VirtualRegister(inlineCallFrame->stackOffset + CallFrameSlot::callee))
         return true;
     
     if (inlineCallFrame->isVarargs()
-        && reg == VirtualRegister(inlineCallFrame->stackOffset + JSStack::ArgumentCount))
+        && reg == VirtualRegister(inlineCallFrame->stackOffset + CallFrameSlot::argumentCount))
         return true;
     
     unsigned numArguments = inlineCallFrame->arguments.size() - 1;
@@ -64,32 +64,52 @@ Node* emitCodeToGetArgumentsArrayLength(
     DFG_ASSERT(
         graph, arguments,
         arguments->op() == CreateDirectArguments || arguments->op() == CreateScopedArguments
-        || arguments->op() == CreateClonedArguments || arguments->op() == PhantomDirectArguments
-        || arguments->op() == PhantomClonedArguments);
+        || arguments->op() == CreateClonedArguments || arguments->op() == CreateRest
+        || arguments->op() == PhantomDirectArguments || arguments->op() == PhantomClonedArguments || arguments->op() == PhantomCreateRest);
     
     InlineCallFrame* inlineCallFrame = arguments->origin.semantic.inlineCallFrame;
+
+    unsigned numberOfArgumentsToSkip = 0;
+    if (arguments->op() == CreateRest || arguments->op() == PhantomCreateRest)
+        numberOfArgumentsToSkip = arguments->numberOfArgumentsToSkip();
     
     if (inlineCallFrame && !inlineCallFrame->isVarargs()) {
+        unsigned argumentsSize = inlineCallFrame->arguments.size() - 1;
+        if (argumentsSize >= numberOfArgumentsToSkip)
+            argumentsSize -= numberOfArgumentsToSkip;
+        else
+            argumentsSize = 0;
         return insertionSet.insertConstant(
-            nodeIndex, origin, jsNumber(inlineCallFrame->arguments.size() - 1));
+            nodeIndex, origin, jsNumber(argumentsSize));
     }
     
     Node* argumentCount;
     if (!inlineCallFrame)
-        argumentCount = insertionSet.insertNode(nodeIndex, SpecInt32, GetArgumentCount, origin);
+        argumentCount = insertionSet.insertNode(nodeIndex, SpecInt32Only, GetArgumentCountIncludingThis, origin);
     else {
-        VirtualRegister argumentCountRegister(inlineCallFrame->stackOffset + JSStack::ArgumentCount);
+        VirtualRegister argumentCountRegister(inlineCallFrame->stackOffset + CallFrameSlot::argumentCount);
         
         argumentCount = insertionSet.insertNode(
-            nodeIndex, SpecInt32, GetStack, origin,
+            nodeIndex, SpecInt32Only, GetStack, origin,
             OpInfo(graph.m_stackAccessData.add(argumentCountRegister, FlushedInt32)));
     }
-    
-    return insertionSet.insertNode(
-        nodeIndex, SpecInt32, ArithSub, origin, OpInfo(Arith::Unchecked),
+
+    Node* result = insertionSet.insertNode(
+        nodeIndex, SpecInt32Only, ArithSub, origin, OpInfo(Arith::Unchecked),
         Edge(argumentCount, Int32Use),
         insertionSet.insertConstantForUse(
-            nodeIndex, origin, jsNumber(1), Int32Use));
+            nodeIndex, origin, jsNumber(1 + numberOfArgumentsToSkip), Int32Use));
+
+    if (numberOfArgumentsToSkip) {
+        // The above subtraction may produce a negative number if this number is non-zero. We correct that here.
+        result = insertionSet.insertNode(
+            nodeIndex, SpecInt32Only, ArithMax, origin, 
+            Edge(result, Int32Use), 
+            insertionSet.insertConstantForUse(nodeIndex, origin, jsNumber(0), Int32Use));
+        result->setResult(NodeResultInt32);
+    }
+
+    return result;
 }
 
 } } // namespace JSC::DFG

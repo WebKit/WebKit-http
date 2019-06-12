@@ -43,14 +43,15 @@ namespace WebKit {
 
 NSString *menuItemTitleForTelephoneNumberGroup()
 {
-    if ([getTUCallClass() respondsToSelector:@selector(supplementalDialTelephonyCallString)])
-        return [getTUCallClass() supplementalDialTelephonyCallString];
-    return WEB_UI_STRING("Call Using iPhone:", "menu item title for phone number");
+    return [getTUCallClass() supplementalDialTelephonyCallString];
 }
 
 NSMenuItem *menuItemForTelephoneNumber(const String& telephoneNumber)
 {
-    RetainPtr<DDActionContext> actionContext = [[getDDActionContextClass() alloc] init];
+    if (!DataDetectorsLibrary())
+        return nil;
+
+    RetainPtr<DDActionContext> actionContext = adoptNS([allocDDActionContextInstance() init]);
     [actionContext setAllowedActionUTIs:@[ @"com.apple.dial" ]];
 
     NSArray *proposedMenuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForValue:(NSString *)telephoneNumber type:getDDBinderPhoneNumberKey() service:nil context:actionContext.get()];
@@ -74,11 +75,14 @@ NSMenuItem *menuItemForTelephoneNumber(const String& telephoneNumber)
 
 RetainPtr<NSMenu> menuForTelephoneNumber(const String& telephoneNumber)
 {
+    if (!DataDetectorsLibrary())
+        return nil;
+
     RetainPtr<NSMenu> menu = adoptNS([[NSMenu alloc] init]);
     NSMutableArray *faceTimeItems = [NSMutableArray array];
     NSMenuItem *dialItem = nil;
 
-    RetainPtr<DDActionContext> actionContext = [[getDDActionContextClass() alloc] init];
+    RetainPtr<DDActionContext> actionContext = adoptNS([allocDDActionContextInstance() init]);
     [actionContext setAllowedActionUTIs:@[ @"com.apple.dial", @"com.apple.facetime", @"com.apple.facetimeaudio" ]];
 
     NSArray *proposedMenuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForValue:(NSString *)telephoneNumber type:getDDBinderPhoneNumberKey() service:nil context:actionContext.get()];

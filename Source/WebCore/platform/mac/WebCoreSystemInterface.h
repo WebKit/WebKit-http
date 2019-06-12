@@ -77,7 +77,7 @@ typedef struct _NSRect NSRect;
 #include <CoreGraphics/CoreGraphics.h>
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 typedef struct OpaqueCFHTTPCookieStorage*  CFHTTPCookieStorageRef;
 typedef struct _CFURLProtectionSpace* CFURLProtectionSpaceRef;
 typedef struct _CFURLCredential* WKCFURLCredentialRef;
@@ -118,7 +118,6 @@ extern "C" {
 
 // In alphabetical order.
 
-extern void (*wkAdvanceDefaultButtonPulseAnimation)(NSButtonCell *);
 extern void (*wkCALayerEnumerateRectsBeingDrawnWithBlock)(CALayer *, CGContextRef, void (^block)(CGRect rect));
 
 typedef enum {
@@ -139,7 +138,6 @@ extern bool (*wkDrawCellFocusRingWithFrameAtTime)(NSCell *cell, NSRect cellFrame
 extern void (*wkDrawMediaSliderTrack)(CGContextRef context, CGRect rect, float timeLoaded, float currentTime,
     float duration, unsigned state);
 extern void (*wkDrawMediaUIPart)(int part, CGContextRef context, CGRect rect, unsigned state);
-extern CFStringRef (*wkSignedPublicKeyAndChallengeString)(unsigned keySize, CFStringRef challenge, CFStringRef keyDescription);
 extern double (*wkGetNSURLResponseCalculatedExpiration)(NSURLResponse *response);
 extern BOOL (*wkGetNSURLResponseMustRevalidate)(NSURLResponse *response);
 extern void (*wkGetWheelEventDeltas)(NSEvent*, float* deltaX, float* deltaY, BOOL* continuous);
@@ -222,7 +220,6 @@ extern NSURLRequest* (*wkCopyRequestWithStorageSession)(CFURLStorageSessionRef, 
 typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
 extern unsigned (*wkGetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef);
 extern NSArray *(*wkHTTPCookies)(CFHTTPCookieStorageRef);
-extern NSArray *(*wkHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSURL *, NSURL *);
 extern void (*wkSetHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
 extern void (*wkDeleteHTTPCookie)(CFHTTPCookieStorageRef, NSHTTPCookie *);
 extern void (*wkDeleteAllHTTPCookies)(CFHTTPCookieStorageRef);
@@ -238,9 +235,7 @@ extern CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
 extern bool (*wkIsPublicSuffix)(NSString *host);
 #endif
 
-#if ENABLE(CACHE_PARTITIONING)
 extern CFStringRef (*wkCachePartitionKey)(void);
-#endif
 
 typedef enum {
     wkExternalPlaybackTypeNone,

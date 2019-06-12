@@ -46,7 +46,7 @@ namespace WebCore {
 const double EventHandler::TextDragDelay = 0.0;
 #endif
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent&) const
 {
     // We always allow tabs to all controls
     return true;
@@ -87,7 +87,7 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
     return false;
 }
 
-bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widget& widget)
+bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& event, Widget& widget)
 {
     if (!is<FrameView>(widget))
         return false;
@@ -96,10 +96,12 @@ bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widge
 }
 
 #if ENABLE(DRAG_SUPPORT)
-PassRefPtr<DataTransfer> EventHandler::createDraggingDataTransfer() const
+
+Ref<DataTransfer> EventHandler::createDraggingDataTransfer() const
 {
-    return DataTransfer::createForDragAndDrop();
+    return DataTransfer::createForDrag();
 }
+
 #endif
 
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
@@ -120,9 +122,9 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
     return true;
 }
 
-unsigned EventHandler::accessKeyModifiers()
+OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
-    return PlatformEvent::AltKey;
+    return PlatformEvent::Modifier::AltKey;
 }
 
 // GTK+ must scroll horizontally if the mouse pointer is on top of the

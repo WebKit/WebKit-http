@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StorageEvent_h
-#define StorageEvent_h
+#pragma once
 
 #include "Event.h"
 #include <wtf/text/WTFString.h>
@@ -33,19 +32,20 @@ namespace WebCore {
 
 class Storage;
 
-struct StorageEventInit : public EventInit {
-    String key;
-    String oldValue;
-    String newValue;
-    String url;
-    RefPtr<Storage> storageArea;
-};
-
 class StorageEvent : public Event {
 public:
     static Ref<StorageEvent> create(const AtomicString& type, const String& key, const String& oldValue, const String& newValue, const String& url, Storage* storageArea);
     static Ref<StorageEvent> createForBindings();
-    static Ref<StorageEvent> createForBindings(const AtomicString&, const StorageEventInit&);
+
+    struct Init : EventInit {
+        String key;
+        String oldValue;
+        String newValue;
+        String url;
+        RefPtr<Storage> storageArea;
+    };
+
+    static Ref<StorageEvent> create(const AtomicString&, const Init&, IsTrusted = IsTrusted::No);
     virtual ~StorageEvent();
 
     const String& key() const { return m_key; }
@@ -59,12 +59,12 @@ public:
     // Needed once we support init<blank>EventNS
     // void initStorageEventNS(in DOMString namespaceURI, in DOMString typeArg, in boolean canBubbleArg, in boolean cancelableArg, in DOMString keyArg, in DOMString oldValueArg, in DOMString newValueArg, in DOMString urlArg, Storage storageAreaArg);
 
-    virtual EventInterface eventInterface() const;
+    EventInterface eventInterface() const override;
 
 private:
     StorageEvent();
     StorageEvent(const AtomicString& type, const String& key, const String& oldValue, const String& newValue, const String& url, Storage* storageArea);
-    StorageEvent(const AtomicString&, const StorageEventInit&);
+    StorageEvent(const AtomicString&, const Init&, IsTrusted);
 
     String m_key;
     String m_oldValue;
@@ -74,5 +74,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StorageEvent_h

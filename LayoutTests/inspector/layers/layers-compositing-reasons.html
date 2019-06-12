@@ -1,7 +1,7 @@
 <html>
 <head>
-<script type="text/javascript" src="../../http/tests/inspector/resources/protocol-test.js"></script>
-<script type="text/javascript">
+<script src="../../http/tests/inspector/resources/protocol-test.js"></script>
+<script>
 
 function test()
 {
@@ -72,6 +72,11 @@ function test()
                 assert(
                     "<div id=\"child\"> is composited due to having \"backface-visibility: hidden\" and a 3D transform",
                     compositingReasons.transform3D && compositingReasons.backfaceVisibilityHidden,
+                    true);
+            } else if (hasId(node, "canvas")) {
+                assert(
+                    "<canvas id=\"canvas\"> is composited due to having a 3D transform",
+                    compositingReasons.transform3D,
                     true);
             }
 
@@ -152,6 +157,10 @@ window.addEventListener("DOMContentLoaded", function()
         -webkit-transform: translateZ(0);
     }
 
+    #canvas {
+        transform: translate3D(0,0,0);
+    }
+
 </style>
 </head>
 <body>
@@ -161,6 +170,8 @@ window.addEventListener("DOMContentLoaded", function()
     <div id="opacity-container">
         <div id="child"></div>
     </div>
+
+    <canvas id="canvas" width="65537" height="65537"></canvas>
 
 </body>
 </html>

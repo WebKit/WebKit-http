@@ -30,15 +30,20 @@
 #import <Foundation/Foundation.h>
 #import <WebKit/_WKFocusedElementInfo.h>
 
+@class UITextSuggestion;
+
 @protocol _WKFormInputSession <NSObject>
 
 @property (nonatomic, readonly, getter=isValid) BOOL valid;
 @property (nonatomic, readonly) NSObject <NSSecureCoding> *userObject;
-@property (nonatomic, readonly) id <_WKFocusedElementInfo> focusedElementInfo WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
+@property (nonatomic, readonly) id <_WKFocusedElementInfo> focusedElementInfo WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
 #if TARGET_OS_IPHONE
 @property (nonatomic, copy) NSString *accessoryViewCustomButtonTitle;
-@property (nonatomic, strong) UIView *customInputView WK_AVAILABLE(NA, WK_IOS_TBA);
+@property (nonatomic, strong) UIView *customInputView WK_API_AVAILABLE(ios(10.0));
+@property (nonatomic, copy) NSArray<UITextSuggestion *> *suggestions WK_API_AVAILABLE(ios(10.0));
+@property (nonatomic) BOOL accessoryViewShouldNotShow WK_API_AVAILABLE(ios(10.0));
+@property (nonatomic) BOOL forceSecureTextEntry WK_API_AVAILABLE(ios(10.0));
 #endif
 
 @end

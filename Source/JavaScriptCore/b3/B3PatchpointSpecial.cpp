@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,18 +46,26 @@ PatchpointSpecial::~PatchpointSpecial()
 
 void PatchpointSpecial::forEachArg(Inst& inst, const ScopedLambda<Inst::EachArgCallback>& callback)
 {
+    PatchpointValue* patchpoint = inst.origin->as<PatchpointValue>();
     unsigned argIndex = 1;
 
-    if (inst.origin->type() != Void)
-        callback(inst.args[argIndex++], Arg::Def, inst.origin->airType(), inst.origin->airWidth());
+    if (patchpoint->type() != Void) {
+        Arg::Role role;
+        if (patchpoint->resultConstraint.kind() == ValueRep::SomeEarlyRegister)
+            role = Arg::EarlyDef;
+        else
+            role = Arg::Def;
+        
+        callback(inst.args[argIndex++], role, inst.origin->resultBank(), inst.origin->resultWidth());
+    }
 
-    forEachArgImpl(0, argIndex, inst, SameAsRep, Nullopt, callback);
+    forEachArgImpl(0, argIndex, inst, SameAsRep, std::nullopt, callback, std::nullopt);
     argIndex += inst.origin->numChildren();
 
-    for (unsigned i = inst.origin->as<PatchpointValue>()->numGPScratchRegisters; i--;)
-        callback(inst.args[argIndex++], Arg::Scratch, Arg::GP, Arg::conservativeWidth(Arg::GP));
-    for (unsigned i = inst.origin->as<PatchpointValue>()->numFPScratchRegisters; i--;)
-        callback(inst.args[argIndex++], Arg::Scratch, Arg::FP, Arg::conservativeWidth(Arg::FP));
+    for (unsigned i = patchpoint->numGPScratchRegisters; i--;)
+        callback(inst.args[argIndex++], Arg::Scratch, GP, conservativeWidth(GP));
+    for (unsigned i = patchpoint->numFPScratchRegisters; i--;)
+        callback(inst.args[argIndex++], Arg::Scratch, FP, conservativeWidth(FP));
 }
 
 bool PatchpointSpecial::isValid(Inst& inst)
@@ -109,7 +117,9 @@ bool PatchpointSpecial::admitsStack(Inst& inst, unsigned argIndex)
         case ValueRep::StackArgument:
             return true;
         case ValueRep::SomeRegister:
+        case ValueRep::SomeEarlyRegister:
         case ValueRep::Register:
+        case ValueRep::LateRegister:
             return false;
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -118,6 +128,11 @@ bool PatchpointSpecial::admitsStack(Inst& inst, unsigned argIndex)
     }
 
     return admitsStackImpl(0, 2, inst, argIndex);
+}
+
+bool PatchpointSpecial::admitsExtendedOffsetAddr(Inst& inst, unsigned argIndex)
+{
+    return admitsStack(inst, argIndex);
 }
 
 CCallHelpers::Jump PatchpointSpecial::generate(
@@ -143,6 +158,11 @@ CCallHelpers::Jump PatchpointSpecial::generate(
     value->m_generator->run(jit, params);
 
     return CCallHelpers::Jump();
+}
+
+bool PatchpointSpecial::isTerminal(Inst& inst)
+{
+    return inst.origin->as<PatchpointValue>()->effects.terminal;
 }
 
 void PatchpointSpecial::dumpImpl(PrintStream& out) const

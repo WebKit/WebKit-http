@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009 University of Szeged
  * All rights reserved.
  * Copyright (C) 2010 MIPS Technologies, Inc. All rights reserved.
@@ -26,13 +26,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MIPSAssembler_h
-#define MIPSAssembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(MIPS)
 
 #include "AssemblerBuffer.h"
 #include "JITCompilationEffort.h"
+#include <limits.h>
 #include <wtf/Assertions.h>
 #include <wtf/SegmentedVector.h>
 
@@ -192,9 +192,24 @@ public:
     {
         emitInst(0x00000000);
     }
+    
+    static void fillNops(void* base, size_t size, bool isCopyingToExecutableMemory)
+    {
+        UNUSED_PARAM(isCopyingToExecutableMemory);
+        RELEASE_ASSERT(!(size % sizeof(int32_t)));
 
+        int32_t* ptr = static_cast<int32_t*>(base);
+        const size_t num32s = size / sizeof(int32_t);
+        const int32_t insn = 0x00000000;
+        for (size_t i = 0; i < num32s; i++)
+            *ptr++ = insn;
+    }
+    
     void sync()
     {
+        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=169984
+        // We might get a performance improvements by using SYNC_MB in some or
+        // all cases.
         emitInst(0x0000000f);
     }
 
@@ -448,6 +463,14 @@ public:
         emitInst(0x0000000d | ((value & 0x3ff) << OP_SH_CODE));
     }
 
+    static bool isBkpt(void* address)
+    {
+        int value = 512; /* BRK_BUG */
+        MIPSWord expected = (0x0000000d | ((value & 0x3ff) << OP_SH_CODE));
+        MIPSWord candidateInstruction = *reinterpret_cast<MIPSWord*>(address);
+        return candidateInstruction == expected;
+    }
+
     void bgez(RegisterID rs, int imm)
     {
         emitInst(0x04010000 | (rs << OP_SH_RS) | (imm & 0xffff));
@@ -545,6 +568,11 @@ public:
     void sqrtd(FPRegisterID fd, FPRegisterID fs)
     {
         emitInst(0x46200004 | (fd << OP_SH_FD) | (fs << OP_SH_FS));
+    }
+
+    void absd(FPRegisterID fd, FPRegisterID fs)
+    {
+        emitInst(0x46200005 | (fd << OP_SH_FD) | (fs << OP_SH_FS));
     }
 
     void movd(FPRegisterID fd, FPRegisterID fs)
@@ -811,6 +839,11 @@ public:
         cacheFlush(insn, flushSize);
     }
 
+    static void relinkJumpToNop(void* from)
+    {
+        relinkJump(from, from);
+    }
+
     static void relinkCall(void* from, void* to)
     {
         void* start;
@@ -882,6 +915,11 @@ public:
     static ptrdiff_t maxJumpReplacementSize()
     {
         return sizeof(MIPSWord) * 4;
+    }
+
+    static constexpr ptrdiff_t patchableJumpSize()
+    {
+        return sizeof(MIPSWord) * 8;
     }
 
     static void revertJumpToMove(void* instructionStart, RegisterID rt, int imm)
@@ -1091,5 +1129,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(MIPS)
-
-#endif // MIPSAssembler_h

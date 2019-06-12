@@ -26,14 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilitySVGRoot_h
-#define AccessibilitySVGRoot_h
+#pragma once
 
-#include "AccessibilityRenderObject.h"
+#include "AccessibilitySVGElement.h"
 
 namespace WebCore {
 
-class AccessibilitySVGRoot final : public AccessibilityRenderObject {
+class AccessibilitySVGRoot final : public AccessibilitySVGElement {
 public:
     static Ref<AccessibilitySVGRoot> create(RenderObject*);
     virtual ~AccessibilitySVGRoot();
@@ -43,14 +42,13 @@ public:
 private:
     explicit AccessibilitySVGRoot(RenderObject*);
     
-    virtual AccessibilityObject* parentObject() const override;
-    virtual bool isAccessibilitySVGRoot() const override { return true; }
+    AccessibilityObject* parentObject() const override;
+    bool isAccessibilitySVGRoot() const override { return true; }
 
     AccessibilityObject* m_parent;
+    AccessibilityRole roleValue() const override { return GroupRole; }
 };
     
 } // namespace WebCore 
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilitySVGRoot, isAccessibilitySVGRoot())
-
-#endif // AccessibilitySVGRoot_h

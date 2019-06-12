@@ -34,22 +34,17 @@
 #if ENABLE(WEB_TIMING)
 
 #include "Document.h"
-#include "DocumentLoadTiming.h"
 #include "DocumentLoader.h"
 #include "DocumentTiming.h"
 #include "Frame.h"
 #include "FrameLoader.h"
-#include "ResourceLoadTiming.h"
+#include "LoadTiming.h"
+#include "NetworkLoadMetrics.h"
+#include "Performance.h"
 #include "ResourceResponse.h"
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
-
-static unsigned long long toIntegerMilliseconds(double seconds)
-{
-    ASSERT(seconds >= 0);
-    return static_cast<unsigned long long>(seconds * 1000.0);
-}
 
 PerformanceTiming::PerformanceTiming(Frame* frame)
     : DOMWindowProperty(frame)
@@ -58,16 +53,16 @@ PerformanceTiming::PerformanceTiming(Frame* frame)
 
 unsigned long long PerformanceTiming::navigationStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
-    return monotonicTimeToIntegerMilliseconds(timing->navigationStart());
+    return monotonicTimeToIntegerMilliseconds(timing->startTime());
 }
 
 unsigned long long PerformanceTiming::unloadEventStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -79,7 +74,7 @@ unsigned long long PerformanceTiming::unloadEventStart() const
 
 unsigned long long PerformanceTiming::unloadEventEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -91,7 +86,7 @@ unsigned long long PerformanceTiming::unloadEventEnd() const
 
 unsigned long long PerformanceTiming::redirectStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -103,7 +98,7 @@ unsigned long long PerformanceTiming::redirectStart() const
 
 unsigned long long PerformanceTiming::redirectEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -115,7 +110,7 @@ unsigned long long PerformanceTiming::redirectEnd() const
 
 unsigned long long PerformanceTiming::fetchStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -128,11 +123,11 @@ unsigned long long PerformanceTiming::domainLookupStart() const
     if (!loader)
         return fetchStart();
     
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadMetrics& timing = loader->response().deprecatedNetworkLoadMetrics();
     
     // This will be -1 when a DNS request is not performed.
     // Rather than exposing a special value that indicates no DNS, we "backfill" with fetchStart.
-    if (timing.domainLookupStart < 0)
+    if (timing.domainLookupStart < 0_ms)
         return fetchStart();
 
     return resourceLoadTimeRelativeToFetchStart(timing.domainLookupStart);
@@ -144,11 +139,11 @@ unsigned long long PerformanceTiming::domainLookupEnd() const
     if (!loader)
         return domainLookupStart();
     
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadMetrics& timing = loader->response().deprecatedNetworkLoadMetrics();
     
     // This will be -1 when a DNS request is not performed.
     // Rather than exposing a special value that indicates no DNS, we "backfill" with domainLookupStart.
-    if (timing.domainLookupEnd < 0)
+    if (timing.domainLookupEnd < 0_ms)
         return domainLookupStart();
 
     return resourceLoadTimeRelativeToFetchStart(timing.domainLookupEnd);
@@ -160,17 +155,17 @@ unsigned long long PerformanceTiming::connectStart() const
     if (!loader)
         return domainLookupEnd();
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadMetrics& timing = loader->response().deprecatedNetworkLoadMetrics();
     
     // connectStart will be -1 when a network request is not made.
     // Rather than exposing a special value that indicates no new connection, we "backfill" with domainLookupEnd.
-    int connectStart = timing.connectStart;
-    if (connectStart < 0)
+    Seconds connectStart = timing.connectStart;
+    if (connectStart < 0_ms)
         return domainLookupEnd();
 
-    // ResourceLoadTiming's connect phase includes DNS, however Navigation Timing's
+    // NetworkLoadMetrics's connect phase includes DNS, however Navigation Timing's
     // connect phase should not. So if there is DNS time, trim it from the start.
-    if (timing.domainLookupEnd >= 0 && timing.domainLookupEnd > connectStart)
+    if (timing.domainLookupEnd >= 0_ms && timing.domainLookupEnd > connectStart)
         connectStart = timing.domainLookupEnd;
 
     return resourceLoadTimeRelativeToFetchStart(connectStart);
@@ -182,11 +177,11 @@ unsigned long long PerformanceTiming::connectEnd() const
     if (!loader)
         return connectStart();
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadMetrics& timing = loader->response().deprecatedNetworkLoadMetrics();
     
     // connectEnd will be -1 when a network request is not made.
     // Rather than exposing a special value that indicates no new connection, we "backfill" with connectStart.
-    if (timing.connectEnd < 0)
+    if (timing.connectEnd < 0_ms)
         return connectStart();
 
     return resourceLoadTimeRelativeToFetchStart(timing.connectEnd);
@@ -198,9 +193,9 @@ unsigned long long PerformanceTiming::secureConnectionStart() const
     if (!loader)
         return 0;
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadMetrics& timing = loader->response().deprecatedNetworkLoadMetrics();
     
-    if (timing.secureConnectionStart < 0)
+    if (timing.secureConnectionStart < 0_ms)
         return 0;
 
     return resourceLoadTimeRelativeToFetchStart(timing.secureConnectionStart);
@@ -212,9 +207,9 @@ unsigned long long PerformanceTiming::requestStart() const
     if (!loader)
         return connectEnd();
     
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadMetrics& timing = loader->response().deprecatedNetworkLoadMetrics();
     
-    ASSERT(timing.requestStart >= 0);
+    ASSERT(timing.requestStart >= 0_ms);
     return resourceLoadTimeRelativeToFetchStart(timing.requestStart);
 }
 
@@ -224,15 +219,15 @@ unsigned long long PerformanceTiming::responseStart() const
     if (!loader)
         return requestStart();
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadMetrics& timing = loader->response().deprecatedNetworkLoadMetrics();
     
-    ASSERT(timing.responseStart >= 0);
+    ASSERT(timing.responseStart >= 0_ms);
     return resourceLoadTimeRelativeToFetchStart(timing.responseStart);
 }
 
 unsigned long long PerformanceTiming::responseEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -286,7 +281,7 @@ unsigned long long PerformanceTiming::domComplete() const
 
 unsigned long long PerformanceTiming::loadEventStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -295,7 +290,7 @@ unsigned long long PerformanceTiming::loadEventStart() const
 
 unsigned long long PerformanceTiming::loadEventEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -305,7 +300,7 @@ unsigned long long PerformanceTiming::loadEventEnd() const
 DocumentLoader* PerformanceTiming::documentLoader() const
 {
     if (!m_frame)
-        return 0;
+        return nullptr;
 
     return m_frame->loader().documentLoader();
 }
@@ -313,36 +308,49 @@ DocumentLoader* PerformanceTiming::documentLoader() const
 const DocumentTiming* PerformanceTiming::documentTiming() const
 {
     if (!m_frame)
-        return 0;
+        return nullptr;
 
     Document* document = m_frame->document();
     if (!document)
-        return 0;
+        return nullptr;
 
     return &document->timing();
 }
 
-DocumentLoadTiming* PerformanceTiming::documentLoadTiming() const
+LoadTiming* PerformanceTiming::loadTiming() const
 {
     DocumentLoader* loader = documentLoader();
     if (!loader)
-        return 0;
+        return nullptr;
 
     return &loader->timing();
 }
 
-unsigned long long PerformanceTiming::resourceLoadTimeRelativeToFetchStart(int relativeMilliseconds) const
+unsigned long long PerformanceTiming::resourceLoadTimeRelativeToFetchStart(Seconds delta) const
 {
-    ASSERT(relativeMilliseconds >= 0);
-    return fetchStart() + relativeMilliseconds;
+    ASSERT(delta >= 0_ms);
+
+    LoadTiming* timing = loadTiming();
+    if (!timing)
+        return 0;
+
+    WallTime fetchStart = timing->monotonicTimeToPseudoWallTime(timing->fetchStart());
+    WallTime combined = fetchStart + delta;
+    Seconds reduced = Performance::reduceTimeResolution(combined.secondsSinceEpoch());
+    return static_cast<unsigned long long>(reduced.milliseconds());
 }
 
-unsigned long long PerformanceTiming::monotonicTimeToIntegerMilliseconds(double monotonicSeconds) const
+unsigned long long PerformanceTiming::monotonicTimeToIntegerMilliseconds(MonotonicTime timeStamp) const
 {
-    ASSERT(monotonicSeconds >= 0);
-    if (const DocumentLoadTiming* timing = documentLoadTiming())
-        return toIntegerMilliseconds(timing->monotonicTimeToPseudoWallTime(monotonicSeconds));
-    return 0;
+    ASSERT(timeStamp.secondsSinceEpoch().seconds() >= 0);
+
+    LoadTiming* timing = loadTiming();
+    if (!timing)
+        return 0;
+
+    WallTime wallTime = timing->monotonicTimeToPseudoWallTime(timeStamp);
+    Seconds reduced = Performance::reduceTimeResolution(wallTime.secondsSinceEpoch());
+    return static_cast<unsigned long long>(reduced.milliseconds());
 }
 
 } // namespace WebCore

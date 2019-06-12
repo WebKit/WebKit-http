@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,54 +23,158 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBRequest_h
-#define IDBRequest_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "ActiveDOMObject.h"
-#include "DOMError.h"
-#include "DOMStringList.h"
-#include "Event.h"
-#include "EventListener.h"
 #include "EventTarget.h"
-#include "IDBAny.h"
-#include "IDBCursor.h"
-#include "ScriptWrappable.h"
+#include "ExceptionOr.h"
+#include "IDBActiveDOMObject.h"
+#include "IDBError.h"
+#include "IDBResourceIdentifier.h"
+#include "IndexedDB.h"
+#include <heap/Strong.h>
 
 namespace WebCore {
 
+class DOMError;
+class Event;
+class IDBCursor;
+class IDBDatabase;
+class IDBIndex;
+class IDBKeyData;
+class IDBObjectStore;
+class IDBResultData;
 class IDBTransaction;
+class IDBValue;
+class ScopeGuard;
+class ThreadSafeDataBuffer;
 
-struct ExceptionCodeWithMessage;
+namespace IDBClient {
+class IDBConnectionProxy;
+class IDBConnectionToServer;
+}
 
-typedef int ExceptionCode;
-
-// Defined in the IDL
-enum class IDBRequestReadyState {
-    Pending = 1,
-    Done = 2,
-    DeprecatedEarlyDeath = 3, // FIXME: https://bugs.webkit.org/show_bug.cgi?id=149117 - Remove this when removing LegacyIDB
-};
-
-class IDBRequest : public EventTargetWithInlineData, public ActiveDOMObject {
+class IDBRequest : public EventTargetWithInlineData, public IDBActiveDOMObject, public RefCounted<IDBRequest> {
 public:
-    virtual ~IDBRequest() { }
+    static Ref<IDBRequest> create(ScriptExecutionContext&, IDBObjectStore&, IDBTransaction&);
+    static Ref<IDBRequest> create(ScriptExecutionContext&, IDBCursor&, IDBTransaction&);
+    static Ref<IDBRequest> create(ScriptExecutionContext&, IDBIndex&, IDBTransaction&);
+    static Ref<IDBRequest> createObjectStoreGet(ScriptExecutionContext&, IDBObjectStore&, IndexedDB::ObjectStoreRecordType, IDBTransaction&);
+    static Ref<IDBRequest> createIndexGet(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, IDBTransaction&);
 
-    virtual RefPtr<IDBAny> result(ExceptionCodeWithMessage&) const = 0;
-    virtual unsigned short errorCode(ExceptionCode&) const = 0;
-    virtual RefPtr<DOMError> error(ExceptionCodeWithMessage&) const = 0;
-    virtual RefPtr<IDBAny> source() const = 0;
-    virtual RefPtr<IDBTransaction> transaction() const = 0;
+    const IDBResourceIdentifier& resourceIdentifier() const { return m_resourceIdentifier; }
 
-    virtual const String& readyState() const = 0;
+    virtual ~IDBRequest();
+
+    using Result = Variant<RefPtr<IDBCursor>, RefPtr<IDBDatabase>, JSC::Strong<JSC::Unknown>>;
+    ExceptionOr<std::optional<Result>> result() const;
+
+    using Source = Variant<RefPtr<IDBObjectStore>, RefPtr<IDBIndex>, RefPtr<IDBCursor>>;
+    const std::optional<Source>& source() const { return m_source; }
+
+    ExceptionOr<DOMError*> error() const;
+
+    RefPtr<IDBTransaction> transaction() const;
+    
+    enum class ReadyState { Pending, Done };
+    ReadyState readyState() const { return m_readyState; }
+
+    bool isDone() const { return m_readyState == ReadyState::Done; }
+
+    uint64_t sourceObjectStoreIdentifier() const;
+    uint64_t sourceIndexIdentifier() const;
+    IndexedDB::ObjectStoreRecordType requestedObjectStoreRecordType() const;
+    IndexedDB::IndexRecordType requestedIndexRecordType() const;
+
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
+
+    using RefCounted::ref;
+    using RefCounted::deref;
+
+    void completeRequestAndDispatchEvent(const IDBResultData&);
+
+    void setResult(const IDBKeyData&);
+    void setResult(const Vector<IDBKeyData>&);
+    void setResult(const Vector<IDBValue>&);
+    void setResult(uint64_t);
+    void setResultToStructuredClone(const IDBValue&);
+    void setResultToUndefined();
+
+    void willIterateCursor(IDBCursor&);
+    void didOpenOrIterateCursor(const IDBResultData&);
+
+    const IDBCursor* pendingCursor() const { return m_pendingCursor.get(); }
+
+    void setSource(IDBCursor&);
+    void setVersionChangeTransaction(IDBTransaction&);
+
+    IndexedDB::RequestType requestType() const { return m_requestType; }
+
+    bool hasPendingActivity() const final;
 
 protected:
-    IDBRequest(ScriptExecutionContext*);
+    IDBRequest(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&);
+
+    void enqueueEvent(Ref<Event>&&);
+    bool dispatchEvent(Event&) override;
+
+    void setResult(Ref<IDBDatabase>&&);
+
+    IDBClient::IDBConnectionProxy& connectionProxy() { return m_connectionProxy.get(); }
+
+    // FIXME: Protected data members aren't great for maintainability.
+    // Consider adding protected helper functions and making these private.
+    ReadyState m_readyState { ReadyState::Pending };
+    RefPtr<IDBTransaction> m_transaction;
+    bool m_shouldExposeTransactionToDOM { true };
+    RefPtr<DOMError> m_domError;
+    IndexedDB::RequestType m_requestType { IndexedDB::RequestType::Other };
+    bool m_contextStopped { false };
+    Event* m_openDatabaseSuccessEvent { nullptr };
+
+private:
+    IDBRequest(ScriptExecutionContext&, IDBObjectStore&, IDBTransaction&);
+    IDBRequest(ScriptExecutionContext&, IDBCursor&, IDBTransaction&);
+    IDBRequest(ScriptExecutionContext&, IDBIndex&, IDBTransaction&);
+    IDBRequest(ScriptExecutionContext&, IDBObjectStore&, IndexedDB::ObjectStoreRecordType, IDBTransaction&);
+    IDBRequest(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, IDBTransaction&);
+
+    EventTargetInterface eventTargetInterface() const override;
+
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
+    virtual void cancelForStop();
+
+    void refEventTarget() final { RefCounted::ref(); }
+    void derefEventTarget() final { RefCounted::deref(); }
+    void uncaughtExceptionInEventHandler() final;
+
+    virtual bool isOpenDBRequest() const { return false; }
+
+    void onError();
+    void onSuccess();
+
+    IDBCursor* resultCursor();
+
+    IDBError m_idbError;
+    IDBResourceIdentifier m_resourceIdentifier;
+
+    std::optional<Result> m_result;
+    std::optional<Source> m_source;
+
+    bool m_hasPendingActivity { true };
+    IndexedDB::ObjectStoreRecordType m_requestedObjectStoreRecordType { IndexedDB::ObjectStoreRecordType::ValueOnly };
+    IndexedDB::IndexRecordType m_requestedIndexRecordType { IndexedDB::IndexRecordType::Key };
+
+    RefPtr<IDBCursor> m_pendingCursor;
+
+    std::unique_ptr<ScopeGuard> m_cursorRequestNotifier;
+
+    Ref<IDBClient::IDBConnectionProxy> m_connectionProxy;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-
-#endif // LegacyRequest_h

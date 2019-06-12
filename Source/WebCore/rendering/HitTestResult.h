@@ -19,15 +19,12 @@
  *
 */
 
-#ifndef HitTestResult_h
-#define HitTestResult_h
+#pragma once
 
-#include "FloatQuad.h"
 #include "FloatRect.h"
 #include "HitTestLocation.h"
 #include "HitTestRequest.h"
 #include "LayoutRect.h"
-#include "TextFlags.h"
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/ListHashSet.h>
@@ -37,13 +34,11 @@ namespace WebCore {
 
 class Element;
 class Frame;
-#if ENABLE(VIDEO)
 class HTMLMediaElement;
-#endif
 class Image;
-class URL;
 class Node;
 class Scrollbar;
+class URL;
 
 class HitTestResult {
 public:
@@ -59,12 +54,13 @@ public:
     WEBCORE_EXPORT HitTestResult& operator=(const HitTestResult&);
 
     Node* innerNode() const { return m_innerNode.get(); }
-    WEBCORE_EXPORT Element* innerElement() const;
     Node* innerNonSharedNode() const { return m_innerNonSharedNode.get(); }
     WEBCORE_EXPORT Element* innerNonSharedElement() const;
     Element* URLElement() const { return m_innerURLElement.get(); }
     Scrollbar* scrollbar() const { return m_scrollbar.get(); }
     bool isOverWidget() const { return m_isOverWidget; }
+
+    WEBCORE_EXPORT String linkSuggestedFilename() const;
 
     // Forwarded from HitTestLocation
     bool isRectBasedTest() const { return m_hitTestLocation.isRectBasedTest(); }
@@ -82,7 +78,7 @@ public:
     const LayoutPoint& localPoint() const { return m_localPoint; }
     void setLocalPoint(const LayoutPoint& p) { m_localPoint = p; }
 
-    WEBCORE_EXPORT void setToNonShadowAncestor();
+    void setToNonUserAgentShadowAncestor();
 
     const HitTestLocation& hitTestLocation() const { return m_hitTestLocation; }
 
@@ -127,6 +123,10 @@ public:
     WEBCORE_EXPORT bool mediaIsVideo() const;
     bool mediaMuted() const;
     void toggleMediaMuteState() const;
+    bool mediaSupportsEnhancedFullscreen() const;
+    bool mediaIsInEnhancedFullscreen() const;
+    void toggleEnhancedFullscreenForVideo() const;
+
     WEBCORE_EXPORT bool isDownloadableMedia() const;
     WEBCORE_EXPORT bool isOverTextInsideFormControlElement() const;
     WEBCORE_EXPORT bool allowsCopy() const;
@@ -145,6 +145,7 @@ public:
     Vector<String> dictationAlternatives() const;
 
     Node* targetNode() const;
+    WEBCORE_EXPORT Element* targetElement() const;
 
 private:
     NodeSet& mutableRectBasedTestResult(); // See above.
@@ -166,8 +167,6 @@ private:
     mutable std::unique_ptr<NodeSet> m_rectBasedTestResult;
 };
 
-String displayString(const String&, const Node*);
+WEBCORE_EXPORT String displayString(const String&, const Node*);
 
 } // namespace WebCore
-
-#endif // HitTestResult_h

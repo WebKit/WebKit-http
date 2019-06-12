@@ -33,8 +33,10 @@
  */
 NS_ASSUME_NONNULL_BEGIN
 
-WK_CLASS_AVAILABLE(10_10, 8_0)
+WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface WKBackForwardListItem : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
 
 /*! @abstract The URL of the webpage represented by this item.
  */

@@ -49,10 +49,16 @@ class StructureHLSL : angle::NonCopyable
   public:
     StructureHLSL();
 
-    void addConstructor(const TType &type, const TString &name, const TIntermSequence *parameters);
+    // Returns the name of the constructor function. "name" parameter is the name of the type being
+    // constructed.
+    TString addConstructor(const TType &type,
+                           const TString &name,
+                           const TIntermSequence *parameters);
     std::string structsHeader() const;
 
-    TString defineQualified(const TStructure &structure, bool useHLSLRowMajorPacking, bool useStd140Packing);
+    TString defineQualified(const TStructure &structure,
+                            bool useHLSLRowMajorPacking,
+                            bool useStd140Packing);
     static TString defineNameless(const TStructure &structure);
 
     Std140PaddingHelper getPaddingHelper();
@@ -72,10 +78,11 @@ class StructureHLSL : angle::NonCopyable
     StructDeclarations mStructDeclarations;
 
     void storeStd140ElementIndex(const TStructure &structure, bool useHLSLRowMajorPacking);
-    static TString define(const TStructure &structure, bool useHLSLRowMajorPacking,
-                         bool useStd140Packing, Std140PaddingHelper *padHelper);
+    static TString define(const TStructure &structure,
+                          bool useHLSLRowMajorPacking,
+                          bool useStd140Packing,
+                          Std140PaddingHelper *padHelper);
 };
-
 }
 
-#endif // COMPILER_TRANSLATOR_STRUCTUREHLSL_H_
+#endif  // COMPILER_TRANSLATOR_STRUCTUREHLSL_H_

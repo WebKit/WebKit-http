@@ -25,11 +25,6 @@
 
 WebInspector.CodeMirrorBezierEditingController = class CodeMirrorBezierEditingController extends WebInspector.CodeMirrorEditingController
 {
-    constructor(codeMirror, marker)
-    {
-        super(codeMirror, marker);
-    }
-
     // Public
 
     get initialValue()
@@ -52,6 +47,11 @@ WebInspector.CodeMirrorBezierEditingController = class CodeMirrorBezierEditingCo
     popoverDidPresent(popover)
     {
         this._bezierEditor.bezier = this.value;
+    }
+
+    popoverDidDismiss(popover)
+    {
+        this._bezierEditor.removeListeners();
     }
 
     // Private

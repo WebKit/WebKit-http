@@ -23,44 +23,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RTCIceServer_h
-#define RTCIceServer_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
+#include <wtf/Variant.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class RTCIceServer : public RefCounted<RTCIceServer> {
-public:
-    static Ref<RTCIceServer> create(const Vector<String>& urls, const String& credential, const String& username)
-    {
-        return adoptRef(*new RTCIceServer(urls, credential, username));
-    }
-    virtual ~RTCIceServer() { }
-
-    const Vector<String>& urls() const { return m_urls; }
-    const String& credential() const { return m_credential; }
-    const String& username() const { return m_username; }
-
-private:
-    RTCIceServer(const Vector<String>& urls, const String& credential, const String& username)
-        : m_urls(urls)
-        , m_credential(credential)
-        , m_username(username)
-    { }
-
-    Vector<String> m_urls;
-    String m_credential;
-    String m_username;
+struct RTCIceServer {
+    Variant<String, Vector<String>> urls;
+    String credential;
+    String username;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCIceServer_h
+#endif // ENABLE(WEB_RTC)

@@ -32,7 +32,7 @@ using namespace WTF;
 
 namespace JSC {
 
-const ClassInfo DateInstance::s_info = {"Date", &JSWrapperObject::s_info, 0, CREATE_METHOD_TABLE(DateInstance)};
+const ClassInfo DateInstance::s_info = {"Date", &JSWrapperObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(DateInstance)};
 
 DateInstance::DateInstance(VM& vm, Structure* structure)
     : JSWrapperObject(vm, structure)
@@ -42,14 +42,14 @@ DateInstance::DateInstance(VM& vm, Structure* structure)
 void DateInstance::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     setInternalValue(vm, jsNaN());
 }
 
 void DateInstance::finishCreation(VM& vm, double time)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     setInternalValue(vm, jsNumber(timeClip(time)));
 }
 

@@ -27,19 +27,11 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
 {
     constructor()
     {
-        super("layer-tree", WebInspector.UIString("Layers"), WebInspector.UIString("Layer"));
+        super("layer-tree", WebInspector.UIString("Layers"));
 
         this._dataGridNodesByLayerId = new Map;
 
         this.element.classList.add("layer-tree");
-
-        WebInspector.showShadowDOMSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showShadowDOMSettingChanged, this);
-
-        window.addEventListener("resize", this._windowResized.bind(this));
-
-        this._buildLayerInfoSection();
-        this._buildDataGridSection();
-        this._buildBottomBar();
     }
 
     // DetailsSidebarPanel Overrides.
@@ -49,8 +41,6 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         WebInspector.layerTreeManager.addEventListener(WebInspector.LayerTreeManager.Event.LayerTreeDidChange, this._layerTreeDidChange, this);
 
         console.assert(this.parentSidebar);
-
-        this.needsRefresh();
 
         super.shown();
     }
@@ -62,17 +52,6 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         super.hidden();
     }
 
-    refresh()
-    {
-        if (!this.domNode)
-            return;
-
-        WebInspector.layerTreeManager.layersForNode(this.domNode, function(layerForNode, childLayers) {
-            this._unfilteredChildLayers = childLayers;
-            this._updateDisplayWithLayers(layerForNode, childLayers);
-        }.bind(this));
-    }
-
     // DOMDetailsSidebarPanel Overrides
 
     supportsDOMNode(nodeToInspect)
@@ -80,23 +59,51 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         return WebInspector.layerTreeManager.supported && nodeToInspect.nodeType() === Node.ELEMENT_NODE;
     }
 
+    // Protected
+
+    initialLayout()
+    {
+        super.initialLayout();
+
+        WebInspector.showShadowDOMSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showShadowDOMSettingChanged, this);
+
+        this._buildLayerInfoSection();
+        this._buildDataGridSection();
+        this._buildBottomBar();
+    }
+
+    layout()
+    {
+        super.layout();
+
+        if (!this.domNode)
+            return;
+
+        WebInspector.layerTreeManager.layersForNode(this.domNode, (layerForNode, childLayers) => {
+            this._unfilteredChildLayers = childLayers;
+            this._updateDisplayWithLayers(layerForNode, childLayers);
+        });
+    }
+
+    sizeDidChange()
+    {
+        super.sizeDidChange();
+
+        // FIXME: <https://webkit.org/b/152269> Web Inspector: Convert DetailsSection classes to use View
+        this._childLayersRow.sizeDidChange();
+    }
+
     // Private
 
     _layerTreeDidChange(event)
     {
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _showShadowDOMSettingChanged(event)
     {
         if (this.selected)
             this._updateDisplayWithLayers(this._layerForNode, this._unfilteredChildLayers);
-    }
-
-    _windowResized(event)
-    {
-        if (this._popover && this._popover.visible)
-            this._updatePopoverForSelectedNode();
     }
 
     _buildLayerInfoSection()
@@ -138,14 +145,15 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         columns.memory.width = "70px";
 
         this._dataGrid = new WebInspector.DataGrid(columns);
+        this._dataGrid.inline = true;
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SortChanged, this._sortDataGrid, this);
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._selectedDataGridNodeChanged, this);
 
-        this.sortColumnIdentifierSetting = new WebInspector.Setting("layer-tree-details-sidebar-panel-sort", "memory");
-        this.sortOrderSetting = new WebInspector.Setting("layer-tree-details-sidebar-panel-sort-order", WebInspector.DataGrid.SortOrder.Descending);
+        this._dataGrid.sortColumnIdentifier = "memory";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Descending;
+        this._dataGrid.createSettings("layer-tree-details-sidebar-panel");
 
         var element = this._dataGrid.element;
-        element.classList.add("inline");
         element.addEventListener("focus", this._dataGridGainedFocus.bind(this), false);
         element.addEventListener("blur", this._dataGridLostFocus.bind(this), false);
         element.addEventListener("click", this._dataGridWasClicked.bind(this), false);
@@ -318,10 +326,10 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         if (!dataGridNode)
             return;
 
-        this._contentForPopover(dataGridNode.layer, function(content) {
+        this._contentForPopover(dataGridNode.layer, (content) => {
             if (dataGridNode === this._dataGrid.selectedNode)
                 this._updatePopoverForSelectedNode(content);
-        }.bind(this));
+        });
     }
 
     _updatePopoverForSelectedNode(content)
@@ -331,8 +339,10 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
             return;
 
         var popover = this._popover;
-        if (!popover)
+        if (!popover) {
             popover = this._popover = new WebInspector.Popover;
+            popover.windowResizeHandler = () => { this._updatePopoverForSelectedNode(); };
+        }
 
         var targetFrame = WebInspector.Rect.rectFromClientRect(dataGridNode.element.getBoundingClientRect());
 
@@ -357,7 +367,7 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
 
         var list = content.appendChild(document.createElement("ul"));
 
-        WebInspector.layerTreeManager.reasonsForCompositingLayer(layer, function(compositingReasons) {
+        WebInspector.layerTreeManager.reasonsForCompositingLayer(layer, (compositingReasons) => {
             if (isEmptyObject(compositingReasons)) {
                 callback(content);
                 return;
@@ -366,7 +376,7 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
             this._populateListOfCompositingReasons(list, compositingReasons);
 
             callback(content);
-        }.bind(this));
+        });
 
         return content;
     }
@@ -403,7 +413,7 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         if (compositingReasons.overflowScrollingTouch)
             addReason(WebInspector.UIString("Element has “-webkit-overflow-scrolling: touch” style"));
         if (compositingReasons.stacking)
-            addReason(WebInspector.UIString("Element establishes a stacking context"));
+            addReason(WebInspector.UIString("Element may overlap another compositing element"));
         if (compositingReasons.overlap)
             addReason(WebInspector.UIString("Element overlaps other compositing element"));
         if (compositingReasons.negativeZIndexChildren)

@@ -27,12 +27,12 @@
 #import "AttributedString.h"
 
 #import "ArgumentCodersMac.h"
-#import "ArgumentDecoder.h"
-#import "ArgumentEncoder.h"
+#import "Decoder.h"
+#import "Encoder.h"
 
 namespace WebKit {
 
-void AttributedString::encode(IPC::ArgumentEncoder& encoder) const
+void AttributedString::encode(IPC::Encoder& encoder) const
 {
     encoder << static_cast<bool>(!string);
     if (!string)
@@ -40,7 +40,7 @@ void AttributedString::encode(IPC::ArgumentEncoder& encoder) const
     IPC::encode(encoder, string.get());
 }
 
-bool AttributedString::decode(IPC::ArgumentDecoder& decoder, AttributedString& attributedString)
+bool AttributedString::decode(IPC::Decoder& decoder, AttributedString& attributedString)
 {
     bool isNull;
     if (!decoder.decode(isNull))

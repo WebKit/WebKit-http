@@ -17,36 +17,31 @@ PASS Request interface: attribute cache
 PASS Request interface: attribute redirect 
 PASS Request interface: attribute integrity 
 PASS Request interface: operation clone() 
+FAIL Request interface: attribute body assert_true: The prototype object must have a property "body" expected true got false
 PASS Request interface: attribute bodyUsed 
-FAIL Request interface: operation arrayBuffer() assert_throws: calling operation with this = null didn't throw TypeError function "function () {
-                memberHolderObject[member.n..." did not throw
-FAIL Request interface: operation blob() assert_throws: calling operation with this = null didn't throw TypeError function "function () {
-                memberHolderObject[member.n..." did not throw
-FAIL Request interface: operation formData() assert_throws: calling operation with this = null didn't throw TypeError function "function () {
-                memberHolderObject[member.n..." did not throw
-FAIL Request interface: operation json() assert_throws: calling operation with this = null didn't throw TypeError function "function () {
-                memberHolderObject[member.n..." did not throw
-FAIL Request interface: operation text() assert_throws: calling operation with this = null didn't throw TypeError function "function () {
-                memberHolderObject[member.n..." did not throw
-PASS Request must be primary interface of new Request("") 
-PASS Stringification of new Request("") 
+PASS Request interface: operation arrayBuffer() 
+PASS Request interface: operation blob() 
+FAIL Request interface: operation formData() assert_own_property: interface prototype object missing non-static operation expected property "formData" missing
+PASS Request interface: operation json() 
+PASS Request interface: operation text() 
 PASS Request interface: new Request("") must inherit property "method" with the proper type (0) 
 PASS Request interface: new Request("") must inherit property "url" with the proper type (1) 
 PASS Request interface: new Request("") must inherit property "headers" with the proper type (2) 
 PASS Request interface: new Request("") must inherit property "type" with the proper type (3) 
 PASS Request interface: new Request("") must inherit property "destination" with the proper type (4) 
 PASS Request interface: new Request("") must inherit property "referrer" with the proper type (5) 
-FAIL Request interface: new Request("") must inherit property "referrerPolicy" with the proper type (6) Unrecognized type ReferrerPolicy
+PASS Request interface: new Request("") must inherit property "referrerPolicy" with the proper type (6) 
 PASS Request interface: new Request("") must inherit property "mode" with the proper type (7) 
 PASS Request interface: new Request("") must inherit property "credentials" with the proper type (8) 
 PASS Request interface: new Request("") must inherit property "cache" with the proper type (9) 
 PASS Request interface: new Request("") must inherit property "redirect" with the proper type (10) 
 PASS Request interface: new Request("") must inherit property "integrity" with the proper type (11) 
 PASS Request interface: new Request("") must inherit property "clone" with the proper type (12) 
-PASS Request interface: new Request("") must inherit property "bodyUsed" with the proper type (13) 
-PASS Request interface: new Request("") must inherit property "arrayBuffer" with the proper type (14) 
-PASS Request interface: new Request("") must inherit property "blob" with the proper type (15) 
-PASS Request interface: new Request("") must inherit property "formData" with the proper type (16) 
-PASS Request interface: new Request("") must inherit property "json" with the proper type (17) 
-PASS Request interface: new Request("") must inherit property "text" with the proper type (18) 
+FAIL Request interface: new Request("") must inherit property "body" with the proper type (13) assert_inherits: property "body" not found in prototype chain
+PASS Request interface: new Request("") must inherit property "bodyUsed" with the proper type (14) 
+PASS Request interface: new Request("") must inherit property "arrayBuffer" with the proper type (15) 
+PASS Request interface: new Request("") must inherit property "blob" with the proper type (16) 
+FAIL Request interface: new Request("") must inherit property "formData" with the proper type (17) assert_inherits: property "formData" not found in prototype chain
+PASS Request interface: new Request("") must inherit property "json" with the proper type (18) 
+PASS Request interface: new Request("") must inherit property "text" with the proper type (19) 
 

@@ -36,7 +36,11 @@ namespace JSC { namespace B3 {
 
 bool shouldDumpIR(B3ComplitationMode mode)
 {
+#if ENABLE(FTL_JIT)
     return FTL::verboseCompilationEnabled() || FTL::shouldDumpDisassembly() || shouldDumpIRAtEachPhase(mode);
+#else
+    return shouldDumpIRAtEachPhase(mode);
+#endif
 }
 
 bool shouldDumpIRAtEachPhase(B3ComplitationMode mode)
@@ -64,6 +68,17 @@ bool shouldSaveIRBeforePhase()
 bool shouldMeasurePhaseTiming()
 {
     return Options::logB3PhaseTimes();
+}
+
+std::optional<GPRReg> pinnedExtendedOffsetAddrRegister()
+{
+#if CPU(ARM64)
+    return static_cast<GPRReg>(+MacroAssembler::dataTempRegister);
+#elif CPU(X86_64)
+    return std::nullopt;
+#else
+#error Unhandled architecture.
+#endif
 }
 
 } } // namespace JSC::B3

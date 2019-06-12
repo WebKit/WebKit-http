@@ -2,7 +2,7 @@
  * Copyright (C) 2000 Lars Knoll (knoll@kde.org)
  *           (C) 2000 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2006, 2007, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2006, 2007, 2010, 2011-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Holger Hans Peter Freyther
  *
  * This library is free software; you can redistribute it and/or
@@ -31,7 +31,6 @@
 #include "FontDescription.h"
 #include "Path.h"
 #include "TextFlags.h"
-#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Optional.h>
 #include <wtf/WeakPtr.h>
@@ -112,7 +111,7 @@ public:
     virtual void advance() = 0;
     virtual ~GlyphToPathTranslator() { }
 };
-GlyphToPathTranslator::GlyphUnderlineType computeUnderlineType(const TextRun&, const GlyphBuffer&, int index);
+GlyphToPathTranslator::GlyphUnderlineType computeUnderlineType(const TextRun&, const GlyphBuffer&, unsigned index);
 
 class TextLayoutDeleter {
 public:
@@ -122,7 +121,7 @@ public:
 class FontCascade {
 public:
     WEBCORE_EXPORT FontCascade();
-    WEBCORE_EXPORT FontCascade(const FontCascadeDescription&, float letterSpacing, float wordSpacing);
+    WEBCORE_EXPORT FontCascade(const FontCascadeDescription&, float letterSpacing = 0, float wordSpacing = 0);
     // This constructor is only used if the platform wants to start with a native font.
     WEBCORE_EXPORT FontCascade(const FontPlatformData&, FontSmoothingMode = AutoSmoothing);
 
@@ -137,23 +136,24 @@ public:
     int pixelSize() const { return fontDescription().computedPixelSize(); }
     float size() const { return fontDescription().computedSize(); }
 
-    void update(RefPtr<FontSelector>&&) const;
+    WEBCORE_EXPORT void update(RefPtr<FontSelector>&& = nullptr) const;
 
     enum CustomFontNotReadyAction { DoNotPaintIfFontNotReady, UseFallbackIfFontNotReady };
-    WEBCORE_EXPORT float drawText(GraphicsContext&, const TextRun&, const FloatPoint&, int from = 0, int to = -1, CustomFontNotReadyAction = DoNotPaintIfFontNotReady) const;
-    static void drawGlyphs(GraphicsContext&, const Font&, const GlyphBuffer&, int from, int numGlyphs, const FloatPoint&, FontSmoothingMode);
-    void drawEmphasisMarks(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, int from = 0, int to = -1) const;
+    WEBCORE_EXPORT float drawText(GraphicsContext&, const TextRun&, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt, CustomFontNotReadyAction = DoNotPaintIfFontNotReady) const;
+    static void drawGlyphs(GraphicsContext&, const Font&, const GlyphBuffer&, unsigned from, unsigned numGlyphs, const FloatPoint&, FontSmoothingMode);
+    void drawEmphasisMarks(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt) const;
 
     DashArray dashesForIntersectionsWithRect(const TextRun&, const FloatPoint& textOrigin, const FloatRect& lineExtents) const;
 
+    float widthOfTextRange(const TextRun&, unsigned from, unsigned to, HashSet<const Font*>* fallbackFonts = 0, float* outWidthBeforeRange = nullptr, float* outWidthAfterRange = nullptr) const;
     WEBCORE_EXPORT float width(const TextRun&, HashSet<const Font*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
-    float width(const TextRun&, int& charsConsumed, String& glyphName) const;
+    float widthForSimpleText(StringView text) const;
 
     std::unique_ptr<TextLayout, TextLayoutDeleter> createLayout(RenderText&, float xPos, bool collapseWhiteSpace) const;
     static float width(TextLayout&, unsigned from, unsigned len, HashSet<const Font*>* fallbackFonts = 0);
 
     int offsetForPosition(const TextRun&, float position, bool includePartialGlyphs) const;
-    void adjustSelectionRectForText(const TextRun&, LayoutRect& selectionRect, int from = 0, int to = -1) const;
+    void adjustSelectionRectForText(const TextRun&, LayoutRect& selectionRect, unsigned from = 0, std::optional<unsigned> to = std::nullopt) const;
 
     bool isSmallCaps() const { return m_fontDescription.variantCaps() == FontVariantCaps::Small; }
 
@@ -172,8 +172,8 @@ public:
     unsigned familyCount() const { return m_fontDescription.familyCount(); }
     const AtomicString& familyAt(unsigned i) const { return m_fontDescription.familyAt(i); }
 
-    FontItalic italic() const { return m_fontDescription.italic(); }
-    FontWeight weight() const { return m_fontDescription.weight(); }
+    FontSelectionValue italic() const { return m_fontDescription.italic(); }
+    FontSelectionValue weight() const { return m_fontDescription.weight(); }
     FontWidthVariant widthVariant() const { return m_fontDescription.widthVariant(); }
 
     bool isPlatformFont() const { return m_fonts->isForPlatformFont(); }
@@ -192,10 +192,8 @@ public:
     const Font& primaryFont() const;
     const FontRanges& fallbackRangesAt(unsigned) const;
     GlyphData glyphDataForCharacter(UChar32, bool mirror, FontVariant = AutoVariant) const;
-    
-#if PLATFORM(COCOA)
+
     const Font* fontForCombiningCharacterSequence(const UChar*, size_t length) const;
-#endif
 
     static bool isCJKIdeograph(UChar32);
     static bool isCJKIdeographOrSymbol(UChar32);
@@ -210,9 +208,6 @@ public:
     // ("Leading" means "left" and "Trailing" means "right.")
     static bool leadingExpansionOpportunity(const StringView&, TextDirection);
     static bool trailingExpansionOpportunity(const StringView&, TextDirection);
-
-    WEBCORE_EXPORT static void setAntialiasedFontDilationEnabled(bool);
-    WEBCORE_EXPORT static bool antialiasedFontDilationEnabled();
 
     WEBCORE_EXPORT static void setShouldUseSmoothing(bool);
     WEBCORE_EXPORT static bool shouldUseSmoothing();
@@ -234,39 +229,39 @@ public:
 private:
     enum ForTextEmphasisOrNot { NotForTextEmphasis, ForTextEmphasis };
 
-    float glyphBufferForTextRun(CodePath, const TextRun&, int from, int to, GlyphBuffer&) const;
+    float glyphBufferForTextRun(CodePath, const TextRun&, unsigned from, unsigned to, GlyphBuffer&) const;
     // Returns the initial in-stream advance.
-    float getGlyphsAndAdvancesForSimpleText(const TextRun&, int from, int to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
-    void drawEmphasisMarksForSimpleText(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, int from, int to) const;
-    void drawGlyphBuffer(GraphicsContext&, const TextRun&, const GlyphBuffer&, FloatPoint&) const;
-    void drawEmphasisMarks(GraphicsContext&, const TextRun&, const GlyphBuffer&, const AtomicString&, const FloatPoint&) const;
+    float getGlyphsAndAdvancesForSimpleText(const TextRun&, unsigned from, unsigned to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
+    void drawEmphasisMarksForSimpleText(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from, unsigned to) const;
+    void drawGlyphBuffer(GraphicsContext&, const GlyphBuffer&, FloatPoint&, CustomFontNotReadyAction) const;
+    void drawEmphasisMarks(GraphicsContext&, const GlyphBuffer&, const AtomicString&, const FloatPoint&) const;
     float floatWidthForSimpleText(const TextRun&, HashSet<const Font*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
     int offsetForPositionForSimpleText(const TextRun&, float position, bool includePartialGlyphs) const;
-    void adjustSelectionRectForSimpleText(const TextRun&, LayoutRect& selectionRect, int from, int to) const;
+    void adjustSelectionRectForSimpleText(const TextRun&, LayoutRect& selectionRect, unsigned from, unsigned to) const;
 
-    Optional<GlyphData> getEmphasisMarkGlyphData(const AtomicString&) const;
+    std::optional<GlyphData> getEmphasisMarkGlyphData(const AtomicString&) const;
 
     static bool canReturnFallbackFontsForComplexText();
     static bool canExpandAroundIdeographsInComplexText();
 
-    // Returns the initial in-stream advance.
-    float getGlyphsAndAdvancesForComplexText(const TextRun&, int from, int to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
 #if PLATFORM(QT)
     void drawComplexText(GraphicsContext&, const TextRun&, const FloatPoint&, int from, int to) const;
 #endif
-    void drawEmphasisMarksForComplexText(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, int from, int to) const;
+
+    // Returns the initial in-stream advance.
+    float getGlyphsAndAdvancesForComplexText(const TextRun&, unsigned from, unsigned to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
+    void drawEmphasisMarksForComplexText(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from, unsigned to) const;
     float floatWidthForComplexText(const TextRun&, HashSet<const Font*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
     int offsetForPositionForComplexText(const TextRun&, float position, bool includePartialGlyphs) const;
-    void adjustSelectionRectForComplexText(const TextRun&, LayoutRect& selectionRect, int from, int to) const;
+    void adjustSelectionRectForComplexText(const TextRun&, LayoutRect& selectionRect, unsigned from, unsigned to) const;
 
-    static std::pair<unsigned, bool> expansionOpportunityCountInternal(const LChar*, size_t length, TextDirection, ExpansionBehavior);
-    static std::pair<unsigned, bool> expansionOpportunityCountInternal(const UChar*, size_t length, TextDirection, ExpansionBehavior);
+    static std::pair<unsigned, bool> expansionOpportunityCountInternal(const LChar*, unsigned length, TextDirection, ExpansionBehavior);
+    static std::pair<unsigned, bool> expansionOpportunityCountInternal(const UChar*, unsigned length, TextDirection, ExpansionBehavior);
 
     friend struct WidthIterator;
-    friend class SVGTextRunRenderingContext;
 
 public:
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     bool equalForTextAutoSizing(const FontCascade& other) const
     {
         return m_fontDescription.equalForTextAutoSizing(other.m_fontDescription)
@@ -344,6 +339,8 @@ private:
 #if PLATFORM(QT)
     void initFormatForTextLayout(QTextLayout*, const TextRun&) const;
 #endif
+
+    static int syntheticObliqueAngle() { return 14; }
 
     FontCascadeDescription m_fontDescription;
     mutable RefPtr<FontCascadeFonts> m_fonts;

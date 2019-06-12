@@ -24,7 +24,7 @@
  */
 
 .sidebar > .panel.details.layer-tree > .content {
-    bottom: 28px;
+    bottom: var(--console-prompt-min-height);
 }
 
 .panel.details.layer-tree .data-grid {
@@ -57,6 +57,7 @@
     position: absolute;
     display: flex;
     bottom: 0;
+    height: var(--console-prompt-min-height);
     width: 100%;
     border-top: 1px solid var(--border-color);
     background-color: white;
@@ -80,17 +81,32 @@
 }
 
 .layer-tree-popover {
+    max-width: 300px;
     padding: 5px;
 }
 
 .layer-tree-popover p {
     margin: 0;
+    font-size: 1.1em;
+    font-weight: bold;
 }
 
 .layer-tree-popover ul {
-    list-style-type: none;
-    margin: 10px 0 0 0;
-    padding-left: 10px;
+    margin: 10px 0 0;
+    padding: 0;
+
+    --layer-tree-popover-ul-margin-start: 1em;
+    --layer-tree-popover-ul-padding-start: 1em;
+}
+
+body[dir=ltr] .layer-tree-popover ul {
+    margin-left: var(--layer-tree-popover-ul-margin-start);
+    padding-left: var(--layer-tree-popover-ul-padding-start);
+}
+
+body[dir=rtl] .layer-tree-popover ul {
+    margin-right: var(--layer-tree-popover-ul-margin-start);
+    padding-right: var(--layer-tree-popover-ul-padding-start);
 }
 
 .layer-tree-popover li {

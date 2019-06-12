@@ -1,5 +1,5 @@
 // Copyright (c) 2001-2010, Purdue University. All rights reserved.
-// Copyright (C) 2015 Apple Inc. All rights reserved.
+// Copyright (C) 2015-2016 Apple Inc. All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -23,12 +23,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-function benchmark() {
-    var verbosity = 0;
-    var numAircraft = 1000;
-    var numFrames = 200;
-    var expectedCollisions = 14484;
-    var percentile = 95;
+function benchmarkImpl(configuration) {
+    var verbosity = configuration.verbosity;
+    var numAircraft = configuration.numAircraft;
+    var numFrames = configuration.numFrames;
+    var expectedCollisions = configuration.expectedCollisions;
+    var percentile = configuration.percentile;
+    var exclude = configuration.exclude;
 
     var simulator = new Simulator(numAircraft);
     var detector = new CollisionDetector();
@@ -47,9 +48,13 @@ function benchmark() {
             numCollisions: collisions.length
         };
         if (verbosity >= 2)
+            print("CDjs: " + result.time);
+        if (verbosity >= 3)
             result.collisions = collisions;
         results.push(result);
     }
+    
+    results.splice(0, exclude);
 
     if (verbosity >= 1) {
         for (var i = 0; i < results.length; ++i) {
@@ -78,3 +83,37 @@ function benchmark() {
     
     return averageAbovePercentile(times, percentile);
 }
+
+function benchmark() {
+    return benchmarkImpl({
+        verbosity: 0,
+        numAircraft: 1000,
+        numFrames: 200,
+        expectedCollisions: 14484,
+        percentile: 95,
+        exclude: 0
+    });
+}
+
+function longBenchmark() {
+    return benchmarkImpl({
+        verbosity: 0,
+        numAircraft: 1000,
+        numFrames: 20000,
+        expectedCollisions: 697299,
+        percentile: 99.5,
+        exclude: 0
+    });
+}
+
+function largeBenchmark() {
+    return benchmarkImpl({
+        verbosity: 1,
+        numAircraft: 20000,
+        numFrames: 110,
+        expectedCollisions: 7316,
+        percentile: 97,
+        exclude: 10
+    });
+}
+

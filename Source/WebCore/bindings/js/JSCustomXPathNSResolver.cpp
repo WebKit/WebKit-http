@@ -26,15 +26,15 @@
 #include "config.h"
 #include "JSCustomXPathNSResolver.h"
 
+#include "CommonVM.h"
+#include "DOMWindow.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
+#include "JSDOMExceptionHandling.h"
 #include "JSDOMWindowCustom.h"
 #include "JSMainThreadExecState.h"
 #include "Page.h"
 #include "PageConsoleClient.h"
-#include "SecurityOrigin.h"
-#include <profiler/Profile.h>
 #include <runtime/JSLock.h>
 #include <wtf/Ref.h>
 
@@ -42,23 +42,21 @@ namespace WebCore {
 
 using namespace JSC;
 
-RefPtr<JSCustomXPathNSResolver> JSCustomXPathNSResolver::create(ExecState* exec, JSValue value)
+ExceptionOr<Ref<JSCustomXPathNSResolver>> JSCustomXPathNSResolver::create(ExecState& state, JSValue value)
 {
     if (value.isUndefinedOrNull())
-        return nullptr;
+        return Exception { TypeError };
 
-    JSObject* resolverObject = value.getObject();
-    if (!resolverObject) {
-        setDOMException(exec, TYPE_MISMATCH_ERR);
-        return nullptr;
-    }
+    auto* resolverObject = value.getObject();
+    if (!resolverObject)
+        return Exception { TYPE_MISMATCH_ERR };
 
-    return adoptRef(*new JSCustomXPathNSResolver(exec, resolverObject, asJSDOMWindow(exec->vmEntryGlobalObject())));
+    return adoptRef(*new JSCustomXPathNSResolver(state.vm(), resolverObject, asJSDOMWindow(state.vmEntryGlobalObject())));
 }
 
-JSCustomXPathNSResolver::JSCustomXPathNSResolver(ExecState* exec, JSObject* customResolver, JSDOMWindow* globalObject)
-    : m_customResolver(exec->vm(), customResolver)
-    , m_globalObject(exec->vm(), globalObject)
+JSCustomXPathNSResolver::JSCustomXPathNSResolver(VM& vm, JSObject* customResolver, JSDOMWindow* globalObject)
+    : m_customResolver(vm, customResolver)
+    , m_globalObject(vm, globalObject)
 {
 }
 
@@ -70,16 +68,16 @@ String JSCustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
 {
     ASSERT(m_customResolver);
 
-    JSLockHolder lock(JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
 
     ExecState* exec = m_globalObject->globalExec();
         
     JSValue function = m_customResolver->get(exec, Identifier::fromString(exec, "lookupNamespaceURI"));
     CallData callData;
     CallType callType = getCallData(function, callData);
-    if (callType == CallTypeNone) {
+    if (callType == CallType::None) {
         callType = m_customResolver->methodTable()->getCallData(m_customResolver.get(), callData);
-        if (callType == CallTypeNone) {
+        if (callType == CallType::None) {
             if (PageConsoleClient* console = m_globalObject->wrapped().console())
                 console->addMessage(MessageSource::JS, MessageLevel::Error, ASCIILiteral("XPathNSResolver does not have a lookupNamespaceURI method."));
             return String();
@@ -87,12 +85,12 @@ String JSCustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
         function = m_customResolver.get();
     }
 
-    Ref<JSCustomXPathNSResolver> selfProtector(*this);
+    Ref<JSCustomXPathNSResolver> protectedThis(*this);
 
     MarkedArgumentBuffer args;
     args.append(jsStringWithCache(exec, prefix));
 
-    NakedPtr<Exception> exception;
+    NakedPtr<JSC::Exception> exception;
     JSValue retval = JSMainThreadExecState::call(exec, function, callType, callData, m_customResolver.get(), args, exception);
 
     String result;
@@ -100,7 +98,7 @@ String JSCustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
         reportException(exec, exception);
     else {
         if (!retval.isUndefinedOrNull())
-            result = retval.toString(exec)->value(exec);
+            result = retval.toWTFString(exec);
     }
 
     return result;

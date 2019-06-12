@@ -27,22 +27,20 @@
 #include "config.h"
 #include "CompositionEvent.h"
 
-#include "EventNames.h"
-
 namespace WebCore {
 
 CompositionEvent::CompositionEvent()
 {
 }
 
-CompositionEvent::CompositionEvent(const AtomicString& type, AbstractView* view, const String& data)
+CompositionEvent::CompositionEvent(const AtomicString& type, DOMWindow* view, const String& data)
     : UIEvent(type, true, true, view, 0)
     , m_data(data)
 {
 }
 
-CompositionEvent::CompositionEvent(const AtomicString& type, const CompositionEventInit& initializer)
-    : UIEvent(type, initializer)
+CompositionEvent::CompositionEvent(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : UIEvent(type, initializer, isTrusted)
     , m_data(initializer.data)
 {
 }
@@ -51,7 +49,7 @@ CompositionEvent::~CompositionEvent()
 {
 }
 
-void CompositionEvent::initCompositionEvent(const AtomicString& type, bool canBubble, bool cancelable, AbstractView* view, const String& data)
+void CompositionEvent::initCompositionEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow* view, const String& data)
 {
     if (dispatched())
         return;
@@ -64,6 +62,11 @@ void CompositionEvent::initCompositionEvent(const AtomicString& type, bool canBu
 EventInterface CompositionEvent::eventInterface() const
 {
     return CompositionEventInterfaceType;
+}
+
+bool CompositionEvent::isCompositionEvent() const
+{
+    return true;
 }
 
 } // namespace WebCore

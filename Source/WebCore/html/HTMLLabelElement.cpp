@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "FormAssociatedElement.h"
+#include "HTMLFormControlElement.h"
 #include "HTMLNames.h"
 
 namespace WebCore {
@@ -57,31 +58,28 @@ Ref<HTMLLabelElement> HTMLLabelElement::create(const QualifiedName& tagName, Doc
     return adoptRef(*new HTMLLabelElement(tagName, document));
 }
 
-bool HTMLLabelElement::isFocusable() const
+LabelableElement* HTMLLabelElement::control() const
 {
-    return false;
-}
-
-LabelableElement* HTMLLabelElement::control()
-{
-    const AtomicString& controlId = fastGetAttribute(forAttr);
+    auto& controlId = attributeWithoutSynchronization(forAttr);
     if (controlId.isNull()) {
         // Search the children and descendants of the label element for a form element.
         // per http://dev.w3.org/html5/spec/Overview.html#the-label-element
         // the form element must be "labelable form-associated element".
         for (auto& labelableElement : descendantsOfType<LabelableElement>(*this)) {
             if (labelableElement.supportLabels())
-                return &labelableElement;
+                return const_cast<LabelableElement*>(&labelableElement);
         }
         return nullptr;
     }
-    
-    return inDocument() ? firstElementWithIdIfLabelable(treeScope(), controlId) : nullptr;
+    return isConnected() ? firstElementWithIdIfLabelable(treeScope(), controlId) : nullptr;
 }
 
 HTMLFormElement* HTMLLabelElement::form() const
 {
-    return FormAssociatedElement::findAssociatedForm(this, 0);
+    auto* control = this->control();
+    if (!is<HTMLFormControlElement>(control))
+        return nullptr;
+    return downcast<HTMLFormControlElement>(*control).form();
 }
 
 void HTMLLabelElement::setActive(bool down, bool pause)
@@ -93,7 +91,7 @@ void HTMLLabelElement::setActive(bool down, bool pause)
     HTMLElement::setActive(down, pause);
 
     // Also update our corresponding control.
-    if (HTMLElement* element = control())
+    if (auto* element = control())
         element->setActive(down, pause);
 }
 
@@ -106,26 +104,26 @@ void HTMLLabelElement::setHovered(bool over)
     HTMLElement::setHovered(over);
 
     // Also update our corresponding control.
-    if (HTMLElement* element = control())
+    if (auto* element = control())
         element->setHovered(over);
 }
 
-void HTMLLabelElement::defaultEventHandler(Event* evt)
+void HTMLLabelElement::defaultEventHandler(Event& event)
 {
     static bool processingClick = false;
 
-    if (evt->type() == eventNames().clickEvent && !processingClick) {
-        RefPtr<HTMLElement> element = control();
+    if (event.type() == eventNames().clickEvent && !processingClick) {
+        RefPtr<LabelableElement> element = control();
 
         // If we can't find a control or if the control received the click
         // event, then there's no need for us to do anything.
-        if (!element || (evt->target() && element->containsIncludingShadowDOM(evt->target()->toNode())))
+        if (!element || (event.target() && element->containsIncludingShadowDOM(event.target()->toNode())))
             return;
 
         processingClick = true;
 
         // Click the corresponding control.
-        element->dispatchSimulatedClick(evt);
+        element->dispatchSimulatedClick(&event);
 
         document().updateLayoutIgnorePendingStylesheets();
         if (element->isMouseFocusable())
@@ -133,27 +131,37 @@ void HTMLLabelElement::defaultEventHandler(Event* evt)
 
         processingClick = false;
         
-        evt->setDefaultHandled();
+        event.setDefaultHandled();
     }
     
-    HTMLElement::defaultEventHandler(evt);
+    HTMLElement::defaultEventHandler(event);
 }
 
 bool HTMLLabelElement::willRespondToMouseClickEvents()
 {
-    return (control() && control()->willRespondToMouseClickEvents()) || HTMLElement::willRespondToMouseClickEvents();
+    auto* element = control();
+    return (element && element->willRespondToMouseClickEvents()) || HTMLElement::willRespondToMouseClickEvents();
 }
 
-void HTMLLabelElement::focus(bool, FocusDirection direction)
+void HTMLLabelElement::focus(bool restorePreviousSelection, FocusDirection direction)
 {
-    // to match other browsers, always restore previous selection
-    if (HTMLElement* element = control())
+    if (document().haveStylesheetsLoaded()) {
+        document().updateLayout();
+        if (isFocusable()) {
+            // The value of restorePreviousSelection is not used for label elements as it doesn't override updateFocusAppearance.
+            Element::focus(restorePreviousSelection, direction);
+            return;
+        }
+    }
+
+    // To match other browsers, always restore previous selection.
+    if (auto* element = control())
         element->focus(true, direction);
 }
 
 void HTMLLabelElement::accessKeyAction(bool sendMouseEvents)
 {
-    if (HTMLElement* element = control())
+    if (auto* element = control())
         element->accessKeyAction(sendMouseEvents);
     else
         HTMLElement::accessKeyAction(sendMouseEvents);

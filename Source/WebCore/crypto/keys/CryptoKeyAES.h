@@ -23,20 +23,45 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoKeyAES_h
-#define CryptoKeyAES_h
+#pragma once
 
 #include "CryptoAlgorithmIdentifier.h"
 #include "CryptoKey.h"
+#include "ExceptionOr.h"
+#include <wtf/Function.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace WebCore {
 
+class CryptoAlgorithmParameters;
+
+struct JsonWebKey;
+
+class AesKeyAlgorithm final : public KeyAlgorithm {
+public:
+    AesKeyAlgorithm(const String& name, size_t length)
+        : KeyAlgorithm(name)
+        , m_length(length)
+    {
+    }
+
+    KeyAlgorithmClass keyAlgorithmClass() const final { return KeyAlgorithmClass::AES; }
+
+    size_t length() const { return m_length; }
+
+private:
+    size_t m_length;
+};
+
 class CryptoKeyAES final : public CryptoKey {
 public:
-    static Ref<CryptoKeyAES> create(CryptoAlgorithmIdentifier algorithm, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsage usage)
+    static const int s_length128 = 128;
+    static const int s_length192 = 192;
+    static const int s_length256 = 256;
+
+    static Ref<CryptoKeyAES> create(CryptoAlgorithmIdentifier algorithm, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsageBitmap usage)
     {
         return adoptRef(*new CryptoKeyAES(algorithm, key, extractable, usage));
     }
@@ -44,17 +69,24 @@ public:
 
     static bool isValidAESAlgorithm(CryptoAlgorithmIdentifier);
 
-    static RefPtr<CryptoKeyAES> generate(CryptoAlgorithmIdentifier, size_t lengthBits, bool extractable, CryptoKeyUsage);
+    static RefPtr<CryptoKeyAES> generate(CryptoAlgorithmIdentifier, size_t lengthBits, bool extractable, CryptoKeyUsageBitmap);
+    static RefPtr<CryptoKeyAES> importRaw(CryptoAlgorithmIdentifier, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
+    using CheckAlgCallback = Function<bool(size_t, const String&)>;
+    static RefPtr<CryptoKeyAES> importJwk(CryptoAlgorithmIdentifier, JsonWebKey&&, bool extractable, CryptoKeyUsageBitmap, CheckAlgCallback&&);
 
-    virtual CryptoKeyClass keyClass() const override { return CryptoKeyClass::AES; }
+    CryptoKeyClass keyClass() const final { return CryptoKeyClass::AES; }
 
     const Vector<uint8_t>& key() const { return m_key; }
+    JsonWebKey exportJwk() const;
+
+    static ExceptionOr<size_t> getKeyLength(const CryptoAlgorithmParameters&);
 
 private:
-    CryptoKeyAES(CryptoAlgorithmIdentifier, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsage);
+    CryptoKeyAES(CryptoAlgorithmIdentifier, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsageBitmap);
+    CryptoKeyAES(CryptoAlgorithmIdentifier, Vector<uint8_t>&& key, bool extractable, CryptoKeyUsageBitmap);
 
-    virtual void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const override;
-    virtual std::unique_ptr<CryptoKeyData> exportData() const override;
+    std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
+    std::unique_ptr<CryptoKeyData> exportData() const final;
 
     Vector<uint8_t> m_key;
 };
@@ -63,6 +95,6 @@ private:
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(CryptoKeyAES, CryptoKeyClass::AES)
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+SPECIALIZE_TYPE_TRAITS_KEY_ALGORITHM(AesKeyAlgorithm, KeyAlgorithmClass::AES)
 
-#endif // CryptoKeyAES_h
+#endif // ENABLE(SUBTLE_CRYPTO)

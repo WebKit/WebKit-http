@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorAgentBase_h
-#define InspectorAgentBase_h
+#pragma once
 
 #include <wtf/text/WTFString.h>
 
@@ -71,6 +70,7 @@ public:
 
     virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) = 0;
     virtual void willDestroyFrontendAndBackend(DisconnectReason) = 0;
+    virtual void discardValues() { }
     virtual void discardAgent() { }
 
 protected:
@@ -83,5 +83,3 @@ protected:
 };
 
 } // namespace Inspector
-
-#endif // !defined(InspectorAgentBase_h)

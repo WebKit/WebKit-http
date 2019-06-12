@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 Nikolas Zimmermann <zimmermann@kde.org>
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -18,48 +19,56 @@
  *
  */
 
-#ifndef ScriptElement_h
-#define ScriptElement_h
+#pragma once
 
-#include "CachedResourceClient.h"
-#include "CachedResourceHandle.h"
-#include "Timer.h"
+#include "ContainerNode.h"
+#include "LoadableScript.h"
 #include <wtf/text/TextPosition.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class CachedScript;
 class ContainerNode;
 class Element;
-class ScriptElement;
+class LoadableModuleScript;
+class PendingScript;
 class ScriptSourceCode;
+class URL;
 
-class ScriptElement : private CachedResourceClient {
+class ScriptElement {
 public:
-    virtual ~ScriptElement();
+    virtual ~ScriptElement() { }
 
     Element& element() { return m_element; }
     const Element& element() const { return m_element; }
 
     enum LegacyTypeSupport { DisallowLegacyTypeInTypeAttribute, AllowLegacyTypeInTypeAttribute };
-    bool prepareScript(const TextPosition& scriptStartPosition = TextPosition::minimumPosition(), LegacyTypeSupport = DisallowLegacyTypeInTypeAttribute);
+    bool prepareScript(const TextPosition& scriptStartPosition = TextPosition(), LegacyTypeSupport = DisallowLegacyTypeInTypeAttribute);
 
     String scriptCharset() const { return m_characterEncoding; }
-    String scriptContent() const;
-    void executeScript(const ScriptSourceCode&);
-    void execute(CachedScript*);
+    WEBCORE_EXPORT String scriptContent() const;
+    void executeClassicScript(const ScriptSourceCode&);
+    void executeModuleScript(LoadableModuleScript&);
+
+    void executePendingScript(PendingScript&);
 
     // XML parser calls these
     virtual void dispatchLoadEvent() = 0;
     void dispatchErrorEvent();
-    bool isScriptTypeSupported(LegacyTypeSupport) const;
 
     bool haveFiredLoadEvent() const { return m_haveFiredLoad; }
     bool willBeParserExecuted() const { return m_willBeParserExecuted; }
     bool readyToBeParserExecuted() const { return m_readyToBeParserExecuted; }
     bool willExecuteWhenDocumentFinishedParsing() const { return m_willExecuteWhenDocumentFinishedParsing; }
-    CachedResourceHandle<CachedScript> cachedScript() { return m_cachedScript; }
+    bool willExecuteInOrder() const { return m_willExecuteInOrder; }
+    LoadableScript* loadableScript() { return m_loadableScript.get(); }
+
+    // https://html.spec.whatwg.org/multipage/scripting.html#concept-script-type
+    enum class ScriptType { Classic, Module };
+    ScriptType scriptType() const { return m_isModuleScript ? ScriptType::Module : ScriptType::Classic; }
+
+    void ref();
+    void deref();
 
 protected:
     ScriptElement(Element&, bool createdByParser, bool isEvaluated);
@@ -72,18 +81,19 @@ protected:
     // Helper functions used by our parent classes.
     bool shouldCallFinishedInsertingSubtree(ContainerNode&);
     void finishedInsertingSubtree();
-    void childrenChanged();
-    void handleSourceAttribute(const String& sourceUrl);
+    void childrenChanged(const ContainerNode::ChildChange&);
+    void handleSourceAttribute(const String& sourceURL);
     void handleAsyncAttribute();
 
 private:
+    void executeScriptAndDispatchEvent(LoadableScript&);
+
+    std::optional<ScriptType> determineScriptType(LegacyTypeSupport) const;
     bool ignoresLoadRequest() const;
     bool isScriptForEventSupported() const;
 
-    bool requestScript(const String& sourceUrl);
-    void stopLoadRequest();
-
-    virtual void notifyFinished(CachedResource*) override;
+    bool requestClassicScript(const String& sourceURL);
+    bool requestModuleScript(const TextPosition& scriptStartPosition);
 
     virtual String sourceAttributeValue() const = 0;
     virtual String charsetAttributeValue() const = 0;
@@ -91,12 +101,12 @@ private:
     virtual String languageAttributeValue() const = 0;
     virtual String forAttributeValue() const = 0;
     virtual String eventAttributeValue() const = 0;
-    virtual bool asyncAttributeValue() const = 0;
-    virtual bool deferAttributeValue() const = 0;
+    virtual bool hasAsyncAttribute() const = 0;
+    virtual bool hasDeferAttribute() const = 0;
     virtual bool hasSourceAttribute() const = 0;
+    virtual bool hasNoModuleAttribute() const = 0;
 
     Element& m_element;
-    CachedResourceHandle<CachedScript> m_cachedScript;
     WTF::OrdinalNumber m_startLineNumber;
     bool m_parserInserted : 1;
     bool m_isExternalScript : 1;
@@ -107,13 +117,14 @@ private:
     bool m_willExecuteWhenDocumentFinishedParsing : 1;
     bool m_forceAsync : 1;
     bool m_willExecuteInOrder : 1;
-    bool m_requestUsesAccessControl : 1;
+    bool m_isModuleScript : 1;
     String m_characterEncoding;
     String m_fallbackCharacterEncoding;
+    RefPtr<LoadableScript> m_loadableScript;
 };
 
-ScriptElement* toScriptElementIfPossible(Element*);
+// FIXME: replace with is/downcast<ScriptElement>.
+bool isScriptElement(Element&);
+ScriptElement& downcastScriptElement(Element&);
 
 }
-
-#endif

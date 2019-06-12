@@ -2,8 +2,8 @@
 <html>
 <head>
 <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">
-<script type="text/javascript" src="../../http/tests/inspector/resources/inspector-test.js"></script>
-<script type="text/javascript" src="./resources/timeline-helper.js"></script>
+<script src="../../http/tests/inspector/resources/inspector-test.js"></script>
+<script src="./resources/timeline-helper.js"></script>
 <script>
 function installTimer()
 {
@@ -50,7 +50,7 @@ function test()
     });
 
     function checkIfExceptionLoopsForever() {
-        WebInspector.runtimeManager.evaluateInInspectedWindow("({}).x.x", "test", true, true, false, false, false, function(result, wasThrown) {
+        WebInspector.runtimeManager.evaluateInInspectedWindow("({}).x.x", {objectGroup: "test", includeCommandLineAPI: true, doNotPauseOnExceptionsAndMuteConsole: true}, function(result, wasThrown) {
             InspectorTest.addResult("An exception was " + (wasThrown ? "" : "not ") + "thrown from the injected script.");
             WebInspector.debuggerManager.resume().then(function() {
                 InspectorTest.addResult("Debugger resumed; stopping timeline capture.");

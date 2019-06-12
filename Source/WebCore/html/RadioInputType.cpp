@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2011, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -31,7 +31,6 @@
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "NodeTraversal.h"
-#include "Settings.h"
 #include "SpatialNavigation.h"
 
 namespace WebCore {
@@ -53,17 +52,17 @@ String RadioInputType::valueMissingText() const
     return validationMessageValueMissingForRadioText();
 }
 
-void RadioInputType::handleClickEvent(MouseEvent* event)
+void RadioInputType::handleClickEvent(MouseEvent& event)
 {
-    event->setDefaultHandled();
+    event.setDefaultHandled();
 }
 
-void RadioInputType::handleKeydownEvent(KeyboardEvent* event)
+void RadioInputType::handleKeydownEvent(KeyboardEvent& event)
 {
     BaseCheckableInputType::handleKeydownEvent(event);
-    if (event->defaultHandled())
+    if (event.defaultHandled())
         return;
-    const String& key = event->keyIdentifier();
+    const String& key = event.keyIdentifier();
     if (key != "Up" && key != "Down" && key != "Left" && key != "Right")
         return;
 
@@ -91,16 +90,16 @@ void RadioInputType::handleKeydownEvent(KeyboardEvent* event)
             break;
         if (inputElement->isRadioButton() && inputElement->name() == element().name() && inputElement->isFocusable()) {
             element().document().setFocusedElement(inputElement.get());
-            inputElement->dispatchSimulatedClick(event, SendNoEvents, DoNotShowPressedLook);
-            event->setDefaultHandled();
+            inputElement->dispatchSimulatedClick(&event, SendNoEvents, DoNotShowPressedLook);
+            event.setDefaultHandled();
             return;
         }
     }
 }
 
-void RadioInputType::handleKeyupEvent(KeyboardEvent* event)
+void RadioInputType::handleKeyupEvent(KeyboardEvent& event)
 {
-    const String& key = event->keyIdentifier();
+    const String& key = event.keyIdentifier();
     if (key != "U+0020")
         return;
     // If an unselected radio is tabbed into (because the entire group has nothing
@@ -110,7 +109,7 @@ void RadioInputType::handleKeyupEvent(KeyboardEvent* event)
     dispatchSimulatedClickIfActive(event);
 }
 
-bool RadioInputType::isKeyboardFocusable(KeyboardEvent* event) const
+bool RadioInputType::isKeyboardFocusable(KeyboardEvent& event) const
 {
     if (!InputType::isKeyboardFocusable(event))
         return false;
@@ -151,13 +150,6 @@ void RadioInputType::willDispatchClick(InputElementClickState& state)
     state.checked = element().checked();
     state.checkedRadioButton = element().checkedRadioButtonForGroup();
 
-#if PLATFORM(IOS)
-    state.indeterminate = element().indeterminate();
-
-    if (element().indeterminate())
-        element().setIndeterminate(false);
-#endif
-
     element().setChecked(true, DispatchChangeEvent);
 }
 
@@ -173,11 +165,6 @@ void RadioInputType::didDispatchClick(Event* event, const InputElementClickState
                 && checkedRadioButton->name() == element().name()) {
             checkedRadioButton->setChecked(true);
         }
-
-#if PLATFORM(IOS)        
-        element().setIndeterminate(state.indeterminate);
-#endif
-
     }
 
     // The work we did in willDispatchClick was default handling.
@@ -189,13 +176,12 @@ bool RadioInputType::isRadioButton() const
     return true;
 }
 
-bool RadioInputType::supportsIndeterminateAppearance() const
+bool RadioInputType::matchesIndeterminatePseudoClass() const
 {
-#if PLATFORM(IOS)
-    return true;
-#else
-    return false;
-#endif
+    const HTMLInputElement& element = this->element();
+    if (const RadioButtonGroups* radioButtonGroups = element.radioButtonGroups())
+        return !radioButtonGroups->hasCheckedButton(&element);
+    return !element.checked();
 }
 
 } // namespace WebCore

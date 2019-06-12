@@ -20,8 +20,7 @@
 
 */
 
-#ifndef TextResourceDecoder_h
-#define TextResourceDecoder_h
+#pragma once
 
 #include "TextEncoding.h"
 #include <wtf/RefCounted.h>
@@ -51,6 +50,8 @@ public:
 
     void setEncoding(const TextEncoding&, EncodingSource);
     const TextEncoding& encoding() const { return m_encoding; }
+
+    bool hasEqualEncodingForCharset(const String&) const;
 
     WEBCORE_EXPORT String decode(const char* data, size_t length);
     WEBCORE_EXPORT String flush();
@@ -98,6 +99,4 @@ private:
     std::unique_ptr<HTMLMetaCharsetParser> m_charsetParser;
 };
 
-}
-
-#endif
+} // namespace WebCore

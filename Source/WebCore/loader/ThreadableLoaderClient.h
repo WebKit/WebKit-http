@@ -28,14 +28,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThreadableLoaderClient_h
-#define ThreadableLoaderClient_h
-
+#pragma once
 
 namespace WebCore {
 
     class ResourceError;
     class ResourceResponse;
+    class ResourceTiming;
 
     class ThreadableLoaderClient {
         WTF_MAKE_NONCOPYABLE(ThreadableLoaderClient); WTF_MAKE_FAST_ALLOCATED;
@@ -44,10 +43,12 @@ namespace WebCore {
 
         virtual void didReceiveResponse(unsigned long /*identifier*/, const ResourceResponse&) { }
         virtual void didReceiveData(const char*, int /*dataLength*/) { }
-        virtual void didFinishLoading(unsigned long /*identifier*/, double /*finishTime*/) { }
+        virtual void didFinishLoading(unsigned long /*identifier*/) { }
         virtual void didFail(const ResourceError&) { }
-        virtual void didFailAccessControlCheck(const ResourceError& error) { didFail(error); }
-        virtual void didFailRedirectCheck() { }
+
+#if ENABLE(WEB_TIMING)
+        virtual void didFinishTiming(const ResourceTiming&) { }
+#endif
 
     protected:
         ThreadableLoaderClient() { }
@@ -55,5 +56,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // ThreadableLoaderClient_h

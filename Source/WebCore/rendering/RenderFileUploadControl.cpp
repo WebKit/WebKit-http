@@ -33,13 +33,10 @@
 #include "RenderText.h"
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
+#include "StringTruncator.h"
 #include "TextRun.h"
 #include "VisiblePosition.h"
 #include <math.h>
-
-#if PLATFORM(IOS)
-#include "StringTruncator.h"
-#endif
 
 namespace WebCore {
 
@@ -58,7 +55,7 @@ const int defaultWidthNumChars = 38;
 #endif
 const int buttonShadowHeight = 2;
 
-RenderFileUploadControl::RenderFileUploadControl(HTMLInputElement& input, Ref<RenderStyle>&& style)
+RenderFileUploadControl::RenderFileUploadControl(HTMLInputElement& input, RenderStyle&& style)
     : RenderBlockFlow(input, WTFMove(style))
     , m_canReceiveDroppedFiles(input.canReceiveDroppedFiles())
 {
@@ -133,7 +130,7 @@ void RenderFileUploadControl::paintObject(PaintInfo& paintInfo, const LayoutPoin
     if (paintInfo.phase == PaintPhaseForeground) {
         const String& displayedFilename = fileTextValue();
         const FontCascade& font = style().fontCascade();
-        TextRun textRun = constructTextRun(this, font, displayedFilename, style(), AllowTrailingExpansion, RespectDirection | RespectDirectionOverride);
+        TextRun textRun = constructTextRun(displayedFilename, style(), AllowTrailingExpansion, RespectDirection | RespectDirectionOverride);
 
 #if PLATFORM(IOS)
         int iconHeight = nodeHeight(uploadButton());
@@ -202,11 +199,10 @@ void RenderFileUploadControl::computeIntrinsicLogicalWidths(LayoutUnit& minLogic
     const String characterAsString = String(&character, 1);
     const FontCascade& font = style().fontCascade();
     // FIXME: Remove the need for this const_cast by making constructTextRun take a const RenderObject*.
-    RenderFileUploadControl* renderer = const_cast<RenderFileUploadControl*>(this);
-    float minDefaultLabelWidth = defaultWidthNumChars * font.width(constructTextRun(renderer, font, characterAsString, style(), AllowTrailingExpansion));
+    float minDefaultLabelWidth = defaultWidthNumChars * font.width(constructTextRun(characterAsString, style(), AllowTrailingExpansion));
 
     const String label = theme().fileListDefaultLabel(inputElement().multiple());
-    float defaultLabelWidth = font.width(constructTextRun(renderer, font, label, style(), AllowTrailingExpansion));
+    float defaultLabelWidth = font.width(constructTextRun(label, style(), AllowTrailingExpansion));
     if (HTMLInputElement* button = uploadButton())
         if (RenderObject* buttonRenderer = button->renderer())
             defaultLabelWidth += buttonRenderer->maxPreferredLogicalWidth() + afterButtonSpacing;
@@ -267,12 +263,11 @@ String RenderFileUploadControl::buttonValue()
 
 String RenderFileUploadControl::fileTextValue() const
 {
+    auto& input = inputElement();
     ASSERT(inputElement().files());
-#if PLATFORM(IOS)
-    if (inputElement().files()->length())
-        return StringTruncator::rightTruncate(inputElement().displayString(), maxFilenameWidth(), style().fontCascade());
-#endif
-    return theme().fileListNameForWidth(inputElement().files(), style().fontCascade(), maxFilenameWidth(), inputElement().multiple());
+    if (input.files()->length() && !input.displayString().isEmpty())
+        return StringTruncator::rightTruncate(input.displayString(), maxFilenameWidth(), style().fontCascade());
+    return theme().fileListNameForWidth(input.files(), style().fontCascade(), maxFilenameWidth(), input.multiple());
 }
     
 } // namespace WebCore

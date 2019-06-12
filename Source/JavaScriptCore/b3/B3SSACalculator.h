@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3SSACalculator_h
-#define B3SSACalculator_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "B3Dominators.h"
-#include "B3IndexMap.h"
 #include "B3ProcedureInlines.h"
 #include <wtf/Bag.h>
+#include <wtf/IndexMap.h>
 #include <wtf/SegmentedVector.h>
 
 namespace JSC { namespace B3 {
@@ -157,7 +156,7 @@ private:
         Vector<Def*> m_phis;
     };
     
-    IndexMap<BasicBlock, BlockData> m_data;
+    IndexMap<BasicBlock*, BlockData> m_data;
 
     Dominators* m_dominators { nullptr };
     Procedure& m_proc;
@@ -166,6 +165,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3SSACalculator_h
-

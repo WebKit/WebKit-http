@@ -28,12 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StorageQuota_h
-#define StorageQuota_h
+#pragma once
 
 #if ENABLE(QUOTA)
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -55,9 +53,9 @@ public:
         return adoptRef(*new StorageQuota(type));
     }
 
-    void queryUsageAndQuota(ScriptExecutionContext*, PassRefPtr<StorageUsageCallback>, PassRefPtr<StorageErrorCallback>);
+    void queryUsageAndQuota(ScriptExecutionContext&, RefPtr<StorageUsageCallback>&&, RefPtr<StorageErrorCallback>&&);
 
-    void requestQuota(ScriptExecutionContext*, unsigned long long newQuotaInBytes, PassRefPtr<StorageQuotaCallback>, PassRefPtr<StorageErrorCallback>);
+    void requestQuota(ScriptExecutionContext&, unsigned long long newQuotaInBytes, RefPtr<StorageQuotaCallback>&&, RefPtr<StorageErrorCallback>&&);
 
     ~StorageQuota();
 
@@ -69,5 +67,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(QUOTA)
-
-#endif // StorageQuota_h

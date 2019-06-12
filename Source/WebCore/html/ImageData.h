@@ -26,38 +26,33 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageData_h
-#define ImageData_h
+#pragma once
 
+#include "ExceptionOr.h"
 #include "IntSize.h"
 #include <runtime/Uint8ClampedArray.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-typedef int ExceptionCode;
-
-class ImageData : public RefCounted<ImageData> {
+class WEBCORE_EXPORT ImageData : public RefCounted<ImageData> {
 public:
-    static PassRefPtr<ImageData> create(unsigned sw, unsigned sh, ExceptionCode&);
-    static PassRefPtr<ImageData> create(const IntSize&);
-    static PassRefPtr<ImageData> create(const IntSize&, PassRefPtr<Uint8ClampedArray>);
-    static PassRefPtr<ImageData> create(PassRefPtr<Uint8ClampedArray>, unsigned sw, unsigned sh, ExceptionCode&);
+    static ExceptionOr<Ref<ImageData>> create(unsigned sw, unsigned sh);
+    static RefPtr<ImageData> create(const IntSize&);
+    static RefPtr<ImageData> create(const IntSize&, Ref<Uint8ClampedArray>&&);
+    static ExceptionOr<RefPtr<ImageData>> create(Ref<Uint8ClampedArray>&&, unsigned sw, unsigned sh);
 
     IntSize size() const { return m_size; }
     int width() const { return m_size.width(); }
     int height() const { return m_size.height(); }
+
     Uint8ClampedArray* data() const { return m_data.get(); }
 
 private:
     explicit ImageData(const IntSize&);
-    ImageData(const IntSize&, PassRefPtr<Uint8ClampedArray>);
+    ImageData(const IntSize&, Ref<Uint8ClampedArray>&&);
 
     IntSize m_size;
     RefPtr<Uint8ClampedArray> m_data;
 };
 
 } // namespace WebCore
-
-#endif // ImageData_h

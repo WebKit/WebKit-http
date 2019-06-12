@@ -27,12 +27,104 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 {
     constructor()
     {
-        super("css-style", WebInspector.UIString("Styles"), WebInspector.UIString("Style"), null, true);
+        const dontCreateNavigationItem = true;
+        super("css-style", WebInspector.UIString("Styles"), dontCreateNavigationItem);
 
         this._selectedPanel = null;
+        this._computedStyleDetailsPanel = new WebInspector.ComputedStyleDetailsPanel(this);
+        this._rulesStyleDetailsPanel = new WebInspector.RulesStyleDetailsPanel(this);
+        this._visualStyleDetailsPanel = new WebInspector.VisualStyleDetailsPanel(this);
+
+        this._panels = [this._computedStyleDetailsPanel, this._rulesStyleDetailsPanel, this._visualStyleDetailsPanel];
+        this._panelNavigationInfo = [this._computedStyleDetailsPanel.navigationInfo, this._rulesStyleDetailsPanel.navigationInfo, this._visualStyleDetailsPanel.navigationInfo];
+
+        this._lastSelectedPanelSetting = new WebInspector.Setting("last-selected-style-details-panel", this._rulesStyleDetailsPanel.navigationInfo.identifier);
+        this._classListContainerToggledSetting = new WebInspector.Setting("class-list-container-toggled", false);
+
+        this._initiallySelectedPanel = this._panelMatchingIdentifier(this._lastSelectedPanelSetting.value) || this._rulesStyleDetailsPanel;
+
+        this._navigationItem = new WebInspector.ScopeRadioButtonNavigationItem(this.identifier, this.displayName, this._panelNavigationInfo, this._initiallySelectedPanel.navigationInfo);
+        this._navigationItem.addEventListener(WebInspector.ScopeRadioButtonNavigationItem.Event.SelectedItemChanged, this._handleSelectedItemChanged, this);
 
         this._forcedPseudoClassCheckboxes = {};
+    }
 
+    // Public
+
+    supportsDOMNode(nodeToInspect)
+    {
+        return nodeToInspect.nodeType() === Node.ELEMENT_NODE;
+    }
+
+    visibilityDidChange()
+    {
+        super.visibilityDidChange();
+
+        if (!this._selectedPanel)
+            return;
+
+        if (!this.visible) {
+            this._selectedPanel.hidden();
+            return;
+        }
+
+        this._updateNoForcedPseudoClassesScrollOffset();
+
+        this._selectedPanel.shown();
+        this._selectedPanel.markAsNeedsRefresh(this.domNode);
+    }
+
+    computedStyleDetailsPanelShowProperty(property)
+    {
+        this._rulesStyleDetailsPanel.scrollToSectionAndHighlightProperty(property);
+        this._switchPanels(this._rulesStyleDetailsPanel);
+
+        this._navigationItem.selectedItemIdentifier = this._lastSelectedPanelSetting.value;
+    }
+
+    // Protected
+
+    layout()
+    {
+        let domNode = this.domNode;
+        if (!domNode)
+            return;
+
+        this.contentView.element.scrollTop = this._initialScrollOffset;
+
+        for (let panel of this._panels) {
+            panel.element._savedScrollTop = undefined;
+            panel.markAsNeedsRefresh(domNode);
+        }
+
+        this._updatePseudoClassCheckboxes();
+
+        if (!this._classListContainer.hidden)
+            this._populateClassToggles();
+    }
+
+    addEventListeners()
+    {
+        let effectiveDOMNode = this.domNode.isPseudoElement() ? this.domNode.parentNode : this.domNode;
+        if (!effectiveDOMNode)
+            return;
+
+        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.EnabledPseudoClassesChanged, this._updatePseudoClassCheckboxes, this);
+        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.AttributeModified, this._handleNodeAttributeModified, this);
+        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.AttributeRemoved, this._handleNodeAttributeRemoved, this);
+    }
+
+    removeEventListeners()
+    {
+        let effectiveDOMNode = this.domNode.isPseudoElement() ? this.domNode.parentNode : this.domNode;
+        if (!effectiveDOMNode)
+            return;
+
+        effectiveDOMNode.removeEventListener(null, null, this);
+    }
+
+    initialLayout()
+    {
         if (WebInspector.cssStyleManager.canForcePseudoClasses()) {
             this._forcedPseudoClassContainer = document.createElement("div");
             this._forcedPseudoClassContainer.className = "pseudo-classes";
@@ -66,32 +158,20 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             this.contentView.element.appendChild(this._forcedPseudoClassContainer);
         }
 
-        this._computedStyleDetailsPanel = new WebInspector.ComputedStyleDetailsPanel(this);
-        this._rulesStyleDetailsPanel = new WebInspector.RulesStyleDetailsPanel(this);
-        this._visualStyleDetailsPanel = new WebInspector.VisualStyleDetailsPanel(this);
-
         this._computedStyleDetailsPanel.addEventListener(WebInspector.StyleDetailsPanel.Event.Refreshed, this._filterDidChange, this);
         this._rulesStyleDetailsPanel.addEventListener(WebInspector.StyleDetailsPanel.Event.Refreshed, this._filterDidChange, this);
 
-        this._panels = [this._computedStyleDetailsPanel, this._rulesStyleDetailsPanel, this._visualStyleDetailsPanel];
-        this._panelNavigationInfo = [this._computedStyleDetailsPanel.navigationInfo, this._rulesStyleDetailsPanel.navigationInfo, this._visualStyleDetailsPanel.navigationInfo];
+        console.assert(this._initiallySelectedPanel, "Should have an initially selected panel.");
 
-        this._lastSelectedSectionSetting = new WebInspector.Setting("last-selected-style-details-panel", this._rulesStyleDetailsPanel.navigationInfo.identifier);
-
-        let selectedPanel = this._panelMatchingIdentifier(this._lastSelectedSectionSetting.value);
-        if (!selectedPanel)
-            selectedPanel = this._rulesStyleDetailsPanel;
-
-        this._switchPanels(selectedPanel);
-
-        this._navigationItem = new WebInspector.ScopeRadioButtonNavigationItem(this._identifier, this._displayName, this._panelNavigationInfo, selectedPanel.navigationInfo);
-        this._navigationItem.addEventListener(WebInspector.ScopeRadioButtonNavigationItem.Event.SelectedItemChanged, this._handleSelectedItemChanged, this);
+        this._switchPanels(this._initiallySelectedPanel);
+        this._initiallySelectedPanel = null;
 
         let optionsContainer = this.element.createChild("div", "options-container");
 
         let newRuleButton = optionsContainer.createChild("img", "new-rule");
-        newRuleButton.title = WebInspector.UIString("New Rule");
+        newRuleButton.title = WebInspector.UIString("Add new rule");
         newRuleButton.addEventListener("click", this._newRuleButtonClicked.bind(this));
+        newRuleButton.addEventListener("contextmenu", this._newRuleButtonContextMenu.bind(this));
 
         this._filterBar = new WebInspector.FilterBar;
         this._filterBar.placeholder = WebInspector.UIString("Filter Styles");
@@ -110,104 +190,26 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         this._addClassContainer.title = WebInspector.UIString("Add a Class");
         this._addClassContainer.addEventListener("click", this._addClassContainerClicked.bind(this));
 
-        let addClassCheckbox = this._addClassContainer.createChild("input");
-        addClassCheckbox.type = "checkbox";
-        addClassCheckbox.checked = true;
-
-        let addClassIcon = useSVGSymbol("Images/Plus13.svg", "add-class-icon");
-        this._addClassContainer.appendChild(addClassIcon);
-
         this._addClassInput = this._addClassContainer.createChild("input", "class-name-input");
         this._addClassInput.setAttribute("placeholder", WebInspector.UIString("Enter Class Name"));
         this._addClassInput.addEventListener("keypress", this._addClassInputKeyPressed.bind(this));
         this._addClassInput.addEventListener("blur", this._addClassInputBlur.bind(this));
 
-        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetAdded, this.refresh, this);
-        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetRemoved, this.refresh, this);
+        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAddedOrRemoved, this);
+        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetRemoved, this._styleSheetAddedOrRemoved, this);
+
+        if (this._classListContainerToggledSetting.value)
+            this._classToggleButtonClicked();
     }
 
-    // Public
-
-    supportsDOMNode(nodeToInspect)
+    sizeDidChange()
     {
-        return nodeToInspect.nodeType() === Node.ELEMENT_NODE;
-    }
-
-    refresh()
-    {
-        let domNode = this.domNode;
-        if (!domNode)
-            return;
-
-        this.contentView.element.scrollTop = this._initialScrollOffset;
-
-        for (let panel of this._panels) {
-            panel.element._savedScrollTop = undefined;
-            panel.markAsNeedsRefresh(domNode);
-        }
-
-        this._updatePseudoClassCheckboxes();
-
-        if (!this._classListContainer.hidden)
-            this._populateClassToggles();
-    }
-
-    visibilityDidChange()
-    {
-        super.visibilityDidChange();
-
-        if (!this._selectedPanel)
-            return;
-
-        if (!this.visible) {
-            this._selectedPanel.hidden();
-            return;
-        }
-
-        this._updateNoForcedPseudoClassesScrollOffset();
-
-        this._selectedPanel.shown();
-        this._selectedPanel.markAsNeedsRefresh(this.domNode);
-    }
-
-    widthDidChange()
-    {
-        super.widthDidChange();
+        super.sizeDidChange();
 
         this._updateNoForcedPseudoClassesScrollOffset();
 
         if (this._selectedPanel)
-            this._selectedPanel.widthDidChange();
-    }
-
-    computedStyleDetailsPanelShowProperty(property)
-    {
-        this._rulesStyleDetailsPanel.scrollToSectionAndHighlightProperty(property);
-        this._switchPanels(this._rulesStyleDetailsPanel);
-
-        this._navigationItem.selectedItemIdentifier = this._lastSelectedSectionSetting.value;
-    }
-
-    // Protected
-
-    addEventListeners()
-    {
-        let effectiveDOMNode = this.domNode.isPseudoElement() ? this.domNode.parentNode : this.domNode;
-        if (!effectiveDOMNode)
-            return;
-
-        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.EnabledPseudoClassesChanged, this._updatePseudoClassCheckboxes, this);
-        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.AttributeModified, this._handleNodeAttributeModified, this);
-        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.AttributeRemoved, this._handleNodeAttributeRemoved, this);
-    }
-
-    removeEventListeners()
-    {
-        let effectiveDOMNode = this.domNode.isPseudoElement() ? this.domNode.parentNode : this.domNode;
-        if (!effectiveDOMNode)
-            return;
-
-        effectiveDOMNode.removeEventListener(null, null, this);
+            this._selectedPanel.sizeDidChange();
     }
 
     // Private
@@ -275,7 +277,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         this.contentView.element.classList.toggle("supports-new-rule", typeof this._selectedPanel.newRuleButtonClicked === "function");
         this._selectedPanel.shown();
 
-        this._lastSelectedSectionSetting.value = selectedPanel.navigationInfo.identifier;
+        this._lastSelectedPanelSetting.value = selectedPanel.navigationInfo.identifier;
     }
 
     _forcedPseudoClassCheckboxChanged(pseudoClass, event)
@@ -322,10 +324,17 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             this._selectedPanel.newRuleButtonClicked();
     }
 
+    _newRuleButtonContextMenu(event)
+    {
+        if (this._selectedPanel && typeof this._selectedPanel.newRuleButtonContextMenu === "function")
+            this._selectedPanel.newRuleButtonContextMenu(event);
+    }
+
     _classToggleButtonClicked(event)
     {
         this._classToggleButton.classList.toggle("selected");
         this._classListContainer.hidden = !this._classListContainer.hidden;
+        this._classListContainerToggledSetting.value = !this._classListContainer.hidden;
         if (this._classListContainer.hidden)
             return;
 
@@ -348,7 +357,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     _addClassInputBlur(event)
     {
-        this._toggleClass.call(this, this._addClassInput.value, true);
+        this.domNode.toggleClass(this._addClassInput.value, true);
         this._addClassContainer.classList.remove("active");
         this._addClassInput.value = null;
     }
@@ -402,52 +411,24 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
         let classNameTitle = classNameContainer.createChild("span");
         classNameTitle.textContent = className;
+        classNameTitle.draggable = true;
+        classNameTitle.addEventListener("dragstart", (event) => {
+            event.dataTransfer.setData(WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesDragType, className);
+            event.dataTransfer.effectAllowed = "copy";
+        });
 
-        function classNameToggleChanged(event) {
-            this._toggleClass.call(this, className, classNameToggle.checked);
+        let classNameToggleChanged = (event) => {
+            this.domNode.toggleClass(className, classNameToggle.checked);
             classToggledMap.set(className, classNameToggle.checked);
-        }
+        };
 
-        classNameToggle.addEventListener("click", classNameToggleChanged.bind(this));
+        classNameToggle.addEventListener("click", classNameToggleChanged);
         classNameTitle.addEventListener("click", (event) => {
             classNameToggle.checked = !classNameToggle.checked;
-            classNameToggleChanged.call(this);
+            classNameToggleChanged();
         });
 
         this._classListContainer.appendChild(classNameContainer);
-    }
-
-    _toggleClass(className, flag)
-    {
-        if (!className || !className.length)
-            return;
-
-        let effectiveNode = this.domNode;
-        if (effectiveNode && effectiveNode.isPseudoElement())
-            effectiveNode = effectiveNode.parentNode;
-
-        console.assert(effectiveNode);
-        if (!effectiveNode)
-            return;
-
-        if (effectiveNode.nodeType() !== Node.ELEMENT_NODE)
-            return;
-
-        function resolvedNode(object)
-        {
-            if (!object)
-                return;
-
-            function toggleClass(className, flag)
-            {
-                this.classList.toggle(className, flag);
-            }
-
-            object.callFunction(toggleClass, [className, flag]);
-            object.release();
-        }
-
-        WebInspector.RemoteObject.resolveNode(effectiveNode, "", resolvedNode);
     }
 
     _filterDidChange()
@@ -456,9 +437,14 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
         this._selectedPanel.filterDidChange(this._filterBar);
     }
+
+    _styleSheetAddedOrRemoved()
+    {
+        this.needsLayout();
+    }
 };
 
-WebInspector.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset = 30; // Default height of the forced pseudo classes container. Updated in widthDidChange.
+WebInspector.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset = 30; // Default height of the forced pseudo classes container. Updated in sizeDidChange.
 WebInspector.CSSStyleDetailsSidebarPanel.FilterInProgressClassName = "filter-in-progress";
 WebInspector.CSSStyleDetailsSidebarPanel.FilterMatchingSectionHasLabelClassName = "filter-section-has-label";
 WebInspector.CSSStyleDetailsSidebarPanel.FilterMatchSectionClassName = "filter-matching";
@@ -466,3 +452,4 @@ WebInspector.CSSStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName = "filt
 WebInspector.CSSStyleDetailsSidebarPanel.NoFilterMatchInPropertyClassName = "filter-property-non-matching";
 
 WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol = Symbol("css-style-details-sidebar-panel-toggled-classes-symbol");
+WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesDragType = "text/classname";

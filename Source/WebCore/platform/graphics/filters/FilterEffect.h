@@ -26,6 +26,7 @@
 #include "FloatRect.h"
 #include "IntRect.h"
 #include <runtime/Uint8ClampedArray.h>
+#include <wtf/MathExtras.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -54,8 +55,8 @@ public:
     void clearResultsRecursive();
 
     ImageBuffer* asImageBuffer();
-    PassRefPtr<Uint8ClampedArray> asUnmultipliedImage(const IntRect&);
-    PassRefPtr<Uint8ClampedArray> asPremultipliedImage(const IntRect&);
+    RefPtr<Uint8ClampedArray> asUnmultipliedImage(const IntRect&);
+    RefPtr<Uint8ClampedArray> asPremultipliedImage(const IntRect&);
     void copyUnmultipliedImage(Uint8ClampedArray* destination, const IntRect&);
     void copyPremultipliedImage(Uint8ClampedArray* destination, const IntRect&);
 
@@ -170,6 +171,14 @@ protected:
     void forceValidPreMultipliedPixels();
 
     void clipAbsolutePaintRect();
+    
+    static Vector<float> normalizedFloats(const Vector<float>& values)
+    {
+        Vector<float> normalizedValues(values.size());
+        for (size_t i = 0; i < values.size(); ++i)
+            normalizedValues[i] = normalizedFloat(values[i]);
+        return normalizedValues;
+    }
 
 private:
     std::unique_ptr<ImageBuffer> m_imageBufferResult;

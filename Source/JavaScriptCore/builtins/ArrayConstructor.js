@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,8 +28,7 @@ function of(/* items... */)
     "use strict";
 
     var length = arguments.length;
-    // TODO: Need isConstructor(this) instead of typeof "function" check.
-    var array = typeof this === 'function' ? new this(length) : new @Array(length);
+    var array = @isConstructor(this) ? new this(length) : @newArrayWithSize(length);
     for (var k = 0; k < length; ++k)
         @putByValDirect(array, k, arguments[k]);
     array.length = length;
@@ -42,28 +41,26 @@ function from(items /*, mapFn, thisArg */)
 
     var thisObj = this;
 
-    var mapFn = arguments.length > 1 ? arguments[1] : @undefined;
+    var mapFn = @argument(1);
 
     var thisArg;
 
     if (mapFn !== @undefined) {
         if (typeof mapFn !== "function")
-            throw new @TypeError("Array.from requires that the second argument, when provided, be a function");
+            @throwTypeError("Array.from requires that the second argument, when provided, be a function");
 
-        if (arguments.length > 2)
-            thisArg = arguments[2];
+        thisArg = @argument(2);
     }
 
     if (items == null)
-        throw new @TypeError("Array.from requires an array-like object - not null or undefined");
+        @throwTypeError("Array.from requires an array-like object - not null or undefined");
 
-    var iteratorMethod = items[@symbolIterator];
+    var iteratorMethod = items.@iteratorSymbol;
     if (iteratorMethod != null) {
         if (typeof iteratorMethod !== "function")
-            throw new @TypeError("Array.from requires that the property of the first argument, items[Symbol.iterator], when exists, be a function");
+            @throwTypeError("Array.from requires that the property of the first argument, items[Symbol.iterator], when exists, be a function");
 
-        // TODO: Need isConstructor(thisObj) instead of typeof "function" check.
-        var result = (typeof thisObj === "function") ? @Object(new thisObj()) : [];
+        var result = @isConstructor(thisObj) ? new thisObj() : [];
 
         var k = 0;
         var iterator = iteratorMethod.@call(items);
@@ -71,11 +68,8 @@ function from(items /*, mapFn, thisArg */)
         // Since for-of loop once more looks up the @@iterator property of a given iterable,
         // it could be observable if the user defines a getter for @@iterator.
         // To avoid this situation, we define a wrapper object that @@iterator just returns a given iterator.
-        var wrapper = {
-            [@symbolIterator]() {
-                return iterator;
-            }
-        };
+        var wrapper = {}
+        wrapper.@iteratorSymbol = function() { return iterator; };
 
         for (var value of wrapper) {
             if (mapFn)
@@ -92,8 +86,7 @@ function from(items /*, mapFn, thisArg */)
     var arrayLike = @Object(items);
     var arrayLikeLength = @toLength(arrayLike.length);
 
-    // TODO: Need isConstructor(thisObj) instead of typeof "function" check.
-    var result = (typeof thisObj === "function") ? @Object(new thisObj(arrayLikeLength)) : new @Array(arrayLikeLength);
+    var result = @isConstructor(thisObj) ? new thisObj(arrayLikeLength) : @newArrayWithSize(arrayLikeLength);
 
     var k = 0;
     while (k < arrayLikeLength) {
@@ -107,4 +100,15 @@ function from(items /*, mapFn, thisArg */)
 
     result.length = arrayLikeLength;
     return result;
+}
+
+function isArray(array)
+{
+    "use strict";
+
+    if (@isJSArray(array) || @isDerivedArray(array))
+        return true;
+    if (!@isProxyObject(array))
+        return false;
+    return @isArraySlow(array);
 }

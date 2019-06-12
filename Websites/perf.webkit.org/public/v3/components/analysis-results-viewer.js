@@ -5,217 +5,242 @@ class AnalysisResultsViewer extends ResultsTable {
         super('analysis-results-viewer');
         this._startPoint = null;
         this._endPoint = null;
+        this._metric = null;
         this._testGroups = null;
         this._currentTestGroup = null;
-        this._renderedCurrentTestGroup = null;
-        this._shouldRenderTable = true;
-        this._additionalHeading = null;
-        this._testGroupCallback = null;
+        this._rangeSelectorLabels = [];
+        this._selectedRange = {};
         this._expandedPoints = new Set;
+        this._groupToCellMap = new Map;
+        this._selectorRadioButtonList = {};
+
+        this._renderTestGroupsLazily = new LazilyEvaluatedFunction(this.renderTestGroups.bind(this));
     }
 
-    setTestGroupCallback(callback) { this._testGroupCallback = callback; }
+    setRangeSelectorLabels(labels) { this._rangeSelectorLabels = labels; }
+    selectedRange() { return this._selectedRange; }
 
-    setCurrentTestGroup(testGroup)
+    setPoints(startPoint, endPoint, metric)
     {
-        this._currentTestGroup = testGroup;
-    }
-
-    setPoints(startPoint, endPoint)
-    {
+        this._metric = metric;
         this._startPoint = startPoint;
         this._endPoint = endPoint;
-        this._shouldRenderTable = true;
-        this._expandedPoints.clear();
+        this._expandedPoints = new Set;
         this._expandedPoints.add(startPoint);
         this._expandedPoints.add(endPoint);
+        this.enqueueToRender();
     }
 
-    setTestGroups(testGroups)
+    setTestGroups(testGroups, currentTestGroup)
     {
         this._testGroups = testGroups;
-        this._shouldRenderTable = true;
+        this._currentTestGroup = currentTestGroup;
+        if (currentTestGroup && this._rangeSelectorLabels.length) {
+            const commitSets = currentTestGroup.requestedCommitSets();
+            this._selectedRange = {
+                [this._rangeSelectorLabels[0]]: commitSets[0],
+                [this._rangeSelectorLabels[1]]: commitSets[1]
+            };
+        }
+        this.enqueueToRender();
     }
 
-    didUpdateResults()
+    setAnalysisResultsView(analysisResultsView)
     {
-        this._shouldRenderTable = true;
+        console.assert(analysisResultsView instanceof AnalysisResultsView);
+        this._analysisResultsView = analysisResultsView;
+        this.enqueueToRender();
     }
 
     render()
     {
-        if (!this._valueFormatter || !this._startPoint)
-            return;
-
+        super.render();
         Instrumentation.startMeasuringTime('AnalysisResultsViewer', 'render');
 
-        if (this._shouldRenderTable) {
-            this._shouldRenderTable = false;
-            this._renderedCurrentTestGroup = null;
+        this._renderTestGroupsLazily.evaluate(this._testGroups,
+            this._startPoint, this._endPoint, this._metric, this._analysisResultsView, this._expandedPoints);
 
-            Instrumentation.startMeasuringTime('AnalysisResultsViewer', 'renderTable');
-            super.render();
-            Instrumentation.endMeasuringTime('AnalysisResultsViewer', 'renderTable');
+        for (const label of this._rangeSelectorLabels) {
+            const commitSet = this._selectedRange[label];
+            if (!commitSet)
+                continue;
+            const list = this._selectorRadioButtonList[label] || [];
+            for (const item of list) {
+                if (item.commitSet.equals(commitSet))
+                    item.radio.checked = true;
+            }
         }
 
-        if (this._currentTestGroup != this._renderedCurrentTestGroup) {
-            if (this._renderedCurrentTestGroup) {
-                var className = this._classForTestGroup(this._renderedCurrentTestGroup);
-                var element = this.content().querySelector('.' + className);
-                if (element)
-                    element.classList.remove('selected');
-            }
-            if (this._currentTestGroup) {
-                var className = this._classForTestGroup(this._currentTestGroup);
-                var element = this.content().querySelector('.' + className);
-                if (element)
-                    element.classList.add('selected');
-            }
-            this._renderedCurrentTestGroup = this._currentTestGroup;
+        const selectedCell = this.content().querySelector('td.selected');
+        if (selectedCell)
+            selectedCell.classList.remove('selected');
+        if (this._groupToCellMap && this._currentTestGroup) {
+            const cell = this._groupToCellMap.get(this._currentTestGroup);
+            if (cell)
+                cell.classList.add('selected');
         }
 
         Instrumentation.endMeasuringTime('AnalysisResultsViewer', 'render');
     }
 
-    heading() { return [ComponentBase.createElement('th', 'Point')]; }
-    additionalHeading() { return this._additionalHeading; }
-
-    buildRowGroups()
+    renderTestGroups(testGroups, startPoint, endPoint, metric, analysisResults, expandedPoints)
     {
-        Instrumentation.startMeasuringTime('AnalysisResultsViewer', 'buildRowGroups');
+        if (!testGroups || !startPoint || !endPoint || !metric || !analysisResults)
+            return false;
 
-        var testGroups = this._testGroups || [];
-        var rootSetsInTestGroups = this._collectRootSetsInTestGroups(testGroups);
+        Instrumentation.startMeasuringTime('AnalysisResultsViewer', 'renderTestGroups');
 
-        var rowToMatchingRootSets = new Map;
-        var rowList = this._buildRowsForPointsAndTestGroups(rootSetsInTestGroups, rowToMatchingRootSets);
+        const commitSetsInTestGroups = this._collectCommitSetsInTestGroups(testGroups);
+        const rowToMatchingCommitSets = new Map;
+        const rows = this._buildRowsForPointsAndTestGroups(commitSetsInTestGroups, rowToMatchingCommitSets);
 
-        var testGroupLayoutMap = new Map;
-        var self = this;
-        rowList.forEach(function (row, rowIndex) {
-            var matchingRootSets = rowToMatchingRootSets.get(row);
-            if (!matchingRootSets) {
+        const testGroupLayoutMap = new Map;
+        rows.forEach((row, rowIndex) => {
+            const matchingCommitSets = rowToMatchingCommitSets.get(row);
+            if (!matchingCommitSets) {
                 console.assert(row instanceof AnalysisResultsViewer.ExpandableRow);
                 return;
             }
 
-            for (var entry of matchingRootSets) {
-                var testGroup = entry.testGroup();
+            for (let entry of matchingCommitSets) {
+                const testGroup = entry.testGroup();
 
-                var block = testGroupLayoutMap.get(testGroup);
+                let block = testGroupLayoutMap.get(testGroup);
                 if (!block) {
-                    block = new AnalysisResultsViewer.TestGroupStackingBlock(
-                        testGroup, self._classForTestGroup(testGroup), self._openStackingBlock.bind(self, testGroup));
+                    block = new AnalysisResultsViewer.TestGroupStackingBlock(testGroup, this._analysisResultsView,
+                        this._groupToCellMap, () => this.dispatchAction('testGroupClick', testGroup));
                     testGroupLayoutMap.set(testGroup, block);
                 }
                 block.addRowIndex(entry, rowIndex);
             }
         });
 
-        var grid = new AnalysisResultsViewer.TestGroupStackingGrid(rowList.length);
-        for (var testGroup of testGroups) {
-            var block = testGroupLayoutMap.get(testGroup);
-            if (block)
-                grid.insertBlockToColumn(block);
+        const [additionalColumnsByRow, columnCount] = AnalysisResultsViewer._layoutBlocks(rows.length, testGroups.map((group) => testGroupLayoutMap.get(group)));
+
+        for (const label of this._rangeSelectorLabels)
+            this._selectorRadioButtonList[label] = [];
+
+        const element = ComponentBase.createElement;
+        const buildHeaders = (headers) => {
+            return [
+                this._rangeSelectorLabels.map((label) => element('th', label)),
+                headers,
+                columnCount ? element('td', {colspan: columnCount + 1, class: 'stacking-block'}) : [],
+            ]
+        };
+        const buildColumns = (columns, row, rowIndex) => {
+            return [
+                this._rangeSelectorLabels.map((label) => {
+                    if (!row.commitSet())
+                        return element('td', '');
+                    const radio = element('input', {type: 'radio', name: label, onchange: () => {
+                        this._selectedRange[label] = row.commitSet();
+                        this.dispatchAction('rangeSelectorClick', label, row);
+                    }});
+                    this._selectorRadioButtonList[label].push({radio, commitSet: row.commitSet()});
+                    return element('td', radio);
+                }),
+                columns,
+                additionalColumnsByRow[rowIndex],
+            ];
         }
+        this.renderTable(metric.makeFormatter(4), [{rows}], 'Point', buildHeaders, buildColumns);
 
-        grid.layout();
-        for (var rowIndex = 0; rowIndex < rowList.length; rowIndex++)
-            rowList[rowIndex].setAdditionalColumns(grid.createCellsForRow(rowIndex));
+        Instrumentation.endMeasuringTime('AnalysisResultsViewer', 'renderTestGroups');
 
-        this._additionalHeading = grid._columns ? ComponentBase.createElement('td', {colspan: grid._columns.length + 1, class: 'stacking-block'}) : [];
-
-        Instrumentation.endMeasuringTime('AnalysisResultsViewer', 'buildRowGroups');
-
-        return [{rows: rowList}];
+        return true;
     }
 
-    _collectRootSetsInTestGroups(testGroups)
+    _collectCommitSetsInTestGroups(testGroups)
     {
         if (!this._testGroups)
             return [];
 
-        var rootSetsInTestGroups = [];
+        var commitSetsInTestGroups = [];
         for (var group of this._testGroups) {
-            var sortedSets = group.requestedRootSets();
+            var sortedSets = group.requestedCommitSets();
             for (var i = 0; i < sortedSets.length; i++)
-                rootSetsInTestGroups.push(new AnalysisResultsViewer.RootSetInTestGroup(group, sortedSets[i]));
+                commitSetsInTestGroups.push(new AnalysisResultsViewer.CommitSetInTestGroup(group, sortedSets[i], sortedSets[i + 1]));
         }
 
-        return rootSetsInTestGroups;
+        return commitSetsInTestGroups;
     }
 
-    _buildRowsForPointsAndTestGroups(rootSetsInTestGroups, rowToMatchingRootSets)
+    _buildRowsForPointsAndTestGroups(commitSetsInTestGroups, rowToMatchingCommitSets)
     {
         console.assert(this._startPoint.series == this._endPoint.series);
         var rowList = [];
         var pointAfterEnd = this._endPoint.series.nextPoint(this._endPoint);
-        var rootSetsWithPoints = new Set;
+        var commitSetsWithPoints = new Set;
         var pointIndex = 0;
         var previousPoint;
         for (var point = this._startPoint; point && point != pointAfterEnd; point = point.series.nextPoint(point), pointIndex++) {
-            var rootSetInPoint = point.rootSet();
-            var matchingRootSets = [];
-            for (var entry of rootSetsInTestGroups) {
-                if (rootSetInPoint.equals(entry.rootSet()) && !rootSetsWithPoints.has(entry)) {
-                    matchingRootSets.push(entry);
-                    rootSetsWithPoints.add(entry);
+            const commitSetInPoint = point.commitSet();
+            const matchingCommitSets = [];
+            for (var entry of commitSetsInTestGroups) {
+                if (commitSetInPoint.equals(entry.commitSet()) && !commitSetsWithPoints.has(entry)) {
+                    matchingCommitSets.push(entry);
+                    commitSetsWithPoints.add(entry);
                 }
             }
 
-            var hasMatchingTestGroup = !!matchingRootSets.length;
+            const hasMatchingTestGroup = !!matchingCommitSets.length;
             if (!hasMatchingTestGroup && !this._expandedPoints.has(point))
                 continue;
 
-            var row = new ResultsTableRow(pointIndex.toString(), rootSetInPoint);
+            const row = new ResultsTableRow(pointIndex.toString(), commitSetInPoint);
             row.setResult(point);
 
             if (previousPoint && previousPoint.series.nextPoint(previousPoint) != point)
                 rowList.push(new AnalysisResultsViewer.ExpandableRow(this._expandBetween.bind(this, previousPoint, point)));
             previousPoint = point;
 
-            rowToMatchingRootSets.set(row, matchingRootSets);
+            rowToMatchingCommitSets.set(row, matchingCommitSets);
             rowList.push(row);
         }
 
-        rootSetsInTestGroups.forEach(function (entry) {
-            if (rootSetsWithPoints.has(entry))
+        commitSetsInTestGroups.forEach(function (entry) {
+            if (commitSetsWithPoints.has(entry))
                 return;
 
             for (var i = 0; i < rowList.length; i++) {
                 var row = rowList[i];
-                if (!(row instanceof AnalysisResultsViewer.ExpandableRow) && row.rootSet().equals(entry.rootSet())) {
-                    rowToMatchingRootSets.get(row).push(entry);
+                if (!(row instanceof AnalysisResultsViewer.ExpandableRow) && row.commitSet().equals(entry.commitSet())) {
+                    rowToMatchingCommitSets.get(row).push(entry);
                     return;
                 }
             }
 
-            var groupTime = entry.rootSet().latestCommitTime();
+            var groupTime = entry.commitSet().latestCommitTime();
+            var newRow = new ResultsTableRow(null, entry.commitSet());
+            rowToMatchingCommitSets.set(newRow, [entry]);
+
             for (var i = 0; i < rowList.length; i++) {
                 if (rowList[i] instanceof AnalysisResultsViewer.ExpandableRow)
                     continue;
 
-                var rowTime = rowList[i].rootSet().latestCommitTime();
+                if (entry.succeedingCommitSet() && rowList[i].commitSet().equals(entry.succeedingCommitSet())) {
+                    rowList.splice(i, 0, newRow);
+                    return;
+                }
+
+                var rowTime = rowList[i].commitSet().latestCommitTime();
                 if (rowTime > groupTime) {
-                    var newRow = new ResultsTableRow(null, entry.rootSet());
-                    rowToMatchingRootSets.set(newRow, [entry]);
                     rowList.splice(i, 0, newRow);
                     return;
                 }
 
                 if (rowTime == groupTime) {
                     // Missing some commits. Do as best as we can to avoid going backwards in time.
-                    var repositoriesInNewRow = entry.rootSet().repositories();
+                    var repositoriesInNewRow = entry.commitSet().repositories();
                     for (var j = i; j < rowList.length; j++) {
                         if (rowList[j] instanceof AnalysisResultsViewer.ExpandableRow)
                             continue;
                         for (var repository of repositoriesInNewRow) {
-                            var newCommit = entry.rootSet().commitForRepository(repository);
-                            var rowCommit = rowList[j].rootSet().commitForRepository(repository);
+                            var newCommit = entry.commitSet().commitForRepository(repository);
+                            var rowCommit = rowList[j].commitSet().commitForRepository(repository);
                             if (!rowCommit || newCommit.time() < rowCommit.time()) {
-                                var row = new ResultsTableRow(null, entry.rootSet());
-                                rowToMatchingRootSets.set(row, [entry]);
-                                rowList.splice(j, 0, row);
+                                rowList.splice(j, 0, newRow);
                                 return;
                             }
                         }
@@ -223,25 +248,14 @@ class AnalysisResultsViewer extends ResultsTable {
                 }
             }
 
-            var newRow = new ResultsTableRow(null, entry.rootSet());
-            rowToMatchingRootSets.set(newRow, [entry]);
+            var newRow = new ResultsTableRow(null, entry.commitSet());
+            rowToMatchingCommitSets.set(newRow, [entry]);
             rowList.push(newRow);
         });
 
         return rowList;
     }
 
-    _classForTestGroup(testGroup)
-    {
-        return 'stacked-test-group-' + testGroup.id();
-    }
-
-    _openStackingBlock(testGroup)
-    {
-        if (this._testGroupCallback)
-            this._testGroupCallback(testGroup);
-    }
-    
     _expandBetween(pointBeforeExpansion, pointAfterExpansion)
     {
         console.assert(pointBeforeExpansion.series == pointAfterExpansion.series);
@@ -253,10 +267,97 @@ class AnalysisResultsViewer extends ResultsTable {
         var increment = Math.ceil((indexAfterEnd - indexBeforeStart) / 5);
         if (increment < 3)
             increment = 1;
+
+        const expandedPoints = new Set([...this._expandedPoints]);
         for (var i = indexBeforeStart + 1; i < indexAfterEnd; i += increment)
-            this._expandedPoints.add(series.findPointByIndex(i));
-        this._shouldRenderTable = true;
-        this.render();
+            expandedPoints.add(series.findPointByIndex(i));
+        this._expandedPoints = expandedPoints;
+
+        this.enqueueToRender();
+    }
+
+    static _layoutBlocks(rowCount, blocks)
+    {
+        const sortedBlocks = this._sortBlocksByRow(blocks);
+
+        const columns = [];
+        for (const block of sortedBlocks)
+            this._insertBlockInFirstAvailableColumn(columns, block);
+
+        const rows = new Array(rowCount);
+        for (let i = 0; i < rowCount; i++)
+            rows[i] = this._createCellsForRow(columns, i);
+
+        return [rows, columns.length];
+    }
+
+    static _sortBlocksByRow(blocks)
+    {
+        for (let i = 0; i < blocks.length; i++)
+            blocks[i].index = i;
+
+        return blocks.slice(0).sort((block1, block2) => {
+            const startRowDiff = block1.startRowIndex() - block2.startRowIndex();
+            if (startRowDiff)
+                return startRowDiff;
+
+            // Order backwards for end rows in order to place test groups with a larger range at the beginning.
+            const endRowDiff = block2.endRowIndex() - block1.endRowIndex();
+            if (endRowDiff)
+                return endRowDiff;
+
+            return block1.index - block2.index;
+        });
+    }
+
+    static _insertBlockInFirstAvailableColumn(columns, newBlock)
+    {
+        for (const existingColumn of columns) {
+            for (let i = 0; i < existingColumn.length; i++) {
+                const currentBlock = existingColumn[i];
+                if ((!i || existingColumn[i - 1].endRowIndex() < newBlock.startRowIndex())
+                    && newBlock.endRowIndex() < currentBlock.startRowIndex()) {
+                    existingColumn.splice(i, 0, newBlock);
+                    return;
+                }
+            }
+            const lastBlock = existingColumn[existingColumn.length - 1];
+            console.assert(lastBlock);
+            if (lastBlock.endRowIndex() < newBlock.startRowIndex()) {
+                existingColumn.push(newBlock);
+                return;
+            }
+        }
+        columns.push([newBlock]);
+    }
+
+    static _createCellsForRow(columns, rowIndex)
+    {
+        const element = ComponentBase.createElement;
+        const link = ComponentBase.createLink;
+
+        const crateEmptyCell = (rowspan) => element('td', {rowspan: rowspan, class: 'stacking-block'}, '');
+
+        const cells = [element('td', {class: 'stacking-block'}, '')];
+        for (const blocksInColumn of columns) {
+            if (!rowIndex && blocksInColumn[0].startRowIndex()) {
+                cells.push(crateEmptyCell(blocksInColumn[0].startRowIndex()));
+                continue;
+            }
+            for (let i = 0; i < blocksInColumn.length; i++) {
+                const block = blocksInColumn[i];
+                if (block.startRowIndex() == rowIndex) {
+                    cells.push(block.createStackingCell());
+                    break;
+                }
+                const rowCount = i + 1 < blocksInColumn.length ? blocksInColumn[i + 1].startRowIndex() : this._rowCount;
+                const remainingRows = rowCount - block.endRowIndex() - 1;
+                if (rowIndex == block.endRowIndex() + 1 && rowIndex < rowCount)
+                    cells.push(crateEmptyCell(remainingRows));
+            }
+        }
+
+        return cells;
     }
 
     static htmlTemplate()
@@ -351,162 +452,75 @@ AnalysisResultsViewer.ExpandableRow = class extends ResultsTableRow {
     }
 }
 
-AnalysisResultsViewer.RootSetInTestGroup = class {
-    constructor(testGroup, rootSet)
+AnalysisResultsViewer.CommitSetInTestGroup = class {
+    constructor(testGroup, commitSet, succeedingCommitSet)
     {
         console.assert(testGroup instanceof TestGroup);
-        console.assert(rootSet instanceof RootSet);
+        console.assert(commitSet instanceof CommitSet);
         this._testGroup = testGroup;
-        this._rootSet = rootSet;
+        this._commitSet = commitSet;
+        this._succeedingCommitSet = succeedingCommitSet;
     }
 
     testGroup() { return this._testGroup; }
-    rootSet() { return this._rootSet; }
+    commitSet() { return this._commitSet; }
+    succeedingCommitSet() { return this._succeedingCommitSet; }
 }
 
 AnalysisResultsViewer.TestGroupStackingBlock = class {
-    constructor(testGroup, className, callback)
+    constructor(testGroup, analysisResultsView, groupToCellMap, callback)
     {
         this._testGroup = testGroup;
-        this._rootSetIndexRowIndexMap = [];
-        this._className = className;
-        this._label = null;
-        this._title = null;
-        this._status = null;
+        this._analysisResultsView = analysisResultsView;
+        this._commitSetIndexRowIndexMap = [];
+        this._groupToCellMap = groupToCellMap;
         this._callback = callback;
     }
 
-    addRowIndex(rootSetInTestGroup, rowIndex)
+    addRowIndex(commitSetInTestGroup, rowIndex)
     {
-        console.assert(rootSetInTestGroup instanceof AnalysisResultsViewer.RootSetInTestGroup);
-        this._rootSetIndexRowIndexMap.push({rootSet: rootSetInTestGroup.rootSet(), rowIndex: rowIndex});
+        console.assert(commitSetInTestGroup instanceof AnalysisResultsViewer.CommitSetInTestGroup);
+        this._commitSetIndexRowIndexMap.push({commitSet: commitSetInTestGroup.commitSet(), rowIndex});
     }
 
     testGroup() { return this._testGroup; }
 
     createStackingCell()
     {
-        this._computeTestGroupStatus();
+        const {label, title, status} = this._computeTestGroupStatus();
 
-        return ComponentBase.createElement('td', {
+        const cell = ComponentBase.createElement('td', {
             rowspan: this.endRowIndex() - this.startRowIndex() + 1,
-            title: this._title,
-            class: 'stacking-block ' + this._className + ' ' + this._status,
+            title,
+            class: 'stacking-block ' + status,
             onclick: this._callback,
-        }, ComponentBase.createLink(this._label, this._title, this._callback));
+        }, ComponentBase.createLink(label, title, this._callback));
+
+        this._groupToCellMap.set(this._testGroup, cell);
+
+        return cell;
     }
 
-    isComplete() { return this._rootSetIndexRowIndexMap.length >= 2; }
+    isComplete() { return this._commitSetIndexRowIndexMap.length >= 2; }
 
-    startRowIndex() { return this._rootSetIndexRowIndexMap[0].rowIndex; }
-    endRowIndex() { return this._rootSetIndexRowIndexMap[this._rootSetIndexRowIndexMap.length - 1].rowIndex; }
-    isThin()
+    startRowIndex() { return this._commitSetIndexRowIndexMap[0].rowIndex; }
+    endRowIndex() { return this._commitSetIndexRowIndexMap[this._commitSetIndexRowIndexMap.length - 1].rowIndex; }
+
+    _valuesForCommitSet(testGroup, commitSet)
     {
-        this._computeTestGroupStatus();
-        return this._status == 'failed';
+        return testGroup.requestsForCommitSet(commitSet).map((request) => {
+            return this._analysisResultsView.resultForRequest(request);
+        }).filter((result) => !!result).map((result) => result.value);
     }
 
     _computeTestGroupStatus()
     {
-        if (this._status || !this.isComplete())
-            return;
-
-        console.assert(this._rootSetIndexRowIndexMap.length <= 2); // FIXME: Support having more root sets.
-
-        var result = this._testGroup.compareTestResults(
-            this._rootSetIndexRowIndexMap[0].rootSet, this._rootSetIndexRowIndexMap[1].rootSet);
-
-        this._label = result.label;
-        this._title = result.fullLabel;
-        this._status = result.status;
+        if (!this.isComplete())
+            return {label: null, title: null, status: null};
+        console.assert(this._commitSetIndexRowIndexMap.length <= 2); // FIXME: Support having more root sets.
+        const startValues = this._valuesForCommitSet(this._testGroup, this._commitSetIndexRowIndexMap[0].commitSet);
+        const endValues = this._valuesForCommitSet(this._testGroup, this._commitSetIndexRowIndexMap[1].commitSet);
+        const result = this._testGroup.compareTestResults(this._analysisResultsView.metric(), startValues, endValues);
+        return {label: result.label, title: result.fullLabel, status: result.status};
     }
-}
-
-AnalysisResultsViewer.TestGroupStackingGrid = class {
-    constructor(rowCount)
-    {
-        this._blocks = [];
-        this._columns = null;
-        this._rowCount = rowCount;
-    }
-
-    insertBlockToColumn(newBlock)
-    {
-        console.assert(newBlock instanceof AnalysisResultsViewer.TestGroupStackingBlock);
-        for (var i = this._blocks.length - 1; i >= 0; i--) {
-            var currentBlock = this._blocks[i];
-            if (currentBlock.startRowIndex() == newBlock.startRowIndex()
-                && currentBlock.endRowIndex() == newBlock.endRowIndex()) {
-                this._blocks.splice(i + 1, 0, newBlock);
-                return;
-            }
-        }
-        this._blocks.push(newBlock);
-    }
-
-    layout()
-    {
-        this._columns = [];
-        for (var block of this._blocks)
-            this._layoutBlock(block);
-    }
-
-    _layoutBlock(newBlock)
-    {
-        for (var columnIndex = 0; columnIndex < this._columns.length; columnIndex++) {
-            var existingColumn = this._columns[columnIndex];
-            if (newBlock.isThin() != existingColumn[0].isThin())
-                continue;
-
-            for (var i = 0; i < existingColumn.length; i++) {
-                var currentBlock = existingColumn[i];
-                if ((!i || existingColumn[i - 1].endRowIndex() < newBlock.startRowIndex())
-                    && newBlock.endRowIndex() < currentBlock.startRowIndex()) {
-                    existingColumn.splice(i, 0, newBlock);
-                    return;
-                }
-            }
-
-            var lastBlock = existingColumn[existingColumn.length - 1];
-            if (lastBlock.endRowIndex() < newBlock.startRowIndex()) {
-                existingColumn.push(newBlock);
-                return;
-            }
-        }
-        this._columns.push([newBlock]);
-    }
-
-    createCellsForRow(rowIndex)
-    {
-        var element = ComponentBase.createElement;
-        var link = ComponentBase.createLink;
-
-        var cells = [element('td', {class: 'stacking-block'}, '')];
-        for (var columnIndex = 0; columnIndex < this._columns.length; columnIndex++) {
-            var blocksInColumn = this._columns[columnIndex];
-            if (!rowIndex && blocksInColumn[0].startRowIndex()) {
-                cells.push(this._createEmptyStackingCell(blocksInColumn[0].startRowIndex()));
-                continue;
-            }
-            for (var i = 0; i < blocksInColumn.length; i++) {
-                var block = blocksInColumn[i];
-                if (block.startRowIndex() == rowIndex) {
-                    cells.push(block.createStackingCell());
-                    break;
-                }
-                var rowCount = i + 1 < blocksInColumn.length ? blocksInColumn[i + 1].startRowIndex() : this._rowCount;
-                var remainingRows = rowCount - block.endRowIndex() - 1;
-                if (rowIndex == block.endRowIndex() + 1 && rowIndex < rowCount)
-                    cells.push(this._createEmptyStackingCell(remainingRows));
-            }
-        }
-
-        return cells;
-    }
-
-    _createEmptyStackingCell(rowspan, content)
-    {
-        return ComponentBase.createElement('td', {rowspan: rowspan, class: 'stacking-block'}, '');
-    }
-
 }

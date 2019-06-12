@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.BreakpointTreeElement = class BreakpointTreeElement extends WebInspector.DebuggerTreeElement
+WebInspector.BreakpointTreeElement = class BreakpointTreeElement extends WebInspector.GeneralTreeElement
 {
     constructor(breakpoint, className, title)
     {
@@ -72,13 +72,18 @@ WebInspector.BreakpointTreeElement = class BreakpointTreeElement extends WebInsp
 
     get filterableData()
     {
-        return {text: [this.breakpoint.url]};
+        return {text: [this.breakpoint.contentIdentifier]};
     }
 
     ondelete()
     {
         if (!WebInspector.debuggerManager.isBreakpointRemovable(this._breakpoint))
             return false;
+
+        // We set this flag so that TreeOutlines that will remove this
+        // BreakpointTreeElement will know whether it was deleted from
+        // within the TreeOutline or from outside it (e.g. TextEditor).
+        this.__deletedViaDeleteKeyboardShortcut = true;
 
         WebInspector.debuggerManager.removeBreakpoint(this._breakpoint);
         return true;
@@ -94,12 +99,6 @@ WebInspector.BreakpointTreeElement = class BreakpointTreeElement extends WebInsp
     {
         this._breakpoint.cycleToNextMode();
         return true;
-    }
-
-    oncontextmenu(event)
-    {
-        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
-        WebInspector.breakpointPopoverController.appendContextMenuItems(contextMenu, this._breakpoint, this._statusImageElement);
     }
 
     onattach()
@@ -121,6 +120,13 @@ WebInspector.BreakpointTreeElement = class BreakpointTreeElement extends WebInsp
 
         if (this._probeSet)
             this._removeProbeSet(this._probeSet);
+    }
+
+    populateContextMenu(contextMenu, event)
+    {
+        WebInspector.breakpointPopoverController.appendContextMenuItems(contextMenu, this._breakpoint, this._statusImageElement);
+
+        super.populateContextMenu(contextMenu, event);
     }
 
     removeStatusImage()
@@ -231,9 +237,9 @@ WebInspector.BreakpointTreeElement = class BreakpointTreeElement extends WebInsp
         }
 
         this.element.classList.add(WebInspector.BreakpointTreeElement.ProbeDataUpdatedStyleClassName);
-        this._removeIconAnimationTimeoutIdentifier = setTimeout(function() {
+        this._removeIconAnimationTimeoutIdentifier = setTimeout(() => {
             this.element.classList.remove(WebInspector.BreakpointTreeElement.ProbeDataUpdatedStyleClassName);
-        }.bind(this), WebInspector.BreakpointTreeElement.ProbeDataUpdatedAnimationDuration);
+        }, WebInspector.BreakpointTreeElement.ProbeDataUpdatedAnimationDuration);
     }
 
     _breakpointLocationDidChange(event)

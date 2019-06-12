@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef DateInstance_h
-#define DateInstance_h
+#pragma once
 
 #include "JSWrapperObject.h"
 
@@ -84,10 +83,8 @@ DateInstance* asDateInstance(JSValue);
 
 inline DateInstance* asDateInstance(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(DateInstance::info()));
+    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), DateInstance::info()));
     return static_cast<DateInstance*>(asObject(value));
 }
 
 } // namespace JSC
-
-#endif // DateInstance_h

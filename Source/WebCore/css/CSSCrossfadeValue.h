@@ -23,95 +23,69 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSCrossfadeValue_h
-#define CSSCrossfadeValue_h
+#pragma once
 
 #include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
 #include "CSSImageGeneratorValue.h"
-#include "CSSPrimitiveValue.h"
-#include "Image.h"
-#include "ImageObserver.h"
+#include <wtf/Function.h>
 
 namespace WebCore {
 
-class CachedImage;
-class CrossfadeSubimageObserverProxy;
-class RenderElement;
-class Document;
+class CSSPrimitiveValue;
 
-class CSSCrossfadeValue : public CSSImageGeneratorValue {
-    friend class CrossfadeSubimageObserverProxy;
+class CSSCrossfadeValue final : public CSSImageGeneratorValue {
 public:
-    static Ref<CSSCrossfadeValue> create(PassRefPtr<CSSValue> fromValue, PassRefPtr<CSSValue> toValue)
-    {
-        return adoptRef(*new CSSCrossfadeValue(fromValue, toValue));
-    }
+    static Ref<CSSCrossfadeValue> create(Ref<CSSValue>&& fromValue, Ref<CSSValue>&& toValue, Ref<CSSPrimitiveValue>&& percentageValue, bool prefixed = false);
 
     ~CSSCrossfadeValue();
 
     String customCSSText() const;
 
-    RefPtr<Image> image(RenderElement*, const FloatSize&);
+    Image* image(RenderElement&, const FloatSize&);
     bool isFixedSize() const { return true; }
-    FloatSize fixedSize(const RenderElement*);
+    FloatSize fixedSize(const RenderElement&);
 
+    bool isPrefixed() const { return m_isPrefixed; }
     bool isPending() const;
-    bool knownToBeOpaque(const RenderElement*) const;
+    bool knownToBeOpaque(const RenderElement&) const;
 
     void loadSubimages(CachedResourceLoader&, const ResourceLoaderOptions&);
 
-    void setPercentage(PassRefPtr<CSSPrimitiveValue> percentageValue) { m_percentageValue = percentageValue; }
-
-    bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
+    bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
 
     RefPtr<CSSCrossfadeValue> blend(const CSSCrossfadeValue&, double) const;
 
     bool equals(const CSSCrossfadeValue&) const;
-
     bool equalInputImages(const CSSCrossfadeValue&) const;
 
 private:
-    CSSCrossfadeValue(PassRefPtr<CSSValue> fromValue, PassRefPtr<CSSValue> toValue)
-        : CSSImageGeneratorValue(CrossfadeClass)
-        , m_fromValue(fromValue)
-        , m_toValue(toValue)
-        , m_crossfadeSubimageObserver(this)
-    {
-    }
+    CSSCrossfadeValue(Ref<CSSValue>&& fromValue, Ref<CSSValue>&& toValue, Ref<CSSPrimitiveValue>&& percentageValue, bool prefixed);
 
-    class CrossfadeSubimageObserverProxy final : public CachedImageClient {
+    class SubimageObserver final : public CachedImageClient {
     public:
-        CrossfadeSubimageObserverProxy(CSSCrossfadeValue* ownerValue)
-            : m_ownerValue(ownerValue)
-            , m_ready(false)
-        {
-        }
-
-        virtual ~CrossfadeSubimageObserverProxy() { }
-        virtual void imageChanged(CachedImage*, const IntRect* = nullptr) override;
-        void setReady(bool ready) { m_ready = ready; }
+        SubimageObserver(CSSCrossfadeValue&);
     private:
-        CSSCrossfadeValue* m_ownerValue;
-        bool m_ready;
+        void imageChanged(CachedImage*, const IntRect*) final;
+        CSSCrossfadeValue& m_owner;
     };
 
-    void crossfadeChanged(const IntRect&);
+    void crossfadeChanged();
 
-    RefPtr<CSSValue> m_fromValue;
-    RefPtr<CSSValue> m_toValue;
-    RefPtr<CSSPrimitiveValue> m_percentageValue;
+    Ref<CSSValue> m_fromValue;
+    Ref<CSSValue> m_toValue;
+    Ref<CSSPrimitiveValue> m_percentageValue;
 
     CachedResourceHandle<CachedImage> m_cachedFromImage;
     CachedResourceHandle<CachedImage> m_cachedToImage;
 
     RefPtr<Image> m_generatedImage;
 
-    CrossfadeSubimageObserverProxy m_crossfadeSubimageObserver;
+    SubimageObserver m_subimageObserver;
+    bool m_isPrefixed { false };
+    bool m_subimagesAreReady { false };
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSCrossfadeValue, isCrossfadeValue())
-
-#endif // CSSCrossfadeValue_h

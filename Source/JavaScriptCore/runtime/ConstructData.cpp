@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ConstructData.h"
 
-#include "Executable.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSFunction.h"
@@ -35,20 +34,24 @@
 
 namespace JSC {
 
-JSObject* construct(ExecState* exec, JSValue constructorObject, const ArgList& args, const String& errorMessage)
+JSObject* construct(ExecState* exec, JSValue constructorObject, const ArgList& args, const char* errorMessage)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     ConstructData constructData;
     ConstructType constructType = getConstructData(constructorObject, constructData);
-    if (constructType == ConstructTypeNone)
-        return throwTypeError(exec, errorMessage);
+    if (constructType == ConstructType::None)
+        return throwTypeError(exec, scope, errorMessage);
 
+    scope.release();
     return construct(exec, constructorObject, constructType, constructData, args, constructorObject);
 }
 
 
 JSObject* construct(ExecState* exec, JSValue constructorObject, ConstructType constructType, const ConstructData& constructData, const ArgList& args, JSValue newTarget)
 {
-    ASSERT(constructType == ConstructTypeJS || constructType == ConstructTypeHost);
+    ASSERT(constructType == ConstructType::JS || constructType == ConstructType::Host);
     return exec->interpreter()->executeConstruct(exec, asObject(constructorObject), constructType, constructData, args, newTarget);
 }
 

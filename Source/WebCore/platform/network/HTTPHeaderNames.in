@@ -68,6 +68,7 @@ Keep-Alive
 Last-Event-ID
 Last-Modified
 Location
+Link
 Origin
 Ping-From
 Ping-To
@@ -89,6 +90,7 @@ Timing-Allow-Origin
 Trailer
 Transfer-Encoding
 Upgrade
+Upgrade-Insecure-Requests
 User-Agent
 Vary
 Via

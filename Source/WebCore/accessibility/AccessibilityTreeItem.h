@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityTreeItem_h
-#define AccessibilityTreeItem_h
+#pragma once
 
 #include "AccessibilityRenderObject.h"
 
@@ -38,16 +37,14 @@ public:
     static Ref<AccessibilityTreeItem> create(RenderObject*);
     virtual ~AccessibilityTreeItem();
 
-    virtual bool shouldIgnoreAttributeRole() const override { return !m_isTreeItemValid; }
+    bool shouldIgnoreAttributeRole() const override { return !m_isTreeItemValid; }
 
 private:
     explicit AccessibilityTreeItem(RenderObject*);
-    virtual AccessibilityRole determineAccessibilityRole() override;
+    AccessibilityRole determineAccessibilityRole() override;
     bool m_isTreeItemValid;
 };
     
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityTreeItem, isTreeItem())
-
-#endif // AccessibilityTreeItem_h

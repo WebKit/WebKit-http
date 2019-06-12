@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFELightElement_h
-#define SVGFELightElement_h
+#pragma once
 
 #include "LightSource.h"
 #include "SVGAnimatedNumber.h"
@@ -37,12 +36,12 @@ public:
 protected:
     SVGFELightElement(const QualifiedName&, Document&);
 
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool rendererIsNeeded(const RenderStyle&) override { return false; }
 
 private:
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    void childrenChanged(const ChildChange&) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGFELightElement)
         DECLARE_ANIMATED_NUMBER(Azimuth, azimuth)
@@ -59,5 +58,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

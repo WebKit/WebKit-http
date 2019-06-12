@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef EllipsisBox_h
-#define EllipsisBox_h
+#pragma once
 
 #include "InlineElementBox.h"
 #include "RenderBlockFlow.h"
@@ -30,9 +29,9 @@ class HitTestResult;
 
 class EllipsisBox final : public InlineElementBox {
 public:
-    EllipsisBox(RenderBlockFlow&, const AtomicString& ellipsisStr, InlineFlowBox* parent, int width, int height, int y, bool firstLine, bool isVertical, InlineBox* markupBox);
-    virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom) override;
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom, HitTestAction) override final;
+    EllipsisBox(RenderBlockFlow&, const AtomicString& ellipsisStr, InlineFlowBox* parent, int width, int height, int y, bool firstLine, bool isHorizontal, InlineBox* markupBox);
+    void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom) override;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom, HitTestAction) final;
     void setSelectionState(RenderObject::SelectionState s) { m_selectionState = s; }
     IntRect selectionRect();
 
@@ -41,7 +40,7 @@ public:
 private:
     void paintMarkupBox(PaintInfo&, const LayoutPoint& paintOffset, LayoutUnit lineTop, LayoutUnit lineBottom, const RenderStyle&);
     int height() const { return m_height; }
-    virtual RenderObject::SelectionState selectionState() override { return m_selectionState; }
+    RenderObject::SelectionState selectionState() override { return m_selectionState; }
     void paintSelection(GraphicsContext&, const LayoutPoint&, const RenderStyle&, const FontCascade&);
     InlineBox* markupBox() const;
 
@@ -52,5 +51,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // EllipsisBox_h

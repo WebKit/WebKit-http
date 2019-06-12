@@ -41,6 +41,8 @@
 namespace WebCore {
 class Frame;
 class Range;
+
+enum class DidWrap : bool;
 }
 
 namespace WebKit {
@@ -73,16 +75,15 @@ public:
 
 private:
     // PageOverlay::Client.
-    virtual void pageOverlayDestroyed(WebCore::PageOverlay&);
-    virtual void willMoveToPage(WebCore::PageOverlay&, WebCore::Page*);
-    virtual void didMoveToPage(WebCore::PageOverlay&, WebCore::Page*);
-    virtual bool mouseEvent(WebCore::PageOverlay&, const WebCore::PlatformMouseEvent&);
-    virtual void drawRect(WebCore::PageOverlay&, WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect);
+    void willMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
+    void didMoveToPage(WebCore::PageOverlay&, WebCore::Page*) override;
+    bool mouseEvent(WebCore::PageOverlay&, const WebCore::PlatformMouseEvent&) override;
+    void drawRect(WebCore::PageOverlay&, WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect) override;
 
     Vector<WebCore::IntRect> rectsForTextMatchesInRect(WebCore::IntRect clipRect);
     bool updateFindIndicator(WebCore::Frame& selectedFrame, bool isShowingOverlay, bool shouldAnimate = true);
 
-    void updateFindUIAfterPageScroll(bool found, const String&, FindOptions, unsigned maxMatchCount);
+    void updateFindUIAfterPageScroll(bool found, const String&, FindOptions, unsigned maxMatchCount, WebCore::DidWrap);
 
     void willFindString();
     void didFindString();

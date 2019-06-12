@@ -36,8 +36,6 @@
 #include <WebCore/GUniquePtrGtk.h>
 #include <gdk/gdk.h>
 #include <wtf/HashSet.h>
-#elif PLATFORM(EFL)
-#include "EWebKit2.h"
 #elif PLATFORM(QT)
 #include <QEvent>
 #include <QTouchEvent>
@@ -53,8 +51,6 @@ class TestController;
 
 #if PLATFORM(GTK)
 struct WTREventQueueItem;
-#elif PLATFORM(EFL)
-struct WTREvent;
 #endif
 
 class EventSenderProxy {
@@ -74,7 +70,6 @@ public:
     void mouseMoveTo(double x, double y);
     void mouseScrollBy(int x, int y);
     void mouseScrollByWithWheelAndMomentumPhases(int x, int y, int phase, int momentum);
-    void swipeGestureWithWheelAndMomentumPhases(int x, int y, int phase, int momentum);
     void continuousMouseScrollBy(int x, int y, bool paged);
 
     void leapForward(int milliseconds);
@@ -102,7 +97,7 @@ private:
     double currentEventTime() { return m_time; }
     void updateClickCountForButton(int button);
 
-#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(QT) || PLATFORM(GTK)
     void replaySavedEvents();
 #endif
 
@@ -125,12 +120,6 @@ private:
     void sendTouchEvent(QEvent::Type);
 #endif
     void sendOrQueueEvent(QEvent*);
-#elif PLATFORM(EFL)
-    void sendOrQueueEvent(const WTREvent&);
-    void dispatchEvent(const WTREvent&);
-#if ENABLE(TOUCH_EVENTS)
-    void sendTouchEvent(Ewk_Touch_Event_Type);
-#endif
 #endif
 
     double m_time;
@@ -155,12 +144,6 @@ private:
     Qt::KeyboardModifiers m_touchModifiers;
     QPoint m_touchPointRadius;
     bool m_touchActive;
-#endif
-#elif PLATFORM(EFL)
-    Deque<WTREvent> m_eventQueue;
-    WKEventMouseButton m_mouseButton;
-#if ENABLE(TOUCH_EVENTS)
-    Eina_List* m_touchPoints;
 #endif
 #endif
 };

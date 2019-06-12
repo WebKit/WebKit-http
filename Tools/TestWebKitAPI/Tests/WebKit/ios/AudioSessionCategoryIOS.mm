@@ -29,15 +29,11 @@
 
 #import "PlatformUtilities.h"
 #import <AVFoundation/AVAudioSession.h>
-#import <WebCore/Settings.h>
 #import <UIKit/UIKit.h>
-#import <WebCore/SoftLinking.h>
+#import <WebCore/Settings.h>
 #import <WebKit/WebKitLegacy.h>
 #import <wtf/RetainPtr.h>
-
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK_CLASS(UIKit, UIWebView)
-SOFT_LINK_CLASS(UIKit, UIWindow)
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVAudioSession)
@@ -66,8 +62,8 @@ namespace TestWebKitAPI {
 TEST(WebKit1, AudioSessionCategoryIOS)
 {
     WebCore::Settings::setShouldManageAudioSessionCategory(true);
-    RetainPtr<UIWindow> uiWindow = adoptNS([[getUIWindowClass() alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
-    RetainPtr<UIWebView> uiWebView = adoptNS([[getUIWebViewClass() alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    RetainPtr<UIWindow> uiWindow = adoptNS([[UIWindow alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    RetainPtr<UIWebView> uiWebView = adoptNS([[UIWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
     [uiWindow addSubview:uiWebView.get()];
 
     uiWebView.get().mediaPlaybackRequiresUserAction = NO;
@@ -85,6 +81,22 @@ TEST(WebKit1, AudioSessionCategoryIOS)
     didBeginPlaying = false;
 
     [uiWebView loadRequest:[NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"video-without-audio" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]]];
+
+    Util::run(&didBeginPlaying);
+
+    EXPECT_WK_STREQ(getAVAudioSessionCategoryAmbient(), [[getAVAudioSessionClass() sharedInstance] category]);
+
+    didBeginPlaying = false;
+
+    [uiWebView loadRequest:[NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"video-with-muted-audio" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]]];
+
+    Util::run(&didBeginPlaying);
+
+    EXPECT_WK_STREQ(getAVAudioSessionCategoryAmbient(), [[getAVAudioSessionClass() sharedInstance] category]);
+
+    didBeginPlaying = false;
+
+    [uiWebView loadRequest:[NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"video-with-muted-audio-and-webaudio" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]]];
 
     Util::run(&didBeginPlaying);
 

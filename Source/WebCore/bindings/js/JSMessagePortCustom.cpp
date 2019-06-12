@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2009, 2016 Apple Inc. All Rights Reserved.
  * Copyright (C) 2011 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,20 +27,6 @@
 #include "config.h"
 #include "JSMessagePort.h"
 
-#include "Event.h"
-#include "ExceptionCode.h"
-#include "Frame.h"
-#include "JSDOMBinding.h"
-#include "JSDOMGlobalObject.h"
-#include "JSEvent.h"
-#include "JSEventListener.h"
-#include "JSMessagePortCustom.h"
-#include "MessagePort.h"
-#include <heap/SlotVisitorInlines.h>
-#include <runtime/Error.h>
-#include <runtime/JSArrayBuffer.h>
-#include <wtf/text/AtomicString.h>
-
 using namespace JSC;
 
 namespace WebCore {
@@ -50,58 +36,6 @@ void JSMessagePort::visitAdditionalChildren(SlotVisitor& visitor)
     // If we have a locally entangled port, we can directly mark it as reachable. Ports that are remotely entangled are marked in-use by markActiveObjectsForContext().
     if (MessagePort* port = wrapped().locallyEntangledPort())
         visitor.addOpaqueRoot(port);
-}
-
-JSC::JSValue JSMessagePort::postMessage(JSC::ExecState& state)
-{
-    return handlePostMessage(state, &wrapped());
-}
-
-void fillMessagePortArray(JSC::ExecState& state, JSC::JSValue value, MessagePortArray& portArray, ArrayBufferArray& arrayBuffers)
-{
-    // Convert from the passed-in JS array-like object to a MessagePortArray.
-    // Also validates the elements per sections 4.1.13 and 4.1.15 of the WebIDL spec and section 8.3.3 of the HTML5 spec.
-    if (value.isUndefinedOrNull()) {
-        portArray.resize(0);
-        arrayBuffers.resize(0);
-        return;
-    }
-
-    // Validation of sequence types, per WebIDL spec 4.1.13.
-    unsigned length = 0;
-    JSObject* object = toJSSequence(&state, value, length);
-    if (state.hadException())
-        return;
-
-    for (unsigned i = 0 ; i < length; ++i) {
-        JSValue value = object->get(&state, i);
-        if (state.hadException())
-            return;
-        // Validation of non-null objects, per HTML5 spec 10.3.3.
-        if (value.isUndefinedOrNull()) {
-            setDOMException(&state, INVALID_STATE_ERR);
-            return;
-        }
-
-        // Validation of Objects implementing an interface, per WebIDL spec 4.1.15.
-        RefPtr<MessagePort> port = JSMessagePort::toWrapped(value);
-        if (port) {
-            // Check for duplicate ports.
-            if (portArray.contains(port)) {
-                setDOMException(&state, INVALID_STATE_ERR);
-                return;
-            }
-            portArray.append(port.release());
-        } else {
-            RefPtr<ArrayBuffer> arrayBuffer = toArrayBuffer(value);
-            if (arrayBuffer)
-                arrayBuffers.append(arrayBuffer);
-            else {
-                throwTypeError(&state);
-                return;
-            }
-        }
-    }
 }
 
 } // namespace WebCore

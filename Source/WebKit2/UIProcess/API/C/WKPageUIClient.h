@@ -48,6 +48,26 @@ enum {
 };
 typedef uint32_t WKPluginUnavailabilityReason;
 
+enum {
+    kWKAutoplayEventDidPreventFromAutoplaying,
+    kWKAutoplayEventDidPlayMediaPreventedFromAutoplaying,
+    kWKAutoplayEventDidAutoplayMediaPastThresholdWithoutUserInterference,
+    kWKAutoplayEventUserDidInterfereWithPlayback,
+};
+typedef uint32_t WKAutoplayEvent;
+
+enum {
+    kWKAutoplayEventFlagsNone = 0,
+    kWKAutoplayEventFlagsHasAudio = 1 << 0,
+};
+typedef uint32_t WKAutoplayEventFlags;
+
+enum {
+    kWKResourceLimitMemory,
+    kWKResourceLimitCPU,
+};
+typedef uint32_t WKResourceLimit;
+
 WK_EXPORT WKTypeID WKPageRunBeforeUnloadConfirmPanelResultListenerGetTypeID();
 WK_EXPORT void WKPageRunBeforeUnloadConfirmPanelResultListenerCall(WKPageRunBeforeUnloadConfirmPanelResultListenerRef listener, bool result);
 
@@ -98,11 +118,17 @@ typedef void (*WKPageHideColorPickerCallback)(WKPageRef page, const void* client
 typedef void (*WKPageUnavailablePluginButtonClickedCallback)(WKPageRef page, WKPluginUnavailabilityReason pluginUnavailabilityReason, WKDictionaryRef pluginInfoDictionary, const void* clientInfo);
 typedef void (*WKPagePinnedStateDidChangeCallback)(WKPageRef page, const void* clientInfo);
 typedef void (*WKPageIsPlayingAudioDidChangeCallback)(WKPageRef page, const void* clientInfo);
-typedef void (*WKPageDecidePolicyForUserMediaPermissionRequestCallback)(WKPageRef page, WKFrameRef frame, WKSecurityOriginRef origin, WKUserMediaPermissionRequestRef permissionRequest, const void* clientInfo);
-typedef void (*WKCheckUserMediaPermissionCallback)(WKPageRef page, WKFrameRef frame, WKSecurityOriginRef origin, WKUserMediaPermissionCheckRef devicesRequest, const void *clientInfo);
+typedef void (*WKPageDecidePolicyForUserMediaPermissionRequestCallback)(WKPageRef page, WKFrameRef frame, WKSecurityOriginRef userMediaDocumentOrigin, WKSecurityOriginRef topLevelDocumentOrigin, WKUserMediaPermissionRequestRef permissionRequest, const void* clientInfo);
+typedef void (*WKCheckUserMediaPermissionCallback)(WKPageRef page, WKFrameRef frame, WKSecurityOriginRef userMediaDocumentOrigin, WKSecurityOriginRef topLevelDocumentOrigin, WKUserMediaPermissionCheckRef devicesRequest, const void *clientInfo);
 typedef void (*WKPageDidClickAutoFillButtonCallback)(WKPageRef page, WKTypeRef userData, const void *clientInfo);
 typedef void (*WKPageMediaSessionMetadataDidChangeCallback)(WKPageRef page, WKMediaSessionMetadataRef metadata, const void* clientInfo);
-
+typedef void (*WKHandleAutoplayEventCallback)(WKPageRef page, WKAutoplayEvent event, WKAutoplayEventFlags flags, const void* clientInfo);
+typedef void (*WKFullscreenMayReturnToInlineCallback)(WKPageRef page, const void* clientInfo);
+typedef void (*WKRequestPointerLockCallback)(WKPageRef page, const void* clientInfo);
+typedef void (*WKDidLosePointerLockCallback)(WKPageRef page, const void* clientInfo);
+typedef void (*WKHasVideoInPictureInPictureDidChangeCallback)(WKPageRef page, bool hasVideoInPictureInPicture, const void* clientInfo);
+typedef void (*WKDidExceedBackgroundResourceLimitWhileInForegroundCallback)(WKPageRef page, WKResourceLimit limit, const void* clientInfo);
+    
 // Deprecated
 typedef WKPageRef (*WKPageCreateNewPageCallback_deprecatedForUseWithV0)(WKPageRef page, WKDictionaryRef features, WKEventModifiers modifiers, WKEventMouseButton mouseButton, const void *clientInfo);
 typedef void      (*WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0)(WKPageRef page, WKEventModifiers modifiers, WKTypeRef userData, const void *clientInfo);
@@ -632,8 +658,283 @@ typedef struct WKPageUIClientV7 {
 
     // Version 7.
     WKPageRunBeforeUnloadConfirmPanelCallback                           runBeforeUnloadConfirmPanel;
+    WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
 } WKPageUIClientV7;
 
+typedef struct WKPageUIClientV8 {
+    WKPageUIClientBase                                                  base;
+    
+    // Version 0.
+    WKPageCreateNewPageCallback_deprecatedForUseWithV0                  createNewPage_deprecatedForUseWithV0;
+    WKPageUIClientCallback                                              showPage;
+    WKPageUIClientCallback                                              close;
+    WKPageTakeFocusCallback                                             takeFocus;
+    WKPageFocusCallback                                                 focus;
+    WKPageUnfocusCallback                                               unfocus;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageSetStatusTextCallback                                         setStatusText;
+    WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
+    WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
+    WKPageDidNotHandleKeyEventCallback                                  didNotHandleKeyEvent;
+    WKPageDidNotHandleWheelEventCallback                                didNotHandleWheelEvent;
+    WKPageGetToolbarsAreVisibleCallback                                 toolbarsAreVisible;
+    WKPageSetToolbarsAreVisibleCallback                                 setToolbarsAreVisible;
+    WKPageGetMenuBarIsVisibleCallback                                   menuBarIsVisible;
+    WKPageSetMenuBarIsVisibleCallback                                   setMenuBarIsVisible;
+    WKPageGetStatusBarIsVisibleCallback                                 statusBarIsVisible;
+    WKPageSetStatusBarIsVisibleCallback                                 setStatusBarIsVisible;
+    WKPageGetIsResizableCallback                                        isResizable;
+    WKPageSetIsResizableCallback                                        setIsResizable;
+    WKPageGetWindowFrameCallback                                        getWindowFrame;
+    WKPageSetWindowFrameCallback                                        setWindowFrame;
+    WKPageRunBeforeUnloadConfirmPanelCallback_deprecatedForUseWithV6    runBeforeUnloadConfirmPanel_deprecatedForUseWithV6;
+    WKPageUIClientCallback                                              didDraw;
+    WKPageUIClientCallback                                              pageDidScroll;
+    WKPageExceededDatabaseQuotaCallback                                 exceededDatabaseQuota;
+    WKPageRunOpenPanelCallback                                          runOpenPanel;
+    WKPageDecidePolicyForGeolocationPermissionRequestCallback           decidePolicyForGeolocationPermissionRequest;
+    WKPageHeaderHeightCallback                                          headerHeight;
+    WKPageFooterHeightCallback                                          footerHeight;
+    WKPageDrawHeaderCallback                                            drawHeader;
+    WKPageDrawFooterCallback                                            drawFooter;
+    WKPagePrintFrameCallback                                            printFrame;
+    WKPageUIClientCallback                                              runModal;
+    void*                                                               unused1; // Used to be didCompleteRubberBandForMainFrame
+    WKPageSaveDataToFileInDownloadsFolderCallback                       saveDataToFileInDownloadsFolder;
+    void*                                                               shouldInterruptJavaScript_unavailable;
+    
+    // Version 1.
+    WKPageCreateNewPageCallback_deprecatedForUseWithV1                  createNewPage_deprecatedForUseWithV1;
+    WKPageMouseDidMoveOverElementCallback                               mouseDidMoveOverElement;
+    WKPageDecidePolicyForNotificationPermissionRequestCallback          decidePolicyForNotificationPermissionRequest;
+    WKPageUnavailablePluginButtonClickedCallback_deprecatedForUseWithV1 unavailablePluginButtonClicked_deprecatedForUseWithV1;
+    
+    // Version 2.
+    WKPageShowColorPickerCallback                                       showColorPicker;
+    WKPageHideColorPickerCallback                                       hideColorPicker;
+    WKPageUnavailablePluginButtonClickedCallback                        unavailablePluginButtonClicked;
+    
+    // Version 3.
+    WKPagePinnedStateDidChangeCallback                                  pinnedStateDidChange;
+    
+    // Version 4.
+    void*                                                               unused2; // Used to be didBeginTrackingPotentialLongMousePress.
+    void*                                                               unused3; // Used to be didRecognizeLongMousePress.
+    void*                                                               unused4; // Used to be didCancelTrackingPotentialLongMousePress.
+    WKPageIsPlayingAudioDidChangeCallback                               isPlayingAudioDidChange;
+    
+    // Version 5.
+    WKPageDecidePolicyForUserMediaPermissionRequestCallback             decidePolicyForUserMediaPermissionRequest;
+    WKPageDidClickAutoFillButtonCallback                                didClickAutoFillButton;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV5             runJavaScriptAlert_deprecatedForUseWithV5;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV5           runJavaScriptConfirm_deprecatedForUseWithV5;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV5            runJavaScriptPrompt_deprecatedForUseWithV5;
+    WKPageMediaSessionMetadataDidChangeCallback                         mediaSessionMetadataDidChange;
+    
+    // Version 6.
+    WKPageCreateNewPageCallback                                         createNewPage;
+    WKPageRunJavaScriptAlertCallback                                    runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback                                  runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback                                   runJavaScriptPrompt;
+    WKCheckUserMediaPermissionCallback                                  checkUserMediaPermissionForOrigin;
+    
+    // Version 7.
+    WKPageRunBeforeUnloadConfirmPanelCallback                           runBeforeUnloadConfirmPanel;
+    WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
+    
+    // Version 8.
+    WKRequestPointerLockCallback                                        requestPointerLock;
+    WKDidLosePointerLockCallback                                        didLosePointerLock;
+} WKPageUIClientV8;
+
+typedef struct WKPageUIClientV9 {
+    WKPageUIClientBase                                                  base;
+
+    // Version 0.
+    WKPageCreateNewPageCallback_deprecatedForUseWithV0                  createNewPage_deprecatedForUseWithV0;
+    WKPageUIClientCallback                                              showPage;
+    WKPageUIClientCallback                                              close;
+    WKPageTakeFocusCallback                                             takeFocus;
+    WKPageFocusCallback                                                 focus;
+    WKPageUnfocusCallback                                               unfocus;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageSetStatusTextCallback                                         setStatusText;
+    WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
+    WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
+    WKPageDidNotHandleKeyEventCallback                                  didNotHandleKeyEvent;
+    WKPageDidNotHandleWheelEventCallback                                didNotHandleWheelEvent;
+    WKPageGetToolbarsAreVisibleCallback                                 toolbarsAreVisible;
+    WKPageSetToolbarsAreVisibleCallback                                 setToolbarsAreVisible;
+    WKPageGetMenuBarIsVisibleCallback                                   menuBarIsVisible;
+    WKPageSetMenuBarIsVisibleCallback                                   setMenuBarIsVisible;
+    WKPageGetStatusBarIsVisibleCallback                                 statusBarIsVisible;
+    WKPageSetStatusBarIsVisibleCallback                                 setStatusBarIsVisible;
+    WKPageGetIsResizableCallback                                        isResizable;
+    WKPageSetIsResizableCallback                                        setIsResizable;
+    WKPageGetWindowFrameCallback                                        getWindowFrame;
+    WKPageSetWindowFrameCallback                                        setWindowFrame;
+    WKPageRunBeforeUnloadConfirmPanelCallback_deprecatedForUseWithV6    runBeforeUnloadConfirmPanel_deprecatedForUseWithV6;
+    WKPageUIClientCallback                                              didDraw;
+    WKPageUIClientCallback                                              pageDidScroll;
+    WKPageExceededDatabaseQuotaCallback                                 exceededDatabaseQuota;
+    WKPageRunOpenPanelCallback                                          runOpenPanel;
+    WKPageDecidePolicyForGeolocationPermissionRequestCallback           decidePolicyForGeolocationPermissionRequest;
+    WKPageHeaderHeightCallback                                          headerHeight;
+    WKPageFooterHeightCallback                                          footerHeight;
+    WKPageDrawHeaderCallback                                            drawHeader;
+    WKPageDrawFooterCallback                                            drawFooter;
+    WKPagePrintFrameCallback                                            printFrame;
+    WKPageUIClientCallback                                              runModal;
+    void*                                                               unused1; // Used to be didCompleteRubberBandForMainFrame
+    WKPageSaveDataToFileInDownloadsFolderCallback                       saveDataToFileInDownloadsFolder;
+    void*                                                               shouldInterruptJavaScript_unavailable;
+
+    // Version 1.
+    WKPageCreateNewPageCallback_deprecatedForUseWithV1                  createNewPage_deprecatedForUseWithV1;
+    WKPageMouseDidMoveOverElementCallback                               mouseDidMoveOverElement;
+    WKPageDecidePolicyForNotificationPermissionRequestCallback          decidePolicyForNotificationPermissionRequest;
+    WKPageUnavailablePluginButtonClickedCallback_deprecatedForUseWithV1 unavailablePluginButtonClicked_deprecatedForUseWithV1;
+
+    // Version 2.
+    WKPageShowColorPickerCallback                                       showColorPicker;
+    WKPageHideColorPickerCallback                                       hideColorPicker;
+    WKPageUnavailablePluginButtonClickedCallback                        unavailablePluginButtonClicked;
+
+    // Version 3.
+    WKPagePinnedStateDidChangeCallback                                  pinnedStateDidChange;
+
+    // Version 4.
+    void*                                                               unused2; // Used to be didBeginTrackingPotentialLongMousePress.
+    void*                                                               unused3; // Used to be didRecognizeLongMousePress.
+    void*                                                               unused4; // Used to be didCancelTrackingPotentialLongMousePress.
+    WKPageIsPlayingAudioDidChangeCallback                               isPlayingAudioDidChange;
+
+    // Version 5.
+    WKPageDecidePolicyForUserMediaPermissionRequestCallback             decidePolicyForUserMediaPermissionRequest;
+    WKPageDidClickAutoFillButtonCallback                                didClickAutoFillButton;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV5             runJavaScriptAlert_deprecatedForUseWithV5;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV5           runJavaScriptConfirm_deprecatedForUseWithV5;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV5            runJavaScriptPrompt_deprecatedForUseWithV5;
+    WKPageMediaSessionMetadataDidChangeCallback                         mediaSessionMetadataDidChange;
+
+    // Version 6.
+    WKPageCreateNewPageCallback                                         createNewPage;
+    WKPageRunJavaScriptAlertCallback                                    runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback                                  runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback                                   runJavaScriptPrompt;
+    WKCheckUserMediaPermissionCallback                                  checkUserMediaPermissionForOrigin;
+
+    // Version 7.
+    WKPageRunBeforeUnloadConfirmPanelCallback                           runBeforeUnloadConfirmPanel;
+    WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
+
+    // Version 8.
+    WKRequestPointerLockCallback                                        requestPointerLock;
+    WKDidLosePointerLockCallback                                        didLosePointerLock;
+
+    // Version 9.
+    WKHandleAutoplayEventCallback                                       handleAutoplayEvent;
+} WKPageUIClientV9;
+    
+typedef struct WKPageUIClientV10 {
+    WKPageUIClientBase                                                  base;
+    
+    // Version 0.
+    WKPageCreateNewPageCallback_deprecatedForUseWithV0                  createNewPage_deprecatedForUseWithV0;
+    WKPageUIClientCallback                                              showPage;
+    WKPageUIClientCallback                                              close;
+    WKPageTakeFocusCallback                                             takeFocus;
+    WKPageFocusCallback                                                 focus;
+    WKPageUnfocusCallback                                               unfocus;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageSetStatusTextCallback                                         setStatusText;
+    WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
+    WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
+    WKPageDidNotHandleKeyEventCallback                                  didNotHandleKeyEvent;
+    WKPageDidNotHandleWheelEventCallback                                didNotHandleWheelEvent;
+    WKPageGetToolbarsAreVisibleCallback                                 toolbarsAreVisible;
+    WKPageSetToolbarsAreVisibleCallback                                 setToolbarsAreVisible;
+    WKPageGetMenuBarIsVisibleCallback                                   menuBarIsVisible;
+    WKPageSetMenuBarIsVisibleCallback                                   setMenuBarIsVisible;
+    WKPageGetStatusBarIsVisibleCallback                                 statusBarIsVisible;
+    WKPageSetStatusBarIsVisibleCallback                                 setStatusBarIsVisible;
+    WKPageGetIsResizableCallback                                        isResizable;
+    WKPageSetIsResizableCallback                                        setIsResizable;
+    WKPageGetWindowFrameCallback                                        getWindowFrame;
+    WKPageSetWindowFrameCallback                                        setWindowFrame;
+    WKPageRunBeforeUnloadConfirmPanelCallback_deprecatedForUseWithV6    runBeforeUnloadConfirmPanel_deprecatedForUseWithV6;
+    WKPageUIClientCallback                                              didDraw;
+    WKPageUIClientCallback                                              pageDidScroll;
+    WKPageExceededDatabaseQuotaCallback                                 exceededDatabaseQuota;
+    WKPageRunOpenPanelCallback                                          runOpenPanel;
+    WKPageDecidePolicyForGeolocationPermissionRequestCallback           decidePolicyForGeolocationPermissionRequest;
+    WKPageHeaderHeightCallback                                          headerHeight;
+    WKPageFooterHeightCallback                                          footerHeight;
+    WKPageDrawHeaderCallback                                            drawHeader;
+    WKPageDrawFooterCallback                                            drawFooter;
+    WKPagePrintFrameCallback                                            printFrame;
+    WKPageUIClientCallback                                              runModal;
+    void*                                                               unused1; // Used to be didCompleteRubberBandForMainFrame
+    WKPageSaveDataToFileInDownloadsFolderCallback                       saveDataToFileInDownloadsFolder;
+    void*                                                               shouldInterruptJavaScript_unavailable;
+    
+    // Version 1.
+    WKPageCreateNewPageCallback_deprecatedForUseWithV1                  createNewPage_deprecatedForUseWithV1;
+    WKPageMouseDidMoveOverElementCallback                               mouseDidMoveOverElement;
+    WKPageDecidePolicyForNotificationPermissionRequestCallback          decidePolicyForNotificationPermissionRequest;
+    WKPageUnavailablePluginButtonClickedCallback_deprecatedForUseWithV1 unavailablePluginButtonClicked_deprecatedForUseWithV1;
+    
+    // Version 2.
+    WKPageShowColorPickerCallback                                       showColorPicker;
+    WKPageHideColorPickerCallback                                       hideColorPicker;
+    WKPageUnavailablePluginButtonClickedCallback                        unavailablePluginButtonClicked;
+    
+    // Version 3.
+    WKPagePinnedStateDidChangeCallback                                  pinnedStateDidChange;
+    
+    // Version 4.
+    void*                                                               unused2; // Used to be didBeginTrackingPotentialLongMousePress.
+    void*                                                               unused3; // Used to be didRecognizeLongMousePress.
+    void*                                                               unused4; // Used to be didCancelTrackingPotentialLongMousePress.
+    WKPageIsPlayingAudioDidChangeCallback                               isPlayingAudioDidChange;
+    
+    // Version 5.
+    WKPageDecidePolicyForUserMediaPermissionRequestCallback             decidePolicyForUserMediaPermissionRequest;
+    WKPageDidClickAutoFillButtonCallback                                didClickAutoFillButton;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV5             runJavaScriptAlert_deprecatedForUseWithV5;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV5           runJavaScriptConfirm_deprecatedForUseWithV5;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV5            runJavaScriptPrompt_deprecatedForUseWithV5;
+    WKPageMediaSessionMetadataDidChangeCallback                         mediaSessionMetadataDidChange;
+    
+    // Version 6.
+    WKPageCreateNewPageCallback                                         createNewPage;
+    WKPageRunJavaScriptAlertCallback                                    runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback                                  runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback                                   runJavaScriptPrompt;
+    WKCheckUserMediaPermissionCallback                                  checkUserMediaPermissionForOrigin;
+    
+    // Version 7.
+    WKPageRunBeforeUnloadConfirmPanelCallback                           runBeforeUnloadConfirmPanel;
+    WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
+    
+    // Version 8.
+    WKRequestPointerLockCallback                                        requestPointerLock;
+    WKDidLosePointerLockCallback                                        didLosePointerLock;
+    
+    // Version 9.
+    WKHandleAutoplayEventCallback                                       handleAutoplayEvent;
+    
+    // Version 10.
+    WKHasVideoInPictureInPictureDidChangeCallback                             hasVideoInPictureInPictureDidChange;
+    WKDidExceedBackgroundResourceLimitWhileInForegroundCallback         didExceedBackgroundResourceLimitWhileInForeground;
+} WKPageUIClientV10;
+    
 #ifdef __cplusplus
 }
 #endif

@@ -23,40 +23,44 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FontFace_h
-#define FontFace_h
+#pragma once
 
 #include "CSSFontFace.h"
 #include "CSSPropertyNames.h"
-#include "DOMCoreException.h"
-#include "ExceptionCode.h"
-#include "JSDOMPromise.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
+#include "JSDOMPromiseDeferred.h"
+#include <wtf/Variant.h>
+#include <wtf/WeakPtr.h>
 
-namespace Deprecated {
-class ScriptValue;
+namespace JSC {
+class ArrayBuffer;
+class ArrayBufferView;
 }
 
 namespace WebCore {
 
-class CSSFontFace;
-class CSSValue;
-class Dictionary;
-
-class FontFace final : public RefCounted<FontFace>, public CSSFontFace::Client {
+class FontFace final : public RefCounted<FontFace>, private CSSFontFace::Client {
 public:
-    static RefPtr<FontFace> create(JSC::ExecState&, ScriptExecutionContext&, const String& family, const Deprecated::ScriptValue& source, const Dictionary& descriptors, ExceptionCode&);
+    struct Descriptors {
+        String style;
+        String weight;
+        String stretch;
+        String unicodeRange;
+        String variant;
+        String featureSettings;
+    };
+    
+    using Source = Variant<String, RefPtr<JSC::ArrayBuffer>, RefPtr<JSC::ArrayBufferView>>;
+    static ExceptionOr<Ref<FontFace>> create(Document&, const String& family, Source&&, const Descriptors&);
+    static Ref<FontFace> create(CSSFontFace&);
     virtual ~FontFace();
 
-    void setFamily(const String&, ExceptionCode&);
-    void setStyle(const String&, ExceptionCode&);
-    void setWeight(const String&, ExceptionCode&);
-    void setStretch(const String&, ExceptionCode&);
-    void setUnicodeRange(const String&, ExceptionCode&);
-    void setVariant(const String&, ExceptionCode&);
-    void setFeatureSettings(const String&, ExceptionCode&);
+    ExceptionOr<void> setFamily(const String&);
+    ExceptionOr<void> setStyle(const String&);
+    ExceptionOr<void> setWeight(const String&);
+    ExceptionOr<void> setStretch(const String&);
+    ExceptionOr<void> setUnicodeRange(const String&);
+    ExceptionOr<void> setVariant(const String&);
+    ExceptionOr<void> setFeatureSettings(const String&);
 
     String family() const;
     String style() const;
@@ -65,10 +69,15 @@ public:
     String unicodeRange() const;
     String variant() const;
     String featureSettings() const;
-    String status() const;
 
-    typedef DOMPromise<FontFace&, DOMCoreException&> Promise;
-    Promise& promise() { return m_promise; }
+    enum class LoadStatus { Unloaded, Loading, Loaded, Error };
+    LoadStatus status() const;
+
+    using Promise = DOMPromiseDeferred<IDLInterface<FontFace>>;
+    std::optional<Promise>& promise() { return m_promise; }
+    void registerLoaded(Promise&&);
+
+    void adopt(CSSFontFace&);
 
     void load();
 
@@ -76,18 +85,20 @@ public:
 
     static RefPtr<CSSValue> parseString(const String&, CSSPropertyID);
 
+    void fontStateChanged(CSSFontFace&, CSSFontFace::Status oldState, CSSFontFace::Status newState) final;
+
+    WeakPtr<FontFace> createWeakPtr() const;
+
+    void ref() final { RefCounted::ref(); }
+    void deref() final { RefCounted::deref(); }
+
 private:
-    FontFace(JSC::ExecState&, CSSFontSelector&);
+    explicit FontFace(CSSFontSelector&);
+    explicit FontFace(CSSFontFace&);
 
-    virtual void stateChanged(CSSFontFace&, CSSFontFace::Status oldState, CSSFontFace::Status newState) override;
-
-    void fulfillPromise();
-    void rejectPromise(ExceptionCode);
-
+    WeakPtrFactory<FontFace> m_weakPtrFactory;
     Ref<CSSFontFace> m_backing;
-    Promise m_promise;
+    std::optional<Promise> m_promise;
 };
 
 }
-
-#endif

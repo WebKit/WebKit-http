@@ -29,6 +29,7 @@
 
 #include "DOMWindow.h"
 #include "Document.h"
+#include "EventNames.h"
 #include "Gamepad.h"
 #include "GamepadEvent.h"
 #include "GamepadProvider.h"
@@ -114,13 +115,18 @@ void GamepadManager::platformGamepadDisconnected(PlatformGamepad& platformGamepa
     }
 }
 
-void GamepadManager::platformGamepadInputActivity()
+void GamepadManager::platformGamepadInputActivity(bool shouldMakeGamepadVisible)
 {
+    if (!shouldMakeGamepadVisible)
+        return;
+
     if (m_gamepadBlindNavigators.isEmpty() && m_gamepadBlindDOMWindows.isEmpty())
         return;
 
-    for (auto* gamepad : GamepadProvider::singleton().platformGamepads())
-        makeGamepadVisible(*gamepad, m_gamepadBlindNavigators, m_gamepadBlindDOMWindows);
+    for (auto* gamepad : GamepadProvider::singleton().platformGamepads()) {
+        if (gamepad)
+            makeGamepadVisible(*gamepad, m_gamepadBlindNavigators, m_gamepadBlindDOMWindows);
+    }
 
     m_gamepadBlindNavigators.clear();
     m_gamepadBlindDOMWindows.clear();
@@ -218,7 +224,7 @@ void GamepadManager::maybeStartMonitoringGamepads()
     if (!m_navigators.isEmpty() || !m_domWindows.isEmpty()) {
         LOG(Gamepad, "GamepadManager has %i NavigatorGamepads and %i DOMWindows registered, is starting gamepad monitoring", m_navigators.size(), m_domWindows.size());
         m_isMonitoringGamepads = true;
-        GamepadProvider::singleton().startMonitoringGamepads(this);
+        GamepadProvider::singleton().startMonitoringGamepads(*this);
     }
 }
 
@@ -230,7 +236,7 @@ void GamepadManager::maybeStopMonitoringGamepads()
     if (m_navigators.isEmpty() && m_domWindows.isEmpty()) {
         LOG(Gamepad, "GamepadManager has no NavigatorGamepads or DOMWindows registered, is stopping gamepad monitoring");
         m_isMonitoringGamepads = false;
-        GamepadProvider::singleton().stopMonitoringGamepads(this);
+        GamepadProvider::singleton().stopMonitoringGamepads(*this);
     }
 }
 

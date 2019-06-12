@@ -32,6 +32,9 @@
 #include "config.h"
 #include "LinkRelAttribute.h"
 
+#include "LinkIconType.h"
+#include "RuntimeEnabledFeatures.h"
+#include <wtf/text/StringView.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -40,20 +43,21 @@ LinkRelAttribute::LinkRelAttribute()
 {
 }
 
+// Keep LinkRelAttribute::isSupported() in sync when updating this constructor.
 LinkRelAttribute::LinkRelAttribute(const String& rel)
 {
     if (equalLettersIgnoringASCIICase(rel, "stylesheet"))
         isStyleSheet = true;
     else if (equalLettersIgnoringASCIICase(rel, "icon") || equalLettersIgnoringASCIICase(rel, "shortcut icon"))
-        iconType = Favicon;
-#if ENABLE(TOUCH_ICON_LOADING)
+        iconType = LinkIconType::Favicon;
     else if (equalLettersIgnoringASCIICase(rel, "apple-touch-icon"))
-        iconType = TouchIcon;
+        iconType = LinkIconType::TouchIcon;
     else if (equalLettersIgnoringASCIICase(rel, "apple-touch-icon-precomposed"))
-        iconType = TouchPrecomposedIcon;
-#endif
+        iconType = LinkIconType::TouchPrecomposedIcon;
     else if (equalLettersIgnoringASCIICase(rel, "dns-prefetch"))
         isDNSPrefetch = true;
+    else if (RuntimeEnabledFeatures::sharedFeatures().linkPreloadEnabled() && equalLettersIgnoringASCIICase(rel, "preload"))
+        isLinkPreload = true;
     else if (equalLettersIgnoringASCIICase(rel, "alternate stylesheet") || equalLettersIgnoringASCIICase(rel, "stylesheet alternate")) {
         isStyleSheet = true;
         isAlternate = true;
@@ -61,21 +65,17 @@ LinkRelAttribute::LinkRelAttribute(const String& rel)
         // Tokenize the rel attribute and set bits based on specific keywords that we find.
         String relCopy = rel;
         relCopy.replace('\n', ' ');
-        Vector<String> list;
-        relCopy.split(' ', list);
-        for (auto& word : list) {
+        for (auto word : StringView(relCopy).split(' ')) {
             if (equalLettersIgnoringASCIICase(word, "stylesheet"))
                 isStyleSheet = true;
             else if (equalLettersIgnoringASCIICase(word, "alternate"))
                 isAlternate = true;
             else if (equalLettersIgnoringASCIICase(word, "icon"))
-                iconType = Favicon;
-#if ENABLE(TOUCH_ICON_LOADING)
+                iconType = LinkIconType::Favicon;
             else if (equalLettersIgnoringASCIICase(word, "apple-touch-icon"))
-                iconType = TouchIcon;
+                iconType = LinkIconType::TouchIcon;
             else if (equalLettersIgnoringASCIICase(word, "apple-touch-icon-precomposed"))
-                iconType = TouchPrecomposedIcon;
-#endif
+                iconType = LinkIconType::TouchPrecomposedIcon;
 #if ENABLE(LINK_PREFETCH)
             else if (equalLettersIgnoringASCIICase(word, "prefetch"))
                 isLinkPrefetch = true;
@@ -84,6 +84,27 @@ LinkRelAttribute::LinkRelAttribute(const String& rel)
 #endif
         }
     }
+}
+
+// https://html.spec.whatwg.org/#linkTypes
+bool LinkRelAttribute::isSupported(StringView attribute)
+{
+    static const char* const supportedAttributes[] = {
+        "alternate", "dns-prefetch", "icon", "stylesheet", "apple-touch-icon", "apple-touch-icon-precomposed",
+#if ENABLE(LINK_PREFETCH)
+        "prefetch", "subresource",
+#endif
+    };
+
+    for (auto* supportedAttribute : supportedAttributes) {
+        if (equalIgnoringASCIICase(attribute, supportedAttribute))
+            return true;
+    }
+
+    if (RuntimeEnabledFeatures::sharedFeatures().linkPreloadEnabled() && equalIgnoringASCIICase(attribute, "preload"))
+        return true;
+
+    return false;
 }
 
 }

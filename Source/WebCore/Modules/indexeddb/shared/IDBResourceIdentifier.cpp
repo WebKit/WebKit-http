@@ -30,15 +30,14 @@
 
 #include "IDBConnectionToClient.h"
 #include "IDBConnectionToServer.h"
-#include "IDBRequestImpl.h"
+#include "IDBRequest.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
 static uint64_t nextClientResourceNumber()
 {
-    ASSERT(isMainThread());
-    static uint64_t currentNumber = 1;
+    static std::atomic<uint64_t> currentNumber(1);
     return currentNumber += 2;
 }
 
@@ -59,14 +58,14 @@ IDBResourceIdentifier::IDBResourceIdentifier(uint64_t connectionIdentifier, uint
 {
 }
 
-IDBResourceIdentifier::IDBResourceIdentifier(const IDBClient::IDBConnectionToServer& connection)
-    : m_idbConnectionIdentifier(connection.identifier())
+IDBResourceIdentifier::IDBResourceIdentifier(const IDBClient::IDBConnectionProxy& connectionProxy)
+    : m_idbConnectionIdentifier(connectionProxy.serverConnectionIdentifier())
     , m_resourceNumber(nextClientResourceNumber())
 {
 }
 
-IDBResourceIdentifier::IDBResourceIdentifier(const IDBClient::IDBConnectionToServer& connection, const IDBClient::IDBRequest& request)
-    : m_idbConnectionIdentifier(connection.identifier())
+IDBResourceIdentifier::IDBResourceIdentifier(const IDBClient::IDBConnectionProxy& connectionProxy, const IDBRequest& request)
+    : m_idbConnectionIdentifier(connectionProxy.serverConnectionIdentifier())
     , m_resourceNumber(request.resourceIdentifier().m_resourceNumber)
 {
 }
@@ -98,7 +97,7 @@ bool IDBResourceIdentifier::isHashTableDeletedValue() const
         && m_resourceNumber == std::numeric_limits<uint64_t>::max();
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String IDBResourceIdentifier::loggingString() const
 {
     return String::format("<%" PRIu64", %" PRIu64">", m_idbConnectionIdentifier, m_resourceNumber);

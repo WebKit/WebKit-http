@@ -17,99 +17,95 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGStaticListPropertyTearOff_h
-#define SVGStaticListPropertyTearOff_h
+#pragma once
 
 #include "SVGListProperty.h"
 
 namespace WebCore {
 
-template<typename PropertyType>
+template<typename PropertyType> 
 class SVGStaticListPropertyTearOff : public SVGListProperty<PropertyType> {
 public:
-    typedef SVGListProperty<PropertyType> Base;
+    using Self = SVGStaticListPropertyTearOff<PropertyType>;
+    using Base = SVGListProperty<PropertyType>;
 
-    typedef typename SVGPropertyTraits<PropertyType>::ListItemType ListItemType;
-    typedef SVGPropertyTearOff<ListItemType> ListItemTearOff;
+    using ListItemType = typename SVGPropertyTraits<PropertyType>::ListItemType;
+    using ListItemTearOff = typename SVGPropertyTraits<PropertyType>::ListItemTearOff;
 
     using Base::m_role;
     using Base::m_values;
 
-    static Ref<SVGStaticListPropertyTearOff<PropertyType>> create(SVGElement& contextElement, PropertyType& values)
+    static Ref<Self> create(SVGElement& contextElement, PropertyType& values)
     {
-        return adoptRef(*new SVGStaticListPropertyTearOff<PropertyType>(&contextElement, values));
+        return adoptRef(*new Self(contextElement, values));
     }
 
-    // SVGList API
-    void clear(ExceptionCode& ec)
+    ExceptionOr<void> clear()
     {
-        Base::clearValues(ec);
+        return Base::clearValues();
     }
 
-    ListItemType initialize(const ListItemType& newItem, ExceptionCode& ec)
+    ExceptionOr<ListItemType> initialize(const ListItemType& newItem)
     {
-        return Base::initializeValues(newItem, ec);
+        return Base::initializeValues(newItem);
     }
 
-    ListItemType getItem(unsigned index, ExceptionCode& ec)
+    ExceptionOr<ListItemType> getItem(unsigned index)
     {
-        return Base::getItemValues(index, ec);
+        return Base::getItemValues(index);
     }
 
-    ListItemType insertItemBefore(const ListItemType& newItem, unsigned index, ExceptionCode& ec)
+    ExceptionOr<ListItemType> insertItemBefore(const ListItemType& newItem, unsigned index)
     {
-        return Base::insertItemBeforeValues(newItem, index, ec);
+        return Base::insertItemBeforeValues(newItem, index);
     }
 
-    ListItemType replaceItem(const ListItemType& newItem, unsigned index, ExceptionCode& ec)
+    ExceptionOr<ListItemType> replaceItem(const ListItemType& newItem, unsigned index)
     {
-        return Base::replaceItemValues(newItem, index, ec);
+        return Base::replaceItemValues(newItem, index);
     }
 
-    ListItemType removeItem(unsigned index, ExceptionCode& ec)
+    ExceptionOr<ListItemType> removeItem(unsigned index)
     {
-        return Base::removeItemValues(index, ec);
+        return Base::removeItemValues(index);
     }
 
-    ListItemType appendItem(const ListItemType& newItem, ExceptionCode& ec)
+    ExceptionOr<ListItemType> appendItem(const ListItemType& newItem)
     {
-        return Base::appendItemValues(newItem, ec);
+        return Base::appendItemValues(newItem);
     }
 
-private:
+protected:
     SVGStaticListPropertyTearOff(SVGElement* contextElement, PropertyType& values)
-        : SVGListProperty<PropertyType>(UndefinedRole, values, 0)
-        , m_contextElement(contextElement)
+        : Base(UndefinedRole, values, nullptr)
+        , m_contextElement(*contextElement)
     {
     }
 
-    virtual bool isReadOnly() const
+    bool isReadOnly() const override
     {
         return m_role == AnimValRole;
     }
 
-    virtual void commitChange()
+    void commitChange() override
     {
         ASSERT(m_values);
-        m_values->commitChange(m_contextElement.get());
+        m_values->commitChange(m_contextElement);
     }
 
-    virtual bool processIncomingListItemValue(const ListItemType&, unsigned*)
+    bool processIncomingListItemValue(const ListItemType&, unsigned*) override
     {
         // no-op for static lists
         return true;
     }
 
-    virtual bool processIncomingListItemWrapper(RefPtr<ListItemTearOff>&, unsigned*)
+    bool processIncomingListItemWrapper(Ref<ListItemTearOff>&, unsigned*) override
     {
         ASSERT_NOT_REACHED();
         return true;
     }
 
-private:
-    RefPtr<SVGElement> m_contextElement;
+    Ref<SVGElement> m_contextElement;
 };
 
 }
-
-#endif // SVGStaticListPropertyTearOff_h

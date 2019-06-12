@@ -26,10 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SymbolTable_h
-#define SymbolTable_h
+#pragma once
 
-#include "ConcurrentJITLock.h"
+#include "ConcurrentJSLock.h"
 #include "ConstantMode.h"
 #include "InferredValue.h"
 #include "JSObject.h"
@@ -199,6 +198,23 @@ public:
         return *this;
     }
     
+    SymbolTableEntry(SymbolTableEntry&& other)
+        : m_bits(SlimFlag)
+    {
+        swap(other);
+    }
+
+    SymbolTableEntry& operator=(SymbolTableEntry&& other)
+    {
+        swap(other);
+        return *this;
+    }
+
+    void swap(SymbolTableEntry& other)
+    {
+        std::swap(m_bits, other.m_bits);
+    }
+
     bool isNull() const
     {
         return !(bits() & ~SlimFlag);
@@ -263,10 +279,10 @@ public:
         return bits() & DontEnumFlag;
     }
     
-    void disableWatching()
+    void disableWatching(VM& vm)
     {
         if (WatchpointSet* set = watchpointSet())
-            set->invalidate("Disabling watching in symbol table");
+            set->invalidate(vm, "Disabling watching in symbol table");
         if (varOffset().isScope())
             pack(varOffset(), false, isReadOnly(), isDontEnum());
     }
@@ -437,13 +453,6 @@ public:
         return symbolTable;
     }
     
-    static SymbolTable* createNameScopeTable(VM& vm, const Identifier& ident, unsigned attributes)
-    {
-        SymbolTable* result = create(vm);
-        result->add(ident.impl(), SymbolTableEntry(VarOffset(ScopeOffset(0)), attributes));
-        return result;
-    }
-    
     static const bool needsDestruction = true;
     static void destroy(JSCell*);
 
@@ -453,61 +462,61 @@ public:
     }
 
     // You must hold the lock until after you're done with the iterator.
-    Map::iterator find(const ConcurrentJITLocker&, UniquedStringImpl* key)
+    Map::iterator find(const ConcurrentJSLocker&, UniquedStringImpl* key)
     {
         return m_map.find(key);
     }
     
-    Map::iterator find(const GCSafeConcurrentJITLocker&, UniquedStringImpl* key)
+    Map::iterator find(const GCSafeConcurrentJSLocker&, UniquedStringImpl* key)
     {
         return m_map.find(key);
     }
     
-    SymbolTableEntry get(const ConcurrentJITLocker&, UniquedStringImpl* key)
+    SymbolTableEntry get(const ConcurrentJSLocker&, UniquedStringImpl* key)
     {
         return m_map.get(key);
     }
     
     SymbolTableEntry get(UniquedStringImpl* key)
     {
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return get(locker, key);
     }
     
-    SymbolTableEntry inlineGet(const ConcurrentJITLocker&, UniquedStringImpl* key)
+    SymbolTableEntry inlineGet(const ConcurrentJSLocker&, UniquedStringImpl* key)
     {
         return m_map.inlineGet(key);
     }
     
     SymbolTableEntry inlineGet(UniquedStringImpl* key)
     {
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return inlineGet(locker, key);
     }
     
-    Map::iterator begin(const ConcurrentJITLocker&)
+    Map::iterator begin(const ConcurrentJSLocker&)
     {
         return m_map.begin();
     }
     
-    Map::iterator end(const ConcurrentJITLocker&)
+    Map::iterator end(const ConcurrentJSLocker&)
     {
         return m_map.end();
     }
     
-    Map::iterator end(const GCSafeConcurrentJITLocker&)
+    Map::iterator end(const GCSafeConcurrentJSLocker&)
     {
         return m_map.end();
     }
     
-    size_t size(const ConcurrentJITLocker&) const
+    size_t size(const ConcurrentJSLocker&) const
     {
         return m_map.size();
     }
     
     size_t size() const
     {
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return size(locker);
     }
     
@@ -546,7 +555,7 @@ public:
         return ScopeOffset(scopeSize());
     }
     
-    ScopeOffset takeNextScopeOffset(const ConcurrentJITLocker&)
+    ScopeOffset takeNextScopeOffset(const ConcurrentJSLocker&)
     {
         ScopeOffset result = nextScopeOffset();
         m_maxScopeOffset = result;
@@ -555,45 +564,49 @@ public:
     
     ScopeOffset takeNextScopeOffset()
     {
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return takeNextScopeOffset(locker);
     }
     
-    void add(const ConcurrentJITLocker&, UniquedStringImpl* key, const SymbolTableEntry& entry)
+    template<typename Entry>
+    void add(const ConcurrentJSLocker&, UniquedStringImpl* key, Entry&& entry)
     {
         RELEASE_ASSERT(!m_localToEntry);
         didUseVarOffset(entry.varOffset());
-        Map::AddResult result = m_map.add(key, entry);
+        Map::AddResult result = m_map.add(key, std::forward<Entry>(entry));
         ASSERT_UNUSED(result, result.isNewEntry);
     }
     
-    void add(UniquedStringImpl* key, const SymbolTableEntry& entry)
+    template<typename Entry>
+    void add(UniquedStringImpl* key, Entry&& entry)
     {
-        ConcurrentJITLocker locker(m_lock);
-        add(locker, key, entry);
+        ConcurrentJSLocker locker(m_lock);
+        add(locker, key, std::forward<Entry>(entry));
     }
     
-    void set(const ConcurrentJITLocker&, UniquedStringImpl* key, const SymbolTableEntry& entry)
+    template<typename Entry>
+    void set(const ConcurrentJSLocker&, UniquedStringImpl* key, Entry&& entry)
     {
         RELEASE_ASSERT(!m_localToEntry);
         didUseVarOffset(entry.varOffset());
-        m_map.set(key, entry);
+        m_map.set(key, std::forward<Entry>(entry));
     }
     
-    void set(UniquedStringImpl* key, const SymbolTableEntry& entry)
+    template<typename Entry>
+    void set(UniquedStringImpl* key, Entry&& entry)
     {
-        ConcurrentJITLocker locker(m_lock);
-        set(locker, key, entry);
+        ConcurrentJSLocker locker(m_lock);
+        set(locker, key, std::forward<Entry>(entry));
     }
     
-    bool contains(const ConcurrentJITLocker&, UniquedStringImpl* key)
+    bool contains(const ConcurrentJSLocker&, UniquedStringImpl* key)
     {
         return m_map.contains(key);
     }
     
     bool contains(UniquedStringImpl* key)
     {
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return contains(locker, key);
     }
     
@@ -638,13 +651,13 @@ public:
         return m_arguments.get();
     }
     
-    const LocalToEntryVec& localToEntry(const ConcurrentJITLocker&);
-    SymbolTableEntry* entryFor(const ConcurrentJITLocker&, ScopeOffset);
+    const LocalToEntryVec& localToEntry(const ConcurrentJSLocker&);
+    SymbolTableEntry* entryFor(const ConcurrentJSLocker&, ScopeOffset);
     
-    GlobalVariableID uniqueIDForVariable(const ConcurrentJITLocker&, UniquedStringImpl* key, VM&);
-    GlobalVariableID uniqueIDForOffset(const ConcurrentJITLocker&, VarOffset, VM&);
-    RefPtr<TypeSet> globalTypeSetForOffset(const ConcurrentJITLocker&, VarOffset, VM&);
-    RefPtr<TypeSet> globalTypeSetForVariable(const ConcurrentJITLocker&, UniquedStringImpl* key, VM&);
+    GlobalVariableID uniqueIDForVariable(const ConcurrentJSLocker&, UniquedStringImpl* key, VM&);
+    GlobalVariableID uniqueIDForOffset(const ConcurrentJSLocker&, VarOffset, VM&);
+    RefPtr<TypeSet> globalTypeSetForOffset(const ConcurrentJSLocker&, VarOffset, VM&);
+    RefPtr<TypeSet> globalTypeSetForVariable(const ConcurrentJSLocker&, UniquedStringImpl* key, VM&);
 
     bool usesNonStrictEval() const { return m_usesNonStrictEval; }
     void setUsesNonStrictEval(bool usesNonStrictEval) { m_usesNonStrictEval = usesNonStrictEval; }
@@ -664,7 +677,10 @@ public:
 
     SymbolTable* cloneScopePart(VM&);
 
-    void prepareForTypeProfiling(const ConcurrentJITLocker&);
+    void prepareForTypeProfiling(const ConcurrentJSLocker&);
+
+    CodeBlock* rareDataCodeBlock();
+    void setRareDataCodeBlock(CodeBlock*);
     
     InferredValue* singletonScope() { return m_singletonScope.get(); }
 
@@ -681,12 +697,13 @@ private:
     Map m_map;
     ScopeOffset m_maxScopeOffset;
     
-    struct TypeProfilingRareData {
+    struct SymbolTableRareData {
         UniqueIDMap m_uniqueIDMap;
         OffsetToVariableMap m_offsetToVariableMap;
         UniqueTypeSetMap m_uniqueTypeSetMap;
+        WriteBarrier<CodeBlock> m_codeBlock;
     };
-    std::unique_ptr<TypeProfilingRareData> m_typeProfilingRareData;
+    std::unique_ptr<SymbolTableRareData> m_rareData;
 
     bool m_usesNonStrictEval : 1;
     bool m_nestedLexicalScope : 1; // Non-function LexicalScope.
@@ -698,9 +715,7 @@ private:
     std::unique_ptr<LocalToEntryVec> m_localToEntry;
 
 public:
-    mutable ConcurrentJITLock m_lock;
+    mutable ConcurrentJSLock m_lock;
 };
 
 } // namespace JSC
-
-#endif // SymbolTable_h

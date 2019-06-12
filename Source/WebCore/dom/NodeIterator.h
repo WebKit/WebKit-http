@@ -22,55 +22,49 @@
  *
  */
 
-#ifndef NodeIterator_h
-#define NodeIterator_h
+#pragma once
 
+#include "ExceptionOr.h"
 #include "NodeFilter.h"
 #include "ScriptWrappable.h"
 #include "Traversal.h"
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-    typedef int ExceptionCode;
+class NodeIterator : public ScriptWrappable, public RefCounted<NodeIterator>, public NodeIteratorBase {
+public:
+    static Ref<NodeIterator> create(Node&, unsigned whatToShow, RefPtr<NodeFilter>&&);
+    WEBCORE_EXPORT ~NodeIterator();
 
-    class NodeIterator : public ScriptWrappable, public RefCounted<NodeIterator>, public NodeIteratorBase {
-    public:
-        static Ref<NodeIterator> create(Node* rootNode, unsigned long whatToShow, RefPtr<NodeFilter>&& filter)
-        {
-            return adoptRef(*new NodeIterator(rootNode, whatToShow, WTFMove(filter)));
-        }
-        ~NodeIterator();
+    WEBCORE_EXPORT ExceptionOr<RefPtr<Node>> nextNode();
+    WEBCORE_EXPORT ExceptionOr<RefPtr<Node>> previousNode();
+    void detach() { } // This is now a no-op as per the DOM specification.
 
-        RefPtr<Node> nextNode();
-        RefPtr<Node> previousNode();
-        void detach();
+    Node* referenceNode() const { return m_referenceNode.node.get(); }
+    bool pointerBeforeReferenceNode() const { return m_referenceNode.isPointerBeforeNode; }
 
-        Node* referenceNode() const { return m_referenceNode.node.get(); }
-        bool pointerBeforeReferenceNode() const { return m_referenceNode.isPointerBeforeNode; }
+    // This function is called before any node is removed from the document tree.
+    void nodeWillBeRemoved(Node&);
 
-        // This function is called before any node is removed from the document tree.
-        void nodeWillBeRemoved(Node&);
+private:
+    NodeIterator(Node&, unsigned whatToShow, RefPtr<NodeFilter>&&);
 
-    private:
-        NodeIterator(Node*, unsigned long whatToShow, RefPtr<NodeFilter>&&);
+    struct NodePointer {
+        RefPtr<Node> node;
+        bool isPointerBeforeNode { true };
 
-        struct NodePointer {
-            RefPtr<Node> node;
-            bool isPointerBeforeNode;
-            NodePointer();
-            NodePointer(Node*, bool);
-            void clear();
-            bool moveToNext(Node* root);
-            bool moveToPrevious(Node* root);
-        };
+        NodePointer() = default;
+        NodePointer(Node&, bool);
 
-        void updateForNodeRemoval(Node& nodeToBeRemoved, NodePointer&) const;
-
-        NodePointer m_referenceNode;
-        NodePointer m_candidateNode;
+        void clear();
+        bool moveToNext(Node& root);
+        bool moveToPrevious(Node& root);
     };
 
-} // namespace WebCore
+    void updateForNodeRemoval(Node& nodeToBeRemoved, NodePointer&) const;
 
-#endif // NodeIterator_h
+    NodePointer m_referenceNode;
+    NodePointer m_candidateNode;
+};
+
+} // namespace WebCore

@@ -34,6 +34,7 @@
 #include <WebCore/Timer.h>
 #include <wtf/BloomFilter.h>
 #include <wtf/Deque.h>
+#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/Optional.h>
 #include <wtf/WorkQueue.h>
@@ -47,7 +48,8 @@ class IOChannel;
 class Storage {
     WTF_MAKE_NONCOPYABLE(Storage);
 public:
-    static std::unique_ptr<Storage> open(const String& cachePath);
+    enum class Mode { Normal, Testing };
+    static std::unique_ptr<Storage> open(const String& cachePath, Mode);
 
     struct Record {
         WTF_MAKE_FAST_ALLOCATED;
@@ -56,16 +58,18 @@ public:
         std::chrono::system_clock::time_point timeStamp;
         Data header;
         Data body;
+        std::optional<SHA1::Digest> bodyHash;
     };
     // This may call completion handler synchronously on failure.
-    typedef std::function<bool (std::unique_ptr<Record>)> RetrieveCompletionHandler;
+    typedef Function<bool (std::unique_ptr<Record>)> RetrieveCompletionHandler;
     void retrieve(const Key&, unsigned priority, RetrieveCompletionHandler&&);
 
-    typedef std::function<void (const Data& mappedBody)> MappedBodyHandler;
+    typedef Function<void (const Data& mappedBody)> MappedBodyHandler;
     void store(const Record&, MappedBodyHandler&&);
 
     void remove(const Key&);
-    void clear(const String& type, std::chrono::system_clock::time_point modifiedSinceTime, std::function<void ()>&& completionHandler);
+    void remove(const Vector<Key>&, Function<void ()>&&);
+    void clear(const String& type, std::chrono::system_clock::time_point modifiedSinceTime, Function<void ()>&& completionHandler);
 
     struct RecordInfo {
         size_t bodySize;
@@ -78,7 +82,7 @@ public:
         ShareCount = 1 << 1,
     };
     typedef unsigned TraverseFlags;
-    typedef std::function<void (const Record*, const RecordInfo&)> TraverseHandler;
+    typedef Function<void (const Record*, const RecordInfo&)> TraverseHandler;
     // Null record signals end.
     void traverse(const String& type, TraverseFlags, TraverseHandler&&);
 
@@ -86,16 +90,24 @@ public:
     size_t capacity() const { return m_capacity; }
     size_t approximateSize() const;
 
-    static const unsigned version = 5;
+    static const unsigned version = 11;
+#if PLATFORM(MAC)
+    /// Allow the last stable version of the cache to co-exist with the latest development one.
+    static const unsigned lastStableVersion = 11;
+#endif
 
     String basePath() const;
     String versionPath() const;
     String recordsPath() const;
 
+    const Salt& salt() const { return m_salt; }
+
+    bool canUseSharedMemoryForBodyData() const { return m_canUseSharedMemoryForBodyData; }
+
     ~Storage();
 
 private:
-    Storage(const String& directoryPath);
+    Storage(const String& directoryPath, Mode, Salt);
 
     String recordDirectoryPathForKey(const Key&) const;
     String recordPathForKey(const Key&) const;
@@ -117,12 +129,12 @@ private:
     void dispatchPendingWriteOperations();
     void finishWriteOperation(WriteOperation&);
 
-    Optional<BlobStorage::Blob> storeBodyAsBlob(WriteOperation&);
-    Data encodeRecord(const Record&, Optional<BlobStorage::Blob>);
+    std::optional<BlobStorage::Blob> storeBodyAsBlob(WriteOperation&);
+    Data encodeRecord(const Record&, std::optional<BlobStorage::Blob>);
     void readRecord(ReadOperation&, const Data&);
 
     void updateFileModificationTime(const String& path);
-    bool removeFromPendingWriteOperations(const Key&);
+    void removeFromPendingWriteOperations(const Key&);
 
     WorkQueue& ioQueue() { return m_ioQueue.get(); }
     WorkQueue& backgroundIOQueue() { return m_backgroundIOQueue.get(); }
@@ -132,9 +144,14 @@ private:
     bool mayContainBlob(const Key&) const;
 
     void addToRecordFilter(const Key&);
+    void deleteFiles(const Key&);
 
     const String m_basePath;
     const String m_recordsPath;
+    
+    const Mode m_mode;
+    const Salt m_salt;
+    const bool m_canUseSharedMemoryForBodyData;
 
     size_t m_capacity { std::numeric_limits<size_t>::max() };
     size_t m_approximateRecordsSize { 0 };
@@ -170,7 +187,8 @@ private:
 };
 
 // FIXME: Remove, used by NetworkCacheStatistics only.
-void traverseRecordsFiles(const String& recordsPath, const String& type, const std::function<void (const String& fileName, const String& hashString, const String& type, bool isBodyBlob, const String& recordDirectoryPath)>&);
+using RecordFileTraverseFunction = Function<void (const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath)>;
+void traverseRecordsFiles(const String& recordsPath, const String& type, const RecordFileTraverseFunction&);
 
 }
 }

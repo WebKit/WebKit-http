@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2010, 2016 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
  *
@@ -53,10 +53,10 @@ Ref<HTMLButtonElement> HTMLButtonElement::create(const QualifiedName& tagName, D
 
 void HTMLButtonElement::setType(const AtomicString& type)
 {
-    setAttribute(typeAttr, type);
+    setAttributeWithoutSynchronization(typeAttr, type);
 }
 
-RenderPtr<RenderElement> HTMLButtonElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> HTMLButtonElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderButton>(*this, WTFMove(style));
 }
@@ -79,7 +79,7 @@ const AtomicString& HTMLButtonElement::formControlType() const
     }
 
     ASSERT_NOT_REACHED();
-    return emptyAtom;
+    return emptyAtom();
 }
 
 bool HTMLButtonElement::isPresentationAttribute(const QualifiedName& name) const
@@ -96,34 +96,39 @@ bool HTMLButtonElement::isPresentationAttribute(const QualifiedName& name) const
 void HTMLButtonElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == typeAttr) {
+        Type oldType = m_type;
         if (equalLettersIgnoringASCIICase(value, "reset"))
             m_type = RESET;
         else if (equalLettersIgnoringASCIICase(value, "button"))
             m_type = BUTTON;
         else
             m_type = SUBMIT;
-        setNeedsWillValidateCheck();
+        if (oldType != m_type) {
+            setNeedsWillValidateCheck();
+            if (form() && (oldType == SUBMIT || m_type == SUBMIT))
+                form()->resetDefaultButton();
+        }
     } else
         HTMLFormControlElement::parseAttribute(name, value);
 }
 
-void HTMLButtonElement::defaultEventHandler(Event* event)
+void HTMLButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().DOMActivateEvent && !isDisabledFormControl()) {
+    if (event.type() == eventNames().DOMActivateEvent && !isDisabledFormControl()) {
         if (form() && m_type == SUBMIT) {
             m_isActivatedSubmit = true;
             form()->prepareForSubmission(event);
-            event->setDefaultHandled();
+            event.setDefaultHandled();
             m_isActivatedSubmit = false; // Do this in case submission was canceled.
         }
         if (form() && m_type == RESET) {
             form()->reset();
-            event->setDefaultHandled();
+            event.setDefaultHandled();
         }
     }
 
-    if (is<KeyboardEvent>(*event)) {
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+    if (is<KeyboardEvent>(event)) {
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         if (keyboardEvent.type() == eventNames().keydownEvent && keyboardEvent.keyIdentifier() == "U+0020") {
             setActive(true, true);
             // No setDefaultHandled() - IE dispatches a keypress in this case.
@@ -164,6 +169,11 @@ bool HTMLButtonElement::isSuccessfulSubmitButton() const
     return m_type == SUBMIT && !isDisabledFormControl();
 }
 
+bool HTMLButtonElement::matchesDefaultPseudoClass() const
+{
+    return isSuccessfulSubmitButton() && form() && form()->defaultButton() == this;
+}
+
 bool HTMLButtonElement::isActivatedSubmit() const
 {
     return m_isActivatedSubmit;
@@ -196,7 +206,7 @@ bool HTMLButtonElement::isURLAttribute(const Attribute& attribute) const
 
 const AtomicString& HTMLButtonElement::value() const
 {
-    return fastGetAttribute(valueAttr);
+    return attributeWithoutSynchronization(valueAttr);
 }
 
 bool HTMLButtonElement::computeWillValidate() const

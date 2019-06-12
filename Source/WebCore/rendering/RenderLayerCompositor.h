@@ -23,14 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RenderLayerCompositor_h
-#define RenderLayerCompositor_h
+#pragma once
 
 #include "ChromeClient.h"
 #include "GraphicsLayerClient.h"
 #include "GraphicsLayerUpdater.h"
 #include "RenderLayer.h"
 #include <wtf/HashMap.h>
+#include <wtf/OptionSet.h>
 
 namespace WebCore {
 
@@ -55,36 +55,34 @@ enum CompositingUpdateType {
     CompositingUpdateOnCompositedScroll
 };
 
-enum {
-    CompositingReasonNone                                   = 0,
-    CompositingReason3DTransform                            = 1 << 0,
-    CompositingReasonVideo                                  = 1 << 1,
-    CompositingReasonCanvas                                 = 1 << 2,
-    CompositingReasonPlugin                                 = 1 << 3,
-    CompositingReasonIFrame                                 = 1 << 4,
-    CompositingReasonBackfaceVisibilityHidden               = 1 << 5,
-    CompositingReasonClipsCompositingDescendants            = 1 << 6,
-    CompositingReasonAnimation                              = 1 << 7,
-    CompositingReasonFilters                                = 1 << 8,
-    CompositingReasonPositionFixed                          = 1 << 9,
-    CompositingReasonPositionSticky                         = 1 << 10,
-    CompositingReasonOverflowScrollingTouch                 = 1 << 11,
-    CompositingReasonStacking                               = 1 << 12,
-    CompositingReasonOverlap                                = 1 << 13,
-    CompositingReasonNegativeZIndexChildren                 = 1 << 14,
-    CompositingReasonTransformWithCompositedDescendants     = 1 << 15,
-    CompositingReasonOpacityWithCompositedDescendants       = 1 << 16,
-    CompositingReasonMaskWithCompositedDescendants          = 1 << 17,
-    CompositingReasonReflectionWithCompositedDescendants    = 1 << 18,
-    CompositingReasonFilterWithCompositedDescendants        = 1 << 19,
-    CompositingReasonBlendingWithCompositedDescendants      = 1 << 20,
-    CompositingReasonPerspective                            = 1 << 21,
-    CompositingReasonPreserve3D                             = 1 << 22,
-    CompositingReasonWillChange                             = 1 << 23,
-    CompositingReasonRoot                                   = 1 << 24,
-    CompositingReasonIsolatesCompositedBlendingDescendants  = 1 << 25,
+enum class CompositingReason {
+    Transform3D                            = 1 << 0,
+    Video                                  = 1 << 1,
+    Canvas                                 = 1 << 2,
+    Plugin                                 = 1 << 3,
+    IFrame                                 = 1 << 4,
+    BackfaceVisibilityHidden               = 1 << 5,
+    ClipsCompositingDescendants            = 1 << 6,
+    Animation                              = 1 << 7,
+    Filters                                = 1 << 8,
+    PositionFixed                          = 1 << 9,
+    PositionSticky                         = 1 << 10,
+    OverflowScrollingTouch                 = 1 << 11,
+    Stacking                               = 1 << 12,
+    Overlap                                = 1 << 13,
+    NegativeZIndexChildren                 = 1 << 14,
+    TransformWithCompositedDescendants     = 1 << 15,
+    OpacityWithCompositedDescendants       = 1 << 16,
+    MaskWithCompositedDescendants          = 1 << 17,
+    ReflectionWithCompositedDescendants    = 1 << 18,
+    FilterWithCompositedDescendants        = 1 << 19,
+    BlendingWithCompositedDescendants      = 1 << 20,
+    Perspective                            = 1 << 21,
+    Preserve3D                             = 1 << 22,
+    WillChange                             = 1 << 23,
+    Root                                   = 1 << 24,
+    IsolatesCompositedBlendingDescendants  = 1 << 25,
 };
-typedef unsigned CompositingReasons;
 
 // RenderLayerCompositor manages the hierarchy of
 // composited RenderLayers. It determines which RenderLayers
@@ -249,13 +247,13 @@ public:
 
     String layerTreeAsText(LayerTreeFlags);
 
-    virtual float deviceScaleFactor() const override;
-    virtual float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const override;
-    virtual float pageScaleFactor() const override;
-    virtual float zoomedOutPageScaleFactor() const override;
+    float deviceScaleFactor() const override;
+    float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const override;
+    float pageScaleFactor() const override;
+    float zoomedOutPageScaleFactor() const override;
 
-    virtual void didCommitChangesForLayer(const GraphicsLayer*) const override;
-    virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) override;
+    void didCommitChangesForLayer(const GraphicsLayer*) const override;
+    void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) override;
 
     void layerTiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/);
     
@@ -304,7 +302,7 @@ public:
 
     bool hasNonMainLayersWithTiledBacking() const { return m_layersWithTiledBackingCount; }
 
-    CompositingReasons reasonsForCompositing(const RenderLayer&) const;
+    OptionSet<CompositingReason> reasonsForCompositing(const RenderLayer&) const;
 
     void setLayerFlushThrottlingEnabled(bool);
     void disableLayerFlushThrottlingTemporarilyForInteraction();
@@ -312,7 +310,9 @@ public:
     void didPaintBacking(RenderLayerBacking*);
 
     void setRootExtendedBackgroundColor(const Color&);
-    Color rootExtendedBackgroundColor() const { return m_rootExtendedBackgroundColor; }
+    const Color& rootExtendedBackgroundColor() const { return m_rootExtendedBackgroundColor; }
+
+    void updateRootContentLayerClipping();
 
 #if ENABLE(CSS_SCROLL_SNAP)
     void updateScrollSnapPropertiesWithFrameView(const FrameView&);
@@ -331,13 +331,13 @@ private:
     struct OverlapExtent;
 
     // GraphicsLayerClient implementation
-    virtual void notifyFlushRequired(const GraphicsLayer*) override;
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect&) override;
-    virtual void customPositionForVisibleRectComputation(const GraphicsLayer*, FloatPoint&) const override;
-    virtual bool isTrackingRepaints() const override;
+    void notifyFlushRequired(const GraphicsLayer*) override;
+    void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect&, GraphicsLayerPaintFlags) override;
+    void customPositionForVisibleRectComputation(const GraphicsLayer*, FloatPoint&) const override;
+    bool isTrackingRepaints() const override;
     
     // GraphicsLayerUpdaterClient implementation
-    virtual void flushLayersSoon(GraphicsLayerUpdater&) override;
+    void flushLayersSoon(GraphicsLayerUpdater&) override;
 
     // Whether the given RL needs a compositing layer.
     bool needsToBeComposited(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
@@ -345,13 +345,13 @@ private:
     bool requiresCompositingLayer(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
     // Whether the layer could ever be composited.
     bool canBeComposited(const RenderLayer&) const;
+    bool needsCompositingUpdateForStyleChangeOnNonCompositedLayer(RenderLayer&, const RenderStyle* oldStyle) const;
 
     // Make or destroy the backing for this layer; returns true if backing changed.
     enum class BackingRequired { No, Yes, Unknown };
     bool updateBacking(RenderLayer&, CompositingChangeRepaint shouldRepaint, BackingRequired = BackingRequired::Unknown);
 
     void clearBackingForLayerIncludingDescendants(RenderLayer&);
-    void setIsInWindowForLayerIncludingDescendants(RenderLayer&, bool isInWindow);
 
     // Repaint this and its child layers.
     void recursiveRepaintLayer(RenderLayer&);
@@ -411,7 +411,7 @@ private:
     void updateScrollCoordinatedLayersAfterFlushIncludingSubframes();
     void updateScrollCoordinatedLayersAfterFlush();
     
-    Page* page() const;
+    Page& page() const;
     
     GraphicsLayerFactory* graphicsLayerFactory() const;
     ScrollingCoordinator* scrollingCoordinator() const;
@@ -433,14 +433,12 @@ private:
     bool requiresCompositingForPosition(RenderLayerModelObject&, const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
     bool requiresCompositingForOverflowScrolling(const RenderLayer&) const;
     bool requiresCompositingForIndirectReason(RenderLayerModelObject&, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason&) const;
+    static bool styleChangeMayAffectIndirectCompositingReasons(const RenderLayerModelObject& renderer, const RenderStyle& oldStyle);
 
 #if PLATFORM(IOS)
     bool requiresCompositingForScrolling(const RenderLayer&) const;
 
     void updateCustomLayersAfterFlush();
-
-    ChromeClient* chromeClient() const;
-
 #endif
 
     void updateScrollCoordinationForThisFrame(ScrollingNodeID);
@@ -463,6 +461,7 @@ private:
 
     // True if the FrameView uses a ScrollingCoordinator.
     bool hasCoordinatedScrolling() const;
+    bool useCoordinatedScrollingForLayer(const RenderLayer&) const;
 
     bool isAsyncScrollableStickyLayer(const RenderLayer&, const RenderLayer** enclosingAcceleratedOverflowLayer = nullptr) const;
     bool isViewportConstrainedFixedOrStickyLayer(const RenderLayer&) const;
@@ -474,8 +473,6 @@ private:
     void startInitialLayerFlushTimerIfNeeded();
     void startLayerFlushTimerIfNeeded();
     void layerFlushTimerFired();
-
-    void paintRelatedMilestonesTimerFired();
 
 #if !LOG_DISABLED
     const char* logReasonsForCompositing(const RenderLayer&);
@@ -548,7 +545,6 @@ private:
 
     std::unique_ptr<GraphicsLayerUpdater> m_layerUpdater; // Updates tiled layer visible area periodically while animations are running.
 
-    Timer m_paintRelatedMilestonesTimer;
     Timer m_layerFlushTimer;
 
     bool m_layerFlushThrottlingEnabled { false };
@@ -573,5 +569,3 @@ private:
 void paintScrollbar(Scrollbar*, GraphicsContext&, const IntRect& clip);
 
 } // namespace WebCore
-
-#endif // RenderLayerCompositor_h

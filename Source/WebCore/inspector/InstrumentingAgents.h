@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InstrumentingAgents_h
-#define InstrumentingAgents_h
+#pragma once
 
 #include <inspector/InspectorEnvironment.h>
 #include <wtf/FastMalloc.h>
@@ -45,18 +44,21 @@ class InspectorDebuggerAgent;
 namespace WebCore {
 
 class InspectorApplicationCacheAgent;
+class InspectorCanvasAgent;
 class InspectorCSSAgent;
 class InspectorDOMAgent;
 class InspectorDOMDebuggerAgent;
 class InspectorDOMStorageAgent;
 class InspectorDatabaseAgent;
 class InspectorLayerTreeAgent;
+class InspectorWorkerAgent;
+class InspectorMemoryAgent;
 class InspectorNetworkAgent;
 class InspectorPageAgent;
-class InspectorReplayAgent;
 class InspectorTimelineAgent;
 class Page;
 class PageDebuggerAgent;
+class PageHeapAgent;
 class PageRuntimeAgent;
 class WebConsoleAgent;
 
@@ -80,6 +82,9 @@ public:
 
     InspectorPageAgent* inspectorPageAgent() const { return m_inspectorPageAgent; }
     void setInspectorPageAgent(InspectorPageAgent* agent) { m_inspectorPageAgent = agent; }
+
+    InspectorCanvasAgent* inspectorCanvasAgent() const { return m_inspectorCanvasAgent; }
+    void setInspectorCanvasAgent(InspectorCanvasAgent* agent) { m_inspectorCanvasAgent = agent; }
 
     InspectorCSSAgent* inspectorCSSAgent() const { return m_inspectorCSSAgent; }
     void setInspectorCSSAgent(InspectorCSSAgent* agent) { m_inspectorCSSAgent = agent; }
@@ -105,9 +110,9 @@ public:
     InspectorDOMStorageAgent* inspectorDOMStorageAgent() const { return m_inspectorDOMStorageAgent; }
     void setInspectorDOMStorageAgent(InspectorDOMStorageAgent* agent) { m_inspectorDOMStorageAgent = agent; }
 
-#if ENABLE(WEB_REPLAY)
-    InspectorReplayAgent* inspectorReplayAgent() const { return m_inspectorReplayAgent; }
-    void setInspectorReplayAgent(InspectorReplayAgent* agent) { m_inspectorReplayAgent = agent; }
+#if ENABLE(RESOURCE_USAGE)
+    InspectorMemoryAgent* inspectorMemoryAgent() const { return m_inspectorMemoryAgent; }
+    void setInspectorMemoryAgent(InspectorMemoryAgent* agent) { m_inspectorMemoryAgent = agent; }
 #endif
 
     InspectorDatabaseAgent* inspectorDatabaseAgent() const { return m_inspectorDatabaseAgent; }
@@ -122,11 +127,17 @@ public:
     PageDebuggerAgent* pageDebuggerAgent() const { return m_pageDebuggerAgent; }
     void setPageDebuggerAgent(PageDebuggerAgent* agent) { m_pageDebuggerAgent = agent; }
 
+    PageHeapAgent* pageHeapAgent() const { return m_pageHeapAgent; }
+    void setPageHeapAgent(PageHeapAgent* agent) { m_pageHeapAgent = agent; }
+
     InspectorDOMDebuggerAgent* inspectorDOMDebuggerAgent() const { return m_inspectorDOMDebuggerAgent; }
     void setInspectorDOMDebuggerAgent(InspectorDOMDebuggerAgent* agent) { m_inspectorDOMDebuggerAgent = agent; }
 
     InspectorLayerTreeAgent* inspectorLayerTreeAgent() const { return m_inspectorLayerTreeAgent; }
     void setInspectorLayerTreeAgent(InspectorLayerTreeAgent* agent) { m_inspectorLayerTreeAgent = agent; }
+
+    InspectorWorkerAgent* inspectorWorkerAgent() const { return m_inspectorWorkerAgent; }
+    void setInspectorWorkerAgent(InspectorWorkerAgent* agent) { m_inspectorWorkerAgent = agent; }
 
 private:
     InstrumentingAgents(Inspector::InspectorEnvironment&);
@@ -137,6 +148,7 @@ private:
     InspectorPageAgent* m_inspectorPageAgent { nullptr };
     InspectorCSSAgent* m_inspectorCSSAgent { nullptr };
     InspectorLayerTreeAgent* m_inspectorLayerTreeAgent { nullptr };
+    InspectorWorkerAgent* m_inspectorWorkerAgent { nullptr };
     WebConsoleAgent* m_webConsoleAgent { nullptr };
     InspectorDOMAgent* m_inspectorDOMAgent { nullptr };
     InspectorNetworkAgent* m_inspectorNetworkAgent { nullptr };
@@ -144,16 +156,16 @@ private:
     InspectorTimelineAgent* m_inspectorTimelineAgent { nullptr };
     InspectorTimelineAgent* m_persistentInspectorTimelineAgent { nullptr };
     InspectorDOMStorageAgent* m_inspectorDOMStorageAgent { nullptr };
-#if ENABLE(WEB_REPLAY)
-    InspectorReplayAgent* m_inspectorReplayAgent { nullptr };
+#if ENABLE(RESOURCE_USAGE)
+    InspectorMemoryAgent* m_inspectorMemoryAgent { nullptr };
 #endif
     InspectorDatabaseAgent* m_inspectorDatabaseAgent { nullptr };
     InspectorApplicationCacheAgent* m_inspectorApplicationCacheAgent { nullptr };
     Inspector::InspectorDebuggerAgent* m_inspectorDebuggerAgent { nullptr };
     PageDebuggerAgent* m_pageDebuggerAgent { nullptr };
+    PageHeapAgent* m_pageHeapAgent { nullptr };
     InspectorDOMDebuggerAgent* m_inspectorDOMDebuggerAgent { nullptr };
+    InspectorCanvasAgent* m_inspectorCanvasAgent { nullptr };
 };
 
 } // namespace WebCore
-
-#endif // !defined(InstrumentingAgents_h)

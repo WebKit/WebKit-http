@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef SQLCallbackWrapper_h
-#define SQLCallbackWrapper_h
+
+#pragma once
 
 #include "ScriptExecutionContext.h"
 #include <wtf/Lock.h>
@@ -41,8 +41,8 @@ namespace WebCore {
 // - by unwrapping and then dereferencing normally - on context thread only
 template<typename T> class SQLCallbackWrapper {
 public:
-    SQLCallbackWrapper(PassRefPtr<T> callback, ScriptExecutionContext* scriptExecutionContext)
-        : m_callback(callback)
+    SQLCallbackWrapper(RefPtr<T>&& callback, ScriptExecutionContext* scriptExecutionContext)
+        : m_callback(WTFMove(callback))
         , m_scriptExecutionContext(m_callback ? scriptExecutionContext : 0)
     {
         ASSERT(!m_callback || (m_scriptExecutionContext.get() && m_scriptExecutionContext->isContextThread()));
@@ -68,8 +68,8 @@ public:
                 m_scriptExecutionContext = nullptr;
                 return;
             }
-            scriptExecutionContextPtr = m_scriptExecutionContext.release().leakRef();
-            callback = m_callback.release().leakRef();
+            scriptExecutionContextPtr = m_scriptExecutionContext.leakRef();
+            callback = m_callback.leakRef();
         }
         scriptExecutionContextPtr->postTask({
             ScriptExecutionContext::Task::CleanupTask,
@@ -81,12 +81,12 @@ public:
         });
     }
 
-    PassRefPtr<T> unwrap()
+    RefPtr<T> unwrap()
     {
         LockHolder locker(m_mutex);
         ASSERT(!m_callback || m_scriptExecutionContext->isContextThread());
         m_scriptExecutionContext = nullptr;
-        return m_callback.release();
+        return WTFMove(m_callback);
     }
 
     // Useful for optimizations only, please test the return value of unwrap to be sure.
@@ -99,5 +99,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SQLCallbackWrapper_h

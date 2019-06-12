@@ -45,7 +45,7 @@ public:
 private:
     ViewUpdateDispatcher();
     // IPC::Connection::WorkQueueMessageReceiver.
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     void visibleContentRectUpdate(uint64_t pageID, const VisibleContentRectUpdateInfo&);
 
@@ -53,7 +53,7 @@ private:
 
     struct UpdateData {
         VisibleContentRectUpdateInfo visibleContentRectUpdateInfo;
-        double oldestTimestamp;
+        MonotonicTime oldestTimestamp;
     };
 
     Ref<WorkQueue> m_queue;

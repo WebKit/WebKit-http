@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SVGImageForContainer_h
-#define SVGImageForContainer_h
+#pragma once
 
 #include "AffineTransform.h"
 #include "FloatRect.h"
@@ -42,28 +41,28 @@ public:
         return adoptRef(*new SVGImageForContainer(image, containerSize, zoom));
     }
 
-    virtual bool isSVGImage() const override { return true; }
+    bool isSVGImage() const final { return true; }
 
-    virtual FloatSize size() const override;
+    FloatSize size() const final;
 
     void setURL(const URL& url) { m_image->setURL(url); }
 
-    virtual bool usesContainerSize() const override { return m_image->usesContainerSize(); }
-    virtual bool hasRelativeWidth() const override { return m_image->hasRelativeWidth(); }
-    virtual bool hasRelativeHeight() const override { return m_image->hasRelativeHeight(); }
-    virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override
+    bool usesContainerSize() const final { return m_image->usesContainerSize(); }
+    bool hasRelativeWidth() const final { return m_image->hasRelativeWidth(); }
+    bool hasRelativeHeight() const final { return m_image->hasRelativeHeight(); }
+    void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final
     {
         m_image->computeIntrinsicDimensions(intrinsicWidth, intrinsicHeight, intrinsicRatio);
     }
 
-    virtual void draw(GraphicsContext&, const FloatRect&, const FloatRect&, CompositeOperator, BlendMode, ImageOrientationDescription) override;
+    ImageDrawResult draw(GraphicsContext&, const FloatRect&, const FloatRect&, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) final;
 
-    virtual void drawPattern(GraphicsContext&, const FloatRect&, const AffineTransform&, const FloatPoint&, const FloatSize&, CompositeOperator, const FloatRect&, BlendMode) override;
+    void drawPattern(GraphicsContext&, const FloatRect&, const FloatRect&, const AffineTransform&, const FloatPoint&, const FloatSize&, CompositeOperator, BlendMode) final;
 
     // FIXME: Implement this to be less conservative.
-    virtual bool currentFrameKnownToBeOpaque() override { return false; }
+    bool currentFrameKnownToBeOpaque() const final { return false; }
 
-    virtual PassNativeImagePtr nativeImageForCurrentFrame() override;
+    NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) final;
 
 private:
     SVGImageForContainer(SVGImage* image, const FloatSize& containerSize, float zoom)
@@ -73,11 +72,11 @@ private:
     {
     }
 
-    virtual void destroyDecodedData(bool /*destroyAll*/ = true) override { }
+    void destroyDecodedData(bool /*destroyAll*/ = true) final { }
 
     SVGImage* m_image;
     const FloatSize m_containerSize;
     const float m_zoom;
 };
-}
-#endif // SVGImageForContainer_h
+
+} // namespace WebCore

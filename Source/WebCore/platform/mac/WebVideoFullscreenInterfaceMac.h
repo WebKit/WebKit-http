@@ -23,55 +23,61 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebVideoFullscreenInterfaceMac_h
-#define WebVideoFullscreenInterfaceMac_h
+#pragma once
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 
-#include <WebCore/HTMLMediaElementEnums.h>
-#include <WebCore/WebVideoFullscreenInterface.h>
+#include "HTMLMediaElementEnums.h"
+#include "WebPlaybackSessionInterfaceMac.h"
+#include "WebPlaybackSessionModel.h"
+#include "WebVideoFullscreenModel.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
+OBJC_CLASS NSWindow;
+OBJC_CLASS WebVideoFullscreenInterfaceMacObjC;
+
 namespace WebCore {
 class IntRect;
+class FloatSize;
+class WebPlaybackSessionInterfaceMac;
 class WebVideoFullscreenChangeObserver;
-class WebVideoFullscreenModel;
 
 class WEBCORE_EXPORT WebVideoFullscreenInterfaceMac
-    : public WebVideoFullscreenInterface
+    : public WebVideoFullscreenModelClient
+    , private WebPlaybackSessionModelClient
     , public RefCounted<WebVideoFullscreenInterfaceMac> {
 
 public:
-    static Ref<WebVideoFullscreenInterfaceMac> create()
+    static Ref<WebVideoFullscreenInterfaceMac> create(WebPlaybackSessionInterfaceMac& playbackSessionInterface)
     {
-        return adoptRef(*new WebVideoFullscreenInterfaceMac());
+        return adoptRef(*new WebVideoFullscreenInterfaceMac(playbackSessionInterface));
     }
     virtual ~WebVideoFullscreenInterfaceMac();
+    WebVideoFullscreenModel* webVideoFullscreenModel() const { return m_videoFullscreenModel; }
+    WebPlaybackSessionModel* webPlaybackSessionModel() const { return m_playbackSessionInterface->webPlaybackSessionModel(); }
     WEBCORE_EXPORT void setWebVideoFullscreenModel(WebVideoFullscreenModel*);
+    WebVideoFullscreenChangeObserver* webVideoFullscreenChangeObserver() const { return m_fullscreenChangeObserver; }
     WEBCORE_EXPORT void setWebVideoFullscreenChangeObserver(WebVideoFullscreenChangeObserver*);
 
-    WEBCORE_EXPORT void resetMediaState() override { }
-    WEBCORE_EXPORT void setDuration(double) override { }
-    WEBCORE_EXPORT void setCurrentTime(double /*currentTime*/, double /*anchorTime*/) override { }
-    WEBCORE_EXPORT void setBufferedTime(double) override { }
-    WEBCORE_EXPORT void setRate(bool /*isPlaying*/, float /*playbackRate*/) override { }
-    WEBCORE_EXPORT void setVideoDimensions(bool /*hasVideo*/, float /*width*/, float /*height*/) override { }
-    WEBCORE_EXPORT void setSeekableRanges(const TimeRanges&) override { }
-    WEBCORE_EXPORT void setCanPlayFastReverse(bool) override { }
-    WEBCORE_EXPORT void setAudioMediaSelectionOptions(const Vector<WTF::String>& /*options*/, uint64_t /*selectedIndex*/) override { }
-    WEBCORE_EXPORT void setLegibleMediaSelectionOptions(const Vector<WTF::String>& /*options*/, uint64_t /*selectedIndex*/) override { }
-    WEBCORE_EXPORT void setExternalPlayback(bool /*enabled*/, ExternalPlaybackTargetType, WTF::String /*localizedDeviceName*/) override { }
-    WEBCORE_EXPORT void setWirelessVideoPlaybackDisabled(bool) override { }
+    // WebPlaybackSessionModelClient
+    WEBCORE_EXPORT void rateChanged(bool isPlaying, float playbackRate) override;
+    WEBCORE_EXPORT void externalPlaybackChanged(bool  enabled, WebPlaybackSessionModel::ExternalPlaybackTargetType, const String& localizedDeviceName) override;
 
-    WEBCORE_EXPORT void setupFullscreen(NSView& /*layerHostedView*/, const IntRect& /*initialRect*/, HTMLMediaElementEnums::VideoFullscreenMode, bool /*allowsPictureInPicturePlayback*/) { }
-    WEBCORE_EXPORT void enterFullscreen() { }
-    WEBCORE_EXPORT void exitFullscreen(const IntRect& /*finalRect*/) { }
-    WEBCORE_EXPORT void cleanupFullscreen() { }
-    WEBCORE_EXPORT void invalidate() { }
-    WEBCORE_EXPORT void requestHideAndExitFullscreen() { }
-    WEBCORE_EXPORT void preparedToReturnToInline(bool /*visible*/, const IntRect& /*inlineRect*/) { }
+    // WebVideoFullscreenModelClient
+    WEBCORE_EXPORT void hasVideoChanged(bool) final;
+    WEBCORE_EXPORT void videoDimensionsChanged(const FloatSize&) final;
+
+    WEBCORE_EXPORT void setupFullscreen(NSView& layerHostedView, const IntRect& initialRect, NSWindow *parentWindow, HTMLMediaElementEnums::VideoFullscreenMode, bool allowsPictureInPicturePlayback);
+    WEBCORE_EXPORT void enterFullscreen();
+    WEBCORE_EXPORT void exitFullscreen(const IntRect& finalRect, NSWindow *parentWindow);
+    WEBCORE_EXPORT void exitFullscreenWithoutAnimationToMode(HTMLMediaElementEnums::VideoFullscreenMode);
+    WEBCORE_EXPORT void cleanupFullscreen();
+    WEBCORE_EXPORT void invalidate();
+    void requestHideAndExitFullscreen() { }
+    WEBCORE_EXPORT void preparedToReturnToInline(bool visible, const IntRect& inlineRect, NSWindow *parentWindow);
+    WEBCORE_EXPORT void ensureControlsManager();
 
     HTMLMediaElementEnums::VideoFullscreenMode mode() const { return m_mode; }
     bool hasMode(HTMLMediaElementEnums::VideoFullscreenMode mode) const { return m_mode & mode; }
@@ -79,17 +85,23 @@ public:
     void setMode(HTMLMediaElementEnums::VideoFullscreenMode);
     void clearMode(HTMLMediaElementEnums::VideoFullscreenMode);
 
-    WEBCORE_EXPORT bool mayAutomaticallyShowVideoPictureInPicture() const { return false; }
+    bool isPlayingVideoInEnhancedFullscreen() const;
+
+    bool mayAutomaticallyShowVideoPictureInPicture() const { return false; }
     void applicationDidBecomeActive() { }
 
-protected:
+    WEBCORE_EXPORT WebVideoFullscreenInterfaceMacObjC *videoFullscreenInterfaceObjC();
+
+private:
+    WebVideoFullscreenInterfaceMac(WebPlaybackSessionInterfaceMac&);
+    Ref<WebPlaybackSessionInterfaceMac> m_playbackSessionInterface;
     WebVideoFullscreenModel* m_videoFullscreenModel { nullptr };
     WebVideoFullscreenChangeObserver* m_fullscreenChangeObserver { nullptr };
     HTMLMediaElementEnums::VideoFullscreenMode m_mode { HTMLMediaElementEnums::VideoFullscreenModeNone };
+    RetainPtr<WebVideoFullscreenInterfaceMacObjC> m_webVideoFullscreenInterfaceObjC;
 };
 
 }
 
 #endif
 
-#endif /* WebVideoFullscreenInterfaceMac_h */

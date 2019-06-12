@@ -26,15 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSAspectRatioValue_h
-#define CSSAspectRatioValue_h
+#pragma once
 
-#include "CSSPrimitiveValue.h"
 #include "CSSValue.h"
 
 namespace WebCore {
 
-class CSSAspectRatioValue : public CSSValue {
+class CSSAspectRatioValue final : public CSSValue {
 public:
     static Ref<CSSAspectRatioValue> create(float numeratorValue, float denominatorValue)
     {
@@ -63,5 +61,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSAspectRatioValue, isAspectRatioValue())
-
-#endif

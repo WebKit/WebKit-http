@@ -20,8 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderLayerModelObject_h
-#define RenderLayerModelObject_h
+#pragma once
 
 #include "RenderElement.h"
 
@@ -39,8 +38,8 @@ public:
     bool hasSelfPaintingLayer() const;
     RenderLayer* layer() const { return m_layer.get(); }
 
-    virtual void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
     virtual void updateFromStyle() { }
 
     virtual bool requiresLayer() const = 0;
@@ -51,11 +50,14 @@ public:
 
     virtual bool isScrollableOrRubberbandableBox() const { return false; }
 
+    bool shouldPlaceBlockDirectionScrollbarOnLeft() const;
+
 protected:
-    RenderLayerModelObject(Element&, Ref<RenderStyle>&&, BaseTypeFlags);
-    RenderLayerModelObject(Document&, Ref<RenderStyle>&&, BaseTypeFlags);
+    RenderLayerModelObject(Element&, RenderStyle&&, BaseTypeFlags);
+    RenderLayerModelObject(Document&, RenderStyle&&, BaseTypeFlags);
 
     void createLayer();
+    void willBeDestroyed() override;
 
 private:
     std::unique_ptr<RenderLayer> m_layer;
@@ -70,5 +72,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderLayerModelObject, isRenderLayerModelObject())
-
-#endif // RenderLayerModelObject_h

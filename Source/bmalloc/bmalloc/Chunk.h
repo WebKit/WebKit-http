@@ -26,59 +26,153 @@
 #ifndef Chunk_h
 #define Chunk_h
 
-#include "ObjectType.h"
+#include "Object.h"
 #include "Sizes.h"
+#include "SmallLine.h"
+#include "SmallPage.h"
 #include "VMAllocate.h"
+#include <array>
 
 namespace bmalloc {
 
-template<class Traits>
-class Chunk {
+class Chunk : public ListNode<Chunk> {
 public:
-    typedef typename Traits::PageType Page;
-    typedef typename Traits::LineType Line;
-
-    static const size_t lineSize = Traits::lineSize;
-    static const size_t chunkSize = Traits::chunkSize;
-    static const size_t chunkOffset = Traits::chunkOffset;
-    static const uintptr_t chunkMask = Traits::chunkMask;
-
     static Chunk* get(void*);
 
-    Page* begin() { return Page::get(Line::get(m_memory)); }
-    Page* end() { return &m_pages[pageCount]; }
+    Chunk(size_t pageSize);
     
-    Line* lines() { return m_lines; }
-    Page* pages() { return m_pages; }
+    void ref() { ++m_refCount; }
+    void deref() { BASSERT(m_refCount); --m_refCount; }
+    unsigned refCount() { return m_refCount; }
+
+    size_t offset(void*);
+
+    char* address(size_t offset);
+    SmallPage* page(size_t offset);
+    SmallLine* line(size_t offset);
+
+    char* bytes() { return reinterpret_cast<char*>(this); }
+    SmallLine* lines() { return &m_lines[0]; }
+    SmallPage* pages() { return &m_pages[0]; }
+    
+    List<SmallPage>& freePages() { return m_freePages; }
 
 private:
-    static_assert(!(vmPageSize % lineSize), "vmPageSize must be an even multiple of line size");
-    static_assert(!(chunkSize % lineSize), "chunk size must be an even multiple of line size");
+    size_t m_refCount { };
+    List<SmallPage> m_freePages { };
 
-    static const size_t lineCount = chunkSize / lineSize;
-    static const size_t pageCount = chunkSize / vmPageSize;
-
-    Line m_lines[lineCount];
-    Page m_pages[pageCount];
-
-    // Align to vmPageSize to avoid sharing physical pages with metadata.
-    // Otherwise, we'll confuse the scavenger into trying to scavenge metadata.
-    // FIXME: Below #ifdef workaround fix should be removed after all linux based ports bump
-    // own gcc version. See https://bugs.webkit.org/show_bug.cgi?id=140162#c87
-#if BPLATFORM(IOS)
-    char m_memory[] __attribute__((aligned(16384)));
-    static_assert(vmPageSize == 16384, "vmPageSize and alignment must be same");
-#else
-    char m_memory[] __attribute__((aligned(4096)));
-    static_assert(vmPageSize == 4096, "vmPageSize and alignment must be same");
-#endif
+    std::array<SmallLine, chunkSize / smallLineSize> m_lines { };
+    std::array<SmallPage, chunkSize / smallPageSize> m_pages { };
 };
 
-template<class Traits>
-inline auto Chunk<Traits>::get(void* object) -> Chunk*
+struct ChunkHash {
+    static unsigned hash(Chunk* key)
+    {
+        return static_cast<unsigned>(
+            reinterpret_cast<uintptr_t>(key) / chunkSize);
+    }
+};
+
+template<typename Function> void forEachPage(Chunk* chunk, size_t pageSize, Function function)
 {
-    BASSERT(isSmallOrMedium(object));
-    return static_cast<Chunk*>(mask(object, chunkMask));
+    // We align to at least the page size so we can service aligned allocations
+    // at equal and smaller powers of two, and also so we can vmDeallocatePhysicalPages().
+    size_t metadataSize = roundUpToMultipleOfNonPowerOfTwo(pageSize, sizeof(Chunk));
+
+    Object begin(chunk, metadataSize);
+    Object end(chunk, chunkSize);
+
+    for (auto it = begin; it + pageSize <= end; it = it + pageSize)
+        function(it.page());
+}
+
+inline Chunk::Chunk(size_t pageSize)
+{
+    size_t smallPageCount = pageSize / smallPageSize;
+    forEachPage(this, pageSize, [&](SmallPage* page) {
+        for (size_t i = 0; i < smallPageCount; ++i)
+            page[i].setSlide(i);
+    });
+}
+
+inline Chunk* Chunk::get(void* address)
+{
+    return static_cast<Chunk*>(mask(address, chunkMask));
+}
+
+inline size_t Chunk::offset(void* address)
+{
+    BASSERT(address >= this);
+    BASSERT(address < bytes() + chunkSize);
+    return static_cast<char*>(address) - bytes();
+}
+
+inline char* Chunk::address(size_t offset)
+{
+    return bytes() + offset;
+}
+
+inline SmallPage* Chunk::page(size_t offset)
+{
+    size_t pageNumber = offset / smallPageSize;
+    SmallPage* page = &m_pages[pageNumber];
+    return page - page->slide();
+}
+
+inline SmallLine* Chunk::line(size_t offset)
+{
+    size_t lineNumber = offset / smallLineSize;
+    return &m_lines[lineNumber];
+}
+
+inline char* SmallLine::begin()
+{
+    Chunk* chunk = Chunk::get(this);
+    size_t lineNumber = this - chunk->lines();
+    size_t offset = lineNumber * smallLineSize;
+    return &reinterpret_cast<char*>(chunk)[offset];
+}
+
+inline char* SmallLine::end()
+{
+    return begin() + smallLineSize;
+}
+
+inline SmallLine* SmallPage::begin()
+{
+    BASSERT(!m_slide);
+    Chunk* chunk = Chunk::get(this);
+    size_t pageNumber = this - chunk->pages();
+    size_t lineNumber = pageNumber * smallPageLineCount;
+    return &chunk->lines()[lineNumber];
+}
+
+inline Object::Object(void* object)
+    : m_chunk(Chunk::get(object))
+    , m_offset(m_chunk->offset(object))
+{
+}
+
+inline Object::Object(Chunk* chunk, void* object)
+    : m_chunk(chunk)
+    , m_offset(m_chunk->offset(object))
+{
+    BASSERT(chunk == Chunk::get(object));
+}
+
+inline char* Object::address()
+{
+    return m_chunk->address(m_offset);
+}
+
+inline SmallLine* Object::line()
+{
+    return m_chunk->line(m_offset);
+}
+
+inline SmallPage* Object::page()
+{
+    return m_chunk->page(m_offset);
 }
 
 }; // namespace bmalloc

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,20 +34,62 @@
 
 namespace JSC { namespace B3 { namespace Air {
 
+bool Inst::hasEarlyDef()
+{
+    if (kind.opcode == Patch && !extraEarlyClobberedRegs().isEmpty())
+        return true;
+    bool result = false;
+    forEachArg(
+        [&] (Arg&, Arg::Role role, Bank, Width) {
+            result |= Arg::isEarlyDef(role);
+        });
+    return result;
+}
+
+bool Inst::hasLateUseOrDef()
+{
+    if (kind.opcode == Patch && !extraClobberedRegs().isEmpty())
+        return true;
+    bool result = false;
+    forEachArg(
+        [&] (Arg&, Arg::Role role, Bank, Width) {
+            result |= Arg::isLateUse(role) || Arg::isLateDef(role);
+        });
+    return result;
+}
+
+bool Inst::needsPadding(Inst* prevInst, Inst* nextInst)
+{
+    bool result = prevInst && nextInst && prevInst->hasLateUseOrDef() && nextInst->hasEarlyDef();
+    return result;
+}
+
 bool Inst::hasArgEffects()
 {
     bool result = false;
     forEachArg(
-        [&] (Arg&, Arg::Role role, Arg::Type, Arg::Width) {
+        [&] (Arg&, Arg::Role role, Bank, Width) {
             if (Arg::isAnyDef(role))
                 result = true;
         });
     return result;
 }
 
+unsigned Inst::jsHash() const
+{
+    // FIXME: This should do something for flags.
+    // https://bugs.webkit.org/show_bug.cgi?id=162751
+    unsigned result = static_cast<unsigned>(kind.opcode);
+    
+    for (const Arg& arg : args)
+        result += arg.jsHash();
+    
+    return result;
+}
+
 void Inst::dump(PrintStream& out) const
 {
-    out.print(opcode, " ", listDump(args));
+    out.print(kind, " ", listDump(args));
     if (origin) {
         if (args.size())
             out.print(", ");

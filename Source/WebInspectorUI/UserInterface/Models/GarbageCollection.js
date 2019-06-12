@@ -29,7 +29,7 @@ WebInspector.GarbageCollection = class GarbageCollection extends WebInspector.Ob
     {
         super();
 
-        console.assert(endTime > startTime);
+        console.assert(endTime >= startTime);
 
         this._type = type;
         this._startTime = startTime;
@@ -49,20 +49,9 @@ WebInspector.GarbageCollection = class GarbageCollection extends WebInspector.Ob
 
     // Public
 
-    get type()
-    {
-        return this._type;
-    }
-
-    get startTime()
-    {
-        return this._startTime;
-    }
-
-    get endTime()
-    {
-        return this._endTime;
-    }
+    get type() { return this._type; }
+    get startTime() { return this._startTime; }
+    get endTime() { return this._endTime; }
 
     get duration()
     {

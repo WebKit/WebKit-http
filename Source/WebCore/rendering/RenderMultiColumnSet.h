@@ -23,9 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef RenderMultiColumnSet_h
-#define RenderMultiColumnSet_h
+#pragma once
 
 #include "LayerFragment.h"
 #include "RenderMultiColumnFlowThread.h"
@@ -46,7 +44,7 @@ namespace WebCore {
 // come before and after the span.
 class RenderMultiColumnSet final : public RenderRegionSet {
 public:
-    RenderMultiColumnSet(RenderFlowThread&, Ref<RenderStyle>&&);
+    RenderMultiColumnSet(RenderFlowThread&, RenderStyle&&);
 
     RenderBlockFlow* multiColumnBlockFlow() const { return downcast<RenderBlockFlow>(parent()); }
     RenderMultiColumnFlowThread* multiColumnFlowThread() const { return static_cast<RenderMultiColumnFlowThread*>(flowThread()); }
@@ -60,7 +58,7 @@ public:
     RenderObject* lastRendererInFlowThread() const;
 
     // Return true if the specified renderer (descendant of the flow thread) is inside this column set.
-    bool containsRendererInFlowThread(RenderObject*) const;
+    bool containsRendererInFlowThread(const RenderObject&) const;
 
     void setLogicalTopInFlowThread(LayoutUnit);
     LayoutUnit logicalTopInFlowThread() const { return isHorizontalWritingMode() ? flowThreadPortionRect().y() : flowThreadPortionRect().x(); }
@@ -101,7 +99,7 @@ public:
     // after layout that the columns weren't tall enough.
     void recordSpaceShortage(LayoutUnit spaceShortage);
 
-    virtual void updateLogicalWidth() override;
+    void updateLogicalWidth() override;
 
     void prepareForLayout(bool initial);
     // Begin laying out content for this column set. This happens at the beginning of flow thread
@@ -125,38 +123,38 @@ public:
     };
     LayoutPoint translateRegionPointToFlowThread(const LayoutPoint & logicalPoint, ColumnHitTestTranslationMode = DoNotClampHitTestTranslationToColumns) const;
 
-    virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&) override;
+    void updateHitTestResult(HitTestResult&, const LayoutPoint&) override;
     
     LayoutRect columnRectAt(unsigned index) const;
     unsigned columnCount() const;
 
 protected:
-    virtual void addOverflowFromChildren() override;
+    void addOverflowFromChildren() override;
     
 private:
-    virtual bool isRenderMultiColumnSet() const override { return true; }
-    virtual void layout() override;
+    bool isRenderMultiColumnSet() const override { return true; }
+    void layout() override;
 
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
-    virtual void paintObject(PaintInfo&, const LayoutPoint&) override { }
+    void paintObject(PaintInfo&, const LayoutPoint&) override { }
 
-    virtual LayoutUnit pageLogicalWidth() const override { return m_computedColumnWidth; }
-    virtual LayoutUnit pageLogicalHeight() const override { return m_computedColumnHeight; }
+    LayoutUnit pageLogicalWidth() const override { return m_computedColumnWidth; }
+    LayoutUnit pageLogicalHeight() const override { return m_computedColumnHeight; }
 
-    virtual LayoutUnit pageLogicalTopForOffset(LayoutUnit offset) const override;
+    LayoutUnit pageLogicalTopForOffset(LayoutUnit offset) const override;
 
-    virtual LayoutUnit logicalHeightOfAllFlowThreadContent() const override { return logicalHeightInFlowThread(); }
+    LayoutUnit logicalHeightOfAllFlowThreadContent() const override { return logicalHeightInFlowThread(); }
 
-    virtual void repaintFlowThreadContent(const LayoutRect& repaintRect) override;
+    void repaintFlowThreadContent(const LayoutRect& repaintRect) override;
 
-    virtual void collectLayerFragments(LayerFragments&, const LayoutRect& layerBoundingBox, const LayoutRect& dirtyRect) override;
+    void collectLayerFragments(LayerFragments&, const LayoutRect& layerBoundingBox, const LayoutRect& dirtyRect) override;
 
-    virtual void adjustRegionBoundsFromFlowThreadPortionRect(LayoutRect& regionBounds) const override;
+    void adjustRegionBoundsFromFlowThreadPortionRect(LayoutRect& regionBounds) const override;
 
-    virtual VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
+    VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
 
-    virtual const char* renderName() const override;
+    const char* renderName() const override;
 
     LayoutUnit calculateMaxColumnHeight() const;
     LayoutUnit columnGap() const;
@@ -230,6 +228,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMultiColumnSet, isRenderMultiColumnSet())
-
-#endif // RenderMultiColumnSet_h
-

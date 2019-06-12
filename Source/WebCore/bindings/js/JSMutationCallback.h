@@ -23,21 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSMutationCallback_h
-#define JSMutationCallback_h
+#pragma once
 
 #include "ActiveDOMCallback.h"
 #include "DOMWrapperWorld.h"
 #include "MutationCallback.h"
 #include <heap/Weak.h>
 #include <runtime/JSObject.h>
-#include <wtf/Forward.h>
 
 namespace WebCore {
 
 class JSDOMGlobalObject;
 
-class JSMutationCallback : public MutationCallback, public ActiveDOMCallback {
+class JSMutationCallback final : public MutationCallback, public ActiveDOMCallback {
 public:
     static Ref<JSMutationCallback> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
@@ -46,17 +44,14 @@ public:
 
     virtual ~JSMutationCallback();
 
-    virtual void call(const Vector<RefPtr<MutationRecord>>&, MutationObserver*) override;
-
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ContextDestructionObserver::scriptExecutionContext(); }
+    void call(const Vector<Ref<MutationRecord>>&, MutationObserver*) override;
+    bool canInvokeCallback() const override { return ActiveDOMCallback::canInvokeCallback(); }
 
 private:
     JSMutationCallback(JSC::JSObject* callback, JSDOMGlobalObject*);
 
     mutable JSC::Weak<JSC::JSObject> m_callback;
-    RefPtr<DOMWrapperWorld> m_isolatedWorld;
+    Ref<DOMWrapperWorld> m_isolatedWorld;
 };
 
 } // namespace WebCore
-
-#endif

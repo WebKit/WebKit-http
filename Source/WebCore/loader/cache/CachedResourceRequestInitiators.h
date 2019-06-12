@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CachedResourceRequestInitiators_h
-#define CachedResourceRequestInitiators_h
+#pragma once
 
 #include "ThreadGlobalData.h"
 #include <wtf/text/AtomicString.h>
@@ -35,6 +34,7 @@ struct CachedResourceRequestInitiators {
     CachedResourceRequestInitiators();
 
     const AtomicString css;
+    const AtomicString fetch;
     const AtomicString icon;
     const AtomicString xmlhttprequest;
     WTF_MAKE_NONCOPYABLE(CachedResourceRequestInitiators); WTF_MAKE_FAST_ALLOCATED;
@@ -48,5 +48,3 @@ inline const CachedResourceRequestInitiators& cachedResourceRequestInitiators()
 }
 
 } // namespace WebCore
-
-#endif

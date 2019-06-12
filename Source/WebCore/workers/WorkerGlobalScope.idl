@@ -21,21 +21,17 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
 [
-    GlobalContext=WorkerGlobalScope,
     CustomProxyToJSObject,
+    Exposed=Worker,
     JSCustomMarkFunction,
-    JSCustomGetOwnPropertySlotAndDescriptor,
     JSLegacyParent=JSWorkerGlobalScopeBase,
 ] interface WorkerGlobalScope : EventTarget {
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [Replaceable] readonly attribute  WorkerGlobalScope self;
-#endif
-    [Replaceable] readonly attribute WorkerLocation location;
+    readonly attribute WorkerGlobalScope self;
+    readonly attribute WorkerLocation location;
     void close();
 
     attribute EventHandler onerror;
@@ -44,12 +40,25 @@
 
     // WorkerUtils
 
-    [Custom] void importScripts(/*[Variadic] DOMString urls */);
-    [Replaceable] readonly attribute WorkerNavigator navigator;
+    [MayThrowException] void importScripts(USVString... urls);
+    readonly attribute WorkerNavigator navigator;
 
     // Additional constructors
 
-    attribute DOMURLConstructor webkitURL; // FIXME: deprecate this.
+    // FIXME: Automatically generate these once we can drop the IndexedDBWorkers runtime flag.
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBCursorConstructor IDBCursor;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBCursorWithValueConstructor IDBCursorWithValue;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBDatabaseConstructor IDBDatabase;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBFactoryConstructor IDBFactory;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBIndexConstructor IDBIndex;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBKeyRangeConstructor IDBKeyRange;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBObjectStoreConstructor IDBObjectStore;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBOpenDBRequestConstructor IDBOpenDBRequest;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBRequestConstructor IDBRequest;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBTransactionConstructor IDBTransaction;
+    [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBVersionChangeEventConstructor IDBVersionChangeEvent;
 };
 
-WorkerGlobalScope implements WindowTimers;
+WorkerGlobalScope implements GlobalCrypto;
+WorkerGlobalScope implements GlobalPerformance;
+WorkerGlobalScope implements WindowOrWorkerGlobalScope;

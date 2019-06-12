@@ -327,21 +327,20 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
         return false;
     bool hasAlpha = !m_image->currentFrameKnownToBeOpaque();
     if ((ignoreGammaAndColorProfile || (hasAlpha && !premultiplyAlpha)) && m_image->data()) {
-        ImageSource decoder(ImageSource::AlphaNotPremultiplied,
-                            ignoreGammaAndColorProfile ? ImageSource::GammaAndColorProfileIgnored : ImageSource::GammaAndColorProfileApplied);
+        ImageSource decoder(nullptr, AlphaOption::NotPremultiplied, ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied);
         decoder.setData(m_image->data(), true);
         if (!decoder.frameCount())
             return false;
 
-        m_decodedImage = adoptCF(decoder.createFrameAtIndex(0));
-        m_cgImage = m_decodedImage.get();
+        m_decodedImage = decoder.createFrameImageAtIndex(0);
+        m_cgImage = m_decodedImage;
     } else
         m_cgImage = m_image->nativeImageForCurrentFrame();
     if (!m_cgImage)
         return false;
 
-    m_imageWidth = CGImageGetWidth(m_cgImage);
-    m_imageHeight = CGImageGetHeight(m_cgImage);
+    m_imageWidth = CGImageGetWidth(m_cgImage.get());
+    m_imageHeight = CGImageGetHeight(m_cgImage.get());
     if (!m_imageWidth || !m_imageHeight)
         return false;
 
@@ -349,7 +348,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     // so, re-render it into an RGB color space. The image re-packing
     // code requires color data, not color table indices, for the
     // image data.
-    CGColorSpaceRef colorSpace = CGImageGetColorSpace(m_cgImage);
+    CGColorSpaceRef colorSpace = CGImageGetColorSpace(m_cgImage.get());
     CGColorSpaceModel model = CGColorSpaceGetModel(colorSpace);
     if (model == kCGColorSpaceModelIndexed) {
         RetainPtr<CGContextRef> bitmapContext;
@@ -364,22 +363,22 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
 
         CGContextSetBlendMode(bitmapContext.get(), kCGBlendModeCopy);
         CGContextSetInterpolationQuality(bitmapContext.get(), kCGInterpolationNone);
-        CGContextDrawImage(bitmapContext.get(), CGRectMake(0, 0, m_imageWidth, m_imageHeight), m_cgImage);
+        CGContextDrawImage(bitmapContext.get(), CGRectMake(0, 0, m_imageWidth, m_imageHeight), m_cgImage.get());
 
         // Now discard the original CG image and replace it with a copy from the bitmap context.
         m_decodedImage = adoptCF(CGBitmapContextCreateImage(bitmapContext.get()));
         m_cgImage = m_decodedImage.get();
     }
 
-    size_t bitsPerComponent = CGImageGetBitsPerComponent(m_cgImage);
-    size_t bitsPerPixel = CGImageGetBitsPerPixel(m_cgImage);
+    size_t bitsPerComponent = CGImageGetBitsPerComponent(m_cgImage.get());
+    size_t bitsPerPixel = CGImageGetBitsPerPixel(m_cgImage.get());
     if (bitsPerComponent != 8 && bitsPerComponent != 16)
         return false;
     if (bitsPerPixel % bitsPerComponent)
         return false;
     size_t componentsPerPixel = bitsPerPixel / bitsPerComponent;
 
-    CGBitmapInfo bitInfo = CGImageGetBitmapInfo(m_cgImage);
+    CGBitmapInfo bitInfo = CGImageGetBitmapInfo(m_cgImage.get());
     bool bigEndianSource = false;
     // These could technically be combined into one large switch
     // statement, but we prefer not to so that we fail fast if we
@@ -421,7 +420,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
 
     m_alphaOp = AlphaDoNothing;
     AlphaFormat alphaFormat = AlphaFormatNone;
-    switch (CGImageGetAlphaInfo(m_cgImage)) {
+    switch (CGImageGetAlphaInfo(m_cgImage.get())) {
     case kCGImageAlphaPremultipliedFirst:
         if (!premultiplyAlpha)
             m_alphaOp = AlphaDoUnmultiply;
@@ -461,14 +460,14 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     if (m_imageSourceFormat == DataFormatNumFormats)
         return false;
 
-    m_pixelData = adoptCF(CGDataProviderCopyData(CGImageGetDataProvider(m_cgImage)));
+    m_pixelData = adoptCF(CGDataProviderCopyData(CGImageGetDataProvider(m_cgImage.get())));
     if (!m_pixelData)
         return false;
 
     m_imagePixelData = reinterpret_cast<const void*>(CFDataGetBytePtr(m_pixelData.get()));
 
     unsigned int srcUnpackAlignment = 0;
-    size_t bytesPerRow = CGImageGetBytesPerRow(m_cgImage);
+    size_t bytesPerRow = CGImageGetBytesPerRow(m_cgImage.get());
     unsigned padding = bytesPerRow - bitsPerPixel / 8 * m_imageWidth;
     if (padding) {
         srcUnpackAlignment = padding + 1;
@@ -536,7 +535,7 @@ void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imag
     context.scale(FloatSize(1, -1));
     context.translate(0, -imageHeight);
     context.setImageInterpolationQuality(InterpolationNone);
-    context.drawNativeImage(cgImage.get(), imageSize, canvasRect, FloatRect(FloatPoint(), imageSize), CompositeCopy);
+    context.drawNativeImage(cgImage, imageSize, canvasRect, FloatRect(FloatPoint(), imageSize), CompositeCopy);
 }
 
 } // namespace WebCore

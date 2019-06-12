@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,55 +23,59 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceLoadObserver_h
-#define ResourceLoadObserver_h
+#pragma once
 
+#include "Timer.h"
 #include <wtf/HashMap.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
+
+namespace WTF {
+class Lock;
+class WorkQueue;
+}
 
 namespace WebCore {
 
 class Document;
-class KeyedDecoder;
-class KeyedEncoder;
+class Frame;
+class Page;
+class ResourceRequest;
+class ResourceResponse;
 class URL;
 
 struct ResourceLoadStatistics;
 
 class ResourceLoadObserver {
-    friend class NeverDestroyed<ResourceLoadObserver>;
+    friend class WTF::NeverDestroyed<ResourceLoadObserver>;
 public:
-    WEBCORE_EXPORT static ResourceLoadObserver& sharedObserver();
-    
-    void logFrameNavigation(bool isRedirect, const URL& sourceURL, const URL& targetURL, bool isMainFrame, const URL& mainFrameURL);
-    void logSubresourceLoading(bool isRedirect, const URL& sourceURL, const URL& targetURL, const URL& mainFrameURL);
-    void logUserInteraction(const Document&);
+    WEBCORE_EXPORT static ResourceLoadObserver& shared();
 
-    WEBCORE_EXPORT void writeDataToDisk();
-    WEBCORE_EXPORT void readDataFromDiskIfNeeded();
-    WEBCORE_EXPORT void setStatisticsStorageDirectory(const String&);
+    WEBCORE_EXPORT void setShouldThrottleObserverNotifications(bool);
+    
+    void logFrameNavigation(const Frame&, const Frame& topFrame, const ResourceRequest& newRequest);
+    void logSubresourceLoading(const Frame*, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse);
+    void logWebSocketLoading(const Frame*, const URL&);
+    void logUserInteractionWithReducedTimeResolution(const Document&);
 
     WEBCORE_EXPORT String statisticsForOrigin(const String&);
 
+    WEBCORE_EXPORT void setNotificationCallback(WTF::Function<void (Vector<ResourceLoadStatistics>&&)>&&);
+
 private:
-    ResourceLoadStatistics& resourceStatisticsForPrimaryDomain(const String&);
-    
-    static String primaryDomain(const URL&);
+    ResourceLoadObserver();
 
-    bool isPrevalentResource(const String&) const;
+    bool shouldLog(Page*) const;
+    ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
 
-    String persistentStoragePath(const String& label) const;
+    void scheduleNotificationIfNeeded();
+    void notificationTimerFired();
+    Vector<ResourceLoadStatistics> takeStatistics();
 
-    void writeDataToDisk(const String& origin, const ResourceLoadStatistics&) const;
-
-    std::unique_ptr<KeyedDecoder> createDecoderFromDisk(const String& label) const;
-    void writeEncoderToDisk(KeyedEncoder&, const String& label) const;
-
-    HashMap<String, size_t> m_originsVisitedMap;
     HashMap<String, ResourceLoadStatistics> m_resourceStatisticsMap;
-    String m_storagePath;
+    WTF::Function<void (Vector<ResourceLoadStatistics>&&)> m_notificationCallback;
+    Timer m_notificationTimer;
+    bool m_shouldThrottleNotifications { true };
 };
     
 } // namespace WebCore
-
-#endif /* ResourceLoadObserver_h */

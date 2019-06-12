@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSProxy_h
-#define JSProxy_h
+#pragma once
 
 #include "JSDestructibleObject.h"
 
@@ -42,8 +41,16 @@ public:
         return proxy;
     }
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, JSType proxyType = ImpureProxyType)
+    static JSProxy* create(VM& vm, Structure* structure)
     {
+        JSProxy* proxy = new (NotNull, allocateCell<JSProxy>(vm.heap)) JSProxy(vm, structure);
+        proxy->finishCreation(vm);
+        return proxy;
+    }
+
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype, JSType proxyType)
+    {
+        ASSERT(proxyType == ImpureProxyType || proxyType == PureForwardingProxyType);
         return Structure::create(vm, globalObject, prototype, TypeInfo(proxyType, StructureFlags), info());
     }
 
@@ -51,6 +58,8 @@ public:
 
     JSObject* target() const { return m_target.get(); }
     static ptrdiff_t targetOffset() { return OBJECT_OFFSETOF(JSProxy, m_target); }
+
+    JS_EXPORT_PRIVATE void setTarget(VM&, JSGlobalObject*);
 
 protected:
     JSProxy(VM& vm, Structure* structure)
@@ -71,13 +80,12 @@ protected:
 
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
 
-    JS_EXPORT_PRIVATE void setTarget(VM&, JSGlobalObject*);
-
     JS_EXPORT_PRIVATE static String className(const JSObject*);
+    JS_EXPORT_PRIVATE static String toStringName(const JSObject*, ExecState*);
     JS_EXPORT_PRIVATE static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     JS_EXPORT_PRIVATE static bool getOwnPropertySlotByIndex(JSObject*, ExecState*, unsigned, PropertySlot&);
-    JS_EXPORT_PRIVATE static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
-    JS_EXPORT_PRIVATE static void putByIndex(JSCell*, ExecState*, unsigned, JSValue, bool shouldThrow);
+    JS_EXPORT_PRIVATE static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    JS_EXPORT_PRIVATE static bool putByIndex(JSCell*, ExecState*, unsigned, JSValue, bool shouldThrow);
     JS_EXPORT_PRIVATE static bool deleteProperty(JSCell*, ExecState*, PropertyName);
     JS_EXPORT_PRIVATE static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned);
     JS_EXPORT_PRIVATE static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
@@ -86,11 +94,13 @@ protected:
     JS_EXPORT_PRIVATE static void getStructurePropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     JS_EXPORT_PRIVATE static void getGenericPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
+    JS_EXPORT_PRIVATE static bool setPrototype(JSObject*, ExecState*, JSValue, bool shouldThrowIfCantSet);
+    JS_EXPORT_PRIVATE static JSValue getPrototype(JSObject*, ExecState*);
+    JS_EXPORT_PRIVATE static bool isExtensible(JSObject*, ExecState*);
+    JS_EXPORT_PRIVATE static bool preventExtensions(JSObject*, ExecState*);
 
 private:
     WriteBarrier<JSObject> m_target;
 };
 
 } // namespace JSC
-
-#endif // JSProxy_h

@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFEMorphologyElement_h
-#define SVGFEMorphologyElement_h
+#pragma once
 
 #include "FEMorphology.h"
 #include "SVGAnimatedEnumeration.h"
@@ -37,9 +36,9 @@ struct SVGPropertyTraits<MorphologyOperatorType> {
         case FEMORPHOLOGY_OPERATOR_UNKNOWN:
             return emptyString();
         case FEMORPHOLOGY_OPERATOR_ERODE:
-            return "erode";
+            return ASCIILiteral("erode");
         case FEMORPHOLOGY_OPERATOR_DILATE:
-            return "dilate";
+            return ASCIILiteral("dilate");
         }
 
         ASSERT_NOT_REACHED();
@@ -65,10 +64,10 @@ public:
 private:
     SVGFEMorphologyElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 
     static const AtomicString& radiusXIdentifier();
     static const AtomicString& radiusYIdentifier();
@@ -82,5 +81,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

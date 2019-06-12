@@ -250,8 +250,11 @@ void AXObjectCache::setShouldRepostNotificationsForTests(bool value)
     axShouldRepostNotificationsForTests = value;
 }
 
-static void AXPostNotificationWithUserInfo(id object, NSString *notification, id userInfo)
+static void AXPostNotificationWithUserInfo(AccessibilityObjectWrapper *object, NSString *notification, id userInfo)
 {
+    if (id associatedPluginParent = [object associatedPluginParent])
+        object = associatedPluginParent;
+    
     NSAccessibilityPostNotificationWithUserInfo(object, notification, userInfo);
     // To simplify monitoring for notifications in tests, repost as a simple NSNotification instead of forcing test infrastucture to setup an IPC client and do all the translation between WebCore types and platform specific IPC types and back
     if (UNLIKELY(axShouldRepostNotificationsForTests))
@@ -361,7 +364,7 @@ void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject*
 
     NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] initWithCapacity:5];
     if (m_isSynchronizingSelection)
-        [userInfo setObject:[NSNumber numberWithBool:YES] forKey:NSAccessibilityTextStateSyncKey];
+        [userInfo setObject:@YES forKey:NSAccessibilityTextStateSyncKey];
     if (intent.type != AXTextStateChangeTypeUnknown) {
         [userInfo setObject:@(platformChangeTypeForWebCoreChangeType(intent.type)) forKey:NSAccessibilityTextStateChangeTypeKey];
         switch (intent.type) {
@@ -398,12 +401,28 @@ void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject*
         [userInfo setObject:wrapper forKey:NSAccessibilityTextChangeElement];
 
     AXPostNotificationWithUserInfo(rootWebArea()->wrapper(), NSAccessibilitySelectedTextChangedNotification, userInfo);
-    AXPostNotificationWithUserInfo(object->wrapper(), NSAccessibilitySelectedTextChangedNotification, userInfo);
+    if (rootWebArea()->wrapper() != object->wrapper())
+        AXPostNotificationWithUserInfo(object->wrapper(), NSAccessibilitySelectedTextChangedNotification, userInfo);
 
     [userInfo release];
 }
 
-static NSDictionary *textReplacementChangeDictionary(AccessibilityObject* object, AXTextEditType type, const String& string, const VisiblePosition& position)
+static void addTextMarkerFor(NSMutableDictionary* change, AccessibilityObject& object, const VisiblePosition& position)
+{
+    if (position.isNull())
+        return;
+    if (id textMarker = [object.wrapper() textMarkerForVisiblePosition:position])
+        [change setObject:textMarker forKey:NSAccessibilityTextChangeValueStartMarker];
+}
+
+static void addTextMarkerFor(NSMutableDictionary* change, AccessibilityObject& object, HTMLTextFormControlElement& textControl)
+{
+    if (id textMarker = [object.wrapper() textMarkerForFirstPositionInTextControl:textControl])
+        [change setObject:textMarker forKey:NSAccessibilityTextChangeValueStartMarker];
+}
+
+template <typename TextMarkerTargetType>
+static NSDictionary *textReplacementChangeDictionary(AccessibilityObject& object, AXTextEditType type, const String& string, TextMarkerTargetType& markerTarget)
 {
     NSString *text = (NSString *)string;
     NSUInteger length = [text length];
@@ -416,10 +435,7 @@ static NSDictionary *textReplacementChangeDictionary(AccessibilityObject* object
         text = [text substringToIndex:AXValueChangeTruncationLength];
     }
     [change setObject:text forKey:NSAccessibilityTextChangeValue];
-    if (position.isNotNull()) {
-        if (id textMarker = [object->wrapper() textMarkerForVisiblePosition:position])
-            [change setObject:textMarker forKey:NSAccessibilityTextChangeValueStartMarker];
-    }
+    addTextMarkerFor(change, object, markerTarget);
     return [change autorelease];
 }
 
@@ -428,7 +444,24 @@ void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject*
     if (!text.length())
         return;
 
-    postTextReplacementPlatformNotification(object, AXTextEditTypeUnknown, "", type, text, position);
+    postTextReplacementPlatformNotification(object, AXTextEditTypeUnknown, emptyString(), type, text, position);
+}
+
+static void postUserInfoForChanges(AccessibilityObject& rootWebArea, AccessibilityObject& object, NSMutableArray* changes)
+{
+    NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] initWithCapacity:4];
+    [userInfo setObject:@(platformChangeTypeForWebCoreChangeType(AXTextStateChangeTypeEdit)) forKey:NSAccessibilityTextStateChangeTypeKey];
+    if (changes.count)
+        [userInfo setObject:changes forKey:NSAccessibilityTextChangeValues];
+
+    if (id wrapper = object.wrapper())
+        [userInfo setObject:wrapper forKey:NSAccessibilityTextChangeElement];
+
+    AXPostNotificationWithUserInfo(rootWebArea.wrapper(), NSAccessibilityValueChangedNotification, userInfo);
+    if (rootWebArea.wrapper() != object.wrapper())
+        AXPostNotificationWithUserInfo(object.wrapper(), NSAccessibilityValueChangedNotification, userInfo);
+
+    [userInfo release];
 }
 
 void AXObjectCache::postTextReplacementPlatformNotification(AccessibilityObject* object, AXTextEditType deletionType, const String& deletedText, AXTextEditType insertionType, const String& insertedText, const VisiblePosition& position)
@@ -439,25 +472,30 @@ void AXObjectCache::postTextReplacementPlatformNotification(AccessibilityObject*
     if (!object)
         return;
 
-    NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] initWithCapacity:4];
-    [userInfo setObject:@(platformChangeTypeForWebCoreChangeType(AXTextStateChangeTypeEdit)) forKey:NSAccessibilityTextStateChangeTypeKey];
+    NSMutableArray *changes = [[NSMutableArray alloc] initWithCapacity:2];
+    if (NSDictionary *change = textReplacementChangeDictionary(*object, deletionType, deletedText, position))
+        [changes addObject:change];
+    if (NSDictionary *change = textReplacementChangeDictionary(*object, insertionType, insertedText, position))
+        [changes addObject:change];
+    postUserInfoForChanges(*rootWebArea(), *object, changes);
+    [changes release];
+}
+
+void AXObjectCache::postTextReplacementPlatformNotificationForTextControl(AccessibilityObject* object, const String& deletedText, const String& insertedText, HTMLTextFormControlElement& textControl)
+{
+    if (!object)
+        object = rootWebArea();
+
+    if (!object)
+        return;
 
     NSMutableArray *changes = [[NSMutableArray alloc] initWithCapacity:2];
-    if (NSDictionary *change = textReplacementChangeDictionary(object, deletionType, deletedText, position))
+    if (NSDictionary *change = textReplacementChangeDictionary(*object, AXTextEditTypeDelete, deletedText, textControl))
         [changes addObject:change];
-    if (NSDictionary *change = textReplacementChangeDictionary(object, insertionType, insertedText, position))
+    if (NSDictionary *change = textReplacementChangeDictionary(*object, AXTextEditTypeInsert, insertedText, textControl))
         [changes addObject:change];
-    if (changes.count)
-        [userInfo setObject:changes forKey:NSAccessibilityTextChangeValues];
+    postUserInfoForChanges(*rootWebArea(), *object, changes);
     [changes release];
-
-    if (id wrapper = object->wrapper())
-        [userInfo setObject:wrapper forKey:NSAccessibilityTextChangeElement];
-
-    AXPostNotificationWithUserInfo(rootWebArea()->wrapper(), NSAccessibilityValueChangedNotification, userInfo);
-    AXPostNotificationWithUserInfo(object->wrapper(), NSAccessibilityValueChangedNotification, userInfo);
-
-    [userInfo release];
 }
 
 void AXObjectCache::frameLoadingEventPlatformNotification(AccessibilityObject* axFrameObject, AXLoadingEvent loadingEvent)

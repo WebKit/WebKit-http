@@ -44,6 +44,7 @@ namespace NetworkCache {
 class Statistics {
 public:
     static std::unique_ptr<Statistics> open(const String& cachePath);
+    explicit Statistics(const String& databasePath);
 
     void clear();
 
@@ -55,21 +56,19 @@ public:
     void recordRevalidationSuccess(uint64_t webPageID, const Key&, const WebCore::ResourceRequest&);
 
 private:
-    explicit Statistics(const String& databasePath);
-
     WorkQueue& serialBackgroundIOQueue() { return m_serialBackgroundIOQueue.get(); }
 
     void initialize(const String& databasePath);
     void bootstrapFromNetworkCache(const String& networkCachePath);
     void shrinkIfNeeded();
 
-    void addHashesToDatabase(const Vector<StringCapture>& hashes);
-    void addStoreDecisionsToDatabase(const Vector<std::pair<StringCapture, NetworkCache::StoreDecision>>&);
+    void addHashesToDatabase(const HashSet<String>& hashes);
+    void addStoreDecisionsToDatabase(const HashMap<String, NetworkCache::StoreDecision>&);
     void writeTimerFired();
 
-    typedef std::function<void (bool wasEverRequested, const Optional<StoreDecision>&)> RequestedCompletionHandler;
+    typedef Function<void (bool wasEverRequested, const std::optional<StoreDecision>&)> RequestedCompletionHandler;
     enum class NeedUncachedReason { No, Yes };
-    void queryWasEverRequested(const String&, NeedUncachedReason, const RequestedCompletionHandler&);
+    void queryWasEverRequested(const String&, NeedUncachedReason, RequestedCompletionHandler&&);
     void markAsRequested(const String& hash);
 
     struct EverRequestedQuery {

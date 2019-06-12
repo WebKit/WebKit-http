@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -21,7 +22,12 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include <WebCore/UserMediaPermissionCheck.h>
+#include "MediaDeviceSandboxExtensions.h"
+#include "SandboxExtension.h"
+#include <WebCore/MediaCanStartListener.h>
+#include <WebCore/MediaConstraints.h>
+#include <WebCore/MediaDevicesEnumerationRequest.h>
+#include <WebCore/UserMediaClient.h>
 #include <WebCore/UserMediaRequest.h>
 #include <wtf/HashMap.h>
 #include <wtf/Ref.h>
@@ -31,26 +37,43 @@ namespace WebKit {
 
 class WebPage;
 
-class UserMediaPermissionRequestManager {
+class UserMediaPermissionRequestManager
+    : private WebCore::MediaCanStartListener {
 public:
     explicit UserMediaPermissionRequestManager(WebPage&);
+    ~UserMediaPermissionRequestManager();
 
     void startUserMediaRequest(WebCore::UserMediaRequest&);
     void cancelUserMediaRequest(WebCore::UserMediaRequest&);
-    void didReceiveUserMediaPermissionDecision(uint64_t requestID, bool allowed, const String& audioDeviceUID, const String& videoDeviceUID);
+    void userMediaAccessWasGranted(uint64_t, String&& audioDeviceUID, String&& videoDeviceUID, String&& deviceIdentifierHashSalt);
+    void userMediaAccessWasDenied(uint64_t, WebCore::UserMediaRequest::MediaAccessDenialReason, String&&);
 
-    void startUserMediaPermissionCheck(WebCore::UserMediaPermissionCheck&);
-    void cancelUserMediaPermissionCheck(WebCore::UserMediaPermissionCheck&);
-    void didCompleteUserMediaPermissionCheck(uint64_t requestID, bool allowed);
+    void enumerateMediaDevices(WebCore::MediaDevicesEnumerationRequest&);
+    void cancelMediaDevicesEnumeration(WebCore::MediaDevicesEnumerationRequest&);
+    void didCompleteMediaDeviceEnumeration(uint64_t, const Vector<WebCore::CaptureDevice>& deviceList, String&& deviceIdentifierHashSalt, bool originHasPersistentAccess);
+
+    void grantUserMediaDeviceSandboxExtensions(const MediaDeviceSandboxExtensions&);
+    void revokeUserMediaDeviceSandboxExtensions(const Vector<String>&);
 
 private:
+    void sendUserMediaRequest(WebCore::UserMediaRequest&);
+
+    // WebCore::MediaCanStartListener
+    void mediaCanStart(WebCore::Document&) override;
+
+    void removeMediaRequestFromMaps(WebCore::UserMediaRequest&);
+
     WebPage& m_page;
 
     HashMap<uint64_t, RefPtr<WebCore::UserMediaRequest>> m_idToUserMediaRequestMap;
     HashMap<RefPtr<WebCore::UserMediaRequest>, uint64_t> m_userMediaRequestToIDMap;
 
-    HashMap<uint64_t, RefPtr<WebCore::UserMediaPermissionCheck>> m_idToUserMediaPermissionCheckMap;
-    HashMap<RefPtr<WebCore::UserMediaPermissionCheck>, uint64_t> m_userMediaPermissionCheckToIDMap;
+    HashMap<uint64_t, RefPtr<WebCore::MediaDevicesEnumerationRequest>> m_idToMediaDevicesEnumerationRequestMap;
+    HashMap<RefPtr<WebCore::MediaDevicesEnumerationRequest>, uint64_t> m_mediaDevicesEnumerationRequestToIDMap;
+
+    HashMap<String, RefPtr<SandboxExtension>> m_userMediaDeviceSandboxExtensions;
+
+    HashMap<RefPtr<WebCore::Document>, Vector<RefPtr<WebCore::UserMediaRequest>>> m_blockedRequests;
 };
 
 } // namespace WebKit

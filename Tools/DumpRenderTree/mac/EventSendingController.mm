@@ -43,6 +43,9 @@
 
 #if !PLATFORM(IOS)
 #import <Carbon/Carbon.h> // for GetCurrentEventTime()
+#import <WebKit/WebHTMLView.h>
+#import <objc/runtime.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -137,6 +140,35 @@ BOOL replayingSavedEvents;
 
 @implementation EventSendingController
 
+#if PLATFORM(MAC)
+static NSDraggingSession *drt_WebHTMLView_beginDraggingSessionWithItemsEventSource(WebHTMLView *self, id _cmd, NSArray<NSDraggingItem *> *items, NSEvent *event, id<NSDraggingSource> source)
+{
+    ASSERT(!draggingInfo);
+
+    WebFrameView *webFrameView = ^ {
+        for (NSView *superview = self.superview; superview; superview = superview.superview) {
+            if ([superview isKindOfClass:WebFrameView.class])
+                return (WebFrameView *)superview;
+        }
+
+        ASSERT_NOT_REACHED();
+        return (WebFrameView *)nil;
+    }();
+
+    WebView *webView = webFrameView.webFrame.webView;
+
+    NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:NSDragPboard];
+    for (NSDraggingItem *item in items)
+        [pasteboard writeObjects:@[ item.item ]];
+
+    draggingInfo = [[DumpRenderTreeDraggingInfo alloc] initWithImage:nil offset:NSZeroSize pasteboard:pasteboard source:source];
+    [webView draggingUpdated:draggingInfo];
+    [EventSendingController replaySavedEvents];
+
+    return nullptr;
+}
+#endif
+
 + (void)initialize
 {
     webkitDomEventNames = [[NSArray alloc] initWithObjects:
@@ -187,6 +219,15 @@ BOOL replayingSavedEvents;
         @"unload",
         @"zoom",
         nil];
+
+#if PLATFORM(MAC)
+    // Add an implementation of -[WebHTMLView beginDraggingSessionWithItems:event:source:].
+    SEL selector = @selector(beginDraggingSessionWithItems:event:source:);
+    const char* typeEncoding = method_getTypeEncoding(class_getInstanceMethod(NSView.class, selector));
+
+    if (!class_addMethod(WebHTMLView.class, selector, reinterpret_cast<IMP>(drt_WebHTMLView_beginDraggingSessionWithItemsEventSource), typeEncoding))
+        ASSERT_NOT_REACHED();
+#endif
 }
 
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)aSelector
@@ -355,33 +396,33 @@ BOOL replayingSavedEvents;
 static NSEventType eventTypeForMouseButtonAndAction(int button, MouseAction action)
 {
     switch (button) {
-        case LeftMouseButton:
-            switch (action) {
-                case MouseDown:
-                    return NSLeftMouseDown;
-                case MouseUp:
-                    return NSLeftMouseUp;
-                case MouseDragged:
-                    return NSLeftMouseDragged;
-            }
-        case RightMouseButton:
-            switch (action) {
-                case MouseDown:
-                    return NSRightMouseDown;
-                case MouseUp:
-                    return NSRightMouseUp;
-                case MouseDragged:
-                    return NSRightMouseDragged;
-            }
-        default:
-            switch (action) {
-                case MouseDown:
-                    return NSOtherMouseDown;
-                case MouseUp:
-                    return NSOtherMouseUp;
-                case MouseDragged:
-                    return NSOtherMouseDragged;
-            }
+    case LeftMouseButton:
+        switch (action) {
+        case MouseDown:
+            return NSEventTypeLeftMouseDown;
+        case MouseUp:
+            return NSEventTypeLeftMouseUp;
+        case MouseDragged:
+            return NSEventTypeLeftMouseDragged;
+        }
+    case RightMouseButton:
+        switch (action) {
+        case MouseDown:
+            return NSEventTypeRightMouseDown;
+        case MouseUp:
+            return NSEventTypeRightMouseUp;
+        case MouseDragged:
+            return NSEventTypeRightMouseDragged;
+        }
+    default:
+        switch (action) {
+        case MouseDown:
+            return NSEventTypeOtherMouseDown;
+        case MouseUp:
+            return NSEventTypeOtherMouseUp;
+        case MouseDragged:
+            return NSEventTypeOtherMouseDragged;
+        }
     }
     assert(0);
     return static_cast<NSEventType>(0);
@@ -433,15 +474,17 @@ static NSEventType eventTypeForMouseButtonAndAction(int button, MouseAction acti
 static int modifierFlags(const NSString* modifierName)
 {
 #if !PLATFORM(IOS)
-    const int controlKeyMask = NSControlKeyMask;
-    const int shiftKeyMask = NSShiftKeyMask;
-    const int alternateKeyMask = NSAlternateKeyMask;
-    const int commandKeyMask = NSCommandKeyMask;
+    const int controlKeyMask = NSEventModifierFlagControl;
+    const int shiftKeyMask = NSEventModifierFlagShift;
+    const int alternateKeyMask = NSEventModifierFlagOption;
+    const int commandKeyMask = NSEventModifierFlagCommand;
+    const int capsLockKeyMask = NSEventModifierFlagCapsLock;
 #else
     const int controlKeyMask = WebEventFlagMaskControl;
     const int shiftKeyMask = WebEventFlagMaskShift;
     const int alternateKeyMask = WebEventFlagMaskAlternate;
     const int commandKeyMask = WebEventFlagMaskCommand;
+    const int capsLockKeyMask = WebEventFlagMaskAlphaShift;
 #endif
 
     int flags = 0;
@@ -453,6 +496,8 @@ static int modifierFlags(const NSString* modifierName)
         flags |= alternateKeyMask;
     else if ([modifierName isEqual:@"metaKey"] || [modifierName isEqual:@"addSelectionKey"])
         flags |= commandKeyMask;
+    else if ([modifierName isEqual:@"capsLockKey"])
+        flags |= capsLockKeyMask;
 
     return flags;
 }
@@ -638,9 +683,9 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
 
     NSView *view = [mainFrame webView];
 #if !PLATFORM(IOS)
-    lastMousePosition = [view convertPoint:NSMakePoint(x, [view frame].size.height - y) toView:nil];
-    NSEvent *event = [NSEvent mouseEventWithType:(leftMouseButtonDown ? NSLeftMouseDragged : NSMouseMoved)
-                                        location:lastMousePosition 
+    NSPoint newMousePosition = [view convertPoint:NSMakePoint(x, [view frame].size.height - y) toView:nil];
+    NSEvent *event = [NSEvent mouseEventWithType:(leftMouseButtonDown ? NSEventTypeLeftMouseDragged : NSEventTypeMouseMoved)
+                                        location:newMousePosition
                                    modifierFlags:0 
                                        timestamp:[self currentEventTime]
                                     windowNumber:[[view window] windowNumber] 
@@ -648,6 +693,11 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
                                      eventNumber:++eventNumber 
                                       clickCount:(leftMouseButtonDown ? clickCount : 0) 
                                         pressure:0.0];
+    CGEventRef cgEvent = event.CGEvent;
+    CGEventSetIntegerValueField(cgEvent, kCGMouseEventDeltaX, newMousePosition.x - lastMousePosition.x);
+    CGEventSetIntegerValueField(cgEvent, kCGMouseEventDeltaY, newMousePosition.y - lastMousePosition.y);
+    event = [NSEvent eventWithCGEvent:cgEvent];
+    lastMousePosition = newMousePosition;
 #else
     lastMousePosition = [view convertPoint:NSMakePoint(x, y) toView:nil];
     WebEvent *event = [[WebEvent alloc] initWithMouseEventType:WebEventMouseMoved
@@ -773,7 +823,7 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
     [[[mainFrame frameView] documentView] layout];
     [self updateClickCountForButton:RightMouseButton];
 
-    NSEvent *event = [NSEvent mouseEventWithType:NSRightMouseDown
+    NSEvent *event = [NSEvent mouseEventWithType:NSEventTypeRightMouseDown
                                         location:lastMousePosition 
                                    modifierFlags:0 
                                        timestamp:[self currentEventTime]
@@ -1009,7 +1059,7 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
 
     if ([character length] == 1 && [character characterAtIndex:0] >= 'A' && [character characterAtIndex:0] <= 'Z') {
 #if !PLATFORM(IOS)
-        modifierFlags |= NSShiftKeyMask;
+        modifierFlags |= NSEventModifierFlagShift;
 #else
         modifierFlags |= WebEventFlagMaskAlphaShift;
 #endif
@@ -1019,12 +1069,12 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
     modifierFlags |= buildModifierFlags(modifiers);
 
     if (location == DOM_KEY_LOCATION_NUMPAD)
-        modifierFlags |= NSNumericPadKeyMask;
+        modifierFlags |= NSEventModifierFlagNumericPad;
 
     [[[mainFrame frameView] documentView] layout];
 
 #if !PLATFORM(IOS)
-    NSEvent *event = [NSEvent keyEventWithType:NSKeyDown
+    NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown
                         location:NSMakePoint(5, 5)
                         modifierFlags:modifierFlags
                         timestamp:[self currentEventTime]
@@ -1041,7 +1091,7 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
                         charactersIgnoringModifiers:charactersIgnoringModifiers
                         modifiers:(WebEventFlags)modifierFlags
                         isRepeating:NO
-                        isPopupVariant:NO
+                        withFlags:0
                         keyCode:[character characterAtIndex:0]
                         isTabKey:([character characterAtIndex:0] == '\t')
                         characterSet:WebEventCharacterSetASCII];
@@ -1056,7 +1106,7 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
 #endif
 
 #if !PLATFORM(IOS)
-    event = [NSEvent keyEventWithType:NSKeyUp
+    event = [NSEvent keyEventWithType:NSEventTypeKeyUp
                         location:NSMakePoint(5, 5)
                         modifierFlags:modifierFlags
                         timestamp:[self currentEventTime]
@@ -1074,7 +1124,7 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
                         charactersIgnoringModifiers:charactersIgnoringModifiers
                         modifiers:(WebEventFlags)modifierFlags
                         isRepeating:NO
-                        isPopupVariant:NO
+                        withFlags:0
                         keyCode:[character characterAtIndex:0]
                         isTabKey:([character characterAtIndex:0] == '\t')
                         characterSet:WebEventCharacterSetASCII];

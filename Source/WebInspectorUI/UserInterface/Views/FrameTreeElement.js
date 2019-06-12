@@ -38,6 +38,7 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
         frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
         frame.addEventListener(WebInspector.Frame.Event.ResourceWasRemoved, this._resourceWasRemoved, this);
+        frame.addEventListener(WebInspector.Frame.Event.ExtraScriptAdded, this._extraScriptAdded, this);
         frame.addEventListener(WebInspector.Frame.Event.ChildFrameWasAdded, this._childFrameWasAdded, this);
         frame.addEventListener(WebInspector.Frame.Event.ChildFrameWasRemoved, this._childFrameWasRemoved, this);
 
@@ -45,44 +46,30 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         frame.domTree.addEventListener(WebInspector.DOMTree.Event.ContentFlowWasRemoved, this._childContentFlowWasRemoved, this);
         frame.domTree.addEventListener(WebInspector.DOMTree.Event.RootDOMNodeInvalidated, this._rootDOMNodeInvalidated, this);
 
-        if (this._frame.isMainFrame())
-            this._downloadingPage = false;
-
         this.shouldRefreshChildren = true;
         this.folderSettingsKey = this._frame.url.hash;
 
-        this.registerFolderizeSettings("frames", WebInspector.UIString("Frames"),
-            function(representedObject) { return representedObject instanceof WebInspector.Frame; },
-            function() { return this.frame.childFrames.length; }.bind(this),
-            WebInspector.FrameTreeElement
-        );
+        this.registerFolderizeSettings("frames", WebInspector.UIString("Frames"), this._frame.childFrameCollection, WebInspector.FrameTreeElement);
+        this.registerFolderizeSettings("flows", WebInspector.UIString("Flows"), this._frame.domTree.contentFlowCollection, WebInspector.ContentFlowTreeElement);
+        this.registerFolderizeSettings("extra-scripts", WebInspector.UIString("Extra Scripts"), this._frame.extraScriptCollection, WebInspector.ScriptTreeElement);
 
-        this.registerFolderizeSettings("flows", WebInspector.UIString("Flows"),
-            function(representedObject) { return representedObject instanceof WebInspector.ContentFlow; },
-            function() { return this.frame.domTree.flowsCount; }.bind(this),
-            WebInspector.ContentFlowTreeElement
-        );
+        if (window.CanvasAgent && WebInspector.settings.experimentalShowCanvasContextsInResources.value)
+            this.registerFolderizeSettings("canvases", WebInspector.UIString("Canvases"), this._frame.canvasCollection, WebInspector.CanvasTreeElement);
 
-        function makeValidateCallback(resourceType) {
-            return function(representedObject) {
-                return representedObject instanceof WebInspector.Resource && representedObject.type === resourceType;
-            };
+        function forwardingConstructor(representedObject, ...extraArguments) {
+            if (representedObject instanceof WebInspector.CSSStyleSheet)
+                return new WebInspector.CSSStyleSheetTreeElement(representedObject, ...extraArguments);
+            return new WebInspector.ResourceTreeElement(representedObject, ...extraArguments);
         }
 
-        function makeChildCountCallback(frame, resourceType) {
-            return function() {
-                return frame.resourcesWithType(resourceType).length;
-            };
-        }
+        for (let [key, value] of Object.entries(WebInspector.Resource.Type)) {
+            let folderName = WebInspector.Resource.displayNameForType(value, true);
 
-        for (var key in WebInspector.Resource.Type) {
-            var value = WebInspector.Resource.Type[key];
-            var folderName = WebInspector.Resource.displayNameForType(value, true);
-            this.registerFolderizeSettings(key, folderName,
-                makeValidateCallback(value),
-                makeChildCountCallback(this.frame, value),
-                WebInspector.ResourceTreeElement
-            );
+            let treeElementConstructor = forwardingConstructor;
+            if (value === WebInspector.Resource.Type.WebSocket)
+                treeElementConstructor = WebInspector.WebSocketResourceTreeElement;
+
+            this.registerFolderizeSettings(key, folderName, this._frame.resourceCollectionForType(value), treeElementConstructor);
         }
 
         this.updateParentStatus();
@@ -135,6 +122,25 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
     {
         // Immediate superclasses are skipped, since Frames handle their own SourceMapResources.
         WebInspector.GeneralTreeElement.prototype.onattach.call(this);
+
+        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+
+        if (window.CanvasAgent && WebInspector.settings.experimentalShowCanvasContextsInResources.value) {
+            this._frame.canvasCollection.addEventListener(WebInspector.Collection.Event.ItemAdded, this._canvasWasAdded, this);
+            this._frame.canvasCollection.addEventListener(WebInspector.Collection.Event.ItemRemoved, this._canvasWasRemoved, this);
+        }
+    }
+
+    ondetach()
+    {
+        WebInspector.cssStyleManager.removeEventListener(WebInspector.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+
+        if (window.CanvasAgent && WebInspector.settings.experimentalShowCanvasContextsInResources.value) {
+            this._frame.canvasCollection.removeEventListener(WebInspector.Collection.Event.ItemAdded, this._canvasWasAdded, this);
+            this._frame.canvasCollection.removeEventListener(WebInspector.Collection.Event.ItemRemoved, this._canvasWasRemoved, this);
+        }
+
+        super.ondetach();
     }
 
     // Overrides from FolderizedTreeElement (Protected).
@@ -172,11 +178,11 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         this.updateParentStatus();
         this.prepareToPopulate();
 
-        for (var i = 0; i < this._frame.childFrames.length; ++i)
-            this.addChildForRepresentedObject(this._frame.childFrames[i]);
+        for (let frame of this._frame.childFrameCollection.items)
+            this.addChildForRepresentedObject(frame);
 
-        for (var i = 0; i < this._frame.resources.length; ++i)
-            this.addChildForRepresentedObject(this._frame.resources[i]);
+        for (let resource of this._frame.resourceCollection.items)
+            this.addChildForRepresentedObject(resource);
 
         var sourceMaps = this.resource && this.resource.sourceMaps;
         for (var i = 0; i < sourceMaps.length; ++i) {
@@ -185,10 +191,21 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
                 this.addChildForRepresentedObject(sourceMap.resources[j]);
         }
 
-        var flowMap = this._frame.domTree.flowMap;
-        for (var flowKey in flowMap)
-            this.addChildForRepresentedObject(flowMap[flowKey]);
+        for (let contentFlow of this._frame.domTree.contentFlowCollection.items)
+            this.addChildForRepresentedObject(contentFlow);
 
+        for (let extraScript of this._frame.extraScriptCollection.items) {
+            if (extraScript.sourceURL || extraScript.sourceMappingURL)
+                this.addChildForRepresentedObject(extraScript);
+        }
+
+        if (window.CanvasAgent && WebInspector.settings.experimentalShowCanvasContextsInResources.value) {
+            for (let canvas of this._frame.canvasCollection.items)
+                this.addChildForRepresentedObject(canvas);
+        }
+
+        const doNotCreateIfMissing = true;
+        WebInspector.cssStyleManager.preferredInspectorStyleSheetForFrame(this._frame, this.addRepresentedObjectToNewChildQueue.bind(this), doNotCreateIfMissing);
     }
 
     onexpand()
@@ -240,6 +257,13 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         this.removeChildForRepresentedObject(event.data.resource);
     }
 
+    _extraScriptAdded(event)
+    {
+        let extraScript = event.data.script;
+        if (extraScript.sourceURL || extraScript.sourceMappingURL)
+            this.addRepresentedObjectToNewChildQueue(extraScript);
+    }
+
     _childFrameWasAdded(event)
     {
         this.addRepresentedObjectToNewChildQueue(event.data.childFrame);
@@ -264,5 +288,23 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
     {
         if (this.expanded)
             this._frame.domTree.requestContentFlowList();
+    }
+
+    _styleSheetAdded(event)
+    {
+        if (!event.data.styleSheet.isInspectorStyleSheet())
+            return;
+
+        this.addRepresentedObjectToNewChildQueue(event.data.styleSheet);
+    }
+
+    _canvasWasAdded(event)
+    {
+        this.addRepresentedObjectToNewChildQueue(event.data.item);
+    }
+
+    _canvasWasRemoved(event)
+    {
+        this.removeChildForRepresentedObject(event.data.item);
     }
 };

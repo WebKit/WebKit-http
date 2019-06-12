@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebConnectionToWebProcess_h
-#define WebConnectionToWebProcess_h
+#pragma once
 
 #include "WebConnection.h"
 
@@ -34,7 +33,7 @@ class WebProcessProxy;
 
 class WebConnectionToWebProcess : public WebConnection {
 public:
-    static PassRefPtr<WebConnectionToWebProcess> create(WebProcessProxy*);
+    static Ref<WebConnectionToWebProcess> create(WebProcessProxy*);
 
     WebProcessProxy* webProcessProxy() const { return m_process; }
 
@@ -44,17 +43,15 @@ private:
     WebConnectionToWebProcess(WebProcessProxy*);
 
     // WebConnection
-    virtual RefPtr<API::Object> transformHandlesToObjects(API::Object*) override;
-    virtual RefPtr<API::Object> transformObjectsToHandles(API::Object*) override;
-    virtual bool hasValidConnection() const override;
+    RefPtr<API::Object> transformHandlesToObjects(API::Object*) override;
+    RefPtr<API::Object> transformObjectsToHandles(API::Object*) override;
+    bool hasValidConnection() const override;
 
     // IPC::MessageSender
-    virtual IPC::Connection* messageSenderConnection() override;
-    virtual uint64_t messageSenderDestinationID() override;
+    IPC::Connection* messageSenderConnection() override;
+    uint64_t messageSenderDestinationID() override;
 
     WebProcessProxy* m_process;
 };
 
 } // namespace WebKit
-
-#endif // WebConnectionToWebProcess_h

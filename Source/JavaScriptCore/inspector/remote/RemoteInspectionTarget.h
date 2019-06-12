@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(REMOTE_INSPECTOR)
+#pragma once
 
-#ifndef RemoteInspectionTarget_h
-#define RemoteInspectionTarget_h
+#if ENABLE(REMOTE_INSPECTOR)
 
 #include "RemoteControllableTarget.h"
 #include <wtf/RetainPtr.h>
@@ -42,25 +41,28 @@ public:
     bool remoteDebuggingAllowed() const { return m_allowed; }
     void setRemoteDebuggingAllowed(bool);
 
+#if USE(CF)
     CFRunLoopRef targetRunLoop() override { return m_runLoop.get(); }
     void setTargetRunLoop(CFRunLoopRef runLoop) { m_runLoop = runLoop; }
+#endif
 
     virtual String name() const { return String(); } // JavaScript and Web
     virtual String url() const { return String(); } // Web
     virtual bool hasLocalDebugger() const = 0;
 
     virtual void setIndicating(bool) { } // Default is to do nothing.
-    virtual void pause() { };
 
     virtual bool automaticInspectionAllowed() const { return false; }
     virtual void pauseWaitingForAutomaticInspection();
     virtual void unpauseForInitializedInspector();
 
     // RemoteControllableTarget overrides.
-    virtual bool remoteControlAllowed() const override;
+    bool remoteControlAllowed() const override;
 private:
     bool m_allowed {false};
+#if USE(CF)
     RetainPtr<CFRunLoopRef> m_runLoop;
+#endif
 };
 
 } // namespace Inspector
@@ -72,7 +74,5 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(Inspector::RemoteInspectionTarget) \
             || target.type() == Inspector::RemoteControllableTarget::Type::Web; \
     }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // RemoteInspectionTarget_h
 
 #endif // ENABLE(REMOTE_INSPECTOR)

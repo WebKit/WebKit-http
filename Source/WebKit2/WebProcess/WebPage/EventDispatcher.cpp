@@ -85,7 +85,7 @@ void EventDispatcher::removeScrollingTreeForPage(WebPage* webPage)
 
 void EventDispatcher::initializeConnection(IPC::Connection* connection)
 {
-    connection->addWorkQueueMessageReceiver(Messages::EventDispatcher::messageReceiverName(), &m_queue.get(), this);
+    connection->addWorkQueueMessageReceiver(Messages::EventDispatcher::messageReceiverName(), m_queue.get(), this);
 }
 
 void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEvent, bool canRubberBandAtLeft, bool canRubberBandAtRight, bool canRubberBandAtTop, bool canRubberBandAtBottom)
@@ -107,7 +107,7 @@ void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEven
     if (m_recentWheelEventDeltaFilter->isFilteringDeltas()) {
         m_recentWheelEventDeltaFilter->updateFromDelta(FloatSize(platformWheelEvent.deltaX(), platformWheelEvent.deltaY()));
         FloatSize filteredDelta = m_recentWheelEventDeltaFilter->filteredDelta();
-        platformWheelEvent = platformWheelEvent.copyWithDeltas(filteredDelta.width(), filteredDelta.height());
+        platformWheelEvent = platformWheelEvent.copyWithDeltasAndVelocity(filteredDelta.width(), filteredDelta.height(), m_recentWheelEventDeltaFilter->filteredVelocity());
     }
 #endif
 
@@ -138,18 +138,16 @@ void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEven
     UNUSED_PARAM(canRubberBandAtBottom);
 #endif
 
-    RefPtr<EventDispatcher> eventDispatcher = this;
-    RunLoop::main().dispatch([eventDispatcher, pageID, wheelEvent] {
-        eventDispatcher->dispatchWheelEvent(pageID, wheelEvent);
+    RunLoop::main().dispatch([protectedThis = makeRef(*this), pageID, wheelEvent]() mutable {
+        protectedThis->dispatchWheelEvent(pageID, wheelEvent);
     }); 
 }
 
 #if ENABLE(MAC_GESTURE_EVENTS) || ENABLE(QT_GESTURE_EVENTS)
 void EventDispatcher::gestureEvent(uint64_t pageID, const WebKit::WebGestureEvent& gestureEvent)
 {
-    RefPtr<EventDispatcher> eventDispatcher = this;
-    RunLoop::main().dispatch([eventDispatcher, pageID, gestureEvent] {
-        eventDispatcher->dispatchGestureEvent(pageID, gestureEvent);
+    RunLoop::main().dispatch([protectedThis = makeRef(*this), pageID, gestureEvent]() mutable {
+        protectedThis->dispatchGestureEvent(pageID, gestureEvent);
     });
 }
 #endif
@@ -182,8 +180,7 @@ void EventDispatcher::touchEvent(uint64_t pageID, const WebKit::WebTouchEvent& t
             const WebTouchEvent& lastTouchEvent = queuedEvents.last();
 
             // Coalesce touch move events.
-            WebEvent::Type type = lastTouchEvent.type();
-            if (type == WebEvent::TouchMove)
+            if (touchEvent.type() == WebEvent::TouchMove && lastTouchEvent.type() == WebEvent::TouchMove)
                 queuedEvents.last() = touchEvent;
             else
                 queuedEvents.append(touchEvent);
@@ -191,9 +188,8 @@ void EventDispatcher::touchEvent(uint64_t pageID, const WebKit::WebTouchEvent& t
     }
 
     if (updateListWasEmpty) {
-        RefPtr<EventDispatcher> eventDispatcher = this;
-        RunLoop::main().dispatch([eventDispatcher] {
-            eventDispatcher->dispatchTouchEvents();
+        RunLoop::main().dispatch([protectedThis = makeRef(*this)]() mutable {
+            protectedThis->dispatchTouchEvents();
         });
     }
 }

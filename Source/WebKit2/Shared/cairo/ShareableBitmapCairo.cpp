@@ -40,12 +40,12 @@ namespace WebKit {
 
 static const cairo_format_t cairoFormat = CAIRO_FORMAT_ARGB32;
 
-size_t ShareableBitmap::numBytesForSize(const WebCore::IntSize& size)
+Checked<unsigned, RecordOverflow> ShareableBitmap::numBytesForSize(const WebCore::IntSize& size)
 {
-    return cairo_format_stride_for_width(cairoFormat, size.width()) * size.height();
+    return Checked<unsigned, RecordOverflow>(cairo_format_stride_for_width(cairoFormat, size.width())) * size.height();
 }
 
-static inline PassRefPtr<cairo_surface_t> createSurfaceFromData(void* data, const WebCore::IntSize& size)
+static inline RefPtr<cairo_surface_t> createSurfaceFromData(void* data, const WebCore::IntSize& size)
 {
     const int stride = cairo_format_stride_for_width(cairoFormat, size.width());
     return adoptRef(cairo_image_surface_create_for_data(static_cast<unsigned char*>(data), cairoFormat, size.width(), size.height(), stride));
@@ -72,14 +72,14 @@ void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const I
     context.platformContext()->drawSurfaceToContext(surface.get(), destRect, srcRectScaled, context);
 }
 
-PassRefPtr<cairo_surface_t> ShareableBitmap::createCairoSurface()
+RefPtr<cairo_surface_t> ShareableBitmap::createCairoSurface()
 {
     RefPtr<cairo_surface_t> image = createSurfaceFromData(data(), m_size);
 
     ref(); // Balanced by deref in releaseSurfaceData.
     static cairo_user_data_key_t dataKey;
     cairo_surface_set_user_data(image.get(), &dataKey, this, releaseSurfaceData);
-    return image.release();
+    return image;
 }
 
 void ShareableBitmap::releaseSurfaceData(void* typelessBitmap)
@@ -87,13 +87,13 @@ void ShareableBitmap::releaseSurfaceData(void* typelessBitmap)
     static_cast<ShareableBitmap*>(typelessBitmap)->deref(); // Balanced by ref in createCairoSurface.
 }
 
-PassRefPtr<Image> ShareableBitmap::createImage()
+RefPtr<Image> ShareableBitmap::createImage()
 {
     RefPtr<cairo_surface_t> surface = createCairoSurface();
     if (!surface)
-        return 0;
+        return nullptr;
 
-    return BitmapImage::create(surface.release());
+    return BitmapImage::create(WTFMove(surface));
 }
 
 } // namespace WebKit

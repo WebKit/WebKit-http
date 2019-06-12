@@ -31,64 +31,66 @@
 #include "ChildProcessProxy.h"
 #include "ProcessLauncher.h"
 #include "WebProcessProxyMessages.h"
-#include "WebsiteDataTypes.h"
 #include <wtf/Deque.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 class SecurityOrigin;
 class SessionID;
+struct SecurityOriginData;
 }
 
 namespace WebKit {
 
 class WebProcessPool;
+enum class WebsiteDataType;
+struct WebsiteData;
 
 class DatabaseProcessProxy : public ChildProcessProxy {
 public:
     static Ref<DatabaseProcessProxy> create(WebProcessPool*);
     ~DatabaseProcessProxy();
 
-    void fetchWebsiteData(WebCore::SessionID, WebsiteDataTypes, std::function<void (WebsiteData)> completionHandler);
-    void deleteWebsiteData(WebCore::SessionID, WebsiteDataTypes, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);
-    void deleteWebsiteDataForOrigins(WebCore::SessionID, WebsiteDataTypes, const Vector<RefPtr<WebCore::SecurityOrigin>>& origins, std::function<void ()> completionHandler);
+    void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, WTF::Function<void(WebsiteData)>&& completionHandler);
+    void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, WTF::Function<void()>&& completionHandler);
+    void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>&, WTF::Function<void()>&& completionHandler);
 
-    void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
+    void getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&&);
 
 private:
     DatabaseProcessProxy(WebProcessPool*);
 
     // ChildProcessProxy
-    virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
-    virtual void processWillShutDown(IPC::Connection&) override;
+    void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
+    void processWillShutDown(IPC::Connection&) override;
 
     // IPC::Connection::Client
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didClose(IPC::Connection&) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::UI; }
-    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Database; }
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didClose(IPC::Connection&) override;
+    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
-    void didReceiveDatabaseProcessProxyMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveDatabaseProcessProxyMessage(IPC::Connection&, IPC::Decoder&);
 
     // Message handlers
     void didCreateDatabaseToWebProcessConnection(const IPC::Attachment&);
     void didFetchWebsiteData(uint64_t callbackID, const WebsiteData&);
     void didDeleteWebsiteData(uint64_t callbackID);
     void didDeleteWebsiteDataForOrigins(uint64_t callbackID);
+#if ENABLE(SANDBOX_EXTENSIONS)
+    void getSandboxExtensionsForBlobFiles(uint64_t requestID, const Vector<String>& paths);
+#endif
 
     // ProcessLauncher::Client
-    virtual void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;
-
-    void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&);
+    void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;
 
     WebProcessPool* m_processPool;
 
     unsigned m_numPendingConnectionRequests;
-    Deque<RefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>> m_pendingConnectionReplies;
+    Deque<Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>> m_pendingConnectionReplies;
 
-    HashMap<uint64_t, std::function<void (WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
-    HashMap<uint64_t, std::function<void ()>> m_pendingDeleteWebsiteDataCallbacks;
-    HashMap<uint64_t, std::function<void ()>> m_pendingDeleteWebsiteDataForOriginsCallbacks;
+    HashMap<uint64_t, WTF::Function<void (WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
+    HashMap<uint64_t, WTF::Function<void ()>> m_pendingDeleteWebsiteDataCallbacks;
+    HashMap<uint64_t, WTF::Function<void ()>> m_pendingDeleteWebsiteDataForOriginsCallbacks;
 };
 
 } // namespace WebKit

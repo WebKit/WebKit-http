@@ -27,13 +27,12 @@
  */
 
 
-#ifndef Screen_h
-#define Screen_h
+#pragma once
 
 #include "DOMWindowProperty.h"
 #include "ScriptWrappable.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -57,5 +56,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // Screen_h

@@ -286,8 +286,9 @@ static CFDictionaryRef createExtensionToMIMETypeMap()
     return CFDictionaryCreate(kCFAllocatorDefault, (const void**)&keys, (const void**)&values, sizeof(keys)/sizeof(CFStringRef), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 }
 
-void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse)
+void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceLoad)
 {
+    UNUSED_PARAM(isMainResourceLoad);
     RetainPtr<CFStringRef> result = CFURLResponseGetMIMEType(cfResponse);
     RetainPtr<CFStringRef> originalResult = result;
 
@@ -324,19 +325,19 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse)
 }
 #endif
 
-#if !USE(CFNETWORK)
-NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLConnection *connection, NSURLRequest *newRequest, NSURLResponse *redirectResponse)
+#if !USE(CFURLCONNECTION)
+NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLRequest *currentRequest, NSURLRequest *newRequest, NSURLResponse *redirectResponse)
 {
     if (redirectResponse)
         return redirectResponse;
 
-    if ([[[newRequest URL] scheme] isEqualToString:[[[connection currentRequest] URL] scheme]])
+    if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]])
         return nil;
 
     // If the new request is a different protocol than the current request, synthesize a redirect response.
     // This is critical for HSTS (<rdar://problem/14241270>).
     NSDictionary *synthesizedResponseHeaderFields = @{ @"Location": [[newRequest URL] absoluteString], @"Cache-Control": @"no-store" };
-    return [[[NSHTTPURLResponse alloc] initWithURL:[[connection currentRequest] URL] statusCode:302 HTTPVersion:(NSString *)kCFHTTPVersion1_1 headerFields:synthesizedResponseHeaderFields] autorelease];
+    return [[[NSHTTPURLResponse alloc] initWithURL:[currentRequest URL] statusCode:302 HTTPVersion:(NSString *)kCFHTTPVersion1_1 headerFields:synthesizedResponseHeaderFields] autorelease];
 }
 #endif
 

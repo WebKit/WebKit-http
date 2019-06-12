@@ -33,6 +33,7 @@
 #include "WebContextMenuItemData.h"
 #include "WebPage.h"
 #include <WebCore/ContextMenu.h>
+#include <WebCore/Editor.h>
 #include <WebCore/Event.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/MainFrame.h>
@@ -61,13 +62,13 @@ void WebContextMenuClient::searchWithGoogle(const Frame* frame)
     String searchString = frame->editor().selectedText();
     searchString.stripWhiteSpace();
     String encoded = encodeWithURLEscapeSequences(searchString);
-    encoded.replace("%20", "+");
-    
+    encoded.replace(ASCIILiteral { "%20" }, ASCIILiteral { "+" });
+
     String url = "http://www.google.com/search?q=" + encoded + "&ie=UTF-8&oe=UTF-8";
 
     if (Page* page = frame->page()) {
-        UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
-        page->mainFrame().loader().urlSelected(URL(ParsedURLString, url), String(), 0, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+        UserGestureIndicator indicator(ProcessingUserGesture);
+        page->mainFrame().loader().urlSelected(URL { URL { }, url }, { }, nullptr, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
     }
 }
 #endif

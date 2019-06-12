@@ -29,7 +29,6 @@
 #include "LayerTreeContext.h"
 #include "RemoteLayerBackingStoreCollection.h"
 #include "RemoteLayerTreeTransaction.h"
-#include "WebPage.h"
 #include <WebCore/GraphicsLayerFactory.h>
 #include <WebCore/LayerPool.h>
 #include <WebCore/PlatformCALayer.h>
@@ -55,9 +54,9 @@ public:
 
     WebCore::LayerPool& layerPool() { return m_layerPool; }
 
-    float deviceScaleFactor() const { return m_webPage.deviceScaleFactor(); }
+    float deviceScaleFactor() const;
 
-    LayerHostingMode layerHostingMode() const { return m_webPage.layerHostingMode(); }
+    LayerHostingMode layerHostingMode() const;
 
     void buildTransaction(RemoteLayerTreeTransaction&, WebCore::PlatformCALayer& rootLayer);
 
@@ -70,10 +69,13 @@ public:
     void willStartAnimationOnLayer(PlatformCALayerRemote&);
 
     RemoteLayerBackingStoreCollection& backingStoreCollection() { return m_backingStoreCollection; }
+    
+    void setNextFlushIsForImmediatePaint(bool nextFlushIsForImmediatePaint) { m_nextFlushIsForImmediatePaint = nextFlushIsForImmediatePaint; }
+    bool nextFlushIsForImmediatePaint() const { return m_nextFlushIsForImmediatePaint; }
 
 private:
     // WebCore::GraphicsLayerFactory
-    virtual std::unique_ptr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayer::Type, WebCore::GraphicsLayerClient&) override;
+    std::unique_ptr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayer::Type, WebCore::GraphicsLayerClient&) override;
 
     WebPage& m_webPage;
 
@@ -88,6 +90,8 @@ private:
     RemoteLayerTreeTransaction* m_currentTransaction;
 
     WebCore::LayerPool m_layerPool;
+    
+    bool m_nextFlushIsForImmediatePaint { false };
 };
 
 } // namespace WebKit

@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFETurbulenceElement_h
-#define SVGFETurbulenceElement_h
+#pragma once
 
 #include "FETurbulence.h"
 #include "SVGAnimatedEnumeration.h"
@@ -45,9 +44,9 @@ struct SVGPropertyTraits<SVGStitchOptions> {
         case SVG_STITCHTYPE_UNKNOWN:
             return emptyString();
         case SVG_STITCHTYPE_STITCH:
-            return "stitch";
+            return ASCIILiteral("stitch");
         case SVG_STITCHTYPE_NOSTITCH:
-            return "noStitch";
+            return ASCIILiteral("noStitch");
         }
 
         ASSERT_NOT_REACHED();
@@ -74,9 +73,9 @@ struct SVGPropertyTraits<TurbulenceType> {
         case FETURBULENCE_TYPE_UNKNOWN:
             return emptyString();
         case FETURBULENCE_TYPE_FRACTALNOISE:
-            return "fractalNoise";
+            return ASCIILiteral("fractalNoise");
         case FETURBULENCE_TYPE_TURBULENCE:
-            return "turbulence";
+            return ASCIILiteral("turbulence");
         }
 
         ASSERT_NOT_REACHED();
@@ -100,10 +99,10 @@ public:
 private:
     SVGFETurbulenceElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 
     static const AtomicString& baseFrequencyXIdentifier();
     static const AtomicString& baseFrequencyYIdentifier();
@@ -119,5 +118,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

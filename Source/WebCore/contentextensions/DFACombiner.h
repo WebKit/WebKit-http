@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DFACombiner_h
-#define DFACombiner_h
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "DFA.h"
+#include <wtf/Function.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -38,7 +38,7 @@ namespace ContentExtensions {
 class WEBCORE_EXPORT DFACombiner {
 public:
     void addDFA(DFA&&);
-    void combineDFAs(unsigned minimumSize, std::function<void(DFA&&)> handler);
+    void combineDFAs(unsigned minimumSize, const WTF::Function<void(DFA&&)>& handler);
 
 private:
     Vector<DFA> m_dfas;
@@ -50,10 +50,7 @@ inline void DFACombiner::addDFA(DFA&& dfa)
     m_dfas.append(WTFMove(dfa));
 }
 
-}
-
+} // namespace ContentExtensions
 } // namespace WebCore
 
-#endif
-
-#endif
+#endif // ENABLE(CONTENT_EXTENSIONS)

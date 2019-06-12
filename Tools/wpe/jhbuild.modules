@@ -1,0 +1,273 @@
+<?xml version="1.0"?>
+<!DOCTYPE moduleset SYSTEM "moduleset.dtd">
+<?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
+<moduleset>
+
+  <metamodule id="webkitwpe-testing-dependencies">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="libsoup"/>
+      <dep package="cairo"/>
+      <dep package="fonts"/>
+      <dep package="dicts"/>
+      <dep package="fontconfig"/>
+      <dep package="freetype6"/>
+      <dep package="harfbuzz"/>
+      <dep package="xkbcommon"/>
+      <dep package="wayland"/>
+      <dep package="gstreamer"/>
+      <dep package="gst-plugins-base"/>
+      <dep package="gst-plugins-good"/>
+      <dep package="gst-plugins-bad"/>
+      <dep package="gst-libav"/>
+      <dep package="wpe"/>
+      <dep package="wpe-mesa"/>
+      <dep package="libgpg-error"/>
+      <dep package="libgcrypt"/>
+      <dep package="dyz"/>
+    </dependencies>
+  </metamodule>
+
+  <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
+  <repository type="tarball" name="sourceware.org-mirror"
+      href="http://mirrors.kernel.org/sources.redhat.com/"/>
+  <repository type="tarball" name="ftp.gnome.org"
+      href="http://ftp.gnome.org"/>
+  <repository type="tarball" name="cairographics.org"
+      href="http://cairographics.org"/>
+  <repository type="tarball" name="freedesktop.org"
+      href="http://www.freedesktop.org"/>
+  <repository type="tarball" name="wayland.freedesktop.org"
+      href="http://wayland.freedesktop.org"/>
+  <repository type="git" name="github.com"
+      href="https://github.com"/>
+  <repository type="tarball" name="gstreamer"
+      href="http://gstreamer.freedesktop.org/src/"/>
+  <repository type="tarball" name="xkbcommon.org"
+      href="http://xkbcommon.org"/>
+  <repository type="tarball" name="savannah.gnu.org"
+      href="http://download.savannah.gnu.org/releases/"/>
+  <repository type="tarball" name="gnupg.org"
+      href="https://www.gnupg.org/ftp/gcrypt/"/>
+
+  <autotools id="libffi" autogen-sh="configure">
+    <branch module="libffi/libffi-3.0.10.tar.gz" version="3.0.10"
+             repo="sourceware.org-mirror"
+             hash="sha256:f01eb9027e9eb56aeaeef636649877756d475d714ef8b47f627f65bc5f3b492f"/>
+  </autotools>
+
+  <autotools id="glib"
+             autogen-sh="configure"
+             autogenargs="--disable-dtrace">
+    <dependencies>
+      <dep package="libffi"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib/2.44/glib-2.44.1.tar.xz" version="2.44.1"
+            repo="ftp.gnome.org"
+            hash="sha256:8811deacaf8a503d0a9b701777ea079ca6a4277be10e3d730d2112735d5eca07">
+      <patch file="glib-warning-fix.patch" strip="1"/>
+      <patch file="gdate-suppress-string-format-literal-warning.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="glib-networking">
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib-networking/2.42/glib-networking-2.42.0.tar.xz" version="2.42.0"
+            repo="ftp.gnome.org"
+            hash="sha256:304dd9e4c0ced69094300e0b9e66cd2eaae7161b9fc3186536d11458677d820d"/>
+  </autotools>
+
+  <autotools id="libsoup"
+             autogenargs="--without-gnome --disable-introspection">
+    <dependencies>
+      <dep package="glib-networking"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/libsoup/2.48/libsoup-2.48.0.tar.xz" version="2.48.0"
+            repo="ftp.gnome.org"
+            hash="sha256:ea34dd64fe44343445daf6dd690d0691e9d973468de44878da97371c16d89784"/>
+  </autotools>
+
+  <autotools id="fonts" supports-non-srcdir-builds="no"
+             skip-autogen="true">
+    <branch repo="github.com" module="mrobinson/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.5"/>
+  </autotools>
+
+  <autotools id="dicts" supports-non-srcdir-builds="no"
+             skip-autogen="true">
+    <branch repo="github.com" module="mrobinson/webkitgtk-test-dicts.git" checkoutdir="webkitgtk-test-dicts" tag="0.0.1"/>
+  </autotools>
+
+  <autotools id="freetype6" autogen-sh="configure">
+    <branch module="freetype/freetype-2.4.11.tar.bz2" version="2.4.11"
+            repo="savannah.gnu.org"
+            hash="sha256:ef9d0bcb64647d9e5125dc7534d7ca371c98310fec87677c410f397f71ffbe3f"
+            md5sum="b93435488942486c8d0ca22e8f768034">
+      <patch file="freetype6-2.4.11-truetype-font-height-fix.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="fontconfig" autogen-sh="configure">
+    <dependencies>
+      <dep package="freetype6"/>
+    </dependencies>
+    <branch module="software/fontconfig/release/fontconfig-2.11.1.tar.gz" version="2.11.1"
+            repo="freedesktop.org"
+            hash="sha256:b6b066c7dce3f436fdc0dfbae9d36122b38094f4f53bd8dffd45e195b0540d8d"
+            md5sum="e75e303b4f7756c2b16203a57ac87eba">
+        <patch file="fontconfig-avoid-conflicts-with-integer-width-macros-from-TS-18.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="harfbuzz" autogen-sh="configure"
+        autogenargs="--with-cairo=no --with-glib=no --with-freetype=yes">
+    <dependencies>
+      <dep package="freetype6"/>
+    </dependencies>
+    <branch module="software/harfbuzz/release/harfbuzz-1.3.3.tar.bz2"
+            version="1.3.3"
+            checkoutdir="harfbuzz-1.3.3"
+            repo="freedesktop.org"
+            hash="sha256:2620987115a4122b47321610dccbcc18f7f121115fd7b88dc8a695c8b66cb3c9"
+            md5sum="97ae15a72a93f1f27324a2b8d9bd3b1d">
+    </branch>
+  </autotools>
+
+  <autotools id="pixman"
+             autogen-sh="configure"
+             autogenargs="--enable-gtk=no">
+    <branch module="releases/pixman-0.32.6.tar.gz" version="0.32.6"
+            repo="cairographics.org"
+            hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"/>
+  </autotools>
+
+  <autotools id="cairo" autogenargs="--enable-egl=yes --enable-glesv2">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="fontconfig"/>
+      <dep package="pixman"/>
+    </dependencies>
+    <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
+            repo="cairographics.org"
+            hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e">
+      <patch file="cairo-egl-device-create-for-egl-surface.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="xkbcommon">
+    <branch module="download/libxkbcommon-0.5.0.tar.xz" version="0.5.0"
+            repo="xkbcommon.org"
+            hash="sha1:7127993bfb69e13cdff25fb8b3c8f26ce6be5bfa"/>
+  </autotools>
+
+  <autotools id="wayland" autogenargs="--disable-documentation">
+    <branch module="releases/wayland-1.9.0.tar.xz" version="1.9.0"
+            repo="wayland.freedesktop.org"
+            hash="sha256:9c8770720aa0034479735f58a4dc4ca9b172ecfede28f5134312e135b7301efa"/>
+  </autotools>
+
+  <autotools id="orc" autogenargs="--disable-gtk-doc" autogen-sh="configure">
+    <branch module="orc/orc-0.4.17.tar.gz" version="0.4.17"
+            repo="gstreamer"
+            hash="sha256:4fc7cca48c59fff23afee78fb642cdbde001f56401c8f47b95a16578d1d5d7e8"
+            md5sum="af1bf3dab9e69f3c36f389285e2a12a1"/>
+  </autotools>
+
+  <autotools id="gstreamer" autogen-sh="configure" autogenargs="--disable-gtk-doc">
+    <dependencies>
+      <dep package="orc"/>
+    </dependencies>
+    <branch module="gstreamer/gstreamer-${version}.tar.xz" version="1.10.5"
+            repo="gstreamer"
+            hash="sha256:bc06243600817f637029da29d089d5908d1d266542f68bf6626a10c5f05f1f1d">
+      <patch file="gstreamer-0001-protection-added-function-to-filter-system-ids.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="gst-plugins-base"
+             autogen-sh="configure"
+             autogenargs="--disable-examples --disable-gtk-doc">
+    <dependencies>
+      <dep package="gstreamer"/>
+    </dependencies>
+    <branch module="gst-plugins-base/gst-plugins-base-${version}.tar.xz" version="1.10.5"
+            repo="gstreamer"
+            hash="sha256:1c401a79bd1e4521c6ef1b66579bddedd9136e164e54792aab4bfcf3485bf9a7"/>
+  </autotools>
+
+  <autotools id="gst-plugins-good" autogen-sh="configure" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+
+    <branch module="gst-plugins-good/gst-plugins-good-${version}.tar.xz" version="1.10.5"
+            repo="gstreamer"
+            hash="sha256:be053f6ed716eeb517cec148cec637cdce571c6e04d5c21409e2876fb76c7639">
+      <patch file="gst-plugins-good-0003-rtpbin-receive-bundle-support.patch" strip="1"/>
+      <patch file="gst-plugins-good-0005-souphttpsrc-cookie-jar-and-context-query-support.patch" strip="1"/>
+      <patch file="gst-plugins-good-0006-qtdemux-add-context-for-a-preferred-protection.patch" strip="1"/>
+      <patch file="gst-plugins-good-0008-qtdemux-also-push-buffers-without-encryption-info-in.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="gst-plugins-bad" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+    <branch module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" version="1.10.5"
+            repo="gstreamer"
+            hash="sha256:c5806040bb83b43be86ce592e6a19c5d83d7776f7d9f434eb4b911c4efff3573">
+    </branch>
+  </autotools>
+
+  <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
+    <dependencies>
+      <dep package="gst-plugins-base"/>
+    </dependencies>
+    <branch module="gst-libav/gst-libav-${version}.tar.xz" version="1.10.5"
+            repo="gstreamer"
+            hash="sha256:e4d2f315f478d47281fbfdfbd590a63d23704ca37911d7142d5992616f4b28d3"/>
+  </autotools>
+
+  <cmake id="wpe">
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend.git"
+            tag="5e2a29d2ccc637f7122ba72c1d62ef669b42f05c" />
+  </cmake>
+
+  <cmake id="wpe-mesa">
+    <dependencies>
+      <dep package="wpe" />
+      <dep package="glib" />
+      <dep package="wayland" />
+      <dep package="xkbcommon" />
+    </dependencies>
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend-mesa.git"
+            tag="b6e2a82dfd5a12761911dc890625ec81d2a012b4" />
+  </cmake>
+
+  <autotools id="libgpg-error" autogen-sh="configure">
+    <branch module="libgpg-error/libgpg-error-1.27.tar.bz2"
+            version="1.27"
+            repo="gnupg.org"
+            hash="sha256:4f93aac6fecb7da2b92871bb9ee33032be6a87b174f54abf8ddf0911a22d29d2">
+    </branch>
+  </autotools>
+
+  <autotools id="libgcrypt" autogen-sh="configure">
+    <branch module="libgcrypt/libgcrypt-1.7.6.tar.bz2"
+            version="1.7.6"
+            repo="gnupg.org"
+            hash="sha256:626aafee84af9d2ce253d2c143dc1c0902dda045780cc241f39970fc60be05bc">
+        <patch file="libgcrypt-use-only-dev-urandom-for-testing.patch" strip="1"/>
+    </branch>
+    <dependencies>
+      <dep package="libgpg-error"/>
+    </dependencies>
+  </autotools>
+
+  <autotools id="dyz" supports-non-srcdir-builds="no">
+    <branch repo="github.com" module="Igalia/dyz" tag="0880252bac243add39ea54c0797ceb167d775ce9"/>
+  </autotools>
+
+</moduleset>

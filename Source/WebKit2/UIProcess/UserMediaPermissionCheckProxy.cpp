@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,28 +27,34 @@
 #include "UserMediaPermissionCheckProxy.h"
 
 #include "UserMediaPermissionRequestManagerProxy.h"
+#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
-UserMediaPermissionCheckProxy::UserMediaPermissionCheckProxy(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID)
-    : m_manager(&manager)
-    , m_userMediaID(userMediaID)
+UserMediaPermissionCheckProxy::UserMediaPermissionCheckProxy(uint64_t userMediaID, uint64_t frameID, CompletionHandler&& handler, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin)
+    : m_userMediaID(userMediaID)
+    , m_frameID(frameID)
+    , m_completionHandler(WTFMove(handler))
+    , m_userMediaDocumentSecurityOrigin(WTFMove(userMediaDocumentOrigin))
+    , m_topLevelDocumentSecurityOrigin(WTFMove(topLevelDocumentOrigin))
 {
 }
 
-void UserMediaPermissionCheckProxy::setHasPersistentPermission(bool allowed)
+void UserMediaPermissionCheckProxy::setUserMediaAccessInfo(String&& mediaDeviceIdentifierHashSalt, bool allowed)
 {
-    ASSERT(m_manager);
-    if (!m_manager)
+    if (!m_completionHandler)
         return;
 
-    m_manager->didCompleteUserMediaPermissionCheck(m_userMediaID, allowed);
-    m_manager = nullptr;
+    m_completionHandler(m_userMediaID, WTFMove(mediaDeviceIdentifierHashSalt), allowed);
+    m_completionHandler = nullptr;
 }
 
 void UserMediaPermissionCheckProxy::invalidate()
 {
-    m_manager = nullptr;
+    m_completionHandler = nullptr;
 }
 
 } // namespace WebKit

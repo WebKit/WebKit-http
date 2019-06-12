@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLTokenizer_h
-#define HTMLTokenizer_h
+#pragma once
 
 #include "HTMLParserOptions.h"
 #include "HTMLToken.h"
@@ -42,6 +41,9 @@ public:
     // If we can't parse a whole token, this returns null.
     class TokenPtr;
     TokenPtr nextToken(SegmentedString&);
+
+    // Used by HTMLSourceTracker.
+    void setTokenAttributeBaseOffset(unsigned);
 
     // Returns a copy of any characters buffered internally by the tokenizer.
     // The tokenizer buffers characters when searching for the </script> token that terminates a script element.
@@ -282,6 +284,11 @@ inline HTMLTokenizer::TokenPtr HTMLTokenizer::nextToken(SegmentedString& source)
     return TokenPtr(processToken(source) ? &m_token : nullptr);
 }
 
+inline void HTMLTokenizer::setTokenAttributeBaseOffset(unsigned offset)
+{
+    m_token.setAttributeBaseOffset(offset);
+}
+
 inline size_t HTMLTokenizer::numberOfBufferedCharacters() const
 {
     // Notice that we add 2 to the length of the m_temporaryBuffer to
@@ -345,6 +352,4 @@ inline bool HTMLTokenizer::neverSkipNullCharacters() const
     return m_forceNullCharacterReplacement;
 }
 
-}
-
-#endif
+} // namespace WebCore

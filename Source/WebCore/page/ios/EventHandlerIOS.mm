@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,23 +27,27 @@
 #import "EventHandler.h"
 
 #import "AXObjectCache.h"
-#import "BlockExceptions.h"
 #import "Chrome.h"
 #import "ChromeClient.h"
+#import "DataTransfer.h"
+#import "DragState.h"
 #import "FocusController.h"
 #import "Frame.h"
 #import "FrameView.h"
 #import "KeyboardEvent.h"
 #import "MouseEventWithHitTestResults.h"
 #import "Page.h"
+#import "Pasteboard.h"
 #import "PlatformEventFactoryIOS.h"
 #import "PlatformKeyboardEvent.h"
 #import "RenderWidget.h"
 #import "WAKView.h"
 #import "WAKWindow.h"
 #import "WebEvent.h"
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/Noncopyable.h>
+#import <wtf/SetForScope.h>
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 #import <WebKitAdditions/EventHandlerIOSTouch.cpp>
@@ -108,8 +112,7 @@ bool EventHandler::wheelEvent(WebEvent *event)
 bool EventHandler::dispatchSimulatedTouchEvent(IntPoint location)
 {
     bool handled = handleTouchEvent(PlatformEventFactory::createPlatformSimulatedTouchEvent(PlatformEvent::TouchStart, location));
-    if (handled)
-        handleTouchEvent(PlatformEventFactory::createPlatformSimulatedTouchEvent(PlatformEvent::TouchEnd, location));
+    handled |= handleTouchEvent(PlatformEventFactory::createPlatformSimulatedTouchEvent(PlatformEvent::TouchEnd, location));
     return handled;
 }
     
@@ -121,7 +124,7 @@ void EventHandler::touchEvent(WebEvent *event)
 }
 #endif
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent& event) const
 {
     Page* page = m_frame.page();
     if (!page)
@@ -166,6 +169,8 @@ void EventHandler::focusDocumentView()
     Page* page = m_frame.page();
     if (!page)
         return;
+
+    Ref<Frame> protectedFrame(m_frame);
 
     if (FrameView* frameView = m_frame.view()) {
         if (NSView *documentView = frameView->documentView())
@@ -406,7 +411,7 @@ bool EventHandler::passSubframeEventToSubframe(MouseEventWithHitTestResults& eve
     return false;
 }
 
-bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent&, Widget& widget)
+bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent&, Widget& widget)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
@@ -538,20 +543,75 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
     return true;
 }
 
-unsigned EventHandler::accessKeyModifiers()
+OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
     // Control+Option key combinations are usually unused on Mac OS X, but not when VoiceOver is enabled.
     // So, we use Control in this case, even though it conflicts with Emacs-style key bindings.
     // See <https://bugs.webkit.org/show_bug.cgi?id=21107> for more detail.
     if (AXObjectCache::accessibilityEnhancedUserInterfaceEnabled())
-        return PlatformKeyboardEvent::CtrlKey;
+        return PlatformEvent::Modifier::CtrlKey;
 
-    return PlatformKeyboardEvent::CtrlKey | PlatformKeyboardEvent::AltKey;
+    return { PlatformEvent::Modifier::CtrlKey, PlatformEvent::Modifier::AltKey };
 }
 
 PlatformMouseEvent EventHandler::currentPlatformMouseEvent() const
 {
     return PlatformEventFactory::createPlatformMouseEvent(currentEvent());
 }
+
+#if ENABLE(DRAG_SUPPORT)
+
+Ref<DataTransfer> EventHandler::createDraggingDataTransfer() const
+{
+    Pasteboard("data interaction pasteboard").clear();
+    return DataTransfer::createForDrag();
+}
+
+bool EventHandler::eventLoopHandleMouseDragged(const MouseEventWithHitTestResults&)
+{
+    return false;
+}
+
+bool EventHandler::tryToBeginDataInteractionAtPoint(const IntPoint& clientPosition, const IntPoint&)
+{
+    Ref<Frame> protectedFrame(m_frame);
+
+    auto* document = m_frame.document();
+    if (!document)
+        return false;
+
+    document->updateLayoutIgnorePendingStylesheets();
+
+    FloatPoint adjustedClientPositionAsFloatPoint(clientPosition);
+    protectedFrame->nodeRespondingToClickEvents(clientPosition, adjustedClientPositionAsFloatPoint);
+    IntPoint adjustedClientPosition = roundedIntPoint(adjustedClientPositionAsFloatPoint);
+    IntPoint adjustedGlobalPosition = protectedFrame->view()->windowToContents(adjustedClientPosition);
+
+    PlatformMouseEvent syntheticMousePressEvent(adjustedClientPosition, adjustedGlobalPosition, LeftButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime(), 0, NoTap);
+    PlatformMouseEvent syntheticMouseMoveEvent(adjustedClientPosition, adjustedGlobalPosition, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), 0, NoTap);
+
+    HitTestRequest request(HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent);
+    auto documentPoint = protectedFrame->view() ? protectedFrame->view()->windowToContents(syntheticMouseMoveEvent.position()) : syntheticMouseMoveEvent.position();
+    auto hitTestedMouseEvent = document->prepareMouseEvent(request, documentPoint, syntheticMouseMoveEvent);
+
+    RefPtr<Frame> subframe = subframeForHitTestResult(hitTestedMouseEvent);
+    if (subframe && subframe->eventHandler().tryToBeginDataInteractionAtPoint(adjustedClientPosition, adjustedGlobalPosition))
+        return true;
+
+    // FIXME: This needs to be refactored, along with handleMousePressEvent and handleMouseMoveEvent, so that state associated only with dragging
+    // lives solely in the DragController, and so that we don't need to pretend that a mouse press and mouse move have already occurred here.
+    m_mouseDownMayStartDrag = eventMayStartDrag(syntheticMousePressEvent);
+    if (!m_mouseDownMayStartDrag)
+        return false;
+
+    SetForScope<bool> mousePressed(m_mousePressed, true);
+    dragState().source = nullptr;
+    dragState().draggedContentRange = nullptr;
+    m_mouseDownPos = protectedFrame->view()->windowToContents(syntheticMouseMoveEvent.position());
+
+    return handleMouseDraggedEvent(hitTestedMouseEvent, DontCheckDragHysteresis);
+}
+
+#endif
 
 }

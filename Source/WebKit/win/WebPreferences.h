@@ -23,15 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebPreferences_H
-#define WebPreferences_H
+#pragma once
 
 #include "WebKit.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <WebCore/BString.h>
 #include <wtf/RetainPtr.h>
 
-class WebPreferences : public IWebPreferences, public IWebPreferencesPrivate3 {
+class WebPreferences : public IWebPreferences, public IWebPreferencesPrivate5 {
 public:
     static WebPreferences* createInstance();
 protected:
@@ -233,6 +232,33 @@ public:
     // IWebPreferencesPrivate3
     virtual HRESULT STDMETHODCALLTYPE showTiledScrollingIndicator(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setShowTiledScrollingIndicator(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE fetchAPIEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setFetchAPIEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE shadowDOMEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setShadowDOMEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE customElementsEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setCustomElementsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE modernMediaControlsEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setModernMediaControlsEnabled(BOOL);
+
+    // IWebPreferencesPrivate4
+    virtual HRESULT STDMETHODCALLTYPE setApplicationId(BSTR);
+    virtual HRESULT STDMETHODCALLTYPE webAnimationsEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setWebAnimationsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE userTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setUserTimingEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE resourceTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setResourceTimingEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE linkPreloadEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setLinkPreloadEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE mediaPreloadingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setMediaPreloadingEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE clearNetworkLoaderSession();
+    virtual HRESULT STDMETHODCALLTYPE switchNetworkLoaderToNewTestingSession();
+
+    // IWebPreferencesPrivate5
+    virtual HRESULT STDMETHODCALLTYPE isSecureContextAttributeEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setIsSecureContextAttributeEnabled(BOOL);
 
     // WebPreferences
 
@@ -247,14 +273,16 @@ public:
     static void removeReferenceForIdentifier(BSTR identifier);
     static WebPreferences* sharedStandardPreferences();
 
+    static CFStringRef applicationId();
+
     // From WebHistory.h
     HRESULT historyItemLimit(_Out_ int*);
     HRESULT setHistoryItemLimit(int);
     HRESULT historyAgeInDaysLimit(_Out_ int*);
     HRESULT setHistoryAgeInDaysLimit(int);
 
-     void willAddToWebView();
-     void didRemoveFromWebView();
+    void willAddToWebView();
+    void didRemoveFromWebView();
 
     HRESULT postPreferencesChangesNotification();
 
@@ -287,6 +315,5 @@ protected:
     bool m_autoSaves { false };
     bool m_automaticallyDetectsCacheModel { true };
     unsigned m_numWebViews { 0 };
+    static RetainPtr<CFStringRef> m_applicationId;
 };
-
-#endif

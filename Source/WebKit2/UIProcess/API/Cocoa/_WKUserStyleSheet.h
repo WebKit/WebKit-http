@@ -31,14 +31,20 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-WK_CLASS_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA)
+@class _WKUserContentWorld;
+
+WK_CLASS_AVAILABLE(macosx(10.12), ios(10.0))
 @interface _WKUserStyleSheet : NSObject <NSCopying>
 
 @property (nonatomic, readonly, copy) NSString *source;
 
+@property (nonatomic, readonly, copy) NSURL *baseURL;
+
 @property (nonatomic, readonly, getter=isForMainFrameOnly) BOOL forMainFrameOnly;
 
 - (instancetype)initWithSource:(NSString *)source forMainFrameOnly:(BOOL)forMainFrameOnly;
+- (instancetype)initWithSource:(NSString *)source forMainFrameOnly:(BOOL)forMainFrameOnly legacyWhitelist:(NSArray<NSString *> *)legacyWhitelist legacyBlacklist:(NSArray<NSString *> *)legacyBlacklist userContentWorld:(_WKUserContentWorld *)userContentWorld;
+- (instancetype)initWithSource:(NSString *)source forMainFrameOnly:(BOOL)forMainFrameOnly legacyWhitelist:(NSArray<NSString *> *)legacyWhitelist legacyBlacklist:(NSArray<NSString *> *)legacyBlacklist baseURL:(NSURL *)baseURL userContentWorld:(_WKUserContentWorld *)userContentWorld;
 
 @end
 

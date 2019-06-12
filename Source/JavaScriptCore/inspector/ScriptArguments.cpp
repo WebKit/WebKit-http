@@ -33,6 +33,7 @@
 #include "ScriptArguments.h"
 
 #include "JSCInlines.h"
+#include "ProxyObject.h"
 #include "ScriptValue.h"
 
 namespace Inspector {
@@ -40,6 +41,16 @@ namespace Inspector {
 Ref<ScriptArguments> ScriptArguments::create(JSC::ExecState* scriptState, Vector<Deprecated::ScriptValue>& arguments)
 {
     return adoptRef(*new ScriptArguments(scriptState, arguments));
+}
+
+Ref<ScriptArguments> ScriptArguments::createEmpty(JSC::ExecState* scriptState)
+{
+    return adoptRef(*new ScriptArguments(scriptState));
+}
+
+ScriptArguments::ScriptArguments(JSC::ExecState* execState)
+    : m_globalObject(execState->vm(), execState->lexicalGlobalObject())
+{
 }
 
 ScriptArguments::ScriptArguments(JSC::ExecState* execState, Vector<Deprecated::ScriptValue>& arguments)
@@ -52,7 +63,7 @@ ScriptArguments::~ScriptArguments()
 {
 }
 
-const Deprecated::ScriptValue &ScriptArguments::argumentAt(size_t index) const
+const Deprecated::ScriptValue& ScriptArguments::argumentAt(size_t index) const
 {
     ASSERT(m_arguments.size() > index);
     return m_arguments[index];
@@ -66,13 +77,9 @@ JSC::ExecState* ScriptArguments::globalState() const
     return nullptr;
 }
 
-bool ScriptArguments::getFirstArgumentAsString(String& result, bool checkForNullOrUndefined)
+bool ScriptArguments::getFirstArgumentAsString(String& result)
 {
     if (!argumentCount())
-        return false;
-
-    const Deprecated::ScriptValue& value = argumentAt(0);
-    if (checkForNullOrUndefined && (value.isNull() || value.isUndefined()))
         return false;
 
     if (!globalState()) {
@@ -80,7 +87,13 @@ bool ScriptArguments::getFirstArgumentAsString(String& result, bool checkForNull
         return false;
     }
 
-    result = value.toString(globalState());
+    JSC::JSValue value = argumentAt(0).jsValue();
+    if (JSC::jsDynamicCast<JSC::ProxyObject*>(globalState()->vm(), value)) {
+        result = ASCIILiteral("[object Proxy]");
+        return true;
+    }
+
+    result = argumentAt(0).toString(globalState());
     return true;
 }
 

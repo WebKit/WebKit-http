@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2007, 2011, 2012 Apple Inc.  All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,6 +55,12 @@ typedef enum {
 typedef enum {
     WebKitJavaScriptRuntimeFlagsAllEnabled = 0
 } WebKitJavaScriptRuntimeFlags;
+
+typedef enum {
+    WebKitFrameFlatteningDisabled,
+    WebKitFrameFlatteningEnabledForNonFullScreenIFrames,
+    WebKitFrameFlatteningFullyEnabled
+} WebKitFrameFlattening;
 
 extern NSString *WebPreferencesChangedNotification;
 extern NSString *WebPreferencesRemovedNotification;
@@ -138,6 +144,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)allowFileAccessFromFileURLs;
 - (void)setAllowFileAccessFromFileURLs:(BOOL)flag;
 
+- (BOOL)needsStorageAccessFromFileURLsQuirk;
+- (void)setNeedsStorageAccessFromFileURLsQuirk:(BOOL)flag;
+
 - (BOOL)zoomsTextOnly;
 - (void)setZoomsTextOnly:(BOOL)zoomsTextOnly;
 
@@ -153,8 +162,26 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)isFrameFlatteningEnabled;
 - (void)setFrameFlatteningEnabled:(BOOL)flag;
 
+- (WebKitFrameFlattening)frameFlattening;
+- (void)setFrameFlattening:(WebKitFrameFlattening)flag;
+
+- (BOOL)asyncFrameScrollingEnabled;
+- (void)setAsyncFrameScrollingEnabled:(BOOL)enabled;
+
 - (BOOL)isSpatialNavigationEnabled;
 - (void)setSpatialNavigationEnabled:(BOOL)flag;
+
+- (void)setMediaDevicesEnabled:(BOOL)flag;
+- (BOOL)mediaDevicesEnabled;
+
+- (void)setMediaStreamEnabled:(BOOL)flag;
+- (BOOL)mediaStreamEnabled;
+
+- (void)setPeerConnectionEnabled:(BOOL)flag;
+- (BOOL)peerConnectionEnabled;
+
+- (void)setWebRTCLegacyAPIEnabled:(BOOL)flag;
+- (BOOL)webRTCLegacyAPIEnabled;
 
 #if !TARGET_OS_IPHONE
 // zero means do AutoScale
@@ -212,14 +239,14 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)acceleratedCompositingEnabled;
 - (void)setAcceleratedCompositingEnabled:(BOOL)enabled;
 
-- (BOOL)cssRegionsEnabled;
-- (void)setCSSRegionsEnabled:(BOOL)enabled;
-
-- (BOOL)cssCompositingEnabled;
-- (void)setCSSCompositingEnabled:(BOOL)enabled;
+- (BOOL)subpixelAntialiasedLayerTextEnabled;
+- (void)setSubpixelAntialiasedLayerTextEnabled:(BOOL)enabled;
 
 - (BOOL)showDebugBorders;
 - (void)setShowDebugBorders:(BOOL)show;
+
+- (BOOL)simpleLineLayoutEnabled;
+- (void)setSimpleLineLayoutEnabled:(BOOL)enabled;
 
 - (BOOL)simpleLineLayoutDebugBordersEnabled;
 - (void)setSimpleLineLayoutDebugBordersEnabled:(BOOL)enabled;
@@ -236,8 +263,17 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)webGLEnabled;
 - (void)setWebGLEnabled:(BOOL)enabled;
 
+- (BOOL)webGL2Enabled;
+- (void)setWebGL2Enabled:(BOOL)enabled;
+
 - (BOOL)forceSoftwareWebGLRendering;
 - (void)setForceSoftwareWebGLRendering:(BOOL)forced;
+
+- (BOOL)forceLowPowerGPUForWebGL;
+- (void)setForceWebGLUsesLowPower:(BOOL)forceLowPower;
+
+- (BOOL)webGPUEnabled;
+- (void)setWebGPUEnabled:(BOOL)enabled;
 
 - (BOOL)accelerated2dCanvasEnabled;
 - (void)setAccelerated2dCanvasEnabled:(BOOL)enabled;
@@ -248,11 +284,19 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)hyperlinkAuditingEnabled;
 - (void)setHyperlinkAuditingEnabled:(BOOL)enabled;
 
+// Deprecated. Use -setVideoPlaybackRequiresUserGesture and -setAudioPlaybackRequiresUserGesture instead.
 - (void)setMediaPlaybackRequiresUserGesture:(BOOL)flag;
+// Deprecated. Use -videoPlaybackRequiresUserGesture and -audioPlaybackRequiresUserGesture instead.
 - (BOOL)mediaPlaybackRequiresUserGesture;
+
+- (void)setVideoPlaybackRequiresUserGesture:(BOOL)flag;
+- (BOOL)videoPlaybackRequiresUserGesture;
 
 - (void)setAudioPlaybackRequiresUserGesture:(BOOL)flag;
 - (BOOL)audioPlaybackRequiresUserGesture;
+
+- (void)setOverrideUserGestureRequirementForMainContent:(BOOL)flag;
+- (BOOL)overrideUserGestureRequirementForMainContent;
 
 - (void)setMediaPlaybackAllowsInline:(BOOL)flag;
 - (BOOL)mediaPlaybackAllowsInline;
@@ -309,6 +353,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)mediaPlaybackAllowsAirPlay;
 #endif
 
+- (void)_setTextAutosizingEnabled:(BOOL)enabled;
+- (BOOL)_textAutosizingEnabled;
+
 - (BOOL)isInheritURIQueryComponentEnabled;
 - (void)setEnableInheritURIQueryComponent:(BOOL)flag;
 
@@ -324,8 +371,8 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)_alwaysRequestGeolocationPermission;
 - (void)_setAlwaysUseAcceleratedOverflowScroll:(BOOL)flag;
 - (BOOL)_alwaysUseAcceleratedOverflowScroll;
-- (void)_setLayoutInterval:(int)l;
-- (int)_layoutInterval;
+- (void)_setLayoutInterval:(int)milliseconds;
+- (int)_layoutInterval; // Milliseonds.
 - (void)_setMaxParseDuration:(float)d;
 - (float)_maxParseDuration;
 - (void)_setInterpolationQuality:(int)quality;
@@ -455,11 +502,11 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setGamepadsEnabled:(BOOL)flag;
 - (BOOL)gamepadsEnabled;
 
+- (void)setMediaPreloadingEnabled:(BOOL)flag;
+- (BOOL)mediaPreloadingEnabled;
+
 - (void)setMediaKeysStorageDirectory:(NSString *)directory;
 - (NSString *)mediaKeysStorageDirectory;
-
-- (void)setAntialiasedFontDilationEnabled:(BOOL)flag;
-- (BOOL)antialiasedFontDilationEnabled;
 
 - (void)setMetaRefreshEnabled:(BOOL)flag;
 - (BOOL)metaRefreshEnabled;
@@ -470,7 +517,74 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag;
 - (BOOL)mockCaptureDevicesEnabled;
 
+- (void)setMockCaptureDevicesPromptEnabled:(BOOL)flag;
+- (BOOL)mockCaptureDevicesPromptEnabled;
+
+- (void)setEnumeratingAllNetworkInterfacesEnabled:(BOOL)flag;
+- (BOOL)enumeratingAllNetworkInterfacesEnabled;
+
+- (void)setIceCandidateFilteringEnabled:(BOOL)flag;
+- (BOOL)iceCandidateFilteringEnabled;
+
+- (void)setMediaCaptureRequiresSecureConnection:(BOOL)flag;
+- (BOOL)mediaCaptureRequiresSecureConnection;
+
+- (void)setShadowDOMEnabled:(BOOL)flag;
+- (BOOL)shadowDOMEnabled;
+
+- (void)setCustomElementsEnabled:(BOOL)flag;
+- (BOOL)customElementsEnabled;
+
+- (void)setFetchAPIEnabled:(BOOL)flag;
+- (BOOL)fetchAPIEnabled;
+
+- (void)setReadableByteStreamAPIEnabled:(BOOL)flag;
+- (BOOL)readableByteStreamAPIEnabled;
+
+- (void)setWritableStreamAPIEnabled:(BOOL)flag;
+- (BOOL)writableStreamAPIEnabled;
+
+- (void)setDownloadAttributeEnabled:(BOOL)flag;
+- (BOOL)downloadAttributeEnabled;
+
+- (void)setCSSGridLayoutEnabled:(BOOL)flag;
+- (BOOL)isCSSGridLayoutEnabled;
+
+- (void)setWebAnimationsEnabled:(BOOL)flag;
+- (BOOL)webAnimationsEnabled;
+
+- (void)setModernMediaControlsEnabled:(BOOL)flag;
+- (BOOL)modernMediaControlsEnabled;
+
+- (void)setCredentialManagementEnabled:(BOOL)flag;
+- (BOOL)credentialManagementEnabled;
+
+- (void)setIsSecureContextAttributeEnabled:(BOOL)flag;
+- (BOOL)isSecureContextAttributeEnabled;
+
+@property (nonatomic) BOOL visualViewportEnabled;
+@property (nonatomic) BOOL largeImageAsyncDecodingEnabled;
+@property (nonatomic) BOOL animatedImageAsyncDecodingEnabled;
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 @property (nonatomic) BOOL mediaDataLoadsAutomatically;
+@property (nonatomic) BOOL attachmentElementEnabled;
+@property (nonatomic) BOOL allowsInlineMediaPlaybackAfterFullscreen;
+@property (nonatomic) BOOL intersectionObserverEnabled;
+@property (nonatomic) BOOL displayContentsEnabled;
+@property (nonatomic) BOOL userTimingEnabled;
+@property (nonatomic) BOOL resourceTimingEnabled;
+@property (nonatomic) BOOL linkPreloadEnabled;
+@property (nonatomic) BOOL credentialManagementEnabled;
+@property (nonatomic) BOOL mediaUserGestureInheritsFromDocument;
+@property (nonatomic) BOOL isSecureContextAttributeEnabled;
+@property (nonatomic) BOOL legacyEncryptedMediaAPIEnabled;
+@property (nonatomic) BOOL viewportFitEnabled;
+@property (nonatomic) BOOL constantPropertiesEnabled;
+
+#if TARGET_OS_IPHONE
+@property (nonatomic) BOOL quickLookDocumentSavingEnabled;
+#endif
+
+@property (nonatomic) NSString *mediaContentTypesRequiringHardwareSupport;
 
 @end

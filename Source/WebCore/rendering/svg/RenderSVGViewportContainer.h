@@ -20,8 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGViewportContainer_h
-#define RenderSVGViewportContainer_h
+#pragma once
 
 #include "RenderSVGContainer.h"
 
@@ -31,34 +30,34 @@ namespace WebCore {
 // thus we inherit from RenderSVGContainer instead of RenderSVGTransformableContainer
 class RenderSVGViewportContainer final : public RenderSVGContainer {
 public:
-    RenderSVGViewportContainer(SVGSVGElement&, Ref<RenderStyle>&&);
+    RenderSVGViewportContainer(SVGSVGElement&, RenderStyle&&);
 
     SVGSVGElement& svgSVGElement() const;
 
     FloatRect viewport() const { return m_viewport; }
 
     bool isLayoutSizeChanged() const { return m_isLayoutSizeChanged; }
-    virtual bool didTransformToRootUpdate() override { return m_didTransformToRootUpdate; }
+    bool didTransformToRootUpdate() override { return m_didTransformToRootUpdate; }
 
-    virtual void determineIfLayoutSizeChanged() override;
-    virtual void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
+    void determineIfLayoutSizeChanged() override;
+    void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
 
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
 
 private:
     void element() const = delete;
 
-    virtual bool isSVGViewportContainer() const override { return true; }
-    virtual const char* renderName() const override { return "RenderSVGViewportContainer"; }
+    bool isSVGViewportContainer() const override { return true; }
+    const char* renderName() const override { return "RenderSVGViewportContainer"; }
 
     AffineTransform viewportTransform() const;
-    virtual const AffineTransform& localToParentTransform() const override { return m_localToParentTransform; }
+    const AffineTransform& localToParentTransform() const override { return m_localToParentTransform; }
 
-    virtual void calcViewport() override;
-    virtual bool calculateLocalTransform() override;
+    void calcViewport() override;
+    bool calculateLocalTransform() override;
 
-    virtual void applyViewportClip(PaintInfo&) override;
-    virtual bool pointIsInsideViewportClip(const FloatPoint& pointInParent) override;
+    void applyViewportClip(PaintInfo&) override;
+    bool pointIsInsideViewportClip(const FloatPoint& pointInParent) override;
 
     FloatRect m_viewport;
     mutable AffineTransform m_localToParentTransform;
@@ -70,5 +69,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGViewportContainer, isSVGViewportContainer())
-
-#endif // RenderSVGViewportContainer_h

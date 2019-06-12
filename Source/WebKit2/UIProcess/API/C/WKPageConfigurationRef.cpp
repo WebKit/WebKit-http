@@ -103,3 +103,13 @@ void WKPageConfigurationSetWebsiteDataStore(WKPageConfigurationRef configuration
 {
     toImpl(configuration)->setWebsiteDataStore(toImpl(websiteDataStore));
 }
+
+void WKPageConfigurationSetInitialCapitalizationEnabled(WKPageConfigurationRef configuration, bool enabled)
+{
+    toImpl(configuration)->setInitialCapitalizationEnabled(enabled);
+}
+
+void WKPageConfigurationSetBackgroundCPULimit(WKPageConfigurationRef configuration, double cpuLimit)
+{
+    toImpl(configuration)->setCPULimit(cpuLimit);
+}

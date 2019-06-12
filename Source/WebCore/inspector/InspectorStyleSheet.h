@@ -22,19 +22,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorStyleSheet_h
-#define InspectorStyleSheet_h
+#pragma once
 
 #include "CSSPropertySourceData.h"
 #include "CSSStyleDeclaration.h"
-#include "ExceptionCode.h"
 #include <inspector/InspectorProtocolObjects.h>
 #include <inspector/InspectorValues.h>
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
-#include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
 
 class ParsedStyleSheet;
 
@@ -127,20 +122,20 @@ struct InspectorStyleProperty {
 
 class InspectorStyle final : public RefCounted<InspectorStyle> {
 public:
-    static Ref<InspectorStyle> create(const InspectorCSSId& styleId, RefPtr<CSSStyleDeclaration>&&, InspectorStyleSheet* parentStyleSheet);
+    static Ref<InspectorStyle> create(const InspectorCSSId& styleId, Ref<CSSStyleDeclaration>&&, InspectorStyleSheet* parentStyleSheet);
     ~InspectorStyle();
 
-    CSSStyleDeclaration* cssStyle() const { return m_style.get(); }
+    CSSStyleDeclaration& cssStyle() const { return m_style.get(); }
     RefPtr<Inspector::Protocol::CSS::CSSStyle> buildObjectForStyle() const;
     Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSComputedStyleProperty>> buildArrayForComputedStyle() const;
 
-    bool getText(String* result) const;
-    bool setText(const String&, ExceptionCode&);
+    ExceptionOr<String> text() const;
+    ExceptionOr<void> setText(const String&);
 
 private:
-    InspectorStyle(const InspectorCSSId& styleId, RefPtr<CSSStyleDeclaration>&&, InspectorStyleSheet* parentStyleSheet);
+    InspectorStyle(const InspectorCSSId& styleId, Ref<CSSStyleDeclaration>&&, InspectorStyleSheet* parentStyleSheet);
 
-    bool populateAllProperties(Vector<InspectorStyleProperty>* result) const;
+    void populateAllProperties(Vector<InspectorStyleProperty>* result) const;
     Ref<Inspector::Protocol::CSS::CSSStyle> styleWithProperties() const;
     RefPtr<CSSRuleSourceData> extractSourceData() const;
     String shorthandValue(const String& shorthandProperty) const;
@@ -148,7 +143,7 @@ private:
     Vector<String> longhandProperties(const String& shorthandProperty) const;
 
     InspectorCSSId m_styleId;
-    RefPtr<CSSStyleDeclaration> m_style;
+    Ref<CSSStyleDeclaration> m_style;
     InspectorStyleSheet* m_parentStyleSheet;
 };
 
@@ -171,19 +166,19 @@ public:
     String finalURL() const;
     CSSStyleSheet* pageStyleSheet() const { return m_pageStyleSheet.get(); }
     void reparseStyleSheet(const String&);
-    bool setText(const String&, ExceptionCode&);
-    String ruleSelector(const InspectorCSSId&, ExceptionCode&);
-    bool setRuleSelector(const InspectorCSSId&, const String& selector, ExceptionCode&);
-    CSSStyleRule* addRule(const String& selector, ExceptionCode&);
-    bool deleteRule(const InspectorCSSId&, ExceptionCode&);
+    ExceptionOr<void> setText(const String&);
+    ExceptionOr<String> ruleSelector(const InspectorCSSId&);
+    ExceptionOr<void> setRuleSelector(const InspectorCSSId&, const String& selector);
+    ExceptionOr<CSSStyleRule*> addRule(const String& selector);
+    ExceptionOr<void> deleteRule(const InspectorCSSId&);
     CSSStyleRule* ruleForId(const InspectorCSSId&) const;
     RefPtr<Inspector::Protocol::CSS::CSSStyleSheetBody> buildObjectForStyleSheet();
     RefPtr<Inspector::Protocol::CSS::CSSStyleSheetHeader> buildObjectForStyleSheetInfo();
     RefPtr<Inspector::Protocol::CSS::CSSRule> buildObjectForRule(CSSStyleRule*, Element*);
     RefPtr<Inspector::Protocol::CSS::CSSStyle> buildObjectForStyle(CSSStyleDeclaration*);
-    bool setStyleText(const InspectorCSSId&, const String& text, String* oldText, ExceptionCode&);
+    ExceptionOr<void> setStyleText(const InspectorCSSId&, const String& text, String* oldText);
 
-    virtual bool getText(String* result) const;
+    virtual ExceptionOr<String> text() const;
     virtual CSSStyleDeclaration* styleForId(const InspectorCSSId&) const;
     void fireStyleSheetChanged();
 
@@ -202,7 +197,7 @@ protected:
     virtual RefPtr<InspectorStyle> inspectorStyleForId(const InspectorCSSId&);
 
     // Also accessed by friend class InspectorStyle.
-    virtual bool setStyleText(CSSStyleDeclaration*, const String&, ExceptionCode&);
+    virtual ExceptionOr<void> setStyleText(CSSStyleDeclaration*, const String&);
     virtual std::unique_ptr<Vector<size_t>> lineEndings() const;
 
 private:
@@ -210,7 +205,6 @@ private:
     friend class InspectorStyle;
 
     static void collectFlatRules(RefPtr<CSSRuleList>&&, CSSStyleRuleVector* result);
-    bool checkPageStyleSheet(ExceptionCode&) const;
     bool styleSheetMutated() const;
     bool ensureText() const;
     bool ensureSourceData();
@@ -221,7 +215,7 @@ private:
     bool inlineStyleSheetText(String* result) const;
     Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
     Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*, Element*);
-    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*);
+    Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*, int& endingLine);
 
     InspectorPageAgent* m_pageAgent;
     String m_id;
@@ -235,31 +229,31 @@ private:
 
 class InspectorStyleSheetForInlineStyle final : public InspectorStyleSheet {
 public:
-    static Ref<InspectorStyleSheetForInlineStyle> create(InspectorPageAgent*, const String& id, RefPtr<Element>&&, Inspector::Protocol::CSS::StyleSheetOrigin, Listener*);
+    static Ref<InspectorStyleSheetForInlineStyle> create(InspectorPageAgent*, const String& id, Ref<StyledElement>&&, Inspector::Protocol::CSS::StyleSheetOrigin, Listener*);
 
     void didModifyElementAttribute();
-    virtual bool getText(String* result) const override;
-    virtual CSSStyleDeclaration* styleForId(const InspectorCSSId& id) const override { ASSERT_UNUSED(id, !id.ordinal()); return inlineStyle(); }
+    ExceptionOr<String> text() const final;
+    CSSStyleDeclaration* styleForId(const InspectorCSSId& id) const final { ASSERT_UNUSED(id, !id.ordinal()); return &inlineStyle(); }
 
 protected:
-    InspectorStyleSheetForInlineStyle(InspectorPageAgent*, const String& id, RefPtr<Element>&&, Inspector::Protocol::CSS::StyleSheetOrigin, Listener*);
+    InspectorStyleSheetForInlineStyle(InspectorPageAgent*, const String& id, Ref<StyledElement>&&, Inspector::Protocol::CSS::StyleSheetOrigin, Listener*);
 
-    virtual Document* ownerDocument() const override;
-    virtual RefPtr<CSSRuleSourceData> ruleSourceDataFor(CSSStyleDeclaration* style) const override { ASSERT_UNUSED(style, style == inlineStyle()); return m_ruleSourceData; }
-    virtual unsigned ruleIndexByStyle(CSSStyleDeclaration*) const override { return 0; }
-    virtual bool ensureParsedDataReady() override;
-    virtual RefPtr<InspectorStyle> inspectorStyleForId(const InspectorCSSId&) override;
+    Document* ownerDocument() const final;
+    RefPtr<CSSRuleSourceData> ruleSourceDataFor(CSSStyleDeclaration* style) const final { ASSERT_UNUSED(style, style == &inlineStyle()); return m_ruleSourceData; }
+    unsigned ruleIndexByStyle(CSSStyleDeclaration*) const final { return 0; }
+    bool ensureParsedDataReady() final;
+    RefPtr<InspectorStyle> inspectorStyleForId(const InspectorCSSId&) final;
 
     // Also accessed by friend class InspectorStyle.
-    virtual bool setStyleText(CSSStyleDeclaration*, const String&, ExceptionCode&) override;
-    virtual std::unique_ptr<Vector<size_t>> lineEndings() const override;
+    ExceptionOr<void> setStyleText(CSSStyleDeclaration*, const String&) final;
+    std::unique_ptr<Vector<size_t>> lineEndings() const final;
 
 private:
-    CSSStyleDeclaration* inlineStyle() const;
+    CSSStyleDeclaration& inlineStyle() const;
     const String& elementStyleText() const;
-    bool getStyleAttributeRanges(CSSRuleSourceData* result) const;
+    Ref<CSSRuleSourceData> ruleSourceData() const;
 
-    RefPtr<Element> m_element;
+    Ref<StyledElement> m_element;
     RefPtr<CSSRuleSourceData> m_ruleSourceData;
     RefPtr<InspectorStyle> m_inspectorStyle;
 
@@ -269,5 +263,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(InspectorStyleSheet_h)

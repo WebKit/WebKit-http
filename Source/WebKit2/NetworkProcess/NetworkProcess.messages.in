@@ -30,32 +30,45 @@ messages -> NetworkProcess LegacyReceiver {
 #if USE(SOUP)
     SetIgnoreTLSErrors(bool ignoreTLSErrors)
     UserPreferredLanguagesChanged(Vector<String> languages)
+    SetNetworkProxySettings(struct WebCore::SoupNetworkProxySettings settings)
 #endif
 
     ClearCachedCredentials()
 
-    EnsurePrivateBrowsingSession(WebCore::SessionID sessionID)
-    DestroyPrivateBrowsingSession(WebCore::SessionID sessionID)
+    EnsurePrivateBrowsingSession(struct WebKit::WebsiteDataStoreParameters websiteDataStoreParameters)
+    AddWebsiteDataStore(struct WebKit::WebsiteDataStoreParameters websiteDataStoreParameters);
+    DestroySession(WebCore::SessionID sessionID)
 
-    FetchWebsiteData(WebCore::SessionID sessionID, uint64_t websiteDataTypes, uint64_t callbackID)
-    DeleteWebsiteData(WebCore::SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
-    DeleteWebsiteDataForOrigins(WebCore::SessionID sessionID, uint64_t websiteDataTypes, Vector<WebCore::SecurityOriginData> origins, Vector<String> cookieHostNames, uint64_t callbackID)
+    FetchWebsiteData(WebCore::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, OptionSet<WebKit::WebsiteDataFetchOption> fetchOptions, uint64_t callbackID)
+    DeleteWebsiteData(WebCore::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
+    DeleteWebsiteDataForOrigins(WebCore::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, Vector<WebCore::SecurityOriginData> origins, Vector<String> cookieHostNames, uint64_t callbackID)
 
-    DownloadRequest(WebCore::SessionID sessionID, WebKit::DownloadID downloadID, WebCore::ResourceRequest request)
+    DownloadRequest(WebCore::SessionID sessionID, WebKit::DownloadID downloadID, WebCore::ResourceRequest request, String suggestedFilename)
     ResumeDownload(WebCore::SessionID sessionID, WebKit::DownloadID downloadID, IPC::DataReference resumeData, String path, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
     CancelDownload(WebKit::DownloadID downloadID)
 #if PLATFORM(QT)
     StartTransfer(WebKit::DownloadID downloadID, String destination)
 #endif
+
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    ContinueCanAuthenticateAgainstProtectionSpace(uint64_t loaderID, bool canAuthenticate)
+#endif
 #if USE(NETWORK_SESSION)
-    ContinueCanAuthenticateAgainstProtectionSpace(WebKit::DownloadID downloadID, bool canAuthenticate)
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    ContinueCanAuthenticateAgainstProtectionSpaceDownload(WebKit::DownloadID downloadID, bool canAuthenticate)
+#endif
     ContinueWillSendRequest(WebKit::DownloadID downloadID, WebCore::ResourceRequest request)
 #endif
+    ContinueDecidePendingDownloadDestination(WebKit::DownloadID downloadID, String destination, WebKit::SandboxExtension::Handle sandboxExtensionHandle, bool allowOverwrite)
 
     SetProcessSuppressionEnabled(bool flag)
 #if PLATFORM(COCOA)
     SetQOS(int latencyQOS, int throughputQOS)
+    SetCookieStoragePartitioningEnabled(bool enabled)
 #endif
+    SetAllowsAnySSLCertificateForWebSocket(bool enabled) -> ()
+
+    SyncAllCookies() -> ()
 
     AllowSpecificHTTPSCertificateForHost(WebCore::CertificateInfo certificate, String host)
     SetCanHandleHTTPSServerTrustEvaluation(bool value)
@@ -69,4 +82,10 @@ messages -> NetworkProcess LegacyReceiver {
     PrepareToSuspend()
     CancelPrepareToSuspend()
     ProcessDidResume()
+
+    DidGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t requestID)
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    UpdateCookiePartitioningForTopPrivatelyOwnedDomains(Vector<String> domainsToRemove, Vector<String> domainsToAdd, bool shouldClearFirst)
+#endif
 }

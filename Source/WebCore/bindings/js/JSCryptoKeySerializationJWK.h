@@ -23,15 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSCryptoKeySerializationJWK_h
-#define JSCryptoKeySerializationJWK_h
+#pragma once
+
+#if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoKeySerialization.h"
 #include <heap/Strong.h>
-#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
-
-#if ENABLE(SUBTLE_CRYPTO)
 
 namespace JSC {
 class ExecState;
@@ -40,7 +38,7 @@ class JSObject;
 
 namespace WebCore {
 
-class CryptoAlgorithmParameters;
+class CryptoAlgorithmParametersDeprecated;
 class CryptoKey;
 class CryptoKeyDataRSAComponents;
 
@@ -53,12 +51,12 @@ public:
     static String serialize(JSC::ExecState* exec, const CryptoKey&);
 
 private:
-    virtual bool reconcileAlgorithm(std::unique_ptr<CryptoAlgorithm>&, std::unique_ptr<CryptoAlgorithmParameters>&) const override;
+    std::optional<CryptoAlgorithmPair> reconcileAlgorithm(CryptoAlgorithm*, CryptoAlgorithmParametersDeprecated*) const override;
 
-    virtual void reconcileUsages(CryptoKeyUsage&) const override;
-    virtual void reconcileExtractable(bool&) const override;
+    void reconcileUsages(CryptoKeyUsageBitmap&) const override;
+    void reconcileExtractable(bool&) const override;
 
-    virtual std::unique_ptr<CryptoKeyData> keyData() const override;
+    std::unique_ptr<CryptoKeyData> keyData() const override;
 
     bool keySizeIsValid(size_t sizeInBits) const;
     std::unique_ptr<CryptoKeyData> keyDataOctetSequence() const;
@@ -70,7 +68,6 @@ private:
     mutable String m_jwkAlgorithmName; // Stored when reconcileAlgorithm is called, and used later.
 };
 
-}
+} // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // JSCryptoKeySerializationJWK_h

@@ -24,10 +24,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CanvasProxy_h
-#define CanvasProxy_h
+#pragma once
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -43,5 +41,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // CanvasProxy_h

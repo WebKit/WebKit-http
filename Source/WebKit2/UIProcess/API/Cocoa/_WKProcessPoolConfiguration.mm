@@ -82,6 +82,53 @@
     _processPoolConfiguration->setDiskCacheSizeOverride(size);
 }
 
+- (BOOL)diskCacheSpeculativeValidationEnabled
+{
+    return _processPoolConfiguration->diskCacheSpeculativeValidationEnabled();
+}
+
+- (void)setDiskCacheSpeculativeValidationEnabled:(BOOL)enabled
+{
+    _processPoolConfiguration->setDiskCacheSpeculativeValidationEnabled(enabled);
+}
+
+- (BOOL)ignoreSynchronousMessagingTimeoutsForTesting
+{
+    return _processPoolConfiguration->ignoreSynchronousMessagingTimeoutsForTesting();
+}
+
+- (void)setIgnoreSynchronousMessagingTimeoutsForTesting:(BOOL)ignoreSynchronousMessagingTimeoutsForTesting
+{
+    _processPoolConfiguration->setIgnoreSynchronousMessagingTimeoutsForTesting(ignoreSynchronousMessagingTimeoutsForTesting);
+}
+
+- (NSArray<NSURL *> *)additionalReadAccessAllowedURLs
+{
+    auto paths = _processPoolConfiguration->additionalReadAccessAllowedPaths();
+    if (paths.isEmpty())
+        return @[ ];
+
+    NSMutableArray *urls = [NSMutableArray arrayWithCapacity:paths.size()];
+    for (const auto& path : paths)
+        [urls addObject:[NSURL fileURLWithFileSystemRepresentation:path.data() isDirectory:NO relativeToURL:nil]];
+
+    return urls;
+}
+
+- (void)setAdditionalReadAccessAllowedURLs:(NSArray<NSURL *> *)additionalReadAccessAllowedURLs
+{
+    Vector<CString> paths;
+    paths.reserveInitialCapacity(additionalReadAccessAllowedURLs.count);
+    for (NSURL *url in additionalReadAccessAllowedURLs) {
+        if (!url.isFileURL)
+            [NSException raise:NSInvalidArgumentException format:@"%@ is not a file URL", url];
+
+        paths.uncheckedAppend(url.fileSystemRepresentation);
+    }
+
+    _processPoolConfiguration->setAdditionalReadAccessAllowedPaths(WTFMove(paths));
+}
+
 - (NSArray *)cachePartitionedURLSchemes
 {
     auto schemes = _processPoolConfiguration->cachePartitionedURLSchemes();
@@ -130,6 +177,88 @@
 
     _processPoolConfiguration->setAlwaysRevalidatedURLSchemes(WTFMove(schemes));
 }
+
+- (NSString *)sourceApplicationBundleIdentifier
+{
+    return _processPoolConfiguration->sourceApplicationBundleIdentifier();
+}
+
+- (void)setSourceApplicationBundleIdentifier:(NSString *)sourceApplicationBundleIdentifier
+{
+    _processPoolConfiguration->setSourceApplicationBundleIdentifier(sourceApplicationBundleIdentifier);
+}
+
+- (NSString *)sourceApplicationSecondaryIdentifier
+{
+    return _processPoolConfiguration->sourceApplicationSecondaryIdentifier();
+}
+
+- (void)setSourceApplicationSecondaryIdentifier:(NSString *)sourceApplicationSecondaryIdentifier
+{
+    _processPoolConfiguration->setSourceApplicationSecondaryIdentifier(sourceApplicationSecondaryIdentifier);
+}
+
+- (BOOL)allowsCellularAccess
+{
+    return _processPoolConfiguration->allowsCellularAccess();
+}
+
+- (void)setAllowsCellularAccess:(BOOL)allowsCellularAccess
+{
+    _processPoolConfiguration->setAllowsCellularAccess(allowsCellularAccess);
+}
+
+- (BOOL)shouldCaptureAudioInUIProcess
+{
+    return _processPoolConfiguration->shouldCaptureAudioInUIProcess();
+}
+
+- (void)setShouldCaptureAudioInUIProcess:(BOOL)shouldCaptureAudioInUIProcess
+{
+    _processPoolConfiguration->setShouldCaptureAudioInUIProcess(shouldCaptureAudioInUIProcess);
+}
+
+- (void)setPresentingApplicationPID:(pid_t)presentingApplicationPID
+{
+    _processPoolConfiguration->setPresentingApplicationPID(presentingApplicationPID);
+}
+
+- (pid_t)presentingApplicationPID
+{
+    return _processPoolConfiguration->presentingApplicationPID();
+}
+
+#if PLATFORM(IOS)
+- (NSString *)CTDataConnectionServiceType
+{
+    return _processPoolConfiguration->ctDataConnectionServiceType();
+}
+
+- (void)setCTDataConnectionServiceType:(NSString *)ctDataConnectionServiceType
+{
+    _processPoolConfiguration->setCTDataConnectionServiceType(ctDataConnectionServiceType);
+}
+
+- (BOOL)alwaysRunsAtBackgroundPriority
+{
+    return _processPoolConfiguration->alwaysRunsAtBackgroundPriority();
+}
+
+- (void)setAlwaysRunsAtBackgroundPriority:(BOOL)alwaysRunsAtBackgroundPriority
+{
+    _processPoolConfiguration->setAlwaysRunsAtBackgroundPriority(alwaysRunsAtBackgroundPriority);
+}
+
+- (BOOL)shouldTakeUIBackgroundAssertion
+{
+    return _processPoolConfiguration->shouldTakeUIBackgroundAssertion();
+}
+
+- (void)setShouldTakeUIBackgroundAssertion:(BOOL)shouldTakeUIBackgroundAssertion
+{
+    return _processPoolConfiguration->setShouldTakeUIBackgroundAssertion(shouldTakeUIBackgroundAssertion);
+}
+#endif
 
 - (NSString *)description
 {

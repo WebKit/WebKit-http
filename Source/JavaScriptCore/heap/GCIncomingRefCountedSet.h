@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GCIncomingRefCountedSet_h
-#define GCIncomingRefCountedSet_h
+#pragma once
 
 #include "GCIncomingRefCounted.h"
 
@@ -36,8 +35,9 @@ template<typename T>
 class GCIncomingRefCountedSet {
 public:
     GCIncomingRefCountedSet();
-    ~GCIncomingRefCountedSet();
-    
+
+    void lastChanceToFinalize();
+
     // Returns true if the native object is new to this set.
     bool addReference(JSCell*, T*);
     
@@ -54,6 +54,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // GCIncomingRefCountedSet_h
-

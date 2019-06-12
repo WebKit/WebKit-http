@@ -59,9 +59,7 @@ public:
                 // Force usage of highest-numbered virtual registers.
                 scoreBoard.sortFree();
             }
-            for (size_t indexInBlock = 0; indexInBlock < block->size(); ++indexInBlock) {
-                Node* node = block->at(indexInBlock);
-        
+            for (auto* node : *block) {
                 if (!node->shouldGenerate())
                     continue;
                 
@@ -113,7 +111,6 @@ public:
 
 bool performVirtualRegisterAllocation(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Virtual Register Allocation Phase");
     return runPhase<VirtualRegisterAllocationPhase>(graph);
 }
 

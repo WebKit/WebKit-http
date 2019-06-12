@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLFrameSetElement_h
-#define HTMLFrameSetElement_h
+#pragma once
 
 #include "HTMLElement.h"
 #include <memory>
@@ -46,24 +45,27 @@ public:
     const Length* colLengths() const { return m_colLengths.get(); }
 
     static HTMLFrameSetElement* findContaining(Element* descendant);
+    
+    Vector<AtomicString> supportedPropertyNames() const;
+    DOMWindow* namedItem(const AtomicString&);
 
 private:
     HTMLFrameSetElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 
-    virtual void willAttachRenderers() override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override;
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    void willAttachRenderers() final;
+    bool rendererIsNeeded(const RenderStyle&) final;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
     
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) final;
 
-    virtual bool willRecalcStyle(Style::Change) override;
+    void willRecalcStyle(Style::Change) final;
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
 
     std::unique_ptr<Length[]> m_rowLengths;
     std::unique_ptr<Length[]> m_colLengths;
@@ -82,5 +84,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // HTMLFrameSetElement_h

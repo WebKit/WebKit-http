@@ -33,9 +33,22 @@
 #include "DFGNaturalLoops.h"
 #include "DFGPhase.h"
 #include "FTLCapabilities.h"
+#include "FunctionWhitelist.h"
 #include "JSCInlines.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace JSC { namespace DFG {
+
+static FunctionWhitelist& ensureGlobalFTLWhitelist()
+{
+    static LazyNeverDestroyed<FunctionWhitelist> ftlWhitelist;
+    static std::once_flag initializeWhitelistFlag;
+    std::call_once(initializeWhitelistFlag, [] {
+        const char* functionWhitelistFile = Options::ftlWhitelist();
+        ftlWhitelist.construct(functionWhitelistFile);
+    });
+    return ftlWhitelist;
+}
 
 class TierUpCheckInjectionPhase : public Phase {
 public:
@@ -57,6 +70,9 @@ public:
         if (!Options::bytecodeRangeToFTLCompile().isInRange(m_graph.m_profiledBlock->instructionCount()))
             return false;
 
+        if (!ensureGlobalFTLWhitelist().contains(m_graph.m_profiledBlock))
+            return false;
+
 #if ENABLE(FTL_JIT)
         FTL::CapabilityLevel level = FTL::canCompile(m_graph);
         if (level == FTL::CannotCompile)
@@ -64,50 +80,74 @@ public:
         
         if (!Options::useOSREntryToFTL())
             level = FTL::CanCompile;
-
-        // First we find all the loops that contain a LoopHint for which we cannot OSR enter.
-        // We use that information to decide if we need CheckTierUpAndOSREnter or CheckTierUpWithNestedTriggerAndOSREnter.
+        
         m_graph.ensureNaturalLoops();
         NaturalLoops& naturalLoops = *m_graph.m_naturalLoops;
+        HashMap<const NaturalLoop*, unsigned> naturalLoopToLoopHint = buildNaturalLoopToLoopHintMap(naturalLoops);
 
-        HashSet<const NaturalLoop*> loopsContainingLoopHintWithoutOSREnter = findLoopsContainingLoopHintWithoutOSREnter(naturalLoops, level);
+        HashMap<unsigned, LoopHintDescriptor> tierUpHierarchy;
 
-        bool canTierUpAndOSREnter = false;
-        
         InsertionSet insertionSet(m_graph);
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
-            
+
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
                 if (node->op() != LoopHint)
                     continue;
 
                 NodeOrigin origin = node->origin;
-                if (canOSREnterAtLoopHint(level, block, nodeIndex)) {
-                    canTierUpAndOSREnter = true;
-                    const NaturalLoop* loop = naturalLoops.innerMostLoopOf(block);
-                    if (loop && loopsContainingLoopHintWithoutOSREnter.contains(loop))
-                        insertionSet.insertNode(nodeIndex + 1, SpecNone, CheckTierUpWithNestedTriggerAndOSREnter, origin);
-                    else
-                        insertionSet.insertNode(nodeIndex + 1, SpecNone, CheckTierUpAndOSREnter, origin);
-                } else
-                    insertionSet.insertNode(nodeIndex + 1, SpecNone, CheckTierUpInLoop, origin);
+                bool canOSREnter = canOSREnterAtLoopHint(level, block, nodeIndex);
+
+                NodeType tierUpType = CheckTierUpAndOSREnter;
+                if (!canOSREnter)
+                    tierUpType = CheckTierUpInLoop;
+                insertionSet.insertNode(nodeIndex + 1, SpecNone, tierUpType, origin);
+
+                unsigned bytecodeIndex = origin.semantic.bytecodeIndex;
+                if (canOSREnter)
+                    m_graph.m_plan.tierUpAndOSREnterBytecodes.append(bytecodeIndex);
+
+                if (const NaturalLoop* loop = naturalLoops.innerMostLoopOf(block)) {
+                    LoopHintDescriptor descriptor;
+                    descriptor.canOSREnter = canOSREnter;
+
+                    const NaturalLoop* outerLoop = loop;
+                    while ((outerLoop = naturalLoops.innerMostOuterLoop(*outerLoop))) {
+                        auto it = naturalLoopToLoopHint.find(outerLoop);
+                        if (it != naturalLoopToLoopHint.end())
+                            descriptor.osrEntryCandidates.append(it->value);
+                    }
+                    if (!descriptor.osrEntryCandidates.isEmpty())
+                        tierUpHierarchy.add(bytecodeIndex, WTFMove(descriptor));
+                }
                 break;
             }
-            
+
             NodeAndIndex terminal = block->findTerminal();
             if (terminal.node->isFunctionTerminal()) {
                 insertionSet.insertNode(
                     terminal.index, SpecNone, CheckTierUpAtReturn, terminal.node->origin);
             }
-            
+
             insertionSet.execute(block);
         }
 
-        m_graph.m_plan.canTierUpAndOSREnter = canTierUpAndOSREnter;
+        // Add all the candidates that can be OSR Entered.
+        for (auto entry : tierUpHierarchy) {
+            Vector<unsigned> tierUpCandidates;
+            for (unsigned bytecodeIndex : entry.value.osrEntryCandidates) {
+                auto descriptorIt = tierUpHierarchy.find(bytecodeIndex);
+                if (descriptorIt != tierUpHierarchy.end()
+                    && descriptorIt->value.canOSREnter)
+                    tierUpCandidates.append(bytecodeIndex);
+            }
+
+            if (!tierUpCandidates.isEmpty())
+                m_graph.m_plan.tierUpInLoopHierarchy.add(entry.key, WTFMove(tierUpCandidates));
+        }
         m_graph.m_plan.willTryToTierUp = true;
         return true;
 #else // ENABLE(FTL_JIT)
@@ -118,6 +158,11 @@ public:
 
 private:
 #if ENABLE(FTL_JIT)
+    struct LoopHintDescriptor {
+        Vector<unsigned> osrEntryCandidates;
+        bool canOSREnter;
+    };
+
     bool canOSREnterAtLoopHint(FTL::CapabilityLevel level, const BasicBlock* block, unsigned nodeIndex)
     {
         Node* node = block->at(nodeIndex);
@@ -137,32 +182,30 @@ private:
         return true;
     }
 
-    HashSet<const NaturalLoop*> findLoopsContainingLoopHintWithoutOSREnter(const NaturalLoops& naturalLoops, FTL::CapabilityLevel level)
+    HashMap<const NaturalLoop*, unsigned> buildNaturalLoopToLoopHintMap(const NaturalLoops& naturalLoops)
     {
-        HashSet<const NaturalLoop*> loopsContainingLoopHintWithoutOSREnter;
+        HashMap<const NaturalLoop*, unsigned> naturalLoopsToLoopHint;
+
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
                 if (node->op() != LoopHint)
                     continue;
 
-                if (!canOSREnterAtLoopHint(level, block, nodeIndex)) {
-                    const NaturalLoop* loop = naturalLoops.innerMostLoopOf(block);
-                    while (loop) {
-                        loopsContainingLoopHintWithoutOSREnter.add(loop);
-                        loop = naturalLoops.innerMostOuterLoop(*loop);
-                    }
+                if (const NaturalLoop* loop = naturalLoops.innerMostLoopOf(block)) {
+                    unsigned bytecodeIndex = node->origin.semantic.bytecodeIndex;
+                    naturalLoopsToLoopHint.add(loop, bytecodeIndex);
                 }
+                break;
             }
         }
-        return loopsContainingLoopHintWithoutOSREnter;
+        return naturalLoopsToLoopHint;
     }
 #endif
 };
 
 bool performTierUpCheckInjection(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Tier-up Check Injection");
     return runPhase<TierUpCheckInjectionPhase>(graph);
 }
 

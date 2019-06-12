@@ -138,7 +138,7 @@ bool MultipartHandle::parseHeadersIfPossible()
 
     // Parse the HTTP headers.
     String value;
-    String name;
+    StringView name;
     char* p = const_cast<char*>(content);
     const char* end = content + contentLength;
     size_t totalConsumedLength = 0;
@@ -155,7 +155,7 @@ bool MultipartHandle::parseHeadersIfPossible()
         if (name.isEmpty())
             break;
 
-        m_headers.add(name, value);
+        m_headers.add(name.toString(), value);
     }
 
     m_buffer.remove(0, totalConsumedLength + 1);
@@ -337,20 +337,19 @@ void MultipartHandle::didReceiveResponse()
 {
     ResourceHandleInternal* d = m_resourceHandle->getInternal();
     if (d->client()) {
-        std::unique_ptr<ResourceResponse> response = ResourceResponseBase::adopt(d->m_response.copyData());
+        auto response = d->m_response;
 
         HTTPHeaderMap::const_iterator end = m_headers.end();
         for (HTTPHeaderMap::const_iterator it = m_headers.begin(); it != end; ++it)
-            response->setHTTPHeaderField(it->key, it->value);
+            response.setHTTPHeaderField(it->key, it->value);
 
         String contentType = m_headers.get(HTTPHeaderName::ContentType);
         String mimeType = extractMIMETypeFromMediaType(contentType);
 
-        response->setMimeType(mimeType.convertToASCIILowercase());
-        response->setTextEncodingName(extractCharsetFromMediaType(contentType));
+        response.setMimeType(mimeType.convertToASCIILowercase());
+        response.setTextEncodingName(extractCharsetFromMediaType(contentType));
 
-        d->client()->didReceiveResponse(m_resourceHandle, *response);
-        response->setResponseFired(true);
+        d->client()->didReceiveResponse(m_resourceHandle, WTFMove(response));
     }
 }
 

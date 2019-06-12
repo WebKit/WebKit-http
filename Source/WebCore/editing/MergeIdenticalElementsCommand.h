@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MergeIdenticalElementsCommand_h
-#define MergeIdenticalElementsCommand_h
+#pragma once
 
 #include "EditCommand.h"
 
@@ -32,26 +31,24 @@ namespace WebCore {
 
 class MergeIdenticalElementsCommand : public SimpleEditCommand {
 public:
-    static Ref<MergeIdenticalElementsCommand> create(PassRefPtr<Element> element1, PassRefPtr<Element> element2)
+    static Ref<MergeIdenticalElementsCommand> create(Ref<Element>&& element1, Ref<Element>&& element2)
     {
-        return adoptRef(*new MergeIdenticalElementsCommand(element1, element2));
+        return adoptRef(*new MergeIdenticalElementsCommand(WTFMove(element1), WTFMove(element2)));
     }
 
 private:
-    MergeIdenticalElementsCommand(PassRefPtr<Element>, PassRefPtr<Element>);
+    MergeIdenticalElementsCommand(Ref<Element>&&, Ref<Element>&&);
 
-    virtual void doApply() override;
-    virtual void doUnapply() override;
+    void doApply() override;
+    void doUnapply() override;
     
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override;
+    void getNodesInCommand(HashSet<Node*>&) override;
 #endif
     
-    RefPtr<Element> m_element1;
-    RefPtr<Element> m_element2;
+    Ref<Element> m_element1;
+    Ref<Element> m_element2;
     RefPtr<Node> m_atChild;
 };
 
 } // namespace WebCore
-
-#endif // MergeIdenticalElementsCommand_h

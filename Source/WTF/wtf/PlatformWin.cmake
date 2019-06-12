@@ -1,18 +1,19 @@
 list(APPEND WTF_SOURCES
+    PlatformUserPreferredLanguagesWin.cpp
+
+    text/win/TextBreakIteratorInternalICUWin.cpp
+
     text/cf/AtomicStringImplCF.cpp
     text/cf/StringCF.cpp
     text/cf/StringImplCF.cpp
     text/cf/StringViewCF.cpp
 
+    win/CPUTimeWin.cpp
     win/MainThreadWin.cpp
+    win/MemoryFootprintWin.cpp
+    win/MemoryPressureHandlerWin.cpp
     win/RunLoopWin.cpp
-    win/WTFDLL.cpp
-    win/WorkItemWin.cpp
     win/WorkQueueWin.cpp
-)
-
-list(APPEND WTF_LIBRARIES
-    winmm
 )
 
 if (${WTF_PLATFORM_WIN_CAIRO})

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLOperations_h
-#define FTLOperations_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -36,8 +35,6 @@ namespace JSC { namespace FTL {
 class LazySlowPath;
 
 extern "C" {
-
-JSCell* JIT_OPERATION operationNewObjectWithButterfly(ExecState*, Structure*) WTF_INTERNAL;
 
 JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
     ExecState*, ExitTimeObjectMaterialization*, EncodedJSValue*) WTF_INTERNAL;
@@ -52,6 +49,3 @@ void* JIT_OPERATION compileFTLLazySlowPath(ExecState*, unsigned) WTF_INTERNAL;
 } } // namespace JSC::DFG
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLOperations_h
-

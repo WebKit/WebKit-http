@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLContextObject_h
-#define WebGLContextObject_h
+#pragma once
 
 #include "WebGLObject.h"
 
@@ -41,27 +40,25 @@ public:
 
     WebGLRenderingContextBase* context() const { return m_context; }
 
-    virtual bool validate(const WebGLContextGroup*, const WebGLRenderingContextBase* context) const override
+    bool validate(const WebGLContextGroup*, const WebGLRenderingContextBase& context) const override
     {
-        return context == m_context;
+        return &context == m_context;
     }
 
     void detachContext();
 
 protected:
-    WebGLContextObject(WebGLRenderingContextBase*);
+    WebGLContextObject(WebGLRenderingContextBase&);
 
-    virtual bool hasGroupOrContext() const override
+    bool hasGroupOrContext() const override
     {
         return m_context;
     }
 
-    virtual GraphicsContext3D* getAGraphicsContext3D() const override;
+    GraphicsContext3D* getAGraphicsContext3D() const override;
 
 private:
     WebGLRenderingContextBase* m_context;
 };
 
 } // namespace WebCore
-
-#endif // WebGLContextObject_h

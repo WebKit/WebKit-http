@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessConnection_h
-#define WebProcessConnection_h
+#pragma once
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
@@ -54,9 +53,6 @@ public:
 
     static void setGlobalException(const String&);
     
-    void audioHardwareDidBecomeActive();
-    void audioHardwareDidBecomeInactive();
-
 private:
     WebProcessConnection(IPC::Connection::Identifier);
 
@@ -65,19 +61,17 @@ private:
     void destroyPluginControllerProxy(PluginControllerProxy*);
 
     // IPC::Connection::Client
-    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    virtual void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
-    virtual void didClose(IPC::Connection&) override;
-    virtual void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Plugin; }
-    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Web; }
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
+    void didClose(IPC::Connection&) override;
+    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // Message handlers.
-    void didReceiveWebProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&);
-    void didReceiveSyncWebProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
-    void createPlugin(const PluginCreationParameters&, PassRefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply>);
+    void didReceiveWebProcessConnectionMessage(IPC::Connection&, IPC::Decoder&);
+    void didReceiveSyncWebProcessConnectionMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
+    void createPlugin(const PluginCreationParameters&, Ref<Messages::WebProcessConnection::CreatePlugin::DelayedReply>&&);
     void createPluginAsynchronously(const PluginCreationParameters&);
-    void destroyPlugin(uint64_t pluginInstanceID, bool asynchronousCreationIncomplete, PassRefPtr<Messages::WebProcessConnection::DestroyPlugin::DelayedReply>);
+    void destroyPlugin(uint64_t pluginInstanceID, bool asynchronousCreationIncomplete, Ref<Messages::WebProcessConnection::DestroyPlugin::DelayedReply>&&);
     
     void createPluginInternal(const PluginCreationParameters&, bool& result, bool& wantsWheelEvents, uint32_t& remoteLayerClientID);
 
@@ -91,6 +85,3 @@ private:
 } // namespace WebKit
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
-
-
-#endif // WebProcessConnection_h

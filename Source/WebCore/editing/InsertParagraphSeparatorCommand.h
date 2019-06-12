@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef InsertParagraphSeparatorCommand_h
-#define InsertParagraphSeparatorCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -42,16 +41,16 @@ public:
 private:
     InsertParagraphSeparatorCommand(Document&, bool useDefaultParagraphElement, bool pasteBlockqutoeIntoUnquotedArea, EditAction);
 
-    virtual void doApply();
+    void doApply() override;
 
     void calculateStyleBeforeInsertion(const Position&);
     void applyStyleAfterInsertion(Node* originalEnclosingBlock);
     void getAncestorsInsideBlock(const Node* insertionNode, Element* outerBlock, Vector<RefPtr<Element>>& ancestors);
-    PassRefPtr<Element> cloneHierarchyUnderNewBlock(const Vector<RefPtr<Element>>& ancestors, PassRefPtr<Element> blockToInsert);
+    Ref<Element> cloneHierarchyUnderNewBlock(const Vector<RefPtr<Element>>& ancestors, Ref<Element>&& blockToInsert);
 
     bool shouldUseDefaultParagraphElement(Node*) const;
 
-    virtual bool preservesTypingStyle() const;
+    bool preservesTypingStyle() const override;
 
     RefPtr<EditingStyle> m_style;
 
@@ -59,6 +58,4 @@ private:
     bool m_pasteBlockqutoeIntoUnquotedArea;
 };
 
-}
-
-#endif
+} // namespace WebCore

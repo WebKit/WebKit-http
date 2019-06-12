@@ -33,15 +33,15 @@
 
 namespace WebCore {
 
-PopStateEvent::PopStateEvent(const AtomicString& type, const PopStateEventInit& initializer)
-    : Event(type, initializer)
-    , m_state(initializer.state)
+PopStateEvent::PopStateEvent(JSC::ExecState& state, const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : Event(type, initializer, isTrusted)
+    , m_state(state.vm(), initializer.state)
 {
 }
 
-PopStateEvent::PopStateEvent(PassRefPtr<SerializedScriptValue> serializedState, PassRefPtr<History> history)
+PopStateEvent::PopStateEvent(RefPtr<SerializedScriptValue>&& serializedState, History* history)
     : Event(eventNames().popstateEvent, false, true)
-    , m_serializedState(serializedState)
+    , m_serializedState(WTFMove(serializedState))
     , m_history(history)
 {
 }
@@ -50,22 +50,27 @@ PopStateEvent::~PopStateEvent()
 {
 }
 
-Ref<PopStateEvent> PopStateEvent::create(RefPtr<SerializedScriptValue>&& serializedState, PassRefPtr<History> history)
+Ref<PopStateEvent> PopStateEvent::create(RefPtr<SerializedScriptValue>&& serializedState, History* history)
 {
     return adoptRef(*new PopStateEvent(WTFMove(serializedState), history));
 }
 
-Ref<PopStateEvent> PopStateEvent::createForBindings(const AtomicString& type, const PopStateEventInit& initializer)
+Ref<PopStateEvent> PopStateEvent::create(JSC::ExecState& state, const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
 {
-    return adoptRef(*new PopStateEvent(type, initializer));
+    return adoptRef(*new PopStateEvent(state, type, initializer, isTrusted));
 }
 
-RefPtr<SerializedScriptValue> PopStateEvent::trySerializeState(JSC::ExecState* exec)
+Ref<PopStateEvent> PopStateEvent::createForBindings()
+{
+    return adoptRef(*new PopStateEvent);
+}
+
+RefPtr<SerializedScriptValue> PopStateEvent::trySerializeState(JSC::ExecState& executionState)
 {
     ASSERT(!m_state.hasNoValue());
     
     if (!m_serializedState && !m_triedToSerialize) {
-        m_serializedState = SerializedScriptValue::create(exec, m_state.jsValue(), nullptr, nullptr, NonThrowing);
+        m_serializedState = SerializedScriptValue::create(executionState, m_state.jsValue(), SerializationErrorMode::NonThrowing);
         m_triedToSerialize = true;
     }
     

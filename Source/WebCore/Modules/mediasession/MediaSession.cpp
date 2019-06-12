@@ -30,46 +30,23 @@
 
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "Dictionary.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "HTMLMediaElement.h"
 #include "MediaSessionManager.h"
+#include "Page.h"
 
 namespace WebCore {
 
-static const char* defaultKind = "";
-static const char* ambientKind = "ambient";
-static const char* transientKind = "transient";
-static const char* transientSoloKind = "transient-solo";
-static const char* contentKind = "content";
-
-MediaSession::Kind MediaSession::parseKind(const String& kind)
-{
-    // 4. Media Session
-    // 2. Set media session's current media session type to the corresponding media session type of media session category.
-
-    if (kind.isNull() || kind == contentKind)
-        return MediaSession::Kind::Content;
-    if (kind == ambientKind)
-        return MediaSession::Kind::Ambient;
-    if (kind == transientKind)
-        return MediaSession::Kind::Transient;
-    if (kind == transientSoloKind)
-        return MediaSession::Kind::TransientSolo;
-
-    ASSERT_NOT_REACHED();
-    return MediaSession::Kind::Content;
-}
-
-MediaSession::MediaSession(ScriptExecutionContext& context, const String& kind)
-    : m_document(downcast<Document>(context))
-    , m_kind(parseKind(kind))
+MediaSession::MediaSession(Document& document, Kind kind)
+    : m_document(document)
+    , m_kind(kind)
 {
     // 4. Media Sessions
     // 3. If media session's current media session type is "content", then create a new media remote controller for media
     //    session. (Otherwise media session has no media remote controller.)
     if (m_kind == Kind::Content)
-        m_controls = MediaRemoteControls::create(context, this);
+        m_controls = MediaRemoteControls::create(document, this);
 
     MediaSessionManager::singleton().addMediaSession(*this);
 }
@@ -80,22 +57,6 @@ MediaSession::~MediaSession()
 
     if (m_controls)
         m_controls->clearSession();
-}
-
-String MediaSession::kind() const
-{
-    switch (m_kind) {
-    case MediaSession::Kind::Default:
-        return defaultKind;
-    case MediaSession::Kind::Ambient:
-        return ambientKind;
-    case MediaSession::Kind::Transient:
-        return transientKind;
-    case MediaSession::Kind::TransientSolo:
-        return transientSoloKind;
-    case MediaSession::Kind::Content:
-        return contentKind;
-    }
 }
 
 MediaRemoteControls* MediaSession::controls()
@@ -122,7 +83,7 @@ void MediaSession::removeMediaElement(HTMLMediaElement& element)
         m_iteratedActiveParticipatingElements->remove(&element);
 }
 
-void MediaSession::changeActiveMediaElements(std::function<void(void)> worker)
+void MediaSession::changeActiveMediaElements(const WTF::Function<void(void)>& worker)
 {
     if (Page *page = m_document.page()) {
         bool hadActiveMediaElements = MediaSessionManager::singleton().hasActiveMediaElements();
@@ -153,33 +114,16 @@ bool MediaSession::hasActiveMediaElements() const
     return !m_activeParticipatingElements.isEmpty();
 }
 
-void MediaSession::setMetadata(const Dictionary& metadata)
+void MediaSession::setMetadata(const std::optional<Metadata>& optionalMetadata)
 {
-    // 5.1.3
-    // 1. Let media session be the current media session.
-    // 2. Let baseURL be the API base URL specified by the entry settings object.
-    // 3. Set media session's title to metadata's title.
-    String title;
-    metadata.get("title", title);
+    if (!optionalMetadata)
+        m_metadata = { };
+    else {
+        auto& metadata = optionalMetadata.value();
+        m_metadata = { metadata.title, metadata.artist, metadata.album, m_document.completeURL(metadata.artwork) };
+    }
 
-    // 4. Set media session's artist name to metadata's artist.
-    String artist;
-    metadata.get("artist", artist);
-
-    // 5. Set media session's album name to metadata's album.
-    String album;
-    metadata.get("album", album);
-
-    // 6. If metadata's artwork is present, parse it using baseURL, and if that does not return failure, set media
-    //    session's artwork URL to the return value.
-    URL artworkURL;
-    String artworkPath;
-    if (metadata.get("artwork", artworkPath))
-        artworkURL = m_document.completeURL(artworkPath);
-
-    m_metadata = MediaSessionMetadata(title, artist, album, artworkURL);
-
-    if (Page *page = m_document.page())
+    if (auto* page = m_document.page())
         page->chrome().client().mediaSessionMetadataDidChange(m_metadata);
 }
 
@@ -293,7 +237,7 @@ void MediaSession::togglePlayback()
     });
 }
 
-void MediaSession::safelyIterateActiveMediaElements(std::function<void(HTMLMediaElement*)> handler)
+void MediaSession::safelyIterateActiveMediaElements(const WTF::Function<void(HTMLMediaElement*)>& handler)
 {
     ASSERT(!m_iteratedActiveParticipatingElements);
 

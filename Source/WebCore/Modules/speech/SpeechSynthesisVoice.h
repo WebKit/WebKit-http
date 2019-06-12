@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SpeechSynthesisVoice_h
-#define SpeechSynthesisVoice_h
+#pragma once
 
 #if ENABLE(SPEECH_SYNTHESIS)
 
 #include "PlatformSpeechSynthesisVoice.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -38,24 +36,22 @@ namespace WebCore {
 class SpeechSynthesisVoice : public RefCounted<SpeechSynthesisVoice> {
 public:
     virtual ~SpeechSynthesisVoice() { }
-    static Ref<SpeechSynthesisVoice> create(PassRefPtr<PlatformSpeechSynthesisVoice>);
-    
+    static Ref<SpeechSynthesisVoice> create(PlatformSpeechSynthesisVoice&);
+
     const String& voiceURI() const { return m_platformVoice->voiceURI(); }
     const String& name() const { return m_platformVoice->name(); }
     const String& lang() const { return m_platformVoice->lang(); }
     bool localService() const { return m_platformVoice->localService(); }
     bool isDefault() const { return m_platformVoice->isDefault(); }
-    
-    PlatformSpeechSynthesisVoice* platformVoice() const { return m_platformVoice.get(); }
+
+    PlatformSpeechSynthesisVoice* platformVoice() { return m_platformVoice.ptr(); }
 
 private:
-    explicit SpeechSynthesisVoice(PassRefPtr<PlatformSpeechSynthesisVoice>);
-    
-    RefPtr<PlatformSpeechSynthesisVoice> m_platformVoice;
+    explicit SpeechSynthesisVoice(PlatformSpeechSynthesisVoice&);
+
+    Ref<PlatformSpeechSynthesisVoice> m_platformVoice;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(SPEECH_SYNTHESIS)
-
-#endif // SpeechSynthesisVoice_h

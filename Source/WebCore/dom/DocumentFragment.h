@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef DocumentFragment_h
-#define DocumentFragment_h
+#pragma once
 
 #include "ContainerNode.h"
 #include "FragmentScriptingPermission.h"
@@ -36,20 +35,20 @@ public:
     void parseHTML(const String&, Element* contextElement, ParserContentPolicy = AllowScriptingContent);
     bool parseXML(const String&, Element* contextElement, ParserContentPolicy = AllowScriptingContent);
     
-    virtual bool canContainRangeEndPoint() const override final { return true; }
+    bool canContainRangeEndPoint() const final { return true; }
     virtual bool isTemplateContent() const { return false; }
 
     // From the NonElementParentNode interface - https://dom.spec.whatwg.org/#interface-nonelementparentnode
-    Element* getElementById(const AtomicString&) const;
+    WEBCORE_EXPORT Element* getElementById(const AtomicString&) const;
 
 protected:
     DocumentFragment(Document&, ConstructionType = CreateContainer);
-    virtual String nodeName() const override final;
+    String nodeName() const final;
 
 private:
-    virtual NodeType nodeType() const override final;
-    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
-    virtual bool childTypeAllowed(NodeType) const override;
+    NodeType nodeType() const final;
+    Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    bool childTypeAllowed(NodeType) const override;
 };
 
 } // namespace WebCore
@@ -57,5 +56,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::DocumentFragment)
     static bool isType(const WebCore::Node& node) { return node.isDocumentFragment(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

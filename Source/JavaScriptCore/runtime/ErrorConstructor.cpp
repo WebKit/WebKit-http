@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2008, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -31,7 +31,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ErrorConstructor);
 
-const ClassInfo ErrorConstructor::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(ErrorConstructor) };
+const ClassInfo ErrorConstructor::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ErrorConstructor) };
 
 ErrorConstructor::ErrorConstructor(VM& vm, Structure* structure)
     : InternalFunction(vm, structure)
@@ -40,38 +40,75 @@ ErrorConstructor::ErrorConstructor(VM& vm, Structure* structure)
 
 void ErrorConstructor::finishCreation(VM& vm, ErrorPrototype* errorPrototype)
 {
-    Base::finishCreation(vm, errorPrototype->classInfo()->className);
+    Base::finishCreation(vm, ASCIILiteral("Error"));
     // ECMA 15.11.3.1 Error.prototype
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, errorPrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), DontDelete | ReadOnly | DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), DontEnum | ReadOnly);
+
+    unsigned defaultStackTraceLimit = Options::defaultErrorStackTraceLimit();
+    m_stackTraceLimit = defaultStackTraceLimit;
+    putDirectWithoutTransition(vm, vm.propertyNames->stackTraceLimit, jsNumber(defaultStackTraceLimit), None);
 }
 
 // ECMA 15.9.3
 
 EncodedJSValue JSC_HOST_CALL Interpreter::constructWithErrorConstructor(ExecState* exec)
 {
-    JSValue message = exec->argumentCount() ? exec->argument(0) : jsUndefined();
-    Structure* errorStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), asInternalFunction(exec->callee())->globalObject()->errorStructure());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSValue message = exec->argument(0);
+    Structure* errorStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), asInternalFunction(exec->jsCallee())->globalObject()->errorStructure());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }
 
 ConstructType ErrorConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = Interpreter::constructWithErrorConstructor;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 EncodedJSValue JSC_HOST_CALL Interpreter::callErrorConstructor(ExecState* exec)
 {
-    JSValue message = exec->argumentCount() ? exec->argument(0) : jsUndefined();
-    Structure* errorStructure = asInternalFunction(exec->callee())->globalObject()->errorStructure();
+    JSValue message = exec->argument(0);
+    Structure* errorStructure = asInternalFunction(exec->jsCallee())->globalObject()->errorStructure();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }
 
 CallType ErrorConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = Interpreter::callErrorConstructor;
-    return CallTypeHost;
+    return CallType::Host;
+}
+
+bool ErrorConstructor::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+{
+    VM& vm = exec->vm();
+    ErrorConstructor* thisObject = jsCast<ErrorConstructor*>(cell);
+
+    if (propertyName == vm.propertyNames->stackTraceLimit) {
+        if (value.isNumber()) {
+            double effectiveLimit = value.asNumber();
+            effectiveLimit = std::max(0., effectiveLimit);
+            effectiveLimit = std::min(effectiveLimit, static_cast<double>(std::numeric_limits<unsigned>::max()));
+            thisObject->m_stackTraceLimit = static_cast<unsigned>(effectiveLimit);
+        } else
+            thisObject->m_stackTraceLimit = { };
+    }
+
+    return Base::put(thisObject, exec, propertyName, value, slot);
+}
+
+bool ErrorConstructor::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
+{
+    VM& vm = exec->vm();
+    ErrorConstructor* thisObject = jsCast<ErrorConstructor*>(cell);
+
+    if (propertyName == vm.propertyNames->stackTraceLimit)
+        thisObject->m_stackTraceLimit = { };
+
+    return Base::deleteProperty(thisObject, exec, propertyName);
 }
 
 } // namespace JSC

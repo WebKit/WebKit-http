@@ -23,41 +23,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSFontFace_h
-#define CSSFontFace_h
+#pragma once
 
-#include "CSSFontFaceRule.h"
-#include "CSSFontFaceSource.h"
-#include "FontFeatureSettings.h"
+#include "FontSelectionValueInlines.h"
+#include "FontTaggedSettings.h"
+#include "StyleRule.h"
 #include "TextFlags.h"
+#include "Timer.h"
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
+
+namespace JSC {
+class ExecState;
+}
 
 namespace WebCore {
 
+class CSSFontFaceSource;
+class CSSFontSelector;
 class CSSSegmentedFontFace;
 class CSSValue;
 class CSSValueList;
+class Document;
 class FontDescription;
 class Font;
 class FontFace;
+enum class ExternalResourceDownloadPolicy;
 
-// FIXME: This class does not need to be reference counted.
 class CSSFontFace final : public RefCounted<CSSFontFace> {
 public:
-    static Ref<CSSFontFace> create(CSSFontSelector& fontSelector, FontFace* wrapper = nullptr, bool isLocalFallback = false)
+    static Ref<CSSFontFace> create(CSSFontSelector* fontSelector, StyleRuleFontFace* cssConnection = nullptr, FontFace* wrapper = nullptr, bool isLocalFallback = false)
     {
-        return adoptRef(*new CSSFontFace(fontSelector, wrapper, isLocalFallback));
+        return adoptRef(*new CSSFontFace(fontSelector, cssConnection, wrapper, isLocalFallback));
     }
     virtual ~CSSFontFace();
 
+    // FIXME: These functions don't need to have boolean return values.
+    // Callers only call this with known-valid CSS values.
     bool setFamilies(CSSValue&);
-    bool setStyle(CSSValue&);
-    bool setWeight(CSSValue&);
+    void setStyle(CSSValue&);
+    void setWeight(CSSValue&);
+    void setStretch(CSSValue&);
     bool setUnicodeRange(CSSValue&);
     bool setVariantLigatures(CSSValue&);
     bool setVariantPosition(CSSValue&);
@@ -65,19 +75,26 @@ public:
     bool setVariantNumeric(CSSValue&);
     bool setVariantAlternates(CSSValue&);
     bool setVariantEastAsian(CSSValue&);
-    bool setFeatureSettings(CSSValue&);
+    void setFeatureSettings(CSSValue&);
 
     enum class Status;
     struct UnicodeRange;
     const CSSValueList* families() const { return m_families.get(); }
-    FontTraitsMask traitsMask() const { return m_traitsMask; }
+    FontSelectionRange weight() const { return m_fontSelectionCapabilities.computeWeight(); }
+    FontSelectionRange stretch() const { return m_fontSelectionCapabilities.computeWidth(); }
+    FontSelectionRange italic() const { return m_fontSelectionCapabilities.computeSlope(); }
+    FontSelectionCapabilities fontSelectionCapabilities() const { return m_fontSelectionCapabilities.computeFontSelectionCapabilities(); }
     const Vector<UnicodeRange>& ranges() const { return m_ranges; }
     const FontFeatureSettings& featureSettings() const { return m_featureSettings; }
     const FontVariantSettings& variantSettings() const { return m_variantSettings; }
     void setVariantSettings(const FontVariantSettings& variantSettings) { m_variantSettings = variantSettings; }
-    void setTraitsMask(FontTraitsMask traitsMask) { m_traitsMask = traitsMask; }
+    void setWeight(FontSelectionRange weight) { m_fontSelectionCapabilities.weight = weight; }
+    void setStretch(FontSelectionRange stretch) { m_fontSelectionCapabilities.width = stretch; }
+    void setStyle(FontSelectionRange italic) { m_fontSelectionCapabilities.slope = italic; }
+    void setFontSelectionCapabilities(FontSelectionCapabilities capabilities) { m_fontSelectionCapabilities = capabilities; }
     bool isLocalFallback() const { return m_isLocalFallback; }
     Status status() const { return m_status; }
+    StyleRuleFontFace* cssConnection() const { return m_cssConnection.get(); }
 
     class Client;
     void addClient(Client&);
@@ -91,13 +108,19 @@ public:
     void fontLoaded(CSSFontFaceSource&);
 
     void load();
-    RefPtr<Font> font(const FontDescription&, bool syntheticBold, bool syntheticItalic);
+
+    RefPtr<Font> font(const FontDescription&, bool syntheticBold, bool syntheticItalic, ExternalResourceDownloadPolicy);
+
+    static void appendSources(CSSFontFace&, CSSValueList&, Document*, bool isInitiatingElementInUserAgentShadowTree);
 
     class Client {
     public:
         virtual ~Client() { }
-        virtual void fontLoaded(CSSFontFace&) { };
-        virtual void stateChanged(CSSFontFace&, Status oldState, Status newState) { UNUSED_PARAM(oldState); UNUSED_PARAM(newState); };
+        virtual void fontLoaded(CSSFontFace&) { }
+        virtual void fontStateChanged(CSSFontFace&, Status /*oldState*/, Status /*newState*/) { }
+        virtual void fontPropertyChanged(CSSFontFace&, CSSValueList* /*oldFamilies*/ = nullptr) { }
+        virtual void ref() = 0;
+        virtual void deref() = 0;
     };
 
     // Pending => Loading  => TimedOut
@@ -109,55 +132,57 @@ public:
     //              ||   //  \\   ||
     //              \/  \/    \/  \/
     //             Success    Failure
-    enum class Status {
-        Pending,
-        Loading,
-        TimedOut,
-        Success,
-        Failure
-    };
+    enum class Status { Pending, Loading, TimedOut, Success, Failure };
 
     struct UnicodeRange {
-        UnicodeRange(UChar32 from, UChar32 to)
-            : m_from(from)
-            , m_to(to)
-        {
-        }
-
-        UChar32 from() const { return m_from; }
-        UChar32 to() const { return m_to; }
-
-    private:
-        UChar32 m_from;
-        UChar32 m_to;
+        UChar32 from;
+        UChar32 to;
     };
 
-    FontFace* wrapper() const { return m_wrapper; }
+    bool rangesMatchCodePoint(UChar32) const;
+
+    // We don't guarantee that the FontFace wrapper will be the same every time you ask for it.
+    Ref<FontFace> wrapper();
+    void setWrapper(FontFace&);
+    FontFace* existingWrapper() { return m_wrapper.get(); }
+
+    bool webFontsShouldAlwaysFallBack() const;
+
+    bool purgeable() const;
+
+    void updateStyleIfNeeded();
 
 #if ENABLE(SVG_FONTS)
     bool hasSVGFontFaceSource() const;
 #endif
 
 private:
-    CSSFontFace(CSSFontSelector&, FontFace*, bool isLocalFallback);
+    CSSFontFace(CSSFontSelector*, StyleRuleFontFace*, FontFace*, bool isLocalFallback);
 
-    size_t pump();
+    size_t pump(ExternalResourceDownloadPolicy);
     void setStatus(Status);
+    void notifyClientsOfFontPropertyChange();
+
+    void initializeWrapper();
+
+    void fontLoadEventOccurred();
+    void timeoutFired();
 
     RefPtr<CSSValueList> m_families;
-    FontTraitsMask m_traitsMask { static_cast<FontTraitsMask>(FontStyleNormalMask | FontWeight400Mask) };
     Vector<UnicodeRange> m_ranges;
-    HashSet<Client*> m_clients;
-    Ref<CSSFontSelector> m_fontSelector;
-    FontFace* m_wrapper;
     FontFeatureSettings m_featureSettings;
     FontVariantSettings m_variantSettings;
+    Timer m_timeoutTimer;
     Vector<std::unique_ptr<CSSFontFaceSource>> m_sources;
+    RefPtr<CSSFontSelector> m_fontSelector;
+    RefPtr<StyleRuleFontFace> m_cssConnection;
+    HashSet<Client*> m_clients;
+    WeakPtr<FontFace> m_wrapper;
+    FontSelectionSpecifiedCapabilities m_fontSelectionCapabilities;
     Status m_status { Status::Pending };
     bool m_isLocalFallback { false };
     bool m_sourcesPopulated { false };
+    bool m_mayBePurged { true };
 };
 
 }
-
-#endif

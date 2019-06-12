@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,13 +29,6 @@
 #if ENABLE(MEDIA_STREAM)
 
 #import <WebCore/UserMediaClient.h>
-#import <wtf/PassRefPtr.h>
-
-namespace WebCore {
-class UserMediaClient;
-class UserMediaPermissionCheck;
-class UserMediaRequest;
-}
 
 @class WebView;
 
@@ -45,13 +38,13 @@ public:
     ~WebUserMediaClient();
 
     // UserMediaClient
-    void requestUserMediaAccess(WebCore::UserMediaRequest&) override;
-    void cancelUserMediaAccessRequest(WebCore::UserMediaRequest&) override;
+    void requestUserMediaAccess(WebCore::UserMediaRequest&) final;
+    void cancelUserMediaAccessRequest(WebCore::UserMediaRequest&) final;
 
-    void checkUserMediaPermission(WebCore::UserMediaPermissionCheck&) override;
-    void cancelUserMediaPermissionCheck(WebCore::UserMediaPermissionCheck&) override;
+    void enumerateMediaDevices(WebCore::MediaDevicesEnumerationRequest&) final;
+    void cancelMediaDevicesEnumerationRequest(WebCore::MediaDevicesEnumerationRequest&) final;
 
-    void pageDestroyed() override;
+    void pageDestroyed() final;
 
 private:
     WebView* m_webView;

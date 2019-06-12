@@ -116,12 +116,10 @@
                         {name: 'alt', expectedNull: 'null'},
                         {name: 'archive', expectedNull: 'null'},
                         {name: 'code', expectedNull: 'null'},
-                        {name: 'codeBase', expectedNull: 'null'},
                         {name: 'height', expectedNull: 'null'},
-                        {name: 'hspace', expectedNull: 'null'},
+                        {name: 'hspace', expectedNull: 0},
                         {name: 'name', expectedNull: 'null'},
-                        {name: 'object', expectedNull: 'null'},
-                        {name: 'vspace', expectedNull: 'null'},
+                        {name: 'vspace', expectedNull: 0},
                         {name: 'width', expectedNull: 'null'}
                     ]
                 },
@@ -153,12 +151,12 @@
                     type: 'HTMLBodyElement',
                     elementToUse: document.createElement('body'),
                     attributes: [
-                        {name: 'aLink', expectedNull: 'null'},
+                        {name: 'aLink', expectedNull: ''},
                         {name: 'background', expectedNull: 'null'},
-                        {name: 'bgColor', expectedNull: 'null'},
-                        {name: 'link', expectedNull: 'null'},
-                        {name: 'text', expectedNull: 'null'},
-                        {name: 'vLink', expectedNull: 'null'}
+                        {name: 'bgColor', expectedNull: ''},
+                        {name: 'link', expectedNull: ''},
+                        {name: 'text', expectedNull: ''},
+                        {name: 'vLink', expectedNull: ''}
                     ]
                 },
                 {
@@ -205,7 +203,7 @@
                     type: 'HTMLFontElement',
                     elementToUse: document.createElement('font'),
                     attributes: [
-                        {name: 'color', expectedNull: 'null'},
+                        {name: 'color', expectedNull: ''},
                         {name: 'face', expectedNull: 'null'},
                         {name: 'size', expectedNull: 'null'}
                     ]
@@ -227,8 +225,8 @@
                     elementToUse: document.createElement('frame'),
                     attributes: [
                         {name: 'frameBorder', expectedNull: 'null'},
-                        {name: 'marginHeight', expectedNull: 'null'},
-                        {name: 'marginWidth', expectedNull: 'null'},
+                        {name: 'marginHeight', expectedNull: ''},
+                        {name: 'marginWidth', expectedNull: ''},
                         {name: 'name', expectedNull: 'null'},
                         {name: 'scrolling', expectedNull: 'null'},
                     ]
@@ -279,8 +277,8 @@
                         {name: 'align', expectedNull: 'null'},
                         {name: 'frameBorder', expectedNull: 'null'},
                         {name: 'height', expectedNull: 'null'},
-                        {name: 'marginHeight', expectedNull: 'null'},
-                        {name: 'marginWidth', expectedNull: 'null'},
+                        {name: 'marginHeight', expectedNull: ''},
+                        {name: 'marginWidth', expectedNull: ''},
                         {name: 'name', expectedNull: 'null'},
                         {name: 'scrolling', expectedNull: 'null'},
                         {name: 'width', expectedNull: 'null'}
@@ -293,7 +291,7 @@
                         {name: 'name', expectedNull: 'null'},
                         {name: 'align', expectedNull: 'null'},
                         {name: 'alt', expectedNull: 'null'},
-                        {name: 'border', expectedNull: 'null'},
+                        {name: 'border', expectedNull: ''},
                         {name: 'useMap', expectedNull: 'null'},
                     ]
                 },
@@ -383,8 +381,7 @@
                         {name: 'code', expectedNull: 'null'},
                         {name: 'align', expectedNull: 'null'},
                         {name: 'archive', expectedNull: 'null'},
-                        {name: 'border', expectedNull: 'null'},
-                        {name: 'codeBase', expectedNull: 'null'},
+                        {name: 'border', expectedNull: ''},
                         {name: 'codeType', expectedNull: 'null'},
                         {name: 'height', expectedNull: 'null'},
                         {name: 'name', expectedNull: 'null'},
@@ -448,7 +445,7 @@
                     type: 'HTMLScriptElement',
                     elementToUse: document.createElement('script'),
                     attributes: [
-                        {name: 'text', expectedNull: ''},
+                        {name: 'text', expectedNull: 'null'},
                         {name: 'htmlFor', expectedNull: 'null'},
                         {name: 'event', expectedNull: 'null'},
                         {name: 'charset', expectedNull: 'null'},
@@ -485,12 +482,12 @@
                         {name: 'abbr', expectedNull: 'null'},
                         {name: 'align', expectedNull: 'null'},
                         {name: 'axis', expectedNull: 'null'},
-                        {name: 'bgColor', expectedNull: 'null'},
+                        {name: 'bgColor', expectedNull: ''},
                         {name: 'ch', expectedNull: 'null'},
                         {name: 'chOff', expectedNull: 'null'},
                         {name: 'headers', expectedNull: 'null'},
                         {name: 'height', expectedNull: 'null'},
-                        {name: 'scope', expectedNull: 'null'},
+                        {name: 'scope', expectedNull: ''},
                         {name: 'vAlign', expectedNull: 'null'},
                         {name: 'width', expectedNull: 'null'}
                     ]
@@ -511,10 +508,10 @@
                     elementToUse: document.createElement('table'),
                     attributes: [
                         {name: 'align', expectedNull: 'null'},
-                        {name: 'bgColor', expectedNull: 'null'},
+                        {name: 'bgColor', expectedNull: ''},
                         {name: 'border', expectedNull: 'null'},
-                        {name: 'cellPadding', expectedNull: 'null'},
-                        {name: 'cellSpacing', expectedNull: 'null'},
+                        {name: 'cellPadding', expectedNull: ''},
+                        {name: 'cellSpacing', expectedNull: ''},
                         {name: 'frame', expectedNull: 'null'},
                         {name: 'rules', expectedNull: 'null'},
                         {name: 'summary', expectedNull: 'null'},
@@ -526,7 +523,7 @@
                     elementToUse: document.createElement('tr'),
                     attributes: [
                         {name: 'align', expectedNull: 'null'},
-                        {name: 'bgColor', expectedNull: 'null'},
+                        {name: 'bgColor', expectedNull: ''},
                         {name: 'ch', expectedNull: 'null'},
                         {name: 'chOff', expectedNull: 'null'},
                         {name: 'vAlign', expectedNull: 'null'}

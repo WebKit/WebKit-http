@@ -35,11 +35,10 @@ public:
     WebDragClient(WebView*);
     virtual void dragControllerDestroyed();
 
-    virtual WebCore::DragDestinationAction actionMaskForDrag(WebCore::DragData&);
     virtual WebCore::DragSourceAction dragSourceActionMaskForPoint(const WebCore::IntPoint&);
-    virtual void willPerformDragDestinationAction(WebCore::DragDestinationAction, WebCore::DragData&);
+    virtual void willPerformDragDestinationAction(WebCore::DragDestinationAction, const WebCore::DragData&);
     virtual void willPerformDragSourceAction(WebCore::DragSourceAction, const WebCore::IntPoint&, WebCore::DataTransfer&);
-    virtual void startDrag(WebCore::DragImageRef, const WebCore::IntPoint&, const WebCore::IntPoint&, WebCore::DataTransfer&, WebCore::Frame&, bool);
+    virtual void startDrag(WebCore::DragItem, WebCore::DataTransfer&, WebCore::Frame&);
 
 private:
     WebView* m_webView;

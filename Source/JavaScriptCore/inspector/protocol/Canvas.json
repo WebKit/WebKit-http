@@ -1,0 +1,124 @@
+{
+    "domain": "Canvas",
+    "availability": "web",
+    "description": "Canvas domain allows tracking of canvases that have an associated graphics context. Tracks canvases in the DOM and CSS canvases created with -webkit-canvas.",
+    "types": [
+        {
+            "id": "CanvasId",
+            "type": "string",
+            "description": "Unique canvas identifier."
+        },
+        {
+            "id": "ContextType",
+            "type": "string",
+            "enum": ["canvas-2d", "webgl", "webgl2", "webgpu"],
+            "description": "The type of rendering context backing the canvas element."
+        },
+        {
+            "id": "ContextAttributes",
+            "type": "object",
+            "description": "WebGL drawing surface attributes.",
+            "properties": [
+                { "name": "alpha", "type": "boolean" },
+                { "name": "depth", "type": "boolean" },
+                { "name": "stencil", "type": "boolean" },
+                { "name": "antialias", "type": "boolean" },
+                { "name": "premultipliedAlpha", "type": "boolean" },
+                { "name": "preserveDrawingBuffer", "type": "boolean" },
+                { "name": "failIfMajorPerformanceCaveat", "type": "boolean" }
+            ]
+        },
+        {
+            "id": "Canvas",
+            "type": "object",
+            "description": "Information about a canvas for which a rendering context has been created.",
+            "properties": [
+                { "name": "canvasId", "$ref": "CanvasId", "description": "Canvas identifier." },
+                { "name": "contextType", "$ref": "ContextType", "description": "The type of rendering context backing the canvas." },
+                { "name": "frameId", "$ref": "Network.FrameId", "description": "Parent frame identifier." },
+                { "name": "nodeId", "$ref": "DOM.NodeId", "optional": true, "description": "The corresponding DOM node id." },
+                { "name": "cssCanvasName", "type": "string", "optional": true, "description": "The CSS canvas identifier, for canvases created with <code>document.getCSSCanvasContext</code>." },
+                { "name": "contextAttributes", "$ref": "ContextAttributes", "optional": true, "description": "Context attributes for WebGL rendering contexts." },
+                { "name": "memoryCost", "type": "number", "optional": true, "description": "Memory usage of the canvas in bytes." }
+            ]
+        }
+    ],
+    "commands": [
+        {
+            "name": "enable",
+            "description": "Enables Canvas domain events."
+        },
+        {
+            "name": "disable",
+            "description": "Disables Canvas domain events."
+        },
+        {
+            "name": "requestNode",
+            "description": "Gets the NodeId for the canvas node with the given CanvasId.",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId", "description": "Canvas identifier." }
+            ],
+            "returns": [
+                { "name": "nodeId", "$ref": "DOM.NodeId", "description": "Node identifier for given canvas." }
+            ]
+        },
+        {
+            "name": "requestContent",
+            "description": "Gets the data for the canvas node with the given CanvasId.",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId", "description": "Canvas identifier." }
+            ],
+            "returns": [
+                { "name": "content", "type": "string", "description": "Base64-encoded data of the canvas' contents." }
+            ]
+        },
+        {
+            "name": "requestCSSCanvasClientNodes",
+            "description": "Gets all the nodes that are using this canvas via -webkit-canvas.",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId" }
+            ],
+            "returns": [
+                { "name": "clientNodeIds", "type": "array", "items": { "$ref": "DOM.NodeId" } }
+            ]
+        },
+        {
+            "name": "resolveCanvasContext",
+            "description": "Resolves JavaScript canvas context object for given canvasId.",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId", "description": "Canvas identifier." },
+                { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." }
+            ],
+            "returns": [
+                { "name": "object", "$ref": "Runtime.RemoteObject", "description": "JavaScript object wrapper for given canvas context." }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "name": "canvasAdded",
+            "parameters": [
+                { "name": "canvas", "$ref": "Canvas", "description": "Canvas object." }
+            ]
+        },
+        {
+            "name": "canvasRemoved",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId", "description": "Removed canvas identifier." }
+            ]
+        },
+        {
+            "name": "canvasMemoryChanged",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId", "description": "Identifier of canvas that changed." },
+                { "name": "memoryCost", "type": "number", "description": "New memory cost value for the canvas in bytes." }
+            ]
+        },
+        {
+            "name": "cssCanvasClientNodesChanged",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId", "description": "Identifier of canvas that changed." }
+            ]
+        }
+    ]
+}

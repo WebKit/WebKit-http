@@ -1,7 +1,7 @@
 <?php
 
 require_once('db.php');
-require_once('manifest.php');
+require_once('manifest-generator.php');
 
 ?><!DOCTYPE html>
 <html>
@@ -22,6 +22,7 @@ require_once('manifest.php');
     <li><a href="/admin/triggerables">Triggerables</a></li>
     <li><a href="/admin/repositories">Repositories</a></li>
     <li><a href="/admin/bug-trackers">Bug Trackers</a></li>
+    <li><a href="/admin/files">Files</a></li>
 </ul>
 </header>
 

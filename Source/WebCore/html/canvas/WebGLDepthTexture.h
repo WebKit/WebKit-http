@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLDepthTexture_h
-#define WebGLDepthTexture_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,14 +31,12 @@ namespace WebCore {
 
 class WebGLDepthTexture final : public WebGLExtension {
 public:
-    explicit WebGLDepthTexture(WebGLRenderingContextBase*);
+    explicit WebGLDepthTexture(WebGLRenderingContextBase&);
     virtual ~WebGLDepthTexture();
 
-    static bool supported(GraphicsContext3D*);
+    static bool supported(GraphicsContext3D&);
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // WebGLDepthTexture_h

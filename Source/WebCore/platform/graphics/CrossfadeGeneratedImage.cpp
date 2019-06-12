@@ -50,17 +50,20 @@ static void drawCrossfadeSubimage(GraphicsContext& context, Image& image, Compos
     bool useTransparencyLayer = image.isSVGImage();
 
     GraphicsContextStateSaver stateSaver(context);
+    
+    CompositeOperator drawImageOperation = operation;
 
-    context.setCompositeOperation(operation);
-
-    if (useTransparencyLayer)
+    if (useTransparencyLayer) {
+        context.setCompositeOperation(operation);
         context.beginTransparencyLayer(opacity);
-    else
+        drawImageOperation = CompositeSourceOver;
+    } else
         context.setAlpha(opacity);
 
     if (targetSize != imageSize)
         context.scale(FloatSize(targetSize.width() / imageSize.width(), targetSize.height() / imageSize.height()));
-    context.drawImage(image, IntPoint());
+
+    context.drawImage(image, IntPoint(), ImagePaintingOptions(drawImageOperation));
 
     if (useTransparencyLayer)
         context.endTransparencyLayer();
@@ -69,7 +72,7 @@ static void drawCrossfadeSubimage(GraphicsContext& context, Image& image, Compos
 void CrossfadeGeneratedImage::drawCrossfade(GraphicsContext& context)
 {
     // Draw nothing if either of the images hasn't loaded yet.
-    if (m_fromImage.ptr() == Image::nullImage() || m_toImage.ptr() == Image::nullImage())
+    if (m_fromImage.ptr() == &Image::nullImage() || m_toImage.ptr() == &Image::nullImage())
         return;
 
     GraphicsContextStateSaver stateSaver(context);
@@ -83,7 +86,7 @@ void CrossfadeGeneratedImage::drawCrossfade(GraphicsContext& context)
     context.endTransparencyLayer();
 }
 
-void CrossfadeGeneratedImage::draw(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator compositeOp, BlendMode blendMode, ImageOrientationDescription)
+ImageDrawResult CrossfadeGeneratedImage::draw(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator compositeOp, BlendMode blendMode, DecodingMode, ImageOrientationDescription)
 {
     GraphicsContextStateSaver stateSaver(context);
     context.setCompositeOperation(compositeOp, blendMode);
@@ -94,9 +97,10 @@ void CrossfadeGeneratedImage::draw(GraphicsContext& context, const FloatRect& ds
     context.translate(-srcRect.x(), -srcRect.y());
     
     drawCrossfade(context);
+    return ImageDrawResult::DidDraw;
 }
 
-void CrossfadeGeneratedImage::drawPattern(GraphicsContext& context, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator compositeOp, const FloatRect& dstRect, BlendMode blendMode)
+void CrossfadeGeneratedImage::drawPattern(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator compositeOp, BlendMode blendMode)
 {
     std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(size(), context.renderingMode());
     if (!imageBuffer)
@@ -107,7 +111,7 @@ void CrossfadeGeneratedImage::drawPattern(GraphicsContext& context, const FloatR
     drawCrossfade(graphicsContext);
 
     // Tile the image buffer into the context.
-    imageBuffer->drawPattern(context, srcRect, patternTransform, phase, spacing, compositeOp, dstRect, blendMode);
+    imageBuffer->drawPattern(context, dstRect, srcRect, patternTransform, phase, spacing, compositeOp, blendMode);
 }
 
 void CrossfadeGeneratedImage::dump(TextStream& ts) const

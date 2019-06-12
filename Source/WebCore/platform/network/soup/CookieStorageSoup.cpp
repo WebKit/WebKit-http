@@ -21,34 +21,16 @@
 
 #if USE(SOUP)
 
-#include "CookieJarSoup.h"
-#include "NotImplemented.h"
-
-#include <stdio.h>
-
 namespace WebCore {
 
-static CookieChangeCallbackPtr cookieChangeCallback;
-
-static void soupCookiesChanged(SoupCookieJar* jar, SoupCookie*, SoupCookie*, gpointer)
+void startObservingCookieChanges(const NetworkStorageSession&, WTF::Function<void ()>&&)
 {
-    if (jar != soupCookieJar())
-        return;
-    cookieChangeCallback();
+    ASSERT_NOT_REACHED();
 }
 
-void startObservingCookieChanges(CookieChangeCallbackPtr callback)
+void stopObservingCookieChanges(const NetworkStorageSession&)
 {
-    ASSERT(!cookieChangeCallback);
-    cookieChangeCallback = callback;
-
-    g_signal_connect(soupCookieJar(), "changed", G_CALLBACK(soupCookiesChanged), 0);
-}
-
-void stopObservingCookieChanges()
-{
-    g_signal_handlers_disconnect_by_func(soupCookieJar(), reinterpret_cast<void*>(soupCookiesChanged), 0);
-    cookieChangeCallback = 0;
+    ASSERT_NOT_REACHED();
 }
 
 }

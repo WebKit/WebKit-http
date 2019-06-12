@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,102 +26,18 @@
 #include "config.h"
 
 #if ENABLE(WEBGL) && ENABLE(WEBGL2)
-#include "JSWebGL2RenderingContext.h"
 
-#include "NotImplemented.h"
-#include "WebGL2RenderingContext.h"
+#include "JSWebGL2RenderingContext.h"
+#include <heap/HeapInlines.h>
 
 using namespace JSC;
 
 namespace WebCore {
 
-static JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, const WebGLGetInfo& info)
-{
-    switch (info.getType()) {
-    case WebGLGetInfo::kTypeBool:
-        return jsBoolean(info.getBool());
-    case WebGLGetInfo::kTypeBoolArray: {
-        MarkedArgumentBuffer list;
-        const auto& values = info.getBoolArray();
-        for (const auto& value : values)
-            list.append(jsBoolean(value));
-        return constructArray(exec, 0, globalObject, list);
-    }
-    case WebGLGetInfo::kTypeFloat:
-        return jsNumber(info.getFloat());
-    case WebGLGetInfo::kTypeInt:
-        return jsNumber(info.getInt());
-    case WebGLGetInfo::kTypeNull:
-        return jsNull();
-    case WebGLGetInfo::kTypeString:
-        return jsStringWithCache(exec, info.getString());
-    case WebGLGetInfo::kTypeUnsignedInt:
-        return jsNumber(info.getUnsignedInt());
-    case WebGLGetInfo::kTypeInt64:
-        return jsNumber(info.getInt64());
-    default:
-        notImplemented();
-        return jsUndefined();
-    }
-}
-
 void JSWebGL2RenderingContext::visitAdditionalChildren(SlotVisitor& visitor)
 {
     visitor.addOpaqueRoot(&wrapped());
 }
-
-JSValue JSWebGL2RenderingContext::getInternalformatParameter(ExecState* exec)
-{
-    UNUSED_PARAM(exec);
-    return jsUndefined();
-}
-
-JSValue JSWebGL2RenderingContext::getQueryParameter(ExecState* exec)
-{
-    UNUSED_PARAM(exec);
-    return jsUndefined();
-}
-
-JSValue JSWebGL2RenderingContext::getSamplerParameter(ExecState* exec)
-{
-    UNUSED_PARAM(exec);
-    return jsUndefined();
-}
-
-JSValue JSWebGL2RenderingContext::getSyncParameter(ExecState* exec)
-{
-    UNUSED_PARAM(exec);
-    return jsUndefined();
-}
-
-JSValue JSWebGL2RenderingContext::getIndexedParameter(ExecState* exec)
-{
-    if (exec->argumentCount() != 2)
-        return exec->vm().throwException(exec, createNotEnoughArgumentsError(exec));
-
-    WebGL2RenderingContext& context = wrapped();
-    unsigned pname = exec->uncheckedArgument(0).toInt32(exec);
-    if (exec->hadException())
-        return jsUndefined();
-    unsigned index = exec->uncheckedArgument(1).toInt32(exec);
-    if (exec->hadException())
-        return jsUndefined();
-    WebGLGetInfo info = context.getIndexedParameter(pname, index);
-    return toJS(exec, globalObject(), info);
-}
-
-JSValue JSWebGL2RenderingContext::getActiveUniformBlockParameter(ExecState* exec)
-{
-    UNUSED_PARAM(exec);
-    return jsUndefined();
-}
-
-JSValue JSWebGL2RenderingContext::getActiveUniformBlockName(ExecState* exec)
-{
-    UNUSED_PARAM(exec);
-    return jsUndefined();
-}
-
 
 } // namespace WebCore
 

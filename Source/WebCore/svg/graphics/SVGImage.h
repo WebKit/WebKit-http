@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SVGImage_h
-#define SVGImage_h
+#pragma once
 
 #include "Image.h"
 #include "URL.h"
@@ -51,22 +50,26 @@ public:
     RenderBox* embeddedContentBox() const;
     FrameView* frameView() const;
 
-    virtual bool isSVGImage() const override { return true; }
-    virtual FloatSize size() const override { return m_intrinsicSize; }
+    bool isSVGImage() const final { return true; }
+    FloatSize size() const final { return m_intrinsicSize; }
 
     void setURL(const URL& url) { m_url = url; }
 
-    virtual bool hasSingleSecurityOrigin() const override;
+    bool hasSingleSecurityOrigin() const final;
 
-    virtual bool hasRelativeWidth() const override;
-    virtual bool hasRelativeHeight() const override;
+    bool hasRelativeWidth() const final;
+    bool hasRelativeHeight() const final;
 
-    virtual void startAnimation(CatchUpAnimation = CatchUp) override;
-    virtual void stopAnimation() override;
-    virtual void resetAnimation() override;
+    void startAnimation() final;
+    void stopAnimation() final;
+    void resetAnimation() final;
+    bool isAnimating() const final;
 
 #if USE(CAIRO)
-    virtual PassNativeImagePtr nativeImageForCurrentFrame() override;
+    NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) final;
+#endif
+#if USE(DIRECT2D)
+    NativeImagePtr nativeImage(const GraphicsContext* = nullptr) final;
 #endif
 
 private:
@@ -75,26 +78,27 @@ private:
 
     virtual ~SVGImage();
 
-    virtual String filenameExtension() const override;
+    String filenameExtension() const final;
 
-    virtual void setContainerSize(const FloatSize&) override;
+    void setContainerSize(const FloatSize&) final;
     IntSize containerSize() const;
-    virtual bool usesContainerSize() const override { return true; }
-    virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override;
+    bool usesContainerSize() const final { return true; }
+    void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
 
-    virtual bool dataChanged(bool allDataReceived) override;
+    void reportApproximateMemoryCost() const;
+    EncodedDataStatus dataChanged(bool allDataReceived) final;
 
     // FIXME: SVGImages will be unable to prune because this function is not implemented yet.
-    virtual void destroyDecodedData(bool) override { }
+    void destroyDecodedData(bool) final { }
 
     // FIXME: Implement this to be less conservative.
-    virtual bool currentFrameKnownToBeOpaque() override { return false; }
+    bool currentFrameKnownToBeOpaque() const final { return false; }
 
-    virtual void dump(TextStream&) const override;
+    void dump(TextStream&) const final;
 
     SVGImage(ImageObserver&, const URL&);
-    virtual void draw(GraphicsContext&, const FloatRect& fromRect, const FloatRect& toRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
-    void drawForContainer(GraphicsContext&, const FloatSize, float, const FloatRect&, const FloatRect&, CompositeOperator, BlendMode);
+    ImageDrawResult draw(GraphicsContext&, const FloatRect& fromRect, const FloatRect& toRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) final;
+    ImageDrawResult drawForContainer(GraphicsContext&, const FloatSize, float, const FloatRect&, const FloatRect&, CompositeOperator, BlendMode);
     void drawPatternForContainer(GraphicsContext&, const FloatSize& containerSize, float zoom, const FloatRect& srcRect, const AffineTransform&, const FloatPoint& phase, const FloatSize& spacing,
         CompositeOperator, const FloatRect&, BlendMode);
 
@@ -111,5 +115,3 @@ bool isInSVGImage(const Element*);
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_IMAGE(SVGImage)
-
-#endif // SVGImage_h

@@ -9,37 +9,40 @@
 #ifndef LIBANGLE_RENDERER_D3D_D3D11_BUFFER11_H_
 #define LIBANGLE_RENDERER_D3D_D3D11_BUFFER11_H_
 
+#include <array>
+#include <map>
+
 #include "libANGLE/angletypes.h"
 #include "libANGLE/renderer/d3d/BufferD3D.h"
+#include "libANGLE/signal_utils.h"
+
+namespace gl
+{
+class FramebufferAttachment;
+}
 
 namespace rx
 {
+struct PackPixelsParams;
 class Renderer11;
+struct SourceIndexData;
+struct TranslatedAttribute;
 
+// The order of this enum governs priority of 'getLatestBufferStorage'.
 enum BufferUsage
 {
+    BUFFER_USAGE_SYSTEM_MEMORY,
     BUFFER_USAGE_STAGING,
     BUFFER_USAGE_VERTEX_OR_TRANSFORM_FEEDBACK,
     BUFFER_USAGE_INDEX,
+    // TODO: possibly share this buffer type with shader storage buffers.
+    BUFFER_USAGE_INDIRECT,
     BUFFER_USAGE_PIXEL_UNPACK,
     BUFFER_USAGE_PIXEL_PACK,
     BUFFER_USAGE_UNIFORM,
-    BUFFER_USAGE_SYSTEM_MEMORY,
-};
+    BUFFER_USAGE_EMULATED_INDEXED_VERTEX,
 
-struct PackPixelsParams
-{
-    PackPixelsParams();
-    PackPixelsParams(const gl::Rectangle &area, GLenum format, GLenum type, GLuint outputPitch,
-                     const gl::PixelPackState &pack, ptrdiff_t offset);
-
-    gl::Rectangle area;
-    GLenum format;
-    GLenum type;
-    GLuint outputPitch;
-    gl::Buffer *packBuffer;
-    gl::PixelPackState pack;
-    ptrdiff_t offset;
+    BUFFER_USAGE_COUNT,
 };
 
 typedef size_t DataRevision;
@@ -47,41 +50,68 @@ typedef size_t DataRevision;
 class Buffer11 : public BufferD3D
 {
   public:
-    Buffer11(Renderer11 *renderer);
+    Buffer11(const gl::BufferState &state, Renderer11 *renderer);
     virtual ~Buffer11();
 
-    ID3D11Buffer *getBuffer(BufferUsage usage);
-    ID3D11Buffer *getConstantBufferRange(GLintptr offset, GLsizeiptr size);
-    ID3D11ShaderResourceView *getSRV(DXGI_FORMAT srvFormat);
-    bool isMapped() const { return mMappedStorage != NULL; }
-    gl::Error packPixels(ID3D11Texture2D *srcTexure, UINT srcSubresource, const PackPixelsParams &params);
+    gl::ErrorOrResult<ID3D11Buffer *> getBuffer(BufferUsage usage);
+    gl::ErrorOrResult<ID3D11Buffer *> getEmulatedIndexedBuffer(SourceIndexData *indexInfo,
+                                                               const TranslatedAttribute &attribute,
+                                                               GLint startVertex);
+    gl::Error getConstantBufferRange(GLintptr offset,
+                                     GLsizeiptr size,
+                                     ID3D11Buffer **bufferOut,
+                                     UINT *firstConstantOut,
+                                     UINT *numConstantsOut);
+    gl::ErrorOrResult<ID3D11ShaderResourceView *> getSRV(DXGI_FORMAT srvFormat);
+    bool isMapped() const { return mMappedStorage != nullptr; }
+    gl::Error packPixels(const gl::FramebufferAttachment &readAttachment,
+                         const PackPixelsParams &params);
+    size_t getTotalCPUBufferMemoryBytes() const;
 
     // BufferD3D implementation
-    virtual size_t getSize() const { return mSize; }
-    virtual bool supportsDirectBinding() const;
+    size_t getSize() const override { return mSize; }
+    bool supportsDirectBinding() const override;
+    gl::Error getData(const uint8_t **outData) override;
+    void initializeStaticData() override;
+    void invalidateStaticData() override;
 
     // BufferImpl implementation
-    virtual gl::Error setData(const void* data, size_t size, GLenum usage);
-    gl::Error getData(const uint8_t **outData) override;
-    virtual gl::Error setSubData(const void* data, size_t size, size_t offset);
-    virtual gl::Error copySubData(BufferImpl* source, GLintptr sourceOffset, GLintptr destOffset, GLsizeiptr size);
-    virtual gl::Error map(GLenum access, GLvoid **mapPtr);
-    virtual gl::Error mapRange(size_t offset, size_t length, GLbitfield access, GLvoid **mapPtr);
-    virtual gl::Error unmap(GLboolean *result);
-    virtual void markTransformFeedbackUsage();
+    gl::Error setData(ContextImpl *context,
+                      GLenum target,
+                      const void *data,
+                      size_t size,
+                      GLenum usage) override;
+    gl::Error setSubData(ContextImpl *context,
+                         GLenum target,
+                         const void *data,
+                         size_t size,
+                         size_t offset) override;
+    gl::Error copySubData(ContextImpl *contextImpl,
+                          BufferImpl *source,
+                          GLintptr sourceOffset,
+                          GLintptr destOffset,
+                          GLsizeiptr size) override;
+    gl::Error map(ContextImpl *contextImpl, GLenum access, GLvoid **mapPtr) override;
+    gl::Error mapRange(ContextImpl *contextImpl,
+                       size_t offset,
+                       size_t length,
+                       GLbitfield access,
+                       GLvoid **mapPtr) override;
+    gl::Error unmap(ContextImpl *contextImpl, GLboolean *result) override;
+    gl::Error markTransformFeedbackUsage() override;
+
+    // We use two set of dirty events. Static buffers are marked dirty whenever
+    // data changes, because they must be re-translated. Direct buffers only need to be
+    // updated when the underlying ID3D11Buffer pointer changes - hopefully far less often.
+    angle::BroadcastChannel<> *getStaticBroadcastChannel();
+    angle::BroadcastChannel<> *getDirectBroadcastChannel();
 
   private:
     class BufferStorage;
+    class EmulatedIndexedStorage;
     class NativeStorage;
     class PackStorage;
     class SystemMemoryStorage;
-
-    Renderer11 *mRenderer;
-    size_t mSize;
-
-    BufferStorage *mMappedStorage;
-
-    std::map<BufferUsage, BufferStorage*> mBufferStorages;
 
     struct ConstantBufferCacheEntry
     {
@@ -91,6 +121,39 @@ class Buffer11 : public BufferD3D
         unsigned int lruCount;
     };
 
+    void markBufferUsage(BufferUsage usage);
+    gl::Error garbageCollection(BufferUsage currentUsage);
+    gl::ErrorOrResult<NativeStorage *> getStagingStorage();
+    gl::ErrorOrResult<PackStorage *> getPackStorage();
+    gl::ErrorOrResult<SystemMemoryStorage *> getSystemMemoryStorage();
+
+    gl::Error updateBufferStorage(BufferStorage *storage, size_t sourceOffset, size_t storageSize);
+    gl::ErrorOrResult<BufferStorage *> getBufferStorage(BufferUsage usage);
+    gl::ErrorOrResult<BufferStorage *> getLatestBufferStorage() const;
+
+    gl::ErrorOrResult<BufferStorage *> getConstantBufferRangeStorage(GLintptr offset,
+                                                                     GLsizeiptr size);
+
+    BufferStorage *allocateStorage(BufferUsage usage);
+    void updateDeallocThreshold(BufferUsage usage);
+
+    // Free the storage if we decide it isn't being used very often.
+    gl::Error checkForDeallocation(BufferUsage usage);
+
+    // For some cases of uniform buffer storage, we can't deallocate system memory storage.
+    bool canDeallocateSystemMemory() const;
+
+    Renderer11 *mRenderer;
+    size_t mSize;
+
+    BufferStorage *mMappedStorage;
+
+    std::array<BufferStorage *, BUFFER_USAGE_COUNT> mBufferStorages;
+
+    // These two arrays are used to track when to free unused storage.
+    std::array<unsigned int, BUFFER_USAGE_COUNT> mDeallocThresholds;
+    std::array<unsigned int, BUFFER_USAGE_COUNT> mIdleness;
+
     // Cache of D3D11 constant buffer for specific ranges of buffer data.
     // This is used to emulate UBO ranges on 11.0 devices.
     // Constant buffers are indexed by there start offset.
@@ -99,24 +162,10 @@ class Buffer11 : public BufferD3D
     size_t mConstantBufferStorageAdditionalSize;
     unsigned int mMaxConstantBufferLruCount;
 
-    typedef std::pair<ID3D11Buffer *, ID3D11ShaderResourceView *> BufferSRVPair;
-    std::map<DXGI_FORMAT, BufferSRVPair> mBufferResourceViews;
-
-    unsigned int mReadUsageCount;
-    bool mHasSystemMemoryStorage;
-
-    void markBufferUsage();
-    NativeStorage *getStagingStorage();
-    PackStorage *getPackStorage();
-    gl::Error getSystemMemoryStorage(SystemMemoryStorage **storageOut);
-
-    void updateBufferStorage(BufferStorage *storage, size_t sourceOffset, size_t storageSize);
-    BufferStorage *getBufferStorage(BufferUsage usage);
-    BufferStorage *getLatestBufferStorage() const;
-
-    BufferStorage *getContantBufferRangeStorage(GLintptr offset, GLsizeiptr size);
+    angle::BroadcastChannel<> mStaticBroadcastChannel;
+    angle::BroadcastChannel<> mDirectBroadcastChannel;
 };
 
-}
+}  // namespace rx
 
 #endif // LIBANGLE_RENDERER_D3D_D3D11_BUFFER11_H_

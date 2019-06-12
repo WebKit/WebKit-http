@@ -23,14 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3StackmapGenerationParams_h
-#define B3StackmapGenerationParams_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "AirGenerationContext.h"
 #include "B3ValueRep.h"
+#include "CCallHelpers.h"
 #include "RegisterSet.h"
+#include <wtf/Box.h>
 
 namespace JSC { namespace B3 {
 
@@ -39,6 +40,8 @@ class PatchpointSpecial;
 class Procedure;
 class StackmapValue;
 
+// NOTE: It's possible to capture StackmapGenerationParams by value, but not all of the methods will
+// work if you do that.
 class StackmapGenerationParams {
 public:
     // This is the stackmap value that we're generating.
@@ -57,6 +60,7 @@ public:
     Vector<ValueRep>::const_iterator end() const { return m_reps.end(); }
     
     // This tells you the registers that were used.
+    // NOTE: This will report bogus information if you did proc.setNeedsUsedRegisters(false).
     const RegisterSet& usedRegisters() const;
 
     // This is a useful helper if you want to do register allocation inside of a patchpoint. The
@@ -76,13 +80,24 @@ public:
     //
     // I.e. it is like usedRegisters() but also includes unsaved callee-saves and excludes scratch
     // registers.
+    //
+    // NOTE: This will report bogus information if you did proc.setNeedsUsedRegisters(false).
     JS_EXPORT_PRIVATE RegisterSet unavailableRegisters() const;
 
     GPRReg gpScratch(unsigned index) const { return m_gpScratch[index]; }
     FPRReg fpScratch(unsigned index) const { return m_fpScratch[index]; }
+    
+    // This is computed lazily, so it won't work if you capture StackmapGenerationParams by value.
+    // These labels will get populated before any late paths or link tasks execute.
+    JS_EXPORT_PRIVATE Vector<Box<CCallHelpers::Label>> successorLabels() const;
+    
+    // This is computed lazily, so it won't work if you capture StackmapGenerationParams by value.
+    // Returns true if the successor at the given index is going to be emitted right after the
+    // patchpoint.
+    JS_EXPORT_PRIVATE bool fallsThroughToSuccessor(unsigned successorIndex) const;
 
     // This is provided for convenience; it means that you don't have to capture it if you don't want to.
-    Procedure& proc() const;
+    JS_EXPORT_PRIVATE Procedure& proc() const;
     
     // The Air::GenerationContext gives you even more power.
     Air::GenerationContext& context() const { return m_context; };
@@ -113,6 +128,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3StackmapGenerationParams_h
-

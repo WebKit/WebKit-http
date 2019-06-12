@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebMediaSessionManager_h
-#define WebMediaSessionManager_h
+#pragma once
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
@@ -32,7 +31,6 @@
 #include "MediaPlaybackTargetPicker.h"
 #include "MediaPlaybackTargetPickerMock.h"
 #include "MediaProducer.h"
-#include "Timer.h"
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RunLoop.h>
@@ -71,8 +69,8 @@ private:
     WebCore::MediaPlaybackTargetPickerMock& mockPicker();
 
     // MediaPlaybackTargetPicker::Client
-    virtual void setPlaybackTarget(Ref<WebCore::MediaPlaybackTarget>&&) override;
-    virtual void externalOutputDeviceAvailableDidChange(bool) override;
+    void setPlaybackTarget(Ref<WebCore::MediaPlaybackTarget>&&) override;
+    void externalOutputDeviceAvailableDidChange(bool) override;
 
     size_t find(WebMediaSessionManagerClient*, uint64_t);
 
@@ -103,7 +101,7 @@ private:
     RefPtr<MediaPlaybackTarget> m_playbackTarget;
     std::unique_ptr<WebCore::MediaPlaybackTargetPickerMock> m_pickerOverride;
     ConfigurationTasks m_taskFlags { NoTask };
-    double m_currentWatchdogInterval { 0 };
+    Seconds m_currentWatchdogInterval;
     bool m_externalOutputDeviceAvailable { false };
     bool m_targetChanged { false };
     bool m_mockPickerEnabled { false };
@@ -111,6 +109,4 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
-
-#endif // WebMediaSessionManager_h
+#endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)

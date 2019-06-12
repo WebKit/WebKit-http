@@ -38,7 +38,7 @@ static const CGFloat slowMotionFactor = 10;
 
 static NSTimeInterval WebWindowAnimationDurationFromDuration(NSTimeInterval duration)
 {
-    return ([[NSApp currentEvent] modifierFlags] & NSShiftKeyMask) ? duration * slowMotionFactor : duration;        
+    return ([[NSApp currentEvent] modifierFlags] & NSEventModifierFlagShift) ? duration * slowMotionFactor : duration;
 }
 
 static NSRect scaledRect(NSRect _initialFrame, NSRect _finalFrame, CGFloat factor)

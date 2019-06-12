@@ -26,17 +26,14 @@
 #include "config.h"
 #include "WeakMapData.h"
 
-#include "CopiedAllocator.h"
-#include "CopyVisitorInlines.h"
 #include "ExceptionHelpers.h"
-#include "JSCJSValueInlines.h"
-#include "SlotVisitorInlines.h"
+#include "JSCInlines.h"
 
 #include <wtf/MathExtras.h>
 
 namespace JSC {
 
-const ClassInfo WeakMapData::s_info = { "WeakMapData", 0, 0, CREATE_METHOD_TABLE(WeakMapData) };
+const ClassInfo WeakMapData::s_info = { "WeakMapData", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(WeakMapData) };
 
 WeakMapData::WeakMapData(VM& vm)
     : Base(vm, vm.weakMapDataStructure.get())
@@ -54,6 +51,12 @@ void WeakMapData::destroy(JSCell* cell)
     static_cast<WeakMapData*>(cell)->~WeakMapData();
 }
 
+size_t WeakMapData::estimatedSize(JSCell* cell)
+{
+    WeakMapData* thisObj = jsCast<WeakMapData*>(cell);
+    return Base::estimatedSize(cell) + (thisObj->m_map.capacity() * (sizeof(JSObject*) + sizeof(WriteBarrier<Unknown>)));
+}
+
 void WeakMapData::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     Base::visitChildren(cell, visitor);
@@ -63,7 +66,7 @@ void WeakMapData::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     // Rough approximation of the external storage needed for the hashtable.
     // This isn't exact, but it is close enough, and proportional to the actual
-    // external mermory usage.
+    // external memory usage.
     visitor.reportExtraMemoryVisited(thisObj->m_map.capacity() * (sizeof(JSObject*) + sizeof(WriteBarrier<Unknown>)));
 }
 
@@ -105,11 +108,11 @@ void WeakMapData::clear()
 void WeakMapData::DeadKeyCleaner::visitWeakReferences(SlotVisitor& visitor)
 {
     m_liveKeyCount = 0;
-    for (auto it = m_target->m_map.begin(), end = m_target->m_map.end(); it != end; ++it) {
-        if (!Heap::isMarked(it->key))
+    for (auto& pair : m_target->m_map) {
+        if (!Heap::isMarked(pair.key))
             continue;
         m_liveKeyCount++;
-        visitor.append(&it->value);
+        visitor.append(pair.value);
     }
     RELEASE_ASSERT(m_liveKeyCount <= m_target->m_map.size());
 }
@@ -123,19 +126,19 @@ void WeakMapData::DeadKeyCleaner::finalizeUnconditionally()
             return;
         Vector<JSObject*> deadEntries;
         deadEntries.reserveCapacity(deadCount);
-        for (auto it = m_target->m_map.begin(), end = m_target->m_map.end(); it != end; ++it) {
-            if (Heap::isMarked(it->key))
+        for (auto& pair : m_target->m_map) {
+            if (Heap::isMarked(pair.key))
                 continue;
-            deadEntries.uncheckedAppend(it->key);
+            deadEntries.uncheckedAppend(pair.key);
         }
-        for (size_t i = 0; i < deadEntries.size(); i++)
-            m_target->m_map.remove(deadEntries[i]);
+        for (auto& deadEntry : deadEntries)
+            m_target->m_map.remove(deadEntry);
     } else {
         MapType newMap;
-        for (auto it = m_target->m_map.begin(), end = m_target->m_map.end(); it != end; ++it) {
-            if (!Heap::isMarked(it->key))
+        for (auto& pair : m_target->m_map) {
+            if (!Heap::isMarked(pair.key))
                 continue;
-            newMap.add(it->key, it->value);
+            newMap.add(pair.key, pair.value);
         }
         m_target->m_map.swap(newMap);
     }

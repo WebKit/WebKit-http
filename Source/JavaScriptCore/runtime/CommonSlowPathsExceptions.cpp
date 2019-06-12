@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,9 +28,15 @@
 
 #include "CallFrame.h"
 #include "CodeBlock.h"
+#include "FrameTracers.h"
+#include "Interpreter.h"
 #include "JITExceptions.h"
 #include "LLIntCommon.h"
 #include "JSCInlines.h"
+
+#if LLINT_SLOW_PATH_TRACING
+#include "Exception.h"
+#endif
 
 namespace JSC { namespace CommonSlowPaths {
 
@@ -38,9 +44,11 @@ void interpreterThrowInCaller(ExecState* exec, JSObject* error)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    vm->throwException(exec, error);
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+
+    throwException(exec, scope, error);
 #if LLINT_SLOW_PATH_TRACING
-    dataLog("Throwing exception ", vm->exception(), ".\n");
+    dataLog("Throwing exception ", JSValue(scope.exception()), ".\n");
 #endif
 }
 

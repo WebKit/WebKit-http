@@ -22,36 +22,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextPosition_h
-#define TextPosition_h
+#pragma once
 
-#include <wtf/Assertions.h>
+#include "OrdinalNumber.h"
 
 namespace WTF {
-
-// An abstract number of element in a sequence. The sequence has a first element.
-// This type should be used instead of integer because 2 contradicting traditions can
-// call a first element '0' or '1' which makes integer type ambiguous.
-class OrdinalNumber {
-public:
-    static OrdinalNumber fromZeroBasedInt(int zeroBasedInt) { return OrdinalNumber(zeroBasedInt); }
-    static OrdinalNumber fromOneBasedInt(int oneBasedInt) { return OrdinalNumber(oneBasedInt - 1); }
-    OrdinalNumber() : m_zeroBasedValue(0) { }
-
-    int zeroBasedInt() const { return m_zeroBasedValue; }
-    int oneBasedInt() const { return m_zeroBasedValue + 1; }
-
-    bool operator==(OrdinalNumber other) { return m_zeroBasedValue == other.m_zeroBasedValue; }
-    bool operator!=(OrdinalNumber other) { return !((*this) == other); }
-
-    static OrdinalNumber first() { return OrdinalNumber(0); }
-    static OrdinalNumber beforeFirst() { return OrdinalNumber(-1); }
-
-private:
-    OrdinalNumber(int zeroBasedInt) : m_zeroBasedValue(zeroBasedInt) { }
-    int m_zeroBasedValue;
-};
-
 
 // TextPosition structure specifies coordinates within an text resource. It is used mostly
 // for saving script source position.
@@ -62,12 +37,10 @@ public:
         , m_column(column)
     {
     }
+
     TextPosition() { }
     bool operator==(const TextPosition& other) { return m_line == other.m_line && m_column == other.m_column; }
     bool operator!=(const TextPosition& other) { return !((*this) == other); }
-
-    // A 'minimum' value of position, used as a default value.
-    static TextPosition minimumPosition() { return TextPosition(OrdinalNumber::first(), OrdinalNumber::first()); }
 
     // A value with line value less than a minimum; used as an impossible position.
     static TextPosition belowRangePosition() { return TextPosition(OrdinalNumber::beforeFirst(), OrdinalNumber::beforeFirst()); }
@@ -78,8 +51,4 @@ public:
 
 }
 
-using WTF::OrdinalNumber;
-
 using WTF::TextPosition;
-
-#endif // TextPosition_h

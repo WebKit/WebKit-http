@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,59 +23,41 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StyleTreeResolver_h
-#define StyleTreeResolver_h
+#pragma once
 
-#include "RenderStyleConstants.h"
+#include "SelectorChecker.h"
 #include "SelectorFilter.h"
 #include "StyleChange.h"
 #include "StyleSharingResolver.h"
-#include <functional>
-#include <wtf/RefPtr.h>
+#include "StyleUpdate.h"
+#include <wtf/Function.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
-class ContainerNode;
 class Document;
 class Element;
-class HTMLSlotElement;
 class Node;
 class RenderStyle;
-class RenderTreePosition;
-class Settings;
 class ShadowRoot;
 class StyleResolver;
-class Text;
 
 namespace Style {
 
 class TreeResolver {
 public:
     TreeResolver(Document&);
+    ~TreeResolver();
 
-    void resolve(Change);
+    std::unique_ptr<Update> resolve();
+
+    static ElementUpdate createAnimatedElementUpdate(std::unique_ptr<RenderStyle>, Element&, Change parentChange);
 
 private:
-    void resolveShadowTree(Change, RenderStyle& inheritedStyle);
+    std::unique_ptr<RenderStyle> styleForElement(Element&, const RenderStyle& inheritedStyle);
 
-    Ref<RenderStyle> styleForElement(Element&, RenderStyle& inheritedStyle);
-
-    void resolveRecursively(Element&, RenderStyle& inheritedStyle, RenderTreePosition&, Change);
-    Change resolveLocally(Element&, RenderStyle& inheritedStyle, RenderTreePosition&, Change inheritedChange);
-    void resolveChildren(Element&, RenderStyle&, Change, RenderTreePosition&);
-    void resolveChildAtShadowBoundary(Node&, RenderStyle& inheritedStyle, RenderTreePosition&, Change);
-    void resolveBeforeOrAfterPseudoElement(Element&, Change, PseudoId, RenderTreePosition&);
-
-    void createRenderTreeRecursively(Element&, RenderStyle&, RenderTreePosition&, RefPtr<RenderStyle>&& resolvedStyle);
-    void createRenderer(Element&, RenderTreePosition&, RefPtr<RenderStyle>&& resolvedStyle);
-    void createRenderTreeForBeforeOrAfterPseudoElement(Element&, PseudoId, RenderTreePosition&);
-    void createRenderTreeForChildren(ContainerNode&, RenderStyle&, RenderTreePosition&);
-    void createRenderTreeForShadowRoot(ShadowRoot&);
-
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
-    void resolveSlotAssignees(HTMLSlotElement&, RenderStyle& inheritedStyle, RenderTreePosition&, Change);
-    void createRenderTreeForSlotAssignees(HTMLSlotElement&, RenderStyle& inheritedStyle, RenderTreePosition&);
-#endif
+    void resolveComposedTree();
+    ElementUpdate resolveElement(Element&);
 
     struct Scope : RefCounted<Scope> {
         StyleResolver& styleResolver;
@@ -87,24 +69,43 @@ private:
         Scope(Document&);
         Scope(ShadowRoot&, Scope& enclosingScope);
     };
+
+    struct Parent {
+        Element* element;
+        const RenderStyle& style;
+        Change change { NoChange };
+        bool didPushScope { false };
+        bool elementNeedingStyleRecalcAffectsNextSiblingElementStyle { false };
+
+        Parent(Document&);
+        Parent(Element&, const RenderStyle&, Change);
+    };
+
     Scope& scope() { return m_scopeStack.last(); }
+    Parent& parent() { return m_parentStack.last(); }
+
     void pushScope(ShadowRoot&);
     void pushEnclosingScope();
     void popScope();
 
+    void pushParent(Element&, const RenderStyle&, Change);
+    void popParent();
+    void popParentsToDepth(unsigned depth);
+
+    const RenderStyle* parentBoxStyle() const;
+
     Document& m_document;
+    std::unique_ptr<RenderStyle> m_documentElementStyle;
+
     Vector<Ref<Scope>, 4> m_scopeStack;
+    Vector<Parent, 32> m_parentStack;
+    bool m_didSeePendingStylesheet { false };
+
+    std::unique_ptr<Update> m_update;
 };
 
-void detachRenderTree(Element&);
-void detachTextRenderer(Text&);
-
-void updateTextRendererAfterContentChange(Text&, unsigned offsetOfReplacedData, unsigned lengthOfReplacedData);
-
-void queuePostResolutionCallback(std::function<void ()>);
+void queuePostResolutionCallback(Function<void ()>&&);
 bool postResolutionCallbacksAreSuspended();
-
-bool isPlaceholderStyle(const RenderStyle&);
 
 class PostResolutionCallbackDisabler {
 public:
@@ -115,5 +116,3 @@ public:
 }
 
 }
-
-#endif

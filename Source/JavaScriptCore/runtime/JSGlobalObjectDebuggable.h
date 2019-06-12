@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSGlobalObjectDebuggable_h
-#define JSGlobalObjectDebuggable_h
+#pragma once
 
 #if ENABLE(REMOTE_INSPECTOR)
 
-#include "JSGlobalObjectInspectorController.h"
 #include "RemoteInspectionTarget.h"
 #include <wtf/Noncopyable.h>
 
@@ -48,18 +46,17 @@ public:
     JSGlobalObjectDebuggable(JSGlobalObject&);
     ~JSGlobalObjectDebuggable() { }
 
-    virtual Inspector::RemoteControllableTarget::Type type() const override { return Inspector::RemoteControllableTarget::Type::JavaScript; }
+    Inspector::RemoteControllableTarget::Type type() const override { return Inspector::RemoteControllableTarget::Type::JavaScript; }
 
-    virtual String name() const override;
-    virtual bool hasLocalDebugger() const override { return false; }
+    String name() const override;
+    bool hasLocalDebugger() const override { return false; }
 
-    virtual void connect(Inspector::FrontendChannel*, bool automaticInspection) override;
-    virtual void disconnect(Inspector::FrontendChannel*) override;
-    virtual void dispatchMessageFromRemote(const String& message) override;
-    virtual void pause() override;
+    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false, bool immediatelyPause = false) override;
+    void disconnect(Inspector::FrontendChannel*) override;
+    void dispatchMessageFromRemote(const String& message) override;
 
-    virtual bool automaticInspectionAllowed() const override { return true; }
-    virtual void pauseWaitingForAutomaticInspection() override;
+    bool automaticInspectionAllowed() const override { return true; }
+    void pauseWaitingForAutomaticInspection() override;
 
 private:
     JSGlobalObject& m_globalObject;
@@ -70,5 +67,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_CONTROLLABLE_TARGET(JSC::JSGlobalObjectDebuggable, JavaScript);
 
 #endif // ENABLE(REMOTE_INSPECTOR)
-
-#endif // !defined(JSGlobalObjectDebuggable_h)

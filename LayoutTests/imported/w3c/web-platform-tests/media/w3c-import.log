@@ -1,12 +1,11 @@
 The tests in this directory were imported from the W3C repository.
-Do NOT modify these tests directly in Webkit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Do NOT modify these tests directly in WebKit.
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
-Then run the Tools/Scripts/import-w3c-tests in Webkit to reimport
+Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
 
-Do NOT modify or remove this file
+Do NOT modify or remove this file.
 
 ------------------------------------------------------------------------
 Properties requiring vendor prefixes:
@@ -18,6 +17,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/media/2048x1360-random.jpg
 /LayoutTests/imported/w3c/web-platform-tests/media/A4.mp4
 /LayoutTests/imported/w3c/web-platform-tests/media/A4.ogv
+/LayoutTests/imported/w3c/web-platform-tests/media/OWNERS
 /LayoutTests/imported/w3c/web-platform-tests/media/foo.vtt
 /LayoutTests/imported/w3c/web-platform-tests/media/foo.vtt.headers
 /LayoutTests/imported/w3c/web-platform-tests/media/green-at-15.mp4

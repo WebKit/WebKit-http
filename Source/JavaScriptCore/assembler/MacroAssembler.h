@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssembler_h
-#define MacroAssembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
+
+#include "JSCJSValue.h"
 
 #if CPU(ARM_THUMB2)
 #include "MacroAssemblerARMv7.h"
@@ -54,17 +55,20 @@ namespace JSC { typedef MacroAssemblerX86 MacroAssemblerBase; };
 #include "MacroAssemblerX86_64.h"
 namespace JSC { typedef MacroAssemblerX86_64 MacroAssemblerBase; };
 
-#elif CPU(SH4)
-#include "MacroAssemblerSH4.h"
-namespace JSC {
-typedef MacroAssemblerSH4 MacroAssemblerBase;
-};
-
 #else
 #error "The MacroAssembler is not supported on this platform."
 #endif
 
+#include "MacroAssemblerHelpers.h"
+
 namespace JSC {
+
+namespace Printer {
+
+struct PrintRecord;
+typedef Vector<PrintRecord> PrintRecordList;
+
+}
 
 class MacroAssembler : public MacroAssemblerBase {
 public:
@@ -112,12 +116,15 @@ public:
     using MacroAssemblerBase::pop;
     using MacroAssemblerBase::jump;
     using MacroAssemblerBase::branch32;
+    using MacroAssemblerBase::compare32;
     using MacroAssemblerBase::move;
+    using MacroAssemblerBase::moveDouble;
     using MacroAssemblerBase::add32;
+    using MacroAssemblerBase::mul32;
     using MacroAssemblerBase::and32;
     using MacroAssemblerBase::branchAdd32;
     using MacroAssemblerBase::branchMul32;
-#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(X86_64)
+#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL) || CPU(X86_64) || CPU(MIPS)
     using MacroAssemblerBase::branchPtr;
 #endif
     using MacroAssemblerBase::branchSub32;
@@ -137,7 +144,7 @@ public:
     static const double twoToThe32; // This is super useful for some double code.
 
     // Utilities used by the DFG JIT.
-#if ENABLE(DFG_JIT)
+    using AbstractMacroAssemblerBase::invert;
     using MacroAssemblerBase::invert;
     
     static DoubleCondition invert(DoubleCondition cond)
@@ -230,46 +237,27 @@ public:
         return Equal;
     }
 
-    // True if this:
-    //     branch8(cond, value, value)
-    // Is the same as this:
-    //     branch32(cond, signExt8(value), signExt8(value))
     static bool isSigned(RelationalCondition cond)
     {
-        switch (cond) {
-        case Equal:
-        case NotEqual:
-        case GreaterThan:
-        case GreaterThanOrEqual:
-        case LessThan:
-        case LessThanOrEqual:
-            return true;
-        default:
-            return false;
-        }
+        return MacroAssemblerHelpers::isSigned<MacroAssembler>(cond);
     }
 
-    // True if this:
-    //     branch8(cond, value, value)
-    // Is the same as this:
-    //     branch32(cond, zeroExt8(value), zeroExt8(value))
     static bool isUnsigned(RelationalCondition cond)
     {
-        switch (cond) {
-        case Equal:
-        case NotEqual:
-        case Above:
-        case AboveOrEqual:
-        case Below:
-        case BelowOrEqual:
-            return true;
-        default:
-            return false;
-        }
+        return MacroAssemblerHelpers::isUnsigned<MacroAssembler>(cond);
     }
-#endif
 
-    // Platform agnostic onvenience functions,
+    static bool isSigned(ResultCondition cond)
+    {
+        return MacroAssemblerHelpers::isSigned<MacroAssembler>(cond);
+    }
+
+    static bool isUnsigned(ResultCondition cond)
+    {
+        return MacroAssemblerHelpers::isUnsigned<MacroAssembler>(cond);
+    }
+
+    // Platform agnostic convenience functions,
     // described in terms of other macro assembly methods.
     void pop()
     {
@@ -370,6 +358,11 @@ public:
         branchPtr(cond, op1, imm).linkTo(target, this);
     }
 
+    Jump branch32(RelationalCondition cond, RegisterID left, AbsoluteAddress right)
+    {
+        return branch32(flip(cond), right, left);
+    }
+
     void branch32(RelationalCondition cond, RegisterID op1, RegisterID op2, Label target)
     {
         branch32(cond, op1, op2).linkTo(target, this);
@@ -398,6 +391,11 @@ public:
     Jump branch32(RelationalCondition cond, Imm32 left, RegisterID right)
     {
         return branch32(commute(cond), right, left);
+    }
+
+    void compare32(RelationalCondition cond, Imm32 left, RegisterID right, RegisterID dest)
+    {
+        compare32(commute(cond), right, left, dest);
     }
 
     void branchTestPtr(ResultCondition cond, RegisterID reg, Label target)
@@ -485,6 +483,7 @@ public:
 
     // B3 has additional pseudo-opcodes for returning, when it wants to signal that the return
     // consumes some register in some way.
+    void retVoid() { ret(); }
     void ret32(RegisterID) { ret(); }
     void ret64(RegisterID) { ret(); }
     void retFloat(FPRegisterID) { ret(); }
@@ -494,6 +493,30 @@ public:
     bool shouldConsiderBlinding()
     {
         return !(random() & (BlindingModulus - 1));
+    }
+
+    void move(Address src, Address dest, RegisterID scratch)
+    {
+        loadPtr(src, scratch);
+        storePtr(scratch, dest);
+    }
+    
+    void move32(Address src, Address dest, RegisterID scratch)
+    {
+        load32(src, scratch);
+        store32(scratch, dest);
+    }
+    
+    void moveFloat(Address src, Address dest, FPRegisterID scratch)
+    {
+        loadFloat(src, scratch);
+        storeFloat(scratch, dest);
+    }
+    
+    void moveDouble(Address src, Address dest, FPRegisterID scratch)
+    {
+        loadDouble(src, scratch);
+        storeDouble(scratch, dest);
     }
 
     // Ptr methods
@@ -513,6 +536,11 @@ public:
     void addPtr(RegisterID src, RegisterID dest)
     {
         add32(src, dest);
+    }
+
+    void addPtr(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        add32(left, right, dest);
     }
 
     void addPtr(TrustedImm32 imm, RegisterID srcDest)
@@ -615,6 +643,10 @@ public:
         xor32(imm, srcDest);
     }
 
+    void xorPtr(Address src, RegisterID dest)
+    {
+        xor32(src, dest);
+    }
 
     void loadPtr(ImplicitAddress address, RegisterID dest)
     {
@@ -631,6 +663,18 @@ public:
         load32(address, dest);
     }
 
+#if ENABLE(FAST_TLS_JIT)
+    void loadFromTLSPtr(uint32_t offset, RegisterID dst)
+    {
+        loadFromTLS32(offset, dst);
+    }
+
+    void storeToTLSPtr(RegisterID src, uint32_t offset)
+    {
+        storeToTLS32(src, offset);
+    }
+#endif
+
     DataLabel32 loadPtrWithAddressOffsetPatch(Address address, RegisterID dest)
     {
         return load32WithAddressOffsetPatch(address, dest);
@@ -645,7 +689,7 @@ public:
     {
         move(Imm32(imm.asTrustedImmPtr()), dest);
     }
-
+    
     void comparePtr(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID dest)
     {
         compare32(cond, left, right, dest);
@@ -781,11 +825,16 @@ public:
         return MacroAssemblerBase::branchTest8(cond, Address(address.base, address.offset), mask);
     }
 
-#else // !CPU(X86_64)
+#else // !CPU(X86_64) && !CPU(ARM64)
 
     void addPtr(RegisterID src, RegisterID dest)
     {
         add64(src, dest);
+    }
+
+    void addPtr(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        add64(left, right, dest);
     }
     
     void addPtr(Address src, RegisterID dest)
@@ -908,6 +957,11 @@ public:
         xor64(src, dest);
     }
     
+    void xorPtr(Address src, RegisterID dest)
+    {
+        xor64(src, dest);
+    }
+    
     void xorPtr(RegisterID src, Address dest)
     {
         xor64(src, dest);
@@ -932,6 +986,17 @@ public:
     {
         load64(address, dest);
     }
+
+#if ENABLE(FAST_TLS_JIT)
+    void loadFromTLSPtr(uint32_t offset, RegisterID dst)
+    {
+        loadFromTLS64(offset, dst);
+    }
+    void storeToTLSPtr(RegisterID src, uint32_t offset)
+    {
+        storeToTLS64(src, offset);
+    }
+#endif
 
     DataLabel32 loadPtrWithAddressOffsetPatch(Address address, RegisterID dest)
     {
@@ -1272,6 +1337,14 @@ public:
             move(imm.asTrustedImm64(), dest);
     }
 
+#if CPU(X86_64) || CPU(ARM64)
+    void moveDouble(Imm64 imm, FPRegisterID dest)
+    {
+        move(imm, scratchRegister());
+        move64ToDouble(scratchRegister(), dest);
+    }
+#endif
+
     void and64(Imm32 imm, RegisterID dest)
     {
         if (shouldBlind(imm)) {
@@ -1315,68 +1388,6 @@ public:
 #endif // !CPU(X86_64)
 
 #if ENABLE(B3_JIT)
-    template<typename LeftType, typename RightType>
-    void moveDoubleConditionally32(RelationalCondition cond, LeftType left, RightType right, FPRegisterID src, FPRegisterID dest)
-    {
-        Jump falseCase = branch32(invert(cond), left, right);
-        moveDouble(src, dest);
-        falseCase.link(this);
-    }
-
-    template<typename LeftType, typename RightType>
-    void moveDoubleConditionally64(RelationalCondition cond, LeftType left, RightType right, FPRegisterID src, FPRegisterID dest)
-    {
-        Jump falseCase = branch64(invert(cond), left, right);
-        moveDouble(src, dest);
-        falseCase.link(this);
-    }
-
-    template<typename TestType, typename MaskType>
-    void moveDoubleConditionallyTest32(ResultCondition cond, TestType test, MaskType mask, FPRegisterID src, FPRegisterID dest)
-    {
-        if (isInvertible(cond)) {
-            Jump falseCase = branchTest32(invert(cond), test, mask);
-            moveDouble(src, dest);
-            falseCase.link(this);
-        }
-
-        Jump trueCase = branchTest32(cond, test, mask);
-        Jump falseCase = jump();
-        trueCase.link(this);
-        moveDouble(src, dest);
-        falseCase.link(this);
-    }
-
-    template<typename TestType, typename MaskType>
-    void moveDoubleConditionallyTest64(ResultCondition cond, TestType test, MaskType mask, FPRegisterID src, FPRegisterID dest)
-    {
-        if (isInvertible(cond)) {
-            Jump falseCase = branchTest64(invert(cond), test, mask);
-            moveDouble(src, dest);
-            falseCase.link(this);
-        }
-
-        Jump trueCase = branchTest64(cond, test, mask);
-        Jump falseCase = jump();
-        trueCase.link(this);
-        moveDouble(src, dest);
-        falseCase.link(this);
-    }
-
-    void moveDoubleConditionallyDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, FPRegisterID src, FPRegisterID dest)
-    {
-        Jump falseCase = branchDouble(invert(cond), left, right);
-        moveDouble(src, dest);
-        falseCase.link(this);
-    }
-
-    void moveDoubleConditionallyFloat(DoubleCondition cond, FPRegisterID left, FPRegisterID right, FPRegisterID src, FPRegisterID dest)
-    {
-        Jump falseCase = branchFloat(invert(cond), left, right);
-        moveDouble(src, dest);
-        falseCase.link(this);
-    }
-
     // We should implement this the right way eventually, but for now, it's fine because it arises so
     // infrequently.
     void compareDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest)
@@ -1395,10 +1406,17 @@ public:
     }
 #endif
 
-    void lea(Address address, RegisterID dest)
+    void lea32(Address address, RegisterID dest)
     {
-        addPtr(TrustedImm32(address.offset), address.base, dest);
+        add32(TrustedImm32(address.offset), address.base, dest);
     }
+
+#if CPU(X86_64) || CPU(ARM64)
+    void lea64(Address address, RegisterID dest)
+    {
+        add64(TrustedImm32(address.offset), address.base, dest);
+    }
+#endif // CPU(X86_64) || CPU(ARM64)
 
     bool shouldBlind(Imm32 imm)
     {
@@ -1513,6 +1531,16 @@ public:
         } else
             add32(imm.asTrustedImm32(), dest);
     }
+
+    void add32(Imm32 imm, RegisterID src, RegisterID dest)
+    {
+        if (shouldBlind(imm)) {
+            BlindedImm32 key = additionBlindedConstant(imm);
+            add32(key.value1, src, dest);
+            add32(key.value2, dest);
+        } else
+            add32(imm.asTrustedImm32(), src, dest);
+    }
     
     void addPtr(Imm32 imm, RegisterID dest)
     {
@@ -1522,6 +1550,27 @@ public:
             addPtr(key.value2, dest);
         } else
             addPtr(imm.asTrustedImm32(), dest);
+    }
+
+    void mul32(Imm32 imm, RegisterID src, RegisterID dest)
+    {
+        if (shouldBlind(imm)) {
+            if (src != dest || haveScratchRegisterForBlinding()) {
+                if (src == dest) {
+                    move(src, scratchRegisterForBlinding());
+                    src = scratchRegisterForBlinding();
+                }
+                loadXorBlindedConstant(xorBlindConstant(imm), dest);
+                mul32(src, dest);
+                return;
+            }
+            // If we don't have a scratch register available for use, we'll just
+            // place a random number of nops.
+            uint32_t nopCount = random() & 3;
+            while (nopCount--)
+                nop();
+        }
+        mul32(imm.asTrustedImm32(), src, dest);
     }
 
     void and32(Imm32 imm, RegisterID dest)
@@ -1683,18 +1732,45 @@ public:
         return branch32(cond, left, right.asTrustedImm32());
     }
 
+    void compare32(RelationalCondition cond, RegisterID left, Imm32 right, RegisterID dest)
+    {
+        if (shouldBlind(right)) {
+            if (left != dest || haveScratchRegisterForBlinding()) {
+                RegisterID blindedConstantReg = dest;
+                if (left == dest)
+                    blindedConstantReg = scratchRegisterForBlinding();
+                loadXorBlindedConstant(xorBlindConstant(right), blindedConstantReg);
+                compare32(cond, left, blindedConstantReg, dest);
+                return;
+            }
+            // If we don't have a scratch register available for use, we'll just
+            // place a random number of nops.
+            uint32_t nopCount = random() & 3;
+            while (nopCount--)
+                nop();
+            compare32(cond, left, right.asTrustedImm32(), dest);
+            return;
+        }
+
+        compare32(cond, left, right.asTrustedImm32(), dest);
+    }
+
     Jump branchAdd32(ResultCondition cond, RegisterID src, Imm32 imm, RegisterID dest)
     {
-        if (src == dest)
-            ASSERT(haveScratchRegisterForBlinding());
-
         if (shouldBlind(imm)) {
-            if (src == dest) {
-                move(src, scratchRegisterForBlinding());
-                src = scratchRegisterForBlinding();
+            if (src != dest || haveScratchRegisterForBlinding()) {
+                if (src == dest) {
+                    move(src, scratchRegisterForBlinding());
+                    src = scratchRegisterForBlinding();
+                }
+                loadXorBlindedConstant(xorBlindConstant(imm), dest);
+                return branchAdd32(cond, src, dest);
             }
-            loadXorBlindedConstant(xorBlindConstant(imm), dest);
-            return branchAdd32(cond, src, dest);  
+            // If we don't have a scratch register available for use, we'll just
+            // place a random number of nops.
+            uint32_t nopCount = random() & 3;
+            while (nopCount--)
+                nop();
         }
         return branchAdd32(cond, src, imm.asTrustedImm32(), dest);            
     }
@@ -1759,17 +1835,128 @@ public:
     }
 
 #if ENABLE(MASM_PROBE)
-    using MacroAssemblerBase::probe;
+    struct CPUState;
+
+    // This function emits code to preserve the CPUState (e.g. registers),
+    // call a user supplied probe function, and restore the CPUState before
+    // continuing with other JIT generated code.
+    //
+    // The user supplied probe function will be called with a single pointer to
+    // a ProbeContext struct (defined below) which contains, among other things,
+    // the preserved CPUState. This allows the user probe function to inspect
+    // the CPUState at that point in the JIT generated code.
+    //
+    // If the user probe function alters the register values in the ProbeContext,
+    // the altered values will be loaded into the CPU registers when the probe
+    // returns.
+    //
+    // The ProbeContext is stack allocated and is only valid for the duration
+    // of the call to the user probe function.
+    //
+    // Note: this version of probe() should be implemented by the target specific
+    // MacroAssembler.
+    void probe(ProbeFunction, void* arg);
+
+    void probe(std::function<void(ProbeContext*)>);
+#endif // ENABLE(MASM_PROBE)
 
     // Let's you print from your JIT generated code.
+    // This only works if ENABLE(MASM_PROBE). Otherwise, print() is a no-op.
     // See comments in MacroAssemblerPrinter.h for examples of how to use this.
     template<typename... Arguments>
-    void print(Arguments... args);
+    void print(Arguments&&... args);
 
-    void probe(std::function<void (ProbeContext*)>);
-#endif
+    void print(Printer::PrintRecordList*);
 };
 
+#if ENABLE(MASM_PROBE)
+
+#define DECLARE_REGISTER(_type, _regName) \
+    _type _regName;
+
+struct MacroAssembler::CPUState {
+    FOR_EACH_CPU_REGISTER(DECLARE_REGISTER)
+
+    static inline const char* gprName(RegisterID);
+    static inline const char* fprName(FPRegisterID);
+    inline void*& gpr(RegisterID);
+    inline double& fpr(FPRegisterID);
+};
+#undef DECLARE_REGISTER
+
+inline const char* MacroAssembler::CPUState::gprName(RegisterID regID)
+{
+#define DECLARE_REGISTER(_type, _regName) \
+    case RegisterID::_regName: \
+        return #_regName;
+
+    switch (regID) {
+        FOR_EACH_CPU_GPREGISTER(DECLARE_REGISTER)
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+#undef DECLARE_REGISTER
+}
+
+inline const char* MacroAssembler::CPUState::fprName(FPRegisterID regID)
+{
+#define DECLARE_REGISTER(_type, _regName) \
+    case FPRegisterID::_regName: \
+        return #_regName;
+
+    switch (regID) {
+        FOR_EACH_CPU_FPREGISTER(DECLARE_REGISTER)
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+#undef DECLARE_REGISTER
+}
+
+inline void*& MacroAssembler::CPUState::gpr(RegisterID regID)
+{
+#define DECLARE_REGISTER(_type, _regName) \
+    case RegisterID::_regName: \
+        return _regName;
+
+    switch (regID) {
+        FOR_EACH_CPU_GPREGISTER(DECLARE_REGISTER)
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+#undef DECLARE_REGISTER
+}
+
+inline double& MacroAssembler::CPUState::fpr(FPRegisterID regID)
+{
+#define DECLARE_REGISTER(_type, _regName) \
+    case FPRegisterID::_regName: \
+        return _regName;
+
+    switch (regID) {
+        FOR_EACH_CPU_FPREGISTER(DECLARE_REGISTER)
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+#undef DECLARE_REGISTER
+}
+
+struct ProbeContext {
+    using CPUState = MacroAssembler::CPUState;
+    using RegisterID = MacroAssembler::RegisterID;
+    using FPRegisterID = MacroAssembler::FPRegisterID;
+
+    ProbeFunction probeFunction;
+    void* arg;
+    CPUState cpu;
+
+    // Convenience methods:
+    void*& gpr(RegisterID regID) { return cpu.gpr(regID); }
+    double& fpr(FPRegisterID regID) { return cpu.fpr(regID); }
+    const char* gprName(RegisterID regID) { return cpu.gprName(regID); }
+    const char* fprName(FPRegisterID regID) { return cpu.fprName(regID); }
+};
+#endif // ENABLE(MASM_PROBE)
+    
 } // namespace JSC
 
 namespace WTF {
@@ -1802,5 +1989,3 @@ public:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssembler_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Butterfly_h
-#define Butterfly_h
+#pragma once
 
 #include "IndexingHeader.h"
-#include "PropertyOffset.h"
 #include "PropertyStorage.h"
 #include <wtf/Noncopyable.h>
 
@@ -90,6 +88,12 @@ public:
         return reinterpret_cast<Butterfly*>(static_cast<EncodedJSValue*>(base) + preCapacity + propertyCapacity + 1);
     }
     
+    ALWAYS_INLINE static unsigned availableContiguousVectorLength(size_t propertyCapacity, unsigned vectorLength);
+    static unsigned availableContiguousVectorLength(Structure*, unsigned vectorLength);
+    
+    ALWAYS_INLINE static unsigned optimalContiguousVectorLength(size_t propertyCapacity, unsigned vectorLength);
+    static unsigned optimalContiguousVectorLength(Structure*, unsigned vectorLength);
+    
     // This method is here not just because it's handy, but to remind you that
     // the whole point of butterflies is to do evil pointer arithmetic.
     static Butterfly* fromPointer(char* ptr)
@@ -106,9 +110,9 @@ public:
     
     static Butterfly* createUninitialized(VM&, JSCell* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes);
 
+    static Butterfly* tryCreate(VM& vm, JSCell*, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader& indexingHeader, size_t indexingPayloadSizeInBytes);
     static Butterfly* create(VM&, JSCell* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader&, size_t indexingPayloadSizeInBytes);
     static Butterfly* create(VM&, JSCell* intendedOwner, Structure*);
-    static Butterfly* createUninitializedDuringCollection(CopyVisitor&, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes);
     
     IndexingHeader* indexingHeader() { return IndexingHeader::from(this); }
     const IndexingHeader* indexingHeader() const { return IndexingHeader::from(this); }
@@ -167,6 +171,3 @@ public:
 };
 
 } // namespace JSC
-
-#endif // Butterfly_h
-

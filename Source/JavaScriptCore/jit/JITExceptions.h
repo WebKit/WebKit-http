@@ -23,20 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITExceptions_h
-#define JITExceptions_h
-
-#include "Interpreter.h"
-#include "JSCJSValue.h"
+#pragma once
 
 namespace JSC {
+
+enum UnwindStart : uint8_t;
 
 class ExecState;
 class VM;
 
-void genericUnwind(VM*, ExecState*, UnwindStart = UnwindFromCurrentFrame);
+void genericUnwind(VM*, ExecState*, UnwindStart);
+void genericUnwind(VM*, ExecState*);
 
 } // namespace JSC
-
-#endif // JITExceptions_h
-

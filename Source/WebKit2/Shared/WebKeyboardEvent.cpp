@@ -37,10 +37,16 @@ WebKeyboardEvent::WebKeyboardEvent()
 
 #if USE(APPKIT)
 
-WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool handledByInputMethod, const Vector<WebCore::KeypressCommand>& commands, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool handledByInputMethod, const Vector<WebCore::KeypressCommand>& commands, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(unmodifiedText)
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    , m_key(key)
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    , m_code(code)
+#endif
     , m_keyIdentifier(keyIdentifier)
     , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
     , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
@@ -56,10 +62,12 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
 
 #elif PLATFORM(GTK)
 
-WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, bool handledByInputMethod, Vector<String>&& commands, bool isKeypad, Modifiers modifiers, double timestamp)
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, bool handledByInputMethod, Vector<String>&& commands, bool isKeypad, Modifiers modifiers, double timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(text)
+    , m_key(key)
+    , m_code(code)
     , m_keyIdentifier(keyIdentifier)
     , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
     , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
@@ -69,6 +77,29 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
     , m_isAutoRepeat(false)
     , m_isKeypad(isKeypad)
     , m_isSystemKey(false)
+{
+    ASSERT(isKeyboardEventType(type));
+}
+
+#elif PLATFORM(IOS)
+
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
+    : WebEvent(type, modifiers, timestamp)
+    , m_text(text)
+    , m_unmodifiedText(unmodifiedText)
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    , m_key(key)
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    , m_code(code)
+#endif
+    , m_keyIdentifier(keyIdentifier)
+    , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
+    , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
+    , m_macCharCode(macCharCode)
+    , m_isAutoRepeat(isAutoRepeat)
+    , m_isKeypad(isKeypad)
+    , m_isSystemKey(isSystemKey)
 {
     ASSERT(isKeyboardEventType(type));
 }
@@ -96,12 +127,18 @@ WebKeyboardEvent::~WebKeyboardEvent()
 {
 }
 
-void WebKeyboardEvent::encode(IPC::ArgumentEncoder& encoder) const
+void WebKeyboardEvent::encode(IPC::Encoder& encoder) const
 {
     WebEvent::encode(encoder);
 
     encoder << m_text;
     encoder << m_unmodifiedText;
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    encoder << m_key;
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    encoder << m_code;
+#endif
     encoder << m_keyIdentifier;
     encoder << m_windowsVirtualKeyCode;
     encoder << m_nativeVirtualKeyCode;
@@ -115,7 +152,7 @@ void WebKeyboardEvent::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_isSystemKey;
 }
 
-bool WebKeyboardEvent::decode(IPC::ArgumentDecoder& decoder, WebKeyboardEvent& result)
+bool WebKeyboardEvent::decode(IPC::Decoder& decoder, WebKeyboardEvent& result)
 {
     if (!WebEvent::decode(decoder, result))
         return false;
@@ -124,6 +161,14 @@ bool WebKeyboardEvent::decode(IPC::ArgumentDecoder& decoder, WebKeyboardEvent& r
         return false;
     if (!decoder.decode(result.m_unmodifiedText))
         return false;
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    if (!decoder.decode(result.m_key))
+        return false;
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    if (!decoder.decode(result.m_code))
+        return false;
+#endif
     if (!decoder.decode(result.m_keyIdentifier))
         return false;
     if (!decoder.decode(result.m_windowsVirtualKeyCode))

@@ -20,39 +20,40 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IconLoader_h
-#define IconLoader_h
+#pragma once
 
 #include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
+#include "URL.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
 class CachedRawResource;
+class DocumentLoader;
 class Frame;
 
 class IconLoader final : private CachedRawResourceClient {
     WTF_MAKE_NONCOPYABLE(IconLoader); WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit IconLoader(Frame&);
+    IconLoader(DocumentLoader&, const URL&);
     virtual ~IconLoader();
 
     void startLoading();
     void stopLoading();
 
 private:
-    virtual void notifyFinished(CachedResource*) override;
+    void notifyFinished(CachedResource&) final;
 
-    Frame& m_frame;
+    Frame* m_frame { nullptr };
+    DocumentLoader* m_documentLoader { nullptr };
+    URL m_url;
     CachedResourceHandle<CachedRawResource> m_resource;
 };
 
 } // namespace WebCore
-
-#endif

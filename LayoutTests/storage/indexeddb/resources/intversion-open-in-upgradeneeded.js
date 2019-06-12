@@ -5,6 +5,9 @@ if (this.importScripts) {
 
 description("Test calling db.open in upgradeneeded.");
 
+if (window.testRunner)
+    testRunner.accummulateLogsForChannel("IndexedDB");
+
 function test()
 {
     removeVendorPrefixes();
@@ -41,7 +44,6 @@ function upgradeNeeded1(evt)
     evalAndLog("request = indexedDB.open(dbname, 3)");
     evalAndLog("request.onupgradeneeded = upgradeNeeded2");
     evalAndLog("request.onsuccess = openSuccess2");
-    evalAndLog("request.onblocked = onBlocked");
     request.onerror = unexpectedErrorCallback;
 }
 
@@ -59,11 +61,6 @@ function onVersionChange(evt)
 {
     preamble(evt);
     evalAndLog("db.close()");
-}
-
-function onBlocked(evt)
-{
-    preamble(evt);
 }
 
 function upgradeNeeded2(evt)

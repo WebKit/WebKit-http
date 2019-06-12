@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CommandLineAPIModule_h
-#define CommandLineAPIModule_h
+#pragma once
 
 #include <inspector/InjectedScriptModule.h>
 
@@ -34,12 +33,10 @@ class CommandLineAPIModule final : public Inspector::InjectedScriptModule {
 public:
     CommandLineAPIModule();
 
-    virtual String source() const override;
-    virtual JSC::JSValue host(Inspector::InjectedScriptManager*, JSC::ExecState*) const override;
+    String source() const override;
+    JSC::JSValue host(Inspector::InjectedScriptManager*, JSC::ExecState*) const override;
 
     static void injectIfNeeded(Inspector::InjectedScriptManager*, const Inspector::InjectedScript&);
 };
 
 } // namespace WebCore
-
-#endif // !defined(CommandLineAPIModule_h)

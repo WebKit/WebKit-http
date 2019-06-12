@@ -33,7 +33,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ScopedArguments);
 
-const ClassInfo ScopedArguments::s_info = { "Arguments", &Base::s_info, 0, CREATE_METHOD_TABLE(ScopedArguments) };
+const ClassInfo ScopedArguments::s_info = { "Arguments", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ScopedArguments) };
 
 ScopedArguments::ScopedArguments(VM& vm, Structure* structure, unsigned totalLength)
     : GenericArguments(vm, structure)
@@ -82,7 +82,7 @@ ScopedArguments* ScopedArguments::createByCopying(ExecState* exec, ScopedArgumen
     return createByCopyingFrom(
         exec->vm(), exec->lexicalGlobalObject()->scopedArgumentsStructure(),
         exec->registers() + CallFrame::argumentOffset(0), exec->argumentCount(),
-        jsCast<JSFunction*>(exec->callee()), table, scope);
+        jsCast<JSFunction*>(exec->jsCallee()), table, scope);
 }
 
 ScopedArguments* ScopedArguments::createByCopyingFrom(VM& vm, Structure* structure, Register* argumentsStart, unsigned totalLength, JSFunction* callee, ScopedArgumentsTable* table, JSLexicalEnvironment* scope)
@@ -103,14 +103,16 @@ void ScopedArguments::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_callee);
-    visitor.append(&thisObject->m_table);
-    visitor.append(&thisObject->m_scope);
+    visitor.append(thisObject->m_callee);
+    visitor.append(thisObject->m_table);
+    visitor.append(thisObject->m_scope);
     
     if (thisObject->m_totalLength > thisObject->m_table->length()) {
         visitor.appendValues(
             thisObject->overflowStorage(), thisObject->m_totalLength - thisObject->m_table->length());
     }
+
+    GenericArguments<ScopedArguments>::visitChildren(cell, visitor);
 }
 
 Structure* ScopedArguments::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
@@ -135,7 +137,7 @@ void ScopedArguments::overrideThingsIfNecessary(VM& vm)
         overrideThings(vm);
 }
 
-void ScopedArguments::overrideArgument(VM& vm, uint32_t i)
+void ScopedArguments::unmapArgument(VM& vm, uint32_t i)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(i < m_totalLength);
     unsigned namedLength = m_table->length();

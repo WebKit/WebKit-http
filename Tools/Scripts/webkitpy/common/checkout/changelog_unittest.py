@@ -479,6 +479,8 @@ class ChangeLogTest(unittest.TestCase):
         self._assert_has_valid_reviewer("Rubber stamped by Eric Seidel.", True)
         self._assert_has_valid_reviewer("Unreviewed build fix.", True)
         self._assert_has_valid_reviewer("Reviewed by Gabor Rapcsanyi.", False)
+        self._assert_has_valid_reviewer("Reviewed by Myles Maxfield", True)
+        self._assert_has_valid_reviewer("Reviewed by Myles C. Maxfield", True)
 
     def test_is_touched_files_text_clean(self):
         tests = [
@@ -642,8 +644,7 @@ class ChangeLogTest(unittest.TestCase):
         bug_url = "http://example.com/b/2344"
         ChangeLog(self._changelog_path, fs).set_short_description_and_bug_url(short_description, bug_url)
         actual_contents = fs.read_text_file(self._changelog_path)
-        expected_message = "%s\n        %s" % (short_description, bug_url)
-        expected_contents = changelog_contents.replace("Need a short description (OOPS!).", expected_message)
+        expected_contents = changelog_contents.replace("Need a short description (OOPS!).", short_description)
         self.assertEqual(actual_contents.splitlines(), expected_contents.splitlines())
 
         changelog_contents = u"%s\n%s" % (self._new_entry_boilerplate, self._example_changelog)
@@ -680,7 +681,6 @@ class ChangeLogTest(unittest.TestCase):
         actual_contents = fs.read_text_file(self._changelog_path)
         expected_contents = "== Rolled over to ChangeLog-2009-06-16 ==\n"
         self.assertEqual(actual_contents.splitlines(), expected_contents.splitlines())
-
 
     def test_prepend_text(self):
         fs = MockFileSystem()

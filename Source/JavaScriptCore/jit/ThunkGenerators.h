@@ -23,17 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThunkGenerators_h
-#define ThunkGenerators_h
+#pragma once
 
 #include "CodeSpecializationKind.h"
-#include "ThunkGenerator.h"
 
 #if ENABLE(JIT)
 namespace JSC {
 
 class CallLinkInfo;
-class CCallHelpers;
+class MacroAssemblerCodeRef;
+class VM;
 
 MacroAssemblerCodeRef throwExceptionFromCallSlowPathGenerator(VM*);
 
@@ -46,6 +45,7 @@ MacroAssemblerCodeRef virtualThunkFor(VM*, CallLinkInfo&);
 MacroAssemblerCodeRef nativeCallGenerator(VM*);
 MacroAssemblerCodeRef nativeConstructGenerator(VM*);
 MacroAssemblerCodeRef nativeTailCallGenerator(VM*);
+MacroAssemblerCodeRef nativeTailCallWithoutSavedTagsGenerator(VM*);
 MacroAssemblerCodeRef arityFixupGenerator(VM*);
 MacroAssemblerCodeRef unreachableGenerator(VM*);
 
@@ -60,11 +60,10 @@ MacroAssemblerCodeRef floorThunkGenerator(VM*);
 MacroAssemblerCodeRef logThunkGenerator(VM*);
 MacroAssemblerCodeRef roundThunkGenerator(VM*);
 MacroAssemblerCodeRef sqrtThunkGenerator(VM*);
-MacroAssemblerCodeRef powThunkGenerator(VM*);
 MacroAssemblerCodeRef imulThunkGenerator(VM*);
 MacroAssemblerCodeRef randomThunkGenerator(VM*);
+MacroAssemblerCodeRef truncThunkGenerator(VM*);
 
+MacroAssemblerCodeRef boundThisNoArgsFunctionCallGenerator(VM*);
 }
 #endif // ENABLE(JIT)
-
-#endif // ThunkGenerator_h

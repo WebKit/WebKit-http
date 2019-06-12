@@ -28,29 +28,33 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BMPImageDecoder_h
-#define BMPImageDecoder_h
+#pragma once
 
 #include "BMPImageReader.h"
 
 namespace WebCore {
 
     // This class decodes the BMP image format.
-    class BMPImageDecoder : public ImageDecoder {
+    class BMPImageDecoder final : public ImageDecoder {
     public:
-        BMPImageDecoder(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
+        static Ref<ImageDecoder> create(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+        {
+            return adoptRef(*new BMPImageDecoder(alphaOption, gammaAndColorProfileOption));
+        }
 
         // ImageDecoder
-        virtual String filenameExtension() const { return "bmp"; }
-        virtual void setData(SharedBuffer*, bool allDataReceived);
-        virtual bool isSizeAvailable();
-        virtual ImageFrame* frameBufferAtIndex(size_t index);
+        String filenameExtension() const override { return ASCIILiteral("bmp"); }
+        void setData(SharedBuffer&, bool allDataReceived) override;
+        ImageFrame* frameBufferAtIndex(size_t index) override;
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
         // BMPImageReader!
-        virtual bool setFailed();
+        bool setFailed() override;
 
     private:
+        BMPImageDecoder(AlphaOption, GammaAndColorProfileOption);
+        void tryDecodeSize(bool allDataReceived) override { decode(true, allDataReceived); }
+
         inline uint32_t readUint32(int offset) const
         {
             return BMPImageReader::readUint32(m_data.get(), m_decodedOffset + offset);
@@ -59,7 +63,7 @@ namespace WebCore {
         // Decodes the image.  If |onlySize| is true, stops decoding after
         // calculating the image size.  If decoding fails but there is no more
         // data coming, sets the "decode failure" flag.
-        void decode(bool onlySize);
+        void decode(bool onlySize, bool allDataReceived);
 
         // Decodes the image.  If |onlySize| is true, stops decoding after
         // calculating the image size.  Returns whether decoding succeeded.
@@ -80,5 +84,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif

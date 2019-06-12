@@ -24,28 +24,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLBlock_h
-#define RenderMathMLBlock_h
+#pragma once
 
 #if ENABLE(MATHML)
 
-#include "RenderFlexibleBox.h"
+#include "MathMLElement.h"
+#include "MathMLStyle.h"
+#include "RenderBlock.h"
 #include "RenderTable.h"
 #include "StyleInheritedData.h"
 
-#define ENABLE_DEBUG_MATH_LAYOUT 0
-
 namespace WebCore {
-    
+
 class RenderMathMLOperator;
+class MathMLPresentationElement;
 
-class RenderMathMLBlock : public RenderFlexibleBox {
+class RenderMathMLBlock : public RenderBlock {
 public:
-    RenderMathMLBlock(Element&, Ref<RenderStyle>&&);
-    RenderMathMLBlock(Document&, Ref<RenderStyle>&&);
+    RenderMathMLBlock(MathMLPresentationElement&, RenderStyle&&);
+    RenderMathMLBlock(Document&, RenderStyle&&);
+    virtual ~RenderMathMLBlock();
 
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
-    
+    MathMLStyle& mathMLStyle() const { return m_mathMLStyle; }
+
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
+
     // MathML defines an "embellished operator" as roughly an <mo> that may have subscripts,
     // superscripts, underscripts, overscripts, or a denominator (as in d/dx, where "d" is some
     // differential operator). The padding, precedence, and stretchiness of the base <mo> should
@@ -54,39 +57,64 @@ public:
     // FIXME: We don't yet handle all the cases in the MathML spec. See
     // https://bugs.webkit.org/show_bug.cgi?id=78617.
     virtual RenderMathMLOperator* unembellishedOperator() { return 0; }
-    
-    virtual int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const override;
-    
+
+    int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const override;
+
 #if ENABLE(DEBUG_MATH_LAYOUT)
     virtual void paint(PaintInfo&, const LayoutPoint&);
 #endif
-    
-    // Create a new RenderMathMLBlock, with a new style inheriting from this->style().
-    RenderPtr<RenderMathMLBlock> createAnonymousMathMLBlock();
-    
+
+protected:
+    LayoutUnit ruleThicknessFallback() const
+    {
+        // This function returns a value for the default rule thickness (TeX's \xi_8) to be used as a fallback when we lack a MATH table.
+        // This arbitrary value of 0.05em was used in early WebKit MathML implementations for the thickness of the fraction bars.
+        // Note that Gecko has a slower but more accurate version that measures the thickness of U+00AF MACRON to be more accurate and otherwise fallback to some arbitrary value.
+        return 0.05f * style().fontCascade().size();
+    }
+
+    LayoutUnit mathAxisHeight() const;
+    LayoutUnit mirrorIfNeeded(LayoutUnit horizontalOffset, LayoutUnit boxWidth = 0) const;
+    LayoutUnit mirrorIfNeeded(LayoutUnit horizontalOffset, const RenderBox& child) const { return mirrorIfNeeded(horizontalOffset, child.logicalWidth()); }
+
+    static LayoutUnit ascentForChild(const RenderBox& child)
+    {
+        return child.firstLineBaseline().value_or(child.logicalHeight());
+    }
+
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+    void layoutInvalidMarkup();
+
 private:
-    virtual bool isRenderMathMLBlock() const override final { return true; }
-    virtual const char* renderName() const override;
-    bool isFlexibleBoxImpl() const override { return true; }
+    bool isRenderMathMLBlock() const final { return true; }
+    const char* renderName() const override { return "RenderMathMLBlock"; }
+    bool avoidsFloats() const final { return true; }
+    bool canDropAnonymousBlockChild() const final { return false; }
+    void layoutItems(bool relayoutChildren);
+
+    Ref<MathMLStyle> m_mathMLStyle;
 };
 
 class RenderMathMLTable final : public RenderTable {
 public:
-    explicit RenderMathMLTable(Element& element, Ref<RenderStyle>&& style)
+    explicit RenderMathMLTable(MathMLElement& element, RenderStyle&& style)
         : RenderTable(element, WTFMove(style))
+        , m_mathMLStyle(MathMLStyle::create())
     {
     }
-    
-    virtual Optional<int> firstLineBaseline() const override;
-    
+
+
+    MathMLStyle& mathMLStyle() const { return m_mathMLStyle; }
+
 private:
-    virtual bool isRenderMathMLTable() const override { return true; }
-    virtual const char* renderName() const override { return "RenderMathMLTable"; }
+    bool isRenderMathMLTable() const final { return true; }
+    const char* renderName() const final { return "RenderMathMLTable"; }
+    std::optional<int> firstLineBaseline() const final;
+
+    Ref<MathMLStyle> m_mathMLStyle;
 };
 
-// Parsing functions for MathML Length values
-bool parseMathMLLength(const String&, LayoutUnit&, const RenderStyle*, bool allowNegative = true);
-bool parseMathMLNamedSpace(const String&, LayoutUnit&, const RenderStyle*, bool allowNegative = true);
+LayoutUnit toUserUnits(const MathMLElement::Length&, const RenderStyle&, const LayoutUnit& referenceValue);
 
 } // namespace WebCore
 
@@ -94,4 +122,3 @@ SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLBlock, isRenderMathMLBlock())
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLTable, isRenderMathMLTable())
 
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLBlock_h

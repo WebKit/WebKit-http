@@ -42,6 +42,7 @@
 #import <WebKitLegacy/WAKAppKitStubs.h>
 #endif
 
+@class NSWindow;
 @class WebDownloadInternal;
 
 /*!
@@ -74,9 +75,6 @@
 
 /*!
     @method downloadWindowForAuthenticationSheet:
-    @abstract
-    @param
-    @result
 */
 - (NSWindow *)downloadWindowForAuthenticationSheet:(WebDownload *)download;
 

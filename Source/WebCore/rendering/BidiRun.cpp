@@ -33,7 +33,7 @@ namespace WebCore {
 
 DEFINE_DEBUG_ONLY_GLOBAL(RefCountedLeakCounter, bidiRunCounter, ("BidiRun"));
 
-BidiRun::BidiRun(int start, int stop, RenderObject& renderer, BidiContext* context, UCharDirection dir)
+BidiRun::BidiRun(unsigned start, unsigned stop, RenderObject& renderer, BidiContext* context, UCharDirection dir)
     : BidiCharacterRun(start, stop, context, dir)
     , m_renderer(renderer)
     , m_box(nullptr)
@@ -51,6 +51,14 @@ BidiRun::~BidiRun()
 #ifndef NDEBUG
     bidiRunCounter.decrement();
 #endif
+}
+
+std::unique_ptr<BidiRun> BidiRun::takeNext()
+{
+    std::unique_ptr<BidiCharacterRun> next = BidiCharacterRun::takeNext();
+    BidiCharacterRun* raw = next.release();
+    std::unique_ptr<BidiRun> result = std::unique_ptr<BidiRun>(static_cast<BidiRun*>(raw));
+    return result;
 }
 
 }

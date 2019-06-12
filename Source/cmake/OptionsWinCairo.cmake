@@ -2,6 +2,12 @@ set(WTF_PLATFORM_WIN_CAIRO 1)
 
 include(OptionsWin)
 
+find_package(Cairo 1.14.4 REQUIRED)
+find_package(CURL 7.45.0 REQUIRED)
+find_package(OpenSSL REQUIRED)
+
+SET_AND_EXPOSE_TO_BUILD(USE_CAIRO ON)
+
 set(USE_CF 1)
 set(USE_CURL 1)
 set(USE_ICU_UNICODE 1)

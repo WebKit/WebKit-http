@@ -23,19 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-// Introduced in DOM Level 2:
 [
-    JSCustomHeader,
+    ExportToWrappedFunction,
     GenerateIsReachable,
     ImplementationLacksVTable,
+    JSCustomHeader,
 ] interface MediaList {
-
-    [TreatNullAs=NullString, TreatReturnedNullStringAs=Null, SetterRaisesException] attribute DOMString mediaText;
+    [SetterMayThrowException] attribute [TreatNullAs=EmptyString] DOMString mediaText;
     readonly attribute unsigned long length;
 
-    [TreatReturnedNullStringAs=Null] getter DOMString item([Default=Undefined] optional unsigned long index);
-    [RaisesException] void deleteMedium([Default=Undefined] optional DOMString oldMedium);
-    [RaisesException] void appendMedium([Default=Undefined] optional DOMString newMedium);
+    getter DOMString? item(unsigned long index);
 
+    [MayThrowException] void deleteMedium(DOMString oldMedium);
+    [MayThrowException] void appendMedium(DOMString newMedium);
 };
-

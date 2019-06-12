@@ -28,6 +28,7 @@
 #include "CSSValueKeywords.h"
 #include "ExceptionCode.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "RenderLayer.h"
 #include "RenderMarquee.h"
 
@@ -44,18 +45,18 @@ inline HTMLMarqueeElement::HTMLMarqueeElement(const QualifiedName& tagName, Docu
 
 Ref<HTMLMarqueeElement> HTMLMarqueeElement::create(const QualifiedName& tagName, Document& document)
 {
-    Ref<HTMLMarqueeElement> marqueeElement = adoptRef(*new HTMLMarqueeElement(tagName, document));
+    auto marqueeElement = adoptRef(*new HTMLMarqueeElement(tagName, document));
     marqueeElement->suspendIfNeeded();
     return marqueeElement;
 }
 
 int HTMLMarqueeElement::minimumDelay() const
 {
-    if (!fastHasAttribute(truespeedAttr)) {
+    if (!hasAttributeWithoutSynchronization(truespeedAttr)) {
         // WinIE uses 60ms as the minimum delay by default.
         return 60;
     }
-    return 0;
+    return 16; // Don't allow timers at < 16ms intervals to avoid CPU hogging: webkit.org/b/160609
 }
 
 bool HTMLMarqueeElement::isPresentationAttribute(const QualifiedName& name) const
@@ -111,59 +112,49 @@ void HTMLMarqueeElement::collectStyleForPresentationAttribute(const QualifiedNam
 
 void HTMLMarqueeElement::start()
 {
-    if (RenderMarquee* marqueeRenderer = renderMarquee())
-        marqueeRenderer->start();
+    if (auto* renderer = renderMarquee())
+        renderer->start();
 }
 
 void HTMLMarqueeElement::stop()
 {
-    if (RenderMarquee* marqueeRenderer = renderMarquee())
-        marqueeRenderer->stop();
+    if (auto* renderer = renderMarquee())
+        renderer->stop();
 }
 
-int HTMLMarqueeElement::scrollAmount() const
+unsigned HTMLMarqueeElement::scrollAmount() const
 {
-    bool ok;
-    int scrollAmount = fastGetAttribute(scrollamountAttr).toInt(&ok);
-    return ok && scrollAmount >= 0 ? scrollAmount : RenderStyle::initialMarqueeIncrement().intValue();
+    return limitToOnlyHTMLNonNegative(attributeWithoutSynchronization(scrollamountAttr), RenderStyle::initialMarqueeIncrement().intValue());
 }
     
-void HTMLMarqueeElement::setScrollAmount(int scrollAmount, ExceptionCode& ec)
+void HTMLMarqueeElement::setScrollAmount(unsigned scrollAmount)
 {
-    if (scrollAmount < 0)
-        ec = INDEX_SIZE_ERR;
-    else
-        setIntegralAttribute(scrollamountAttr, scrollAmount);
+    setUnsignedIntegralAttribute(scrollamountAttr, limitToOnlyHTMLNonNegative(scrollAmount, RenderStyle::initialMarqueeIncrement().intValue()));
 }
     
-int HTMLMarqueeElement::scrollDelay() const
+unsigned HTMLMarqueeElement::scrollDelay() const
 {
-    bool ok;
-    int scrollDelay = fastGetAttribute(scrolldelayAttr).toInt(&ok);
-    return ok && scrollDelay >= 0 ? scrollDelay : RenderStyle::initialMarqueeSpeed();
+    return limitToOnlyHTMLNonNegative(attributeWithoutSynchronization(scrolldelayAttr), RenderStyle::initialMarqueeSpeed());
 }
 
-void HTMLMarqueeElement::setScrollDelay(int scrollDelay, ExceptionCode& ec)
+void HTMLMarqueeElement::setScrollDelay(unsigned scrollDelay)
 {
-    if (scrollDelay < 0)
-        ec = INDEX_SIZE_ERR;
-    else
-        setIntegralAttribute(scrolldelayAttr, scrollDelay);
+    setUnsignedIntegralAttribute(scrolldelayAttr, limitToOnlyHTMLNonNegative(scrollDelay, RenderStyle::initialMarqueeSpeed()));
 }
     
 int HTMLMarqueeElement::loop() const
 {
     bool ok;
-    int loopValue = fastGetAttribute(loopAttr).toInt(&ok);
+    int loopValue = attributeWithoutSynchronization(loopAttr).toInt(&ok);
     return ok && loopValue > 0 ? loopValue : -1;
 }
     
-void HTMLMarqueeElement::setLoop(int loop, ExceptionCode& ec)
+ExceptionOr<void> HTMLMarqueeElement::setLoop(int loop)
 {
     if (loop <= 0 && loop != -1)
-        ec = INDEX_SIZE_ERR;
-    else
-        setIntegralAttribute(loopAttr, loop);
+        return Exception { INDEX_SIZE_ERR };
+    setIntegralAttribute(loopAttr, loop);
+    return { };
 }
 
 bool HTMLMarqueeElement::canSuspendForDocumentSuspension() const
@@ -185,9 +176,9 @@ void HTMLMarqueeElement::resume()
 
 RenderMarquee* HTMLMarqueeElement::renderMarquee() const
 {
-    if (renderer() && renderer()->hasLayer())
-        return renderBoxModelObject()->layer()->marquee();
-    return 0;
+    if (!renderer() || !renderer()->hasLayer())
+        return nullptr;
+    return renderBoxModelObject()->layer()->marquee();
 }
 
 } // namespace WebCore

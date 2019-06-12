@@ -23,12 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGBlockSet_h
-#define DFGBlockSet_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DFGBasicBlock.h"
+#include <wtf/BitVector.h>
 
 namespace JSC { namespace DFG {
 
@@ -146,6 +146,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGBlockSet_h
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2014-2017 Apple, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +26,18 @@
 #import "config.h"
 #import "DataDetection.h"
 
+#if ENABLE(DATA_DETECTION)
+
 #import "Attr.h"
 #import "CSSStyleDeclaration.h"
-#import "DataDetectorsCoreSoftLink.h"
 #import "DataDetectorsSPI.h"
+#import "DataDetectorsUISPI.h"
+#import "Editing.h"
+#import "ElementAncestorIterator.h"
+#import "ElementTraversal.h"
 #import "FrameView.h"
 #import "HTMLAnchorElement.h"
+#import "HTMLNames.h"
 #import "HTMLTextFormControlElement.h"
 #import "HitTestResult.h"
 #import "Node.h"
@@ -39,45 +45,18 @@
 #import "NodeTraversal.h"
 #import "Range.h"
 #import "RenderObject.h"
+#import "StyleProperties.h"
 #import "Text.h"
 #import "TextIterator.h"
 #import "VisiblePosition.h"
 #import "VisibleUnits.h"
-#import "htmlediting.h"
+#import <wtf/text/StringBuilder.h>
 
-const char *dataDetectorsURLScheme = "x-apple-data-detectors";
-const char *dataDetectorsAttributeTypeKey = "x-apple-data-detectors-type";
-const char *dataDetectorsAttributeResultKey = "x-apple-data-detectors-result";
+#import "DataDetectorsCoreSoftLink.h"
 
 namespace WebCore {
 
-bool DataDetection::isDataDetectorLink(Element* element)
-{
-    return element->getAttribute(dataDetectorsURLScheme) == "true";
-}
-
-String DataDetection::dataDetectorIdentifier(Element* element)
-{
-    return element->getAttribute(dataDetectorsAttributeResultKey);
-}
-
-bool DataDetection::shouldCancelDefaultAction(Element* element)
-{
-#if PLATFORM(MAC)
-    UNUSED_PARAM(element);
-    return false;
-#else
-    // FIXME: We should also compute the DDResultRef and check the result category.
-    if (!is<HTMLAnchorElement>(*element))
-        return false;
-    if (element->getAttribute(dataDetectorsURLScheme) != "true")
-        return false;
-    String type = element->getAttribute(dataDetectorsAttributeTypeKey);
-    if (type == "misc" || type == "calendar-event" || type == "telephone")
-        return true;
-    return false;
-#endif
-}
+using namespace HTMLNames;
 
 #if PLATFORM(MAC)
 
@@ -103,7 +82,7 @@ static RetainPtr<DDActionContext> detectItemAtPositionWithRange(VisiblePosition 
         CFRange resultRangeInContext = DDResultGetRange(result);
         if (hitLocation >= resultRangeInContext.location && (hitLocation - resultRangeInContext.location) < resultRangeInContext.length) {
             mainResult = result;
-            mainResultRange = TextIterator::subrange(contextRange.get(), resultRangeInContext.location, resultRangeInContext.length);
+            mainResultRange = TextIterator::subrange(*contextRange, resultRangeInContext.location, resultRangeInContext.length);
             break;
         }
     }
@@ -173,7 +152,49 @@ RetainPtr<DDActionContext> DataDetection::detectItemAroundHitTestResult(const Hi
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
+bool DataDetection::isDataDetectorLink(Element& element)
+{
+    if (!is<HTMLAnchorElement>(element))
+        return false;
+
+    return [softLink_DataDetectorsCore_DDURLTapAndHoldSchemes() containsObject:(NSString *)downcast<HTMLAnchorElement>(element).href().protocol().toStringWithoutCopying().convertToASCIILowercase()];
+}
+
+bool DataDetection::requiresExtendedContext(Element& element)
+{
+    return equalIgnoringASCIICase(element.attributeWithoutSynchronization(x_apple_data_detectors_typeAttr), "calendar-event");
+}
+
+String DataDetection::dataDetectorIdentifier(Element& element)
+{
+    return element.attributeWithoutSynchronization(x_apple_data_detectors_resultAttr);
+}
+
+bool DataDetection::shouldCancelDefaultAction(Element& element)
+{
+    if (!isDataDetectorLink(element))
+        return false;
     
+    if (softLink_DataDetectorsCore_DDShouldImmediatelyShowActionSheetForURL(downcast<HTMLAnchorElement>(element).href()))
+        return true;
+    
+    const AtomicString& resultAttribute = element.attributeWithoutSynchronization(x_apple_data_detectors_resultAttr);
+    if (resultAttribute.isEmpty())
+        return false;
+    NSArray *results = element.document().frame()->dataDetectionResults();
+    if (!results)
+        return false;
+    Vector<String> resultIndices;
+    resultAttribute.string().split('/', resultIndices);
+    DDResultRef result = [[results objectAtIndex:resultIndices[0].toInt()] coreResult];
+    // Handle the case of a signature block, where we need to check the correct subresult.
+    for (size_t i = 1; i < resultIndices.size(); i++) {
+        results = (NSArray *)softLink_DataDetectorsCore_DDResultGetSubResults(result);
+        result = (DDResultRef)[results objectAtIndex:resultIndices[i].toInt()];
+    }
+    return softLink_DataDetectorsCore_DDShouldImmediatelyShowActionSheetForResult(result);
+}
+
 static BOOL resultIsURL(DDResultRef result)
 {
     if (!result)
@@ -194,7 +215,8 @@ static NSString *constructURLStringForResult(DDResultRef currentResult, NSString
     
     if (((detectionTypes & DataDetectorTypeAddress) && (DDResultCategoryAddress == category))
         || ((detectionTypes & DataDetectorTypeTrackingNumber) && (CFStringCompare(get_DataDetectorsCore_DDBinderTrackingNumberKey(), type, 0) == kCFCompareEqualTo))
-        || ((detectionTypes & DataDetectorTypeFlight) && (CFStringCompare(get_DataDetectorsCore_DDBinderFlightInformationKey(), type, 0) == kCFCompareEqualTo))
+        || ((detectionTypes & DataDetectorTypeFlightNumber) && (CFStringCompare(get_DataDetectorsCore_DDBinderFlightInformationKey(), type, 0) == kCFCompareEqualTo))
+        || ((detectionTypes & DataDetectorTypeLookupSuggestion) && (CFStringCompare(get_DataDetectorsCore_DDBinderParsecSourceKey(), type, 0) == kCFCompareEqualTo))
         || ((detectionTypes & DataDetectorTypePhoneNumber) && (DDResultCategoryPhoneNumber == category))
         || ((detectionTypes & DataDetectorTypeLink) && resultIsURL(currentResult))) {
         
@@ -207,80 +229,52 @@ static NSString *constructURLStringForResult(DDResultRef currentResult, NSString
     return nil;
 }
 
-static void removeResultLinksFromAnchor(Node* node, Node* nodeParent)
+static void removeResultLinksFromAnchor(Element& element)
 {
     // Perform a depth-first search for anchor nodes, which have the DDURLScheme attribute set to true,
-    // take their children and insert them before the anchor,
-    // and then remove the anchor.
-    
-    if (!node)
+    // take their children and insert them before the anchor, and then remove the anchor.
+
+    // Note that this is not using ElementChildIterator because we potentially prepend children as we iterate over them.
+    for (auto* child = ElementTraversal::firstChild(element); child; child = ElementTraversal::nextSibling(*child))
+        removeResultLinksFromAnchor(*child);
+
+    auto* elementParent = element.parentElement();
+    if (!elementParent)
         return;
     
-    BOOL nodeIsDDAnchor = is<HTMLAnchorElement>(*node) && downcast<Element>(*node).getAttribute(dataDetectorsURLScheme) == "true";
-    
-    RefPtr<NodeList> children = node->childNodes();
-    unsigned childCount = children->length();
-    for (size_t i = 0; i < childCount; i++) {
-        Node *child = children->item(i);
-        if (is<Element>(*child))
-            removeResultLinksFromAnchor(child, node);
-    }
-    
-    if (nodeIsDDAnchor && nodeParent) {
-        children = node->childNodes();
-        childCount = children->length();
-        
-        // Iterate over the children and move them all onto the same level as this anchor.
-        // Remove the anchor afterwards.
-        for (size_t i = 0; i < childCount; i++) {
-            Node *child = children->item(0);
-            nodeParent->insertBefore(child, node, ASSERT_NO_EXCEPTION);
-        }
-        nodeParent->removeChild(node, ASSERT_NO_EXCEPTION);
-    }
+    bool elementIsDDAnchor = is<HTMLAnchorElement>(element) && equalIgnoringASCIICase(element.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true");
+    if (!elementIsDDAnchor)
+        return;
+
+    // Iterate over the children and move them all onto the same level as this anchor. Remove the anchor afterwards.
+    while (auto* child = element.firstChild())
+        elementParent->insertBefore(*child, &element);
+
+    elementParent->removeChild(element);
 }
 
-static bool searchForLinkRemovingExistingDDLinks(Node* startNode, Node* endNode, bool &didModifyDOM)
+static bool searchForLinkRemovingExistingDDLinks(Node& startNode, Node& endNode, bool& didModifyDOM)
 {
     didModifyDOM = false;
-    Node *node = startNode;
-    while (node) {
+    for (Node* node = &startNode; node; node = NodeTraversal::next(*node)) {
         if (is<HTMLAnchorElement>(*node)) {
-            if (downcast<Element>(*node).getAttribute(dataDetectorsURLScheme) != "true")
+            auto& anchor = downcast<HTMLAnchorElement>(*node);
+            if (!equalIgnoringASCIICase(anchor.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true"))
                 return true;
-            removeResultLinksFromAnchor(node, node->parentElement());
+            removeResultLinksFromAnchor(anchor);
             didModifyDOM = true;
         }
         
-        if (node == endNode) {
+        if (node == &endNode) {
             // If we found the end node and no link, return false unless an ancestor node is a link.
             // The only ancestors not tested at this point are in the direct line from self's parent to the top.
-            node = startNode->parentNode();
-            while (node) {
-                if (is<HTMLAnchorElement>(*node)) {
-                    if (downcast<Element>(*node).getAttribute(dataDetectorsURLScheme) != "true")
-                        return true;
-                    removeResultLinksFromAnchor(node, node->parentElement());
-                    didModifyDOM = true;
-                }
-                node = node->parentNode();
+            for (auto& anchor : ancestorsOfType<HTMLAnchorElement>(startNode)) {
+                if (!equalIgnoringASCIICase(anchor.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true"))
+                    return true;
+                removeResultLinksFromAnchor(anchor);
+                didModifyDOM = true;
             }
             return false;
-        }
-        
-        RefPtr<NodeList> childNodes = node->childNodes();
-        if (childNodes->length())
-            node = childNodes->item(0);
-        else {
-            Node *newNode = node->nextSibling();
-            Node *parentNode = node;
-            while (!newNode) {
-                parentNode = parentNode->parentNode();
-                if (!parentNode)
-                    return false;
-                newNode = parentNode->nextSibling();
-            }
-            node = newNode;
         }
     }
     return false;
@@ -304,30 +298,32 @@ static NSString *dataDetectorTypeForCategory(DDResultCategory category)
     }
 }
 
-static String dataDetectorStringForPath(NSIndexPath* path)
+static String dataDetectorStringForPath(NSIndexPath *path)
 {
     NSUInteger length = path.length;
     
     switch (length) {
     case 0:
-        return String();
-        
+        return { };
     case 1:
-        return String::format("%lu", (unsigned long)[path indexAtPosition:0]);
-        
-    case 2:
-        return String::format("%lu/%lu", (unsigned long)[path indexAtPosition:0], (unsigned long)[path indexAtPosition:1]);
-        
-    default:
-        {
-            String componentsString = String::format("%lu", (unsigned long)[path indexAtPosition:0]);
-            for (NSUInteger i = 1 ; i < length ; i++) {
-                componentsString.append("/");
-                componentsString.append(String::format("%lu", (unsigned long)[path indexAtPosition:i]));
-            }
-
-            return componentsString;
+        return String::number((unsigned long)[path indexAtPosition:0]);
+    case 2: {
+        StringBuilder stringBuilder;
+        stringBuilder.appendNumber((unsigned long)[path indexAtPosition:0]);
+        stringBuilder.append('/');
+        stringBuilder.appendNumber((unsigned long)[path indexAtPosition:1]);
+        return stringBuilder.toString();
+    }
+    default: {
+        StringBuilder stringBuilder;
+        stringBuilder.appendNumber((unsigned long)[path indexAtPosition:0]);
+        for (NSUInteger i = 1 ; i < length ; i++) {
+            stringBuilder.append('/');
+            stringBuilder.appendNumber((unsigned long)[path indexAtPosition:i]);
         }
+
+        return stringBuilder.toString();
+    }
     }
 }
 
@@ -358,7 +354,7 @@ static void buildQuery(DDScanQueryRef scanQuery, Range* contextRange)
             continue;
         }
         // Test for white space nodes, we're coalescing them.
-        const UniChar *currentCharPtr = iterator.text().upconvertedCharacters();
+        const UniChar* currentCharPtr = iterator.text().upconvertedCharacters();
         
         bool containsOnlyWhiteSpace = true;
         bool hasTab = false;
@@ -416,24 +412,27 @@ static inline CFComparisonResult queryOffsetCompare(DDQueryOffset o1, DDQueryOff
     return kCFCompareEqualTo;
 }
 
-NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDetectorTypes types)
+NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDetectorTypes types, NSDictionary *context)
 {
     RetainPtr<DDScannerRef> scanner = adoptCF(softLink_DataDetectorsCore_DDScannerCreate(DDScannerTypeStandard, 0, nullptr));
     RetainPtr<DDScanQueryRef> scanQuery = adoptCF(softLink_DataDetectorsCore_DDScanQueryCreate(NULL));
     buildQuery(scanQuery.get(), contextRange.get());
     
+    if (types & DataDetectorTypeLookupSuggestion)
+        softLink_DataDetectorsCore_DDScannerEnableOptionalSource(scanner.get(), DDScannerSourceSpotlight, true);
+
     // FIXME: we should add a timeout to this call to make sure it doesn't take too much time.
     if (!softLink_DataDetectorsCore_DDScannerScanQuery(scanner.get(), scanQuery.get()))
         return nil;
-    
+
     RetainPtr<CFArrayRef> scannerResults = adoptCF(softLink_DataDetectorsCore_DDScannerCopyResultsWithOptions(scanner.get(), get_DataDetectorsCore_DDScannerCopyResultsOptionsForPassiveUse() | DDScannerCopyResultsOptionsCoalesceSignatures));
     if (!scannerResults)
         return nil;
-    
+
     CFIndex resultCount = CFArrayGetCount(scannerResults.get());
     if (!resultCount)
         return nil;
-    
+
     Vector<RetainPtr<DDResultRef>> allResults;
     Vector<RetainPtr<NSIndexPath>> indexPaths;
     NSInteger currentTopLevelIndex = 0;
@@ -467,16 +466,14 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
     for (auto& result : allResults) {
         DDQueryRange queryRange = softLink_DataDetectorsCore_DDResultGetQueryRangeForURLification(result.get());
         CFIndex iteratorTargetAdvanceCount = (CFIndex)softLink_DataDetectorsCore_DDScanQueryGetFragmentMetaData(scanQuery.get(), queryRange.start.queryIndex);
-        while (iteratorCount < iteratorTargetAdvanceCount) {
+        for (; iteratorCount < iteratorTargetAdvanceCount; ++iteratorCount)
             iterator.advance();
-            iteratorCount++;
-        }
 
         Vector<RefPtr<Range>> fragmentRanges;
         RefPtr<Range> currentRange = iterator.range();
         CFIndex fragmentIndex = queryRange.start.queryIndex;
         if (fragmentIndex == queryRange.end.queryIndex)
-            fragmentRanges.append(TextIterator::subrange(currentRange.get(), queryRange.start.offset, queryRange.end.offset - queryRange.start.offset));
+            fragmentRanges.append(TextIterator::subrange(*currentRange, queryRange.start.offset, queryRange.end.offset - queryRange.start.offset));
         else {
             if (!queryRange.start.offset)
                 fragmentRanges.append(currentRange);
@@ -485,68 +482,80 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
         }
         
         while (fragmentIndex < queryRange.end.queryIndex) {
-            fragmentIndex++;
+            ++fragmentIndex;
             iteratorTargetAdvanceCount = (CFIndex)softLink_DataDetectorsCore_DDScanQueryGetFragmentMetaData(scanQuery.get(), fragmentIndex);
-            while (iteratorCount < iteratorTargetAdvanceCount) {
+            for (; iteratorCount < iteratorTargetAdvanceCount; ++iteratorCount)
                 iterator.advance();
-                iteratorCount++;
-            }
+
             currentRange = iterator.range();
-            fragmentRanges.append(currentRange);
+            RefPtr<Range> fragmentRange = (fragmentIndex == queryRange.end.queryIndex) ?  Range::create(currentRange->ownerDocument(), &currentRange->startContainer(), currentRange->startOffset(), &currentRange->endContainer(), currentRange->startOffset() + queryRange.end.offset) : currentRange;
+            RefPtr<Range> previousRange = fragmentRanges.last();
+            if (&previousRange->startContainer() == &fragmentRange->startContainer()) {
+                fragmentRange = Range::create(currentRange->ownerDocument(), &previousRange->startContainer(), previousRange->startOffset(), &fragmentRange->endContainer(), fragmentRange->endOffset());
+                fragmentRanges.last() = fragmentRange;
+            } else
+                fragmentRanges.append(fragmentRange);
         }
-        allResultRanges.append(fragmentRanges);
+        allResultRanges.append(WTFMove(fragmentRanges));
     }
     
-    CFTimeZoneRef tz = CFTimeZoneCopyDefault();
-    NSDate *referenceDate = [NSDate date];
+    auto tz = adoptCF(CFTimeZoneCopyDefault());
+    NSDate *referenceDate = [context objectForKey:getkDataDetectorsReferenceDateKey()] ?: [NSDate date];
     Text* lastTextNodeToUpdate = nullptr;
     String lastNodeContent;
     size_t contentOffset = 0;
-    DDQueryOffset lastModifiedQueryOffset = {-1, 0};
+    DDQueryOffset lastModifiedQueryOffset = { -1, 0 };
     
     // For each result add the link.
     // Since there could be multiple results in the same text node, the node is only modified when
     // we are about to process a different text node.
     resultCount = allResults.size();
     
-    for (CFIndex resultIndex = 0; resultIndex < resultCount; resultIndex++) {
+    for (CFIndex resultIndex = 0; resultIndex < resultCount; ++resultIndex) {
         DDResultRef coreResult = allResults[resultIndex].get();
         DDQueryRange queryRange = softLink_DataDetectorsCore_DDResultGetQueryRangeForURLification(coreResult);
-        Vector<RefPtr<Range>> resultRanges = allResultRanges[resultIndex];
+        auto& resultRanges = allResultRanges[resultIndex];
 
         // Compare the query offsets to make sure we don't go backwards
         if (queryOffsetCompare(lastModifiedQueryOffset, queryRange.start) >= 0)
             continue;
 
-        if (!resultRanges.size())
+        if (resultRanges.isEmpty())
             continue;
-
-        NSString *identifier = dataDetectorStringForPath(indexPaths[resultIndex].get());
-        NSString *correspondingURL = constructURLStringForResult(coreResult, identifier, referenceDate, (NSTimeZone *)tz, types);
-        bool didModifyDOM = false;
         
         // Store the range boundaries as Position, because the DOM could change if we find
         // old data detector link.
         Vector<std::pair<Position, Position>> rangeBoundaries;
+        rangeBoundaries.reserveInitialCapacity(resultRanges.size());
         for (auto& range : resultRanges)
-            rangeBoundaries.append(std::make_pair(range->startPosition(), range->endPosition()));
+            rangeBoundaries.uncheckedAppend({ range->startPosition(), range->endPosition() });
 
-        if (!correspondingURL || searchForLinkRemovingExistingDDLinks(&resultRanges.first()->startContainer(), &resultRanges.last()->endContainer(), didModifyDOM))
+        NSString *identifier = dataDetectorStringForPath(indexPaths[resultIndex].get());
+        NSString *correspondingURL = constructURLStringForResult(coreResult, identifier, referenceDate, (NSTimeZone *)tz.get(), types);
+        bool didModifyDOM = false;
+
+        if (!correspondingURL || searchForLinkRemovingExistingDDLinks(resultRanges.first()->startContainer(), resultRanges.last()->endContainer(), didModifyDOM))
             continue;
         
         if (didModifyDOM) {
             // If the DOM was modified because some old links were removed,
             // we need to recreate the ranges because they could no longer be valid.
-            resultRanges.clear();
+            ASSERT(resultRanges.size() == rangeBoundaries.size());
+            resultRanges.shrink(0); // Keep capacity as we are going to repopulate the Vector right away with the same number of items.
             for (auto& rangeBoundary : rangeBoundaries)
-                resultRanges.append(Range::create(*rangeBoundary.first.document(), rangeBoundary.first, rangeBoundary.second));
+                resultRanges.uncheckedAppend(Range::create(*rangeBoundary.first.document(), rangeBoundary.first, rangeBoundary.second));
         }
         
         lastModifiedQueryOffset = queryRange.end;
+        BOOL shouldUseLightLinks = softLink_DataDetectorsCore_DDShouldUseLightLinksForResult(coreResult, [indexPaths[resultIndex] length] > 1);
 
         for (auto& range : resultRanges) {
-            Node* parentNode = range->startContainer().parentNode();
-            Text& currentTextNode = downcast<Text>(range->startContainer());
+            auto* parentNode = range->startContainer().parentNode();
+            if (!parentNode)
+                continue;
+            if (!is<Text>(range->startContainer()))
+                continue;
+            auto& currentTextNode = downcast<Text>(range->startContainer());
             Document& document = currentTextNode.document();
             String textNodeData;
             
@@ -555,37 +564,62 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
                     lastTextNodeToUpdate->setData(lastNodeContent);
                 contentOffset = 0;
                 if (range->startOffset() > 0)
-                    textNodeData = currentTextNode.substringData(0, range->startOffset(), ASSERT_NO_EXCEPTION);
+                    textNodeData = currentTextNode.data().substring(0, range->startOffset());
             } else
-                textNodeData = currentTextNode.substringData(contentOffset, range->startOffset() - contentOffset, ASSERT_NO_EXCEPTION);
+                textNodeData = currentTextNode.data().substring(contentOffset, range->startOffset() - contentOffset);
             
             if (!textNodeData.isEmpty()) {
-                RefPtr<Node> newNode = Text::create(document, textNodeData);
-                parentNode->insertBefore(newNode, &currentTextNode, ASSERT_NO_EXCEPTION);
+                parentNode->insertBefore(Text::create(document, textNodeData), &currentTextNode);
                 contentOffset = range->startOffset();
             }
             
             // Create the actual anchor node and insert it before the current node.
-            textNodeData = currentTextNode.substringData(range->startOffset(), range->endOffset() - range->startOffset(), ASSERT_NO_EXCEPTION);
-            RefPtr<Node> newNode = Text::create(document, textNodeData);
-            parentNode->insertBefore(newNode, &currentTextNode, ASSERT_NO_EXCEPTION);
+            textNodeData = currentTextNode.data().substring(range->startOffset(), range->endOffset() - range->startOffset());
+            Ref<Text> newTextNode = Text::create(document, textNodeData);
+            parentNode->insertBefore(newTextNode.copyRef(), &currentTextNode);
             
-            RefPtr<HTMLAnchorElement> anchorElement = HTMLAnchorElement::create(document);
+            Ref<HTMLAnchorElement> anchorElement = HTMLAnchorElement::create(document);
             anchorElement->setHref(correspondingURL);
             anchorElement->setDir("ltr");
-            RefPtr<Attr> color = downcast<Element>(parentNode)->getAttributeNode("color");
-            if (color)
-                anchorElement->setAttribute(HTMLNames::styleAttr, color->style()->cssText());
-            
-            anchorElement->Node::appendChild(newNode, ASSERT_NO_EXCEPTION);
-            parentNode->insertBefore(anchorElement, &currentTextNode, ASSERT_NO_EXCEPTION);
+            if (shouldUseLightLinks) {
+                document.updateStyleIfNeeded();
+                auto* renderStyle = parentNode->computedStyle();
+                if (renderStyle) {
+                    auto textColor = renderStyle->visitedDependentColor(CSSPropertyColor);
+                    if (textColor.isValid()) {
+                        double h = 0;
+                        double s = 0;
+                        double v = 0;
+                        textColor.getHSV(h, s, v);
+
+                        // Set the alpha of the underline to 46% if the text color is white-ish (defined
+                        // as having a saturation of less than 2% and a value/brightness or greater than
+                        // 98%). Otherwise, set the alpha of the underline to 26%.
+                        double overrideAlpha = (s < 0.02 && v > 0.98) ? 0.46 : 0.26;
+                        auto underlineColor = Color(colorWithOverrideAlpha(textColor.rgb(), overrideAlpha));
+
+                        anchorElement->setInlineStyleProperty(CSSPropertyColor, textColor.cssText());
+                        anchorElement->setInlineStyleProperty(CSSPropertyWebkitTextDecorationColor, underlineColor.cssText());
+                    }
+                }
+            } else if (is<StyledElement>(*parentNode)) {
+                if (auto* style = downcast<StyledElement>(*parentNode).presentationAttributeStyle()) {
+                    String color = style->getPropertyValue(CSSPropertyColor);
+                    if (!color.isEmpty())
+                        anchorElement->setInlineStyleProperty(CSSPropertyColor, color);
+                }
+            }
+            anchorElement->appendChild(WTFMove(newTextNode));
             // Add a special attribute to mark this URLification as the result of data detectors.
-            anchorElement->setAttribute(QualifiedName(nullAtom, dataDetectorsURLScheme, nullAtom), "true");
-            anchorElement->setAttribute(QualifiedName(nullAtom, dataDetectorsAttributeTypeKey, nullAtom), dataDetectorTypeForCategory(softLink_DataDetectorsCore_DDResultGetCategory(coreResult)));
-            anchorElement->setAttribute(QualifiedName(nullAtom, dataDetectorsAttributeResultKey, nullAtom), identifier);
+            anchorElement->setAttributeWithoutSynchronization(x_apple_data_detectorsAttr, AtomicString("true", AtomicString::ConstructFromLiteral));
+            anchorElement->setAttributeWithoutSynchronization(x_apple_data_detectors_typeAttr, dataDetectorTypeForCategory(softLink_DataDetectorsCore_DDResultGetCategory(coreResult)));
+            anchorElement->setAttributeWithoutSynchronization(x_apple_data_detectors_resultAttr, identifier);
+
+            parentNode->insertBefore(WTFMove(anchorElement), &currentTextNode);
+
             contentOffset = range->endOffset();
             
-            lastNodeContent = currentTextNode.substringData(range->endOffset(), currentTextNode.length() - range->endOffset(), ASSERT_NO_EXCEPTION);
+            lastNodeContent = currentTextNode.data().substring(range->endOffset(), currentTextNode.length() - range->endOffset());
             lastTextNodeToUpdate = &currentTextNode;
         }        
     }
@@ -596,9 +630,24 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
 }
 
 #else
-NSArray *DataDetection::detectContentInRange(RefPtr<Range>&, DataDetectorTypes)
+NSArray *DataDetection::detectContentInRange(RefPtr<Range>&, DataDetectorTypes, NSDictionary *)
 {
     return nil;
 }
 #endif
+
+const String& DataDetection::dataDetectorURLProtocol()
+{
+    static NeverDestroyed<String> protocol(MAKE_STATIC_STRING_IMPL("x-apple-data-detectors"));
+    return protocol;
+}
+
+bool DataDetection::isDataDetectorURL(const URL& url)
+{
+    return url.protocolIs(dataDetectorURLProtocol());
+}
+
 } // namespace WebCore
+
+#endif
+

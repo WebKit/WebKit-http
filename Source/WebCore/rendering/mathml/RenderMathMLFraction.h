@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 François Sausset (sausset@gmail.com). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,37 +25,57 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLFraction_h
-#define RenderMathMLFraction_h
+#pragma once
 
 #if ENABLE(MATHML)
 
-#include "MathMLInlineContainerElement.h"
+#include "MathMLFractionElement.h"
 #include "RenderMathMLBlock.h"
 
 namespace WebCore {
 
+class MathMLFractionElement;
+
 class RenderMathMLFraction final : public RenderMathMLBlock {
 public:
-    RenderMathMLFraction(MathMLInlineContainerElement&, Ref<RenderStyle>&&);
+    RenderMathMLFraction(MathMLFractionElement&, RenderStyle&&);
 
-    MathMLInlineContainerElement& element() { return static_cast<MathMLInlineContainerElement&>(nodeForNonAnonymous()); }
-    float lineThickness() const { return m_lineThickness; }
+    float relativeLineThickness() const { return m_defaultLineThickness ? m_lineThickness / m_defaultLineThickness : LayoutUnit(0); }
 
 private:
-    virtual bool isRenderMathMLFraction() const override { return true; }
-    virtual const char* renderName() const override { return "RenderMathMLFraction"; }
+    bool isRenderMathMLFraction() const final { return true; }
+    const char* renderName() const final { return "RenderMathMLFraction"; }
 
-    virtual void addChild(RenderObject* child, RenderObject* beforeChild) override;
-    virtual void updateFromElement() override;
-    virtual Optional<int> firstLineBaseline() const override;
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
-    virtual RenderMathMLOperator* unembellishedOperator() override;
-    virtual void layout() override;
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void computePreferredLogicalWidths() final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
+    std::optional<int> firstLineBaseline() const final;
+    void paint(PaintInfo&, const LayoutPoint&) final;
+    RenderMathMLOperator* unembellishedOperator() final;
 
-    void fixChildStyle(RenderObject*);
-    
+    MathMLFractionElement& element() const { return static_cast<MathMLFractionElement&>(nodeForNonAnonymous()); }
+
+    bool isStack() const { return !m_lineThickness; }
+    bool isValid() const;
+    RenderBox& numerator() const;
+    RenderBox& denominator() const;
+    LayoutUnit horizontalOffset(RenderBox&, MathMLFractionElement::FractionAlignment);
+    void updateLineThickness();
+    struct FractionParameters {
+        LayoutUnit numeratorGapMin;
+        LayoutUnit denominatorGapMin;
+        LayoutUnit numeratorMinShiftUp;
+        LayoutUnit denominatorMinShiftDown;
+    };
+    FractionParameters fractionParameters();
+    struct StackParameters {
+        LayoutUnit gapMin;
+        LayoutUnit topShiftUp;
+        LayoutUnit bottomShiftDown;
+    };
+    StackParameters stackParameters();
+
+    LayoutUnit m_ascent;
+    LayoutUnit m_defaultLineThickness { 1 };
     LayoutUnit m_lineThickness;
 };
 
@@ -63,5 +84,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLFraction, isRenderMathMLFraction())
 
 #endif // ENABLE(MATHML)
-
-#endif // RenderMathMLFraction_h

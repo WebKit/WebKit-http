@@ -27,77 +27,43 @@
 #include "config.h"
 #include "WebProcess.h"
 
-#if PLATFORM(EFL)
-#include "SeccompFiltersWebProcessEfl.h"
-#elif PLATFORM(GTK)
-#include "SeccompFiltersWebProcessGtk.h"
-#endif
-
-#include "CertificateInfo.h"
-#include "WebCookieManager.h"
 #include "WebProcessCreationParameters.h"
-#include <WebCore/FileSystem.h>
-#include <WebCore/Language.h>
 #include <WebCore/MemoryCache.h>
-#include <WebCore/PageCache.h>
-#include <WebCore/ResourceHandle.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/SoupNetworkSession.h>
-#include <libsoup/soup.h>
-#include <wtf/RAMSize.h>
-#include <wtf/glib/GRefPtr.h>
-#include <wtf/glib/GUniquePtr.h>
+
+#if PLATFORM(WAYLAND)
+#include "WaylandCompositorDisplay.h"
+#endif
 
 namespace WebKit {
 
 void WebProcess::platformSetCacheModel(CacheModel cacheModel)
 {
-    unsigned cacheTotalCapacity = 0;
-    unsigned cacheMinDeadCapacity = 0;
-    unsigned cacheMaxDeadCapacity = 0;
-    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
-    unsigned pageCacheSize = 0;
-
-    unsigned long urlCacheMemoryCapacity = 0;
-    unsigned long urlCacheDiskCapacity = 0;
-
-    uint64_t diskFreeSize = 0;
-
-    uint64_t memSize = WTF::ramSize() / WTF::MB;
-    calculateCacheSizes(cacheModel, memSize, diskFreeSize,
-                        cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
-                        pageCacheSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
-
-    auto& memoryCache = WebCore::MemoryCache::singleton();
-    memoryCache.setDisabled(cacheModel == CacheModelDocumentViewer);
-    memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
-    WebCore::PageCache::singleton().setMaxSize(pageCacheSize);
-
-#if PLATFORM(GTK)
-    WebCore::PageCache::singleton().setShouldClearBackingStores(true);
-#endif
-}
-
-void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear)
-{
+    WebCore::MemoryCache::singleton().setDisabled(cacheModel == CacheModelDocumentViewer);
 }
 
 void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& parameters)
 {
-#if ENABLE(SECCOMP_FILTERS)
-    {
-#if PLATFORM(EFL)
-        SeccompFiltersWebProcessEfl seccompFilters(parameters);
-#elif PLATFORM(GTK)
-        SeccompFiltersWebProcessGtk seccompFilters(parameters);
-#endif
-        seccompFilters.initialize();
-    }
+    if (parameters.proxySettings.mode != WebCore::SoupNetworkProxySettings::Mode::Default)
+        setNetworkProxySettings(parameters.proxySettings);
+
+#if PLATFORM(WAYLAND)
+    m_waylandCompositorDisplay = WaylandCompositorDisplay::create(parameters.waylandCompositorDisplayName);
 #endif
 }
 
 void WebProcess::platformTerminate()
 {
+}
+
+void WebProcess::setNetworkProxySettings(const WebCore::SoupNetworkProxySettings& settings)
+{
+    WebCore::SoupNetworkSession::setProxySettings(settings);
+    WebCore::NetworkStorageSession::forEach([](const WebCore::NetworkStorageSession& session) {
+        if (auto* soupSession = session.soupNetworkSession())
+            soupSession->setupProxy();
+    });
 }
 
 } // namespace WebKit

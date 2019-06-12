@@ -25,20 +25,22 @@
 
 WebInspector.ResourceTimelineDataGridNode = class ResourceTimelineDataGridNode extends WebInspector.TimelineDataGridNode
 {
-    constructor(resourceTimelineRecord, graphOnly, graphDataSource)
+    constructor(resourceTimelineRecord, includesGraph, graphDataSource, shouldShowPopover)
     {
-        super(graphOnly, graphDataSource);
+        super(includesGraph, graphDataSource);
 
         this._resource = resourceTimelineRecord.resource;
         this._record = resourceTimelineRecord;
+        this._shouldShowPopover = shouldShowPopover;
 
-        this._record.addEventListener(WebInspector.TimelineRecord.Event.Updated, graphOnly ? this._timelineRecordUpdated : this._needsRefresh, this);
+        this._resource.addEventListener(WebInspector.Resource.Event.LoadingDidFinish, this._needsRefresh, this);
+        this._resource.addEventListener(WebInspector.Resource.Event.LoadingDidFail, this._needsRefresh, this);
+        this._resource.addEventListener(WebInspector.Resource.Event.URLDidChange, this._needsRefresh, this);
 
-        if (!graphOnly) {
-            this._resource.addEventListener(WebInspector.Resource.Event.URLDidChange, this._needsRefresh, this);
+        if (includesGraph)
+            this._record.addEventListener(WebInspector.TimelineRecord.Event.Updated, this._timelineRecordUpdated, this);
+        else {
             this._resource.addEventListener(WebInspector.Resource.Event.TypeDidChange, this._needsRefresh, this);
-            this._resource.addEventListener(WebInspector.Resource.Event.LoadingDidFinish, this._needsRefresh, this);
-            this._resource.addEventListener(WebInspector.Resource.Event.LoadingDidFail, this._needsRefresh, this);
             this._resource.addEventListener(WebInspector.Resource.Event.SizeDidChange, this._needsRefresh, this);
             this._resource.addEventListener(WebInspector.Resource.Event.TransferSizeDidChange, this._needsRefresh, this);
         }
@@ -64,7 +66,7 @@ WebInspector.ResourceTimelineDataGridNode = class ResourceTimelineDataGridNode e
         var resource = this._resource;
         var data = {};
 
-        if (!this._graphOnly) {
+        if (!this._includesGraph) {
             var zeroTime = this.graphDataSource ? this.graphDataSource.zeroTime : 0;
 
             data.domain = WebInspector.displayNameForHost(resource.urlComponents.host);
@@ -74,10 +76,14 @@ WebInspector.ResourceTimelineDataGridNode = class ResourceTimelineDataGridNode e
             data.statusCode = resource.statusCode;
             data.cached = resource.cached;
             data.size = resource.size;
-            data.transferSize = resource.transferSize;
+            data.transferSize = !isNaN(resource.networkTotalTransferSize) ? resource.networkTotalTransferSize : resource.estimatedTotalTransferSize;
             data.requestSent = resource.requestSentTimestamp - zeroTime;
             data.duration = resource.receiveDuration;
             data.latency = resource.latency;
+            data.protocol = resource.protocol;
+            data.priority = resource.priority;
+            data.remoteAddress = resource.remoteAddress;
+            data.connectionIdentifier = resource.connectionIdentifier;
         }
 
         data.graph = this._record.startTime;
@@ -88,35 +94,68 @@ WebInspector.ResourceTimelineDataGridNode = class ResourceTimelineDataGridNode e
 
     createCellContent(columnIdentifier, cell)
     {
-        var resource = this._resource;
+        let resource = this._resource;
 
-        if (resource.failed || resource.canceled || resource.statusCode >= 400)
+        if (resource.hadLoadingError())
             cell.classList.add("error");
 
-        var value = this.data[columnIdentifier];
+        let value = this.data[columnIdentifier];
 
         switch (columnIdentifier) {
+        case "name":
+            cell.classList.add(...this.iconClassNames());
+            cell.title = resource.displayURL;
+            this._updateStatus(cell);
+            return this._createNameCellDocumentFragment();
+
         case "type":
-            return WebInspector.Resource.displayNameForType(value);
+            var text = WebInspector.Resource.displayNameForType(value);
+            cell.title = text;
+            return text;
 
         case "statusCode":
             cell.title = resource.statusText || "";
             return value || emDash;
 
         case "cached":
-            return value ? WebInspector.UIString("Yes") : WebInspector.UIString("No");
-
-        case "domain":
-            return value || emDash;
+            var fragment = this._cachedCellContent();
+            cell.title = fragment.textContent;
+            return fragment;
 
         case "size":
         case "transferSize":
-            return isNaN(value) ? emDash : Number.bytesToString(value, true);
+            var text = emDash;
+            if (!isNaN(value)) {
+                text = Number.bytesToString(value, true);
+                cell.title = text;
+            }
+            return text;
 
         case "requestSent":
         case "latency":
         case "duration":
-            return isNaN(value) ? emDash : Number.secondsToString(value, true);
+            var text = emDash;
+            if (!isNaN(value)) {
+                text = Number.secondsToString(value, true);
+                cell.title = text;
+            }
+            return text;
+
+        case "domain":
+        case "method":
+        case "scheme":
+        case "protocol":
+        case "remoteAddress":
+        case "connectionIdentifier":
+            if (value)
+                cell.title = value;
+            return value || emDash;
+
+        case "priority":
+            var title = WebInspector.Resource.displayNameForPriority(value);
+            if (title)
+                cell.title = title;
+            return title || emDash;
         }
 
         return super.createCellContent(columnIdentifier, cell);
@@ -134,7 +173,103 @@ WebInspector.ResourceTimelineDataGridNode = class ResourceTimelineDataGridNode e
         super.refresh();
     }
 
+    iconClassNames()
+    {
+        return [WebInspector.ResourceTreeElement.ResourceIconStyleClassName, this.resource.type];
+    }
+
+    appendContextMenuItems(contextMenu)
+    {
+        WebInspector.appendContextMenuItemsForSourceCode(contextMenu, this._resource);
+    }
+
+    // Protected
+
+    didAddRecordBar(recordBar)
+    {
+        if (!this._shouldShowPopover)
+            return;
+
+        if (!recordBar.records.length || recordBar.records[0].type !== WebInspector.TimelineRecord.Type.Network)
+            return;
+
+        console.assert(!this._mouseEnterRecordBarListener);
+        this._mouseEnterRecordBarListener = this._mouseoverRecordBar.bind(this);
+        recordBar.element.addEventListener("mouseenter", this._mouseEnterRecordBarListener);
+    }
+
+    didRemoveRecordBar(recordBar)
+    {
+        if (!this._shouldShowPopover)
+            return;
+
+        if (!recordBar.records.length || recordBar.records[0].type !== WebInspector.TimelineRecord.Type.Network)
+            return;
+
+        recordBar.element.removeEventListener("mouseenter", this._mouseEnterRecordBarListener);
+        this._mouseEnterRecordBarListener = null;
+    }
+
+    filterableDataForColumn(columnIdentifier)
+    {
+        if (columnIdentifier === "name")
+            return this._resource.url;
+        return super.filterableDataForColumn(columnIdentifier);
+    }
+
     // Private
+
+    _createNameCellDocumentFragment()
+    {
+        let fragment = document.createDocumentFragment();
+        let mainTitle = this.displayName();
+        fragment.append(mainTitle);
+
+        // Show the host as the subtitle if it is different from the main resource or if this is the main frame's main resource.
+        let frame = this._resource.parentFrame;
+        let isMainResource = this._resource.isMainResource();
+        let parentResourceHost;
+        if (frame && isMainResource) {
+            // When the resource is a main resource, get the host from the current frame's parent frame instead of the current frame.
+            parentResourceHost = frame.parentFrame ? frame.parentFrame.mainResource.urlComponents.host : null;
+        } else if (frame) {
+            // When the resource is a normal sub-resource, get the host from the current frame's main resource.
+            parentResourceHost = frame.mainResource.urlComponents.host;
+        }
+
+        if (parentResourceHost !== this._resource.urlComponents.host || frame.isMainFrame() && isMainResource) {
+            let subtitle = WebInspector.displayNameForHost(this._resource.urlComponents.host);
+            if (mainTitle !== subtitle) {
+                let subtitleElement = document.createElement("span");
+                subtitleElement.classList.add("subtitle");
+                subtitleElement.textContent = subtitle;
+                fragment.append(subtitleElement);
+            }
+        }
+
+        return fragment;
+    }
+
+    _cachedCellContent()
+    {
+        if (!this._resource.hasResponse())
+            return emDash;
+
+        let responseSource = this._resource.responseSource;
+        if (responseSource === WebInspector.Resource.ResponseSource.MemoryCache || responseSource === WebInspector.Resource.ResponseSource.DiskCache) {
+            console.assert(this._resource.cached, "This resource has a cache responseSource it should also be marked as cached", this._resource);
+            let span = document.createElement("span");
+            let cacheType = document.createElement("span");
+            cacheType.classList = "cache-type";
+            cacheType.textContent = responseSource === WebInspector.Resource.ResponseSource.MemoryCache ? WebInspector.UIString("(Memory)") : WebInspector.UIString("(Disk)");
+            span.append(WebInspector.UIString("Yes"), " ", cacheType);
+            return span;
+        }
+
+        let fragment = document.createDocumentFragment();
+        fragment.append(this._resource.cached ? WebInspector.UIString("Yes") : WebInspector.UIString("No"));
+        return fragment;
+    }
 
     _needsRefresh()
     {
@@ -154,4 +289,159 @@ WebInspector.ResourceTimelineDataGridNode = class ResourceTimelineDataGridNode e
         if (this.isRecordVisible(this._record))
             this.needsGraphRefresh();
     }
+
+    _dataGridNodeGoToArrowClicked()
+    {
+        const options = {
+            ignoreNetworkTab: true,
+            ignoreSearchTab: true,
+        };
+        WebInspector.showSourceCode(this._resource, options);
+    }
+
+    _updateStatus(cell)
+    {
+        if (this._resource.failed)
+            cell.classList.add("error");
+        else {
+            cell.classList.remove("error");
+
+            if (this._resource.finished)
+                this.createGoToArrowButton(cell, this._dataGridNodeGoToArrowClicked.bind(this));
+        }
+
+        if (this._spinner)
+            this._spinner.element.remove();
+
+        if (this._resource.finished || this._resource.failed)
+            return;
+
+        if (!this._spinner)
+            this._spinner = new WebInspector.IndeterminateProgressSpinner;
+
+        let contentElement = cell.firstChild;
+        contentElement.appendChild(this._spinner.element);
+    }
+
+    _mouseoverRecordBar(event)
+    {
+        let recordBar = WebInspector.TimelineRecordBar.fromElement(event.target);
+        console.assert(recordBar);
+        if (!recordBar)
+            return;
+
+        let calculateTargetFrame = () => {
+            let columnRect = WebInspector.Rect.rectFromClientRect(this.elementWithColumnIdentifier("graph").getBoundingClientRect());
+            let barRect = WebInspector.Rect.rectFromClientRect(event.target.getBoundingClientRect());
+            return columnRect.intersectionWithRect(barRect);
+        };
+
+        let targetFrame = calculateTargetFrame();
+        if (!targetFrame.size.width && !targetFrame.size.height)
+            return;
+
+        console.assert(recordBar.records.length);
+        let resource = recordBar.records[0].resource;
+        if (!resource.timingData)
+            return;
+
+        if (!resource.timingData.responseEnd)
+            return;
+
+        if (this.dataGrid._dismissPopoverTimeout) {
+            clearTimeout(this.dataGrid._dismissPopoverTimeout);
+            this.dataGrid._dismissPopoverTimeout = undefined;
+        }
+
+        let popoverContentElement = document.createElement("div");
+        popoverContentElement.classList.add("resource-timing-popover-content");
+
+        if (resource.failed || resource.urlComponents.scheme === "data" || (resource.cached && resource.statusCode !== 304)) {
+            let descriptionElement = document.createElement("span");
+            descriptionElement.classList.add("description");
+            if (resource.failed)
+                descriptionElement.textContent = WebInspector.UIString("Resource failed to load.");
+            else if (resource.urlComponents.scheme === "data")
+                descriptionElement.textContent = WebInspector.UIString("Resource was loaded with the “data“ scheme.");
+            else
+                descriptionElement.textContent = WebInspector.UIString("Resource was served from the cache.");
+            popoverContentElement.appendChild(descriptionElement);
+        } else {
+            let columns = {
+                description: {
+                    width: "80px"
+                },
+                graph: {
+                    width: `${WebInspector.ResourceTimelineDataGridNode.PopoverGraphColumnWidthPixels}px`
+                },
+                duration: {
+                    width: "70px",
+                    aligned: "right"
+                }
+            };
+
+            let popoverDataGrid = new WebInspector.DataGrid(columns);
+            popoverDataGrid.inline = true;
+            popoverDataGrid.headerVisible = false;
+            popoverContentElement.appendChild(popoverDataGrid.element);
+
+            let graphDataSource = {
+                get secondsPerPixel() { return resource.duration / WebInspector.ResourceTimelineDataGridNode.PopoverGraphColumnWidthPixels; },
+                get zeroTime() { return resource.firstTimestamp; },
+                get startTime() { return resource.firstTimestamp; },
+                get currentTime() { return this.endTime; },
+
+                get endTime()
+                {
+                    let endTimePadding = this.secondsPerPixel * WebInspector.TimelineRecordBar.MinimumWidthPixels;
+                    return resource.lastTimestamp + endTimePadding;
+                }
+            };
+
+            let secondTimestamp = resource.timingData.domainLookupStart || resource.timingData.connectStart || resource.timingData.requestStart;
+            if (secondTimestamp - resource.timingData.startTime)
+                popoverDataGrid.appendChild(new WebInspector.ResourceTimingPopoverDataGridNode(WebInspector.UIString("Stalled"), resource.timingData.startTime, secondTimestamp, graphDataSource));
+            if (resource.timingData.domainLookupStart)
+                popoverDataGrid.appendChild(new WebInspector.ResourceTimingPopoverDataGridNode(WebInspector.UIString("DNS"), resource.timingData.domainLookupStart, resource.timingData.domainLookupEnd, graphDataSource));
+            if (resource.timingData.connectStart)
+                popoverDataGrid.appendChild(new WebInspector.ResourceTimingPopoverDataGridNode(WebInspector.UIString("Connection"), resource.timingData.connectStart, resource.timingData.connectEnd, graphDataSource));
+            if (resource.timingData.secureConnectionStart)
+                popoverDataGrid.appendChild(new WebInspector.ResourceTimingPopoverDataGridNode(WebInspector.UIString("Secure"), resource.timingData.secureConnectionStart, resource.timingData.connectEnd, graphDataSource));
+            popoverDataGrid.appendChild(new WebInspector.ResourceTimingPopoverDataGridNode(WebInspector.UIString("Request"), resource.timingData.requestStart, resource.timingData.responseStart, graphDataSource));
+            popoverDataGrid.appendChild(new WebInspector.ResourceTimingPopoverDataGridNode(WebInspector.UIString("Response"), resource.timingData.responseStart, resource.timingData.responseEnd, graphDataSource));
+
+            const higherResolution = true;
+            let totalData = {
+                description: WebInspector.UIString("Total time"),
+                duration: Number.secondsToMillisecondsString(resource.timingData.responseEnd - resource.timingData.startTime, higherResolution)
+            };
+            popoverDataGrid.appendChild(new WebInspector.DataGridNode(totalData));
+
+            popoverDataGrid.updateLayout();
+        }
+
+        if (!this.dataGrid._popover)
+            this.dataGrid._popover = new WebInspector.Popover;
+
+        let preferredEdges = [WebInspector.RectEdge.MAX_Y, WebInspector.RectEdge.MIN_Y, WebInspector.RectEdge.MIN_X];
+        this.dataGrid._popover.windowResizeHandler = () => {
+            let bounds = calculateTargetFrame();
+            this.dataGrid._popover.present(bounds.pad(2), preferredEdges);
+        };
+
+        recordBar.element.addEventListener("mouseleave", () => {
+            if (!this.dataGrid)
+                return;
+
+            this.dataGrid._dismissPopoverTimeout = setTimeout(() => {
+                if (this.dataGrid)
+                    this.dataGrid._popover.dismiss();
+            }, WebInspector.ResourceTimelineDataGridNode.DelayedPopoverDismissalTimeout);
+        }, {once: true});
+
+        this.dataGrid._popover.presentNewContentWithFrame(popoverContentElement, targetFrame.pad(2), preferredEdges);
+    }
 };
+
+WebInspector.ResourceTimelineDataGridNode.PopoverGraphColumnWidthPixels = 110;
+WebInspector.ResourceTimelineDataGridNode.DelayedPopoverDismissalTimeout = 500;

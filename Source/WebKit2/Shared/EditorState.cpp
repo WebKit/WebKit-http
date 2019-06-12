@@ -26,14 +26,13 @@
 #include "config.h"
 #include "EditorState.h"
 
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
 
-void EditorState::encode(IPC::ArgumentEncoder& encoder) const
+void EditorState::encode(IPC::Encoder& encoder) const
 {
-    encoder << shouldIgnoreCompositionSelectionChange;
+    encoder << shouldIgnoreSelectionChanges;
     encoder << selectionIsNone;
     encoder << selectionIsRange;
     encoder << isContentEditable;
@@ -66,9 +65,9 @@ void EditorState::encode(IPC::ArgumentEncoder& encoder) const
 #endif
 }
 
-bool EditorState::decode(IPC::ArgumentDecoder& decoder, EditorState& result)
+bool EditorState::decode(IPC::Decoder& decoder, EditorState& result)
 {
-    if (!decoder.decode(result.shouldIgnoreCompositionSelectionChange))
+    if (!decoder.decode(result.shouldIgnoreSelectionChanges))
         return false;
 
     if (!decoder.decode(result.selectionIsNone))
@@ -141,15 +140,18 @@ bool EditorState::decode(IPC::ArgumentDecoder& decoder, EditorState& result)
 }
 
 #if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
-void EditorState::PostLayoutData::encode(IPC::ArgumentEncoder& encoder) const
+void EditorState::PostLayoutData::encode(IPC::Encoder& encoder) const
 {
-#if PLATFORM(IOS) || PLATFORM(GTK)
     encoder << typingAttributes;
+#if PLATFORM(IOS) || PLATFORM(GTK)
     encoder << caretRectAtStart;
 #endif
 #if PLATFORM(IOS) || PLATFORM(MAC)
     encoder << selectionClipRect;
     encoder << selectedTextLength;
+    encoder << textAlignment;
+    encoder << textColor;
+    encoder << enclosingListType;
 #endif
 #if PLATFORM(IOS)
     encoder << caretRectAtEnd;
@@ -160,6 +162,8 @@ void EditorState::PostLayoutData::encode(IPC::ArgumentEncoder& encoder) const
     encoder << twoCharacterBeforeSelection;
     encoder << isReplaceAllowed;
     encoder << hasContent;
+    encoder << isStableStateUpdate;
+    encoder << insideFixedPosition;
 #endif
 #if PLATFORM(MAC)
     encoder << candidateRequestStartPosition;
@@ -168,11 +172,11 @@ void EditorState::PostLayoutData::encode(IPC::ArgumentEncoder& encoder) const
 #endif
 }
 
-bool EditorState::PostLayoutData::decode(IPC::ArgumentDecoder& decoder, PostLayoutData& result)
+bool EditorState::PostLayoutData::decode(IPC::Decoder& decoder, PostLayoutData& result)
 {
-#if PLATFORM(IOS) || PLATFORM(GTK)
     if (!decoder.decode(result.typingAttributes))
         return false;
+#if PLATFORM(IOS) || PLATFORM(GTK)
     if (!decoder.decode(result.caretRectAtStart))
         return false;
 #endif
@@ -180,6 +184,12 @@ bool EditorState::PostLayoutData::decode(IPC::ArgumentDecoder& decoder, PostLayo
     if (!decoder.decode(result.selectionClipRect))
         return false;
     if (!decoder.decode(result.selectedTextLength))
+        return false;
+    if (!decoder.decode(result.textAlignment))
+        return false;
+    if (!decoder.decode(result.textColor))
+        return false;
+    if (!decoder.decode(result.enclosingListType))
         return false;
 #endif
 #if PLATFORM(IOS)
@@ -198,6 +208,10 @@ bool EditorState::PostLayoutData::decode(IPC::ArgumentDecoder& decoder, PostLayo
     if (!decoder.decode(result.isReplaceAllowed))
         return false;
     if (!decoder.decode(result.hasContent))
+        return false;
+    if (!decoder.decode(result.isStableStateUpdate))
+        return false;
+    if (!decoder.decode(result.insideFixedPosition))
         return false;
 #endif
 #if PLATFORM(MAC)

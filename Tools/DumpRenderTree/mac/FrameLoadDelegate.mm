@@ -229,6 +229,10 @@
     if (!done && gTestRunner->dumpFrameLoadCallbacks()) {
         NSString *string = [NSString stringWithFormat:@"%@ - didFailProvisionalLoadWithError", [frame _drt_descriptionSuitableForTestResult]];
         printf("%s\n", [string UTF8String]);
+        if (error.code == WebKitErrorCannotShowURL) {
+            string = [NSString stringWithFormat:@"%@ - (ErrorCodeCannotShowURL)", [frame _drt_descriptionSuitableForTestResult]];
+            printf("%s\n", [string UTF8String]);
+        }
     }
 
     if ([error domain] == NSURLErrorDomain && ([error code] == NSURLErrorServerCertificateHasUnknownRoot || [error code] == NSURLErrorServerCertificateUntrusted)) {
@@ -302,9 +306,7 @@
 
     // Make Old-Style controllers
 
-#if !PLATFORM(IOS)
     WebView *webView = [frame webView];
-#endif
     WebScriptObject *obj = [frame windowObject];
 #if !PLATFORM(IOS)
     AppleScriptController *asc = [[AppleScriptController alloc] initWithWebView:webView];
@@ -330,12 +332,9 @@
     [obj setValue:pluginFunction forKey:@"objCPluginFunction"];
     [pluginFunction release];
 
-#if !PLATFORM(IOS)
-// FIXME: <rdar://problem/5106287> DumpRenderTree: fix TextInputController to work with iOS and re-enable tests
     TextInputController *tic = [[TextInputController alloc] initWithWebView:webView];
     [obj setValue:tic forKey:@"textInputController"];
     [tic release];
-#endif
 }
 
 - (void)didClearWindowObjectForFrame:(WebFrame *)frame inIsolatedWorld:(WebScriptWorld *)world

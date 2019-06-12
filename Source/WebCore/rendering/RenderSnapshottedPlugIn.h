@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,48 +23,39 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderSnapshottedPlugIn_h
-#define RenderSnapshottedPlugIn_h
+#pragma once
 
 #include "RenderEmbeddedObject.h"
-#include "RenderImageResource.h"
-#include "Timer.h"
 
 namespace WebCore {
 
 class HTMLPlugInImageElement;
+class RenderImageResource;
 
 class RenderSnapshottedPlugIn final : public RenderEmbeddedObject {
 public:
-    RenderSnapshottedPlugIn(HTMLPlugInImageElement&, Ref<RenderStyle>&&);
+    RenderSnapshottedPlugIn(HTMLPlugInImageElement&, RenderStyle&&);
     virtual ~RenderSnapshottedPlugIn();
 
     HTMLPlugInImageElement& plugInImageElement() const;
-
-    void updateSnapshot(PassRefPtr<Image>);
-
-    void handleEvent(Event*);
+    void updateSnapshot(Image*);
+    void handleEvent(Event&);
 
 private:
+    void willBeDestroyed() override;
     void frameOwnerElement() const = delete;
-    virtual const char* renderName() const override { return "RenderSnapshottedPlugIn"; }
-
-    virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const override;
-    virtual bool isSnapshottedPlugIn() const override { return true; }
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
-    
-    virtual bool canHaveWidget() const override { return false; }
-
+    const char* renderName() const final { return "RenderSnapshottedPlugIn"; }
+    CursorDirective getCursor(const LayoutPoint&, Cursor&) const final;
+    bool isSnapshottedPlugIn() const final { return true; }
+    void paint(PaintInfo&, const LayoutPoint&) final;
+    bool canHaveWidget() const final { return false; }
     void paintSnapshot(PaintInfo&, const LayoutPoint&);
-
-    virtual void layout() override;
+    void layout() final;
 
     std::unique_ptr<RenderImageResource> m_snapshotResource;
-    bool m_isPotentialMouseActivation;
+    bool m_isPotentialMouseActivation { false };
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSnapshottedPlugIn, isSnapshottedPlugIn())
-
-#endif // RenderSnapshottedPlugIn_h

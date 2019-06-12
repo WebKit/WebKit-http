@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3StackmapSpecial_h
-#define B3StackmapSpecial_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -52,17 +51,17 @@ public:
     };
 
 protected:
-    void reportUsedRegisters(Air::Inst&, const RegisterSet&) override;
-    const RegisterSet& extraEarlyClobberedRegs(Air::Inst&) override;
-    const RegisterSet& extraClobberedRegs(Air::Inst&) override;
+    void reportUsedRegisters(Air::Inst&, const RegisterSet&) final;
+    RegisterSet extraEarlyClobberedRegs(Air::Inst&) final;
+    RegisterSet extraClobberedRegs(Air::Inst&) final;
 
     // Note that this does not override generate() or dumpImpl()/deepDumpImpl(). We have many some
     // subclasses that implement that.
     void forEachArgImpl(
         unsigned numIgnoredB3Args, unsigned numIgnoredAirArgs,
-        Air::Inst&, RoleMode, Optional<unsigned> firstRecoverableIndex,
-        const ScopedLambda<Air::Inst::EachArgCallback>&);
-    
+        Air::Inst&, RoleMode, std::optional<unsigned> firstRecoverableIndex,
+        const ScopedLambda<Air::Inst::EachArgCallback>&, std::optional<Width> optionalDefArgWidth);
+
     bool isValidImpl(
         unsigned numIgnoredB3Args, unsigned numIgnoredAirArgs,
         Air::Inst&);
@@ -88,6 +87,3 @@ void printInternal(PrintStream&, JSC::B3::StackmapSpecial::RoleMode);
 } // namespace WTF
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3StackmapSpecial_h
-

@@ -43,26 +43,26 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, Ma
 
     bool chosePlainText;
     RefPtr<DocumentFragment> fragment = pasteboard->documentFragment(m_frame, *range, allowPlainText, chosePlainText);
-    if (fragment && shouldInsertFragment(fragment, range, EditorInsertActionPasted))
+    if (fragment && shouldInsertFragment(*fragment, range.get(), EditorInsertAction::Pasted))
         pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard), chosePlainText, mailBlockquoteHandling);
 }
 
 template <typename PlatformDragData>
-static PassRefPtr<DocumentFragment> createFragmentFromPlatformData(PlatformDragData& platformDragData, Frame& frame)
+static RefPtr<DocumentFragment> createFragmentFromPlatformData(PlatformDragData& platformDragData, Frame& frame)
 {
     if (containsFilenames(&platformDragData)) {
-        if (PassRefPtr<DocumentFragment> fragment = fragmentFromFilenames(frame.document(), &platformDragData))
+        if (auto fragment = fragmentFromFilenames(frame.document(), &platformDragData))
             return fragment;
     }
 
     if (containsHTML(&platformDragData)) {
-        if (PassRefPtr<DocumentFragment> fragment = fragmentFromHTML(frame.document(), &platformDragData))
+        if (RefPtr<DocumentFragment> fragment = fragmentFromHTML(frame.document(), &platformDragData))
             return fragment;
     }
     return nullptr;
 }
 
-PassRefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)
+RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)
 {
     if (COMPtr<IDataObject> platformDragData = pasteboard.dataObject())
         return createFragmentFromPlatformData(*platformDragData, m_frame);

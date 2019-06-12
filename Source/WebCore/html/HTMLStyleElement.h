@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLStyleElement_h
-#define HTMLStyleElement_h
+#pragma once
 
 #include "HTMLElement.h"
 #include "InlineStyleSheetOwner.h"
@@ -32,44 +31,43 @@ class HTMLStyleElement;
 class StyleSheet;
 
 template<typename T> class EventSender;
-typedef EventSender<HTMLStyleElement> StyleEventSender;
+
+using StyleEventSender = EventSender<HTMLStyleElement>;
 
 class HTMLStyleElement final : public HTMLElement {
 public:
+    static Ref<HTMLStyleElement> create(Document&);
     static Ref<HTMLStyleElement> create(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLStyleElement();
 
     CSSStyleSheet* sheet() const { return m_styleSheetOwner.sheet(); }
 
-    bool disabled() const;
-    void setDisabled(bool);
+    WEBCORE_EXPORT bool disabled() const;
+    WEBCORE_EXPORT void setDisabled(bool);
 
     void dispatchPendingEvent(StyleEventSender*);
     static void dispatchPendingLoadEvents();
 
+    void finishParsingChildren() final;
+
 private:
     HTMLStyleElement(const QualifiedName&, Document&, bool createdByParser);
 
-    // overload from HTMLElement
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
-    virtual void childrenChanged(const ChildChange&) override;
-
-    virtual void finishParsingChildren() override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
+    void childrenChanged(const ChildChange&) final;
 
     bool isLoading() const { return m_styleSheetOwner.isLoading(); }
-    virtual bool sheetLoaded() override { return m_styleSheetOwner.sheetLoaded(*this); }
-    virtual void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred) override;
-    virtual void startLoadingDynamicSheet() override { m_styleSheetOwner.startLoadingDynamicSheet(*this); }
+    bool sheetLoaded() final { return m_styleSheetOwner.sheetLoaded(*this); }
+    void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred) final;
+    void startLoadingDynamicSheet() final { m_styleSheetOwner.startLoadingDynamicSheet(*this); }
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
     InlineStyleSheetOwner m_styleSheetOwner;
-    bool m_firedLoad;
-    bool m_loadedSheet;
+    bool m_firedLoad { false };
+    bool m_loadedSheet { false };
 };
 
 } //namespace
-
-#endif

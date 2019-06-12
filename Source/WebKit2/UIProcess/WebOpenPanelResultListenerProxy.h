@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebOpenPanelResultListenerProxy_h
-#define WebOpenPanelResultListenerProxy_h
+#pragma once
 
 #include "APIObject.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
+#include <wtf/Vector.h>
 
 namespace API {
 class Array;
@@ -42,17 +42,17 @@ class WebPageProxy;
 
 class WebOpenPanelResultListenerProxy : public API::ObjectImpl<API::Object::Type::FramePolicyListener> {
 public:
-    static PassRefPtr<WebOpenPanelResultListenerProxy> create(WebPageProxy* page)
+    static Ref<WebOpenPanelResultListenerProxy> create(WebPageProxy* page)
     {
-        return adoptRef(new WebOpenPanelResultListenerProxy(page));
+        return adoptRef(*new WebOpenPanelResultListenerProxy(page));
     }
 
     virtual ~WebOpenPanelResultListenerProxy();
 
 #if PLATFORM(IOS)
-    void chooseFiles(API::Array*, API::String* displayString, const API::Data* iconImageData);
+    void chooseFiles(const Vector<String>& filenames, const String& displayString, const API::Data* iconImageData);
 #endif
-    void chooseFiles(API::Array*);
+    void chooseFiles(const Vector<String>& filenames);
     void cancel();
 
     void invalidate();
@@ -64,5 +64,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebOpenPanelResultListenerProxy_h

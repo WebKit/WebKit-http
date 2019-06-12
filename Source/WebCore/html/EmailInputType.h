@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EmailInputType_h
-#define EmailInputType_h
+#pragma once
 
 #include "BaseTextInputType.h"
 
@@ -40,15 +39,13 @@ public:
     explicit EmailInputType(HTMLInputElement& element) : BaseTextInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual bool typeMismatchFor(const String&) const override;
-    virtual bool typeMismatch() const override;
-    virtual String typeMismatchText() const override;
-    virtual bool isEmailField() const override;
-    virtual bool supportsSelectionAPI() const override;
-    virtual String sanitizeValue(const String&) const override;
+    const AtomicString& formControlType() const override;
+    bool typeMismatchFor(const String&) const override;
+    bool typeMismatch() const override;
+    String typeMismatchText() const override;
+    bool isEmailField() const override;
+    bool supportsSelectionAPI() const override;
+    String sanitizeValue(const String&) const override;
 };
 
 } // namespace WebCore
-
-#endif // ButtonInputType_h

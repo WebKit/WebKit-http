@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef LLIntCommon_h
-#define LLIntCommon_h
+#pragma once
+
+// Enables LLINT stats collection.
+#define ENABLE_LLINT_STATS 0
 
 // Print every instruction executed.
 #define LLINT_EXECUTION_TRACING 0
@@ -42,6 +44,3 @@
 
 // Disable inline caching of get_by_id and put_by_id.
 #define LLINT_ALWAYS_ACCESS_SLOW 0
-
-#endif // LLIntCommon_h
-

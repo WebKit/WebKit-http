@@ -26,9 +26,9 @@
 #ifndef CDMPrivateMediaSourceAVFObjC_h
 #define CDMPrivateMediaSourceAVFObjC_h
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
-#include "CDMPrivate.h"
+#include "LegacyCDMPrivate.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -46,8 +46,8 @@ public:
     static bool supportsKeySystem(const String&);
     static bool supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType);
 
-    virtual bool supportsMIMEType(const String& mimeType) override;
-    virtual std::unique_ptr<CDMSession> createSession(CDMSessionClient*) override;
+    bool supportsMIMEType(const String& mimeType) override;
+    std::unique_ptr<CDMSession> createSession(CDMSessionClient*) override;
 
     CDM* cdm() const { return m_cdm; }
 
@@ -60,6 +60,6 @@ protected:
 
 }
 
-#endif // ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 #endif // CDMPrivateMediaSourceAVFObjC_h

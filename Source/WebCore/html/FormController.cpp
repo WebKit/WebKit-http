@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2010, 2011, 2012 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -35,7 +35,7 @@ static inline HTMLFormElement* ownerFormForState(const HTMLFormControlElementWit
     // Assume controls with form attribute have no owners because we restore
     // state during parsing and form owners of such controls might be
     // indeterminate.
-    return control.fastHasAttribute(formAttr) ? 0 : control.form();
+    return control.hasAttributeWithoutSynchronization(formAttr) ? 0 : control.form();
 }
 
 // ----------------------------------------------------------------------------
@@ -195,7 +195,7 @@ private:
 
 static bool isNotFormControlTypeCharacter(UChar ch)
 {
-    return ch != '-' && (ch > 'z' || ch < 'a');
+    return !(ch == '-' || isASCIILower(ch));
 }
 
 std::unique_ptr<SavedFormState> SavedFormState::deserialize(const Vector<String>& stateVector, size_t& index)
@@ -387,7 +387,7 @@ static String formStateSignature()
     // In the legacy version of serialized state, the first item was a name
     // attribute value of a form control. The following string literal should
     // contain some characters which are rarely used for name attribute values.
-    static NeverDestroyed<String> signature(ASCIILiteral("\n\r?% WebKit serialized form state version 8 \n\r=&"));
+    static NeverDestroyed<String> signature(MAKE_STATIC_STRING_IMPL("\n\r?% WebKit serialized form state version 8 \n\r=&"));
     return signature;
 }
 

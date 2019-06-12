@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2013 The MathJax Consortium.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,90 +25,65 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLScripts_h
-#define RenderMathMLScripts_h
+#pragma once
 
 #if ENABLE(MATHML)
 
 #include "RenderMathMLBlock.h"
 
 namespace WebCore {
-    
-class RenderMathMLScripts;
 
-class RenderMathMLScriptsWrapper final : public RenderMathMLBlock {
-
-friend class RenderMathMLScripts;
-
-public:
-    enum WrapperType { Base, SubSupPair };
-
-    virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) override;
-    virtual void removeChild(RenderObject&) override;
-
-private:
-    RenderMathMLScriptsWrapper(Document& document, Ref<RenderStyle>&& style, WrapperType kind)
-        : RenderMathMLBlock(document, WTFMove(style))
-        , m_kind(kind)
-    {
-    }
-
-    static RenderMathMLScriptsWrapper* createAnonymousWrapper(RenderMathMLScripts* renderObject, WrapperType);
-
-    void addChildInternal(bool normalInsertion, RenderObject* child, RenderObject* beforeChild = 0);
-    void removeChildInternal(bool normalRemoval, RenderObject& child);
-
-    virtual const char* renderName() const override { return m_kind == Base ? "Base Wrapper" : "SubSupPair Wrapper"; }
-    virtual bool isRenderMathMLScriptsWrapper() const override final { return true; }
-
-    RenderMathMLScripts* parentMathMLScripts();
-
-    WrapperType m_kind;
-};
+class MathMLScriptsElement;
 
 // Render a base with scripts.
-class RenderMathMLScripts final : public RenderMathMLBlock {
-
-friend class RenderMathMLScriptsWrapper;
-
+class RenderMathMLScripts : public RenderMathMLBlock {
 public:
-    RenderMathMLScripts(Element&, Ref<RenderStyle>&&);
-    virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) override;
-    virtual void removeChild(RenderObject&) override;
-    
-    virtual RenderMathMLOperator* unembellishedOperator() override;
-    virtual Optional<int> firstLineBaseline() const override;
+    RenderMathMLScripts(MathMLScriptsElement&, RenderStyle&&);
+    RenderMathMLOperator* unembellishedOperator() final;
 
 protected:
-    virtual void layout() override;
-    
+    bool isRenderMathMLScripts() const override { return true; }
+    const char* renderName() const override { return "RenderMathMLScripts"; }
+    void computePreferredLogicalWidths() override;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+
+    enum ScriptsType { Sub, Super, SubSup, Multiscripts, Under, Over, UnderOver };
+    ScriptsType m_scriptType;
+
 private:
-    void addChildInternal(bool normalInsertion, RenderObject* child, RenderObject* beforeChild = 0);
-    void removeChildInternal(bool normalRemoval, RenderObject& child);
-
-    virtual bool isRenderMathMLScripts() const override { return true; }
-    virtual const char* renderName() const override { return "RenderMathMLScripts"; }
-
-    void fixAnonymousStyleForSubSupPair(RenderObject* subSupPair, bool isPostScript);
-    void fixAnonymousStyles();
-
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-
-    // Omit our subscript and/or superscript. This may return 0 for a non-MathML base (which
-    // won't occur in valid MathML).
-    RenderBoxModelObject* base() const;
-
-    enum ScriptsType { Sub, Super, SubSup, Multiscripts };
-
-    ScriptsType m_kind;
-    RenderMathMLScriptsWrapper* m_baseWrapper;
+    MathMLScriptsElement& element() const;
+    std::optional<int> firstLineBaseline() const final;
+    struct ReferenceChildren {
+        RenderBox* base;
+        RenderBox* prescriptDelimiter;
+        RenderBox* firstPostScript;
+        RenderBox* firstPreScript;
+    };
+    std::optional<ReferenceChildren> validateAndGetReferenceChildren();
+    LayoutUnit spaceAfterScript();
+    LayoutUnit italicCorrection(const ReferenceChildren&);
+    struct VerticalParameters {
+        LayoutUnit subscriptShiftDown;
+        LayoutUnit superscriptShiftUp;
+        LayoutUnit subscriptBaselineDropMin;
+        LayoutUnit superScriptBaselineDropMax;
+        LayoutUnit subSuperscriptGapMin;
+        LayoutUnit superscriptBottomMin;
+        LayoutUnit subscriptTopMax;
+        LayoutUnit superscriptBottomMaxWithSubscript;
+    };
+    VerticalParameters verticalParameters() const;
+    struct VerticalMetrics {
+        LayoutUnit subShift;
+        LayoutUnit supShift;
+        LayoutUnit ascent;
+        LayoutUnit descent;
+    };
+    VerticalMetrics verticalMetrics(const ReferenceChildren&);
 };
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLScriptsWrapper, isRenderMathMLScriptsWrapper())
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLScripts, isRenderMathMLScripts())
 
 #endif // ENABLE(MATHML)
-
-#endif // RenderMathMLScripts_h

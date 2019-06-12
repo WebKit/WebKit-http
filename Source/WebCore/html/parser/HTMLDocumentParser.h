@@ -24,14 +24,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLDocumentParser_h
-#define HTMLDocumentParser_h
+#pragma once
 
-#include "CachedResourceClient.h"
 #include "HTMLInputStream.h"
 #include "HTMLScriptRunnerHost.h"
 #include "HTMLSourceTracker.h"
 #include "HTMLTokenizer.h"
+#include "PendingScriptClient.h"
 #include "ScriptableDocumentParser.h"
 #include "XSSAuditor.h"
 #include "XSSAuditorDelegate.h"
@@ -39,6 +38,7 @@
 namespace WebCore {
 
 class DocumentFragment;
+class Element;
 class HTMLDocument;
 class HTMLParserScheduler;
 class HTMLPreloadScanner;
@@ -47,7 +47,7 @@ class HTMLTreeBuilder;
 class HTMLResourcePreloader;
 class PumpSession;
 
-class HTMLDocumentParser : public ScriptableDocumentParser, private HTMLScriptRunnerHost, private CachedResourceClient {
+class HTMLDocumentParser : public ScriptableDocumentParser, private HTMLScriptRunnerHost, private PendingScriptClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static Ref<HTMLDocumentParser> create(HTMLDocument&);
@@ -60,14 +60,14 @@ public:
 
     // For HTMLTreeBuilder.
     HTMLTokenizer& tokenizer();
-    virtual TextPosition textPosition() const override final;
+    TextPosition textPosition() const final;
 
 protected:
     explicit HTMLDocumentParser(HTMLDocument&);
 
-    virtual void insert(const SegmentedString&) override final;
-    virtual void append(RefPtr<StringImpl>&&) override;
-    virtual void finish() override;
+    void insert(SegmentedString&&) final;
+    void append(RefPtr<StringImpl>&&) override;
+    void finish() override;
 
     HTMLTreeBuilder& treeBuilder();
 
@@ -76,34 +76,35 @@ private:
     static Ref<HTMLDocumentParser> create(DocumentFragment&, Element& contextElement, ParserContentPolicy);
 
     // DocumentParser
-    virtual void detach() override final;
-    virtual bool hasInsertionPoint() override final;
-    virtual bool processingData() const override final;
-    virtual void prepareToStopParsing() override final;
-    virtual void stopParsing() override final;
-    virtual bool isWaitingForScripts() const override;
-    virtual bool isExecutingScript() const override final;
-    virtual void executeScriptsWaitingForStylesheets() override final;
-    virtual void suspendScheduledTasks() override final;
-    virtual void resumeScheduledTasks() override final;
+    void detach() final;
+    bool hasInsertionPoint() final;
+    bool processingData() const final;
+    void prepareToStopParsing() final;
+    void stopParsing() final;
+    bool isWaitingForScripts() const override;
+    bool isExecutingScript() const final;
+    bool hasScriptsWaitingForStylesheets() const final;
+    void executeScriptsWaitingForStylesheets() final;
+    void suspendScheduledTasks() final;
+    void resumeScheduledTasks() final;
 
-    virtual bool shouldAssociateConsoleMessagesWithTextPosition() const override final;
+    bool shouldAssociateConsoleMessagesWithTextPosition() const final;
 
     // HTMLScriptRunnerHost
-    virtual void watchForLoad(CachedResource*) override final;
-    virtual void stopWatchingForLoad(CachedResource*) override final;
-    virtual HTMLInputStream& inputStream() override final;
-    virtual bool hasPreloadScanner() const override final;
-    virtual void appendCurrentInputStreamToPreloadScannerAndScan() override final;
+    void watchForLoad(PendingScript&) final;
+    void stopWatchingForLoad(PendingScript&) final;
+    HTMLInputStream& inputStream() final;
+    bool hasPreloadScanner() const final;
+    void appendCurrentInputStreamToPreloadScannerAndScan() final;
 
-    // CachedResourceClient
-    virtual void notifyFinished(CachedResource*) override final;
+    // PendingScriptClient
+    void notifyFinished(PendingScript&) final;
 
     Document* contextForParsingSession();
 
     enum SynchronousMode { AllowYield, ForceSynchronous };
-    bool canTakeNextToken(SynchronousMode, PumpSession&);
     void pumpTokenizer(SynchronousMode);
+    bool pumpTokenizerLoop(SynchronousMode, bool parsingFragment, PumpSession&);
     void pumpTokenizerIfPossible(SynchronousMode);
     void constructTreeFromHTMLToken(HTMLTokenizer::TokenPtr&);
 
@@ -161,6 +162,4 @@ inline HTMLTreeBuilder& HTMLDocumentParser::treeBuilder()
     return *m_treeBuilder;
 }
 
-}
-
-#endif
+} // namespace WebCore

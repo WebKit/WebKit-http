@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,35 +24,113 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InternalSettings_h
-#define InternalSettings_h
+#pragma once
 
 // FIXME (121927): This include should not be needed.
 #include <wtf/text/AtomicStringHash.h>
 
 #include "EditingBehaviorTypes.h"
+#include "ExceptionOr.h"
 #include "FontGenericFamilies.h"
 #include "IntSize.h"
 #include "InternalSettingsGenerated.h"
 #include "SecurityOrigin.h"
+#include "Settings.h"
+#include "WritingMode.h"
 
 namespace WebCore {
 
-typedef int ExceptionCode;
-
-class Frame;
-class Document;
 class Page;
 class Settings;
 
 class InternalSettings : public InternalSettingsGenerated {
 public:
+    static Ref<InternalSettings> create(Page*);
+    static InternalSettings* from(Page*);
+    void hostDestroyed();
+    void resetToConsistentState();
+
+    ExceptionOr<void> setUsesOverlayScrollbars(bool);
+    ExceptionOr<void> setTouchEventEmulationEnabled(bool);
+    ExceptionOr<void> setStandardFontFamily(const String& family, const String& script);
+    ExceptionOr<void> setSerifFontFamily(const String& family, const String& script);
+    ExceptionOr<void> setSansSerifFontFamily(const String& family, const String& script);
+    ExceptionOr<void> setFixedFontFamily(const String& family, const String& script);
+    ExceptionOr<void> setCursiveFontFamily(const String& family, const String& script);
+    ExceptionOr<void> setFantasyFontFamily(const String& family, const String& script);
+    ExceptionOr<void> setPictographFontFamily(const String& family, const String& script);
+    ExceptionOr<void> setTextAutosizingEnabled(bool);
+    ExceptionOr<void> setTextAutosizingWindowSizeOverride(int width, int height);
+    ExceptionOr<void> setTextAutosizingFontScaleFactor(float);
+    ExceptionOr<void> setMediaTypeOverride(const String&);
+    ExceptionOr<void> setCanStartMedia(bool);
+    ExceptionOr<void> setAllowsAirPlayForMediaPlayback(bool);
+    ExceptionOr<void> setMediaCaptureRequiresSecureConnection(bool);
+
+    ExceptionOr<void> setEditingBehavior(const String&);
+    ExceptionOr<void> setPreferMIMETypeForImages(bool);
+    ExceptionOr<void> setPDFImageCachingPolicy(const String&);
+    ExceptionOr<void> setShouldDisplayTrackKind(const String& kind, bool enabled);
+    ExceptionOr<bool> shouldDisplayTrackKind(const String& kind);
+    ExceptionOr<void> setStorageBlockingPolicy(const String&);
+    ExceptionOr<void> setImagesEnabled(bool);
+    ExceptionOr<void> setMinimumTimerInterval(double intervalInSeconds);
+    ExceptionOr<void> setDefaultVideoPosterURL(const String&);
+    ExceptionOr<void> setForcePendingWebGLPolicy(bool);
+    ExceptionOr<void> setTimeWithoutMouseMovementBeforeHidingControls(double);
+    ExceptionOr<void> setUseLegacyBackgroundSizeShorthandBehavior(bool);
+    ExceptionOr<void> setAutoscrollForDragAndDropEnabled(bool);
+    ExceptionOr<void> setFontFallbackPrefersPictographs(bool);
+    ExceptionOr<void> setWebFontsAlwaysFallBack(bool);
+    ExceptionOr<void> setQuickTimePluginReplacementEnabled(bool);
+    ExceptionOr<void> setYouTubeFlashPluginReplacementEnabled(bool);
+    ExceptionOr<void> setBackgroundShouldExtendBeyondPage(bool);
+    ExceptionOr<void> setShouldConvertPositionStyleOnCopy(bool);
+    ExceptionOr<void> setScrollingTreeIncludesFrames(bool);
+    ExceptionOr<void> setAllowUnclampedScrollPosition(bool);
+    ExceptionOr<void> setAllowsInlineMediaPlayback(bool);
+    ExceptionOr<void> setAllowsInlineMediaPlaybackAfterFullscreen(bool);
+    ExceptionOr<void> setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool);
+    ExceptionOr<String> userInterfaceDirectionPolicy();
+    ExceptionOr<void> setUserInterfaceDirectionPolicy(const String&);
+    ExceptionOr<String> systemLayoutDirection();
+    ExceptionOr<void> setSystemLayoutDirection(const String&);
+    ExceptionOr<void> setShouldMockBoldSystemFontForAccessibility(bool);
+    ExceptionOr<void> setShouldManageAudioSessionCategory(bool);
+
+    enum class FrameFlatteningValue { Disabled, EnabledForNonFullScreenIFrames, FullyEnabled };
+    ExceptionOr<void> setFrameFlattening(const FrameFlatteningValue&);
+    
+    static void setAllowsAnySSLCertificate(bool);
+
+    ExceptionOr<bool> deferredCSSParserEnabled();
+    ExceptionOr<void> setDeferredCSSParserEnabled(bool);
+
+    enum class ForcedAccessibilityValue { System, On, Off };
+    ForcedAccessibilityValue forcedColorsAreInvertedAccessibilityValue() const;
+    void setForcedColorsAreInvertedAccessibilityValue(ForcedAccessibilityValue);
+    ForcedAccessibilityValue forcedDisplayIsMonochromeAccessibilityValue() const;
+    void setForcedDisplayIsMonochromeAccessibilityValue(ForcedAccessibilityValue);
+    ForcedAccessibilityValue forcedPrefersReducedMotionAccessibilityValue() const;
+    void setForcedPrefersReducedMotionAccessibilityValue(ForcedAccessibilityValue);
+
+    // RuntimeEnabledFeatures.
+    static void setIndexedDBWorkersEnabled(bool);
+    static void setCSSGridLayoutEnabled(bool);
+    static void setWebGL2Enabled(bool);
+    static void setWebGPUEnabled(bool);
+
+private:
+    explicit InternalSettings(Page*);
+
+    Settings& settings() const;
+    static const char* supplementName();
+
     class Backup {
     public:
         explicit Backup(Settings&);
         void restoreTo(Settings&);
 
-        bool m_originalCSSShapesEnabled;
         EditingBehaviorType m_originalEditingBehavior;
 
         // Initially empty, only used if changed by a test.
@@ -67,15 +145,15 @@ public:
 #if ENABLE(TEXT_AUTOSIZING)
         bool m_originalTextAutosizingEnabled;
         IntSize m_originalTextAutosizingWindowSizeOverride;
-        float m_originalTextAutosizingFontScaleFactor;
 #endif
+
         String m_originalMediaTypeOverride;
         bool m_originalCanvasUsesAcceleratedDrawing;
         bool m_originalMockScrollbarsEnabled;
         bool m_originalUsesOverlayScrollbars;
-        bool m_langAttributeAwareFormControlUIEnabled;
         bool m_imagesEnabled;
-        double m_minimumTimerInterval;
+        bool m_preferMIMETypeForImages;
+        Seconds m_minimumDOMTimerInterval;
 #if ENABLE(VIDEO_TRACK)
         bool m_shouldDisplaySubtitles;
         bool m_shouldDisplayCaptions;
@@ -83,12 +161,14 @@ public:
 #endif
         String m_defaultVideoPosterURL;
         bool m_forcePendingWebGLPolicy;
-        bool m_originalTimeWithoutMouseMovementBeforeHidingControls;
+        Seconds m_originalTimeWithoutMouseMovementBeforeHidingControls;
         bool m_useLegacyBackgroundSizeShorthandBehavior;
         bool m_autoscrollForDragAndDropEnabled;
-        bool m_pluginReplacementEnabled;
+        bool m_quickTimePluginReplacementEnabled;
+        bool m_youTubeFlashPluginReplacementEnabled;
         bool m_shouldConvertPositionStyleOnCopy;
         bool m_fontFallbackPrefersPictographs;
+        bool m_webFontsAlwaysFallBack;
         bool m_backgroundShouldExtendBeyondPage;
         SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
         bool m_scrollingTreeIncludesFrames;
@@ -99,66 +179,33 @@ public:
         bool m_allowsAirPlayForMediaPlayback;
 #endif
         bool m_allowsInlineMediaPlayback;
+        bool m_allowsInlineMediaPlaybackAfterFullscreen;
         bool m_inlineMediaPlaybackRequiresPlaysInlineAttribute;
+        bool m_deferredCSSParserEnabled;
+        bool m_inputEventsEnabled;
+
+        UserInterfaceDirectionPolicy m_userInterfaceDirectionPolicy;
+        TextDirection m_systemLayoutDirection;
+        PDFImageCachingPolicy m_pdfImageCachingPolicy;
+        Settings::ForcedAccessibilityValue m_forcedColorsAreInvertedAccessibilityValue;
+        Settings::ForcedAccessibilityValue m_forcedDisplayIsMonochromeAccessibilityValue;
+        Settings::ForcedAccessibilityValue m_forcedPrefersReducedMotionAccessibilityValue;
+        FrameFlattening m_frameFlattening;
+
+        // Runtime enabled settings.
+        bool m_indexedDBWorkersEnabled;
+        bool m_cssGridLayoutEnabled;
+        bool m_webGL2Enabled;
+        bool m_webGPUEnabled;
+        
+        bool m_shouldMockBoldSystemFontForAccessibility;
+#if USE(AUDIO_SESSION)
+        bool m_shouldManageAudioSessionCategory;
+#endif
     };
-
-    static Ref<InternalSettings> create(Page* page)
-    {
-        return adoptRef(*new InternalSettings(page));
-    }
-    static InternalSettings* from(Page*);
-    void hostDestroyed() { m_page = 0; }
-
-    virtual ~InternalSettings();
-    void resetToConsistentState();
-
-    void setUsesOverlayScrollbars(bool, ExceptionCode&);
-    void setTouchEventEmulationEnabled(bool, ExceptionCode&);
-    void setStandardFontFamily(const String& family, const String& script, ExceptionCode&);
-    void setSerifFontFamily(const String& family, const String& script, ExceptionCode&);
-    void setSansSerifFontFamily(const String& family, const String& script, ExceptionCode&);
-    void setFixedFontFamily(const String& family, const String& script, ExceptionCode&);
-    void setCursiveFontFamily(const String& family, const String& script, ExceptionCode&);
-    void setFantasyFontFamily(const String& family, const String& script, ExceptionCode&);
-    void setPictographFontFamily(const String& family, const String& script, ExceptionCode&);
-    void setTextAutosizingEnabled(bool enabled, ExceptionCode&);
-    void setTextAutosizingWindowSizeOverride(int width, int height, ExceptionCode&);
-    void setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode&);
-    void setMediaTypeOverride(const String& mediaType, ExceptionCode&);
-    void setCSSShapesEnabled(bool, ExceptionCode&);
-    void setCanStartMedia(bool, ExceptionCode&);
-    void setWirelessPlaybackDisabled(bool);
-    void setEditingBehavior(const String&, ExceptionCode&);
-    void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
-    bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);
-    void setStorageBlockingPolicy(const String&, ExceptionCode&);
-    void setLangAttributeAwareFormControlUIEnabled(bool);
-    void setImagesEnabled(bool, ExceptionCode&);
-    void setMinimumTimerInterval(double intervalInSeconds, ExceptionCode&);
-    void setDefaultVideoPosterURL(const String& url, ExceptionCode&);
-    void setForcePendingWebGLPolicy(bool, ExceptionCode&);
-    void setTimeWithoutMouseMovementBeforeHidingControls(double time, ExceptionCode&);
-    void setUseLegacyBackgroundSizeShorthandBehavior(bool, ExceptionCode&);
-    void setAutoscrollForDragAndDropEnabled(bool, ExceptionCode&);
-    void setFontFallbackPrefersPictographs(bool, ExceptionCode&);
-    void setPluginReplacementEnabled(bool);
-    void setBackgroundShouldExtendBeyondPage(bool, ExceptionCode&);
-    void setShouldConvertPositionStyleOnCopy(bool, ExceptionCode&);
-    void setScrollingTreeIncludesFrames(bool, ExceptionCode&);
-    void setAllowsInlineMediaPlayback(bool, ExceptionCode&);
-    void setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool, ExceptionCode&);
-
-private:
-    explicit InternalSettings(Page*);
-
-    Settings* settings() const;
-    Page* page() const { return m_page; }
-    static const char* supplementName();
 
     Page* m_page;
     Backup m_backup;
 };
 
 } // namespace WebCore
-
-#endif

@@ -33,6 +33,7 @@
 #include <WebCore/SQLiteDatabaseTracker.h>
 #include <WebCore/SQLiteStatement.h>
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <WebCore/TextEncoding.h>
 #include <wtf/MainThread.h>
 #include <wtf/StdLibExtras.h>
@@ -43,13 +44,15 @@
 #include <sqlite3_private.h>
 #endif
 
-namespace WebCore {
+using namespace WebCore;
 
-static StorageTracker* storageTracker = 0;
+namespace WebKit {
+
+static StorageTracker* storageTracker = nullptr;
 
 // If there is no document referencing a storage database, close the underlying database
 // after it has been idle for m_StorageDatabaseIdleInterval seconds.
-static const double DefaultStorageDatabaseIdleInterval = 300;
+static const Seconds defaultStorageDatabaseIdleInterval { 300_s };
     
 void StorageTracker::initializeTracker(const String& storagePath, StorageTrackerClient* client)
 {
@@ -94,33 +97,8 @@ StorageTracker::StorageTracker(const String& storagePath)
     , m_thread(std::make_unique<StorageThread>())
     , m_isActive(false)
     , m_needsInitialization(false)
-    , m_StorageDatabaseIdleInterval(DefaultStorageDatabaseIdleInterval)
+    , m_StorageDatabaseIdleInterval(defaultStorageDatabaseIdleInterval)
 {
-}
-
-void StorageTracker::setDatabaseDirectoryPath(const String& path)
-{
-    LockHolder locker(m_databaseMutex);
-
-    if (m_database.isOpen())
-        m_database.close();
-
-    m_storageDirectoryPath = path.isolatedCopy();
-
-    {
-        LockHolder locker(m_originSetMutex);
-        m_originSet.clear();
-    }
-
-    if (!m_isActive)
-        return;
-
-    importOriginIdentifiers();
-}
-
-String StorageTracker::databaseDirectoryPath() const
-{
-    return m_storageDirectoryPath.isolatedCopy();
 }
 
 String StorageTracker::trackerDatabasePath()
@@ -293,9 +271,8 @@ void StorageTracker::syncFileSystemAndTrackerDatabase()
         if (foundOrigins.contains(originIdentifier))
             continue;
 
-        String originIdentifierCopy = originIdentifier.isolatedCopy();
-        callOnMainThread([this, originIdentifierCopy] {
-            deleteOriginWithIdentifier(originIdentifierCopy);
+        callOnMainThread([this, originIdentifier = originIdentifier.isolatedCopy()] {
+            deleteOriginWithIdentifier(originIdentifier);
         });
     }
 }
@@ -314,19 +291,17 @@ void StorageTracker::setOriginDetails(const String& originIdentifier, const Stri
         m_originSet.add(originIdentifier);
     }
 
-    String originIdentifierCopy = originIdentifier.isolatedCopy();
-    String databaseFileCopy = databaseFile.isolatedCopy();
-    auto function = [this, originIdentifierCopy, databaseFileCopy] {
-        syncSetOriginDetails(originIdentifierCopy, databaseFileCopy);
+    auto function = [this, originIdentifier = originIdentifier.isolatedCopy(), databaseFile = databaseFile.isolatedCopy()] {
+        syncSetOriginDetails(originIdentifier, databaseFile);
     };
 
     if (isMainThread()) {
         ASSERT(m_thread);
-        m_thread->dispatch(function);
+        m_thread->dispatch(WTFMove(function));
     } else {
         // FIXME: This weird ping-ponging was done to fix a deadlock. We should figure out a cleaner way to avoid it instead.
-        callOnMainThread([this, function] {
-            m_thread->dispatch(function);
+        callOnMainThread([this, function = WTFMove(function)]() mutable {
+            m_thread->dispatch(WTFMove(function));
         });
     }
 }
@@ -369,17 +344,26 @@ void StorageTracker::syncSetOriginDetails(const String& originIdentifier, const 
     }
 }
 
-void StorageTracker::origins(Vector<RefPtr<SecurityOrigin>>& result)
+Vector<SecurityOriginData> StorageTracker::origins()
 {
     ASSERT(m_isActive);
     
     if (!m_isActive)
-        return;
+        return { };
 
     LockHolder locker(m_originSetMutex);
 
-    for (OriginSet::const_iterator it = m_originSet.begin(), end = m_originSet.end(); it != end; ++it)
-        result.append(SecurityOrigin::createFromDatabaseIdentifier(*it));
+    Vector<SecurityOriginData> result;
+    result.reserveInitialCapacity(m_originSet.size());
+    for (auto& identifier : m_originSet) {
+        auto origin = SecurityOriginData::fromDatabaseIdentifier(identifier);
+        if (!origin) {
+            ASSERT_NOT_REACHED();
+            continue;
+        }
+        result.uncheckedAppend(origin.value());
+    }
+    return result;
 }
 
 void StorageTracker::deleteAllOrigins()
@@ -476,10 +460,15 @@ void StorageTracker::syncDeleteAllOrigins()
 
 void StorageTracker::deleteOriginWithIdentifier(const String& originIdentifier)
 {
-    deleteOrigin(&SecurityOrigin::createFromDatabaseIdentifier(originIdentifier).get());
+    auto origin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier);
+    if (!origin) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+    deleteOrigin(origin.value());
 }
 
-void StorageTracker::deleteOrigin(SecurityOrigin* origin)
+void StorageTracker::deleteOrigin(const SecurityOriginData& origin)
 {    
     ASSERT(m_isActive);
     ASSERT(isMainThread());
@@ -496,7 +485,7 @@ void StorageTracker::deleteOrigin(SecurityOrigin* origin)
     // StorageTracker db deletion.
     WebStorageNamespaceProvider::clearLocalStorageForOrigin(origin);
 
-    String originId = origin->databaseIdentifier();
+    String originId = origin.databaseIdentifier();
     
     {
         LockHolder locker(m_originSetMutex);
@@ -504,9 +493,8 @@ void StorageTracker::deleteOrigin(SecurityOrigin* origin)
         m_originSet.remove(originId);
     }
 
-    String originIdCopy = originId.isolatedCopy();
-    m_thread->dispatch([this, originIdCopy] {
-        syncDeleteOrigin(originIdCopy);
+    m_thread->dispatch([this, originId = originId.isolatedCopy()] {
+        syncDeleteOrigin(originId);
     });
 }
 
@@ -649,7 +637,7 @@ long long StorageTracker::diskUsageForOrigin(SecurityOrigin* origin)
 
     LockHolder locker(m_databaseMutex);
 
-    String path = databasePathForOrigin(origin->databaseIdentifier());
+    String path = databasePathForOrigin(SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
     if (path.isEmpty())
         return 0;
 

@@ -26,6 +26,8 @@
 #include "config.h"
 #include "NumberOfCores.h"
 
+#include <cstdio>
+
 #if OS(DARWIN)
 #include <sys/param.h>
 // sys/types.h must come before sys/sysctl.h because the latter uses
@@ -47,6 +49,15 @@ int numberOfProcessorCores()
 
     if (s_numberOfCores > 0)
         return s_numberOfCores;
+    
+    if (const char* coresEnv = getenv("WTF_numberOfProcessorCores")) {
+        unsigned numberOfCores;
+        if (sscanf(coresEnv, "%u", &numberOfCores) == 1) {
+            s_numberOfCores = numberOfCores;
+            return s_numberOfCores;
+        } else
+            fprintf(stderr, "WARNING: failed to parse WTF_numberOfProcessorCores=%s\n", coresEnv);
+    }
 
 #if OS(DARWIN)
     unsigned result;

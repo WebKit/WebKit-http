@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PropertyCondition_h
-#define PropertyCondition_h
+#pragma once
 
 #include "JSObject.h"
 #include <wtf/HashMap.h>
@@ -38,7 +37,7 @@ public:
     enum Kind {
         Presence,
         Absence,
-        AbsenceOfSetter,
+        AbsenceOfSetEffect,
         Equivalence // An adaptive watchpoint on this will be a pair of watchpoints, and when the structure transitions, we will set the replacement watchpoint on the new structure.
     };
     
@@ -90,22 +89,22 @@ public:
         return absenceWithoutBarrier(uid, prototype);
     }
     
-    static PropertyCondition absenceOfSetterWithoutBarrier(
+    static PropertyCondition absenceOfSetEffectWithoutBarrier(
         UniquedStringImpl* uid, JSObject* prototype)
     {
         PropertyCondition result;
         result.m_uid = uid;
-        result.m_kind = AbsenceOfSetter;
+        result.m_kind = AbsenceOfSetEffect;
         result.u.absence.prototype = prototype;
         return result;
     }
     
-    static PropertyCondition absenceOfSetter(
+    static PropertyCondition absenceOfSetEffect(
         VM& vm, JSCell* owner, UniquedStringImpl* uid, JSObject* prototype)
     {
         if (owner)
             vm.heap.writeBarrier(owner);
-        return absenceOfSetterWithoutBarrier(uid, prototype);
+        return absenceOfSetEffectWithoutBarrier(uid, prototype);
     }
     
     static PropertyCondition equivalenceWithoutBarrier(
@@ -144,7 +143,7 @@ public:
         return u.presence.attributes;
     }
     
-    bool hasPrototype() const { return !!*this && (m_kind == Absence || m_kind == AbsenceOfSetter); }
+    bool hasPrototype() const { return !!*this && (m_kind == Absence || m_kind == AbsenceOfSetEffect); }
     JSObject* prototype() const
     {
         ASSERT(hasPrototype());
@@ -170,7 +169,7 @@ public:
             result ^= u.presence.attributes;
             break;
         case Absence:
-        case AbsenceOfSetter:
+        case AbsenceOfSetEffect:
             result ^= WTF::PtrHash<JSObject*>::hash(u.absence.prototype);
             break;
         case Equivalence:
@@ -191,7 +190,7 @@ public:
             return u.presence.offset == other.u.presence.offset
                 && u.presence.attributes == other.u.presence.attributes;
         case Absence:
-        case AbsenceOfSetter:
+        case AbsenceOfSetEffect:
             return u.absence.prototype == other.u.absence.prototype;
         case Equivalence:
             return u.equivalence.value == other.u.equivalence.value;
@@ -283,11 +282,11 @@ public:
     
     void validateReferences(const TrackedReferences&) const;
 
-    static bool isValidValueForAttributes(JSValue value, unsigned attributes);
+    static bool isValidValueForAttributes(VM&, JSValue, unsigned attributes);
 
-    bool isValidValueForPresence(JSValue) const;
+    bool isValidValueForPresence(VM&, JSValue) const;
 
-    PropertyCondition attemptToMakeEquivalenceWithoutBarrier(JSObject* base) const;
+    PropertyCondition attemptToMakeEquivalenceWithoutBarrier(VM&, JSObject* base) const;
 
 private:
     bool isWatchableWhenValid(Structure*, WatchabilityEffort) const;
@@ -333,6 +332,3 @@ template<typename T> struct HashTraits;
 template<> struct HashTraits<JSC::PropertyCondition> : SimpleClassHashTraits<JSC::PropertyCondition> { };
 
 } // namespace WTF
-
-#endif // PropertyCondition_h
-

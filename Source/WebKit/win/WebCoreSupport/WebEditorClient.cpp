@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2007, 2011, 2014-2015 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -142,11 +142,6 @@ WebEditorClient::~WebEditorClient()
         m_undoTarget->Release();
 }
 
-void WebEditorClient::pageDestroyed()
-{
-    delete this;
-}
-
 bool WebEditorClient::isContinuousSpellCheckingEnabled()
 {
     BOOL enabled;
@@ -247,6 +242,11 @@ void WebEditorClient::discardedComposition(Frame*)
     notImplemented();
 }
 
+void WebEditorClient::canceledComposition()
+{
+    notImplemented();
+}
+
 void WebEditorClient::didEndEditing()
 {
     static _bstr_t webViewDidEndEditingNotificationName(WebViewDidEndEditingNotification);
@@ -284,6 +284,21 @@ bool WebEditorClient::shouldDeleteRange(Range* range)
     return shouldDelete;
 }
 
+static WebViewInsertAction kit(EditorInsertAction action)
+{
+    switch (action) {
+    case EditorInsertAction::Typed:
+        return WebViewInsertActionTyped;
+    case EditorInsertAction::Pasted:
+        return WebViewInsertActionPasted;
+    case EditorInsertAction::Dropped:
+        return WebViewInsertActionDropped;
+    }
+
+    ASSERT_NOT_REACHED();
+    return WebViewInsertActionTyped;
+}
+
 bool WebEditorClient::shouldInsertNode(Node* node, Range* insertingRange, EditorInsertAction givenAction)
 { 
     COMPtr<IWebEditingDelegate> editingDelegate;
@@ -301,7 +316,7 @@ bool WebEditorClient::shouldInsertNode(Node* node, Range* insertingRange, Editor
     BOOL shouldInsert = FALSE;
     COMPtr<IWebEditingDelegate2> editingDelegate2(Query, editingDelegate);
     if (editingDelegate2) {
-        if (FAILED(editingDelegate2->shouldInsertNode(m_webView, insertDOMNode.get(), insertingDOMRange.get(), static_cast<WebViewInsertAction>(givenAction), &shouldInsert)))
+        if (FAILED(editingDelegate2->shouldInsertNode(m_webView, insertDOMNode.get(), insertingDOMRange.get(), kit(givenAction), &shouldInsert)))
             return true;
     }
 
@@ -320,7 +335,7 @@ bool WebEditorClient::shouldInsertText(const String& str, Range* insertingRange,
 
     BString text(str);
     BOOL shouldInsert = FALSE;
-    if (FAILED(editingDelegate->shouldInsertText(m_webView, text, insertingDOMRange.get(), static_cast<WebViewInsertAction>(givenAction), &shouldInsert)))
+    if (FAILED(editingDelegate->shouldInsertText(m_webView, text, insertingDOMRange.get(), kit(givenAction), &shouldInsert)))
         return true;
 
     return shouldInsert;
@@ -359,22 +374,6 @@ bool WebEditorClient::shouldMoveRangeAfterDelete(Range*, Range*)
     return true;
 }
 
-bool WebEditorClient::shouldChangeTypingStyle(StyleProperties*, StyleProperties*)
-{
-    notImplemented();
-    return false;
-}
-
-void WebEditorClient::webViewDidChangeTypingStyle(WebNotification* /*notification*/)
-{
-    notImplemented();
-}
-
-void WebEditorClient::webViewDidChangeSelection(WebNotification* /*notification*/)
-{
-    notImplemented();
-}
-
 bool WebEditorClient::smartInsertDeleteEnabled(void)
 {
     Page* page = m_webView->page();
@@ -383,7 +382,7 @@ bool WebEditorClient::smartInsertDeleteEnabled(void)
     return page->settings().smartInsertDeleteEnabled();
 }
 
-bool WebEditorClient::isSelectTrailingWhitespaceEnabled(void)
+bool WebEditorClient::isSelectTrailingWhitespaceEnabled(void) const
 {
     Page* page = m_webView->page();
     if (!page)
@@ -506,7 +505,7 @@ void WebEditorClient::textDidChangeInTextArea(Element* e)
 class WebEditorUndoCommand : public IWebUndoCommand
 {
 public:
-    WebEditorUndoCommand(PassRefPtr<UndoStep>, bool isUndo);
+    WebEditorUndoCommand(UndoStep&, bool isUndo);
     void execute();
 
     // IUnknown
@@ -516,11 +515,11 @@ public:
 
 private:
     ULONG m_refCount;
-    RefPtr<UndoStep> m_step;
+    Ref<UndoStep> m_step;
     bool m_isUndo;
 };
 
-WebEditorUndoCommand::WebEditorUndoCommand(PassRefPtr<UndoStep> step, bool isUndo)
+WebEditorUndoCommand::WebEditorUndoCommand(UndoStep& step, bool isUndo)
     : m_step(step)
     , m_isUndo(isUndo) 
     , m_refCount(1)
@@ -568,7 +567,9 @@ ULONG WebEditorUndoCommand::Release()
 static String undoNameForEditAction(EditAction editAction)
 {
     switch (editAction) {
-    case EditActionUnspecified: return String();
+    case EditActionUnspecified:
+    case EditActionInsertReplacement:
+        return String();
     case EditActionSetColor: return WEB_UI_STRING_KEY("Set Color", "Set Color (Undo action name)", "Undo action name");
     case EditActionSetBackgroundColor: return WEB_UI_STRING_KEY("Set Background Color", "Set Background Color (Undo action name)", "Undo action name");
     case EditActionTurnOffKerning: return WEB_UI_STRING_KEY("Turn Off Kerning", "Turn Off Kerning (Undo action name)", "Undo action name");
@@ -595,15 +596,27 @@ static String undoNameForEditAction(EditAction editAction)
     case EditActionUnderline: return WEB_UI_STRING_KEY("Underline", "Underline (Undo action name)", "Undo action name");
     case EditActionOutline: return WEB_UI_STRING_KEY("Outline", "Outline (Undo action name)", "Undo action name");
     case EditActionUnscript: return WEB_UI_STRING_KEY("Unscript", "Unscript (Undo action name)", "Undo action name");
-    case EditActionDrag: return WEB_UI_STRING_KEY("Drag", "Drag (Undo action name)", "Undo action name");
+    case EditActionDeleteByDrag: return WEB_UI_STRING_KEY("Drag", "Drag (Undo action name)", "Undo action name");
     case EditActionCut: return WEB_UI_STRING_KEY("Cut", "Cut (Undo action name)", "Undo action name");
     case EditActionPaste: return WEB_UI_STRING_KEY("Paste", "Paste (Undo action name)", "Undo action name");
     case EditActionPasteFont: return WEB_UI_STRING_KEY("Paste Font", "Paste Font (Undo action name)", "Undo action name");
     case EditActionPasteRuler: return WEB_UI_STRING_KEY("Paste Ruler", "Paste Ruler (Undo action name)", "Undo action name");
-    case EditActionTyping: return WEB_UI_STRING_KEY("Typing", "Typing (Undo action name)", "Undo action name");
+    case EditActionTypingDeleteSelection:
+    case EditActionTypingDeleteBackward:
+    case EditActionTypingDeleteForward:
+    case EditActionTypingDeleteWordBackward:
+    case EditActionTypingDeleteWordForward:
+    case EditActionTypingDeleteLineBackward:
+    case EditActionTypingDeleteLineForward:
+    case EditActionTypingInsertText:
+    case EditActionTypingInsertLineBreak:
+    case EditActionTypingInsertParagraph:
+        return WEB_UI_STRING_KEY("Typing", "Typing (Undo action name)", "Undo action name");
     case EditActionCreateLink: return WEB_UI_STRING_KEY("Create Link", "Create Link (Undo action name)", "Undo action name");
     case EditActionUnlink: return WEB_UI_STRING_KEY("Unlink", "Unlink (Undo action name)", "Undo action name");
-    case EditActionInsertList: return WEB_UI_STRING_KEY("Insert List", "Insert List (Undo action name)", "Undo action name");
+    case EditActionInsertUnorderedList:
+    case EditActionInsertOrderedList:
+        return WEB_UI_STRING_KEY("Insert List", "Insert List (Undo action name)", "Undo action name");
     case EditActionFormatBlock: return WEB_UI_STRING_KEY("Formatting", "Format Block (Undo action name)", "Undo action name");
     case EditActionIndent: return WEB_UI_STRING_KEY("Indent", "Indent (Undo action name)", "Undo action name");
     case EditActionOutdent: return WEB_UI_STRING_KEY("Outdent", "Outdent (Undo action name)", "Undo action name");
@@ -611,11 +624,11 @@ static String undoNameForEditAction(EditAction editAction)
     return String();
 }
 
-void WebEditorClient::registerUndoStep(PassRefPtr<UndoStep> step)
+void WebEditorClient::registerUndoStep(UndoStep& step)
 {
     IWebUIDelegate* uiDelegate = 0;
     if (SUCCEEDED(m_webView->uiDelegate(&uiDelegate))) {
-        String actionName = undoNameForEditAction(step->editingAction());
+        String actionName = undoNameForEditAction(step.editingAction());
         WebEditorUndoCommand* undoCommand = new WebEditorUndoCommand(step, true);
         if (!undoCommand)
             return;
@@ -627,7 +640,7 @@ void WebEditorClient::registerUndoStep(PassRefPtr<UndoStep> step)
     }
 }
 
-void WebEditorClient::registerRedoStep(PassRefPtr<UndoStep> step)
+void WebEditorClient::registerRedoStep(UndoStep& step)
 {
     IWebUIDelegate* uiDelegate = 0;
     if (SUCCEEDED(m_webView->uiDelegate(&uiDelegate))) {
@@ -846,7 +859,7 @@ bool WebEditorClient::spellingUIIsShowing()
     return !!showing;
 }
 
-void WebEditorClient::getGuessesForWord(const String& word, const String& context, Vector<String>& guesses)
+void WebEditorClient::getGuessesForWord(const String& word, const String& context, const VisibleSelection&, Vector<String>& guesses)
 {
     guesses.clear();
 

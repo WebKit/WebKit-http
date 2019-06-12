@@ -24,6 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 // @conditional=ENABLE(STREAMS_API)
 // @internal
 
@@ -78,17 +79,15 @@ function validateAndNormalizeQueuingStrategy(size, highWaterMark)
     "use strict";
 
     if (size !== @undefined && typeof size !== "function")
-        throw new @TypeError("size parameter must be a function");
+        @throwTypeError("size parameter must be a function");
 
     const normalizedStrategy = { };
 
     normalizedStrategy.size = size;
     normalizedStrategy.highWaterMark = @Number(highWaterMark);
 
-    if (@isNaN(normalizedStrategy.highWaterMark))
-        throw new @TypeError("highWaterMark parameter is not a number");
-    if (normalizedStrategy.highWaterMark < 0)
-        throw new @RangeError("highWaterMark is negative");
+    if (@isNaN(normalizedStrategy.highWaterMark) || normalizedStrategy.highWaterMark < 0)
+        @throwRangeError("highWaterMark value is negative or not a number");
 
     return normalizedStrategy;
 }
@@ -115,7 +114,7 @@ function enqueueValueWithSize(queue, value, size)
 
     size = @Number(size);
     if (!@isFinite(size) || size < 0)
-        throw new @RangeError("size has an incorrect value");
+        @throwRangeError("size has an incorrect value");
     queue.content.@push({ value: value, size: size });
     queue.size += size;
 }

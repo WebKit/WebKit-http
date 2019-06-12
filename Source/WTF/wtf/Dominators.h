@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@ class Dominators {
 public:
     Dominators(Graph& graph, bool selfCheck = false)
         : m_graph(graph)
+        , m_data(graph.template newMap<BlockData>())
     {
         LengauerTarjan lengauerTarjan(m_graph);
         lengauerTarjan.compute();
@@ -67,7 +68,7 @@ public:
     
         // Plain stack-based worklist because we are guaranteed to see each block exactly once anyway.
         Vector<GraphNodeWithOrder<typename Graph::Node>> worklist;
-        worklist.append(GraphNodeWithOrder<typename Graph::Node>(m_graph.node(0), GraphVisitOrder::Pre));
+        worklist.append(GraphNodeWithOrder<typename Graph::Node>(m_graph.root(), GraphVisitOrder::Pre));
         while (!worklist.isEmpty()) {
             GraphNodeWithOrder<typename Graph::Node> item = worklist.takeLast();
             switch (item.order) {
@@ -135,6 +136,9 @@ public:
             functor(block);
     }
     
+    // Note: This will visit the dominators starting with the 'to' node and moving up the idom tree
+    // until it gets to the root. Some clients of this function, like B3::moveConstants(), rely on this
+    // order.
     template<typename Functor>
     void forAllDominatorsOf(typename Graph::Node to, const Functor& functor) const
     {
@@ -279,10 +283,10 @@ public:
             if (m_data[blockIndex].preNumber == UINT_MAX)
                 continue;
             
-            out.print("    Block #", blockIndex, ": idom = ", pointerDump(m_data[blockIndex].idomParent), ", idomKids = [");
+            out.print("    Block #", blockIndex, ": idom = ", m_graph.dump(m_data[blockIndex].idomParent), ", idomKids = [");
             CommaPrinter comma;
             for (unsigned i = 0; i < m_data[blockIndex].idomKids.size(); ++i)
-                out.print(comma, *m_data[blockIndex].idomKids[i]);
+                out.print(comma, m_graph.dump(m_data[blockIndex].idomKids[i]));
             out.print("], pre/post = ", m_data[blockIndex].preNumber, "/", m_data[blockIndex].postNumber, "\n");
         }
     }
@@ -347,7 +351,7 @@ private:
             // of not noticing A->C until we're done processing B.
 
             ExtendedGraphNodeWorklist<typename Graph::Node, unsigned, typename Graph::Set> worklist;
-            worklist.push(m_graph.node(0), 0);
+            worklist.push(m_graph.root(), 0);
         
             while (GraphNodeWith<typename Graph::Node, unsigned> item = worklist.pop()) {
                 typename Graph::Node block = item.node;
@@ -514,14 +518,14 @@ private:
 
             // We know that the entry block is only dominated by itself.
             m_results[0].clearAll();
-            m_results[0].set(0);
+            m_results[0][0] = true;
 
             // Find all of the valid blocks.
             m_scratch.clearAll();
             for (unsigned i = numBlocks; i--;) {
                 if (!graph.node(i))
                     continue;
-                m_scratch.set(i);
+                m_scratch[i] = true;
             }
     
             // Mark all nodes as dominated by everything.
@@ -529,7 +533,7 @@ private:
                 if (!graph.node(i) || !graph.predecessors(graph.node(i)).size())
                     m_results[i].clearAll();
                 else
-                    m_results[i].set(m_scratch);
+                    m_results[i] = m_scratch;
             }
 
             // Iteratively eliminate nodes that are not dominator.
@@ -552,7 +556,7 @@ private:
         
         bool dominates(unsigned from, unsigned to) const
         {
-            return m_results[to].get(from);
+            return m_results[to][from];
         }
     
         bool dominates(typename Graph::Node from, typename Graph::Node to) const
@@ -585,12 +589,12 @@ private:
                 return false;
 
             // Find the intersection of dom(preds).
-            m_scratch.set(m_results[m_graph.index(m_graph.predecessors(block)[0])]);
+            m_scratch = m_results[m_graph.index(m_graph.predecessors(block)[0])];
             for (unsigned j = m_graph.predecessors(block).size(); j-- > 1;)
-                m_scratch.filter(m_results[m_graph.index(m_graph.predecessors(block)[j])]);
+                m_scratch &= m_results[m_graph.index(m_graph.predecessors(block)[j])];
 
             // The block is also dominated by itself.
-            m_scratch.set(idx);
+            m_scratch[idx] = true;
 
             return m_results[idx].setAndCheck(m_scratch);
         }

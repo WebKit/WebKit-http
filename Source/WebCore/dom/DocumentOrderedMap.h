@@ -28,10 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DocumentOrderedMap_h
-#define DocumentOrderedMap_h
+#pragma once
 
-#include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
@@ -60,8 +58,7 @@ public:
     Element* getElementById(const AtomicStringImpl&, const TreeScope&) const;
     Element* getElementByName(const AtomicStringImpl&, const TreeScope&) const;
     HTMLMapElement* getElementByMapName(const AtomicStringImpl&, const TreeScope&) const;
-    HTMLMapElement* getElementByCaseFoldedMapName(const AtomicStringImpl&, const TreeScope&) const;
-    HTMLImageElement* getElementByCaseFoldedUsemap(const AtomicStringImpl&, const TreeScope&) const;
+    HTMLImageElement* getElementByUsemap(const AtomicStringImpl&, const TreeScope&) const;
     HTMLLabelElement* getElementByLabelForAttribute(const AtomicStringImpl&, const TreeScope&) const;
     Element* getElementByWindowNamedItem(const AtomicStringImpl&, const TreeScope&) const;
     Element* getElementByDocumentNamedItem(const AtomicStringImpl&, const TreeScope&) const;
@@ -110,5 +107,3 @@ inline bool DocumentOrderedMap::containsMultiple(const AtomicStringImpl& id) con
 }
 
 } // namespace WebCore
-
-#endif // DocumentOrderedMap_h

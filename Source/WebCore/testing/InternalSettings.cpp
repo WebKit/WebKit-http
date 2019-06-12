@@ -30,12 +30,14 @@
 #include "CaptionUserPreferences.h"
 #include "Document.h"
 #include "ExceptionCode.h"
+#include "FontCache.h"
 #include "FrameView.h"
 #include "Language.h"
 #include "LocaleToScriptMapping.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "PageGroup.h"
+#include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "Supplementable.h"
@@ -45,40 +47,24 @@
 #include "ColorChooser.h"
 #endif
 
-#define InternalSettingsGuardForSettingsReturn(returnValue) \
-    if (!settings()) { \
-        ec = INVALID_ACCESS_ERR; \
-        return returnValue; \
-    }
-
-#define InternalSettingsGuardForSettings()  \
-    if (!settings()) { \
-        ec = INVALID_ACCESS_ERR; \
-        return; \
-    }
-
-#define InternalSettingsGuardForPage() \
-    if (!page()) { \
-        ec = INVALID_ACCESS_ERR; \
-        return; \
-    }
+#if USE(SOUP)
+#include "SoupNetworkSession.h"
+#endif
 
 namespace WebCore {
 
 InternalSettings::Backup::Backup(Settings& settings)
-    : m_originalCSSShapesEnabled(RuntimeEnabledFeatures::sharedFeatures().cssShapesEnabled())
-    , m_originalEditingBehavior(settings.editingBehaviorType())
+    : m_originalEditingBehavior(settings.editingBehaviorType())
 #if ENABLE(TEXT_AUTOSIZING)
     , m_originalTextAutosizingEnabled(settings.textAutosizingEnabled())
     , m_originalTextAutosizingWindowSizeOverride(settings.textAutosizingWindowSizeOverride())
-    , m_originalTextAutosizingFontScaleFactor(settings.textAutosizingFontScaleFactor())
 #endif
     , m_originalMediaTypeOverride(settings.mediaTypeOverride())
     , m_originalCanvasUsesAcceleratedDrawing(settings.canvasUsesAcceleratedDrawing())
     , m_originalMockScrollbarsEnabled(settings.mockScrollbarsEnabled())
-    , m_langAttributeAwareFormControlUIEnabled(RuntimeEnabledFeatures::sharedFeatures().langAttributeAwareFormControlUIEnabled())
     , m_imagesEnabled(settings.areImagesEnabled())
-    , m_minimumTimerInterval(settings.minimumDOMTimerInterval())
+    , m_preferMIMETypeForImages(settings.preferMIMETypeForImages())
+    , m_minimumDOMTimerInterval(settings.minimumDOMTimerInterval())
 #if ENABLE(VIDEO_TRACK)
     , m_shouldDisplaySubtitles(settings.shouldDisplaySubtitles())
     , m_shouldDisplayCaptions(settings.shouldDisplayCaptions())
@@ -89,9 +75,11 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_originalTimeWithoutMouseMovementBeforeHidingControls(settings.timeWithoutMouseMovementBeforeHidingControls())
     , m_useLegacyBackgroundSizeShorthandBehavior(settings.useLegacyBackgroundSizeShorthandBehavior())
     , m_autoscrollForDragAndDropEnabled(settings.autoscrollForDragAndDropEnabled())
-    , m_pluginReplacementEnabled(RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
+    , m_quickTimePluginReplacementEnabled(settings.quickTimePluginReplacementEnabled())
+    , m_youTubeFlashPluginReplacementEnabled(settings.youTubeFlashPluginReplacementEnabled())
     , m_shouldConvertPositionStyleOnCopy(settings.shouldConvertPositionStyleOnCopy())
     , m_fontFallbackPrefersPictographs(settings.fontFallbackPrefersPictographs())
+    , m_webFontsAlwaysFallBack(settings.webFontsAlwaysFallBack())
     , m_backgroundShouldExtendBeyondPage(settings.backgroundShouldExtendBeyondPage())
     , m_storageBlockingPolicy(settings.storageBlockingPolicy())
     , m_scrollingTreeIncludesFrames(settings.scrollingTreeIncludesFrames())
@@ -102,13 +90,36 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_allowsAirPlayForMediaPlayback(settings.allowsAirPlayForMediaPlayback())
 #endif
     , m_allowsInlineMediaPlayback(settings.allowsInlineMediaPlayback())
+    , m_allowsInlineMediaPlaybackAfterFullscreen(settings.allowsInlineMediaPlaybackAfterFullscreen())
     , m_inlineMediaPlaybackRequiresPlaysInlineAttribute(settings.inlineMediaPlaybackRequiresPlaysInlineAttribute())
+    , m_deferredCSSParserEnabled(settings.deferredCSSParserEnabled())
+    , m_inputEventsEnabled(settings.inputEventsEnabled())
+    , m_userInterfaceDirectionPolicy(settings.userInterfaceDirectionPolicy())
+    , m_systemLayoutDirection(settings.systemLayoutDirection())
+    , m_pdfImageCachingPolicy(settings.pdfImageCachingPolicy())
+    , m_forcedColorsAreInvertedAccessibilityValue(settings.forcedColorsAreInvertedAccessibilityValue())
+    , m_forcedDisplayIsMonochromeAccessibilityValue(settings.forcedDisplayIsMonochromeAccessibilityValue())
+    , m_forcedPrefersReducedMotionAccessibilityValue(settings.forcedPrefersReducedMotionAccessibilityValue())
+    , m_frameFlattening(settings.frameFlattening())
+#if ENABLE(INDEXED_DATABASE_IN_WORKERS)
+    , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
+#endif
+    , m_cssGridLayoutEnabled(RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled())
+#if ENABLE(WEBGL2)
+    , m_webGL2Enabled(RuntimeEnabledFeatures::sharedFeatures().webGL2Enabled())
+#endif
+#if ENABLE(WEBGPU)
+    , m_webGPUEnabled(RuntimeEnabledFeatures::sharedFeatures().webGPUEnabled())
+#endif
+    , m_shouldMockBoldSystemFontForAccessibility(RenderTheme::singleton().shouldMockBoldSystemFontForAccessibility())
+#if USE(AUDIO_SESSION)
+    , m_shouldManageAudioSessionCategory(Settings::shouldManageAudioSessionCategory())
+#endif
 {
 }
 
 void InternalSettings::Backup::restoreTo(Settings& settings)
 {
-    RuntimeEnabledFeatures::sharedFeatures().setCSSShapesEnabled(m_originalCSSShapesEnabled);
     settings.setEditingBehaviorType(m_originalEditingBehavior);
 
     for (const auto& standardFont : m_standardFontFamilies)
@@ -142,13 +153,12 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(TEXT_AUTOSIZING)
     settings.setTextAutosizingEnabled(m_originalTextAutosizingEnabled);
     settings.setTextAutosizingWindowSizeOverride(m_originalTextAutosizingWindowSizeOverride);
-    settings.setTextAutosizingFontScaleFactor(m_originalTextAutosizingFontScaleFactor);
 #endif
     settings.setMediaTypeOverride(m_originalMediaTypeOverride);
     settings.setCanvasUsesAcceleratedDrawing(m_originalCanvasUsesAcceleratedDrawing);
-    RuntimeEnabledFeatures::sharedFeatures().setLangAttributeAwareFormControlUIEnabled(m_langAttributeAwareFormControlUIEnabled);
     settings.setImagesEnabled(m_imagesEnabled);
-    settings.setMinimumDOMTimerInterval(m_minimumTimerInterval);
+    settings.setPreferMIMETypeForImages(m_preferMIMETypeForImages);
+    settings.setMinimumDOMTimerInterval(m_minimumDOMTimerInterval);
 #if ENABLE(VIDEO_TRACK)
     settings.setShouldDisplaySubtitles(m_shouldDisplaySubtitles);
     settings.setShouldDisplayCaptions(m_shouldDisplayCaptions);
@@ -161,6 +171,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setAutoscrollForDragAndDropEnabled(m_autoscrollForDragAndDropEnabled);
     settings.setShouldConvertPositionStyleOnCopy(m_shouldConvertPositionStyleOnCopy);
     settings.setFontFallbackPrefersPictographs(m_fontFallbackPrefersPictographs);
+    settings.setWebFontsAlwaysFallBack(m_webFontsAlwaysFallBack);
     settings.setBackgroundShouldExtendBeyondPage(m_backgroundShouldExtendBeyondPage);
     settings.setStorageBlockingPolicy(m_storageBlockingPolicy);
     settings.setScrollingTreeIncludesFrames(m_scrollingTreeIncludesFrames);
@@ -168,8 +179,37 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setTouchEventEmulationEnabled(m_touchEventEmulationEnabled);
 #endif
     settings.setAllowsInlineMediaPlayback(m_allowsInlineMediaPlayback);
+    settings.setAllowsInlineMediaPlaybackAfterFullscreen(m_allowsInlineMediaPlaybackAfterFullscreen);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(m_inlineMediaPlaybackRequiresPlaysInlineAttribute);
-    RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
+    settings.setQuickTimePluginReplacementEnabled(m_quickTimePluginReplacementEnabled);
+    settings.setYouTubeFlashPluginReplacementEnabled(m_youTubeFlashPluginReplacementEnabled);
+    settings.setDeferredCSSParserEnabled(m_deferredCSSParserEnabled);
+    settings.setInputEventsEnabled(m_inputEventsEnabled);
+    settings.setUserInterfaceDirectionPolicy(m_userInterfaceDirectionPolicy);
+    settings.setSystemLayoutDirection(m_systemLayoutDirection);
+    settings.setPdfImageCachingPolicy(m_pdfImageCachingPolicy);
+    settings.setForcedColorsAreInvertedAccessibilityValue(m_forcedColorsAreInvertedAccessibilityValue);
+    settings.setForcedDisplayIsMonochromeAccessibilityValue(m_forcedDisplayIsMonochromeAccessibilityValue);
+    settings.setForcedPrefersReducedMotionAccessibilityValue(m_forcedPrefersReducedMotionAccessibilityValue);
+    Settings::setAllowsAnySSLCertificate(false);
+    RenderTheme::singleton().setShouldMockBoldSystemFontForAccessibility(m_shouldMockBoldSystemFontForAccessibility);
+    FontCache::singleton().setShouldMockBoldSystemFontForAccessibility(m_shouldMockBoldSystemFontForAccessibility);
+    settings.setFrameFlattening(m_frameFlattening);
+
+#if ENABLE(INDEXED_DATABASE_IN_WORKERS)
+    RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
+#endif
+    RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(m_cssGridLayoutEnabled);
+#if ENABLE(WEBGL2)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(m_webGL2Enabled);
+#endif
+#if ENABLE(WEBGPU)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled(m_webGPUEnabled);
+#endif
+
+#if USE(AUDIO_SESSION)
+    Settings::setShouldManageAudioSessionCategory(m_shouldManageAudioSessionCategory);
+#endif
 }
 
 class InternalSettingsWrapper : public Supplement<Page> {
@@ -178,7 +218,7 @@ public:
         : m_internalSettings(InternalSettings::create(page)) { }
     virtual ~InternalSettingsWrapper() { m_internalSettings->hostDestroyed(); }
 #if !ASSERT_DISABLED
-    virtual bool isRefCountedWrapper() const override { return true; }
+    bool isRefCountedWrapper() const override { return true; }
 #endif
     InternalSettings* internalSettings() const { return m_internalSettings.get(); }
 
@@ -198,8 +238,9 @@ InternalSettings* InternalSettings::from(Page* page)
     return static_cast<InternalSettingsWrapper*>(Supplement<Page>::from(page, supplementName()))->internalSettings();
 }
 
-InternalSettings::~InternalSettings()
+void InternalSettings::hostDestroyed()
 {
+    m_page = nullptr;
 }
 
 InternalSettings::InternalSettings(Page* page)
@@ -208,198 +249,228 @@ InternalSettings::InternalSettings(Page* page)
     , m_backup(page->settings())
 {
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    page->settings().setAllowsAirPlayForMediaPlayback(false);
+    setAllowsAirPlayForMediaPlayback(false);
 #endif
+#if ENABLE(MEDIA_STREAM)
+    setMediaCaptureRequiresSecureConnection(false);
+#endif
+}
+
+Ref<InternalSettings> InternalSettings::create(Page* page)
+{
+    return adoptRef(*new InternalSettings(page));
 }
 
 void InternalSettings::resetToConsistentState()
 {
-    page()->setPageScaleFactor(1, IntPoint(0, 0));
-    page()->setCanStartMedia(true);
-    page()->settings().setForcePendingWebGLPolicy(false);
+    m_page->setPageScaleFactor(1, { 0, 0 });
+    m_page->mainFrame().setPageAndTextZoomFactors(1, 1);
+    m_page->setCanStartMedia(true);
+
+    settings().setForcePendingWebGLPolicy(false);
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    m_page->settings().setAllowsAirPlayForMediaPlayback(false);
+    settings().setAllowsAirPlayForMediaPlayback(false);
+#endif
+#if ENABLE(MEDIA_STREAM)
+    setMediaCaptureRequiresSecureConnection(false);
 #endif
 
-    m_backup.restoreTo(*settings());
-    m_backup = Backup(*settings());
+    m_backup.restoreTo(settings());
+    m_backup = Backup { settings() };
 
     InternalSettingsGenerated::resetToConsistentState();
 }
 
-Settings* InternalSettings::settings() const
+Settings& InternalSettings::settings() const
 {
-    if (!page())
-        return 0;
-    return &page()->settings();
+    ASSERT(m_page);
+    return m_page->settings();
 }
 
-void InternalSettings::setTouchEventEmulationEnabled(bool enabled, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setTouchEventEmulationEnabled(bool enabled)
 {
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
 #if ENABLE(TOUCH_EVENTS)
-    InternalSettingsGuardForSettings();
-    settings()->setTouchEventEmulationEnabled(enabled);
+    settings().setTouchEventEmulationEnabled(enabled);
 #else
     UNUSED_PARAM(enabled);
-    UNUSED_PARAM(ec);
 #endif
+    return { };
 }
 
-void InternalSettings::setStandardFontFamily(const String& family, const String& script, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setStandardFontFamily(const String& family, const String& script)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     UScriptCode code = scriptNameToCode(script);
     if (code == USCRIPT_INVALID_CODE)
-        return;
-    m_backup.m_standardFontFamilies.add(code, settings()->standardFontFamily(code));
-    settings()->setStandardFontFamily(family, code);
+        return { };
+    m_backup.m_standardFontFamilies.add(code, settings().standardFontFamily(code));
+    settings().setStandardFontFamily(family, code);
+    return { };
 }
 
-void InternalSettings::setSerifFontFamily(const String& family, const String& script, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setSerifFontFamily(const String& family, const String& script)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     UScriptCode code = scriptNameToCode(script);
     if (code == USCRIPT_INVALID_CODE)
-        return;
-    m_backup.m_serifFontFamilies.add(code, settings()->serifFontFamily(code));
-    settings()->setSerifFontFamily(family, code);
+        return { };
+    m_backup.m_serifFontFamilies.add(code, settings().serifFontFamily(code));
+    settings().setSerifFontFamily(family, code);
+    return { };
 }
 
-void InternalSettings::setSansSerifFontFamily(const String& family, const String& script, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setSansSerifFontFamily(const String& family, const String& script)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     UScriptCode code = scriptNameToCode(script);
     if (code == USCRIPT_INVALID_CODE)
-        return;
-    m_backup.m_sansSerifFontFamilies.add(code, settings()->sansSerifFontFamily(code));
-    settings()->setSansSerifFontFamily(family, code);
+        return { };
+    m_backup.m_sansSerifFontFamilies.add(code, settings().sansSerifFontFamily(code));
+    settings().setSansSerifFontFamily(family, code);
+    return { };
 }
 
-void InternalSettings::setFixedFontFamily(const String& family, const String& script, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setFixedFontFamily(const String& family, const String& script)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     UScriptCode code = scriptNameToCode(script);
     if (code == USCRIPT_INVALID_CODE)
-        return;
-    m_backup.m_fixedFontFamilies.add(code, settings()->fixedFontFamily(code));
-    settings()->setFixedFontFamily(family, code);
+        return { };
+    m_backup.m_fixedFontFamilies.add(code, settings().fixedFontFamily(code));
+    settings().setFixedFontFamily(family, code);
+    return { };
 }
 
-void InternalSettings::setCursiveFontFamily(const String& family, const String& script, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setCursiveFontFamily(const String& family, const String& script)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     UScriptCode code = scriptNameToCode(script);
     if (code == USCRIPT_INVALID_CODE)
-        return;
-    m_backup.m_cursiveFontFamilies.add(code, settings()->cursiveFontFamily(code));
-    settings()->setCursiveFontFamily(family, code);
+        return { };
+    m_backup.m_cursiveFontFamilies.add(code, settings().cursiveFontFamily(code));
+    settings().setCursiveFontFamily(family, code);
+    return { };
 }
 
-void InternalSettings::setFantasyFontFamily(const String& family, const String& script, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setFantasyFontFamily(const String& family, const String& script)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     UScriptCode code = scriptNameToCode(script);
     if (code == USCRIPT_INVALID_CODE)
-        return;
-    m_backup.m_fantasyFontFamilies.add(code, settings()->fantasyFontFamily(code));
-    settings()->setFantasyFontFamily(family, code);
+        return { };
+    m_backup.m_fantasyFontFamilies.add(code, settings().fantasyFontFamily(code));
+    settings().setFantasyFontFamily(family, code);
+    return { };
 }
 
-void InternalSettings::setPictographFontFamily(const String& family, const String& script, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setPictographFontFamily(const String& family, const String& script)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     UScriptCode code = scriptNameToCode(script);
     if (code == USCRIPT_INVALID_CODE)
-        return;
-    m_backup.m_pictographFontFamilies.add(code, settings()->pictographFontFamily(code));
-    settings()->setPictographFontFamily(family, code);
+        return { };
+    m_backup.m_pictographFontFamilies.add(code, settings().pictographFontFamily(code));
+    settings().setPictographFontFamily(family, code);
+    return { };
 }
 
-void InternalSettings::setTextAutosizingEnabled(bool enabled, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setTextAutosizingEnabled(bool enabled)
 {
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
 #if ENABLE(TEXT_AUTOSIZING)
-    InternalSettingsGuardForSettings();
-    settings()->setTextAutosizingEnabled(enabled);
+    settings().setTextAutosizingEnabled(enabled);
 #else
     UNUSED_PARAM(enabled);
-    UNUSED_PARAM(ec);
 #endif
+    return { };
 }
 
-void InternalSettings::setTextAutosizingWindowSizeOverride(int width, int height, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setTextAutosizingWindowSizeOverride(int width, int height)
 {
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
 #if ENABLE(TEXT_AUTOSIZING)
-    InternalSettingsGuardForSettings();
-    settings()->setTextAutosizingWindowSizeOverride(IntSize(width, height));
+    settings().setTextAutosizingWindowSizeOverride(IntSize(width, height));
 #else
     UNUSED_PARAM(width);
     UNUSED_PARAM(height);
-    UNUSED_PARAM(ec);
 #endif
+    return { };
 }
 
-void InternalSettings::setMediaTypeOverride(const String& mediaType, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setMediaTypeOverride(const String& mediaType)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setMediaTypeOverride(mediaType);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setMediaTypeOverride(mediaType);
+    return { };
 }
 
-void InternalSettings::setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setCanStartMedia(bool enabled)
 {
-#if ENABLE(TEXT_AUTOSIZING)
-    InternalSettingsGuardForSettings();
-    settings()->setTextAutosizingFontScaleFactor(fontScaleFactor);
-#else
-    UNUSED_PARAM(fontScaleFactor);
-    UNUSED_PARAM(ec);
-#endif
-}
-
-void InternalSettings::setCSSShapesEnabled(bool enabled, ExceptionCode& ec)
-{
-    UNUSED_PARAM(ec);
-    RuntimeEnabledFeatures::sharedFeatures().setCSSShapesEnabled(enabled);
-}
-
-void InternalSettings::setCanStartMedia(bool enabled, ExceptionCode& ec)
-{
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     m_page->setCanStartMedia(enabled);
+    return { };
 }
 
-void InternalSettings::setWirelessPlaybackDisabled(bool available)
+ExceptionOr<void> InternalSettings::setAllowsAirPlayForMediaPlayback(bool allows)
 {
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    m_page->settings().setAllowsAirPlayForMediaPlayback(available);
+    settings().setAllowsAirPlayForMediaPlayback(allows);
 #else
-    UNUSED_PARAM(available);
+    UNUSED_PARAM(allows);
 #endif
+    return { };
 }
 
-void InternalSettings::setEditingBehavior(const String& editingBehavior, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setMediaCaptureRequiresSecureConnection(bool requires)
 {
-    InternalSettingsGuardForSettings();
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+#if ENABLE(MEDIA_STREAM)
+    settings().setMediaCaptureRequiresSecureConnection(requires);
+#else
+    UNUSED_PARAM(requires);
+#endif
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setEditingBehavior(const String& editingBehavior)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     if (equalLettersIgnoringASCIICase(editingBehavior, "win"))
-        settings()->setEditingBehaviorType(EditingWindowsBehavior);
+        settings().setEditingBehaviorType(EditingWindowsBehavior);
     else if (equalLettersIgnoringASCIICase(editingBehavior, "mac"))
-        settings()->setEditingBehaviorType(EditingMacBehavior);
+        settings().setEditingBehaviorType(EditingMacBehavior);
     else if (equalLettersIgnoringASCIICase(editingBehavior, "unix"))
-        settings()->setEditingBehaviorType(EditingUnixBehavior);
+        settings().setEditingBehaviorType(EditingUnixBehavior);
     else if (equalLettersIgnoringASCIICase(editingBehavior, "ios"))
-        settings()->setEditingBehaviorType(EditingIOSBehavior);
+        settings().setEditingBehaviorType(EditingIOSBehavior);
     else
-        ec = SYNTAX_ERR;
+        return Exception { SYNTAX_ERR };
+    return { };
 }
 
-void InternalSettings::setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setShouldDisplayTrackKind(const String& kind, bool enabled)
 {
-    InternalSettingsGuardForSettings();
-
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
 #if ENABLE(VIDEO_TRACK)
-    if (!page())
-        return;
-
-    auto& captionPreferences = page()->group().captionPreferences();
+    auto& captionPreferences = m_page->group().captionPreferences();
     if (equalLettersIgnoringASCIICase(kind, "subtitles"))
         captionPreferences.setUserPrefersSubtitles(enabled);
     else if (equalLettersIgnoringASCIICase(kind, "captions"))
@@ -407,22 +478,20 @@ void InternalSettings::setShouldDisplayTrackKind(const String& kind, bool enable
     else if (equalLettersIgnoringASCIICase(kind, "textdescriptions"))
         captionPreferences.setUserPrefersTextDescriptions(enabled);
     else
-        ec = SYNTAX_ERR;
+        return Exception { SYNTAX_ERR };
 #else
     UNUSED_PARAM(kind);
     UNUSED_PARAM(enabled);
 #endif
+    return { };
 }
 
-bool InternalSettings::shouldDisplayTrackKind(const String& kind, ExceptionCode& ec)
+ExceptionOr<bool> InternalSettings::shouldDisplayTrackKind(const String& kind)
 {
-    InternalSettingsGuardForSettingsReturn(false);
-
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
 #if ENABLE(VIDEO_TRACK)
-    if (!page())
-        return false;
-
-    auto& captionPreferences = page()->group().captionPreferences();
+    auto& captionPreferences = m_page->group().captionPreferences();
     if (equalLettersIgnoringASCIICase(kind, "subtitles"))
         return captionPreferences.userPrefersSubtitles();
     if (equalLettersIgnoringASCIICase(kind, "captions"))
@@ -430,116 +499,414 @@ bool InternalSettings::shouldDisplayTrackKind(const String& kind, ExceptionCode&
     if (equalLettersIgnoringASCIICase(kind, "textdescriptions"))
         return captionPreferences.userPrefersTextDescriptions();
 
-    ec = SYNTAX_ERR;
-    return false;
+    return Exception { SYNTAX_ERR };
 #else
     UNUSED_PARAM(kind);
     return false;
 #endif
 }
 
-void InternalSettings::setStorageBlockingPolicy(const String& mode, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setStorageBlockingPolicy(const String& mode)
 {
-    InternalSettingsGuardForSettings();
-
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
     if (mode == "AllowAll")
-        settings()->setStorageBlockingPolicy(SecurityOrigin::AllowAllStorage);
+        settings().setStorageBlockingPolicy(SecurityOrigin::AllowAllStorage);
     else if (mode == "BlockThirdParty")
-        settings()->setStorageBlockingPolicy(SecurityOrigin::BlockThirdPartyStorage);
+        settings().setStorageBlockingPolicy(SecurityOrigin::BlockThirdPartyStorage);
     else if (mode == "BlockAll")
-        settings()->setStorageBlockingPolicy(SecurityOrigin::BlockAllStorage);
+        settings().setStorageBlockingPolicy(SecurityOrigin::BlockAllStorage);
     else
-        ec = SYNTAX_ERR;
+        return Exception { SYNTAX_ERR };
+    return { };
 }
 
-void InternalSettings::setLangAttributeAwareFormControlUIEnabled(bool enabled)
+ExceptionOr<void> InternalSettings::setPreferMIMETypeForImages(bool preferMIMETypeForImages)
 {
-    RuntimeEnabledFeatures::sharedFeatures().setLangAttributeAwareFormControlUIEnabled(enabled);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setPreferMIMETypeForImages(preferMIMETypeForImages);
+    return { };
 }
 
-void InternalSettings::setImagesEnabled(bool enabled, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setImagesEnabled(bool enabled)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setImagesEnabled(enabled);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setImagesEnabled(enabled);
+    return { };
 }
 
-void InternalSettings::setMinimumTimerInterval(double intervalInSeconds, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setPDFImageCachingPolicy(const String& policy)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setMinimumDOMTimerInterval(intervalInSeconds);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    if (equalLettersIgnoringASCIICase(policy, "disabled"))
+        settings().setPdfImageCachingPolicy(PDFImageCachingDisabled);
+    else if (equalLettersIgnoringASCIICase(policy, "belowmemorylimit"))
+        settings().setPdfImageCachingPolicy(PDFImageCachingBelowMemoryLimit);
+    else if (equalLettersIgnoringASCIICase(policy, "clipboundsonly"))
+        settings().setPdfImageCachingPolicy(PDFImageCachingClipBoundsOnly);
+    else if (equalLettersIgnoringASCIICase(policy, "enabled"))
+        settings().setPdfImageCachingPolicy(PDFImageCachingEnabled);
+    else
+        return Exception { SYNTAX_ERR };
+    return { };
 }
 
-void InternalSettings::setDefaultVideoPosterURL(const String& url, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setMinimumTimerInterval(double intervalInSeconds)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setDefaultVideoPosterURL(url);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setMinimumDOMTimerInterval(Seconds { intervalInSeconds });
+    return { };
 }
 
-void InternalSettings::setForcePendingWebGLPolicy(bool forced, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setDefaultVideoPosterURL(const String& url)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setForcePendingWebGLPolicy(forced);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setDefaultVideoPosterURL(url);
+    return { };
 }
 
-void InternalSettings::setTimeWithoutMouseMovementBeforeHidingControls(double time, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setForcePendingWebGLPolicy(bool forced)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setTimeWithoutMouseMovementBeforeHidingControls(time);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setForcePendingWebGLPolicy(forced);
+    return { };
 }
 
-void InternalSettings::setUseLegacyBackgroundSizeShorthandBehavior(bool enabled, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setTimeWithoutMouseMovementBeforeHidingControls(double time)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setUseLegacyBackgroundSizeShorthandBehavior(enabled);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setTimeWithoutMouseMovementBeforeHidingControls(Seconds { time });
+    return { };
 }
 
-void InternalSettings::setAutoscrollForDragAndDropEnabled(bool enabled, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setUseLegacyBackgroundSizeShorthandBehavior(bool enabled)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setAutoscrollForDragAndDropEnabled(enabled);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setUseLegacyBackgroundSizeShorthandBehavior(enabled);
+    return { };
 }
 
-void InternalSettings::setFontFallbackPrefersPictographs(bool preferPictographs, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setAutoscrollForDragAndDropEnabled(bool enabled)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setFontFallbackPrefersPictographs(preferPictographs);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setAutoscrollForDragAndDropEnabled(enabled);
+    return { };
 }
 
-void InternalSettings::setPluginReplacementEnabled(bool enabled)
+ExceptionOr<void> InternalSettings::setFontFallbackPrefersPictographs(bool preferPictographs)
 {
-    RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(enabled);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setFontFallbackPrefersPictographs(preferPictographs);
+    return { };
 }
 
-void InternalSettings::setBackgroundShouldExtendBeyondPage(bool hasExtendedBackground, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setWebFontsAlwaysFallBack(bool enable)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setBackgroundShouldExtendBeyondPage(hasExtendedBackground);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setWebFontsAlwaysFallBack(enable);
+    return { };
 }
 
-void InternalSettings::setShouldConvertPositionStyleOnCopy(bool convert, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setQuickTimePluginReplacementEnabled(bool enabled)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setShouldConvertPositionStyleOnCopy(convert);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setQuickTimePluginReplacementEnabled(enabled);
+    return { };
 }
 
-void InternalSettings::setScrollingTreeIncludesFrames(bool enabled, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setYouTubeFlashPluginReplacementEnabled(bool enabled)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setScrollingTreeIncludesFrames(enabled);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setYouTubeFlashPluginReplacementEnabled(enabled);
+    return { };
 }
 
-void InternalSettings::setAllowsInlineMediaPlayback(bool allows, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setBackgroundShouldExtendBeyondPage(bool hasExtendedBackground)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setAllowsInlineMediaPlayback(allows);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setBackgroundShouldExtendBeyondPage(hasExtendedBackground);
+    return { };
 }
 
-void InternalSettings::setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool requires, ExceptionCode& ec)
+ExceptionOr<void> InternalSettings::setShouldConvertPositionStyleOnCopy(bool convert)
 {
-    InternalSettingsGuardForSettings();
-    settings()->setInlineMediaPlaybackRequiresPlaysInlineAttribute(requires);
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setShouldConvertPositionStyleOnCopy(convert);
+    return { };
 }
 
-// If you add to this list, make sure that you update the Backup class for test reproducability!
+ExceptionOr<void> InternalSettings::setScrollingTreeIncludesFrames(bool enabled)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setScrollingTreeIncludesFrames(enabled);
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setAllowUnclampedScrollPosition(bool allowUnclamped)
+{
+    if (!m_page || !m_page->mainFrame().view())
+        return Exception { INVALID_ACCESS_ERR };
+
+    m_page->mainFrame().view()->setAllowsUnclampedScrollPositionForTesting(allowUnclamped);
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setAllowsInlineMediaPlayback(bool allows)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setAllowsInlineMediaPlayback(allows);
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setAllowsInlineMediaPlaybackAfterFullscreen(bool allows)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setAllowsInlineMediaPlaybackAfterFullscreen(allows);
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool requires)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setInlineMediaPlaybackRequiresPlaysInlineAttribute(requires);
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setShouldMockBoldSystemFontForAccessibility(bool requires)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    RenderTheme::singleton().setShouldMockBoldSystemFontForAccessibility(requires);
+    FontCache::singleton().setShouldMockBoldSystemFontForAccessibility(requires);
+    return { };
+}
+
+void InternalSettings::setIndexedDBWorkersEnabled(bool enabled)
+{
+#if ENABLE(INDEXED_DATABASE_IN_WORKERS)
+    RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+#endif
+}
+
+void InternalSettings::setCSSGridLayoutEnabled(bool enabled)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enabled);
+}
+
+void InternalSettings::setWebGL2Enabled(bool enabled)
+{
+#if ENABLE(WEBGL2)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+#endif
+}
+
+void InternalSettings::setWebGPUEnabled(bool enabled)
+{
+#if ENABLE(WEBGPU)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+#endif
+}
+
+ExceptionOr<String> InternalSettings::userInterfaceDirectionPolicy()
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    switch (settings().userInterfaceDirectionPolicy()) {
+    case UserInterfaceDirectionPolicy::Content:
+        return String { ASCIILiteral { "Content" } };
+    case UserInterfaceDirectionPolicy::System:
+        return String { ASCIILiteral { "View" } };
+    }
+    ASSERT_NOT_REACHED();
+    return Exception { INVALID_ACCESS_ERR };
+}
+
+ExceptionOr<void> InternalSettings::setUserInterfaceDirectionPolicy(const String& policy)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    if (equalLettersIgnoringASCIICase(policy, "content")) {
+        settings().setUserInterfaceDirectionPolicy(UserInterfaceDirectionPolicy::Content);
+        return { };
+    }
+    if (equalLettersIgnoringASCIICase(policy, "view")) {
+        settings().setUserInterfaceDirectionPolicy(UserInterfaceDirectionPolicy::System);
+        return { };
+    }
+    return Exception { INVALID_ACCESS_ERR };
+}
+
+ExceptionOr<String> InternalSettings::systemLayoutDirection()
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    switch (settings().systemLayoutDirection()) {
+    case LTR:
+        return String { ASCIILiteral { "LTR" } };
+    case RTL:
+        return String { ASCIILiteral { "RTL" } };
+    }
+    ASSERT_NOT_REACHED();
+    return Exception { INVALID_ACCESS_ERR };
+}
+
+ExceptionOr<void> InternalSettings::setSystemLayoutDirection(const String& direction)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    if (equalLettersIgnoringASCIICase(direction, "ltr")) {
+        settings().setSystemLayoutDirection(LTR);
+        return { };
+    }
+    if (equalLettersIgnoringASCIICase(direction, "rtl")) {
+        settings().setSystemLayoutDirection(RTL);
+        return { };
+    }
+    return Exception { INVALID_ACCESS_ERR };
+}
+
+static FrameFlattening internalSettingsToWebCoreValue(InternalSettings::FrameFlatteningValue value)
+{
+    switch (value) {
+    case InternalSettings::FrameFlatteningValue::Disabled:
+        return FrameFlatteningDisabled;
+    case InternalSettings::FrameFlatteningValue::EnabledForNonFullScreenIFrames:
+        return FrameFlatteningEnabledForNonFullScreenIFrames;
+    case InternalSettings::FrameFlatteningValue::FullyEnabled:
+        return FrameFlatteningFullyEnabled;
+    }
+
+    ASSERT_NOT_REACHED();
+    return FrameFlatteningDisabled;
+}
+
+ExceptionOr<void> InternalSettings::setFrameFlattening(const FrameFlatteningValue& frameFlattening)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setFrameFlattening(internalSettingsToWebCoreValue(frameFlattening));
+    return { };
+}
+
+void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
+{
+    Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
+#if USE(SOUP)
+    SoupNetworkSession::setShouldIgnoreTLSErrors(allowsAnyCertificate);
+#endif
+}
+
+ExceptionOr<bool> InternalSettings::deferredCSSParserEnabled()
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    return settings().deferredCSSParserEnabled();
+}
+
+ExceptionOr<void> InternalSettings::setDeferredCSSParserEnabled(bool enabled)
+{
+    if (!m_page)
+        return Exception { INVALID_ACCESS_ERR };
+    settings().setDeferredCSSParserEnabled(enabled);
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setShouldManageAudioSessionCategory(bool should)
+{
+#if USE(AUDIO_SESSION)
+    Settings::setShouldManageAudioSessionCategory(should);
+    return { };
+#else
+    UNUSED_PARAM(should);
+    return Exception { INVALID_ACCESS_ERR };
+#endif
+}
+
+static InternalSettings::ForcedAccessibilityValue settingsToInternalSettingsValue(Settings::ForcedAccessibilityValue value)
+{
+    switch (value) {
+    case Settings::ForcedAccessibilityValue::System:
+        return InternalSettings::ForcedAccessibilityValue::System;
+    case Settings::ForcedAccessibilityValue::On:
+        return InternalSettings::ForcedAccessibilityValue::On;
+    case Settings::ForcedAccessibilityValue::Off:
+        return InternalSettings::ForcedAccessibilityValue::Off;
+    }
+
+    ASSERT_NOT_REACHED();
+    return InternalSettings::ForcedAccessibilityValue::Off;
+}
+
+static Settings::ForcedAccessibilityValue internalSettingsToSettingsValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    switch (value) {
+    case InternalSettings::ForcedAccessibilityValue::System:
+        return Settings::ForcedAccessibilityValue::System;
+    case InternalSettings::ForcedAccessibilityValue::On:
+        return Settings::ForcedAccessibilityValue::On;
+    case InternalSettings::ForcedAccessibilityValue::Off:
+        return Settings::ForcedAccessibilityValue::Off;
+    }
+
+    ASSERT_NOT_REACHED();
+    return Settings::ForcedAccessibilityValue::Off;
+}
+
+InternalSettings::ForcedAccessibilityValue InternalSettings::forcedColorsAreInvertedAccessibilityValue() const
+{
+    return settingsToInternalSettingsValue(settings().forcedColorsAreInvertedAccessibilityValue());
+}
+
+void InternalSettings::setForcedColorsAreInvertedAccessibilityValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    settings().setForcedColorsAreInvertedAccessibilityValue(internalSettingsToSettingsValue(value));
+}
+
+InternalSettings::ForcedAccessibilityValue InternalSettings::forcedDisplayIsMonochromeAccessibilityValue() const
+{
+    return settingsToInternalSettingsValue(settings().forcedDisplayIsMonochromeAccessibilityValue());
+}
+
+void InternalSettings::setForcedDisplayIsMonochromeAccessibilityValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    settings().setForcedDisplayIsMonochromeAccessibilityValue(internalSettingsToSettingsValue(value));
+}
+
+InternalSettings::ForcedAccessibilityValue InternalSettings::forcedPrefersReducedMotionAccessibilityValue() const
+{
+    return settingsToInternalSettingsValue(settings().forcedPrefersReducedMotionAccessibilityValue());
+}
+
+void InternalSettings::setForcedPrefersReducedMotionAccessibilityValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    settings().setForcedPrefersReducedMotionAccessibilityValue(internalSettingsToSettingsValue(value));
+}
+
+// If you add to this class, make sure that you update the Backup class for test reproducability!
 
 }

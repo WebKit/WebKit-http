@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKWindowFeatures.h"
+#import "WKWindowFeaturesPrivate.h"
 
 #if WK_API_ENABLED
 

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBRequestData_h
-#define IDBRequestData_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -34,22 +33,27 @@
 
 namespace WebCore {
 
+class IDBOpenDBRequest;
+class IDBTransaction;
+
 namespace IndexedDB {
 enum class IndexRecordType;
 }
 
 namespace IDBClient {
-class IDBConnectionToServer;
-class IDBOpenDBRequest;
-class IDBTransaction;
+class IDBConnectionProxy;
 class TransactionOperation;
 }
 
 class IDBRequestData {
 public:
-    IDBRequestData(const IDBClient::IDBConnectionToServer&, const IDBClient::IDBOpenDBRequest&);
+    IDBRequestData(const IDBClient::IDBConnectionProxy&, const IDBOpenDBRequest&);
     explicit IDBRequestData(IDBClient::TransactionOperation&);
     IDBRequestData(const IDBRequestData&);
+
+    enum IsolatedCopyTag { IsolatedCopy };
+    IDBRequestData(const IDBRequestData&, IsolatedCopyTag);
+    IDBRequestData isolatedCopy() const;
 
     uint64_t serverConnectionIdentifier() const;
     IDBResourceIdentifier requestIdentifier() const;
@@ -73,6 +77,8 @@ public:
     template<class Decoder> static bool decode(Decoder&, IDBRequestData&);
 
 private:
+    static void isolatedCopy(const IDBRequestData& source, IDBRequestData& destination);
+
     uint64_t m_serverConnectionIdentifier { 0 };
     std::unique_ptr<IDBResourceIdentifier> m_requestIdentifier;
     std::unique_ptr<IDBResourceIdentifier> m_transactionIdentifier;
@@ -167,4 +173,3 @@ bool IDBRequestData::decode(Decoder& decoder, IDBRequestData& request)
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBRequestData_h

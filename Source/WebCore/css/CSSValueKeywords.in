@@ -48,9 +48,11 @@ small-caption
 -apple-system-short-footnote
 -apple-system-short-caption1
 -apple-system-tall-body
+-apple-system-title0
 -apple-system-title1
 -apple-system-title2
 -apple-system-title3
+-apple-system-title4
 #endif
 
 // This has to go after the -apple-system versions.
@@ -125,15 +127,7 @@ normal
 bold
 bolder
 lighter
-100
-200
-300
-400
-500
-600
-700
-800
-900
+
 //
 // CSS_PROP_FONT_SIZE:
 //
@@ -173,6 +167,7 @@ fantasy
 monospace
 -webkit-body
 -webkit-pictograph
+system-ui
 //
 //
 // CSS_PROP_*_COLOR
@@ -417,35 +412,40 @@ flex
 -webkit-flex
 inline-flex
 -webkit-inline-flex
--webkit-grid
--webkit-inline-grid
+contents
+grid
+inline-grid
 //none
 //
 // CSS_PROP_CURSOR:
 // The order here must match the order of the ECursor enum in RenderStyleConstants.h.
 //
 auto
-crosshair
 default
-pointer
-move
-vertical-text
-cell
+// none
 context-menu
+help
+pointer
+progress
+wait
+cell
+crosshair
+text
+vertical-text
 alias
 // copy
-progress
+move
 no-drop
 not-allowed
-zoom-in
-zoom-out
+grab
+grabbing
 e-resize
+n-resize
 ne-resize
 nw-resize
-n-resize
+s-resize
 se-resize
 sw-resize
-s-resize
 w-resize
 ew-resize
 ns-resize
@@ -453,15 +453,13 @@ nesw-resize
 nwse-resize
 col-resize
 row-resize
-text
-wait
-help
 all-scroll
+zoom-in
+zoom-out
 -webkit-grab
 -webkit-grabbing
 -webkit-zoom-in
 -webkit-zoom-out
-// none
 //
 // CSS_PROP_CURSOR_VISIBILITY:
 // auto
@@ -510,6 +508,8 @@ hide
 higher
 invert
 inverted
+isolate-override
+plaintext
 -webkit-isolate
 -webkit-isolate-override
 -webkit-plaintext
@@ -522,7 +522,6 @@ line-through
 local
 loud
 lower
--webkit-marquee
 mix
 no-close-quote
 no-open-quote
@@ -595,6 +594,7 @@ space-evenly
 // flex-end
 // center
 // baseline
+first-baseline
 last-baseline
 // stretch
 
@@ -613,7 +613,8 @@ last-baseline
 // auto
 // stretch
 // baseline
-// last-baseline
+// last baseline
+// first baseline
 // center
 // start
 // end
@@ -687,9 +688,12 @@ min-intrinsic
 //
 // CSS3 intrinsic dimension keywords
 //
+min-content
 -webkit-min-content
+max-content
 -webkit-max-content
 -webkit-fill-available
+fit-content
 -webkit-fit-content
 
 //
@@ -806,9 +810,13 @@ rating-level-indicator
 #if defined(ENABLE_SERVICE_CONTROLS) && ENABLE_SERVICE_CONTROLS
 image-controls-button
 #endif
+#if defined(ENABLE_APPLE_PAY) && ENABLE_APPLE_PAY
+-apple-pay-button
+#endif
 textarea
 #if defined(ENABLE_ATTACHMENT_ELEMENT) && ENABLE_ATTACHMENT_ELEMENT
 attachment
+borderless-attachment
 #endif
 caps-lock-indicator
 
@@ -833,6 +841,17 @@ padding
 padding-box
 
 //
+// Variables Implementation
+//
+var
+-internal-variable-value
+
+//
+// UA Constants
+//
+constant
+
+//
 // CSS_PROP_BREAK_BEFORE/AFTER/INSIDE
 //
 avoid-column
@@ -843,7 +862,7 @@ recto
 region
 verso
 
-// CSS_SHAPES
+// CSS Shapes
 margin-box
 
 // clip-path
@@ -1068,7 +1087,7 @@ pixelated
 -webkit-crisp-edges
 -webkit-optimize-contrast
 
-// -webkit-shape-outside
+// shape-outside
 nonzero
 evenodd
 at
@@ -1083,6 +1102,8 @@ elements
 // -webkit-scroll-snap-type
 mandatory
 proximity
+x
+y
 #endif
 
 // -webkit-region-fragment
@@ -1140,6 +1161,104 @@ isolate
 // none
 scale-down
 
+// background-image, etc.
+container-scroll
+cross-fade
+image-set
+linear-gradient
+radial-gradient
+repeating-linear-gradient
+repeating-radial-gradient
+-webkit-canvas
+-webkit-cross-fade
+-webkit-gradient
+-webkit-linear-gradient
+-webkit-radial-gradient
+-webkit-repeating-linear-gradient
+-webkit-repeating-radial-gradient
+-webkit-image-set
+-webkit-named-image
+filter
+-webkit-filter
+dashboard-region
+
+// deprecated gradients
+from
+to
+color-stop
+radial
+
+// content
+attr
+counter
+counters
+
+// clip
+rect
+
+// shapes
+polygon
+
+// @font-face src
+format
+
+// (-webkit-)filter
+// invert
+grayscale
+sepia
+saturate
+hue-rotate
+opacity
+brightness
+contrast
+blur
+drop-shadow
+url
+cubic-bezier
+spring
+steps
+
+// colors
+rgb
+rgba
+hsl
+hsla
+//color
+
+// transform
+matrix
+matrix3d
+perspective
+rotate
+rotateX
+rotateY
+rotateZ
+rotate3d
+scale
+scaleX
+scaleY
+scaleZ
+scale3d
+skew
+skewX
+skewY
+translate
+translateX
+translateY
+translateZ
+translate3d
+
+// transform-box
+// border-box
+// view-box
+fill-box
+
+// motion path
+path
+
+calc
+-webkit-calc
+
 #if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
 from-image
 snap
@@ -1155,10 +1274,14 @@ snap
 // stroke
 markers
 
-// -webkit-grid-{column-start|column-end|row-start|row-end}
+// grid-{column-start|column-end|row-start|row-end}
 span
 
-// -webkit-grid-auto-flow
+// grid-template-{columns|rows}
+minmax
+
+// grid-auto-flow
+auto-flow
 dense
 
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
@@ -1179,13 +1302,24 @@ from-intrinsic
 -webkit-partially-balanced
 #endif
 
+#if defined(ENABLE_APPLE_PAY) && ENABLE_APPLE_PAY
+// -apple-pay-button-style
+white-outline
+
+// -apple-pay-button-type
+plain
+buy
+set-up
+donate
+#endif
+
 // font-synthesis
 weight
 style
 
 // will-change
 scroll-position
-contents
+//contents
 
 #if defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
 // touch-action
@@ -1197,3 +1331,19 @@ allow-end
 first
 force-end
 last
+
+// color-gamut
+p3
+rec2020
+
+// color() function
+sRGB
+display-p3
+
+// prefers-reduced-motion
+reduce
+no-preference
+
+// auto-repeat
+auto-fill
+auto-fit

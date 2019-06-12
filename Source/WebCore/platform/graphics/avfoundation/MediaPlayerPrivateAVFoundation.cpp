@@ -34,19 +34,21 @@
 #include "GraphicsContext.h"
 #include "InbandTextTrackPrivateAVF.h"
 #include "InbandTextTrackPrivateClient.h"
-#include "URL.h"
 #include "Logging.h"
 #include "PlatformLayer.h"
 #include "PlatformTimeRanges.h"
 #include "Settings.h"
-#include "SoftLinking.h"
+#include "URL.h"
 #include <CoreMedia/CoreMedia.h>
+#include <heap/HeapInlines.h>
 #include <runtime/DataView.h>
+#include <runtime/TypedArrayInlines.h>
 #include <runtime/Uint16Array.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/CString.h>
+#include <wtf/SoftLinking.h>
 #include <wtf/StringPrintStream.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -559,7 +561,8 @@ void MediaPlayerPrivateAVFoundation::updateStates()
             newReadyState = MediaPlayer::HaveCurrentData;
         m_haveReportedFirstVideoFrame = true;
         m_player->firstVideoFrameAvailable();
-    }
+    } else if (!hasAvailableVideoFrame())
+        m_haveReportedFirstVideoFrame = false;
 
 #if !LOG_DISABLED
     if (m_networkState != newNetworkState || m_readyState != newReadyState) {
@@ -617,8 +620,14 @@ void MediaPlayerPrivateAVFoundation::metadataLoaded()
 void MediaPlayerPrivateAVFoundation::rateChanged()
 {
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && PLATFORM(IOS)
-    if (isCurrentPlaybackTargetWireless())
-        m_player->handlePlaybackCommand(rate() ? PlatformMediaSession::PlayCommand : PlatformMediaSession::PauseCommand);
+    LOG(Media, "MediaPlayerPrivateAVFoundation::rateChanged(%p) - rate = %f, requested rate = %f, item status = %i", this, rate(), requestedRate(), playerItemStatus());
+    if (isCurrentPlaybackTargetWireless() && playerItemStatus() >= MediaPlayerAVPlayerItemStatusPlaybackBufferFull) {
+        double rate = this->rate();
+        if (rate != requestedRate()) {
+            m_player->handlePlaybackCommand(rate ? PlatformMediaSession::PlayCommand : PlatformMediaSession::PauseCommand);
+            return;
+        }
+    }
 #endif
 
     m_player->rateChanged();
@@ -650,7 +659,7 @@ void MediaPlayerPrivateAVFoundation::seekCompleted(bool finished)
 
     m_seeking = false;
 
-    std::function<void()> pendingSeek;
+    WTF::Function<void()> pendingSeek;
     std::swap(pendingSeek, m_pendingSeek);
 
     if (pendingSeek) {
@@ -671,7 +680,7 @@ void MediaPlayerPrivateAVFoundation::didEnd()
     // Hang onto the current time and use it as duration from now on since we are definitely at
     // the end of the movie. Do this because the initial duration is sometimes an estimate.
     MediaTime now = currentMediaTime();
-    if (now > MediaTime::zeroTime())
+    if (now > MediaTime::zeroTime() && !m_seeking)
         m_cachedDuration = now;
 
     updateStates();
@@ -781,16 +790,17 @@ static const char* notificationName(MediaPlayerPrivateAVFoundation::Notification
 #endif // !LOG_DISABLED
     
 
-void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification notification)
+void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification&& notification)
 {
-    if (notification.type() != Notification::FunctionType)
+    auto notificationType = notification.type();
+    if (notificationType != Notification::FunctionType)
         LOG(Media, "MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(%p) - notification %s", this, notificationName(notification));
 
     m_queueMutex.lock();
 
     // It is important to always process the properties in the order that we are notified,
     // so always go through the queue because notifications happen on different threads.
-    m_queuedNotifications.append(notification);
+    m_queuedNotifications.append(WTFMove(notification));
 
 #if OS(WINDOWS)
     bool delayDispatch = true;
@@ -800,8 +810,7 @@ void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification
     if (delayDispatch && !m_mainThreadCallPending) {
         m_mainThreadCallPending = true;
 
-        auto weakThis = createWeakPtr();
-        callOnMainThread([weakThis] {
+        callOnMainThread([weakThis = createWeakPtr()] {
             if (!weakThis)
                 return;
 
@@ -812,7 +821,7 @@ void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification
     m_queueMutex.unlock();
 
     if (delayDispatch) {
-        if (notification.type() != Notification::FunctionType)
+        if (notificationType != Notification::FunctionType)
             LOG(Media, "MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(%p) - early return", this);
         return;
     }
@@ -824,7 +833,7 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
 {
     ASSERT(isMainThread());
 
-    Notification notification = Notification();
+    Notification notification;
     {
         LockHolder lock(m_queueMutex);
         
@@ -833,13 +842,11 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
         
         if (!m_delayCallbacks) {
             // Only dispatch one notification callback per invocation because they can cause recursion.
-            notification = m_queuedNotifications.first();
-            m_queuedNotifications.remove(0);
+            notification = m_queuedNotifications.takeFirst();
         }
         
         if (!m_queuedNotifications.isEmpty() && !m_mainThreadCallPending) {
-            auto weakThis = createWeakPtr();
-            callOnMainThread([weakThis] {
+            callOnMainThread([weakThis = createWeakPtr()] {
                 if (!weakThis)
                     return;
 
@@ -962,9 +969,8 @@ void MediaPlayerPrivateAVFoundation::trackModeChanged()
 
 void MediaPlayerPrivateAVFoundation::clearTextTracks()
 {
-    for (unsigned i = 0; i < m_textTracks.size(); ++i) {
-        RefPtr<InbandTextTrackPrivateAVF> track = m_textTracks[i];
-        player()->removeTextTrack(track);
+    for (auto& track : m_textTracks) {
+        player()->removeTextTrack(*track);
         track->disconnect();
     }
     m_textTracks.clear();
@@ -973,11 +979,12 @@ void MediaPlayerPrivateAVFoundation::clearTextTracks()
 void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector<RefPtr<InbandTextTrackPrivateAVF>>& removedTextTracks)
 {
     if (removedTextTracks.size()) {
-        for (unsigned i = 0; i < m_textTracks.size(); ++i) {
-            if (!removedTextTracks.contains(m_textTracks[i]))
+        for (unsigned i = 0; i < m_textTracks.size(); ) {
+            if (!removedTextTracks.contains(m_textTracks[i])) {
+                ++i;
                 continue;
-            
-            player()->removeTextTrack(removedTextTracks[i].get());
+            }
+            player()->removeTextTrack(*m_textTracks[i]);
             m_textTracks.remove(i);
         }
     }
@@ -997,20 +1004,23 @@ void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector
             continue;
         
         track->setHasBeenReported(true);
-        player()->addTextTrack(track.get());
+        player()->addTextTrack(*track);
     }
     LOG(Media, "MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(%p) - found %lu text tracks", this, m_textTracks.size());
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
+
 void MediaPlayerPrivateAVFoundation::playbackTargetIsWirelessChanged()
 {
     if (m_player)
         m_player->currentPlaybackTargetIsWirelessChanged();
 }
+
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+
 bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitData(Uint8Array* initData, String& keyURI, String& keyID, RefPtr<Uint8Array>& certificate)
 {
     // initData should have the following layout:
@@ -1018,10 +1028,10 @@ bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitDat
     if (initData->byteLength() < 4)
         return false;
 
-    RefPtr<ArrayBuffer> initDataBuffer = initData->buffer();
+    RefPtr<ArrayBuffer> initDataBuffer = initData->unsharedBuffer();
 
     // Use a DataView to read uint32 values from the buffer, as Uint32Array requires the reads be aligned on 4-byte boundaries. 
-    RefPtr<JSC::DataView> initDataView = JSC::DataView::create(initDataBuffer, 0, initDataBuffer->byteLength());
+    RefPtr<JSC::DataView> initDataView = JSC::DataView::create(initDataBuffer.copyRef(), 0, initDataBuffer->byteLength());
     uint32_t offset = 0;
     bool status = true;
 
@@ -1030,7 +1040,7 @@ bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitDat
     if (!status || offset + keyURILength > initData->length())
         return false;
 
-    RefPtr<Uint16Array> keyURIArray = Uint16Array::create(initDataBuffer, offset, keyURILength);
+    RefPtr<Uint16Array> keyURIArray = Uint16Array::create(initDataBuffer.copyRef(), offset, keyURILength);
     if (!keyURIArray)
         return false;
 
@@ -1042,7 +1052,7 @@ bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitDat
     if (!status || offset + keyIDLength > initData->length())
         return false;
 
-    RefPtr<Uint8Array> keyIDArray = Uint8Array::create(initDataBuffer, offset, keyIDLength);
+    RefPtr<Uint8Array> keyIDArray = Uint8Array::create(initDataBuffer.copyRef(), offset, keyIDLength);
     if (!keyIDArray)
         return false;
 
@@ -1054,12 +1064,13 @@ bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitDat
     if (!status || offset + certificateLength > initData->length())
         return false;
 
-    certificate = Uint8Array::create(initDataBuffer, offset, certificateLength);
+    certificate = Uint8Array::create(WTFMove(initDataBuffer), offset, certificateLength);
     if (!certificate)
         return false;
 
     return true;
 }
+
 #endif
 
 URL MediaPlayerPrivateAVFoundation::resolvedURL() const
@@ -1130,6 +1141,7 @@ const HashSet<String, ASCIICaseInsensitiveHash>& MediaPlayerPrivateAVFoundation:
             "audio/mpeg3",
             "audio/mpegurl",
             "audio/mpg",
+            "audio/vnd.wave",
             "audio/wav",
             "audio/wave",
             "audio/x-aac",

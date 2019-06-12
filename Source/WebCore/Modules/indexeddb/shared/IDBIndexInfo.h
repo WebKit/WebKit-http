@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBIndexInfo_h
-#define IDBIndexInfo_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -36,7 +35,7 @@ namespace WebCore {
 class IDBIndexInfo {
 public:
     WEBCORE_EXPORT IDBIndexInfo();
-    IDBIndexInfo(uint64_t identifier, uint64_t objectStoreIdentifier, const String& name, const IDBKeyPath&, bool unique, bool multiEntry);
+    IDBIndexInfo(uint64_t identifier, uint64_t objectStoreIdentifier, const String& name, IDBKeyPath&&, bool unique, bool multiEntry);
 
     IDBIndexInfo isolatedCopy() const;
 
@@ -47,12 +46,18 @@ public:
     bool unique() const { return m_unique; }
     bool multiEntry() const { return m_multiEntry; }
 
+    void rename(const String& newName) { m_name = newName; }
+
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBIndexInfo&);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String loggingString(int indent = 0) const;
+    String condensedLoggingString() const;
 #endif
+
+    // FIXME: Remove the need for this.
+    static const int64_t InvalidId = -1;
 
 private:
     uint64_t m_identifier { 0 };
@@ -96,4 +101,3 @@ bool IDBIndexInfo::decode(Decoder& decoder, IDBIndexInfo& info)
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBIndexInfo_h

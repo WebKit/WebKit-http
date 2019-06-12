@@ -33,6 +33,7 @@ import time
 
 from webkitpy.port.server_process import ServerProcess
 from webkitpy.port.driver import Driver
+from webkitpy.port.xvfbdriver import XvfbDriver
 
 _log = logging.getLogger(__name__)
 
@@ -40,7 +41,10 @@ _log = logging.getLogger(__name__)
 class WestonDriver(Driver):
     @staticmethod
     def check_driver(port):
-        weston_found = port.host.executive.run_command(['which', 'weston'], return_exit_code=True) is 0
+        weston_findcmd = ['which', 'weston']
+        if port._should_use_jhbuild():
+            weston_findcmd = port._jhbuild_wrapper + weston_findcmd
+        weston_found = port.host.executive.run_command(weston_findcmd, return_exit_code=True) is 0
         if not weston_found:
             _log.error("No weston found. Cannot run layout tests.")
         return weston_found
@@ -48,37 +52,38 @@ class WestonDriver(Driver):
     def __init__(self, *args, **kwargs):
         Driver.__init__(self, *args, **kwargs)
         self._startup_delay_secs = 1.0
+        self._xvfbdriver = XvfbDriver(*args, **kwargs)
 
-    def _start(self, pixel_tests, per_test_args):
-        self.stop()
-
-        driver_name = self._port.driver_name()
-        self._driver_directory = self._port.host.filesystem.mkdtemp(prefix='%s-' % driver_name)
-
+    def _setup_environ_for_test(self):
+        self._driver_directory = self._port.host.filesystem.mkdtemp(prefix='%s-' % self._server_name)
+        driver_environment = self._port.setup_environ_for_server(self._server_name)
+        driver_environment['DISPLAY'] = ":%d" % self._xvfbdriver._xvfb_run(driver_environment)
         weston_socket = 'WKTesting-weston-%032x' % random.getrandbits(128)
-        weston_command = ['weston', '--socket=%s' % weston_socket, '--width=800', '--height=600']
+        weston_command = ['weston', '--socket=%s' % weston_socket, '--width=1024', '--height=768', '--use-pixman']
+        if self._port._should_use_jhbuild():
+            weston_command = self._port._jhbuild_wrapper + weston_command
         with open(os.devnull, 'w') as devnull:
-            self._weston_process = self._port.host.executive.popen(weston_command, stderr=devnull)
+            self._weston_process = self._port.host.executive.popen(weston_command, stderr=devnull, env=driver_environment)
 
         # Give Weston a bit of time to set itself up.
         time.sleep(self._startup_delay_secs)
 
-        driver_environment = self._port.setup_environ_for_server(driver_name)
         driver_environment['LOCAL_RESOURCE_ROOT'] = self._port.layout_tests_dir()
-
         # Currently on WebKit2, there is no API for setting the application cache directory.
         # Each worker should have its own and it should be cleaned afterwards, when the worker stops.
         driver_environment['XDG_CACHE_HOME'] = self._ensure_driver_tmpdir_subdirectory('appcache')
         driver_environment['DUMPRENDERTREE_TEMP'] = self._ensure_driver_tmpdir_subdirectory('drt-temp')
-
         driver_environment['WAYLAND_DISPLAY'] = weston_socket
         driver_environment['GDK_BACKEND'] = 'wayland'
         if driver_environment.get('DISPLAY'):
             del driver_environment['DISPLAY']
+        return driver_environment
 
+    def _start(self, pixel_tests, per_test_args):
+        self.stop()
         self._crashed_process_name = None
         self._crashed_pid = None
-        self._server_process = self._port._server_process_constructor(self._port, driver_name, self.cmd_line(pixel_tests, per_test_args), driver_environment)
+        self._server_process = self._port._server_process_constructor(self._port, self._server_name, self.cmd_line(pixel_tests, per_test_args), self._setup_environ_for_test())
         self._server_process.start()
 
     def stop(self):

@@ -8,11 +8,14 @@
 
 #include "libANGLE/renderer/gl/SurfaceGL.h"
 
+#include "libANGLE/renderer/gl/FramebufferGL.h"
+#include "libANGLE/renderer/gl/RendererGL.h"
+
 namespace rx
 {
 
-SurfaceGL::SurfaceGL()
-    : SurfaceImpl()
+SurfaceGL::SurfaceGL(const egl::SurfaceState &state, RendererGL *renderer)
+    : SurfaceImpl(state), mRenderer(renderer)
 {
 }
 
@@ -20,4 +23,20 @@ SurfaceGL::~SurfaceGL()
 {
 }
 
+FramebufferImpl *SurfaceGL::createDefaultFramebuffer(const gl::FramebufferState &data)
+{
+    return new FramebufferGL(data, mRenderer->getFunctions(), mRenderer->getStateManager(),
+                             mRenderer->getWorkarounds(), mRenderer->getBlitter(), true);
+}
+
+egl::Error SurfaceGL::getSyncValues(EGLuint64KHR *ust, EGLuint64KHR *msc, EGLuint64KHR *sbc)
+{
+    UNREACHABLE();
+    return egl::Error(EGL_BAD_SURFACE);
+}
+
+egl::Error SurfaceGL::unMakeCurrent()
+{
+    return egl::Error(EGL_SUCCESS);
+}
 }

@@ -97,14 +97,14 @@ WebInspector.CSSCompletions = class CSSCompletions
                 return;
 
             var propertyNamesForCodeMirror = {};
-            var valueKeywordsForCodeMirror = {"inherit": true, "initial": true, "unset": true, "revert": true};
+            var valueKeywordsForCodeMirror = {"inherit": true, "initial": true, "unset": true, "revert": true, "var": true};
             var colorKeywordsForCodeMirror = {};
 
             function nameForCodeMirror(name)
             {
                 // CodeMirror parses the vendor prefix separate from the property or keyword name,
                 // so we need to strip vendor prefixes from our names. Also strip function parenthesis.
-                return name.replace(/^-[^-]+-/, "").replace(/\(\)$/, "");
+                return name.replace(/^-[^-]+-/, "").replace(/\(\)$/, "").toLowerCase();
             }
 
             function collectPropertyNameForCodeMirror(propertyName)
@@ -189,12 +189,6 @@ WebInspector.CSSCompletions = class CSSCompletions
         return results;
     }
 
-    firstStartsWith(prefix)
-    {
-        var foundIndex = this._firstIndexOfPrefix(prefix);
-        return (foundIndex === -1 ? "" : this._values[foundIndex]);
-    }
-
     _firstIndexOfPrefix(prefix)
     {
         if (!this._values.length)
@@ -267,16 +261,6 @@ WebInspector.CSSCompletions = class CSSCompletions
     isShorthandPropertyName(shorthand)
     {
         return shorthand in this._longhands;
-    }
-
-    isLonghandPropertyName(longhand)
-    {
-        return longhand in this._shorthands;
-    }
-
-    longhandsForShorthand(shorthand)
-    {
-        return this._longhands[shorthand] || [];
     }
 
     shorthandsForLonghand(longhand)

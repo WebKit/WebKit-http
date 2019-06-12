@@ -28,152 +28,35 @@
 
 #if ENABLE(NETWORK_CACHE)
 
-#include "WebCoreArgumentCoders.h"
-#include <wtf/text/CString.h>
-#include <wtf/text/WTFString.h>
+namespace WTF {
+namespace Persistence {
 
-namespace WebKit {
-namespace NetworkCache {
-
-void Coder<AtomicString>::encode(Encoder& encoder, const AtomicString& atomicString)
+// Store common HTTP headers as strings instead of using their value in the HTTPHeaderName enumeration
+// so that the headers stored in the cache stays valid even after HTTPHeaderName.in gets updated.
+void Coder<WebCore::HTTPHeaderMap>::encode(Encoder& encoder, const WebCore::HTTPHeaderMap& headers)
 {
-    encoder << atomicString.string();
+    encoder << static_cast<uint64_t>(headers.size());
+    for (auto& keyValue : headers) {
+        encoder << keyValue.key;
+        encoder << keyValue.value;
+    }
 }
 
-bool Coder<AtomicString>::decode(Decoder& decoder, AtomicString& atomicString)
+bool Coder<WebCore::HTTPHeaderMap>::decode(Decoder& decoder, WebCore::HTTPHeaderMap& headers)
 {
-    String string;
-    if (!decoder.decode(string))
+    uint64_t headersSize;
+    if (!decoder.decode(headersSize))
         return false;
-
-    atomicString = string;
+    for (uint64_t i = 0; i < headersSize; ++i) {
+        String name;
+        if (!decoder.decode(name))
+            return false;
+        String value;
+        if (!decoder.decode(value))
+            return false;
+        headers.add(name, value);
+    }
     return true;
-}
-
-void Coder<CString>::encode(Encoder& encoder, const CString& string)
-{
-    // Special case the null string.
-    if (string.isNull()) {
-        encoder << std::numeric_limits<uint32_t>::max();
-        return;
-    }
-
-    uint32_t length = string.length();
-    encoder << length;
-    encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.data()), length);
-}
-
-bool Coder<CString>::decode(Decoder& decoder, CString& result)
-{
-    uint32_t length;
-    if (!decoder.decode(length))
-        return false;
-
-    if (length == std::numeric_limits<uint32_t>::max()) {
-        // This is the null string.
-        result = CString();
-        return true;
-    }
-
-    // Before allocating the string, make sure that the decoder buffer is big enough.
-    if (!decoder.bufferIsLargeEnoughToContain<char>(length))
-        return false;
-
-    char* buffer;
-    CString string = CString::newUninitialized(length, buffer);
-    if (!decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(buffer), length))
-        return false;
-
-    result = string;
-    return true;
-}
-
-
-void Coder<String>::encode(Encoder& encoder, const String& string)
-{
-    // Special case the null string.
-    if (string.isNull()) {
-        encoder << std::numeric_limits<uint32_t>::max();
-        return;
-    }
-
-    uint32_t length = string.length();
-    bool is8Bit = string.is8Bit();
-
-    encoder << length << is8Bit;
-
-    if (is8Bit)
-        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.characters8()), length * sizeof(LChar));
-    else
-        encoder.encodeFixedLengthData(reinterpret_cast<const uint8_t*>(string.characters16()), length * sizeof(UChar));
-}
-
-template <typename CharacterType>
-static inline bool decodeStringText(Decoder& decoder, uint32_t length, String& result)
-{
-    // Before allocating the string, make sure that the decoder buffer is big enough.
-    if (!decoder.bufferIsLargeEnoughToContain<CharacterType>(length))
-        return false;
-
-    CharacterType* buffer;
-    String string = String::createUninitialized(length, buffer);
-    if (!decoder.decodeFixedLengthData(reinterpret_cast<uint8_t*>(buffer), length * sizeof(CharacterType)))
-        return false;
-    
-    result = string;
-    return true;    
-}
-
-bool Coder<String>::decode(Decoder& decoder, String& result)
-{
-    uint32_t length;
-    if (!decoder.decode(length))
-        return false;
-
-    if (length == std::numeric_limits<uint32_t>::max()) {
-        // This is the null string.
-        result = String();
-        return true;
-    }
-
-    bool is8Bit;
-    if (!decoder.decode(is8Bit))
-        return false;
-
-    if (is8Bit)
-        return decodeStringText<LChar>(decoder, length, result);
-    return decodeStringText<UChar>(decoder, length, result);
-}
-
-void Coder<WebCore::CertificateInfo>::encode(Encoder& encoder, const WebCore::CertificateInfo& certificateInfo)
-{
-    // FIXME: Cocoa CertificateInfo is a CF object tree. Generalize CF type coding so we don't need to use ArgumentCoder here.
-    IPC::ArgumentEncoder argumentEncoder;
-    argumentEncoder << certificateInfo;
-    encoder << static_cast<uint64_t>(argumentEncoder.bufferSize());
-    encoder.encodeFixedLengthData(argumentEncoder.buffer(), argumentEncoder.bufferSize());
-}
-
-bool Coder<WebCore::CertificateInfo>::decode(Decoder& decoder, WebCore::CertificateInfo& certificateInfo)
-{
-    uint64_t certificateSize;
-    if (!decoder.decode(certificateSize))
-        return false;
-    Vector<uint8_t> data(certificateSize);
-    if (!decoder.decodeFixedLengthData(data.data(), data.size()))
-        return false;
-    IPC::ArgumentDecoder argumentDecoder(data.data(), data.size());
-    return argumentDecoder.decode(certificateInfo);
-}
-
-void Coder<SHA1::Digest>::encode(Encoder& encoder, const SHA1::Digest& digest)
-{
-    encoder.encodeFixedLengthData(digest.data(), sizeof(digest));
-}
-
-bool Coder<SHA1::Digest>::decode(Decoder& decoder, SHA1::Digest& digest)
-{
-    return decoder.decodeFixedLengthData(digest.data(), sizeof(digest));
 }
 
 }

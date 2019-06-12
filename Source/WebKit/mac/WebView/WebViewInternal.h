@@ -40,6 +40,7 @@
 #import <WebCore/HTMLMediaElementEnums.h>
 #import <WebCore/LayoutMilestones.h>
 #import <WebCore/TextAlternativeWithRange.h>
+#import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
 #import <WebCore/WebCoreKeyboardUIMode.h>
 #import <functional>
@@ -50,6 +51,7 @@ namespace WebCore {
 class Element;
 class Event;
 class Frame;
+class HTMLMediaElement;
 class HTMLVideoElement;
 class HistoryItem;
 class KeyboardEvent;
@@ -61,6 +63,12 @@ struct DictationAlternative;
 struct DictionaryPopupInfo;
 }
 
+#if PLATFORM(IOS) && ENABLE(DRAG_SUPPORT)
+namespace WebCore {
+struct DragItem;
+}
+#endif
+
 class WebMediaPlaybackTargetPicker;
 class WebSelectionServiceController;
 
@@ -71,6 +79,7 @@ class WebSelectionServiceController;
 
 #endif
 
+@class NSCandidateListTouchBarItem;
 @class WebBasePluginPackage;
 @class WebDownload;
 @class WebImmediateActionController;
@@ -85,6 +94,13 @@ WebLayoutMilestones kitLayoutMilestones(WebCore::LayoutMilestones);
 
 #if USE(DICTATION_ALTERNATIVES)
 OBJC_CLASS NSTextAlternatives;
+#endif
+
+#if ENABLE(DATA_INTERACTION) && defined(__cplusplus)
+@interface WebUITextIndicatorData (WebUITextIndicatorInternal)
+- (WebUITextIndicatorData *)initWithImage:(CGImageRef)image textIndicatorData:(const WebCore::TextIndicatorData&)indicatorData scale:(CGFloat)scale;
+- (WebUITextIndicatorData *)initWithImage:(CGImageRef)image scale:(CGFloat)scale;
+@end
 #endif
 
 @interface WebView (WebViewEditingExtras)
@@ -109,11 +125,6 @@ OBJC_CLASS NSTextAlternatives;
 - (WebCore::KeyboardUIMode)_keyboardUIMode;
 
 - (BOOL)_becomingFirstResponderFromOutside;
-
-#if ENABLE(ICONDATABASE)
-- (void)_registerForIconNotification:(BOOL)listen;
-- (void)_dispatchDidReceiveIconFromWebFrame:(WebFrame *)webFrame;
-#endif
 
 - (BOOL)_needsOneShotDrawingSynchronization;
 - (void)_setNeedsOneShotDrawingSynchronization:(BOOL)needsSynchronization;
@@ -244,6 +255,15 @@ OBJC_CLASS NSTextAlternatives;
 
 - (void)_documentScaleChanged;
 - (BOOL)_fetchCustomFixedPositionLayoutRect:(NSRect*)rect;
+#if ENABLE(ORIENTATION_EVENTS)
+- (void)_setDeviceOrientation:(NSUInteger)orientation;
+- (NSUInteger)_deviceOrientation;
+#endif
+#endif
+
+#if ENABLE(DATA_INTERACTION) && defined(__cplusplus)
+- (void)_startDrag:(const WebCore::DragItem&)dragItem;
+- (void)_didConcludeEditDataInteraction;
 #endif
 
 - (void)_preferencesChanged:(WebPreferences *)preferences;
@@ -251,6 +271,11 @@ OBJC_CLASS NSTextAlternatives;
 #if ENABLE(VIDEO) && defined(__cplusplus)
 - (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode;
 - (void)_exitVideoFullscreen;
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+- (BOOL)_hasActiveVideoForControlsInterface;
+- (void)_setUpPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement;
+- (void)_clearPlaybackControlsManager;
+#endif
 #endif
 
 #if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS) && defined(__cplusplus)
@@ -287,9 +312,16 @@ OBJC_CLASS NSTextAlternatives;
 - (void)_setMockMediaPlaybackTargetPickerName:(NSString *)name state:(WebCore::MediaPlaybackTargetContext::State)state;
 #endif
 
-@end
+- (void)prepareForMouseUp;
+- (void)prepareForMouseDown;
+- (void)updateTouchBar;
+- (void)_dismissTextTouchBarPopoverItemWithIdentifier:(NSString *)identifier;
+- (NSCandidateListTouchBarItem *)candidateList;
 
-@interface WebView (WebUpdateWebViewAdditions)
-- (void)updateWebViewAdditions;
-- (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock;
+- (void)showFormValidationMessage:(NSString *)message withAnchorRect:(NSRect)anchorRect;
+- (void)hideFormValidationMessage;
+
+#if !PLATFORM(IOS)
+- (void)_setMainFrameIcon:(NSImage *)icon;
+#endif
 @end

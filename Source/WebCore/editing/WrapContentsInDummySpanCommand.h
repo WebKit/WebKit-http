@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WrapContentsInDummySpanCommand_h
-#define WrapContentsInDummySpanCommand_h
+#pragma once
 
 #include "EditCommand.h"
 
@@ -34,27 +33,25 @@ class HTMLElement;
 
 class WrapContentsInDummySpanCommand : public SimpleEditCommand {
 public:
-    static Ref<WrapContentsInDummySpanCommand> create(PassRefPtr<Element> element)
+    static Ref<WrapContentsInDummySpanCommand> create(Element& element)
     {
         return adoptRef(*new WrapContentsInDummySpanCommand(element));
     }
 
 private:
-    explicit WrapContentsInDummySpanCommand(PassRefPtr<Element>);
+    explicit WrapContentsInDummySpanCommand(Element&);
 
-    virtual void doApply() override;
-    virtual void doUnapply() override;
-    virtual void doReapply() override;
+    void doApply() override;
+    void doUnapply() override;
+    void doReapply() override;
     void executeApply();
 
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override;
+    void getNodesInCommand(HashSet<Node*>&) override;
 #endif
 
-    RefPtr<Element> m_element;
+    Ref<Element> m_element;
     RefPtr<HTMLElement> m_dummySpan;
 };
 
 } // namespace WebCore
-
-#endif // WrapContentsInDummySpanCommand_h

@@ -34,22 +34,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-NetworkResourceLoadParameters::NetworkResourceLoadParameters()
-    : identifier(0)
-    , webPageID(0)
-    , webFrameID(0)
-    , sessionID(SessionID::emptySessionID())
-    , contentSniffingPolicy(SniffContent)
-    , allowStoredCredentials(DoNotAllowStoredCredentials)
-    , clientCredentialPolicy(DoNotAskClientForAnyCredentials)
-    , shouldClearReferrerOnHTTPSToHTTPRedirect(true)
-    , defersLoading(false)
-    , needsCertificateInfo(false)
-    , maximumBufferingTime(0_ms)
-{
-}
-
-void NetworkResourceLoadParameters::encode(IPC::ArgumentEncoder& encoder) const
+void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << identifier;
     encoder << webPageID;
@@ -90,13 +75,15 @@ void NetworkResourceLoadParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder.encodeEnum(contentSniffingPolicy);
     encoder.encodeEnum(allowStoredCredentials);
     encoder.encodeEnum(clientCredentialPolicy);
+    encoder << shouldFollowRedirects;
     encoder << shouldClearReferrerOnHTTPSToHTTPRedirect;
     encoder << defersLoading;
     encoder << needsCertificateInfo;
     encoder << maximumBufferingTime;
+    encoder << derivedCachedDataTypesToRetrieve;
 }
 
-bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, NetworkResourceLoadParameters& result)
+bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourceLoadParameters& result)
 {
     if (!decoder.decode(result.identifier))
         return false;
@@ -127,8 +114,8 @@ bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, Networ
         if (!decoder.decode(requestBodySandboxExtensionHandles))
             return false;
         for (size_t i = 0; i < requestBodySandboxExtensionHandles.size(); ++i) {
-            if (RefPtr<SandboxExtension> extension = SandboxExtension::create(requestBodySandboxExtensionHandles[i]))
-                result.requestBodySandboxExtensions.append(extension.release());
+            if (auto extension = SandboxExtension::create(requestBodySandboxExtensionHandles[i]))
+                result.requestBodySandboxExtensions.append(WTFMove(extension));
         }
     }
 
@@ -145,6 +132,8 @@ bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, Networ
         return false;
     if (!decoder.decodeEnum(result.clientCredentialPolicy))
         return false;
+    if (!decoder.decode(result.shouldFollowRedirects))
+        return false;
     if (!decoder.decode(result.shouldClearReferrerOnHTTPSToHTTPRedirect))
         return false;
     if (!decoder.decode(result.defersLoading))
@@ -152,6 +141,8 @@ bool NetworkResourceLoadParameters::decode(IPC::ArgumentDecoder& decoder, Networ
     if (!decoder.decode(result.needsCertificateInfo))
         return false;
     if (!decoder.decode(result.maximumBufferingTime))
+        return false;
+    if (!decoder.decode(result.derivedCachedDataTypesToRetrieve))
         return false;
 
     return true;

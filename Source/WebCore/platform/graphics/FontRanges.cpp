@@ -27,51 +27,103 @@
 #include "FontRanges.h"
 
 #include "Font.h"
+#include "FontSelector.h"
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+const Font* FontRanges::Range::font(ExternalResourceDownloadPolicy policy) const
+{
+    return m_fontAccessor->font(policy);
+}
+
 FontRanges::FontRanges()
 {
 }
 
+class TrivialFontAccessor final : public FontAccessor {
+public:
+    static Ref<TrivialFontAccessor> create(Ref<Font>&& font)
+    {
+        return adoptRef(*new TrivialFontAccessor(WTFMove(font)));
+    }
+
+private:
+    TrivialFontAccessor(RefPtr<Font>&& font)
+        : m_font(WTFMove(font))
+    {
+    }
+
+    const Font* font(ExternalResourceDownloadPolicy) const final
+    {
+        return m_font.get();
+    }
+
+    bool isLoading() const final
+    {
+        return m_font->isInterstitial();
+    }
+
+    RefPtr<Font> m_font;
+};
+
 FontRanges::FontRanges(RefPtr<Font>&& font)
 {
     if (font)
-        m_ranges.append(Range { 0, 0x7FFFFFFF, font.releaseNonNull() });
+        m_ranges.append(Range { 0, 0x7FFFFFFF, TrivialFontAccessor::create(font.releaseNonNull()) });
 }
 
 FontRanges::~FontRanges()
 {
 }
 
-GlyphData FontRanges::glyphDataForCharacter(UChar32 character) const
+GlyphData FontRanges::glyphDataForCharacter(UChar32 character, ExternalResourceDownloadPolicy policy) const
 {
+    const Font* resultFont = nullptr;
     for (auto& range : m_ranges) {
         if (range.from() <= character && character <= range.to()) {
-            auto glyphData = range.font().glyphDataForCharacter(character);
-            if (glyphData.glyph)
-                return glyphData;
+            if (auto* font = range.font(policy)) {
+                if (font->isInterstitial()) {
+                    policy = ExternalResourceDownloadPolicy::Forbid;
+                    if (!resultFont)
+                        resultFont = font;
+                } else {
+                    auto glyphData = font->glyphDataForCharacter(character);
+                    if (glyphData.glyph)
+                        return glyphData;
+                }
+            }
         }
+    }
+    if (resultFont) {
+        // We want higher-level code to be able to differentiate between
+        // "The interstitial font doesn't have the character" and
+        // "The real downloaded font doesn't have the character".
+        GlyphData result = resultFont->glyphDataForCharacter(character);
+        if (!result.font)
+            result.font = resultFont;
+        return result;
     }
     return GlyphData();
 }
 
 const Font* FontRanges::fontForCharacter(UChar32 character) const
 {
-    return glyphDataForCharacter(character).font;
+    return glyphDataForCharacter(character, ExternalResourceDownloadPolicy::Allow).font;
 }
 
 const Font& FontRanges::fontForFirstRange() const
 {
-    return m_ranges[0].font();
+    auto* font = m_ranges[0].font(ExternalResourceDownloadPolicy::Forbid);
+    ASSERT(font);
+    return *font;
 }
 
 bool FontRanges::isLoading() const
 {
     for (auto& range : m_ranges) {
-        if (range.font().isLoading())
+        if (range.fontAccessor().isLoading())
             return true;
     }
     return false;

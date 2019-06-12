@@ -28,14 +28,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThreadableLoader_h
-#define ThreadableLoader_h
+#pragma once
 
 #include "ResourceLoaderOptions.h"
 #include <wtf/Noncopyable.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -44,14 +41,7 @@ namespace WebCore {
     class ResourceRequest;
     class ResourceResponse;
     class ScriptExecutionContext;
-    class SecurityOrigin;
     class ThreadableLoaderClient;
-    
-    enum CrossOriginRequestPolicy {
-        DenyCrossOriginRequests,
-        UseAccessControl,
-        AllowCrossOriginRequests
-    };
 
     enum PreflightPolicy {
         ConsiderPreflight,
@@ -66,31 +56,37 @@ namespace WebCore {
         EnforceScriptSrcDirective,
     };
 
-    struct ThreadableLoaderOptions : ResourceLoaderOptions {
-        ThreadableLoaderOptions();
-        ThreadableLoaderOptions(const ResourceLoaderOptions&, PreflightPolicy, CrossOriginRequestPolicy, ContentSecurityPolicyEnforcement, RefPtr<SecurityOrigin>&&, String&& initiator);
-        ~ThreadableLoaderOptions();
-
-        std::unique_ptr<ThreadableLoaderOptions> isolatedCopy() const;
-
-        PreflightPolicy preflightPolicy; // If AccessControl is used, how to determine if a preflight is needed.
-        CrossOriginRequestPolicy crossOriginRequestPolicy;
-        ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement { ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective };
-        RefPtr<SecurityOrigin> securityOrigin;
-        String initiator; // This cannot be an AtomicString, as isolatedCopy() wouldn't create an object that's safe for passing to another thread.
+    enum class ResponseFilteringPolicy {
+        Enable,
+        Disable,
     };
 
-    // Useful for doing loader operations from any thread (not threadsafe, 
+    struct ThreadableLoaderOptions : ResourceLoaderOptions {
+        ThreadableLoaderOptions();
+        ThreadableLoaderOptions(const ResourceLoaderOptions&, PreflightPolicy, ContentSecurityPolicyEnforcement, String&& initiator, ResponseFilteringPolicy);
+        ~ThreadableLoaderOptions();
+
+        ThreadableLoaderOptions isolatedCopy() const;
+
+        PreflightPolicy preflightPolicy { ConsiderPreflight };
+        ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement { ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective };
+        String initiator; // This cannot be an AtomicString, as isolatedCopy() wouldn't create an object that's safe for passing to another thread.
+        ResponseFilteringPolicy filteringPolicy { ResponseFilteringPolicy::Disable };
+    };
+
+    // Useful for doing loader operations from any thread (not threadsafe,
     // just able to run on threads other than the main thread).
     class ThreadableLoader {
         WTF_MAKE_NONCOPYABLE(ThreadableLoader);
     public:
-        static void loadResourceSynchronously(ScriptExecutionContext*, const ResourceRequest&, ThreadableLoaderClient&, const ThreadableLoaderOptions&);
-        static PassRefPtr<ThreadableLoader> create(ScriptExecutionContext*, ThreadableLoaderClient*, const ResourceRequest&, const ThreadableLoaderOptions&);
+        static void loadResourceSynchronously(ScriptExecutionContext&, ResourceRequest&&, ThreadableLoaderClient&, const ThreadableLoaderOptions&);
+        static RefPtr<ThreadableLoader> create(ScriptExecutionContext&, ThreadableLoaderClient&, ResourceRequest&&, const ThreadableLoaderOptions&, String&& referrer = String());
 
         virtual void cancel() = 0;
         void ref() { refThreadableLoader(); }
         void deref() { derefThreadableLoader(); }
+
+        static void logError(ScriptExecutionContext&, const ResourceError&, const String&);
 
     protected:
         ThreadableLoader() { }
@@ -100,5 +96,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // ThreadableLoader_h

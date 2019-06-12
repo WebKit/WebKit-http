@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AutocompleteErrorEvent_h
-#define AutocompleteErrorEvent_h
+#pragma once
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
 
@@ -31,10 +30,6 @@
 #include "EventNames.h"
 
 namespace WebCore {
-
-struct AutocompleteErrorEventInit : public EventInit {
-    String reason;
-};
 
 class AutocompleteErrorEvent final : public Event {
 public:
@@ -48,9 +43,13 @@ public:
         return adoptRef(*new AutocompleteErrorEvent(reason));
     }
 
-    static Ref<AutocompleteErrorEvent> create(const AtomicString& eventType, const AutocompleteErrorEventInit& initializer)
+    struct Init : EventInit {
+        String reason;
+    };
+
+    static Ref<AutocompleteErrorEvent> create(const AtomicString& eventType, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new AutocompleteErrorEvent(eventType, initializer));
+        return adoptRef(*new AutocompleteErrorEvent(eventType, initializer, isTrusted));
     }
 
     const String& reason() const { return m_reason; }
@@ -66,8 +65,8 @@ private:
     {
     }
 
-    AutocompleteErrorEvent(const AtomicString& eventType, const AutocompleteErrorEventInit& initializer)
-        : Event(eventType, initializer)
+    AutocompleteErrorEvent(const AtomicString& eventType, const Init& initializer, IsTrusted isTrusted)
+        : Event(eventType, initializer, isTrusted)
         , m_reason(initializer.reason)
     {
     }
@@ -78,5 +77,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(REQUEST_AUTOCOMPLETE)
-
-#endif // AutocompleteErrorEvent_h

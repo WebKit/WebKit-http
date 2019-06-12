@@ -1,12 +1,11 @@
 The tests in this directory were imported from the W3C repository.
-Do NOT modify these tests directly in Webkit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Do NOT modify these tests directly in WebKit.
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
-Then run the Tools/Scripts/import-w3c-tests in Webkit to reimport
+Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
 
-Do NOT modify or remove this file
+Do NOT modify or remove this file.
 
 ------------------------------------------------------------------------
 Properties requiring vendor prefixes:
@@ -18,16 +17,21 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/accept-language.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/accept.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/authentication.py
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/base.xml
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/chunked.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/conditional.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/content.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/corsenabled.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/delay.py
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/echo-headers.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/echo-method.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/empty-div-utf8-html.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/folder.txt
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/form.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/gzip.py
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/header-content-length.asis
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/headers-basic.asis
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/headers.asis
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/headers.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/image.gif
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/img-utf8-html.py
@@ -36,8 +40,13 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/init.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/inspect-headers.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/invalid-utf8-html.py
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/last-modified.py
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/parse-headers.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/redirect.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/requri.py
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/send-after-setting-document-domain-window-1.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/send-after-setting-document-domain-window-2.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/send-after-setting-document-domain-window-helper.js
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/shift-jis-html.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/status.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/trickle.py
@@ -47,6 +56,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/win-1252-xml.py
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/workerxhr-origin-referrer.js
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/workerxhr-simple.js
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-event-order.js
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout-aborted.js
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout-abortedonmain.js
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout-overrides.js

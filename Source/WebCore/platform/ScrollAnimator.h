@@ -33,7 +33,6 @@
 #define ScrollAnimator_h
 
 #include "FloatPoint.h"
-#include "LayoutUnit.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollTypes.h"
 #include "WheelEventTestTrigger.h"
@@ -134,11 +133,12 @@ public:
     bool processWheelEventForScrollSnap(const PlatformWheelEvent&);
 #endif
     void updateScrollSnapState();
-    LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) const override;
+    FloatPoint scrollOffset() const override;
     void immediateScrollOnAxis(ScrollEventAxis, float delta) override;
     bool activeScrollSnapIndexDidChange() const;
     unsigned activeScrollSnapIndexForAxis(ScrollEventAxis) const;
     LayoutSize scrollExtent() const override;
+    FloatSize viewportSize() const override;
 #endif
 
 protected:

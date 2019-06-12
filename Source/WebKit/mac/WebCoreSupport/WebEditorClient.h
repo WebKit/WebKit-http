@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
 @class WebView;
 @class WebEditorUndoTarget;
 
-class WebEditorClient : public WebCore::EditorClient, public WebCore::TextCheckerClient {
+class WebEditorClient final : public WebCore::EditorClient, public WebCore::TextCheckerClient {
 public:
     WebEditorClient(WebView *);
     virtual ~WebEditorClient();
@@ -51,147 +51,157 @@ public:
     void didCheckSucceed(int sequence, NSArray *results);
 
 private:
-    virtual void pageDestroyed() override;
+    bool isGrammarCheckingEnabled() final;
+    void toggleGrammarChecking() final;
+    bool isContinuousSpellCheckingEnabled() final;
+    void toggleContinuousSpellChecking() final;
+    int spellCheckerDocumentTag() final;
 
-    virtual bool isGrammarCheckingEnabled() override;
-    virtual void toggleGrammarChecking() override;
-    virtual bool isContinuousSpellCheckingEnabled() override;
-    virtual void toggleContinuousSpellChecking() override;
-    virtual int spellCheckerDocumentTag() override;
+    bool smartInsertDeleteEnabled() final;
+    bool isSelectTrailingWhitespaceEnabled() const final;
 
-    virtual bool smartInsertDeleteEnabled() override;
-    virtual bool isSelectTrailingWhitespaceEnabled() override;
+    bool shouldDeleteRange(WebCore::Range*) final;
 
-    virtual bool shouldDeleteRange(WebCore::Range*) override;
+    bool shouldBeginEditing(WebCore::Range*) final;
+    bool shouldEndEditing(WebCore::Range*) final;
+    bool shouldInsertNode(WebCore::Node*, WebCore::Range*, WebCore::EditorInsertAction) final;
+    bool shouldInsertText(const String&, WebCore::Range*, WebCore::EditorInsertAction) final;
+    bool shouldChangeSelectedRange(WebCore::Range* fromRange, WebCore::Range* toRange, WebCore::EAffinity, bool stillSelecting) final;
 
-    virtual bool shouldBeginEditing(WebCore::Range*) override;
-    virtual bool shouldEndEditing(WebCore::Range*) override;
-    virtual bool shouldInsertNode(WebCore::Node*, WebCore::Range*, WebCore::EditorInsertAction) override;
-    virtual bool shouldInsertText(const String&, WebCore::Range*, WebCore::EditorInsertAction) override;
-    virtual bool shouldChangeSelectedRange(WebCore::Range* fromRange, WebCore::Range* toRange, WebCore::EAffinity, bool stillSelecting) override;
+    bool shouldApplyStyle(WebCore::StyleProperties*, WebCore::Range*) final;
+    void didApplyStyle() final;
 
-    virtual bool shouldApplyStyle(WebCore::StyleProperties*, WebCore::Range*) override;
-    virtual void didApplyStyle() override;
+    bool shouldMoveRangeAfterDelete(WebCore::Range*, WebCore::Range* rangeToBeReplaced) final;
 
-    virtual bool shouldMoveRangeAfterDelete(WebCore::Range*, WebCore::Range* rangeToBeReplaced) override;
+    void didBeginEditing() final;
+    void didEndEditing() final;
+    void willWriteSelectionToPasteboard(WebCore::Range*) final;
+    void didWriteSelectionToPasteboard() final;
+    void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final;
 
-    virtual void didBeginEditing() override;
-    virtual void didEndEditing() override;
-    virtual void willWriteSelectionToPasteboard(WebCore::Range*) override;
-    virtual void didWriteSelectionToPasteboard() override;
-    virtual void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) override;
+    NSString *userVisibleString(NSURL *) final;
+    void setInsertionPasteboard(const String&) final;
+    NSURL *canonicalizeURL(NSURL *) final;
+    NSURL *canonicalizeURLString(NSString *) final;
 
-    virtual NSString *userVisibleString(NSURL *) override;
-    virtual WebCore::DocumentFragment* documentFragmentFromAttributedString(NSAttributedString *, Vector< RefPtr<WebCore::ArchiveResource>>&) override;
-    virtual void setInsertionPasteboard(const String&) override;
-    virtual NSURL *canonicalizeURL(NSURL *) override;
-    virtual NSURL *canonicalizeURLString(NSString *) override;
-    
 #if USE(APPKIT)
-    virtual void uppercaseWord() override;
-    virtual void lowercaseWord() override;
-    virtual void capitalizeWord() override;
+    void uppercaseWord() final;
+    void lowercaseWord() final;
+    void capitalizeWord() final;
 #endif
 
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)
-    virtual void showSubstitutionsPanel(bool show) override;
-    virtual bool substitutionsPanelIsShowing() override;
-    virtual void toggleSmartInsertDelete() override;
-    virtual bool isAutomaticQuoteSubstitutionEnabled() override;
-    virtual void toggleAutomaticQuoteSubstitution() override;
-    virtual bool isAutomaticLinkDetectionEnabled() override;
-    virtual void toggleAutomaticLinkDetection() override;
-    virtual bool isAutomaticDashSubstitutionEnabled() override;
-    virtual void toggleAutomaticDashSubstitution() override;
-    virtual bool isAutomaticTextReplacementEnabled() override;
-    virtual void toggleAutomaticTextReplacement() override;
-    virtual bool isAutomaticSpellingCorrectionEnabled() override;
-    virtual void toggleAutomaticSpellingCorrection() override;
+    void showSubstitutionsPanel(bool show) final;
+    bool substitutionsPanelIsShowing() final;
+    void toggleSmartInsertDelete() final;
+    bool isAutomaticQuoteSubstitutionEnabled() final;
+    void toggleAutomaticQuoteSubstitution() final;
+    bool isAutomaticLinkDetectionEnabled() final;
+    void toggleAutomaticLinkDetection() final;
+    bool isAutomaticDashSubstitutionEnabled() final;
+    void toggleAutomaticDashSubstitution() final;
+    bool isAutomaticTextReplacementEnabled() final;
+    void toggleAutomaticTextReplacement() final;
+    bool isAutomaticSpellingCorrectionEnabled() final;
+    void toggleAutomaticSpellingCorrection() final;
 #endif
 
-    virtual TextCheckerClient* textChecker() override { return this; }
+    TextCheckerClient* textChecker() final { return this; }
 
-    virtual void respondToChangedContents() override;
-    virtual void respondToChangedSelection(WebCore::Frame*) override;
-    virtual void didChangeSelectionAndUpdateLayout() override { }
-    virtual void discardedComposition(WebCore::Frame*) override;
+    void respondToChangedContents() final;
+    void respondToChangedSelection(WebCore::Frame*) final;
+    void didChangeSelectionAndUpdateLayout() final { }
+    void updateEditorStateAfterLayoutIfEditabilityChanged() final;
+    void discardedComposition(WebCore::Frame*) final;
+    void canceledComposition() final;
 
-    virtual void registerUndoStep(PassRefPtr<WebCore::UndoStep>) override;
-    virtual void registerRedoStep(PassRefPtr<WebCore::UndoStep>) override;
-    virtual void clearUndoRedoOperations() override;
+    void registerUndoStep(WebCore::UndoStep&) final;
+    void registerRedoStep(WebCore::UndoStep&) final;
+    void clearUndoRedoOperations() final;
 
-    virtual bool canCopyCut(WebCore::Frame*, bool defaultValue) const override;
-    virtual bool canPaste(WebCore::Frame*, bool defaultValue) const override;
-    virtual bool canUndo() const override;
-    virtual bool canRedo() const override;
+    bool canCopyCut(WebCore::Frame*, bool defaultValue) const final;
+    bool canPaste(WebCore::Frame*, bool defaultValue) const final;
+    bool canUndo() const final;
+    bool canRedo() const final;
     
-    virtual void undo() override;
-    virtual void redo() override;
+    void undo() final;
+    void redo() final;
     
-    virtual void handleKeyboardEvent(WebCore::KeyboardEvent*) override;
-    virtual void handleInputMethodKeydown(WebCore::KeyboardEvent*) override;
+    void handleKeyboardEvent(WebCore::KeyboardEvent*) final;
+    void handleInputMethodKeydown(WebCore::KeyboardEvent*) final;
 
-    virtual void textFieldDidBeginEditing(WebCore::Element*) override;
-    virtual void textFieldDidEndEditing(WebCore::Element*) override;
-    virtual void textDidChangeInTextField(WebCore::Element*) override;
-    virtual bool doTextFieldCommandFromEvent(WebCore::Element*, WebCore::KeyboardEvent*) override;
-    virtual void textWillBeDeletedInTextField(WebCore::Element*) override;
-    virtual void textDidChangeInTextArea(WebCore::Element*) override;
-    virtual void overflowScrollPositionChanged() override { };
+    void textFieldDidBeginEditing(WebCore::Element*) final;
+    void textFieldDidEndEditing(WebCore::Element*) final;
+    void textDidChangeInTextField(WebCore::Element*) final;
+    bool doTextFieldCommandFromEvent(WebCore::Element*, WebCore::KeyboardEvent*) final;
+    void textWillBeDeletedInTextField(WebCore::Element*) final;
+    void textDidChangeInTextArea(WebCore::Element*) final;
+    void overflowScrollPositionChanged() final { };
 
 #if PLATFORM(IOS)
-    virtual void startDelayingAndCoalescingContentChangeNotifications() override;
-    virtual void stopDelayingAndCoalescingContentChangeNotifications() override;
-    virtual void writeDataToPasteboard(NSDictionary*) override;
-    virtual NSArray* supportedPasteboardTypesForCurrentSelection() override;
-    virtual NSArray* readDataFromPasteboard(NSString* type, int index) override;
-    virtual bool hasRichlyEditableSelection() override;
-    virtual int getPasteboardItemsCount() override;
-    virtual WebCore::DocumentFragment* documentFragmentFromDelegate(int index) override;
-    virtual bool performsTwoStepPaste(WebCore::DocumentFragment*) override;
-    virtual int pasteboardChangeCount() override;
+    void startDelayingAndCoalescingContentChangeNotifications() final;
+    void stopDelayingAndCoalescingContentChangeNotifications() final;
+    void writeDataToPasteboard(NSDictionary*) final;
+    NSArray* supportedPasteboardTypesForCurrentSelection() final;
+    NSArray* readDataFromPasteboard(NSString* type, int index) final;
+    bool hasRichlyEditableSelection() final;
+    int getPasteboardItemsCount() final;
+    RefPtr<WebCore::DocumentFragment> documentFragmentFromDelegate(int index) final;
+    bool performsTwoStepPaste(WebCore::DocumentFragment*) final;
+    int pasteboardChangeCount() final;
 #endif
-    
-    virtual bool shouldEraseMarkersAfterChangeSelection(WebCore::TextCheckingType) const override;
-    virtual void ignoreWordInSpellDocument(const String&) override;
-    virtual void learnWord(const String&) override;
-    virtual void checkSpellingOfString(StringView, int* misspellingLocation, int* misspellingLength) override;
-    virtual String getAutoCorrectSuggestionForMisspelledWord(const String&) override;
-    virtual void checkGrammarOfString(StringView, Vector<WebCore::GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) override;
-    virtual Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, WebCore::TextCheckingTypeMask checkingTypes) override;
-    virtual void updateSpellingUIWithGrammarString(const String&, const WebCore::GrammarDetail&) override;
-    virtual void updateSpellingUIWithMisspelledWord(const String&) override;
-    virtual void showSpellingUI(bool show) override;
-    virtual bool spellingUIIsShowing() override;
-    virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) override;
 
-    virtual void willSetInputMethodState() override;
-    virtual void setInputMethodState(bool enabled) override;
-    virtual void requestCheckingOfString(PassRefPtr<WebCore::TextCheckingRequest>) override;
+    bool performTwoStepDrop(WebCore::DocumentFragment&, WebCore::Range& destination, bool isMove) final;
+    
+    bool shouldEraseMarkersAfterChangeSelection(WebCore::TextCheckingType) const final;
+    void ignoreWordInSpellDocument(const String&) final;
+    void learnWord(const String&) final;
+    void checkSpellingOfString(StringView, int* misspellingLocation, int* misspellingLength) final;
+    String getAutoCorrectSuggestionForMisspelledWord(const String&) final;
+    void checkGrammarOfString(StringView, Vector<WebCore::GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) final;
+    Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, WebCore::TextCheckingTypeMask checkingTypes, const WebCore::VisibleSelection& currentSelection) final;
+    void updateSpellingUIWithGrammarString(const String&, const WebCore::GrammarDetail&) final;
+    void updateSpellingUIWithMisspelledWord(const String&) final;
+    void showSpellingUI(bool show) final;
+    bool spellingUIIsShowing() final;
+    void getGuessesForWord(const String& word, const String& context, const WebCore::VisibleSelection& currentSelection, Vector<String>& guesses) final;
+
+    void willSetInputMethodState() final;
+    void setInputMethodState(bool enabled) final;
+    void requestCheckingOfString(WebCore::TextCheckingRequest&, const WebCore::VisibleSelection& currentSelection) final;
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-    void requestCandidatesForSelection(const WebCore::VisibleSelection&);
+    void requestCandidatesForSelection(const WebCore::VisibleSelection&) final;
     void handleRequestedCandidates(NSInteger, NSArray<NSTextCheckingResult *> *);
-    void handleAcceptedCandidate(NSTextCheckingResult *);
+    void handleAcceptedCandidateWithSoftSpaces(WebCore::TextCheckingResult) final;
 #endif
 
-    void registerUndoOrRedoStep(PassRefPtr<WebCore::UndoStep>, bool isRedo);
+    void registerUndoOrRedoStep(WebCore::UndoStep&, bool isRedo);
 
     WebView *m_webView;
     RetainPtr<WebEditorUndoTarget> m_undoTarget;
-    bool m_haveUndoRedoOperations;
+    bool m_haveUndoRedoOperations { false };
     RefPtr<WebCore::TextCheckingRequest> m_textCheckingRequest;
+
 #if PLATFORM(IOS)
-    bool m_delayingContentChangeNotifications;
-    bool m_hasDelayedContentChangeNotification;
+    bool m_delayingContentChangeNotifications { false };
+    bool m_hasDelayedContentChangeNotification { false };
 #endif
 
     WebCore::VisibleSelection m_lastSelectionForRequestedCandidates;
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    RetainPtr<NSString> m_paragraphContextForCandidateRequest;
+    NSRange m_rangeForCandidates;
+    NSInteger m_lastCandidateRequestSequenceNumber;
+#endif
+
+    enum class EditorStateIsContentEditable { No, Yes, Unset };
+    EditorStateIsContentEditable m_lastEditorStateWasContentEditable { EditorStateIsContentEditable::Unset };
+
     WeakPtrFactory<WebEditorClient> m_weakPtrFactory;
 };
 
-#if PLATFORM(COCOA)
 inline NSSelectionAffinity kit(WebCore::EAffinity affinity)
 {
     switch (affinity) {
@@ -215,7 +225,6 @@ inline WebCore::EAffinity core(NSSelectionAffinity affinity)
     ASSERT_NOT_REACHED();
     return WebCore::EAffinity::UPSTREAM;
 }
-#endif
 
 #if PLATFORM(IOS)
 
@@ -280,7 +289,7 @@ inline bool WebEditorClient::spellingUIIsShowing()
     return false;
 }
 
-inline void WebEditorClient::getGuessesForWord(const String&, const String&, Vector<String>&)
+inline void WebEditorClient::getGuessesForWord(const String&, const String&, const WebCore::VisibleSelection&, Vector<String>&)
 {
 }
 

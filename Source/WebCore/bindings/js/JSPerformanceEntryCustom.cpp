@@ -30,7 +30,7 @@
 
 #include "config.h"
 
-#if ENABLE(PERFORMANCE_TIMELINE)
+#if ENABLE(WEB_TIMING)
 
 #include "JSPerformanceEntry.h"
 
@@ -46,27 +46,25 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, PerformanceEntry* entry)
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<PerformanceEntry>&& entry)
 {
-    if (!entry)
-        return jsNull();
+    if (is<PerformanceResourceTiming>(entry))
+        return createWrapper<PerformanceResourceTiming>(globalObject, WTFMove(entry));
 
-#if ENABLE(RESOURCE_TIMING)
-    if (entry->isResource())
-        return wrap<JSPerformanceResourceTiming>(globalObject, static_cast<PerformanceResourceTiming*>(entry));
-#endif
+    if (is<PerformanceMark>(entry))
+        return createWrapper<PerformanceMark>(globalObject, WTFMove(entry));
 
-#if ENABLE(USER_TIMING)
-    if (entry->isMark())
-        return wrap<JSPerformanceMark>(globalObject, static_cast<PerformanceMark*>(entry));
+    if (is<PerformanceMeasure>(entry))
+        return createWrapper<PerformanceMeasure>(globalObject, WTFMove(entry));
 
-    if (entry->isMeasure())
-        return wrap<JSPerformanceMeasure>(globalObject, static_cast<PerformanceMeasure*>(entry));
-#endif
+    return createWrapper<PerformanceEntry>(globalObject, WTFMove(entry));
+}
 
-    return wrap<JSPerformanceEntry>(globalObject, entry);
+JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, PerformanceEntry& entry)
+{
+    return wrap(state, globalObject, entry);
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(PERFORMANCE_TIMELINE)
+#endif // ENABLE(WEB_TIMING)

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextChecker_h
-#define TextChecker_h
+#pragma once
 
 #include "TextCheckerCompletion.h"
 #include <WebCore/EditorClient.h>
@@ -42,6 +41,9 @@ public:
 
     static void setContinuousSpellCheckingEnabled(bool);
     static void setGrammarCheckingEnabled(bool);
+    
+    static void setTestingMode(bool);
+    static bool isTestingMode();
 
 #if PLATFORM(COCOA)
     static void setAutomaticSpellingCorrectionEnabled(bool);
@@ -72,7 +74,7 @@ public:
     static int64_t uniqueSpellDocumentTag(WebPageProxy*);
     static void closeSpellDocumentWithTag(int64_t);
 #if USE(UNIFIED_TEXT_CHECKING)
-    static Vector<WebCore::TextCheckingResult> checkTextOfParagraph(int64_t spellDocumentTag, StringView text, uint64_t checkingTypes);
+    static Vector<WebCore::TextCheckingResult> checkTextOfParagraph(int64_t spellDocumentTag, StringView text, int32_t insertionPoint, uint64_t checkingTypes, bool initialCapitalizationEnabled);
 #endif
     static void checkSpellingOfString(int64_t spellDocumentTag, StringView text, int32_t& misspellingLocation, int32_t& misspellingLength);
     static void checkGrammarOfString(int64_t spellDocumentTag, StringView text, Vector<WebCore::GrammarDetail>&, int32_t& badGrammarLocation, int32_t& badGrammarLength);
@@ -80,12 +82,10 @@ public:
     static void toggleSpellingUIIsShowing();
     static void updateSpellingUIWithMisspelledWord(int64_t spellDocumentTag, const String& misspelledWord);
     static void updateSpellingUIWithGrammarString(int64_t spellDocumentTag, const String& badGrammarPhrase, const WebCore::GrammarDetail&);
-    static void getGuessesForWord(int64_t spellDocumentTag, const String& word, const String& context, Vector<String>& guesses);
+    static void getGuessesForWord(int64_t spellDocumentTag, const String& word, const String& context, int32_t insertionPoint, Vector<String>& guesses, bool initialCapitalizationEnabled);
     static void learnWord(int64_t spellDocumentTag, const String& word);
     static void ignoreWord(int64_t spellDocumentTag, const String& word);
-    static void requestCheckingOfString(PassRefPtr<TextCheckerCompletion>);
+    static void requestCheckingOfString(Ref<TextCheckerCompletion>&&, int32_t insertionPoint);
 };
 
 } // namespace WebKit
-
-#endif // TextChecker_h

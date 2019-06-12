@@ -26,12 +26,13 @@
 #include "QuotesData.h"
 #include "RenderTextFragment.h"
 #include "RenderView.h"
+#include <wtf/unicode/CharacterNames.h>
 
 using namespace WTF::Unicode;
 
 namespace WebCore {
 
-RenderQuote::RenderQuote(Document& document, Ref<RenderStyle>&& style, QuoteType quote)
+RenderQuote::RenderQuote(Document& document, RenderStyle&& style, QuoteType quote)
     : RenderInline(document, WTFMove(style))
     , m_type(quote)
     , m_text(emptyString())
@@ -40,11 +41,24 @@ RenderQuote::RenderQuote(Document& document, Ref<RenderStyle>&& style, QuoteType
 
 RenderQuote::~RenderQuote()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderQuote::willBeDestroyed()
+{
     detachQuote();
 
     ASSERT(!m_isAttached);
     ASSERT(!m_next);
     ASSERT(!m_previous);
+
+    RenderInline::willBeDestroyed();
+}
+
+void RenderQuote::insertedIntoTree()
+{
+    RenderInline::insertedIntoTree();
+    attachQuote();
 }
 
 void RenderQuote::willBeRemovedFromTree()
@@ -383,6 +397,9 @@ String RenderQuote::computeText() const
 
 void RenderQuote::attachQuote()
 {
+    if (view().renderTreeIsBeingMutatedInternally())
+        return;
+
     ASSERT(!m_isAttached);
     ASSERT(!m_next);
     ASSERT(!m_previous);
@@ -424,6 +441,9 @@ void RenderQuote::attachQuote()
 
 void RenderQuote::detachQuote()
 {
+    if (view().renderTreeIsBeingMutatedInternally())
+        return;
+
     ASSERT(!m_next || m_next->m_isAttached);
     ASSERT(!m_previous || m_previous->m_isAttached);
     if (!m_isAttached)
@@ -434,7 +454,7 @@ void RenderQuote::detachQuote()
         view().setRenderQuoteHead(m_next);
     if (m_next)
         m_next->m_previous = m_previous;
-    if (!documentBeingDestroyed()) {
+    if (!renderTreeBeingDestroyed()) {
         for (RenderQuote* quote = m_next; quote; quote = quote->m_next)
             quote->updateDepth();
     }

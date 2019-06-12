@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingCoordinatorIOS_h
-#define ScrollingCoordinatorIOS_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
@@ -43,15 +42,15 @@ public:
     explicit ScrollingCoordinatorIOS(Page*);
     virtual ~ScrollingCoordinatorIOS();
 
-    virtual void pageDestroyed() override;
+    void pageDestroyed() override;
 
-    virtual void commitTreeStateIfNeeded() override;
+    void commitTreeStateIfNeeded() override;
 
     // Handle the wheel event on the scrolling thread. Returns whether the event was handled or not.
-    virtual bool handleWheelEvent(FrameView&, const PlatformWheelEvent&) override { return false; }
+    bool handleWheelEvent(FrameView&, const PlatformWheelEvent&) override { return false; }
 
 private:
-    virtual void scheduleTreeStateCommit() override;
+    void scheduleTreeStateCommit() override;
 
     void commitTreeState();
 
@@ -61,5 +60,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ScrollingCoordinatorIOS_h

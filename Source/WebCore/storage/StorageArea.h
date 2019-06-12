@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StorageArea_h
-#define StorageArea_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
@@ -35,8 +34,10 @@ namespace WebCore {
 class Frame;
 class SecurityOrigin;
 class StorageSyncManager;
-typedef int ExceptionCode;
-enum StorageType { LocalStorage, SessionStorage };
+
+enum class StorageType;
+
+struct SecurityOriginData;
 
 class StorageArea : public RefCounted<StorageArea> {
 public:
@@ -59,9 +60,7 @@ public:
     virtual void decrementAccessCount() { }
     virtual void closeDatabaseIfIdle() { }
 
-    virtual SecurityOrigin& securityOrigin() = 0;
+    virtual SecurityOriginData securityOrigin() const = 0;
 };
 
 } // namespace WebCore
-
-#endif // StorageArea_h

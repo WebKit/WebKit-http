@@ -23,10 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HitTestingTransformState_h
-#define HitTestingTransformState_h
+#pragma once
 
-#include "AffineTransform.h"
 #include "FloatPoint.h"
 #include "FloatQuad.h"
 #include "IntSize.h"
@@ -91,5 +89,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // HitTestingTransformState_h

@@ -50,7 +50,13 @@ template<typename T> inline constexpr T min(T a, T b)
 
 template<typename T> inline constexpr T mask(T value, uintptr_t mask)
 {
-    return reinterpret_cast<T>(reinterpret_cast<uintptr_t>(value) & mask);
+    static_assert(sizeof(T) == sizeof(uintptr_t), "sizeof(T) must be equal to sizeof(uintptr_t).");
+    return static_cast<T>(static_cast<uintptr_t>(value) & mask);
+}
+
+template<typename T> inline T* mask(T* value, uintptr_t mask)
+{
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(value) & mask);
 }
 
 template<typename T> inline constexpr bool test(T value, uintptr_t mask)
@@ -66,28 +72,57 @@ inline constexpr bool isPowerOfTwo(size_t size)
 template<typename T> inline T roundUpToMultipleOf(size_t divisor, T x)
 {
     BASSERT(isPowerOfTwo(divisor));
-    return reinterpret_cast<T>((reinterpret_cast<uintptr_t>(x) + (divisor - 1)) & ~(divisor - 1));
+    static_assert(sizeof(T) == sizeof(uintptr_t), "sizeof(T) must be equal to sizeof(uintptr_t).");
+    return static_cast<T>((static_cast<uintptr_t>(x) + (divisor - 1)) & ~(divisor - 1));
 }
 
-template<size_t divisor, typename T> inline constexpr T roundUpToMultipleOf(T x)
+template<size_t divisor, typename T> inline T roundUpToMultipleOf(T x)
 {
     static_assert(isPowerOfTwo(divisor), "'divisor' must be a power of two.");
     return roundUpToMultipleOf(divisor, x);
 }
 
-template<size_t divisor, typename T> inline constexpr T roundDownToMultipleOf(T x)
+template<typename T> inline T* roundUpToMultipleOf(size_t divisor, T* x)
+{
+    BASSERT(isPowerOfTwo(divisor));
+    return reinterpret_cast<T*>((reinterpret_cast<uintptr_t>(x) + (divisor - 1)) & ~(divisor - 1));
+}
+
+template<size_t divisor, typename T> inline T* roundUpToMultipleOf(T* x)
 {
     static_assert(isPowerOfTwo(divisor), "'divisor' must be a power of two.");
+    return roundUpToMultipleOf(divisor, x);
+}
+
+template<typename T> inline T roundDownToMultipleOf(size_t divisor, T x)
+{
+    BASSERT(isPowerOfTwo(divisor));
     return reinterpret_cast<T>(mask(reinterpret_cast<uintptr_t>(x), ~(divisor - 1ul)));
 }
 
-template<typename T> void divideRoundingUp(T numerator, T denominator, T& quotient, T& remainder)
+template<size_t divisor, typename T> inline constexpr T roundDownToMultipleOf(T x)
+{
+    static_assert(isPowerOfTwo(divisor), "'divisor' must be a power of two.");
+    return roundDownToMultipleOf(divisor, x);
+}
+
+template<typename T> inline void divideRoundingUp(T numerator, T denominator, T& quotient, T& remainder)
 {
     // We expect the compiler to emit a single divide instruction to extract both the quotient and the remainder.
     quotient = numerator / denominator;
     remainder = numerator % denominator;
     if (remainder)
         quotient += 1;
+}
+
+template<typename T> inline T divideRoundingUp(T numerator, T denominator)
+{
+    return (numerator + denominator - 1) / denominator;
+}
+
+template<typename T> inline T roundUpToMultipleOfNonPowerOfTwo(size_t divisor, T x)
+{
+    return divideRoundingUp(x, divisor) * divisor;
 }
 
 // Version of sizeof that returns 0 for empty classes.
@@ -100,6 +135,11 @@ template<typename T> inline constexpr size_t sizeOf()
 template<typename T> inline constexpr size_t bitCount()
 {
     return sizeof(T) * 8;
+}
+
+inline constexpr unsigned long log2(unsigned long value)
+{
+    return bitCount<unsigned long>() - 1 - __builtin_clzl(value);
 }
 
 } // namespace bmalloc

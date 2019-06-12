@@ -23,11 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StyleFilterData_h
-#define StyleFilterData_h
+#pragma once
 
 #include "FilterOperations.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -43,7 +42,7 @@ public:
         return !(*this == o);
     }
 
-    FilterOperations m_operations;
+    FilterOperations operations;
 
 private:
     StyleFilterData();
@@ -51,5 +50,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleFilterData_h

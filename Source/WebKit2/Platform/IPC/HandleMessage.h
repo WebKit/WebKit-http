@@ -1,12 +1,36 @@
-#ifndef HandleMessage_h
-#define HandleMessage_h
+/*
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-#include "Arguments.h"
-#include "MessageDecoder.h"
-#include "MessageEncoder.h"
+#pragma once
+
+#include "ArgumentCoders.h"
 #include <wtf/StdLibExtras.h>
 
 namespace IPC {
+
+class Connection;
 
 // Dispatch functions with no reply arguments.
 
@@ -39,15 +63,15 @@ void callMemberFunction(ArgsTuple&& args, ReplyArgsTuple& replyArgs, C* object, 
 // Dispatch functions with delayed reply arguments.
 
 template <typename C, typename MF, typename R, typename ArgsTuple, size_t... ArgsIndex>
-void callMemberFunctionImpl(C* object, MF function, PassRefPtr<R> delayedReply, ArgsTuple&& args, std::index_sequence<ArgsIndex...>)
+void callMemberFunctionImpl(C* object, MF function, Ref<R>&& delayedReply, ArgsTuple&& args, std::index_sequence<ArgsIndex...>)
 {
-    (object->*function)(std::get<ArgsIndex>(args)..., delayedReply);
+    (object->*function)(std::get<ArgsIndex>(args)..., WTFMove(delayedReply));
 }
 
 template<typename C, typename MF, typename R, typename ArgsTuple, typename ArgsIndicies = std::make_index_sequence<std::tuple_size<ArgsTuple>::value>>
-void callMemberFunction(ArgsTuple&& args, PassRefPtr<R> delayedReply, C* object, MF function)
+void callMemberFunction(ArgsTuple&& args, Ref<R>&& delayedReply, C* object, MF function)
 {
-    callMemberFunctionImpl(object, function, delayedReply, std::forward<ArgsTuple>(args), ArgsIndicies());
+    callMemberFunctionImpl(object, function, WTFMove(delayedReply), std::forward<ArgsTuple>(args), ArgsIndicies());
 }
 
 // Dispatch functions with connection parameter with no reply arguments.
@@ -55,7 +79,7 @@ void callMemberFunction(ArgsTuple&& args, PassRefPtr<R> delayedReply, C* object,
 template <typename C, typename MF, typename ArgsTuple, size_t... ArgsIndex>
 void callMemberFunctionImpl(C* object, MF function, Connection& connection, ArgsTuple&& args, std::index_sequence<ArgsIndex...>)
 {
-    (object->*function)(connection, std::get<ArgsIndex>(args)...);
+    (object->*function)(connection, std::get<ArgsIndex>(std::forward<ArgsTuple>(args))...);
 }
 
 template<typename C, typename MF, typename ArgsTuple, typename ArgsIndicies = std::make_index_sequence<std::tuple_size<ArgsTuple>::value>>
@@ -80,10 +104,20 @@ void callMemberFunction(Connection& connection, ArgsTuple&& args, ReplyArgsTuple
 
 // Main dispatch functions
 
+template<typename T>
+struct CodingType {
+    typedef std::remove_const_t<std::remove_reference_t<T>> Type;
+};
+
+template<typename... Ts>
+struct CodingType<std::tuple<Ts...>> {
+    typedef std::tuple<typename CodingType<Ts>::Type...> Type;
+};
+
 template<typename T, typename C, typename MF>
-void handleMessage(MessageDecoder& decoder, C* object, MF function)
+void handleMessage(Decoder& decoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
@@ -93,37 +127,37 @@ void handleMessage(MessageDecoder& decoder, C* object, MF function)
 }
 
 template<typename T, typename C, typename MF>
-void handleMessage(MessageDecoder& decoder, MessageEncoder& replyEncoder, C* object, MF function)
+void handleMessage(Decoder& decoder, Encoder& replyEncoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
     }
 
-    typename T::Reply::ValueType replyArguments;
+    typename CodingType<typename T::Reply>::Type replyArguments;
     callMemberFunction(WTFMove(arguments), replyArguments, object, function);
     replyEncoder << replyArguments;
 }
 
 template<typename T, typename C, typename MF>
-void handleMessage(Connection& connection, MessageDecoder& decoder, MessageEncoder& replyEncoder, C* object, MF function)
+void handleMessage(Connection& connection, Decoder& decoder, Encoder& replyEncoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
     }
 
-    typename T::Reply::ValueType replyArguments;
+    typename CodingType<typename T::Reply>::Type replyArguments;
     callMemberFunction(connection, WTFMove(arguments), replyArguments, object, function);
     replyEncoder << replyArguments;
 }
 
 template<typename T, typename C, typename MF>
-void handleMessage(Connection& connection, MessageDecoder& decoder, C* object, MF function)
+void handleMessage(Connection& connection, Decoder& decoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
@@ -132,18 +166,16 @@ void handleMessage(Connection& connection, MessageDecoder& decoder, C* object, M
 }
 
 template<typename T, typename C, typename MF>
-void handleMessageDelayed(Connection& connection, MessageDecoder& decoder, std::unique_ptr<MessageEncoder>& replyEncoder, C* object, MF function)
+void handleMessageDelayed(Connection& connection, Decoder& decoder, std::unique_ptr<Encoder>& replyEncoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
     }
 
-    RefPtr<typename T::DelayedReply> delayedReply = adoptRef(new typename T::DelayedReply(&connection, WTFMove(replyEncoder)));
-    callMemberFunction(WTFMove(arguments), delayedReply.release(), object, function);
+    Ref<typename T::DelayedReply> delayedReply = adoptRef(*new typename T::DelayedReply(connection, WTFMove(replyEncoder)));
+    callMemberFunction(WTFMove(arguments), WTFMove(delayedReply), object, function);
 }
 
 } // namespace IPC
-
-#endif // HandleMessage_h

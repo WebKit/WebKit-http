@@ -27,7 +27,7 @@
 #include "config.h"
 #include "CSSSelectorList.h"
 
-#include "CSSParserValues.h"
+#include "CSSParserSelector.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -45,7 +45,6 @@ CSSSelectorList::CSSSelectorList(const CSSSelectorList& other)
 CSSSelectorList::CSSSelectorList(CSSSelectorList&& other)
     : m_selectorArray(other.m_selectorArray)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(componentCount());
     other.m_selectorArray = nullptr;
 }
 
@@ -102,7 +101,6 @@ CSSSelectorList& CSSSelectorList::operator=(CSSSelectorList&& other)
     m_selectorArray = other.m_selectorArray;
     other.m_selectorArray = nullptr;
 
-    ASSERT_WITH_SECURITY_IMPLICATION(componentCount());
     return *this;
 }
 
@@ -131,9 +129,9 @@ String CSSSelectorList::selectorsText() const
 
 void CSSSelectorList::buildSelectorsText(StringBuilder& stringBuilder) const
 {
-    const CSSSelector* firstSubSelector = first();
-    for (const CSSSelector* subSelector = firstSubSelector; subSelector; subSelector = CSSSelectorList::next(subSelector)) {
-        if (subSelector != firstSubSelector)
+    const CSSSelector* firstSubselector = first();
+    for (const CSSSelector* subSelector = firstSubselector; subSelector; subSelector = CSSSelectorList::next(subSelector)) {
+        if (subSelector != firstSubselector)
             stringBuilder.appendLiteral(", ");
         stringBuilder.append(subSelector->selectorText());
     }
@@ -173,9 +171,9 @@ class SelectorNeedsNamespaceResolutionFunctor {
 public:
     bool operator()(const CSSSelector* selector)
     {
-        if (selector->match() == CSSSelector::Tag && selector->tagQName().prefix() != nullAtom && selector->tagQName().prefix() != starAtom)
+        if (selector->match() == CSSSelector::Tag && !selector->tagQName().prefix().isEmpty() && selector->tagQName().prefix() != starAtom())
             return true;
-        if (selector->isAttributeSelector() && selector->attribute().prefix() != nullAtom && selector->attribute().prefix() != starAtom)
+        if (selector->isAttributeSelector() && !selector->attribute().prefix().isEmpty() && selector->attribute().prefix() != starAtom())
             return true;
         return false;
     }

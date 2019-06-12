@@ -19,11 +19,9 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef StyleRule_h
-#define StyleRule_h
+#pragma once
 
 #include "CSSSelectorList.h"
-#include "MediaList.h"
 #include "StyleProperties.h"
 #include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
@@ -33,9 +31,12 @@ namespace WebCore {
 class CSSRule;
 class CSSStyleRule;
 class CSSStyleSheet;
+class MediaQuerySet;
 class MutableStyleProperties;
+class StyleRuleKeyframe;
 class StyleProperties;
-
+class StyleRuleKeyframes;
+    
 class StyleRuleBase : public WTF::RefCountedBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -48,7 +49,8 @@ public:
         FontFace,
         Page,
         Keyframes,
-        Keyframe, // Not used. These are internally non-rule StyleKeyframe objects.
+        Keyframe, // Not used. These are internally non-rule StyleRuleKeyframe objects.
+        Namespace,
         Supports = 12,
 #if ENABLE(CSS_DEVICE_ADAPTATION)
         Viewport = 15,
@@ -61,6 +63,8 @@ public:
     bool isCharsetRule() const { return type() == Charset; }
     bool isFontFaceRule() const { return type() == FontFace; }
     bool isKeyframesRule() const { return type() == Keyframes; }
+    bool isKeyframeRule() const { return type() == Keyframe; }
+    bool isNamespaceRule() const { return type() == Namespace; }
     bool isMediaRule() const { return type() == Media; }
     bool isPageRule() const { return type() == Page; }
     bool isStyleRule() const { return type() == Style; }
@@ -73,8 +77,6 @@ public:
 
     Ref<StyleRuleBase> copy() const;
 
-    int sourceLine() const { return m_sourceLine; }
-
     void deref()
     {
         if (derefBase())
@@ -82,38 +84,45 @@ public:
     }
 
     // FIXME: There shouldn't be any need for the null parent version.
-    PassRefPtr<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet = 0) const;
-    PassRefPtr<CSSRule> createCSSOMWrapper(CSSRule* parentRule) const;
+    RefPtr<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet = nullptr) const;
+    RefPtr<CSSRule> createCSSOMWrapper(CSSRule* parentRule) const;
 
 protected:
-    StyleRuleBase(Type type, signed sourceLine = 0) : m_type(type), m_sourceLine(sourceLine) { }
-    StyleRuleBase(const StyleRuleBase& o) : WTF::RefCountedBase(), m_type(o.m_type), m_sourceLine(o.m_sourceLine) { }
+    StyleRuleBase(Type type)
+        : m_type(type)
+        { }
+
+    StyleRuleBase(const StyleRuleBase& o)
+        : WTF::RefCountedBase()
+        , m_type(o.m_type)
+        { }
 
     ~StyleRuleBase() { }
 
 private:
-    void destroy();
+    WEBCORE_EXPORT void destroy();
     
-    PassRefPtr<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet, CSSRule* parentRule) const;
+    RefPtr<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet, CSSRule* parentRule) const;
 
     unsigned m_type : 5;
-    signed m_sourceLine : 27;
 };
 
-class StyleRule : public StyleRuleBase {
+class StyleRule final : public StyleRuleBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<StyleRule> create(int sourceLine, Ref<StyleProperties>&& properties)
+    static Ref<StyleRule> create(Ref<StylePropertiesBase>&& properties)
     {
-        return adoptRef(*new StyleRule(sourceLine, WTFMove(properties)));
+        return adoptRef(*new StyleRule(WTFMove(properties)));
     }
     
     ~StyleRule();
 
     const CSSSelectorList& selectorList() const { return m_selectorList; }
-    const StyleProperties& properties() const { return m_properties; }
-    MutableStyleProperties& mutableProperties();
     
+    const StyleProperties& properties() const;
+    MutableStyleProperties& mutableProperties();
+    const StyleProperties* propertiesWithoutDeferredParsing() const;
+
     void parserAdoptSelectorVector(Vector<std::unique_ptr<CSSParserSelector>>& selectors) { m_selectorList.adoptSelectorVector(selectors); }
     void wrapperAdoptSelectorList(CSSSelectorList& selectors) { m_selectorList = WTFMove(selectors); }
     void parserAdoptSelectorArray(CSSSelector* selectors) { m_selectorList.adoptSelectorArray(selectors); }
@@ -125,16 +134,21 @@ public:
     static unsigned averageSizeInBytes();
 
 private:
-    StyleRule(int sourceLine, Ref<StyleProperties>&&);
+    StyleRule(Ref<StylePropertiesBase>&&);
     StyleRule(const StyleRule&);
 
-    static Ref<StyleRule> create(int sourceLine, const Vector<const CSSSelector*>&, Ref<StyleProperties>&&);
+    static Ref<StyleRule> create(const Vector<const CSSSelector*>&, Ref<StyleProperties>&&);
 
-    Ref<StyleProperties> m_properties;
+    mutable Ref<StylePropertiesBase> m_properties;
     CSSSelectorList m_selectorList;
 };
 
-class StyleRuleFontFace : public StyleRuleBase {
+inline const StyleProperties* StyleRule::propertiesWithoutDeferredParsing() const
+{
+    return m_properties->type() != DeferredPropertiesType ? &downcast<StyleProperties>(m_properties.get()) : nullptr;
+}
+
+class StyleRuleFontFace final : public StyleRuleBase {
 public:
     static Ref<StyleRuleFontFace> create(Ref<StyleProperties>&& properties) { return adoptRef(*new StyleRuleFontFace(WTFMove(properties))); }
     
@@ -145,7 +159,6 @@ public:
 
     Ref<StyleRuleFontFace> copy() const { return adoptRef(*new StyleRuleFontFace(*this)); }
 
-
 private:
     explicit StyleRuleFontFace(Ref<StyleProperties>&&);
     StyleRuleFontFace(const StyleRuleFontFace&);
@@ -153,7 +166,7 @@ private:
     Ref<StyleProperties> m_properties;
 };
 
-class StyleRulePage : public StyleRuleBase {
+class StyleRulePage final : public StyleRuleBase {
 public:
     static Ref<StyleRulePage> create(Ref<StyleProperties>&& properties) { return adoptRef(*new StyleRulePage(WTFMove(properties))); }
 
@@ -176,26 +189,53 @@ private:
     CSSSelectorList m_selectorList;
 };
 
+class DeferredStyleGroupRuleList final {
+public:
+    DeferredStyleGroupRuleList(const CSSParserTokenRange&, CSSDeferredParser&);
+    
+    void parseDeferredRules(Vector<RefPtr<StyleRuleBase>>&);
+    void parseDeferredKeyframes(StyleRuleKeyframes&);
+
+private:
+    Vector<CSSParserToken> m_tokens;
+    Ref<CSSDeferredParser> m_parser;
+};
+    
 class StyleRuleGroup : public StyleRuleBase {
 public:
-    const Vector<RefPtr<StyleRuleBase>>& childRules() const { return m_childRules; }
-    
+    const Vector<RefPtr<StyleRuleBase>>& childRules() const;
+    const Vector<RefPtr<StyleRuleBase>>* childRulesWithoutDeferredParsing() const;
+
     void wrapperInsertRule(unsigned, Ref<StyleRuleBase>&&);
     void wrapperRemoveRule(unsigned);
     
 protected:
-    StyleRuleGroup(Type, Vector<RefPtr<StyleRuleBase>>& adoptRule);
+    StyleRuleGroup(Type, Vector<RefPtr<StyleRuleBase>>&);
+    StyleRuleGroup(Type, std::unique_ptr<DeferredStyleGroupRuleList>&&);
     StyleRuleGroup(const StyleRuleGroup&);
     
 private:
-    Vector<RefPtr<StyleRuleBase>> m_childRules;
+    void parseDeferredRulesIfNeeded() const;
+
+    mutable Vector<RefPtr<StyleRuleBase>> m_childRules;
+    mutable std::unique_ptr<DeferredStyleGroupRuleList> m_deferredRules;
 };
 
-class StyleRuleMedia : public StyleRuleGroup {
+inline const Vector<RefPtr<StyleRuleBase>>* StyleRuleGroup::childRulesWithoutDeferredParsing() const
+{
+    return !m_deferredRules ? &m_childRules : nullptr;
+}
+
+class StyleRuleMedia final : public StyleRuleGroup {
 public:
-    static Ref<StyleRuleMedia> create(PassRefPtr<MediaQuerySet> media, Vector<RefPtr<StyleRuleBase>>& adoptRules)
+    static Ref<StyleRuleMedia> create(Ref<MediaQuerySet>&& media, Vector<RefPtr<StyleRuleBase>>& adoptRules)
     {
-        return adoptRef(*new StyleRuleMedia(media, adoptRules));
+        return adoptRef(*new StyleRuleMedia(WTFMove(media), adoptRules));
+    }
+
+    static Ref<StyleRuleMedia> create(Ref<MediaQuerySet>&& media, std::unique_ptr<DeferredStyleGroupRuleList>&& deferredChildRules)
+    {
+        return adoptRef(*new StyleRuleMedia(WTFMove(media), WTFMove(deferredChildRules)));
     }
 
     MediaQuerySet* mediaQueries() const { return m_mediaQueries.get(); }
@@ -203,17 +243,23 @@ public:
     Ref<StyleRuleMedia> copy() const { return adoptRef(*new StyleRuleMedia(*this)); }
 
 private:
-    StyleRuleMedia(PassRefPtr<MediaQuerySet>, Vector<RefPtr<StyleRuleBase>>& adoptRules);
+    StyleRuleMedia(Ref<MediaQuerySet>&&, Vector<RefPtr<StyleRuleBase>>& adoptRules);
+    StyleRuleMedia(Ref<MediaQuerySet>&&, std::unique_ptr<DeferredStyleGroupRuleList>&&);
     StyleRuleMedia(const StyleRuleMedia&);
 
     RefPtr<MediaQuerySet> m_mediaQueries;
 };
 
-class StyleRuleSupports : public StyleRuleGroup {
+class StyleRuleSupports final : public StyleRuleGroup {
 public:
     static Ref<StyleRuleSupports> create(const String& conditionText, bool conditionIsSupported, Vector<RefPtr<StyleRuleBase>>& adoptRules)
     {
         return adoptRef(*new StyleRuleSupports(conditionText, conditionIsSupported, adoptRules));
+    }
+    
+    static Ref<StyleRuleSupports> create(const String& conditionText, bool conditionIsSupported, std::unique_ptr<DeferredStyleGroupRuleList>&& deferredChildRules)
+    {
+        return adoptRef(*new StyleRuleSupports(conditionText, conditionIsSupported, WTFMove(deferredChildRules)));
     }
 
     String conditionText() const { return m_conditionText; }
@@ -222,32 +268,41 @@ public:
 
 private:
     StyleRuleSupports(const String& conditionText, bool conditionIsSupported, Vector<RefPtr<StyleRuleBase>>& adoptRules);
+    StyleRuleSupports(const String& conditionText, bool conditionIsSupported, std::unique_ptr<DeferredStyleGroupRuleList>&&);
+    
     StyleRuleSupports(const StyleRuleSupports&);
 
     String m_conditionText;
     bool m_conditionIsSupported;
 };
 
-class StyleRuleRegion : public StyleRuleGroup {
+class StyleRuleRegion final : public StyleRuleGroup {
 public:
     static Ref<StyleRuleRegion> create(Vector<std::unique_ptr<CSSParserSelector>>* selectors, Vector<RefPtr<StyleRuleBase>>& adoptRules)
     {
         return adoptRef(*new StyleRuleRegion(selectors, adoptRules));
     }
-
+    
+    static Ref<StyleRuleRegion> create(CSSSelectorList& selectors, Vector<RefPtr<StyleRuleBase>>& adoptRules)
+    {
+        return adoptRef(*new StyleRuleRegion(selectors, adoptRules));
+    }
+    
     const CSSSelectorList& selectorList() const { return m_selectorList; }
 
     Ref<StyleRuleRegion> copy() const { return adoptRef(*new StyleRuleRegion(*this)); }
 
 private:
     StyleRuleRegion(Vector<std::unique_ptr<CSSParserSelector>>*, Vector<RefPtr<StyleRuleBase>>& adoptRules);
+    StyleRuleRegion(CSSSelectorList&, Vector<RefPtr<StyleRuleBase>>&);
+    
     StyleRuleRegion(const StyleRuleRegion&);
     
     CSSSelectorList m_selectorList;
 };
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
-class StyleRuleViewport : public StyleRuleBase {
+class StyleRuleViewport final : public StyleRuleBase {
 public:
     static Ref<StyleRuleViewport> create(Ref<StyleProperties>&& properties) { return adoptRef(*new StyleRuleViewport(WTFMove(properties))); }
 
@@ -266,6 +321,42 @@ private:
 };
 #endif // ENABLE(CSS_DEVICE_ADAPTATION)
 
+// This is only used by the CSS parser.
+class StyleRuleCharset final : public StyleRuleBase {
+public:
+    static Ref<StyleRuleCharset> create() { return adoptRef(*new StyleRuleCharset()); }
+    
+    ~StyleRuleCharset();
+    
+    Ref<StyleRuleCharset> copy() const { return adoptRef(*new StyleRuleCharset(*this)); }
+
+private:
+    explicit StyleRuleCharset();
+    StyleRuleCharset(const StyleRuleCharset&);
+};
+
+class StyleRuleNamespace final : public StyleRuleBase {
+public:
+    static Ref<StyleRuleNamespace> create(AtomicString prefix, AtomicString uri)
+    {
+        return adoptRef(*new StyleRuleNamespace(prefix, uri));
+    }
+    
+    ~StyleRuleNamespace();
+
+    Ref<StyleRuleNamespace> copy() const { return adoptRef(*new StyleRuleNamespace(*this)); }
+    
+    AtomicString prefix() const { return m_prefix; }
+    AtomicString uri() const { return m_uri; }
+
+private:
+    StyleRuleNamespace(AtomicString prefix, AtomicString uri);
+    StyleRuleNamespace(const StyleRuleNamespace&);
+    
+    AtomicString m_prefix;
+    AtomicString m_uri;
+};
+    
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRule)
@@ -298,4 +389,15 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRuleViewport)
 SPECIALIZE_TYPE_TRAITS_END()
 #endif // ENABLE(CSS_DEVICE_ADAPTATION)
 
-#endif // StyleRule_h
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRuleNamespace)
+    static bool isType(const WebCore::StyleRuleBase& rule) { return rule.isNamespaceRule(); }
+SPECIALIZE_TYPE_TRAITS_END()
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRuleKeyframe)
+static bool isType(const WebCore::StyleRuleBase& rule) { return rule.isKeyframeRule(); }
+SPECIALIZE_TYPE_TRAITS_END()
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyleRuleCharset)
+static bool isType(const WebCore::StyleRuleBase& rule) { return rule.isCharsetRule(); }
+SPECIALIZE_TYPE_TRAITS_END()
+

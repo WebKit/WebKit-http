@@ -45,8 +45,8 @@ public:
     static Ref<PDFPluginTextAnnotation> create(PDFAnnotation *, PDFLayerController *, PDFPlugin*);
     virtual ~PDFPluginTextAnnotation();
 
-    virtual void updateGeometry() override;
-    virtual void commit() override;
+    void updateGeometry() override;
+    void commit() override;
 
 protected:
     PDFPluginTextAnnotation(PDFAnnotation *annotation, PDFLayerController *pdfLayerController, PDFPlugin* plugin)
@@ -54,13 +54,16 @@ protected:
     {
     }
 
-    virtual PassRefPtr<WebCore::Element> createAnnotationElement() override;
+    Ref<WebCore::Element> createAnnotationElement() override;
     String value() const;
 
 private:
-    virtual bool handleEvent(WebCore::Event*) override;
+    bool handleEvent(WebCore::Event*) override;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     PDFAnnotationTextWidget *textAnnotation() const { return static_cast<PDFAnnotationTextWidget *>(annotation()); }
+#pragma clang diagnostic pop
 };
 
 } // namespace WebKit

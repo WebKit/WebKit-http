@@ -34,7 +34,7 @@ class WebPageProxy;
 }
 
 namespace WebCore {
-class DisplaySleepDisabler;
+class SleepDisabler;
 class IntRect;
 }
 
@@ -49,18 +49,22 @@ typedef enum FullScreenState : NSInteger FullScreenState;
     WebKit::WebPageProxy* _page;
     RetainPtr<WebCoreFullScreenPlaceholderView> _webViewPlaceholder;
     RetainPtr<NSView> _clipView;
+    RetainPtr<NSView> _backgroundView;
     NSRect _initialFrame;
     NSRect _finalFrame;
     RetainPtr<NSTimer> _watchdogTimer;
+    RetainPtr<NSArray> _savedConstraints;
 
     FullScreenState _fullScreenState;
 
     double _savedScale;
     RefPtr<WebKit::VoidCallback> _repaintCallback;
+    float _savedTopContentInset;
 }
 
 @property (readonly) NSRect initialFrame;
 @property (readonly) NSRect finalFrame;
+@property (assign) NSArray *savedConstraints;
 
 - (id)initWithWindow:(NSWindow *)window webView:(NSView *)webView page:(WebKit::WebPageProxy&)page;
 
@@ -70,6 +74,7 @@ typedef enum FullScreenState : NSInteger FullScreenState;
 
 - (void)enterFullScreen:(NSScreen *)screen;
 - (void)exitFullScreen;
+- (void)requestExitFullScreen;
 - (void)close;
 - (void)beganEnterFullScreenWithInitialFrame:(const WebCore::IntRect&)initialFrame finalFrame:(const WebCore::IntRect&)finalFrame;
 - (void)beganExitFullScreenWithInitialFrame:(const WebCore::IntRect&)initialFrame finalFrame:(const WebCore::IntRect&)finalFrame;

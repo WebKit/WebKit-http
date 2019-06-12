@@ -26,12 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TypeProfilerLog_h
-#define TypeProfilerLog_h
+#pragma once
 
 #include "JSCJSValue.h"
 #include "Structure.h"
-#include "TypeProfiler.h"
 
 namespace JSC {
 
@@ -65,6 +63,8 @@ public:
     JS_EXPORT_PRIVATE void processLogEntries(const String&);
     LogEntry* logEndPtr() const { return m_logEndPtr; }
 
+    void visit(SlotVisitor&);
+
     static ptrdiff_t logStartOffset() { return OBJECT_OFFSETOF(TypeProfilerLog, m_logStartPtr); }
     static ptrdiff_t currentLogEntryOffset() { return OBJECT_OFFSETOF(TypeProfilerLog, m_currentLogEntryPtr); }
 
@@ -80,5 +80,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // TypeProfilerLog_h

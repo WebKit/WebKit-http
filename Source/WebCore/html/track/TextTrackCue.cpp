@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011, 2013 Google Inc.  All rights reserved.
- * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,17 +30,13 @@
  */
 
 #include "config.h"
+#include "TextTrackCue.h"
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "TextTrackCue.h"
-
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
-#include "DocumentFragment.h"
 #include "Event.h"
-#include "HTMLDivElement.h"
-#include "HTMLSpanElement.h"
 #include "Logging.h"
 #include "NodeTraversal.h"
 #include "Text.h"
@@ -49,37 +45,24 @@
 #include "VTTCue.h"
 #include "VTTRegionList.h"
 #include <wtf/MathExtras.h>
-#include <wtf/text/StringBuilder.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-static const int invalidCueIndex = -1;
-
-PassRefPtr<TextTrackCue> TextTrackCue::create(ScriptExecutionContext& context, double start, double end, const String& content)
+const AtomicString& TextTrackCue::cueShadowPseudoId()
 {
-    return create(context, MediaTime::createWithDouble(start), MediaTime::createWithDouble(end), content);
-}
-
-PassRefPtr<TextTrackCue> TextTrackCue::create(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)
-{
-    return VTTCue::create(context, start, end, content);
+    static NeverDestroyed<const AtomicString> cue("cue", AtomicString::ConstructFromLiteral);
+    return cue;
 }
 
 TextTrackCue::TextTrackCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end)
     : m_startTime(start)
     , m_endTime(end)
-    , m_cueIndex(invalidCueIndex)
-    , m_processingCueChanges(0)
-    , m_track(0)
     , m_scriptExecutionContext(context)
     , m_isActive(false)
     , m_pauseOnExit(false)
 {
     ASSERT(m_scriptExecutionContext.isDocument());
-}
-
-TextTrackCue::~TextTrackCue()
-{
 }
 
 void TextTrackCue::willChange()
@@ -121,14 +104,8 @@ void TextTrackCue::setId(const String& id)
     didChange();
 }
 
-void TextTrackCue::setStartTime(double value, ExceptionCode& ec)
+void TextTrackCue::setStartTime(double value)
 {
-    // NaN, Infinity and -Infinity values should trigger a TypeError.
-    if (std::isinf(value) || std::isnan(value)) {
-        ec = TypeError;
-        return;
-    }
-    
     // TODO(93143): Add spec-compliant behavior for negative time values.
     if (m_startTime.toDouble() == value || value < 0)
         return;
@@ -143,14 +120,8 @@ void TextTrackCue::setStartTime(const MediaTime& value)
     didChange();
 }
     
-void TextTrackCue::setEndTime(double value, ExceptionCode& ec)
+void TextTrackCue::setEndTime(double value)
 {
-    // NaN, Infinity and -Infinity values should trigger a TypeError.
-    if (std::isinf(value) || std::isnan(value)) {
-        ec = TypeError;
-        return;
-    }
-
     // TODO(93143): Add spec-compliant behavior for negative time values.
     if (m_endTime.toDouble() == value || value < 0)
         return;
@@ -173,27 +144,10 @@ void TextTrackCue::setPauseOnExit(bool value)
     m_pauseOnExit = value;
 }
 
-int TextTrackCue::cueIndex()
-{
-    if (m_cueIndex == invalidCueIndex) {
-        ASSERT(track());
-        ASSERT(track()->cues());
-        if (TextTrackCueList* cueList = track()->cues())
-            m_cueIndex = cueList->getCueIndex(this);
-    }
-
-    return m_cueIndex;
-}
-
-void TextTrackCue::invalidateCueIndex()
-{
-    m_cueIndex = invalidCueIndex;
-}
-
 bool TextTrackCue::dispatchEvent(Event& event)
 {
     // When a TextTrack's mode is disabled: no cues are active, no events fired.
-    if (!track() || track()->mode() == TextTrack::disabledKeyword())
+    if (!track() || track()->mode() == TextTrack::Mode::Disabled)
         return false;
 
     return EventTarget::dispatchEvent(event);
@@ -201,7 +155,7 @@ bool TextTrackCue::dispatchEvent(Event& event)
 
 bool TextTrackCue::isActive()
 {
-    return m_isActive && track() && track()->mode() != TextTrack::disabledKeyword();
+    return m_isActive && track() && track()->mode() != TextTrack::Mode::Disabled;
 }
 
 void TextTrackCue::setIsActive(bool active)

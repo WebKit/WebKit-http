@@ -28,47 +28,38 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCIceCandidate_h
-#define RTCIceCandidate_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
-#include "ExceptionBase.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class Dictionary;
-class RTCIceCandidateDescriptor;
-
 class RTCIceCandidate : public RefCounted<RTCIceCandidate>, public ScriptWrappable {
 public:
-    static RefPtr<RTCIceCandidate> create(const Dictionary&, ExceptionCode&);
-    static Ref<RTCIceCandidate> create(const String& candidate, const String& sdpMid, unsigned short sdpMLineIndex);
-    virtual ~RTCIceCandidate() { }
+    struct Init {
+        String candidate;
+        String sdpMid;
+        std::optional<unsigned short> sdpMLineIndex;
+    };
+
+    static ExceptionOr<Ref<RTCIceCandidate>> create(const Init&);
+    static Ref<RTCIceCandidate> create(const String& candidate, const String& sdpMid, std::optional<unsigned short> sdpMLineIndex);
 
     const String& candidate() const { return m_candidate; }
-    void setCandidate(const String& candidate) { m_candidate = candidate; }
-
     const String& sdpMid() const { return m_sdpMid; }
-    void setSdpMid(const String& sdpMid) { m_sdpMid = sdpMid; }
-
-    unsigned short sdpMLineIndex() const { return m_sdpMLineIndex; }
-    void setSdpMLineIndex(unsigned short sdpMLineIndex) { m_sdpMLineIndex = sdpMLineIndex; }
+    std::optional<unsigned short> sdpMLineIndex() const { return m_sdpMLineIndex; }
 
 private:
-    explicit RTCIceCandidate(const String& candidate, const String& sdpMid, unsigned short sdpMLineIndex);
+    RTCIceCandidate(const String& candidate, const String& sdpMid, std::optional<unsigned short> sdpMLineIndex);
 
     String m_candidate;
     String m_sdpMid;
-    unsigned short m_sdpMLineIndex;
+    std::optional<unsigned short> m_sdpMLineIndex;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCIceCandidate_h
+#endif // ENABLE(WEB_RTC)

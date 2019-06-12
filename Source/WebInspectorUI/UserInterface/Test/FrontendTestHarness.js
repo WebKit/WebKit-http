@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,9 @@ FrontendTestHarness = class FrontendTestHarness extends TestHarness
 
         this._results = [];
         this._shouldResendResults = true;
+
+        // Options that are set per-test for debugging purposes.
+        this.dumpActivityToSystemConsole = false;
     }
 
     // TestHarness Overrides
@@ -86,6 +89,12 @@ FrontendTestHarness = class FrontendTestHarness extends TestHarness
         RuntimeAgent.evaluate.invoke({expression, objectGroup: "test", includeCommandLineAPI: false}, callback);
     }
 
+    debug()
+    {
+        this.dumpActivityToSystemConsole = true;
+        InspectorBackend.dumpInspectorProtocolMessages = true;
+    }
+
     // Frontend test-specific methods.
 
     expectNoError(error)
@@ -111,14 +120,18 @@ FrontendTestHarness = class FrontendTestHarness extends TestHarness
             this.completeTest();
     }
 
-    reloadPage(shouldIgnoreCache)
+    reloadPage(options={})
     {
         console.assert(!this._testPageIsReloading);
         console.assert(!this._testPageReloadedOnce);
 
         this._testPageIsReloading = true;
 
-        return PageAgent.reload(!!shouldIgnoreCache)
+        let {ignoreCache, revalidateAllResources} = options;
+        let shouldIgnoreCache = !!ignoreCache;
+        revalidateAllResources = !!revalidateAllResources;
+
+        return PageAgent.reload.invoke({shouldIgnoreCache, revalidateAllResources})
             .then(() => {
                 this._shouldResendResults = true;
                 this._testPageReloadedOnce = true;
@@ -134,31 +147,87 @@ FrontendTestHarness = class FrontendTestHarness extends TestHarness
         let self = this;
         function createProxyConsoleHandler(type) {
             return function() {
-                self.addResult(`${type}: ` + Array.from(arguments).join(" ")); 
+                self.addResult(`${type}: ` + Array.from(arguments).join(" "));
+            };
+        }
+
+        function createProxyConsoleTraceHandler(){
+            return function() {
+                try {
+                    throw new Exception();
+                } catch (e) {
+                    // Skip the first frame which is added by this function.
+                    let frames = e.stack.split("\n").slice(1);
+                    let sanitizedFrames = frames.map(TestHarness.sanitizeStackFrame);
+                    self.addResult("TRACE: " + Array.from(arguments).join(" "));
+                    self.addResult(sanitizedFrames.join("\n"));
+                }
             };
         }
 
         let redirectedMethods = {};
-        for (let key in window.console) 
-            redirectedMethods[key] = window.console[key].bind(window.console);
+        for (let key in window.console)
+            redirectedMethods[key] = window.console[key];
 
-        for (let type of ["log", "error", "info"])
+        for (let type of ["log", "error", "info", "warn"])
             redirectedMethods[type] = createProxyConsoleHandler(type.toUpperCase());
+
+        redirectedMethods["trace"] = createProxyConsoleTraceHandler();
 
         this._originalConsole = window.console;
         window.console = redirectedMethods;
     }
 
-    reportUncaughtException(message, url, lineNumber, columnNumber)
+    reportUnhandledRejection(error)
     {
-        let result = `Uncaught exception in inspector page: ${message} [${url}:${lineNumber}:${columnNumber}]`;
+        let message = error.message;
+        let stack = error.stack;
+        let result = `Unhandled promise rejection in inspector page: ${message}\n`;
+        if (stack) {
+            let sanitizedStack = this.sanitizeStack(stack);
+            result += `\nStack Trace: ${sanitizedStack}\n`;
+        }
 
         // If the connection to the test page is not set up, then just dump to console and give up.
         // Errors encountered this early can be debugged by loading Test.html in a normal browser page.
-        if (this._originalConsole && (!InspectorFrontendHost || !InspectorBackend)) {
+        if (this._originalConsole && !this._testPageHasLoaded())
             this._originalConsole["error"](result);
-            return false;
-        }
+
+        this.addResult(result);
+        this.completeTest();
+
+        // Stop default handler so we can empty InspectorBackend's message queue.
+        return true;
+    }
+
+    reportUncaughtExceptionFromEvent(message, url, lineNumber, columnNumber)
+    {
+        // An exception thrown from a timer callback does not report a URL.
+        if (url === "undefined")
+            url = "global";
+
+        return this.reportUncaughtException({message, url, lineNumber, columnNumber});
+    }
+
+    reportUncaughtException({message, url, lineNumber, columnNumber, stack, code})
+    {
+        let result;
+        let sanitizedURL = TestHarness.sanitizeURL(url);
+        let sanitizedStack = this.sanitizeStack(stack);
+        if (url || lineNumber || columnNumber)
+            result = `Uncaught exception in Inspector page: ${message} [${sanitizedURL}:${lineNumber}:${columnNumber}]\n`;
+        else
+            result = `Uncaught exception in Inspector page: ${message}\n`;
+
+        if (stack)
+            result += `\nStack Trace:\n${sanitizedStack}\n`;
+        if (code)
+            result += `\nEvaluated Code:\n${code}`;
+
+        // If the connection to the test page is not set up, then just dump to console and give up.
+        // Errors encountered this early can be debugged by loading Test.html in a normal browser page.
+        if (this._originalConsole && !this._testPageHasLoaded())
+            this._originalConsole["error"](result);
 
         this.addResult(result);
         this.completeTest();
@@ -167,6 +236,11 @@ FrontendTestHarness = class FrontendTestHarness extends TestHarness
     }
 
     // Private
+
+    _testPageHasLoaded()
+    {
+        return self._shouldResendResults;
+    }
 
     _resendResults()
     {

@@ -35,9 +35,10 @@
 #include "IntSize.h"
 #include "ImageBufferData.h"
 #include "PlatformLayer.h"
+#include <memory>
 #include <runtime/Uint8ClampedArray.h>
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
 #if PLATFORM(QT)
@@ -76,19 +77,21 @@ class ImageBuffer {
     friend class IOSurface;
 public:
     // Will return a null pointer on allocation failure.
-    static std::unique_ptr<ImageBuffer> create(const FloatSize& size, RenderingMode renderingMode, float resolutionScale = 1, ColorSpace colorSpace = ColorSpaceSRGB)
-    {
-        bool success = false;
-        std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(size, resolutionScale, colorSpace, renderingMode, success));
-        if (!success)
-            return nullptr;
-        return buffer;
-    }
+    WEBCORE_EXPORT static std::unique_ptr<ImageBuffer> create(const FloatSize&, RenderingMode, float resolutionScale = 1, ColorSpace = ColorSpaceSRGB);
+#if USE(DIRECT2D)
+    WEBCORE_EXPORT static std::unique_ptr<ImageBuffer> create(const FloatSize&, RenderingMode, const GraphicsContext*, float resolutionScale = 1, ColorSpace = ColorSpaceSRGB);
+#endif
 
-    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&, bool hasAlpha);
+    // Create an image buffer compatible with the context, with suitable resolution for drawing into the buffer and then into this context.
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, const GraphicsContext&);
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, ColorSpace, const GraphicsContext&);
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&);
 #if PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
     static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const IntSize&, ColorSpace, QOpenGLContext*);
 #endif
+
+    static IntSize compatibleBufferSize(const FloatSize&, const GraphicsContext&);
+    bool isCompatibleWithContext(const GraphicsContext&) const;
 
     WEBCORE_EXPORT ~ImageBuffer();
 
@@ -110,14 +113,17 @@ public:
 
     enum CoordinateSystem { LogicalCoordinateSystem, BackingStoreCoordinateSystem };
 
-    PassRefPtr<Uint8ClampedArray> getUnmultipliedImageData(const IntRect&, CoordinateSystem = LogicalCoordinateSystem) const;
-    PassRefPtr<Uint8ClampedArray> getPremultipliedImageData(const IntRect&, CoordinateSystem = LogicalCoordinateSystem) const;
+    RefPtr<Uint8ClampedArray> getUnmultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
+    RefPtr<Uint8ClampedArray> getPremultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
 
     void putByteArray(Multiply multiplied, Uint8ClampedArray*, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem = LogicalCoordinateSystem);
     
     void convertToLuminanceMask();
     
-    String toDataURL(const String& mimeType, const double* quality = 0, CoordinateSystem = LogicalCoordinateSystem) const;
+    String toDataURL(const String& mimeType, std::optional<double> quality = std::nullopt, CoordinateSystem = LogicalCoordinateSystem) const;
+    Vector<uint8_t> toData(const String& mimeType, std::optional<double> quality = std::nullopt) const;
+    Vector<uint8_t> toBGRAData() const;
+
 #if !USE(CG)
     AffineTransform baseTransform() const { return AffineTransform(); }
     void transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstColorSpace);
@@ -127,9 +133,8 @@ public:
 #endif
     PlatformLayer* platformLayer() const;
 
-#if USE(CAIRO)
-    NativeImagePtr nativeImage() const;
-#endif
+    size_t memoryCost() const;
+    size_t externalMemoryCost() const;
 
     // FIXME: current implementations of this method have the restriction that they only work
     // with textures that are RGB or RGBA format, and UNSIGNED_BYTE type.
@@ -149,10 +154,12 @@ private:
     RetainPtr<CGImageRef> copyNativeImage(BackingStoreCopy = CopyBackingStore) const;
     static RetainPtr<CGImageRef> sinkIntoNativeImage(std::unique_ptr<ImageBuffer>);
     void flushContext() const;
+#elif USE(DIRECT2D)
+    void flushContext() const;
 #endif
     
     void draw(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
-    void drawPattern(GraphicsContext&, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
+    void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
 
     static void drawConsuming(std::unique_ptr<ImageBuffer>, GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
 
@@ -173,13 +180,19 @@ private:
     // This constructor will place its success into the given out-variable
     // so that create() knows when it should return failure.
     WEBCORE_EXPORT ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, bool& success);
-#if PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
+#if USE(CG)
+    ImageBuffer(const FloatSize&, float resolutionScale, CGColorSpaceRef, RenderingMode, bool& success);
+    RetainPtr<CFDataRef> toCFData(const String& mimeType, std::optional<double> quality) const;
+#elif USE(DIRECT2D)
+    ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, const GraphicsContext*, bool& success);
+#elif PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
     ImageBuffer(const IntSize&, ColorSpace, QOpenGLContext*, bool& success);
 #endif
 };
 
 #if USE(CG)
-String ImageDataToDataURL(const ImageData&, const String& mimeType, const double* quality);
+String dataURL(const ImageData&, const String& mimeType, std::optional<double> quality);
+Vector<uint8_t> data(const ImageData&, const String& mimeType, std::optional<double> quality);
 #endif
 
 } // namespace WebCore

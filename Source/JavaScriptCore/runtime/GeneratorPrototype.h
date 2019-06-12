@@ -23,17 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GeneratorPrototype_h
-#define GeneratorPrototype_h
+#pragma once
 
 #include "JSObject.h"
 
 namespace JSC {
 
+// %GeneratorPrototype% intrinsic.
+// https://tc39.github.io/ecma262/#sec-properties-of-generator-prototype
 class GeneratorPrototype : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static GeneratorPrototype* create(VM& vm, JSGlobalObject*, Structure* structure)
     {
@@ -49,8 +50,6 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-
 private:
     GeneratorPrototype(VM& vm, Structure* structure)
         : Base(vm, structure)
@@ -59,6 +58,4 @@ private:
     void finishCreation(VM&);
 };
 
-}
-
-#endif // !defined(GeneratorPrototype_h)
+} // namespace JSC

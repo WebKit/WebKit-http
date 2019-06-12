@@ -24,79 +24,50 @@
  */
 
 #include "config.h"
-#include "JSCSSValue.h"
 
-#include "CSSPrimitiveValue.h"
-#include "CSSValueList.h"
-#include "JSCSSPrimitiveValue.h"
-#include "JSCSSValueList.h"
+#include "DeprecatedCSSOMPrimitiveValue.h"
+#include "DeprecatedCSSOMValueList.h"
+#include "JSDeprecatedCSSOMPrimitiveValue.h"
+#include "JSDeprecatedCSSOMValue.h"
+#include "JSDeprecatedCSSOMValueList.h"
 #include "JSNode.h"
-#include "JSSVGColor.h"
-#include "JSSVGPaint.h"
-#include "JSWebKitCSSFilterValue.h"
-#include "JSWebKitCSSTransformValue.h"
-#include "SVGColor.h"
-#include "SVGPaint.h"
-#include "WebKitCSSFilterValue.h"
-#include "WebKitCSSTransformValue.h"
 
 using namespace JSC;
 
 namespace WebCore {
 
-bool JSCSSValueOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void* context, SlotVisitor& visitor)
+bool JSDeprecatedCSSOMValueOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void* context, SlotVisitor& visitor)
 {
-    JSCSSValue* jsCSSValue = jsCast<JSCSSValue*>(handle.slot()->asCell());
+    JSDeprecatedCSSOMValue* jsCSSValue = jsCast<JSDeprecatedCSSOMValue*>(handle.slot()->asCell());
     if (!jsCSSValue->hasCustomProperties())
         return false;
     DOMWrapperWorld* world = static_cast<DOMWrapperWorld*>(context);
-    void* root = world->m_cssValueRoots.get(&jsCSSValue->wrapped());
+    void* root = world->m_deprecatedCSSOMValueRoots.get(&jsCSSValue->wrapped());
     if (!root)
         return false;
     return visitor.containsOpaqueRoot(root);
 }
 
-void JSCSSValueOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
+void JSDeprecatedCSSOMValueOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    JSCSSValue* jsCSSValue = jsCast<JSCSSValue*>(handle.slot()->asCell());
+    JSDeprecatedCSSOMValue* jsCSSValue = static_cast<JSDeprecatedCSSOMValue*>(handle.slot()->asCell());
     DOMWrapperWorld& world = *static_cast<DOMWrapperWorld*>(context);
-    world.m_cssValueRoots.remove(&jsCSSValue->wrapped());
+    world.m_deprecatedCSSOMValueRoots.remove(&jsCSSValue->wrapped());
     uncacheWrapper(world, &jsCSSValue->wrapped(), jsCSSValue);
 }
 
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, CSSValue* value)
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<DeprecatedCSSOMValue>&& value)
 {
-    if (!value)
-        return jsNull();
+    if (value->isValueList())
+        return createWrapper<DeprecatedCSSOMValueList>(globalObject, WTFMove(value));
+    if (value->isPrimitiveValue())
+        return createWrapper<DeprecatedCSSOMPrimitiveValue>(globalObject, WTFMove(value));
+    return createWrapper<DeprecatedCSSOMValue>(globalObject, WTFMove(value));
+}
 
-    // Scripts should only ever see cloned CSSValues, never the internal ones.
-    ASSERT(value->isCSSOMSafe());
-
-    // If we're here under erroneous circumstances, prefer returning null over a potentially insecure value.
-    if (!value->isCSSOMSafe())
-        return jsNull();
-
-    JSObject* wrapper = getCachedWrapper(globalObject->world(), value);
-
-    if (wrapper)
-        return wrapper;
-
-    if (value->isWebKitCSSTransformValue())
-        wrapper = CREATE_DOM_WRAPPER(globalObject, WebKitCSSTransformValue, value);
-    else if (value->isWebKitCSSFilterValue())
-        wrapper = CREATE_DOM_WRAPPER(globalObject, WebKitCSSFilterValue, value);
-    else if (value->isValueList())
-        wrapper = CREATE_DOM_WRAPPER(globalObject, CSSValueList, value);
-    else if (value->isSVGPaint())
-        wrapper = CREATE_DOM_WRAPPER(globalObject, SVGPaint, value);
-    else if (value->isSVGColor())
-        wrapper = CREATE_DOM_WRAPPER(globalObject, SVGColor, value);
-    else if (value->isPrimitiveValue())
-        wrapper = CREATE_DOM_WRAPPER(globalObject, CSSPrimitiveValue, value);
-    else
-        wrapper = CREATE_DOM_WRAPPER(globalObject, CSSValue, value);
-
-    return wrapper;
+JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, DeprecatedCSSOMValue& value)
+{
+    return wrap(state, globalObject, value);
 }
 
 } // namespace WebCore

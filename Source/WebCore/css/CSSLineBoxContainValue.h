@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSLineBoxContainValue_h
-#define CSSLineBoxContainValue_h
+#pragma once
 
 #include "CSSValue.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
@@ -39,7 +37,7 @@ enum LineBoxContainFlags { LineBoxContainNone = 0x0, LineBoxContainBlock = 0x1, 
 typedef unsigned LineBoxContain;
 
 // Used for text-CSSLineBoxContain and box-CSSLineBoxContain
-class CSSLineBoxContainValue : public CSSValue {
+class CSSLineBoxContainValue final : public CSSValue {
 public:
     static Ref<CSSLineBoxContainValue> create(LineBoxContain value)
     {
@@ -59,5 +57,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSLineBoxContainValue, isLineBoxContainValue())
-
-#endif // CSSLineBoxContainValue_h

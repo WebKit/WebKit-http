@@ -42,18 +42,18 @@ public:
     float dy() const { return m_dy; }
     void setDy(float dy) { m_dy = dy; }
 
-    Color shadowColor() const { return m_shadowColor; } 
+    const Color& shadowColor() const { return m_shadowColor; } 
     void setShadowColor(const Color& shadowColor) { m_shadowColor = shadowColor; }
 
     float shadowOpacity() const { return m_shadowOpacity; }
     void setShadowOpacity(float shadowOpacity) { m_shadowOpacity = shadowOpacity; }
 
-    virtual void platformApplySoftware();
-    virtual void dump();
+    void platformApplySoftware() override;
+    void dump() override;
 
-    virtual void determineAbsolutePaintRect();
+    void determineAbsolutePaintRect() override;
 
-    virtual TextStream& externalRepresentation(TextStream&, int indention) const;
+    TextStream& externalRepresentation(TextStream&, int indention) const override;
 
 private:
     FEDropShadow(Filter&, float, float, float, float, const Color&, float);

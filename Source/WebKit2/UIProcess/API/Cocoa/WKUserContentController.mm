@@ -29,6 +29,8 @@
 #if WK_API_ENABLED
 
 #import "APISerializedScriptValue.h"
+#import "APIUserContentWorld.h"
+#import "WKContentRuleListInternal.h"
 #import "WKFrameInfoInternal.h"
 #import "WKNSArray.h"
 #import "WKScriptMessageHandler.h"
@@ -38,6 +40,7 @@
 #import "WebScriptMessageHandler.h"
 #import "WebUserContentControllerProxy.h"
 #import "_WKUserContentFilterInternal.h"
+#import "_WKUserContentWorldInternal.h"
 #import "_WKUserStyleSheetInternal.h"
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityOriginData.h>
@@ -62,6 +65,18 @@
     [super dealloc];
 }
 
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if (!(self = [self init]))
+        return nil;
+
+    return self;
+}
+
 - (NSArray *)userScripts
 {
     return wrapper(_userContentControllerProxy->userScripts());
@@ -77,6 +92,27 @@
     _userContentControllerProxy->removeAllUserScripts();
 }
 
+- (void)addContentRuleList:(WKContentRuleList *)contentRuleList
+{
+#if ENABLE(CONTENT_EXTENSIONS)
+    _userContentControllerProxy->addContentRuleList(*contentRuleList->_contentRuleList);
+#endif
+}
+
+- (void)removeContentRuleList:(WKContentRuleList *)contentRuleList
+{
+#if ENABLE(CONTENT_EXTENSIONS)
+    _userContentControllerProxy->removeContentRuleList(contentRuleList->_contentRuleList->name());
+#endif
+}
+
+- (void)removeAllContentRuleLists
+{
+#if ENABLE(CONTENT_EXTENSIONS)
+    _userContentControllerProxy->removeAllContentRuleLists();
+#endif
+}
+
 class ScriptMessageHandlerDelegate final : public WebKit::WebScriptMessageHandler::Client {
 public:
     ScriptMessageHandlerDelegate(WKUserContentController *controller, id <WKScriptMessageHandler> handler, NSString *name)
@@ -86,10 +122,10 @@ public:
     {
     }
     
-    virtual void didPostMessage(WebKit::WebPageProxy& page, WebKit::WebFrameProxy& frame, const WebCore::SecurityOriginData& securityOriginData, WebCore::SerializedScriptValue& serializedScriptValue)
+    void didPostMessage(WebKit::WebPageProxy& page, const WebKit::FrameInfoData& frameInfoData, WebCore::SerializedScriptValue& serializedScriptValue) override
     {
         @autoreleasepool {
-            RetainPtr<WKFrameInfo> frameInfo = wrapper(API::FrameInfo::create(frame, securityOriginData.securityOrigin()));
+            RetainPtr<WKFrameInfo> frameInfo = wrapper(API::FrameInfo::create(frameInfoData, &page));
             id body = API::SerializedScriptValue::deserialize(serializedScriptValue, 0);
             auto message = adoptNS([[WKScriptMessage alloc] _initWithBody:body webView:fromWebPageProxy(page) frameInfo:frameInfo.get() name:m_name.get()]);
         
@@ -105,14 +141,14 @@ private:
 
 - (void)addScriptMessageHandler:(id <WKScriptMessageHandler>)scriptMessageHandler name:(NSString *)name
 {
-    RefPtr<WebKit::WebScriptMessageHandler> handler = WebKit::WebScriptMessageHandler::create(std::make_unique<ScriptMessageHandlerDelegate>(self, scriptMessageHandler, name), name);
+    auto handler = WebKit::WebScriptMessageHandler::create(std::make_unique<ScriptMessageHandlerDelegate>(self, scriptMessageHandler, name), name, API::UserContentWorld::normalWorld());
     if (!_userContentControllerProxy->addUserScriptMessageHandler(handler.get()))
         [NSException raise:NSInvalidArgumentException format:@"Attempt to add script message handler with name '%@' when one already exists.", name];
 }
 
 - (void)removeScriptMessageHandlerForName:(NSString *)name
 {
-    _userContentControllerProxy->removeUserMessageHandlerForName(name);
+    _userContentControllerProxy->removeUserMessageHandlerForName(name, API::UserContentWorld::normalWorld());
 }
 
 #pragma mark WKObject protocol implementation
@@ -131,24 +167,29 @@ private:
     _userContentControllerProxy->removeUserScript(*userScript->_userScript);
 }
 
+- (void)_removeAllUserScriptsAssociatedWithUserContentWorld:(_WKUserContentWorld *)userContentWorld
+{
+    _userContentControllerProxy->removeAllUserScripts(*userContentWorld->_userContentWorld);
+}
+
 - (void)_addUserContentFilter:(_WKUserContentFilter *)userContentFilter
 {
 #if ENABLE(CONTENT_EXTENSIONS)
-    _userContentControllerProxy->addUserContentExtension(*userContentFilter->_userContentExtension);
+    _userContentControllerProxy->addContentRuleList(*userContentFilter->_contentRuleList->_contentRuleList);
 #endif
 }
 
 - (void)_removeUserContentFilter:(NSString *)userContentFilterName
 {
 #if ENABLE(CONTENT_EXTENSIONS)
-    _userContentControllerProxy->removeUserContentExtension(userContentFilterName);
+    _userContentControllerProxy->removeContentRuleList(userContentFilterName);
 #endif
 }
 
 - (void)_removeAllUserContentFilters
 {
 #if ENABLE(CONTENT_EXTENSIONS)
-    _userContentControllerProxy->removeAllUserContentExtensions();
+    _userContentControllerProxy->removeAllContentRuleLists();
 #endif
 }
 
@@ -170,6 +211,28 @@ private:
 - (void)_removeAllUserStyleSheets
 {
     _userContentControllerProxy->removeAllUserStyleSheets();
+}
+
+- (void)_removeAllUserStyleSheetsAssociatedWithUserContentWorld:(_WKUserContentWorld *)userContentWorld
+{
+    _userContentControllerProxy->removeAllUserStyleSheets(*userContentWorld->_userContentWorld);
+}
+
+- (void)_addScriptMessageHandler:(id <WKScriptMessageHandler>)scriptMessageHandler name:(NSString *)name userContentWorld:(_WKUserContentWorld *)userContentWorld
+{
+    auto handler = WebKit::WebScriptMessageHandler::create(std::make_unique<ScriptMessageHandlerDelegate>(self, scriptMessageHandler, name), name, *userContentWorld->_userContentWorld);
+    if (!_userContentControllerProxy->addUserScriptMessageHandler(handler.get()))
+        [NSException raise:NSInvalidArgumentException format:@"Attempt to add script message handler with name '%@' when one already exists.", name];
+}
+
+- (void)_removeScriptMessageHandlerForName:(NSString *)name userContentWorld:(_WKUserContentWorld *)userContentWorld
+{
+    _userContentControllerProxy->removeUserMessageHandlerForName(name, *userContentWorld->_userContentWorld);
+}
+
+- (void)_removeAllScriptMessageHandlersAssociatedWithUserContentWorld:(_WKUserContentWorld *)userContentWorld
+{
+    _userContentControllerProxy->removeAllUserMessageHandlers(*userContentWorld->_userContentWorld);
 }
 
 @end

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,11 +27,9 @@
 #if USE(QUICK_LOOK)
 
 #import "QuickLookSPI.h"
-#import "SoftLinking.h"
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_FOR_SOURCE(WebCore, QuickLook)
-
-SOFT_LINK_CLASS_FOR_SOURCE(WebCore, QuickLook, QLPreviewConverter)
 
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, QuickLook, QLPreviewGetSupportedMIMETypes, NSSet *, (), ())
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, QuickLook, QLTypeCopyBestMimeTypeForFileNameAndMimeType, NSString *, (NSString *fileName, NSString *mimeType), (fileName, mimeType))

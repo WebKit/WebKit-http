@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +26,11 @@
 #include "config.h"
 #include "SVGToOTFFontConversion.h"
 
-#if ENABLE(SVG_OTF_CONVERTER)
+#if ENABLE(SVG_FONTS)
 
 #include "CSSStyleDeclaration.h"
 #include "ElementChildIterator.h"
+#include "Glyph.h"
 #include "SVGFontElement.h"
 #include "SVGFontFaceElement.h"
 #include "SVGGlyphElement.h"
@@ -38,6 +39,7 @@
 #include "SVGPathParser.h"
 #include "SVGPathStringSource.h"
 #include "SVGVKernElement.h"
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -194,7 +196,7 @@ private:
 
     uint32_t calculateChecksum(size_t startingOffset, size_t endingOffset) const;
 
-    void processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement*, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, Optional<FloatRect>& boundingBox);
+    void processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement*, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, std::optional<FloatRect>& boundingBox);
 
     typedef void (SVGToOTFFontConverter::*FontAppendingFunction)();
     void appendTable(const char identifier[4], FontAppendingFunction);
@@ -220,7 +222,7 @@ private:
 
     void appendValidCFFString(const String&);
 
-    Vector<char> transcodeGlyphPaths(float width, const SVGElement& glyphOrMissingGlyphElement, Optional<FloatRect>& boundingBox) const;
+    Vector<char> transcodeGlyphPaths(float width, const SVGElement& glyphOrMissingGlyphElement, std::optional<FloatRect>& boundingBox) const;
 
     void addCodepointRanges(const UnicodeRanges&, HashSet<Glyph>& glyphSet) const;
     void addCodepoints(const HashSet<String>& codepoints, HashSet<Glyph>& glyphSet) const;
@@ -485,7 +487,7 @@ void SVGToOTFFontConverter::appendNAMETable()
     append16(3); // Unicode version 2.0 or later
     append16(0); // Language
     append16(1); // Name identifier. 1 = Font family
-    append16(m_fontFamily.length());
+    append16(m_fontFamily.length() * 2);
     append16(0); // Offset into name data
 
     for (auto codeUnit : StringView(m_fontFamily).codeUnits())
@@ -496,9 +498,9 @@ void SVGToOTFFontConverter::appendOS2Table()
 {
     int16_t averageAdvance = s_outputUnitsPerEm;
     bool ok;
-    int value = m_fontElement.fastGetAttribute(SVGNames::horiz_adv_xAttr).toInt(&ok);
+    int value = m_fontElement.attributeWithoutSynchronization(SVGNames::horiz_adv_xAttr).toInt(&ok);
     if (!ok && m_missingGlyphElement)
-        value = m_missingGlyphElement->fastGetAttribute(SVGNames::horiz_adv_xAttr).toInt(&ok);
+        value = m_missingGlyphElement->attributeWithoutSynchronization(SVGNames::horiz_adv_xAttr).toInt(&ok);
     value = scaleUnitsPerEm(value);
     if (ok)
         averageAdvance = clampTo<int16_t>(value);
@@ -526,7 +528,7 @@ void SVGToOTFFontConverter::appendOS2Table()
     char panoseBytes[panoseSize];
     if (m_fontFaceElement) {
         Vector<String> segments;
-        m_fontFaceElement->fastGetAttribute(SVGNames::panose_1Attr).string().split(' ', segments);
+        m_fontFaceElement->attributeWithoutSynchronization(SVGNames::panose_1Attr).string().split(' ', segments);
         if (segments.size() == panoseSize) {
             for (auto& segment : segments) {
                 bool ok;
@@ -617,7 +619,7 @@ void SVGToOTFFontConverter::appendCFFTable()
 
     String weight;
     if (m_fontFaceElement) {
-        auto& potentialWeight = m_fontFaceElement->fastGetAttribute(SVGNames::font_weightAttr);
+        auto& potentialWeight = m_fontFaceElement->attributeWithoutSynchronization(SVGNames::font_weightAttr);
         if (isValidStringForCFF(potentialWeight))
             weight = potentialWeight;
     }
@@ -732,7 +734,7 @@ Glyph SVGToOTFFontConverter::firstGlyph(const Vector<Glyph, 1>& v, UChar32 codep
     auto codePoints = StringView(m_glyphs[v[0]].codepoints).codePoints();
     auto codePointsIterator = codePoints.begin();
     ASSERT(codePointsIterator != codePoints.end());
-    ASSERT(codepoint = *codePointsIterator);
+    ASSERT(codepoint == *codePointsIterator);
 #endif
     return v[0];
 }
@@ -753,7 +755,7 @@ void SVGToOTFFontConverter::appendLigatureSubtable(size_t subtableRecordLocation
     }
     if (ligaturePairs.size() > std::numeric_limits<uint16_t>::max())
         ligaturePairs.clear();
-    std::sort(ligaturePairs.begin(), ligaturePairs.end(), [](LigaturePair& lhs, LigaturePair& rhs) {
+    std::sort(ligaturePairs.begin(), ligaturePairs.end(), [](auto& lhs, auto& rhs) {
         return lhs.first[0] < rhs.first[0];
     });
     Vector<size_t> overlappingFirstGlyphSegmentLengths;
@@ -820,7 +822,7 @@ void SVGToOTFFontConverter::appendArabicReplacementSubtable(size_t subtableRecor
     for (auto& pair : m_codepointsToIndicesMap) {
         for (auto glyphIndex : pair.value) {
             auto& glyph = m_glyphs[glyphIndex];
-            if (glyph.glyphElement && equalIgnoringASCIICase(glyph.glyphElement->fastGetAttribute(SVGNames::arabic_formAttr), arabicForm))
+            if (glyph.glyphElement && equalIgnoringASCIICase(glyph.glyphElement->attributeWithoutSynchronization(SVGNames::arabic_formAttr), arabicForm))
                 arabicFinalReplacements.append(std::make_pair(pair.value[0], glyphIndex));
         }
     }
@@ -955,9 +957,9 @@ void SVGToOTFFontConverter::appendVORGTable()
     append16(0); // Minor version
 
     bool ok;
-    int defaultVerticalOriginY = m_fontElement.fastGetAttribute(SVGNames::vert_origin_yAttr).toInt(&ok);
+    int defaultVerticalOriginY = m_fontElement.attributeWithoutSynchronization(SVGNames::vert_origin_yAttr).toInt(&ok);
     if (!ok && m_missingGlyphElement)
-        defaultVerticalOriginY = m_missingGlyphElement->fastGetAttribute(SVGNames::vert_origin_yAttr).toInt();
+        defaultVerticalOriginY = m_missingGlyphElement->attributeWithoutSynchronization(SVGNames::vert_origin_yAttr).toInt();
     defaultVerticalOriginY = scaleUnitsPerEm(defaultVerticalOriginY);
     append16(clampTo<int16_t>(defaultVerticalOriginY));
 
@@ -965,7 +967,7 @@ void SVGToOTFFontConverter::appendVORGTable()
     append16(0); // Place to write table size.
     for (Glyph i = 0; i < m_glyphs.size(); ++i) {
         if (auto* glyph = m_glyphs[i].glyphElement) {
-            if (int verticalOriginY = glyph->fastGetAttribute(SVGNames::vert_origin_yAttr).toInt()) {
+            if (int verticalOriginY = glyph->attributeWithoutSynchronization(SVGNames::vert_origin_yAttr).toInt()) {
                 append16(i);
                 append16(clampTo<int16_t>(scaleUnitsPerEm(verticalOriginY)));
             }
@@ -1077,7 +1079,7 @@ template<typename T> inline size_t SVGToOTFFontConverter::appendKERNSubtable(boo
 
 size_t SVGToOTFFontConverter::finishAppendingKERNSubtable(Vector<KerningData> kerningData, uint16_t coverage)
 {
-    std::sort(kerningData.begin(), kerningData.end(), [](const KerningData& a, const KerningData& b) {
+    std::sort(kerningData.begin(), kerningData.end(), [](auto& a, auto& b) {
         return a.glyph1 < b.glyph1 || (a.glyph1 == b.glyph1 && a.glyph2 < b.glyph2);
     });
 
@@ -1121,12 +1123,6 @@ void SVGToOTFFontConverter::appendKERNTable()
     ASSERT_UNUSED(sizeOfHorizontalSubtable, subtablesOffset + sizeOfHorizontalSubtable == m_result.size());
     size_t sizeOfVerticalSubtable = appendKERNSubtable<SVGVKernElement>(&SVGVKernElement::buildVerticalKerningPair, 0);
     ASSERT_UNUSED(sizeOfVerticalSubtable, subtablesOffset + sizeOfHorizontalSubtable + sizeOfVerticalSubtable == m_result.size());
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-    // Work around a bug in Apple's font parser by adding some padding bytes. <rdar://problem/18401901>
-    for (int i = 0; i < 6; ++i)
-        m_result.append(0);
-#endif
 }
 
 template <typename V>
@@ -1142,19 +1138,19 @@ static const char rrCurveTo = 0x08;
 static const char endChar = 0x0e;
 static const char rMoveTo = 0x15;
 
-class CFFBuilder : public SVGPathConsumer {
+class CFFBuilder final : public SVGPathConsumer {
 public:
     CFFBuilder(Vector<char>& cffData, float width, FloatPoint origin, float unitsPerEmScalar)
         : m_cffData(cffData)
         , m_unitsPerEmScalar(unitsPerEmScalar)
     {
-        writeCFFEncodedNumber(m_cffData, width);
+        writeCFFEncodedNumber(m_cffData, std::floor(width)); // hmtx table can't encode fractional FUnit values, and the CFF table needs to agree with hmtx.
         writeCFFEncodedNumber(m_cffData, origin.x());
         writeCFFEncodedNumber(m_cffData, origin.y());
         m_cffData.append(rMoveTo);
     }
 
-    Optional<FloatRect> boundingBox() const
+    std::optional<FloatRect> boundingBox() const
     {
         return m_boundingBox;
     }
@@ -1180,7 +1176,7 @@ private:
         m_current = destination;
     }
 
-    virtual void moveTo(const FloatPoint& targetPoint, bool closed, PathCoordinateMode mode) override
+    void moveTo(const FloatPoint& targetPoint, bool closed, PathCoordinateMode mode) final
     {
         if (closed && !m_cffData.isEmpty())
             closePath();
@@ -1200,7 +1196,7 @@ private:
         m_cffData.append(rLineTo);
     }
 
-    virtual void lineTo(const FloatPoint& targetPoint, PathCoordinateMode mode) override
+    void lineTo(const FloatPoint& targetPoint, PathCoordinateMode mode) final
     {
         FloatPoint scaledTargetPoint = FloatPoint(targetPoint.x() * m_unitsPerEmScalar, targetPoint.y() * m_unitsPerEmScalar);
         FloatPoint destination = mode == AbsoluteCoordinates ? scaledTargetPoint : m_current + scaledTargetPoint;
@@ -1208,7 +1204,7 @@ private:
         unscaledLineTo(destination);
     }
 
-    virtual void curveToCubic(const FloatPoint& point1, const FloatPoint& point2, const FloatPoint& point3, PathCoordinateMode mode) override
+    void curveToCubic(const FloatPoint& point1, const FloatPoint& point2, const FloatPoint& point3, PathCoordinateMode mode) final
     {
         FloatPoint scaledPoint1 = FloatPoint(point1.x() * m_unitsPerEmScalar, point1.y() * m_unitsPerEmScalar);
         FloatPoint scaledPoint2 = FloatPoint(point2.x() * m_unitsPerEmScalar, point2.y() * m_unitsPerEmScalar);
@@ -1226,34 +1222,34 @@ private:
         m_cffData.append(rrCurveTo);
     }
 
-    virtual void closePath() override
+    void closePath() final
     {
         if (m_current != m_startingPoint)
             unscaledLineTo(m_startingPoint);
     }
 
-    virtual void incrementPathSegmentCount() override { }
-    virtual bool continueConsuming() override { return true; }
+    void incrementPathSegmentCount() final { }
+    bool continueConsuming() final { return true; }
 
-    virtual void lineToHorizontal(float, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
-    virtual void lineToVertical(float, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
-    virtual void curveToCubicSmooth(const FloatPoint&, const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
-    virtual void curveToQuadratic(const FloatPoint&, const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
-    virtual void curveToQuadraticSmooth(const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
-    virtual void arcTo(float, float, float, bool, bool, const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
+    void lineToHorizontal(float, PathCoordinateMode) final { ASSERT_NOT_REACHED(); }
+    void lineToVertical(float, PathCoordinateMode) final { ASSERT_NOT_REACHED(); }
+    void curveToCubicSmooth(const FloatPoint&, const FloatPoint&, PathCoordinateMode) final { ASSERT_NOT_REACHED(); }
+    void curveToQuadratic(const FloatPoint&, const FloatPoint&, PathCoordinateMode) final { ASSERT_NOT_REACHED(); }
+    void curveToQuadraticSmooth(const FloatPoint&, PathCoordinateMode) final { ASSERT_NOT_REACHED(); }
+    void arcTo(float, float, float, bool, bool, const FloatPoint&, PathCoordinateMode) final { ASSERT_NOT_REACHED(); }
 
     Vector<char>& m_cffData;
     FloatPoint m_startingPoint;
     FloatPoint m_current;
-    Optional<FloatRect> m_boundingBox;
+    std::optional<FloatRect> m_boundingBox;
     float m_unitsPerEmScalar;
 };
 
-Vector<char> SVGToOTFFontConverter::transcodeGlyphPaths(float width, const SVGElement& glyphOrMissingGlyphElement, Optional<FloatRect>& boundingBox) const
+Vector<char> SVGToOTFFontConverter::transcodeGlyphPaths(float width, const SVGElement& glyphOrMissingGlyphElement, std::optional<FloatRect>& boundingBox) const
 {
     Vector<char> result;
 
-    auto& dAttribute = glyphOrMissingGlyphElement.fastGetAttribute(SVGNames::dAttr);
+    auto& dAttribute = glyphOrMissingGlyphElement.attributeWithoutSynchronization(SVGNames::dAttr);
     if (dAttribute.isEmpty()) {
         writeCFFEncodedNumber(result, width);
         writeCFFEncodedNumber(result, 0);
@@ -1265,10 +1261,10 @@ Vector<char> SVGToOTFFontConverter::transcodeGlyphPaths(float width, const SVGEl
 
     // FIXME: If we are vertical, use vert_origin_x and vert_origin_y
     bool ok;
-    float horizontalOriginX = scaleUnitsPerEm(glyphOrMissingGlyphElement.fastGetAttribute(SVGNames::horiz_origin_xAttr).toFloat(&ok));
+    float horizontalOriginX = scaleUnitsPerEm(glyphOrMissingGlyphElement.attributeWithoutSynchronization(SVGNames::horiz_origin_xAttr).toFloat(&ok));
     if (!ok && m_fontFaceElement)
         horizontalOriginX = scaleUnitsPerEm(m_fontFaceElement->horizontalOriginX());
-    float horizontalOriginY = scaleUnitsPerEm(glyphOrMissingGlyphElement.fastGetAttribute(SVGNames::horiz_origin_yAttr).toFloat(&ok));
+    float horizontalOriginY = scaleUnitsPerEm(glyphOrMissingGlyphElement.attributeWithoutSynchronization(SVGNames::horiz_origin_yAttr).toFloat(&ok));
     if (!ok && m_fontFaceElement)
         horizontalOriginY = scaleUnitsPerEm(m_fontFaceElement->horizontalOriginY());
 
@@ -1285,19 +1281,19 @@ Vector<char> SVGToOTFFontConverter::transcodeGlyphPaths(float width, const SVGEl
     return result;
 }
 
-void SVGToOTFFontConverter::processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement* glyphElement, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, Optional<FloatRect>& boundingBox)
+void SVGToOTFFontConverter::processGlyphElement(const SVGElement& glyphOrMissingGlyphElement, const SVGGlyphElement* glyphElement, float defaultHorizontalAdvance, float defaultVerticalAdvance, const String& codepoints, std::optional<FloatRect>& boundingBox)
 {
     bool ok;
-    float horizontalAdvance = scaleUnitsPerEm(glyphOrMissingGlyphElement.fastGetAttribute(SVGNames::horiz_adv_xAttr).toFloat(&ok));
+    float horizontalAdvance = scaleUnitsPerEm(glyphOrMissingGlyphElement.attributeWithoutSynchronization(SVGNames::horiz_adv_xAttr).toFloat(&ok));
     if (!ok)
         horizontalAdvance = defaultHorizontalAdvance;
     m_advanceWidthMax = std::max(m_advanceWidthMax, horizontalAdvance);
-    float verticalAdvance = scaleUnitsPerEm(glyphOrMissingGlyphElement.fastGetAttribute(SVGNames::vert_adv_yAttr).toFloat(&ok));
+    float verticalAdvance = scaleUnitsPerEm(glyphOrMissingGlyphElement.attributeWithoutSynchronization(SVGNames::vert_adv_yAttr).toFloat(&ok));
     if (!ok)
         verticalAdvance = defaultVerticalAdvance;
     m_advanceHeightMax = std::max(m_advanceHeightMax, verticalAdvance);
 
-    Optional<FloatRect> glyphBoundingBox;
+    std::optional<FloatRect> glyphBoundingBox;
     auto path = transcodeGlyphPaths(horizontalAdvance, glyphOrMissingGlyphElement, glyphBoundingBox);
     if (!path.size()) {
         // It's better to use a fallback font rather than use a font without all its glyphs.
@@ -1310,7 +1306,7 @@ void SVGToOTFFontConverter::processGlyphElement(const SVGElement& glyphOrMissing
     if (glyphBoundingBox)
         m_minRightSideBearing = std::min(m_minRightSideBearing, horizontalAdvance - glyphBoundingBox.value().maxX());
 
-    m_glyphs.append(GlyphData(WTFMove(path), glyphElement, horizontalAdvance, verticalAdvance, glyphBoundingBox.valueOr(FloatRect()), codepoints));
+    m_glyphs.append(GlyphData(WTFMove(path), glyphElement, horizontalAdvance, verticalAdvance, glyphBoundingBox.value_or(FloatRect()), codepoints));
 }
 
 void SVGToOTFFontConverter::appendLigatureGlyphs()
@@ -1363,8 +1359,8 @@ bool SVGToOTFFontConverter::compareCodepointsLexicographically(const GlyphData& 
     }
 
     if (iterator1 == codePoints1.end() && iterator2 == codePoints2.end()) {
-        bool firstIsIsolated = data1.glyphElement && equalLettersIgnoringASCIICase(data1.glyphElement->fastGetAttribute(SVGNames::arabic_formAttr), "isolated");
-        bool secondIsIsolated = data2.glyphElement && equalLettersIgnoringASCIICase(data2.glyphElement->fastGetAttribute(SVGNames::arabic_formAttr), "isolated");
+        bool firstIsIsolated = data1.glyphElement && equalLettersIgnoringASCIICase(data1.glyphElement->attributeWithoutSynchronization(SVGNames::arabic_formAttr), "isolated");
+        bool secondIsIsolated = data2.glyphElement && equalLettersIgnoringASCIICase(data2.glyphElement->attributeWithoutSynchronization(SVGNames::arabic_formAttr), "isolated");
         return firstIsIsolated && !secondIsIsolated;
     }
     return iterator1 == codePoints1.end();
@@ -1420,7 +1416,7 @@ SVGToOTFFontConverter::SVGToOTFFontConverter(const SVGFontElement& fontElement)
 
     populateEmptyGlyphCharString(m_emptyGlyphCharString, s_outputUnitsPerEm);
 
-    Optional<FloatRect> boundingBox;
+    std::optional<FloatRect> boundingBox;
     if (m_missingGlyphElement)
         processGlyphElement(*m_missingGlyphElement, nullptr, defaultHorizontalAdvance, defaultVerticalAdvance, String(), boundingBox);
     else {
@@ -1429,18 +1425,12 @@ SVGToOTFFontConverter::SVGToOTFFontConverter(const SVGFontElement& fontElement)
     }
 
     for (auto& glyphElement : childrenOfType<SVGGlyphElement>(m_fontElement)) {
-        auto& unicodeAttribute = glyphElement.fastGetAttribute(SVGNames::unicodeAttr);
+        auto& unicodeAttribute = glyphElement.attributeWithoutSynchronization(SVGNames::unicodeAttr);
         if (!unicodeAttribute.isEmpty()) // If we can never actually trigger this glyph, ignore it completely
             processGlyphElement(glyphElement, &glyphElement, defaultHorizontalAdvance, defaultVerticalAdvance, unicodeAttribute, boundingBox);
     }
 
-    m_boundingBox = boundingBox.valueOr(FloatRect());
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-    // <rdar://problem/20086223> Cocoa has a bug where glyph bounding boxes are not correctly respected for frustum culling. Work around this by
-    // inflating the font's bounding box
-    m_boundingBox.extend(FloatPoint(0, 0));
-#endif
+    m_boundingBox = boundingBox.value_or(FloatRect());
 
     appendLigatureGlyphs();
 
@@ -1454,14 +1444,14 @@ SVGToOTFFontConverter::SVGToOTFFontConverter(const SVGFontElement& fontElement)
     for (Glyph i = 0; i < m_glyphs.size(); ++i) {
         GlyphData& glyph = m_glyphs[i];
         if (glyph.glyphElement) {
-            auto& glyphName = glyph.glyphElement->fastGetAttribute(SVGNames::glyph_nameAttr);
+            auto& glyphName = glyph.glyphElement->attributeWithoutSynchronization(SVGNames::glyph_nameAttr);
             if (!glyphName.isNull())
                 m_glyphNameToIndexMap.add(glyphName, i);
         }
         if (m_codepointsToIndicesMap.isValidKey(glyph.codepoints)) {
             auto& glyphVector = m_codepointsToIndicesMap.add(glyph.codepoints, Vector<Glyph>()).iterator->value;
             // Prefer isolated arabic forms
-            if (glyph.glyphElement && equalLettersIgnoringASCIICase(glyph.glyphElement->fastGetAttribute(SVGNames::arabic_formAttr), "isolated"))
+            if (glyph.glyphElement && equalLettersIgnoringASCIICase(glyph.glyphElement->attributeWithoutSynchronization(SVGNames::arabic_formAttr), "isolated"))
                 glyphVector.insert(0, i);
             else
                 glyphVector.append(i);
@@ -1470,22 +1460,21 @@ SVGToOTFFontConverter::SVGToOTFFontConverter(const SVGFontElement& fontElement)
 
     // FIXME: Handle commas.
     if (m_fontFaceElement) {
-        Vector<String> segments;
-        m_fontFaceElement->fastGetAttribute(SVGNames::font_weightAttr).string().split(' ', segments);
-        for (auto& segment : segments) {
+        auto& fontWeightAttribute = m_fontFaceElement->attributeWithoutSynchronization(SVGNames::font_weightAttr);
+        for (auto segment : StringView(fontWeightAttribute).split(' ')) {
             if (equalLettersIgnoringASCIICase(segment, "bold")) {
                 m_weight = 7;
                 break;
             }
             bool ok;
-            int value = segment.toInt(&ok);
+            int value = segment.toInt(ok);
             if (ok && value >= 0 && value < 1000) {
                 m_weight = (value + 50) / 100;
                 break;
             }
         }
-        m_fontFaceElement->fastGetAttribute(SVGNames::font_styleAttr).string().split(' ', segments);
-        for (auto& segment : segments) {
+        auto& fontStyleAttribute = m_fontFaceElement->attributeWithoutSynchronization(SVGNames::font_styleAttr);
+        for (auto segment : StringView(fontStyleAttribute).split(' ')) {
             if (equalLettersIgnoringASCIICase(segment, "italic") || equalLettersIgnoringASCIICase(segment, "oblique")) {
                 m_italic = true;
                 break;
@@ -1583,16 +1572,16 @@ bool SVGToOTFFontConverter::convertSVGToOTFFont()
     return true;
 }
 
-Optional<Vector<char>> convertSVGToOTFFont(const SVGFontElement& element)
+std::optional<Vector<char>> convertSVGToOTFFont(const SVGFontElement& element)
 {
     SVGToOTFFontConverter converter(element);
     if (converter.error())
-        return Nullopt;
+        return std::nullopt;
     if (!converter.convertSVGToOTFFont())
-        return Nullopt;
+        return std::nullopt;
     return converter.releaseResult();
 }
 
 }
 
-#endif // ENABLE(SVG_OTF_CONVERTER)
+#endif // ENABLE(SVG_FONTS)

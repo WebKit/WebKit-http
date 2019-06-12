@@ -3,8 +3,8 @@
 <link href="resources/grid.css" rel="stylesheet">
 <style>
 .grid {
-    -webkit-grid-template-columns: 50px 60px;
-    -webkit-grid-template-rows: 20px 30px;
+    grid-template-columns: 50px 60px;
+    grid-template-rows: 20px 30px;
     max-width: 110px;
 }
 
@@ -54,7 +54,7 @@
 </div>
 
 <div style="position: relative">
-<div class="grid" style="-webkit-writing-mode: vertical-rl; margin-bottom: 60px;" data-expected-width="50" data-expected-height="110">
+<div class="grid verticalRL" style="margin-bottom: 60px;" data-expected-width="50" data-expected-height="110">
     <div class="firstRowFirstColumn" data-offset-x="40" data-offset-y="0"></div>
     <div class="firstRowSecondColumn" data-offset-x="40" data-offset-y="50"></div>
     <div class="secondRowFirstColumn" data-offset-x="20" data-offset-y="0"></div>
@@ -63,7 +63,7 @@
 </div>
 
 <div style="position: relative">
-<div class="grid" style="-webkit-writing-mode: vertical-lr; margin-bottom: 60px;" data-expected-width="50" data-expected-height="110">
+<div class="grid verticalLR" style="margin-bottom: 60px;" data-expected-width="50" data-expected-height="110">
     <div class="firstRowFirstColumn" data-offset-x="0" data-offset-y="0"></div>
     <div class="firstRowSecondColumn" data-offset-x="0" data-offset-y="50"></div>
     <div class="secondRowFirstColumn" data-offset-x="20" data-offset-y="0"></div>

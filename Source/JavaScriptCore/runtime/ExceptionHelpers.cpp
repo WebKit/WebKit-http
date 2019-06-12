@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,15 +29,15 @@
 #include "config.h"
 #include "ExceptionHelpers.h"
 
-#include "CodeBlock.h"
 #include "CallFrame.h"
+#include "CatchScope.h"
+#include "CodeBlock.h"
 #include "ErrorHandlingScope.h"
 #include "Exception.h"
-#include "JSGlobalObjectFunctions.h"
-#include "JSNotAnObject.h"
 #include "Interpreter.h"
-#include "Nodes.h"
 #include "JSCInlines.h"
+#include "JSGlobalObjectFunctions.h"
+#include "Nodes.h"
 #include "RuntimeType.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringView.h>
@@ -46,7 +46,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(TerminatedExecutionError);
 
-const ClassInfo TerminatedExecutionError::s_info = { "TerminatedExecutionError", &Base::s_info, 0, CREATE_METHOD_TABLE(TerminatedExecutionError) };
+const ClassInfo TerminatedExecutionError::s_info = { "TerminatedExecutionError", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(TerminatedExecutionError) };
 
 JSValue TerminatedExecutionError::defaultValue(const JSObject*, ExecState* exec, PreferredPrimitiveType hint)
 {
@@ -60,17 +60,24 @@ JSObject* createTerminatedExecutionException(VM* vm)
     return TerminatedExecutionError::create(*vm);
 }
 
-bool isTerminatedExecutionException(Exception* exception)
+bool isTerminatedExecutionException(VM& vm, Exception* exception)
 {
     if (!exception->value().isObject())
         return false;
 
-    return exception->value().inherits(TerminatedExecutionError::info());
+    return exception->value().inherits(vm, TerminatedExecutionError::info());
 }
 
 JSObject* createStackOverflowError(ExecState* exec)
 {
-    return createRangeError(exec, ASCIILiteral("Maximum call stack size exceeded."));
+    return createStackOverflowError(exec, exec->lexicalGlobalObject());
+}
+
+JSObject* createStackOverflowError(ExecState* exec, JSGlobalObject* globalObject)
+{
+    auto* error = createRangeError(exec, globalObject, ASCIILiteral("Maximum call stack size exceeded."));
+    jsCast<ErrorInstance*>(error)->setStackOverflowError();
+    return error;
 }
 
 JSObject* createUndefinedVariableError(ExecState* exec, const Identifier& ident)
@@ -86,11 +93,13 @@ JSObject* createUndefinedVariableError(ExecState* exec, const Identifier& ident)
 JSString* errorDescriptionForValue(ExecState* exec, JSValue v)
 {
     if (v.isString())
-        return jsNontrivialString(exec, makeString('"',  asString(v)->value(exec), '"'));
+        return jsNontrivialString(exec, makeString('"', asString(v)->value(exec), '"'));
+    if (v.isSymbol())
+        return jsNontrivialString(exec, asSymbol(v)->descriptiveString());
     if (v.isObject()) {
         CallData callData;
         JSObject* object = asObject(v);
-        if (object->methodTable()->getCallData(object, callData) != CallTypeNone)
+        if (object->methodTable()->getCallData(object, callData) != CallType::None)
             return exec->vm().smallStrings.functionString();
         return jsString(exec, JSObject::calculatedClassName(object));
     }
@@ -102,7 +111,7 @@ static String defaultApproximateSourceError(const String& originalMessage, const
     return makeString(originalMessage, " (near '...", sourceText, "...')");
 }
 
-static String defaultSourceAppender(const String& originalMessage, const String& sourceText, RuntimeType, ErrorInstance::SourceTextWhereErrorOccurred occurrence)
+String defaultSourceAppender(const String& originalMessage, const String& sourceText, RuntimeType, ErrorInstance::SourceTextWhereErrorOccurred occurrence)
 {
     if (occurrence == ErrorInstance::FoundApproximateSource)
         return defaultApproximateSourceError(originalMessage, sourceText);
@@ -126,7 +135,7 @@ static String functionCallBase(const String& sourceText)
         // and their closing parenthesis, the text range passed into the message appender 
         // will not inlcude the text in between these parentheses, it will just be the desired
         // text that precedes the parentheses.
-        return sourceText;
+        return String();
     }
 
     unsigned parenStack = 1;
@@ -134,26 +143,32 @@ static String functionCallBase(const String& sourceText)
     idx -= 1;
     // Note that we're scanning text right to left instead of the more common left to right, 
     // so syntax detection is backwards.
-    while (parenStack > 0) {
+    while (parenStack && idx) {
         UChar curChar = sourceText[idx];
-        if (isInMultiLineComment)  {
-            if (idx > 0 && curChar == '*' && sourceText[idx - 1] == '/') {
+        if (isInMultiLineComment) {
+            if (curChar == '*' && sourceText[idx - 1] == '/') {
                 isInMultiLineComment = false;
-                idx -= 1;
+                --idx;
             }
         } else if (curChar == '(')
-            parenStack -= 1;
+            --parenStack;
         else if (curChar == ')')
-            parenStack += 1;
-        else if (idx > 0 && curChar == '/' && sourceText[idx - 1] == '*') {
+            ++parenStack;
+        else if (curChar == '/' && sourceText[idx - 1] == '*') {
             isInMultiLineComment = true;
-            idx -= 1;
+            --idx;
         }
 
-        if (!idx)
-            break;
+        if (idx)
+            --idx;
+    }
 
-        idx -= 1;
+    if (parenStack) {
+        // As noted in the FIXME at the top of this function, there are bugs
+        // in the above string processing. This algorithm is mostly best effort
+        // and it works for most JS text in practice. However, if we determine
+        // that the algorithm failed, we should just return the empty value.
+        return String();
     }
 
     return sourceText.left(idx + 1);
@@ -176,6 +191,8 @@ static String notAFunctionSourceAppender(const String& originalMessage, const St
         displayValue = StringView(originalMessage.characters16(), notAFunctionIndex - 1);
 
     String base = functionCallBase(sourceText);
+    if (!base)
+        return defaultApproximateSourceError(originalMessage, sourceText);
     StringBuilder builder;
     builder.append(base);
     builder.appendLiteral(" is not a function. (In '");
@@ -183,10 +200,14 @@ static String notAFunctionSourceAppender(const String& originalMessage, const St
     builder.appendLiteral("', '");
     builder.append(base);
     builder.appendLiteral("' is ");
-    if (type == TypeObject)
-        builder.appendLiteral("an instance of ");
-    builder.append(displayValue);
-    builder.appendLiteral(")");
+    if (type == TypeSymbol)
+        builder.appendLiteral("a Symbol");
+    else {
+        if (type == TypeObject)
+            builder.appendLiteral("an instance of ");
+        builder.append(displayValue);
+    }
+    builder.append(')');
 
     return builder.toString();
 }
@@ -200,7 +221,12 @@ static String invalidParameterInSourceAppender(const String& originalMessage, co
 
     ASSERT(occurrence == ErrorInstance::FoundExactSource);
     auto inIndex = sourceText.reverseFind("in");
-    RELEASE_ASSERT(inIndex != notFound);
+    if (inIndex == notFound) {
+        // This should basically never happen, since JS code must use the literal
+        // text "in" for the `in` operation. However, if we fail to find "in"
+        // for any reason, just fail gracefully.
+        return originalMessage;
+    }
     if (sourceText.find("in") != inIndex)
         return makeString(originalMessage, " (evaluating '", sourceText, "')");
 
@@ -237,7 +263,11 @@ static String invalidParameterInstanceofhasInstanceValueNotFunctionSourceAppende
 
 JSObject* createError(ExecState* exec, JSValue value, const String& message, ErrorInstance::SourceAppender appender)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     String errorMessage = makeString(errorDescriptionForValue(exec, value)->value(exec), ' ', message);
+    scope.assertNoException();
     JSObject* exception = createTypeError(exec, errorMessage, appender, runtimeTypeForValue(value));
     ASSERT(exception->isErrorInstance());
     return exception;
@@ -260,7 +290,7 @@ JSObject* createInvalidInstanceofParameterErrorNotFunction(ExecState* exec, JSVa
     return createError(exec, value, makeString(" is not a function"), invalidParameterInstanceofNotFunctionSourceAppender);
 }
 
-JSObject* createInvalidInstanceofParameterErrorhasInstanceValueNotFunction(ExecState* exec, JSValue value)
+JSObject* createInvalidInstanceofParameterErrorHasInstanceValueNotFunction(ExecState* exec, JSValue value)
 {
     return createError(exec, value, makeString("[Symbol.hasInstance] is not a function, undefined, or null"), invalidParameterInstanceofhasInstanceValueNotFunctionSourceAppender);
 }
@@ -290,23 +320,23 @@ JSObject* createTDZError(ExecState* exec)
     return createReferenceError(exec, "Cannot access uninitialized variable.");
 }
 
-JSObject* throwOutOfMemoryError(ExecState* exec)
+JSObject* throwOutOfMemoryError(ExecState* exec, ThrowScope& scope)
 {
-    return exec->vm().throwException(exec, createOutOfMemoryError(exec));
+    return throwException(exec, scope, createOutOfMemoryError(exec));
 }
 
-JSObject* throwStackOverflowError(ExecState* exec)
+JSObject* throwStackOverflowError(ExecState* exec, ThrowScope& scope)
 {
     VM& vm = exec->vm();
     ErrorHandlingScope errorScope(vm);
-    return vm.throwException(exec, createStackOverflowError(exec));
+    return throwException(exec, scope, createStackOverflowError(exec));
 }
 
-JSObject* throwTerminatedExecutionException(ExecState* exec)
+JSObject* throwTerminatedExecutionException(ExecState* exec, ThrowScope& scope)
 {
     VM& vm = exec->vm();
     ErrorHandlingScope errorScope(vm);
-    return vm.throwException(exec, createTerminatedExecutionException(&vm));
+    return throwException(exec, scope, createTerminatedExecutionException(&vm));
 }
 
 } // namespace JSC

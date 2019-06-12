@@ -27,15 +27,21 @@
 #include "VisibleContentRectUpdateInfo.h"
 
 #include "WebCoreArgumentCoders.h"
+#include <WebCore/LengthBox.h>
+#include <WebCore/TextStream.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
-void VisibleContentRectUpdateInfo::encode(IPC::ArgumentEncoder& encoder) const
+void VisibleContentRectUpdateInfo::encode(IPC::Encoder& encoder) const
 {
-    encoder << m_exposedRect;
-    encoder << m_unobscuredRect;
+    encoder << m_exposedContentRect;
+    encoder << m_unobscuredContentRect;
     encoder << m_unobscuredRectInScrollViewCoordinates;
     encoder << m_customFixedPositionRect;
+    encoder << m_obscuredInsets;
+    encoder << m_unobscuredSafeAreaInsets;
     encoder << m_lastLayerTreeTransactionID;
     encoder << m_scale;
     encoder << m_timestamp;
@@ -43,19 +49,25 @@ void VisibleContentRectUpdateInfo::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_verticalVelocity;
     encoder << m_scaleChangeRate;
     encoder << m_inStableState;
+    encoder << m_isFirstUpdateForNewViewSize;
     encoder << m_isChangingObscuredInsetsInteractively;
     encoder << m_allowShrinkToFit;
+    encoder << m_enclosedInScrollableAncestorView;
 }
 
-bool VisibleContentRectUpdateInfo::decode(IPC::ArgumentDecoder& decoder, VisibleContentRectUpdateInfo& result)
+bool VisibleContentRectUpdateInfo::decode(IPC::Decoder& decoder, VisibleContentRectUpdateInfo& result)
 {
-    if (!decoder.decode(result.m_exposedRect))
+    if (!decoder.decode(result.m_exposedContentRect))
         return false;
-    if (!decoder.decode(result.m_unobscuredRect))
+    if (!decoder.decode(result.m_unobscuredContentRect))
         return false;
     if (!decoder.decode(result.m_unobscuredRectInScrollViewCoordinates))
         return false;
     if (!decoder.decode(result.m_customFixedPositionRect))
+        return false;
+    if (!decoder.decode(result.m_obscuredInsets))
+        return false;
+    if (!decoder.decode(result.m_unobscuredSafeAreaInsets))
         return false;
     if (!decoder.decode(result.m_lastLayerTreeTransactionID))
         return false;
@@ -71,12 +83,58 @@ bool VisibleContentRectUpdateInfo::decode(IPC::ArgumentDecoder& decoder, Visible
         return false;
     if (!decoder.decode(result.m_inStableState))
         return false;
+    if (!decoder.decode(result.m_isFirstUpdateForNewViewSize))
+        return false;
     if (!decoder.decode(result.m_isChangingObscuredInsetsInteractively))
         return false;
     if (!decoder.decode(result.m_allowShrinkToFit))
         return false;
+    if (!decoder.decode(result.m_enclosedInScrollableAncestorView))
+        return false;
 
     return true;
+}
+
+String VisibleContentRectUpdateInfo::dump() const
+{
+    TextStream stream;
+    stream << *this;
+    return stream.release();
+}
+
+TextStream& operator<<(TextStream& ts, const VisibleContentRectUpdateInfo& info)
+{
+    TextStream::GroupScope scope(ts);
+    
+    ts << "VisibleContentRectUpdateInfo";
+
+    ts.dumpProperty("lastLayerTreeTransactionID", info.lastLayerTreeTransactionID());
+
+    ts.dumpProperty("exposedContentRect", info.exposedContentRect());
+    ts.dumpProperty("unobscuredContentRect", info.unobscuredContentRect());
+    ts.dumpProperty("unobscuredRectInScrollViewCoordinates", info.unobscuredRectInScrollViewCoordinates());
+    ts.dumpProperty("unobscuredContentRectRespectingInputViewBounds", info.unobscuredContentRectRespectingInputViewBounds());
+    ts.dumpProperty("customFixedPositionRect", info.customFixedPositionRect());
+    ts.dumpProperty("obscuredInsets", info.obscuredInsets());
+    ts.dumpProperty("unobscuredSafeAreaInsets", info.unobscuredSafeAreaInsets());
+
+    ts.dumpProperty("scale", info.scale());
+    ts.dumpProperty("inStableState", info.inStableState());
+    ts.dumpProperty("isFirstUpdateForNewViewSize", info.isFirstUpdateForNewViewSize());
+    if (info.isChangingObscuredInsetsInteractively())
+        ts.dumpProperty("isChangingObscuredInsetsInteractively", info.isChangingObscuredInsetsInteractively());
+    if (info.enclosedInScrollableAncestorView())
+        ts.dumpProperty("enclosedInScrollableAncestorView", info.enclosedInScrollableAncestorView());
+
+    ts.dumpProperty("timestamp", info.timestamp().secondsSinceEpoch().value());
+    if (info.horizontalVelocity())
+        ts.dumpProperty("horizontalVelocity", info.horizontalVelocity());
+    if (info.verticalVelocity())
+        ts.dumpProperty("verticalVelocity", info.verticalVelocity());
+    if (info.scaleChangeRate())
+        ts.dumpProperty("scaleChangeRate", info.scaleChangeRate());
+
+    return ts;
 }
 
 } // namespace WebKit

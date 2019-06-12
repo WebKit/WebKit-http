@@ -1,71 +1,156 @@
 /*
- * Copyright (C) 2004, 2005, 2007, 2008 Nikolas Zimmermann <zimmermann@kde.org>
- * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) Research In Motion Limited 2010. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Library General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details.
- *
- * You should have received a copy of the GNU Library General Public License
- * along with this library; see the file COPYING.LIB.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SVGAngle_h
-#define SVGAngle_h
+#pragma once
 
-#include "SVGPropertyTraits.h"
+#include "ExceptionCode.h"
+#include "SVGAngleValue.h"
+#include "SVGPropertyTearOff.h"
 
 namespace WebCore {
 
-typedef int ExceptionCode;
-
-class SVGAngle {
-    WTF_MAKE_FAST_ALLOCATED;
+class SVGAngle : public SVGPropertyTearOff<SVGAngleValue> {
 public:
-    SVGAngle();
+    static Ref<SVGAngle> create(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, SVGAngleValue& value)
+    {
+        return adoptRef(*new SVGAngle(animatedProperty, role, value));
+    }
 
-    enum SVGAngleType {
-        SVG_ANGLETYPE_UNKNOWN = 0,
-        SVG_ANGLETYPE_UNSPECIFIED = 1,
-        SVG_ANGLETYPE_DEG = 2,
-        SVG_ANGLETYPE_RAD = 3,
-        SVG_ANGLETYPE_GRAD = 4
-    };
+    static Ref<SVGAngle> create(const SVGAngleValue& initialValue = { })
+    {
+        return adoptRef(*new SVGAngle(initialValue));
+    }
 
-    SVGAngleType unitType() const { return m_unitType; }
+    static Ref<SVGAngle> create(const SVGAngleValue* initialValue)
+    {
+        return adoptRef(*new SVGAngle(initialValue));
+    }
 
-    void setValue(float);
-    float value() const;
+    template<typename T> static ExceptionOr<Ref<SVGAngle>> create(ExceptionOr<T>&& initialValue)
+    {
+        if (initialValue.hasException())
+            return initialValue.releaseException();
+        return create(initialValue.releaseReturnValue());
+    }
 
-    void setValueInSpecifiedUnits(float valueInSpecifiedUnits) { m_valueInSpecifiedUnits = valueInSpecifiedUnits; }
-    float valueInSpecifiedUnits() const { return m_valueInSpecifiedUnits; }
+    SVGAngleValue::Type unitType()
+    {
+        return propertyReference().unitType();
+    }
 
-    void setValueAsString(const String&, ExceptionCode&);
-    String valueAsString() const;
+    ExceptionOr<void> setValueForBindings(float value)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
-    void newValueSpecifiedUnits(unsigned short unitType, float valueInSpecifiedUnits, ExceptionCode&);
-    void convertToSpecifiedUnits(unsigned short unitType, ExceptionCode&);
+        propertyReference().setValue(value);
+        commitChange();
+
+        return { };
+    }
+    
+    float valueForBindings()
+    {
+        return propertyReference().value();
+    }
+
+    ExceptionOr<void> setValueInSpecifiedUnits(float valueInSpecifiedUnits)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+
+        propertyReference().setValueInSpecifiedUnits(valueInSpecifiedUnits);
+        commitChange();
+        
+        return { };
+    }
+    
+    float valueInSpecifiedUnits()
+    {
+        return propertyReference().valueInSpecifiedUnits();
+    }
+
+    ExceptionOr<void> setValueAsString(const String& value)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+
+        auto result = propertyReference().setValueAsString(value);
+        if (result.hasException())
+            return result;
+        
+        commitChange();
+        return result;
+    }
+
+    String valueAsString()
+    {
+        return propertyReference().valueAsString();
+    }
+
+    ExceptionOr<void> newValueSpecifiedUnits(unsigned short unitType, float valueInSpecifiedUnits)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+
+        auto result = propertyReference().newValueSpecifiedUnits(unitType, valueInSpecifiedUnits);
+        if (result.hasException())
+            return result;
+        
+        commitChange();
+        return result;
+    }
+    
+    ExceptionOr<void> convertToSpecifiedUnits(unsigned short unitType)
+    {
+        if (isReadOnly())
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+
+        auto result = propertyReference().convertToSpecifiedUnits(unitType);
+        if (result.hasException())
+            return result;
+        
+        commitChange();
+        return result;
+    }
 
 private:
-    SVGAngleType m_unitType;
-    float m_valueInSpecifiedUnits;
-};
+    SVGAngle(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, SVGAngleValue& value)
+        : SVGPropertyTearOff<SVGAngleValue>(&animatedProperty, role, value)
+    {
+    }
 
-template<>
-struct SVGPropertyTraits<SVGAngle> {
-    static SVGAngle initialValue() { return SVGAngle(); }
-    static String toString(const SVGAngle& type) { return type.valueAsString(); }
+    explicit SVGAngle(const SVGAngleValue& initialValue)
+        : SVGPropertyTearOff<SVGAngleValue>(initialValue)
+    {
+    }
+
+    explicit SVGAngle(const SVGAngleValue* initialValue)
+        : SVGPropertyTearOff<SVGAngleValue>(initialValue)
+    {
+    }
 };
 
 } // namespace WebCore
-
-#endif // SVGAngle_h

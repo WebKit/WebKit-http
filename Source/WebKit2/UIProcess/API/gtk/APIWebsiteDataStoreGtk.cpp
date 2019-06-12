@@ -35,14 +35,11 @@ String WebsiteDataStore::defaultApplicationCacheDirectory()
     return cacheDirectoryFileSystemRepresentation("webkitgtk" G_DIR_SEPARATOR_S "applications");
 }
 
+// FIXME: The other directories in this file are shared between all applications using WebKitGTK+.
+// Why is only this directory namespaced to a particular application?
 String WebsiteDataStore::defaultNetworkCacheDirectory()
 {
-#if ENABLE(NETWORK_CACHE)
-    static const char networkCacheSubdirectory[] = "WebKitCache";
-#else
-    static const char networkCacheSubdirectory[] = "webkit";
-#endif
-    return cacheDirectoryFileSystemRepresentation(WebCore::pathByAppendingComponent(WebCore::filenameToString(g_get_prgname()), networkCacheSubdirectory));
+    return cacheDirectoryFileSystemRepresentation(WebCore::pathByAppendingComponent(WebCore::stringFromFileSystemRepresentation(g_get_prgname()), "WebKitCache"));
 }
 
 String WebsiteDataStore::defaultIndexedDBDatabaseDirectory()
@@ -65,14 +62,19 @@ String WebsiteDataStore::defaultWebSQLDatabaseDirectory()
     return websiteDataDirectoryFileSystemRepresentation("webkitgtk" G_DIR_SEPARATOR_S "databases");
 }
 
+String WebsiteDataStore::defaultResourceLoadStatisticsDirectory()
+{
+    return websiteDataDirectoryFileSystemRepresentation("webkitgtk" G_DIR_SEPARATOR_S "ResourceLoadStatistics");
+}
+
 String WebsiteDataStore::cacheDirectoryFileSystemRepresentation(const String& directoryName)
 {
-    return WebCore::pathByAppendingComponent(WebCore::filenameToString(g_get_user_cache_dir()), directoryName);
+    return WebCore::pathByAppendingComponent(WebCore::stringFromFileSystemRepresentation(g_get_user_cache_dir()), directoryName);
 }
 
 String WebsiteDataStore::websiteDataDirectoryFileSystemRepresentation(const String& directoryName)
 {
-    return WebCore::pathByAppendingComponent(WebCore::filenameToString(g_get_user_data_dir()), directoryName);
+    return WebCore::pathByAppendingComponent(WebCore::stringFromFileSystemRepresentation(g_get_user_data_dir()), directoryName);
 }
 
 WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfiguration()
@@ -85,6 +87,7 @@ WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfig
     configuration.webSQLDatabaseDirectory = defaultWebSQLDatabaseDirectory();
     configuration.localStorageDirectory = defaultLocalStorageDirectory();
     configuration.mediaKeysStorageDirectory = defaultMediaKeysStorageDirectory();
+    configuration.resourceLoadStatisticsDirectory = defaultResourceLoadStatisticsDirectory();
 
     return configuration;
 }

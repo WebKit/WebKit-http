@@ -27,24 +27,14 @@
 #include "UserContentController.h"
 
 #include "DOMWrapperWorld.h"
-#include "Document.h"
-#include "DocumentLoader.h"
-#include "ExtensionStyleSheets.h"
-#include "MainFrame.h"
-#include "Page.h"
-#include "ResourceLoadInfo.h"
 #include "UserScript.h"
 #include "UserStyleSheet.h"
+#include <heap/HeapInlines.h>
 #include <runtime/JSCellInlines.h>
 #include <runtime/StructureInlines.h>
 
-#if ENABLE(USER_MESSAGE_HANDLERS)
-#include "UserMessageHandlerDescriptor.h"
-#endif
-
 #if ENABLE(CONTENT_EXTENSIONS)
-#include "ContentExtensionCompiler.h"
-#include "ContentExtensionsBackend.h"
+#include "CompiledContentExtension.h"
 #endif
 
 namespace WebCore {
@@ -62,36 +52,39 @@ UserContentController::~UserContentController()
 {
 }
 
-void UserContentController::addPage(Page& page)
+void UserContentController::forEachUserScript(Function<void(DOMWrapperWorld&, const UserScript&)>&& functor) const
 {
-    ASSERT(!m_pages.contains(&page));
-    m_pages.add(&page);
+    for (const auto& worldAndUserScriptVector : m_userScripts) {
+        auto& world = *worldAndUserScriptVector.key.get();
+        for (const auto& userScript : *worldAndUserScriptVector.value)
+            functor(world, *userScript);
+    }
 }
 
-void UserContentController::removePage(Page& page)
+void UserContentController::forEachUserStyleSheet(Function<void(const UserStyleSheet&)>&& functor) const
 {
-    ASSERT(m_pages.contains(&page));
-    m_pages.remove(&page);
+    for (auto& styleSheetVector : m_userStyleSheets.values()) {
+        for (const auto& styleSheet : *styleSheetVector)
+            functor(*styleSheet);
+    }
 }
+
+#if ENABLE(USER_MESSAGE_HANDLERS)
+void UserContentController::forEachUserMessageHandler(Function<void(const UserMessageHandlerDescriptor&)>&&) const
+{
+}
+#endif
 
 void UserContentController::addUserScript(DOMWrapperWorld& world, std::unique_ptr<UserScript> userScript)
 {
-    if (!m_userScripts)
-        m_userScripts = std::make_unique<UserScriptMap>();
-
-    auto& scriptsInWorld = m_userScripts->add(&world, nullptr).iterator->value;
-    if (!scriptsInWorld)
-        scriptsInWorld = std::make_unique<UserScriptVector>();
+    auto& scriptsInWorld = m_userScripts.ensure(&world, [&] { return std::make_unique<UserScriptVector>(); }).iterator->value;
     scriptsInWorld->append(WTFMove(userScript));
 }
 
 void UserContentController::removeUserScript(DOMWrapperWorld& world, const URL& url)
 {
-    if (!m_userScripts)
-        return;
-
-    auto it = m_userScripts->find(&world);
-    if (it == m_userScripts->end())
+    auto it = m_userScripts.find(&world);
+    if (it == m_userScripts.end())
         return;
 
     auto scripts = it->value.get();
@@ -101,38 +94,27 @@ void UserContentController::removeUserScript(DOMWrapperWorld& world, const URL& 
     }
 
     if (scripts->isEmpty())
-        m_userScripts->remove(it);
+        m_userScripts.remove(it);
 }
 
 void UserContentController::removeUserScripts(DOMWrapperWorld& world)
 {
-    if (!m_userScripts)
-        return;
-
-    m_userScripts->remove(&world);
+    m_userScripts.remove(&world);
 }
 
 void UserContentController::addUserStyleSheet(DOMWrapperWorld& world, std::unique_ptr<UserStyleSheet> userStyleSheet, UserStyleInjectionTime injectionTime)
 {
-    if (!m_userStyleSheets)
-        m_userStyleSheets = std::make_unique<UserStyleSheetMap>();
-
-    auto& styleSheetsInWorld = m_userStyleSheets->add(&world, nullptr).iterator->value;
-    if (!styleSheetsInWorld)
-        styleSheetsInWorld = std::make_unique<UserStyleSheetVector>();
+    auto& styleSheetsInWorld = m_userStyleSheets.ensure(&world, [&] { return std::make_unique<UserStyleSheetVector>(); }).iterator->value;
     styleSheetsInWorld->append(WTFMove(userStyleSheet));
 
     if (injectionTime == InjectInExistingDocuments)
-        invalidateInjectedStyleSheetCacheInAllFrames();
+        invalidateInjectedStyleSheetCacheInAllFramesInAllPages();
 }
 
 void UserContentController::removeUserStyleSheet(DOMWrapperWorld& world, const URL& url)
 {
-    if (!m_userStyleSheets)
-        return;
-
-    auto it = m_userStyleSheets->find(&world);
-    if (it == m_userStyleSheets->end())
+    auto it = m_userStyleSheets.find(&world);
+    if (it == m_userStyleSheets.end())
         return;
 
     auto& stylesheets = *it->value;
@@ -149,117 +131,26 @@ void UserContentController::removeUserStyleSheet(DOMWrapperWorld& world, const U
         return;
 
     if (stylesheets.isEmpty())
-        m_userStyleSheets->remove(it);
+        m_userStyleSheets.remove(it);
 
-    invalidateInjectedStyleSheetCacheInAllFrames();
+    invalidateInjectedStyleSheetCacheInAllFramesInAllPages();
 }
 
 void UserContentController::removeUserStyleSheets(DOMWrapperWorld& world)
 {
-    if (!m_userStyleSheets)
+    if (!m_userStyleSheets.remove(&world))
         return;
 
-    if (!m_userStyleSheets->remove(&world))
-        return;
-
-    invalidateInjectedStyleSheetCacheInAllFrames();
+    invalidateInjectedStyleSheetCacheInAllFramesInAllPages();
 }
-
-#if ENABLE(USER_MESSAGE_HANDLERS)
-void UserContentController::addUserMessageHandlerDescriptor(UserMessageHandlerDescriptor& descriptor)
-{
-    if (!m_userMessageHandlerDescriptors)
-        m_userMessageHandlerDescriptors = std::make_unique<UserMessageHandlerDescriptorMap>();
-
-    m_userMessageHandlerDescriptors->add(std::make_pair(descriptor.name(), &descriptor.world()), &descriptor);
-}
-
-void UserContentController::removeUserMessageHandlerDescriptor(UserMessageHandlerDescriptor& descriptor)
-{
-    if (!m_userMessageHandlerDescriptors)
-        return;
-
-    m_userMessageHandlerDescriptors->remove(std::make_pair(descriptor.name(), &descriptor.world()));
-}
-#endif
-
-#if ENABLE(CONTENT_EXTENSIONS)
-void UserContentController::addUserContentExtension(const String& name, RefPtr<ContentExtensions::CompiledContentExtension> contentExtension)
-{
-    if (!m_contentExtensionBackend)
-        m_contentExtensionBackend = std::make_unique<ContentExtensions::ContentExtensionsBackend>();
-    
-    m_contentExtensionBackend->addContentExtension(name, contentExtension);
-}
-
-void UserContentController::removeUserContentExtension(const String& name)
-{
-    if (!m_contentExtensionBackend)
-        return;
-
-    m_contentExtensionBackend->removeContentExtension(name);
-}
-
-void UserContentController::removeAllUserContentExtensions()
-{
-    if (!m_contentExtensionBackend)
-        return;
-
-    m_contentExtensionBackend->removeAllContentExtensions();
-}
-
-static bool contentExtensionsEnabled(const DocumentLoader& documentLoader)
-{
-    if (auto frame = documentLoader.frame()) {
-        if (frame->isMainFrame())
-            return documentLoader.userContentExtensionsEnabled();
-        if (auto mainDocumentLoader = frame->mainFrame().loader().documentLoader())
-            return mainDocumentLoader->userContentExtensionsEnabled();
-    }
-
-    return true;
-}
-    
-ContentExtensions::BlockedStatus UserContentController::processContentExtensionRulesForLoad(ResourceRequest& request, ResourceType resourceType, DocumentLoader& initiatingDocumentLoader)
-{
-    if (!m_contentExtensionBackend)
-        return ContentExtensions::BlockedStatus::NotBlocked;
-
-    if (!contentExtensionsEnabled(initiatingDocumentLoader))
-        return ContentExtensions::BlockedStatus::NotBlocked;
-
-    return m_contentExtensionBackend->processContentExtensionRulesForLoad(request, resourceType, initiatingDocumentLoader);
-}
-
-Vector<ContentExtensions::Action> UserContentController::actionsForResourceLoad(const ResourceLoadInfo& resourceLoadInfo, DocumentLoader& initiatingDocumentLoader)
-{
-    if (!m_contentExtensionBackend)
-        return Vector<ContentExtensions::Action>();
-    
-    if (!contentExtensionsEnabled(initiatingDocumentLoader))
-        return Vector<ContentExtensions::Action>();
-
-    return m_contentExtensionBackend->actionsForResourceLoad(resourceLoadInfo);
-}
-#endif
 
 void UserContentController::removeAllUserContent()
 {
-    m_userScripts = nullptr;
+    m_userScripts.clear();
 
-    if (m_userStyleSheets) {
-        m_userStyleSheets = nullptr;
-        invalidateInjectedStyleSheetCacheInAllFrames();
-    }
-}
-
-void UserContentController::invalidateInjectedStyleSheetCacheInAllFrames()
-{
-    for (auto& page : m_pages) {
-        for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            frame->document()->extensionStyleSheets().invalidateInjectedStyleSheetCache();
-            frame->document()->styleResolverChanged(DeferRecalcStyle);
-        }
+    if (!m_userStyleSheets.isEmpty()) {
+        m_userStyleSheets.clear();
+        invalidateInjectedStyleSheetCacheInAllFramesInAllPages();
     }
 }
 

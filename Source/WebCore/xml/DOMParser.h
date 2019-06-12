@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003, 2006 Apple Inc.
+ *  Copyright (C) 2003, 2006 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -16,28 +16,24 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef DOMParser_h
-#define DOMParser_h
+#pragma once
 
-#include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#include "ExceptionOr.h"
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
-typedef int ExceptionCode;
 
 class Document;
 
 class DOMParser : public RefCounted<DOMParser> {
 public:
-    static Ref<DOMParser> create() { return adoptRef(*new DOMParser); }
-
-    RefPtr<Document> parseFromString(const String&, const String& contentType, ExceptionCode&);
+    static Ref<DOMParser> create(Document& contextDocument);
+    ExceptionOr<Ref<Document>> parseFromString(const String&, const String& contentType);
 
 private:
-    DOMParser() { }
+    explicit DOMParser(Document& contextDocument);
+
+    WeakPtr<Document> m_contextDocument;
 };
 
 }
-
-#endif // XMLSerializer.h

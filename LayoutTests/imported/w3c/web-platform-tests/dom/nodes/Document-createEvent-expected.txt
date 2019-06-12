@@ -1,10 +1,67 @@
 
+FAIL AnimationEvent should be an alias for AnimationEvent. The operation is not supported.
+FAIL createEvent('AnimationEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL animationevent should be an alias for AnimationEvent. The operation is not supported.
+FAIL createEvent('animationevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL ANIMATIONEVENT should be an alias for AnimationEvent. The operation is not supported.
+FAIL createEvent('ANIMATIONEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "AnimationEvents" 
+FAIL BeforeUnloadEvent should be an alias for BeforeUnloadEvent. The operation is not supported.
+FAIL createEvent('BeforeUnloadEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL beforeunloadevent should be an alias for BeforeUnloadEvent. The operation is not supported.
+FAIL createEvent('beforeunloadevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL BEFOREUNLOADEVENT should be an alias for BeforeUnloadEvent. The operation is not supported.
+FAIL createEvent('BEFOREUNLOADEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "BeforeUnloadEvents" 
+FAIL CloseEvent should be an alias for CloseEvent. The operation is not supported.
+FAIL createEvent('CloseEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL closeevent should be an alias for CloseEvent. The operation is not supported.
+FAIL createEvent('closeevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL CLOSEEVENT should be an alias for CloseEvent. The operation is not supported.
+FAIL createEvent('CLOSEEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "CloseEvents" 
+PASS CompositionEvent should be an alias for CompositionEvent. 
+PASS createEvent('CompositionEvent') should be initialized correctly. 
+PASS compositionevent should be an alias for CompositionEvent. 
+PASS createEvent('compositionevent') should be initialized correctly. 
+PASS COMPOSITIONEVENT should be an alias for CompositionEvent. 
+PASS createEvent('COMPOSITIONEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "CompositionEvents" 
 PASS CustomEvent should be an alias for CustomEvent. 
 PASS createEvent('CustomEvent') should be initialized correctly. 
 PASS customevent should be an alias for CustomEvent. 
 PASS createEvent('customevent') should be initialized correctly. 
 PASS CUSTOMEVENT should be an alias for CustomEvent. 
 PASS createEvent('CUSTOMEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "CustomEvents" 
+FAIL DeviceMotionEvent should be an alias for DeviceMotionEvent. The operation is not supported.
+FAIL createEvent('DeviceMotionEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL devicemotionevent should be an alias for DeviceMotionEvent. The operation is not supported.
+FAIL createEvent('devicemotionevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL DEVICEMOTIONEVENT should be an alias for DeviceMotionEvent. The operation is not supported.
+FAIL createEvent('DEVICEMOTIONEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "DeviceMotionEvents" 
+FAIL DeviceOrientationEvent should be an alias for DeviceOrientationEvent. The operation is not supported.
+FAIL createEvent('DeviceOrientationEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL deviceorientationevent should be an alias for DeviceOrientationEvent. The operation is not supported.
+FAIL createEvent('deviceorientationevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL DEVICEORIENTATIONEVENT should be an alias for DeviceOrientationEvent. The operation is not supported.
+FAIL createEvent('DEVICEORIENTATIONEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "DeviceOrientationEvents" 
+FAIL DragEvent should be an alias for DragEvent. The operation is not supported.
+FAIL createEvent('DragEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL dragevent should be an alias for DragEvent. The operation is not supported.
+FAIL createEvent('dragevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL DRAGEVENT should be an alias for DragEvent. The operation is not supported.
+FAIL createEvent('DRAGEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "DragEvents" 
+FAIL ErrorEvent should be an alias for ErrorEvent. The operation is not supported.
+FAIL createEvent('ErrorEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL errorevent should be an alias for ErrorEvent. The operation is not supported.
+FAIL createEvent('errorevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL ERROREVENT should be an alias for ErrorEvent. The operation is not supported.
+FAIL createEvent('ERROREVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "ErrorEvents" 
 PASS Event should be an alias for Event. 
 PASS createEvent('Event') should be initialized correctly. 
 PASS event should be an alias for Event. 
@@ -17,30 +74,49 @@ PASS events should be an alias for Event.
 PASS createEvent('events') should be initialized correctly. 
 PASS EVENTS should be an alias for Event. 
 PASS createEvent('EVENTS') should be initialized correctly. 
+FAIL FocusEvent should be an alias for FocusEvent. The operation is not supported.
+FAIL createEvent('FocusEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL focusevent should be an alias for FocusEvent. The operation is not supported.
+FAIL createEvent('focusevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL FOCUSEVENT should be an alias for FocusEvent. The operation is not supported.
+FAIL createEvent('FOCUSEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "FocusEvents" 
+PASS HashChangeEvent should be an alias for HashChangeEvent. 
+PASS createEvent('HashChangeEvent') should be initialized correctly. 
+PASS hashchangeevent should be an alias for HashChangeEvent. 
+PASS createEvent('hashchangeevent') should be initialized correctly. 
+PASS HASHCHANGEEVENT should be an alias for HashChangeEvent. 
+PASS createEvent('HASHCHANGEEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "HashChangeEvents" 
 PASS HTMLEvents should be an alias for Event. 
 PASS createEvent('HTMLEvents') should be initialized correctly. 
 PASS htmlevents should be an alias for Event. 
 PASS createEvent('htmlevents') should be initialized correctly. 
 PASS HTMLEVENTS should be an alias for Event. 
 PASS createEvent('HTMLEVENTS') should be initialized correctly. 
+FAIL IDBVersionChangeEvent should be an alias for IDBVersionChangeEvent. The operation is not supported.
+FAIL createEvent('IDBVersionChangeEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL idbversionchangeevent should be an alias for IDBVersionChangeEvent. The operation is not supported.
+FAIL createEvent('idbversionchangeevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL IDBVERSIONCHANGEEVENT should be an alias for IDBVersionChangeEvent. The operation is not supported.
+FAIL createEvent('IDBVERSIONCHANGEEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "IDBVersionChangeEvents" 
 PASS KeyboardEvent should be an alias for KeyboardEvent. 
 PASS createEvent('KeyboardEvent') should be initialized correctly. 
 PASS keyboardevent should be an alias for KeyboardEvent. 
 PASS createEvent('keyboardevent') should be initialized correctly. 
 PASS KEYBOARDEVENT should be an alias for KeyboardEvent. 
 PASS createEvent('KEYBOARDEVENT') should be initialized correctly. 
-FAIL KeyEvents should be an alias for KeyboardEvent. NotSupportedError: DOM Exception 9
-FAIL createEvent('KeyEvents') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
-FAIL keyevents should be an alias for KeyboardEvent. NotSupportedError: DOM Exception 9
-FAIL createEvent('keyevents') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
-FAIL KEYEVENTS should be an alias for KeyboardEvent. NotSupportedError: DOM Exception 9
-FAIL createEvent('KEYEVENTS') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "KeyboardEvents" assert_throws: function "function () {
+          var evt = document.createEvent(plural);
+        }" did not throw
 PASS MessageEvent should be an alias for MessageEvent. 
 PASS createEvent('MessageEvent') should be initialized correctly. 
 PASS messageevent should be an alias for MessageEvent. 
 PASS createEvent('messageevent') should be initialized correctly. 
 PASS MESSAGEEVENT should be an alias for MessageEvent. 
 PASS createEvent('MESSAGEEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "MessageEvents" 
 PASS MouseEvent should be an alias for MouseEvent. 
 PASS createEvent('MouseEvent') should be initialized correctly. 
 PASS mouseevent should be an alias for MouseEvent. 
@@ -53,12 +129,61 @@ PASS mouseevents should be an alias for MouseEvent.
 PASS createEvent('mouseevents') should be initialized correctly. 
 PASS MOUSEEVENTS should be an alias for MouseEvent. 
 PASS createEvent('MOUSEEVENTS') should be initialized correctly. 
-FAIL TouchEvent should be an alias for TouchEvent. NotSupportedError: DOM Exception 9
+FAIL PageTransitionEvent should be an alias for PageTransitionEvent. The operation is not supported.
+FAIL createEvent('PageTransitionEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL pagetransitionevent should be an alias for PageTransitionEvent. The operation is not supported.
+FAIL createEvent('pagetransitionevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL PAGETRANSITIONEVENT should be an alias for PageTransitionEvent. The operation is not supported.
+FAIL createEvent('PAGETRANSITIONEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "PageTransitionEvents" 
+PASS PopStateEvent should be an alias for PopStateEvent. 
+PASS createEvent('PopStateEvent') should be initialized correctly. 
+PASS popstateevent should be an alias for PopStateEvent. 
+PASS createEvent('popstateevent') should be initialized correctly. 
+PASS POPSTATEEVENT should be an alias for PopStateEvent. 
+PASS createEvent('POPSTATEEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "PopStateEvents" 
+PASS StorageEvent should be an alias for StorageEvent. 
+PASS createEvent('StorageEvent') should be initialized correctly. 
+PASS storageevent should be an alias for StorageEvent. 
+PASS createEvent('storageevent') should be initialized correctly. 
+PASS STORAGEEVENT should be an alias for StorageEvent. 
+PASS createEvent('STORAGEEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "StorageEvents" 
+FAIL SVGEvents should be an alias for Event. The operation is not supported.
+FAIL createEvent('SVGEvents') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL svgevents should be an alias for Event. The operation is not supported.
+FAIL createEvent('svgevents') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL SVGEVENTS should be an alias for Event. The operation is not supported.
+FAIL createEvent('SVGEVENTS') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL TextEvent should be an alias for CompositionEvent. assert_equals: expected object "[object CompositionEventPrototype]" but got object "[object TextEventPrototype]"
+PASS createEvent('TextEvent') should be initialized correctly. 
+FAIL textevent should be an alias for CompositionEvent. assert_equals: expected object "[object CompositionEventPrototype]" but got object "[object TextEventPrototype]"
+PASS createEvent('textevent') should be initialized correctly. 
+FAIL TEXTEVENT should be an alias for CompositionEvent. assert_equals: expected object "[object CompositionEventPrototype]" but got object "[object TextEventPrototype]"
+PASS createEvent('TEXTEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "TextEvents" 
+FAIL TouchEvent should be an alias for TouchEvent. The operation is not supported.
 FAIL createEvent('TouchEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
-FAIL touchevent should be an alias for TouchEvent. NotSupportedError: DOM Exception 9
+FAIL touchevent should be an alias for TouchEvent. The operation is not supported.
 FAIL createEvent('touchevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
-FAIL TOUCHEVENT should be an alias for TouchEvent. NotSupportedError: DOM Exception 9
+FAIL TOUCHEVENT should be an alias for TouchEvent. The operation is not supported.
 FAIL createEvent('TOUCHEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "TouchEvents" 
+FAIL TrackEvent should be an alias for TrackEvent. The operation is not supported.
+FAIL createEvent('TrackEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL trackevent should be an alias for TrackEvent. The operation is not supported.
+FAIL createEvent('trackevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL TRACKEVENT should be an alias for TrackEvent. The operation is not supported.
+FAIL createEvent('TRACKEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "TrackEvents" 
+FAIL TransitionEvent should be an alias for TransitionEvent. The operation is not supported.
+FAIL createEvent('TransitionEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL transitionevent should be an alias for TransitionEvent. The operation is not supported.
+FAIL createEvent('transitionevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL TRANSITIONEVENT should be an alias for TransitionEvent. The operation is not supported.
+FAIL createEvent('TRANSITIONEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "TransitionEvents" 
 PASS UIEvent should be an alias for UIEvent. 
 PASS createEvent('UIEvent') should be initialized correctly. 
 PASS uievent should be an alias for UIEvent. 
@@ -71,5 +196,144 @@ PASS uievents should be an alias for UIEvent.
 PASS createEvent('uievents') should be initialized correctly. 
 PASS UIEVENTS should be an alias for UIEvent. 
 PASS createEvent('UIEVENTS') should be initialized correctly. 
+FAIL WebGLContextEvent should be an alias for WebGLContextEvent. The operation is not supported.
+FAIL createEvent('WebGLContextEvent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL webglcontextevent should be an alias for WebGLContextEvent. The operation is not supported.
+FAIL createEvent('webglcontextevent') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+FAIL WEBGLCONTEXTEVENT should be an alias for WebGLContextEvent. The operation is not supported.
+FAIL createEvent('WEBGLCONTEXTEVENT') should be initialized correctly. undefined is not an object (evaluating 'ev.type')
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "WebGLContextEvents" 
+PASS WheelEvent should be an alias for WheelEvent. 
+PASS createEvent('WheelEvent') should be initialized correctly. 
+PASS wheelevent should be an alias for WheelEvent. 
+PASS createEvent('wheelevent') should be initialized correctly. 
+PASS WHEELEVENT should be an alias for WheelEvent. 
+PASS createEvent('WHEELEVENT') should be initialized correctly. 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized legacy event interface "WheelEvents" 
 PASS Should throw NOT_SUPPORTED_ERR for unrecognized arguments 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "AnimationPlaybackEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "AnimationPlaybackEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "AnimationPlayerEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "AnimationPlayerEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ApplicationCacheErrorEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ApplicationCacheErrorEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "AudioProcessingEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "AudioProcessingEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "AutocompleteErrorEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "AutocompleteErrorEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "BeforeInstallPromptEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "BeforeInstallPromptEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "BlobEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "BlobEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ClipboardEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ClipboardEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "CommandEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "CommandEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "DataContainerEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "DataContainerEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ExtendableEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ExtendableEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ExtendableMessageEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ExtendableMessageEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "FetchEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "FetchEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "FontFaceSetLoadEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "FontFaceSetLoadEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "GamepadEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "GamepadEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "GeofencingEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "GeofencingEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "InstallEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "InstallEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "KeyEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "KeyEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MIDIConnectionEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MIDIConnectionEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MIDIMessageEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MIDIMessageEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MediaEncryptedEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MediaEncryptedEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MediaKeyEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MediaKeyEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MediaKeyMessageEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MediaKeyMessageEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MediaQueryListEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MediaQueryListEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MediaStreamEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MediaStreamEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MediaStreamTrackEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MediaStreamTrackEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MouseScrollEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MouseScrollEvents" 
+FAIL Should throw NOT_SUPPORTED_ERR for non-legacy event interface "MutationEvent" assert_throws: function "function () {
+        var evt = document.createEvent(eventInterface);
+      }" did not throw
+FAIL Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "MutationEvents" assert_throws: function "function () {
+        var evt = document.createEvent(eventInterface + "s");
+      }" did not throw
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "NotificationEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "NotificationEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "NotifyPaintEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "NotifyPaintEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "OfflineAudioCompletionEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "OfflineAudioCompletionEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "OrientationEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "OrientationEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "PageTransition" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "PageTransitions" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "PointerEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "PointerEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "PopUpEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "PopUpEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "PresentationConnectionAvailableEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "PresentationConnectionAvailableEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "PresentationConnectionCloseEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "PresentationConnectionCloseEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ProgressEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ProgressEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "PromiseRejectionEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "PromiseRejectionEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "PushEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "PushEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "RTCDTMFToneChangeEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "RTCDTMFToneChangeEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "RTCDataChannelEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "RTCDataChannelEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "RTCIceCandidateEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "RTCIceCandidateEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "RelatedEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "RelatedEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ResourceProgressEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ResourceProgressEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SVGEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SVGZoomEvent" 
+FAIL Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "SVGZoomEvents" assert_throws: function "function () {
+        var evt = document.createEvent(eventInterface + "s");
+      }" did not throw
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ScrollAreaEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ScrollAreaEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SecurityPolicyViolationEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "SecurityPolicyViolationEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ServicePortConnectEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ServicePortConnectEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "ServiceWorkerMessageEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "ServiceWorkerMessageEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SimpleGestureEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "SimpleGestureEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SpeechRecognitionError" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "SpeechRecognitionErrors" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SpeechRecognitionEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "SpeechRecognitionEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SpeechSynthesisEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "SpeechSynthesisEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "SyncEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "SyncEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "TimeEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "TimeEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "WebKitAnimationEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "WebKitAnimationEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "WebKitTransitionEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "WebKitTransitionEvents" 
+PASS Should throw NOT_SUPPORTED_ERR for non-legacy event interface "XULCommandEvent" 
+PASS Should throw NOT_SUPPORTED_ERR for pluralized non-legacy event interface "XULCommandEvents" 
 

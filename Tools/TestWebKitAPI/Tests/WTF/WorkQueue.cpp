@@ -35,6 +35,8 @@
 
 namespace TestWebKitAPI {
 
+using namespace std::literals::chrono_literals;
+
 static const char* simpleTestLabel = "simpleTest";
 static const char* longTestLabel = "longTest";
 static const char* thirdTestLabel = "thirdTest";
@@ -66,7 +68,7 @@ TEST(WTF_WorkQueue, Simple)
 
     queue->dispatch([&](void) {
         m_functionCallOrder.append(longTestLabel);
-        std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+        std::this_thread::sleep_for(100ns);
         calledLongTest = true;
     });
 
@@ -120,7 +122,7 @@ TEST(WTF_WorkQueue, TwoQueues)
     });
 
     queue2->dispatch([&](void) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(50ms);
 
         LockHolder locker(m_lock);
 
@@ -178,7 +180,7 @@ TEST(WTF_WorkQueue, DispatchAfter)
         m_testCompleted.notifyOne();
     });
 
-    queue->dispatchAfter(std::chrono::milliseconds(500), [&](void) {
+    queue->dispatchAfter(500_ms, [&](void) {
         LockHolder locker(m_lock);
         m_functionCallOrder.append(dispatchAfterLabel);
         calledDispatchAfterTest = true;
@@ -198,6 +200,39 @@ TEST(WTF_WorkQueue, DispatchAfter)
     EXPECT_EQ(static_cast<size_t>(2), m_functionCallOrder.size());
     EXPECT_STREQ(simpleTestLabel, m_functionCallOrder[0].c_str());
     EXPECT_STREQ(dispatchAfterLabel, m_functionCallOrder[1].c_str());
+}
+
+TEST(WTF_WorkQueue, DestroyOnSelf)
+{
+    Lock lock;
+    Condition dispatchAfterTestStarted;
+    Condition dispatchAfterTestCompleted;
+    bool started = false;
+    bool completed = false;
+
+    {
+        LockHolder locker(lock);
+        {
+            auto queue = WorkQueue::create("com.apple.WebKit.Test.dispatchAfter");
+            queue->dispatchAfter(500_ms, [&](void) {
+                LockHolder locker(lock);
+                dispatchAfterTestStarted.wait(lock, [&] {
+                    return started;
+                });
+                completed = true;
+                dispatchAfterTestCompleted.notifyOne();
+            });
+        }
+        started = true;
+        dispatchAfterTestStarted.notifyOne();
+    }
+    {
+        LockHolder locker(lock);
+        dispatchAfterTestCompleted.wait(lock, [&] {
+            return completed;
+        });
+        WTF::sleep(0.1);
+    }
 }
 
 } // namespace TestWebKitAPI

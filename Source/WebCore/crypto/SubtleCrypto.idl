@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,20 +23,24 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+enum KeyFormat { "raw", "spki", "pkcs8", "jwk" };
+
 [
     Conditional=SUBTLE_CRYPTO,
-    InterfaceName=WebKitSubtleCrypto,
-    GenerateIsReachable=ImplDocument,
-    NoInterfaceObject,
+    Exposed=(Window,Worker),
+    GenerateIsReachable=ImplScriptExecutionContext,
 ] interface SubtleCrypto {
-    [Custom] Promise encrypt(AlgorithmIdentifier algorithm, Key key, sequence<CryptoOperationData> data);
-    [Custom] Promise decrypt(AlgorithmIdentifier algorithm, Key key, sequence<CryptoOperationData> data);
-    [Custom] Promise sign(AlgorithmIdentifier algorithm, Key key, sequence<CryptoOperationData> data);
-    [Custom] Promise verify(AlgorithmIdentifier algorithm, Key key, CryptoOperationData signature, sequence<CryptoOperationData> data);
-    [Custom] Promise digest(AlgorithmIdentifier algorithm, sequence<CryptoOperationData> data);
-    [Custom] Promise generateKey(AlgorithmIdentifier algorithm, optional boolean extractable, optional sequence<KeyUsage> keyUsages);
-    [Custom] Promise importKey(KeyFormat format, CryptoOperationData keyData, AlgorithmIdentifier? algorithm, optional boolean extractable, optional sequence<KeyUsage> keyUsages);
-    [Custom] Promise exportKey(KeyFormat format, Key key);
-    [Custom] Promise wrapKey(KeyFormat format, Key key, Key wrappingKey, AlgorithmIdentifier wrapAlgorithm);
-    [Custom] Promise unwrapKey(KeyFormat format, CryptoOperationData wrappedKey, Key unwrappingKey, AlgorithmIdentifier unwrapAlgorithm, AlgorithmIdentifier? unwrappedKeyAlgorithm, optional boolean extractable, optional sequence<KeyUsage> keyUsages);
+    [Custom] Promise<any> encrypt(AlgorithmIdentifier algorithm, CryptoKey key, BufferSource data);
+    [Custom] Promise<any> decrypt(AlgorithmIdentifier algorithm, CryptoKey key, BufferSource data);
+    [Custom] Promise<any> sign(AlgorithmIdentifier algorithm, CryptoKey key, BufferSource data);
+    [Custom] Promise<any> verify(AlgorithmIdentifier algorithm, CryptoKey key, BufferSource signature, BufferSource data);
+    [Custom] Promise<any> digest(AlgorithmIdentifier algorithm, BufferSource data);
+    [Custom] Promise<any> deriveKey(AlgorithmIdentifier algorithm, CryptoKey baseKey, AlgorithmIdentifier derivedKeyType, boolean extractable, sequence<KeyUsage> keyUsages);
+    [Custom] Promise<ArrayBuffer> deriveBits(AlgorithmIdentifier algorithm, CryptoKey baseKey, unsigned long length);
+    // FIXME: Should this return a Promise<(CryptoKey or CryptoKeyPair)>?
+    [Custom] Promise<any> generateKey(AlgorithmIdentifier algorithm, boolean extractable, sequence<CryptoKeyUsage> keyUsages);
+    [Custom] Promise<CryptoKey> importKey(KeyFormat format, (BufferSource or JsonWebKey) keyData, AlgorithmIdentifier algorithm, boolen extractable, sequence<CryptoKeyUsage> keyUsages);
+    [Custom] Promise<any> exportKey(KeyFormat format, CryptoKey key);
+    [Custom] Promise<any> wrapKey(KeyFormat format, CryptoKey key, CryptoKey wrappingKey, AlgorithmIdentifier wrapAlgorithm);
+    [Custom] Promise<CryptoKey> unwrapKey(KeyFormat format, BufferSource wrappedKey, CryptoKey unwrappingKey, AlgorithmIdentifier unwrapAlgorithm, AlgorithmIdentifier unwrappedKeyAlgorithm, boolean extractable, sequence<KeyUsage> keyUsages);
 };

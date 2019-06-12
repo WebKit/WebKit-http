@@ -26,17 +26,12 @@
 #include "config.h"
 #import "PlatformCAFilters.h"
 
-#import "BlockExceptions.h"
 #import "FloatConversion.h"
 #import "LengthFunctions.h" // This is a layering violation.
 #import "PlatformCALayerCocoa.h"
 #import "QuartzCoreSPI.h"
 #import <QuartzCore/QuartzCore.h>
-
-#if ENABLE(FILTERS_LEVEL_2)
-@interface CABackdropLayer : CALayer
-@end
-#endif
+#import <wtf/BlockObjCExceptions.h>
 
 using namespace WebCore;
 
@@ -163,7 +158,7 @@ void PlatformCAFilters::setFiltersOnLayer(PlatformLayer* layer, const FilterOper
             [filter setValue:[NSNumber numberWithFloat:floatValueForLength(blurOperation.stdDeviation(), 0)] forKey:@"inputRadius"];
 #if ENABLE(FILTERS_LEVEL_2)
             if ([layer isKindOfClass:[CABackdropLayer class]])
-                [filter setValue:[NSNumber numberWithBool:YES] forKey:@"inputNormalizeEdges"];
+                [filter setValue:@YES forKey:@"inputNormalizeEdges"];
 #endif
             [filter setName:filterName];
             [array.get() addObject:filter];

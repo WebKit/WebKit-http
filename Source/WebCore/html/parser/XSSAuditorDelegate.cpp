@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 Google, Inc. All Rights Reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,8 +34,8 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLParserIdioms.h"
+#include "NavigationScheduler.h"
 #include "PingLoader.h"
-#include "SecurityOrigin.h"
 #include <inspector/InspectorValues.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/CString.h>
@@ -45,7 +46,6 @@ namespace WebCore {
 
 XSSAuditorDelegate::XSSAuditorDelegate(Document& document)
     : m_document(document)
-    , m_didSendNotifications(false)
 {
     ASSERT(isMainThread());
 }
@@ -61,32 +61,30 @@ static inline String buildConsoleError(const XSSInfo& xssInfo)
     message.append(xssInfo.m_didBlockEntirePage ? "the source code of a script" : "its source code");
     message.appendLiteral(" was found within the request.");
 
-    if (xssInfo.m_didSendCSPHeader)
-        message.appendLiteral(" The server sent a 'Content-Security-Policy' header requesting this behavior.");
-    else if (xssInfo.m_didSendXSSProtectionHeader)
+    if (xssInfo.m_didSendXSSProtectionHeader)
         message.appendLiteral(" The server sent an 'X-XSS-Protection' header requesting this behavior.");
     else
-        message.appendLiteral(" The auditor was enabled as the server sent neither an 'X-XSS-Protection' nor 'Content-Security-Policy' header.");
+        message.appendLiteral(" The auditor was enabled because the server did not send an 'X-XSS-Protection' header.");
 
     return message.toString();
 }
 
-PassRefPtr<FormData> XSSAuditorDelegate::generateViolationReport(const XSSInfo& xssInfo)
+Ref<FormData> XSSAuditorDelegate::generateViolationReport(const XSSInfo& xssInfo)
 {
     ASSERT(isMainThread());
 
-    FrameLoader& frameLoader = m_document.frame()->loader();
+    auto& frameLoader = m_document.frame()->loader();
     String httpBody;
     if (frameLoader.documentLoader()) {
-        if (FormData* formData = frameLoader.documentLoader()->originalRequest().httpBody())
+        if (auto* formData = frameLoader.documentLoader()->originalRequest().httpBody())
             httpBody = formData->flattenToString();
     }
 
-    Ref<InspectorObject> reportDetails = InspectorObject::create();
+    auto reportDetails = InspectorObject::create();
     reportDetails->setString("request-url", xssInfo.m_originalURL);
     reportDetails->setString("request-body", httpBody);
 
-    Ref<InspectorObject> reportObject = InspectorObject::create();
+    auto reportObject = InspectorObject::create();
     reportObject->setObject("xss-report", WTFMove(reportDetails));
 
     return FormData::create(reportObject->toJSONString().utf8().data());

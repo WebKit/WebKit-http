@@ -21,11 +21,11 @@
 #include "config.h"
 #include "StyleSheetList.h"
 
-#include "AuthorStyleSheets.h"
 #include "CSSStyleSheet.h"
 #include "Document.h"
 #include "HTMLNames.h"
 #include "HTMLStyleElement.h"
+#include "StyleScope.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -45,12 +45,12 @@ inline const Vector<RefPtr<StyleSheet>>& StyleSheetList::styleSheets() const
 {
     if (!m_document)
         return m_detachedStyleSheets;
-    return m_document->authorStyleSheets().styleSheetsForStyleSheetList();
+    return m_document->styleScope().styleSheetsForStyleSheetList();
 }
 
 void StyleSheetList::detachFromDocument()
 {
-    m_detachedStyleSheets = m_document->authorStyleSheets().styleSheetsForStyleSheetList();
+    m_detachedStyleSheets = m_document->styleScope().styleSheetsForStyleSheetList();
     m_document = nullptr;
 }
 
@@ -65,7 +65,7 @@ StyleSheet* StyleSheetList::item(unsigned index)
     return index < sheets.size() ? sheets[index].get() : 0;
 }
 
-HTMLStyleElement* StyleSheetList::getNamedItem(const String& name) const
+CSSStyleSheet* StyleSheetList::namedItem(const AtomicString& name) const
 {
     if (!m_document)
         return nullptr;
@@ -77,7 +77,7 @@ HTMLStyleElement* StyleSheetList::getNamedItem(const String& name) const
     // But unicity of stylesheet ids is good practice anyway ;)
     Element* element = m_document->getElementById(name);
     if (is<HTMLStyleElement>(element))
-        return downcast<HTMLStyleElement>(element);
+        return downcast<HTMLStyleElement>(element)->sheet();
     return nullptr;
 }
 

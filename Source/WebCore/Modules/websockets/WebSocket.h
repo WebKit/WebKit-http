@@ -28,37 +28,44 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebSocket_h
-#define WebSocket_h
+#pragma once
 
 #if ENABLE(WEB_SOCKETS)
 
 #include "ActiveDOMObject.h"
-#include "EventListener.h"
 #include "EventTarget.h"
+#include "ExceptionOr.h"
+#include "Timer.h"
 #include "URL.h"
-#include "WebSocketChannel.h"
 #include "WebSocketChannelClient.h"
-#include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/Deque.h>
+#include <wtf/HashSet.h>
+#include <wtf/Lock.h>
+
+namespace JSC {
+class ArrayBuffer;
+class ArrayBufferView;
+}
 
 namespace WebCore {
 
 class Blob;
-class CloseEvent;
 class ThreadableWebSocketChannel;
 
-class WebSocket final : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, public WebSocketChannelClient {
+class WebSocket final : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, private WebSocketChannelClient {
 public:
     static void setIsAvailable(bool);
     static bool isAvailable();
-    static const char* subProtocolSeperator();
-    static Ref<WebSocket> create(ScriptExecutionContext&);
-    static RefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, ExceptionCode&);
-    static RefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, const String& protocol, ExceptionCode&);
-    static RefPtr<WebSocket> create(ScriptExecutionContext&, const String& url, const Vector<String>& protocols, ExceptionCode&);
+
+    static const char* subprotocolSeparator();
+
+    static ExceptionOr<Ref<WebSocket>> create(ScriptExecutionContext&, const String& url);
+    static ExceptionOr<Ref<WebSocket>> create(ScriptExecutionContext&, const String& url, const String& protocol);
+    static ExceptionOr<Ref<WebSocket>> create(ScriptExecutionContext&, const String& url, const Vector<String>& protocols);
     virtual ~WebSocket();
+
+    static HashSet<WebSocket*>& allActiveWebSockets(const LockHolder&);
+    static StaticLock& allActiveWebSocketsMutex();
 
     enum State {
         CONNECTING = 0,
@@ -67,44 +74,33 @@ public:
         CLOSED = 3
     };
 
-    void connect(const String& url, ExceptionCode&);
-    void connect(const String& url, const String& protocol, ExceptionCode&);
-    void connect(const String& url, const Vector<String>& protocols, ExceptionCode&);
+    ExceptionOr<void> connect(const String& url);
+    ExceptionOr<void> connect(const String& url, const String& protocol);
+    ExceptionOr<void> connect(const String& url, const Vector<String>& protocols);
 
-    void send(const String& message, ExceptionCode&);
-    void send(JSC::ArrayBuffer*, ExceptionCode&);
-    void send(JSC::ArrayBufferView*, ExceptionCode&);
-    void send(Blob*, ExceptionCode&);
+    ExceptionOr<void> send(const String& message);
+    ExceptionOr<void> send(JSC::ArrayBuffer&);
+    ExceptionOr<void> send(JSC::ArrayBufferView&);
+    ExceptionOr<void> send(Blob&);
 
-    void close(int code, const String& reason, ExceptionCode&);
-    void close(ExceptionCode& ec) { close(WebSocketChannel::CloseEventCodeNotSpecified, String(), ec); }
-    void close(int code, ExceptionCode& ec) { close(code, String(), ec); }
+    ExceptionOr<void> close(std::optional<unsigned short> code, const String& reason);
+
+    RefPtr<ThreadableWebSocketChannel> channel() const;
 
     const URL& url() const;
     State readyState() const;
-    unsigned long bufferedAmount() const;
+    unsigned bufferedAmount() const;
 
     String protocol() const;
     String extensions() const;
 
     String binaryType() const;
-    void setBinaryType(const String&);
+    ExceptionOr<void> setBinaryType(const String&);
 
-    // EventTarget functions.
-    virtual EventTargetInterface eventTargetInterface() const override;
-    virtual ScriptExecutionContext* scriptExecutionContext() const override;
+    ScriptExecutionContext* scriptExecutionContext() const final;
 
-    using RefCounted<WebSocket>::ref;
-    using RefCounted<WebSocket>::deref;
-
-    // WebSocketChannelClient functions.
-    virtual void didConnect() override;
-    virtual void didReceiveMessage(const String& message) override;
-    virtual void didReceiveBinaryData(Vector<char>&&) override;
-    virtual void didReceiveMessageError() override;
-    virtual void didUpdateBufferedAmount(unsigned long bufferedAmount) override;
-    virtual void didStartClosingHandshake() override;
-    virtual void didClose(unsigned long unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) override;
+    using RefCounted::ref;
+    using RefCounted::deref;
 
 private:
     explicit WebSocket(ScriptExecutionContext&);
@@ -113,31 +109,38 @@ private:
     void dispatchOrQueueErrorEvent();
     void dispatchOrQueueEvent(Ref<Event>&&);
 
-    // ActiveDOMObject API.
-    void contextDestroyed() override;
-    bool canSuspendForDocumentSuspension() const override;
-    void suspend(ReasonForSuspension) override;
-    void resume() override;
-    void stop() override;
-    const char* activeDOMObjectName() const override;
+    void contextDestroyed() final;
+    bool canSuspendForDocumentSuspension() const final;
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
+    void stop() final;
+    const char* activeDOMObjectName() const final;
 
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    EventTargetInterface eventTargetInterface() const final;
+
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
+
+    void didConnect() final;
+    void didReceiveMessage(const String& message) final;
+    void didReceiveBinaryData(Vector<uint8_t>&&) final;
+    void didReceiveMessageError() final;
+    void didUpdateBufferedAmount(unsigned bufferedAmount) final;
+    void didStartClosingHandshake() final;
+    void didClose(unsigned unhandledBufferedAmount, ClosingHandshakeCompletionStatus, unsigned short code, const String& reason) final;
+    void didUpgradeURL() final;
 
     size_t getFramingOverhead(size_t payloadSize);
 
-    enum BinaryType {
-        BinaryTypeBlob,
-        BinaryTypeArrayBuffer
-    };
+    enum class BinaryType { Blob, ArrayBuffer };
 
     RefPtr<ThreadableWebSocketChannel> m_channel;
 
-    State m_state;
+    State m_state { CONNECTING };
     URL m_url;
-    unsigned long m_bufferedAmount;
-    unsigned long m_bufferedAmountAfterClose;
-    BinaryType m_binaryType;
+    unsigned m_bufferedAmount { 0 };
+    unsigned m_bufferedAmountAfterClose { 0 };
+    BinaryType m_binaryType { BinaryType::Blob };
     String m_subprotocol;
     String m_extensions;
 
@@ -150,5 +153,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(WEB_SOCKETS)
-
-#endif // WebSocket_h

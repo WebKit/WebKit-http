@@ -29,7 +29,6 @@
 #if PLATFORM(COCOA)
 
 #include "APIObject.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace API {
@@ -50,10 +49,10 @@ class WebArchive : public API::ObjectImpl<API::Object::Type::WebArchive> {
 public:
     virtual ~WebArchive();
 
-    static Ref<WebArchive> create(WebArchiveResource* mainResource, PassRefPtr<API::Array> subresources, PassRefPtr<API::Array> subframeArchives);
+    static Ref<WebArchive> create(WebArchiveResource* mainResource, RefPtr<API::Array>&& subresources, RefPtr<API::Array>&& subframeArchives);
     static Ref<WebArchive> create(API::Data*);
-    static Ref<WebArchive> create(PassRefPtr<WebCore::LegacyWebArchive>);
-    static Ref<WebArchive> create(WebCore::Range*);
+    static Ref<WebArchive> create(RefPtr<WebCore::LegacyWebArchive>&&);
+    static Ref<WebArchive> create(WebCore::Range&);
 
     WebArchiveResource* mainResource();
     API::Array* subresources();
@@ -64,9 +63,9 @@ public:
     WebCore::LegacyWebArchive* coreLegacyWebArchive();
 
 private:
-    WebArchive(WebArchiveResource* mainResource, PassRefPtr<API::Array> subresources, PassRefPtr<API::Array> subframeArchives);
+    WebArchive(WebArchiveResource* mainResource, RefPtr<API::Array>&& subresources, RefPtr<API::Array>&& subframeArchives);
     WebArchive(API::Data*);
-    WebArchive(PassRefPtr<WebCore::LegacyWebArchive>);
+    WebArchive(RefPtr<WebCore::LegacyWebArchive>&&);
 
     RefPtr<WebCore::LegacyWebArchive> m_legacyWebArchive;
     RefPtr<WebArchiveResource> m_cachedMainResource;

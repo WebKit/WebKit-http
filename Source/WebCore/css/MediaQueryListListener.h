@@ -17,9 +17,9 @@
  *  Boston, MA 02110-1301, USA.
  */
 
-#ifndef MediaQueryListListener_h
-#define MediaQueryListListener_h
+#pragma once
 
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -32,7 +32,7 @@ public:
         JSMediaQueryListListenerType
     };
 
-    virtual bool queryChanged(MediaQueryList*) = 0;
+    virtual CallbackResult<void> handleEvent(MediaQueryList&) = 0;
     virtual bool operator==(const MediaQueryListListener&) const = 0;
     virtual ~MediaQueryListListener() { }
 
@@ -49,5 +49,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // MediaQueryListListener_h

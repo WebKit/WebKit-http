@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CanvasRenderingContext_h
-#define CanvasRenderingContext_h
+#pragma once
 
 #include "GraphicsLayer.h"
 #include "HTMLCanvasElement.h"
 #include "ScriptWrappable.h"
-#include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/StringHash.h>
 
@@ -47,21 +45,25 @@ class CanvasRenderingContext : public ScriptWrappable {
 public:
     virtual ~CanvasRenderingContext() { }
 
-    void ref() { m_canvas->ref(); }
-    void deref() { m_canvas->deref(); }
-    HTMLCanvasElement* canvas() const { return m_canvas; }
+    void ref() { m_canvas.ref(); }
+    void deref() { m_canvas.deref(); }
+    HTMLCanvasElement& canvas() const { return m_canvas; }
 
     virtual bool is2d() const { return false; }
     virtual bool isWebGL1() const { return false; }
     virtual bool isWebGL2() const { return false; }
-    bool is3d() const { return isWebGL1() || isWebGL1(); }
+    bool isWebGL() const { return isWebGL1() || isWebGL2(); }
+#if ENABLE(WEBGPU)
+    virtual bool isWebGPU() const { return false; }
+#endif
+    virtual bool isGPUBased() const { return false; }
     virtual bool isAccelerated() const { return false; }
 
     virtual void paintRenderingResultsToCanvas() {}
     virtual PlatformLayer* platformLayer() const { return 0; }
 
 protected:
-    CanvasRenderingContext(HTMLCanvasElement*);
+    CanvasRenderingContext(HTMLCanvasElement&);
     bool wouldTaintOrigin(const CanvasPattern*);
     bool wouldTaintOrigin(const HTMLCanvasElement*);
     bool wouldTaintOrigin(const HTMLImageElement*);
@@ -71,12 +73,12 @@ protected:
     template<class T> void checkOrigin(const T* arg)
     {
         if (wouldTaintOrigin(arg))
-            canvas()->setOriginTainted();
+            canvas().setOriginTainted();
     }
     void checkOrigin(const URL&);
 
 private:
-    HTMLCanvasElement* m_canvas;
+    HTMLCanvasElement& m_canvas;
 };
 
 } // namespace WebCore
@@ -85,5 +87,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
     static bool isType(const WebCore::CanvasRenderingContext& context) { return context.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

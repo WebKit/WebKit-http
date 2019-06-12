@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGCommonData_h
-#define DFGCommonData_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -35,7 +34,6 @@
 #include "InlineCallFrameSet.h"
 #include "JSCell.h"
 #include "ProfilerCompilation.h"
-#include "SymbolTable.h"
 #include <wtf/Bag.h>
 #include <wtf/Noncopyable.h>
 
@@ -77,6 +75,7 @@ public:
         , frameRegisterCount(std::numeric_limits<unsigned>::max())
         , requiredRegisterCountForExit(std::numeric_limits<unsigned>::max())
     { }
+    ~CommonData();
     
     void notifyCompilingStructureTransition(Plan&, CodeBlock*, Node*);
     CallSiteIndex addCodeOrigin(CodeOrigin);
@@ -87,7 +86,10 @@ public:
     void shrinkToFit();
     
     bool invalidate(); // Returns true if we did invalidate, or false if the code block was already invalidated.
-    
+    bool hasInstalledVMTrapsBreakpoints() const { return isStillValid && hasVMTrapsBreakpointsInstalled; }
+    void installVMTrapBreakpoints(CodeBlock* owner);
+    bool isVMTrapBreakpoint(void* address);
+
     unsigned requiredRegisterCountForExecutionAndExit() const
     {
         return std::max(frameRegisterCount, requiredRegisterCountForExit);
@@ -113,6 +115,7 @@ public:
     bool livenessHasBeenProved; // Initialized and used on every GC.
     bool allTransitionsHaveBeenMarked; // Initialized and used on every GC.
     bool isStillValid;
+    bool hasVMTrapsBreakpointsInstalled { false };
     
 #if USE(JSVALUE32_64)
     std::unique_ptr<Bag<double>> doubleConstants;
@@ -126,9 +129,8 @@ private:
 
 };
 
+CodeBlock* codeBlockForVMTrapPC(void* pc);
+
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGCommonData_h
-

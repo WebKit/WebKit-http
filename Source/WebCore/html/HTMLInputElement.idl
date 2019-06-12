@@ -19,7 +19,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-interface HTMLInputElement : HTMLElement {
+[
+    ExportMacro=WEBCORE_EXPORT,
+    JSGenerateToNativeObject,
+] interface HTMLInputElement : HTMLElement {
     [Reflect] attribute DOMString accept;
     [Reflect] attribute DOMString alt;
     attribute DOMString autocomplete;
@@ -29,17 +32,20 @@ interface HTMLInputElement : HTMLElement {
     [Reflect] attribute DOMString dirName;
     [Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
-    attribute FileList files;
-    attribute DOMString formAction;
-    [TreatNullAs=NullString] attribute DOMString formEnctype;
-    [TreatNullAs=NullString] attribute DOMString formMethod;
+    attribute FileList? files;
+    attribute USVString formAction;
+
+    attribute DOMString formEnctype;
+    attribute DOMString formMethod;
+
     [Reflect] attribute boolean formNoValidate;
     [Reflect] attribute DOMString formTarget;
     attribute unsigned long height;
     attribute boolean indeterminate;
     [Conditional=DATALIST_ELEMENT] readonly attribute HTMLElement list;
     [Reflect] attribute DOMString max;
-    [SetterRaisesException] attribute long maxLength;
+    [SetterMayThrowException] attribute long minLength;
+    [SetterMayThrowException] attribute long maxLength;
     [Reflect] attribute DOMString min;
     [Reflect] attribute boolean multiple;
     [Reflect] attribute DOMString name;
@@ -47,81 +53,43 @@ interface HTMLInputElement : HTMLElement {
     [Reflect] attribute DOMString placeholder;
     [Reflect] attribute boolean readOnly;
     [Reflect] attribute boolean required;
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ObjCImplementedAsUnsignedLong] attribute DOMString size; // DOM level 2 changed this to a long, but ObjC API is a string
-#else
-    [SetterRaisesException] attribute unsigned long size; // Changed string -> long -> unsigned long
-#endif
-    [Reflect, URL] attribute DOMString src;
+    [SetterMayThrowException] attribute unsigned long size;
+    [Reflect, URL] attribute USVString src;
     [Reflect] attribute DOMString step;
     attribute DOMString type; // readonly dropped as part of DOM level 2
     attribute DOMString defaultValue;
     // See the discussion in https://bugs.webkit.org/show_bug.cgi?id=100085
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [TreatNullAs=NullString, SetterRaisesException] attribute DOMString value;
-#else
-    [TreatNullAs=NullString] attribute DOMString value;
-#endif
-    [SetterRaisesException] attribute Date valueAsDate;
-    [SetterRaisesException] attribute unrestricted double valueAsNumber;
+    [SetterMayThrowException] attribute [TreatNullAs=EmptyString] DOMString value;
+    [SetterMayThrowException] attribute Date? valueAsDate;
+    [SetterMayThrowException] attribute unrestricted double valueAsNumber;
 
-    [RaisesException] void stepUp(optional long n = 1);
-    [RaisesException] void stepDown(optional long n = 1);
+    [MayThrowException] void stepUp(optional long n = 1);
+    [MayThrowException] void stepDown(optional long n = 1);
 
     attribute unsigned long width;
     readonly attribute boolean willValidate;
     readonly attribute ValidityState validity;
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
-    void setCustomValidity([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString error);
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
+    void setCustomValidity(DOMString error);
 
     readonly attribute NodeList labels;
 
     void select();
-    [Custom] attribute long selectionStart;
-    [Custom] attribute long selectionEnd;
-    [Custom] attribute DOMString selectionDirection;
+    [ImplementedAs=selectionStartForBindings, GetterMayThrowException, SetterMayThrowException] attribute long selectionStart;
+    [ImplementedAs=selectionEndForBindings, GetterMayThrowException, SetterMayThrowException]  attribute long selectionEnd;
+    [ImplementedAs=selectionDirectionForBindings, GetterMayThrowException, SetterMayThrowException]  attribute DOMString selectionDirection;
 
-    [RaisesException] void setRangeText(DOMString replacement);
-    [RaisesException] void setRangeText(DOMString replacement,
-                        unsigned long start,
-                        unsigned long end,
-                        [Default=NullString] optional DOMString selectionMode);
+    [MayThrowException] void setRangeText(DOMString replacement);
+    [MayThrowException] void setRangeText(DOMString replacement, unsigned long start, unsigned long end, optional DOMString selectionMode);
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Custom] void setSelectionRange(long start, long end);
-#else
-    [Custom] void setSelectionRange([Default=Undefined] optional long start, 
-                                    [Default=Undefined] optional long end, 
-                                    optional DOMString direction);
-#endif
+    [ImplementedAs=setSelectionRangeForBindings, MayThrowException]  void setSelectionRange(long start, long end, optional DOMString direction);
 
-    // Non-standard attributes
     [Reflect] attribute DOMString align;
     [Reflect] attribute DOMString useMap;
     [Reflect] attribute boolean incremental;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString accessKey;
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    void click();
-#endif
-
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
-    void setValueForUser([TreatNullAs=NullString] DOMString value);
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extension:
-    readonly attribute DOMString altDisplayString;
-    readonly attribute URL absoluteImageURL;
-#endif
-
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=NullString] attribute DOMString autocapitalize;
-
     // See http://www.w3.org/TR/html-media-capture/
-    [Conditional=MEDIA_CAPTURE, Reflect] attribute boolean capture;
+    [Conditional=MEDIA_CAPTURE, Reflect] attribute DOMString capture;
 };

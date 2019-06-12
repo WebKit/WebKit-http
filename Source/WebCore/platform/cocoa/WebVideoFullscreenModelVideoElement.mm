@@ -28,25 +28,22 @@
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #import "WebVideoFullscreenModelVideoElement.h"
 
-#import "DOMEventInternal.h"
+#import "DOMWindow.h"
+#import "History.h"
 #import "Logging.h"
 #import "MediaControlsHost.h"
-#import "WebVideoFullscreenInterface.h"
+#import "WebPlaybackSessionModelMediaElement.h"
 #import <QuartzCore/CoreAnimation.h>
-#import <WebCore/DOMEventListener.h>
 #import <WebCore/Event.h>
 #import <WebCore/EventListener.h>
 #import <WebCore/EventNames.h>
 #import <WebCore/HTMLElement.h>
 #import <WebCore/HTMLVideoElement.h>
 #import <WebCore/Page.h>
-#import <WebCore/PageGroup.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/TextTrackList.h>
 #import <WebCore/TimeRanges.h>
 #import <wtf/NeverDestroyed.h>
-#import <wtf/RetainPtr.h>
-
+#import <wtf/SoftLinking.h>
 
 using namespace WebCore;
 
@@ -59,54 +56,29 @@ WebVideoFullscreenModelVideoElement::~WebVideoFullscreenModelVideoElement()
 {
 }
 
-void WebVideoFullscreenModelVideoElement::setWebVideoFullscreenInterface(WebVideoFullscreenInterface* interface)
-{
-    if (interface == m_videoFullscreenInterface)
-        return;
-
-    m_videoFullscreenInterface = interface;
-
-    if (m_videoFullscreenInterface) {
-        m_videoFullscreenInterface->resetMediaState();
-        if (m_videoElement) {
-            m_videoFullscreenInterface->setVideoDimensions(true, m_videoElement->videoWidth(), m_videoElement->videoHeight());
-            m_videoFullscreenInterface->setWirelessVideoPlaybackDisabled(m_videoElement->mediaSession().wirelessVideoPlaybackDisabled(*m_videoElement));
-        }
-    }
-}
-
 void WebVideoFullscreenModelVideoElement::setVideoElement(HTMLVideoElement* videoElement)
 {
     if (m_videoElement == videoElement)
         return;
-
-    if (m_videoFullscreenInterface)
-        m_videoFullscreenInterface->resetMediaState();
 
     if (m_videoElement && m_videoElement->videoFullscreenLayer())
         m_videoElement->setVideoFullscreenLayer(nullptr);
 
     if (m_videoElement && m_isListening) {
         for (auto& eventName : observedEventNames())
-            m_videoElement->removeEventListener(eventName, this, false);
+            m_videoElement->removeEventListener(eventName, *this, false);
     }
     m_isListening = false;
 
     m_videoElement = videoElement;
 
-    if (!m_videoElement)
-        return;
-
-    for (auto& eventName : observedEventNames())
-        m_videoElement->addEventListener(eventName, this, false);
-    m_isListening = true;
+    if (m_videoElement) {
+        for (auto& eventName : observedEventNames())
+            m_videoElement->addEventListener(eventName, *this, false);
+        m_isListening = true;
+    }
 
     updateForEventName(eventNameAll());
-
-    if (m_videoFullscreenInterface) {
-        m_videoFullscreenInterface->setVideoDimensions(true, videoElement->videoWidth(), videoElement->videoHeight());
-        m_videoFullscreenInterface->setWirelessVideoPlaybackDisabled(m_videoElement->mediaSession().wirelessVideoPlaybackDisabled(*m_videoElement));
-    }
 }
 
 void WebVideoFullscreenModelVideoElement::handleEvent(WebCore::ScriptExecutionContext*, WebCore::Event* event)
@@ -116,68 +88,24 @@ void WebVideoFullscreenModelVideoElement::handleEvent(WebCore::ScriptExecutionCo
 
 void WebVideoFullscreenModelVideoElement::updateForEventName(const WTF::AtomicString& eventName)
 {
-    if (!m_videoElement || !m_videoFullscreenInterface)
+    if (m_clients.isEmpty())
         return;
     
     bool all = eventName == eventNameAll();
 
     if (all
-        || eventName == eventNames().durationchangeEvent) {
-        m_videoFullscreenInterface->setDuration(m_videoElement->duration());
-        // These is no standard event for minFastReverseRateChange; duration change is a reasonable proxy for it.
-        // It happens every time a new item becomes ready to play.
-        m_videoFullscreenInterface->setCanPlayFastReverse(m_videoElement->minFastReverseRate() < 0.0);
-    }
-
-    if (all
-        || eventName == eventNames().pauseEvent
-        || eventName == eventNames().playEvent
-        || eventName == eventNames().ratechangeEvent)
-        m_videoFullscreenInterface->setRate(!m_videoElement->paused(), m_videoElement->playbackRate());
-
-    if (all
-        || eventName == eventNames().timeupdateEvent) {
-        m_videoFullscreenInterface->setCurrentTime(m_videoElement->currentTime(), [[NSProcessInfo processInfo] systemUptime]);
-        m_videoFullscreenInterface->setBufferedTime(m_videoElement->maxBufferedTime());
-        // FIXME: 130788 - find a better event to update seekable ranges from.
-        m_videoFullscreenInterface->setSeekableRanges(*m_videoElement->seekable());
-    }
-
-    if (all
-        || eventName == eventNames().addtrackEvent
-        || eventName == eventNames().removetrackEvent)
-        updateLegibleOptions();
-    
-    if (all
-        || eventName == eventNames().resizeEvent)
-        m_videoFullscreenInterface->setVideoDimensions(true, m_videoElement->videoWidth(), m_videoElement->videoHeight());
-
-    if (all
-        || eventName == eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent) {
-        bool enabled = m_videoElement->webkitCurrentPlaybackTargetIsWireless();
-        WebVideoFullscreenInterface::ExternalPlaybackTargetType targetType = WebVideoFullscreenInterface::TargetTypeNone;
-        String localizedDeviceName;
-
-        if (m_videoElement->mediaControlsHost()) {
-            static NeverDestroyed<String> airplay(ASCIILiteral("airplay"));
-            static NeverDestroyed<String> tvout(ASCIILiteral("tvout"));
-            
-            String type = m_videoElement->mediaControlsHost()->externalDeviceType();
-            if (type == airplay)
-                targetType = WebVideoFullscreenInterface::TargetTypeAirPlay;
-            else if (type == tvout)
-                targetType = WebVideoFullscreenInterface::TargetTypeTVOut;
-            localizedDeviceName = m_videoElement->mediaControlsHost()->externalDeviceDisplayName();
-        }
-        m_videoFullscreenInterface->setExternalPlayback(enabled, targetType, localizedDeviceName);
-        m_videoFullscreenInterface->setWirelessVideoPlaybackDisabled(m_videoElement->mediaSession().wirelessVideoPlaybackDisabled(*m_videoElement));
+        || eventName == eventNames().resizeEvent) {
+        setHasVideo(m_videoElement);
+        setVideoDimensions(m_videoElement ? FloatSize(m_videoElement->videoWidth(), m_videoElement->videoHeight()) : FloatSize());
     }
 }
 
-void WebVideoFullscreenModelVideoElement::setVideoFullscreenLayer(PlatformLayer* videoLayer)
+void WebVideoFullscreenModelVideoElement::setVideoFullscreenLayer(PlatformLayer* videoLayer, WTF::Function<void()>&& completionHandler)
 {
-    if (m_videoFullscreenLayer == videoLayer)
+    if (m_videoFullscreenLayer == videoLayer) {
+        completionHandler();
         return;
+    }
     
     m_videoFullscreenLayer = videoLayer;
 #if PLATFORM(MAC)
@@ -187,74 +115,37 @@ void WebVideoFullscreenModelVideoElement::setVideoFullscreenLayer(PlatformLayer*
 #endif
     [m_videoFullscreenLayer setBounds:m_videoFrame];
     
-    if (m_videoElement)
-        m_videoElement->setVideoFullscreenLayer(m_videoFullscreenLayer.get());
+    if (!m_videoElement) {
+        completionHandler();
+        return;
+    }
+
+    m_videoElement->setVideoFullscreenLayer(m_videoFullscreenLayer.get(), WTFMove(completionHandler));
 }
 
-void WebVideoFullscreenModelVideoElement::play()
+void WebVideoFullscreenModelVideoElement::waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler)
 {
-    if (m_videoElement)
-        m_videoElement->play();
+    if (!m_videoElement) {
+        completionHandler();
+        return;
+    }
+
+    m_videoElement->waitForPreparedForInlineThen(WTFMove(completionHandler));
 }
 
-void WebVideoFullscreenModelVideoElement::pause()
-{
-    if (m_videoElement)
-        m_videoElement->pause();
-}
-
-void WebVideoFullscreenModelVideoElement::togglePlayState()
-{
-    if (m_videoElement)
-        m_videoElement->togglePlayState();
-}
-
-void WebVideoFullscreenModelVideoElement::beginScrubbing()
-{
-    if (m_videoElement)
-        m_videoElement->beginScrubbing();
-}
-
-void WebVideoFullscreenModelVideoElement::endScrubbing()
-{
-    if (m_videoElement)
-        m_videoElement->endScrubbing();
-}
-
-void WebVideoFullscreenModelVideoElement::seekToTime(double time)
-{
-    if (m_videoElement)
-        m_videoElement->setCurrentTime(time);
-}
-
-void WebVideoFullscreenModelVideoElement::fastSeek(double time)
-{
-    if (m_videoElement)
-        m_videoElement->fastSeek(time);
-}
-
-void WebVideoFullscreenModelVideoElement::beginScanningForward()
-{
-    if (m_videoElement)
-        m_videoElement->beginScanning(MediaControllerInterface::Forward);
-}
-
-void WebVideoFullscreenModelVideoElement::beginScanningBackward()
-{
-    if (m_videoElement)
-        m_videoElement->beginScanning(MediaControllerInterface::Backward);
-}
-
-void WebVideoFullscreenModelVideoElement::endScanning()
-{
-    if (m_videoElement)
-        m_videoElement->endScanning();
-}
-
-void WebVideoFullscreenModelVideoElement::requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
+void WebVideoFullscreenModelVideoElement::requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode, bool finishedWithMedia)
 {
     if (m_videoElement && m_videoElement->fullscreenMode() != mode)
         m_videoElement->setFullscreenMode(mode);
+
+    if (m_videoElement && finishedWithMedia && mode == MediaPlayerEnums::VideoFullscreenModeNone) {
+        if (m_videoElement->document().isMediaDocument()) {
+            if (DOMWindow* window = m_videoElement->document().domWindow()) {
+                if (History* history = window->history())
+                    history->back();
+            }
+        }
+    }
 }
 
 void WebVideoFullscreenModelVideoElement::setVideoLayerFrame(FloatRect rect)
@@ -280,107 +171,12 @@ void WebVideoFullscreenModelVideoElement::setVideoLayerGravity(WebVideoFullscree
     m_videoElement->setVideoFullscreenGravity(videoGravity);
 }
 
-void WebVideoFullscreenModelVideoElement::selectAudioMediaOption(uint64_t selectedAudioIndex)
-{
-    AudioTrack* selectedAudioTrack = nullptr;
-
-    for (size_t index = 0; index < m_audioTracksForMenu.size(); ++index) {
-        auto& audioTrack = m_audioTracksForMenu[index];
-        audioTrack->setEnabled(index == static_cast<size_t>(selectedAudioIndex));
-        if (audioTrack->enabled())
-            selectedAudioTrack = audioTrack.get();
-    }
-
-    m_videoElement->audioTrackEnabledChanged(selectedAudioTrack);
-}
-
-void WebVideoFullscreenModelVideoElement::selectLegibleMediaOption(uint64_t index)
-{
-    TextTrack* textTrack = nullptr;
-    
-    if (index < m_legibleTracksForMenu.size())
-        textTrack = m_legibleTracksForMenu[static_cast<size_t>(index)].get();
-    else
-        textTrack = TextTrack::captionMenuOffItem();
-    
-    m_videoElement->setSelectedTextTrack(textTrack);
-}
-
-void WebVideoFullscreenModelVideoElement::updateLegibleOptions()
-{
-    AudioTrackList* audioTrackList = m_videoElement->audioTracks();
-    TextTrackList* trackList = m_videoElement->textTracks();
-
-    if ((!trackList && !audioTrackList) || !m_videoElement->document().page() || !m_videoElement->mediaControlsHost())
-        return;
-    
-    WTF::AtomicString displayMode = m_videoElement->mediaControlsHost()->captionDisplayMode();
-    TextTrack* offItem = m_videoElement->mediaControlsHost()->captionMenuOffItem();
-    TextTrack* automaticItem = m_videoElement->mediaControlsHost()->captionMenuAutomaticItem();
-
-    auto& captionPreferences = m_videoElement->document().page()->group().captionPreferences();
-    m_legibleTracksForMenu = captionPreferences.sortedTrackListForMenu(trackList);
-    m_audioTracksForMenu = captionPreferences.sortedTrackListForMenu(audioTrackList);
-
-    Vector<String> audioTrackDisplayNames;
-    uint64_t selectedAudioIndex = 0;
-    
-    for (size_t index = 0; index < m_audioTracksForMenu.size(); ++index) {
-        auto& track = m_audioTracksForMenu[index];
-        audioTrackDisplayNames.append(captionPreferences.displayNameForTrack(track.get()));
-        
-        if (track->enabled())
-            selectedAudioIndex = index;
-    }
-    
-    m_videoFullscreenInterface->setAudioMediaSelectionOptions(audioTrackDisplayNames, selectedAudioIndex);
-
-    Vector<String> trackDisplayNames;
-    uint64_t selectedIndex = 0;
-    uint64_t offIndex = 0;
-    bool trackMenuItemSelected = false;
-    
-    for (size_t index = 0; index < m_legibleTracksForMenu.size(); index++) {
-        auto& track = m_legibleTracksForMenu[index];
-        trackDisplayNames.append(captionPreferences.displayNameForTrack(track.get()));
-        
-        if (track == offItem)
-            offIndex = index;
-        
-        if (track == automaticItem && displayMode == MediaControlsHost::automaticKeyword()) {
-            selectedIndex = index;
-            trackMenuItemSelected = true;
-        }
-        
-        if (displayMode != MediaControlsHost::automaticKeyword() && track->mode() == TextTrack::showingKeyword()) {
-            selectedIndex = index;
-            trackMenuItemSelected = true;
-        }
-    }
-    
-    if (offIndex && !trackMenuItemSelected && displayMode == MediaControlsHost::forcedOnlyKeyword()) {
-        selectedIndex = offIndex;
-        trackMenuItemSelected = true;
-    }
-    
-    m_videoFullscreenInterface->setLegibleMediaSelectionOptions(trackDisplayNames, selectedIndex);
-}
-
 const Vector<AtomicString>& WebVideoFullscreenModelVideoElement::observedEventNames()
 {
     static NeverDestroyed<Vector<AtomicString>> sEventNames;
 
-    if (!sEventNames.get().size()) {
-        sEventNames.get().append(eventNames().durationchangeEvent);
-        sEventNames.get().append(eventNames().pauseEvent);
-        sEventNames.get().append(eventNames().playEvent);
-        sEventNames.get().append(eventNames().ratechangeEvent);
-        sEventNames.get().append(eventNames().timeupdateEvent);
-        sEventNames.get().append(eventNames().addtrackEvent);
-        sEventNames.get().append(eventNames().removetrackEvent);
+    if (!sEventNames.get().size())
         sEventNames.get().append(eventNames().resizeEvent);
-        sEventNames.get().append(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
-    }
     return sEventNames.get();
 }
 
@@ -396,6 +192,18 @@ void WebVideoFullscreenModelVideoElement::fullscreenModeChanged(HTMLMediaElement
         m_videoElement->fullscreenModeChanged(videoFullscreenMode);
 }
 
+void WebVideoFullscreenModelVideoElement::addClient(WebVideoFullscreenModelClient& client)
+{
+    ASSERT(!m_clients.contains(&client));
+    m_clients.add(&client);
+}
+
+void WebVideoFullscreenModelVideoElement::removeClient(WebVideoFullscreenModelClient& client)
+{
+    ASSERT(m_clients.contains(&client));
+    m_clients.remove(&client);
+}
+
 bool WebVideoFullscreenModelVideoElement::isVisible() const
 {
     if (!m_videoElement)
@@ -405,6 +213,28 @@ bool WebVideoFullscreenModelVideoElement::isVisible() const
         return page->isVisible();
 
     return false;
+}
+
+void WebVideoFullscreenModelVideoElement::setHasVideo(bool hasVideo)
+{
+    if (hasVideo == m_hasVideo)
+        return;
+
+    m_hasVideo = hasVideo;
+
+    for (auto& client : m_clients)
+        client->hasVideoChanged(m_hasVideo);
+}
+
+void WebVideoFullscreenModelVideoElement::setVideoDimensions(const FloatSize& videoDimensions)
+{
+    if (m_videoDimensions == videoDimensions)
+        return;
+
+    m_videoDimensions = videoDimensions;
+
+    for (auto& client : m_clients)
+        client->videoDimensionsChanged(m_videoDimensions);
 }
 
 #endif

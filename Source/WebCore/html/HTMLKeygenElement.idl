@@ -33,7 +33,7 @@ interface HTMLKeygenElement : HTMLElement {
     [Reflect] attribute DOMString challenge;
     [Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
-    [Reflect] attribute DOMString keytype;
+    attribute DOMString keytype;
     [Reflect] attribute DOMString name;
 
     readonly attribute DOMString type;
@@ -42,7 +42,8 @@ interface HTMLKeygenElement : HTMLElement {
     readonly attribute ValidityState validity;
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
-    void setCustomValidity([TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString error);
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
+    void setCustomValidity(DOMString error);
 
     readonly attribute NodeList labels;
 };

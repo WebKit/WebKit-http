@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -25,18 +25,27 @@
 #include "InlineCallFrame.h"
 #include "JSScope.h"
 #include "JSCInlines.h"
-#include "JSGlobalObjectFunctions.h"
-#include <wtf/Vector.h>
+#include "ParseInt.h"
+#include <wtf/text/StringBuilder.h>
 
 namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ErrorInstance);
 
-const ClassInfo ErrorInstance::s_info = { "Error", &JSNonFinalObject::s_info, 0, CREATE_METHOD_TABLE(ErrorInstance) };
+const ClassInfo ErrorInstance::s_info = { "Error", &JSNonFinalObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ErrorInstance) };
 
 ErrorInstance::ErrorInstance(VM& vm, Structure* structure)
     : JSNonFinalObject(vm, structure)
 {
+}
+
+ErrorInstance* ErrorInstance::create(ExecState* state, Structure* structure, JSValue message, SourceAppender appender, RuntimeType type, bool useCurrentFrame)
+{
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    String messageString = message.isUndefined() ? String() : message.toWTFString(state);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    return create(state, vm, structure, messageString, appender, type, useCurrentFrame);
 }
 
 static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, unsigned bytecodeOffset)
@@ -138,18 +147,84 @@ private:
 void ErrorInstance::finishCreation(ExecState* exec, VM& vm, const String& message, bool useCurrentFrame)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     if (!message.isNull())
         putDirect(vm, vm.propertyNames->message, jsString(&vm, message), DontEnum);
 
-    unsigned bytecodeOffset = hasSourceAppender();
+    unsigned bytecodeOffset = 0;
     CallFrame* callFrame = nullptr;
-    bool hasTrace = addErrorInfoAndGetBytecodeOffset(exec, vm, this, useCurrentFrame, callFrame, bytecodeOffset);
+    bool hasTrace = addErrorInfoAndGetBytecodeOffset(exec, vm, this, useCurrentFrame, callFrame, hasSourceAppender() ? &bytecodeOffset : nullptr);
 
     if (hasTrace && callFrame && hasSourceAppender()) {
-        if (callFrame && callFrame->codeBlock()) 
+        if (callFrame && callFrame->codeBlock()) {
+            ASSERT(!callFrame->callee().isWasm());
             appendSourceToError(callFrame, this, bytecodeOffset);
+        }
     }
 }
-    
+
+// Based on ErrorPrototype's errorProtoFuncToString(), but is modified to
+// have no observable side effects to the user (i.e. does not call proxies,
+// and getters).
+String ErrorInstance::sanitizedToString(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSValue nameValue;
+    auto namePropertName = vm.propertyNames->name;
+    PropertySlot nameSlot(this, PropertySlot::InternalMethodType::VMInquiry);
+
+    JSValue currentObj = this;
+    unsigned prototypeDepth = 0;
+
+    // We only check the current object and its prototype (2 levels) because normal
+    // Error objects may have a name property, and if not, its prototype should have
+    // a name property for the type of error e.g. "SyntaxError".
+    while (currentObj.isCell() && prototypeDepth++ < 2) {
+        JSObject* obj = jsCast<JSObject*>(currentObj);
+        if (JSObject::getOwnPropertySlot(obj, exec, namePropertName, nameSlot) && nameSlot.isValue()) {
+            nameValue = nameSlot.getValue(exec, namePropertName);
+            break;
+        }
+        currentObj = obj->getPrototypeDirect();
+    }
+    scope.assertNoException();
+
+    String nameString;
+    if (!nameValue)
+        nameString = ASCIILiteral("Error");
+    else {
+        nameString = nameValue.toWTFString(exec);
+        RETURN_IF_EXCEPTION(scope, String());
+    }
+
+    JSValue messageValue;
+    auto messagePropertName = vm.propertyNames->message;
+    PropertySlot messageSlot(this, PropertySlot::InternalMethodType::VMInquiry);
+    if (JSObject::getOwnPropertySlot(this, exec, messagePropertName, messageSlot) && messageSlot.isValue())
+        messageValue = messageSlot.getValue(exec, messagePropertName);
+    scope.assertNoException();
+
+    String messageString;
+    if (!messageValue)
+        messageString = String();
+    else {
+        messageString = messageValue.toWTFString(exec);
+        RETURN_IF_EXCEPTION(scope, String());
+    }
+
+    if (!nameString.length())
+        return messageString;
+
+    if (!messageString.length())
+        return nameString;
+
+    StringBuilder builder;
+    builder.append(nameString);
+    builder.appendLiteral(": ");
+    builder.append(messageString);
+    return builder.toString();
+}
+
 } // namespace JSC

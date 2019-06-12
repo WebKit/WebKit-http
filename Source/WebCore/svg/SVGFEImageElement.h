@@ -18,12 +18,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFEImageElement_h
-#define SVGFEImageElement_h
+#pragma once
 
 #include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
-#include "ImageBuffer.h"
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedPreserveAspectRatio.h"
 #include "SVGExternalResourcesRequired.h"
@@ -47,21 +45,21 @@ public:
 private:
     SVGFEImageElement(const QualifiedName&, Document&);
 
-    virtual void finishedInsertingSubtree() override;
+    void finishedInsertingSubtree() override;
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual void notifyFinished(CachedResource*) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    void notifyFinished(CachedResource&) final;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
-    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 
     void clearResourceReferences();
     void requestImageResource();
 
-    virtual void buildPendingResource() override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual void removedFrom(ContainerNode&) override;
+    void buildPendingResource() override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void removedFrom(ContainerNode&) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGFEImageElement)
         DECLARE_ANIMATED_PRESERVEASPECTRATIO(PreserveAspectRatio, preserveAspectRatio)
@@ -73,5 +71,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

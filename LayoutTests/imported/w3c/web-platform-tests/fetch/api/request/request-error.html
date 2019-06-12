@@ -12,7 +12,7 @@
   <body>
     <script>
       test(function() {
-        assert_throws(new TypeError() , function() { new Request("", {"window" : "whatever"}); },
+        assert_throws(new TypeError() , function() { new Request("", {"window" : "http://test.url"}); },
           "Expect TypeError exception");
       },"RequestInit's window is not null");
 
@@ -37,11 +37,6 @@
       },"RequestInit's referrer is invalid");
 
       test(function() {
-        assert_throws(new TypeError() , function() { new Request("", {"referrer" : "http://test.url"}); },
-          "Expect TypeError exception");
-      },"RequestInit's referrer has invalid origin")
-
-      test(function() {
         assert_throws(new TypeError() , function() { new Request("", {"method" : "IN VALID"}); },
           "Expect TypeError exception");
       }, "RequestInit's method is invalid");
@@ -62,14 +57,63 @@
                       "Expect TypeError exception");
       },"RequestInit's mode is no-cors and integrity is not empty");
 
+      test(function() {
+        assert_throws(new TypeError() ,
+                      function() { new Request("", {"mode" : "cors", "cache" : "only-if-cached"}); },
+                      "Expect TypeError exception");
+      },"RequestInit's cache mode is only-if-cached and mode is not same-origin");
+
+      test(function() {
+        var initialHeaders = new Headers([["Content-Type", "potato"]]);
+        var initialRequest = new Request("", {"headers" : initialHeaders});
+        var request = new Request(initialRequest);
+        assert_equals(request.headers.get("Content-Type"), "potato");
+      }, "Request should get its content-type from the init request");
+
+      test(function() {
+        var initialHeaders = new Headers([["Content-Type", "potato"]]);
+        var initialRequest = new Request("", {"headers" : initialHeaders});
+        var headers = new Headers([]);
+        var request = new Request(initialRequest, {"headers" : headers});
+        assert_false(request.headers.has("Content-Type"));
+      }, "Request should not get its content-type from the init request if init headers are provided");
+
+      test(function() {
+        var initialHeaders = new Headers([["Content-Type-Extra", "potato"]]);
+        var initialRequest = new Request("", {"headers" : initialHeaders, "body" : "this is my plate", "method" : "POST"});
+        var request = new Request(initialRequest);
+        assert_equals(request.headers.get("Content-Type"), "text/plain;charset=UTF-8");
+      }, "Request should get its content-type from the body if none is provided");
+
+      test(function() {
+        var initialHeaders = new Headers([["Content-Type", "potato"]]);
+        var initialRequest = new Request("", {"headers" : initialHeaders, "body" : "this is my plate", "method" : "POST"});
+        var request = new Request(initialRequest);
+        assert_equals(request.headers.get("Content-Type"), "potato");
+      }, "Request should get its content-type from init headers if one is provided");
+
       var parameters = ["referrerPolicy", "mode", "credentials", "cache", "redirect"];
       parameters.forEach(function(parameter) {
         test(function() {
           var options = { };
           options[parameter] = "BAD";
-          assert_throws(new TypeError(), () => new Request("", options));
+          assert_throws(new TypeError(), function() { new Request("", options); });
         },"Bad " + parameter +" init parameter value");
       });
+
+      function testOnlyIfCachedMode(fetchMode, ok) {
+        test(function() {
+          var options = {"cache": "only-if-cached", "mode": fetchMode};
+          if (ok)
+            new Request("test", options);
+          else
+            assert_throws(new TypeError(), function() { new Request("test", options); });
+        }, "Request with cache mode: only-if-cached and fetch mode: " + fetchMode);
+      }
+      testOnlyIfCachedMode("same-origin", true);
+      testOnlyIfCachedMode("cors", false);
+      testOnlyIfCachedMode("no-cors", false);
+
     </script>
   </body>
 </html>

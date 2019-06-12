@@ -35,17 +35,14 @@
     Constructor,
     ImplementationLacksVTable,
 ] interface XSLTProcessor {
-    
-    void importStylesheet([Default=Undefined] optional Node stylesheet);
-    DocumentFragment transformToFragment([Default=Undefined] optional Node source, [Default=Undefined] optional Document docVal);
-    Document transformToDocument([Default=Undefined] optional Node source);
+    void importStylesheet(optional Node? stylesheet = null);
+    DocumentFragment transformToFragment(optional Node? source = null, optional Document? docVal = null);
+    Document transformToDocument(optional Node? source = null);
 
-    [Custom] void setParameter(DOMString namespaceURI, DOMString localName, DOMString value);
-    [Custom, TreatReturnedNullStringAs=Undefined] DOMString getParameter(DOMString namespaceURI, DOMString localName);
-    [Custom] void removeParameter(DOMString namespaceURI, DOMString localName);
+    void setParameter(DOMString? namespaceURI, DOMString? localName, DOMString? value);
+    DOMString? getParameter(DOMString? namespaceURI, DOMString? localName);
+    void removeParameter(DOMString? namespaceURI, DOMString? localName);
     void clearParameters();
 
     void reset();
-
 };
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +36,7 @@ JSObjectRef objCCallbackFunctionForMethod(JSContext *, Class, Protocol *, BOOL i
 JSObjectRef objCCallbackFunctionForBlock(JSContext *, id);
 JSObjectRef objCCallbackFunctionForInit(JSContext *, Class, Protocol *, SEL, const char* types);
 
-id tryUnwrapConstructor(JSObjectRef);
+id tryUnwrapConstructor(JSC::VM*, JSObjectRef);
 #endif
 
 namespace JSC {
@@ -62,7 +62,7 @@ public:
     ObjCCallbackFunctionImpl* impl() const { return m_impl.get(); }
 
 protected:
-    ObjCCallbackFunction(VM&, JSGlobalObject*, JSObjectCallAsFunctionCallback, JSObjectCallAsConstructorCallback, std::unique_ptr<ObjCCallbackFunctionImpl>);
+    ObjCCallbackFunction(VM&, Structure*, JSObjectCallAsFunctionCallback, JSObjectCallAsConstructorCallback, std::unique_ptr<ObjCCallbackFunctionImpl>);
 
 private:
     static CallType getCallData(JSCell*, CallData&);

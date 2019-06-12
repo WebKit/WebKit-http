@@ -26,11 +26,11 @@
 #include "WebKitDLL.h"
 #include "WebBackForwardList.h"
 
+#include "BackForwardList.h"
 #include "WebFrame.h"
 #include "WebKit.h"
 #include "WebPreferences.h"
 
-#include <WebCore/BackForwardList.h>
 #include <WebCore/COMPtr.h>
 #include <WebCore/HistoryItem.h>
 
@@ -47,8 +47,8 @@ static HashMap<BackForwardList*, WebBackForwardList*>& backForwardListWrappers()
     return staticBackForwardListWrappers;
 }
 
-WebBackForwardList::WebBackForwardList(PassRefPtr<BackForwardList> backForwardList)
-    : m_backForwardList(backForwardList)
+WebBackForwardList::WebBackForwardList(RefPtr<BackForwardList>&& backForwardList)
+    : m_backForwardList(WTFMove(backForwardList))
 {
     ASSERT(!backForwardListWrappers().contains(m_backForwardList.get()));
     backForwardListWrappers().set(m_backForwardList.get(), this);
@@ -68,12 +68,12 @@ WebBackForwardList::~WebBackForwardList()
     gClassNameCount().remove("WebBackForwardList");
 }
 
-WebBackForwardList* WebBackForwardList::createInstance(PassRefPtr<BackForwardList> backForwardList)
+WebBackForwardList* WebBackForwardList::createInstance(RefPtr<BackForwardList>&& backForwardList)
 {
     WebBackForwardList* instance = backForwardListWrappers().get(backForwardList.get());
 
     if (!instance)
-        instance = new WebBackForwardList(backForwardList);
+        instance = new WebBackForwardList(WTFMove(backForwardList));
 
     instance->AddRef();
     return instance;
@@ -194,7 +194,7 @@ HRESULT WebBackForwardList::forwardItem(_COM_Outptr_opt_ IWebHistoryItem** item)
 HRESULT WebBackForwardList::backListWithLimit(int limit, _Out_ int* listCount,
     __deref_inout_opt IWebHistoryItem** list)
 {
-    HistoryItemVector historyItemVector;
+    Vector<Ref<HistoryItem>> historyItemVector;
     m_backForwardList->backListWithLimit(limit, historyItemVector);
 
     *listCount = static_cast<int>(historyItemVector.size());
@@ -211,7 +211,7 @@ HRESULT WebBackForwardList::backListWithLimit(int limit, _Out_ int* listCount,
 HRESULT WebBackForwardList::forwardListWithLimit(int limit, _Out_ int* listCount,
     __deref_inout_opt IWebHistoryItem** list)
 {
-    HistoryItemVector historyItemVector;
+    Vector<Ref<HistoryItem>> historyItemVector;
     m_backForwardList->forwardListWithLimit(limit, historyItemVector);
 
     *listCount = static_cast<int>(historyItemVector.size());

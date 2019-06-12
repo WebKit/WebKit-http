@@ -32,6 +32,8 @@
 
 namespace WebKit {
 
+struct WebsiteDataStoreParameters;
+
 class RemoteNetworkingContext final : public WebCore::NetworkingContext {
 public:
     static Ref<RemoteNetworkingContext> create(WebCore::SessionID sessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
@@ -41,9 +43,10 @@ public:
     virtual ~RemoteNetworkingContext();
 
     // FIXME: Remove platform-specific code and use SessionTracker.
-    static void ensurePrivateBrowsingSession(WebCore::SessionID);
+    static void ensurePrivateBrowsingSession(WebsiteDataStoreParameters&&);
+    static void ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&);
 
-    virtual bool shouldClearReferrerOnHTTPSToHTTPRedirect() const override { return m_shouldClearReferrerOnHTTPSToHTTPRedirect; }
+    bool shouldClearReferrerOnHTTPSToHTTPRedirect() const override { return m_shouldClearReferrerOnHTTPSToHTTPRedirect; }
 
 private:
     RemoteNetworkingContext(WebCore::SessionID sessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
@@ -52,15 +55,15 @@ private:
     {
     }
 
-    virtual bool isValid() const override;
-    virtual WebCore::NetworkStorageSession& storageSession() const override;
+    bool isValid() const override;
+    WebCore::NetworkStorageSession& storageSession() const override;
 
 #if PLATFORM(COCOA)
     void setLocalFileContentSniffingEnabled(bool value) { m_localFileContentSniffingEnabled = value; }
-    virtual bool localFileContentSniffingEnabled() const override;
-    virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
-    virtual String sourceApplicationIdentifier() const override;
-    virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
+    bool localFileContentSniffingEnabled() const override;
+    RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
+    String sourceApplicationIdentifier() const override;
+    WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
 #endif
 
     WebCore::SessionID m_sessionID;

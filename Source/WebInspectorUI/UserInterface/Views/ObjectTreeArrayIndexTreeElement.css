@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-.object-tree-array-index {
+.tree-outline .item.object-tree-array-index {
     position: relative;
     left: -12px;
     margin-top: 2px;
@@ -35,8 +35,9 @@
 }
 
 .object-tree-array-index .index-name {
-    font-family: -apple-system-monospaced-numbers, sans-serif;
+    font-family: -apple-system, sans-serif;
     font-size: 11px;
+    font-variant-numeric: tabular-nums;
     vertical-align: top;
     color: var(--console-secondary-text-color);
 

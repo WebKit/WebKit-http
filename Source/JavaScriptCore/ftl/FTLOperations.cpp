@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,26 +33,15 @@
 #include "FTLJITCode.h"
 #include "FTLLazySlowPath.h"
 #include "InlineCallFrame.h"
+#include "JSAsyncFunction.h"
 #include "JSCInlines.h"
+#include "JSFixedArray.h"
 #include "JSGeneratorFunction.h"
 #include "JSLexicalEnvironment.h"
 
 namespace JSC { namespace FTL {
 
 using namespace JSC::DFG;
-
-extern "C" JSCell* JIT_OPERATION operationNewObjectWithButterfly(ExecState* exec, Structure* structure)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-    
-    Butterfly* butterfly = Butterfly::create(
-        vm, nullptr, 0, structure->outOfLineCapacity(), false, IndexingHeader(), 0);
-    
-    JSObject* result = JSFinalObject::create(exec, structure, butterfly);
-    result->butterfly(); // Ensure that the butterfly is in to-space.
-    return result;
-}
 
 extern "C" void JIT_OPERATION operationPopulateObjectInOSR(
     ExecState* exec, ExitTimeObjectMaterialization* materialization,
@@ -94,8 +83,12 @@ extern "C" void JIT_OPERATION operationPopulateObjectInOSR(
 
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
+    case PhantomCreateRest:
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
         // Those are completely handled by operationMaterializeObjectInOSR
         break;
 
@@ -139,6 +132,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
             if (property.location() != PromotedLocationDescriptor(StructurePLoc))
                 continue;
 
+            RELEASE_ASSERT(JSValue::decode(values[i]).asCell()->inherits(vm, Structure::info()));
             structure = jsCast<Structure*>(JSValue::decode(values[i]));
             break;
         }
@@ -163,23 +157,30 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
     }
 
     case PhantomNewFunction:
-    case PhantomNewGeneratorFunction: {
+    case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction: {
         // Figure out what the executable and activation are
         FunctionExecutable* executable = nullptr;
         JSScope* activation = nullptr;
         for (unsigned i = materialization->properties().size(); i--;) {
             const ExitPropertyValue& property = materialization->properties()[i];
-            if (property.location() == PromotedLocationDescriptor(FunctionExecutablePLoc))
+            if (property.location() == PromotedLocationDescriptor(FunctionExecutablePLoc)) {
+                RELEASE_ASSERT(JSValue::decode(values[i]).asCell()->inherits(vm, FunctionExecutable::info()));
                 executable = jsCast<FunctionExecutable*>(JSValue::decode(values[i]));
-            if (property.location() == PromotedLocationDescriptor(FunctionActivationPLoc))
+            }
+            if (property.location() == PromotedLocationDescriptor(FunctionActivationPLoc)) {
+                RELEASE_ASSERT(JSValue::decode(values[i]).asCell()->inherits(vm, JSScope::info()));
                 activation = jsCast<JSScope*>(JSValue::decode(values[i]));
+            }
         }
         RELEASE_ASSERT(executable && activation);
 
         if (materialization->type() == PhantomNewFunction)
             return JSFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
-        ASSERT(materialization->type() == PhantomNewGeneratorFunction);
-        return JSGeneratorFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
+        else if (materialization->type() == PhantomNewGeneratorFunction)
+            return JSGeneratorFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);    
+        ASSERT(materialization->type() == PhantomNewAsyncFunction);
+        return JSAsyncFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
     }
 
     case PhantomCreateActivation: {
@@ -188,10 +189,13 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
         SymbolTable* table = nullptr;
         for (unsigned i = materialization->properties().size(); i--;) {
             const ExitPropertyValue& property = materialization->properties()[i];
-            if (property.location() == PromotedLocationDescriptor(ActivationScopePLoc))
+            if (property.location() == PromotedLocationDescriptor(ActivationScopePLoc)) {
+                RELEASE_ASSERT(JSValue::decode(values[i]).asCell()->inherits(vm, JSScope::info()));
                 scope = jsCast<JSScope*>(JSValue::decode(values[i]));
-            else if (property.location() == PromotedLocationDescriptor(ActivationSymbolTablePLoc))
+            } else if (property.location() == PromotedLocationDescriptor(ActivationSymbolTablePLoc)) {
+                RELEASE_ASSERT(JSValue::decode(values[i]).asCell()->inherits(vm, SymbolTable::info()));
                 table = jsCast<SymbolTable*>(JSValue::decode(values[i]));
+            }
         }
         RELEASE_ASSERT(scope);
         RELEASE_ASSERT(table);
@@ -221,7 +225,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
         if (validationEnabled()) {
             // Validate to make sure every slot in the scope has one value.
-            ConcurrentJITLocker locker(table->m_lock);
+            ConcurrentJSLocker locker(table->m_lock);
             for (auto iter = table->begin(locker), end = table->end(locker); iter != end; ++iter) {
                 bool found = false;
                 for (unsigned i = materialization->properties().size(); i--;) {
@@ -247,6 +251,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
         return result;
     }
 
+    case PhantomCreateRest:
     case PhantomDirectArguments:
     case PhantomClonedArguments: {
         if (!materialization->origin().inlineCallFrame) {
@@ -255,6 +260,17 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 return DirectArguments::createByCopying(exec);
             case PhantomClonedArguments:
                 return ClonedArguments::createWithMachineFrame(exec, exec, ArgumentsMode::Cloned);
+            case PhantomCreateRest: {
+                CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
+                    materialization->origin(), exec->codeBlock());
+
+                unsigned numberOfArgumentsToSkip = codeBlock->numberOfArgumentsToSkip();
+                JSGlobalObject* globalObject = codeBlock->globalObject();
+                Structure* structure = globalObject->restParameterStructure();
+                JSValue* argumentsToCopyRegion = exec->addressOfArgumentsStart() + numberOfArgumentsToSkip;
+                unsigned arraySize = exec->argumentCount() > numberOfArgumentsToSkip ? exec->argumentCount() - numberOfArgumentsToSkip : 0;
+                return constructArray(exec, structure, argumentsToCopyRegion, arraySize);
+            }
             default:
                 RELEASE_ASSERT_NOT_REACHED();
                 return nullptr;
@@ -268,14 +284,12 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 const ExitPropertyValue& property = materialization->properties()[i];
                 if (property.location() != PromotedLocationDescriptor(ArgumentCountPLoc))
                     continue;
-                
                 argumentCount = JSValue::decode(values[i]).asUInt32();
-                RELEASE_ASSERT(argumentCount);
                 break;
             }
-            RELEASE_ASSERT(argumentCount);
         } else
             argumentCount = materialization->origin().inlineCallFrame->arguments.size();
+        RELEASE_ASSERT(argumentCount);
         
         JSFunction* callee = nullptr;
         if (materialization->origin().inlineCallFrame->isClosureCall) {
@@ -328,7 +342,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
         case PhantomClonedArguments: {
             unsigned length = argumentCount - 1;
             ClonedArguments* result = ClonedArguments::createEmpty(
-                vm, codeBlock->globalObject()->outOfBandArgumentsStructure(), callee);
+                vm, codeBlock->globalObject()->clonedArgumentsStructure(), callee, length);
             
             for (unsigned i = materialization->properties().size(); i--;) {
                 const ExitPropertyValue& property = materialization->properties()[i];
@@ -341,14 +355,158 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 result->putDirectIndex(exec, index, JSValue::decode(values[i]));
             }
             
-            result->putDirect(vm, vm.propertyNames->length, jsNumber(length));
             return result;
         }
+        case PhantomCreateRest: {
+            unsigned numberOfArgumentsToSkip = codeBlock->numberOfArgumentsToSkip();
+            JSGlobalObject* globalObject = codeBlock->globalObject();
+            Structure* structure = globalObject->restParameterStructure();
+            ASSERT(argumentCount > 0);
+            unsigned arraySize = (argumentCount - 1) > numberOfArgumentsToSkip ? argumentCount - 1 - numberOfArgumentsToSkip : 0;
+
+            // FIXME: we should throw an out of memory error here if tryCreate() fails.
+            // https://bugs.webkit.org/show_bug.cgi?id=169784
+            JSArray* array = JSArray::tryCreate(vm, structure, arraySize);
+            RELEASE_ASSERT(array);
+
+            for (unsigned i = materialization->properties().size(); i--;) {
+                const ExitPropertyValue& property = materialization->properties()[i];
+                if (property.location().kind() != ArgumentPLoc)
+                    continue;
+
+                unsigned argIndex = property.location().info();
+                if (numberOfArgumentsToSkip > argIndex)
+                    continue;
+                unsigned arrayIndex = argIndex - numberOfArgumentsToSkip;
+                if (arrayIndex >= arraySize)
+                    continue;
+                array->putDirectIndex(exec, arrayIndex, JSValue::decode(values[i]));
+            }
+
+#if !ASSERT_DISABLED
+            // We avoid this O(n^2) loop when asserts are disabled, but the condition checked here
+            // must hold to ensure the correctness of the above loop because of how we allocate the array.
+            for (unsigned targetIndex = 0; targetIndex < arraySize; ++targetIndex) {
+                bool found = false;
+                for (unsigned i = materialization->properties().size(); i--;) {
+                    const ExitPropertyValue& property = materialization->properties()[i];
+                    if (property.location().kind() != ArgumentPLoc)
+                        continue;
+
+                    unsigned argIndex = property.location().info();
+                    if (numberOfArgumentsToSkip > argIndex)
+                        continue;
+                    unsigned arrayIndex = argIndex - numberOfArgumentsToSkip;
+                    if (arrayIndex >= arraySize)
+                        continue;
+                    if (arrayIndex == targetIndex) {
+                        found = true;
+                        break;
+                    }
+                }
+                ASSERT(found);
+            }
+#endif
+            return array;
+        }
+
         default:
             RELEASE_ASSERT_NOT_REACHED();
             return nullptr;
         }
     }
+
+    case PhantomSpread: {
+        JSArray* array = nullptr;
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location().kind() == SpreadPLoc) {
+                array = jsCast<JSArray*>(JSValue::decode(values[i]));
+                break;
+            }
+        }
+        RELEASE_ASSERT(array);
+
+        // Note: it is sound for JSFixedArray::createFromArray to call getDirectIndex here
+        // because we're guaranteed we won't be calling any getters. The reason for this is
+        // that we only support PhantomSpread over CreateRest, which is an array we create.
+        // Any attempts to put a getter on any indices on the rest array will escape the array.
+        JSFixedArray* fixedArray = JSFixedArray::createFromArray(exec, vm, array);
+        RELEASE_ASSERT(fixedArray);
+        return fixedArray;
+    }
+
+    case PhantomNewArrayWithSpread: {
+        CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
+            materialization->origin(), exec->codeBlock());
+        JSGlobalObject* globalObject = codeBlock->globalObject();
+        Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
+
+        Checked<unsigned, RecordOverflow> checkedArraySize = 0;
+        unsigned numProperties = 0;
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location().kind() == NewArrayWithSpreadArgumentPLoc) {
+                ++numProperties;
+                JSValue value = JSValue::decode(values[i]);
+                if (JSFixedArray* fixedArray = jsDynamicCast<JSFixedArray*>(vm, value))
+                    checkedArraySize += fixedArray->size();
+                else
+                    checkedArraySize += 1;
+            }
+        }
+
+        // FIXME: we should throw an out of memory error here if checkedArraySize has hasOverflowed() or tryCreate() fails.
+        // https://bugs.webkit.org/show_bug.cgi?id=169784
+        unsigned arraySize = checkedArraySize.unsafeGet(); // Crashes if overflowed.
+        JSArray* result = JSArray::tryCreate(vm, structure, arraySize);
+        RELEASE_ASSERT(result);
+
+#if !ASSERT_DISABLED
+        // Ensure we see indices for everything in the range: [0, numProperties)
+        for (unsigned i = 0; i < numProperties; ++i) {
+            bool found = false;
+            for (unsigned j = 0; j < materialization->properties().size(); ++j) {
+                const ExitPropertyValue& property = materialization->properties()[j];
+                if (property.location().kind() == NewArrayWithSpreadArgumentPLoc && property.location().info() == i) {
+                    found = true;
+                    break;
+                }
+            }
+            ASSERT(found);
+        }
+#endif
+
+        Vector<JSValue, 8> arguments;
+        arguments.grow(numProperties);
+
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location().kind() == NewArrayWithSpreadArgumentPLoc) {
+                JSValue value = JSValue::decode(values[i]);
+                RELEASE_ASSERT(property.location().info() < numProperties);
+                arguments[property.location().info()] = value;
+            }
+        }
+
+        unsigned arrayIndex = 0;
+        for (JSValue value : arguments) {
+            if (JSFixedArray* fixedArray = jsDynamicCast<JSFixedArray*>(vm, value)) {
+                for (unsigned i = 0; i < fixedArray->size(); i++) {
+                    ASSERT(fixedArray->get(i));
+                    result->putDirectIndex(exec, arrayIndex, fixedArray->get(i));
+                    ++arrayIndex;
+                }
+            } else {
+                // We are not spreading.
+                result->putDirectIndex(exec, arrayIndex, value);
+                ++arrayIndex;
+            }
+        }
+
+        return result;
+    }
+
         
     default:
         RELEASE_ASSERT_NOT_REACHED();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBConnectionToServerDelegate_h
-#define IDBConnectionToServerDelegate_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -34,13 +33,17 @@ namespace WebCore {
 
 class IDBCursorInfo;
 class IDBIndexInfo;
-class IDBKey;
 class IDBKeyData;
 class IDBObjectStoreInfo;
 class IDBRequestData;
 class IDBResourceIdentifier;
 class IDBTransactionInfo;
-class SerializedScriptValue;
+class IDBValue;
+
+struct IDBGetAllRecordsData;
+struct IDBGetRecordData;
+struct IDBIterateCursorData;
+struct SecurityOriginData;
 
 namespace IndexedDB {
 enum class ObjectStoreOverwriteMode;
@@ -55,27 +58,35 @@ public:
     virtual ~IDBConnectionToServerDelegate() { }
 
     virtual uint64_t identifier() const = 0;
-    virtual void deleteDatabase(IDBRequestData&) = 0;
-    virtual void openDatabase(IDBRequestData&) = 0;
-    virtual void abortTransaction(IDBResourceIdentifier&) = 0;
-    virtual void commitTransaction(IDBResourceIdentifier&) = 0;
-    virtual void didFinishHandlingVersionChangeTransaction(IDBResourceIdentifier&) = 0;
+    virtual void deleteDatabase(const IDBRequestData&) = 0;
+    virtual void openDatabase(const IDBRequestData&) = 0;
+    virtual void abortTransaction(const IDBResourceIdentifier&) = 0;
+    virtual void commitTransaction(const IDBResourceIdentifier&) = 0;
+    virtual void didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier&) = 0;
     virtual void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&) = 0;
     virtual void deleteObjectStore(const IDBRequestData&, const String& objectStoreName) = 0;
+    virtual void renameObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& newName) = 0;
     virtual void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier) = 0;
     virtual void createIndex(const IDBRequestData&, const IDBIndexInfo&) = 0;
     virtual void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName) = 0;
-    virtual void putOrAdd(const IDBRequestData&, IDBKey*, SerializedScriptValue&, const IndexedDB::ObjectStoreOverwriteMode) = 0;
-    virtual void getRecord(const IDBRequestData&, const IDBKeyRangeData&) = 0;
+    virtual void renameIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName) = 0;
+    virtual void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode) = 0;
+    virtual void getRecord(const IDBRequestData&, const IDBGetRecordData&) = 0;
+    virtual void getAllRecords(const IDBRequestData&, const IDBGetAllRecordsData&) = 0;
     virtual void getCount(const IDBRequestData&, const IDBKeyRangeData&) = 0;
     virtual void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&) = 0;
     virtual void openCursor(const IDBRequestData&, const IDBCursorInfo&) = 0;
-    virtual void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count) = 0;
+    virtual void iterateCursor(const IDBRequestData&, const IDBIterateCursorData&) = 0;
 
     virtual void establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo&) = 0;
+    virtual void databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier) = 0;
     virtual void databaseConnectionClosed(uint64_t databaseConnectionIdentifier) = 0;
     virtual void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier) = 0;
     virtual void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier) = 0;
+    virtual void openDBRequestCancelled(const IDBRequestData&) = 0;
+    virtual void confirmDidCloseFromServer(uint64_t databaseConnectionIdentifier) = 0;
+
+    virtual void getAllDatabaseNames(const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID) = 0;
 
     virtual void ref() = 0;
     virtual void deref() = 0;
@@ -85,4 +96,3 @@ public:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBConnectionToServerDelegate_h

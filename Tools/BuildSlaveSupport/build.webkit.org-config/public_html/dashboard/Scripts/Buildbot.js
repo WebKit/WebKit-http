@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -151,6 +151,16 @@ Buildbot.prototype = {
         return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id;
     },
 
+    javaScriptCoreTestFailuresURLForIteration: function(iteration, name)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/" + name + "/logs/json/text";
+    },
+
+    javaScriptCoreTestStdioUrlForIteration: function(iteration, name)
+    {
+        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/" + name + "/logs/stdio";
+    },
+
     layoutTestResultsDirectoryURLForIteration: function(iteration)
     {
         var underscoreSeparatedRevisions = "r";
@@ -167,6 +177,11 @@ Buildbot.prototype = {
     layoutTestResultsURLForIteration: function(iteration)
     {
         return this.layoutTestResultsDirectoryURLForIteration(iteration) + "/results.html";
+    },
+
+    dashboardTestResultsURLForIteration: function(iteration)
+    {
+        return this.layoutTestResultsDirectoryURLForIteration(iteration) + "/dashboard-layout-test-results/index-pretty-diff.html";
     },
 
     layoutTestFullResultsURLForIteration: function(iteration)

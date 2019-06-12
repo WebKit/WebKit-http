@@ -23,21 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DictationCommand_h
-#define DictationCommand_h
+#pragma once
 
 #include "DictationAlternative.h"
 #include "TextInsertionBaseCommand.h"
 
 namespace WebCore {
 
-class DocumentMarker;
-
 class DictationCommand : public TextInsertionBaseCommand {
     friend class DictationCommandLineOperation;
 public:
     static void insertText(Document&, const String&, const Vector<DictationAlternative>& alternatives, const VisibleSelection&);
-    virtual bool isDictationCommand() const { return true; }
+    bool isDictationCommand() const override { return true; }
 private:
     static Ref<DictationCommand> create(Document& document, const String& text, const Vector<DictationAlternative>& alternatives)
     {
@@ -46,7 +43,7 @@ private:
 
     DictationCommand(Document&, const String& text, const Vector<DictationAlternative>& alternatives);
     
-    virtual void doApply();
+    void doApply() override;
 
     void insertTextRunWithoutNewlines(size_t lineStart, size_t lineLength);
     void insertParagraphSeparator();
@@ -55,6 +52,5 @@ private:
     String m_textToInsert;
     Vector<DictationAlternative> m_alternatives;
 };
-}
 
-#endif // DictationCommand_h
+} // namespace WebCore

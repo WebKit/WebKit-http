@@ -17,8 +17,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef FrameNetworkingContext_h
-#define FrameNetworkingContext_h
+#pragma once
 
 #include "Document.h"
 #include "Frame.h"
@@ -34,13 +33,13 @@ public:
         m_frame = nullptr;
     }
 
-    virtual bool shouldClearReferrerOnHTTPSToHTTPRedirect() const override
+    bool shouldClearReferrerOnHTTPSToHTTPRedirect() const override
     {
         // FIXME: PingLoader finishes without a frame, but it should use its document's referrer policy.
         if (!m_frame)
             return true;
 
-        return m_frame->document()->referrerPolicy() == ReferrerPolicyDefault;
+        return m_frame->document()->referrerPolicy() == ReferrerPolicy::Default;
     }
 
 protected:
@@ -52,11 +51,9 @@ protected:
     Frame* frame() const { return m_frame; }
 
 private:
-    virtual bool isValid() const override { return m_frame; }
+    bool isValid() const override { return m_frame; }
 
     Frame* m_frame;
 };
 
 }
-
-#endif // FrameNetworkingContext_h

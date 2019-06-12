@@ -28,8 +28,10 @@
 #include "GRefPtrGStreamer.h"
 #include "Logging.h"
 #include "WebKitWebAudioSourceGStreamer.h"
+#include <gst/audio/gstaudiobasesink.h>
 #include <gst/gst.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 
 namespace WebCore {
 
@@ -40,6 +42,12 @@ const unsigned framesToPull = 128;
 gboolean messageCallback(GstBus*, GstMessage* message, AudioDestinationGStreamer* destination)
 {
     return destination->handleMessage(message);
+}
+
+static void autoAudioSinkChildAddedCallback(GstChildProxy*, GObject* object, gchar*, gpointer)
+{
+    if (GST_IS_AUDIO_BASE_SINK(object))
+        g_object_set(GST_AUDIO_BASE_SINK(object), "buffer-time", static_cast<gint64>(100000), nullptr);
 }
 
 std::unique_ptr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String&, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
@@ -78,21 +86,23 @@ AudioDestinationGStreamer::AudioDestinationGStreamer(AudioIOCallback& callback, 
     m_pipeline = gst_pipeline_new("play");
     GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
     ASSERT(bus);
-    gst_bus_add_signal_watch(bus.get());
+    gst_bus_add_signal_watch_full(bus.get(), RunLoopSourcePriority::RunLoopDispatcher);
     g_signal_connect(bus.get(), "message", G_CALLBACK(messageCallback), this);
 
     GstElement* webkitAudioSrc = reinterpret_cast<GstElement*>(g_object_new(WEBKIT_TYPE_WEB_AUDIO_SRC,
                                                                             "rate", sampleRate,
                                                                             "bus", m_renderBus.get(),
                                                                             "provider", &m_callback,
-                                                                            "frames", framesToPull, NULL));
+                                                                            "frames", framesToPull, nullptr));
 
-    GRefPtr<GstElement> audioSink = gst_element_factory_make("autoaudiosink", 0);
+    GRefPtr<GstElement> audioSink = gst_element_factory_make("autoaudiosink", nullptr);
     m_audioSinkAvailable = audioSink;
     if (!audioSink) {
         LOG_ERROR("Failed to create GStreamer autoaudiosink element");
         return;
     }
+
+    g_signal_connect(audioSink.get(), "child-added", G_CALLBACK(autoAudioSinkChildAddedCallback), nullptr);
 
     // Autoaudiosink does the real sink detection in the GST_STATE_NULL->READY transition
     // so it's best to roll it to READY as soon as possible to ensure the underlying platform
@@ -105,9 +115,9 @@ AudioDestinationGStreamer::AudioDestinationGStreamer(AudioIOCallback& callback, 
         return;
     }
 
-    GstElement* audioConvert = gst_element_factory_make("audioconvert", 0);
-    GstElement* audioResample = gst_element_factory_make("audioresample", 0);
-    gst_bin_add_many(GST_BIN(m_pipeline), webkitAudioSrc, audioConvert, audioResample, audioSink.get(), NULL);
+    GstElement* audioConvert = gst_element_factory_make("audioconvert", nullptr);
+    GstElement* audioResample = gst_element_factory_make("audioresample", nullptr);
+    gst_bin_add_many(GST_BIN(m_pipeline), webkitAudioSrc, audioConvert, audioResample, audioSink.get(), nullptr);
 
     // Link src pads from webkitAudioSrc to audioConvert ! audioResample ! autoaudiosink.
     gst_element_link_pads_full(webkitAudioSrc, "src", audioConvert, "sink", GST_PAD_LINK_CHECK_NOTHING);

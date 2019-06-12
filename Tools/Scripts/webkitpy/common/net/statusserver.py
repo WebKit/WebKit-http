@@ -1,9 +1,9 @@
 # Copyright (C) 2009 Google Inc. All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 # notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above
@@ -13,7 +13,7 @@
 #     * Neither the name of Google Inc. nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -123,7 +123,7 @@ class StatusServer:
         return NetworkTransaction().run(lambda: self._post_work_item_to_ews(attachment_id))
 
     def next_work_item(self, queue_name):
-        _log.debug("Fetching next work item for %s" % queue_name)
+        _log.info("Fetching next work item for %s" % queue_name)
         next_patch_url = "%s/next-patch/%s" % (self.url, queue_name)
         return self._fetch_url(next_patch_url)
 
@@ -152,7 +152,7 @@ class StatusServer:
         return NetworkTransaction(convert_404_to_None=True).run(lambda: self._post_release_lock(queue_name, patch))
 
     def update_work_items(self, queue_name, high_priority_work_items, work_items):
-        _log.debug("Recording work items: %s for %s" % (high_priority_work_items + work_items, queue_name))
+        _log.info("Recording work items: %s for %s" % (high_priority_work_items + work_items, queue_name))
         return NetworkTransaction().run(lambda: self._post_work_items_to_server(queue_name, high_priority_work_items, work_items))
 
     def update_status(self, queue_name, status, patch=None, results_file=None):
@@ -166,7 +166,7 @@ class StatusServer:
     def _fetch_url(self, url):
         # FIXME: This should use NetworkTransaction's 404 handling instead.
         try:
-            return urllib2.urlopen(url).read()
+            return urllib2.urlopen(url, timeout=300).read()
         except urllib2.HTTPError, e:
             if e.code == 404:
                 return None

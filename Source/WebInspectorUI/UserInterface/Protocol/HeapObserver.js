@@ -29,6 +29,24 @@ WebInspector.HeapObserver = class HeapObserver
 
     garbageCollected(collection)
     {
-        WebInspector.heapManager.garbageCollected(collection);
+        WebInspector.heapManager.garbageCollected(this.target, collection);
+    }
+
+    trackingStart(timestamp, snapshotStringData)
+    {
+        let workerProxy = WebInspector.HeapSnapshotWorkerProxy.singleton();
+        workerProxy.createSnapshot(snapshotStringData, ({objectId, snapshot: serializedSnapshot}) => {
+            let snapshot = WebInspector.HeapSnapshotProxy.deserialize(objectId, serializedSnapshot);
+            WebInspector.timelineManager.heapTrackingStarted(timestamp, snapshot);
+        });
+    }
+
+    trackingComplete(timestamp, snapshotStringData)
+    {
+        let workerProxy = WebInspector.HeapSnapshotWorkerProxy.singleton();
+        workerProxy.createSnapshot(snapshotStringData, ({objectId, snapshot: serializedSnapshot}) => {
+            let snapshot = WebInspector.HeapSnapshotProxy.deserialize(objectId, serializedSnapshot);
+            WebInspector.timelineManager.heapTrackingCompleted(timestamp, snapshot);
+        });
     }
 };

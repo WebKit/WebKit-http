@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef Microtasks_h
-#define Microtasks_h
+#pragma once
 
 #include "Timer.h"
 #include <wtf/NeverDestroyed.h>
@@ -66,7 +65,6 @@ private:
 
     bool m_performingMicrotaskCheckpoint = false;
     Vector<std::unique_ptr<Microtask>> m_microtaskQueue;
-    Vector<std::unique_ptr<Microtask>> m_tasksAppendedDuringMicrotaskCheckpoint;
 
     // FIXME: Instead of a Timer, we should have a centralized Event Loop that calls performMicrotaskCheckpoint()
     // on every iteration, implementing https://html.spec.whatwg.org/multipage/webappapis.html#processing-model-9
@@ -74,5 +72,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // Microtask_h

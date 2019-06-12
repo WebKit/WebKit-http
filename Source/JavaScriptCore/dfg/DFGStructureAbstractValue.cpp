@@ -32,28 +32,19 @@
 
 namespace JSC { namespace DFG {
 
-// Comment out the empty SAMPLE() definition, and uncomment the one that uses SamplingRegion, if
-// you want extremely fine-grained profiling in this code.
-#define SAMPLE(name) 
-//#define SAMPLE(name) SamplingRegion samplingRegion(name)
-
 #if !ASSERT_DISABLED
 void StructureAbstractValue::assertIsRegistered(Graph& graph) const
 {
-    SAMPLE("StructureAbstractValue assertIsRegistered");
-
     if (isTop())
         return;
     
     for (unsigned i = size(); i--;)
-        graph.assertIsRegistered(at(i));
+        graph.assertIsRegistered(at(i).get());
 }
 #endif // !ASSERT_DISABLED
 
 void StructureAbstractValue::clobber()
 {
-    SAMPLE("StructureAbstractValue clobber");
-
     // The premise of this approach to clobbering is that anytime we introduce
     // a watchable structure into an abstract value, we watchpoint it. You can assert
     // that this holds by calling assertIsWatched().
@@ -71,7 +62,7 @@ void StructureAbstractValue::clobber()
         return;
     }
     
-    StructureSet::OutOfLineList* list = m_set.list();
+    RegisteredStructureSet::OutOfLineList* list = m_set.list();
     for (unsigned i = list->m_length; i--;) {
         if (!list->list()[i]->dfgShouldWatch()) {
             makeTop();
@@ -80,10 +71,8 @@ void StructureAbstractValue::clobber()
     }
 }
 
-void StructureAbstractValue::observeTransition(Structure* from, Structure* to)
+void StructureAbstractValue::observeTransition(RegisteredStructure from, RegisteredStructure to)
 {
-    SAMPLE("StructureAbstractValue observeTransition");
-    
     ASSERT(!from->dfgShouldWatch());
 
     if (isTop())
@@ -101,12 +90,10 @@ void StructureAbstractValue::observeTransition(Structure* from, Structure* to)
 
 void StructureAbstractValue::observeTransitions(const TransitionVector& vector)
 {
-    SAMPLE("StructureAbstractValue observeTransitions");
-
     if (isTop())
         return;
     
-    StructureSet newStructures;
+    RegisteredStructureSet newStructures;
     for (unsigned i = vector.size(); i--;) {
         ASSERT(!vector[i].previous->dfgShouldWatch());
 
@@ -123,10 +110,8 @@ void StructureAbstractValue::observeTransitions(const TransitionVector& vector)
         makeTop();
 }
 
-bool StructureAbstractValue::add(Structure* structure)
+bool StructureAbstractValue::add(RegisteredStructure structure)
 {
-    SAMPLE("StructureAbstractValue add");
-
     if (isTop())
         return false;
     
@@ -139,10 +124,8 @@ bool StructureAbstractValue::add(Structure* structure)
     return true;
 }
 
-bool StructureAbstractValue::merge(const StructureSet& other)
+bool StructureAbstractValue::merge(const RegisteredStructureSet& other)
 {
-    SAMPLE("StructureAbstractValue merge set");
-
     if (isTop())
         return false;
     
@@ -151,8 +134,6 @@ bool StructureAbstractValue::merge(const StructureSet& other)
 
 bool StructureAbstractValue::mergeSlow(const StructureAbstractValue& other)
 {
-    SAMPLE("StructureAbstractValue merge value slow");
-
     // It isn't immediately obvious that the code below is doing the right thing, so let's go
     // through it.
     //
@@ -194,10 +175,8 @@ bool StructureAbstractValue::mergeSlow(const StructureAbstractValue& other)
     return changed;
 }
 
-bool StructureAbstractValue::mergeNotTop(const StructureSet& other)
+bool StructureAbstractValue::mergeNotTop(const RegisteredStructureSet& other)
 {
-    SAMPLE("StructureAbstractValue merge not top");
-
     if (!m_set.merge(other))
         return false;
     
@@ -207,10 +186,8 @@ bool StructureAbstractValue::mergeNotTop(const StructureSet& other)
     return true;
 }
 
-void StructureAbstractValue::filter(const StructureSet& other)
+void StructureAbstractValue::filter(const RegisteredStructureSet& other)
 {
-    SAMPLE("StructureAbstractValue filter set");
-
     if (isTop()) {
         m_set = other;
         return;
@@ -244,8 +221,6 @@ void StructureAbstractValue::filter(const StructureSet& other)
 
 void StructureAbstractValue::filter(const StructureAbstractValue& other)
 {
-    SAMPLE("StructureAbstractValue filter value");
-
     if (other.isTop())
         return;
     
@@ -254,7 +229,7 @@ void StructureAbstractValue::filter(const StructureAbstractValue& other)
             return;
         
         if (!isClobbered()) {
-            // See justification in filter(const StructureSet&), above. An unclobbered set is
+            // See justification in filter(const RegisteredStructureSet&), above. An unclobbered set is
             // almost always better.
             if (m_set.size() > other.m_set.size() + clobberedSupremacyThreshold)
                 *this = other; // Keep the clobbered set.
@@ -270,8 +245,6 @@ void StructureAbstractValue::filter(const StructureAbstractValue& other)
 
 void StructureAbstractValue::filterSlow(SpeculatedType type)
 {
-    SAMPLE("StructureAbstractValue filter type slow");
-
     if (!(type & SpecCell)) {
         clear();
         return;
@@ -280,25 +253,38 @@ void StructureAbstractValue::filterSlow(SpeculatedType type)
     ASSERT(!isTop());
     
     m_set.genericFilter(
-        [&] (Structure* structure) {
-            return !!(speculationFromStructure(structure) & type);
+        [&] (RegisteredStructure structure) {
+            return !!(speculationFromStructure(structure.get()) & type);
         });
 }
 
-bool StructureAbstractValue::contains(Structure* structure) const
+void StructureAbstractValue::filterClassInfoSlow(const ClassInfo* classInfo)
 {
-    SAMPLE("StructureAbstractValue contains");
+    ASSERT(!isTop());
+    m_set.genericFilter(
+        [&] (RegisteredStructure structure) {
+            return structure->classInfo()->isSubClassOf(classInfo);
+        });
+}
 
+bool StructureAbstractValue::contains(RegisteredStructure structure) const
+{
     if (isInfinite())
         return true;
     
     return m_set.contains(structure);
 }
 
-bool StructureAbstractValue::isSubsetOf(const StructureSet& other) const
+bool StructureAbstractValue::contains(Structure* structure) const
 {
-    SAMPLE("StructureAbstractValue isSubsetOf set");
+    if (isInfinite())
+        return true;
+    
+    return m_set.toStructureSet().contains(structure);
+}
 
+bool StructureAbstractValue::isSubsetOf(const RegisteredStructureSet& other) const
+{
     if (isInfinite())
         return false;
     
@@ -307,8 +293,6 @@ bool StructureAbstractValue::isSubsetOf(const StructureSet& other) const
 
 bool StructureAbstractValue::isSubsetOf(const StructureAbstractValue& other) const
 {
-    SAMPLE("StructureAbstractValue isSubsetOf value");
-
     if (isTop())
         return false;
     
@@ -328,20 +312,16 @@ bool StructureAbstractValue::isSubsetOf(const StructureAbstractValue& other) con
     return m_set.isSubsetOf(other.m_set);
 }
 
-bool StructureAbstractValue::isSupersetOf(const StructureSet& other) const
+bool StructureAbstractValue::isSupersetOf(const RegisteredStructureSet& other) const
 {
-    SAMPLE("StructureAbstractValue isSupersetOf set");
-
     if (isInfinite())
         return true;
     
     return m_set.isSupersetOf(other);
 }
 
-bool StructureAbstractValue::overlaps(const StructureSet& other) const
+bool StructureAbstractValue::overlaps(const RegisteredStructureSet& other) const
 {
-    SAMPLE("StructureAbstractValue overlaps set");
-
     if (isInfinite())
         return true;
     
@@ -350,18 +330,27 @@ bool StructureAbstractValue::overlaps(const StructureSet& other) const
 
 bool StructureAbstractValue::overlaps(const StructureAbstractValue& other) const
 {
-    SAMPLE("StructureAbstractValue overlaps value");
-
     if (other.isInfinite())
         return true;
     
     return overlaps(other.m_set);
 }
 
+bool StructureAbstractValue::isSubClassOf(const ClassInfo* classInfo) const
+{
+    if (isInfinite())
+        return false;
+
+    // Note taht this function returns true if the structure set is empty.
+    for (const RegisteredStructure structure : m_set) {
+        if (!structure->classInfo()->isSubClassOf(classInfo))
+            return false;
+    }
+    return true;
+}
+
 bool StructureAbstractValue::equalsSlow(const StructureAbstractValue& other) const
 {
-    SAMPLE("StructureAbstractValue equalsSlow");
-
     ASSERT(m_set.m_pointer != other.m_set.m_pointer);
     ASSERT(!isTop());
     ASSERT(!other.isTop());
@@ -378,7 +367,7 @@ void StructureAbstractValue::dumpInContext(PrintStream& out, DumpContext* contex
     if (isTop())
         out.print("TOP");
     else
-        out.print(inContext(m_set, context));
+        out.print(inContext(m_set.toStructureSet(), context));
 }
 
 void StructureAbstractValue::dump(PrintStream& out) const

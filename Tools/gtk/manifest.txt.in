@@ -1,9 +1,13 @@
 # Global rules
 exclude #$
 exclude ChangeLog
+exclude CMakeLists.txt.user
 exclude Makefile
-exclude PlatformEfl.cmake
+exclude PlatformAppleWin.cmake
+exclude PlatformMac.cmake
+exclude PlatformWPE.cmake
 exclude PlatformWin.cmake
+exclude PlatformWinCairo.cmake
 exclude tags$
 exclude ~$
 exclude \.#$
@@ -12,7 +16,6 @@ exclude \.cproject$
 exclude \.git$
 exclude \.gitattributes$
 exclude \.gitignore$
-exclude \.gyp$
 exclude \.icns$
 exclude \.lproj$
 exclude \.m$
@@ -23,7 +26,6 @@ exclude \.order$
 exclude \.orig$
 exclude \.pdf$
 exclude \.plist$
-exclude \.pro\.user$
 exclude \.project$
 exclude \.props$
 exclude \.pyc$
@@ -41,35 +43,30 @@ exclude \.xcconfig$
 exclude \.xcodeproj$
 
 # Exclude directories from other ports
-exclude .*\/(mac|ios|cf|cg|cocoa|Cocoa|objc|avfoundation|ca|curl|efl|win)\/.*$
+exclude .*\/(Configurations|mac|ios|cf|cg|cocoa|Cocoa|objc|avfoundation|ca|curl|win|wpe)\/.*$
 
 directory Source
 exclude Source/JavaScriptCore/tests
+exclude Source/ThirdParty/libwebrtc
+exclude Source/ThirdParty/qunit
 exclude Source/WebCore/platform/audio/resources
 exclude Source/WebCore/bindings/scripts/test
-exclude Source/WebCore/platform/efl/DefaultTheme
 exclude Source/WebCore/Resources
-exclude Source/cmake/EFLHelpers.cmake$
+exclude Source/WebKit/.*
 exclude Source/cmake/OptionsWinCairo.cmake$
 exclude Source/cmake/OptionsWindows.cmake$
 exclude Source/cmake/OptionsAppleWin.cmake$
-exclude Source/cmake/OptionsEfl.cmake$
-exclude Source/cmake/eflsymbols.filter$
+exclude Source/cmake/OptionsWPE.cmake$
 exclude Source/WebInspectorUI/Tools
 exclude Source/WebInspectorUI/UserInterface/Images
 
-directory Source/WebInspectorUI/UserInterface/Images/gtk
-
-# Most of the files in Source/WebKit are not necessary to build GTK+ and
-# the directory includes lots of images, so we're a bit more picky here.
-exclude Source/WebKit/.*
-exclude Source/WebKit2/Configurations
 exclude Source/WebKit2/Resources
 exclude Source/WebKit2/gtk/NEWS$
 
 # We do want to include the NEWS, but we want it to be in the root of the archive.
 file Source/WebKit2/gtk/NEWS NEWS
 
+directory Source/WebInspectorUI/UserInterface/Images/gtk
 file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
 file Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
 
@@ -84,23 +81,17 @@ file Source/WebCore/Resources/urlIcon.png
 file Source/WebCore/platform/audio/resources/Composite.wav
 
 directory Tools/gtk
-directory Tools/ImageDiff
+exclude Tools/gtk/patches
+exclude Tools/gtk/jhbuild.modules
+exclude Tools/gtk/jhbuildrc
+exclude Tools/gtk/make-dist.py
+exclude Tools/gtk/ycm_extra_conf.py
+
 directory Tools/MiniBrowser
 directory Tools/TestWebKitAPI
 
-directory Tools/DumpRenderTree
-exclude Tools/DumpRenderTree/fonts
-
-directory Tools/WebKitTestRunner
-exclude Tools/WebKitTestRunner/fonts/
-
 file CMakeLists.txt
 file Tools/CMakeLists.txt
-file Tools/Scripts/VCSUtils.pm
-file Tools/Scripts/run-gtk-tests
-file Tools/Scripts/webkit-build-directory
-file Tools/Scripts/webkitdirs.pm
-file Tools/jhbuild/jhbuildutils.py
 
 directory ${CMAKE_BINARY_DIR}/Documentation/webkit2gtk-${WEBKITGTK_API_VERSION}/html Documentation/webkit2gtk-${WEBKITGTK_API_VERSION}/html
 directory ${CMAKE_BINARY_DIR}/Documentation/webkitdomgtk-${WEBKITGTK_API_VERSION}/html Documentation/webkitdomgtk-${WEBKITGTK_API_VERSION}/html

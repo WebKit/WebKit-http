@@ -42,9 +42,9 @@ namespace WebCore {
 
 // FIXME: Skip Content Security Policy check when associated plugin element is in a user agent shadow tree.
 // See <https://bugs.webkit.org/show_bug.cgi?id=146663>.
-NetscapePlugInStreamLoader::NetscapePlugInStreamLoader(Frame* frame, NetscapePlugInStreamLoaderClient* client)
-    : ResourceLoader(frame, ResourceLoaderOptions(SendCallbacks, SniffContent, DoNotBufferData, AllowStoredCredentials, AskClientForAllCredentials, ClientRequestedCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching))
-    , m_client(client)
+NetscapePlugInStreamLoader::NetscapePlugInStreamLoader(Frame& frame, NetscapePlugInStreamLoaderClient& client)
+    : ResourceLoader(frame, ResourceLoaderOptions(SendCallbacks, SniffContent, DoNotBufferData, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, SkipSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching))
+    , m_client(&client)
 {
 #if ENABLE(CONTENT_EXTENSIONS)
     m_resourceType = ResourceType::PlugInStream;
@@ -55,13 +55,13 @@ NetscapePlugInStreamLoader::~NetscapePlugInStreamLoader()
 {
 }
 
-PassRefPtr<NetscapePlugInStreamLoader> NetscapePlugInStreamLoader::create(Frame* frame, NetscapePlugInStreamLoaderClient* client, const ResourceRequest& request)
+RefPtr<NetscapePlugInStreamLoader> NetscapePlugInStreamLoader::create(Frame& frame, NetscapePlugInStreamLoaderClient& client, const ResourceRequest& request)
 {
-    RefPtr<NetscapePlugInStreamLoader> loader(adoptRef(new NetscapePlugInStreamLoader(frame, client)));
+    auto loader(adoptRef(new NetscapePlugInStreamLoader(frame, client)));
     if (!loader->init(request))
         return nullptr;
 
-    return loader.release();
+    return loader;
 }
 
 bool NetscapePlugInStreamLoader::isDone() const
@@ -88,13 +88,13 @@ bool NetscapePlugInStreamLoader::init(const ResourceRequest& request)
     return true;
 }
 
-void NetscapePlugInStreamLoader::willSendRequest(ResourceRequest&& request, const ResourceResponse& redirectResponse, std::function<void(ResourceRequest&&)>&& callback)
+void NetscapePlugInStreamLoader::willSendRequest(ResourceRequest&& request, const ResourceResponse& redirectResponse, WTF::Function<void(ResourceRequest&&)>&& callback)
 {
-    RefPtr<NetscapePlugInStreamLoader> protect(this);
+    RefPtr<NetscapePlugInStreamLoader> protectedThis(this);
 
-    m_client->willSendRequest(this, WTFMove(request), redirectResponse, [protect, redirectResponse, callback](ResourceRequest request) {
+    m_client->willSendRequest(this, WTFMove(request), redirectResponse, [protectedThis, redirectResponse, callback = WTFMove(callback)](ResourceRequest request) {
         if (!request.isNull())
-            protect->willSendRequestInternal(request, redirectResponse);
+            protectedThis->willSendRequestInternal(request, redirectResponse);
 
         callback(WTFMove(request));
     });
@@ -102,7 +102,7 @@ void NetscapePlugInStreamLoader::willSendRequest(ResourceRequest&& request, cons
 
 void NetscapePlugInStreamLoader::didReceiveResponse(const ResourceResponse& response)
 {
-    Ref<NetscapePlugInStreamLoader> protect(*this);
+    Ref<NetscapePlugInStreamLoader> protectedThis(*this);
 
     m_client->didReceiveResponse(this, response);
 
@@ -129,36 +129,36 @@ void NetscapePlugInStreamLoader::didReceiveResponse(const ResourceResponse& resp
 
 void NetscapePlugInStreamLoader::didReceiveData(const char* data, unsigned length, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
-    didReceiveDataOrBuffer(data, length, 0, encodedDataLength, dataPayloadType);
+    didReceiveDataOrBuffer(data, length, nullptr, encodedDataLength, dataPayloadType);
 }
 
-void NetscapePlugInStreamLoader::didReceiveBuffer(PassRefPtr<SharedBuffer> buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
+void NetscapePlugInStreamLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
-    didReceiveDataOrBuffer(0, 0, buffer, encodedDataLength, dataPayloadType);
+    didReceiveDataOrBuffer(nullptr, 0, WTFMove(buffer), encodedDataLength, dataPayloadType);
 }
 
-void NetscapePlugInStreamLoader::didReceiveDataOrBuffer(const char* data, int length, PassRefPtr<SharedBuffer> buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
+void NetscapePlugInStreamLoader::didReceiveDataOrBuffer(const char* data, int length, RefPtr<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
-    Ref<NetscapePlugInStreamLoader> protect(*this);
+    Ref<NetscapePlugInStreamLoader> protectedThis(*this);
     
     m_client->didReceiveData(this, buffer ? buffer->data() : data, buffer ? buffer->size() : length);
 
-    ResourceLoader::didReceiveDataOrBuffer(data, length, buffer, encodedDataLength, dataPayloadType);
+    ResourceLoader::didReceiveDataOrBuffer(data, length, WTFMove(buffer), encodedDataLength, dataPayloadType);
 }
 
-void NetscapePlugInStreamLoader::didFinishLoading(double finishTime)
+void NetscapePlugInStreamLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMetrics)
 {
-    Ref<NetscapePlugInStreamLoader> protect(*this);
+    Ref<NetscapePlugInStreamLoader> protectedThis(*this);
 
     notifyDone();
 
     m_client->didFinishLoading(this);
-    ResourceLoader::didFinishLoading(finishTime);
+    ResourceLoader::didFinishLoading(networkLoadMetrics);
 }
 
 void NetscapePlugInStreamLoader::didFail(const ResourceError& error)
 {
-    Ref<NetscapePlugInStreamLoader> protect(*this);
+    Ref<NetscapePlugInStreamLoader> protectedThis(*this);
 
     notifyDone();
 

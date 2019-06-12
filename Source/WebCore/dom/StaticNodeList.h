@@ -26,65 +26,48 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StaticNodeList_h
-#define StaticNodeList_h
+#pragma once
 
 #include "Element.h"
 #include "NodeList.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 class WEBCORE_EXPORT StaticNodeList final : public NodeList {
 public:
-    static PassRefPtr<StaticNodeList> adopt(Vector<Ref<Node>>& nodes)
+    static Ref<StaticNodeList> create(Vector<Ref<Node>>&& nodes = { })
     {
-        RefPtr<StaticNodeList> nodeList = adoptRef(new StaticNodeList);
-        nodeList->m_nodes.swap(nodes);
-        return nodeList.release();
+        return adoptRef(*new StaticNodeList(WTFMove(nodes)));
     }
 
-    static Ref<StaticNodeList> createEmpty()
-    {
-        return adoptRef(*new StaticNodeList);
-    }
-
-    virtual unsigned length() const override;
-    virtual Node* item(unsigned index) const override;
+    unsigned length() const override;
+    Node* item(unsigned index) const override;
 
 private:
-    StaticNodeList() { }
+    StaticNodeList(Vector<Ref<Node>>&& nodes)
+        : m_nodes(WTFMove(nodes))
+    { }
 
     Vector<Ref<Node>> m_nodes;
 };
 
 class StaticElementList final : public NodeList {
 public:
-    static Ref<StaticElementList> adopt(Vector<Ref<Element>>& elements)
+    static Ref<StaticElementList> create(Vector<Ref<Element>>&& elements = { })
     {
-        Ref<StaticElementList> nodeList = adoptRef(*new StaticElementList);
-        nodeList->m_elements.swap(elements);
-        return nodeList;
+        return adoptRef(*new StaticElementList(WTFMove(elements)));
     }
 
-    static Ref<StaticElementList> createEmpty()
-    {
-        return adoptRef(*new StaticElementList);
-    }
-
-    virtual unsigned length() const override;
-    virtual Element* item(unsigned index) const override;
+    unsigned length() const override;
+    Element* item(unsigned index) const override;
 
 private:
-    StaticElementList()
-    {
-    }
+    StaticElementList(Vector<Ref<Element>>&& elements)
+        : m_elements(WTFMove(elements))
+    { }
 
     Vector<Ref<Element>> m_elements;
 };
 
 } // namespace WebCore
-
-#endif // StaticNodeList_h

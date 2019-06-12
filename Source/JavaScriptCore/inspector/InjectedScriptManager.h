@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InjectedScriptManager_h
-#define InjectedScriptManager_h
+#pragma once
 
 #include "InjectedScript.h"
 #include "InjectedScriptHost.h"
@@ -50,13 +49,13 @@ namespace Inspector {
 class JS_EXPORT_PRIVATE InjectedScriptManager {
     WTF_MAKE_NONCOPYABLE(InjectedScriptManager); WTF_MAKE_FAST_ALLOCATED;
 public:
-    InjectedScriptManager(InspectorEnvironment&, PassRefPtr<InjectedScriptHost>);
+    InjectedScriptManager(InspectorEnvironment&, Ref<InjectedScriptHost>&&);
     virtual ~InjectedScriptManager();
 
     virtual void disconnect();
     virtual void discardInjectedScripts();
 
-    InjectedScriptHost* injectedScriptHost();
+    InjectedScriptHost& injectedScriptHost();
     InspectorEnvironment& inspectorEnvironment() const { return m_environment; }
 
     InjectedScript injectedScriptFor(JSC::ExecState*);
@@ -74,13 +73,11 @@ protected:
 
 private:
     String injectedScriptSource();
-    Deprecated::ScriptObject createInjectedScript(const String& source, JSC::ExecState*, int id);
+    JSC::JSObject* createInjectedScript(const String& source, JSC::ExecState*, int id);
 
     InspectorEnvironment& m_environment;
-    RefPtr<InjectedScriptHost> m_injectedScriptHost;
+    Ref<InjectedScriptHost> m_injectedScriptHost;
     int m_nextInjectedScriptId;
 };
 
 } // namespace Inspector
-
-#endif // !defined(InjectedScriptManager_h)

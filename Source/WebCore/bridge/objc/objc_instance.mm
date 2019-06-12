@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2008-2009, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,9 @@
 #import <runtime/ObjectPrototype.h>
 #import <wtf/Assertions.h>
 #import <wtf/HashMap.h>
+#import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/ThreadSpecific.h>
 
 #ifdef NDEBUG
 #define OBJC_LOG(formatAndArgs...) ((void)0)
@@ -77,6 +79,9 @@ void ObjcInstance::setGlobalException(NSString* exception, JSGlobalObject* excep
 
 void ObjcInstance::moveGlobalExceptionToExecState(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!s_exception) {
         ASSERT(!s_exceptionEnvironment);
         return;
@@ -84,7 +89,7 @@ void ObjcInstance::moveGlobalExceptionToExecState(ExecState* exec)
 
     if (!s_exceptionEnvironment || s_exceptionEnvironment == exec->vmEntryGlobalObject()) {
         JSLockHolder lock(exec);
-        throwError(exec, s_exception);
+        throwError(exec, scope, s_exception);
     }
 
     [s_exception release];
@@ -189,11 +194,11 @@ private:
     void finishCreation(VM& vm, const String& name)
     {
         Base::finishCreation(vm, name);
-        ASSERT(inherits(info()));
+        ASSERT(inherits(vm, info()));
     }
 };
 
-const ClassInfo ObjCRuntimeMethod::s_info = { "ObjCRuntimeMethod", &RuntimeMethod::s_info, 0, CREATE_METHOD_TABLE(ObjCRuntimeMethod) };
+const ClassInfo ObjCRuntimeMethod::s_info = { "ObjCRuntimeMethod", &RuntimeMethod::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ObjCRuntimeMethod) };
 
 JSC::JSValue ObjcInstance::getMethod(ExecState* exec, PropertyName propertyName)
 {
@@ -203,8 +208,11 @@ JSC::JSValue ObjcInstance::getMethod(ExecState* exec, PropertyName propertyName)
 
 JSC::JSValue ObjcInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod)
 {
-    if (!asObject(runtimeMethod)->inherits(ObjCRuntimeMethod::info()))
-        return exec->vm().throwException(exec, createTypeError(exec, "Attempt to invoke non-plug-in method on plug-in object."));
+    JSC::VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (!asObject(runtimeMethod)->inherits(vm, ObjCRuntimeMethod::info()))
+        return throwTypeError(exec, scope, ASCIILiteral("Attempt to invoke non-plug-in method on plug-in object."));
 
     ObjcMethod *method = static_cast<ObjcMethod*>(runtimeMethod->method());
     ASSERT(method);
@@ -459,9 +467,43 @@ JSC::JSValue ObjcInstance::defaultValue(ExecState* exec, PreferredPrimitiveType 
     return valueOf(exec);
 }
 
+static WTF::ThreadSpecific<uint32_t>* s_descriptionDepth;
+
+@interface NSObject (WebDescriptionCategory)
+- (NSString *)_web_description;
+@end
+
+@implementation NSObject (WebDescriptionCategory)
+
+- (NSString *)_web_description
+{
+    ASSERT(s_descriptionDepth);
+    if (s_descriptionDepth->isSet() && **s_descriptionDepth)
+        return [NSString stringWithFormat:@"<%@>", NSStringFromClass([self class])];
+    // We call _web_description here since this method should only be called
+    // once we have already swizzled this method with the one on NSObject.
+    // Thus, _web_description is actually the original description method.
+    return [self _web_description];
+}
+
+@end
+
 JSC::JSValue ObjcInstance::stringValue(ExecState* exec) const
 {
-    return convertNSStringToString(exec, [getObject() description]);
+    static std::once_flag initializeDescriptionDepthOnceFlag;
+    std::call_once(initializeDescriptionDepthOnceFlag, [] {
+        s_descriptionDepth = new WTF::ThreadSpecific<uint32_t>();
+        **s_descriptionDepth = 0;
+
+        auto descriptionMethod = class_getInstanceMethod([NSObject class], @selector(description));
+        auto webDescriptionMethod = class_getInstanceMethod([NSObject class], @selector(_web_description));
+        method_exchangeImplementations(descriptionMethod, webDescriptionMethod);
+    });
+
+    (**s_descriptionDepth)++;
+    JSC::JSValue result = convertNSStringToString(exec, [getObject() description]);
+    (**s_descriptionDepth)--;
+    return result;
 }
 
 JSC::JSValue ObjcInstance::numberValue(ExecState*) const

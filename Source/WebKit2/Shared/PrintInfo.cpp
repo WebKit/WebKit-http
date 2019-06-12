@@ -26,9 +26,8 @@
 #include "config.h"
 #include "PrintInfo.h"
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
-#include "Arguments.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 #if PLATFORM(GTK)
 #include "ArgumentCodersGtk.h"
@@ -36,14 +35,7 @@
 
 namespace WebKit {
 
-PrintInfo::PrintInfo()
-    : pageSetupScaleFactor(0)
-    , availablePaperWidth(0)
-    , availablePaperHeight(0)
-{
-}
-
-void PrintInfo::encode(IPC::ArgumentEncoder& encoder) const
+void PrintInfo::encode(IPC::Encoder& encoder) const
 {
     encoder << pageSetupScaleFactor;
     encoder << availablePaperWidth;
@@ -54,9 +46,13 @@ void PrintInfo::encode(IPC::ArgumentEncoder& encoder) const
     IPC::encode(encoder, pageSetup.get());
     encoder.encodeEnum(printMode);
 #endif
+
+#if PLATFORM(IOS)
+    encoder << snapshotFirstPage;
+#endif
 }
 
-bool PrintInfo::decode(IPC::ArgumentDecoder& decoder, PrintInfo& info)
+bool PrintInfo::decode(IPC::Decoder& decoder, PrintInfo& info)
 {
     if (!decoder.decode(info.pageSetupScaleFactor))
         return false;
@@ -71,6 +67,11 @@ bool PrintInfo::decode(IPC::ArgumentDecoder& decoder, PrintInfo& info)
     if (!IPC::decode(decoder, info.pageSetup))
         return false;
     if (!decoder.decodeEnum(info.printMode))
+        return false;
+#endif
+
+#if PLATFORM(IOS)
+    if (!decoder.decode(info.snapshotFirstPage))
         return false;
 #endif
 

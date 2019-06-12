@@ -28,20 +28,21 @@
 
 #if PLATFORM(IOS)
 
+#import "CommonVM.h"
 #import "FloatingPointEnvironment.h"
-#import "JSDOMWindowBase.h"
+#import "RuntimeApplicationChecks.h"
 #import "ThreadGlobalData.h"
-#import "RuntimeApplicationChecksIOS.h"
+#import "WAKWindow.h"
 #import "WebCoreThreadInternal.h"
 #import "WebCoreThreadMessage.h"
 #import "WebCoreThreadRun.h"
-#import "WebCoreThreadSafe.h"
 #import "WKUtilities.h"
 
 #import <runtime/InitializeThreading.h>
 #import <runtime/JSLock.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 #import <wtf/Threading.h>
 #import <wtf/text/AtomicString.h>
 
@@ -139,11 +140,10 @@ WEBCORE_EXPORT volatile bool webThreadShouldYield;
 
 static pthread_mutex_t WebCoreReleaseLock;
 static void WebCoreObjCDeallocOnWebThreadImpl(id self, SEL _cmd);
+static void WebCoreObjCDeallocWithWebThreadLock(Class cls);
 static void WebCoreObjCDeallocWithWebThreadLockImpl(id self, SEL _cmd);
 
 static NSMutableArray *sAsyncDelegates = nil;
-
-static CFStringRef delegateSourceRunLoopMode;
 
 static inline void SendMessage(NSInvocation *invocation)
 {
@@ -210,7 +210,7 @@ static void SendDelegateMessage(NSInvocation *invocation)
 
         {
             // Code block created to scope JSC::JSLock::DropAllLocks outside of WebThreadLock()
-            JSC::JSLock::DropAllLocks dropAllLocks(WebCore::JSDOMWindowBase::commonVM());
+            JSC::JSLock::DropAllLocks dropAllLocks(WebCore::commonVM());
             _WebThreadUnlock();
 
             CFRunLoopSourceSignal(delegateSource);
@@ -248,7 +248,7 @@ void WebThreadRunOnMainThread(void(^delegateBlock)())
         return;
     }
 
-    JSC::JSLock::DropAllLocks dropAllLocks(WebCore::JSDOMWindowBase::commonVM());
+    JSC::JSLock::DropAllLocks dropAllLocks(WebCore::commonVM());
     _WebThreadUnlock();
 
     void (^delegateBlockCopy)() = Block_copy(delegateBlock);
@@ -620,7 +620,9 @@ static void FreeThreadContext(void *threadContext)
 
 static void InitThreadContextKey()
 {
-    pthread_key_create(&threadContextKey, FreeThreadContext);
+    int error = pthread_key_create(&threadContextKey, FreeThreadContext);
+    if (error)
+        CRASH();
 }
 
 static WebThreadContext *CurrentThreadContext(void)
@@ -708,8 +710,9 @@ static void StartWebThread()
     // Initialize AtomicString on the main thread.
     WTF::AtomicString::init();
 
+    RunLoop::initializeMainRunLoop();
+
     // register class for WebThread deallocation
-    WebCoreObjCDeallocOnWebThread([DOMObject class]);
     WebCoreObjCDeallocOnWebThread([WAKWindow class]);
     WebCoreObjCDeallocWithWebThreadLock([WAKView class]);
 
@@ -728,12 +731,11 @@ static void StartWebThread()
     CFRunLoopRef runLoop = CFRunLoopGetCurrent();
     CFRunLoopSourceContext delegateSourceContext = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, HandleDelegateSource};
     delegateSource = CFRunLoopSourceCreate(NULL, 0, &delegateSourceContext);
+
     // We shouldn't get delegate callbacks while scrolling, but there might be
     // one outstanding when we start.  Add the source for all common run loop
     // modes so we don't block the web thread while scrolling.
-    if (!delegateSourceRunLoopMode)
-        delegateSourceRunLoopMode = kCFRunLoopCommonModes;
-    CFRunLoopAddSource(runLoop, delegateSource, delegateSourceRunLoopMode);
+    CFRunLoopAddSource(runLoop, delegateSource, kCFRunLoopCommonModes);
 
     sAsyncDelegates = [[NSMutableArray alloc] init];
 
@@ -987,20 +989,9 @@ WebThreadContext *WebThreadCurrentContext(void)
     return CurrentThreadContext();
 }
 
-bool WebThreadContextIsCurrent(void)
-{   
-    return WebThreadCurrentContext() == webThreadContext;
-}
-
-void WebThreadSetDelegateSourceRunLoopMode(CFStringRef mode)
-{
-    ASSERT(!webThreadStarted);
-    delegateSourceRunLoopMode = mode;
-}
-
 void WebThreadEnable(void)
 {
-    RELEASE_ASSERT_WITH_MESSAGE(!WebCore::applicationIsWebProcess(), "The WebProcess should never run a Web Thread");
+    RELEASE_ASSERT_WITH_MESSAGE(!WebCore::IOSApplication::isWebProcess(), "The WebProcess should never run a Web Thread");
 
     static pthread_once_t initControl = PTHREAD_ONCE_INIT;
     pthread_once(&initControl, StartWebThread);

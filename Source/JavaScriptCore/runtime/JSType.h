@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef JSType_h
-#define JSType_h
+#pragma once
 
 namespace JSC {
 
@@ -35,7 +34,6 @@ enum JSType : uint8_t {
     StringType,
     SymbolType,
 
-    GetterSetterType,
     CustomGetterSetterType,
     APIValueWrapperType,
 
@@ -51,6 +49,10 @@ enum JSType : uint8_t {
     UnlinkedEvalCodeBlockType,
     UnlinkedFunctionCodeBlockType,
 
+    JSFixedArrayType,
+    JSSourceCodeType,
+    JSScriptFetcherType,
+
     // The ObjectType value must come before any JSType that is a subclass of JSObject.
     ObjectType,
     FinalObjectType,
@@ -64,6 +66,9 @@ enum JSType : uint8_t {
     DirectArgumentsType,
     ScopedArgumentsType,
 
+    ArrayType,
+    DerivedArrayType,
+
     Int8ArrayType,
     Int16ArrayType,
     Int32ArrayType,
@@ -75,16 +80,32 @@ enum JSType : uint8_t {
     Float64ArrayType,
     DataViewType,
 
+    GetterSetterType,
+
+    // Start environment record types.
     GlobalObjectType,
-    ClosureObjectType,
+    LexicalEnvironmentType,
+    GlobalLexicalEnvironmentType,
+    ModuleEnvironmentType,
+    StrictEvalActivationType,
+    // End environment record types.
 
     RegExpObjectType,
+    ProxyObjectType,
+    JSMapType,
+    JSSetType,
 
-    LastJSCObjectType = RegExpObjectType,
+    WebAssemblyFunctionType,
+
+    ClonedArgumentsType,
+
+    WebAssemblyToJSCalleeType,
+
+    LastJSCObjectType = WebAssemblyToJSCalleeType,
+    MaxJSType = 0b11111111,
 };
 
-COMPILE_ASSERT(sizeof(JSType) == sizeof(uint8_t), sizeof_jstype_is_one_byte);
+static_assert(sizeof(JSType) == sizeof(uint8_t), "sizeof(JSType) is one byte.");
+static_assert(LastJSCObjectType < 128, "The highest bit is reserved for embedder's extension.");
 
 } // namespace JSC
-
-#endif

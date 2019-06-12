@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSDataView_h
-#define JSDataView_h
+#pragma once
 
 #include "DataView.h"
 #include "JSArrayBufferView.h"
@@ -40,33 +39,39 @@ protected:
     JSDataView(VM&, ConstructionContext&, ArrayBuffer*);
     
 public:
-    static JSDataView* create(
-        ExecState*, Structure*, PassRefPtr<ArrayBuffer>, unsigned byteOffset,
+    JS_EXPORT_PRIVATE static JSDataView* create(
+        ExecState*, Structure*, RefPtr<ArrayBuffer>&&, unsigned byteOffset,
         unsigned byteLength);
     
     // Dummy methods, which don't actually work; these are just in place to
     // placate some template specialization we do elsewhere.
     static JSDataView* createUninitialized(ExecState*, Structure*, unsigned length);
     static JSDataView* create(ExecState*, Structure*, unsigned length);
-    bool set(ExecState*, JSObject*, unsigned offset, unsigned length);
+    bool set(ExecState*, unsigned, JSObject*, unsigned, unsigned length);
     bool setIndex(ExecState*, unsigned, JSValue);
     
-    ArrayBuffer* buffer() const { return m_buffer; }
+    ArrayBuffer* possiblySharedBuffer() const { return m_buffer; }
+    ArrayBuffer* unsharedBuffer() const
+    {
+        RELEASE_ASSERT(!m_buffer->isShared());
+        return m_buffer;
+    }
     
-    PassRefPtr<DataView> typedImpl();
+    RefPtr<DataView> possiblySharedTypedImpl();
+    RefPtr<DataView> unsharedTypedImpl();
     
     static const TypedArrayType TypedArrayStorageType = TypeDataView;
 
 protected:
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
 
     static ArrayBuffer* slowDownAndWasteMemory(JSArrayBufferView*);
-    static PassRefPtr<ArrayBufferView> getTypedArrayImpl(JSArrayBufferView*);
+    static RefPtr<ArrayBufferView> getTypedArrayImpl(JSArrayBufferView*);
     
 public:
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
@@ -78,6 +83,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // JSDataView_h
-

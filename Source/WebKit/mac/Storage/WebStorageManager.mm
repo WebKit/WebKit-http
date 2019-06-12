@@ -26,11 +26,13 @@
 #import "WebStorageManagerInternal.h"
 
 #import "StorageTracker.h"
+#import "WebKitVersionChecks.h"
 #import "WebSecurityOriginInternal.h"
 #import "WebStorageNamespaceProvider.h"
 #import "WebStorageTrackerClient.h"
 #import <WebCore/PageGroup.h>
 #import <WebCore/SecurityOrigin.h>
+#import <WebCore/SecurityOriginData.h>
 #import <pthread.h>
 
 using namespace WebCore;
@@ -50,7 +52,6 @@ static pthread_once_t registerLocalStoragePath = PTHREAD_ONCE_INIT;
     return sharedManager;
 }
 
-#if PLATFORM(IOS)
 - (id)init
 {
     if (!(self = [super init]))
@@ -60,18 +61,15 @@ static pthread_once_t registerLocalStoragePath = PTHREAD_ONCE_INIT;
     
     return self;
 }
-#endif
 
 - (NSArray *)origins
 {
-    Vector<RefPtr<SecurityOrigin>> coreOrigins;
-
-    StorageTracker::tracker().origins(coreOrigins);
+    auto coreOrigins = WebKit::StorageTracker::tracker().origins();
 
     NSMutableArray *webOrigins = [[NSMutableArray alloc] initWithCapacity:coreOrigins.size()];
 
-    for (size_t i = 0; i < coreOrigins.size(); ++i) {
-        WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:coreOrigins[i].get()];
+    for (auto& origin : coreOrigins) {
+        WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:origin.securityOrigin().ptr()];
         [webOrigins addObject:webOrigin];
         [webOrigin release];
     }
@@ -81,7 +79,7 @@ static pthread_once_t registerLocalStoragePath = PTHREAD_ONCE_INIT;
 
 - (void)deleteAllOrigins
 {
-    StorageTracker::tracker().deleteAllOrigins();
+    WebKit::StorageTracker::tracker().deleteAllOrigins();
 #if PLATFORM(IOS)
     // FIXME: This needs to be removed once StorageTrackers in multiple processes
     // are in sync: <rdar://problem/9567500> Remove Website Data pane is not kept in sync with Safari
@@ -91,22 +89,22 @@ static pthread_once_t registerLocalStoragePath = PTHREAD_ONCE_INIT;
 
 - (void)deleteOrigin:(WebSecurityOrigin *)origin
 {
-    StorageTracker::tracker().deleteOrigin([origin _core]);
+    WebKit::StorageTracker::tracker().deleteOrigin(SecurityOriginData::fromSecurityOrigin(*[origin _core]));
 }
 
 - (unsigned long long)diskUsageForOrigin:(WebSecurityOrigin *)origin
 {
-    return StorageTracker::tracker().diskUsageForOrigin([origin _core]);
+    return WebKit::StorageTracker::tracker().diskUsageForOrigin([origin _core]);
 }
 
 - (void)syncLocalStorage
 {
-    WebStorageNamespaceProvider::syncLocalStorage();
+    WebKit::WebStorageNamespaceProvider::syncLocalStorage();
 }
 
 - (void)syncFileSystemAndTrackerDatabase
 {
-    StorageTracker::tracker().syncFileSystemAndTrackerDatabase();
+    WebKit::StorageTracker::tracker().syncFileSystemAndTrackerDatabase();
 }
 
 + (NSString *)_storageDirectoryPath
@@ -117,12 +115,12 @@ static pthread_once_t registerLocalStoragePath = PTHREAD_ONCE_INIT;
 
 + (void)setStorageDatabaseIdleInterval:(double)interval
 {
-    StorageTracker::tracker().setStorageDatabaseIdleInterval(interval);
+    WebKit::StorageTracker::tracker().setStorageDatabaseIdleInterval(1_s * interval);
 }
 
 + (void)closeIdleLocalStorageDatabases
 {
-    WebStorageNamespaceProvider::closeIdleLocalStorageDatabases();
+    WebKit::WebStorageNamespaceProvider::closeIdleLocalStorageDatabases();
 }
 
 static void initializeLocalStoragePath()
@@ -142,9 +140,15 @@ void WebKitInitializeStorageIfNecessary()
     static BOOL initialized = NO;
     if (initialized)
         return;
-    
-    StorageTracker::initializeTracker([WebStorageManager _storageDirectoryPath], WebStorageTrackerClient::sharedWebStorageTrackerClient());
-        
+
+    auto *storagePath = [WebStorageManager _storageDirectoryPath];
+    WebKit::StorageTracker::initializeTracker(storagePath, WebStorageTrackerClient::sharedWebStorageTrackerClient());
+
+#if PLATFORM(IOS)
+    if (linkedOnOrAfter(SDKVersion::FirstToExcludeLocalStorageFromBackup))
+        [[NSURL fileURLWithPath:storagePath] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+#endif
+
     initialized = YES;
 }
 

@@ -36,6 +36,7 @@
 #import <WebKit/WKPagePrivate.h>
 #import <WebKit/WKWebView.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
 @interface NSApplication (Details)
 - (void)_setCurrentEvent:(NSEvent *)event;
@@ -44,17 +45,6 @@
 @interface NSEvent (ForTestRunner)
 - (void)_postDelayed;
 @end
-
-#if defined(__LP64__)
-struct WKTRCGSEventRecord {
-    char offset1[150];
-    uint8_t phase;
-    char offset2[13];
-    float deltaX;
-    float deltaY;
-    char offset3[76];
-} __attribute__((packed));
-#endif
 
 @interface EventSenderSyntheticEvent : NSEvent {
 @public
@@ -70,11 +60,6 @@ struct WKTRCGSEventRecord {
     short _eventSender_subtype;
     NSEventType _eventSender_type;
     NSWindow *_eventSender_window;
-
-
-#if defined(__LP64__)
-    WKTRCGSEventRecord _eventSender_cgsEventRecord;
-#endif
 }
 
 - (id)initPressureEventAtLocation:(NSPoint)location globalLocation:(NSPoint)globalLocation stage:(NSInteger)stage pressure:(float)pressure stageTransition:(float)stageTransition phase:(NSEventPhase)phase time:(NSTimeInterval)time eventNumber:(NSInteger)eventNumber window:(NSWindow *)window;
@@ -167,13 +152,6 @@ struct WKTRCGSEventRecord {
     return false;
 }
 
-#if defined(__LP64__)
-- (WKTRCGSEventRecord)_cgsEventRecord
-{
-    return _eventSender_cgsEventRecord;
-}
-#endif
-
 - (NSWindow *)window
 {
     return _eventSender_window;
@@ -207,33 +185,33 @@ struct KeyMappingEntry {
 static NSEventType eventTypeForMouseButtonAndAction(int button, MouseAction action)
 {
     switch (button) {
-        case LeftMouseButton:
-            switch (action) {
-                case MouseDown:
-                    return NSLeftMouseDown;
-                case MouseUp:
-                    return NSLeftMouseUp;
-                case MouseDragged:
-                    return NSLeftMouseDragged;
-            }
-        case RightMouseButton:
-            switch (action) {
-                case MouseDown:
-                    return NSRightMouseDown;
-                case MouseUp:
-                    return NSRightMouseUp;
-                case MouseDragged:
-                    return NSRightMouseDragged;
-            }
-        default:
-            switch (action) {
-                case MouseDown:
-                    return NSOtherMouseDown;
-                case MouseUp:
-                    return NSOtherMouseUp;
-                case MouseDragged:
-                    return NSOtherMouseDragged;
-            }
+    case LeftMouseButton:
+        switch (action) {
+        case MouseDown:
+            return NSEventTypeLeftMouseDown;
+        case MouseUp:
+            return NSEventTypeLeftMouseUp;
+        case MouseDragged:
+            return NSEventTypeLeftMouseDragged;
+        }
+    case RightMouseButton:
+        switch (action) {
+        case MouseDown:
+            return NSEventTypeRightMouseDown;
+        case MouseUp:
+            return NSEventTypeRightMouseUp;
+        case MouseDragged:
+            return NSEventTypeRightMouseDragged;
+        }
+    default:
+        switch (action) {
+        case MouseDown:
+            return NSEventTypeOtherMouseDown;
+        case MouseUp:
+            return NSEventTypeOtherMouseUp;
+        case MouseDragged:
+            return NSEventTypeOtherMouseDragged;
+        }
     }
     assert(0);
     return static_cast<NSEventType>(0);
@@ -243,13 +221,15 @@ static int buildModifierFlags(WKEventModifiers modifiers)
 {
     int flags = 0;
     if (modifiers & kWKEventModifiersControlKey)
-        flags |= NSControlKeyMask;
+        flags |= NSEventModifierFlagControl;
     if (modifiers & kWKEventModifiersShiftKey)
-        flags |= NSShiftKeyMask;
+        flags |= NSEventModifierFlagShift;
     if (modifiers & kWKEventModifiersAltKey)
-        flags |= NSAlternateKeyMask;
+        flags |= NSEventModifierFlagOption;
     if (modifiers & kWKEventModifiersMetaKey)
-        flags |= NSCommandKeyMask;
+        flags |= NSEventModifierFlagCommand;
+    if (modifiers & kWKEventModifiersCapsLockKey)
+        flags |= NSEventModifierFlagCapsLock;
     return flags;
 }
 
@@ -349,7 +329,7 @@ void EventSenderProxy::sendMouseDownToStartPressureEvents()
 {
     updateClickCountForButton(0);
 
-    NSEvent *event = [NSEvent mouseEventWithType:NSLeftMouseDown
+    NSEvent *event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
         location:NSMakePoint(m_position.x, m_position.y)
         modifierFlags:NSEventMaskPressure
         timestamp:absoluteTimeForEventTime(currentEventTime())
@@ -413,7 +393,7 @@ void EventSenderProxy::mouseForceClick()
     RetainPtr<NSEvent> preForceClick = pressureChangeEvent(1, PressureChangeDirection::Increasing);
     RetainPtr<NSEvent> forceClick = pressureChangeEvent(2, PressureChangeDirection::Increasing);
     RetainPtr<NSEvent> releasingPressure = pressureChangeEvent(1, PressureChangeDirection::Decreasing);
-    NSEvent *mouseUp = [NSEvent mouseEventWithType:NSLeftMouseUp
+    NSEvent *mouseUp = [NSEvent mouseEventWithType:NSEventTypeLeftMouseUp
         location:NSMakePoint(m_position.x, m_position.y)
         modifierFlags:0
         timestamp:absoluteTimeForEventTime(currentEventTime())
@@ -450,7 +430,7 @@ void EventSenderProxy::startAndCancelMouseForceClick()
     RetainPtr<NSEvent> beginPressure = beginPressureEvent(1);
     RetainPtr<NSEvent> increasingPressure = pressureChangeEvent(1, PressureChangeDirection::Increasing);
     RetainPtr<NSEvent> releasingPressure = pressureChangeEvent(1, PressureChangeDirection::Decreasing);
-    NSEvent *mouseUp = [NSEvent mouseEventWithType:NSLeftMouseUp
+    NSEvent *mouseUp = [NSEvent mouseEventWithType:NSEventTypeLeftMouseUp
         location:NSMakePoint(m_position.x, m_position.y)
         modifierFlags:0
         timestamp:absoluteTimeForEventTime(currentEventTime())
@@ -597,11 +577,10 @@ void EventSenderProxy::startAndCancelMouseForceClick()
 void EventSenderProxy::mouseMoveTo(double x, double y)
 {
     NSView *view = m_testController->mainWebView()->platformView();
-    NSPoint position = [view convertPoint:NSMakePoint(x, y) toView:nil];
-    m_position.x = position.x;
-    m_position.y = position.y;
-    NSEvent *event = [NSEvent mouseEventWithType:(m_leftMouseButtonDown ? NSLeftMouseDragged : NSMouseMoved)
-                                        location:position
+    NSPoint newMousePosition = [view convertPoint:NSMakePoint(x, y) toView:nil];
+    bool isDrag = m_leftMouseButtonDown;
+    NSEvent *event = [NSEvent mouseEventWithType:(isDrag ? NSEventTypeLeftMouseDragged : NSEventTypeMouseMoved)
+                                        location:newMousePosition
                                    modifierFlags:0 
                                        timestamp:absoluteTimeForEventTime(currentEventTime())
                                     windowNumber:view.window.windowNumber
@@ -610,11 +589,22 @@ void EventSenderProxy::mouseMoveTo(double x, double y)
                                       clickCount:(m_leftMouseButtonDown ? m_clickCount : 0) 
                                         pressure:0];
 
+    CGEventRef cgEvent = event.CGEvent;
+    CGEventSetIntegerValueField(cgEvent, kCGMouseEventDeltaX, newMousePosition.x - m_position.x);
+    CGEventSetIntegerValueField(cgEvent, kCGMouseEventDeltaY, newMousePosition.y - m_position.y);
+    event = [NSEvent eventWithCGEvent:cgEvent];
+    m_position.x = newMousePosition.x;
+    m_position.y = newMousePosition.y;
+
     NSPoint windowLocation = event.locationInWindow;
-    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:windowLocation];
+    // Always target drags at the WKWebView to allow for drag-scrolling outside the view.
+    NSView *targetView = isDrag ? m_testController->mainWebView()->platformView() : [m_testController->mainWebView()->platformView() hitTest:windowLocation];
     if (targetView) {
         [NSApp _setCurrentEvent:event];
-        [targetView mouseMoved:event];
+        if (isDrag)
+            [targetView mouseDragged:event];
+        else
+            [targetView mouseMoved:event];
         [NSApp _setCurrentEvent:nil];
     } else
         WTFLogAlways("mouseMoveTo failed to find a target view at %f,%f\n", windowLocation.x, windowLocation.y);
@@ -627,7 +617,7 @@ void EventSenderProxy::leapForward(int milliseconds)
 
 void EventSenderProxy::keyDown(WKStringRef key, WKEventModifiers modifiers, unsigned keyLocation)
 {
-    NSString* character = [NSString stringWithCString:toSTD(key).c_str() 
+    NSString* character = [NSString stringWithCString:toSTD(key).c_str()
                                    encoding:[NSString defaultCStringEncoding]];
 
     NSString *eventCharacter = character;
@@ -704,6 +694,10 @@ void EventSenderProxy::keyDown(WKStringRef key, WKEventModifiers modifiers, unsi
         const unichar ch = 0xFFE8;
         eventCharacter = [NSString stringWithCharacters:&ch length:1];
         keyCode = 0x3D;
+    } else if ([character isEqualToString:@"escape"]) {
+        const unichar ch = 0x1B;
+        eventCharacter = [NSString stringWithCharacters:&ch length:1];
+        keyCode = 0x35;
     }
 
     // Compare the input string with the function-key names defined by the DOM spec (i.e. "F1",...,"F24").
@@ -796,16 +790,16 @@ void EventSenderProxy::keyDown(WKStringRef key, WKEventModifiers modifiers, unsi
     int modifierFlags = 0;
 
     if ([character length] == 1 && [character characterAtIndex:0] >= 'A' && [character characterAtIndex:0] <= 'Z') {
-        modifierFlags |= NSShiftKeyMask;
+        modifierFlags |= NSEventModifierFlagShift;
         charactersIgnoringModifiers = [character lowercaseString];
     }
 
     modifierFlags |= buildModifierFlags(modifiers);
 
     if (keyLocation == 0x03 /*DOM_KEY_LOCATION_NUMPAD*/)
-        modifierFlags |= NSNumericPadKeyMask;
+        modifierFlags |= NSEventModifierFlagNumericPad;
 
-    NSEvent *event = [NSEvent keyEventWithType:NSKeyDown
+    NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown
                         location:NSMakePoint(5, 5)
                         modifierFlags:modifierFlags
                         timestamp:absoluteTimeForEventTime(currentEventTime())
@@ -820,7 +814,7 @@ void EventSenderProxy::keyDown(WKStringRef key, WKEventModifiers modifiers, unsi
     [[m_testController->mainWebView()->platformWindow() firstResponder] keyDown:event];
     [NSApp _setCurrentEvent:nil];
 
-    event = [NSEvent keyEventWithType:NSKeyUp
+    event = [NSEvent keyEventWithType:NSEventTypeKeyUp
                         location:NSMakePoint(5, 5)
                         modifierFlags:modifierFlags
                         timestamp:absoluteTimeForEventTime(currentEventTime())
@@ -888,52 +882,6 @@ void EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases(int x, int y, int
         NSPoint windowLocation = [event locationInWindow];
         WTFLogAlways("mouseScrollByWithWheelAndMomentumPhases failed to find the target view at %f,%f\n", windowLocation.x, windowLocation.y);
     }
-}
-
-static NSEventPhase nsEventPhaseFromCGEventPhase(int phase)
-{
-    switch (phase) {
-    case 0: // kCGSGesturePhaseNone
-        return NSEventPhaseNone;
-    case 1: // kCGSGesturePhaseBegan
-        return NSEventPhaseBegan;
-    case 2: // kCGSGesturePhaseChanged
-        return NSEventPhaseChanged;
-    case 4: // kCGSGesturePhaseEnded
-        return NSEventPhaseEnded;
-    case 8: // kCGSGesturePhaseCancelled
-        return NSEventPhaseCancelled;
-    case 128: // kCGSGesturePhaseMayBegin
-        return NSEventPhaseMayBegin;
-    }
-
-    ASSERT_NOT_REACHED();
-    return NSEventPhaseNone;
-}
-
-void EventSenderProxy::swipeGestureWithWheelAndMomentumPhases(int x, int y, int phase, int momentum)
-{
-    RetainPtr<EventSenderSyntheticEvent> event = adoptNS([[EventSenderSyntheticEvent alloc] init]);
-
-    // "mayBegin" a swipe is actually a scroll wheel event.
-    event->_eventSender_type = (phase == 128) ? NSScrollWheel : NSEventTypeGesture;
-    event->_eventSender_subtype = 6; // kIOHIDEventTypeScroll
-    event->_eventSender_locationInWindow = NSMakePoint(m_position.x, m_position.y);
-    event->_eventSender_location = ([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin);
-    event->_eventSender_phase = nsEventPhaseFromCGEventPhase(phase);
-    event->_eventSender_momentumPhase = nsEventPhaseFromCGEventPhase(momentum);
-    event->_eventSender_timestamp = absoluteTimeForEventTime(currentEventTime());
-    event->_eventSender_eventNumber = ++eventNumber;
-
-#if defined(__LP64__)
-    event->_eventSender_cgsEventRecord.phase = phase;
-    event->_eventSender_cgsEventRecord.deltaX = (float)x;
-    event->_eventSender_cgsEventRecord.deltaY = (float)y;
-#else
-    NSLog(@"Synthetic swipe gestures are not implemented for 32-bit WebKitTestRunner.");
-#endif
-
-    [NSApp sendEvent:event.get()];
 }
 
 } // namespace WTR

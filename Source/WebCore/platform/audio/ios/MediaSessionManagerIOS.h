@@ -47,28 +47,40 @@ public:
     virtual ~MediaSessionManageriOS();
 
     void externalOutputDeviceAvailableDidChange();
-    virtual bool hasWirelessTargetsAvailable() override;
-    void applicationDidEnterBackground(bool isSuspendedUnderLock);
-    void applicationWillEnterForeground(bool isSuspendedUnderLock);
+    bool hasWirelessTargetsAvailable() override;
 
 private:
     friend class PlatformMediaSessionManager;
 
     MediaSessionManageriOS();
 
-    virtual bool sessionWillBeginPlayback(PlatformMediaSession&) override;
-    virtual void sessionWillEndPlayback(PlatformMediaSession&) override;
-    
+    void removeSession(PlatformMediaSession&) override;
+
+    bool sessionWillBeginPlayback(PlatformMediaSession&) override;
+    void sessionWillEndPlayback(PlatformMediaSession&) override;
+    void clientCharacteristicsChanged(PlatformMediaSession&) override;
+
     void updateNowPlayingInfo();
     
-    virtual void resetRestrictions() override;
+    void resetRestrictions() override;
 
-    virtual void configureWireLessTargetMonitoring() override;
+    void configureWireLessTargetMonitoring() override;
 
-    virtual bool sessionCanLoadMedia(const PlatformMediaSession&) const override;
+    bool sessionCanLoadMedia(const PlatformMediaSession&) const override;
+
+    bool hasActiveNowPlayingSession() const final { return m_nowPlayingActive; }
+    String lastUpdatedNowPlayingTitle() const final { return m_reportedTitle; }
+    double lastUpdatedNowPlayingDuration() const final { return m_reportedDuration; }
+    double lastUpdatedNowPlayingElapsedTime() const final { return m_reportedCurrentTime; }
+
+    PlatformMediaSession* nowPlayingEligibleSession();
     
     RetainPtr<WebMediaSessionHelper> m_objcObserver;
-    bool m_isInBackground { false };
+    double m_reportedRate { 0 };
+    double m_reportedDuration { 0 };
+    double m_reportedCurrentTime { 0 };
+    String m_reportedTitle;
+    bool m_nowPlayingActive { false };
 };
 
 } // namespace WebCore

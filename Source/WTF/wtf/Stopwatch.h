@@ -22,11 +22,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Stopwatch_h
-#define Stopwatch_h
+#pragma once
 
 #include <cmath>
 #include <wtf/CurrentTime.h>
+#include <wtf/MonotonicTime.h>
 #include <wtf/RefCounted.h>
 
 namespace WTF {
@@ -43,6 +43,7 @@ public:
     void stop();
 
     double elapsedTime();
+    double elapsedTimeSince(MonotonicTime);
 
     bool isActive() const { return !std::isnan(m_lastStartTime); }
 private:
@@ -81,8 +82,14 @@ inline double Stopwatch::elapsedTime()
     return m_elapsedTime + (monotonicallyIncreasingTime() - m_lastStartTime);
 }
 
+inline double Stopwatch::elapsedTimeSince(MonotonicTime timeStamp)
+{
+    if (!isActive())
+        return m_elapsedTime;
+
+    return m_elapsedTime + (timeStamp.secondsSinceEpoch().seconds() - m_lastStartTime);
+}
+
 } // namespace WTF
 
 using WTF::Stopwatch;
-
-#endif // Stopwatch_h

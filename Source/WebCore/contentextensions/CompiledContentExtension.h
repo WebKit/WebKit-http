@@ -23,15 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CompiledContentExtension_h
-#define CompiledContentExtension_h
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "ContentExtensionRule.h"
 #include "DFABytecode.h"
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 namespace ContentExtensions {
@@ -40,18 +38,18 @@ class WEBCORE_EXPORT CompiledContentExtension : public ThreadSafeRefCounted<Comp
 public:
     virtual ~CompiledContentExtension();
 
-    virtual const DFABytecode* filtersWithoutDomainsBytecode() const = 0;
-    virtual unsigned filtersWithoutDomainsBytecodeLength() const = 0;
-    virtual const DFABytecode* filtersWithDomainsBytecode() const = 0;
-    virtual unsigned filtersWithDomainsBytecodeLength() const = 0;
-    virtual const DFABytecode* domainFiltersBytecode() const = 0;
-    virtual unsigned domainFiltersBytecodeLength() const = 0;
+    virtual const DFABytecode* filtersWithoutConditionsBytecode() const = 0;
+    virtual unsigned filtersWithoutConditionsBytecodeLength() const = 0;
+    virtual const DFABytecode* filtersWithConditionsBytecode() const = 0;
+    virtual unsigned filtersWithConditionsBytecodeLength() const = 0;
+    virtual const DFABytecode* topURLFiltersBytecode() const = 0;
+    virtual unsigned topURLFiltersBytecodeLength() const = 0;
     virtual const SerializedActionByte* actions() const = 0;
     virtual unsigned actionsLength() const = 0;
+    virtual bool conditionsApplyOnlyToDomain() const = 0;
 };
 
 } // namespace ContentExtensions
 } // namespace WebCore
 
 #endif // ENABLE(CONTENT_EXTENSIONS)
-#endif // CompiledContentExtension_h

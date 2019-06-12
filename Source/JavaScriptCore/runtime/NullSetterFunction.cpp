@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 
 namespace JSC {
 
-const ClassInfo NullSetterFunction::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(NullSetterFunction) };
+const ClassInfo NullSetterFunction::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(NullSetterFunction) };
 
 
 class GetCallerStrictnessFunctor {
@@ -45,7 +45,7 @@ public:
     {
     }
 
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         ++m_iterations;
         if (m_iterations < 2)
@@ -59,8 +59,8 @@ public:
     bool callerIsStrict() const { return m_callerIsStrict; }
 
 private:
-    int m_iterations;
-    bool m_callerIsStrict;
+    mutable int m_iterations;
+    mutable bool m_callerIsStrict;
 };
 
 static bool callerIsStrict(ExecState* exec)
@@ -72,20 +72,23 @@ static bool callerIsStrict(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL callReturnUndefined(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (callerIsStrict(exec))
-        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Setting a property that has only a getter")));
+        return JSValue::encode(throwTypeError(exec, scope, ASCIILiteral("Setting a property that has only a getter")));
     return JSValue::encode(jsUndefined());
 }
 
 CallType NullSetterFunction::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callReturnUndefined;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 ConstructType NullSetterFunction::getConstructData(JSCell*, ConstructData&)
 {
-    return ConstructTypeNone;
+    return ConstructType::None;
 }
 
 }

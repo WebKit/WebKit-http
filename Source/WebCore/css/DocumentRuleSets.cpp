@@ -37,21 +37,33 @@
 
 namespace WebCore {
 
-DocumentRuleSets::DocumentRuleSets()
+DocumentRuleSets::DocumentRuleSets(StyleResolver& styleResolver)
+    : m_styleResolver(styleResolver)
 {
+    m_authorStyle = std::make_unique<RuleSet>();
+    m_authorStyle->disableAutoShrinkToFit();
 }
 
 DocumentRuleSets::~DocumentRuleSets()
 {
 }
 
-void DocumentRuleSets::initUserStyle(ExtensionStyleSheets& extensionStyleSheets, const MediaQueryEvaluator& medium, StyleResolver& resolver)
+RuleSet* DocumentRuleSets::userStyle() const
 {
+    if (m_usesSharedUserStyle)
+        return m_styleResolver.document().styleScope().resolver().ruleSets().userStyle();
+    return m_userStyle.get();
+}
+
+void DocumentRuleSets::initializeUserStyle()
+{
+    auto& extensionStyleSheets = m_styleResolver.document().extensionStyleSheets();
+    auto& mediaQueryEvaluator = m_styleResolver.mediaQueryEvaluator();
     auto tempUserStyle = std::make_unique<RuleSet>();
     if (CSSStyleSheet* pageUserSheet = extensionStyleSheets.pageUserSheet())
-        tempUserStyle->addRulesFromSheet(pageUserSheet->contents(), medium, &resolver);
-    collectRulesFromUserStyleSheets(extensionStyleSheets.injectedUserStyleSheets(), *tempUserStyle, medium, resolver);
-    collectRulesFromUserStyleSheets(extensionStyleSheets.documentUserStyleSheets(), *tempUserStyle, medium, resolver);
+        tempUserStyle->addRulesFromSheet(pageUserSheet->contents(), mediaQueryEvaluator, &m_styleResolver);
+    collectRulesFromUserStyleSheets(extensionStyleSheets.injectedUserStyleSheets(), *tempUserStyle, mediaQueryEvaluator, m_styleResolver);
+    collectRulesFromUserStyleSheets(extensionStyleSheets.documentUserStyleSheets(), *tempUserStyle, mediaQueryEvaluator, m_styleResolver);
     if (tempUserStyle->ruleCount() > 0 || tempUserStyle->pageRules().size() > 0)
         m_userStyle = WTFMove(tempUserStyle);
 }
@@ -78,6 +90,7 @@ static std::unique_ptr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
 
 void DocumentRuleSets::resetAuthorStyle()
 {
+    m_isAuthorStyleDefined = true;
     m_authorStyle = std::make_unique<RuleSet>();
     m_authorStyle->disableAutoShrinkToFit();
 }
@@ -88,7 +101,7 @@ void DocumentRuleSets::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet
     // needs to be reconstructed. To handle insertions too the rule order numbers would need to be updated.
     for (auto& cssSheet : styleSheets) {
         ASSERT(!cssSheet->disabled());
-        if (cssSheet->mediaQueries() && !medium->eval(cssSheet->mediaQueries(), resolver))
+        if (cssSheet->mediaQueries() && !medium->evaluate(*cssSheet->mediaQueries(), resolver))
             continue;
         m_authorStyle->addRulesFromSheet(cssSheet->contents(), *medium, resolver);
         inspectorCSSOMWrappers.collectFromStyleSheetIfNeeded(cssSheet.get());
@@ -109,14 +122,19 @@ void DocumentRuleSets::collectFeatures() const
 
     if (m_authorStyle)
         m_features.add(m_authorStyle->features());
-    if (m_userStyle)
-        m_features.add(m_userStyle->features());
+    if (auto* userStyle = this->userStyle())
+        m_features.add(userStyle->features());
 
     m_siblingRuleSet = makeRuleSet(m_features.siblingRules);
     m_uncommonAttributeRuleSet = makeRuleSet(m_features.uncommonAttributeRules);
+
+    m_ancestorClassRuleSets.clear();
+    m_ancestorAttributeRuleSetsForHTML.clear();
+
+    m_features.shrinkToFit();
 }
 
-RuleSet* DocumentRuleSets::ancestorClassRules(AtomicStringImpl* className) const
+RuleSet* DocumentRuleSets::ancestorClassRules(const AtomicString& className) const
 {
     auto addResult = m_ancestorClassRuleSets.add(className, nullptr);
     if (addResult.isNewEntry) {
@@ -126,7 +144,7 @@ RuleSet* DocumentRuleSets::ancestorClassRules(AtomicStringImpl* className) const
     return addResult.iterator->value.get();
 }
 
-const DocumentRuleSets::AttributeRules* DocumentRuleSets::ancestorAttributeRulesForHTML(AtomicStringImpl* attributeName) const
+const DocumentRuleSets::AttributeRules* DocumentRuleSets::ancestorAttributeRulesForHTML(const AtomicString& attributeName) const
 {
     auto addResult = m_ancestorAttributeRuleSetsForHTML.add(attributeName, nullptr);
     auto& value = addResult.iterator->value;

@@ -31,7 +31,7 @@
 namespace JSC {
 
 const ClassInfo ArrayBufferNeuteringWatchpoint::s_info = {
-    "ArrayBufferNeuteringWatchpoint", 0, 0,
+    "ArrayBufferNeuteringWatchpoint", nullptr, nullptr, nullptr,
     CREATE_METHOD_TABLE(ArrayBufferNeuteringWatchpoint)
 };
 
@@ -62,7 +62,7 @@ Structure* ArrayBufferNeuteringWatchpoint::createStructure(VM& vm)
 
 void ArrayBufferNeuteringWatchpoint::fireAll()
 {
-    set()->fireAll("Array buffer was neutered");
+    set()->fireAll(*vm(), "Array buffer was neutered");
 }
 
 } // namespace JSC

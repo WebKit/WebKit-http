@@ -1,7 +1,7 @@
 # Copyright (C) 2009 Google Inc. All rights reserved.
 # Copyright (C) 2010 Chris Jerdonek (chris.jerdonek@gmail.com)
 # Copyright (C) 2010 ProFUSION embedded systems
-# Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+# Copyright (C) 2013-2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -34,10 +34,10 @@
 import logging
 import os.path
 import re
-import sys
 
 from checkers.common import categories as CommonCategories
 from checkers.common import CarriageReturnChecker
+from checkers.contributors import ContributorsChecker
 from checkers.changelog import ChangeLogChecker
 from checkers.cpp import CppChecker
 from checkers.cmake import CMakeChecker
@@ -46,6 +46,8 @@ from checkers.js import JSChecker
 from checkers.jsonchecker import JSONChecker
 from checkers.jsonchecker import JSONContributorsChecker
 from checkers.jsonchecker import JSONFeaturesChecker
+from checkers.jsonchecker import JSONCSSPropertiesChecker
+from checkers.jstest import JSTestChecker
 from checkers.messagesin import MessagesInChecker
 from checkers.png import PNGChecker
 from checkers.python import PythonChecker
@@ -87,7 +89,6 @@ _BASE_FILTER_RULES = [
     '-build/endif_comment',
     '-build/include_what_you_use',  # <string> for std::string
     '-build/storage_class',  # const static
-    '-legal/copyright',
     '-readability/multiline_comment',
     '-readability/braces',  # int foo() {};
     '-readability/fn_size',
@@ -134,7 +135,7 @@ _PATH_RULES_SPECIFIER = [
     # API and therefore do not follow the same header including
     # discipline as WebCore.
 
-    ([# TestNetscapePlugIn has no config.h and uses funny names like
+    ([  # TestNetscapePlugIn has no config.h and uses funny names like
       # NPP_SetWindow.
       os.path.join('Tools', 'DumpRenderTree', 'TestNetscapePlugIn'),
       # Qt tests and examples follow Qt coding style
@@ -175,30 +176,15 @@ _PATH_RULES_SPECIFIER = [
        "Tools/MiniBrowser/qt/raw"],
       ["-build/include"]),
 
-    ([# The GTK+ APIs use GTK+ naming style, which includes
-      # lower-cased, underscore-separated values, whitespace before
-      # parens for function calls, and always having variable names.
-      # Also, GTK+ allows the use of NULL.
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMCustom.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMDeprecated.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMEventTarget.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMNodeFilter.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMXPathNSResolver.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'scripts', 'test', 'GObject'),
-      os.path.join('Source', 'WebKit', 'gtk', 'webkit'),
-      os.path.join('Tools', 'DumpRenderTree', 'gtk')],
-     ["-readability/naming",
-      "-readability/parameter_name",
-      "-readability/null",
-      "-readability/enum_casing",
-      "-whitespace/declaration",
-      "-whitespace/indent",
-      "-whitespace/parens"]),
-
-    ([# The GTK+ API use upper case, underscore separated, words in
+    ([# The GTK+ and WPE APIs use upper case, underscore separated, words in
       # certain types of enums (e.g. signals, properties).
+      os.path.join('Source', 'WebKit2', 'Shared', 'API', 'glib'),
+      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'glib'),
       os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk')],
+      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'wpe'),
+      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'glib'),
+      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk'),
+      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'wpe')],
      ["-readability/enum_casing"]),
 
     ([# To use GStreamer GL without conflicts of GL symbols,
@@ -220,22 +206,6 @@ _PATH_RULES_SPECIFIER = [
      ["-readability/parameter_name",
       "-whitespace/parens"]),
 
-    ([# The EFL APIs use EFL naming style, which includes
-      # both lower-cased and camel-cased, underscore-sparated
-      # values.
-      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'efl'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'efl')],
-     ["-readability/naming",
-      "-readability/parameter_name"]),
-    ([# MiniBrowser/efl are EFL simple application.
-      # They need to use efl coding style and they don't have config.h.
-      os.path.join('Tools', 'MiniBrowser', 'efl')],
-     ["-readability/naming",
-      "-readability/parameter_name",
-      "-runtime/ctype_function",
-      "-whitespace/declaration",
-      "-build/include_order"]),
-
     # WebKit2 rules:
     # WebKit2 and certain directories have idiosyncracies.
     ([# NPAPI has function names with underscores.
@@ -255,11 +225,6 @@ _PATH_RULES_SPECIFIER = [
       "-whitespace/declaration"]),
     ([# These files define GObjects, which implies some definitions of
       # variables and functions containing underscores.
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMCustom.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMDeprecated.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMEventTarget.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMNodeFilter.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMXPathNSResolver.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'graphics', 'gstreamer', 'VideoSinkGStreamer.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'graphics', 'gstreamer', 'WebKitWebSourceGStreamer.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'audio', 'gstreamer', 'WebKitWebAudioSourceGStreamer.cpp'),
@@ -275,12 +240,20 @@ _PATH_RULES_SPECIFIER = [
     #   No carriage-return line endings: since this is easy to correct.
     #
     ([os.path.join('webkitpy', 'thirdparty'),
+      os.path.join('Source', 'ThirdParty', 'ANGLE'),
       os.path.join('Source', 'ThirdParty', 'brotli'),
-      os.path.join('Source', 'ThirdParty', 'woff2')],
+      os.path.join('Source', 'ThirdParty', 'woff2'),
+      os.path.join('Source', 'ThirdParty', 'xdgmime')],
      ["-",
       "+pep8/W191",  # Tabs
       "+pep8/W291",  # Trailing white space
       "+whitespace/carriage_return"]),
+
+    ([# Source/JavaScriptCore/disassembler/udis86/ is generated code.
+      os.path.join('Source', 'JavaScriptCore', 'disassembler', 'udis86')],
+     ["-readability/naming/underscores",
+      "-whitespace/declaration",
+      "-whitespace/indent"]),
 
     ([# There is no way to avoid the symbols __jit_debug_register_code
       # and __jit_debug_descriptor when integrating with gdb.
@@ -344,6 +317,21 @@ _PNG_FILE_EXTENSION = 'png'
 
 _CMAKE_FILE_EXTENSION = 'cmake'
 
+# Files that are never skipped by name.
+#
+# Do not skip these files, even when they appear in
+# _SKIPPED_FILES_WITH_WARNING or _SKIPPED_FILES_WITHOUT_WARNING.
+_NEVER_SKIPPED_JS_FILES = [
+    'js-test-pre.js',
+    'js-test-post.js',
+    'js-test-post-async.js',
+    'standalone-pre.js',
+]
+
+_NEVER_SKIPPED_FILES = _NEVER_SKIPPED_JS_FILES + [
+    'TestExpectations',
+]
+
 # Files to skip that are less obvious.
 #
 # Some files should be skipped when checking style. For example,
@@ -351,13 +339,20 @@ _CMAKE_FILE_EXTENSION = 'cmake'
 # future merges.
 _SKIPPED_FILES_WITH_WARNING = [
     os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'WebKitGtk'),
-    # All WebKit*.h files in Source/WebKit2/UIProcess/API/gtk,
-    # except those ending in ...Private.h are GTK+ API headers,
-    # which differ greatly from WebKit coding style.
+
+    # WebKit*.h files in Source/WebKit2/UIProcess/API/[gtk|wpe], except those ending in Private.h are API headers, which do not follow WebKit coding style.
     re.compile(re.escape(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
     re.compile(re.escape(os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+
+    # GObject DOM bindings copied from generated code using different coding style.
+    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'DOM'),
+
     os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
-    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'webkit-web-extension.h')]
+    os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'wpe', 'webkit.h'),
+    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'webkit-web-extension.h'),
+    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'wpe', 'webkit-web-extension.h')]
 
 # Files to skip that are more common or obvious.
 #
@@ -365,6 +360,15 @@ _SKIPPED_FILES_WITH_WARNING = [
 # with FileType.NONE are automatically skipped without warning.
 _SKIPPED_FILES_WITHOUT_WARNING = [
     "LayoutTests" + os.path.sep,
+
+    # Files generated by the bindings script should not be checked for style.
+    os.path.join('Source', 'WebCore', 'bindings', 'scripts', 'test'),
+
+    # ICU headers are imported.
+    os.path.join('Source', 'JavaScriptCore', 'icu'),
+    os.path.join('Source', 'WebCore', 'icu'),
+    os.path.join('Source', 'WebKit', 'mac', 'icu'),
+    os.path.join('Source', 'WTF', 'icu'),
     ]
 
 # Extensions of files which are allowed to contain carriage returns.
@@ -387,6 +391,7 @@ def _all_categories():
     categories = CommonCategories.union(CppChecker.categories)
     categories = categories.union(JSChecker.categories)
     categories = categories.union(JSONChecker.categories)
+    categories = categories.union(JSTestChecker.categories)
     categories = categories.union(TestExpectationsChecker.categories)
     categories = categories.union(ChangeLogChecker.categories)
     categories = categories.union(PNGChecker.categories)
@@ -542,6 +547,7 @@ class FileType:
     CMAKE = 11
     FEATUREDEFINES = 12
 
+
 class CheckerDispatcher(object):
 
     """Supports determining whether and how to check style, based on path."""
@@ -582,7 +588,7 @@ class CheckerDispatcher(object):
         basename = os.path.basename(file_path)
         if basename.startswith('ChangeLog'):
             return False
-        elif basename == 'TestExpectations':
+        elif basename in _NEVER_SKIPPED_FILES:
             return False
         for skipped_file in _SKIPPED_FILES_WITHOUT_WARNING:
             if self._should_skip_file_path(file_path, skipped_file):
@@ -645,17 +651,25 @@ class CheckerDispatcher(object):
             checker = CppChecker(file_path, file_extension,
                                  handle_style_error, min_confidence)
         elif file_type == FileType.JS:
+            basename = os.path.basename(file_path)
             # Do not attempt to check non-Inspector or 3rd-party JavaScript files as JS.
             if os.path.join('WebInspectorUI', 'UserInterface') in file_path and (not 'External' in file_path):
                 checker = JSChecker(file_path, handle_style_error)
+            elif basename in _NEVER_SKIPPED_JS_FILES:
+                checker = JSTestChecker(file_path, handle_style_error)
             else:
                 checker = TextChecker(file_path, handle_style_error)
         elif file_type == FileType.JSON:
             basename = os.path.basename(file_path)
-            if commit_queue and basename == 'contributors.json':
-                checker = JSONContributorsChecker(file_path, handle_style_error)
-            if basename == 'features.json':
+            if basename == 'contributors.json':
+                if commit_queue:
+                    checker = JSONContributorsChecker(file_path, handle_style_error)
+                else:
+                    checker = ContributorsChecker(file_path, handle_style_error)
+            elif basename == 'features.json':
                 checker = JSONFeaturesChecker(file_path, handle_style_error)
+            elif basename == 'CSSProperties.json':
+                checker = JSONCSSPropertiesChecker(file_path, handle_style_error)
             else:
                 checker = JSONChecker(file_path, handle_style_error)
         elif file_type == FileType.PYTHON:

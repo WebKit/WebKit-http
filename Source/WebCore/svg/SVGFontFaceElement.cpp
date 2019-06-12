@@ -41,6 +41,7 @@
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
+#include "StyleScope.h"
 #include <math.h>
 
 namespace WebCore {
@@ -49,7 +50,7 @@ using namespace SVGNames;
 
 inline SVGFontFaceElement::SVGFontFaceElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
-    , m_fontFaceRule(StyleRuleFontFace::create(MutableStyleProperties::create(CSSStrictMode)))
+    , m_fontFaceRule(StyleRuleFontFace::create(MutableStyleProperties::create(HTMLStandardMode)))
     , m_fontElement(nullptr)
 {
     ASSERT(hasTagName(font_faceTag));
@@ -64,6 +65,7 @@ void SVGFontFaceElement::parseAttribute(const QualifiedName& name, const AtomicS
 {    
     CSSPropertyID propId = cssPropertyIdForSVGAttributeName(name);
     if (propId > 0) {
+        // FIXME: Parse using the @font-face descriptor grammars, not the property grammars.
         m_fontFaceRule->mutableProperties().setProperty(propId, value, false);
         rebuildFontFace();
         return;
@@ -74,21 +76,21 @@ void SVGFontFaceElement::parseAttribute(const QualifiedName& name, const AtomicS
 
 unsigned SVGFontFaceElement::unitsPerEm() const
 {
-    const AtomicString& value = fastGetAttribute(units_per_emAttr);
+    const AtomicString& value = attributeWithoutSynchronization(units_per_emAttr);
     if (value.isEmpty())
-        return gDefaultUnitsPerEm;
+        return FontMetrics::defaultUnitsPerEm;
 
     return static_cast<unsigned>(ceilf(value.toFloat()));
 }
 
 int SVGFontFaceElement::xHeight() const
 {
-    return static_cast<int>(ceilf(fastGetAttribute(x_heightAttr).toFloat()));
+    return static_cast<int>(ceilf(attributeWithoutSynchronization(x_heightAttr).toFloat()));
 }
 
 int SVGFontFaceElement::capHeight() const
 {
-    return static_cast<int>(ceilf(fastGetAttribute(cap_heightAttr).toFloat()));
+    return static_cast<int>(ceilf(attributeWithoutSynchronization(cap_heightAttr).toFloat()));
 }
 
 float SVGFontFaceElement::horizontalOriginX() const
@@ -99,7 +101,7 @@ float SVGFontFaceElement::horizontalOriginX() const
     // Spec: The X-coordinate in the font coordinate system of the origin of a glyph to be used when
     // drawing horizontally oriented text. (Note that the origin applies to all glyphs in the font.)
     // If the attribute is not specified, the effect is as if a value of "0" were specified.
-    return m_fontElement->fastGetAttribute(horiz_origin_xAttr).toFloat();
+    return m_fontElement->attributeWithoutSynchronization(horiz_origin_xAttr).toFloat();
 }
 
 float SVGFontFaceElement::horizontalOriginY() const
@@ -110,7 +112,7 @@ float SVGFontFaceElement::horizontalOriginY() const
     // Spec: The Y-coordinate in the font coordinate system of the origin of a glyph to be used when
     // drawing horizontally oriented text. (Note that the origin applies to all glyphs in the font.)
     // If the attribute is not specified, the effect is as if a value of "0" were specified.
-    return m_fontElement->fastGetAttribute(horiz_origin_yAttr).toFloat();
+    return m_fontElement->attributeWithoutSynchronization(horiz_origin_yAttr).toFloat();
 }
 
 float SVGFontFaceElement::horizontalAdvanceX() const
@@ -121,7 +123,7 @@ float SVGFontFaceElement::horizontalAdvanceX() const
     // Spec: The default horizontal advance after rendering a glyph in horizontal orientation. Glyph
     // widths are required to be non-negative, even if the glyph is typically rendered right-to-left,
     // as in Hebrew and Arabic scripts.
-    return m_fontElement->fastGetAttribute(horiz_adv_xAttr).toFloat();
+    return m_fontElement->attributeWithoutSynchronization(horiz_adv_xAttr).toFloat();
 }
 
 float SVGFontFaceElement::verticalOriginX() const
@@ -132,7 +134,7 @@ float SVGFontFaceElement::verticalOriginX() const
     // Spec: The default X-coordinate in the font coordinate system of the origin of a glyph to be used when
     // drawing vertically oriented text. If the attribute is not specified, the effect is as if the attribute
     // were set to half of the effective value of attribute horiz-adv-x.
-    const AtomicString& value = m_fontElement->fastGetAttribute(vert_origin_xAttr);
+    const AtomicString& value = m_fontElement->attributeWithoutSynchronization(vert_origin_xAttr);
     if (value.isEmpty())
         return horizontalAdvanceX() / 2.0f;
 
@@ -147,7 +149,7 @@ float SVGFontFaceElement::verticalOriginY() const
     // Spec: The default Y-coordinate in the font coordinate system of the origin of a glyph to be used when
     // drawing vertically oriented text. If the attribute is not specified, the effect is as if the attribute
     // were set to the position specified by the font's ascent attribute.             
-    const AtomicString& value = m_fontElement->fastGetAttribute(vert_origin_yAttr);
+    const AtomicString& value = m_fontElement->attributeWithoutSynchronization(vert_origin_yAttr);
     if (value.isEmpty())
         return ascent();
 
@@ -161,7 +163,7 @@ float SVGFontFaceElement::verticalAdvanceY() const
 
     // Spec: The default vertical advance after rendering a glyph in vertical orientation. If the attribute is
     // not specified, the effect is as if a value equivalent of one em were specified (see units-per-em).                    
-    const AtomicString& value = m_fontElement->fastGetAttribute(vert_adv_yAttr);
+    const AtomicString& value = m_fontElement->attributeWithoutSynchronization(vert_adv_yAttr);
        if (value.isEmpty())
         return 1.0f;
 
@@ -174,12 +176,12 @@ int SVGFontFaceElement::ascent() const
     // unaccented height of the font within the font coordinate system. If the attribute is not specified,
     // the effect is as if the attribute were set to the difference between the units-per-em value and the
     // vert-origin-y value for the corresponding font.
-    const AtomicString& ascentValue = fastGetAttribute(ascentAttr);
+    const AtomicString& ascentValue = attributeWithoutSynchronization(ascentAttr);
     if (!ascentValue.isEmpty())
         return static_cast<int>(ceilf(ascentValue.toFloat()));
 
     if (m_fontElement) {
-        const AtomicString& vertOriginY = m_fontElement->fastGetAttribute(vert_origin_yAttr);
+        const AtomicString& vertOriginY = m_fontElement->attributeWithoutSynchronization(vert_origin_yAttr);
         if (!vertOriginY.isEmpty())
             return static_cast<int>(unitsPerEm()) - static_cast<int>(ceilf(vertOriginY.toFloat()));
     }
@@ -193,7 +195,7 @@ int SVGFontFaceElement::descent() const
     // Spec: Same syntax and semantics as the 'descent' descriptor within an @font-face rule. The maximum
     // unaccented depth of the font within the font coordinate system. If the attribute is not specified,
     // the effect is as if the attribute were set to the vert-origin-y value for the corresponding font.
-    const AtomicString& descentValue = fastGetAttribute(descentAttr);
+    const AtomicString& descentValue = attributeWithoutSynchronization(descentAttr);
     if (!descentValue.isEmpty()) {
         // 14 different W3C SVG 1.1 testcases use a negative descent value,
         // where a positive was meant to be used  Including:
@@ -203,7 +205,7 @@ int SVGFontFaceElement::descent() const
     }
 
     if (m_fontElement) {
-        const AtomicString& vertOriginY = m_fontElement->fastGetAttribute(vert_origin_yAttr);
+        const AtomicString& vertOriginY = m_fontElement->attributeWithoutSynchronization(vert_origin_yAttr);
         if (!vertOriginY.isEmpty())
             return static_cast<int>(ceilf(vertOriginY.toFloat()));
     }
@@ -226,7 +228,7 @@ SVGFontElement* SVGFontFaceElement::associatedFontElement() const
 
 void SVGFontFaceElement::rebuildFontFace()
 {
-    if (!inDocument()) {
+    if (!isConnected()) {
         ASSERT(!m_fontElement);
         return;
     }
@@ -266,13 +268,13 @@ void SVGFontFaceElement::rebuildFontFace()
         }
     }
 
-    document().styleResolverChanged(DeferRecalcStyle);
+    document().styleScope().didChangeStyleSheetEnvironment();
 }
 
 Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNode& rootParent)
 {
     SVGElement::insertedInto(rootParent);
-    if (!rootParent.inDocument()) {
+    if (!rootParent.isConnected()) {
         ASSERT(!m_fontElement);
         return InsertionDone;
     }
@@ -286,12 +288,12 @@ void SVGFontFaceElement::removedFrom(ContainerNode& rootParent)
 {
     SVGElement::removedFrom(rootParent);
 
-    if (rootParent.inDocument()) {
+    if (rootParent.isConnected()) {
         m_fontElement = nullptr;
         document().accessSVGExtensions().unregisterSVGFontFaceElement(this);
         m_fontFaceRule->mutableProperties().clear();
 
-        document().styleResolverChanged(DeferRecalcStyle);
+        document().styleScope().didChangeStyleSheetEnvironment();
     } else
         ASSERT(!m_fontElement);
 }

@@ -115,7 +115,7 @@ bool SVGTextQuery::executeQuery(Data* queryData, ProcessTextFragmentCallback fra
         queryData->textBox = m_textBoxes.at(textBoxPosition);
         queryData->textRenderer = &queryData->textBox->renderer();
 
-        queryData->isVerticalText = queryData->textRenderer->style().svgStyle().isVerticalWritingMode();
+        queryData->isVerticalText = queryData->textRenderer->style().isVerticalWritingMode();
         const Vector<SVGTextFragment>& fragments = queryData->textBox->textFragments();
     
         // Loop over all text fragments in this text box, firing a callback for each.
@@ -134,13 +134,15 @@ bool SVGTextQuery::executeQuery(Data* queryData, ProcessTextFragmentCallback fra
     return false;
 }
 
-bool SVGTextQuery::mapStartEndPositionsIntoFragmentCoordinates(Data* queryData, const SVGTextFragment& fragment, int& startPosition, int& endPosition) const
+bool SVGTextQuery::mapStartEndPositionsIntoFragmentCoordinates(Data* queryData, const SVGTextFragment& fragment, unsigned& startPosition, unsigned& endPosition) const
 {
     // Reuse the same logic used for text selection & painting, to map our query start/length into start/endPositions of the current text fragment.
+    ASSERT(startPosition >= queryData->processedCharacters);
+    ASSERT(endPosition >= queryData->processedCharacters);
     startPosition -= queryData->processedCharacters;
     endPosition -= queryData->processedCharacters;
 
-    if (startPosition >= endPosition || startPosition < 0 || endPosition < 0)
+    if (startPosition >= endPosition)
         return false;
 
     modifyStartEndPositionsRespectingLigatures(queryData, startPosition, endPosition);
@@ -151,7 +153,7 @@ bool SVGTextQuery::mapStartEndPositionsIntoFragmentCoordinates(Data* queryData, 
     return true;
 }
 
-void SVGTextQuery::modifyStartEndPositionsRespectingLigatures(Data* queryData, int& startPosition, int& endPosition) const
+void SVGTextQuery::modifyStartEndPositionsRespectingLigatures(Data* queryData, unsigned& startPosition, unsigned& endPosition) const
 {
     SVGTextLayoutAttributes* layoutAttributes = queryData->textRenderer->layoutAttributes();
     Vector<SVGTextMetrics>& textMetricsValues = layoutAttributes->textMetricsValues();
@@ -167,7 +169,7 @@ void SVGTextQuery::modifyStartEndPositionsRespectingLigatures(Data* queryData, i
     bool alterStartPosition = true;
     bool alterEndPosition = true;
 
-    int lastPositionOffset = -1;
+    std::optional<unsigned> lastPositionOffset;
     for (; textMetricsOffset < textMetricsSize && positionOffset < positionSize; ++textMetricsOffset) {
         SVGTextMetrics& metrics = textMetricsValues[textMetricsOffset];
 
@@ -182,21 +184,21 @@ void SVGTextQuery::modifyStartEndPositionsRespectingLigatures(Data* queryData, i
             break;
 
         // If the start position maps to a character in the metrics list, we don't need to modify it.
-        if (startPosition == static_cast<int>(positionOffset))
+        if (startPosition == positionOffset)
             alterStartPosition = false;
 
         // If the start position maps to a character in the metrics list, we don't need to modify it.
-        if (endPosition == static_cast<int>(positionOffset))
+        if (endPosition == positionOffset)
             alterEndPosition = false;
 
         // Detect ligatures.
-        if (lastPositionOffset != -1 && lastPositionOffset - positionOffset > 1) {
-            if (alterStartPosition && startPosition > lastPositionOffset && startPosition < static_cast<int>(positionOffset)) {
-                startPosition = lastPositionOffset;
+        if (lastPositionOffset && lastPositionOffset.value() - positionOffset > 1) {
+            if (alterStartPosition && startPosition > lastPositionOffset.value() && startPosition < positionOffset) {
+                startPosition = lastPositionOffset.value();
                 alterStartPosition = false;
             }
 
-            if (alterEndPosition && endPosition > lastPositionOffset && endPosition < static_cast<int>(positionOffset)) {
+            if (alterEndPosition && endPosition > lastPositionOffset.value() && endPosition < positionOffset) {
                 endPosition = positionOffset;
                 alterEndPosition = false;
             }
@@ -212,11 +214,11 @@ void SVGTextQuery::modifyStartEndPositionsRespectingLigatures(Data* queryData, i
     if (!alterStartPosition && !alterEndPosition)
         return;
 
-    if (lastPositionOffset != -1 && lastPositionOffset - positionOffset > 1) {
-        if (alterStartPosition && startPosition > lastPositionOffset && startPosition < static_cast<int>(positionOffset))
-            startPosition = lastPositionOffset;
+    if (lastPositionOffset && lastPositionOffset.value() - positionOffset > 1) {
+        if (alterStartPosition && startPosition > lastPositionOffset.value() && startPosition < positionOffset)
+            startPosition = lastPositionOffset.value();
 
-        if (alterEndPosition && endPosition > lastPositionOffset && endPosition < static_cast<int>(positionOffset))
+        if (alterEndPosition && endPosition > lastPositionOffset.value() && endPosition < positionOffset)
             endPosition = positionOffset;
     }
 }
@@ -284,8 +286,8 @@ bool SVGTextQuery::subStringLengthCallback(Data* queryData, const SVGTextFragmen
 {
     SubStringLengthData* data = static_cast<SubStringLengthData*>(queryData);
 
-    int startPosition = data->startPosition;
-    int endPosition = startPosition + data->length;
+    unsigned startPosition = data->startPosition;
+    unsigned endPosition = startPosition + data->length;
     if (!mapStartEndPositionsIntoFragmentCoordinates(queryData, fragment, startPosition, endPosition))
         return false;
 
@@ -319,8 +321,8 @@ bool SVGTextQuery::startPositionOfCharacterCallback(Data* queryData, const SVGTe
 {
     StartPositionOfCharacterData* data = static_cast<StartPositionOfCharacterData*>(queryData);
 
-    int startPosition = data->position;
-    int endPosition = startPosition + 1;
+    unsigned startPosition = data->position;
+    unsigned endPosition = startPosition + 1;
     if (!mapStartEndPositionsIntoFragmentCoordinates(queryData, fragment, startPosition, endPosition))
         return false;
 
@@ -343,10 +345,10 @@ bool SVGTextQuery::startPositionOfCharacterCallback(Data* queryData, const SVGTe
     return true;
 }
 
-SVGPoint SVGTextQuery::startPositionOfCharacter(unsigned position) const
+FloatPoint SVGTextQuery::startPositionOfCharacter(unsigned position) const
 {
     if (m_textBoxes.isEmpty())
-        return SVGPoint();
+        return { };
 
     StartPositionOfCharacterData data(position);
     executeQuery(&data, &SVGTextQuery::startPositionOfCharacterCallback);
@@ -368,8 +370,8 @@ bool SVGTextQuery::endPositionOfCharacterCallback(Data* queryData, const SVGText
 {
     EndPositionOfCharacterData* data = static_cast<EndPositionOfCharacterData*>(queryData);
 
-    int startPosition = data->position;
-    int endPosition = startPosition + 1;
+    unsigned startPosition = data->position;
+    unsigned endPosition = startPosition + 1;
     if (!mapStartEndPositionsIntoFragmentCoordinates(queryData, fragment, startPosition, endPosition))
         return false;
 
@@ -390,10 +392,10 @@ bool SVGTextQuery::endPositionOfCharacterCallback(Data* queryData, const SVGText
     return true;
 }
 
-SVGPoint SVGTextQuery::endPositionOfCharacter(unsigned position) const
+FloatPoint SVGTextQuery::endPositionOfCharacter(unsigned position) const
 {
     if (m_textBoxes.isEmpty())
-        return SVGPoint();
+        return { };
 
     EndPositionOfCharacterData data(position);
     executeQuery(&data, &SVGTextQuery::endPositionOfCharacterCallback);
@@ -416,8 +418,8 @@ bool SVGTextQuery::rotationOfCharacterCallback(Data* queryData, const SVGTextFra
 {
     RotationOfCharacterData* data = static_cast<RotationOfCharacterData*>(queryData);
 
-    int startPosition = data->position;
-    int endPosition = startPosition + 1;
+    unsigned startPosition = data->position;
+    unsigned endPosition = startPosition + 1;
     if (!mapStartEndPositionsIntoFragmentCoordinates(queryData, fragment, startPosition, endPosition))
         return false;
 
@@ -454,7 +456,7 @@ struct ExtentOfCharacterData : SVGTextQuery::Data {
     FloatRect extent;
 };
 
-static inline void calculateGlyphBoundaries(SVGTextQuery::Data* queryData, const SVGTextFragment& fragment, int startPosition, FloatRect& extent)
+static inline void calculateGlyphBoundaries(SVGTextQuery::Data* queryData, const SVGTextFragment& fragment, unsigned startPosition, FloatRect& extent)
 {
     float scalingFactor = queryData->textRenderer->scalingFactor();
     ASSERT(scalingFactor);
@@ -484,8 +486,8 @@ bool SVGTextQuery::extentOfCharacterCallback(Data* queryData, const SVGTextFragm
 {
     ExtentOfCharacterData* data = static_cast<ExtentOfCharacterData*>(queryData);
 
-    int startPosition = data->position;
-    int endPosition = startPosition + 1;
+    unsigned startPosition = data->position;
+    unsigned endPosition = startPosition + 1;
     if (!mapStartEndPositionsIntoFragmentCoordinates(queryData, fragment, startPosition, endPosition))
         return false;
 
@@ -519,8 +521,8 @@ bool SVGTextQuery::characterNumberAtPositionCallback(Data* queryData, const SVGT
 
     FloatRect extent;
     for (unsigned i = 0; i < fragment.length; ++i) {
-        int startPosition = data->processedCharacters + i;
-        int endPosition = startPosition + 1;
+        unsigned startPosition = data->processedCharacters + i;
+        unsigned endPosition = startPosition + 1;
         if (!mapStartEndPositionsIntoFragmentCoordinates(queryData, fragment, startPosition, endPosition))
             continue;
 
@@ -534,7 +536,7 @@ bool SVGTextQuery::characterNumberAtPositionCallback(Data* queryData, const SVGT
     return false;
 }
 
-int SVGTextQuery::characterNumberAtPosition(const SVGPoint& position) const
+int SVGTextQuery::characterNumberAtPosition(const FloatPoint& position) const
 {
     if (m_textBoxes.isEmpty())
         return -1;

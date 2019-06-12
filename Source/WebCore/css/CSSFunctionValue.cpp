@@ -26,55 +26,18 @@
 #include "config.h"
 #include "CSSFunctionValue.h"
 
-#include "CSSParserValues.h"
-#include "CSSValueList.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
-
-CSSFunctionValue::CSSFunctionValue(CSSParserFunction* function)
-    : CSSValue(FunctionClass)
-    , m_name(function->name)
-{
-    if (function->args)
-        m_args = CSSValueList::createFromParserValueList(*function->args);
-}
-
-CSSFunctionValue::CSSFunctionValue(const String& name, PassRefPtr<CSSValueList> args)
-    : CSSValue(FunctionClass)
-    , m_name(name)
-    , m_args(args)
-{
-}
-
+    
 String CSSFunctionValue::customCSSText() const
 {
     StringBuilder result;
-    result.append(m_name); // Includes the '('
-    if (m_args)
-        result.append(m_args->cssText());
+    result.append(getValueName(m_name));
+    result.append('(');
+    result.append(CSSValueList::customCSSText());
     result.append(')');
     return result.toString();
-}
-
-bool CSSFunctionValue::equals(const CSSFunctionValue& other) const
-{
-    return m_name == other.m_name && compareCSSValuePtr(m_args, other.m_args);
-}
-
-bool CSSFunctionValue::buildParserValueSubstitutingVariables(CSSParserValue* result, const CustomPropertyValueMap& customProperties) const
-{
-    result->id = CSSValueInvalid;
-    result->unit = CSSParserValue::Function;
-    result->function = new CSSParserFunction;
-    result->function->name.init(m_name);
-    bool success = true;
-    if (m_args) {
-        CSSParserValueList* argList = new CSSParserValueList;
-        success = m_args->buildParserValueListSubstitutingVariables(argList, customProperties);
-        result->function->args.reset(argList);
-    }
-    return success;
 }
 
 }

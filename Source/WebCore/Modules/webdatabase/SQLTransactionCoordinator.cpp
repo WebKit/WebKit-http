@@ -33,20 +33,17 @@
 #include "SQLTransactionCoordinator.h"
 
 #include "Database.h"
-#include "SQLTransactionBackend.h"
+#include "SQLTransaction.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginData.h"
 #include <wtf/Deque.h>
-#include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-static String getDatabaseIdentifier(SQLTransactionBackend* transaction)
+static String getDatabaseIdentifier(SQLTransaction& transaction)
 {
-    Database* database = transaction->database();
-    ASSERT(database);
-    return database->securityOrigin()->databaseIdentifier();
+    return transaction.database().securityOrigin().databaseIdentifier();
 }
 
 SQLTransactionCoordinator::SQLTransactionCoordinator()
@@ -59,7 +56,7 @@ void SQLTransactionCoordinator::processPendingTransactions(CoordinationInfo& inf
     if (info.activeWriteTransaction || info.pendingTransactions.isEmpty())
         return;
 
-    RefPtr<SQLTransactionBackend> firstPendingTransaction = info.pendingTransactions.first();
+    RefPtr<SQLTransaction> firstPendingTransaction = info.pendingTransactions.first();
     if (firstPendingTransaction->isReadOnly()) {
         do {
             firstPendingTransaction = info.pendingTransactions.takeFirst();
@@ -73,7 +70,7 @@ void SQLTransactionCoordinator::processPendingTransactions(CoordinationInfo& inf
     }
 }
 
-void SQLTransactionCoordinator::acquireLock(SQLTransactionBackend* transaction)
+void SQLTransactionCoordinator::acquireLock(SQLTransaction& transaction)
 {
     ASSERT(!m_isShuttingDown);
 
@@ -86,11 +83,11 @@ void SQLTransactionCoordinator::acquireLock(SQLTransactionBackend* transaction)
     }
 
     CoordinationInfo& info = coordinationInfoIterator->value;
-    info.pendingTransactions.append(transaction);
+    info.pendingTransactions.append(&transaction);
     processPendingTransactions(info);
 }
 
-void SQLTransactionCoordinator::releaseLock(SQLTransactionBackend* transaction)
+void SQLTransactionCoordinator::releaseLock(SQLTransaction& transaction)
 {
     if (m_isShuttingDown)
         return;
@@ -101,11 +98,11 @@ void SQLTransactionCoordinator::releaseLock(SQLTransactionBackend* transaction)
     ASSERT(coordinationInfoIterator != m_coordinationInfoMap.end());
     CoordinationInfo& info = coordinationInfoIterator->value;
 
-    if (transaction->isReadOnly()) {
-        ASSERT(info.activeReadTransactions.contains(transaction));
-        info.activeReadTransactions.remove(transaction);
+    if (transaction.isReadOnly()) {
+        ASSERT(info.activeReadTransactions.contains(&transaction));
+        info.activeReadTransactions.remove(&transaction);
     } else {
-        ASSERT(info.activeWriteTransaction == transaction);
+        ASSERT(info.activeWriteTransaction == &transaction);
         info.activeWriteTransaction = nullptr;
     }
 
@@ -132,7 +129,7 @@ void SQLTransactionCoordinator::shutdown()
         // Transaction phase 3 cleanup. See comment on "What happens if a
         // transaction is interrupted?" at the top of SQLTransactionBackend.cpp.
         while (!info.pendingTransactions.isEmpty()) {
-            RefPtr<SQLTransactionBackend> transaction = info.pendingTransactions.first();
+            RefPtr<SQLTransaction> transaction = info.pendingTransactions.first();
             transaction->notifyDatabaseThreadIsShuttingDown();
         }
     }

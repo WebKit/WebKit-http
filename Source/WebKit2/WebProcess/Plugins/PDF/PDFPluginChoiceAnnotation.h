@@ -42,8 +42,8 @@ class PDFPluginChoiceAnnotation : public PDFPluginAnnotation {
 public:
     static Ref<PDFPluginChoiceAnnotation> create(PDFAnnotation *, PDFLayerController *, PDFPlugin*);
 
-    virtual void updateGeometry() override;
-    virtual void commit() override;
+    void updateGeometry() override;
+    void commit() override;
 
 private:
     PDFPluginChoiceAnnotation(PDFAnnotation *annotation, PDFLayerController *pdfLayerController, PDFPlugin* plugin)
@@ -51,9 +51,12 @@ private:
     {
     }
 
-    virtual PassRefPtr<WebCore::Element> createAnnotationElement() override;
+    Ref<WebCore::Element> createAnnotationElement() override;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     PDFAnnotationChoiceWidget *choiceAnnotation() { return static_cast<PDFAnnotationChoiceWidget *>(annotation()); }
+#pragma clang diagnostic pop
 };
 
 } // namespace WebKit

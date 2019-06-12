@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInjectedScriptHost_h
-#define WebInjectedScriptHost_h
+#pragma once
 
 #include <inspector/InjectedScriptHost.h>
 
@@ -34,10 +33,8 @@ class WebInjectedScriptHost final : public Inspector::InjectedScriptHost {
 public:
     static Ref<WebInjectedScriptHost> create() { return adoptRef(*new WebInjectedScriptHost); }
 
-    virtual JSC::JSValue subtype(JSC::ExecState*, JSC::JSValue) override;
-    virtual bool isHTMLAllCollection(JSC::JSValue) override;
+    JSC::JSValue subtype(JSC::ExecState*, JSC::JSValue) override;
+    bool isHTMLAllCollection(JSC::VM&, JSC::JSValue) override;
 };
 
 } // namespace WebCore
-
-#endif // !defined(WebInjectedScriptHost_h)

@@ -30,14 +30,12 @@
 
 #import "CDMSessionMediaSourceAVFObjC.h"
 #import "ContentType.h"
-#import "ExceptionCodePlaceholder.h"
 #import "MediaPlayerPrivateMediaSourceAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
 #import "SourceBufferPrivateAVFObjC.h"
-#import "SoftLinking.h"
 #import <objc/runtime.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/AtomicString.h>
-#import <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -68,8 +66,7 @@ MediaSourcePrivate::AddStatus MediaSourcePrivateAVFObjC::addSourceBuffer(const C
 {
     MediaEngineSupportParameters parameters;
     parameters.isMediaSource = true;
-    parameters.type = contentType.type();
-    parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
+    parameters.type = contentType;
     if (MediaPlayerPrivateMediaSourceAVFObjC::supportsType(parameters) == MediaPlayer::IsNotSupported)
         return NotSupported;
 
@@ -84,8 +81,10 @@ void MediaSourcePrivateAVFObjC::removeSourceBuffer(SourceBufferPrivate* buffer)
     ASSERT(m_sourceBuffers.contains(buffer));
 
     size_t pos = m_activeSourceBuffers.find(buffer);
-    if (pos != notFound)
+    if (pos != notFound) {
         m_activeSourceBuffers.remove(pos);
+        m_player->notifyActiveSourceBuffersChanged();
+    }
 
     pos = m_sourceBuffers.find(buffer);
     m_sourceBuffers[pos]->clearMediaSource();
@@ -142,17 +141,21 @@ void MediaSourcePrivateAVFObjC::seekCompleted()
 
 void MediaSourcePrivateAVFObjC::sourceBufferPrivateDidChangeActiveState(SourceBufferPrivateAVFObjC* buffer, bool active)
 {
-    if (active && !m_activeSourceBuffers.contains(buffer))
+    if (active && !m_activeSourceBuffers.contains(buffer)) {
         m_activeSourceBuffers.append(buffer);
+        m_player->notifyActiveSourceBuffersChanged();
+    }
 
     if (!active) {
         size_t position = m_activeSourceBuffers.find(buffer);
-        if (position != notFound)
+        if (position != notFound) {
             m_activeSourceBuffers.remove(position);
+            m_player->notifyActiveSourceBuffersChanged();
+        }
     }
 }
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void MediaSourcePrivateAVFObjC::sourceBufferKeyNeeded(SourceBufferPrivateAVFObjC* buffer, Uint8Array* initData)
 {
     m_sourceBuffersNeedingSessions.append(buffer);
@@ -170,14 +173,24 @@ bool MediaSourcePrivateAVFObjC::hasAudio() const
     return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), MediaSourcePrivateAVFObjCHasAudio);
 }
 
-static bool MediaSourcePrivateAVFObjCHasVideo(SourceBufferPrivateAVFObjC* sourceBuffer)
-{
-    return sourceBuffer->hasVideo();
-}
-
 bool MediaSourcePrivateAVFObjC::hasVideo() const
 {
-    return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), MediaSourcePrivateAVFObjCHasVideo);
+    return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), [] (SourceBufferPrivateAVFObjC* sourceBuffer) {
+        return sourceBuffer->hasVideo();
+    });
+}
+
+bool MediaSourcePrivateAVFObjC::hasSelectedVideo() const
+{
+    return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), [] (SourceBufferPrivateAVFObjC* sourceBuffer) {
+        return sourceBuffer->hasSelectedVideo();
+    });
+}
+
+void MediaSourcePrivateAVFObjC::willSeek()
+{
+    for (auto* sourceBuffer : m_activeSourceBuffers)
+        sourceBuffer->willSeek();
 }
 
 void MediaSourcePrivateAVFObjC::seekToTime(const MediaTime& time)
@@ -206,6 +219,42 @@ FloatSize MediaSourcePrivateAVFObjC::naturalSize() const
         result = result.expandedTo(sourceBuffer->naturalSize());
 
     return result;
+}
+
+void MediaSourcePrivateAVFObjC::hasSelectedVideoChanged(SourceBufferPrivateAVFObjC& sourceBuffer)
+{
+    bool hasSelectedVideo = sourceBuffer.hasSelectedVideo();
+    if (m_sourceBufferWithSelectedVideo == &sourceBuffer && !hasSelectedVideo)
+        setSourceBufferWithSelectedVideo(nullptr);
+    else if (m_sourceBufferWithSelectedVideo != &sourceBuffer && hasSelectedVideo)
+        setSourceBufferWithSelectedVideo(&sourceBuffer);
+}
+
+void MediaSourcePrivateAVFObjC::setVideoLayer(AVSampleBufferDisplayLayer* layer)
+{
+    if (m_sourceBufferWithSelectedVideo)
+        m_sourceBufferWithSelectedVideo->setVideoLayer(layer);
+}
+
+void MediaSourcePrivateAVFObjC::setDecompressionSession(WebCoreDecompressionSession* decompressionSession)
+{
+    if (m_sourceBufferWithSelectedVideo)
+        m_sourceBufferWithSelectedVideo->setDecompressionSession(decompressionSession);
+}
+
+void MediaSourcePrivateAVFObjC::setSourceBufferWithSelectedVideo(SourceBufferPrivateAVFObjC* sourceBuffer)
+{
+    if (m_sourceBufferWithSelectedVideo) {
+        m_sourceBufferWithSelectedVideo->setVideoLayer(nullptr);
+        m_sourceBufferWithSelectedVideo->setDecompressionSession(nullptr);
+    }
+
+    m_sourceBufferWithSelectedVideo = sourceBuffer;
+
+    if (m_sourceBufferWithSelectedVideo) {
+        m_sourceBufferWithSelectedVideo->setVideoLayer(m_player->sampleBufferDisplayLayer());
+        m_sourceBufferWithSelectedVideo->setDecompressionSession(m_player->decompressionSession());
+    }
 }
 
 }

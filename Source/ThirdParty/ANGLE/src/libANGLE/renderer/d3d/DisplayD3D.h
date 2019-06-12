@@ -19,38 +19,57 @@ class RendererD3D;
 class DisplayD3D : public DisplayImpl
 {
   public:
-    DisplayD3D();
+    DisplayD3D(const egl::DisplayState &state);
 
     egl::Error initialize(egl::Display *display) override;
     virtual void terminate() override;
 
-    egl::Error createWindowSurface(const egl::Config *configuration, EGLNativeWindowType window, const egl::AttributeMap &attribs,
-                                   SurfaceImpl **outSurface) override;
-    egl::Error createPbufferSurface(const egl::Config *configuration, const egl::AttributeMap &attribs,
-                                    SurfaceImpl **outSurface) override;
-    egl::Error createPbufferFromClientBuffer(const egl::Config *configuration, EGLClientBuffer shareHandle,
-                                             const egl::AttributeMap &attribs, SurfaceImpl **outSurface) override;
-    egl::Error createPixmapSurface(const egl::Config *configuration, NativePixmapType nativePixmap,
-                                   const egl::AttributeMap &attribs, SurfaceImpl **outSurface) override;
+    // Surface creation
+    SurfaceImpl *createWindowSurface(const egl::SurfaceState &state,
+                                     EGLNativeWindowType window,
+                                     const egl::AttributeMap &attribs) override;
+    SurfaceImpl *createPbufferSurface(const egl::SurfaceState &state,
+                                      const egl::AttributeMap &attribs) override;
+    SurfaceImpl *createPbufferFromClientBuffer(const egl::SurfaceState &state,
+                                               EGLenum buftype,
+                                               EGLClientBuffer clientBuffer,
+                                               const egl::AttributeMap &attribs) override;
+    SurfaceImpl *createPixmapSurface(const egl::SurfaceState &state,
+                                     NativePixmapType nativePixmap,
+                                     const egl::AttributeMap &attribs) override;
 
-    egl::Error createContext(const egl::Config *config, const gl::Context *shareContext, const egl::AttributeMap &attribs,
-                             gl::Context **outContext) override;
+    ImageImpl *createImage(EGLenum target,
+                           egl::ImageSibling *buffer,
+                           const egl::AttributeMap &attribs) override;
+
+    ContextImpl *createContext(const gl::ContextState &state) override;
+
+    StreamProducerImpl *createStreamProducerD3DTextureNV12(
+        egl::Stream::ConsumerType consumerType,
+        const egl::AttributeMap &attribs) override;
 
     egl::Error makeCurrent(egl::Surface *drawSurface, egl::Surface *readSurface, gl::Context *context) override;
 
-    egl::ConfigSet generateConfigs() const override;
+    egl::ConfigSet generateConfigs() override;
 
-    bool isDeviceLost() const override;
     bool testDeviceLost() override;
     egl::Error restoreLostDevice() override;
 
     bool isValidNativeWindow(EGLNativeWindowType window) const override;
+    egl::Error validateClientBuffer(const egl::Config *configuration,
+                                    EGLenum buftype,
+                                    EGLClientBuffer clientBuffer,
+                                    const egl::AttributeMap &attribs) const override;
 
     egl::Error getDevice(DeviceImpl **device) override;
 
     std::string getVendorString() const override;
 
-    ATOM getChildWindowClass() const;
+    egl::Error waitClient() const override;
+    egl::Error waitNative(EGLint engine,
+                          egl::Surface *drawSurface,
+                          egl::Surface *readSurface) const override;
+    gl::Version getMaxSupportedESVersion() const override;
 
   private:
     void generateExtensions(egl::DisplayExtensions *outExtensions) const override;
@@ -59,9 +78,6 @@ class DisplayD3D : public DisplayImpl
     egl::Display *mDisplay;
 
     rx::RendererD3D *mRenderer;
-    ATOM mChildWindowClass;
-
-    DeviceImpl *mDevice;
 };
 
 }

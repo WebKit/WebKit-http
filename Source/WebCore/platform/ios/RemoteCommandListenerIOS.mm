@@ -28,14 +28,15 @@
 
 #if PLATFORM(IOS)
 
+#import <MediaPlayer/MPRemoteCommand.h>
 #import <MediaPlayer/MPRemoteCommandCenter.h>
 #import <MediaPlayer/MPRemoteCommandEvent.h>
-#import <MediaPlayer/MPRemoteCommand.h>
-#import <WebCore/SoftLinking.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(MediaPlayer)
 SOFT_LINK_CLASS(MediaPlayer, MPRemoteCommandCenter)
 SOFT_LINK_CLASS(MediaPlayer, MPSeekCommandEvent)
+SOFT_LINK_CLASS(MediaPlayer, MPChangePlaybackPositionCommandEvent)
 
 namespace WebCore {
 
@@ -55,7 +56,7 @@ RemoteCommandListenerIOS::RemoteCommandListenerIOS(RemoteCommandListenerClient& 
         callOnMainThread([weakThis] {
             if (!weakThis)
                 return;
-            weakThis->m_client.didReceiveRemoteControlCommand(PlatformMediaSession::PauseCommand);
+            weakThis->m_client.didReceiveRemoteControlCommand(PlatformMediaSession::PauseCommand, nullptr);
         });
 
         return MPRemoteCommandHandlerStatusSuccess;
@@ -65,7 +66,7 @@ RemoteCommandListenerIOS::RemoteCommandListenerIOS(RemoteCommandListenerClient& 
         callOnMainThread([weakThis] {
             if (!weakThis)
                 return;
-            weakThis->m_client.didReceiveRemoteControlCommand(PlatformMediaSession::PlayCommand);
+            weakThis->m_client.didReceiveRemoteControlCommand(PlatformMediaSession::PlayCommand, nullptr);
         });
 
         return MPRemoteCommandHandlerStatusSuccess;
@@ -75,7 +76,7 @@ RemoteCommandListenerIOS::RemoteCommandListenerIOS(RemoteCommandListenerClient& 
         callOnMainThread([weakThis] {
             if (!weakThis)
                 return;
-            weakThis->m_client.didReceiveRemoteControlCommand(PlatformMediaSession::TogglePlayPauseCommand);
+            weakThis->m_client.didReceiveRemoteControlCommand(PlatformMediaSession::TogglePlayPauseCommand, nullptr);
         });
 
         return MPRemoteCommandHandlerStatusSuccess;
@@ -90,7 +91,7 @@ RemoteCommandListenerIOS::RemoteCommandListenerIOS(RemoteCommandListenerClient& 
         callOnMainThread([weakThis, command] {
             if (!weakThis)
                 return;
-            weakThis->m_client.didReceiveRemoteControlCommand(command);
+            weakThis->m_client.didReceiveRemoteControlCommand(command, nullptr);
         });
 
         return MPRemoteCommandHandlerStatusSuccess;
@@ -105,7 +106,25 @@ RemoteCommandListenerIOS::RemoteCommandListenerIOS(RemoteCommandListenerClient& 
         callOnMainThread([weakThis, command] {
             if (!weakThis)
                 return;
-            weakThis->m_client.didReceiveRemoteControlCommand(command);
+            weakThis->m_client.didReceiveRemoteControlCommand(command, nullptr);
+        });
+
+        return MPRemoteCommandHandlerStatusSuccess;
+    }];
+
+    m_seekToTimeTarget = [[center changePlaybackPositionCommand] addTargetWithHandler:^(MPRemoteCommandEvent *event) {
+        ASSERT([event isKindOfClass:getMPChangePlaybackPositionCommandEventClass()]);
+
+        if (!client.supportsSeeking())
+            return MPRemoteCommandHandlerStatusCommandFailed;
+
+        MPChangePlaybackPositionCommandEvent* seekEvent = static_cast<MPChangePlaybackPositionCommandEvent *>(event);
+        PlatformMediaSession::RemoteCommandArgument argument { [seekEvent positionTime] };
+
+        callOnMainThread([weakThis, argument] {
+            if (!weakThis)
+                return;
+            weakThis->m_client.didReceiveRemoteControlCommand(PlatformMediaSession::SeekToPlaybackPositionCommand, &argument);
         });
 
         return MPRemoteCommandHandlerStatusSuccess;
@@ -120,6 +139,12 @@ RemoteCommandListenerIOS::~RemoteCommandListenerIOS()
     [[center togglePlayPauseCommand] removeTarget:m_togglePlayPauseTarget.get()];
     [[center seekForwardCommand] removeTarget:m_seekForwardTarget.get()];
     [[center seekBackwardCommand] removeTarget:m_seekBackwardTarget.get()];
+    [[center changePlaybackPositionCommand] removeTarget:m_seekToTimeTarget.get()];
+}
+
+void RemoteCommandListenerIOS::updateSupportedCommands()
+{
+    [[[getMPRemoteCommandCenterClass() sharedCommandCenter] changePlaybackPositionCommand] setEnabled:!!client().supportsSeeking()];
 }
 
 }

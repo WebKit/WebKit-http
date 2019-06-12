@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple, Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,21 +27,19 @@
 #include "SetIteratorPrototype.h"
 
 #include "IteratorOperations.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSSetIterator.h"
-#include "StructureInlines.h"
 
 namespace JSC {
 
-const ClassInfo SetIteratorPrototype::s_info = { "Set Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(SetIteratorPrototype) };
+const ClassInfo SetIteratorPrototype::s_info = { "Set Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(SetIteratorPrototype) };
 
 static EncodedJSValue JSC_HOST_CALL SetIteratorPrototypeFuncNext(ExecState*);
 
 void SetIteratorPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     vm.prototypeMap.addPrototype(this);
 
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, SetIteratorPrototypeFuncNext, DontEnum, 0);
@@ -50,14 +48,19 @@ void SetIteratorPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 
 EncodedJSValue JSC_HOST_CALL SetIteratorPrototypeFuncNext(CallFrame* callFrame)
 {
-    JSValue result;
-    JSSetIterator* iterator = jsDynamicCast<JSSetIterator*>(callFrame->thisValue());
-    if (!iterator)
-        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot call SetIterator.next() on a non-SetIterator object")));
+    VM& vm = callFrame->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (iterator->next(callFrame, result))
+    JSValue result;
+    JSSetIterator* iterator = jsDynamicCast<JSSetIterator*>(vm, callFrame->thisValue());
+    if (!iterator)
+        return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot call SetIterator.next() on a non-SetIterator object")));
+
+    if (iterator->next(callFrame, result)) {
+        scope.release();
         return JSValue::encode(createIteratorResultObject(callFrame, result, false));
-    iterator->finish();
+    }
+    scope.release();
     return JSValue::encode(createIteratorResultObject(callFrame, jsUndefined(), true));
 }
 

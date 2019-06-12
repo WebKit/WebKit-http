@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,30 +23,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLSampler_h
-#define WebGLSampler_h
+#pragma once
 
 #include "WebGLSharedObject.h"
-
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class WebGLSampler final : public WebGLSharedObject {
 public:
+    static Ref<WebGLSampler> create(WebGLRenderingContextBase&);
     virtual ~WebGLSampler();
 
-    static Ref<WebGLSampler> create(WebGLRenderingContextBase*);
-
 protected:
-    WebGLSampler(WebGLRenderingContextBase*);
-
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
-
-private:
-    virtual bool isSampler() const override { return true; }
+    explicit WebGLSampler(WebGLRenderingContextBase&);
+    void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) final;
 };
 
 } // namespace WebCore
-
-#endif // WebGLSampler_h

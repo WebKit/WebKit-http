@@ -23,13 +23,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+typedef (BufferSource or Blob or USVString) BlobPart;
+
+// FIXME: This should be exposed on Workers as well.
 [
-    JSGenerateToNativeObject,
+    Constructor(sequence<BlobPart> fileBits, USVString fileName, optional FilePropertyBag options),
+    ExportMacro=WEBCORE_EXPORT,
+    Exposed=(Window),
     JSGenerateToJSObject,
+    JSGenerateToNativeObject,
 ] interface File : Blob {
     readonly attribute DOMString name;
-#if !defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT
-    readonly attribute Date lastModifiedDate;
-#endif
+    readonly attribute long long lastModified;
 };
 
+dictionary FilePropertyBag : BlobPropertyBag {
+    long long lastModified;
+};

@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2008, 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2008, 2014-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * This library is free software; you can redistribute it and/or
@@ -21,8 +21,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef TagCollection_h
-#define TagCollection_h
+#pragma once
 
 #include "CachedHTMLCollection.h"
 #include <wtf/text/AtomicString.h>
@@ -32,66 +31,73 @@ namespace WebCore {
 // HTMLCollection that limits to a particular tag.
 class TagCollection final : public CachedHTMLCollection<TagCollection, CollectionTypeTraits<ByTag>::traversalType> {
 public:
-    static Ref<TagCollection> create(ContainerNode& rootNode, const AtomicString& namespaceURI, const AtomicString& localName)
-    {
-        ASSERT(namespaceURI != starAtom);
-        return adoptRef(*new TagCollection(rootNode, namespaceURI, localName));
-    }
-
-    static Ref<TagCollection> create(ContainerNode& rootNode, CollectionType type, const AtomicString& localName)
+    static Ref<TagCollection> create(ContainerNode& rootNode, CollectionType type, const AtomicString& qualifiedName)
     {
         ASSERT_UNUSED(type, type == ByTag);
-        return adoptRef(*new TagCollection(rootNode, starAtom, localName));
+        return adoptRef(*new TagCollection(rootNode, qualifiedName));
     }
 
     virtual ~TagCollection();
-
     bool elementMatches(Element&) const;
 
-protected:
-    TagCollection(ContainerNode& rootNode, const AtomicString& namespaceURI, const AtomicString& localName);
+private:
+    TagCollection(ContainerNode& rootNode, const AtomicString& qualifiedName);
+
+    AtomicString m_qualifiedName;
+};
+
+class TagCollectionNS final : public CachedHTMLCollection<TagCollectionNS, CollectionTypeTraits<ByTag>::traversalType> {
+public:
+    static Ref<TagCollectionNS> create(ContainerNode& rootNode, const AtomicString& namespaceURI, const AtomicString& localName)
+    {
+        return adoptRef(*new TagCollectionNS(rootNode, namespaceURI, localName));
+    }
+
+    virtual ~TagCollectionNS();
+    bool elementMatches(Element&) const;
+
+private:
+    TagCollectionNS(ContainerNode& rootNode, const AtomicString& namespaceURI, const AtomicString& localName);
 
     AtomicString m_namespaceURI;
     AtomicString m_localName;
 };
 
-inline bool TagCollection::elementMatches(Element& element) const
-{
-    // Implements http://dvcs.w3.org/hg/domcore/raw-file/tip/Overview.html#concept-getelementsbytagnamens
-    if (m_localName != starAtom && m_localName != element.localName())
-        return false;
-
-    return m_namespaceURI == starAtom || m_namespaceURI == element.namespaceURI();
-}
-
 class HTMLTagCollection final : public CachedHTMLCollection<HTMLTagCollection, CollectionTypeTraits<ByHTMLTag>::traversalType> {
 public:
-    static Ref<HTMLTagCollection> create(ContainerNode& rootNode, CollectionType type, const AtomicString& localName)
+    static Ref<HTMLTagCollection> create(ContainerNode& rootNode, CollectionType type, const AtomicString& qualifiedName)
     {
         ASSERT_UNUSED(type, type == ByHTMLTag);
-        return adoptRef(*new HTMLTagCollection(rootNode, localName));
+        return adoptRef(*new HTMLTagCollection(rootNode, qualifiedName));
     }
 
     virtual ~HTMLTagCollection();
-
     bool elementMatches(Element&) const;
 
 private:
-    HTMLTagCollection(ContainerNode& rootNode, const AtomicString& localName);
+    HTMLTagCollection(ContainerNode& rootNode, const AtomicString& qualifiedName);
 
-    AtomicString m_localName;
-    AtomicString m_loweredLocalName;
+    AtomicString m_qualifiedName;
+    AtomicString m_loweredQualifiedName;
 };
+
+inline bool TagCollection::elementMatches(Element& element) const
+{
+    return m_qualifiedName == element.tagQName().toString();
+}
+
+inline bool TagCollectionNS::elementMatches(Element& element) const
+{
+    if (m_localName != starAtom() && m_localName != element.localName())
+        return false;
+    return m_namespaceURI == starAtom() || m_namespaceURI == element.namespaceURI();
+}
 
 inline bool HTMLTagCollection::elementMatches(Element& element) const
 {
-    // Implements http://dvcs.w3.org/hg/domcore/raw-file/tip/Overview.html#concept-getelementsbytagname
-    if (m_localName == starAtom)
-        return true;
-    const AtomicString& localName = element.isHTMLElement() ? m_loweredLocalName : m_localName;
-    return localName == element.localName();
+    if (element.isHTMLElement())
+        return m_loweredQualifiedName == element.tagQName().toString();
+    return m_qualifiedName == element.tagQName().toString();
 }
 
 } // namespace WebCore
-
-#endif // TagCollection_h

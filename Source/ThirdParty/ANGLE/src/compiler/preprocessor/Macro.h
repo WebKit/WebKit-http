@@ -8,6 +8,7 @@
 #define COMPILER_PREPROCESSOR_MACRO_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -26,16 +27,12 @@ struct Macro
     typedef std::vector<std::string> Parameters;
     typedef std::vector<Token> Replacements;
 
-    Macro()
-        : predefined(false),
-          disabled(false),
-          type(kTypeObj)
-    {
-    }
+    Macro() : predefined(false), disabled(false), expansionCount(0), type(kTypeObj) {}
     bool equals(const Macro &other) const;
 
     bool predefined;
     mutable bool disabled;
+    mutable int expansionCount;
 
     Type type;
     std::string name;
@@ -43,7 +40,9 @@ struct Macro
     Replacements replacements;
 };
 
-typedef std::map<std::string, Macro> MacroSet;
+typedef std::map<std::string, std::shared_ptr<Macro>> MacroSet;
+
+void PredefineMacro(MacroSet *macroSet, const char *name, int value);
 
 }  // namespace pp
 

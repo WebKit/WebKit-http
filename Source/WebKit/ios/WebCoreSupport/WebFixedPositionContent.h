@@ -39,9 +39,7 @@ typedef NS_ENUM(NSInteger, WebFixedPositionAnchorEdge) {
 // like position:fixed layers.
 // Can be called without taking the WebThread lock.
 
-@interface WebFixedPositionContent : NSObject {
-    struct WebFixedPositionContentData* _private;
-}
+@interface WebFixedPositionContent : NSObject
 
 - (id)initWithWebView:(WebView *)webView;
 
@@ -49,7 +47,5 @@ typedef NS_ENUM(NSInteger, WebFixedPositionAnchorEdge) {
 - (void)overflowScrollPositionForLayer:(CALayer *)scrollLayer changedTo:(CGPoint)scrollPosition;
 - (void)didFinishScrollingOrZooming;
 - (BOOL)hasFixedOrStickyPositionLayers;
-// Returns CGFLOAT_MAX if there are no layers anchored to the given edge.
-- (CGFloat)minimumOffsetFromFixedPositionLayersToAnchorEdge:(WebFixedPositionAnchorEdge)anchorEdge ofRect:(CGRect)rect inLayer:(CALayer *)layer;
 
 @end

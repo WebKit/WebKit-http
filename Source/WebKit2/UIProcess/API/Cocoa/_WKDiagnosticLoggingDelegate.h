@@ -33,7 +33,7 @@ typedef NS_ENUM(NSInteger, _WKDiagnosticLoggingResultType) {
     _WKDiagnosticLoggingResultPass,
     _WKDiagnosticLoggingResultFail,
     _WKDiagnosticLoggingResultNoop,
-} WK_ENUM_AVAILABLE(10_11, 9_0);
+} WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 @protocol _WKDiagnosticLoggingDelegate <NSObject>
 @optional
@@ -41,6 +41,7 @@ typedef NS_ENUM(NSInteger, _WKDiagnosticLoggingResultType) {
 - (void)_webView:(WKWebView *)webView logDiagnosticMessage:(NSString *)message description:(NSString *)description;
 - (void)_webView:(WKWebView *)webView logDiagnosticMessageWithResult:(NSString *)message description:(NSString *)description result:(_WKDiagnosticLoggingResultType)result;
 - (void)_webView:(WKWebView *)webView logDiagnosticMessageWithValue:(NSString *)message description:(NSString *)description value:(NSString *) value;
+- (void)_webView:(WKWebView *)webView logDiagnosticMessageWithEnhancedPrivacy:(NSString *)message description:(NSString *)description WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 

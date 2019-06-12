@@ -26,8 +26,6 @@
 #import "config.h"
 #import "Widget.h"
 
-
-#import "BlockExceptions.h"
 #import "Chrome.h"
 #import "Cursor.h"
 #import "Document.h"
@@ -40,6 +38,7 @@
 #import "RuntimeApplicationChecks.h"
 #import "WebCoreFrameView.h"
 #import "WebCoreView.h"
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/Ref.h>
 #import <wtf/RetainPtr.h>
 
@@ -90,7 +89,7 @@ void Widget::setFocus(bool focused)
     if (!focused)
         return;
 
-    Frame* frame = Frame::frameForWidget(this);
+    Frame* frame = Frame::frameForWidget(*this);
     if (!frame)
         return;
 
@@ -160,7 +159,7 @@ void Widget::setFrameRect(const IntRect& rect)
 
     // Take a reference to this Widget, because sending messages to outerView can invoke arbitrary
     // code including recalc style/layout, which can deref it.
-    Ref<Widget> protect(*this);
+    Ref<Widget> protectedThis(*this);
 
     NSRect frame = rect;
     if (!NSEqualRects(frame, outerView.frame)) {
@@ -185,7 +184,7 @@ NSView *Widget::getOuterView() const
     return view;
 }
 
-void Widget::paint(GraphicsContext& p, const IntRect& r)
+void Widget::paint(GraphicsContext& p, const IntRect& r, SecurityOriginPaintPolicy)
 {
     if (p.paintingDisabled())
         return;
@@ -194,13 +193,17 @@ void Widget::paint(GraphicsContext& p, const IntRect& r)
     // We don't want to paint the view at all if it's layer backed, because then we'll end up
     // with multiple copies of the view contents, one in the view's layer itself and one in the
     // WebHTMLView's backing store (either a layer or the window backing store).
-    // However, Quicken Essentials has a plug-in that depends on drawing to update the layer (see <rdar://problem/15221231>).
-    if (view.layer && !applicationIsQuickenEssentials())
+    if (view.layer) {
+#if PLATFORM(MAC)
+        // However, Quicken Essentials has a plug-in that depends on drawing to update the layer (see <rdar://problem/15221231>).
+        if (!MacApplication::isQuickenEssentials())
+#endif
         return;
+    }
 
     // Take a reference to this Widget, because sending messages to the views can invoke arbitrary
     // code, which can deref it.
-    Ref<Widget> protect(*this);
+    Ref<Widget> protectedThis(*this);
 
     NSGraphicsContext *currentContext = [NSGraphicsContext currentContext];
     if (currentContext == [[view window] graphicsContext] || ![currentContext isDrawingToScreen]) {

@@ -22,9 +22,7 @@
 #ifndef WidthIterator_h
 #define WidthIterator_h
 
-#include "FontCascade.h"
-#include "SVGGlyph.h"
-#include "TextRun.h"
+#include <unicode/umachine.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
@@ -44,7 +42,7 @@ struct WidthIterator {
 public:
     WidthIterator(const FontCascade*, const TextRun&, HashSet<const Font*>* fallbackFonts = 0, bool accountForGlyphBounds = false, bool forTextEmphasis = false);
 
-    unsigned advance(int to, GlyphBuffer*);
+    unsigned advance(unsigned to, GlyphBuffer*);
     bool advanceOneCharacter(float& width, GlyphBuffer&);
 
     float maxGlyphBoundingBoxY() const { ASSERT(m_accountForGlyphBounds); return m_maxGlyphBoundingBoxY; }
@@ -54,12 +52,6 @@ public:
 
     const TextRun& run() const { return m_run; }
     float runWidthSoFar() const { return m_runWidthSoFar; }
-
-#if ENABLE(SVG_FONTS)
-    String lastGlyphName() const { return m_lastGlyphName; }
-    void setLastGlyphName(const String& name) { m_lastGlyphName = name; }
-    Vector<SVGGlyph::ArabicForm>& arabicForms() { return m_arabicForms; }
-#endif
 
     const FontCascade* m_font;
 
@@ -72,19 +64,14 @@ public:
     bool m_isAfterExpansion;
     float m_finalRoundingWidth;
 
-#if ENABLE(SVG_FONTS)
-    String m_lastGlyphName;
-    Vector<SVGGlyph::ArabicForm> m_arabicForms;
-#endif
-
 private:
-    GlyphData glyphDataForCharacter(UChar32, bool mirror, int currentCharacter, unsigned& advanceLength, String& normalizedSpacesStringCache);
+    GlyphData glyphDataForCharacter(UChar32, bool mirror);
     template <typename TextIterator>
     inline unsigned advanceInternal(TextIterator&, GlyphBuffer*);
 
     enum class TransformsType { None, Forced, NotForced };
-    TransformsType shouldApplyFontTransforms(const GlyphBuffer*, int lastGlyphCount, UChar32 previousCharacter) const;
-    float applyFontTransforms(GlyphBuffer*, bool ltr, int& lastGlyphCount, const Font*, UChar32 previousCharacter, bool force, CharactersTreatedAsSpace&);
+    TransformsType shouldApplyFontTransforms(const GlyphBuffer*, unsigned lastGlyphCount, UChar32 previousCharacter) const;
+    float applyFontTransforms(GlyphBuffer*, bool ltr, unsigned& lastGlyphCount, const Font*, UChar32 previousCharacter, bool force, CharactersTreatedAsSpace&);
 
     HashSet<const Font*>* m_fallbackFonts { nullptr };
     bool m_accountForGlyphBounds { false };

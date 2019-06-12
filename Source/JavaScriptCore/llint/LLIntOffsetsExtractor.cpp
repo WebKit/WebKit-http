@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,36 +28,38 @@
 #include "ArrayProfile.h"
 #include "CodeBlock.h"
 #include "CommonSlowPaths.h"
-#include "Debugger.h"
 #include "DirectArguments.h"
+#include "DirectEvalExecutable.h"
+#include "EvalExecutable.h"
 #include "Exception.h"
-#include "Executable.h"
 #include "Heap.h"
+#include "IndirectEvalExecutable.h"
 #include "Interpreter.h"
 #include "JSArray.h"
+#include "JSArrayBufferView.h"
 #include "JSCell.h"
-#include "JSFunction.h"
-#include "VM.h"
 #include "JSEnvironmentRecord.h"
+#include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "JSModuleRecord.h"
 #include "JSObject.h"
-#include "JSStack.h"
 #include "JSString.h"
 #include "JSTypeInfo.h"
 #include "JumpTable.h"
 #include "LLIntOfflineAsmConfig.h"
 #include "MarkedSpace.h"
+#include "NativeExecutable.h"
 #include "ProtoCallFrame.h"
+#include "ShadowChicken.h"
 #include "Structure.h"
 #include "StructureChain.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
+#include "VM.h"
 #include "VMEntryRecord.h"
 #include "ValueProfile.h"
 #include "Watchdog.h"
 #include <wtf/text/StringImpl.h>
-
 
 namespace JSC {
 

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingStateTree_h
-#define ScrollingStateTree_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
@@ -48,7 +47,7 @@ public:
     WEBCORE_EXPORT ~ScrollingStateTree();
 
     ScrollingStateFrameScrollingNode* rootStateNode() const { return m_rootStateNode.get(); }
-    WEBCORE_EXPORT ScrollingStateNode* stateNodeForID(ScrollingNodeID);
+    WEBCORE_EXPORT ScrollingStateNode* stateNodeForID(ScrollingNodeID) const;
 
     WEBCORE_EXPORT ScrollingNodeID attachNode(ScrollingNodeType, ScrollingNodeID, ScrollingNodeID parentID);
     void detachNode(ScrollingNodeID);
@@ -75,15 +74,14 @@ public:
     void setPreferredLayerRepresentation(LayerRepresentation::Type representation) { m_preferredLayerRepresentation = representation; }
 
 private:
-    void setRootStateNode(PassRefPtr<ScrollingStateFrameScrollingNode> rootStateNode) { m_rootStateNode = rootStateNode; }
+    void setRootStateNode(Ref<ScrollingStateFrameScrollingNode>&& rootStateNode) { m_rootStateNode = WTFMove(rootStateNode); }
     void addNode(ScrollingStateNode*);
 
-    PassRefPtr<ScrollingStateNode> createNode(ScrollingNodeType, ScrollingNodeID);
-    
-    enum class SubframeNodeRemoval {
-        Delete,
-        Orphan
-    };
+    Ref<ScrollingStateNode> createNode(ScrollingNodeType, ScrollingNodeID);
+
+    bool nodeTypeAndParentMatch(ScrollingStateNode&, ScrollingNodeType, ScrollingNodeID parentID) const;
+
+    enum class SubframeNodeRemoval { Delete, Orphan };
     void removeNodeAndAllDescendants(ScrollingStateNode*, SubframeNodeRemoval = SubframeNodeRemoval::Delete);
 
     void recursiveNodeWillBeRemoved(ScrollingStateNode* currNode, SubframeNodeRemoval);
@@ -107,5 +105,3 @@ void showScrollingStateTree(const WebCore::ScrollingStateNode*);
 #endif
 
 #endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
-
-#endif // ScrollingStateTree_h

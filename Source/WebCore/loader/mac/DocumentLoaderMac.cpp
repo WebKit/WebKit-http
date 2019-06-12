@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 static void scheduleAll(const ResourceLoaderMap& loaders, SchedulePair& pair)
 {
@@ -71,4 +71,4 @@ void DocumentLoader::unschedule(SchedulePair& pair)
 
 #endif
 
-} // namespace
+} // namespace WebCore

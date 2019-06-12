@@ -102,22 +102,18 @@ CGColorSpaceRef LayerHostingContext::colorSpace() const
     return [m_context colorSpace];
 }
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+#if PLATFORM(MAC)
 void LayerHostingContext::setColorMatchUntaggedContent(bool colorMatchUntaggedContent)
 {
-    if ([m_context respondsToSelector:@selector(setColorMatchUntaggedContent:)])
-        [m_context setColorMatchUntaggedContent:colorMatchUntaggedContent];
+    [m_context setColorMatchUntaggedContent:colorMatchUntaggedContent];
 }
 
 bool LayerHostingContext::colorMatchUntaggedContent() const
 {
-    if ([m_context respondsToSelector:@selector(colorMatchUntaggedContent)])
-        return [m_context colorMatchUntaggedContent];
-    return false;
+    return [m_context colorMatchUntaggedContent];
 }
 #endif
 
-#if HAVE(COREANIMATION_FENCES)
 void LayerHostingContext::setFencePort(mach_port_t fencePort)
 {
     [m_context setFencePort:fencePort];
@@ -127,19 +123,5 @@ MachSendRight LayerHostingContext::createFencePort()
 {
     return MachSendRight::adopt([m_context createFencePort]);
 }
-#else
-NO_RETURN_DUE_TO_ASSERT void LayerHostingContext::setFencePort(mach_port_t fencePort)
-{
-    ASSERT_NOT_REACHED();
-}
-
-NO_RETURN_DUE_TO_ASSERT MachSendRight LayerHostingContext::createFencePort()
-{
-    ASSERT_NOT_REACHED();
-#if ASSERT_DISABLED
-    return MachSendRight();
-#endif
-}
-#endif
 
 } // namespace WebKit

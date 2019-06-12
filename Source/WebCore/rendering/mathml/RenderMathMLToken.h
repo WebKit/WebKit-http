@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2014 Frédéric Wang (fred.wang@free.fr). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
+ * Copyright (C) 2016 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,40 +25,47 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLToken_h
-#define RenderMathMLToken_h
+#pragma once
 
 #if ENABLE(MATHML)
 
-#include "MathMLTextElement.h"
 #include "RenderMathMLBlock.h"
-#include "RenderText.h"
 
 namespace WebCore {
-    
+
+class MathMLTokenElement;
+
 class RenderMathMLToken : public RenderMathMLBlock {
 public:
-    RenderMathMLToken(Element&, Ref<RenderStyle>&&);
-    RenderMathMLToken(Document&, Ref<RenderStyle>&&);
+    RenderMathMLToken(MathMLTokenElement&, RenderStyle&&);
+    RenderMathMLToken(Document&, RenderStyle&&);
 
-    MathMLTextElement& element() { return static_cast<MathMLTextElement&>(nodeForNonAnonymous()); }
+    MathMLTokenElement& element();
 
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override { return true; };
-    virtual void addChild(RenderObject* newChild, RenderObject* beforeChild) override;
     virtual void updateTokenContent();
-    virtual void updateFromElement() override;
+    void updateFromElement() override;
 
 protected:
-    void createWrapperIfNeeded();
+    void paint(PaintInfo&, const LayoutPoint&) override;
+    void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) override;
+    std::optional<int> firstLineBaseline() const override;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+    void computePreferredLogicalWidths() override;
 
 private:
-    virtual bool isRenderMathMLToken() const override final { return true; }
-    virtual const char* renderName() const override { return isAnonymous() ? "RenderMathMLToken (anonymous)" : "RenderMathMLToken"; }
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    virtual void updateStyle();
-
-    // This boolean indicates whether the token element contains some RenderElement descendants, other than the anonymous renderers created for layout purpose.
-    bool m_containsElement;
+    bool isRenderMathMLToken() const final { return true; }
+    const char* renderName() const override { return "RenderMathMLToken"; }
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const final { return true; };
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void updateMathVariantGlyph();
+    void setMathVariantGlyphDirty()
+    {
+        m_mathVariantGlyphDirty = true;
+        setNeedsLayoutAndPrefWidthsRecalc();
+    }
+    std::optional<UChar32> m_mathVariantCodePoint { std::nullopt };
+    bool m_mathVariantIsMirrored { false };
+    bool m_mathVariantGlyphDirty { false };
 };
 
 } // namespace WebCore
@@ -64,4 +73,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLToken, isRenderMathMLToken())
 
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLToken_h

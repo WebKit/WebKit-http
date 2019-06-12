@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,50 +24,42 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LoadableTextTrack_h
-#define LoadableTextTrack_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
 #include "TextTrack.h"
 #include "TextTrackLoader.h"
-#include <wtf/TypeCasts.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class HTMLTrackElement;
-class LoadableTextTrack;
 
 class LoadableTextTrack final : public TextTrack, private TextTrackLoaderClient {
 public:
-    static Ref<LoadableTextTrack> create(HTMLTrackElement* track, const String& kind, const String& label, const String& language)
+    static Ref<LoadableTextTrack> create(HTMLTrackElement& track, const String& kind, const String& label, const String& language)
     {
         return adoptRef(*new LoadableTextTrack(track, kind, label, language));
     }
-    virtual ~LoadableTextTrack();
 
     void scheduleLoad(const URL&);
 
-    virtual void clearClient() override;
-
-    virtual AtomicString id() const override;
-
     size_t trackElementIndex();
-    HTMLTrackElement* trackElement() { return m_trackElement; }
-    void setTrackElement(HTMLTrackElement*);
-    virtual Element* element() override;
+    HTMLTrackElement* trackElement() const { return m_trackElement; }
+    void clearElement() { m_trackElement = nullptr; }
 
-    virtual bool isDefault() const override { return m_isDefault; }
-    virtual void setIsDefault(bool isDefault) override  { m_isDefault = isDefault; }
+    void setIsDefault(bool isDefault) final { m_isDefault = isDefault; }
 
 private:
-    // TextTrackLoaderClient
-    virtual void newCuesAvailable(TextTrackLoader*) override;
-    virtual void cueLoadingCompleted(TextTrackLoader*, bool loadingFailed) override;
-    virtual void newRegionsAvailable(TextTrackLoader*) override;
+    LoadableTextTrack(HTMLTrackElement&, const String& kind, const String& label, const String& language);
 
-    LoadableTextTrack(HTMLTrackElement*, const String& kind, const String& label, const String& language);
+    void newCuesAvailable(TextTrackLoader*) final;
+    void cueLoadingCompleted(TextTrackLoader*, bool loadingFailed) final;
+    void newRegionsAvailable(TextTrackLoader*) final;
+
+    AtomicString id() const final;
+    bool isDefault() const final { return m_isDefault; }
+    Element* element() final;
 
     void loadTimerFired();
 
@@ -74,8 +67,9 @@ private:
     Timer m_loadTimer;
     std::unique_ptr<TextTrackLoader> m_loader;
     URL m_url;
-    bool m_isDefault;
+    bool m_isDefault { false };
 };
+
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::LoadableTextTrack)
@@ -83,5 +77,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::LoadableTextTrack)
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(VIDEO_TRACK)
-
-#endif // LoadableTextTrack_h

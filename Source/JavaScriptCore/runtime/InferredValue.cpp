@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 
 namespace JSC {
 
-const ClassInfo InferredValue::s_info = { "InferredValue", 0, 0, CREATE_METHOD_TABLE(InferredValue) };
+const ClassInfo InferredValue::s_info = { "InferredValue", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(InferredValue) };
 
 InferredValue* InferredValue::create(VM& vm)
 {
@@ -54,14 +54,18 @@ void InferredValue::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     InferredValue* inferredValue = jsCast<InferredValue*>(cell);
     
+    auto locker = holdLock(*inferredValue);
+    
     if (inferredValue->m_set.hasBeenInvalidated()) {
-        inferredValue->m_cleanup = nullptr;
+        if (inferredValue->m_cleanup && !inferredValue->m_cleanup->isOnList())
+            inferredValue->m_cleanup = nullptr;
         return;
     }
     
-    if (!inferredValue->m_value)
+    JSValue value = inferredValue->m_value.get();
+    if (!value)
         return;
-    if (!inferredValue->m_value.get().isCell())
+    if (!value.isCell())
         return;
     
     if (!inferredValue->m_cleanup)
@@ -92,7 +96,7 @@ void InferredValue::notifyWriteSlow(VM& vm, JSValue value, const FireDetail& det
         ASSERT(!!m_value);
         if (m_value.get() == value)
             return;
-        invalidate(detail);
+        invalidate(vm, detail);
         return;
         
     case IsInvalidated:
@@ -119,13 +123,16 @@ InferredValue::ValueCleanup::~ValueCleanup()
 
 void InferredValue::ValueCleanup::finalizeUnconditionally()
 {
-    ASSERT(m_owner->m_value);
-    ASSERT(m_owner->m_value.get().isCell());
+    JSValue value = m_owner->m_value.get();
     
-    if (Heap::isMarked(m_owner->m_value.get().asCell()))
+    // Concurrent GC means that this could have changed since we installed the finalizer.
+    if (!value || !value.isCell())
         return;
     
-    m_owner->invalidate(StringFireDetail("InferredValue clean-up during GC"));
+    if (Heap::isMarked(value.asCell()))
+        return;
+    
+    m_owner->invalidate(*m_owner->vm(), StringFireDetail("InferredValue clean-up during GC"));
 }
 
 } // namespace JSC

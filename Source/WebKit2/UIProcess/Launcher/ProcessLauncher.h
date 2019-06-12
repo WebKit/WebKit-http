@@ -23,14 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessLauncher_h
-#define WebProcessLauncher_h
+#pragma once
 
 #include "Connection.h"
 #include "PlatformProcessIdentifier.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
@@ -61,7 +61,7 @@ public:
         ProcessType processType;
         HashMap<String, String> extraInitializationData;
 
-#if (PLATFORM(EFL) || PLATFORM(GTK)) && !defined(NDEBUG)
+#if ENABLE(DEVELOPER_MODE) && (PLATFORM(GTK) || PLATFORM(WPE))
         String processCmdPrefix;
 #endif
     };
@@ -87,11 +87,14 @@ private:
 
     Client* m_client;
 
+#if PLATFORM(COCOA)
+    OSObjectPtr<xpc_connection_t> m_xpcConnection;
+#endif
+
+    WeakPtrFactory<ProcessLauncher> m_weakPtrFactory;
     const LaunchOptions m_launchOptions;
     bool m_isLaunching;
     PlatformProcessIdentifier m_processIdentifier;
 };
 
 } // namespace WebKit
-
-#endif // WebProcessLauncher_h

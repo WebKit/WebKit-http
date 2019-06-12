@@ -27,22 +27,24 @@
 #include "ProxyConstructor.h"
 
 #include "Error.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "IdentifierInlines.h"
+#include "JSCInlines.h"
+#include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
 #include "ProxyObject.h"
+#include "ProxyRevoke.h"
 #include "StructureInlines.h"
 
 namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ProxyConstructor);
 
-const ClassInfo ProxyConstructor::s_info = { "Proxy", &Base::s_info, 0, CREATE_METHOD_TABLE(ProxyConstructor) };
+const ClassInfo ProxyConstructor::s_info = { "Proxy", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ProxyConstructor) };
 
 ProxyConstructor* ProxyConstructor::create(VM& vm, Structure* structure)
 {
     ProxyConstructor* constructor = new (NotNull, allocateCell<ProxyConstructor>(vm.heap)) ProxyConstructor(vm, structure);
-    constructor->finishCreation(vm, "Proxy");
+    constructor->finishCreation(vm, "Proxy", structure->globalObject());
     return constructor;
 }
 
@@ -51,37 +53,72 @@ ProxyConstructor::ProxyConstructor(VM& vm, Structure* structure)
 {
 }
 
-void ProxyConstructor::finishCreation(VM& vm, const char* name)
+static EncodedJSValue JSC_HOST_CALL makeRevocableProxy(ExecState* exec)
 {
-    Base::finishCreation(vm, name);
-
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(2), ReadOnly | DontDelete | DontEnum);
-}
-
-static EncodedJSValue JSC_HOST_CALL constructProxyObject(ExecState* exec)
-{
-    if (exec->newTarget().isUndefined())
-        return throwVMTypeError(exec, ASCIILiteral("new.target of Proxy construct should not be undefined."));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (exec->argumentCount() < 2)
+        return throwVMTypeError(exec, scope, ASCIILiteral("Proxy.revocable needs to be called with two arguments: the target and the handler"));
 
     ArgList args(exec);
     JSValue target = args.at(0);
     JSValue handler = args.at(1);
-    return JSValue::encode(ProxyObject::create(exec, exec->lexicalGlobalObject()->proxyObjectStructure(), target, handler));
+    ProxyObject* proxy = ProxyObject::create(exec, exec->lexicalGlobalObject(), target, handler);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    ProxyRevoke* revoke = ProxyRevoke::create(vm, exec->lexicalGlobalObject()->proxyRevokeStructure(), proxy);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    JSObject* result = constructEmptyObject(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    result->putDirect(vm, makeIdentifier(vm, "proxy"), proxy, None);
+    result->putDirect(vm, makeIdentifier(vm, "revoke"), revoke, None);
+
+    return JSValue::encode(result);
+}
+
+static EncodedJSValue JSC_HOST_CALL proxyRevocableConstructorThrowError(ExecState* exec)
+{
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    return throwVMTypeError(exec, scope, ASCIILiteral("Proxy.revocable cannot be constructed. It can only be called"));
+}
+
+void ProxyConstructor::finishCreation(VM& vm, const char* name, JSGlobalObject* globalObject)
+{
+    Base::finishCreation(vm, name);
+
+    putDirect(vm, vm.propertyNames->length, jsNumber(2), DontEnum | ReadOnly);
+    putDirect(vm, makeIdentifier(vm, "revocable"), JSFunction::create(vm, globalObject, 2, ASCIILiteral("revocable"), makeRevocableProxy, NoIntrinsic, proxyRevocableConstructorThrowError));
+}
+
+static EncodedJSValue JSC_HOST_CALL constructProxyObject(ExecState* exec)
+{
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    if (exec->newTarget().isUndefined())
+        return throwVMTypeError(exec, scope, ASCIILiteral("new.target of Proxy construct should not be undefined"));
+
+    ArgList args(exec);
+    JSValue target = args.at(0);
+    JSValue handler = args.at(1);
+    scope.release();
+    return JSValue::encode(ProxyObject::create(exec, exec->lexicalGlobalObject(), target, handler));
 }
 
 ConstructType ProxyConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructProxyObject;
-    return ConstructTypeHost;
+    return ConstructType::Host;
+}
+
+static EncodedJSValue JSC_HOST_CALL callProxy(ExecState* exec)
+{
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "Proxy"));
 }
 
 CallType ProxyConstructor::getCallData(JSCell*, CallData& callData)
 {
-    // Proxy should throw a TypeError when called as a function.
-    callData.js.functionExecutable = 0;
-    callData.js.scope = 0;
-    callData.native.function = 0;
-    return CallTypeNone;
+    callData.native.function = callProxy;
+    return CallType::Host;
 }
 
 } // namespace JSC

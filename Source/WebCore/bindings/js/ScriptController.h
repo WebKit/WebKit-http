@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *  Copyright (C) 2008 Eric Seidel <eric@webkit.org>
  *
  *  This library is free software; you can redistribute it and/or
@@ -19,11 +19,10 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef ScriptController_h
-#define ScriptController_h
+#pragma once
 
 #include "FrameLoaderTypes.h"
-#include "JSDOMWindowShell.h"
+#include "JSDOMWindowProxy.h"
 #include <JavaScriptCore/JSBase.h>
 #include <heap/Strong.h>
 #include <wtf/Forward.h>
@@ -38,13 +37,11 @@ OBJC_CLASS WebScriptObject;
 
 struct NPObject;
 
-namespace Deprecated {
-class ScriptValue;
-}
-
 namespace JSC {
-class JSGlobalObject;
 class ExecState;
+class JSGlobalObject;
+class JSInternalPromise;
+class JSModuleRecord;
 
 namespace Bindings {
 class Instance;
@@ -54,14 +51,16 @@ class RootObject;
 
 namespace WebCore {
 
+class CachedScriptFetcher;
 class Frame;
 class HTMLDocument;
 class HTMLPlugInElement;
+class LoadableModuleScript;
 class ScriptSourceCode;
 class SecurityOrigin;
+class URL;
 class Widget;
-
-typedef HashMap<void*, RefPtr<JSC::Bindings::RootObject>> RootObjectMap;
+struct ExceptionDetails;
 
 enum ReasonForCallingCanExecuteScripts {
     AboutToExecuteScript,
@@ -71,7 +70,8 @@ enum ReasonForCallingCanExecuteScripts {
 class ScriptController {
     WTF_MAKE_FAST_ALLOCATED;
 
-    typedef HashMap<RefPtr<DOMWrapperWorld>, JSC::Strong<JSDOMWindowShell>> ShellMap;
+    using ProxyMap = HashMap<RefPtr<DOMWrapperWorld>, JSC::Strong<JSDOMWindowProxy>>;
+    using RootObjectMap = HashMap<void*, Ref<JSC::Bindings::RootObject>>;
 
 public:
     explicit ScriptController(Frame&);
@@ -79,31 +79,31 @@ public:
 
     WEBCORE_EXPORT static Ref<DOMWrapperWorld> createWorld();
 
-    JSDOMWindowShell* createWindowShell(DOMWrapperWorld&);
-    void destroyWindowShell(DOMWrapperWorld&);
+    JSDOMWindowProxy& createWindowProxy(DOMWrapperWorld&);
+    void destroyWindowProxy(DOMWrapperWorld&);
 
-    Vector<JSC::Strong<JSDOMWindowShell>> windowShells();
+    Vector<JSC::Strong<JSDOMWindowProxy>> windowProxies();
 
-    JSDOMWindowShell* windowShell(DOMWrapperWorld& world)
+    JSDOMWindowProxy* windowProxy(DOMWrapperWorld& world)
     {
-        ShellMap::iterator iter = m_windowShells.find(&world);
-        return (iter != m_windowShells.end()) ? iter->value.get() : initScript(world);
+        auto iter = m_windowProxies.find(&world);
+        return (iter != m_windowProxies.end()) ? iter->value.get() : initScript(world);
     }
-    JSDOMWindowShell* existingWindowShell(DOMWrapperWorld& world) const
+    JSDOMWindowProxy* existingWindowProxy(DOMWrapperWorld& world) const
     {
-        ShellMap::const_iterator iter = m_windowShells.find(&world);
-        return (iter != m_windowShells.end()) ? iter->value.get() : 0;
+        auto iter = m_windowProxies.find(&world);
+        return (iter != m_windowProxies.end()) ? iter->value.get() : 0;
     }
     JSDOMWindow* globalObject(DOMWrapperWorld& world)
     {
-        return windowShell(world)->window();
+        return windowProxy(world)->window();
     }
 
     static void getAllWorlds(Vector<Ref<DOMWrapperWorld>>&);
 
-    Deprecated::ScriptValue executeScript(const ScriptSourceCode&, ExceptionDetails* = nullptr);
-    WEBCORE_EXPORT Deprecated::ScriptValue executeScript(const String& script, bool forceUserGesture = false, ExceptionDetails* = nullptr);
-    WEBCORE_EXPORT Deprecated::ScriptValue executeScriptInWorld(DOMWrapperWorld&, const String& script, bool forceUserGesture = false);
+    JSC::JSValue executeScript(const ScriptSourceCode&, ExceptionDetails* = nullptr);
+    WEBCORE_EXPORT JSC::JSValue executeScript(const String& script, bool forceUserGesture = false, ExceptionDetails* = nullptr);
+    WEBCORE_EXPORT JSC::JSValue executeScriptInWorld(DOMWrapperWorld&, const String& script, bool forceUserGesture = false);
 
     // Returns true if argument is a JavaScript URL.
     bool executeIfJavaScriptURL(const URL&, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL = ReplaceDocumentIfJavaScriptURL);
@@ -112,13 +112,26 @@ public:
     // Darwin is an exception to this rule: it is OK to call this function from any thread, even reentrantly.
     static void initializeThreading();
 
-    Deprecated::ScriptValue evaluate(const ScriptSourceCode&, ExceptionDetails* = nullptr);
-    Deprecated::ScriptValue evaluateInWorld(const ScriptSourceCode&, DOMWrapperWorld&, ExceptionDetails* = nullptr);
+    JSC::JSValue evaluate(const ScriptSourceCode&, ExceptionDetails* = nullptr);
+    JSC::JSValue evaluateInWorld(const ScriptSourceCode&, DOMWrapperWorld&, ExceptionDetails* = nullptr);
+
+    void loadModuleScriptInWorld(LoadableModuleScript&, const String& moduleName, DOMWrapperWorld&);
+    void loadModuleScript(LoadableModuleScript&, const String& moduleName);
+    void loadModuleScriptInWorld(LoadableModuleScript&, const ScriptSourceCode&, DOMWrapperWorld&);
+    void loadModuleScript(LoadableModuleScript&, const ScriptSourceCode&);
+
+    JSC::JSValue linkAndEvaluateModuleScriptInWorld(LoadableModuleScript& , DOMWrapperWorld&);
+    JSC::JSValue linkAndEvaluateModuleScript(LoadableModuleScript&);
+
+    JSC::JSValue evaluateModule(const URL&, JSC::JSModuleRecord&, DOMWrapperWorld&);
+    JSC::JSValue evaluateModule(const URL&, JSC::JSModuleRecord&);
 
     WTF::TextPosition eventHandlerPosition() const;
 
     void enableEval();
+    void enableWebAssembly();
     void disableEval(const String& errorMessage);
+    void disableWebAssembly(const String& errorMessage);
 
     WEBCORE_EXPORT static bool processingUserGesture();
     WEBCORE_EXPORT static bool processingUserGestureForMedia();
@@ -127,15 +140,16 @@ public:
     WEBCORE_EXPORT bool canExecuteScripts(ReasonForCallingCanExecuteScripts);
 
     // Debugger can be 0 to detach any existing Debugger.
-    void attachDebugger(JSC::Debugger*); // Attaches/detaches in all worlds/window shells.
-    void attachDebugger(JSDOMWindowShell*, JSC::Debugger*);
+    void attachDebugger(JSC::Debugger*); // Attaches/detaches in all worlds/window proxies.
+    void attachDebugger(JSDOMWindowProxy*, JSC::Debugger*);
 
     void setPaused(bool b) { m_paused = b; }
     bool isPaused() const { return m_paused; }
 
     const String* sourceURL() const { return m_sourceURL; } // 0 if we are not evaluating any script
 
-    void clearWindowShell(DOMWindow* newDOMWindow, bool goingIntoPageCache);
+    void clearWindowProxiesNotMatchingDOMWindow(DOMWindow*, bool goingIntoPageCache);
+    void setDOMWindowForWindowProxy(DOMWindow*);
     void updateDocument();
 
     void namedItemAdded(HTMLDocument*, const AtomicString&) { }
@@ -147,10 +161,10 @@ public:
     void updatePlatformScriptObjects();
 
     RefPtr<JSC::Bindings::Instance>  createScriptInstanceForWidget(Widget*);
-    JSC::Bindings::RootObject* bindingRootObject();
+    WEBCORE_EXPORT JSC::Bindings::RootObject* bindingRootObject();
     JSC::Bindings::RootObject* cacheableBindingRootObject();
 
-    WEBCORE_EXPORT RefPtr<JSC::Bindings::RootObject> createRootObject(void* nativeHandle);
+    WEBCORE_EXPORT Ref<JSC::Bindings::RootObject> createRootObject(void* nativeHandle);
 
     void collectIsolatedContexts(Vector<std::pair<JSC::ExecState*, SecurityOrigin*>>&);
 
@@ -162,16 +176,16 @@ public:
     WEBCORE_EXPORT JSC::JSObject* jsObjectForPluginElement(HTMLPlugInElement*);
     
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    NPObject* createScriptObjectForPluginElement(HTMLPlugInElement*);
     WEBCORE_EXPORT NPObject* windowScriptNPObject();
 #endif
 
 private:
-    WEBCORE_EXPORT JSDOMWindowShell* initScript(DOMWrapperWorld&);
+    WEBCORE_EXPORT JSDOMWindowProxy* initScript(DOMWrapperWorld&);
+    void setupModuleScriptHandlers(LoadableModuleScript&, JSC::JSInternalPromise&, DOMWrapperWorld&);
 
     void disconnectPlatformScriptObjects();
 
-    ShellMap m_windowShells;
+    ProxyMap m_windowProxies;
     Frame& m_frame;
     const String* m_sourceURL;
 
@@ -194,5 +208,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ScriptController_h

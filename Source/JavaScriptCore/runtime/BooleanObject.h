@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef BooleanObject_h
-#define BooleanObject_h
+#pragma once
 
 #include "JSWrapperObject.h"
 
@@ -52,10 +51,8 @@ BooleanObject* asBooleanObject(JSValue);
 
 inline BooleanObject* asBooleanObject(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(BooleanObject::info()));
+    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), BooleanObject::info()));
     return static_cast<BooleanObject*>(asObject(value));
 }
 
 } // namespace JSC
-
-#endif // BooleanObject_h

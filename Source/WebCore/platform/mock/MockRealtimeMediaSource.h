@@ -34,51 +34,56 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "RealtimeMediaSource.h"
-#include <wtf/RunLoop.h>
+
+#if USE(OPENWEBRTC)
+#include "RealtimeMediaSourceOwr.h"
+#endif
 
 namespace WebCore {
 
-class FloatRect;
-class GraphicsContext;
-class TrackSourceInfo;
+class CaptureDevice;
 
-class MockRealtimeMediaSource : public RealtimeMediaSource {
+#if USE(OPENWEBRTC)
+using BaseRealtimeMediaSourceClass = RealtimeMediaSourceOwr;
+#else
+using BaseRealtimeMediaSourceClass = RealtimeMediaSource;
+#endif
+
+class MockRealtimeMediaSource : public BaseRealtimeMediaSourceClass {
 public:
     virtual ~MockRealtimeMediaSource() { }
 
-    static const AtomicString& mockAudioSourcePersistentID();
-    static const AtomicString& mockAudioSourceName();
-
-    static const AtomicString& mockVideoSourcePersistentID();
-    static const AtomicString& mockVideoSourceName();
-
-    static RefPtr<TrackSourceInfo> trackSourceWithUID(const String&, MediaConstraints*);
+    static Vector<CaptureDevice>& audioDevices();
+    static Vector<CaptureDevice>& videoDevices();
 
 protected:
     MockRealtimeMediaSource(const String& id, Type, const String& name);
 
     virtual void updateSettings(RealtimeMediaSourceSettings&) = 0;
     virtual void initializeCapabilities(RealtimeMediaSourceCapabilities&) = 0;
+#if !USE(OPENWEBRTC)
     virtual void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) = 0;
+#endif
 
-    void startProducingData() override { m_isProducingData = true; }
-    void stopProducingData() override { m_isProducingData = false; }
+    const RealtimeMediaSourceCapabilities& capabilities() const override;
+    const RealtimeMediaSourceSettings& settings() const override;
 
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() override;
-    const RealtimeMediaSourceSettings& settings() override;
-
-    MediaConstraints& constraints() { return *m_constraints.get(); }
     RealtimeMediaSourceSupportedConstraints& supportedConstraints();
 
-private:
+    unsigned deviceIndex() { return m_deviceIndex; }
 
-    bool isProducingData() const override { return m_isProducingData; }
+private:
+    void initializeCapabilities();
+#if USE(OPENWEBRTC)
+    void initializeSettings() final;
+#else
+    void initializeSettings();
+#endif
 
     RealtimeMediaSourceSettings m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
-    RefPtr<RealtimeMediaSourceCapabilities> m_capabilities;
-    RefPtr<MediaConstraints> m_constraints;
-    bool m_isProducingData { false };
+    std::unique_ptr<RealtimeMediaSourceCapabilities> m_capabilities;
+    unsigned m_deviceIndex { 0 };
 };
 
 } // namespace WebCore

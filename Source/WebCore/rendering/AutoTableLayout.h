@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef AutoTableLayout_h
-#define AutoTableLayout_h
+#pragma once
 
 #include "LayoutUnit.h"
 #include "Length.h"
@@ -36,9 +35,10 @@ public:
     explicit AutoTableLayout(RenderTable*);
     virtual ~AutoTableLayout();
 
-    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth) override;
-    virtual void applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const override;
-    virtual void layout() override;
+    void computeIntrinsicLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth) override;
+    LayoutUnit scaledWidthFromPercentColumns() const override { return m_scaledWidthFromPercentColumns; }
+    void applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const override;
+    void layout() override;
 
 private:
     void fullRecalc();
@@ -63,8 +63,7 @@ private:
     Vector<RenderTableCell*, 4> m_spanCells;
     bool m_hasPercent : 1;
     mutable bool m_effectiveLogicalWidthDirty : 1;
+    LayoutUnit m_scaledWidthFromPercentColumns;
 };
 
 } // namespace WebCore
-
-#endif // AutoTableLayout_h

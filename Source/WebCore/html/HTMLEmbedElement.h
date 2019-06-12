@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLEmbedElement_h
-#define HTMLEmbedElement_h
+#pragma once
 
 #include "HTMLPlugInImageElement.h"
 
@@ -29,29 +28,28 @@ namespace WebCore {
 
 class HTMLEmbedElement final : public HTMLPlugInImageElement {
 public:
+    static Ref<HTMLEmbedElement> create(Document&);
     static Ref<HTMLEmbedElement> create(const QualifiedName&, Document&, bool createdByParser);
 
 private:
     HTMLEmbedElement(const QualifiedName&, Document&, bool createdByParser);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 
-    virtual bool rendererIsNeeded(const RenderStyle&) override;
+    bool rendererIsNeeded(const RenderStyle&) final;
 
-    virtual bool isURLAttribute(const Attribute&) const override;
-    virtual const AtomicString& imageSourceURL() const override;
+    bool isURLAttribute(const Attribute&) const final;
+    const AtomicString& imageSourceURL() const final;
 
-    virtual RenderWidget* renderWidgetLoadingPlugin() const override;
+    RenderWidget* renderWidgetLoadingPlugin() const final;
 
-    virtual void updateWidget(PluginCreationOption) override;
+    void updateWidget(CreatePlugins) final;
 
-    virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
     void parametersForPlugin(Vector<String>& paramNames, Vector<String>& paramValues);
 };
 
-}
-
-#endif
+} // namespace WebCore

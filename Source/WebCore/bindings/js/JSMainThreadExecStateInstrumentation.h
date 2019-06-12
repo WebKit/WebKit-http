@@ -24,12 +24,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSMainThreadExecStateInstrumentation_h
-#define JSMainThreadExecStateInstrumentation_h
+#pragma once
 
 #include "InspectorInstrumentation.h"
 #include "JSMainThreadExecState.h"
-#include <runtime/Executable.h>
+#include <runtime/FunctionExecutable.h>
 
 namespace WebCore {
 
@@ -50,14 +49,12 @@ inline InspectorInstrumentationCookie JSMainThreadExecState::instrumentFunctionI
 
 inline InspectorInstrumentationCookie JSMainThreadExecState::instrumentFunctionCall(ScriptExecutionContext* context, JSC::CallType type, const JSC::CallData& data)
 {
-    return instrumentFunctionInternal<JSC::CallType, JSC::CallTypeJS, JSC::CallData>(context, type, data);
+    return instrumentFunctionInternal<JSC::CallType, JSC::CallType::JS, JSC::CallData>(context, type, data);
 }
 
 inline InspectorInstrumentationCookie JSMainThreadExecState::instrumentFunctionConstruct(ScriptExecutionContext* context, JSC::ConstructType type, const JSC::ConstructData& data)
 {
-    return instrumentFunctionInternal<JSC::ConstructType, JSC::ConstructTypeJS, JSC::ConstructData>(context, type, data);
+    return instrumentFunctionInternal<JSC::ConstructType, JSC::ConstructType::JS, JSC::ConstructData>(context, type, data);
 }
 
 } // namespace WebCore
-
-#endif // JSMainThreadExecStateInstrumentation_h

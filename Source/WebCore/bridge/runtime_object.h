@@ -47,7 +47,7 @@ public:
     static void destroy(JSCell*);
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
     static JSValue defaultValue(const JSObject*, ExecState*, PreferredPrimitiveType);
     static CallType getCallData(JSCell*, CallData&);
@@ -59,13 +59,13 @@ public:
 
     Instance* getInternalInstance() const { return m_instance.get(); }
 
-    static JSObject* throwInvalidAccessError(ExecState*);
+    static JSObject* throwInvalidAccessError(ExecState*, ThrowScope&);
 
     DECLARE_INFO;
 
-    static ObjectPrototype* createPrototype(VM&, JSGlobalObject* globalObject)
+    static ObjectPrototype* createPrototype(VM&, JSGlobalObject& globalObject)
     {
-        return globalObject->objectPrototype();
+        return globalObject.objectPrototype();
     }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)

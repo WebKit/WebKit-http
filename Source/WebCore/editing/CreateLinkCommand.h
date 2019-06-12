@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CreateLinkCommand_h
-#define CreateLinkCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -37,17 +36,15 @@ public:
         return adoptRef(*new CreateLinkCommand(document, linkURL));
     }
 
-    bool isCreateLinkCommand() const { return true; }
+    bool isCreateLinkCommand() const override { return true; }
 
 private:
     CreateLinkCommand(Document&, const String& linkURL);
 
-    virtual void doApply();
-    virtual EditAction editingAction() const { return EditActionCreateLink; }
+    void doApply() override;
+    EditAction editingAction() const override { return EditActionCreateLink; }
 
     String m_url;
 };
 
 } // namespace WebCore
-
-#endif // CreateLinkCommand_h

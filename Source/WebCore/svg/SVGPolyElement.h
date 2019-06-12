@@ -18,36 +18,37 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPolyElement_h
-#define SVGPolyElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
-#include "SVGPointList.h"
+#include "SVGPointListValues.h"
 
 namespace WebCore {
 
 class SVGPolyElement : public SVGGraphicsElement, public SVGExternalResourcesRequired {
 public:
-    RefPtr<SVGListPropertyTearOff<SVGPointList>> points();
-    RefPtr<SVGListPropertyTearOff<SVGPointList>> animatedPoints();
+    Ref<SVGPointList> points();
+    Ref<SVGPointList> animatedPoints();
 
-    SVGPointList& pointList() const { return m_points.value; }
+    SVGPointListValues& pointList() const { return m_points.value; }
 
     static const SVGPropertyInfo* pointsPropertyInfo();
+
+    size_t approximateMemoryCost() const override;
 
 protected:
     SVGPolyElement(const QualifiedName&, Document&);
 
 private:
-    virtual bool isValid() const override { return SVGTests::isValid(); }
+    bool isValid() const override { return SVGTests::isValid(); }
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override; 
-    virtual void svgAttributeChanged(const QualifiedName&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override; 
+    void svgAttributeChanged(const QualifiedName&) override;
 
-    virtual bool supportsMarkers() const override { return true; }
+    bool supportsMarkers() const override { return true; }
 
     // Custom 'points' property
     static void synchronizePoints(SVGElement* contextElement);
@@ -58,7 +59,7 @@ private:
     END_DECLARE_ANIMATED_PROPERTIES
 
 protected:
-    mutable SVGSynchronizableAnimatedProperty<SVGPointList> m_points;
+    mutable SVGSynchronizableAnimatedProperty<SVGPointListValues> m_points;
 };
 
 } // namespace WebCore
@@ -67,5 +68,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SVGPolyElement)
     static bool isType(const WebCore::SVGElement& element) { return element.hasTagName(WebCore::SVGNames::polygonTag) || element.hasTagName(WebCore::SVGNames::polylineTag); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::SVGElement>(node) && isType(downcast<WebCore::SVGElement>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

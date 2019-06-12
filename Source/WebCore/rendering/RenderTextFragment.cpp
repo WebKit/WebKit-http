@@ -25,6 +25,7 @@
 
 #include "RenderBlock.h"
 #include "RenderIterator.h"
+#include "RenderMultiColumnFlowThread.h"
 #include "Text.h"
 
 namespace WebCore {
@@ -68,7 +69,7 @@ void RenderTextFragment::styleDidChange(StyleDifference diff, const RenderStyle*
     RenderText::styleDidChange(diff, oldStyle);
 
     if (RenderBlock* block = blockForAccompanyingFirstLetter()) {
-        block->style().removeCachedPseudoStyle(FIRST_LETTER);
+        block->mutableStyle().removeCachedPseudoStyle(FIRST_LETTER);
         block->updateFirstLetter();
     }
 }
@@ -112,6 +113,8 @@ RenderBlock* RenderTextFragment::blockForAccompanyingFirstLetter()
     if (!m_firstLetter)
         return nullptr;
     for (auto& block : ancestorsOfType<RenderBlock>(*m_firstLetter)) {
+        if (is<RenderMultiColumnFlowThread>(block))
+            break;
         if (block.style().hasPseudoStyle(FIRST_LETTER) && block.canHaveChildren())
             return &block;
     }

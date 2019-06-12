@@ -265,7 +265,7 @@ static void pageDidDrawToImage(const ShareableBitmap::Handle& imageHandle, IPCCa
     _webFrame->page()->beginPrinting(_webFrame.get(), printInfo);
 
     IPCCallbackContext* context = new IPCCallbackContext;
-    RefPtr<DataCallback> callback = DataCallback::create([context](API::Data* data, WebKit::CallbackBase::Error) {
+    auto callback = DataCallback::create([context](API::Data* data, WebKit::CallbackBase::Error) {
         ASSERT(RunLoop::isMain());
 
         std::unique_ptr<IPCCallbackContext> contextDeleter(context);
@@ -281,12 +281,12 @@ static void pageDidDrawToImage(const ShareableBitmap::Handle& imageHandle, IPCCa
             view->_printingCallbackCondition.notifyOne();
         }
     });
-    _expectedPrintCallback = callback->callbackID();
+    _expectedPrintCallback = callback->callbackID().toInteger();
 
     context->view = self;
-    context->callbackID = callback->callbackID();
+    context->callbackID = callback->callbackID().toInteger();
 
-    _webFrame->page()->drawPagesToPDF(_webFrame.get(), printInfo, firstPage - 1, lastPage - firstPage + 1, callback.get());
+    _webFrame->page()->drawPagesToPDF(_webFrame.get(), printInfo, firstPage - 1, lastPage - firstPage + 1, WTFMove(callback));
 }
 
 static void pageDidComputePageRects(const Vector<WebCore::IntRect>& pageRects, double totalScaleFactorForPrinting, IPCCallbackContext* context)
@@ -340,15 +340,15 @@ static void pageDidComputePageRects(const Vector<WebCore::IntRect>& pageRects, d
     ASSERT(!_expectedComputedPagesCallback);
 
     IPCCallbackContext* context = new IPCCallbackContext;
-    RefPtr<ComputedPagesCallback> callback = ComputedPagesCallback::create([context](const Vector<WebCore::IntRect>& pageRects, double totalScaleFactorForPrinting, WebKit::CallbackBase::Error) {
+    auto callback = ComputedPagesCallback::create([context](const Vector<WebCore::IntRect>& pageRects, double totalScaleFactorForPrinting, WebKit::CallbackBase::Error) {
         std::unique_ptr<IPCCallbackContext> contextDeleter(context);
         pageDidComputePageRects(pageRects, totalScaleFactorForPrinting, context);
     });
-    _expectedComputedPagesCallback = callback->callbackID();
+    _expectedComputedPagesCallback = callback->callbackID().toInteger();
     context->view = self;
     context->callbackID = _expectedComputedPagesCallback;
 
-    _webFrame->page()->computePagesForPrinting(_webFrame.get(), PrintInfo([_printOperation printInfo]), callback.release());
+    _webFrame->page()->computePagesForPrinting(_webFrame.get(), PrintInfo([_printOperation printInfo]), WTFMove(callback));
     return YES;
 }
 
@@ -427,6 +427,11 @@ static void prepareDataForPrintingOnSecondaryThread(WKPrintingView *view)
     return 0; // Invalid page number.
 }
 
+static CFStringRef linkDestinationName(PDFDocument *document, PDFDestination *destination)
+{
+    return (CFStringRef)[NSString stringWithFormat:@"%lu-%f-%f", (unsigned long)[document indexForPage:destination.page], destination.point.x, destination.point.y];
+}
+
 - (void)_drawPDFDocument:(PDFDocument *)pdfDocument page:(unsigned)page atPoint:(NSPoint)point
 {
     if (!pdfDocument) {
@@ -449,21 +454,38 @@ static void prepareDataForPrintingOnSecondaryThread(WKPrintingView *view)
     CGContextTranslateCTM(context, point.x, point.y);
     CGContextScaleCTM(context, _totalScaleFactorForPrinting, -_totalScaleFactorForPrinting);
     CGContextTranslateCTM(context, 0, -[pdfPage boundsForBox:kPDFDisplayBoxMediaBox].size.height);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [pdfPage drawWithBox:kPDFDisplayBoxMediaBox];
+#pragma clang diagnostic pop
 
     CGAffineTransform transform = CGContextGetCTM(context);
+
+    for (const auto& destination : _linkDestinationsPerPage[page]) {
+        CGPoint destinationPoint = CGPointApplyAffineTransform(NSPointToCGPoint([destination point]), transform);
+        CGPDFContextAddDestinationAtPoint(context, linkDestinationName(pdfDocument, destination.get()), destinationPoint);
+    }
 
     for (PDFAnnotation *annotation in [pdfPage annotations]) {
         if (![annotation isKindOfClass:pdfAnnotationLinkClass()])
             continue;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         PDFAnnotationLink *linkAnnotation = (PDFAnnotationLink *)annotation;
+#pragma clang diagnostic pop
         NSURL *url = [linkAnnotation URL];
-        if (!url)
-            continue;
+        CGRect transformedRect = CGRectApplyAffineTransform(NSRectToCGRect([linkAnnotation bounds]), transform);
 
-        CGRect urlRect = NSRectToCGRect([linkAnnotation bounds]);
-        CGRect transformedRect = CGRectApplyAffineTransform(urlRect, transform);
+        if (!url) {
+            PDFDestination *destination = [linkAnnotation destination];
+            if (!destination)
+                continue;
+            CGPDFContextSetDestinationForRect(context, linkDestinationName(pdfDocument, destination), transformedRect);
+
+            continue;
+        }
+
         CGPDFContextSetURLForRect(context, (CFURLRef)url, transformedRect);
     }
 
@@ -495,17 +517,17 @@ static void prepareDataForPrintingOnSecondaryThread(WKPrintingView *view)
                 _webFrame->page()->beginPrinting(_webFrame.get(), PrintInfo([_printOperation printInfo]));
 
                 IPCCallbackContext* context = new IPCCallbackContext;
-                RefPtr<ImageCallback> callback = ImageCallback::create([context](const ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
+                auto callback = ImageCallback::create([context](const ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
                     std::unique_ptr<IPCCallbackContext> contextDeleter(context);
                     pageDidDrawToImage(imageHandle, context);
                 });
-                _latestExpectedPreviewCallback = callback->callbackID();
+                _latestExpectedPreviewCallback = callback->callbackID().toInteger();
                 _expectedPreviewCallbacks.add(_latestExpectedPreviewCallback, scaledPrintingRect);
 
                 context->view = self;
-                context->callbackID = callback->callbackID();
+                context->callbackID = callback->callbackID().toInteger();
 
-                _webFrame->page()->drawRectToImage(_webFrame.get(), PrintInfo([_printOperation printInfo]), scaledPrintingRect, imageSize, callback.get());
+                _webFrame->page()->drawRectToImage(_webFrame.get(), PrintInfo([_printOperation printInfo]), scaledPrintingRect, imageSize, WTFMove(callback));
                 return;
             }
         }
@@ -543,6 +565,31 @@ static void prepareDataForPrintingOnSecondaryThread(WKPrintingView *view)
     if (!_printedPagesPDFDocument) {
         RetainPtr<NSData> pdfData = adoptNS([[NSData alloc] initWithBytes:_printedPagesData.data() length:_printedPagesData.size()]);
         _printedPagesPDFDocument = adoptNS([[pdfDocumentClass() alloc] initWithData:pdfData.get()]);
+
+        unsigned pageCount = [_printedPagesPDFDocument pageCount];
+        _linkDestinationsPerPage.clear();
+        _linkDestinationsPerPage.resize(pageCount);
+        for (unsigned i = 0; i < pageCount; i++) {
+            PDFPage *page = [_printedPagesPDFDocument pageAtIndex:i];
+            for (PDFAnnotation *annotation in page.annotations) {
+                if (![annotation isKindOfClass:pdfAnnotationLinkClass()])
+                    continue;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                PDFAnnotationLink *linkAnnotation = (PDFAnnotationLink *)annotation;
+#pragma clang diagnostic pop
+                if (linkAnnotation.URL)
+                    continue;
+
+                PDFDestination *destination = linkAnnotation.destination;
+                if (!destination)
+                    continue;
+
+                unsigned destinationPageIndex = [_printedPagesPDFDocument indexForPage:destination.page];
+                _linkDestinationsPerPage[destinationPageIndex].append(destination);
+            }
+        }
     }
 
     unsigned printedPageNumber = [self _pageForRect:nsRect] - [self _firstPrintedPageNumber];

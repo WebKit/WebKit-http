@@ -22,12 +22,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GainNode_h
-#define GainNode_h
+#pragma once
 
 #include "AudioNode.h"
 #include "AudioParam.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/Threading.h>
 
 namespace WebCore {
@@ -45,18 +43,18 @@ public:
     }
 
     // AudioNode
-    virtual void process(size_t framesToProcess) override;
-    virtual void reset() override;
+    void process(size_t framesToProcess) override;
+    void reset() override;
 
     // Called in the main thread when the number of channels for the input may have changed.
-    virtual void checkNumberOfChannelsForInput(AudioNodeInput*) override;
+    void checkNumberOfChannelsForInput(AudioNodeInput*) override;
 
     // JavaScript interface
     AudioParam* gain() { return m_gain.get(); }
 
 private:
-    virtual double tailTime() const override { return 0; }
-    virtual double latencyTime() const override { return 0; }
+    double tailTime() const override { return 0; }
+    double latencyTime() const override { return 0; }
 
     GainNode(AudioContext&, float sampleRate);
 
@@ -67,5 +65,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // GainNode_h

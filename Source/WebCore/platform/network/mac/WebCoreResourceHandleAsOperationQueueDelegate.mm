@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +26,12 @@
 #import "config.h"
 #import "WebCoreResourceHandleAsOperationQueueDelegate.h"
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #import "AuthenticationChallenge.h"
 #import "AuthenticationMac.h"
+#import "CFNetworkSPI.h"
 #import "Logging.h"
-#import "NSURLRequestSPI.h"
 #import "ResourceHandle.h"
 #import "ResourceHandleClient.h"
 #import "ResourceRequest.h"
@@ -58,7 +58,7 @@ using namespace WebCore;
 
 - (void)detachHandle
 {
-    m_handle = 0;
+    m_handle = nullptr;
 
     m_requestResult = nullptr;
     m_cachedResponseResult = nullptr;
@@ -100,7 +100,7 @@ using namespace WebCore;
     ASSERT(!isMainThread());
     UNUSED_PARAM(connection);
 
-    redirectResponse = synthesizeRedirectResponseIfNecessary(connection, newRequest, redirectResponse);
+    redirectResponse = synthesizeRedirectResponseIfNecessary([connection currentRequest], newRequest, redirectResponse);
 
     // See <rdar://problem/5380697>. This is a workaround for a behavior change in CFNetwork where willSendRequest gets called more often.
     if (!redirectResponse)
@@ -122,9 +122,7 @@ using namespace WebCore;
             return;
         }
 
-        ResourceRequest request = newRequest;
-
-        m_handle->willSendRequest(request, redirectResponse);
+        m_handle->willSendRequest(newRequest, redirectResponse);
     });
 
     dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
@@ -144,22 +142,6 @@ using namespace WebCore;
             return;
         }
         m_handle->didReceiveAuthenticationChallenge(core(challenge));
-    });
-}
-
-- (void)connection:(NSURLConnection *)connection didCancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-{
-    // FIXME: We probably don't need to implement this (see <rdar://problem/8960124>).
-
-    ASSERT(!isMainThread());
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p didCancelAuthenticationChallenge:%p", m_handle, connection, challenge);
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (!m_handle)
-            return;
-        m_handle->didCancelAuthenticationChallenge(core(challenge));
     });
 }
 
@@ -203,44 +185,25 @@ using namespace WebCore;
 
         // Avoid MIME type sniffing if the response comes back as 304 Not Modified.
         int statusCode = [r respondsToSelector:@selector(statusCode)] ? [(id)r statusCode] : 0;
-        if (statusCode != 304)
-            adjustMIMETypeIfNecessary([r _CFURLResponse]);
+        if (statusCode != 304) {
+            bool isMainResourceLoad = m_handle->firstRequest().requester() == ResourceRequest::Requester::Main;
+            adjustMIMETypeIfNecessary([r _CFURLResponse], isMainResourceLoad);
+        }
 
         if ([m_handle->firstRequest().nsURLRequest(DoNotUpdateHTTPBody) _propertyForKey:@"ForceHTMLMIMEType"])
             [r _setMIMEType:@"text/html"];
         
         ResourceResponse resourceResponse(r);
 #if ENABLE(WEB_TIMING)
-        ResourceHandle::getConnectionTimingData(connection, resourceResponse.resourceLoadTiming());
+        ResourceHandle::getConnectionTimingData(connection, resourceResponse.deprecatedNetworkLoadMetrics());
 #else
         UNUSED_PARAM(connection);
 #endif
-        m_handle->client()->didReceiveResponseAsync(m_handle, resourceResponse);
+        m_handle->didReceiveResponse(WTFMove(resourceResponse));
     });
 
     dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
 }
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-- (void)connection:(NSURLConnection *)connection didReceiveDataArray:(NSArray *)dataArray
-{
-    ASSERT(!isMainThread());
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p didReceiveDataArray:%p arraySize:%d", m_handle, connection, dataArray, [dataArray count]);
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (!dataArray)
-            return;
-
-        if (!m_handle || !m_handle->client())
-            return;
-
-        m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::wrapCFDataArray(reinterpret_cast<CFArrayRef>(dataArray)), -1);
-        // The call to didReceiveData above can cancel a load, and if so, the delegate (self) could have been deallocated by this point.
-    });
-}
-#endif
 
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data lengthReceived:(long long)lengthReceived
 {
@@ -260,7 +223,7 @@ using namespace WebCore;
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
         // -1 means we do not provide any data about transfer size to inspector so it would use
         // Content-Length headers or content size to show transfer size.
-        m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::wrapNSData(data), -1);
+        m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::create(data), -1);
     });
 }
 
@@ -290,7 +253,7 @@ using namespace WebCore;
         if (!m_handle || !m_handle->client())
             return;
 
-        m_handle->client()->didFinishLoading(m_handle, 0);
+        m_handle->client()->didFinishLoading(m_handle);
     });
 }
 
@@ -346,5 +309,5 @@ using namespace WebCore;
 
 @end
 
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)
 

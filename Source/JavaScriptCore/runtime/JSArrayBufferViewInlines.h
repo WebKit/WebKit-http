@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSArrayBufferViewInlines_h
-#define JSArrayBufferViewInlines_h
+#pragma once
 
 #include "ArrayBufferView.h"
 #include "JSArrayBufferView.h"
@@ -32,13 +31,25 @@
 
 namespace JSC {
 
-inline ArrayBuffer* JSArrayBufferView::buffer()
+inline bool JSArrayBufferView::isShared()
+{
+    switch (m_mode) {
+    case WastefulTypedArray:
+        return existingBufferInButterfly()->isShared();
+    case DataViewMode:
+        return jsCast<JSDataView*>(this)->possiblySharedBuffer()->isShared();
+    default:
+        return false;
+    }
+}
+
+inline ArrayBuffer* JSArrayBufferView::possiblySharedBuffer()
 {
     switch (m_mode) {
     case WastefulTypedArray:
         return existingBufferInButterfly();
     case DataViewMode:
-        return jsCast<JSDataView*>(this)->buffer();
+        return jsCast<JSDataView*>(this)->possiblySharedBuffer();
     default:
         return methodTable()->slowDownAndWasteMemory(this);
     }
@@ -50,34 +61,41 @@ inline ArrayBuffer* JSArrayBufferView::existingBufferInButterfly()
     return butterfly()->indexingHeader()->arrayBuffer();
 }
 
-inline PassRefPtr<ArrayBufferView> JSArrayBufferView::impl()
+inline RefPtr<ArrayBufferView> JSArrayBufferView::possiblySharedImpl()
 {
     return methodTable()->getTypedArrayImpl(this);
 }
 
-inline void JSArrayBufferView::neuter()
+inline RefPtr<ArrayBufferView> JSArrayBufferView::unsharedImpl()
 {
-    ASSERT(hasArrayBuffer());
-    m_length = 0;
-    m_vector.clear();
+    RefPtr<ArrayBufferView> result = possiblySharedImpl();
+    RELEASE_ASSERT(!result->isShared());
+    return result;
 }
 
 inline unsigned JSArrayBufferView::byteOffset()
 {
     if (!hasArrayBuffer())
         return 0;
-
-    ASSERT(!vector() == !buffer()->data());
-
+    
+    ArrayBuffer* buffer = possiblySharedBuffer();
+    ASSERT(!vector() == !buffer->data());
+    
     ptrdiff_t delta =
-        bitwise_cast<uint8_t*>(vector()) - static_cast<uint8_t*>(buffer()->data());
+        bitwise_cast<uint8_t*>(vector()) - static_cast<uint8_t*>(buffer->data());
     
     unsigned result = static_cast<unsigned>(delta);
     ASSERT(static_cast<ptrdiff_t>(result) == delta);
     return result;
 }
 
+inline RefPtr<ArrayBufferView> JSArrayBufferView::toWrapped(VM& vm, JSValue value)
+{
+    if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(vm, value)) {
+        if (!view->isShared())
+            return view->unsharedImpl();
+    }
+    return nullptr;
+}
+
 } // namespace JSC
-
-#endif // JSArrayBufferViewInlines_h
-

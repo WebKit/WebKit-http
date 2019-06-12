@@ -10,11 +10,18 @@
 #define LIBANGLE_RENDERER_GL_FUNCTIONSGL_H_
 
 #include "common/debug.h"
+#include "libANGLE/Version.h"
 #include "libANGLE/renderer/gl/functionsgl_enums.h"
 #include "libANGLE/renderer/gl/functionsgl_typedefs.h"
 
 namespace rx
 {
+
+enum StandardGL
+{
+    STANDARD_GL_DESKTOP,
+    STANDARD_GL_ES,
+};
 
 class FunctionsGL
 {
@@ -25,12 +32,19 @@ class FunctionsGL
     void initialize();
 
     // Version information
-    GLuint majorVersion;
-    GLuint minorVersion;
-    bool openGLES;
+    gl::Version version;
+    StandardGL standard;
+    GLint profile;
+    bool isAtLeastGL(const gl::Version &glVersion) const;
+    bool isAtMostGL(const gl::Version &glVersion) const;
+    bool isAtLeastGLES(const gl::Version &glesVersion) const;
+    bool isAtMostGLES(const gl::Version &glesVersion) const;
 
     // Extensions
     std::vector<std::string> extensions;
+    bool hasExtension(const std::string &ext) const;
+    bool hasGLExtension(const std::string &ext) const;
+    bool hasGLESExtension(const std::string &ext) const;
 
     // Entry Points
     // 1.0
@@ -380,6 +394,31 @@ class FunctionsGL
     PFNGLTEXIMAGE3DMULTISAMPLEPROC texImage3DMultisample;
     PFNGLWAITSYNCPROC waitSync;
 
+    // NV_path_rendering (originally written against 3.2 compatibility profile)
+    PFNGLMATRIXLOADFEXTPROC matrixLoadEXT;
+    PFNGLGENPATHSNVPROC genPathsNV;
+    PFNGLDELETEPATHSNVPROC delPathsNV;
+    PFNGLPATHCOMMANDSNVPROC pathCommandsNV;
+    PFNGLISPATHNVPROC isPathNV;
+    PFNGLPATHPARAMETERFNVPROC setPathParameterfNV;
+    PFNGLPATHPARAMETERINVPROC setPathParameteriNV;
+    PFNGLGETPATHPARAMETERFVNVPROC getPathParameterfNV;
+    PFNGLGETPATHPARAMETERIVNVPROC getPathParameteriNV;
+    PFNGLPATHSTENCILFUNCNVPROC pathStencilFuncNV;
+    PFNGLSTENCILFILLPATHNVPROC stencilFillPathNV;
+    PFNGLSTENCILSTROKEPATHNVPROC stencilStrokePathNV;
+    PFNGLCOVERFILLPATHNVPROC coverFillPathNV;
+    PFNGLCOVERSTROKEPATHNVPROC coverStrokePathNV;
+    PFNGLSTENCILTHENCOVERFILLPATHNVPROC stencilThenCoverFillPathNV;
+    PFNGLSTENCILTHENCOVERSTROKEPATHNVPROC stencilThenCoverStrokePathNV;
+    PFNGLCOVERFILLPATHINSTANCEDNVPROC coverFillPathInstancedNV;
+    PFNGLCOVERSTROKEPATHINSTANCEDNVPROC coverStrokePathInstancedNV;
+    PFNGLSTENCILFILLPATHINSTANCEDNVPROC stencilFillPathInstancedNV;
+    PFNGLSTENCILSTROKEPATHINSTANCEDNVPROC stencilStrokePathInstancedNV;
+    PFNGLSTENCILTHENCOVERFILLPATHINSTANCEDNVPROC stencilThenCoverFillPathInstancedNV;
+    PFNGLSTENCILTHENCOVERSTROKEPATHINSTANCEDNVPROC stencilThenCoverStrokePathInstancedNV;
+    PFNGLPROGRAMPATHFRAGMENTINPUTGENNVPROC programPathFragmentInputGenNV;
+
     // 3.3
     PFNGLBINDFRAGDATALOCATIONINDEXEDPROC bindFragDataLocationIndexed;
     PFNGLBINDSAMPLERPROC bindSampler;
@@ -576,6 +615,7 @@ class FunctionsGL
     PFNGLGETDEBUGMESSAGELOGPROC getDebugMessageLog;
     PFNGLGETFRAMEBUFFERPARAMETERIVPROC getFramebufferParameteriv;
     PFNGLGETINTERNALFORMATI64VPROC getInternalformati64v;
+    PFNGLGETPOINTERVPROC getPointerv;
     PFNGLGETOBJECTLABELPROC getObjectLabel;
     PFNGLGETOBJECTPTRLABELPROC getObjectPtrLabel;
     PFNGLGETPROGRAMINTERFACEIVPROC getProgramInterfaceiv;
@@ -606,6 +646,7 @@ class FunctionsGL
     PFNGLVERTEXATTRIBIFORMATPROC vertexAttribIFormat;
     PFNGLVERTEXATTRIBLFORMATPROC vertexAttribLFormat;
     PFNGLVERTEXBINDINGDIVISORPROC vertexBindingDivisor;
+    PFNGLCOVERAGEMODULATIONNVPROC coverageModulationNV;
 
     // 4.4
     PFNGLBINDBUFFERSBASEPROC bindBuffersBase;
@@ -730,7 +771,21 @@ class FunctionsGL
     PFNGLVERTEXARRAYVERTEXBUFFERPROC vertexArrayVertexBuffer;
     PFNGLVERTEXARRAYVERTEXBUFFERSPROC vertexArrayVertexBuffers;
 
+    // ES 3.2
+    PFNGLBLENDBARRIERPROC blendBarrier;
+    PFNGLPRIMITIVEBOUNDINGBOXPROC primitiveBoundingBox;
+
+    // GL_OES_EGL_image
+    PFNGLEGLIMAGETARGETRENDERBUFFERSTORAGEOESPROC eglImageTargetRenderbufferStorageOES;
+    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC eglImageTargetTexture2DOES;
+
+    // GL_EXT_discard_framebuffer
+    PFNGLDISCARDFRAMEBUFFEREXTPROC discardFramebuffer;
+
   private:
+    void initializeProcsDesktopGL();
+    void initializeProcsGLES();
+
     virtual void *loadProcAddress(const std::string &function) = 0;
 };
 

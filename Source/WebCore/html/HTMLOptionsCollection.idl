@@ -19,29 +19,18 @@
  */
 
 [
-    JSGenerateToNativeObject,
-    CustomIndexedSetter,
+    ExportToWrappedFunction,
     GenerateIsReachable=ImplOwnerNodeRoot,
+    JSGenerateToNativeObject,
 ] interface HTMLOptionsCollection : HTMLCollection {
+    [CEReactions, SetterMayThrowException] attribute unsigned long length;
+    [CEReactions] setter void (unsigned long index, HTMLOptionElement? option);
+    [CEReactions, MayThrowException] void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
+    [CEReactions] void remove(long index);
+
     attribute long selectedIndex;
-    [CustomSetter, SetterRaisesException] attribute unsigned long length;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    getter Node namedItem([Default=Undefined] optional DOMString name);
-#else
-    getter HTMLOptionElement namedItem([Default=Undefined] optional DOMString name);
-#endif
-
-#if (!defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C) && (!defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT)
-    [RaisesException] void add(HTMLElement element, [Default=Undefined] optional HTMLElement? before);
-    [RaisesException] void add(HTMLElement element, [Default=Undefined] optional long index);
-#else
-    [RaisesException] void add(HTMLOptionElement option, unsigned long index);
-#endif
-    [Custom] void remove([Default=Undefined] optional unsigned long index);
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    Node item(unsigned long index);
-#endif
+    // FIXME: Can these just be inherited from HTMLCollection like in the spec?
+    getter HTMLOptionElement? item(unsigned long index);
+    getter HTMLOptionElement? namedItem(DOMString name);
 };
-

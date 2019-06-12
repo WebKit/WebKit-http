@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGResourceLinearGradient_h
-#define RenderSVGResourceLinearGradient_h
+#pragma once
 
 #include "LinearGradientAttributes.h"
 #include "RenderSVGResourceGradient.h"
@@ -29,17 +28,17 @@ namespace WebCore {
 
 class RenderSVGResourceLinearGradient final : public RenderSVGResourceGradient {
 public:
-    RenderSVGResourceLinearGradient(SVGLinearGradientElement&, Ref<RenderStyle>&&);
+    RenderSVGResourceLinearGradient(SVGLinearGradientElement&, RenderStyle&&);
     virtual ~RenderSVGResourceLinearGradient();
 
     SVGLinearGradientElement& linearGradientElement() const { return downcast<SVGLinearGradientElement>(RenderSVGResourceGradient::gradientElement()); }
 
-    virtual RenderSVGResourceType resourceType() const override { return LinearGradientResourceType; }
+    RenderSVGResourceType resourceType() const override { return LinearGradientResourceType; }
 
-    virtual SVGUnitTypes::SVGUnitType gradientUnits() const override { return m_attributes.gradientUnits(); }
-    virtual void calculateGradientTransform(AffineTransform& transform) override { transform = m_attributes.gradientTransform(); }
-    virtual bool collectGradientAttributes() override;
-    virtual void buildGradient(GradientData*) const override;
+    SVGUnitTypes::SVGUnitType gradientUnits() const override { return m_attributes.gradientUnits(); }
+    void calculateGradientTransform(AffineTransform& transform) override { transform = m_attributes.gradientTransform(); }
+    bool collectGradientAttributes() override;
+    void buildGradient(GradientData*) const override;
 
     FloatPoint startPoint(const LinearGradientAttributes&) const;
     FloatPoint endPoint(const LinearGradientAttributes&) const;
@@ -47,13 +46,11 @@ public:
 private:
     void gradientElement() const = delete;
 
-    virtual const char* renderName() const override { return "RenderSVGResourceLinearGradient"; }
+    const char* renderName() const override { return "RenderSVGResourceLinearGradient"; }
 
     LinearGradientAttributes m_attributes;
 };
 
-}
+} // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_SVG_RESOURCE(RenderSVGResourceLinearGradient, LinearGradientResourceType)
-
-#endif

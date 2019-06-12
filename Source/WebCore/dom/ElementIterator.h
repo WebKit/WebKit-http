@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ElementIterator_h
-#define ElementIterator_h
+#pragma once
 
 #include "ElementTraversal.h"
 
@@ -192,7 +191,7 @@ inline void ElementIterator<ElementType>::dropAssertions()
 }
 
 template <typename ElementType>
-inline ElementType* findElementAncestorOfType(const Element& current)
+inline ElementType* findElementAncestorOfType(const Node& current)
 {
     for (Element* ancestor = current.parentElement(); ancestor; ancestor = ancestor->parentElement()) {
         if (is<ElementType>(*ancestor))
@@ -202,7 +201,7 @@ inline ElementType* findElementAncestorOfType(const Element& current)
 }
 
 template <>
-inline Element* findElementAncestorOfType<Element>(const Element& current)
+inline Element* findElementAncestorOfType<Element>(const Node& current)
 {
     return current.parentElement();
 }
@@ -394,10 +393,8 @@ inline bool ElementConstIterator<ElementType>::operator!=(const ElementConstIter
     return !(*this == other);
 }
 
-}
+} // namespace WebCore
 
 #include "ElementAncestorIterator.h"
 #include "ElementChildIterator.h"
 #include "TypedElementDescendantIterator.h"
-
-#endif

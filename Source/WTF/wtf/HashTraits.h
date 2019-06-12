@@ -21,10 +21,11 @@
 #ifndef WTF_HashTraits_h
 #define WTF_HashTraits_h
 
-#include <wtf/HashFunctions.h>
-#include <wtf/StdLibExtras.h>
-#include <utility>
 #include <limits>
+#include <utility>
+#include <wtf/HashFunctions.h>
+#include <wtf/Optional.h>
+#include <wtf/StdLibExtras.h>
 
 namespace WTF {
 
@@ -61,9 +62,18 @@ template<typename T> struct GenericHashTraits : GenericHashTraitsBase<std::is_in
 
     static T emptyValue() { return T(); }
 
+    template<typename U, typename V> 
+    static void assignToEmpty(U& emptyValue, V&& value)
+    { 
+        emptyValue = std::forward<V>(value);
+    }
+
     // Type for return value of functions that do not transfer ownership, such as get.
     typedef T PeekType;
     template<typename U> static U&& peek(U&& value) { return std::forward<U>(value); }
+
+    typedef T TakeType;
+    template<typename U> static TakeType take(U&& value) { return std::forward<U>(value); }
 };
 
 template<typename T> struct HashTraits : GenericHashTraits<T> { };
@@ -83,6 +93,13 @@ template<typename T> struct UnsignedWithZeroKeyHashTraits : GenericHashTraits<T>
     static T emptyValue() { return std::numeric_limits<T>::max(); }
     static void constructDeletedValue(T& slot) { slot = std::numeric_limits<T>::max() - 1; }
     static bool isDeletedValue(T value) { return value == std::numeric_limits<T>::max() - 1; }
+};
+
+template<typename T> struct SignedWithZeroKeyHashTraits : GenericHashTraits<T> {
+    static const bool emptyValueIsZero = false;
+    static T emptyValue() { return std::numeric_limits<T>::min(); }
+    static void constructDeletedValue(T& slot) { slot = std::numeric_limits<T>::max(); }
+    static bool isDeletedValue(T value) { return value == std::numeric_limits<T>::max(); }
 };
 
 // Can be used with strong enums, allows zero as key.
@@ -116,6 +133,30 @@ template<typename T, typename Deleter> struct HashTraits<std::unique_ptr<T, Dele
     typedef T* PeekType;
     static T* peek(const std::unique_ptr<T, Deleter>& value) { return value.get(); }
     static T* peek(std::nullptr_t) { return nullptr; }
+
+    static void customDeleteBucket(std::unique_ptr<T, Deleter>& value)
+    {
+        // The custom delete function exists to avoid a dead store before the value is destructed.
+        // The normal destruction sequence of a bucket would be:
+        // 1) Call the destructor of unique_ptr.
+        // 2) unique_ptr store a zero for its internal pointer.
+        // 3) unique_ptr destroys its value.
+        // 4) Call constructDeletedValue() to set the bucket as destructed.
+        //
+        // The problem is the call in (3) prevents the compile from eliminating the dead store in (2)
+        // becase a side effect of free() could be observing the value.
+        //
+        // This version of deleteBucket() ensures the dead 2 stores changing "value"
+        // are on the same side of the function call.
+        ASSERT(!isDeletedValue(value));
+        T* pointer = value.release();
+        constructDeletedValue(value);
+
+        // The null case happens if a caller uses std::move() to remove the pointer before calling remove()
+        // with an iterator. This is very uncommon.
+        if (LIKELY(pointer))
+            Deleter()(pointer);
+    }
 };
 
 template<typename P> struct HashTraits<RefPtr<P>> : SimpleClassHashTraits<RefPtr<P>> {
@@ -124,11 +165,38 @@ template<typename P> struct HashTraits<RefPtr<P>> : SimpleClassHashTraits<RefPtr
     typedef P* PeekType;
     static PeekType peek(const RefPtr<P>& value) { return value.get(); }
     static PeekType peek(P* value) { return value; }
+
+    static void customDeleteBucket(RefPtr<P>& value)
+    {
+        // See unique_ptr's customDeleteBucket() for an explanation.
+        ASSERT(!SimpleClassHashTraits<RefPtr<P>>::isDeletedValue(value));
+        auto valueToBeDestroyed = WTFMove(value);
+        SimpleClassHashTraits<RefPtr<P>>::constructDeletedValue(value);
+    }
+};
+
+template<typename P> struct HashTraits<Ref<P>> : SimpleClassHashTraits<Ref<P>> {
+    static const bool emptyValueIsZero = true;
+    static Ref<P> emptyValue() { return HashTableEmptyValue; }
+
+    static const bool hasIsEmptyValueFunction = true;
+    static bool isEmptyValue(const Ref<P>& value) { return value.isHashTableEmptyValue(); }
+
+    static void assignToEmpty(Ref<P>& emptyValue, Ref<P>&& newValue) { ASSERT(isEmptyValue(emptyValue)); emptyValue.assignToHashTableEmptyValue(WTFMove(newValue)); }
+
+    typedef P* PeekType;
+    static PeekType peek(const Ref<P>& value) { return const_cast<PeekType>(value.ptrAllowingHashTableEmptyValue()); }
+    static PeekType peek(P* value) { return value; }
+
+    typedef std::optional<Ref<P>> TakeType;
+    static TakeType take(Ref<P>&& value) { return isEmptyValue(value) ? std::nullopt : std::optional<Ref<P>>(WTFMove(value)); }
 };
 
 template<> struct HashTraits<String> : SimpleClassHashTraits<String> {
     static const bool hasIsEmptyValueFunction = true;
     static bool isEmptyValue(const String&);
+
+    static void customDeleteBucket(String&);
 };
 
 // This struct template is an implementation detail of the isHashTraitsEmptyValue function,
@@ -143,6 +211,30 @@ template<typename Traits> struct HashTraitsEmptyValueChecker<Traits, false> {
 template<typename Traits, typename T> inline bool isHashTraitsEmptyValue(const T& value)
 {
     return HashTraitsEmptyValueChecker<Traits, Traits::hasIsEmptyValueFunction>::isEmptyValue(value);
+}
+
+template<typename Traits, typename T>
+struct HashTraitHasCustomDelete {
+    static T& bucketArg;
+    template<typename X> static std::true_type TestHasCustomDelete(X*, decltype(X::customDeleteBucket(bucketArg))* = nullptr);
+    static std::false_type TestHasCustomDelete(...);
+    typedef decltype(TestHasCustomDelete(static_cast<Traits*>(nullptr))) ResultType;
+    static const bool value = ResultType::value;
+};
+
+template<typename Traits, typename T>
+typename std::enable_if<HashTraitHasCustomDelete<Traits, T>::value>::type
+hashTraitsDeleteBucket(T& value)
+{
+    Traits::customDeleteBucket(value);
+}
+
+template<typename Traits, typename T>
+typename std::enable_if<!HashTraitHasCustomDelete<Traits, T>::value>::type
+hashTraitsDeleteBucket(T& value)
+{
+    value.~T();
+    Traits::constructDeletedValue(value);
 }
 
 template<typename FirstTraitsArg, typename SecondTraitsArg>
@@ -163,6 +255,29 @@ struct PairHashTraits : GenericHashTraits<std::pair<typename FirstTraitsArg::Tra
 
 template<typename First, typename Second>
 struct HashTraits<std::pair<First, Second>> : public PairHashTraits<HashTraits<First>, HashTraits<Second>> { };
+
+template<typename FirstTrait, typename... Traits>
+struct TupleHashTraits : GenericHashTraits<std::tuple<typename FirstTrait::TraitType, typename Traits::TraitType...>> {
+    typedef std::tuple<typename FirstTrait::TraitType, typename Traits::TraitType...> TraitType;
+    typedef std::tuple<typename FirstTrait::EmptyValueType, typename Traits::EmptyValueType...> EmptyValueType;
+
+    // We should use emptyValueIsZero = Traits::emptyValueIsZero &&... whenever we switch to C++17. We can't do anything
+    // better here right now because GCC can't do C++.
+    template<typename BoolType>
+    static constexpr bool allTrue(BoolType value) { return value; }
+    template<typename BoolType, typename... BoolTypes>
+    static constexpr bool allTrue(BoolType value, BoolTypes... values) { return value && allTrue(values...); }
+    static const bool emptyValueIsZero = allTrue(FirstTrait::emptyValueIsZero, Traits::emptyValueIsZero...);
+    static EmptyValueType emptyValue() { return std::make_tuple(FirstTrait::emptyValue(), Traits::emptyValue()...); }
+
+    static const unsigned minimumTableSize = FirstTrait::minimumTableSize;
+
+    static void constructDeletedValue(TraitType& slot) { FirstTrait::constructDeletedValue(std::get<0>(slot)); }
+    static bool isDeletedValue(const TraitType& value) { return FirstTrait::isDeletedValue(std::get<0>(value)); }
+};
+
+template<typename... Traits>
+struct HashTraits<std::tuple<Traits...>> : public TupleHashTraits<HashTraits<Traits>...> { };
 
 template<typename KeyTypeArg, typename ValueTypeArg>
 struct KeyValuePair {
@@ -187,7 +302,7 @@ struct KeyValuePair {
     }
 
     KeyTypeArg key;
-    ValueTypeArg value;
+    ValueTypeArg value { };
 };
 
 template<typename KeyTraitsArg, typename ValueTraitsArg>
@@ -196,6 +311,7 @@ struct KeyValuePairHashTraits : GenericHashTraits<KeyValuePair<typename KeyTrait
     typedef ValueTraitsArg ValueTraits;
     typedef KeyValuePair<typename KeyTraits::TraitType, typename ValueTraits::TraitType> TraitType;
     typedef KeyValuePair<typename KeyTraits::EmptyValueType, typename ValueTraits::EmptyValueType> EmptyValueType;
+    typedef typename ValueTraitsArg::TraitType ValueType;
 
     static const bool emptyValueIsZero = KeyTraits::emptyValueIsZero && ValueTraits::emptyValueIsZero;
     static EmptyValueType emptyValue() { return KeyValuePair<typename KeyTraits::EmptyValueType, typename ValueTraits::EmptyValueType>(KeyTraits::emptyValue(), ValueTraits::emptyValue()); }
@@ -204,6 +320,15 @@ struct KeyValuePairHashTraits : GenericHashTraits<KeyValuePair<typename KeyTrait
 
     static void constructDeletedValue(TraitType& slot) { KeyTraits::constructDeletedValue(slot.key); }
     static bool isDeletedValue(const TraitType& value) { return KeyTraits::isDeletedValue(value.key); }
+
+    static void customDeleteBucket(TraitType& value)
+    {
+        static_assert(std::is_trivially_destructible<KeyValuePair<int, int>>::value,
+            "The wrapper itself has to be trivially destructible for customDeleteBucket() to make sense, since we do not destruct the wrapper itself.");
+
+        hashTraitsDeleteBucket<KeyTraits>(value.key);
+        value.value.~ValueType();
+    }
 };
 
 template<typename Key, typename Value>
@@ -246,6 +371,7 @@ struct CustomHashTraits : public GenericHashTraits<T> {
 } // namespace WTF
 
 using WTF::HashTraits;
+using WTF::KeyValuePair;
 using WTF::PairHashTraits;
 using WTF::NullableHashTraits;
 using WTF::SimpleClassHashTraits;

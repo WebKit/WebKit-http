@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSRExitCompiler_h
-#define DFGOSRExitCompiler_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "AssemblyHelpers.h"
 #include "CCallHelpers.h"
 #include "DFGOSRExit.h"
-#include "DFGOperations.h"
+#include "Operands.h"
 
 namespace JSC {
 
@@ -46,7 +44,7 @@ public:
     {
     }
     
-    void compileExit(const OSRExit&, const Operands<ValueRecovery>&, SpeculationRecovery*);
+    void compileExit(VM&, const OSRExit&, const Operands<ValueRecovery>&, SpeculationRecovery*);
 
 private:
     void emitRestoreArguments(const Operands<ValueRecovery>&);
@@ -61,5 +59,3 @@ void JIT_OPERATION compileOSRExit(ExecState*) WTF_INTERNAL;
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOSRExitCompiler_h

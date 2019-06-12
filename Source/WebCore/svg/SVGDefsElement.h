@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGDefsElement_h
-#define SVGDefsElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGExternalResourcesRequired.h"
@@ -35,10 +34,10 @@ public:
 private:
     SVGDefsElement(const QualifiedName&, Document&);
 
-    virtual bool isValid() const override;
-    virtual bool supportsFocus() const override { return false; }
+    bool isValid() const final;
+    bool supportsFocus() const final { return false; }
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGDefsElement)
         DECLARE_ANIMATED_BOOLEAN_OVERRIDE(ExternalResourcesRequired, externalResourcesRequired)
@@ -46,5 +45,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

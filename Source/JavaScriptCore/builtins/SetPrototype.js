@@ -28,12 +28,12 @@ function forEach(callback /*, thisArg */)
     "use strict";
 
     if (!@isSet(this))
-        throw new @TypeError("Set operation called on non-Set object");
+        @throwTypeError("Set operation called on non-Set object");
 
     if (typeof callback !== 'function')
-        throw new @TypeError("Set.prototype.forEach callback must be a function");
+        @throwTypeError("Set.prototype.forEach callback must be a function");
 
-    var thisArg = arguments.length > 1 ? arguments[1] : @undefined;
+    var thisArg = @argument(1);
     var iterator = @SetIterator(this);
 
     // To avoid object allocations for iterator result objects, we pass the placeholder to the special "next" function in order to fill the results.

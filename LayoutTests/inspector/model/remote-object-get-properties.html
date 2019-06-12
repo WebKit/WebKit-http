@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 <head>
-<script type="text/javascript" src="../../http/tests/inspector/resources/inspector-test.js"></script>
+<script src="../../http/tests/inspector/resources/inspector-test.js"></script>
 <script>
 // ------------------------------
 //   Setup Test Prototype Chain
@@ -39,12 +39,13 @@ ClassWithBadGetter.prototype = {
 
 // window.loadEvent is set inside of <body onload="..."> below.
 var simpleObject = {a:1, b:"string"};
+var simpleArray = [1, "two", /three/];
+var arrayProto = [].__proto__;
 var complexObject = new SuperFoo;
 var badGetterObject = new ClassWithBadGetter;
 var unboundFunction = function() { console.log(arguments); }
 var boundFunction = unboundFunction.bind(document.body, 1, 2, 3);
 var objectWithSymbolProperties = {prop:1, [Symbol()]:2, [Symbol('sym')]:3, [Symbol('sym')]:4, [Symbol()]: Symbol(), prop2: 5};
-
 
 // --------
 //   test
@@ -55,12 +56,15 @@ function test()
     var currentStepIndex = 0;
     var steps = [
         {expression: "window.simpleObject"},
+        {expression: "window.simpleArray"},
+        {expression: "window.arrayProto"},
         {expression: "window.loadEvent"},
         {expression: "window.complexObject"},
         {expression: "window.badGetterObject"},
         {expression: "window.unboundFunction"},
         {expression: "window.boundFunction"},
         {expression: "window.objectWithSymbolProperties"},
+        {expression: "document.getElementById('my-select').options"},
     ]
 
     function runNextStep() {
@@ -75,7 +79,7 @@ function test()
         InspectorTest.log("-----------------------------------------------------");
         InspectorTest.log("EXPRESSION: " + step.expression);
 
-        WebInspector.runtimeManager.evaluateInInspectedWindow(step.expression, "test", false, true, false, false, false, function(remoteObject, wasThrown) {
+        WebInspector.runtimeManager.evaluateInInspectedWindow(step.expression, {objectGroup: "test", doNotPauseOnExceptionsAndMuteConsole: true}, function(remoteObject, wasThrown) {
             InspectorTest.assert(remoteObject instanceof WebInspector.RemoteObject);
             InspectorTest.log("type: " + remoteObject.type);
             if (remoteObject.subtype)
@@ -115,5 +119,8 @@ function test()
 </script>
 </head>
 <body onload="window.loadEvent = event; runTest()">
+    <select id="my-select" style="display: none">
+        <option name="1" id="attr_1" value="1"></option>
+    </select>
 </body>
 </html>

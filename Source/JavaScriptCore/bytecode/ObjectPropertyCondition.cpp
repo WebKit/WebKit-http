@@ -73,6 +73,20 @@ bool ObjectPropertyCondition::validityRequiresImpurePropertyWatchpoint() const
     return validityRequiresImpurePropertyWatchpoint(m_object->structure());
 }
 
+bool ObjectPropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(Structure* structure) const
+{
+    return m_condition.isStillValidAssumingImpurePropertyWatchpoint(structure, m_object);
+}
+
+bool ObjectPropertyCondition::isStillValidAssumingImpurePropertyWatchpoint() const
+{
+    if (!*this)
+        return false;
+
+    return isStillValidAssumingImpurePropertyWatchpoint(m_object->structure());
+}
+
+
 bool ObjectPropertyCondition::isStillValid(Structure* structure) const
 {
     return m_condition.isStillValid(structure, m_object);
@@ -148,9 +162,9 @@ void ObjectPropertyCondition::validateReferences(const TrackedReferences& tracke
     m_condition.validateReferences(tracked);
 }
 
-ObjectPropertyCondition ObjectPropertyCondition::attemptToMakeEquivalenceWithoutBarrier() const
+ObjectPropertyCondition ObjectPropertyCondition::attemptToMakeEquivalenceWithoutBarrier(VM& vm) const
 {
-    PropertyCondition result = condition().attemptToMakeEquivalenceWithoutBarrier(object());
+    PropertyCondition result = condition().attemptToMakeEquivalenceWithoutBarrier(vm, object());
     if (!result)
         return ObjectPropertyCondition();
     return ObjectPropertyCondition(object(), result);

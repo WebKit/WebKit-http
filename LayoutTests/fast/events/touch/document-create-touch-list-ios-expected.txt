@@ -5,13 +5,18 @@ On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE
 
 PASS 'TouchEvent' in window is true
 PASS window.propertyIsEnumerable('TouchEvent') is false
-PASS new TouchEvent() threw exception TypeError: TouchEventConstructor is not a constructor (evaluating 'new TouchEvent()').
+PASS new TouchEvent() threw exception TypeError: Not enough arguments.
 PASS "createTouchList" in document is true
 PASS touchList is non-null.
 PASS touchList.length is 0
 PASS touchList.item(0) is null
 PASS touchList.item(1) is null
-FAIL An exception was thrown: Type error
+PASS ts.touches.length is 2
+PASS ts.touches[0].identifier is 12341
+PASS ts.touches[0].clientX is 60
+PASS ts.touches[1].screenY is 120
+PASS ts.ctrlKey is true
+PASS var tl = document.createTouchList(1, 2) threw exception TypeError: Type error.
 PASS successfullyParsed is true
 
 TEST COMPLETE

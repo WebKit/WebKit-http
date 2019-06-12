@@ -54,6 +54,12 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
         if (representedObject instanceof WebInspector.Script)
             return new WebInspector.ScriptContentView(representedObject, extraArguments);
 
+        if (representedObject instanceof WebInspector.CSSStyleSheet)
+            return new WebInspector.TextResourceContentView(representedObject, extraArguments);
+
+        if (representedObject instanceof WebInspector.Canvas)
+            return new WebInspector.CanvasContentView(representedObject, extraArguments);
+
         if (representedObject instanceof WebInspector.TimelineRecording)
             return new WebInspector.TimelineRecordingContentView(representedObject, extraArguments);
 
@@ -66,16 +72,19 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
                 return new WebInspector.LayoutTimelineView(representedObject, extraArguments);
 
             if (timelineType === WebInspector.TimelineRecord.Type.Script)
-                return new WebInspector.ScriptTimelineView(representedObject, extraArguments);
+                return new WebInspector.ScriptClusterTimelineView(representedObject, extraArguments);
 
             if (timelineType === WebInspector.TimelineRecord.Type.RenderingFrame)
                 return new WebInspector.RenderingFrameTimelineView(representedObject, extraArguments);
 
             if (timelineType === WebInspector.TimelineRecord.Type.Memory)
                 return new WebInspector.MemoryTimelineView(representedObject, extraArguments);
+
+            if (timelineType === WebInspector.TimelineRecord.Type.HeapAllocations)
+                return new WebInspector.HeapAllocationsTimelineView(representedObject, extraArguments);
         }
 
-        if (representedObject instanceof WebInspector.Breakpoint) {
+        if (representedObject instanceof WebInspector.Breakpoint || representedObject instanceof WebInspector.IssueMessage) {
             if (representedObject.sourceCodeLocation)
                 return WebInspector.ContentView.createFromRepresentedObject(representedObject.sourceCodeLocation.displaySourceCode, extraArguments);
         }
@@ -91,6 +100,9 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
 
         if (representedObject instanceof WebInspector.DatabaseObject)
             return new WebInspector.DatabaseContentView(representedObject, extraArguments);
+
+        if (representedObject instanceof WebInspector.IndexedDatabase)
+            return new WebInspector.IndexedDatabaseContentView(representedObject, extraArguments);
 
         if (representedObject instanceof WebInspector.IndexedDatabaseObjectStore)
             return new WebInspector.IndexedDatabaseObjectStoreContentView(representedObject, extraArguments);
@@ -108,6 +120,14 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
             var resultView = new WebInspector.FrameDOMTreeContentView(WebInspector.frameResourceManager.mainFrame.domTree, extraArguments);
             resultView.restoreFromCookie({nodeToSelect: representedObject.domNode});
             return resultView;
+        }
+
+        if (representedObject instanceof WebInspector.DOMNode) {
+            if (representedObject.frame) {
+                let resultView = WebInspector.ContentView.createFromRepresentedObject(representedObject.frame, extraArguments);
+                resultView.restoreFromCookie({nodeToSelect: representedObject});
+                return resultView;
+            }
         }
 
         if (representedObject instanceof WebInspector.SourceCodeSearchMatchObject) {
@@ -132,19 +152,33 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
         if (representedObject instanceof WebInspector.ContentFlow)
             return new WebInspector.ContentFlowDOMTreeContentView(representedObject, extraArguments);
 
+        if (representedObject instanceof WebInspector.CallingContextTree)
+            return new WebInspector.ProfileView(representedObject, extraArguments);
+
+        if (representedObject instanceof WebInspector.HeapSnapshotProxy || representedObject instanceof WebInspector.HeapSnapshotDiffProxy)
+            return new WebInspector.HeapSnapshotClusterContentView(representedObject, extraArguments);
+
+        if (representedObject instanceof WebInspector.Collection)
+            return new WebInspector.CollectionContentView(representedObject, extraArguments);
+
         if (typeof representedObject === "string" || representedObject instanceof String)
             return new WebInspector.TextContentView(representedObject, extraArguments);
 
         console.assert(!WebInspector.ContentView.isViewable(representedObject));
 
-        throw new Error("Can't make a ContentView for an unknown representedObject.");
+        throw new Error("Can't make a ContentView for an unknown representedObject of type: " + representedObject.constructor.name);
     }
 
     static contentViewForRepresentedObject(representedObject, onlyExisting, extraArguments)
     {
         console.assert(representedObject);
 
+        // Some represented objects attempt to resolve a better represented object.
+        // This may result in null, for example a Breakpoint which doesn't have a SourceCode.
         let resolvedRepresentedObject = WebInspector.ContentView.resolvedRepresentedObjectForRepresentedObject(representedObject);
+        if (!resolvedRepresentedObject)
+            return null;
+
         let existingContentView = resolvedRepresentedObject[WebInspector.ContentView.ContentViewForRepresentedObjectSymbol];
         console.assert(!existingContentView || existingContentView instanceof WebInspector.ContentView);
         if (existingContentView)
@@ -174,9 +208,19 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
         if (representedObject instanceof WebInspector.Frame)
             return representedObject.mainResource;
 
-        if (representedObject instanceof WebInspector.Breakpoint) {
+        if (representedObject instanceof WebInspector.Breakpoint || representedObject instanceof WebInspector.IssueMessage) {
             if (representedObject.sourceCodeLocation)
                 return representedObject.sourceCodeLocation.displaySourceCode;
+        }
+
+        if (representedObject instanceof WebInspector.DOMBreakpoint) {
+            if (representedObject.domNode)
+                return WebInspector.ContentView.resolvedRepresentedObjectForRepresentedObject(representedObject.domNode);
+        }
+
+        if (representedObject instanceof WebInspector.DOMNode) {
+            if (representedObject.frame)
+                return WebInspector.ContentView.resolvedRepresentedObjectForRepresentedObject(representedObject.frame);
         }
 
         if (representedObject instanceof WebInspector.DOMSearchMatchObject)
@@ -196,11 +240,15 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
             return true;
         if (representedObject instanceof WebInspector.Script)
             return true;
+        if (representedObject instanceof WebInspector.CSSStyleSheet)
+            return true;
+        if (representedObject instanceof WebInspector.Canvas)
+            return true;
         if (representedObject instanceof WebInspector.TimelineRecording)
             return true;
         if (representedObject instanceof WebInspector.Timeline)
             return true;
-        if (representedObject instanceof WebInspector.Breakpoint)
+        if (representedObject instanceof WebInspector.Breakpoint || representedObject instanceof WebInspector.IssueMessage)
             return representedObject.sourceCodeLocation;
         if (representedObject instanceof WebInspector.DOMStorageObject)
             return true;
@@ -209,6 +257,8 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
         if (representedObject instanceof WebInspector.DatabaseTableObject)
             return true;
         if (representedObject instanceof WebInspector.DatabaseObject)
+            return true;
+        if (representedObject instanceof WebInspector.IndexedDatabase)
             return true;
         if (representedObject instanceof WebInspector.IndexedDatabaseObjectStore)
             return true;
@@ -225,6 +275,12 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
         if (representedObject instanceof WebInspector.LogObject)
             return true;
         if (representedObject instanceof WebInspector.ContentFlow)
+            return true;
+        if (representedObject instanceof WebInspector.CallingContextTree)
+            return true;
+        if (representedObject instanceof WebInspector.HeapSnapshotProxy || representedObject instanceof WebInspector.HeapSnapshotDiffProxy)
+            return true;
+        if (representedObject instanceof WebInspector.Collection)
             return true;
         if (typeof representedObject === "string" || representedObject instanceof String)
             return true;
@@ -287,7 +343,7 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
     get supportsSplitContentBrowser()
     {
         // Implemented by subclasses.
-        return true;
+        return WebInspector.dockedConfigurationSupportsSplitContentBrowser();
     }
 
     shown()
@@ -341,6 +397,17 @@ WebInspector.ContentView = class ContentView extends WebInspector.View
     {
         // Implemented by subclasses.
         return false;
+    }
+
+    get supportsCustomFindBanner()
+    {
+        // Implemented by subclasses.
+        return false;
+    }
+
+    showCustomFindBanner()
+    {
+        // Implemented by subclasses.
     }
 
     get numberOfSearchResults()

@@ -29,7 +29,7 @@
 #include "config.h"
 #include "CompositeAnimation.h"
 
-#include "AnimationControllerPrivate.h"
+#include "CSSAnimationControllerPrivate.h"
 #include "CSSPropertyAnimation.h"
 #include "CSSPropertyNames.h"
 #include "ImplicitAnimation.h"
@@ -42,7 +42,7 @@
 
 namespace WebCore {
 
-CompositeAnimation::CompositeAnimation(AnimationControllerPrivate& animationController)
+CompositeAnimation::CompositeAnimation(CSSAnimationControllerPrivate& animationController)
     : m_animationController(animationController)
 {
     m_suspended = m_animationController.isSuspended() && !m_animationController.allowsNewAnimationsWhileSuspended();
@@ -77,7 +77,7 @@ void CompositeAnimation::clearRenderer()
     }
 }
 
-void CompositeAnimation::updateTransitions(RenderElement* renderer, RenderStyle* currentStyle, RenderStyle* targetStyle)
+void CompositeAnimation::updateTransitions(RenderElement* renderer, const RenderStyle* currentStyle, const RenderStyle* targetStyle)
 {
     // If currentStyle is null or there are no old or new transitions, just skip it
     if (!currentStyle || (!targetStyle->transitions() && m_transitions.isEmpty()))
@@ -88,16 +88,16 @@ void CompositeAnimation::updateTransitions(RenderElement* renderer, RenderStyle*
     for (auto& transition : m_transitions.values())
         transition->setActive(false);
         
-    RefPtr<RenderStyle> modifiedCurrentStyle;
+    std::unique_ptr<RenderStyle> modifiedCurrentStyle;
     
     // Check to see if we need to update the active transitions
     if (targetStyle->transitions()) {
         for (size_t i = 0; i < targetStyle->transitions()->size(); ++i) {
-            Animation& animation = targetStyle->transitions()->animation(i);
-            bool isActiveTransition = !m_suspended && (animation.duration() || animation.delay() > 0);
+            auto& animation = targetStyle->transitions()->animation(i);
+            bool isActiveTransition = animation.duration() || animation.delay() > 0;
 
             Animation::AnimationMode mode = animation.animationMode();
-            if (mode == Animation::AnimateNone)
+            if (mode == Animation::AnimateNone || mode == Animation::AnimateUnknownProperty)
                 continue;
 
             CSSPropertyID prop = animation.property();
@@ -121,8 +121,8 @@ void CompositeAnimation::updateTransitions(RenderElement* renderer, RenderStyle*
                 // If there is a running animation for this property, the transition is overridden
                 // and we have to use the unanimatedStyle from the animation. We do the test
                 // against the unanimated style here, but we "override" the transition later.
-                RefPtr<KeyframeAnimation> keyframeAnim = getAnimationForProperty(prop);
-                RenderStyle* fromStyle = keyframeAnim ? keyframeAnim->unanimatedStyle() : currentStyle;
+                auto* keyframeAnimation = animationForProperty(prop);
+                auto* fromStyle = keyframeAnimation ? keyframeAnimation->unanimatedStyle() : currentStyle;
 
                 // See if there is a current transition for this prop
                 ImplicitAnimation* implAnim = m_transitions.get(prop);
@@ -148,7 +148,7 @@ void CompositeAnimation::updateTransitions(RenderElement* renderer, RenderStyle*
                         // of the property, so that restarted transitions use the correct starting point.
                         if (CSSPropertyAnimation::animationOfPropertyIsAccelerated(prop) && implAnim->isAccelerated()) {
                             if (!modifiedCurrentStyle)
-                                modifiedCurrentStyle = RenderStyle::clone(currentStyle);
+                                modifiedCurrentStyle = RenderStyle::clonePtr(*currentStyle);
 
                             implAnim->blendPropertyValueInStyle(prop, modifiedCurrentStyle.get());
                         }
@@ -168,11 +168,14 @@ void CompositeAnimation::updateTransitions(RenderElement* renderer, RenderStyle*
                 // <https://bugs.webkit.org/show_bug.cgi?id=24787>
                 if (!equal && isActiveTransition) {
                     // Add the new transition
-                    RefPtr<ImplicitAnimation> implicitAnimation = ImplicitAnimation::create(animation, prop, renderer, this, modifiedCurrentStyle ? modifiedCurrentStyle.get() : fromStyle);
-                    LOG(Animations, "Created ImplicitAnimation %p on renderer %p for property %s duration %.2f delay %.2f", implicitAnimation.get(), renderer, getPropertyName(prop), animation.duration(), animation.delay());
-                    m_transitions.set(prop, implicitAnimation.release());
+                    auto implicitAnimation = ImplicitAnimation::create(animation, prop, renderer, this, modifiedCurrentStyle ? modifiedCurrentStyle.get() : fromStyle);
+                    if (m_suspended && implicitAnimation->hasStyle())
+                        implicitAnimation->updatePlayState(AnimPlayStatePaused);
+
+                    LOG(Animations, "Created ImplicitAnimation %p on renderer %p for property %s duration %.2f delay %.2f", implicitAnimation.ptr(), renderer, getPropertyName(prop), animation.duration(), animation.delay());
+                    m_transitions.set(prop, WTFMove(implicitAnimation));
                 }
-                
+
                 // We only need one pass for the single prop case
                 if (!all)
                     break;
@@ -195,7 +198,7 @@ void CompositeAnimation::updateTransitions(RenderElement* renderer, RenderStyle*
         m_transitions.remove(propertyToRemove);
 }
 
-void CompositeAnimation::updateKeyframeAnimations(RenderElement* renderer, RenderStyle* currentStyle, RenderStyle* targetStyle)
+void CompositeAnimation::updateKeyframeAnimations(RenderElement* renderer, const RenderStyle* currentStyle, const RenderStyle* targetStyle)
 {
     // Nothing to do if we don't have any animations, and didn't have any before
     if (m_keyframeAnimations.isEmpty() && !targetStyle->hasAnimations())
@@ -203,117 +206,124 @@ void CompositeAnimation::updateKeyframeAnimations(RenderElement* renderer, Rende
 
     m_keyframeAnimations.checkConsistency();
     
-    if (currentStyle && currentStyle->hasAnimations() && targetStyle->hasAnimations() && *(currentStyle->animations()) == *(targetStyle->animations())) {
-        // The current and target animations are the same so we just need to toss any 
-        // animation which is finished (postActive).
-        for (auto& animation : m_keyframeAnimations.values()) {
-            if (animation->postActive())
-                animation->setIndex(-1);
-        }
-    } else {
-        // Mark all existing animations as no longer active.
-        for (auto& animation : m_keyframeAnimations.values())
-            animation->setIndex(-1);
+    if (currentStyle && currentStyle->hasAnimations() && targetStyle->hasAnimations() && *(currentStyle->animations()) == *(targetStyle->animations()))
+        return;
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-        m_hasScrollTriggeredAnimation = false;
+    m_hasScrollTriggeredAnimation = false;
 #endif
 
-        // Toss the animation order map.
-        m_keyframeAnimationOrderMap.clear();
+    AnimationNameMap newAnimations;
 
-        static NeverDestroyed<const AtomicString> none("none", AtomicString::ConstructFromLiteral);
-        
-        // Now mark any still active animations as active and add any new animations.
-        if (targetStyle->animations()) {
-            int numAnims = targetStyle->animations()->size();
-            for (int i = 0; i < numAnims; ++i) {
-                Animation& animation = targetStyle->animations()->animation(i);
-                AtomicString animationName(animation.name());
+    // Toss the animation order map.
+    m_keyframeAnimationOrderMap.clear();
 
-                if (!animation.isValidAnimation())
+    static NeverDestroyed<const AtomicString> none("none", AtomicString::ConstructFromLiteral);
+    
+    // Now mark any still active animations as active and add any new animations.
+    if (targetStyle->animations()) {
+        int numAnims = targetStyle->animations()->size();
+        for (int i = 0; i < numAnims; ++i) {
+            auto& animation = targetStyle->animations()->animation(i);
+            AtomicString animationName(animation.name());
+
+            if (!animation.isValidAnimation())
+                continue;
+            
+            // See if there is a current animation for this name.
+            RefPtr<KeyframeAnimation> keyframeAnim = m_keyframeAnimations.get(animationName.impl());
+            if (keyframeAnim) {
+                newAnimations.add(keyframeAnim->name().impl(), keyframeAnim);
+
+                if (keyframeAnim->postActive())
                     continue;
-                
-                // See if there is a current animation for this name.
-                RefPtr<KeyframeAnimation> keyframeAnim = m_keyframeAnimations.get(animationName.impl());
-                
-                if (keyframeAnim) {
-                    // If this animation is postActive, skip it so it gets removed at the end of this function.
-                    if (keyframeAnim->postActive())
-                        continue;
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-                    if (animation.trigger()->isScrollAnimationTrigger())
-                        m_hasScrollTriggeredAnimation = true;
+                if (animation.trigger()->isScrollAnimationTrigger())
+                    m_hasScrollTriggeredAnimation = true;
 #endif
 
-                    // This one is still active.
+                // Animations match, but play states may differ. Update if needed.
+                keyframeAnim->updatePlayState(animation.playState());
 
-                    // Animations match, but play states may differ. Update if needed.
-                    keyframeAnim->updatePlayState(animation.playState());
-                                
-                    // Set the saved animation to this new one, just in case the play state has changed.
-                    keyframeAnim->setAnimation(animation);
-                    keyframeAnim->setIndex(i);
-                } else if ((animation.duration() || animation.delay()) && animation.iterationCount() && animationName != none) {
-                    keyframeAnim = KeyframeAnimation::create(animation, renderer, i, this, targetStyle);
-                    LOG(Animations, "Creating KeyframeAnimation %p on renderer %p with keyframes %s, duration %.2f, delay %.2f, iterations %.2f", keyframeAnim.get(), renderer, animation.name().utf8().data(), animation.duration(), animation.delay(), animation.iterationCount());
-                    if (m_suspended) {
-                        keyframeAnim->updatePlayState(AnimPlayStatePaused);
-                        LOG(Animations, "  (created in suspended/paused state)");
-                    }
-#if !LOG_DISABLED
-                    for (auto propertyID : keyframeAnim->keyframes().properties())
-                        LOG(Animations, "  property %s", getPropertyName(propertyID));
-#endif
+                // Set the saved animation to this new one, just in case the play state has changed.
+                keyframeAnim->setAnimation(animation);
+            } else if ((animation.duration() || animation.delay()) && animation.iterationCount() && animationName != none) {
+                keyframeAnim = KeyframeAnimation::create(animation, renderer, this, targetStyle);
+                LOG(Animations, "Creating KeyframeAnimation %p on renderer %p with keyframes %s, duration %.2f, delay %.2f, iterations %.2f", keyframeAnim.get(), renderer, animation.name().utf8().data(), animation.duration(), animation.delay(), animation.iterationCount());
 
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-                    if (animation.trigger()->isScrollAnimationTrigger())
-                        m_hasScrollTriggeredAnimation = true;
-#endif
-
-                    m_keyframeAnimations.set(keyframeAnim->name().impl(), keyframeAnim);
+                if (m_suspended) {
+                    keyframeAnim->updatePlayState(AnimPlayStatePaused);
+                    LOG(Animations, "  (created in suspended/paused state)");
                 }
-                
-                // Add this to the animation order map.
-                if (keyframeAnim)
-                    m_keyframeAnimationOrderMap.append(keyframeAnim->name().impl());
+#if !LOG_DISABLED
+                for (auto propertyID : keyframeAnim->keyframes().properties())
+                    LOG(Animations, "  property %s", getPropertyName(propertyID));
+#endif
+
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+                if (animation.trigger()->isScrollAnimationTrigger())
+                    m_hasScrollTriggeredAnimation = true;
+#endif
+
+                newAnimations.set(keyframeAnim->name().impl(), keyframeAnim);
             }
+            
+            // Add this to the animation order map.
+            if (keyframeAnim)
+                m_keyframeAnimationOrderMap.append(keyframeAnim->name().impl());
         }
     }
     
     // Make a list of animations to be removed.
-    Vector<AtomicStringImpl*> animsToBeRemoved;
     for (auto& animation : m_keyframeAnimations.values()) {
-        if (animation->index() < 0) {
-            animsToBeRemoved.append(animation->name().impl());
+        if (!newAnimations.contains(animation->name().impl())) {
             animationController().animationWillBeRemoved(animation.get());
             animation->clear();
             LOG(Animations, "Removing KeyframeAnimation %p from renderer %p", animation.get(), renderer);
         }
     }
     
-    // Now remove the animations from the list.
-    for (auto* nameForRemoval : animsToBeRemoved)
-        m_keyframeAnimations.remove(nameForRemoval);
+    std::swap(newAnimations, m_keyframeAnimations);
 }
 
-bool CompositeAnimation::animate(RenderElement& renderer, RenderStyle* currentStyle, RenderStyle& targetStyle, Ref<RenderStyle>& blendedStyle)
+bool CompositeAnimation::animate(RenderElement& renderer, const RenderStyle* currentStyle, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& blendedStyle)
 {
     // We don't do any transitions if we don't have a currentStyle (on startup).
     updateTransitions(&renderer, currentStyle, &targetStyle);
     updateKeyframeAnimations(&renderer, currentStyle, &targetStyle);
     m_keyframeAnimations.checkConsistency();
 
-    RefPtr<RenderStyle> animatedStyle;
     bool animationStateChanged = false;
+    bool forceStackingContext = false;
 
     if (currentStyle) {
         // Now that we have transition objects ready, let them know about the new goal state.  We want them
         // to fill in a RenderStyle*& only if needed.
+        bool checkForStackingContext = false;
         for (auto& transition : m_transitions.values()) {
-            if (transition->animate(this, &renderer, currentStyle, &targetStyle, animatedStyle))
+            bool didBlendStyle = false;
+            if (transition->animate(*this, &renderer, currentStyle, targetStyle, blendedStyle, didBlendStyle))
                 animationStateChanged = true;
+
+            if (didBlendStyle)
+                checkForStackingContext |= WillChangeData::propertyCreatesStackingContext(transition->animatingProperty());
+        }
+
+        if (blendedStyle && checkForStackingContext) {
+            // Note that this is similar to code in StyleResolver::adjustRenderStyle() but only needs to consult
+            // animatable properties that can trigger stacking context.
+            if (blendedStyle->opacity() < 1.0f
+                || blendedStyle->hasTransformRelatedProperty()
+                || blendedStyle->hasMask()
+                || blendedStyle->clipPath()
+                || blendedStyle->boxReflect()
+                || blendedStyle->hasFilter()
+#if ENABLE(FILTERS_LEVEL_2)
+                || blendedStyle->hasBackdropFilter()
+#endif
+                )
+            forceStackingContext = true;
         }
     }
 
@@ -321,21 +331,31 @@ bool CompositeAnimation::animate(RenderElement& renderer, RenderStyle* currentSt
     // to fill in a RenderStyle*& only if needed.
     for (auto& name : m_keyframeAnimationOrderMap) {
         RefPtr<KeyframeAnimation> keyframeAnim = m_keyframeAnimations.get(name);
-        if (keyframeAnim && keyframeAnim->animate(this, &renderer, currentStyle, &targetStyle, animatedStyle))
-            animationStateChanged = true;
+        if (keyframeAnim) {
+            bool didBlendStyle = false;
+            if (keyframeAnim->animate(*this, &renderer, currentStyle, targetStyle, blendedStyle, didBlendStyle))
+                animationStateChanged = true;
+
+            forceStackingContext |= didBlendStyle && keyframeAnim->triggersStackingContext();
+            m_hasAnimationThatDependsOnLayout |= keyframeAnim->dependsOnLayout();
+        }
     }
 
-    if (animatedStyle)
-        blendedStyle = animatedStyle.releaseNonNull();
-    else
-        blendedStyle = targetStyle;
+    // https://drafts.csswg.org/css-animations-1/
+    // While an animation is applied but has not finished, or has finished but has an animation-fill-mode of forwards or both,
+    // the user agent must act as if the will-change property ([css-will-change-1]) on the element additionally
+    // includes all the properties animated by the animation.
+    if (forceStackingContext && blendedStyle) {
+        if (blendedStyle->hasAutoZIndex())
+            blendedStyle->setZIndex(0);
+    }
 
     return animationStateChanged;
 }
 
-PassRefPtr<RenderStyle> CompositeAnimation::getAnimatedStyle() const
+std::unique_ptr<RenderStyle> CompositeAnimation::getAnimatedStyle() const
 {
-    RefPtr<RenderStyle> resultStyle;
+    std::unique_ptr<RenderStyle> resultStyle;
     for (auto& transition : m_transitions.values())
         transition->getAnimatedStyle(resultStyle);
 
@@ -350,50 +370,54 @@ PassRefPtr<RenderStyle> CompositeAnimation::getAnimatedStyle() const
     return resultStyle;
 }
 
-double CompositeAnimation::timeToNextService() const
+std::optional<Seconds> CompositeAnimation::timeToNextService() const
 {
-    // Returns the time at which next service is required. -1 means no service is required. 0 means 
+    // Returns the time at which next service is required. std::nullopt means no service is required. 0 means
     // service is required now, and > 0 means service is required that many seconds in the future.
-    double minT = -1;
+    std::optional<Seconds> minT;
     
     if (!m_transitions.isEmpty()) {
         for (auto& transition : m_transitions.values()) {
-            double t = transition->timeToNextService();
-            if (t < minT || minT == -1)
-                minT = t;
-            if (minT == 0)
-                return 0;
+            std::optional<Seconds> t = transition->timeToNextService();
+            if (!t)
+                continue;
+            if (!minT || t.value() < minT.value())
+                minT = t.value();
+            if (minT.value() == 0_s)
+                return 0_s;
         }
     }
     if (!m_keyframeAnimations.isEmpty()) {
         m_keyframeAnimations.checkConsistency();
         for (auto& animation : m_keyframeAnimations.values()) {
-            double t = animation->timeToNextService();
-            if (t < minT || minT == -1)
-                minT = t;
-            if (minT == 0)
-                return 0;
+            std::optional<Seconds> t = animation->timeToNextService();
+            if (!t)
+                continue;
+            if (!minT || t.value() < minT.value())
+                minT = t.value();
+            if (minT.value() == 0_s)
+                return 0_s;
         }
     }
 
     return minT;
 }
 
-PassRefPtr<KeyframeAnimation> CompositeAnimation::getAnimationForProperty(CSSPropertyID property) const
+KeyframeAnimation* CompositeAnimation::animationForProperty(CSSPropertyID property) const
 {
-    RefPtr<KeyframeAnimation> retval;
-    
+    KeyframeAnimation* result = nullptr;
+
     // We want to send back the last animation with the property if there are multiples.
     // So we need to iterate through all animations
     if (!m_keyframeAnimations.isEmpty()) {
         m_keyframeAnimations.checkConsistency();
         for (auto& animation : m_keyframeAnimations.values()) {
             if (animation->hasAnimationForProperty(property))
-                retval = animation;
+                result = animation.get();
         }
     }
-    
-    return retval;
+
+    return result;
 }
 
 bool CompositeAnimation::computeExtentOfTransformAnimation(LayoutRect& bounds) const

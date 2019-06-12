@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
  * Copyright (C) 2012 Intel Inc. All rights reserved.
  *
@@ -32,57 +33,54 @@
 #include "config.h"
 #include "PerformanceResourceTiming.h"
 
-#if ENABLE(RESOURCE_TIMING)
+#if ENABLE(WEB_TIMING)
 
 #include "Document.h"
-#include "DocumentLoadTiming.h"
 #include "DocumentLoader.h"
-#include "HTTPHeaderNames.h"
-#include "URL.h"
-#include "ResourceRequest.h"
+#include "LoadTiming.h"
 #include "ResourceResponse.h"
-#include "SecurityOrigin.h"
-#include <wtf/Vector.h>
+#include "ResourceTiming.h"
+#include "URL.h"
 
 namespace WebCore {
 
-static double monotonicTimeToDocumentMilliseconds(Document* document, double seconds)
+static double monotonicTimeToDOMHighResTimeStamp(MonotonicTime timeOrigin, MonotonicTime timeStamp)
 {
-    ASSERT(seconds >= 0.0);
-    return document->loader()->timing().monotonicTimeToZeroBasedDocumentTime(seconds) * 1000.0;
+    ASSERT(timeStamp.secondsSinceEpoch().seconds() >= 0);
+    if (!timeStamp || !timeOrigin)
+        return 0;
+
+    Seconds seconds = timeStamp - timeOrigin;
+    return Performance::reduceTimeResolution(seconds).milliseconds();
 }
 
-static bool passesTimingAllowCheck(const ResourceResponse& response, Document* requestingDocument)
+static double entryStartTime(MonotonicTime timeOrigin, const ResourceTiming& resourceTiming)
 {
-    RefPtr<SecurityOrigin> resourceOrigin = SecurityOrigin::create(response.url());
-    if (resourceOrigin->isSameSchemeHostPort(requestingDocument->securityOrigin()))
-        return true;
+    return monotonicTimeToDOMHighResTimeStamp(timeOrigin, resourceTiming.loadTiming().startTime());
+}
 
-    const String& timingAllowOriginString = response.httpHeaderField(HTTPHeaderName::TimingAllowOrigin);
-    if (timingAllowOriginString.isEmpty() || equalLettersIgnoringASCIICase(timingAllowOriginString, "null"))
-        return false;
-
-    if (timingAllowOriginString == "*")
-        return true;
-
-    const String& securityOrigin = requestingDocument->securityOrigin()->toString();
-    Vector<String> timingAllowOrigins;
-    timingAllowOriginString.split(' ', timingAllowOrigins);
-    for (auto& origin : timingAllowOrigins) {
-        if (origin == securityOrigin)
-            return true;
+static double entryEndTime(MonotonicTime timeOrigin, const ResourceTiming& resourceTiming)
+{
+    if (resourceTiming.networkLoadMetrics().isComplete()) {
+        Seconds endTime = (resourceTiming.loadTiming().fetchStart() + resourceTiming.networkLoadMetrics().responseEnd) - timeOrigin;
+        return Performance::reduceTimeResolution(endTime).milliseconds();
     }
 
-    return false;
+    return monotonicTimeToDOMHighResTimeStamp(timeOrigin, resourceTiming.loadTiming().responseEnd());
 }
 
-PerformanceResourceTiming::PerformanceResourceTiming(const AtomicString& initiatorType, const ResourceRequest& request, const ResourceResponse& response, double initiationTime, double finishTime, Document* requestingDocument)
-    : PerformanceEntry(request.url().string(), "resource", monotonicTimeToDocumentMilliseconds(requestingDocument, initiationTime), monotonicTimeToDocumentMilliseconds(requestingDocument, finishTime))
-    , m_initiatorType(initiatorType)
-    , m_timing(response.resourceLoadTiming())
-    , m_finishTime(finishTime)
-    , m_shouldReportDetails(passesTimingAllowCheck(response, requestingDocument))
-    , m_requestingDocument(requestingDocument)
+Ref<PerformanceResourceTiming> PerformanceResourceTiming::create(MonotonicTime timeOrigin, ResourceTiming&& resourceTiming)
+{
+    return adoptRef(*new PerformanceResourceTiming(timeOrigin, WTFMove(resourceTiming)));
+}
+
+PerformanceResourceTiming::PerformanceResourceTiming(MonotonicTime timeOrigin, ResourceTiming&& resourceTiming)
+    : PerformanceEntry(PerformanceEntry::Type::Resource, resourceTiming.url().string(), ASCIILiteral("resource"), entryStartTime(timeOrigin, resourceTiming), entryEndTime(timeOrigin, resourceTiming))
+    , m_initiatorType(resourceTiming.initiator())
+    , m_timeOrigin(timeOrigin)
+    , m_loadTiming(resourceTiming.loadTiming())
+    , m_networkLoadMetrics(resourceTiming.networkLoadMetrics())
+    , m_shouldReportDetails(resourceTiming.allowTimingDetails())
 {
 }
 
@@ -90,30 +88,38 @@ PerformanceResourceTiming::~PerformanceResourceTiming()
 {
 }
 
-AtomicString PerformanceResourceTiming::initiatorType() const
+String PerformanceResourceTiming::nextHopProtocol() const
 {
-    return m_initiatorType;
+    return m_networkLoadMetrics.protocol;
+}
+
+double PerformanceResourceTiming::workerStart() const
+{
+    return 0.0;
 }
 
 double PerformanceResourceTiming::redirectStart() const
 {
-    // FIXME: Need to track and report redirects for resources.
     if (!m_shouldReportDetails)
         return 0.0;
-    return 0;
+
+    return monotonicTimeToDOMHighResTimeStamp(m_timeOrigin, m_loadTiming.redirectStart());
 }
 
 double PerformanceResourceTiming::redirectEnd() const
 {
     if (!m_shouldReportDetails)
         return 0.0;
-    return 0;
+
+    return monotonicTimeToDOMHighResTimeStamp(m_timeOrigin, m_loadTiming.redirectEnd());
 }
 
 double PerformanceResourceTiming::fetchStart() const
 {
-    // FIXME: This should be different depending on redirects.
-    return (startTime());
+    // fetchStart is a required property.
+    ASSERT(m_loadTiming.fetchStart());
+
+    return monotonicTimeToDOMHighResTimeStamp(m_timeOrigin, m_loadTiming.fetchStart());
 }
 
 double PerformanceResourceTiming::domainLookupStart() const
@@ -121,10 +127,10 @@ double PerformanceResourceTiming::domainLookupStart() const
     if (!m_shouldReportDetails)
         return 0.0;
 
-    if (m_timing.domainLookupStart < 0)
+    if (m_networkLoadMetrics.domainLookupStart <= 0_ms)
         return fetchStart();
 
-    return resourceTimeToDocumentMilliseconds(m_timing.domainLookupStart);
+    return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.domainLookupStart);
 }
 
 double PerformanceResourceTiming::domainLookupEnd() const
@@ -132,10 +138,10 @@ double PerformanceResourceTiming::domainLookupEnd() const
     if (!m_shouldReportDetails)
         return 0.0;
 
-    if (m_timing.domainLookupEnd < 0)
+    if (m_networkLoadMetrics.domainLookupEnd <= 0_ms)
         return domainLookupStart();
 
-    return resourceTimeToDocumentMilliseconds(m_timing.domainLookupEnd);
+    return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.domainLookupEnd);
 }
 
 double PerformanceResourceTiming::connectStart() const
@@ -143,16 +149,10 @@ double PerformanceResourceTiming::connectStart() const
     if (!m_shouldReportDetails)
         return 0.0;
 
-    // connectStart will be -1 when a network request is not made.
-    if (m_timing.connectStart < 0)
+    if (m_networkLoadMetrics.connectStart <= 0_ms)
         return domainLookupEnd();
 
-    // connectStart includes any DNS time, so we may need to trim that off.
-    int connectStart = m_timing.connectStart;
-    if (m_timing.domainLookupEnd >= 0)
-        connectStart = m_timing.domainLookupEnd;
-
-    return resourceTimeToDocumentMilliseconds(connectStart);
+    return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.connectStart);
 }
 
 double PerformanceResourceTiming::connectEnd() const
@@ -160,11 +160,10 @@ double PerformanceResourceTiming::connectEnd() const
     if (!m_shouldReportDetails)
         return 0.0;
 
-    // connectStart will be -1 when a network request is not made.
-    if (m_timing.connectEnd < 0)
+    if (m_networkLoadMetrics.connectEnd <= 0_ms)
         return connectStart();
 
-    return resourceTimeToDocumentMilliseconds(m_timing.connectEnd);
+    return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.connectEnd);
 }
 
 double PerformanceResourceTiming::secureConnectionStart() const
@@ -172,10 +171,10 @@ double PerformanceResourceTiming::secureConnectionStart() const
     if (!m_shouldReportDetails)
         return 0.0;
 
-    if (m_timing.secureConnectionStart < 0) // Secure connection not negotiated.
+    if (m_networkLoadMetrics.secureConnectionStart <= 0_ms)
         return 0.0;
 
-    return resourceTimeToDocumentMilliseconds(m_timing.secureConnectionStart);
+    return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.secureConnectionStart);
 }
 
 double PerformanceResourceTiming::requestStart() const
@@ -183,21 +182,58 @@ double PerformanceResourceTiming::requestStart() const
     if (!m_shouldReportDetails)
         return 0.0;
 
-    return resourceTimeToDocumentMilliseconds(m_timing.requestStart);
+    // requestStart is 0 when a network request is not made.
+    if (m_networkLoadMetrics.requestStart <= 0_ms)
+        return connectEnd();
+
+    return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.requestStart);
+}
+
+double PerformanceResourceTiming::responseStart() const
+{
+    if (!m_shouldReportDetails)
+        return 0.0;
+
+    // responseStart is 0 when a network request is not made.
+    if (m_networkLoadMetrics.responseStart <= 0_ms)
+        return requestStart();
+
+    return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.responseStart);
 }
 
 double PerformanceResourceTiming::responseEnd() const
 {
-    return monotonicTimeToDocumentMilliseconds(m_requestingDocument.get(), m_finishTime);
+    // responseEnd is a required property.
+    ASSERT(m_networkLoadMetrics.isComplete() || m_loadTiming.responseEnd());
+
+    if (m_networkLoadMetrics.isComplete()) {
+        // responseEnd is 0 when a network request is not made.
+        // This should mean all other properties are empty.
+        if (m_networkLoadMetrics.responseEnd <= 0_ms) {
+            ASSERT(m_networkLoadMetrics.responseStart <= 0_ms);
+            ASSERT(m_networkLoadMetrics.requestStart <= 0_ms);
+            ASSERT(m_networkLoadMetrics.requestStart <= 0_ms);
+            ASSERT(m_networkLoadMetrics.secureConnectionStart <= 0_ms);
+            ASSERT(m_networkLoadMetrics.connectEnd <= 0_ms);
+            ASSERT(m_networkLoadMetrics.connectStart <= 0_ms);
+            ASSERT(m_networkLoadMetrics.domainLookupEnd <= 0_ms);
+            ASSERT(m_networkLoadMetrics.domainLookupStart <= 0_ms);
+            return fetchStart();
+        }
+
+        return networkLoadTimeToDOMHighResTimeStamp(m_networkLoadMetrics.responseEnd);
+    }
+
+    return monotonicTimeToDOMHighResTimeStamp(m_timeOrigin, m_loadTiming.responseEnd());
 }
 
-double PerformanceResourceTiming::resourceTimeToDocumentMilliseconds(int deltaMilliseconds) const
+double PerformanceResourceTiming::networkLoadTimeToDOMHighResTimeStamp(Seconds delta) const
 {
-    if (!deltaMilliseconds)
-        return 0.0;
-    return monotonicTimeToDocumentMilliseconds(m_requestingDocument.get(), m_requestingDocument->loader()->timing().navigationStart()) + deltaMilliseconds;
+    ASSERT(delta);
+    Seconds final = (m_loadTiming.fetchStart() + delta) - m_timeOrigin;
+    return Performance::reduceTimeResolution(final).milliseconds();
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(RESOURCE_TIMING)
+#endif // ENABLE(WEB_TIMING)

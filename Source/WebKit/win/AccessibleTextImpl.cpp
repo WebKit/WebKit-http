@@ -29,17 +29,16 @@
 #include "WebView.h"
 
 #include <WebCore/Document.h>
+#include <WebCore/Editing.h>
 #include <WebCore/Editor.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameSelection.h>
 #include <WebCore/HTMLTextFormControlElement.h>
 #include <WebCore/Node.h>
-#include <WebCore/Page.h>
 #include <WebCore/Position.h>
 #include <WebCore/RenderTextControl.h>
 #include <WebCore/VisibleSelection.h>
 #include <WebCore/VisibleUnits.h>
-#include <WebCore/htmlediting.h>
 
 using namespace WebCore;
 
@@ -563,7 +562,7 @@ HRESULT AccessibleText::copyText(long startOffset, long endOffset)
 
 HRESULT AccessibleText::deleteText(long startOffset, long endOffset)
 {
-    if (m_object->isReadOnly())
+    if (!m_object->canSetValueAttribute())
         return S_FALSE;
 
     if (initialCheck() == E_POINTER)
@@ -581,7 +580,7 @@ HRESULT AccessibleText::deleteText(long startOffset, long endOffset)
 
 HRESULT AccessibleText::insertText(long offset, BSTR* text)
 {
-    if (m_object->isReadOnly())
+    if (!m_object->canSetValueAttribute())
         return S_FALSE;
 
     if (initialCheck() == E_POINTER)
@@ -601,7 +600,7 @@ HRESULT AccessibleText::insertText(long offset, BSTR* text)
 
 HRESULT AccessibleText::cutText(long startOffset, long endOffset)
 {
-    if (m_object->isReadOnly())
+    if (!m_object->canSetValueAttribute())
         return S_FALSE;
 
     if (initialCheck() == E_POINTER)
@@ -622,7 +621,7 @@ HRESULT AccessibleText::cutText(long startOffset, long endOffset)
 
 HRESULT AccessibleText::pasteText(long offset)
 {
-    if (m_object->isReadOnly())
+    if (!m_object->canSetValueAttribute())
         return S_FALSE;
 
     if (initialCheck() == E_POINTER)
@@ -642,7 +641,7 @@ HRESULT AccessibleText::pasteText(long offset)
 
 HRESULT AccessibleText::replaceText(long startOffset, long endOffset, BSTR* text)
 {
-    if (m_object->isReadOnly())
+    if (!m_object->canSetValueAttribute())
         return S_FALSE;
 
     if (initialCheck() == E_POINTER)

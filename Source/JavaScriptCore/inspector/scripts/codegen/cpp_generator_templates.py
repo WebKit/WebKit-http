@@ -30,8 +30,7 @@
 class CppGeneratorTemplates:
 
     HeaderPrelude = (
-    """#ifndef ${headerGuardString}
-#define ${headerGuardString}
+    """#pragma once
 
 ${includes}
 
@@ -40,9 +39,7 @@ namespace Inspector {
 ${typedefs}""")
 
     HeaderPostlude = (
-    """} // namespace Inspector
-
-#endif // !defined(${headerGuardString})""")
+    """} // namespace Inspector""")
 
     ImplementationPrelude = (
     """#include "config.h"
@@ -57,8 +54,7 @@ namespace Inspector {""")
 """)
 
     AlternateDispatchersHeaderPrelude = (
-    """#ifndef ${headerGuardString}
-#define ${headerGuardString}
+    """#pragma once
 
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 
@@ -78,9 +74,7 @@ private:
     AlternateDispatchersHeaderPostlude = (
     """} // namespace Inspector
 
-#endif // ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
-
-#endif // !defined(${headerGuardString})""")
+#endif // ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)""")
 
     AlternateBackendDispatcherHeaderDomainHandlerInterfaceDeclaration = (
     """class Alternate${domainName}BackendDispatcher : public AlternateBackendDispatcher {
@@ -101,18 +95,20 @@ protected:
     """${classAndExportMacro} ${domainName}BackendDispatcher final : public SupplementalBackendDispatcher {
 public:
     static Ref<${domainName}BackendDispatcher> create(BackendDispatcher&, ${domainName}BackendDispatcherHandler*);
-    virtual void dispatch(long requestId, const String& method, Ref<InspectorObject>&& message) override;
+    void dispatch(long requestId, const String& method, Ref<InspectorObject>&& message) override;
 ${commandDeclarations}
 private:
     ${domainName}BackendDispatcher(BackendDispatcher&, ${domainName}BackendDispatcherHandler*);
-    ${domainName}BackendDispatcherHandler* m_agent;
-#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
+    ${domainName}BackendDispatcherHandler* m_agent { nullptr };
+};""")
+
+    BackendDispatcherHeaderDomainDispatcherAlternatesDeclaration = (
+    """#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 public:
     void setAlternateDispatcher(Alternate${domainName}BackendDispatcher* alternateDispatcher) { m_alternateDispatcher = alternateDispatcher; }
 private:
-    Alternate${domainName}BackendDispatcher* m_alternateDispatcher;
-#endif
-};""")
+    Alternate${domainName}BackendDispatcher* m_alternateDispatcher { nullptr };
+#endif""")
 
     BackendDispatcherHeaderAsyncCommandDeclaration = (
     """    ${classAndExportMacro} ${callbackName} : public BackendDispatcher::CallbackBase {
@@ -176,9 +172,6 @@ ${dispatchCases}
 ${domainName}BackendDispatcher::${domainName}BackendDispatcher(BackendDispatcher& backendDispatcher, ${domainName}BackendDispatcherHandler* agent)
     : SupplementalBackendDispatcher(backendDispatcher)
     , m_agent(agent)
-#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
-    , m_alternateDispatcher(nullptr)
-#endif
 {
     m_backendDispatcher->registerDispatcherForDomain(ASCIILiteral("${domainName}"), this);
 }""")

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "APIArray.h"
 #include "APIData.h"
 #include "InjectedBundle.h"
+#include "InjectedBundleClient.h"
 #include "InjectedBundleScriptWorld.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
@@ -37,7 +38,7 @@
 #include "WebFrame.h"
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
-#include <WebCore/DatabaseManager.h>
+#include <WebCore/DatabaseTracker.h>
 
 using namespace WebCore;
 using namespace WebKit;
@@ -49,7 +50,7 @@ WKTypeID WKBundleGetTypeID()
 
 void WKBundleSetClient(WKBundleRef bundleRef, WKBundleClientBase *wkClient)
 {
-    toImpl(bundleRef)->initializeClient(wkClient);
+    toImpl(bundleRef)->setClient(std::make_unique<InjectedBundleClient>(wkClient));
 }
 
 void WKBundlePostMessage(WKBundleRef bundleRef, WKStringRef messageNameRef, WKTypeRef messageBodyRef)
@@ -62,7 +63,7 @@ void WKBundlePostSynchronousMessage(WKBundleRef bundleRef, WKStringRef messageNa
     RefPtr<API::Object> returnData;
     toImpl(bundleRef)->postSynchronousMessage(toWTFString(messageNameRef), toImpl(messageBodyRef), returnData);
     if (returnDataRef)
-        *returnDataRef = toAPI(returnData.release().leakRef());
+        *returnDataRef = toAPI(returnData.leakRef());
 }
 
 WKConnectionRef WKBundleGetApplicationConnection(WKBundleRef bundleRef)
@@ -135,6 +136,11 @@ void WKBundleSetAllowFileAccessFromFileURLs(WKBundleRef bundleRef, WKBundlePageG
     toImpl(bundleRef)->setAllowFileAccessFromFileURLs(toImpl(pageGroupRef), enabled);
 }
 
+void WKBundleSetAllowStorageAccessFromFileURLS(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool needsQuirk)
+{
+    toImpl(bundleRef)->setNeedsStorageAccessFromFileURLsQuirk(toImpl(pageGroupRef), needsQuirk);
+}
+
 void WKBundleSetMinimumLogicalFontSize(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, int size)
 {
     toImpl(bundleRef)->setMinimumLogicalFontSize(toImpl(pageGroupRef), size);
@@ -145,9 +151,9 @@ void WKBundleSetFrameFlatteningEnabled(WKBundleRef bundleRef, WKBundlePageGroupR
     toImpl(bundleRef)->setFrameFlatteningEnabled(toImpl(pageGroupRef), enabled);
 }
 
-void WKBundleSetPluginsEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
+void WKBundleSetAsyncFrameScrollingEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
 {
-    toImpl(bundleRef)->setPluginsEnabled(toImpl(pageGroupRef), enabled);
+    toImpl(bundleRef)->setAsyncFrameScrollingEnabled(toImpl(pageGroupRef), enabled);
 }
 
 void WKBundleSetJavaScriptCanAccessClipboard(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
@@ -158,6 +164,11 @@ void WKBundleSetJavaScriptCanAccessClipboard(WKBundleRef bundleRef, WKBundlePage
 void WKBundleSetPrivateBrowsingEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
 {
     toImpl(bundleRef)->setPrivateBrowsingEnabled(toImpl(pageGroupRef), enabled);
+}
+
+void WKBundleSetUseDashboardCompatibilityMode(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
+{
+    toImpl(bundleRef)->setUseDashboardCompatibilityMode(toImpl(pageGroupRef), enabled);
 }
 
 void WKBundleSetPopupBlockingEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
@@ -202,19 +213,18 @@ void WKBundleReportException(JSContextRef context, JSValueRef exception)
 
 void WKBundleClearAllDatabases(WKBundleRef)
 {
-    DatabaseManager::singleton().deleteAllDatabases();
+    DatabaseTracker::singleton().deleteAllDatabasesImmediately();
 }
 
 void WKBundleSetDatabaseQuota(WKBundleRef bundleRef, uint64_t quota)
 {
-    // Historically, we've used the following (somewhat non-sensical) string
-    // for the databaseIdentifier of local files.
-    DatabaseManager::singleton().setQuota(SecurityOrigin::createFromDatabaseIdentifier("file__0").ptr(), quota);
+    // Historically, we've used the following (somewhat nonsensical) string for the databaseIdentifier of local files.
+    DatabaseTracker::singleton().setQuota(*SecurityOriginData::fromDatabaseIdentifier("file__0"), quota);
 }
 
 WKDataRef WKBundleCreateWKDataFromUInt8Array(WKBundleRef bundle, JSContextRef context, JSValueRef data)
 {
-    return toAPI(toImpl(bundle)->createWebDataFromUint8Array(context, data).leakRef());
+    return toAPI(&toImpl(bundle)->createWebDataFromUint8Array(context, data).leakRef());
 }
 
 int WKBundleNumberOfPages(WKBundleRef bundleRef, WKBundleFrameRef frameRef, double pageWidthInPixels, double pageHeightInPixels)

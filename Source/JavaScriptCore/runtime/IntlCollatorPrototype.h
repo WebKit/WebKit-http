@@ -23,20 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IntlCollatorPrototype_h
-#define IntlCollatorPrototype_h
+#pragma once
 
 #if ENABLE(INTL)
 
-#include "IntlCollator.h"
 #include "JSObject.h"
 
 namespace JSC {
 
-class IntlCollatorPrototype : public IntlCollator {
+class IntlCollatorPrototype : public JSNonFinalObject {
 public:
-    typedef IntlCollator Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    typedef JSNonFinalObject Base;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static IntlCollatorPrototype* create(VM&, JSGlobalObject*, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
@@ -48,11 +46,8 @@ protected:
 
 private:
     IntlCollatorPrototype(VM&, Structure*);
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 };
 
 } // namespace JSC
 
 #endif // ENABLE(INTL)
-
-#endif // IntlCollatorPrototype_h

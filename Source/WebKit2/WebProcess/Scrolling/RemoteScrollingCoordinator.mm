@@ -30,8 +30,6 @@
 
 #import "ArgumentCoders.h"
 #import "GraphicsLayerCARemote.h"
-#import "MessageDecoder.h"
-#import "MessageEncoder.h"
 #import "RemoteLayerTreeDrawingArea.h"
 #import "RemoteScrollingCoordinatorMessages.h"
 #import "RemoteScrollingCoordinatorTransaction.h"
@@ -99,7 +97,7 @@ void RemoteScrollingCoordinator::buildTransaction(RemoteScrollingCoordinatorTran
 // Notification from the UI process that we scrolled.
 void RemoteScrollingCoordinator::scrollPositionChangedForNode(ScrollingNodeID nodeID, const FloatPoint& scrollPosition, bool syncLayerPosition)
 {
-    scheduleUpdateScrollPositionAfterAsyncScroll(nodeID, scrollPosition, false /* FIXME */, syncLayerPosition ? SyncScrollingLayerPosition : SetScrollingLayerPosition);
+    scheduleUpdateScrollPositionAfterAsyncScroll(nodeID, scrollPosition, std::nullopt, false /* FIXME */, syncLayerPosition ? ScrollingLayerPositionAction::Sync : ScrollingLayerPositionAction::Set);
 }
 
 void RemoteScrollingCoordinator::currentSnapPointIndicesChangedForNode(ScrollingNodeID nodeID, unsigned horizontal, unsigned vertical)

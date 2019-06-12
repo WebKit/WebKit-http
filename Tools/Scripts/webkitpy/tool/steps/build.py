@@ -1,9 +1,10 @@
 # Copyright (C) 2010 Google Inc. All rights reserved.
-# 
+# Copyright (C) 2017 Apple Inc. All rights reserved.
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
-# 
+#
 #     * Redistributions of source code must retain the above copyright
 # notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above
@@ -13,7 +14,7 @@
 #     * Neither the name of Google Inc. nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -41,28 +42,35 @@ class Build(AbstractStep):
             Options.build,
             Options.quiet,
             Options.build_style,
+            Options.group,
         ]
 
-    def build(self, build_style):
+    def build(self, build_style, group):
         environment = self._tool.copy_current_environment()
         environment.disable_gcc_smartquotes()
         environment.disable_jhbuild_VT100_output()
         env = environment.to_dictionary()
 
-        build_webkit_command = self._tool.deprecated_port().build_webkit_command(build_style=build_style)
+        if group == "jsc":
+            build_command = self._tool.deprecated_port().build_jsc_command(build_style=build_style)
+        else:
+            build_command = self._tool.deprecated_port().build_webkit_command(build_style=build_style)
 
         if self._options.architecture:
-            build_webkit_command += ['ARCHS=%s' % self._options.architecture]
+            build_command += ['ARCHS=%s' % self._options.architecture]
 
-        self._tool.executive.run_and_throw_if_fail(build_webkit_command, self._options.quiet,
+        self._tool.executive.run_and_throw_if_fail(build_command, self._options.quiet,
             cwd=self._tool.scm().checkout_root, env=env)
 
     def run(self, state):
         if not self._options.build:
             return
         _log.info("Building WebKit")
+
+        group = self._options.group
+
         if self._options.build_style == "both":
-            self.build("debug")
-            self.build("release")
+            self.build("debug", group)
+            self.build("release", group)
         else:
-            self.build(self._options.build_style)
+            self.build(self._options.build_style, group)

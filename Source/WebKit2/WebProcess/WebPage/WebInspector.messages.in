@@ -28,6 +28,7 @@ messages -> WebInspector {
 
     ShowConsole()
     ShowResources()
+    ShowTimelines()
 
     ShowMainResourceForFrame(uint64_t frameIdentifier)
 
@@ -36,10 +37,8 @@ messages -> WebInspector {
     StartPageProfiling()
     StopPageProfiling()
 
-    SendMessageToBackend(String message)
+    StartElementSelection()
+    StopElementSelection()
 
-#if ENABLE(INSPECTOR_SERVER)
-    RemoteFrontendConnected()
-    RemoteFrontendDisconnected()
-#endif
+    SendMessageToBackend(String message)
 }

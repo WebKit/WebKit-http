@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008, 2009, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -19,20 +19,17 @@
  *
  */
 
-#ifndef ArgList_h
-#define ArgList_h
+#pragma once
 
 #include "CallFrame.h"
-#include "Register.h"
+#include <wtf/ForbidHeapAllocation.h>
 #include <wtf/HashSet.h>
-#include <wtf/Vector.h>
 
 namespace JSC {
 
-class SlotVisitor;
-
 class MarkedArgumentBuffer {
     WTF_MAKE_NONCOPYABLE(MarkedArgumentBuffer);
+    WTF_FORBID_HEAP_ALLOCATION;
     friend class VM;
     friend class ArgList;
 
@@ -78,7 +75,8 @@ public:
 
     void append(JSValue v)
     {
-        if (m_size >= m_capacity)
+        ASSERT(m_size <= m_capacity);
+        if (m_size == m_capacity || mallocBase())
             return slowAppend(v);
 
         slotFor(m_size) = JSValue::encode(v);
@@ -97,9 +95,21 @@ public:
         return JSValue::decode(slotFor(m_size - 1));
     }
         
-    static void markLists(HeapRootVisitor&, ListSet&);
+    static void markLists(SlotVisitor&, ListSet&);
+
+    void ensureCapacity(size_t requestedCapacity)
+    {
+        if (requestedCapacity > static_cast<size_t>(m_capacity))
+            slowEnsureCapacity(requestedCapacity);
+    }
 
 private:
+    void expandCapacity();
+    void expandCapacity(int newCapacity);
+    void slowEnsureCapacity(size_t requestedCapacity);
+
+    void addMarkSet(JSValue);
+
     JS_EXPORT_PRIVATE void slowAppend(JSValue);
         
     EncodedJSValue& slotFor(int item) const
@@ -109,7 +119,7 @@ private:
         
     EncodedJSValue* mallocBase()
     {
-        if (m_capacity == static_cast<int>(inlineCapacity))
+        if (m_buffer == m_inlineBuffer)
             return 0;
         return &slotFor(0);
     }
@@ -155,13 +165,15 @@ public:
         
     JS_EXPORT_PRIVATE void getSlice(int startIndex, ArgList& result) const;
 
-private:
+    // FIXME: This is only made public as a work around for jsc's test helper function,
+    // callWasmFunction() to use. Make this a private method again once we can remove
+    // callWasmFunction().
+    // https://bugs.webkit.org/show_bug.cgi?id=168582
     JSValue* data() const { return m_args; }
 
+private:
     JSValue* m_args;
     int m_argCount;
 };
 
 } // namespace JSC
-
-#endif // ArgList_h

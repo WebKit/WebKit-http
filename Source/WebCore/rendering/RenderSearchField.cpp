@@ -36,13 +36,11 @@
 #include "HitTestResult.h"
 #include "LocalizedStrings.h"
 #include "Page.h"
-#include "PlatformKeyboardEvent.h"
 #include "PopupMenu.h"
 #include "RenderLayer.h"
 #include "RenderScrollbar.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
-#include "Settings.h"
 #include "StyleResolver.h"
 #include "TextControlInnerElements.h"
 
@@ -50,7 +48,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderSearchField::RenderSearchField(HTMLInputElement& element, Ref<RenderStyle>&& style)
+RenderSearchField::RenderSearchField(HTMLInputElement& element, RenderStyle&& style)
     : RenderTextControlSingleLine(element, WTFMove(style))
     , m_searchPopupIsVisible(false)
     , m_searchPopup(0)
@@ -60,10 +58,17 @@ RenderSearchField::RenderSearchField(HTMLInputElement& element, Ref<RenderStyle>
 
 RenderSearchField::~RenderSearchField()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderSearchField::willBeDestroyed()
+{
     if (m_searchPopup) {
         m_searchPopup->popupMenu()->disconnectClient();
         m_searchPopup = nullptr;
     }
+
+    RenderTextControlSingleLine::willBeDestroyed();
 }
 
 inline HTMLElement* RenderSearchField::resultsButtonElement() const
@@ -85,7 +90,7 @@ void RenderSearchField::addSearchResult()
     if (value.isEmpty())
         return;
 
-    if (frame().page()->usesEphemeralSession())
+    if (page().usesEphemeralSession())
         return;
 
     m_recentSearches.removeAllMatching([value] (const RecentSearch& recentSearch) {
@@ -99,7 +104,7 @@ void RenderSearchField::addSearchResult()
 
     const AtomicString& name = autosaveName();
     if (!m_searchPopup)
-        m_searchPopup = document().page()->chrome().createSearchPopupMenu(this);
+        m_searchPopup = page().chrome().createSearchPopupMenu(*this);
 
     m_searchPopup->saveRecentSearches(name, m_recentSearches);
 }
@@ -110,7 +115,7 @@ void RenderSearchField::showPopup()
         return;
 
     if (!m_searchPopup)
-        m_searchPopup = document().page()->chrome().createSearchPopupMenu(this);
+        m_searchPopup = page().chrome().createSearchPopupMenu(*this);
 
     if (!m_searchPopup->enabled())
         return;
@@ -129,7 +134,10 @@ void RenderSearchField::showPopup()
         m_searchPopup->saveRecentSearches(name, m_recentSearches);
     }
 
-    m_searchPopup->popupMenu()->show(snappedIntRect(absoluteBoundingBoxRect()), &view().frameView(), -1);
+    FloatPoint absTopLeft = localToAbsolute(FloatPoint(), UseTransforms);
+    IntRect absBounds = absoluteBoundingBoxRectIgnoringTransforms();
+    absBounds.setLocation(roundedIntPoint(absTopLeft));
+    m_searchPopup->popupMenu()->show(absBounds, &view().frameView(), -1);
 }
 
 void RenderSearchField::hidePopup()
@@ -178,8 +186,8 @@ void RenderSearchField::updateCancelButtonVisibility() const
     if (curStyle.visibility() == buttonVisibility)
         return;
 
-    auto cancelButtonStyle = RenderStyle::clone(&curStyle);
-    cancelButtonStyle.get().setVisibility(buttonVisibility);
+    auto cancelButtonStyle = RenderStyle::clone(curStyle);
+    cancelButtonStyle.setVisibility(buttonVisibility);
     cancelButtonRenderer->setStyle(WTFMove(cancelButtonStyle));
 }
 
@@ -190,7 +198,7 @@ EVisibility RenderSearchField::visibilityForCancelButton() const
 
 const AtomicString& RenderSearchField::autosaveName() const
 {
-    return inputElement().fastGetAttribute(autosaveAttr);
+    return inputElement().attributeWithoutSynchronization(autosaveAttr);
 }
 
 // PopupMenuClient methods
@@ -203,7 +211,7 @@ void RenderSearchField::valueChanged(unsigned listIndex, bool fireEvents)
             const AtomicString& name = autosaveName();
             if (!name.isEmpty()) {
                 if (!m_searchPopup)
-                    m_searchPopup = document().page()->chrome().createSearchPopupMenu(this);
+                    m_searchPopup = page().chrome().createSearchPopupMenu(*this);
                 m_searchPopup->saveRecentSearches(name, m_recentSearches);
             }
         }
@@ -346,33 +354,12 @@ HostWindow* RenderSearchField::hostWindow() const
     return view().frameView().hostWindow();
 }
 
-PassRefPtr<Scrollbar> RenderSearchField::createScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize controlSize)
+Ref<Scrollbar> RenderSearchField::createScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize controlSize)
 {
-    RefPtr<Scrollbar> widget;
     bool hasCustomScrollbarStyle = style().hasPseudoStyle(SCROLLBAR);
     if (hasCustomScrollbarStyle)
-        widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &inputElement());
-    else
-        widget = Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
-    return widget.release();
-}
-
-LayoutUnit RenderSearchField::computeLogicalHeightLimit() const
-{
-    return logicalHeight();
-}
-
-void RenderSearchField::centerContainerIfNeeded(RenderBox* containerRenderer) const
-{
-    if (!containerRenderer)
-        return;
-
-    if (containerRenderer->logicalHeight() <= contentLogicalHeight())
-        return;
-
-    // A quirk for find-in-page box on Safari Windows.
-    // http://webkit.org/b/63157
-    centerRenderer(*containerRenderer);
+        return RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &inputElement());
+    return Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
 }
 
 }

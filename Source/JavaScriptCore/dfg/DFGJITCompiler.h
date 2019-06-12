@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGJITCompiler_h
-#define DFGJITCompiler_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -35,8 +34,6 @@
 #include "DFGInlineCacheWrapper.h"
 #include "DFGJITCode.h"
 #include "DFGOSRExitCompilationInfo.h"
-#include "DFGRegisterBank.h"
-#include "FPRInfo.h"
 #include "GPRInfo.h"
 #include "HandlerInfo.h"
 #include "JITCode.h"
@@ -44,7 +41,6 @@
 #include "LinkBuffer.h"
 #include "MacroAssembler.h"
 #include "PCToCodeOriginMap.h"
-#include "TempRegisterSet.h"
 
 namespace JSC {
 
@@ -147,15 +143,16 @@ public:
         return m_jitCode->common.addCodeOrigin(codeOrigin);
     }
 
-    void emitStoreCodeOrigin(CodeOrigin codeOrigin)
+    CallSiteIndex emitStoreCodeOrigin(CodeOrigin codeOrigin)
     {
         CallSiteIndex callSite = addCallSite(codeOrigin);
         emitStoreCallSiteIndex(callSite);
+        return callSite;
     }
 
     void emitStoreCallSiteIndex(CallSiteIndex callSite)
     {
-        store32(TrustedImm32(callSite.bits()), tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+        store32(TrustedImm32(callSite.bits()), tagFor(static_cast<VirtualRegister>(CallFrameSlot::argumentCount)));
     }
 
     // Add a call out from JIT code, without an exception check.
@@ -170,13 +167,13 @@ public:
 
     void exceptionCheckWithCallFrameRollback()
     {
-        m_exceptionChecksWithCallFrameRollback.append(emitExceptionCheck());
+        m_exceptionChecksWithCallFrameRollback.append(emitExceptionCheck(*vm()));
     }
 
     // Add a call out from JIT code, with a fast exception check that tests if the return value is zero.
     void fastExceptionCheck()
     {
-        callExceptionFuzz();
+        callExceptionFuzz(*vm());
         m_exceptionChecks.append(branchTestPtr(Zero, GPRInfo::returnValueGPR));
     }
     
@@ -197,6 +194,11 @@ public:
         m_getByIds.append(InlineCacheWrapper<JITGetByIdGenerator>(gen, slowPath));
     }
     
+    void addGetByIdWithThis(const JITGetByIdWithThisGenerator& gen, SlowPathGenerator* slowPath)
+    {
+        m_getByIdsWithThis.append(InlineCacheWrapper<JITGetByIdWithThisGenerator>(gen, slowPath));
+    }
+    
     void addPutById(const JITPutByIdGenerator& gen, SlowPathGenerator* slowPath)
     {
         m_putByIds.append(InlineCacheWrapper<JITPutByIdGenerator>(gen, slowPath));
@@ -207,14 +209,19 @@ public:
         m_ins.append(record);
     }
     
-    unsigned currentJSCallIndex() const
-    {
-        return m_jsCalls.size();
-    }
-
     void addJSCall(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo* info)
     {
         m_jsCalls.append(JSCallRecord(fastCall, slowCall, targetToCheck, info));
+    }
+    
+    void addJSDirectCall(Call call, Label slowPath, CallLinkInfo* info)
+    {
+        m_jsDirectCalls.append(JSDirectCallRecord(call, slowPath, info));
+    }
+    
+    void addJSDirectTailCall(PatchableJump patchableJump, Call call, Label slowPath, CallLinkInfo* info)
+    {
+        m_jsDirectTailCalls.append(JSDirectTailCallRecord(patchableJump, call, slowPath, info));
     }
     
     void addWeakReference(JSCell* target)
@@ -237,14 +244,14 @@ public:
     }
 
     template<typename T>
-    Jump branchWeakStructure(RelationalCondition cond, T left, Structure* weakStructure)
+    Jump branchWeakStructure(RelationalCondition cond, T left, RegisteredStructure weakStructure)
     {
+        Structure* structure = weakStructure.get();
 #if USE(JSVALUE64)
-        Jump result = branch32(cond, left, TrustedImm32(weakStructure->id()));
-        addWeakReference(weakStructure);
+        Jump result = branch32(cond, left, TrustedImm32(structure->id()));
         return result;
 #else
-        return branchWeakPtr(cond, left, weakStructure);
+        return branchPtr(cond, left, TrustedImmPtr(structure));
 #endif
     }
 
@@ -257,6 +264,8 @@ public:
     CallSiteIndex recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(const CodeOrigin&, unsigned eventStreamIndex);
 
     PCToCodeOriginMapBuilder& pcToCodeOriginMapBuilder() { return m_pcToCodeOriginMapBuilder; }
+
+    VM* vm() { return &m_graph.m_vm; }
 
 private:
     friend class OSRExitJumpPlaceholder;
@@ -290,25 +299,58 @@ private:
     
     Vector<Label> m_blockHeads;
 
+
     struct JSCallRecord {
         JSCallRecord(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo* info)
-            : m_fastCall(fastCall)
-            , m_slowCall(slowCall)
-            , m_targetToCheck(targetToCheck)
-            , m_info(info)
+            : fastCall(fastCall)
+            , slowCall(slowCall)
+            , targetToCheck(targetToCheck)
+            , info(info)
         {
         }
         
-        Call m_fastCall;
-        Call m_slowCall;
-        DataLabelPtr m_targetToCheck;
-        CallLinkInfo* m_info;
+        Call fastCall;
+        Call slowCall;
+        DataLabelPtr targetToCheck;
+        CallLinkInfo* info;
     };
     
+    struct JSDirectCallRecord {
+        JSDirectCallRecord(Call call, Label slowPath, CallLinkInfo* info)
+            : call(call)
+            , slowPath(slowPath)
+            , info(info)
+        {
+        }
+        
+        Call call;
+        Label slowPath;
+        CallLinkInfo* info;
+    };
+    
+    struct JSDirectTailCallRecord {
+        JSDirectTailCallRecord(PatchableJump patchableJump, Call call, Label slowPath, CallLinkInfo* info)
+            : patchableJump(patchableJump)
+            , call(call)
+            , slowPath(slowPath)
+            , info(info)
+        {
+        }
+        
+        PatchableJump patchableJump;
+        Call call;
+        Label slowPath;
+        CallLinkInfo* info;
+    };
+
+    
     Vector<InlineCacheWrapper<JITGetByIdGenerator>, 4> m_getByIds;
+    Vector<InlineCacheWrapper<JITGetByIdWithThisGenerator>, 4> m_getByIdsWithThis;
     Vector<InlineCacheWrapper<JITPutByIdGenerator>, 4> m_putByIds;
     Vector<InRecord, 4> m_ins;
     Vector<JSCallRecord, 4> m_jsCalls;
+    Vector<JSDirectCallRecord, 4> m_jsDirectCalls;
+    Vector<JSDirectTailCallRecord, 4> m_jsDirectTailCalls;
     SegmentedVector<OSRExitCompilationInfo, 4> m_exitCompilationInfo;
     Vector<Vector<Label>> m_exitSiteLabels;
     
@@ -328,5 +370,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif
-#endif
-

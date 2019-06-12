@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2010, 2014, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 David Smith <catfish.man@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -19,17 +19,16 @@
  *
  */
 
-#ifndef ElementRareData_h
-#define ElementRareData_h
+#pragma once
 
-#include "AttributeDOMTokenList.h"
+#include "CustomElementReactionQueue.h"
+#include "DOMTokenList.h"
 #include "DatasetDOMStringMap.h"
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
 #include "PseudoElement.h"
 #include "RenderElement.h"
 #include "ShadowRoot.h"
-#include "StyleInheritedData.h"
 
 namespace WebCore {
 
@@ -45,29 +44,36 @@ public:
     PseudoElement* afterPseudoElement() const { return m_afterPseudoElement.get(); }
 
     void resetComputedStyle();
-    void resetDynamicRestyleObservations();
+    void resetStyleRelations();
     
-    short tabIndex() const { return m_tabIndex; }
-    void setTabIndexExplicitly(short index) { m_tabIndex = index; m_tabIndexWasSetExplicitly = true; }
+    int tabIndex() const { return m_tabIndex; }
+    void setTabIndexExplicitly(int index) { m_tabIndex = index; m_tabIndexWasSetExplicitly = true; }
     bool tabIndexSetExplicitly() const { return m_tabIndexWasSetExplicitly; }
     void clearTabIndexExplicitly() { m_tabIndex = 0; m_tabIndexWasSetExplicitly = false; }
 
     bool needsFocusAppearanceUpdateSoonAfterAttach() const { return m_needsFocusAppearanceUpdateSoonAfterAttach; }
     void setNeedsFocusAppearanceUpdateSoonAfterAttach(bool needs) { m_needsFocusAppearanceUpdateSoonAfterAttach = needs; }
 
+    bool styleAffectedByActive() const { return m_styleAffectedByActive; }
+    void setStyleAffectedByActive(bool value) { m_styleAffectedByActive = value; }
+
     bool styleAffectedByEmpty() const { return m_styleAffectedByEmpty; }
     void setStyleAffectedByEmpty(bool value) { m_styleAffectedByEmpty = value; }
 
+    bool styleAffectedByFocusWithin() const { return m_styleAffectedByFocusWithin; }
+    void setStyleAffectedByFocusWithin(bool value) { m_styleAffectedByFocusWithin = value; }
+
     RegionOversetState regionOversetState() const { return m_regionOversetState; }
     void setRegionOversetState(RegionOversetState state) { m_regionOversetState = state; }
+
+    bool isNamedFlowContentElement() const { return m_isNamedFlowContentElement; }
+    void setIsNamedFlowContentElement(bool value) { m_isNamedFlowContentElement = value; }
 
 #if ENABLE(FULLSCREEN_API)
     bool containsFullScreenElement() { return m_containsFullScreenElement; }
     void setContainsFullScreenElement(bool value) { m_containsFullScreenElement = value; }
 #endif
 
-    bool childrenAffectedByActive() const { return m_childrenAffectedByActive; }
-    void setChildrenAffectedByActive(bool value) { m_childrenAffectedByActive = value; }
     bool childrenAffectedByDrag() const { return m_childrenAffectedByDrag; }
     void setChildrenAffectedByDrag(bool value) { m_childrenAffectedByDrag = value; }
 
@@ -86,14 +92,17 @@ public:
     ShadowRoot* shadowRoot() const { return m_shadowRoot.get(); }
     void setShadowRoot(RefPtr<ShadowRoot>&& shadowRoot) { m_shadowRoot = WTFMove(shadowRoot); }
 
+    CustomElementReactionQueue* customElementReactionQueue() { return m_customElementReactionQueue.get(); }
+    void setCustomElementReactionQueue(std::unique_ptr<CustomElementReactionQueue>&& queue) { m_customElementReactionQueue = WTFMove(queue); }
+
     NamedNodeMap* attributeMap() const { return m_attributeMap.get(); }
     void setAttributeMap(std::unique_ptr<NamedNodeMap> attributeMap) { m_attributeMap = WTFMove(attributeMap); }
 
     RenderStyle* computedStyle() const { return m_computedStyle.get(); }
-    void setComputedStyle(Ref<RenderStyle>&& computedStyle) { m_computedStyle = WTFMove(computedStyle); }
+    void setComputedStyle(std::unique_ptr<RenderStyle> computedStyle) { m_computedStyle = WTFMove(computedStyle); }
 
-    AttributeDOMTokenList* classList() const { return m_classList.get(); }
-    void setClassList(std::unique_ptr<AttributeDOMTokenList> classList) { m_classList = WTFMove(classList); }
+    DOMTokenList* classList() const { return m_classList.get(); }
+    void setClassList(std::unique_ptr<DOMTokenList> classList) { m_classList = WTFMove(classList); }
 
     DatasetDOMStringMap* dataset() const { return m_dataset.get(); }
     void setDataset(std::unique_ptr<DatasetDOMStringMap> dataset) { m_dataset = WTFMove(dataset); }
@@ -108,17 +117,18 @@ public:
     void setHasPendingResources(bool has) { m_hasPendingResources = has; }
 
 private:
-    short m_tabIndex;
+    int m_tabIndex;
     unsigned short m_childIndex;
     unsigned m_tabIndexWasSetExplicitly : 1;
     unsigned m_needsFocusAppearanceUpdateSoonAfterAttach : 1;
+    unsigned m_styleAffectedByActive : 1;
     unsigned m_styleAffectedByEmpty : 1;
+    unsigned m_styleAffectedByFocusWithin : 1;
 #if ENABLE(FULLSCREEN_API)
     unsigned m_containsFullScreenElement : 1;
 #endif
     unsigned m_hasPendingResources : 1;
     unsigned m_childrenAffectedByHover : 1;
-    unsigned m_childrenAffectedByActive : 1;
     unsigned m_childrenAffectedByDrag : 1;
     // Bits for dynamic child matching.
     // We optimize for :first-child and :last-child. The other positional child selectors like nth-child or
@@ -126,16 +136,18 @@ private:
     unsigned m_childrenAffectedByLastChildRules : 1;
     unsigned m_childrenAffectedByBackwardPositionalRules : 1;
     unsigned m_childrenAffectedByPropertyBasedBackwardPositionalRules : 1;
+    unsigned m_isNamedFlowContentElement : 1;
 
     RegionOversetState m_regionOversetState;
 
     LayoutSize m_minimumSizeForResizing;
     IntPoint m_savedLayerScrollPosition;
-    RefPtr<RenderStyle> m_computedStyle;
+    std::unique_ptr<RenderStyle> m_computedStyle;
 
     std::unique_ptr<DatasetDOMStringMap> m_dataset;
-    std::unique_ptr<AttributeDOMTokenList> m_classList;
+    std::unique_ptr<DOMTokenList> m_classList;
     RefPtr<ShadowRoot> m_shadowRoot;
+    std::unique_ptr<CustomElementReactionQueue> m_customElementReactionQueue;
     std::unique_ptr<NamedNodeMap> m_attributeMap;
 
     RefPtr<PseudoElement> m_beforePseudoElement;
@@ -155,17 +167,19 @@ inline ElementRareData::ElementRareData(RenderElement* renderer)
     , m_childIndex(0)
     , m_tabIndexWasSetExplicitly(false)
     , m_needsFocusAppearanceUpdateSoonAfterAttach(false)
+    , m_styleAffectedByActive(false)
     , m_styleAffectedByEmpty(false)
+    , m_styleAffectedByFocusWithin(false)
 #if ENABLE(FULLSCREEN_API)
     , m_containsFullScreenElement(false)
 #endif
     , m_hasPendingResources(false)
     , m_childrenAffectedByHover(false)
-    , m_childrenAffectedByActive(false)
     , m_childrenAffectedByDrag(false)
     , m_childrenAffectedByLastChildRules(false)
     , m_childrenAffectedByBackwardPositionalRules(false)
     , m_childrenAffectedByPropertyBasedBackwardPositionalRules(false)
+    , m_isNamedFlowContentElement(false)
     , m_regionOversetState(RegionUndefined)
     , m_minimumSizeForResizing(defaultMinimumSizeForResizing())
 {
@@ -193,19 +207,18 @@ inline void ElementRareData::setAfterPseudoElement(RefPtr<PseudoElement>&& pseud
 inline void ElementRareData::resetComputedStyle()
 {
     m_computedStyle = nullptr;
-    setStyleAffectedByEmpty(false);
-    setChildIndex(0);
 }
 
-inline void ElementRareData::resetDynamicRestyleObservations()
+inline void ElementRareData::resetStyleRelations()
 {
-    setChildrenAffectedByActive(false);
+    setStyleAffectedByEmpty(false);
+    setStyleAffectedByFocusWithin(false);
+    setChildIndex(0);
+    setStyleAffectedByActive(false);
     setChildrenAffectedByDrag(false);
     setChildrenAffectedByLastChildRules(false);
     setChildrenAffectedByBackwardPositionalRules(false);
     setChildrenAffectedByPropertyBasedBackwardPositionalRules(false);
 }
 
-} // namespace
-
-#endif // ElementRareData_h
+} // namespace WebCore

@@ -22,32 +22,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderFullScreen_h
-#define RenderFullScreen_h
+#pragma once
 
 #if ENABLE(FULLSCREEN_API)
 
 #include "RenderFlexibleBox.h"
-#include "StyleInheritedData.h"
 
 namespace WebCore {
 
 class RenderFullScreen final : public RenderFlexibleBox {
 public:
-    RenderFullScreen(Document&, Ref<RenderStyle>&&);
+    RenderFullScreen(Document&, RenderStyle&&);
 
-    virtual const char* renderName() const override { return "RenderFullScreen"; }
+    const char* renderName() const override { return "RenderFullScreen"; }
 
     void setPlaceholder(RenderBlock*);
     RenderBlock* placeholder() { return m_placeholder; }
-    void createPlaceholder(Ref<RenderStyle>&&, const LayoutRect& frameRect);
+    void createPlaceholder(std::unique_ptr<RenderStyle>, const LayoutRect& frameRect);
 
     static RenderFullScreen* wrapRenderer(RenderObject*, RenderElement*, Document&);
     void unwrapRenderer(bool& requiresRenderTreeRebuild);
 
+    ItemPosition selfAlignmentNormalBehavior(const RenderBox* = nullptr) const override { return ItemPositionCenter; }
+    
 private:
-    virtual bool isRenderFullScreen() const override { return true; }
-    virtual void willBeDestroyed() override;
+    bool isRenderFullScreen() const override { return true; }
+    void willBeDestroyed() override;
     bool isFlexibleBoxImpl() const override { return true; }
 
 protected:
@@ -59,5 +59,3 @@ protected:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderFullScreen, isRenderFullScreen())
 
 #endif // ENABLE(FULLSCREEN_API)
-
-#endif // RenderFullScreen_h

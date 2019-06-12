@@ -28,6 +28,7 @@
 #import "AppDelegate.h"
 #import "SettingsController.h"
 #import <WebKit/WebKit.h>
+#import <WebKit/WebNSURLExtras.h>
 #import <WebKit/WebPreferences.h>
 #import <WebKit/WebPreferencesPrivate.h>
 #import <WebKit/WebPreferenceKeysPrivate.h>
@@ -42,6 +43,8 @@
 {
     _webView = [[WebView alloc] initWithFrame:[containerView bounds] frameName:nil groupName:@"MiniBrowser"];
     [_webView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+
+    _webView.editable = self.isEditable;
 
     [_webView setFrameLoadDelegate:self];
     [_webView setUIDelegate:self];
@@ -78,34 +81,26 @@
     [self fetch:nil];
 }
 
+- (void)loadHTMLString:(NSString *)HTMLString
+{
+    [_webView.mainFrame loadHTMLString:HTMLString baseURL:nil];
+}
+
 - (IBAction)fetch:(id)sender
 {
     [urlText setStringValue:[self addProtocolIfNecessary:[urlText stringValue]]];
-    NSURL *url = [NSURL URLWithString:[urlText stringValue]];
+    NSURL *url = [NSURL _webkit_URLWithUserTypedString:urlText.stringValue];
     [[_webView mainFrame] loadRequest:[NSURLRequest requestWithURL:url]];
 }
 
-- (IBAction)showHideWebView:(id)sender
+- (IBAction)setPageScale:(id)sender
 {
-    BOOL hidden = ![_webView isHidden];
-    
-    [_webView setHidden:hidden];
+    CGFloat scale = [self pageScaleForMenuItemTag:[sender tag]];
+    [_webView _scaleWebView:scale atOrigin:NSZeroPoint];
 }
 
-- (IBAction)removeReinsertWebView:(id)sender
+- (IBAction)setViewScale:(id)sender
 {
-    if ([_webView window]) {
-        [_webView retain];
-        [_webView removeFromSuperview]; 
-    } else {
-        [containerView addSubview:_webView];
-        [_webView release];
-    }
-}
-
-- (IBAction)setScale:(id)sender
-{
-    
 }
 
 - (IBAction)reload:(id)sender
@@ -128,6 +123,12 @@
     [_webView goForward:sender];
 }
 
+static BOOL areEssentiallyEqual(double a, double b)
+{
+    double tolerance = 0.001;
+    return (fabs(a - b) <= tolerance);
+}
+
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem
 {
     SEL action = [menuItem action];
@@ -145,6 +146,11 @@
         [menuItem setTitle:[_webView window] ? @"Remove Web View" : @"Insert Web View"];
     else if (action == @selector(toggleZoomMode:))
         [menuItem setState:_zoomTextOnly ? NSOnState : NSOffState];
+    else if (action == @selector(toggleEditable:))
+        [menuItem setState:self.isEditable ? NSOnState : NSOffState];
+
+    if (action == @selector(setPageScale:))
+        [menuItem setState:areEssentiallyEqual([_webView _viewScaleFactor], [self pageScaleForMenuItemTag:[menuItem tag]])];
 
     return YES;
 }
@@ -178,10 +184,6 @@
     [self autorelease];
 }
 
-- (void)applicationTerminating
-{
-}
-
 - (double)currentZoomFactor
 {
     return 1;
@@ -197,7 +199,11 @@
     if (![self canZoomIn])
         return;
 
-    [_webView makeTextLarger:sender];
+    if (_zoomTextOnly)
+        [_webView makeTextLarger:sender];
+    else
+        [_webView zoomPageIn:sender];
+
 }
 
 - (BOOL)canZoomOut
@@ -210,12 +216,15 @@
     if (![self canZoomIn])
         return;
 
-    [_webView makeTextSmaller:sender];
+    if (_zoomTextOnly)
+        [_webView makeTextSmaller:sender];
+    else
+        [_webView zoomPageOut:sender];
 }
 
 - (BOOL)canResetZoom
 {
-    return [_webView canMakeTextStandardSize];
+    return _zoomTextOnly ? [_webView canMakeTextStandardSize] : [_webView canResetPageZoom];
 }
 
 - (void)resetZoom:(id)sender
@@ -223,7 +232,10 @@
     if (![self canResetZoom])
         return;
 
-    [_webView makeTextStandardSize:sender];
+    if (_zoomTextOnly)
+        [_webView makeTextStandardSize:sender];
+    else
+        [_webView resetPageZoom:sender];
 }
 
 - (IBAction)toggleZoomMode:(id)sender
@@ -233,11 +245,6 @@
 }
 
 - (IBAction)toggleShrinkToFit:(id)sender
-{
-
-}
-
-- (IBAction)find:(id)sender
 {
 }
 
@@ -250,17 +257,33 @@
     return _webView.mainFrame.dataSource.request.URL;
 }
 
+- (NSView *)mainContentView
+{
+    return _webView;
+}
+
+- (void)setEditable:(BOOL)editable
+{
+    [super setEditable:editable];
+    _webView.editable = editable;
+}
+
 - (void)didChangeSettings
 {
     SettingsController *settings = [SettingsController shared];
 
     [[WebPreferences standardPreferences] setSubpixelCSSOMElementMetricsEnabled:settings.subPixelCSSOMMetricsEnabled];
     [[WebPreferences standardPreferences] setShowDebugBorders:settings.layerBordersVisible];
+    [[WebPreferences standardPreferences] setSimpleLineLayoutEnabled:settings.simpleLineLayoutEnabled];
     [[WebPreferences standardPreferences] setSimpleLineLayoutDebugBordersEnabled:settings.simpleLineLayoutDebugBordersEnabled];
     [[WebPreferences standardPreferences] setShowRepaintCounter:settings.layerBordersVisible];
     [[WebPreferences standardPreferences] setSuppressesIncrementalRendering:settings.incrementalRenderingSuppressed];
     [[WebPreferences standardPreferences] setAcceleratedDrawingEnabled:settings.acceleratedDrawingEnabled];
+    [[WebPreferences standardPreferences] setSubpixelAntialiasedLayerTextEnabled:settings.subpixelAntialiasedLayerTextEnabled];
     [[WebPreferences standardPreferences] setResourceLoadStatisticsEnabled:settings.resourceLoadStatisticsEnabled];
+    [[WebPreferences standardPreferences] setVisualViewportEnabled:settings.visualViewportEnabled];
+    [[WebPreferences standardPreferences] setLargeImageAsyncDecodingEnabled:settings.largeImageAsyncDecodingEnabled];
+    [[WebPreferences standardPreferences] setAnimatedImageAsyncDecodingEnabled:settings.animatedImageAsyncDecodingEnabled];
 
     BOOL useTransparentWindows = settings.useTransparentWindows;
     if (useTransparentWindows != !self.window.isOpaque) {
@@ -315,10 +338,10 @@
 {
     if (!title) {
         NSURL *url = _webView.mainFrame.dataSource.request.URL;
-        title = url.lastPathComponent;
+        title = url.lastPathComponent ?: url._web_userVisibleString;
     }
-    
-    [self.window setTitle:[title stringByAppendingString:@" [WK1]"]];
+
+    [self.window setTitle:[title stringByAppendingFormat:@" [WK1]%@", _webView.editable ? @" [Editable]" : @""]];
 }
 
 - (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request
@@ -335,9 +358,18 @@
         return;
 
     NSURL *committedURL = [[[frame dataSource] request] URL];
-    [urlText setStringValue:[committedURL absoluteString]];
+    urlText.stringValue = committedURL._web_userVisibleString;
 
     [self updateTitle:nil];
+}
+
+- (void)webView:(WebView *)sender didChangeLocationWithinPageForFrame:(WebFrame *)frame
+{
+    if (frame != [sender mainFrame])
+        return;
+
+    NSURL *committedURL = [[[frame dataSource] request] URL];
+    urlText.stringValue = committedURL._web_userVisibleString;
 }
 
 - (void)webView:(WebView *)sender didReceiveTitle:(NSString *)title forFrame:(WebFrame *)frame
@@ -363,6 +395,28 @@
 
     [alert runModal];
     [alert release];
+}
+
+- (BOOL)webView:(WebView *)sender runBeforeUnloadConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WebFrame *)frame
+{
+    NSAlert *alert = [[NSAlert alloc] init];
+
+    alert.messageText = [NSString stringWithFormat:@"JavaScript before unload dialog from %@.", frame.dataSource.request.URL.absoluteString];
+    alert.informativeText = message;
+
+    [alert addButtonWithTitle:@"Leave Page"];
+    [alert addButtonWithTitle:@"Stay On Page"];
+
+    NSModalResponse response = [alert runModal];
+    
+    [alert release];
+
+    return response == NSAlertFirstButtonReturn;
+}
+
+- (NSUInteger)webView:(WebView *)webView dragDestinationActionMaskForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+{
+    return WebDragDestinationActionAny;
 }
 
 @end

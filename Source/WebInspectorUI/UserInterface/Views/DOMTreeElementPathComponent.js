@@ -39,7 +39,7 @@ WebInspector.DOMTreeElementPathComponent = class DOMTreeElementPathComponent ext
                 title = "::" + node.pseudoType();
             } else {
                 className = WebInspector.DOMTreeElementPathComponent.DOMElementIconStyleClassName;
-                title = WebInspector.displayNameForNode(node);
+                title = node.displayName;
             }
             break;
 
@@ -72,10 +72,10 @@ WebInspector.DOMTreeElementPathComponent = class DOMTreeElementPathComponent ext
             // FIXME: At some point we might want a different icon for this.
             // <rdar://problem/12800950> Need icon for DOCUMENT_FRAGMENT_NODE and PROCESSING_INSTRUCTION_NODE
             className = WebInspector.DOMTreeElementPathComponent.DOMDocumentTypeIconStyleClassName;
-            if (node.isInShadowTree())
+            if (node.shadowRootType())
                 title = WebInspector.UIString("Shadow Content");
             else
-                title = WebInspector.displayNameForNode(node);
+                title = node.displayName;
             break;
 
         case Node.PROCESSING_INSTRUCTION_NODE:

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,19 +27,32 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
 {
     constructor()
     {
-        super("dom-node-details", WebInspector.UIString("Node"), WebInspector.UIString("Node"));
+        super("dom-node-details", WebInspector.UIString("Node"));
+
+        this._eventListenerGroupingMethodSetting = new WebInspector.Setting("dom-node-event-listener-grouping-method", WebInspector.DOMNodeDetailsSidebarPanel.EventListenerGroupingMethod.Event);
+
+        this.element.classList.add("dom-node");
+
+        this._nodeRemoteObject = null;
+    }
+
+    // Protected
+
+    initialLayout()
+    {
+        super.initialLayout();
 
         WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.AttributeModified, this._attributesChanged, this);
         WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.AttributeRemoved, this._attributesChanged, this);
         WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.CharacterDataModified, this._characterDataModified, this);
-
-        this.element.classList.add("dom-node");
+        WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.CustomElementStateChanged, this._customElementStateChanged, this);
 
         this._identityNodeTypeRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Type"));
         this._identityNodeNameRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Name"));
         this._identityNodeValueRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Value"));
+        this._identityNodeContentSecurityPolicyHashRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("CSP Hash"));
 
-        var identityGroup = new WebInspector.DetailsSectionGroup([this._identityNodeTypeRow, this._identityNodeNameRow, this._identityNodeValueRow]);
+        var identityGroup = new WebInspector.DetailsSectionGroup([this._identityNodeTypeRow, this._identityNodeNameRow, this._identityNodeValueRow, this._identityNodeContentSecurityPolicyHashRow]);
         var identitySection = new WebInspector.DetailsSection("dom-node-identity", WebInspector.UIString("Identity"), [identityGroup]);
 
         this._attributesDataGridRow = new WebInspector.DetailsSectionDataGridRow(null, WebInspector.UIString("No Attributes"));
@@ -52,8 +65,28 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         var propertiesGroup = new WebInspector.DetailsSectionGroup([this._propertiesRow]);
         var propertiesSection = new WebInspector.DetailsSection("dom-node-properties", WebInspector.UIString("Properties"), [propertiesGroup]);
 
+        let eventListenersFilterElement = useSVGSymbol("Images/FilterFieldGlyph.svg", "filter", WebInspector.UIString("Grouping Method"));
+
+        let eventListenersGroupMethodSelectElement = eventListenersFilterElement.appendChild(document.createElement("select"));
+        eventListenersGroupMethodSelectElement.addEventListener("change", (event) => {
+            this._eventListenerGroupingMethodSetting.value = eventListenersGroupMethodSelectElement.value;
+
+            this._refreshEventListeners();
+        });
+
+        function createOption(text, value) {
+            let optionElement = eventListenersGroupMethodSelectElement.appendChild(document.createElement("option"));
+            optionElement.value = value;
+            optionElement.textContent = text;
+        }
+
+        createOption(WebInspector.UIString("Group by Event"), WebInspector.DOMNodeDetailsSidebarPanel.EventListenerGroupingMethod.Event);
+        createOption(WebInspector.UIString("Group by Node"), WebInspector.DOMNodeDetailsSidebarPanel.EventListenerGroupingMethod.Node);
+
+        eventListenersGroupMethodSelectElement.value = this._eventListenerGroupingMethodSetting.value;
+
         this._eventListenersSectionGroup = new WebInspector.DetailsSectionGroup;
-        var eventListenersSection = new WebInspector.DetailsSection("dom-node-event-listeners", WebInspector.UIString("Event Listeners"), [this._eventListenersSectionGroup]);
+        let eventListenersSection = new WebInspector.DetailsSection("dom-node-event-listeners", WebInspector.UIString("Event Listeners"), [this._eventListenersSectionGroup], eventListenersFilterElement);
 
         this.contentView.element.appendChild(identitySection.element);
         this.contentView.element.appendChild(attributesSection.element);
@@ -72,6 +105,8 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
             this._accessibilityNodeExpandedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Expanded"));
             this._accessibilityNodeFlowsRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Flows"));
             this._accessibilityNodeFocusedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Focused"));
+            this._accessibilityNodeHeadingLevelRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Heading Level"));
+            this._accessibilityNodehierarchyLevelRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Hierarchy Level"));
             this._accessibilityNodeIgnoredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Ignored"));
             this._accessibilityNodeInvalidRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Invalid"));
             this._accessibilityNodeLiveRegionStatusRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Live"));
@@ -93,22 +128,26 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         }
     }
 
-    // Public
-
-    refresh()
+    layout()
     {
-        var domNode = this.domNode;
-        if (!domNode)
+        super.layout();
+
+        if (!this.domNode)
             return;
 
-        this._identityNodeTypeRow.value = this._nodeTypeDisplayName();
-        this._identityNodeNameRow.value = domNode.nodeNameInCorrectCase();
-        this._identityNodeValueRow.value = domNode.nodeValue();
-
+        this._refreshIdentity();
         this._refreshAttributes();
         this._refreshProperties();
         this._refreshEventListeners();
         this._refreshAccessibility();
+    }
+
+    sizeDidChange()
+    {
+        super.sizeDidChange();
+
+        // FIXME: <https://webkit.org/b/152269> Web Inspector: Convert DetailsSection classes to use View
+        this._attributesDataGridRow.sizeDidChange();
     }
 
     // Private
@@ -118,17 +157,54 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         return window.DOMAgent && DOMAgent.getAccessibilityPropertiesForNode;
     }
 
+    _refreshIdentity()
+    {
+        const domNode = this.domNode;
+        this._identityNodeTypeRow.value = this._nodeTypeDisplayName();
+        this._identityNodeNameRow.value = domNode.nodeNameInCorrectCase();
+        this._identityNodeValueRow.value = domNode.nodeValue();
+        this._identityNodeContentSecurityPolicyHashRow.value = domNode.contentSecurityPolicyHash();
+    }
+
     _refreshAttributes()
     {
-        this._attributesDataGridRow.dataGrid = this._createAttributesDataGrid();
+        let domNode = this.domNode;
+        if (!domNode || !domNode.hasAttributes()) {
+            // Remove the DataGrid to show the placeholder text.
+            this._attributesDataGridRow.dataGrid = null;
+            return;
+        }
+
+        let dataGrid = this._attributesDataGridRow.dataGrid;
+        if (!dataGrid) {
+            const columns = {
+                name: {title: WebInspector.UIString("Name"), width: "30%"},
+                value: {title: WebInspector.UIString("Value")},
+            };
+            dataGrid = this._attributesDataGridRow.dataGrid = new WebInspector.DataGrid(columns);
+        }
+
+        dataGrid.removeChildren();
+
+        let attributes = domNode.attributes();
+        attributes.sort((a, b) => a.name.extendedLocaleCompare(b.name));
+        for (let attribute of attributes) {
+            let dataGridNode = new WebInspector.EditableDataGridNode(attribute);
+            dataGridNode.addEventListener(WebInspector.EditableDataGridNode.Event.ValueChanged, this._attributeNodeValueChanged, this);
+            dataGrid.appendChild(dataGridNode);
+        }
+
+        dataGrid.updateLayoutIfNeeded();
     }
 
     _refreshProperties()
     {
-        var domNode = this.domNode;
-        if (!domNode)
-            return;
+        if (this._nodeRemoteObject) {
+            this._nodeRemoteObject.release();
+            this._nodeRemoteObject = null;
+        }
 
+        let domNode = this.domNode;
         RuntimeAgent.releaseObjectGroup(WebInspector.DOMNodeDetailsSidebarPanel.PropertiesObjectGroupName);
         WebInspector.RemoteObject.resolveNode(domNode, WebInspector.DOMNodeDetailsSidebarPanel.PropertiesObjectGroupName, nodeResolved.bind(this));
 
@@ -141,7 +217,9 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
             if (this.domNode !== domNode)
                 return;
 
-            function collectPrototypes()
+            this._nodeRemoteObject = object;
+
+            function inspectedPage_node_collectPrototypes()
             {
                 // This builds an object with numeric properties. This is easier than dealing with arrays
                 // with the way RemoteObject works. Start at 1 since we use parseInt later and parseInt
@@ -158,8 +236,9 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 return result;
             }
 
-            object.callFunction(collectPrototypes, undefined, false, nodePrototypesReady.bind(this));
-            object.release();
+            const args = undefined;
+            const generatePreview = false;
+            object.callFunction(inspectedPage_node_collectPrototypes, args, generatePreview, nodePrototypesReady.bind(this));
         }
 
         function nodePrototypesReady(error, object, wasThrown)
@@ -183,31 +262,37 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
             if (this.domNode !== domNode)
                 return;
 
-            var element = this._propertiesRow.element;
+            let element = this._propertiesRow.element;
             element.removeChildren();
 
-            // Get array of prototype user-friendly names.
-            for (var i = 0; i < prototypes.length; ++i) {
+            let propertyPath = new WebInspector.PropertyPath(this._nodeRemoteObject, "node");
+
+            let initialSection = true;
+            for (let i = 0; i < prototypes.length; ++i) {
                 // The only values we care about are numeric, as assigned in collectPrototypes.
                 if (!parseInt(prototypes[i].name, 10))
                     continue;
 
-                var prototype = prototypes[i].value;
-                var title = prototype.description;
-                if (title.match(/Prototype$/))
-                    title = title.replace(/Prototype$/, WebInspector.UIString(" (Prototype)"));
-                else if (title === "Object")
+                let prototype = prototypes[i].value;
+                let prototypeName = prototype.description;
+                let title = prototypeName;
+                if (/Prototype$/.test(title)) {
+                    prototypeName = prototypeName.replace(/Prototype$/, "");
+                    title = prototypeName + WebInspector.UIString(" (Prototype)");
+                } else if (title === "Object")
                     title = title + WebInspector.UIString(" (Prototype)");
 
-                // FIXME: <https://webkit.org/b/142833> Web Inspector: Node Details Sidebar Properties Section has "undefined" for all prototype properties
-
-                var objectTree = new WebInspector.ObjectTreeView(prototype, WebInspector.ObjectTreeView.Mode.Properties);
+                let mode = initialSection ? WebInspector.ObjectTreeView.Mode.Properties : WebInspector.ObjectTreeView.Mode.PureAPI;
+                let objectTree = new WebInspector.ObjectTreeView(prototype, mode, propertyPath);
                 objectTree.showOnlyProperties();
+                objectTree.setPrototypeNameOverride(prototypeName);
 
-                var detailsSection = new WebInspector.DetailsSection(prototype.description.hash + "-prototype-properties", title, null, null, true);
-                detailsSection.groups[0].rows = [new WebInspector.DetailsSectionPropertiesRow(objectTree)];
+                let detailsSection = new WebInspector.DetailsSection(prototype.description.hash + "-prototype-properties", title, null, null, true);
+                detailsSection.groups[0].rows = [new WebInspector.ObjectPropertiesDetailSectionRow(objectTree, detailsSection)];
 
                 element.appendChild(detailsSection.element);
+
+                initialSection = false;
             }
         }
     }
@@ -218,7 +303,65 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         if (!domNode)
             return;
 
-        domNode.eventListeners(eventListenersCallback.bind(this));
+        function createEventListenerSection(title, eventListeners, options = {}) {
+            let groups = eventListeners.map((eventListener) => new WebInspector.EventListenerSectionGroup(eventListener, options));
+
+            const optionsElement = null;
+            const defaultCollapsedSettingValue = true;
+            let section = new WebInspector.DetailsSection(`${title}-event-listener-section`, title, groups, optionsElement, defaultCollapsedSettingValue);
+            section.element.classList.add("event-listener-section");
+            return section;
+        }
+
+        function generateGroupsByEvent(eventListeners) {
+            let eventListenerTypes = new Map;
+            for (let eventListener of eventListeners) {
+                eventListener.node = WebInspector.domTreeManager.nodeForId(eventListener.nodeId);
+
+                let eventListenersForType = eventListenerTypes.get(eventListener.type);
+                if (!eventListenersForType)
+                    eventListenerTypes.set(eventListener.type, eventListenersForType = []);
+
+                eventListenersForType.push(eventListener);
+            }
+
+            let rows = [];
+
+            let types = Array.from(eventListenerTypes.keys());
+            types.sort();
+            for (let type of types)
+                rows.push(createEventListenerSection(type, eventListenerTypes.get(type), {hideType: true}));
+
+            return rows;
+        }
+
+        function generateGroupsByNode(eventListeners) {
+            let eventListenerNodes = new Map;
+            for (let eventListener of eventListeners) {
+                eventListener.node = WebInspector.domTreeManager.nodeForId(eventListener.nodeId);
+
+                let eventListenersForNode = eventListenerNodes.get(eventListener.node);
+                if (!eventListenersForNode)
+                    eventListenerNodes.set(eventListener.node, eventListenersForNode = []);
+
+                eventListenersForNode.push(eventListener);
+            }
+
+            let rows = [];
+
+            let currentNode = domNode;
+            do {
+                let eventListenersForNode = eventListenerNodes.get(currentNode);
+                if (!eventListenersForNode)
+                    continue;
+
+                eventListenersForNode.sort((a, b) => a.type.toLowerCase().extendedLocaleCompare(b.type.toLowerCase()));
+
+                rows.push(createEventListenerSection(currentNode.displayName, eventListenersForNode, {hideNode: true}));
+            } while (currentNode = currentNode.parentNode);
+
+            return rows;
+        }
 
         function eventListenersCallback(error, eventListeners)
         {
@@ -229,37 +372,25 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
             if (this.domNode !== domNode)
                 return;
 
-            var eventListenerTypes = [];
-            var eventListenerSections = {};
-            for (var i = 0; i < eventListeners.length; ++i) {
-                var eventListener = eventListeners[i];
-                eventListener.node = WebInspector.domTreeManager.nodeForId(eventListener.nodeId);
-
-                var type = eventListener.type;
-                var section = eventListenerSections[type];
-                if (!section) {
-                    section = new WebInspector.EventListenerSection(type, domNode.id);
-                    eventListenerSections[type] = section;
-                    eventListenerTypes.push(type);
-                }
-
-                section.addListener(eventListener);
-            }
-
-            if (!eventListenerTypes.length) {
+            if (!eventListeners.length) {
                 var emptyRow = new WebInspector.DetailsSectionRow(WebInspector.UIString("No Event Listeners"));
                 emptyRow.showEmptyMessage();
                 this._eventListenersSectionGroup.rows = [emptyRow];
                 return;
             }
 
-            eventListenerTypes.sort();
+            switch (this._eventListenerGroupingMethodSetting.value) {
+            case WebInspector.DOMNodeDetailsSidebarPanel.EventListenerGroupingMethod.Event:
+                this._eventListenersSectionGroup.rows = generateGroupsByEvent.call(this, eventListeners);
+                break;
 
-            var rows = [];
-            for (var i = 0; i < eventListenerTypes.length; ++i)
-                rows.push(eventListenerSections[eventListenerTypes[i]]);
-            this._eventListenersSectionGroup.rows = rows;
+            case WebInspector.DOMNodeDetailsSidebarPanel.EventListenerGroupingMethod.Node:
+                this._eventListenersSectionGroup.rows = generateGroupsByNode.call(this, eventListeners);
+                break;
+            }
         }
+
+        domNode.getEventListeners(eventListenersCallback.bind(this));
     }
 
     _refreshAccessibility()
@@ -300,15 +431,15 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         }
 
         function linkListForNodeIds(nodeIds) {
-            if (!nodeIds) 
+            if (!nodeIds)
                 return null;
 
             const itemsToShow = 5;
             let hasLinks = false;
             let listItemCount = 0;
             let container = document.createElement("div");
-            container.classList.add("list-container")
-            let linkList = container.createChild("ul", "node-link-list");            
+            container.classList.add("list-container");
+            let linkList = container.createChild("ul", "node-link-list");
             let initiallyHiddenItems = [];
             for (let nodeId of nodeIds) {
                 let node = WebInspector.domTreeManager.nodeForId(nodeId);
@@ -318,10 +449,10 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 hasLinks = true;
                 let li = linkList.createChild("li");
                 li.appendChild(link);
-                if (listItemCount >= itemsToShow) {  
+                if (listItemCount >= itemsToShow) {
                     li.hidden = true;
                     initiallyHiddenItems.push(li);
-                } 
+                }
                 listItemCount++;
             }
             container.appendChild(linkList);
@@ -329,11 +460,11 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 let moreNodesButton = container.createChild("button", "expand-list-button");
                 moreNodesButton.textContent = WebInspector.UIString("%d More\u2026").format(listItemCount - itemsToShow);
                 moreNodesButton.addEventListener("click", () => {
-                    initiallyHiddenItems.forEach((element) => element.hidden = false);
+                    initiallyHiddenItems.forEach((element) => { element.hidden = false; });
                     moreNodesButton.remove();
                 });
             }
-            if (hasLinks) 
+            if (hasLinks)
                 return container;
 
             return null;
@@ -363,9 +494,8 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
 
                 // Accessibility tree children are not a 1:1 mapping with DOM tree children.
                 var childNodeLinkList = linkListForNodeIds(accessibilityProperties.childNodeIds);
-                
                 var controlledNodeLinkList = linkListForNodeIds(accessibilityProperties.controlledNodeIds);
-                
+
                 var current = "";
                 switch (accessibilityProperties.current) {
                 case DOMAgent.AccessibilityPropertiesCurrent.True:
@@ -389,12 +519,12 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 default:
                     current = "";
                 }
-                
+
                 var disabled = booleanValueToLocalizedStringIfTrue("disabled");
                 var expanded = booleanValueToLocalizedStringIfPropertyDefined("expanded");
                 var flowedNodeLinkList = linkListForNodeIds(accessibilityProperties.flowedNodeIds);
                 var focused = booleanValueToLocalizedStringIfPropertyDefined("focused");
-                
+
                 var ignored = "";
                 if (accessibilityProperties.ignored) {
                     ignored = WebInspector.UIString("Yes");
@@ -417,7 +547,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 var liveRegionStatus = "";
                 var liveRegionStatusNode = null;
                 var liveRegionStatusToken = accessibilityProperties.liveRegionStatus;
-                switch(liveRegionStatusToken) {
+                switch (liveRegionStatusToken) {
                 case DOMAgent.AccessibilityPropertiesLiveRegionStatus.Assertive:
                     liveRegionStatus = WebInspector.UIString("Assertive");
                     break;
@@ -433,7 +563,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                     if (liveRegionRelevant && liveRegionRelevant.length) {
                         // @aria-relevant="all" is exposed as ["additions","removals","text"], in order.
                         // This order is controlled in WebCore and expected in WebInspectorUI.
-                        if (liveRegionRelevant.length === 3 
+                        if (liveRegionRelevant.length === 3
                             && liveRegionRelevant[0] === DOMAgent.LiveRegionRelevant.Additions
                             && liveRegionRelevant[1] === DOMAgent.LiveRegionRelevant.Removals
                             && liveRegionRelevant[2] === DOMAgent.LiveRegionRelevant.Text)
@@ -488,18 +618,45 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 var required = booleanValueToLocalizedStringIfPropertyDefined("required");
 
                 var role = accessibilityProperties.role;
+                let hasPopup = accessibilityProperties.isPopupButton;
+                let roleType = null;
+                let buttonType = null;
+                let buttonTypePopupString = WebInspector.UIString("popup");
+                let buttonTypeToggleString = WebInspector.UIString("toggle");
+                let buttonTypePopupToggleString = WebInspector.UIString("popup, toggle");
+
                 if (role === "" || role === "unknown")
-                    role = WebInspector.UIString("No exact ARIA role match.");
+                    role = WebInspector.UIString("No matching ARIA role");
                 else if (role) {
+                    if (role === "button") {
+                        if (pressed)
+                            buttonType = buttonTypeToggleString;
+
+                        // In cases where an element is a toggle button, but it also has
+                        // aria-haspopup, we concatenate the button types. If it is just
+                        // a popup button, we only include "popup".
+                        if (hasPopup)
+                            buttonType = buttonType ? buttonTypePopupToggleString : buttonTypePopupString;
+                    }
+
                     if (!domNode.getAttribute("role"))
-                        role = WebInspector.UIString("%s (default)").format(role);
-                    else if (domNode.getAttribute("role") !== role)
-                        role = WebInspector.UIString("%s (computed)").format(role);
+                        roleType = WebInspector.UIString("default");
+                    else if (buttonType || domNode.getAttribute("role") !== role)
+                        roleType = WebInspector.UIString("computed");
+
+                    if (buttonType && roleType)
+                        role = WebInspector.UIString("%s (%s, %s)").format(role, buttonType, roleType);
+                    else if (roleType || buttonType) {
+                        let extraInfo = roleType || buttonType;
+                        role = WebInspector.UIString("%s (%s)").format(role, extraInfo);
+                    }
                 }
 
                 var selected = booleanValueToLocalizedStringIfTrue("selected");
                 var selectedChildNodeLinkList = linkListForNodeIds(accessibilityProperties.selectedChildNodeIds);
 
+                var headingLevel = accessibilityProperties.headingLevel;
+                var hierarchyLevel = accessibilityProperties.hierarchyLevel;
                 // Assign all the properties to their respective views.
                 this._accessibilityNodeActiveDescendantRow.value = activeDescendantLink || "";
                 this._accessibilityNodeBusyRow.value = busy;
@@ -511,11 +668,13 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 this._accessibilityNodeExpandedRow.value = expanded;
                 this._accessibilityNodeFlowsRow.value = flowedNodeLinkList || "";
                 this._accessibilityNodeFocusedRow.value = focused;
+                this._accessibilityNodeHeadingLevelRow.value = headingLevel || "";
+                this._accessibilityNodehierarchyLevelRow.value = hierarchyLevel || "";
                 this._accessibilityNodeIgnoredRow.value = ignored;
                 this._accessibilityNodeInvalidRow.value = invalid;
                 this._accessibilityNodeLabelRow.value = label;
                 this._accessibilityNodeLiveRegionStatusRow.value = liveRegionStatusNode || liveRegionStatus;
-                
+
                 // Row label changes based on whether the value is a delegate node link.
                 this._accessibilityNodeMouseEventRow.label = mouseEventNodeLink ? WebInspector.UIString("Click Listener") : WebInspector.UIString("Clickable");
                 this._accessibilityNodeMouseEventRow.value = mouseEventNodeLink || mouseEventTextValue;
@@ -531,7 +690,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Items");
                 this._accessibilityNodeSelectedChildrenRow.value = selectedChildNodeLinkList || "";
                 if (selectedChildNodeLinkList && accessibilityProperties.selectedChildNodeIds.length === 1)
-                    this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Item");                
+                    this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Item");
 
                 // Display order, not alphabetical as above.
                 this._accessibilityGroup.rows = [
@@ -548,6 +707,8 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                     this._accessibilityNodeFlowsRow,
                     this._accessibilityNodeMouseEventRow,
                     this._accessibilityNodeFocusedRow,
+                    this._accessibilityNodeHeadingLevelRow,
+                    this._accessibilityNodehierarchyLevelRow,
                     this._accessibilityNodeBusyRow,
                     this._accessibilityNodeLiveRegionStatusRow,
                     this._accessibilityNodeCurrentRow,
@@ -584,6 +745,19 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         this._refreshAccessibility();
     }
 
+    _attributeNodeValueChanged(event)
+    {
+        let change = event.data;
+        let data = event.target.data;
+
+        if (change.columnIdentifier === "name") {
+            this.domNode.removeAttribute(data[change.columnIdentifier], (error) => {
+                this.domNode.setAttribute(change.value, `${change.value}="${data.value}"`);
+            });
+        } else if (change.columnIdentifier === "value")
+            this.domNode.setAttributeValue(data.name, change.value);
+    }
+
     _characterDataModified(event)
     {
         if (event.data.node !== this.domNode)
@@ -591,11 +765,21 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         this._identityNodeValueRow.value = this.domNode.nodeValue();
     }
 
+    _customElementStateChanged(event)
+    {
+        if (event.data.node !== this.domNode)
+            return;
+        this._refreshIdentity();
+    }
+
     _nodeTypeDisplayName()
     {
         switch (this.domNode.nodeType()) {
-        case Node.ELEMENT_NODE:
-            return WebInspector.UIString("Element");
+        case Node.ELEMENT_NODE: {
+            const nodeName = WebInspector.UIString("Element");
+            const state = this._customElementState();
+            return state === null ? nodeName : `${nodeName} (${state})`;
+        }
         case Node.TEXT_NODE:
             return WebInspector.UIString("Text Node");
         case Node.COMMENT_NODE:
@@ -616,25 +800,27 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         }
     }
 
-    _createAttributesDataGrid()
+    _customElementState()
     {
-        var domNode = this.domNode;
-        if (!domNode || !domNode.hasAttributes())
+        const state = this.domNode.customElementState();
+        switch (state) {
+        case WebInspector.DOMNode.CustomElementState.Builtin:
             return null;
-
-        var columns = {name: {title: WebInspector.UIString("Name"), width: "30%"}, value: {title: WebInspector.UIString("Value")}};
-        var dataGrid = new WebInspector.DataGrid(columns);
-
-        var attributes = domNode.attributes();
-        for (var i = 0; i < attributes.length; ++i) {
-            var attribute = attributes[i];
-
-            var node = new WebInspector.DataGridNode({name: attribute.name, value: attribute.value || ""}, false);
-            dataGrid.appendChild(node);
+        case WebInspector.DOMNode.CustomElementState.Custom:
+            return WebInspector.UIString("Custom");
+        case WebInspector.DOMNode.CustomElementState.Waiting:
+            return WebInspector.UIString("Undefined custom element");
+        case WebInspector.DOMNode.CustomElementState.Failed:
+            return WebInspector.UIString("Failed to upgrade");
         }
-
-        return dataGrid;
+        console.error("Unknown DOM custom element state: ", state);
+        return null;
     }
+};
+
+WebInspector.DOMNodeDetailsSidebarPanel.EventListenerGroupingMethod = {
+    Event: "event",
+    Node: "node",
 };
 
 WebInspector.DOMNodeDetailsSidebarPanel.PropertiesObjectGroupName = "dom-node-details-sidebar-properties-object-group";

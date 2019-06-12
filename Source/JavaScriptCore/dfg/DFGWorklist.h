@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,24 +23,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGWorklist_h
-#define DFGWorklist_h
-
-#if ENABLE(DFG_JIT)
+#pragma once
 
 #include "DFGPlan.h"
 #include "DFGThreadData.h"
+#include <wtf/AutomaticThread.h>
 #include <wtf/Condition.h>
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
-#include <wtf/Noncopyable.h>
 
 namespace JSC {
 
 class SlotVisitor;
 
 namespace DFG {
+
+#if ENABLE(DFG_JIT)
 
 class Worklist : public RefCounted<Worklist> {
 public:
@@ -50,14 +49,15 @@ public:
     
     static Ref<Worklist> create(CString worklistName, unsigned numberOfThreads, int relativePriority = 0);
     
-    void enqueue(PassRefPtr<Plan>);
+    void enqueue(Ref<Plan>&&);
     
     // This is equivalent to:
     // worklist->waitUntilAllPlansForVMAreReady(vm);
     // worklist->completeAllReadyPlansForVM(vm);
     void completeAllPlansForVM(VM&);
 
-    void rememberCodeBlocks(VM&);
+    template<typename Func>
+    void iterateCodeBlocksForGC(VM&, const Func&);
 
     void waitUntilAllPlansForVMAreReady(VM&);
     State completeAllReadyPlansForVM(VM&, CompilationKey = CompilationKey());
@@ -76,18 +76,23 @@ public:
     void visitWeakReferences(SlotVisitor&);
     void removeDeadPlans(VM&);
     
+    void removeNonCompilingPlansForVM(VM&);
+    
     void dump(PrintStream&) const;
     
 private:
     Worklist(CString worklistName);
     void finishCreation(unsigned numberOfThreads, int);
     
+    class ThreadBody;
+    friend class ThreadBody;
+    
     void runThread(ThreadData*);
     static void threadFunction(void* argument);
     
     void removeAllReadyPlansForVM(VM&, Vector<RefPtr<Plan>, 8>&);
 
-    void dump(const LockHolder&, PrintStream&) const;
+    void dump(const AbstractLocker&, PrintStream&) const;
     
     CString m_threadName;
     
@@ -107,8 +112,8 @@ private:
 
     Lock m_suspensionLock;
     
-    mutable Lock m_lock;
-    Condition m_planEnqueued;
+    Box<Lock> m_lock;
+    RefPtr<AutomaticThreadCondition> m_planEnqueued;
     Condition m_planCompiled;
     
     Vector<std::unique_ptr<ThreadData>> m_threads;
@@ -116,36 +121,28 @@ private:
 };
 
 // For DFGMode compilations.
-Worklist* ensureGlobalDFGWorklist();
+Worklist& ensureGlobalDFGWorklist();
 Worklist* existingGlobalDFGWorklistOrNull();
 
 // For FTLMode and FTLForOSREntryMode compilations.
-Worklist* ensureGlobalFTLWorklist();
+Worklist& ensureGlobalFTLWorklist();
 Worklist* existingGlobalFTLWorklistOrNull();
 
-Worklist* ensureGlobalWorklistFor(CompilationMode);
+Worklist& ensureGlobalWorklistFor(CompilationMode);
 
 // Simplify doing things for all worklists.
-inline unsigned numberOfWorklists() { return 2; }
-inline Worklist* worklistForIndexOrNull(unsigned index)
-{
-    switch (index) {
-    case 0:
-        return existingGlobalDFGWorklistOrNull();
-    case 1:
-        return existingGlobalFTLWorklistOrNull();
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        return 0;
-    }
-}
-
-void completeAllPlansForVM(VM&);
-void rememberCodeBlocks(VM&);
-
-} } // namespace JSC::DFG
+unsigned numberOfWorklists();
+Worklist& ensureWorklistForIndex(unsigned index);
+Worklist* existingWorklistForIndexOrNull(unsigned index);
+Worklist& existingWorklistForIndex(unsigned index);
 
 #endif // ENABLE(DFG_JIT)
 
-#endif // DFGWorklist_h
+void completeAllPlansForVM(VM&);
+void markCodeBlocks(VM&, SlotVisitor&);
+
+template<typename Func>
+void iterateCodeBlocksForGC(VM&, const Func&);
+
+} } // namespace JSC::DFG
 

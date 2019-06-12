@@ -29,13 +29,12 @@
     left: 0;
     right: 0;
     bottom: 0;
-
     overflow-y: auto;
     overflow-x: hidden;
 }
 
 .sidebar > .panel.details.css-style > .content.has-filter-bar {
-    bottom: 28px;
+    bottom: calc(var(--navigation-bar-height) - 1px);
 }
 
 .sidebar > .panel.details.css-style > .content > .pseudo-classes {
@@ -69,6 +68,7 @@
     display: flex;
     align-items: center;
     position: absolute;
+    z-index: 1;
     width: 100%;
     background-color: white;
     border-top: 1px solid var(--border-color);
@@ -87,9 +87,18 @@
     width: 15px;
     min-width: 15px;
     height: 15px;
-    margin-left: 6px;
     content: url(../Images/Plus15.svg);
     opacity: 0.7;
+
+    --panel-details-css-style-content-options-container-new-rule-margin-start: 6px;
+}
+
+body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule {
+    margin-left: var(--panel-details-css-style-content-options-container-new-rule-margin-start);
+}
+
+body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule {
+    margin-right: var(--panel-details-css-style-content-options-container-new-rule-margin-start);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .filter-bar {
@@ -98,22 +107,33 @@
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle {
-    margin: 0 5px 1px 0;
+    margin: 0 0 1px;
     padding: 2px 4px 3px;
     background: none;
     border: none;
     border-radius: 3px;
+    white-space: nowrap;
     -webkit-appearance: none;
+
+    --panel-details-css-style-content-options-container-toggle-class-toggle-margin-end: 5px;
+}
+
+body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle {
+    margin-right: var(--panel-details-css-style-content-options-container-toggle-class-toggle-margin-end);
+}
+
+body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle {
+    margin-left: var(--panel-details-css-style-content-options-container-toggle-class-toggle-margin-end);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle.selected {
-    color: white;
-    background-color: hsl(212, 92%, 54%);
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:not(.selected):hover {
-    color: white;
-    background-color: hsla(212, 92%, 54%, 0.5);
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color-hover);
 }
 
 .sidebar > .panel.details.css-style > .content:not(.supports-new-rule) ~ .options-container > .new-rule,
@@ -124,7 +144,7 @@
 .sidebar > .panel.details.css-style > .content ~ .class-list-container {
     flex-wrap: wrap;
     bottom: var(--console-prompt-min-height);
-    max-height: 65px;
+    max-height: 75px;
     padding: 3px 2px;
     overflow-y: scroll;
 }
@@ -136,27 +156,23 @@
 
 .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class {
     display: flex;
-    align-items: center;
-}
-
-.sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > input[type="checkbox"] {
-    pointer-events: none;
-}
-
-.sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .add-class-icon {
-    width: 12px;
-    height: 12px;
+    width: 100%;
 }
 
 .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input {
-    width: 100px;
+    flex-grow: 1;
     height: 18px;
-    margin: 0 0 0 2px;
+    margin: 0;
+
+    --panel-details-css-style-content-class-list-container-new-class-class-name-input-margin-start: 2px;
 }
 
-.sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class.active > .add-class-icon,
-.sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class:not(.active) > .class-name-input {
-    display: none;
+body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input {
+    margin-left: var(--panel-details-css-style-content-class-list-container-new-class-class-name-input-margin-start);
+}
+
+body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input {
+    margin-right: var(--panel-details-css-style-content-class-list-container-new-class-class-name-input-margin-start);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .class-list-container > *:matches(.new-class, .class-toggle) {

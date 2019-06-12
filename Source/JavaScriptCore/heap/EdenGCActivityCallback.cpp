@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,12 +25,11 @@
 
 #include "config.h"
 #include "EdenGCActivityCallback.h"
+#include "HeapInlines.h"
 
 #include "VM.h"
 
 namespace JSC {
-
-#if USE(CF) || USE(GLIB) || PLATFORM(QT)
 
 EdenGCActivityCallback::EdenGCActivityCallback(Heap* heap)
     : GCActivityCallback(heap)
@@ -39,10 +38,10 @@ EdenGCActivityCallback::EdenGCActivityCallback(Heap* heap)
 
 void EdenGCActivityCallback::doCollection()
 {
-    m_vm->heap.collect(EdenCollection);
+    m_vm->heap.collectAsync(CollectionScope::Eden);
 }
 
-double EdenGCActivityCallback::lastGCLength()
+Seconds EdenGCActivityCallback::lastGCLength()
 {
     return m_vm->heap.lastEdenGCLength();
 }
@@ -67,33 +66,5 @@ double EdenGCActivityCallback::gcTimeSlice(size_t bytes)
 {
     return std::min((static_cast<double>(bytes) / MB) * Options::percentCPUPerMBForEdenTimer(), Options::collectionTimerMaxPercentCPU());
 }
-
-#else
-
-EdenGCActivityCallback::EdenGCActivityCallback(Heap* heap)
-    : GCActivityCallback(heap->vm())
-{
-}
-
-void EdenGCActivityCallback::doCollection()
-{
-}
-
-double EdenGCActivityCallback::lastGCLength()
-{
-    return 0;
-}
-
-double EdenGCActivityCallback::deathRate()
-{
-    return 0;
-}
-
-double EdenGCActivityCallback::gcTimeSlice(size_t)
-{
-    return 0;
-}
-
-#endif // USE(CF) || PLATFORM(EFL)
 
 } // namespace JSC

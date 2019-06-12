@@ -26,10 +26,12 @@
 #ifndef ProcessAssertion_h
 #define ProcessAssertion_h
 
-#include "PlatformProcessIdentifier.h"
+#include <unistd.h>
+#include <wtf/Function.h>
 
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
 #include <wtf/RetainPtr.h>
+#include <wtf/WeakPtr.h>
 OBJC_CLASS BKSProcessAssertion;
 #endif
 
@@ -49,31 +51,50 @@ public:
 
 class ProcessAssertion {
 public:
-    ProcessAssertion(PlatformProcessIdentifier, AssertionState);
-    ~ProcessAssertion();
+    ProcessAssertion(pid_t, AssertionState, Function<void()>&& invalidationCallback = { });
+    virtual ~ProcessAssertion();
 
-    void setClient(ProcessAssertionClient& client) { m_client = &client; }
+    virtual void setClient(ProcessAssertionClient& client) { m_client = &client; }
     ProcessAssertionClient* client() { return m_client; }
 
     AssertionState state() const { return m_assertionState; }
-    void setState(AssertionState);
+    virtual void setState(AssertionState);
+
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+protected:
+    enum class Validity { No, Yes, Unset };
+    Validity validity() const { return m_validity; }
+#endif
 
 private:
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+    WeakPtr<ProcessAssertion> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
+    void markAsInvalidated();
+
     RetainPtr<BKSProcessAssertion> m_assertion;
+    Validity m_validity { Validity::Unset };
+    WeakPtrFactory<ProcessAssertion> m_weakFactory;
+    Function<void()> m_invalidationCallback;
 #endif
     AssertionState m_assertionState;
     ProcessAssertionClient* m_client { nullptr };
 };
     
-class ProcessAndUIAssertion : public ProcessAssertion {
+class ProcessAndUIAssertion final : public ProcessAssertion {
 public:
     ProcessAndUIAssertion(PlatformProcessIdentifier, AssertionState);
     ~ProcessAndUIAssertion();
 
-    void setClient(ProcessAssertionClient&);
+    void setClient(ProcessAssertionClient&) final;
 
-    void setState(AssertionState);
+    void setState(AssertionState) final;
+
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+private:
+    void updateRunInBackgroundCount();
+
+    bool m_isHoldingBackgroundAssertion { false };
+#endif
 };
     
 }

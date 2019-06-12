@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSREntry_h
-#define DFGOSREntry_h
+#pragma once
 
 #include "DFGAbstractValue.h"
 #include "Operands.h"
@@ -57,7 +56,7 @@ struct OSREntryData {
     Operands<AbstractValue> m_expectedValues;
     // Use bitvectors here because they tend to only require one word.
     BitVector m_localsForcedDouble;
-    BitVector m_localsForcedMachineInt;
+    BitVector m_localsForcedAnyInt;
     Vector<OSREntryReshuffling> m_reshufflings;
     BitVector m_machineStackUsed;
     
@@ -78,6 +77,3 @@ inline void* prepareOSREntry(ExecState*, CodeBlock*, unsigned) { return 0; }
 #endif
 
 } } // namespace JSC::DFG
-
-#endif // DFGOSREntry_h
-

@@ -30,7 +30,7 @@
 
 #import "WebNotificationInternal.h"
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 #import "WebSecurityOriginInternal.h"
 #import <WebCore/Notification.h>
 #import <WebCore/ScriptExecutionContext.h>
@@ -42,7 +42,7 @@ using namespace WebCore;
 @interface WebNotificationPrivate : NSObject
 {
 @public
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     RefPtr<Notification> _internal;
     uint64_t _notificationID;
 #endif
@@ -52,8 +52,9 @@ using namespace WebCore;
 @implementation WebNotificationPrivate
 @end
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
 @implementation WebNotification (WebNotificationInternal)
+
 Notification* core(WebNotification *notification)
 {
     if (!notification->_private)
@@ -65,7 +66,7 @@ Notification* core(WebNotification *notification)
 {
     if (!(self = [super init]))
         return nil;
-    _private = adoptNS([[WebNotificationPrivate alloc] init]);
+    _private = [[WebNotificationPrivate alloc] init];
     _private->_internal = coreNotification;
     _private->_notificationID = notificationID;
     return self;
@@ -79,9 +80,15 @@ Notification* core(WebNotification *notification)
     return nil;
 }
 
+- (void)dealloc
+{
+    [_private release];
+    [super dealloc];
+}
+
 - (NSString *)title
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     return core(self)->title();
 #else
     return nil;
@@ -90,7 +97,7 @@ Notification* core(WebNotification *notification)
 
 - (NSString *)body
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     return core(self)->body();
 #else
     return nil;
@@ -99,7 +106,7 @@ Notification* core(WebNotification *notification)
 
 - (NSString *)tag
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     return core(self)->tag();
 #else
     return nil;
@@ -108,8 +115,8 @@ Notification* core(WebNotification *notification)
 
 - (NSString *)iconURL
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    return core(self)->iconURL();
+#if ENABLE(NOTIFICATIONS)
+    return core(self)->icon();
 #else
     return nil;
 #endif
@@ -117,7 +124,7 @@ Notification* core(WebNotification *notification)
 
 - (NSString *)lang
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     return core(self)->lang();
 #else
     return nil;
@@ -126,8 +133,15 @@ Notification* core(WebNotification *notification)
 
 - (NSString *)dir
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    return core(self)->dir();
+#if ENABLE(NOTIFICATIONS)
+    switch (core(self)->dir()) {
+        case Notification::Direction::Auto:
+            return @"auto";
+        case Notification::Direction::Ltr:
+            return @"ltr";
+        case Notification::Direction::Rtl:
+            return @"rtl";
+    }
 #else
     return nil;
 #endif
@@ -135,7 +149,7 @@ Notification* core(WebNotification *notification)
 
 - (WebSecurityOrigin *)origin
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     return [[[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:core(self)->scriptExecutionContext()->securityOrigin()] autorelease];
 #else
     return nil;
@@ -144,7 +158,7 @@ Notification* core(WebNotification *notification)
 
 - (uint64_t)notificationID
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     return _private->_notificationID;
 #else
     return 0;
@@ -153,28 +167,28 @@ Notification* core(WebNotification *notification)
 
 - (void)dispatchShowEvent
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     core(self)->dispatchShowEvent();
 #endif
 }
 
 - (void)dispatchCloseEvent
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     core(self)->dispatchCloseEvent();
 #endif
 }
 
 - (void)dispatchClickEvent
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     core(self)->dispatchClickEvent();
 #endif
 }
 
 - (void)dispatchErrorEvent
 {
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     core(self)->dispatchErrorEvent();
 #endif
 }

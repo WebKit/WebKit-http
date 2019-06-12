@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TypedElementDescendantIterator_h
-#define TypedElementDescendantIterator_h
+#pragma once
 
 #include "ElementIterator.h"
 
@@ -179,14 +178,14 @@ inline TypedElementDescendantIterator<ElementType> TypedElementDescendantIterato
 template <typename ElementType>
 inline TypedElementDescendantIterator<ElementType> TypedElementDescendantIteratorAdapter<ElementType>::beginAt(ElementType& descendant)
 {
-    ASSERT(descendant.isDescendantOf(&m_root));
+    ASSERT(descendant.isDescendantOf(m_root));
     return TypedElementDescendantIterator<ElementType>(m_root, &descendant);
 }
 
 template <typename ElementType>
 inline TypedElementDescendantIterator<ElementType> TypedElementDescendantIteratorAdapter<ElementType>::from(Element& descendant)
 {
-    ASSERT(descendant.isDescendantOf(&m_root));
+    ASSERT(descendant.isDescendantOf(m_root));
     if (is<ElementType>(descendant))
         return TypedElementDescendantIterator<ElementType>(m_root, downcast<ElementType>(&descendant));
     ElementType* next = Traversal<ElementType>::next(descendant, &m_root);
@@ -228,14 +227,14 @@ inline TypedElementDescendantConstIterator<ElementType> TypedElementDescendantCo
 template <typename ElementType>
 inline TypedElementDescendantConstIterator<ElementType> TypedElementDescendantConstIteratorAdapter<ElementType>::beginAt(const ElementType& descendant) const
 {
-    ASSERT(descendant.isDescendantOf(&m_root));
+    ASSERT(descendant.isDescendantOf(m_root));
     return TypedElementDescendantConstIterator<ElementType>(m_root, &descendant);
 }
 
 template <typename ElementType>
 inline TypedElementDescendantConstIterator<ElementType> TypedElementDescendantConstIteratorAdapter<ElementType>::from(const Element& descendant) const
 {
-    ASSERT(descendant.isDescendantOf(&m_root));
+    ASSERT(descendant.isDescendantOf(m_root));
     if (is<ElementType>(descendant))
         return TypedElementDescendantConstIterator<ElementType>(m_root, downcast<ElementType>(&descendant));
     const ElementType* next = Traversal<ElementType>::next(descendant, &m_root);
@@ -320,6 +319,4 @@ template<typename ElementType> inline DoubleTypedElementDescendantIteratorAdapte
     return { descendantsOfType<ElementType>(firstRoot), descendantsOfType<ElementType>(secondRoot) };
 }
 
-}
-
-#endif
+} // namespace WebCore

@@ -32,10 +32,6 @@
     overflow: auto;
 }
 
-.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-special-property-placeholder {
-    display: none;
-}
-
 .visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list {
     min-height: 51px;
     max-height: 94px;
@@ -52,8 +48,8 @@
 }
 
 .visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item.selected {
-    background-color: hsl(213, 92%, 55%) !important;
-    color: white;
+    background-color: var(--selected-background-color) !important;
+    color: var(--selected-foreground-color);
 }
 
 .visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > :matches(button, img) {
@@ -89,9 +85,10 @@
     line-height: 15px;
 }
 
+.visual-style-property-container .visual-style-comma-separated-keyword-item-editor::placeholder,
 .visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles > .subtitle {
-    font-size: 9px;
-    color: hsl(0, 0%, 83%);
+    font-size: 10px;
+    color: hsla(0, 0%, 100%, 0.7);
 }
 
 .visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles > .subtitle::before {

@@ -6,7 +6,7 @@ Tests that AudioChannelSplitter works correctly.
 
 <html>
 <head>
-<script src="../resources/js-test-pre.js"></script>
+<script src="../resources/js-test.js"></script>
 <script type="text/javascript" src="resources/audio-testing.js"></script>
 </head>
 
@@ -73,11 +73,6 @@ function checkResult(event) {
 }
 
 function runTest() {
-    if (window.testRunner) {
-        testRunner.dumpAsText();
-        testRunner.waitUntilDone();
-    }
-
     window.jsTestIsAsync = true;
 
     // Create stereo offline audio context.
@@ -153,7 +148,7 @@ function runTest() {
     channelSplitter.connect(channelMerger, 0, 1);
     channelSplitter.connect(channelMerger, 1, 0);
 
-    sourceNode.noteOn(0);
+    sourceNode.start(0);
 
     context.oncomplete = checkResult;
     context.startRendering();
@@ -162,7 +157,5 @@ function runTest() {
 runTest();
 
 </script>
-
-<script src="../resources/js-test-post.js"></script>
 </body>
 </html>

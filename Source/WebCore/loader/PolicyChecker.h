@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,13 +27,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PolicyChecker_h
-#define PolicyChecker_h
+#pragma once
 
 #include "FrameLoaderTypes.h"
 #include "PolicyCallback.h"
 #include "ResourceRequest.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 #if ENABLE(CONTENT_FILTERING)
@@ -55,9 +53,9 @@ class PolicyChecker {
 public:
     explicit PolicyChecker(Frame&);
 
-    void checkNavigationPolicy(const ResourceRequest&, DocumentLoader*, PassRefPtr<FormState>, NavigationPolicyDecisionFunction);
-    void checkNavigationPolicy(const ResourceRequest&, NavigationPolicyDecisionFunction);
-    void checkNewWindowPolicy(const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>, const String& frameName, NewWindowPolicyDecisionFunction);
+    void checkNavigationPolicy(const ResourceRequest&, bool didReceiveRedirectResponse, DocumentLoader*, FormState*, NavigationPolicyDecisionFunction);
+    void checkNavigationPolicy(const ResourceRequest&, bool didReceiveRedirectResponse, NavigationPolicyDecisionFunction);
+    void checkNewWindowPolicy(const NavigationAction&, const ResourceRequest&, FormState*, const String& frameName, NewWindowPolicyDecisionFunction);
     void checkContentPolicy(const ResourceResponse&, ContentPolicyDecisionFunction);
 
     // FIXME: These are different.  They could use better names.
@@ -68,6 +66,8 @@ public:
 
     FrameLoadType loadType() const { return m_loadType; }
     void setLoadType(FrameLoadType loadType) { m_loadType = loadType; }
+
+    void setSuggestedFilename(const String& suggestedFilename) { m_suggestedFilename = suggestedFilename; }
 
     bool delegateIsDecidingNavigationPolicy() const { return m_delegateIsDecidingNavigationPolicy; }
     bool delegateIsHandlingUnimplementablePolicy() const { return m_delegateIsHandlingUnimplementablePolicy; }
@@ -100,6 +100,7 @@ private:
     // on navigation action delegate callbacks.
     FrameLoadType m_loadType;
     PolicyCallback m_callback;
+    String m_suggestedFilename;
 
 #if ENABLE(CONTENT_FILTERING)
     ContentFilterUnblockHandler m_contentFilterUnblockHandler;
@@ -107,5 +108,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // PolicyChecker_h

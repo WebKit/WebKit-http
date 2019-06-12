@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StringIteratorPrototype_h
-#define StringIteratorPrototype_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -34,7 +33,7 @@ namespace JSC {
 class StringIteratorPrototype : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static StringIteratorPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
     {
@@ -56,9 +55,6 @@ private:
     {
     }
     void finishCreation(VM&, JSGlobalObject*);
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 };
 
-}
-
-#endif // !defined(StringIteratorPrototype_h)
+} // namespace JSC

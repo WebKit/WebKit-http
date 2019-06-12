@@ -24,11 +24,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SymbolConstructor_h
-#define SymbolConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
-#include "Symbol.h"
 
 namespace JSC {
 
@@ -38,7 +36,7 @@ class GetterSetter;
 class SymbolConstructor : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = OverridesGetOwnPropertySlot | Base::StructureFlags;
+    static const unsigned StructureFlags = HasStaticPropertyTable | Base::StructureFlags;
 
     static SymbolConstructor* create(VM& vm, Structure* structure, SymbolPrototype* prototype, GetterSetter*)
     {
@@ -61,9 +59,6 @@ private:
     SymbolConstructor(VM&, Structure*);
     static ConstructType getConstructData(JSCell*, ConstructData&);
     static CallType getCallData(JSCell*, CallData&);
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 };
 
 } // namespace JSC
-
-#endif // SymbolConstructor_h

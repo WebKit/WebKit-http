@@ -23,13 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebKit2Initialize_h
-#define WebKit2Initialize_h
+#pragma once
 
 namespace WebKit {
 
 void InitializeWebKit2();
 
 };
-
-#endif // WebKit2Initialize_h

@@ -11,6 +11,7 @@
 
 #include "common/debug.h"
 #include "libANGLE/Error.h"
+#include "libANGLE/State.h"
 #include "libANGLE/angletypes.h"
 #include "libANGLE/renderer/gl/functionsgl_typedefs.h"
 
@@ -19,37 +20,50 @@
 namespace gl
 {
 struct Caps;
-struct Data;
+class ContextState;
 class State;
 }
 
 namespace rx
 {
 
+class FramebufferGL;
 class FunctionsGL;
+class TransformFeedbackGL;
+class QueryGL;
 
-class StateManagerGL : angle::NonCopyable
+class StateManagerGL final : angle::NonCopyable
 {
   public:
     StateManagerGL(const FunctionsGL *functions, const gl::Caps &rendererCaps);
 
+    void deleteProgram(GLuint program);
+    void deleteVertexArray(GLuint vao);
+    void deleteTexture(GLuint texture);
+    void deleteSampler(GLuint sampler);
+    void deleteBuffer(GLuint buffer);
+    void deleteFramebuffer(GLuint fbo);
+    void deleteRenderbuffer(GLuint rbo);
+    void deleteTransformFeedback(GLuint transformFeedback);
+    void deleteQuery(GLuint query);
+
     void useProgram(GLuint program);
-    void bindVertexArray(GLuint vao);
+    void forceUseProgram(GLuint program);
+    void bindVertexArray(GLuint vao, GLuint elementArrayBuffer);
     void bindBuffer(GLenum type, GLuint buffer);
+    void bindBufferBase(GLenum type, size_t index, GLuint buffer);
+    void bindBufferRange(GLenum type, size_t index, GLuint buffer, size_t offset, size_t size);
     void activeTexture(size_t unit);
     void bindTexture(GLenum type, GLuint texture);
-    void setPixelUnpackState(GLint alignment, GLint rowLength);
+    void bindSampler(size_t unit, GLuint sampler);
     void bindFramebuffer(GLenum type, GLuint framebuffer);
     void bindRenderbuffer(GLenum type, GLuint renderbuffer);
+    void bindTransformFeedback(GLenum type, GLuint transformFeedback);
+    void beginQuery(GLenum type, GLuint query);
+    void endQuery(GLenum type, GLuint query);
+    void onBeginQuery(QueryGL *query);
 
-    void setClearState(const gl::State &state, GLbitfield mask);
-
-    gl::Error setDrawArraysState(const gl::Data &data, GLint first, GLsizei count);
-    gl::Error setDrawElementsState(const gl::Data &data, GLsizei count, GLenum type, const GLvoid *indices,
-                                   const GLvoid **outIndices);
-
-  private:
-    gl::Error setGenericDrawState(const gl::Data &data);
+    void setAttributeCurrentData(size_t index, const gl::VertexAttribCurrentValueData &data);
 
     void setScissorTestEnabled(bool enabled);
     void setScissor(const gl::Rectangle &scissor);
@@ -59,7 +73,10 @@ class StateManagerGL : angle::NonCopyable
 
     void setBlendEnabled(bool enabled);
     void setBlendColor(const gl::ColorF &blendColor);
-    void setBlendFuncs(GLenum sourceBlendRGB, GLenum destBlendRGB, GLenum sourceBlendAlpha, GLenum destBlendAlpha);
+    void setBlendFuncs(GLenum sourceBlendRGB,
+                       GLenum destBlendRGB,
+                       GLenum sourceBlendAlpha,
+                       GLenum destBlendAlpha);
     void setBlendEquations(GLenum blendEquationRGB, GLenum blendEquationAlpha);
     void setColorMask(bool red, bool green, bool blue, bool alpha);
     void setSampleAlphaToCoverageEnabled(bool enabled);
@@ -82,7 +99,6 @@ class StateManagerGL : angle::NonCopyable
     void setFrontFace(GLenum frontFace);
     void setPolygonOffsetFillEnabled(bool enabled);
     void setPolygonOffset(float factor, float units);
-    void setMultisampleEnabled(bool enabled);
     void setRasterizerDiscardEnabled(bool enabled);
     void setLineWidth(float width);
 
@@ -92,19 +108,116 @@ class StateManagerGL : angle::NonCopyable
     void setClearDepth(float clearDepth);
     void setClearStencil(GLint clearStencil);
 
+    void setPixelUnpackState(const gl::PixelUnpackState &unpack);
+    void setPixelUnpackState(GLint alignment,
+                             GLint rowLength,
+                             GLint skipRows,
+                             GLint skipPixels,
+                             GLint imageHeight,
+                             GLint skipImages,
+                             GLuint unpackBuffer);
+    void setPixelPackState(const gl::PixelPackState &pack);
+    void setPixelPackState(GLint alignment,
+                           GLint rowLength,
+                           GLint skipRows,
+                           GLint skipPixels,
+                           GLuint packBuffer);
+
+    void setFramebufferSRGBEnabled(const gl::ContextState &data, bool enabled);
+    void setFramebufferSRGBEnabledForFramebuffer(const gl::ContextState &data,
+                                                 bool enabled,
+                                                 const FramebufferGL *framebuffer);
+
+    void setDitherEnabled(bool enabled);
+
+    void setMultisamplingStateEnabled(bool enabled);
+    void setSampleAlphaToOneStateEnabled(bool enabled);
+
+    void setCoverageModulation(GLenum components);
+
+    void setPathRenderingModelViewMatrix(const GLfloat *m);
+    void setPathRenderingProjectionMatrix(const GLfloat *m);
+    void setPathRenderingStencilState(GLenum func, GLint ref, GLuint mask);
+
+    void onDeleteQueryObject(QueryGL *query);
+
+    gl::Error setDrawArraysState(const gl::ContextState &data,
+                                 GLint first,
+                                 GLsizei count,
+                                 GLsizei instanceCount);
+    gl::Error setDrawElementsState(const gl::ContextState &data,
+                                   GLsizei count,
+                                   GLenum type,
+                                   const GLvoid *indices,
+                                   GLsizei instanceCount,
+                                   const GLvoid **outIndices);
+    gl::Error setDrawIndirectState(const gl::ContextState &data, GLenum type);
+
+    gl::Error setDispatchComputeState(const gl::ContextState &data);
+
+    void pauseTransformFeedback();
+    void pauseAllQueries();
+    void pauseQuery(GLenum type);
+    void resumeAllQueries();
+    void resumeQuery(GLenum type);
+    gl::Error onMakeCurrent(const gl::ContextState &data);
+
+    void syncState(const gl::ContextState &data, const gl::State::DirtyBits &glDirtyBits);
+
+  private:
+    // Set state that's common among draw commands and compute invocations.
+    void setGenericShaderState(const gl::ContextState &data);
+
+    // Set state that's common among draw commands.
+    gl::Error setGenericDrawState(const gl::ContextState &data);
+
+    void setTextureCubemapSeamlessEnabled(bool enabled);
+
     const FunctionsGL *mFunctions;
 
     GLuint mProgram;
+
     GLuint mVAO;
+    std::vector<gl::VertexAttribCurrentValueData> mVertexAttribCurrentValues;
+
     std::map<GLenum, GLuint> mBuffers;
+
+    struct IndexedBufferBinding
+    {
+        IndexedBufferBinding();
+
+        size_t offset;
+        size_t size;
+        GLuint buffer;
+    };
+    std::map<GLenum, std::vector<IndexedBufferBinding>> mIndexedBuffers;
 
     size_t mTextureUnitIndex;
     std::map<GLenum, std::vector<GLuint>> mTextures;
+    std::vector<GLuint> mSamplers;
+
+    GLuint mTransformFeedback;
+
+    std::map<GLenum, GLuint> mQueries;
+
+    TransformFeedbackGL *mPrevDrawTransformFeedback;
+    std::set<QueryGL *> mCurrentQueries;
+    gl::ContextID mPrevDrawContext;
 
     GLint mUnpackAlignment;
     GLint mUnpackRowLength;
+    GLint mUnpackSkipRows;
+    GLint mUnpackSkipPixels;
+    GLint mUnpackImageHeight;
+    GLint mUnpackSkipImages;
 
-    std::map<GLenum, GLuint> mFramebuffers;
+    GLint mPackAlignment;
+    GLint mPackRowLength;
+    GLint mPackSkipRows;
+    GLint mPackSkipPixels;
+
+    // TODO(jmadill): Convert to std::array when available
+    std::vector<GLenum> mFramebuffers;
     GLuint mRenderbuffer;
 
     bool mScissorTestEnabled;
@@ -156,7 +269,6 @@ class StateManagerGL : angle::NonCopyable
     bool mPolygonOffsetFillEnabled;
     GLfloat mPolygonOffsetFactor;
     GLfloat mPolygonOffsetUnits;
-    bool mMultisampleEnabled;
     bool mRasterizerDiscardEnabled;
     float mLineWidth;
 
@@ -165,6 +277,23 @@ class StateManagerGL : angle::NonCopyable
     gl::ColorF mClearColor;
     float mClearDepth;
     GLint mClearStencil;
+
+    bool mFramebufferSRGBEnabled;
+    bool mDitherEnabled;
+    bool mTextureCubemapSeamlessEnabled;
+
+    bool mMultisamplingEnabled;
+    bool mSampleAlphaToOneEnabled;
+
+    GLenum mCoverageModulation;
+
+    GLfloat mPathMatrixMV[16];
+    GLfloat mPathMatrixProj[16];
+    GLenum mPathStencilFunc;
+    GLint mPathStencilRef;
+    GLuint mPathStencilMask;
+
+    gl::State::DirtyBits mLocalDirtyBits;
 };
 
 }

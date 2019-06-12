@@ -137,13 +137,31 @@ size_t randomAlignment()
 
 }
 
-void benchmark_stress_aligned(bool isParallel)
+void benchmark_stress_aligned(CommandLine&)
 {
     const size_t heapSize = 100 * MB;
     const size_t churnSize = .05 * heapSize;
     const size_t churnCount = 100;
     
     srandom(1); // For consistency between runs.
+
+    size_t limit = 0x00001ffffffffffful;
+    
+    for (size_t size = 0; size < limit; size = std::max(size, sizeof(void*)) * 2) {
+        for (size_t alignment = sizeof(void*); alignment < limit; alignment *= 2) {
+            void* object = mbmemalign(alignment, size);
+            if (reinterpret_cast<uintptr_t>(object) & (alignment - 1))
+                abort();
+            mbfree(object, size);
+        }
+
+        for (size_t alignment = sizeof(void*); alignment < limit; alignment *= 2) {
+            void* object = mbmemalign(alignment, size + 128);
+            if (reinterpret_cast<uintptr_t>(object) & (alignment - 1))
+                abort();
+            mbfree(object, size + 128);
+        }
+    }
 
     std::vector<Object> objects;
     

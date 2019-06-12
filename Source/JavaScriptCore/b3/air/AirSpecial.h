@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirSpecial_h
-#define AirSpecial_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -47,7 +46,7 @@ public:
     static const char* const dumpPrefix;
     
     Special();
-    virtual ~Special();
+    JS_EXPORT_PRIVATE virtual ~Special();
 
     Code& code() const { return *m_code; }
 
@@ -56,7 +55,8 @@ public:
     virtual void forEachArg(Inst&, const ScopedLambda<Inst::EachArgCallback>&) = 0;
     virtual bool isValid(Inst&) = 0;
     virtual bool admitsStack(Inst&, unsigned argIndex) = 0;
-    virtual Optional<unsigned> shouldTryAliasingDef(Inst&);
+    virtual bool admitsExtendedOffsetAddr(Inst&, unsigned argIndex) = 0;
+    virtual std::optional<unsigned> shouldTryAliasingDef(Inst&);
 
     // This gets called on for each Inst that uses this Special. Note that there is no way to
     // guarantee that a Special gets used from just one Inst, because Air might taildup late. So,
@@ -85,11 +85,17 @@ public:
     
     virtual CCallHelpers::Jump generate(Inst&, CCallHelpers&, GenerationContext&) = 0;
 
-    virtual const RegisterSet& extraEarlyClobberedRegs(Inst&) = 0;
-    virtual const RegisterSet& extraClobberedRegs(Inst&) = 0;
+    virtual RegisterSet extraEarlyClobberedRegs(Inst&) = 0;
+    virtual RegisterSet extraClobberedRegs(Inst&) = 0;
+    
+    // By default, this returns false.
+    virtual bool isTerminal(Inst&);
 
     // By default, this returns true.
-    virtual bool hasNonArgNonControlEffects();
+    virtual bool hasNonArgEffects(Inst&);
+
+    // By default, this returns true.
+    virtual bool hasNonArgNonControlEffects(Inst&);
 
     void dump(PrintStream&) const;
     void deepDump(PrintStream&) const;
@@ -133,6 +139,3 @@ inline DeepSpecialDump deepDump(const Special* special)
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirSpecial_h
-

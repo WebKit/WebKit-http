@@ -18,9 +18,7 @@ template <class Parent>
 class NodeSearchTraverser : public TIntermTraverser
 {
   public:
-    NodeSearchTraverser()
-        : mFound(false)
-    {}
+    NodeSearchTraverser() : TIntermTraverser(true, false, false), mFound(false) {}
 
     bool found() const { return mFound; }
 
@@ -42,39 +40,17 @@ class FindDiscard : public NodeSearchTraverser<FindDiscard>
     {
         switch (node->getFlowOp())
         {
-          case EOpKill:
-            mFound = true;
-            break;
-
-          default: break;
-        }
-
-        return !mFound;
-    }
-};
-
-class FindSideEffectRewriting : public NodeSearchTraverser<FindSideEffectRewriting>
-{
-  public:
-    virtual bool visitBinary(Visit visit, TIntermBinary *node)
-    {
-        switch (node->getOp())
-        {
-          case EOpLogicalOr:
-          case EOpLogicalAnd:
-            if (node->getRight()->hasSideEffects())
-            {
+            case EOpKill:
                 mFound = true;
-            }
-            break;
+                break;
 
-          default: break;
+            default:
+                break;
         }
 
         return !mFound;
     }
 };
-
 }
 
-#endif // COMPILER_TRANSLATOR_NODESEARCH_H_
+#endif  // COMPILER_TRANSLATOR_NODESEARCH_H_

@@ -34,7 +34,6 @@
 #import <WebKitSystemInterface.h>
 #import <sys/stat.h>
 #import <wtf/ObjcRuntimeExtras.h>
-#import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
 #import <WebCore/FileSystemIOS.h>
@@ -75,7 +74,7 @@ static void *setMetaData(void* context)
     ASSERT(URLString);
     ASSERT(path);
 
-    NSURL *URL = [NSURL _web_URLWithUserTypedString:URLString];
+    NSURL *URL = [NSURL _webkit_URLWithUserTypedString:URLString];
     if (URL)
         URLString = [[URL _web_URLByRemovingUserInfo] _web_userVisibleString];
  

@@ -39,8 +39,8 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -49,8 +49,8 @@ bool isValidEnum(WebCore::ShouldOpenExternalURLsPolicy);
 
 struct HTTPBody {
     struct Element {
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Element&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Element&);
 
         enum class Type {
             Data,
@@ -66,23 +66,23 @@ struct HTTPBody {
         // File.
         String filePath;
         int64_t fileStart;
-        Optional<int64_t> fileLength;
-        Optional<double> expectedFileModificationTime;
+        std::optional<int64_t> fileLength;
+        std::optional<double> expectedFileModificationTime;
 
         // Blob.
         String blobURLString;
     };
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, HTTPBody&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, HTTPBody&);
 
     String contentType;
     Vector<Element> elements;
 };
 
 struct FrameState {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, FrameState&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, FrameState&);
 
     String urlString;
     String originalURLString;
@@ -90,15 +90,16 @@ struct FrameState {
     String target;
 
     Vector<String> documentState;
-    Optional<Vector<uint8_t>> stateObjectData;
+    std::optional<Vector<uint8_t>> stateObjectData;
 
-    int64_t documentSequenceNumber;
-    int64_t itemSequenceNumber;
+    int64_t documentSequenceNumber { 0 };
+    int64_t itemSequenceNumber { 0 };
 
     WebCore::IntPoint scrollPosition;
-    float pageScaleFactor;
+    bool shouldRestoreScrollPosition { true };
+    float pageScaleFactor { 0 };
 
-    Optional<HTTPBody> httpBody;
+    std::optional<HTTPBody> httpBody;
 
     // FIXME: These should not be per frame.
 #if PLATFORM(IOS)
@@ -106,15 +107,15 @@ struct FrameState {
     WebCore::IntRect unobscuredContentRect;
     WebCore::FloatSize minimumLayoutSizeInScrollViewCoordinates;
     WebCore::IntSize contentSize;
-    bool scaleIsInitial = false;
+    bool scaleIsInitial { false };
 #endif
 
     Vector<FrameState> children;
 };
 
 struct PageState {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, PageState&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, PageState&);
 
     String title;
     FrameState mainFrameState;
@@ -122,8 +123,8 @@ struct PageState {
 };
 
 struct BackForwardListItemState {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, BackForwardListItemState&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, BackForwardListItemState&);
 
     uint64_t identifier;
 
@@ -135,11 +136,11 @@ struct BackForwardListItemState {
 };
 
 struct BackForwardListState {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, BackForwardListState&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, BackForwardListState&);
 
     Vector<BackForwardListItemState> items;
-    Optional<uint32_t> currentIndex;
+    std::optional<uint32_t> currentIndex;
 };
 
 struct SessionState {

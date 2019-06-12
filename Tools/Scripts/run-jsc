@@ -35,24 +35,32 @@ use FindBin;
 use lib $FindBin::Bin;
 use Getopt::Long;
 use webkitdirs;
-Getopt::Long::Configure("pass_through");
+Getopt::Long::Configure("no_auto_abbrev", "pass_through");
 
-my $usage = "Usage: run-jsc [--count run_count] shell_file [file2...]";
+my $usage = "Usage: run-jsc [--count run_count] [--debugger] shell_file [file2...]";
 
 my $count = 1;
+my $debugger = 0;
+
 GetOptions("count|c=i" => \$count);
+GetOptions("debugger" => \$debugger);
 
 setConfiguration();
 
-my $jsc = File::Spec->catfile(jscProductDir(), "jsc ") . "@ARGV";
+my $jsc;
+if ($debugger) {
+    my $debuggerCmd = defined($ENV{"DEBUGGER"}) ? $ENV{"DEBUGGER"} : "lldb";
+    $jsc = $debuggerCmd . " " . File::Spec->catfile(jscProductDir(), "jsc -- ") . "@ARGV";
+} else {
+    $jsc = File::Spec->catfile(jscProductDir(), "jsc ") . "@ARGV";
+}
 
 my $dyld = jscProductDir();
 
 $ENV{"DYLD_FRAMEWORK_PATH"} = $dyld;
 print STDERR "Running $count time(s): DYLD_FRAMEWORK_PATH=$dyld $jsc\n";
-while ($count--) {
-    if (system("$jsc") != 0) {
-        last;
-    }
-}
 
+while ($count--) {
+    my $status = system("$jsc") >> 8;
+    exit $status if $status != 0;
+}

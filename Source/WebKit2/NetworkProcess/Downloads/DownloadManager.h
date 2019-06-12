@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #define DownloadManager_h
 
 #include "DownloadID.h"
+#include "NetworkDataTask.h"
 #include "PendingDownload.h"
 #include "SandboxExtension.h"
 #include <WebCore/NotImplemented.h>
@@ -35,9 +36,8 @@
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
-#if !USE(NETWORK_SESSION)
+class BlobDataFileReference;
 class ResourceHandle;
-#endif
 class ResourceRequest;
 class ResourceResponse;
 class SessionID;
@@ -52,6 +52,8 @@ namespace WebKit {
 
 class AuthenticationManager;
 class Download;
+class NetworkConnectionToWebProcess;
+class NetworkLoad;
 class PendingDownload;
 
 class DownloadManager {
@@ -66,18 +68,24 @@ public:
         virtual void didDestroyDownload() = 0;
         virtual IPC::Connection* downloadProxyConnection() = 0;
         virtual AuthenticationManager& downloadsAuthenticationManager() = 0;
+#if USE(NETWORK_SESSION)
+        virtual void pendingDownloadCanceled(DownloadID) = 0;
+#endif
     };
 
     explicit DownloadManager(Client&);
 
-    void startDownload(WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&);
+    void startDownload(NetworkConnectionToWebProcess*, WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
 #if USE(NETWORK_SESSION)
-    std::unique_ptr<PendingDownload> dataTaskBecameDownloadTask(DownloadID, std::unique_ptr<Download>&&);
+    void dataTaskBecameDownloadTask(DownloadID, std::unique_ptr<Download>&&);
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
-    void continueWillSendRequest(DownloadID, const WebCore::ResourceRequest&);
-#else
-    void convertHandleToDownload(DownloadID, WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 #endif
+    void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
+    void willDecidePendingDownloadDestination(NetworkDataTask&, ResponseCompletionHandler&&);
+#endif
+    void convertNetworkLoadToDownload(DownloadID, std::unique_ptr<NetworkLoad>&&, Vector<RefPtr<WebCore::BlobDataFileReference>>&&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
+    void continueDecidePendingDownloadDestination(DownloadID, String destination, const SandboxExtension::Handle&, bool allowOverwrite);
 
     void resumeDownload(WebCore::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
 
@@ -103,6 +111,8 @@ private:
     Client& m_client;
 #if USE(NETWORK_SESSION)
     HashMap<DownloadID, std::unique_ptr<PendingDownload>> m_pendingDownloads;
+    HashMap<DownloadID, std::pair<RefPtr<NetworkDataTask>, ResponseCompletionHandler>> m_downloadsWaitingForDestination;
+    HashMap<DownloadID, RefPtr<NetworkDataTask>> m_downloadsAfterDestinationDecided;
 #endif
     HashMap<DownloadID, std::unique_ptr<Download>> m_downloads;
 };

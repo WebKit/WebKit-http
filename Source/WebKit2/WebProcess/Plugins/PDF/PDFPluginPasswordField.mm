@@ -33,6 +33,7 @@
 #import "PDFPlugin.h"
 #import <PDFKit/PDFKit.h>
 #import <WebCore/Event.h>
+#import <WebCore/EventNames.h>
 #import <WebCore/HTMLElement.h>
 #import <WebCore/KeyboardEvent.h>
 
@@ -49,14 +50,14 @@ Ref<PDFPluginPasswordField> PDFPluginPasswordField::create(PDFLayerController *p
 
 PDFPluginPasswordField::~PDFPluginPasswordField()
 {
-    element()->removeEventListener(eventNames().keyupEvent, eventListener(), false);
+    element()->removeEventListener(eventNames().keyupEvent, *eventListener(), false);
 }
 
-PassRefPtr<Element> PDFPluginPasswordField::createAnnotationElement()
+Ref<Element> PDFPluginPasswordField::createAnnotationElement()
 {
-    RefPtr<Element> element = PDFPluginTextAnnotation::createAnnotationElement();
+    auto element = PDFPluginTextAnnotation::createAnnotationElement();
     element->setAttribute(typeAttr, "password");
-    element->addEventListener(eventNames().keyupEvent, eventListener(), false);
+    element->addEventListener(eventNames().keyupEvent, *eventListener(), false);
     return element;
 }
 

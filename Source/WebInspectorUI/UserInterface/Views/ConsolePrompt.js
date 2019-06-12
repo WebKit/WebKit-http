@@ -37,7 +37,7 @@ WebInspector.ConsolePrompt = class ConsolePrompt extends WebInspector.View
 
         this._codeMirror = WebInspector.CodeMirrorEditor.create(this.element, {
             lineWrapping: true,
-            mode: mimeType,
+            mode: {name: mimeType, globalVars: true},
             indentWithTabs: true,
             indentUnit: 4,
             matchBrackets: true
@@ -113,11 +113,6 @@ WebInspector.ConsolePrompt = class ConsolePrompt extends WebInspector.View
     focus()
     {
         this._codeMirror.focus();
-    }
-
-    shown()
-    {
-        this._codeMirror.refresh();
     }
 
     updateCompletions(completions, implicitSuffix)

@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -17,8 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef JSEventListener_h
-#define JSEventListener_h
+#pragma once
 
 #include "DOMWrapperWorld.h"
 #include "EventListener.h"
@@ -26,6 +25,9 @@
 #include <heap/Weak.h>
 #include <heap/WeakInlines.h>
 #include <wtf/Ref.h>
+#include <wtf/TypeCasts.h>
+#include <wtf/text/TextPosition.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -41,67 +43,75 @@ public:
         return adoptRef(*new JSEventListener(listener, wrapper, isAttribute, world));
     }
 
+    static RefPtr<JSEventListener> create(JSC::JSValue listener, JSC::JSObject& wrapper, bool isAttribute, DOMWrapperWorld& world)
+    {
+        if (UNLIKELY(!listener.isObject()))
+            return nullptr;
+
+        return adoptRef(new JSEventListener(JSC::asObject(listener), &wrapper, isAttribute, world));
+    }
+
     static const JSEventListener* cast(const EventListener* listener)
     {
         return listener->type() == JSEventListenerType
             ? static_cast<const JSEventListener*>(listener)
-            : 0;
+            : nullptr;
     }
 
     virtual ~JSEventListener();
 
-    virtual bool operator==(const EventListener& other) override;
+    bool operator==(const EventListener& other) const override;
 
     // Returns true if this event listener was created for an event handler attribute, like "onload" or "onclick".
     bool isAttribute() const { return m_isAttribute; }
 
     JSC::JSObject* jsFunction(ScriptExecutionContext*) const;
-    DOMWrapperWorld& isolatedWorld() const { return *m_isolatedWorld; }
+    DOMWrapperWorld& isolatedWorld() const { return m_isolatedWorld; }
 
     JSC::JSObject* wrapper() const { return m_wrapper.get(); }
     void setWrapper(JSC::VM&, JSC::JSObject* wrapper) const { m_wrapper = JSC::Weak<JSC::JSObject>(wrapper); }
 
+    virtual String sourceURL() const { return String(); }
+    virtual TextPosition sourcePosition() const { return TextPosition(); }
+
 private:
     virtual JSC::JSObject* initializeJSFunction(ScriptExecutionContext*) const;
-    virtual void visitJSFunction(JSC::SlotVisitor&) override;
-    virtual bool virtualisAttribute() const override;
+    void visitJSFunction(JSC::SlotVisitor&) override;
+    bool virtualisAttribute() const override;
 
 protected:
     JSEventListener(JSC::JSObject* function, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld&);
-    virtual void handleEvent(ScriptExecutionContext*, Event*) override;
+    void handleEvent(ScriptExecutionContext*, Event*) override;
 
 private:
     mutable JSC::Weak<JSC::JSObject> m_jsFunction;
     mutable JSC::Weak<JSC::JSObject> m_wrapper;
 
     bool m_isAttribute;
-    RefPtr<DOMWrapperWorld> m_isolatedWorld;
+    Ref<DOMWrapperWorld> m_isolatedWorld;
 };
 
 // For "onxxx" attributes that automatically set up JavaScript event listeners.
-JSC::JSValue eventHandlerAttribute(EventTarget&, const AtomicString& eventType);
+JSC::JSValue eventHandlerAttribute(EventTarget&, const AtomicString& eventType, DOMWrapperWorld&);
 void setEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, EventTarget&, const AtomicString& eventType, JSC::JSValue);
 
 // Like the functions above, but for attributes that forward event handlers to the window object rather than setting them on the target.
-JSC::JSValue windowEventHandlerAttribute(HTMLElement&, const AtomicString& eventType);
+JSC::JSValue windowEventHandlerAttribute(HTMLElement&, const AtomicString& eventType, DOMWrapperWorld&);
 void setWindowEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, HTMLElement&, const AtomicString& eventType, JSC::JSValue);
-JSC::JSValue windowEventHandlerAttribute(DOMWindow&, const AtomicString& eventType);
+JSC::JSValue windowEventHandlerAttribute(DOMWindow&, const AtomicString& eventType, DOMWrapperWorld&);
 void setWindowEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, DOMWindow&, const AtomicString& eventType, JSC::JSValue);
 
 // Like the functions above, but for attributes that forward event handlers to the document rather than setting them on the target.
-JSC::JSValue documentEventHandlerAttribute(HTMLElement&, const AtomicString& eventType);
+JSC::JSValue documentEventHandlerAttribute(HTMLElement&, const AtomicString& eventType, DOMWrapperWorld&);
 void setDocumentEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, HTMLElement&, const AtomicString& eventType, JSC::JSValue);
-JSC::JSValue documentEventHandlerAttribute(Document&, const AtomicString& eventType);
+JSC::JSValue documentEventHandlerAttribute(Document&, const AtomicString& eventType, DOMWrapperWorld&);
 void setDocumentEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, Document&, const AtomicString& eventType, JSC::JSValue);
-
-Ref<JSEventListener> createJSEventListenerForAdd(JSC::ExecState&, JSC::JSObject& listener, JSC::JSObject& wrapper);
-Ref<JSEventListener> createJSEventListenerForRemove(JSC::ExecState&, JSC::JSObject& listener, JSC::JSObject& wrapper);
 
 inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* scriptExecutionContext) const
 {
     // initializeJSFunction can trigger code that deletes this event listener
     // before we're done. It should always return 0 in this case.
-    Ref<JSEventListener> protect(const_cast<JSEventListener&>(*this));
+    auto protect = makeRef(const_cast<JSEventListener&>(*this));
     JSC::Strong<JSC::JSObject> wrapper(m_isolatedWorld->vm(), m_wrapper.get());
 
     if (!m_jsFunction) {
@@ -119,7 +129,7 @@ inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* script
 
     // If m_wrapper is 0, then m_jsFunction is zombied, and should never be accessed.
     if (!m_wrapper)
-        return 0;
+        return nullptr;
 
     // Try to verify that m_jsFunction wasn't recycled. (Not exact, since an
     // event listener can be almost anything, but this makes test-writing easier).
@@ -128,11 +138,8 @@ inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* script
     return m_jsFunction.get();
 }
 
-inline Ref<JSEventListener> createJSEventListenerForRemove(JSC::ExecState& state, JSC::JSObject& listener, JSC::JSObject& wrapper)
-{
-    return createJSEventListenerForAdd(state, listener, wrapper);
-}
-
 } // namespace WebCore
 
-#endif // JSEventListener_h
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::JSEventListener)
+static bool isType(const WebCore::EventListener& input) { return input.type() == WebCore::JSEventListener::JSEventListenerType; }
+SPECIALIZE_TYPE_TRAITS_END()

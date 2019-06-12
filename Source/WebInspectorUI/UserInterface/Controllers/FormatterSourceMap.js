@@ -36,9 +36,9 @@ WebInspector.FormatterSourceMap = class FormatterSourceMap extends WebInspector.
 
     // Static
 
-    static fromBuilder(builder)
+    static fromSourceMapData({originalLineEndings, formattedLineEndings, mapping})
     {
-        return new WebInspector.FormatterSourceMap(builder.originalLineEndings, builder.formattedLineEndings, builder.mapping);
+        return new WebInspector.FormatterSourceMap(originalLineEndings, formattedLineEndings, mapping);
     }
 
     // Public
@@ -54,7 +54,6 @@ WebInspector.FormatterSourceMap = class FormatterSourceMap extends WebInspector.
         var formattedPosition = this._convertPosition(this._mapping.original, this._mapping.formatted, originalPosition);
         return this._positionToLocation(this._formattedLineEndings, formattedPosition);
     }
-
 
     formattedToOriginal(lineNumber, columnNumber)
     {

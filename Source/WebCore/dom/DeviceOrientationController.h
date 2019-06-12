@@ -24,11 +24,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DeviceOrientationController_h
-#define DeviceOrientationController_h
+#pragma once
 
 #include "DeviceController.h"
-#include <wtf/HashCountedSet.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
@@ -52,8 +50,8 @@ public:
     void suspendUpdates();
     void resumeUpdates();
 #else
-    virtual bool hasLastData() override;
-    virtual RefPtr<Event> getLastEvent() override;
+    bool hasLastData() override;
+    RefPtr<Event> getLastEvent() override;
 #endif
 
     static const char* supplementName();
@@ -62,5 +60,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // DeviceOrientationController_h

@@ -23,22 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSRExit_h
-#define DFGOSRExit_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "CodeOrigin.h"
-#include "DFGCommon.h"
-#include "DFGExitProfile.h"
 #include "DFGOSRExitBase.h"
 #include "GPRInfo.h"
 #include "MacroAssembler.h"
 #include "MethodOfGettingAValueProfile.h"
-#include "Operands.h"
-#include "ValueProfile.h"
-#include "ValueRecovery.h"
-#include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
 
@@ -48,8 +40,9 @@ struct Node;
 
 // This enum describes the types of additional recovery that
 // may need be performed should a speculation check fail.
-enum SpeculationRecoveryType {
+enum SpeculationRecoveryType : uint8_t {
     SpeculativeAdd,
+    SpeculativeAddImmediate,
     BooleanSpeculationCheck
 };
 
@@ -60,22 +53,36 @@ enum SpeculationRecoveryType {
 class SpeculationRecovery {
 public:
     SpeculationRecovery(SpeculationRecoveryType type, GPRReg dest, GPRReg src)
-        : m_type(type)
+        : m_src(src)
         , m_dest(dest)
-        , m_src(src)
+        , m_type(type)
     {
+        ASSERT(m_type == SpeculativeAdd || m_type == BooleanSpeculationCheck);
+    }
+
+    SpeculationRecovery(SpeculationRecoveryType type, GPRReg dest, int32_t immediate)
+        : m_immediate(immediate)
+        , m_dest(dest)
+        , m_type(type)
+    {
+        ASSERT(m_type == SpeculativeAddImmediate);
     }
 
     SpeculationRecoveryType type() { return m_type; }
     GPRReg dest() { return m_dest; }
     GPRReg src() { return m_src; }
+    int32_t immediate() { return m_immediate; }
 
 private:
+    // different recovery types may required different additional information here.
+    union {
+        GPRReg m_src;
+        int32_t m_immediate;
+    };
+    GPRReg m_dest;
+
     // Indicates the type of additional recovery to be performed.
     SpeculationRecoveryType m_type;
-    // different recovery types may required different additional information here.
-    GPRReg m_dest;
-    GPRReg m_src;
 };
 
 // === OSRExit ===
@@ -84,13 +91,13 @@ private:
 // going into baseline code.
 struct OSRExit : public OSRExitBase {
     OSRExit(ExitKind, JSValueSource, MethodOfGettingAValueProfile, SpeculativeJIT*, unsigned streamIndex, unsigned recoveryIndex = UINT_MAX);
+
+    unsigned m_patchableCodeOffset { 0 };
     
     MacroAssemblerCodeRef m_code;
     
     JSValueSource m_jsValueSource;
     MethodOfGettingAValueProfile m_valueProfile;
-
-    unsigned m_patchableCodeOffset;
     
     unsigned m_recoveryIndex;
 
@@ -115,6 +122,3 @@ struct SpeculationFailureDebugInfo {
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOSRExit_h
-

@@ -49,8 +49,8 @@ void printInternal(PrintStream& out, UseKind useKind)
     case Int52RepUse:
         out.print("Int52Rep");
         return;
-    case MachineIntUse:
-        out.print("MachineInt");
+    case AnyIntUse:
+        out.print("AnyInt");
         return;
     case NumberUse:
         out.print("Number");
@@ -64,8 +64,8 @@ void printInternal(PrintStream& out, UseKind useKind)
     case DoubleRepRealUse:
         out.print("DoubleRepReal");
         return;
-    case DoubleRepMachineIntUse:
-        out.print("DoubleRepMachineInt");
+    case DoubleRepAnyIntUse:
+        out.print("DoubleRepAnyInt");
         return;
     case BooleanUse:
         out.print("Boolean");
@@ -85,6 +85,9 @@ void printInternal(PrintStream& out, UseKind useKind)
     case ObjectUse:
         out.print("Object");
         return;
+    case ArrayUse:
+        out.print("Array");
+        return;
     case FunctionUse:
         out.print("Function");
         return;
@@ -94,6 +97,18 @@ void printInternal(PrintStream& out, UseKind useKind)
     case RegExpObjectUse:
         out.print("RegExpObject");
         return;
+    case ProxyObjectUse:
+        out.print("ProxyObject");
+        return;
+    case DerivedArrayUse:
+        out.print("DerivedArray");
+        return;
+    case MapObjectUse:
+        out.print("MapObjectUse");
+        return;
+    case SetObjectUse:
+        out.print("SetObjectUse");
+        return;
     case ObjectOrOtherUse:
         out.print("ObjectOrOther");
         return;
@@ -102,6 +117,9 @@ void printInternal(PrintStream& out, UseKind useKind)
         return;
     case StringUse:
         out.print("String");
+        return;
+    case StringOrOtherUse:
+        out.print("StringOrOther");
         return;
     case KnownStringUse:
         out.print("KnownString");

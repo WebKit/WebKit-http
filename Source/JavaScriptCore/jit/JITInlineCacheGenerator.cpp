@@ -29,8 +29,10 @@
 #if ENABLE(JIT)
 
 #include "CodeBlock.h"
-#include "LinkBuffer.h"
+#include "InlineAccess.h"
 #include "JSCInlines.h"
+#include "LinkBuffer.h"
+#include "StructureStubInfo.h"
 
 namespace JSC {
 
@@ -60,33 +62,29 @@ JITByIdGenerator::JITByIdGenerator(
     
     m_stubInfo->patch.baseGPR = static_cast<int8_t>(base.payloadGPR());
     m_stubInfo->patch.valueGPR = static_cast<int8_t>(value.payloadGPR());
+    m_stubInfo->patch.thisGPR = static_cast<int8_t>(InvalidGPRReg);
 #if USE(JSVALUE32_64)
     m_stubInfo->patch.baseTagGPR = static_cast<int8_t>(base.tagGPR());
     m_stubInfo->patch.valueTagGPR = static_cast<int8_t>(value.tagGPR());
+    m_stubInfo->patch.thisTagGPR = static_cast<int8_t>(InvalidGPRReg);
 #endif
 }
 
 void JITByIdGenerator::finalize(LinkBuffer& fastPath, LinkBuffer& slowPath)
 {
-    CodeLocationCall callReturnLocation = slowPath.locationOf(m_call);
-    m_stubInfo->callReturnLocation = callReturnLocation;
-    m_stubInfo->patch.deltaCheckImmToCall = MacroAssembler::differenceBetweenCodePtr(
-        fastPath.locationOf(m_structureImm), callReturnLocation);
-    m_stubInfo->patch.deltaCallToJump = MacroAssembler::differenceBetweenCodePtr(
-        callReturnLocation, fastPath.locationOf(m_structureCheck));
-#if USE(JSVALUE64)
-    m_stubInfo->patch.deltaCallToLoadOrStore = MacroAssembler::differenceBetweenCodePtr(
-        callReturnLocation, fastPath.locationOf(m_loadOrStore));
-#else
-    m_stubInfo->patch.deltaCallToTagLoadOrStore = MacroAssembler::differenceBetweenCodePtr(
-        callReturnLocation, fastPath.locationOf(m_tagLoadOrStore));
-    m_stubInfo->patch.deltaCallToPayloadLoadOrStore = MacroAssembler::differenceBetweenCodePtr(
-        callReturnLocation, fastPath.locationOf(m_loadOrStore));
-#endif
-    m_stubInfo->patch.deltaCallToSlowCase = MacroAssembler::differenceBetweenCodePtr(
-        callReturnLocation, slowPath.locationOf(m_slowPathBegin));
-    m_stubInfo->patch.deltaCallToDone = MacroAssembler::differenceBetweenCodePtr(
-        callReturnLocation, fastPath.locationOf(m_done));
+    ASSERT(m_start.isSet());
+    CodeLocationLabel start = fastPath.locationOf(m_start);
+    m_stubInfo->patch.start = start;
+
+    int32_t inlineSize = MacroAssembler::differenceBetweenCodePtr(
+        start, fastPath.locationOf(m_done));
+    ASSERT(inlineSize > 0);
+    m_stubInfo->patch.inlineSize = inlineSize;
+
+    m_stubInfo->patch.deltaFromStartToSlowPathCallLocation = MacroAssembler::differenceBetweenCodePtr(
+        start, slowPath.locationOf(m_slowPathCall));
+    m_stubInfo->patch.deltaFromStartToSlowPathStart = MacroAssembler::differenceBetweenCodePtr(
+        start, slowPath.locationOf(m_slowPathBegin));
 }
 
 void JITByIdGenerator::finalize(LinkBuffer& linkBuffer)
@@ -94,38 +92,48 @@ void JITByIdGenerator::finalize(LinkBuffer& linkBuffer)
     finalize(linkBuffer, linkBuffer);
 }
 
-void JITByIdGenerator::generateFastPathChecks(MacroAssembler& jit)
+void JITByIdGenerator::generateFastCommon(MacroAssembler& jit, size_t inlineICSize)
 {
-    m_structureCheck = jit.patchableBranch32WithPatch(
-        MacroAssembler::NotEqual,
-        MacroAssembler::Address(m_base.payloadGPR(), JSCell::structureIDOffset()),
-        m_structureImm, MacroAssembler::TrustedImm32(0));
+    m_start = jit.label();
+    size_t startSize = jit.m_assembler.buffer().codeSize();
+    m_slowPathJump = jit.jump();
+    size_t jumpSize = jit.m_assembler.buffer().codeSize() - startSize;
+    size_t nopsToEmitInBytes = inlineICSize - jumpSize;
+    jit.emitNops(nopsToEmitInBytes);
+    ASSERT(jit.m_assembler.buffer().codeSize() - startSize == inlineICSize);
+    m_done = jit.label();
 }
 
 JITGetByIdGenerator::JITGetByIdGenerator(
     CodeBlock* codeBlock, CodeOrigin codeOrigin, CallSiteIndex callSite, const RegisterSet& usedRegisters,
-    JSValueRegs base, JSValueRegs value)
-    : JITByIdGenerator(
-        codeBlock, codeOrigin, callSite, AccessType::Get, usedRegisters, base, value)
+    UniquedStringImpl* propertyName, JSValueRegs base, JSValueRegs value, AccessType accessType)
+    : JITByIdGenerator(codeBlock, codeOrigin, callSite, accessType, usedRegisters, base, value)
+    , m_isLengthAccess(propertyName == codeBlock->vm()->propertyNames->length.impl())
 {
     RELEASE_ASSERT(base.payloadGPR() != value.tagGPR());
 }
 
 void JITGetByIdGenerator::generateFastPath(MacroAssembler& jit)
 {
-    generateFastPathChecks(jit);
-    
-#if USE(JSVALUE64)
-    m_loadOrStore = jit.load64WithCompactAddressOffsetPatch(
-        MacroAssembler::Address(m_base.payloadGPR(), 0), m_value.payloadGPR()).label();
-#else
-    m_tagLoadOrStore = jit.load32WithCompactAddressOffsetPatch(
-        MacroAssembler::Address(m_base.payloadGPR(), 0), m_value.tagGPR()).label();
-    m_loadOrStore = jit.load32WithCompactAddressOffsetPatch(
-        MacroAssembler::Address(m_base.payloadGPR(), 0), m_value.payloadGPR()).label();
+    generateFastCommon(jit, m_isLengthAccess ? InlineAccess::sizeForLengthAccess() : InlineAccess::sizeForPropertyAccess());
+}
+
+JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator(
+    CodeBlock* codeBlock, CodeOrigin codeOrigin, CallSiteIndex callSite, const RegisterSet& usedRegisters,
+    UniquedStringImpl*, JSValueRegs value, JSValueRegs base, JSValueRegs thisRegs, AccessType accessType)
+    : JITByIdGenerator(codeBlock, codeOrigin, callSite, accessType, usedRegisters, base, value)
+{
+    RELEASE_ASSERT(thisRegs.payloadGPR() != thisRegs.tagGPR());
+
+    m_stubInfo->patch.thisGPR = static_cast<int8_t>(thisRegs.payloadGPR());
+#if USE(JSVALUE32_64)
+    m_stubInfo->patch.thisTagGPR = static_cast<int8_t>(thisRegs.tagGPR());
 #endif
-    
-    m_done = jit.label();
+}
+
+void JITGetByIdWithThisGenerator::generateFastPath(MacroAssembler& jit)
+{
+    generateFastCommon(jit, InlineAccess::sizeForPropertyAccess());
 }
 
 JITPutByIdGenerator::JITPutByIdGenerator(
@@ -142,19 +150,7 @@ JITPutByIdGenerator::JITPutByIdGenerator(
 
 void JITPutByIdGenerator::generateFastPath(MacroAssembler& jit)
 {
-    generateFastPathChecks(jit);
-    
-#if USE(JSVALUE64)
-    m_loadOrStore = jit.store64WithAddressOffsetPatch(
-        m_value.payloadGPR(), MacroAssembler::Address(m_base.payloadGPR(), 0)).label();
-#else
-    m_tagLoadOrStore = jit.store32WithAddressOffsetPatch(
-        m_value.tagGPR(), MacroAssembler::Address(m_base.payloadGPR(), 0)).label();
-    m_loadOrStore = jit.store32WithAddressOffsetPatch(
-        m_value.payloadGPR(), MacroAssembler::Address(m_base.payloadGPR(), 0)).label();
-#endif
-    
-    m_done = jit.label();
+    generateFastCommon(jit, InlineAccess::sizeForPropertyReplace());
 }
 
 V_JITOperation_ESsiJJI JITPutByIdGenerator::slowPathFunction()

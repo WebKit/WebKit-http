@@ -26,10 +26,9 @@
 #include "config.h"
 #include "MediaTimeQTKit.h"
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && USE(QTKIT)
 
-#import "SoftLinking.h"
-#import <QTKit/QTTime.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(QTKit)
 SOFT_LINK_CONSTANT(QTKit, QTIndefiniteTime, QTTime)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,60 +28,18 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGAtTailAbstractState.h"
 #include "DFGGraph.h"
 #include "DFGNode.h"
+#include "DFGNullAbstractState.h"
 #include "Operations.h"
 
 namespace JSC { namespace DFG {
 
 namespace {
 
-class EdgeMayExit {
-public:
-    EdgeMayExit()
-        : m_result(false)
-    {
-    }
-    
-    void operator()(Node*, Edge edge)
-    {
-        // FIXME: Maybe this should call mayHaveTypeCheck(edge.useKind()) instead.
-        // https://bugs.webkit.org/show_bug.cgi?id=148545
-        if (edge.willHaveCheck()) {
-            m_result = true;
-            return;
-        }
-
-        switch (edge.useKind()) {
-        // These are shady because nodes that have these use kinds will typically exit for
-        // unrelated reasons. For example CompareEq doesn't usually exit, but if it uses ObjectUse
-        // then it will.
-        case ObjectUse:
-        case ObjectOrOtherUse:
-            m_result = true;
-            break;
-            
-        // These are shady because they check the structure even if the type of the child node
-        // passes the StringObject type filter.
-        case StringObjectUse:
-        case StringOrStringObjectUse:
-            m_result = true;
-            break;
-            
-        default:
-            break;
-        }
-    }
-    
-    bool result() const { return m_result; }
-    
-private:
-    bool m_result;
-};
-
-} // anonymous namespace
-
-ExitMode mayExit(Graph& graph, Node* node)
+template<typename StateType>
+ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
 {
     ExitMode result = DoesNotExit;
     
@@ -92,6 +50,7 @@ ExitMode mayExit(Graph& graph, Node* node)
     case SetArgument:
     case JSConstant:
     case DoubleConstant:
+    case LazyJSConstant:
     case Int52Constant:
     case MovHint:
     case SetLocal:
@@ -112,7 +71,7 @@ ExitMode mayExit(Graph& graph, Node* node)
     case KillStack:
     case GetStack:
     case GetCallee:
-    case GetArgumentCount:
+    case GetArgumentCountIncludingThis:
     case GetRestLength:
     case GetScope:
     case PhantomLocal:
@@ -128,24 +87,29 @@ ExitMode mayExit(Graph& graph, Node* node)
     case NotifyWrite:
     case PutStructure:
     case StoreBarrier:
+    case FencedStoreBarrier:
     case PutByOffset:
     case PutClosureVar:
+    case RecordRegExpCachedResult:
+    case NukeStructureAndSetButterfly:
         break;
 
     case StrCat:
     case Call:
     case Construct:
     case CallVarargs:
+    case CallEval:
     case ConstructVarargs:
     case CallForwardVarargs:
     case ConstructForwardVarargs:
+    case CreateActivation:
     case MaterializeCreateActivation:
     case MaterializeNewObject:
     case NewFunction:
-    case NewArrowFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case NewStringObject:
-    case CreateActivation:
+    case ToNumber:
         result = ExitsForExceptions;
         break;
 
@@ -153,13 +117,66 @@ ExitMode mayExit(Graph& graph, Node* node)
         // If in doubt, return true.
         return Exits;
     }
-
-    EdgeMayExit functor;
-    DFG_NODE_DO_TO_CHILDREN(graph, node, functor);
-    if (functor.result())
-        result = Exits;
     
+    graph.doToChildren(
+        node,
+        [&] (Edge& edge) {
+            if (state) {
+                // Ignore the Check flag on the edge. This is important because that flag answers
+                // the question: "would this edge have had a check if it executed wherever it
+                // currently resides in control flow?" But when a state is passed, we want to ask a
+                // different question: "would this edge have a check if it executed wherever this
+                // state is?" Using the Check flag for this purpose wouldn't even be conservatively
+                // correct. It would be wrong in both directions.
+                if (mayHaveTypeCheck(edge.useKind())
+                    && (state.forNode(edge).m_type & ~typeFilterFor(edge.useKind()))) {
+                    result = Exits;
+                    return;
+                }
+            } else {
+                // FIXME: Maybe this should call mayHaveTypeCheck(edge.useKind()) instead.
+                // https://bugs.webkit.org/show_bug.cgi?id=148545
+                if (edge.willHaveCheck()) {
+                    result = Exits;
+                    return;
+                }
+            }
+            
+            switch (edge.useKind()) {
+            // These are shady because nodes that have these use kinds will typically exit for
+            // unrelated reasons. For example CompareEq doesn't usually exit, but if it uses
+            // ObjectUse then it will.
+            case ObjectUse:
+            case ObjectOrOtherUse:
+                result = Exits;
+                break;
+                
+            // These are shady because they check the structure even if the type of the child node
+            // passes the StringObject type filter.
+            case StringObjectUse:
+            case StringOrStringObjectUse:
+                result = Exits;
+                break;
+                
+            default:
+                break;
+            }
+        });
+
     return result;
+}
+
+} // anonymous namespace
+
+ExitMode mayExit(Graph& graph, Node* node)
+{
+    NullAbstractState state;
+    return mayExitImpl(graph, node, state);
+}
+
+ExitMode mayExit(Graph& graph, Node* node, AtTailAbstractState& state)
+{
+    return mayExitImpl(graph, node, state);
 }
 
 } } // namespace JSC::DFG

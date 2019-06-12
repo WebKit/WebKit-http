@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLAreaElement_h
-#define HTMLAreaElement_h
+#pragma once
 
 #include "HTMLAnchorElement.h"
 #include "LayoutRect.h"
@@ -29,8 +28,8 @@
 
 namespace WebCore {
 
-class HitTestResult;
 class HTMLImageElement;
+class HitTestResult;
 class Path;
 
 class HTMLAreaElement final : public HTMLAnchorElement {
@@ -41,36 +40,34 @@ public:
 
     bool mapMouseEvent(LayoutPoint location, const LayoutSize&, HitTestResult&);
 
-    // FIXME: Use RenderElement* instead of RenderObject* once we upstream iOS's DOMUIKitExtensions.{h, mm}.
-    LayoutRect computeRect(RenderObject*) const;
+    // FIXME: Use RenderElement& instead of RenderObject*.
+    WEBCORE_EXPORT LayoutRect computeRect(RenderObject*) const;
     Path computePath(RenderObject*) const;
+    Path computePathForFocusRing(const LayoutSize& elementSize) const;
 
     // The parent map's image.
-    HTMLImageElement* imageElement() const;
+    WEBCORE_EXPORT HTMLImageElement* imageElement() const;
     
 private:
     HTMLAreaElement(const QualifiedName&, Document&);
 
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual bool supportsFocus() const override;
-    virtual String target() const override;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
-    virtual bool isMouseFocusable() const override;
-    virtual bool isFocusable() const override;
-    virtual void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode) override;
-    virtual void setFocus(bool) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool supportsFocus() const final;
+    String target() const final;
+    bool isKeyboardFocusable(KeyboardEvent&) const final;
+    bool isMouseFocusable() const final;
+    bool isFocusable() const final;
+    void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode) final;
+    void setFocus(bool) final;
 
     enum Shape { Default, Poly, Rect, Circle, Unknown };
     Path getRegion(const LayoutSize&) const;
     void invalidateCachedRegion();
 
     std::unique_ptr<Path> m_region;
-    std::unique_ptr<Length[]> m_coords;
-    int m_coordsLen;
+    Vector<double> m_coords;
     LayoutSize m_lastSize;
     Shape m_shape;
 };
 
 } //namespace
-
-#endif

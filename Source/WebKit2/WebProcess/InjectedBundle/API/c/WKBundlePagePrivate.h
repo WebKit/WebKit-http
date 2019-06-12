@@ -85,10 +85,11 @@ WK_EXPORT void* WKAccessibilityFocusedObject(WKBundlePageRef);
 WK_EXPORT void WKAccessibilityEnableEnhancedAccessibility(bool);
 WK_EXPORT bool WKAccessibilityEnhancedAccessibilityEnabled();
 
-WK_EXPORT WKStringRef WKBundlePageCopyContextMenuItemTitle(WKContextMenuItemRef);
 WK_EXPORT void WKBundlePageClickMenuItem(WKBundlePageRef, WKContextMenuItemRef);
 WK_EXPORT WKArrayRef WKBundlePageCopyContextMenuItems(WKBundlePageRef);
 WK_EXPORT WKArrayRef WKBundlePageCopyContextMenuAtPointInWindow(WKBundlePageRef, WKPoint);
+
+WK_EXPORT void WKBundlePageInsertNewlineInQuotedContent(WKBundlePageRef page);
 
 // This only works if the SuppressesIncrementalRendering preference is set as well.
 typedef unsigned WKRenderingSuppressionToken;
@@ -108,6 +109,16 @@ WK_EXPORT uint64_t WKBundlePageGetAppCacheUsageForOrigin(WKBundlePageRef page, W
 WK_EXPORT void WKBundlePageSetApplicationCacheOriginQuota(WKBundlePageRef page, WKStringRef origin, uint64_t bytes);
 WK_EXPORT void WKBundlePageResetApplicationCacheOriginQuota(WKBundlePageRef page, WKStringRef origin);
 WK_EXPORT WKArrayRef WKBundlePageCopyOriginsWithApplicationCache(WKBundlePageRef page);
+
+enum {
+    kWKEventThrottlingBehaviorResponsive = 0,
+    kWKEventThrottlingBehaviorUnresponsive
+};
+
+typedef uint32_t WKEventThrottlingBehavior;
+
+// Passing null in the second parameter clears the override.
+WK_EXPORT void WKBundlePageSetEventThrottlingBehaviorOverride(WKBundlePageRef, WKEventThrottlingBehavior*);
 
 #if TARGET_OS_IPHONE
 WK_EXPORT void WKBundlePageSetUseTestingViewportConfiguration(WKBundlePageRef, bool);

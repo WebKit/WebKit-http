@@ -23,18 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPreferences_h
-#define WebPreferences_h
+#pragma once
 
+#include "APIExperimentalFeature.h"
 #include "APIObject.h"
 #include "FontSmoothingLevel.h"
 #include "WebPreferencesDefinitions.h"
 #include "WebPreferencesStore.h"
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
-#define DECLARE_PREFERENCE_GETTER_AND_SETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue) \
+#define DECLARE_PREFERENCE_GETTER_AND_SETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
     void set##KeyUpper(const Type& value); \
     Type KeyLower() const;
 
@@ -45,28 +44,28 @@ class WebPageProxy;
 class WebPreferences : public API::ObjectImpl<API::Object::Type::Preferences> {
 public:
     static Ref<WebPreferences> create(const String& identifier, const String& keyPrefix, const String& globalDebugKeyPrefix);
-    static PassRefPtr<WebPreferences> createWithLegacyDefaults(const String& identifier, const String& keyPrefix, const String& globalDebugKeyPrefix);
+    static Ref<WebPreferences> createWithLegacyDefaults(const String& identifier, const String& keyPrefix, const String& globalDebugKeyPrefix);
 
     explicit WebPreferences(const String& identifier, const String& keyPrefix, const String& globalDebugKeyPrefix);
     WebPreferences(const WebPreferences&);
 
     virtual ~WebPreferences();
 
-    PassRefPtr<WebPreferences> copy() const;
+    Ref<WebPreferences> copy() const;
 
     void addPage(WebPageProxy&);
     void removePage(WebPageProxy&);
 
     const WebPreferencesStore& store() const { return m_store; }
 
-#define DECLARE_PREFERENCE_GETTER_AND_SETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue) \
-    void set##KeyUpper(const Type& value); \
-    Type KeyLower() const; \
-
     FOR_EACH_WEBKIT_PREFERENCE(DECLARE_PREFERENCE_GETTER_AND_SETTERS)
     FOR_EACH_WEBKIT_DEBUG_PREFERENCE(DECLARE_PREFERENCE_GETTER_AND_SETTERS)
+    FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(DECLARE_PREFERENCE_GETTER_AND_SETTERS)
 
-#undef DECLARE_PREFERENCE_GETTER_AND_SETTERS
+    static const Vector<RefPtr<API::Object>>& experimentalFeatures();
+    bool isEnabledForFeature(const API::ExperimentalFeature&) const;
+    void setEnabledForFeature(bool, const API::ExperimentalFeature&);
+    void enableAllExperimentalFeatures();
 
     // Exposed for WebKitTestRunner use only.
     void forceUpdate() { update(); }
@@ -80,6 +79,7 @@ private:
 
     void updateStringValueForKey(const String& key, const String& value);
     void updateBoolValueForKey(const String& key, bool value);
+    void updateBoolValueForExperimentalFeatureKey(const String& key, bool value);
     void updateUInt32ValueForKey(const String& key, uint32_t value);
     void updateDoubleValueForKey(const String& key, double value);
     void updateFloatValueForKey(const String& key, float value);
@@ -108,5 +108,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebPreferences_h

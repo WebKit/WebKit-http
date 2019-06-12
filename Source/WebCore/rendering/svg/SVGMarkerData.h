@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGMarkerData_h
-#define SVGMarkerData_h
+#pragma once
 
 #include "FloatConversion.h"
 #include "Path.h"
@@ -48,9 +47,10 @@ struct MarkerPosition {
 
 class SVGMarkerData {
 public:
-    SVGMarkerData(Vector<MarkerPosition>& positions)
+    SVGMarkerData(Vector<MarkerPosition>& positions, bool reverseStart)
         : m_positions(positions)
         , m_elementIndex(0)
+        , m_reverseStart(reverseStart)
     {
     }
 
@@ -87,6 +87,8 @@ private:
 
         switch (type) {
         case StartMarker:
+            if (m_reverseStart)
+                return narrowPrecisionToFloat(outAngle - 180);
             return narrowPrecisionToFloat(outAngle);
         case MidMarker:
             // WK193015: Prevent bugs due to angles being non-continuous.
@@ -147,8 +149,7 @@ private:
     FloatPoint m_subpathStart;
     FloatPoint m_inslopePoints[2];
     FloatPoint m_outslopePoints[2];
+    bool m_reverseStart;
 };
 
-}
-
-#endif // SVGMarkerData_h
+} // namespace WebCore

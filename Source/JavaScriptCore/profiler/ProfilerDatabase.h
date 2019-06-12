@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,20 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ProfilerDatabase_h
-#define ProfilerDatabase_h
+#pragma once
 
 #include "JSCJSValue.h"
 #include "ProfilerBytecodes.h"
 #include "ProfilerCompilation.h"
-#include "ProfilerCompilationKind.h"
+#include "ProfilerEvent.h"
 #include <wtf/FastMalloc.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/SegmentedVector.h>
-#include <wtf/ThreadingPrimitives.h>
 #include <wtf/text/WTFString.h>
 
 namespace JSC { namespace Profiler {
@@ -52,7 +49,7 @@ public:
     Bytecodes* ensureBytecodesFor(CodeBlock*);
     void notifyDestruction(CodeBlock*);
     
-    void addCompilation(PassRefPtr<Compilation>);
+    void addCompilation(CodeBlock*, Ref<Compilation>&&);
     
     // Converts the database to a JavaScript object that is suitable for JSON stringification.
     // Note that it's probably a good idea to use an ExecState* associated with a global
@@ -70,7 +67,11 @@ public:
 
     void registerToSaveAtExit(const char* filename);
     
+    JS_EXPORT_PRIVATE void logEvent(CodeBlock* codeBlock, const char* summary, const CString& detail);
+    
 private:
+    Bytecodes* ensureBytecodesFor(const AbstractLocker&, CodeBlock*);
+    
     void addDatabaseToAtExit();
     void removeDatabaseFromAtExit();
     void performAtExitSave() const;
@@ -81,7 +82,9 @@ private:
     VM& m_vm;
     SegmentedVector<Bytecodes> m_bytecodes;
     HashMap<CodeBlock*, Bytecodes*> m_bytecodesMap;
-    Vector<RefPtr<Compilation>> m_compilations;
+    Vector<Ref<Compilation>> m_compilations;
+    HashMap<CodeBlock*, Ref<Compilation>> m_compilationMap;
+    Vector<Event> m_events;
     bool m_shouldSaveAtExit;
     CString m_atExitSaveFilename;
     Database* m_nextRegisteredDatabase;
@@ -89,6 +92,3 @@ private:
 };
 
 } } // namespace JSC::Profiler
-
-#endif // ProfilerDatabase_h
-

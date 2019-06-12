@@ -18,14 +18,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGException_h
-#define SVGException_h
+#pragma once
 
 #include "ExceptionBase.h"
 
 namespace WebCore {
 
-class SVGException : public ExceptionBase {
+class SVGException final : public ExceptionBase {
 public:
     static Ref<SVGException> create(const ExceptionCodeDescription& description)
     {
@@ -51,5 +50,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SVGException_h

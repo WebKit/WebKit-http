@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirArgInlines_h
-#define AirArgInlines_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -54,9 +53,9 @@ template<> struct ArgThingHelper<Tmp> {
     }
 
     template<typename Functor>
-    static void forEach(Arg& arg, Arg::Role role, Arg::Type type, Arg::Width width, const Functor& functor)
+    static void forEach(Arg& arg, Arg::Role role, Bank bank, Width width, const Functor& functor)
     {
-        arg.forEachTmp(role, type, width, functor);
+        arg.forEachTmp(role, bank, width, functor);
     }
 };
 
@@ -78,9 +77,91 @@ template<> struct ArgThingHelper<Arg> {
     }
 
     template<typename Functor>
-    static void forEach(Arg& arg, Arg::Role role, Arg::Type type, Arg::Width width, const Functor& functor)
+    static void forEach(Arg& arg, Arg::Role role, Bank bank, Width width, const Functor& functor)
     {
-        functor(arg, role, type, width);
+        functor(arg, role, bank, width);
+    }
+};
+
+template<> struct ArgThingHelper<StackSlot*> {
+    static bool is(const Arg& arg)
+    {
+        return arg.isStack();
+    }
+    
+    static StackSlot* as(const Arg& arg)
+    {
+        return arg.stackSlot();
+    }
+    
+    template<typename Functor>
+    static void forEachFast(Arg& arg, const Functor& functor)
+    {
+        if (!arg.isStack())
+            return;
+        
+        StackSlot* stackSlot = arg.stackSlot();
+        functor(stackSlot);
+        arg = Arg::stack(stackSlot, arg.offset());
+    }
+    
+    template<typename Functor>
+    static void forEach(Arg& arg, Arg::Role role, Bank bank, Width width, const Functor& functor)
+    {
+        if (!arg.isStack())
+            return;
+        
+        StackSlot* stackSlot = arg.stackSlot();
+        
+        // FIXME: This is way too optimistic about the meaning of "Def". It gets lucky for
+        // now because our only use of "Anonymous" stack slots happens to want the optimistic
+        // semantics. We could fix this by just changing the comments that describe the
+        // semantics of "Anonymous".
+        // https://bugs.webkit.org/show_bug.cgi?id=151128
+        
+        functor(stackSlot, role, bank, width);
+        arg = Arg::stack(stackSlot, arg.offset());
+    }
+};
+
+template<> struct ArgThingHelper<Reg> {
+    static bool is(const Arg& arg)
+    {
+        return arg.isReg();
+    }
+    
+    static Reg as(const Arg& arg)
+    {
+        return arg.reg();
+    }
+    
+    template<typename Functor>
+    static void forEachFast(Arg& arg, const Functor& functor)
+    {
+        arg.forEachTmpFast(
+            [&] (Tmp& tmp) {
+                if (!tmp.isReg())
+                    return;
+                
+                Reg reg = tmp.reg();
+                functor(reg);
+                tmp = Tmp(reg);
+            });
+    }
+    
+    template<typename Functor>
+    static void forEach(Arg& arg, Arg::Role argRole, Bank argBank, Width argWidth, const Functor& functor)
+    {
+        arg.forEachTmp(
+            argRole, argBank, argWidth,
+            [&] (Tmp& tmp, Arg::Role role, Bank bank, Width width) {
+                if (!tmp.isReg())
+                    return;
+                
+                Reg reg = tmp.reg();
+                functor(reg, role, bank, width);
+                tmp = Tmp(reg);
+            });
     }
 };
 
@@ -103,14 +184,11 @@ void Arg::forEachFast(const Functor& functor)
 }
 
 template<typename Thing, typename Functor>
-void Arg::forEach(Role role, Type type, Width width, const Functor& functor)
+void Arg::forEach(Role role, Bank bank, Width width, const Functor& functor)
 {
-    ArgThingHelper<Thing>::forEach(*this, role, type, width, functor);
+    ArgThingHelper<Thing>::forEach(*this, role, bank, width, functor);
 }
 
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirArgInlines_h
-

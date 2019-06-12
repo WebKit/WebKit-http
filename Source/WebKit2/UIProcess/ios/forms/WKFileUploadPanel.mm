@@ -30,32 +30,26 @@
 
 #import "APIArray.h"
 #import "APIData.h"
+#import "APIOpenPanelParameters.h"
 #import "APIString.h"
+#import "PhotosSPI.h"
 #import "UIKitSPI.h"
 #import "WKContentViewInteraction.h"
 #import "WKData.h"
 #import "WKStringCF.h"
 #import "WKURLCF.h"
-#import "WebOpenPanelParameters.h"
+#import "WebIconUtilities.h"
 #import "WebOpenPanelResultListenerProxy.h"
 #import "WebPageProxy.h"
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
 #import <MobileCoreServices/MobileCoreServices.h>
-#import <Photos/Photos.h>
 #import <WebCore/LocalizedStrings.h>
-#import <WebCore/SoftLinking.h>
 #import <WebKit/WebNSFileManagerExtras.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
 
 using namespace WebKit;
-
-SOFT_LINK_FRAMEWORK(AVFoundation);
-SOFT_LINK_CLASS(AVFoundation, AVAssetImageGenerator);
-SOFT_LINK_CLASS(AVFoundation, AVURLAsset);
-
-SOFT_LINK_FRAMEWORK(CoreMedia);
-SOFT_LINK_CONSTANT(CoreMedia, kCMTimeZero, CMTime);
 
 SOFT_LINK_FRAMEWORK(Photos);
 SOFT_LINK_CLASS(Photos, PHAsset);
@@ -64,10 +58,13 @@ SOFT_LINK_CLASS(Photos, PHImageRequestOptions);
 SOFT_LINK_CONSTANT(Photos, PHImageRequestOptionsResizeModeNone, NSString *);
 SOFT_LINK_CONSTANT(Photos, PHImageRequestOptionsVersionCurrent, NSString *);
 
-#define kCMTimeZero getkCMTimeZero()
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
+static inline UIImagePickerControllerCameraDevice cameraDeviceForMediaCaptureType(WebCore::MediaCaptureType mediaCaptureType)
+{
+    return mediaCaptureType == WebCore::MediaCaptureTypeUser ? UIImagePickerControllerCameraDeviceFront : UIImagePickerControllerCameraDeviceRear;
+}
 
 #pragma mark - Document picker icons
 
@@ -80,117 +77,6 @@ static inline UIImage *cameraIcon()
 {
     return _UIImageGetWebKitTakePhotoOrVideoIcon();
 }
-
-#pragma mark - Icon generation
-
-static const CGFloat iconSideLength = 100;
-
-static CGRect squareCropRectForSize(CGSize size)
-{
-    CGFloat smallerSide = MIN(size.width, size.height);
-    CGRect cropRect = CGRectMake(0, 0, smallerSide, smallerSide);
-
-    if (size.width < size.height)
-        cropRect.origin.y = std::round((size.height - smallerSide) / 2);
-    else
-        cropRect.origin.x = std::round((size.width - smallerSide) / 2);
-
-    return cropRect;
-}
-
-static UIImage *squareImage(CGImageRef image)
-{
-    if (!image)
-        return nil;
-
-    CGSize imageSize = CGSizeMake(CGImageGetWidth(image), CGImageGetHeight(image));
-    if (imageSize.width == imageSize.height)
-        return [UIImage imageWithCGImage:image];
-
-    CGRect squareCropRect = squareCropRectForSize(imageSize);
-    RetainPtr<CGImageRef> squareImage = adoptCF(CGImageCreateWithImageInRect(image, squareCropRect));
-    return [UIImage imageWithCGImage:squareImage.get()];
-}
-
-static UIImage *thumbnailSizedImageForImage(CGImageRef image)
-{
-    UIImage *squaredImage = squareImage(image);
-    if (!squaredImage)
-        return nil;
-
-    CGRect destRect = CGRectMake(0, 0, iconSideLength, iconSideLength);
-    UIGraphicsBeginImageContext(destRect.size);
-    CGContextSetInterpolationQuality(UIGraphicsGetCurrentContext(), kCGInterpolationHigh);
-    [squaredImage drawInRect:destRect];
-    UIImage *resultImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return resultImage;
-}
-
-static UIImage* fallbackIconForFile(NSURL *file)
-{
-    ASSERT_ARG(file, [file isFileURL]);
-
-    UIDocumentInteractionController *interactionController = [UIDocumentInteractionController interactionControllerWithURL:file];
-    return thumbnailSizedImageForImage(interactionController.icons[0].CGImage);
-}
-
-static UIImage* iconForImageFile(NSURL *file)
-{
-    ASSERT_ARG(file, [file isFileURL]);
-
-    NSDictionary *options = @{
-        (id)kCGImageSourceCreateThumbnailFromImageIfAbsent: @YES,
-        (id)kCGImageSourceThumbnailMaxPixelSize: @(iconSideLength),
-        (id)kCGImageSourceCreateThumbnailWithTransform: @YES,
-    };
-    RetainPtr<CGImageSource> imageSource = adoptCF(CGImageSourceCreateWithURL((CFURLRef)file, 0));
-    RetainPtr<CGImageRef> thumbnail = adoptCF(CGImageSourceCreateThumbnailAtIndex(imageSource.get(), 0, (CFDictionaryRef)options));
-    if (!thumbnail) {
-        LOG_ERROR("WKFileUploadPanel: Error creating thumbnail image for image: %@", file);
-        return fallbackIconForFile(file);
-    }
-
-    return thumbnailSizedImageForImage(thumbnail.get());
-}
-
-static UIImage* iconForVideoFile(NSURL *file)
-{
-    ASSERT_ARG(file, [file isFileURL]);
-
-    RetainPtr<AVURLAsset> asset = adoptNS([allocAVURLAssetInstance() initWithURL:file options:nil]);
-    RetainPtr<AVAssetImageGenerator> generator = adoptNS([allocAVAssetImageGeneratorInstance() initWithAsset:asset.get()]);
-    [generator setAppliesPreferredTrackTransform:YES];
-
-    NSError *error = nil;
-    RetainPtr<CGImageRef> imageRef = adoptCF([generator copyCGImageAtTime:kCMTimeZero actualTime:nil error:&error]);
-    if (!imageRef) {
-        LOG_ERROR("WKFileUploadPanel: Error creating image for video '%@': %@", file, error);
-        return fallbackIconForFile(file);
-    }
-
-    return thumbnailSizedImageForImage(imageRef.get());
-}
-
-static UIImage* iconForFile(NSURL *file)
-{
-    ASSERT_ARG(file, [file isFileURL]);
-
-    NSString *fileExtension = file.pathExtension;
-    if (!fileExtension.length)
-        return nil;
-
-    RetainPtr<CFStringRef> fileUTI = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (CFStringRef)fileExtension, 0));
-
-    if (UTTypeConformsTo(fileUTI.get(), kUTTypeImage))
-        return iconForImageFile(file);
-
-    if (UTTypeConformsTo(fileUTI.get(), kUTTypeMovie))
-        return iconForVideoFile(file);
-
-    return fallbackIconForFile(file);
-}
-
 
 #pragma mark - _WKFileUploadItem
 
@@ -292,6 +178,7 @@ static UIImage* iconForFile(NSURL *file)
 #pragma clang diagnostic pop
     RetainPtr<UIDocumentMenuViewController> _documentMenuController;
     RetainPtr<UIAlertController> _actionSheetController;
+    WebCore::MediaCaptureType _mediaCaptureType;
 }
 
 - (instancetype)initWithView:(WKContentView *)view
@@ -321,7 +208,9 @@ static UIImage* iconForFile(NSURL *file)
 
 - (void)_cancel
 {
-    _listener->cancel();
+    if (_listener)
+        _listener->cancel();
+    
     [self _dispatchDidDismiss];
 }
 
@@ -333,24 +222,21 @@ static UIImage* iconForFile(NSURL *file)
         return;
     }
 
-    Vector<RefPtr<API::Object>> urls;
-    urls.reserveInitialCapacity(count);
+    Vector<String> filenames;
+    filenames.reserveInitialCapacity(count);
     for (NSURL *fileURL in fileURLs)
-        urls.uncheckedAppend(adoptRef(toImpl(WKURLCreateWithCFURL((CFURLRef)fileURL))));
-    Ref<API::Array> fileURLsRef = API::Array::create(WTFMove(urls));
+        filenames.uncheckedAppend(String::fromUTF8(fileURL.fileSystemRepresentation));
 
     NSData *jpeg = UIImageJPEGRepresentation(iconImage, 1.0);
     RefPtr<API::Data> iconImageDataRef = adoptRef(toImpl(WKDataCreate(reinterpret_cast<const unsigned char*>([jpeg bytes]), [jpeg length])));
 
-    RefPtr<API::String> displayStringRef = adoptRef(toImpl(WKStringCreateWithCFString((CFStringRef)displayString)));
-
-    _listener->chooseFiles(fileURLsRef.ptr(), displayStringRef.get(), iconImageDataRef.get());
+    _listener->chooseFiles(filenames, displayString, iconImageDataRef.get());
     [self _dispatchDidDismiss];
 }
 
 #pragma mark - Present / Dismiss API
 
-- (void)presentWithParameters:(WebKit::WebOpenPanelParameters*)parameters resultListener:(WebKit::WebOpenPanelResultListenerProxy*)listener
+- (void)presentWithParameters:(API::OpenPanelParameters*)parameters resultListener:(WebKit::WebOpenPanelResultListenerProxy*)listener
 {
     ASSERT(!_listener);
 
@@ -364,12 +250,34 @@ static UIImage* iconForFile(NSURL *file)
         [mimeTypes addObject:mimeType->string()];
     _mimeTypes = adoptNS([mimeTypes copy]);
 
+    _mediaCaptureType = WebCore::MediaCaptureTypeNone;
+#if ENABLE(MEDIA_CAPTURE)
+    _mediaCaptureType = parameters->mediaCaptureType();
+#endif
+
+    if ([self _shouldMediaCaptureOpenMediaDevice]) {
+        [self _adjustMediaCaptureType];
+
+        _usingCamera = YES;
+        [self _showPhotoPickerWithSourceType:UIImagePickerControllerSourceTypeCamera];
+
+        return;
+    }
+
     [self _showDocumentPickerMenu];
 }
 
 - (void)dismiss
 {
-    [self _dismissDisplayAnimated:NO];
+    // Dismiss any view controller that is being presented. This works for all types of view controllers, popovers, etc.
+    // If there is any kind of view controller presented on this view, it will be removed. 
+    
+    [[UIViewController _viewControllerForFullScreenPresentationFromView:_view] dismissViewControllerAnimated:NO completion:nil];
+    
+    [_presentationPopover setDelegate:nil];
+    _presentationPopover = nil;
+    _presentationViewController = nil;
+    
     [self _cancel];
 }
 
@@ -470,20 +378,49 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
         [self _showPhotoPickerWithSourceType:UIImagePickerControllerSourceTypePhotoLibrary];
     }];
 
-    if (NSString *cameraString = [self _cameraButtonLabel]) {
-        [_documentMenuController addOptionWithTitle:cameraString image:cameraIcon() order:UIDocumentMenuOrderFirst handler:^{
-            _usingCamera = YES;
-            [self _showPhotoPickerWithSourceType:UIImagePickerControllerSourceTypeCamera];
-        }];
+    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        if (NSString *cameraString = [self _cameraButtonLabel]) {
+            [_documentMenuController addOptionWithTitle:cameraString image:cameraIcon() order:UIDocumentMenuOrderFirst handler:^{
+                _usingCamera = YES;
+                [self _showPhotoPickerWithSourceType:UIImagePickerControllerSourceTypeCamera];
+            }];
+        }
     }
 
-    [self _presentForCurrentInterfaceIdiom:_documentMenuController.get()];
+    [self _presentMenuOptionForCurrentInterfaceIdiom:_documentMenuController.get()];
+    // Clear out the view controller we just presented. Don't save a reference to the UIDocumentMenuViewController as it is self dismissing.
+    _presentationViewController = nil;
 }
 
 #pragma mark - Image Picker
 
+- (void)_adjustMediaCaptureType
+{
+    if ([UIImagePickerController isCameraDeviceAvailable:UIImagePickerControllerCameraDeviceFront] || [UIImagePickerController isCameraDeviceAvailable:UIImagePickerControllerCameraDeviceRear]) {
+        if (![UIImagePickerController isCameraDeviceAvailable:UIImagePickerControllerCameraDeviceFront])
+            _mediaCaptureType = WebCore::MediaCaptureTypeEnvironment;
+        
+        if (![UIImagePickerController isCameraDeviceAvailable:UIImagePickerControllerCameraDeviceRear])
+            _mediaCaptureType = WebCore::MediaCaptureTypeUser;
+        
+        return;
+    }
+    
+    _mediaCaptureType = WebCore::MediaCaptureTypeNone;
+}
+
+- (BOOL)_shouldMediaCaptureOpenMediaDevice
+{
+    if (_mediaCaptureType == WebCore::MediaCaptureTypeNone || ![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera])
+        return NO;
+    
+    return YES;
+}
+
 - (void)_showPhotoPickerWithSourceType:(UIImagePickerControllerSourceType)sourceType
 {
+    ASSERT([UIImagePickerController isSourceTypeAvailable:sourceType]);
+    
     _imagePicker = adoptNS([[UIImagePickerController alloc] init]);
     [_imagePicker setDelegate:self];
     [_imagePicker setSourceType:sourceType];
@@ -492,6 +429,9 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     [_imagePicker _setAllowsMultipleSelection:_allowMultipleFiles];
     [_imagePicker setMediaTypes:[self _mediaTypesForPickerSourceType:sourceType]];
 
+    if (_mediaCaptureType != WebCore::MediaCaptureTypeNone)
+        [_imagePicker setCameraDevice:cameraDeviceForMediaCaptureType(_mediaCaptureType)];
+    
     // Use a popover on the iPad if the source type is not the camera.
     // The camera will use a fullscreen, modal view controller.
     BOOL usePopover = UICurrentUserInterfaceIdiomIsPad() && sourceType != UIImagePickerControllerSourceTypeCamera;
@@ -503,7 +443,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
 #pragma mark - Presenting View Controllers
 
-- (void)_presentForCurrentInterfaceIdiom:(UIViewController *)viewController
+- (void)_presentMenuOptionForCurrentInterfaceIdiom:(UIViewController *)viewController
 {
     if (UICurrentUserInterfaceIdiomIsPad())
         [self _presentPopoverWithContentViewController:viewController animated:YES];
@@ -652,7 +592,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 {
     NSUInteger count = [infos count];
     if (index == count) {
-        NSString *displayString = [self _displayStringForPhotos:processedImageCount videos:processedVideoCount];
+        NSString *displayString = (processedImageCount || processedVideoCount) ? [NSString localizedStringWithFormat:WEB_UI_NSSTRING(@"%lu photo(s) and %lu video(s)", "label next to file upload control; parameters are the number of photos and the number of videos"), (unsigned long)processedImageCount, (unsigned long)processedVideoCount] : nil;
         successBlock(processedResults, displayString);
         return;
     }
@@ -674,7 +614,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 - (void)_uploadItemForImageData:(NSData *)imageData imageName:(NSString *)imageName successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
 {
     ASSERT_ARG(imageData, imageData);
-    ASSERT(!isMainThread());
+    ASSERT(!RunLoop::isMain());
 
     NSString * const kTemporaryDirectoryName = @"WKWebFileUpload";
 
@@ -737,22 +677,26 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
             return;
         }
 
+        PHAsset *firstAsset = result[0];
+        [firstAsset fetchPropertySetsIfNeeded];
+        NSString *originalFilename = [[firstAsset originalMetadataProperties] originalFilename];
+        ASSERT(originalFilename);
+
         RetainPtr<PHImageRequestOptions> options = adoptNS([allocPHImageRequestOptionsInstance() init]);
         [options setVersion:PHImageRequestOptionsVersionCurrent];
         [options setSynchronous:YES];
         [options setResizeMode:PHImageRequestOptionsResizeModeNone];
 
         PHImageManager *manager = (PHImageManager *)[getPHImageManagerClass() defaultManager];
-        [manager requestImageDataForAsset:result[0] options:options.get() resultHandler:^(NSData *imageData, NSString *dataUTI, UIImageOrientation, NSDictionary *info) {
+        [manager requestImageDataForAsset:firstAsset options:options.get() resultHandler:^(NSData *imageData, NSString *dataUTI, UIImageOrientation, NSDictionary *info)
+        {
             if (!imageData) {
                 LOG_ERROR("WKFileUploadPanel: Failed to request image data for asset with URL %@", assetURL);
                 [self _uploadItemForJPEGRepresentationOfImage:image successBlock:successBlock failureBlock:failureBlock];
                 return;
             }
 
-            RetainPtr<CFStringRef> extension = adoptCF(UTTypeCopyPreferredTagWithClass((CFStringRef)dataUTI, kUTTagClassFilenameExtension));
-            NSString *imageName = [@"image." stringByAppendingString:(extension ? (id)extension.get() : @"jpg")];
-            [self _uploadItemForImageData:imageData imageName:imageName successBlock:successBlock failureBlock:failureBlock];
+            [self _uploadItemForImageData:imageData imageName:originalFilename successBlock:successBlock failureBlock:failureBlock];
         }];
     });
 }
@@ -799,69 +743,6 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
     // Photos taken with the camera will not have an asset URL. Fall back to a JPEG representation.
     [self _uploadItemForJPEGRepresentationOfImage:originalImage successBlock:successBlock failureBlock:failureBlock];
-}
-
-- (NSString *)_displayStringForPhotos:(NSUInteger)imageCount videos:(NSUInteger)videoCount
-{
-    if (!imageCount && !videoCount)
-        return nil;
-
-    NSString *title;
-    NSString *countString;
-    NSString *imageString;
-    NSString *videoString;
-    NSUInteger numberOfTypes = 2;
-
-    RetainPtr<NSNumberFormatter> countFormatter = adoptNS([[NSNumberFormatter alloc] init]);
-    [countFormatter setLocale:[NSLocale currentLocale]];
-    [countFormatter setGeneratesDecimalNumbers:YES];
-    [countFormatter setNumberStyle:NSNumberFormatterDecimalStyle];
-
-    // Generate the individual counts for each type.
-    switch (imageCount) {
-    case 0:
-        imageString = nil;
-        --numberOfTypes;
-        break;
-    case 1:
-        imageString = WEB_UI_STRING_KEY("1 Photo", "1 Photo (file upload on page label for one photo)", "File Upload single photo label");
-        break;
-    default:
-        countString = [countFormatter stringFromNumber:@(imageCount)];
-        imageString = [NSString stringWithFormat:WEB_UI_STRING_KEY("%@ Photos", "# Photos (file upload on page label for multiple photos)", "File Upload multiple photos label"), countString];
-        break;
-    }
-
-    switch (videoCount) {
-    case 0:
-        videoString = nil;
-        --numberOfTypes;
-        break;
-    case 1:
-        videoString = WEB_UI_STRING_KEY("1 Video", "1 Video (file upload on page label for one video)", "File Upload single video label");
-        break;
-    default:
-        countString = [countFormatter stringFromNumber:@(videoCount)];
-        videoString = [NSString stringWithFormat:WEB_UI_STRING_KEY("%@ Videos", "# Videos (file upload on page label for multiple videos)", "File Upload multiple videos label"), countString];
-        break;
-    }
-
-    // Combine into a single result string if needed.
-    switch (numberOfTypes) {
-    case 2:
-        // FIXME: For localization we should build a complete string. We should have a localized string for each different combination.
-        title = [NSString stringWithFormat:WEB_UI_STRING_KEY("%@ and %@", "# Photos and # Videos (file upload on page label for image and videos)", "File Upload images and videos label"), imageString, videoString];
-        break;
-    case 1:
-        title = imageString ? imageString : videoString;
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-        title = nil;
-        break;
-    }
-
-    return [title lowercaseString];
 }
 
 @end

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,11 +25,9 @@
 #if USE(QUICK_LOOK)
 
 #include "QuickLookSPI.h"
-#include "SoftLinking.h"
+#include <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_FOR_HEADER(WebCore, QuickLook)
-
-SOFT_LINK_CLASS_FOR_HEADER(WebCore, QuickLook, QLPreviewConverter)
 
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, QuickLook, QLPreviewGetSupportedMIMETypes, NSSet *, (), ())
 #define QLPreviewGetSupportedMIMETypes softLink_QuickLook_QLPreviewGetSupportedMIMETypes

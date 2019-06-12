@@ -23,11 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGTransition_h
-#define DFGTransition_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGRegisteredStructure.h"
 #include <wtf/PrintStream.h>
 #include <wtf/Vector.h>
 
@@ -39,16 +39,12 @@ struct DumpContext;
 namespace DFG {
 
 struct Transition {
-    Structure* previous;
-    Structure* next;
+    RegisteredStructure previous;
+    RegisteredStructure next;
     
-    Transition()
-        : previous(nullptr)
-        , next(nullptr)
-    {
-    }
+    Transition() = default;
     
-    Transition(Structure* previous, Structure* next)
+    Transition(RegisteredStructure previous, RegisteredStructure next)
         : previous(previous)
         , next(next)
     {
@@ -63,6 +59,3 @@ typedef Vector<Transition, 3> TransitionVector;
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGTransition_h
-

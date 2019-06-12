@@ -23,19 +23,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CharacterProperties_h
-#define CharacterProperties_h
+#pragma once
+
+#include <unicode/uchar.h>
 
 namespace WebCore {
 
+#define ICU_HEADERS_UNDERSTAND_SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS (U_ICU_VERSION_MAJOR_NUM > 56 || (U_ICU_VERSION_MAJOR_NUM == 56 && U_ICU_VERSION_MINOR_NUM >= 1))
+
+#if ICU_HEADERS_UNDERSTAND_SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS
+static bool icuLibraryUnderstandsSupplementalSymbolsAndPictographs()
+{
+    UVersionInfo versionInfo;
+    u_getVersion(versionInfo);
+    static_assert(U_MAX_VERSION_LENGTH >= 2, "Cannot run ICU version check");
+    return versionInfo[0] > 56 || (versionInfo[0] == 56 && versionInfo[1] >= 1);
+}
+#endif
+
 static inline bool isEmojiGroupCandidate(UChar32 character)
 {
-    return (character >= 0x1F466 && character <= 0x1F469) || character == 0x2764 || character == 0x1F48B
-        || character == 0x1F441 || character == 0x1F5E8;
+    auto unicodeBlock = ublock_getCode(character);
+
+    if (unicodeBlock == UBLOCK_MISCELLANEOUS_SYMBOLS
+        || unicodeBlock == UBLOCK_DINGBATS
+        || unicodeBlock == UBLOCK_MISCELLANEOUS_SYMBOLS_AND_PICTOGRAPHS
+        || unicodeBlock == UBLOCK_EMOTICONS
+        || unicodeBlock == UBLOCK_TRANSPORT_AND_MAP_SYMBOLS)
+        return true;
+
+#if ICU_HEADERS_UNDERSTAND_SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS
+    static bool useSupplementalSymbolsAndPictographs = icuLibraryUnderstandsSupplementalSymbolsAndPictographs();
+    if (useSupplementalSymbolsAndPictographs)
+        return unicodeBlock == UBLOCK_SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS;
+#endif
+    return character >= 0x1F900 && character <= 0x1F9FF;
 }
 
-static inline bool isEmojiModifier(UChar32 character)
+static inline bool isEmojiFitzpatrickModifier(UChar32 character)
 {
+    // U+1F3FB - EMOJI MODIFIER FITZPATRICK TYPE-1-2
+    // U+1F3FC - EMOJI MODIFIER FITZPATRICK TYPE-3
+    // U+1F3FD - EMOJI MODIFIER FITZPATRICK TYPE-4
+    // U+1F3FE - EMOJI MODIFIER FITZPATRICK TYPE-5
+    // U+1F3FF - EMOJI MODIFIER FITZPATRICK TYPE-6
+
     return character >= 0x1F3FB && character <= 0x1F3FF;
 }
 
@@ -45,5 +77,3 @@ inline bool isVariationSelector(UChar32 character)
 }
 
 }
-
-#endif

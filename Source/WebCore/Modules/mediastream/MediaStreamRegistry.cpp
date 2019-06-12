@@ -43,11 +43,11 @@ MediaStreamRegistry& MediaStreamRegistry::shared()
     return instance;
 }
 
-void MediaStreamRegistry::registerURL(SecurityOrigin*, const URL& url, URLRegistrable* stream)
+void MediaStreamRegistry::registerURL(SecurityOrigin*, const URL& url, URLRegistrable& stream)
 {
-    ASSERT(&stream->registry() == this);
+    ASSERT(&stream.registry() == this);
     ASSERT(isMainThread());
-    m_mediaStreams.set(url.string(), static_cast<MediaStream*>(stream));
+    m_mediaStreams.set(url.string(), static_cast<MediaStream*>(&stream));
 }
 
 void MediaStreamRegistry::unregisterURL(const URL& url)
@@ -60,10 +60,6 @@ URLRegistrable* MediaStreamRegistry::lookup(const String& url) const
 {
     ASSERT(isMainThread());
     return m_mediaStreams.get(url);
-}
-
-MediaStreamRegistry::MediaStreamRegistry()
-{
 }
 
 MediaStream* MediaStreamRegistry::lookUp(const URL& url) const
@@ -84,21 +80,16 @@ void MediaStreamRegistry::registerStream(MediaStream& stream)
 
 void MediaStreamRegistry::unregisterStream(MediaStream& stream)
 {
-    Vector<MediaStream*>& allStreams = mediaStreams();
+    auto& allStreams = mediaStreams();
     size_t pos = allStreams.find(&stream);
     if (pos != notFound)
         allStreams.remove(pos);
 }
 
-MediaStream* MediaStreamRegistry::lookUp(const MediaStreamPrivate& privateStream) const
+void MediaStreamRegistry::forEach(const WTF::Function<void(MediaStream&)>& callback) const
 {
-    Vector<MediaStream*>& allStreams = mediaStreams();
-    for (auto& stream : allStreams) {
-        if (stream->privateStream() == &privateStream)
-            return stream;
-    }
-
-    return nullptr;
+    for (auto& stream : mediaStreams())
+        callback(*stream);
 }
 
 } // namespace WebCore

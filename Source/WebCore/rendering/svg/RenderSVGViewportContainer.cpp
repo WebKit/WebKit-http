@@ -25,12 +25,11 @@
 
 #include "GraphicsContext.h"
 #include "RenderView.h"
-#include "SVGNames.h"
 #include "SVGSVGElement.h"
 
 namespace WebCore {
 
-RenderSVGViewportContainer::RenderSVGViewportContainer(SVGSVGElement& element, Ref<RenderStyle>&& style)
+RenderSVGViewportContainer::RenderSVGViewportContainer(SVGSVGElement& element, RenderStyle&& style)
     : RenderSVGContainer(element, WTFMove(style))
     , m_didTransformToRootUpdate(false)
     , m_isLayoutSizeChanged(false)

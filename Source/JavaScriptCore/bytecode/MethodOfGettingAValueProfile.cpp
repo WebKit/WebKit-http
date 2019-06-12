@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,8 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "ArithProfile.h"
+#include "CCallHelpers.h"
 #include "CodeBlock.h"
 #include "JSCInlines.h"
 
@@ -44,28 +46,32 @@ MethodOfGettingAValueProfile MethodOfGettingAValueProfile::fromLazyOperand(
     return result;
 }
 
-EncodedJSValue* MethodOfGettingAValueProfile::getSpecFailBucket(unsigned index) const
+void MethodOfGettingAValueProfile::emitReportValue(CCallHelpers& jit, JSValueRegs regs) const
 {
     switch (m_kind) {
     case None:
-        return 0;
+        return;
         
     case Ready:
-        return u.profile->specFailBucket(index);
+        jit.storeValue(regs, u.profile->specFailBucket(0));
+        return;
         
     case LazyOperand: {
         LazyOperandValueProfileKey key(u.lazyOperand.bytecodeOffset, VirtualRegister(u.lazyOperand.operand));
         
-        ConcurrentJITLocker locker(u.lazyOperand.codeBlock->m_lock);
+        ConcurrentJSLocker locker(u.lazyOperand.codeBlock->m_lock);
         LazyOperandValueProfile* profile =
             u.lazyOperand.codeBlock->lazyOperandValueProfiles().add(locker, key);
-        return profile->specFailBucket(index);
+        jit.storeValue(regs, profile->specFailBucket(0));
+        return;
     }
         
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        return 0;
-    }
+    case ArithProfileReady: {
+        u.arithProfile->emitObserveResult(jit, regs, DoNotHaveTagRegisters);
+        return;
+    } }
+    
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 } // namespace JSC

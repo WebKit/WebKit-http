@@ -29,11 +29,10 @@
 #include "JSObject.h"
 #include "JSCInlines.h"
 #include "Structure.h"
-#include <wtf/RefPtr.h>
 
 namespace JSC {
     
-const ClassInfo StructureChain::s_info = { "StructureChain", 0, 0, CREATE_METHOD_TABLE(StructureChain) };
+const ClassInfo StructureChain::s_info = { "StructureChain", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(StructureChain) };
 
 StructureChain::StructureChain(VM& vm, Structure* structure)
     : JSCell(vm, structure)
@@ -49,9 +48,11 @@ void StructureChain::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     StructureChain* thisObject = jsCast<StructureChain*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    size_t i = 0;
-    while (thisObject->m_vector[i])
-        visitor.append(&thisObject->m_vector[i++]);
+    if (WriteBarrier<Structure>* vector = thisObject->m_vector.get()) {
+        size_t i = 0;
+        while (vector[i])
+            visitor.append(vector[i++]);
+    }
 }
 
 } // namespace JSC

@@ -44,8 +44,8 @@ public:
     
     virtual ~DisplayRefreshMonitorIOS();
 
-    void displayLinkFired(double nowSeconds);
-    virtual bool requestRefreshCallback() override;
+    void displayLinkFired();
+    bool requestRefreshCallback() override;
 
 private:
     explicit DisplayRefreshMonitorIOS(PlatformDisplayID);

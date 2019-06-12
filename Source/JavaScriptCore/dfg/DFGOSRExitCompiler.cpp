@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "DFGCommon.h"
 #include "DFGJITCode.h"
 #include "DFGOSRExitPreparation.h"
+#include "DFGOperations.h"
 #include "LinkBuffer.h"
 #include "OperandsInlines.h"
 #include "JSCInlines.h"
@@ -70,7 +71,7 @@ void OSRExitCompiler::emitRestoreArguments(const Operands<ValueRecovery>& operan
         
         if (!inlineCallFrame || inlineCallFrame->isClosureCall) {
             m_jit.loadPtr(
-                AssemblyHelpers::addressFor(stackOffset + JSStack::Callee),
+                AssemblyHelpers::addressFor(stackOffset + CallFrameSlot::callee),
                 GPRInfo::regT0);
         } else {
             m_jit.move(
@@ -80,7 +81,7 @@ void OSRExitCompiler::emitRestoreArguments(const Operands<ValueRecovery>& operan
         
         if (!inlineCallFrame || inlineCallFrame->isVarargs()) {
             m_jit.load32(
-                AssemblyHelpers::payloadFor(stackOffset + JSStack::ArgumentCount),
+                AssemblyHelpers::payloadFor(stackOffset + CallFrameSlot::argumentCount),
                 GPRInfo::regT1);
         } else {
             m_jit.move(
@@ -112,16 +113,15 @@ extern "C" {
 
 void compileOSRExit(ExecState* exec)
 {
-    SamplingRegion samplingRegion("DFG OSR Exit Compilation");
+    VM* vm = &exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(*vm);
 
-    if (exec->vm().callFrameForCatch)
-        RELEASE_ASSERT(exec->vm().callFrameForCatch == exec);
+    if (vm->callFrameForCatch)
+        RELEASE_ASSERT(vm->callFrameForCatch == exec);
     
     CodeBlock* codeBlock = exec->codeBlock();
     ASSERT(codeBlock);
     ASSERT(codeBlock->jitType() == JITCode::DFGJIT);
-
-    VM* vm = &exec->vm();
     
     // It's sort of preferable that we don't GC while in here. Anyways, doing so wouldn't
     // really be profitable.
@@ -133,7 +133,7 @@ void compileOSRExit(ExecState* exec)
     if (vm->callFrameForCatch)
         ASSERT(exit.m_kind == GenericUnwind);
     if (exit.isExceptionHandler())
-        ASSERT(!!vm->exception());
+        ASSERT_UNUSED(scope, !!scope.exception());
         
     
     prepareCodeOriginForOSRExit(exec, exit.m_codeOrigin);
@@ -147,17 +147,18 @@ void compileOSRExit(ExecState* exec)
         recovery = &codeBlock->jitCode()->dfg()->speculationRecovery[exit.m_recoveryIndex];
 
     {
-        CCallHelpers jit(vm, codeBlock);
+        CCallHelpers jit(codeBlock);
         OSRExitCompiler exitCompiler(jit);
 
         if (exit.m_kind == GenericUnwind) {
             // We are acting as a defacto op_catch because we arrive here from genericUnwind().
             // So, we must restore our call frame and stack pointer.
-            jit.restoreCalleeSavesFromVMCalleeSavesBuffer();
+            jit.restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(*vm);
             jit.loadPtr(vm->addressOfCallFrameForCatch(), GPRInfo::callFrameRegister);
-            jit.addPtr(CCallHelpers::TrustedImm32(codeBlock->stackPointerOffset() * sizeof(Register)),
-                GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
         }
+        jit.addPtr(
+            CCallHelpers::TrustedImm32(codeBlock->stackPointerOffset() * sizeof(Register)),
+            GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
 
         jit.jitAssertHasValidCallFrame();
         
@@ -171,11 +172,11 @@ void compileOSRExit(ExecState* exec)
             jit.add64(CCallHelpers::TrustedImm32(1), CCallHelpers::AbsoluteAddress(profilerExit->counterAddress()));
         }
 
-        exitCompiler.compileExit(exit, operands, recovery);
+        exitCompiler.compileExit(*vm, exit, operands, recovery);
         
-        LinkBuffer patchBuffer(*vm, jit, codeBlock);
+        LinkBuffer patchBuffer(jit, codeBlock);
         exit.m_code = FINALIZE_CODE_IF(
-            shouldDumpDisassembly() || Options::verboseOSR(),
+            shouldDumpDisassembly() || Options::verboseOSR() || Options::verboseDFGOSRExit(),
             patchBuffer,
             ("DFG OSR exit #%u (%s, %s) from %s, with operands = %s",
                 exitIndex, toCString(exit.m_codeOrigin).data(),

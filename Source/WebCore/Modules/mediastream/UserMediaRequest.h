@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,79 +30,66 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UserMediaRequest_h
-#define UserMediaRequest_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "ActiveDOMObject.h"
-#include "MediaDevices.h"
-#include "MediaStreamCreationClient.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
+#include "JSDOMPromiseDeferred.h"
+#include "MediaConstraints.h"
 
 namespace WebCore {
 
-class Dictionary;
-class Document;
-class Frame;
-class MediaConstraints;
-class MediaStreamPrivate;
-class UserMediaController;
+class MediaStream;
 class SecurityOrigin;
+class UserMediaController;
 
-typedef int ExceptionCode;
-
-class UserMediaRequest : public MediaStreamCreationClient, public ContextDestructionObserver {
+class UserMediaRequest : public RefCounted<UserMediaRequest>, private ContextDestructionObserver {
 public:
-    static void start(Document*, const Dictionary&, MediaDevices::Promise&&, ExceptionCode&);
+    static ExceptionOr<void> start(Document&, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&&);
 
-    ~UserMediaRequest();
-
-    WEBCORE_EXPORT SecurityOrigin* securityOrigin() const;
+    virtual ~UserMediaRequest();
 
     void start();
-    WEBCORE_EXPORT void userMediaAccessGranted(const String& audioDeviceUID, const String& videoDeviceUID);
-    WEBCORE_EXPORT void userMediaAccessDenied();
 
-    bool requiresAudio() const { return m_audioDeviceUIDs.size(); }
-    bool requiresVideo() const { return m_videoDeviceUIDs.size(); }
+    WEBCORE_EXPORT void setAllowedMediaDeviceUIDs(const String& audioDeviceUID, const String& videoDeviceUID);
+    WEBCORE_EXPORT void allow(String&& audioDeviceUID, String&& videoDeviceUID, String&& deviceIdentifierHashSalt);
+
+    enum MediaAccessDenialReason { NoConstraints, UserMediaDisabled, NoCaptureDevices, InvalidConstraint, HardwareError, PermissionDenied, OtherFailure };
+    WEBCORE_EXPORT void deny(MediaAccessDenialReason, const String& invalidConstraint);
 
     const Vector<String>& audioDeviceUIDs() const { return m_audioDeviceUIDs; }
     const Vector<String>& videoDeviceUIDs() const { return m_videoDeviceUIDs; }
 
-    const String& allowedAudioDeviceUID() const { return m_audioDeviceUIDAllowed; }
+    const MediaConstraints& audioConstraints() const { return m_audioConstraints; }
+    const MediaConstraints& videoConstraints() const { return m_videoConstraints; }
+
+    const String& allowedAudioDeviceUID() const { return m_allowedAudioDeviceUID; }
     const String& allowedVideoDeviceUID() const { return m_allowedVideoDeviceUID; }
 
+    WEBCORE_EXPORT SecurityOrigin* userMediaDocumentOrigin() const;
+    WEBCORE_EXPORT SecurityOrigin* topLevelDocumentOrigin() const;
+    WEBCORE_EXPORT Document* document() const;
+
 private:
-    UserMediaRequest(ScriptExecutionContext*, UserMediaController*, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints, MediaDevices::Promise&&);
+    UserMediaRequest(Document&, UserMediaController&, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&&);
 
-    // MediaStreamCreationClient
-    virtual void constraintsValidated(const Vector<RefPtr<RealtimeMediaSource>>& audioTracks, const Vector<RefPtr<RealtimeMediaSource>>& videoTracks) override final;
-    virtual void constraintsInvalid(const String& constraintName) override final;
-    virtual void didCreateStream(PassRefPtr<MediaStreamPrivate>) override final;
-    virtual void failedToCreateStreamWithConstraintsError(const String& constraintName) override final;
-    virtual void failedToCreateStreamWithPermissionError() override final;
-
-    // ContextDestructionObserver
-    virtual void contextDestroyed() override final;
+    void contextDestroyed() final;
     
-    RefPtr<MediaConstraints> m_audioConstraints;
-    RefPtr<MediaConstraints> m_videoConstraints;
+    MediaConstraints m_audioConstraints;
+    MediaConstraints m_videoConstraints;
 
     Vector<String> m_videoDeviceUIDs;
     Vector<String> m_audioDeviceUIDs;
 
     String m_allowedVideoDeviceUID;
-    String m_audioDeviceUIDAllowed;
+    String m_allowedAudioDeviceUID;
 
     UserMediaController* m_controller;
-    MediaDevices::Promise m_promise;
+    DOMPromiseDeferred<IDLInterface<MediaStream>> m_promise;
+    RefPtr<UserMediaRequest> m_protector;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // UserMediaRequest_h

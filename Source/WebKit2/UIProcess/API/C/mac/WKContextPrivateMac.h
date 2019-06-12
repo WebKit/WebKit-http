@@ -33,9 +33,6 @@
 extern "C" {
 #endif
 
-WK_EXPORT bool WKContextGetProcessSuppressionEnabled(WKContextRef context);
-WK_EXPORT void WKContextSetProcessSuppressionEnabled(WKContextRef context, bool enabled);
-
 WK_EXPORT bool WKContextIsPlugInUpdateAvailable(WKContextRef context, WKStringRef plugInBundleIdentifier);
 
 WK_EXPORT void WKContextSetPluginLoadClientPolicy(WKContextRef context, WKPluginLoadClientPolicy policy, WKStringRef host, WKStringRef bundleIdentifier, WKStringRef versionString);
@@ -76,8 +73,6 @@ WK_EXPORT WKStringRef WKPlugInInfoIsSandboxedKey();
 
 WK_EXPORT bool WKContextShouldBlockWebGL();
 WK_EXPORT bool WKContextShouldSuggestBlockWebGL();
-
-WK_EXPORT pid_t WKContextGetNetworkProcessIdentifier(WKContextRef context);
 
 #ifdef __cplusplus
 }

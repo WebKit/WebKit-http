@@ -34,6 +34,7 @@
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
 #if WK_API_ENABLED
 @interface WKWebView (Details)
@@ -54,8 +55,35 @@ enum {
 @property (nonatomic, assign) PlatformWebView* platformWebView;
 @end
 
+static Vector<WebKitTestRunnerWindow*> allWindows;
+
 @implementation WebKitTestRunnerWindow
 @synthesize platformWebView = _platformWebView;
+
++ (NSWindow *)_WTR_keyWindow
+{
+    size_t i = allWindows.size();
+    while (i) {
+        if ([allWindows[i] isKeyWindow])
+            return allWindows[i];
+        --i;
+    }
+
+    return nil;
+}
+
+- (instancetype)initWithContentRect:(NSRect)contentRect styleMask:(NSUInteger)windowStyle backing:(NSBackingStoreType)bufferingType defer:(BOOL)deferCreation
+{
+    allWindows.append(self);
+    return [super initWithContentRect:contentRect styleMask:windowStyle backing:bufferingType defer:deferCreation];
+}
+
+- (void)dealloc
+{
+    allWindows.removeFirst(self);
+    ASSERT(!allWindows.contains(self));
+    [super dealloc];
+}
 
 - (BOOL)isKeyWindow
 {
@@ -118,7 +146,7 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
 
     NSScreen *firstScreen = [[NSScreen screens] objectAtIndex:0];
     NSRect windowRect = m_options.shouldShowWebView ? NSOffsetRect(rect, 100, 100) : NSOffsetRect(rect, -10000, [firstScreen frame].size.height - rect.size.height + 10000);
-    m_window = [[WebKitTestRunnerWindow alloc] initWithContentRect:windowRect styleMask:NSBorderlessWindowMask backing:(NSBackingStoreType)_NSBackingStoreUnbuffered defer:YES];
+    m_window = [[WebKitTestRunnerWindow alloc] initWithContentRect:windowRect styleMask:NSWindowStyleMaskBorderless backing:(NSBackingStoreType)_NSBackingStoreUnbuffered defer:YES];
     m_window.platformWebView = this;
     [m_window setColorSpace:[firstScreen colorSpace]];
     [m_window setCollectionBehavior:NSWindowCollectionBehaviorStationary];
@@ -134,14 +162,18 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
 void PlatformWebView::setWindowIsKey(bool isKey)
 {
     m_windowIsKey = isKey;
+    if (m_windowIsKey)
+        [m_window makeKeyWindow];
+    else
+        [m_window resignKeyWindow];
 }
 
-void PlatformWebView::resizeTo(unsigned width, unsigned height)
+void PlatformWebView::resizeTo(unsigned width, unsigned height, WebViewSizingMode sizingMode)
 {
     WKRect frame = windowFrame();
     frame.size.width = width;
     frame.size.height = height;
-    setWindowFrame(frame);
+    setWindowFrame(frame, sizingMode);
 }
 
 PlatformWebView::~PlatformWebView()
@@ -150,6 +182,18 @@ PlatformWebView::~PlatformWebView()
     [m_window close];
     [m_window release];
     [m_view release];
+}
+
+PlatformWindow PlatformWebView::keyWindow()
+{
+    size_t i = allWindows.size();
+    while (i) {
+        --i;
+        if ([allWindows[i] isKeyWindow])
+            return allWindows[i];
+    }
+
+    return nil;
 }
 
 WKPageRef PlatformWebView::page()
@@ -179,7 +223,7 @@ WKRect PlatformWebView::windowFrame()
     return wkFrame;
 }
 
-void PlatformWebView::setWindowFrame(WKRect frame)
+void PlatformWebView::setWindowFrame(WKRect frame, WebViewSizingMode)
 {
     [m_window setFrame:NSMakeRect(frame.origin.x, frame.origin.y, frame.size.width, frame.size.height) display:YES];
     [platformView() setFrame:NSMakeRect(0, 0, frame.size.width, frame.size.height)];
@@ -212,12 +256,22 @@ void PlatformWebView::removeChromeInputField()
     }
 }
 
+void PlatformWebView::addToWindow()
+{
+    [[m_window contentView] addSubview:m_view];
+}
+
+void PlatformWebView::removeFromWindow()
+{
+    [m_view removeFromSuperview];
+}
+
 void PlatformWebView::makeWebViewFirstResponder()
 {
     [m_window makeFirstResponder:platformView()];
 }
 
-WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
+RetainPtr<CGImageRef> PlatformWebView::windowSnapshotImage()
 {
     [platformView() display];
     CGWindowImageOption options = kCGWindowImageBoundsIgnoreFraming | kCGWindowImageShouldBeOpaque;
@@ -225,18 +279,7 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
     if ([m_window backingScaleFactor] == 1)
         options |= kCGWindowImageNominalResolution;
 
-    RetainPtr<CGImageRef> windowSnapshotImage = adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, [m_window windowNumber], options));
-
-    // windowSnapshotImage will be in GenericRGB, as we've set the main display's color space to GenericRGB.
-    return adoptWK(WKImageCreateFromCGImage(windowSnapshotImage.get(), 0));
-}
-
-bool PlatformWebView::viewSupportsOptions(const TestOptions& options) const
-{
-    if (m_options.useThreadedScrolling != options.useThreadedScrolling || m_options.overrideLanguages != options.overrideLanguages)
-        return false;
-
-    return true;
+    return adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, [m_window windowNumber], options));
 }
 
 void PlatformWebView::changeWindowScaleIfNeeded(float newScale)

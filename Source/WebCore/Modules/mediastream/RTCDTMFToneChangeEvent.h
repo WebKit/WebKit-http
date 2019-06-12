@@ -23,26 +23,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCDTMFToneChangeEvent_h
-#define RTCDTMFToneChangeEvent_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC_DTMF)
 
 #include "Event.h"
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-struct RTCDTMFToneChangeEventInit : public EventInit {
-    String tone;
-};
-
 class RTCDTMFToneChangeEvent : public Event {
 public:
     virtual ~RTCDTMFToneChangeEvent();
 
     static Ref<RTCDTMFToneChangeEvent> create(const String& tone);
-    static Ref<RTCDTMFToneChangeEvent> createForBindings(const AtomicString& type, const RTCDTMFToneChangeEventInit& initializer);
+
+    struct Init : EventInit {
+        String tone;
+    };
+
+    static Ref<RTCDTMFToneChangeEvent> create(const AtomicString& type, const Init&, IsTrusted = IsTrusted::No);
 
     const String& tone() const;
 
@@ -50,13 +50,11 @@ public:
 
 private:
     explicit RTCDTMFToneChangeEvent(const String& tone);
-    explicit RTCDTMFToneChangeEvent(const RTCDTMFToneChangeEventInit&);
+    RTCDTMFToneChangeEvent(const AtomicString& type, const Init&, IsTrusted);
 
     String m_tone;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCDTMFToneChangeEvent_h
+#endif // ENABLE(WEB_RTC)

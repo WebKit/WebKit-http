@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2010 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2010, 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -21,74 +21,70 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
-#ifndef Worker_h
-#define Worker_h
+#pragma once
 
 #include "AbstractWorker.h"
 #include "ActiveDOMObject.h"
 #include "ContentSecurityPolicyResponseHeaders.h"
-#include "EventListener.h"
 #include "EventTarget.h"
 #include "MessagePort.h"
 #include "WorkerScriptLoaderClient.h"
-#include <wtf/Forward.h>
+#include <runtime/RuntimeFlags.h>
 #include <wtf/Optional.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
 #include <wtf/text/AtomicStringHash.h>
+
+namespace JSC {
+class ExecState;
+class JSObject;
+class JSValue;
+}
 
 namespace WebCore {
 
-    class ScriptExecutionContext;
-    class WorkerGlobalScopeProxy;
-    class WorkerScriptLoader;
+class ScriptExecutionContext;
+class WorkerGlobalScopeProxy;
+class WorkerScriptLoader;
 
-    typedef int ExceptionCode;
+class Worker final : public AbstractWorker, public ActiveDOMObject, private WorkerScriptLoaderClient {
+public:
+    static ExceptionOr<Ref<Worker>> create(ScriptExecutionContext&, JSC::RuntimeFlags, const String& url);
+    virtual ~Worker();
 
-    class Worker final : public AbstractWorker, public ActiveDOMObject, private WorkerScriptLoaderClient {
-    public:
-        static RefPtr<Worker> create(ScriptExecutionContext&, const String& url, ExceptionCode&);
-        virtual ~Worker();
+    ExceptionOr<void> postMessage(JSC::ExecState&, JSC::JSValue message, Vector<JSC::Strong<JSC::JSObject>>&&);
 
-        virtual EventTargetInterface eventTargetInterface() const override { return WorkerEventTargetInterfaceType; }
+    void terminate();
 
-        void postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, ExceptionCode&);
-        // Needed for Objective-C bindings (see bug 28774).
-        void postMessage(PassRefPtr<SerializedScriptValue> message, MessagePort*, ExceptionCode&);
+    bool hasPendingActivity() const final;
 
-        void terminate();
+    String identifier() const { return m_identifier; }
 
-        // EventTarget API.
-        virtual ScriptExecutionContext* scriptExecutionContext() const override final { return ActiveDOMObject::scriptExecutionContext(); }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
 
-        // ActiveDOMObject API.
-        bool hasPendingActivity() const override;
+private:
+    explicit Worker(ScriptExecutionContext&, JSC::RuntimeFlags);
 
-    private:
-        explicit Worker(ScriptExecutionContext&);
+    EventTargetInterface eventTargetInterface() const final { return WorkerEventTargetInterfaceType; }
 
-        void notifyNetworkStateChange(bool isOnline);
+    void notifyNetworkStateChange(bool isOnline);
 
-        // WorkerScriptLoaderClient callbacks
-        virtual void didReceiveResponse(unsigned long identifier, const ResourceResponse&) override;
-        virtual void notifyFinished() override;
+    void didReceiveResponse(unsigned long identifier, const ResourceResponse&) final;
+    void notifyFinished() final;
 
-        // ActiveDOMObject API.
-        bool canSuspendForDocumentSuspension() const override;
-        void stop() override;
-        const char* activeDOMObjectName() const override;
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
+    const char* activeDOMObjectName() const final;
 
-        friend void networkStateChanged(bool isOnLine);
+    friend void networkStateChanged(bool isOnLine);
 
-        RefPtr<WorkerScriptLoader> m_scriptLoader;
-        WorkerGlobalScopeProxy* m_contextProxy; // The proxy outlives the worker to perform thread shutdown.
-        Optional<ContentSecurityPolicyResponseHeaders> m_contentSecurityPolicyResponseHeaders;
-        bool m_shouldBypassMainWorldContentSecurityPolicy { false };
-    };
+    RefPtr<WorkerScriptLoader> m_scriptLoader;
+    String m_identifier;
+    WorkerGlobalScopeProxy& m_contextProxy; // The proxy outlives the worker to perform thread shutdown.
+    std::optional<ContentSecurityPolicyResponseHeaders> m_contentSecurityPolicyResponseHeaders;
+    MonotonicTime m_workerCreationTime;
+    bool m_shouldBypassMainWorldContentSecurityPolicy { false };
+    JSC::RuntimeFlags m_runtimeFlags;
+};
 
 } // namespace WebCore
-
-#endif // Worker_h

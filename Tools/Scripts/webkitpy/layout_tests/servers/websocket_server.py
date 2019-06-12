@@ -1,4 +1,5 @@
 # Copyright (C) 2011 Google Inc. All rights reserved.
+# Copyright (C) 2016 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -28,8 +29,10 @@
 
 """A class to help start/stop the PyWebSocket server used by layout tests."""
 
+import errno
 import logging
 import os
+import socket
 import sys
 import time
 
@@ -39,16 +42,15 @@ from webkitpy.layout_tests.servers import http_server_base
 _log = logging.getLogger(__name__)
 
 
-_WS_LOG_PREFIX = 'pywebsocket.ws.log-'
-_WSS_LOG_PREFIX = 'pywebsocket.wss.log-'
-
-
-_DEFAULT_WS_PORT = 8880
-_DEFAULT_WSS_PORT = 9323
+_WS_LOG_NAME = 'pywebsocket.ws.log'
+_WSS_LOG_NAME = 'pywebsocket.wss.log'
 
 
 class PyWebSocket(http_server.Lighttpd):
-    def __init__(self, port_obj, output_dir, port=_DEFAULT_WS_PORT,
+    DEFAULT_WS_PORT = 8880
+    DEFAULT_WSS_PORT = 9323
+
+    def __init__(self, port_obj, output_dir, port=DEFAULT_WS_PORT,
                  root=None, use_tls=False,
                  private_key=None, certificate=None, ca_certificate=None,
                  pidfile=None):
@@ -56,7 +58,7 @@ class PyWebSocket(http_server.Lighttpd):
           output_dir: the absolute path to the layout test result directory
         """
         http_server.Lighttpd.__init__(self, port_obj, output_dir,
-                                      port=_DEFAULT_WS_PORT,
+                                      port=port,
                                       root=root)
         self._output_dir = output_dir
         self._pid_file = pidfile
@@ -102,13 +104,27 @@ class PyWebSocket(http_server.Lighttpd):
                 self._web_socket_tests = None
 
         if self._use_tls:
-            self._log_prefix = _WSS_LOG_PREFIX
+            self._log_prefix = _WSS_LOG_NAME
         else:
-            self._log_prefix = _WS_LOG_PREFIX
+            self._log_prefix = _WS_LOG_NAME
+
+    def is_running(self):
+        s = socket.socket()
+        try:
+            s.connect(('localhost', self._port))
+        except IOError, e:
+            if e.errno not in (errno.ECONNREFUSED, errno.ECONNRESET):
+                raise
+            return False
+        finally:
+            s.close()
+        return True
+
+    def ports_to_forward(self):
+        return [self._port]
 
     def _prepare_config(self):
-        time_str = time.strftime('%d%b%Y-%H%M%S')
-        log_file_name = self._log_prefix + time_str
+        log_file_name = self._log_prefix
         # FIXME: Doesn't Executive have a devnull, so that we don't have to use os.devnull directly?
         self._wsin = open(os.devnull, 'r')
 
@@ -145,7 +161,7 @@ class PyWebSocket(http_server.Lighttpd):
             start_cmd.extend(['-t', '-k', self._private_key,
                               '-c', self._certificate])
             if self._ca_certificate:
-                start_cmd.append('--ca-certificate')
+                start_cmd.append('--tls-client-ca')
                 start_cmd.append(self._ca_certificate)
 
         self._start_cmd = start_cmd

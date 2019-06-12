@@ -23,35 +23,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLSpace_h
-#define RenderMathMLSpace_h
+#pragma once
 
 #if ENABLE(MATHML)
 
-#include "MathMLTextElement.h"
+#include "MathMLSpaceElement.h"
 #include "RenderMathMLBlock.h"
 
 namespace WebCore {
-    
+
 class RenderMathMLSpace final : public RenderMathMLBlock {
 public:
-    RenderMathMLSpace(MathMLTextElement&, Ref<RenderStyle>&&);
-    MathMLTextElement& element() { return static_cast<MathMLTextElement&>(nodeForNonAnonymous()); }
+    RenderMathMLSpace(MathMLSpaceElement&, RenderStyle&&);
+    MathMLSpaceElement& element() const { return static_cast<MathMLSpaceElement&>(nodeForNonAnonymous()); }
 
 private:
-    virtual const char* renderName() const override { return isAnonymous() ? "RenderMathMLSpace (anonymous)" : "RenderMathMLSpace"; }
-    virtual bool isRenderMathMLSpace() const override { return true; }
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override { return false; }
-    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
-    virtual void updateFromElement() override;
-    virtual Optional<int> firstLineBaseline() const override;
-    virtual void updateLogicalWidth() override;
-    virtual void updateLogicalHeight() override;
+    const char* renderName() const final { return "RenderMathMLSpace"; }
+    bool isRenderMathMLSpace() const final { return true; }
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const final { return false; }
+    void computePreferredLogicalWidths() final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
+    std::optional<int> firstLineBaseline() const final;
 
-    LayoutUnit m_width;
-    LayoutUnit m_height;
-    LayoutUnit m_depth;
+    LayoutUnit spaceWidth() const;
+    void getSpaceHeightAndDepth(LayoutUnit& height, LayoutUnit& depth) const;
 };
 
 } // namespace WebCore
@@ -59,4 +54,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLSpace, isRenderMathMLSpace())
 
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLSpace_h

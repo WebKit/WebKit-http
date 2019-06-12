@@ -4,10 +4,21 @@
     <script>
     function go() {
         var video = document.getElementsByTagName('video')[0];
-        video.addEventListener('playing', function() {
+        video.play().then(playing).catch(notPlaying);
+    }
+
+    function playing() {
+        try {
+            window.webkit.messageHandlers.testHandler.postMessage('playing');
+        } catch(e) {
             window.location = 'callback:playing';
-        });
-        video.play();
+        }
+    }
+
+    function notPlaying() {
+        try {
+            window.webkit.messageHandlers.testHandler.postMessage('not playing');
+        } catch(e) { }
     }
     </script>
 </head>

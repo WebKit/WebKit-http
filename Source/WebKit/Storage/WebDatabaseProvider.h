@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebDatabaseProvider_h
-#define WebDatabaseProvider_h
+#pragma once
 
 #include <WebCore/DatabaseProvider.h>
 #include <wtf/Forward.h>
@@ -42,8 +41,9 @@ public:
     virtual ~WebDatabaseProvider();
 
 #if ENABLE(INDEXED_DATABASE)
-    virtual bool supportsModernIDB() const override { return true; }
-    virtual WebCore::IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const WebCore::SessionID&) override;
+    WebCore::IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const WebCore::SessionID&) override;
+
+    void deleteAllDatabases();
 #endif
 
 private:
@@ -52,9 +52,6 @@ private:
     static String indexedDatabaseDirectoryPath();
 
 #if ENABLE(INDEXED_DATABASE)
-    virtual RefPtr<WebCore::IDBFactoryBackendInterface> createIDBFactoryBackend() override;
     HashMap<uint64_t, RefPtr<WebCore::InProcessIDBServer>> m_idbServerMap;
 #endif
 };
-
-#endif // WebDatabaseProvider_h

@@ -55,6 +55,8 @@
 #endif
 #endif
 
+@class UIColor;
+@class UIImage;
 @class NSError;
 @class WebFrame;
 @class WebDeviceOrientation;
@@ -114,6 +116,10 @@ extern NSString *_WebViewRemoteInspectorHasSessionChangedNotification;
 #if TARGET_OS_IPHONE
 extern NSString *WebQuickLookFileNameKey;
 extern NSString *WebQuickLookUTIKey;
+#endif
+
+#if TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+@protocol UIDropSession;
 #endif
 
 extern NSString * const WebViewWillCloseNotification;
@@ -179,6 +185,19 @@ typedef enum {
     WebNotificationPermissionNotAllowed,
     WebNotificationPermissionDenied
 } WebNotificationPermission;
+
+@interface WebUITextIndicatorData : NSObject
+@property (nonatomic, retain) UIImage *dataInteractionImage;
+@property (nonatomic, assign) CGRect selectionRectInRootViewCoordinates;
+@property (nonatomic, assign) CGRect textBoundingRectInRootViewCoordinates;
+@property (nonatomic, retain) NSArray<NSValue *> *textRectsInBoundingRectCoordinates; // CGRect values
+@property (nonatomic, assign) CGFloat contentImageScaleFactor;
+@property (nonatomic, retain) UIImage *contentImageWithHighlight;
+@property (nonatomic, retain) UIImage *contentImage;
+@property (nonatomic, retain) UIImage *contentImageWithoutSelection;
+@property (nonatomic, assign) CGRect contentImageWithoutSelectionRectInRootViewCoordinates;
+@property (nonatomic, retain) UIColor *estimatedBackgroundColor;
+@end
 
 #if !TARGET_OS_IPHONE
 @interface WebController : NSTreeController {
@@ -300,6 +319,9 @@ typedef enum {
 @end
 
 @interface WebView (WebPrivate)
+
++ (void)_setIconLoadingEnabled:(BOOL)enabled;
++ (BOOL)_isIconLoadingEnabled;
 
 - (WebInspector *)inspector;
 
@@ -440,29 +462,35 @@ Could be worth adding to the API.
 - (DOMCSSStyleDeclaration *)styleAtSelectionStart;
 
 - (NSUInteger)_renderTreeSize;
-- (NSSize)_contentsSizeRespectingOverflow;
-
-/*!
- * @method _handleMemoryWarning
- * @discussion Try to release memory since we got a memory warning from the system. This method is
- * also used by other internal clients. See <rdar://9582500>.
- */
-+ (void)_handleMemoryWarning;
 
 - (void)_setResourceLoadSchedulerSuspended:(BOOL)suspend;
 + (void)_setTileCacheLayerPoolCapacity:(unsigned)capacity;
 
 + (void)_setAllowCookies:(BOOL)allow;
 + (BOOL)_allowCookies;
-+ (BOOL)_isUnderMemoryPressure;
-+ (void)_clearMemoryPressure;
-+ (BOOL)_shouldWaitForMemoryClearMessage;
 + (void)_releaseMemoryNow;
 
 - (void)_replaceCurrentHistoryItem:(WebHistoryItem *)item;
-#endif // PLATFORM(IOS)
 
-#if TARGET_OS_IPHONE
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition;
+- (WebUITextIndicatorData *)_getDataInteractionData;
+@property (nonatomic, readonly, strong, getter=_dataOperationTextIndicator) WebUITextIndicatorData *dataOperationTextIndicator;
+@property (nonatomic, readonly) NSUInteger _dragSourceAction;
+@property (nonatomic, strong, readonly) NSString *_draggedLinkTitle;
+@property (nonatomic, strong, readonly) NSURL *_draggedLinkURL;
+@property (nonatomic, readonly) CGRect _draggedElementBounds;
+- (uint64_t)_enteredDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (uint64_t)_updatedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (void)_exitedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (void)_performDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (BOOL)_tryToPerformDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
+- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)clientPosition;
+
+@property (nonatomic, readonly, getter=_dataInteractionCaretRect) CGRect dataInteractionCaretRect;
+#endif
+
+// Deprecated. Use -[WebDataSource _quickLookContent] instead.
 - (NSDictionary *)quickLookContentForURL:(NSURL *)url;
 #endif
 
@@ -486,12 +514,14 @@ Could be worth adding to the API.
 // SPI for DumpRenderTree
 - (void)_updateActiveState;
 
+- (void)_didScrollDocumentInFrameView:(WebFrameView *)frameView;
+
 /*!
     @method _registerViewClass:representationClass:forURLScheme:
     @discussion Register classes that implement WebDocumentView and WebDocumentRepresentation respectively.
     @param viewClass The WebDocumentView class to use to render data for a given MIME type.
     @param representationClass The WebDocumentRepresentation class to use to represent data of the given MIME type.
-    @param scheme The URL scheme to represent with an object of the given class.
+    @param URLScheme The URL scheme to represent with an object of the given class.
 */
 + (void)_registerViewClass:(Class)viewClass representationClass:(Class)representationClass forURLScheme:(NSString *)URLScheme;
 
@@ -574,7 +604,7 @@ Could be worth adding to the API.
 #if !TARGET_OS_IPHONE
 /*!
     @method setAlwaysShowVerticalScroller:
-    @result Forces the vertical scroller to be visible if flag is YES, otherwise
+    @abstract Forces the vertical scroller to be visible if flag is YES, otherwise
     if flag is NO the scroller with automatically show and hide as needed.
  */
 - (void)setAlwaysShowVerticalScroller:(BOOL)flag;
@@ -587,7 +617,7 @@ Could be worth adding to the API.
 
 /*!
     @method setAlwaysShowHorizontalScroller:
-    @result Forces the horizontal scroller to be visible if flag is YES, otherwise
+    @abstract Forces the horizontal scroller to be visible if flag is YES, otherwise
     if flag is NO the scroller with automatically show and hide as needed.
  */
 - (void)setAlwaysShowHorizontalScroller:(BOOL)flag;
@@ -654,12 +684,6 @@ Could be worth adding to the API.
     remove was successful.
  */
 - (BOOL)_setMediaLayer:(CALayer*)layer forPluginView:(NSView*)pluginView;
-
-/*!
-    @method _clearBackForwardCache
-    @abstract Clear's this WebView's back/forward cache on the WebThread.
- */
-- (void)_clearBackForwardCache;
 
 /*!
  @method _wantsTelephoneNumberParsing
@@ -748,13 +772,10 @@ Could be worth adding to the API.
 - (void)setInteractiveFormValidationEnabled:(BOOL)enabled;
 - (int)validationMessageTimerMagnification;
 - (void)setValidationMessageTimerMagnification:(int)newValue;
+- (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem;
 
 // Returns YES if NSView -displayRectIgnoringOpacity:inContext: will produce a faithful representation of the content.
 - (BOOL)_isSoftwareRenderable;
-// When drawing into a bitmap context, we normally flatten compositing layers (and distort 3D transforms).
-// Clients who are able to capture their own copy of the compositing layers need to be able to disable this.
-- (void)_setIncludesFlattenedCompositingLayersWhenDrawingToBitmap:(BOOL)flag;
-- (BOOL)_includesFlattenedCompositingLayersWhenDrawingToBitmap;
 
 - (void)setTracksRepaints:(BOOL)flag;
 - (BOOL)isTrackingRepaints;
@@ -800,7 +821,7 @@ Could be worth adding to the API.
 
 /*!
     @method setCSSAnimationsSuspended
-    @param paused YES to suspend animations, NO to resume animations.
+    @param suspended YES to suspend animations, NO to resume animations.
     @discussion Suspends or resumes all running animations and transitions in the page.
 */
 - (void)setCSSAnimationsSuspended:(BOOL)suspended;
@@ -819,7 +840,7 @@ Could be worth adding to the API.
 + (void)_registerURLSchemeAsAllowingDatabaseAccessInPrivateBrowsing:(NSString *)scheme;
 
 - (void)_scaleWebView:(float)scale atOrigin:(NSPoint)origin;
-- (float)_viewScaleFactor;
+- (float)_viewScaleFactor; // This is actually pageScaleFactor.
 
 - (void)_setUseFixedLayout:(BOOL)fixed;
 - (void)_setFixedLayoutSize:(NSSize)size;
@@ -894,6 +915,19 @@ Could be worth adding to the API.
 @property (nonatomic, copy, getter=_sourceApplicationAuditData, setter=_setSourceApplicationAuditData:) NSData *sourceApplicationAuditData;
 
 - (void)_setFontFallbackPrefersPictographs:(BOOL)flag;
+
+- (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString forSelectedRange:(NSRange)range view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock;
+- (void)forceRequestCandidatesForTesting;
+- (BOOL)shouldRequestCandidates;
+
+typedef struct WebEdgeInsets {
+    CGFloat top;
+    CGFloat left;
+    CGFloat bottom;
+    CGFloat right;
+} WebEdgeInsets;
+
+@property (nonatomic, assign, setter=_setUnobscuredSafeAreaInsets:) WebEdgeInsets _unobscuredSafeAreaInsets;
 
 @end
 

@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html>
+<script>
+    if (window.internals)
+        window.internals.settings.setAttachmentElementEnabled(true)
+</script>
 <body onload="runTest()">
 <div>text before <attachment id="attachment"></attachment> text after</div>
+<div id="result"></div>
 <script>
 var file;
 if (window.internals)
@@ -16,6 +21,8 @@ window.onload = function () {
     eventSender.mouseMoveTo(attachment.offsetLeft + 10, attachment.offsetTop + 10);
     eventSender.mouseDown(0);
     eventSender.mouseUp(0);
+    var range = window.getSelection().getRangeAt(0);
+    document.getElementById("result").innerText = 'Start offset ' + range.startOffset + ' End offset ' + range.endOffset;
 }
 </script>
 </body>

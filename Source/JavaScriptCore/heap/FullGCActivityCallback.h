@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FullGCActivityCallback_h
-#define FullGCActivityCallback_h
+#pragma once
 
 #include "GCActivityCallback.h"
 
@@ -34,24 +33,17 @@ class JS_EXPORT_PRIVATE FullGCActivityCallback : public GCActivityCallback {
 public:
     FullGCActivityCallback(Heap*);
 
-    virtual void doCollection() override;
+    void doCollection() override;
 
-    bool didSyncGCRecently() const { return m_didSyncGCRecently; }
-    void setDidSyncGCRecently() { m_didSyncGCRecently = true; }
+    bool didGCRecently() const { return m_didGCRecently; }
+    void setDidGCRecently() { m_didGCRecently = true; }
 
 protected:
-#if USE(CF)
-    FullGCActivityCallback(Heap* heap, CFRunLoopRef runLoop)
-        : GCActivityCallback(heap, runLoop)
-    {
-    }
-#endif
+    Seconds lastGCLength() override;
+    double gcTimeSlice(size_t bytes) override;
+    double deathRate() override;
 
-    virtual double lastGCLength() override;
-    virtual double gcTimeSlice(size_t bytes) override;
-    virtual double deathRate() override;
-
-    bool m_didSyncGCRecently { false };
+    bool m_didGCRecently { false };
 };
 
 inline RefPtr<FullGCActivityCallback> GCActivityCallback::createFullTimer(Heap* heap)
@@ -60,5 +52,3 @@ inline RefPtr<FullGCActivityCallback> GCActivityCallback::createFullTimer(Heap* 
 }
 
 } // namespace JSC
-
-#endif // FullGCActivityCallback_h

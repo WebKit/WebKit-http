@@ -52,17 +52,19 @@ chdirWebKit();
 
 my $showHelp = 0;
 my $clean = 0;
+my $defaultCMakeFeatures = 0;
 my $minimal = 0;
 my $installHeaders;
 my $installLibs;
 my $prefixPath;
 my $shouldInstall = 0;
 my $makeArgs = "";
-my $cmakeArgs = "";
+my @cmakeArgs;
 my $onlyWebKitProject = 0;
 my $coverageSupport = 0;
 my $shouldRunStaticAnalyzer = 0;
 my $startTime = time();
+my $archs32bit = 0;
 
 my @features = getFeatureOptionList();
 
@@ -73,6 +75,8 @@ push @ARGV, split(/ /, $ENV{'BUILD_WEBKIT_ARGS'}) if ($ENV{'BUILD_WEBKIT_ARGS'})
 foreach (@ARGV) {
     if ($_ eq '--minimal') {
         $minimal = 1;
+    } elsif ($_ eq 'ARCHS=i386' or $_ eq 'ARCHS=armv7' or $_ eq 'ARCHS=armv7s') {
+        $archs32bit = 1;
     }
 }
 
@@ -89,14 +93,16 @@ Usage: $programName [options] [options to pass to build system]
   --debug                           Compile with Debug configuration
   --release                         Compile with Release configuration
   --sdk=<sdk>                       Use a specific Xcode SDK (iOS and Mac only)
-  --device                          Use "iphoneos.internal" SDK if installed, else "iphoneos" SDK (iOS only)
+  --ios-device                      Use "iphoneos.internal" SDK if installed, else "iphoneos" SDK (iOS only)
+  --device                          DEPRECATED alias of --ios-device
   --ios-simulator                   Use the current iphonesimulator SDK (iOS only)
+  --simulator                       DEPRECATED alias of --ios-simulator
   --coverage                        Enable code coverage support (Mac only)
   --analyze                         Enable static anaylsis (iOS and Mac only)
 
-  --efl                             Build the EFL port
   --gtk                             Build the GTK+ port
   --qt                              Build the Qt port
+  --wpe                             Build the WPE port
   --wincairo                        Build using Cairo (rather than CoreGraphics) on Windows
 
   --inspector-frontend              Copy Web Inspector user interface resources to the build directory
@@ -104,9 +110,10 @@ Usage: $programName [options] [options to pass to build system]
   --prefix=<path>                   Set installation prefix to the given path (Gtk/Efl/Qt only)
   --install                         Install into given prefix after compilation
   --makeargs=<arguments>            Optional Makefile flags
-  --cmakeargs=<arguments>           Optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
+  --cmakeargs=<arguments>           One or more optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
 
   --minimal                         No optional features, unless explicitly enabled
+  --default-cmake-features          Use the default CMake features enabled for the port (CMake based ports)
 
   --only-webkit                     Build only the WebKit project
 EOF
@@ -119,11 +126,12 @@ my %options = (
     'prefix=s' => \$prefixPath,
     'install' => \$shouldInstall,
     'makeargs=s' => \$makeArgs,
-    'cmakeargs=s' => \$cmakeArgs,
+    'cmakeargs=s' => \@cmakeArgs,
     'minimal' => \$minimal,
     'only-webkit' => \$onlyWebKitProject,
     'coverage' => \$coverageSupport,
     'analyze' => \$shouldRunStaticAnalyzer,
+    'default-cmake-features' => \$defaultCMakeFeatures,
 );
 
 # Build usage text and options list from features
@@ -149,23 +157,26 @@ my $productDir = productDir();
 my @projects = ("Source/JavaScriptCore", "Source/WebCore", "Source/WebKit");
 
 # Build WTF as a separate static library on ports which support it.
-splice @projects, 0, 0, "Source/WTF" if isAppleMacWebKit() or isAppleWinWebKit() or isWinCairo();
+splice @projects, 0, 0, "Source/WTF" if isAppleWebKit() or isWinCairo();
 
-splice @projects, 0, 0, "Source/bmalloc" if isAppleMacWebKit();
+splice @projects, 0, 0, "Source/bmalloc" if isAppleCocoaWebKit();
 
-for my $dir (@projects) {
-    if (! -d $dir) {
-        die "Error: No $dir directory found. Please do a fresh checkout.\n";
+# Ports using CMake will check if directories exist in the CMake configuration.
+if (!isCMakeBuild()) {
+    for my $dir (@projects) {
+        if (! -d $dir) {
+            die "Error: No $dir directory found. Please do a fresh checkout.\n";
+        }
     }
 }
 
-if (!isIOSWebKit() && !-d "WebKitLibraries") {
+if ((isAppleWebKit() || isWinCairo()) && !-d "WebKitLibraries") {
     die "Error: No WebKitLibraries directory found. Please do a fresh checkout.\n";
 }
 
 my @options = ();
 
-if (isAppleMacWebKit()) {
+if (isAppleCocoaWebKit()) {
     push @options, XcodeOptions();
     sub option($$$)
     {
@@ -179,8 +190,12 @@ if (isAppleMacWebKit()) {
         push @options, $option unless $option eq "";
     }
 
-    # ANGLE must come before WebCore
-    splice @projects, 0, 0, "Source/ThirdParty/ANGLE";
+    # ANGLE and libwebrtc must come before WebCore
+    splice @projects, 0, 0, ("Source/ThirdParty/ANGLE");
+    if (not $archs32bit and ((portName() eq Mac and not architecture() eq "i386") or 
+        (portName() eq iOS and (architecture() eq "arm64" or architecture() eq "x86_64")))) {
+        splice @projects, 0, 0, ("Source/ThirdParty/libwebrtc");
+    }
 
     push @projects, ("Source/WebKit2");
 
@@ -192,26 +207,14 @@ if (isAppleMacWebKit()) {
         splice(@projects, $webKitIndex, 0, "Source/WebInspectorUI");
 
         # Copy library and header from WebKitLibraries to a findable place in the product directory.
-        my @copyLibrariesArgs = ("perl", "Tools/Scripts/copy-webkitlibraries-to-product-directory", "--wksi", "--llvm", productDir());
+        my @copyLibrariesArgs = ("perl", "Tools/Scripts/copy-webkitlibraries-to-product-directory", "--wksi",  productDir());
         print(join(" ", @copyLibrariesArgs) . "\n");
         (system(@copyLibrariesArgs) == 0) or die;
     } else {
         my @copyLibrariesArgs = ("perl", "Tools/Scripts/copy-webkitlibraries-to-product-directory", "--sdk", xcodeSDK(), "--wksi");
-        push @copyLibrariesArgs, "--llvm" if willUseIOSDeviceSDK();
-        if (my $hasInternalSDK = xcodeSDK() eq "iphoneos.internal") {
-            push @copyLibrariesArgs, (
-                "--prefer-system-llvm",
-                "--llvm-subdirectory", "internal-llvm",
-                "--llvm-prefix", "/usr/local",
-            );
-        }
         push @copyLibrariesArgs, productDir();
         print(join(" ", @copyLibrariesArgs) . "\n");
         (system(@copyLibrariesArgs) == 0) or die;
-
-        if (willUseIOSSimulatorSDK()) {
-            (system("perl", "Tools/Scripts/build-layouttestrelay", argumentsForConfiguration()) == 0) or die;
-        }
     }
 
     # Build Tools needed for Apple ports
@@ -257,21 +260,24 @@ if (isCMakeBuild() && (!isAnyWindows() || isQt())) {
     my @featureArgs = cMakeArgsFromFeatures();
     removeCMakeCache(@featureArgs);
 
-    buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, (cmakeBasedPortArguments(), @featureArgs), $cmakeArgs);
+    buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, (cmakeBasedPortArguments(), @featureArgs), @cmakeArgs);
 }
 
 my $baseProductDir = baseProductDir();
 if (isAppleWinWebKit() || isWinCairo()) {
+    my @featureArgs = cMakeArgsFromFeatures();
+    removeCMakeCache(@featureArgs);
+
     chdirWebKit();
-    if (exitStatus(generateBuildSystemFromCMakeProject())) {
+    if (exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs))) {
         die "Run \"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcvarsall.bat\" before build-webkit when using ninja";
     }
     chdirWebKit();
     if (canUseNinja()) {
-        chdir File::Spec->catdir("WebKitBuild", configuration());
+        chdir File::Spec->catdir($baseProductDir, configuration());
         $result = system("ninja");
     } else {
-        $result = buildVisualStudioProject(File::Spec->catfile("WebKitBuild", configuration(), "WebKit.sln"), $clean);
+        $result = buildVisualStudioProject(File::Spec->catfile($baseProductDir, configuration(), "WebKit.sln"), $clean);
     }
     if (exitStatus($result)) {
         my $scriptDir = relativeScriptsDir();
@@ -282,7 +288,7 @@ if (isAppleWinWebKit() || isWinCairo()) {
         }
         exit exitStatus($result);
     }
-} elsif (isAppleMacWebKit() && !isCMakeBuild()) {
+} elsif (isAppleCocoaWebKit() && !isCMakeBuild()) {
     # Build, and abort if the build fails.
     for my $dir (@projects) {
         chdir $dir or die;
@@ -299,6 +305,24 @@ if (isAppleWinWebKit() || isWinCairo()) {
         # Various build* calls above may change the CWD.
         chdirWebKit();
 
+        if (exitStatus($result)) {
+            exit exitStatus($result);
+        }
+
+        # Build ImageDiff for host
+        my @command = File::Spec->catfile(getcwd(), "/Tools/Scripts/build-imagediff");
+        chdirWebKit();
+        if (!-e $command[0]) {
+          die "build-imagediff script not found";
+        }
+
+        if ($clean) {
+          push @command, " --clean";
+        }
+        push @command, argumentsForConfiguration();
+        push @command, @ARGV;
+        @command = extractNonMacOSHostConfiguration(\@command);
+        $result = system(@command);
         if (exitStatus($result)) {
             exit exitStatus($result);
         }
@@ -323,11 +347,13 @@ exit 0;
 sub cMakeArgsFromFeatures()
 {
     my @args;
-    foreach (@features) {
-        my $featureName = $_->{define};
-        if ($featureName) {
-            my $featureEnabled = ${$_->{value}} ? "ON" : "OFF";
-            push @args, "-D$featureName=$featureEnabled";
+    if (!$defaultCMakeFeatures) {
+        foreach (@features) {
+            my $featureName = $_->{define};
+            if ($featureName) {
+                my $featureEnabled = ${$_->{value}} ? "ON" : "OFF";
+                push @args, "-D$featureName=$featureEnabled";
+            }
         }
     }
     return @args;

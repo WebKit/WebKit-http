@@ -31,29 +31,23 @@
 #import "SharedBuffer.h"
 #import <wtf/text/WTFString.h>
 
+#if PLATFORM(IOS)
+#import <CoreGraphics/CoreGraphics.h>
+#import <ImageIO/ImageIO.h>
+#import <MobileCoreServices/MobileCoreServices.h>
+#endif
+
 @interface WebCoreBundleFinder : NSObject
 @end
 
 @implementation WebCoreBundleFinder
 @end
 
-#if PLATFORM(IOS)
-#import "SoftLinking.h"
-
-#import <CoreGraphics/CoreGraphics.h>
-#import <ImageIO/ImageIO.h>
-#import <MobileCoreServices/MobileCoreServices.h>
-
-SOFT_LINK_FRAMEWORK(MobileCoreServices)
-SOFT_LINK_CONSTANT(MobileCoreServices, kUTTypeTIFF, CFStringRef)
-#define kUTTypeTIFF getkUTTypeTIFF()
-#endif
-
 namespace WebCore {
 
 void BitmapImage::invalidatePlatformData()
 {
-    if (m_frames.size() != 1)
+    if (frameCount() != 1)
         return;
 
 #if USE(APPKIT)
@@ -62,15 +56,15 @@ void BitmapImage::invalidatePlatformData()
     m_tiffRep = nullptr;
 }
 
-PassRefPtr<Image> Image::loadPlatformResource(const char *name)
+Ref<Image> Image::loadPlatformResource(const char *name)
 {
     NSBundle *bundle = [NSBundle bundleForClass:[WebCoreBundleFinder class]];
     NSString *imagePath = [bundle pathForResource:[NSString stringWithUTF8String:name] ofType:@"png"];
     NSData *namedImageData = [NSData dataWithContentsOfFile:imagePath];
     if (namedImageData) {
-        RefPtr<Image> image = BitmapImage::create();
-        image->setData(SharedBuffer::wrapNSData(namedImageData), true);
-        return image.release();
+        auto image = BitmapImage::create();
+        image->setData(SharedBuffer::create(namedImageData), true);
+        return WTFMove(image);
     }
 
     // We have reports indicating resource loads are failing, but we don't yet know the root cause(s).
@@ -80,55 +74,67 @@ PassRefPtr<Image> Image::loadPlatformResource(const char *name)
     return Image::nullImage();
 }
 
-CFDataRef BitmapImage::getTIFFRepresentation()
+RetainPtr<CFDataRef> BitmapImage::tiffRepresentation(const Vector<NativeImagePtr>& nativeImages)
+{
+    // If nativeImages.size() is zero, we know for certain this image doesn't have valid data
+    // Even though the call to CGImageDestinationCreateWithData will fail and we'll handle it gracefully,
+    // in certain circumstances that call will spam the console with an error message
+    if (!nativeImages.size())
+        return nullptr;
+
+    RetainPtr<CFMutableDataRef> data = adoptCF(CFDataCreateMutable(0, 0));
+    RetainPtr<CGImageDestinationRef> destination = adoptCF(CGImageDestinationCreateWithData(data.get(), kUTTypeTIFF, nativeImages.size(), 0));
+
+    if (!destination)
+        return nullptr;
+
+    for (auto nativeImage : nativeImages)
+        CGImageDestinationAddImage(destination.get(), nativeImage.get(), 0);
+
+    CGImageDestinationFinalize(destination.get());
+    return data;
+}
+
+CFDataRef BitmapImage::tiffRepresentation()
 {
     if (m_tiffRep)
         return m_tiffRep.get();
 
-    unsigned numFrames = frameCount();
-
-    // If numFrames is zero, we know for certain this image doesn't have valid data
-    // Even though the call to CGImageDestinationCreateWithData will fail and we'll handle it gracefully,
-    // in certain circumstances that call will spam the console with an error message
-    if (!numFrames)
-        return 0;
-
-    Vector<CGImageRef> images;
-    for (unsigned i = 0; i < numFrames; ++i ) {
-        CGImageRef cgImage = frameAtIndex(i);
-        if (cgImage)
-            images.append(cgImage);
-    }
-
-    unsigned numValidFrames = images.size();
-
-    RetainPtr<CFMutableDataRef> data = adoptCF(CFDataCreateMutable(0, 0));
-    RetainPtr<CGImageDestinationRef> destination = adoptCF(CGImageDestinationCreateWithData(data.get(), kUTTypeTIFF, numValidFrames, 0));
-
-    if (!destination)
-        return 0;
-
-    for (unsigned i = 0; i < numValidFrames; ++i)
-        CGImageDestinationAddImage(destination.get(), images[i], 0);
-
-    CGImageDestinationFinalize(destination.get());
+    auto data = tiffRepresentation(framesNativeImages());
+    if (!data)
+        return nullptr;
 
     m_tiffRep = data;
     return m_tiffRep.get();
+
+    
 }
 
 #if USE(APPKIT)
-NSImage* BitmapImage::getNSImage()
+NSImage* BitmapImage::nsImage()
 {
     if (m_nsImage)
         return m_nsImage.get();
 
-    CFDataRef data = getTIFFRepresentation();
+    CFDataRef data = tiffRepresentation();
     if (!data)
-        return 0;
+        return nullptr;
     
     m_nsImage = adoptNS([[NSImage alloc] initWithData:(NSData*)data]);
     return m_nsImage.get();
+}
+
+RetainPtr<NSImage> BitmapImage::snapshotNSImage()
+{
+    auto nativeImage = this->nativeImageForCurrentFrame();
+    if (!nativeImage)
+        return nullptr;
+
+    auto data = tiffRepresentation({ nativeImage });
+    if (!data)
+        return nullptr;
+
+    return adoptNS([[NSImage alloc] initWithData:(NSData*)data.get()]);
 }
 #endif
 

@@ -29,6 +29,7 @@
 
 #include "TextCodecICU.h"
 #include "TextCodecLatin1.h"
+#include "TextCodecReplacement.h"
 #include "TextCodecUserDefined.h"
 #include "TextCodecUTF16.h"
 #include "TextCodecUTF8.h"
@@ -39,7 +40,6 @@
 #include <wtf/HashSet.h>
 #include <wtf/Lock.h>
 #include <wtf/MainThread.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
 
@@ -115,7 +115,7 @@ static bool didExtendTextCodecMaps;
 static HashSet<const char*>* japaneseEncodings;
 static HashSet<const char*>* nonBackslashEncodings;
 
-static const char* const textEncodingNameBlacklist[] = { "UTF-7" };
+static const char* const textEncodingNameBlacklist[] = { "UTF-7", "BOCU-1", "SCSU" };
 
 #if ERROR_DISABLED
 
@@ -176,30 +176,26 @@ static void addToTextCodecMap(const char* name, NewTextCodecFunction function, c
 
 static void pruneBlacklistedCodecs()
 {
-    for (size_t i = 0; i < WTF_ARRAY_LENGTH(textEncodingNameBlacklist); ++i) {
-        const char* atomicName = textEncodingNameMap->get(textEncodingNameBlacklist[i]);
+    for (auto& nameFromBlacklist : textEncodingNameBlacklist) {
+        auto* atomicName = textEncodingNameMap->get(nameFromBlacklist);
         if (!atomicName)
             continue;
 
         Vector<const char*> names;
-        TextEncodingNameMap::const_iterator it = textEncodingNameMap->begin();
-        TextEncodingNameMap::const_iterator end = textEncodingNameMap->end();
-        for (; it != end; ++it) {
-            if (it->value == atomicName)
-                names.append(it->key);
+        for (auto& entry : *textEncodingNameMap) {
+            if (entry.value == atomicName)
+                names.append(entry.key);
         }
 
-        size_t length = names.size();
-        for (size_t j = 0; j < length; ++j)
-            textEncodingNameMap->remove(names[j]);
+        for (auto* name : names)
+            textEncodingNameMap->remove(name);
 
         textCodecMap->remove(atomicName);
     }
 }
 
-static void buildBaseTextCodecMaps()
+static void buildBaseTextCodecMaps(const std::lock_guard<StaticLock>&)
 {
-    ASSERT(isMainThread());
     ASSERT(!textCodecMap);
     ASSERT(!textEncodingNameMap);
 
@@ -267,6 +263,22 @@ bool isJapaneseEncoding(const char* canonicalEncodingName)
     return canonicalEncodingName && japaneseEncodings && japaneseEncodings->contains(canonicalEncodingName);
 }
 
+bool isReplacementEncoding(const char* alias)
+{
+    if (!alias)
+        return false;
+
+    if (strlen(alias) != 11)
+        return false;
+
+    return !strcasecmp(alias, "replacement");
+}
+
+bool isReplacementEncoding(const String& alias)
+{
+    return equalLettersIgnoringASCIICase(alias, "replacement");
+}
+
 bool shouldShowBackslashAsCurrencySymbolIn(const char* canonicalEncodingName)
 {
     return canonicalEncodingName && nonBackslashEncodings && nonBackslashEncodings->contains(canonicalEncodingName);
@@ -274,6 +286,9 @@ bool shouldShowBackslashAsCurrencySymbolIn(const char* canonicalEncodingName)
 
 static void extendTextCodecMaps()
 {
+    TextCodecReplacement::registerEncodingNames(addToTextEncodingNameMap);
+    TextCodecReplacement::registerCodecs(addToTextCodecMap);
+
     TextCodecICU::registerEncodingNames(addToTextEncodingNameMap);
     TextCodecICU::registerCodecs(addToTextCodecMap);
 
@@ -301,10 +316,10 @@ const char* atomicCanonicalTextEncodingName(const char* name)
     if (!name || !name[0])
         return nullptr;
 
-    if (!textEncodingNameMap)
-        buildBaseTextCodecMaps();
-
     std::lock_guard<StaticLock> lock(encodingRegistryMutex);
+
+    if (!textEncodingNameMap)
+        buildBaseTextCodecMaps(lock);
 
     if (const char* atomicName = textEncodingNameMap->get(name))
         return atomicName;
@@ -359,6 +374,13 @@ String defaultTextEncodingNameForSystemLanguage()
     // On some OS versions, the result is CP949 (uppercase).
     if (equalLettersIgnoringASCIICase(systemEncodingName, "cp949"))
         systemEncodingName = ASCIILiteral("ks_c_5601-1987");
+
+    // CFStringConvertEncodingToIANACharSetName() returns cp874 for kTextEncodingDOSThai, AKA windows-874.
+    // Since "cp874" alias is not standard (https://encoding.spec.whatwg.org/#names-and-labels), map to
+    // "dos-874" instead.
+    if (equalLettersIgnoringASCIICase(systemEncodingName, "cp874"))
+        systemEncodingName = ASCIILiteral("dos-874");
+
     return systemEncodingName;
 #else
     return ASCIILiteral("ISO-8859-1");

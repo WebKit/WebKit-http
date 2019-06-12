@@ -28,7 +28,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import base64
-import copy
 import logging
 import re
 import shlex
@@ -38,19 +37,22 @@ import os
 
 from webkitpy.common.system import path
 from webkitpy.common.system.profiler import ProfilerFactory
-from webkitpy.layout_tests.servers.web_platform_test_server import WebPlatformTestServer
 
 
 _log = logging.getLogger(__name__)
 
 
 class DriverInput(object):
-    def __init__(self, test_name, timeout, image_hash, should_run_pixel_test, args=None):
+    def __init__(self, test_name, timeout, image_hash, should_run_pixel_test, should_dump_jsconsolelog_in_stderr=None, args=None):
         self.test_name = test_name
         self.timeout = timeout  # in ms
         self.image_hash = image_hash
         self.should_run_pixel_test = should_run_pixel_test
+        self.should_dump_jsconsolelog_in_stderr = should_dump_jsconsolelog_in_stderr
         self.args = args or []
+
+    def __repr__(self):
+        return "DriverInput(test_name='{}', timeout={}, image_hash={}, should_run_pixel_test={}, should_dump_jsconsolelog_in_stderr={}'".format(self.test_name, self.timeout, self.image_hash, self.should_run_pixel_test, self.should_dump_jsconsolelog_in_stderr)
 
 
 class DriverOutput(object):
@@ -115,6 +117,7 @@ class DriverOutput(object):
         for pattern in patterns:
             self.error = re.sub(pattern[0], pattern[1], self.error)
 
+
 class Driver(object):
     """object for running test(s) using DumpRenderTree/WebKitTestRunner."""
 
@@ -130,9 +133,13 @@ class Driver(object):
         self._port = port
         self._worker_number = worker_number
         self._no_timeout = no_timeout
+        self._target_host = port.target_host(worker_number)
 
         self._driver_tempdir = None
-        # WebKitTestRunner/LayoutTestRelay can report back subprocess crashes by printing
+        self._driver_user_directory_suffix = None
+        self._driver_user_cache_directory = None
+
+        # WebKitTestRunner can report back subprocess crashes by printing
         # "#CRASHED - PROCESSNAME".  Since those can happen at any time and ServerProcess
         # won't be aware of them (since the actual tool didn't crash, just a subprocess)
         # we record the crashed subprocess name here.
@@ -147,6 +154,8 @@ class Driver(object):
         # instead scope these locally in run_test.
         self.error_from_test = str()
         self.err_seen_eof = False
+
+        self._server_name = self._port.driver_name()
         self._server_process = None
 
         self._measurements = {}
@@ -193,8 +202,8 @@ class Driver(object):
             deadline = test_begin_time + int(driver_input.timeout) / 1000.0 + 5
 
         self._server_process.write(command)
-        text, audio = self._read_first_block(deadline)  # First block is either text or audio
-        image, actual_image_hash = self._read_optional_image_block(deadline)  # The second (optional) block is image data.
+        text, audio = self._read_first_block(deadline, driver_input.test_name)  # First block is either text or audio
+        image, actual_image_hash = self._read_optional_image_block(deadline, driver_input.test_name)  # The second (optional) block is image data.
 
         crashed = self.has_crashed()
         timed_out = self._server_process.timed_out
@@ -232,7 +241,7 @@ class Driver(object):
             crashed_pid=self._crashed_pid, crash_log=crash_log, pid=pid)
 
     def _get_crash_log(self, stdout, stderr, newer_than):
-        return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than)
+        return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than, target_host=self._target_host)
 
     def _command_wrapper(self):
         # Hook for injecting valgrind or other runtime instrumentation, used by e.g. tools/valgrind/valgrind_tests.py.
@@ -245,9 +254,14 @@ class Driver(object):
 
     HTTP_DIR = "http/tests/"
     HTTP_LOCAL_DIR = "http/tests/local/"
+    WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR = "http/wpt/"
+    WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE = "WebKit/"
 
     def is_http_test(self, test_name):
         return test_name.startswith(self.HTTP_DIR) and not test_name.startswith(self.HTTP_LOCAL_DIR)
+
+    def is_webkit_specific_web_platform_test(self, test_name):
+        return test_name.startswith(self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR)
 
     def is_web_platform_test(self, test_name):
         return test_name.startswith(self.web_platform_test_server_doc_root)
@@ -256,6 +270,8 @@ class Driver(object):
         """Convert a test name to a URI."""
         if self.is_web_platform_test(test_name):
             return self.web_platform_test_server_base_url + test_name[len(self.web_platform_test_server_doc_root):]
+        if self.is_webkit_specific_web_platform_test(test_name):
+            return self.web_platform_test_server_base_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE + test_name[len(self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR):]
 
         if not self.is_http_test(test_name):
             return path.abspath_to_uri(self._port.host.platform, self._port.abspath_for_test(test_name))
@@ -280,6 +296,8 @@ class Driver(object):
             if not prefix.endswith('/'):
                 prefix += '/'
             return uri[len(prefix):]
+        if uri.startswith(self.web_platform_test_server_base_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE):
+            return uri.replace(self.web_platform_test_server_base_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE, self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR)
         if uri.startswith(self.web_platform_test_server_base_url):
             return uri.replace(self.web_platform_test_server_base_url, self.web_platform_test_server_doc_root)
         if uri.startswith("http://"):
@@ -294,7 +312,7 @@ class Driver(object):
         if self._crashed_process_name:
             return True
         if self._server_process.has_crashed():
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
             return True
         return False
@@ -311,23 +329,37 @@ class Driver(object):
             self._start(pixel_tests, per_test_args)
             self._run_post_start_tasks()
 
+    def _append_environment_variable_path(self, environment, variable, path):
+        if variable in environment:
+            environment[variable] = environment[variable] + os.pathsep + path
+        else:
+            environment[variable] = path
+
     def _setup_environ_for_driver(self, environment):
-        environment['DYLD_LIBRARY_PATH'] = str(self._port._build_path())
-        environment['__XPC_DYLD_LIBRARY_PATH'] = environment['DYLD_LIBRARY_PATH']
-        environment['DYLD_FRAMEWORK_PATH'] = str(self._port._build_path())
+        build_root_path = str(self._port._build_path())
+        self._append_environment_variable_path(environment, 'DYLD_LIBRARY_PATH', build_root_path)
+        self._append_environment_variable_path(environment, '__XPC_DYLD_LIBRARY_PATH', build_root_path)
+        self._append_environment_variable_path(environment, 'DYLD_FRAMEWORK_PATH', build_root_path)
+        self._append_environment_variable_path(environment, '__XPC_DYLD_FRAMEWORK_PATH', build_root_path)
         # Use an isolated temp directory that can be deleted after testing (especially important on Mac, as
         # CoreMedia disk cache is in the temp directory).
         environment['TMPDIR'] = str(self._driver_tempdir)
-        environment['DIRHELPER_USER_DIR_SUFFIX'] = str(os.path.basename(str(self._driver_tempdir)))
+        environment['DIRHELPER_USER_DIR_SUFFIX'] = self._driver_user_directory_suffix
         # Put certain normally persistent files into the temp directory (e.g. IndexedDB storage).
-        environment['DUMPRENDERTREE_TEMP'] = str(self._driver_tempdir)
+        if sys.platform == 'cygwin':
+            environment['DUMPRENDERTREE_TEMP'] = path.cygpath(str(self._driver_tempdir))
+        else:
+            environment['DUMPRENDERTREE_TEMP'] = str(self._driver_tempdir)
         environment['LOCAL_RESOURCE_ROOT'] = str(self._port.layout_tests_dir())
         environment['ASAN_OPTIONS'] = "allocator_may_return_null=1"
         environment['__XPC_ASAN_OPTIONS'] = environment['ASAN_OPTIONS']
-        if 'WEBKIT_OUTPUTDIR' in os.environ:
-            environment['WEBKIT_OUTPUTDIR'] = os.environ['WEBKIT_OUTPUTDIR']
         if self._profiler:
             environment = self._profiler.adjusted_environment(environment)
+        return environment
+
+    def _setup_environ_for_test(self):
+        environment = self._port.setup_environ_for_server(self._server_name)
+        environment = self._setup_environ_for_driver(environment)
         return environment
 
     def _start(self, pixel_tests, per_test_args):
@@ -335,13 +367,16 @@ class Driver(object):
         # Each driver process should be using individual directories under _driver_tempdir (which is deleted when stopping),
         # however some subsystems on some platforms could end up using process default ones.
         self._port._clear_global_caches_and_temporary_files()
-        self._driver_tempdir = self._port._driver_tempdir()
-        server_name = self._port.driver_name()
-        environment = self._port.setup_environ_for_server(server_name)
-        environment = self._setup_environ_for_driver(environment)
+        self._driver_tempdir = self._port._driver_tempdir(self._target_host)
+        self._driver_user_directory_suffix = os.path.basename(str(self._driver_tempdir))
+        user_cache_directory = self._port._path_to_user_cache_directory(self._driver_user_directory_suffix)
+        if user_cache_directory:
+            self._target_host.filesystem.maybe_make_directory(user_cache_directory)
+            self._driver_user_cache_directory = user_cache_directory
+        environment = self._setup_environ_for_test()
         self._crashed_process_name = None
         self._crashed_pid = None
-        self._server_process = self._port._server_process_constructor(self._port, server_name, self.cmd_line(pixel_tests, per_test_args), environment)
+        self._server_process = self._port._test_runner_process_constructor(self._port, self._server_name, self.cmd_line(pixel_tests, per_test_args), environment, target_host=self._target_host)
         self._server_process.start()
 
     def _run_post_start_tasks(self):
@@ -361,9 +396,11 @@ class Driver(object):
                 self._profiler.profile_after_exit()
 
         if self._driver_tempdir:
-            self._port._filesystem.rmtree(str(self._driver_tempdir))
-            self._port.remove_cache_directory(os.path.basename(str(self._driver_tempdir)))
+            self._target_host.filesystem.rmtree(str(self._driver_tempdir))
             self._driver_tempdir = None
+        if self._driver_user_cache_directory:
+            self._target_host.filesystem.rmtree(self._driver_user_cache_directory)
+            self._driver_user_cache_directory = None
 
     def cmd_line(self, pixel_tests, per_test_args):
         cmd = self._command_wrapper()
@@ -394,6 +431,16 @@ class Driver(object):
         return cmd
 
     def _check_for_driver_timeout(self, out_line):
+        if out_line.startswith("#PID UNRESPONSIVE - "):
+            match = re.match('#PID UNRESPONSIVE - (\S+)', out_line)
+            child_process_name = match.group(1) if match else 'WebProcess'
+            match = re.search('pid (\d+)', out_line)
+            child_process_pid = int(match.group(1)) if match else None
+            err_line = 'Wait on notifyDone timed out, process ' + child_process_name + ' pid = ' + str(child_process_pid)
+            self.error_from_test += err_line
+            _log.debug(err_line)
+            if self._port.get_option("sample_on_timeout"):
+                self._port.sample_process(child_process_name, child_process_pid, self._target_host)
         if out_line == "FAIL: Timed out waiting for notifyDone to be called\n":
             self._driver_timed_out = True
 
@@ -404,7 +451,7 @@ class Driver(object):
     def _check_for_driver_crash_or_unresponsiveness(self, error_line):
         crashed_check = error_line.rstrip('\r\n')
         if crashed_check == "#CRASHED":
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
             return True
         elif error_line.startswith("#CRASHED - "):
@@ -422,8 +469,9 @@ class Driver(object):
             _log.debug('%s is unresponsive, pid = %s' % (child_process_name, str(child_process_pid)))
             self._driver_timed_out = True
             if child_process_pid:
-                self._port.sample_process(child_process_name, child_process_pid)
+                self._port.sample_process(child_process_name, child_process_pid, self._target_host)
             self.error_from_test += error_line
+            self._server_process.write('#SAMPLE FINISHED\n', True)  # Must be able to ignore a broken pipe here, target process may already be closed.
             return True
         return self.has_crashed()
 
@@ -431,10 +479,12 @@ class Driver(object):
         # FIXME: performance tests pass in full URLs instead of test names.
         if driver_input.test_name.startswith('http://') or driver_input.test_name.startswith('https://')  or driver_input.test_name == ('about:blank'):
             command = driver_input.test_name
-        elif self.is_http_test(driver_input.test_name) or self.is_web_platform_test(driver_input.test_name):
+        elif self.is_web_platform_test(driver_input.test_name) or self.is_webkit_specific_web_platform_test(driver_input.test_name) or (self.is_http_test(driver_input.test_name) and (self._port.get_option('webkit_test_runner') or sys.platform == "cygwin")):
             command = self.test_to_uri(driver_input.test_name)
+            command += "'--absolutePath'"
+            command += self._port.abspath_for_test(driver_input.test_name, self._target_host)
         else:
-            command = self._port.abspath_for_test(driver_input.test_name)
+            command = self._port.abspath_for_test(driver_input.test_name, self._target_host)
             if sys.platform == 'cygwin':
                 command = path.cygpath(command)
 
@@ -445,13 +495,15 @@ class Driver(object):
             command += "'--timeout'%s" % driver_input.timeout
         if driver_input.should_run_pixel_test:
             command += "'--pixel-test"
+        if driver_input.should_dump_jsconsolelog_in_stderr:
+            command += "'--dump-jsconsolelog-in-stderr"
         if driver_input.image_hash:
             command += "'" + driver_input.image_hash
         return command + "\n"
 
-    def _read_first_block(self, deadline):
+    def _read_first_block(self, deadline, test_name):
         # returns (text_content, audio_content)
-        block = self._read_block(deadline)
+        block = self._read_block(deadline, test_name)
         if block.malloc:
             self._measurements['Malloc'] = float(block.malloc)
         if block.js_heap:
@@ -460,9 +512,9 @@ class Driver(object):
             return (None, block.decoded_content)
         return (block.decoded_content, None)
 
-    def _read_optional_image_block(self, deadline):
+    def _read_optional_image_block(self, deadline, test_name):
         # returns (image, actual_image_hash)
-        block = self._read_block(deadline, wait_for_stderr_eof=True)
+        block = self._read_block(deadline, test_name, wait_for_stderr_eof=True)
         if block.content and block.content_type == 'image/png':
             return (block.decoded_content, block.content_hash)
         return (None, block.content_hash)
@@ -493,12 +545,12 @@ class Driver(object):
             return line[:-5], True
         return line, False
 
-    def _read_block(self, deadline, wait_for_stderr_eof=False):
+    def _read_block(self, deadline, test_name, wait_for_stderr_eof=False):
         block = ContentBlock()
         out_seen_eof = False
         asan_violation_detected = False
 
-        while not self.has_crashed():
+        while True:
             if out_seen_eof and (self.err_seen_eof or not wait_for_stderr_eof):
                 break
 
@@ -511,7 +563,8 @@ class Driver(object):
             else:
                 out_line, err_line = self._server_process.read_either_stdout_or_stderr_line(deadline)
 
-            if self._server_process.timed_out or self.has_crashed():
+            # ServerProcess returns None for time outs and crashes.
+            if out_line is None and err_line is None:
                 break
 
             if out_line:
@@ -524,7 +577,7 @@ class Driver(object):
             if out_line:
                 self._check_for_driver_timeout(out_line)
                 if out_line[-1] != "\n":
-                    _log.error("Last character read from DRT stdout line was not a newline!  This indicates either a NRWT or DRT bug.")
+                    _log.error("  %s -> Last character read from DRT stdout line was not a newline!  This indicates either a NRWT or DRT bug." % test_name)
                 content_length_before_header_check = block._content_length
                 self._process_stdout_line(block, out_line)
                 # FIXME: Unlike HTTP, DRT dumps the content right after printing a Content-Length header.
@@ -553,7 +606,7 @@ class Driver(object):
                     self.error_from_test += err_line
 
         if asan_violation_detected and not self._crashed_process_name:
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
 
         block.decode_content()
@@ -564,27 +617,6 @@ class Driver(object):
         # This checks if the required system dependencies for the driver are met.
         # Since this is the generic class implementation, just return True.
         return True
-
-
-class IOSSimulatorDriver(Driver):
-    def cmd_line(self, pixel_tests, per_test_args):
-        cmd = super(IOSSimulatorDriver, self).cmd_line(pixel_tests, per_test_args)
-        relay_tool = self._port.relay_path
-        dump_tool = cmd[0]
-        dump_tool_args = cmd[1:]
-        product_dir = self._port._build_path()
-        relay_args = [
-            '-runtime', self._port.simulator_runtime.identifier,
-            '-deviceType', self._port.simulator_device_type.identifier,
-            '-suffix', str(self._worker_number),
-            '-productDir', product_dir,
-            '-app', dump_tool,
-        ]
-        return [relay_tool] + relay_args + ['--'] + dump_tool_args
-
-    def _setup_environ_for_driver(self, environment):
-        environment['DEVELOPER_DIR'] = self._port.developer_dir
-        return super(IOSSimulatorDriver, self)._setup_environ_for_driver(environment)
 
 
 class ContentBlock(object):
@@ -604,6 +636,7 @@ class ContentBlock(object):
             self.decoded_content = base64.b64decode(self.content)
         else:
             self.decoded_content = self.content
+
 
 class DriverProxy(object):
     """A wrapper for managing two Driver instances, one with pixel tests and
@@ -626,6 +659,12 @@ class DriverProxy(object):
     # FIXME: this should be a @classmethod (or implemented on Port instead).
     def is_http_test(self, test_name):
         return self._driver.is_http_test(test_name)
+
+    def is_web_platform_test(self, test_name):
+        return self._driver.is_web_platform_test(test_name)
+
+    def is_webkit_specific_web_platform_test(self, test_name):
+        return self._driver.is_webkit_specific_web_platform_test(test_name)
 
     # FIXME: this should be a @classmethod (or implemented on Port instead).
     def test_to_uri(self, test_name):

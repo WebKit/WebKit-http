@@ -18,16 +18,15 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef DashboardRegion_h
-#define DashboardRegion_h
-
-#include "Rect.h"
+#pragma once
 
 #if ENABLE(DASHBOARD_SUPPORT)
 
+#include "Rect.h"
+
 namespace WebCore {
 
-class DashboardRegion : public RectBase, public RefCounted<DashboardRegion> {
+class DashboardRegion final : public RectBase, public RefCounted<DashboardRegion> {
 public:
     static Ref<DashboardRegion> create() { return adoptRef(*new DashboardRegion); }
     bool equals(const DashboardRegion& other) const
@@ -47,8 +46,6 @@ private:
     DashboardRegion() : m_isCircle(false), m_isRectangle(false) { }
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore
 
 #endif

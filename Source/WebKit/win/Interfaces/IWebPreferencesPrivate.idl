@@ -175,5 +175,37 @@ interface IWebPreferencesPrivate3 : IWebPreferencesPrivate2
 {
     HRESULT showTiledScrollingIndicator([out, retval] BOOL* enabled);
     HRESULT setShowTiledScrollingIndicator([in] BOOL enabled);
+    HRESULT fetchAPIEnabled([out, retval] BOOL* enabled);
+    HRESULT setFetchAPIEnabled([in] BOOL enabled);
+    HRESULT shadowDOMEnabled([out, retval] BOOL* enabled);
+    HRESULT setShadowDOMEnabled([in] BOOL enabled);
+    HRESULT customElementsEnabled([out, retval] BOOL* enabled);
+    HRESULT setCustomElementsEnabled([in] BOOL enabled);
+    HRESULT modernMediaControlsEnabled([out, retval] BOOL* enabled);
+    HRESULT setModernMediaControlsEnabled([in] BOOL enabled);
 }
 
+[uuid(F9582D72-6348-45B1-AB09-39E33459B5B9)]
+interface IWebPreferencesPrivate4 : IWebPreferencesPrivate3
+{
+    HRESULT setApplicationId([in] BSTR applicationId);
+    HRESULT webAnimationsEnabled([out, retval] BOOL*);
+    HRESULT setWebAnimationsEnabled([in] BOOL enabled);
+    HRESULT userTimingEnabled([out, retval] BOOL*);
+    HRESULT setUserTimingEnabled([in] BOOL enabled);
+    HRESULT resourceTimingEnabled([out, retval] BOOL*);
+    HRESULT setResourceTimingEnabled([in] BOOL enabled);
+    HRESULT linkPreloadEnabled([out, retval] BOOL*);
+    HRESULT setLinkPreloadEnabled([in] BOOL enabled);
+    HRESULT mediaPreloadingEnabled([out, retval] BOOL*);
+    HRESULT setMediaPreloadingEnabled([in] BOOL enabled);
+    HRESULT clearNetworkLoaderSession();
+    HRESULT switchNetworkLoaderToNewTestingSession();
+}
+
+[uuid(9C4CBF53-19BC-46B3-831E-6A8B88200F20)]
+interface IWebPreferencesPrivate5 : IWebPreferencesPrivate4
+{
+    HRESULT isSecureContextAttributeEnabled([out, retval] BOOL*);
+    HRESULT setIsSecureContextAttributeEnabled([in] BOOL enabled);
+}

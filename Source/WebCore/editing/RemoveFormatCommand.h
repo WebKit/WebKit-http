@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RemoveFormatCommand_h
-#define RemoveFormatCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -40,10 +39,8 @@ public:
 private:
     explicit RemoveFormatCommand(Document&);
 
-    virtual void doApply();
-    virtual EditAction editingAction() const { return EditActionUnspecified; }
+    void doApply() override;
+    EditAction editingAction() const override { return EditActionUnspecified; }
 };
 
 } // namespace WebCore
-
-#endif // RemoveFormatCommand_h

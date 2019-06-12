@@ -28,14 +28,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define __STDC_FORMAT_MACROS
 #include "config.h"
 #include "SQLiteFileSystem.h"
 
 #include "FileSystem.h"
 #include "SQLiteDatabase.h"
 #include "SQLiteStatement.h"
-#include <inttypes.h>
 #include <sqlite3.h>
 
 #if PLATFORM(IOS)
@@ -50,7 +48,7 @@ SQLiteFileSystem::SQLiteFileSystem()
 
 int SQLiteFileSystem::openDatabase(const String& filename, sqlite3** database, bool)
 {
-    return sqlite3_open(fileSystemRepresentation(filename).data(), database);
+    return sqlite3_open_v2(fileSystemRepresentation(filename).data(), database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_AUTOPROXY, nullptr);
 }
 
 String SQLiteFileSystem::appendDatabaseFileNameToPath(const String& path, const String& fileName)
@@ -85,7 +83,16 @@ bool SQLiteFileSystem::deleteEmptyDatabaseDirectory(const String& path)
 
 bool SQLiteFileSystem::deleteDatabaseFile(const String& fileName)
 {
-    return deleteFile(fileName);
+    String walFileName = makeString(fileName, ASCIILiteral("-wal"));
+    String shmFileName = makeString(fileName, ASCIILiteral("-shm"));
+
+    // Try to delete all three files whether or not they are there.
+    deleteFile(fileName);
+    deleteFile(walFileName);
+    deleteFile(shmFileName);
+
+    // If any of the wal or shm files remain after the delete attempt, the overall delete operation failed.
+    return !fileExists(fileName) && !fileExists(walFileName) && !fileExists(shmFileName);
 }
 
 #if PLATFORM(IOS)

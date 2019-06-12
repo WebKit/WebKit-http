@@ -28,16 +28,16 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
+#include "FloatRect.h"
 #include "Logging.h"
-#include <WebCore/FloatRect.h>
-#include <WebCore/MediaPlaybackTargetMock.h>
-#include <WebCore/WebMediaSessionManager.h>
+#include "MediaPlaybackTargetMock.h"
+#include "WebMediaSessionManager.h"
 
 using namespace WebCore;
 
 namespace WebCore {
 
-static const double timerInterval = 1.0 / 10.0;
+static const Seconds timerInterval { 100_ms };
 
 MediaPlaybackTargetPickerMock::MediaPlaybackTargetPickerMock(MediaPlaybackTargetPicker::Client& client)
     : MediaPlaybackTargetPicker(client)

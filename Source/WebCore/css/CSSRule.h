@@ -20,19 +20,17 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSRule_h
-#define CSSRule_h
+#pragma once
 
-#include <wtf/RefCounted.h>
+#include "ExceptionOr.h"
 #include <wtf/TypeCasts.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class CSSStyleSheet;
 class StyleRuleBase;
+
 struct CSSParserContext;
-typedef int ExceptionCode;
 
 class CSSRule : public RefCounted<CSSRule> {
 public:
@@ -51,6 +49,7 @@ public:
         // <https://bugs.webkit.org/show_bug.cgi?id=71293>.
         KEYFRAMES_RULE,
         KEYFRAME_RULE,
+        NAMESPACE_RULE = 10, // Matches other browsers.
         SUPPORTS_RULE = 12,
 #if ENABLE(CSS_DEVICE_ADAPTATION)
         WEBKIT_VIEWPORT_RULE = 15,
@@ -90,8 +89,7 @@ public:
 
     CSSRule* parentRule() const { return m_parentIsRule ? m_parentRule : 0; }
 
-    // NOTE: Just calls notImplemented().
-    void setCssText(const String&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setCssText(const String&);
 
 protected:
     CSSRule(CSSStyleSheet* parent)
@@ -122,5 +120,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::CSSRule& rule) { return rule.type() == WebCore::predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // CSSRule_h

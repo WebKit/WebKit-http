@@ -488,7 +488,7 @@ long AccessibleBase::state() const
     if (!m_object->isEnabled())
         state |= STATE_SYSTEM_UNAVAILABLE;
 
-    if (m_object->isReadOnly())
+    if (!m_object->canSetValueAttribute())
         state |= STATE_SYSTEM_READONLY;
 
     if (m_object->isOffScreen())
@@ -597,17 +597,17 @@ HRESULT AccessibleBase::get_accKeyboardShortcut(VARIANT vChild, __deref_opt_out 
     static String accessKeyModifiers;
     if (accessKeyModifiers.isNull()) {
         StringBuilder accessKeyModifiersBuilder;
-        unsigned modifiers = EventHandler::accessKeyModifiers();
+        auto modifiers = EventHandler::accessKeyModifiers();
         // Follow the same order as Mozilla MSAA implementation:
         // Ctrl+Alt+Shift+Meta+key. MSDN states that keyboard shortcut strings
         // should not be localized and defines the separator as "+".
-        if (modifiers & PlatformEvent::CtrlKey)
+        if (modifiers.contains(PlatformEvent::Modifier::CtrlKey))
             accessKeyModifiersBuilder.appendLiteral("Ctrl+");
-        if (modifiers & PlatformEvent::AltKey)
+        if (modifiers.contains(PlatformEvent::Modifier::AltKey))
             accessKeyModifiersBuilder.appendLiteral("Alt+");
-        if (modifiers & PlatformEvent::ShiftKey)
+        if (modifiers.contains(PlatformEvent::Modifier::ShiftKey))
             accessKeyModifiersBuilder.appendLiteral("Shift+");
-        if (modifiers & PlatformEvent::MetaKey)
+        if (modifiers.contains(PlatformEvent::Modifier::MetaKey))
             accessKeyModifiersBuilder.appendLiteral("Win+");
         accessKeyModifiers = accessKeyModifiersBuilder.toString();
     }
@@ -879,6 +879,7 @@ static long MSAARole(AccessibilityRole role)
         case WebCore::HeadingRole:
         case WebCore::ListMarkerRole:
         case WebCore::StaticTextRole:
+        case WebCore::LabelRole:
             return ROLE_SYSTEM_STATICTEXT;
         case WebCore::OutlineRole:
             return ROLE_SYSTEM_OUTLINE;
@@ -886,6 +887,7 @@ static long MSAARole(AccessibilityRole role)
             return ROLE_SYSTEM_COLUMN;
         case WebCore::RowRole:
             return ROLE_SYSTEM_ROW;
+        case WebCore::ApplicationGroupRole:
         case WebCore::GroupRole:
         case WebCore::RadioGroupRole:
             return ROLE_SYSTEM_GROUPING;
@@ -917,7 +919,6 @@ static long MSAARole(AccessibilityRole role)
         case WebCore::DivRole:
         case WebCore::FooterRole:
         case WebCore::FormRole:
-        case WebCore::LabelRole:
         case WebCore::ParagraphRole:
             return ROLE_SYSTEM_GROUPING;
         case WebCore::HorizontalRuleRole:
@@ -967,19 +968,19 @@ static long MSAARole(AccessibilityRole role)
         case WebCore::DocumentRole:
         case WebCore::DocumentArticleRole:
         case WebCore::DocumentNoteRole:
-        case WebCore::DocumentRegionRole:
             return ROLE_SYSTEM_GROUPING;
         case WebCore::DocumentMathRole:
         case WebCore::MathElementRole:
             return ROLE_SYSTEM_EQUATION;
         case WebCore::HelpTagRole:
             return ROLE_SYSTEM_HELPBALLOON;
-        case WebCore::LandmarkApplicationRole:
+        case WebCore::WebApplicationRole:
         case WebCore::LandmarkBannerRole:
         case WebCore::LandmarkComplementaryRole:
         case WebCore::LandmarkContentInfoRole:
         case WebCore::LandmarkMainRole:
         case WebCore::LandmarkNavigationRole:
+        case WebCore::LandmarkRegionRole:
         case WebCore::LandmarkSearchRole:
         case WebCore::LegendRole:
             return ROLE_SYSTEM_GROUPING;

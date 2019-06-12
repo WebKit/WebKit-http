@@ -29,13 +29,16 @@
 
 #import <Foundation/Foundation.h>
 
-WK_CLASS_AVAILABLE(10_10, 8_0)
+WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface WKWebProcessPlugInScriptWorld : NSObject
 
 + (WKWebProcessPlugInScriptWorld *)world;
 + (WKWebProcessPlugInScriptWorld *)normalWorld;
 
+@property (nonatomic, readonly, copy) NSString *name;
+
 - (void)clearWrappers;
+- (void)makeAllShadowRootsOpen WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
 @end
 

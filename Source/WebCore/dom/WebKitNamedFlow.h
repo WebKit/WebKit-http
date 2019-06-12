@@ -27,19 +27,15 @@
  * SUCH DAMAGE.
  */
 
-#ifndef WebKitNamedFlow_h
-#define WebKitNamedFlow_h
+#pragma once
 
 #include "EventTarget.h"
-
-#include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-class Document;
 class NamedFlowCollection;
 class Node;
 class NodeList;
@@ -62,8 +58,8 @@ public:
     using RefCounted<WebKitNamedFlow>::ref;
     using RefCounted<WebKitNamedFlow>::deref;
 
-    virtual EventTargetInterface eventTargetInterface() const override { return WebKitNamedFlowEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override;
+    EventTargetInterface eventTargetInterface() const override { return WebKitNamedFlowEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const override;
 
     // This function is called from the JS binding code to determine if the NamedFlow object is reachable or not.
     // If the object has listeners, the object should only be discarded if the parent Document is not reachable.
@@ -84,8 +80,8 @@ private:
     WebKitNamedFlow(NamedFlowCollection&, const AtomicString&);
 
     // EventTarget implementation.
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    void refEventTarget() override { ref(); }
+    void derefEventTarget() override { deref(); }
 
     // The name of the flow thread as specified in CSS.
     AtomicString m_flowThreadName;
@@ -94,6 +90,4 @@ private:
     RenderNamedFlowThread* m_parentFlowThread;
 };
 
-}
-
-#endif
+} // namespace WebCore

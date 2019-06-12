@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef BeforeUnloadEvent_h
-#define BeforeUnloadEvent_h
+#pragma once
 
 #include "Event.h"
 
@@ -41,12 +40,12 @@ public:
     String returnValue() const { return m_returnValue; }
     void setReturnValue(const String& returnValue) { m_returnValue = returnValue; }
 
-    virtual EventInterface eventInterface() const override { return BeforeUnloadEventInterfaceType; }
+    EventInterface eventInterface() const override { return BeforeUnloadEventInterfaceType; }
 
 private:
     BeforeUnloadEvent();
 
-    virtual bool isBeforeUnloadEvent() const override;
+    bool isBeforeUnloadEvent() const override;
 
     String m_returnValue;
 };
@@ -54,5 +53,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_EVENT(BeforeUnloadEvent)
-
-#endif // BeforeUnloadEvent_h

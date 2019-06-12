@@ -68,18 +68,18 @@ class BugzillaTest(unittest.TestCase):
 '''
     _expected_example_attachment_parsing = {
         'attach_date': datetime.datetime(2009, 07, 29, 10, 23),
-        'bug_id' : 100,
-        'is_obsolete' : True,
-        'is_patch' : True,
-        'id' : 33721,
-        'url' : "https://bugs.webkit.org/attachment.cgi?id=33721",
-        'name' : "Fixed whitespace issue",
-        'type' : "text/plain",
-        'review' : '+',
-        'reviewer_email' : 'one@test.com',
-        'commit-queue' : '+',
-        'committer_email' : 'two@test.com',
-        'attacher_email' : 'christian.plesner.hansen@gmail.com',
+        'bug_id': 100,
+        'is_obsolete': True,
+        'is_patch': True,
+        'id': 33721,
+        'url': "https://bugs.webkit.org/attachment.cgi?id=33721",
+        'name': "Fixed whitespace issue",
+        'type': "text/plain",
+        'review': '+',
+        'reviewer_email': 'one@test.com',
+        'commit-queue': '+',
+        'committer_email': 'two@test.com',
+        'attacher_email': 'christian.plesner.hansen@gmail.com',
     }
 
     def test_url_creation(self):
@@ -238,8 +238,9 @@ Ignore this bug.  Just for testing failure modes of webkit-patch and the commit-
   <head>
     <title>
   Attachment 41073 Details for Bug 27314</title>
-<link rel="Top" href="https://bugs.webkit.org/">
-    <link rel="Up" href="show_bug.cgi?id=27314">
+<div id="bug_title">
+  Attachment 41073 Details for
+  <a class="bz_bug_link bz_status_ASSIGNED " title="Sample bug" href="show_bug.cgi?id=27314">Bug 27314</a>: Sample bug</div>
 """
 
     def test_attachment_detail_bug_parsing(self):

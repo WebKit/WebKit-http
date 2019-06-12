@@ -17,8 +17,7 @@
  *  Boston, MA 02110-1301 USA
  */
 
-#ifndef GLContextGLX_h
-#define GLContextGLX_h
+#pragma once
 
 #if USE(GLX)
 
@@ -27,39 +26,45 @@
 #include "XUniqueResource.h"
 
 typedef unsigned char GLubyte;
-typedef unsigned long XID;
+typedef unsigned long Window;
 typedef void* ContextKeyType;
+typedef struct _XDisplay Display;
 
 namespace WebCore {
 
-class GLContextGLX : public GLContext {
+class GLContextGLX final : public GLContext {
     WTF_MAKE_NONCOPYABLE(GLContextGLX);
 public:
-    static std::unique_ptr<GLContextGLX> createContext(XID window, GLContext* sharingContext);
-    static std::unique_ptr<GLContextGLX> createWindowContext(XID window, GLContext* sharingContext);
+    static std::unique_ptr<GLContextGLX> createContext(GLNativeWindowType, PlatformDisplay&);
+    static std::unique_ptr<GLContextGLX> createSharingContext(PlatformDisplay&);
 
-    GLContextGLX(XUniqueGLXContext&&, XID);
-    GLContextGLX(XUniqueGLXContext&&, XUniqueGLXPbuffer&&);
-    GLContextGLX(XUniqueGLXContext&&, XUniquePixmap&&, XUniqueGLXPixmap&&);
     virtual ~GLContextGLX();
-    virtual bool makeContextCurrent();
-    virtual void swapBuffers();
-    virtual void waitNative();
-    virtual bool canRenderToDefaultFramebuffer();
-    virtual IntSize defaultFrameBufferSize();
-    virtual cairo_device_t* cairoDevice();
-    virtual bool isEGLContext() const { return false; }
-
-#if ENABLE(GRAPHICS_CONTEXT_3D)
-    virtual PlatformGraphicsContext3D platformContext();
-#endif
 
 private:
-    static std::unique_ptr<GLContextGLX> createPbufferContext(GLXContext sharingContext);
-    static std::unique_ptr<GLContextGLX> createPixmapContext(GLXContext sharingContext);
+    bool makeContextCurrent() override;
+    void swapBuffers() override;
+    void waitNative() override;
+    bool canRenderToDefaultFramebuffer() override;
+    IntSize defaultFrameBufferSize() override;
+    void swapInterval(int) override;
+    cairo_device_t* cairoDevice() override;
+    bool isEGLContext() const override { return false; }
 
+#if ENABLE(GRAPHICS_CONTEXT_3D)
+    PlatformGraphicsContext3D platformContext() override;
+#endif
+
+    GLContextGLX(PlatformDisplay&, XUniqueGLXContext&&, GLNativeWindowType);
+    GLContextGLX(PlatformDisplay&, XUniqueGLXContext&&, XUniqueGLXPbuffer&&);
+    GLContextGLX(PlatformDisplay&, XUniqueGLXContext&&, XUniquePixmap&&, XUniqueGLXPixmap&&);
+
+    static std::unique_ptr<GLContextGLX> createWindowContext(GLNativeWindowType, PlatformDisplay&, GLXContext sharingContext = nullptr);
+    static std::unique_ptr<GLContextGLX> createPbufferContext(PlatformDisplay&, GLXContext sharingContext = nullptr);
+    static std::unique_ptr<GLContextGLX> createPixmapContext(PlatformDisplay&, GLXContext sharingContext = nullptr);
+
+    Display* m_x11Display { nullptr };
     XUniqueGLXContext m_context;
-    XID m_window { 0 };
+    Window m_window { 0 };
     XUniqueGLXPbuffer m_pbuffer;
     XUniquePixmap m_pixmap;
     XUniqueGLXPixmap m_glxPixmap;
@@ -70,4 +75,3 @@ private:
 
 #endif // USE(GLX)
 
-#endif // GLContextGLX_h

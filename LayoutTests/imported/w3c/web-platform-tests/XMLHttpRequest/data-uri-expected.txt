@@ -1,22 +1,12 @@
-CONSOLE MESSAGE: line 40: XMLHttpRequest cannot load data:text/plain,Hello, World!. Cross origin requests are only supported for HTTP.
-CONSOLE MESSAGE: line 40: XMLHttpRequest cannot load data:text/plain;base64,SGVsbG8sIFdvcmxkIQ==. Cross origin requests are only supported for HTTP.
-CONSOLE MESSAGE: line 40: XMLHttpRequest cannot load data:text/html,Hello, World!. Cross origin requests are only supported for HTTP.
-CONSOLE MESSAGE: line 40: XMLHttpRequest cannot load data:text/html;charset=UTF-8,Hello, World!. Cross origin requests are only supported for HTTP.
-CONSOLE MESSAGE: line 40: XMLHttpRequest cannot load data:image/png,Hello, World!. Cross origin requests are only supported for HTTP.
-CONSOLE MESSAGE: line 40: XMLHttpRequest cannot load data:text/plain,Hello, World!. Cross origin requests are only supported for HTTP.
-CONSOLE MESSAGE: line 40: XMLHttpRequest cannot load data:text/plain,Hello, World!. Cross origin requests are only supported for HTTP.
-CONSOLE MESSAGE: XMLHttpRequest cannot load data:text/plain,Hello, World!. Origin http://localhost:8800 is not allowed by Access-Control-Allow-Origin.
-CONSOLE MESSAGE: XMLHttpRequest cannot load data:text/plain,Hello, World!. Origin http://localhost:8800 is not allowed by Access-Control-Allow-Origin.
-CONSOLE MESSAGE: XMLHttpRequest cannot load data:text/plain,Hello, World!. Origin http://localhost:8800 is not allowed by Access-Control-Allow-Origin.
 
-FAIL XHR method GET with charset text/plain assert_equals: expected "Hello, World!" but got ""
-FAIL XHR method GET with charset text/plain (base64) assert_equals: expected "Hello, World!" but got ""
-FAIL XHR method GET with charset text/html assert_equals: expected "Hello, World!" but got ""
-FAIL XHR method GET with charset text/html;charset=UTF-8 assert_equals: expected "Hello, World!" but got ""
-FAIL XHR method GET with charset image/png assert_equals: expected "Hello, World!" but got ""
-FAIL XHR method POST with charset text/plain assert_equals: expected "OK" but got ""
-FAIL XHR method PUT with charset text/plain assert_equals: expected "OK" but got ""
-FAIL XHR method DELETE with charset text/plain assert_equals: expected "OK" but got ""
-FAIL XHR method HEAD with charset text/plain assert_equals: expected "OK" but got ""
-FAIL XHR method UNICORN with charset text/plain assert_equals: expected "OK" but got ""
+PASS XHR method GET with MIME type text/plain 
+PASS XHR method GET with MIME type text/plain (base64) 
+PASS XHR method GET with MIME type text/html 
+PASS XHR method GET with MIME type text/html;charset=UTF-8 
+PASS XHR method GET with MIME type image/png 
+PASS XHR method POST with MIME type text/plain 
+PASS XHR method PUT with MIME type text/plain 
+PASS XHR method DELETE with MIME type text/plain 
+PASS XHR method HEAD with MIME type text/plain 
+PASS XHR method UNICORN with MIME type text/plain 
 

@@ -20,8 +20,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef CachedImage_h
-#define CachedImage_h
+#pragma once
 
 #include "CachedResource.h"
 #include "Image.h"
@@ -31,7 +30,6 @@
 #include "LayoutSize.h"
 #include "SVGImageCache.h"
 #include <wtf/HashMap.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -45,16 +43,14 @@ class SecurityOrigin;
 
 struct Length;
 
-class CachedImage final : public CachedResource, public ImageObserver {
+class CachedImage final : public CachedResource {
     friend class MemoryCache;
 
 public:
-    enum CacheBehaviorType { AutomaticallyCached, ManuallyCached };
-
-    CachedImage(const ResourceRequest&, SessionID);
+    CachedImage(CachedResourceRequest&&, SessionID);
     CachedImage(Image*, SessionID);
+    // Constructor to use for manually cached images.
     CachedImage(const URL&, Image*, SessionID);
-    CachedImage(const URL&, Image*, CacheBehaviorType, SessionID);
     virtual ~CachedImage();
 
     WEBCORE_EXPORT Image* image(); // Returns the nullImage() if the image is not available yet.
@@ -63,34 +59,40 @@ public:
     bool currentFrameKnownToBeOpaque(const RenderElement*);
 
     std::pair<Image*, float> brokenImage(float deviceScaleFactor) const; // Returns an image and the image's resolution scale factor.
-    bool willPaintBrokenImage() const; 
+    bool willPaintBrokenImage() const;
 
-    bool canRender(const RenderObject* renderer, float multiplier) { return !errorOccurred() && !imageSizeForRenderer(renderer, multiplier).isEmpty(); }
+    bool canRender(const RenderElement* renderer, float multiplier) { return !errorOccurred() && !imageSizeForRenderer(renderer, multiplier).isEmpty(); }
 
     void setContainerSizeForRenderer(const CachedImageClient*, const LayoutSize&, float);
-    bool usesImageContainerSize() const;
-    bool imageHasRelativeWidth() const;
-    bool imageHasRelativeHeight() const;
+    bool usesImageContainerSize() const { return m_image && m_image->usesContainerSize(); }
+    bool imageHasRelativeWidth() const { return m_image && m_image->hasRelativeWidth(); }
+    bool imageHasRelativeHeight() const { return m_image && m_image->hasRelativeHeight(); }
 
-    virtual void addDataBuffer(SharedBuffer&) override;
-    virtual void finishLoading(SharedBuffer*) override;
+    void addDataBuffer(SharedBuffer&) override;
+    void finishLoading(SharedBuffer*) override;
 
     enum SizeType {
         UsedSize,
         IntrinsicSize
     };
     // This method takes a zoom multiplier that can be used to increase the natural size of the image by the zoom.
-    LayoutSize imageSizeForRenderer(const RenderObject*, float multiplier, SizeType = UsedSize); // returns the size of the complete image.
+    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, SizeType = UsedSize); // returns the size of the complete image.
     void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio);
 
     bool isManuallyCached() const { return m_isManuallyCached; }
     RevalidationDecision makeRevalidationDecision(CachePolicy) const override;
-    virtual void load(CachedResourceLoader&, const ResourceLoaderOptions&) override;
+    void load(CachedResourceLoader&) override;
 
     bool isOriginClean(SecurityOrigin*);
 
+    void addPendingImageDrawingClient(CachedImageClient&);
+
 private:
     void clear();
+
+    CachedImage(CachedImage&, const ResourceRequest&, SessionID);
+
+    void setBodyDataFrom(const CachedResource&) final;
 
     void createImage();
     void clearImage();
@@ -98,30 +100,51 @@ private:
     void notifyObservers(const IntRect* changeRect = nullptr);
     void checkShouldPaintBrokenImage();
 
-    virtual void switchClientsToRevalidatedResource() override;
-    virtual bool mayTryReplaceEncodedData() const override { return true; }
+    void switchClientsToRevalidatedResource() final;
+    bool mayTryReplaceEncodedData() const final { return true; }
 
-    virtual void didAddClient(CachedResourceClient*) override;
-    virtual void didRemoveClient(CachedResourceClient*) override;
+    void didAddClient(CachedResourceClient&) final;
+    void didRemoveClient(CachedResourceClient&) final;
 
-    virtual void allClientsRemoved() override;
-    virtual void destroyDecodedData() override;
+    void allClientsRemoved() override;
+    void destroyDecodedData() override;
 
-    virtual void addData(const char* data, unsigned length) override;
-    virtual void error(CachedResource::Status) override;
-    virtual void responseReceived(const ResourceResponse&) override;
+    EncodedDataStatus setImageDataBuffer(SharedBuffer*, bool allDataReceived);
+    void addData(const char* data, unsigned length) override;
+    void error(CachedResource::Status) override;
+    void responseReceived(const ResourceResponse&) override;
 
     // For compatibility, images keep loading even if there are HTTP errors.
-    virtual bool shouldIgnoreHTTPStatusCodeErrors() const override { return true; }
+    bool shouldIgnoreHTTPStatusCodeErrors() const override { return true; }
 
-    virtual bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
+    bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
 
-    // ImageObserver
-    virtual void decodedSizeChanged(const Image*, int delta) override;
-    virtual void didDraw(const Image*) override;
+    class CachedImageObserver final : public RefCounted<CachedImageObserver>, public ImageObserver {
+    public:
+        static Ref<CachedImageObserver> create(CachedImage& image) { return adoptRef(*new CachedImageObserver(image)); }
+        HashSet<CachedImage*>& cachedImages() { return m_cachedImages; }
+        const HashSet<CachedImage*>& cachedImages() const { return m_cachedImages; }
 
-    virtual void animationAdvanced(const Image*) override;
-    virtual void changedInRect(const Image*, const IntRect&) override;
+    private:
+        explicit CachedImageObserver(CachedImage&);
+
+        // ImageObserver API
+        URL sourceUrl() const override { return !m_cachedImages.isEmpty() ? (*m_cachedImages.begin())->url() : URL(); }
+        void decodedSizeChanged(const Image&, long long delta) final;
+        void didDraw(const Image&) final;
+
+        bool canDestroyDecodedData(const Image&) final;
+        void imageFrameAvailable(const Image&, ImageAnimatingState, const IntRect* changeRect = nullptr) final;
+        void changedInRect(const Image&, const IntRect*) final;
+
+        HashSet<CachedImage*> m_cachedImages;
+    };
+
+    void decodedSizeChanged(const Image&, long long delta);
+    void didDraw(const Image&);
+    bool canDestroyDecodedData(const Image&);
+    void imageFrameAvailable(const Image&, ImageAnimatingState, const IntRect* changeRect = nullptr);
+    void changedInRect(const Image&, const IntRect*);
 
     void addIncrementalDataBuffer(SharedBuffer&);
 
@@ -131,14 +154,15 @@ private:
     typedef HashMap<const CachedImageClient*, SizeAndZoom> ContainerSizeRequests;
     ContainerSizeRequests m_pendingContainerSizeRequests;
 
+    HashSet<CachedImageClient*> m_pendingImageDrawingClients;
+
+    RefPtr<CachedImageObserver> m_imageObserver;
     RefPtr<Image> m_image;
     std::unique_ptr<SVGImageCache> m_svgImageCache;
-    unsigned m_isManuallyCached : 1;
-    unsigned m_shouldPaintBrokenImage : 1;
+    bool m_isManuallyCached { false };
+    bool m_shouldPaintBrokenImage { true };
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedImage, CachedResource::ImageResource)
-
-#endif // CachedImage_h

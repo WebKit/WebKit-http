@@ -28,19 +28,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CloseEvent_h
-#define CloseEvent_h
+#pragma once
 
 #include "Event.h"
 #include "EventNames.h"
 
 namespace WebCore {
-
-struct CloseEventInit : public EventInit {
-    bool wasClean { false };
-    unsigned short code { 0 };
-    String reason;
-};
 
 class CloseEvent : public Event {
 public:
@@ -49,9 +42,15 @@ public:
         return adoptRef(*new CloseEvent(wasClean, code, reason));
     }
 
-    static Ref<CloseEvent> createForBindings(const AtomicString& type, const CloseEventInit& initializer)
+    struct Init : EventInit {
+        bool wasClean { false };
+        unsigned short code { 0 };
+        String reason;
+    };
+
+    static Ref<CloseEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new CloseEvent(type, initializer));
+        return adoptRef(*new CloseEvent(type, initializer, isTrusted));
     }
 
     bool wasClean() const { return m_wasClean; }
@@ -59,7 +58,7 @@ public:
     String reason() const { return m_reason; }
 
     // Event function.
-    virtual EventInterface eventInterface() const override { return CloseEventInterfaceType; }
+    EventInterface eventInterface() const override { return CloseEventInterfaceType; }
 
 private:
     CloseEvent(bool wasClean, int code, const String& reason)
@@ -70,8 +69,8 @@ private:
     {
     }
 
-    CloseEvent(const AtomicString& type, const CloseEventInit& initializer)
-        : Event(type, initializer)
+    CloseEvent(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+        : Event(type, initializer, isTrusted)
         , m_wasClean(initializer.wasClean)
         , m_code(initializer.code)
         , m_reason(initializer.reason)
@@ -84,5 +83,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // CloseEvent_h

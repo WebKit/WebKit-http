@@ -30,8 +30,8 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLPlugInElement.h"
-#include "Page.h"
 #include "RenderElement.h"
+#include "Settings.h"
 #include "ShadowRoot.h"
 #include "YouTubeEmbedShadowElement.h"
 #include <wtf/text/StringBuilder.h>
@@ -40,12 +40,12 @@ namespace WebCore {
 
 void YouTubePluginReplacement::registerPluginReplacement(PluginReplacementRegistrar registrar)
 {
-    registrar(ReplacementPlugin(create, supportsMimeType, supportsFileExtension, supportsURL));
+    registrar(ReplacementPlugin(create, supportsMimeType, supportsFileExtension, supportsURL, isEnabledBySettings));
 }
 
-PassRefPtr<PluginReplacement> YouTubePluginReplacement::create(HTMLPlugInElement& plugin, const Vector<String>& paramNames, const Vector<String>& paramValues)
+Ref<PluginReplacement> YouTubePluginReplacement::create(HTMLPlugInElement& plugin, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
-    return adoptRef(new YouTubePluginReplacement(plugin, paramNames, paramValues));
+    return adoptRef(*new YouTubePluginReplacement(plugin, paramNames, paramValues));
 }
 
 bool YouTubePluginReplacement::supportsMimeType(const String& mimeType)
@@ -67,7 +67,7 @@ YouTubePluginReplacement::YouTubePluginReplacement(HTMLPlugInElement& plugin, co
         m_attributes.add(paramNames[i], paramValues[i]);
 }
 
-RenderPtr<RenderElement> YouTubePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, Ref<RenderStyle>&& style, const RenderTreePosition& insertionPosition)
+RenderPtr<RenderElement> YouTubePluginReplacement::createElementRenderer(HTMLPlugInElement& plugin, RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
     ASSERT_UNUSED(plugin, m_parentElement == &plugin);
 
@@ -77,28 +77,28 @@ RenderPtr<RenderElement> YouTubePluginReplacement::createElementRenderer(HTMLPlu
     return m_embedShadowElement->createElementRenderer(WTFMove(style), insertionPosition);
 }
 
-bool YouTubePluginReplacement::installReplacement(ShadowRoot* root)
+bool YouTubePluginReplacement::installReplacement(ShadowRoot& root)
 {
     m_embedShadowElement = YouTubeEmbedShadowElement::create(m_parentElement->document());
 
-    root->appendChild(*m_embedShadowElement);
+    root.appendChild(*m_embedShadowElement);
 
-    Ref<HTMLIFrameElement> iframeElement = HTMLIFrameElement::create(HTMLNames::iframeTag, m_parentElement->document());
+    auto iframeElement = HTMLIFrameElement::create(HTMLNames::iframeTag, m_parentElement->document());
     if (m_attributes.contains("width"))
-        iframeElement->setAttribute(HTMLNames::widthAttr, AtomicString("100%", AtomicString::ConstructFromLiteral));
+        iframeElement->setAttributeWithoutSynchronization(HTMLNames::widthAttr, AtomicString("100%", AtomicString::ConstructFromLiteral));
     
     const auto& heightValue = m_attributes.find("height");
     if (heightValue != m_attributes.end()) {
         iframeElement->setAttribute(HTMLNames::styleAttr, AtomicString("max-height: 100%", AtomicString::ConstructFromLiteral));
-        iframeElement->setAttribute(HTMLNames::heightAttr, heightValue->value);
+        iframeElement->setAttributeWithoutSynchronization(HTMLNames::heightAttr, heightValue->value);
     }
 
-    iframeElement->setAttribute(HTMLNames::srcAttr, youTubeURL(m_attributes.get("src")));
-    iframeElement->setAttribute(HTMLNames::frameborderAttr, AtomicString("0", AtomicString::ConstructFromLiteral));
+    iframeElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, youTubeURL(m_attributes.get("src")));
+    iframeElement->setAttributeWithoutSynchronization(HTMLNames::frameborderAttr, AtomicString("0", AtomicString::ConstructFromLiteral));
     
     // Disable frame flattening for this iframe.
-    iframeElement->setAttribute(HTMLNames::scrollingAttr, AtomicString("no", AtomicString::ConstructFromLiteral));
-    m_embedShadowElement->appendChild(WTFMove(iframeElement));
+    iframeElement->setAttributeWithoutSynchronization(HTMLNames::scrollingAttr, AtomicString("no", AtomicString::ConstructFromLiteral));
+    m_embedShadowElement->appendChild(iframeElement);
 
     return true;
 }
@@ -199,7 +199,7 @@ static const String& valueForKey(const YouTubePluginReplacement::KeyValueMap& di
     return value->value;
 }
 
-static URL processAndCreateYouTubeURL(const URL& url, bool& isYouTubeShortenedURL)
+static URL processAndCreateYouTubeURL(const URL& url, bool& isYouTubeShortenedURL, String& outPathAfterFirstAmpersand)
 {
     if (!url.protocolIsInHTTPFamily())
         return URL();
@@ -265,16 +265,22 @@ static URL processAndCreateYouTubeURL(const URL& url, bool& isYouTubeShortenedUR
             }
         }
     } else if (hasCaseInsensitivePrefix(path, "/v/") || hasCaseInsensitivePrefix(path, "/e/")) {
-        String videoID = url.lastPathComponent();
-        
-        // These URLs are funny - they don't have a ? for the first query parameter.
-        // Strip all characters after and including '&' to remove extraneous parameters after the video ID.
-        size_t ampersand = videoID.find('&');
-        if (ampersand != notFound)
-            videoID = videoID.substring(0, ampersand);
-        
-        if (!videoID.isEmpty())
+        String lastPathComponent = url.lastPathComponent();
+        String videoID;
+        String pathAfterFirstAmpersand;
+
+        size_t ampersandLocation = lastPathComponent.find('&');
+        if (ampersandLocation != notFound) {
+            // Some URLs we care about use & in place of ? for the first query parameter.
+            videoID = lastPathComponent.substring(0, ampersandLocation);
+            pathAfterFirstAmpersand = lastPathComponent.substring(ampersandLocation + 1, lastPathComponent.length() - ampersandLocation);
+        } else
+            videoID = lastPathComponent;
+
+        if (!videoID.isEmpty()) {
+            outPathAfterFirstAmpersand = pathAfterFirstAmpersand;
             return createYouTubeURL(videoID, emptyString());
+        }
     }
     
     return URL();
@@ -283,9 +289,14 @@ static URL processAndCreateYouTubeURL(const URL& url, bool& isYouTubeShortenedUR
 String YouTubePluginReplacement::youTubeURL(const String& srcString)
 {
     URL srcURL = m_parentElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(srcString));
+    return youTubeURLFromAbsoluteURL(srcURL, srcString);
+}
 
+String YouTubePluginReplacement::youTubeURLFromAbsoluteURL(const URL& srcURL, const String& srcString)
+{
     bool isYouTubeShortenedURL = false;
-    URL youTubeURL = processAndCreateYouTubeURL(srcURL, isYouTubeShortenedURL);
+    String possibleMalformedQuery;
+    URL youTubeURL = processAndCreateYouTubeURL(srcURL, isYouTubeShortenedURL, possibleMalformedQuery);
     if (srcURL.isEmpty() || youTubeURL.isEmpty())
         return srcString;
 
@@ -311,17 +322,11 @@ String YouTubePluginReplacement::youTubeURL(const String& srcString)
 
     const String& srcURLPrefix = srcString.substring(0, locationOfPathBeforeVideoID);
     String query = srcURL.query();
+    // If the URL has no query, use the possibly malformed query we found.
+    if (query.isEmpty())
+        query = possibleMalformedQuery;
 
-    // By default, the iframe will display information like the video title and uploader on top of the video. Don't display
-    // them if the embeding html doesn't specify it.
-    if (!query.isEmpty() && !query.contains("showinfo"))
-        query.append("&showinfo=0");
-    else
-        query = "showinfo=0";
-    
-    // Append the query string if it is valid. Some sites apparently forget to add "?" for the query string, in that case,
-    // we will discard the parameters in the url.
-    // See: <rdar://problem/11535155>
+    // Append the query string if it is valid.
     StringBuilder finalURL;
     if (isYouTubeShortenedURL)
         finalURL.appendLiteral("http://www.youtube.com");
@@ -339,6 +344,11 @@ String YouTubePluginReplacement::youTubeURL(const String& srcString)
 bool YouTubePluginReplacement::supportsURL(const URL& url)
 {
     return isYouTubeURL(url);
+}
+
+bool YouTubePluginReplacement::isEnabledBySettings(const Settings& settings)
+{
+    return settings.youTubeFlashPluginReplacementEnabled();
 }
     
 }

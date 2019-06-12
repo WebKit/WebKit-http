@@ -1,10 +1,6 @@
-CONSOLE MESSAGE: line 12: 
-CONSOLE MESSAGE: line 15: 1
-CONSOLE MESSAGE: line 18: 1
-CONSOLE MESSAGE: line 21: 1,2
-CONSOLE MESSAGE: line 24: 1,2
-CONSOLE MESSAGE: line 27: 1,2,Test
-CONSOLE MESSAGE: line 30: 1,2,Test
-CONSOLE MESSAGE: line 33: 1,2,Test,Test1
-CONSOLE MESSAGE: line 36: 1,2,Test,Test1
+
+PASS Object.getOwnPropertyNames(localStorage) on an empty local storage should return an empty array. 
+PASS Object.defineProperty can be used to add items to localStorage. 
+PASS Operator delete can be used to remove items from localStorage. 
+PASS The configurable modifier does effect the result when used in adding properties to localStorage with Object.defineProperty. 
 

@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, int port, const String& path, bool hostHasWildcard, bool portHasWildcard)
+ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, std::optional<uint16_t> port, const String& path, bool hostHasWildcard, bool portHasWildcard)
     : m_policy(policy)
     , m_scheme(scheme)
     , m_host(host)
@@ -43,19 +43,21 @@ ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPo
 {
 }
 
-bool ContentSecurityPolicySource::matches(const URL& url) const
+bool ContentSecurityPolicySource::matches(const URL& url, bool didReceiveRedirectResponse) const
 {
     if (!schemeMatches(url))
         return false;
     if (isSchemeOnly())
         return true;
-    return hostMatches(url) && portMatches(url) && pathMatches(url);
+    return hostMatches(url) && portMatches(url) && (didReceiveRedirectResponse || pathMatches(url));
 }
 
 bool ContentSecurityPolicySource::schemeMatches(const URL& url) const
 {
     if (m_scheme.isEmpty())
         return m_policy.protocolMatchesSelf(url);
+    if (equalLettersIgnoringASCIICase(m_scheme, "http"))
+        return url.protocolIsInHTTPFamily();
     return equalIgnoringASCIICase(url.protocol(), m_scheme);
 }
 
@@ -76,7 +78,7 @@ bool ContentSecurityPolicySource::pathMatches(const URL& url) const
     String path = decodeURLEscapeSequences(url.path());
 
     if (m_path.endsWith("/"))
-        return path.startsWith(m_path, false);
+        return path.startsWith(m_path);
 
     return path == m_path;
 }
@@ -86,16 +88,19 @@ bool ContentSecurityPolicySource::portMatches(const URL& url) const
     if (m_portHasWildcard)
         return true;
 
-    int port = url.port();
+    std::optional<uint16_t> port = url.port();
 
     if (port == m_port)
         return true;
 
+    if (isDefaultPortForProtocol(m_port.value(), "http") && ((!port && url.protocolIs("https")) || isDefaultPortForProtocol(port.value(), "https")))
+        return true;
+
     if (!port)
-        return isDefaultPortForProtocol(m_port, url.protocol());
+        return isDefaultPortForProtocol(m_port.value(), url.protocol());
 
     if (!m_port)
-        return isDefaultPortForProtocol(port, url.protocol());
+        return isDefaultPortForProtocol(port.value(), url.protocol());
 
     return false;
 }

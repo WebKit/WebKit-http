@@ -23,48 +23,54 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GIFImageDecoder_h
-#define GIFImageDecoder_h
+#pragma once
 
 #include "ImageDecoder.h"
+#include <wtf/Lock.h>
 
 class GIFImageReader;
 
 namespace WebCore {
 
     // This class decodes the GIF image format.
-    class GIFImageDecoder : public ImageDecoder {
+    class GIFImageDecoder final : public ImageDecoder {
     public:
-        GIFImageDecoder(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
+        static Ref<ImageDecoder> create(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+        {
+            return adoptRef(*new GIFImageDecoder(alphaOption, gammaAndColorProfileOption));
+        }
+
         virtual ~GIFImageDecoder();
 
         enum GIFQuery { GIFFullQuery, GIFSizeQuery, GIFFrameCountQuery };
 
         // ImageDecoder
-        virtual String filenameExtension() const { return "gif"; }
-        virtual void setData(SharedBuffer* data, bool allDataReceived);
-        virtual bool isSizeAvailable();
-        virtual bool setSize(unsigned width, unsigned height);
-        virtual size_t frameCount();
-        virtual int repetitionCount() const;
-        virtual ImageFrame* frameBufferAtIndex(size_t index);
+        String filenameExtension() const override { return ASCIILiteral("gif"); }
+        void setData(SharedBuffer& data, bool allDataReceived) override;
+        bool setSize(const IntSize&) override;
+        size_t frameCount() const override;
+        RepetitionCount repetitionCount() const override;
+        ImageFrame* frameBufferAtIndex(size_t index) override;
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
         // GIFImageReader!
-        virtual bool setFailed();
-        virtual void clearFrameBufferCache(size_t clearBeforeFrame);
+        bool setFailed() override;
+        void clearFrameBufferCache(size_t clearBeforeFrame) override;
 
         // Callbacks from the GIF reader.
         bool haveDecodedRow(unsigned frameIndex, const Vector<unsigned char>& rowBuffer, size_t width, size_t rowNumber, unsigned repeatCount, bool writeTransparentPixels);
-        bool frameComplete(unsigned frameIndex, unsigned frameDuration, ImageFrame::FrameDisposalMethod disposalMethod);
+        bool frameComplete(unsigned frameIndex, unsigned frameDuration, ImageFrame::DisposalMethod);
         void gifComplete();
 
     private:
+        GIFImageDecoder(AlphaOption, GammaAndColorProfileOption);
+        void tryDecodeSize(bool allDataReceived) override { decode(0, GIFSizeQuery, allDataReceived); }
+
         // If the query is GIFFullQuery, decodes the image up to (but not
         // including) |haltAtFrame|.  Otherwise, decodes as much as is needed to
         // answer the query, ignoring bitmap data.  If decoding fails but there
         // is no more data coming, sets the "decode failure" flag.
-        void decode(unsigned haltAtFrame, GIFQuery);
+        void decode(unsigned haltAtFrame, GIFQuery, bool allDataReceived);
 
         // Called to initialize the frame buffer with the given index, based on
         // the previous frame's disposal method. Returns true on success. On
@@ -72,10 +78,9 @@ namespace WebCore {
         bool initFrameBuffer(unsigned frameIndex);
 
         bool m_currentBufferSawAlpha;
-        mutable int m_repetitionCount;
+        mutable RepetitionCount m_repetitionCount { RepetitionCountOnce };
         std::unique_ptr<GIFImageReader> m_reader;
+        Lock m_decodeLock;
     };
 
 } // namespace WebCore
-
-#endif

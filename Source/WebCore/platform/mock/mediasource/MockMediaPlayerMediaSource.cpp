@@ -28,7 +28,6 @@
 
 #if ENABLE(MEDIA_SOURCE)
 
-#include "ExceptionCodePlaceholder.h"
 #include "MediaPlayer.h"
 #include "MediaSourcePrivateClient.h"
 #include "MockMediaSourcePrivate.h"
@@ -69,13 +68,15 @@ MediaPlayer::SupportsType MockMediaPlayerMediaSource::supportsType(const MediaEn
     if (!parameters.isMediaSource)
         return MediaPlayer::IsNotSupported;
 
-    if (parameters.type.isEmpty() || !mimeTypeCache().contains(parameters.type))
+    auto containerType = parameters.type.containerType();
+    if (containerType.isEmpty() || !mimeTypeCache().contains(containerType))
         return MediaPlayer::IsNotSupported;
 
-    if (parameters.codecs.isEmpty())
+    auto codecs = parameters.type.parameter(ContentType::codecsParameter());
+    if (codecs.isEmpty())
         return MediaPlayer::MayBeSupported;
 
-    return parameters.codecs == "mock" ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;
+    return codecs == "mock" ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;
 }
 
 MockMediaPlayerMediaSource::MockMediaPlayerMediaSource(MediaPlayer* player)

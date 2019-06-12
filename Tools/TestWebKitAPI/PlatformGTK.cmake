@@ -56,6 +56,7 @@ list(APPEND test_webcore_LIBRARIES
     ${GDK3_LIBRARIES}
     ${GTK3_LIBRARIES}
 )
+ADD_WHOLE_ARCHIVE_TO_LIBRARIES(test_webcore_LIBRARIES)
 
 list(APPEND TestWebKitAPI_LIBRARIES
     ${GDK3_LIBRARIES}
@@ -75,6 +76,7 @@ add_executable(TestWebKit2
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionBasic.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionNoCache.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DownloadDecideDestinationCrash.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/EnumerateMediaDevices.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/EvaluateJavaScript.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/FailedLoad.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/Find.cpp
@@ -98,8 +100,10 @@ add_executable(TestWebKit2
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PageLoadBasic.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PageLoadDidChangeLocationWithinPageForFrame.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ParentFrame.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PendingAPIRequestURL.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PreventEmptyUserAgent.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PrivateBrowsingPushStateNoHistoryCallback.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ProvisionalURLAfterWillSendRequestCallback.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ReloadPageAfterCrash.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ResizeWindowAfterCrash.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/RestoreSessionStateContainingFormData.cpp
@@ -123,33 +127,22 @@ add_test(TestWebKit2 ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/TestWebKi
 set_tests_properties(TestWebKit2 PROPERTIES TIMEOUT 60)
 set_target_properties(TestWebKit2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2)
 
-if (ENABLE_SECCOMP_FILTERS)
-    # This test needs to be in its own executable. It's a general test of the
-    # seccomp filter mechanism, and the filters it sets are incompatible with
-    # the correct operation of WebKit and the other tests.
-    add_executable(TestSeccompFilters
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/SeccompFilters.cpp
-    )
-
-    target_link_libraries(TestSeccompFilters ${test_webkit2_api_LIBRARIES})
-    add_test(TestSeccompFilters ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/TestWebKit2)
-    set_tests_properties(TestSeccompFilters PROPERTIES TIMEOUT 5)
-    set_target_properties(TestSeccompFilters PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2)
-endif ()
-
-set(TestWebCoreGtk_SOURCES
-    ${TESTWEBKITAPI_DIR}/Tests/WebCore/gtk/UserAgentQuirks.cpp
-)
-
 add_executable(TestWebCore
     ${test_main_SOURCES}
-    ${TestWebCoreGtk_SOURCES}
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/CSSParser.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/ComplexTextController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FileSystem.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/GridPosition.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/HTMLParserIdioms.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SecurityOrigin.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBufferTest.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/URLParser.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/UserAgentQuirks.cpp
 )
 
 target_link_libraries(TestWebCore ${test_webcore_LIBRARIES})

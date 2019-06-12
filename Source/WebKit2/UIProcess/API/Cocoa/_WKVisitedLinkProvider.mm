@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "_WKVisitedLinkProvider.h"
+#include "_WKVisitedLinkStore.h"
 
 #if WK_API_ENABLED
 

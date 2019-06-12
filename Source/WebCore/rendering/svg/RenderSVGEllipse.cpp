@@ -29,11 +29,10 @@
 
 #include "SVGCircleElement.h"
 #include "SVGEllipseElement.h"
-#include "SVGNames.h"
 
 namespace WebCore {
 
-RenderSVGEllipse::RenderSVGEllipse(SVGGraphicsElement& element, Ref<RenderStyle>&& style)
+RenderSVGEllipse::RenderSVGEllipse(SVGGraphicsElement& element, RenderStyle&& style)
     : RenderSVGShape(element, WTFMove(style))
     , m_usePathFallback(false)
 {
@@ -104,7 +103,7 @@ void RenderSVGEllipse::fillShape(GraphicsContext& context) const
 
 void RenderSVGEllipse::strokeShape(GraphicsContext& context) const
 {
-    if (!style().svgStyle().hasVisibleStroke())
+    if (!style().hasVisibleStroke())
         return;
     if (m_usePathFallback) {
         RenderSVGShape::strokeShape(context);

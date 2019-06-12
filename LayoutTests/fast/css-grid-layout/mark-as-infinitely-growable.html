@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <head>
 <link href="resources/grid.css" rel="stylesheet"/>
+<link href="resources/grid-alignment.css" rel="stylesheet"/>
 <style>
 .grid {
     font: 10px/1 Ahem;
 }
 .gridAutoAndAuto {
-    -webkit-grid-template-columns: auto auto;
+    grid-template-columns: auto auto;
 }
 
 .gridFixedMaxContentAndFixedMaxContent {
-    -webkit-grid-template-columns: minmax(20px, -webkit-max-content) minmax(10px, -webkit-max-content);
+    grid-template-columns: minmax(20px, max-content) minmax(10px, max-content);
 }
 </style>
 <script src="../../resources/js-test.js"></script>
@@ -18,7 +19,7 @@
 <body>
 <script src="resources/grid-definitions-parsing-utils.js"></script>
 
-<div class="grid gridAutoAndAuto" id="gridAutoAndAuto">
+<div class="grid gridAutoAndAuto justifyContentStart" id="gridAutoAndAuto">
     <div class="firstRowFirstColumn">X X</div>
     <div class="firstRowBothColumn">XXXXXX XXX</div>
 </div>

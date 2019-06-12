@@ -28,12 +28,15 @@
 #define Image_h
 
 #include "Color.h"
+#include "DecodingOptions.h"
 #include "FloatRect.h"
 #include "FloatSize.h"
 #include "GraphicsTypes.h"
 #include "ImageOrientation.h"
-#include "NativeImagePtr.h"
-#include <wtf/PassRefPtr.h>
+#include "ImageTypes.h"
+#include "NativeImage.h"
+#include "Timer.h"
+#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
@@ -69,6 +72,7 @@ class FloatPoint;
 class FloatSize;
 class GraphicsContext;
 class SharedBuffer;
+class URL;
 struct Length;
 
 // This class gets notified when an image creates or destroys decoded frames and when it advances animation frames.
@@ -79,8 +83,7 @@ class Image : public RefCounted<Image> {
 public:
     virtual ~Image();
     
-    static PassRefPtr<Image> create(ImageObserver* = nullptr);
-    WEBCORE_EXPORT static PassRefPtr<Image> loadPlatformResource(const char* name);
+    WEBCORE_EXPORT static Ref<Image> loadPlatformResource(const char* name);
     WEBCORE_EXPORT static bool supportsType(const String&);
 
     virtual bool isBitmapImage() const { return false; }
@@ -91,14 +94,14 @@ public:
     virtual bool isSVGImage() const { return false; }
     virtual bool isPDFDocumentImage() const { return false; }
 
-    virtual bool currentFrameKnownToBeOpaque() = 0;
+    virtual bool currentFrameKnownToBeOpaque() const = 0;
     virtual bool isAnimated() const { return false; }
 
     // Derived classes should override this if they can assure that 
     // the image contains only resources from its own security origin.
     virtual bool hasSingleSecurityOrigin() const { return false; }
 
-    WEBCORE_EXPORT static Image* nullImage();
+    WEBCORE_EXPORT static Image& nullImage();
     bool isNull() const { return size().isEmpty(); }
 
     virtual void setContainerSize(const FloatSize&) { }
@@ -111,51 +114,55 @@ public:
     FloatRect rect() const { return FloatRect(FloatPoint(), size()); }
     float width() const { return size().width(); }
     float height() const { return size().height(); }
-    virtual bool getHotSpot(IntPoint&) const { return false; }
+    virtual std::optional<IntPoint> hotSpot() const { return std::nullopt; }
 
 #if PLATFORM(IOS)
     virtual FloatSize originalSize() const { return size(); }
 #endif
 
-    WEBCORE_EXPORT bool setData(PassRefPtr<SharedBuffer> data, bool allDataReceived);
-    virtual bool dataChanged(bool /*allDataReceived*/) { return false; }
-    
+    WEBCORE_EXPORT EncodedDataStatus setData(RefPtr<SharedBuffer>&& data, bool allDataReceived);
+    virtual EncodedDataStatus dataChanged(bool /*allDataReceived*/) { return EncodedDataStatus::Unknown; }
+
+    virtual String uti() const { return String(); } // null string if unknown
     virtual String filenameExtension() const { return String(); } // null string if unknown
 
     virtual void destroyDecodedData(bool destroyAll = true) = 0;
 
     SharedBuffer* data() { return m_encodedImageData.get(); }
+    const SharedBuffer* data() const { return m_encodedImageData.get(); }
 
     // Animation begins whenever someone draws the image, so startAnimation() is not normally called.
     // It will automatically pause once all observers no longer want to render the image anywhere.
-    enum CatchUpAnimation { DoNotCatchUp, CatchUp };
-    virtual void startAnimation(CatchUpAnimation = CatchUp) { }
+    virtual void startAnimation() { }
+    void startAnimationAsynchronously();
     virtual void stopAnimation() {}
     virtual void resetAnimation() {}
+    virtual void imageFrameAvailableAtIndex(size_t) { }
+    virtual bool isAnimating() const { return false; }
+    bool animationPending() const { return m_animationStartTimer.isActive(); }
     
     // Typically the CachedImage that owns us.
     ImageObserver* imageObserver() const { return m_imageObserver; }
     void setImageObserver(ImageObserver* observer) { m_imageObserver = observer; }
+    URL sourceURL() const;
 
     enum TileRule { StretchTile, RoundTile, SpaceTile, RepeatTile };
 
-    virtual PassNativeImagePtr nativeImageForCurrentFrame() { return 0; }
-    virtual ImageOrientation orientationForCurrentFrame() { return ImageOrientation(); }
+    virtual NativeImagePtr nativeImage(const GraphicsContext* = nullptr) { return nullptr; }
+    virtual NativeImagePtr nativeImageOfSize(const IntSize&, const GraphicsContext* = nullptr) { return nullptr; }
+    virtual NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) { return nullptr; }
+    virtual ImageOrientation orientationForCurrentFrame() const { return ImageOrientation(); }
+    virtual Vector<NativeImagePtr> framesNativeImages() { return { }; }
 
     // Accessors for native image formats.
 
 #if USE(APPKIT)
-    virtual NSImage* getNSImage() { return 0; }
+    virtual NSImage *nsImage() { return nullptr; }
+    virtual RetainPtr<NSImage> snapshotNSImage() { return nullptr; }
 #endif
 
 #if PLATFORM(COCOA)
-    virtual CFDataRef getTIFFRepresentation() { return 0; }
-#endif
-
-#if USE(CG)
-    virtual CGImageRef getCGImageRef() { return 0; }
-    virtual CGImageRef getFirstCGImageRefOfSize(const IntSize&) { return 0; }
-    virtual RetainPtr<CFArrayRef> getCGImageArray() { return 0; }
+    virtual CFDataRef tiffRepresentation() { return nullptr; }
 #endif
 
 #if PLATFORM(WIN)
@@ -164,19 +171,15 @@ public:
 #endif
 
 #if PLATFORM(GTK)
-    virtual GdkPixbuf* getGdkPixbuf() { return 0; }
+    virtual GdkPixbuf* getGdkPixbuf() { return nullptr; }
 #endif
 
 #if PLATFORM(QT)
     static void setPlatformResource(const char* name, const QPixmap&);
 #endif
 
-#if PLATFORM(EFL)
-    virtual Evas_Object* getEvasObject(Evas*) { return 0; }
-#endif
-
-    virtual void drawPattern(GraphicsContext&, const FloatRect& srcRect, const AffineTransform& patternTransform,
-        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
+    virtual void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
+        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
 
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     FloatRect adjustSourceRectForDownSampling(const FloatRect& srcRect, const IntSize& scaledSize) const;
@@ -196,17 +199,17 @@ protected:
 #if PLATFORM(WIN)
     virtual void drawFrameMatchingSourceSize(GraphicsContext&, const FloatRect& dstRect, const IntSize& srcSize, CompositeOperator) { }
 #endif
-    virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) = 0;
-    void drawTiled(GraphicsContext&, const FloatRect& dstRect, const FloatPoint& srcPoint, const FloatSize& tileSize, const FloatSize& spacing, CompositeOperator, BlendMode);
-    void drawTiled(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const FloatSize& tileScaleFactor, TileRule hRule, TileRule vRule, CompositeOperator);
+    virtual ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) = 0;
+    ImageDrawResult drawTiled(GraphicsContext&, const FloatRect& dstRect, const FloatPoint& srcPoint, const FloatSize& tileSize, const FloatSize& spacing, CompositeOperator, BlendMode, DecodingMode);
+    ImageDrawResult drawTiled(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const FloatSize& tileScaleFactor, TileRule hRule, TileRule vRule, CompositeOperator);
 
     // Supporting tiled drawing
-    virtual bool mayFillWithSolidColor() { return false; }
-    virtual Color solidColor() const { return Color(); }
-    
+    virtual Color singlePixelSolidColor() const { return Color(); }
+
 private:
     RefPtr<SharedBuffer> m_encodedImageData;
     ImageObserver* m_imageObserver;
+    Timer m_animationStartTimer;
 };
 
 TextStream& operator<<(TextStream&, const Image&);

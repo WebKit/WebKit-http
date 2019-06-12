@@ -37,22 +37,26 @@
 #import "JavaScriptCore.h"
 #import "ObjcRuntimeExtras.h"
 #import "StrongInlines.h"
-#import <wtf/HashSet.h>
 
 #if JSC_OBJC_API_ENABLED
 
 @implementation JSContext {
     JSVirtualMachine *m_virtualMachine;
     JSGlobalContextRef m_context;
-    JSWrapperMap *m_wrapperMap;
     JSC::Strong<JSC::JSObject> m_exception;
 }
-
-@synthesize exceptionHandler;
 
 - (JSGlobalContextRef)JSGlobalContextRef
 {
     return m_context;
+}
+
+- (void)ensureWrapperMap
+{
+    if (!toJS([self JSGlobalContextRef])->lexicalGlobalObject()->wrapperMap()) {
+        // The map will be retained by the GlobalObject in initialization.
+        [[[JSWrapperMap alloc] initWithGlobalContextRef:[self JSGlobalContextRef]] release];
+    }
 }
 
 - (instancetype)init
@@ -68,12 +72,12 @@
 
     m_virtualMachine = [virtualMachine retain];
     m_context = JSGlobalContextCreateInGroup(getGroupFromVirtualMachine(virtualMachine), 0);
-    m_wrapperMap = [[JSWrapperMap alloc] initWithContext:self];
 
     self.exceptionHandler = ^(JSContext *context, JSValue *exceptionValue) {
         context.exception = exceptionValue;
     };
 
+    [self ensureWrapperMap];
     [m_virtualMachine addContext:self forGlobalContextRef:m_context];
 
     return self;
@@ -82,10 +86,9 @@
 - (void)dealloc
 {
     m_exception.clear();
-    [m_wrapperMap release];
     JSGlobalContextRelease(m_context);
     [m_virtualMachine release];
-    [self.exceptionHandler release];
+    [_exceptionHandler release];
     [super dealloc];
 }
 
@@ -128,7 +131,7 @@
 
 - (JSWrapperMap *)wrapperMap
 {
-    return m_wrapperMap;
+    return toJS(m_context)->lexicalGlobalObject()->wrapperMap();
 }
 
 - (JSValue *)globalObject
@@ -261,7 +264,7 @@
     m_virtualMachine = [[JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&globalObject->vm())] retain];
     ASSERT(m_virtualMachine);
     m_context = JSGlobalContextRetain(context);
-    m_wrapperMap = [[JSWrapperMap alloc] initWithContext:self];
+    [self ensureWrapperMap];
 
     self.exceptionHandler = ^(JSContext *context, JSValue *exceptionValue) {
         context.exception = exceptionValue;
@@ -312,13 +315,13 @@
 - (JSValue *)wrapperForObjCObject:(id)object
 {
     JSC::JSLockHolder locker(toJS(m_context));
-    return [m_wrapperMap jsWrapperForObject:object];
+    return [[self wrapperMap] jsWrapperForObject:object inContext:self];
 }
 
 - (JSValue *)wrapperForJSObject:(JSValueRef)value
 {
     JSC::JSLockHolder locker(toJS(m_context));
-    return [m_wrapperMap objcWrapperForJSValueRef:value];
+    return [[self wrapperMap] objcWrapperForJSValueRef:value inContext:self];
 }
 
 + (JSContext *)contextWithJSGlobalContextRef:(JSGlobalContextRef)globalContext

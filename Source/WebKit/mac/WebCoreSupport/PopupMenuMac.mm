@@ -24,7 +24,6 @@
 #import "WebFrameInternal.h"
 #import <WebCore/IntRect.h>
 #import <WebCore/AXObjectCache.h>
-#import <WebCore/BlockExceptions.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ChromeClient.h>
 #import <WebCore/EventHandler.h>
@@ -34,6 +33,7 @@
 #import <WebCore/Page.h>
 #import <WebCore/PopupMenuClient.h>
 #import <WebKitSystemInterface.h>
+#import <wtf/BlockObjCExceptions.h>
 
 using namespace WebCore;
 
@@ -81,23 +81,20 @@ void PopupMenuMac::populate()
         PopupMenuStyle style = m_client->itemStyle(i);
         RetainPtr<NSMutableDictionary> attributes = adoptNS([[NSMutableDictionary alloc] init]);
         if (style.font() != FontCascade()) {
-            NSFont *font = style.font().primaryFont().getNSFont();
+            RetainPtr<CTFontRef> font = style.font().primaryFont().getCTFont();
             if (!font) {
                 CGFloat size = style.font().primaryFont().platformData().size();
-                font = style.font().weight() < FontWeightBold ? [NSFont systemFontOfSize:size] : [NSFont boldSystemFontOfSize:size];
+                font = adoptCF(CTFontCreateUIFontForLanguage(isFontWeightBold(style.font().weight()) ? kCTFontUIFontEmphasizedSystem : kCTFontUIFontSystem, size, nullptr));
             }
-            [attributes setObject:font forKey:NSFontAttributeName];
+            [attributes setObject:toNSFont(font.get()) forKey:NSFontAttributeName];
         }
 
         RetainPtr<NSMutableParagraphStyle> paragraphStyle = adoptNS([[NSParagraphStyle defaultParagraphStyle] mutableCopy]);
-        [paragraphStyle setAlignment:menuTextDirection == LTR ? NSLeftTextAlignment : NSRightTextAlignment];
+        [paragraphStyle setAlignment:menuTextDirection == LTR ? NSTextAlignmentLeft : NSTextAlignmentRight];
         NSWritingDirection writingDirection = style.textDirection() == LTR ? NSWritingDirectionLeftToRight : NSWritingDirectionRightToLeft;
         [paragraphStyle setBaseWritingDirection:writingDirection];
         if (style.hasTextDirectionOverride()) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            RetainPtr<NSNumber> writingDirectionValue = adoptNS([[NSNumber alloc] initWithInteger:writingDirection + NSTextWritingDirectionOverride]);
-#pragma clang diagnostic pop
+            RetainPtr<NSNumber> writingDirectionValue = adoptNS([[NSNumber alloc] initWithInteger:writingDirection + NSWritingDirectionOverride]);
             RetainPtr<NSArray> writingDirectionArray = adoptNS([[NSArray alloc] initWithObjects:writingDirectionValue.get(), nil]);
             [attributes setObject:writingDirectionArray.get() forKey:NSWritingDirectionAttributeName];
         }
@@ -145,16 +142,20 @@ void PopupMenuMac::show(const IntRect& r, FrameView* v, int index)
 
     NSView* view = v->documentView();
 
+    TextDirection textDirection = m_client->menuStyle().textDirection();
+
     [m_popup attachPopUpWithFrame:r inView:view];
     [m_popup selectItemAtIndex:index];
+    [m_popup setUserInterfaceLayoutDirection:textDirection == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
 
-    NSMenu* menu = [m_popup menu];
-    
+    NSMenu *menu = [m_popup menu];
+    [menu setUserInterfaceLayoutDirection:textDirection == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
+
     NSPoint location;
-    NSFont* font = m_client->menuStyle().font().primaryFont().getNSFont();
+    CTFontRef font = m_client->menuStyle().font().primaryFont().getCTFont();
 
     // These values were borrowed from AppKit to match their placement of the menu.
-    const int popOverHorizontalAdjust = -10;
+    const int popOverHorizontalAdjust = -13;
     const int popUnderHorizontalAdjust = 6;
     const int popUnderVerticalAdjust = 6;
     if (m_client->shouldPopOver()) {
@@ -163,14 +164,27 @@ void PopupMenuMac::show(const IntRect& r, FrameView* v, int index)
             titleFrame = r;
         float vertOffset = roundf((NSMaxY(r) - NSMaxY(titleFrame)) + NSHeight(titleFrame));
         // Adjust for fonts other than the system font.
-        NSFont* defaultFont = [NSFont systemFontOfSize:[font pointSize]];
-        vertOffset += [font descender] - [defaultFont descender];
+        auto defaultFont = adoptCF(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, CTFontGetSize(font), nil));
+        vertOffset += CTFontGetDescent(font) - CTFontGetDescent(defaultFont.get());
         vertOffset = fminf(NSHeight(r), vertOffset);
-    
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+        if (textDirection == LTR)
+            location = NSMakePoint(NSMinX(r) + popOverHorizontalAdjust, NSMaxY(r) - vertOffset);
+        else
+            location = NSMakePoint(NSMaxX(r) - popOverHorizontalAdjust, NSMaxY(r) - vertOffset);
+#else
         location = NSMakePoint(NSMinX(r) + popOverHorizontalAdjust, NSMaxY(r) - vertOffset);
-    } else
-        location = NSMakePoint(NSMinX(r) + popUnderHorizontalAdjust, NSMaxY(r) + popUnderVerticalAdjust);    
-
+#endif
+    } else {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+        if (textDirection == LTR)
+            location = NSMakePoint(NSMinX(r) + popUnderHorizontalAdjust, NSMaxY(r) + popUnderVerticalAdjust);
+        else
+            location = NSMakePoint(NSMaxX(r) - popUnderHorizontalAdjust, NSMaxY(r) + popUnderVerticalAdjust);
+#else
+        location = NSMakePoint(NSMinX(r) + popUnderHorizontalAdjust, NSMaxY(r) + popUnderVerticalAdjust);
+#endif
+    }
     // Save the current event that triggered the popup, so we can clean up our event
     // state after the NSMenu goes away.
     Ref<Frame> frame(v->frame());
@@ -179,6 +193,7 @@ void PopupMenuMac::show(const IntRect& r, FrameView* v, int index)
     Ref<PopupMenuMac> protector(*this);
 
     RetainPtr<NSView> dummyView = adoptNS([[NSView alloc] initWithFrame:r]);
+    [dummyView.get() setUserInterfaceLayoutDirection:textDirection == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
     [view addSubview:dummyView.get()];
     location = [dummyView convertPoint:location fromView:view];
     
@@ -192,17 +207,17 @@ void PopupMenuMac::show(const IntRect& r, FrameView* v, int index)
     NSControlSize controlSize;
     switch (m_client->menuStyle().menuSize()) {
     case PopupMenuStyle::PopupMenuSizeNormal:
-        controlSize = NSRegularControlSize;
+        controlSize = NSControlSizeRegular;
         break;
     case PopupMenuStyle::PopupMenuSizeSmall:
-        controlSize = NSSmallControlSize;
+        controlSize = NSControlSizeSmall;
         break;
     case PopupMenuStyle::PopupMenuSizeMini:
-        controlSize = NSMiniControlSize;
+        controlSize = NSControlSizeMini;
         break;
     }
 
-    WKPopupMenu(menu, location, roundf(NSWidth(r)), dummyView.get(), index, font, controlSize, !m_client->menuStyle().hasDefaultAppearance());
+    WKPopupMenu(menu, location, roundf(NSWidth(r)), dummyView.get(), index, toNSFont(font), controlSize, !m_client->menuStyle().hasDefaultAppearance());
 
     [m_popup dismissPopUp];
     [dummyView removeFromSuperview];

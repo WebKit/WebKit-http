@@ -4,18 +4,21 @@ import argparse
 import logging
 import os
 import sys
+from pkg_resources import require, VersionConflict, DistributionNotFound
 
 try:
+    require("Twisted>=15.5.0")
     import twisted
-except ImportError:
+except (ImportError, VersionConflict, DistributionNotFound):
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../..')))
-    from webkitpy.thirdparty.autoinstalled.twisted import twisted
+    from webkitpy.thirdparty.autoinstalled.twisted_15_5_0 import twisted
 
 from twisted.web import static, server
 from twisted.web.resource import Resource
 from twisted.internet import reactor
 
 _log = logging.getLogger(__name__)
+
 
 class ServerControl(Resource):
     isLeaf = True
@@ -27,7 +30,7 @@ class ServerControl(Resource):
 
     def render_POST(self, request):
         _log.info("Serving request %s" % request)
-        sys.stdout.write(request.content.getvalue())
+        sys.stdout.write(request.content.read())
         sys.stdout.flush()
         reactor.stop()
         return 'OK'

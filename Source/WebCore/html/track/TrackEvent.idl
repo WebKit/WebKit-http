@@ -25,8 +25,11 @@
 
 [
     Conditional=VIDEO_TRACK,
-    ConstructorTemplate=Event
+    Constructor(DOMString type, optional TrackEventInit eventInitDict)
 ] interface TrackEvent : Event {
-    [InitializedByEventConstructor, CustomGetter] readonly attribute object track;
+    readonly attribute (VideoTrack or AudioTrack or TextTrack)? track;
 };
 
+dictionary TrackEventInit : EventInit {
+    (VideoTrack or AudioTrack or TextTrack)? track = null;
+};

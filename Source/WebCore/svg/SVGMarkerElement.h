@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGMarkerElement_h
-#define SVGMarkerElement_h
+#pragma once
 
 #include "SVGAnimatedAngle.h"
 #include "SVGAnimatedBoolean.h"
@@ -43,6 +42,7 @@ enum SVGMarkerOrientType {
     SVGMarkerOrientUnknown = 0,
     SVGMarkerOrientAuto,
     SVGMarkerOrientAngle,
+    SVGMarkerOrientAutoStartReverse,
 
     // Add new elements before here.
     SVGMarkerOrientMax
@@ -58,9 +58,9 @@ struct SVGPropertyTraits<SVGMarkerUnitsType> {
         case SVGMarkerUnitsUnknown:
             return emptyString();
         case SVGMarkerUnitsUserSpaceOnUse:
-            return "userSpaceOnUse";
+            return ASCIILiteral("userSpaceOnUse");
         case SVGMarkerUnitsStrokeWidth:
-            return "strokeWidth";
+            return ASCIILiteral("strokeWidth");
         }
 
         ASSERT_NOT_REACHED();
@@ -78,21 +78,23 @@ struct SVGPropertyTraits<SVGMarkerUnitsType> {
 };
 
 template<>
-struct SVGPropertyTraits<SVGMarkerOrientType> {
-    static unsigned highestEnumValue() { return SVGMarkerOrientAngle; }
+inline unsigned SVGIDLEnumLimits<SVGMarkerOrientType>::highestExposedEnumValue() { return SVGMarkerOrientAngle; }
+
+template<> struct SVGPropertyTraits<SVGMarkerOrientType> {
+    static unsigned highestEnumValue() { return SVGMarkerOrientAutoStartReverse; }
 
     // toString is not needed, synchronizeOrientType() handles this on its own.
 
-    static SVGMarkerOrientType fromString(const String& value, SVGAngle& angle)
+    static SVGMarkerOrientType fromString(const String& value, SVGAngleValue& angle)
     {
         if (value == "auto")
             return SVGMarkerOrientAuto;
-
-        ExceptionCode ec = 0;
-        angle.setValueAsString(value, ec);
-        if (!ec)
-            return SVGMarkerOrientAngle;
-        return SVGMarkerOrientUnknown;
+        if (value == "auto-start-reverse")
+            return SVGMarkerOrientAutoStartReverse;
+        auto setValueResult = angle.setValueAsString(value);
+        if (setValueResult.hasException())
+            return SVGMarkerOrientUnknown;
+        return SVGMarkerOrientAngle;
     }
 };
 
@@ -110,7 +112,8 @@ public:
     enum {
         SVG_MARKER_ORIENT_UNKNOWN = SVGMarkerOrientUnknown,
         SVG_MARKER_ORIENT_AUTO = SVGMarkerOrientAuto,
-        SVG_MARKER_ORIENT_ANGLE = SVGMarkerOrientAngle
+        SVG_MARKER_ORIENT_ANGLE = SVGMarkerOrientAngle,
+        SVG_MARKER_ORIENT_AUTOSTARTREVERSE = SVGMarkerOrientAutoStartReverse
     };
 
     static Ref<SVGMarkerElement> create(const QualifiedName&, Document&);
@@ -118,24 +121,26 @@ public:
     AffineTransform viewBoxToViewTransform(float viewWidth, float viewHeight) const;
 
     void setOrientToAuto();
-    void setOrientToAngle(const SVGAngle&);
+    void setOrientToAngle(SVGAngle&);
 
     static const SVGPropertyInfo* orientTypePropertyInfo();
 
 private:
     SVGMarkerElement(const QualifiedName&, Document&);
 
-    virtual bool needsPendingResourceHandling() const override { return false; }
+    bool needsPendingResourceHandling() const override { return false; }
 
     static bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void svgAttributeChanged(const QualifiedName&) override;
-    virtual void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void svgAttributeChanged(const QualifiedName&) override;
+    void childrenChanged(const ChildChange&) override;
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return true; }
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    bool rendererIsNeeded(const RenderStyle&) override { return true; }
 
-    virtual bool selfHasRelativeLengths() const override;
+    bool selfHasRelativeLengths() const override;
+
+    void setOrient(SVGMarkerOrientType, const SVGAngleValue&);
 
     void synchronizeOrientType();
 
@@ -167,6 +172,4 @@ private:
     mutable SVGSynchronizableAnimatedProperty<SVGMarkerOrientType> m_orientType;
 };
 
-}
-
-#endif
+} // namespace WebCore

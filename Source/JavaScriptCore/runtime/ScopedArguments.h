@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ScopedArguments_h
-#define ScopedArguments_h
+#pragma once
 
 #include "GenericArguments.h"
 #include "JSLexicalEnvironment.h"
@@ -71,7 +70,7 @@ public:
         return internalLength();
     }
     
-    bool canAccessIndexQuickly(uint32_t i) const
+    bool isMappedArgument(uint32_t i) const
     {
         if (i >= m_totalLength)
             return false;
@@ -81,14 +80,14 @@ public:
         return !!overflowStorage()[i - namedLength].get();
     }
 
-    bool canAccessArgumentIndexQuicklyInDFG(uint32_t i) const
+    bool isMappedArgumentInDFG(uint32_t i) const
     {
-        return canAccessIndexQuickly(i);
+        return isMappedArgument(i);
     }
     
     JSValue getIndexQuickly(uint32_t i) const
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(canAccessIndexQuickly(i));
+        ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
         unsigned namedLength = m_table->length();
         if (i < namedLength)
             return m_scope->variableAt(m_table->get(i)).get();
@@ -97,10 +96,10 @@ public:
 
     void setIndexQuickly(VM& vm, uint32_t i, JSValue value)
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(canAccessIndexQuickly(i));
+        ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
         unsigned namedLength = m_table->length();
         if (i < namedLength)
-            m_scope->variableAt(m_table->get(i)).set(vm, this, value);
+            m_scope->variableAt(m_table->get(i)).set(vm, m_scope.get(), value);
         else
             overflowStorage()[i - namedLength].set(vm, this, value);
     }
@@ -109,12 +108,27 @@ public:
     {
         return m_callee;
     }
-    
+
     bool overrodeThings() const { return m_overrodeThings; }
     void overrideThings(VM&);
     void overrideThingsIfNecessary(VM&);
-    void overrideArgument(VM&, uint32_t index);
+    void unmapArgument(VM&, uint32_t index);
     
+    void initModifiedArgumentsDescriptorIfNecessary(VM& vm)
+    {
+        GenericArguments<ScopedArguments>::initModifiedArgumentsDescriptorIfNecessary(vm, m_table->length());
+    }
+
+    void setModifiedArgumentDescriptor(VM& vm, unsigned index)
+    {
+        GenericArguments<ScopedArguments>::setModifiedArgumentDescriptor(vm, index, m_table->length());
+    }
+
+    bool isModifiedArgumentDescriptor(unsigned index)
+    {
+        return GenericArguments<ScopedArguments>::isModifiedArgumentDescriptor(index, m_table->length());
+    }
+
     void copyToArguments(ExecState*, VirtualRegister firstElementDest, unsigned offset, unsigned length);
 
     DECLARE_INFO;
@@ -131,9 +145,9 @@ public:
         return WTF::roundUpToMultipleOf<sizeof(WriteBarrier<Unknown>)>(sizeof(ScopedArguments));
     }
     
-    static size_t allocationSize(unsigned overflowArgumentsLength)
+    static size_t allocationSize(Checked<size_t> overflowArgumentsLength)
     {
-        return overflowStorageOffset() + sizeof(WriteBarrier<Unknown>) * overflowArgumentsLength;
+        return (overflowStorageOffset() + sizeof(WriteBarrier<Unknown>) * overflowArgumentsLength).unsafeGet();
     }
 
 private:
@@ -152,6 +166,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // ScopedArguments_h
-

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -28,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RadioInputType_h
-#define RadioInputType_h
+#pragma once
 
 #include "BaseCheckableInputType.h"
 
@@ -40,20 +40,18 @@ public:
     explicit RadioInputType(HTMLInputElement& element) : BaseCheckableInputType(element) { }
 
 private:
-    virtual const AtomicString& formControlType() const override;
-    virtual bool valueMissing(const String&) const override;
-    virtual String valueMissingText() const override;
-    virtual void handleClickEvent(MouseEvent*) override;
-    virtual void handleKeydownEvent(KeyboardEvent*) override;
-    virtual void handleKeyupEvent(KeyboardEvent*) override;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
-    virtual bool shouldSendChangeEventAfterCheckedChanged() override;
-    virtual void willDispatchClick(InputElementClickState&) override;
-    virtual void didDispatchClick(Event*, const InputElementClickState&) override;
-    virtual bool isRadioButton() const override;
-    virtual bool supportsIndeterminateAppearance() const override;
+    const AtomicString& formControlType() const override;
+    bool valueMissing(const String&) const override;
+    String valueMissingText() const override;
+    void handleClickEvent(MouseEvent&) override;
+    void handleKeydownEvent(KeyboardEvent&) override;
+    void handleKeyupEvent(KeyboardEvent&) override;
+    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    bool shouldSendChangeEventAfterCheckedChanged() override;
+    void willDispatchClick(InputElementClickState&) override;
+    void didDispatchClick(Event*, const InputElementClickState&) override;
+    bool isRadioButton() const override;
+    bool matchesIndeterminatePseudoClass() const override;
 };
 
 } // namespace WebCore
-
-#endif // RadioInputType_h

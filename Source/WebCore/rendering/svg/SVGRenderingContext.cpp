@@ -28,7 +28,6 @@
 #include "BasicShapes.h"
 #include "Frame.h"
 #include "FrameView.h"
-#include "Page.h"
 #include "RenderLayer.h"
 #include "RenderSVGImage.h"
 #include "RenderSVGResourceClipper.h"
@@ -57,7 +56,7 @@ SVGRenderingContext::~SVGRenderingContext()
     if (m_renderingFlags & EndFilterLayer) {
         ASSERT(m_filter);
         GraphicsContext* contextPtr = &m_paintInfo->context();
-        m_filter->postApplyResource(*m_renderer, contextPtr, ApplyToDefaultMode, 0, 0);
+        m_filter->postApplyResource(*m_renderer, contextPtr, RenderSVGResourceMode::ApplyToDefault, 0, 0);
         m_paintInfo->setContext(*m_savedContext);
         m_paintInfo->rect = m_savedPaintRect;
     }
@@ -90,7 +89,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
         m_renderingFlags |= RestoreGraphicsContext;
     }
 
-    RenderStyle& style = m_renderer->style();
+    auto& style = m_renderer->style();
 
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
@@ -153,7 +152,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
 
     auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*m_renderer);
     if (!resources) {
-        if (style.hasFilter())
+        if (style.hasReferenceFilterOnly())
             return;
 
         m_renderingFlags |= RenderingPrepared;
@@ -163,7 +162,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     if (!isRenderingMask) {
         if (RenderSVGResourceMasker* masker = resources->masker()) {
             GraphicsContext* contextPtr = &m_paintInfo->context();
-            bool result = masker->applyResource(*m_renderer, style, contextPtr, ApplyToDefaultMode);
+            bool result = masker->applyResource(*m_renderer, style, contextPtr, RenderSVGResourceMode::ApplyToDefault);
             m_paintInfo->setContext(*contextPtr);
             if (!result)
                 return;
@@ -173,7 +172,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     RenderSVGResourceClipper* clipper = resources->clipper();
     if (!clipPathOperation && clipper) {
         GraphicsContext* contextPtr = &m_paintInfo->context();
-        bool result = clipper->applyResource(*m_renderer, style, contextPtr, ApplyToDefaultMode);
+        bool result = clipper->applyResource(*m_renderer, style, contextPtr, RenderSVGResourceMode::ApplyToDefault);
         m_paintInfo->setContext(*contextPtr);
         if (!result)
             return;
@@ -188,7 +187,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
             // (because it was either drawn before or empty) but we still need to apply the filter.
             m_renderingFlags |= EndFilterLayer;
             GraphicsContext* contextPtr = &m_paintInfo->context();
-            bool result = m_filter->applyResource(*m_renderer, style, contextPtr, ApplyToDefaultMode);
+            bool result = m_filter->applyResource(*m_renderer, style, contextPtr, RenderSVGResourceMode::ApplyToDefault);
             m_paintInfo->setContext(*contextPtr);
             if (!result)
                 return;
@@ -295,14 +294,16 @@ void SVGRenderingContext::renderSubtreeToImageBuffer(ImageBuffer* image, RenderE
 {
     ASSERT(image);
 
-    PaintInfo info(image->context(), LayoutRect::infiniteRect(), PaintPhaseForeground, PaintBehaviorNormal);
+    // Rendering into a buffer implies we're being used for masking, clipping, patterns or filters. In each of these
+    // cases we don't want to paint the selection.
+    PaintInfo info(image->context(), LayoutRect::infiniteRect(), PaintPhaseForeground, PaintBehaviorSkipSelectionHighlight);
 
     AffineTransform& contentTransformation = currentContentTransformation();
     AffineTransform savedContentTransformation = contentTransformation;
     contentTransformation = subtreeContentTransformation * contentTransformation;
 
     ASSERT(!item.needsLayout());
-    item.paint(info, IntPoint());
+    item.paint(info, { });
 
     contentTransformation = savedContentTransformation;
 }
@@ -316,7 +317,7 @@ void SVGRenderingContext::clipToImageBuffer(GraphicsContext& context, const Affi
 
     // The mask image has been created in the absolute coordinate space, as the image should not be scaled.
     // So the actual masking process has to be done in the absolute coordinate space as well.
-    context.concatCTM(absoluteTransform.inverse().valueOr(AffineTransform()));
+    context.concatCTM(absoluteTransform.inverse().value_or(AffineTransform()));
     context.clipToImageBuffer(*imageBuffer, absoluteTargetRect);
     context.concatCTM(absoluteTransform);
 
@@ -351,7 +352,7 @@ bool SVGRenderingContext::bufferForeground(std::unique_ptr<ImageBuffer>& imageBu
 
     // Create a new buffer and paint the foreground into it.
     if (!imageBuffer) {
-        if ((imageBuffer = m_paintInfo->context().createCompatibleBuffer(expandedIntSize(boundingBox.size()), true))) {
+        if ((imageBuffer = ImageBuffer::createCompatibleBuffer(expandedIntSize(boundingBox.size()), ColorSpaceSRGB, m_paintInfo->context()))) {
             GraphicsContext& bufferedRenderingContext = imageBuffer->context();
             bufferedRenderingContext.translate(-boundingBox.x(), -boundingBox.y());
             PaintInfo bufferedInfo(*m_paintInfo);

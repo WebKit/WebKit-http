@@ -27,8 +27,10 @@
 #include "FilterOperation.h"
 
 #include "AnimationUtilities.h"
+#include "CachedResourceLoader.h"
 #include "CachedSVGDocumentReference.h"
 #include "FilterEffect.h"
+#include "SVGURIReference.h"
 #include "TextStream.h"
 
 namespace WebCore {
@@ -59,20 +61,23 @@ bool ReferenceFilterOperation::operator==(const FilterOperation& operation) cons
     
     return m_url == downcast<ReferenceFilterOperation>(operation).m_url;
 }
-    
-CachedSVGDocumentReference* ReferenceFilterOperation::getOrCreateCachedSVGDocumentReference()
+
+void ReferenceFilterOperation::loadExternalDocumentIfNeeded(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
 {
-    if (!m_cachedSVGDocumentReference)
-        m_cachedSVGDocumentReference = std::make_unique<CachedSVGDocumentReference>(m_url);
-    return m_cachedSVGDocumentReference.get();
+    if (m_cachedSVGDocumentReference)
+        return;
+    if (!SVGURIReference::isExternalURIReference(m_url, *cachedResourceLoader.document()))
+        return;
+    m_cachedSVGDocumentReference = std::make_unique<CachedSVGDocumentReference>(m_url);
+    m_cachedSVGDocumentReference->load(cachedResourceLoader, options);
 }
 
-void ReferenceFilterOperation::setFilterEffect(PassRefPtr<FilterEffect> filterEffect)
+void ReferenceFilterOperation::setFilterEffect(RefPtr<FilterEffect>&& filterEffect)
 {
-    m_filterEffect = filterEffect;
+    m_filterEffect = WTFMove(filterEffect);
 }
 
-PassRefPtr<FilterOperation> BasicColorMatrixFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
+RefPtr<FilterOperation> BasicColorMatrixFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
 {
     if (from && !from->isSameType(*this))
         return this;
@@ -108,7 +113,7 @@ double BasicColorMatrixFilterOperation::passthroughAmount() const
     }
 }
 
-PassRefPtr<FilterOperation> BasicComponentTransferFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
+RefPtr<FilterOperation> BasicComponentTransferFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
 {
     if (from && !from->isSameType(*this))
         return this;
@@ -154,7 +159,7 @@ bool BlurFilterOperation::operator==(const FilterOperation& operation) const
     return m_stdDeviation == downcast<BlurFilterOperation>(operation).stdDeviation();
 }
     
-PassRefPtr<FilterOperation> BlurFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
+RefPtr<FilterOperation> BlurFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
 {
     if (from && !from->isSameType(*this))
         return this;
@@ -162,11 +167,11 @@ PassRefPtr<FilterOperation> BlurFilterOperation::blend(const FilterOperation* fr
     LengthType lengthType = m_stdDeviation.type();
 
     if (blendToPassthrough)
-        return BlurFilterOperation::create(Length(lengthType).blend(m_stdDeviation, progress));
+        return BlurFilterOperation::create(WebCore::blend(m_stdDeviation, Length(lengthType), progress));
 
     const BlurFilterOperation* fromOperation = downcast<BlurFilterOperation>(from);
     Length fromLength = fromOperation ? fromOperation->m_stdDeviation : Length(lengthType);
-    return BlurFilterOperation::create(m_stdDeviation.blend(fromLength, progress));
+    return BlurFilterOperation::create(WebCore::blend(fromLength, m_stdDeviation, progress));
 }
     
 bool DropShadowFilterOperation::operator==(const FilterOperation& operation) const
@@ -177,7 +182,7 @@ bool DropShadowFilterOperation::operator==(const FilterOperation& operation) con
     return m_location == other.m_location && m_stdDeviation == other.m_stdDeviation && m_color == other.m_color;
 }
     
-PassRefPtr<FilterOperation> DropShadowFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
+RefPtr<FilterOperation> DropShadowFilterOperation::blend(const FilterOperation* from, double progress, bool blendToPassthrough)
 {
     if (from && !from->isSameType(*this))
         return this;

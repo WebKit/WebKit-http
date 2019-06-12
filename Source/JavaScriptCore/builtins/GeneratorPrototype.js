@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2015-2016 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,46 +26,38 @@
 
 // 25.3.3.3 GeneratorResume ( generator, value )
 // 25.3.3.4 GeneratorResumeAbrupt(generator, abruptCompletion)
+@globalPrivate
 function generatorResume(generator, sentValue, resumeMode)
 {
     "use strict";
-
-    // GeneratorState.
-    const Completed = -1;
-    const Executing = -2;
-
-    // ResumeMode.
-    const NormalMode = 0;
-    const ReturnMode = 1;
-    const ThrowMode = 2;
 
     let state = generator.@generatorState;
     let done = false;
     let value = @undefined;
 
     if (typeof state !== 'number')
-        throw new @TypeError("|this| should be a generator");
+        @throwTypeError("|this| should be a generator");
 
-    if (state === Executing)
-        throw new @TypeError("Generator is executing");
+    if (state === @GeneratorStateExecuting)
+        @throwTypeError("Generator is executing");
 
-    if (state === Completed) {
-        if (resumeMode === ThrowMode)
+    if (state === @GeneratorStateCompleted) {
+        if (resumeMode === @GeneratorResumeModeThrow)
             throw sentValue;
 
         done = true;
-        if (resumeMode === ReturnMode)
+        if (resumeMode === @GeneratorResumeModeReturn)
             value = sentValue;
     } else {
         try {
-            generator.@generatorState = Executing;
-            value = generator.@generatorNext.@call(generator.@generatorThis, generator, state, sentValue, resumeMode);
-            if (generator.@generatorState === Executing) {
-                generator.@generatorState = Completed;
+            generator.@generatorState = @GeneratorStateExecuting;
+            value = generator.@generatorNext.@call(generator.@generatorThis, generator, state, sentValue, resumeMode, generator.@generatorFrame);
+            if (generator.@generatorState === @GeneratorStateExecuting) {
+                generator.@generatorState = @GeneratorStateCompleted;
                 done = true;
             }
         } catch (error) {
-            generator.@generatorState = Completed;
+            generator.@generatorState = @GeneratorStateCompleted;
             throw error;
         }
     }
@@ -75,19 +68,19 @@ function next(value)
 {
     "use strict";
 
-    return @generatorResume(this, value, /* NormalMode */ 0);
+    return @generatorResume(this, value, @GeneratorResumeModeNormal);
 }
 
 function return(value)
 {
     "use strict";
 
-    return @generatorResume(this, value, /* ReturnMode */ 1);
+    return @generatorResume(this, value, @GeneratorResumeModeReturn);
 }
 
 function throw(exception)
 {
     "use strict";
 
-    return @generatorResume(this, exception, /* ThrowMode */ 2);
+    return @generatorResume(this, exception, @GeneratorResumeModeThrow);
 }

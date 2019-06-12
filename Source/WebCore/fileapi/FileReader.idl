@@ -30,7 +30,7 @@
  */
 
 [
-    GlobalContext=DOMWindow&WorkerGlobalScope,
+    Exposed=(Window,Worker),
     ActiveDOMObject,
     Constructor,
     ConstructorCallWith=ScriptExecutionContext,
@@ -41,16 +41,16 @@
     const unsigned short DONE = 2;
     readonly attribute unsigned short readyState;
 
+    // FIXME: In all four methods found below, the blob parameter should not be nullable.
     // async read methods
-    [RaisesException] void readAsArrayBuffer(Blob blob);
-    [RaisesException] void readAsBinaryString(Blob blob);
-    [RaisesException] void readAsText(Blob blob, optional DOMString encoding);
-    [RaisesException] void readAsDataURL(Blob blob);
+    [MayThrowException] void readAsArrayBuffer(Blob? blob);
+    [MayThrowException] void readAsBinaryString(Blob? blob);
+    [MayThrowException] void readAsText(Blob? blob, optional DOMString encoding);
+    [MayThrowException] void readAsDataURL(Blob? blob);
 
     void abort();
 
-    // file data
-    [Custom] readonly attribute any result;
+    readonly attribute (DOMString or ArrayBuffer)? result;
 
     readonly attribute FileError error;
 

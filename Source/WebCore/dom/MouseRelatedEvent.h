@@ -21,15 +21,16 @@
  *
  */
 
-#ifndef MouseRelatedEvent_h
-#define MouseRelatedEvent_h
+#pragma once
 
 #include "LayoutPoint.h"
 #include "UIEventWithKeyState.h"
 
 namespace WebCore {
 
-struct MouseRelatedEventInit : public UIEventWithKeyStateInit {
+class FrameView;
+
+struct MouseRelatedEventInit : public EventModifierInit {
     int screenX { 0 };
     int screenY { 0 };
 };
@@ -49,38 +50,41 @@ public:
     int movementY() const { return m_movementDelta.y(); }
 #endif
     const LayoutPoint& clientLocation() const { return m_clientLocation; }
-    virtual int layerX() override;
-    virtual int layerY() override;
+    int layerX() override;
+    int layerY() override;
     WEBCORE_EXPORT int offsetX();
     WEBCORE_EXPORT int offsetY();
     bool isSimulated() const { return m_isSimulated; }
-    virtual int pageX() const override final;
-    virtual int pageY() const override final;
+    int pageX() const final;
+    int pageY() const final;
+    WEBCORE_EXPORT FloatPoint locationInRootViewCoordinates() const;
     virtual const LayoutPoint& pageLocation() const;
-    int x() const;
-    int y() const;
+    WEBCORE_EXPORT int x() const;
+    WEBCORE_EXPORT int y() const;
 
     // Page point in "absolute" coordinates (i.e. post-zoomed, page-relative coords,
     // usable with RenderObject::absoluteToLocal).
     const LayoutPoint& absoluteLocation() const { return m_absoluteLocation; }
-    void setAbsoluteLocation(const LayoutPoint& p) { m_absoluteLocation = p; }
 
 protected:
-    MouseRelatedEvent();
-    MouseRelatedEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, AbstractView*,
+    MouseRelatedEvent() = default;
+    MouseRelatedEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, DOMWindow*,
         int detail, const IntPoint& screenLocation, const IntPoint& windowLocation,
 #if ENABLE(POINTER_LOCK)
         const IntPoint& movementDelta,
 #endif
         bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, bool isSimulated = false);
-    MouseRelatedEvent(const AtomicString& type, const MouseRelatedEventInit&);
+    MouseRelatedEvent(const AtomicString& type, const MouseRelatedEventInit&, IsTrusted = IsTrusted::No);
 
     void initCoordinates();
     void initCoordinates(const LayoutPoint& clientLocation);
-    virtual void receivedTarget() override final;
+    void receivedTarget() final;
 
     void computePageLocation();
     void computeRelativePosition();
+
+    float documentToAbsoluteScaleFactor() const;
+    FrameView* frameView() const;
 
     // Expose these so MouseEvent::initMouseEvent can set them.
     IntPoint m_screenLocation;
@@ -96,10 +100,8 @@ private:
     LayoutPoint m_layerLocation;
     LayoutPoint m_offsetLocation;
     LayoutPoint m_absoluteLocation;
-    bool m_isSimulated;
-    bool m_hasCachedRelativePosition;
+    bool m_isSimulated { false };
+    bool m_hasCachedRelativePosition { false };
 };
 
 } // namespace WebCore
-
-#endif // MouseRelatedEvent_h

@@ -52,14 +52,13 @@
 #include "WebScriptWorld.h"
 #include "WebURLResponse.h"
 #include "WebView.h"
-#include <WebCore/AnimationController.h>
 #include <WebCore/BString.h>
 #include <WebCore/COMPtr.h>
+#include <WebCore/CSSAnimationController.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/DocumentMarkerController.h>
-#include <WebCore/DOMImplementation.h>
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Editor.h>
 #include <WebCore/Event.h>
@@ -81,6 +80,7 @@
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/MouseRelatedEvent.h>
 #include <WebCore/NotImplemented.h>
@@ -100,6 +100,7 @@
 #include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOrigin.h>
 #include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/JSCJSValue.h>
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/JSObject.h>
@@ -306,7 +307,7 @@ HRESULT WebFrame::reloadFromOrigin()
     if (!coreFrame)
         return E_UNEXPECTED;
 
-    coreFrame->loader().reload(true);
+    coreFrame->loader().reload(WebCore::ReloadOption::FromOrigin);
     return S_OK;
 }
 
@@ -560,11 +561,11 @@ HRESULT WebFrame::loadRequest(_In_opt_ IWebURLRequest* request)
     if (!coreFrame)
         return E_UNEXPECTED;
 
-    coreFrame->loader().load(FrameLoadRequest(coreFrame, requestImpl->resourceRequest(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+    coreFrame->loader().load(FrameLoadRequest(*coreFrame, requestImpl->resourceRequest(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
     return S_OK;
 }
 
-void WebFrame::loadData(PassRefPtr<WebCore::SharedBuffer> data, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL)
+void WebFrame::loadData(RefPtr<WebCore::SharedBuffer>&& data, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL)
 {
     String mimeTypeString(mimeType, SysStringLen(mimeType));
     if (!mimeType)
@@ -581,16 +582,16 @@ void WebFrame::loadData(PassRefPtr<WebCore::SharedBuffer> data, BSTR mimeType, B
 
     ResourceRequest request(baseCoreURL);
     ResourceResponse response(URL(), mimeTypeString, data->size(), encodingString);
-    SubstituteData substituteData(data, failingCoreURL, response, SubstituteData::SessionHistoryVisibility::Hidden);
+    SubstituteData substituteData(WTFMove(data), failingCoreURL, response, SubstituteData::SessionHistoryVisibility::Hidden);
 
     // This method is only called from IWebFrame methods, so don't ASSERT that the Frame pointer isn't null.
     if (Frame* coreFrame = core(this))
-        coreFrame->loader().load(FrameLoadRequest(coreFrame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
+        coreFrame->loader().load(FrameLoadRequest(*coreFrame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
 }
 
 HRESULT WebFrame::loadData(_In_opt_ IStream* data, _In_ BSTR mimeType, _In_ BSTR textEncodingName, _In_ BSTR url)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create();
+    auto sharedBuffer = SharedBuffer::create();
 
     STATSTG stat;
     if (SUCCEEDED(data->Stat(&stat, STATFLAG_NONAME))) {
@@ -604,7 +605,7 @@ HRESULT WebFrame::loadData(_In_opt_ IStream* data, _In_ BSTR mimeType, _In_ BSTR
         }
     }
 
-    loadData(sharedBuffer, mimeType, textEncodingName, url, nullptr);
+    loadData(WTFMove(sharedBuffer), mimeType, textEncodingName, url, nullptr);
     return S_OK;
 }
 
@@ -613,7 +614,7 @@ HRESULT WebFrame::loadPlainTextString(_In_ BSTR plainText, _In_ BSTR url)
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(plainText), sizeof(UChar) * SysStringLen(plainText));
     BString plainTextMimeType(TEXT("text/plain"), 10);
     BString utf16Encoding(TEXT("utf-16"), 6);
-    loadData(sharedBuffer.release(), plainTextMimeType, utf16Encoding, url, nullptr);
+    loadData(WTFMove(sharedBuffer), plainTextMimeType, utf16Encoding, url, nullptr);
     return S_OK;
 }
 
@@ -621,7 +622,7 @@ void WebFrame::loadHTMLString(_In_ BSTR htmlString, _In_ BSTR baseURL, _In_ BSTR
 {
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(htmlString), sizeof(UChar) * SysStringLen(htmlString));
     BString utf16Encoding(TEXT("utf-16"), 6);
-    loadData(sharedBuffer.release(), 0, utf16Encoding, baseURL, unreachableURL);
+    loadData(WTFMove(sharedBuffer), 0, utf16Encoding, baseURL, unreachableURL);
 }
 
 HRESULT WebFrame::loadHTMLString(_In_ BSTR htmlString, _In_ BSTR baseURL)
@@ -1030,7 +1031,7 @@ HRESULT WebFrame::deselectAll()
 
 // WebFrame ---------------------------------------------------------------
 
-PassRefPtr<Frame> WebFrame::createSubframeWithOwnerElement(IWebView* webView, Page* page, HTMLFrameOwnerElement* ownerElement)
+Ref<Frame> WebFrame::createSubframeWithOwnerElement(IWebView* webView, Page* page, HTMLFrameOwnerElement* ownerElement)
 {
     webView->QueryInterface(&d->webView);
     d->webView->Release(); // don't hold the extra ref
@@ -1039,9 +1040,9 @@ PassRefPtr<Frame> WebFrame::createSubframeWithOwnerElement(IWebView* webView, Pa
     d->webView->viewWindow(&viewWindow);
 
     this->AddRef(); // We release this ref in frameLoaderDestroyed()
-    RefPtr<Frame> frame = Frame::create(page, ownerElement, new WebFrameLoaderClient(this));
-    d->frame = frame.get();
-    return frame.release();
+    auto frame = Frame::create(page, ownerElement, new WebFrameLoaderClient(this));
+    d->frame = frame.ptr();
+    return frame;
 }
 
 void WebFrame::initWithWebView(IWebView* webView, Page* page)
@@ -1067,7 +1068,7 @@ void WebFrame::invalidate()
     ASSERT(coreFrame);
 
     if (Document* document = coreFrame->document())
-        document->recalcStyle(Style::Force);
+        document->resolveStyle(WebCore::Document::ResolveStyleType::Rebuild);
 }
 
 HRESULT WebFrame::inViewSourceMode(BOOL* flag)
@@ -1253,7 +1254,7 @@ HRESULT WebFrame::allowsFollowingLink(_In_ BSTR url, _Out_ BOOL* result)
     if (!frame)
         return E_UNEXPECTED;
 
-    *result = frame->document()->securityOrigin()->canDisplay(MarshallingHelpers::BSTRToKURL(url));
+    *result = frame->document()->securityOrigin().canDisplay(MarshallingHelpers::BSTRToKURL(url));
     return S_OK;
 }
 
@@ -1385,7 +1386,7 @@ HRESULT WebFrame::canProvideDocumentSource(bool* result)
         BString mimeTypeBStr;
         if (SUCCEEDED(urlResponse->MIMEType(&mimeTypeBStr))) {
             String mimeType(mimeTypeBStr, SysStringLen(mimeTypeBStr));
-            *result = mimeType == "text/html" || WebCore::DOMImplementation::isXMLMIMEType(mimeType);
+            *result = mimeType == "text/html" || WebCore::MIMETypeRegistry::isXMLMIMEType(mimeType);
         }
     }
     return hr;
@@ -1838,11 +1839,13 @@ HRESULT WebFrame::spoolPages(HDC printDC, UINT startPage, UINT endPage, void* ct
 
     float headerHeight = 0, footerHeight = 0;
     headerAndFooterHeights(&headerHeight, &footerHeight);
+#if USE(CG) || USE(CAIRO)
     GraphicsContext spoolCtx(pctx);
     spoolCtx.setShouldIncludeChildWindows(true);
 
     for (UINT ii = startPage; ii < endPage; ii++)
         spoolPage(pctx, spoolCtx, printDC, ui.get(), headerHeight, footerHeight, ii, pageCount);
+#endif
 
 #if USE(CAIRO)
     cairo_surface_finish(printSurface);
@@ -1998,15 +2001,15 @@ HRESULT WebFrame::stringByEvaluatingJavaScriptInScriptWorld(IWebScriptWorld* iWo
     // Start off with some guess at a frame and a global object, we'll try to do better...!
     JSDOMWindow* anyWorldGlobalObject = coreFrame->script().globalObject(mainThreadNormalWorld());
 
-    // The global object is probably a shell object? - if so, we know how to use this!
+    // The global object is probably a proxy object? - if so, we know how to use this!
     JSC::JSObject* globalObjectObj = toJS(globalObjectRef);
-    if (!strcmp(globalObjectObj->classInfo()->className, "JSDOMWindowShell"))
-        anyWorldGlobalObject = static_cast<JSDOMWindowShell*>(globalObjectObj)->window();
+    if (globalObjectObj->inherits(*globalObjectObj->vm(), JSDOMWindowProxy::info()))
+        anyWorldGlobalObject = static_cast<JSDOMWindowProxy*>(globalObjectObj)->window();
 
     // Get the frame frome the global object we've settled on.
     Frame* frame = anyWorldGlobalObject->wrapped().frame();
     ASSERT(frame->document());
-    JSValue result = frame->script().executeScriptInWorld(world->world(), string, true).jsValue();
+    JSValue result = frame->script().executeScriptInWorld(world->world(), string, true);
 
     if (!frame) // In case the script removed our frame from the page.
         return S_OK;

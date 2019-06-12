@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorMemoryAgent_h
-#define InspectorMemoryAgent_h
+#pragma once
 
 #if ENABLE(RESOURCE_USAGE)
 
@@ -32,6 +31,7 @@
 #include "ResourceUsageData.h"
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
+#include <wtf/MemoryPressureHandler.h>
 
 namespace WebCore {
 
@@ -44,23 +44,27 @@ public:
     InspectorMemoryAgent(PageAgentContext&);
     virtual ~InspectorMemoryAgent() { }
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
+    void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     // MemoryBackendDispatcherHandler
-    virtual void startTracking(ErrorString&) override;
-    virtual void stopTracking(ErrorString&) override;
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void startTracking(ErrorString&) override;
+    void stopTracking(ErrorString&) override;
+
+    // InspectorInstrumentation
+    void didHandleMemoryPressure(Critical);
 
 private:
     void collectSample(const ResourceUsageData&);
 
     std::unique_ptr<Inspector::MemoryFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::MemoryBackendDispatcher> m_backendDispatcher;
+    bool m_enabled { false };
     bool m_tracking { false };
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(RESOURCE_USAGE)
-
-#endif // !defined(InspectorMemoryAgent_h)

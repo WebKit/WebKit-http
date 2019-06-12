@@ -25,25 +25,25 @@
 
 #import "config.h"
 
-#if ENABLE(VIDEO)
+#if ENABLE(VIDEO) && USE(QTKIT)
 
 #import "MediaPlayerPrivateQTKit.h"
 
-#import "BlockExceptions.h"
 #import "DocumentLoader.h"
 #import "GraphicsContext.h"
-#import "URL.h"
 #import "Logging.h"
 #import "MIMETypeRegistry.h"
 #import "MediaTimeQTKit.h"
 #import "PlatformLayer.h"
 #import "PlatformTimeRanges.h"
+#import "QTKitSPI.h"
 #import "SecurityOrigin.h"
-#import "SoftLinking.h"
+#import "URL.h"
 #import "WebCoreSystemInterface.h"
-#import <QTKit/QTKit.h>
 #import <objc/runtime.h>
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(QTKit)
 
@@ -175,7 +175,7 @@ void MediaPlayerPrivateQTKit::registerMediaEngine(MediaEngineRegistrar registrar
 {
     if (isAvailable())
         registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateQTKit>(player); }, getSupportedTypes,
-            supportsType, getSitesInMediaCache, clearMediaCache, clearMediaCacheForSite, 0);
+            supportsType, originsInMediaCache, clearMediaCache, clearMediaCacheForOrigins, 0);
 }
 
 MediaPlayerPrivateQTKit::MediaPlayerPrivateQTKit(MediaPlayer* player)
@@ -305,8 +305,8 @@ static void disableComponentsOnce()
         {'imdc', 'pdf ', 'appl', 0, 0},  
     };
 
-    for (size_t i = 0; i < WTF_ARRAY_LENGTH(componentsToDisable); ++i) 
-        wkQTMovieDisableComponent(componentsToDisable[i]);
+    for (auto& component : componentsToDisable)
+        wkQTMovieDisableComponent(component);
 }
 
 void MediaPlayerPrivateQTKit::createQTMovie(NSURL *url, NSDictionary *movieAttributes)
@@ -647,7 +647,7 @@ void MediaPlayerPrivateQTKit::seek(const MediaTime& inTime)
     if (maxMediaTimeSeekable() >= m_seekTo)
         doSeek();
     else 
-        m_seekTimer.start(0, 0.5f);
+        m_seekTimer.start(0_s, 500_ms);
 }
 
 void MediaPlayerPrivateQTKit::doSeek() 
@@ -1307,12 +1307,6 @@ void MediaPlayerPrivateQTKit::getSupportedTypes(HashSet<String, ASCIICaseInsensi
 
 MediaPlayer::SupportsType MediaPlayerPrivateQTKit::supportsType(const MediaEngineSupportParameters& parameters)
 {
-#if ENABLE(ENCRYPTED_MEDIA)
-    // QTKit does not support any encrytped media, so return IsNotSupported if the keySystem is non-NULL:
-    if (!parameters.keySystem.isNull() && !parameters.keySystem.isEmpty())
-        return MediaPlayer::IsNotSupported;
-#endif
-
 #if ENABLE(MEDIA_SOURCE)
     if (parameters.isMediaSource)
         return MediaPlayer::IsNotSupported;
@@ -1323,12 +1317,13 @@ MediaPlayer::SupportsType MediaPlayerPrivateQTKit::supportsType(const MediaEngin
 
     // Due to <rdar://problem/10777059>, avoid calling the mime types cache functions if at
     // all possible:
-    if (shouldRejectMIMEType(parameters.type))
+    auto containerType = parameters.type.containerType();
+    if (shouldRejectMIMEType(containerType))
         return MediaPlayer::IsNotSupported;
 
     // We check the "modern" type cache first, as it doesn't require QTKitServer to start.
-    if (mimeModernTypesCache().contains(parameters.type) || mimeCommonTypesCache().contains(parameters.type))
-        return parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
+    if (mimeModernTypesCache().contains(containerType) || mimeCommonTypesCache().contains(containerType))
+        return parameters.type.codecs().isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
 
     return MediaPlayer::IsNotSupported;
 }
@@ -1339,23 +1334,30 @@ bool MediaPlayerPrivateQTKit::isAvailable()
     return QTKitLibrary();
 }
 
-void MediaPlayerPrivateQTKit::getSitesInMediaCache(Vector<String>& sites) 
+HashSet<RefPtr<SecurityOrigin>> MediaPlayerPrivateQTKit::originsInMediaCache(const String&)
 {
+    HashSet<RefPtr<SecurityOrigin>> origins;
     NSArray *mediaSites = wkQTGetSitesInMediaDownloadCache();
-    for (NSString *site in mediaSites)
-        sites.append(site);
+    
+    for (NSString *site in mediaSites) {
+        URL siteAsURL = URL(URL(), site);
+        if (siteAsURL.isValid())
+            origins.add(SecurityOrigin::create(siteAsURL));
+    }
+    return origins;
 }
 
-void MediaPlayerPrivateQTKit::clearMediaCache()
+void MediaPlayerPrivateQTKit::clearMediaCache(const String&, std::chrono::system_clock::time_point)
 {
     LOG(Media, "MediaPlayerPrivateQTKit::clearMediaCache()");
     wkQTClearMediaDownloadCache();
 }
 
-void MediaPlayerPrivateQTKit::clearMediaCacheForSite(const String& site)
+void MediaPlayerPrivateQTKit::clearMediaCacheForOrigins(const String&, const HashSet<RefPtr<SecurityOrigin>>& origins)
 {
-    LOG(Media, "MediaPlayerPrivateQTKit::clearMediaCacheForSite()");
-    wkQTClearMediaDownloadCacheForSite(site);
+    LOG(Media, "MediaPlayerPrivateQTKit::clearMediaCacheForOrigins()");
+    for (auto& origin : origins)
+        wkQTClearMediaDownloadCacheForSite(origin->toRawString());
 }
 
 void MediaPlayerPrivateQTKit::disableUnsupportedTracks()
@@ -1479,8 +1481,8 @@ bool MediaPlayerPrivateQTKit::hasSingleSecurityOrigin() const
     if (!m_qtMovie)
         return false;
 
-    RefPtr<SecurityOrigin> resolvedOrigin = SecurityOrigin::create(URL(wkQTMovieResolvedURL(m_qtMovie.get())));
-    RefPtr<SecurityOrigin> requestedOrigin = SecurityOrigin::createFromString(m_movieURL);
+    Ref<SecurityOrigin> resolvedOrigin = SecurityOrigin::create(URL(wkQTMovieResolvedURL(m_qtMovie.get())));
+    Ref<SecurityOrigin> requestedOrigin = SecurityOrigin::createFromString(m_movieURL);
     return resolvedOrigin->isSameSchemeHostPort(requestedOrigin.get());
 }
 

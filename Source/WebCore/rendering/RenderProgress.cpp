@@ -21,20 +21,17 @@
 #include "config.h"
 #include "RenderProgress.h"
 
-#include "HTMLNames.h"
 #include "HTMLProgressElement.h"
-#include "PaintInfo.h"
 #include "RenderTheme.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-RenderProgress::RenderProgress(HTMLElement& element, Ref<RenderStyle>&& style)
+RenderProgress::RenderProgress(HTMLElement& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
     , m_position(HTMLProgressElement::InvalidPosition)
     , m_animationStartTime(0)
-    , m_animationRepeatInterval(0)
     , m_animationDuration(0)
     , m_animating(false)
     , m_animationTimer(*this, &RenderProgress::animationTimerFired)
@@ -57,10 +54,9 @@ void RenderProgress::updateFromElement()
     RenderBlockFlow::updateFromElement();
 }
 
-void RenderProgress::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderProgress::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const
 {
-    RenderBox::computeLogicalHeight(logicalHeight, logicalTop, computedValues);
-
+    auto computedValues = RenderBox::computeLogicalHeight(logicalHeight, logicalTop);
     LayoutRect frame = frameRect();
     if (isHorizontalWritingMode())
         frame.setHeight(computedValues.m_extent);
@@ -68,6 +64,7 @@ void RenderProgress::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit l
         frame.setWidth(computedValues.m_extent);
     IntSize frameSize = theme().progressBarRectForBounds(*this, snappedIntRect(frame)).size();
     computedValues.m_extent = isHorizontalWritingMode() ? frameSize.height() : frameSize.width();
+    return computedValues;
 }
 
 double RenderProgress::animationProgress() const

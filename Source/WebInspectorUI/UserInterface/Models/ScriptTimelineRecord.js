@@ -113,7 +113,7 @@ WebInspector.ScriptTimelineRecord = class ScriptTimelineRecord extends WebInspec
             if (nodePayload.url) {
                 var sourceCode = WebInspector.frameResourceManager.resourceForURL(nodePayload.url);
                 if (!sourceCode)
-                    sourceCode = WebInspector.debuggerManager.scriptsForURL(nodePayload.url)[0];
+                    sourceCode = WebInspector.debuggerManager.scriptsForURL(nodePayload.url, WebInspector.assumingMainTarget())[0];
 
                 // The lineNumber is 1-based, but we expect 0-based.
                 var lineNumber = nodePayload.lineNumber - 1;
@@ -329,12 +329,12 @@ WebInspector.ScriptTimelineRecord.EventType.displayName = function(eventType, de
         nameMap.set("webkitEditableContentChanged", "Editable Content Changed");
         nameMap.set("webkitTransitionEnd", "Transition End");
         nameMap.set("webkitaddsourcebuffer", "Add Source Buffer");
-        nameMap.set("webkitbeginfullscreen", "Begin Fullscreen");
+        nameMap.set("webkitbeginfullscreen", "Begin Full Screen");
         nameMap.set("webkitcurrentplaybacktargetiswirelesschanged", "Current Playback Target Is Wireless Changed");
         nameMap.set("webkitdeviceproximity", "Device Proximity");
-        nameMap.set("webkitendfullscreen", "End Fullscreen");
-        nameMap.set("webkitfullscreenchange", "Fullscreen Change");
-        nameMap.set("webkitfullscreenerror", "Fullscreen Error");
+        nameMap.set("webkitendfullscreen", "End Full Screen");
+        nameMap.set("webkitfullscreenchange", "Full Screen Change");
+        nameMap.set("webkitfullscreenerror", "Full Screen Error");
         nameMap.set("webkitkeyadded", "Key Added");
         nameMap.set("webkitkeyerror", "Key Error");
         nameMap.set("webkitkeymessage", "Key Message");
@@ -357,7 +357,7 @@ WebInspector.ScriptTimelineRecord.EventType.displayName = function(eventType, de
         WebInspector.ScriptTimelineRecord._eventDisplayNames = nameMap;
     }
 
-    switch(eventType) {
+    switch (eventType) {
     case WebInspector.ScriptTimelineRecord.EventType.ScriptEvaluated:
     case WebInspector.ScriptTimelineRecord.EventType.APIScriptEvaluated:
         return WebInspector.UIString("Script Evaluated");
@@ -388,27 +388,27 @@ WebInspector.ScriptTimelineRecord.EventType.displayName = function(eventType, de
         return WebInspector.UIString("Garbage Collection");
     case WebInspector.ScriptTimelineRecord.EventType.TimerFired:
         if (details && includeDetailsInMainTitle)
-            return WebInspector.UIString("Timer %s Fired").format(details);
+            return WebInspector.UIString("Timer %d Fired").format(details);
         return WebInspector.UIString("Timer Fired");
     case WebInspector.ScriptTimelineRecord.EventType.TimerInstalled:
         if (details && includeDetailsInMainTitle)
-            return WebInspector.UIString("Timer %s Installed").format(details.timerId);
+            return WebInspector.UIString("Timer %d Installed").format(details.timerId);
         return WebInspector.UIString("Timer Installed");
     case WebInspector.ScriptTimelineRecord.EventType.TimerRemoved:
         if (details && includeDetailsInMainTitle)
-            return WebInspector.UIString("Timer %s Removed").format(details);
+            return WebInspector.UIString("Timer %d Removed").format(details);
         return WebInspector.UIString("Timer Removed");
     case WebInspector.ScriptTimelineRecord.EventType.AnimationFrameFired:
         if (details && includeDetailsInMainTitle)
-            return WebInspector.UIString("Animation Frame %s Fired").format(details);
+            return WebInspector.UIString("Animation Frame %d Fired").format(details);
         return WebInspector.UIString("Animation Frame Fired");
     case WebInspector.ScriptTimelineRecord.EventType.AnimationFrameRequested:
         if (details && includeDetailsInMainTitle)
-            return WebInspector.UIString("Animation Frame %s Requested").format(details);
+            return WebInspector.UIString("Animation Frame %d Requested").format(details);
         return WebInspector.UIString("Animation Frame Requested");
     case WebInspector.ScriptTimelineRecord.EventType.AnimationFrameCanceled:
         if (details && includeDetailsInMainTitle)
-            return WebInspector.UIString("Animation Frame %s Canceled").format(details);
+            return WebInspector.UIString("Animation Frame %d Canceled").format(details);
         return WebInspector.UIString("Animation Frame Canceled");
     }
 };

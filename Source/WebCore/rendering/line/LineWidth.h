@@ -27,8 +27,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LineWidth_h
-#define LineWidth_h
+#pragma once
 
 #include "LayoutUnit.h"
 
@@ -59,7 +58,8 @@ public:
     float availableWidth() const { return m_availableWidth; }
     float logicalLeftOffset() const { return m_left; }
     
-    bool hasCommitted() const { return m_committedWidth > 0 || m_hasCommittedReplaced; }
+    bool hasCommitted() const { return m_hasCommitted; }
+    bool hasCommittedReplaced() const { return m_hasCommittedReplaced; }
 
     void updateAvailableWidth(LayoutUnit minimumHeight = 0);
     void shrinkAvailableWidthForNewFloatIfNeeded(const FloatingObject&);
@@ -73,36 +73,35 @@ public:
         m_hasUncommittedReplaced = true;
     }
     void commit();
-    void applyOverhang(RenderRubyRun*, RenderObject* startRenderer, RenderObject* endRenderer);
+    void applyOverhang(const RenderRubyRun&, RenderObject* startRenderer, RenderObject* endRenderer);
     void fitBelowFloats(bool isFirstLine = false);
     void setTrailingWhitespaceWidth(float collapsedWhitespace, float borderPaddingMargin = 0);
-    bool shouldIndentText() const { return m_shouldIndentText == IndentText; }
+    IndentTextOrNot shouldIndentText() const { return m_shouldIndentText; }
+    
+    bool isFirstLine() const { return m_isFirstLine; }
 
 private:
     void computeAvailableWidthFromLeftAndRight();
     bool fitsOnLineExcludingTrailingCollapsedWhitespace() const;
     void updateLineDimension(LayoutUnit newLineTop, LayoutUnit newLineWidth, float newLineLeft, float newLineRight);
-#if ENABLE(CSS_SHAPES)
     void wrapNextToShapeOutside(bool isFirstLine);
-#endif
 
     RenderBlockFlow& m_block;
-    float m_uncommittedWidth;
-    float m_committedWidth;
-    float m_overhangWidth; // The amount by which |m_availableWidth| has been inflated to account for possible contraction due to ruby overhang.
-    float m_trailingWhitespaceWidth;
-    float m_trailingCollapsedWhitespaceWidth;
-    float m_left;
-    float m_right;
-    float m_availableWidth;
-    bool m_isFirstLine;
-    bool m_hasUncommittedReplaced { false };
+    float m_uncommittedWidth { 0 };
+    float m_committedWidth { 0 };
+    float m_overhangWidth { 0 }; // The amount by which |m_availableWidth| has been inflated to account for possible contraction due to ruby overhang.
+    float m_trailingWhitespaceWidth { 0 };
+    float m_trailingCollapsedWhitespaceWidth { 0 };
+    float m_left { 0 };
+    float m_right { 0 };
+    float m_availableWidth { 0 };
+    bool m_isFirstLine { true };
+    bool m_hasCommitted { false };
     bool m_hasCommittedReplaced { false };
+    bool m_hasUncommittedReplaced { false };
     IndentTextOrNot m_shouldIndentText;
 };
 
 IndentTextOrNot requiresIndent(bool isFirstLine, bool isAfterHardLineBreak, const RenderStyle&);
 
-}
-
-#endif // LineWidth_h
+} // namespace WebCore

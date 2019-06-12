@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2003, 2007-2008, 2016 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef RegExpConstructor_h
-#define RegExpConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
 #include "RegExp.h"
@@ -34,7 +33,7 @@ class GetterSetter;
 class RegExpConstructor : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static RegExpConstructor* create(VM& vm, Structure* structure, RegExpPrototype* regExpPrototype, GetterSetter* species)
     {
@@ -48,12 +47,11 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
-
     DECLARE_INFO;
 
     MatchResult performMatch(VM&, RegExp*, JSString*, const String&, int startOffset, int** ovector);
     MatchResult performMatch(VM&, RegExp*, JSString*, const String&, int startOffset);
+    void recordMatch(VM&, RegExp*, JSString*, const MatchResult&);
 
     void setMultiline(bool multiline) { m_multiline = multiline; }
     bool multiline() const { return m_multiline; }
@@ -68,6 +66,8 @@ public:
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
+    static ptrdiff_t offsetOfCachedResult() { return OBJECT_OFFSETOF(RegExpConstructor, m_cachedResult); }
+
 protected:
     void finishCreation(VM&, RegExpPrototype*, GetterSetter* species);
 
@@ -79,16 +79,16 @@ private:
 
     RegExpCachedResult m_cachedResult;
     bool m_multiline;
-    Vector<int, 32> m_ovector;
+    Vector<int> m_ovector;
 };
 
 RegExpConstructor* asRegExpConstructor(JSValue);
 
-JSObject* constructRegExp(ExecState*, JSGlobalObject*, const ArgList&, JSValue newTarget = jsUndefined());
+JSObject* constructRegExp(ExecState*, JSGlobalObject*, const ArgList&, JSObject* callee = nullptr, JSValue newTarget = jsUndefined());
 
 inline RegExpConstructor* asRegExpConstructor(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(RegExpConstructor::info()));
+    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), RegExpConstructor::info()));
     return static_cast<RegExpConstructor*>(asObject(value));
 }
 
@@ -124,6 +124,27 @@ ALWAYS_INLINE MatchResult RegExpConstructor::performMatch(VM& vm, RegExp* regExp
     return result;
 }
 
-} // namespace JSC
+ALWAYS_INLINE void RegExpConstructor::recordMatch(VM& vm, RegExp* regExp, JSString* string, const MatchResult& result)
+{
+    ASSERT(result);
+    m_cachedResult.record(vm, this, regExp, string, result);
+}
 
-#endif // RegExpConstructor_h
+ALWAYS_INLINE bool isRegExp(VM& vm, ExecState* exec, JSValue value)
+{
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (!value.isObject())
+        return false;
+
+    JSObject* object = asObject(value);
+    JSValue matchValue = object->get(exec, vm.propertyNames->matchSymbol);
+    RETURN_IF_EXCEPTION(scope, false);
+    if (!matchValue.isUndefined())
+        return matchValue.toBoolean(exec);
+
+    return object->inherits(vm, RegExpObject::info());
+}
+
+EncodedJSValue JSC_HOST_CALL esSpecRegExpCreate(ExecState*);
+
+} // namespace JSC

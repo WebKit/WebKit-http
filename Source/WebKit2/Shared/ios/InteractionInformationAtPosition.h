@@ -23,38 +23,48 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InteractionInformationAtPosition_h
-#define InteractionInformationAtPosition_h
+#pragma once
 
 #if PLATFORM(IOS)
 
 #include "ArgumentCoders.h"
+#include "InteractionInformationRequest.h"
 #include "ShareableBitmap.h"
 #include <WebCore/IntPoint.h>
 #include <WebCore/SelectionRect.h>
 #include <WebCore/TextIndicator.h>
+#include <WebCore/URL.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
 
 struct InteractionInformationAtPosition {
-    WebCore::IntPoint point;
+    InteractionInformationRequest request;
+
     bool nodeAtPositionIsAssistedNode { false };
+#if ENABLE(DATA_INTERACTION)
+    bool hasSelectionAtPosition { false };
+#endif
     bool isSelectable { false };
     bool isNearMarkedText { false };
     bool touchCalloutEnabled { true };
     bool isLink { false };
     bool isImage { false };
+    bool isAttachment { false };
     bool isAnimatedImage { false };
     bool isElement { false };
 #if ENABLE(DATA_DETECTION)
     bool isDataDetectorLink { false };
 #endif
-    String url;
-    String imageURL;
+    WebCore::FloatPoint adjustedPointForNodeRespondingToClickEvents;
+    WebCore::URL url;
+    WebCore::URL imageURL;
     String title;
+    String idAttribute;
     WebCore::IntRect bounds;
     RefPtr<ShareableBitmap> image;
+    String textBefore;
+    String textAfter;
 
     WebCore::TextIndicatorData linkIndicator;
 #if ENABLE(DATA_DETECTION)
@@ -62,12 +72,15 @@ struct InteractionInformationAtPosition {
     RetainPtr<NSArray> dataDetectorResults;
 #endif
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, InteractionInformationAtPosition&);
+    // Copy compatible optional bits forward (for example, if we have a InteractionInformationAtPosition
+    // with snapshots in it, and perform another request for the same point without requesting the snapshots,
+    // we can fetch the cheap information and copy the snapshots into the new response).
+    void mergeCompatibleOptionalInformation(const InteractionInformationAtPosition& oldInformation);
+
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, InteractionInformationAtPosition&);
 };
 
 }
 
 #endif // PLATFORM(IOS)
-
-#endif // InteractionInformationAtPosition_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -133,12 +133,12 @@ JSGlobalContextRef JSGlobalContextCreateInGroup(JSContextGroupRef group, JSClass
 {
     initializeThreading();
 
-    RefPtr<VM> vm = group ? PassRefPtr<VM>(toJS(group)) : VM::createContextGroup();
+    Ref<VM> vm = group ? Ref<VM>(*toJS(group)) : VM::createContextGroup();
 
-    JSLockHolder locker(vm.get());
+    JSLockHolder locker(vm.ptr());
 
     if (!globalObjectClass) {
-        JSGlobalObject* globalObject = JSGlobalObject::create(*vm, JSGlobalObject::createStructure(*vm, jsNull()));
+        JSGlobalObject* globalObject = JSGlobalObject::create(vm.get(), JSGlobalObject::createStructure(vm.get(), jsNull()));
 #if ENABLE(REMOTE_INSPECTOR)
         if (JSRemoteInspectorGetInspectionEnabledByDefault())
             globalObject->setRemoteDebuggingEnabled(true);
@@ -146,12 +146,12 @@ JSGlobalContextRef JSGlobalContextCreateInGroup(JSContextGroupRef group, JSClass
         return JSGlobalContextRetain(toGlobalRef(globalObject->globalExec()));
     }
 
-    JSGlobalObject* globalObject = JSCallbackObject<JSGlobalObject>::create(*vm, globalObjectClass, JSCallbackObject<JSGlobalObject>::createStructure(*vm, 0, jsNull()));
+    JSGlobalObject* globalObject = JSCallbackObject<JSGlobalObject>::create(vm.get(), globalObjectClass, JSCallbackObject<JSGlobalObject>::createStructure(vm.get(), 0, jsNull()));
     ExecState* exec = globalObject->globalExec();
     JSValue prototype = globalObjectClass->prototype(exec);
     if (!prototype)
         prototype = jsNull();
-    globalObject->resetPrototype(*vm, prototype);
+    globalObject->resetPrototype(vm.get(), prototype);
 #if ENABLE(REMOTE_INSPECTOR)
     if (JSRemoteInspectorGetInspectionEnabledByDefault())
         globalObject->setRemoteDebuggingEnabled(true);
@@ -255,14 +255,16 @@ public:
     {
     }
 
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         if (m_remainingCapacityForFrameCapture) {
             // If callee is unknown, but we've not added any frame yet, we should
             // still add the frame, because something called us, and gave us arguments.
-            JSObject* callee = visitor->callee();
-            if (!callee && visitor->index())
-                return StackVisitor::Done;
+            if (visitor->callee().isCell()) {
+                JSCell* callee = visitor->callee().asCell();
+                if (!callee && visitor->index())
+                    return StackVisitor::Done;
+            }
 
             StringBuilder& builder = m_builder;
             if (!builder.isEmpty())
@@ -273,7 +275,7 @@ public:
             builder.append(visitor->functionName());
             builder.appendLiteral("() at ");
             builder.append(visitor->sourceURL());
-            if (visitor->isJSFrame()) {
+            if (visitor->hasLineAndColumnInfo()) {
                 builder.append(':');
                 unsigned lineNumber;
                 unsigned unusedColumn;
@@ -281,7 +283,7 @@ public:
                 builder.appendNumber(lineNumber);
             }
 
-            if (!callee)
+            if (!visitor->callee().rawPtr())
                 return StackVisitor::Done;
 
             m_remainingCapacityForFrameCapture--;
@@ -292,7 +294,7 @@ public:
 
 private:
     StringBuilder& m_builder;
-    unsigned m_remainingCapacityForFrameCapture;
+    mutable unsigned m_remainingCapacityForFrameCapture;
 };
 
 JSStringRef JSContextCreateBacktrace(JSContextRef ctx, unsigned maxStackSize)

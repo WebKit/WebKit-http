@@ -40,6 +40,11 @@ enum LengthType {
     Undefined
 };
 
+enum ValueRange {
+    ValueRangeAll,
+    ValueRangeNonNegative
+};
+
 class CalculationValue;
 class TextStream;
 
@@ -107,17 +112,12 @@ public:
     bool isSpecified() const;
     bool isSpecifiedOrIntrinsic() const;
 
-    // Blend two lengths to produce a new length that is in between them. Used for animation.
-    // FIXME: Why is this a member function?
-    Length blend(const Length& from, double progress) const;
-
     float nonNanCalculatedValue(int maxValue) const;
 
 private:
     bool isLegacyIntrinsic() const;
 
     bool isCalculatedEqual(const Length&) const;
-    Length blendMixedTypes(const Length& from, double progress) const;
 
     WEBCORE_EXPORT void ref() const;
     WEBCORE_EXPORT void deref() const;
@@ -131,6 +131,9 @@ private:
     unsigned char m_type;
     bool m_isFloat;
 };
+
+// Blend two lengths to produce a new length that is in between them. Used for animation.
+Length blend(const Length& from, const Length& to, double progress);
 
 std::unique_ptr<Length[]> newCoordsArray(const String&, int& length);
 std::unique_ptr<Length[]> newLengthArray(const String&, int& length);
@@ -412,32 +415,7 @@ inline bool Length::isFitContent() const
     return type() == FitContent;
 }
 
-// FIXME: Does this need to be in the header? Is it valuable to inline? Does it get inlined?
-inline Length Length::blend(const Length& from, double progress) const
-{
-    if (from.type() == Calculated || type() == Calculated)
-        return blendMixedTypes(from, progress);
-
-    if (!from.isZero() && !isZero() && from.type() != type())
-        return blendMixedTypes(from, progress);
-
-    if (from.isZero() && isZero())
-        return progress ? *this : from; // Pick up 'auto' from 'from' if progress is zero.
-
-    LengthType resultType = type();
-    if (isZero())
-        resultType = from.type();
-
-    if (resultType == Percent) {
-        float fromPercent = from.isZero() ? 0 : from.percent();
-        float toPercent = isZero() ? 0 : percent();
-        return Length(WebCore::blend(fromPercent, toPercent, progress), Percent);
-    }
-
-    float fromValue = from.isZero() ? 0 : from.value();
-    float toValue = isZero() ? 0 : value();
-    return Length(WebCore::blend(fromValue, toValue, progress), resultType);
-}
+Length convertTo100PercentMinusLength(const Length&);
 
 TextStream& operator<<(TextStream&, Length);
 

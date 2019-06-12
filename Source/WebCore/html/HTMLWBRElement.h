@@ -23,24 +23,24 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLWBRElement_h
-#define HTMLWBRElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
 namespace WebCore {
 
+class RenderLineBreak;
+
 class HTMLWBRElement final : public HTMLElement {
 public:
     static Ref<HTMLWBRElement> create(const QualifiedName&, Document&);
 
+    RenderLineBreak* renderer() const;
+
 private:
     HTMLWBRElement(const QualifiedName&, Document&);
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 };
 
 } // namespace WebCore
-
-#endif // HTMLWBRElement_h
-

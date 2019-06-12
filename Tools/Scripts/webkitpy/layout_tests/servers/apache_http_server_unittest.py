@@ -26,7 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import re
 import sys
 import unittest
 
@@ -35,7 +34,6 @@ from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.common.host_mock import MockHost
 from webkitpy.port import test
 from webkitpy.layout_tests.servers.apache_http_server import LayoutTestApacheHttpd
-from webkitpy.layout_tests.servers.http_server_base import ServerError
 
 
 class TestLayoutTestApacheHttpd(unittest.TestCase):
@@ -52,11 +50,16 @@ class TestLayoutTestApacheHttpd(unittest.TestCase):
         host.executive = MockExecutive(should_log=True)
         test_port = test.TestPort(host)
         host.filesystem.write_text_file(test_port._path_to_apache_config_file(), '')
+        host.filesystem.write_text_file(
+            "/mock-checkout/Tools/Scripts/webkitpy/layout_tests/servers/aliases.json", '[["/js-test-resources", "resources"], ["/media-resources", "media"], ["/test/test.file", "resources/testfile"]]')
 
         server = LayoutTestApacheHttpd(test_port, "/mock/output_dir")
         server._check_that_all_ports_are_available = lambda: True
         server._is_server_running_on_all_ports = lambda: True
         server._wait_for_action = fake_pid
+
+        self.assertEqual(server.ports_to_forward(), [8000, 8080, 8443])
+
         oc = OutputCapture()
         try:
             oc.capture_output()

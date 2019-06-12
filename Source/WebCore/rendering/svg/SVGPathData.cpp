@@ -30,6 +30,8 @@
 #include "SVGNames.h"
 #include "SVGPathElement.h"
 #include "SVGPathUtilities.h"
+#include "SVGPoint.h"
+#include "SVGPointList.h"
 #include "SVGPolygonElement.h"
 #include "SVGPolylineElement.h"
 #include "SVGRectElement.h"
@@ -45,7 +47,7 @@ static void updatePathFromCircleElement(SVGElement* element, Path& path)
     RenderElement* renderer = element->renderer();
     if (!renderer)
         return;
-    RenderStyle& style = renderer->style();
+    auto& style = renderer->style();
     float r = lengthContext.valueForLength(style.svgStyle().r());
     if (r > 0) {
         float cx = lengthContext.valueForLength(style.svgStyle().cx(), LengthModeWidth);
@@ -59,7 +61,7 @@ static void updatePathFromEllipseElement(SVGElement* element, Path& path)
     RenderElement* renderer = element->renderer();
     if (!renderer)
         return;
-    RenderStyle& style = renderer->style();
+    auto& style = renderer->style();
     SVGLengthContext lengthContext(element);
     float rx = lengthContext.valueForLength(style.svgStyle().rx(), LengthModeWidth);
     if (rx <= 0)
@@ -88,7 +90,7 @@ static void updatePathFromPathElement(SVGElement* element, Path& path)
 
 static void updatePathFromPolygonElement(SVGElement* element, Path& path)
 {
-    SVGPointList& points = downcast<SVGPolygonElement>(element)->animatedPoints()->values();
+    auto& points = downcast<SVGPolygonElement>(element)->animatedPoints()->values();
     if (points.isEmpty())
         return;
 
@@ -103,7 +105,7 @@ static void updatePathFromPolygonElement(SVGElement* element, Path& path)
 
 static void updatePathFromPolylineElement(SVGElement* element, Path& path)
 {
-    SVGPointList& points = downcast<SVGPolylineElement>(element)->animatedPoints()->values();
+    auto& points = downcast<SVGPolylineElement>(element)->animatedPoints()->values();
     if (points.isEmpty())
         return;
 
@@ -120,7 +122,7 @@ static void updatePathFromRectElement(SVGElement* element, Path& path)
     if (!renderer)
         return;
 
-    RenderStyle& style = renderer->style();
+    auto& style = renderer->style();
     SVGLengthContext lengthContext(element);
     float width = lengthContext.valueForLength(style.width(), LengthModeWidth);
     if (width <= 0)
@@ -158,13 +160,13 @@ void updatePathFromGraphicsElement(SVGElement* element, Path& path)
     static HashMap<AtomicStringImpl*, PathUpdateFunction>* map = 0;
     if (!map) {
         map = new HashMap<AtomicStringImpl*, PathUpdateFunction>;
-        map->set(SVGNames::circleTag.localName().impl(), &updatePathFromCircleElement);
-        map->set(SVGNames::ellipseTag.localName().impl(), &updatePathFromEllipseElement);
-        map->set(SVGNames::lineTag.localName().impl(), &updatePathFromLineElement);
-        map->set(SVGNames::pathTag.localName().impl(), &updatePathFromPathElement);
-        map->set(SVGNames::polygonTag.localName().impl(), &updatePathFromPolygonElement);
-        map->set(SVGNames::polylineTag.localName().impl(), &updatePathFromPolylineElement);
-        map->set(SVGNames::rectTag.localName().impl(), &updatePathFromRectElement);
+        map->set(SVGNames::circleTag.localName().impl(), updatePathFromCircleElement);
+        map->set(SVGNames::ellipseTag.localName().impl(), updatePathFromEllipseElement);
+        map->set(SVGNames::lineTag.localName().impl(), updatePathFromLineElement);
+        map->set(SVGNames::pathTag.localName().impl(), updatePathFromPathElement);
+        map->set(SVGNames::polygonTag.localName().impl(), updatePathFromPolygonElement);
+        map->set(SVGNames::polylineTag.localName().impl(), updatePathFromPolylineElement);
+        map->set(SVGNames::rectTag.localName().impl(), updatePathFromRectElement);
     }
 
     if (PathUpdateFunction pathUpdateFunction = map->get(element->localName().impl()))

@@ -28,9 +28,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RequestAnimationFrameCallback_h
-#define RequestAnimationFrameCallback_h
+#pragma once
 
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -38,13 +38,11 @@ namespace WebCore {
 class RequestAnimationFrameCallback : public RefCounted<RequestAnimationFrameCallback> {
 public:
     virtual ~RequestAnimationFrameCallback() { }
-    virtual bool handleEvent(double highResTimeMs) = 0;
+    virtual CallbackResult<void> handleEvent(double highResTimeMs) = 0;
 
     int m_id;
     bool m_firedOrCancelled;
     bool m_useLegacyTimeBase;
 };
 
-}
-
-#endif // RequestAnimationFrameCallback_h
+} // namespace WebCore

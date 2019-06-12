@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FontSelector_h
-#define FontSelector_h
+#pragma once
 
 #include "FontRanges.h"
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -36,6 +34,14 @@ namespace WebCore {
 class FontCascadeDescription;
 class FontDescription;
 class FontSelectorClient;
+
+class FontAccessor : public RefCounted<FontAccessor> {
+public:
+    virtual ~FontAccessor() { }
+
+    virtual const Font* font(ExternalResourceDownloadPolicy) const = 0;
+    virtual bool isLoading() const = 0;
+};
 
 class FontSelector : public RefCounted<FontSelector> {
 public:
@@ -55,13 +61,4 @@ public:
     virtual unsigned version() const = 0;
 };
 
-class FontSelectorClient {
-public:
-    virtual ~FontSelectorClient() { }
-
-    virtual void fontsNeedUpdate(FontSelector&) = 0;
-};
-
-} // namespace WebCore
-
-#endif // FontSelector_h
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,18 +23,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JITSubGenerator_h
-#define JITSubGenerator_h
+#pragma once
 
 #if ENABLE(JIT)
 
 #include "CCallHelpers.h"
+#include "JITMathICInlineResult.h"
 #include "SnippetOperand.h"
 
 namespace JSC {
 
+struct MathICGenerationState;
+
 class JITSubGenerator {
 public:
+    JITSubGenerator() { }
+
     JITSubGenerator(SnippetOperand leftOperand, SnippetOperand rightOperand,
         JSValueRegs result, JSValueRegs left, JSValueRegs right,
         FPRReg leftFPR, FPRReg rightFPR, GPRReg scratchGPR, FPRReg scratchFPR)
@@ -49,11 +53,11 @@ public:
         , m_scratchFPR(scratchFPR)
     { }
 
-    void generateFastPath(CCallHelpers&);
+    JITMathICInlineResult generateInline(CCallHelpers&, MathICGenerationState&, const ArithProfile*);
+    bool generateFastPath(CCallHelpers&, CCallHelpers::JumpList& endJumpList, CCallHelpers::JumpList& slowPathJumpList, const ArithProfile*, bool shouldEmitProfiling);
 
-    bool didEmitFastPath() const { return m_didEmitFastPath; }
-    CCallHelpers::JumpList& endJumpList() { return m_endJumpList; }
-    CCallHelpers::JumpList& slowPathJumpList() { return m_slowPathJumpList; }
+    static bool isLeftOperandValidConstant(SnippetOperand) { return false; }
+    static bool isRightOperandValidConstant(SnippetOperand) { return false; }
 
 private:
     SnippetOperand m_leftOperand;
@@ -65,14 +69,8 @@ private:
     FPRReg m_rightFPR;
     GPRReg m_scratchGPR;
     FPRReg m_scratchFPR;
-    bool m_didEmitFastPath { false };
-
-    CCallHelpers::JumpList m_endJumpList;
-    CCallHelpers::JumpList m_slowPathJumpList;
 };
 
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITSubGenerator_h

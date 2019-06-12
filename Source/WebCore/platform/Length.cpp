@@ -99,7 +99,7 @@ std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
         else
             spacified[i] = cc;
     }
-    RefPtr<StringImpl> str = StringImpl::adopt(spacified);
+    RefPtr<StringImpl> str = StringImpl::adopt(WTFMove(spacified));
 
     str = str->simplifyWhiteSpace();
 
@@ -251,18 +251,6 @@ Length::Length(Ref<CalculationValue>&& value)
 {
     m_calculationValueHandle = calculationValues().insert(WTFMove(value));
 }
-        
-Length Length::blendMixedTypes(const Length& from, double progress) const
-{
-    if (progress <= 0.0)
-        return from;
-        
-    if (progress >= 1.0)
-        return *this;
-        
-    auto blend = std::make_unique<CalcExpressionBlendLength>(from, *this, progress);
-    return Length(CalculationValue::create(WTFMove(blend), CalculationRangeAll));
-}
 
 CalculationValue& Length::calculationValue() const
 {
@@ -294,6 +282,56 @@ float Length::nonNanCalculatedValue(int maxValue) const
 bool Length::isCalculatedEqual(const Length& other) const
 {
     return calculationValue() == other.calculationValue();
+}
+
+Length convertTo100PercentMinusLength(const Length& length)
+{
+    if (length.isPercent())
+        return Length(100 - length.value(), Percent);
+    
+    // Turn this into a calc expression: calc(100% - length)
+    auto lhs = std::make_unique<CalcExpressionLength>(Length(100, Percent));
+    auto rhs = std::make_unique<CalcExpressionLength>(length);
+    auto op = std::make_unique<CalcExpressionBinaryOperation>(WTFMove(lhs), WTFMove(rhs), CalcSubtract);
+    return Length(CalculationValue::create(WTFMove(op), ValueRangeAll));
+}
+
+static Length blendMixedTypes(const Length& from, const Length& to, double progress)
+{
+    if (progress <= 0.0)
+        return from;
+        
+    if (progress >= 1.0)
+        return to;
+        
+    auto blend = std::make_unique<CalcExpressionBlendLength>(from, to, progress);
+    return Length(CalculationValue::create(WTFMove(blend), ValueRangeAll));
+}
+
+Length blend(const Length& from, const Length& to, double progress)
+{
+    if (from.isAuto() || from.isUndefined() || to.isAuto() || to.isUndefined())
+        return to;
+
+    if (from.type() == Calculated || to.type() == Calculated)
+        return blendMixedTypes(from, to, progress);
+
+    if (!from.isZero() && !to.isZero() && from.type() != to.type())
+        return blendMixedTypes(from, to, progress);
+
+    LengthType resultType = to.type();
+    if (to.isZero())
+        resultType = from.type();
+
+    if (resultType == Percent) {
+        float fromPercent = from.isZero() ? 0 : from.percent();
+        float toPercent = to.isZero() ? 0 : to.percent();
+        return Length(WebCore::blend(fromPercent, toPercent, progress), Percent);
+    }
+
+    float fromValue = from.isZero() ? 0 : from.value();
+    float toValue = to.isZero() ? 0 : to.value();
+    return Length(WebCore::blend(fromValue, toValue, progress), resultType);
 }
 
 struct SameSizeAsLength {
@@ -328,8 +366,10 @@ TextStream& operator<<(TextStream& ts, Length length)
     case Undefined:
         ts << length.type();
         break;
-    case Relative:
     case Fixed:
+        ts << TextStream::FormatNumberRespectingIntegers(length.value()) << "px";
+        break;
+    case Relative:
     case Intrinsic:
     case MinIntrinsic:
     case MinContent:
@@ -342,7 +382,7 @@ TextStream& operator<<(TextStream& ts, Length length)
         ts << TextStream::FormatNumberRespectingIntegers(length.percent()) << "%";
         break;
     case Calculated:
-        // FIXME: dump CalculationValue.
+        ts << length.calculationValue();
         break;
     }
     

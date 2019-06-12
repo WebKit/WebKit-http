@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InjectedBundle_h
-#define InjectedBundle_h
+#pragma once
 
-#include "AccessibilityController.h"
 #include "EventSendingController.h"
 #include "GCController.h"
 #include "TestRunner.h"
@@ -37,6 +35,10 @@
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
+
+#if HAVE(ACCESSIBILITY)
+#include "AccessibilityController.h"
+#endif
 
 namespace WTR {
 
@@ -56,7 +58,9 @@ public:
     GCController* gcController() { return m_gcController.get(); }
     EventSendingController* eventSendingController() { return m_eventSendingController.get(); }
     TextInputController* textInputController() { return m_textInputController.get(); }
+#if HAVE(ACCESSIBILITY)
     AccessibilityController* accessibilityController() { return m_accessibilityController.get(); }
+#endif
 
     InjectedBundlePage* page() const;
     size_t pageCount() const { return m_pages.size(); }
@@ -77,14 +81,17 @@ public:
 
     bool shouldDumpPixels() const { return m_dumpPixels; }
     bool useWaitToDumpWatchdogTimer() const { return m_useWaitToDumpWatchdogTimer; }
-    
+    bool dumpJSConsoleLogInStdErr() const { return m_dumpJSConsoleLogInStdErr; };
+
     void outputText(const String&);
+    void dumpToStdErr(const String&);
     void postNewBeforeUnloadReturnValue(bool);
     void postAddChromeInputField();
     void postRemoveChromeInputField();
     void postFocusWebView();
     void postSetBackingScaleFactor(double);
     void postSetWindowIsKey(bool);
+    void postSetViewSize(double width, double height);
     void postSimulateWebNotificationClick(uint64_t notificationID);
     void postSetAddsVisitedLinks(bool);
 
@@ -96,7 +103,10 @@ public:
 
     // MediaStream.
     void setUserMediaPermission(bool);
-    void setUserMediaPermissionForOrigin(bool permission, WKStringRef url);
+    void resetUserMediaPermission();
+    void setUserMediaPersistentPermissionForOrigin(bool permission, WKStringRef origin, WKStringRef parentOrigin);
+    unsigned userMediaPermissionRequestCountForOrigin(WKStringRef origin, WKStringRef parentOrigin) const;
+    void resetUserMediaPermissionRequestCountForOrigin(WKStringRef origin, WKStringRef parentOrigin);
 
     // Policy delegate.
     void setCustomPolicyDelegate(bool enabled, bool permissive);
@@ -120,6 +130,10 @@ public:
 
     bool isAllowedHost(WKStringRef);
 
+    unsigned imageCountInGeneralPasteboard() const;
+
+    void setAllowsAnySSLCertificate(bool);
+    
 private:
     InjectedBundle();
     ~InjectedBundle();
@@ -147,7 +161,9 @@ private:
     WKBundlePageGroupRef m_pageGroup;
     Vector<std::unique_ptr<InjectedBundlePage>> m_pages;
 
+#if HAVE(ACCESSIBILITY)
     RefPtr<AccessibilityController> m_accessibilityController;
+#endif
     RefPtr<TestRunner> m_testRunner;
     RefPtr<GCController> m_gcController;
     RefPtr<EventSendingController> m_eventSendingController;
@@ -167,6 +183,7 @@ private:
     bool m_useWorkQueue;
     int m_timeout;
     bool m_pixelResultIsPending { false };
+    bool m_dumpJSConsoleLogInStdErr { false };
 
     WKRetainPtr<WKDataRef> m_audioResult;
     WKRetainPtr<WKImageRef> m_pixelResult;
@@ -176,5 +193,3 @@ private:
 };
 
 } // namespace WTR
-
-#endif // InjectedBundle_h

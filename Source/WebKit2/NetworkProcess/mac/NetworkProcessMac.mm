@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,17 +40,13 @@
 #import <WebCore/CertificateInfo.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/LocalizedStrings.h>
-#import <WebCore/MemoryPressureHandler.h>
 #import <WebKitSystemInterface.h>
 #import <notify.h>
 #import <sysexits.h>
+#import <wtf/MemoryPressureHandler.h>
 #import <wtf/text/WTFString.h>
 
 using namespace WebCore;
-
-@interface NSURLRequest (Details) 
-+ (void)setAllowsSpecificHTTPSCertificate:(NSArray *)allow forHost:(NSString *)host;
-@end
 
 namespace WebKit {
 
@@ -74,8 +70,8 @@ static void overrideSystemProxies(const String& httpProxy, const String& httpsPr
         URL httpProxyURL(URL(), httpProxy);
         if (httpProxyURL.isValid()) {
             [proxySettings setObject:nsStringFromWebCoreString(httpProxyURL.host()) forKey:(NSString *)kCFNetworkProxiesHTTPProxy];
-            if (httpProxyURL.hasPort()) {
-                NSNumber *port = [NSNumber numberWithInt:httpProxyURL.port()];
+            if (httpProxyURL.port()) {
+                NSNumber *port = [NSNumber numberWithInt:httpProxyURL.port().value()];
                 [proxySettings setObject:port forKey:(NSString *)kCFNetworkProxiesHTTPPort];
             }
         }
@@ -87,8 +83,8 @@ static void overrideSystemProxies(const String& httpProxy, const String& httpsPr
         URL httpsProxyURL(URL(), httpsProxy);
         if (httpsProxyURL.isValid()) {
             [proxySettings setObject:nsStringFromWebCoreString(httpsProxyURL.host()) forKey:(NSString *)kCFNetworkProxiesHTTPSProxy];
-            if (httpsProxyURL.hasPort()) {
-                NSNumber *port = [NSNumber numberWithInt:httpsProxyURL.port()];
+            if (httpsProxyURL.port()) {
+                NSNumber *port = [NSNumber numberWithInt:httpsProxyURL.port().value()];
                 [proxySettings setObject:port forKey:(NSString *)kCFNetworkProxiesHTTPSPort];
             }
         } else
@@ -104,7 +100,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     platformInitializeNetworkProcessCocoa(parameters);
 
 #if ENABLE(SEC_ITEM_SHIM)
-    SecItemShim::singleton().initialize(this);
+    initializeSecItemShim(*this);
 #endif
 
     if (!parameters.httpProxy.isNull() || !parameters.httpsProxy.isNull())

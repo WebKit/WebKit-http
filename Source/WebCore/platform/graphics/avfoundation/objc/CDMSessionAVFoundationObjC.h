@@ -23,15 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CDMSessionAVFoundationObjC_h
-#define CDMSessionAVFoundationObjC_h
+#pragma once
 
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 #include <wtf/RetainPtr.h>
+#include <wtf/WeakPtr.h>
+#include <wtf/text/WTFString.h>
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 OBJC_CLASS AVAssetResourceLoadingRequest;
+OBJC_CLASS WebCDMSessionAVFoundationObjCListener;
 
 namespace WebCore {
 
@@ -40,24 +42,27 @@ class MediaPlayerPrivateAVFoundationObjC;
 class CDMSessionAVFoundationObjC : public CDMSession {
 public:
     CDMSessionAVFoundationObjC(MediaPlayerPrivateAVFoundationObjC* parent, CDMSessionClient*);
-    virtual ~CDMSessionAVFoundationObjC() { }
+    virtual ~CDMSessionAVFoundationObjC();
 
-    virtual CDMSessionType type() override { return CDMSessionTypeAVFoundationObjC; }
-    virtual void setClient(CDMSessionClient* client) override { m_client = client; }
-    virtual const String& sessionId() const override { return m_sessionId; }
-    virtual RefPtr<Uint8Array> generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode) override;
-    virtual void releaseKeys() override;
-    virtual bool update(Uint8Array*, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode) override;
+    CDMSessionType type() override { return CDMSessionTypeAVFoundationObjC; }
+    void setClient(CDMSessionClient* client) override { m_client = client; }
+    const String& sessionId() const override { return m_sessionId; }
+    RefPtr<Uint8Array> generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode) override;
+    void releaseKeys() override;
+    bool update(Uint8Array*, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode) override;
+
+    void playerDidReceiveError(NSError *);
+
+    WeakPtr<CDMSessionAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 protected:
-    MediaPlayerPrivateAVFoundationObjC* m_parent;
+    WeakPtr<MediaPlayerPrivateAVFoundationObjC> m_parent;
     CDMSessionClient* m_client;
     String m_sessionId;
     RetainPtr<AVAssetResourceLoadingRequest> m_request;
+    WeakPtrFactory<CDMSessionAVFoundationObjC> m_weakPtrFactory;
 };
 
 }
 
 #endif
-
-#endif // CDMSessionAVFoundationObjC_h

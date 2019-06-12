@@ -46,7 +46,7 @@ class PDFPlugin;
 
 class PDFPluginAnnotation : public RefCounted<PDFPluginAnnotation> {
 public:
-    static PassRefPtr<PDFPluginAnnotation> create(PDFAnnotation *, PDFLayerController *, PDFPlugin*);
+    static RefPtr<PDFPluginAnnotation> create(PDFAnnotation *, PDFLayerController *, PDFPlugin*);
     virtual ~PDFPluginAnnotation();
 
     WebCore::Element* element() const { return m_element.get(); }
@@ -75,7 +75,7 @@ protected:
     virtual bool handleEvent(WebCore::Event*);
 
 private:
-    virtual PassRefPtr<WebCore::Element> createAnnotationElement() = 0;
+    virtual Ref<WebCore::Element> createAnnotationElement() = 0;
 
     class PDFPluginAnnotationEventListener : public WebCore::EventListener {
     public:
@@ -84,7 +84,7 @@ private:
             return adoptRef(*new PDFPluginAnnotationEventListener(annotation));
         }
 
-        virtual bool operator==(const EventListener& listener) override { return this == &listener; }
+        bool operator==(const EventListener& listener) const override { return this == &listener; }
 
         void setAnnotation(PDFPluginAnnotation* annotation) { m_annotation = annotation; }
 
@@ -96,7 +96,7 @@ private:
         {
         }
 
-        virtual void handleEvent(WebCore::ScriptExecutionContext*, WebCore::Event*) override;
+        void handleEvent(WebCore::ScriptExecutionContext*, WebCore::Event*) override;
 
         PDFPluginAnnotation* m_annotation;
     };

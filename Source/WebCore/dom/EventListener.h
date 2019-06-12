@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef EventListener_h
-#define EventListener_h
+#pragma once
 
 #include <wtf/RefCounted.h>
 
@@ -44,11 +43,10 @@ public:
         GObjectEventListenerType,
         NativeEventListenerType,
         SVGTRefTargetEventListenerType,
-        MediaControlsAppleEventListenerType 
     };
 
     virtual ~EventListener() { }
-    virtual bool operator==(const EventListener&) = 0;
+    virtual bool operator==(const EventListener&) const = 0;
     virtual void handleEvent(ScriptExecutionContext*, Event*) = 0;
     virtual bool wasCreatedFromMarkup() const { return false; }
 
@@ -69,6 +67,4 @@ private:
     Type m_type;
 };
 
-}
-
-#endif
+} // namespace WebCore

@@ -200,8 +200,6 @@ AccessibilityUIElement AccessibilityUIElement::titleUIElement()
         return nullptr;
 
     COMPtr<IAccessible> titleElement(Query, value.punkVal);
-    if (value.punkVal)
-        value.punkVal->Release();
 
     return titleElement;
 }
@@ -686,7 +684,16 @@ AccessibilityUIElement AccessibilityUIElement::cellForColumnAndRow(unsigned colu
 
 JSStringRef AccessibilityUIElement::selectedTextRange()
 {
-    return JSStringCreateWithCharacters(0, 0);    
+    COMPtr<IAccessibleComparable> comparable = comparableObject(platformUIElement().get());
+    if (!comparable)
+        return JSStringCreateWithCharacters(0, 0);
+
+    _variant_t value;
+    if (FAILED(comparable->get_attribute(_bstr_t(L"AXSelectedTextRangeAttribute"), &value.GetVARIANT())))
+        return JSStringCreateWithCharacters(0, 0);    
+
+    ASSERT(V_VT(&value) == VT_BSTR);
+    return JSStringCreateWithBSTR(value.bstrVal);
 }
 
 void AccessibilityUIElement::setSelectedTextRange(unsigned location, unsigned length)
@@ -793,6 +800,10 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
     return JSStringCreateWithBSTR(valueBSTR);
 }
 
+void AccessibilityUIElement::clearSelectedChildren() const
+{
+    // FIXME: implement
+}
 
 JSStringRef AccessibilityUIElement::documentEncoding()
 {
@@ -868,6 +879,18 @@ bool AccessibilityUIElement::isCollapsed() const
 }
 
 bool AccessibilityUIElement::isIgnored() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isSingleLine() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isMultiLine() const
 {
     // FIXME: implement
     return false;

@@ -4,9 +4,12 @@ ifneq (,$(SDKROOT))
 	ifeq (,$(findstring macosx,$(SDKROOT)))
 		MODULES = DumpRenderTree WebKitTestRunner ../Source/ThirdParty/gtest/xcode TestWebKitAPI
 	endif
-	ifeq (,$(DO_NOT_BUILD_LAYOUT_TEST_RELAY))
-		MODULES += LayoutTestRelay
+	ifneq (,$(findstring iphone,$(SDKROOT)))
+		MODULES += MobileMiniBrowser
 	endif
+endif
+ifeq (,$(DO_NOT_BUILD_IMAGE_DIFF))
+	MODULES += ImageDiff
 endif
 
 all:

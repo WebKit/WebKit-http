@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirStackSlot_h
-#define AirStackSlot_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -76,6 +75,9 @@ public:
     // This should usually just be called from phases that do stack allocation. But you can
     // totally force a stack slot to land at some offset.
     void setOffsetFromFP(intptr_t);
+    
+    // This computes a hash for comparing this to JSAir's StackSlot.
+    unsigned jsHash() const;
 
     void dump(PrintStream&) const;
     void deepDump(PrintStream&) const;
@@ -129,6 +131,3 @@ inline void printInternal(PrintStream& out, JSC::B3::Air::StackSlot* stackSlot)
 } // namespace WTF
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirStackSlot_h
-

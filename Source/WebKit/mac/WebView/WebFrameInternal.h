@@ -164,8 +164,8 @@ WebView *getWebView(WebFrame *webFrame);
 - (DOMRange *)_rangeByAlteringCurrentSelection:(WebCore::FrameSelection::EAlteration)alteration direction:(WebCore::SelectionDirection)direction granularity:(WebCore::TextGranularity)granularity;
 #endif
 - (NSRange)_convertToNSRange:(WebCore::Range*)range;
-- (PassRefPtr<WebCore::Range>)_convertToDOMRange:(NSRange)nsrange;
-- (PassRefPtr<WebCore::Range>)_convertToDOMRange:(NSRange)nsrange rangeIsRelativeTo:(WebRangeIsRelativeTo)rangeIsRelativeTo;
+- (RefPtr<WebCore::Range>)_convertToDOMRange:(NSRange)nsrange;
+- (RefPtr<WebCore::Range>)_convertToDOMRange:(NSRange)nsrange rangeIsRelativeTo:(WebRangeIsRelativeTo)rangeIsRelativeTo;
 
 - (DOMDocumentFragment *)_documentFragmentWithMarkupString:(NSString *)markupString baseURLString:(NSString *)baseURLString;
 - (DOMDocumentFragment *)_documentFragmentWithNodesAsParagraphs:(NSArray *)nodes;
@@ -179,7 +179,7 @@ WebView *getWebView(WebFrame *webFrame);
 - (DOMCSSStyleDeclaration *)_typingStyle;
 - (void)_setTypingStyle:(DOMCSSStyleDeclaration *)style withUndoAction:(WebCore::EditAction)undoAction;
 
-#if ENABLE(DRAG_SUPPORT)
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 - (void)_dragSourceEndedAt:(NSPoint)windowLoc operation:(NSDragOperation)operation;
 #endif
 

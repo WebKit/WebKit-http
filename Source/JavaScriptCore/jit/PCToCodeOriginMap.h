@@ -23,18 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PCToCodeOriginMap_h
-#define PCToCodeOriginMap_h
+#pragma once
 
 #if ENABLE(JIT)
 
 #include "CodeOrigin.h"
-#include "DFGCommon.h"
 #include "MacroAssembler.h"
 #include "VM.h"
-#include <wtf/Bag.h>
 #include <wtf/Optional.h>
-#include <wtf/RedBlackTree.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -84,7 +80,7 @@ public:
     PCToCodeOriginMap(PCToCodeOriginMapBuilder&&, LinkBuffer&);
     ~PCToCodeOriginMap();
 
-    Optional<CodeOrigin> findPC(void* pc) const;
+    std::optional<CodeOrigin> findPC(void* pc) const;
 
     double memorySize();
 
@@ -100,5 +96,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // PCToCodeOriginMap_h 

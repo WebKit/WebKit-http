@@ -96,7 +96,6 @@ void WebDownload::init(ResourceHandle* handle, const ResourceRequest& request, c
     // or it fails to creating and we have a now-useless connection with a dangling ref. 
     // Either way, we need to release the connection to balance out ref counts
     handle->releaseConnectionForDownload();
-    CFRelease(connection);
 }
 
 void WebDownload::init(const URL& url, IWebDownloadDelegate* delegate)
@@ -377,7 +376,7 @@ void WebDownload::didReceiveAuthenticationChallenge(CFURLAuthChallengeRef challe
 {
     // Try previously stored credential first.
     if (!CFURLAuthChallengeGetPreviousFailureCount(challenge)) {
-        Credential credential = CredentialStorage::defaultCredentialStorage().get(core(CFURLAuthChallengeGetProtectionSpace(challenge)));
+        Credential credential = CredentialStorage::defaultCredentialStorage().get(emptyString(), core(CFURLAuthChallengeGetProtectionSpace(challenge)));
         if (!credential.isEmpty()) {
             RetainPtr<CFURLCredentialRef> cfCredential = adoptCF(createCF(credential));
             CFURLDownloadUseCredential(m_download.get(), cfCredential.get(), challenge);

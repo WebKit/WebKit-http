@@ -24,20 +24,15 @@
  *
  */
 
-#ifndef CompositionEvent_h
-#define CompositionEvent_h
+#pragma once
 
 #include "UIEvent.h"
 
 namespace WebCore {
 
-struct CompositionEventInit : UIEventInit {
-    String data;
-};
-
 class CompositionEvent final : public UIEvent {
 public:
-    static Ref<CompositionEvent> create(const AtomicString& type, AbstractView* view, const String& data)
+    static Ref<CompositionEvent> create(const AtomicString& type, DOMWindow* view, const String& data)
     {
         return adoptRef(*new CompositionEvent(type, view, data));
     }
@@ -47,27 +42,33 @@ public:
         return adoptRef(*new CompositionEvent);
     }
 
-    static Ref<CompositionEvent> createForBindings(const AtomicString& type, const CompositionEventInit& initializer)
+    struct Init : UIEventInit {
+        String data;
+    };
+
+    static Ref<CompositionEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new CompositionEvent(type, initializer));
+        return adoptRef(*new CompositionEvent(type, initializer, isTrusted));
     }
 
     virtual ~CompositionEvent();
 
-    void initCompositionEvent(const AtomicString& type, bool canBubble, bool cancelable, AbstractView*, const String& data);
+    void initCompositionEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow*, const String& data);
 
     String data() const { return m_data; }
 
-    virtual EventInterface eventInterface() const override;
+    EventInterface eventInterface() const override;
 
 private:
     CompositionEvent();
-    CompositionEvent(const AtomicString& type, AbstractView*, const String&);
-    CompositionEvent(const AtomicString& type, const CompositionEventInit&);
+    CompositionEvent(const AtomicString& type, DOMWindow*, const String&);
+    CompositionEvent(const AtomicString& type, const Init&, IsTrusted);
+
+    bool isCompositionEvent() const override;
 
     String m_data;
 };
 
 } // namespace WebCore
 
-#endif // CompositionEvent_h
+SPECIALIZE_TYPE_TRAITS_EVENT(CompositionEvent)

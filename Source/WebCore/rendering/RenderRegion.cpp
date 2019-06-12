@@ -35,7 +35,6 @@
 #include "HitTestResult.h"
 #include "IntRect.h"
 #include "LayoutRepainter.h"
-#include "PaintInfo.h"
 #include "Range.h"
 #include "RenderBoxRegionInfo.h"
 #include "RenderInline.h"
@@ -48,7 +47,7 @@
 
 namespace WebCore {
 
-RenderRegion::RenderRegion(Element& element, Ref<RenderStyle>&& style, RenderFlowThread* flowThread)
+RenderRegion::RenderRegion(Element& element, RenderStyle&& style, RenderFlowThread* flowThread)
     : RenderBlockFlow(element, WTFMove(style))
     , m_flowThread(flowThread)
     , m_parentNamedFlowThread(nullptr)
@@ -56,7 +55,7 @@ RenderRegion::RenderRegion(Element& element, Ref<RenderStyle>&& style, RenderFlo
 {
 }
 
-RenderRegion::RenderRegion(Document& document, Ref<RenderStyle>&& style, RenderFlowThread* flowThread)
+RenderRegion::RenderRegion(Document& document, RenderStyle&& style, RenderFlowThread* flowThread)
     : RenderBlockFlow(document, WTFMove(style))
     , m_flowThread(flowThread)
     , m_parentNamedFlowThread(nullptr)
@@ -280,7 +279,7 @@ void RenderRegion::installFlowThread()
 
 void RenderRegion::attachRegion()
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
     
     // A region starts off invalid.
@@ -325,9 +324,9 @@ std::unique_ptr<RenderBoxRegionInfo> RenderRegion::takeRenderBoxRegionInfo(const
     return m_renderBoxRegionInfo.take(box);
 }
 
-void RenderRegion::removeRenderBoxRegionInfo(const RenderBox* box)
+void RenderRegion::removeRenderBoxRegionInfo(const RenderBox& box)
 {
-    m_renderBoxRegionInfo.remove(box);
+    m_renderBoxRegionInfo.remove(&box);
 }
 
 void RenderRegion::deleteAllRenderBoxRegionInfo()

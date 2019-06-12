@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInspectorUI_h
-#define WebInspectorUI_h
+#pragma once
 
 #include "Connection.h"
 #include "WebInspectorFrontendAPIDispatcher.h"
@@ -44,31 +43,36 @@ public:
     static Ref<WebInspectorUI> create(WebPage&);
 
     // Implemented in generated WebInspectorUIMessageReceiver.cpp
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // IPC::Connection::Client
     void didClose(IPC::Connection&) override { closeWindow(); }
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { closeWindow(); }
-    virtual IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    virtual IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Web; }
 
     // Called by WebInspectorUI messages
     void establishConnection(IPC::Attachment connectionIdentifier, uint64_t inspectedPageIdentifier, bool underTest, unsigned inspectionLevel);
 
     void showConsole();
     void showResources();
+    void showTimelines();
 
     void showMainResourceForFrame(const String& frameIdentifier);
 
     void startPageProfiling();
     void stopPageProfiling();
 
+    void startElementSelection();
+    void stopElementSelection();
+
     void attachedBottom() { setDockSide(DockSide::Bottom); }
     void attachedRight() { setDockSide(DockSide::Right); }
+    void attachedLeft() { setDockSide(DockSide::Left); }
     void detached() { setDockSide(DockSide::Undocked); }
 
     void setDockSide(DockSide);
     void setDockingUnavailable(bool);
+
+    void setIsVisible(bool);
 
     void didSave(const String& url);
     void didAppend(const String& url);
@@ -87,6 +91,8 @@ public:
     void bringToFront() override;
     void closeWindow() override;
 
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() const override;
+
     void requestSetDockSide(DockSide) override;
     void changeAttachedWindowHeight(unsigned) override;
     void changeAttachedWindowWidth(unsigned) override;
@@ -100,6 +106,9 @@ public:
     void inspectedURLChanged(const String&) override;
 
     void sendMessageToBackend(const String&) override;
+
+    void pagePaused() override;
+    void pageUnpaused() override;
 
     bool isUnderTest() override { return m_underTest; }
     unsigned inspectionLevel() const override { return m_inspectionLevel; }
@@ -119,15 +128,9 @@ private:
     uint64_t m_inspectedPageIdentifier { 0 };
     bool m_underTest { false };
     bool m_dockingUnavailable { false };
+    bool m_isVisible { false };
     DockSide m_dockSide { DockSide::Undocked };
     unsigned m_inspectionLevel { 1 };
-
-#if PLATFORM(COCOA)
-    mutable String m_localizedStringsURL;
-    mutable bool m_hasLocalizedStringsURL { false };
-#endif
 };
 
 } // namespace WebKit
-
-#endif // WebInspectorUI_h

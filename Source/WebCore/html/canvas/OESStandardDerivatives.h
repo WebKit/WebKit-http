@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OESStandardDerivatives_h
-#define OESStandardDerivatives_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class OESStandardDerivatives final : public WebGLExtension {
 public:
-    explicit OESStandardDerivatives(WebGLRenderingContextBase*);
+    explicit OESStandardDerivatives(WebGLRenderingContextBase&);
     virtual ~OESStandardDerivatives();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // OESStandardDerivatives_h

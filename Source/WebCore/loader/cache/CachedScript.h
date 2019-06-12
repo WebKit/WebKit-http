@@ -23,8 +23,7 @@
     pages from the web. It has a memory cache for these objects.
 */
 
-#ifndef CachedScript_h
-#define CachedScript_h
+#pragma once
 
 #include "CachedResource.h"
 
@@ -34,28 +33,25 @@ class TextResourceDecoder;
 
 class CachedScript final : public CachedResource {
 public:
-    CachedScript(const ResourceRequest&, const String& charset, SessionID);
+    CachedScript(CachedResourceRequest&&, SessionID);
     virtual ~CachedScript();
 
     StringView script();
     unsigned scriptHash();
 
-    String mimeType() const;
-
-#if ENABLE(NOSNIFF)
-    bool mimeTypeAllowedByNosniff() const;
-#endif
-
 private:
-    virtual bool mayTryReplaceEncodedData() const override { return true; }
+    bool mayTryReplaceEncodedData() const final { return true; }
 
-    virtual bool shouldIgnoreHTTPStatusCodeErrors() const override;
+    bool shouldIgnoreHTTPStatusCodeErrors() const final;
 
-    virtual void setEncoding(const String&) override;
-    virtual String encoding() const override;
-    virtual void finishLoading(SharedBuffer*) override;
+    void setEncoding(const String&) final;
+    String encoding() const final;
+    const TextResourceDecoder* textResourceDecoder() const final { return m_decoder.get(); }
+    void finishLoading(SharedBuffer*) final;
 
-    virtual void destroyDecodedData() override;
+    void destroyDecodedData() final;
+
+    void setBodyDataFrom(const CachedResource&) final;
 
     String m_script;
     unsigned m_scriptHash { 0 };
@@ -69,5 +65,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedScript, CachedResource::Script)
-
-#endif // CachedScript_h

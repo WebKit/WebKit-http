@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ConsoleClient_h
-#define ConsoleClient_h
+#pragma once
 
 #include "ConsoleTypes.h"
 #include <wtf/Forward.h>
@@ -42,32 +41,31 @@ public:
     virtual ~ConsoleClient() { }
 
     JS_EXPORT_PRIVATE static void printConsoleMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& url, unsigned lineNumber, unsigned columnNumber);
-    JS_EXPORT_PRIVATE static void printConsoleMessageWithArguments(MessageSource, MessageType, MessageLevel, JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&);
+    JS_EXPORT_PRIVATE static void printConsoleMessageWithArguments(MessageSource, MessageType, MessageLevel, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&);
 
-    void logWithLevel(ExecState*, RefPtr<Inspector::ScriptArguments>&&, MessageLevel);
-    void clear(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void dir(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void dirXML(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void table(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void trace(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void assertCondition(ExecState*, RefPtr<Inspector::ScriptArguments>&&, bool condition);
-    void group(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void groupCollapsed(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
-    void groupEnd(ExecState*, RefPtr<Inspector::ScriptArguments>&&);
+    void logWithLevel(ExecState*, Ref<Inspector::ScriptArguments>&&, MessageLevel);
+    void clear(ExecState*);
+    void dir(ExecState*, Ref<Inspector::ScriptArguments>&&);
+    void dirXML(ExecState*, Ref<Inspector::ScriptArguments>&&);
+    void table(ExecState*, Ref<Inspector::ScriptArguments>&&);
+    void trace(ExecState*, Ref<Inspector::ScriptArguments>&&);
+    void assertion(ExecState*, Ref<Inspector::ScriptArguments>&&);
+    void group(ExecState*, Ref<Inspector::ScriptArguments>&&);
+    void groupCollapsed(ExecState*, Ref<Inspector::ScriptArguments>&&);
+    void groupEnd(ExecState*, Ref<Inspector::ScriptArguments>&&);
 
-    virtual void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) = 0;
-    virtual void count(ExecState*, RefPtr<Inspector::ScriptArguments>&&) = 0;
+    virtual void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) = 0;
+    virtual void count(ExecState*, Ref<Inspector::ScriptArguments>&&) = 0;
     virtual void profile(ExecState*, const String& title) = 0;
     virtual void profileEnd(ExecState*, const String& title) = 0;
+    virtual void takeHeapSnapshot(ExecState*, const String& title) = 0;
     virtual void time(ExecState*, const String& title) = 0;
     virtual void timeEnd(ExecState*, const String& title) = 0;
-    virtual void timeStamp(ExecState*, RefPtr<Inspector::ScriptArguments>&&) = 0;
+    virtual void timeStamp(ExecState*, Ref<Inspector::ScriptArguments>&&) = 0;
 
 private:
     enum ArgumentRequirement { ArgumentRequired, ArgumentNotRequired };
-    void internalMessageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&, ArgumentRequirement);
+    void internalMessageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&, ArgumentRequirement);
 };
 
 } // namespace JSC
-
-#endif // ConsoleClient_h

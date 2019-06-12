@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2008, 2014, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2009 Igalia S.L.
  *
@@ -33,10 +33,10 @@
 #include "Chrome.h"
 #include "CreateLinkCommand.h"
 #include "DocumentFragment.h"
+#include "Editing.h"
 #include "EditorClient.h"
 #include "Event.h"
 #include "EventHandler.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FormatBlockCommand.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -46,20 +46,20 @@
 #include "HTMLNames.h"
 #include "IndentOutdentCommand.h"
 #include "InsertListCommand.h"
-#include "KillRing.h"
 #include "Page.h"
 #include "Pasteboard.h"
 #include "RenderBox.h"
 #include "ReplaceSelectionCommand.h"
 #include "Scrollbar.h"
 #include "Settings.h"
-#include "Sound.h"
 #include "StyleProperties.h"
 #include "TypingCommand.h"
 #include "UnlinkCommand.h"
+#include "UserGestureIndicator.h"
 #include "UserTypingGestureIndicator.h"
-#include "htmlediting.h"
 #include "markup.h"
+#include <pal/system/Sound.h>
+#include <pal/text/KillRing.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -74,16 +74,13 @@ public:
     TriState (*state)(Frame&, Event*);
     String (*value)(Frame&, Event*);
     bool isTextInsertion;
-    bool allowExecutionWhenDisabled;
+    bool (*allowExecutionWhenDisabled)(EditorCommandSource);
 };
 
 typedef HashMap<String, const EditorInternalCommand*, ASCIICaseInsensitiveHash> CommandMap;
 
 static const bool notTextInsertion = false;
 static const bool isTextInsertion = true;
-
-static const bool allowExecutionWhenDisabled = true;
-static const bool doNotAllowExecutionWhenDisabled = false;
 
 // Related to Editor::selectionForCommand.
 // Certain operations continue to use the target control's selection even if the event handler
@@ -158,21 +155,19 @@ static bool executeApplyParagraphStyle(Frame& frame, EditorCommandSource source,
     return false;
 }
 
-static bool executeInsertFragment(Frame& frame, PassRefPtr<DocumentFragment> fragment)
+static bool executeInsertFragment(Frame& frame, Ref<DocumentFragment>&& fragment)
 {
     ASSERT(frame.document());
-    applyCommand(ReplaceSelectionCommand::create(*frame.document(), fragment, ReplaceSelectionCommand::PreventNesting, EditActionInsert));
+    ReplaceSelectionCommand::create(*frame.document(), WTFMove(fragment), ReplaceSelectionCommand::PreventNesting, EditActionInsert)->apply();
     return true;
 }
 
 static bool executeInsertNode(Frame& frame, Ref<Node>&& content)
 {
-    RefPtr<DocumentFragment> fragment = DocumentFragment::create(*frame.document());
-    ExceptionCode ec = 0;
-    fragment->appendChild(WTFMove(content), ec);
-    if (ec)
+    auto fragment = DocumentFragment::create(*frame.document());
+    if (fragment->appendChild(content).hasException())
         return false;
-    return executeInsertFragment(frame, fragment.release());
+    return executeInsertFragment(frame, WTFMove(fragment));
 }
 
 static bool expandSelectionToGranularity(Frame& frame, TextGranularity granularity)
@@ -230,12 +225,11 @@ static unsigned verticalScrollDistance(Frame& frame)
     return static_cast<unsigned>(Scrollbar::pageStep(height));
 }
 
-static RefPtr<Range> unionDOMRanges(Range* a, Range* b)
+static RefPtr<Range> unionDOMRanges(Range& a, Range& b)
 {
-    Range* start = a->compareBoundaryPoints(Range::START_TO_START, b, ASSERT_NO_EXCEPTION) <= 0 ? a : b;
-    Range* end = a->compareBoundaryPoints(Range::END_TO_END, b, ASSERT_NO_EXCEPTION) <= 0 ? b : a;
-
-    return Range::create(a->ownerDocument(), &start->startContainer(), start->startOffset(), &end->endContainer(), end->endOffset());
+    Range& start = a.compareBoundaryPoints(Range::START_TO_START, b).releaseReturnValue() <= 0 ? a : b;
+    Range& end = a.compareBoundaryPoints(Range::END_TO_END, b).releaseReturnValue() <= 0 ? b : a;
+    return Range::create(a.ownerDocument(), &start.startContainer(), start.startOffset(), &end.endContainer(), end.endOffset());
 }
 
 // Execute command functions
@@ -257,7 +251,7 @@ static bool executeCreateLink(Frame& frame, Event*, EditorCommandSource, const S
     if (value.isEmpty())
         return false;
     ASSERT(frame.document());
-    applyCommand(CreateLinkCommand::create(*frame.document(), value));
+    CreateLinkCommand::create(*frame.document(), value)->apply();
     return true;
 }
 
@@ -358,8 +352,8 @@ static bool executeDeleteToMark(Frame& frame, Event*, EditorCommandSource, const
 {
     RefPtr<Range> mark = frame.editor().mark().toNormalizedRange();
     FrameSelection& selection = frame.selection();
-    if (mark) {
-        bool selected = selection.setSelectedRange(unionDOMRanges(mark.get(), frame.editor().selectedRange().get()).get(), DOWNSTREAM, true);
+    if (mark && frame.editor().selectedRange()) {
+        bool selected = selection.setSelectedRange(unionDOMRanges(*mark, *frame.editor().selectedRange()).get(), DOWNSTREAM, true);
         ASSERT(selected);
         if (!selected)
             return false;
@@ -383,7 +377,7 @@ static bool executeDeleteWordForward(Frame& frame, Event*, EditorCommandSource, 
 
 static bool executeFindString(Frame& frame, Event*, EditorCommandSource, const String& value)
 {
-    return frame.editor().findString(value, CaseInsensitive | WrapAround);
+    return frame.editor().findString(value, CaseInsensitive | WrapAround | DoNotTraverseFlatTree);
 }
 
 static bool executeFontName(Frame& frame, Event*, EditorCommandSource source, const String& value)
@@ -415,14 +409,13 @@ static bool executeFormatBlock(Frame& frame, Event*, EditorCommandSource, const 
     if (tagName[0] == '<' && tagName[tagName.length() - 1] == '>')
         tagName = tagName.substring(1, tagName.length() - 2);
 
-    String localName, prefix;
-    if (!Document::parseQualifiedName(tagName, prefix, localName, IGNORE_EXCEPTION))
+    auto qualifiedTagName = Document::parseQualifiedName(xhtmlNamespaceURI, tagName);
+    if (qualifiedTagName.hasException())
         return false;
-    QualifiedName qualifiedTagName(prefix, localName, xhtmlNamespaceURI);
 
     ASSERT(frame.document());
-    RefPtr<FormatBlockCommand> command = FormatBlockCommand::create(*frame.document(), qualifiedTagName);
-    applyCommand(command);
+    auto command = FormatBlockCommand::create(*frame.document(), qualifiedTagName.releaseReturnValue());
+    command->apply();
     return command->didApply();
 }
 
@@ -453,7 +446,7 @@ static bool executeIgnoreSpelling(Frame& frame, Event*, EditorCommandSource, con
 static bool executeIndent(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     ASSERT(frame.document());
-    applyCommand(IndentOutdentCommand::create(*frame.document(), IndentOutdentCommand::Indent));
+    IndentOutdentCommand::create(*frame.document(), IndentOutdentCommand::Indent)->apply();
     return true;
 }
 
@@ -515,7 +508,7 @@ static bool executeInsertNewlineInQuotedContent(Frame& frame, Event*, EditorComm
 static bool executeInsertOrderedList(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     ASSERT(frame.document());
-    applyCommand(InsertListCommand::create(*frame.document(), InsertListCommand::OrderedList));
+    InsertListCommand::create(*frame.document(), InsertListCommand::OrderedList)->apply();
     return true;
 }
 
@@ -539,7 +532,7 @@ static bool executeInsertText(Frame& frame, Event*, EditorCommandSource, const S
 static bool executeInsertUnorderedList(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     ASSERT(frame.document());
-    applyCommand(InsertListCommand::create(*frame.document(), InsertListCommand::UnorderedList));
+    InsertListCommand::create(*frame.document(), InsertListCommand::UnorderedList)->apply();
     return true;
 }
 
@@ -876,7 +869,7 @@ static bool executeMoveToRightEndOfLineAndModifySelection(Frame& frame, Event*, 
 static bool executeOutdent(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     ASSERT(frame.document());
-    applyCommand(IndentOutdentCommand::create(*frame.document(), IndentOutdentCommand::Outdent));
+    IndentOutdentCommand::create(*frame.document(), IndentOutdentCommand::Outdent)->apply();
     return true;
 }
 
@@ -937,7 +930,7 @@ static bool executePrint(Frame& frame, Event*, EditorCommandSource, const String
     Page* page = frame.page();
     if (!page)
         return false;
-    page->chrome().print(&frame);
+    page->chrome().print(frame);
     return true;
 }
 
@@ -1009,10 +1002,10 @@ static bool executeSelectToMark(Frame& frame, Event*, EditorCommandSource, const
     RefPtr<Range> mark = frame.editor().mark().toNormalizedRange();
     RefPtr<Range> selection = frame.editor().selectedRange();
     if (!mark || !selection) {
-        systemBeep();
+        PAL::systemBeep();
         return false;
     }
-    frame.selection().setSelectedRange(unionDOMRanges(mark.get(), selection.get()).get(), DOWNSTREAM, true);
+    frame.selection().setSelectedRange(unionDOMRanges(*mark, *selection).get(), DOWNSTREAM, true);
     return true;
 }
 
@@ -1064,10 +1057,11 @@ static bool executeSuperscript(Frame& frame, Event*, EditorCommandSource source,
 
 static bool executeSwapWithMark(Frame& frame, Event*, EditorCommandSource, const String&)
 {
+    Ref<Frame> protector(frame);
     const VisibleSelection& mark = frame.editor().mark();
     const VisibleSelection& selection = frame.selection().selection();
     if (mark.isNone() || selection.isNone()) {
-        systemBeep();
+        PAL::systemBeep();
         return false;
     }
     frame.selection().setSelection(mark);
@@ -1116,7 +1110,7 @@ static bool executeUndo(Frame& frame, Event*, EditorCommandSource, const String&
 static bool executeUnlink(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     ASSERT(frame.document());
-    applyCommand(UnlinkCommand::create(*frame.document()));
+    UnlinkCommand::create(*frame.document())->apply();
     return true;
 }
 
@@ -1157,12 +1151,30 @@ static bool supportedFromMenuOrKeyBinding(Frame*)
     return false;
 }
 
+static bool defaultValueForSupportedCopyCut(Frame& frame)
+{
+    auto& settings = frame.settings();
+    if (settings.javaScriptCanAccessClipboard())
+        return true;
+    
+    switch (settings.clipboardAccessPolicy()) {
+    case ClipboardAccessPolicy::Allow:
+    case ClipboardAccessPolicy::RequiresUserGesture:
+        return true;
+    case ClipboardAccessPolicy::Deny:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
 static bool supportedCopyCut(Frame* frame)
 {
     if (!frame)
         return false;
 
-    bool defaultValue = frame->settings().javaScriptCanAccessClipboard();
+    bool defaultValue = defaultValueForSupportedCopyCut(*frame);
 
     EditorClient* client = frame->editor().client();
     return client ? client->canCopyCut(frame, defaultValue) : defaultValue;
@@ -1219,14 +1231,49 @@ static bool enableCaretInEditableText(Frame& frame, Event* event, EditorCommandS
     return selection.isCaret() && selection.isContentEditable();
 }
 
-static bool enabledCopy(Frame& frame, Event*, EditorCommandSource)
+static bool allowCopyCutFromDOM(Frame& frame)
 {
-    return frame.editor().canDHTMLCopy() || frame.editor().canCopy();
+    auto& settings = frame.settings();
+    if (settings.javaScriptCanAccessClipboard())
+        return true;
+    
+    switch (settings.clipboardAccessPolicy()) {
+    case ClipboardAccessPolicy::Allow:
+        return true;
+    case ClipboardAccessPolicy::Deny:
+        return false;
+    case ClipboardAccessPolicy::RequiresUserGesture:
+        return UserGestureIndicator::processingUserGesture();
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
-static bool enabledCut(Frame& frame, Event*, EditorCommandSource)
+static bool enabledCopy(Frame& frame, Event*, EditorCommandSource source)
 {
-    return frame.editor().canDHTMLCut() || frame.editor().canCut();
+    switch (source) {
+    case CommandFromMenuOrKeyBinding:    
+        return frame.editor().canDHTMLCopy() || frame.editor().canCopy();
+    case CommandFromDOM:
+    case CommandFromDOMWithUserInterface:
+        return allowCopyCutFromDOM(frame) && (frame.editor().canDHTMLCopy() || frame.editor().canCopy());
+    }
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
+static bool enabledCut(Frame& frame, Event*, EditorCommandSource source)
+{
+    switch (source) {
+    case CommandFromMenuOrKeyBinding:    
+        return frame.editor().canDHTMLCut() || frame.editor().canCut();
+    case CommandFromDOM:
+    case CommandFromDOMWithUserInterface:
+        return allowCopyCutFromDOM(frame) && (frame.editor().canDHTMLCut() || frame.editor().canCut());
+    }
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
 static bool enabledClearText(Frame& frame, Event*, EditorCommandSource)
@@ -1434,12 +1481,38 @@ static String valueForeColor(Frame& frame, Event*)
 static String valueFormatBlock(Frame& frame, Event*)
 {
     const VisibleSelection& selection = frame.selection().selection();
-    if (!selection.isNonOrphanedCaretOrRange() || !selection.isContentEditable())
+    if (selection.isNoneOrOrphaned() || !selection.isContentEditable())
         return emptyString();
     Element* formatBlockElement = FormatBlockCommand::elementForFormatBlockCommand(selection.firstRange().get());
     if (!formatBlockElement)
         return emptyString();
     return formatBlockElement->localName();
+}
+
+// allowExecutionWhenDisabled functions
+
+static bool allowExecutionWhenDisabled(EditorCommandSource)
+{
+    return true;
+}
+
+static bool doNotAllowExecutionWhenDisabled(EditorCommandSource)
+{
+    return false;
+}
+
+static bool allowExecutionWhenDisabledCopyCut(EditorCommandSource source)
+{
+    switch (source) {
+    case CommandFromMenuOrKeyBinding:
+        return true;
+    case CommandFromDOM:
+    case CommandFromDOMWithUserInterface:
+        return false;
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
 // Map of functions
@@ -1459,9 +1532,9 @@ static const CommandMap& createCommandMap()
         { "BackColor", { executeBackColor, supported, enabledInRichlyEditableText, stateNone, valueBackColor, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "Bold", { executeToggleBold, supported, enabledInRichlyEditableText, stateBold, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "ClearText", { executeClearText, supported, enabledClearText, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
-        { "Copy", { executeCopy, supportedCopyCut, enabledCopy, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
+        { "Copy", { executeCopy, supportedCopyCut, enabledCopy, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabledCopyCut } },
         { "CreateLink", { executeCreateLink, supported, enabledInRichlyEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
-        { "Cut", { executeCut, supportedCopyCut, enabledCut, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
+        { "Cut", { executeCut, supportedCopyCut, enabledCut, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabledCopyCut } },
         { "DefaultParagraphSeparator", { executeDefaultParagraphSeparator, supported, enabled, stateNone, valueDefaultParagraphSeparator, notTextInsertion, doNotAllowExecutionWhenDisabled} },
         { "Delete", { executeDelete, supported, enabledDelete, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "DeleteBackward", { executeDeleteBackward, supportedFromMenuOrKeyBinding, enabledInEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
@@ -1663,12 +1736,12 @@ static const EditorInternalCommand* internalCommand(const String& commandName)
 
 Editor::Command Editor::command(const String& commandName)
 {
-    return Command(internalCommand(commandName), CommandFromMenuOrKeyBinding, &m_frame);
+    return Command(internalCommand(commandName), CommandFromMenuOrKeyBinding, m_frame);
 }
 
 Editor::Command Editor::command(const String& commandName, EditorCommandSource source)
 {
-    return Command(internalCommand(commandName), source, &m_frame);
+    return Command(internalCommand(commandName), source, m_frame);
 }
 
 bool Editor::commandIsSupportedFromMenuOrKeyBinding(const String& commandName)
@@ -1680,26 +1753,26 @@ Editor::Command::Command()
 {
 }
 
-Editor::Command::Command(const EditorInternalCommand* command, EditorCommandSource source, PassRefPtr<Frame> frame)
+Editor::Command::Command(const EditorInternalCommand* command, EditorCommandSource source, Frame& frame)
     : m_command(command)
     , m_source(source)
-    , m_frame(command ? frame : 0)
+    , m_frame(command ? &frame : nullptr)
 {
-    // Use separate assertions so we can tell which bad thing happened.
-    if (!command)
-        ASSERT(!m_frame);
-    else
-        ASSERT(m_frame);
+    ASSERT(command || !m_frame);
 }
 
 bool Editor::Command::execute(const String& parameter, Event* triggeringEvent) const
 {
     if (!isEnabled(triggeringEvent)) {
         // Let certain commands be executed when performed explicitly even if they are disabled.
-        if (!isSupported() || !m_frame || !m_command->allowExecutionWhenDisabled)
+        if (!allowExecutionWhenDisabled())
             return false;
     }
-    m_frame->document()->updateLayoutIgnorePendingStylesheets();
+    auto document = m_frame->document();
+    document->updateLayoutIgnorePendingStylesheets();
+    if (m_frame->document() != document)
+        return false;
+
     return m_command->execute(*m_frame, triggeringEvent, m_source, parameter);
 }
 
@@ -1749,6 +1822,13 @@ String Editor::Command::value(Event* triggeringEvent) const
 bool Editor::Command::isTextInsertion() const
 {
     return m_command && m_command->isTextInsertion;
+}
+
+bool Editor::Command::allowExecutionWhenDisabled() const
+{
+    if (!isSupported() || !m_frame)
+        return false;
+    return m_command->allowExecutionWhenDisabled(m_source);
 }
 
 } // namespace WebCore

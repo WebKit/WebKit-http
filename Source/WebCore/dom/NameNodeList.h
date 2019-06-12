@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef NameNodeList_h
-#define NameNodeList_h
+#pragma once
 
 #include "LiveNodeList.h"
 #include <wtf/Forward.h>
@@ -40,8 +39,8 @@ public:
 
     virtual ~NameNodeList();
 
-    virtual bool elementMatches(Element&) const override;
-    virtual bool isRootedAtDocument() const override { return false; }
+    bool elementMatches(Element&) const override;
+    bool isRootedAtDocument() const override { return false; }
 
 private:
     NameNodeList(ContainerNode& rootNode, const AtomicString& name);
@@ -55,5 +54,3 @@ inline bool NameNodeList::elementMatches(Element& element) const
 }
 
 } // namespace WebCore
-
-#endif // NameNodeList_h

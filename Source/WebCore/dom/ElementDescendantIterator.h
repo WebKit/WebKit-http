@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ElementDescendantIterator_h
-#define ElementDescendantIterator_h
+#pragma once
 
 #include "Element.h"
 #include "ElementIteratorAssertions.h"
@@ -75,7 +74,7 @@ public:
 
 private:
     const Element* m_current;
-    Vector<Element*, 16, UnsafeVectorOverflow> m_ancestorSiblingStack;
+    Vector<Element*, 16> m_ancestorSiblingStack;
 
 #if !ASSERT_DISABLED
     ElementIteratorAssertions m_assertions;
@@ -171,7 +170,7 @@ ALWAYS_INLINE ElementDescendantIterator& ElementDescendantIterator::operator--()
     if (!previousSibling) {
         m_current = m_current->parentElement();
         // The stack optimizes for forward traversal only, this just maintains consistency.
-        if (m_current->nextSibling() == m_ancestorSiblingStack.last())
+        if (m_current->nextSibling() && m_current->nextSibling() == m_ancestorSiblingStack.last())
             m_ancestorSiblingStack.removeLast();
         return *this;
     }
@@ -355,7 +354,7 @@ inline ElementDescendantConstIteratorAdapter elementDescendants(const ContainerN
     return ElementDescendantConstIteratorAdapter(root);
 }
 
-}
+} // namespace WebCore
 
 namespace std {
 template <> struct iterator_traits<WebCore::ElementDescendantIterator> {
@@ -365,4 +364,3 @@ template <> struct iterator_traits<WebCore::ElementDescendantConstIterator> {
     typedef const WebCore::Element value_type;
 };
 }
-#endif

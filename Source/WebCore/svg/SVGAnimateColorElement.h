@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAnimateColorElement_h
-#define SVGAnimateColorElement_h
+#pragma once
 
 #include "SVGAnimateElementBase.h"
 
@@ -32,9 +31,7 @@ public:
 
 private:
     SVGAnimateColorElement(const QualifiedName&, Document&);
-    virtual void determinePropertyValueTypes(const String& from, const String& to) override;
+    void determinePropertyValueTypes(const String& from, const String& to) override;
 };
 
 } // namespace WebCore
-
-#endif // SVGAnimateColorElement_h

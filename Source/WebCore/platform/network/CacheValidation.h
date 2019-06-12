@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CacheValidation_h
-#define CacheValidation_h
+#pragma once
 
 #include "PlatformExportMacros.h"
+#include "SessionID.h"
+#include <chrono>
 #include <wtf/Optional.h>
+#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class HTTPHeaderMap;
+class ResourceRequest;
 class ResourceResponse;
 
 struct RedirectChainCacheStatus {
@@ -57,14 +61,19 @@ enum ReuseExpiredRedirectionOrNot { DoNotReuseExpiredRedirection, ReuseExpiredRe
 WEBCORE_EXPORT bool redirectChainAllowsReuse(RedirectChainCacheStatus, ReuseExpiredRedirectionOrNot);
 
 struct CacheControlDirectives {
-    Optional<std::chrono::microseconds> maxAge;
-    Optional<std::chrono::microseconds> maxStale;
+    std::optional<std::chrono::microseconds> maxAge;
+    std::optional<std::chrono::microseconds> maxStale;
     bool noCache { false };
     bool noStore { false };
     bool mustRevalidate { false };
+    bool immutable { false };
 };
 WEBCORE_EXPORT CacheControlDirectives parseCacheControlDirectives(const HTTPHeaderMap&);
 
-}
+WEBCORE_EXPORT Vector<std::pair<String, String>> collectVaryingRequestHeaders(const ResourceRequest&, const ResourceResponse&, SessionID = SessionID::defaultSessionID());
+WEBCORE_EXPORT bool verifyVaryingRequestHeaders(const Vector<std::pair<String, String>>& varyingRequestHeaders, const ResourceRequest&, SessionID = SessionID::defaultSessionID());
 
-#endif
+WEBCORE_EXPORT bool isStatusCodeCacheableByDefault(int statusCode);
+WEBCORE_EXPORT bool isStatusCodePotentiallyCacheable(int statusCode);
+
+}

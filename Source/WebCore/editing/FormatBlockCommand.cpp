@@ -24,11 +24,11 @@
  */
 
 #include "config.h"
-#include "Element.h"
 #include "FormatBlockCommand.h"
+
 #include "Document.h"
-#include "ExceptionCodePlaceholder.h"
-#include "htmlediting.h"
+#include "Editing.h"
+#include "Element.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "Range.h"
@@ -41,6 +41,7 @@ using namespace HTMLNames;
 
 static Node* enclosingBlockToSplitTreeTo(Node* startNode);
 static bool isElementForFormatBlock(const QualifiedName& tagName);
+
 static inline bool isElementForFormatBlock(Node* node)
 {
     return is<Element>(*node) && isElementForFormatBlock(downcast<Element>(*node).tagQName());
@@ -63,7 +64,8 @@ void FormatBlockCommand::formatSelection(const VisiblePosition& startOfSelection
 void FormatBlockCommand::formatRange(const Position& start, const Position& end, const Position& endOfSelection, RefPtr<Element>& blockNode)
 {
     Node* nodeToSplitTo = enclosingBlockToSplitTreeTo(start.deprecatedNode());
-    RefPtr<Node> outerBlock = (start.deprecatedNode() == nodeToSplitTo) ? start.deprecatedNode() : splitTreeToNode(start.deprecatedNode(), nodeToSplitTo);
+    ASSERT(nodeToSplitTo);
+    RefPtr<Node> outerBlock = (start.deprecatedNode() == nodeToSplitTo) ? start.deprecatedNode() : splitTreeToNode(*start.deprecatedNode(), *nodeToSplitTo);
     RefPtr<Node> nodeAfterInsertionPosition = outerBlock;
 
     RefPtr<Range> range = Range::create(document(), start, endOfSelection);
@@ -73,8 +75,8 @@ void FormatBlockCommand::formatRange(const Position& start, const Position& end,
     if (!root || !refNode)
         return;
     if (isElementForFormatBlock(refNode->tagQName()) && start == startOfBlock(start)
-        && (end == endOfBlock(end) || isNodeVisiblyContainedWithin(refNode, range.get()))
-        && refNode != root && !root->isDescendantOf(refNode)) {
+        && (end == endOfBlock(end) || isNodeVisiblyContainedWithin(*refNode, *range))
+        && refNode != root && !root->isDescendantOf(*refNode)) {
         // Already in a block element that only contains the current paragraph
         if (refNode->hasTagName(tagName()))
             return;
@@ -85,7 +87,7 @@ void FormatBlockCommand::formatRange(const Position& start, const Position& end,
         // Create a new blockquote and insert it as a child of the root editable element. We accomplish
         // this by splitting all parents of the current paragraph up to that point.
         blockNode = createBlockElement();
-        insertNodeBefore(blockNode, nodeAfterInsertionPosition);
+        insertNodeBefore(*blockNode, *nodeAfterInsertionPosition);
     }
 
     Position lastParagraphInBlockNode = blockNode->lastChild() ? positionAfterNode(blockNode->lastChild()) : Position();
@@ -156,7 +158,7 @@ Node* enclosingBlockToSplitTreeTo(Node* startNode)
             return n;
         if (isBlock(n))
             lastBlock = n;
-        if (isListElement(n))
+        if (isListHTMLElement(n))
             return n->parentNode()->hasEditableStyle() ? n->parentNode() : n;
     }
     return lastBlock;

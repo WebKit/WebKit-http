@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirInstInlines_h
-#define AirInstInlines_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -36,76 +35,24 @@
 
 namespace JSC { namespace B3 { namespace Air {
 
-template<typename T> struct ForEach;
-template<> struct ForEach<Tmp> {
-    template<typename Functor>
-    static void forEach(Inst& inst, const Functor& functor)
-    {
-        inst.forEachTmp(functor);
-    }
-};
-
-template<> struct ForEach<Arg> {
-    template<typename Functor>
-    static void forEach(Inst& inst, const Functor& functor)
-    {
-        inst.forEachArg(functor);
-    }
-};
-
-template<> struct ForEach<StackSlot*> {
-    template<typename Functor>
-    static void forEach(Inst& inst, const Functor& functor)
-    {
-        inst.forEachArg(
-            [&] (Arg& arg, Arg::Role role, Arg::Type type, Arg::Width width) {
-                if (!arg.isStack())
-                    return;
-                StackSlot* stackSlot = arg.stackSlot();
-
-                // FIXME: This is way too optimistic about the meaning of "Def". It gets lucky for
-                // now because our only use of "Anonymous" stack slots happens to want the optimistic
-                // semantics. We could fix this by just changing the comments that describe the
-                // semantics of "Anonymous".
-                // https://bugs.webkit.org/show_bug.cgi?id=151128
-                
-                functor(stackSlot, role, type, width);
-                arg = Arg::stack(stackSlot, arg.offset());
-            });
-    }
-};
-
-template<> struct ForEach<Reg> {
-    template<typename Functor>
-    static void forEach(Inst& inst, const Functor& functor)
-    {
-        inst.forEachTmp(
-            [&] (Tmp& tmp, Arg::Role role, Arg::Type type, Arg::Width width) {
-                if (!tmp.isReg())
-                    return;
-
-                Reg reg = tmp.reg();
-                functor(reg, role, type, width);
-                tmp = Tmp(reg);
-            });
-    }
-};
-
 template<typename Thing, typename Functor>
 void Inst::forEach(const Functor& functor)
 {
-    ForEach<Thing>::forEach(*this, functor);
+    forEachArg(
+        [&] (Arg& arg, Arg::Role role, Bank bank, Width width) {
+            arg.forEach<Thing>(role, bank, width, functor);
+        });
 }
 
-inline const RegisterSet& Inst::extraClobberedRegs()
+inline RegisterSet Inst::extraClobberedRegs()
 {
-    ASSERT(opcode == Patch);
+    ASSERT(kind.opcode == Patch);
     return args[0].special()->extraClobberedRegs(*this);
 }
 
-inline const RegisterSet& Inst::extraEarlyClobberedRegs()
+inline RegisterSet Inst::extraEarlyClobberedRegs()
 {
-    ASSERT(opcode == Patch);
+    ASSERT(kind.opcode == Patch);
     return args[0].special()->extraEarlyClobberedRegs(*this);
 }
 
@@ -114,17 +61,17 @@ inline void Inst::forEachDef(Inst* prevInst, Inst* nextInst, const Functor& func
 {
     if (prevInst) {
         prevInst->forEach<Thing>(
-            [&] (Thing& thing, Arg::Role role, Arg::Type argType, Arg::Width argWidth) {
+            [&] (Thing& thing, Arg::Role role, Bank argBank, Width argWidth) {
                 if (Arg::isLateDef(role))
-                    functor(thing, role, argType, argWidth);
+                    functor(thing, role, argBank, argWidth);
             });
     }
 
     if (nextInst) {
         nextInst->forEach<Thing>(
-            [&] (Thing& thing, Arg::Role role, Arg::Type argType, Arg::Width argWidth) {
+            [&] (Thing& thing, Arg::Role role, Bank argBank, Width argWidth) {
                 if (Arg::isEarlyDef(role))
-                    functor(thing, role, argType, argWidth);
+                    functor(thing, role, argBank, argWidth);
             });
     }
 }
@@ -138,16 +85,16 @@ inline void Inst::forEachDefWithExtraClobberedRegs(
     Arg::Role regDefRole;
     
     auto reportReg = [&] (Reg reg) {
-        Arg::Type type = reg.isGPR() ? Arg::GP : Arg::FP;
-        functor(Thing(reg), regDefRole, type, Arg::conservativeWidth(type));
+        Bank bank = reg.isGPR() ? GP : FP;
+        functor(Thing(reg), regDefRole, bank, conservativeWidth(bank));
     };
 
-    if (prevInst && prevInst->opcode == Patch) {
+    if (prevInst && prevInst->kind.opcode == Patch) {
         regDefRole = Arg::Def;
         prevInst->extraClobberedRegs().forEach(reportReg);
     }
 
-    if (nextInst && nextInst->opcode == Patch) {
+    if (nextInst && nextInst->kind.opcode == Patch) {
         regDefRole = Arg::EarlyDef;
         nextInst->extraEarlyClobberedRegs().forEach(reportReg);
     }
@@ -155,7 +102,7 @@ inline void Inst::forEachDefWithExtraClobberedRegs(
 
 inline void Inst::reportUsedRegisters(const RegisterSet& usedRegisters)
 {
-    ASSERT(opcode == Patch);
+    ASSERT(kind.opcode == Patch);
     args[0].special()->reportUsedRegisters(*this, usedRegisters);
 }
 
@@ -164,12 +111,17 @@ inline bool Inst::admitsStack(Arg& arg)
     return admitsStack(&arg - &args[0]);
 }
 
-inline Optional<unsigned> Inst::shouldTryAliasingDef()
+inline bool Inst::admitsExtendedOffsetAddr(Arg& arg)
+{
+    return admitsExtendedOffsetAddr(&arg - &args[0]);
+}
+
+inline std::optional<unsigned> Inst::shouldTryAliasingDef()
 {
     if (!isX86())
-        return Nullopt;
+        return std::nullopt;
 
-    switch (opcode) {
+    switch (kind.opcode) {
     case Add32:
     case Add64:
     case And32:
@@ -180,14 +132,23 @@ inline Optional<unsigned> Inst::shouldTryAliasingDef()
     case Or64:
     case Xor32:
     case Xor64:
-    case AddDouble:
-    case AddFloat:
     case AndFloat:
     case AndDouble:
-    case MulDouble:
-    case MulFloat:
+    case OrFloat:
+    case OrDouble:
     case XorDouble:
     case XorFloat:
+        if (args.size() == 3)
+            return 2;
+        break;
+    case AddDouble:
+    case AddFloat:
+    case MulDouble:
+    case MulFloat:
+#if CPU(X86) || CPU(X86_64)
+        if (MacroAssembler::supportsAVX())
+            return std::nullopt;
+#endif
         if (args.size() == 3)
             return 2;
         break;
@@ -202,6 +163,12 @@ inline Optional<unsigned> Inst::shouldTryAliasingDef()
     case MoveConditionallyTest64:
     case MoveConditionallyDouble:
     case MoveConditionallyFloat:
+    case MoveDoubleConditionally32:
+    case MoveDoubleConditionally64:
+    case MoveDoubleConditionallyTest32:
+    case MoveDoubleConditionallyTest64:
+    case MoveDoubleConditionallyDouble:
+    case MoveDoubleConditionallyFloat:
         if (args.size() == 6)
             return 5;
         break;
@@ -211,7 +178,7 @@ inline Optional<unsigned> Inst::shouldTryAliasingDef()
     default:
         break;
     }
-    return Nullopt;
+    return std::nullopt;
 }
 
 inline bool isShiftValid(const Inst& inst)
@@ -254,6 +221,26 @@ inline bool isUrshift64Valid(const Inst& inst)
     return isShiftValid(inst);
 }
 
+inline bool isRotateRight32Valid(const Inst& inst)
+{
+    return isShiftValid(inst);
+}
+
+inline bool isRotateLeft32Valid(const Inst& inst)
+{
+    return isShiftValid(inst);
+}
+
+inline bool isRotateRight64Valid(const Inst& inst)
+{
+    return isShiftValid(inst);
+}
+
+inline bool isRotateLeft64Valid(const Inst& inst)
+{
+    return isShiftValid(inst);
+}
+
 inline bool isX86DivHelperValid(const Inst& inst)
 {
 #if CPU(X86) || CPU(X86_64)
@@ -280,14 +267,88 @@ inline bool isX86Div32Valid(const Inst& inst)
     return isX86DivHelperValid(inst);
 }
 
+inline bool isX86UDiv32Valid(const Inst& inst)
+{
+    return isX86DivHelperValid(inst);
+}
+
 inline bool isX86Div64Valid(const Inst& inst)
 {
     return isX86DivHelperValid(inst);
 }
 
+inline bool isX86UDiv64Valid(const Inst& inst)
+{
+    return isX86DivHelperValid(inst);
+}
+
+inline bool isAtomicStrongCASValid(const Inst& inst)
+{
+#if CPU(X86) || CPU(X86_64)
+    switch (inst.args.size()) {
+    case 3:
+        return inst.args[0] == Tmp(X86Registers::eax);
+    case 5:
+        return inst.args[1] == Tmp(X86Registers::eax);
+    default:
+        return false;
+    }
+#else // CPU(X86) || CPU(X86_64)
+    UNUSED_PARAM(inst);
+    return false;
+#endif // CPU(X86) || CPU(X86_64)
+}
+
+inline bool isBranchAtomicStrongCASValid(const Inst& inst)
+{
+#if CPU(X86) || CPU(X86_64)
+    return inst.args[1] == Tmp(X86Registers::eax);
+#else // CPU(X86) || CPU(X86_64)
+    UNUSED_PARAM(inst);
+    return false;
+#endif // CPU(X86) || CPU(X86_64)
+}
+
+inline bool isAtomicStrongCAS8Valid(const Inst& inst)
+{
+    return isAtomicStrongCASValid(inst);
+}
+
+inline bool isAtomicStrongCAS16Valid(const Inst& inst)
+{
+    return isAtomicStrongCASValid(inst);
+}
+
+inline bool isAtomicStrongCAS32Valid(const Inst& inst)
+{
+    return isAtomicStrongCASValid(inst);
+}
+
+inline bool isAtomicStrongCAS64Valid(const Inst& inst)
+{
+    return isAtomicStrongCASValid(inst);
+}
+
+inline bool isBranchAtomicStrongCAS8Valid(const Inst& inst)
+{
+    return isBranchAtomicStrongCASValid(inst);
+}
+
+inline bool isBranchAtomicStrongCAS16Valid(const Inst& inst)
+{
+    return isBranchAtomicStrongCASValid(inst);
+}
+
+inline bool isBranchAtomicStrongCAS32Valid(const Inst& inst)
+{
+    return isBranchAtomicStrongCASValid(inst);
+}
+
+inline bool isBranchAtomicStrongCAS64Valid(const Inst& inst)
+{
+    return isBranchAtomicStrongCASValid(inst);
+}
+
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirInstInlines_h
-

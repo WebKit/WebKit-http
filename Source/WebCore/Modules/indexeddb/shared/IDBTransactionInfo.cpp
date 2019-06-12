@@ -28,7 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "IDBTransactionImpl.h"
+#include "IDBTransaction.h"
 
 namespace WebCore {
 
@@ -41,9 +41,9 @@ IDBTransactionInfo::IDBTransactionInfo(const IDBResourceIdentifier& identifier)
 {
 }
 
-IDBTransactionInfo IDBTransactionInfo::clientTransaction(const IDBClient::IDBConnectionToServer& connection, const Vector<String>& objectStores, IndexedDB::TransactionMode mode)
+IDBTransactionInfo IDBTransactionInfo::clientTransaction(const IDBClient::IDBConnectionProxy& connectionProxy, const Vector<String>& objectStores, IDBTransactionMode mode)
 {
-    IDBTransactionInfo result((IDBResourceIdentifier(connection)));
+    IDBTransactionInfo result((IDBResourceIdentifier(connectionProxy)));
     result.m_mode = mode;
     result.m_objectStores = objectStores;
 
@@ -53,7 +53,7 @@ IDBTransactionInfo IDBTransactionInfo::clientTransaction(const IDBClient::IDBCon
 IDBTransactionInfo IDBTransactionInfo::versionChange(const IDBServer::IDBConnectionToClient& connection, const IDBDatabaseInfo& originalDatabaseInfo, uint64_t newVersion)
 {
     IDBTransactionInfo result((IDBResourceIdentifier(connection)));
-    result.m_mode = IndexedDB::TransactionMode::VersionChange;
+    result.m_mode = IDBTransactionMode::Versionchange;
     result.m_newVersion = newVersion;
     result.m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(originalDatabaseInfo);
 
@@ -70,35 +70,43 @@ IDBTransactionInfo::IDBTransactionInfo(const IDBTransactionInfo& info)
         m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(*info.m_originalDatabaseInfo);
 }
 
-IDBTransactionInfo IDBTransactionInfo::isolatedCopy() const
+IDBTransactionInfo::IDBTransactionInfo(const IDBTransactionInfo& that, IsolatedCopyTag)
 {
-    IDBTransactionInfo result(m_identifier);
-    result.m_mode = m_mode;
-    result.m_newVersion = m_newVersion;
-
-    result.m_objectStores.reserveCapacity(m_objectStores.size());
-    for (auto& objectStore : m_objectStores)
-        result.m_objectStores.uncheckedAppend(objectStore.isolatedCopy());
-
-    if (m_originalDatabaseInfo)
-        result.m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(*m_originalDatabaseInfo);
-
-    return result;
+    isolatedCopy(that, *this);
 }
 
-#ifndef NDEBUG
+IDBTransactionInfo IDBTransactionInfo::isolatedCopy() const
+{
+    return { *this, IsolatedCopy };
+}
+
+void IDBTransactionInfo::isolatedCopy(const IDBTransactionInfo& source, IDBTransactionInfo& destination)
+{
+    destination.m_identifier = source.m_identifier.isolatedCopy();
+    destination.m_mode = source.m_mode;
+    destination.m_newVersion = source.m_newVersion;
+
+    destination.m_objectStores.reserveCapacity(source.m_objectStores.size());
+    for (auto& objectStore : source.m_objectStores)
+        destination.m_objectStores.uncheckedAppend(objectStore.isolatedCopy());
+
+    if (source.m_originalDatabaseInfo)
+        destination.m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(*source.m_originalDatabaseInfo, IDBDatabaseInfo::IsolatedCopy);
+}
+
+#if !LOG_DISABLED
 String IDBTransactionInfo::loggingString() const
 {
     String modeString;
     switch (m_mode) {
-    case IndexedDB::TransactionMode::ReadOnly:
-        modeString = IDBTransaction::modeReadOnly();
+    case IDBTransactionMode::Readonly:
+        modeString = ASCIILiteral("readonly");
         break;
-    case IndexedDB::TransactionMode::ReadWrite:
-        modeString = IDBTransaction::modeReadWrite();
+    case IDBTransactionMode::Readwrite:
+        modeString = ASCIILiteral("readwrite");
         break;
-    case IndexedDB::TransactionMode::VersionChange:
-        modeString = IDBTransaction::modeVersionChange();
+    case IDBTransactionMode::Versionchange:
+        modeString = ASCIILiteral("versionchange");
         break;
     default:
         ASSERT_NOT_REACHED();

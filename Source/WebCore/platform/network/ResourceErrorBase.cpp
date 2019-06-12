@@ -31,7 +31,12 @@ namespace WebCore {
 
 const char* const errorDomainWebKitInternal = "WebKitInternal";
 
-ResourceError ResourceErrorBase::copy() const
+inline const ResourceError& ResourceErrorBase::asResourceError() const
+{
+    return *static_cast<const ResourceError*>(this);
+}
+
+ResourceError ResourceErrorBase::isolatedCopy() const
 {
     lazyInit();
 
@@ -40,10 +45,10 @@ ResourceError ResourceErrorBase::copy() const
     errorCopy.m_errorCode = m_errorCode;
     errorCopy.m_failingURL = m_failingURL.isolatedCopy();
     errorCopy.m_localizedDescription = m_localizedDescription.isolatedCopy();
-    errorCopy.m_isNull = m_isNull;
-    errorCopy.m_isCancellation = m_isCancellation;
-    errorCopy.m_isTimeout = m_isTimeout;
-    platformCopy(errorCopy);
+    errorCopy.m_type = m_type;
+
+    errorCopy.doPlatformIsolatedCopy(asResourceError());
+
     return errorCopy;
 }
 
@@ -52,12 +57,19 @@ void ResourceErrorBase::lazyInit() const
     const_cast<ResourceError*>(static_cast<const ResourceError*>(this))->platformLazyInit();
 }
 
+void ResourceErrorBase::setType(Type type)
+{
+    // setType should only be used to specialize the error type.
+    ASSERT(m_type == Type::General || m_type == Type::Null || (m_type == Type::Cancellation && type == Type::AccessControl));
+    m_type = type;
+}
+
 bool ResourceErrorBase::compare(const ResourceError& a, const ResourceError& b)
 {
     if (a.isNull() && b.isNull())
         return true;
 
-    if (a.isNull() || b.isNull())
+    if (a.type() != b.type())
         return false;
 
     if (a.domain() != b.domain())
@@ -70,12 +82,6 @@ bool ResourceErrorBase::compare(const ResourceError& a, const ResourceError& b)
         return false;
 
     if (a.localizedDescription() != b.localizedDescription())
-        return false;
-
-    if (a.isCancellation() != b.isCancellation())
-        return false;
-
-    if (a.isTimeout() != b.isTimeout())
         return false;
 
     return ResourceError::platformCompare(a, b);

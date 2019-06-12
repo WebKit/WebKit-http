@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,9 +33,11 @@
 #include "DFGBasicBlockInlines.h"
 #include "DFGClobberSet.h"
 #include "DFGClobberize.h"
+#include "DFGControlEquivalenceAnalysis.h"
 #include "DFGEdgeDominates.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
+#include "DFGMayExit.h"
 #include "DFGNaturalLoops.h"
 #include "DFGPhase.h"
 #include "DFGSafeToExecute.h"
@@ -74,6 +76,7 @@ public:
         
         m_graph.ensureDominators();
         m_graph.ensureNaturalLoops();
+        m_graph.ensureControlEquivalenceAnalysis();
 
         if (verbose) {
             dataLog("Graph before LICM:\n");
@@ -99,9 +102,7 @@ public:
             if (!loop)
                 continue;
             LoopData& data = m_data[loop->index()];
-            for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
-                Node* node = block->at(nodeIndex);
-                
+            for (auto* node : *block) {
                 // Don't look beyond parts of the code that definitely always exit.
                 // FIXME: This shouldn't be needed.
                 // https://bugs.webkit.org/show_bug.cgi?id=128584
@@ -260,43 +261,6 @@ private:
         // we could still hoist just the checks.
         // https://bugs.webkit.org/show_bug.cgi?id=144525
         
-        // FIXME: If a node has a type check - even something like a CheckStructure - then we should
-        // only hoist the node if we know that it will execute on every loop iteration or if we know
-        // that the type check will always succeed at the loop pre-header through some other means
-        // (like looking at prediction propagation results). Otherwise, we might make a mistake like
-        // this:
-        //
-        // var o = ...; // sometimes null and sometimes an object with structure S1.
-        // for (...) {
-        //     if (o)
-        //         ... = o.f; // CheckStructure and GetByOffset, which we will currently hoist.
-        // }
-        //
-        // When we encounter such code, we'll hoist the CheckStructure and GetByOffset and then we
-        // will have a recompile. We'll then end up thinking that the get_by_id needs to be
-        // polymorphic, which is false.
-        //
-        // We can counter this by either having a control flow equivalence check, or by consulting
-        // prediction propagation to see if the check would always succeed. Prediction propagation
-        // would not be enough for things like:
-        //
-        // var p = ...; // some boolean predicate
-        // var o = {};
-        // if (p)
-        //     o.f = 42;
-        // for (...) {
-        //     if (p)
-        //         ... = o.f;
-        // }
-        //
-        // Prediction propagation can't tell us anything about the structure, and the CheckStructure
-        // will appear to be hoistable because the loop doesn't clobber structures. The cell check
-        // in the CheckStructure will be hoistable though, since prediction propagation can tell us
-        // that o is always SpecFinalObject. In cases like this, control flow equivalence is the
-        // only effective guard.
-        //
-        // https://bugs.webkit.org/show_bug.cgi?id=144527
-        
         if (readsOverlap(m_graph, node, data.writes)) {
             if (verbose) {
                 dataLog(
@@ -315,6 +279,25 @@ private:
             return false;
         }
         
+        NodeOrigin originalOrigin = node->origin;
+
+        // NOTE: We could just use BackwardsDominators here directly, since we already know that the
+        // preHeader dominates fromBlock. But we wouldn't get anything from being so clever, since
+        // dominance checks are O(1) and only a few integer compares.
+        bool addsBlindSpeculation = mayExit(m_graph, node, m_state)
+            && !m_graph.m_controlEquivalenceAnalysis->dominatesEquivalently(data.preHeader, fromBlock);
+        
+        if (addsBlindSpeculation
+            && m_graph.baselineCodeBlockFor(originalOrigin.semantic)->hasExitSite(FrequentExitSite(HoistingFailed))) {
+            if (verbose) {
+                dataLog(
+                    "    Not hoisting ", node, " because it may exit and the pre-header (",
+                    *data.preHeader, ") is not control equivalent to the node's original block (",
+                    *fromBlock, ") and hoisting had previously failed.\n");
+            }
+            return false;
+        }
+        
         if (verbose) {
             dataLog(
                 "    Hoisting ", node, " from ", *fromBlock, " to ", *data.preHeader,
@@ -326,8 +309,9 @@ private:
         // https://bugs.webkit.org/show_bug.cgi?id=148544
         data.preHeader->insertBeforeTerminal(node);
         node->owner = data.preHeader;
-        NodeOrigin originalOrigin = node->origin;
-        node->origin = data.preHeader->terminal()->origin.withSemantic(node->origin.semantic);
+        NodeOrigin terminalOrigin = data.preHeader->terminal()->origin;
+        node->origin = terminalOrigin.withSemantic(node->origin.semantic);
+        node->origin.wasHoisted |= addsBlindSpeculation;
         
         // Modify the states at the end of the preHeader of the loop we hoisted to,
         // and all pre-headers inside the loop. This isn't a stability bottleneck right now
@@ -338,6 +322,12 @@ private:
             if (!subLoop)
                 continue;
             BasicBlock* subPreHeader = m_data[subLoop->index()].preHeader;
+            // We may not have given this loop a pre-header because either it didn't have exitOK
+            // or the header had multiple predecessors that it did not dominate. In that case the
+            // loop wouldn't be a hoisting candidate anyway, so we don't have to do anything.
+            if (!subPreHeader)
+                continue;
+            // The pre-header's tail may be unreachable, in which case we have nothing to do.
             if (!subPreHeader->cfaDidFinish)
                 continue;
             m_state.initializeTo(subPreHeader);
@@ -349,7 +339,7 @@ private:
         // code. But for now we just assert that's the case.
         DFG_ASSERT(m_graph, node, !(node->flags() & NodeHasVarArgs));
         
-        nodeRef = m_graph.addNode(SpecNone, Check, originalOrigin, node->children);
+        nodeRef = m_graph.addNode(Check, originalOrigin, node->children);
         
         return true;
     }
@@ -361,7 +351,6 @@ private:
 
 bool performLICM(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG LICM Phase");
     return runPhase<LICMPhase>(graph);
 }
 

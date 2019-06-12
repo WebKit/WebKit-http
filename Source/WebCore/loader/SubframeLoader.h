@@ -28,12 +28,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SubframeLoader_h
-#define SubframeLoader_h
+#pragma once
 
 #include "FrameLoaderTypes.h"
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -53,7 +51,7 @@ class Widget;
 
 // This is a slight misnomer. It handles the higher level logic of loading both subframes and plugins.
 class SubframeLoader {
-    WTF_MAKE_NONCOPYABLE(SubframeLoader);
+    WTF_MAKE_NONCOPYABLE(SubframeLoader); WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit SubframeLoader(Frame&);
 
@@ -63,7 +61,7 @@ public:
     bool requestObject(HTMLPlugInImageElement&, const String& url, const AtomicString& frameName,
         const String& serviceType, const Vector<String>& paramNames, const Vector<String>& paramValues);
 
-    PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const Vector<String>& paramNames, const Vector<String>& paramValues);
+    RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const Vector<String>& paramNames, const Vector<String>& paramValues);
 
     WEBCORE_EXPORT bool allowPlugins();
 
@@ -78,16 +76,14 @@ private:
     bool loadPlugin(HTMLPlugInImageElement&, const URL&, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback);
 
     bool shouldUsePlugin(const URL&, const String& mimeType, bool hasFallback, bool& useFallback);
-    bool pluginIsLoadable(HTMLPlugInImageElement&, const URL&, const String& mimeType);
+    bool pluginIsLoadable(const URL&, const String& mimeType);
 
-    Document* document() const;
+    URL completeURL(const String&) const;
+
+    bool shouldConvertInvalidURLsToBlank() const;
 
     bool m_containsPlugins;
     Frame& m_frame;
-
-    URL completeURL(const String&) const;
 };
 
 } // namespace WebCore
-
-#endif // SubframeLoader_h

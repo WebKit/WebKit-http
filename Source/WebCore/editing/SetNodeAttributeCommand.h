@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SetNodeAttributeCommand_h
-#define SetNodeAttributeCommand_h
+#pragma once
 
 #include "EditCommand.h"
 #include "QualifiedName.h"
@@ -33,27 +32,25 @@ namespace WebCore {
 
 class SetNodeAttributeCommand : public SimpleEditCommand {
 public:
-    static Ref<SetNodeAttributeCommand> create(PassRefPtr<Element> element, const QualifiedName& attribute, const AtomicString& value)
+    static Ref<SetNodeAttributeCommand> create(Ref<Element>&& element, const QualifiedName& attribute, const AtomicString& value)
     {
-        return adoptRef(*new SetNodeAttributeCommand(element, attribute, value));
+        return adoptRef(*new SetNodeAttributeCommand(WTFMove(element), attribute, value));
     }
 
 private:
-    SetNodeAttributeCommand(PassRefPtr<Element>, const QualifiedName& attribute, const AtomicString& value);
+    SetNodeAttributeCommand(Ref<Element>&&, const QualifiedName& attribute, const AtomicString& value);
 
-    virtual void doApply() override;
-    virtual void doUnapply() override;
+    void doApply() override;
+    void doUnapply() override;
 
 #ifndef NDEBUG
-    virtual void getNodesInCommand(HashSet<Node*>&) override;
+    void getNodesInCommand(HashSet<Node*>&) override;
 #endif
 
-    RefPtr<Element> m_element;
+    Ref<Element> m_element;
     QualifiedName m_attribute;
     AtomicString m_value;
     AtomicString m_oldValue;
 };
 
 } // namespace WebCore
-
-#endif // SetNodeAttributeCommand_h

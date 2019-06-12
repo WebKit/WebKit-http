@@ -28,11 +28,10 @@ namespace WebCore {
 
 class FESpecularLighting : public FELighting {
 public:
-    static Ref<FESpecularLighting> create(Filter&, const Color&, float, float,
-        float, float, float, PassRefPtr<LightSource>);
+    static Ref<FESpecularLighting> create(Filter&, const Color&, float, float, float, float, float, Ref<LightSource>&&);
     virtual ~FESpecularLighting();
 
-    Color lightingColor() const;
+    const Color& lightingColor() const;
     bool setLightingColor(const Color&);
 
     float surfaceScale() const;
@@ -50,15 +49,14 @@ public:
     float kernelUnitLengthY() const;
     bool setKernelUnitLengthY(float);
 
-    const LightSource* lightSource() const;
-    void setLightSource(PassRefPtr<LightSource>);
+    const LightSource& lightSource() const;
 
-    virtual void dump();
+    void dump() override;
 
-    virtual TextStream& externalRepresentation(TextStream&, int indention) const;
+    TextStream& externalRepresentation(TextStream&, int indention) const override;
 
 private:
-    FESpecularLighting(Filter&, const Color&, float, float, float, float, float, PassRefPtr<LightSource>);
+    FESpecularLighting(Filter&, const Color&, float, float, float, float, float, Ref<LightSource>&&);
 };
 
 } // namespace WebCore

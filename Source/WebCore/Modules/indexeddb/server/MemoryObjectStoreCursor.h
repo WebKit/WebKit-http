@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MemoryObjectStoreCursor_h
-#define MemoryObjectStoreCursor_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBCursorInfo.h"
 #include "IDBKeyData.h"
 #include "MemoryCursor.h"
-#include <set>
 #include <wtf/Optional.h>
 
 namespace WebCore {
@@ -45,18 +43,18 @@ public:
 
     void objectStoreCleared();
     void keyDeleted(const IDBKeyData&);
-    void keyAdded(std::set<IDBKeyData>::iterator);
+    void keyAdded(IDBKeyDataSet::iterator);
 
 private:
-    virtual void currentData(IDBGetResult&) override final;
-    virtual void iterate(const IDBKeyData&, uint32_t count, IDBGetResult&) override final;
+    void currentData(IDBGetResult&) final;
+    void iterate(const IDBKeyData&, const IDBKeyData& primaryKey, uint32_t count, IDBGetResult&) final;
 
-    void setFirstInRemainingRange(std::set<IDBKeyData>&);
-    void setForwardIteratorFromRemainingRange(std::set<IDBKeyData>&);
-    void setReverseIteratorFromRemainingRange(std::set<IDBKeyData>&);
+    void setFirstInRemainingRange(IDBKeyDataSet&);
+    void setForwardIteratorFromRemainingRange(IDBKeyDataSet&);
+    void setReverseIteratorFromRemainingRange(IDBKeyDataSet&);
 
-    void incrementForwardIterator(std::set<IDBKeyData>&, const IDBKeyData&, uint32_t count);
-    void incrementReverseIterator(std::set<IDBKeyData>&, const IDBKeyData&, uint32_t count);
+    void incrementForwardIterator(IDBKeyDataSet&, const IDBKeyData&, uint32_t count);
+    void incrementReverseIterator(IDBKeyDataSet&, const IDBKeyData&, uint32_t count);
 
     bool hasValidPosition() const;
 
@@ -64,7 +62,7 @@ private:
 
     IDBKeyRangeData m_remainingRange;
 
-    WTF::Optional<std::set<IDBKeyData>::iterator> m_iterator;
+    std::optional<IDBKeyDataSet::iterator> m_iterator;
 
     IDBKeyData m_currentPositionKey;
 };
@@ -73,4 +71,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // MemoryObjectStoreCursor_h

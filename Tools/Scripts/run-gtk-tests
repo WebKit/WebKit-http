@@ -17,6 +17,7 @@
 # the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 
+import logging
 import subprocess
 import os
 import sys
@@ -30,6 +31,7 @@ sys.path.append(os.path.join(top_level_directory, "Tools", "jhbuild"))
 sys.path.append(os.path.join(top_level_directory, "Tools", "gtk"))
 import common
 import jhbuildutils
+from webkitpy.common.host import Host
 
 class SkippedTest:
     ENTIRE_SUITE = None
@@ -67,8 +69,12 @@ class TestRunner:
 
     SKIPPED = [
         SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/mouse-target", "Test times out after r150890", 117689),
+        SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/usermedia-permission-requests", "Test times out", 158257),
+        SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/audio-usermedia-permission-request", "Test times out", 158257),
         SkippedTest("WebKit2Gtk/TestCookieManager", "/webkit2/WebKitCookieManager/persistent-storage", "Test is flaky", 134580),
+        SkippedTest("WebKit2Gtk/TestPrinting", "/webkit2/WebKitPrintOperation/custom-widget", "Test is flaky", 168196),
         SkippedTest("WebKit2Gtk/TestWebViewEditor", "/webkit2/WebKitWebView/editable/editable", "Test hits an assertion in Debug builds", 151654, "Debug"),
+        SkippedTest("WebKit2Gtk/TestWebExtensions", "/webkit2/WebKitWebExtension/form-controls-associated-signal", "Test is flaky", 168194),
         SkippedTest("WebKit2Gtk/TestWebExtensions", "/webkit2/WebKitWebView/install-missing-plugins-permission-request", "Test times out", 147822),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.MouseMoveAfterCrash", "Test is flaky", 85066),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.NewFirstVisuallyNonEmptyLayoutForImages", "Test is flaky", 85066),
@@ -82,12 +88,14 @@ class TestRunner:
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.TerminateTwice", "Test causes crash on the next test", 121970),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.GeolocationTransitionToHighAccuracy", "Test causes crash on the next test", 125068),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.GeolocationTransitionToLowAccuracy", "Test causes crash on the next test", 125068),
-        SkippedTest("WebKit2/UserMedia", "WebKit2.UserMediaBasic", "We will not test by default until the upgrade gstreamer to 1.9", 153540),
     ]
 
     SLOW = [
         "WTF_Lock.ContendedShortSection",
-        "WTF_WordLock.ContendedShortSection"
+        "WTF_Lock.ContendedLongSection",
+        "WTF_WordLock.ContendedShortSection",
+        "WTF_WordLock.ContendedLongSection",
+        "WebKit2Gtk/TestInspectorServer",
     ]
 
     def __init__(self, options, tests=[]):
@@ -95,6 +103,8 @@ class TestRunner:
 
         self._build_type = "Debug" if self._options.debug else "Release"
         common.set_build_types((self._build_type,))
+        self._port = Host().port_factory.get("gtk")
+        self._driver = self._create_driver()
 
         self._programs_path = common.binary_build_path()
         self._tests = self._get_tests(tests)
@@ -148,6 +158,28 @@ class TestRunner:
 
         return None
 
+    def _wait_for_accessibility_bus(self):
+        def timeout_accessibility_bus():
+            self._accessibility_bus_found = False
+            sys.stderr.write("Timeout waiting for the accesibility bus.\n")
+            sys.stderr.flush()
+            loop.quit()
+        # Backup current environment, and temporally set the test one.
+        oldenv = dict(os.environ)
+        os.environ.clear()
+        os.environ.update(self._test_env)
+        # We spin a main loop until the bus name appears on DBus.
+        self._accessibility_bus_found = True
+        loop = GLib.MainLoop()
+        Gio.bus_watch_name(Gio.BusType.SESSION, 'org.a11y.Bus', Gio.BusNameWatcherFlags.NONE,
+                           lambda *args: loop.quit(), None)
+        GLib.timeout_add_seconds(5, timeout_accessibility_bus)
+        loop.run()
+        # Restore previous environment.
+        os.environ.clear()
+        os.environ.update(oldenv)
+        return self._accessibility_bus_found
+
     def _start_accessibility_daemons(self):
         spi_bus_launcher_path = self._lookup_atspi2_binary('at-spi-bus-launcher')
         spi_registryd_path = self._lookup_atspi2_binary('at-spi2-registryd')
@@ -161,12 +193,11 @@ class TestRunner:
             sys.stderr.flush()
             return False
 
-        # We need to wait until the SPI bus is launched before trying to start the SPI
-        # registry, so we spin a main loop until the bus name appears on DBus.
-        loop = GLib.MainLoop()
-        Gio.bus_watch_name(Gio.BusType.SESSION, 'org.a11y.Bus', Gio.BusNameWatcherFlags.NONE,
-                           lambda *args: loop.quit(), None)
-        loop.run()
+        # We need to wait until the SPI bus is launched before trying to start the SPI registry.
+        if not self._wait_for_accessibility_bus():
+            sys.stderr.write("Failed checking the accessibility bus within D-Bus\n")
+            sys.stderr.flush()
+            return False
 
         try:
             self._spi_registryd = subprocess.Popen([spi_registryd_path], env=self._test_env)
@@ -177,33 +208,18 @@ class TestRunner:
 
         return True
 
-    def _run_xvfb(self):
-        self._xvfb = None
-        if not self._options.use_xvfb:
-            return True
-
-        self._test_env["DISPLAY"] = self._options.display
-
-        try:
-            self._xvfb = subprocess.Popen(["Xvfb", self._options.display, "-screen", "0", "800x600x24", "-nolisten", "tcp"],
-                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except Exception as e:
-            sys.stderr.write("Failed to run Xvfb: %s\n" % e)
-            sys.stderr.flush()
-            return False
-
-        return True
+    def _create_driver(self, port_options=[]):
+        self._port._display_server = self._options.display_server
+        driver = self._port.create_driver(worker_number=0, no_timeout=True)._make_driver(pixel_tests=False)
+        if not driver.check_driver(self._port):
+            raise RuntimeError("Failed to check driver %s" %driver.__class__.__name__)
+        return driver
 
     def _setup_testing_environment(self):
-        self._test_env = os.environ
-        self._test_env['GSETTINGS_BACKEND'] = 'memory'
+        self._test_env = self._driver._setup_environ_for_test()
         self._test_env["TEST_WEBKIT_API_WEBKIT2_RESOURCES_PATH"] = common.top_level_path("Tools", "TestWebKitAPI", "Tests", "WebKit2")
         self._test_env["TEST_WEBKIT_API_WEBKIT2_INJECTED_BUNDLE_PATH"] = common.library_build_path()
         self._test_env["WEBKIT_EXEC_PATH"] = self._programs_path
-        self._test_env["OWR_USE_TEST_SOURCES"] = '1'
-
-        if not self._run_xvfb():
-            return False
 
         # If we cannot start the accessibility daemons, we can just skip the accessibility tests.
         if not self._start_accessibility_daemons():
@@ -216,8 +232,8 @@ class TestRunner:
             self._spi_registryd.terminate()
         if self._spi_bus_launcher:
             self._spi_bus_launcher.terminate()
-        if self._xvfb:
-            self._xvfb.terminate()
+        if self._driver:
+            self._driver.stop()
 
     def _test_cases_to_skip(self, test_program):
         if self._options.skipped_action != 'skip':
@@ -324,12 +340,20 @@ class TestRunner:
         for test_case in self._test_cases_to_skip(test_program):
             tester_command.extend(['-s', test_case])
         tester_command.append(test_program)
+        # This timeout is supposed to be per test case, but in the case of GLib tests it affects all the tests cases of
+        # the same test program. Some test programs like TestLoaderClient, that have a lot of test cases, often time out
+        # in the bots because the timeout is not enough to run all the tests cases. So, we use a longer timeout for GLib
+        # tests (timeout * 2).
+        timeout = self._options.timeout * 2
+        test = os.path.join(os.path.basename(os.path.dirname(test_program)), os.path.basename(test_program))
+        if test in TestRunner.SLOW:
+            timeout *= 5
 
-        return self._run_test_command(tester_command, self._options.timeout)
+        return self._run_test_command(tester_command, timeout)
 
     def _get_tests_from_google_test_suite(self, test_program):
         try:
-            output = subprocess.check_output([test_program, '--gtest_list_tests'])
+            output = subprocess.check_output([test_program, '--gtest_list_tests'], env=self._test_env)
         except subprocess.CalledProcessError:
             sys.stderr.write("ERROR: could not list available tests for binary %s.\n" % (test_program))
             sys.stderr.flush()
@@ -452,8 +476,6 @@ if __name__ == "__main__":
     option_parser.add_option('-v', '--verbose',
                              action='store_true', dest='verbose',
                              help='Run gtester in verbose mode')
-    option_parser.add_option('--display', action='store', dest='display', default=':55',
-                             help='Display to run Xvfb')
     option_parser.add_option('--skipped', action='store', dest='skipped_action',
                              choices=['skip', 'ignore', 'only'], default='skip',
                              metavar='skip|ignore|only',
@@ -461,8 +483,12 @@ if __name__ == "__main__":
     option_parser.add_option('-t', '--timeout',
                              action='store', type='int', dest='timeout', default=10,
                              help='Time in seconds until a test times out')
-    option_parser.add_option('--no-xvfb', action='store_false', dest='use_xvfb', default=True,
-                             help='Do not run tests under Xvfb')
+    option_parser.add_option('--display-server', choices=['xvfb', 'xorg', 'weston', 'wayland'], default='xvfb',
+                             help='"xvfb": Use a virtualized X11 server. "xorg": Use the current X11 session. '
+                                  '"weston": Use a virtualized Weston server. "wayland": Use the current wayland session.'),
     options, args = option_parser.parse_args()
 
-    sys.exit(TestRunner(options, args).run_tests())
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    runner = TestRunner(options, args)
+    sys.exit(runner.run_tests())

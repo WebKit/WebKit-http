@@ -70,7 +70,7 @@ static DOMHandleCache& domHandleCache()
 
 RefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::getOrCreate(JSContextRef, JSObjectRef object)
 {
-    Node* node = JSNode::toWrapped(toJS(object));
+    Node* node = JSNode::toWrapped(*toJS(object)->vm(), toJS(object));
     return getOrCreate(node);
 }
 
@@ -134,26 +134,42 @@ IntRect InjectedBundleNodeHandle::renderRect(bool* isReplaced)
     return m_node->pixelSnappedRenderRect(isReplaced);
 }
 
-static PassRefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& rect, SnapshotOptions options)
+static RefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& paintingRect, const std::optional<float>& bitmapWidth, SnapshotOptions options)
 {
-    IntSize bitmapSize = rect.size();
-    float scaleFactor = frameView->frame().page()->deviceScaleFactor();
-    bitmapSize.scale(scaleFactor);
+    if (paintingRect.isEmpty())
+        return nullptr;
 
-    RefPtr<WebImage> snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options));
-    if (!snapshot->bitmap())
-        return 0;
+    float bitmapScaleFactor;
+    IntSize bitmapSize;
+    if (bitmapWidth) {
+        bitmapScaleFactor = bitmapWidth.value() / paintingRect.width();
+        bitmapSize = roundedIntSize(FloatSize(bitmapWidth.value(), paintingRect.height() * bitmapScaleFactor));
+    } else {
+        bitmapScaleFactor = 1;
+        bitmapSize = paintingRect.size();
+    }
 
-    auto graphicsContext = snapshot->bitmap()->createGraphicsContext();
+    float deviceScaleFactor = frameView->frame().page()->deviceScaleFactor();
+    bitmapSize.scale(deviceScaleFactor);
+
+    if (bitmapSize.isEmpty())
+        return nullptr;
+
+    auto snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options));
+    if (!snapshot)
+        return nullptr;
+
+    auto graphicsContext = snapshot->bitmap().createGraphicsContext();
     graphicsContext->clearRect(IntRect(IntPoint(), bitmapSize));
-    graphicsContext->applyDeviceScaleFactor(scaleFactor);
-    graphicsContext->translate(-rect.x(), -rect.y());
+    graphicsContext->applyDeviceScaleFactor(deviceScaleFactor);
+    graphicsContext->scale(bitmapScaleFactor);
+    graphicsContext->translate(-paintingRect.x(), -paintingRect.y());
 
     FrameView::SelectionInSnapshot shouldPaintSelection = FrameView::IncludeSelection;
     if (options & SnapshotOptionsExcludeSelectionHighlighting)
         shouldPaintSelection = FrameView::ExcludeSelection;
 
-    PaintBehavior paintBehavior = frameView->paintBehavior() | PaintBehaviorFlattenCompositingLayers;
+    PaintBehavior paintBehavior = (frameView->paintBehavior() & ~PaintBehaviorAllowAsyncImageDecoding) | PaintBehaviorFlattenCompositingLayers;
     if (options & SnapshotOptionsForceBlackText)
         paintBehavior |= PaintBehaviorForceBlackText;
     if (options & SnapshotOptionsForceWhiteText)
@@ -161,13 +177,13 @@ static PassRefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& re
 
     PaintBehavior oldPaintBehavior = frameView->paintBehavior();
     frameView->setPaintBehavior(paintBehavior);
-    frameView->paintContentsForSnapshot(*graphicsContext.get(), rect, shouldPaintSelection, FrameView::DocumentCoordinates);
+    frameView->paintContentsForSnapshot(*graphicsContext.get(), paintingRect, shouldPaintSelection, FrameView::DocumentCoordinates);
     frameView->setPaintBehavior(oldPaintBehavior);
 
-    return snapshot.release();
+    return snapshot;
 }
 
-PassRefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions options)
+RefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions options, bool shouldExcludeOverflow, const std::optional<float>& bitmapWidth)
 {
     Frame* frame = m_node->document().frame();
     if (!frame)
@@ -183,17 +199,22 @@ PassRefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions opt
     if (!renderer)
         return nullptr;
 
-    LayoutRect topLevelRect;
-    IntRect paintingRect = snappedIntRect(renderer->paintingRootRect(topLevelRect));
+    IntRect paintingRect;
+    if (shouldExcludeOverflow)
+        paintingRect = renderer->absoluteBoundingBoxRectIgnoringTransforms();
+    else {
+        LayoutRect topLevelRect;
+        paintingRect = snappedIntRect(renderer->paintingRootRect(topLevelRect));
+    }
 
     frameView->setNodeToDraw(m_node.ptr());
-    RefPtr<WebImage> image = imageForRect(frameView, paintingRect, options);
+    auto image = imageForRect(frameView, paintingRect, bitmapWidth, options);
     frameView->setNodeToDraw(0);
 
-    return image.release();
+    return image;
 }
 
-PassRefPtr<InjectedBundleRangeHandle> InjectedBundleNodeHandle::visibleRange()
+RefPtr<InjectedBundleRangeHandle> InjectedBundleNodeHandle::visibleRange()
 {
     VisiblePosition start = firstPositionInNode(m_node.ptr());
     VisiblePosition end = lastPositionInNode(m_node.ptr());
@@ -208,6 +229,14 @@ void InjectedBundleNodeHandle::setHTMLInputElementValueForUser(const String& val
         return;
 
     downcast<HTMLInputElement>(m_node.get()).setValueForUser(value);
+}
+
+void InjectedBundleNodeHandle::setHTMLInputElementSpellcheckEnabled(bool enabled)
+{
+    if (!is<HTMLInputElement>(m_node))
+        return;
+
+    downcast<HTMLInputElement>(m_node.get()).setSpellcheckDisabledExceptTextReplacement(!enabled);
 }
 
 bool InjectedBundleNodeHandle::isHTMLInputElementAutoFilled() const
@@ -278,7 +307,7 @@ bool InjectedBundleNodeHandle::isTextField() const
     return downcast<HTMLInputElement>(m_node.get()).isText();
 }
 
-PassRefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::htmlTableCellElementCellAbove()
+RefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::htmlTableCellElementCellAbove()
 {
     if (!is<HTMLTableCellElement>(m_node))
         return nullptr;
@@ -286,7 +315,7 @@ PassRefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::htmlTableCellElem
     return getOrCreate(downcast<HTMLTableCellElement>(m_node.get()).cellAbove());
 }
 
-PassRefPtr<WebFrame> InjectedBundleNodeHandle::documentFrame()
+RefPtr<WebFrame> InjectedBundleNodeHandle::documentFrame()
 {
     if (!m_node->isDocumentNode())
         return nullptr;
@@ -298,7 +327,7 @@ PassRefPtr<WebFrame> InjectedBundleNodeHandle::documentFrame()
     return WebFrame::fromCoreFrame(*frame);
 }
 
-PassRefPtr<WebFrame> InjectedBundleNodeHandle::htmlFrameElementContentFrame()
+RefPtr<WebFrame> InjectedBundleNodeHandle::htmlFrameElementContentFrame()
 {
     if (!is<HTMLFrameElement>(m_node))
         return nullptr;
@@ -310,7 +339,7 @@ PassRefPtr<WebFrame> InjectedBundleNodeHandle::htmlFrameElementContentFrame()
     return WebFrame::fromCoreFrame(*frame);
 }
 
-PassRefPtr<WebFrame> InjectedBundleNodeHandle::htmlIFrameElementContentFrame()
+RefPtr<WebFrame> InjectedBundleNodeHandle::htmlIFrameElementContentFrame()
 {
     if (!is<HTMLIFrameElement>(m_node))
         return nullptr;

@@ -39,24 +39,26 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
     static compareResourceTreeElements(a, b)
     {
         // Compare by type first to keep resources grouped by type when not sorted into folders.
-        var comparisonResult = a.resource.type.localeCompare(b.resource.type);
+        var comparisonResult = a.resource.type.extendedLocaleCompare(b.resource.type);
         if (comparisonResult !== 0)
             return comparisonResult;
 
         // Compare async resource types by their first timestamp so they are in chronological order.
-        if (a.resource.type === WebInspector.Resource.Type.XHR || a.resource.type === WebInspector.Resource.Type.WebSocket)
+        if (a.resource.type === WebInspector.Resource.Type.XHR
+            || a.resource.type === WebInspector.Resource.Type.Fetch
+            || a.resource.type === WebInspector.Resource.Type.WebSocket)
             return a.resource.firstTimestamp - b.resource.firstTimestamp || 0;
 
         // Compare by subtitle when the types are the same. The subtitle is used to show the
         // domain of the resource. This causes resources to group by domain. If the resource
         // is on the same domain as the frame it will have an empty subtitle. This is good
         // because empty string sorts first, so those will appear before external resources.
-        comparisonResult = a.subtitle.localeCompare(b.subtitle);
+        comparisonResult = a.subtitle.extendedLocaleCompare(b.subtitle);
         if (comparisonResult !== 0)
             return comparisonResult;
 
         // Compare by title when the subtitles are the same.
-        return a.mainTitle.localeCompare(b.mainTitle);
+        return a.mainTitle.extendedLocaleCompare(b.mainTitle);
     }
 
     static compareFolderAndResourceTreeElements(a, b)
@@ -69,7 +71,7 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
         if (!aIsFolder && bIsFolder)
             return 1;
         if (aIsFolder && bIsFolder)
-            return a.mainTitle.localeCompare(b.mainTitle);
+            return a.mainTitle.extendedLocaleCompare(b.mainTitle);
 
         return WebInspector.ResourceTreeElement.compareResourceTreeElements(a, b);
     }
@@ -83,11 +85,15 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
 
     get filterableData()
     {
-        return {text: [this._resource.url]};
+        let urlComponents = this._resource.urlComponents;
+        return {text: [urlComponents.lastPathComponent, urlComponents.path, this._resource.url]};
     }
 
     ondblclick()
     {
+        if (this._resource.type === WebInspector.Resource.Type.WebSocket)
+            return;
+
         InspectorFrontendHost.openInNewTab(this._resource.url);
     }
 
@@ -128,13 +134,16 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
     _updateTitles()
     {
         var frame = this._resource.parentFrame;
+        var target = this._resource.target;
+
         var isMainResource = this._resource.isMainResource();
+        var parentResourceHost = target.mainResource ? target.mainResource.urlComponents.host : null;
         if (isMainResource && frame) {
             // When the resource is a main resource, get the host from the current frame's parent frame instead of the current frame.
-            var parentResourceHost = frame.parentFrame ? frame.parentFrame.mainResource.urlComponents.host : null;
+            parentResourceHost = frame.parentFrame ? frame.parentFrame.mainResource.urlComponents.host : null;
         } else if (frame) {
             // When the resource is a normal sub-resource, get the host from the current frame's main resource.
-            var parentResourceHost = frame.mainResource.urlComponents.host;
+            parentResourceHost = frame.mainResource.urlComponents.host;
         }
 
         var urlComponents = this._resource.urlComponents;
@@ -143,28 +152,37 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
         this.mainTitle = WebInspector.displayNameForURL(this._resource.url, urlComponents);
 
         // Show the host as the subtitle if it is different from the main resource or if this is the main frame's main resource.
-        var subtitle = parentResourceHost !== urlComponents.host || frame.isMainFrame() && isMainResource ? WebInspector.displayNameForHost(urlComponents.host) : null;
+        var subtitle = parentResourceHost !== urlComponents.host || frame && frame.isMainFrame() && isMainResource ? WebInspector.displayNameForHost(urlComponents.host) : null;
         this.subtitle = this.mainTitle !== subtitle ? subtitle : null;
 
         if (oldMainTitle !== this.mainTitle)
             this.callFirstAncestorFunction("descendantResourceTreeElementMainTitleDidChange", [this, oldMainTitle]);
     }
 
+    populateContextMenu(contextMenu, event)
+    {
+        WebInspector.appendContextMenuItemsForSourceCode(contextMenu, this._resource);
+
+        super.populateContextMenu(contextMenu, event);
+    }
+
     // Private
 
     _updateStatus()
     {
-        if (this._resource.failed)
+        if (this._resource.hadLoadingError())
             this.addClassName(WebInspector.ResourceTreeElement.FailedStyleClassName);
         else
             this.removeClassName(WebInspector.ResourceTreeElement.FailedStyleClassName);
 
         if (this._resource.finished || this._resource.failed) {
             // Remove the spinner.
-            this.status = "";
+            if (this.status && this.status[WebInspector.ResourceTreeElement.SpinnerSymbol])
+                this.status = "";
         } else {
-            var spinner = new WebInspector.IndeterminateProgressSpinner;
+            let spinner = new WebInspector.IndeterminateProgressSpinner;
             this.status = spinner.element;
+            this.status[WebInspector.ResourceTreeElement.SpinnerSymbol] = true;
         }
     }
 
@@ -190,3 +208,5 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
 
 WebInspector.ResourceTreeElement.ResourceIconStyleClassName = "resource-icon";
 WebInspector.ResourceTreeElement.FailedStyleClassName = "failed";
+
+WebInspector.ResourceTreeElement.SpinnerSymbol = Symbol("spinner");

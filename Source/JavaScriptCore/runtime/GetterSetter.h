@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef GetterSetter_h
-#define GetterSetter_h
+#pragma once
 
 #include "JSCell.h"
 
@@ -41,20 +40,20 @@ class JSObject;
 // that if a property holding a GetterSetter reference is constant-inferred and
 // that constant is observed to have a non-null setter (or getter) then we can
 // constant fold that setter (or getter).
-class GetterSetter final : public JSCell {
+class GetterSetter final : public JSNonFinalObject {
     friend class JIT;
-
+    typedef JSNonFinalObject Base;
 private:
     GetterSetter(VM& vm, JSGlobalObject* globalObject)
-        : JSCell(vm, vm.getterSetterStructure.get())
+        : Base(vm, globalObject->getterSetterStructure())
     {
         m_getter.set(vm, this, globalObject->nullGetterFunction());
         m_setter.set(vm, this, globalObject->nullSetterFunction());
     }
 
 public:
-    typedef JSCell Base;
-    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
+
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | StructureIsImmortal;
 
     static GetterSetter* create(VM& vm, JSGlobalObject* globalObject)
     {
@@ -74,8 +73,8 @@ public:
         return result;
     }
 
-    bool isGetterNull() const { return !!jsDynamicCast<NullGetterFunction*>(m_getter.get()); }
-    bool isSetterNull() const { return !!jsDynamicCast<NullSetterFunction*>(m_setter.get()); }
+    bool isGetterNull() const { return !!jsDynamicCast<NullGetterFunction*>(*m_getter.get()->vm(), m_getter.get()); }
+    bool isSetterNull() const { return !!jsDynamicCast<NullSetterFunction*>(*m_setter.get()->vm(), m_setter.get()); }
 
     // Set the getter. It's only valid to call this if you've never set the getter on this
     // object.
@@ -128,7 +127,12 @@ public:
         return OBJECT_OFFSETOF(GetterSetter, m_setter);
     }
 
-    DECLARE_INFO;
+    DECLARE_EXPORT_INFO;
+
+    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&) { RELEASE_ASSERT_NOT_REACHED(); return false; }
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&) { RELEASE_ASSERT_NOT_REACHED(); return false; }
+    static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool) { RELEASE_ASSERT_NOT_REACHED(); return false; }
+    static bool deleteProperty(JSCell*, ExecState*, PropertyName) { RELEASE_ASSERT_NOT_REACHED(); return false; }
 
 private:
     WriteBarrier<JSObject> m_getter;
@@ -144,8 +148,6 @@ inline GetterSetter* asGetterSetter(JSValue value)
 }
 
 JSValue callGetter(ExecState*, JSValue base, JSValue getterSetter);
-JS_EXPORT_PRIVATE void callSetter(ExecState*, JSValue base, JSValue getterSetter, JSValue, ECMAMode);
+JS_EXPORT_PRIVATE bool callSetter(ExecState*, JSValue base, JSValue getterSetter, JSValue, ECMAMode);
 
 } // namespace JSC
-
-#endif // GetterSetter_h

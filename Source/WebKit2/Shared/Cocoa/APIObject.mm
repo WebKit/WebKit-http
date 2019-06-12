@@ -33,11 +33,15 @@
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextGroupInternal.h"
 #import "WKConnectionInternal.h"
+#import "WKContentRuleListInternal.h"
+#import "WKContentRuleListStoreInternal.h"
 #import "WKFrameInfoInternal.h"
+#import "WKHTTPCookieStoreInternal.h"
 #import "WKNSArray.h"
 #import "WKNSData.h"
 #import "WKNSDictionary.h"
 #import "WKNSError.h"
+#import "WKNSNumber.h"
 #import "WKNSString.h"
 #import "WKNSURL.h"
 #import "WKNSURLAuthenticationChallenge.h"
@@ -46,9 +50,11 @@
 #import "WKNavigationDataInternal.h"
 #import "WKNavigationInternal.h"
 #import "WKNavigationResponseInternal.h"
+#import "WKOpenPanelParametersInternal.h"
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKSecurityOriginInternal.h"
+#import "WKURLSchemeTaskInternal.h"
 #import "WKUserContentControllerInternal.h"
 #import "WKUserScriptInternal.h"
 #import "WKWebProcessPlugInBrowserContextControllerInternal.h"
@@ -57,17 +63,20 @@
 #import "WKWebProcessPlugInInternal.h"
 #import "WKWebProcessPlugInNodeHandleInternal.h"
 #import "WKWebProcessPlugInPageGroupInternal.h"
+#import "WKWebProcessPlugInRangeHandleInternal.h"
 #import "WKWebProcessPlugInScriptWorldInternal.h"
 #import "WKWebsiteDataRecordInternal.h"
 #import "WKWebsiteDataStoreInternal.h"
 #import "WKWindowFeaturesInternal.h"
 #import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadInternal.h"
+#import "_WKExperimentalFeatureInternal.h"
 #import "_WKFrameHandleInternal.h"
+#import "_WKGeolocationPositionInternal.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
-#import "_WKUserContentExtensionStoreInternal.h"
-#import "_WKUserContentFilterInternal.h"
+#import "_WKUserContentWorldInternal.h"
+#import "_WKUserInitiatedActionInternal.h"
 #import "_WKUserStyleSheetInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
 
@@ -112,6 +121,13 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKBackForwardListItem alloc];
         break;
 
+    case Type::Boolean:
+    case Type::Double:
+    case Type::UInt64:
+        wrapper = [WKNSNumber alloc];
+        ((WKNSNumber *)wrapper)->_type = type;
+        break;
+
     case Type::Bundle:
         wrapper = [WKWebProcessPlugInController alloc];
         break;
@@ -148,6 +164,10 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [_WKDownload alloc];
         break;
 
+    case Type::ExperimentalFeature:
+        wrapper = [_WKExperimentalFeature alloc];
+        break;
+
     case Type::Error:
         wrapper = NSAllocateObject([WKNSError self], size, nullptr);
         break;
@@ -160,9 +180,21 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKFrameInfo alloc];
         break;
 
+#if PLATFORM(IOS)
+    case Type::GeolocationPosition:
+        wrapper = [_WKGeolocationPosition alloc];
+        break;
+#endif
+
+    case Type::HTTPCookieStore:
+        wrapper = [WKHTTPCookieStore alloc];
+        break;
+
+#if PLATFORM(MAC)
     case Type::HitTestResult:
         wrapper = [_WKHitTestResult alloc];
         break;
+#endif
 
     case Type::Navigation:
         wrapper = [WKNavigation alloc];
@@ -179,6 +211,12 @@ void* Object::newObject(size_t size, Type type)
     case Type::NavigationResponse:
         wrapper = [WKNavigationResponse alloc];
         break;
+
+#if PLATFORM(MAC)
+    case Type::OpenPanelParameters:
+        wrapper = [WKOpenPanelParameters alloc];
+        break;
+#endif
 
     case Type::PageGroup:
         wrapper = [WKBrowsingContextGroup alloc];
@@ -200,16 +238,28 @@ void* Object::newObject(size_t size, Type type)
         wrapper = NSAllocateObject([WKNSURLRequest class], size, nullptr);
         break;
 
+    case Type::URLSchemeTask:
+        wrapper = [WKURLSchemeTaskImpl alloc];
+        break;
+
     case Type::UserContentController:
         wrapper = [WKUserContentController alloc];
         break;
 
-    case Type::UserContentExtension:
-        wrapper = [_WKUserContentFilter alloc];
+    case Type::ContentRuleList:
+        wrapper = [WKContentRuleList alloc];
         break;
 
-    case Type::UserContentExtensionStore:
-        wrapper = [_WKUserContentExtensionStore alloc];
+    case Type::ContentRuleListStore:
+        wrapper = [WKContentRuleListStore alloc];
+        break;
+
+    case Type::UserContentWorld:
+        wrapper = [_WKUserContentWorld alloc];
+        break;
+
+    case Type::UserInitiatedAction:
+        wrapper = [_WKUserInitiatedAction alloc];
         break;
 
     case Type::UserScript:
@@ -250,6 +300,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::BundlePageGroup:
         wrapper = [WKWebProcessPlugInPageGroup alloc];
+        break;
+
+    case Type::BundleRangeHandle:
+        wrapper = [WKWebProcessPlugInRangeHandle alloc];
         break;
 
     case Type::BundleScriptWorld:

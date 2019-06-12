@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2006, 2015 Apple Inc.
+ * Copyright (C) 2006, 2015-2016 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef RenderView_h
-#define RenderView_h
+#pragma once
 
 #include "FrameView.h"
 #include "LayoutState.h"
@@ -44,23 +43,23 @@ class RenderQuote;
 
 class RenderView final : public RenderBlockFlow, public SelectionSubtreeRoot {
 public:
-    RenderView(Document&, Ref<RenderStyle>&&);
+    RenderView(Document&, RenderStyle&&);
     virtual ~RenderView();
 
     WEBCORE_EXPORT bool hitTest(const HitTestRequest&, HitTestResult&);
     bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
 
-    virtual const char* renderName() const override { return "RenderView"; }
+    const char* renderName() const override { return "RenderView"; }
 
-    virtual bool requiresLayer() const override { return true; }
+    bool requiresLayer() const override { return true; }
 
-    virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
 
-    virtual void layout() override;
-    virtual void updateLogicalWidth() override;
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    void layout() override;
+    void updateLogicalWidth() override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
-    virtual LayoutUnit availableLogicalHeight(AvailableLogicalHeightType) const override;
+    LayoutUnit availableLogicalHeight(AvailableLogicalHeightType) const override;
 
     // The same as the FrameView's layoutHeight/layoutWidth but with null check guards.
     int viewHeight() const;
@@ -75,18 +74,20 @@ public:
 
     FrameView& frameView() const { return m_frameView; }
 
-    virtual LayoutRect visualOverflowRect() const override;
-    virtual LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, bool fixed = false) const override;
+    LayoutRect visualOverflowRect() const override;
+    LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, RepaintContext = { }) const override;
     void repaintRootContents();
     void repaintViewRectangle(const LayoutRect&) const;
     void repaintViewAndCompositedLayers();
 
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
+    void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
+    // Return the renderer whose background style is used to paint the root background.
+    RenderElement* rendererForRootBackground() const;
 
     enum SelectionRepaintMode { RepaintNewXOROld, RepaintNewMinusOld, RepaintNothing };
-    void setSelection(RenderObject* start, int startPos, RenderObject* end, int endPos, SelectionRepaintMode = RepaintNewXOROld);
-    void getSelection(RenderObject*& startRenderer, int& startOffset, RenderObject*& endRenderer, int& endOffset) const;
+    void setSelection(RenderObject* start, std::optional<unsigned> startPos, RenderObject* endObject, std::optional<unsigned> endPos, SelectionRepaintMode = RepaintNewXOROld);
+    void getSelection(RenderObject*& startRenderer, std::optional<unsigned>& startOffset, RenderObject*& endRenderer, std::optional<unsigned>& endOffset) const;
     void clearSelection();
     RenderObject* selectionUnsplitStart() const { return m_selectionUnsplitStart; }
     RenderObject* selectionUnsplitEnd() const { return m_selectionUnsplitEnd; }
@@ -95,8 +96,8 @@ public:
 
     bool printing() const;
 
-    virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const override;
-    virtual void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
+    void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const override;
+    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
 
     LayoutRect viewRect() const;
 
@@ -131,24 +132,16 @@ public:
 
     // Subtree push/pop
     void pushLayoutState(RenderObject&);
+    bool pushLayoutStateForPaginationIfNeeded(RenderBlockFlow&);
     void popLayoutState(RenderObject&) { return popLayoutState(); } // Just doing this to keep popLayoutState() private and to make the subtree calls symmetrical.
-
-    bool shouldDisableLayoutStateForSubtree(RenderObject*) const;
 
     // Returns true if layoutState should be used for its cached offset and clip.
     bool layoutStateEnabled() const { return m_layoutStateDisableCount == 0 && m_layoutState; }
     LayoutState* layoutState() const { return m_layoutState.get(); }
 
-    virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&) override;
+    void updateHitTestResult(HitTestResult&, const LayoutPoint&) override;
 
-    LayoutUnit pageLogicalHeight() const { return m_pageLogicalHeight; }
-    void setPageLogicalHeight(LayoutUnit height)
-    {
-        if (m_pageLogicalHeight != height) {
-            m_pageLogicalHeight = height;
-            m_pageLogicalHeightChanged = true;
-        }
-    }
+    void setPageLogicalSize(LayoutSize);
     LayoutUnit pageOrViewLogicalHeight() const;
 
     // This method is used to assign a page number only when pagination modes have
@@ -198,12 +191,15 @@ public:
     bool checkTwoPassLayoutForAutoHeightRegions() const;
     FlowThreadController& flowThreadController();
 
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
     IntSize viewportSizeForCSSViewportUnits() const;
 
     void setRenderQuoteHead(RenderQuote* head) { m_renderQuoteHead = head; }
     RenderQuote* renderQuoteHead() const { return m_renderQuoteHead; }
+    
+    // FIXME: see class RenderTreeInternalMutation below.
+    bool renderTreeIsBeingMutatedInternally() const { return !!m_renderTreeInternalMutationCounter; }
 
     // FIXME: This is a work around because the current implementation of counters
     // requires walking the entire tree repeatedly and most pages don't actually use either
@@ -226,8 +222,9 @@ public:
     void registerForVisibleInViewportCallback(RenderElement&);
     void unregisterForVisibleInViewportCallback(RenderElement&);
     void resumePausedImageAnimationsIfNeeded(IntRect visibleRect);
-    void addRendererWithPausedImageAnimations(RenderElement&);
+    void addRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
     void removeRendererWithPausedImageAnimations(RenderElement&);
+    void removeRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
 
     class RepaintRegionAccumulator {
         WTF_MAKE_NONCOPYABLE(RepaintRegionAccumulator);
@@ -236,9 +233,11 @@ public:
         ~RepaintRegionAccumulator();
 
     private:
-        RenderView* m_rootView;
+        WeakPtr<RenderView> m_rootView;
         bool m_wasAccumulatingRepaintRegion;
     };
+
+    WeakPtr<RenderView> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
 
     void scheduleLazyRepaint(RenderBox&);
     void unscheduleLazyRepaint(RenderBox&);
@@ -247,21 +246,25 @@ public:
     void releaseProtectedRenderWidgets() { m_protectedRenderWidgets.clear(); }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    void registerBoxWithScrollSnapCoordinates(const RenderBox&);
-    void unregisterBoxWithScrollSnapCoordinates(const RenderBox&);
-    const HashSet<const RenderBox*>& boxesWithScrollSnapCoordinates() { return m_boxesWithScrollSnapCoordinates; }
+    void registerBoxWithScrollSnapPositions(const RenderBox&);
+    void unregisterBoxWithScrollSnapPositions(const RenderBox&);
+    const HashSet<const RenderBox*>& boxesWithScrollSnapPositions() { return m_boxesWithScrollSnapPositions; }
+#endif
+
+#if !ASSERT_DISABLED
+    bool inHitTesting() const { return m_inHitTesting; }
 #endif
 
 protected:
-    virtual void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
-    virtual const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
-    virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
-    virtual bool requiresColumns(int desiredColumnCount) const override;
+    void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
+    const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
+    void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
+    bool requiresColumns(int desiredColumnCount) const override;
 
 private:
     void initializeLayoutState(LayoutState&);
 
-    virtual void computeColumnCountAndWidth() override;
+    void computeColumnCountAndWidth() override;
 
     bool shouldRepaint(const LayoutRect&) const;
     void flushAccumulatedRepaintRegion() const;
@@ -285,6 +288,17 @@ private:
         m_layoutState = WTFMove(m_layoutState->m_next);
     }
 
+    enum class RenderTreeInternalMutation { On, Off };
+    void setRenderTreeInternalMutation(RenderTreeInternalMutation state)
+    {
+        if (state == RenderTreeInternalMutation::On)
+            ++m_renderTreeInternalMutationCounter;
+        else {
+            ASSERT(m_renderTreeInternalMutationCounter);
+            --m_renderTreeInternalMutationCounter;
+        }
+    }
+
     // Suspends the LayoutState optimization. Used under transforms that cannot be represented by
     // LayoutState (common in SVG) and when manipulating the render tree during layout in ways
     // that can trigger repaint of a non-child (e.g. when a list item moves its list marker around).
@@ -306,10 +320,11 @@ private:
     friend class LayoutStateMaintainer;
     friend class LayoutStateDisabler;
     friend class SubtreeLayoutStateMaintainer;
+    friend class RenderTreeInternalMutationScope;
 
-    virtual bool isScrollableOrRubberbandableBox() const override;
+    bool isScrollableOrRubberbandableBox() const override;
 
-    void splitSelectionBetweenSubtrees(const RenderObject* startRenderer, int startPos, const RenderObject* endRenderer, int endPos, SelectionRepaintMode blockRepaintMode);
+    void splitSelectionBetweenSubtrees(const RenderObject* startRenderer, std::optional<unsigned> startPos, const RenderObject* endRenderer, std::optional<unsigned> endPos, SelectionRepaintMode blockRepaintMode);
     void clearSubtreeSelection(const SelectionSubtreeRoot&, SelectionRepaintMode, OldSelectionData&) const;
     void updateSelectionForSubtrees(RenderSubtreesMap&, SelectionRepaintMode);
     void applySubtreeSelection(const SelectionSubtreeRoot&, SelectionRepaintMode, const OldSelectionData&);
@@ -319,10 +334,11 @@ private:
 private:
     FrameView& m_frameView;
 
-    RenderObject* m_selectionUnsplitStart;
-    RenderObject* m_selectionUnsplitEnd;
-    int m_selectionUnsplitStartPos;
-    int m_selectionUnsplitEndPos;
+    WeakPtrFactory<RenderView> m_weakFactory;
+    RenderObject* m_selectionUnsplitStart { nullptr };
+    RenderObject* m_selectionUnsplitEnd { nullptr };
+    std::optional<unsigned> m_selectionUnsplitStartPos;
+    std::optional<unsigned> m_selectionUnsplitEndPos;
 
     // Include this RenderView.
     uint64_t m_rendererCount { 1 };
@@ -331,18 +347,11 @@ private:
 
     // FIXME: Only used by embedded WebViews inside AppKit NSViews.  Find a way to remove.
     struct LegacyPrinting {
-        LegacyPrinting()
-            : m_bestTruncatedAt(0)
-            , m_truncatedAt(0)
-            , m_truncatorWidth(0)
-            , m_forcedPageBreak(false)
-        { }
-
-        int m_bestTruncatedAt;
-        int m_truncatedAt;
-        int m_truncatorWidth;
+        int m_bestTruncatedAt { 0 };
+        int m_truncatedAt { 0 };
+        int m_truncatorWidth { 0 };
         IntRect m_printRect;
-        bool m_forcedPageBreak;
+        bool m_forcedPageBreak { false };
     };
     LegacyPrinting m_legacyPrinting;
     // End deprecated members.
@@ -355,22 +364,26 @@ private:
     HashSet<RenderBox*> m_renderersNeedingLazyRepaint;
 
     std::unique_ptr<ImageQualityController> m_imageQualityController;
-    LayoutUnit m_pageLogicalHeight;
-    bool m_pageLogicalHeightChanged;
+    std::optional<LayoutSize> m_pageLogicalSize;
+    bool m_pageLogicalHeightChanged { false };
     std::unique_ptr<LayoutState> m_layoutState;
-    unsigned m_layoutStateDisableCount;
+    unsigned m_layoutStateDisableCount { 0 };
     std::unique_ptr<RenderLayerCompositor> m_compositor;
     std::unique_ptr<FlowThreadController> m_flowThreadController;
 
-    RenderQuote* m_renderQuoteHead;
-    unsigned m_renderCounterCount;
+    RenderQuote* m_renderQuoteHead { nullptr };
+    unsigned m_renderCounterCount { 0 };
+    unsigned m_renderTreeInternalMutationCounter { 0 };
 
-    bool m_selectionWasCaret;
-    bool m_hasSoftwareFilters;
+    bool m_selectionWasCaret { false };
+    bool m_hasSoftwareFilters { false };
     bool m_usesFirstLineRules { false };
     bool m_usesFirstLetterRules { false };
+#if !ASSERT_DISABLED
+    bool m_inHitTesting { false };
+#endif
 
-    HashSet<RenderElement*> m_renderersWithPausedImageAnimation;
+    HashMap<RenderElement*, Vector<CachedImage*>> m_renderersWithPausedImageAnimation;
     HashSet<RenderElement*> m_visibleInViewportRenderers;
     Vector<RefPtr<RenderWidget>> m_protectedRenderWidgets;
 
@@ -378,7 +391,7 @@ private:
     SelectionRectGatherer m_selectionRectGatherer;
 #endif
 #if ENABLE(CSS_SCROLL_SNAP)
-    HashSet<const RenderBox*> m_boxesWithScrollSnapCoordinates;
+    HashSet<const RenderBox*> m_boxesWithScrollSnapPositions;
 #endif
 };
 
@@ -458,8 +471,25 @@ private:
     RenderView& m_view;
 };
 
+// FIXME: This is a temporary workaround to mute unintended activities triggered by render tree mutations.
+class RenderTreeInternalMutationScope {
+    WTF_MAKE_NONCOPYABLE(RenderTreeInternalMutationScope);
+public:
+    RenderTreeInternalMutationScope(RenderView& view)
+        : m_view(view)
+    {
+        m_view.setRenderTreeInternalMutation(RenderView::RenderTreeInternalMutation::On);
+    }
+
+    ~RenderTreeInternalMutationScope()
+    {
+        m_view.setRenderTreeInternalMutation(RenderView::RenderTreeInternalMutation::Off);
+    }
+
+private:
+    RenderView& m_view;
+};
+
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderView, isRenderView())
-
-#endif // RenderView_h

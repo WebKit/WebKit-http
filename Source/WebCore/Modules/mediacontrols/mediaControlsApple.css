@@ -61,6 +61,10 @@ video:-webkit-full-page-media::-webkit-media-controls-panel.no-video {
     -webkit-font-smoothing: subpixel-antialiased;
 }
 
+::-webkit-media-controls.placeholder-showing {
+    overflow: hidden;
+}
+
 video::-webkit-media-text-track-container,
 audio::-webkit-media-text-track-container {
     position: relative;
@@ -479,6 +483,21 @@ audio::-webkit-media-controls-closed-captions-container li.selected:hover .check
     content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><polygon fill="rgba(255,255,255,0.45)" points="252.301,4.477 126.667,194.104 43.358,108.3 6.868,161.408 132.515,290.814 297.732,49.926"/></svg>');
 }
 
+video::-webkit-media-controls-panel .picture-in-picture-button {
+    margin-right: 7px;
+    margin-left: 8px;
+    margin-top: 1px;
+    width: 16px;
+    min-width: 18px;
+    height: 12px;
+
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 12" fill="rgba(255,255,255,0.45)"><polygon points="6 8 1 8 1 1 14 1 14 6 15 6 15 0 0 0 0 9 6 9 6 8"/><rect x="7" y="7" width="9" height="5"/><polyline transform="translate(4, 4) rotate(180) translate(-4, -4)" points="5.33 2 5.33 3 3.67 3 5.67 5 5 5.67 3 3.67 3 5.33 2 5.33 2 2"/></svg>');
+  }
+
+video::-webkit-media-controls-panel .picture-in-picture-button.return-from-picture-in-picture {
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 12" fill="rgba(255,255,255,0.45)"><polygon points="6 8 1 8 1 1 14 1 14 6 15 6 15 0 0 0 0 9 6 9 6 8"/><rect x="7" y="7" width="9" height="5"/><polyline points="5.33 2 5.33 3 3.67 3 5.67 5 5 5.67 3 3.67 3 5.33 2 5.33 2 2"/></svg>');
+  }
+
 video::-webkit-media-controls-fullscreen-button,
 audio::-webkit-media-controls-fullscreen-button {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 15" stroke="rgba(255,255,255,0.45)" fill="none"><path d="M 7,1.5 L 12.5,1.5 L 12.5,7"/><path d="M 0.5,8 L 0.5,13.5 L 6,13.5"/><path stroke-linecap="round" d="M 12.5,1.5 L 7.5,6.5"/><path stroke-linecap="round" d="M 0.5,13.5 L 5.5,8.5"/></svg>');
@@ -745,6 +764,10 @@ video:-webkit-full-screen::-webkit-media-controls-panel .volume-box {
     border: none;
 }
 
+video:-webkit-full-screen::-webkit-media-controls-panel .volume-box:not(.uses-ltr-user-interface-layout-direction) {
+    transform: translateX(23px) scaleX(-1);
+}
+
 video:-webkit-full-screen::-webkit-media-controls-volume-slider {
     -webkit-transform: none;
     background-color: transparent;
@@ -870,6 +893,7 @@ video::-webkit-media-text-track-container {
     width: 100%;
     overflow: hidden;
     padding-bottom: 5px;
+    z-index: 0;
 
     text-align: center;
     color: rgba(255, 255, 255, 1);
@@ -1000,6 +1024,14 @@ audio::-webkit-media-controls-wireless-playback-picker-button:active {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 15" stroke="white"><defs> <clipPath fill-rule="evenodd" id="cut-hole"><path d="M 0,0.5 L 16,0.5 L 16,15.5 L 0,15.5 z M 0,14.5 L 16,14.5 L 8,5 z"/></clipPath></defs><rect fill="none" clip-path="url(#cut-hole)" x="0.5" y="2" width="15" height="8"/><path stroke="none" fill="white" d="M 3.5,13.25 L 12.5,13.25 L 8,8 z"/></svg>');
 }
 
+video::-webkit-media-controls-panel .picture-in-picture-button:active {
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 12" fill="white"><polygon points="6 8 1 8 1 1 14 1 14 6 15 6 15 0 0 0 0 9 6 9 6 8"/><rect x="7" y="7" width="9" height="5"/><path d="M5.5,4.45a0.5,0.5,0,0,0-.5.5v1.3L2.58,3.83a0.5,0.5,0,0,0-.71.71L4.33,7H3A0.5,0.5,0,0,0,3,8H5.5A0.5,0.5,0,0,0,6,7.5V4.95A0.5,0.5,0,0,0,5.5,4.45Z" transform="translate(0 -2)"/></svg>');
+}
+
+video::-webkit-media-controls-panel .picture-in-picture-button.return-from-picture-in-picture:active {
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 12" fill="white"><polygon points="6 8 1 8 1 1 14 1 14 6 15 6 15 0 0 0 0 9 6 9 6 8"/><rect x="7" y="7" width="9" height="5"/><path d="M2.22,7.23a0.5,0.5,0,0,0,.5-0.5V5.43L5.15,7.85a0.5,0.5,0,0,0,.71-0.71L3.39,4.68H4.77a0.5,0.5,0,0,0,0-1H2.22a0.5,0.5,0,0,0-.5.5V6.73A0.5,0.5,0,0,0,2.22,7.23Z" transform="translate(0 -2)"/></svg>');
+}
+
 /* ==================== AIRPLAY PLACARD ==================== */
 
 video::-webkit-media-controls-wireless-playback-status,
@@ -1100,24 +1132,22 @@ audio::-webkit-media-controls-wireless-playback-status.hidden {
     display: none;
 }
 
-video::-webkit-media-controls-panel .picture-in-picture-button {
-    margin-right: 7px;
-    margin-left: 8px;
-    margin-top: 1px;
-    width: 18px;
-    min-width: 18px;
-    height: 14px;
-
-    background-color: rgba(255,255,255,0.45);
-    -webkit-mask-size: 18px 14px;
-    -webkit-mask-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC4AAAAkCAYAAAD2IghRAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAANhJREFUeNrslzEOwjAMRR2UA3AQ7sLKwsTEglg6sTIgLgs7qCZBRbIsWpDayHH1v/SHJmn0ZFutHYiIqX4F+cDMtCCncgseh1JiLJ5lxH+Br2qGZ2Gpa/IjeVMZ1/ur0ndgLdaeydsvF9/7LrYEz7oo+J0X8Kyz2GuT917As04K/uAFPKtR5xov4FnHLuIy+i7AqavxVr1jAh7H/HbRZE3QZGndBvaW1k1Z6VqdHtjzIBELZrHoKIfRzbpUxqY4IOJzLpWAiAMc4AAHOMAB/m9T9Bn1veklwACtBYmnlYBaIQAAAABJRU5ErkJggg==');
-}
-
-video::-webkit-media-controls-panel .picture-in-picture-button.return-from-picture-in-picture {
-    -webkit-mask-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC4AAAAkCAYAAAD2IghRAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAOZJREFUeNpiZGBg+M8w+AEjMuf///8MTAxDFAxZh7Pgi5IBBv+HZYgPS4f/JwJ/GA1xCjMnIfAejf9poHPvfyy5GFvS6KdjyYPLXeAKiFiH/0ZiT6GT46ni8CAg/onEn0WH/EEVh4OAL5rjFwIx81BwOAh4APE3JPGlNHQ8VR0OAs5A/BVJbjUQsw0Fh4OAHRB/RpLPG0wOJwSsoTXnfBolF5o5HARUBqL2pYbDB6bGBDqchYYlAk27cqPt8YFuHVIaxYyjIT6ckwrjaIiPOnzU4aMOH3X4qMNHHU5sowjWmxhqACDAAI3lmdvpn4aTAAAAAElFTkSuQmCC');
-}
-
 video::-webkit-media-controls-panel.picture-in-picture {
     opacity: 0;
     pointer-events: none;
+}
+
+video:-webkit-full-screen::-webkit-media-controls-panel .picture-in-picture-button {
+    margin-top: 7px;
+    margin-right: 24px;
+    margin-left: 0px;
+}
+
+/* Time display clones that we use in updateLayoutForDisplayedWidth(). */
+::-webkit-media-controls-current-time-display.clone,
+::-webkit-media-controls-time-remaining-display.clone {
+    position: absolute;
+    display: inline;
+    top: 100%;
+    mix-blend-mode: normal;
 }

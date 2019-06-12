@@ -29,16 +29,15 @@
 #import "CoreGraphicsSPI.h"
 #import "Document.h"
 #import "Element.h"
-#import "ExceptionCodePlaceholder.h"
 #import "FileList.h"
 #import "FloatRoundedRect.h"
 #import "FocusController.h"
 #import "Frame.h"
 #import "FrameSelection.h"
 #import "FrameView.h"
+#import "GeometryUtilities.h"
 #import "GraphicsContextCG.h"
 #import "HTMLAttachmentElement.h"
-#import "HTMLAudioElement.h"
 #import "HTMLInputElement.h"
 #import "HTMLMediaElement.h"
 #import "HTMLNames.h"
@@ -63,14 +62,17 @@
 #import "RenderSlider.h"
 #import "RenderSnapshottedPlugIn.h"
 #import "RenderView.h"
+#import "RuntimeEnabledFeatures.h"
 #import "SharedBuffer.h"
 #import "StringTruncator.h"
 #import "StyleResolver.h"
 #import "ThemeMac.h"
 #import "TimeRanges.h"
+#import "UTIUtilities.h"
 #import "UserAgentScripts.h"
 #import "UserAgentStyleSheets.h"
 #import "WebCoreSystemInterface.h"
+#import <wtf/MathExtras.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/StdLibExtras.h>
@@ -112,10 +114,10 @@
 
 // We estimate the animation rate of a Mac OS X progress bar is 33 fps.
 // Hard code the value here because we haven't found API for it.
-const double progressAnimationFrameRate = 0.033;
+static const Seconds progressAnimationFrameRate = 33_ms;
 
 // Mac OS X progress bar animation seems to have 256 frames.
-const double progressAnimationNumFrames = 256;
+static const double progressAnimationNumFrames = 256;
 
 @interface WebCoreRenderThemeNotificationObserver : NSObject
 {
@@ -193,10 +195,10 @@ enum {
     leftPadding
 };
 
-PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
+RenderTheme& RenderTheme::singleton()
 {
-    static RenderTheme& rt = RenderThemeMac::create().leakRef();
-    return &rt;
+    static NeverDestroyed<Ref<RenderTheme>> theme(RenderThemeMac::create());
+    return theme.get();
 }
 
 Ref<RenderTheme> RenderThemeMac::create()
@@ -230,24 +232,75 @@ NSView* RenderThemeMac::documentViewFor(const RenderObject& o) const
 String RenderThemeMac::mediaControlsStyleSheet()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsStyleSheet.isEmpty())
-        m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
-    return m_mediaControlsStyleSheet;
+    if (m_legacyMediaControlsStyleSheet.isEmpty())
+        m_legacyMediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
+    return m_legacyMediaControlsStyleSheet;
 #else
     return emptyString();
 #endif
 }
 
+String RenderThemeMac::modernMediaControlsStyleSheet()
+{
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
+        if (m_mediaControlsStyleSheet.isEmpty())
+            m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"modern-media-controls" ofType:@"css" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil];
+        return m_mediaControlsStyleSheet;
+    }
+    return emptyString();
+#else
+    return emptyString();
+#endif
+}
+
+void RenderThemeMac::purgeCaches()
+{
+    m_legacyMediaControlsScript.clearImplIfNotShared();
+    m_mediaControlsScript.clearImplIfNotShared();
+    m_legacyMediaControlsStyleSheet.clearImplIfNotShared();
+    m_mediaControlsStyleSheet.clearImplIfNotShared();
+}
+
 String RenderThemeMac::mediaControlsScript()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsScript.isEmpty()) {
-        StringBuilder scriptBuilder;
-        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        m_mediaControlsScript = scriptBuilder.toString();
+    if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
+        if (m_mediaControlsScript.isEmpty()) {
+            NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+
+            StringBuilder scriptBuilder;
+            scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls-localized-strings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+            scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls" ofType:@"js" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil]);
+            m_mediaControlsScript = scriptBuilder.toString();
+        }
+        return m_mediaControlsScript;
     }
-    return m_mediaControlsScript;
+
+    if (m_legacyMediaControlsScript.isEmpty()) {
+        NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+
+        StringBuilder scriptBuilder;
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+
+        m_legacyMediaControlsScript = scriptBuilder.toString();
+    }
+    return m_legacyMediaControlsScript;
+#else
+    return emptyString();
+#endif
+}
+
+String RenderThemeMac::mediaControlsBase64StringForIconNameAndType(const String& iconName, const String& iconType)
+{
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
+        return emptyString();
+
+    String directory = "modern-media-controls/images";
+    NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:iconType inDirectory:directory]] base64EncodedStringWithOptions:0];
 #else
     return emptyString();
 #endif
@@ -304,7 +357,7 @@ Color RenderThemeMac::platformInactiveListBoxSelectionBackgroundColor() const
     return platformInactiveSelectionBackgroundColor();
 }
 
-static FontWeight toFontWeight(NSInteger appKitFontWeight)
+static FontSelectionValue toFontWeight(NSInteger appKitFontWeight)
 {
     ASSERT(appKitFontWeight > 0 && appKitFontWeight < 15);
     if (appKitFontWeight > 14)
@@ -312,21 +365,21 @@ static FontWeight toFontWeight(NSInteger appKitFontWeight)
     else if (appKitFontWeight < 1)
         appKitFontWeight = 1;
 
-    static const FontWeight fontWeights[] = {
-        FontWeight100,
-        FontWeight100,
-        FontWeight200,
-        FontWeight300,
-        FontWeight400,
-        FontWeight500,
-        FontWeight600,
-        FontWeight600,
-        FontWeight700,
-        FontWeight800,
-        FontWeight800,
-        FontWeight900,
-        FontWeight900,
-        FontWeight900
+    static const FontSelectionValue fontWeights[] = {
+        FontSelectionValue(100),
+        FontSelectionValue(100),
+        FontSelectionValue(200),
+        FontSelectionValue(300),
+        FontSelectionValue(400),
+        FontSelectionValue(500),
+        FontSelectionValue(600),
+        FontSelectionValue(600),
+        FontSelectionValue(700),
+        FontSelectionValue(800),
+        FontSelectionValue(800),
+        FontSelectionValue(900),
+        FontSelectionValue(900),
+        FontSelectionValue(900)
     };
     return fontWeights[appKitFontWeight - 1];
 }
@@ -351,13 +404,13 @@ void RenderThemeMac::updateCachedSystemFontDescription(CSSValueID cssValueId, Fo
             fontName = AtomicString("-apple-status-bar", AtomicString::ConstructFromLiteral);
             break;
         case CSSValueWebkitMiniControl:
-            font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:NSMiniControlSize]];
+            font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:NSControlSizeMini]];
             break;
         case CSSValueWebkitSmallControl:
-            font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:NSSmallControlSize]];
+            font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:NSControlSizeSmall]];
             break;
         case CSSValueWebkitControl:
-            font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:NSRegularControlSize]];
+            font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:NSControlSizeRegular]];
             break;
         default:
             font = [NSFont systemFontOfSize:[NSFont systemFontSize]];
@@ -367,7 +420,7 @@ void RenderThemeMac::updateCachedSystemFontDescription(CSSValueID cssValueId, Fo
         return;
 
     if (fontName.isNull())
-        fontName = AtomicString("-apple-system", AtomicString::ConstructFromLiteral);
+        fontName = AtomicString("system-ui", AtomicString::ConstructFromLiteral);
 
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
     fontDescription.setIsAbsoluteSize(true);
@@ -741,23 +794,23 @@ NSControlSize RenderThemeMac::controlSizeForFont(const RenderStyle& style) const
 {
     int fontSize = style.fontSize();
     if (fontSize >= 16)
-        return NSRegularControlSize;
+        return NSControlSizeRegular;
     if (fontSize >= 11)
-        return NSSmallControlSize;
-    return NSMiniControlSize;
+        return NSControlSizeSmall;
+    return NSControlSizeMini;
 }
 
 NSControlSize RenderThemeMac::controlSizeForCell(NSCell*, const IntSize* sizes, const IntSize& minSize, float zoomLevel) const
 {
-    if (minSize.width() >= static_cast<int>(sizes[NSRegularControlSize].width() * zoomLevel)
-        && minSize.height() >= static_cast<int>(sizes[NSRegularControlSize].height() * zoomLevel))
-        return NSRegularControlSize;
+    if (minSize.width() >= static_cast<int>(sizes[NSControlSizeRegular].width() * zoomLevel)
+        && minSize.height() >= static_cast<int>(sizes[NSControlSizeRegular].height() * zoomLevel))
+        return NSControlSizeRegular;
 
-    if (minSize.width() >= static_cast<int>(sizes[NSSmallControlSize].width() * zoomLevel)
-        && minSize.height() >= static_cast<int>(sizes[NSSmallControlSize].height() * zoomLevel))
-        return NSSmallControlSize;
+    if (minSize.width() >= static_cast<int>(sizes[NSControlSizeSmall].width() * zoomLevel)
+        && minSize.height() >= static_cast<int>(sizes[NSControlSizeSmall].height() * zoomLevel))
+        return NSControlSizeSmall;
 
-    return NSMiniControlSize;
+    return NSControlSizeMini;
 }
 
 void RenderThemeMac::setControlSize(NSCell* cell, const IntSize* sizes, const IntSize& minSize, float zoomLevel)
@@ -815,11 +868,11 @@ void RenderThemeMac::setFontFromControlSize(StyleResolver&, RenderStyle& style, 
 NSControlSize RenderThemeMac::controlSizeForSystemFont(const RenderStyle& style) const
 {
     int fontSize = style.fontSize();
-    if (fontSize >= [NSFont systemFontSizeForControlSize:NSRegularControlSize])
-        return NSRegularControlSize;
-    if (fontSize >= [NSFont systemFontSizeForControlSize:NSSmallControlSize])
-        return NSSmallControlSize;
-    return NSMiniControlSize;
+    if (fontSize >= [NSFont systemFontSizeForControlSize:NSControlSizeRegular])
+        return NSControlSizeRegular;
+    if (fontSize >= [NSFont systemFontSizeForControlSize:NSControlSizeSmall])
+        return NSControlSizeSmall;
+    return NSControlSizeMini;
 }
 
 bool RenderThemeMac::paintTextField(const RenderObject& o, const PaintInfo& paintInfo, const FloatRect& r)
@@ -846,7 +899,7 @@ bool RenderThemeMac::paintTextField(const RenderObject& o, const PaintInfo& pain
     return false;
 }
 
-void RenderThemeMac::adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const
+void RenderThemeMac::adjustTextFieldStyle(StyleResolver&, RenderStyle&, const Element*) const
 {
 }
 
@@ -857,7 +910,7 @@ bool RenderThemeMac::paintTextArea(const RenderObject& o, const PaintInfo& paint
     return false;
 }
 
-void RenderThemeMac::adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element*) const
+void RenderThemeMac::adjustTextAreaStyle(StyleResolver&, RenderStyle&, const Element*) const
 {
 }
 
@@ -878,15 +931,21 @@ const IntSize* RenderThemeMac::popupButtonSizes() const
     return sizes;
 }
 
-const int* RenderThemeMac::popupButtonPadding(NSControlSize size) const
+const int* RenderThemeMac::popupButtonPadding(NSControlSize size, bool isRTL) const
 {
-    static const int padding[3][4] =
+    static const int paddingLTR[3][4] =
     {
         { 2, 26, 3, 8 },
         { 2, 23, 3, 8 },
         { 2, 22, 3, 10 }
     };
-    return padding[size];
+    static const int paddingRTL[3][4] =
+    {
+        { 2, 8, 3, 26 },
+        { 2, 8, 3, 23 },
+        { 2, 8, 3, 22 }
+    };
+    return isRTL ? paddingRTL[size] : paddingLTR[size];
 }
 
 bool RenderThemeMac::paintMenuList(const RenderObject& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
@@ -912,7 +971,7 @@ bool RenderThemeMac::paintMenuList(const RenderObject& renderer, const PaintInfo
         inflatedRect.setWidth(inflatedRect.width() / zoomLevel);
         inflatedRect.setHeight(inflatedRect.height() / zoomLevel);
         paintInfo.context().translate(inflatedRect.x(), inflatedRect.y());
-        paintInfo.context().scale(FloatSize(zoomLevel, zoomLevel));
+        paintInfo.context().scale(zoomLevel);
         paintInfo.context().translate(-inflatedRect.x(), -inflatedRect.y());
     }
 
@@ -1015,11 +1074,10 @@ NSLevelIndicatorCell* RenderThemeMac::levelIndicatorFor(const RenderMeter& rende
     }
 
     [cell setLevelIndicatorStyle:levelIndicatorStyleFor(style.appearance())];
-    [cell setBaseWritingDirection:style.isLeftToRightDirection() ? NSWritingDirectionLeftToRight : NSWritingDirectionRightToLeft];
+    [cell setUserInterfaceLayoutDirection:style.isLeftToRightDirection() ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
     [cell setMinValue:element->min()];
     [cell setMaxValue:element->max()];
-    RetainPtr<NSNumber> valueObject = [NSNumber numberWithDouble:value];
-    [cell setObjectValue:valueObject.get()];
+    [cell setObjectValue:@(value)];
 
     return cell;
 }
@@ -1070,17 +1128,17 @@ int RenderThemeMac::minimumProgressBarHeight(const RenderStyle& style) const
     return sizeForSystemFont(style, progressBarSizes()).height();
 }
 
-double RenderThemeMac::animationRepeatIntervalForProgressBar(RenderProgress&) const
+Seconds RenderThemeMac::animationRepeatIntervalForProgressBar(RenderProgress&) const
 {
     return progressAnimationFrameRate;
 }
 
 double RenderThemeMac::animationDurationForProgressBar(RenderProgress&) const
 {
-    return progressAnimationNumFrames * progressAnimationFrameRate;
+    return progressAnimationNumFrames * progressAnimationFrameRate.value();
 }
 
-void RenderThemeMac::adjustProgressBarStyle(StyleResolver&, RenderStyle&, Element*) const
+void RenderThemeMac::adjustProgressBarStyle(StyleResolver&, RenderStyle&, const Element*) const
 {
 }
 
@@ -1095,7 +1153,7 @@ bool RenderThemeMac::paintProgressBar(const RenderObject& renderObject, const Pa
     const auto& renderProgress = downcast<RenderProgress>(renderObject);
     HIThemeTrackDrawInfo trackInfo;
     trackInfo.version = 0;
-    if (controlSize == NSRegularControlSize)
+    if (controlSize == NSControlSizeRegular)
         trackInfo.kind = renderProgress.position() < 0 ? kThemeLargeIndeterminateBar : kThemeLargeProgressBar;
     else
         trackInfo.kind = renderProgress.position() < 0 ? kThemeMediumIndeterminateBar : kThemeMediumProgressBar;
@@ -1111,7 +1169,7 @@ bool RenderThemeMac::paintProgressBar(const RenderObject& renderObject, const Pa
     trackInfo.reserved = 0;
     trackInfo.filler1 = 0;
 
-    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::createCompatibleBuffer(inflatedRect.size(), deviceScaleFactor, ColorSpaceSRGB, paintInfo.context(), true);
+    std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::createCompatibleBuffer(inflatedRect.size(), deviceScaleFactor, ColorSpaceSRGB, paintInfo.context());
     if (!imageBuffer)
         return true;
 
@@ -1134,8 +1192,8 @@ const float baseFontSize = 11.0f;
 const float baseArrowHeight = 4.0f;
 const float baseArrowWidth = 5.0f;
 const float baseSpaceBetweenArrows = 2.0f;
-const int arrowPaddingLeft = 6;
-const int arrowPaddingRight = 6;
+const int arrowPaddingBefore = 6;
+const int arrowPaddingAfter = 6;
 const int paddingBeforeSeparator = 4;
 const int baseBorderRadius = 5;
 const int styledPopupPaddingLeft = 8;
@@ -1251,6 +1309,7 @@ void RenderThemeMac::paintMenuListButtonGradients(const RenderObject& o, const P
 
 bool RenderThemeMac::paintMenuListButtonDecorations(const RenderBox& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
 {
+    bool isRTL = renderer.style().direction() == RTL;
     IntRect bounds = IntRect(rect.x() + renderer.style().borderLeftWidth(),
         rect.y() + renderer.style().borderTopWidth(),
         rect.width() - renderer.style().borderLeftWidth() - renderer.style().borderRightWidth(),
@@ -1263,10 +1322,14 @@ bool RenderThemeMac::paintMenuListButtonDecorations(const RenderBox& renderer, c
     float centerY = bounds.y() + bounds.height() / 2.0f;
     float arrowHeight = baseArrowHeight * fontScale;
     float arrowWidth = baseArrowWidth * fontScale;
-    float leftEdge = bounds.maxX() - arrowPaddingRight * renderer.style().effectiveZoom() - arrowWidth;
+    float leftEdge;
+    if (isRTL)
+        leftEdge = bounds.x() + arrowPaddingAfter * renderer.style().effectiveZoom();
+    else
+        leftEdge = bounds.maxX() - arrowPaddingAfter * renderer.style().effectiveZoom() - arrowWidth;
     float spaceBetweenArrows = baseSpaceBetweenArrows * fontScale;
 
-    if (bounds.width() < arrowWidth + arrowPaddingLeft * renderer.style().effectiveZoom())
+    if (bounds.width() < arrowWidth + arrowPaddingBefore * renderer.style().effectiveZoom())
         return false;
 
     GraphicsContextStateSaver stateSaver(paintInfo.context());
@@ -1295,18 +1358,22 @@ bool RenderThemeMac::paintMenuListButtonDecorations(const RenderBox& renderer, c
 
     // FIXME: Should the separator thickness and space be scaled up by fontScale?
     int separatorSpace = 2; // Deliberately ignores zoom since it looks nicer if it stays thin.
-    int leftEdgeOfSeparator = static_cast<int>(leftEdge - arrowPaddingLeft * renderer.style().effectiveZoom()); // FIXME: Round?
+    int leftEdgeOfSeparator;
+    if (isRTL)
+        leftEdgeOfSeparator = static_cast<int>(roundf(leftEdge + arrowWidth + arrowPaddingBefore * renderer.style().effectiveZoom()));
+    else
+        leftEdgeOfSeparator = static_cast<int>(roundf(leftEdge - arrowPaddingBefore * renderer.style().effectiveZoom()));
 
     // Draw the separator to the left of the arrows
     paintInfo.context().setStrokeThickness(1); // Deliberately ignores zoom since it looks nicer if it stays thin.
     paintInfo.context().setStrokeStyle(SolidStroke);
     paintInfo.context().setStrokeColor(leftSeparatorColor);
     paintInfo.context().drawLine(IntPoint(leftEdgeOfSeparator, bounds.y()),
-                                IntPoint(leftEdgeOfSeparator, bounds.maxY()));
+        IntPoint(leftEdgeOfSeparator, bounds.maxY()));
 
     paintInfo.context().setStrokeColor(rightSeparatorColor);
     paintInfo.context().drawLine(IntPoint(leftEdgeOfSeparator + separatorSpace, bounds.y()),
-                                IntPoint(leftEdgeOfSeparator + separatorSpace, bounds.maxY()));
+        IntPoint(leftEdgeOfSeparator + separatorSpace, bounds.maxY()));
     return false;
 }
 
@@ -1316,7 +1383,7 @@ static const IntSize* menuListButtonSizes()
     return sizes;
 }
 
-void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, Element* e) const
+void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* e) const
 {
     NSControlSize controlSize = controlSizeForFont(style);
 
@@ -1347,17 +1414,23 @@ void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderSty
 LengthBox RenderThemeMac::popupInternalPaddingBox(const RenderStyle& style) const
 {
     if (style.appearance() == MenulistPart) {
-        return { static_cast<int>(popupButtonPadding(controlSizeForFont(style))[topPadding] * style.effectiveZoom()),
-            static_cast<int>(popupButtonPadding(controlSizeForFont(style))[rightPadding] * style.effectiveZoom()),
-            static_cast<int>(popupButtonPadding(controlSizeForFont(style))[bottomPadding] * style.effectiveZoom()),
-            static_cast<int>(popupButtonPadding(controlSizeForFont(style))[leftPadding] * style.effectiveZoom()) };
+        const int* padding = popupButtonPadding(controlSizeForFont(style), style.direction() == RTL);
+        return { static_cast<int>(padding[topPadding] * style.effectiveZoom()),
+            static_cast<int>(padding[rightPadding] * style.effectiveZoom()),
+            static_cast<int>(padding[bottomPadding] * style.effectiveZoom()),
+            static_cast<int>(padding[leftPadding] * style.effectiveZoom()) };
     }
 
     if (style.appearance() == MenulistButtonPart) {
         float arrowWidth = baseArrowWidth * (style.fontSize() / baseFontSize);
+        float rightPadding = ceilf(arrowWidth + (arrowPaddingBefore + arrowPaddingAfter + paddingBeforeSeparator) * style.effectiveZoom());
+        float leftPadding = styledPopupPaddingLeft * style.effectiveZoom();
+        if (style.direction() == RTL)
+            std::swap(rightPadding, leftPadding);
         return { static_cast<int>(styledPopupPaddingTop * style.effectiveZoom()),
-            static_cast<int>(ceilf(arrowWidth + (arrowPaddingLeft + arrowPaddingRight + paddingBeforeSeparator) * style.effectiveZoom())),
-            static_cast<int>(styledPopupPaddingBottom * style.effectiveZoom()), static_cast<int>(styledPopupPaddingLeft * style.effectiveZoom()) };
+            static_cast<int>(rightPadding),
+            static_cast<int>(styledPopupPaddingBottom * style.effectiveZoom()),
+            static_cast<int>(leftPadding) };
     }
 
     return { 0, 0, 0, 0 };
@@ -1368,18 +1441,18 @@ PopupMenuStyle::PopupMenuSize RenderThemeMac::popupMenuSize(const RenderStyle& s
     NSPopUpButtonCell* popupButton = this->popupButton();
     NSControlSize size = controlSizeForCell(popupButton, popupButtonSizes(), rect.size(), style.effectiveZoom());
     switch (size) {
-    case NSRegularControlSize:
+    case NSControlSizeRegular:
         return PopupMenuStyle::PopupMenuSizeNormal;
-    case NSSmallControlSize:
+    case NSControlSizeSmall:
         return PopupMenuStyle::PopupMenuSizeSmall;
-    case NSMiniControlSize:
+    case NSControlSizeMini:
         return PopupMenuStyle::PopupMenuSizeMini;
     default:
         return PopupMenuStyle::PopupMenuSizeNormal;
     }
 }
 
-void RenderThemeMac::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeMac::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     float fontScale = style.fontSize() / baseFontSize;
 
@@ -1399,6 +1472,8 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSiz
     // Set the control size based off the rectangle we're painting into.
     setControlSize(popupButton, popupButtonSizes(), buttonSize, o.style().effectiveZoom());
 
+    popupButton.userInterfaceLayoutDirection = o.style().direction() == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft;
+
     // Update the various states we respond to.
     updateCheckedState(popupButton, o);
     updateEnabledState(popupButton, o);
@@ -1407,12 +1482,11 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSiz
 
 void RenderThemeMac::paintCellAndSetFocusedElementNeedsRepaintIfNecessary(NSCell* cell, const RenderObject& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
 {
-    Page* page = renderer.document().page();
     bool shouldDrawFocusRing = isFocused(renderer) && renderer.style().outlineStyleIsAuto();
-    bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || page->pageScaleFactor() != 1;
+    bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || renderer.page().pageScaleFactor() != 1;
     bool shouldDrawCell = true;
-    if (ThemeMac::drawCellOrFocusRingWithViewIntoContext(cell, paintInfo.context(), rect, documentViewFor(renderer), shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, page->deviceScaleFactor()))
-        page->focusController().setFocusedElementNeedsRepaint();
+    if (ThemeMac::drawCellOrFocusRingWithViewIntoContext(cell, paintInfo.context(), rect, documentViewFor(renderer), shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, renderer.page().deviceScaleFactor()))
+        renderer.page().focusController().setFocusedElementNeedsRepaint();
 }
 
 const IntSize* RenderThemeMac::menuListSizes() const
@@ -1429,7 +1503,7 @@ int RenderThemeMac::minimumMenuListSize(const RenderStyle& style) const
 const int trackWidth = 5;
 const int trackRadius = 2;
 
-void RenderThemeMac::adjustSliderTrackStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeMac::adjustSliderTrackStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     style.setBoxShadow(nullptr);
 }
@@ -1475,7 +1549,7 @@ bool RenderThemeMac::paintSliderTrack(const RenderObject& o, const PaintInfo& pa
     return false;
 }
 
-void RenderThemeMac::adjustSliderThumbStyle(StyleResolver& styleResolver, RenderStyle& style, Element* element) const
+void RenderThemeMac::adjustSliderThumbStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* element) const
 {
     RenderTheme::adjustSliderThumbStyle(styleResolver, style, element);
     style.setBoxShadow(nullptr);
@@ -1533,13 +1607,13 @@ bool RenderThemeMac::paintSliderThumb(const RenderObject& o, const PaintInfo& pa
         unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
         unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
         paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
-        paintInfo.context().scale(FloatSize(zoomLevel, zoomLevel));
+        paintInfo.context().scale(zoomLevel);
         paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
     }
 
     bool shouldDrawCell = true;
     bool shouldDrawFocusRing = false;
-    float deviceScaleFactor = o.document().page()->deviceScaleFactor();
+    float deviceScaleFactor = o.page().deviceScaleFactor();
     bool shouldUseImageBuffer = deviceScaleFactor != 1 || zoomLevel != 1;
     ThemeMac::drawCellOrFocusRingWithViewIntoContext(sliderThumbCell, paintInfo.context(), unzoomedRect, view, shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, deviceScaleFactor);
     [sliderThumbCell setControlView:nil];
@@ -1564,7 +1638,7 @@ bool RenderThemeMac::paintSearchField(const RenderObject& o, const PaintInfo& pa
         unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
         unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
         paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
-        paintInfo.context().scale(FloatSize(zoomLevel, zoomLevel));
+        paintInfo.context().scale(zoomLevel);
         paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
     }
 
@@ -1606,7 +1680,7 @@ void RenderThemeMac::setSearchFieldSize(RenderStyle& style) const
     setSizeFromFont(style, searchFieldSizes());
 }
 
-void RenderThemeMac::adjustSearchFieldStyle(StyleResolver& styleResolver, RenderStyle& style, Element*) const
+void RenderThemeMac::adjustSearchFieldStyle(StyleResolver& styleResolver, RenderStyle& style, const Element*) const
 {
     // Override border.
     style.resetBorder();
@@ -1639,6 +1713,19 @@ void RenderThemeMac::adjustSearchFieldStyle(StyleResolver& styleResolver, Render
 
 bool RenderThemeMac::paintSearchFieldCancelButton(const RenderBox& box, const PaintInfo& paintInfo, const IntRect& r)
 {
+    auto adjustedCancelButtonRect = [this, &box] (const FloatRect& localBoundsForCancelButton) -> FloatRect
+    {
+        IntSize cancelButtonSizeBasedOnFontSize = sizeForSystemFont(box.style(), cancelButtonSizes());
+        FloatSize diff = localBoundsForCancelButton.size() - FloatSize(cancelButtonSizeBasedOnFontSize);
+        if (!diff.width() && !diff.height())
+            return localBoundsForCancelButton;
+        // Vertically centered and right aligned.
+        FloatRect adjustedLocalBoundsForCancelButton = localBoundsForCancelButton;
+        adjustedLocalBoundsForCancelButton.move(diff.width(), floorToDevicePixel(diff.height() / 2, box.document().deviceScaleFactor()));
+        adjustedLocalBoundsForCancelButton.setSize(cancelButtonSizeBasedOnFontSize);
+        return adjustedLocalBoundsForCancelButton;
+    };
+
     if (!box.element())
         return false;
     Element* input = box.element()->shadowHost();
@@ -1663,7 +1750,15 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderBox& box, const Pa
 
     float zoomLevel = box.style().effectiveZoom();
 
-    FloatRect localBounds = [search cancelButtonRectForBounds:NSRect(snappedIntRect(inputBox.contentBoxRect()))];
+    FloatRect localBounds = adjustedCancelButtonRect([search cancelButtonRectForBounds:NSRect(snappedIntRect(inputBox.contentBoxRect()))]);
+    // Adjust position based on the content direction.
+    float adjustedXPosition;
+    if (box.style().direction() == RTL)
+        adjustedXPosition = inputBox.contentBoxRect().x();
+    else
+        adjustedXPosition = inputBox.contentBoxRect().maxX() - localBounds.size().width();
+    
+    localBounds.setX(adjustedXPosition);
     FloatPoint paintingPos = convertToPaintingPosition(inputBox, box, localBounds.location(), r.location());
 
     FloatRect unzoomedRect(paintingPos, localBounds.size());
@@ -1671,10 +1766,9 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderBox& box, const Pa
         unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
         unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
         paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
-        paintInfo.context().scale(FloatSize(zoomLevel, zoomLevel));
+        paintInfo.context().scale(zoomLevel);
         paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
     }
-
     [[search cancelButtonCell] drawWithFrame:unzoomedRect inView:documentViewFor(box)];
     [[search cancelButtonCell] setControlView:nil];
     return false;
@@ -1682,11 +1776,11 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderBox& box, const Pa
 
 const IntSize* RenderThemeMac::cancelButtonSizes() const
 {
-    static const IntSize sizes[3] = { IntSize(16, 13), IntSize(13, 11), IntSize(13, 9) };
+    static const IntSize sizes[3] = { IntSize(22, 22), IntSize(19, 19), IntSize(15, 15) };
     return sizes;
 }
 
-void RenderThemeMac::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeMac::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, cancelButtonSizes());
     style.setWidth(Length(size.width(), Fixed));
@@ -1694,14 +1788,15 @@ void RenderThemeMac::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderSt
     style.setBoxShadow(nullptr);
 }
 
+const int resultsArrowWidth = 5;
 const IntSize* RenderThemeMac::resultsButtonSizes() const
 {
-    static const IntSize sizes[3] = { IntSize(19, 13), IntSize(17, 11), IntSize(17, 9) };
+    static const IntSize sizes[3] = { IntSize(19, 22), IntSize(17, 19), IntSize(17, 15) };
     return sizes;
 }
 
 const int emptyResultsOffset = 9;
-void RenderThemeMac::adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeMac::adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, resultsButtonSizes());
     style.setWidth(Length(size.width() - emptyResultsOffset, Fixed));
@@ -1714,7 +1809,7 @@ bool RenderThemeMac::paintSearchFieldDecorationPart(const RenderObject&, const P
     return false;
 }
 
-void RenderThemeMac::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeMac::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, resultsButtonSizes());
     style.setWidth(Length(size.width(), Fixed));
@@ -1750,8 +1845,7 @@ bool RenderThemeMac::paintSearchFieldResultsDecorationPart(const RenderBox& box,
     return false;
 }
 
-const int resultsArrowWidth = 5;
-void RenderThemeMac::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeMac::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     IntSize size = sizeForSystemFont(style, resultsButtonSizes());
     style.setWidth(Length(size.width() + resultsArrowWidth, Fixed));
@@ -1761,6 +1855,20 @@ void RenderThemeMac::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderS
 
 bool RenderThemeMac::paintSearchFieldResultsButton(const RenderBox& box, const PaintInfo& paintInfo, const IntRect& r)
 {
+    auto adjustedResultButtonRect = [this, &box] (const FloatRect& localBounds) -> FloatRect
+    {
+        IntSize buttonSize = sizeForSystemFont(box.style(), resultsButtonSizes());
+        buttonSize.expand(resultsArrowWidth, 0);
+        FloatSize diff = localBounds.size() - FloatSize(buttonSize);
+        if (!diff.isZero())
+            return localBounds;
+        // Vertically centered and left aligned.
+        FloatRect adjustedLocalBounds = localBounds;
+        adjustedLocalBounds.move(0, floorToDevicePixel(diff.height() / 2, box.document().deviceScaleFactor()));
+        adjustedLocalBounds.setSize(buttonSize);
+        return adjustedLocalBounds;
+    };
+
     Element* input = box.element()->shadowHost();
     if (!input)
         input = box.element();
@@ -1779,7 +1887,14 @@ bool RenderThemeMac::paintSearchFieldResultsButton(const RenderBox& box, const P
     GraphicsContextStateSaver stateSaver(paintInfo.context());
     float zoomLevel = box.style().effectiveZoom();
 
-    FloatRect localBounds = [search searchButtonRectForBounds:NSRect(snappedIntRect(inputBox.contentBoxRect()))];
+    FloatRect localBounds = adjustedResultButtonRect([search searchButtonRectForBounds:NSRect(snappedIntRect(inputBox.contentBoxRect()))]);
+    // Adjust position based on the content direction.
+    float adjustedXPosition;
+    if (box.style().direction() == RTL)
+        adjustedXPosition = inputBox.contentBoxRect().maxX() - localBounds.size().width();
+    else
+        adjustedXPosition = inputBox.contentBoxRect().x();
+    localBounds.setX(adjustedXPosition);
     FloatPoint paintingPos = convertToPaintingPosition(inputBox, box, localBounds.location(), r.location());
     
     FloatRect unzoomedRect(paintingPos, localBounds.size());
@@ -1787,7 +1902,7 @@ bool RenderThemeMac::paintSearchFieldResultsButton(const RenderBox& box, const P
         unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
         unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
         paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
-        paintInfo.context().scale(FloatSize(zoomLevel, zoomLevel));
+        paintInfo.context().scale(zoomLevel);
         paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
     }
 
@@ -1887,7 +2002,7 @@ int RenderThemeMac::sliderTickOffsetFromTrackCenter() const
 const int sliderThumbWidth = 15;
 const int sliderThumbHeight = 15;
 
-void RenderThemeMac::adjustSliderThumbSize(RenderStyle& style, Element*) const
+void RenderThemeMac::adjustSliderThumbSize(RenderStyle& style, const Element*) const
 {
     float zoomLevel = style.effectiveZoom();
     if (style.appearance() == SliderThumbHorizontalPart || style.appearance() == SliderThumbVerticalPart) {
@@ -1896,7 +2011,7 @@ void RenderThemeMac::adjustSliderThumbSize(RenderStyle& style, Element*) const
     }
 }
 
-bool RenderThemeMac::shouldHaveCapsLockIndicator(HTMLInputElement& element) const
+bool RenderThemeMac::shouldHaveCapsLockIndicator(const HTMLInputElement& element) const
 {
     return element.isPasswordField();
 }
@@ -1907,10 +2022,6 @@ NSPopUpButtonCell* RenderThemeMac::popupButton() const
         m_popupButton = adoptNS([[NSPopUpButtonCell alloc] initTextCell:@"" pullsDown:NO]);
         [m_popupButton.get() setUsesItemFromMenu:NO];
         [m_popupButton.get() setFocusRingType:NSFocusRingTypeExterior];
-        // We don't want the app's UI layout direction to affect the appearance of popup buttons in
-        // web content, which has its own layout direction.
-        // FIXME: Make this depend on the directionality of the select element, once the rest of the
-        // rendering code can account for the popup arrows appearing on the other side.
         [m_popupButton setUserInterfaceLayoutDirection:NSUserInterfaceLayoutDirectionLeftToRight];
     }
 
@@ -1943,8 +2054,8 @@ NSSliderCell* RenderThemeMac::sliderThumbHorizontal() const
 {
     if (!m_sliderThumbHorizontal) {
         m_sliderThumbHorizontal = adoptNS([[NSSliderCell alloc] init]);
-        [m_sliderThumbHorizontal.get() setSliderType:NSLinearSlider];
-        [m_sliderThumbHorizontal.get() setControlSize:NSSmallControlSize];
+        [m_sliderThumbHorizontal.get() setSliderType:NSSliderTypeLinear];
+        [m_sliderThumbHorizontal.get() setControlSize:NSControlSizeSmall];
         [m_sliderThumbHorizontal.get() setFocusRingType:NSFocusRingTypeExterior];
     }
 
@@ -1955,8 +2066,8 @@ NSSliderCell* RenderThemeMac::sliderThumbVertical() const
 {
     if (!m_sliderThumbVertical) {
         m_sliderThumbVertical = adoptNS([[NSSliderCell alloc] init]);
-        [m_sliderThumbVertical.get() setSliderType:NSLinearSlider];
-        [m_sliderThumbVertical.get() setControlSize:NSSmallControlSize];
+        [m_sliderThumbVertical.get() setSliderType:NSSliderTypeLinear];
+        [m_sliderThumbVertical.get() setControlSize:NSControlSizeSmall];
         [m_sliderThumbVertical.get() setFocusRingType:NSFocusRingTypeExterior];
     }
 
@@ -2083,6 +2194,7 @@ static Color attachmentTitleInactiveBackgroundColor() { return Color(204, 204, 2
 static Color attachmentTitleInactiveTextColor() { return Color(100, 100, 100, 255); }
 
 const CGFloat attachmentSubtitleFontSize = 10;
+const int attachmentSubtitleWidthIncrement = 10;
 static Color attachmentSubtitleTextColor() { return Color(82, 145, 214, 255); }
 
 const CGFloat attachmentProgressBarWidth = 30;
@@ -2092,6 +2204,11 @@ const CGFloat attachmentProgressBarBorderWidth = 1;
 static Color attachmentProgressBarBackgroundColor() { return Color(0, 0, 0, 89); }
 static Color attachmentProgressBarFillColor() { return Color(Color::white); }
 static Color attachmentProgressBarBorderColor() { return Color(0, 0, 0, 128); }
+
+const CGFloat attachmentPlaceholderBorderRadius = 5;
+static Color attachmentPlaceholderBorderColor() { return Color(0, 0, 0, 56); }
+const CGFloat attachmentPlaceholderBorderWidth = 2;
+const CGFloat attachmentPlaceholderBorderDashLength = 6;
 
 const CGFloat attachmentMargin = 3;
 
@@ -2228,8 +2345,7 @@ void AttachmentLayout::layOutTitle(const RenderAttachment& attachment)
 
 void AttachmentLayout::layOutSubtitle(const RenderAttachment& attachment)
 {
-    String subtitleText = attachment.attachmentElement().fastGetAttribute(subtitleAttr);
-
+    auto& subtitleText = attachment.attachmentElement().attributeWithoutSynchronization(subtitleAttr);
     if (subtitleText.isEmpty())
         return;
 
@@ -2271,7 +2387,11 @@ AttachmentLayout::AttachmentLayout(const RenderAttachment& attachment)
     attachmentRect = iconBackgroundRect;
     for (const auto& line : lines)
         attachmentRect.unite(line.backgroundRect);
-    attachmentRect.unite(subtitleTextRect);
+    if (!subtitleTextRect.isEmpty()) {
+        FloatRect roundedSubtitleTextRect = subtitleTextRect;
+        roundedSubtitleTextRect.inflateX(attachmentSubtitleWidthIncrement - clampToInteger(ceilf(subtitleTextRect.width())) % attachmentSubtitleWidthIncrement);
+        attachmentRect.unite(roundedSubtitleTextRect);
+    }
     attachmentRect.inflate(attachmentMargin);
     attachmentRect = encloseRectToDevicePixels(attachmentRect, attachment.document().deviceScaleFactor());
 }
@@ -2315,13 +2435,23 @@ static void paintAttachmentIconBackground(const RenderAttachment&, GraphicsConte
 
 static RefPtr<Icon> iconForAttachment(const RenderAttachment& attachment)
 {
-    String MIMEType = attachment.attachmentElement().attachmentType();
-    if (!MIMEType.isEmpty()) {
-        if (equalIgnoringASCIICase(MIMEType, "multipart/x-folder")) {
+    String attachmentType = attachment.attachmentElement().attachmentType();
+    
+    if (!attachmentType.isEmpty()) {
+        if (equalIgnoringASCIICase(attachmentType, "multipart/x-folder") || equalIgnoringASCIICase(attachmentType, "application/vnd.apple.folder")) {
             if (auto icon = Icon::createIconForUTI("public.directory"))
                 return icon;
-        } else if (auto icon = Icon::createIconForMIMEType(MIMEType))
-            return icon;
+        } else {
+            auto attachmentTypeCF = attachmentType.createCFString();
+            RetainPtr<CFStringRef> UTI;
+            if (isDeclaredUTI(attachmentTypeCF.get()))
+                UTI = attachmentTypeCF;
+            else
+                UTI = UTIFromMIMEType(attachmentTypeCF.get());
+
+            if (auto icon = Icon::createIconForUTI(UTI.get()))
+                return icon;
+        }
     }
 
     if (File* file = attachment.attachmentElement().file()) {
@@ -2344,6 +2474,24 @@ static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsCont
     if (!icon)
         return;
     icon->paint(context, layout.iconRect);
+}
+
+static void paintAttachmentIconPlaceholder(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
+{
+    RefPtr<Image> placeholderImage;
+    float imageScale = 1;
+    if (attachment.document().deviceScaleFactor() >= 2) {
+        placeholderImage = Image::loadPlatformResource("AttachmentPlaceholder@2x");
+        imageScale = 2;
+    } else
+        placeholderImage = Image::loadPlatformResource("AttachmentPlaceholder");
+
+    // Center the placeholder image where the icon would usually be.
+    FloatRect placeholderRect(0, 0, placeholderImage->width() / imageScale, placeholderImage->height() / imageScale);
+    placeholderRect.setX(layout.iconRect.x() + (layout.iconRect.width() - placeholderRect.width()) / 2);
+    placeholderRect.setY(layout.iconRect.y() + (layout.iconRect.height() - placeholderRect.height()) / 2);
+
+    context.drawImage(*placeholderImage, placeholderRect);
 }
 
 static void paintAttachmentTitleBackground(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
@@ -2376,7 +2524,7 @@ static void paintAttachmentTitle(const RenderAttachment&, GraphicsContext& conte
         context.translate(toFloatSize(line.origin));
         context.scale(FloatSize(1, -1));
 
-        CGContextSetTextMatrix(context.platformContext(), CGAffineTransformIdentity);
+        CGContextSetTextPosition(context.platformContext(), 0, 0);
         CTLineDraw(line.line.get(), context.platformContext());
     }
 }
@@ -2388,20 +2536,12 @@ static void paintAttachmentSubtitle(const RenderAttachment&, GraphicsContext& co
     context.translate(toFloatSize(layout.subtitleTextRect.minXMaxYCorner()));
     context.scale(FloatSize(1, -1));
 
-    CGContextSetTextMatrix(context.platformContext(), CGAffineTransformIdentity);
+    CGContextSetTextPosition(context.platformContext(), 0, 0);
     CTLineDraw(layout.subtitleLine.get(), context.platformContext());
 }
 
-static void paintAttachmentProgress(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
+static void paintAttachmentProgress(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout, float progress)
 {
-    String progressString = attachment.attachmentElement().fastGetAttribute(progressAttr);
-    if (progressString.isEmpty())
-        return;
-    bool validProgress;
-    float progress = progressString.toFloat(&validProgress);
-    if (!validProgress)
-        return;
-
     GraphicsContextStateSaver saver(context);
 
     FloatRect progressBounds((attachmentIconBackgroundSize - attachmentProgressBarWidth) / 2, layout.iconBackgroundRect.maxY() + attachmentProgressBarOffset - attachmentProgressBarHeight, attachmentProgressBarWidth, attachmentProgressBarHeight);
@@ -2433,6 +2573,17 @@ static void paintAttachmentProgress(const RenderAttachment& attachment, Graphics
     context.strokePath(borderPath);
 }
 
+static void paintAttachmentPlaceholderBorder(const RenderAttachment&, GraphicsContext& context, AttachmentLayout& layout)
+{
+    Path borderPath;
+    borderPath.addRoundedRect(layout.attachmentRect, FloatSize(attachmentPlaceholderBorderRadius, attachmentPlaceholderBorderRadius));
+    context.setStrokeColor(attachmentPlaceholderBorderColor());
+    context.setStrokeThickness(attachmentPlaceholderBorderWidth);
+    context.setStrokeStyle(DashedStroke);
+    context.setLineDash({attachmentPlaceholderBorderDashLength}, 0);
+    context.strokePath(borderPath);
+}
+
 bool RenderThemeMac::paintAttachment(const RenderObject& renderer, const PaintInfo& paintInfo, const IntRect& paintRect)
 {
     if (!is<RenderAttachment>(renderer))
@@ -2442,23 +2593,39 @@ bool RenderThemeMac::paintAttachment(const RenderObject& renderer, const PaintIn
 
     AttachmentLayout layout(attachment);
 
+    auto& progressString = attachment.attachmentElement().attributeWithoutSynchronization(progressAttr);
+    bool validProgress = false;
+    float progress = 0;
+    if (!progressString.isEmpty())
+        progress = progressString.toFloat(&validProgress);
+
     GraphicsContext& context = paintInfo.context();
     LocalCurrentGraphicsContext localContext(context);
     GraphicsContextStateSaver saver(context);
 
     context.translate(toFloatSize(paintRect.location()));
-    context.translate(FloatSize((layout.attachmentRect.width() - attachmentIconBackgroundSize) / 2, 0));
+    context.translate(floorSizeToDevicePixels(LayoutSize((paintRect.width() - attachmentIconBackgroundSize) / 2, 0), renderer.document().deviceScaleFactor()));
 
     bool useSelectedStyle = attachment.selectionState() != RenderObject::SelectionNone;
+    bool usePlaceholder = validProgress && !progress;
 
     if (useSelectedStyle)
         paintAttachmentIconBackground(attachment, context, layout);
-    paintAttachmentIcon(attachment, context, layout);
+    if (usePlaceholder)
+        paintAttachmentIconPlaceholder(attachment, context, layout);
+    else
+        paintAttachmentIcon(attachment, context, layout);
+
     if (useSelectedStyle)
         paintAttachmentTitleBackground(attachment, context, layout);
     paintAttachmentTitle(attachment, context, layout);
     paintAttachmentSubtitle(attachment, context, layout);
-    paintAttachmentProgress(attachment, context, layout);
+
+    if (validProgress && progress)
+        paintAttachmentProgress(attachment, context, layout, progress);
+
+    if (usePlaceholder)
+        paintAttachmentPlaceholderBorder(attachment, context, layout);
 
     return true;
 }

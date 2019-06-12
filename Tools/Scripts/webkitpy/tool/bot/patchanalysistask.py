@@ -1,4 +1,5 @@
 # Copyright (c) 2010 Google Inc. All rights reserved.
+# Copyright (C) 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -28,6 +29,7 @@
 
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.net.layouttestresults import LayoutTestResults
+from webkitpy.common.net.jsctestresults import JSCTestResults
 
 
 class UnableToApplyPatch(Exception):
@@ -37,6 +39,13 @@ class UnableToApplyPatch(Exception):
 
 
 class PatchIsNotValid(Exception):
+    def __init__(self, patch, failure_message):
+        Exception.__init__(self)
+        self.patch = patch
+        self.failure_message = failure_message
+
+
+class PatchIsNotApplicable(Exception):
     def __init__(self, patch):
         Exception.__init__(self)
         self.patch = patch
@@ -82,8 +91,11 @@ class PatchAnalysisTask(object):
         self._script_error = None
         self._results_archive_from_patch_test_run = None
         self._results_from_patch_test_run = None
+        self.error = None
 
     def _run_command(self, command, success_message, failure_message):
+        if not self.validate():
+            raise PatchIsNotValid(self._patch, self.error)
         try:
             self._delegate.run_command(command)
             self._delegate.command_passed(success_message, patch=self._patch)
@@ -118,28 +130,45 @@ class PatchAnalysisTask(object):
         "Applied patch",
         "Patch does not apply")
 
+    def _check_patch_relevance(self):
+        args = [
+            "check-patch-relevance",
+            "--quiet",
+        ]
+
+        if hasattr(self._delegate, 'group'):
+            args.append("--group=%s" % self._delegate.group())
+
+        return self._run_command(args, "Checked relevance of patch", "Patch was not relevant")
+
     def _build(self):
-        return self._run_command([
+        args = [
             "build",
             "--no-clean",
             "--no-update",
             "--build-style=%s" % self._delegate.build_style(),
-        ],
-        "Built patch",
-        "Patch does not build")
+        ]
+
+        if hasattr(self._delegate, 'group'):
+            args.append("--group=%s" % self._delegate.group())
+
+        return self._run_command(args, "Built patch", "Patch does not build")
 
     def _build_without_patch(self):
-        return self._run_command([
+        args = [
             "build",
             "--force-clean",
             "--no-update",
             "--build-style=%s" % self._delegate.build_style(),
-        ],
-        "Able to build without patch",
-        "Unable to build without patch")
+        ]
+
+        if hasattr(self._delegate, 'group'):
+            args.append("--group=%s" % self._delegate.group())
+
+        return self._run_command(args, "Able to build without patch", "Unable to build without patch")
 
     def _test(self):
-        return self._run_command([
+        args = [
             "build-and-test",
             "--no-clean",
             "--no-update",
@@ -147,22 +176,30 @@ class PatchAnalysisTask(object):
             "--test",
             "--non-interactive",
             "--build-style=%s" % self._delegate.build_style(),
-        ],
-        "Passed tests",
-        "Patch does not pass tests")
+        ]
+
+        if hasattr(self._delegate, 'group'):
+            args.append("--group=%s" % self._delegate.group())
+
+        return self._run_command(args, "Passed tests", "Patch does not pass tests")
 
     def _build_and_test_without_patch(self):
-        return self._run_command([
+        args = [
             "build-and-test",
             "--force-clean",
             "--no-update",
-            "--build",
             "--test",
             "--non-interactive",
             "--build-style=%s" % self._delegate.build_style(),
-        ],
-        "Able to pass tests without patch",
-        "Unable to pass tests without patch (tree is red?)")
+        ]
+
+        if getattr(self._delegate, 'should_build', True):
+            args.append("--build")
+
+        if hasattr(self._delegate, 'group'):
+            args.append("--group=%s" % self._delegate.group())
+
+        return self._run_command(args, "Able to pass tests without patch", "Unable to pass tests without patch (tree is red?)")
 
     def _land(self):
         # Unclear if this should pass --quiet or not.  If --parent-command always does the reporting, then it should.
@@ -202,10 +239,59 @@ class PatchAnalysisTask(object):
         # also present without the patch, so we don't need to defer.
         return False
 
-    def _test_patch(self):
-        if self._test():
+    def _retry_bindings_tests(self):
+        first_results = self._delegate.test_results()
+        first_script_error = self._script_error
+        first_failure_status_id = self.failure_status_id
+        if first_results is None:
+            return False
+
+        # Some errors are not correctly reported by the run-bindings-tests script
+        # https://bugs.webkit.org/show_bug.cgi?id=169449
+        # In affected cases, add a message requesting to look at test output instead.
+        if not first_results._failures:
+            first_results._failures = ["Please see test output for results"]
+
+        self._build_and_test_without_patch()
+        clean_tree_results = self._delegate.test_results()
+        if clean_tree_results is None:
+            return False
+
+        if first_results.is_subset(clean_tree_results):
             return True
 
+        self.failure_status_id = first_failure_status_id
+        return self.report_failure(None, first_results, first_script_error)
+
+    # FIXME: Abstract out common parts of the retry logic.
+    def _retry_jsc_tests(self):
+        first_results = self._delegate.test_results()
+        first_script_error = self._script_error
+        first_failure_status_id = self.failure_status_id
+        if first_results is None:
+            return False
+
+        if self._test():
+            return True
+        second_results = self._delegate.test_results()
+        second_script_error = self._script_error
+        if second_results is None:
+            return False
+
+        consistently_failing_test_results = JSCTestResults.intersection(first_results, second_results)
+
+        self._build_and_test_without_patch()
+        clean_tree_results = self._delegate.test_results()
+        if clean_tree_results is None:
+            return False
+
+        if consistently_failing_test_results.is_subset(clean_tree_results):
+            return True
+
+        self.failure_status_id = first_failure_status_id
+        return self.report_failure(None, consistently_failing_test_results, first_script_error)
+
+    def _retry_layout_tests(self):
         # Note: archive_last_test_results deletes the results directory, making these calls order-sensitve.
         # We could remove this dependency by building the test_results from the archive.
         first_results = self._delegate.test_results()
@@ -236,11 +322,13 @@ class PatchAnalysisTask(object):
             return self.report_failure(first_results_archive, first_results, first_script_error)
 
         if second_results.did_exceed_test_failure_limit():
-            self._should_defer_patch_or_throw(first_results.failing_test_results(), first_results_archive, first_script_error, first_failure_status_id)
+            self._should_defer_patch_or_throw(first_results.failing_test_results(), first_results_archive,
+                                              first_script_error, first_failure_status_id)
             return False
 
         if first_results.did_exceed_test_failure_limit():
-            self._should_defer_patch_or_throw(second_results.failing_test_results(), second_results_archive, second_script_error, second_failure_status_id)
+            self._should_defer_patch_or_throw(second_results.failing_test_results(), second_results_archive,
+                                              second_script_error, second_failure_status_id)
             return False
 
         if self._results_failed_different_tests(first_results, second_results):
@@ -255,20 +343,33 @@ class PatchAnalysisTask(object):
 
             tests_that_consistently_failed = first_failing_results_set.intersection(second_failing_results_set)
             if tests_that_consistently_failed:
-                if self._should_defer_patch_or_throw(tests_that_consistently_failed, first_results_archive, first_script_error, first_failure_status_id):
+                if self._should_defer_patch_or_throw(tests_that_consistently_failed, first_results_archive,
+                                                     first_script_error, first_failure_status_id):
                     return False  # Defer patch
 
             # At this point we know that at least one test flaked, but no consistent failures
             # were introduced. This is a bit of a grey-zone.
             return False  # Defer patch
 
-        if self._should_defer_patch_or_throw(first_results.failing_test_results(), first_results_archive, first_script_error, first_failure_status_id):
+        if self._should_defer_patch_or_throw(first_results.failing_test_results(), first_results_archive,
+                                             first_script_error, first_failure_status_id):
             return False  # Defer patch
 
         # At this point, we know that the first and second runs had the exact same failures,
         # and that those failures are all present on the clean tree, so we can say with certainty
         # that the patch is good.
         return True
+
+    def _test_patch(self):
+        if self._test():
+            return True
+
+        if hasattr(self._delegate, 'group') and self._delegate.group() == "jsc":
+            return self._retry_jsc_tests()
+        elif hasattr(self._delegate, 'group') and self._delegate.group() == "bindings":
+            return self._retry_bindings_tests()
+        else:
+            return self._retry_layout_tests()
 
     def results_archive_from_patch_test_run(self, patch):
         assert(self._patch.id() == patch.id())  # PatchAnalysisTask is not currently re-useable.

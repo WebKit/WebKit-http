@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,10 +30,10 @@
  */
 
 #include "config.h"
-
 #include "JSMutationObserver.h"
 
 #include "ExceptionCode.h"
+#include "JSDOMConstructorBase.h"
 #include "JSMutationCallback.h"
 #include "JSNodeCustom.h"
 #include "MutationObserver.h"
@@ -43,30 +44,31 @@ using namespace JSC;
 
 namespace WebCore {
 
-EncodedJSValue JSC_HOST_CALL constructJSMutationObserver(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL constructJSMutationObserver(ExecState& exec)
 {
-    if (exec->argumentCount() < 1)
-        return throwVMError(exec, createNotEnoughArgumentsError(exec));
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSObject* object = exec->argument(0).getObject();
+    if (exec.argumentCount() < 1)
+        return throwVMError(&exec, scope, createNotEnoughArgumentsError(&exec));
+
+    JSObject* object = exec.uncheckedArgument(0).getObject();
     CallData callData;
-    if (!object || object->methodTable()->getCallData(object, callData) == CallTypeNone)
-        return throwVMError(exec, createTypeError(exec, "Callback argument must be a function"));
+    if (!object || object->methodTable()->getCallData(object, callData) == CallType::None)
+        return throwArgumentTypeError(exec, scope, 0, "callback", "MutationObserver", nullptr, "MutationCallback");
 
-    DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec->callee());
-    RefPtr<JSMutationCallback> callback = JSMutationCallback::create(object, jsConstructor->globalObject());
-    JSObject* jsObserver = asObject(toJS(exec, jsConstructor->globalObject(), MutationObserver::create(callback.release())));
+    auto* jsConstructor = jsCast<JSDOMConstructorBase*>(exec.jsCallee());
+    auto callback = JSMutationCallback::create(object, jsConstructor->globalObject());
+    JSObject* jsObserver = asObject(toJSNewlyCreated(&exec, jsConstructor->globalObject(), MutationObserver::create(WTFMove(callback))));
     PrivateName propertyName;
-    jsObserver->putDirect(jsConstructor->globalObject()->vm(), propertyName, object);
+    jsObserver->putDirect(vm, propertyName, object);
     return JSValue::encode(jsObserver);
 }
 
 bool JSMutationObserverOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {
-    MutationObserver& observer = jsCast<JSMutationObserver*>(handle.slot()->asCell())->wrapped();
-    auto observedNodes = observer.getObservedNodes();
-    for (auto it = observedNodes.begin(), end = observedNodes.end(); it != end; ++it) {
-        if (visitor.containsOpaqueRoot(root(*it)))
+    for (auto* node : jsCast<JSMutationObserver*>(handle.slot()->asCell())->wrapped().observedNodes()) {
+        if (visitor.containsOpaqueRoot(root(node)))
             return true;
     }
     return false;

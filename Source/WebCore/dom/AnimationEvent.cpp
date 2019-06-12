@@ -26,19 +26,17 @@
 #include "config.h"
 #include "AnimationEvent.h"
 
-#include "EventNames.h"
-
 namespace WebCore {
 
-AnimationEvent::AnimationEvent(const AtomicString& type, const AnimationEventInit& initializer)
-    : Event(type, initializer)
+AnimationEvent::AnimationEvent(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : Event(type, initializer, isTrusted)
     , m_animationName(initializer.animationName)
     , m_elapsedTime(initializer.elapsedTime)
 {
 }
 
 AnimationEvent::AnimationEvent(const AtomicString& type, const String& animationName, double elapsedTime)
-    : Event(type, true, true)
+    : Event(type, true, false)
     , m_animationName(animationName)
     , m_elapsedTime(elapsedTime)
 {

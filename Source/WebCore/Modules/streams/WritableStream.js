@@ -36,10 +36,10 @@ function initializeWritableStream(underlyingSink, strategy)
         strategy = { highWaterMark: 0, size: function() { return 1; } };
 
     if (!@isObject(underlyingSink))
-        throw new @TypeError("WritableStream constructor takes an object as first argument");
+        @throwTypeError("WritableStream constructor takes an object as first argument");
 
     if (!@isObject(strategy))
-        throw new @TypeError("WritableStream constructor takes an object as second argument, if any");
+        @throwTypeError("WritableStream constructor takes an object as second argument, if any");
 
     this.@underlyingSink = underlyingSink;
     this.@closedPromiseCapability = @newPromiseCapability(@Promise);
@@ -111,7 +111,7 @@ function write(chunk)
     "use strict";
 
     if (!@isWritableStream(this))
-        return @Promise.@reject(new @TypeError("The WritableStream.close method can only be used on instances of WritableStream"));
+        return @Promise.@reject(new @TypeError("The WritableStream.write method can only be used on instances of WritableStream"));
 
     if (this.@state === @streamClosed || this.@state === @streamClosing)
         return @Promise.@reject(new @TypeError("Cannot write on a WritableString that is closed or closing"));
@@ -170,7 +170,7 @@ function state()
     "use strict";
 
     if (!@isWritableStream(this))
-        throw new @TypeError("The WritableStream.state getter can only be used on instances of WritableStream");
+        @throwTypeError("The WritableStream.state getter can only be used on instances of WritableStream");
 
     switch(this.@state) {
     case @streamClosed:

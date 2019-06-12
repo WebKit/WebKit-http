@@ -29,7 +29,7 @@
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoader.h"
-#include "JSDOMBinding.h"
+#include "JSDOMExceptionHandling.h"
 #include "JSDOMWindow.h"
 #include "JSMainThreadExecState.h"
 #include "JSMainThreadExecStateInstrumentation.h"
@@ -39,7 +39,6 @@
 #include "ScriptSourceCode.h"
 #include "WorkerGlobalScope.h"
 #include "WorkerThread.h"
-#include <bindings/ScriptValue.h>
 #include <runtime/JSLock.h>
 
 using namespace JSC;
@@ -48,14 +47,16 @@ namespace WebCore {
 
 std::unique_ptr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWrapperWorld& isolatedWorld, ContentSecurityPolicy* policy)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue v = exec->argument(0);
     CallData callData;
-    if (getCallData(v, callData) == CallTypeNone) {
+    if (getCallData(v, callData) == CallType::None) {
         if (policy && !policy->allowEval(exec))
             return nullptr;
-        String string = v.toString(exec)->value(exec);
-        if (exec->hadException())
-            return nullptr;
+        String string = v.toWTFString(exec);
+        RETURN_IF_EXCEPTION(scope, nullptr);
         return std::unique_ptr<ScheduledAction>(new ScheduledAction(string, isolatedWorld));
     }
 
@@ -64,7 +65,7 @@ std::unique_ptr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWra
 
 ScheduledAction::ScheduledAction(ExecState* exec, JSValue function, DOMWrapperWorld& isolatedWorld)
     : m_function(exec->vm(), function)
-    , m_isolatedWorld(&isolatedWorld)
+    , m_isolatedWorld(isolatedWorld)
 {
     // setTimeout(function, interval, arg0, arg1...).
     // Start at 2 to skip function and interval.
@@ -87,7 +88,7 @@ void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSV
 
     CallData callData;
     CallType callType = getCallData(m_function.get(), callData);
-    if (callType == CallTypeNone)
+    if (callType == CallType::None)
         return;
 
     ExecState* exec = globalObject->globalExec();
@@ -99,7 +100,7 @@ void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSV
 
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(&context, callType, callData);
 
-    NakedPtr<Exception> exception;
+    NakedPtr<JSC::Exception> exception;
     if (is<Document>(context))
         JSMainThreadExecState::profiledCall(exec, JSC::ProfilingReason::Other, m_function.get(), callType, callData, thisValue, args, exception);
     else
@@ -113,7 +114,7 @@ void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSV
 
 void ScheduledAction::execute(Document& document)
 {
-    JSDOMWindow* window = toJSDOMWindow(document.frame(), *m_isolatedWorld);
+    JSDOMWindow* window = toJSDOMWindow(document.frame(), m_isolatedWorld);
     if (!window)
         return;
 
@@ -122,9 +123,9 @@ void ScheduledAction::execute(Document& document)
         return;
 
     if (m_function)
-        executeFunctionInContext(window, window->shell(), document);
+        executeFunctionInContext(window, window->proxy(), document);
     else
-        frame->script().executeScriptInWorld(*m_isolatedWorld, m_code);
+        frame->script().executeScriptInWorld(m_isolatedWorld, m_code);
 }
 
 void ScheduledAction::execute(WorkerGlobalScope& workerGlobalScope)

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SQLiteIDBTransaction_h
-#define SQLiteIDBTransaction_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -66,14 +65,21 @@ public:
     void closeCursor(SQLiteIDBCursor&);
     void notifyCursorsOfChanges(int64_t objectStoreID);
 
-    IndexedDB::TransactionMode mode() const { return m_info.mode(); }
+    IDBTransactionMode mode() const { return m_info.mode(); }
     bool inProgress() const;
 
     SQLiteTransaction* sqliteTransaction() const { return m_sqliteTransaction.get(); }
+    SQLiteIDBBackingStore& backingStore() { return m_backingStore; }
+
+    void addBlobFile(const String& temporaryPath, const String& storedFilename);
+    void addRemovedBlobFile(const String& removedFilename);
 
 private:
     void clearCursors();
     void reset();
+
+    void moveBlobFilesIfNecessary();
+    void deleteBlobFilesIfNecessary();
 
     IDBTransactionInfo m_info;
 
@@ -81,10 +87,11 @@ private:
     std::unique_ptr<SQLiteTransaction> m_sqliteTransaction;
     HashMap<IDBResourceIdentifier, std::unique_ptr<SQLiteIDBCursor>> m_cursors;
     HashSet<SQLiteIDBCursor*> m_backingStoreCursors;
+    Vector<std::pair<String, String>> m_blobTemporaryAndStoredFilenames;
+    HashSet<String> m_blobRemovedFilenames;
 };
 
 } // namespace IDBServer
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // SQLiteIDBTransaction_h

@@ -28,14 +28,16 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
     constructor(identifier)
     {
         let {image, title} = WebInspector.SearchTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.TabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel,
-            WebInspector.domNodeDetailsSidebarPanel, WebInspector.cssStyleDetailsSidebarPanel];
+        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
+        let detailsSidebarPanelConstructors = [WebInspector.ResourceDetailsSidebarPanel, WebInspector.ProbeDetailsSidebarPanel,
+            WebInspector.DOMNodeDetailsSidebarPanel, WebInspector.CSSStyleDetailsSidebarPanel];
 
-        if (WebInspector.layerTreeDetailsSidebarPanel)
-            detailsSidebarPanels.push(WebInspector.layerTreeDetailsSidebarPanel);
+        if (window.LayerTreeAgent)
+            detailsSidebarPanelConstructors.push(WebInspector.LayerTreeDetailsSidebarPanel);
 
-        super(identifier || "search", "search", tabBarItem, WebInspector.SearchSidebarPanel, detailsSidebarPanels);
+        super(identifier || "search", "search", tabBarItem, WebInspector.SearchSidebarPanel, detailsSidebarPanelConstructors);
+
+        this._forcePerformSearch = false;
     }
 
     static tabInfo()
@@ -68,17 +70,44 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
 
     canShowRepresentedObject(representedObject)
     {
-        return representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Script || representedObject instanceof WebInspector.DOMTree;
+        if (!(representedObject instanceof WebInspector.Resource) && !(representedObject instanceof WebInspector.Script) && !(representedObject instanceof WebInspector.DOMTree))
+            return false;
+
+        return !!this.navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);
     }
 
     focusSearchField()
     {
-        this.navigationSidebarPanel.focusSearchField();
+        this.navigationSidebarPanel.focusSearchField(this._forcePerformSearch);
+
+        this._forcePerformSearch = false;
     }
 
     performSearch(searchQuery)
     {
         this.navigationSidebarPanel.performSearch(searchQuery);
+
+        this._forcePerformSearch = false;
+    }
+
+    handleCopyEvent(event)
+    {
+        let selectedTreeElement = this.navigationSidebarPanel.contentTreeOutline.selectedTreeElement;
+        if (!selectedTreeElement)
+            return;
+
+        event.clipboardData.setData("text/plain", selectedTreeElement.synthesizedTextValue);
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    // Protected
+
+    initialLayout()
+    {
+        super.initialLayout();
+
+        this._forcePerformSearch = true;
     }
 };
 

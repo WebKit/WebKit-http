@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2011, 2015 Ericsson AB. All rights reserved.
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,16 +25,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaStream_h
-#define MediaStream_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "ContextDestructionObserver.h"
+#include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "ExceptionBase.h"
+#include "MediaCanStartListener.h"
+#include "MediaProducer.h"
 #include "MediaStreamPrivate.h"
 #include "MediaStreamTrack.h"
+#include "PlatformMediaSession.h"
 #include "ScriptWrappable.h"
 #include "Timer.h"
 #include "URLRegistry.h"
@@ -44,7 +46,17 @@
 
 namespace WebCore {
 
-class MediaStream final : public URLRegistrable, public EventTargetWithInlineData, public ContextDestructionObserver, public MediaStreamTrack::Observer, public MediaStreamPrivate::Observer, public RefCounted<MediaStream> {
+class Document;
+
+class MediaStream final
+    : public URLRegistrable
+    , public EventTargetWithInlineData
+    , public ActiveDOMObject
+    , public MediaStreamTrack::Observer
+    , public MediaStreamPrivate::Observer
+    , private MediaCanStartListener
+    , private PlatformMediaSessionClient
+    , public RefCounted<MediaStream> {
 public:
     class Observer {
     public:
@@ -53,15 +65,15 @@ public:
     };
 
     static Ref<MediaStream> create(ScriptExecutionContext&);
-    static Ref<MediaStream> create(ScriptExecutionContext&, MediaStream*);
+    static Ref<MediaStream> create(ScriptExecutionContext&, MediaStream&);
     static Ref<MediaStream> create(ScriptExecutionContext&, const MediaStreamTrackVector&);
-    static Ref<MediaStream> create(ScriptExecutionContext&, RefPtr<MediaStreamPrivate>&&);
+    static Ref<MediaStream> create(ScriptExecutionContext&, Ref<MediaStreamPrivate>&&);
     virtual ~MediaStream();
 
     String id() const { return m_private->id(); }
 
-    void addTrack(RefPtr<MediaStreamTrack>&&);
-    void removeTrack(MediaStreamTrack*);
+    void addTrack(MediaStreamTrack&);
+    void removeTrack(MediaStreamTrack&);
     MediaStreamTrack* getTrackById(String);
 
     MediaStreamTrackVector getAudioTracks() const;
@@ -71,66 +83,107 @@ public:
     RefPtr<MediaStream> clone();
 
     bool active() const { return m_isActive; }
+    bool muted() const { return m_private->muted(); }
 
-    MediaStreamPrivate* privateStream() const { return m_private.get(); }
+    MediaStreamPrivate& privateStream() { return m_private.get(); }
+
+    void startProducingData();
+    void stopProducingData();
+
+    void endCaptureTracks();
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const final { return MediaStreamEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
+    EventTargetInterface eventTargetInterface() const final { return MediaStreamEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
     using RefCounted<MediaStream>::ref;
     using RefCounted<MediaStream>::deref;
 
     // URLRegistrable
-    virtual URLRegistry& registry() const override;
+    URLRegistry& registry() const override;
 
     void addObserver(Observer*);
     void removeObserver(Observer*);
 
+    void addTrackFromPlatform(Ref<MediaStreamTrack>&&);
+
+    Document* document() const;
+
+    // ActiveDOMObject API.
+    bool hasPendingActivity() const final;
+
+    enum class StreamModifier { DomAPI, Platform };
+    bool internalAddTrack(Ref<MediaStreamTrack>&&, StreamModifier);
+    WEBCORE_EXPORT bool internalRemoveTrack(const String&, StreamModifier);
+
 protected:
     MediaStream(ScriptExecutionContext&, const MediaStreamTrackVector&);
-    MediaStream(ScriptExecutionContext&, RefPtr<MediaStreamPrivate>&&);
-
-    // ContextDestructionObserver
-    virtual void contextDestroyed() override final;
+    MediaStream(ScriptExecutionContext&, Ref<MediaStreamPrivate>&&);
 
 private:
-    enum class StreamModifier { DomAPI, Platform };
 
     // EventTarget
-    virtual void refEventTarget() override final { ref(); }
-    virtual void derefEventTarget() override final { deref(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
     // MediaStreamTrack::Observer
-    virtual void trackDidEnd() override final;
+    void trackDidEnd() final;
 
     // MediaStreamPrivate::Observer
-    virtual void activeStatusChanged() override final;
-    virtual void didAddTrack(MediaStreamTrackPrivate&) override final;
-    virtual void didRemoveTrack(MediaStreamTrackPrivate&) override final;
+    void activeStatusChanged() final;
+    void didAddTrack(MediaStreamTrackPrivate&) final;
+    void didRemoveTrack(MediaStreamTrackPrivate&) final;
+    void characteristicsChanged() final;
 
-    bool internalAddTrack(RefPtr<MediaStreamTrack>&&, StreamModifier);
-    bool internalRemoveTrack(RefPtr<MediaStreamTrack>&&, StreamModifier);
+    MediaProducer::MediaStateFlags mediaState() const;
+
+    // MediaCanStartListener
+    void mediaCanStart(Document&) final;
+
+    // PlatformMediaSessionClient
+    PlatformMediaSession::MediaType mediaType() const final;
+    PlatformMediaSession::MediaType presentationType() const final;
+    PlatformMediaSession::CharacteristicsFlags characteristics() const final;
+    void mayResumePlayback(bool shouldResume) final;
+    void suspendPlayback() final;
+    bool canReceiveRemoteControlCommands() const final { return false; }
+    void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) final { }
+    bool supportsSeeking() const final { return false; }
+    bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const final { return false; }
+    String sourceApplicationIdentifier() const final;
+    bool canProduceAudio() const final;
+    const Document* hostingDocument() const final { return document(); }
+    bool processingUserGestureForMedia() const final;
+
+    // ActiveDOMObject API.
+    void stop() final;
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
 
     void scheduleActiveStateChange();
     void activityEventTimerFired();
     void setIsActive(bool);
+    void statusDidChange();
 
     MediaStreamTrackVector trackVectorForType(RealtimeMediaSource::Type) const;
 
-    RefPtr<MediaStreamPrivate> m_private;
+    Ref<MediaStreamPrivate> m_private;
 
-    bool m_isActive;
     HashMap<String, RefPtr<MediaStreamTrack>> m_trackSet;
 
     Timer m_activityEventTimer;
     Vector<Ref<Event>> m_scheduledActivityEvents;
 
     Vector<Observer*> m_observers;
+    std::unique_ptr<PlatformMediaSession> m_mediaSession;
+
+    MediaProducer::MediaStateFlags m_state { MediaProducer::IsNotPlaying };
+
+    bool m_isActive { false };
+    bool m_isProducingData { false };
+    bool m_isWaitingUntilMediaCanStart { false };
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // MediaStream_h

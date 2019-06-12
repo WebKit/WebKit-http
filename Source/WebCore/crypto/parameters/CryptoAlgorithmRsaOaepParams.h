@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmRsaOaepParams_h
-#define CryptoAlgorithmRsaOaepParams_h
+#pragma once
 
-#include "CryptoAlgorithmIdentifier.h"
+#include "BufferSource.h"
 #include "CryptoAlgorithmParameters.h"
+#include <wtf/Vector.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
@@ -35,20 +35,28 @@ namespace WebCore {
 
 class CryptoAlgorithmRsaOaepParams final : public CryptoAlgorithmParameters {
 public:
-    CryptoAlgorithmRsaOaepParams()
-        : hasLabel(false)
+    // Use labelVector() instead of label. The label will be gone once labelVector() is called.
+    std::optional<BufferSource::VariantType> label;
+
+    Class parametersClass() const final { return Class::RsaOaepParams; }
+
+    const Vector<uint8_t>& labelVector()
     {
+        if (!m_labelVector.isEmpty() || !label)
+            return m_labelVector;
+
+        m_labelBuffer = WTFMove(*label);
+        label = std::nullopt;
+        if (!m_labelBuffer.length())
+            return m_labelVector;
+
+        m_labelVector.append(m_labelBuffer.data(), m_labelBuffer.length());
+        return m_labelVector;
     }
 
-    // The hash function to apply to the message.
-    CryptoAlgorithmIdentifier hash;
-
-    // The optional label/application data to associate with the message.
-    // FIXME: Is there a difference between a missing label and an empty one? Perhaps we don't need the hasLabel member.
-    bool hasLabel;
-    Vector<uint8_t> label;
-
-    virtual Class parametersClass() const override { return Class::RsaOaepParams; }
+private:
+    Vector<uint8_t> m_labelVector;
+    BufferSource m_labelBuffer;
 };
 
 } // namespace WebCore
@@ -56,4 +64,3 @@ public:
 SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(RsaOaepParams)
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmRsaOaepParams_h

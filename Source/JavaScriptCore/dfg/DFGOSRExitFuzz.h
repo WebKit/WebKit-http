@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSRExitFuzz_h
-#define DFGOSRExitFuzz_h
+#pragma once
 
 #include "Options.h"
 
@@ -34,9 +33,8 @@ extern unsigned g_numberOfStaticOSRExitFuzzChecks;
 
 inline bool doOSRExitFuzzing()
 {
-    if (!Options::useOSRExitFuzz())
-        return false;
-    
+    ASSERT(Options::useOSRExitFuzz());
+
     g_numberOfStaticOSRExitFuzzChecks++;
     if (unsigned atStatic = Options::fireOSRExitFuzzAtStatic())
         return atStatic == g_numberOfStaticOSRExitFuzzChecks;
@@ -48,6 +46,3 @@ inline bool doOSRExitFuzzing()
 extern unsigned g_numberOfOSRExitFuzzChecks;
 
 } } // namespace JSC::DFG
-
-#endif // DFGOSRExitFuzz_h
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,9 +32,11 @@
 #include "DFGCommonData.h"
 #include "Heap.h"
 #include "VM.h"
+#include "JITStubRoutineSet.h"
 #include "JSCInlines.h"
 #include "SlotVisitor.h"
 #include "Structure.h"
+#include <wtf/RefPtr.h>
 
 namespace JSC {
 
@@ -44,7 +46,7 @@ GCAwareJITStubRoutine::GCAwareJITStubRoutine(
     , m_mayBeExecuting(false)
     , m_isJettisoned(false)
 {
-    vm.heap.m_jitStubRoutines.add(this);
+    vm.heap.m_jitStubRoutines->add(this);
 }
 
 GCAwareJITStubRoutine::~GCAwareJITStubRoutine() { }
@@ -79,28 +81,31 @@ void GCAwareJITStubRoutine::markRequiredObjectsInternal(SlotVisitor&)
 {
 }
 
-MarkingGCAwareJITStubRoutineWithOneObject::MarkingGCAwareJITStubRoutineWithOneObject(
+MarkingGCAwareJITStubRoutine::MarkingGCAwareJITStubRoutine(
     const MacroAssemblerCodeRef& code, VM& vm, const JSCell* owner,
-    JSCell* object)
+    const Vector<JSCell*>& cells)
     : GCAwareJITStubRoutine(code, vm)
-    , m_object(vm, owner, object)
+    , m_cells(cells.size())
+{
+    for (unsigned i = cells.size(); i--;)
+        m_cells[i].set(vm, owner, cells[i]);
+}
+
+MarkingGCAwareJITStubRoutine::~MarkingGCAwareJITStubRoutine()
 {
 }
 
-MarkingGCAwareJITStubRoutineWithOneObject::~MarkingGCAwareJITStubRoutineWithOneObject()
+void MarkingGCAwareJITStubRoutine::markRequiredObjectsInternal(SlotVisitor& visitor)
 {
-}
-
-void MarkingGCAwareJITStubRoutineWithOneObject::markRequiredObjectsInternal(SlotVisitor& visitor)
-{
-    visitor.append(&m_object);
+    for (auto& entry : m_cells)
+        visitor.append(entry);
 }
 
 
 GCAwareJITStubRoutineWithExceptionHandler::GCAwareJITStubRoutineWithExceptionHandler(
-    const MacroAssemblerCodeRef& code, VM& vm, 
+    const MacroAssemblerCodeRef& code, VM& vm,  const JSCell* owner, const Vector<JSCell*>& cells,
     CodeBlock* codeBlockForExceptionHandlers, CallSiteIndex exceptionHandlerCallSiteIndex)
-    : GCAwareJITStubRoutine(code, vm)
+    : MarkingGCAwareJITStubRoutine(code, vm, owner, cells)
     , m_codeBlockWithExceptionHandler(codeBlockForExceptionHandlers)
     , m_exceptionHandlerCallSiteIndex(exceptionHandlerCallSiteIndex)
 {
@@ -127,32 +132,27 @@ void GCAwareJITStubRoutineWithExceptionHandler::observeZeroRefCount()
 }
 
 
-PassRefPtr<JITStubRoutine> createJITStubRoutine(
+Ref<JITStubRoutine> createJITStubRoutine(
     const MacroAssemblerCodeRef& code,
     VM& vm,
     const JSCell* owner,
     bool makesCalls,
-    JSCell* object,
+    const Vector<JSCell*>& cells,
     CodeBlock* codeBlockForExceptionHandlers,
     CallSiteIndex exceptionHandlerCallSiteIndex)
 {
     if (!makesCalls)
-        return adoptRef(new JITStubRoutine(code));
+        return adoptRef(*new JITStubRoutine(code));
     
     if (codeBlockForExceptionHandlers) {
-        RELEASE_ASSERT(!object); // We're not a marking stub routine.
         RELEASE_ASSERT(JITCode::isOptimizingJIT(codeBlockForExceptionHandlers->jitType()));
-        return static_pointer_cast<JITStubRoutine>(
-            adoptRef(new GCAwareJITStubRoutineWithExceptionHandler(code, vm, codeBlockForExceptionHandlers, exceptionHandlerCallSiteIndex)));
+        return adoptRef(*new GCAwareJITStubRoutineWithExceptionHandler(code, vm, owner, cells, codeBlockForExceptionHandlers, exceptionHandlerCallSiteIndex));
     }
 
-    if (!object) {
-        return static_pointer_cast<JITStubRoutine>(
-            adoptRef(new GCAwareJITStubRoutine(code, vm)));
-    }
+    if (cells.isEmpty())
+        return adoptRef(*new GCAwareJITStubRoutine(code, vm));
     
-    return static_pointer_cast<JITStubRoutine>(
-        adoptRef(new MarkingGCAwareJITStubRoutineWithOneObject(code, vm, owner, object)));
+    return adoptRef(*new MarkingGCAwareJITStubRoutine(code, vm, owner, cells));
 }
 
 } // namespace JSC

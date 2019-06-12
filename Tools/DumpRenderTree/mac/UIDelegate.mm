@@ -57,6 +57,11 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
     windowOrigin = NSZeroPoint;
 }
 
+- (void)resetToConsistentStateBeforeTesting:(const TestOptions&)options
+{
+    m_enableDragDestinationActionLoad = options.enableDragDestinationActionLoad;
+}
+
 - (void)webView:(WebView *)sender setFrame:(NSRect)frame
 {
     // FIXME: Do we need to resize an NSWindow too?
@@ -82,10 +87,11 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
     if (range.location != NSNotFound)
         message = [[message substringToIndex:range.location] stringByAppendingString:[[message substringFromIndex:NSMaxRange(range)] lastPathComponent]];
 
-    printf ("CONSOLE MESSAGE: ");
+    auto out = gTestRunner->dumpJSConsoleLogInStdErr() ? stderr : stdout;
+    fprintf(out, "CONSOLE MESSAGE: ");
     if ([lineNumber intValue])
-        printf ("line %d: ", [lineNumber intValue]);
-    printf ("%s\n", [message UTF8String]);
+        fprintf(out, "line %d: ", [lineNumber intValue]);
+    fprintf(out, "%s\n", [message UTF8String]);
 }
 
 - (void)modalWindowWillClose:(NSNotification *)notification
@@ -266,7 +272,6 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (void)timerFired
 {
-    ASSERT(gTestRunner->isGeolocationPermissionSet());
     m_timer = 0;
     NSEnumerator* enumerator = [m_pendingGeolocationPermissionListeners objectEnumerator];
     id<WebAllowDenyPolicyListener> listener;
@@ -362,6 +367,43 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
     // Any 128 bit key would do, all we need for testing is to implement the callback.
     return [NSData dataWithBytes:"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f" length:16];
 }
+
+- (void)webView:(WebView *)sender runOpenPanelForFileButtonWithResultListener:(id<WebOpenPanelResultListener>)resultListener allowMultipleFiles:(BOOL)allowMultipleFiles
+{
+    printf("OPEN FILE PANEL\n");
+
+    auto& openPanelFiles = gTestRunner->openPanelFiles();
+    if (openPanelFiles.empty()) {
+        [resultListener cancel];
+        return;
+    }
+
+    NSURL *baseURL = [NSURL URLWithString:[NSString stringWithUTF8String:gTestRunner->testURL().c_str()]];
+    auto filePaths = adoptNS([[NSMutableArray alloc] initWithCapacity:openPanelFiles.size()]);
+    for (auto& filePath : openPanelFiles) {
+        NSURL *fileURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:filePath.c_str()] relativeToURL:baseURL];
+        [filePaths addObject:fileURL.path];
+    }
+
+    if (allowMultipleFiles) {
+        [resultListener chooseFilenames:filePaths.get()];
+        return;
+    }
+
+    [resultListener chooseFilename:[filePaths firstObject]];
+}
+
+#if !PLATFORM(IOS)
+
+- (NSUInteger)webView:(WebView *)webView dragDestinationActionMaskForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
+{
+    WebDragDestinationAction actions = WebDragDestinationActionAny;
+    if (!m_enableDragDestinationActionLoad)
+        actions &= ~WebDragDestinationActionLoad;
+    return actions;
+}
+
+#endif
 
 - (void)dealloc
 {

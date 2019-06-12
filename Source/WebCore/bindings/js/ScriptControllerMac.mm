@@ -30,7 +30,7 @@
 #import "ScriptController.h"
 
 #import "BridgeJSC.h"
-#import "DOMAbstractViewFrame.h"
+#import "CommonVM.h"
 #import "DOMWindow.h"
 #import "Frame.h"
 #import "FrameLoader.h"
@@ -53,7 +53,7 @@
 @interface NSObject (WebPlugin)
 - (id)objectForWebScript;
 - (NPObject *)createPluginScriptableObject;
-- (PassRefPtr<JSC::Bindings::Instance>)createPluginBindingsInstance:(PassRefPtr<JSC::Bindings::RootObject>)rootObject;
+- (RefPtr<JSC::Bindings::Instance>)createPluginBindingsInstance:(Ref<JSC::Bindings::RootObject>&&)rootObject;
 @end
 
 using namespace JSC::Bindings;
@@ -66,16 +66,16 @@ RefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(
     if (!widgetView)
         return nullptr;
 
-    RefPtr<RootObject> rootObject = createRootObject(widgetView);
+    auto rootObject = createRootObject(widgetView);
 
     if ([widgetView respondsToSelector:@selector(createPluginBindingsInstance:)])
-        return [widgetView createPluginBindingsInstance:rootObject.release()];
+        return [widgetView createPluginBindingsInstance:WTFMove(rootObject)];
         
     if ([widgetView respondsToSelector:@selector(objectForWebScript)]) {
         id objectForWebScript = [widgetView objectForWebScript];
         if (!objectForWebScript)
             return nullptr;
-        return JSC::Bindings::ObjcInstance::create(objectForWebScript, rootObject.release());
+        return JSC::Bindings::ObjcInstance::create(objectForWebScript, WTFMove(rootObject));
     }
 
     if ([widgetView respondsToSelector:@selector(createPluginScriptableObject)]) {
@@ -85,7 +85,7 @@ RefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(
         NPObject* npObject = [widgetView createPluginScriptableObject];
         if (!npObject)
             return nullptr;
-        RefPtr<Instance> instance = JSC::Bindings::CInstance::create(npObject, rootObject.release());
+        RefPtr<Instance> instance = JSC::Bindings::CInstance::create(npObject, WTFMove(rootObject));
         // -createPluginScriptableObject returns a retained NPObject.  The caller is expected to release it.
         _NPN_ReleaseObject(npObject);
         return instance;
@@ -95,18 +95,17 @@ RefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(
     return nullptr;
 }
 
-WebScriptObject* ScriptController::windowScriptObject()
+WebScriptObject *ScriptController::windowScriptObject()
 {
     if (!canExecuteScripts(NotAboutToExecuteScript))
-        return 0;
+        return nil;
 
     if (!m_windowScriptObject) {
-        JSC::JSLockHolder lock(JSDOMWindowBase::commonVM());
+        JSC::JSLockHolder lock(commonVM());
         JSC::Bindings::RootObject* root = bindingRootObject();
-        m_windowScriptObject = [WebScriptObject scriptObjectForJSObject:toRef(windowShell(pluginWorld())) originRootObject:root rootObject:root];
+        m_windowScriptObject = [WebScriptObject scriptObjectForJSObject:toRef(windowProxy(pluginWorld())) originRootObject:root rootObject:root];
     }
 
-    ASSERT([m_windowScriptObject.get() isKindOfClass:[DOMAbstractView class]]);
     return m_windowScriptObject.get();
 }
 
@@ -132,10 +131,8 @@ void ScriptController::updatePlatformScriptObjects()
 
 void ScriptController::disconnectPlatformScriptObjects()
 {
-    if (m_windowScriptObject) {
-        ASSERT([m_windowScriptObject.get() isKindOfClass:[DOMAbstractView class]]);
-        [(DOMAbstractView *)m_windowScriptObject.get() _disconnectFrame];
-    }
+    if (m_windowScriptObject)
+        disconnectWindowWrapper(m_windowScriptObject.get());
 }
 
 }

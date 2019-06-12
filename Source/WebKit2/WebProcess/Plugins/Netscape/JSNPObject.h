@@ -85,7 +85,7 @@ private:
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 
     static bool getOwnPropertySlot(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PropertySlot&);
-    static void put(JSC::JSCell*, JSC::ExecState*, JSC::PropertyName, JSC::JSValue, JSC::PutPropertySlot&);
+    static bool put(JSC::JSCell*, JSC::ExecState*, JSC::PropertyName, JSC::JSValue, JSC::PutPropertySlot&);
 
     static bool deleteProperty(JSC::JSCell*, JSC::ExecState*, JSC::PropertyName);
     static bool deletePropertyByIndex(JSC::JSCell*, JSC::ExecState*, unsigned propertyName);
@@ -96,7 +96,7 @@ private:
 
     static JSC::EncodedJSValue propertyGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
     static JSC::EncodedJSValue methodGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-    static JSC::JSObject* throwInvalidAccessError(JSC::ExecState*);
+    static JSC::JSObject* throwInvalidAccessError(JSC::ExecState*, JSC::ThrowScope&);
 
     NPRuntimeObjectMap* m_objectMap;
     NPObject* m_npObject;

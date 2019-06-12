@@ -32,10 +32,10 @@
 #include "InspectorLayerTreeAgent.h"
 
 #include "InspectorDOMAgent.h"
-#include <inspector/InspectorFrontendDispatchers.h>
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
 #include "PseudoElement.h"
+#include "RenderChildIterator.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
@@ -105,30 +105,31 @@ void InspectorLayerTreeAgent::layersForNode(ErrorString& errorString, int nodeId
 {
     layers = Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>::create();
 
-    Node* node = m_instrumentingAgents.inspectorDOMAgent()->nodeForId(nodeId);
+    auto* node = m_instrumentingAgents.inspectorDOMAgent()->nodeForId(nodeId);
     if (!node) {
         errorString = ASCIILiteral("Provided node id doesn't match any known node");
         return;
     }
 
-    RenderObject* renderer = node->renderer();
+    auto* renderer = node->renderer();
     if (!renderer) {
         errorString = ASCIILiteral("Node for provided node id doesn't have a renderer");
         return;
     }
 
-    gatherLayersUsingRenderObjectHierarchy(errorString, renderer, layers);
+    if (is<RenderElement>(*renderer))
+        gatherLayersUsingRenderObjectHierarchy(errorString, downcast<RenderElement>(*renderer), layers);
 }
 
-void InspectorLayerTreeAgent::gatherLayersUsingRenderObjectHierarchy(ErrorString& errorString, RenderObject* renderer, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>& layers)
+void InspectorLayerTreeAgent::gatherLayersUsingRenderObjectHierarchy(ErrorString& errorString, RenderElement& renderer, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>& layers)
 {
-    if (renderer->hasLayer()) {
-        gatherLayersUsingRenderLayerHierarchy(errorString, downcast<RenderLayerModelObject>(*renderer).layer(), layers);
+    if (renderer.hasLayer()) {
+        gatherLayersUsingRenderLayerHierarchy(errorString, downcast<RenderLayerModelObject>(renderer).layer(), layers);
         return;
     }
 
-    for (renderer = renderer->firstChildSlow(); renderer; renderer = renderer->nextSibling())
-        gatherLayersUsingRenderObjectHierarchy(errorString, renderer, layers);
+    for (auto& child : childrenOfType<RenderElement>(renderer))
+        gatherLayersUsingRenderObjectHierarchy(errorString, child, layers);
 }
 
 void InspectorLayerTreeAgent::gatherLayersUsingRenderLayerHierarchy(ErrorString& errorString, RenderLayer* renderLayer, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::LayerTree::Layer>>& layers)
@@ -232,84 +233,84 @@ void InspectorLayerTreeAgent::reasonsForCompositingLayer(ErrorString& errorStrin
         return;
     }
 
-    CompositingReasons reasonsBitmask = renderLayer->compositor().reasonsForCompositing(*renderLayer);
+    OptionSet<CompositingReason> reasons = renderLayer->compositor().reasonsForCompositing(*renderLayer);
     auto compositingReasons = Inspector::Protocol::LayerTree::CompositingReasons::create().release();
 
-    if (reasonsBitmask & CompositingReason3DTransform)
+    if (reasons.contains(CompositingReason::Transform3D))
         compositingReasons->setTransform3D(true);
 
-    if (reasonsBitmask & CompositingReasonVideo)
+    if (reasons.contains(CompositingReason::Video))
         compositingReasons->setVideo(true);
-    else if (reasonsBitmask & CompositingReasonCanvas)
+    else if (reasons.contains(CompositingReason::Canvas))
         compositingReasons->setCanvas(true);
-    else if (reasonsBitmask & CompositingReasonPlugin)
+    else if (reasons.contains(CompositingReason::Plugin))
         compositingReasons->setPlugin(true);
-    else if (reasonsBitmask & CompositingReasonIFrame)
+    else if (reasons.contains(CompositingReason::IFrame))
         compositingReasons->setIFrame(true);
-    
-    if (reasonsBitmask & CompositingReasonBackfaceVisibilityHidden)
+
+    if (reasons.contains(CompositingReason::BackfaceVisibilityHidden))
         compositingReasons->setBackfaceVisibilityHidden(true);
 
-    if (reasonsBitmask & CompositingReasonClipsCompositingDescendants)
+    if (reasons.contains(CompositingReason::ClipsCompositingDescendants))
         compositingReasons->setClipsCompositingDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonAnimation)
+    if (reasons.contains(CompositingReason::Animation))
         compositingReasons->setAnimation(true);
 
-    if (reasonsBitmask & CompositingReasonFilters)
+    if (reasons.contains(CompositingReason::Filters))
         compositingReasons->setFilters(true);
 
-    if (reasonsBitmask & CompositingReasonPositionFixed)
+    if (reasons.contains(CompositingReason::PositionFixed))
         compositingReasons->setPositionFixed(true);
 
-    if (reasonsBitmask & CompositingReasonPositionSticky)
+    if (reasons.contains(CompositingReason::PositionSticky))
         compositingReasons->setPositionSticky(true);
 
-    if (reasonsBitmask & CompositingReasonOverflowScrollingTouch)
+    if (reasons.contains(CompositingReason::OverflowScrollingTouch))
         compositingReasons->setOverflowScrollingTouch(true);
 
-    if (reasonsBitmask & CompositingReasonStacking)
+    if (reasons.contains(CompositingReason::Stacking))
         compositingReasons->setStacking(true);
 
-    if (reasonsBitmask & CompositingReasonOverlap)
+    if (reasons.contains(CompositingReason::Overlap))
         compositingReasons->setOverlap(true);
 
-    if (reasonsBitmask & CompositingReasonNegativeZIndexChildren)
+    if (reasons.contains(CompositingReason::NegativeZIndexChildren))
         compositingReasons->setNegativeZIndexChildren(true);
 
-    if (reasonsBitmask & CompositingReasonTransformWithCompositedDescendants)
+    if (reasons.contains(CompositingReason::TransformWithCompositedDescendants))
         compositingReasons->setTransformWithCompositedDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonOpacityWithCompositedDescendants)
+    if (reasons.contains(CompositingReason::OpacityWithCompositedDescendants))
         compositingReasons->setOpacityWithCompositedDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonMaskWithCompositedDescendants)
+    if (reasons.contains(CompositingReason::MaskWithCompositedDescendants))
         compositingReasons->setMaskWithCompositedDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonReflectionWithCompositedDescendants)
+    if (reasons.contains(CompositingReason::ReflectionWithCompositedDescendants))
         compositingReasons->setReflectionWithCompositedDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonFilterWithCompositedDescendants)
+    if (reasons.contains(CompositingReason::FilterWithCompositedDescendants))
         compositingReasons->setFilterWithCompositedDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonBlendingWithCompositedDescendants)
+    if (reasons.contains(CompositingReason::BlendingWithCompositedDescendants))
         compositingReasons->setBlendingWithCompositedDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonIsolatesCompositedBlendingDescendants)
+    if (reasons.contains(CompositingReason::IsolatesCompositedBlendingDescendants))
         compositingReasons->setIsolatesCompositedBlendingDescendants(true);
 
-    if (reasonsBitmask & CompositingReasonPerspective)
+    if (reasons.contains(CompositingReason::Perspective))
         compositingReasons->setPerspective(true);
 
-    if (reasonsBitmask & CompositingReasonPreserve3D)
+    if (reasons.contains(CompositingReason::Preserve3D))
         compositingReasons->setPreserve3D(true);
 
-    if (reasonsBitmask & CompositingReasonWillChange)
+    if (reasons.contains(CompositingReason::WillChange))
         compositingReasons->setWillChange(true);
 
-    if (reasonsBitmask & CompositingReasonRoot)
+    if (reasons.contains(CompositingReason::Root))
         compositingReasons->setRoot(true);
-    
+
     compositingReasonsResult = WTFMove(compositingReasons);
 }
 

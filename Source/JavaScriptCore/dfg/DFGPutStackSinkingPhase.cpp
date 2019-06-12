@@ -560,9 +560,7 @@ public:
         // Finally eliminate the sunken PutStacks by turning them into Checks. This keeps whatever
         // type check they were doing.
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
-            for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
-                Node* node = block->at(nodeIndex);
-                
+            for (auto* node : *block) {
                 if (!putStacksToSink.contains(node))
                     continue;
                 
@@ -583,7 +581,6 @@ public:
     
 bool performPutStackSinking(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG PutStack Sinking Phase");
     return runPhase<PutStackSinkingPhase>(graph);
 }
 

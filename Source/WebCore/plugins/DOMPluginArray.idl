@@ -20,11 +20,13 @@
 
 [
     GenerateIsReachable=ImplFrame,
+    LegacyUnenumerableNamedProperties,
     InterfaceName=PluginArray,
 ] interface DOMPluginArray {
     readonly attribute unsigned long length;
-    getter DOMPlugin item([Default=Undefined] optional unsigned long index);
-    getter DOMPlugin namedItem([Default=Undefined] optional DOMString name);
-    void refresh([Default=Undefined] optional boolean reload);
+    getter DOMPlugin? item(unsigned long index);
+    getter DOMPlugin? namedItem(DOMString name);
+
+    void refresh(optional boolean reload = false);
 };
 

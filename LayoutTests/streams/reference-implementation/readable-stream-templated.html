@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<script>
+// Silence unhandled rejection messages.
+window.addEventListener("unhandledrejection", function(event) {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+});
+</script>
 <script src='../../resources/testharness.js'></script>
 <script src='../../resources/testharnessreport.js'></script>
 <script src='resources/streams-utils.js'></script>
@@ -400,10 +407,23 @@ templatedRSTwoChunksClosed('ReadableStream (two chunks enqueued, then closed)', 
 
 templatedRSTwoChunksClosed('ReadableStream (two chunks enqueued async, then closed)', function() {
     return new ReadableStream({
+        _cancelled: false,
         start: function(c) {
-            setTimeout(function() { c.enqueue(chunks[0]); }, 100);
-            setTimeout(function() { c.enqueue(chunks[1]); }, 200);
-            setTimeout(function() { c.close(); }, 300);
+            setTimeout(() => {
+                if (!this._cancelled)
+                    c.enqueue(chunks[0]);
+            }, 100);
+            setTimeout(() => {
+                if (!this._cancelled)
+                    c.enqueue(chunks[1]);
+            }, 200);
+            setTimeout(() => {
+                if (!this._cancelled)
+                    c.close();
+            }, 300);
+        },
+        cancel: function(reason) {
+             this._cancelled = true;
         }
     })},
     chunks

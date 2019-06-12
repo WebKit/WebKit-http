@@ -113,6 +113,9 @@ static NSArray *_writableTypesForImageWithArchive (void)
         WebURLNamePboardType,
         NSStringPboardType,
         NSFilenamesPboardType,
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+        NSFilesPromisePboardType,
+#endif
         nil];
 }
 
@@ -131,7 +134,7 @@ static NSArray *_writableTypesForImageWithArchive (void)
     if ([types containsObject:NSStringPboardType]) {
         NSString *URLString = [self stringForType:NSStringPboardType];
         if ([URLString _webkit_looksLikeAbsoluteURL]) {
-            NSURL *URL = [[NSURL _web_URLWithUserTypedString:URLString] _webkit_canonicalize];
+            NSURL *URL = [[NSURL _webkit_URLWithUserTypedString:URLString] _webkit_canonicalize];
             if (URL) {
                 return URL;
             }
@@ -181,7 +184,10 @@ static NSArray *_writableTypesForImageWithArchive (void)
 
 + (int)_web_setFindPasteboardString:(NSString *)string withOwner:(id)owner
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     NSPasteboard *findPasteboard = [NSPasteboard pasteboardWithName:NSFindPboard];
+#pragma clang diagnostic pop
     [findPasteboard declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:owner];
     [findPasteboard setString:string forType:NSStringPboardType];
     return [findPasteboard changeCount];
@@ -219,15 +225,16 @@ static NSArray *_writableTypesForImageWithArchive (void)
 
 static CachedImage* imageFromElement(DOMElement *domElement)
 {
-    Element* element = core(domElement);
+    auto* element = core(domElement);
     if (!element)
         return nullptr;
-    
-    ASSERT(element->renderer());
-    auto& imageRenderer = downcast<RenderImage>(*element->renderer());
-    if (!imageRenderer.cachedImage() || imageRenderer.cachedImage()->errorOccurred())
+    auto* renderer = element->renderer();
+    if (!is<RenderImage>(renderer))
         return nullptr;
-    return imageRenderer.cachedImage();
+    auto* image = downcast<RenderImage>(*renderer).cachedImage();
+    if (!image || image->errorOccurred())
+        return nullptr;
+    return image;
 }
 
 - (void)_web_writeImage:(NSImage *)image
@@ -269,13 +276,17 @@ static CachedImage* imageFromElement(DOMElement *domElement)
                                    archive:(WebArchive *)archive
                                     source:(WebHTMLView *)source
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     ASSERT(self == [NSPasteboard pasteboardWithName:NSDragPboard]);
+#pragma clang diagnostic pop
 
     NSString *extension = @"";
     RetainPtr<NSMutableArray> types = adoptNS([[NSMutableArray alloc] initWithObjects:NSFilesPromisePboardType, nil]);
     if (auto* renderer = core(element)->renderer()) {
         if (is<RenderImage>(*renderer)) {
-            if (CachedImage* image = downcast<RenderImage>(*renderer).cachedImage()) {
+            if (auto* image = downcast<RenderImage>(*renderer).cachedImage()) {
+                // FIXME: This doesn't check errorOccured the way imageFromElement does.
                 extension = image->image()->filenameExtension();
                 if (![extension length])
                     return nullptr;

@@ -41,8 +41,11 @@
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ScopeGuard.h"
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/WorkQueue.h>
 
 namespace WebCore {
 
@@ -50,12 +53,12 @@ BlobRegistryImpl::~BlobRegistryImpl()
 {
 }
 
-static RefPtr<ResourceHandle> createResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
+static Ref<ResourceHandle> createBlobResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
 {
     return static_cast<BlobRegistryImpl&>(blobRegistry()).createResourceHandle(request, client);
 }
 
-static void loadResourceSynchronously(NetworkingContext*, const ResourceRequest& request, StoredCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+static void loadBlobResourceSynchronously(NetworkingContext*, const ResourceRequest& request, StoredCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     BlobData* blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(request.url());
     BlobResourceHandle::loadResourceSynchronously(blobData, request, error, response, data);
@@ -65,20 +68,17 @@ static void registerBlobResourceHandleConstructor()
 {
     static bool didRegister = false;
     if (!didRegister) {
-        ResourceHandle::registerBuiltinConstructor("blob", createResourceHandle);
-        ResourceHandle::registerBuiltinSynchronousLoader("blob", loadResourceSynchronously);
+        ResourceHandle::registerBuiltinConstructor("blob", createBlobResourceHandle);
+        ResourceHandle::registerBuiltinSynchronousLoader("blob", loadBlobResourceSynchronously);
         didRegister = true;
     }
 }
 
-RefPtr<ResourceHandle> BlobRegistryImpl::createResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
+Ref<ResourceHandle> BlobRegistryImpl::createResourceHandle(const ResourceRequest& request, ResourceHandleClient* client)
 {
     auto handle = BlobResourceHandle::createAsync(getBlobDataFromURL(request.url()), request, client);
-    if (!handle)
-        return nullptr;
-
     handle->start();
-    return handle;
+    return WTFMove(handle);
 }
 
 void BlobRegistryImpl::appendStorageItems(BlobData* blobData, const BlobDataItemList& items, long long offset, long long length)
@@ -98,11 +98,11 @@ void BlobRegistryImpl::appendStorageItems(BlobData* blobData, const BlobDataItem
     for (; iter != items.end() && length > 0; ++iter) {
         long long currentLength = iter->length() - offset;
         long long newLength = currentLength > length ? length : currentLength;
-        if (iter->type == BlobDataItem::Data)
-            blobData->appendData(iter->data, iter->offset() + offset, newLength);
+        if (iter->type() == BlobDataItem::Type::Data)
+            blobData->appendData(iter->data(), iter->offset() + offset, newLength);
         else {
-            ASSERT(iter->type == BlobDataItem::File);
-            blobData->appendFile(iter->file.get(), iter->offset() + offset, newLength);
+            ASSERT(iter->type() == BlobDataItem::Type::File);
+            blobData->appendFile(iter->file(), iter->offset() + offset, newLength);
         }
         length -= newLength;
         offset = 0;
@@ -110,25 +110,22 @@ void BlobRegistryImpl::appendStorageItems(BlobData* blobData, const BlobDataItem
     ASSERT(!length);
 }
 
-void BlobRegistryImpl::registerFileBlobURL(const URL& url, RefPtr<BlobDataFileReference>&& file, const String& contentType)
+void BlobRegistryImpl::registerFileBlobURL(const URL& url, Ref<BlobDataFileReference>&& file, const String& contentType)
 {
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create();
-    blobData->setContentType(contentType);
-
-    blobData->appendFile(file);
-    m_blobs.set(url.string(), blobData.release());
+    auto blobData = BlobData::create(contentType);
+    blobData->appendFile(WTFMove(file));
+    m_blobs.set(url.string(), WTFMove(blobData));
 }
 
-void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobParts, const String& contentType)
+void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart>&& blobParts, const String& contentType)
 {
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create();
-    blobData->setContentType(contentType);
+    auto blobData = BlobData::create(contentType);
 
     // The blob data is stored in the "canonical" way. That is, it only contains a list of Data and File items.
     // 1) The Data item is denoted by the raw data and the range.
@@ -139,8 +136,9 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
     for (BlobPart& part : blobParts) {
         switch (part.type()) {
         case BlobPart::Data: {
-            RefPtr<RawData> rawData = RawData::create(part.moveData());
-            blobData->appendData(rawData.release());
+            auto movedData = part.moveData();
+            auto data = ThreadSafeDataBuffer::create(WTFMove(movedData));
+            blobData->appendData(data);
             break;
         }
         case BlobPart::Blob: {
@@ -153,18 +151,32 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
         }
     }
 
-    m_blobs.set(url.string(), blobData.release());
+    m_blobs.set(url.string(), WTFMove(blobData));
 }
 
 void BlobRegistryImpl::registerBlobURL(const URL& url, const URL& srcURL)
 {
+    registerBlobURLOptionallyFileBacked(url, srcURL, nullptr, { });
+}
+
+void BlobRegistryImpl::registerBlobURLOptionallyFileBacked(const URL& url, const URL& srcURL, RefPtr<BlobDataFileReference>&& file, const String& contentType)
+{
     ASSERT(isMainThread());
+    registerBlobResourceHandleConstructor();
 
     BlobData* src = getBlobDataFromURL(srcURL);
-    if (!src)
+    if (src) {
+        m_blobs.set(url.string(), src);
+        return;
+    }
+
+    if (!file || file->path().isEmpty())
         return;
 
-    m_blobs.set(url.string(), src);
+    auto backingFile = BlobData::create(contentType);
+    backingFile->appendFile(file.releaseNonNull());
+
+    m_blobs.set(url.string(), WTFMove(backingFile));
 }
 
 void BlobRegistryImpl::registerBlobURLForSlice(const URL& url, const URL& srcURL, long long start, long long end)
@@ -196,12 +208,11 @@ void BlobRegistryImpl::registerBlobURLForSlice(const URL& url, const URL& srcURL
         end = originalSize;
 
     unsigned long long newLength = end - start;
-    RefPtr<BlobData> newData = BlobData::create();
-    newData->setContentType(originalData->contentType());
+    auto newData = BlobData::create(originalData->contentType());
 
-    appendStorageItems(newData.get(), originalData->items(), start, newLength);
+    appendStorageItems(newData.ptr(), originalData->items(), start, newLength);
 
-    m_blobs.set(url.string(), newData.release());
+    m_blobs.set(url.string(), WTFMove(newData));
 }
 
 void BlobRegistryImpl::unregisterBlobURL(const URL& url)
@@ -228,6 +239,93 @@ unsigned long long BlobRegistryImpl::blobSize(const URL& url)
         result += item.length();
 
     return result;
+}
+
+static WorkQueue& blobUtilityQueue()
+{
+    static NeverDestroyed<Ref<WorkQueue>> queue(WorkQueue::create("org.webkit.BlobUtility", WorkQueue::Type::Serial, WorkQueue::QOS::Background));
+    return queue.get();
+}
+
+struct BlobForFileWriting {
+    String blobURL;
+    Vector<std::pair<String, ThreadSafeDataBuffer>> filePathsOrDataBuffers;
+};
+
+void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler)
+{
+    Vector<BlobForFileWriting> blobsForWriting;
+    for (auto& url : blobURLs) {
+        blobsForWriting.append({ });
+        blobsForWriting.last().blobURL = url.isolatedCopy();
+
+        auto* blobData = getBlobDataFromURL({ ParsedURLString, url });
+        if (!blobData) {
+            Vector<String> filePaths;
+            completionHandler(filePaths);
+            return;
+        }
+
+        for (auto& item : blobData->items()) {
+            switch (item.type()) {
+            case BlobDataItem::Type::Data:
+                blobsForWriting.last().filePathsOrDataBuffers.append({ { }, item.data() });
+                break;
+            case BlobDataItem::Type::File:
+                blobsForWriting.last().filePathsOrDataBuffers.append({ item.file()->path().isolatedCopy(), { } });
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+            }
+        }
+    }
+
+    blobUtilityQueue().dispatch([blobsForWriting = WTFMove(blobsForWriting), completionHandler = WTFMove(completionHandler)]() mutable {
+        Vector<String> filePaths;
+
+        auto performWriting = [blobsForWriting = WTFMove(blobsForWriting), &filePaths]() {
+            for (auto& blob : blobsForWriting) {
+                PlatformFileHandle file;
+                String tempFilePath = openTemporaryFile(ASCIILiteral("Blob"), file);
+
+                ScopeGuard fileCloser([file]() mutable {
+                    closeFile(file);
+                });
+                
+                if (tempFilePath.isEmpty() || !isHandleValid(file)) {
+                    LOG_ERROR("Failed to open temporary file for writing a Blob to IndexedDB");
+                    return false;
+                }
+
+                for (auto& part : blob.filePathsOrDataBuffers) {
+                    if (part.second.data()) {
+                        int length = part.second.data()->size();
+                        if (writeToFile(file, reinterpret_cast<const char*>(part.second.data()->data()), length) != length) {
+                            LOG_ERROR("Failed writing a Blob to temporary file for storage in IndexedDB");
+                            return false;
+                        }
+                    } else {
+                        ASSERT(!part.first.isEmpty());
+                        if (!appendFileContentsToFileHandle(part.first, file)) {
+                            LOG_ERROR("Failed copying File contents to a Blob temporary file for storage in IndexedDB (%s to %s)", part.first.utf8().data(), tempFilePath.utf8().data());
+                            return false;
+                        }
+                    }
+                }
+
+                filePaths.append(tempFilePath.isolatedCopy());
+            }
+
+            return true;
+        };
+
+        if (!performWriting())
+            filePaths.clear();
+
+        callOnMainThread([completionHandler = WTFMove(completionHandler), filePaths = WTFMove(filePaths)]() {
+            completionHandler(filePaths);
+        });
+    });
 }
 
 } // namespace WebCore

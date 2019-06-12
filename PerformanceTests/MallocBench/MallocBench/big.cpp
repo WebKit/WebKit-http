@@ -39,14 +39,14 @@ struct Object {
     size_t size;
 };
 
-void benchmark_big(bool isParallel)
+void benchmark_big(CommandLine& commandLine)
 {
     size_t times = 1;
 
     size_t vmSize = 1ul * 1024 * 1024 * 1024;
-    size_t objectSizeMin = 4 * 1024;
-    size_t objectSizeMax = 64 * 1024;
-    if (isParallel)
+    size_t objectSizeMin = 8 * 1024;
+    size_t objectSizeMax = 128 * 1024;
+    if (commandLine.isParallel())
         vmSize /= cpuCount();
 
     size_t objectCount = vmSize / objectSizeMin;

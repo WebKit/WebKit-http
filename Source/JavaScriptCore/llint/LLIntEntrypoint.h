@@ -23,10 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef LLIntEntrypoint_h
-#define LLIntEntrypoint_h
+#pragma once
 
-#include "CodeSpecializationKind.h"
 
 namespace JSC {
 
@@ -40,5 +38,3 @@ void setEntrypoint(VM&, CodeBlock*);
 unsigned frameRegisterCountFor(CodeBlock*);
 
 } } // namespace JSC::LLInt
-
-#endif // LLIntEntrypoint_h

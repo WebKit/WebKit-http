@@ -22,12 +22,12 @@ PASS parseThenSerializeRule('[a^="b" i] { }') is '[a^="b" i] { }'
 PASS parseThenSerializeRule('[a$="b" i] { }') is '[a$="b" i] { }'
 PASS parseThenSerializeRule('[a*="b" i] { }') is '[a*="b" i] { }'
 
-PASS parseThenSerializeRule('*|a { }') is '*|a { }'
-PASS parseThenSerializeRule('n|a { }') is 'n|a { }'
-PASS parseThenSerializeRule('*|* { }') is '*|* { }'
-PASS parseThenSerializeRule('n|* { }') is 'n|* { }'
+PASS parseThenSerializeRule('*|a { }') is 'a { }'
+PASS parseThenSerializeRule('*|* { }') is '* { }'
+PASS parseThenSerializeRule('|a { }') is '|a { }'
+PASS parseThenSerializeRule('|* { }') is '|* { }'
 PASS parseThenSerializeRule('[*|a] { }') is '[*|a] { }'
-PASS parseThenSerializeRule('[n|a] { }') is '[n|a] { }'
+PASS parseThenSerializeRule('[|a] { }') is '[a] { }'
 
 PASS parseThenSerializeRule('a:active { }') is 'a:active { }'
 PASS parseThenSerializeRule('a b { }') is 'a b { }'
@@ -185,27 +185,56 @@ PASS parseThenSerializeRule(':not(:nth-child(2n of :not(a.b, c#d.e))) { }') is '
 PASS parseThenSerializeRule(':not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) { }') is ':not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) { }'
 PASS parseThenSerializeRule('a:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) b + c:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) ~ d:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) > d:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) { }') is 'a:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) b + c:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) ~ d:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) > d:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) { }'
 
-PASS parseThenSerializeRule('::-webkit-file-upload-button { }') is '*::-webkit-file-upload-button { }'
-PASS parseThenSerializeRule('::-webkit-search-cancel-button { }') is '*::-webkit-search-cancel-button { }'
-PASS parseThenSerializeRule('::-webkit-search-decoration { }') is '*::-webkit-search-decoration { }'
-PASS parseThenSerializeRule('::-webkit-search-results-button { }') is '*::-webkit-search-results-button { }'
-PASS parseThenSerializeRule('::-webkit-search-results-decoration { }') is '*::-webkit-search-results-decoration { }'
-PASS parseThenSerializeRule('::-webkit-slider-thumb { }') is '*::-webkit-slider-thumb { }'
+PASS parseThenSerializeRule('::-webkit-file-upload-button { }') is '::-webkit-file-upload-button { }'
+PASS parseThenSerializeRule('::-webkit-search-cancel-button { }') is '::-webkit-search-cancel-button { }'
+PASS parseThenSerializeRule('::-webkit-search-decoration { }') is '::-webkit-search-decoration { }'
+PASS parseThenSerializeRule('::-webkit-search-results-button { }') is '::-webkit-search-results-button { }'
+PASS parseThenSerializeRule('::-webkit-search-results-decoration { }') is '::-webkit-search-results-decoration { }'
+PASS parseThenSerializeRule('::-webkit-slider-thumb { }') is '::-webkit-slider-thumb { }'
 
 PASS parseThenSerializeRule('a::-webkit-slider-thumb { }') is 'a::-webkit-slider-thumb { }'
-PASS parseThenSerializeRule('a ::-webkit-slider-thumb { }') is 'a *::-webkit-slider-thumb { }'
+PASS parseThenSerializeRule('a ::-webkit-slider-thumb { }') is 'a ::-webkit-slider-thumb { }'
 PASS parseThenSerializeRule('[a]::-webkit-slider-thumb { }') is '[a]::-webkit-slider-thumb { }'
-PASS parseThenSerializeRule('[a] ::-webkit-slider-thumb { }') is '[a] *::-webkit-slider-thumb { }'
+PASS parseThenSerializeRule('[a] ::-webkit-slider-thumb { }') is '[a] ::-webkit-slider-thumb { }'
 PASS parseThenSerializeRule('.a::-webkit-slider-thumb { }') is '.a::-webkit-slider-thumb { }'
-PASS parseThenSerializeRule('.a ::-webkit-slider-thumb { }') is '.a *::-webkit-slider-thumb { }'
+PASS parseThenSerializeRule('.a ::-webkit-slider-thumb { }') is '.a ::-webkit-slider-thumb { }'
 PASS parseThenSerializeRule('#a::-webkit-slider-thumb { }') is '#a::-webkit-slider-thumb { }'
-PASS parseThenSerializeRule('#a ::-webkit-slider-thumb { }') is '#a *::-webkit-slider-thumb { }'
-PASS parseThenSerializeRule('* ::-webkit-slider-thumb { }') is '* *::-webkit-slider-thumb { }'
+PASS parseThenSerializeRule('#a ::-webkit-slider-thumb { }') is '#a ::-webkit-slider-thumb { }'
+PASS parseThenSerializeRule('* ::-webkit-slider-thumb { }') is '* ::-webkit-slider-thumb { }'
 
 PASS parseThenSerializeRule('a[b]::-webkit-slider-thumb { }') is 'a[b]::-webkit-slider-thumb { }'
 PASS parseThenSerializeRule('a.b::-webkit-slider-thumb { }') is 'a.b::-webkit-slider-thumb { }'
 PASS parseThenSerializeRule('a#b::-webkit-slider-thumb { }') is 'a#b::-webkit-slider-thumb { }'
 PASS parseThenSerializeRule('a[b].c#d::-webkit-slider-thumb { }') is 'a[b].c#d::-webkit-slider-thumb { }'
+
+PASS parseThenSerializeRule('a[b]::placeholder { }') is 'a[b]::placeholder { }'
+PASS parseThenSerializeRule('a.b::placeholder { }') is 'a.b::placeholder { }'
+PASS parseThenSerializeRule('a#b::placeholder { }') is 'a#b::placeholder { }'
+PASS parseThenSerializeRule('a[b].c#d::placeholder { }') is 'a[b].c#d::placeholder { }'
+PASS parseThenSerializeRule('a[b]::-webkit-input-placeholder { }') is 'a[b]::-webkit-input-placeholder { }'
+PASS parseThenSerializeRule('a.b::-webkit-input-placeholder { }') is 'a.b::-webkit-input-placeholder { }'
+PASS parseThenSerializeRule('a#b::-webkit-input-placeholder { }') is 'a#b::-webkit-input-placeholder { }'
+PASS parseThenSerializeRule('a[b].c#d::-webkit-input-placeholder { }') is 'a[b].c#d::-webkit-input-placeholder { }'
+
+PASS parseThenSerializeRule('a[b]:default { }') is 'a[b]:default { }'
+PASS parseThenSerializeRule('a.b:default { }') is 'a.b:default { }'
+PASS parseThenSerializeRule('a#b:default { }') is 'a#b:default { }'
+PASS parseThenSerializeRule('a[b].c#d:default { }') is 'a[b].c#d:default { }'
+
+PASS parseThenSerializeRule('a[b]:in-range { }') is 'a[b]:in-range { }'
+PASS parseThenSerializeRule('a.b:in-range { }') is 'a.b:in-range { }'
+PASS parseThenSerializeRule('a#b:in-range { }') is 'a#b:in-range { }'
+PASS parseThenSerializeRule('a[b].c#d:in-range { }') is 'a[b].c#d:in-range { }'
+
+PASS parseThenSerializeRule('a[b]:out-of-range { }') is 'a[b]:out-of-range { }'
+PASS parseThenSerializeRule('a.b:out-of-range { }') is 'a.b:out-of-range { }'
+PASS parseThenSerializeRule('a#b:out-of-range { }') is 'a#b:out-of-range { }'
+PASS parseThenSerializeRule('a[b].c#d:out-of-range { }') is 'a[b].c#d:out-of-range { }'
+
+PASS parseThenSerializeRule('a[b]:focus-within { }') is 'a[b]:focus-within { }'
+PASS parseThenSerializeRule('a.b:focus-within { }') is 'a.b:focus-within { }'
+PASS parseThenSerializeRule('a#b:focus-within { }') is 'a#b:focus-within { }'
+PASS parseThenSerializeRule('a[b].c#d:focus-within { }') is 'a[b].c#d:focus-within { }'
 
 PASS parseThenSerializeRule('input:not([type="file"]):focus { }') is 'input:not([type="file"]):focus { }'
 PASS parseThenSerializeRule(':-webkit-any([type="file"]) { }') is ':-webkit-any([type="file"]) { }'
@@ -224,7 +253,6 @@ PASS parseThenSerializeRule(':any-link + div { }') is ':any-link + div { }'
 PASS parseThenSerializeRule(':not(:any-link) { }') is ':not(:any-link) { }'
 
 PASS parseThenSerializeRule('*:active { }') is ':active { }'
-PASS parseThenSerializeRule('|a { }') is 'a { }'
 
 PASS parseThenSerializeRule('input[type=file]:focus { }') is 'input[type="file"]:focus { }'
 
@@ -400,7 +428,7 @@ PASS parseThenSerializeRule(':lang(*-    ) { }') threw exception TypeError: unde
 PASS parseThenSerializeRule(':lang(*--) { }') threw exception TypeError: undefined is not an object (evaluating 'styleElement.sheet.cssRules[0].cssText').
 PASS parseThenSerializeRule(':lang(*---) { }') threw exception TypeError: undefined is not an object (evaluating 'styleElement.sheet.cssRules[0].cssText').
 PASS parseThenSerializeRule(':lang(*----) { }') threw exception TypeError: undefined is not an object (evaluating 'styleElement.sheet.cssRules[0].cssText').
-PASS parseThenSerializeRule(':lang(*)' { }) threw exception SyntaxError: Unexpected token '{'. Expected ')' to end a argument list..
+PASS parseThenSerializeRule(':lang(*)' { }) threw exception SyntaxError: Unexpected token '{'. Expected ')' to end an argument list..
 PASS parseThenSerializeRule(':lang(**) { }') threw exception TypeError: undefined is not an object (evaluating 'styleElement.sheet.cssRules[0].cssText').
 PASS parseThenSerializeRule(':lang(-*-) { }') threw exception TypeError: undefined is not an object (evaluating 'styleElement.sheet.cssRules[0].cssText').
 PASS parseThenSerializeRule(':lang(*-*) { }') threw exception TypeError: undefined is not an object (evaluating 'styleElement.sheet.cssRules[0].cssText').

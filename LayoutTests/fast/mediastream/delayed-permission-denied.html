@@ -14,21 +14,24 @@ function denyPermission() {
         testRunner.setUserMediaPermission(false);
 }
 
+if (window.testRunner)
+    testRunner.resetUserMediaPermission();
+
 var error;
 var options = {audio: true, video: true};
-navigator.webkitGetUserMedia(options, function(stream) {
-    testFailed('Success callback invoked unexpectedly');
-    finishJSTest();
-}, function(e) {
-    if (permissionSet) {
-        error = e;
-        shouldBe('error.code', 'error.PERMISSION_DENIED');
+navigator.mediaDevices.getUserMedia(options)
+    .then(stream => {
+        testFailed('Success callback invoked unexpectedly');
         finishJSTest();
-        return;
-    }
-    testFailed('Error callback invoked unexpectedly');
-    finishJSTest();
-});
+    })
+    .catch(err => {
+        if (permissionSet) {
+            error = err;
+            shouldBeEqualToString('error.name', 'NotAllowedError');
+        } else
+            testFailed('Error callback invoked unexpectedly');
+        finishJSTest();
+    });
 
 window.setTimeout(denyPermission, 100);
 </script>

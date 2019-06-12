@@ -36,14 +36,18 @@
     background-color: hsl(15, 100%, 90%);
 }
 
-.source-code.text-editor > .CodeMirror .issue-widget {
+.source-code.text-editor > .CodeMirror .thread-indicator {
+    background-color: hsla(99, 38%, 86%, 0.5);
+}
+
+.source-code.text-editor > .CodeMirror .line-indicator-widget {
     float: right;
     padding: 0 5px 1px 5px;
     border-bottom-left-radius: 5px;
     cursor: default;
 }
 
-.source-code.text-editor > .CodeMirror .issue-widget.inline {
+.source-code.text-editor > .CodeMirror .line-indicator-widget.inline {
     position: relative;
     top: -13px;
     height: 13px;
@@ -51,13 +55,13 @@
     border-bottom-left-radius: 0;
 }
 
-.source-code.text-editor > .CodeMirror .issue-widget > .arrow {
+.source-code.text-editor > .CodeMirror .line-indicator-widget > .arrow {
     display: none;
 }
 
-.source-code.text-editor > .CodeMirror .issue-widget.inline > .arrow {
+.source-code.text-editor > .CodeMirror .line-indicator-widget.inline > .arrow {
     position: absolute;
-    left: -5.5px;
+    left: -5px;
     display: block;
 
     top: 0px;
@@ -69,7 +73,13 @@
     border-right: 5.5px solid transparent;
 }
 
-.source-code.text-editor > .CodeMirror .issue-widget > .icon {
+@media (-webkit-min-device-pixel-ratio: 2) {
+    .source-code.text-editor > .CodeMirror .line-indicator-widget.inline > .arrow {
+        left: -5.5px;
+    }
+}
+
+.source-code.text-editor > .CodeMirror .line-indicator-widget > .icon {
     height: 9px;
     width: 9px;
     padding-right: 12px;
@@ -77,6 +87,18 @@
     background-size: 9px 9px;
     background-repeat: no-repeat;
     background-position-y: 1px;
+}
+
+.source-code.text-editor > .CodeMirror .line-indicator-widget > .text {
+    font-family: -apple-system, sans-serif;
+}
+
+.source-code.text-editor > .CodeMirror .line-indicator-widget.inline > .text {
+    display: inline-block;
+    max-width: 300px;
+    vertical-align: baseline;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .source-code.text-editor > .CodeMirror .issue-widget > .icon.icon-warning {
@@ -111,16 +133,16 @@
     border-right-color: hsl(11, 100%, 80%);
 }
 
-.source-code.text-editor > .CodeMirror .issue-widget > .text {
-    font-family: -apple-system, sans-serif;
+.source-code.text-editor > .CodeMirror .thread-widget {
+    background-color: hsl(90, 30%, 82%);
 }
 
-.source-code.text-editor > .CodeMirror .issue-widget.inline > .text {
-    display: inline-block;
-    max-width: 300px;
-    vertical-align: baseline;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.source-code.text-editor > .CodeMirror .thread-widget.inline {
+    background-color: hsl(90, 30%, 82%);
+}
+
+.source-code.text-editor > .CodeMirror .thread-widget.inline > .arrow {
+    border-right-color: hsl(90, 30%, 82%);
 }
 
 .popover .debugger-popover-content {
@@ -140,8 +162,8 @@
 .popover .debugger-popover-content > .title {
     font-family: -apple-system, sans-serif;
     font-weight: 500;
-    padding: 2px 0 4px 10px;
 
+    padding: 2px 6px 4px 6px;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
@@ -162,8 +184,18 @@
 }
 
 .popover .debugger-popover-content.function > .body {
-    padding-left: 10px;
-    padding-right: 10px;
+    min-width: 200px;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.popover .debugger-popover-content.function > .body .CodeMirror {
+    height: auto;
+    background-color: inherit;
+}
+
+.popover .debugger-popover-content.function > .body .CodeMirror pre {
+    padding-left: 0;
 }
 
 /* Custom styling for the hover menu attached to color tokens */
@@ -175,7 +207,7 @@
 .hover-menu.color > img {
     width: 16px;
     height: 16px;
-    content: -webkit-image-set(url(../Images/ColorIcon.png) 1x, url(../Images/ColorIcon@2x.png) 2x);
+    content: image-set(url(../Images/ColorIcon.png) 1x, url(../Images/ColorIcon@2x.png) 2x);
     transform: translateY(0.5px);
 }
 

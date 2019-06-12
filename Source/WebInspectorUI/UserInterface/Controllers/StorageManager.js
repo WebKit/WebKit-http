@@ -138,8 +138,6 @@ WebInspector.StorageManager = class StorageManager extends WebInspector.Object
         this.dispatchEventToListeners(WebInspector.StorageManager.Event.DOMStorageObjectWasInspected, {domStorage});
     }
 
-    // Protected
-
     requestIndexedDatabaseData(objectStore, objectStoreIndex, startEntryIndex, maximumEntryCount, callback)
     {
         console.assert(window.IndexedDBAgent);
@@ -176,6 +174,15 @@ WebInspector.StorageManager = class StorageManager extends WebInspector.Object
         };
 
         IndexedDBAgent.requestData.invoke(requestArguments, processData);
+    }
+
+    clearObjectStore(objectStore)
+    {
+        let securityOrigin = objectStore.parentDatabase.securityOrigin;
+        let databaseName = objectStore.parentDatabase.name;
+        let objectStoreName = objectStore.name;
+
+        IndexedDBAgent.clearObjectStore(securityOrigin, databaseName, objectStoreName);
     }
 
     // Private
@@ -271,11 +278,11 @@ WebInspector.StorageManager = class StorageManager extends WebInspector.Object
         function processKeyPath(keyPathPayload)
         {
             switch (keyPathPayload.type) {
-            case "null":
+            case IndexedDBAgent.KeyPathType.Null:
                 return null;
-            case "string":
+            case IndexedDBAgent.KeyPathType.String:
                 return keyPathPayload.string;
-            case "array":
+            case IndexedDBAgent.KeyPathType.Array:
                 return keyPathPayload.array;
             default:
                 console.error("Unknown KeyPath type:", keyPathPayload.type);

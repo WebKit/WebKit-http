@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,13 @@
 #ifndef ANGLEWebKitBridge_h
 #define ANGLEWebKitBridge_h
 
+#if USE(LIBEPOXY)
+// libepoxy headers have to be included before <ANGLE/ShaderLang.h> in order to avoid
+// picking up khrplatform.h inclusion that's done in ANGLE.
+#include <epoxy/gl.h>
+#endif
+
 #include <ANGLE/ShaderLang.h>
-#include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS)
@@ -43,8 +48,10 @@
 #define GL_SAMPLER_2D_RECT_ARB            0x8B63
 #endif
 
-#elif PLATFORM(GTK) || PLATFORM(EFL)
-#if USE(OPENGL_ES_2)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
+#if USE(LIBEPOXY)
+// <epoxy/gl.h> already included above.
+#elif USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
 #else
 #include "OpenGLShims.h"
@@ -64,37 +71,16 @@ enum ANGLEShaderSymbolType {
     SHADER_SYMBOL_TYPE_VARYING
 };
 
-struct ANGLEShaderSymbol {
-    ANGLEShaderSymbolType symbolType;
-    String name;
-    String mappedName;
-    sh::GLenum dataType;
-    unsigned size;
-    sh::GLenum precision;
-    int staticUse;
-
-    bool isSampler() const
-    {
-        return symbolType == SHADER_SYMBOL_TYPE_UNIFORM
-            && (dataType == GL_SAMPLER_2D
-            || dataType == GL_SAMPLER_CUBE
-#if !PLATFORM(IOS) && !((PLATFORM(EFL) || PLATFORM(GTK)) && USE(OPENGL_ES_2))
-            || dataType == GL_SAMPLER_2D_RECT_ARB
-#endif
-            );
-    }
-};
-
 class ANGLEWebKitBridge {
 public:
 
-    ANGLEWebKitBridge(ShShaderOutput = SH_GLSL_OUTPUT, ShShaderSpec = SH_WEBGL_SPEC);
+    ANGLEWebKitBridge(ShShaderOutput = SH_GLSL_COMPATIBILITY_OUTPUT, ShShaderSpec = SH_WEBGL_SPEC);
     ~ANGLEWebKitBridge();
     
-    ShBuiltInResources getResources() { return m_resources; }
-    void setResources(ShBuiltInResources);
+    const ShBuiltInResources& getResources() { return m_resources; }
+    void setResources(const ShBuiltInResources&);
     
-    bool compileShaderSource(const char* shaderSource, ANGLEShaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<ANGLEShaderSymbol>& symbols, int extraCompileOptions = 0);
+    bool compileShaderSource(const char* shaderSource, ANGLEShaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, int extraCompileOptions = 0);
 
 private:
 

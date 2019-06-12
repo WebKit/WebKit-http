@@ -24,11 +24,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorBackendDispatcher_h
-#define InspectorBackendDispatcher_h
+#pragma once
 
 #include "InspectorFrontendRouter.h"
 #include "InspectorProtocolTypes.h"
+#include <functional>
+#include <wtf/DeprecatedOptional.h>
 #include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -39,7 +40,7 @@ class BackendDispatcher;
 
 typedef String ErrorString;
 
-class SupplementalBackendDispatcher : public RefCounted<SupplementalBackendDispatcher> {
+class JS_EXPORT_PRIVATE SupplementalBackendDispatcher : public RefCounted<SupplementalBackendDispatcher> {
 public:
     SupplementalBackendDispatcher(BackendDispatcher&);
     virtual ~SupplementalBackendDispatcher();
@@ -48,9 +49,9 @@ protected:
     Ref<BackendDispatcher> m_backendDispatcher;
 };
 
-class BackendDispatcher : public RefCounted<BackendDispatcher> {
+class JS_EXPORT_PRIVATE BackendDispatcher : public RefCounted<BackendDispatcher> {
 public:
-    JS_EXPORT_PRIVATE static Ref<BackendDispatcher> create(Ref<FrontendRouter>&&);
+    static Ref<BackendDispatcher> create(Ref<FrontendRouter>&&);
 
     class JS_EXPORT_PRIVATE CallbackBase : public RefCounted<CallbackBase> {
     public:
@@ -82,15 +83,16 @@ public:
     };
 
     void registerDispatcherForDomain(const String& domain, SupplementalBackendDispatcher*);
-    JS_EXPORT_PRIVATE void dispatch(const String& message);
+    void dispatch(const String& message);
 
-    JS_EXPORT_PRIVATE void sendResponse(long requestId, RefPtr<InspectorObject>&& result);
-    JS_EXPORT_PRIVATE void sendPendingErrors();
+    void sendResponse(long requestId, RefPtr<InspectorObject>&& result);
+    void sendPendingErrors();
 
     void reportProtocolError(CommonErrorCode, const String& errorMessage);
-    JS_EXPORT_PRIVATE void reportProtocolError(Optional<long> relatedRequestId, CommonErrorCode, const String& errorMessage);
+    void reportProtocolError(std::optional<long> relatedRequestId, CommonErrorCode, const String& errorMessage);
 
     template<typename T>
+    WTF_HIDDEN_DECLARATION
     T getPropertyValue(InspectorObject*, const String& name, bool* out_optionalValueFound, T defaultValue, std::function<bool(InspectorValue&, T&)>, const char* typeName);
 
     int getInteger(InspectorObject*, const String& name, bool* valueFound);
@@ -104,6 +106,11 @@ public:
 private:
     BackendDispatcher(Ref<FrontendRouter>&&);
 
+#if PLATFORM(MAC)
+    // This is necessary for some versions of Safari. Remove it when those versions of Safari are no longer supported.
+    void reportProtocolError(WTF::DeprecatedOptional<long> relatedRequestId, CommonErrorCode, const String& errorMessage);
+#endif
+
     Ref<FrontendRouter> m_frontendRouter;
     HashMap<String, SupplementalBackendDispatcher*> m_dispatchers;
 
@@ -114,9 +121,7 @@ private:
 
     // For synchronously handled requests, avoid plumbing requestId through every
     // call that could potentially fail with a protocol error.
-    Optional<long> m_currentRequestId { Nullopt };
+    std::optional<long> m_currentRequestId { std::nullopt };
 };
 
 } // namespace Inspector
-
-#endif // !defined(InspectorBackendDispatcher_h)

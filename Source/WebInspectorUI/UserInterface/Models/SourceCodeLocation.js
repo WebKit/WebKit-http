@@ -244,10 +244,7 @@ WebInspector.SourceCodeLocation = class SourceCodeLocation extends WebInspector.
         var boundMouseOverOrMove = mouseOverOrMove.bind(this);
         element.addEventListener("mouseover", boundMouseOverOrMove);
         element.addEventListener("mousemove", boundMouseOverOrMove);
-
-        element.addEventListener("mouseout", function(event) {
-            updateDisplayString.call(this, false);
-        }.bind(this));
+        element.addEventListener("mouseout", (event) => { updateDisplayString.call(this, false); });
     }
 
     // Protected
@@ -321,11 +318,13 @@ WebInspector.SourceCodeLocation = class SourceCodeLocation extends WebInspector.
         nameStyle = nameStyle || WebInspector.SourceCodeLocation.NameStyle.Short;
         prefix = prefix || "";
 
-        var lineString = lineNumber + 1; // The user visible line number is 1-based.
+        let lineString = lineNumber + 1; // The user visible line number is 1-based.
         if (columnStyle === WebInspector.SourceCodeLocation.ColumnStyle.Shown && columnNumber > 0)
             lineString += ":" + (columnNumber + 1); // The user visible column number is 1-based.
         else if (columnStyle === WebInspector.SourceCodeLocation.ColumnStyle.OnlyIfLarge && columnNumber > WebInspector.SourceCodeLocation.LargeColumnNumber)
             lineString += ":" + (columnNumber + 1); // The user visible column number is 1-based.
+        else if (columnStyle === WebInspector.SourceCodeLocation.ColumnStyle.Hidden)
+            lineString = "";
 
         switch (nameStyle) {
         case WebInspector.SourceCodeLocation.NameStyle.None:
@@ -333,9 +332,12 @@ WebInspector.SourceCodeLocation = class SourceCodeLocation extends WebInspector.
 
         case WebInspector.SourceCodeLocation.NameStyle.Short:
         case WebInspector.SourceCodeLocation.NameStyle.Full:
-            const displayURL = sourceCode.displayURL;
-            const lineSuffix = displayURL ? ":" + lineString : WebInspector.UIString(" (line %s)").format(lineString);
-            return prefix + (nameStyle === WebInspector.SourceCodeLocation.NameStyle.Full && displayURL ? displayURL : sourceCode.displayName) + lineSuffix;
+            var displayURL = sourceCode.displayURL;
+            var name = nameStyle === WebInspector.SourceCodeLocation.NameStyle.Full && displayURL ? displayURL : sourceCode.displayName;
+            if (columnStyle === WebInspector.SourceCodeLocation.ColumnStyle.Hidden)
+                return prefix + name;
+            var lineSuffix = displayURL ? ":" + lineString : WebInspector.UIString(" (line %s)").format(lineString);
+            return prefix + name + lineSuffix;
 
         default:
             console.error("Unknown nameStyle: " + nameStyle);
@@ -451,7 +453,7 @@ WebInspector.SourceCodeLocation.NameStyle = {
 };
 
 WebInspector.SourceCodeLocation.ColumnStyle = {
-    Hidden: "hidden",             // column numbers are not included.
+    Hidden: "hidden",             // line and column numbers are not included.
     OnlyIfLarge: "only-if-large", // column numbers greater than 80 are shown.
     Shown: "shown"                // non-zero column numbers are shown.
 };

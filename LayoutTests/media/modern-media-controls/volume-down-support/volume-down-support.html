@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<script src="../../../resources/js-test-pre.js"></script>
+<script src="../resources/media-controls-utils.js" type="text/javascript"></script>
+<body>
+<video src="../../content/test.mp4" style="width: 320px; height: 240px;" controls></video>
+<div id="shadow"></div>
+<script type="text/javascript">
+
+window.jsTestIsAsync = true;
+
+description("Testing clicking on the volume down button correctly sets the volume to 0.");
+
+const media = document.querySelector("video");
+const button = document.body.appendChild(document.createElement("button"));
+
+button.addEventListener("click", () => media.webkitEnterFullscreen());
+
+media.addEventListener("loadedmetadata", () => {
+    pressOnElement(button);
+    shouldBecomeEqual('!!window.internals.shadowRoot(media).lastChild.querySelector("button.volume-down")', "true", () => {
+        shouldBeTrue("media.webkitDisplayingFullscreen");
+        shouldBe("media.volume", "1");
+
+        shouldBeCloseTo("media.volume", "0", () => {
+            debug("");
+            media.remove();
+            button.remove();
+            finishJSTest();
+        });
+
+        debug("");
+        debug("Pressing on the volume down button");
+        pressOnElement(window.internals.shadowRoot(media).lastElementChild.lastElementChild.querySelector("button.volume-down"));
+    });
+});
+
+</script>
+<script src="../../../resources/js-test-post.js"></script>
+</body>

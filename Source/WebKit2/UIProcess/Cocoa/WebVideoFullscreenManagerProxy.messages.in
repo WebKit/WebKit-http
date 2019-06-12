@@ -20,24 +20,17 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 messages -> WebVideoFullscreenManagerProxy {
-    ResetMediaState(uint64_t contextId)
-    SetCurrentTime(uint64_t contextId, double currentTime, double hostTime)
-    SetBufferedTime(uint64_t contextId, double bufferedTime)
-    SetVideoDimensions(uint64_t contextId, bool hasVideo, unsigned width, unsigned height)
-    SetSeekableRangesVector(uint64_t contextId, Vector<std::pair<double, double>> ranges)
-    SetCanPlayFastReverse(uint64_t contextId, bool value)
-    SetAudioMediaSelectionOptions(uint64_t contextId, Vector<String> options, uint64_t selectedIndex)
-    SetLegibleMediaSelectionOptions(uint64_t contextId, Vector<String> options, uint64_t selectedIndex)
-    SetExternalPlaybackProperties(uint64_t contextId, bool enabled, uint32_t targetType, String localizedDeviceName)
-    SetWirelessVideoPlaybackDisabled(uint64_t contextId, bool disabled)
-    SetDuration(uint64_t contextId, double duration)
-    SetRate(uint64_t contextId, bool isPlaying, double rate)
+    SetHasVideo(uint64_t contextId, bool hasVideo)
+    SetVideoDimensions(uint64_t contextId, WebCore::FloatSize videoDimensions)
     SetupFullscreenWithID(uint64_t contextId, uint32_t videoLayerID, WebCore::IntRect initialRect, float hostingScaleFactor, WebCore::HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode, bool allowsPictureInPicture)
     EnterFullscreen(uint64_t contextId)
     ExitFullscreen(uint64_t contextId, WebCore::IntRect finalRect)
     CleanupFullscreen(uint64_t contextId)
     PreparedToReturnToInline(uint64_t contextId, bool visible, WebCore::IntRect inlineRect)
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    ExitFullscreenWithoutAnimationToMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode)
+#endif
 }
 #endif

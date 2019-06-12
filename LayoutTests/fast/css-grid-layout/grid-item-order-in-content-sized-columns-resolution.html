@@ -2,36 +2,37 @@
 <html>
 <head>
 <link href="resources/grid.css" rel="stylesheet"/>
+<link href="resources/grid-alignment.css" rel="stylesheet"/>
 <style>
 .grid {
     font: 10px/1 Ahem;
 }
 .gridFixedMinContentAndFixedMaxContent {
-     -webkit-grid-template-columns: minmax(20px, -webkit-min-content) minmax(20px, -webkit-max-content);
+     grid-template-columns: minmax(20px, min-content) minmax(20px, max-content);
 }
 .gridMaxContentFixedAndMinContentFixed {
-     -webkit-grid-template-columns: minmax(-webkit-max-content, 50px) minmax(-webkit-min-content, 50px);
+     grid-template-columns: minmax(max-content, 50px) minmax(min-content, 50px);
 }
 .gridFixedMinContentAndAuto {
-     -webkit-grid-template-columns: minmax(20px, -webkit-min-content) auto;
+     grid-template-columns: minmax(20px, min-content) auto;
 }
 .gridFixedMaxContentAndAuto {
-     -webkit-grid-template-columns: minmax(20px, -webkit-max-content) auto;
+     grid-template-columns: minmax(20px, max-content) auto;
 }
 .gridMaxContentAndAuto {
-     -webkit-grid-template-columns: -webkit-max-content auto;
+     grid-template-columns: max-content auto;
 }
 .gridAutoAndMaxContent {
-     -webkit-grid-template-columns: auto -webkit-max-content;
+     grid-template-columns: auto max-content;
 }
 .gridMinContentAndAuto {
-     -webkit-grid-template-columns: -webkit-min-content auto;
+     grid-template-columns: min-content auto;
 }
 .gridAutoAndMinContent {
-     -webkit-grid-template-columns: -webkit-min-content auto;
+     grid-template-columns: min-content auto;
 }
 .spanTwo {
-     -webkit-grid-column: 1 / 3;
+     grid-column: 1 / 3;
 }
 </style>
 <script src="../../resources/js-test.js"></script>
@@ -52,42 +53,42 @@
 </div>
 
 <div style="position: relative">
-    <div id="gridFixedMinContentAndAuto" class="grid gridFixedMinContentAndAuto">
+    <div id="gridFixedMinContentAndAuto" class="grid contentStart gridFixedMinContentAndAuto">
 	<div class="firstRowFirstColumn">XXXXX</div>
 	<div class="spanTwo secondRowFirstColumn">XXX XXX</div>
     </div>
 </div>
 
 <div style="position: relative">
-    <div id="gridFixedMaxContentAndAuto" class="grid gridFixedMaxContentAndAuto">
+    <div id="gridFixedMaxContentAndAuto" class="grid contentStart gridFixedMaxContentAndAuto">
 	<div class="firstRowFirstColumn">XXXXX</div>
 	<div class="spanTwo secondRowFirstColumn">XXX XXX</div>
     </div>
 </div>
 
 <div style="position: relative">
-    <div id="gridMaxContentAndAuto" class="grid gridMaxContentAndAuto">
+    <div id="gridMaxContentAndAuto" class="grid contentStart gridMaxContentAndAuto">
 	<div class="firstRowFirstColumn">XXXXX</div>
 	<div class="spanTwo secondRowFirstColumn">XXX XXX</div>
     </div>
 </div>
 
 <div style="position: relative">
-    <div id="gridAutoAndMaxContent" class="grid gridAutoAndMaxContent">
+    <div id="gridAutoAndMaxContent" class="grid contentStart gridAutoAndMaxContent">
 	<div class="firstRowFirstColumn">XXXXX</div>
 	<div class="spanTwo secondRowFirstColumn">XXX XXX</div>
     </div>
 </div>
 
 <div style="position: relative">
-    <div id="gridMinContentAndAuto" class="grid gridMinContentAndAuto">
+    <div id="gridMinContentAndAuto" class="grid contentStart gridMinContentAndAuto">
 	<div class="firstRowFirstColumn">XXXXX</div>
 	<div class="spanTwo secondRowFirstColumn">XXX XXX</div>
     </div>
 </div>
 
 <div style="position: relative">
-    <div id="gridAutoAndMinContent" class="grid gridAutoAndMinContent">
+    <div id="gridAutoAndMinContent" class="grid contentStart gridAutoAndMinContent">
 	<div class="firstRowFirstColumn">XXXXX</div>
 	<div class="spanTwo secondRowFirstColumn">XXX XXX</div>
     </div>
@@ -100,11 +101,11 @@
 function checkTrackBreadthAfterItemRowSwap(gridId)
 {
      window.gridElement = document.getElementById(gridId);
-     var oldValue = getComputedStyle(gridElement, '').getPropertyValue('-webkit-grid-template-columns');
-     var firstChildRow = getComputedStyle(gridElement.children[0],'').getPropertyValue('-webkit-grid-row');
-     gridElement.children[0].style.webkitGridRow = getComputedStyle(gridElement.children[1],'').getPropertyValue('-webkit-grid-row');
-     gridElement.children[1].style.webkitGridRow = firstChildRow;
-     var newValue = getComputedStyle(gridElement, '').getPropertyValue('-webkit-grid-template-columns');
+     var oldValue = getComputedStyle(gridElement, '').getPropertyValue('grid-template-columns');
+     var firstChildRow = getComputedStyle(gridElement.children[0],'').getPropertyValue('grid-row');
+     gridElement.children[0].style.gridRow = getComputedStyle(gridElement.children[1],'').getPropertyValue('grid-row');
+     gridElement.children[1].style.gridRow = firstChildRow;
+     var newValue = getComputedStyle(gridElement, '').getPropertyValue('grid-template-columns');
 
      if (newValue == oldValue)
          testPassed("grid-template-columns is " + newValue + " after grid row swap.");

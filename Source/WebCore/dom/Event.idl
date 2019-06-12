@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2009, 2011, 2017 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -18,67 +18,41 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// Introduced in DOM Level 2:
 [
+    Constructor(DOMString type, optional EventInit eventInitDict),
     CustomToJSObject,
-    ConstructorTemplate=Event,
-    ObjCPolymorphic,
+    DOMJIT,
+    ExportToWrappedFunction,
+    Exposed=(Window,Worker),
+    JSCustomHeader,
 ] interface Event {
+    readonly attribute DOMString type;
+    readonly attribute EventTarget? target;
+    readonly attribute EventTarget? currentTarget;
+    [EnabledAtRuntime=ShadowDOM] sequence<EventTarget> composedPath();
 
-    // DOM PhaseType
-    const unsigned short NONE                = 0;
-    const unsigned short CAPTURING_PHASE     = 1;
-    const unsigned short AT_TARGET           = 2;
-    const unsigned short BUBBLING_PHASE      = 3;
+    const unsigned short NONE = 0;
+    const unsigned short CAPTURING_PHASE = 1;
+    const unsigned short AT_TARGET = 2;
+    const unsigned short BUBBLING_PHASE = 3;
+    readonly attribute unsigned short eventPhase;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-    // Reverse-engineered from Netscape
-    const unsigned short MOUSEDOWN           = 1;
-    const unsigned short MOUSEUP             = 2;
-    const unsigned short MOUSEOVER           = 4;
-    const unsigned short MOUSEOUT            = 8;
-    const unsigned short MOUSEMOVE           = 16;
-    const unsigned short MOUSEDRAG           = 32;
-    const unsigned short CLICK               = 64;
-    const unsigned short DBLCLICK            = 128;
-    const unsigned short KEYDOWN             = 256;
-    const unsigned short KEYUP               = 512;
-    const unsigned short KEYPRESS            = 1024;
-    const unsigned short DRAGDROP            = 2048;
-    const unsigned short FOCUS               = 4096;
-    const unsigned short BLUR                = 8192;
-    const unsigned short SELECT              = 16384;
-    const unsigned short CHANGE              = 32768;
-#endif
-
-    readonly attribute DOMString        type;
-    readonly attribute EventTarget      target;
-    readonly attribute EventTarget      currentTarget;
-    readonly attribute unsigned short   eventPhase;
-    [InitializedByEventConstructor] readonly attribute boolean bubbles;
-    [InitializedByEventConstructor] readonly attribute boolean cancelable;
-    readonly attribute DOMTimeStamp     timeStamp;
-
-    void               stopPropagation();
-    void               preventDefault();
-    [ObjCLegacyUnnamedParameters] void initEvent([Default=Undefined] optional DOMString eventTypeArg, 
-                                  [Default=Undefined] optional boolean canBubbleArg, 
-                                  [Default=Undefined] optional boolean cancelableArg);
-
-    // DOM Level 3 Additions.
-    readonly attribute boolean defaultPrevented;
+    void stopPropagation();
+    attribute boolean cancelBubble; // historical alias of .stopPropagation.
     void stopImmediatePropagation();
 
+    readonly attribute boolean bubbles;
+    readonly attribute boolean cancelable;
+    void preventDefault();
+    readonly attribute boolean defaultPrevented;
+    [EnabledAtRuntime=ShadowDOM] readonly attribute boolean composed;
+
     [Unforgeable] readonly attribute boolean isTrusted;
+    readonly attribute DOMTimeStamp timeStamp;
 
-    // IE Extensions
-    readonly attribute EventTarget      srcElement;
+    void initEvent(DOMString type, optional boolean bubbles = false, optional boolean cancelable = false); // Historical.
+
+    // IE extensions that may get standardized (https://github.com/whatwg/dom/issues/334).
+    readonly attribute EventTarget srcElement;
     [ImplementedAs=legacyReturnValue] attribute boolean returnValue;
-             attribute boolean          cancelBubble;
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [Custom] readonly attribute DataTransfer        clipboardData;
-#endif
-
 };
-

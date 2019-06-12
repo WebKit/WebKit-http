@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2008 Apple Inc.  All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,29 +26,26 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FormDataStreamMac_h
-#define FormDataStreamMac_h
+#pragma once
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #include <wtf/Forward.h>
-
-typedef const struct _CFURLRequest* CFURLRequestRef;
+#include <wtf/RetainPtr.h>
 
 @class NSInputStream;
 @class NSMutableURLRequest;
 
 namespace WebCore {
 
-    class FormData;
+class FormData;
 
-    void setHTTPBody(NSMutableURLRequest *, FormData*);
-    FormData* httpBodyFromStream(NSInputStream *);
+void setHTTPBody(NSMutableURLRequest *, FormData*);
+WEBCORE_EXPORT RetainPtr<NSInputStream> createHTTPBodyNSInputStream(FormData&);
+FormData* httpBodyFromStream(NSInputStream *);
 
-    CFStringRef formDataStreamLengthPropertyName();
+CFStringRef formDataStreamLengthPropertyName();
 
 } // namespace WebCore
 
-#endif // !USE(CFNETWORK)
-
-#endif // FormDataStreamMac_h
+#endif // !USE(CFURLCONNECTION)

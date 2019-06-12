@@ -28,18 +28,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FileReader_h
-#define FileReader_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
+#include "ExceptionOr.h"
 #include "FileError.h"
 #include "FileReaderLoader.h"
 #include "FileReaderLoaderClient.h"
 #include <chrono>
-#include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace JSC {
 class ArrayBuffer;
@@ -48,11 +45,8 @@ class ArrayBuffer;
 namespace WebCore {
 
 class Blob;
-class ScriptExecutionContext;
 
-typedef int ExceptionCode;
-
-class FileReader final : public RefCounted<FileReader>, public ActiveDOMObject, public EventTargetWithInlineData, public FileReaderLoaderClient {
+class FileReader final : public RefCounted<FileReader>, public ActiveDOMObject, public EventTargetWithInlineData, private FileReaderLoaderClient {
 public:
     static Ref<FileReader> create(ScriptExecutionContext&);
 
@@ -64,11 +58,10 @@ public:
         DONE = 2
     };
 
-    void readAsArrayBuffer(Blob*, ExceptionCode&);
-    void readAsBinaryString(Blob*, ExceptionCode&);
-    void readAsText(Blob*, const String& encoding, ExceptionCode&);
-    void readAsText(Blob*, ExceptionCode&);
-    void readAsDataURL(Blob*, ExceptionCode&);
+    ExceptionOr<void> readAsArrayBuffer(Blob*);
+    ExceptionOr<void> readAsBinaryString(Blob*);
+    ExceptionOr<void> readAsText(Blob*, const String& encoding);
+    ExceptionOr<void> readAsDataURL(Blob*);
     void abort();
 
     void doAbort();
@@ -76,43 +69,36 @@ public:
     ReadyState readyState() const { return m_state; }
     RefPtr<FileError> error() { return m_error; }
     FileReaderLoader::ReadType readType() const { return m_readType; }
-    RefPtr<JSC::ArrayBuffer> arrayBufferResult() const;
-    String stringResult();
+    std::optional<Variant<String, RefPtr<JSC::ArrayBuffer>>> result() const;
 
-    // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const override { return FileReaderEventTargetInterfaceType; }
-    virtual ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
-
-    // FileReaderLoaderClient
-    virtual void didStartLoading() override;
-    virtual void didReceiveData() override;
-    virtual void didFinishLoading() override;
-    virtual void didFail(int errorCode) override;
-
-    using RefCounted<FileReader>::ref;
-    using RefCounted<FileReader>::deref;
+    using RefCounted::ref;
+    using RefCounted::deref;
 
 private:
     explicit FileReader(ScriptExecutionContext&);
 
-    // ActiveDOMObject API.
-    const char* activeDOMObjectName() const override;
-    bool canSuspendForDocumentSuspension() const override;
-    void stop() override;
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
 
-    // EventTarget
-    virtual void refEventTarget() override { ref(); }
-    virtual void derefEventTarget() override { deref(); }
+    EventTargetInterface eventTargetInterface() const final { return FileReaderEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
 
-    void terminate();
-    void readInternal(Blob*, FileReaderLoader::ReadType, ExceptionCode&);
+    void didStartLoading() final;
+    void didReceiveData() final;
+    void didFinishLoading() final;
+    void didFail(int errorCode) final;
+
+    ExceptionOr<void> readInternal(Blob&, FileReaderLoader::ReadType);
     void fireErrorEvent(int httpStatusCode);
     void fireEvent(const AtomicString& type);
 
-    ReadyState m_state;
-    bool m_aborting;
+    ReadyState m_state { EMPTY };
+    bool m_aborting { false };
     RefPtr<Blob> m_blob;
-    FileReaderLoader::ReadType m_readType;
+    FileReaderLoader::ReadType m_readType { FileReaderLoader::ReadAsBinaryString };
     String m_encoding;
     std::unique_ptr<FileReaderLoader> m_loader;
     RefPtr<FileError> m_error;
@@ -120,5 +106,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // FileReader_h

@@ -39,6 +39,7 @@ _log = logging.getLogger(__name__)
 
 INTERRUPTED_EXIT_STATUS = signal.SIGINT + 128
 
+
 class TestRunResults(object):
     def __init__(self, expectations, num_tests):
         self.total = num_tests
@@ -92,6 +93,33 @@ class TestRunResults(object):
         if test_is_slow:
             self.slow_tests.add(test_result.test_name)
 
+    def merge(self, test_run_results):
+        if not test_run_results:
+            return self
+        # self.expectations should be the same for both
+        self.total += test_run_results.total
+        self.remaining += test_run_results.remaining
+        self.expected += test_run_results.expected
+        self.unexpected += test_run_results.unexpected
+        self.unexpected_failures += test_run_results.unexpected_failures
+        self.unexpected_crashes += test_run_results.unexpected_crashes
+        self.unexpected_timeouts += test_run_results.unexpected_timeouts
+        self.tests_by_expectation.update(test_run_results.tests_by_expectation)
+        self.tests_by_timeline.update(test_run_results.tests_by_timeline)
+        self.results_by_name.update(test_run_results.results_by_name)
+        self.all_results += test_run_results.all_results
+        self.unexpected_results_by_name.update(test_run_results.unexpected_results_by_name)
+        self.failures_by_name.update(test_run_results.failures_by_name)
+        self.total_failures += test_run_results.total_failures
+        self.expected_skips += test_run_results.expected_skips
+        self.tests_by_expectation.update(test_run_results.tests_by_expectation)
+        self.tests_by_timeline.update(test_run_results.tests_by_timeline)
+        self.slow_tests.update(test_run_results.slow_tests)
+
+        self.interrupted |= test_run_results.interrupted
+        self.keyboard_interrupted |= test_run_results.keyboard_interrupted
+        return self
+
 
 class RunDetails(object):
     def __init__(self, exit_code, summarized_results=None, initial_results=None, retry_results=None, enabled_pixel_tests_in_retry=False):
@@ -122,6 +150,7 @@ def _interpret_test_failures(failures):
                 test_dict['image_diff_percent'] = failure.diff_percent
 
     return test_dict
+
 
 # These results must match ones in print_unexpected_results() in views/buildbot_results.py.
 def summarize_results(port_obj, expectations, initial_results, retry_results, enabled_pixel_tests_in_retry, include_passes=False, include_time_and_modifiers=False):

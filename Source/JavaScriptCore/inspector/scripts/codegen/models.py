@@ -42,12 +42,25 @@ _FRAMEWORK_CONFIG_MAP = {
     "Global": {
     },
     "JavaScriptCore": {
-        "export_macro": "JS_EXPORT_PRIVATE"
+        "cpp_protocol_group": "Inspector",
+        "export_macro": "JS_EXPORT_PRIVATE",
+        "alternate_dispatchers": True,
+    },
+    "WebKit": {
+        "cpp_protocol_group": "Automation",
+        "objc_protocol_group": "WD",
+        "objc_prefix": "WD",
     },
     "WebInspector": {
+        "objc_protocol_group": "RWI",
+        "objc_prefix": "RWI",
     },
     # Used for code generator tests.
     "Test": {
+        "alternate_dispatchers": True,
+        "cpp_protocol_group": "Test",
+        "objc_protocol_group": "Test",
+        "objc_prefix": "Test",
     }
 }
 
@@ -76,6 +89,9 @@ class Framework:
         if frameworkString == "JavaScriptCore":
             return Frameworks.JavaScriptCore
 
+        if frameworkString == "WebKit":
+            return Frameworks.WebKit
+
         if frameworkString == "WebInspector":
             return Frameworks.WebInspector
 
@@ -88,9 +104,45 @@ class Framework:
 class Frameworks:
     Global = Framework("Global")
     JavaScriptCore = Framework("JavaScriptCore")
+    WebKit = Framework("WebKit")
     WebInspector = Framework("WebInspector")
     Test = Framework("Test")
 
+
+class Platform:
+    def __init__(self, name):
+        self.name = name
+
+    @staticmethod
+    def fromString(platformString):
+        platformString = platformString.lower()
+        if platformString == "ios":
+            return Platforms.iOS
+
+        if platformString == "macos":
+            return Platforms.macOS
+
+        if platformString == "all":
+            return Platforms.All
+
+        if platformString == "generic" or not platformString:
+            return Platforms.Generic
+
+        raise ParseException("Unknown platform: %s" % platformString)
+
+
+class Platforms:
+    All = Platform("all")
+    Generic = Platform("generic")
+    iOS = Platform("ios")
+    macOS = Platform("macos")
+
+    # Allow iteration over all platforms. See <http://stackoverflow.com/questions/5434400/>.
+    class __metaclass__(type):
+        def __iter__(self):
+            for attr in dir(Platforms):
+                if not attr.startswith("__"):
+                    yield getattr(Platforms, attr)
 
 class TypeReference:
     def __init__(self, type_kind, referenced_type_name, enum_values, array_items):
@@ -105,6 +157,10 @@ class TypeReference:
         if type_kind is not None and referenced_type_name is not None:
             raise ParseException("Type reference cannot have both 'type' and '$ref' keys.")
 
+        all_primitive_types = ["integer", "number", "string", "boolean", "enum", "object", "array", "any"]
+        if type_kind is not None and type_kind not in all_primitive_types:
+            raise ParseException("Type reference '%s' is not a primitive type. Allowed values: %s" % (type_kind, ', '.join(all_primitive_types)))
+
         if type_kind == "array" and array_items is None:
             raise ParseException("Type reference with type 'array' must have key 'items' to define array element type.")
 
@@ -115,7 +171,7 @@ class TypeReference:
         if self.referenced_type_name is not None:
             return self.referenced_type_name
         else:
-            return self.type_kind  # integer, string, number, boolean, enum, object, array
+            return self.type_kind  # one of all_primitive_types
 
 
 class Type:
@@ -161,8 +217,9 @@ class PrimitiveType(Type):
 
 
 class AliasedType(Type):
-    def __init__(self, name, domain, aliased_type_ref):
-        self._name = name
+    def __init__(self, declaration, domain, aliased_type_ref):
+        self._name = declaration.type_name
+        self._declaration = declaration
         self._domain = domain
         self._aliased_type_ref = aliased_type_ref
         self.aliased_type = None
@@ -191,8 +248,9 @@ class AliasedType(Type):
 
 
 class EnumType(Type):
-    def __init__(self, name, domain, values, primitive_type_ref, is_anonymous=False):
-        self._name = name
+    def __init__(self, declaration, domain, values, primitive_type_ref, is_anonymous=False):
+        self._name = "(anonymous)" if declaration is None else declaration.type_name
+        self._declaration = declaration
         self._domain = domain
         self._values = values
         self._primitive_type_ref = primitive_type_ref
@@ -200,16 +258,19 @@ class EnumType(Type):
         self.is_anonymous = is_anonymous
 
     def __repr__(self):
-        return 'EnumType[value_type=%s; values=%s]' % (self.qualified_name(), ', '.join(map(str, self.enum_values())))
+        return 'EnumType[primitive_type=%s; enum_values=%s]' % (self.qualified_name(), ', '.join(map(str, self.enum_values())))
 
     def is_enum(self):
         return True
 
+    def enum_values(self):
+        return self._values
+
     def type_domain(self):
         return self._domain
 
-    def enum_values(self):
-        return self._values
+    def declaration(self):
+        return self._declaration
 
     def qualified_name(self):
         return  ".".join([self.type_domain().domain_name, self.raw_name()])
@@ -224,8 +285,9 @@ class EnumType(Type):
 
 
 class ArrayType(Type):
-    def __init__(self, name, element_type_ref, domain):
-        self._name = name
+    def __init__(self, declaration, element_type_ref, domain):
+        self._name = None if declaration is None else declaration.type_name
+        self._declaration = declaration
         self._domain = domain
         self._element_type_ref = element_type_ref
         self.element_type = None
@@ -235,6 +297,9 @@ class ArrayType(Type):
             return 'ArrayType[element_type=%r]' % self.element_type
         else:
             return 'ArrayType[element_type=(unresolved)]'
+
+    def declaration(self):
+        return self._declaration
 
     def type_domain(self):
         return self._domain
@@ -251,13 +316,17 @@ class ArrayType(Type):
 
 
 class ObjectType(Type):
-    def __init__(self, name, domain, members):
-        self._name = name
+    def __init__(self, declaration, domain):
+        self._name = declaration.type_name
+        self._declaration = declaration
         self._domain = domain
-        self.members = members
+        self.members = declaration.type_members
 
     def __repr__(self):
         return 'ObjectType[%s]' % self.qualified_name()
+
+    def declaration(self):
+        return self._declaration
 
     def type_domain(self):
         return self._domain
@@ -319,7 +388,11 @@ class Protocol:
             if json['availability'] not in allowed_activation_strings:
                 raise ParseException('Malformed domain specification: availability is an unsupported string. Was: "%s", Allowed values: %s' % (json['availability'], ', '.join(allowed_activation_strings)))
 
-        self.domains.append(Domain(json['domain'], json.get('description', ''), json.get('featureGuard'), json.get('availability'), isSupplemental, types, commands, events))
+        if 'workerSupported' in json:
+            if not isinstance(json['workerSupported'], bool):
+                raise ParseException('Malformed domain specification: workerSupported is not a boolean. Was: "%s"' % json['availability'])
+
+        self.domains.append(Domain(json['domain'], json.get('description', ''), json.get('featureGuard'), json.get('availability'), json.get('workerSupported', False), isSupplemental, types, commands, events))
 
     def parse_type_declaration(self, json):
         check_for_required_properties(['id', 'type'], json, "type")
@@ -337,7 +410,8 @@ class Protocol:
             raise ParseException("Malformed domain specification: type declaration for %s has duplicate member names" % json['id'])
 
         type_ref = TypeReference(json['type'], json.get('$ref'), json.get('enum'), json.get('items'))
-        return TypeDeclaration(json['id'], type_ref, json.get("description", ""), type_members)
+        platform = Platform.fromString(json.get('platform', 'generic'))
+        return TypeDeclaration(json['id'], type_ref, json.get("description", ""), platform, type_members)
 
     def parse_type_member(self, json):
         check_for_required_properties(['name'], json, "type member")
@@ -371,7 +445,8 @@ class Protocol:
             if len(duplicate_names) > 0:
                 raise ParseException("Malformed domain specification: return parameter list for command %s has duplicate parameter names" % json['name'])
 
-        return Command(json['name'], call_parameters, return_parameters, json.get('description', ""), json.get('async', False))
+        platform = Platform.fromString(json.get('platform', 'generic'))
+        return Command(json['name'], call_parameters, return_parameters, json.get('description', ""), platform, json.get('async', False))
 
     def parse_event(self, json):
         check_for_required_properties(['name'], json, "event")
@@ -388,7 +463,8 @@ class Protocol:
             if len(duplicate_names) > 0:
                 raise ParseException("Malformed domain specification: parameter list for event %s has duplicate parameter names" % json['name'])
 
-        return Event(json['name'], event_parameters, json.get('description', ""))
+        platform = Platform.fromString(json.get('platform', 'generic'))
+        return Event(json['name'], event_parameters, json.get('description', ""), platform)
 
     def parse_call_or_return_parameter(self, json):
         check_for_required_properties(['name'], json, "parameter")
@@ -408,7 +484,7 @@ class Protocol:
 
         # Gather qualified type names from type declarations in each domain.
         for domain in self.domains:
-            for declaration in domain.type_declarations:
+            for declaration in domain.all_type_declarations():
                 # Basic sanity checking.
                 if declaration.type_ref.referenced_type_name is not None:
                     raise TypecheckException("Type declarations must name a base type, not a type reference.")
@@ -425,13 +501,13 @@ class Protocol:
                 kind = declaration.type_ref.type_kind
                 if declaration.type_ref.enum_values is not None:
                     primitive_type_ref = TypeReference(declaration.type_ref.type_kind, None, None, None)
-                    type_instance = EnumType(declaration.type_name, domain, declaration.type_ref.enum_values, primitive_type_ref)
+                    type_instance = EnumType(declaration, domain, declaration.type_ref.enum_values, primitive_type_ref)
                 elif kind == "array":
-                    type_instance = ArrayType(declaration.type_name, declaration.type_ref.array_type_ref, domain)
+                    type_instance = ArrayType(declaration, declaration.type_ref.array_type_ref, domain)
                 elif kind == "object":
-                    type_instance = ObjectType(declaration.type_name, domain, declaration.type_members)
+                    type_instance = ObjectType(declaration, domain)
                 else:
-                    type_instance = AliasedType(declaration.type_name, domain, declaration.type_ref)
+                    type_instance = AliasedType(declaration, domain, declaration.type_ref)
 
                 log.debug("< Created fresh type %r for declaration %s" % (type_instance, qualified_type_name))
                 self.types_by_name[qualified_type_name] = type_instance
@@ -462,7 +538,7 @@ class Protocol:
         if type_ref.enum_values is not None:
             # We need to create a type reference without enum values as the enum's nested type.
             primitive_type_ref = TypeReference(type_ref.type_kind, None, None, None)
-            type_instance = EnumType("(anonymous)", domain, type_ref.enum_values, primitive_type_ref, True)
+            type_instance = EnumType(None, domain, type_ref.enum_values, primitive_type_ref, True)
             type_instance.resolve_type_references(self)
             log.debug("< Created fresh type instance for anonymous enum type: %s" % type_instance.qualified_name())
             return type_instance
@@ -486,39 +562,50 @@ class Protocol:
 
 
 class Domain:
-    def __init__(self, domain_name, description, feature_guard, availability, isSupplemental, type_declarations, commands, events):
+    def __init__(self, domain_name, description, feature_guard, availability, workerSupported, isSupplemental, type_declarations, commands, events):
         self.domain_name = domain_name
         self.description = description
         self.feature_guard = feature_guard
         self.availability = availability
+        self.workerSupported = workerSupported
         self.is_supplemental = isSupplemental
-        self.type_declarations = type_declarations
-        self.commands = commands
-        self.events = events
+        self._type_declarations = type_declarations
+        self._commands = commands
+        self._events = events
+
+    def all_type_declarations(self):
+        return self._type_declarations
+
+    def all_commands(self):
+        return self._commands
+
+    def all_events(self):
+        return self._events
 
     def resolve_type_references(self, protocol):
         log.debug("> Resolving type declarations for domain: %s" % self.domain_name)
-        for declaration in self.type_declarations:
+        for declaration in self._type_declarations:
             declaration.resolve_type_references(protocol, self)
 
         log.debug("> Resolving types in commands for domain: %s" % self.domain_name)
-        for command in self.commands:
+        for command in self._commands:
             command.resolve_type_references(protocol, self)
 
         log.debug("> Resolving types in events for domain: %s" % self.domain_name)
-        for event in self.events:
+        for event in self._events:
             event.resolve_type_references(protocol, self)
 
 
 class Domains:
-    GLOBAL = Domain("", "The global domain, in which primitive types are implicitly declared.", None, None, True, [], [], [])
+    GLOBAL = Domain("", "The global domain, in which primitive types are implicitly declared.", None, None, True, False, [], [], [])
 
 
 class TypeDeclaration:
-    def __init__(self, type_name, type_ref, description, type_members):
+    def __init__(self, type_name, type_ref, description, platform, type_members):
         self.type_name = type_name
         self.type_ref = type_ref
         self.description = description
+        self.platform = platform
         self.type_members = type_members
 
         if self.type_name != ucfirst(self.type_name):
@@ -562,11 +649,12 @@ class Parameter:
 
 
 class Command:
-    def __init__(self, command_name, call_parameters, return_parameters, description, is_async):
+    def __init__(self, command_name, call_parameters, return_parameters, description, platform, is_async):
         self.command_name = command_name
         self.call_parameters = call_parameters
         self.return_parameters = return_parameters
         self.description = description
+        self.platform = platform
         self.is_async = is_async
 
     def resolve_type_references(self, protocol, domain):
@@ -580,10 +668,11 @@ class Command:
 
 
 class Event:
-    def __init__(self, event_name, event_parameters, description):
+    def __init__(self, event_name, event_parameters, description, platform):
         self.event_name = event_name
         self.event_parameters = event_parameters
         self.description = description
+        self.platform = platform
 
     def resolve_type_references(self, protocol, domain):
         log.debug(">> Resolving type references for parameters in event: %s" % self.event_name)

@@ -30,7 +30,7 @@
 
 #include <WebCore/NetscapePlugInStreamLoader.h>
 #include <WebKitLegacy/npapi.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
@@ -47,13 +47,13 @@ class NetscapePluginInstanceProxy;
 class HostedNetscapePluginStream : public RefCounted<HostedNetscapePluginStream>
                                  , private WebCore::NetscapePlugInStreamLoaderClient {
 public:
-    static PassRefPtr<HostedNetscapePluginStream> create(NetscapePluginInstanceProxy* instance, uint32_t streamID, NSURLRequest *request)
+    static Ref<HostedNetscapePluginStream> create(NetscapePluginInstanceProxy* instance, uint32_t streamID, NSURLRequest *request)
     {
-        return adoptRef(new HostedNetscapePluginStream(instance, streamID, request));
+        return adoptRef(*new HostedNetscapePluginStream(instance, streamID, request));
     }
-    static PassRefPtr<HostedNetscapePluginStream> create(NetscapePluginInstanceProxy* instance, WebCore::FrameLoader* frameLoader)
+    static Ref<HostedNetscapePluginStream> create(NetscapePluginInstanceProxy* instance, WebCore::FrameLoader* frameLoader)
     {
-        return adoptRef(new HostedNetscapePluginStream(instance, frameLoader));
+        return adoptRef(*new HostedNetscapePluginStream(instance, frameLoader));
     }
 
     ~HostedNetscapePluginStream();
@@ -86,7 +86,7 @@ private:
     NSError *pluginCancelledConnectionError() const;
 
     // NetscapePlugInStreamLoaderClient methods.
-    void willSendRequest(WebCore::NetscapePlugInStreamLoader*, WebCore::ResourceRequest&&, const WebCore::ResourceResponse& redirectResponse, std::function<void (WebCore::ResourceRequest&&)>&&) override;
+    void willSendRequest(WebCore::NetscapePlugInStreamLoader*, WebCore::ResourceRequest&&, const WebCore::ResourceResponse& redirectResponse, WTF::Function<void (WebCore::ResourceRequest&&)>&&) override;
     void didReceiveResponse(WebCore::NetscapePlugInStreamLoader*, const WebCore::ResourceResponse&) override;
     bool wantsAllStreams() const override;
     

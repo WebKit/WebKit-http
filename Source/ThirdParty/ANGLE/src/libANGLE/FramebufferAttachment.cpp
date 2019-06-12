@@ -16,11 +16,18 @@
 #include "libANGLE/Texture.h"
 #include "libANGLE/formatutils.h"
 #include "libANGLE/renderer/FramebufferImpl.h"
+#include "libANGLE/renderer/FramebufferAttachmentObjectImpl.h"
 
 namespace gl
 {
 
 ////// FramebufferAttachment::Target Implementation //////
+
+FramebufferAttachment::Target::Target()
+    : mBinding(GL_NONE),
+      mTextureIndex(ImageIndex::MakeInvalid())
+{
+}
 
 FramebufferAttachment::Target::Target(GLenum binding, const ImageIndex &imageIndex)
     : mBinding(binding),
@@ -44,8 +51,7 @@ FramebufferAttachment::Target &FramebufferAttachment::Target::operator=(const Ta
 ////// FramebufferAttachment Implementation //////
 
 FramebufferAttachment::FramebufferAttachment()
-    : mType(GL_NONE),
-      mTarget(GL_NONE, ImageIndex::MakeInvalid())
+    : mType(GL_NONE), mResource(nullptr)
 {
 }
 
@@ -53,19 +59,39 @@ FramebufferAttachment::FramebufferAttachment(GLenum type,
                                              GLenum binding,
                                              const ImageIndex &textureIndex,
                                              FramebufferAttachmentObject *resource)
-    : mType(type),
-      mTarget(binding, textureIndex)
+    : mResource(nullptr)
 {
-    mResource.set(resource);
+    attach(type, binding, textureIndex, resource);
+}
+
+FramebufferAttachment::FramebufferAttachment(const FramebufferAttachment &other)
+    : mResource(nullptr)
+{
+    attach(other.mType, other.mTarget.binding(), other.mTarget.textureIndex(), other.mResource);
+}
+
+FramebufferAttachment &FramebufferAttachment::operator=(const FramebufferAttachment &other)
+{
+    attach(other.mType, other.mTarget.binding(), other.mTarget.textureIndex(), other.mResource);
+    return *this;
+}
+
+FramebufferAttachment::~FramebufferAttachment()
+{
+    detach();
 }
 
 void FramebufferAttachment::detach()
 {
     mType = GL_NONE;
-    mResource.set(nullptr);
+    if (mResource != nullptr)
+    {
+        mResource->onDetach();
+        mResource = nullptr;
+    }
 
     // not technically necessary, could omit for performance
-    mTarget = Target(GL_NONE, ImageIndex::MakeInvalid());
+    mTarget = Target();
 }
 
 void FramebufferAttachment::attach(GLenum type,
@@ -73,54 +99,67 @@ void FramebufferAttachment::attach(GLenum type,
                                    const ImageIndex &textureIndex,
                                    FramebufferAttachmentObject *resource)
 {
+    if (resource == nullptr)
+    {
+        detach();
+        return;
+    }
+
     mType = type;
     mTarget = Target(binding, textureIndex);
-    mResource.set(resource);
-}
+    resource->onAttach();
 
-FramebufferAttachment::~FramebufferAttachment()
-{
-    mResource.set(nullptr);
+    if (mResource != nullptr)
+    {
+        mResource->onDetach();
+    }
+
+    mResource = resource;
 }
 
 GLuint FramebufferAttachment::getRedSize() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).redBits;
+    return getFormat().info->redBits;
 }
 
 GLuint FramebufferAttachment::getGreenSize() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).greenBits;
+    return getFormat().info->greenBits;
 }
 
 GLuint FramebufferAttachment::getBlueSize() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).blueBits;
+    return getFormat().info->blueBits;
 }
 
 GLuint FramebufferAttachment::getAlphaSize() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).alphaBits;
+    return getFormat().info->alphaBits;
 }
 
 GLuint FramebufferAttachment::getDepthSize() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).depthBits;
+    return getFormat().info->depthBits;
 }
 
 GLuint FramebufferAttachment::getStencilSize() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).stencilBits;
+    return getFormat().info->stencilBits;
 }
 
 GLenum FramebufferAttachment::getComponentType() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).componentType;
+    return getFormat().info->componentType;
 }
 
 GLenum FramebufferAttachment::getColorEncoding() const
 {
-    return GetInternalFormatInfo(getInternalFormat()).colorEncoding;
+    return getFormat().info->colorEncoding;
+}
+
+GLuint FramebufferAttachment::id() const
+{
+    return mResource->getId();
 }
 
 const ImageIndex &FramebufferAttachment::getTextureImageIndex() const
@@ -158,17 +197,54 @@ GLint FramebufferAttachment::layer() const
 
 Texture *FramebufferAttachment::getTexture() const
 {
-    return rx::GetAs<Texture>(mResource.get());
+    return rx::GetAs<Texture>(mResource);
 }
 
 Renderbuffer *FramebufferAttachment::getRenderbuffer() const
 {
-    return rx::GetAs<Renderbuffer>(mResource.get());
+    return rx::GetAs<Renderbuffer>(mResource);
 }
 
 const egl::Surface *FramebufferAttachment::getSurface() const
 {
-    return rx::GetAs<egl::Surface>(mResource.get());
+    return rx::GetAs<egl::Surface>(mResource);
 }
 
+FramebufferAttachmentObject *FramebufferAttachment::getResource() const
+{
+    return mResource;
 }
+
+bool FramebufferAttachment::operator==(const FramebufferAttachment &other) const
+{
+    if (mResource != other.mResource || mType != other.mType)
+    {
+        return false;
+    }
+
+    if (mType == GL_TEXTURE && getTextureImageIndex() != other.getTextureImageIndex())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool FramebufferAttachment::operator!=(const FramebufferAttachment &other) const
+{
+    return !(*this == other);
+}
+
+Error FramebufferAttachmentObject::getAttachmentRenderTarget(
+    const FramebufferAttachment::Target &target,
+    rx::FramebufferAttachmentRenderTarget **rtOut) const
+{
+    return getAttachmentImpl()->getAttachmentRenderTarget(target, rtOut);
+}
+
+angle::BroadcastChannel<> *FramebufferAttachmentObject::getDirtyChannel()
+{
+    return &mDirtyChannel;
+}
+
+}  // namespace gl

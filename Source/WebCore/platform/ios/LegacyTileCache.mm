@@ -28,13 +28,13 @@
 
 #if PLATFORM(IOS)
 
+#include <CoreText/CoreText.h>
 #include "FontAntialiasingStateSaver.h"
 #include "LegacyTileGrid.h"
 #include "LegacyTileGridTile.h"
 #include "LegacyTileLayer.h"
 #include "LegacyTileLayerPool.h"
 #include "Logging.h"
-#include "MemoryPressureHandler.h"
 #include "QuartzCoreSPI.h"
 #include "SystemMemory.h"
 #include "WAKWindow.h"
@@ -42,6 +42,7 @@
 #include "WebCoreSystemInterface.h"
 #include "WebCoreThreadRun.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/MemoryPressureHandler.h>
 #include <wtf/RAMSize.h>
 
 @interface WAKView (WebViewExtras)
@@ -69,25 +70,9 @@ namespace WebCore {
 
 LegacyTileCache::LegacyTileCache(WAKWindow* window)
     : m_window(window)
-    , m_keepsZoomedOutTiles(false)
-    , m_hasPendingLayoutTiles(false)
-    , m_hasPendingUpdateTilingMode(false)
     , m_tombstone(adoptNS([[LegacyTileCacheTombstone alloc] init]))
-    , m_tilingMode(Normal)
-    , m_tilingDirection(TilingDirectionDown)
-    , m_tileSize(512, 512)
-    , m_tilesOpaque(true)
-    , m_tileBordersVisible(false)
-    , m_tilePaintCountersVisible(false)
-    , m_acceleratedDrawingEnabled(false)
-    , m_isSpeculativeTileCreationEnabled(true)
-    , m_didCallWillStartScrollingOrZooming(false)
     , m_zoomedOutTileGrid(std::make_unique<LegacyTileGrid>(*this, m_tileSize))
     , m_tileCreationTimer(*this, &LegacyTileCache::tileCreationTimerFired)
-    , m_currentScale(1.f)
-    , m_pendingScale(0)
-    , m_pendingZoomedOutScale(0)
-    , m_tileControllerShouldUseLowScaleTiles(false)
 {
     [hostLayer() insertSublayer:m_zoomedOutTileGrid->tileHostLayer() atIndex:0];
     hostLayerSizeChanged();
@@ -116,7 +101,7 @@ FloatRect LegacyTileCache::visibleRectInLayer(CALayer *layer) const
     return [layer convertRect:[m_window extendedVisibleRect] fromLayer:hostLayer()];
 }
 
-void LegacyTileCache::setOverrideVisibleRect(Optional<FloatRect> rect)
+void LegacyTileCache::setOverrideVisibleRect(std::optional<FloatRect> rect)
 {
     m_overrideVisibleRect = rect;
 }
@@ -419,7 +404,7 @@ void LegacyTileCache::finishedCreatingTiles(bool didCreateTiles, bool createMore
 
     // Keep creating tiles until the whole coverRect is covered.
     if (createMore)
-        m_tileCreationTimer.startOneShot(0);
+        m_tileCreationTimer.startOneShot(0_s);
 }
 
 void LegacyTileCache::tileCreationTimerFired()
@@ -519,14 +504,18 @@ void LegacyTileCache::drawReplacementImage(LegacyTileLayer* layer, CGContextRef 
     CGContextDrawImage(context, imageRect, image);
 }
 
-void LegacyTileCache::drawWindowContent(LegacyTileLayer* layer, CGContextRef context, CGRect dirtyRect)
+void LegacyTileCache::drawWindowContent(LegacyTileLayer* layer, CGContextRef context, CGRect dirtyRect, DrawingFlags drawingFlags)
 {
     CGRect frame = [layer frame];
     FontAntialiasingStateSaver fontAntialiasingState(context, [m_window useOrientationDependentFontAntialiasing] && [layer isOpaque]);
     fontAntialiasingState.setup([WAKWindow hasLandscapeOrientation]);
 
+    if (drawingFlags == DrawingFlags::Snapshotting)
+        [m_window setIsInSnapshottingPaint:YES];
+        
     CGSRegionObj drawRegion = (CGSRegionObj)[layer regionBeingDrawn];
     CGFloat contentsScale = [layer contentsScale];
+    
     if (drawRegion && shouldRepaintInPieces(dirtyRect, drawRegion, contentsScale)) {
         // Use fine grained repaint rectangles to minimize the amount of painted pixels.
         CGSRegionEnumeratorObj enumerator = CGSRegionEnumerator(drawRegion);
@@ -549,9 +538,12 @@ void LegacyTileCache::drawWindowContent(LegacyTileLayer* layer, CGContextRef con
     }
 
     fontAntialiasingState.restore();
+    
+    if (drawingFlags == DrawingFlags::Snapshotting)
+        [m_window setIsInSnapshottingPaint:NO];
 }
 
-void LegacyTileCache::drawLayer(LegacyTileLayer* layer, CGContextRef context)
+void LegacyTileCache::drawLayer(LegacyTileLayer* layer, CGContextRef context, DrawingFlags drawingFlags)
 {
     // The web lock unlock observer runs after CA commit observer.
     if (!WebThreadIsLockedOrDisabled()) {
@@ -570,7 +562,7 @@ void LegacyTileCache::drawLayer(LegacyTileLayer* layer, CGContextRef context)
     if (RetainPtr<CGImage> contentReplacementImage = this->contentReplacementImage())
         drawReplacementImage(layer, context, contentReplacementImage.get());
     else
-        drawWindowContent(layer, context, dirtyRect);
+        drawWindowContent(layer, context, dirtyRect, drawingFlags);
 
     ++layer.paintCount;
     if (m_tilePaintCountersVisible) {
@@ -591,14 +583,17 @@ void LegacyTileCache::drawLayer(LegacyTileLayer* layer, CGContextRef context)
             CGContextSetRGBFillColor(context, 1, 0, 0, 0.4f);
         else
             CGContextSetRGBFillColor(context, 1, 1, 1, 0.6f);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        CGContextSetTextMatrix(context, CGAffineTransformMakeScale(1, -1));
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        CGContextSelectFont(context, "Helvetica", 25, kCGEncodingMacRoman);
-        CGContextShowTextAtPoint(context, labelBounds.origin.x + 3, labelBounds.origin.y + 20, text, strlen(text));
-#pragma clang diagnostic pop
+
+        auto matrix = CGAffineTransformMakeScale(1, -1);
+        auto font = adoptCF(CTFontCreateWithName(CFSTR("Helvetica"), 25, &matrix));
+        CFTypeRef keys[] = { kCTFontAttributeName, kCTForegroundColorFromContextAttributeName };
+        CFTypeRef values[] = { font.get(), kCFBooleanTrue };
+        auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+        auto string = adoptCF(CFStringCreateWithBytesNoCopy(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(text), strlen(text), kCFStringEncodingUTF8, false, kCFAllocatorNull));
+        auto attributedString = adoptCF(CFAttributedStringCreate(kCFAllocatorDefault, string.get(), attributes.get()));
+        auto line = adoptCF(CTLineCreateWithAttributedString(attributedString.get()));
+        CGContextSetTextPosition(context, labelBounds.origin.x + 3, labelBounds.origin.y + 20);
+        CTLineDraw(line.get(), context);
     
         CGContextRestoreGState(context);        
     }
@@ -778,7 +773,7 @@ void LegacyTileCache::setSpeculativeTileCreationEnabled(bool enabled)
         return;
     m_isSpeculativeTileCreationEnabled = enabled;
     if (m_isSpeculativeTileCreationEnabled)
-        m_tileCreationTimer.startOneShot(0);
+        m_tileCreationTimer.startOneShot(0_s);
 }
 
 bool LegacyTileCache::hasPendingDraw() const

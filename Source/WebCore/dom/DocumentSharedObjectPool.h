@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef DocumentSharedObjectPool_h
-#define DocumentSharedObjectPool_h
+#pragma once
 
 #include <memory>
 #include <wtf/HashMap.h>
@@ -38,6 +37,7 @@ class Attribute;
 class ShareableElementData;
 
 class DocumentSharedObjectPool {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     Ref<ShareableElementData> cachedShareableElementDataWithAttributes(const Vector<Attribute>&);
 
@@ -46,6 +46,4 @@ private:
     ShareableElementDataCache m_shareableElementDataCache;
 };
 
-}
-
-#endif
+} // namespace WebCore

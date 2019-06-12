@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014 Apple Inc. All rights reserved.
+# Copyright (c) 2014, 2016 Apple Inc. All rights reserved.
 # Copyright (c) 2014 University of Washington. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -32,27 +32,25 @@ from string import Template
 
 from cpp_generator import CppGenerator
 from cpp_generator_templates import CppGeneratorTemplates as CppTemplates
-from generator import Generator
 
 log = logging.getLogger('global')
 
 
-class CppAlternateBackendDispatcherHeaderGenerator(Generator):
-    def __init__(self, model, input_filepath):
-        Generator.__init__(self, model, input_filepath)
+class CppAlternateBackendDispatcherHeaderGenerator(CppGenerator):
+    def __init__(self, *args, **kwargs):
+        CppGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
-        return 'InspectorAlternateBackendDispatchers.h'
+        return '%sAlternateBackendDispatchers.h' % self.protocol_name()
 
     def generate_output(self):
         headers = [
-            '"InspectorProtocolTypes.h"',
+            '"%sProtocolTypes.h"' % self.protocol_name(),
             '<inspector/InspectorFrontendRouter.h>',
             '<JavaScriptCore/InspectorBackendDispatcher.h>',
         ]
 
         header_args = {
-            'headerGuardString': re.sub('\W+', '_', self.output_filename()),
             'includes': '\n'.join(['#include ' + header for header in headers]),
         }
 
@@ -65,11 +63,13 @@ class CppAlternateBackendDispatcherHeaderGenerator(Generator):
         return '\n\n'.join(sections)
 
     def _generate_handler_declarations_for_domain(self, domain):
-        if not domain.commands:
+        commands = self.commands_for_domain(domain)
+
+        if not len(commands):
             return ''
 
         command_declarations = []
-        for command in domain.commands:
+        for command in commands:
             command_declarations.append(self._generate_handler_declaration_for_command(command))
 
         handler_args = {

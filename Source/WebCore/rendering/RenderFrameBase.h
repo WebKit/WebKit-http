@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RenderFrameBase_h
-#define RenderFrameBase_h
+#pragma once
 
 #include "FrameView.h"
 #include "RenderWidget.h"
@@ -37,7 +36,7 @@ class RenderView;
 // Base class for RenderFrame and RenderIFrame
 class RenderFrameBase : public RenderWidget {
 protected:
-    RenderFrameBase(HTMLFrameElementBase&, Ref<RenderStyle>&&);
+    RenderFrameBase(HTMLFrameElementBase&, RenderStyle&&);
 
 public:
     FrameView* childView() const { return downcast<FrameView>(RenderWidget::widget()); }
@@ -45,11 +44,9 @@ public:
     void layoutWithFlattening(bool fixedWidth, bool fixedHeight);
 
 private:
-    void peformLayoutWithFlattening(bool hasFixedWidth, bool hasFixedHeight);
+    void performLayoutWithFlattening(bool hasFixedWidth, bool hasFixedHeight);
     RenderView* childRenderView() const;
     void widget() const = delete;
 };
 
 } // namespace WebCore
-
-#endif // RenderFrameBase_h

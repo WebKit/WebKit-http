@@ -19,17 +19,15 @@
  *
  */
 
-#ifndef RuleSet_h
-#define RuleSet_h
+#pragma once
 
 #include "RuleFeature.h"
 #include "SelectorCompiler.h"
 #include "StyleRule.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/text/AtomicString.h>
-#include <wtf/text/CString.h>
+#include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
 
@@ -160,31 +158,30 @@ public:
     ~RuleSet();
 
     typedef Vector<RuleData, 1> RuleDataVector;
-    typedef HashMap<AtomicStringImpl*, std::unique_ptr<RuleDataVector>> AtomRuleMap;
+    typedef HashMap<AtomicString, std::unique_ptr<RuleDataVector>> AtomRuleMap;
 
     void addRulesFromSheet(StyleSheetContents&, const MediaQueryEvaluator&, StyleResolver* = 0);
 
     void addStyleRule(StyleRule*, AddRuleFlags);
     void addRule(StyleRule*, unsigned selectorIndex, AddRuleFlags);
     void addPageRule(StyleRulePage*);
-    void addToRuleSet(AtomicStringImpl* key, AtomRuleMap&, const RuleData&);
+    void addToRuleSet(const AtomicString& key, AtomRuleMap&, const RuleData&);
     void addRegionRule(StyleRuleRegion*, bool hasDocumentSecurityOrigin);
     void shrinkToFit();
     void disableAutoShrinkToFit() { m_autoShrinkToFitEnabled = false; }
 
     const RuleFeatureSet& features() const { return m_features; }
 
-    const RuleDataVector* idRules(AtomicStringImpl* key) const { return m_idRules.get(key); }
-    const RuleDataVector* classRules(AtomicStringImpl* key) const { return m_classRules.get(key); }
-    const RuleDataVector* tagRules(AtomicStringImpl* key, bool isHTMLName) const;
-    const RuleDataVector* shadowPseudoElementRules(AtomicStringImpl* key) const { return m_shadowPseudoElementRules.get(key); }
+    const RuleDataVector* idRules(const AtomicString& key) const { return m_idRules.get(key); }
+    const RuleDataVector* classRules(const AtomicString& key) const { return m_classRules.get(key); }
+    const RuleDataVector* tagRules(const AtomicString& key, bool isHTMLName) const;
+    const RuleDataVector* shadowPseudoElementRules(const AtomicString& key) const { return m_shadowPseudoElementRules.get(key); }
     const RuleDataVector* linkPseudoClassRules() const { return &m_linkPseudoClassRules; }
 #if ENABLE(VIDEO_TRACK)
     const RuleDataVector* cuePseudoRules() const { return &m_cuePseudoRules; }
 #endif
-#if ENABLE(SHADOW_DOM)
     const RuleDataVector& hostPseudoClassRules() const { return m_hostPseudoClassRules; }
-#endif
+    const RuleDataVector& slottedPseudoElementRules() const { return m_slottedPseudoElementRules; }
     const RuleDataVector* focusPseudoClassRules() const { return &m_focusPseudoClassRules; }
     const RuleDataVector* universalRules() const { return &m_universalRules; }
 
@@ -194,7 +191,7 @@ public:
     unsigned ruleCount() const { return m_ruleCount; }
 
     bool hasShadowPseudoElementRules() const;
-    void copyShadowPseudoElementRulesFrom(const RuleSet&);
+    bool hasHostPseudoClassRulesMatchingInShadowTree() const { return m_hasHostPseudoClassRulesMatchingInShadowTree; }
 
 private:
     void addChildRules(const Vector<RefPtr<StyleRuleBase>>&, const MediaQueryEvaluator& medium, StyleResolver*, bool hasDocumentSecurityOrigin, bool isInitiatingElementInUserAgentShadowTree, AddRuleFlags);
@@ -208,19 +205,19 @@ private:
 #if ENABLE(VIDEO_TRACK)
     RuleDataVector m_cuePseudoRules;
 #endif
-#if ENABLE(SHADOW_DOM)
     RuleDataVector m_hostPseudoClassRules;
-#endif
+    RuleDataVector m_slottedPseudoElementRules;
     RuleDataVector m_focusPseudoClassRules;
     RuleDataVector m_universalRules;
     Vector<StyleRulePage*> m_pageRules;
     unsigned m_ruleCount { 0 };
-    bool m_autoShrinkToFitEnabled { false };
+    bool m_hasHostPseudoClassRulesMatchingInShadowTree { false };
+    bool m_autoShrinkToFitEnabled { true };
     RuleFeatureSet m_features;
     Vector<RuleSetSelectorPair> m_regionSelectorsAndRuleSets;
 };
 
-inline const RuleSet::RuleDataVector* RuleSet::tagRules(AtomicStringImpl* key, bool isHTMLName) const
+inline const RuleSet::RuleDataVector* RuleSet::tagRules(const AtomicString& key, bool isHTMLName) const
 {
     const AtomRuleMap* tagRules;
     if (isHTMLName)
@@ -233,9 +230,8 @@ inline const RuleSet::RuleDataVector* RuleSet::tagRules(AtomicStringImpl* key, b
 } // namespace WebCore
 
 namespace WTF {
+
 // RuleData is simple enough that initializing to 0 and moving with memcpy will totally work.
 template<> struct VectorTraits<WebCore::RuleData> : SimpleClassVectorTraits { };
 
 } // namespace WTF
-
-#endif // RuleSet_h

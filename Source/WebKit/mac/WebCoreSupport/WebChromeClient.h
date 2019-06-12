@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2010 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,137 +31,141 @@
 #import <WebCore/FocusDirection.h>
 #import <wtf/Forward.h>
 
-#if PLATFORM(IOS)
-#import <wtf/Platform.h>
-#import <wtf/text/WTFString.h>
-#import <WebCore/Chrome.h>
-#endif
-
 @class WebView;
 
+// FIXME: This class is used as a concrete class on Mac, but on iOS this is an abstract
+// base class of the concrete class, WebChromeClientIOS. Because of that, this class and
+// many of its functions are not marked final. That is messy way to organize things.
 class WebChromeClient : public WebCore::ChromeClient {
 public:
     WebChromeClient(WebView*);
-    
-    virtual void chromeDestroyed() override;
-    
-    virtual void setWindowRect(const WebCore::FloatRect&) override;
-    virtual WebCore::FloatRect windowRect() override;
 
-    virtual WebCore::FloatRect pageRect() override;
+    WebView* webView() const { return m_webView; }
 
-    virtual void focus() override;
-    virtual void unfocus() override;
-    
-    virtual bool canTakeFocus(WebCore::FocusDirection) override;
-    virtual void takeFocus(WebCore::FocusDirection) override;
+private:
+    void chromeDestroyed() final;
 
-    virtual void focusedElementChanged(WebCore::Element*) override;
-    virtual void focusedFrameChanged(WebCore::Frame*) override;
+    void setWindowRect(const WebCore::FloatRect&) override;
+    WebCore::FloatRect windowRect() override;
 
-    virtual WebCore::Page* createWindow(WebCore::Frame*, const WebCore::FrameLoadRequest&, const WebCore::WindowFeatures&, const WebCore::NavigationAction&) override;
-    virtual void show() override;
+    WebCore::FloatRect pageRect() final;
 
-    virtual bool canRunModal() override;
-    virtual void runModal() override;
+    void focus() override;
+    void unfocus() final;
 
-    virtual void setToolbarsVisible(bool) override;
-    virtual bool toolbarsVisible() override;
-    
-    virtual void setStatusbarVisible(bool) override;
-    virtual bool statusbarVisible() override;
-    
-    virtual void setScrollbarsVisible(bool) override;
-    virtual bool scrollbarsVisible() override;
-    
-    virtual void setMenubarVisible(bool) override;
-    virtual bool menubarVisible() override;
-    
-    virtual void setResizable(bool) override;
-    
-    virtual void addMessageToConsole(JSC::MessageSource, JSC::MessageLevel, const WTF::String& message, unsigned lineNumber, unsigned columnNumber, const WTF::String& sourceURL) override;
+    bool canTakeFocus(WebCore::FocusDirection) final;
+    void takeFocus(WebCore::FocusDirection) override;
 
-    virtual bool canRunBeforeUnloadConfirmPanel() override;
-    virtual bool runBeforeUnloadConfirmPanel(const WTF::String& message, WebCore::Frame*) override;
+    void focusedElementChanged(WebCore::Element*) override;
+    void focusedFrameChanged(WebCore::Frame*) final;
 
-    virtual void closeWindowSoon() override;
+    WebCore::Page* createWindow(WebCore::Frame&, const WebCore::FrameLoadRequest&, const WebCore::WindowFeatures&, const WebCore::NavigationAction&) final;
+    void show() final;
 
-    virtual void runJavaScriptAlert(WebCore::Frame*, const WTF::String&) override;
-    virtual bool runJavaScriptConfirm(WebCore::Frame*, const WTF::String&) override;
-    virtual bool runJavaScriptPrompt(WebCore::Frame*, const WTF::String& message, const WTF::String& defaultValue, WTF::String& result) override;
+    bool canRunModal() final;
+    void runModal() final;
 
-    virtual bool supportsImmediateInvalidation() override;
-    virtual void invalidateRootView(const WebCore::IntRect&) override;
-    virtual void invalidateContentsAndRootView(const WebCore::IntRect&) override;
-    virtual void invalidateContentsForSlowScroll(const WebCore::IntRect&) override;
-    virtual void scroll(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& rectToScroll, const WebCore::IntRect& clipRect) override;
+    void setToolbarsVisible(bool) final;
+    bool toolbarsVisible() final;
 
-    virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const override;
-    virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const override;
+    void setStatusbarVisible(bool) final;
+    bool statusbarVisible() final;
+
+    void setScrollbarsVisible(bool) final;
+    bool scrollbarsVisible() final;
+
+    void setMenubarVisible(bool) final;
+    bool menubarVisible() final;
+
+    void setResizable(bool) final;
+
+    void addMessageToConsole(JSC::MessageSource, JSC::MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceURL) final;
+
+    bool canRunBeforeUnloadConfirmPanel() final;
+    bool runBeforeUnloadConfirmPanel(const String& message, WebCore::Frame&) final;
+
+    void closeWindowSoon() final;
+
+    void runJavaScriptAlert(WebCore::Frame&, const String&) override;
+    bool runJavaScriptConfirm(WebCore::Frame&, const String&) override;
+    bool runJavaScriptPrompt(WebCore::Frame&, const String& message, const String& defaultValue, String& result) override;
+
+    bool supportsImmediateInvalidation() final;
+    void invalidateRootView(const WebCore::IntRect&) final;
+    void invalidateContentsAndRootView(const WebCore::IntRect&) final;
+    void invalidateContentsForSlowScroll(const WebCore::IntRect&) final;
+    void scroll(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& rectToScroll, const WebCore::IntRect& clipRect) final;
+
+    WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const final;
+    WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const final;
+
 #if PLATFORM(IOS)
-    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) const override;
-    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) const override;
+    WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) const final;
+    WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) const final;
 #endif
-    virtual PlatformPageClient platformPageClient() const override;
-    virtual void contentsSizeChanged(WebCore::Frame*, const WebCore::IntSize&) const override;
-    virtual void scrollRectIntoView(const WebCore::IntRect&) const override;
-    
-    virtual void setStatusbarText(const WTF::String&) override;
 
-    virtual void scrollbarsModeDidChange() const override { }
-    virtual bool shouldUnavailablePluginMessageBeButton(WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const override;
-    virtual void unavailablePluginButtonClicked(WebCore::Element*, WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const override;
-    virtual void mouseDidMoveOverElement(const WebCore::HitTestResult&, unsigned modifierFlags) override;
+    PlatformPageClient platformPageClient() const final;
+    void contentsSizeChanged(WebCore::Frame&, const WebCore::IntSize&) const final;
+    void scrollRectIntoView(const WebCore::IntRect&) const final;
 
-    virtual void setToolTip(const WTF::String&, WebCore::TextDirection) override;
+    void setStatusbarText(const String&) override;
 
-    virtual void print(WebCore::Frame*) override;
-    virtual void exceededDatabaseQuota(WebCore::Frame*, const WTF::String& databaseName, WebCore::DatabaseDetails) override;
-    virtual void reachedMaxAppCacheSize(int64_t spaceNeeded) override;
-    virtual void reachedApplicationCacheOriginQuota(WebCore::SecurityOrigin*, int64_t totalSpaceNeeded) override;
+    void scrollbarsModeDidChange() const final { }
+    bool shouldUnavailablePluginMessageBeButton(WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const final;
+    void unavailablePluginButtonClicked(WebCore::Element&, WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const final;
+    void mouseDidMoveOverElement(const WebCore::HitTestResult&, unsigned modifierFlags) final;
+
+    void setToolTip(const String&, WebCore::TextDirection) final;
+
+    void print(WebCore::Frame&) final;
+    void exceededDatabaseQuota(WebCore::Frame&, const String& databaseName, WebCore::DatabaseDetails) final;
+    void reachedMaxAppCacheSize(int64_t spaceNeeded) final;
+    void reachedApplicationCacheOriginQuota(WebCore::SecurityOrigin&, int64_t totalSpaceNeeded) final;
 
 #if ENABLE(DASHBOARD_SUPPORT)
-    virtual void annotatedRegionsChanged() override;
+    void annotatedRegionsChanged() final;
 #endif
 
-    virtual void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>) override;
-    virtual void loadIconForFiles(const Vector<WTF::String>&, WebCore::FileIconLoader*) override;
+    void runOpenPanel(WebCore::Frame&, WebCore::FileChooser&) override;
+    void loadIconForFiles(const Vector<String>&, WebCore::FileIconLoader&) final;
+    RefPtr<WebCore::Icon> createIconForFiles(const Vector<String>& filenames) override;
 
 #if !PLATFORM(IOS)
-    virtual void setCursor(const WebCore::Cursor&) override;
-    virtual void setCursorHiddenUntilMouseMoves(bool) override;
+    void setCursor(const WebCore::Cursor&) final;
+    void setCursorHiddenUntilMouseMoves(bool) final;
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual std::unique_ptr<WebCore::ColorChooser> createColorChooser(WebCore::ColorChooserClient*, const WebCore::Color&) override;
+    std::unique_ptr<WebCore::ColorChooser> createColorChooser(WebCore::ColorChooserClient&, const WebCore::Color&) final;
 #endif
 
-    virtual WebCore::KeyboardUIMode keyboardUIMode() override;
-
-    virtual NSResponder *firstResponder() override;
-    virtual void makeFirstResponder(NSResponder *) override;
-
-    virtual void enableSuddenTermination() override;
-    virtual void disableSuddenTermination() override;
-    
-#if ENABLE(TOUCH_EVENTS)
-    virtual void needTouchEvents(bool) override { }
+#if ENABLE(POINTER_LOCK)
+    bool requestPointerLock() final;
+    void requestPointerUnlock() final;
 #endif
 
-    virtual bool shouldReplaceWithGeneratedFileForUpload(const WTF::String& path, WTF::String &generatedFilename) override;
-    virtual WTF::String generateReplacementFile(const WTF::String& path) override;
+    WebCore::KeyboardUIMode keyboardUIMode() final;
 
-    virtual void elementDidFocus(const WebCore::Node*) override;
-    virtual void elementDidBlur(const WebCore::Node*) override;
+    NSResponder *firstResponder() final;
+    void makeFirstResponder(NSResponder *) final;
 
-    virtual bool shouldPaintEntireContents() const override;
+    void enableSuddenTermination() final;
+    void disableSuddenTermination() final;
 
-    virtual void attachRootGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
-    virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
-    virtual void setNeedsOneShotDrawingSynchronization() override;
-    virtual void scheduleCompositingLayerFlush() override;
+    bool shouldReplaceWithGeneratedFileForUpload(const String& path, String &generatedFilename) final;
+    String generateReplacementFile(const String& path) final;
 
-    virtual CompositingTriggerFlags allowedCompositingTriggers() const override
+    void elementDidFocus(WebCore::Element&) override;
+    void elementDidBlur(WebCore::Element&) override;
+
+    bool shouldPaintEntireContents() const final;
+
+    void attachRootGraphicsLayer(WebCore::Frame&, WebCore::GraphicsLayer*) override;
+    void attachViewOverlayGraphicsLayer(WebCore::Frame&, WebCore::GraphicsLayer*) final;
+    void setNeedsOneShotDrawingSynchronization() final;
+    void scheduleCompositingLayerFlush() final;
+
+    CompositingTriggerFlags allowedCompositingTriggers() const final
     {
         return static_cast<CompositingTriggerFlags>(
             ThreeDTransformTrigger |
@@ -174,51 +178,50 @@ public:
             AnimationTrigger);
     }
 
+#if ENABLE(VIDEO) && PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+    void setUpPlaybackControlsManager(WebCore::HTMLMediaElement&) final;
+    void clearPlaybackControlsManager() final;
+#endif
+
 #if ENABLE(VIDEO)
-    virtual bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
-    virtual void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
-    virtual void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) override;
+    bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) final;
+    void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode) final;
+    void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) final;
+    void exitVideoFullscreenToModeWithoutAnimation(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode) final;
 #endif
-    
+
 #if ENABLE(FULLSCREEN_API)
-    virtual bool supportsFullScreenForElement(const WebCore::Element*, bool withKeyboard) override;
-    virtual void enterFullScreenForElement(WebCore::Element*) override;
-    virtual void exitFullScreenForElement(WebCore::Element*) override;
+    bool supportsFullScreenForElement(const WebCore::Element&, bool withKeyboard) final;
+    void enterFullScreenForElement(WebCore::Element&) final;
+    void exitFullScreenForElement(WebCore::Element*) final;
 #endif
 
-    virtual bool selectItemWritingDirectionIsNatural() override;
-    virtual bool selectItemAlignmentFollowsMenuWritingDirection() override;
-    virtual bool hasOpenedPopup() const override;
-    virtual RefPtr<WebCore::PopupMenu> createPopupMenu(WebCore::PopupMenuClient*) const override;
-    virtual RefPtr<WebCore::SearchPopupMenu> createSearchPopupMenu(WebCore::PopupMenuClient*) const override;
+    bool selectItemWritingDirectionIsNatural() override;
+    bool selectItemAlignmentFollowsMenuWritingDirection() override;
+    bool hasOpenedPopup() const final;
+    RefPtr<WebCore::PopupMenu> createPopupMenu(WebCore::PopupMenuClient&) const override;
+    RefPtr<WebCore::SearchPopupMenu> createSearchPopupMenu(WebCore::PopupMenuClient&) const override;
 
-    virtual void wheelEventHandlersChanged(bool) override { }
+    void wheelEventHandlersChanged(bool) final { }
 
 #if ENABLE(SUBTLE_CRYPTO)
-    virtual bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const override;
-    virtual bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const override;
+    bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const final;
+    bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const final;
 #endif
 
 #if ENABLE(SERVICE_CONTROLS)
-    virtual void handleSelectionServiceClick(WebCore::FrameSelection&, const Vector<String>& telephoneNumbers, const WebCore::IntPoint&) override;
-    virtual bool hasRelevantSelectionServices(bool isTextOnly) const override;
-#endif
-
-#if PLATFORM(IOS)
-    WebView* webView() const { return m_webView; }
-#else
-    WebView* webView() { return m_webView; }
+    void handleSelectionServiceClick(WebCore::FrameSelection&, const Vector<String>& telephoneNumbers, const WebCore::IntPoint&) final;
+    bool hasRelevantSelectionServices(bool isTextOnly) const final;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
-    void addPlaybackTargetPickerClient(uint64_t /*contextId*/) override;
-    void removePlaybackTargetPickerClient(uint64_t /*contextId*/) override;
-    void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* hasVideo */) override;
-    void playbackTargetPickerClientStateDidChange(uint64_t /*contextId*/, WebCore::MediaProducer::MediaStateFlags) override;
-    void setMockMediaPlaybackTargetPickerEnabled(bool) override;
-    void setMockMediaPlaybackTargetPickerState(const String&, WebCore::MediaPlaybackTargetContext::State) override;
+    void addPlaybackTargetPickerClient(uint64_t /*contextId*/) final;
+    void removePlaybackTargetPickerClient(uint64_t /*contextId*/) final;
+    void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* hasVideo */) final;
+    void playbackTargetPickerClientStateDidChange(uint64_t /*contextId*/, WebCore::MediaProducer::MediaStateFlags) final;
+    void setMockMediaPlaybackTargetPickerEnabled(bool) final;
+    void setMockMediaPlaybackTargetPickerState(const String&, WebCore::MediaPlaybackTargetContext::State) final;
 #endif
 
-private:
     WebView *m_webView;
 };

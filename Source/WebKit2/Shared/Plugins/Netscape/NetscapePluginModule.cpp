@@ -135,7 +135,7 @@ void NetscapePluginModule::shutdown()
     initializedNetscapePluginModules().remove(pluginModuleIndex);
 }
 
-PassRefPtr<NetscapePluginModule> NetscapePluginModule::getOrCreate(const String& pluginPath)
+RefPtr<NetscapePluginModule> NetscapePluginModule::getOrCreate(const String& pluginPath)
 {
     // First, see if we already have a module with this plug-in path.
     for (size_t i = 0; i < initializedNetscapePluginModules().size(); ++i) {
@@ -145,13 +145,13 @@ PassRefPtr<NetscapePluginModule> NetscapePluginModule::getOrCreate(const String&
             return pluginModule;
     }
 
-    RefPtr<NetscapePluginModule> pluginModule(adoptRef(new NetscapePluginModule(pluginPath)));
+    auto pluginModule(adoptRef(*new NetscapePluginModule(pluginPath)));
     
     // Try to load and initialize the plug-in module.
     if (!pluginModule->load())
-        return 0;
+        return nullptr;
     
-    return pluginModule.release();
+    return WTFMove(pluginModule);
 }
 
 void NetscapePluginModule::incrementLoadCount()

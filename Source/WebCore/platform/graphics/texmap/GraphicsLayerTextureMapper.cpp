@@ -48,8 +48,6 @@ GraphicsLayerTextureMapper::GraphicsLayerTextureMapper(Type layerType, GraphicsL
     , m_contentsLayer(0)
     , m_animationStartTime(0)
     , m_isScrollable(false)
-    , m_isNonCompositingLayer(false)
-    , m_isVisibleRectDirty(true)
 {
 }
 
@@ -169,7 +167,6 @@ void GraphicsLayerTextureMapper::setPosition(const FloatPoint& value)
         return;
     GraphicsLayer::setPosition(value);
     notifyChange(PositionChange);
-    markVisibleRectAsDirty();
 }
 
 void GraphicsLayerTextureMapper::setAnchorPoint(const FloatPoint3D& value)
@@ -178,7 +175,6 @@ void GraphicsLayerTextureMapper::setAnchorPoint(const FloatPoint3D& value)
         return;
     GraphicsLayer::setAnchorPoint(value);
     notifyChange(AnchorPointChange);
-    markVisibleRectAsDirty();
 }
 
 void GraphicsLayerTextureMapper::setSize(const FloatSize& value)
@@ -190,7 +186,6 @@ void GraphicsLayerTextureMapper::setSize(const FloatSize& value)
     if (maskLayer())
         maskLayer()->setSize(value);
     notifyChange(SizeChange);
-    markVisibleRectAsDirty();
 }
 
 void GraphicsLayerTextureMapper::setTransform(const TransformationMatrix& value)
@@ -200,7 +195,6 @@ void GraphicsLayerTextureMapper::setTransform(const TransformationMatrix& value)
 
     GraphicsLayer::setTransform(value);
     notifyChange(TransformChange);
-    markVisibleRectAsDirty();
 }
 
 void GraphicsLayerTextureMapper::setChildrenTransform(const TransformationMatrix& value)
@@ -209,7 +203,6 @@ void GraphicsLayerTextureMapper::setChildrenTransform(const TransformationMatrix
         return;
     GraphicsLayer::setChildrenTransform(value);
     notifyChange(ChildrenTransformChange);
-    markVisibleRectAsDirty();
 }
 
 void GraphicsLayerTextureMapper::setPreserves3D(bool value)
@@ -218,7 +211,6 @@ void GraphicsLayerTextureMapper::setPreserves3D(bool value)
         return;
     GraphicsLayer::setPreserves3D(value);
     notifyChange(Preserves3DChange);
-    markVisibleRectAsDirty();
 }
 
 void GraphicsLayerTextureMapper::setMasksToBounds(bool value)
@@ -227,7 +219,6 @@ void GraphicsLayerTextureMapper::setMasksToBounds(bool value)
         return;
     GraphicsLayer::setMasksToBounds(value);
     notifyChange(MasksToBoundsChange);
-    markVisibleRectAsDirty();
 }
 
 void GraphicsLayerTextureMapper::setDrawsContent(bool value)
@@ -297,7 +288,7 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
     if (image) {
         // Make the decision about whether the image has changed.
         // This code makes the assumption that pointer equality on a NativeImagePtr is a valid way to tell if the image is changed.
-        // This assumption is true in Qt, GTK and EFL.
+        // This assumption is true for the GTK+ port.
         NativeImagePtr newNativeImagePtr = image->nativeImageForCurrentFrame();
         if (!newNativeImagePtr)
             return;
@@ -310,7 +301,6 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
             m_compositedImage = TextureMapperTiledBackingStore::create();
         m_compositedImage->setContentsToImage(image);
         m_compositedImage->updateContentsScale(pageScaleFactor() * deviceScaleFactor());
-        m_compositedImage->updateContentsSize(image->size());
     } else {
         m_compositedNativeImagePtr = nullptr;
         m_compositedImage = nullptr;
@@ -374,13 +364,11 @@ void GraphicsLayerTextureMapper::setIsScrollable(bool isScrollable)
     notifyChange(IsScrollableChange);
 }
 
-void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly(bool)
+void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
 {
     prepareBackingStoreIfNeeded();
     commitLayerChanges();
     m_layer.syncAnimations();
-    if (!m_isNonCompositingLayer)
-        computeTransformedVisibleRect();
 }
 
 void GraphicsLayerTextureMapper::prepareBackingStoreIfNeeded()
@@ -480,7 +468,7 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
         m_layer.setFilters(filters());
 
     if (m_changeMask & BackingStoreChange)
-        m_layer.setBackingStore(m_backingStore);
+        m_layer.setBackingStore(m_backingStore.copyRef());
 
     if (m_changeMask & DebugVisualsChange)
         m_layer.setDebugVisuals(isShowingDebugBorder(), debugBorderColor(), debugBorderWidth(), isShowingRepaintCounter());
@@ -509,37 +497,37 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     m_changeMask = NoChanges;
 }
 
-void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect, bool viewportIsStable)
+void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect)
 {
     if (!m_layer.textureMapper())
         return;
 
-    flushCompositingStateForThisLayerOnly(viewportIsStable);
+    flushCompositingStateForThisLayerOnly();
 
     if (maskLayer())
-        maskLayer()->flushCompositingState(rect, viewportIsStable);
+        maskLayer()->flushCompositingState(rect);
     if (replicaLayer())
-        replicaLayer()->flushCompositingState(rect, viewportIsStable);
+        replicaLayer()->flushCompositingState(rect);
     for (auto* child : children())
-        child->flushCompositingState(rect, viewportIsStable);
+        child->flushCompositingState(rect);
 }
 
-void GraphicsLayerTextureMapper::updateBackingStoreIncludingSubLayers(const FloatRect& visibleContentRect)
+void GraphicsLayerTextureMapper::updateBackingStoreIncludingSubLayers()
 {
     if (!m_layer.textureMapper())
         return;
 
-    updateBackingStoreIfNeeded(visibleContentRect);
+    updateBackingStoreIfNeeded();
 
     if (maskLayer())
-        downcast<GraphicsLayerTextureMapper>(*maskLayer()).updateBackingStoreIfNeeded(visibleContentRect);
+        downcast<GraphicsLayerTextureMapper>(*maskLayer()).updateBackingStoreIfNeeded();
     if (replicaLayer())
-        downcast<GraphicsLayerTextureMapper>(*replicaLayer()).updateBackingStoreIfNeeded(visibleContentRect);
+        downcast<GraphicsLayerTextureMapper>(*replicaLayer()).updateBackingStoreIfNeeded();
     for (auto* child : children())
-        downcast<GraphicsLayerTextureMapper>(*child).updateBackingStoreIncludingSubLayers(visibleContentRect);
+        downcast<GraphicsLayerTextureMapper>(*child).updateBackingStoreIncludingSubLayers();
 }
 
-void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded(const FloatRect& visibleContentRect)
+void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()
 {
     TextureMapper* textureMapper = m_layer.textureMapper();
     if (!textureMapper)
@@ -562,10 +550,9 @@ void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded(const FloatRect& vis
 #endif
     TextureMapperTiledBackingStore* backingStore = static_cast<TextureMapperTiledBackingStore*>(m_backingStore.get());
     backingStore->updateContentsScale(pageScaleFactor() * deviceScaleFactor());
-    backingStore->updateContentsSize(m_size);
 
     dirtyRect.scale(pageScaleFactor() * deviceScaleFactor());
-    backingStore->updateContents(*textureMapper, this, transformedVisibleRect(visibleContentRect), dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
+    backingStore->updateContents(*textureMapper, this, m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
 
     m_needsDisplay = false;
     m_needsDisplayRect = IntRect();
@@ -576,12 +563,35 @@ bool GraphicsLayerTextureMapper::shouldHaveBackingStore() const
     return drawsContent() && contentsAreVisible() && !m_size.isEmpty();
 }
 
+bool GraphicsLayerTextureMapper::filtersCanBeComposited(const FilterOperations& filters) const
+{
+    if (!filters.size())
+        return false;
+
+    for (const auto& filterOperation : filters.operations()) {
+        if (filterOperation->type() == FilterOperation::REFERENCE)
+            return false;
+    }
+
+    return true;
+}
+
 bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList, const FloatSize& boxSize, const Animation* anim, const String& keyframesName, double timeOffset)
 {
     ASSERT(!keyframesName.isEmpty());
 
     if (!anim || anim->isEmptyOrZeroDuration() || valueList.size() < 2 || (valueList.property() != AnimatedPropertyTransform && valueList.property() != AnimatedPropertyOpacity))
         return false;
+
+    if (valueList.property() == AnimatedPropertyFilter) {
+        int listIndex = validateFilterOperations(valueList);
+        if (listIndex < 0)
+            return false;
+
+        const auto& filters = static_cast<const FilterAnimationValue&>(valueList.at(listIndex)).value();
+        if (!filtersCanBeComposited(filters))
+            return false;
+    }
 
     bool listsMatch = false;
     bool hasBigRotation;
@@ -624,8 +634,21 @@ bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
     // TextureMapperImageBuffer does not support CSS filters.
     if (!textureMapper || textureMapper->accelerationMode() == TextureMapper::SoftwareMode)
         return false;
-    notifyChange(FilterChange);
-    return GraphicsLayer::setFilters(filters);
+
+    bool canCompositeFilters = filtersCanBeComposited(filters);
+    if (GraphicsLayer::filters() == filters)
+        return canCompositeFilters;
+
+    if (canCompositeFilters) {
+        if (!GraphicsLayer::setFilters(filters))
+            return false;
+        notifyChange(FilterChange);
+    } else if (GraphicsLayer::filters().size()) {
+        clearFilters();
+        notifyChange(FilterChange);
+    }
+
+    return canCompositeFilters;
 }
 
 void GraphicsLayerTextureMapper::setFixedToViewport(bool fixed)
@@ -641,82 +664,6 @@ void GraphicsLayerTextureMapper::setRepaintCount(int repaintCount)
 {
     m_repaintCount = repaintCount;
     notifyChange(RepaintCountChange);
-}
-
-void GraphicsLayerTextureMapper::markVisibleRectAsDirty()
-{
-    m_isVisibleRectDirty = true;
-
-    if (maskLayer())
-        downcast<GraphicsLayerTextureMapper>(*maskLayer()).markVisibleRectAsDirty();
-    if (replicaLayer())
-        downcast<GraphicsLayerTextureMapper>(*replicaLayer()).markVisibleRectAsDirty();
-    for (auto* child : children())
-        downcast<GraphicsLayerTextureMapper>(*child).markVisibleRectAsDirty();
-}
-
-bool GraphicsLayerTextureMapper::selfOrAncestorHasActiveTransformAnimation() const
-{
-    if (m_animations.hasActiveAnimationsOfType(AnimatedPropertyTransform))
-        return true;
-
-    if (!parent())
-        return false;
-
-    return downcast<GraphicsLayerTextureMapper>(*parent()).selfOrAncestorHasActiveTransformAnimation();
-}
-
-void GraphicsLayerTextureMapper::computeTransformedVisibleRect()
-{
-    if (!m_isVisibleRectDirty && !selfOrAncestorHasActiveTransformAnimation())
-        return;
-
-    m_isVisibleRectDirty = false;
-    TransformationMatrix currentTransform = transform();
-    if (selfOrAncestorHasActiveTransformAnimation())
-        client().getCurrentTransform(this, currentTransform);
-    m_layerTransform.setLocalTransform(currentTransform);
-
-    m_layerTransform.setAnchorPoint(m_anchorPoint);
-    m_layerTransform.setPosition(m_position);
-    m_layerTransform.setSize(m_size);
-
-    m_layerTransform.setFlattening(!preserves3D());
-    m_layerTransform.setChildrenTransform(childrenTransform());
-    m_layerTransform.combineTransforms(parent() ? downcast<GraphicsLayerTextureMapper>(*parent()).m_layerTransform.combinedForChildren() : TransformationMatrix());
-
-    m_cachedInverseTransform = m_layerTransform.combined().inverse().valueOr(TransformationMatrix());
-}
-
-static void clampToContentsRectIfRectIsInfinite(FloatRect& rect, const FloatSize& contentsSize)
-{
-    if (rect.width() >= LayoutUnit::nearlyMax() || rect.width() <= LayoutUnit::nearlyMin()) {
-        rect.setX(0);
-        rect.setWidth(contentsSize.width());
-    }
-
-    if (rect.height() >= LayoutUnit::nearlyMax() || rect.height() <= LayoutUnit::nearlyMin()) {
-        rect.setY(0);
-        rect.setHeight(contentsSize.height());
-    }
-}
-
-FloatRect GraphicsLayerTextureMapper::transformedVisibleRect(const FloatRect& visibleContentRect)
-{
-    if (m_isNonCompositingLayer)
-        return FloatRect(FloatPoint::zero(), m_size);
-
-    // Non-invertible layers are not visible.
-    if (!m_layerTransform.combined().isInvertible())
-        return IntRect();
-
-    // Return a projection of the visible rect (surface coordinates) onto the layer's plane (layer coordinates).
-    // The resulting quad might be squewed and the visible rect is the bounding box of this quad,
-    // so it might spread further than the real visible area (and then even more amplified by the cover rect multiplier).
-    ASSERT(m_cachedInverseTransform == m_layerTransform.combined().inverse().valueOr(TransformationMatrix()));
-    FloatRect rect = m_cachedInverseTransform.clampedBoundsOfProjectedQuad(FloatQuad(visibleContentRect));
-    clampToContentsRectIfRectIsInfinite(rect, size());
-    return rect;
 }
 
 }

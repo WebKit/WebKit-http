@@ -33,10 +33,10 @@
 #import "WebSecurityOriginInternal.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
-#import <WebCore/BlockExceptions.h>
 #import <WebCore/Document.h>
 #import <WebCore/Frame.h>
 #import <WebCore/Geolocation.h>
+#import <wtf/BlockObjCExceptions.h>
 
 #if PLATFORM(IOS)
 #import <WebCore/WAKResponder.h>
@@ -118,7 +118,7 @@ void WebGeolocationClient::requestPermission(Geolocation* geolocation)
         return;
     }
 
-    WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:frame->document()->securityOrigin()];
+    WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:&frame->document()->securityOrigin()];
     WebGeolocationPolicyListener* listener = [[WebGeolocationPolicyListener alloc] initWithGeolocation:geolocation];
 
     CallUIDelegate(m_webView, selector, webOrigin, kit(frame), listener);
@@ -221,7 +221,7 @@ GeolocationPosition* WebGeolocationClient::lastPosition()
     Frame* frame = m_geolocation->frame();
     if (!frame)
         return;
-    WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:frame->document()->securityOrigin()];
+    WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:&frame->document()->securityOrigin()];
     WebGeolocationPolicyListener *listener = [[WebGeolocationPolicyListener alloc] initWithGeolocation:m_geolocation.get() forWebView:webView];
     SEL selector = @selector(webView:decidePolicyForGeolocationRequestFromOrigin:frame:listener:);
     CallUIDelegate(webView, selector, webOrigin, kit(frame), listener);

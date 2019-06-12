@@ -18,8 +18,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef DOMPluginArray_h
-#define DOMPluginArray_h
+#pragma once
 
 #include "DOMPlugin.h"
 #include "DOMWindowProperty.h"
@@ -41,7 +40,7 @@ public:
     RefPtr<DOMPlugin> namedItem(const AtomicString& propertyName);
     Vector<AtomicString> supportedPropertyNames();
 
-    void refresh(bool reload);
+    void refresh(bool reloadPages);
 
 private:
     explicit DOMPluginArray(Frame*);
@@ -49,5 +48,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // DOMPluginArray_h

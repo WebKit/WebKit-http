@@ -68,14 +68,21 @@ void HTMLAppletElement::parseAttribute(const QualifiedName& name, const AtomicSt
     HTMLPlugInImageElement::parseAttribute(name, value);
 }
 
+bool HTMLAppletElement::isURLAttribute(const Attribute& attribute) const
+{
+    return attribute.name().localName() == codebaseAttr
+        || attribute.name().localName() == objectAttr
+        || HTMLPlugInImageElement::isURLAttribute(attribute);
+}
+
 bool HTMLAppletElement::rendererIsNeeded(const RenderStyle& style)
 {
-    if (!fastHasAttribute(codeAttr))
+    if (!hasAttributeWithoutSynchronization(codeAttr))
         return false;
     return HTMLPlugInImageElement::rendererIsNeeded(style);
 }
 
-RenderPtr<RenderElement> HTMLAppletElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> HTMLAppletElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     if (!canEmbedJava())
         return RenderElement::createFor(*this, WTFMove(style));
@@ -95,7 +102,7 @@ RenderWidget* HTMLAppletElement::renderWidgetLoadingPlugin() const
     return renderWidget();
 }
 
-void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
+void HTMLAppletElement::updateWidget(CreatePlugins createPlugins)
 {
     setNeedsWidgetUpdate(false);
     // FIXME: This should ASSERT isFinishedParsingChildren() instead.
@@ -103,13 +110,13 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
         return;
 
 #if PLATFORM(IOS)
-    UNUSED_PARAM(pluginCreationOption);
+    UNUSED_PARAM(createPlugins);
 #else
     // FIXME: It's sadness that we have this special case here.
     //        See http://trac.webkit.org/changeset/25128 and
     //        plugins/netscape-plugin-setwindow-size.html
-    if (pluginCreationOption == CreateOnlyNonNetscapePlugins) {
-        // Ensure updateWidget() is called again during layout to create the Netscape plug-in.
+    if (createPlugins == CreatePlugins::No) {
+        // Ensure updateWidget() is called again during layout to create the plug-in.
         setNeedsWidgetUpdate(true);
         return;
     }
@@ -125,9 +132,9 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
     Vector<String> paramValues;
 
     paramNames.append("code");
-    paramValues.append(fastGetAttribute(codeAttr).string());
+    paramValues.append(attributeWithoutSynchronization(codeAttr).string());
 
-    const AtomicString& codeBase = fastGetAttribute(codebaseAttr);
+    const AtomicString& codeBase = attributeWithoutSynchronization(codebaseAttr);
     if (!codeBase.isNull()) {
         paramNames.append(ASCIILiteral("codeBase"));
         paramValues.append(codeBase.string());
@@ -139,7 +146,7 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
         paramValues.append(name.string());
     }
 
-    const AtomicString& archive = fastGetAttribute(archiveAttr);
+    const AtomicString& archive = attributeWithoutSynchronization(archiveAttr);
     if (!archive.isNull()) {
         paramNames.append(ASCIILiteral("archive"));
         paramValues.append(archive.string());
@@ -148,7 +155,7 @@ void HTMLAppletElement::updateWidget(PluginCreationOption pluginCreationOption)
     paramNames.append(ASCIILiteral("baseURL"));
     paramValues.append(document().baseURL().string());
 
-    const AtomicString& mayScript = fastGetAttribute(mayscriptAttr);
+    const AtomicString& mayScript = attributeWithoutSynchronization(mayscriptAttr);
     if (!mayScript.isNull()) {
         paramNames.append(ASCIILiteral("mayScript"));
         paramValues.append(mayScript.string());
@@ -174,14 +181,10 @@ bool HTMLAppletElement::canEmbedJava() const
     if (document().isSandboxed(SandboxPlugins))
         return false;
 
-    Settings* settings = document().settings();
-    if (!settings)
+    if (!document().settings().isJavaEnabled())
         return false;
 
-    if (!settings->isJavaEnabled())
-        return false;
-
-    if (document().securityOrigin()->isLocal() && !settings->isJavaEnabledForLocalFiles())
+    if (document().securityOrigin().isLocal() && !document().settings().isJavaEnabledForLocalFiles())
         return false;
 
     return true;

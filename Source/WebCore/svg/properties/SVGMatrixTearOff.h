@@ -17,49 +17,43 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGMatrixTearOff_h
-#define SVGMatrixTearOff_h
+#pragma once
 
-#include "SVGPropertyTearOff.h"
+#include "SVGMatrix.h"
 #include "SVGTransform.h"
 
 namespace WebCore {
 
-class SVGMatrixTearOff : public SVGPropertyTearOff<SVGMatrix> {
+class SVGMatrixTearOff final : public SVGMatrix {
 public:
-    // Used for non-animated POD types that are not associated with a SVGAnimatedProperty object, nor with a XML DOM attribute
-    // and that contain a parent type that's exposed to the bindings via a SVGStaticPropertyTearOff object
-    // (for example: SVGTransform::matrix).
-    static Ref<SVGMatrixTearOff> create(SVGPropertyTearOff<SVGTransform>& parent, SVGMatrix& value)
+    static Ref<SVGMatrixTearOff> create(SVGTransform& parent, SVGMatrixValue& value)
     {
         ASSERT_UNUSED(value, &parent.propertyReference().svgMatrix() == &value);
-        Ref<SVGMatrixTearOff> result = adoptRef(*new SVGMatrixTearOff(&parent));
+        Ref<SVGMatrixTearOff> result = adoptRef(*new SVGMatrixTearOff(parent));
         parent.addChild(result->m_weakFactory.createWeakPtr());
         return result;
     }
 
-    virtual SVGMatrix& propertyReference() override { return m_parent->propertyReference().svgMatrix(); }
+    SVGMatrixValue& propertyReference() final { return m_parent->propertyReference().svgMatrix(); }
 
-    virtual void setValue(SVGMatrix& value) override { m_parent->propertyReference().setMatrix(value); }
+    void setValue(SVGMatrixValue& value) final { m_parent->propertyReference().setMatrix(value); }
 
-    virtual void commitChange() override
+    void commitChange() final
     {
         m_parent->propertyReference().updateSVGMatrix();
         m_parent->commitChange();
     }
 
 private:
-    SVGMatrixTearOff(SVGPropertyTearOff<SVGTransform>* parent)
-        : SVGPropertyTearOff<SVGMatrix>(nullptr)
-        , m_parent(parent)
+    SVGMatrixTearOff(SVGTransform& parent)
+        : SVGMatrix(nullptr)
+        , m_parent(&parent)
         , m_weakFactory(this)
     {
     }
 
-    RefPtr<SVGPropertyTearOff<SVGTransform>> m_parent;
+    RefPtr<SVGTransform> m_parent;
     WeakPtrFactory<SVGPropertyTearOffBase> m_weakFactory;
 };
 
-}
-
-#endif // SVGMatrixTearOff_h
+} // namespace WebCore

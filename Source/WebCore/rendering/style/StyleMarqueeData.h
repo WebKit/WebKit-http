@@ -22,12 +22,11 @@
  *
  */
 
-#ifndef StyleMarqueeData_h
-#define StyleMarqueeData_h
+#pragma once
 
 #include "Length.h"
 #include "RenderStyleConstants.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -57,5 +56,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleMarqueeData_h

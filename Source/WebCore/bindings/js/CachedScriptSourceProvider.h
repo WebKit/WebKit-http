@@ -23,13 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CachedScriptSourceProvider_h
-#define CachedScriptSourceProvider_h
+#pragma once
 
 #include "CachedResourceClient.h"
 #include "CachedResourceHandle.h"
 #include "CachedScript.h"
-#include <parser/SourceCode.h>
+#include "CachedScriptFetcher.h"
 #include <parser/SourceProvider.h>
 
 namespace WebCore {
@@ -37,32 +36,25 @@ namespace WebCore {
 class CachedScriptSourceProvider : public JSC::SourceProvider, public CachedResourceClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<CachedScriptSourceProvider> create(CachedScript* cachedScript) { return adoptRef(*new CachedScriptSourceProvider(cachedScript)); }
+    static Ref<CachedScriptSourceProvider> create(CachedScript* cachedScript, JSC::SourceProviderSourceType sourceType, Ref<CachedScriptFetcher>&& scriptFetcher) { return adoptRef(*new CachedScriptSourceProvider(cachedScript, sourceType, WTFMove(scriptFetcher))); }
 
     virtual ~CachedScriptSourceProvider()
     {
-        m_cachedScript->removeClient(this);
+        m_cachedScript->removeClient(*this);
     }
 
     unsigned hash() const override { return m_cachedScript->scriptHash(); }
     StringView source() const override { return m_cachedScript->script(); }
 
 private:
-    CachedScriptSourceProvider(CachedScript* cachedScript)
-        : SourceProvider(cachedScript->response().url(), TextPosition::minimumPosition())
+    CachedScriptSourceProvider(CachedScript* cachedScript, JSC::SourceProviderSourceType sourceType, Ref<CachedScriptFetcher>&& scriptFetcher)
+        : SourceProvider(JSC::SourceOrigin { cachedScript->response().url(), WTFMove(scriptFetcher) }, cachedScript->response().url(), TextPosition(), sourceType)
         , m_cachedScript(cachedScript)
     {
-        m_cachedScript->addClient(this);
+        m_cachedScript->addClient(*this);
     }
 
     CachedResourceHandle<CachedScript> m_cachedScript;
 };
 
-inline JSC::SourceCode makeSource(CachedScript* cachedScript)
-{
-    return JSC::SourceCode(CachedScriptSourceProvider::create(cachedScript));
-}
-
 } // namespace WebCore
-
-#endif // CachedScriptSourceProvider_h

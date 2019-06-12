@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OESElementIndexUint_h
-#define OESElementIndexUint_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class OESElementIndexUint final : public WebGLExtension {
 public:
-    explicit OESElementIndexUint(WebGLRenderingContextBase*);
+    explicit OESElementIndexUint(WebGLRenderingContextBase&);
     virtual ~OESElementIndexUint();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // OESElementIndexUint_h

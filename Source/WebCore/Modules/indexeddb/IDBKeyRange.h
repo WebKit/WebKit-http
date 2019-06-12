@@ -23,73 +23,57 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBKeyRange_h
-#define IDBKeyRange_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "Dictionary.h"
-#include "IDBKey.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
+
+namespace JSC {
+class ExecState;
+class JSValue;
+}
 
 namespace WebCore {
 
-typedef int ExceptionCode;
+class IDBKey;
+class ScriptExecutionContext;
 
 class IDBKeyRange : public ScriptWrappable, public RefCounted<IDBKeyRange> {
 public:
-    enum LowerBoundType {
-        LowerBoundOpen,
-        LowerBoundClosed
-    };
-    enum UpperBoundType {
-        UpperBoundOpen,
-        UpperBoundClosed
-    };
+    static Ref<IDBKeyRange> create(RefPtr<IDBKey>&& lower, RefPtr<IDBKey>&& upper, bool isLowerOpen, bool isUpperOpen);
+    static Ref<IDBKeyRange> create(RefPtr<IDBKey>&&);
+    ~IDBKeyRange();
 
-    static Ref<IDBKeyRange> create(PassRefPtr<IDBKey> lower, PassRefPtr<IDBKey> upper, LowerBoundType lowerType, UpperBoundType upperType)
-    {
-        return adoptRef(*new IDBKeyRange(lower, upper, lowerType, upperType));
-    }
-    static Ref<IDBKeyRange> create(PassRefPtr<IDBKey> prpKey);
-    ~IDBKeyRange() { }
+    IDBKey* lower() const { return m_lower.get(); }
+    IDBKey* upper() const { return m_upper.get(); }
+    bool lowerOpen() const { return m_isLowerOpen; }
+    bool upperOpen() const { return m_isUpperOpen; }
 
-    PassRefPtr<IDBKey> lower() const { return m_lower; }
-    PassRefPtr<IDBKey> upper() const { return m_upper; }
+    static ExceptionOr<Ref<IDBKeyRange>> only(RefPtr<IDBKey>&& value);
+    static ExceptionOr<Ref<IDBKeyRange>> only(JSC::ExecState&, JSC::JSValue key);
 
-    Deprecated::ScriptValue lowerValue(ScriptExecutionContext*) const;
-    Deprecated::ScriptValue upperValue(ScriptExecutionContext*) const;
-    bool lowerOpen() const { return m_lowerType == LowerBoundOpen; }
-    bool upperOpen() const { return m_upperType == UpperBoundOpen; }
+    static ExceptionOr<Ref<IDBKeyRange>> lowerBound(JSC::ExecState&, JSC::JSValue bound, bool open);
+    static ExceptionOr<Ref<IDBKeyRange>> upperBound(JSC::ExecState&, JSC::JSValue bound, bool open);
 
-    static PassRefPtr<IDBKeyRange> only(PassRefPtr<IDBKey> value, ExceptionCode&);
-    static PassRefPtr<IDBKeyRange> only(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&);
+    static ExceptionOr<Ref<IDBKeyRange>> bound(JSC::ExecState&, JSC::JSValue lower, JSC::JSValue upper, bool lowerOpen, bool upperOpen);
 
-    static PassRefPtr<IDBKeyRange> lowerBound(ScriptExecutionContext* context, const Deprecated::ScriptValue& bound, ExceptionCode& ec) { return lowerBound(context, bound, false, ec); }
-    static PassRefPtr<IDBKeyRange> lowerBound(ScriptExecutionContext*, const Deprecated::ScriptValue& bound, bool open, ExceptionCode&);
-
-    static PassRefPtr<IDBKeyRange> upperBound(ScriptExecutionContext* context, const Deprecated::ScriptValue& bound, ExceptionCode& ec) { return upperBound(context, bound, false, ec); }
-    static PassRefPtr<IDBKeyRange> upperBound(ScriptExecutionContext*, const Deprecated::ScriptValue& bound, bool open, ExceptionCode&);
-
-    static PassRefPtr<IDBKeyRange> bound(ScriptExecutionContext* context, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, ExceptionCode& ec) { return bound(context, lower, upper, false, false, ec); }
-    static PassRefPtr<IDBKeyRange> bound(ScriptExecutionContext* context, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, bool lowerOpen, ExceptionCode& ec) { return bound(context, lower, upper, lowerOpen, false, ec); }
-    static PassRefPtr<IDBKeyRange> bound(ScriptExecutionContext*, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, bool lowerOpen, bool upperOpen, ExceptionCode&);
+    ExceptionOr<bool> includes(JSC::ExecState&, JSC::JSValue key);
 
     WEBCORE_EXPORT bool isOnlyKey() const;
 
 private:
-    IDBKeyRange(PassRefPtr<IDBKey> lower, PassRefPtr<IDBKey> upper, LowerBoundType lowerType, UpperBoundType upperType);
+    IDBKeyRange(RefPtr<IDBKey>&& lower, RefPtr<IDBKey>&& upper, bool isLowerOpen, bool isUpperOpen);
 
     RefPtr<IDBKey> m_lower;
     RefPtr<IDBKey> m_upper;
-    LowerBoundType m_lowerType;
-    UpperBoundType m_upperType;
+    bool m_isLowerOpen;
+    bool m_isUpperOpen;
 };
 
 } // namespace WebCore
 
 #endif
-
-#endif // IDBKeyRange_h

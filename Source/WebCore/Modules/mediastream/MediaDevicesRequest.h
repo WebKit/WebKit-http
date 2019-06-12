@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,31 +24,21 @@
  *
  */
 
-#ifndef MediaDevicesRequest_h
-#define MediaDevicesRequest_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "ActiveDOMObject.h"
 #include "MediaDevices.h"
-#include "MediaStreamCreationClient.h"
-#include "MediaStreamTrackSourcesRequestClient.h"
-#include "UserMediaPermissionCheck.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Document;
-class Frame;
+class MediaDevicesEnumerationRequest;
 class SecurityOrigin;
 
-typedef int ExceptionCode;
-
-class MediaDevicesRequest : public MediaStreamTrackSourcesRequestClient, public UserMediaPermissionCheckClient, public ContextDestructionObserver {
+class MediaDevicesRequest : public RefCounted<MediaDevicesRequest>, private ContextDestructionObserver {
 public:
-    static RefPtr<MediaDevicesRequest> create(Document*, MediaDevices::EnumerateDevicesPromise&&, ExceptionCode&);
+    static Ref<MediaDevicesRequest> create(Document&, MediaDevices::EnumerateDevicesPromise&&);
 
     virtual ~MediaDevicesRequest();
 
@@ -57,29 +47,17 @@ public:
     SecurityOrigin* securityOrigin() const;
 
 private:
-    MediaDevicesRequest(ScriptExecutionContext*, MediaDevices::EnumerateDevicesPromise&&);
+    MediaDevicesRequest(Document&, MediaDevices::EnumerateDevicesPromise&&);
 
-    void getTrackSources();
+    void contextDestroyed() final;
 
-    // MediaStreamTrackSourcesRequestClient
-    const String& requestOrigin() const final;
-    void didCompleteRequest(const TrackSourceInfoVector&) final;
-
-    // ContextDestructionObserver
-    void contextDestroyed() override final;
-
-    // UserMediaPermissionCheckClient
-    void didCompleteCheck(bool) override final;
+    void filterDeviceList(Vector<RefPtr<MediaDeviceInfo>>&);
 
     MediaDevices::EnumerateDevicesPromise m_promise;
     RefPtr<MediaDevicesRequest> m_protector;
-    RefPtr<UserMediaPermissionCheck> m_permissionCheck;
-
-    bool m_canShowLabels { false };
+    RefPtr<MediaDevicesEnumerationRequest> m_enumerationRequest;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // MediaDevicesRequest_h

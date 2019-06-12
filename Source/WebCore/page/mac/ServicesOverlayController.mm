@@ -48,30 +48,29 @@
 #import "PageOverlayController.h"
 #import "PlatformCAAnimationCocoa.h"
 #import "Settings.h"
-#import "SoftLinking.h"
 #import <QuartzCore/QuartzCore.h>
+#import <wtf/SoftLinking.h>
 
 const float highlightFadeAnimationDuration = 0.3;
 
 namespace WebCore {
 
-Ref<ServicesOverlayController::Highlight> ServicesOverlayController::Highlight::createForSelection(ServicesOverlayController& controller, RetainPtr<DDHighlightRef> ddHighlight, PassRefPtr<Range> range)
+Ref<ServicesOverlayController::Highlight> ServicesOverlayController::Highlight::createForSelection(ServicesOverlayController& controller, RetainPtr<DDHighlightRef> ddHighlight, Ref<Range>&& range)
 {
-    return adoptRef(*new Highlight(controller, Highlight::SelectionType, ddHighlight, range));
+    return adoptRef(*new Highlight(controller, Highlight::SelectionType, ddHighlight, WTFMove(range)));
 }
 
-Ref<ServicesOverlayController::Highlight> ServicesOverlayController::Highlight::createForTelephoneNumber(ServicesOverlayController& controller, RetainPtr<DDHighlightRef> ddHighlight, PassRefPtr<Range> range)
+Ref<ServicesOverlayController::Highlight> ServicesOverlayController::Highlight::createForTelephoneNumber(ServicesOverlayController& controller, RetainPtr<DDHighlightRef> ddHighlight, Ref<Range>&& range)
 {
-    return adoptRef(*new Highlight(controller, Highlight::TelephoneNumberType, ddHighlight, range));
+    return adoptRef(*new Highlight(controller, Highlight::TelephoneNumberType, ddHighlight, WTFMove(range)));
 }
 
-ServicesOverlayController::Highlight::Highlight(ServicesOverlayController& controller, Type type, RetainPtr<DDHighlightRef> ddHighlight, PassRefPtr<WebCore::Range> range)
-    : m_range(range)
+ServicesOverlayController::Highlight::Highlight(ServicesOverlayController& controller, Type type, RetainPtr<DDHighlightRef> ddHighlight, Ref<WebCore::Range>&& range)
+    : m_range(WTFMove(range))
     , m_type(type)
     , m_controller(&controller)
 {
     ASSERT(ddHighlight);
-    ASSERT(m_range);
 
     Page* page = controller.mainFrame().page();
     m_graphicsLayer = GraphicsLayer::create(page ? page->chrome().client().graphicsLayerFactory() : nullptr, *this);
@@ -94,6 +93,9 @@ ServicesOverlayController::Highlight::~Highlight()
 
 void ServicesOverlayController::Highlight::setDDHighlight(DDHighlightRef highlight)
 {
+    if (!DataDetectorsLibrary())
+        return;
+
     if (!m_controller)
         return;
 
@@ -127,8 +129,11 @@ void ServicesOverlayController::Highlight::notifyFlushRequired(const GraphicsLay
     page->chrome().client().scheduleCompositingLayerFlush();
 }
 
-void ServicesOverlayController::Highlight::paintContents(const GraphicsLayer*, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect&)
+void ServicesOverlayController::Highlight::paintContents(const GraphicsLayer*, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect&, GraphicsLayerPaintFlags)
 {
+    if (!DataDetectorsLibrary())
+        return;
+
     CGContextRef cgContext = graphicsContext.platformContext();
 
     CGLayerRef highlightLayer = DDHighlightGetLayerWithContext(ddHighlight(), cgContext);
@@ -213,13 +218,6 @@ ServicesOverlayController::~ServicesOverlayController()
 {
     for (auto& highlight : m_highlights)
         highlight->invalidate();
-}
-
-void ServicesOverlayController::pageOverlayDestroyed(PageOverlay&)
-{
-    // Before the overlay is destroyed, it should have moved out of the Page,
-    // at which point we already cleared our back pointer.
-    ASSERT(!m_servicesOverlay);
 }
 
 void ServicesOverlayController::willMoveToPage(PageOverlay&, Page* page)
@@ -369,7 +367,7 @@ void ServicesOverlayController::selectionRectsDidChange(const Vector<LayoutRect>
     m_currentSelectionRects = rects;
     m_isTextOnly = isTextOnly;
 
-    m_lastSelectionChangeTime = std::chrono::steady_clock::now();
+    m_lastSelectionChangeTime = MonotonicTime::now();
 
     compactRectsWithGapRects(m_currentSelectionRects, gapRects);
 
@@ -392,7 +390,7 @@ void ServicesOverlayController::invalidateHighlightsOfType(Highlight::Type type)
         return;
 
     m_dirtyHighlightTypes |= type;
-    m_buildHighlightsTimer.startOneShot(0);
+    m_buildHighlightsTimer.startOneShot(0_s);
 }
 
 void ServicesOverlayController::buildPotentialHighlightsIfNeeded()
@@ -410,7 +408,7 @@ void ServicesOverlayController::buildPotentialHighlightsIfNeeded()
 
     if (m_potentialHighlights.isEmpty()) {
         if (m_servicesOverlay)
-            m_mainFrame.pageOverlayController().uninstallPageOverlay(m_servicesOverlay, PageOverlay::FadeMode::DoNotFade);
+            m_mainFrame.pageOverlayController().uninstallPageOverlay(*m_servicesOverlay, PageOverlay::FadeMode::DoNotFade);
         return;
     }
 
@@ -425,21 +423,24 @@ void ServicesOverlayController::buildPotentialHighlightsIfNeeded()
 
 bool ServicesOverlayController::mouseIsOverHighlight(Highlight& highlight, bool& mouseIsOverButton) const
 {
+    if (!DataDetectorsLibrary())
+        return false;
+
     Boolean onButton;
     bool hovered = DDHighlightPointIsOnHighlight(highlight.ddHighlight(), (CGPoint)m_mousePosition, &onButton);
     mouseIsOverButton = onButton;
     return hovered;
 }
 
-std::chrono::milliseconds ServicesOverlayController::remainingTimeUntilHighlightShouldBeShown(Highlight* highlight) const
+Seconds ServicesOverlayController::remainingTimeUntilHighlightShouldBeShown(Highlight* highlight) const
 {
     if (!highlight)
-        return std::chrono::milliseconds::zero();
+        return 0_s;
 
-    auto minimumTimeUntilHighlightShouldBeShown = 200_ms;
+    Seconds minimumTimeUntilHighlightShouldBeShown = 200_ms;
     Page* page = m_mainFrame.page();
     if (page && page->focusController().focusedOrMainFrame().selection().selection().isContentEditable())
-        minimumTimeUntilHighlightShouldBeShown = 1000_ms;
+        minimumTimeUntilHighlightShouldBeShown = 1_s;
 
     bool mousePressed = m_mainFrame.eventHandler().mousePressed();
 
@@ -447,15 +448,14 @@ std::chrono::milliseconds ServicesOverlayController::remainingTimeUntilHighlight
     // by virtue of being expanded to include the entire telephone number. However, we will still avoid highlighting
     // telephone numbers while the mouse is down.
     if (highlight->type() == Highlight::TelephoneNumberType)
-        return mousePressed ? minimumTimeUntilHighlightShouldBeShown : 0_ms;
+        return mousePressed ? minimumTimeUntilHighlightShouldBeShown : 0_s;
 
-    auto now = std::chrono::steady_clock::now();
-    auto timeSinceLastSelectionChange = now - m_lastSelectionChangeTime;
-    auto timeSinceHighlightBecameActive = now - m_nextActiveHighlightChangeTime;
-    auto timeSinceLastMouseUp = mousePressed ? 0_ms : now - m_lastMouseUpTime;
+    MonotonicTime now = MonotonicTime::now();
+    Seconds timeSinceLastSelectionChange = now - m_lastSelectionChangeTime;
+    Seconds timeSinceHighlightBecameActive = now - m_nextActiveHighlightChangeTime;
+    Seconds timeSinceLastMouseUp = mousePressed ? 0_s : now - m_lastMouseUpTime;
 
-    auto remainingDelay = minimumTimeUntilHighlightShouldBeShown - std::min(std::min(timeSinceLastSelectionChange, timeSinceHighlightBecameActive), timeSinceLastMouseUp);
-    return std::chrono::duration_cast<std::chrono::milliseconds>(remainingDelay);
+    return minimumTimeUntilHighlightShouldBeShown - std::min(std::min(timeSinceLastSelectionChange, timeSinceHighlightBecameActive), timeSinceLastMouseUp);
 }
 
 void ServicesOverlayController::determineActiveHighlightTimerFired()
@@ -525,7 +525,7 @@ void ServicesOverlayController::buildPhoneNumberHighlights()
         CGRect cgRect = rect;
         RetainPtr<DDHighlightRef> ddHighlight = adoptCF(DDHighlightCreateWithRectsInVisibleRectWithStyleAndDirection(nullptr, &cgRect, 1, mainFrameView.visibleContentRect(), DDHighlightStyleBubbleStandard | DDHighlightStyleStandardIconArrow, YES, NSWritingDirectionNatural, NO, YES));
 
-        newPotentialHighlights.add(Highlight::createForTelephoneNumber(*this, ddHighlight, range));
+        newPotentialHighlights.add(Highlight::createForTelephoneNumber(*this, ddHighlight, range.releaseNonNull()));
     }
 
     replaceHighlightsOfTypePreservingEquivalentHighlights(newPotentialHighlights, Highlight::TelephoneNumberType);
@@ -568,7 +568,7 @@ void ServicesOverlayController::buildSelectionHighlight()
             CGRect visibleRect = mainFrameView->visibleContentRect();
             RetainPtr<DDHighlightRef> ddHighlight = adoptCF(DDHighlightCreateWithRectsInVisibleRectWithStyleAndDirection(nullptr, cgRects.begin(), cgRects.size(), visibleRect, DDHighlightStyleBubbleNone | DDHighlightStyleStandardIconArrow | DDHighlightStyleButtonShowAlways, YES, NSWritingDirectionNatural, NO, YES));
             
-            newPotentialHighlights.add(Highlight::createForSelection(*this, ddHighlight, selectionRange));
+            newPotentialHighlights.add(Highlight::createForSelection(*this, ddHighlight, selectionRange.releaseNonNull()));
         }
     }
 
@@ -618,9 +618,9 @@ void ServicesOverlayController::createOverlayIfNeeded()
     if (!m_mainFrame.settings().serviceControlsEnabled())
         return;
 
-    RefPtr<PageOverlay> overlay = PageOverlay::create(*this, PageOverlay::OverlayType::Document);
-    m_servicesOverlay = overlay.get();
-    m_mainFrame.pageOverlayController().installPageOverlay(overlay.release(), PageOverlay::FadeMode::DoNotFade);
+    auto overlay = PageOverlay::create(*this, PageOverlay::OverlayType::Document);
+    m_servicesOverlay = overlay.ptr();
+    m_mainFrame.pageOverlayController().installPageOverlay(WTFMove(overlay), PageOverlay::FadeMode::DoNotFade);
 }
 
 Vector<RefPtr<Range>> ServicesOverlayController::telephoneNumberRangesForFocusedFrame()
@@ -636,14 +636,9 @@ bool ServicesOverlayController::highlightsAreEquivalent(const Highlight* a, cons
 {
     if (a == b)
         return true;
-
     if (!a || !b)
         return false;
-
-    if (a->type() == b->type() && areRangesEqual(a->range(), b->range()))
-        return true;
-
-    return false;
+    return a->type() == b->type() && areRangesEqual(&a->range(), &b->range());
 }
 
 ServicesOverlayController::Highlight* ServicesOverlayController::findTelephoneNumberHighlightContainingSelectionHighlight(Highlight& selectionHighlight)
@@ -667,7 +662,7 @@ ServicesOverlayController::Highlight* ServicesOverlayController::findTelephoneNu
         if (highlight->type() != Highlight::TelephoneNumberType)
             continue;
 
-        if (highlight->range()->contains(*activeSelectionRange))
+        if (highlight->range().contains(*activeSelectionRange))
             return highlight.get();
     }
 
@@ -721,7 +716,7 @@ void ServicesOverlayController::determineActiveHighlight(bool& mouseIsOverActive
         // highlight, and only reset the active highlight hysteresis when that changes.
         if (m_nextActiveHighlight != newActiveHighlight) {
             m_nextActiveHighlight = newActiveHighlight;
-            m_nextActiveHighlightChangeTime = std::chrono::steady_clock::now();
+            m_nextActiveHighlightChangeTime = MonotonicTime::now();
         }
 
         m_currentMouseDownOnButtonHighlight = nullptr;
@@ -732,12 +727,12 @@ void ServicesOverlayController::determineActiveHighlight(bool& mouseIsOverActive
         }
 
         auto remainingTimeUntilHighlightShouldBeShown = this->remainingTimeUntilHighlightShouldBeShown(newActiveHighlight.get());
-        if (remainingTimeUntilHighlightShouldBeShown > std::chrono::steady_clock::duration::zero()) {
+        if (remainingTimeUntilHighlightShouldBeShown > 0_s) {
             m_determineActiveHighlightTimer.startOneShot(remainingTimeUntilHighlightShouldBeShown);
             return;
         }
 
-        m_activeHighlight = m_nextActiveHighlight.release();
+        m_activeHighlight = WTFMove(m_nextActiveHighlight);
 
         if (m_activeHighlight) {
             m_servicesOverlay->layer().addChild(m_activeHighlight->layer());
@@ -764,7 +759,7 @@ bool ServicesOverlayController::mouseEvent(PageOverlay&, const PlatformMouseEven
         RefPtr<Highlight> mouseDownHighlight = m_currentMouseDownOnButtonHighlight;
         m_currentMouseDownOnButtonHighlight = nullptr;
 
-        m_lastMouseUpTime = std::chrono::steady_clock::now();
+        m_lastMouseUpTime = MonotonicTime::now();
 
         if (mouseIsOverActiveHighlightButton && mouseDownHighlight) {
             handleClick(m_mousePosition, *mouseDownHighlight);
@@ -830,7 +825,7 @@ void ServicesOverlayController::handleClick(const IntPoint& clickPoint, Highligh
 
         page->chrome().client().handleSelectionServiceClick(page->focusController().focusedOrMainFrame().selection(), selectedTelephoneNumbers, windowPoint);
     } else if (highlight.type() == Highlight::TelephoneNumberType)
-        page->chrome().client().handleTelephoneNumberClick(highlight.range()->text(), windowPoint);
+        page->chrome().client().handleTelephoneNumberClick(highlight.range().text(), windowPoint);
 }
 
 void ServicesOverlayController::didCreateHighlight(Highlight* highlight)

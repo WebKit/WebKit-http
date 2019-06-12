@@ -25,7 +25,7 @@
 
 WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
 {
-    constructor(element, delegate, disableBackForward)
+    constructor(element, delegate, disableBackForward, disableFindBanner)
     {
         super(element);
 
@@ -38,25 +38,39 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
         this._contentViewContainer.addEventListener(WebInspector.ContentViewContainer.Event.CurrentContentViewDidChange, this._currentContentViewDidChange, this);
         this.addSubview(this._contentViewContainer);
 
-        this._findBanner = new WebInspector.FindBanner(this);
-        this._findBanner.addEventListener(WebInspector.FindBanner.Event.DidShow, this._findBannerDidShow, this);
-        this._findBanner.addEventListener(WebInspector.FindBanner.Event.DidHide, this._findBannerDidHide, this);
-
         if (!disableBackForward) {
-            this._backKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Control, WebInspector.KeyboardShortcut.Key.Left, this._backButtonClicked.bind(this), this.element);
-            this._forwardKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Control, WebInspector.KeyboardShortcut.Key.Right, this._forwardButtonClicked.bind(this), this.element);
+            let isRTL = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL;
 
-            this._backButtonNavigationItem = new WebInspector.ButtonNavigationItem("back", WebInspector.UIString("Back (%s)").format(this._backKeyboardShortcut.displayName), "Images/BackForwardArrows.svg#back-arrow-mask", 8, 13);
-            this._backButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._backButtonClicked, this);
-            this._backButtonNavigationItem.enabled = false;
-            this._navigationBar.addNavigationItem(this._backButtonNavigationItem);
+            let goBack = () => { this.goBack(); };
+            let goForward = () => { this.goForward(); };
 
-            this._forwardButtonNavigationItem = new WebInspector.ButtonNavigationItem("forward", WebInspector.UIString("Forward (%s)").format(this._forwardKeyboardShortcut.displayName), "Images/BackForwardArrows.svg#forward-arrow-mask", 8, 13);
-            this._forwardButtonNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._forwardButtonClicked, this);
-            this._forwardButtonNavigationItem.enabled = false;
-            this._navigationBar.addNavigationItem(this._forwardButtonNavigationItem);
+            let backShortcutKey = isRTL ? WebInspector.KeyboardShortcut.Key.Right : WebInspector.KeyboardShortcut.Key.Left;
+            let forwardShortcutKey = isRTL ? WebInspector.KeyboardShortcut.Key.Left : WebInspector.KeyboardShortcut.Key.Right;
+            this._backKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Control, backShortcutKey, goBack, this.element);
+            this._forwardKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Control, forwardShortcutKey, goForward, this.element);
+
+            let leftArrow = "Images/BackForwardArrows.svg#left-arrow-mask";
+            let rightArrow = "Images/BackForwardArrows.svg#right-arrow-mask";
+            let backButtonImage = isRTL ? rightArrow : leftArrow;
+            let forwardButtonImage = isRTL ? leftArrow : rightArrow;
+
+            this._backNavigationItem = new WebInspector.ButtonNavigationItem("back", WebInspector.UIString("Back (%s)").format(this._backKeyboardShortcut.displayName), backButtonImage, 8, 13);
+            this._backNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, goBack);
+            this._backNavigationItem.enabled = false;
+            this._navigationBar.addNavigationItem(this._backNavigationItem);
+
+            this._forwardNavigationItem = new WebInspector.ButtonNavigationItem("forward", WebInspector.UIString("Forward (%s)").format(this._forwardKeyboardShortcut.displayName), forwardButtonImage, 8, 13);
+            this._forwardNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, goForward);
+            this._forwardNavigationItem.enabled = false;
+            this._navigationBar.addNavigationItem(this._forwardNavigationItem);
 
             this._navigationBar.addNavigationItem(new WebInspector.DividerNavigationItem);
+        }
+
+        if (!disableFindBanner) {
+            this._findBanner = new WebInspector.FindBanner(this);
+            this._findBanner.addEventListener(WebInspector.FindBanner.Event.DidShow, this._findBannerDidShow, this);
+            this._findBanner.addEventListener(WebInspector.FindBanner.Event.DidHide, this._findBannerDidHide, this);
         }
 
         this._hierarchicalPathNavigationItem = new WebInspector.HierarchicalPathNavigationItem;
@@ -195,15 +209,17 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
         // so it does not need to be called here.
     }
 
-    handleFindEvent(event)
+    showFindBanner()
     {
+        if (!this._findBanner)
+            return;
+
         var currentContentView = this.currentContentView;
         if (!currentContentView || !currentContentView.supportsSearch)
             return;
 
-        // LogContentView has custom search handling.
-        if (typeof currentContentView.handleFindEvent === "function") {
-            currentContentView.handleFindEvent(event);
+        if (currentContentView.supportsCustomFindBanner) {
+            currentContentView.showCustomFindBanner();
             return;
         }
 
@@ -259,27 +275,19 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
     {
         this._contentViewContainer.shown();
 
-        this._findBanner.enableKeyboardShortcuts();
+        if (this._findBanner)
+            this._findBanner.enableKeyboardShortcuts();
     }
 
     hidden()
     {
         this._contentViewContainer.hidden();
 
-        this._findBanner.disableKeyboardShortcuts();
+        if (this._findBanner)
+            this._findBanner.disableKeyboardShortcuts();
     }
 
     // Private
-
-    _backButtonClicked(event)
-    {
-        this.goBack();
-    }
-
-    _forwardButtonClicked(event)
-    {
-        this.goForward();
-    }
 
     _findBannerDidShow(event)
     {
@@ -288,6 +296,8 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
             return;
 
         currentContentView.automaticallyRevealFirstSearchResult = true;
+        if (this._findBanner.searchQuery !== "")
+            currentContentView.performSearch(this._findBanner.searchQuery);
     }
 
     _findBannerDidHide(event)
@@ -297,10 +307,14 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
             return;
 
         currentContentView.automaticallyRevealFirstSearchResult = false;
+        currentContentView.searchCleared();
     }
 
     _contentViewNumberOfSearchResultsDidChange(event)
     {
+        if (!this._findBanner)
+            return;
+
         if (event.target !== this.currentContentView)
             return;
 
@@ -346,39 +360,49 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
 
     _updateBackForwardButtons()
     {
-        if (!this._backButtonNavigationItem || !this._forwardButtonNavigationItem)
+        if (!this._backNavigationItem || !this._forwardNavigationItem)
             return;
 
-        this._backButtonNavigationItem.enabled = this.canGoBack();
-        this._forwardButtonNavigationItem.enabled = this.canGoForward();
+        this._backNavigationItem.enabled = this.canGoBack();
+        this._forwardNavigationItem.enabled = this.canGoForward();
     }
 
-    _updateContentViewNavigationItems()
+    _updateContentViewNavigationItems(forceUpdate)
     {
-        var navigationBar = this.navigationBar;
-
-        // First, we remove the navigation items added by the previous content view.
-        this._currentContentViewNavigationItems.forEach(function(navigationItem) {
-            navigationBar.removeNavigationItem(navigationItem);
-        });
-
-        var currentContentView = this.currentContentView;
+        let currentContentView = this.currentContentView;
         if (!currentContentView) {
+            this._removeAllNavigationItems();
             this._currentContentViewNavigationItems = [];
             return;
         }
 
-        var insertionIndex = navigationBar.navigationItems.indexOf(this._dividingFlexibleSpaceNavigationItem) + 1;
+        // If the ContentView is a tombstone within our ContentViewContainer, don't steal its navigationItems.
+        // Only the owning ContentBrowser should have the navigationItems.
+        if (currentContentView.parentContainer !== this._contentViewContainer)
+            return;
+
+        if (!forceUpdate) {
+            let previousItems = this._currentContentViewNavigationItems.filter((item) => !(item instanceof WebInspector.DividerNavigationItem));
+            let isUnchanged = Array.shallowEqual(previousItems, currentContentView.navigationItems);
+
+            if (isUnchanged)
+                return;
+        }
+
+        this._removeAllNavigationItems();
+
+        let navigationBar = this.navigationBar;
+        let insertionIndex = navigationBar.navigationItems.indexOf(this._dividingFlexibleSpaceNavigationItem) + 1;
         console.assert(insertionIndex >= 0);
 
         // Keep track of items we'll be adding to the navigation bar.
-        var newNavigationItems = [];
+        let newNavigationItems = [];
 
         // Go through each of the items of the new content view and add a divider before them.
         currentContentView.navigationItems.forEach(function(navigationItem, index) {
             // Add dividers before items unless it's the first item and not a button.
             if (index !== 0 || navigationItem instanceof WebInspector.ButtonNavigationItem) {
-                var divider = new WebInspector.DividerNavigationItem;
+                let divider = new WebInspector.DividerNavigationItem;
                 navigationBar.insertNavigationItem(divider, insertionIndex++);
                 newNavigationItems.push(divider);
             }
@@ -391,8 +415,19 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
         this._currentContentViewNavigationItems = newNavigationItems;
     }
 
+    _removeAllNavigationItems()
+    {
+        for (let navigationItem of this._currentContentViewNavigationItems) {
+            if (navigationItem.parentNavigationBar)
+                navigationItem.parentNavigationBar.removeNavigationItem(navigationItem);
+        }
+    }
+
     _updateFindBanner(currentContentView)
     {
+        if (!this._findBanner)
+            return;
+
         if (!currentContentView) {
             this._findBanner.targetElement = null;
             this._findBanner.numberOfResults = null;
@@ -408,19 +443,9 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
         }
     }
 
-    _dispatchCurrentRepresentedObjectsDidChangeEventSoon()
-    {
-        if (this._currentRepresentedObjectsDidChangeTimeout)
-            return;
-        this._currentRepresentedObjectsDidChangeTimeout = setTimeout(this._dispatchCurrentRepresentedObjectsDidChangeEvent.bind(this), 0);
-    }
-
     _dispatchCurrentRepresentedObjectsDidChangeEvent()
     {
-        if (this._currentRepresentedObjectsDidChangeTimeout) {
-            clearTimeout(this._currentRepresentedObjectsDidChangeTimeout);
-            delete this._currentRepresentedObjectsDidChangeTimeout;
-        }
+        this._dispatchCurrentRepresentedObjectsDidChangeEvent.cancelDebounce();
 
         this.dispatchEventToListeners(WebInspector.ContentBrowser.Event.CurrentRepresentedObjectsDidChange);
     }
@@ -437,7 +462,7 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
 
         this._navigationBar.needsLayout();
 
-        this._dispatchCurrentRepresentedObjectsDidChangeEventSoon();
+        this.soon._dispatchCurrentRepresentedObjectsDidChangeEvent();
     }
 
     _contentViewSupplementalRepresentedObjectsDidChange(event)
@@ -445,7 +470,7 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
         if (event.target !== this.currentContentView)
             return;
 
-        this._dispatchCurrentRepresentedObjectsDidChangeEventSoon();
+        this.soon._dispatchCurrentRepresentedObjectsDidChangeEvent();
     }
 
     _currentContentViewDidChange(event)
@@ -471,7 +496,8 @@ WebInspector.ContentBrowser = class ContentBrowser extends WebInspector.View
         if (event.target !== this.currentContentView)
             return;
 
-        this._updateContentViewNavigationItems();
+        const forceUpdate = true;
+        this._updateContentViewNavigationItems(forceUpdate);
         this._navigationBar.needsLayout();
     }
 

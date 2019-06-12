@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,66 +26,59 @@
 #include "config.h"
 #include "JSMap.h"
 
-#include "CopiedBlockInlines.h"
-#include "JSCJSValueInlines.h"
-#include "JSMapIterator.h"
-#include "MapDataInlines.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
+#include "MapPrototype.h"
 
 namespace JSC {
 
-const ClassInfo JSMap::s_info = { "Map", &Base::s_info, 0, CREATE_METHOD_TABLE(JSMap) };
+const ClassInfo JSMap::s_info = { "Map", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSMap) };
 
-void JSMap::destroy(JSCell* cell)
+String JSMap::toStringName(const JSObject*, ExecState*)
 {
-    JSMap* thisObject = jsCast<JSMap*>(cell);
-    thisObject->JSMap::~JSMap();
+    return ASCIILiteral("Object");
 }
 
-void JSMap::visitChildren(JSCell* cell, SlotVisitor& visitor)
+JSMap* JSMap::clone(ExecState* exec, VM& vm, Structure* structure)
 {
-    Base::visitChildren(cell, visitor);
-    jsCast<JSMap*>(cell)->m_mapData.visitChildren(cell, visitor);
+    JSMap* instance = new (NotNull, allocateCell<JSMap>(vm.heap)) JSMap(vm, structure);
+    instance->finishCreation(exec, vm, this);
+    return instance;
 }
 
-void JSMap::copyBackingStore(JSCell* cell, CopyVisitor& visitor, CopyToken token)
+bool JSMap::isIteratorProtocolFastAndNonObservable()
 {
-    Base::copyBackingStore(cell, visitor, token);
-    jsCast<JSMap*>(cell)->m_mapData.copyBackingStore(visitor, token);
+    JSGlobalObject* globalObject = this->globalObject();
+    if (!globalObject->isMapPrototypeIteratorProtocolFastAndNonObservable())
+        return false;
+
+    Structure* structure = this->structure();
+    // This is the fast case. Many maps will be an original map.
+    if (structure == globalObject->mapStructure())
+        return true;
+
+    if (structure->storedPrototype() != globalObject->mapPrototype())
+        return false;
+
+    if (getDirectOffset(globalObject->vm(), globalObject->vm().propertyNames->iteratorSymbol) != invalidOffset)
+        return false;
+
+    return true;
 }
 
-bool JSMap::has(ExecState* exec, JSValue key)
+bool JSMap::canCloneFastAndNonObservable(Structure* structure)
 {
-    return m_mapData.contains(exec, key);
-}
+    auto setFastAndNonObservable = [&] (Structure* structure) {
+        JSGlobalObject* globalObject = structure->globalObject();
+        if (!globalObject->isMapPrototypeSetFastAndNonObservable())
+            return false;
 
-size_t JSMap::size(ExecState* exec)
-{
-    return m_mapData.size(exec);
-}
+        if (structure->storedPrototype() != globalObject->mapPrototype())
+            return false;
 
-JSValue JSMap::get(ExecState* exec, JSValue key)
-{
-    JSValue result = m_mapData.get(exec, key);
-    if (!result)
-        return jsUndefined();
-    return result;
-}
+        return true;
+    };
 
-void JSMap::set(ExecState* exec, JSValue key, JSValue value)
-{
-    m_mapData.set(exec, this, key, value);
-}
-
-void JSMap::clear(ExecState*)
-{
-    m_mapData.clear();
-}
-
-bool JSMap::remove(ExecState* exec, JSValue key)
-{
-    return m_mapData.remove(exec, key);
+    return isIteratorProtocolFastAndNonObservable() && setFastAndNonObservable(structure);
 }
 
 }

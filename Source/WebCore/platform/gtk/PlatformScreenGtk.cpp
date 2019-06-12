@@ -130,4 +130,9 @@ FloatRect screenAvailableRect(Widget* widget)
 
 }
 
+bool screenSupportsExtendedColor(Widget*)
+{
+    return false;
+}
+
 } // namespace WebCore

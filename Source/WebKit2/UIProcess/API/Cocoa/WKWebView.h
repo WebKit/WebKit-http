@@ -38,6 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class WKBackForwardList;
 @class WKBackForwardListItem;
 @class WKNavigation;
+@class WKSnapshotConfiguration;
 @class WKWebViewConfiguration;
 
 @protocol WKNavigationDelegate;
@@ -49,10 +50,10 @@ NS_ASSUME_NONNULL_BEGIN
  Used to configure @link WKWebView @/link instances.
  */
 #if TARGET_OS_IPHONE
-WK_CLASS_AVAILABLE(10_10, 8_0)
+WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface WKWebView : UIView
 #else
-WK_CLASS_AVAILABLE(10_10, 8_0)
+WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface WKWebView : NSView
 #endif
 
@@ -83,7 +84,7 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  */
 - (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration NS_DESIGNATED_INITIALIZER;
 
-- (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
+- (nullable instancetype)initWithCoder:(NSCoder *)coder NS_DESIGNATED_INITIALIZER;
 
 /*! @abstract Navigates to a requested URL.
  @param request The request specifying the URL to which to navigate.
@@ -98,7 +99,7 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  If readAccessURL references a directory, files inside that file may be loaded by WebKit.
  @result A new navigation for the given file URL.
  */
-- (nullable WKNavigation *)loadFileURL:(NSURL *)URL allowingReadAccessToURL:(NSURL *)readAccessURL WK_AVAILABLE(10_11, 9_0);
+- (nullable WKNavigation *)loadFileURL:(NSURL *)URL allowingReadAccessToURL:(NSURL *)readAccessURL WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 /*! @abstract Sets the webpage contents and base URL.
  @param string The string to use as the contents of the webpage.
@@ -114,7 +115,7 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  @param baseURL A URL that is used to resolve relative URLs within the document.
  @result A new navigation.
  */
-- (nullable WKNavigation *)loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL WK_AVAILABLE(10_11, 9_0);
+- (nullable WKNavigation *)loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 /*! @abstract Navigates to an item from the back-forward list and sets it
  as the current item.
@@ -164,12 +165,11 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  */
 @property (nonatomic, readonly) BOOL hasOnlySecureContent;
 
-/*! @abstract An array of SecCertificateRef objects forming the certificate
- chain for the currently committed navigation.
- @discussion The certificates are ordered from leaf (at index 0) to anchor.
- @link WKWebView @/link is key-value observing (KVO) compliant for this property.
+/*! @abstract A SecTrustRef for the currently committed navigation.
+ @discussion @link WKWebView @/link is key-value observing (KVO) compliant 
+ for this property.
  */
-@property (nonatomic, readonly, copy) NSArray *certificateChain WK_AVAILABLE(10_11, 9_0);
+@property (nonatomic, readonly, nullable) SecTrustRef serverTrust WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
 /*! @abstract A Boolean value indicating whether there is a back item in
  the back-forward list that can be navigated to.
@@ -219,7 +219,20 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
  @param completionHandler A block to invoke when script evaluation completes or fails.
  @discussion The completionHandler is passed the result of the script evaluation or an error.
 */
-- (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(void (^ WK_NULLABLE_SPECIFIER)(WK_NULLABLE_SPECIFIER id, NSError * WK_NULLABLE_SPECIFIER error))completionHandler;
+- (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))completionHandler;
+
+/*! @abstract Get a snapshot for the visible viewport of WKWebView.
+ @param snapshotConfiguration An object that specifies how the snapshot is configured.
+ @param completionHandler A block to invoke when the snapshot is ready.
+ @discussion If the WKSnapshotConfiguration is nil, the method will snapshot the bounds of the 
+ WKWebView and create an image that is the width of the bounds of the WKWebView and scaled to the 
+ device scale. The completionHandler is passed the image of the viewport contents or an error.
+ */
+#if TARGET_OS_IPHONE
+- (void)takeSnapshotWithConfiguration:(nullable WKSnapshotConfiguration *)snapshotConfiguration completionHandler:(void (^)(UIImage * _Nullable snapshotImage, NSError * _Nullable error))completionHandler WK_API_AVAILABLE(ios(WK_IOS_TBA));
+#else
+- (void)takeSnapshotWithConfiguration:(nullable WKSnapshotConfiguration *)snapshotConfiguration completionHandler:(void (^)(NSImage * _Nullable snapshotImage, NSError * _Nullable error))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+#endif
 
 /*! @abstract A Boolean value indicating whether horizontal swipe gestures
  will trigger back-forward list navigations.
@@ -229,13 +242,13 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
 
 /*! @abstract The custom user agent string or nil if no custom user agent string has been set.
 */
-@property (nullable, nonatomic, copy) NSString *customUserAgent WK_AVAILABLE(10_11, 9_0);
+@property (nullable, nonatomic, copy) NSString *customUserAgent WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 /*! @abstract A Boolean value indicating whether link preview is allowed for any
  links inside this WKWebView.
- @discussion The default value is NO on iOS and YES on Mac.
+ @discussion The default value is YES on Mac and iOS.
  */
-@property (nonatomic) BOOL allowsLinkPreview WK_AVAILABLE(10_11, 9_0);
+@property (nonatomic) BOOL allowsLinkPreview WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 #if TARGET_OS_IPHONE
 /*! @abstract The scroll view associated with the web view.
@@ -265,6 +278,11 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
 - (void)setMagnification:(CGFloat)magnification centeredAtPoint:(CGPoint)point;
 
 #endif
+
+/* @abstract Checks whether or not WKWebViews handle the given URL scheme by default.
+ @param scheme The URL scheme to check.
+ */
++ (BOOL)handlesURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 
@@ -304,6 +322,12 @@ WK_CLASS_AVAILABLE(10_10, 8_0)
 @end
 
 #endif
+
+@interface WKWebView (WKDeprecated)
+
+@property (nonatomic, readonly, copy) NSArray *certificateChain WK_API_DEPRECATED_WITH_REPLACEMENT("serverTrust", macosx(10.11, 10.12), ios(9.0, 10.0));
+
+@end
 
 NS_ASSUME_NONNULL_END
 

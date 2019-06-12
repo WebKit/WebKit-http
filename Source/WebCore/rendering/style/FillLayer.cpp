@@ -64,9 +64,10 @@ FillLayer::FillLayer(EFillLayerType type)
     , m_repeatYSet(false)
     , m_xPosSet(false)
     , m_yPosSet(false)
-    , m_backgroundOriginSet(false)
-    , m_backgroundXOrigin(LeftEdge)
-    , m_backgroundYOrigin(TopEdge)
+    , m_backgroundXOriginSet(false)
+    , m_backgroundYOriginSet(false)
+    , m_backgroundXOrigin(static_cast<unsigned>(Edge::Left))
+    , m_backgroundYOrigin(static_cast<unsigned>(Edge::Top))
     , m_compositeSet(type == MaskFillLayer)
     , m_blendModeSet(false)
     , m_maskSourceTypeSet(false)
@@ -97,7 +98,8 @@ FillLayer::FillLayer(const FillLayer& o)
     , m_repeatYSet(o.m_repeatYSet)
     , m_xPosSet(o.m_xPosSet)
     , m_yPosSet(o.m_yPosSet)
-    , m_backgroundOriginSet(o.m_backgroundOriginSet)
+    , m_backgroundXOriginSet(o.m_backgroundXOriginSet)
+    , m_backgroundYOriginSet(o.m_backgroundYOriginSet)
     , m_backgroundXOrigin(o.m_backgroundXOrigin)
     , m_backgroundYOrigin(o.m_backgroundYOrigin)
     , m_compositeSet(o.m_compositeSet)
@@ -122,7 +124,8 @@ FillLayer& FillLayer::operator=(const FillLayer& o)
     m_yPosition = o.m_yPosition;
     m_backgroundXOrigin = o.m_backgroundXOrigin;
     m_backgroundYOrigin = o.m_backgroundYOrigin;
-    m_backgroundOriginSet = o.m_backgroundOriginSet;
+    m_backgroundXOriginSet = o.m_backgroundXOriginSet;
+    m_backgroundYOriginSet = o.m_backgroundYOriginSet;
     m_sizeLength = o.m_sizeLength;
     m_attachment = o.m_attachment;
     m_clip = o.m_clip;
@@ -172,10 +175,10 @@ void FillLayer::fillUnsetProperties()
         // We need to fill in the remaining values with the pattern specified.
         for (FillLayer* pattern = this; curr; curr = curr->next()) {
             curr->m_xPosition = pattern->m_xPosition;
-            if (pattern->isBackgroundOriginSet()) {
+            if (pattern->isBackgroundXOriginSet())
                 curr->m_backgroundXOrigin = pattern->m_backgroundXOrigin;
+            if (pattern->isBackgroundYOriginSet())
                 curr->m_backgroundYOrigin = pattern->m_backgroundYOrigin;
-            }
             pattern = pattern->next();
             if (pattern == curr || !pattern)
                 pattern = this;
@@ -187,10 +190,10 @@ void FillLayer::fillUnsetProperties()
         // We need to fill in the remaining values with the pattern specified.
         for (FillLayer* pattern = this; curr; curr = curr->next()) {
             curr->m_yPosition = pattern->m_yPosition;
-            if (pattern->isBackgroundOriginSet()) {
+            if (pattern->isBackgroundXOriginSet())
                 curr->m_backgroundXOrigin = pattern->m_backgroundXOrigin;
+            if (pattern->isBackgroundYOriginSet())
                 curr->m_backgroundYOrigin = pattern->m_backgroundYOrigin;
-            }
             pattern = pattern->next();
             if (pattern == curr || !pattern)
                 pattern = this;
@@ -380,16 +383,10 @@ bool FillLayer::hasFixedImage() const
     return false;
 }
 
-static inline bool layerImagesIdentical(const FillLayer& layer1, const FillLayer& layer2)
-{
-    // We just care about pointer equivalency.
-    return layer1.image() == layer2.image();
-}
-
 bool FillLayer::imagesIdentical(const FillLayer* layer1, const FillLayer* layer2)
 {
     for (; layer1 && layer2; layer1 = layer1->next(), layer2 = layer2->next()) {
-        if (!layerImagesIdentical(*layer1, *layer2))
+        if (!arePointingToEqualData(layer1->image(), layer2->image()))
             return false;
     }
 

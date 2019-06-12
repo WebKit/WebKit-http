@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef InsertListCommand_h
-#define InsertListCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -33,7 +32,7 @@ namespace WebCore {
 class HTMLElement;
 class HTMLQualifiedName;
 
-class InsertListCommand : public CompositeEditCommand {
+class InsertListCommand final : public CompositeEditCommand {
 public:
     enum Type { OrderedList, UnorderedList };
 
@@ -44,17 +43,17 @@ public:
 
     static RefPtr<HTMLElement> insertList(Document&, Type);
     
-    virtual bool preservesTypingStyle() const { return true; }
+    bool preservesTypingStyle() const final { return true; }
 
 private:
     InsertListCommand(Document&, Type);
 
-    virtual void doApply();
-    virtual EditAction editingAction() const { return EditActionInsertList; }
+    void doApply() final;
+    EditAction editingAction() const final;
 
-    HTMLElement* fixOrphanedListChild(Node*);
+    HTMLElement& fixOrphanedListChild(Node&);
     bool selectionHasListOfType(const VisibleSelection& selection, const QualifiedName&);
-    RefPtr<HTMLElement> mergeWithNeighboringLists(PassRefPtr<HTMLElement>);
+    Ref<HTMLElement> mergeWithNeighboringLists(HTMLElement&);
     void doApplyForSingleParagraph(bool forceCreateList, const HTMLQualifiedName&, Range* currentSelection);
     void unlistifyParagraph(const VisiblePosition& originalStart, HTMLElement* listNode, Node* listChildNode);
     RefPtr<HTMLElement> listifyParagraph(const VisiblePosition& originalStart, const QualifiedName& listTag);
@@ -63,5 +62,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // InsertListCommand_h

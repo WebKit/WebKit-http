@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInspectorFrontendAPIDispatcher_h
-#define WebInspectorFrontendAPIDispatcher_h
+#pragma once
 
 #include <wtf/Deque.h>
 #include <wtf/text/WTFString.h>
@@ -35,10 +34,13 @@ class WebPage;
 
 class WebInspectorFrontendAPIDispatcher {
 public:
-    WebInspectorFrontendAPIDispatcher(WebPage& page);
+    WebInspectorFrontendAPIDispatcher(WebPage&);
 
     void reset();
     void frontendLoaded();
+
+    void suspend();
+    void unsuspend();
 
     void dispatchCommand(const String& command);
     void dispatchCommand(const String& command, const String& argument);
@@ -46,13 +48,13 @@ public:
     void dispatchMessageAsync(const String& message);
 
 private:
-    void evaluateExpressionOnLoad(const String& expression);
+    void evaluateOrQueueExpression(const String&);
+    void evaluateQueuedExpressions();
 
     WebPage& m_page;
     Deque<String> m_queue;
     bool m_frontendLoaded { false };
+    bool m_suspended { false };
 };
 
 } // namespace WebKit
-
-#endif // WebInspectorFrontendAPIDispatcher_h

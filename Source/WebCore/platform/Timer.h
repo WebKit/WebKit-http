@@ -23,12 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Timer_h
-#define Timer_h
+#pragma once
 
-#include <chrono>
 #include <functional>
+#include <wtf/Function.h>
+#include <wtf/MonotonicTime.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Optional.h>
+#include <wtf/Seconds.h>
 #include <wtf/Threading.h>
 #include <wtf/Vector.h>
 
@@ -49,22 +51,20 @@ public:
     WEBCORE_EXPORT TimerBase();
     WEBCORE_EXPORT virtual ~TimerBase();
 
-    WEBCORE_EXPORT void start(double nextFireInterval, double repeatInterval);
+    WEBCORE_EXPORT void start(Seconds nextFireInterval, Seconds repeatInterval);
 
-    void startRepeating(double repeatInterval) { start(repeatInterval, repeatInterval); }
-    void startRepeating(std::chrono::milliseconds repeatInterval) { startRepeating(repeatInterval.count() * 0.001); }
-    void startOneShot(double interval) { start(interval, 0); }
-    void startOneShot(std::chrono::milliseconds interval) { startOneShot(interval.count() * 0.001); }
+    void startRepeating(Seconds repeatInterval) { start(repeatInterval, repeatInterval); }
+    void startOneShot(Seconds interval) { start(interval, 0_s); }
 
     WEBCORE_EXPORT void stop();
     bool isActive() const;
 
-    double nextFireInterval() const;
-    double nextUnalignedFireInterval() const;
-    double repeatInterval() const { return m_repeatInterval; }
+    Seconds nextFireInterval() const;
+    Seconds nextUnalignedFireInterval() const;
+    Seconds repeatInterval() const { return m_repeatInterval; }
 
-    void augmentFireInterval(double delta) { setNextFireTime(m_nextFireTime + delta); }
-    void augmentRepeatInterval(double delta) { augmentFireInterval(delta); m_repeatInterval += delta; }
+    void augmentFireInterval(Seconds delta) { setNextFireTime(m_nextFireTime + delta); }
+    void augmentRepeatInterval(Seconds delta) { augmentFireInterval(delta); m_repeatInterval += delta; }
 
     void didChangeAlignmentInterval();
 
@@ -73,17 +73,17 @@ public:
 private:
     virtual void fired() = 0;
 
-    virtual double alignedFireTime(double fireTime) const { return fireTime; }
+    virtual std::optional<MonotonicTime> alignedFireTime(MonotonicTime) const { return std::nullopt; }
 
     void checkConsistency() const;
     void checkHeapIndex() const;
 
-    void setNextFireTime(double);
+    void setNextFireTime(MonotonicTime);
 
     bool inHeap() const { return m_heapIndex != -1; }
 
     bool hasValidHeapPosition() const;
-    void updateHeapIfNeeded(double oldTime);
+    void updateHeapIfNeeded(MonotonicTime oldTime);
 
     void heapDecreaseKey();
     void heapDelete();
@@ -95,16 +95,16 @@ private:
 
     Vector<TimerBase*>& timerHeap() const { ASSERT(m_cachedThreadGlobalTimerHeap); return *m_cachedThreadGlobalTimerHeap; }
 
-    double m_nextFireTime; // 0 if inactive
-    double m_unalignedNextFireTime; // m_nextFireTime not considering alignment interval
-    double m_repeatInterval; // 0 if not repeating
-    int m_heapIndex; // -1 if not in heap
+    MonotonicTime m_nextFireTime; // 0 if inactive
+    MonotonicTime m_unalignedNextFireTime; // m_nextFireTime not considering alignment interval
+    Seconds m_repeatInterval; // 0 if not repeating
+    int m_heapIndex { -1 }; // -1 if not in heap
     unsigned m_heapInsertionOrder; // Used to keep order among equal-fire-time timers
-    Vector<TimerBase*>* m_cachedThreadGlobalTimerHeap;
+    Vector<TimerBase*>* m_cachedThreadGlobalTimerHeap { nullptr };
 
 #ifndef NDEBUG
     ThreadIdentifier m_thread;
-    bool m_wasDeleted;
+    bool m_wasDeleted { false };
 #endif
 
     friend class ThreadTimers;
@@ -122,18 +122,18 @@ public:
     {
     }
 
-    Timer(std::function<void ()> function)
+    Timer(WTF::Function<void ()>&& function)
         : m_function(WTFMove(function))
     {
     }
 
 private:
-    virtual void fired() override
+    void fired() override
     {
         m_function();
     }
     
-    std::function<void ()> m_function;
+    WTF::Function<void ()> m_function;
 };
 
 inline bool TimerBase::isActive() const
@@ -144,18 +144,18 @@ inline bool TimerBase::isActive() const
 #else
     ASSERT(WebThreadIsCurrent() || pthread_main_np() || m_thread == currentThread());
 #endif // PLATFORM(IOS)
-    return m_nextFireTime;
+    return static_cast<bool>(m_nextFireTime);
 }
 
 class DeferrableOneShotTimer : protected TimerBase {
 public:
     template<typename TimerFiredClass>
-    DeferrableOneShotTimer(TimerFiredClass& object, void (TimerFiredClass::*function)(), std::chrono::milliseconds delay)
+    DeferrableOneShotTimer(TimerFiredClass& object, void (TimerFiredClass::*function)(), Seconds delay)
         : DeferrableOneShotTimer(std::bind(function, &object), delay)
     {
     }
 
-    DeferrableOneShotTimer(std::function<void ()> function, std::chrono::milliseconds delay)
+    DeferrableOneShotTimer(WTF::Function<void ()>&& function, Seconds delay)
         : m_function(WTFMove(function))
         , m_delay(delay)
         , m_shouldRestartWhenTimerFires(false)
@@ -184,7 +184,7 @@ public:
     using TimerBase::isActive;
 
 private:
-    virtual void fired() override
+    void fired() override
     {
         if (m_shouldRestartWhenTimerFires) {
             m_shouldRestartWhenTimerFires = false;
@@ -195,12 +195,10 @@ private:
         m_function();
     }
 
-    std::function<void ()> m_function;
+    WTF::Function<void ()> m_function;
 
-    std::chrono::milliseconds m_delay;
+    Seconds m_delay;
     bool m_shouldRestartWhenTimerFires;
 };
 
 }
-
-#endif

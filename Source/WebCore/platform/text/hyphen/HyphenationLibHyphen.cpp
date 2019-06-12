@@ -31,6 +31,8 @@
 
 #include "FileSystem.h"
 #include <hyphen.h>
+#include <limits>
+#include <stdlib.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/TinyLRUCache.h>
@@ -62,8 +64,14 @@ static String extractLocaleFromDictionaryFilePath(const String& filePath)
 
 static void scanDirectoryForDicionaries(const char* directoryPath, HashMap<AtomicString, Vector<String>>& availableLocales)
 {
-    for (const auto& filePath : listDirectory(directoryPath, "hyph_*.dic")) {
+    for (auto& filePath : listDirectory(directoryPath, "hyph_*.dic")) {
         String locale = extractLocaleFromDictionaryFilePath(filePath).convertToASCIILowercase();
+
+        char normalizedPath[PATH_MAX];
+        if (!realpath(fileSystemRepresentation(filePath).data(), normalizedPath))
+            continue;
+
+        filePath = stringFromFileSystemRepresentation(normalizedPath);
         availableLocales.add(locale, Vector<String>()).iterator->value.append(filePath);
 
         String localeReplacingUnderscores = String(locale);
@@ -98,6 +106,8 @@ static void scanTestDictionariesDirectoryIfNecessary(HashMap<AtomicString, Vecto
     scanDirectoryForDicionaries(dictionariesPath.get(), availableLocales);
 #elif defined(TEST_HYPHENATAION_PATH)
     scanDirectoryForDicionaries(TEST_HYPHENATAION_PATH, availableLocales);
+#else
+    UNUSED_PARAM(availableLocales);
 #endif
 }
 #endif
@@ -166,13 +176,17 @@ private:
     HyphenDictUniquePtr m_libhyphenDictionary;
 };
 
+} // namespace WebCore
+
+namespace WTF {
+
 template<>
-class TinyLRUCachePolicy<AtomicString, RefPtr<HyphenationDictionary>>
+class TinyLRUCachePolicy<AtomicString, RefPtr<WebCore::HyphenationDictionary>>
 {
 public:
-    static TinyLRUCache<AtomicString, RefPtr<HyphenationDictionary>>& cache()
+    static TinyLRUCache<AtomicString, RefPtr<WebCore::HyphenationDictionary>, 32>& cache()
     {
-        static NeverDestroyed<TinyLRUCache<AtomicString, RefPtr<HyphenationDictionary>>> cache;
+        static NeverDestroyed<TinyLRUCache<AtomicString, RefPtr<WebCore::HyphenationDictionary>, 32>> cache;
         return cache;
     }
 
@@ -181,16 +195,20 @@ public:
         return localeIdentifier.isNull();
     }
 
-    static RefPtr<HyphenationDictionary> createValueForNullKey()
+    static RefPtr<WebCore::HyphenationDictionary> createValueForNullKey()
     {
-        return HyphenationDictionary::createNull();
+        return WebCore::HyphenationDictionary::createNull();
     }
 
-    static RefPtr<HyphenationDictionary> createValueForKey(const AtomicString& dictionaryPath)
+    static RefPtr<WebCore::HyphenationDictionary> createValueForKey(const AtomicString& dictionaryPath)
     {
-        return HyphenationDictionary::create(fileSystemRepresentation(dictionaryPath.string()));
+        return WebCore::HyphenationDictionary::create(WebCore::fileSystemRepresentation(dictionaryPath.string()));
     }
 };
+
+} // namespace WTF
+
+namespace WebCore {
 
 static void countLeadingSpaces(const CString& utf8String, int32_t& pointerOffset, int32_t& characterOffset)
 {
@@ -231,9 +249,13 @@ size_t lastHyphenLocation(StringView string, size_t beforeIndex, const AtomicStr
     char* hyphenArrayData = hyphenArray.data();
 
     String lowercaseLocaleIdentifier = AtomicString(localeIdentifier.string().convertToASCIILowercase());
-    ASSERT(availableLocales().contains(lowercaseLocaleIdentifier));
+
+    // Web content may specify strings for locales which do not exist or that we do not have.
+    if (!availableLocales().contains(lowercaseLocaleIdentifier))
+        return 0;
+
     for (const auto& dictionaryPath : availableLocales().get(lowercaseLocaleIdentifier)) {
-        RefPtr<HyphenationDictionary> dictionary = TinyLRUCachePolicy<AtomicString, RefPtr<HyphenationDictionary>>::cache().get(AtomicString(dictionaryPath));
+        RefPtr<HyphenationDictionary> dictionary = WTF::TinyLRUCachePolicy<AtomicString, RefPtr<HyphenationDictionary>>::cache().get(AtomicString(dictionaryPath));
 
         char** replacements = nullptr;
         int* positions = nullptr;
@@ -256,11 +278,11 @@ size_t lastHyphenLocation(StringView string, size_t beforeIndex, const AtomicStr
         free(positions);
         free(removedCharacterCounts);
 
-        for (int i = beforeIndex - leadingSpaceCharacters - 1; i >= 0; i--) {
+        for (int i = beforeIndex - leadingSpaceCharacters - 2; i >= 0; i--) {
             // libhyphen will put an odd number in hyphenArrayData at all
             // hyphenation points. A number & 1 will be true for odd numbers.
             if (hyphenArrayData[i] & 1)
-                return i + leadingSpaceCharacters;
+                return i + 1 + leadingSpaceCharacters;
         }
     }
 

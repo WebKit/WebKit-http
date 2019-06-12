@@ -23,17 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UserMessageHandlersNamespace_h
-#define UserMessageHandlersNamespace_h
+#pragma once
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 
 #include "FrameDestructionObserver.h"
+#include "UserContentProvider.h"
 #include "UserMessageHandler.h"
+#include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
 
@@ -41,24 +42,28 @@ class Frame;
 class UserMessageHandler;
 class DOMWrapperWorld;
 
-class UserMessageHandlersNamespace : public RefCounted<UserMessageHandlersNamespace>, public FrameDestructionObserver {
+class UserMessageHandlersNamespace : public RefCounted<UserMessageHandlersNamespace>, public FrameDestructionObserver, public UserContentProviderInvalidationClient {
 public:
-    static Ref<UserMessageHandlersNamespace> create(Frame& frame)
+    static Ref<UserMessageHandlersNamespace> create(Frame& frame, UserContentProvider& userContentProvider)
     {
-        return adoptRef(*new UserMessageHandlersNamespace(frame));
+        return adoptRef(*new UserMessageHandlersNamespace(frame, userContentProvider));
     }
 
     virtual ~UserMessageHandlersNamespace();
 
-    UserMessageHandler* handler(const AtomicString&, DOMWrapperWorld&);
+    Vector<AtomicString> supportedPropertyNames() const;
+    UserMessageHandler* namedItem(DOMWrapperWorld&, const AtomicString&);
 
 private:
-    explicit UserMessageHandlersNamespace(Frame&);
+    explicit UserMessageHandlersNamespace(Frame&, UserContentProvider&);
 
-    Vector<Ref<UserMessageHandler>> m_messageHandlers;
+    // UserContentProviderInvalidationClient
+    void didInvalidate(UserContentProvider&) override;
+
+    Ref<UserContentProvider> m_userContentProvider;
+    HashMap<std::pair<AtomicString, RefPtr<DOMWrapperWorld>>, RefPtr<UserMessageHandler>> m_messageHandlers;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(USER_MESSAGE_HANDLERS)
-#endif // UserMessageHandlersNamespace_h

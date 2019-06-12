@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CFNetworkSPI_h
-#define CFNetworkSPI_h
+#pragma clang system_header
+
+#pragma once
 
 #include "CFNetworkConnectionCacheSPI.h"
 #include <CFNetwork/CFNetwork.h>
@@ -41,27 +42,24 @@
 #include <CFNetwork/CFURLResponsePriv.h>
 #include <CFNetwork/CFURLStorageSession.h>
 
-// FIXME: Remove the defined(__OBJC__)-guard onnce we fix <rdar://problem/19033610>.
+// FIXME: Remove the defined(__OBJC__)-guard once we fix <rdar://problem/19033610>.
 #if defined(__OBJC__) && PLATFORM(COCOA)
-// FIXME: As a workaround for <rdar://problem/18337182>, we conditionally enclose the header
-// in an extern "C" linkage block to make it suitable for C++ use.
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #import <CFNetwork/CFNSURLConnection.h>
-
-#ifdef __cplusplus
-}
 #endif
-#endif // defined(__OBJC__) && PLATFORM(COCOA)
 
-#else // PLATFORM(WIN) || USE(APPLE_INTERNAL_SDK)
+#else // !PLATFORM(WIN) && !USE(APPLE_INTERNAL_SDK)
 
 typedef CF_ENUM(int64_t, _TimingDataOptions)
 {
     _TimingDataOptionsEnableW3CNavigationTiming = (1 << 0)
 };
+
+enum CFURLCacheStoragePolicy {
+    kCFURLCacheStorageAllowed = 0,
+    kCFURLCacheStorageAllowedInMemoryOnly = 1,
+    kCFURLCacheStorageNotAllowed = 2
+};
+typedef enum CFURLCacheStoragePolicy CFURLCacheStoragePolicy;
 
 typedef const struct _CFCachedURLResponse* CFCachedURLResponseRef;
 typedef const struct _CFURLCache* CFURLCacheRef;
@@ -69,6 +67,7 @@ typedef const struct _CFURLCredential* CFURLCredentialRef;
 typedef const struct _CFURLRequest* CFURLRequestRef;
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 typedef const struct __CFData* CFDataRef;
+typedef const struct OpaqueCFHTTPCookie* CFHTTPCookieRef;
 typedef struct _CFURLConnection* CFURLConnectionRef;
 typedef struct _CFURLCredentialStorage* CFURLCredentialStorageRef;
 typedef struct _CFURLProtectionSpace* CFURLProtectionSpaceRef;
@@ -83,8 +82,25 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 #endif
 
 #if defined(__OBJC__)
+
+@interface NSURLCache ()
+-(instancetype)_initWithMemoryCapacity:(NSUInteger)memoryCapacity diskCapacity:(NSUInteger)diskCapacity relativePath:(NSString *)path;
+- (CFURLCacheRef)_CFURLCache;
+@end
+
 @interface NSURLRequest ()
++ (NSArray *)allowsSpecificHTTPSCertificateForHost:(NSString *)host;
++ (void)setAllowsSpecificHTTPSCertificate:(NSArray *)allow forHost:(NSString *)host;
++ (void)setDefaultTimeoutInterval:(NSTimeInterval)seconds;
+- (NSArray *)contentDispositionEncodingFallbackArray;
+- (CFURLRequestRef)_CFURLRequest;
+- (id)_initWithCFURLRequest:(CFURLRequestRef)request;
+- (id)_propertyForKey:(NSString *)key;
 - (void)_setProperty:(id)value forKey:(NSString *)key;
+@end
+
+@interface NSMutableURLRequest ()
+- (void)setContentDispositionEncodingFallbackArray:(NSArray *)theEncodingFallbackArray;
 @end
 
 @interface NSURLResponse ()
@@ -97,75 +113,123 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 - (NSDictionary *)_timingData;
 @end
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+@interface NSHTTPCookie ()
+- (CFHTTPCookieRef)_CFHTTPCookie;
+@end
+
 @interface NSURLSessionConfiguration ()
 @property (assign) _TimingDataOptions _timingDataOptions;
+@property (copy) NSData *_sourceApplicationAuditTokenData;
+@property (nullable, copy) NSString *_sourceApplicationBundleIdentifier;
+@property (nullable, copy) NSString *_sourceApplicationSecondaryIdentifier;
+@property BOOL _shouldSkipPreferredClientCertificateLookup NS_AVAILABLE(10_10, 8_0);
+#if PLATFORM(IOS)
+@property (nullable, copy) NSString *_CTDataConnectionServiceType;
+#endif
+@end
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+@interface NSURLSessionTaskTransactionMetrics ()
+@property (copy, readonly) NSString* _remoteAddressAndPort;
+@property (copy, readonly) NSUUID* _connectionIdentifier;
+@property (assign, readonly) NSInteger _requestHeaderBytesSent;
+@property (assign, readonly) NSInteger _responseHeaderBytesReceived;
+@property (assign, readonly) int64_t _responseBodyBytesReceived;
+@property (assign, readonly) int64_t _responseBodyBytesDecoded;
 @end
 #endif
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS)
+@interface NSHTTPCookie ()
+@property (nullable, readonly, copy) NSString *_storagePartition;
+@end
+
+@interface NSHTTPCookieStorage ()
+- (void)_getCookiesForURL:(NSURL *)url mainDocumentURL:(NSURL *)mainDocumentURL partition:(NSString *)partition completionHandler:(void (^)(NSArray *))completionHandler;
+@end
+
+@interface NSURLSessionTask ()
+@property (readwrite, copy) NSString *_pathToDownloadTaskFile;
+@property (copy) NSString *_storagePartitionIdentifier;
+@end
 #endif
 
-#endif // PLATFORM(WIN) || USE(APPLE_INTERNAL_SDK)
+#endif // defined(__OBJC__)
 
-EXTERN_C void CFURLRequestSetShouldStartSynchronously(CFURLRequestRef, Boolean);
+#endif // !PLATFORM(WIN) && !USE(APPLE_INTERNAL_SDK)
 
-EXTERN_C CFURLCacheRef CFURLCacheCopySharedURLCache();
-EXTERN_C void CFURLCacheSetMemoryCapacity(CFURLCacheRef, CFIndex memoryCapacity);
-EXTERN_C void _CFURLCachePurgeMemoryCache(CFURLCacheRef);
-#if PLATFORM(COCOA)
-EXTERN_C CFBooleanRef _CFURLCacheIsResponseDataMemMapped(CFURLCacheRef, CFDataRef);
-EXTERN_C void _CFURLCacheSetMinSizeForVMCachedResource(CFURLCacheRef, CFIndex);
-
-EXTERN_C Boolean _CFNetworkIsKnownHSTSHostWithSession(CFURLRef, CFURLStorageSessionRef);
-EXTERN_C void _CFNetworkResetHSTSHostsWithSession(CFURLStorageSessionRef);
-#endif
-
-EXTERN_C void CFHTTPCookieStorageDeleteAllCookies(CFHTTPCookieStorageRef);
-
-#if PLATFORM(COCOA)
-EXTERN_C CFDataRef _CFCachedURLResponseGetMemMappedData(CFCachedURLResponseRef);
-#ifdef __BLOCKS__
-EXTERN_C void _CFCachedURLResponseSetBecameFileBackedCallBackBlock(CFCachedURLResponseRef, CFCachedURLResponseCallBackBlock, dispatch_queue_t);
-#endif
-#endif // PLATFORM(COCOA)
-
-EXTERN_C void CFURLConnectionInvalidateConnectionCache();
-
-EXTERN_C CFStringRef const kCFHTTPCookieLocalFileDomain;
-EXTERN_C const CFStringRef kCFURLRequestAllowAllPOSTCaching;
+WTF_EXTERN_C_BEGIN
 
 #if !PLATFORM(WIN)
-EXTERN_C const CFStringRef _kCFURLConnectionPropertyShouldSniff;
+
+CFURLStorageSessionRef _CFURLStorageSessionCreate(CFAllocatorRef, CFStringRef, CFDictionaryRef);
+CFURLCacheRef _CFURLStorageSessionCopyCache(CFAllocatorRef, CFURLStorageSessionRef);
+
+void CFURLRequestSetShouldStartSynchronously(CFURLRequestRef, Boolean);
+
+CFURLCacheRef CFURLCacheCopySharedURLCache();
+void CFURLCacheSetMemoryCapacity(CFURLCacheRef, CFIndex memoryCapacity);
+CFIndex CFURLCacheMemoryCapacity(CFURLCacheRef);
+void CFURLCacheSetDiskCapacity(CFURLCacheRef, CFIndex);
+
+#if PLATFORM(COCOA)
+Boolean _CFNetworkIsKnownHSTSHostWithSession(CFURLRef, CFURLStorageSessionRef);
+void _CFNetworkResetHSTSHostsWithSession(CFURLStorageSessionRef);
 #endif
 
-EXTERN_C CFHTTPCookieStorageRef _CFHTTPCookieStorageGetDefault(CFAllocatorRef);
-EXTERN_C void CFHTTPCookieStorageSetCookieAcceptPolicy(CFHTTPCookieStorageRef, CFHTTPCookieStorageAcceptPolicy);
-EXTERN_C void _CFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
-EXTERN_C CFURLCredentialStorageRef CFURLCredentialStorageCreate(CFAllocatorRef);
-EXTERN_C CFURLCredentialRef CFURLCredentialStorageCopyDefaultCredentialForProtectionSpace(CFURLCredentialStorageRef, CFURLProtectionSpaceRef);
-EXTERN_C CFURLRequestPriority CFURLRequestGetRequestPriority(CFURLRequestRef);
-EXTERN_C void _CFURLRequestSetProtocolProperty(CFURLRequestRef, CFStringRef, CFTypeRef);
-EXTERN_C void CFURLRequestSetRequestPriority(CFURLRequestRef, CFURLRequestPriority);
-EXTERN_C void CFURLRequestSetShouldPipelineHTTP(CFURLRequestRef, Boolean, Boolean);
-EXTERN_C void _CFURLRequestSetStorageSession(CFMutableURLRequestRef, CFURLStorageSessionRef);
-EXTERN_C CFStringRef CFURLResponseCopySuggestedFilename(CFURLResponseRef);
-EXTERN_C CFHTTPMessageRef CFURLResponseGetHTTPResponse(CFURLResponseRef);
-EXTERN_C CFStringRef CFURLResponseGetMIMEType(CFURLResponseRef);
-EXTERN_C CFDictionaryRef _CFURLResponseGetSSLCertificateContext(CFURLResponseRef);
-EXTERN_C CFURLRef CFURLResponseGetURL(CFURLResponseRef);
-EXTERN_C void CFURLResponseSetMIMEType(CFURLResponseRef, CFStringRef);
-EXTERN_C CFHTTPCookieStorageRef _CFURLStorageSessionCopyCookieStorage(CFAllocatorRef, CFURLStorageSessionRef);
+void CFHTTPCookieStorageDeleteAllCookies(CFHTTPCookieStorageRef);
+void _CFHTTPCookieStorageFlushCookieStores();
 
-// FIXME: We should only forward declare this SPI when building for iOS without the Apple Internal SDK.
-// As a workaround for <rdar://problem/19025016>, we must forward declare this SPI regardless of whether
-// we are building with the Apple Internal SDK.
-#if defined(__OBJC__) && PLATFORM(IOS)
-@interface NSURLCache ()
--(id)_initWithMemoryCapacity:(NSUInteger)memoryCapacity diskCapacity:(NSUInteger)diskCapacity relativePath:(NSString *)path;
-@end
+#if PLATFORM(COCOA)
+CFDataRef _CFCachedURLResponseGetMemMappedData(CFCachedURLResponseRef);
 #endif
+
+#if PLATFORM(COCOA) && defined(__BLOCKS__)
+void _CFCachedURLResponseSetBecameFileBackedCallBackBlock(CFCachedURLResponseRef, CFCachedURLResponseCallBackBlock, dispatch_queue_t);
+#endif
+
+extern CFStringRef const kCFHTTPCookieLocalFileDomain;
+extern const CFStringRef kCFHTTPVersion1_1;
+extern const CFStringRef kCFURLRequestAllowAllPOSTCaching;
+extern const CFStringRef _kCFURLConnectionPropertyShouldSniff;
+
+CFHTTPCookieStorageRef _CFHTTPCookieStorageGetDefault(CFAllocatorRef);
+CFHTTPCookieStorageRef CFHTTPCookieStorageCreateFromFile(CFAllocatorRef, CFURLRef, CFHTTPCookieStorageRef);
+
+void CFHTTPCookieStorageSetCookie(CFHTTPCookieStorageRef, CFHTTPCookieRef);
+void CFHTTPCookieStorageSetCookieAcceptPolicy(CFHTTPCookieStorageRef, CFHTTPCookieStorageAcceptPolicy);
+CFHTTPCookieStorageAcceptPolicy CFHTTPCookieStorageGetCookieAcceptPolicy(CFHTTPCookieStorageRef);
+void _CFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
+CFURLCredentialStorageRef CFURLCredentialStorageCreate(CFAllocatorRef);
+CFURLCredentialRef CFURLCredentialStorageCopyDefaultCredentialForProtectionSpace(CFURLCredentialStorageRef, CFURLProtectionSpaceRef);
+CFURLRequestPriority CFURLRequestGetRequestPriority(CFURLRequestRef);
+void _CFURLRequestSetProtocolProperty(CFURLRequestRef, CFStringRef, CFTypeRef);
+void CFURLRequestSetRequestPriority(CFURLRequestRef, CFURLRequestPriority);
+void CFURLRequestSetShouldPipelineHTTP(CFURLRequestRef, Boolean, Boolean);
+void _CFURLRequestSetStorageSession(CFMutableURLRequestRef, CFURLStorageSessionRef);
+CFStringRef CFURLResponseCopySuggestedFilename(CFURLResponseRef);
+CFHTTPMessageRef CFURLResponseGetHTTPResponse(CFURLResponseRef);
+CFStringRef CFURLResponseGetMIMEType(CFURLResponseRef);
+CFDictionaryRef _CFURLResponseGetSSLCertificateContext(CFURLResponseRef);
+CFURLRef CFURLResponseGetURL(CFURLResponseRef);
+void CFURLResponseSetMIMEType(CFURLResponseRef, CFStringRef);
+CFHTTPCookieStorageRef _CFURLStorageSessionCopyCookieStorage(CFAllocatorRef, CFURLStorageSessionRef);
+CFArrayRef _CFHTTPCookieStorageCopyCookiesForURLWithMainDocumentURL(CFHTTPCookieStorageRef inCookieStorage, CFURLRef inURL, CFURLRef inMainDocumentURL, Boolean sendSecureCookies);
+CFStringRef CFURLResponseGetTextEncodingName(CFURLResponseRef);
+SInt64 CFURLResponseGetExpectedContentLength(CFURLResponseRef);
+CFTypeID CFURLResponseGetTypeID();
+Boolean CFURLRequestShouldHandleHTTPCookies(CFURLRequestRef);
+CFURLRef CFURLRequestGetURL(CFURLRequestRef);
+CFURLResponseRef CFURLResponseCreate(CFAllocatorRef, CFURLRef, CFStringRef mimeType, SInt64 expectedContentLength, CFStringRef textEncodingName, CFURLCacheStoragePolicy);
+void CFURLResponseSetExpectedContentLength(CFURLResponseRef, SInt64 length);
+CFURLResponseRef CFURLResponseCreateWithHTTPResponse(CFAllocatorRef, CFURLRef, CFHTTPMessageRef, CFURLCacheStoragePolicy);
+
+#endif // !PLATFORM(WIN)
+
+WTF_EXTERN_C_END
 
 #if defined(__OBJC__) && !USE(APPLE_INTERNAL_SDK)
+
 enum : NSUInteger {
     NSHTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain = 3,
 };
@@ -174,30 +238,32 @@ enum : NSUInteger {
 -(id)_initWithCFCachedURLResponse:(CFCachedURLResponseRef)cachedResponse;
 -(CFCachedURLResponseRef)_CFCachedURLResponse;
 @end
+
 #endif
 
-#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
-EXTERN_C CFDataRef _CFNetworkCopyATSContext(void);
-EXTERN_C Boolean _CFNetworkSetATSContext(CFDataRef);
-#endif
+WTF_EXTERN_C_BEGIN
+
+CFDataRef _CFNetworkCopyATSContext(void);
+Boolean _CFNetworkSetATSContext(CFDataRef);
 
 #if PLATFORM(COCOA)
-EXTERN_C void _CFNetworkResetHSTSHostsSinceDate(CFURLStorageSessionRef, CFDateRef);
+void _CFNetworkResetHSTSHostsSinceDate(CFURLStorageSessionRef, CFDateRef);
 #endif
 
-#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
-EXTERN_C CFDataRef CFHTTPCookieStorageCreateIdentifyingData(CFAllocatorRef inAllocator, CFHTTPCookieStorageRef inStorage);
-EXTERN_C CFHTTPCookieStorageRef CFHTTPCookieStorageCreateFromIdentifyingData(CFAllocatorRef inAllocator, CFDataRef inData);
-EXTERN_C CFArrayRef _CFHTTPParsedCookiesWithResponseHeaderFields(CFAllocatorRef inAllocator, CFDictionaryRef headerFields, CFURLRef inURL);
-#endif
+CFDataRef CFHTTPCookieStorageCreateIdentifyingData(CFAllocatorRef inAllocator, CFHTTPCookieStorageRef inStorage);
+CFHTTPCookieStorageRef CFHTTPCookieStorageCreateFromIdentifyingData(CFAllocatorRef inAllocator, CFDataRef inData);
+CFArrayRef _CFHTTPParsedCookiesWithResponseHeaderFields(CFAllocatorRef inAllocator, CFDictionaryRef headerFields, CFURLRef inURL);
+
+WTF_EXTERN_C_END
 
 #if defined(__OBJC__)
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
 @interface NSHTTPCookie ()
+#if PLATFORM(MAC)
 + (NSArray *)_parsedCookiesWithResponseHeaderFields:(NSDictionary *)headerFields forURL:(NSURL *)aURL;
-@end
 #endif
++ (NSArray *)_cf2nsCookies:(CFArrayRef)cfCookies;
+@end
 
 #if !USE(APPLE_INTERNAL_SDK)
 @interface NSHTTPCookieStorage ()
@@ -209,11 +275,12 @@ EXTERN_C CFArrayRef _CFHTTPParsedCookiesWithResponseHeaderFields(CFAllocatorRef 
 #endif
 
 // FIXME: Move +_setSharedHTTPCookieStorage: into the above section under !USE(APPLE_INTERNAL_SDK) when possible (soon).
-#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
 @interface NSHTTPCookieStorage ()
 + (void)_setSharedHTTPCookieStorage:(NSHTTPCookieStorage *)storage;
 @end
-#endif
-#endif // defined(__OBJC__)
 
-#endif // CFNetworkSPI_h
+@interface NSURLResponse ()
+- (void)_setMIMEType:(NSString *)type;
+@end
+
+#endif // defined(__OBJC__)

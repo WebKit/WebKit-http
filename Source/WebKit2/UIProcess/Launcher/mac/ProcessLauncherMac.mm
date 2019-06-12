@@ -26,9 +26,7 @@
 #import "config.h"
 #import "ProcessLauncher.h"
 
-#import <WebCore/CFBundleSPI.h>
 #import <WebCore/ServersSPI.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/WebCoreNSStringExtras.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
@@ -36,34 +34,36 @@
 #import <spawn.h>
 #import <sys/param.h>
 #import <sys/stat.h>
-#import <wtf/PassRefPtr.h>
-#import <wtf/RetainPtr.h>
 #import <wtf/RunLoop.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/Threading.h>
+#import <wtf/spi/cf/CFBundleSPI.h>
 #import <wtf/spi/darwin/XPCSPI.h>
 #import <wtf/text/CString.h>
 #import <wtf/text/WTFString.h>
 
-namespace WebKit {
+#if PLATFORM(MAC)
+#import "CodeSigning.h"
+#endif
 
-typedef void (ProcessLauncher::*DidFinishLaunchingProcessFunction)(PlatformProcessIdentifier, IPC::Connection::Identifier);
+namespace WebKit {
 
 static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptions)
 {
     switch (launchOptions.processType) {
     case ProcessLauncher::ProcessType::Web:
-        return "com.apple.WebKit.WebContent" WK_XPC_SERVICE_SUFFIX;
+        return "com.apple.WebKit.WebContent";
     case ProcessLauncher::ProcessType::Network:
-        return "com.apple.WebKit.Networking" WK_XPC_SERVICE_SUFFIX;
+        return "com.apple.WebKit.Networking";
 #if ENABLE(DATABASE_PROCESS)
     case ProcessLauncher::ProcessType::Database:
-        return "com.apple.WebKit.Databases" WK_XPC_SERVICE_SUFFIX;
+        return "com.apple.WebKit.Databases";
 #endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
     case ProcessLauncher::ProcessType::Plugin32:
-        return "com.apple.WebKit.Plugin.32" WK_XPC_SERVICE_SUFFIX;
+        return "com.apple.WebKit.Plugin.32";
     case ProcessLauncher::ProcessType::Plugin64:
-        return "com.apple.WebKit.Plugin.64" WK_XPC_SERVICE_SUFFIX;
+        return "com.apple.WebKit.Plugin.64";
 #endif
     }
 }
@@ -79,15 +79,30 @@ static bool shouldLeakBoost(const ProcessLauncher::LaunchOptions& launchOptions)
     return launchOptions.processType == ProcessLauncher::ProcessType::Network;
 #endif
 }
-    
-static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
+
+static NSString *systemDirectoryPath()
 {
-    // Create a connection to the WebKit XPC service.
-    auto connection = adoptOSObject(xpc_connection_create(serviceName(launchOptions), 0));
+    static NSString *path = [^{
+#if PLATFORM(IOS_SIMULATOR)
+        char *simulatorRoot = getenv("SIMULATOR_ROOT");
+        return simulatorRoot ? [NSString stringWithFormat:@"%s/System/", simulatorRoot] : @"/System/";
+#else
+        return @"/System/";
+#endif
+    }() copy];
+
+    return path;
+}
+
+void ProcessLauncher::launchProcess()
+{
+    ASSERT(!m_xpcConnection);
+
+    m_xpcConnection = adoptOSObject(xpc_connection_create(serviceName(m_launchOptions), dispatch_get_main_queue()));
 
     uuid_t uuid;
     uuid_generate(uuid);
-    xpc_connection_set_oneshot_instance(connection.get(), uuid);
+    xpc_connection_set_oneshot_instance(m_xpcConnection.get(), uuid);
 
     // Inherit UI process localization. It can be different from child process default localization:
     // 1. When the application and system frameworks simply have different localized resources available, we should match the application.
@@ -107,8 +122,8 @@ static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions
     xpc_dictionary_set_value(initializationMessage.get(), "ContainerEnvironmentVariables", containerEnvironmentVariables.get());
 #endif
 
-    auto languagesIterator = launchOptions.extraInitializationData.find("OverrideLanguages");
-    if (languagesIterator != launchOptions.extraInitializationData.end()) {
+    auto languagesIterator = m_launchOptions.extraInitializationData.find("OverrideLanguages");
+    if (languagesIterator != m_launchOptions.extraInitializationData.end()) {
         auto languages = adoptOSObject(xpc_array_create(nullptr, 0));
         Vector<String> languageVector;
         languagesIterator->value.split(",", false, languageVector);
@@ -117,16 +132,15 @@ static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions
         xpc_dictionary_set_value(initializationMessage.get(), "OverrideLanguages", languages.get());
     }
 
-    xpc_connection_set_bootstrap(connection.get(), initializationMessage.get());
+#if PLATFORM(MAC)
+    xpc_dictionary_set_string(initializationMessage.get(), "WebKitBundleVersion", [[NSBundle bundleWithIdentifier:@"com.apple.WebKit"].infoDictionary[(__bridge NSString *)kCFBundleVersionKey] UTF8String]);
+#endif
+    xpc_connection_set_bootstrap(m_xpcConnection.get(), initializationMessage.get());
 
-    // XPC requires having an event handler, even if it is not used.
-    xpc_connection_set_event_handler(connection.get(), ^(xpc_object_t event) { });
-    xpc_connection_resume(connection.get());
-    
-    if (shouldLeakBoost(launchOptions)) {
+    if (shouldLeakBoost(m_launchOptions)) {
         auto preBootstrapMessage = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
         xpc_dictionary_set_string(preBootstrapMessage.get(), "message-name", "pre-bootstrap");
-        xpc_connection_send_message(connection.get(), preBootstrapMessage.get());
+        xpc_connection_send_message(m_xpcConnection.get(), preBootstrapMessage.get());
     }
     
     // Create the listening port.
@@ -136,8 +150,16 @@ static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions
     // Insert a send right so we can send to it.
     mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND);
 
-    NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
-    CString clientIdentifier = bundleIdentifier ? String([[NSBundle mainBundle] bundleIdentifier]).utf8() : *_NSGetProgname();
+    mach_port_t previousNotificationPort;
+    mach_port_request_notification(mach_task_self(), listeningPort, MACH_NOTIFY_NO_SENDERS, 0, listeningPort, MACH_MSG_TYPE_MAKE_SEND_ONCE, &previousNotificationPort);
+    ASSERT(!previousNotificationPort);
+
+    String clientIdentifier;
+#if PLATFORM(MAC)
+    clientIdentifier = codeSigningIdentifierForCurrentProcess();
+#endif
+    if (clientIdentifier.isNull())
+        clientIdentifier = [[NSBundle mainBundle] bundleIdentifier];
 
     // FIXME: Switch to xpc_connection_set_bootstrap once it's available everywhere we need.
     auto bootstrapMessage = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
@@ -146,78 +168,70 @@ static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions
     xpc_dictionary_set_mach_send(bootstrapMessage.get(), "server-port", listeningPort);
     mach_port_deallocate(mach_task_self(), listeningPort);
 
-    xpc_dictionary_set_string(bootstrapMessage.get(), "client-identifier", clientIdentifier.data());
+    xpc_dictionary_set_string(bootstrapMessage.get(), "client-identifier", !clientIdentifier.isEmpty() ? clientIdentifier.utf8().data() : *_NSGetProgname());
     xpc_dictionary_set_string(bootstrapMessage.get(), "ui-process-name", [[[NSProcessInfo processInfo] processName] UTF8String]);
 
-    if (forDevelopment) {
+    bool isWebKitDevelopmentBuild = ![[[[NSBundle bundleWithIdentifier:@"com.apple.WebKit"] bundlePath] stringByDeletingLastPathComponent] hasPrefix:systemDirectoryPath()];
+    if (isWebKitDevelopmentBuild) {
         xpc_dictionary_set_fd(bootstrapMessage.get(), "stdout", STDOUT_FILENO);
         xpc_dictionary_set_fd(bootstrapMessage.get(), "stderr", STDERR_FILENO);
     }
 
     auto extraInitializationData = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
 
-    for (const auto& keyValuePair : launchOptions.extraInitializationData)
+    for (const auto& keyValuePair : m_launchOptions.extraInitializationData)
         xpc_dictionary_set_string(extraInitializationData.get(), keyValuePair.key.utf8().data(), keyValuePair.value.utf8().data());
 
     xpc_dictionary_set_value(bootstrapMessage.get(), "extra-initialization-data", extraInitializationData.get());
 
-    that->ref();
+    auto weakProcessLauncher = m_weakPtrFactory.createWeakPtr();
+    xpc_connection_set_event_handler(m_xpcConnection.get(), [weakProcessLauncher, listeningPort](xpc_object_t event) {
+        ASSERT(xpc_get_type(event) == XPC_TYPE_ERROR);
 
-    xpc_connection_send_message_with_reply(connection.get(), bootstrapMessage.get(), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
-        xpc_type_t type = xpc_get_type(reply);
-        if (type == XPC_TYPE_ERROR) {
-            // We failed to launch. Release the send right.
-            mach_port_deallocate(mach_task_self(), listeningPort);
+        auto processLauncher = weakProcessLauncher.get();
+        if (!processLauncher)
+            return;
 
-            // And the receive right.
-            mach_port_mod_refs(mach_task_self(), listeningPort, MACH_PORT_RIGHT_RECEIVE, -1);
+        if (!processLauncher->isLaunching())
+            return;
 
-            RefPtr<ProcessLauncher> protector(that);
-            RunLoop::main().dispatch([protector, didFinishLaunchingProcessFunction] {
-                (*protector.*didFinishLaunchingProcessFunction)(0, IPC::Connection::Identifier());
-            });
-        } else {
-            ASSERT(type == XPC_TYPE_DICTIONARY);
+        // We failed to launch. Release the send right.
+        mach_port_deallocate(mach_task_self(), listeningPort);
+
+        // And the receive right.
+        mach_port_mod_refs(mach_task_self(), listeningPort, MACH_PORT_RIGHT_RECEIVE, -1);
+
+        if (processLauncher->m_xpcConnection)
+            xpc_connection_cancel(processLauncher->m_xpcConnection.get());
+        processLauncher->m_xpcConnection = nullptr;
+
+        processLauncher->didFinishLaunchingProcess(0, IPC::Connection::Identifier());
+    });
+
+    xpc_connection_resume(m_xpcConnection.get());
+
+    ref();
+    xpc_connection_send_message_with_reply(m_xpcConnection.get(), bootstrapMessage.get(), dispatch_get_main_queue(), ^(xpc_object_t reply) {
+        // Errors are handled in the event handler.
+        if (xpc_get_type(reply) != XPC_TYPE_ERROR) {
+            ASSERT(xpc_get_type(reply) == XPC_TYPE_DICTIONARY);
             ASSERT(!strcmp(xpc_dictionary_get_string(reply, "message-name"), "process-finished-launching"));
 
-            // The process has finished launching, grab the pid from the connection.
-            pid_t processIdentifier = xpc_connection_get_pid(connection.get());
+            if (!m_xpcConnection) {
+                // The process was terminated.
+                didFinishLaunchingProcess(0, IPC::Connection::Identifier());
+                return;
+            }
 
-            // We've finished launching the process, message back to the main run loop. This takes ownership of the connection.
-            RefPtr<ProcessLauncher> protector(that);
-            RunLoop::main().dispatch([protector, didFinishLaunchingProcessFunction, processIdentifier, listeningPort, connection] {
-                (*protector.*didFinishLaunchingProcessFunction)(processIdentifier, IPC::Connection::Identifier(listeningPort, connection));
-            });
+            // The process has finished launching, grab the pid from the connection.
+            pid_t processIdentifier = xpc_connection_get_pid(m_xpcConnection.get());
+
+            didFinishLaunchingProcess(processIdentifier, IPC::Connection::Identifier(listeningPort, m_xpcConnection));
+            m_xpcConnection = nullptr;
         }
 
-        that->deref();
+        deref();
     });
-}
-
-static void createService(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
-{
-    connectToService(launchOptions, forDevelopment, that, didFinishLaunchingProcessFunction);
-}
-
-static NSString *systemDirectoryPath()
-{
-    static NSString *path = [^{
-#if PLATFORM(IOS_SIMULATOR)
-        char *simulatorRoot = getenv("SIMULATOR_ROOT");
-        return simulatorRoot ? [NSString stringWithFormat:@"%s/System/", simulatorRoot] : @"/System/";
-#else
-        return @"/System/";
-#endif
-    }() copy];
-
-    return path;
-}
-
-void ProcessLauncher::launchProcess()
-{
-    bool isWebKitDevelopmentBuild = ![[[[NSBundle bundleWithIdentifier:@"com.apple.WebKit"] bundlePath] stringByDeletingLastPathComponent] hasPrefix:systemDirectoryPath()];
-
-    createService(m_launchOptions, isWebKitDevelopmentBuild, this, &ProcessLauncher::didFinishLaunchingProcess);
 }
 
 void ProcessLauncher::terminateProcess()
@@ -236,6 +250,12 @@ void ProcessLauncher::terminateProcess()
     
 void ProcessLauncher::platformInvalidate()
 {
+    if (!m_xpcConnection)
+        return;
+
+    xpc_connection_cancel(m_xpcConnection.get());
+    xpc_connection_kill(m_xpcConnection.get(), SIGKILL);
+    m_xpcConnection = nullptr;
 }
 
 } // namespace WebKit

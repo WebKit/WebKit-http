@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,21 +26,29 @@
 #include "config.h"
 #include "CacheValidation.h"
 
+#include "CookiesStrategy.h"
 #include "HTTPHeaderMap.h"
+#include "NetworkStorageSession.h"
+#include "PlatformCookieJar.h"
+#include "PlatformStrategies.h"
+#include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
+
+using namespace std::literals::chrono_literals;
 
 // These response headers are not copied from a revalidated response to the
 // cached response headers. For compatibility, this list is based on Chromium's
 // net/http/http_response_headers.cc.
-const char* const headersToIgnoreAfterRevalidation[] = {
+static const char* const headersToIgnoreAfterRevalidation[] = {
     "allow",
     "connection",
     "etag",
     "keep-alive",
-    "last-modified"
+    "last-modified",
     "proxy-authenticate",
     "proxy-connection",
     "trailer",
@@ -54,7 +62,7 @@ const char* const headersToIgnoreAfterRevalidation[] = {
 // Some header prefixes mean "Don't copy this header from a 304 response.".
 // Rather than listing all the relevant headers, we can consolidate them into
 // this list, also grabbed from Chromium's net/http/http_response_headers.cc.
-const char* const headerPrefixesToIgnoreAfterRevalidation[] = {
+static const char* const headerPrefixesToIgnoreAfterRevalidation[] = {
     "content-",
     "x-content-",
     "x-webkit-"
@@ -66,8 +74,10 @@ static inline bool shouldUpdateHeaderAfterRevalidation(const String& header)
         if (equalIgnoringASCIICase(header, headerToIgnore))
             return false;
     }
-    for (size_t i = 0; i < WTF_ARRAY_LENGTH(headerPrefixesToIgnoreAfterRevalidation); i++) {
-        if (header.startsWith(headerPrefixesToIgnoreAfterRevalidation[i], false))
+    for (auto& prefixToIgnore : headerPrefixesToIgnoreAfterRevalidation) {
+        // FIXME: Would be more efficient if we added an overload of
+        // startsWithIgnoringASCIICase that takes a const char*.
+        if (header.startsWithIgnoringASCIICase(prefixToIgnore))
             return false;
     }
     return true;
@@ -97,8 +107,8 @@ std::chrono::microseconds computeCurrentAge(const ResourceResponse& response, st
     // http://tools.ietf.org/html/rfc7234#section-4.2.3
     // No compensation for latency as that is not terribly important in practice.
     auto dateValue = response.date();
-    auto apparentAge = dateValue ? std::max(microseconds::zero(), duration_cast<microseconds>(responseTime - dateValue.value())) : microseconds::zero();
-    auto ageValue = response.age().valueOr(microseconds::zero());
+    auto apparentAge = dateValue ? std::max(0us, duration_cast<microseconds>(responseTime - *dateValue)) : 0us;
+    auto ageValue = response.age().value_or(0us);
     auto correctedInitialAge = std::max(apparentAge, ageValue);
     auto residentTime = duration_cast<microseconds>(system_clock::now() - responseTime);
     return correctedInitialAge + residentTime;
@@ -107,32 +117,33 @@ std::chrono::microseconds computeCurrentAge(const ResourceResponse& response, st
 std::chrono::microseconds computeFreshnessLifetimeForHTTPFamily(const ResourceResponse& response, std::chrono::system_clock::time_point responseTime)
 {
     using namespace std::chrono;
-    ASSERT(response.url().protocolIsInHTTPFamily());
+
+    if (!response.url().protocolIsInHTTPFamily())
+        return 0us;
 
     // Freshness Lifetime:
     // http://tools.ietf.org/html/rfc7234#section-4.2.1
     auto maxAge = response.cacheControlMaxAge();
     if (maxAge)
-        return maxAge.value();
-    auto expires = response.expires();
+        return *maxAge;
+
     auto date = response.date();
-    auto dateValue = date ? date.value() : responseTime;
-    if (expires)
-        return duration_cast<microseconds>(expires.value() - dateValue);
+    auto effectiveDate = date.value_or(responseTime);
+    if (auto expires = response.expires())
+        return duration_cast<microseconds>(*expires - effectiveDate);
 
     // Implicit lifetime.
     switch (response.httpStatusCode()) {
     case 301: // Moved Permanently
     case 410: // Gone
         // These are semantically permanent and so get long implicit lifetime.
-        return hours(365 * 24);
+        return 365 * 24h;
     default:
         // Heuristic Freshness:
         // http://tools.ietf.org/html/rfc7234#section-4.2.2
-        auto lastModified = response.lastModified();
-        if (lastModified)
-            return duration_cast<microseconds>((dateValue - lastModified.value()) * 0.1);
-        return microseconds::zero();
+        if (auto lastModified = response.lastModified())
+            return duration_cast<microseconds>((effectiveDate - *lastModified) * 0.1);
+        return 0us;
     }
 }
 
@@ -197,21 +208,22 @@ inline bool isCacheHeaderSeparator(UChar c)
     }
 }
 
-inline bool isControlCharacter(UChar c)
+inline bool isControlCharacterOrSpace(UChar character)
 {
-    return c < ' ' || c == 127;
+    return character <= ' ' || character == 127;
 }
 
-inline String trimToNextSeparator(const String& str)
+inline StringView trimToNextSeparator(StringView string)
 {
-    return str.substring(0, str.find(isCacheHeaderSeparator));
+    return string.substring(0, string.find(isCacheHeaderSeparator));
 }
 
 static Vector<std::pair<String, String>> parseCacheHeader(const String& header)
 {
     Vector<std::pair<String, String>> result;
 
-    const String safeHeader = header.removeCharacters(isControlCharacter);
+    String safeHeaderString = header.removeCharacters(isControlCharacterOrSpace);
+    StringView safeHeader = safeHeaderString;
     unsigned max = safeHeader.length();
     unsigned pos = 0;
     while (pos < max) {
@@ -219,30 +231,30 @@ static Vector<std::pair<String, String>> parseCacheHeader(const String& header)
         size_t nextEqualSignPosition = safeHeader.find('=', pos);
         if (nextEqualSignPosition == notFound && nextCommaPosition == notFound) {
             // Add last directive to map with empty string as value
-            result.append(std::make_pair(trimToNextSeparator(safeHeader.substring(pos, max - pos).stripWhiteSpace()), ""));
+            result.append({ trimToNextSeparator(safeHeader.substring(pos, max - pos)).toString(), emptyString() });
             return result;
         }
         if (nextCommaPosition != notFound && (nextCommaPosition < nextEqualSignPosition || nextEqualSignPosition == notFound)) {
             // Add directive to map with empty string as value
-            result.append(std::make_pair(trimToNextSeparator(safeHeader.substring(pos, nextCommaPosition - pos).stripWhiteSpace()), ""));
+            result.append({ trimToNextSeparator(safeHeader.substring(pos, nextCommaPosition - pos)).toString(), emptyString() });
             pos += nextCommaPosition - pos + 1;
             continue;
         }
         // Get directive name, parse right hand side of equal sign, then add to map
-        String directive = trimToNextSeparator(safeHeader.substring(pos, nextEqualSignPosition - pos).stripWhiteSpace());
+        String directive = trimToNextSeparator(safeHeader.substring(pos, nextEqualSignPosition - pos)).toString();
         pos += nextEqualSignPosition - pos + 1;
 
-        String value = safeHeader.substring(pos, max - pos).stripWhiteSpace();
+        StringView value = safeHeader.substring(pos, max - pos);
         if (value[0] == '"') {
             // The value is a quoted string
             size_t nextDoubleQuotePosition = value.find('"', 1);
             if (nextDoubleQuotePosition == notFound) {
                 // Parse error; just use the rest as the value
-                result.append(std::make_pair(directive, trimToNextSeparator(value.substring(1, value.length() - 1).stripWhiteSpace())));
+                result.append({ directive, trimToNextSeparator(value.substring(1)).toString() });
                 return result;
             }
             // Store the value as a quoted string without quotes
-            result.append(std::make_pair(directive, value.substring(1, nextDoubleQuotePosition - 1).stripWhiteSpace()));
+            result.append({ directive, value.substring(1, nextDoubleQuotePosition - 1).toString() });
             pos += (safeHeader.find('"', pos) - pos) + nextDoubleQuotePosition + 1;
             // Move past next comma, if there is one
             size_t nextCommaPosition2 = safeHeader.find(',', pos);
@@ -255,11 +267,11 @@ static Vector<std::pair<String, String>> parseCacheHeader(const String& header)
         size_t nextCommaPosition2 = value.find(',');
         if (nextCommaPosition2 == notFound) {
             // The rest is the value; no change to value needed
-            result.append(std::make_pair(directive, trimToNextSeparator(value)));
+            result.append({ directive, trimToNextSeparator(value).toString() });
             return result;
         }
         // The value is delimited by the next comma
-        result.append(std::make_pair(directive, trimToNextSeparator(value.substring(0, nextCommaPosition2).stripWhiteSpace())));
+        result.append({ directive, trimToNextSeparator(value.substring(0, nextCommaPosition2)).toString() });
         pos += (safeHeader.find(',', pos) - pos) + 1;
     }
     return result;
@@ -310,7 +322,8 @@ CacheControlDirectives parseCacheControlDirectives(const HTTPHeaderMap& headers)
                 double maxStale = directives[i].second.toDouble(&ok);
                 if (ok)
                     result.maxStale = duration_cast<microseconds>(duration<double>(maxStale));
-            }
+            } else if (equalLettersIgnoringASCIICase(directives[i].first, "immutable"))
+                result.immutable = true;
         }
     }
 
@@ -324,6 +337,92 @@ CacheControlDirectives parseCacheControlDirectives(const HTTPHeaderMap& headers)
     }
 
     return result;
+}
+
+static String headerValueForVary(const ResourceRequest& request, const String& headerName, SessionID sessionID)
+{
+    // Explicit handling for cookies is needed because they are added magically by the networking layer.
+    // FIXME: The value might have changed between making the request and retrieving the cookie here.
+    // We could fetch the cookie when making the request but that seems overkill as the case is very rare and it
+    // is a blocking operation. This should be sufficient to cover reasonable cases.
+    if (headerName == httpHeaderNameString(HTTPHeaderName::Cookie)) {
+        auto* cookieStrategy = platformStrategies() ? platformStrategies()->cookiesStrategy() : nullptr;
+        if (!cookieStrategy) {
+            ASSERT(sessionID == SessionID::defaultSessionID());
+            return cookieRequestHeaderFieldValue(NetworkStorageSession::defaultStorageSession(), request.firstPartyForCookies(), request.url());
+        }
+        return cookieStrategy->cookieRequestHeaderFieldValue(sessionID, request.firstPartyForCookies(), request.url());
+    }
+    return request.httpHeaderField(headerName);
+}
+
+Vector<std::pair<String, String>> collectVaryingRequestHeaders(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, SessionID sessionID)
+{
+    String varyValue = response.httpHeaderField(WebCore::HTTPHeaderName::Vary);
+    if (varyValue.isEmpty())
+        return { };
+    Vector<String> varyingHeaderNames;
+    varyValue.split(',', varyingHeaderNames);
+    Vector<std::pair<String, String>> varyingRequestHeaders;
+    varyingRequestHeaders.reserveCapacity(varyingHeaderNames.size());
+    for (auto& varyHeaderName : varyingHeaderNames) {
+        String headerName = varyHeaderName.stripWhiteSpace();
+        String headerValue = headerValueForVary(request, headerName, sessionID);
+        varyingRequestHeaders.append(std::make_pair(headerName, headerValue));
+    }
+    return varyingRequestHeaders;
+}
+
+bool verifyVaryingRequestHeaders(const Vector<std::pair<String, String>>& varyingRequestHeaders, const WebCore::ResourceRequest& request, SessionID sessionID)
+{
+    for (auto& varyingRequestHeader : varyingRequestHeaders) {
+        // FIXME: Vary: * in response would ideally trigger a cache delete instead of a store.
+        if (varyingRequestHeader.first == "*")
+            return false;
+        String headerValue = headerValueForVary(request, varyingRequestHeader.first, sessionID);
+        if (headerValue != varyingRequestHeader.second)
+            return false;
+    }
+    return true;
+}
+
+// http://tools.ietf.org/html/rfc7231#page-48
+bool isStatusCodeCacheableByDefault(int statusCode)
+{
+    switch (statusCode) {
+    case 200: // OK
+    case 203: // Non-Authoritative Information
+    case 204: // No Content
+    case 206: // Partial Content
+    case 300: // Multiple Choices
+    case 301: // Moved Permanently
+    case 404: // Not Found
+    case 405: // Method Not Allowed
+    case 410: // Gone
+    case 414: // URI Too Long
+    case 501: // Not Implemented
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool isStatusCodePotentiallyCacheable(int statusCode)
+{
+    switch (statusCode) {
+    case 201: // Created
+    case 202: // Accepted
+    case 205: // Reset Content
+    case 302: // Found
+    case 303: // See Other
+    case 307: // Temporary redirect
+    case 403: // Forbidden
+    case 406: // Not Acceptable
+    case 415: // Unsupported Media Type
+        return true;
+    default:
+        return false;
+    }
 }
 
 }

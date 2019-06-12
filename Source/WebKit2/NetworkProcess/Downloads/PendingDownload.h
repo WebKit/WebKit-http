@@ -40,32 +40,36 @@ namespace WebKit {
 class DownloadID;
 class NetworkLoad;
 class NetworkLoadParameters;
+class NetworkSession;
     
 class PendingDownload : public NetworkLoadClient, public IPC::MessageSender {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    PendingDownload(const NetworkLoadParameters&, DownloadID);
+    PendingDownload(NetworkLoadParameters&&, DownloadID, NetworkSession&, const String& suggestedName);
+    PendingDownload(std::unique_ptr<NetworkLoad>&&, DownloadID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 
-    void continueWillSendRequest(const WebCore::ResourceRequest&);
+    void continueWillSendRequest(WebCore::ResourceRequest&&);
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(bool canAuthenticate);
+#endif
+    void cancel();
 
 private:    
     // NetworkLoadClient.
-    virtual void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override { }
-    virtual void canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&) override;
-    virtual bool isSynchronous() const override { return false; }
-    virtual void willSendRedirectedRequest(const WebCore::ResourceRequest&, const WebCore::ResourceRequest& redirectRequest, const WebCore::ResourceResponse& redirectResponse) override;
-    virtual ShouldContinueDidReceiveResponse didReceiveResponse(const WebCore::ResourceResponse&) override { return ShouldContinueDidReceiveResponse::No; };
-    virtual void didReceiveBuffer(RefPtr<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override { };
-    virtual void didFinishLoading(double finishTime) override { };
-    virtual void didFailLoading(const WebCore::ResourceError&) override { };
-    virtual void didConvertToDownload() override;
-#if PLATFORM(COCOA)
-    virtual void willCacheResponseAsync(CFCachedURLResponseRef) override { }
+    void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override { }
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    void canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&) override;
 #endif
-    
+    bool isSynchronous() const override { return false; }
+    void willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse) override;
+    ShouldContinueDidReceiveResponse didReceiveResponse(WebCore::ResourceResponse&&) override { return ShouldContinueDidReceiveResponse::No; };
+    void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override { };
+    void didFinishLoading(const WebCore::NetworkLoadMetrics&) override { };
+    void didFailLoading(const WebCore::ResourceError&) override;
+
     // MessageSender.
-    virtual IPC::Connection* messageSenderConnection() override;
-    virtual uint64_t messageSenderDestinationID() override;
+    IPC::Connection* messageSenderConnection() override;
+    uint64_t messageSenderDestinationID() override;
 
 private:
     std::unique_ptr<NetworkLoad> m_networkLoad;

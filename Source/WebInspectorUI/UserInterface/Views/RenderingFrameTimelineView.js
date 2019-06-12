@@ -31,8 +31,6 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
 
         console.assert(WebInspector.TimelineRecord.Type.RenderingFrame);
 
-        this.navigationSidebarTreeOutline.element.classList.add("rendering-frame");
-
         var scopeBarItems = [];
         for (var key in WebInspector.RenderingFrameTimelineView.DurationFilter) {
             var value = WebInspector.RenderingFrameTimelineView.DurationFilter[key];
@@ -42,7 +40,13 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         this._scopeBar = new WebInspector.ScopeBar("rendering-frame-scope-bar", scopeBarItems, scopeBarItems[0], true);
         this._scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectionDidChange, this);
 
-        let columns = {totalTime: {}, scriptTime: {}, layoutTime: {}, paintTime: {}, otherTime: {}, startTime: {}, location: {}};
+        let columns = {name: {}, totalTime: {}, scriptTime: {}, layoutTime: {}, paintTime: {}, otherTime: {}, startTime: {}, location: {}};
+
+        columns.name.title = WebInspector.UIString("Name");
+        columns.name.width = "20%";
+        columns.name.icon = true;
+        columns.name.disclosure = true;
+        columns.name.locked = true;
 
         columns.totalTime.title = WebInspector.UIString("Total Time");
         columns.totalTime.width = "15%";
@@ -73,10 +77,12 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         for (var column in columns)
             columns[column].sortable = true;
 
-        this._dataGrid = new WebInspector.TimelineDataGrid(this.navigationSidebarTreeOutline, columns, this);
-        this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
-        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("rendering-frame-timeline-view-sort", "startTime");
-        this._dataGrid.sortOrderSetting = new WebInspector.Setting("rendering-frame-timeline-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
+        this._dataGrid = new WebInspector.TimelineDataGrid(columns);
+        this._dataGrid.sortColumnIdentifier = "startTime";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
+        this._dataGrid.createSettings("rendering-frame-timeline-view");
+
+        this.setupDataGrid(this._dataGrid);
 
         this.element.classList.add("rendering-frame");
         this.addSubview(this._dataGrid);
@@ -104,10 +110,7 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
 
     // Public
 
-    get navigationSidebarTreeOutlineLabel()
-    {
-        return WebInspector.UIString("Records");
-    }
+    get showsLiveRecordingData() { return false; }
 
     shown()
     {
@@ -133,23 +136,19 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
 
     get selectionPathComponents()
     {
-        var dataGridNode = this._dataGrid.selectedNode;
-        if (!dataGridNode)
+        let dataGridNode = this._dataGrid.selectedNode;
+        if (!dataGridNode || dataGridNode.hidden)
             return null;
 
-        var pathComponents = [];
+        let pathComponents = [];
 
         while (dataGridNode && !dataGridNode.root) {
-            var treeElement = this._dataGrid.treeElementForDataGridNode(dataGridNode);
-            console.assert(treeElement);
-            if (!treeElement)
-                break;
-
-            if (treeElement.hidden)
+            console.assert(dataGridNode instanceof WebInspector.TimelineDataGridNode);
+            if (dataGridNode.hidden)
                 return null;
 
-            var pathComponent = new WebInspector.GeneralTreeElementPathComponent(treeElement);
-            pathComponent.addEventListener(WebInspector.HierarchicalPathComponent.Event.SiblingWasSelected, this.treeElementPathComponentSelected, this);
+            let pathComponent = new WebInspector.TimelineDataGridNodePathComponent(dataGridNode);
+            pathComponent.addEventListener(WebInspector.HierarchicalPathComponent.Event.SiblingWasSelected, this.dataGridNodePathComponentSelected, this);
             pathComponents.unshift(pathComponent);
             dataGridNode = dataGridNode.parent;
         }
@@ -157,22 +156,24 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         return pathComponents;
     }
 
-    matchTreeElementAgainstCustomFilters(treeElement)
+    get filterStartTime()
     {
-        console.assert(this._scopeBar.selectedItems.length === 1);
-        var selectedScopeBarItem = this._scopeBar.selectedItems[0];
-        if (!selectedScopeBarItem || selectedScopeBarItem.id === WebInspector.RenderingFrameTimelineView.DurationFilter.All)
-            return true;
+        let records = this.representedObject.records;
+        let startIndex = this.startTime;
+        if (startIndex >= records.length)
+            return Infinity;
 
-        while (treeElement && !(treeElement.record instanceof WebInspector.RenderingFrameTimelineRecord))
-            treeElement = treeElement.parent;
+        return records[startIndex].startTime;
+    }
 
-        console.assert(treeElement, "Cannot apply duration filter: no RenderingFrameTimelineRecord found.");
-        if (!treeElement)
-            return false;
+    get filterEndTime()
+    {
+        let records = this.representedObject.records;
+        let endIndex = this.endTime - 1;
+        if (endIndex >= records.length)
+            return Infinity;
 
-        var minimumDuration = selectedScopeBarItem.id === WebInspector.RenderingFrameTimelineView.DurationFilter.OverOneMillisecond ? 0.001 : 0.015;
-        return treeElement.record.duration > minimumDuration;
+        return records[endIndex].endTime;
     }
 
     reset()
@@ -186,46 +187,11 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
 
     // Protected
 
-    canShowContentViewForTreeElement(treeElement)
+    dataGridNodePathComponentSelected(event)
     {
-        if (treeElement instanceof WebInspector.ProfileNodeTreeElement)
-            return !!treeElement.profileNode.sourceCodeLocation;
-        return super.canShowContentViewForTreeElement(treeElement);
-    }
+        let dataGridNode = event.data.pathComponent.timelineDataGridNode;
+        console.assert(dataGridNode.dataGrid === this._dataGrid);
 
-    showContentViewForTreeElement(treeElement)
-    {
-        if (treeElement instanceof WebInspector.ProfileNodeTreeElement) {
-            if (treeElement.profileNode.sourceCodeLocation)
-                WebInspector.showOriginalOrFormattedSourceCodeLocation(treeElement.profileNode.sourceCodeLocation);
-            return;
-        }
-
-        super.showContentViewForTreeElement(treeElement);
-    }
-
-    treeElementDeselected(treeElement)
-    {
-        var dataGridNode = this._dataGrid.dataGridNodeForTreeElement(treeElement);
-        if (!dataGridNode)
-            return;
-
-        dataGridNode.deselect();
-    }
-
-    treeElementSelected(treeElement, selectedByUser)
-    {
-        if (this._dataGrid.shouldIgnoreSelectionEvent())
-            return;
-
-        super.treeElementSelected(treeElement, selectedByUser);
-    }
-
-    treeElementPathComponentSelected(event)
-    {
-        var dataGridNode = this._dataGrid.dataGridNodeForTreeElement(event.data.pathComponent.generalTreeElement);
-        if (!dataGridNode)
-            return;
         dataGridNode.revealAndSelect();
     }
 
@@ -234,6 +200,28 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         if (treeElement instanceof WebInspector.ProfileNodeTreeElement)
             return new WebInspector.ProfileNodeDataGridNode(treeElement.profileNode, this.zeroTime, this.startTime, this.endTime);
         return null;
+    }
+
+    matchDataGridNodeAgainstCustomFilters(node)
+    {
+        if (!super.matchDataGridNodeAgainstCustomFilters(node))
+            return false;
+
+        console.assert(node instanceof WebInspector.TimelineDataGridNode);
+        console.assert(this._scopeBar.selectedItems.length === 1);
+        let selectedScopeBarItem = this._scopeBar.selectedItems[0];
+        if (!selectedScopeBarItem || selectedScopeBarItem.id === WebInspector.RenderingFrameTimelineView.DurationFilter.All)
+            return true;
+
+        while (node && !(node.record instanceof WebInspector.RenderingFrameTimelineRecord))
+            node = node.parent;
+
+        console.assert(node, "Cannot apply duration filter: no RenderingFrameTimelineRecord found.");
+        if (!node)
+            return false;
+
+        let minimumDuration = selectedScopeBarItem.id === WebInspector.RenderingFrameTimelineView.DurationFilter.OverOneMillisecond ? 0.001 : 0.015;
+        return node.record.duration > minimumDuration;
     }
 
     layout()
@@ -248,54 +236,45 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         if (!this._pendingRecords.length)
             return;
 
-        for (var renderingFrameTimelineRecord of this._pendingRecords) {
+        for (let renderingFrameTimelineRecord of this._pendingRecords) {
             console.assert(renderingFrameTimelineRecord instanceof WebInspector.RenderingFrameTimelineRecord);
 
-            var treeElement = new WebInspector.TimelineRecordTreeElement(renderingFrameTimelineRecord);
-            var dataGridNode = new WebInspector.RenderingFrameTimelineDataGridNode(renderingFrameTimelineRecord, this.zeroTime);
-            this._dataGrid.addRowInSortOrder(treeElement, dataGridNode);
+            let dataGridNode = new WebInspector.RenderingFrameTimelineDataGridNode(renderingFrameTimelineRecord, this.zeroTime);
+            this._dataGrid.addRowInSortOrder(null, dataGridNode);
 
-            var stack = [{children: renderingFrameTimelineRecord.children, parentTreeElement: treeElement, index: 0}];
+            let stack = [{children: renderingFrameTimelineRecord.children, parentDataGridNode: dataGridNode, index: 0}];
             while (stack.length) {
-                var entry = stack.lastValue;
+                let entry = stack.lastValue;
                 if (entry.index >= entry.children.length) {
                     stack.pop();
                     continue;
                 }
 
-                var childRecord = entry.children[entry.index];
-                var childTreeElement = null;
+                let childRecord = entry.children[entry.index];
+                let childDataGridNode = null;
                 if (childRecord.type === WebInspector.TimelineRecord.Type.Layout) {
-                    childTreeElement = new WebInspector.TimelineRecordTreeElement(childRecord, WebInspector.SourceCodeLocation.NameStyle.Short);
-                    if (childRecord.width && childRecord.height) {
-                        let subtitle = document.createElement("span");
-                        subtitle.textContent = WebInspector.UIString("%d \u2A09 %d").format(childRecord.width, childRecord.height);
-                        childTreeElement.subtitle = subtitle;
-                    }
-                    var layoutDataGridNode = new WebInspector.LayoutTimelineDataGridNode(childRecord, this.zeroTime);
+                    childDataGridNode = new WebInspector.LayoutTimelineDataGridNode(childRecord, this.zeroTime);
 
-                    this._dataGrid.addRowInSortOrder(childTreeElement, layoutDataGridNode, entry.parentTreeElement);
+                    this._dataGrid.addRowInSortOrder(null, childDataGridNode, entry.parentDataGridNode);
                 } else if (childRecord.type === WebInspector.TimelineRecord.Type.Script) {
-                    var rootNodes = [];
+                    let rootNodes = [];
                     if (childRecord.profile) {
                         // FIXME: Support using the bottom-up tree once it is implemented.
                         rootNodes = childRecord.profile.topDownRootNodes;
                     }
 
-                    childTreeElement = new WebInspector.TimelineRecordTreeElement(childRecord, WebInspector.SourceCodeLocation.NameStyle.Short, rootNodes.length);
-                    var scriptDataGridNode = new WebInspector.ScriptTimelineDataGridNode(childRecord, this.zeroTime);
+                    childDataGridNode = new WebInspector.ScriptTimelineDataGridNode(childRecord, this.zeroTime);
 
-                    this._dataGrid.addRowInSortOrder(childTreeElement, scriptDataGridNode, entry.parentTreeElement);
+                    this._dataGrid.addRowInSortOrder(null, childDataGridNode, entry.parentDataGridNode);
 
-                    for (var profileNode of rootNodes) {
-                        var profileNodeTreeElement = new WebInspector.ProfileNodeTreeElement(profileNode, this);
-                        var profileNodeDataGridNode = new WebInspector.ProfileNodeDataGridNode(profileNode, this.zeroTime, this.startTime, this.endTime);
-                        this._dataGrid.addRowInSortOrder(profileNodeTreeElement, profileNodeDataGridNode, childTreeElement);
+                    for (let profileNode of rootNodes) {
+                        let profileNodeDataGridNode = new WebInspector.ProfileNodeDataGridNode(profileNode, this.zeroTime, this.startTime, this.endTime);
+                        this._dataGrid.addRowInSortOrder(null, profileNodeDataGridNode, childDataGridNode);
                     }
                 }
 
-                if (childTreeElement && childRecord.children.length)
-                    stack.push({children: childRecord.children, parentTreeElement: childTreeElement, index: 0});
+                if (childDataGridNode && childRecord.children.length)
+                    stack.push({children: childRecord.children, parentDataGridNode: childDataGridNode, index: 0});
                 ++entry.index;
             }
         }
@@ -314,14 +293,9 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         this.needsLayout();
     }
 
-    _dataGridNodeSelected(event)
+    _scopeBarSelectionDidChange()
     {
-        this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
-    }
-
-    _scopeBarSelectionDidChange(event)
-    {
-        this.timelineSidebarPanel.updateFilter();
+        this._dataGrid.filterDidChange();
     }
 };
 

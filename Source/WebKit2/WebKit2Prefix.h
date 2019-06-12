@@ -51,12 +51,13 @@
 #import <Foundation/Foundation.h>
 #if USE(APPKIT)
 #import <Cocoa/Cocoa.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 #endif
 #endif
 
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
 #define ENABLE_SHAREABLE_RESOURCE 1
 #endif
 

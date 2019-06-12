@@ -23,15 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MathMLSelectElement_h
-#define MathMLSelectElement_h
+#pragma once
 
 #if ENABLE(MATHML)
-#include "MathMLInlineContainerElement.h"
+
+#include "MathMLRowElement.h"
 
 namespace WebCore {
 
-class MathMLSelectElement final : public MathMLInlineContainerElement {
+class MathMLSelectElement final : public MathMLRowElement {
 public:
     static Ref<MathMLSelectElement> create(const QualifiedName& tagName, Document&);
     static bool isMathMLEncoding(const AtomicString& value);
@@ -40,26 +40,25 @@ public:
 
 private:
     MathMLSelectElement(const QualifiedName& tagName, Document&);
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    virtual bool childShouldCreateRenderer(const Node&) const override;
+    bool childShouldCreateRenderer(const Node&) const final;
 
-    virtual void finishParsingChildren() override;
-    virtual void childrenChanged(const ChildChange&) override;
-    virtual void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason = ModifiedDirectly) override;
-    virtual void defaultEventHandler(Event*) override;
-    virtual bool willRespondToMouseClickEvents() override;
+    void finishParsingChildren() final;
+    void childrenChanged(const ChildChange&) final;
+    void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason = ModifiedDirectly) final;
+    void defaultEventHandler(Event&) final;
+    bool willRespondToMouseClickEvents() final;
 
     void toggle();
     int getSelectedActionChildAndIndex(Element*& selectedChild);
     Element* getSelectedActionChild();
     Element* getSelectedSemanticsChild();
 
-    void updateSelectedChild() override;
+    void updateSelectedChild() final;
     RefPtr<Element> m_selectedChild;
 };
 
 }
 
 #endif // ENABLE(MATHML)
-#endif // MathMLSelectElement_h

@@ -20,27 +20,19 @@
  *
  */
 
-#ifndef RenderTextControlSingleLine_h
-#define RenderTextControlSingleLine_h
+#pragma once
 
 #include "HTMLInputElement.h"
 #include "RenderTextControl.h"
 
 namespace WebCore {
 
-class HTMLInputElement;
-
 class RenderTextControlSingleLine : public RenderTextControl {
 public:
-    RenderTextControlSingleLine(HTMLInputElement&, Ref<RenderStyle>&&);
+    RenderTextControlSingleLine(HTMLInputElement&, RenderStyle&&);
     virtual ~RenderTextControlSingleLine();
-    // FIXME: Move create*Style() to their classes.
-    virtual Ref<RenderStyle> createInnerTextStyle(const RenderStyle* startStyle) const override;
-    Ref<RenderStyle> createInnerBlockStyle(const RenderStyle* startStyle) const;
 
 protected:
-    virtual void centerContainerIfNeeded(RenderBox*) const { }
-    virtual LayoutUnit computeLogicalHeightLimit() const;
     void centerRenderer(RenderBox& renderer) const;
     HTMLElement* containerElement() const;
     HTMLElement* innerBlockElement() const;
@@ -49,38 +41,34 @@ protected:
 private:
     void textFormControlElement() const = delete;
 
-    virtual bool hasControlClip() const override;
-    virtual LayoutRect controlClipRect(const LayoutPoint&) const override;
-    virtual bool isTextField() const override final { return true; }
+    bool hasControlClip() const override;
+    LayoutRect controlClipRect(const LayoutPoint&) const override;
+    bool isTextField() const final { return true; }
 
-    virtual void layout() override;
+    void layout() override;
 
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
-    virtual void autoscroll(const IntPoint&) override;
+    void autoscroll(const IntPoint&) override;
 
     // Subclassed to forward to our inner div.
-    virtual int scrollLeft() const override;
-    virtual int scrollTop() const override;
-    virtual int scrollWidth() const override;
-    virtual int scrollHeight() const override;
-    virtual void setScrollLeft(int) override;
-    virtual void setScrollTop(int) override;
-    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = nullptr, RenderBox* startBox = nullptr, const IntPoint& wheelEventAbsolutePoint = IntPoint()) override final;
-    virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = 0) override final;
+    int scrollLeft() const override;
+    int scrollTop() const override;
+    int scrollWidth() const override;
+    int scrollHeight() const override;
+    void setScrollLeft(int) override;
+    void setScrollTop(int) override;
+    bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = nullptr, RenderBox* startBox = nullptr, const IntPoint& wheelEventAbsolutePoint = IntPoint()) final;
+    bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = 0) final;
 
     int textBlockWidth() const;
-    virtual float getAverageCharWidth() override;
-    virtual LayoutUnit preferredContentLogicalWidth(float charWidth) const override;
-    virtual LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const override;
+    float getAverageCharWidth() override;
+    LayoutUnit preferredContentLogicalWidth(float charWidth) const override;
+    LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const override;
     
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-
-    bool textShouldBeTruncated() const;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
     HTMLElement* innerSpinButtonElement() const;
-
-    LayoutUnit m_desiredInnerTextLogicalHeight;
 };
 
 inline HTMLElement* RenderTextControlSingleLine::containerElement() const
@@ -97,20 +85,18 @@ inline HTMLElement* RenderTextControlSingleLine::innerBlockElement() const
 
 class RenderTextControlInnerBlock final : public RenderBlockFlow {
 public:
-    RenderTextControlInnerBlock(Element& element, Ref<RenderStyle>&& style)
+    RenderTextControlInnerBlock(Element& element, RenderStyle&& style)
         : RenderBlockFlow(element, WTFMove(style))
     {
     }
 
 private:
-    virtual bool hasLineIfEmpty() const override { return true; }
-    virtual bool isTextControlInnerBlock() const override { return true; }
-    virtual bool canBeProgramaticallyScrolled() const override { return true; }
+    bool hasLineIfEmpty() const override { return true; }
+    bool isTextControlInnerBlock() const override { return true; }
+    bool canBeProgramaticallyScrolled() const override { return true; }
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderTextControlSingleLine, isTextField())
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderTextControlInnerBlock, isTextControlInnerBlock())
-
-#endif // RenderTextControlSingleLine_h

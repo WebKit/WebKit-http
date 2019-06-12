@@ -27,9 +27,13 @@
 #include "LocalStorageDatabaseTracker.h"
 
 #include <WebCore/FileSystem.h>
+#include <WebCore/SQLiteFileSystem.h>
 #include <WebCore/SQLiteStatement.h>
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <WebCore/TextEncoding.h>
+#include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/CString.h>
 
@@ -37,13 +41,13 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<LocalStorageDatabaseTracker> LocalStorageDatabaseTracker::create(PassRefPtr<WorkQueue> queue, const String& localStorageDirectory)
+Ref<LocalStorageDatabaseTracker> LocalStorageDatabaseTracker::create(Ref<WorkQueue>&& queue, const String& localStorageDirectory)
 {
-    return adoptRef(new LocalStorageDatabaseTracker(queue, localStorageDirectory));
+    return adoptRef(*new LocalStorageDatabaseTracker(WTFMove(queue), localStorageDirectory));
 }
 
-LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(PassRefPtr<WorkQueue> queue, const String& localStorageDirectory)
-    : m_queue(queue)
+LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(Ref<WorkQueue>&& queue, const String& localStorageDirectory)
+    : m_queue(WTFMove(queue))
     , m_localStorageDirectory(localStorageDirectory.isolatedCopy())
 {
     ASSERT(!m_localStorageDirectory.isEmpty());
@@ -51,9 +55,8 @@ LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(PassRefPtr<WorkQueue> q
     // Make sure the encoding is initialized before we start dispatching things to the queue.
     UTF8Encoding();
 
-    RefPtr<LocalStorageDatabaseTracker> localStorageDatabaseTracker(this);
-    m_queue->dispatch([localStorageDatabaseTracker] {
-        localStorageDatabaseTracker->importOriginIdentifiers();
+    m_queue->dispatch([protectedThis = makeRef(*this)]() mutable {
+        protectedThis->importOriginIdentifiers();
     });
 }
 
@@ -61,19 +64,19 @@ LocalStorageDatabaseTracker::~LocalStorageDatabaseTracker()
 {
 }
 
-String LocalStorageDatabaseTracker::databasePath(SecurityOrigin* securityOrigin) const
+String LocalStorageDatabaseTracker::databasePath(const SecurityOriginData& securityOrigin) const
 {
-    return databasePath(securityOrigin->databaseIdentifier() + ".localstorage");
+    return databasePath(securityOrigin.databaseIdentifier() + ".localstorage");
 }
 
-void LocalStorageDatabaseTracker::didOpenDatabaseWithOrigin(SecurityOrigin* securityOrigin)
+void LocalStorageDatabaseTracker::didOpenDatabaseWithOrigin(const SecurityOriginData& securityOrigin)
 {
-    addDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier(), databasePath(securityOrigin));
+    addDatabaseWithOriginIdentifier(securityOrigin.databaseIdentifier(), databasePath(securityOrigin));
 }
 
-void LocalStorageDatabaseTracker::deleteDatabaseWithOrigin(SecurityOrigin* securityOrigin)
+void LocalStorageDatabaseTracker::deleteDatabaseWithOrigin(const SecurityOriginData& securityOrigin)
 {
-    removeDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier());
+    removeDatabaseWithOriginIdentifier(securityOrigin.databaseIdentifier());
 }
 
 void LocalStorageDatabaseTracker::deleteAllDatabases()
@@ -124,23 +127,25 @@ void LocalStorageDatabaseTracker::deleteAllDatabases()
     deleteEmptyDirectory(m_localStorageDirectory);
 }
 
-static Optional<time_t> fileCreationTime(const String& filePath)
+static std::optional<time_t> fileCreationTime(const String& filePath)
 {
     time_t time;
-    return getFileCreationTime(filePath, time) ? time : Optional<time_t>(Nullopt);
+    return getFileCreationTime(filePath, time) ? time : std::optional<time_t>(std::nullopt);
 }
 
-static Optional<time_t> fileModificationTime(const String& filePath)
+static std::optional<time_t> fileModificationTime(const String& filePath)
 {
     time_t time;
     if (!getFileModificationTime(filePath, time))
-        return Nullopt;
+        return std::nullopt;
 
     return time;
 }
 
-Vector<Ref<SecurityOrigin>> LocalStorageDatabaseTracker::deleteDatabasesModifiedSince(std::chrono::system_clock::time_point time)
+Vector<SecurityOriginData> LocalStorageDatabaseTracker::deleteDatabasesModifiedSince(std::chrono::system_clock::time_point time)
 {
+    ASSERT(!RunLoop::isMain());
+    importOriginIdentifiers();
     Vector<String> originIdentifiersToDelete;
 
     for (const String& origin : m_origins) {
@@ -154,25 +159,32 @@ Vector<Ref<SecurityOrigin>> LocalStorageDatabaseTracker::deleteDatabasesModified
             originIdentifiersToDelete.append(origin);
     }
 
-    Vector<Ref<SecurityOrigin>> deletedDatabaseOrigins;
+    Vector<SecurityOriginData> deletedDatabaseOrigins;
     deletedDatabaseOrigins.reserveInitialCapacity(originIdentifiersToDelete.size());
 
     for (const auto& originIdentifier : originIdentifiersToDelete) {
         removeDatabaseWithOriginIdentifier(originIdentifier);
 
-        deletedDatabaseOrigins.uncheckedAppend(SecurityOrigin::createFromDatabaseIdentifier(originIdentifier));
+        if (auto origin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier))
+            deletedDatabaseOrigins.uncheckedAppend(*origin);
+        else
+            ASSERT_NOT_REACHED();
     }
 
     return deletedDatabaseOrigins;
 }
 
-Vector<Ref<WebCore::SecurityOrigin>> LocalStorageDatabaseTracker::origins() const
+Vector<SecurityOriginData> LocalStorageDatabaseTracker::origins() const
 {
-    Vector<Ref<SecurityOrigin>> origins;
+    Vector<SecurityOriginData> origins;
     origins.reserveInitialCapacity(m_origins.size());
 
-    for (const String& origin : m_origins)
-        origins.uncheckedAppend(SecurityOrigin::createFromDatabaseIdentifier(origin));
+    for (const String& originIdentifier : m_origins) {
+        if (auto origin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier))
+            origins.uncheckedAppend(*origin);
+        else
+            ASSERT_NOT_REACHED();
+    }
 
     return origins;
 }
@@ -201,6 +213,10 @@ String LocalStorageDatabaseTracker::databasePath(const String& filename) const
         LOG_ERROR("Unable to create LocalStorage database path %s", m_localStorageDirectory.utf8().data());
         return String();
     }
+
+#if PLATFORM(IOS)
+    platformMaybeExcludeFromBackup();
+#endif
 
     return pathByAppendingComponent(m_localStorageDirectory, filename);
 }
@@ -337,13 +353,13 @@ void LocalStorageDatabaseTracker::removeDatabaseWithOriginIdentifier(const Strin
         return;
     }
 
-    deleteFile(path);
+    SQLiteFileSystem::deleteDatabaseFile(path);
 
     m_origins.remove(originIdentifier);
     if (m_origins.isEmpty()) {
         // There are no origins left; delete the tracker database.
         m_database.close();
-        deleteFile(trackerDatabasePath());
+        SQLiteFileSystem::deleteDatabaseFile(trackerDatabasePath());
         deleteEmptyDirectory(m_localStorageDirectory);
     }
 

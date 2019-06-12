@@ -20,30 +20,34 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef CachedImageClient_h
-#define CachedImageClient_h
+#pragma once
 
 #include "CachedResourceClient.h"
+#include "ImageTypes.h"
 
 namespace WebCore {
 
 class CachedImage;
 class IntRect;
 
+enum class VisibleInViewportState { Unknown, Yes, No };
+
 class CachedImageClient : public CachedResourceClient {
 public:
     virtual ~CachedImageClient() { }
     static CachedResourceClientType expectedType() { return ImageType; }
-    virtual CachedResourceClientType resourceClientType() const override { return expectedType(); }
+    CachedResourceClientType resourceClientType() const override { return expectedType(); }
 
     // Called whenever a frame of an image changes because we got more data from the network.
     // If not null, the IntRect is the changed rect of the image.
     virtual void imageChanged(CachedImage*, const IntRect* = nullptr) { }
 
-    // Called when GIF animation progresses.
-    virtual void newImageAnimationFrameAvailable(CachedImage& image) { imageChanged(&image); }
+    virtual bool canDestroyDecodedData() { return true; }
+
+    // Called when a new decoded frame for a large image is available or when an animated image is ready to advance to the next frame.
+    virtual VisibleInViewportState imageFrameAvailable(CachedImage& image, ImageAnimatingState, const IntRect* changeRect) { imageChanged(&image, changeRect); return VisibleInViewportState::No; }
+
+    virtual void didRemoveCachedImageClient(CachedImage&) { }
 };
 
-}
-
-#endif
+} // namespace WebCore

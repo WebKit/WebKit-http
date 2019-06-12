@@ -26,9 +26,11 @@
 #import "config.h"
 #import "PlatformScreen.h"
 
+#import "CoreGraphicsSPI.h"
 #import "FloatRect.h"
 #import "FrameView.h"
 #import "HostWindow.h"
+#import <ColorSync/ColorSync.h>
 
 extern "C" {
 bool CGDisplayUsesInvertedPolarity(void);
@@ -37,107 +39,127 @@ bool CGDisplayUsesForceToGray(void);
 
 namespace WebCore {
 
-static PlatformDisplayID displayIDFromScreen(NSScreen *screen)
+// These functions scale between screen and page coordinates because JavaScript/DOM operations
+// assume that the screen and the page share the same coordinate system.
+
+static PlatformDisplayID displayID(NSScreen *screen)
 {
-    return (PlatformDisplayID)[[[screen deviceDescription] objectForKey:@"NSScreenNumber"] intValue];
+    return [[[screen deviceDescription] objectForKey:@"NSScreenNumber"] intValue];
 }
 
-static NSScreen *screenForDisplayID(PlatformDisplayID displayID)
+static PlatformDisplayID displayID(Widget* widget)
 {
-    for (NSScreen *screen in [NSScreen screens]) {
-        if (displayIDFromScreen(screen) == displayID)
-            return screen;
-    }
-    return nil;
+    if (!widget)
+        return 0;
+
+    auto* view = widget->root();
+    if (!view)
+        return 0;
+
+    auto* hostWindow = view->hostWindow();
+    if (!hostWindow)
+        return 0;
+
+    return hostWindow->displayID();
 }
 
-int screenDepth(Widget*)
+// Screen containing the menubar.
+static NSScreen *firstScreen()
 {
-    return NSBitsPerPixelFromDepth([[NSScreen deepestScreen] depth]);
+    NSArray *screens = [NSScreen screens];
+    if (![screens count])
+        return nil;
+    return [screens objectAtIndex:0];
 }
 
-int screenDepthPerComponent(Widget*)
+static NSWindow *window(Widget* widget)
 {
-    return NSBitsPerSampleFromDepth([[NSScreen deepestScreen] depth]);
+    if (!widget)
+        return nil;
+    return widget->platformWidget().window;
+}
+
+static NSScreen *screen(Widget* widget)
+{
+    // If the widget is in a window, use that, otherwise use the display ID from the host window.
+    // First case is for when the NSWindow is in the same process, second case for when it's not.
+    if (auto screenFromWindow = window(widget).screen)
+        return screenFromWindow;
+    return screen(displayID(widget));
+}
+
+int screenDepth(Widget* widget)
+{
+    return NSBitsPerPixelFromDepth(screen(widget).depth);
+}
+
+int screenDepthPerComponent(Widget* widget)
+{
+    return NSBitsPerSampleFromDepth(screen(widget).depth);
 }
 
 bool screenIsMonochrome(Widget*)
 {
+    // This is a system-wide accessibility setting, same on all screens.
     return CGDisplayUsesForceToGray();
 }
 
 bool screenHasInvertedColors()
 {
+    // This is a system-wide accessibility setting, same on all screens.
     return CGDisplayUsesInvertedPolarity();
-}
-
-// These functions scale between screen and page coordinates because JavaScript/DOM operations
-// assume that the screen and the page share the same coordinate system.
-
-static PlatformDisplayID displayFromWidget(Widget* widget)
-{
-    if (!widget)
-        return 0;
-    
-    FrameView* view = widget->root();
-    if (!view)
-        return 0;
-
-    return view->hostWindow()->displayID();
-}
-
-static NSScreen *screenForWidget(Widget* widget, NSWindow *window)
-{
-    // Widget is in an NSWindow, use its screen.
-    if (window)
-        return screenForWindow(window);
-    
-    // Didn't get an NSWindow; probably WebKit2. Try using the Widget's display ID.
-    if (NSScreen *screen = screenForDisplayID(displayFromWidget(widget)))
-        return screen;
-    
-    // Widget's window is offscreen, or no screens. Fall back to the first screen if available.
-    return screenForWindow(nil);
 }
 
 FloatRect screenRect(Widget* widget)
 {
-    NSWindow *window = widget ? [widget->platformWidget() window] : nil;
-    NSScreen *screen = screenForWidget(widget, window);
-    return toUserSpace([screen frame], window);
+    return toUserSpace([screen(widget) frame], window(widget));
 }
 
 FloatRect screenAvailableRect(Widget* widget)
 {
-    NSWindow *window = widget ? [widget->platformWidget() window] : nil;
-    NSScreen *screen = screenForWidget(widget, window);
-    return toUserSpace([screen visibleFrame], window);
+    return toUserSpace([screen(widget) visibleFrame], window(widget));
 }
 
-NSScreen *screenForWindow(NSWindow *window)
+NSScreen *screen(NSWindow *window)
 {
-    NSScreen *screen = [window screen]; // nil if the window is off-screen
-    if (screen)
-        return screen;
-    
-    NSArray *screens = [NSScreen screens];
-    if ([screens count] > 0)
-        return [screens objectAtIndex:0]; // screen containing the menubar
-    
-    return nil;
+    return [window screen] ?: firstScreen();
+}
+
+NSScreen *screen(PlatformDisplayID displayID)
+{
+    for (NSScreen *screen in [NSScreen screens]) {
+        if (WebCore::displayID(screen) == displayID)
+            return screen;
+    }
+    return firstScreen();
+}
+
+bool screenSupportsExtendedColor(Widget* widget)
+{
+    if (!widget)
+        return false;
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    return [screen(widget) canRepresentDisplayGamut:NSDisplayGamutP3];
+#else
+    auto colorSpace = screen(widget).colorSpace.CGColorSpace;
+    auto iccData = adoptCF(CGColorSpaceCopyICCProfile(colorSpace));
+    auto profile = adoptCF(ColorSyncProfileCreate(iccData.get(), nullptr));
+    return profile && ColorSyncProfileIsWideGamut(profile.get());
+#endif
 }
 
 FloatRect toUserSpace(const NSRect& rect, NSWindow *destination)
 {
     FloatRect userRect = rect;
-    userRect.setY(NSMaxY([screenForWindow(destination) frame]) - (userRect.y() + userRect.height())); // flip
+    userRect.setY(NSMaxY([screen(destination) frame]) - (userRect.y() + userRect.height())); // flip
     return userRect;
 }
 
 NSRect toDeviceSpace(const FloatRect& rect, NSWindow *source)
 {
     FloatRect deviceRect = rect;
-    deviceRect.setY(NSMaxY([screenForWindow(source) frame]) - (deviceRect.y() + deviceRect.height())); // flip
+    deviceRect.setY(NSMaxY([screen(source) frame]) - (deviceRect.y() + deviceRect.height())); // flip
     return deviceRect;
 }
 

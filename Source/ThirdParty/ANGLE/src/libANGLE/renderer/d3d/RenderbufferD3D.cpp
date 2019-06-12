@@ -9,19 +9,22 @@
 
 #include "libANGLE/renderer/d3d/RenderbufferD3D.h"
 
+#include "libANGLE/Image.h"
+#include "libANGLE/renderer/d3d/EGLImageD3D.h"
 #include "libANGLE/renderer/d3d/RendererD3D.h"
 #include "libANGLE/renderer/d3d/RenderTargetD3D.h"
 
 namespace rx
 {
-RenderbufferD3D::RenderbufferD3D(RendererD3D *renderer) : mRenderer(renderer)
+RenderbufferD3D::RenderbufferD3D(RendererD3D *renderer)
+    : mRenderer(renderer), mRenderTarget(nullptr), mImage(nullptr)
 {
-    mRenderTarget = NULL;
 }
 
 RenderbufferD3D::~RenderbufferD3D()
 {
     SafeDelete(mRenderTarget);
+    mImage = nullptr;
 }
 
 gl::Error RenderbufferD3D::setStorage(GLenum internalformat, size_t width, size_t height)
@@ -45,7 +48,7 @@ gl::Error RenderbufferD3D::setStorageMultisample(size_t samples, GLenum internal
     // the specified storage.
     // Because ES 3.0 already knows the exact number of supported samples, it would already have been
     // validated and generated GL_INVALID_VALUE.
-    const gl::TextureCaps &formatCaps = mRenderer->getRendererTextureCaps().get(creationFormat);
+    const gl::TextureCaps &formatCaps = mRenderer->getNativeTextureCaps().get(creationFormat);
     if (samples > formatCaps.getMaxSamples())
     {
         return gl::Error(GL_OUT_OF_MEMORY, "Renderbuffer format does not support %u samples, %u is the maximum.",
@@ -53,33 +56,41 @@ gl::Error RenderbufferD3D::setStorageMultisample(size_t samples, GLenum internal
     }
 
     RenderTargetD3D *newRT = NULL;
-    gl::Error error = mRenderer->createRenderTarget(width, height, creationFormat, samples, &newRT);
-    if (error.isError())
-    {
-        return error;
-    }
+    ANGLE_TRY(mRenderer->createRenderTarget(static_cast<int>(width), static_cast<int>(height),
+                                            creationFormat, static_cast<GLsizei>(samples), &newRT));
 
     SafeDelete(mRenderTarget);
+    mImage        = nullptr;
     mRenderTarget = newRT;
 
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
-RenderTargetD3D *RenderbufferD3D::getRenderTarget()
+gl::Error RenderbufferD3D::setStorageEGLImageTarget(egl::Image *image)
 {
-    return mRenderTarget;
+    mImage = GetImplAs<EGLImageD3D>(image);
+    SafeDelete(mRenderTarget);
+
+    return gl::NoError();
 }
 
-unsigned int RenderbufferD3D::getRenderTargetSerial() const
+gl::Error RenderbufferD3D::getRenderTarget(RenderTargetD3D **outRenderTarget)
 {
-    return (mRenderTarget ? mRenderTarget->getSerial() : 0);
+    if (mImage)
+    {
+        return mImage->getRenderTarget(outRenderTarget);
+    }
+    else
+    {
+        *outRenderTarget = mRenderTarget;
+        return gl::NoError();
+    }
 }
 
 gl::Error RenderbufferD3D::getAttachmentRenderTarget(const gl::FramebufferAttachment::Target &target,
                                                      FramebufferAttachmentRenderTarget **rtOut)
 {
-    *rtOut = mRenderTarget;
-    return gl::Error(GL_NO_ERROR);
+    return getRenderTarget(reinterpret_cast<RenderTargetD3D **>(rtOut));
 }
 
 }

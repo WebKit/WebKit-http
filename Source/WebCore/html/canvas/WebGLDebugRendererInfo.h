@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLDebugRendererInfo_h
-#define WebGLDebugRendererInfo_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -37,12 +36,10 @@ public:
         UNMASKED_RENDERER_WEBGL = 0x9246
     };
 
-    explicit WebGLDebugRendererInfo(WebGLRenderingContextBase*);
+    explicit WebGLDebugRendererInfo(WebGLRenderingContextBase&);
     virtual ~WebGLDebugRendererInfo();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // WebGLDebugRendererInfo_h

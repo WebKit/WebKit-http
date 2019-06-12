@@ -25,31 +25,41 @@
  */
 
 #include "config.h"
+#include "RenderMathMLBlock.h"
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLBlock.h"
-
+#include "CSSHelper.h"
 #include "GraphicsContext.h"
+#include "LayoutRepainter.h"
+#include "MathMLElement.h"
 #include "MathMLNames.h"
+#include "MathMLPresentationElement.h"
 #include "RenderView.h"
-#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(DEBUG_MATH_LAYOUT)
 #include "PaintInfo.h"
 #endif
 
 namespace WebCore {
-    
+
 using namespace MathMLNames;
-    
-RenderMathMLBlock::RenderMathMLBlock(Element& container, Ref<RenderStyle>&& style)
-    : RenderFlexibleBox(container, WTFMove(style))
+
+RenderMathMLBlock::RenderMathMLBlock(MathMLPresentationElement& container, RenderStyle&& style)
+    : RenderBlock(container, WTFMove(style), 0)
+    , m_mathMLStyle(MathMLStyle::create())
 {
+    setChildrenInline(false); // All of our children must be block-level.
 }
 
-RenderMathMLBlock::RenderMathMLBlock(Document& document, Ref<RenderStyle>&& style)
-    : RenderFlexibleBox(document, WTFMove(style))
+RenderMathMLBlock::RenderMathMLBlock(Document& document, RenderStyle&& style)
+    : RenderBlock(document, WTFMove(style), 0)
+    , m_mathMLStyle(MathMLStyle::create())
+{
+    setChildrenInline(false); // All of our children must be block-level.
+}
+
+RenderMathMLBlock::~RenderMathMLBlock()
 {
 }
 
@@ -58,11 +68,29 @@ bool RenderMathMLBlock::isChildAllowed(const RenderObject& child, const RenderSt
     return is<Element>(child.node());
 }
 
-RenderPtr<RenderMathMLBlock> RenderMathMLBlock::createAnonymousMathMLBlock()
+static LayoutUnit axisHeight(const RenderStyle& style)
 {
-    RenderPtr<RenderMathMLBlock> newBlock = createRenderer<RenderMathMLBlock>(document(), RenderStyle::createAnonymousStyleWithDisplay(&style(), FLEX));
-    newBlock->initializeStyle();
-    return newBlock;
+    // If we have a MATH table we just return the AxisHeight constant.
+    const auto& primaryFont = style.fontCascade().primaryFont();
+    if (auto* mathData = primaryFont.mathData())
+        return mathData->getMathConstant(primaryFont, OpenTypeMathData::AxisHeight);
+
+    // Otherwise, the idea is to try and use the middle of operators as the math axis which we thus approximate by "half of the x-height".
+    // Note that Gecko has a slower but more accurate version that measures half of the height of U+2212 MINUS SIGN.
+    return style.fontMetrics().xHeight() / 2;
+}
+
+LayoutUnit RenderMathMLBlock::mathAxisHeight() const
+{
+    return axisHeight(style());
+}
+
+LayoutUnit RenderMathMLBlock::mirrorIfNeeded(LayoutUnit horizontalOffset, LayoutUnit boxWidth) const
+{
+    if (style().direction() == RTL)
+        return logicalWidth() - boxWidth - horizontalOffset;
+
+    return horizontalOffset;
 }
 
 int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const
@@ -71,241 +99,167 @@ int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLin
     // return 0 here to match our line-height. This matters when RootInlineBox::ascentAndDescentForBox is called on a RootInlineBox for an inline-block.
     if (linePositionMode == PositionOfInteriorLineBoxes)
         return 0;
-    
-    // FIXME: This may be unnecessary after flex baselines are implemented (https://bugs.webkit.org/show_bug.cgi?id=96188).
-    return firstLineBaseline().valueOrCompute([&] {
-        return RenderFlexibleBox::baselinePosition(baselineType, firstLine, direction, linePositionMode);
-    });
-}
 
-const char* RenderMathMLBlock::renderName() const
-{
-    EDisplay display = style().display();
-    if (display == FLEX)
-        return isAnonymous() ? "RenderMathMLBlock (anonymous, flex)" : "RenderMathMLBlock (flex)";
-    if (display == INLINE_FLEX)
-        return isAnonymous() ? "RenderMathMLBlock (anonymous, inline-flex)" : "RenderMathMLBlock (inline-flex)";
-    // |display| should be one of the above.
-    ASSERT_NOT_REACHED();
-    return isAnonymous() ? "RenderMathMLBlock (anonymous)" : "RenderMathMLBlock";
+    return firstLineBaseline().value_or(RenderBlock::baselinePosition(baselineType, firstLine, direction, linePositionMode));
 }
 
 #if ENABLE(DEBUG_MATH_LAYOUT)
 void RenderMathMLBlock::paint(PaintInfo& info, const LayoutPoint& paintOffset)
 {
-    RenderFlexibleBox::paint(info, paintOffset);
-    
+    RenderBlock::paint(info, paintOffset);
+
     if (info.context().paintingDisabled() || info.phase != PaintPhaseForeground)
         return;
 
     IntPoint adjustedPaintOffset = roundedIntPoint(paintOffset + location());
 
     GraphicsContextStateSaver stateSaver(info.context());
-    
+
     info.context().setStrokeThickness(1.0f);
     info.context().setStrokeStyle(SolidStroke);
     info.context().setStrokeColor(Color(0, 0, 255));
-    
+
     info.context().drawLine(adjustedPaintOffset, IntPoint(adjustedPaintOffset.x() + pixelSnappedOffsetWidth(), adjustedPaintOffset.y()));
     info.context().drawLine(IntPoint(adjustedPaintOffset.x() + pixelSnappedOffsetWidth(), adjustedPaintOffset.y()), IntPoint(adjustedPaintOffset.x() + pixelSnappedOffsetWidth(), adjustedPaintOffset.y() + pixelSnappedOffsetHeight()));
     info.context().drawLine(IntPoint(adjustedPaintOffset.x(), adjustedPaintOffset.y() + pixelSnappedOffsetHeight()), IntPoint(adjustedPaintOffset.x() + pixelSnappedOffsetWidth(), adjustedPaintOffset.y() + pixelSnappedOffsetHeight()));
     info.context().drawLine(adjustedPaintOffset, IntPoint(adjustedPaintOffset.x(), adjustedPaintOffset.y() + pixelSnappedOffsetHeight()));
-    
+
     int topStart = paddingTop();
-    
+
     info.context().setStrokeColor(Color(0, 255, 0));
-    
+
     info.context().drawLine(IntPoint(adjustedPaintOffset.x(), adjustedPaintOffset.y() + topStart), IntPoint(adjustedPaintOffset.x() + pixelSnappedOffsetWidth(), adjustedPaintOffset.y() + topStart));
-    
+
     int baseline = roundToInt(baselinePosition(AlphabeticBaseline, true, HorizontalLine));
-    
+
     info.context().setStrokeColor(Color(255, 0, 0));
-    
+
     info.context().drawLine(IntPoint(adjustedPaintOffset.x(), adjustedPaintOffset.y() + baseline), IntPoint(adjustedPaintOffset.x() + pixelSnappedOffsetWidth(), adjustedPaintOffset.y() + baseline));
 }
 #endif // ENABLE(DEBUG_MATH_LAYOUT)
 
-//
-// The MathML specification says:
-// (http://www.w3.org/TR/MathML/chapter2.html#fund.units)
-//
-// "Most presentation elements have attributes that accept values representing
-// lengths to be used for size, spacing or similar properties. The syntax of a
-// length is specified as
-//
-// number | number unit | namedspace
-//
-// There should be no space between the number and the unit of a length."
-// 
-// "A trailing '%' represents a percent of the default value. The default
-// value, or how it is obtained, is listed in the table of attributes for each
-// element. [...] A number without a unit is intepreted as a multiple of the
-// default value."
-//
-// "The possible units in MathML are:
-//  
-// Unit Description
-// em   an em (font-relative unit traditionally used for horizontal lengths)
-// ex   an ex (font-relative unit traditionally used for vertical lengths)
-// px   pixels, or size of a pixel in the current display
-// in   inches (1 inch = 2.54 centimeters)
-// cm   centimeters
-// mm   millimeters
-// pt   points (1 point = 1/72 inch)
-// pc   picas (1 pica = 12 points)
-// %    percentage of default value"
-//
-// The numbers are defined that way:
-// - unsigned-number: "a string of decimal digits with up to one decimal point
-//   (U+002E), representing a non-negative terminating decimal number (a type of
-//   rational number)"
-// - number: "an optional prefix of '-' (U+002D), followed by an unsigned
-//   number, representing a terminating decimal number (a type of rational
-//   number)"
-//
-bool parseMathMLLength(const String& string, LayoutUnit& lengthValue, const RenderStyle* style, bool allowNegative)
+LayoutUnit toUserUnits(const MathMLElement::Length& length, const RenderStyle& style, const LayoutUnit& referenceValue)
 {
-    String s = string.simplifyWhiteSpace();
-
-    int stringLength = s.length();
-    if (!stringLength)
-        return false;
-
-    if (parseMathMLNamedSpace(s, lengthValue, style, allowNegative))
-        return true;
-
-    StringBuilder number;
-    String unit;
-
-    // This verifies whether the negative sign is there.
-    int i = 0;
-    UChar c = s[0];
-    if (c == '-') {
-        number.append(c);
-        i++;
+    switch (length.type) {
+    case MathMLElement::LengthType::Cm:
+        return length.value * cssPixelsPerInch / 2.54f;
+    case MathMLElement::LengthType::Em:
+        return length.value * style.fontCascade().size();
+    case MathMLElement::LengthType::Ex:
+        return length.value * style.fontMetrics().xHeight();
+    case MathMLElement::LengthType::In:
+        return length.value * cssPixelsPerInch;
+    case MathMLElement::LengthType::MathUnit:
+        return length.value * style.fontCascade().size() / 18;
+    case MathMLElement::LengthType::Mm:
+        return length.value * cssPixelsPerInch / 25.4f;
+    case MathMLElement::LengthType::Pc:
+        return length.value * cssPixelsPerInch / 6;
+    case MathMLElement::LengthType::Percentage:
+        return referenceValue * length.value / 100;
+    case MathMLElement::LengthType::Pt:
+        return length.value * cssPixelsPerInch / 72;
+    case MathMLElement::LengthType::Px:
+        return length.value;
+    case MathMLElement::LengthType::UnitLess:
+        return referenceValue * length.value;
+    case MathMLElement::LengthType::ParsingFailed:
+        return referenceValue;
+    case MathMLElement::LengthType::Infinity:
+        return intMaxForLayoutUnit;
+    default:
+        ASSERT_NOT_REACHED();
+        return referenceValue;
     }
-
-    // This gathers up characters that make up the number.
-    bool gotDot = false;
-    for ( ; i < stringLength; i++) {
-        c = s[i];
-        // The string is invalid if it contains two dots.
-        if (gotDot && c == '.')
-            return false;
-        if (c == '.')
-            gotDot = true;
-        else if (!isASCIIDigit(c)) {
-            unit = s.substring(i, stringLength - i);
-            // Some authors leave blanks before the unit, but that shouldn't
-            // be allowed, so don't simplifyWhitespace on 'unit'.
-            break;
-        }
-        number.append(c);
-    }
-
-    // Convert number to floating point
-    bool ok;
-    float floatValue = number.toString().toFloat(&ok);
-    if (!ok)
-        return false;
-    if (floatValue < 0 && !allowNegative)
-        return false;
-
-    if (unit.isEmpty()) {
-        // no explicit unit, this is a number that will act as a multiplier
-        lengthValue *= floatValue;
-        return true;
-    }
-    if (unit == "%") {
-        lengthValue *= floatValue / 100;
-        return true;
-    }
-    if (unit == "em") {
-        lengthValue = floatValue * style->fontCascade().size();
-        return true;
-    }
-    if (unit == "ex") {
-        lengthValue = floatValue * style->fontMetrics().xHeight();
-        return true;
-    }
-    if (unit == "px") {
-        lengthValue = floatValue;
-        return true;
-    }
-    if (unit == "pt") {
-        lengthValue = 4 * (floatValue / 3);
-        return true;
-    }
-    if (unit == "pc") {
-        lengthValue = 16 * floatValue;
-        return true;
-    }
-    if (unit == "in") {
-        lengthValue = 96 * floatValue;
-        return true;
-    }
-    if (unit == "cm") {
-        lengthValue = 96 * (floatValue / 2.54);
-        return true;
-    }
-    if (unit == "mm") {
-        lengthValue = 96 * (floatValue / 25.4);
-        return true;
-    }
-
-    // unexpected unit
-    return false;
 }
 
-bool parseMathMLNamedSpace(const String& string, LayoutUnit& lengthValue, const RenderStyle* style, bool allowNegative)
+std::optional<int> RenderMathMLTable::firstLineBaseline() const
 {
-    float length = 0;
-    // See if it is one of the namedspaces (ranging -7/18em, -6/18, ... 7/18em)
-    if (string == "veryverythinmathspace")
-        length = 1;
-    else if (string == "verythinmathspace")
-        length = 2;
-    else if (string == "thinmathspace")
-        length = 3;
-    else if (string == "mediummathspace")
-        length = 4;
-    else if (string == "thickmathspace")
-        length = 5;
-    else if (string == "verythickmathspace")
-        length = 6;
-    else if (string == "veryverythickmathspace")
-        length = 7;
-    else if (allowNegative) {
-        if (string == "negativeveryverythinmathspace")
-            length = -1;
-        else if (string == "negativeverythinmathspace")
-            length = -2;
-        else if (string == "negativethinmathspace")
-            length = -3;
-        else if (string == "negativemediummathspace")
-            length = -4;
-        else if (string == "negativethickmathspace")
-            length = -5;
-        else if (string == "negativeverythickmathspace")
-            length = -6;
-        else if (string == "negativeveryverythickmathspace")
-            length = -7;        
-    }
-    if (length) {
-        lengthValue = length * style->fontCascade().size() / 18;
-        return true;
-    }
-    return false;
+    // By default the vertical center of <mtable> is aligned on the math axis.
+    // This is different than RenderTable::firstLineBoxBaseline, which returns the baseline of the first row of a <table>.
+    return std::optional<int>(logicalHeight() / 2 + axisHeight(style()));
 }
 
-Optional<int> RenderMathMLTable::firstLineBaseline() const
+void RenderMathMLBlock::layoutItems(bool relayoutChildren)
 {
-    // In legal MathML, we'll have a MathML parent. That RenderFlexibleBox parent will use our firstLineBaseline() for baseline alignment, per
-    // http://dev.w3.org/csswg/css3-flexbox/#flex-baselines. We want to vertically center an <mtable>, such as a matrix. Essentially the whole <mtable> element fits on a
-    // single line, whose baseline gives this centering. This is different than RenderTable::firstLineBoxBaseline, which returns the baseline of the first row of a <table>.
-    return (logicalHeight() + style().fontMetrics().xHeight()) / 2;
+    LayoutUnit verticalOffset = borderBefore() + paddingBefore();
+    LayoutUnit horizontalOffset = borderStart() + paddingStart();
+
+    LayoutUnit preferredHorizontalExtent = 0;
+    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+        LayoutUnit childHorizontalExtent = child->maxPreferredLogicalWidth() - child->horizontalBorderAndPaddingExtent();
+        LayoutUnit childHorizontalMarginBoxExtent = child->horizontalBorderAndPaddingExtent() + childHorizontalExtent;
+        childHorizontalMarginBoxExtent += child->horizontalMarginExtent();
+
+        preferredHorizontalExtent += childHorizontalMarginBoxExtent;
+    }
+
+    LayoutUnit currentHorizontalExtent = contentLogicalWidth();
+    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+        LayoutUnit childSize = child->maxPreferredLogicalWidth() - child->horizontalBorderAndPaddingExtent();
+
+        if (preferredHorizontalExtent > currentHorizontalExtent)
+            childSize = currentHorizontalExtent;
+
+        LayoutUnit childPreferredSize = childSize + child->horizontalBorderAndPaddingExtent();
+
+        if (childPreferredSize != child->width())
+            child->setChildNeedsLayout(MarkOnlyThis);
+
+        updateBlockChildDirtyBitsBeforeLayout(relayoutChildren, *child);
+        child->layoutIfNeeded();
+
+        LayoutUnit childVerticalMarginBoxExtent;
+        childVerticalMarginBoxExtent = child->height() + child->verticalMarginExtent();
+
+        setLogicalHeight(std::max(logicalHeight(), verticalOffset + borderAfter() + paddingAfter() + childVerticalMarginBoxExtent + horizontalScrollbarHeight()));
+
+        horizontalOffset += child->marginStart();
+
+        LayoutUnit childHorizontalExtent = child->width();
+        LayoutPoint childLocation(style().isLeftToRightDirection() ? horizontalOffset : width() - horizontalOffset - childHorizontalExtent,
+            verticalOffset + child->marginBefore());
+
+        child->setLocation(childLocation);
+        horizontalOffset += childHorizontalExtent + child->marginEnd();
+    }
 }
 
-}    
+void RenderMathMLBlock::layoutBlock(bool relayoutChildren, LayoutUnit)
+{
+    ASSERT(needsLayout());
+
+    if (!relayoutChildren && simplifiedLayout())
+        return;
+
+    LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
+
+    if (recomputeLogicalWidth())
+        relayoutChildren = true;
+
+    setLogicalHeight(borderAndPaddingLogicalHeight() + scrollbarLogicalHeight());
+
+    layoutItems(relayoutChildren);
+
+    updateLogicalHeight();
+
+    repainter.repaintAfterLayout();
+
+    clearNeedsLayout();
+}
+
+void RenderMathMLBlock::layoutInvalidMarkup()
+{
+    // Invalid MathML subtrees are just renderered as empty boxes.
+    // FIXME: https://webkit.org/b/135460 - Should we display some "invalid" markup message instead?
+    ASSERT(needsLayout());
+    for (auto child = firstChildBox(); child; child = child->nextSiblingBox())
+        child->layoutIfNeeded();
+    setLogicalWidth(0);
+    setLogicalHeight(0);
+    clearNeedsLayout();
+}
+
+}
 
 #endif

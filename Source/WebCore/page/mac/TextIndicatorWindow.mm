@@ -64,7 +64,7 @@ using namespace WebCore;
     BOOL _fadingOut;
 }
 
-- (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin offset:(NSPoint)offset;
+- (instancetype)initWithFrame:(NSRect)frame textIndicator:(TextIndicator&)textIndicator margin:(NSSize)margin offset:(NSPoint)offset;
 
 - (void)present;
 - (void)hideWithCompletionHandler:(void(^)(void))completionHandler;
@@ -147,12 +147,12 @@ static bool indicatorWantsManualAnimation(const TextIndicator& indicator)
     return false;
 }
 
-- (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin offset:(NSPoint)offset
+- (instancetype)initWithFrame:(NSRect)frame textIndicator:(TextIndicator&)textIndicator margin:(NSSize)margin offset:(NSPoint)offset
 {
     if (!(self = [super initWithFrame:frame]))
         return nil;
 
-    _textIndicator = textIndicator;
+    _textIndicator = &textIndicator;
     _margin = margin;
 
     self.wantsLayer = YES;
@@ -162,9 +162,9 @@ static bool indicatorWantsManualAnimation(const TextIndicator& indicator)
     contentsImageLogicalSize.scale(1 / _textIndicator->contentImageScaleFactor());
     RetainPtr<CGImageRef> contentsImage;
     if (indicatorWantsContentCrossfade(*_textIndicator))
-        contentsImage = _textIndicator->contentImageWithHighlight()->getCGImageRef();
+        contentsImage = _textIndicator->contentImageWithHighlight()->nativeImage();
     else
-        contentsImage = _textIndicator->contentImage()->getCGImageRef();
+        contentsImage = _textIndicator->contentImage()->nativeImage();
 
     RetainPtr<NSMutableArray> bounceLayers = adoptNS([[NSMutableArray alloc] init]);
 
@@ -265,7 +265,7 @@ static RetainPtr<CAKeyframeAnimation> createBounceAnimation(CFTimeInterval durat
 static RetainPtr<CABasicAnimation> createContentCrossfadeAnimation(CFTimeInterval duration, TextIndicator& textIndicator)
 {
     RetainPtr<CABasicAnimation> crossfadeAnimation = [CABasicAnimation animationWithKeyPath:@"contents"];
-    RetainPtr<CGImageRef> contentsImage = textIndicator.contentImage()->getCGImageRef();
+    RetainPtr<CGImageRef> contentsImage = textIndicator.contentImage()->nativeImage();
     [crossfadeAnimation setToValue:(id)contentsImage.get()];
     [crossfadeAnimation setFillMode:kCAFillModeForwards];
     [crossfadeAnimation setRemovedOnCompletion:NO];
@@ -457,16 +457,16 @@ void TextIndicatorWindow::setTextIndicator(Ref<TextIndicator> textIndicator, CGR
     verticalMargin = CGCeiling(verticalMargin);
 
     CGRect contentRect = CGRectInset(textBoundingRectInScreenCoordinates, -horizontalMargin, -verticalMargin);
-    NSRect windowContentRect = [NSWindow contentRectForFrameRect:NSRectFromCGRect(contentRect) styleMask:NSBorderlessWindowMask];
+    NSRect windowContentRect = [NSWindow contentRectForFrameRect:NSRectFromCGRect(contentRect) styleMask:NSWindowStyleMaskBorderless];
     NSRect integralWindowContentRect = NSIntegralRect(windowContentRect);
     NSPoint fractionalTextOffset = NSMakePoint(windowContentRect.origin.x - integralWindowContentRect.origin.x, windowContentRect.origin.y - integralWindowContentRect.origin.y);
-    m_textIndicatorWindow = adoptNS([[NSWindow alloc] initWithContentRect:integralWindowContentRect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO]);
-
+    m_textIndicatorWindow = adoptNS([[NSWindow alloc] initWithContentRect:integralWindowContentRect styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO]);
     [m_textIndicatorWindow setBackgroundColor:[NSColor clearColor]];
     [m_textIndicatorWindow setOpaque:NO];
     [m_textIndicatorWindow setIgnoresMouseEvents:YES];
 
-    m_textIndicatorView = adoptNS([[WebTextIndicatorView alloc] initWithFrame:NSMakeRect(0, 0, [m_textIndicatorWindow frame].size.width, [m_textIndicatorWindow frame].size.height) textIndicator:m_textIndicator margin:NSMakeSize(horizontalMargin, verticalMargin) offset:fractionalTextOffset]);
+    m_textIndicatorView = adoptNS([[WebTextIndicatorView alloc] initWithFrame:NSMakeRect(0, 0, [m_textIndicatorWindow frame].size.width, [m_textIndicatorWindow frame].size.height)
+        textIndicator:*m_textIndicator margin:NSMakeSize(horizontalMargin, verticalMargin) offset:fractionalTextOffset]);
     [m_textIndicatorWindow setContentView:m_textIndicatorView.get()];
 
     [[m_targetView window] addChildWindow:m_textIndicatorWindow.get() ordered:NSWindowAbove];
@@ -476,7 +476,7 @@ void TextIndicatorWindow::setTextIndicator(Ref<TextIndicator> textIndicator, CGR
         [m_textIndicatorView present];
 
     if (lifetime == TextIndicatorWindowLifetime::Temporary)
-        m_temporaryTextIndicatorTimer.startOneShot(timeBeforeFadeStarts);
+        m_temporaryTextIndicatorTimer.startOneShot(1_s * timeBeforeFadeStarts);
 }
 
 void TextIndicatorWindow::closeWindow()

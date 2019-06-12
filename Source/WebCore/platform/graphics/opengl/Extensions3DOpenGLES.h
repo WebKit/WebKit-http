@@ -24,8 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Extensions3DOpenGLES_h
-#define Extensions3DOpenGLES_h
+#pragma once
 
 #include "Extensions3DOpenGLCommon.h"
 
@@ -34,7 +33,10 @@
 #if PLATFORM(QT)
 // Takes care of declaring the GLES extensions.
 #include <qopengl.h>
+#elif USE(LIBEPOXY)
+#include <epoxy/gl.h>
 #else
+#define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #endif
@@ -76,7 +78,7 @@ namespace WebCore {
 class Extensions3DOpenGLES : public Extensions3DOpenGLCommon {
 public:
     // This class only needs to be instantiated by GraphicsContext3D implementations.
-    explicit Extensions3DOpenGLES(GraphicsContext3D*);
+    Extensions3DOpenGLES(GraphicsContext3D*, bool useIndexedGetString);
     virtual ~Extensions3DOpenGLES();
 
     virtual void framebufferTexture2DMultisampleIMG(unsigned long target, unsigned long attachment, unsigned long textarget, unsigned int texture, int level, unsigned long samples);
@@ -138,5 +140,3 @@ protected:
 } // namespace WebCore
 
 #endif // USE(OPENGL_ES_2)
-
-#endif // Extensions3DOpenGLES_h

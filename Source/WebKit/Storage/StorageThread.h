@@ -26,10 +26,8 @@
 #ifndef StorageThread_h
 #define StorageThread_h
 
-#include <functional>
-#include <wtf/HashSet.h>
+#include <wtf/Function.h>
 #include <wtf/MessageQueue.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Threading.h>
 
 namespace WebCore {
@@ -46,20 +44,18 @@ public:
     bool start();
     void terminate();
 
-    void dispatch(const std::function<void()>&);
+    void dispatch(Function<void ()>&&);
 
     static void releaseFastMallocFreeMemoryInAllThreads();
 
 private:
-    // Called on background thread.
-    static void threadEntryPointCallback(void*);
     void threadEntryPoint();
 
     // Background thread part of the terminate procedure.
     void performTerminate();
 
-    ThreadIdentifier m_threadID;
-    MessageQueue<std::function<void()>> m_queue;
+    RefPtr<Thread> m_thread;
+    MessageQueue<Function<void ()>> m_queue;
 };
 
 } // namespace WebCore

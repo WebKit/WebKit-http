@@ -26,40 +26,98 @@
 #include "config.h"
 #include "PlatformDisplayX11.h"
 
+#include "GLContext.h"
+
 #if PLATFORM(X11)
 #include <X11/Xlib.h>
+#include <X11/extensions/Xcomposite.h>
+#if PLATFORM(GTK)
+#include <X11/extensions/Xdamage.h>
+#endif
 
 #if USE(EGL)
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 #endif
 
 namespace WebCore {
 
-PlatformDisplayX11::PlatformDisplayX11()
-    : m_display(XOpenDisplay(nullptr))
-    , m_ownedDisplay(true)
+std::unique_ptr<PlatformDisplay> PlatformDisplayX11::create()
 {
+    Display* display = XOpenDisplay(getenv("DISPLAY"));
+    if (!display)
+        return nullptr;
+
+    return std::make_unique<PlatformDisplayX11>(display, NativeDisplayOwned::Yes);
 }
 
-PlatformDisplayX11::PlatformDisplayX11(Display* display)
-    : m_display(display)
-    , m_ownedDisplay(false)
+PlatformDisplayX11::PlatformDisplayX11(Display* display, NativeDisplayOwned displayOwned)
+    : PlatformDisplay(displayOwned)
+    , m_display(display)
 {
 }
 
 PlatformDisplayX11::~PlatformDisplayX11()
 {
-    if (m_ownedDisplay)
+#if USE(EGL) || USE(GLX)
+    // Clear the sharing context before releasing the display.
+    m_sharingGLContext = nullptr;
+#endif
+    if (m_nativeDisplayOwned == NativeDisplayOwned::Yes)
         XCloseDisplay(m_display);
 }
 
 #if USE(EGL)
 void PlatformDisplayX11::initializeEGLDisplay()
 {
-    m_eglDisplay = eglGetDisplay(m_display);
+#if defined(EGL_KHR_platform_x11)
+    const char* extensions = eglQueryString(nullptr, EGL_EXTENSIONS);
+    if (GLContext::isExtensionSupported(extensions, "EGL_KHR_platform_base")) {
+        if (auto* getPlatformDisplay = reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(eglGetProcAddress("eglGetPlatformDisplay")))
+            m_eglDisplay = getPlatformDisplay(EGL_PLATFORM_X11_KHR, m_display, nullptr);
+    } else if (GLContext::isExtensionSupported(extensions, "EGL_EXT_platform_base")) {
+        if (auto* getPlatformDisplay = reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(eglGetProcAddress("eglGetPlatformDisplayEXT")))
+            m_eglDisplay = getPlatformDisplay(EGL_PLATFORM_X11_KHR, m_display, nullptr);
+    } else
+#endif
+        m_eglDisplay = eglGetDisplay(m_display);
+
     PlatformDisplay::initializeEGLDisplay();
 }
+#endif // USE(EGL)
+
+bool PlatformDisplayX11::supportsXComposite() const
+{
+    if (!m_supportsXComposite) {
+        if (m_display) {
+            int eventBase, errorBase;
+            m_supportsXComposite = XCompositeQueryExtension(m_display, &eventBase, &errorBase);
+        } else
+            m_supportsXComposite = false;
+    }
+    return m_supportsXComposite.value();
+}
+
+bool PlatformDisplayX11::supportsXDamage(std::optional<int>& damageEventBase, std::optional<int>& damageErrorBase) const
+{
+    if (!m_supportsXDamage) {
+        m_supportsXDamage = false;
+#if PLATFORM(GTK)
+        if (m_display) {
+            int eventBase, errorBase;
+            m_supportsXDamage = XDamageQueryExtension(m_display, &eventBase, &errorBase);
+            if (m_supportsXDamage.value()) {
+                m_damageEventBase = eventBase;
+                m_damageErrorBase = errorBase;
+            }
+        }
 #endif
+    }
+
+    damageEventBase = m_damageEventBase;
+    damageErrorBase = m_damageErrorBase;
+    return m_supportsXDamage.value();
+}
 
 } // namespace WebCore
 

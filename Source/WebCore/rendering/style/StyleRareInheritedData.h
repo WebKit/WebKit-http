@@ -22,18 +22,16 @@
  *
  */
 
-#ifndef StyleRareInheritedData_h
-#define StyleRareInheritedData_h
+#pragma once
 
 #include "Color.h"
 #include "DataRef.h"
 #include "Length.h"
 #include "StyleCustomPropertyData.h"
 #include <wtf/RefCounted.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/AtomicString.h>
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 #include "TextSizeAdjustment.h"
 #endif
 
@@ -74,17 +72,17 @@ public:
     
     RefPtr<CursorList> cursorData;
     Length indent;
-    float m_effectiveZoom;
+    float effectiveZoom;
     
     Length wordSpacing;
 
-    DataRef<StyleCustomPropertyData> m_customProperties;
+    DataRef<StyleCustomPropertyData> customProperties;
 
     // Paged media properties.
     short widows;
     short orphans;
-    unsigned m_hasAutoWidows : 1;
-    unsigned m_hasAutoOrphans : 1;
+    unsigned hasAutoWidows : 1;
+    unsigned hasAutoOrphans : 1;
     
     unsigned textSecurity : 2; // ETextSecurity
     unsigned userModify : 2; // EUserModify (editing)
@@ -92,7 +90,6 @@ public:
     unsigned overflowWrap : 1; // EOverflowWrap
     unsigned nbspMode : 1; // ENBSPMode
     unsigned lineBreak : 3; // LineBreak
-    unsigned resize : 2; // EResize
     unsigned userSelect : 2; // EUserSelect
     unsigned colorSpace : 1; // ColorSpace
     unsigned speak : 3; // ESpeak
@@ -100,34 +97,34 @@ public:
     unsigned textEmphasisFill : 1; // TextEmphasisFill
     unsigned textEmphasisMark : 3; // TextEmphasisMark
     unsigned textEmphasisPosition : 4; // TextEmphasisPosition
-    unsigned m_textOrientation : 2; // TextOrientation
+    unsigned textOrientation : 2; // TextOrientation
 #if ENABLE(CSS3_TEXT)
-    unsigned m_textIndentLine : 1; // TextIndentLine
-    unsigned m_textIndentType : 1; // TextIndentType
+    unsigned textIndentLine : 1; // TextIndentLine
+    unsigned textIndentType : 1; // TextIndentType
 #endif
-    unsigned m_lineBoxContain: 7; // LineBoxContain
+    unsigned lineBoxContain: 7; // LineBoxContain
     // CSS Image Values Level 3
 #if ENABLE(CSS_IMAGE_ORIENTATION)
-    unsigned m_imageOrientation : 4; // ImageOrientationEnum
+    unsigned imageOrientation : 4; // ImageOrientationEnum
 #endif
-    unsigned m_imageRendering : 3; // EImageRendering
-    unsigned m_lineSnap : 2; // LineSnap
-    unsigned m_lineAlign : 1; // LineAlign
+    unsigned imageRendering : 3; // EImageRendering
+    unsigned lineSnap : 2; // LineSnap
+    unsigned lineAlign : 1; // LineAlign
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     unsigned useTouchOverflowScrolling: 1;
 #endif
 #if ENABLE(CSS_IMAGE_RESOLUTION)
-    unsigned m_imageResolutionSource : 1; // ImageResolutionSource
-    unsigned m_imageResolutionSnap : 1; // ImageResolutionSnap
+    unsigned imageResolutionSource : 1; // ImageResolutionSource
+    unsigned imageResolutionSnap : 1; // ImageResolutionSnap
 #endif
 #if ENABLE(CSS3_TEXT)
-    unsigned m_textAlignLast : 3; // TextAlignLast
-    unsigned m_textJustify : 2; // TextJustify
-#endif // CSS3_TEXT
-    unsigned m_textDecorationSkip : 5; // TextDecorationSkip
-    unsigned m_textUnderlinePosition : 3; // TextUnderlinePosition
-    unsigned m_rubyPosition : 2; // RubyPosition
-    unsigned m_textZoom: 1; // TextZoom
+    unsigned textAlignLast : 3; // TextAlignLast
+    unsigned textJustify : 2; // TextJustify
+#endif
+    unsigned textDecorationSkip : 5; // TextDecorationSkip
+    unsigned textUnderlinePosition : 3; // TextUnderlinePosition
+    unsigned rubyPosition : 2; // RubyPosition
+    unsigned textZoom: 1; // TextZoom
 
 #if PLATFORM(IOS)
     unsigned touchCalloutEnabled : 1;
@@ -137,7 +134,17 @@ public:
     unsigned trailingWord : 1;
 #endif
 
-    unsigned m_hangingPunctuation : 4;
+    unsigned hangingPunctuation : 4;
+
+    unsigned paintOrder : 3; // PaintOrder
+    unsigned capStyle : 2; // LineCap
+    unsigned joinStyle : 2; // LineJoin
+    unsigned hasSetStrokeWidth : 1;
+    unsigned hasSetStrokeColor : 1;
+    Length strokeWidth;
+    Color strokeColor;
+    Color visitedLinkStrokeColor;
+    float miterLimit;
 
     AtomicString hyphenationString;
     short hyphenationLimitBefore;
@@ -147,15 +154,15 @@ public:
     AtomicString textEmphasisCustomMark;
     RefPtr<QuotesData> quotes;
 
-    AtomicString m_lineGrid;
-    unsigned m_tabSize;
+    AtomicString lineGrid;
+    unsigned tabSize;
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     TextSizeAdjustment textSizeAdjust;
 #endif
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
-    float m_imageResolution;
+    float imageResolution;
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -168,5 +175,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleRareInheritedData_h

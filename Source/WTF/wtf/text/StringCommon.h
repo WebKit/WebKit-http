@@ -26,8 +26,10 @@
 #ifndef StringCommon_h
 #define StringCommon_h
 
+#include <algorithm>
 #include <unicode/uchar.h>
 #include <wtf/ASCIICType.h>
+#include <wtf/NotFound.h>
 
 namespace WTF {
 
@@ -323,6 +325,17 @@ ALWAYS_INLINE bool equalCommon(const StringClassA* a, const StringClassB* b)
     return equal(*a, *b);
 }
 
+template<typename StringClass, unsigned length> bool equal(const StringClass& a, const UChar (&codeUnits)[length])
+{
+    if (a.length() != length)
+        return false;
+
+    if (a.is8Bit())
+        return equal(a.characters8(), codeUnits, length);
+
+    return equal(a.characters16(), codeUnits, length);
+}
+
 template<typename CharacterTypeA, typename CharacterTypeB>
 inline bool equalIgnoringASCIICase(const CharacterTypeA* a, const CharacterTypeB* b, unsigned length)
 {
@@ -590,20 +603,37 @@ template<typename CharacterType, unsigned lowercaseLettersLength> inline bool eq
     return charactersLength == lowercaseLettersStringLength && equalLettersIgnoringASCIICase(characters, lowercaseLetters, lowercaseLettersStringLength);
 }
 
-// This is intentionally not marked inline because it's used often and is not speed-critical enough to want it inlined everywhere.
-template<typename StringClass> bool equalLettersIgnoringASCIICaseCommonWithoutLength(const StringClass& string, const char* lowercaseLetters)
+template<typename StringClass> bool inline hasPrefixWithLettersIgnoringASCIICaseCommon(const StringClass& string, const char* lowercaseLetters, unsigned length)
 {
 #if !ASSERT_DISABLED
     ASSERT(*lowercaseLetters);
     for (const char* letter = lowercaseLetters; *letter; ++letter)
         ASSERT(toASCIILowerUnchecked(*letter) == *letter);
 #endif
-    unsigned length = string.length();
-    if (length != strlen(lowercaseLetters))
-        return false;
+    ASSERT(string.length() >= length);
+
     if (string.is8Bit())
         return equalLettersIgnoringASCIICase(string.characters8(), lowercaseLetters, length);
     return equalLettersIgnoringASCIICase(string.characters16(), lowercaseLetters, length);
+}
+
+// This is intentionally not marked inline because it's used often and is not speed-critical enough to want it inlined everywhere.
+template<typename StringClass> bool equalLettersIgnoringASCIICaseCommonWithoutLength(const StringClass& string, const char* lowercaseLetters)
+{
+    unsigned length = string.length();
+    if (length != strlen(lowercaseLetters))
+        return false;
+    return hasPrefixWithLettersIgnoringASCIICaseCommon(string, lowercaseLetters, length);
+}
+
+template<typename StringClass> bool startsWithLettersIgnoringASCIICaseCommonWithoutLength(const StringClass& string, const char* lowercaseLetters)
+{
+    size_t prefixLength = strlen(lowercaseLetters);
+    if (!prefixLength)
+        return true;
+    if (string.length() < prefixLength)
+        return false;
+    return hasPrefixWithLettersIgnoringASCIICaseCommon(string, lowercaseLetters, prefixLength);
 }
 
 template<typename StringClass, unsigned length> inline bool equalLettersIgnoringASCIICaseCommon(const StringClass& string, const char (&lowercaseLetters)[length])
@@ -612,6 +642,12 @@ template<typename StringClass, unsigned length> inline bool equalLettersIgnoring
     ASSERT(strlen(lowercaseLetters) == length - 1);
     const char* pointer = lowercaseLetters;
     return equalLettersIgnoringASCIICaseCommonWithoutLength(string, pointer);
+}
+
+template<typename StringClass, unsigned length> inline bool startsWithLettersIgnoringASCIICaseCommon(const StringClass& string, const char (&lowercaseLetters)[length])
+{
+    const char* pointer = lowercaseLetters;
+    return startsWithLettersIgnoringASCIICaseCommonWithoutLength(string, pointer);
 }
 
 }

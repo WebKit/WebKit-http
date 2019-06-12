@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,42 +23,35 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JITNegGenerator_h
-#define JITNegGenerator_h
+#pragma once
 
 #if ENABLE(JIT)
 
 #include "CCallHelpers.h"
-#include "SnippetOperand.h"
+#include "JITMathIC.h"
+#include "JITMathICInlineResult.h"
 
 namespace JSC {
 
 class JITNegGenerator {
 public:
+    JITNegGenerator() = default;
+
     JITNegGenerator(JSValueRegs result, JSValueRegs src, GPRReg scratchGPR)
         : m_result(result)
         , m_src(src)
         , m_scratchGPR(scratchGPR)
     { }
 
-    void generateFastPath(CCallHelpers&);
-
-    bool didEmitFastPath() const { return m_didEmitFastPath; }
-    CCallHelpers::JumpList& endJumpList() { return m_endJumpList; }
-    CCallHelpers::JumpList& slowPathJumpList() { return m_slowPathJumpList; }
+    JITMathICInlineResult generateInline(CCallHelpers&, MathICGenerationState&, const ArithProfile*);
+    bool generateFastPath(CCallHelpers&, CCallHelpers::JumpList& endJumpList, CCallHelpers::JumpList& slowPathJumpList, const ArithProfile*, bool shouldEmitProfiling);
 
 private:
     JSValueRegs m_result;
     JSValueRegs m_src;
     GPRReg m_scratchGPR;
-    bool m_didEmitFastPath { false };
-
-    CCallHelpers::JumpList m_endJumpList;
-    CCallHelpers::JumpList m_slowPathJumpList;
 };
 
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITNegGenerator_h

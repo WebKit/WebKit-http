@@ -4,6 +4,7 @@ var mediaElement = document; // If not set, an event from any element will trigg
 var consoleElement = null;
 var printFullTestDetails = true; // This is optionaly switched of by test whose tested values can differ. (see disableFullTestDetailsPrinting())
 var Failed = false;
+var Success = true;
 
 var track = null; // Current TextTrack being tested.
 var cues = null; // Current TextTrackCueList being tested.
@@ -266,6 +267,11 @@ function failTest(text)
     endTest();
 }
 
+function passTest(text)
+{
+    logResult(Success, text);
+    endTest();
+}
 
 function logResult(success, text)
 {
@@ -396,7 +402,10 @@ function runWithKeyDown(fn)
 
     function thunk() {
         document.removeEventListener(eventName, thunk, false);
-        fn();
+        if (typeof fn === 'function')
+            fn();
+        else
+            run(fn);
     }
     document.addEventListener(eventName, thunk, false);
 
@@ -406,4 +415,34 @@ function runWithKeyDown(fn)
         else
             eventSender.mouseDown();
     }
+}
+
+function shouldResolve(promise) {
+    return new Promise((resolve, reject) => {
+        promise.then(result => {
+            logResult(Success, 'Promise resolved');
+            resolve(result);
+        }).catch((error) => {
+            logResult(Failed, 'Promise rejected');
+            reject(error);
+        });
+    });
+}
+
+function shouldReject(promise) {
+    return new Promise((resolve, reject) => {
+        promise.then(result => {
+            logResult(Failed, 'Promise resolved incorrectly');
+            reject(result);
+        }).catch((error) => {
+            logResult(Success, 'Promise rejected correctly');
+            resolve(error);
+        });
+    });
+
+}
+
+function handlePromise(promise) {
+    function handle() { }
+    return promise.then(handle, handle);
 }

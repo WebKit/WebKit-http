@@ -26,40 +26,34 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ExceptionBase_h
-#define ExceptionBase_h
+#pragma once
 
-#include "ExceptionCode.h"
-#include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 struct ExceptionCodeDescription;
 
+using ExceptionCode = int;
+
 class ExceptionBase : public RefCounted<ExceptionBase> {
 public:
     unsigned short code() const { return m_code; }
     String name() const { return m_name; }
     String message() const { return m_message; }
-    String description() const { return m_description; }
 
     String toString() const;
 
 protected:
-    enum class MessageSource {
-        ConstructMessage,
-        UseDescription,
-    };
-    explicit ExceptionBase(const ExceptionCodeDescription&, MessageSource = MessageSource::ConstructMessage);
+    explicit ExceptionBase(const ExceptionCodeDescription&);
+    ExceptionBase(unsigned short code, const String& name, const String& message, const String& typeName);
 
 private:
     unsigned short m_code;
     String m_name;
     String m_message;
-    String m_description;
+    String m_typeName;
+    mutable String m_toString;
 };
 
 } // namespace WebCore
-
-#endif // ExceptionBase_h

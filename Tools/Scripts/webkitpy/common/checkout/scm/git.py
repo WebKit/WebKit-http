@@ -1,5 +1,5 @@
 # Copyright (c) 2009, 2010, 2011 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2016 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -113,6 +113,14 @@ class Git(SCM, SVNRepository):
             return executive.run_command([cls.executable_name, 'rev-parse', '--is-inside-work-tree'], cwd=path, error_handler=Executive.ignore_error).rstrip() == "true"
         except OSError, e:
             # The Windows bots seem to through a WindowsError when git isn't installed.
+            return False
+
+    @classmethod
+    def clone(cls, url, directory, executive=None):
+        try:
+            executive = executive or Executive()
+            return executive.run_command([cls.executable_name, 'clone', '-v', url, directory], error_handler=Executive.ignore_error)
+        except OSError, e:
             return False
 
     def find_checkout_root(self, path):
@@ -242,10 +250,6 @@ class Git(SCM, SVNRepository):
         return self._changes_files_for_commit(commit_id)
 
     def revisions_changing_file(self, path, limit=5):
-        # raise a script error if path does not exists to match the behavior of  the svn implementation.
-        if not self._filesystem.exists(path):
-            raise ScriptError(message="Path %s does not exist." % path)
-
         # git rev-list head --remove-empty --limit=5 -- path would be equivalent.
         commit_ids = self._run_git(["log", "--remove-empty", "--pretty=format:%H", "-%s" % limit, "--", path]).splitlines()
         return filter(lambda revision: revision, map(self.svn_revision_from_git_commit, commit_ids))
@@ -274,12 +278,18 @@ class Git(SCM, SVNRepository):
         # git 1.7.0.4 (and earlier) didn't support the separate arg.
         return self._run_git(['log', '-1', '--grep=' + grep_str, '--date=iso', self.find_checkout_root(path)])
 
+    def _most_recent_log_for_revision(self, revision, path):
+        return self._run_git(['log', '-1', revision, '--date=iso', self.find_checkout_root(path)])
+
     def svn_revision(self, path):
         git_log = self._most_recent_log_matching('git-svn-id:', path)
         match = re.search("^\s*git-svn-id:.*@(?P<svn_revision>\d+)\ ", git_log, re.MULTILINE)
         if not match:
             return ""
         return str(match.group('svn_revision'))
+
+    def native_revision(self, path):
+        return self._run_git(['-C', self.find_checkout_root(path), 'log', '-1', '--pretty=format:%H'])
 
     def svn_url(self):
         git_command = ['svn', 'info']
@@ -303,6 +313,11 @@ class Git(SCM, SVNRepository):
         sign = 1 if match.group(7) == '+' else -1
         time_without_timezone = time_with_timezone - datetime.timedelta(hours=sign * int(match.group(8)), minutes=int(match.group(9)))
         return time_without_timezone.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    def timestamp_of_native_revision(self, path, sha):
+        unix_timestamp = self._run_git(['-C', self.find_checkout_root(path), 'log', '-1', sha, '--pretty=format:%ct']).rstrip()
+        commit_timestamp = datetime.datetime.utcfromtimestamp(float(unix_timestamp))
+        return commit_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     def prepend_svn_revision(self, diff):
         revision = self.head_svn_revision()
@@ -480,6 +495,18 @@ class Git(SCM, SVNRepository):
         return self._run_git(['svn', 'blame', path])
 
     # Git-specific methods:
+    def origin_url(self):
+        return self._run_git(['config', '--get', 'remote.origin.url']).strip()
+
+    def init_submodules(self):
+        return self._run_git(['submodule', 'update', '--init', '--recursive'])
+
+    def submodules_status(self):
+        return self._run_git(['submodule', 'status', '--recursive'])
+
+    def deinit_submodules(self):
+        return self._run_git(['submodule', 'deinit', '-f', '.'])
+
     def _branch_ref_exists(self, branch_ref):
         return self._run_git(['show-ref', '--quiet', '--verify', branch_ref], return_exit_code=True) == 0
 
@@ -553,3 +580,12 @@ class Git(SCM, SVNRepository):
 
     def files_changed_summary_for_commit(self, commit_id):
         return self._run_git(['diff-tree', '--shortstat', '--no-renames', '--no-commit-id', commit_id])
+
+    def fetch(self, remote='origin'):
+        return self._run_git(['fetch', remote])
+
+    def checkout(self, revision, quiet=None):
+        command = ['checkout', revision]
+        if quiet:
+            command += ['-q']
+        return self._run_git(command)

@@ -29,6 +29,8 @@
 #include <WebKit/WKBase.h>
 #include <WebKit/WKContext.h>
 
+#include <unistd.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -60,6 +62,8 @@ WK_EXPORT void WKContextSetDomainRelaxationForbiddenForURLScheme(WKContextRef co
 
 WK_EXPORT void WKContextSetCanHandleHTTPSServerTrustEvaluation(WKContextRef context, bool value);
 
+WK_EXPORT void WKContextSetDiskCacheSpeculativeValidationEnabled(WKContextRef context, bool value);
+
 WK_EXPORT void WKContextSetIconDatabasePath(WKContextRef context, WKStringRef iconDatabasePath);
 
 WK_EXPORT void WKContextAllowSpecificHTTPSCertificateForHost(WKContextRef context, WKCertificateInfoRef certificate, WKStringRef host);
@@ -79,6 +83,10 @@ WK_EXPORT void WKContextWarmInitialProcess(WKContextRef context);
 // At some point it should be removed.
 WK_EXPORT void WKContextSetUsesNetworkProcess(WKContextRef, bool);
 
+WK_EXPORT void WKContextTerminateNetworkProcess(WKContextRef);
+
+WK_EXPORT void WKContextSetAllowsAnySSLCertificateForWebSocketTesting(WKContextRef, bool);
+    
 // Test only. Should be called before any secondary processes are started.
 WK_EXPORT void WKContextUseTestingNetworkSession(WKContextRef context);
 
@@ -91,6 +99,9 @@ WK_EXPORT void WKContextSetInvalidMessageFunction(WKContextInvalidMessageFunctio
 WK_EXPORT void WKContextSetMemoryCacheDisabled(WKContextRef, bool disabled);
 
 WK_EXPORT void WKContextSetFontWhitelist(WKContextRef, WKArrayRef);
+
+WK_EXPORT pid_t WKContextGetNetworkProcessIdentifier(WKContextRef context);
+WK_EXPORT pid_t WKContextGetDatabaseProcessIdentifier(WKContextRef context);
 
 #ifdef __cplusplus
 }

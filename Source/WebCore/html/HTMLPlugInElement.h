@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,15 +20,10 @@
  *
  */
 
-#ifndef HTMLPlugInElement_h
-#define HTMLPlugInElement_h
+#pragma once
 
 #include "HTMLFrameOwnerElement.h"
 #include "Image.h"
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-struct NPObject;
-#endif
 
 namespace JSC {
 namespace Bindings {
@@ -49,7 +44,7 @@ public:
 
     void resetInstance();
 
-    PassRefPtr<JSC::Bindings::Instance> getInstance();
+    JSC::Bindings::Instance* bindingsInstance();
 
     enum class PluginLoadingPolicy { DoNotLoad, Load };
     WEBCORE_EXPORT Widget* pluginWidget(PluginLoadingPolicy = PluginLoadingPolicy::Load) const;
@@ -65,46 +60,45 @@ public:
     };
     DisplayState displayState() const { return m_displayState; }
     virtual void setDisplayState(DisplayState);
-    virtual void updateSnapshot(PassRefPtr<Image>) { }
+    virtual void updateSnapshot(Image*) { }
     virtual void dispatchPendingMouseClick() { }
     virtual bool isRestartedPlugin() const { return false; }
 
     JSC::JSObject* scriptObjectForPluginReplacement();
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    WEBCORE_EXPORT NPObject* getNPObject();
-#endif
-
     bool isCapturingMouseEvents() const { return m_isCapturingMouseEvents; }
     void setIsCapturingMouseEvents(bool capturing) { m_isCapturingMouseEvents = capturing; }
 
-    virtual bool canContainRangeEndPoint() const override { return false; }
+    bool canContainRangeEndPoint() const override { return false; }
 
     bool canProcessDrag() const;
 
 #if PLATFORM(IOS)
-    virtual bool willRespondToMouseMoveEvents() override { return false; }
+    bool willRespondToMouseMoveEvents() override { return false; }
 #endif
-    virtual bool willRespondToMouseClickEvents() override;
+    bool willRespondToMouseClickEvents() override;
 
     virtual bool isPlugInImageElement() const { return false; }
 
     bool isUserObservable() const;
-    
+
+    WEBCORE_EXPORT bool isReplacementObscured(const String& unavailabilityDescription);
+    WEBCORE_EXPORT bool isReplacementObscured();
+
 protected:
     HTMLPlugInElement(const QualifiedName& tagName, Document&);
 
-    virtual void willDetachRenderers() override;
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void willDetachRenderers() override;
+    bool isPresentationAttribute(const QualifiedName&) const override;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
     virtual bool useFallbackContent() const { return false; }
 
-    virtual void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
     virtual bool requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues);
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
-    virtual void didAddUserAgentShadowRoot(ShadowRoot*) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    void didAddUserAgentShadowRoot(ShadowRoot*) override;
 
     // Subclasses should use guardedDispatchBeforeLoadEvent instead of calling dispatchBeforeLoadEvent directly.
     bool guardedDispatchBeforeLoadEvent(const String& sourceURL);
@@ -117,23 +111,17 @@ private:
 
     bool dispatchBeforeLoadEvent(const String& sourceURL); // Not implemented, generates a compile error if subclasses call this by mistake.
 
-    // FIXME: Shadow DOM spec says we should be able to create shadow root on applet, embed, and object.
-    virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
-
     // This will load the plugin if necessary.
     virtual RenderWidget* renderWidgetLoadingPlugin() const = 0;
 
-    virtual bool supportsFocus() const override;
+    bool supportsFocus() const override;
 
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const override;
-    virtual bool isPluginElement() const override final;
+    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    bool isPluginElement() const final;
 
     RefPtr<JSC::Bindings::Instance> m_instance;
     Timer m_swapRendererTimer;
     RefPtr<PluginReplacement> m_pluginReplacement;
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    NPObject* m_NPObject;
-#endif
     bool m_isCapturingMouseEvents;
 
     DisplayState m_displayState;
@@ -144,5 +132,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLPlugInElement)
     static bool isType(const WebCore::Node& node) { return node.isPluginElement(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // HTMLPlugInElement_h

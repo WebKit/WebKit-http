@@ -30,24 +30,17 @@
 #include "NetworkResourcesData.h"
 
 #include "CachedResource.h"
-#include "DOMImplementation.h"
 #include "ResourceResponse.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
-
-namespace {
-// 100MB
-static const size_t maximumResourcesContentSize = 100 * 1000 * 1000;
-
-// 10MB
-static const size_t maximumSingleResourceContentSize = 10 * 1000 * 1000;
-}
 
 using namespace Inspector;
 
 namespace WebCore {
 
-// ResourceData
+static const size_t maximumResourcesContentSize = 100 * 1000 * 1000; // 100MB
+static const size_t maximumSingleResourceContentSize = 10 * 1000 * 1000; // 10MB
+
 NetworkResourcesData::ResourceData::ResourceData(const String& requestId, const String& loaderId)
     : m_requestId(requestId)
     , m_loaderId(loaderId)
@@ -117,7 +110,6 @@ size_t NetworkResourcesData::ResourceData::decodeDataToContent()
     return contentSizeInBytes(m_content) - dataLength;
 }
 
-// NetworkResourcesData
 NetworkResourcesData::NetworkResourcesData()
     : m_contentSize(0)
     , m_maximumResourcesContentSize(maximumResourcesContentSize)
@@ -136,21 +128,6 @@ void NetworkResourcesData::resourceCreated(const String& requestId, const String
     m_requestIdToResourceDataMap.set(requestId, new ResourceData(requestId, loaderId));
 }
 
-static RefPtr<TextResourceDecoder> createOtherResourceTextDecoder(const String& mimeType, const String& textEncodingName)
-{
-    RefPtr<TextResourceDecoder> decoder;
-    if (!textEncodingName.isEmpty())
-        decoder = TextResourceDecoder::create("text/plain", textEncodingName);
-    else if (DOMImplementation::isXMLMIMEType(mimeType)) {
-        decoder = TextResourceDecoder::create("application/xml");
-        decoder->useLenientXMLDecoding();
-    } else if (equalLettersIgnoringASCIICase(mimeType, "text/html"))
-        decoder = TextResourceDecoder::create("text/html", "UTF-8");
-    else if (mimeType == "text/plain")
-        decoder = TextResourceDecoder::create("text/plain", "ISO-8859-1");
-    return decoder;
-}
-
 void NetworkResourcesData::responseReceived(const String& requestId, const String& frameId, const ResourceResponse& response)
 {
     ResourceData* resourceData = resourceDataForRequestId(requestId);
@@ -158,7 +135,7 @@ void NetworkResourcesData::responseReceived(const String& requestId, const Strin
         return;
     resourceData->setFrameId(frameId);
     resourceData->setUrl(response.url());
-    resourceData->setDecoder(createOtherResourceTextDecoder(response.mimeType(), response.textEncodingName()));
+    resourceData->setDecoder(InspectorPageAgent::createTextDecoder(response.mimeType(), response.textEncodingName()));
     resourceData->setHTTPStatusCode(response.httpStatusCode());
 }
 
@@ -190,7 +167,7 @@ void NetworkResourcesData::setResourceContent(const String& requestId, const Str
         return;
     if (ensureFreeSpace(dataLength) && !resourceData->isContentEvicted()) {
         // We can not be sure that we didn't try to save this request data while it was loading, so remove it, if any.
-        if (resourceData->hasContent())
+        if (resourceData->hasContent() || resourceData->hasData())
             m_contentSize -= resourceData->removeContent();
         m_requestIdsDeque.append(requestId);
         resourceData->setContent(content, base64Encoded);
@@ -281,6 +258,13 @@ void NetworkResourcesData::clear(const String& preservedLoaderId)
             delete resourceData;
     }
     m_requestIdToResourceDataMap.swap(preservedMap);
+}
+
+Vector<NetworkResourcesData::ResourceData*> NetworkResourcesData::resources()
+{
+    Vector<NetworkResourcesData::ResourceData*> resources;
+    copyValuesToVector(m_requestIdToResourceDataMap, resources);
+    return resources;
 }
 
 NetworkResourcesData::ResourceData* NetworkResourcesData::resourceDataForRequestId(const String& requestId)

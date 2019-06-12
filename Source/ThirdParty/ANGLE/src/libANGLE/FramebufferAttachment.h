@@ -12,9 +12,10 @@
 
 #include "angle_gl.h"
 #include "common/angleutils.h"
+#include "libANGLE/angletypes.h"
 #include "libANGLE/Error.h"
 #include "libANGLE/ImageIndex.h"
-#include "libANGLE/RefCountObject.h"
+#include "libANGLE/signal_utils.h"
 
 namespace egl
 {
@@ -38,6 +39,7 @@ class FramebufferAttachmentObjectImpl;
 namespace gl
 {
 class FramebufferAttachmentObject;
+struct Format;
 class Renderbuffer;
 class Texture;
 
@@ -57,20 +59,8 @@ class FramebufferAttachment final
                           const ImageIndex &textureIndex,
                           FramebufferAttachmentObject *resource);
 
-    FramebufferAttachment(const FramebufferAttachment &other)
-       : mType(other.mType),
-         mTarget(other.mTarget)
-    {
-        mResource.set(other.mResource.get());
-    }
-
-    FramebufferAttachment &operator=(const FramebufferAttachment &other)
-    {
-        mType = other.mType;
-        mTarget = other.mTarget;
-        mResource.set(other.mResource.get());
-        return *this;
-    }
+    FramebufferAttachment(const FramebufferAttachment &other);
+    FramebufferAttachment &operator=(const FramebufferAttachment &other);
 
     ~FramebufferAttachment();
 
@@ -83,6 +73,7 @@ class FramebufferAttachment final
     class Target
     {
       public:
+        Target();
         Target(GLenum binding, const ImageIndex &imageIndex);
         Target(const Target &other);
         Target &operator=(const Target &other);
@@ -115,7 +106,7 @@ class FramebufferAttachment final
     bool isRenderbufferWithId(GLuint renderbufferId) const { return mType == GL_RENDERBUFFER && id() == renderbufferId; }
 
     GLenum getBinding() const { return mTarget.binding(); }
-    GLuint id() const { return mResource.id(); }
+    GLuint id() const;
 
     // These methods are only legal to call on Texture attachments
     const ImageIndex &getTextureImageIndex() const;
@@ -123,9 +114,11 @@ class FramebufferAttachment final
     GLint mipLevel() const;
     GLint layer() const;
 
-    GLsizei getWidth() const;
-    GLsizei getHeight() const;
-    GLenum getInternalFormat() const;
+    // The size of the underlying resource the attachment points to. The 'depth' value will
+    // correspond to a 3D texture depth or the layer count of a 2D array texture. For Surfaces and
+    // Renderbuffers, it will always be 1.
+    Extents getSize() const;
+    const Format &getFormat() const;
     GLsizei getSamples() const;
     GLenum type() const { return mType; }
     bool isAttached() const { return mType != GL_NONE; }
@@ -133,96 +126,81 @@ class FramebufferAttachment final
     Renderbuffer *getRenderbuffer() const;
     Texture *getTexture() const;
     const egl::Surface *getSurface() const;
+    FramebufferAttachmentObject *getResource() const;
 
     // "T" must be static_castable from FramebufferAttachmentRenderTarget
     template <typename T>
     gl::Error getRenderTarget(T **rtOut) const
     {
-        // Cast through the pointer-to-pointer type
-        rx::FramebufferAttachmentRenderTarget *rtPtr = nullptr;
-        gl::Error error = getRenderTarget(&rtPtr);
-        *rtOut = static_cast<T*>(rtPtr);
-        return error;
+        static_assert(std::is_base_of<rx::FramebufferAttachmentRenderTarget, T>(),
+                      "Invalid RenderTarget class.");
+        return getRenderTargetImpl(
+            reinterpret_cast<rx::FramebufferAttachmentRenderTarget **>(rtOut));
     }
 
+    bool operator==(const FramebufferAttachment &other) const;
+    bool operator!=(const FramebufferAttachment &other) const;
+
   private:
-    gl::Error getRenderTarget(rx::FramebufferAttachmentRenderTarget **rtOut) const;
+    gl::Error getRenderTargetImpl(rx::FramebufferAttachmentRenderTarget **rtOut) const;
 
     GLenum mType;
     Target mTarget;
-    BindingPointer<FramebufferAttachmentObject> mResource;
+    FramebufferAttachmentObject *mResource;
 };
 
 // A base class for objects that FBO Attachments may point to.
-class FramebufferAttachmentObject : public RefCountObject
+class FramebufferAttachmentObject
 {
   public:
-    FramebufferAttachmentObject(GLuint id) : RefCountObject(id) {}
+    FramebufferAttachmentObject() {}
+    virtual ~FramebufferAttachmentObject() {}
 
-    virtual GLsizei getAttachmentWidth(const FramebufferAttachment::Target &target) const = 0;
-    virtual GLsizei getAttachmentHeight(const FramebufferAttachment::Target &target) const = 0;
-    virtual GLenum getAttachmentInternalFormat(const FramebufferAttachment::Target &target) const = 0;
+    virtual Extents getAttachmentSize(const FramebufferAttachment::Target &target) const = 0;
+    virtual const Format &getAttachmentFormat(
+        const FramebufferAttachment::Target &target) const                                  = 0;
     virtual GLsizei getAttachmentSamples(const FramebufferAttachment::Target &target) const = 0;
+
+    virtual void onAttach() = 0;
+    virtual void onDetach() = 0;
+    virtual GLuint getId() const = 0;
 
     Error getAttachmentRenderTarget(const FramebufferAttachment::Target &target,
                                     rx::FramebufferAttachmentRenderTarget **rtOut) const;
 
+    angle::BroadcastChannel<> *getDirtyChannel();
+
   protected:
     virtual rx::FramebufferAttachmentObjectImpl *getAttachmentImpl() const = 0;
+
+    angle::BroadcastChannel<> mDirtyChannel;
 };
 
-inline GLsizei FramebufferAttachment::getWidth() const
+inline Extents FramebufferAttachment::getSize() const
 {
-    return mResource->getAttachmentWidth(mTarget);
+    ASSERT(mResource);
+    return mResource->getAttachmentSize(mTarget);
 }
 
-inline GLsizei FramebufferAttachment::getHeight() const
+inline const Format &FramebufferAttachment::getFormat() const
 {
-    return mResource->getAttachmentHeight(mTarget);
-}
-
-inline GLenum FramebufferAttachment::getInternalFormat() const
-{
-    return mResource->getAttachmentInternalFormat(mTarget);
+    ASSERT(mResource);
+    return mResource->getAttachmentFormat(mTarget);
 }
 
 inline GLsizei FramebufferAttachment::getSamples() const
 {
+    ASSERT(mResource);
     return mResource->getAttachmentSamples(mTarget);
 }
 
-inline gl::Error FramebufferAttachment::getRenderTarget(rx::FramebufferAttachmentRenderTarget **rtOut) const
+inline gl::Error FramebufferAttachment::getRenderTargetImpl(
+    rx::FramebufferAttachmentRenderTarget **rtOut) const
 {
+    ASSERT(mResource);
     return mResource->getAttachmentRenderTarget(mTarget, rtOut);
 }
 
 } // namespace gl
-
-namespace rx
-{
-
-class FramebufferAttachmentObjectImpl : angle::NonCopyable
-{
-  public:
-    FramebufferAttachmentObjectImpl() {}
-    virtual ~FramebufferAttachmentObjectImpl() {}
-
-    virtual gl::Error getAttachmentRenderTarget(const gl::FramebufferAttachment::Target &target,
-                                                FramebufferAttachmentRenderTarget **rtOut) = 0;
-};
-
-} // namespace rx
-
-namespace gl
-{
-
-inline Error FramebufferAttachmentObject::getAttachmentRenderTarget(
-    const FramebufferAttachment::Target &target,
-    rx::FramebufferAttachmentRenderTarget **rtOut) const
-{
-    return getAttachmentImpl()->getAttachmentRenderTarget(target, rtOut);
-}
-
-}
 
 #endif // LIBANGLE_FRAMEBUFFERATTACHMENT_H_

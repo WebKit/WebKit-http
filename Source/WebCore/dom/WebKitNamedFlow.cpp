@@ -30,7 +30,9 @@
 #include "config.h"
 #include "WebKitNamedFlow.h"
 
+#include "EventNames.h"
 #include "NamedFlowCollection.h"
+#include "NoEventDispatchAssertion.h"
 #include "RenderNamedFlowFragment.h"
 #include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
@@ -120,7 +122,7 @@ int WebKitNamedFlow::firstEmptyRegionIndex() const
 Ref<NodeList> WebKitNamedFlow::getRegionsByContent(Node* contentNode)
 {
     if (!contentNode)
-        return StaticElementList::createEmpty();
+        return StaticElementList::create();
 
     if (m_flowManager->document())
         m_flowManager->document()->updateLayoutIgnorePendingStylesheets();
@@ -128,7 +130,7 @@ Ref<NodeList> WebKitNamedFlow::getRegionsByContent(Node* contentNode)
     // The renderer may be destroyed or created after the style update.
     // Because this is called from JS, where the wrapper keeps a reference to the NamedFlow, no guard is necessary.
     if (!m_parentFlowThread)
-        return StaticElementList::createEmpty();
+        return StaticElementList::create();
 
     Vector<Ref<Element>> regionElements;
 
@@ -148,7 +150,7 @@ Ref<NodeList> WebKitNamedFlow::getRegionsByContent(Node* contentNode)
         }
     }
 
-    return StaticElementList::adopt(regionElements);
+    return StaticElementList::create(WTFMove(regionElements));
 }
 
 Ref<NodeList> WebKitNamedFlow::getRegions()
@@ -159,7 +161,7 @@ Ref<NodeList> WebKitNamedFlow::getRegions()
     // The renderer may be destroyed or created after the style update.
     // Because this is called from JS, where the wrapper keeps a reference to the NamedFlow, no guard is necessary.
     if (!m_parentFlowThread)
-        return StaticElementList::createEmpty();
+        return StaticElementList::create();
 
     Vector<Ref<Element>> regionElements;
 
@@ -175,7 +177,7 @@ Ref<NodeList> WebKitNamedFlow::getRegions()
         regionElements.append(*namedFlowFragment.generatingElement());
     }
 
-    return StaticElementList::adopt(regionElements);
+    return StaticElementList::create(WTFMove(regionElements));
 }
 
 Ref<NodeList> WebKitNamedFlow::getContent()
@@ -186,17 +188,17 @@ Ref<NodeList> WebKitNamedFlow::getContent()
     // The renderer may be destroyed or created after the style update.
     // Because this is called from JS, where the wrapper keeps a reference to the NamedFlow, no guard is necessary.
     if (!m_parentFlowThread)
-        return StaticElementList::createEmpty();
+        return StaticElementList::create();
 
+    auto& contentElementsList = m_parentFlowThread->contentElements();
     Vector<Ref<Element>> contentElements;
-
-    const NamedFlowContentElements& contentElementsList = m_parentFlowThread->contentElements();
+    contentElements.reserveInitialCapacity(contentElementsList.size());
     for (auto& element : contentElementsList) {
         ASSERT(element->computedStyle()->flowThread() == m_parentFlowThread->flowThreadName());
-        contentElements.append(*element);
+        contentElements.uncheckedAppend(*element);
     }
 
-    return StaticElementList::adopt(contentElements);
+    return StaticElementList::create(WTFMove(contentElements));
 }
 
 void WebKitNamedFlow::setRenderer(RenderNamedFlowThread* parentFlowThread)
@@ -210,7 +212,7 @@ void WebKitNamedFlow::setRenderer(RenderNamedFlowThread* parentFlowThread)
 
 void WebKitNamedFlow::dispatchRegionOversetChangeEvent()
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
     
     // If the flow is in the "NULL" state the event should not be dispatched any more.
     if (flowState() == FlowStateNull)

@@ -29,36 +29,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptCallFrame_h
-#define ScriptCallFrame_h
+#pragma once
 
+#include "DebuggerPrimitives.h"
+#include "InspectorProtocolObjects.h"
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
-#include "InspectorProtocolObjects.h"
 
 namespace Inspector {
 
 class JS_EXPORT_PRIVATE ScriptCallFrame  {
 public:
-    ScriptCallFrame(const String& functionName, const String& scriptName, unsigned lineNumber, unsigned column);
+    ScriptCallFrame(const String& functionName, const String& scriptName, JSC::SourceID sourceID, unsigned lineNumber, unsigned column);
     ~ScriptCallFrame();
 
     const String& functionName() const { return m_functionName; }
     const String& sourceURL() const { return m_scriptName; }
     unsigned lineNumber() const { return m_lineNumber; }
     unsigned columnNumber() const { return m_column; }
+    JSC::SourceID sourceID() const { return m_sourceID; }
 
     bool isEqual(const ScriptCallFrame&) const;
+    bool isNative() const;
 
     Ref<Inspector::Protocol::Console::CallFrame> buildInspectorObject() const;
 
 private:
     String m_functionName;
     String m_scriptName;
+    JSC::SourceID m_sourceID;
     unsigned m_lineNumber;
     unsigned m_column;
 };
 
 } // namespace Inspector
-
-#endif // ScriptCallFrame_h

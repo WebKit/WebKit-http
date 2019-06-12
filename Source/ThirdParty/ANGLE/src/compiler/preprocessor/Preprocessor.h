@@ -7,9 +7,9 @@
 #ifndef COMPILER_PREPROCESSOR_PREPROCESSOR_H_
 #define COMPILER_PREPROCESSOR_PREPROCESSOR_H_
 
-#include <stddef.h>
+#include <cstddef>
 
-#include "pp_utils.h"
+#include "common/angleutils.h"
 
 namespace pp
 {
@@ -19,10 +19,18 @@ class DirectiveHandler;
 struct PreprocessorImpl;
 struct Token;
 
-class Preprocessor
+struct PreprocessorSettings : angle::NonCopyable
+{
+    PreprocessorSettings() : maxMacroExpansionDepth(1000) {}
+    int maxMacroExpansionDepth;
+};
+
+class Preprocessor : angle::NonCopyable
 {
   public:
-    Preprocessor(Diagnostics *diagnostics, DirectiveHandler *directiveHandler);
+    Preprocessor(Diagnostics *diagnostics,
+                 DirectiveHandler *directiveHandler,
+                 const PreprocessorSettings &settings);
     ~Preprocessor();
 
     // count: specifies the number of elements in the string and length arrays.
@@ -34,7 +42,7 @@ class Preprocessor
     // Each element in the length array may contain the length of the
     // corresponding string or a value less than 0 to indicate that the string
     // is null terminated.
-    bool init(size_t count, const char * const string[], const int length[]);
+    bool init(size_t count, const char *const string[], const int length[]);
     // Adds a pre-defined macro.
     void predefineMacro(const char *name, int value);
 
@@ -44,8 +52,6 @@ class Preprocessor
     void setMaxTokenSize(size_t maxTokenSize);
 
   private:
-    PP_DISALLOW_COPY_AND_ASSIGN(Preprocessor);
-
     PreprocessorImpl *mImpl;
 };
 

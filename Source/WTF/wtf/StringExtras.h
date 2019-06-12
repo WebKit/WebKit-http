@@ -36,47 +36,8 @@
 #endif 
 
 #if COMPILER(MSVC)
-// FIXME: why a COMPILER check instead of OS? also, these should be HAVE checks
 
-#include <errno.h>
-
-#if _MSC_VER < 1900
-inline int snprintf(char* buffer, size_t count, const char* format, ...) 
-{
-    int result;
-    va_list args;
-    va_start(args, format);
-    result = _vsnprintf(buffer, count, format, args);
-    if (result < 0 && errno != EINVAL)
-        result = _vscprintf(format, args);
-    va_end(args);
-
-    // In the case where the string entirely filled the buffer, _vsnprintf will not
-    // null-terminate it, but snprintf must.
-    if (count > 0)
-        buffer[count - 1] = '\0';
-
-    return result;
-}
-#endif
-
-inline double wtf_vsnprintf(char* buffer, size_t count, const char* format, va_list args)
-{
-    int result = _vsnprintf(buffer, count, format, args);
-    if (result < 0 && errno != EINVAL)
-        result = _vscprintf(format, args);
-
-    // In the case where the string entirely filled the buffer, _vsnprintf will not
-    // null-terminate it, but vsnprintf must.
-    if (count > 0)
-        buffer[count - 1] = '\0';
-
-    return result;
-}
-
-// Work around a difference in Microsoft's implementation of vsnprintf, where 
-// vsnprintf does not null terminate the buffer. WebKit can rely on the null termination.
-#define vsnprintf(buffer, count, format, args) wtf_vsnprintf(buffer, count, format, args)
+// FIXME: We should stop using these entirely and use suitable versions of equalIgnoringASCIICase instead.
 
 inline int strncasecmp(const char* s1, const char* s2, size_t len)
 {

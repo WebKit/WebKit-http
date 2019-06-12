@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef KeyedEncoderGlib_h
-#define KeyedEncoderGlib_h
+#pragma once
 
 #include "KeyedCoding.h"
 #include <glib.h>
@@ -39,25 +38,25 @@ public:
     KeyedEncoderGlib();
     ~KeyedEncoderGlib();
 
-    virtual PassRefPtr<WebCore::SharedBuffer> finishEncoding() override;
-
 private:
-    virtual void encodeBytes(const String& key, const uint8_t*, size_t) override;
-    virtual void encodeBool(const String& key, bool) override;
-    virtual void encodeUInt32(const String& key, uint32_t) override;
-    virtual void encodeInt32(const String& key, int32_t) override;
-    virtual void encodeInt64(const String& key, int64_t) override;
-    virtual void encodeFloat(const String& key, float) override;
-    virtual void encodeDouble(const String& key, double) override;
-    virtual void encodeString(const String& key, const String&) override;
+    RefPtr<WebCore::SharedBuffer> finishEncoding() final;
 
-    virtual void beginObject(const String& key) override;
-    virtual void endObject() override;
+    void encodeBytes(const String& key, const uint8_t*, size_t) final;
+    void encodeBool(const String& key, bool) final;
+    void encodeUInt32(const String& key, uint32_t) final;
+    void encodeInt32(const String& key, int32_t) final;
+    void encodeInt64(const String& key, int64_t) final;
+    void encodeFloat(const String& key, float) final;
+    void encodeDouble(const String& key, double) final;
+    void encodeString(const String& key, const String&) final;
 
-    virtual void beginArray(const String& key) override;
-    virtual void beginArrayElement() override;
-    virtual void endArrayElement() override;
-    virtual void endArray() override;
+    void beginObject(const String& key) final;
+    void endObject() final;
+
+    void beginArray(const String& key) final;
+    void beginArrayElement() final;
+    void endArrayElement() final;
+    void endArray() final;
 
     GVariantBuilder m_variantBuilder;
     Vector<GVariantBuilder*, 16> m_variantBuilderStack;
@@ -66,5 +65,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // KeyedEncoderGlib_h

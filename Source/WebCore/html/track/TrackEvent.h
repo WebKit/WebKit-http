@@ -23,46 +23,48 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TrackEvent_h
-#define TrackEvent_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
+#include "AudioTrack.h"
 #include "Event.h"
-#include "TrackBase.h"
+#include "TextTrack.h"
+#include "VideoTrack.h"
 
 namespace WebCore {
-
-struct TrackEventInit : public EventInit {
-    RefPtr<TrackBase> track;
-};
 
 class TrackEvent final : public Event {
 public:
     virtual ~TrackEvent();
 
-    static Ref<TrackEvent> create(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<TrackBase>&& track)
+    static Ref<TrackEvent> create(const AtomicString& type, bool canBubble, bool cancelable, Ref<TrackBase>&& track)
     {
         return adoptRef(*new TrackEvent(type, canBubble, cancelable, WTFMove(track)));
     }
 
-    static Ref<TrackEvent> createForBindings(const AtomicString& type, const TrackEventInit& initializer)
+    using TrackEventTrack = Variant<RefPtr<VideoTrack>, RefPtr<AudioTrack>, RefPtr<TextTrack>>;
+
+    struct Init : public EventInit {
+        std::optional<TrackEventTrack> track;
+    };
+
+    static Ref<TrackEvent> create(const AtomicString& type, Init&& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new TrackEvent(type, initializer));
+        return adoptRef(*new TrackEvent(type, WTFMove(initializer), isTrusted));
     }
 
-    virtual EventInterface eventInterface() const override;
-
-    TrackBase* track() const { return m_track.get(); }
+    std::optional<TrackEventTrack> track() const { return m_track; }
 
 private:
-    TrackEvent(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<TrackBase>&&);
-    TrackEvent(const AtomicString& type, const TrackEventInit& initializer);
+    TrackEvent(const AtomicString& type, bool canBubble, bool cancelable, Ref<TrackBase>&&);
+    TrackEvent(const AtomicString& type, Init&& initializer, IsTrusted);
 
-    RefPtr<TrackBase> m_track;
+    EventInterface eventInterface() const override;
+
+    std::optional<TrackEventTrack> m_track;
 };
 
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)

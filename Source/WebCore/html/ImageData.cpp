@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,92 +36,81 @@
 
 namespace WebCore {
 
-PassRefPtr<ImageData> ImageData::create(unsigned sw, unsigned sh, ExceptionCode& ec)
+ExceptionOr<Ref<ImageData>> ImageData::create(unsigned sw, unsigned sh)
 {
-    if (!sw || !sh) {
-        ec = INDEX_SIZE_ERR;
-        return nullptr;
-    }
+    if (!sw || !sh)
+        return Exception { INDEX_SIZE_ERR };
 
     Checked<int, RecordOverflow> dataSize = 4;
     dataSize *= sw;
     dataSize *= sh;
-    if (dataSize.hasOverflowed()) {
-        ec = TypeError;
-        return nullptr;
-    }
+    if (dataSize.hasOverflowed())
+        return Exception { TypeError }; // FIXME: Seems a peculiar choice of exception here.
 
     IntSize size(sw, sh);
-    RefPtr<ImageData> data = adoptRef(new ImageData(size));
+    auto data = adoptRef(*new ImageData(size));
     data->data()->zeroFill();
-    return data.release();
+    return WTFMove(data);
 }
 
-PassRefPtr<ImageData> ImageData::create(const IntSize& size)
+RefPtr<ImageData> ImageData::create(const IntSize& size)
 {
     Checked<int, RecordOverflow> dataSize = 4;
     dataSize *= size.width();
     dataSize *= size.height();
     if (dataSize.hasOverflowed())
-        return 0;
+        return nullptr;
 
-    return adoptRef(new ImageData(size));
+    return adoptRef(*new ImageData(size));
 }
 
-PassRefPtr<ImageData> ImageData::create(const IntSize& size, PassRefPtr<Uint8ClampedArray> byteArray)
+RefPtr<ImageData> ImageData::create(const IntSize& size, Ref<Uint8ClampedArray>&& byteArray)
 {
     Checked<int, RecordOverflow> dataSize = 4;
     dataSize *= size.width();
     dataSize *= size.height();
     if (dataSize.hasOverflowed())
-        return 0;
+        return nullptr;
 
-    if (dataSize.unsafeGet() < 0
-        || static_cast<unsigned>(dataSize.unsafeGet()) > byteArray->length())
-        return 0;
+    if (dataSize.unsafeGet() < 0 || static_cast<unsigned>(dataSize.unsafeGet()) > byteArray->length())
+        return nullptr;
 
-    return adoptRef(new ImageData(size, byteArray));
+    return adoptRef(*new ImageData(size, WTFMove(byteArray)));
 }
 
-PassRefPtr<ImageData> ImageData::create(PassRefPtr<Uint8ClampedArray> byteArray, unsigned sw, unsigned sh, ExceptionCode& ec)
+ExceptionOr<RefPtr<ImageData>> ImageData::create(Ref<Uint8ClampedArray>&& byteArray, unsigned sw, unsigned sh)
 {
     unsigned length = byteArray->length();
-    if (!length || length % 4 != 0) {
-        ec = INVALID_STATE_ERR;
-        return nullptr;
-    }
+    if (!length || length % 4 != 0)
+        return Exception { INVALID_STATE_ERR };
 
-    if (!sw) {
-        ec = INDEX_SIZE_ERR;
-        return nullptr;
-    }
+    if (!sw)
+        return Exception { INDEX_SIZE_ERR };
 
     length /= 4;
-    if (length % sw != 0) {
-        ec = INVALID_STATE_ERR;
-        return nullptr;
-    }
+    if (length % sw != 0)
+        return Exception { INVALID_STATE_ERR };
 
     unsigned height = length / sw;
-    if (sh && sh != height) {
-        ec = INDEX_SIZE_ERR;
-        return nullptr;
-    }
+    if (sh && sh != height)
+        return Exception { INDEX_SIZE_ERR };
 
-    return create(IntSize(sw, height), byteArray);
+    return create(IntSize(sw, height), WTFMove(byteArray));
 }
 
 ImageData::ImageData(const IntSize& size)
     : m_size(size)
-    , m_data(Uint8ClampedArray::createUninitialized(size.width() * size.height() * 4))
+    , m_data(Uint8ClampedArray::createUninitialized((size.area() * 4).unsafeGet()))
 {
+    ASSERT(m_data);
 }
 
-ImageData::ImageData(const IntSize& size, PassRefPtr<Uint8ClampedArray> byteArray)
+ImageData::ImageData(const IntSize& size, Ref<Uint8ClampedArray>&& byteArray)
     : m_size(size)
-    , m_data(byteArray)
+    , m_data(WTFMove(byteArray))
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(static_cast<unsigned>(size.width() * size.height() * 4) <= m_data->length());
+    ASSERT(m_data);
+    ASSERT_WITH_SECURITY_IMPLICATION(!m_data || (size.area() * 4).unsafeGet() <= m_data->length());
 }
 
 }

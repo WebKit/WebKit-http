@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,10 @@
 #include "config.h"
 #include "ModuleAnalyzer.h"
 
-#include "IdentifierInlines.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSModuleRecord.h"
+#include "ModuleScopeData.h"
 #include "StrongInlines.h"
 
 namespace JSC {
@@ -38,24 +37,11 @@ namespace JSC {
 
 ModuleAnalyzer::ModuleAnalyzer(ExecState* exec, const Identifier& moduleKey, const SourceCode& sourceCode, const VariableEnvironment& declaredVariables, const VariableEnvironment& lexicalVariables)
     : m_vm(&exec->vm())
-    , m_moduleRecord(exec->vm(), JSModuleRecord::create(exec->vm(), exec->lexicalGlobalObject()->moduleRecordStructure(), moduleKey, sourceCode, declaredVariables, lexicalVariables))
+    , m_moduleRecord(exec->vm(), JSModuleRecord::create(exec, exec->vm(), exec->lexicalGlobalObject()->moduleRecordStructure(), moduleKey, sourceCode, declaredVariables, lexicalVariables))
 {
 }
 
-Identifier ModuleAnalyzer::exportedBinding(const RefPtr<UniquedStringImpl>& ident)
-{
-    const auto iterator = m_aliasMap.find(ident);
-    if (iterator != m_aliasMap.end())
-        return iterator->value;
-    return Identifier::fromUid(&vm(), ident.get());
-}
-
-void ModuleAnalyzer::declareExportAlias(const Identifier& localName, const Identifier& exportName)
-{
-    m_aliasMap.add(localName.impl(), exportName);
-}
-
-void ModuleAnalyzer::exportVariable(const RefPtr<UniquedStringImpl>& localName, const VariableEnvironmentEntry& variable)
+void ModuleAnalyzer::exportVariable(ModuleProgramNode& moduleProgramNode, const RefPtr<UniquedStringImpl>& localName, const VariableEnvironmentEntry& variable)
 {
     // In the parser, we already marked the variables as Exported and Imported.
     // By leveraging this information, we collect the information that is needed
@@ -74,29 +60,33 @@ void ModuleAnalyzer::exportVariable(const RefPtr<UniquedStringImpl>& localName, 
     if (!variable.isExported())
         return;
 
-    const Identifier exportName = exportedBinding(localName);
-
     // Exported module local variable.
     if (!variable.isImported()) {
-        moduleRecord()->addExportEntry(JSModuleRecord::ExportEntry::createLocal(exportName, Identifier::fromUid(m_vm, localName.get()), variable));
+        for (auto& exportName : moduleProgramNode.moduleScopeData().exportedBindings().get(localName.get()))
+            moduleRecord()->addExportEntry(JSModuleRecord::ExportEntry::createLocal(Identifier::fromUid(m_vm, exportName.get()), Identifier::fromUid(m_vm, localName.get())));
         return;
     }
 
-    Optional<JSModuleRecord::ImportEntry> optionalImportEntry = moduleRecord()->tryGetImportEntry(localName.get());
-    ASSERT(optionalImportEntry);
-    const JSModuleRecord::ImportEntry& importEntry = *optionalImportEntry;
     if (variable.isImportedNamespace()) {
         // Exported namespace binding.
         // import * as namespace from "mod"
         // export { namespace }
-        moduleRecord()->addExportEntry(JSModuleRecord::ExportEntry::createNamespace(exportName, importEntry.moduleRequest));
+        //
+        // Sec 15.2.1.16.1 step 11-a-ii-2-b https://tc39.github.io/ecma262/#sec-parsemodule
+        // Namespace export is handled as local export since a namespace object binding itself is implemented as a local binding.
+        for (auto& exportName : moduleProgramNode.moduleScopeData().exportedBindings().get(localName.get()))
+            moduleRecord()->addExportEntry(JSModuleRecord::ExportEntry::createLocal(Identifier::fromUid(m_vm, exportName.get()), Identifier::fromUid(m_vm, localName.get())));
         return;
     }
 
     // Indirectly exported binding.
     // import a from "mod"
     // export { a }
-    moduleRecord()->addExportEntry(JSModuleRecord::ExportEntry::createIndirect(exportName, importEntry.importName, importEntry.moduleRequest));
+    std::optional<JSModuleRecord::ImportEntry> optionalImportEntry = moduleRecord()->tryGetImportEntry(localName.get());
+    ASSERT(optionalImportEntry);
+    const JSModuleRecord::ImportEntry& importEntry = *optionalImportEntry;
+    for (auto& exportName : moduleProgramNode.moduleScopeData().exportedBindings().get(localName.get()))
+        moduleRecord()->addExportEntry(JSModuleRecord::ExportEntry::createIndirect(Identifier::fromUid(m_vm, exportName.get()), importEntry.importName, importEntry.moduleRequest));
 }
 
 
@@ -145,10 +135,10 @@ JSModuleRecord* ModuleAnalyzer::analyze(ModuleProgramNode& moduleProgramNode)
     //
     //     export * from "mod"
     for (const auto& pair : m_moduleRecord->declaredVariables())
-        exportVariable(pair.key, pair.value);
+        exportVariable(moduleProgramNode, pair.key, pair.value);
 
     for (const auto& pair : m_moduleRecord->lexicalVariables())
-        exportVariable(pair.key, pair.value);
+        exportVariable(moduleProgramNode, pair.key, pair.value);
 
     if (Options::dumpModuleRecord())
         m_moduleRecord->dump();

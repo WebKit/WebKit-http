@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 #include "SandboxUtilities.h"
 
 #if PLATFORM(IOS)
-#import <WebCore/RuntimeApplicationChecksIOS.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #endif
 
 namespace API {
@@ -40,9 +40,9 @@ String WebsiteDataStore::defaultApplicationCacheDirectory()
 #if PLATFORM(IOS)
     // This quirk used to make these apps share application cache storage, but doesn't accomplish that any more.
     // Preserving it avoids the need to migrate data when upgrading.
-    // FIXME: Ideally we should just have Safari and WebApp create a data store with
+    // FIXME: Ideally we should just have Safari, WebApp, and webbookmarksd create a data store with
     // this application cache path, but that's not supported as of right now.
-    if (WebCore::applicationIsMobileSafari() || WebCore::applicationIsWebApp()) {
+    if (WebCore::IOSApplication::isMobileSafari() || WebCore::IOSApplication::isWebApp() || WebCore::IOSApplication::isWebBookmarksD()) {
         NSString *cachePath = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.apple.WebAppCache"];
 
         return WebKit::stringByResolvingSymlinksInPath(cachePath.stringByStandardizingPath);
@@ -55,6 +55,11 @@ String WebsiteDataStore::defaultApplicationCacheDirectory()
 String WebsiteDataStore::defaultNetworkCacheDirectory()
 {
     return cacheDirectoryFileSystemRepresentation("NetworkCache");
+}
+
+String WebsiteDataStore::defaultMediaCacheDirectory()
+{
+    return tempDirectoryFileSystemRepresentation("MediaCache");
 }
 
 String WebsiteDataStore::defaultIndexedDBDatabaseDirectory()
@@ -75,6 +80,45 @@ String WebsiteDataStore::defaultMediaKeysStorageDirectory()
 String WebsiteDataStore::defaultWebSQLDatabaseDirectory()
 {
     return websiteDataDirectoryFileSystemRepresentation("WebSQL");
+}
+
+String WebsiteDataStore::defaultResourceLoadStatisticsDirectory()
+{
+    return websiteDataDirectoryFileSystemRepresentation("ResourceLoadStatistics");
+}
+
+String WebsiteDataStore::defaultJavaScriptConfigurationDirectory()
+{
+    return tempDirectoryFileSystemRepresentation("JavaScriptCoreDebug", DontCreateDirectory);
+}
+
+String WebsiteDataStore::tempDirectoryFileSystemRepresentation(const String& directoryName, ShouldCreateDirectory shouldCreateDirectory)
+{
+    static dispatch_once_t onceToken;
+    static NSURL *tempURL;
+    
+    dispatch_once(&onceToken, ^{
+        NSURL *url = [NSURL fileURLWithPath:NSTemporaryDirectory()];
+        if (!url)
+            RELEASE_ASSERT_NOT_REACHED();
+        
+        if (!WebKit::processHasContainer()) {
+            NSString *bundleIdentifier = [NSBundle mainBundle].bundleIdentifier;
+            if (!bundleIdentifier)
+                bundleIdentifier = [NSProcessInfo processInfo].processName;
+            url = [url URLByAppendingPathComponent:bundleIdentifier isDirectory:YES];
+        }
+        
+        tempURL = [[url URLByAppendingPathComponent:@"WebKit" isDirectory:YES] retain];
+    });
+    
+    NSURL *url = [tempURL URLByAppendingPathComponent:directoryName isDirectory:YES];
+
+    if (shouldCreateDirectory == CreateDirectory
+        && (![[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes:nil error:nullptr]))
+        LOG_ERROR("Failed to create directory %@", url);
+    
+    return url.absoluteURL.path.fileSystemRepresentation;
 }
 
 String WebsiteDataStore::cacheDirectoryFileSystemRepresentation(const String& directoryName)
@@ -138,11 +182,16 @@ WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfig
     WebKit::WebsiteDataStore::Configuration configuration;
 
     configuration.applicationCacheDirectory = defaultApplicationCacheDirectory();
+    configuration.applicationCacheFlatFileSubdirectoryName = "Files";
     configuration.networkCacheDirectory = defaultNetworkCacheDirectory();
+    configuration.mediaCacheDirectory = defaultMediaCacheDirectory();
 
     configuration.webSQLDatabaseDirectory = defaultWebSQLDatabaseDirectory();
     configuration.localStorageDirectory = defaultLocalStorageDirectory();
     configuration.mediaKeysStorageDirectory = defaultMediaKeysStorageDirectory();
+    configuration.resourceLoadStatisticsDirectory = defaultResourceLoadStatisticsDirectory();
+    
+    configuration.javaScriptConfigurationDirectory = defaultJavaScriptConfigurationDirectory();
 
     return configuration;
 }

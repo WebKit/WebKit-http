@@ -23,11 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
+
 #include "ElementAndTextDescendantIterator.h"
 #include "ShadowRoot.h"
-
-#ifndef ComposedTreeIterator_h
-#define ComposedTreeIterator_h
 
 namespace WebCore {
 
@@ -36,7 +35,8 @@ class HTMLSlotElement;
 class ComposedTreeIterator {
 public:
     ComposedTreeIterator();
-    ComposedTreeIterator(ContainerNode& root);
+    enum FirstChildTag { FirstChild };
+    ComposedTreeIterator(ContainerNode& root, FirstChildTag);
     ComposedTreeIterator(ContainerNode& root, Node& current);
 
     Node& operator*() { return current(); }
@@ -54,34 +54,34 @@ public:
 
     unsigned depth() const;
 
+    void dropAssertions();
+
 private:
     void initializeContextStack(ContainerNode& root, Node& current);
     void traverseNextInShadowTree();
     void traverseNextLeavingContext();
-    bool pushContext(ShadowRoot&);
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+    void traverseShadowRoot(ShadowRoot&);
     bool advanceInSlot(int direction);
     void traverseSiblingInSlot(int direction);
-#endif
 
     struct Context {
-        Context() { }
-        explicit Context(ContainerNode& root)
-            : iterator(root)
-        { }
-        Context(ContainerNode& root, Node& node, size_t slotNodeIndex = notFound)
-            : iterator(root, &node)
-            , slotNodeIndex(slotNodeIndex)
-        { }
+        Context();
+        Context(ContainerNode& root, FirstChildTag);
+        Context(ContainerNode& root, Node& node);
 
+        enum SlottedTag { Slotted };
+        Context(ContainerNode& root, Node& node, SlottedTag);
         ElementAndTextDescendantIterator iterator;
+        ElementAndTextDescendantIterator end;
         size_t slotNodeIndex { notFound };
     };
     Context& context() { return m_contextStack.last(); }
     const Context& context() const { return m_contextStack.last(); }
     Node& current() { return *context().iterator; }
 
-    Vector<Context, 4> m_contextStack;
+    bool m_rootIsInShadowTree { false };
+    bool m_didDropAssertions { false };
+    Vector<Context, 8> m_contextStack;
 };
 
 inline ComposedTreeIterator::ComposedTreeIterator()
@@ -92,11 +92,11 @@ inline ComposedTreeIterator::ComposedTreeIterator()
 inline ComposedTreeIterator& ComposedTreeIterator::traverseNext()
 {
     if (auto* shadowRoot = context().iterator->shadowRoot()) {
-        if (pushContext(*shadowRoot))
-            return *this;
+        traverseShadowRoot(*shadowRoot);
+        return *this;
     }
 
-    if (m_contextStack.size() > 1) {
+    if (m_contextStack.size() > 1 || m_rootIsInShadowTree) {
         traverseNextInShadowTree();
         return *this;
     }
@@ -109,7 +109,7 @@ inline ComposedTreeIterator& ComposedTreeIterator::traverseNextSkippingChildren(
 {
     context().iterator.traverseNextSkippingChildren();
 
-    if (!context().iterator && m_contextStack.size() > 1)
+    if (context().iterator == context().end)
         traverseNextLeavingContext();
     
     return *this;
@@ -117,24 +117,20 @@ inline ComposedTreeIterator& ComposedTreeIterator::traverseNextSkippingChildren(
 
 inline ComposedTreeIterator& ComposedTreeIterator::traverseNextSibling()
 {
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (current().parentNode()->shadowRoot()) {
         traverseSiblingInSlot(1);
         return *this;
     }
-#endif
     context().iterator.traverseNextSibling();
     return *this;
 }
 
 inline ComposedTreeIterator& ComposedTreeIterator::traversePreviousSibling()
 {
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (current().parentNode()->shadowRoot()) {
         traverseSiblingInSlot(-1);
         return *this;
     }
-#endif
     context().iterator.traversePreviousSibling();
     return *this;
 }
@@ -153,7 +149,7 @@ public:
         : m_parent(parent)
     { }
 
-    ComposedTreeIterator begin() { return ComposedTreeIterator(m_parent); }
+    ComposedTreeIterator begin() { return ComposedTreeIterator(m_parent, ComposedTreeIterator::FirstChild); }
     ComposedTreeIterator end() { return { }; }
     ComposedTreeIterator at(const Node& child) { return ComposedTreeIterator(m_parent, const_cast<Node&>(child)); }
     
@@ -167,7 +163,7 @@ public:
     public:
         Iterator() = default;
         explicit Iterator(ContainerNode& root)
-            : ComposedTreeIterator(root)
+            : ComposedTreeIterator(root, ComposedTreeIterator::FirstChild)
         { }
         Iterator(ContainerNode& root, Node& current)
             : ComposedTreeIterator(root, current)
@@ -200,6 +196,7 @@ inline ComposedTreeChildAdapter composedTreeChildren(ContainerNode& parent)
     return ComposedTreeChildAdapter(parent);
 }
 
-}
+enum class ComposedTreeAsTextMode { Normal, WithPointers };
+WEBCORE_EXPORT String composedTreeAsText(ContainerNode& root, ComposedTreeAsTextMode = ComposedTreeAsTextMode::Normal);
 
-#endif
+} // namespace WebCore

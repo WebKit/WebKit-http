@@ -44,6 +44,10 @@
 #include "OpenTypeVerticalData.h"
 #endif
 
+#if USE(DIRECT2D)
+#include <dwrite.h>
+#endif
+
 namespace WebCore {
 
 unsigned GlyphPage::s_count = 0;
@@ -51,16 +55,16 @@ unsigned GlyphPage::s_count = 0;
 const float smallCapsFontSizeMultiplier = 0.7f;
 const float emphasisMarkFontSizeMultiplier = 0.5f;
 
-Font::Font(const FontPlatformData& platformData, std::unique_ptr<SVGData>&& svgData, bool isCustomFont, bool isLoading, bool isTextOrientationFallback)
+Font::Font(const FontPlatformData& platformData, Origin origin, Interstitial interstitial, Visibility visibility, OrientationFallback orientationFallback)
     : m_maxCharWidth(-1)
     , m_avgCharWidth(-1)
     , m_platformData(platformData)
-    , m_svgData(WTFMove(svgData))
     , m_mathData(nullptr)
+    , m_origin(origin)
+    , m_visibility(visibility)
     , m_treatAsFixedPitch(false)
-    , m_isCustomFont(isCustomFont)
-    , m_isLoading(isLoading)
-    , m_isTextOrientationFallback(isTextOrientationFallback)
+    , m_isInterstitial(interstitial == Interstitial::Yes)
+    , m_isTextOrientationFallback(orientationFallback == OrientationFallback::Yes)
     , m_isBrokenIdeographFallback(false)
     , m_hasVerticalGlyphs(false)
     , m_isUsedInSystemFallbackCache(false)
@@ -68,37 +72,25 @@ Font::Font(const FontPlatformData& platformData, std::unique_ptr<SVGData>&& svgD
     , m_shouldNotBeUsedForArabic(false)
 #endif
 {
-}
-
-Font::Font(const FontPlatformData& platformData, bool isCustomFont, bool isLoading, bool isTextOrientationFallback)
-    : Font(platformData, std::unique_ptr<SVGData>(), isCustomFont, isLoading, isTextOrientationFallback)
-{
     platformInit();
     platformGlyphInit();
     platformCharWidthInit();
 #if ENABLE(OPENTYPE_VERTICAL)
-    if (platformData.orientation() == Vertical && !isTextOrientationFallback) {
-        m_verticalData = platformData.verticalData();
+    if (platformData.orientation() == Vertical && orientationFallback == OrientationFallback::No) {
+        m_verticalData = FontCache::singleton().verticalData(platformData);
         m_hasVerticalGlyphs = m_verticalData.get() && m_verticalData->hasVerticalMetrics();
     }
 #endif
 }
 
-Font::Font(std::unique_ptr<SVGData> svgData, float fontSize, bool syntheticBold, bool syntheticItalic)
-    : Font(FontPlatformData(fontSize, syntheticBold, syntheticItalic), WTFMove(svgData), true, false, false)
-{
-    m_svgData->initializeFont(this, fontSize);
-}
-
 // Estimates of avgCharWidth and maxCharWidth for platforms that don't support accessing these values from the font.
 void Font::initCharWidths()
 {
-    auto* glyphPageZero = glyphPage(0);
+    auto* glyphPageZero = glyphPage(GlyphPage::pageNumberForCodePoint('0'));
 
     // Treat the width of a '0' as the avgCharWidth.
     if (m_avgCharWidth <= 0.f && glyphPageZero) {
-        static const UChar32 digitZeroChar = '0';
-        Glyph digitZeroGlyph = glyphPageZero->glyphDataForCharacter(digitZeroChar).glyph;
+        Glyph digitZeroGlyph = glyphPageZero->glyphDataForCharacter('0').glyph;
         if (digitZeroGlyph)
             m_avgCharWidth = widthForGlyph(digitZeroGlyph);
     }
@@ -114,22 +106,23 @@ void Font::initCharWidths()
 void Font::platformGlyphInit()
 {
     auto* glyphPageZero = glyphPage(0);
-    if (!glyphPageZero) {
-        determinePitch();
-        return;
-    }
+    auto* glyphPageCharacterZero = glyphPage(GlyphPage::pageNumberForCodePoint('0'));
+    auto* glyphPageSpace = glyphPage(GlyphPage::pageNumberForCodePoint(space));
 
     // Ask for the glyph for 0 to avoid paging in ZERO WIDTH SPACE. Control characters, including 0,
     // are mapped to the ZERO WIDTH SPACE glyph.
-    m_zeroWidthSpaceGlyph = glyphPageZero->glyphDataForCharacter(0).glyph;
+    if (glyphPageZero)
+        m_zeroWidthSpaceGlyph = glyphPageZero->glyphDataForCharacter(0).glyph;
 
     // Nasty hack to determine if we should round or ceil space widths.
     // If the font is monospace or fake monospace we ceil to ensure that 
     // every character and the space are the same width. Otherwise we round.
-    m_spaceGlyph = glyphPageZero->glyphDataForCharacter(' ').glyph;
+    if (glyphPageSpace)
+        m_spaceGlyph = glyphPageSpace->glyphDataForCharacter(space).glyph;
     float width = widthForGlyph(m_spaceGlyph);
     m_spaceWidth = width;
-    m_zeroGlyph = glyphPageZero->glyphDataForCharacter('0').glyph;
+    if (glyphPageCharacterZero)
+        m_zeroGlyph = glyphPageCharacterZero->glyphDataForCharacter('0').glyph;
     m_fontMetrics.setZeroWidth(widthForGlyph(m_zeroGlyph));
     determinePitch();
     m_adjustedSpaceWidth = m_treatAsFixedPitch ? ceilf(width) : roundf(width);
@@ -148,14 +141,12 @@ Font::~Font()
 
 static bool fillGlyphPage(GlyphPage& pageToFill, UChar* buffer, unsigned bufferLength, const Font& font)
 {
-#if ENABLE(SVG_FONTS)
-    if (auto* svgData = font.svgData())
-        return svgData->fillSVGGlyphPage(&pageToFill, buffer, bufferLength);
-#endif
     bool hasGlyphs = pageToFill.fill(buffer, bufferLength);
 #if ENABLE(OPENTYPE_VERTICAL)
     if (hasGlyphs && font.verticalData())
         font.verticalData()->substituteWithVerticalGlyphs(&font, &pageToFill);
+#else
+    UNUSED_PARAM(font);
 #endif
     return hasGlyphs;
 }
@@ -166,52 +157,60 @@ static RefPtr<GlyphPage> createAndFillGlyphPage(unsigned pageNumber, const Font&
     // FIXME: Times New Roman contains Arabic glyphs, but Core Text doesn't know how to shape them. See <rdar://problem/9823975>.
     // Once we have the fix for <rdar://problem/9823975> then remove this code together with Font::shouldNotBeUsedForArabic()
     // in <rdar://problem/12096835>.
-    if (pageNumber == 6 && font.shouldNotBeUsedForArabic())
+    if (GlyphPage::pageNumberIsUsedForArabic(pageNumber) && font.shouldNotBeUsedForArabic())
         return nullptr;
 #endif
 
-    unsigned start = pageNumber * GlyphPage::size;
-    UChar buffer[GlyphPage::size * 2 + 2];
+    unsigned glyphPageSize = GlyphPage::sizeForPageNumber(pageNumber);
+
+    unsigned start = GlyphPage::startingCodePointInPageNumber(pageNumber);
+    unsigned end = start + glyphPageSize;
+    Vector<UChar> buffer(glyphPageSize * 2 + 2);
     unsigned bufferLength;
     // Fill in a buffer with the entire "page" of characters that we want to look up glyphs for.
     if (U_IS_BMP(start)) {
-        bufferLength = GlyphPage::size;
-        for (unsigned i = 0; i < GlyphPage::size; i++)
+        bufferLength = glyphPageSize;
+        for (unsigned i = 0; i < bufferLength; i++)
             buffer[i] = start + i;
 
-        if (!start) {
-            // Control characters must not render at all.
-            for (unsigned i = 0; i < 0x20; ++i)
-                buffer[i] = zeroWidthSpace;
-            for (unsigned i = 0x7F; i < 0xA0; i++)
-                buffer[i] = zeroWidthSpace;
-            buffer[softHyphen] = zeroWidthSpace;
+        // Code points 0x0 - 0x20 and 0x7F - 0xA0 are control character and shouldn't render. Map them to ZERO WIDTH SPACE.
+        auto overwriteCodePoints = [&](unsigned minimum, unsigned maximum, UChar newCodePoint) {
+            unsigned begin = std::max(start, minimum);
+            unsigned complete = std::min(end, maximum);
+            for (unsigned i = begin; i < complete; ++i)
+                buffer[i - start] = newCodePoint;
+        };
 
-            // \n, \t, and nonbreaking space must render as a space.
-            buffer[(int)'\n'] = ' ';
-            buffer[(int)'\t'] = ' ';
-            buffer[noBreakSpace] = ' ';
-        } else if (start == (leftToRightMark & ~(GlyphPage::size - 1))) {
-            // LRM, RLM, LRE, RLE, ZWNJ, ZWJ, and PDF must not render at all.
-            buffer[leftToRightMark - start] = zeroWidthSpace;
-            buffer[rightToLeftMark - start] = zeroWidthSpace;
-            buffer[leftToRightEmbed - start] = zeroWidthSpace;
-            buffer[rightToLeftEmbed - start] = zeroWidthSpace;
-            buffer[leftToRightOverride - start] = zeroWidthSpace;
-            buffer[rightToLeftOverride - start] = zeroWidthSpace;
-            buffer[zeroWidthNonJoiner - start] = zeroWidthSpace;
-            buffer[zeroWidthJoiner - start] = zeroWidthSpace;
-            buffer[popDirectionalFormatting - start] = zeroWidthSpace;
-        } else if (start == (objectReplacementCharacter & ~(GlyphPage::size - 1))) {
-            // Object replacement character must not render at all.
-            buffer[objectReplacementCharacter - start] = zeroWidthSpace;
-        } else if (start == (zeroWidthNoBreakSpace & ~(GlyphPage::size - 1))) {
-            // ZWNBS/BOM must not render at all.
-            buffer[zeroWidthNoBreakSpace - start] = zeroWidthSpace;
-        }
+        auto overwriteCodePoint = [&](UChar codePoint, UChar newCodePoint) {
+            if (codePoint >= start && codePoint < end)
+                buffer[codePoint - start] = newCodePoint;
+        };
+
+        overwriteCodePoints(0x0, 0x20, zeroWidthSpace);
+        overwriteCodePoints(0x7F, 0xA0, zeroWidthSpace);
+        overwriteCodePoint(softHyphen, zeroWidthSpace);
+        overwriteCodePoint('\n', space);
+        overwriteCodePoint('\t', space);
+        overwriteCodePoint(noBreakSpace, space);
+        overwriteCodePoint(narrowNoBreakSpace, zeroWidthSpace);
+        overwriteCodePoint(leftToRightMark, zeroWidthSpace);
+        overwriteCodePoint(rightToLeftMark, zeroWidthSpace);
+        overwriteCodePoint(leftToRightEmbed, zeroWidthSpace);
+        overwriteCodePoint(rightToLeftEmbed, zeroWidthSpace);
+        overwriteCodePoint(leftToRightOverride, zeroWidthSpace);
+        overwriteCodePoint(rightToLeftOverride, zeroWidthSpace);
+        overwriteCodePoint(leftToRightIsolate, zeroWidthSpace);
+        overwriteCodePoint(rightToLeftIsolate, zeroWidthSpace);
+        overwriteCodePoint(zeroWidthNonJoiner, zeroWidthSpace);
+        overwriteCodePoint(zeroWidthJoiner, zeroWidthSpace);
+        overwriteCodePoint(popDirectionalFormatting, zeroWidthSpace);
+        overwriteCodePoint(popDirectionalIsolate, zeroWidthSpace);
+        overwriteCodePoint(firstStrongIsolate, zeroWidthSpace);
+        overwriteCodePoint(objectReplacementCharacter, zeroWidthSpace);
+        overwriteCodePoint(zeroWidthNoBreakSpace, zeroWidthSpace);
     } else {
-        bufferLength = GlyphPage::size * 2;
-        for (unsigned i = 0; i < GlyphPage::size; i++) {
+        bufferLength = glyphPageSize * 2;
+        for (unsigned i = 0; i < glyphPageSize; i++) {
             int c = i + start;
             buffer[i * 2] = U16_LEAD(c);
             buffer[i * 2 + 1] = U16_TRAIL(c);
@@ -225,7 +224,7 @@ static RefPtr<GlyphPage> createAndFillGlyphPage(unsigned pageNumber, const Font&
     // for only 128 out of 256 characters.
     Ref<GlyphPage> glyphPage = GlyphPage::create(font);
 
-    bool haveGlyphs = fillGlyphPage(glyphPage, buffer, bufferLength, font);
+    bool haveGlyphs = fillGlyphPage(glyphPage, buffer.data(), bufferLength, font);
     if (!haveGlyphs)
         return nullptr;
 
@@ -248,7 +247,7 @@ const GlyphPage* Font::glyphPage(unsigned pageNumber) const
 
 Glyph Font::glyphForCharacter(UChar32 character) const
 {
-    auto* page = glyphPage(character / GlyphPage::size);
+    auto* page = glyphPage(GlyphPage::pageNumberForCodePoint(character));
     if (!page)
         return 0;
     return page->glyphForCharacter(character);
@@ -256,100 +255,94 @@ Glyph Font::glyphForCharacter(UChar32 character) const
 
 GlyphData Font::glyphDataForCharacter(UChar32 character) const
 {
-    auto* page = glyphPage(character / GlyphPage::size);
+    auto* page = glyphPage(GlyphPage::pageNumberForCodePoint(character));
     if (!page)
         return GlyphData();
     return page->glyphDataForCharacter(character);
 }
 
-const Font& Font::verticalRightOrientationFont() const
+auto Font::ensureDerivedFontData() const -> DerivedFonts&
 {
     if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-    if (!m_derivedFontData->verticalRightOrientation) {
-        FontPlatformData verticalRightPlatformData(m_platformData);
-        verticalRightPlatformData.setOrientation(Horizontal);
-        m_derivedFontData->verticalRightOrientation = create(verticalRightPlatformData, isCustomFont(), false, true);
+        m_derivedFontData = std::make_unique<DerivedFonts>();
+    return *m_derivedFontData;
+}
+
+const Font& Font::verticalRightOrientationFont() const
+{
+    DerivedFonts& derivedFontData = ensureDerivedFontData();
+    if (!derivedFontData.verticalRightOrientationFont) {
+        auto verticalRightPlatformData = FontPlatformData::cloneWithOrientation(m_platformData, Horizontal);
+        derivedFontData.verticalRightOrientationFont = create(verticalRightPlatformData, origin(), Interstitial::No, Visibility::Visible, OrientationFallback::Yes);
     }
-    ASSERT(m_derivedFontData->verticalRightOrientation != this);
-    return *m_derivedFontData->verticalRightOrientation;
+    ASSERT(derivedFontData.verticalRightOrientationFont != this);
+    return *derivedFontData.verticalRightOrientationFont;
 }
 
 const Font& Font::uprightOrientationFont() const
 {
-    if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-    if (!m_derivedFontData->uprightOrientation)
-        m_derivedFontData->uprightOrientation = create(m_platformData, isCustomFont(), false, true);
-    ASSERT(m_derivedFontData->uprightOrientation != this);
-    return *m_derivedFontData->uprightOrientation;
+    DerivedFonts& derivedFontData = ensureDerivedFontData();
+    if (!derivedFontData.uprightOrientationFont)
+        derivedFontData.uprightOrientationFont = create(m_platformData, origin(), Interstitial::No, Visibility::Visible, OrientationFallback::Yes);
+    ASSERT(derivedFontData.uprightOrientationFont != this);
+    return *derivedFontData.uprightOrientationFont;
+}
+
+const Font& Font::invisibleFont() const
+{
+    DerivedFonts& derivedFontData = ensureDerivedFontData();
+    if (!derivedFontData.invisibleFont)
+        derivedFontData.invisibleFont = create(m_platformData, origin(), Interstitial::Yes, Visibility::Invisible);
+    ASSERT(derivedFontData.invisibleFont != this);
+    return *derivedFontData.invisibleFont;
 }
 
 const Font* Font::smallCapsFont(const FontDescription& fontDescription) const
 {
-    if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-    if (!m_derivedFontData->smallCaps)
-        m_derivedFontData->smallCaps = createScaledFont(fontDescription, smallCapsFontSizeMultiplier);
-    ASSERT(m_derivedFontData->smallCaps != this);
-    return m_derivedFontData->smallCaps.get();
+    DerivedFonts& derivedFontData = ensureDerivedFontData();
+    if (!derivedFontData.smallCapsFont)
+        derivedFontData.smallCapsFont = createScaledFont(fontDescription, smallCapsFontSizeMultiplier);
+    ASSERT(derivedFontData.smallCapsFont != this);
+    return derivedFontData.smallCapsFont.get();
 }
 
-#if PLATFORM(COCOA)
 const Font& Font::noSynthesizableFeaturesFont() const
 {
-    if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-    if (!m_derivedFontData->noSynthesizableFeatures)
-        m_derivedFontData->noSynthesizableFeatures = createFontWithoutSynthesizableFeatures();
-    ASSERT(m_derivedFontData->noSynthesizableFeatures != this);
-    return *m_derivedFontData->noSynthesizableFeatures;
-}
+#if PLATFORM(COCOA)
+    DerivedFonts& derivedFontData = ensureDerivedFontData();
+    if (!derivedFontData.noSynthesizableFeaturesFont)
+        derivedFontData.noSynthesizableFeaturesFont = createFontWithoutSynthesizableFeatures();
+    ASSERT(derivedFontData.noSynthesizableFeaturesFont != this);
+    return *derivedFontData.noSynthesizableFeaturesFont;
+#else
+    return *this;
 #endif
+}
 
 const Font* Font::emphasisMarkFont(const FontDescription& fontDescription) const
 {
-    if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-    if (!m_derivedFontData->emphasisMark)
-        m_derivedFontData->emphasisMark = createScaledFont(fontDescription, emphasisMarkFontSizeMultiplier);
-    ASSERT(m_derivedFontData->emphasisMark != this);
-    return m_derivedFontData->emphasisMark.get();
+    DerivedFonts& derivedFontData = ensureDerivedFontData();
+    if (!derivedFontData.emphasisMarkFont)
+        derivedFontData.emphasisMarkFont = createScaledFont(fontDescription, emphasisMarkFontSizeMultiplier);
+    ASSERT(derivedFontData.emphasisMarkFont != this);
+    return derivedFontData.emphasisMarkFont.get();
 }
 
 const Font& Font::brokenIdeographFont() const
 {
-    if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-    if (!m_derivedFontData->brokenIdeograph) {
-        m_derivedFontData->brokenIdeograph = create(m_platformData, isCustomFont(), false);
-        m_derivedFontData->brokenIdeograph->m_isBrokenIdeographFallback = true;
+    DerivedFonts& derivedFontData = ensureDerivedFontData();
+    if (!derivedFontData.brokenIdeographFont) {
+        derivedFontData.brokenIdeographFont = create(m_platformData, origin(), Interstitial::No);
+        derivedFontData.brokenIdeographFont->m_isBrokenIdeographFallback = true;
     }
-    ASSERT(m_derivedFontData->brokenIdeograph != this);
-    return *m_derivedFontData->brokenIdeograph;
-}
-
-const Font& Font::nonSyntheticItalicFont() const
-{
-    if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-    if (!m_derivedFontData->nonSyntheticItalic) {
-        FontPlatformData nonSyntheticItalicFontPlatformData(m_platformData);
-#if PLATFORM(COCOA) || USE(CAIRO)
-        nonSyntheticItalicFontPlatformData.setSyntheticOblique(false);
-#endif
-        m_derivedFontData->nonSyntheticItalic = create(nonSyntheticItalicFontPlatformData, isCustomFont());
-    }
-    ASSERT(m_derivedFontData->nonSyntheticItalic != this);
-    return *m_derivedFontData->nonSyntheticItalic;
+    ASSERT(derivedFontData.brokenIdeographFont != this);
+    return *derivedFontData.brokenIdeographFont;
 }
 
 #ifndef NDEBUG
 String Font::description() const
 {
-    if (isSVGFont())
-        return "[SVG font]";
-    if (isCustomFont())
+    if (origin() == Origin::Remote)
         return "[custom font]";
 
     return platformData().description();
@@ -358,7 +351,7 @@ String Font::description() const
 
 const OpenTypeMathData* Font::mathData() const
 {
-    if (m_isLoading)
+    if (isInterstitial())
         return nullptr;
     if (!m_mathData) {
         m_mathData = OpenTypeMathData::create(m_platformData);
@@ -368,22 +361,14 @@ const OpenTypeMathData* Font::mathData() const
     return m_mathData.get();
 }
 
-Font::DerivedFontData::~DerivedFontData()
-{
-}
-
 RefPtr<Font> Font::createScaledFont(const FontDescription& fontDescription, float scaleFactor) const
 {
-    if (isSVGFont())
-        return nullptr;
-
     return platformCreateScaledFont(fontDescription, scaleFactor);
 }
 
 bool Font::applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advances, size_t glyphCount, bool enableKerning, bool requiresShaping) const
 {
     // We need to handle transforms on SVG fonts internally, since they are rendered internally.
-    ASSERT(!isSVGFont());
 #if PLATFORM(COCOA)
     CTFontTransformOptions options = (enableKerning ? kCTFontTransformApplyPositioning : 0) | (requiresShaping ? kCTFontTransformApplyShaping : 0);
     return CTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
@@ -515,5 +500,12 @@ void Font::removeFromSystemFallbackCache()
             characterMap.remove(key);
     }
 }
+
+#if !PLATFORM(COCOA)
+bool Font::variantCapsSupportsCharacterForSynthesis(FontVariantCaps, UChar32) const
+{
+    return false;
+}
+#endif
 
 } // namespace WebCore

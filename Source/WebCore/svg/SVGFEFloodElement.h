@@ -18,10 +18,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFEFloodElement_h
-#define SVGFEFloodElement_h
+#pragma once
 
-#include "FEFlood.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
 namespace WebCore {
@@ -33,10 +31,8 @@ public:
 private:
     SVGFEFloodElement(const QualifiedName&, Document&);
 
-    virtual bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName) override;
-    virtual RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    bool setFilterEffectAttribute(FilterEffect*, const QualifiedName& attrName) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 };
 
 } // namespace WebCore
-
-#endif

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
- * Copyright (C) 2011, 2012, 2013 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,18 +24,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AudioTrack_h
-#define AudioTrack_h
-
-#include "PlatformExportMacros.h"
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
 #include "AudioTrackPrivate.h"
-#include "ExceptionCode.h"
 #include "TrackBase.h"
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -44,12 +38,12 @@ class AudioTrack;
 class AudioTrackClient {
 public:
     virtual ~AudioTrackClient() { }
-    virtual void audioTrackEnabledChanged(AudioTrack*) = 0;
+    virtual void audioTrackEnabledChanged(AudioTrack&) = 0;
 };
 
-class AudioTrack final : public TrackBase, public AudioTrackPrivateClient {
+class AudioTrack final : public MediaTrackBase, private AudioTrackPrivateClient {
 public:
-    static Ref<AudioTrack> create(AudioTrackClient* client, PassRefPtr<AudioTrackPrivate> trackPrivate)
+    static Ref<AudioTrack> create(AudioTrackClient& client, AudioTrackPrivate& trackPrivate)
     {
         return adoptRef(*new AudioTrack(client, trackPrivate));
     }
@@ -61,48 +55,43 @@ public:
     static const AtomicString& mainDescKeyword();
     static const AtomicString& translationKeyword();
     static const AtomicString& commentaryKeyword();
-    virtual const AtomicString& defaultKindKeyword() const override { return emptyAtom; }
 
-    virtual bool enabled() const override { return m_enabled; }
+    bool enabled() const final { return m_enabled; }
     void setEnabled(const bool);
 
-    virtual void clearClient() override { m_client = nullptr; }
+    void clearClient() final { m_client = nullptr; }
     AudioTrackClient* client() const { return m_client; }
 
-    size_t inbandTrackIndex();
+    size_t inbandTrackIndex() const;
 
-    void setPrivate(PassRefPtr<AudioTrackPrivate>);
-
-protected:
-    AudioTrack(AudioTrackClient*, PassRefPtr<AudioTrackPrivate>);
+    void setPrivate(AudioTrackPrivate&);
 
 private:
-    virtual bool isValidKind(const AtomicString&) const override;
+    AudioTrack(AudioTrackClient&, AudioTrackPrivate&);
+
+    bool isValidKind(const AtomicString&) const final;
 
     // AudioTrackPrivateClient
-    void enabledChanged(AudioTrackPrivate*, bool) override;
+    void enabledChanged(bool) final;
 
     // TrackPrivateBaseClient
-    void idChanged(TrackPrivateBase*, const AtomicString&) override;
-    void labelChanged(TrackPrivateBase*, const AtomicString&) override;
-    void languageChanged(TrackPrivateBase*, const AtomicString&) override;
-    void willRemove(TrackPrivateBase*) override;
+    void idChanged(const AtomicString&) final;
+    void labelChanged(const AtomicString&) final;
+    void languageChanged(const AtomicString&) final;
+    void willRemove() final;
 
     void updateKindFromPrivate();
 
     bool m_enabled;
     AudioTrackClient* m_client;
 
-    RefPtr<AudioTrackPrivate> m_private;
+    Ref<AudioTrackPrivate> m_private;
 };
-
-inline AudioTrack* toAudioTrack(TrackBase* track)
-{
-    ASSERT_WITH_SECURITY_IMPLICATION(track->type() == TrackBase::AudioTrack);
-    return static_cast<AudioTrack*>(track);
-}
 
 } // namespace WebCore
 
-#endif
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::AudioTrack)
+    static bool isType(const WebCore::TrackBase& track) { return track.type() == WebCore::TrackBase::AudioTrack; }
+SPECIALIZE_TYPE_TRAITS_END()
+
 #endif

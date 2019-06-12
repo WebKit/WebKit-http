@@ -26,17 +26,16 @@
 #include "config.h"
 #include "ChildProcess.h"
 
+#include "Logging.h"
 #include "SandboxInitializationParameters.h"
-
-#if !OS(WINDOWS)
+#include <WebCore/SessionID.h>
 #include <unistd.h>
 #endif
 
 namespace WebKit {
 
 ChildProcess::ChildProcess()
-    : m_terminationTimeout(0)
-    , m_terminationCounter(0)
+    : m_terminationCounter(0)
     , m_terminationTimer(RunLoop::main(), this, &ChildProcess::terminationTimerFired)
     , m_processSuppressionDisabled("Process Suppression Disabled by UIProcess")
 {
@@ -50,12 +49,13 @@ static void didCloseOnConnectionWorkQueue(IPC::Connection*)
 {
     // If the connection has been closed and we haven't responded in the main thread for 10 seconds
     // the process will exit forcibly.
-    auto watchdogDelay = std::chrono::seconds(10);
+    auto watchdogDelay = 10_s;
 
     WorkQueue::create("com.apple.WebKit.ChildProcess.WatchDogQueue")->dispatchAfter(watchdogDelay, [] {
         // We use _exit here since the watchdog callback is called from another thread and we don't want
         // global destructors or atexit handlers to be called from this thread while the main thread is busy
         // doing its thing.
+        RELEASE_LOG_ERROR(IPC, "Exiting process early due to unacknowledged closed-connection");
         _exit(EXIT_FAILURE);
     });
 }
@@ -64,12 +64,19 @@ void ChildProcess::initialize(const ChildProcessInitializationParameters& parame
 {
     platformInitialize();
 
+#if PLATFORM(COCOA)
+    m_priorityBoostMessage = parameters.priorityBoostMessage;
+#endif
+
     initializeProcess(parameters);
     initializeProcessName(parameters);
 
     SandboxInitializationParameters sandboxParameters;
     initializeSandbox(parameters, sandboxParameters);
-    
+
+    // In WebKit2, only the UI process should ever be generating non-default SessionIDs.
+    WebCore::SessionID::enableGenerationProtection();
+
     m_connection = IPC::Connection::createClientConnection(parameters.connectionIdentifier, *this);
     m_connection->setDidCloseOnConnectionWorkQueueCallback(didCloseOnConnectionWorkQueue);
     initializeConnection(m_connection.get());
@@ -116,6 +123,11 @@ void ChildProcess::removeMessageReceiver(IPC::StringReference messageReceiverNam
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName);
 }
 
+void ChildProcess::removeMessageReceiver(IPC::MessageReceiver& messageReceiver)
+{
+    m_messageReceiverMap.removeMessageReceiver(messageReceiver);
+}
+
 void ChildProcess::disableTermination()
 {
     m_terminationCounter++;
@@ -158,8 +170,15 @@ void ChildProcess::terminationTimerFired()
 
 void ChildProcess::stopRunLoop()
 {
+    platformStopRunLoop();
+}
+
+#if !PLATFORM(IOS)
+void ChildProcess::platformStopRunLoop()
+{
     RunLoop::main().stop();
 }
+#endif
 
 void ChildProcess::terminate()
 {
@@ -180,6 +199,12 @@ void ChildProcess::platformInitialize()
 
 void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
 {
+}
+
+void ChildProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName)
+{
+    WTFLogAlways("Received invalid message: '%s::%s'", messageReceiverName.toString().data(), messageName.toString().data());
+    CRASH();
 }
 #endif
 

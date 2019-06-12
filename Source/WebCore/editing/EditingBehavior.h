@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef EditingBehavior_h
-#define EditingBehavior_h
+#pragma once
 
 #include "EditingBehaviorTypes.h"
 
@@ -91,10 +90,11 @@ public:
 
     bool shouldSelectBasedOnDictionaryLookup() const { return m_type == EditingMacBehavior; }
 
+    // Linux and Windows always extend selections from the extent endpoint.
+    bool shouldAlwaysExtendSelectionFromExtentEndpoint() const { return m_type != EditingMacBehavior && m_type != EditingIOSBehavior; }
+
 private:
     EditingBehaviorType m_type;
 };
 
 } // namespace WebCore
-
-#endif // EditingBehavior_h

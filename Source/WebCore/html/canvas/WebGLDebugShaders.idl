@@ -24,9 +24,9 @@
  */
 
 [
-    NoInterfaceObject,
     Conditional=WEBGL,
     GenerateIsReachable=ImplWebGLRenderingContext,
+    NoInterfaceObject,
 ] interface WebGLDebugShaders {
-    [StrictTypeChecking, TreatReturnedNullStringAs=Null, RaisesException] DOMString getTranslatedShaderSource(WebGLShader shader);
+    DOMString? getTranslatedShaderSource(WebGLShader? shader); // FIXME: The return value and the parameter should not be nullable.
 };

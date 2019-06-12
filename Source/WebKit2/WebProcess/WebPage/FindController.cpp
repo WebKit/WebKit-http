@@ -36,6 +36,7 @@
 #include <WebCore/DocumentMarkerController.h>
 #include <WebCore/FloatQuad.h>
 #include <WebCore/FocusController.h>
+#include <WebCore/FrameSelection.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/MainFrame.h>
@@ -114,7 +115,7 @@ static Frame* frameWithSelection(Page* page)
     return 0;
 }
 
-void FindController::updateFindUIAfterPageScroll(bool found, const String& string, FindOptions options, unsigned maxMatchCount)
+void FindController::updateFindUIAfterPageScroll(bool found, const String& string, FindOptions options, unsigned maxMatchCount, DidWrap didWrap)
 {
     Frame* selectedFrame = frameWithSelection(m_webPage->corePage());
     
@@ -181,7 +182,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
             m_findMatches.append(range);
         }
 
-        m_webPage->send(Messages::WebPageProxy::DidFindString(string, matchRects, matchCount, m_foundStringMatchIndex));
+        m_webPage->send(Messages::WebPageProxy::DidFindString(string, matchRects, matchCount, m_foundStringMatchIndex, didWrap == DidWrap::Yes));
 
         if (!(options & FindOptionsShowFindIndicator) || !selectedFrame || !updateFindIndicator(*selectedFrame, shouldShowOverlay))
             hideFindIndicator();
@@ -189,12 +190,12 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
 
     if (!shouldShowOverlay) {
         if (m_findPageOverlay)
-            m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(m_findPageOverlay, PageOverlay::FadeMode::Fade);
+            m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_findPageOverlay, PageOverlay::FadeMode::Fade);
     } else {
         if (!m_findPageOverlay) {
-            RefPtr<PageOverlay> findPageOverlay = PageOverlay::create(*this, PageOverlay::OverlayType::Document);
-            m_findPageOverlay = findPageOverlay.get();
-            m_webPage->mainFrame()->pageOverlayController().installPageOverlay(findPageOverlay.release(), PageOverlay::FadeMode::Fade);
+            auto findPageOverlay = PageOverlay::create(*this, PageOverlay::OverlayType::Document);
+            m_findPageOverlay = findPageOverlay.ptr();
+            m_webPage->mainFrame()->pageOverlayController().installPageOverlay(WTFMove(findPageOverlay), PageOverlay::FadeMode::Fade);
         }
         m_findPageOverlay->setNeedsDisplay();
     }
@@ -232,10 +233,11 @@ void FindController::findString(const String& string, FindOptions options, unsig
     m_findMatches.clear();
 
     bool found;
+    DidWrap didWrap = DidWrap::No;
     if (pluginView)
         found = pluginView->findString(string, coreOptions, maxMatchCount);
     else
-        found = m_webPage->corePage()->findString(string, coreOptions);
+        found = m_webPage->corePage()->findString(string, coreOptions, &didWrap);
 
     if (found) {
         didFindString();
@@ -249,8 +251,8 @@ void FindController::findString(const String& string, FindOptions options, unsig
     }
 
     RefPtr<WebPage> protectedWebPage = m_webPage;
-    m_webPage->drawingArea()->dispatchAfterEnsuringUpdatedScrollPosition([protectedWebPage, found, string, options, maxMatchCount] () {
-        protectedWebPage->findController().updateFindUIAfterPageScroll(found, string, options, maxMatchCount);
+    m_webPage->drawingArea()->dispatchAfterEnsuringUpdatedScrollPosition([protectedWebPage, found, string, options, maxMatchCount, didWrap] () {
+        protectedWebPage->findController().updateFindUIAfterPageScroll(found, string, options, maxMatchCount, didWrap);
     });
 }
 
@@ -312,7 +314,7 @@ void FindController::hideFindUI()
 {
     m_findMatches.clear();
     if (m_findPageOverlay)
-        m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(m_findPageOverlay, PageOverlay::FadeMode::Fade);
+        m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_findPageOverlay, PageOverlay::FadeMode::Fade);
 
     PluginView* pluginView = pluginViewForFrame(m_webPage->mainFrame());
     
@@ -325,6 +327,7 @@ void FindController::hideFindUI()
 }
 
 #if !PLATFORM(IOS)
+
 bool FindController::updateFindIndicator(Frame& selectedFrame, bool isShowingOverlay, bool shouldAnimate)
 {
     RefPtr<TextIndicator> indicator = TextIndicator::createWithSelectionInFrame(selectedFrame, TextIndicatorOptionIncludeMarginIfRangeMatchesSelection, shouldAnimate ? TextIndicatorPresentationTransition::Bounce : TextIndicatorPresentationTransition::None);
@@ -366,6 +369,7 @@ void FindController::didFailToFindString()
 void FindController::didHideFindIndicator()
 {
 }
+
 #endif
 
 void FindController::showFindIndicatorInSelection()
@@ -421,10 +425,6 @@ Vector<IntRect> FindController::rectsForTextMatchesInRect(IntRect clipRect)
     }
 
     return rects;
-}
-
-void FindController::pageOverlayDestroyed(PageOverlay&)
-{
 }
 
 void FindController::willMoveToPage(PageOverlay&, Page* page)

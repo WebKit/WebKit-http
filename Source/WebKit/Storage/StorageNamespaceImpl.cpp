@@ -29,11 +29,14 @@
 #include "StorageSyncManager.h"
 #include "StorageTracker.h"
 #include <WebCore/StorageMap.h>
+#include <WebCore/StorageType.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringHash.h>
 
-namespace WebCore {
+using namespace WebCore;
+
+namespace WebKit {
 
 static HashMap<String, StorageNamespaceImpl*>& localStorageNamespaceMap()
 {
@@ -42,21 +45,26 @@ static HashMap<String, StorageNamespaceImpl*>& localStorageNamespaceMap()
     return localStorageNamespaceMap;
 }
 
-RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(unsigned quota)
+Ref<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(unsigned quota)
 {
-    return adoptRef(new StorageNamespaceImpl(SessionStorage, String(), quota));
+    return adoptRef(*new StorageNamespaceImpl(StorageType::Session, String(), quota));
 }
 
-RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::getOrCreateLocalStorageNamespace(const String& databasePath, unsigned quota)
+Ref<StorageNamespaceImpl> StorageNamespaceImpl::createEphemeralLocalStorageNamespace(unsigned quota)
+{
+    return adoptRef(*new StorageNamespaceImpl(StorageType::EphemeralLocal, String(), quota));
+}
+
+Ref<StorageNamespaceImpl> StorageNamespaceImpl::getOrCreateLocalStorageNamespace(const String& databasePath, unsigned quota)
 {
     ASSERT(!databasePath.isNull());
 
     auto& slot = localStorageNamespaceMap().add(databasePath, nullptr).iterator->value;
     if (slot)
-        return slot;
+        return *slot;
 
-    RefPtr<StorageNamespaceImpl> storageNamespace = adoptRef(new StorageNamespaceImpl(LocalStorage, databasePath, quota));
-    slot = storageNamespace.get();
+    Ref<StorageNamespaceImpl> storageNamespace = adoptRef(*new StorageNamespaceImpl(StorageType::Local, databasePath, quota));
+    slot = storageNamespace.ptr();
 
     return storageNamespace;
 }
@@ -68,7 +76,7 @@ StorageNamespaceImpl::StorageNamespaceImpl(StorageType storageType, const String
     , m_quota(quota)
     , m_isShutdown(false)
 {
-    if (m_storageType == LocalStorage && !m_path.isEmpty())
+    if (isPersistentLocalStorage(m_storageType) && !m_path.isEmpty())
         m_syncManager = StorageSyncManager::create(m_path);
 }
 
@@ -76,7 +84,7 @@ StorageNamespaceImpl::~StorageNamespaceImpl()
 {
     ASSERT(isMainThread());
 
-    if (m_storageType == LocalStorage) {
+    if (isPersistentLocalStorage(m_storageType)) {
         ASSERT(localStorageNamespaceMap().get(m_path) == this);
         localStorageNamespaceMap().remove(m_path);
     }
@@ -89,17 +97,16 @@ RefPtr<StorageNamespace> StorageNamespaceImpl::copy(Page*)
 {
     ASSERT(isMainThread());
     ASSERT(!m_isShutdown);
-    ASSERT(m_storageType == SessionStorage);
+    ASSERT(m_storageType == StorageType::Session || m_storageType == StorageType::EphemeralLocal);
 
     RefPtr<StorageNamespaceImpl> newNamespace = adoptRef(new StorageNamespaceImpl(m_storageType, m_path, m_quota));
+    for (auto& iter : m_storageAreaMap)
+        newNamespace->m_storageAreaMap.set(iter.key, iter.value->copy());
 
-    StorageAreaMap::iterator end = m_storageAreaMap.end();
-    for (StorageAreaMap::iterator i = m_storageAreaMap.begin(); i != end; ++i)
-        newNamespace->m_storageAreaMap.set(i->key, i->value->copy());
     return newNamespace;
 }
 
-RefPtr<StorageArea> StorageNamespaceImpl::storageArea(RefPtr<SecurityOrigin>&& origin)
+RefPtr<StorageArea> StorageNamespaceImpl::storageArea(const SecurityOriginData& origin)
 {
     ASSERT(isMainThread());
     ASSERT(!m_isShutdown);
@@ -108,8 +115,8 @@ RefPtr<StorageArea> StorageNamespaceImpl::storageArea(RefPtr<SecurityOrigin>&& o
     if ((storageArea = m_storageAreaMap.get(origin)))
         return storageArea;
 
-    storageArea = StorageAreaImpl::create(m_storageType, origin.copyRef(), m_syncManager, m_quota);
-    m_storageAreaMap.set(WTFMove(origin), storageArea);
+    storageArea = StorageAreaImpl::create(m_storageType, origin, m_syncManager.get(), m_quota);
+    m_storageAreaMap.set(origin, storageArea.get());
     return storageArea;
 }
 
@@ -120,8 +127,8 @@ void StorageNamespaceImpl::close()
     if (m_isShutdown)
         return;
 
-    // If we're session storage, we shouldn't need to do any work here.
-    if (m_storageType == SessionStorage) {
+    // If we're not a persistent storage, we shouldn't need to do any work here.
+    if (m_storageType == StorageType::Session || m_storageType == StorageType::EphemeralLocal) {
         ASSERT(!m_syncManager);
         return;
     }
@@ -136,7 +143,7 @@ void StorageNamespaceImpl::close()
     m_isShutdown = true;
 }
 
-void StorageNamespaceImpl::clearOriginForDeletion(SecurityOrigin* origin)
+void StorageNamespaceImpl::clearOriginForDeletion(const SecurityOriginData& origin)
 {
     ASSERT(isMainThread());
 

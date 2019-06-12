@@ -26,38 +26,27 @@
 #include "config.h"
 #include "WebKit2Initialize.h"
 
-#include "Logging.h"
-#include <WebCore/Logging.h>
+#include "LogInitialization.h"
+#include <WebCore/LogInitialization.h>
 #include <runtime/InitializeThreading.h>
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
 
-#if PLATFORM(COCOA)
-#include "WebSystemInterface.h"
-#endif
-#if PLATFORM(IOS)
-#import <WebCore/WebCoreThreadSystemInterface.h>
-#endif
-
 namespace WebKit {
+
+#if !PLATFORM(COCOA)
 
 void InitializeWebKit2()
 {
-#if PLATFORM(COCOA)
-    InitWebCoreSystemInterface();
-#endif
-#if PLATFORM(IOS)
-    InitWebCoreThreadSystemInterface();
-#endif
-
     JSC::initializeThreading();
-    WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
 
-#if !LOG_DISABLED
-    WebCore::initializeLoggingChannelsIfNecessary();
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
+    WebCore::initializeLogChannelsIfNecessary();
     WebKit::initializeLogChannelsIfNecessary();
-#endif // !LOG_DISABLED
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 }
+
+#endif // !PLATFORM(COCOA)
 
 } // namespace WebKit

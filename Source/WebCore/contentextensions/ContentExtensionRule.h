@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ContentExtensionRule_h
-#define ContentExtensionRule_h
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
@@ -44,17 +43,23 @@ namespace ContentExtensions {
 struct Trigger {
     String urlFilter;
     bool urlFilterIsCaseSensitive { false };
+    bool topURLConditionIsCaseSensitive { false };
     ResourceFlags flags { 0 };
-    Vector<String> domains;
-    enum class DomainCondition {
+    Vector<String> conditions;
+    enum class ConditionType {
         None,
         IfDomain,
         UnlessDomain,
-    } domainCondition { DomainCondition::None };
+        IfTopURL,
+        UnlessTopURL,
+    };
+    ConditionType conditionType { ConditionType::None };
 
     ~Trigger()
     {
-        ASSERT(domains.isEmpty() == (domainCondition == DomainCondition::None));
+        ASSERT(conditions.isEmpty() == (conditionType == ConditionType::None));
+        if (topURLConditionIsCaseSensitive)
+            ASSERT(conditionType == ConditionType::IfTopURL || conditionType == ConditionType::UnlessTopURL);
     }
 
     bool isEmpty() const
@@ -62,8 +67,8 @@ struct Trigger {
         return urlFilter.isEmpty()
             && !urlFilterIsCaseSensitive
             && !flags
-            && domains.isEmpty()
-            && domainCondition == DomainCondition::None;
+            && conditions.isEmpty()
+            && conditionType == ConditionType::None;
     }
 
     bool operator==(const Trigger& other) const
@@ -71,8 +76,8 @@ struct Trigger {
         return urlFilter == other.urlFilter
             && urlFilterIsCaseSensitive == other.urlFilterIsCaseSensitive
             && flags == other.flags
-            && domains == other.domains
-            && domainCondition == other.domainCondition;
+            && conditions == other.conditions
+            && conditionType == other.conditionType;
     }
 };
 
@@ -84,13 +89,10 @@ struct TriggerHash {
             hash ^= StringHash::hash(trigger.urlFilter);
         hash = WTF::pairIntHash(hash, DefaultHash<ResourceFlags>::Hash::hash(trigger.flags));
 
-        for (const String& domain : trigger.domains)
-            hash ^= StringHash::hash(domain);
+        for (const String& condition : trigger.conditions)
+            hash ^= StringHash::hash(condition);
 
-        if (trigger.domainCondition == Trigger::DomainCondition::IfDomain)
-            hash |= 1 << 16;
-        else if (trigger.domainCondition == Trigger::DomainCondition::IfDomain)
-            hash |= 1 << 31;
+        hash ^= 1 << static_cast<unsigned>(trigger.conditionType);
         return hash;
     }
 
@@ -176,7 +178,7 @@ private:
     
 class ContentExtensionRule {
 public:
-    ContentExtensionRule(const Trigger&, const Action&);
+    ContentExtensionRule(Trigger&&, Action&&);
 
     const Trigger& trigger() const { return m_trigger; }
     const Action& action() const { return m_action; }
@@ -187,9 +189,6 @@ private:
 };
 
 } // namespace ContentExtensions
-
 } // namespace WebCore
 
 #endif // ENABLE(CONTENT_EXTENSIONS)
-
-#endif // ContentExtensionRule_h

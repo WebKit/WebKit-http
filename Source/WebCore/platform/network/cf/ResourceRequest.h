@@ -24,133 +24,108 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceRequest_h
-#define ResourceRequest_h
+#pragma once
 
 #include "ResourceRequestBase.h"
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS NSURLRequest;
 
-#if PLATFORM(COCOA) || USE(CFNETWORK)
+#if PLATFORM(COCOA) || USE(CFURLCONNECTION)
 typedef const struct _CFURLRequest* CFURLRequestRef;
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 #endif
 
 namespace WebCore {
 
-    class ResourceRequest : public ResourceRequestBase {
-    public:
-        ResourceRequest(const String& url) 
-            : ResourceRequestBase(URL(ParsedURLString, url), UseProtocolCachePolicy)
-        {
-        }
-
-        ResourceRequest(const URL& url) 
-            : ResourceRequestBase(url, UseProtocolCachePolicy)
-        {
-        }
-
-        ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = UseProtocolCachePolicy)
-            : ResourceRequestBase(url, policy)
-        {
-            setHTTPReferrer(referrer);
-        }
-        
-        ResourceRequest()
-            : ResourceRequestBase(URL(), UseProtocolCachePolicy)
-        {
-        }
-        
-#if USE(CFNETWORK)
-#if PLATFORM(COCOA)
-        WEBCORE_EXPORT ResourceRequest(NSURLRequest *);
-        void updateNSURLRequest();
-        void clearOrUpdateNSURLRequest();
-#endif
-
-        ResourceRequest(CFURLRequestRef cfRequest)
-            : ResourceRequestBase()
-            , m_cfRequest(cfRequest)
-        {
-        }
-#else
-        ResourceRequest(NSURLRequest *nsRequest)
-            : ResourceRequestBase()
-            , m_nsRequest(nsRequest)
-        {
-        }
-#endif
-
-        WEBCORE_EXPORT void updateFromDelegatePreservingOldProperties(const ResourceRequest&);
-
-#if PLATFORM(MAC)
-        void applyWebArchiveHackForMail();
-#endif
-#if PLATFORM(COCOA)
-#if USE(CFNETWORK)
-        bool encodingRequiresPlatformData() const { return m_httpBody || m_cfRequest; }
-#else
-        bool encodingRequiresPlatformData() const { return m_httpBody || m_nsRequest; }
-#endif
-        WEBCORE_EXPORT NSURLRequest *nsURLRequest(HTTPBodyUpdatePolicy) const;
-
-        WEBCORE_EXPORT static CFStringRef isUserInitiatedKey();
-#endif
-
-#if ENABLE(CACHE_PARTITIONING)
-        WEBCORE_EXPORT static String partitionName(const String& domain);
-        const String& cachePartition() const { return m_cachePartition.isNull() ? emptyString() : m_cachePartition; }
-        void setCachePartition(const String& cachePartition)
-        {
-            ASSERT(cachePartition == partitionName(cachePartition));
-            m_cachePartition = cachePartition;
-        }
-        void setDomainForCachePartition(const String& domain) { m_cachePartition = partitionName(domain); }
-#endif
-
-#if PLATFORM(COCOA) || USE(CFNETWORK)
-        WEBCORE_EXPORT CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const;
-        void setStorageSession(CFURLStorageSessionRef);
-#endif
-
-        WEBCORE_EXPORT static bool httpPipeliningEnabled();
-        WEBCORE_EXPORT static void setHTTPPipeliningEnabled(bool);
-
-        static bool resourcePrioritiesEnabled();
-
-    private:
-        friend class ResourceRequestBase;
-
-        void doUpdatePlatformRequest();
-        void doUpdateResourceRequest();
-        void doUpdatePlatformHTTPBody();
-        void doUpdateResourceHTTPBody();
-
-        std::unique_ptr<CrossThreadResourceRequestData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceRequestData>) const;
-        void doPlatformAdopt(std::unique_ptr<CrossThreadResourceRequestData>);
-
-#if USE(CFNETWORK)
-        RetainPtr<CFURLRequestRef> m_cfRequest;
-#endif
-#if PLATFORM(COCOA)
-        RetainPtr<NSURLRequest> m_nsRequest;
-#endif
-#if ENABLE(CACHE_PARTITIONING)
-        String m_cachePartition;
-#endif
-
-        static bool s_httpPipeliningEnabled;
-    };
-
-    struct CrossThreadResourceRequestData : public CrossThreadResourceRequestDataBase {
-#if ENABLE(CACHE_PARTITIONING)
-        String m_cachePartition;
-#endif
-    };
-
-    inline bool ResourceRequest::resourcePrioritiesEnabled()
+class ResourceRequest : public ResourceRequestBase {
+public:
+    ResourceRequest(const String& url) 
+        : ResourceRequestBase(URL(ParsedURLString, url), UseProtocolCachePolicy)
     {
+    }
+
+    ResourceRequest(const URL& url) 
+        : ResourceRequestBase(url, UseProtocolCachePolicy)
+    {
+    }
+
+    ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = UseProtocolCachePolicy)
+        : ResourceRequestBase(url, policy)
+    {
+        setHTTPReferrer(referrer);
+    }
+    
+    ResourceRequest()
+        : ResourceRequestBase(URL(), UseProtocolCachePolicy)
+    {
+    }
+    
+#if USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
+    WEBCORE_EXPORT ResourceRequest(NSURLRequest *);
+    void updateNSURLRequest();
+    void clearOrUpdateNSURLRequest();
+#endif
+
+    ResourceRequest(CFURLRequestRef cfRequest)
+        : ResourceRequestBase()
+        , m_cfRequest(cfRequest)
+    {
+    }
+#else
+    ResourceRequest(NSURLRequest *nsRequest)
+        : ResourceRequestBase()
+        , m_nsRequest(nsRequest)
+    {
+    }
+#endif
+
+    WEBCORE_EXPORT void updateFromDelegatePreservingOldProperties(const ResourceRequest&);
+
+#if PLATFORM(COCOA)
+#if USE(CFURLCONNECTION)
+    bool encodingRequiresPlatformData() const { return m_httpBody || m_cfRequest; }
+#else
+    bool encodingRequiresPlatformData() const { return m_httpBody || m_nsRequest; }
+#endif
+    WEBCORE_EXPORT NSURLRequest *nsURLRequest(HTTPBodyUpdatePolicy) const;
+
+    WEBCORE_EXPORT static CFStringRef isUserInitiatedKey();
+#endif
+
+#if PLATFORM(COCOA) || USE(CFURLCONNECTION)
+    WEBCORE_EXPORT CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const;
+    void setStorageSession(CFURLStorageSessionRef);
+#endif
+
+    WEBCORE_EXPORT static bool httpPipeliningEnabled();
+    WEBCORE_EXPORT static void setHTTPPipeliningEnabled(bool);
+
+    static bool resourcePrioritiesEnabled();
+
+private:
+    friend class ResourceRequestBase;
+
+    void doUpdatePlatformRequest();
+    void doUpdateResourceRequest();
+    void doUpdatePlatformHTTPBody();
+    void doUpdateResourceHTTPBody();
+
+    void doPlatformSetAsIsolatedCopy(const ResourceRequest&);
+
+#if USE(CFURLCONNECTION)
+    RetainPtr<CFURLRequestRef> m_cfRequest;
+#endif
+#if PLATFORM(COCOA)
+    RetainPtr<NSURLRequest> m_nsRequest;
+#endif
+
+    static bool s_httpPipeliningEnabled;
+};
+
+inline bool ResourceRequest::resourcePrioritiesEnabled()
+{
 #if PLATFORM(MAC)
     return true;
 #elif PLATFORM(IOS)
@@ -158,9 +133,6 @@ namespace WebCore {
 #elif PLATFORM(WIN)
     return false;
 #endif
-    }
-
+}
 
 } // namespace WebCore
-
-#endif // ResourceRequest_h

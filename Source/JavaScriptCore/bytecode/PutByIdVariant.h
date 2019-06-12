@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PutByIdVariant_h
-#define PutByIdVariant_h
+#pragma once
 
 #include "ObjectPropertyConditionSet.h"
 #include "PropertyOffset.h"
@@ -112,7 +111,10 @@ public:
     
     // We don't support intrinsics for Setters (it would be sweet if we did) but we need this for templated helpers.
     Intrinsic intrinsic() const { return NoIntrinsic; }
-    
+
+    // This is needed for templated helpers.
+    bool isPropertyUnset() const { return false; }
+
     PropertyOffset offset() const
     {
         ASSERT(isSet());
@@ -143,6 +145,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // PutByIdVariant_h
-

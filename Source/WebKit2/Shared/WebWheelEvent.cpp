@@ -26,7 +26,6 @@
 #include "config.h"
 #include "WebEvent.h"
 
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 using namespace WebCore;
@@ -67,9 +66,23 @@ WebWheelEvent::WebWheelEvent(Type type, const IntPoint& position, const IntPoint
 {
     ASSERT(isWheelEventType(type));
 }
+#elif PLATFORM(GTK)
+WebWheelEvent::WebWheelEvent(Type type, const IntPoint& position, const IntPoint& globalPosition, const FloatSize& delta, const FloatSize& wheelTicks, Phase phase, Phase momentumPhase, Granularity granularity, Modifiers modifiers, double timestamp)
+    : WebEvent(type, modifiers, timestamp)
+    , m_position(position)
+    , m_globalPosition(globalPosition)
+    , m_delta(delta)
+    , m_wheelTicks(wheelTicks)
+    , m_granularity(granularity)
+    , m_directionInvertedFromDevice(false)
+    , m_phase(phase)
+    , m_momentumPhase(momentumPhase)
+{
+    ASSERT(isWheelEventType(type));
+}
 #endif
 
-void WebWheelEvent::encode(IPC::ArgumentEncoder& encoder) const
+void WebWheelEvent::encode(IPC::Encoder& encoder) const
 {
     WebEvent::encode(encoder);
 
@@ -79,16 +92,18 @@ void WebWheelEvent::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_wheelTicks;
     encoder << m_granularity;
     encoder << m_directionInvertedFromDevice;
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
     encoder << m_phase;
     encoder << m_momentumPhase;
+#endif
+#if PLATFORM(COCOA)
     encoder << m_hasPreciseScrollingDeltas;
     encoder << m_scrollCount;
     encoder << m_unacceleratedScrollingDelta;
 #endif
 }
 
-bool WebWheelEvent::decode(IPC::ArgumentDecoder& decoder, WebWheelEvent& t)
+bool WebWheelEvent::decode(IPC::Decoder& decoder, WebWheelEvent& t)
 {
     if (!WebEvent::decode(decoder, t))
         return false;
@@ -104,11 +119,13 @@ bool WebWheelEvent::decode(IPC::ArgumentDecoder& decoder, WebWheelEvent& t)
         return false;
     if (!decoder.decode(t.m_directionInvertedFromDevice))
         return false;
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
     if (!decoder.decode(t.m_phase))
         return false;
     if (!decoder.decode(t.m_momentumPhase))
         return false;
+#endif
+#if PLATFORM(COCOA)
     if (!decoder.decode(t.m_hasPreciseScrollingDeltas))
         return false;
     if (!decoder.decode(t.m_scrollCount))

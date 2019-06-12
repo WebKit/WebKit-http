@@ -72,6 +72,7 @@ function parseCSSImage(s)
     switch (functionName) {
     case "filter":
         return parseFilterImage(functionValue);
+    case "cross-fade":
     case "-webkit-cross-fade":
         return parseCrossFade(functionValue);
     case "url":
@@ -88,14 +89,14 @@ function parseCrossFade(s)
 {
     var matches = s.match("(.*)\\s*,\\s*(.*)\\s*,\\s*(.*)\\s*");
     if (!matches) {
-        console.error("Parsing error on '-webkit-cross-fade()'.");
+        console.error("Parsing error on 'cross-fade()'.");
         return null;
     }
 
     var from = parseCSSImage(matches[1]);
     var to = parseCSSImage(matches[2]);
     if (!from || !to) {
-        console.error("Parsing error on images passed to '-webkit-cross-fade()' ", s);
+        console.error("Parsing error on images passed to 'cross-fade()' ", s);
         return null;
     }
 
@@ -105,19 +106,19 @@ function parseCrossFade(s)
         // Check if last char is '%' and rip it off.
         // Normalize it to number.
         if (fadeValue.search('%') != fadeValue.length - 1) {
-            console.error("Passed value to '-webkit-cross-fade()' is not a number or percentage ", fadeValue);
+            console.error("Passed value to 'cross-fade()' is not a number or percentage ", fadeValue);
             return null;
         }
         fadeValue = fadeValue.slice(0, fadeValue.length - 1);
         if (isNaN(fadeValue)) {
-            console.error("Passed value to '-webkit-cross-fade()' is not a number or percentage ", fadeValue);
+            console.error("Passed value to 'cross-fade()' is not a number or percentage ", fadeValue);
             return null;
         }
         percent = parseFloat(fadeValue) / 100;
     } else
         percent = parseFloat(fadeValue);
 
-    return ["-webkit-cross-fade", from, to, percent];
+    return ["cross-fade", from, to, percent];
 }
 
 // This should just be called by parseCSSImage.
@@ -244,6 +245,7 @@ function compareCSSImages(computedValue, expectedValue, tolerance)
     case "-webkit-filter":
         return compareCSSImages(actual[1], expected[1], tolerance)
             && compareFilterFunctions(actual[2], expected[2], tolerance);
+    case "cross-fade":
     case "-webkit-cross-fade":
         return compareCSSImages(actual[1], expected[1], tolerance)
             && compareCSSImages(actual[2], expected[2], tolerance)
@@ -254,6 +256,40 @@ function compareCSSImages(computedValue, expectedValue, tolerance)
         console.error("Unknown CSS Image function ", actual[0]);
         return false;
     }
+}
+
+function compareFontVariationSettings(computedValue, expectedValue, tolerance)
+{
+    if (!computedValue)
+        return false;
+    if (computedValue == "normal" || expectedValue == "normal")
+        return computedValue == expectedValue;
+    var computed = computedValue.split(", ");
+    var expected = expectedValue.split(", ");
+    if (computed.length != expected.length)
+        return false;
+    for (var i = 0; i < computed.length; ++i) {
+        var computedPieces = computed[i].split(" ");
+        var expectedPieces = expected[i].split(" ");
+        if (computedPieces.length != 2 || expectedPieces.length != 2)
+            return false;
+        if (computedPieces[0] != expectedPieces[0])
+            return false;
+        var computedNumber = Number.parseFloat(computedPieces[1]);
+        var expectedNumber = Number.parseFloat(expectedPieces[1]);
+        if (Math.abs(computedNumber - expectedNumber) > tolerance)
+            return false;
+    }
+    return true;
+}
+
+function compareFontStyle(computedValue, expectedValue, tolerance)
+{
+	var computed = computedValue.split(" ");
+	var expected = expectedValue.split(" ");
+	var computedAngle = computed[1].split("deg");
+	var expectedAngle = expected[1].split("deg");
+	return computed[0] == expected[0] && Math.abs(computedAngle[0] - expectedAngle[0]) <= tolerance;
 }
 
 // Called by CSS Image function filter() as well as filter property.
@@ -399,8 +435,14 @@ function getPropertyValue(property, elementId, iframeId)
                || property == "webkitClipPath"
                || property == "webkitShapeInside"
                || property == "webkitShapeOutside"
-               || !property.indexOf("webkitTransform")) {
+               || property == "font-variation-settings"
+               || property == "font-style"
+               || !property.indexOf("webkitTransform")
+               || !property.indexOf("transform")) {
         computedValue = window.getComputedStyle(element)[property.split(".")[0]];
+    } else if (property == "font-stretch") {
+        var computedStyle = window.getComputedStyle(element).getPropertyCSSValue(property);
+        computedValue = computedStyle.getFloatValue(CSSPrimitiveValue.CSS_PERCENTAGE);
     } else {
         var computedStyle = window.getComputedStyle(element).getPropertyCSSValue(property);
         computedValue = computedStyle.getFloatValue(CSSPrimitiveValue.CSS_NUMBER);
@@ -413,7 +455,7 @@ function comparePropertyValue(property, computedValue, expectedValue, tolerance)
 {
     var result = true;
 
-    if (!property.indexOf("webkitTransform")) {
+    if (!property.indexOf("webkitTransform") || !property.indexOf("transform")) {
         if (typeof expectedValue == "string")
             result = (computedValue == expectedValue);
         else if (typeof expectedValue == "number") {
@@ -443,9 +485,12 @@ function comparePropertyValue(property, computedValue, expectedValue, tolerance)
                || property == "webkitMaskImage"
                || property == "webkitMaskBoxImage")
         result = compareCSSImages(computedValue, expectedValue, tolerance);
-    else {
+    else if (property == "font-variation-settings")
+        result = compareFontVariationSettings(computedValue, expectedValue, tolerance);
+    else if (property == "font-style")
+        result = compareFontStyle(computedValue, expectedValue, tolerance);
+    else
         result = isCloseEnough(computedValue, expectedValue, tolerance);
-    }
     return result;
 }
 
@@ -503,6 +548,9 @@ function startTest(expected, startCallback, finishCallback)
 var result = "";
 var hasPauseAnimationAPI;
 
+if (window.testRunner)
+    testRunner.waitUntilDone();
+
 function runAnimationTest(expected, startCallback, event, disablePauseAnimationAPI, doPixelTest, finishCallback)
 {
     hasPauseAnimationAPI = 'internals' in window;
@@ -512,7 +560,6 @@ function runAnimationTest(expected, startCallback, event, disablePauseAnimationA
     if (window.testRunner) {
         if (!doPixelTest)
             testRunner.dumpAsText();
-        testRunner.waitUntilDone();
     }
     
     if (!expected)

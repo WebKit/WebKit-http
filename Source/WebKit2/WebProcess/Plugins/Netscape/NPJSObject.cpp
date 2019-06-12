@@ -31,6 +31,7 @@
 #include "JSNPObject.h"
 #include "NPRuntimeObjectMap.h"
 #include "NPRuntimeUtilities.h"
+#include <JavaScriptCore/CatchScope.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <JavaScriptCore/JSCellInlines.h>
 #include <JavaScriptCore/JSLock.h>
@@ -48,7 +49,7 @@ namespace WebKit {
 NPJSObject* NPJSObject::create(VM& vm, NPRuntimeObjectMap* objectMap, JSObject* jsObject)
 {
     // We should never have a JSNPObject inside an NPJSObject.
-    ASSERT(!jsObject->inherits(JSNPObject::info()));
+    ASSERT(!jsObject->inherits(vm, JSNPObject::info()));
 
     NPJSObject* npJSObject = toNPJSObject(createNPObject(0, npClass()));
     npJSObject->initialize(vm, objectMap, jsObject);
@@ -101,13 +102,15 @@ bool NPJSObject::hasMethod(NPIdentifier methodName)
     if (!exec)
         return false;
 
-    JSLockHolder lock(exec);
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     JSValue value = m_jsObject->get(exec, identifierFromIdentifierRep(exec, identifierRep));    
-    exec->clearException();
+    scope.clearException();
 
     CallData callData;
-    return getCallData(value, callData) != CallTypeNone;
+    return getCallData(value, callData) != CallType::None;
 }
 
 bool NPJSObject::invoke(NPIdentifier methodName, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
@@ -147,7 +150,9 @@ bool NPJSObject::hasProperty(NPIdentifier identifier)
     if (!exec)
         return false;
     
-    JSLockHolder lock(exec);
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     bool result;
     if (identifierRep->isString())
@@ -155,7 +160,7 @@ bool NPJSObject::hasProperty(NPIdentifier identifier)
     else
         result = m_jsObject->hasProperty(exec, identifierRep->number());
 
-    exec->clearException();
+    scope.clearException();
     return result;
 }
 
@@ -167,7 +172,10 @@ bool NPJSObject::getProperty(NPIdentifier propertyName, NPVariant* result)
     if (!exec)
         return false;
 
-    JSLockHolder lock(exec);
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     JSValue jsResult;
     if (identifierRep->isString())
         jsResult = m_jsObject->get(exec, identifierFromIdentifierRep(exec, identifierRep));
@@ -175,7 +183,7 @@ bool NPJSObject::getProperty(NPIdentifier propertyName, NPVariant* result)
         jsResult = m_jsObject->get(exec, identifierRep->number());
     
     m_objectMap->convertJSValueToNPVariant(exec, jsResult, *result);
-    exec->clearException();
+    scope.clearException();
     return true;
 }
 
@@ -187,7 +195,9 @@ bool NPJSObject::setProperty(NPIdentifier propertyName, const NPVariant* value)
     if (!exec)
         return false;
     
-    JSLockHolder lock(exec);
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     JSValue jsValue = m_objectMap->convertNPVariantToJSValue(exec, m_objectMap->globalObject(), *value);
     if (identifierRep->isString()) {
@@ -195,7 +205,7 @@ bool NPJSObject::setProperty(NPIdentifier propertyName, const NPVariant* value)
         m_jsObject->methodTable()->put(m_jsObject.get(), exec, identifierFromIdentifierRep(exec, identifierRep), jsValue, slot);
     } else
         m_jsObject->methodTable()->putByIndex(m_jsObject.get(), exec, identifierRep->number(), jsValue, false);
-    exec->clearException();
+    scope.clearException();
     
     return true;
 }
@@ -208,26 +218,29 @@ bool NPJSObject::removeProperty(NPIdentifier propertyName)
     if (!exec)
         return false;
 
-    JSLockHolder lock(exec);
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     if (identifierRep->isString()) {
         Identifier identifier = identifierFromIdentifierRep(exec, identifierRep);
         
         if (!m_jsObject->hasProperty(exec, identifier)) {
-            exec->clearException();
+            scope.clearException();
             return false;
         }
         
         m_jsObject->methodTable()->deleteProperty(m_jsObject.get(), exec, identifier);
     } else {
         if (!m_jsObject->hasProperty(exec, identifierRep->number())) {
-            exec->clearException();
+            scope.clearException();
             return false;
         }
 
         m_jsObject->methodTable()->deletePropertyByIndex(m_jsObject.get(), exec, identifierRep->number());
     }
 
-    exec->clearException();
+    scope.clearException();
     return true;
 }
 
@@ -259,11 +272,13 @@ bool NPJSObject::construct(const NPVariant* arguments, uint32_t argumentCount, N
     if (!exec)
         return false;
 
-    JSLockHolder lock(exec);
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     ConstructData constructData;
     ConstructType constructType = getConstructData(m_jsObject.get(), constructData);
-    if (constructType == ConstructTypeNone)
+    if (constructType == ConstructType::None)
         return false;
 
     // Convert the passed in arguments.
@@ -275,16 +290,19 @@ bool NPJSObject::construct(const NPVariant* arguments, uint32_t argumentCount, N
     
     // Convert and return the new object.
     m_objectMap->convertJSValueToNPVariant(exec, value, *result);
-    exec->clearException();
+    scope.clearException();
 
     return true;
 }
 
 bool NPJSObject::invoke(ExecState* exec, JSGlobalObject* globalObject, JSValue function, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     CallData callData;
     CallType callType = getCallData(function, callData);
-    if (callType == CallTypeNone)
+    if (callType == CallType::None)
         return false;
 
     // Convert the passed in arguments.
@@ -294,9 +312,18 @@ bool NPJSObject::invoke(ExecState* exec, JSGlobalObject* globalObject, JSValue f
 
     JSValue value = JSC::call(exec, function, callType, callData, m_jsObject.get(), argumentList);
 
+    if (UNLIKELY(scope.exception())) {
+        scope.clearException();
+        return false;
+    }
+
     // Convert and return the result of the function call.
     m_objectMap->convertJSValueToNPVariant(exec, value, *result);
-    exec->clearException();
+
+    if (UNLIKELY(scope.exception())) {
+        scope.clearException();
+        return false;
+    }
     
     return true;
 }

@@ -21,6 +21,7 @@
 #include "config.h"
 #include "SVGFEFloodElement.h"
 
+#include "FEFlood.h"
 #include "RenderStyle.h"
 #include "SVGNames.h"
 #include "SVGRenderStyle.h"
@@ -62,7 +63,7 @@ RefPtr<FilterEffect> SVGFEFloodElement::build(SVGFilterBuilder*, Filter& filter)
     
     const SVGRenderStyle& svgStyle = renderer->style().svgStyle();
 
-    Color color = svgStyle.floodColor();
+    const Color& color = svgStyle.floodColor();
     float opacity = svgStyle.floodOpacity();
 
     return FEFlood::create(filter, color, opacity);

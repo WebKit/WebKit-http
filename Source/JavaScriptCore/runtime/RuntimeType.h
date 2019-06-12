@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RuntimeType_h
-#define RuntimeType_h
+#pragma once
 
 #include <wtf/text/WTFString.h>
 
@@ -37,7 +36,7 @@ enum RuntimeType : uint16_t {
     TypeUndefined          = 0x2,
     TypeNull               = 0x4,
     TypeBoolean            = 0x8,
-    TypeMachineInt         = 0x10,
+    TypeAnyInt             = 0x10,
     TypeNumber             = 0x20,
     TypeString             = 0x40,
     TypeObject             = 0x80,
@@ -45,6 +44,8 @@ enum RuntimeType : uint16_t {
 };
 
 typedef uint16_t RuntimeTypeMask;
+
+static const RuntimeTypeMask RuntimeTypeMaskAllTypes = TypeFunction | TypeUndefined | TypeNull | TypeBoolean | TypeAnyInt | TypeNumber | TypeString | TypeObject | TypeSymbol;
 
 class JSValue;
 RuntimeType runtimeTypeForValue(JSValue);
@@ -56,5 +57,3 @@ ALWAYS_INLINE bool runtimeTypeIsPrimitive(RuntimeTypeMask type)
 }
 
 } // namespace JSC
-
-#endif // RuntimeType_h

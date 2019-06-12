@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingStateStickyNode_h
-#define ScrollingStateStickyNode_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
@@ -41,7 +40,7 @@ class ScrollingStateStickyNode final : public ScrollingStateNode {
 public:
     static Ref<ScrollingStateStickyNode> create(ScrollingStateTree&, ScrollingNodeID);
 
-    virtual Ref<ScrollingStateNode> clone(ScrollingStateTree&) override;
+    Ref<ScrollingStateNode> clone(ScrollingStateTree&) override;
 
     virtual ~ScrollingStateStickyNode();
 
@@ -56,9 +55,9 @@ private:
     ScrollingStateStickyNode(ScrollingStateTree&, ScrollingNodeID);
     ScrollingStateStickyNode(const ScrollingStateStickyNode&, ScrollingStateTree&);
 
-    virtual void syncLayerPositionForViewportRect(const LayoutRect& viewportRect) override;
+    void reconcileLayerPositionForViewportRect(const LayoutRect& viewportRect, ScrollingLayerPositionAction) override;
 
-    virtual void dumpProperties(TextStream&, int indent) const override;
+    void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const override;
 
     StickyPositionViewportConstraints m_constraints;
 };
@@ -68,5 +67,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_SCROLLING_STATE_NODE(ScrollingStateStickyNode, isStickyNode())
 
 #endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
-
-#endif // ScrollingStateStickyNode_h

@@ -51,19 +51,36 @@ class ImageD3D : angle::NonCopyable
 
     virtual bool redefine(GLenum target, GLenum internalformat, const gl::Extents &size, bool forceRelease) = 0;
 
-    virtual gl::Error loadData(const gl::Box &area, const gl::PixelUnpackState &unpack, GLenum type, const void *input) = 0;
+    virtual gl::Error loadData(const gl::Box &area,
+                               const gl::PixelUnpackState &unpack,
+                               GLenum type,
+                               const void *input,
+                               bool applySkipImages) = 0;
     virtual gl::Error loadCompressedData(const gl::Box &area, const void *input) = 0;
 
-    virtual gl::Error setManagedSurface2D(TextureStorage *storage, int level) { return gl::Error(GL_NO_ERROR); };
-    virtual gl::Error setManagedSurfaceCube(TextureStorage *storage, int face, int level) { return gl::Error(GL_NO_ERROR); };
-    virtual gl::Error setManagedSurface3D(TextureStorage *storage, int level) { return gl::Error(GL_NO_ERROR); };
-    virtual gl::Error setManagedSurface2DArray(TextureStorage *storage, int layer, int level) { return gl::Error(GL_NO_ERROR); };
+    virtual gl::Error setManagedSurface2D(TextureStorage *storage, int level)
+    {
+        return gl::NoError();
+    };
+    virtual gl::Error setManagedSurfaceCube(TextureStorage *storage, int face, int level)
+    {
+        return gl::NoError();
+    };
+    virtual gl::Error setManagedSurface3D(TextureStorage *storage, int level)
+    {
+        return gl::NoError();
+    };
+    virtual gl::Error setManagedSurface2DArray(TextureStorage *storage, int layer, int level)
+    {
+        return gl::NoError();
+    };
     virtual gl::Error copyToStorage(TextureStorage *storage, const gl::ImageIndex &index, const gl::Box &region) = 0;
 
-    virtual gl::Error copy(const gl::Offset &destOffset, const gl::Box &sourceArea,
-                           const gl::ImageIndex &sourceIndex, TextureStorage *source) = 0;
-
-    gl::Error copy(const gl::Offset &destOffset, const gl::Rectangle &sourceArea, const gl::Framebuffer *source);
+    virtual gl::Error copyFromTexStorage(const gl::ImageIndex &imageIndex,
+                                         TextureStorage *source) = 0;
+    virtual gl::Error copyFromFramebuffer(const gl::Offset &destOffset,
+                                          const gl::Rectangle &sourceArea,
+                                          const gl::Framebuffer *source) = 0;
 
   protected:
     GLsizei mWidth;
@@ -74,9 +91,6 @@ class ImageD3D : angle::NonCopyable
     GLenum mTarget;
 
     bool mDirty;
-
-  private:
-    virtual gl::Error copy(const gl::Offset &destOffset, const gl::Rectangle &sourceArea, RenderTargetD3D *source) = 0;
 };
 
 }

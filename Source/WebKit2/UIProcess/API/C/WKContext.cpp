@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WKContextPrivate.h"
 
+#include "APIArray.h"
 #include "APIClient.h"
 #include "APIDownloadClient.h"
 #include "APILegacyContextHistoryClient.h"
@@ -38,9 +39,9 @@
 #include "WKContextConfigurationRef.h"
 #include "WKRetainPtr.h"
 #include "WebCertificateInfo.h"
+#include "WebContextInjectedBundleClient.h"
 #include "WebIconDatabase.h"
 #include "WebProcessPool.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -48,9 +49,6 @@
 #include "WebCookieManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebNotificationManagerProxy.h"
-#if ENABLE(BATTERY_STATUS)
-#include "WebBatteryManagerProxy.h"
-#endif
 
 namespace API {
 template<> struct ClientTraits<WKContextDownloadClientBase> {
@@ -95,7 +93,7 @@ void WKContextSetClient(WKContextRef contextRef, const WKContextClientBase* wkCl
 
 void WKContextSetInjectedBundleClient(WKContextRef contextRef, const WKContextInjectedBundleClientBase* wkClient)
 {
-    toImpl(contextRef)->initializeInjectedBundleClient(wkClient);
+    toImpl(contextRef)->setInjectedBundleClient(std::make_unique<WebContextInjectedBundleClient>(wkClient));
 }
 
 void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryClientBase* wkClient)
@@ -108,7 +106,7 @@ void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryCl
         }
 
     private:
-        virtual void didNavigateWithNavigationData(WebProcessPool& processPool, WebPageProxy& page, const WebNavigationDataStore& navigationDataStore, WebFrameProxy& frame) override
+        void didNavigateWithNavigationData(WebProcessPool& processPool, WebPageProxy& page, const WebNavigationDataStore& navigationDataStore, WebFrameProxy& frame) override
         {
             if (!m_client.didNavigateWithNavigationData)
                 return;
@@ -117,7 +115,7 @@ void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryCl
             m_client.didNavigateWithNavigationData(toAPI(&processPool), toAPI(&page), toAPI(navigationData.get()), toAPI(&frame), m_client.base.clientInfo);
         }
 
-        virtual void didPerformClientRedirect(WebProcessPool& processPool, WebPageProxy& page, const String& sourceURL, const String& destinationURL, WebFrameProxy& frame) override
+        void didPerformClientRedirect(WebProcessPool& processPool, WebPageProxy& page, const String& sourceURL, const String& destinationURL, WebFrameProxy& frame) override
         {
             if (!m_client.didPerformClientRedirect)
                 return;
@@ -125,7 +123,7 @@ void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryCl
             m_client.didPerformClientRedirect(toAPI(&processPool), toAPI(&page), toURLRef(sourceURL.impl()), toURLRef(destinationURL.impl()), toAPI(&frame), m_client.base.clientInfo);
         }
 
-        virtual void didPerformServerRedirect(WebProcessPool& processPool, WebPageProxy& page, const String& sourceURL, const String& destinationURL, WebFrameProxy& frame) override
+        void didPerformServerRedirect(WebProcessPool& processPool, WebPageProxy& page, const String& sourceURL, const String& destinationURL, WebFrameProxy& frame) override
         {
             if (!m_client.didPerformServerRedirect)
                 return;
@@ -133,7 +131,7 @@ void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryCl
             m_client.didPerformServerRedirect(toAPI(&processPool), toAPI(&page), toURLRef(sourceURL.impl()), toURLRef(destinationURL.impl()), toAPI(&frame), m_client.base.clientInfo);
         }
 
-        virtual void didUpdateHistoryTitle(WebProcessPool& processPool, WebPageProxy& page, const String& title, const String& url, WebFrameProxy& frame) override
+        void didUpdateHistoryTitle(WebProcessPool& processPool, WebPageProxy& page, const String& title, const String& url, WebFrameProxy& frame) override
         {
             if (!m_client.didUpdateHistoryTitle)
                 return;
@@ -141,7 +139,7 @@ void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryCl
             m_client.didUpdateHistoryTitle(toAPI(&processPool), toAPI(&page), toAPI(title.impl()), toURLRef(url.impl()), toAPI(&frame), m_client.base.clientInfo);
         }
 
-        virtual void populateVisitedLinks(WebProcessPool& processPool) override
+        void populateVisitedLinks(WebProcessPool& processPool) override
         {
             if (!m_client.populateVisitedLinks)
                 return;
@@ -149,7 +147,7 @@ void WKContextSetHistoryClient(WKContextRef contextRef, const WKContextHistoryCl
             m_client.populateVisitedLinks(toAPI(&processPool), m_client.base.clientInfo);
         }
 
-        virtual bool addsVisitedLinks() const override
+        bool addsVisitedLinks() const override
         {
             return m_client.populateVisitedLinks;
         }
@@ -175,7 +173,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             initialize(client);
         }
     private:
-        virtual void didStart(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
+        void didStart(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
         {
             if (!m_client.didStart)
                 return;
@@ -183,7 +181,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didStart(toAPI(processPool), toAPI(downloadProxy), m_client.base.clientInfo);
         }
 
-        virtual void didReceiveAuthenticationChallenge(WebProcessPool* processPool, DownloadProxy* downloadProxy, AuthenticationChallengeProxy* authenticationChallengeProxy) override
+        void didReceiveAuthenticationChallenge(WebProcessPool* processPool, DownloadProxy* downloadProxy, AuthenticationChallengeProxy* authenticationChallengeProxy) override
         {
             if (!m_client.didReceiveAuthenticationChallenge)
                 return;
@@ -191,7 +189,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didReceiveAuthenticationChallenge(toAPI(processPool), toAPI(downloadProxy), toAPI(authenticationChallengeProxy), m_client.base.clientInfo);
         }
 
-        virtual void didReceiveResponse(WebProcessPool* processPool, DownloadProxy* downloadProxy, const ResourceResponse& response) override
+        void didReceiveResponse(WebProcessPool* processPool, DownloadProxy* downloadProxy, const ResourceResponse& response) override
         {
             if (!m_client.didReceiveResponse)
                 return;
@@ -199,7 +197,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didReceiveResponse(toAPI(processPool), toAPI(downloadProxy), toAPI(API::URLResponse::create(response).ptr()), m_client.base.clientInfo);
         }
 
-        virtual void didReceiveData(WebProcessPool* processPool, DownloadProxy* downloadProxy, uint64_t length) override
+        void didReceiveData(WebProcessPool* processPool, DownloadProxy* downloadProxy, uint64_t length) override
         {
             if (!m_client.didReceiveData)
                 return;
@@ -207,7 +205,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didReceiveData(toAPI(processPool), toAPI(downloadProxy), length, m_client.base.clientInfo);
         }
 
-        virtual bool shouldDecodeSourceDataOfMIMEType(WebProcessPool* processPool, DownloadProxy* downloadProxy, const String& mimeType) override
+        bool shouldDecodeSourceDataOfMIMEType(WebProcessPool* processPool, DownloadProxy* downloadProxy, const String& mimeType) override
         {
             if (!m_client.shouldDecodeSourceDataOfMIMEType)
                 return true;
@@ -215,7 +213,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             return m_client.shouldDecodeSourceDataOfMIMEType(toAPI(processPool), toAPI(downloadProxy), toAPI(mimeType.impl()), m_client.base.clientInfo);
         }
 
-        virtual String decideDestinationWithSuggestedFilename(WebProcessPool* processPool, DownloadProxy* downloadProxy, const String& filename, bool& allowOverwrite) override
+        String decideDestinationWithSuggestedFilename(WebProcessPool* processPool, DownloadProxy* downloadProxy, const String& filename, bool& allowOverwrite) override
         {
             if (!m_client.decideDestinationWithSuggestedFilename)
                 return String();
@@ -224,7 +222,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             return toWTFString(destination.get());
         }
 
-        virtual void didCreateDestination(WebProcessPool* processPool, DownloadProxy* downloadProxy, const String& path) override
+        void didCreateDestination(WebProcessPool* processPool, DownloadProxy* downloadProxy, const String& path) override
         {
             if (!m_client.didCreateDestination)
                 return;
@@ -232,7 +230,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didCreateDestination(toAPI(processPool), toAPI(downloadProxy), toAPI(path.impl()), m_client.base.clientInfo);
         }
 
-        virtual void didFinish(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
+        void didFinish(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
         {
             if (!m_client.didFinish)
                 return;
@@ -240,7 +238,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didFinish(toAPI(processPool), toAPI(downloadProxy), m_client.base.clientInfo);
         }
 
-        virtual void didFail(WebProcessPool* processPool, DownloadProxy* downloadProxy, const ResourceError& error) override
+        void didFail(WebProcessPool* processPool, DownloadProxy* downloadProxy, const ResourceError& error) override
         {
             if (!m_client.didFail)
                 return;
@@ -248,7 +246,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didFail(toAPI(processPool), toAPI(downloadProxy), toAPI(error), m_client.base.clientInfo);
         }
         
-        virtual void didCancel(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
+        void didCancel(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
         {
             if (!m_client.didCancel)
                 return;
@@ -256,7 +254,7 @@ void WKContextSetDownloadClient(WKContextRef contextRef, const WKContextDownload
             m_client.didCancel(toAPI(processPool), toAPI(downloadProxy), m_client.base.clientInfo);
         }
         
-        virtual void processDidCrash(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
+        void processDidCrash(WebProcessPool* processPool, DownloadProxy* downloadProxy) override
         {
             if (!m_client.processDidCrash)
                 return;
@@ -357,6 +355,15 @@ void WKContextSetAdditionalPluginsDirectory(WKContextRef contextRef, WKStringRef
 #endif
 }
 
+void WKContextRefreshPlugIns(WKContextRef context)
+{
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    toImpl(context)->refreshPlugins();
+#else
+    UNUSED_PARAM(context);
+#endif
+}
+
 void WKContextRegisterURLSchemeAsEmptyDocument(WKContextRef contextRef, WKStringRef urlScheme)
 {
     toImpl(contextRef)->registerURLSchemeAsEmptyDocument(toImpl(urlScheme)->string());
@@ -374,12 +381,7 @@ void WKContextRegisterURLSchemeAsBypassingContentSecurityPolicy(WKContextRef con
 
 void WKContextRegisterURLSchemeAsCachePartitioned(WKContextRef contextRef, WKStringRef urlScheme)
 {
-#if ENABLE(CACHE_PARTITIONING)
     toImpl(contextRef)->registerURLSchemeAsCachePartitioned(toImpl(urlScheme)->string());
-#else
-    UNUSED_PARAM(contextRef);
-    UNUSED_PARAM(urlScheme);
-#endif
 }
 
 void WKContextSetDomainRelaxationForbiddenForURLScheme(WKContextRef contextRef, WKStringRef urlScheme)
@@ -392,6 +394,11 @@ void WKContextSetCanHandleHTTPSServerTrustEvaluation(WKContextRef contextRef, bo
     toImpl(contextRef)->setCanHandleHTTPSServerTrustEvaluation(value);
 }
 
+void WKContextSetDiskCacheSpeculativeValidationEnabled(WKContextRef contextRef, bool value)
+{
+    toImpl(contextRef)->configuration().setDiskCacheSpeculativeValidationEnabled(value);
+}
+
 WKCookieManagerRef WKContextGetCookieManager(WKContextRef contextRef)
 {
     return toAPI(toImpl(contextRef)->supplement<WebCookieManagerProxy>());
@@ -399,22 +406,12 @@ WKCookieManagerRef WKContextGetCookieManager(WKContextRef contextRef)
 
 WKWebsiteDataStoreRef WKContextGetWebsiteDataStore(WKContextRef context)
 {
-    return toAPI(toImpl(context)->websiteDataStore());
+    return toAPI(&toImpl(context)->websiteDataStore());
 }
 
 WKApplicationCacheManagerRef WKContextGetApplicationCacheManager(WKContextRef context)
 {
     return reinterpret_cast<WKApplicationCacheManagerRef>(WKContextGetWebsiteDataStore(context));
-}
-
-WKBatteryManagerRef WKContextGetBatteryManager(WKContextRef contextRef)
-{
-#if ENABLE(BATTERY_STATUS)
-    return toAPI(toImpl(contextRef)->supplement<WebBatteryManagerProxy>());
-#else
-    UNUSED_PARAM(contextRef);
-    return 0;
-#endif
 }
 
 WKGeolocationManagerRef WKContextGetGeolocationManager(WKContextRef contextRef)
@@ -445,16 +442,6 @@ WKMediaSessionFocusManagerRef WKContextGetMediaSessionFocusManager(WKContextRef 
 WKNotificationManagerRef WKContextGetNotificationManager(WKContextRef contextRef)
 {
     return toAPI(toImpl(contextRef)->supplement<WebNotificationManagerProxy>());
-}
-
-WKPluginSiteDataManagerRef WKContextGetPluginSiteDataManager(WKContextRef context)
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    return reinterpret_cast<WKPluginSiteDataManagerRef>(WKContextGetWebsiteDataStore(context));
-#else
-    UNUSED_PARAM(context);
-    return nullptr;
-#endif
 }
 
 WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef context)
@@ -517,6 +504,16 @@ void WKContextGetStatisticsWithOptions(WKContextRef contextRef, WKStatisticsOpti
     toImpl(contextRef)->getStatistics(optionsMask, toGenericCallbackFunction(context, callback));
 }
 
+bool WKContextJavaScriptConfigurationFileEnabled(WKContextRef contextRef)
+{
+    return toImpl(contextRef)->javaScriptConfigurationFileEnabled();
+}
+
+void WKContextSetJavaScriptConfigurationFileEnabled(WKContextRef contextRef, bool enable)
+{
+    toImpl(contextRef)->setJavaScriptConfigurationFileEnabled(enable);
+}
+
 void WKContextGarbageCollectJavaScriptObjects(WKContextRef contextRef)
 {
     toImpl(contextRef)->garbageCollectJavaScriptObjects();
@@ -532,6 +529,11 @@ void WKContextUseTestingNetworkSession(WKContextRef context)
     toImpl(context)->useTestingNetworkSession();
 }
 
+void WKContextSetAllowsAnySSLCertificateForWebSocketTesting(WKContextRef context, bool allows)
+{
+    toImpl(context)->setAllowsAnySSLCertificateForWebSocket(allows);
+}
+
 void WKContextClearCachedCredentials(WKContextRef context)
 {
     toImpl(context)->clearCachedCredentials();
@@ -539,7 +541,7 @@ void WKContextClearCachedCredentials(WKContextRef context)
 
 WKDictionaryRef WKContextCopyPlugInAutoStartOriginHashes(WKContextRef contextRef)
 {
-    return toAPI(toImpl(contextRef)->plugInAutoStartOriginHashes().leakRef());
+    return toAPI(&toImpl(contextRef)->plugInAutoStartOriginHashes().leakRef());
 }
 
 void WKContextSetPlugInAutoStartOriginHashes(WKContextRef contextRef, WKDictionaryRef dictionaryRef)
@@ -576,4 +578,19 @@ void WKContextSetMemoryCacheDisabled(WKContextRef contextRef, bool disabled)
 void WKContextSetFontWhitelist(WKContextRef contextRef, WKArrayRef arrayRef)
 {
     toImpl(contextRef)->setFontWhitelist(toImpl(arrayRef));
+}
+
+void WKContextTerminateNetworkProcess(WKContextRef context)
+{
+    toImpl(context)->terminateNetworkProcess();
+}
+
+pid_t WKContextGetNetworkProcessIdentifier(WKContextRef contextRef)
+{
+    return toImpl(contextRef)->networkProcessIdentifier();
+}
+
+pid_t WKContextGetDatabaseProcessIdentifier(WKContextRef contextRef)
+{
+    return toImpl(contextRef)->databaseProcessIdentifier();
 }

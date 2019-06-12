@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,9 @@
 #import "AutomationClient.h"
 #import "CacheModel.h"
 #import "DownloadClient.h"
+#import "Logging.h"
 #import "SandboxUtilities.h"
+#import "UIGamepadProvider.h"
 #import "WKObject.h"
 #import "WeakObjCPtr.h"
 #import "WebCertificateInfo.h"
@@ -44,12 +46,15 @@
 #import "_WKProcessPoolConfigurationInternal.h"
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/CertificateInfo.h>
+#import <WebCore/PluginData.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
 #import <WebCore/WebCoreThreadSystemInterface.h>
 #import "WKGeolocationProviderIOS.h"
 #endif
+
+static WKProcessPool *sharedProcessPool;
 
 @implementation WKProcessPool {
     WebKit::WeakObjCPtr<id <_WKAutomationDelegate>> _automationDelegate;
@@ -58,6 +63,7 @@
     RetainPtr<_WKAutomationSession> _automationSession;
 #if PLATFORM(IOS)
     RetainPtr<WKGeolocationProviderIOS> _geolocationProvider;
+    RetainPtr<id <_WKGeolocationCoreLocationProvider>> _coreLocationProvider;
 #endif // PLATFORM(IOS)
 }
 
@@ -88,6 +94,28 @@
     [super dealloc];
 }
 
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+    if (self == sharedProcessPool) {
+        [coder encodeBool:YES forKey:@"isSharedProcessPool"];
+        return;
+    }
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    if (!(self = [self init]))
+        return nil;
+
+    if ([coder decodeBoolForKey:@"isSharedProcessPool"]) {
+        [self release];
+
+        return [[WKProcessPool _sharedProcessPool] retain];
+    }
+
+    return self;
+}
+
 - (NSString *)description
 {
     return [NSString stringWithFormat:@"<%@: %p; configuration = %@>", NSStringFromClass(self.class), self, wrapper(_processPool->configuration())];
@@ -115,6 +143,16 @@
 @end
 
 @implementation WKProcessPool (WKPrivate)
+
++ (WKProcessPool *)_sharedProcessPool
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedProcessPool = [[WKProcessPool alloc] init];
+    });
+
+    return sharedProcessPool;
+}
 
 + (NSURL *)_websiteDataURLForContainerWithURL:(NSURL *)containerURL
 {
@@ -161,7 +199,7 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 
 - (void)_setCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
-    _processPool->supplement<WebKit::WebCookieManagerProxy>()->setHTTPCookieAcceptPolicy(toHTTPCookieAcceptPolicy(policy));
+    _processPool->supplement<WebKit::WebCookieManagerProxy>()->setHTTPCookieAcceptPolicy(WebCore::SessionID::defaultSessionID(), toHTTPCookieAcceptPolicy(policy), [](WebKit::CallbackBase::Error){});
 }
 
 - (id)_objectForBundleParameter:(NSString *)parameter
@@ -212,6 +250,101 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
     _processPool->sendToAllProcesses(Messages::WebProcess::SetInjectedBundleParameters(IPC::DataReference(static_cast<const uint8_t*>([data bytes]), [data length])));
 }
 
+#if !TARGET_OS_IPHONE
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
+
+static bool isPluginLoadClientPolicyAcceptable(unsigned policy)
+{
+    return policy <= WebCore::PluginLoadClientPolicyMaximum;
+}
+static HashMap<String, HashMap<String, HashMap<String, uint8_t>>> toPluginLoadClientPoliciesHashMap(NSDictionary* dictionary)
+{
+    __block HashMap<String, HashMap<String, HashMap<String, uint8_t>>> pluginLoadClientPolicies;
+    [dictionary enumerateKeysAndObjectsUsingBlock:^(id nsHost, id nsPoliciesForHost, BOOL *stop) {
+        if (![nsHost isKindOfClass:[NSString class]]) {
+            RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+            return;
+        }
+        if (![nsPoliciesForHost isKindOfClass:[NSDictionary class]]) {
+            RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+            return;
+        }
+
+        String host = (NSString *)nsHost;
+        __block HashMap<String, HashMap<String, uint8_t>> policiesForHost;
+        [nsPoliciesForHost enumerateKeysAndObjectsUsingBlock:^(id nsIdentifier, id nsVersionsToPolicies, BOOL *stop) {
+            if (![nsIdentifier isKindOfClass:[NSString class]]) {
+                RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                return;
+            }
+            if (![nsVersionsToPolicies isKindOfClass:[NSDictionary class]]) {
+                RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                return;
+            }
+
+            String bundleIdentifier = (NSString *)nsIdentifier;
+            __block HashMap<String, uint8_t> versionsToPolicies;
+            [nsVersionsToPolicies enumerateKeysAndObjectsUsingBlock:^(id nsVersion, id nsPolicy, BOOL *stop) {
+                if (![nsVersion isKindOfClass:[NSString class]]) {
+                    RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                    return;
+                }
+                if (![nsPolicy isKindOfClass:[NSNumber class]]) {
+                    RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                    return;
+                }
+                unsigned policy = ((NSNumber *)nsPolicy).unsignedIntValue;
+                if (!isPluginLoadClientPolicyAcceptable(policy)) {
+                    RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                    return;
+                }
+                String version = (NSString *)nsVersion;
+                versionsToPolicies.add(version, static_cast<uint8_t>(policy));
+            }];
+            if (!versionsToPolicies.isEmpty())
+                policiesForHost.add(bundleIdentifier, WTFMove(versionsToPolicies));
+        }];
+        if (!policiesForHost.isEmpty())
+            pluginLoadClientPolicies.add(host, WTFMove(policiesForHost));
+    }];
+    return pluginLoadClientPolicies;
+}
+
+static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<String, HashMap<String, uint8_t>>>& map)
+{
+    auto policies = adoptNS([[NSMutableDictionary alloc] initWithCapacity:map.size()]);
+    for (auto& hostPair : map) {
+        NSString *host = hostPair.key;
+        policies.get()[host] = adoptNS([[NSMutableDictionary alloc] initWithCapacity:hostPair.value.size()]).get();
+        for (auto& bundleIdentifierPair : hostPair.value) {
+            NSString *bundlerIdentifier = bundleIdentifierPair.key;
+            policies.get()[host][bundlerIdentifier] = adoptNS([[NSMutableDictionary alloc] initWithCapacity:bundleIdentifierPair.value.size()]).get();
+            for (auto& versionPair : bundleIdentifierPair.value) {
+                NSString *version = versionPair.key;
+                policies.get()[host][bundlerIdentifier][version] = adoptNS([[NSNumber alloc] initWithUnsignedInt:versionPair.value]).get();
+            }
+        }
+    }
+    return policies.autorelease();
+}
+
+#endif
+
+- (void)_resetPluginLoadClientPolicies:(NSDictionary *)policies
+{
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    _processPool->resetPluginLoadClientPolicies(toPluginLoadClientPoliciesHashMap(policies));
+#endif
+}
+
+-(NSDictionary *)_pluginLoadClientPolicies
+{
+    auto& map = _processPool->pluginLoadClientPolicies();
+    return policiesHashMapToDictionary(map);
+}
+#endif
+
 
 - (id <_WKDownloadDelegate>)_downloadDelegate
 {
@@ -250,6 +383,63 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
     _automationSession = automationSession;
     _processPool->setAutomationSession(automationSession ? automationSession->_session.get() : nullptr);
 }
+
+- (void)_terminateDatabaseProcess
+{
+    _processPool->terminateDatabaseProcess();
+}
+
+- (void)_terminateNetworkProcess
+{
+    _processPool->terminateNetworkProcess();
+}
+
+- (pid_t)_networkProcessIdentifier
+{
+    return _processPool->networkProcessIdentifier();
+}
+
+- (void)_syncNetworkProcessCookies
+{
+    _processPool->syncNetworkProcessCookies();
+}
+
+- (size_t)_webProcessCount
+{
+    return _processPool->processes().size();
+}
+
++ (void)_forceGameControllerFramework
+{
+#if ENABLE(GAMEPAD)
+    WebKit::UIGamepadProvider::setUsesGameControllerFramework();
+#endif
+}
+
+- (BOOL)_isCookieStoragePartitioningEnabled
+{
+    return _processPool->cookieStoragePartitioningEnabled();
+}
+
+- (void)_setCookieStoragePartitioningEnabled:(BOOL)enabled
+{
+    _processPool->setCookieStoragePartitioningEnabled(enabled);
+}
+
+#if PLATFORM(IOS)
+- (id <_WKGeolocationCoreLocationProvider>)_coreLocationProvider
+{
+    return _coreLocationProvider.get();
+}
+
+- (void)_setCoreLocationProvider:(id<_WKGeolocationCoreLocationProvider>)coreLocationProvider
+{
+    if (_geolocationProvider)
+        [NSException raise:NSGenericException format:@"Changing the location provider is not supported after a web view in the process pool has begun servicing geolocation requests."];
+
+    _coreLocationProvider = coreLocationProvider;
+}
+#endif // PLATFORM(IOS)
 
 @end
 

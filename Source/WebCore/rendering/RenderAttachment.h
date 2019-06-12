@@ -23,40 +23,48 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderAttachment_h
-#define RenderAttachment_h
+#pragma once
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
+#include "HTMLAttachmentElement.h"
 #include "RenderReplaced.h"
 
 namespace WebCore {
 
-class HTMLAttachmentElement;
-
 class RenderAttachment final : public RenderReplaced {
 public:
-    RenderAttachment(HTMLAttachmentElement&, Ref<RenderStyle>&&);
+    RenderAttachment(HTMLAttachmentElement&, RenderStyle&&);
 
     HTMLAttachmentElement& attachmentElement() const;
+
+    void setShouldDrawBorder(bool drawBorder) { m_shouldDrawBorder = drawBorder; }
+    bool shouldDrawBorder() const;
 
     void invalidate();
 
 private:
     void element() const = delete;
-    virtual bool isAttachment() const override { return true; }
-    virtual const char* renderName() const override { return "RenderAttachment"; }
+    bool isAttachment() const override { return true; }
+    const char* renderName() const override { return "RenderAttachment"; }
 
-    virtual bool shouldDrawSelectionTint() const override { return false; }
+    bool shouldDrawSelectionTint() const override { return false; }
 
-    virtual void layout() override;
+    void layout() override;
 
-    virtual int baselinePosition(FontBaseline, bool, LineDirectionMode, LinePositionMode) const override;
+    int baselinePosition(FontBaseline, bool, LineDirectionMode, LinePositionMode) const override;
+
+    LayoutUnit m_minimumIntrinsicWidth;
+    bool m_shouldDrawBorder { true };
 };
+
+inline RenderAttachment* HTMLAttachmentElement::renderer() const
+{
+    return downcast<RenderAttachment>(HTMLElement::renderer());
+}
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderAttachment, isAttachment())
 
 #endif // ENABLE(ATTACHMENT_ELEMENT)
-#endif // RenderAttachment_h

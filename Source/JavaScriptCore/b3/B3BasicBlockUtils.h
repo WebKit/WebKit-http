@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3BasicBlockUtils_h
-#define B3BasicBlockUtils_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
-#include "B3IndexSet.h"
 #include <wtf/GraphNodeWorklist.h>
+#include <wtf/IndexSet.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace B3 {
@@ -85,34 +84,37 @@ void updatePredecessorsAfter(BasicBlock* root)
     }
 }
 
-// This recomputes predecessors and removes blocks that aren't reachable.
-template<typename BasicBlock, typename DeleteFunctor>
-void resetReachability(
-    Vector<std::unique_ptr<BasicBlock>>& blocks, const DeleteFunctor& deleteFunctor)
+template<typename BasicBlock>
+void clearPredecessors(Vector<std::unique_ptr<BasicBlock>>& blocks)
 {
-    // Clear all predecessor lists first.
     for (auto& block : blocks) {
         if (block)
             block->predecessors().resize(0);
     }
+}
 
+template<typename BasicBlock>
+void recomputePredecessors(Vector<std::unique_ptr<BasicBlock>>& blocks)
+{
+    clearPredecessors(blocks);
     updatePredecessorsAfter(blocks[0].get());
+}
 
-    for (unsigned i = 1; i < blocks.size(); ++i) {
-        if (!blocks[i])
-            continue;
-        if (blocks[i]->predecessors().isEmpty()) {
-            deleteFunctor(blocks[i].get());
-            blocks[i] = nullptr;
-        }
-    }
+template<typename BasicBlock>
+bool isBlockDead(BasicBlock* block)
+{
+    if (!block)
+        return false;
+    if (!block->index())
+        return false;
+    return block->predecessors().isEmpty();
 }
 
 template<typename BasicBlock>
 Vector<BasicBlock*> blocksInPreOrder(BasicBlock* root)
 {
     Vector<BasicBlock*> result;
-    GraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> worklist;
+    GraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock*>> worklist;
     worklist.push(root);
     while (BasicBlock* block = worklist.pop()) {
         result.append(block);
@@ -126,7 +128,7 @@ template<typename BasicBlock>
 Vector<BasicBlock*> blocksInPostOrder(BasicBlock* root)
 {
     Vector<BasicBlock*> result;
-    PostOrderGraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> worklist;
+    PostOrderGraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock*>> worklist;
     worklist.push(root);
     while (GraphNodeWithOrder<BasicBlock*> item = worklist.pop()) {
         switch (item.order) {
@@ -146,6 +148,3 @@ Vector<BasicBlock*> blocksInPostOrder(BasicBlock* root)
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3BasicBlockUtils_h
-

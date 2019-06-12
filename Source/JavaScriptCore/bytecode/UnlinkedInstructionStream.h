@@ -24,9 +24,9 @@
  */
 
 
-#ifndef UnlinkedInstructionStream_h
-#define UnlinkedInstructionStream_h
+#pragma once
 
+#include "Opcode.h"
 #include "UnlinkedCodeBlock.h"
 #include <wtf/RefCountedArray.h>
 
@@ -38,6 +38,7 @@ public:
     explicit UnlinkedInstructionStream(const Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow>&);
 
     unsigned count() const { return m_instructionCount; }
+    size_t sizeInBytes() const;
 
     class Reader {
     public:
@@ -141,10 +142,8 @@ ALWAYS_INLINE const UnlinkedInstruction* UnlinkedInstructionStream::Reader::next
     m_unpackedBuffer[0].u.opcode = static_cast<OpcodeID>(read8());
     unsigned opLength = opcodeLength(m_unpackedBuffer[0].u.opcode);
     for (unsigned i = 1; i < opLength; ++i)
-        m_unpackedBuffer[i].u.index = read32();
+        m_unpackedBuffer[i].u.unsignedValue = read32();
     return m_unpackedBuffer;
 }
 
 } // namespace JSC
-
-#endif // UnlinkedInstructionStream_h

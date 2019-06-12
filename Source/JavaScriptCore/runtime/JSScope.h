@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015  Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,16 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSScope_h
-#define JSScope_h
+#pragma once
 
 #include "GetPutInfo.h"
 #include "JSObject.h"
-#include "VariableEnvironment.h"
 
 namespace JSC {
 
 class ScopeChainIterator;
+class SymbolTable;
+class VariableEnvironment;
 class WatchpointSet;
 
 class JSScope : public JSNonFinalObject {
@@ -45,20 +45,20 @@ public:
 
     static JSObject* objectAtScope(JSScope*);
 
-    static JSValue resolve(ExecState*, JSScope*, const Identifier&);
+    static JSObject* resolve(ExecState*, JSScope*, const Identifier&);
+    static JSValue resolveScopeForHoistingFuncDeclInEval(ExecState*, JSScope*, const Identifier&);
     static ResolveOp abstractResolve(ExecState*, size_t depthOffset, JSScope*, const Identifier&, GetOrPut, ResolveType, InitializationMode);
 
     static bool hasConstantScope(ResolveType);
     static JSScope* constantScopeForCodeBlock(ResolveType, CodeBlock*);
 
-    static void collectVariablesUnderTDZ(JSScope*, VariableEnvironment& result);
+    static void collectClosureVariablesUnderTDZ(JSScope*, VariableEnvironment& result);
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
     bool isVarScope();
     bool isLexicalScope();
     bool isModuleScope();
-    bool isGlobalLexicalEnvironment();
     bool isCatchScope();
     bool isFunctionNameScopeObject();
 
@@ -69,11 +69,16 @@ public:
     JSScope* next();
 
     JSGlobalObject* globalObject();
-    VM* vm();
+    JSGlobalObject* globalObject(VM&);
     JSObject* globalThis();
+
+    SymbolTable* symbolTable(VM&);
 
 protected:
     JSScope(VM&, Structure*, JSScope* next);
+
+    template<typename ReturnPredicateFunctor, typename SkipPredicateFunctor>
+    static JSObject* resolve(ExecState*, JSScope*, const Identifier&, ReturnPredicateFunctor, SkipPredicateFunctor);
 
 private:
     WriteBarrier<JSScope> m_next;
@@ -127,9 +132,9 @@ inline JSGlobalObject* JSScope::globalObject()
     return structure()->globalObject();
 }
 
-inline VM* JSScope::vm()
+inline JSGlobalObject* JSScope::globalObject(VM& vm)
 { 
-    return MarkedBlock::blockFor(this)->vm();
+    return structure(vm)->globalObject();
 }
 
 inline Register& Register::operator=(JSScope* scope)
@@ -140,12 +145,12 @@ inline Register& Register::operator=(JSScope* scope)
 
 inline JSScope* Register::scope() const
 {
-    return jsCast<JSScope*>(jsValue());
+    return jsCast<JSScope*>(unboxedCell());
 }
 
 inline JSGlobalObject* ExecState::lexicalGlobalObject() const
 {
-    return callee()->globalObject();
+    return jsCallee()->globalObject();
 }
 
 inline size_t JSScope::offsetOfNext()
@@ -154,5 +159,3 @@ inline size_t JSScope::offsetOfNext()
 }
 
 } // namespace JSC
-
-#endif // JSScope_h

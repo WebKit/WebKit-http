@@ -46,6 +46,10 @@
 #define __NSi_10_11 introduced=10.0 // Use 10.0 to indicate that everything is available.
 #endif
 
+#ifndef __NSi_10_12 // Building from trunk rather than SDK.
+#define __NSi_10_12 introduced=10.0 // Use 10.0 to indicate that everything is available.
+#endif
+
 #ifndef __AVAILABILITY_INTERNAL__MAC_10_9
 #define __AVAILABILITY_INTERNAL__MAC_10_9
 #endif
@@ -62,15 +66,18 @@
 #define AVAILABLE_MAC_OS_X_VERSION_10_10_AND_LATER
 #endif
 
-#endif /* __MAC_OS_X_VERSION_MIN_REQUIRED <= 101100 */
+#endif /* !TARGET_OS_IPHONE && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100 */
 
 #if defined(BUILDING_GTK__)
 #undef CF_AVAILABLE
 #define CF_AVAILABLE(_mac, _ios)
+#undef CF_ENUM_AVAILABLE
+#define CF_ENUM_AVAILABLE(_mac, _ios)
 #endif
 
 #else
 #define CF_AVAILABLE(_mac, _ios)
+#define CF_ENUM_AVAILABLE(_mac, _ios)
 #endif
 
 #endif /* __WebKitAvailability__ */

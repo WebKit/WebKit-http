@@ -20,14 +20,14 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef PlatformPasteboard_h
 #define PlatformPasteboard_h
 
 #include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
+#include <wtf/Function.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 
@@ -39,25 +39,33 @@ OBJC_CLASS NSPasteboard;
 OBJC_CLASS UIPasteboard;
 #endif
 
+#if PLATFORM(WPE)
+struct wpe_pasteboard;
+#endif
+
 namespace WebCore {
 
 class Color;
+class SelectionData;
 class SharedBuffer;
 class URL;
 struct PasteboardImage;
+struct PasteboardURL;
 struct PasteboardWebContent;
 
 class PlatformPasteboard {
 public:
-    // FIXME: probably we don't need a constructor that takes a pasteboard name for iOS.
     WEBCORE_EXPORT explicit PlatformPasteboard(const String& pasteboardName);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || PLATFORM(WPE)
     WEBCORE_EXPORT PlatformPasteboard();
+    WEBCORE_EXPORT Vector<String> filenamesForDataInteraction();
+    WEBCORE_EXPORT void getTypesByFidelityForItemAtIndex(Vector<String>& types, int index);
+    WEBCORE_EXPORT void updateSupportedTypeIdentifiers(const Vector<String>& types);
 #endif
     WEBCORE_EXPORT static String uniqueName();
-    
+
     WEBCORE_EXPORT void getTypes(Vector<String>& types);
-    WEBCORE_EXPORT PassRefPtr<SharedBuffer> bufferForType(const String& pasteboardType);
+    WEBCORE_EXPORT RefPtr<SharedBuffer> bufferForType(const String& pasteboardType);
     WEBCORE_EXPORT void getPathnamesForType(Vector<String>& pathnames, const String& pasteboardType);
     WEBCORE_EXPORT String stringForType(const String& pasteboardType);
     WEBCORE_EXPORT long changeCount() const;
@@ -70,23 +78,44 @@ public:
 
     // These methods will return 0 if pasteboard ownership has been taken from us.
     WEBCORE_EXPORT long copy(const String& fromPasteboard);
-    WEBCORE_EXPORT long setBufferForType(PassRefPtr<SharedBuffer>, const String& pasteboardType);
+    WEBCORE_EXPORT long setBufferForType(SharedBuffer*, const String& pasteboardType);
     WEBCORE_EXPORT long setPathnamesForType(const Vector<String>& pathnames, const String& pasteboardType);
     WEBCORE_EXPORT long setStringForType(const String&, const String& pasteboardType);
     WEBCORE_EXPORT void write(const PasteboardWebContent&);
     WEBCORE_EXPORT void write(const PasteboardImage&);
     WEBCORE_EXPORT void write(const String& pasteboardType, const String&);
-    WEBCORE_EXPORT PassRefPtr<SharedBuffer> readBuffer(int index, const String& pasteboardType);
+    WEBCORE_EXPORT void write(const PasteboardURL&);
+    WEBCORE_EXPORT RefPtr<SharedBuffer> readBuffer(int index, const String& pasteboardType);
     WEBCORE_EXPORT String readString(int index, const String& pasteboardType);
-    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType);
+    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType, String& title);
     WEBCORE_EXPORT int count();
+    WEBCORE_EXPORT int numberOfFiles();
+
+#if PLATFORM(GTK)
+    WEBCORE_EXPORT void writeToClipboard(const SelectionData&, WTF::Function<void()>&& primarySelectionCleared);
+    WEBCORE_EXPORT Ref<SelectionData> readFromClipboard();
+#endif
 
 private:
+#if PLATFORM(IOS)
+    WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardWebContent&);
+    WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardImage&);
+    WEBCORE_EXPORT void writeObjectRepresentations(const String& pasteboardType, const String& text);
+    WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardURL&);
+    bool allowReadingURLAtIndex(const URL&, int index) const;
+#endif
+
 #if PLATFORM(MAC)
     RetainPtr<NSPasteboard> m_pasteboard;
 #endif
 #if PLATFORM(IOS)
-    RetainPtr<UIPasteboard> m_pasteboard;
+    RetainPtr<id> m_pasteboard;
+#endif
+#if PLATFORM(GTK)
+    GtkClipboard* m_clipboard;
+#endif
+#if PLATFORM(WPE)
+    struct wpe_pasteboard* m_pasteboard;
 #endif
 };
 

@@ -33,3 +33,22 @@
 @property (nonatomic, assign) BOOL scrollingUsesUIWebScrollView;
 
 @end
+
+@interface DumpRenderTreeBrowserView (DRTTesting)
+
+- (CGRect)documentVisibleRect;
+
+@end
+
+
+@class DumpRenderTreeWebScrollViewDelegate;
+
+@interface DumpRenderTreeWebScrollView : UIWebScrollView
+
+@property (nonatomic, retain) DumpRenderTreeWebScrollViewDelegate *scrollViewDelegate;
+
+@property (nonatomic, copy) void (^zoomToScaleCompletionHandler)(void);
+
+- (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler;
+
+@end

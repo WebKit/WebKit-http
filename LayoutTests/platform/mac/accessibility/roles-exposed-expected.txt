@@ -182,7 +182,7 @@ h6
 hr
       AXRole: AXSplitter
       AXSubrole: AXContentSeparator
-      AXRoleDescription: separator
+      AXRoleDescription: rule
       
 i
       AXRole: 
@@ -237,7 +237,7 @@ input[type='checkbox']
 input[type='date']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: date field
       
 input[type='datetime']
       AXRole: AXTextField
@@ -247,12 +247,12 @@ input[type='datetime']
 input[type='datetime-local']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: date and time field
       
 input[type='email']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: email field
       
 input[type='file']
       AXRole: AXButton
@@ -272,12 +272,12 @@ input[type='image']
 input[type='month']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: month and year field
       
 input[type='number']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: number field
       
 input[type='password']
       AXRole: AXTextField
@@ -312,7 +312,7 @@ input[type='submit']
 input[type='tel']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: telephone number field
       
 input[type='text']
       AXRole: AXTextField
@@ -322,17 +322,17 @@ input[type='text']
 input[type='time']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: time field
       
 input[type='url']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: URL field
       
 input[type='week']
       AXRole: AXTextField
       AXSubrole: 
-      AXRoleDescription: text field
+      AXRoleDescription: week and year field
       
 ins:not([datetime])
       AXRole: AXGroup
@@ -355,9 +355,9 @@ area
       AXRoleDescription: 
       
 mark
-      AXRole: 
+      AXRole: AXGroup
       AXSubrole: 
-      AXRoleDescription: 
+      AXRoleDescription: highlighted
       
 math
       AXRole: AXGroup
@@ -579,9 +579,19 @@ samp
       AXSubrole: AXSampleStyleGroup
       AXRoleDescription: group
       
-section
+section:not([aria-label]:not([aria-labelledby])
       AXRole: AXGroup
-      AXSubrole: AXDocumentRegion
+      AXSubrole: 
+      AXRoleDescription: group
+      
+section[aria-label]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+section[aria-labelledby]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
       AXRoleDescription: region
       
 select:not([multiple])
@@ -635,14 +645,14 @@ strong
       AXRoleDescription: 
       
 sub
-      AXRole: 
-      AXSubrole: 
-      AXRoleDescription: 
+      AXRole: AXGroup
+      AXSubrole: AXSubscriptStyleGroup
+      AXRoleDescription: group
       
 sup
-      AXRole: 
-      AXSubrole: 
-      AXRoleDescription: 
+      AXRole: AXGroup
+      AXSubrole: AXSuperscriptStyleGroup
+      AXRoleDescription: group
       
 svg
       AXRole: 
@@ -710,14 +720,14 @@ textarea
       AXRoleDescription: text entry area
       
 time:not([datetime])
-      AXRole: 
-      AXSubrole: 
-      AXRoleDescription: 
+      AXRole: AXGroup
+      AXSubrole: AXTimeGroup
+      AXRoleDescription: group
       
 time[datetime]
-      AXRole: 
-      AXSubrole: 
-      AXRoleDescription: 
+      AXRole: AXGroup
+      AXSubrole: AXTimeGroup
+      AXRoleDescription: group
       
 ul
       AXRole: AXList
@@ -807,12 +817,12 @@ div[role=alert]
 div[role=alertdialog]
       AXRole: AXGroup
       AXSubrole: AXApplicationAlertDialog
-      AXRoleDescription: alert dialog
+      AXRoleDescription: web alert dialog
       
 div[role=application]
       AXRole: AXGroup
-      AXSubrole: AXLandmarkApplication
-      AXRoleDescription: application
+      AXSubrole: AXWebApplication
+      AXRoleDescription: web application
       
 div[role=article]
       AXRole: AXGroup
@@ -857,17 +867,217 @@ div[role=definition]
 div[role=dialog]
       AXRole: AXGroup
       AXSubrole: AXApplicationDialog
-      AXRoleDescription: dialog
+      AXRoleDescription: web dialog
       
 div[role=directory]
       AXRole: AXList
       AXSubrole: AXContentList
       AXRoleDescription: content list
       
+div[role=doc-abstract]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-acknowledgments]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-afterword]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-appendix]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-backlink]
+      AXRole: AXLink
+      AXSubrole: 
+      AXRoleDescription: link
+      
+div[role=doc-biblioentry]
+      AXRole: AXGroup
+      AXSubrole: 
+      AXRoleDescription: group
+      
+div[role=doc-bibliography]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-biblioref]
+      AXRole: AXLink
+      AXSubrole: 
+      AXRoleDescription: link
+      
+div[role=doc-chapter]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-colophon]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-conclusion]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-cover]
+      AXRole: AXImage
+      AXSubrole: 
+      AXRoleDescription: image
+      
+div[role=doc-credit]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-credits]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-dedication]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-endnote]
+      AXRole: AXGroup
+      AXSubrole: 
+      AXRoleDescription: group
+      
+div[role=doc-endnotes]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-epigraph]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-epilogue]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-errata]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-example]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-footnote]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-foreword]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-glossary]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-glossref]
+      AXRole: AXLink
+      AXSubrole: 
+      AXRoleDescription: link
+      
+div[role=doc-index]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkNavigation
+      AXRoleDescription: navigation
+      
+div[role=doc-introduction]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-noteref]
+      AXRole: AXLink
+      AXSubrole: 
+      AXRoleDescription: link
+      
+div[role=doc-notice]
+      AXRole: AXGroup
+      AXSubrole: AXDocumentNote
+      AXRoleDescription: note
+      
+div[role=doc-pagebreak]
+      AXRole: AXSplitter
+      AXSubrole: 
+      AXRoleDescription: splitter
+      
+div[role=doc-pagelist]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkNavigation
+      AXRoleDescription: navigation
+      
+div[role=doc-part]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-preface]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-prologue]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=doc-pullquote]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-qna]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: group
+      
+div[role=doc-subtitle]
+      AXRole: AXHeading
+      AXSubrole: 
+      AXRoleDescription: heading
+      
+div[role=doc-tip]
+      AXRole: AXGroup
+      AXSubrole: AXDocumentNote
+      AXRoleDescription: note
+      
+div[role=doc-toc]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkNavigation
+      AXRoleDescription: navigation
+      
 div[role=document]
       AXRole: AXGroup
       AXSubrole: AXDocument
       AXRoleDescription: document
+      
+div[role=figure]
+      AXRole: AXGroup
+      AXSubrole: 
+      AXRoleDescription: figure
       
 div[role=form]
       AXRole: AXGroup
@@ -904,9 +1114,14 @@ div[role=gridcell]
       AXSubrole: 
       AXRoleDescription: cell
       
+div[role=feed]
+      AXRole: AXGroup
+      AXSubrole: AXApplicationGroup
+      AXRoleDescription: feed
+      
 div[role=group]
       AXRole: AXGroup
-      AXSubrole: 
+      AXSubrole: AXApplicationGroup
       AXRoleDescription: group
       
 div[role=heading]
@@ -1034,9 +1249,19 @@ div[role=radio]
       AXSubrole: 
       AXRoleDescription: radio button
       
-div[role=region]
+div[role=region]:not([aria-label]:not([aria-labelledby])
       AXRole: AXGroup
-      AXSubrole: AXDocumentRegion
+      AXSubrole: 
+      AXRoleDescription: group
+      
+div[role=region][aria-label]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
+      AXRoleDescription: region
+      
+div[role=region][aria-labelledby]
+      AXRole: AXGroup
+      AXSubrole: AXLandmarkRegion
       AXRoleDescription: region
       
 div[role=scrollbar]
@@ -1093,6 +1318,11 @@ div[role=tabpanel]
       AXRole: AXGroup
       AXSubrole: AXTabPanel
       AXRoleDescription: tab panel
+      
+div[role=term]
+      AXRole: AXGroup
+      AXSubrole: AXTerm
+      AXRoleDescription: term
       
 div[role=textbox]
       AXRole: AXTextField

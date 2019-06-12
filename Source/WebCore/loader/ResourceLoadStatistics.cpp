@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,41 +27,11 @@
 #include "ResourceLoadStatistics.h"
 
 #include "KeyedCoding.h"
+#include "PublicSuffix.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
-
-static const unsigned minimumOriginsVisitedForPrevalenceClassification = 100;
-
-// Sub frame thresholds
-static const unsigned subframeUnderTopFrameOriginsThresholdAbsolute = 3;
-
-// Subresource thresholds
-static const unsigned subresourceUnderTopFrameOriginsThresholdAbsolute = 5;
-static const unsigned subresourceHasBeenRedirectedFromToUniqueDomainsThresholdAbsolute = 3;
-static const unsigned redirectedToOtherPrevalentResourceOriginsThresholdAbsolute = 2;
-
-bool ResourceLoadStatistics::checkAndSetAsPrevalentResourceIfNecessary(unsigned originsVisitedSoFar)
-{
-    if (originsVisitedSoFar < minimumOriginsVisitedForPrevalenceClassification || isPrevalentResource)
-        return false;
-
-    if (hasPrevalentResourceCharacteristics()) {
-        isPrevalentResource = true;
-        return true;
-    }
-
-    return false;
-}
-
-bool ResourceLoadStatistics::hasPrevalentResourceCharacteristics() const
-{
-    return subframeUnderTopFrameOrigins.size() > subframeUnderTopFrameOriginsThresholdAbsolute
-        || subresourceUnderTopFrameOrigins.size() > subresourceUnderTopFrameOriginsThresholdAbsolute
-        || subresourceUniqueRedirectsTo.size() > subresourceHasBeenRedirectedFromToUniqueDomainsThresholdAbsolute
-        || redirectedToOtherPrevalentResourceOrigins.size() > redirectedToOtherPrevalentResourceOriginsThresholdAbsolute;
-}
 
 typedef WTF::HashMap<String, unsigned, StringHash, HashTraits<String>, HashTraits<unsigned>>::KeyValuePairType ResourceLoadStatisticsValue;
 
@@ -76,42 +46,27 @@ static void encodeHashCountedSet(KeyedEncoder& encoder, const String& label, con
     });
 }
 
-void ResourceLoadStatistics::encode(KeyedEncoder& encoder, const String& origin) const
+void ResourceLoadStatistics::encode(KeyedEncoder& encoder) const
 {
-    encoder.encodeString("PrevalentResourceOrigin", origin);
+    encoder.encodeString("PrevalentResourceOrigin", highLevelDomain);
+    
+    encoder.encodeDouble("lastSeen", lastSeen.secondsSinceEpoch().value());
     
     // User interaction
     encoder.encodeBool("hadUserInteraction", hadUserInteraction);
-    
-    // Top frame stats
-    encoder.encodeBool("topFrameHasBeenNavigatedToBefore", topFrameHasBeenNavigatedToBefore);
-    encoder.encodeUInt32("topFrameHasBeenRedirectedTo", topFrameHasBeenRedirectedTo);
-    encoder.encodeUInt32("topFrameHasBeenRedirectedFrom", topFrameHasBeenRedirectedFrom);
-    encoder.encodeUInt32("topFrameInitialLoadCount", topFrameInitialLoadCount);
-    encoder.encodeUInt32("topFrameHasBeenNavigatedTo", topFrameHasBeenNavigatedTo);
-    encoder.encodeUInt32("topFrameHasBeenNavigatedFrom", topFrameHasBeenNavigatedFrom);
+    encoder.encodeDouble("mostRecentUserInteraction", mostRecentUserInteractionTime.secondsSinceEpoch().value());
+    encoder.encodeBool("grandfathered", grandfathered);
     
     // Subframe stats
-    encoder.encodeBool("subframeHasBeenLoadedBefore", subframeHasBeenLoadedBefore);
-    encoder.encodeUInt32("subframeHasBeenRedirectedTo", subframeHasBeenRedirectedTo);
-    encoder.encodeUInt32("subframeHasBeenRedirectedFrom", subframeHasBeenRedirectedFrom);
-    encoder.encodeUInt32("subframeSubResourceCount", subframeSubResourceCount);
     encodeHashCountedSet(encoder, "subframeUnderTopFrameOrigins", subframeUnderTopFrameOrigins);
-    encodeHashCountedSet(encoder, "subframeUniqueRedirectsTo", subframeUniqueRedirectsTo);
-    encoder.encodeUInt32("subframeHasBeenNavigatedTo", subframeHasBeenNavigatedTo);
-    encoder.encodeUInt32("subframeHasBeenNavigatedFrom", subframeHasBeenNavigatedFrom);
     
     // Subresource stats
-    encoder.encodeUInt32("subresourceHasBeenRedirectedFrom", subresourceHasBeenRedirectedFrom);
-    encoder.encodeUInt32("subresourceHasBeenRedirectedTo", subresourceHasBeenRedirectedTo);
-    encoder.encodeUInt32("subresourceHasBeenSubresourceCount", subresourceHasBeenSubresourceCount);
-    encoder.encodeDouble("subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited", subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited);
     encodeHashCountedSet(encoder, "subresourceUnderTopFrameOrigins", subresourceUnderTopFrameOrigins);
     encodeHashCountedSet(encoder, "subresourceUniqueRedirectsTo", subresourceUniqueRedirectsTo);
     
     // Prevalent Resource
-    encodeHashCountedSet(encoder, "redirectedToOtherPrevalentResourceOrigins", redirectedToOtherPrevalentResourceOrigins);
     encoder.encodeBool("isPrevalentResource", isPrevalentResource);
+    encoder.encodeUInt32("dataRecordsRemoved", dataRecordsRemoved);
 }
 
 static void decodeHashCountedSet(KeyedDecoder& decoder, const String& label, HashCountedSet<String>& hashCountedSet)
@@ -130,89 +85,50 @@ static void decodeHashCountedSet(KeyedDecoder& decoder, const String& label, Has
     });
 }
 
-bool ResourceLoadStatistics::decode(KeyedDecoder& decoder, const String& origin)
+bool ResourceLoadStatistics::decode(KeyedDecoder& decoder)
 {
-    String storedOrigin;
-    if (!decoder.decodeString("PrevalentResourceOrigin", storedOrigin))
+    if (!decoder.decodeString("PrevalentResourceOrigin", highLevelDomain))
         return false;
-    
-    ASSERT_UNUSED(origin, storedOrigin == origin);
     
     // User interaction
     if (!decoder.decodeBool("hadUserInteraction", hadUserInteraction))
         return false;
     
-    // Top frame stats
-    if (!decoder.decodeBool("topFrameHasBeenNavigatedToBefore", topFrameHasBeenNavigatedToBefore))
-        return false;
-    
-    if (!decoder.decodeUInt32("topFrameHasBeenRedirectedTo", topFrameHasBeenRedirectedTo))
-        return false;
-    
-    if (!decoder.decodeUInt32("topFrameHasBeenRedirectedFrom", topFrameHasBeenRedirectedFrom))
-        return false;
-    
-    if (!decoder.decodeUInt32("topFrameInitialLoadCount", topFrameInitialLoadCount))
-        return false;
-    
-    if (!decoder.decodeUInt32("topFrameHasBeenNavigatedTo", topFrameHasBeenNavigatedTo))
-        return false;
-    
-    if (!decoder.decodeUInt32("topFrameHasBeenNavigatedFrom", topFrameHasBeenNavigatedFrom))
-        return false;
-    
     // Subframe stats
-    if (!decoder.decodeBool("subframeHasBeenLoadedBefore", subframeHasBeenLoadedBefore))
-        return false;
-    
-    if (!decoder.decodeUInt32("subframeHasBeenRedirectedTo", subframeHasBeenRedirectedTo))
-        return false;
-    
-    if (!decoder.decodeUInt32("subframeHasBeenRedirectedFrom", subframeHasBeenRedirectedFrom))
-        return false;
-    
-    if (!decoder.decodeUInt32("subframeSubResourceCount", subframeSubResourceCount))
-        return false;
-
     decodeHashCountedSet(decoder, "subframeUnderTopFrameOrigins", subframeUnderTopFrameOrigins);
-    decodeHashCountedSet(decoder, "subframeUniqueRedirectsTo", subframeUniqueRedirectsTo);
-    
-    if (!decoder.decodeUInt32("subframeHasBeenNavigatedTo", subframeHasBeenNavigatedTo))
-        return false;
-    
-    if (!decoder.decodeUInt32("subframeHasBeenNavigatedFrom", subframeHasBeenNavigatedFrom))
-        return false;
     
     // Subresource stats
-    if (!decoder.decodeUInt32("subresourceHasBeenRedirectedFrom", subresourceHasBeenRedirectedFrom))
-        return false;
-    
-    if (!decoder.decodeUInt32("subresourceHasBeenRedirectedTo", subresourceHasBeenRedirectedTo))
-        return false;
-    
-    if (!decoder.decodeUInt32("subresourceHasBeenSubresourceCount", subresourceHasBeenSubresourceCount))
-        return false;
-    
-    if (!decoder.decodeDouble("subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited", subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited))
-        return false;
-
     decodeHashCountedSet(decoder, "subresourceUnderTopFrameOrigins", subresourceUnderTopFrameOrigins);
     decodeHashCountedSet(decoder, "subresourceUniqueRedirectsTo", subresourceUniqueRedirectsTo);
     
     // Prevalent Resource
-    decodeHashCountedSet(decoder, "redirectedToOtherPrevalentResourceOrigins", redirectedToOtherPrevalentResourceOrigins);
-    
     if (!decoder.decodeBool("isPrevalentResource", isPrevalentResource))
         return false;
+
+    if (!decoder.decodeUInt32("dataRecordsRemoved", dataRecordsRemoved))
+        return false;
+
+    double mostRecentUserInteractionTimeAsDouble;
+    if (!decoder.decodeDouble("mostRecentUserInteraction", mostRecentUserInteractionTimeAsDouble))
+        return false;
+    mostRecentUserInteractionTime = WallTime::fromRawSeconds(mostRecentUserInteractionTimeAsDouble);
+
+    if (!decoder.decodeBool("grandfathered", grandfathered))
+        return false;
+
+    double lastSeenTimeAsDouble;
+    if (!decoder.decodeDouble("lastSeen", lastSeenTimeAsDouble))
+        return false;
+    lastSeen = WallTime::fromRawSeconds(lastSeenTimeAsDouble);
     
     return true;
 }
 
 static void appendBoolean(StringBuilder& builder, const String& label, bool flag)
 {
-    builder.append("    ");
+    builder.appendLiteral("    ");
     builder.append(label);
-    builder.append(": ");
+    builder.appendLiteral(": ");
     builder.append(flag ? "Yes" : "No");
 }
 
@@ -221,90 +137,119 @@ static void appendHashCountedSet(StringBuilder& builder, const String& label, co
     if (hashCountedSet.isEmpty())
         return;
 
-    builder.append("    ");
+    builder.appendLiteral("    ");
     builder.append(label);
-    builder.append(":\n");
+    builder.appendLiteral(":\n");
 
     for (auto& entry : hashCountedSet) {
-        builder.append("        ");
+        builder.appendLiteral("        ");
         builder.append(entry.key);
-        builder.append(": ");
+        builder.appendLiteral(": ");
         builder.appendNumber(entry.value);
         builder.append('\n');
     }
-    
 }
 
 String ResourceLoadStatistics::toString() const
 {
     StringBuilder builder;
     
+    builder.appendLiteral("lastSeen");
+    builder.appendNumber(lastSeen.secondsSinceEpoch().value());
+    builder.append('\n');
+    
     // User interaction
     appendBoolean(builder, "hadUserInteraction", hadUserInteraction);
     builder.append('\n');
-    
-    // Top frame stats
-    appendBoolean(builder, "topFrameHasBeenNavigatedToBefore", topFrameHasBeenNavigatedToBefore);
+    builder.appendLiteral("    mostRecentUserInteraction: ");
+    builder.appendNumber(mostRecentUserInteractionTime.secondsSinceEpoch().value());
     builder.append('\n');
-    builder.append("    topFrameHasBeenRedirectedTo: ");
-    builder.appendNumber(topFrameHasBeenRedirectedTo);
-    builder.append('\n');
-    builder.append("    topFrameHasBeenRedirectedFrom: ");
-    builder.appendNumber(topFrameHasBeenRedirectedFrom);
-    builder.append('\n');
-    builder.append("    topFrameInitialLoadCount: ");
-    builder.appendNumber(topFrameInitialLoadCount);
-    builder.append('\n');
-    builder.append("    topFrameHasBeenNavigatedTo: ");
-    builder.appendNumber(topFrameHasBeenNavigatedTo);
-    builder.append('\n');
-    builder.append("    topFrameHasBeenNavigatedFrom: ");
-    builder.appendNumber(topFrameHasBeenNavigatedFrom);
+    appendBoolean(builder, "    grandfathered", grandfathered);
     builder.append('\n');
     
     // Subframe stats
-    appendBoolean(builder, "subframeHasBeenLoadedBefore", subframeHasBeenLoadedBefore);
-    builder.append('\n');
-    builder.append("    subframeHasBeenRedirectedTo: ");
-    builder.appendNumber(subframeHasBeenRedirectedTo);
-    builder.append('\n');
-    builder.append("    subframeHasBeenRedirectedFrom: ");
-    builder.appendNumber(subframeHasBeenRedirectedFrom);
-    builder.append('\n');
-    builder.append("    subframeSubResourceCount: ");
-    builder.appendNumber(subframeSubResourceCount);
-    builder.append('\n');
     appendHashCountedSet(builder, "subframeUnderTopFrameOrigins", subframeUnderTopFrameOrigins);
-    appendHashCountedSet(builder, "subframeUniqueRedirectsTo", subframeUniqueRedirectsTo);
-    builder.append("    subframeHasBeenNavigatedTo: ");
-    builder.appendNumber(subframeHasBeenNavigatedTo);
-    builder.append('\n');
-    builder.append("    subframeHasBeenNavigatedFrom: ");
-    builder.appendNumber(subframeHasBeenNavigatedFrom);
-    builder.append('\n');
     
     // Subresource stats
-    builder.append("    subresourceHasBeenRedirectedFrom: ");
-    builder.appendNumber(subresourceHasBeenRedirectedFrom);
-    builder.append('\n');
-    builder.append("    subresourceHasBeenRedirectedTo: ");
-    builder.appendNumber(subresourceHasBeenRedirectedTo);
-    builder.append('\n');
-    builder.append("    subresourceHasBeenSubresourceCount: ");
-    builder.appendNumber(subresourceHasBeenSubresourceCount);
-    builder.append('\n');
-    builder.append("    subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited: ");
-    builder.appendNumber(subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited);
-    builder.append('\n');
     appendHashCountedSet(builder, "subresourceUnderTopFrameOrigins", subresourceUnderTopFrameOrigins);
     appendHashCountedSet(builder, "subresourceUniqueRedirectsTo", subresourceUniqueRedirectsTo);
     
     // Prevalent Resource
-    appendHashCountedSet(builder, "redirectedToOtherPrevalentResourceOrigins", redirectedToOtherPrevalentResourceOrigins);
     appendBoolean(builder, "isPrevalentResource", isPrevalentResource);
+    builder.appendLiteral("    dataRecordsRemoved: ");
+    builder.appendNumber(dataRecordsRemoved);
+    builder.append('\n');
+
+    // In-memory only
+    appendBoolean(builder, "isMarkedForCookiePartitioning", isMarkedForCookiePartitioning);
+    builder.append('\n');
+
     builder.append('\n');
 
     return builder.toString();
+}
+
+template <typename T>
+static void mergeHashCountedSet(HashCountedSet<T>& to, const HashCountedSet<T>& from)
+{
+    for (auto& entry : from)
+        to.add(entry.key, entry.value);
+}
+
+void ResourceLoadStatistics::merge(const ResourceLoadStatistics& other)
+{
+    ASSERT(other.highLevelDomain == highLevelDomain);
+
+    if (lastSeen < other.lastSeen)
+        lastSeen = other.lastSeen;
+    
+    if (!other.hadUserInteraction) {
+        // If user interaction has been reset do so here too.
+        // Else, do nothing.
+        if (!other.mostRecentUserInteractionTime) {
+            hadUserInteraction = false;
+            mostRecentUserInteractionTime = { };
+        }
+    } else {
+        hadUserInteraction = true;
+        if (mostRecentUserInteractionTime < other.mostRecentUserInteractionTime)
+            mostRecentUserInteractionTime = other.mostRecentUserInteractionTime;
+    }
+    grandfathered |= other.grandfathered;
+    
+    // Subframe stats
+    mergeHashCountedSet(subframeUnderTopFrameOrigins, other.subframeUnderTopFrameOrigins);
+    
+    // Subresource stats
+    mergeHashCountedSet(subresourceUnderTopFrameOrigins, other.subresourceUnderTopFrameOrigins);
+    mergeHashCountedSet(subresourceUniqueRedirectsTo, other.subresourceUniqueRedirectsTo);
+    
+    // Prevalent resource stats
+    isPrevalentResource |= other.isPrevalentResource;
+    dataRecordsRemoved += other.dataRecordsRemoved;
+    
+    // In-memory only
+    isMarkedForCookiePartitioning |= other.isMarkedForCookiePartitioning;
+}
+
+String ResourceLoadStatistics::primaryDomain(const URL& url)
+{
+    return primaryDomain(url.host());
+}
+
+String ResourceLoadStatistics::primaryDomain(const String& host)
+{
+    if (host.isNull() || host.isEmpty())
+        return ASCIILiteral("nullOrigin");
+
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    String primaryDomain = topPrivatelyControlledDomain(host);
+    // We will have an empty string here if there is no TLD. Use the host as a fallback.
+    if (!primaryDomain.isEmpty())
+        return primaryDomain;
+#endif
+
+    return host;
 }
 
 }

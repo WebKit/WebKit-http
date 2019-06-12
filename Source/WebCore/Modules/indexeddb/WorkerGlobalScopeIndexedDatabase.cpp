@@ -31,14 +31,16 @@
 
 #include "WorkerGlobalScopeIndexedDatabase.h"
 
+#include "IDBConnectionProxy.h"
 #include "IDBFactory.h"
-#include "IDBFactoryBackendInterface.h"
+#include "IDBOpenDBRequest.h"
 #include "ScriptExecutionContext.h"
-#include "SecurityOrigin.h"
+#include "WorkerGlobalScope.h"
 
 namespace WebCore {
 
-WorkerGlobalScopeIndexedDatabase::WorkerGlobalScopeIndexedDatabase()
+WorkerGlobalScopeIndexedDatabase::WorkerGlobalScopeIndexedDatabase(WorkerGlobalScope&, IDBClient::IDBConnectionProxy& connectionProxy)
+    : m_connectionProxy(connectionProxy)
 {
 }
 
@@ -51,31 +53,35 @@ const char* WorkerGlobalScopeIndexedDatabase::supplementName()
     return "WorkerGlobalScopeIndexedDatabase";
 }
 
-WorkerGlobalScopeIndexedDatabase* WorkerGlobalScopeIndexedDatabase::from(ScriptExecutionContext* context)
+WorkerGlobalScopeIndexedDatabase* WorkerGlobalScopeIndexedDatabase::from(WorkerGlobalScope& scope)
 {
-    WorkerGlobalScopeIndexedDatabase* supplement = static_cast<WorkerGlobalScopeIndexedDatabase*>(Supplement<ScriptExecutionContext>::from(context, supplementName()));
+    WorkerGlobalScopeIndexedDatabase* supplement = static_cast<WorkerGlobalScopeIndexedDatabase*>(Supplement<WorkerGlobalScope>::from(&scope, supplementName()));
     if (!supplement) {
-        auto newSupplement = std::make_unique<WorkerGlobalScopeIndexedDatabase>();
+        auto* connectionProxy = scope.idbConnectionProxy();
+        if (!connectionProxy)
+            return nullptr;
+
+        auto newSupplement = std::make_unique<WorkerGlobalScopeIndexedDatabase>(scope, *connectionProxy);
         supplement = newSupplement.get();
-        provideTo(context, supplementName(), WTFMove(newSupplement));
+        provideTo(&scope, supplementName(), WTFMove(newSupplement));
     }
     return supplement;
 }
 
-IDBFactory* WorkerGlobalScopeIndexedDatabase::indexedDB(ScriptExecutionContext* context)
+IDBFactory* WorkerGlobalScopeIndexedDatabase::indexedDB(WorkerGlobalScope& scope)
 {
-    return from(context)->indexedDB();
+    auto* scopeIDB = from(scope);
+    return scopeIDB ? scopeIDB->indexedDB() : nullptr;
 }
 
 IDBFactory* WorkerGlobalScopeIndexedDatabase::indexedDB()
 {
-    if (!m_factoryBackend)
-        m_factoryBackend = IDBFactoryBackendInterface::create();
     if (!m_idbFactory)
-        m_idbFactory = IDBFactory::create(m_factoryBackend.get());
+        m_idbFactory = IDBFactory::create(m_connectionProxy.get());
+
     return m_idbFactory.get();
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(INDEXED_DATABASE)
+#endif // ENABLE(INDEXED_DATABASE_IN_WORKERS)

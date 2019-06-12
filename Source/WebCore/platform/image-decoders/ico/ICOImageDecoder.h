@@ -28,35 +28,34 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ICOImageDecoder_h
-#define ICOImageDecoder_h
+#pragma once
 
 #include "BMPImageReader.h"
 
 namespace WebCore {
-
-    class PNGImageDecoder;
-
     // This class decodes the ICO and CUR image formats.
-    class ICOImageDecoder : public ImageDecoder {
+    class ICOImageDecoder final : public ImageDecoder {
     public:
-        ICOImageDecoder(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
+        static Ref<ImageDecoder> create(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+        {
+            return adoptRef(*new ICOImageDecoder(alphaOption, gammaAndColorProfileOption));
+        }
+
         virtual ~ICOImageDecoder();
 
         // ImageDecoder
-        virtual String filenameExtension() const { return "ico"; }
-        virtual void setData(SharedBuffer*, bool allDataReceived);
-        virtual bool isSizeAvailable();
-        virtual IntSize size() const;
-        virtual IntSize frameSizeAtIndex(size_t) const;
-        virtual bool setSize(unsigned width, unsigned height);
-        virtual size_t frameCount();
-        virtual ImageFrame* frameBufferAtIndex(size_t);
+        String filenameExtension() const override { return ASCIILiteral("ico"); }
+        void setData(SharedBuffer&, bool allDataReceived) override;
+        IntSize size() override;
+        IntSize frameSizeAtIndex(size_t, SubsamplingLevel) override;
+        bool setSize(const IntSize&) override;
+        size_t frameCount() const override;
+        ImageFrame* frameBufferAtIndex(size_t) override;
         // CAUTION: setFailed() deletes all readers and decoders.  Be careful to
         // avoid accessing deleted memory, especially when calling this from
         // inside BMPImageReader!
-        virtual bool setFailed();
-        virtual bool hotSpot(IntPoint&) const;
+        bool setFailed() override;
+        std::optional<IntPoint> hotSpot() const override;
 
     private:
         enum ImageType {
@@ -76,6 +75,9 @@ namespace WebCore {
             IntPoint m_hotSpot;
             uint32_t m_imageOffset;
         };
+
+        ICOImageDecoder(AlphaOption, GammaAndColorProfileOption);
+        void tryDecodeSize(bool allDataReceived) override { decode(0, true, allDataReceived); }
 
         // Returns true if |a| is a preferable icon entry to |b|.
         // Larger sizes, or greater bitdepths at the same size, are preferable.
@@ -97,7 +99,7 @@ namespace WebCore {
         // Decodes the entry at |index|.  If |onlySize| is true, stops decoding
         // after calculating the image size.  If decoding fails but there is no
         // more data coming, sets the "decode failure" flag.
-        void decode(size_t index, bool onlySize);
+        void decode(size_t index, bool onlySize, bool allDataReceived);
 
         // Decodes the directory and directory entries at the beginning of the
         // data, and initializes members.  Returns true if all decoding
@@ -116,9 +118,8 @@ namespace WebCore {
         // could be decoded.
         bool processDirectoryEntries();
 
-        // Stores the hot-spot for |index| in |hotSpot| and returns true,
-        // or returns false if there is none.
-        bool hotSpotAtIndex(size_t index, IntPoint& hotSpot) const;
+        // Returns the hot-spot for |index|, returns std::nullopt if there is none.
+        std::optional<IntPoint> hotSpotAtIndex(size_t) const;
 
         // Reads and returns a directory entry from the current offset into
         // |data|.
@@ -143,7 +144,7 @@ namespace WebCore {
         // The image decoders for the various frames.
         typedef Vector<std::unique_ptr<BMPImageReader>> BMPReaders;
         BMPReaders m_bmpReaders;
-        typedef Vector<std::unique_ptr<PNGImageDecoder>> PNGDecoders;
+        typedef Vector<RefPtr<ImageDecoder>> PNGDecoders;
         PNGDecoders m_pngDecoders;
 
         // Valid only while a BMPImageReader is decoding, this holds the size
@@ -152,5 +153,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif

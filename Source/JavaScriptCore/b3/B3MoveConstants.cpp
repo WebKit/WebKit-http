@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,10 +28,11 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirArg.h"
 #include "B3BasicBlockInlines.h"
 #include "B3Dominators.h"
 #include "B3InsertionSetInlines.h"
-#include "B3MemoryValue.h"
+#include "B3MemoryValueInlines.h"
 #include "B3PhaseScope.h"
 #include "B3ProcedureInlines.h"
 #include "B3ValueInlines.h"
@@ -62,7 +63,7 @@ public:
         
         hoistConstants(
             [&] (const ValueKey& key) -> bool {
-                return key.opcode() == Const32 || key.opcode() == Const64;
+                return key.opcode() == Const32 || key.opcode() == Const64 || key.opcode() == ArgumentReg;
             });
     }
 
@@ -72,7 +73,7 @@ private:
     {
         Dominators& dominators = m_proc.dominators();
         HashMap<ValueKey, Value*> valueForConstant;
-        IndexMap<BasicBlock, Vector<Value*>> materializations(m_proc.size());
+        IndexMap<BasicBlock*, Vector<Value*>> materializations(m_proc.size());
 
         // We determine where things get materialized based on where they are used.
         for (BasicBlock* block : m_proc) {
@@ -125,7 +126,7 @@ private:
                 if (valueForConstant.get(key) == value)
                     value = m_proc.add<Value>(Nop, value->origin());
                 else
-                    value->replaceWithNop();
+                    value->replaceWithNopIgnoringType();
             }
         }
 
@@ -134,10 +135,31 @@ private:
         for (BasicBlock* block : m_proc) {
             for (unsigned valueIndex = 0; valueIndex < block->size(); ++valueIndex) {
                 Value* value = block->at(valueIndex);
-                for (Value* child : value->children()) {
+                
+                // This finds the outermost (best) block last. So, the functor overrides the result
+                // each time it finds something acceptable.
+                auto findBestConstant = [&] (const auto& predicate) -> Value* {
+                    Value* result = nullptr;
+                    dominators.forAllDominatorsOf(
+                        block,
+                        [&] (BasicBlock* dominator) {
+                            for (Value* value : materializations[dominator]) {
+                                if (predicate(value)) {
+                                    result = value;
+                                    break;
+                                }
+                            }
+                        });
+                    return result;
+                };
+                
+                // We call this when we have found a constant that we'd like to use. It's possible that
+                // we have computed that the constant should be meterialized in this block, but we
+                // haven't inserted it yet. This inserts the constant if necessary.
+                auto materialize = [&] (Value* child) {
                     ValueKey key = child->key();
                     if (!filter(key))
-                        continue;
+                        return;
 
                     // If we encounter a fast constant, then it must be canonical, since we already
                     // got rid of the non-canonical ones.
@@ -146,14 +168,84 @@ private:
                     if (child->owner != block) {
                         // This constant isn't our problem. It's going to be materialized in another
                         // block.
-                        continue;
+                        return;
                     }
                     
                     // We're supposed to materialize this constant in this block, and we haven't
                     // done it yet.
                     m_insertionSet.insertValue(valueIndex, child);
                     child->owner = nullptr;
+                };
+                
+                if (MemoryValue* memoryValue = value->as<MemoryValue>()) {
+                    Value* pointer = memoryValue->lastChild();
+                    if (pointer->hasIntPtr() && filter(pointer->key())) {
+                        auto desiredOffset = [&] (Value* otherPointer) -> intptr_t {
+                            // We would turn this:
+                            //
+                            //     Load(@p, offset = c)
+                            //
+                            // into this:
+                            //
+                            //     Load(@q, offset = ?)
+                            //
+                            // The offset should be c + @p - @q, because then we're loading from:
+                            //
+                            //     @q + c + @p - @q
+                            uintptr_t c = static_cast<uintptr_t>(static_cast<intptr_t>(memoryValue->offset()));
+                            uintptr_t p = pointer->asIntPtr();
+                            uintptr_t q = otherPointer->asIntPtr();
+                            return c + p - q;
+                        };
+                        
+                        Value* bestPointer = findBestConstant(
+                            [&] (Value* candidatePointer) -> bool {
+                                if (!candidatePointer->hasIntPtr())
+                                    return false;
+                                
+                                int64_t offset = desiredOffset(candidatePointer);
+                                return memoryValue->isLegalOffset(offset);
+                            });
+                        
+                        if (bestPointer) {
+                            memoryValue->lastChild() = bestPointer;
+                            memoryValue->setOffset(static_cast<int32_t>(desiredOffset(bestPointer)));
+                        }
+                    }
+                } else {
+                    switch (value->opcode()) {
+                    case Add:
+                    case Sub: {
+                        Value* addend = value->child(1);
+                        if (!addend->hasInt() || !filter(addend->key()))
+                            break;
+                        int64_t addendConst = addend->asInt();
+                        Value* bestAddend = findBestConstant(
+                            [&] (Value* candidateAddend) -> bool {
+                                if (candidateAddend->type() != addend->type())
+                                    return false;
+                                if (!candidateAddend->hasInt())
+                                    return false;
+                                return candidateAddend == addend
+                                    || candidateAddend->asInt() == -addendConst;
+                            });
+                        if (!bestAddend || bestAddend == addend)
+                            break;
+                        materialize(value->child(0));
+                        materialize(bestAddend);
+                        value->replaceWithIdentity(
+                            m_insertionSet.insert<Value>(
+                                valueIndex, value->opcode() == Add ? Sub : Add, value->origin(),
+                                value->child(0), bestAddend));
+                        break;
+                    }
+                    default:
+                        break;
+                    }
                 }
+                
+                for (Value* child : value->children())
+                    materialize(child);
             }
 
             // We may have some constants that need to be materialized right at the end of this
@@ -182,7 +274,7 @@ private:
         for (auto& entry : m_constTable)
             m_dataSection[entry.value] = entry.key.value();
 
-        IndexSet<Value> offLimits;
+        IndexSet<Value*> offLimits;
         for (BasicBlock* block : m_proc) {
             for (unsigned valueIndex = 0; valueIndex < block->size(); ++valueIndex) {
                 StackmapValue* value = block->at(valueIndex)->as<StackmapValue>();
@@ -216,12 +308,16 @@ private:
                 if (offLimits.contains(value))
                     continue;
 
+                auto offset = sizeof(int64_t) * m_constTable.get(key);
+                if (!isRepresentableAs<Value::OffsetType>(offset))
+                    continue;
+
                 Value* tableBase = m_insertionSet.insertIntConstant(
                     valueIndex, value->origin(), pointerType(),
                     bitwise_cast<intptr_t>(m_dataSection));
                 Value* result = m_insertionSet.insert<MemoryValue>(
                     valueIndex, Load, value->type(), value->origin(), tableBase,
-                    sizeof(int64_t) * m_constTable.get(key));
+                    static_cast<Value::OffsetType>(offset));
                 value->replaceWithIdentity(result);
             }
 
@@ -242,7 +338,7 @@ private:
 
     static ValueKey floatZero()
     {
-        return ValueKey(ConstFloat, Double, 0.0);
+        return ValueKey(ConstFloat, Float, 0.0);
     }
 
     Procedure& m_proc;

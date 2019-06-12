@@ -32,28 +32,33 @@
 
 namespace WebKit {
 
-void WebIconDatabaseClient::didChangeIconForPageURL(WebIconDatabase* iconDatabase, API::URL* url)
+WebIconDatabaseClient::WebIconDatabaseClient(const WKIconDatabaseClientBase* wkClient)
+{
+    initialize(wkClient);
+}
+
+void WebIconDatabaseClient::didChangeIconForPageURL(WebIconDatabase& iconDatabase, const String& pageURL)
 {
     if (!m_client.didChangeIconForPageURL)
         return;
-    
-    m_client.didChangeIconForPageURL(toAPI(iconDatabase), toAPI(url), m_client.base.clientInfo);
+
+    m_client.didChangeIconForPageURL(toAPI(&iconDatabase), toAPI(API::URL::create(pageURL).ptr()), m_client.base.clientInfo);
 }
 
-void WebIconDatabaseClient::didRemoveAllIcons(WebIconDatabase* iconDatabase)
+void WebIconDatabaseClient::didRemoveAllIcons(WebIconDatabase& iconDatabase)
 {
     if (!m_client.didRemoveAllIcons)
         return;
-    
-    m_client.didRemoveAllIcons(toAPI(iconDatabase),  m_client.base.clientInfo);
+
+    m_client.didRemoveAllIcons(toAPI(&iconDatabase),  m_client.base.clientInfo);
 }
 
-void WebIconDatabaseClient::iconDataReadyForPageURL(WebIconDatabase* iconDatabase, API::URL* url)
+void WebIconDatabaseClient::iconDataReadyForPageURL(WebIconDatabase& iconDatabase, const String& pageURL)
 {
     if (!m_client.iconDataReadyForPageURL)
         return;
 
-    m_client.iconDataReadyForPageURL(toAPI(iconDatabase), toAPI(url), m_client.base.clientInfo);
+    m_client.iconDataReadyForPageURL(toAPI(&iconDatabase), toAPI(API::URL::create(pageURL).ptr()), m_client.base.clientInfo);
 }
 
 } // namespace WebKit

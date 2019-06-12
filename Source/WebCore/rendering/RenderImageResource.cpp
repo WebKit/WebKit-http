@@ -37,7 +37,6 @@
 namespace WebCore {
 
 RenderImageResource::RenderImageResource()
-    : m_renderer(0)
 {
 }
 
@@ -54,10 +53,12 @@ void RenderImageResource::initialize(RenderElement* renderer)
 
 void RenderImageResource::shutdown()
 {
-    ASSERT(m_renderer);
+    if (!m_cachedImage)
+        return;
 
-    if (m_cachedImage)
-        m_cachedImage->removeClient(m_renderer);
+    ASSERT(m_renderer);
+    image()->stopAnimation();
+    m_cachedImage->removeClient(*m_renderer);
 }
 
 void RenderImageResource::setCachedImage(CachedImage* newImage)
@@ -68,10 +69,10 @@ void RenderImageResource::setCachedImage(CachedImage* newImage)
         return;
 
     if (m_cachedImage)
-        m_cachedImage->removeClient(m_renderer);
+        m_cachedImage->removeClient(*m_renderer);
     m_cachedImage = newImage;
     if (m_cachedImage) {
-        m_cachedImage->addClient(m_renderer);
+        m_cachedImage->addClient(*m_renderer);
         if (m_cachedImage->errorOccurred())
             m_renderer->imageChanged(m_cachedImage.get());
     }
@@ -90,9 +91,9 @@ void RenderImageResource::resetAnimation()
         m_renderer->repaint();
 }
 
-RefPtr<Image> RenderImageResource::image(int, int) const
+RefPtr<Image> RenderImageResource::image(const IntSize&) const
 {
-    return m_cachedImage ? m_cachedImage->imageForRenderer(m_renderer) : Image::nullImage();
+    return m_cachedImage ? m_cachedImage->imageForRenderer(m_renderer) : &Image::nullImage();
 }
 
 bool RenderImageResource::errorOccurred() const

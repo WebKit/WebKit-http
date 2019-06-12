@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceHandleCFURLConnectionDelegate_h
-#define ResourceHandleCFURLConnectionDelegate_h
+#pragma once
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "ResourceRequest.h"
 #include <CFNetwork/CFURLConnectionPriv.h>
@@ -73,9 +72,6 @@ private:
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     static Boolean canRespondToProtectionSpaceCallback(CFURLConnectionRef, CFURLProtectionSpaceRef, const void* clientInfo);
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    static void didReceiveDataArrayCallback(CFURLConnectionRef, CFArrayRef, const void* clientInfo);
-#endif // USE(NETWORK_CFDATA_ARRAY_CALLBACK)
 
     virtual CFURLRequestRef willSendRequest(CFURLRequestRef, CFURLResponseRef) = 0;
     virtual void didReceiveResponse(CFURLConnectionRef, CFURLResponseRef) = 0;
@@ -89,9 +85,6 @@ private:
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     virtual Boolean canRespondToProtectionSpace(CFURLProtectionSpaceRef) = 0;
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    virtual void didReceiveDataArray(CFArrayRef dataArray) = 0;
-#endif // USE(NETWORK_CFDATA_ARRAY_CALLBACK)
 
 protected:
     ResourceHandle* m_handle;
@@ -100,6 +93,4 @@ protected:
 
 } // namespace WebCore.
 
-#endif // USE(CFNETWORK)
-
-#endif // ResourceHandleCFURLConnectionDelegate_h
+#endif // USE(CFURLCONNECTION)

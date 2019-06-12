@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AudioTrackList_h
-#define AudioTrackList_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -46,10 +45,10 @@ public:
 
     AudioTrack* item(unsigned index) const;
     AudioTrack* lastItem() const { return item(length() - 1); }
-    void append(PassRefPtr<AudioTrack>);
+    void append(Ref<AudioTrack>&&);
 
     // EventTarget
-    virtual EventTargetInterface eventTargetInterface() const override;
+    EventTargetInterface eventTargetInterface() const override;
 
 private:
     AudioTrackList(HTMLMediaElement*, ScriptExecutionContext*);
@@ -57,5 +56,4 @@ private:
 
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)

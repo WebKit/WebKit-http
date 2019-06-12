@@ -44,6 +44,8 @@
 #import <WebKit/_WKUserContentExtensionStore.h>
 #import <WebKit/_WKUserContentExtensionStorePrivate.h>
 #import <mach-o/dyld.h>
+#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
 @interface NSSound ()
 + (void)_setAlertType:(NSUInteger)alertType;
@@ -55,12 +57,27 @@ void TestController::notifyDone()
 {
 }
 
+static PlatformWindow wtr_NSApplication_keyWindow(id self, SEL _cmd)
+{
+    return WTR::PlatformWebView::keyWindow();
+}
+
 void TestController::platformInitialize()
 {
     poseAsClass("WebKitTestRunnerPasteboard", "NSPasteboard");
     poseAsClass("WebKitTestRunnerEvent", "NSEvent");
 
     [NSSound _setAlertType:0];
+
+    Method keyWindowMethod = class_getInstanceMethod(objc_getClass("NSApplication"), @selector(keyWindow));
+
+    ASSERT(keyWindowMethod);
+    if (!keyWindowMethod) {
+        NSLog(@"Failed to swizzle the \"keyWindowMethod\" method on NSApplication");
+        return;
+    }
+    
+    method_setImplementation(keyWindowMethod, (IMP)wtr_NSApplication_keyWindow);
 }
 
 void TestController::platformDestroy()
@@ -87,7 +104,7 @@ void TestController::platformResetStateToConsistentValues()
 {
     cocoaResetStateToConsistentValues();
 
-    while ([NSApp nextEventMatchingMask:NSEventMaskGesture | NSScrollWheelMask untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES]) {
+    while ([NSApp nextEventMatchingMask:NSEventMaskGesture | NSEventMaskScrollWheel untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES]) {
         // Clear out (and ignore) any pending gesture and scroll wheel events.
     }
 }
@@ -126,7 +143,6 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
 #endif
 }
 
-#if ENABLE(PLATFORM_FONT_LOOKUP)
 static NSSet *allowedFontFamilySet()
 {
     static NSSet *fontFamilySet = [[NSSet setWithObjects:
@@ -149,6 +165,7 @@ static NSSet *allowedFontFamilySet()
         @"Arial Rounded MT Bold",
         @"Arial Unicode MS",
         @"Arial",
+        @"Avenir Next",
         @"Ayuthaya",
         @"Baghdad",
         @"Baskerville",
@@ -203,6 +220,7 @@ static NSSet *allowedFontFamilySet()
         @"Kokonor",
         @"Krungthep",
         @"KufiStandardGK",
+        @"LastResort",
         @"LiHei Pro",
         @"LiSong Pro",
         @"Lucida Grande",
@@ -280,7 +298,6 @@ static WKRetainPtr<WKArrayRef> generateWhitelist()
 
     return adoptWK(result);
 }
-#endif
 
 void TestController::platformInitializeContext()
 {
@@ -293,9 +310,7 @@ void TestController::platformInitializeContext()
                                           diskPath:nil]);
     [NSURLCache setSharedURLCache:sharedCache.get()];
 
-#if ENABLE(PLATFORM_FONT_LOOKUP)
     WKContextSetFontWhitelist(m_context.get(), generateWhitelist().get());
-#endif
 }
 
 void TestController::setHidden(bool hidden)

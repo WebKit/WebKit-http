@@ -23,13 +23,11 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef InspectorConsoleAgent_h
-#define InspectorConsoleAgent_h
+#pragma once
 
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
 #include "inspector/InspectorAgentBase.h"
-#include "runtime/ConsoleTypes.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
@@ -44,6 +42,7 @@ namespace Inspector {
 
 class ConsoleMessage;
 class InjectedScriptManager;
+class InspectorHeapAgent;
 class ScriptArguments;
 class ScriptCallStack;
 typedef String ErrorString;
@@ -52,17 +51,18 @@ class JS_EXPORT_PRIVATE InspectorConsoleAgent : public InspectorAgentBase, publi
     WTF_MAKE_NONCOPYABLE(InspectorConsoleAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    InspectorConsoleAgent(AgentContext&);
+    InspectorConsoleAgent(AgentContext&, InspectorHeapAgent*);
     virtual ~InspectorConsoleAgent();
 
-    virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
-    virtual void willDestroyFrontendAndBackend(DisconnectReason) override;
+    void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
+    void willDestroyFrontendAndBackend(DisconnectReason) override;
+    void discardValues() override;
 
-    virtual void enable(ErrorString&) override;
-    virtual void disable(ErrorString&) override;
-    virtual void clearMessages(ErrorString&) override;
-    virtual void setMonitoringXHREnabled(ErrorString&, bool enabled) override = 0;
-    virtual void addInspectedNode(ErrorString&, int nodeId) override = 0;
+    void enable(ErrorString&) override;
+    void disable(ErrorString&) override;
+    void clearMessages(ErrorString&) override;
+    void setMonitoringXHREnabled(ErrorString&, bool enabled) override = 0;
+    void addInspectedNode(ErrorString&, int nodeId) override = 0;
 
     bool enabled() const { return m_enabled; }
     void reset();
@@ -70,8 +70,9 @@ public:
     void addMessageToConsole(std::unique_ptr<ConsoleMessage>);
 
     void startTiming(const String& title);
-    void stopTiming(const String& title, PassRefPtr<ScriptCallStack>);
-    void count(JSC::ExecState*, PassRefPtr<ScriptArguments>);
+    void stopTiming(const String& title, Ref<ScriptCallStack>&&);
+    void takeHeapSnapshot(const String& title);
+    void count(JSC::ExecState*, Ref<ScriptArguments>&&);
 
 protected:
     void addConsoleMessage(std::unique_ptr<ConsoleMessage>);
@@ -79,6 +80,7 @@ protected:
     InjectedScriptManager& m_injectedScriptManager;
     std::unique_ptr<ConsoleFrontendDispatcher> m_frontendDispatcher;
     RefPtr<ConsoleBackendDispatcher> m_backendDispatcher;
+    InspectorHeapAgent* m_heapAgent;
 
     ConsoleMessage* m_previousMessage { nullptr };
     Vector<std::unique_ptr<ConsoleMessage>> m_consoleMessages;
@@ -89,5 +91,3 @@ protected:
 };
 
 } // namespace Inspector
-
-#endif // !defined(InspectorConsoleAgent_h)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -105,7 +105,16 @@ struct RangeKey {
             out.print("ArrayBounds(");
             break;
         }
-        out.print(m_source, ", ", m_key, ")");
+        if (m_source)
+            out.print(m_source);
+        else
+            out.print("null");
+        out.print(", ");
+        if (m_key)
+            out.print(m_key);
+        else
+            out.print("null");
+        out.print(")");
     }
     
     RangeKind m_kind;
@@ -192,8 +201,7 @@ private:
         // First we collect Ranges. If operations within the range have enough redundancy,
         // we hoist. And then we remove additions and checks that fall within the max range.
         
-        for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
-            Node* node = block->at(nodeIndex);
+        for (auto* node : *block) {
             RangeKeyAndAddend data = rangeKeyAndAddend(node);
             if (verbose)
                 dataLog("For ", node, ": ", data, "\n");
@@ -250,7 +258,13 @@ private:
                     Node* maxNode;
                     
                     if (!data.m_key.m_source) {
-                        minNode = 0;
+                        // data.m_key.m_source being null means that we're comparing against int32 constants (see rangeKeyAndAddend()).
+                        // Since CheckInBounds does an unsigned comparison, if the minBound >= 0, it is also covered by the
+                        // maxBound comparison. However, if minBound < 0, then CheckInBounds should always fail its speculation check.
+                        // We'll force an OSR exit in that case.
+                        minNode = nullptr;
+                        if (range.m_minBound < 0)
+                            m_insertionSet.insertNode(nodeIndex, SpecNone, ForceOSRExit, node->origin);
                         maxNode = m_insertionSet.insertConstant(
                             nodeIndex, maxOrigin, jsNumber(range.m_maxBound));
                     } else {
@@ -382,7 +396,7 @@ private:
                 nodeIndex, origin, jsNumber(addend), source.useKind()));
     }
     
-    typedef std::unordered_map<RangeKey, Range, HashMethod<RangeKey>> RangeMap;
+    using RangeMap = std::unordered_map<RangeKey, Range, HashMethod<RangeKey>, std::equal_to<RangeKey>, FastAllocator<std::pair<const RangeKey, Range>>>;
     RangeMap m_map;
     
     InsertionSet m_insertionSet;
@@ -391,7 +405,6 @@ private:
     
 bool performIntegerCheckCombining(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG Integer Check Combining Phase");
     return runPhase<IntegerCheckCombiningPhase>(graph);
 }
 

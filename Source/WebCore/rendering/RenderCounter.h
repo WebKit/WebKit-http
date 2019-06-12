@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef RenderCounter_h
-#define RenderCounter_h
+#pragma once
 
 #include "CounterContent.h"
 #include "RenderText.h"
@@ -43,19 +42,17 @@ public:
     void updateCounter();
 
 private:
-    virtual const char* renderName() const override;
-    virtual bool isCounter() const override;
-    virtual String originalText() const override;
+    void willBeDestroyed() override;
     
-    virtual void computePreferredLogicalWidths(float leadWidth) override;
-
-    // Removes the reference to the CounterNode associated with this renderer.
-    // This is used to cause a counter display update when the CounterNode tree changes.
-    void invalidate();
+    const char* renderName() const override;
+    bool isCounter() const override;
+    String originalText() const override;
+    
+    void computePreferredLogicalWidths(float leadWidth) override;
 
     CounterContent m_counter;
-    CounterNode* m_counterNode;
-    RenderCounter* m_nextForSameCounter;
+    CounterNode* m_counterNode { nullptr };
+    RenderCounter* m_nextForSameCounter { nullptr };
     friend class CounterNode;
 };
 
@@ -64,8 +61,6 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderCounter, isCounter())
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
-void showCounterRendererTree(const WebCore::RenderObject*, const char* counterName = 0);
+// Outside the WebCore namespace for ease of invocation from the debugger.
+void showCounterRendererTree(const WebCore::RenderObject*, const char* counterName = nullptr);
 #endif
-
-#endif // RenderCounter_h

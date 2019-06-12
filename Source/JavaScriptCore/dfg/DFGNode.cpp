@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,12 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGGraph.h"
-#include "DFGNodeAllocator.h"
 #include "DFGPromotedHeapLocation.h"
 #include "JSCInlines.h"
 
 namespace JSC { namespace DFG {
+
+const char Node::HashSetTemplateInstantiationString[] = "::JSC::DFG::Node*";
 
 bool MultiPutByOffsetData::writesStructures() const
 {
@@ -62,11 +63,6 @@ void BranchTarget::dump(PrintStream& out) const
     
     if (count == count) // If the count is not NaN, then print it.
         out.print("/w:", count);
-}
-
-unsigned Node::index() const
-{
-    return NodeAllocator::allocatorOf(this)->indexOf(this);
 }
 
 bool Node::hasVariableAccessData(Graph& graph)
@@ -132,10 +128,10 @@ void Node::convertToIdentityOn(Node* child)
         setOpAndDefaultFlags(Int52Rep);
         switch (input) {
         case NodeResultDouble:
-            child1().setUseKind(DoubleRepMachineIntUse);
+            child1().setUseKind(DoubleRepAnyIntUse);
             return;
         case NodeResultJS:
-            child1().setUseKind(MachineIntUse);
+            child1().setUseKind(AnyIntUse);
             return;
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -160,11 +156,19 @@ void Node::convertToIdentityOn(Node* child)
     }
 }
 
+void Node::convertToLazyJSConstant(Graph& graph, LazyJSValue value)
+{
+    m_op = LazyJSConstant;
+    m_flags &= ~NodeMustGenerate;
+    m_opInfo = graph.m_lazyJSValues.add(value);
+    children.reset();
+}
+
 void Node::convertToPutHint(const PromotedLocationDescriptor& descriptor, Node* base, Node* value)
 {
     m_op = PutHint;
-    m_opInfo = descriptor.imm1().m_value;
-    m_opInfo2 = descriptor.imm2().m_value;
+    m_opInfo = descriptor.imm1();
+    m_opInfo2 = descriptor.imm2();
     child1() = base->defaultEdge();
     child2() = value->defaultEdge();
     child3() = Edge();
@@ -173,7 +177,7 @@ void Node::convertToPutHint(const PromotedLocationDescriptor& descriptor, Node* 
 void Node::convertToPutStructureHint(Node* structure)
 {
     ASSERT(m_op == PutStructure);
-    ASSERT(structure->castConstant<Structure*>() == transition()->next);
+    ASSERT(structure->castConstant<Structure*>(*structure->asCell()->vm()) == transition()->next.get());
     convertToPutHint(StructurePLoc, child1().node(), structure);
 }
 
@@ -193,9 +197,63 @@ void Node::convertToPutClosureVarHint()
         child1().node(), child2().node());
 }
 
+void Node::convertToDirectCall(FrozenValue* executable)
+{
+    NodeType newOp = LastNodeType;
+    switch (op()) {
+    case Call:
+        newOp = DirectCall;
+        break;
+    case Construct:
+        newOp = DirectConstruct;
+        break;
+    case TailCallInlinedCaller:
+        newOp = DirectTailCallInlinedCaller;
+        break;
+    case TailCall:
+        newOp = DirectTailCall;
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+    
+    m_op = newOp;
+    m_opInfo = executable;
+}
+
+void Node::convertToCallDOM(Graph& graph)
+{
+    ASSERT(op() == Call);
+    ASSERT(signature());
+
+    Edge edges[3];
+    // Skip the first one. This is callee.
+    RELEASE_ASSERT(numChildren() <= 4);
+    for (unsigned i = 1; i < numChildren(); ++i)
+        edges[i - 1] = graph.varArgChild(this, i);
+
+    setOpAndDefaultFlags(CallDOM);
+    children.setChild1(edges[0]);
+    children.setChild2(edges[1]);
+    children.setChild3(edges[2]);
+
+    if (!signature()->effect.mustGenerate())
+        clearFlags(NodeMustGenerate);
+}
+
+String Node::tryGetString(Graph& graph)
+{
+    if (hasConstant())
+        return constant()->tryGetString(graph);
+    if (hasLazyJSValue())
+        return lazyJSValue().tryGetString(graph);
+    return String();
+}
+
 PromotedLocationDescriptor Node::promotedLocationDescriptor()
 {
-    return PromotedLocationDescriptor(static_cast<PromotedLocationKind>(m_opInfo), m_opInfo2);
+    return PromotedLocationDescriptor(static_cast<PromotedLocationKind>(m_opInfo.as<uint32_t>()), m_opInfo2.as<uint32_t>());
 }
 
 } } // namespace JSC::DFG

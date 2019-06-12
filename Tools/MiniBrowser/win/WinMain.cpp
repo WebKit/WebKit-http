@@ -26,6 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#pragma warning(disable: 4091)
+
 #include "stdafx.h"
 #include "MiniBrowserLibResource.h"
 #include "MiniBrowserWebHost.h"
@@ -68,6 +70,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     // Init COM
     OleInitialize(nullptr);
+
+    ::SetProcessDPIAware();
 
     float scaleFactor = WebCore::deviceScaleFactorForWindow(nullptr);
 

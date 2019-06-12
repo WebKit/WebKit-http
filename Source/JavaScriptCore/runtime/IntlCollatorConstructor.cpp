@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
  * Copyright (C) 2015 Sukolsak Sakshuwong (sukolsak@gmail.com)
+ * Copyright (C) 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,11 +34,8 @@
 #include "IntlCollator.h"
 #include "IntlCollatorPrototype.h"
 #include "IntlObject.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "Lookup.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
 
 namespace JSC {
 
@@ -51,7 +49,7 @@ static EncodedJSValue JSC_HOST_CALL IntlCollatorConstructorFuncSupportedLocalesO
 
 namespace JSC {
 
-const ClassInfo IntlCollatorConstructor::s_info = { "Function", &InternalFunction::s_info, &collatorConstructorTable, CREATE_METHOD_TABLE(IntlCollatorConstructor) };
+const ClassInfo IntlCollatorConstructor::s_info = { "Function", &InternalFunction::s_info, &collatorConstructorTable, nullptr, CREATE_METHOD_TABLE(IntlCollatorConstructor) };
 
 /* Source for IntlCollatorConstructor.lut.h
 @begin collatorConstructorTable
@@ -86,27 +84,20 @@ void IntlCollatorConstructor::finishCreation(VM& vm, IntlCollatorPrototype* coll
 
 static EncodedJSValue JSC_HOST_CALL constructIntlCollator(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     // 10.1.2 Intl.Collator ([locales [, options]]) (ECMA-402 2.0)
     // 1. If NewTarget is undefined, let newTarget be the active function object, else let newTarget be NewTarget.
-    JSValue newTarget = state->newTarget();
-    if (newTarget.isUndefined())
-        newTarget = state->callee();
-
     // 2. Let collator be OrdinaryCreateFromConstructor(newTarget, %CollatorPrototype%).
-    VM& vm = state->vm();
-    IntlCollator* collator = IntlCollator::create(vm, jsCast<IntlCollatorConstructor*>(state->callee()));
-    if (collator && !jsDynamicCast<IntlCollatorConstructor*>(newTarget)) {
-        JSValue proto = asObject(newTarget)->getDirect(vm, vm.propertyNames->prototype);
-        asObject(collator)->setPrototypeWithCycleCheck(state, proto);
-    }
-
     // 3. ReturnIfAbrupt(collator).
+    Structure* structure = InternalFunction::createSubclassStructure(state, state->newTarget(), jsCast<IntlCollatorConstructor*>(state->jsCallee())->collatorStructure());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    IntlCollator* collator = IntlCollator::create(vm, structure);
     ASSERT(collator);
 
     // 4. Return InitializeCollator(collator, locales, options).
-    JSValue locales = state->argument(0);
-    JSValue options = state->argument(1);
-    collator->initializeCollator(*state, locales, options);
+    scope.release();
+    collator->initializeCollator(*state, state->argument(0), state->argument(1));
     return JSValue::encode(collator);
 }
 
@@ -116,50 +107,49 @@ static EncodedJSValue JSC_HOST_CALL callIntlCollator(ExecState* state)
     // 1. If NewTarget is undefined, let newTarget be the active function object, else let newTarget be NewTarget.
     // NewTarget is always undefined when called as a function.
 
-    // 2. Let collator be OrdinaryCreateFromConstructor(newTarget, %CollatorPrototype%).
     VM& vm = state->vm();
-    IntlCollator* collator = IntlCollator::create(vm, jsCast<IntlCollatorConstructor*>(state->callee()));
+    IntlCollatorConstructor* callee = jsCast<IntlCollatorConstructor*>(state->jsCallee());
 
+    // FIXME: Collator does not get the workaround for ECMA-402 1.0 compatibility.
+    // https://bugs.webkit.org/show_bug.cgi?id=153679
+
+    // 2. Let collator be OrdinaryCreateFromConstructor(newTarget, %CollatorPrototype%).
     // 3. ReturnIfAbrupt(collator).
+    IntlCollator* collator = IntlCollator::create(vm, callee->collatorStructure());
     ASSERT(collator);
 
     // 4. Return InitializeCollator(collator, locales, options).
-    JSValue locales = state->argument(0);
-    JSValue options = state->argument(1);
-    collator->initializeCollator(*state, locales, options);
+    collator->initializeCollator(*state, state->argument(0), state->argument(1));
     return JSValue::encode(collator);
 }
 
 ConstructType IntlCollatorConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructIntlCollator;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 CallType IntlCollatorConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callIntlCollator;
-    return CallTypeHost;
-}
-
-bool IntlCollatorConstructor::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
-{
-    return getStaticFunctionSlot<InternalFunction>(state, collatorConstructorTable, jsCast<IntlCollatorConstructor*>(object), propertyName, slot);
+    return CallType::Host;
 }
 
 EncodedJSValue JSC_HOST_CALL IntlCollatorConstructorFuncSupportedLocalesOf(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     // 10.2.2 Intl.Collator.supportedLocalesOf(locales [, options]) (ECMA-402 2.0)
 
     // 1. Let requestedLocales be CanonicalizeLocaleList(locales).
     Vector<String> requestedLocales = canonicalizeLocaleList(*state, state->argument(0));
 
     // 2. ReturnIfAbrupt(requestedLocales).
-    if (state->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 3. Return SupportedLocales(%Collator%.[[availableLocales]], requestedLocales, options).
-    JSGlobalObject* globalObject = state->callee()->globalObject();
+    JSGlobalObject* globalObject = state->jsCallee()->globalObject();
+    scope.release();
     return JSValue::encode(supportedLocales(*state, globalObject->intlCollatorAvailableLocales(), requestedLocales, state->argument(1)));
 }
 
@@ -170,7 +160,7 @@ void IntlCollatorConstructor::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_collatorStructure);
+    visitor.append(thisObject->m_collatorStructure);
 }
 
 } // namespace JSC

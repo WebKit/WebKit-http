@@ -30,8 +30,8 @@
 #include "IntPoint.h"
 #include "IntRect.h"
 #include "IntSize.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -45,7 +45,8 @@ class BitmapTexture : public RefCounted<BitmapTexture> {
 public:
     enum Flag {
         NoFlag = 0,
-        SupportsAlpha = 0x01
+        SupportsAlpha = 0x01,
+        FBOAttachment = 0x02
     };
 
     enum UpdateContentsFlag {
@@ -83,7 +84,7 @@ public:
     inline int numberOfBytes() const { return size().width() * size().height() * bpp() >> 3; }
     inline bool isOpaque() const { return !(m_flags & SupportsAlpha); }
 
-    virtual PassRefPtr<BitmapTexture> applyFilters(TextureMapper&, const FilterOperations&) { return this; }
+    virtual RefPtr<BitmapTexture> applyFilters(TextureMapper&, const FilterOperations&) { return this; }
 
 protected:
     IntSize m_contentSize;

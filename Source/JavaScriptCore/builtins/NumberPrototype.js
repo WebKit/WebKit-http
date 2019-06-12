@@ -34,13 +34,11 @@ function toLocaleString(/* locales, options */)
 
     // 1. Let x be thisNumberValue(this value).
     // 2. ReturnIfAbrupt(x).
-    var number = this;
-    if (!(typeof number === "number" || number instanceof @Number))
-        throw new @TypeError("Number.prototype.toLocaleString called on incompatible " + typeof number);
+    var number = @thisNumberValue.@call(this);
 
     // 3. Let numberFormat be Construct(%NumberFormat%, «locales, options»).
     // 4. ReturnIfAbrupt(numberFormat).
-    var numberFormat = new @NumberFormat(arguments[0], arguments[1]);
+    var numberFormat = new @NumberFormat(@argument(0), @argument(1));
 
     // 5. Return FormatNumber(numberFormat, x).
     return numberFormat.format(number);

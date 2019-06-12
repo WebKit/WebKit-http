@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGAtTailAbstractState_h
-#define DFGAtTailAbstractState_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DFGAbstractValue.h"
 #include "DFGBasicBlock.h"
+#include "DFGBlockMap.h"
 #include "DFGGraph.h"
+#include "DFGNodeFlowProjection.h"
 
 namespace JSC { namespace DFG { 
 
@@ -40,13 +41,15 @@ public:
     
     ~AtTailAbstractState();
     
+    explicit operator bool() const { return true; }
+    
     void initializeTo(BasicBlock* block)
     {
         m_block = block;
     }
     
-    void createValueForNode(Node*);
-    AbstractValue& forNode(Node*);
+    void createValueForNode(NodeFlowProjection);
+    AbstractValue& forNode(NodeFlowProjection);
     AbstractValue& forNode(Edge edge) { return forNode(edge.node()); }
     Operands<AbstractValue>& variables() { return m_block->valuesAtTail; }
     
@@ -64,12 +67,10 @@ public:
 
 private:
     Graph& m_graph;
-    BasicBlock* m_block;
+    BlockMap<HashMap<NodeFlowProjection, AbstractValue>> m_valuesAtTailMap;
+    BasicBlock* m_block { nullptr };
 };
 
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGAtTailAbstractState_h
-

@@ -24,7 +24,7 @@
  */
 
 #import "config.h"
-#import "WKFormSelectControl.h"
+#import "WKFormSelectPopover.h"
 
 #if PLATFORM(IOS)
 
@@ -32,6 +32,7 @@
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
 #import "WKFormPopover.h"
+#import "WKFormSelectControl.h"
 #import "WebPageProxy.h"
 #import <UIKit/UIPickerView.h>
 #import <WebCore/LocalizedStrings.h>
@@ -122,11 +123,15 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
         currentIndex++;
     }
     
-    UITextWritingDirection writingDirection = UITextWritingDirectionLeftToRight;
+    UITextWritingDirection writingDirection = _contentView.assistedNodeInformation.isRTL ? UITextWritingDirectionRightToLeft : UITextWritingDirectionLeftToRight;
     BOOL override = NO;
-    // FIXME: retrieve from WebProcess writing direction and override.
     _textAlignment = (writingDirection == UITextWritingDirectionLeftToRight) ? NSTextAlignmentLeft : NSTextAlignmentRight;
-    
+
+    // Typically UIKit apps have their writing direction follow the system
+    // language. However WebKit wants to follow the content direction.
+    // For that reason we have to override what the system thinks.
+    if (writingDirection == UITextWritingDirectionRightToLeft)
+        self.view.semanticContentAttribute = UISemanticContentAttributeForceRightToLeft;
     [self setTitle:stringWithWritingDirection(_contentView.assistedNodeInformation.title, writingDirection, override)];
     
     return self;
@@ -244,6 +249,7 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
     if (!cell)
         cell = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:WKPopoverTableViewCellReuseIdentifier] autorelease];
     
+    cell.semanticContentAttribute = self.view.semanticContentAttribute;
     cell.textLabel.textAlignment = _textAlignment;
     
     if (_contentView.assistedNodeInformation.selectOptions.isEmpty()) {
@@ -367,7 +373,6 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
 @end
 
 @implementation WKSelectPopover {
-    WKContentView *_view;
     RetainPtr<WKSelectTableViewController> _tableViewController;
 }
 
@@ -376,7 +381,6 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
     if (!(self = [super initWithView:view]))
         return nil;
     
-    _view = view;
     CGRect frame;
     frame.origin = CGPointZero;
     frame.size = [UIKeyboard defaultSizeForInterfaceOrientation:[UIApp interfaceOrientation]];
@@ -386,12 +390,12 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
     UIViewController *popoverViewController = _tableViewController.get();
     UINavigationController *navController = nil;
     NSString *title = view.assistedNodeInformation.title;
-    BOOL needsNavigationController = (_view && _UIApplicationUsesLegacyUI()) || [title length];
+    BOOL needsNavigationController = (self.view && _UIApplicationUsesLegacyUI()) || [title length];
     if (needsNavigationController) {
         navController = [[UINavigationController alloc] initWithRootViewController:_tableViewController.get()];
         popoverViewController = navController;
         
-        if (_view.assistedNodeInformation.isMultiSelect && _UIApplicationUsesLegacyUI())
+        if (self.view.assistedNodeInformation.isMultiSelect && _UIApplicationUsesLegacyUI())
             _tableViewController.get().navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(_userActionDismissedPopover:)] autorelease];
     }
     
@@ -439,6 +443,18 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
 - (void)_userActionDismissedPopover:(id)sender
 {
     [self accessoryDone];
+}
+
+@end
+
+@implementation WKSelectPopover(WKTesting)
+
+- (void)selectRow:(NSInteger)rowIndex inComponent:(NSInteger)componentIndex extendingSelection:(BOOL)extendingSelection
+{
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:rowIndex inSection:componentIndex];
+    [[_tableViewController tableView] selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionMiddle];
+    // Inform the delegate, since -selectRowAtIndexPath:... doesn't do that.
+    [_tableViewController tableView:[_tableViewController tableView] didSelectRowAtIndexPath:indexPath];
 }
 
 @end

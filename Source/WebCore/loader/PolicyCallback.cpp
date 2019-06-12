@@ -38,24 +38,7 @@
 
 namespace WebCore {
 
-PolicyCallback::PolicyCallback()
-{
-}
-
-PolicyCallback::~PolicyCallback()
-{
-}
-
-void PolicyCallback::clear()
-{
-    clearRequest();
-    m_navigationFunction = nullptr;
-    m_newWindowFunction = nullptr;
-    m_contentFunction = nullptr;
-}
-
-void PolicyCallback::set(const ResourceRequest& request, PassRefPtr<FormState> formState,
-    NavigationPolicyDecisionFunction function)
+void PolicyCallback::set(const ResourceRequest& request, FormState* formState, NavigationPolicyDecisionFunction&& function)
 {
     m_request = request;
     m_formState = formState;
@@ -66,7 +49,7 @@ void PolicyCallback::set(const ResourceRequest& request, PassRefPtr<FormState> f
     m_contentFunction = nullptr;
 }
 
-void PolicyCallback::set(const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName, const NavigationAction& navigationAction, NewWindowPolicyDecisionFunction function)
+void PolicyCallback::set(const ResourceRequest& request, FormState* formState, const String& frameName, const NavigationAction& navigationAction, NewWindowPolicyDecisionFunction&& function)
 {
     m_request = request;
     m_formState = formState;
@@ -78,7 +61,7 @@ void PolicyCallback::set(const ResourceRequest& request, PassRefPtr<FormState> f
     m_contentFunction = nullptr;
 }
 
-void PolicyCallback::set(ContentPolicyDecisionFunction function)
+void PolicyCallback::set(ContentPolicyDecisionFunction&& function)
 {
     m_request = ResourceRequest();
     m_formState = nullptr;

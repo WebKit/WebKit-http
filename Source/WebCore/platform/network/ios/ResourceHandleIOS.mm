@@ -8,7 +8,7 @@
 #import "config.h"
 #import "ResourceHandleInternal.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #import <CFNetwork/CFSocketStreamPriv.h>
 #import <Foundation/NSURLRequestPrivate.h>

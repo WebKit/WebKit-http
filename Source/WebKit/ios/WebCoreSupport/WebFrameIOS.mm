@@ -27,9 +27,10 @@
 
 #import "WebFrameIOS.h"
 
+#import <WebCore/DocumentMarkerController.h>
+#import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
 #import <WebCore/Element.h>
-#import <WebCore/DocumentMarkerController.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FloatRect.h>
 #import <WebCore/Frame.h>
@@ -37,7 +38,6 @@
 #import <WebCore/FrameSnapshotting.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HitTestResult.h>
-#import <WebCore/htmlediting.h>
 #import <WebCore/Position.h>
 #import <WebCore/Range.h>
 #import <WebCore/RenderObject.h>
@@ -165,8 +165,7 @@ using namespace WebCore;
         
         if (pos == start || pos < start) {
             start.setAffinity(UPSTREAM);
-            //result = start.next().absoluteCaretBounds();
-            result = start.absoluteCaretBounds(); //<rdar://problem/6716185>: Allow placing the caaret to the left of the first character.
+            result = start.absoluteCaretBounds();
         } else if (pos > end) {
             end.setAffinity(DOWNSTREAM);
             result = end.absoluteCaretBounds();
@@ -848,8 +847,8 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
     while (currentVisiblePosition.isNotNull()) {
         WebVisiblePosition *currentWebVisiblePosition = [WebVisiblePosition _wrapVisiblePosition:currentVisiblePosition];
         
-        Node *currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
-        int lastOffset = lastOffsetForEditing(currentNode);
+        auto* currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
+        int lastOffset = lastOffsetForEditing(*currentNode);
         ASSERT(lastOffset >= 0);
         if (lastOffset < 0)
             return currentWebVisiblePosition;
@@ -858,9 +857,9 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
         if (previousVisiblePosition.isNull())
             return currentWebVisiblePosition;
         
-        RefPtr<Range> graphemeRange = Range::create(document, previousVisiblePosition.deepEquivalent(), currentVisiblePosition.deepEquivalent());
+        auto graphemeRange = Range::create(document, previousVisiblePosition.deepEquivalent(), currentVisiblePosition.deepEquivalent());
         
-        auto markers = document.markers().markersInRange(graphemeRange.get(), DocumentMarker::DictationResult);
+        auto markers = document.markers().markersInRange(graphemeRange, DocumentMarker::DictationResult);
         if (markers.isEmpty())
             return currentWebVisiblePosition;
         
@@ -904,8 +903,8 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
     while (currentVisiblePosition.isNotNull()) {
         WebVisiblePosition *currentWebVisiblePosition = [WebVisiblePosition _wrapVisiblePosition:currentVisiblePosition];
         
-        Node *currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
-        int lastOffset = lastOffsetForEditing(currentNode);
+        auto* currentNode = currentVisiblePosition.deepEquivalent().anchorNode();
+        int lastOffset = lastOffsetForEditing(*currentNode);
         ASSERT(lastOffset >= 0);
         if (lastOffset < 0)
             return currentWebVisiblePosition;
@@ -914,9 +913,9 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
         if (nextVisiblePosition.isNull())
             return currentWebVisiblePosition;
         
-        RefPtr<Range> graphemeRange = Range::create(document, currentVisiblePosition.deepEquivalent(), nextVisiblePosition.deepEquivalent());
+        auto graphemeRange = Range::create(document, currentVisiblePosition.deepEquivalent(), nextVisiblePosition.deepEquivalent());
         
-        auto markers = document.markers().markersInRange(graphemeRange.get(), DocumentMarker::DictationResult);
+        auto markers = document.markers().markersInRange(graphemeRange, DocumentMarker::DictationResult);
         if (markers.isEmpty())
             return currentWebVisiblePosition;
         

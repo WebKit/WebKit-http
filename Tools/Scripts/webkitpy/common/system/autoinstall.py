@@ -53,6 +53,7 @@ _PYPI_ENV_VAR = 'PYPI_MIRRORS'
 _SOURCEFORGE_ENV_VAR = 'SOURCEFORGE_MIRRORS'
 _CACHE_ENV_VAR = 'LOCAL_AUTOINSTALL_CACHE'
 
+
 class AutoInstaller(object):
 
     """Supports automatically installing Python packages from an URL.
@@ -377,12 +378,12 @@ class AutoInstaller(object):
                            % (url, err))
                 raise IOError(message)
         code = 200
-        if hasattr(netstream, "getcode"):
+        if not url.startswith("file") and hasattr(netstream, "getcode"):
             code = netstream.getcode()
         if not 200 <= code < 300:
             raise ValueError("HTTP Error code %s" % code)
 
-        BUFSIZE = 2**13  # 8KB
+        BUFSIZE = 2 ** 13  # 8KB
         while True:
             data = netstream.read(BUFSIZE)
             if not data:
@@ -466,7 +467,8 @@ class AutoInstaller(object):
 
         Optional Args:
           should_refresh: A boolean value of whether the package should be
-                          downloaded again if the package is already present.
+                          downloaded and reinstalled again even if the
+                          package is already present.
           target_name: The name of the folder or file in the autoinstaller
                        target directory at which the package should be
                        installed.  Defaults to the base name of the
@@ -487,7 +489,7 @@ class AutoInstaller(object):
             target_name = os.path.basename(url_subpath)
 
         target_path = os.path.join(self._target_dir, target_name.replace('/', os.sep))
-        if not should_refresh and self._is_downloaded(target_name, url):
+        if not should_refresh and self._is_downloaded(target_name, url) and os.path.exists(target_path):
             return
 
         files_to_remove = files_to_remove or []

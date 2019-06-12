@@ -24,61 +24,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCOfferAnswerOptions_h
-#define RTCOfferAnswerOptions_h
+#pragma once
 
-#if ENABLE(MEDIA_STREAM)
-
-#include "Dictionary.h"
-#include "ExceptionCode.h"
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#if ENABLE(WEB_RTC)
 
 namespace WebCore {
 
-class Dictionary;
-
-class RTCOfferAnswerOptions : public RefCounted<RTCOfferAnswerOptions> {
-public:
-    virtual ~RTCOfferAnswerOptions() { }
-
-    bool voiceActivityDetection() const { return m_voiceActivityDetection; }
-
-protected:
-    virtual bool initialize(const Dictionary&);
-    RTCOfferAnswerOptions();
-
-    bool m_voiceActivityDetection;
-};
-
-class RTCOfferOptions : public RTCOfferAnswerOptions {
-public:
-    static RefPtr<RTCOfferOptions> create(const Dictionary&, ExceptionCode&);
-
-    int64_t offerToReceiveVideo() const { return m_offerToReceiveVideo; }
-    int64_t offerToReceiveAudio() const { return m_offerToReceiveAudio; }
-    bool iceRestart() const { return m_iceRestart; }
-
-private:
-    virtual bool initialize(const Dictionary&) override;
-    RTCOfferOptions();
-
-    int64_t m_offerToReceiveVideo;
-    int64_t m_offerToReceiveAudio;
-    bool m_iceRestart;
-};
-
-class RTCAnswerOptions : public RTCOfferAnswerOptions {
-public:
-    static RefPtr<RTCAnswerOptions> create(const Dictionary&, ExceptionCode&);
-
-private:
-    virtual bool initialize(const Dictionary&) override;
-    RTCAnswerOptions() { }
+struct RTCOfferAnswerOptions {
+    bool voiceActivityDetection { true };
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
-
-#endif // RTCOfferAnswerOptions_h
+#endif // ENABLE(WEB_RTC)

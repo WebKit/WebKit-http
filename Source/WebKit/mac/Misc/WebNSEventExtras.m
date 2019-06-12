@@ -29,13 +29,14 @@
 #if !PLATFORM(IOS)
 
 #import <WebKitLegacy/WebNSEventExtras.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
 @implementation NSEvent (WebExtras)
 
 -(BOOL)_web_isKeyEvent:(unichar)key
 {
     int type = [self type];
-    if (type != NSKeyDown && type != NSKeyUp)
+    if (type != NSEventTypeKeyDown && type != NSEventTypeKeyUp)
         return NO;
     
     NSString *chars = [self charactersIgnoringModifiers];
@@ -64,7 +65,7 @@
 
 - (BOOL)_web_isOptionTabKeyEvent
 {
-    return ([self modifierFlags] & NSAlternateKeyMask) && [self _web_isTabKeyEvent];
+    return ([self modifierFlags] & NSEventModifierFlagOption) && [self _web_isTabKeyEvent];
 }
 
 - (BOOL)_web_isReturnOrEnterKeyEvent

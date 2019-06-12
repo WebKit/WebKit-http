@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -87,15 +87,15 @@ void printInternal(PrintStream& out, LocationKind kind)
     case ArrayLengthLoc:
         out.print("ArrayLengthLoc");
         return;
+
+    case VectorLengthLoc:
+        out.print("VectorLengthLoc");
+        return;
         
     case ButterflyLoc:
         out.print("ButterflyLoc");
         return;
         
-    case ButterflyReadOnlyLoc:
-        out.print("ButterflyReadOnlyLoc");
-        return;
-
     case CheckTypeInfoFlagsLoc:
         out.print("CheckTypeInfoFlagsLoc");
         return;
@@ -119,11 +119,19 @@ void printInternal(PrintStream& out, LocationKind kind)
     case HasIndexedPropertyLoc:
         out.print("HasIndexedPorpertyLoc");
         return;
-        
-    case IndexedPropertyLoc:
-        out.print("IndexedPorpertyLoc");
+
+    case IndexedPropertyDoubleLoc:
+        out.print("IndexedPropertyDoubleLoc");
         return;
-        
+
+    case IndexedPropertyInt52Loc:
+        out.print("IndexedPropertyInt52Loc");
+        return;
+
+    case IndexedPropertyJSLoc:
+        out.print("IndexedPropertyJSLoc");
+        return;
+
     case IndexedPropertyStorageLoc:
         out.print("IndexedPropertyStorageLoc");
         return;
@@ -140,16 +148,24 @@ void printInternal(PrintStream& out, LocationKind kind)
         out.print("TypedArrayByteOffsetLoc");
         return;
         
-    case VarInjectionWatchpointLoc:
-        out.print("VarInjectionWatchpointLoc");
-        return;
-        
     case StructureLoc:
         out.print("StructureLoc");
         return;
 
     case RegExpObjectLastIndexLoc:
         out.print("RegExpObjectLastIndexLoc");
+        return;
+    case MapBucketLoc:
+        out.print("MapBucketLoc");
+        return;
+    case JSMapGetLoc:
+        out.print("JSMapGetLoc");
+        return;
+    case MapHasLoc:
+        out.print("MapHasLoc");
+        return;
+    case DOMStateLoc:
+        out.print("DOMStateLoc");
         return;
     }
     

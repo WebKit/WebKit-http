@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DFABytecodeInterpreter_h
-#define DFABytecodeInterpreter_h
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
@@ -33,7 +32,6 @@
 #include "DFABytecode.h"
 #include <wtf/DataLog.h>
 #include <wtf/HashSet.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
     
@@ -50,25 +48,22 @@ public:
     typedef HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> Actions;
     
     Actions interpret(const CString&, uint16_t flags);
-    Actions interpretWithDomains(const CString&, uint16_t flags, const DFABytecodeInterpreter::Actions& domainActions);
+    Actions interpretWithConditions(const CString&, uint16_t flags, const DFABytecodeInterpreter::Actions& conditionActions);
     Actions actionsMatchingEverything();
 
 private:
-    void interpretAppendAction(unsigned& programCounter, Actions&, bool ifDomain);
-    void interpretTestFlagsAndAppendAction(unsigned& programCounter, uint16_t flags, Actions&, bool ifDomain);
+    void interpretAppendAction(unsigned& programCounter, Actions&, bool ifCondition);
+    void interpretTestFlagsAndAppendAction(unsigned& programCounter, uint16_t flags, Actions&, bool ifCondition);
 
     template<bool caseSensitive>
     void interpetJumpTable(const char* url, uint32_t& urlIndex, uint32_t& programCounter, bool& urlIndexIsAfterEndOfString);
 
     const DFABytecode* m_bytecode;
     const unsigned m_bytecodeLength;
-    const DFABytecodeInterpreter::Actions* m_domainActions { nullptr };
+    const DFABytecodeInterpreter::Actions* m_topURLActions { nullptr };
 };
 
-} // namespace ContentExtensions
-    
+} // namespace ContentExtensions    
 } // namespace WebCore
 
 #endif // ENABLE(CONTENT_EXTENSIONS)
-
-#endif // DFABytecodeInterpreter_h

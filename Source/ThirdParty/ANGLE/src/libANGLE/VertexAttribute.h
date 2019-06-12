@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// Helper structure describing a single vertex attribute
+// Helper structures about Generic Vertex Attribute.
 //
 
 #ifndef LIBANGLE_VERTEXATTRIBUTE_H_
@@ -13,61 +13,62 @@
 
 namespace gl
 {
+class VertexArray;
 
-struct VertexAttribute
+//
+// Implementation of Generic Vertex Attribute Bindings for ES3.1
+//
+struct VertexBinding final : angle::NonCopyable
 {
-    bool enabled; // From glEnable/DisableVertexAttribArray
+    VertexBinding();
+    explicit VertexBinding(VertexBinding &&binding);
+    VertexBinding &operator=(VertexBinding &&binding);
 
+    GLuint stride;
+    GLuint divisor;
+    GLintptr offset;
+
+    BindingPointer<Buffer> buffer;
+};
+
+//
+// Implementation of Generic Vertex Attributes for ES3.1
+//
+struct VertexAttribute final : angle::NonCopyable
+{
+    explicit VertexAttribute(GLuint bindingIndex);
+    explicit VertexAttribute(VertexAttribute &&attrib);
+    VertexAttribute &operator=(VertexAttribute &&attrib);
+
+    bool enabled;  // For glEnable/DisableVertexAttribArray
     GLenum type;
     GLuint size;
     bool normalized;
     bool pureInteger;
-    GLuint stride; // 0 means natural stride
 
-    union
-    {
-        const GLvoid *pointer;
-        GLintptr offset;
-    };
-    BindingPointer<Buffer> buffer; // Captured when glVertexAttribPointer is called.
+    const GLvoid *pointer;
+    GLintptr relativeOffset;
 
-    GLuint divisor;
-
-    VertexAttribute();
+    GLuint vertexAttribArrayStride;  // ONLY for queries of VERTEX_ATTRIB_ARRAY_STRIDE
+    GLuint bindingIndex;
 };
 
 bool operator==(const VertexAttribute &a, const VertexAttribute &b);
 bool operator!=(const VertexAttribute &a, const VertexAttribute &b);
+bool operator==(const VertexBinding &a, const VertexBinding &b);
+bool operator!=(const VertexBinding &a, const VertexBinding &b);
 
-template <typename T>
-T QuerySingleVertexAttributeParameter(const VertexAttribute& attrib, GLenum pname)
-{
-  switch (pname)
-  {
-    case GL_VERTEX_ATTRIB_ARRAY_ENABLED:
-      return static_cast<T>(attrib.enabled ? GL_TRUE : GL_FALSE);
-    case GL_VERTEX_ATTRIB_ARRAY_SIZE:
-      return static_cast<T>(attrib.size);
-    case GL_VERTEX_ATTRIB_ARRAY_STRIDE:
-      return static_cast<T>(attrib.stride);
-    case GL_VERTEX_ATTRIB_ARRAY_TYPE:
-      return static_cast<T>(attrib.type);
-    case GL_VERTEX_ATTRIB_ARRAY_NORMALIZED:
-      return static_cast<T>(attrib.normalized ? GL_TRUE : GL_FALSE);
-    case GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING:
-      return static_cast<T>(attrib.buffer.id());
-    case GL_VERTEX_ATTRIB_ARRAY_DIVISOR:
-      return static_cast<T>(attrib.divisor);
-    case GL_VERTEX_ATTRIB_ARRAY_INTEGER:
-      return static_cast<T>(attrib.pureInteger ? GL_TRUE : GL_FALSE);
-    default:
-      UNREACHABLE();
-      return static_cast<T>(0);
-  }
-}
+size_t ComputeVertexAttributeTypeSize(const VertexAttribute &attrib);
 
-size_t ComputeVertexAttributeTypeSize(const VertexAttribute& attrib);
-size_t ComputeVertexAttributeStride(const VertexAttribute& attrib);
+// Warning: you should ensure binding really matches attrib.bindingIndex before using this function.
+size_t ComputeVertexAttributeStride(const VertexAttribute &attrib, const VertexBinding &binding);
+
+// Warning: you should ensure binding really matches attrib.bindingIndex before using this function.
+GLintptr ComputeVertexAttributeOffset(const VertexAttribute &attrib, const VertexBinding &binding);
+
+size_t ComputeVertexBindingElementCount(const VertexBinding &binding,
+                                        size_t drawCount,
+                                        size_t instanceCount);
 
 struct VertexAttribCurrentValueData
 {
@@ -79,44 +80,18 @@ struct VertexAttribCurrentValueData
     };
     GLenum Type;
 
-    void setFloatValues(const GLfloat floatValues[4])
-    {
-        for (unsigned int valueIndex = 0; valueIndex < 4; valueIndex++)
-        {
-            FloatValues[valueIndex] = floatValues[valueIndex];
-        }
-        Type = GL_FLOAT;
-    }
+    VertexAttribCurrentValueData();
 
-    void setIntValues(const GLint intValues[4])
-    {
-        for (unsigned int valueIndex = 0; valueIndex < 4; valueIndex++)
-        {
-            IntValues[valueIndex] = intValues[valueIndex];
-        }
-        Type = GL_INT;
-    }
-
-    void setUnsignedIntValues(const GLuint unsignedIntValues[4])
-    {
-        for (unsigned int valueIndex = 0; valueIndex < 4; valueIndex++)
-        {
-            UnsignedIntValues[valueIndex] = unsignedIntValues[valueIndex];
-        }
-        Type = GL_UNSIGNED_INT;
-    }
-
-    bool operator==(const VertexAttribCurrentValueData &other)
-    {
-        return (Type == other.Type && memcmp(FloatValues, other.FloatValues, sizeof(float) * 4) == 0);
-    }
-
-    bool operator!=(const VertexAttribCurrentValueData &other)
-    {
-        return !(*this == other);
-    }
+    void setFloatValues(const GLfloat floatValues[4]);
+    void setIntValues(const GLint intValues[4]);
+    void setUnsignedIntValues(const GLuint unsignedIntValues[4]);
 };
 
-}
+bool operator==(const VertexAttribCurrentValueData &a, const VertexAttribCurrentValueData &b);
+bool operator!=(const VertexAttribCurrentValueData &a, const VertexAttribCurrentValueData &b);
+
+}  // namespace gl
+
+#include "VertexAttribute.inl"
 
 #endif // LIBANGLE_VERTEXATTRIBUTE_H_

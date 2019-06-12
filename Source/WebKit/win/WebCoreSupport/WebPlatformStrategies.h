@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,9 +29,8 @@
 #include <WebCore/CookiesStrategy.h>
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/PlatformStrategies.h>
-#include <WebCore/PluginStrategy.h>
 
-class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PluginStrategy {
+class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy {
 public:
     static void initialize();
     
@@ -42,7 +41,6 @@ private:
     virtual WebCore::CookiesStrategy* createCookiesStrategy();
     virtual WebCore::LoaderStrategy* createLoaderStrategy();
     virtual WebCore::PasteboardStrategy* createPasteboardStrategy();
-    virtual WebCore::PluginStrategy* createPluginStrategy();
     virtual WebCore::BlobRegistry* createBlobRegistry();
 
     // WebCore::CookiesStrategy
@@ -50,13 +48,9 @@ private:
     virtual void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, const String&);
     virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&);
     virtual String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&);
+    virtual String cookieRequestHeaderFieldValue(WebCore::SessionID, const WebCore::URL& firstParty, const WebCore::URL&);
     virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&);
     virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&);
-
-    // WebCore::PluginStrategy
-    virtual void refreshPlugins();
-    virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&);
-    virtual void getWebVisiblePluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&);
 };
 
 #endif // WebPlatformStrategies_h

@@ -28,14 +28,13 @@
 
 #if PLATFORM(MAC)
 
-#import <wtf/RetainPtr.h>
-
 namespace WebKit {
 
 NSString * const PasteboardTypes::WebArchivePboardType = @"Apple Web Archive pasteboard type";
 NSString * const PasteboardTypes::WebURLsWithTitlesPboardType = @"WebURLsWithTitlesPboardType";
 NSString * const PasteboardTypes::WebURLPboardType = @"public.url";
 NSString * const PasteboardTypes::WebURLNamePboardType = @"public.url-name";
+NSString * const PasteboardTypes::WebDummyPboardType = @"Apple WebKit dummy pasteboard type";
 
 static inline NSArray *retain(NSArray *array)
 {
@@ -52,7 +51,11 @@ NSArray* PasteboardTypes::forEditing()
 
 NSArray* PasteboardTypes::forURL()
 {
-    static NSArray *types = retain([NSArray arrayWithObjects:WebURLsWithTitlesPboardType, NSURLPboardType, WebURLPboardType,  WebURLNamePboardType, NSStringPboardType, NSFilenamesPboardType, nil]);
+    static NSArray *types = retain([NSArray arrayWithObjects:WebURLsWithTitlesPboardType, NSURLPboardType, WebURLPboardType,  WebURLNamePboardType, NSStringPboardType, NSFilenamesPboardType,
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+                                    NSFilesPromisePboardType,
+#endif
+                                    nil]);
     return types;
 }
 

@@ -36,17 +36,20 @@ DatabaseProcessCreationParameters::DatabaseProcessCreationParameters()
 {
 }
 
-void DatabaseProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
+void DatabaseProcessCreationParameters::encode(IPC::Encoder& encoder) const
 {
 #if ENABLE(INDEXED_DATABASE)
+    encoder << sessionID;
     encoder << indexedDatabaseDirectory;
     encoder << indexedDatabaseDirectoryExtensionHandle;
 #endif
 }
 
-bool DatabaseProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, DatabaseProcessCreationParameters& result)
+bool DatabaseProcessCreationParameters::decode(IPC::Decoder& decoder, DatabaseProcessCreationParameters& result)
 {
 #if ENABLE(INDEXED_DATABASE)
+    if (!decoder.decode(result.sessionID))
+        return false;
     if (!decoder.decode(result.indexedDatabaseDirectory))
         return false;
     if (!decoder.decode(result.indexedDatabaseDirectoryExtensionHandle))

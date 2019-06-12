@@ -21,7 +21,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -32,7 +32,8 @@
 #include "ImageBuffer.h"
 #include "ImageObserver.h"
 #include "IntRect.h"
-#include "MIMETypeRegistry.h"
+#include "Logging.h"
+#include "Settings.h"
 #include "TextStream.h"
 #include "Timer.h"
 #include <wtf/CurrentTime.h>
@@ -40,425 +41,137 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS)
-#include <limits>
+#include "RuntimeApplicationChecks.h"
 #endif
 
 namespace WebCore {
 
 BitmapImage::BitmapImage(ImageObserver* observer)
     : Image(observer)
-    , m_minimumSubsamplingLevel(0)
-    , m_imageOrientation(OriginTopLeft)
-    , m_shouldRespectImageOrientation(false)
-    , m_currentFrame(0)
-    , m_repetitionCount(cAnimationNone)
-    , m_repetitionCountStatus(Unknown)
-    , m_repetitionsComplete(0)
-    , m_desiredFrameStartTime(0)
-    , m_decodedSize(0)
-    , m_decodedPropertiesSize(0)
-    , m_frameCount(0)
-#if PLATFORM(IOS)
-    // FIXME: We should expose a setting to enable/disable progressive loading remove the PLATFORM(IOS)-guard.
-    , m_progressiveLoadChunkTime(0)
-    , m_progressiveLoadChunkCount(0)
-    , m_allowSubsampling(true)
-#else
-    , m_allowSubsampling(false)
-#endif
-    , m_isSolidColor(false)
-    , m_checkedForSolidColor(false)
-    , m_animationFinished(false)
-    , m_allDataReceived(false)
-    , m_haveSize(false)
-    , m_sizeAvailable(false)
-    , m_hasUniformFrameSize(true)
-    , m_haveFrameCount(false)
-    , m_animationFinishedWhenCatchingUp(false)
+    , m_source(this)
+{
+}
+
+BitmapImage::BitmapImage(NativeImagePtr&& image, ImageObserver* observer)
+    : Image(observer)
+    , m_source(WTFMove(image))
 {
 }
 
 BitmapImage::~BitmapImage()
 {
     invalidatePlatformData();
-    stopAnimation();
+    clearTimer();
+    m_source.clearImage();
+    m_source.stopAsyncDecodingQueue();
 }
 
-void BitmapImage::clearTimer()
+void BitmapImage::updateFromSettings(const Settings& settings)
 {
-    m_frameTimer = nullptr;
-}
-
-void BitmapImage::startTimer(double delay)
-{
-    ASSERT(!m_frameTimer);
-    m_frameTimer = std::make_unique<Timer>(*this, &BitmapImage::advanceAnimation);
-    m_frameTimer->startOneShot(delay);
-}
-
-bool BitmapImage::haveFrameAtIndex(size_t index)
-{
-    if (index >= frameCount())
-        return false;
-
-    if (index >= m_frames.size())
-        return false;
-
-    return m_frames[index].m_frame;
-}
-
-bool BitmapImage::hasSingleSecurityOrigin() const
-{
-    return true;
+    m_allowSubsampling = settings.imageSubsamplingEnabled();
+#if PLATFORM(IOS)
+    if (IOSApplication::isIBooks())
+        m_allowLargeImageAsyncDecoding = false;
+    else
+#endif
+        m_allowLargeImageAsyncDecoding = settings.largeImageAsyncDecodingEnabled();
+    m_allowAnimatedImageAsyncDecoding = settings.animatedImageAsyncDecodingEnabled();
+    m_showDebugBackground = settings.showDebugBorders();
 }
 
 void BitmapImage::destroyDecodedData(bool destroyAll)
 {
-    unsigned frameBytesCleared = 0;
-    const size_t clearBeforeFrame = destroyAll ? m_frames.size() : m_currentFrame;
+    LOG(Images, "BitmapImage::%s - %p - url: %s", __FUNCTION__, this, sourceURL().string().utf8().data());
 
-    // Because we can advance frames without always needing to decode the actual
-    // bitmap data, |m_currentFrame| may be larger than m_frames.size();
-    // make sure not to walk off the end of the container in this case.
-    for (size_t i = 0; i <  std::min(clearBeforeFrame, m_frames.size()); ++i) {
-        // The underlying frame isn't actually changing (we're just trying to
-        // save the memory for the framebuffer data), so we don't need to clear
-        // the metadata.
-        unsigned frameBytes = m_frames[i].m_frameBytes;
-        if (m_frames[i].clear(false))
-            frameBytesCleared += frameBytes;
+    if (!destroyAll)
+        m_source.destroyDecodedDataBeforeFrame(m_currentFrame);
+    else if (!canDestroyDecodedData())
+        m_source.destroyAllDecodedDataExcludeFrame(m_currentFrame);
+    else {
+        m_source.destroyAllDecodedData();
+        m_currentFrameDecodingStatus = ImageFrame::DecodingStatus::Invalid;
     }
 
-    m_source.clear(destroyAll, clearBeforeFrame, data(), m_allDataReceived);
-    destroyMetadataAndNotify(frameBytesCleared, ClearedSource::Yes);
+    // There's no need to throw away the decoder unless we're explicitly asked
+    // to destroy all of the frames.
+    if (!destroyAll || m_source.hasAsyncDecodingQueue())
+        m_source.clearFrameBufferCache(m_currentFrame);
+    else
+        m_source.resetData(data());
+
+    invalidatePlatformData();
 }
 
 void BitmapImage::destroyDecodedDataIfNecessary(bool destroyAll)
 {
-    // Animated images over a certain size are considered large enough that we'll only hang on
-    // to one frame at a time.
-#if PLATFORM(IOS)
-    const unsigned largeAnimationCutoff = 2097152;
-#else
-    const unsigned largeAnimationCutoff = 5242880;
-#endif
-
     // If we have decoded frames but there is no encoded data, we shouldn't destroy
     // the decoded image since we won't be able to reconstruct it later.
-    if (!data() && m_frames.size())
+    if (!data() && frameCount())
         return;
 
-    unsigned allFrameBytes = 0;
-    for (size_t i = 0; i < m_frames.size(); ++i)
-        allFrameBytes += m_frames[i].m_frameBytes;
-
-    if (allFrameBytes > largeAnimationCutoff)
-        destroyDecodedData(destroyAll);
-}
-
-void BitmapImage::destroyMetadataAndNotify(unsigned frameBytesCleared, ClearedSource clearedSource)
-{
-    m_isSolidColor = false;
-    m_checkedForSolidColor = false;
-    invalidatePlatformData();
-
-    ASSERT(m_decodedSize >= frameBytesCleared);
-    m_decodedSize -= frameBytesCleared;
-
-    // Clearing the ImageSource destroys the extra decoded data used for determining image properties.
-    if (clearedSource == ClearedSource::Yes) {
-        frameBytesCleared += m_decodedPropertiesSize;
-        m_decodedPropertiesSize = 0;
-    }
-
-    if (frameBytesCleared && imageObserver())
-        imageObserver()->decodedSizeChanged(this, -safeCast<int>(frameBytesCleared));
-}
-
-void BitmapImage::cacheFrame(size_t index, SubsamplingLevel subsamplingLevel, ImageFrameCaching frameCaching)
-{
-    size_t numFrames = frameCount();
-    ASSERT(m_decodedSize == 0 || numFrames > 1);
-    
-    if (m_frames.size() < numFrames)
-        m_frames.grow(numFrames);
-
-    if (frameCaching == CacheMetadataAndFrame) {
-        m_frames[index].m_frame = m_source.createFrameAtIndex(index, subsamplingLevel);
-        m_frames[index].m_subsamplingLevel = subsamplingLevel;
-        if (numFrames == 1 && m_frames[index].m_frame)
-            checkForSolidColor();
-    }
-
-    m_frames[index].m_orientation = m_source.orientationAtIndex(index);
-    m_frames[index].m_haveMetadata = true;
-    m_frames[index].m_isComplete = m_source.frameIsCompleteAtIndex(index);
-
-    if (repetitionCount(false) != cAnimationNone)
-        m_frames[index].m_duration = m_source.frameDurationAtIndex(index);
-
-    m_frames[index].m_hasAlpha = m_source.frameHasAlphaAtIndex(index);
-    m_frames[index].m_frameBytes = m_source.frameBytesAtIndex(index, subsamplingLevel);
-
-    const IntSize frameSize(index ? m_source.frameSizeAtIndex(index, subsamplingLevel) : m_size);
-    if (!subsamplingLevel && frameSize != m_size)
-        m_hasUniformFrameSize = false;
-
-    if (m_frames[index].m_frame) {
-        int deltaBytes = safeCast<int>(m_frames[index].m_frameBytes);
-        m_decodedSize += deltaBytes;
-        // The fully-decoded frame will subsume the partially decoded data used
-        // to determine image properties.
-        deltaBytes -= m_decodedPropertiesSize;
-        m_decodedPropertiesSize = 0;
-        if (imageObserver())
-            imageObserver()->decodedSizeChanged(this, deltaBytes);
-    }
-}
-
-void BitmapImage::didDecodeProperties() const
-{
-    if (m_decodedSize)
+    if (m_source.decodedSize() < LargeAnimationCutoff)
         return;
 
-    size_t updatedSize = m_source.bytesDecodedToDetermineProperties();
-    if (m_decodedPropertiesSize == updatedSize)
-        return;
-
-    int deltaBytes = updatedSize - m_decodedPropertiesSize;
-#if !ASSERT_DISABLED
-    bool overflow = updatedSize > m_decodedPropertiesSize && deltaBytes < 0;
-    bool underflow = updatedSize < m_decodedPropertiesSize && deltaBytes > 0;
-    ASSERT(!overflow && !underflow);
-#endif
-    m_decodedPropertiesSize = updatedSize;
-    if (imageObserver())
-        imageObserver()->decodedSizeChanged(this, deltaBytes);
+    destroyDecodedData(destroyAll);
 }
 
-void BitmapImage::updateSize(ImageOrientationDescription description) const
+EncodedDataStatus BitmapImage::dataChanged(bool allDataReceived)
 {
-    if (!m_sizeAvailable || m_haveSize)
-        return;
+    if (!shouldUseAsyncDecodingForLargeImages())
+        m_source.destroyIncompleteDecodedData();
 
-    m_size = m_source.size(description);
-    m_sizeRespectingOrientation = m_source.size(ImageOrientationDescription(RespectImageOrientation, description.imageOrientation()));
-
-    m_imageOrientation = static_cast<unsigned>(description.imageOrientation());
-    m_shouldRespectImageOrientation = static_cast<unsigned>(description.respectImageOrientation());
-
-    m_haveSize = true;
-
-    determineMinimumSubsamplingLevel();
-    didDecodeProperties();
+    m_currentFrameDecodingStatus = ImageFrame::DecodingStatus::Invalid;
+    return m_source.dataChanged(data(), allDataReceived);
 }
 
-FloatSize BitmapImage::size() const
+NativeImagePtr BitmapImage::frameImageAtIndexCacheIfNeeded(size_t index, SubsamplingLevel subsamplingLevel, const GraphicsContext* targetContext)
 {
-    updateSize();
-    return m_size;
-}
-
-IntSize BitmapImage::sizeRespectingOrientation(ImageOrientationDescription description) const
-{
-    updateSize(description);
-    return m_sizeRespectingOrientation;
-}
-
-bool BitmapImage::getHotSpot(IntPoint& hotSpot) const
-{
-    bool result = m_source.getHotSpot(hotSpot);
-    didDecodeProperties();
-    return result;
-}
-
-bool BitmapImage::dataChanged(bool allDataReceived)
-{
-    // Because we're modifying the current frame, clear its (now possibly
-    // inaccurate) metadata as well.
-#if !PLATFORM(IOS)
-    // Clear all partially-decoded frames. For most image formats, there is only
-    // one frame, but at least GIF and ICO can have more. With GIFs, the frames
-    // come in order and we ask to decode them in order, waiting to request a
-    // subsequent frame until the prior one is complete. Given that we clear
-    // incomplete frames here, this means there is at most one incomplete frame
-    // (even if we use destroyDecodedData() -- since it doesn't reset the
-    // metadata), and it is after all the complete frames.
-    //
-    // With ICOs, on the other hand, we may ask for arbitrary frames at
-    // different times (e.g. because we're displaying a higher-resolution image
-    // in the content area and using a lower-resolution one for the favicon),
-    // and the frames aren't even guaranteed to appear in the file in the same
-    // order as in the directory, so an arbitrary number of the frames might be
-    // incomplete (if we ask for frames for which we've not yet reached the
-    // start of the frame data), and any or none of them might be the particular
-    // frame affected by appending new data here. Thus we have to clear all the
-    // incomplete frames to be safe.
-    unsigned frameBytesCleared = 0;
-    for (size_t i = 0; i < m_frames.size(); ++i) {
-        // NOTE: Don't call frameIsCompleteAtIndex() here, that will try to
-        // decode any uncached (i.e. never-decoded or
-        // cleared-on-a-previous-pass) frames!
-        unsigned frameBytes = m_frames[i].m_frameBytes;
-        if (m_frames[i].m_haveMetadata && !m_frames[i].m_isComplete)
-            frameBytesCleared += (m_frames[i].clear(true) ? frameBytes : 0);
-    }
-    destroyMetadataAndNotify(frameBytesCleared, ClearedSource::No);
-#else
-    // FIXME: why is this different for iOS?
-    int deltaBytes = 0;
-    if (!m_frames.isEmpty()) {
-        int bytes = m_frames[m_frames.size() - 1].m_frameBytes;
-        if (m_frames[m_frames.size() - 1].clear(true)) {
-            deltaBytes += bytes;
-            deltaBytes += m_decodedPropertiesSize;
-            m_decodedPropertiesSize = 0;
-        }
-    }
-    destroyMetadataAndNotify(deltaBytes, ClearedSource::No);
-#endif
-    
-    // Feed all the data we've seen so far to the image decoder.
-    m_allDataReceived = allDataReceived;
-#if PLATFORM(IOS)
-    // FIXME: We should expose a setting to enable/disable progressive loading and make this
-    // code conditional on it. Then we can remove the PLATFORM(IOS)-guard.
-    static const double chunkLoadIntervals[] = {0, 1, 3, 6, 15};
-    double interval = chunkLoadIntervals[std::min(m_progressiveLoadChunkCount, static_cast<uint16_t>(4))];
-
-    bool needsUpdate = false;
-    if (currentTime() - m_progressiveLoadChunkTime > interval) { // The first time through, the chunk time will be 0 and the image will get an update.
-        needsUpdate = true;
-        m_progressiveLoadChunkTime = currentTime();
-        ASSERT(m_progressiveLoadChunkCount <= std::numeric_limits<uint16_t>::max());
-        ++m_progressiveLoadChunkCount;
-    }
-    if (needsUpdate || allDataReceived)
-        m_source.setData(data(), allDataReceived);
-#else
-    m_source.setData(data(), allDataReceived);
-#endif
-
-    m_haveFrameCount = false;
-    m_hasUniformFrameSize = true;
-    return isSizeAvailable();
-}
-
-String BitmapImage::filenameExtension() const
-{
-    return m_source.filenameExtension();
-}
-
-size_t BitmapImage::frameCount()
-{
-    if (!m_haveFrameCount) {
-        m_frameCount = m_source.frameCount();
-        // If decoder is not initialized yet, m_source.frameCount() returns 0.
-        if (m_frameCount) {
-            didDecodeProperties();
-            m_haveFrameCount = true;
-        }
-    }
-    return m_frameCount;
-}
-
-bool BitmapImage::isSizeAvailable()
-{
-    if (m_sizeAvailable)
-        return true;
-
-    m_sizeAvailable = m_source.isSizeAvailable();
-    didDecodeProperties();
-
-    return m_sizeAvailable;
-}
-
-bool BitmapImage::ensureFrameIsCached(size_t index, ImageFrameCaching frameCaching)
-{
-    if (index >= frameCount())
-        return false;
-
-    if (index >= m_frames.size()
-        || (frameCaching == CacheMetadataAndFrame && !m_frames[index].m_frame)
-        || (frameCaching == CacheMetadataOnly && !m_frames[index].m_haveMetadata))
-        cacheFrame(index, 0, frameCaching);
-
-    return true;
-}
-
-PassNativeImagePtr BitmapImage::frameAtIndex(size_t index, float presentationScaleHint)
-{
-    if (index >= frameCount())
-        return nullptr;
-
-    SubsamplingLevel subsamplingLevel = std::min(m_source.subsamplingLevelForScale(presentationScaleHint), m_minimumSubsamplingLevel);
-
-    // We may have cached a frame with a higher subsampling level, in which case we need to
-    // re-decode with a lower level.
-    if (index < m_frames.size() && m_frames[index].m_frame && subsamplingLevel < m_frames[index].m_subsamplingLevel) {
-        // If the image is already cached, but at too small a size, re-decode a larger version.
-        int sizeChange = -m_frames[index].m_frameBytes;
-        m_frames[index].clear(true);
+    if (!frameHasFullSizeNativeImageAtIndex(index, subsamplingLevel)) {
+        LOG(Images, "BitmapImage::%s - %p - url: %s [subsamplingLevel was %d, resampling]", __FUNCTION__, this, sourceURL().string().utf8().data(), static_cast<int>(frameSubsamplingLevelAtIndex(index)));
         invalidatePlatformData();
-        m_decodedSize += sizeChange;
-        if (imageObserver())
-            imageObserver()->decodedSizeChanged(this, sizeChange);
     }
 
-    // If we haven't fetched a frame yet, do so.
-    if (index >= m_frames.size() || !m_frames[index].m_frame)
-        cacheFrame(index, subsamplingLevel, CacheMetadataAndFrame);
-
-    return m_frames[index].m_frame;
+    return m_source.frameImageAtIndexCacheIfNeeded(index, subsamplingLevel, targetContext);
 }
 
-bool BitmapImage::frameIsCompleteAtIndex(size_t index)
+NativeImagePtr BitmapImage::nativeImage(const GraphicsContext* targetContext)
 {
-    if (!ensureFrameIsCached(index, CacheMetadataOnly))
-        return false;
-
-    return m_frames[index].m_isComplete;
+    return frameImageAtIndexCacheIfNeeded(0, SubsamplingLevel::Default, targetContext);
 }
 
-float BitmapImage::frameDurationAtIndex(size_t index)
+NativeImagePtr BitmapImage::nativeImageForCurrentFrame(const GraphicsContext* targetContext)
 {
-    if (!ensureFrameIsCached(index, CacheMetadataOnly))
-        return 0;
-
-    return m_frames[index].m_duration;
+    return frameImageAtIndexCacheIfNeeded(m_currentFrame, SubsamplingLevel::Default, targetContext);
 }
 
-PassNativeImagePtr BitmapImage::nativeImageForCurrentFrame()
+#if USE(CG)
+NativeImagePtr BitmapImage::nativeImageOfSize(const IntSize& size, const GraphicsContext* targetContext)
 {
-    return frameAtIndex(currentFrame());
+    size_t count = frameCount();
+
+    for (size_t i = 0; i < count; ++i) {
+        auto image = frameImageAtIndexCacheIfNeeded(i, SubsamplingLevel::Default, targetContext);
+        if (image && nativeImageSize(image) == size)
+            return image;
+    }
+
+    // Fallback to the first frame image if we can't find the right size
+    return frameImageAtIndexCacheIfNeeded(0, SubsamplingLevel::Default, targetContext);
 }
 
-bool BitmapImage::frameHasAlphaAtIndex(size_t index)
+Vector<NativeImagePtr> BitmapImage::framesNativeImages()
 {
-    if (!ensureFrameIsCached(index, CacheMetadataOnly))
-        return true;
+    Vector<NativeImagePtr> images;
+    size_t count = frameCount();
 
-    if (m_frames[index].m_haveMetadata)
-        return m_frames[index].m_hasAlpha;
+    for (size_t i = 0; i < count; ++i) {
+        if (auto image = frameImageAtIndexCacheIfNeeded(i))
+            images.append(image);
+    }
 
-    return m_source.frameHasAlphaAtIndex(index);
+    return images;
 }
-
-bool BitmapImage::currentFrameKnownToBeOpaque()
-{
-    return !frameHasAlphaAtIndex(currentFrame());
-}
-
-ImageOrientation BitmapImage::frameOrientationAtIndex(size_t index)
-{
-    if (!ensureFrameIsCached(index, CacheMetadataOnly))
-        return DefaultImageOrientation;
-
-    if (m_frames[index].m_haveMetadata)
-        return m_frames[index].m_orientation;
-
-    return m_source.orientationAtIndex(index);
-}
+#endif
 
 #if !ASSERT_DISABLED
 bool BitmapImage::notSolidColor()
@@ -467,155 +180,112 @@ bool BitmapImage::notSolidColor()
 }
 #endif
 
-int BitmapImage::repetitionCount(bool imageKnownToBeComplete)
+ImageDrawResult BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode mode, DecodingMode decodingMode, ImageOrientationDescription description)
 {
-    if ((m_repetitionCountStatus == Unknown) || ((m_repetitionCountStatus == Uncertain) && imageKnownToBeComplete)) {
-        // Snag the repetition count. If |imageKnownToBeComplete| is false, the
-        // repetition count may not be accurate yet for GIFs; in this case the
-        // decoder will default to cAnimationLoopOnce, and we'll try and read
-        // the count again once the whole image is decoded.
-        m_repetitionCount = m_source.repetitionCount();
-        didDecodeProperties();
-        m_repetitionCountStatus = (imageKnownToBeComplete || m_repetitionCount == cAnimationNone) ? Certain : Uncertain;
-    }
-    return m_repetitionCount;
-}
+    if (destRect.isEmpty() || srcRect.isEmpty())
+        return ImageDrawResult::DidNothing;
 
-bool BitmapImage::shouldAnimate()
-{
-    return (repetitionCount(false) != cAnimationNone && !m_animationFinished && imageObserver());
-}
+    FloatSize scaleFactorForDrawing = context.scaleFactorForDrawing(destRect, srcRect);
+    IntSize sizeForDrawing = expandedIntSize(size() * scaleFactorForDrawing);
+    ImageDrawResult result = ImageDrawResult::DidDraw;
 
-void BitmapImage::startAnimation(CatchUpAnimation catchUpIfNecessary)
-{
-    if (m_frameTimer || !shouldAnimate() || frameCount() <= 1)
-        return;
+    m_currentSubsamplingLevel = m_allowSubsampling ? m_source.subsamplingLevelForScaleFactor(context, scaleFactorForDrawing) : SubsamplingLevel::Default;
+    LOG(Images, "BitmapImage::%s - %p - url: %s [subsamplingLevel = %d scaleFactorForDrawing = (%.4f, %.4f)]", __FUNCTION__, this, sourceURL().string().utf8().data(), static_cast<int>(m_currentSubsamplingLevel), scaleFactorForDrawing.width(), scaleFactorForDrawing.height());
 
-    // If we aren't already animating, set now as the animation start time.
-    const double time = monotonicallyIncreasingTime();
-    if (!m_desiredFrameStartTime)
-        m_desiredFrameStartTime = time;
+    NativeImagePtr image;
+    if (decodingMode == DecodingMode::Asynchronous && shouldUseAsyncDecodingForLargeImages()) {
+        ASSERT(!canAnimate());
+        ASSERT(!m_currentFrame || m_animationFinished);
 
-    // Don't advance the animation to an incomplete frame.
-    size_t nextFrame = (m_currentFrame + 1) % frameCount();
-    if (!m_allDataReceived && !frameIsCompleteAtIndex(nextFrame))
-        return;
+        bool frameIsCompatible = frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, DecodingOptions(sizeForDrawing));
+        bool frameIsBeingDecoded = frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, DecodingOptions(sizeForDrawing));
 
-    // Don't advance past the last frame if we haven't decoded the whole image
-    // yet and our repetition count is potentially unset. The repetition count
-    // in a GIF can potentially come after all the rest of the image data, so
-    // wait on it.
-    if (!m_allDataReceived && repetitionCount(false) == cAnimationLoopOnce && m_currentFrame >= (frameCount() - 1))
-        return;
-
-    // Determine time for next frame to start. By ignoring paint and timer lag
-    // in this calculation, we make the animation appear to run at its desired
-    // rate regardless of how fast it's being repainted.
-    const double currentDuration = frameDurationAtIndex(m_currentFrame);
-    m_desiredFrameStartTime += currentDuration;
-
-#if !PLATFORM(IOS)
-    // When an animated image is more than five minutes out of date, the
-    // user probably doesn't care about resyncing and we could burn a lot of
-    // time looping through frames below. Just reset the timings.
-    const double cAnimationResyncCutoff = 5 * 60;
-    if ((time - m_desiredFrameStartTime) > cAnimationResyncCutoff)
-        m_desiredFrameStartTime = time + currentDuration;
-#else
-    // Maintaining frame-to-frame delays is more important than
-    // maintaining absolute animation timing, so reset the timings each frame.
-    m_desiredFrameStartTime = time + currentDuration;
-#endif
-
-    // The image may load more slowly than it's supposed to animate, so that by
-    // the time we reach the end of the first repetition, we're well behind.
-    // Clamp the desired frame start time in this case, so that we don't skip
-    // frames (or whole iterations) trying to "catch up". This is a tradeoff:
-    // It guarantees users see the whole animation the second time through and
-    // don't miss any repetitions, and is closer to what other browsers do; on
-    // the other hand, it makes animations "less accurate" for pages that try to
-    // sync an image and some other resource (e.g. audio), especially if users
-    // switch tabs (and thus stop drawing the animation, which will pause it)
-    // during that initial loop, then switch back later.
-    if (nextFrame == 0 && m_repetitionsComplete == 0 && m_desiredFrameStartTime < time)
-        m_desiredFrameStartTime = time;
-
-    if (catchUpIfNecessary == DoNotCatchUp || time < m_desiredFrameStartTime) {
-        // Haven't yet reached time for next frame to start; delay until then.
-        startTimer(std::max<double>(m_desiredFrameStartTime - time, 0));
-        return;
-    }
-
-    ASSERT(!m_frameTimer);
-
-    // We've already reached or passed the time for the next frame to start.
-    // See if we've also passed the time for frames after that to start, in
-    // case we need to skip some frames entirely. Remember not to advance
-    // to an incomplete frame.
-    for (size_t frameAfterNext = (nextFrame + 1) % frameCount(); frameIsCompleteAtIndex(frameAfterNext); frameAfterNext = (nextFrame + 1) % frameCount()) {
-        // Should we skip the next frame?
-        double frameAfterNextStartTime = m_desiredFrameStartTime + frameDurationAtIndex(nextFrame);
-        if (time < frameAfterNextStartTime)
-            break;
-
-        // Yes; skip over it without notifying our observers. If we hit the end while catching up,
-        // tell the observer asynchronously.
-        if (!internalAdvanceAnimation(SkippingFramesToCatchUp)) {
-            m_animationFinishedWhenCatchingUp = true;
-            startTimer(0);
-            return;
+        // If the current frame is incomplete, a new request for decoding this frame has to be made even if
+        // it is currently being decoded. New data may have been received since the previous request was made.
+        if ((!frameIsCompatible && !frameIsBeingDecoded) || m_currentFrameDecodingStatus == ImageFrame::DecodingStatus::Invalid) {
+            LOG(Images, "BitmapImage::%s - %p - url: %s [requesting large async decoding]", __FUNCTION__, this, sourceURL().string().utf8().data());
+            m_source.requestFrameAsyncDecodingAtIndex(m_currentFrame, m_currentSubsamplingLevel, sizeForDrawing);
+            m_currentFrameDecodingStatus = ImageFrame::DecodingStatus::Decoding;
         }
-        m_desiredFrameStartTime = frameAfterNextStartTime;
-        nextFrame = frameAfterNext;
+
+        if (m_currentFrameDecodingStatus == ImageFrame::DecodingStatus::Decoding)
+            result = ImageDrawResult::DidRequestDecoding;
+
+        if (!frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, DecodingMode::Asynchronous)) {
+            if (m_showDebugBackground)
+                fillWithSolidColor(context, destRect, Color(Color::yellow).colorWithAlpha(0.5), op);
+            return result;
+        }
+
+        image = frameImageAtIndex(m_currentFrame);
+        LOG(Images, "BitmapImage::%s - %p - url: %s [a decoded image frame is available for drawing]", __FUNCTION__, this, sourceURL().string().utf8().data());
+    } else {
+        StartAnimationStatus status = internalStartAnimation();
+        ASSERT_IMPLIES(status == StartAnimationStatus::DecodingActive, (!m_currentFrame && !m_repetitionsComplete) || frameHasFullSizeNativeImageAtIndex(m_currentFrame, m_currentSubsamplingLevel));
+
+        if (status == StartAnimationStatus::DecodingActive && m_showDebugBackground) {
+            fillWithSolidColor(context, destRect, Color(Color::yellow).colorWithAlpha(0.5), op);
+            return result;
+        }
+
+        if (frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, DecodingMode::Asynchronous)) {
+            // FIXME: instead of showing the yellow rectangle and returning we need to wait for this frame to finish decoding.
+            if (m_showDebugBackground) {
+                fillWithSolidColor(context, destRect, Color(Color::yellow).colorWithAlpha(0.5), op);
+                LOG(Images, "BitmapImage::%s - %p - url: %s [waiting for async decoding to finish]", __FUNCTION__, this, sourceURL().string().utf8().data());
+            }
+            return ImageDrawResult::DidRequestDecoding;
+        }
+
+        image = frameImageAtIndexCacheIfNeeded(m_currentFrame, m_currentSubsamplingLevel, &context);
+        if (!image) // If it's too early we won't have an image yet.
+            return ImageDrawResult::DidNothing;
+
+        if (m_currentFrameDecodingStatus != ImageFrame::DecodingStatus::Complete)
+            ++m_decodeCountForTesting;
     }
 
-    // Draw the next frame as soon as possible. Note that m_desiredFrameStartTime
-    // may be in the past, meaning the next time through this function we'll
-    // kick off the next advancement sooner than this frame's duration would suggest.
-    startTimer(0);
+    ASSERT(image);
+    Color color = singlePixelSolidColor();
+    if (color.isValid()) {
+        fillWithSolidColor(context, destRect, color, op);
+        return result;
+    }
+
+    ImageOrientation orientation(description.imageOrientation());
+    if (description.respectImageOrientation() == RespectImageOrientation)
+        orientation = frameOrientationAtIndex(m_currentFrame);
+
+    drawNativeImage(image, context, destRect, srcRect, IntSize(size()), op, mode, orientation);
+    m_currentFrameDecodingStatus = frameDecodingStatusAtIndex(m_currentFrame);
+
+    if (imageObserver())
+        imageObserver()->didDraw(*this);
+
+    return result;
 }
 
-void BitmapImage::stopAnimation()
-{
-    // This timer is used to animate all occurrences of this image. Don't invalidate
-    // the timer unless all renderers have stopped drawing.
-    clearTimer();
-}
-
-void BitmapImage::resetAnimation()
-{
-    stopAnimation();
-    m_currentFrame = 0;
-    m_repetitionsComplete = 0;
-    m_desiredFrameStartTime = 0;
-    m_animationFinished = false;
-    
-    // For extremely large animations, when the animation is reset, we just throw everything away.
-    destroyDecodedDataIfNecessary(true);
-}
-
-void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, const AffineTransform& transform,
-    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& transform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
     if (tileRect.isEmpty())
         return;
 
     if (!ctxt.drawLuminanceMask()) {
-        Image::drawPattern(ctxt, tileRect, transform, phase, spacing, op, destRect, blendMode);
+        Image::drawPattern(ctxt, destRect, tileRect, transform, phase, spacing, op, blendMode);
         return;
     }
+
     if (!m_cachedImage) {
-        std::unique_ptr<ImageBuffer> buffer = ctxt.createCompatibleBuffer(expandedIntSize(tileRect.size()));
+        auto buffer = ImageBuffer::createCompatibleBuffer(expandedIntSize(tileRect.size()), ColorSpaceSRGB, ctxt);
         if (!buffer)
             return;
 
         ImageObserver* observer = imageObserver();
-        ASSERT(observer);
 
         // Temporarily reset image observer, we don't want to receive any changeInRect() calls due to this relayout.
         setImageObserver(nullptr);
 
-        draw(buffer->context(), tileRect, tileRect, op, blendMode, ImageOrientationDescription());
+        draw(buffer->context(), tileRect, tileRect, op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription());
 
         setImageObserver(observer);
         buffer->convertToLuminanceMask();
@@ -626,97 +296,240 @@ void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, 
     }
 
     ctxt.setDrawLuminanceMask(false);
-    m_cachedImage->drawPattern(ctxt, tileRect, transform, phase, spacing, op, destRect, blendMode);
+    m_cachedImage->drawPattern(ctxt, destRect, tileRect, transform, phase, spacing, op, blendMode);
 }
 
-
-void BitmapImage::advanceAnimation()
+bool BitmapImage::shouldAnimate()
 {
-    internalAdvanceAnimation();
-    // At this point the image region has been marked dirty, and if it's
-    // onscreen, we'll soon make a call to draw(), which will call
-    // startAnimation() again to keep the animation moving.
+    return repetitionCount() && !m_animationFinished && imageObserver();
 }
 
-bool BitmapImage::internalAdvanceAnimation(AnimationAdvancement advancement)
-{
-    clearTimer();
-
-    if (m_animationFinishedWhenCatchingUp) {
-        imageObserver()->animationAdvanced(this);
-        m_animationFinishedWhenCatchingUp = false;
-        return false;
-    }
-    
-    ++m_currentFrame;
-    bool advancedAnimation = true;
-    bool destroyAll = false;
-    if (m_currentFrame >= frameCount()) {
-        ++m_repetitionsComplete;
-
-        // Get the repetition count again. If we weren't able to get a
-        // repetition count before, we should have decoded the whole image by
-        // now, so it should now be available.
-        // Note that we don't need to special-case cAnimationLoopOnce here
-        // because it is 0 (see comments on its declaration in ImageSource.h).
-        if (repetitionCount(true) != cAnimationLoopInfinite && m_repetitionsComplete > m_repetitionCount) {
-            m_animationFinished = true;
-            m_desiredFrameStartTime = 0;
-            --m_currentFrame;
-            advancedAnimation = false;
-        } else {
-            m_currentFrame = 0;
-            destroyAll = true;
-        }
-    }
-    destroyDecodedDataIfNecessary(destroyAll);
-
-    // We need to draw this frame if we advanced to it while not skipping, or if
-    // while trying to skip frames we hit the last frame and thus had to stop.
-    if (advancement == Normal && advancedAnimation)
-        imageObserver()->animationAdvanced(this);
-
-    return advancedAnimation;
-}
-
-bool BitmapImage::mayFillWithSolidColor()
-{
-    if (!m_checkedForSolidColor && frameCount() > 0) {
-        checkForSolidColor();
-        ASSERT(m_checkedForSolidColor);
-    }
-    return m_isSolidColor && !m_currentFrame;
-}
-
-Color BitmapImage::solidColor() const
-{
-    return m_solidColor;
-}
-    
 bool BitmapImage::canAnimate()
 {
     return shouldAnimate() && frameCount() > 1;
 }
 
+bool BitmapImage::shouldUseAsyncDecodingForLargeImages()
+{
+    return !canAnimate() && m_allowLargeImageAsyncDecoding && m_source.shouldUseAsyncDecoding();
+}
+
+bool BitmapImage::shouldUseAsyncDecodingForAnimatedImages()
+{
+    return canAnimate() && m_allowAnimatedImageAsyncDecoding && (shouldUseAsyncDecodingForAnimatedImagesForTesting() || m_source.shouldUseAsyncDecoding());
+}
+
+void BitmapImage::clearTimer()
+{
+    m_frameTimer = nullptr;
+}
+
+void BitmapImage::startTimer(Seconds delay)
+{
+    ASSERT(!m_frameTimer);
+    m_frameTimer = std::make_unique<Timer>(*this, &BitmapImage::advanceAnimation);
+    m_frameTimer->startOneShot(delay);
+}
+
+bool BitmapImage::canDestroyDecodedData()
+{
+    // Animated images should preserve the current frame till the next one finishes decoding.
+    if (m_source.hasAsyncDecodingQueue())
+        return false;
+
+    // Small image should be decoded synchronously. Deleting its decoded frame is fine.
+    if (!shouldUseAsyncDecodingForLargeImages())
+        return true;
+
+    return !imageObserver() || imageObserver()->canDestroyDecodedData(*this);
+}
+
+BitmapImage::StartAnimationStatus BitmapImage::internalStartAnimation()
+{
+    if (!canAnimate())
+        return StartAnimationStatus::CannotStart;
+
+    if (m_frameTimer)
+        return StartAnimationStatus::TimerActive;
+
+    // Don't start a new animation until we draw the frame that is currently being decoded.
+    size_t nextFrame = (m_currentFrame + 1) % frameCount();
+    if (frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(nextFrame, DecodingMode::Asynchronous)) {
+        LOG(Images, "BitmapImage::%s - %p - url: %s [nextFrame = %ld is being decoded]", __FUNCTION__, this, sourceURL().string().utf8().data(), nextFrame);
+        return StartAnimationStatus::DecodingActive;
+    }
+
+    if (m_currentFrame >= frameCount() - 1) {
+        // Don't advance past the last frame if we haven't decoded the whole image
+        // yet and our repetition count is potentially unset. The repetition count
+        // in a GIF can potentially come after all the rest of the image data, so
+        // wait on it.
+        if (!m_source.isAllDataReceived() && repetitionCount() == RepetitionCountOnce)
+            return StartAnimationStatus::IncompleteData;
+
+        ++m_repetitionsComplete;
+
+        // Check for the end of animation.
+        if (repetitionCount() != RepetitionCountInfinite && m_repetitionsComplete >= repetitionCount()) {
+            m_animationFinished = true;
+            destroyDecodedDataIfNecessary(false);
+            return StartAnimationStatus::CannotStart;
+        }
+
+        destroyDecodedDataIfNecessary(true);
+    }
+
+    // Don't advance the animation to an incomplete frame.
+    if (!m_source.isAllDataReceived() && !frameIsCompleteAtIndex(nextFrame))
+        return StartAnimationStatus::IncompleteData;
+
+    MonotonicTime time = MonotonicTime::now();
+
+    // Handle initial state.
+    if (!m_desiredFrameStartTime)
+        m_desiredFrameStartTime = time;
+
+    // Setting 'm_desiredFrameStartTime' to 'time' means we are late; otherwise we are early.
+    m_desiredFrameStartTime = std::max(time, m_desiredFrameStartTime + Seconds { frameDurationAtIndex(m_currentFrame) });
+
+    // Request async decoding for nextFrame only if this is required. If nextFrame is not in the frameCache,
+    // it will be decoded on a separate work queue. When decoding nextFrame finishes, we will be notified
+    // through the callback newFrameNativeImageAvailableAtIndex(). Otherwise, advanceAnimation() will be called
+    // when the timer fires and m_currentFrame will be advanced to nextFrame since it is not being decoded.
+    if (shouldUseAsyncDecodingForAnimatedImages()) {
+        if (frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(nextFrame, m_currentSubsamplingLevel, { }))
+            LOG(Images, "BitmapImage::%s - %p - url: %s [cachedFrameCount = %ld nextFrame = %ld]", __FUNCTION__, this, sourceURL().string().utf8().data(), ++m_cachedFrameCount, nextFrame);
+        else {
+            m_source.requestFrameAsyncDecodingAtIndex(nextFrame, m_currentSubsamplingLevel);
+            m_currentFrameDecodingStatus = ImageFrame::DecodingStatus::Decoding;
+            LOG(Images, "BitmapImage::%s - %p - url: %s [requesting async decoding for nextFrame = %ld]", __FUNCTION__, this, sourceURL().string().utf8().data(), nextFrame);
+        }
+
+        m_desiredFrameDecodeTimeForTesting = time + std::max(m_frameDecodingDurationForTesting, 0_s);
+        if (m_clearDecoderAfterAsyncFrameRequestForTesting)
+            m_source.resetData(data());
+    }
+
+    ASSERT(!m_frameTimer);
+    startTimer(m_desiredFrameStartTime - time);
+    return StartAnimationStatus::Started;
+}
+
+void BitmapImage::advanceAnimation()
+{
+    clearTimer();
+
+    // Pretend as if decoding nextFrame has taken m_frameDecodingDurationForTesting from
+    // the time this decoding was requested.
+    if (shouldUseAsyncDecodingForAnimatedImagesForTesting()) {
+        MonotonicTime time = MonotonicTime::now();
+        // Start a timer with the remaining time from now till the m_desiredFrameDecodeTime.
+        if (m_desiredFrameDecodeTimeForTesting > std::max(time, m_desiredFrameStartTime)) {
+            startTimer(m_desiredFrameDecodeTimeForTesting - time);
+            return;
+        }
+    }
+
+    // Don't advance to nextFrame unless its decoding has finished or was not required.
+    size_t nextFrame = (m_currentFrame + 1) % frameCount();
+    if (!frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(nextFrame, DecodingMode::Asynchronous))
+        internalAdvanceAnimation();
+    else {
+        // Force repaint if showDebugBackground() is on.
+        if (m_showDebugBackground)
+            imageObserver()->changedInRect(*this);
+        LOG(Images, "BitmapImage::%s - %p - url: %s [lateFrameCount = %ld nextFrame = %ld]", __FUNCTION__, this, sourceURL().string().utf8().data(), ++m_lateFrameCount, nextFrame);
+    }
+}
+
+void BitmapImage::internalAdvanceAnimation()
+{
+    m_currentFrame = (m_currentFrame + 1) % frameCount();
+    ASSERT(!frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, DecodingMode::Asynchronous));
+
+    destroyDecodedDataIfNecessary(false);
+
+    if (m_currentFrameDecodingStatus == ImageFrame::DecodingStatus::Decoding)
+        m_currentFrameDecodingStatus = frameDecodingStatusAtIndex(m_currentFrame);
+    if (imageObserver())
+        imageObserver()->imageFrameAvailable(*this, ImageAnimatingState::Yes);
+
+    LOG(Images, "BitmapImage::%s - %p - url: %s [m_currentFrame = %ld]", __FUNCTION__, this, sourceURL().string().utf8().data(), m_currentFrame);
+}
+
+bool BitmapImage::isAnimating() const
+{
+    return !!m_frameTimer;
+}
+
+void BitmapImage::stopAnimation()
+{
+    // This timer is used to animate all occurrences of this image. Don't invalidate
+    // the timer unless all renderers have stopped drawing.
+    clearTimer();
+    if (canAnimate())
+        m_source.stopAsyncDecodingQueue();
+}
+
+void BitmapImage::resetAnimation()
+{
+    stopAnimation();
+    m_currentFrame = 0;
+    m_repetitionsComplete = RepetitionCountNone;
+    m_desiredFrameStartTime = { };
+    m_animationFinished = false;
+
+    // For extremely large animations, when the animation is reset, we just throw everything away.
+    destroyDecodedDataIfNecessary(true);
+}
+
+void BitmapImage::imageFrameAvailableAtIndex(size_t index)
+{
+    LOG(Images, "BitmapImage::%s - %p - url: %s [requested frame %ld is now available]", __FUNCTION__, this, sourceURL().string().utf8().data(), index);
+
+    if (canAnimate()) {
+        if (index == (m_currentFrame + 1) % frameCount()) {
+            // Don't advance to nextFrame unless the timer was fired before its decoding finishes.
+            if (!m_frameTimer)
+                internalAdvanceAnimation();
+            else
+                LOG(Images, "BitmapImage::%s - %p - url: %s [earlyFrameCount = %ld nextFrame = %ld]", __FUNCTION__, this, sourceURL().string().utf8().data(), ++m_earlyFrameCount, index);
+            return;
+        }
+
+        // Because of image partial loading, an image may start decoding as a large static image. But
+        // when more data is received, frameCount() changes to be > 1 so the image starts animating.
+        // The animation may even start before finishing the decoding of the first frame.
+        ASSERT(!m_repetitionsComplete);
+        LOG(Images, "BitmapImage::%s - %p - url: %s [More data makes frameCount() > 1]", __FUNCTION__, this, sourceURL().string().utf8().data());
+    }
+
+    ASSERT(index == m_currentFrame && !m_currentFrame);
+    if (m_source.isAsyncDecodingQueueIdle())
+        m_source.stopAsyncDecodingQueue();
+    if (m_currentFrameDecodingStatus == ImageFrame::DecodingStatus::Decoding)
+        m_currentFrameDecodingStatus = frameDecodingStatusAtIndex(m_currentFrame);
+
+    if (m_currentFrameDecodingStatus == ImageFrame::DecodingStatus::Complete)
+        ++m_decodeCountForTesting;
+
+    if (imageObserver())
+        imageObserver()->imageFrameAvailable(*this, ImageAnimatingState::No);
+}
+
+unsigned BitmapImage::decodeCountForTesting() const
+{
+    return m_decodeCountForTesting;
+}
+
 void BitmapImage::dump(TextStream& ts) const
 {
     Image::dump(ts);
-
-    ts.dumpProperty("type", m_source.filenameExtension());
-
-    if (isAnimated()) {
-        ts.dumpProperty("frame-count", m_frameCount);
-        ts.dumpProperty("repetitions", m_repetitionCount);
+    
+    if (isAnimated())
         ts.dumpProperty("current-frame", m_currentFrame);
-    }
     
-    if (allowSubsampling())
-        ts.dumpProperty("allow-subsampling", allowSubsampling());
-    if (m_isSolidColor)
-        ts.dumpProperty("solid-color", m_isSolidColor);
-    
-    if (m_imageOrientation != OriginTopLeft)
-        ts.dumpProperty("orientation", m_imageOrientation);
+    m_source.dump(ts);
 }
 
 }

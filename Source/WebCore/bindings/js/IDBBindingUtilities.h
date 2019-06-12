@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2014, 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,60 +24,41 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBBindingUtilities_h
-#define IDBBindingUtilities_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "Dictionary.h"
-#include <bindings/ScriptValue.h>
+#include "IDBKeyPath.h"
 #include <wtf/Forward.h>
+
+namespace JSC {
+class ExecState;
+class JSGlobalObject;
+class JSValue;
+}
 
 namespace WebCore {
 
-class DOMRequestState;
 class IDBIndexInfo;
 class IDBKey;
-class IDBKeyPath;
-class IndexKey;
-class SharedBuffer;
-class ThreadSafeDataBuffer;
-
-struct IDBIndexMetadata;
 class IDBKeyData;
+class IDBValue;
+class IndexKey;
+class JSDOMGlobalObject;
 
-IDBKeyPath idbKeyPathFromValue(JSC::ExecState*, JSC::JSValue);
-
-bool injectIDBKeyIntoScriptValue(DOMRequestState*, PassRefPtr<IDBKey>, Deprecated::ScriptValue&, const IDBKeyPath&);
+RefPtr<IDBKey> maybeCreateIDBKeyFromScriptValueAndKeyPath(JSC::ExecState&, const JSC::JSValue&, const IDBKeyPath&);
+bool canInjectIDBKeyIntoScriptValue(JSC::ExecState&, const JSC::JSValue&, const IDBKeyPath&);
 bool injectIDBKeyIntoScriptValue(JSC::ExecState&, const IDBKeyData&, JSC::JSValue, const IDBKeyPath&);
 
-RefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(JSC::ExecState*, const Deprecated::ScriptValue&, const IDBKeyPath&);
-RefPtr<IDBKey> maybeCreateIDBKeyFromScriptValueAndKeyPath(JSC::ExecState&, const Deprecated::ScriptValue&, const IDBKeyPath&);
-RefPtr<IDBKey> maybeCreateIDBKeyFromScriptValueAndKeyPath(JSC::ExecState&, const JSC::JSValue&, const IDBKeyPath&);
-
-bool canInjectIDBKeyIntoScriptValue(DOMRequestState*, const JSC::JSValue&, const IDBKeyPath&);
-bool canInjectIDBKeyIntoScriptValue(JSC::ExecState&, const JSC::JSValue&, const IDBKeyPath&);
-
-Deprecated::ScriptValue deserializeIDBValue(DOMRequestState*, PassRefPtr<SerializedScriptValue>);
-Deprecated::ScriptValue deserializeIDBValueData(ScriptExecutionContext&, const ThreadSafeDataBuffer& valueData);
-Deprecated::ScriptValue deserializeIDBValueBuffer(DOMRequestState*, PassRefPtr<SharedBuffer>, bool keyIsDefined);
-WEBCORE_EXPORT Deprecated::ScriptValue deserializeIDBValueBuffer(JSC::ExecState*, Vector<uint8_t>&&, bool keyIsDefined);
-
-JSC::JSValue deserializeIDBValueDataToJSValue(JSC::ExecState&, const ThreadSafeDataBuffer& valueData);
-
-Deprecated::ScriptValue idbKeyToScriptValue(DOMRequestState*, PassRefPtr<IDBKey>);
-RefPtr<IDBKey> scriptValueToIDBKey(DOMRequestState*, const JSC::JSValue&);
-RefPtr<IDBKey> scriptValueToIDBKey(JSC::ExecState&, const JSC::JSValue&);
-WEBCORE_EXPORT void generateIndexKeysForValue(JSC::ExecState*, const IDBIndexMetadata&, const Deprecated::ScriptValue& objectValue, Vector<IDBKeyData>& indexKeys);
-
-Deprecated::ScriptValue idbKeyDataToScriptValue(ScriptExecutionContext*, const IDBKeyData&);
-
-JSC::JSValue idbValueDataToJSValue(JSC::ExecState&, const ThreadSafeDataBuffer& valueData);
 void generateIndexKeyForValue(JSC::ExecState&, const IDBIndexInfo&, JSC::JSValue, IndexKey& outKey);
-JSC::JSValue idbKeyDataToJSValue(JSC::ExecState&, const IDBKeyData&);
+
+Ref<IDBKey> scriptValueToIDBKey(JSC::ExecState&, const JSC::JSValue&);
+
+JSC::JSValue deserializeIDBValueToJSValue(JSC::ExecState&, const IDBValue&);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const IDBValue&);
+JSC::JSValue toJS(JSC::ExecState&, JSC::JSGlobalObject&, IDBKey*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const IDBKeyData&);
 
 }
 
 #endif // ENABLE(INDEXED_DATABASE)
-
-#endif // IDBBindingUtilities_h

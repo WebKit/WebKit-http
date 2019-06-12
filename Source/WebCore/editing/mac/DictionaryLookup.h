@@ -23,14 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DictionaryLookup_h
-#define DictionaryLookup_h
+#pragma once
 
 #if PLATFORM(MAC)
 
 #include "DictionaryPopupInfo.h"
-#include <functional>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Function.h>
 
 OBJC_CLASS NSString;
 OBJC_CLASS NSView;
@@ -52,20 +50,18 @@ class VisibleSelection;
 
 class DictionaryLookup {
 public:
-    WEBCORE_EXPORT static PassRefPtr<Range> rangeForSelection(const VisibleSelection&, NSDictionary **options);
-    WEBCORE_EXPORT static PassRefPtr<Range> rangeAtHitTestResult(const HitTestResult&, NSDictionary **options);
+    WEBCORE_EXPORT static RefPtr<Range> rangeForSelection(const VisibleSelection&, NSDictionary **options);
+    WEBCORE_EXPORT static RefPtr<Range> rangeAtHitTestResult(const HitTestResult&, NSDictionary **options);
     WEBCORE_EXPORT static NSString *stringForPDFSelection(PDFSelection *, NSDictionary **options);
 
     // FIXME: Should move/unify dictionaryPopupInfoForRange here too.
 
-    WEBCORE_EXPORT static void showPopup(const DictionaryPopupInfo&, NSView *, std::function<void(TextIndicator&)> textIndicatorInstallationCallback, std::function<FloatRect(FloatRect)> rootViewToViewConversionCallback = nullptr);
+    WEBCORE_EXPORT static void showPopup(const DictionaryPopupInfo&, NSView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr);
     WEBCORE_EXPORT static void hidePopup();
 
-    WEBCORE_EXPORT static PlatformAnimationController animationControllerForPopup(const DictionaryPopupInfo&, NSView *, std::function<void(TextIndicator&)> textIndicatorInstallationCallback, std::function<FloatRect(FloatRect)> rootViewToViewConversionCallback = nullptr);
+    WEBCORE_EXPORT static PlatformAnimationController animationControllerForPopup(const DictionaryPopupInfo&, NSView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr);
 };
 
 } // namespace WebCore
 
 #endif // PLATFORM(MAC)
-
-#endif // DictionaryLookup_h

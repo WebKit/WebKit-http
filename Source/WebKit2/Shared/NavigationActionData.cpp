@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,24 +26,29 @@
 #include "config.h"
 #include "NavigationActionData.h"
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "ArgumentCoders.h"
+#include "Decoder.h"
+#include "Encoder.h"
+#include "WebCoreArgumentCoders.h"
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void NavigationActionData::encode(IPC::ArgumentEncoder& encoder) const
+void NavigationActionData::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(navigationType);
     encoder.encodeEnum(modifiers);
     encoder.encodeEnum(mouseButton);
-    encoder << isProcessingUserGesture;
+    encoder.encodeEnum(syntheticClickType);
+    encoder << userGestureTokenIdentifier;
     encoder << canHandleRequest;
     encoder.encodeEnum(shouldOpenExternalURLsPolicy);
+    encoder << downloadAttribute;
+    encoder << clickLocationInRootViewCoordinates;
 }
 
-bool NavigationActionData::decode(IPC::ArgumentDecoder& decoder, NavigationActionData& result)
+bool NavigationActionData::decode(IPC::Decoder& decoder, NavigationActionData& result)
 {
     if (!decoder.decodeEnum(result.navigationType))
         return false;
@@ -51,11 +56,17 @@ bool NavigationActionData::decode(IPC::ArgumentDecoder& decoder, NavigationActio
         return false;
     if (!decoder.decodeEnum(result.mouseButton))
         return false;
-    if (!decoder.decode(result.isProcessingUserGesture))
+    if (!decoder.decodeEnum(result.syntheticClickType))
+        return false;
+    if (!decoder.decode(result.userGestureTokenIdentifier))
         return false;
     if (!decoder.decode(result.canHandleRequest))
         return false;
     if (!decoder.decodeEnum(result.shouldOpenExternalURLsPolicy))
+        return false;
+    if (!decoder.decode(result.downloadAttribute))
+        return false;
+    if (!decoder.decode(result.clickLocationInRootViewCoordinates))
         return false;
 
     return true;

@@ -37,19 +37,13 @@
 
 namespace WebCore {
 
-PlatformMessagePortChannel::EventData::EventData(PassRefPtr<SerializedScriptValue> message, std::unique_ptr<MessagePortChannelArray> channels)
-    : m_message(message)
-    , m_channels(WTFMove(channels))
+void MessagePortChannel::createChannel(MessagePort* port1, MessagePort* port2)
 {
-}
+    Ref<PlatformMessagePortChannel::MessagePortQueue> queue1 = PlatformMessagePortChannel::MessagePortQueue::create();
+    Ref<PlatformMessagePortChannel::MessagePortQueue> queue2 = PlatformMessagePortChannel::MessagePortQueue::create();
 
-void MessagePortChannel::createChannel(PassRefPtr<MessagePort> port1, PassRefPtr<MessagePort> port2)
-{
-    RefPtr<PlatformMessagePortChannel::MessagePortQueue> queue1 = PlatformMessagePortChannel::MessagePortQueue::create();
-    RefPtr<PlatformMessagePortChannel::MessagePortQueue> queue2 = PlatformMessagePortChannel::MessagePortQueue::create();
-
-    auto channel1 = std::make_unique<MessagePortChannel>(PlatformMessagePortChannel::create(queue1, queue2));
-    auto channel2 = std::make_unique<MessagePortChannel>(PlatformMessagePortChannel::create(queue2, queue1));
+    auto channel1 = std::make_unique<MessagePortChannel>(PlatformMessagePortChannel::create(queue1.ptr(), queue2.ptr()));
+    auto channel2 = std::make_unique<MessagePortChannel>(PlatformMessagePortChannel::create(queue2.ptr(), queue1.ptr()));
 
     channel1->m_channel->m_entangledChannel = channel2->m_channel;
     channel2->m_channel->m_entangledChannel = channel1->m_channel;
@@ -58,8 +52,8 @@ void MessagePortChannel::createChannel(PassRefPtr<MessagePort> port1, PassRefPtr
     port2->entangle(WTFMove(channel1));
 }
 
-MessagePortChannel::MessagePortChannel(PassRefPtr<PlatformMessagePortChannel> channel)
-    : m_channel(channel)
+MessagePortChannel::MessagePortChannel(RefPtr<PlatformMessagePortChannel>&& channel)
+    : m_channel(WTFMove(channel))
 {
 }
 
@@ -86,27 +80,26 @@ void MessagePortChannel::disentangle()
         remote->setRemotePort(nullptr);
 }
 
-void MessagePortChannel::postMessageToRemote(PassRefPtr<SerializedScriptValue> message, std::unique_ptr<MessagePortChannelArray> channels)
+void MessagePortChannel::postMessageToRemote(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
 {
     LockHolder lock(m_channel->m_mutex);
     if (!m_channel->m_outgoingQueue)
         return;
-    bool wasEmpty = m_channel->m_outgoingQueue->appendAndCheckEmpty(std::make_unique<PlatformMessagePortChannel::EventData>(message, WTFMove(channels)));
+    bool wasEmpty = m_channel->m_outgoingQueue->appendAndCheckEmpty(std::make_unique<EventData>(WTFMove(message), WTFMove(channels)));
     if (wasEmpty && m_channel->m_remotePort)
         m_channel->m_remotePort->messageAvailable();
 }
 
-bool MessagePortChannel::tryGetMessageFromRemote(RefPtr<SerializedScriptValue>& message, std::unique_ptr<MessagePortChannelArray>& channels)
+auto MessagePortChannel::takeMessageFromRemote() -> std::unique_ptr<EventData>
 {
     LockHolder lock(m_channel->m_mutex);
-    auto result = m_channel->m_incomingQueue->tryGetMessage();
-    if (!result)
-        return false;
+    return m_channel->m_incomingQueue->takeMessage();
+}
 
-    message = result->message();
-    channels = result->channels();
-
-    return true;
+auto MessagePortChannel::takeAllMessagesFromRemote() -> Deque<std::unique_ptr<EventData>>
+{
+    LockHolder lock(m_channel->m_mutex);
+    return m_channel->m_incomingQueue->takeAllMessages();
 }
 
 void MessagePortChannel::close()
@@ -146,12 +139,12 @@ MessagePort* MessagePortChannel::locallyEntangledPort(const ScriptExecutionConte
     return 0;
 }
 
-Ref<PlatformMessagePortChannel> PlatformMessagePortChannel::create(PassRefPtr<MessagePortQueue> incoming, PassRefPtr<MessagePortQueue> outgoing)
+Ref<PlatformMessagePortChannel> PlatformMessagePortChannel::create(MessagePortQueue* incoming, MessagePortQueue* outgoing)
 {
     return adoptRef(*new PlatformMessagePortChannel(incoming, outgoing));
 }
 
-PlatformMessagePortChannel::PlatformMessagePortChannel(PassRefPtr<MessagePortQueue> incoming, PassRefPtr<MessagePortQueue> outgoing)
+PlatformMessagePortChannel::PlatformMessagePortChannel(MessagePortQueue* incoming, MessagePortQueue* outgoing)
     : m_incomingQueue(incoming)
     , m_outgoingQueue(outgoing)
 {

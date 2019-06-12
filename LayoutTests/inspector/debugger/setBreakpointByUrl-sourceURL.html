@@ -9,12 +9,13 @@ eval("function sourceURLFunction() {\n    var a = 1;\n    var b = 2;\n    var c 
 function test()
 {
     InspectorProtocol.sendCommand("Debugger.enable", {});
+    InspectorProtocol.sendCommand("Debugger.setBreakpointsActive", {active: true});
 
     InspectorProtocol.eventHandler["Debugger.scriptParsed"] = function(messageObject)
     {
-        if (/sourceURL-test\.js$/.test(messageObject.params.url)) {
+        if (/sourceURL-test\.js$/.test(messageObject.params.sourceURL)) {
             ProtocolTest.log("Found sourceURL-test.js");
-            var params = {url: messageObject.params.url, lineNumber: 3, columnNumber: 0};
+            var params = {url: messageObject.params.sourceURL, lineNumber: 3, columnNumber: 0};
             InspectorProtocol.sendCommand("Debugger.setBreakpointByUrl", params, function(responseObject) {
                 InspectorProtocol.checkForError(responseObject);
                 ProtocolTest.log("Running sourceURLFunction");

@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebSocketChannel_h
-#define WebSocketChannel_h
+#pragma once
 
 #if ENABLE(WEB_SOCKETS)
 
@@ -43,6 +42,7 @@
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/TypeCasts.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 
@@ -51,6 +51,9 @@ namespace WebCore {
 class Blob;
 class Document;
 class FileReaderLoader;
+class ResourceRequest;
+class ResourceResponse;
+class SocketProvider;
 class SocketStreamHandle;
 class SocketStreamError;
 class WebSocketChannelClient;
@@ -59,35 +62,35 @@ class WebSocketChannel : public RefCounted<WebSocketChannel>, public SocketStrea
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<WebSocketChannel> create(Document* document, WebSocketChannelClient* client) { return adoptRef(*new WebSocketChannel(document, client)); }
+    static Ref<WebSocketChannel> create(Document& document, WebSocketChannelClient& client, SocketProvider& provider) { return adoptRef(*new WebSocketChannel(document, client, provider)); }
     virtual ~WebSocketChannel();
+
+    bool isWebSocketChannel() const final { return true; }
 
     bool send(const char* data, int length);
 
     // ThreadableWebSocketChannel functions.
-    virtual void connect(const URL&, const String& protocol) override;
-    virtual String subprotocol() override;
-    virtual String extensions() override;
-    virtual ThreadableWebSocketChannel::SendResult send(const String& message) override;
-    virtual ThreadableWebSocketChannel::SendResult send(const JSC::ArrayBuffer&, unsigned byteOffset, unsigned byteLength) override;
-    virtual ThreadableWebSocketChannel::SendResult send(Blob&) override;
-    virtual unsigned long bufferedAmount() const override;
-    virtual void close(int code, const String& reason) override; // Start closing handshake.
-    virtual void fail(const String& reason) override;
-    virtual void disconnect() override;
+    void connect(const URL&, const String& protocol) override;
+    String subprotocol() override;
+    String extensions() override;
+    ThreadableWebSocketChannel::SendResult send(const String& message) override;
+    ThreadableWebSocketChannel::SendResult send(const JSC::ArrayBuffer&, unsigned byteOffset, unsigned byteLength) override;
+    ThreadableWebSocketChannel::SendResult send(Blob&) override;
+    unsigned bufferedAmount() const override;
+    void close(int code, const String& reason) override; // Start closing handshake.
+    void fail(const String& reason) override;
+    void disconnect() override;
 
-    virtual void suspend() override;
-    virtual void resume() override;
+    void suspend() override;
+    void resume() override;
 
     // SocketStreamHandleClient functions.
-    virtual void willOpenSocketStream(SocketStreamHandle*) override;
-    virtual void didOpenSocketStream(SocketStreamHandle*) override;
-    virtual void didCloseSocketStream(SocketStreamHandle*) override;
-    virtual void didReceiveSocketStreamData(SocketStreamHandle*, const char*, int) override;
-    virtual void didUpdateBufferedAmount(SocketStreamHandle*, size_t bufferedAmount) override;
-    virtual void didFailSocketStream(SocketStreamHandle*, const SocketStreamError&) override;
-    virtual void didReceiveAuthenticationChallenge(SocketStreamHandle*, const AuthenticationChallenge&) override;
-    virtual void didCancelAuthenticationChallenge(SocketStreamHandle*, const AuthenticationChallenge&) override;
+    void didOpenSocketStream(SocketStreamHandle&) final;
+    void didCloseSocketStream(SocketStreamHandle&) final;
+    void didReceiveSocketStreamData(SocketStreamHandle&, const char*, size_t) final;
+    void didFailToReceiveSocketStreamData(SocketStreamHandle&) final;
+    void didUpdateBufferedAmount(SocketStreamHandle&, size_t bufferedAmount) final;
+    void didFailSocketStream(SocketStreamHandle&, const SocketStreamError&) final;
 
     enum CloseEventCode {
         CloseEventCodeNotSpecified = -1,
@@ -109,20 +112,25 @@ public:
     };
 
     // FileReaderLoaderClient functions.
-    virtual void didStartLoading() override;
-    virtual void didReceiveData() override;
-    virtual void didFinishLoading() override;
-    virtual void didFail(int errorCode) override;
+    void didStartLoading() override;
+    void didReceiveData() override;
+    void didFinishLoading() override;
+    void didFail(int errorCode) override;
+
+    unsigned identifier() const { return m_identifier; }
+    ResourceRequest clientHandshakeRequest() const;
+    const ResourceResponse& serverHandshakeResponse() const;
+    WebSocketHandshake::Mode handshakeMode() const;
 
     using RefCounted<WebSocketChannel>::ref;
     using RefCounted<WebSocketChannel>::deref;
 
 protected:
-    virtual void refThreadableWebSocketChannel() override { ref(); }
-    virtual void derefThreadableWebSocketChannel() override { deref(); }
+    void refThreadableWebSocketChannel() override { ref(); }
+    void derefThreadableWebSocketChannel() override { deref(); }
 
 private:
-    WebSocketChannel(Document*, WebSocketChannelClient*);
+    WEBCORE_EXPORT WebSocketChannel(Document&, WebSocketChannelClient&, SocketProvider&);
 
     bool appendToBuffer(const char* data, size_t len);
     void skipBuffer(size_t len);
@@ -175,7 +183,7 @@ private:
 
     // If you are going to send a hybi-10 frame, you need to use the outgoing frame queue
     // instead of call sendFrame() directly.
-    bool sendFrame(WebSocketFrame::OpCode, const char* data, size_t dataLength);
+    void sendFrame(WebSocketFrame::OpCode, const char* data, size_t dataLength, WTF::Function<void(bool)> completionHandler);
 
     enum BlobLoaderStatus {
         BlobLoaderNotStarted,
@@ -191,35 +199,38 @@ private:
     Vector<char> m_buffer;
 
     Timer m_resumeTimer;
-    bool m_suspended;
-    bool m_closing;
-    bool m_receivedClosingHandshake;
+    bool m_suspended { false };
+    bool m_closing { false };
+    bool m_receivedClosingHandshake { false };
     Timer m_closingTimer;
-    bool m_closed;
-    bool m_shouldDiscardReceivedData;
-    unsigned long m_unhandledBufferedAmount;
+    bool m_closed { false };
+    bool m_shouldDiscardReceivedData { false };
+    unsigned m_unhandledBufferedAmount { 0 };
 
-    unsigned long m_identifier; // m_identifier == 0 means that we could not obtain a valid identifier.
+    unsigned m_identifier { 0 }; // m_identifier == 0 means that we could not obtain a valid identifier.
 
     // Private members only for hybi-10 protocol.
-    bool m_hasContinuousFrame;
+    bool m_hasContinuousFrame { false };
     WebSocketFrame::OpCode m_continuousFrameOpCode;
-    Vector<char> m_continuousFrameData;
-    unsigned short m_closeEventCode;
+    Vector<uint8_t> m_continuousFrameData;
+    unsigned short m_closeEventCode { CloseEventCodeAbnormalClosure };
     String m_closeEventReason;
 
     Deque<std::unique_ptr<QueuedFrame>> m_outgoingFrameQueue;
-    OutgoingFrameQueueStatus m_outgoingFrameQueueStatus;
+    OutgoingFrameQueueStatus m_outgoingFrameQueueStatus { OutgoingFrameQueueOpen };
 
     // FIXME: Load two or more Blobs simultaneously for better performance.
     std::unique_ptr<FileReaderLoader> m_blobLoader;
-    BlobLoaderStatus m_blobLoaderStatus;
+    BlobLoaderStatus m_blobLoaderStatus { BlobLoaderNotStarted };
 
     WebSocketDeflateFramer m_deflateFramer;
+    Ref<SocketProvider> m_socketProvider;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(WEB_SOCKETS)
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::WebSocketChannel)
+    static bool isType(const WebCore::ThreadableWebSocketChannel& threadableWebSocketChannel) { return threadableWebSocketChannel.isWebSocketChannel(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
-#endif // WebSocketChannel_h
+#endif // ENABLE(WEB_SOCKETS)

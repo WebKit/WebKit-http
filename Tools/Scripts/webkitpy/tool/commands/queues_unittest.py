@@ -379,12 +379,11 @@ MOCK: release_work_item: commit-queue 10005
         patch = tool.bugs.fetch_attachment(10007)  # _patch8, resolved bug, without review flag, not marked obsolete (maybe already landed)
         expected_logs = {
             "begin_work_queue": self._default_begin_work_queue_logs("commit-queue"),
-            "process_work_item": """MOCK: update_status: commit-queue Error: commit-queue did not process patch.
+            "process_work_item": """MOCK: update_status: commit-queue Error: commit-queue did not process patch. Reason: Bug is already closed.
 MOCK: release_work_item: commit-queue 10007
 """,
         }
         self.assert_queue_outputs(CommitQueue(), tool=tool, work_item=patch, expected_logs=expected_logs)
-
 
     def test_auto_retry(self):
         queue = CommitQueue()
@@ -412,17 +411,7 @@ MOCK: update_status: commit-queue Tests passed, but commit failed (checkout out 
         queue._options.port = None
         expected_logs = """Running: webkit-patch --status-host=example.com clean --port=mac
 MOCK: update_status: commit-queue Cleaned working directory
-Running: webkit-patch --status-host=example.com update --port=mac
-MOCK: update_status: commit-queue Updated working directory
-Running: webkit-patch --status-host=example.com apply-attachment --no-update --non-interactive 10000 --port=mac
-MOCK: update_status: commit-queue Applied patch
-Running: webkit-patch --status-host=example.com validate-changelog --check-oops --non-interactive 10000 --port=mac
-MOCK: update_status: commit-queue ChangeLog validated
-Running: webkit-patch --status-host=example.com build --no-clean --no-update --build-style=release --port=mac
-MOCK: update_status: commit-queue Built patch
-Running: webkit-patch --status-host=example.com build-and-test --no-clean --no-update --test --non-interactive --build-style=release --port=mac
-MOCK: update_status: commit-queue Passed tests
-MOCK: update_status: commit-queue Error: commit-queue did not process patch.
+MOCK: update_status: commit-queue Error: commit-queue did not process patch. Reason: Patch is obsolete.
 MOCK: release_work_item: commit-queue 10000
 """
         self.maxDiff = None
@@ -482,7 +471,8 @@ class StyleQueueTest(QueuesTest):
     def test_style_queue_with_style_exception(self):
         expected_logs = {
             "begin_work_queue": self._default_begin_work_queue_logs("style-queue"),
-            "process_work_item": """Running: webkit-patch --status-host=example.com clean
+            "process_work_item": """MOCK: update_status: style-queue Started processing patch
+Running: webkit-patch --status-host=example.com clean
 MOCK: update_status: style-queue Cleaned working directory
 Running: webkit-patch --status-host=example.com update
 MOCK: update_status: style-queue Updated working directory
@@ -504,7 +494,8 @@ MOCK: release_work_item: style-queue 10000
     def test_style_queue_with_watch_list_exception(self):
         expected_logs = {
             "begin_work_queue": self._default_begin_work_queue_logs("style-queue"),
-            "process_work_item": """Running: webkit-patch --status-host=example.com clean
+            "process_work_item": """MOCK: update_status: style-queue Started processing patch
+Running: webkit-patch --status-host=example.com clean
 MOCK: update_status: style-queue Cleaned working directory
 Running: webkit-patch --status-host=example.com update
 MOCK: update_status: style-queue Updated working directory
@@ -525,3 +516,15 @@ MOCK: release_work_item: style-queue 10000
         }
         tool = MockTool(executive_throws_when_run=set(['apply-watchlist-local']))
         self.assert_queue_outputs(StyleQueue(), expected_logs=expected_logs, tool=tool)
+
+    def test_non_valid_patch(self):
+        tool = MockTool()
+        patch = tool.bugs.fetch_attachment(10007)  # _patch8, resolved bug, without review flag, not marked obsolete (maybe already landed)
+        expected_logs = {
+            "begin_work_queue": self._default_begin_work_queue_logs("style-queue"),
+            "process_work_item": """MOCK: update_status: style-queue Started processing patch
+MOCK: update_status: style-queue Error: style-queue did not process patch. Reason: Bug is already closed.
+MOCK: release_work_item: style-queue 10007
+""",
+        }
+        self.assert_queue_outputs(StyleQueue(), tool=tool, work_item=patch, expected_logs=expected_logs)

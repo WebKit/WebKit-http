@@ -32,7 +32,6 @@
 #include "Image.h"
 #include "ImageData.h"
 #include "IntRect.h"
-#include "Page.h"
 #include "RenderSVGResourceFilterPrimitive.h"
 #include "RenderView.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
@@ -43,7 +42,7 @@
 
 namespace WebCore {
 
-RenderSVGResourceFilter::RenderSVGResourceFilter(SVGFilterElement& element, Ref<RenderStyle>&& style)
+RenderSVGResourceFilter::RenderSVGResourceFilter(SVGFilterElement& element, RenderStyle&& style)
     : RenderSVGResourceContainer(element, WTFMove(style))
 {
 }
@@ -97,10 +96,10 @@ std::unique_ptr<SVGFilterBuilder> RenderSVGResourceFilter::buildPrimitives(SVGFi
     return builder;
 }
 
-bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const RenderStyle&, GraphicsContext*& context, unsigned short resourceMode)
+bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const RenderStyle&, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode)
 {
     ASSERT(context);
-    ASSERT_UNUSED(resourceMode, resourceMode == ApplyToDefaultMode);
+    ASSERT_UNUSED(resourceMode, resourceMode == RenderSVGResourceMode::ApplyToDefault);
 
     if (m_filter.contains(&renderer)) {
         FilterData* filterData = m_filter.get(&renderer);
@@ -186,8 +185,7 @@ bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const Rende
     effectiveTransform.scale(scale.width(), scale.height());
     effectiveTransform.multiply(filterData->shearFreeAbsoluteTransform);
 
-    RenderingMode renderingMode = renderer.frame().settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
-
+    RenderingMode renderingMode = renderer.settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
     auto sourceGraphic = SVGRenderingContext::createImageBuffer(filterData->drawingRegion, effectiveTransform, ColorSpaceLinearRGB, renderingMode);
     if (!sourceGraphic) {
         ASSERT(!m_filter.contains(&renderer));
@@ -212,10 +210,10 @@ bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const Rende
     return true;
 }
 
-void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, GraphicsContext*& context, unsigned short resourceMode, const Path*, const RenderSVGShape*)
+void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode, const Path*, const RenderSVGShape*)
 {
     ASSERT(context);
-    ASSERT_UNUSED(resourceMode, resourceMode == ApplyToDefaultMode);
+    ASSERT_UNUSED(resourceMode, resourceMode == RenderSVGResourceMode::ApplyToDefault);
 
     FilterData* filterData = m_filter.get(&renderer);
     if (!filterData)
@@ -268,7 +266,7 @@ void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, Graphic
 
         ImageBuffer* resultImage = lastEffect->asImageBuffer();
         if (resultImage) {
-            context->concatCTM(filterData->shearFreeAbsoluteTransform.inverse().valueOr(AffineTransform()));
+            context->concatCTM(filterData->shearFreeAbsoluteTransform.inverse().value_or(AffineTransform()));
 
             context->scale(FloatSize(1 / filterData->filter->filterResolution().width(), 1 / filterData->filter->filterResolution().height()));
             context->drawImageBuffer(*resultImage, lastEffect->absolutePaintRect());

@@ -2,6 +2,7 @@
 <html>
     <head>
         <script src="../../resources/js-test-pre.js"></script>
+        <script src="./resources/getUserMedia-helper.js"></script>
     </head>
     <body>
         <script>
@@ -20,7 +21,9 @@
             function getUserMedia(dictionary, callback)
             {
                 try {
-                    navigator.webkitGetUserMedia(dictionary, callback, error);
+                    navigator.mediaDevices.getUserMedia(dictionary)
+                        .then(callback)
+                        .catch(error);
                 } catch (e) {
                     testFailed('webkitGetUserMedia threw exception :' + e);
                     finishJSTest();
@@ -75,13 +78,20 @@
                 testPassed('Got a stream.');
                 stream = s;
 
-                pc = new webkitRTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
+                pc = new RTCPeerConnection({iceServers:[{urls:'stun:foo.com'}]});
                 pc.onnegotiationneeded = onErroneousNegotiationNeeded;
                 shouldThrow("pc.addStream(null)");
 
                 shouldBe('pc.getLocalStreams().length', '0');
 
                 getUserMedia({audio:true, video:true}, gotStream2);
+            }
+
+            if (window.testRunner)
+                testRunner.setUserMediaPermission(true);
+            else {
+                debug("This test can not be run without the testRunner");
+                finishJSTest();
             }
 
             getUserMedia({audio:true, video:true}, gotStream1);

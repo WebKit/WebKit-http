@@ -17,7 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#if !defined(__WEBKIT2_H_INSIDE__) && !defined(WEBKIT2_COMPILATION) && !defined(__WEBKIT_WEB_EXTENSION_H_INSIDE__)
+#if !defined(__WEBKIT2_H_INSIDE__) && !defined(WEBKIT2_COMPILATION)
 #error "Only <webkit2/webkit2.h> can be included directly."
 #endif
 
@@ -42,7 +42,7 @@ typedef struct _WebKitEditorStatePrivate WebKitEditorStatePrivate;
 
 /**
  * WebKitEditorTypingAttributes:
- * @WEBKIT_EDITOR_TYPING_ATTRIBUTE_NONE: No typing attrubutes.
+ * @WEBKIT_EDITOR_TYPING_ATTRIBUTE_NONE: No typing attributes.
  * @WEBKIT_EDITOR_TYPING_ATTRIBUTE_BOLD: Bold typing attribute.
  * @WEBKIT_EDITOR_TYPING_ATTRIBUTE_ITALIC: Italic typing attribute.
  * @WEBKIT_EDITOR_TYPING_ATTRIBUTE_UNDERLINE: Underline typing attribute.

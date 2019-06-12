@@ -36,7 +36,6 @@
 #include "TextRun.h"
 #include "hb.h"
 #include <memory>
-#include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/unicode/CharacterNames.h>
 
@@ -59,7 +58,7 @@ public:
     FloatPoint adjustStartPoint(const FloatPoint&);
     float totalWidth() { return m_totalWidth; }
     int offsetForPosition(float targetX);
-    FloatRect selectionRect(const FloatPoint&, int height, int from, int to);
+    FloatRect selectionRect(const FloatPoint&, int height, unsigned from, unsigned to);
 
 private:
     class HarfBuzzRun {
@@ -70,17 +69,17 @@ private:
         void setGlyphAndPositions(unsigned index, uint16_t glyphId, float advance, float offsetX, float offsetY);
         void setWidth(float width) { m_width = width; }
 
-        int characterIndexForXPosition(float targetX);
+        unsigned characterIndexForXPosition(float targetX);
         float xPositionForOffset(unsigned offset);
 
         const Font* fontData() { return m_fontData; }
         unsigned startIndex() const { return m_startIndex; }
         unsigned numCharacters() const { return m_numCharacters; }
         unsigned numGlyphs() const { return m_numGlyphs; }
-        uint16_t* glyphs() { return &m_glyphs[0]; }
-        float* advances() { return &m_advances[0]; }
-        FloatPoint* offsets() { return &m_offsets[0]; }
-        uint16_t* glyphToCharacterIndexes() { return &m_glyphToCharacterIndexes[0]; }
+        uint16_t* glyphs() { return m_glyphs.data(); }
+        float* advances() { return m_advances.data(); }
+        FloatPoint* offsets() { return m_offsets.data(); }
+        uint16_t* glyphToCharacterIndexes() { return m_glyphToCharacterIndexes.data(); }
         float width() { return m_width; }
         bool rtl() { return m_direction == RTL; }
         hb_script_t script() { return m_script; }
@@ -88,7 +87,7 @@ private:
     private:
         const Font* m_fontData;
         unsigned m_startIndex;
-        size_t m_numCharacters;
+        unsigned m_numCharacters;
         unsigned m_numGlyphs;
         TextDirection m_direction;
         hb_script_t m_script;

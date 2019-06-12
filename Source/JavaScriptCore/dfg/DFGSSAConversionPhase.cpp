@@ -373,7 +373,7 @@ public:
             if (!block)
                 continue;
             for (unsigned phiIndex = block->phis.size(); phiIndex--;)
-                m_graph.m_allocator.free(block->phis[phiIndex]);
+                m_graph.deleteNode(block->phis[phiIndex]);
             block->phis.clear();
             block->variablesAtHead.clear();
             block->variablesAtTail.clear();
@@ -416,7 +416,6 @@ private:
 
 bool performSSAConversion(Graph& graph)
 {
-    SamplingRegion samplingRegion("DFG SSA Conversion Phase");
     return runPhase<SSAConversionPhase>(graph);
 }
 

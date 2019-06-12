@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2008, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2006, 2008, 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformCookieJar_h
-#define PlatformCookieJar_h
+#pragma once
 
 #include <chrono>
 #include <wtf/Forward.h>
@@ -52,5 +51,3 @@ WEBCORE_EXPORT void deleteAllCookies(const NetworkStorageSession&);
 WEBCORE_EXPORT void deleteAllCookiesModifiedSince(const NetworkStorageSession&, std::chrono::system_clock::time_point);
 
 }
-
-#endif

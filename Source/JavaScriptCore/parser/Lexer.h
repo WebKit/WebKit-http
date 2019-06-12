@@ -20,15 +20,14 @@
  *
  */
 
-#ifndef Lexer_h
-#define Lexer_h
+#pragma once
 
 #include "Lookup.h"
 #include "ParserArena.h"
+#include "ParserModes.h"
 #include "ParserTokens.h"
 #include "SourceCode.h"
 #include <wtf/ASCIICType.h>
-#include <wtf/SegmentedVector.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -38,6 +37,8 @@ enum LexerFlags {
     LexerFlagsDontBuildStrings = 2,
     LexexFlagsDontBuildKeywords = 4
 };
+
+enum class LexerEscapeParseMode { Template, String };
 
 struct ParsedUnicodeEscapeValue;
 
@@ -49,7 +50,7 @@ class Lexer {
     WTF_MAKE_FAST_ALLOCATED;
 
 public:
-    Lexer(VM*, JSParserBuiltinMode);
+    Lexer(VM*, JSParserBuiltinMode, JSParserScriptMode);
     ~Lexer();
 
     // Character manipulation functions.
@@ -63,7 +64,6 @@ public:
     void setIsReparsingFunction() { m_isReparsingFunction = true; }
     bool isReparsingFunction() const { return m_isReparsingFunction; }
 
-    void setTokenPosition(JSToken* tokenRecord);
     JSTokenType lex(JSToken*, unsigned, bool strictMode);
     bool nextTokenIsColon();
     int lineNumber() const { return m_lineNumber; }
@@ -74,18 +74,19 @@ public:
         return JSTextPosition(m_lineNumber, currentOffset(), currentLineStartOffset());
     }
     JSTextPosition positionBeforeLastNewline() const { return m_positionBeforeLastNewline; }
-    JSTokenLocation lastTokenLocation() const { return m_lastTockenLocation; }
+    JSTokenLocation lastTokenLocation() const { return m_lastTokenLocation; }
     void setLastLineNumber(int lastLineNumber) { m_lastLineNumber = lastLineNumber; }
     int lastLineNumber() const { return m_lastLineNumber; }
     bool prevTerminator() const { return m_terminator; }
-    bool scanRegExp(const Identifier*& pattern, const Identifier*& flags, UChar patternPrefix = 0);
+    JSTokenType scanRegExp(JSToken*, UChar patternPrefix = 0);
     enum class RawStringsBuildMode { BuildRawStrings, DontBuildRawStrings };
-    JSTokenType scanTrailingTemplateString(JSToken*, RawStringsBuildMode);
-    bool skipRegExp();
+    JSTokenType scanTemplateString(JSToken*, RawStringsBuildMode);
 
     // Functions for use after parsing.
     bool sawError() const { return m_error; }
+    void setSawError(bool sawError) { m_error = sawError; }
     String getErrorMessage() const { return m_lexErrorMessage; }
+    void setErrorMessage(const String& errorMessage) { m_lexErrorMessage = errorMessage; }
     String sourceURL() const { return m_sourceURLDirective; }
     String sourceMappingURL() const { return m_sourceMappingURLDirective; }
     void clear();
@@ -115,6 +116,13 @@ public:
     }
 
     JSTokenType lexExpectIdentifier(JSToken*, unsigned, bool strictMode);
+
+    ALWAYS_INLINE StringView getToken(const JSToken& token)
+    {
+        SourceProvider* sourceProvider = m_source->provider();
+        ASSERT_WITH_MESSAGE(token.m_location.startOffset <= token.m_location.endOffset, "Calling this function with the baked token.");
+        return sourceProvider->getRange(token.m_location.startOffset, token.m_location.endOffset);
+    }
 
 private:
     void record8(int);
@@ -165,9 +173,8 @@ private:
     template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseString(JSTokenData*, bool strictMode);
     template <bool shouldBuildStrings> NEVER_INLINE StringParseResult parseStringSlowCase(JSTokenData*, bool strictMode);
 
-    enum class EscapeParseMode { Template, String };
-    template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseComplexEscape(EscapeParseMode, bool strictMode, T stringQuoteCharacter);
-    template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseTemplateLiteral(JSTokenData*, RawStringsBuildMode);
+    template <bool shouldBuildStrings, LexerEscapeParseMode escapeParseMode> ALWAYS_INLINE StringParseResult parseComplexEscape(bool strictMode, T stringQuoteCharacter);
+    ALWAYS_INLINE StringParseResult parseTemplateLiteral(JSTokenData*, RawStringsBuildMode);
     ALWAYS_INLINE void parseHex(double& returnValue);
     ALWAYS_INLINE bool parseBinary(double& returnValue);
     ALWAYS_INLINE bool parseOctal(double& returnValue);
@@ -181,6 +188,8 @@ private:
 
     template <unsigned length>
     ALWAYS_INLINE bool consume(const char (&input)[length]);
+
+    void fillTokenInfo(JSToken*, JSTokenType, int lineNumber, int endOffset, int lineStartOffset, JSTextPosition endPosition);
 
     static const size_t initialReadBufferCapacity = 32;
 
@@ -201,7 +210,7 @@ private:
     const T* m_codeStartPlusOffset;
     const T* m_lineStart;
     JSTextPosition m_positionBeforeLastNewline;
-    JSTokenLocation m_lastTockenLocation;
+    JSTokenLocation m_lastTokenLocation;
     bool m_isReparsingFunction;
     bool m_atLineStart;
     bool m_error;
@@ -216,6 +225,7 @@ private:
 
     VM* m_vm;
     bool m_parsingBuiltinFunction;
+    JSParserScriptMode m_scriptMode;
 };
 
 template <>
@@ -392,5 +402,3 @@ slowCase:
 }
 
 } // namespace JSC
-
-#endif // Lexer_h

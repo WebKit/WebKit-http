@@ -17,7 +17,7 @@
 #include "config.h"
 #include "DragData.h"
 
-#include "DataObjectGtk.h"
+#include "SelectionData.h"
 
 namespace WebCore {
 
@@ -61,7 +61,7 @@ Color DragData::asColor() const
     return Color();
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(DraggingPurpose) const
 {
     return containsPlainText() || containsURL() || m_platformDragData->hasMarkup() || containsColor() || containsFiles();
 }

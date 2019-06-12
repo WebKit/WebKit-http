@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef MathObject_h
-#define MathObject_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -31,7 +30,6 @@ private:
 
 public:
     typedef JSNonFinalObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
 
     static MathObject* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
     {
@@ -53,7 +51,6 @@ protected:
 
 EncodedJSValue JSC_HOST_CALL mathProtoFuncAbs(ExecState*);
 EncodedJSValue JSC_HOST_CALL mathProtoFuncFloor(ExecState*);
+EncodedJSValue JSC_HOST_CALL mathProtoFuncTrunc(ExecState*);
 
 } // namespace JSC
-
-#endif // MathObject_h

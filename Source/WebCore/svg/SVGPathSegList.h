@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
+ * Copyright (C) Research In Motion Limited 2010. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -17,42 +17,145 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathSegList_h
-#define SVGPathSegList_h
+#pragma once
 
-#include "SVGListProperty.h"
-#include "SVGPathSeg.h"
-#include "SVGPropertyTraits.h"
-
-#include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
+#include "SVGAnimatedListPropertyTearOff.h"
+#include "SVGPathSegListValues.h"
 
 namespace WebCore {
 
-class SVGElement;
+class SVGPathElement;
 
-class SVGPathSegList : public Vector<RefPtr<SVGPathSeg>> {
+class SVGPathSegList final : public SVGListProperty<SVGPathSegListValues> {
 public:
-    SVGPathSegList(SVGPathSegRole role)
-        : m_role(role)
+    using Base = SVGListProperty<SVGPathSegListValues>;
+    using AnimatedListPropertyTearOff = SVGAnimatedListPropertyTearOff<SVGPathSegListValues>;
+    using ListItemType = SVGPropertyTraits<SVGPathSegListValues>::ListItemType;
+    using PtrListItemType = RefPtr<SVGPathSeg>;
+
+    static Ref<SVGPathSegList> create(AnimatedListPropertyTearOff& animatedProperty, SVGPropertyRole role, SVGPathSegRole pathSegRole, SVGPathSegListValues& values, ListWrapperCache& wrappers)
+    {
+        return adoptRef(*new SVGPathSegList(animatedProperty, role, pathSegRole, values, wrappers));
+    }
+
+    static Ref<SVGPathSegList> create(AnimatedListPropertyTearOff& animatedProperty, SVGPropertyRole role, SVGPathSegListValues& values, ListWrapperCache& wrappers)
+    {
+        ASSERT_NOT_REACHED();
+        return adoptRef(*new SVGPathSegList(animatedProperty, role, PathSegUndefinedRole, values, wrappers));
+    }
+
+    int findItem(const ListItemType& item) const
+    {
+        ASSERT(m_values);
+
+        unsigned size = m_values->size();
+        for (size_t i = 0; i < size; ++i) {
+            if (item == m_values->at(i))
+                return i;
+        }
+
+        return -1;
+    }
+
+    void removeItemFromList(size_t itemIndex, bool shouldSynchronizeWrappers)
+    {
+        ASSERT(m_values);
+        ASSERT_WITH_SECURITY_IMPLICATION(itemIndex < m_values->size());
+
+        m_values->remove(itemIndex);
+
+        if (shouldSynchronizeWrappers)
+            commitChange();
+    }
+
+    // SVGList API
+    ExceptionOr<void> clear();
+
+    ExceptionOr<PtrListItemType> initialize(PtrListItemType newItem)
+    {
+        // Not specified, but FF/Opera do it this way, and it's just sane.
+        if (!newItem)
+            return Exception { SVGException::SVG_WRONG_TYPE_ERR };
+
+        clearContextAndRoles();
+        return Base::initializeValues(newItem);
+    }
+
+    ExceptionOr<PtrListItemType> getItem(unsigned index);
+
+    ExceptionOr<PtrListItemType> insertItemBefore(PtrListItemType newItem, unsigned index)
+    {
+        // Not specified, but FF/Opera do it this way, and it's just sane.
+        if (!newItem)
+            return Exception { SVGException::SVG_WRONG_TYPE_ERR };
+
+        return Base::insertItemBeforeValues(newItem, index);
+    }
+
+    ExceptionOr<PtrListItemType> replaceItem(PtrListItemType, unsigned index);
+
+    ExceptionOr<PtrListItemType> removeItem(unsigned index);
+
+    ExceptionOr<PtrListItemType> appendItem(PtrListItemType newItem)
+    {
+        // Not specified, but FF/Opera do it this way, and it's just sane.
+        if (!newItem)
+            return Exception { SVGException::SVG_WRONG_TYPE_ERR };
+
+        return Base::appendItemValues(newItem);
+    }
+
+private:
+    SVGPathSegList(AnimatedListPropertyTearOff& animatedProperty, SVGPropertyRole role, SVGPathSegRole pathSegRole, SVGPathSegListValues& values, ListWrapperCache& wrappers)
+        : SVGListProperty<SVGPathSegListValues>(role, values, &wrappers)
+        , m_animatedProperty(&animatedProperty)
+        , m_pathSegRole(pathSegRole)
     {
     }
 
-    String valueAsString() const;
+    virtual ~SVGPathSegList()
+    {
+        if (m_animatedProperty)
+            m_animatedProperty->propertyWillBeDeleted(*this);
+    }
 
-    // Only used by SVGPathSegListPropertyTearOff.
-    void commitChange(SVGElement* contextElement, ListModification);
+    SVGPathElement* contextElement() const;
+
+    void clearContextAndRoles();
+
+    using Base::m_role;
+
+    bool isReadOnly() const final
+    {
+        if (m_role == AnimValRole)
+            return true;
+        if (m_animatedProperty && m_animatedProperty->isReadOnly())
+            return true;
+        return false;
+    }
+
+    void commitChange() final
+    {
+        ASSERT(m_values);
+        m_values->commitChange(*m_animatedProperty->contextElement(), ListModificationUnknown);
+    }
+
+    void commitChange(ListModification listModification) final
+    {
+        ASSERT(m_values);
+        m_values->commitChange(*m_animatedProperty->contextElement(), listModification);
+    }
+
+    bool processIncomingListItemValue(const ListItemType& newItem, unsigned* indexToModify) final;
+    bool processIncomingListItemWrapper(Ref<ListItemTearOff>&, unsigned*) final
+    {
+        ASSERT_NOT_REACHED();
+        return true;
+    }
 
 private:
-    SVGPathSegRole m_role;
-};
-
-template<>
-struct SVGPropertyTraits<SVGPathSegList> {
-    static SVGPathSegList initialValue() { return SVGPathSegList(PathSegUndefinedRole); }
-    typedef RefPtr<SVGPathSeg> ListItemType;
+    RefPtr<AnimatedListPropertyTearOff> m_animatedProperty;
+    SVGPathSegRole m_pathSegRole;
 };
 
 } // namespace WebCore
-
-#endif

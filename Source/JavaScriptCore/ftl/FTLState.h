@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLState_h
-#define FTLState_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -65,7 +64,9 @@ class State {
 public:
     State(DFG::Graph& graph);
     ~State();
-    
+
+    VM& vm() { return graph.m_vm; }
+
     // None of these things is owned by State. It is the responsibility of
     // FTL phases to properly manage the lifecycle of the module and function.
     DFG::Graph& graph;
@@ -84,6 +85,3 @@ public:
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLState_h
-

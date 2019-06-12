@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef HTMLTablePartElement_h
-#define HTMLTablePartElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -39,12 +38,10 @@ protected:
     {
     }
 
-    virtual bool isPresentationAttribute(const QualifiedName&) const override;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    bool isPresentationAttribute(const QualifiedName&) const override;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
 
     HTMLTableElement* findParentTable() const;
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

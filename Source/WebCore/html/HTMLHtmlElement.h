@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLHtmlElement_h
-#define HTMLHtmlElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -38,9 +37,7 @@ public:
 private:
     HTMLHtmlElement(const QualifiedName&, Document&);
 
-    virtual bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const final;
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore

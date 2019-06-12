@@ -28,6 +28,7 @@
 
 #include "APISecurityOrigin.h"
 #include "WKAPICast.h"
+#include <WebCore/SecurityOriginData.h>
 
 using namespace WebKit;
 
@@ -38,23 +39,26 @@ WKTypeID WKSecurityOriginGetTypeID()
 
 WKSecurityOriginRef WKSecurityOriginCreateFromString(WKStringRef string)
 {
-    return toAPI(API::SecurityOrigin::create(WebCore::SecurityOrigin::createFromString(toImpl(string)->string())).leakRef());
+    return toAPI(&API::SecurityOrigin::create(WebCore::SecurityOrigin::createFromString(toImpl(string)->string())).leakRef());
 }
 
 WKSecurityOriginRef WKSecurityOriginCreateFromDatabaseIdentifier(WKStringRef identifier)
 {
-    return toAPI(API::SecurityOrigin::create(WebCore::SecurityOrigin::createFromDatabaseIdentifier((toImpl(identifier)->string()))).leakRef());
+    auto origin = WebCore::SecurityOriginData::fromDatabaseIdentifier(toImpl(identifier)->string());
+    if (!origin)
+        return nullptr;
+    return toAPI(&API::SecurityOrigin::create(origin.value().securityOrigin()).leakRef());
 }
 
 WKSecurityOriginRef WKSecurityOriginCreate(WKStringRef protocol, WKStringRef host, int port)
 {
-    RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(toImpl(protocol)->string(), toImpl(host)->string(), port);
-    return toAPI(securityOrigin.release().leakRef());
+    auto securityOrigin = API::SecurityOrigin::create(toImpl(protocol)->string(), toImpl(host)->string(), port);
+    return toAPI(&securityOrigin.leakRef());
 }
 
 WKStringRef WKSecurityOriginCopyDatabaseIdentifier(WKSecurityOriginRef securityOrigin)
 {
-    return toCopiedAPI(toImpl(securityOrigin)->securityOrigin().databaseIdentifier());
+    return toCopiedAPI(WebCore::SecurityOriginData::fromSecurityOrigin(toImpl(securityOrigin)->securityOrigin()).databaseIdentifier());
 }
 
 WKStringRef WKSecurityOriginCopyToString(WKSecurityOriginRef securityOrigin)
@@ -74,19 +78,5 @@ WKStringRef WKSecurityOriginCopyHost(WKSecurityOriginRef securityOrigin)
 
 unsigned short WKSecurityOriginGetPort(WKSecurityOriginRef securityOrigin)
 {
-    return toImpl(securityOrigin)->securityOrigin().port();
-}
-
-// For backwards ABI compatibility.
-extern "C" WK_EXPORT WKStringRef WKSecurityOriginGetHost(WKSecurityOriginRef securityOrigin);
-extern "C" WK_EXPORT WKStringRef WKSecurityOriginGetProtocol(WKSecurityOriginRef securityOrigin);
-
-WKStringRef WKSecurityOriginGetHost(WKSecurityOriginRef securityOrigin)
-{
-    return WKSecurityOriginCopyHost(securityOrigin);
-}
-
-WKStringRef WKSecurityOriginGetProtocol(WKSecurityOriginRef securityOrigin)
-{
-    return WKSecurityOriginCopyProtocol(securityOrigin);
+    return toImpl(securityOrigin)->securityOrigin().port().value_or(0);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2010 Mozilla Corporation. All rights reserved.
  *
@@ -147,9 +147,9 @@ bool GraphicsContext3D::texImage2DResourceSafe(GC3Denum target, GC3Dint level, G
 {
     ASSERT(unpackAlignment == 1 || unpackAlignment == 2 || unpackAlignment == 4 || unpackAlignment == 8);
     std::unique_ptr<unsigned char[]> zero;
-    if (!isResourceSafe() && width > 0 && height > 0) {
+    if (width > 0 && height > 0) {
         unsigned int size;
-        GC3Denum error = computeImageSizeInBytes(format, type, width, height, unpackAlignment, &size, 0);
+        GC3Denum error = computeImageSizeInBytes(format, type, width, height, unpackAlignment, &size, nullptr);
         if (error != GraphicsContext3D::NO_ERROR) {
             synthesizeGLError(error);
             return false;
@@ -167,20 +167,26 @@ bool GraphicsContext3D::texImage2DResourceSafe(GC3Denum target, GC3Dint level, G
 bool GraphicsContext3D::computeFormatAndTypeParameters(GC3Denum format, GC3Denum type, unsigned int* componentsPerPixel, unsigned int* bytesPerComponent)
 {
     switch (format) {
+    case GraphicsContext3D::RED:
+    case GraphicsContext3D::RED_INTEGER:
     case GraphicsContext3D::ALPHA:
     case GraphicsContext3D::LUMINANCE:
     case GraphicsContext3D::DEPTH_COMPONENT:
     case GraphicsContext3D::DEPTH_STENCIL:
         *componentsPerPixel = 1;
         break;
+    case GraphicsContext3D::RG:
+    case GraphicsContext3D::RG_INTEGER:
     case GraphicsContext3D::LUMINANCE_ALPHA:
         *componentsPerPixel = 2;
         break;
     case GraphicsContext3D::RGB:
+    case GraphicsContext3D::RGB_INTEGER:
     case Extensions3D::SRGB_EXT:
         *componentsPerPixel = 3;
         break;
     case GraphicsContext3D::RGBA:
+    case GraphicsContext3D::RGBA_INTEGER:
     case Extensions3D::BGRA_EXT: // GL_EXT_texture_format_BGRA8888
     case Extensions3D::SRGB_ALPHA_EXT:
         *componentsPerPixel = 4;
@@ -188,12 +194,19 @@ bool GraphicsContext3D::computeFormatAndTypeParameters(GC3Denum format, GC3Denum
     default:
         return false;
     }
+
     switch (type) {
     case GraphicsContext3D::UNSIGNED_BYTE:
         *bytesPerComponent = sizeof(GC3Dubyte);
         break;
+    case GraphicsContext3D::BYTE:
+        *bytesPerComponent = sizeof(GC3Dbyte);
+        break;
     case GraphicsContext3D::UNSIGNED_SHORT:
         *bytesPerComponent = sizeof(GC3Dushort);
+        break;
+    case GraphicsContext3D::SHORT:
+        *bytesPerComponent = sizeof(GC3Dshort);
         break;
     case GraphicsContext3D::UNSIGNED_SHORT_5_6_5:
     case GraphicsContext3D::UNSIGNED_SHORT_4_4_4_4:
@@ -202,18 +215,110 @@ bool GraphicsContext3D::computeFormatAndTypeParameters(GC3Denum format, GC3Denum
         *bytesPerComponent = sizeof(GC3Dushort);
         break;
     case GraphicsContext3D::UNSIGNED_INT_24_8:
+    case GraphicsContext3D::UNSIGNED_INT_2_10_10_10_REV:
+    case GraphicsContext3D::UNSIGNED_INT_10F_11F_11F_REV:
+    case GraphicsContext3D::UNSIGNED_INT_5_9_9_9_REV:
+        *componentsPerPixel = 1;
+        *bytesPerComponent = sizeof(GC3Duint);
+        break;
     case GraphicsContext3D::UNSIGNED_INT:
         *bytesPerComponent = sizeof(GC3Duint);
+        break;
+    case GraphicsContext3D::INT:
+        *bytesPerComponent = sizeof(GC3Dint);
         break;
     case GraphicsContext3D::FLOAT: // OES_texture_float
         *bytesPerComponent = sizeof(GC3Dfloat);
         break;
+    case GraphicsContext3D::HALF_FLOAT:
     case GraphicsContext3D::HALF_FLOAT_OES: // OES_texture_half_float
         *bytesPerComponent = sizeof(GC3Dhalffloat);
+        break;
+    case GraphicsContext3D::FLOAT_32_UNSIGNED_INT_24_8_REV:
+        *bytesPerComponent = sizeof(GC3Dfloat) + sizeof(GC3Duint);
         break;
     default:
         return false;
     }
+    return true;
+}
+
+bool GraphicsContext3D::possibleFormatAndTypeForInternalFormat(GC3Denum internalFormat, GC3Denum& format, GC3Denum& type)
+{
+#define POSSIBLE_FORMAT_TYPE_CASE(internalFormatMacro, formatMacro, typeMacro) case internalFormatMacro: \
+        format = formatMacro; \
+        type = GraphicsContext3D::typeMacro; \
+        break;
+
+    switch (internalFormat) {
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB               , GraphicsContext3D::RGB            , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA              , GraphicsContext3D::RGBA           , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::LUMINANCE_ALPHA   , GraphicsContext3D::LUMINANCE_ALPHA, UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::LUMINANCE         , GraphicsContext3D::LUMINANCE      , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::ALPHA             , GraphicsContext3D::ALPHA          , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R8                , GraphicsContext3D::RED            , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R8_SNORM          , GraphicsContext3D::RED            , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R16F              , GraphicsContext3D::RED            , HALF_FLOAT                    );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R32F              , GraphicsContext3D::RED            , FLOAT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R8UI              , GraphicsContext3D::RED_INTEGER    , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R8I               , GraphicsContext3D::RED_INTEGER    , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R16UI             , GraphicsContext3D::RED_INTEGER    , UNSIGNED_SHORT                );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R16I              , GraphicsContext3D::RED_INTEGER    , SHORT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R32UI             , GraphicsContext3D::RED_INTEGER    , UNSIGNED_INT                  );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R32I              , GraphicsContext3D::RED_INTEGER    , INT                           );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG8               , GraphicsContext3D::RG             , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG8_SNORM         , GraphicsContext3D::RG             , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG16F             , GraphicsContext3D::RG             , HALF_FLOAT                    );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG32F             , GraphicsContext3D::RG             , FLOAT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG8UI             , GraphicsContext3D::RG_INTEGER     , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG8I              , GraphicsContext3D::RG_INTEGER     , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG16UI            , GraphicsContext3D::RG_INTEGER     , UNSIGNED_SHORT                );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG16I             , GraphicsContext3D::RG_INTEGER     , SHORT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG32UI            , GraphicsContext3D::RG_INTEGER     , UNSIGNED_INT                  );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RG32I             , GraphicsContext3D::RG_INTEGER     , INT                           );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB8              , GraphicsContext3D::RGB            , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::SRGB8             , GraphicsContext3D::RGB            , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB565            , GraphicsContext3D::RGB            , UNSIGNED_SHORT_5_6_5          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB8_SNORM        , GraphicsContext3D::RGB            , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::R11F_G11F_B10F    , GraphicsContext3D::RGB            , UNSIGNED_INT_10F_11F_11F_REV  );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB9_E5           , GraphicsContext3D::RGB            , UNSIGNED_INT_5_9_9_9_REV      );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB16F            , GraphicsContext3D::RGB            , HALF_FLOAT                    );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB32F            , GraphicsContext3D::RGB            , FLOAT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB8UI            , GraphicsContext3D::RGB_INTEGER    , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB8I             , GraphicsContext3D::RGB_INTEGER    , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB16UI           , GraphicsContext3D::RGB_INTEGER    , UNSIGNED_SHORT                );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB16I            , GraphicsContext3D::RGB_INTEGER    , SHORT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB32UI           , GraphicsContext3D::RGB_INTEGER    , UNSIGNED_INT                  );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB32I            , GraphicsContext3D::RGB_INTEGER    , INT                           );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA8             , GraphicsContext3D::RGBA           , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::SRGB8_ALPHA8      , GraphicsContext3D::RGBA           , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA8_SNORM       , GraphicsContext3D::RGBA           , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB5_A1           , GraphicsContext3D::RGBA           , UNSIGNED_SHORT_5_5_5_1        );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA4             , GraphicsContext3D::RGBA           , UNSIGNED_SHORT_4_4_4_4        );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB10_A2          , GraphicsContext3D::RGBA           , UNSIGNED_INT_2_10_10_10_REV   );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA16F           , GraphicsContext3D::RGBA           , HALF_FLOAT                    );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA32F           , GraphicsContext3D::RGBA           , FLOAT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA8UI           , GraphicsContext3D::RGBA_INTEGER   , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA8I            , GraphicsContext3D::RGBA_INTEGER   , BYTE                          );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGB10_A2UI        , GraphicsContext3D::RGBA_INTEGER   , UNSIGNED_INT_2_10_10_10_REV   );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA16UI          , GraphicsContext3D::RGBA_INTEGER   , UNSIGNED_SHORT                );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA16I           , GraphicsContext3D::RGBA_INTEGER   , SHORT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA32I           , GraphicsContext3D::RGBA_INTEGER   , INT                           );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::RGBA32UI          , GraphicsContext3D::RGBA_INTEGER   , UNSIGNED_INT                  );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::DEPTH_COMPONENT16 , GraphicsContext3D::DEPTH_COMPONENT, UNSIGNED_SHORT                );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::DEPTH_COMPONENT   , GraphicsContext3D::DEPTH_COMPONENT, UNSIGNED_SHORT                );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::DEPTH_COMPONENT24 , GraphicsContext3D::DEPTH_COMPONENT, UNSIGNED_INT                  );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::DEPTH_COMPONENT32F, GraphicsContext3D::DEPTH_COMPONENT, FLOAT                         );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::DEPTH_STENCIL     , GraphicsContext3D::DEPTH_STENCIL  , UNSIGNED_INT_24_8             );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::DEPTH24_STENCIL8  , GraphicsContext3D::DEPTH_STENCIL  , UNSIGNED_INT_24_8             );
+    POSSIBLE_FORMAT_TYPE_CASE(GraphicsContext3D::DEPTH32F_STENCIL8 , GraphicsContext3D::DEPTH_STENCIL  , FLOAT_32_UNSIGNED_INT_24_8_REV);
+    POSSIBLE_FORMAT_TYPE_CASE(Extensions3D::SRGB_EXT               , Extensions3D::SRGB_EXT            , UNSIGNED_BYTE                 );
+    POSSIBLE_FORMAT_TYPE_CASE(Extensions3D::SRGB_ALPHA_EXT         , Extensions3D::SRGB_ALPHA_EXT      , UNSIGNED_BYTE                 );
+    default:
+        return false;
+    }
+#undef POSSIBLE_FORMAT_TYPE_CASE
+
     return true;
 }
 
@@ -224,7 +329,7 @@ GC3Denum GraphicsContext3D::computeImageSizeInBytes(GC3Denum format, GC3Denum ty
     if (width < 0 || height < 0)
         return GraphicsContext3D::INVALID_VALUE;
     unsigned int bytesPerComponent, componentsPerPixel;
-    if (!computeFormatAndTypeParameters(format, type, &bytesPerComponent, &componentsPerPixel))
+    if (!computeFormatAndTypeParameters(format, type, &componentsPerPixel, &bytesPerComponent))
         return GraphicsContext3D::INVALID_ENUM;
     if (!width || !height) {
         *imageSizeInBytes = 0;
@@ -261,21 +366,21 @@ GraphicsContext3D::ImageExtractor::ImageExtractor(Image* image, ImageHtmlDomSour
     m_extractSucceeded = extractImage(premultiplyAlpha, ignoreGammaAndColorProfile);
 }
 
-bool GraphicsContext3D::packImageData( Image* image, const void* pixels, GC3Denum format, GC3Denum type, bool flipY, AlphaOp alphaOp, DataFormat sourceFormat, unsigned width, unsigned height, unsigned sourceUnpackAlignment, Vector<uint8_t>& data)
+bool GraphicsContext3D::packImageData(Image* image, const void* pixels, GC3Denum format, GC3Denum type, bool flipY, AlphaOp alphaOp, DataFormat sourceFormat, unsigned width, unsigned height, unsigned sourceUnpackAlignment, Vector<uint8_t>& data)
 {
-    if (!pixels)
+    if (!image || !pixels)
         return false;
 
     unsigned packedSize;
     // Output data is tightly packed (alignment == 1).
-    if (computeImageSizeInBytes(format, type, width, height, 1, &packedSize, 0) != GraphicsContext3D::NO_ERROR)
+    if (computeImageSizeInBytes(format, type, width, height, 1, &packedSize, nullptr) != GraphicsContext3D::NO_ERROR)
         return false;
     data.resize(packedSize);
 
     if (!packPixels(reinterpret_cast<const uint8_t*>(pixels), sourceFormat, width, height, sourceUnpackAlignment, format, type, alphaOp, data.data(), flipY))
         return false;
     if (ImageObserver* observer = image->imageObserver())
-        observer->didDraw(image);
+        observer->didDraw(*image);
     return true;
 }
 
@@ -288,7 +393,7 @@ bool GraphicsContext3D::extractImageData(ImageData* imageData, GC3Denum format, 
 
     unsigned int packedSize;
     // Output data is tightly packed (alignment == 1).
-    if (computeImageSizeInBytes(format, type, width, height, 1, &packedSize, 0) != GraphicsContext3D::NO_ERROR)
+    if (computeImageSizeInBytes(format, type, width, height, 1, &packedSize, nullptr) != GraphicsContext3D::NO_ERROR)
         return false;
     data.resize(packedSize);
 
@@ -361,6 +466,29 @@ bool GraphicsContext3D::packPixels(const uint8_t* sourceData, DataFormat sourceD
     int remainder = sourceUnpackAlignment ? (validSrc % sourceUnpackAlignment) : 0;
     int srcStride = remainder ? (validSrc + sourceUnpackAlignment - remainder) : validSrc;
 
+    // FIXME: Implement packing pixels to WebGL 2 formats
+    switch (destinationFormat) {
+    case GraphicsContext3D::RED:
+    case GraphicsContext3D::RED_INTEGER:
+    case GraphicsContext3D::RG:
+    case GraphicsContext3D::RG_INTEGER:
+    case GraphicsContext3D::RGB_INTEGER:
+    case GraphicsContext3D::RGBA_INTEGER:
+    case GraphicsContext3D::DEPTH_COMPONENT:
+    case GraphicsContext3D::DEPTH_STENCIL:
+        return false;
+    }
+    switch (destinationType) {
+    case GraphicsContext3D::BYTE:
+    case GraphicsContext3D::SHORT:
+    case GraphicsContext3D::INT:
+    case GraphicsContext3D::UNSIGNED_INT_2_10_10_10_REV:
+    case GraphicsContext3D::UNSIGNED_INT_10F_11F_11F_REV:
+    case GraphicsContext3D::UNSIGNED_INT_5_9_9_9_REV:
+    case GraphicsContext3D::UNSIGNED_INT_24_8:
+        return false;
+    }
+
     DataFormat dstDataFormat = getDataFormat(destinationFormat, destinationType);
     int dstStride = width * TexelBytesForFormat(dstDataFormat);
     if (flipY) {
@@ -424,24 +552,73 @@ unsigned GraphicsContext3D::getClearBitsByAttachmentType(GC3Denum attachment)
 unsigned GraphicsContext3D::getClearBitsByFormat(GC3Denum format)
 {
     switch (format) {
-    case GraphicsContext3D::ALPHA:
-    case GraphicsContext3D::LUMINANCE:
-    case GraphicsContext3D::LUMINANCE_ALPHA:
     case GraphicsContext3D::RGB:
-    case GraphicsContext3D::RGB565:
     case GraphicsContext3D::RGBA:
-    case GraphicsContext3D::RGBA4:
+    case GraphicsContext3D::LUMINANCE_ALPHA:
+    case GraphicsContext3D::LUMINANCE:
+    case GraphicsContext3D::ALPHA:
+    case GraphicsContext3D::R8:
+    case GraphicsContext3D::R8_SNORM:
+    case GraphicsContext3D::R16F:
+    case GraphicsContext3D::R32F:
+    case GraphicsContext3D::R8UI:
+    case GraphicsContext3D::R8I:
+    case GraphicsContext3D::R16UI:
+    case GraphicsContext3D::R16I:
+    case GraphicsContext3D::R32UI:
+    case GraphicsContext3D::R32I:
+    case GraphicsContext3D::RG8:
+    case GraphicsContext3D::RG8_SNORM:
+    case GraphicsContext3D::RG16F:
+    case GraphicsContext3D::RG32F:
+    case GraphicsContext3D::RG8UI:
+    case GraphicsContext3D::RG8I:
+    case GraphicsContext3D::RG16UI:
+    case GraphicsContext3D::RG16I:
+    case GraphicsContext3D::RG32UI:
+    case GraphicsContext3D::RG32I:
+    case GraphicsContext3D::RGB8:
+    case GraphicsContext3D::SRGB8:
+    case GraphicsContext3D::RGB565:
+    case GraphicsContext3D::RGB8_SNORM:
+    case GraphicsContext3D::R11F_G11F_B10F:
+    case GraphicsContext3D::RGB9_E5:
+    case GraphicsContext3D::RGB16F:
+    case GraphicsContext3D::RGB32F:
+    case GraphicsContext3D::RGB8UI:
+    case GraphicsContext3D::RGB8I:
+    case GraphicsContext3D::RGB16UI:
+    case GraphicsContext3D::RGB16I:
+    case GraphicsContext3D::RGB32UI:
+    case GraphicsContext3D::RGB32I:
+    case GraphicsContext3D::RGBA8:
+    case GraphicsContext3D::SRGB8_ALPHA8:
+    case GraphicsContext3D::RGBA8_SNORM:
     case GraphicsContext3D::RGB5_A1:
+    case GraphicsContext3D::RGBA4:
+    case GraphicsContext3D::RGB10_A2:
+    case GraphicsContext3D::RGBA16F:
+    case GraphicsContext3D::RGBA32F:
+    case GraphicsContext3D::RGBA8UI:
+    case GraphicsContext3D::RGBA8I:
+    case GraphicsContext3D::RGB10_A2UI:
+    case GraphicsContext3D::RGBA16UI:
+    case GraphicsContext3D::RGBA16I:
+    case GraphicsContext3D::RGBA32I:
+    case GraphicsContext3D::RGBA32UI:
     case Extensions3D::SRGB_EXT:
     case Extensions3D::SRGB_ALPHA_EXT:
-    case Extensions3D::SRGB8_ALPHA8_EXT:
         return GraphicsContext3D::COLOR_BUFFER_BIT;
     case GraphicsContext3D::DEPTH_COMPONENT16:
+    case GraphicsContext3D::DEPTH_COMPONENT24:
+    case GraphicsContext3D::DEPTH_COMPONENT32F:
     case GraphicsContext3D::DEPTH_COMPONENT:
         return GraphicsContext3D::DEPTH_BUFFER_BIT;
     case GraphicsContext3D::STENCIL_INDEX8:
         return GraphicsContext3D::STENCIL_BUFFER_BIT;
     case GraphicsContext3D::DEPTH_STENCIL:
+    case GraphicsContext3D::DEPTH24_STENCIL8:
+    case GraphicsContext3D::DEPTH32F_STENCIL8:
         return GraphicsContext3D::DEPTH_BUFFER_BIT | GraphicsContext3D::STENCIL_BUFFER_BIT;
     default:
         return 0;
@@ -477,6 +654,18 @@ unsigned GraphicsContext3D::getChannelBitsByFormat(GC3Denum format)
         return 0;
     }
 }
+
+#if !PLATFORM(MAC)
+void GraphicsContext3D::setContextVisibility(bool)
+{
+}
+#endif
+
+#if !PLATFORM(COCOA)
+void GraphicsContext3D::simulateContextChanged()
+{
+}
+#endif
 
 } // namespace WebCore
 

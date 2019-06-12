@@ -32,6 +32,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 
 namespace WebKit {
 namespace NetworkCache {
@@ -64,15 +65,20 @@ IOChannel::IOChannel(const String& filePath, Type type)
     }
 }
 
+IOChannel::~IOChannel()
+{
+    RELEASE_ASSERT(!m_wasDeleted.exchange(true));
+}
+
 Ref<IOChannel> IOChannel::open(const String& filePath, IOChannel::Type type)
 {
     return adoptRef(*new IOChannel(filePath, type));
 }
 
-static inline void runTaskInQueue(std::function<void ()> task, WorkQueue* queue)
+static inline void runTaskInQueue(Function<void ()>&& task, WorkQueue* queue)
 {
     if (queue) {
-        queue->dispatch(task);
+        queue->dispatch(WTFMove(task));
         return;
     }
 
@@ -104,7 +110,7 @@ struct ReadAsyncData {
     GRefPtr<SoupBuffer> buffer;
     RefPtr<WorkQueue> queue;
     size_t bytesToRead;
-    std::function<void (Data&, int error)> completionHandler;
+    Function<void (Data&, int error)> completionHandler;
     Data data;
 };
 
@@ -114,9 +120,7 @@ static void inputStreamReadReadyCallback(GInputStream* stream, GAsyncResult* res
     gssize bytesRead = g_input_stream_read_finish(stream, result, nullptr);
     if (bytesRead == -1) {
         WorkQueue* queue = asyncData->queue.get();
-        auto* asyncDataPtr = asyncData.release();
-        runTaskInQueue([asyncDataPtr] {
-            std::unique_ptr<ReadAsyncData> asyncData(asyncDataPtr);
+        runTaskInQueue([asyncData = WTFMove(asyncData)] {
             asyncData->completionHandler(asyncData->data, -1);
         }, queue);
         return;
@@ -124,9 +128,7 @@ static void inputStreamReadReadyCallback(GInputStream* stream, GAsyncResult* res
 
     if (!bytesRead) {
         WorkQueue* queue = asyncData->queue.get();
-        auto* asyncDataPtr = asyncData.release();
-        runTaskInQueue([asyncDataPtr] {
-            std::unique_ptr<ReadAsyncData> asyncData(asyncDataPtr);
+        runTaskInQueue([asyncData = WTFMove(asyncData)] {
             asyncData->completionHandler(asyncData->data, 0);
         }, queue);
         return;
@@ -138,9 +140,7 @@ static void inputStreamReadReadyCallback(GInputStream* stream, GAsyncResult* res
     size_t pendingBytesToRead = asyncData->bytesToRead - asyncData->data.size();
     if (!pendingBytesToRead) {
         WorkQueue* queue = asyncData->queue.get();
-        auto* asyncDataPtr = asyncData.release();
-        runTaskInQueue([asyncDataPtr] {
-            std::unique_ptr<ReadAsyncData> asyncData(asyncDataPtr);
+        runTaskInQueue([asyncData = WTFMove(asyncData)] {
             asyncData->completionHandler(asyncData->data, 0);
         }, queue);
         return;
@@ -149,42 +149,42 @@ static void inputStreamReadReadyCallback(GInputStream* stream, GAsyncResult* res
     size_t bytesToRead = std::min(pendingBytesToRead, asyncData->buffer->length);
     // Use a local variable for the data buffer to pass it to g_input_stream_read_async(), because ReadAsyncData is released.
     auto data = const_cast<char*>(asyncData->buffer->data);
-    g_input_stream_read_async(stream, data, bytesToRead, G_PRIORITY_DEFAULT, nullptr,
+    g_input_stream_read_async(stream, data, bytesToRead, RunLoopSourcePriority::DiskCacheRead, nullptr,
         reinterpret_cast<GAsyncReadyCallback>(inputStreamReadReadyCallback), asyncData.release());
 }
 
-void IOChannel::read(size_t offset, size_t size, WorkQueue* queue, std::function<void (Data&, int error)> completionHandler)
+void IOChannel::read(size_t offset, size_t size, WorkQueue* queue, Function<void (Data&, int error)>&& completionHandler)
 {
     RefPtr<IOChannel> channel(this);
     if (!m_inputStream) {
-        runTaskInQueue([channel, completionHandler] {
+        runTaskInQueue([channel, completionHandler = WTFMove(completionHandler)] {
             Data data;
             completionHandler(data, -1);
         }, queue);
         return;
     }
 
-    if (!isMainThread()) {
-        readSyncInThread(offset, size, queue, completionHandler);
+    if (!RunLoop::isMain()) {
+        readSyncInThread(offset, size, queue, WTFMove(completionHandler));
         return;
     }
 
     size_t bufferSize = std::min(size, gDefaultReadBufferSize);
     uint8_t* bufferData = static_cast<uint8_t*>(fastMalloc(bufferSize));
     GRefPtr<SoupBuffer> buffer = adoptGRef(soup_buffer_new_with_owner(bufferData, bufferSize, bufferData, fastFree));
-    ReadAsyncData* asyncData = new ReadAsyncData { this, buffer.get(), queue, size, completionHandler, { } };
+    ReadAsyncData* asyncData = new ReadAsyncData { this, buffer.get(), queue, size, WTFMove(completionHandler), { } };
 
     // FIXME: implement offset.
-    g_input_stream_read_async(m_inputStream.get(), const_cast<char*>(buffer->data), bufferSize, G_PRIORITY_DEFAULT, nullptr,
+    g_input_stream_read_async(m_inputStream.get(), const_cast<char*>(buffer->data), bufferSize, RunLoopSourcePriority::DiskCacheRead, nullptr,
         reinterpret_cast<GAsyncReadyCallback>(inputStreamReadReadyCallback), asyncData);
 }
 
-void IOChannel::readSyncInThread(size_t offset, size_t size, WorkQueue* queue, std::function<void (Data&, int error)> completionHandler)
+void IOChannel::readSyncInThread(size_t offset, size_t size, WorkQueue* queue, Function<void (Data&, int error)>&& completionHandler)
 {
-    ASSERT(!isMainThread());
+    ASSERT(!RunLoop::isMain());
 
     RefPtr<IOChannel> channel(this);
-    createThread("IOChannel::readSync", [channel, size, queue, completionHandler] {
+    Thread::create("IOChannel::readSync", [channel, size, queue, completionHandler = WTFMove(completionHandler)] () mutable {
         size_t bufferSize = std::min(size, gDefaultReadBufferSize);
         uint8_t* bufferData = static_cast<uint8_t*>(fastMalloc(bufferSize));
         GRefPtr<SoupBuffer> readBuffer = adoptGRef(soup_buffer_new_with_owner(bufferData, bufferSize, bufferData, fastFree));
@@ -195,7 +195,7 @@ void IOChannel::readSyncInThread(size_t offset, size_t size, WorkQueue* queue, s
             // FIXME: implement offset.
             gssize bytesRead = g_input_stream_read(channel->m_inputStream.get(), const_cast<char*>(readBuffer->data), bytesToRead, nullptr, nullptr);
             if (bytesRead == -1) {
-                runTaskInQueue([channel, completionHandler] {
+                runTaskInQueue([channel, completionHandler = WTFMove(completionHandler)] {
                     Data data;
                     completionHandler(data, -1);
                 }, queue);
@@ -213,19 +213,19 @@ void IOChannel::readSyncInThread(size_t offset, size_t size, WorkQueue* queue, s
         } while (pendingBytesToRead);
 
         GRefPtr<SoupBuffer> bufferCapture = data.soupBuffer();
-        runTaskInQueue([channel, bufferCapture, completionHandler] {
+        runTaskInQueue([channel, bufferCapture, completionHandler = WTFMove(completionHandler)] {
             GRefPtr<SoupBuffer> buffer = bufferCapture;
             Data data = { WTFMove(buffer) };
             completionHandler(data, 0);
         }, queue);
-    });
+    })->detach();
 }
 
 struct WriteAsyncData {
     RefPtr<IOChannel> channel;
     GRefPtr<SoupBuffer> buffer;
     RefPtr<WorkQueue> queue;
-    std::function<void (int error)> completionHandler;
+    Function<void (int error)> completionHandler;
 };
 
 static void outputStreamWriteReadyCallback(GOutputStream* stream, GAsyncResult* result, gpointer userData)
@@ -234,9 +234,7 @@ static void outputStreamWriteReadyCallback(GOutputStream* stream, GAsyncResult* 
     gssize bytesWritten = g_output_stream_write_finish(stream, result, nullptr);
     if (bytesWritten == -1) {
         WorkQueue* queue = asyncData->queue.get();
-        auto* asyncDataPtr = asyncData.release();
-        runTaskInQueue([asyncDataPtr] {
-            std::unique_ptr<WriteAsyncData> asyncData(asyncDataPtr);
+        runTaskInQueue([asyncData = WTFMove(asyncData)] {
             asyncData->completionHandler(-1);
         }, queue);
         return;
@@ -245,9 +243,7 @@ static void outputStreamWriteReadyCallback(GOutputStream* stream, GAsyncResult* 
     gssize pendingBytesToWrite = asyncData->buffer->length - bytesWritten;
     if (!pendingBytesToWrite) {
         WorkQueue* queue = asyncData->queue.get();
-        auto* asyncDataPtr = asyncData.release();
-        runTaskInQueue([asyncDataPtr] {
-            std::unique_ptr<WriteAsyncData> asyncData(asyncDataPtr);
+        runTaskInQueue([asyncData = WTFMove(asyncData)] {
             asyncData->completionHandler(0);
         }, queue);
         return;
@@ -256,15 +252,15 @@ static void outputStreamWriteReadyCallback(GOutputStream* stream, GAsyncResult* 
     asyncData->buffer = adoptGRef(soup_buffer_new_subbuffer(asyncData->buffer.get(), bytesWritten, pendingBytesToWrite));
     // Use a local variable for the data buffer to pass it to g_output_stream_write_async(), because WriteAsyncData is released.
     auto data = asyncData->buffer->data;
-    g_output_stream_write_async(stream, data, pendingBytesToWrite, G_PRIORITY_DEFAULT_IDLE, nullptr,
+    g_output_stream_write_async(stream, data, pendingBytesToWrite, RunLoopSourcePriority::DiskCacheWrite, nullptr,
         reinterpret_cast<GAsyncReadyCallback>(outputStreamWriteReadyCallback), asyncData.release());
 }
 
-void IOChannel::write(size_t offset, const Data& data, WorkQueue* queue, std::function<void (int error)> completionHandler)
+void IOChannel::write(size_t offset, const Data& data, WorkQueue* queue, Function<void (int error)>&& completionHandler)
 {
     RefPtr<IOChannel> channel(this);
     if (!m_outputStream && !m_ioStream) {
-        runTaskInQueue([channel, completionHandler] {
+        runTaskInQueue([channel, completionHandler = WTFMove(completionHandler)] {
             completionHandler(-1);
         }, queue);
         return;
@@ -272,15 +268,15 @@ void IOChannel::write(size_t offset, const Data& data, WorkQueue* queue, std::fu
 
     GOutputStream* stream = m_outputStream ? m_outputStream.get() : g_io_stream_get_output_stream(G_IO_STREAM(m_ioStream.get()));
     if (!stream) {
-        runTaskInQueue([channel, completionHandler] {
+        runTaskInQueue([channel, completionHandler = WTFMove(completionHandler)] {
             completionHandler(-1);
         }, queue);
         return;
     }
 
-    WriteAsyncData* asyncData = new WriteAsyncData { this, data.soupBuffer(), queue, completionHandler };
+    WriteAsyncData* asyncData = new WriteAsyncData { this, data.soupBuffer(), queue, WTFMove(completionHandler) };
     // FIXME: implement offset.
-    g_output_stream_write_async(stream, asyncData->buffer->data, data.size(), G_PRIORITY_DEFAULT_IDLE, nullptr,
+    g_output_stream_write_async(stream, asyncData->buffer->data, data.size(), RunLoopSourcePriority::DiskCacheWrite, nullptr,
         reinterpret_cast<GAsyncReadyCallback>(outputStreamWriteReadyCallback), asyncData);
 }
 

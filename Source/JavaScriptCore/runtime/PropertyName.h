@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PropertyName_h
-#define PropertyName_h
+#pragma once
 
 #include "Identifier.h"
 #include "PrivateName.h"
@@ -45,7 +44,7 @@ public:
     }
 
     PropertyName(const PrivateName& propertyName)
-        : m_impl(propertyName.uid())
+        : m_impl(&propertyName.uid())
     {
         ASSERT(m_impl);
         ASSERT(m_impl->isSymbol());
@@ -53,7 +52,7 @@ public:
 
     bool isNull() const { return !m_impl; }
 
-    bool isSymbol()
+    bool isSymbol() const
     {
         return m_impl && m_impl->isSymbol();
     }
@@ -115,16 +114,14 @@ inline bool operator!=(PropertyName a, PropertyName b)
     return a.uid() != b.uid();
 }
 
-ALWAYS_INLINE Optional<uint32_t> parseIndex(PropertyName propertyName)
+ALWAYS_INLINE std::optional<uint32_t> parseIndex(PropertyName propertyName)
 {
     auto uid = propertyName.uid();
     if (!uid)
-        return Nullopt;
+        return std::nullopt;
     if (uid->isSymbol())
-        return Nullopt;
+        return std::nullopt;
     return parseIndex(*uid);
 }
 
-}
-
-#endif
+} // namespace JSC

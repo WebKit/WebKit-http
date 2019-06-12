@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StructureIDTable_h
-#define StructureIDTable_h
+#pragma once
 
 #include "UnusedPointer.h"
 #include <wtf/Vector.h>
@@ -35,8 +34,48 @@ class Structure;
 
 #if USE(JSVALUE64)
 typedef uint32_t StructureID;
+
+inline StructureID nukedStructureIDBit()
+{
+    return 0x80000000u;
+}
+
+inline StructureID nuke(StructureID id)
+{
+    return id | nukedStructureIDBit();
+}
+
+inline bool isNuked(StructureID id)
+{
+    return !!(id & nukedStructureIDBit());
+}
+
+inline StructureID decontaminate(StructureID id)
+{
+    return id & ~nukedStructureIDBit();
+}
 #else
 typedef Structure* StructureID;
+
+inline StructureID nukedStructureIDBit()
+{
+    return bitwise_cast<StructureID>(static_cast<uintptr_t>(1));
+}
+
+inline StructureID nuke(StructureID id)
+{
+    return bitwise_cast<StructureID>(bitwise_cast<uintptr_t>(id) | bitwise_cast<uintptr_t>(nukedStructureIDBit()));
+}
+
+inline bool isNuked(StructureID id)
+{
+    return !!(bitwise_cast<uintptr_t>(id) & bitwise_cast<uintptr_t>(nukedStructureIDBit()));
+}
+
+inline StructureID decontaminate(StructureID id)
+{
+    return bitwise_cast<StructureID>(bitwise_cast<uintptr_t>(id) & ~bitwise_cast<uintptr_t>(nukedStructureIDBit()));
+}
 #endif
 
 class StructureIDTable {
@@ -51,6 +90,8 @@ public:
     StructureID allocateID(Structure*);
 
     void flushOldTables();
+    
+    size_t size() const { return m_size; }
 
 private:
     void resize(size_t newCapacity);
@@ -82,7 +123,9 @@ private:
 inline Structure* StructureIDTable::get(StructureID structureID)
 {
 #if USE(JSVALUE64)
-    ASSERT_WITH_SECURITY_IMPLICATION(structureID && structureID < m_capacity);
+    ASSERT_WITH_SECURITY_IMPLICATION(structureID);
+    ASSERT_WITH_SECURITY_IMPLICATION(!isNuked(structureID));
+    ASSERT_WITH_SECURITY_IMPLICATION(structureID < m_capacity);
     return table()[structureID].structure;
 #else
     return structureID;
@@ -90,5 +133,3 @@ inline Structure* StructureIDTable::get(StructureID structureID)
 }
 
 } // namespace JSC
-
-#endif // StructureIDTable_h

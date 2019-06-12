@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef InsertTextCommand_h
-#define InsertTextCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -54,22 +53,22 @@ public:
         return adoptRef(*new InsertTextCommand(document, text, selectInsertedText, rebalanceType, editingAction));
     }
 
-    static Ref<InsertTextCommand> createWithMarkerSupplier(Document& document, const String& text, PassRefPtr<TextInsertionMarkerSupplier> markerSupplier, EditAction editingAction = EditActionInsert)
+    static Ref<InsertTextCommand> createWithMarkerSupplier(Document& document, const String& text, Ref<TextInsertionMarkerSupplier>&& markerSupplier, EditAction editingAction = EditActionInsert)
     {
-        return adoptRef(*new InsertTextCommand(document, text, markerSupplier, editingAction));
+        return adoptRef(*new InsertTextCommand(document, text, WTFMove(markerSupplier), editingAction));
     }
 
 protected:
-    InsertTextCommand(Document&, const String& text, PassRefPtr<TextInsertionMarkerSupplier>, EditAction);
+    InsertTextCommand(Document&, const String& text, Ref<TextInsertionMarkerSupplier>&&, EditAction);
     InsertTextCommand(Document&, const String& text, bool selectInsertedText, RebalanceType, EditAction);
 
 private:
 
     void deleteCharacter();
 
-    virtual void doApply() override;
+    void doApply() override;
 
-    virtual bool isInsertTextCommand() const override { return true; }
+    bool isInsertTextCommand() const override { return true; }
 
     Position positionInsideTextNode(const Position&);
     Position insertTab(const Position&);
@@ -87,5 +86,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // InsertTextCommand_h

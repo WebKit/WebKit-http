@@ -33,8 +33,15 @@
 #include "IOSurfaceSPI.h"
 #endif
 
+#if PLATFORM(MAC)
+#include <ColorSync/ColorSync.h>
+#endif
+
 #if USE(APPLE_INTERNAL_SDK)
 
+#if PLATFORM(MAC)
+#include <ColorSync/ColorSyncPriv.h>
+#endif
 #include <CoreGraphics/CGFontCache.h>
 #include <CoreGraphics/CoreGraphicsPrivate.h>
 
@@ -67,6 +74,19 @@ struct CGFontDescriptor {
 typedef const struct CGColorTransform* CGColorTransformRef;
 
 typedef enum {
+    kCGContextTypeUnknown,
+    kCGContextTypePDF,
+    kCGContextTypePostScript,
+    kCGContextTypeWindow,
+    kCGContextTypeBitmap,
+    kCGContextTypeGL,
+    kCGContextTypeDisplayList,
+    kCGContextTypeKSeparation,
+    kCGContextTypeIOSurface,
+    kCGContextTypeCount
+} CGContextType;
+
+typedef enum {
     kCGCompositeCopy = 1,
     kCGCompositeSover = 2,
 } CGCompositeOperation;
@@ -84,7 +104,7 @@ typedef uint32_t CGFontRenderingStyle;
 enum {
     kCGFontAntialiasingStyleUnfiltered = 0 << 7,
     kCGFontAntialiasingStyleFilterLight = 1 << 7,
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+#if PLATFORM(MAC)
     kCGFontAntialiasingStyleUnfilteredCustomDilation = (8 << 7),
 #endif
 };
@@ -143,15 +163,13 @@ CGCompositeOperation CGContextGetCompositeOperation(CGContextRef);
 CGColorRef CGContextGetFillColorAsColor(CGContextRef);
 CGFloat CGContextGetLineWidth(CGContextRef);
 bool CGContextGetShouldSmoothFonts(CGContextRef);
+bool CGContextGetShouldAntialias(CGContextRef);
 void CGContextSetBaseCTM(CGContextRef, CGAffineTransform);
 void CGContextSetCTM(CGContextRef, CGAffineTransform);
 void CGContextSetCompositeOperation(CGContextRef, CGCompositeOperation);
 void CGContextSetShouldAntialiasFonts(CGContextRef, bool shouldAntialiasFonts);
 void CGContextResetClip(CGContextRef);
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
-void CGContextSetFontDilation(CGContextRef, CGSize);
-void CGContextSetFontRenderingStyle(CGContextRef, CGFontRenderingStyle);
-#endif
+CGContextType CGContextGetType(CGContextRef);
 
 CFStringRef CGFontCopyFamilyName(CGFontRef);
 bool CGFontGetDescriptor(CGFontRef, CGFontDescriptor*);
@@ -170,16 +188,24 @@ CGDataProviderRef CGPDFDocumentGetDataProvider(CGPDFDocumentRef);
 CGFontAntialiasingStyle CGContextGetFontAntialiasingStyle(CGContextRef);
 void CGContextSetFontAntialiasingStyle(CGContextRef, CGFontAntialiasingStyle);
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS)
+typedef struct CGPDFAnnotation *CGPDFAnnotationRef;
+typedef bool (^CGPDFAnnotationDrawCallbackType)(CGContextRef context, CGPDFPageRef page, CGPDFAnnotationRef annotation);
+void CGContextDrawPDFPageWithAnnotations(CGContextRef, CGPDFPageRef, CGPDFAnnotationDrawCallbackType);
+#endif
+
 #if USE(IOSURFACE)
 CGContextRef CGIOSurfaceContextCreate(IOSurfaceRef, size_t, size_t, size_t, size_t, CGColorSpaceRef, CGBitmapInfo);
 CGImageRef CGIOSurfaceContextCreateImage(CGContextRef);
 CGImageRef CGIOSurfaceContextCreateImageReference(CGContextRef);
+CGColorSpaceRef CGIOSurfaceContextGetColorSpace(CGContextRef);
 #endif
 
 #if PLATFORM(COCOA)
 CGSRegionEnumeratorObj CGSRegionEnumerator(CGRegionRef);
 CGRect* CGSNextRect(const CGSRegionEnumeratorObj);
 CGError CGSReleaseRegionEnumerator(const CGSRegionEnumeratorObj);
+CGColorSpaceRef CGContextCopyDeviceColorSpace(CGContextRef);
 #endif
 
 #if PLATFORM(WIN)
@@ -194,6 +220,8 @@ CFArrayRef CGSHWCaptureWindowList(CGSConnectionID cid, CGSWindowIDList windowLis
 CGError CGSSetConnectionProperty(CGSConnectionID, CGSConnectionID ownerCid, CFStringRef key, CFTypeRef value);
 CGError CGSCopyConnectionProperty(CGSConnectionID, CGSConnectionID ownerCid, CFStringRef key, CFTypeRef *value);
 CGError CGSGetScreenRectForWindow(CGSConnectionID, CGSWindowID, CGRect *);
+
+bool ColorSyncProfileIsWideGamut(ColorSyncProfileRef);
 #endif
 
 WTF_EXTERN_C_END

@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLPreloadScanner_h
-#define HTMLPreloadScanner_h
+#pragma once
 
 #include "CSSPreloadScanner.h"
 #include "HTMLTokenizer.h"
@@ -47,7 +46,6 @@ public:
 private:
     enum class TagId {
         // These tags are scanned by the StartTagScanner.
-        Iframe,
         Img,
         Input,
         Link,
@@ -80,9 +78,7 @@ private:
     
     Vector<bool> m_pictureSourceState;
 
-#if ENABLE(TEMPLATE_ELEMENT)
     unsigned m_templateCount { 0 };
-#endif
 };
 
 class HTMLPreloadScanner {
@@ -101,6 +97,4 @@ private:
 
 WEBCORE_EXPORT bool testPreloadScannerViewportSupport(Document*);
 
-}
-
-#endif
+} // namespace WebCore

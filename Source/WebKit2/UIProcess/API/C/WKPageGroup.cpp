@@ -26,10 +26,15 @@
 #include "config.h"
 #include "WKPageGroup.h"
 
-#include "APIUserContentExtension.h"
+#include "APIArray.h"
+#include "APIContentRuleList.h"
+#include "APIUserContentWorld.h"
+#include "APIUserScript.h"
+#include "APIUserStyleSheet.h"
 #include "WKAPICast.h"
 #include "WebPageGroup.h"
 #include "WebPreferences.h"
+#include "WebUserContentControllerProxy.h"
 
 using namespace WebKit;
 
@@ -40,13 +45,8 @@ WKTypeID WKPageGroupGetTypeID()
 
 WKPageGroupRef WKPageGroupCreateWithIdentifier(WKStringRef identifier)
 {
-    RefPtr<WebPageGroup> pageGroup = WebPageGroup::create(toWTFString(identifier));
-    return toAPI(pageGroup.release().leakRef());
-}
-
-WKStringRef WKPageGroupCopyIdentifier(WKPageGroupRef pageGroupRef)
-{
-    return toCopiedAPI(toImpl(pageGroupRef)->identifier());
+    auto pageGroup = WebPageGroup::create(toWTFString(identifier));
+    return toAPI(&pageGroup.leakRef());
 }
 
 void WKPageGroupSetPreferences(WKPageGroupRef pageGroupRef, WKPreferencesRef preferencesRef)
@@ -59,52 +59,49 @@ WKPreferencesRef WKPageGroupGetPreferences(WKPageGroupRef pageGroupRef)
     return toAPI(&toImpl(pageGroupRef)->preferences());
 }
 
-void WKPageGroupAddUserStyleSheet(WKPageGroupRef pageGroupRef, WKStringRef sourceRef, WKURLRef baseURL, WKArrayRef whitelistedURLPatterns, WKArrayRef blacklistedURLPatterns, WKUserContentInjectedFrames injectedFrames)
+WKUserContentControllerRef WKPageGroupGetUserContentController(WKPageGroupRef pageGroupRef)
 {
-    toImpl(pageGroupRef)->addUserStyleSheet(toWTFString(sourceRef), toWTFString(baseURL), toImpl(whitelistedURLPatterns), toImpl(blacklistedURLPatterns), toUserContentInjectedFrames(injectedFrames), WebCore::UserStyleUserLevel);
+    return toAPI(&toImpl(pageGroupRef)->userContentController());
 }
 
-void WKPageGroupRemoveAllUserStyleSheets(WKPageGroupRef pageGroupRef)
+void WKPageGroupAddUserStyleSheet(WKPageGroupRef pageGroupRef, WKStringRef sourceRef, WKURLRef baseURLRef, WKArrayRef whitelistedURLPatterns, WKArrayRef blacklistedURLPatterns, WKUserContentInjectedFrames injectedFrames)
 {
-    toImpl(pageGroupRef)->removeAllUserStyleSheets();
+    auto source = toWTFString(sourceRef);
+
+    if (source.isEmpty())
+        return;
+
+    auto baseURLString = toWTFString(baseURLRef);
+    auto whitelist = toImpl(whitelistedURLPatterns);
+    auto blacklist = toImpl(blacklistedURLPatterns);
+
+    Ref<API::UserStyleSheet> userStyleSheet = API::UserStyleSheet::create(WebCore::UserStyleSheet { source, (baseURLString.isEmpty() ? WebCore::blankURL() : WebCore::URL(WebCore::URL(), baseURLString)), whitelist ? whitelist->toStringVector() : Vector<String>(), blacklist ? blacklist->toStringVector() : Vector<String>(), toUserContentInjectedFrames(injectedFrames), WebCore::UserStyleUserLevel }, API::UserContentWorld::normalWorld());
+
+    toImpl(pageGroupRef)->userContentController().addUserStyleSheet(userStyleSheet.get());
 }
 
-void WKPageGroupAddUserScript(WKPageGroupRef pageGroupRef, WKStringRef sourceRef, WKURLRef baseURL, WKArrayRef whitelistedURLPatterns, WKArrayRef blacklistedURLPatterns, WKUserContentInjectedFrames injectedFrames, _WKUserScriptInjectionTime injectionTime)
+void WKPageGroupRemoveAllUserStyleSheets(WKPageGroupRef pageGroup)
 {
-    toImpl(pageGroupRef)->addUserScript(toWTFString(sourceRef), toWTFString(baseURL), toImpl(whitelistedURLPatterns), toImpl(blacklistedURLPatterns), toUserContentInjectedFrames(injectedFrames), toUserScriptInjectionTime(injectionTime));
+    toImpl(pageGroup)->userContentController().removeAllUserStyleSheets();
+}
+
+void WKPageGroupAddUserScript(WKPageGroupRef pageGroupRef, WKStringRef sourceRef, WKURLRef baseURLRef, WKArrayRef whitelistedURLPatterns, WKArrayRef blacklistedURLPatterns, WKUserContentInjectedFrames injectedFrames, _WKUserScriptInjectionTime injectionTime)
+{
+    auto source = toWTFString(sourceRef);
+
+    if (source.isEmpty())
+        return;
+
+    auto baseURLString = toWTFString(baseURLRef);
+    auto whitelist = toImpl(whitelistedURLPatterns);
+    auto blacklist = toImpl(blacklistedURLPatterns);
+    
+    auto url = baseURLString.isEmpty() ? WebCore::blankURL() : WebCore::URL(WebCore::URL(), baseURLString);
+    Ref<API::UserScript> userScript = API::UserScript::create(WebCore::UserScript { WTFMove(source), WTFMove(url), whitelist ? whitelist->toStringVector() : Vector<String>(), blacklist ? blacklist->toStringVector() : Vector<String>(), toUserScriptInjectionTime(injectionTime), toUserContentInjectedFrames(injectedFrames) }, API::UserContentWorld::normalWorld());
+    toImpl(pageGroupRef)->userContentController().addUserScript(userScript.get());
 }
 
 void WKPageGroupRemoveAllUserScripts(WKPageGroupRef pageGroupRef)
 {
-    toImpl(pageGroupRef)->removeAllUserScripts();
-}
-
-void WKPageGroupAddUserContentFilter(WKPageGroupRef pageGroupRef, WKUserContentFilterRef userContentFilterRef)
-{
-#if ENABLE(CONTENT_EXTENSIONS)
-    toImpl(pageGroupRef)->addUserContentExtension(*toImpl(userContentFilterRef));
-#else
-    UNUSED_PARAM(pageGroupRef);
-    UNUSED_PARAM(userContentFilterRef);
-#endif
-}
-
-void WKPageGroupRemoveUserContentFilter(WKPageGroupRef pageGroupRef, WKStringRef userContentFilterNameRef)
-{
-#if ENABLE(CONTENT_EXTENSIONS)
-    toImpl(pageGroupRef)->removeUserContentExtension(toWTFString(userContentFilterNameRef));
-#else
-    UNUSED_PARAM(pageGroupRef);
-    UNUSED_PARAM(userContentFilterNameRef);
-#endif
-}
-
-
-void WKPageGroupRemoveAllUserContentFilters(WKPageGroupRef pageGroupRef)
-{
-#if ENABLE(CONTENT_EXTENSIONS)
-    toImpl(pageGroupRef)->removeAllUserContentExtensions();
-#else
-    UNUSED_PARAM(pageGroupRef);
-#endif
+    toImpl(pageGroupRef)->userContentController().removeAllUserScripts();
 }

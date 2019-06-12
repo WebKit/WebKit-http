@@ -37,7 +37,6 @@
 #include "MIMEHeader.h"
 #include "MIMETypeRegistry.h"
 #include "QuotedPrintable.h"
-#include <wtf/HashMap.h>
 #include <wtf/text/Base64.h>
 
 namespace WebCore {
@@ -57,28 +56,27 @@ MHTMLParser::MHTMLParser(SharedBuffer* data)
 {
 }
 
-PassRefPtr<MHTMLArchive> MHTMLParser::parseArchive()
+RefPtr<MHTMLArchive> MHTMLParser::parseArchive()
 {
-    RefPtr<MIMEHeader> header = MIMEHeader::parseHeader(&m_lineReader);
-    return parseArchiveWithHeader(header.get());
+    return parseArchiveWithHeader(MIMEHeader::parseHeader(m_lineReader).get());
 }
 
-PassRefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
+RefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
 {
     if (!header) {
         LOG_ERROR("Failed to parse MHTML part: no header.");
         return nullptr;
     }
 
-    RefPtr<MHTMLArchive> archive = MHTMLArchive::create();
+    auto archive = MHTMLArchive::create();
     if (!header->isMultipart()) {
         // With IE a page with no resource is not multi-part.
         bool endOfArchiveReached = false;
         RefPtr<ArchiveResource> resource = parseNextPart(*header, String(), String(), endOfArchiveReached);
         if (!resource)
             return nullptr;
-        archive->setMainResource(resource);
-        return archive;
+        archive->setMainResource(resource.releaseNonNull());
+        return WTFMove(archive);
     }
 
     // Skip the message content (it's a generic browser specific message).
@@ -86,7 +84,7 @@ PassRefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
 
     bool endOfArchive = false;
     while (!endOfArchive) {
-        RefPtr<MIMEHeader> resourceHeader = MIMEHeader::parseHeader(&m_lineReader);
+        RefPtr<MIMEHeader> resourceHeader = MIMEHeader::parseHeader(m_lineReader);
         if (!resourceHeader) {
             LOG_ERROR("Failed to parse MHTML, invalid MIME header.");
             return nullptr;
@@ -102,8 +100,8 @@ PassRefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
             ASSERT_UNUSED(endOfPartReached, endOfPartReached);
             // The top-frame is the first frame found, regardless of the nesting level.
             if (subframeArchive->mainResource())
-                addResourceToArchive(subframeArchive->mainResource(), archive.get());
-            archive->addSubframeArchive(subframeArchive);
+                addResourceToArchive(subframeArchive->mainResource(), archive.ptr());
+            archive->addSubframeArchive(subframeArchive.releaseNonNull());
             continue;
         }
 
@@ -112,10 +110,10 @@ PassRefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
             LOG_ERROR("Failed to parse MHTML part.");
             return nullptr;
         }
-        addResourceToArchive(resource.get(), archive.get());
+        addResourceToArchive(resource.get(), archive.ptr());
     }
 
-    return archive.release();
+    return WTFMove(archive);
 }
 
 void MHTMLParser::addResourceToArchive(ArchiveResource* resource, MHTMLArchive* archive)
@@ -128,17 +126,17 @@ void MHTMLParser::addResourceToArchive(ArchiveResource* resource, MHTMLArchive* 
 
     // The first document suitable resource is the main frame.
     if (!archive->mainResource()) {
-        archive->setMainResource(resource);
+        archive->setMainResource(*resource);
         m_frames.append(archive);
         return;
     }
 
     RefPtr<MHTMLArchive> subframe = MHTMLArchive::create();
-    subframe->setMainResource(resource);
+    subframe->setMainResource(*resource);
     m_frames.append(subframe);
 }
 
-PassRefPtr<ArchiveResource> MHTMLParser::parseNextPart(const MIMEHeader& mimeHeader, const String& endOfPartBoundary, const String& endOfDocumentBoundary, bool& endOfArchiveReached)
+RefPtr<ArchiveResource> MHTMLParser::parseNextPart(const MIMEHeader& mimeHeader, const String& endOfPartBoundary, const String& endOfDocumentBoundary, bool& endOfArchiveReached)
 {
     ASSERT(endOfPartBoundary.isEmpty() == endOfDocumentBoundary.isEmpty());
 
@@ -156,7 +154,7 @@ PassRefPtr<ArchiveResource> MHTMLParser::parseNextPart(const MIMEHeader& mimeHea
             LOG_ERROR("Binary contents requires end of part");
             return nullptr;
         }
-        content->append(part);
+        content->append(WTFMove(part));
         m_lineReader.setSeparator("\r\n");
         Vector<char> nextChars;
         if (m_lineReader.peek(nextChars, 2) != 2) {
@@ -213,12 +211,12 @@ PassRefPtr<ArchiveResource> MHTMLParser::parseNextPart(const MIMEHeader& mimeHea
         LOG_ERROR("Invalid encoding for MHTML part.");
         return nullptr;
     }
-    RefPtr<SharedBuffer> contentBuffer = SharedBuffer::adoptVector(data);
+    RefPtr<SharedBuffer> contentBuffer = SharedBuffer::create(WTFMove(data));
     // FIXME: the URL in the MIME header could be relative, we should resolve it if it is.
     // The specs mentions 5 ways to resolve a URL: http://tools.ietf.org/html/rfc2557#section-5
     // IE and Firefox (UNMht) seem to generate only absolute URLs.
     URL location = URL(URL(), mimeHeader.contentLocation());
-    return ArchiveResource::create(contentBuffer, location, mimeHeader.contentType(), mimeHeader.charset(), String());
+    return ArchiveResource::create(WTFMove(contentBuffer), location, mimeHeader.contentType(), mimeHeader.charset(), String());
 }
 
 size_t MHTMLParser::frameCount() const

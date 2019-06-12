@@ -1,80 +1,75 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Metrological Group B.V.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials provided
+ *    with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaKeys_h
-#define MediaKeys_h
+#pragma once
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
 
-#include "CDM.h"
-#include "EventTarget.h"
-#include "ExceptionCode.h"
-#include <runtime/Uint8Array.h>
-#include <wtf/PassRefPtr.h>
+#include "ExceptionOr.h"
+#include "GenericTaskQueue.h"
+#include "JSDOMPromiseDeferred.h"
+#include "MediaKeySessionType.h"
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class CDM;
+class CDMInstance;
+class BufferSource;
 class MediaKeySession;
-class HTMLMediaElement;
 
-class MediaKeys : public RefCounted<MediaKeys>, public CDMClient {
+class MediaKeys : public RefCounted<MediaKeys> {
 public:
-    static RefPtr<MediaKeys> create(const String& keySystem, ExceptionCode&);
-    virtual ~MediaKeys();
+    using KeySessionType = MediaKeySessionType;
 
-    RefPtr<MediaKeySession> createSession(ScriptExecutionContext*, const String& mimeType, Uint8Array* initData, ExceptionCode&);
+    static Ref<MediaKeys> create(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>& supportedSessionTypes, Ref<CDM>&& implementation, Ref<CDMInstance>&& instance)
+    {
+        return adoptRef(*new MediaKeys(useDistinctiveIdentifier, persistentStateAllowed, supportedSessionTypes, WTFMove(implementation), WTFMove(instance)));
+    }
 
-    static bool isTypeSupported(const String& keySystem, const String& mimeType);
+    ~MediaKeys();
 
-    const String& keySystem() const { return m_keySystem; }
-    CDM* cdm() { return m_cdm.get(); }
+    ExceptionOr<Ref<MediaKeySession>> createSession(ScriptExecutionContext&, MediaKeySessionType);
 
-    HTMLMediaElement* mediaElement() const { return m_mediaElement; }
-    void setMediaElement(HTMLMediaElement*);
-
-    void keyAdded();
-    RefPtr<ArrayBuffer> cachedKeyForKeyId(const String& keyId) const;
+    void setServerCertificate(const BufferSource&, Ref<DeferredPromise>&&);
 
 protected:
-    // CDMClient:
-    virtual MediaPlayer* cdmMediaPlayer(const CDM*) const override;
+    MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>&, Ref<CDM>&&, Ref<CDMInstance>&&);
 
-    MediaKeys(const String& keySystem, std::unique_ptr<CDM>);
-
-    Vector<RefPtr<MediaKeySession>> m_sessions;
-
-    HTMLMediaElement* m_mediaElement;
-    String m_keySystem;
-    std::unique_ptr<CDM> m_cdm;
+    bool m_useDistinctiveIdentifier;
+    bool m_persistentStateAllowed;
+    Vector<MediaKeySessionType> m_supportedSessionTypes;
+    Ref<CDM> m_implementation;
+    Ref<CDMInstance> m_instance;
+    GenericTaskQueue<Timer> m_taskQueue;
 };
 
-}
+} // namespace WebCore
 
-#endif // ENABLE(ENCRYPTED_MEDIA_V2)
-
-#endif // MediaKeys_h
+#endif // ENABLE(ENCRYPTED_MEDIA)

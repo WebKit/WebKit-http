@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AssemblerBuffer_h
-#define AssemblerBuffer_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
 
@@ -62,39 +61,62 @@ namespace JSC {
     };
 
     class AssemblerData {
+        WTF_MAKE_NONCOPYABLE(AssemblerData);
+        static const size_t InlineCapacity = 128;
     public:
         AssemblerData()
-            : m_buffer(nullptr)
-            , m_capacity(0)
+            : m_buffer(m_inlineBuffer)
+            , m_capacity(InlineCapacity)
         {
         }
 
-        AssemblerData(unsigned initialCapacity)
+        AssemblerData(size_t initialCapacity)
         {
-            m_capacity = initialCapacity;
-            m_buffer = static_cast<char*>(fastMalloc(m_capacity));
+            if (initialCapacity <= InlineCapacity) {
+                m_capacity = InlineCapacity;
+                m_buffer = m_inlineBuffer;
+            } else {
+                m_capacity = initialCapacity;
+                m_buffer = static_cast<char*>(fastMalloc(m_capacity));
+            }
         }
 
         AssemblerData(AssemblerData&& other)
         {
-            m_buffer = other.m_buffer;
-            other.m_buffer = nullptr;
+            if (other.isInlineBuffer()) {
+                ASSERT(other.m_capacity == InlineCapacity);
+                memcpy(m_inlineBuffer, other.m_inlineBuffer, InlineCapacity);
+                m_buffer = m_inlineBuffer;
+            } else
+                m_buffer = other.m_buffer;
             m_capacity = other.m_capacity;
+
+            other.m_buffer = nullptr;
             other.m_capacity = 0;
         }
 
         AssemblerData& operator=(AssemblerData&& other)
         {
-            m_buffer = other.m_buffer;
-            other.m_buffer = nullptr;
+            if (m_buffer && !isInlineBuffer())
+                fastFree(m_buffer);
+
+            if (other.isInlineBuffer()) {
+                ASSERT(other.m_capacity == InlineCapacity);
+                memcpy(m_inlineBuffer, other.m_inlineBuffer, InlineCapacity);
+                m_buffer = m_inlineBuffer;
+            } else
+                m_buffer = other.m_buffer;
             m_capacity = other.m_capacity;
+
+            other.m_buffer = nullptr;
             other.m_capacity = 0;
             return *this;
         }
 
         ~AssemblerData()
         {
-            fastFree(m_buffer);
+            if (m_buffer && !isInlineBuffer())
+                fastFree(m_buffer);
         }
 
         char* buffer() const { return m_buffer; }
@@ -104,32 +126,37 @@ namespace JSC {
         void grow(unsigned extraCapacity = 0)
         {
             m_capacity = m_capacity + m_capacity / 2 + extraCapacity;
-            m_buffer = static_cast<char*>(fastRealloc(m_buffer, m_capacity));
+            if (isInlineBuffer()) {
+                m_buffer = static_cast<char*>(fastMalloc(m_capacity));
+                memcpy(m_buffer, m_inlineBuffer, InlineCapacity);
+            } else
+                m_buffer = static_cast<char*>(fastRealloc(m_buffer, m_capacity));
         }
 
     private:
+        bool isInlineBuffer() const { return m_buffer == m_inlineBuffer; }
         char* m_buffer;
+        char m_inlineBuffer[InlineCapacity];
         unsigned m_capacity;
     };
 
     class AssemblerBuffer {
-        static const int initialCapacity = 128;
     public:
         AssemblerBuffer()
-            : m_storage(initialCapacity)
+            : m_storage()
             , m_index(0)
         {
         }
 
-        bool isAvailable(int space)
+        bool isAvailable(unsigned space)
         {
             return m_index + space <= m_storage.capacity();
         }
 
-        void ensureSpace(int space)
+        void ensureSpace(unsigned space)
         {
-            if (!isAvailable(space))
-                grow();
+            while (!isAvailable(space))
+                outOfLineGrow();
         }
 
         bool isAligned(int alignment) const
@@ -156,6 +183,15 @@ namespace JSC {
             return m_index;
         }
 
+        void setCodeSize(size_t index)
+        {
+            // Warning: Only use this if you know exactly what you are doing.
+            // For example, say you want 40 bytes of nops, it's ok to grow
+            // and then fill 40 bytes of nops using bigger instructions.
+            m_index = index;
+            ASSERT(m_index <= m_storage.capacity());
+        }
+
         AssemblerLabel label() const
         {
             return AssemblerLabel(m_index);
@@ -163,7 +199,57 @@ namespace JSC {
 
         unsigned debugOffset() { return m_index; }
 
-        AssemblerData releaseAssemblerData() { return WTFMove(m_storage); }
+        AssemblerData&& releaseAssemblerData() { return WTFMove(m_storage); }
+
+        // LocalWriter is a trick to keep the storage buffer and the index
+        // in memory while issuing multiple Stores.
+        // It is created in a block scope and its attribute can stay live
+        // between writes.
+        //
+        // LocalWriter *CANNOT* be mixed with other types of access to AssemblerBuffer.
+        // AssemblerBuffer cannot be used until its LocalWriter goes out of scope.
+        class LocalWriter {
+        public:
+            LocalWriter(AssemblerBuffer& buffer, unsigned requiredSpace)
+                : m_buffer(buffer)
+            {
+                buffer.ensureSpace(requiredSpace);
+                m_storageBuffer = buffer.m_storage.buffer();
+                m_index = buffer.m_index;
+#if !defined(NDEBUG)
+                m_initialIndex = m_index;
+                m_requiredSpace = requiredSpace;
+#endif
+            }
+
+            ~LocalWriter()
+            {
+                ASSERT(m_index - m_initialIndex <= m_requiredSpace);
+                ASSERT(m_buffer.m_index == m_initialIndex);
+                ASSERT(m_storageBuffer == m_buffer.m_storage.buffer());
+                m_buffer.m_index = m_index;
+            }
+
+            void putByteUnchecked(int8_t value) { putIntegralUnchecked(value); }
+            void putShortUnchecked(int16_t value) { putIntegralUnchecked(value); }
+            void putIntUnchecked(int32_t value) { putIntegralUnchecked(value); }
+            void putInt64Unchecked(int64_t value) { putIntegralUnchecked(value); }
+        private:
+            template<typename IntegralType>
+            void putIntegralUnchecked(IntegralType value)
+            {
+                ASSERT(m_index + sizeof(IntegralType) <= m_buffer.m_storage.capacity());
+                *reinterpret_cast_ptr<IntegralType*>(m_storageBuffer + m_index) = value;
+                m_index += sizeof(IntegralType);
+            }
+            AssemblerBuffer& m_buffer;
+            char* m_storageBuffer;
+            unsigned m_index;
+#if !defined(NDEBUG)
+            unsigned m_initialIndex;
+            unsigned m_requiredSpace;
+#endif
+        };
 
     protected:
         template<typename IntegralType>
@@ -171,7 +257,7 @@ namespace JSC {
         {
             unsigned nextIndex = m_index + sizeof(IntegralType);
             if (UNLIKELY(nextIndex > m_storage.capacity()))
-                grow();
+                outOfLineGrow();
             ASSERT(isAvailable(sizeof(IntegralType)));
             *reinterpret_cast_ptr<IntegralType*>(m_storage.buffer() + m_index) = value;
             m_index = nextIndex;
@@ -200,6 +286,13 @@ namespace JSC {
         }
 
     private:
+        NEVER_INLINE void outOfLineGrow()
+        {
+            m_storage.grow();
+        }
+
+        friend LocalWriter;
+
         AssemblerData m_storage;
         unsigned m_index;
     };
@@ -207,5 +300,3 @@ namespace JSC {
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // AssemblerBuffer_h

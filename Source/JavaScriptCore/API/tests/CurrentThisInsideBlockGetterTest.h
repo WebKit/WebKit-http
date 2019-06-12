@@ -23,16 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CurrentThisInsideBlockGetterTest_h
-#define CurrentThisInsideBlockGetterTest_h
+#pragma once
 
-#include <JavaScriptCore/JavaScriptCore.h>
+#include <JavaScriptCore/JavaScript.h>
 
 #if JSC_OBJC_API_ENABLED
 
 void currentThisInsideBlockGetterTest();
 
 #endif // JSC_OBJC_API_ENABLED
-
-
-#endif // CurrentThisInsideBlockGetterTest_h

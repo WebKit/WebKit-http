@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityTableHeaderContainer_h
-#define AccessibilityTableHeaderContainer_h
+#pragma once
 
 #include "AccessibilityMockObject.h"
 #include "AccessibilityTable.h"
@@ -40,20 +39,18 @@ public:
     static Ref<AccessibilityTableHeaderContainer> create();
     virtual ~AccessibilityTableHeaderContainer();
     
-    virtual AccessibilityRole roleValue() const override { return TableHeaderContainerRole; }
+    AccessibilityRole roleValue() const override { return TableHeaderContainerRole; }
     
-    virtual void addChildren() override;
+    void addChildren() override;
     
-    virtual LayoutRect elementRect() const override;
+    LayoutRect elementRect() const override;
     
 private:
     AccessibilityTableHeaderContainer();
     
-    virtual bool computeAccessibilityIsIgnored() const override;
+    bool computeAccessibilityIsIgnored() const override;
 
     LayoutRect m_headerRect;
 }; 
     
 } // namespace WebCore 
-
-#endif // AccessibilityTableHeaderContainer_h

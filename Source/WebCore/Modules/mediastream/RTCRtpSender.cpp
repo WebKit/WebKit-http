@@ -31,43 +31,72 @@
 #include "config.h"
 #include "RTCRtpSender.h"
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(WEB_RTC)
 
-#include "DOMError.h"
 #include "ExceptionCode.h"
-#include "JSDOMError.h"
 
 namespace WebCore {
 
-RTCRtpSender::RTCRtpSender(RefPtr<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, RTCRtpSenderClient& client)
-    : RTCRtpSenderReceiverBase(WTFMove(track))
-    , m_mediaStreamIds(WTFMove(mediaStreamIds))
-    , m_client(&client)
+Ref<RTCRtpSender> RTCRtpSender::create(Ref<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, Backend& backend)
 {
-    // The original track id is always used in negotiation even if the track is replaced.
-    m_trackId = m_track->id();
+    auto sender = adoptRef(*new RTCRtpSender(String(track->kind()), WTFMove(mediaStreamIds), backend));
+    sender->setTrack(WTFMove(track));
+    return sender;
 }
 
-void RTCRtpSender::replaceTrack(MediaStreamTrack* withTrack, PeerConnection::VoidPromise&& promise, ExceptionCode& ec)
+Ref<RTCRtpSender> RTCRtpSender::create(String&& trackKind, Vector<String>&& mediaStreamIds, Backend& backend)
 {
-    if (!withTrack) {
-        ec = TypeError;
+    return adoptRef(*new RTCRtpSender(WTFMove(trackKind), WTFMove(mediaStreamIds), backend));
+}
+
+RTCRtpSender::RTCRtpSender(String&& trackKind, Vector<String>&& mediaStreamIds, Backend& backend)
+    : RTCRtpSenderReceiverBase()
+    , m_trackKind(WTFMove(trackKind))
+    , m_mediaStreamIds(WTFMove(mediaStreamIds))
+    , m_backend(&backend)
+{
+}
+
+void RTCRtpSender::setTrackToNull()
+{
+    ASSERT(m_track);
+    m_trackId = { };
+    m_track = nullptr;
+}
+
+void RTCRtpSender::setTrack(Ref<MediaStreamTrack>&& track)
+{
+    ASSERT(!isStopped());
+    if (!m_track)
+        m_trackId = track->id();
+    m_track = WTFMove(track);
+}
+
+void RTCRtpSender::replaceTrack(RefPtr<MediaStreamTrack>&& withTrack, DOMPromiseDeferred<void>&& promise)
+{
+    if (isStopped()) {
+        promise.reject(INVALID_STATE_ERR);
         return;
     }
 
-    if (!m_client) {
-        promise.reject(DOMError::create("InvalidStateError"));
+    if (withTrack && m_trackKind != withTrack->kind()) {
+        promise.reject(TypeError);
         return;
     }
 
-    if (m_track->kind() != withTrack->kind()) {
-        ec = TypeError;
-        return;
-    }
+    if (!withTrack && m_track)
+        m_track->stopTrack();
 
-    m_client->replaceTrack(*this, *withTrack, WTFMove(promise));
+    m_backend->replaceTrack(*this, WTFMove(withTrack), WTFMove(promise));
+}
+
+RTCRtpParameters RTCRtpSender::getParameters()
+{
+    if (isStopped())
+        return { };
+    return m_backend->getParameters(*this);
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(WEB_RTC)

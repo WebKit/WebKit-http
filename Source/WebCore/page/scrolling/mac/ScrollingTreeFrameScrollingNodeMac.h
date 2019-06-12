@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingTreeFrameScrollingNodeMac_h
-#define ScrollingTreeFrameScrollingNodeMac_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
 
@@ -45,12 +44,13 @@ public:
 private:
     ScrollingTreeFrameScrollingNodeMac(ScrollingTree&, ScrollingNodeID);
 
-    void releaseReferencesToScrollbarPaintersOnTheMainThread();
+    void releaseReferencesToScrollerImpsOnTheMainThread();
 
     // ScrollingTreeNode member functions.
-    virtual void updateBeforeChildren(const ScrollingStateNode&) override;
-    virtual void updateAfterChildren(const ScrollingStateNode&) override;
-    virtual void handleWheelEvent(const PlatformWheelEvent&) override;
+    void commitStateBeforeChildren(const ScrollingStateNode&) override;
+    void commitStateAfterChildren(const ScrollingStateNode&) override;
+
+    void handleWheelEvent(const PlatformWheelEvent&) override;
 
     // ScrollController member functions.
     bool allowsHorizontalStretching(const PlatformWheelEvent&) override;
@@ -71,7 +71,7 @@ private:
 
     void updateLayersAfterViewportChange(const FloatRect& fixedPositionRect, double scale) override;
 
-    void setScrollLayerPosition(const FloatPoint&) override;
+    void setScrollLayerPosition(const FloatPoint&, const FloatRect& layoutViewport) override;
 
     FloatPoint minimumScrollPosition() const override;
     FloatPoint maximumScrollPosition() const override;
@@ -84,15 +84,16 @@ private:
     void removeTestDeferralForReason(WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReason) const override;
 
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
-    LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) const override;
+    FloatPoint scrollOffset() const override;
     void immediateScrollOnAxis(ScrollEventAxis, float delta) override;
     float pageScaleFactor() const override;
     void startScrollSnapTimer() override;
     void stopScrollSnapTimer() override;
     LayoutSize scrollExtent() const override;
+    FloatSize viewportSize() const override;
 #endif
 
-    void logExposedUnfilledArea();
+    unsigned exposedUnfilledArea() const;
 
     ScrollController m_scrollController;
 
@@ -103,8 +104,8 @@ private:
     RetainPtr<CALayer> m_contentShadowLayer;
     RetainPtr<CALayer> m_headerLayer;
     RetainPtr<CALayer> m_footerLayer;
-    RetainPtr<ScrollbarPainter> m_verticalScrollbarPainter;
-    RetainPtr<ScrollbarPainter> m_horizontalScrollbarPainter;
+    RetainPtr<NSScrollerImp> m_verticalScrollerImp;
+    RetainPtr<NSScrollerImp> m_horizontalScrollerImp;
     FloatPoint m_probableMainThreadScrollPosition;
     bool m_lastScrollHadUnfilledPixels { false };
     bool m_hadFirstUpdate { false };
@@ -114,5 +115,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
-
-#endif // ScrollingTreeFrameScrollingNodeMac_h

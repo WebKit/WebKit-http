@@ -34,13 +34,10 @@
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
 #import "WebKitSystemInterface.h"
-#import "WebPluginContainerCheck.h"
-#import "WebNetscapeContainerCheckContextInfo.h"
 #import "WebNSURLExtras.h"
 #import "WebNSURLRequestExtras.h"
 #import "WebView.h"
 #import "WebViewInternal.h"
-
 #import <WebCore/AuthenticationCF.h>
 #import <WebCore/AuthenticationMac.h>
 #import <WebCore/BitmapImage.h>
@@ -53,8 +50,8 @@
 #import <WebCore/HTMLPlugInElement.h>
 #import <WebCore/Page.h>
 #import <WebCore/ProtectionSpace.h>
+#import <WebCore/RenderEmbeddedObject.h>
 #import <WebCore/RenderView.h>
-#import <WebCore/RenderWidget.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebKitLegacy/DOMPrivate.h>
@@ -87,14 +84,14 @@ using namespace WebCore;
       attributeKeys:(NSArray *)keys
     attributeValues:(NSArray *)values
        loadManually:(BOOL)loadManually
-            element:(PassRefPtr<WebCore::HTMLPlugInElement>)element
+            element:(RefPtr<WebCore::HTMLPlugInElement>&&)element
 {
     self = [super initWithFrame:frame];
     if (!self)
         return nil;
     
     _pluginPackage = pluginPackage;
-    _element = element;
+    _element = WTFMove(element);
     _sourceURL = adoptNS([URL copy]);
     _baseURL = adoptNS([baseURL copy]);
     _MIMEType = adoptNS([MIME copy]);
@@ -282,10 +279,9 @@ using namespace WebCore;
 - (NSRect)_windowClipRect
 {
     auto* renderer = _element->renderer();
-    if (!renderer)
+    if (!is<RenderEmbeddedObject>(renderer))
         return NSZeroRect;
-
-    return downcast<RenderWidget>(*renderer).windowClipRect();
+    return downcast<RenderEmbeddedObject>(*renderer).windowClipRect();
 }
 
 - (NSRect)visibleRect
@@ -440,15 +436,6 @@ using namespace WebCore;
 {
     NSWindow *window = [self window];
     return !window || [window isMiniaturized] || [NSApp isHidden] || ![self isDescendantOf:[[self window] contentView]] || [self isHiddenOrHasHiddenAncestor];
-}
-
-- (BOOL)inFlatteningPaint
-{
-    RenderObject* renderer = _element->renderer();
-    if (renderer)
-        return renderer->view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers;
-
-    return NO;
 }
 
 - (BOOL)supportsSnapshotting
@@ -832,46 +819,25 @@ using namespace WebCore;
 }
 
 
-- (CString)resolvedURLStringForURL:(const char*)url target:(const char*)target
-{
-    String relativeURLString = String::fromUTF8(url);
-    if (relativeURLString.isNull())
-        return CString();
-    
-    Frame* frame = core([self webFrame]);
-    if (!frame)
-        return CString();
-
-    Frame* targetFrame = frame->tree().find(String::fromUTF8(target));
-    if (!targetFrame)
-        return CString();
-    
-    if (!frame->document()->securityOrigin()->canAccess(targetFrame->document()->securityOrigin()))
-        return CString();
-  
-    URL absoluteURL = targetFrame->document()->completeURL(relativeURLString);
-    return absoluteURL.string().utf8();
-}
-
 - (void)invalidatePluginContentRect:(NSRect)rect
 {
-    if (RenderBoxModelObject* renderer = downcast<RenderBoxModelObject>(_element->renderer())) {
-        IntRect contentRect(rect);
-        contentRect.move(renderer->borderLeft() + renderer->paddingLeft(), renderer->borderTop() + renderer->paddingTop());
-        
-        renderer->repaintRectangle(contentRect);
-    }
+    auto* renderer = _element->renderer();
+    if (!is<RenderEmbeddedObject>(renderer))
+        return;
+    auto& object = downcast<RenderEmbeddedObject>(*renderer);
+    IntRect contentRect(rect);
+    contentRect.move(object.borderLeft() + object.paddingLeft(), object.borderTop() + object.paddingTop());
+    object.repaintRectangle(contentRect);
 }
 
 - (NSRect)actualVisibleRectInWindow
 {
     auto* renderer = _element->renderer();
-    if (!renderer)
+    if (!is<RenderEmbeddedObject>(renderer))
         return NSZeroRect;
-
-    IntRect widgetRect = renderer->pixelSnappedAbsoluteClippedOverflowRect();
-    widgetRect = renderer->view().frameView().contentsToWindow(widgetRect);
-    return intersection(downcast<RenderWidget>(*renderer).windowClipRect(), widgetRect);
+    auto& object = downcast<RenderEmbeddedObject>(*renderer);
+    auto widgetRect = object.view().frameView().contentsToWindow(object.pixelSnappedAbsoluteClippedOverflowRect());
+    return intersection(object.windowClipRect(), widgetRect);
 }
 
 - (CALayer *)pluginLayer
@@ -919,7 +885,7 @@ bool getAuthenticationInfo(const char* protocolStr, const char* hostStr, int32_t
     
     RetainPtr<NSURLProtectionSpace> protectionSpace = adoptNS([[NSURLProtectionSpace alloc] initWithHost:host port:port protocol:protocol realm:realm authenticationMethod:authenticationMethod]);
     
-    NSURLCredential *credential = CredentialStorage::defaultCredentialStorage().get(ProtectionSpace(protectionSpace.get())).nsCredential();
+    NSURLCredential *credential = CredentialStorage::defaultCredentialStorage().get(emptyString(), ProtectionSpace(protectionSpace.get())).nsCredential();
     if (!credential)
         credential = [[NSURLCredentialStorage sharedCredentialStorage] defaultCredentialForProtectionSpace:protectionSpace.get()];
     if (!credential)
@@ -933,7 +899,7 @@ bool getAuthenticationInfo(const char* protocolStr, const char* hostStr, int32_t
     
     return true;
 }
-    
+
 } // namespace WebKit
 
 #endif //  ENABLE(NETSCAPE_PLUGIN_API)

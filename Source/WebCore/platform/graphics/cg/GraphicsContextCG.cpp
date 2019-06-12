@@ -27,6 +27,8 @@
 #include "config.h"
 #include "GraphicsContextCG.h"
 
+#if USE(CG)
+
 #include "AffineTransform.h"
 #include "CoreGraphicsSPI.h"
 #include "DisplayListRecorder.h"
@@ -34,12 +36,15 @@
 #include "GraphicsContextPlatformPrivateCG.h"
 #include "ImageBuffer.h"
 #include "ImageOrientation.h"
+#include "Logging.h"
 #include "Path.h"
 #include "Pattern.h"
 #include "ShadowBlur.h"
 #include "SubimageCacheWithTimer.h"
+#include "TextStream.h"
 #include "Timer.h"
 #include "URL.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 #include <wtf/RetainPtr.h>
 
@@ -87,6 +92,28 @@ CGColorSpaceRef sRGBColorSpaceRef()
         sRGBSpace = deviceRGBColorSpaceRef();
 #endif // PLATFORM(WIN)
     return sRGBSpace;
+}
+    
+CGColorSpaceRef extendedSRGBColorSpaceRef()
+{
+    static CGColorSpaceRef extendedSRGBSpace;
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+    extendedSRGBSpace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
+#endif
+    // If there is no support for exteneded sRGB, fall back to sRGB.
+    if (!extendedSRGBSpace)
+        extendedSRGBSpace = sRGBColorSpaceRef();
+    return extendedSRGBSpace;
+}
+
+CGColorSpaceRef displayP3ColorSpaceRef()
+{
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101100)
+    static CGColorSpaceRef displayP3Space = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+#else
+    static CGColorSpaceRef displayP3Space = sRGBColorSpaceRef();
+#endif
+    return displayP3Space;
 }
 
 #if PLATFORM(WIN)
@@ -162,30 +189,29 @@ void GraphicsContext::restorePlatformState()
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
 }
 
-void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
+void GraphicsContext::drawNativeImage(const RetainPtr<CGImageRef>& image, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
 {
     if (paintingDisabled())
         return;
 
     if (isRecording()) {
-        m_displayListRecorder->drawNativeImage(imagePtr, imageSize, destRect, srcRect, op, blendMode, orientation);
+        m_displayListRecorder->drawNativeImage(image, imageSize, destRect, srcRect, op, blendMode, orientation);
         return;
     }
 
-    RetainPtr<CGImageRef> image(imagePtr);
+#if !LOG_DISABLED
+    double startTime = currentTime();
+#endif
+    RetainPtr<CGImageRef> subImage(image);
 
-    float currHeight = orientation.usesWidthAsHeight() ? CGImageGetWidth(image.get()) : CGImageGetHeight(image.get());
+    float currHeight = orientation.usesWidthAsHeight() ? CGImageGetWidth(subImage.get()) : CGImageGetHeight(subImage.get());
     if (currHeight <= srcRect.y())
         return;
 
     CGContextRef context = platformContext();
-    CGContextStateSaver stateSaver(context);
-
-#if PLATFORM(IOS)
-    // Anti-aliasing is on by default on the iPhone. Need to turn it off when drawing images.
-    CGContextSetShouldAntialias(context, false);
-#endif
-
+    CGAffineTransform transform = CGContextGetCTM(context);
+    CGContextStateSaver stateSaver(context, false);
+    
     bool shouldUseSubimage = false;
 
     // If the source rect is a subportion of the image, then we compute an inflated destination rect that will hold the entire image
@@ -216,21 +242,23 @@ void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSi
             adjustedDestRect.setHeight(subimageRect.height() / yScale);
 
 #if CACHE_SUBIMAGES
-            image = subimageCache().getSubimage(image.get(), subimageRect);
+            subImage = subimageCache().getSubimage(subImage.get(), subimageRect);
 #else
-            image = adoptCF(CGImageCreateWithImageInRect(image.get(), subimageRect));
+            subImage = adoptCF(CGImageCreateWithImageInRect(subImage.get(), subimageRect));
 #endif
             if (currHeight < srcRect.maxY()) {
-                ASSERT(CGImageGetHeight(image.get()) == currHeight - CGRectIntegral(srcRect).origin.y);
-                adjustedDestRect.setHeight(CGImageGetHeight(image.get()) / yScale);
+                ASSERT(CGImageGetHeight(subImage.get()) == currHeight - CGRectIntegral(srcRect).origin.y);
+                adjustedDestRect.setHeight(CGImageGetHeight(subImage.get()) / yScale);
             }
         } else {
             adjustedDestRect.setLocation(FloatPoint(destRect.x() - srcRect.x() / xScale, destRect.y() - srcRect.y() / yScale));
             adjustedDestRect.setSize(FloatSize(imageSize.width() / xScale, imageSize.height() / yScale));
         }
 
-        if (!destRect.contains(adjustedDestRect))
+        if (!destRect.contains(adjustedDestRect)) {
+            stateSaver.save();
             CGContextClipToRect(context, destRect);
+        }
     }
 
     // If the image is only partially loaded, then shrink the destination rect that we're drawing into accordingly.
@@ -238,6 +266,10 @@ void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSi
         adjustedDestRect.setHeight(adjustedDestRect.height() * currHeight / imageSize.height());
 
 #if PLATFORM(IOS)
+    bool wasAntialiased = CGContextGetShouldAntialias(context);
+    // Anti-aliasing is on by default on the iPhone. Need to turn it off when drawing images.
+    CGContextSetShouldAntialias(context, false);
+
     // Align to pixel boundaries
     adjustedDestRect = roundToDevicePixels(adjustedDestRect);
 #endif
@@ -262,7 +294,16 @@ void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSi
     CGContextScaleCTM(context, 1, -1);
 
     // Draw the image.
-    CGContextDrawImage(context, adjustedDestRect, image.get());
+    CGContextDrawImage(context, adjustedDestRect, subImage.get());
+    
+    if (!stateSaver.didSave()) {
+        CGContextSetCTM(context, transform);
+#if PLATFORM(IOS)
+        CGContextSetShouldAntialias(context, wasAntialiased);
+#endif
+    }
+
+    LOG_WITH_STREAM(Images, stream << "GraphicsContext::drawNativeImage " << image.get() << " size " << imageSize << " into " << destRect << " took " << 1000.0 * (currentTime() - startTime) << "ms");
 }
 
 static void drawPatternCallback(void* info, CGContextRef context)
@@ -278,19 +319,18 @@ static void drawPatternCallback(void* info, CGContextRef context)
 
 static void patternReleaseCallback(void* info)
 {
-    auto image = static_cast<CGImageRef>(info);
-    callOnMainThread([image] {
+    callOnMainThread([image = static_cast<CGImageRef>(info)] {
         CGImageRelease(image);
     });
 }
 
-void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
     if (paintingDisabled() || !patternTransform.isInvertible())
         return;
 
     if (isRecording()) {
-        m_displayListRecorder->drawPattern(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        m_displayListRecorder->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
         return;
     }
 
@@ -311,8 +351,8 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
     float adjustedX = phase.x() - destRect.x() + tileRect.x() * narrowPrecisionToFloat(patternTransform.a()); // We translated the context so that destRect.x() is the origin, so subtract it out.
     float adjustedY = destRect.height() - (phase.y() - destRect.y() + tileRect.y() * narrowPrecisionToFloat(patternTransform.d()) + scaledTileHeight);
 
-    CGImageRef tileImage = image.nativeImageForCurrentFrame();
-    float h = CGImageGetHeight(tileImage);
+    auto tileImage = image.nativeImageForCurrentFrame();
+    float h = CGImageGetHeight(tileImage.get());
 
     RetainPtr<CGImageRef> subImage;
 #if PLATFORM(IOS)
@@ -326,13 +366,13 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
         // Copying a sub-image out of a partially-decoded image stops the decoding of the original image. It should never happen
         // because sub-images are only used for border-image, which only renders when the image is fully decoded.
         ASSERT(h == image.height());
-        subImage = adoptCF(CGImageCreateWithImageInRect(tileImage, tileRect));
+        subImage = adoptCF(CGImageCreateWithImageInRect(tileImage.get(), tileRect));
     }
 
     // If we need to paint gaps between tiles because we have a partially loaded image or non-zero spacing,
     // fall back to the less efficient CGPattern-based mechanism.
     float scaledTileWidth = tileRect.width() * narrowPrecisionToFloat(patternTransform.a());
-    float w = CGImageGetWidth(tileImage);
+    float w = CGImageGetWidth(tileImage.get());
     if (w == image.size().width() && h == image.size().height() && !spacing.width() && !spacing.height()) {
         // FIXME: CG seems to snap the images to integral sizes. When we care (e.g. with border-image-repeat: round),
         // we should tile all but the last, and stetch the last image to fit.
@@ -452,7 +492,7 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
     CGContextStateSaver stateSaver(context, drawsDashedLine);
     if (drawsDashedLine) {
         // Figure out end points to ensure we always paint corners.
-        cornerWidth = strokeStyle == DottedStroke ? thickness : std::min(2 * thickness, std::max(thickness, strokeWidth / 3));
+        cornerWidth = dashedLineCornerWidthForStrokeWidth(strokeWidth);
         setCGFillColor(context, strokeColor());
         if (isVerticalLine) {
             CGContextFillRect(context, FloatRect(point1.x(), point1.y(), thickness, cornerWidth));
@@ -462,44 +502,19 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
             CGContextFillRect(context, FloatRect(point2.x() - cornerWidth, point1.y(), cornerWidth, thickness));
         }
         strokeWidth -= 2 * cornerWidth;
-        float patternWidth = strokeStyle == DottedStroke ? thickness : std::min(3 * thickness, std::max(thickness, strokeWidth / 3));
+        float patternWidth = dashedLinePatternWidthForStrokeWidth(strokeWidth);
         // Check if corner drawing sufficiently covers the line.
         if (strokeWidth <= patternWidth + 1)
             return;
 
-        // Pattern starts with full fill and ends with the empty fill.
-        // 1. Let's start with the empty phase after the corner.
-        // 2. Check if we've got odd or even number of patterns and whether they fully cover the line.
-        // 3. In case of even number of patterns and/or remainder, move the pattern start position
-        // so that the pattern is balanced between the corners.
-        float patternOffset = patternWidth;
-        int numberOfSegments = floorf(strokeWidth / patternWidth);
-        bool oddNumberOfSegments = numberOfSegments % 2;
-        float remainder = strokeWidth - (numberOfSegments * patternWidth);
-        if (oddNumberOfSegments && remainder)
-            patternOffset -= remainder / 2;
-        else if (!oddNumberOfSegments) {
-            if (remainder)
-                patternOffset += patternOffset - (patternWidth + remainder)  / 2;
-            else
-                patternOffset += patternWidth  / 2;
-        }
+        float patternOffset = dashedLinePatternOffsetForPatternAndStrokeWidth(patternWidth, strokeWidth);
         const CGFloat dashedLine[2] = { static_cast<CGFloat>(patternWidth), static_cast<CGFloat>(patternWidth) };
         CGContextSetLineDash(context, patternOffset, dashedLine, 2);
     }
 
-    FloatPoint p1 = point1;
-    FloatPoint p2 = point2;
-    // Center line and cut off corners for pattern patining.
-    if (isVerticalLine) {
-        float centerOffset = (p2.x() - p1.x()) / 2;
-        p1.move(centerOffset, cornerWidth);
-        p2.move(-centerOffset, -cornerWidth);
-    } else {
-        float centerOffset = (p2.y() - p1.y()) / 2;
-        p1.move(cornerWidth, centerOffset);
-        p2.move(-cornerWidth, -centerOffset);
-    }
+    auto centeredPoints = centerLineAndCutOffCorners(isVerticalLine, cornerWidth, point1, point2);
+    auto p1 = centeredPoints[0];
+    auto p2 = centeredPoints[1];
 
     if (shouldAntialias()) {
 #if PLATFORM(IOS)
@@ -582,8 +597,8 @@ void GraphicsContext::applyFillPattern()
 
 static inline bool calculateDrawingMode(const GraphicsContextState& state, CGPathDrawingMode& mode)
 {
-    bool shouldFill = state.fillPattern || state.fillColor.alpha();
-    bool shouldStroke = state.strokePattern || (state.strokeStyle != NoStroke && state.strokeColor.alpha());
+    bool shouldFill = state.fillPattern || state.fillColor.isVisible();
+    bool shouldStroke = state.strokePattern || (state.strokeStyle != NoStroke && state.strokeColor.isVisible());
     bool useEOFill = state.fillRule == RULE_EVENODD;
 
     if (shouldFill) {
@@ -919,7 +934,7 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
 
     WindRule oldFillRule = fillRule();
     Color oldFillColor = fillColor();
-    
+
     setFillRule(RULE_EVENODD);
     setFillColor(color);
 
@@ -1031,7 +1046,6 @@ IntRect GraphicsContext::clipBounds() const
         WTFLogAlways("Getting the clip bounds not yet supported with display lists");
         return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
     }
-
 
     return enclosingIntRect(CGContextGetClipBoundingBox(platformContext()));
 }
@@ -1463,15 +1477,15 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMo
     return FloatRect(roundedOrigin, roundedLowerRight - roundedOrigin);
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool printing, bool doubleLines)
+void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool printing, bool doubleLines, StrokeStyle strokeStyle)
 {
     DashArray widths;
     widths.append(width);
     widths.append(0);
-    drawLinesForText(point, widths, printing, doubleLines);
+    drawLinesForText(point, widths, printing, doubleLines, strokeStyle);
 }
 
-void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleLines)
+void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleLines, StrokeStyle strokeStyle)
 {
     if (paintingDisabled())
         return;
@@ -1492,8 +1506,32 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
     Vector<CGRect, 4> dashBounds;
     ASSERT(!(widths.size() % 2));
     dashBounds.reserveInitialCapacity(dashBounds.size() / 2);
-    for (size_t i = 0; i < widths.size(); i += 2)
-        dashBounds.append(CGRectMake(bounds.x() + widths[i], bounds.y(), widths[i+1] - widths[i], bounds.height()));
+
+    float dashWidth = 0;
+    switch (strokeStyle) {
+    case DottedStroke:
+        dashWidth = bounds.height();
+        break;
+    case DashedStroke:
+        dashWidth = 2 * bounds.height();
+        break;
+    case SolidStroke:
+    default:
+        break;
+    }
+
+    for (size_t i = 0; i < widths.size(); i += 2) {
+        auto left = widths[i];
+        auto width = widths[i+1] - widths[i];
+        if (!dashWidth)
+            dashBounds.append(CGRectMake(bounds.x() + left, bounds.y(), width, bounds.height()));
+        else {
+            auto startParticle = static_cast<unsigned>(std::ceil(left / (2 * dashWidth)));
+            auto endParticle = static_cast<unsigned>((left + width) / (2 * dashWidth));
+            for (unsigned j = startParticle; j < endParticle; ++j)
+                dashBounds.append(CGRectMake(bounds.x() + j * 2 * dashWidth, bounds.y(), dashWidth, bounds.height()));
+        }
+    }
 
     if (doubleLines) {
         // The space between double underlines is equal to the height of the underline
@@ -1510,7 +1548,7 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
         setCGFillColor(platformContext(), fillColor());
 }
 
-void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
+void GraphicsContext::setURLForRect(const URL& link, const FloatRect& destRect)
 {
 #if !PLATFORM(IOS)
     if (paintingDisabled())
@@ -1527,15 +1565,11 @@ void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
 
     CGContextRef context = platformContext();
 
+    FloatRect rect = destRect;
     // Get the bounding box to handle clipping.
-    CGRect box = CGContextGetClipBoundingBox(context);
+    rect.intersect(CGContextGetClipBoundingBox(context));
 
-    IntRect intBox((int)box.origin.x, (int)box.origin.y, (int)box.size.width, (int)box.size.height);
-    IntRect rect = destRect;
-    rect.intersect(intBox);
-
-    CGPDFContextSetURLForRect(context, urlRef.get(),
-        CGRectApplyAffineTransform(rect, CGContextGetCTM(context)));
+    CGPDFContextSetURLForRect(context, urlRef.get(), CGRectApplyAffineTransform(rect, CGContextGetCTM(context)));
 #else
     UNUSED_PARAM(link);
     UNUSED_PARAM(destRect);
@@ -1864,4 +1898,36 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
     CGContextStrokeEllipseInRect(context, ellipse);
 }
 
+bool GraphicsContext::supportsInternalLinks() const
+{
+    return true;
 }
+
+void GraphicsContext::setDestinationForRect(const String& name, const FloatRect& destRect)
+{
+    if (paintingDisabled())
+        return;
+
+    CGContextRef context = platformContext();
+
+    FloatRect rect = destRect;
+    rect.intersect(CGContextGetClipBoundingBox(context));
+
+    CGRect transformedRect = CGRectApplyAffineTransform(rect, CGContextGetCTM(context));
+    CGPDFContextSetDestinationForRect(context, name.createCFString().get(), transformedRect);
+}
+
+void GraphicsContext::addDestinationAtPoint(const String& name, const FloatPoint& position)
+{
+    if (paintingDisabled())
+        return;
+
+    CGContextRef context = platformContext();
+
+    CGPoint transformedPoint = CGPointApplyAffineTransform(position, CGContextGetCTM(context));
+    CGPDFContextAddDestinationAtPoint(context, name.createCFString().get(), transformedPoint);
+}
+
+}
+
+#endif

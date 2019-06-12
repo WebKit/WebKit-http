@@ -32,8 +32,6 @@
 #include "FloatRoundedRect.h"
 #include "FrameSelection.h"
 #include "HTMLAttachmentElement.h"
-#include "Page.h"
-#include "PaintInfo.h"
 #include "RenderTheme.h"
 #include "URL.h"
 
@@ -41,7 +39,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderAttachment::RenderAttachment(HTMLAttachmentElement& element, Ref<RenderStyle>&& style)
+RenderAttachment::RenderAttachment(HTMLAttachmentElement& element, RenderStyle&& style)
     : RenderReplaced(element, WTFMove(style), LayoutSize())
 {
 }
@@ -53,7 +51,10 @@ HTMLAttachmentElement& RenderAttachment::attachmentElement() const
 
 void RenderAttachment::layout()
 {
-    setIntrinsicSize(document().page()->theme().attachmentIntrinsicSize(*this));
+    LayoutSize newIntrinsicSize = theme().attachmentIntrinsicSize(*this);
+    m_minimumIntrinsicWidth = std::max(m_minimumIntrinsicWidth, newIntrinsicSize.width());
+    newIntrinsicSize.setWidth(m_minimumIntrinsicWidth);
+    setIntrinsicSize(newIntrinsicSize);
 
     RenderReplaced::layout();
 }
@@ -66,7 +67,14 @@ void RenderAttachment::invalidate()
 
 int RenderAttachment::baselinePosition(FontBaseline, bool, LineDirectionMode, LinePositionMode) const
 {
-    return document().page()->theme().attachmentBaseline(*this);
+    return theme().attachmentBaseline(*this);
+}
+
+bool RenderAttachment::shouldDrawBorder() const
+{
+    if (style().appearance() == BorderlessAttachmentPart)
+        return false;
+    return m_shouldDrawBorder;
 }
 
 } // namespace WebCore

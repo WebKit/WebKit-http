@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGDocumentExtensions_h
-#define SVGDocumentExtensions_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -29,21 +28,19 @@
 namespace WebCore {
 
 class Document;
+class Element;
 class RenderSVGResourceContainer;
 class SVGElement;
-#if ENABLE(SVG_FONTS)
 class SVGFontFaceElement;
-#endif
 class SVGResourcesCache;
 class SVGSMILElement;
 class SVGSVGElement;
-class Element;
 
 class SVGDocumentExtensions {
     WTF_MAKE_NONCOPYABLE(SVGDocumentExtensions); WTF_MAKE_FAST_ALLOCATED;
 public:
     typedef HashSet<Element*> PendingElements;
-    explicit SVGDocumentExtensions(Document*);
+    explicit SVGDocumentExtensions(Document&);
     ~SVGDocumentExtensions();
     
     void addTimeContainer(SVGSVGElement*);
@@ -57,6 +54,7 @@ public:
     void pauseAnimations();
     void unpauseAnimations();
     void dispatchSVGLoadEventToOutermostSVGElements();
+    bool areAnimationsPaused() const { return m_areAnimationsPaused; }
 
     void reportWarning(const String&);
     void reportError(const String&);
@@ -79,7 +77,7 @@ public:
 #endif
 
 private:
-    Document* m_document; // weak reference
+    Document& m_document;
     HashSet<SVGSVGElement*> m_timeContainers; // For SVG 1.2 support this will need to be made more general.
 #if ENABLE(SVG_FONTS)
     HashSet<SVGFontFaceElement*> m_svgFontFaceElements;
@@ -91,6 +89,8 @@ private:
     std::unique_ptr<SVGResourcesCache> m_resourcesCache;
 
     Vector<SVGElement*> m_rebuildElements;
+    bool m_areAnimationsPaused;
+
 public:
     // This HashMap contains a list of pending resources. Pending resources, are such
     // which are referenced by any object in the SVG document, but do NOT exist yet.
@@ -111,6 +111,4 @@ private:
     std::unique_ptr<PendingElements> removePendingResourceForRemoval(const AtomicString&);
 };
 
-}
-
-#endif
+} // namespace WebCore

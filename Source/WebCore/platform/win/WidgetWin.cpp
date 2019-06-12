@@ -34,7 +34,6 @@
 #include "FrameWin.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"
-#include "Page.h"
 
 #include <winsock2.h>
 #include <windows.h>
@@ -76,7 +75,7 @@ void Widget::setCursor(const Cursor& cursor)
     view->hostWindow()->setCursor(cursor);
 }
 
-void Widget::paint(GraphicsContext&, const IntRect&)
+void Widget::paint(GraphicsContext&, const IntRect&, SecurityOriginPaintPolicy)
 {
 }
 

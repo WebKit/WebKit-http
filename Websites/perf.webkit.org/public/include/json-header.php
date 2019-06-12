@@ -1,6 +1,7 @@
 <?php
 
 require_once('db.php');
+
 require_once('test-path-resolver.php');
 
 header('Content-type: application/json');
@@ -71,6 +72,10 @@ function validate_arguments($array, $list_of_arguments) {
         } else if ($pattern == 'int?') {
             require_format($name, $value, '/^\d*$/');
             $value = $value ? intval($value) : null;
+        } else if ($pattern == 'json') {
+            $value = json_decode($value, true);
+            if ($value === NULL)
+                exit_with_error('Invalid' . camel_case_words_separated_by_underscore($name));
         } else
             require_format($name, $value, $pattern);
         $result[$name] = $value;
@@ -116,8 +121,8 @@ function ensure_privileged_api_data_and_token() {
     return $data;
 }
 
-function remote_user_name($data) {
-    return should_authenticate_as_slave($data) ? NULL : array_get($_SERVER, 'REMOTE_USER');
+function remote_user_name($data = NULL) {
+    return $data && should_authenticate_as_slave($data) ? NULL : array_get($_SERVER, 'REMOTE_USER');
 }
 
 function should_authenticate_as_slave($data) {
@@ -159,6 +164,8 @@ function verify_slave($db, $params) {
     $matched_slave = $db->select_first_row('build_slaves', 'slave', $slave_info);
     if (!$matched_slave)
         exit_with_error('SlaveNotFound', array('name' => $slave_info['name']));
+
+    return $matched_slave['slave_id'];
 }
 
 function find_triggerable_for_task($db, $task_id) {

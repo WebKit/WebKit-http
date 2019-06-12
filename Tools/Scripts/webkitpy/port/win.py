@@ -28,8 +28,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import atexit
-import os
+import glob
 import logging
+import os
 import re
 import sys
 import time
@@ -49,6 +50,7 @@ try:
     import win32com.client
 except ImportError:
     _log.warn("Not running on native Windows.")
+
 
 class WinPort(ApplePort):
     port_name = "win"
@@ -120,9 +122,6 @@ class WinPort(ApplePort):
 
     def operating_system(self):
         return 'win'
-
-    def default_child_processes(self):
-        return 1
 
     def _port_flag_for_scripts(self):
         if self.get_option('architecture') == 'x86_64':
@@ -298,6 +297,10 @@ class WinPort(ApplePort):
         if '_NT_SYMBOL_PATH' not in os.environ:
             _log.warning("The _NT_SYMBOL_PATH environment variable is not set. Using Microsoft Symbol Server.")
             os.environ['_NT_SYMBOL_PATH'] = 'SRV*http://msdl.microsoft.com/download/symbols'
+
+        # Add build path to symbol path
+        os.environ['_NT_SYMBOL_PATH'] += ";" + self._build_path()
+
         ntsd_path = self._ntsd_location()
         if not ntsd_path:
             _log.warning("Can't find ntsd.exe. Crash logs will not be saved.")
@@ -344,19 +347,32 @@ class WinPort(ApplePort):
     def delete_sem_locks(self):
         os.system("rm -rf /dev/shm/sem.*")
 
-    def setup_test_run(self):
+    def delete_preference_files(self):
+        try:
+            preferences_files = self._filesystem.join(os.environ['APPDATA'], "Apple Computer/Preferences", "com.apple.DumpRenderTree*")
+            filelist = glob.glob(preferences_files)
+            for file in filelist:
+                self._filesystem.remove(file)
+        except:
+            _log.warn("Failed to delete preference files.")
+
+    def setup_test_run(self, device_class=None):
         atexit.register(self.restore_crash_log_saving)
         self.setup_crash_log_saving()
         self.prevent_error_dialogs()
         self.delete_sem_locks()
-        super(WinPort, self).setup_test_run()
+        self.delete_preference_files()
+        super(WinPort, self).setup_test_run(device_class)
 
     def clean_up_test_run(self):
         self.allow_error_dialogs()
         self.restore_crash_log_saving()
         super(WinPort, self).clean_up_test_run()
 
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True):
+    def path_to_crash_logs(self):
+        return self.results_directory()
+
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True, target_host=None):
         # Note that we do slow-spin here and wait, since it appears the time
         # ReportCrash takes to actually write and flush the file varies when there are
         # lots of simultaneous crashes going on.
@@ -364,7 +380,7 @@ class WinPort(ApplePort):
         time_fn = time_fn or time.time
         sleep_fn = sleep_fn or time.sleep
         crash_log = ''
-        crash_logs = CrashLogs(self.host, self.results_directory())
+        crash_logs = CrashLogs(target_host or self.host, self.path_to_crash_logs(), crash_logs_to_skip=self._crash_logs_to_skip_for_host.get(target_host or self.host, []))
         now = time_fn()
         # FIXME: delete this after we're sure this code is working ...
         _log.debug('looking for crash log for %s:%s' % (name, str(pid)))

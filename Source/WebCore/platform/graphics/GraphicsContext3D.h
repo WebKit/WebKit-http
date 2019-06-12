@@ -23,10 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GraphicsContext3D_h
-#define GraphicsContext3D_h
+#pragma once
 
 #include "ANGLEWebKitBridge.h"
+#include "GraphicsContext3DAttributes.h"
 #include "GraphicsTypes3D.h"
 #include "Image.h"
 #include "IntRect.h"
@@ -34,7 +34,6 @@
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/ListHashSet.h>
-#include <wtf/Noncopyable.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -68,7 +67,7 @@ class QOpenGLContext;
 class QOpenGLExtensions;
 class QSurface;
 QT_END_NAMESPACE
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN_CAIRO)
+#elif PLATFORM(GTK) || PLATFORM(WIN_CAIRO) || PLATFORM(WPE)
 typedef unsigned int GLuint;
 #endif
 
@@ -109,6 +108,9 @@ class IntSize;
 class WebGLRenderingContextBase;
 #if USE(CAIRO)
 class PlatformContextCairo;
+#endif
+#if USE(TEXTURE_MAPPER)
+class TextureMapperGC3DPlatformLayer;
 #endif
 
 typedef WTF::HashMap<CString, uint64_t> ShaderNameHash;
@@ -721,37 +723,10 @@ public:
         TEXTURE_IMMUTABLE_FORMAT = 0x912F,
         MAX_ELEMENT_INDEX = 0x8D6B,
         NUM_SAMPLE_COUNTS = 0x9380,
-        TEXTURE_IMMUTABLE_LEVELS = 0x82DF
-    };
+        TEXTURE_IMMUTABLE_LEVELS = 0x82DF, 
 
-    // Context creation attributes.
-    struct Attributes {
-        Attributes()
-            : alpha(true)
-            , depth(true)
-            , stencil(false)
-            , antialias(true)
-            , premultipliedAlpha(true)
-            , preserveDrawingBuffer(false)
-            , noExtensions(false)
-            , shareResources(true)
-            , preferDiscreteGPU(false)
-            , forceSoftwareRenderer(false)
-            , devicePixelRatio(1)
-        {
-        }
-
-        bool alpha;
-        bool depth;
-        bool stencil;
-        bool antialias;
-        bool premultipliedAlpha;
-        bool preserveDrawingBuffer;
-        bool noExtensions;
-        bool shareResources;
-        bool preferDiscreteGPU;
-        bool forceSoftwareRenderer;
-        float devicePixelRatio;
+        // OpenGL ES 3 constants
+        MAP_READ_BIT = 0x0001
     };
 
     enum RenderStyle {
@@ -775,13 +750,13 @@ public:
     void setContextLostCallback(std::unique_ptr<ContextLostCallback>);
     void setErrorMessageCallback(std::unique_ptr<ErrorMessageCallback>);
 
-    static PassRefPtr<GraphicsContext3D> create(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
-    static PassRefPtr<GraphicsContext3D> createForCurrentGLContext();
+    static RefPtr<GraphicsContext3D> create(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen);
+    static RefPtr<GraphicsContext3D> createForCurrentGLContext();
     ~GraphicsContext3D();
 
 #if PLATFORM(COCOA)
     PlatformGraphicsContext3D platformGraphicsContext3D() const { return m_contextObj; }
-    Platform3DObject platformTexture() const { return m_compositorTexture; }
+    Platform3DObject platformTexture() const { return m_fbo; }
     CALayer* platformLayer() const { return reinterpret_cast<CALayer*>(m_webGLLayer.get()); }
 #else
     PlatformGraphicsContext3D platformGraphicsContext3D();
@@ -829,6 +804,8 @@ public:
                                      GC3Dint alignment,
                                      unsigned int* imageSizeInBytes,
                                      unsigned int* paddingInBytes);
+
+    static bool possibleFormatAndTypeForInternalFormat(GC3Denum internalFormat, GC3Denum& format, GC3Denum& type);
 
     // Extracts the contents of the given ImageData into the passed Vector,
     // packing the pixel data according to the given format and type,
@@ -903,45 +880,55 @@ public:
 
     ALWAYS_INLINE static bool hasAlpha(DataFormat format)
     {
-        return format == GraphicsContext3D::DataFormatA8
-            || format == GraphicsContext3D::DataFormatA16F
-            || format == GraphicsContext3D::DataFormatA32F
-            || format == GraphicsContext3D::DataFormatRA8
-            || format == GraphicsContext3D::DataFormatAR8
-            || format == GraphicsContext3D::DataFormatRA16F
-            || format == GraphicsContext3D::DataFormatRA32F
-            || format == GraphicsContext3D::DataFormatRGBA8
-            || format == GraphicsContext3D::DataFormatBGRA8
-            || format == GraphicsContext3D::DataFormatARGB8
-            || format == GraphicsContext3D::DataFormatABGR8
-            || format == GraphicsContext3D::DataFormatRGBA16F
-            || format == GraphicsContext3D::DataFormatRGBA32F
-            || format == GraphicsContext3D::DataFormatRGBA4444
-            || format == GraphicsContext3D::DataFormatRGBA5551;
+        switch (format) {
+        case GraphicsContext3D::DataFormatA8:
+        case GraphicsContext3D::DataFormatA16F:
+        case GraphicsContext3D::DataFormatA32F:
+        case GraphicsContext3D::DataFormatRA8:
+        case GraphicsContext3D::DataFormatAR8:
+        case GraphicsContext3D::DataFormatRA16F:
+        case GraphicsContext3D::DataFormatRA32F:
+        case GraphicsContext3D::DataFormatRGBA8:
+        case GraphicsContext3D::DataFormatBGRA8:
+        case GraphicsContext3D::DataFormatARGB8:
+        case GraphicsContext3D::DataFormatABGR8:
+        case GraphicsContext3D::DataFormatRGBA16F:
+        case GraphicsContext3D::DataFormatRGBA32F:
+        case GraphicsContext3D::DataFormatRGBA4444:
+        case GraphicsContext3D::DataFormatRGBA5551:
+            return true;
+        default:
+            return false;
+        }
     }
 
     ALWAYS_INLINE static bool hasColor(DataFormat format)
     {
-        return format == GraphicsContext3D::DataFormatRGBA8
-            || format == GraphicsContext3D::DataFormatRGBA16F
-            || format == GraphicsContext3D::DataFormatRGBA32F
-            || format == GraphicsContext3D::DataFormatRGB8
-            || format == GraphicsContext3D::DataFormatRGB16F
-            || format == GraphicsContext3D::DataFormatRGB32F
-            || format == GraphicsContext3D::DataFormatBGR8
-            || format == GraphicsContext3D::DataFormatBGRA8
-            || format == GraphicsContext3D::DataFormatARGB8
-            || format == GraphicsContext3D::DataFormatABGR8
-            || format == GraphicsContext3D::DataFormatRGBA5551
-            || format == GraphicsContext3D::DataFormatRGBA4444
-            || format == GraphicsContext3D::DataFormatRGB565
-            || format == GraphicsContext3D::DataFormatR8
-            || format == GraphicsContext3D::DataFormatR16F
-            || format == GraphicsContext3D::DataFormatR32F
-            || format == GraphicsContext3D::DataFormatRA8
-            || format == GraphicsContext3D::DataFormatRA16F
-            || format == GraphicsContext3D::DataFormatRA32F
-            || format == GraphicsContext3D::DataFormatAR8;
+        switch (format) {
+        case GraphicsContext3D::DataFormatRGBA8:
+        case GraphicsContext3D::DataFormatRGBA16F:
+        case GraphicsContext3D::DataFormatRGBA32F:
+        case GraphicsContext3D::DataFormatRGB8:
+        case GraphicsContext3D::DataFormatRGB16F:
+        case GraphicsContext3D::DataFormatRGB32F:
+        case GraphicsContext3D::DataFormatBGR8:
+        case GraphicsContext3D::DataFormatBGRA8:
+        case GraphicsContext3D::DataFormatARGB8:
+        case GraphicsContext3D::DataFormatABGR8:
+        case GraphicsContext3D::DataFormatRGBA5551:
+        case GraphicsContext3D::DataFormatRGBA4444:
+        case GraphicsContext3D::DataFormatRGB565:
+        case GraphicsContext3D::DataFormatR8:
+        case GraphicsContext3D::DataFormatR16F:
+        case GraphicsContext3D::DataFormatR32F:
+        case GraphicsContext3D::DataFormatRA8:
+        case GraphicsContext3D::DataFormatRA16F:
+        case GraphicsContext3D::DataFormatRA32F:
+        case GraphicsContext3D::DataFormatAR8:
+            return true;
+        default:
+            return false;
+        }
     }
 
     // Check if the format is one of the formats from the ImageData or DOM elements.
@@ -987,6 +974,13 @@ public:
     void bufferData(GC3Denum target, GC3Dsizeiptr size, const void* data, GC3Denum usage);
     void bufferSubData(GC3Denum target, GC3Dintptr offset, GC3Dsizeiptr size, const void* data);
 
+    void* mapBufferRange(GC3Denum target, GC3Dintptr offset, GC3Dsizeiptr length, GC3Dbitfield access);
+    GC3Dboolean unmapBuffer(GC3Denum target);
+    void copyBufferSubData(GC3Denum readTarget, GC3Denum writeTarget, GC3Dintptr readOffset, GC3Dintptr writeOffset, GC3Dsizeiptr);
+
+    void texStorage2D(GC3Denum target, GC3Dsizei levels, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height);
+    void texStorage3D(GC3Denum target, GC3Dsizei levels, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height, GC3Dsizei depth);
+
     GC3Denum checkFramebufferStatus(GC3Denum target);
     void clear(GC3Dbitfield mask);
     void clearColor(GC3Dclampf red, GC3Dclampf green, GC3Dclampf blue, GC3Dclampf alpha);
@@ -1026,7 +1020,7 @@ public:
     GC3Dint getAttribLocation(Platform3DObject, const String& name);
     void getBooleanv(GC3Denum pname, GC3Dboolean* value);
     void getBufferParameteriv(GC3Denum target, GC3Denum pname, GC3Dint* value);
-    Attributes getContextAttributes();
+    GraphicsContext3DAttributes getContextAttributes();
     GC3Denum getError();
     void getFloatv(GC3Denum pname, GC3Dfloat* value);
     void getFramebufferAttachmentParameteriv(GC3Denum target, GC3Denum attachment, GC3Denum pname, GC3Dint* value);
@@ -1134,7 +1128,7 @@ public:
     GC3Dboolean isVertexArray(Platform3DObject);
     void bindVertexArray(Platform3DObject);
 
-#if PLATFORM(GTK) || PLATFORM(EFL) || USE(CAIRO)
+#if PLATFORM(GTK) || USE(CAIRO)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                        int canvasWidth, int canvasHeight, PlatformContextCairo* context);
 #elif USE(CG)
@@ -1148,14 +1142,24 @@ public:
     void markLayerComposited();
     bool layerComposited() const;
     void forceContextLost();
+    void recycleContext();
+
+    void dispatchContextChangedNotification();
+    void simulateContextChanged();
 
     void paintRenderingResultsToCanvas(ImageBuffer*);
-    PassRefPtr<ImageData> paintRenderingResultsToImageData();
+    RefPtr<ImageData> paintRenderingResultsToImageData();
     bool paintCompositedResultsToCanvas(ImageBuffer*);
 
 #if PLATFORM(IOS)
     void endPaint();
 #endif
+#if PLATFORM(MAC)
+    void updateCGLContext();
+#endif
+    void setContextVisibility(bool);
+
+    GraphicsContext3DPowerPreference powerPreferenceUsedForCreation() const { return m_powerPreferenceUsedForCreation; }
 
     // Support for buffer creation and deletion
     Platform3DObject createBuffer();
@@ -1190,7 +1194,7 @@ public:
     // all methods it contains may necessarily be supported on the
     // current hardware. Must call Extensions3D::supports() to
     // determine this.
-    Extensions3D* getExtensions();
+    Extensions3D& getExtensions();
 
     IntSize getInternalFramebufferSize() const;
 
@@ -1257,7 +1261,7 @@ public:
         ImageSource* m_decoder;
         RefPtr<cairo_surface_t> m_imageSurface;
 #elif USE(CG)
-        CGImageRef m_cgImage;
+        RetainPtr<CGImageRef> m_cgImage;
         RetainPtr<CGImageRef> m_decodedImage;
         RetainPtr<CFDataRef> m_pixelData;
         std::unique_ptr<uint8_t[]> m_formalizedRGBA8Data;
@@ -1275,10 +1279,10 @@ public:
         unsigned m_imageSourceUnpackAlignment;
     };
 
+    void setFailNextGPUStatusCheck() { m_failNextStatusCheck = true; }
+
 private:
-    GraphicsContext3D(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
-    static int numActiveContexts;
-    static int GPUCheckCounter;
+    GraphicsContext3D(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen);
 
     // Helper for packImageData/extractImageData/extractTextureData which implement packing of pixel
     // data into the specified OpenGL destination format and type.
@@ -1294,8 +1298,8 @@ private:
     void validateDepthStencil(const char* packedDepthStencilExtension);
     void validateAttributes();
     
-    // Call to make during draw calls to check on the GPU's status.
-    void checkGPUStatusIfNecessary();
+    // Did the most recent drawing operation leave the GPU in an acceptable state?
+    void checkGPUStatus();
 
     // Read rendering results into a pixel array with the same format as the
     // backbuffer.
@@ -1303,59 +1307,26 @@ private:
     void readPixelsAndConvertToBGRAIfNecessary(int x, int y, int width, int height, unsigned char* pixels);
 
 #if PLATFORM(IOS)
-    bool setRenderbufferStorageFromDrawable(GC3Dsizei width, GC3Dsizei height);
+    void setRenderbufferStorageFromDrawable(GC3Dsizei width, GC3Dsizei height);
 #endif
 
     bool reshapeFBOs(const IntSize&);
     void resolveMultisamplingIfNecessary(const IntRect& = IntRect());
     void attachDepthAndStencilBufferIfNeeded(GLuint internalDepthStencilFormat, int width, int height);
-#if (PLATFORM(QT) || PLATFORM(EFL)) && USE(GRAPHICS_SURFACE)
-    void createGraphicsSurfaces(const IntSize&);
-#endif
 
-    int m_currentWidth, m_currentHeight;
-    bool isResourceSafe();
+    int m_currentWidth { 0 };
+    int m_currentHeight { 0 };
 
 #if PLATFORM(COCOA)
     RetainPtr<WebGLLayer> m_webGLLayer;
-    PlatformGraphicsContext3D m_contextObj;
+    PlatformGraphicsContext3D m_contextObj { nullptr };
 #endif
 
 #if PLATFORM(WIN) && USE(CA)
     RefPtr<PlatformCALayer> m_webGLLayer;
 #endif
 
-    struct SymbolInfo {
-        SymbolInfo()
-            : type(0)
-            , size(0)
-            , precision(GL_NONE) // Invalid precision.
-            , staticUse(0)
-        {
-        }
-
-        SymbolInfo(GC3Denum type, int size, const String& mappedName, sh::GLenum precision, int staticUse)
-            : type(type)
-            , size(size)
-            , mappedName(mappedName)
-            , precision(precision)
-            , staticUse(staticUse)
-        {
-        }
-
-        bool operator==(SymbolInfo& other) const
-        {
-            return type == other.type && size == other.size && mappedName == other.mappedName;
-        }
-
-        GC3Denum type;
-        int size;
-        String mappedName;
-        sh::GLenum precision;
-        int staticUse;
-    };
-
-    typedef HashMap<String, SymbolInfo> ShaderSymbolMap;
+    typedef HashMap<String, sh::ShaderVariable> ShaderSymbolMap;
 
     struct ShaderSourceEntry {
         GC3Denum type;
@@ -1413,53 +1384,56 @@ private:
     String mappedSymbolName(Platform3DObject shaders[2], size_t count, const String& name);
     String originalSymbolName(Platform3DObject program, ANGLEShaderSymbolType, const String& name);
 
+    std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
+
+#if PLATFORM(QT)
+    std::unique_ptr<Extensions3DOpenGLCommon> m_extensions;
+    friend class Extensions3DOpenGL;
+    friend class Extensions3DOpenGLES;
+#elif ((PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(WPE)) && USE(OPENGL_ES_2))
+    friend class Extensions3DOpenGLES;
+    std::unique_ptr<Extensions3DOpenGLES> m_extensions;
+#else
+    friend class Extensions3DOpenGL;
+    std::unique_ptr<Extensions3DOpenGL> m_extensions;
+#endif
+    friend class Extensions3DOpenGLCommon;
+
+    GraphicsContext3DAttributes m_attrs;
+    GraphicsContext3DPowerPreference m_powerPreferenceUsedForCreation { GraphicsContext3DPowerPreference::Default };
+    RenderStyle m_renderStyle;
+    Vector<Vector<float>> m_vertexArray;
+
 #if !PLATFORM(QT)
     ANGLEWebKitBridge m_compiler;
 #endif
 
-    std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
-
-    std::unique_ptr<Extensions3DOpenGLCommon> m_extensions;
-    friend class Extensions3DOpenGL;
-    friend class Extensions3DOpenGLES;
-    friend class Extensions3DOpenGLCommon;
-
-    Attributes m_attrs;
-    RenderStyle m_renderStyle;
-    Vector<Vector<float>> m_vertexArray;
-
-    GC3Duint m_texture;
-    GC3Duint m_compositorTexture;
-    GC3Duint m_fbo;
+    GC3Duint m_texture { 0 };
+    GC3Duint m_fbo { 0 };
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    GC3Duint m_compositorFBO;
+    GC3Duint m_compositorTexture { 0 };
+    GC3Duint m_intermediateTexture { 0 };
 #endif
 
-    GC3Duint m_depthBuffer;
-    GC3Duint m_stencilBuffer;
-    GC3Duint m_depthStencilBuffer;
+    GC3Duint m_depthBuffer { 0 };
+    GC3Duint m_stencilBuffer { 0 };
+    GC3Duint m_depthStencilBuffer { 0 };
 
-    bool m_layerComposited;
-    GC3Duint m_internalColorFormat;
+    bool m_layerComposited { false };
+    GC3Duint m_internalColorFormat { 0 };
 
     struct GraphicsContext3DState {
-        GraphicsContext3DState()
-            : boundFBO(0)
-            , activeTexture(GraphicsContext3D::TEXTURE0)
-            , boundTexture0(0)
-        { }
-
-        GC3Duint boundFBO;
-        GC3Denum activeTexture;
-        GC3Duint boundTexture0;
+        GC3Duint boundFBO { 0 };
+        GC3Denum activeTexture { GraphicsContext3D::TEXTURE0 };
+        GC3Duint boundTexture0 { 0 };
     };
 
     GraphicsContext3DState m_state;
 
     // For multisampling
-    GC3Duint m_multisampleFBO;
-    GC3Duint m_multisampleDepthStencilBuffer;
-    GC3Duint m_multisampleColorBuffer;
+    GC3Duint m_multisampleFBO { 0 };
+    GC3Duint m_multisampleDepthStencilBuffer { 0 };
+    GC3Duint m_multisampleColorBuffer { 0 };
 
     // Errors raised by synthesizeGLError().
     ListHashSet<GC3Denum> m_syntheticErrors;
@@ -1468,17 +1442,32 @@ private:
     QOpenGLExtensions* m_functions;
 #endif
 
+#if USE(TEXTURE_MAPPER)
+    friend class TextureMapperGC3DPlatformLayer;
+    std::unique_ptr<TextureMapperGC3DPlatformLayer> m_texmapLayer;
+#else
     friend class GraphicsContext3DPrivate;
     std::unique_ptr<GraphicsContext3DPrivate> m_private;
+#endif
 
 #if PLATFORM(QT)
     // Must be initialized after m_private so that isGLES2Compliant works
     ANGLEWebKitBridge m_compiler;
 #endif
 
-    WebGLRenderingContextBase* m_webglContext;
+    // FIXME: Layering violation.
+    WebGLRenderingContextBase* m_webglContext { nullptr };
+
+    bool m_isForWebGL2 { false };
+    bool m_usingCoreProfile { false };
+
+    unsigned m_statusCheckCount { 0 };
+    bool m_failNextStatusCheck { false };
+
+#if USE(CAIRO)
+    Platform3DObject m_vao { 0 };
+#endif
+
 };
 
 } // namespace WebCore
-
-#endif // GraphicsContext3D_h

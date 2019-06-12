@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013, 2014, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2014 Yusuke Suzuki <utatane.tea@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,8 @@
 
 #include "CSSParser.h"
 #include "ElementDescendantIterator.h"
+#include "ExceptionCode.h"
+#include "HTMLNames.h"
 #include "SelectorChecker.h"
 #include "StaticNodeList.h"
 #include "StyledElement.h"
@@ -53,16 +55,22 @@ enum class IdMatchingType : uint8_t {
     Filter
 };
 
+static bool canBeUsedForIdFastPath(const CSSSelector& selector)
+{
+    return selector.match() == CSSSelector::Id
+        || (selector.match() == CSSSelector::Exact && selector.attribute() == HTMLNames::idAttr && !selector.attributeValueMatchingIsCaseInsensitive());
+}
+
 static IdMatchingType findIdMatchingType(const CSSSelector& firstSelector)
 {
     bool inRightmost = true;
     for (const CSSSelector* selector = &firstSelector; selector; selector = selector->tagHistory()) {
-        if (selector->match() == CSSSelector::Id) {
+        if (canBeUsedForIdFastPath(*selector)) {
             if (inRightmost)
                 return IdMatchingType::Rightmost;
             return IdMatchingType::Filter;
         }
-        if (selector->relation() != CSSSelector::SubSelector)
+        if (selector->relation() != CSSSelector::Subselector)
             inRightmost = false;
     }
     return IdMatchingType::None;
@@ -88,11 +96,11 @@ SelectorDataList::SelectorDataList(const CSSSelectorList& selectorList)
             case CSSSelector::Class:
                 m_matchType = ClassNameMatch;
                 break;
-            case CSSSelector::Id:
-                m_matchType = RightMostWithIdMatch;
-                break;
             default:
-                m_matchType = CompilableSingle;
+                if (canBeUsedForIdFastPath(selector))
+                    m_matchType = RightMostWithIdMatch;
+                else
+                    m_matchType = CompilableSingle;
                 break;
             }
         } else {
@@ -161,11 +169,11 @@ struct AllElementExtractorSelectorQueryTrait {
     ALWAYS_INLINE static void appendOutputForElement(OutputType& output, Element* element) { ASSERT(element); output.append(*element); }
 };
 
-RefPtr<NodeList> SelectorDataList::queryAll(ContainerNode& rootNode) const
+Ref<NodeList> SelectorDataList::queryAll(ContainerNode& rootNode) const
 {
     Vector<Ref<Element>> result;
     execute<AllElementExtractorSelectorQueryTrait>(rootNode, result);
-    return StaticElementList::adopt(result);
+    return StaticElementList::create(WTFMove(result));
 }
 
 struct SingleElementExtractorSelectorQueryTrait {
@@ -188,15 +196,15 @@ Element* SelectorDataList::queryFirst(ContainerNode& rootNode) const
 
 static const CSSSelector* selectorForIdLookup(const ContainerNode& rootNode, const CSSSelector& firstSelector)
 {
-    if (!rootNode.inDocument())
+    if (!rootNode.isConnected())
         return nullptr;
     if (rootNode.document().inQuirksMode())
         return nullptr;
 
     for (const CSSSelector* selector = &firstSelector; selector; selector = selector->tagHistory()) {
-        if (selector->match() == CSSSelector::Id)
+        if (canBeUsedForIdFastPath(*selector))
             return selector;
-        if (selector->relation() != CSSSelector::SubSelector)
+        if (selector->relation() != CSSSelector::Subselector)
             break;
     }
 
@@ -220,7 +228,7 @@ ALWAYS_INLINE void SelectorDataList::executeFastPathForIdSelector(const Containe
         ASSERT(elements);
         bool rootNodeIsTreeScopeRoot = isTreeScopeRoot(rootNode);
         for (auto& element : *elements) {
-            if ((rootNodeIsTreeScopeRoot || element->isDescendantOf(&rootNode)) && selectorMatches(selectorData, *element, rootNode)) {
+            if ((rootNodeIsTreeScopeRoot || element->isDescendantOf(rootNode)) && selectorMatches(selectorData, *element, rootNode)) {
                 SelectorQueryTrait::appendOutputForElement(output, element);
                 if (SelectorQueryTrait::shouldOnlyMatchFirstElement)
                     return;
@@ -230,7 +238,7 @@ ALWAYS_INLINE void SelectorDataList::executeFastPathForIdSelector(const Containe
     }
 
     Element* element = rootNode.treeScope().getElementById(idToMatch);
-    if (!element || !(isTreeScopeRoot(rootNode) || element->isDescendantOf(&rootNode)))
+    if (!element || !(isTreeScopeRoot(rootNode) || element->isDescendantOf(rootNode)))
         return;
     if (selectorMatches(selectorData, *element, rootNode))
         SelectorQueryTrait::appendOutputForElement(output, element);
@@ -238,7 +246,7 @@ ALWAYS_INLINE void SelectorDataList::executeFastPathForIdSelector(const Containe
 
 static ContainerNode& filterRootById(ContainerNode& rootNode, const CSSSelector& firstSelector)
 {
-    if (!rootNode.inDocument())
+    if (!rootNode.isConnected())
         return rootNode;
     if (rootNode.document().inQuirksMode())
         return rootNode;
@@ -247,26 +255,26 @@ static ContainerNode& filterRootById(ContainerNode& rootNode, const CSSSelector&
     // Thus we can skip the rightmost match.
     const CSSSelector* selector = &firstSelector;
     do {
-        ASSERT(selector->match() != CSSSelector::Id);
-        if (selector->relation() != CSSSelector::SubSelector)
+        ASSERT(!canBeUsedForIdFastPath(*selector));
+        if (selector->relation() != CSSSelector::Subselector)
             break;
         selector = selector->tagHistory();
     } while (selector);
 
     bool inAdjacentChain = false;
     for (; selector; selector = selector->tagHistory()) {
-        if (selector->match() == CSSSelector::Id) {
+        if (canBeUsedForIdFastPath(*selector)) {
             const AtomicString& idToMatch = selector->value();
             if (ContainerNode* searchRoot = rootNode.treeScope().getElementById(idToMatch)) {
                 if (LIKELY(!rootNode.treeScope().containsMultipleElementsWithId(idToMatch))) {
                     if (inAdjacentChain)
                         searchRoot = searchRoot->parentNode();
-                    if (searchRoot && (isTreeScopeRoot(rootNode) || searchRoot == &rootNode || searchRoot->isDescendantOf(&rootNode)))
+                    if (searchRoot && (isTreeScopeRoot(rootNode) || searchRoot == &rootNode || searchRoot->isDescendantOf(rootNode)))
                         return *searchRoot;
                 }
             }
         }
-        if (selector->relation() == CSSSelector::SubSelector)
+        if (selector->relation() == CSSSelector::Subselector)
             continue;
         if (selector->relation() == CSSSelector::DirectAdjacent || selector->relation() == CSSSelector::IndirectAdjacent)
             inAdjacentChain = true;
@@ -328,8 +336,8 @@ ALWAYS_INLINE void SelectorDataList::executeSingleTagNameSelectorData(const Cont
     const AtomicString& selectorLowercaseLocalName = selectorData.selector->tagLowercaseLocalName();
     const AtomicString& selectorNamespaceURI = tagQualifiedName.namespaceURI();
 
-    if (selectorNamespaceURI == starAtom) {
-        if (selectorLocalName != starAtom) {
+    if (selectorNamespaceURI == starAtom()) {
+        if (selectorLocalName != starAtom()) {
             // Common case: name defined, selectorNamespaceURI is a wildcard.
             elementsForLocalName<SelectorQueryTrait>(rootNode, selectorLocalName, selectorLowercaseLocalName, output);
         } else {
@@ -337,7 +345,7 @@ ALWAYS_INLINE void SelectorDataList::executeSingleTagNameSelectorData(const Cont
             anyElement<SelectorQueryTrait>(rootNode, output);
         }
     } else {
-        // Fallback: NamespaceURI is set, selectorLocalName may be starAtom.
+        // Fallback: NamespaceURI is set, selectorLocalName may be starAtom().
         for (auto& element : elementDescendants(const_cast<ContainerNode&>(rootNode))) {
             if (element.namespaceURI() == selectorNamespaceURI && localNameMatches(element, selectorLocalName, selectorLowercaseLocalName)) {
                 SelectorQueryTrait::appendOutputForElement(output, &element);
@@ -608,32 +616,27 @@ SelectorQuery::SelectorQuery(CSSSelectorList&& selectorList)
 {
 }
 
-SelectorQuery* SelectorQueryCache::add(const String& selectors, Document& document, ExceptionCode& ec)
+ExceptionOr<SelectorQuery&> SelectorQueryCache::add(const String& selectors, Document& document)
 {
     auto it = m_entries.find(selectors);
     if (it != m_entries.end())
-        return it->value.get();
+        return *it->value;
 
     CSSParser parser(document);
     CSSSelectorList selectorList;
     parser.parseSelector(selectors, selectorList);
 
-    if (!selectorList.first() || selectorList.hasInvalidSelector()) {
-        ec = SYNTAX_ERR;
-        return nullptr;
-    }
+    if (!selectorList.first() || selectorList.hasInvalidSelector())
+        return Exception { SYNTAX_ERR };
 
-    // Throw a NAMESPACE_ERR if the selector includes any namespace prefixes.
-    if (selectorList.selectorsNeedNamespaceResolution()) {
-        ec = NAMESPACE_ERR;
-        return nullptr;
-    }
+    if (selectorList.selectorsNeedNamespaceResolution())
+        return Exception { SYNTAX_ERR };
 
     const int maximumSelectorQueryCacheSize = 256;
     if (m_entries.size() == maximumSelectorQueryCacheSize)
         m_entries.remove(m_entries.begin());
 
-    return m_entries.add(selectors, std::make_unique<SelectorQuery>(WTFMove(selectorList))).iterator->value.get();
+    return *m_entries.add(selectors, std::make_unique<SelectorQuery>(WTFMove(selectorList))).iterator->value;
 }
 
 }

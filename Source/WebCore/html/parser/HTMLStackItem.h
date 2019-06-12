@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLStackItem_h
-#define HTMLStackItem_h
+#pragma once
 
 #include "AtomicHTMLToken.h"
 #include "DocumentFragment.h"
@@ -39,7 +38,8 @@ namespace WebCore {
 class HTMLStackItem : public RefCounted<HTMLStackItem> {
 public:
     // Normal HTMLElementStack and HTMLFormattingElementList items.
-    static Ref<HTMLStackItem> create(Ref<Element>&&, AtomicHTMLToken&, const AtomicString& namespaceURI = HTMLNames::xhtmlNamespaceURI);
+    static Ref<HTMLStackItem> create(Ref<Element>&&, AtomicHTMLToken&&, const AtomicString& namespaceURI = HTMLNames::xhtmlNamespaceURI);
+    static Ref<HTMLStackItem> create(Ref<Element>&&, const AtomicString&, Vector<Attribute>&&);
 
     // Document fragment or element for parsing context.
     static Ref<HTMLStackItem> create(Element&);
@@ -61,7 +61,8 @@ public:
     bool matchesHTMLTag(const AtomicString&) const;
 
 private:
-    HTMLStackItem(Ref<Element>&&, AtomicHTMLToken&, const AtomicString& namespaceURI);
+    HTMLStackItem(Ref<Element>&&, AtomicHTMLToken&&, const AtomicString& namespaceURI);
+    HTMLStackItem(Ref<Element>&&, const AtomicString& localName, const AtomicString& namespaceURI, Vector<Attribute>&&);
     explicit HTMLStackItem(Element&);
     explicit HTMLStackItem(DocumentFragment&);
 
@@ -75,18 +76,31 @@ bool isInHTMLNamespace(const HTMLStackItem&);
 bool isNumberedHeaderElement(const HTMLStackItem&);
 bool isSpecialNode(const HTMLStackItem&);
 
-inline HTMLStackItem::HTMLStackItem(Ref<Element>&& element, AtomicHTMLToken& token, const AtomicString& namespaceURI = HTMLNames::xhtmlNamespaceURI)
+inline HTMLStackItem::HTMLStackItem(Ref<Element>&& element, AtomicHTMLToken&& token, const AtomicString& namespaceURI = HTMLNames::xhtmlNamespaceURI)
     : m_node(WTFMove(element))
     , m_namespaceURI(namespaceURI)
     , m_localName(token.name())
-    , m_attributes(token.attributes())
+    , m_attributes(WTFMove(token.attributes()))
 {
-    // FIXME: We should find a way to move the attributes vector in the normal code path instead of copying it.
 }
 
-inline Ref<HTMLStackItem> HTMLStackItem::create(Ref<Element>&& element, AtomicHTMLToken& token, const AtomicString& namespaceURI)
+inline Ref<HTMLStackItem> HTMLStackItem::create(Ref<Element>&& element, AtomicHTMLToken&& token, const AtomicString& namespaceURI)
 {
-    return adoptRef(*new HTMLStackItem(WTFMove(element), token, namespaceURI));
+    return adoptRef(*new HTMLStackItem(WTFMove(element), WTFMove(token), namespaceURI));
+}
+
+inline HTMLStackItem::HTMLStackItem(Ref<Element>&& element, const AtomicString& localName, const AtomicString& namespaceURI, Vector<Attribute>&& attributes)
+    : m_node(WTFMove(element))
+    , m_namespaceURI(namespaceURI)
+    , m_localName(localName)
+    , m_attributes(WTFMove(attributes))
+{
+}
+
+inline Ref<HTMLStackItem> HTMLStackItem::create(Ref<Element>&& element, const AtomicString& localName, Vector<Attribute>&& attributes)
+{
+    auto& namespaceURI = element.get().namespaceURI();
+    return adoptRef(*new HTMLStackItem(WTFMove(element), localName, namespaceURI, WTFMove(attributes)));
 }
 
 inline HTMLStackItem::HTMLStackItem(Element& element)
@@ -113,7 +127,7 @@ inline Ref<HTMLStackItem> HTMLStackItem::create(DocumentFragment& fragment)
 
 inline ContainerNode& HTMLStackItem::node() const
 {
-    return const_cast<ContainerNode&>(m_node.get());
+    return m_node.get();
 }
 
 inline Element& HTMLStackItem::element() const
@@ -233,7 +247,6 @@ inline bool isSpecialNode(const HTMLStackItem& item)
             || tagName == HTMLNames::iframeTag
             || tagName == HTMLNames::imgTag
             || tagName == HTMLNames::inputTag
-            || tagName == HTMLNames::isindexTag
             || tagName == HTMLNames::liTag
             || tagName == HTMLNames::linkTag
             || tagName == HTMLNames::listingTag
@@ -259,9 +272,7 @@ inline bool isSpecialNode(const HTMLStackItem& item)
             || tagName == HTMLNames::tableTag
             || tagName == HTMLNames::tbodyTag
             || tagName == HTMLNames::tdTag
-#if ENABLE(TEMPLATE_ELEMENT)
             || tagName == HTMLNames::templateTag
-#endif
             || tagName == HTMLNames::textareaTag
             || tagName == HTMLNames::tfootTag
             || tagName == HTMLNames::thTag
@@ -289,5 +300,3 @@ inline bool isSpecialNode(const HTMLStackItem& item)
 }
 
 } // namespace WebCore
-
-#endif // HTMLStackItem_h

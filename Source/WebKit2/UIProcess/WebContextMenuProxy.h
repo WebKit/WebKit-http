@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebContextMenuProxy_h
-#define WebContextMenuProxy_h
+#pragma once
 
 #if ENABLE(CONTEXT_MENUS)
 
@@ -36,11 +35,13 @@ namespace WebKit {
 
 class WebContextMenuItem;
 
-class WebContextMenuProxy {
+class WebContextMenuProxy : public RefCounted<WebContextMenuProxy> {
 public:
     virtual ~WebContextMenuProxy();
 
     virtual void show() = 0;
+
+    virtual void showContextMenuWithItems(const Vector<WebContextMenuItemData>& items) = 0;
 
 protected:
     WebContextMenuProxy(const ContextMenuContextData&, const UserData&);
@@ -52,5 +53,3 @@ protected:
 } // namespace WebKit
 
 #endif
-
-#endif // WebPopupMenuProxy_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,14 +26,14 @@
 #include "WebPlatformStrategies.h"
 
 #include "FrameLoader.h"
-#include "PluginDatabase.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebResourceLoadScheduler.h"
 #include <WebCore/BlobRegistryImpl.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/PlatformCookieJar.h>
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
 
@@ -61,12 +61,7 @@ LoaderStrategy* WebPlatformStrategies::createLoaderStrategy()
 
 PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
 {
-    return 0;
-}
-
-PluginStrategy* WebPlatformStrategies::createPluginStrategy()
-{
-    return this;
+    return nullptr;
 }
 
 BlobRegistry* WebPlatformStrategies::createBlobRegistry()
@@ -94,6 +89,12 @@ String WebPlatformStrategies::cookieRequestHeaderFieldValue(const NetworkStorage
     return WebCore::cookieRequestHeaderFieldValue(session, firstParty, url);
 }
 
+String WebPlatformStrategies::cookieRequestHeaderFieldValue(WebCore::SessionID sessionID, const URL& firstParty, const URL& url)
+{
+    auto& session = sessionID.isEphemeral() ? WebFrameNetworkingContext::ensurePrivateBrowsingSession() : NetworkStorageSession::defaultStorageSession();
+    return WebCore::cookieRequestHeaderFieldValue(session, firstParty, url);
+}
+
 bool WebPlatformStrategies::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, Vector<Cookie>& rawCookies)
 {
     return WebCore::getRawCookies(session, firstParty, url, rawCookies);
@@ -102,47 +103,4 @@ bool WebPlatformStrategies::getRawCookies(const NetworkStorageSession& session, 
 void WebPlatformStrategies::deleteCookie(const NetworkStorageSession& session, const URL& url, const String& cookieName)
 {
     WebCore::deleteCookie(session, url, cookieName);
-}
-
-void WebPlatformStrategies::refreshPlugins()
-{
-    PluginDatabase::installedPlugins()->refresh();
-}
-
-void WebPlatformStrategies::getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>& outPlugins)
-{
-    const Vector<PluginPackage*>& plugins = PluginDatabase::installedPlugins()->plugins();
-
-    outPlugins.resize(plugins.size());
-
-    for (size_t i = 0; i < plugins.size(); ++i) {
-        PluginPackage* package = plugins[i];
-
-        PluginInfo info;
-        info.name = package->name();
-        info.file = package->fileName();
-        info.desc = package->description();
-
-        const MIMEToDescriptionsMap& mimeToDescriptions = package->mimeToDescriptions();
-
-        info.mimes.reserveCapacity(mimeToDescriptions.size());
-
-        MIMEToDescriptionsMap::const_iterator end = mimeToDescriptions.end();
-        for (MIMEToDescriptionsMap::const_iterator it = mimeToDescriptions.begin(); it != end; ++it) {
-            MimeClassInfo mime;
-
-            mime.type = it->key;
-            mime.desc = it->value;
-            mime.extensions = package->mimeToExtensions().get(mime.type);
-
-            info.mimes.append(mime);
-        }
-
-        outPlugins[i] = info;
-    }
-}
-
-void WebPlatformStrategies::getWebVisiblePluginInfo(const Page* page, Vector<PluginInfo>& plugins)
-{
-    getPluginInfo(page, plugins);
 }

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFramePolicyListenerProxy_h
-#define WebFramePolicyListenerProxy_h
+#pragma once
 
 #include "WebFrameListenerProxy.h"
 
@@ -40,19 +39,19 @@ class WebFramePolicyListenerProxy : public WebFrameListenerProxy {
 public:
     static const Type APIType = Type::FramePolicyListener;
 
-    static PassRefPtr<WebFramePolicyListenerProxy> create(WebFrameProxy* frame, uint64_t listenerID)
+    static Ref<WebFramePolicyListenerProxy> create(WebFrameProxy* frame, uint64_t listenerID)
     {
-        return adoptRef(new WebFramePolicyListenerProxy(frame, listenerID));
+        return adoptRef(*new WebFramePolicyListenerProxy(frame, listenerID));
     }
 
-    void use();
+    void use(const WebsitePolicies&);
     void download();
     void ignore();
 
 private:
     WebFramePolicyListenerProxy(WebFrameProxy*, uint64_t listenerID);
 
-    virtual Type type() const { return APIType; }
+    Type type() const override { return APIType; }
 
 #if DELEGATE_REF_COUNTING_TO_COCOA
     void* operator new(size_t size) { return newObject(size, APIType); }
@@ -62,5 +61,3 @@ private:
 } // namespace WebKit
 
 #undef DELEGATE_REF_COUNTING_TO_COCOA
-
-#endif // WebFramePolicyListenerProxy_h

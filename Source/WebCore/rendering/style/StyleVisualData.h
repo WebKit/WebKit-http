@@ -22,13 +22,12 @@
  *
  */
 
-#ifndef StyleVisualData_h
-#define StyleVisualData_h
+#pragma once
 
 #include "LengthBox.h"
 #include "RenderStyleConstants.h"
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
@@ -38,26 +37,19 @@ public:
     Ref<StyleVisualData> copy() const;
     ~StyleVisualData();
 
-    bool operator==(const StyleVisualData& o) const
+    bool operator==(const StyleVisualData& other) const
     {
-        return clip == o.clip
-            && hasClip == o.hasClip
-            && textDecoration == o.textDecoration
-#if ENABLE(TEXT_AUTOSIZING)
-            && m_textAutosizingMultiplier == o.m_textAutosizingMultiplier
-#endif
-            && m_zoom == o.m_zoom;
+        return clip == other.clip
+            && hasClip == other.hasClip
+            && textDecoration == other.textDecoration
+            && zoom == other.zoom;
     }
-    bool operator!=(const StyleVisualData& o) const { return !(*this == o); }
+    bool operator!=(const StyleVisualData& other) const { return !(*this == other); }
 
     LengthBox clip;
     bool hasClip : 1;
     unsigned textDecoration : TextDecorationBits; // Text decorations defined *only* by this element.
-
-#if ENABLE(TEXT_AUTOSIZING)
-    float m_textAutosizingMultiplier;
-#endif
-    float m_zoom;
+    float zoom;
 
 private:
     StyleVisualData();
@@ -65,5 +57,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleVisualData_h

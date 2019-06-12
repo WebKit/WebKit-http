@@ -25,86 +25,77 @@
 
 WebInspector.ConsoleMessage = class ConsoleMessage extends WebInspector.Object
 {
-    constructor(source, level, message, type, url, line, column, repeatCount, parameters, stackTrace, request)
+    constructor(target, source, level, message, type, url, line, column, repeatCount, parameters, callFrames, request)
     {
         super();
 
         console.assert(typeof source === "string");
         console.assert(typeof level === "string");
         console.assert(typeof message === "string");
-        console.assert(!parameters || parameters.every(function(x) { return x instanceof WebInspector.RemoteObject; }));
+        console.assert(target instanceof WebInspector.Target);
+        console.assert(!parameters || parameters.every((x) => x instanceof WebInspector.RemoteObject));
 
+        this._target = target;
         this._source = source;
         this._level = level;
         this._messageText = message;
         this._type = type || WebInspector.ConsoleMessage.MessageType.Log;
+
         this._url = url || null;
         this._line = line || 0;
         this._column = column || 0;
+        this._sourceCodeLocation = undefined;
 
         this._repeatCount = repeatCount || 0;
         this._parameters = parameters;
 
-        this._stackTrace = WebInspector.StackTrace.fromPayload(stackTrace || []);
+        callFrames = callFrames || [];
+        this._stackTrace = WebInspector.StackTrace.fromPayload(this._target, {callFrames});
 
         this._request = request;
     }
 
     // Public
 
-    get source()
-    {
-        return this._source;
-    }
+    get target() { return this._target; }
+    get source() { return this._source; }
+    get level() { return this._level; }
+    get messageText() { return this._messageText; }
+    get type() { return this._type; }
+    get url() { return this._url; }
+    get line() { return this._line; }
+    get column() { return this._column; }
+    get repeatCount() { return this._repeatCount; }
+    get parameters() { return this._parameters; }
+    get stackTrace() { return this._stackTrace; }
+    get request() { return this._request; }
 
-    get level()
+    get sourceCodeLocation()
     {
-        return this._level;
-    }
+        if (this._sourceCodeLocation !== undefined)
+            return this._sourceCodeLocation;
 
-    get messageText()
-    {
-        return this._messageText;
-    }
+        // First try to get the location from the top frame of the stack trace.
+        let topCallFrame = this._stackTrace.callFrames[0];
+        if (topCallFrame && topCallFrame.sourceCodeLocation) {
+            this._sourceCodeLocation = topCallFrame.sourceCodeLocation;
+            return this._sourceCodeLocation;
+        }
 
-    get type()
-    {
-        return this._type;
-    }
+        // If that doesn't exist try to get a location from the url/line/column in the ConsoleMessage.
+        // FIXME <http://webkit.org/b/76404>: Remove the string equality checks for undefined once we don't get that value anymore.
+        if (this._url && this._url !== "undefined") {
+            let sourceCode = WebInspector.frameResourceManager.resourceForURL(this._url);
+            if (sourceCode) {
+                let lineNumber = this._line > 0 ? this._line - 1 : 0;
+                let columnNumber = this._column > 0 ? this._column - 1 : 0;
+                this._sourceCodeLocation = new WebInspector.SourceCodeLocation(sourceCode, lineNumber, columnNumber);
+                return this._sourceCodeLocation;
+            }
+        }
 
-    get url()
-    {
-        return this._url;
-    }
-
-    get line()
-    {
-        return this._line;
-    }
-
-    get column()
-    {
-        return this._column;
-    }
-
-    get repeatCount()
-    {
-        return this._repeatCount;
-    }
-
-    get parameters()
-    {
-        return this._parameters;
-    }
-
-    get stackTrace()
-    {
-        return this._stackTrace;
-    }
-
-    get request()
-    {
-        return this._request;
+        this._sourceCodeLocation = null;
+        return this._sourceCodeLocation;
     }
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StructureInlines_h
-#define StructureInlines_h
+#pragma once
 
 #include "JSArrayBufferView.h"
 #include "JSCJSValueInlines.h"
@@ -94,8 +93,7 @@ ALWAYS_INLINE PropertyOffset Structure::get(VM& vm, PropertyName propertyName, u
     ASSERT(!isCompilationThread());
     ASSERT(structure()->classInfo() == info());
 
-    PropertyTable* propertyTable;
-    materializePropertyMapIfNecessary(vm, propertyTable);
+    PropertyTable* propertyTable = ensurePropertyTableIfNotEmpty(vm);
     if (!propertyTable)
         return invalidOffset;
 
@@ -148,7 +146,7 @@ inline bool Structure::hasIndexingHeader(const JSCell* cell) const
     if (hasIndexedProperties(indexingType()))
         return true;
     
-    if (!isTypedView(m_classInfo->typedArrayStorageType))
+    if (!isTypedView(typedArrayTypeForType(m_blob.type())))
         return false;
     
     return jsCast<const JSArrayBufferView*>(cell)->mode() == WastefulTypedArray;
@@ -210,7 +208,7 @@ inline bool Structure::isValid(JSGlobalObject* globalObject, StructureChain* cac
         if (asObject(prototype)->structure() != cachedStructure->get())
             return false;
         ++cachedStructure;
-        prototype = asObject(prototype)->prototype();
+        prototype = asObject(prototype)->getPrototypeDirect();
     }
     return prototype.isNull() && !*cachedStructure;
 }
@@ -218,32 +216,6 @@ inline bool Structure::isValid(JSGlobalObject* globalObject, StructureChain* cac
 inline bool Structure::isValid(ExecState* exec, StructureChain* cachedPrototypeChain) const
 {
     return isValid(exec->lexicalGlobalObject(), cachedPrototypeChain);
-}
-
-inline bool Structure::putWillGrowOutOfLineStorage()
-{
-    checkOffsetConsistency();
-
-    ASSERT(outOfLineCapacity() >= outOfLineSize());
-
-    if (!propertyTable()) {
-        unsigned currentSize = numberOfOutOfLineSlotsForLastOffset(m_offset);
-        ASSERT(outOfLineCapacity() >= currentSize);
-        return currentSize == outOfLineCapacity();
-    }
-
-    ASSERT(totalStorageCapacity() >= propertyTable()->propertyStorageSize());
-    if (propertyTable()->hasDeletedOffset())
-        return false;
-
-    ASSERT(totalStorageCapacity() >= propertyTable()->size());
-    return propertyTable()->size() == totalStorageCapacity();
-}
-
-ALWAYS_INLINE WriteBarrier<PropertyTable>& Structure::propertyTable()
-{
-    ASSERT(!globalObject() || !globalObject()->vm().heap.isCollecting());
-    return m_propertyTableUnsafe;
 }
 
 inline void Structure::didReplaceProperty(PropertyOffset offset)
@@ -256,12 +228,12 @@ inline void Structure::didReplaceProperty(PropertyOffset offset)
     WatchpointSet* set = map->get(offset);
     if (LIKELY(!set))
         return;
-    set->fireAll("Property did get replaced");
+    set->fireAll(*vm(), "Property did get replaced");
 }
 
 inline WatchpointSet* Structure::propertyReplacementWatchpointSet(PropertyOffset offset)
 {
-    ConcurrentJITLocker locker(m_lock);
+    ConcurrentJSLocker locker(m_lock);
     if (!hasRareData())
         return nullptr;
     WTF::loadLoadFence();
@@ -271,9 +243,44 @@ inline WatchpointSet* Structure::propertyReplacementWatchpointSet(PropertyOffset
     return map->get(offset);
 }
 
+template<typename DetailsFunc>
+ALWAYS_INLINE bool Structure::checkOffsetConsistency(PropertyTable* propertyTable, const DetailsFunc& detailsFunc) const
+{
+    // We cannot reliably assert things about the property table in the concurrent
+    // compilation thread. It is possible for the table to be stolen and then have
+    // things added to it, which leads to the offsets being all messed up. We could
+    // get around this by grabbing a lock here, but I think that would be overkill.
+    if (isCompilationThread())
+        return true;
+    
+    unsigned totalSize = propertyTable->propertyStorageSize();
+    unsigned inlineOverflowAccordingToTotalSize = totalSize < m_inlineCapacity ? 0 : totalSize - m_inlineCapacity;
+
+    auto fail = [&] (const char* description) {
+        dataLog("Detected offset inconsistency: ", description, "!\n");
+        dataLog("this = ", RawPointer(this), "\n");
+        dataLog("m_offset = ", m_offset, "\n");
+        dataLog("m_inlineCapacity = ", m_inlineCapacity, "\n");
+        dataLog("propertyTable = ", RawPointer(propertyTable), "\n");
+        dataLog("numberOfSlotsForLastOffset = ", numberOfSlotsForLastOffset(m_offset, m_inlineCapacity), "\n");
+        dataLog("totalSize = ", totalSize, "\n");
+        dataLog("inlineOverflowAccordingToTotalSize = ", inlineOverflowAccordingToTotalSize, "\n");
+        dataLog("numberOfOutOfLineSlotsForLastOffset = ", numberOfOutOfLineSlotsForLastOffset(m_offset), "\n");
+        detailsFunc();
+        UNREACHABLE_FOR_PLATFORM();
+    };
+    
+    if (numberOfSlotsForLastOffset(m_offset, m_inlineCapacity) != totalSize)
+        fail("numberOfSlotsForLastOffset doesn't match totalSize");
+    if (inlineOverflowAccordingToTotalSize != numberOfOutOfLineSlotsForLastOffset(m_offset))
+        fail("inlineOverflowAccordingToTotalSize doesn't match numberOfOutOfLineSlotsForLastOffset");
+
+    return true;
+}
+
 ALWAYS_INLINE bool Structure::checkOffsetConsistency() const
 {
-    PropertyTable* propertyTable = m_propertyTableUnsafe.get();
+    PropertyTable* propertyTable = propertyTableOrNull();
 
     if (!propertyTable) {
         ASSERT(!isPinnedPropertyTable());
@@ -286,12 +293,13 @@ ALWAYS_INLINE bool Structure::checkOffsetConsistency() const
     // get around this by grabbing a lock here, but I think that would be overkill.
     if (isCompilationThread())
         return true;
-    
-    RELEASE_ASSERT(numberOfSlotsForLastOffset(m_offset, m_inlineCapacity) == propertyTable->propertyStorageSize());
-    unsigned totalSize = propertyTable->propertyStorageSize();
-    RELEASE_ASSERT((totalSize < inlineCapacity() ? 0 : totalSize - inlineCapacity()) == numberOfOutOfLineSlotsForLastOffset(m_offset));
 
-    return true;
+    return checkOffsetConsistency(propertyTable, [] () { });
+}
+
+inline void Structure::checkConsistency()
+{
+    checkOffsetConsistency();
 }
 
 inline size_t nextOutOfLineStorageCapacity(size_t currentCapacity)
@@ -301,11 +309,6 @@ inline size_t nextOutOfLineStorageCapacity(size_t currentCapacity)
     return currentCapacity * outOfLineGrowthFactor;
 }
 
-inline size_t Structure::suggestedNewOutOfLineStorageCapacity()
-{
-    return nextOutOfLineStorageCapacity(outOfLineCapacity());
-}
-
 inline void Structure::setObjectToStringValue(ExecState* exec, VM& vm, JSString* value, PropertySlot toStringTagSymbolSlot)
 {
     if (!hasRareData())
@@ -313,7 +316,93 @@ inline void Structure::setObjectToStringValue(ExecState* exec, VM& vm, JSString*
     rareData()->setObjectToStringValue(exec, vm, this, value, toStringTagSymbolSlot);
 }
 
+template<Structure::ShouldPin shouldPin, typename Func>
+inline PropertyOffset Structure::add(VM& vm, PropertyName propertyName, unsigned attributes, const Func& func)
+{
+    PropertyTable* table = ensurePropertyTable(vm);
+
+    GCSafeConcurrentJSLocker locker(m_lock, vm.heap);
+
+    switch (shouldPin) {
+    case ShouldPin::Yes:
+        pin(locker, vm, table);
+        break;
+    case ShouldPin::No:
+        setPropertyTable(vm, table);
+        break;
+    }
+    
+    ASSERT(!JSC::isValidOffset(get(vm, propertyName)));
+
+    checkConsistency();
+    if (attributes & DontEnum || propertyName.isSymbol())
+        setIsQuickPropertyAccessAllowedForEnumeration(false);
+
+    auto rep = propertyName.uid();
+
+    PropertyOffset newOffset = table->nextOffset(m_inlineCapacity);
+    
+    PropertyOffset newLastOffset = m_offset;
+    table->add(PropertyMapEntry(rep, newOffset, attributes), newLastOffset, PropertyTable::PropertyOffsetMayChange);
+    
+    func(locker, newOffset, newLastOffset);
+    
+    ASSERT(m_offset == newLastOffset);
+
+    checkConsistency();
+    return newOffset;
+}
+
+template<typename Func>
+inline PropertyOffset Structure::remove(PropertyName propertyName, const Func& func)
+{
+    ConcurrentJSLocker locker(m_lock);
+    
+    checkConsistency();
+
+    auto rep = propertyName.uid();
+    
+    // We ONLY remove from uncacheable dictionaries, which will have a pinned property table.
+    // The only way for them not to have a table is if they are empty.
+    PropertyTable* table = propertyTableOrNull();
+
+    if (!table)
+        return invalidOffset;
+
+    PropertyTable::find_iterator position = table->find(rep);
+    if (!position.first)
+        return invalidOffset;
+    
+    PropertyOffset offset = position.first->offset;
+
+    table->remove(position);
+    table->addDeletedOffset(offset);
+
+    checkConsistency();
+
+    func(locker, offset);
+    return offset;
+}
+
+template<typename Func>
+inline PropertyOffset Structure::addPropertyWithoutTransition(VM& vm, PropertyName propertyName, unsigned attributes, const Func& func)
+{
+    return add<ShouldPin::Yes>(vm, propertyName, attributes, func);
+}
+
+template<typename Func>
+inline PropertyOffset Structure::removePropertyWithoutTransition(VM&, PropertyName propertyName, const Func& func)
+{
+    ASSERT(isUncacheableDictionary());
+    ASSERT(isPinnedPropertyTable());
+    ASSERT(propertyTableOrNull());
+    
+    return remove(propertyName, func);
+}
+
+inline void Structure::setPropertyTable(VM& vm, PropertyTable* table)
+{
+    m_propertyTableUnsafe.setMayBeNull(vm, this, table);
+}
+    
 } // namespace JSC
-
-#endif // StructureInlines_h
-

@@ -23,12 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef RenderMultiColumnFlowThread_h
-#define RenderMultiColumnFlowThread_h
+#pragma once
 
 #include "RenderFlowThread.h"
-
 #include <wtf/HashMap.h>
 
 namespace WebCore {
@@ -38,7 +35,7 @@ class RenderMultiColumnSpannerPlaceholder;
 
 class RenderMultiColumnFlowThread final : public RenderFlowThread {
 public:
-    RenderMultiColumnFlowThread(Document&, Ref<RenderStyle>&&);
+    RenderMultiColumnFlowThread(Document&, RenderStyle&&);
     ~RenderMultiColumnFlowThread();
 
     RenderBlockFlow* multiColumnBlockFlow() const { return downcast<RenderBlockFlow>(parent()); }
@@ -46,15 +43,13 @@ public:
     RenderMultiColumnSet* firstMultiColumnSet() const;
     RenderMultiColumnSet* lastMultiColumnSet() const;
     RenderBox* firstColumnSetOrSpanner() const;
+    bool hasColumnSpanner() const { return !m_spannerMap.isEmpty(); }
     static RenderBox* nextColumnSetOrSpannerSiblingOf(const RenderBox*);
     static RenderBox* previousColumnSetOrSpannerSiblingOf(const RenderBox*);
 
     RenderMultiColumnSpannerPlaceholder* findColumnSpannerPlaceholder(RenderBox* spanner) const { return m_spannerMap.get(spanner); }
 
-    virtual void layout() override;
-
-    // Find the set inside which the specified renderer would be rendered.
-    RenderMultiColumnSet* findSetRendering(RenderObject*) const;
+    void layout() override;
 
     // Populate the flow thread with what's currently its siblings. Called when a regular block
     // becomes a multicol container.
@@ -90,7 +85,7 @@ public:
     
     void computeLineGridPaginationOrigin(LayoutState&) const;
     
-    virtual RenderRegion* mapFromFlowToRegion(TransformState&) const override;
+    RenderRegion* mapFromFlowToRegion(TransformState&) const override;
     
     // This method takes a logical offset and returns a physical translation that can be applied to map
     // a physical point (corresponding to the logical offset) into the region's physical coordinate space.
@@ -102,34 +97,34 @@ public:
     // This method is the inverse of the previous method and goes from region to flow.
     LayoutSize physicalTranslationFromRegionToFlow(const RenderMultiColumnSet*, const LayoutPoint&) const;
     
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
     
-    virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
-    virtual LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = nullptr) const override;
+    void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const override;
+    LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = nullptr) const override;
     
     // FIXME: Eventually as column and region flow threads start nesting, this will end up changing.
-    virtual bool shouldCheckColumnBreaks() const override;
+    bool shouldCheckColumnBreaks() const override;
 
 private:
-    virtual bool isRenderMultiColumnFlowThread() const override { return true; }
-    virtual const char* renderName() const override;
-    virtual void addRegionToThread(RenderRegion*) override;
-    virtual void willBeRemovedFromTree() override;
-    virtual RenderObject* resolveMovedChild(RenderObject* child) const override;
-    virtual void flowThreadDescendantInserted(RenderObject*) override;
-    virtual void flowThreadRelativeWillBeRemoved(RenderObject*) override;
-    virtual void flowThreadDescendantBoxLaidOut(RenderBox*) override;
-    virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
-    virtual LayoutUnit initialLogicalWidth() const override;
-    virtual void setPageBreak(const RenderBlock*, LayoutUnit offset, LayoutUnit spaceShortage) override;
-    virtual void updateMinimumPageHeight(const RenderBlock*, LayoutUnit offset, LayoutUnit minHeight) override;
-    virtual RenderRegion* regionAtBlockOffset(const RenderBox*, LayoutUnit, bool extendLastRegion = false) const override;
-    virtual void setRegionRangeForBox(const RenderBox*, RenderRegion*, RenderRegion*) override;
-    virtual bool addForcedRegionBreak(const RenderBlock*, LayoutUnit, RenderBox* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0) override;
-    virtual bool isPageLogicalHeightKnown() const override;
+    bool isRenderMultiColumnFlowThread() const override { return true; }
+    const char* renderName() const override;
+    void addRegionToThread(RenderRegion*) override;
+    void willBeRemovedFromTree() override;
+    RenderObject* resolveMovedChild(RenderObject* child) const override;
+    void flowThreadDescendantInserted(RenderObject&) override;
+    void flowThreadRelativeWillBeRemoved(RenderObject&) override;
+    void flowThreadDescendantBoxLaidOut(RenderBox*) override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
+    LayoutUnit initialLogicalWidth() const override;
+    void setPageBreak(const RenderBlock*, LayoutUnit offset, LayoutUnit spaceShortage) override;
+    void updateMinimumPageHeight(const RenderBlock*, LayoutUnit offset, LayoutUnit minHeight) override;
+    RenderRegion* regionAtBlockOffset(const RenderBox*, LayoutUnit, bool extendLastRegion = false) const override;
+    void setRegionRangeForBox(const RenderBox&, RenderRegion*, RenderRegion*) override;
+    bool addForcedRegionBreak(const RenderBlock*, LayoutUnit, RenderBox* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0) override;
+    bool isPageLogicalHeightKnown() const override;
 
-    void handleSpannerRemoval(RenderObject* spanner);
-    RenderObject* processPossibleSpannerDescendant(RenderObject*& subtreeRoot, RenderObject* descendant);
+    void handleSpannerRemoval(RenderObject& spanner);
+    RenderObject* processPossibleSpannerDescendant(RenderObject*& subtreeRoot, RenderObject& descendant);
     
 private:
     typedef HashMap<RenderBox*, RenderMultiColumnSpannerPlaceholder*> SpannerMap;
@@ -158,6 +153,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMultiColumnFlowThread, isRenderMultiColumnFlowThread())
-
-#endif // RenderMultiColumnFlowThread_h
-

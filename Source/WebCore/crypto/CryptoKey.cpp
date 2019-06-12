@@ -28,15 +28,13 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmDescriptionBuilder.h"
 #include "CryptoAlgorithmRegistry.h"
 #include <wtf/CryptographicallyRandomNumber.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-CryptoKey::CryptoKey(CryptoAlgorithmIdentifier algorithm, CryptoKeyType type, bool extractable, CryptoKeyUsage usages)
-    : m_algorithm(algorithm)
+CryptoKey::CryptoKey(CryptoAlgorithmIdentifier algorithmIdentifier, Type type, bool extractable, CryptoKeyUsageBitmap usages)
+    : m_algorithmIdentifier(algorithmIdentifier)
     , m_type(type)
     , m_extractable(extractable)
     , m_usages(usages)
@@ -47,51 +45,30 @@ CryptoKey::~CryptoKey()
 {
 }
 
-String CryptoKey::type() const
-{
-    switch (m_type) {
-    case CryptoKeyType::Secret:
-        return ASCIILiteral("secret");
-    case CryptoKeyType::Public:
-        return ASCIILiteral("public");
-    case CryptoKeyType::Private:
-        return ASCIILiteral("private");
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return emptyString();
-}
-
-void CryptoKey::buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder& builder) const
-{
-    builder.add("name", CryptoAlgorithmRegistry::singleton().nameForIdentifier(m_algorithm));
-    // Subclasses will add other keys.
-}
-
-Vector<String> CryptoKey::usages() const
+auto CryptoKey::usages() const -> Vector<CryptoKeyUsage>
 {
     // The result is ordered alphabetically.
-    Vector<String> result;
+    Vector<CryptoKeyUsage> result;
     if (m_usages & CryptoKeyUsageDecrypt)
-        result.append(ASCIILiteral("decrypt"));
+        result.append(CryptoKeyUsage::Decrypt);
     if (m_usages & CryptoKeyUsageDeriveBits)
-        result.append(ASCIILiteral("deriveBits"));
+        result.append(CryptoKeyUsage::DeriveBits);
     if (m_usages & CryptoKeyUsageDeriveKey)
-        result.append(ASCIILiteral("deriveKey"));
+        result.append(CryptoKeyUsage::DeriveKey);
     if (m_usages & CryptoKeyUsageEncrypt)
-        result.append(ASCIILiteral("encrypt"));
+        result.append(CryptoKeyUsage::Encrypt);
     if (m_usages & CryptoKeyUsageSign)
-        result.append(ASCIILiteral("sign"));
+        result.append(CryptoKeyUsage::Sign);
     if (m_usages & CryptoKeyUsageUnwrapKey)
-        result.append(ASCIILiteral("unwrapKey"));
+        result.append(CryptoKeyUsage::UnwrapKey);
     if (m_usages & CryptoKeyUsageVerify)
-        result.append(ASCIILiteral("verify"));
+        result.append(CryptoKeyUsage::Verify);
     if (m_usages & CryptoKeyUsageWrapKey)
-        result.append(ASCIILiteral("wrapKey"));
-
+        result.append(CryptoKeyUsage::WrapKey);
     return result;
 }
 
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK)
+#if !OS(DARWIN) || PLATFORM(GTK)
 Vector<uint8_t> CryptoKey::randomData(size_t size)
 {
     Vector<uint8_t> result(size);
@@ -99,6 +76,7 @@ Vector<uint8_t> CryptoKey::randomData(size_t size)
     return result;
 }
 #endif
+
 } // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)

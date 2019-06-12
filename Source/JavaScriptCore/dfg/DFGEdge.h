@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGEdge_h
-#define DFGEdge_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -144,8 +143,7 @@ public:
 #endif
     }
     bool doesKill() const { return DFG::doesKill(killStatus()); }
-    bool doesNotKill() const { return !doesKill(); }
-    
+
     bool isSet() const { return !!node(); }
 
     Edge sanitized() const
@@ -190,7 +188,7 @@ private:
     friend class AdjacencyList;
     
 #if USE(JSVALUE64)
-    static uint32_t shift() { return 7; }
+    static constexpr uint32_t shift() { return 8; }
     
     static uintptr_t makeWord(Node* node, UseKind useKind, ProofStatus proofStatus, KillStatus killStatus)
     {
@@ -198,8 +196,21 @@ private:
         uintptr_t shiftedValue = bitwise_cast<uintptr_t>(node) << shift();
         ASSERT((shiftedValue >> shift()) == bitwise_cast<uintptr_t>(node));
         ASSERT(useKind >= 0 && useKind < LastUseKind);
-        ASSERT((static_cast<uintptr_t>(LastUseKind) << 2) <= (static_cast<uintptr_t>(2) << shift()));
-        return shiftedValue | (static_cast<uintptr_t>(useKind) << 2) | (DFG::doesKill(killStatus) << 1) | static_cast<uintptr_t>(DFG::isProved(proofStatus));
+        static_assert((static_cast<uintptr_t>(LastUseKind) << 2) < (static_cast<uintptr_t>(1) << shift()), "We rely on this being true to not clobber the node pointer.");
+        uintptr_t result = shiftedValue | (static_cast<uintptr_t>(useKind) << 2) | (DFG::doesKill(killStatus) << 1) | static_cast<uintptr_t>(DFG::isProved(proofStatus));
+        if (!ASSERT_DISABLED) {
+            union U {
+                U() { word = 0; }
+                uintptr_t word;
+                Edge edge;
+            } u;
+            u.word = result;
+            ASSERT(u.edge.useKindUnchecked() == useKind);
+            ASSERT(u.edge.node() == node);
+            ASSERT(u.edge.proofStatusUnchecked() == proofStatus);
+            ASSERT(u.edge.killStatusUnchecked() == killStatus);
+        }
+        return result;
     }
     
 #else
@@ -236,6 +247,3 @@ inline bool operator!=(Node* node, Edge edge)
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGEdge_h
-

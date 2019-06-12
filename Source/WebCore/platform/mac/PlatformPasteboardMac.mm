@@ -40,17 +40,26 @@ PlatformPasteboard::PlatformPasteboard(const String& pasteboardName)
 void PlatformPasteboard::getTypes(Vector<String>& types)
 {
     NSArray *pasteboardTypes = [m_pasteboard.get() types];
-    
+
     for (NSUInteger i = 0; i < [pasteboardTypes count]; i++)
         types.append([pasteboardTypes objectAtIndex:i]);
 }
 
-PassRefPtr<SharedBuffer> PlatformPasteboard::bufferForType(const String& pasteboardType)
+RefPtr<SharedBuffer> PlatformPasteboard::bufferForType(const String& pasteboardType)
 {
     NSData *data = [m_pasteboard.get() dataForType:pasteboardType];
     if (!data)
-        return 0;
-    return SharedBuffer::wrapNSData([[data copy] autorelease]);
+        return nullptr;
+    return SharedBuffer::create([[data copy] autorelease]);
+}
+
+int PlatformPasteboard::numberOfFiles()
+{
+    Vector<String> files;
+    getPathnamesForType(files, String(NSFilenamesPboardType));
+    if (!files.size())
+        getPathnamesForType(files, String(NSFilesPromisePboardType));
+    return files.size();
 }
 
 void PlatformPasteboard::getPathnamesForType(Vector<String>& pathnames, const String& pasteboardType)
@@ -58,7 +67,7 @@ void PlatformPasteboard::getPathnamesForType(Vector<String>& pathnames, const St
     NSArray* paths = [m_pasteboard.get() propertyListForType:pasteboardType];
     if ([paths isKindOfClass:[NSString class]]) {
         pathnames.append((NSString *)paths);
-        return;        
+        return;
     }
     for (NSUInteger i = 0; i < [paths count]; i++)
         pathnames.append([paths objectAtIndex:i]);
@@ -85,14 +94,14 @@ String PlatformPasteboard::uniqueName()
 Color PlatformPasteboard::color()
 {
     NSColor *color = [NSColor colorFromPasteboard:m_pasteboard.get()];
-    
-    // The color may not be in an RGB colorspace. This commonly occurs when a color is 
+
+    // The color may not be in an RGB colorspace. This commonly occurs when a color is
     // dragged from the NSColorPanel grayscale picker.
     if ([[color colorSpace] colorSpaceModel] != NSRGBColorSpaceModel)
         color = [color colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
-    
-    return makeRGBA((int)([color redComponent] * 255.0 + 0.5), (int)([color greenComponent] * 255.0 + 0.5), 
-                    (int)([color blueComponent] * 255.0 + 0.5), (int)([color alphaComponent] * 255.0 + 0.5));    
+
+    return makeRGBA((int)([color redComponent] * 255.0 + 0.5), (int)([color greenComponent] * 255.0 + 0.5),
+        (int)([color blueComponent] * 255.0 + 0.5), (int)([color alphaComponent] * 255.0 + 0.5));
 }
 
 URL PlatformPasteboard::url()
@@ -104,13 +113,13 @@ long PlatformPasteboard::copy(const String& fromPasteboard)
 {
     NSPasteboard* pasteboard = [NSPasteboard pasteboardWithName:fromPasteboard];
     NSArray* types = [pasteboard types];
-    
+
     [m_pasteboard.get() addTypes:types owner:nil];
     for (NSUInteger i = 0; i < [types count]; i++) {
         NSString* type = [types objectAtIndex:i];
         if (![m_pasteboard.get() setData:[pasteboard dataForType:type] forType:type])
             return 0;
-    }    
+    }
     return changeCount();
 }
 
@@ -135,7 +144,7 @@ long PlatformPasteboard::setTypes(const Vector<String>& pasteboardTypes)
     return [m_pasteboard.get() declareTypes:types.get() owner:nil];
 }
 
-long PlatformPasteboard::setBufferForType(PassRefPtr<SharedBuffer> buffer, const String& pasteboardType)
+long PlatformPasteboard::setBufferForType(SharedBuffer* buffer, const String& pasteboardType)
 {
     BOOL didWriteData = [m_pasteboard setData:buffer ? buffer->createNSData().get() : nil forType:pasteboardType];
     if (!didWriteData)
@@ -145,7 +154,7 @@ long PlatformPasteboard::setBufferForType(PassRefPtr<SharedBuffer> buffer, const
 
 long PlatformPasteboard::setPathnamesForType(const Vector<String>& pathnames, const String& pasteboardType)
 {
-    RetainPtr<NSMutableArray> paths = adoptNS([[NSMutableArray alloc] init]);    
+    RetainPtr<NSMutableArray> paths = adoptNS([[NSMutableArray alloc] init]);
     for (size_t i = 0; i < pathnames.size(); ++i)
         [paths.get() addObject:[NSArray arrayWithObject:pathnames[i]]];
     BOOL didWriteData = [m_pasteboard.get() setPropertyList:paths.get() forType:pasteboardType];

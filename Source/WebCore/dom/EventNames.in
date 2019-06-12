@@ -6,12 +6,15 @@ HTMLEvents interfaceName=Event
 AnimationEvent
 BeforeLoadEvent
 BeforeUnloadEvent
+ClipboardEvent
 CloseEvent
 CompositionEvent
 CustomEvent
 ErrorEvent
 FocusEvent
 HashChangeEvent
+InputEvent
+InputEvents interfaceName=InputEvent
 KeyboardEvent
 KeyboardEvents interfaceName=KeyboardEvent
 MessageEvent
@@ -23,6 +26,7 @@ OverflowEvent
 PageTransitionEvent
 PopStateEvent
 ProgressEvent
+PromiseRejectionEvent
 TextEvent
 TransitionEvent
 UIEvent
@@ -31,14 +35,19 @@ WebKitAnimationEvent
 WebKitTransitionEvent
 WheelEvent
 XMLHttpRequestProgressEvent
+ApplePayPaymentAuthorizedEvent conditional=APPLE_PAY
+ApplePayPaymentMethodSelectedEvent conditional=APPLE_PAY
+ApplePayShippingContactSelectedEvent conditional=APPLE_PAY
+ApplePayShippingMethodSelectedEvent conditional=APPLE_PAY
+ApplePayValidateMerchantEvent conditional=APPLE_PAY
 AudioProcessingEvent conditional=WEB_AUDIO
 OfflineAudioCompletionEvent conditional=WEB_AUDIO
-MediaStreamEvent conditional=MEDIA_STREAM
+MediaStreamEvent conditional=WEB_RTC
 MediaStreamTrackEvent conditional=MEDIA_STREAM
-RTCIceCandidateEvent conditional=MEDIA_STREAM
-RTCDataChannelEvent conditional=MEDIA_STREAM
-RTCDTMFToneChangeEvent conditional=MEDIA_STREAM
-RTCTrackEvent conditional=MEDIA_STREAM
+RTCPeerConnectionIceEvent conditional=WEB_RTC
+RTCDataChannelEvent conditional=WEB_RTC
+RTCDTMFToneChangeEvent conditional=WEB_RTC_DTMF
+RTCTrackEvent conditional=WEB_RTC
 SpeechSynthesisEvent conditional=SPEECH_SYNTHESIS
 WebGLContextEvent conditional=WEBGL
 StorageEvent
@@ -46,20 +55,19 @@ SVGEvents interfaceName=Event
 SVGZoomEvent
 SVGZoomEvents interfaceName=SVGZoomEvent
 IDBVersionChangeEvent conditional=INDEXED_DATABASE
-TouchEvent conditional=TOUCH_EVENTS, runtimeConditional=touchEnabled
+TouchEvent conditional=TOUCH_EVENTS
 DeviceMotionEvent conditional=DEVICE_ORIENTATION
 DeviceOrientationEvent conditional=DEVICE_ORIENTATION
 DeviceProximityEvent conditional=PROXIMITY_EVENTS
 OrientationEvent interfaceName=Event, conditional=ORIENTATION_EVENTS
-MediaKeyEvent conditional=ENCRYPTED_MEDIA
-MediaKeyMessageEvent conditional=ENCRYPTED_MEDIA_V2
-MediaKeyNeededEvent conditional=ENCRYPTED_MEDIA_V2
+WebKitMediaKeyMessageEvent conditional=LEGACY_ENCRYPTED_MEDIA
+WebKitMediaKeyNeededEvent conditional=LEGACY_ENCRYPTED_MEDIA
 TrackEvent conditional=VIDEO_TRACK
 AutocompleteErrorEvent conditional=REQUEST_AUTOCOMPLETE
-CSSFontFaceLoadEvent conditional=FONT_LOAD_EVENTS
-SecurityPolicyViolationEvent conditional=CSP_NEXT
-UIRequestEvent conditional=INDIE_UI
+SecurityPolicyViolationEvent
 GestureEvent conditional=IOS_GESTURE_EVENTS|MAC_GESTURE_EVENTS
 WebKitPlaybackTargetAvailabilityEvent conditional=WIRELESS_PLAYBACK_TARGET
 GamepadEvent conditional=GAMEPAD
-
+OverconstrainedErrorEvent conditional=MEDIA_STREAM
+MediaEncryptedEvent conditional=ENCRYPTED_MEDIA
+MediaKeyMessageEvent conditional=ENCRYPTED_MEDIA

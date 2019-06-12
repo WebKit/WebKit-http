@@ -26,16 +26,14 @@
 #include "config.h"
 #include "RemoveNodeCommand.h"
 
-#include "ExceptionCodePlaceholder.h"
-#include "Node.h"
+#include "Editing.h"
 #include "RenderElement.h"
-#include "htmlediting.h"
 #include <wtf/Assertions.h>
 
 namespace WebCore {
 
-RemoveNodeCommand::RemoveNodeCommand(Ref<Node>&& node, ShouldAssumeContentIsAlwaysEditable shouldAssumeContentIsAlwaysEditable)
-    : SimpleEditCommand(node->document())
+RemoveNodeCommand::RemoveNodeCommand(Ref<Node>&& node, ShouldAssumeContentIsAlwaysEditable shouldAssumeContentIsAlwaysEditable, EditAction editingAction)
+    : SimpleEditCommand(node->document(), editingAction)
     , m_node(WTFMove(node))
     , m_shouldAssumeContentIsAlwaysEditable(shouldAssumeContentIsAlwaysEditable)
 {
@@ -53,17 +51,17 @@ void RemoveNodeCommand::doApply()
     m_parent = parent;
     m_refChild = m_node->nextSibling();
 
-    m_node->remove(IGNORE_EXCEPTION);
+    m_node->remove();
 }
 
 void RemoveNodeCommand::doUnapply()
 {
-    RefPtr<ContainerNode> parent = m_parent.release();
-    RefPtr<Node> refChild = m_refChild.release();
+    RefPtr<ContainerNode> parent = WTFMove(m_parent);
+    RefPtr<Node> refChild = WTFMove(m_refChild);
     if (!parent || !parent->hasEditableStyle())
         return;
 
-    parent->insertBefore(m_node.copyRef(), refChild.get(), IGNORE_EXCEPTION);
+    parent->insertBefore(m_node, refChild.get());
 }
 
 #ifndef NDEBUG

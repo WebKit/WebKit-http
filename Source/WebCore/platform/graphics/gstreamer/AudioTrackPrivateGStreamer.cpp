@@ -37,6 +37,8 @@ AudioTrackPrivateGStreamer::AudioTrackPrivateGStreamer(GRefPtr<GstElement> playb
     : TrackPrivateBaseGStreamer(this, index, pad)
     , m_playbin(playbin)
 {
+    // FIXME: Get a real ID from the tkhd atom.
+    m_id = "A" + String::number(index);
     notifyTrackOfActiveChanged();
 }
 
@@ -53,7 +55,7 @@ void AudioTrackPrivateGStreamer::setEnabled(bool enabled)
     AudioTrackPrivate::setEnabled(enabled);
 
     if (enabled && m_playbin)
-        g_object_set(m_playbin.get(), "current-audio", m_index, NULL);
+        g_object_set(m_playbin.get(), "current-audio", m_index, nullptr);
 }
 
 } // namespace WebCore

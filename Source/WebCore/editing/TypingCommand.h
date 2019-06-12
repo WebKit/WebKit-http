@@ -23,14 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TypingCommand_h
-#define TypingCommand_h
+#pragma once
 
 #include "TextInsertionBaseCommand.h"
 
 namespace WebCore {
 
-class TypingCommand : public TextInsertionBaseCommand {
+class TypingCommand final : public TextInsertionBaseCommand {
 public:
     enum ETypingCommand { 
         DeleteSelection,
@@ -44,8 +43,8 @@ public:
 
     enum TextCompositionType {
         TextCompositionNone,
-        TextCompositionUpdate,
-        TextCompositionConfirm
+        TextCompositionPending,
+        TextCompositionFinal,
     };
 
     enum Option {
@@ -53,11 +52,12 @@ public:
         AddsToKillRing = 1 << 1,
         RetainAutocorrectionIndicator = 1 << 2,
         PreventSpellChecking = 1 << 3,
-        SmartDelete = 1 << 4
+        SmartDelete = 1 << 4,
+        IsAutocompletion = 1 << 5,
     };
     typedef unsigned Options;
 
-    static void deleteSelection(Document&, Options = 0);
+    static void deleteSelection(Document&, Options = 0, TextCompositionType = TextCompositionNone);
     static void deleteKeyPressed(Document&, Options = 0, TextGranularity = CharacterGranularity);
     static void forwardDeleteKeyPressed(Document&, Options = 0, TextGranularity = CharacterGranularity);
     static void insertText(Document&, const String&, Options, TextCompositionType = TextCompositionNone);
@@ -79,15 +79,16 @@ public:
     void forwardDeleteKeyPressed(TextGranularity, bool shouldAddToKillRing);
     void deleteSelection(bool smartDelete);
     void setCompositionType(TextCompositionType type) { m_compositionType = type; }
+    void setIsAutocompletion(bool isAutocompletion) { m_isAutocompletion = isAutocompletion; }
 
 #if PLATFORM(IOS)
     void setEndingSelectionOnLastInsertCommand(const VisibleSelection& selection);
 #endif
 
 private:
-    static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text = "", Options options = 0, TextGranularity granularity = CharacterGranularity)
+    static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text = emptyString(), Options options = 0, TextGranularity granularity = CharacterGranularity, TextCompositionType compositionType = TextCompositionNone)
     {
-        return adoptRef(*new TypingCommand(document, command, text, options, granularity, TextCompositionNone));
+        return adoptRef(*new TypingCommand(document, command, text, options, granularity, compositionType));
     }
 
     static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text, Options options, TextCompositionType compositionType)
@@ -102,37 +103,57 @@ private:
     bool isOpenForMoreTyping() const { return m_openForMoreTyping; }
     void closeTyping() { m_openForMoreTyping = false; }
 
-    static PassRefPtr<TypingCommand> lastTypingCommandIfStillOpenForTyping(Frame*);
+    static RefPtr<TypingCommand> lastTypingCommandIfStillOpenForTyping(Frame&);
 
-    virtual void doApply();
-    virtual EditAction editingAction() const;
-    virtual bool isTypingCommand() const;
-    virtual bool preservesTypingStyle() const { return m_preservesTypingStyle; }
-    virtual bool shouldRetainAutocorrectionIndicator() const
+    void doApply() final;
+    bool isTypingCommand() const final;
+    bool preservesTypingStyle() const final { return m_preservesTypingStyle; }
+    bool shouldRetainAutocorrectionIndicator() const final
     {
         ASSERT(isTopLevelCommand());
         return m_shouldRetainAutocorrectionIndicator;
     }
-    virtual void setShouldRetainAutocorrectionIndicator(bool retain) { m_shouldRetainAutocorrectionIndicator = retain; }
-    virtual bool shouldStopCaretBlinking() const { return true; }
+    void setShouldRetainAutocorrectionIndicator(bool retain) final { m_shouldRetainAutocorrectionIndicator = retain; }
+    bool shouldStopCaretBlinking() const final { return true; }
     void setShouldPreventSpellChecking(bool prevent) { m_shouldPreventSpellChecking = prevent; }
+
+    String inputEventTypeName() const final;
+    String inputEventData() const final;
+    RefPtr<DataTransfer> inputEventDataTransfer() const final;
+    bool isBeforeInputEventCancelable() const final;
 
     static void updateSelectionIfDifferentFromCurrentSelection(TypingCommand*, Frame*);
 
     void updatePreservesTypingStyle(ETypingCommand);
+    bool willAddTypingToOpenCommand(ETypingCommand, TextGranularity, const String& = emptyString(), RefPtr<Range>&& = nullptr);
     void markMisspellingsAfterTyping(ETypingCommand);
     void typingAddedToOpenCommand(ETypingCommand);
     bool makeEditableRootEmpty();
 
+    void postTextStateChangeNotificationForDeletion(const VisibleSelection&);
+    void insertTextAndNotifyAccessibility(const String &text, bool selectInsertedText);
+    void insertLineBreakAndNotifyAccessibility();
+    void insertParagraphSeparatorInQuotedContentAndNotifyAccessibility();
+    void insertParagraphSeparatorAndNotifyAccessibility();
+
+    bool willApplyCommand() final;
+    void didApplyCommand() final;
+
+    bool shouldDeferWillApplyCommandUntilAddingTypingCommand() const;
+
     ETypingCommand m_commandType;
+    EditAction m_currentTypingEditAction;
     String m_textToInsert;
+    String m_currentTextToInsert;
     bool m_openForMoreTyping;
     bool m_selectInsertedText;
     bool m_smartDelete;
+    bool m_isHandlingInitialTypingCommand { true };
     TextGranularity m_granularity;
     TextCompositionType m_compositionType;
     bool m_shouldAddToKillRing;
     bool m_preservesTypingStyle;
+    bool m_isAutocompletion;
     
     // Undoing a series of backward deletes will restore a selection around all of the
     // characters that were deleted, but only if the typing command being undone
@@ -144,5 +165,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // TypingCommand_h

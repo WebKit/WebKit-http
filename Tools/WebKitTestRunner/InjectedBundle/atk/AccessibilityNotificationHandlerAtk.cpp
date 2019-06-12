@@ -54,7 +54,7 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
     if (!accessible || !ATK_IS_OBJECT(accessible))
         return true;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
@@ -73,6 +73,10 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
             notificationName = "CheckedStateChanged";
         else if (!g_strcmp0(g_value_get_string(&paramValues[1]), "invalid-entry"))
             notificationName = "AXInvalidStatusChanged";
+        else if (!g_strcmp0(g_value_get_string(&paramValues[1]), "active"))
+            notificationName = "ActiveStateChanged";
+        else if (!g_strcmp0(g_value_get_string(&paramValues[1]), "busy"))
+            notificationName = "AXElementBusyChanged";
     } else if (!g_strcmp0(signalQuery.signal_name, "focus-event")) {
         if (g_value_get_boolean(&paramValues[1]))
             notificationName = "AXFocusedUIElementChanged";
@@ -81,6 +85,9 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
     } else if (!g_strcmp0(signalQuery.signal_name, "children-changed")) {
         const gchar* childrenChangedDetail = g_quark_to_string(signalHint->detail);
         notificationName = !g_strcmp0(childrenChangedDetail, "add") ? "AXChildrenAdded" : "AXChildrenRemoved";
+        gpointer child = g_value_get_pointer(&paramValues[2]);
+        if (ATK_IS_OBJECT(child))
+            extraArgs.append(toJS(jsContext, WTF::getPtr(WTR::AccessibilityUIElement::create(ATK_OBJECT(child)))));
     } else if (!g_strcmp0(signalQuery.signal_name, "property-change")) {
         if (!g_strcmp0(g_quark_to_string(signalHint->detail), "accessible-value"))
             notificationName = "AXValueChanged";
@@ -91,7 +98,8 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
         GUniquePtr<char> signalValue(g_strdup_printf("%d", g_value_get_int(&paramValues[1])));
         JSRetainPtr<JSStringRef> jsSignalValue(Adopt, JSStringCreateWithUTF8CString(signalValue.get()));
         extraArgs.append(JSValueMakeString(jsContext, jsSignalValue.get()));
-    }
+    } else if (!g_strcmp0(signalQuery.signal_name, "text-insert") || !g_strcmp0(signalQuery.signal_name, "text-remove"))
+        notificationName = "AXTextChanged";
 
     if (!jsContext)
         return true;
@@ -149,7 +157,7 @@ void AccessibilityNotificationHandler::setNotificationFunctionCallback(JSValueRe
 
     m_notificationFunctionCallback = notificationFunctionCallback;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
@@ -180,7 +188,7 @@ void AccessibilityNotificationHandler::setNotificationFunctionCallback(JSValueRe
 
 void AccessibilityNotificationHandler::removeAccessibilityNotificationHandler()
 {
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
@@ -218,6 +226,8 @@ void AccessibilityNotificationHandler::connectAccessibilityCallbacks()
         "ATK:AtkDocument:load-complete",
         "ATK:AtkSelection:selection-changed",
         "ATK:AtkText:text-caret-moved",
+        "ATK:AtkText:text-insert",
+        "ATK:AtkText:text-remove",
         0
     };
 

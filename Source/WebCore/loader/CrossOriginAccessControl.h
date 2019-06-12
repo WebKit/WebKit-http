@@ -24,35 +24,30 @@
  *
  */
 
-#ifndef CrossOriginAccessControl_h
-#define CrossOriginAccessControl_h
+#pragma once
 
 #include "ResourceHandleTypes.h"
 #include <wtf/Forward.h>
-#include <wtf/HashSet.h>
-#include <wtf/text/StringHash.h>
 
 namespace WebCore {
-
-typedef HashSet<String, ASCIICaseInsensitiveHash> HTTPHeaderSet;
 
 class HTTPHeaderMap;
 enum class HTTPHeaderName;
 class ResourceRequest;
 class ResourceResponse;
 class SecurityOrigin;
+class URL;
 
 bool isSimpleCrossOriginAccessRequest(const String& method, const HTTPHeaderMap&);
 bool isOnAccessControlSimpleRequestMethodWhitelist(const String&);
-bool isOnAccessControlSimpleRequestHeaderWhitelist(HTTPHeaderName, const String& value);
 bool isOnAccessControlResponseHeaderWhitelist(const String&);
 
-void updateRequestForAccessControl(ResourceRequest&, SecurityOrigin*, StoredCredentials);
-ResourceRequest createAccessControlPreflightRequest(const ResourceRequest&, SecurityOrigin*);
+void updateRequestForAccessControl(ResourceRequest&, SecurityOrigin&, StoredCredentials);
+ResourceRequest createAccessControlPreflightRequest(const ResourceRequest&, SecurityOrigin&, const String&);
 
-bool passesAccessControlCheck(const ResourceResponse&, StoredCredentials, SecurityOrigin*, String& errorDescription);
-void parseAccessControlExposeHeadersAllowList(const String& headerValue, HTTPHeaderSet&);
+bool isValidCrossOriginRedirectionURL(const URL&);
+void cleanRedirectedRequestForAccessControl(ResourceRequest&);
+
+bool passesAccessControlCheck(const ResourceResponse&, StoredCredentials, SecurityOrigin&, String& errorDescription);
 
 } // namespace WebCore
-
-#endif // CrossOriginAccessControl_h

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef YouTubeEmbedShadowElement_h
-#define YouTubeEmbedShadowElement_h
+#pragma once
 
 #include "HTMLDivElement.h"
 #include <wtf/Forward.h>
@@ -35,10 +34,10 @@ class YouTubeEmbedShadowElement final : public HTMLDivElement {
 public:
     static Ref<YouTubeEmbedShadowElement> create(Document&);
 
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+
 private:
     YouTubeEmbedShadowElement(Document&);
 };
 
-}
-
-#endif // YouTubeEmbedShadowElement_h
+} // namespace WebCore

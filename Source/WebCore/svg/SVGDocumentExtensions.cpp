@@ -40,9 +40,10 @@
 
 namespace WebCore {
 
-SVGDocumentExtensions::SVGDocumentExtensions(Document* document)
+SVGDocumentExtensions::SVGDocumentExtensions(Document& document)
     : m_document(document)
     , m_resourcesCache(std::make_unique<SVGResourcesCache>())
+    , m_areAnimationsPaused(!document.page() || !document.page()->isVisible())
 {
 }
 
@@ -53,6 +54,8 @@ SVGDocumentExtensions::~SVGDocumentExtensions()
 void SVGDocumentExtensions::addTimeContainer(SVGSVGElement* element)
 {
     m_timeContainers.add(element);
+    if (m_areAnimationsPaused)
+        element->pauseAnimations();
 }
 
 void SVGDocumentExtensions::removeTimeContainer(SVGSVGElement* element)
@@ -103,12 +106,14 @@ void SVGDocumentExtensions::pauseAnimations()
 {
     for (auto& container : m_timeContainers)
         container->pauseAnimations();
+    m_areAnimationsPaused = true;
 }
 
 void SVGDocumentExtensions::unpauseAnimations()
 {
     for (auto& container : m_timeContainers)
         container->unpauseAnimations();
+    m_areAnimationsPaused = false;
 }
 
 void SVGDocumentExtensions::dispatchSVGLoadEventToOutermostSVGElements()
@@ -123,10 +128,10 @@ void SVGDocumentExtensions::dispatchSVGLoadEventToOutermostSVGElements()
     }
 }
 
-static void reportMessage(Document* document, MessageLevel level, const String& message)
+static void reportMessage(Document& document, MessageLevel level, const String& message)
 {
-    if (document->frame())
-        document->addConsoleMessage(MessageSource::Rendering, level, message);
+    if (document.frame())
+        document.addConsoleMessage(MessageSource::Rendering, level, message);
 }
 
 void SVGDocumentExtensions::reportWarning(const String& message)

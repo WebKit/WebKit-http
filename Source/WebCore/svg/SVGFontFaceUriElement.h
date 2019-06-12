@@ -17,10 +17,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFontFaceUriElement_h
-#define SVGFontFaceUriElement_h
+#pragma once
 
 #if ENABLE(SVG_FONTS)
+
 #include "CachedFontClient.h"
 #include "CachedResourceHandle.h"
 #include "SVGElement.h"
@@ -40,10 +40,10 @@ public:
 private:
     SVGFontFaceUriElement(const QualifiedName&, Document&);
     
-    virtual void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    virtual void childrenChanged(const ChildChange&) override;
-    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void childrenChanged(const ChildChange&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
 
     void loadFont();
 
@@ -53,5 +53,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(SVG_FONTS)
-
-#endif // SVGFontFaceUriElement_h

@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AuthenticationCF_h
-#define AuthenticationCF_h
+#pragma once
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include <CFNetwork/CFURLCredentialPriv.h>
 
@@ -54,6 +53,4 @@ ProtectionSpace core(CFURLProtectionSpaceRef);
 #endif
 }
 
-#endif // USE(CFNETWORK)
-
-#endif // AuthenticationCF_h
+#endif // USE(CFURLCONNECTION)

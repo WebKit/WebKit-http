@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSArrayBufferPrototype_h
-#define JSArrayBufferPrototype_h
+#pragma once
 
 #include "JSObject.h"
 
@@ -35,18 +34,18 @@ public:
     typedef JSNonFinalObject Base;
 
 protected:
-    JSArrayBufferPrototype(VM&, Structure*);
+    JSArrayBufferPrototype(VM&, Structure*, ArrayBufferSharingMode);
     void finishCreation(VM&, JSGlobalObject*);
 
 public:
-    static JSArrayBufferPrototype* create(VM&, JSGlobalObject*, Structure*);
+    static JSArrayBufferPrototype* create(VM&, JSGlobalObject*, Structure*, ArrayBufferSharingMode);
     
     DECLARE_INFO;
     
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
+
+private:
+    ArrayBufferSharingMode m_sharingMode;
 };
 
 } // namespace JSC
-
-#endif // JSArrayBufferPrototype_h
-

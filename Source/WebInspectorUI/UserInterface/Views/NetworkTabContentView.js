@@ -28,10 +28,10 @@ WebInspector.NetworkTabContentView = class NetworkTabContentView extends WebInsp
     constructor(identifier)
     {
         let {image, title} = WebInspector.NetworkTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.TabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel];
+        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
+        let detailsSidebarPanelConstructors = [WebInspector.ResourceDetailsSidebarPanel, WebInspector.ProbeDetailsSidebarPanel];
 
-        super(identifier || "network", "network", tabBarItem, WebInspector.NetworkSidebarPanel, detailsSidebarPanels);
+        super(identifier || "network", "network", tabBarItem, WebInspector.NetworkSidebarPanel, detailsSidebarPanelConstructors);
     }
 
     static tabInfo()
@@ -56,11 +56,16 @@ WebInspector.NetworkTabContentView = class NetworkTabContentView extends WebInsp
 
     canShowRepresentedObject(representedObject)
     {
-        return representedObject instanceof WebInspector.Resource;
+        if (!(representedObject instanceof WebInspector.Resource))
+            return false;
+
+        return !!this.navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);
     }
 
     get supportsSplitContentBrowser()
     {
+        // Since the Network tab has a real sidebar, showing the split console would cause items in
+        // the sidebar to be aligned with an item in the datagrid that isn't shown.
         return false;
     }
 };

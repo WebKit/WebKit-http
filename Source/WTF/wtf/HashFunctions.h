@@ -149,6 +149,10 @@ namespace WTF {
     template<typename T> struct PtrHash : PtrHashBase<T, IsSmartPtr<T>::value> {
     };
 
+    template<typename P> struct PtrHash<Ref<P>> : PtrHashBase<Ref<P>, IsSmartPtr<Ref<P>>::value> {
+        static const bool safeToCompareToEmptyOrDeleted = false;
+    };
+
     // default hash function for each type
 
     template<typename T> struct DefaultHash;
@@ -169,6 +173,45 @@ namespace WTF {
         static unsigned hash(const std::pair<T, U>& p) { return pairIntHash(p.first, p.second); }
         static bool equal(const std::pair<T, U>& a, const std::pair<T, U>& b) { return PairHash<T, T>::equal(a, b); }
         static const bool safeToCompareToEmptyOrDeleted = PairHash<T, U>::safeToCompareToEmptyOrDeleted;
+    };
+
+    template<typename... Types>
+    struct TupleHash {
+        template<size_t I = 0>
+        static typename std::enable_if<I < sizeof...(Types) - 1, unsigned>::type hash(const std::tuple<Types...>& t)
+        {
+            using IthTupleElementType = typename std::tuple_element<I, typename std::tuple<Types...>>::type;
+            return pairIntHash(DefaultHash<IthTupleElementType>::Hash::hash(std::get<I>(t)), hash<I + 1>(t));
+        }
+
+        template<size_t I = 0>
+        static typename std::enable_if<I == sizeof...(Types) - 1, unsigned>::type hash(const std::tuple<Types...>& t)
+        {
+            using IthTupleElementType = typename std::tuple_element<I, typename std::tuple<Types...>>::type;
+            return DefaultHash<IthTupleElementType>::Hash::hash(std::get<I>(t));
+        }
+
+        template<size_t I = 0>
+        static typename std::enable_if<I < sizeof...(Types) - 1, bool>::type equal(const std::tuple<Types...>& a, const std::tuple<Types...>& b)
+        {
+            using IthTupleElementType = typename std::tuple_element<I, typename std::tuple<Types...>>::type;
+            return DefaultHash<IthTupleElementType>::Hash::equal(std::get<I>(a), std::get<I>(b)) && equal<I + 1>(a, b);
+        }
+
+        template<size_t I = 0>
+        static typename std::enable_if<I == sizeof...(Types) - 1, bool>::type equal(const std::tuple<Types...>& a, const std::tuple<Types...>& b)
+        {
+            using IthTupleElementType = typename std::tuple_element<I, typename std::tuple<Types...>>::type;
+            return DefaultHash<IthTupleElementType>::Hash::equal(std::get<I>(a), std::get<I>(b));
+        }
+
+        // We should use safeToCompareToEmptyOrDeleted = DefaultHash<Types>::Hash::safeToCompareToEmptyOrDeleted &&... whenever
+        // we switch to C++17. We can't do anything better here right now because GCC can't do C++.
+        template<typename BoolType>
+        static constexpr bool allTrue(BoolType value) { return value; }
+        template<typename BoolType, typename... BoolTypes>
+        static constexpr bool allTrue(BoolType value, BoolTypes... values) { return value && allTrue(values...); }
+        static const bool safeToCompareToEmptyOrDeleted = allTrue(DefaultHash<Types>::Hash::safeToCompareToEmptyOrDeleted...);
     };
 
     // make IntHash the default hash function for many integer types
@@ -194,6 +237,8 @@ namespace WTF {
 
     template<typename P> struct DefaultHash<P*> { typedef PtrHash<P*> Hash; };
     template<typename P> struct DefaultHash<RefPtr<P>> { typedef PtrHash<RefPtr<P>> Hash; };
+    template<typename P> struct DefaultHash<Ref<P>> { typedef PtrHash<Ref<P>> Hash; };
+
     template<typename P, typename Deleter> struct DefaultHash<std::unique_ptr<P, Deleter>> { typedef PtrHash<std::unique_ptr<P, Deleter>> Hash; };
 
     // make IntPairHash the default hash function for pairs of (at most) 32-bit integers.
@@ -218,6 +263,7 @@ namespace WTF {
     // make PairHash the default hash function for pairs of arbitrary values.
 
     template<typename T, typename U> struct DefaultHash<std::pair<T, U>> { typedef PairHash<T, U> Hash; };
+    template<typename... Types> struct DefaultHash<std::tuple<Types...>> { typedef TupleHash<Types...> Hash; };
 
 } // namespace WTF
 

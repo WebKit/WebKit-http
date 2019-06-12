@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef CDATASection_h
-#define CDATASection_h
+#pragma once
 
 #include "Text.h"
 
@@ -34,11 +33,11 @@ public:
 private:
     CDATASection(Document&, const String&);
 
-    virtual String nodeName() const override;
-    virtual NodeType nodeType() const override;
-    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
-    virtual bool childTypeAllowed(NodeType) const override;
-    virtual Ref<Text> virtualCreate(const String&) override;
+    String nodeName() const override;
+    NodeType nodeType() const override;
+    Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    bool childTypeAllowed(NodeType) const override;
+    Ref<Text> virtualCreate(const String&) override;
 };
 
 } // namespace WebCore
@@ -46,5 +45,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::CDATASection)
     static bool isType(const WebCore::Node& node) { return node.nodeType() == WebCore::Node::CDATA_SECTION_NODE; }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // CDATASection_h

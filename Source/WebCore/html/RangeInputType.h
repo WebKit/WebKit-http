@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RangeInputType_h
-#define RangeInputType_h
+#pragma once
 
 #include "InputType.h"
 
@@ -42,56 +41,51 @@ public:
     explicit RangeInputType(HTMLInputElement&);
 
 private:
-    virtual bool isRangeControl() const override;
-    virtual const AtomicString& formControlType() const override;
-    virtual double valueAsDouble() const override;
-    virtual void setValueAsDecimal(const Decimal&, TextFieldEventBehavior, ExceptionCode&) const override;
-    virtual bool typeMismatchFor(const String&) const override;
-    virtual bool supportsRequired() const override;
-    virtual StepRange createStepRange(AnyStepHandling) const override;
-    virtual bool isSteppable() const override;
+    bool isRangeControl() const final;
+    const AtomicString& formControlType() const final;
+    double valueAsDouble() const final;
+    ExceptionOr<void> setValueAsDecimal(const Decimal&, TextFieldEventBehavior) const final;
+    bool typeMismatchFor(const String&) const final;
+    bool supportsRequired() const final;
+    StepRange createStepRange(AnyStepHandling) const final;
+    bool isSteppable() const final;
 #if !PLATFORM(IOS)
-    virtual void handleMouseDownEvent(MouseEvent*) override;
+    void handleMouseDownEvent(MouseEvent&) final;
 #endif
-    virtual void handleKeydownEvent(KeyboardEvent*) override;
-    virtual RenderPtr<RenderElement> createInputRenderer(Ref<RenderStyle>&&) override;
-    virtual void createShadowSubtree() override;
-    virtual Decimal parseToNumber(const String&, const Decimal&) const override;
-    virtual String serialize(const Decimal&) const override;
-    virtual void accessKeyAction(bool sendMouseEvents) override;
-    virtual void minOrMaxAttributeChanged() override;
-    virtual void setValue(const String&, bool valueChanged, TextFieldEventBehavior) override;
-    virtual String fallbackValue() const override;
-    virtual String sanitizeValue(const String& proposedValue) const override;
-    virtual bool shouldRespectListAttribute() override;
-    virtual HTMLElement* sliderThumbElement() const override;
-    virtual HTMLElement* sliderTrackElement() const override;
+    void handleKeydownEvent(KeyboardEvent&) final;
+    RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) final;
+    void createShadowSubtree() final;
+    Decimal parseToNumber(const String&, const Decimal&) const final;
+    String serialize(const Decimal&) const final;
+    void accessKeyAction(bool sendMouseEvents) final;
+    void minOrMaxAttributeChanged() final;
+    void setValue(const String&, bool valueChanged, TextFieldEventBehavior) final;
+    String fallbackValue() const final;
+    String sanitizeValue(const String& proposedValue) const final;
+    bool shouldRespectListAttribute() final;
+    HTMLElement* sliderThumbElement() const final;
+    HTMLElement* sliderTrackElement() const final;
 
     SliderThumbElement& typedSliderThumbElement() const;
 
 #if ENABLE(DATALIST_ELEMENT)
-    virtual void listAttributeTargetChanged() override;
+    void listAttributeTargetChanged() final;
     void updateTickMarkValues();
-    virtual Optional<Decimal> findClosestTickMarkValue(const Decimal&) override;
+    std::optional<Decimal> findClosestTickMarkValue(const Decimal&) final;
 
-    bool m_tickMarkValuesDirty;
+    bool m_tickMarkValuesDirty { true };
     Vector<Decimal> m_tickMarkValues;
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
-    virtual void handleTouchEvent(TouchEvent*) override;
-
-#if PLATFORM(IOS)
-    virtual void disabledAttributeChanged() override;
-#else
-#if ENABLE(TOUCH_SLIDER)
-    virtual bool hasTouchEventHandler() const override;
+    void handleTouchEvent(TouchEvent&) final;
 #endif
-#endif // PLATFORM(IOS)
-#endif // ENABLE(TOUCH_EVENTS)
 
+    void disabledAttributeChanged() final;
+
+#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS) && ENABLE(TOUCH_SLIDER)
+    bool hasTouchEventHandler() const final;
+#endif
 };
 
 } // namespace WebCore
-
-#endif // RangeInputType_h

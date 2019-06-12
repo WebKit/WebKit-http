@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceUsageData_h
-#define ResourceUsageData_h
+#pragma once
 
 #if ENABLE(RESOURCE_USAGE)
 
 #include <array>
+#include <wtf/MonotonicTime.h>
 
 namespace WebCore {
 
@@ -36,12 +36,13 @@ namespace MemoryCategory {
 static const unsigned bmalloc = 0;
 static const unsigned LibcMalloc = 1;
 static const unsigned JSJIT = 2;
-static const unsigned Images = 3;
-static const unsigned GCHeap = 4;
-static const unsigned GCOwned = 5;
-static const unsigned Other = 6;
-static const unsigned Layers = 7;
-static const unsigned NumberOfCategories = 8;
+static const unsigned WebAssembly = 3;
+static const unsigned Images = 4;
+static const unsigned GCHeap = 5;
+static const unsigned GCOwned = 6;
+static const unsigned Other = 7;
+static const unsigned Layers = 8;
+static const unsigned NumberOfCategories = 9;
 }
 
 struct MemoryCategoryInfo {
@@ -52,8 +53,11 @@ struct MemoryCategoryInfo {
     {
     }
 
+    size_t totalSize() const { return dirtySize + externalSize; }
+
     size_t dirtySize { 0 };
     size_t reclaimableSize { 0 };
+    size_t externalSize { 0 };
     bool isSubcategory { false };
     unsigned type { MemoryCategory::NumberOfCategories };
 };
@@ -64,13 +68,12 @@ struct ResourceUsageData {
 
     float cpu { 0 };
     size_t totalDirtySize { 0 };
+    size_t totalExternalSize { 0 };
     std::array<MemoryCategoryInfo, MemoryCategory::NumberOfCategories> categories;
-    double timeOfNextEdenCollection { 0 };
-    double timeOfNextFullCollection { 0 };
+    MonotonicTime timeOfNextEdenCollection { MonotonicTime::nan() };
+    MonotonicTime timeOfNextFullCollection { MonotonicTime::nan() };
 };
 
 } // namespace WebCore
 
 #endif // ResourceUsageData_h
-
-#endif // ENABLE(RESOURCE_USAGE)

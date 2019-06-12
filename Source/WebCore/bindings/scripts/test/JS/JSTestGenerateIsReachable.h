@@ -18,8 +18,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef JSTestGenerateIsReachable_h
-#define JSTestGenerateIsReachable_h
+#pragma once
 
 #include "JSDOMWrapper.h"
 #include "TestGenerateIsReachable.h"
@@ -29,7 +28,7 @@ namespace WebCore {
 
 class JSTestGenerateIsReachable : public JSDOMWrapper<TestGenerateIsReachable> {
 public:
-    typedef JSDOMWrapper<TestGenerateIsReachable> Base;
+    using Base = JSDOMWrapper<TestGenerateIsReachable>;
     static JSTestGenerateIsReachable* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestGenerateIsReachable>&& impl)
     {
         JSTestGenerateIsReachable* ptr = new (NotNull, JSC::allocateCell<JSTestGenerateIsReachable>(globalObject->vm().heap)) JSTestGenerateIsReachable(structure, *globalObject, WTFMove(impl));
@@ -37,11 +36,9 @@ public:
         return ptr;
     }
 
-    static const bool hasStaticPropertyTable = false;
-
-    static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static JSC::JSObject* getPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static TestGenerateIsReachable* toWrapped(JSC::JSValue);
+    static JSC::JSObject* createPrototype(JSC::VM&, JSDOMGlobalObject&);
+    static JSC::JSObject* prototype(JSC::VM&, JSDOMGlobalObject&);
+    static TestGenerateIsReachable* toWrapped(JSC::VM&, JSC::JSValue);
     static void destroy(JSC::JSCell*);
 
     DECLARE_INFO;
@@ -55,12 +52,7 @@ public:
 protected:
     JSTestGenerateIsReachable(JSC::Structure*, JSDOMGlobalObject&, Ref<TestGenerateIsReachable>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestGenerateIsReachableOwner : public JSC::WeakHandleOwner {
@@ -80,11 +72,14 @@ inline void* wrapperKey(TestGenerateIsReachable* wrappableObject)
     return wrappableObject;
 }
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestGenerateIsReachable*);
-inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestGenerateIsReachable& impl) { return toJS(state, globalObject, &impl); }
-JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, TestGenerateIsReachable*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestGenerateIsReachable&);
+inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestGenerateIsReachable* impl) { return impl ? toJS(state, globalObject, *impl) : JSC::jsNull(); }
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestGenerateIsReachable>&&);
+inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestGenerateIsReachable>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestGenerateIsReachable> {
+    using WrapperClass = JSTestGenerateIsReachable;
+    using ToWrappedReturnType = TestGenerateIsReachable*;
+};
 
 } // namespace WebCore
-
-#endif

@@ -17,12 +17,16 @@ PASS re.toString() is '/c/i'
 PASS re.compile(new RegExp('c'), 'i'); threw exception TypeError: Cannot supply flags when constructing one RegExp from another..
 PASS re.toString() is '/c/i'
 PASS re.compile(new RegExp('+')); threw exception SyntaxError: Invalid regular expression: nothing to repeat.
-PASS re.toString() is '/undefined/'
-PASS re.toString() is '/null/'
 PASS re.toString() is '/(?:)/'
+PASS re.toString() is '/(?:)/'
+PASS re.toString() is '/(?:)/'
+PASS re.toString() is '/null/'
 PASS re.toString() is '/z/'
 PASS re.lastIndex is 0
 PASS re.lastIndex is 1
+PASS regexpWithUndefinedCompiledToValid = new RegExp(undefined), regexpWithUndefinedCompiledToValid.compile('abc') is regexpWithUndefinedCompiledToValid
+PASS regexpValidPatternCompiledToValid = new RegExp('zyx'), regexpValidPatternCompiledToValid.compile('abc') is regexpValidPatternCompiledToValid
+PASS regexpWithValidCompiledToUndefined = new RegExp('abc'), regexpWithValidCompiledToUndefined.compile(undefined) is regexpWithValidCompiledToUndefined
 PASS successfullyParsed is true
 
 TEST COMPLETE

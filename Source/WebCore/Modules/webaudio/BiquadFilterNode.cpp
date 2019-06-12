@@ -28,8 +28,6 @@
 
 #include "BiquadFilterNode.h"
 
-#include "ExceptionCode.h"
-
 namespace WebCore {
 
 BiquadFilterNode::BiquadFilterNode(AudioContext& context, float sampleRate)
@@ -40,78 +38,25 @@ BiquadFilterNode::BiquadFilterNode(AudioContext& context, float sampleRate)
     setNodeType(NodeTypeBiquadFilter);
 }
 
-String BiquadFilterNode::type() const
+BiquadFilterType BiquadFilterNode::type() const
 {
-    switch (const_cast<BiquadFilterNode*>(this)->biquadProcessor()->type()) {
-    case BiquadProcessor::LowPass:
-        return "lowpass";
-    case BiquadProcessor::HighPass:
-        return "highpass";
-    case BiquadProcessor::BandPass:
-        return "bandpass";
-    case BiquadProcessor::LowShelf:
-        return "lowshelf";
-    case BiquadProcessor::HighShelf:
-        return "highshelf";
-    case BiquadProcessor::Peaking:
-        return "peaking";
-    case BiquadProcessor::Notch:
-        return "notch";
-    case BiquadProcessor::Allpass:
-        return "allpass";
-    default:
-        ASSERT_NOT_REACHED();
-        return "lowpass";
-    }
+    return const_cast<BiquadFilterNode*>(this)->biquadProcessor()->type();
 }
 
-void BiquadFilterNode::setType(const String& type)
+void BiquadFilterNode::setType(BiquadFilterType type)
 {
-    if (type == "lowpass")
-        setType(BiquadProcessor::LowPass);
-    else if (type == "highpass")
-        setType(BiquadProcessor::HighPass);
-    else if (type == "bandpass")
-        setType(BiquadProcessor::BandPass);
-    else if (type == "lowshelf")
-        setType(BiquadProcessor::LowShelf);
-    else if (type == "highshelf")
-        setType(BiquadProcessor::HighShelf);
-    else if (type == "peaking")
-        setType(BiquadProcessor::Peaking);
-    else if (type == "notch")
-        setType(BiquadProcessor::Notch);
-    else if (type == "allpass")
-        setType(BiquadProcessor::Allpass);
-    else
-        ASSERT_NOT_REACHED();
+    biquadProcessor()->setType(type);
 }
 
-bool BiquadFilterNode::setType(unsigned type)
-{
-    if (type > BiquadProcessor::Allpass)
-        return false;
-    
-    biquadProcessor()->setType(static_cast<BiquadProcessor::FilterType>(type));
-    return true;
-}
-
-void BiquadFilterNode::getFrequencyResponse(const Float32Array* frequencyHz,
-                                            Float32Array* magResponse,
-                                            Float32Array* phaseResponse)
+void BiquadFilterNode::getFrequencyResponse(const RefPtr<Float32Array>& frequencyHz, const RefPtr<Float32Array>& magResponse, const RefPtr<Float32Array>& phaseResponse)
 {
     if (!frequencyHz || !magResponse || !phaseResponse)
         return;
     
-    int n = std::min(frequencyHz->length(),
-                     std::min(magResponse->length(), phaseResponse->length()));
+    int n = std::min(frequencyHz->length(), std::min(magResponse->length(), phaseResponse->length()));
 
-    if (n) {
-        biquadProcessor()->getFrequencyResponse(n,
-                                                frequencyHz->data(),
-                                                magResponse->data(),
-                                                phaseResponse->data());
-    }
+    if (n)
+        biquadProcessor()->getFrequencyResponse(n, frequencyHz->data(), magResponse->data(), phaseResponse->data());
 }
 
 } // namespace WebCore

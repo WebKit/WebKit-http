@@ -30,7 +30,6 @@
 #include "StringHash.h"
 #include <wtf/ProcessID.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/WTFThreadData.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringView.h>
 #include <wtf/text/SymbolImpl.h>
@@ -102,6 +101,7 @@ void StringStats::printStats()
 }
 #endif
 
+StringImpl::StaticStringImpl StringImpl::s_atomicEmptyString("", StringImpl::StringAtomic);
 
 StringImpl::~StringImpl()
 {
@@ -111,11 +111,16 @@ StringImpl::~StringImpl()
 
     STRING_STATS_REMOVE_STRING(*this);
 
-    if (isAtomic() && length() && !isSymbol())
-        AtomicStringImpl::remove(static_cast<AtomicStringImpl*>(this));
-
-    if (isSymbol() && symbolRegistry())
-        symbolRegistry()->remove(static_cast<SymbolImpl&>(*this));
+    if (isAtomic()) {
+        ASSERT(!isSymbol());
+        if (length())
+            AtomicStringImpl::remove(static_cast<AtomicStringImpl*>(this));
+    } else if (isSymbol()) {
+        auto& symbol = static_cast<SymbolImpl&>(*this);
+        auto* symbolRegistry = symbol.symbolRegistry();
+        if (symbolRegistry)
+            symbolRegistry->remove(*symbol.asRegisteredSymbolImpl());
+    }
 
     BufferOwnership ownership = bufferOwnership();
 
@@ -204,8 +209,8 @@ Ref<StringImpl> StringImpl::createUninitialized(unsigned length, UChar*& data)
 }
 
 template <typename CharType>
-inline Ref<StringImpl> StringImpl::reallocateInternal(PassRefPtr<StringImpl> originalString, unsigned length, CharType*& data)
-{   
+inline Ref<StringImpl> StringImpl::reallocateInternal(Ref<StringImpl>&& originalString, unsigned length, CharType*& data)
+{
     ASSERT(originalString->hasOneRef());
     ASSERT(originalString->bufferOwnership() == BufferInternal);
 
@@ -219,22 +224,22 @@ inline Ref<StringImpl> StringImpl::reallocateInternal(PassRefPtr<StringImpl> ori
         CRASH();
 
     originalString->~StringImpl();
-    StringImpl* string = static_cast<StringImpl*>(fastRealloc(originalString.leakRef(), allocationSize<CharType>(length)));
+    auto* string = static_cast<StringImpl*>(fastRealloc(&originalString.leakRef(), allocationSize<CharType>(length)));
 
     data = string->tailPointer<CharType>();
     return constructInternal<CharType>(string, length);
 }
 
-Ref<StringImpl> StringImpl::reallocate(PassRefPtr<StringImpl> originalString, unsigned length, LChar*& data)
+Ref<StringImpl> StringImpl::reallocate(Ref<StringImpl>&& originalString, unsigned length, LChar*& data)
 {
     ASSERT(originalString->is8Bit());
-    return reallocateInternal(originalString, length, data);
+    return reallocateInternal(WTFMove(originalString), length, data);
 }
 
-Ref<StringImpl> StringImpl::reallocate(PassRefPtr<StringImpl> originalString, unsigned length, UChar*& data)
+Ref<StringImpl> StringImpl::reallocate(Ref<StringImpl>&& originalString, unsigned length, UChar*& data)
 {
     ASSERT(!originalString->is8Bit());
-    return reallocateInternal(originalString, length, data);
+    return reallocateInternal(WTFMove(originalString), length, data);
 }
 
 template <typename CharType>
@@ -265,7 +270,7 @@ Ref<StringImpl> StringImpl::create8BitIfPossible(const UChar* characters, unsign
         return *empty();
 
     LChar* data;
-    RefPtr<StringImpl> string = createUninitializedInternalNonEmpty(length, data);
+    auto string = createUninitializedInternalNonEmpty(length, data);
 
     for (size_t i = 0; i < length; ++i) {
         if (characters[i] & 0xff00)
@@ -273,7 +278,7 @@ Ref<StringImpl> StringImpl::create8BitIfPossible(const UChar* characters, unsign
         data[i] = static_cast<LChar>(characters[i]);
     }
 
-    return string.releaseNonNull();
+    return string;
 }
 
 Ref<StringImpl> StringImpl::create8BitIfPossible(const UChar* string)
@@ -289,26 +294,6 @@ Ref<StringImpl> StringImpl::create(const LChar* string)
     if (length > std::numeric_limits<unsigned>::max())
         CRASH();
     return create(string, length);
-}
-
-Ref<SymbolImpl> StringImpl::createSymbol(PassRefPtr<StringImpl> rep)
-{
-    StringImpl* ownerRep = (rep->bufferOwnership() == BufferSubstring) ? rep->substringBuffer() : rep.get();
-
-    // We allocate a buffer that contains
-    // 1. the StringImpl struct
-    // 2. the pointer to the owner string
-    // 3. the pointer to the symbol registry
-    // 4. the placeholder for symbol aware hash value (allocated size is pointer size, but only 4 bytes are used)
-    StringImpl* stringImpl = static_cast<StringImpl*>(fastMalloc(allocationSize<StringImpl*>(3)));
-    if (rep->is8Bit())
-        return adoptRef(static_cast<SymbolImpl&>(*new (NotNull, stringImpl) StringImpl(CreateSymbol, rep->m_data8, rep->length(), ownerRep)));
-    return adoptRef(static_cast<SymbolImpl&>(*new (NotNull, stringImpl) StringImpl(CreateSymbol, rep->m_data16, rep->length(), ownerRep)));
-}
-
-Ref<SymbolImpl> StringImpl::createSymbolEmpty()
-{
-    return createSymbol(empty());
 }
 
 bool StringImpl::containsOnlyWhitespace()
@@ -364,39 +349,20 @@ UChar32 StringImpl::characterStartingAt(unsigned i)
 Ref<StringImpl> StringImpl::convertToLowercaseWithoutLocale()
 {
     // Note: At one time this was a hot function in the Dromaeo benchmark, specifically the
-    // no-op code path up through the first 'return' statement.
+    // no-op code path that may return ourself if we find no upper case letters and no invalid
+    // ASCII letters.
 
     // First scan the string for uppercase and non-ASCII characters:
     if (is8Bit()) {
-        unsigned failingIndex;
         for (unsigned i = 0; i < m_length; ++i) {
             LChar character = m_data8[i];
-            if (UNLIKELY((character & ~0x7F) || isASCIIUpper(character))) {
-                failingIndex = i;
-                goto SlowPath;
-            }
+            if (UNLIKELY((character & ~0x7F) || isASCIIUpper(character)))
+                return convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(i);
         }
+
         return *this;
-
-SlowPath:
-        LChar* data8;
-        auto newImpl = createUninitializedInternalNonEmpty(m_length, data8);
-
-        for (unsigned i = 0; i < failingIndex; ++i)
-            data8[i] = m_data8[i];
-
-        for (unsigned i = failingIndex; i < m_length; ++i) {
-            LChar character = m_data8[i];
-            if (!(character & ~0x7F))
-                data8[i] = toASCIILower(character);
-            else {
-                ASSERT(u_tolower(character) <= 0xFF);
-                data8[i] = static_cast<LChar>(u_tolower(character));
-            }
-        }
-
-        return newImpl;
     }
+
     bool noUpper = true;
     unsigned ored = 0;
 
@@ -427,19 +393,43 @@ SlowPath:
 
     // Do a slower implementation for cases that include non-ASCII characters.
     UChar* data16;
-    RefPtr<StringImpl> newImpl = createUninitializedInternalNonEmpty(m_length, data16);
+    auto newImpl = createUninitializedInternalNonEmpty(m_length, data16);
 
     UErrorCode status = U_ZERO_ERROR;
     int32_t realLength = u_strToLower(data16, length, m_data16, m_length, "", &status);
     if (U_SUCCESS(status) && realLength == length)
-        return newImpl.releaseNonNull();
+        return newImpl;
 
     newImpl = createUninitialized(realLength, data16);
     status = U_ZERO_ERROR;
     u_strToLower(data16, realLength, m_data16, m_length, "", &status);
     if (U_FAILURE(status))
         return *this;
-    return newImpl.releaseNonNull();
+    return newImpl;
+}
+
+Ref<StringImpl> StringImpl::convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned failingIndex)
+{
+    ASSERT(is8Bit());
+    LChar* data8;
+    auto newImpl = createUninitializedInternalNonEmpty(m_length, data8);
+
+    for (unsigned i = 0; i < failingIndex; ++i) {
+        ASSERT(!(m_data8[i] & ~0x7F) && !isASCIIUpper(m_data8[i]));
+        data8[i] = m_data8[i];
+    }
+
+    for (unsigned i = failingIndex; i < m_length; ++i) {
+        LChar character = m_data8[i];
+        if (!(character & ~0x7F))
+            data8[i] = toASCIILower(character);
+        else {
+            ASSERT(u_tolower(character) <= 0xFF);
+            data8[i] = static_cast<LChar>(u_tolower(character));
+        }
+    }
+
+    return newImpl;
 }
 
 Ref<StringImpl> StringImpl::convertToUppercaseWithoutLocale()
@@ -455,24 +445,17 @@ Ref<StringImpl> StringImpl::convertToUppercaseWithoutLocale()
 
     if (is8Bit()) {
         LChar* data8;
-        RefPtr<StringImpl> newImpl = createUninitialized(m_length, data8);
+        auto newImpl = createUninitialized(m_length, data8);
         
         // Do a faster loop for the case where all the characters are ASCII.
         unsigned ored = 0;
         for (int i = 0; i < length; ++i) {
             LChar c = m_data8[i];
             ored |= c;
-#if CPU(X86) && defined(_MSC_VER) && _MSC_VER >=1700
-            // Workaround for an MSVC 2012 x86 optimizer bug. Remove once the bug is fixed.
-            // See https://connect.microsoft.com/VisualStudio/feedback/details/780362/optimization-bug-of-range-comparison
-            // for more details.
-            data8[i] = c >= 'a' && c <= 'z' ? c & ~0x20 : c;
-#else
             data8[i] = toASCIIUpper(c);
-#endif
         }
         if (!(ored & ~0x7F))
-            return newImpl.releaseNonNull();
+            return newImpl;
 
         // Do a slower implementation for cases that include non-ASCII Latin-1 characters.
         int numberSharpSCharacters = 0;
@@ -494,7 +477,7 @@ Ref<StringImpl> StringImpl::convertToUppercaseWithoutLocale()
         }
 
         if (!numberSharpSCharacters)
-            return newImpl.releaseNonNull();
+            return newImpl;
 
         // We have numberSSCharacters sharp-s characters, but none of the other special characters.
         newImpl = createUninitialized(m_length + numberSharpSCharacters, data8);
@@ -512,7 +495,7 @@ Ref<StringImpl> StringImpl::convertToUppercaseWithoutLocale()
             }
         }
 
-        return newImpl.releaseNonNull();
+        return newImpl;
     }
 
 upconvert:
@@ -520,7 +503,7 @@ upconvert:
     const UChar* source16 = upconvertedCharacters;
 
     UChar* data16;
-    RefPtr<StringImpl> newImpl = createUninitialized(m_length, data16);
+    auto newImpl = createUninitialized(m_length, data16);
     
     // Do a faster loop for the case where all the characters are ASCII.
     unsigned ored = 0;
@@ -530,19 +513,19 @@ upconvert:
         data16[i] = toASCIIUpper(c);
     }
     if (!(ored & ~0x7F))
-        return newImpl.releaseNonNull();
+        return newImpl;
 
     // Do a slower implementation for cases that include non-ASCII characters.
     UErrorCode status = U_ZERO_ERROR;
     int32_t realLength = u_strToUpper(data16, length, source16, m_length, "", &status);
     if (U_SUCCESS(status) && realLength == length)
-        return newImpl.releaseNonNull();
+        return newImpl;
     newImpl = createUninitialized(realLength, data16);
     status = U_ZERO_ERROR;
     u_strToUpper(data16, realLength, source16, m_length, "", &status);
     if (U_FAILURE(status))
         return *this;
-    return newImpl.releaseNonNull();
+    return newImpl;
 }
 
 static inline bool needsTurkishCasingRules(const AtomicString& localeIdentifier)
@@ -578,17 +561,17 @@ Ref<StringImpl> StringImpl::convertToLowercaseWithLocale(const AtomicString& loc
     auto upconvertedCharacters = StringView(*this).upconvertedCharacters();
     const UChar* source16 = upconvertedCharacters;
     UChar* data16;
-    RefPtr<StringImpl> newString = createUninitialized(length, data16);
+    auto newString = createUninitialized(length, data16);
     UErrorCode status = U_ZERO_ERROR;
     int realLength = u_strToLower(data16, length, source16, length, "tr", &status);
     if (U_SUCCESS(status) && realLength == length)
-        return newString.releaseNonNull();
+        return newString;
     newString = createUninitialized(realLength, data16);
     status = U_ZERO_ERROR;
     u_strToLower(data16, realLength, source16, length, "tr", &status);
     if (U_FAILURE(status))
         return *this;
-    return newString.releaseNonNull();
+    return newString;
 }
 
 Ref<StringImpl> StringImpl::convertToUppercaseWithLocale(const AtomicString& localeIdentifier)
@@ -609,17 +592,17 @@ Ref<StringImpl> StringImpl::convertToUppercaseWithLocale(const AtomicString& loc
     auto upconvertedCharacters = StringView(*this).upconvertedCharacters();
     const UChar* source16 = upconvertedCharacters;
     UChar* data16;
-    RefPtr<StringImpl> newString = createUninitialized(length, data16);
+    auto newString = createUninitialized(length, data16);
     UErrorCode status = U_ZERO_ERROR;
     int realLength = u_strToUpper(data16, length, source16, length, "tr", &status);
     if (U_SUCCESS(status) && realLength == length)
-        return newString.releaseNonNull();
+        return newString;
     newString = createUninitialized(realLength, data16);
     status = U_ZERO_ERROR;
     u_strToUpper(data16, realLength, source16, length, "tr", &status);
     if (U_FAILURE(status))
         return *this;
-    return newString.releaseNonNull();
+    return newString;
 }
 
 Ref<StringImpl> StringImpl::foldCase()
@@ -721,7 +704,7 @@ ALWAYS_INLINE Ref<StringImpl> StringImpl::convertASCIICase(StringImpl& impl, con
 
 SlowPath:
     CharacterType* newData;
-    Ref<StringImpl> newImpl = createUninitializedInternalNonEmpty(length, newData);
+    auto newImpl = createUninitializedInternalNonEmpty(length, newData);
     for (unsigned i = 0; i < failingIndex; ++i)
         newData[i] = data[i];
     for (unsigned i = failingIndex; i < length; ++i)
@@ -832,7 +815,7 @@ ALWAYS_INLINE Ref<StringImpl> StringImpl::removeCharacters(const CharType* chara
 
     data.shrink(outc);
 
-    return adopt(data);
+    return adopt(WTFMove(data));
 }
 
 Ref<StringImpl> StringImpl::removeCharacters(CharacterMatchFunctionPtr findMatch)
@@ -876,7 +859,7 @@ inline Ref<StringImpl> StringImpl::simplifyMatchedCharactersToSpace(UCharPredica
     
     data.shrink(outc);
     
-    return adopt(data);
+    return adopt(WTFMove(data));
 }
 
 Ref<StringImpl> StringImpl::simplifyWhiteSpace()
@@ -1262,13 +1245,6 @@ size_t StringImpl::findIgnoringASCIICase(const StringImpl* matchString, unsigned
     if (!matchString)
         return notFound;
     return ::WTF::findIgnoringASCIICase(*this, *matchString, startOffset);
-}
-
-size_t StringImpl::findNextLineStart(unsigned index)
-{
-    if (is8Bit())
-        return WTF::findNextLineStart(characters8(), m_length, index);
-    return WTF::findNextLineStart(characters16(), m_length, index);
 }
 
 size_t StringImpl::reverseFind(UChar c, unsigned index)
@@ -2010,7 +1986,7 @@ UCharDirection StringImpl::defaultWritingDirection(bool* hasStrongDirectionality
     return U_LEFT_TO_RIGHT;
 }
 
-Ref<StringImpl> StringImpl::adopt(StringBuffer<LChar>& buffer)
+Ref<StringImpl> StringImpl::adopt(StringBuffer<LChar>&& buffer)
 {
     unsigned length = buffer.length();
     if (!length)
@@ -2018,7 +1994,7 @@ Ref<StringImpl> StringImpl::adopt(StringBuffer<LChar>& buffer)
     return adoptRef(*new StringImpl(buffer.release(), length));
 }
 
-Ref<StringImpl> StringImpl::adopt(StringBuffer<UChar>& buffer)
+Ref<StringImpl> StringImpl::adopt(StringBuffer<UChar>&& buffer)
 {
     unsigned length = buffer.length();
     if (!length)
@@ -2162,6 +2138,26 @@ CString StringImpl::utf8ForRange(unsigned offset, unsigned length, ConversionMod
 CString StringImpl::utf8(ConversionMode mode) const
 {
     return utf8ForRange(0, length(), mode);
+}
+
+NEVER_INLINE unsigned StringImpl::hashSlowCase() const
+{
+    if (is8Bit())
+        setHash(StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length));
+    else
+        setHash(StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length));
+    return existingHash();
+}
+
+unsigned StringImpl::concurrentHash() const
+{
+    unsigned hash;
+    if (is8Bit())
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length);
+    else
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length);
+    ASSERT(((hash << s_flagCount) >> s_flagCount) == hash);
+    return hash;
 }
 
 bool equalIgnoringNullity(const UChar* a, size_t aLength, StringImpl* b)

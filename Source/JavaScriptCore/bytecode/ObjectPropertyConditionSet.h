@@ -23,12 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ObjectPropertyConditionSet_h
-#define ObjectPropertyConditionSet_h
+#pragma once
 
 #include "ObjectPropertyCondition.h"
 #include <wtf/FastMalloc.h>
-#include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -67,6 +65,8 @@ public:
     {
         return !m_data || !m_data->vector.isEmpty();
     }
+
+    bool isValidAndWatchable() const;
     
     bool isEmpty() const
     {
@@ -155,6 +155,9 @@ private:
     RefPtr<Data> m_data;
 };
 
+ObjectPropertyCondition generateConditionForSelfEquivalence(
+    VM&, JSCell* owner, JSObject* object, UniquedStringImpl* uid);
+
 ObjectPropertyConditionSet generateConditionsForPropertyMiss(
     VM&, JSCell* owner, ExecState*, Structure* headStructure, UniquedStringImpl* uid);
 ObjectPropertyConditionSet generateConditionsForPropertySetterMiss(
@@ -166,10 +169,12 @@ ObjectPropertyConditionSet generateConditionsForPrototypePropertyHitCustom(
     VM&, JSCell* owner, ExecState*, Structure* headStructure, JSObject* prototype,
     UniquedStringImpl* uid);
 
+ObjectPropertyConditionSet generateConditionsForPrototypeEquivalenceConcurrently(
+    VM&, JSGlobalObject*, Structure* headStructure, JSObject* prototype,
+    UniquedStringImpl* uid);
+ObjectPropertyConditionSet generateConditionsForPropertyMissConcurrently(
+    VM&, JSGlobalObject*, Structure* headStructure, UniquedStringImpl* uid);
 ObjectPropertyConditionSet generateConditionsForPropertySetterMissConcurrently(
     VM&, JSGlobalObject*, Structure* headStructure, UniquedStringImpl* uid);
 
 } // namespace JSC
-
-#endif // ObjectPropertyConditionSet_h
-

@@ -10,7 +10,6 @@
 
 #include "libANGLE/Display.h"
 #include "libANGLE/Surface.h"
-#include "libANGLE/renderer/d3d/DisplayD3D.h"
 #include "libANGLE/renderer/d3d/RendererD3D.h"
 #include "libANGLE/renderer/d3d/RenderTargetD3D.h"
 #include "libANGLE/renderer/d3d/SwapChainD3D.h"
@@ -22,47 +21,58 @@
 namespace rx
 {
 
-SurfaceD3D *SurfaceD3D::createOffscreen(RendererD3D *renderer, egl::Display *display, const egl::Config *config, EGLClientBuffer shareHandle,
-                                        EGLint width, EGLint height)
-{
-    return new SurfaceD3D(renderer, display, config, width, height, EGL_TRUE, shareHandle, NULL);
-}
-
-SurfaceD3D *SurfaceD3D::createFromWindow(RendererD3D *renderer, egl::Display *display, const egl::Config *config, EGLNativeWindowType window,
-                                         EGLint fixedSize, EGLint width, EGLint height)
-{
-    return new SurfaceD3D(renderer, display, config, width, height, fixedSize, static_cast<EGLClientBuffer>(0), window);
-}
-
-SurfaceD3D::SurfaceD3D(RendererD3D *renderer, egl::Display *display, const egl::Config *config, EGLint width, EGLint height, EGLint fixedSize,
-                       EGLClientBuffer shareHandle, EGLNativeWindowType window)
-    : SurfaceImpl(),
+SurfaceD3D::SurfaceD3D(const egl::SurfaceState &state,
+                       RendererD3D *renderer,
+                       egl::Display *display,
+                       EGLNativeWindowType window,
+                       EGLenum buftype,
+                       EGLClientBuffer clientBuffer,
+                       const egl::AttributeMap &attribs)
+    : SurfaceImpl(state),
       mRenderer(renderer),
       mDisplay(display),
-      mFixedSize(fixedSize == EGL_TRUE),
-      mRenderTargetFormat(config->renderTargetFormat),
-      mDepthStencilFormat(config->depthStencilFormat),
+      mFixedSize(window == nullptr || attribs.get(EGL_FIXED_SIZE_ANGLE, EGL_FALSE) == EGL_TRUE),
+      mOrientation(static_cast<EGLint>(attribs.get(EGL_SURFACE_ORIENTATION_ANGLE, 0))),
+      mRenderTargetFormat(state.config->renderTargetFormat),
+      mDepthStencilFormat(state.config->depthStencilFormat),
       mSwapChain(nullptr),
       mSwapIntervalDirty(true),
-      mNativeWindow(window),
-      mWidth(width),
-      mHeight(height),
-      mChildWindow(nullptr),
+      mNativeWindow(renderer->createNativeWindow(window, state.config, attribs)),
+      mWidth(static_cast<EGLint>(attribs.get(EGL_WIDTH, 0))),
+      mHeight(static_cast<EGLint>(attribs.get(EGL_HEIGHT, 0))),
       mSwapInterval(1),
-      mShareHandle(reinterpret_cast<HANDLE*>(shareHandle))
+      mShareHandle(0),
+      mD3DTexture(nullptr)
 {
+    if (window != nullptr && !mFixedSize)
+    {
+        mWidth  = -1;
+        mHeight = -1;
+    }
+
+    switch (buftype)
+    {
+        case EGL_D3D_TEXTURE_2D_SHARE_HANDLE_ANGLE:
+            mShareHandle = static_cast<HANDLE>(clientBuffer);
+            break;
+
+        case EGL_D3D_TEXTURE_ANGLE:
+            mD3DTexture = static_cast<IUnknown *>(clientBuffer);
+            ASSERT(mD3DTexture != nullptr);
+            mD3DTexture->AddRef();
+            mRenderer->getD3DTextureInfo(mD3DTexture, &mWidth, &mHeight, &mRenderTargetFormat);
+            break;
+
+        default:
+            break;
+    }
 }
 
 SurfaceD3D::~SurfaceD3D()
 {
     releaseSwapChain();
-
-#if !defined(ANGLE_ENABLE_WINDOWS_STORE)
-    if (mChildWindow.getNativeWindow() != nullptr)
-    {
-        DestroyWindow(mChildWindow.getNativeWindow());
-    }
-#endif
+    SafeDelete(mNativeWindow);
+    SafeRelease(mD3DTexture);
 }
 
 void SurfaceD3D::releaseSwapChain()
@@ -70,49 +80,11 @@ void SurfaceD3D::releaseSwapChain()
     SafeDelete(mSwapChain);
 }
 
-egl::Error SurfaceD3D::initialize()
+egl::Error SurfaceD3D::initialize(const DisplayImpl *displayImpl)
 {
-    if (mNativeWindow.getNativeWindow())
+    if (mNativeWindow->getNativeWindow())
     {
-#if !defined(ANGLE_ENABLE_WINDOWS_STORE)
-        if (mRenderer->shouldCreateChildWindowForSurface(mNativeWindow.getNativeWindow()))
-        {
-            RECT rect;
-            if (!mNativeWindow.getClientRect(&rect))
-            {
-                return egl::Error(EGL_BAD_NATIVE_WINDOW, "Failed to get the size of the native window.");
-            }
-
-            DisplayD3D *displayD3D = GetImplAs<DisplayD3D>(mDisplay);
-            ATOM windowClass = displayD3D->getChildWindowClass();
-
-            HWND childWindow = CreateWindowExA(WS_EX_NOPARENTNOTIFY,
-                                               reinterpret_cast<const char*>(windowClass),
-                                               "ANGLE Intermediate Surface Window",
-                                               WS_CHILDWINDOW | WS_DISABLED | WS_VISIBLE,
-                                               0,
-                                               0,
-                                               rect.right - rect.left,
-                                               rect.bottom - rect.top,
-                                               mNativeWindow.getNativeWindow(),
-                                               nullptr,
-                                               nullptr,
-                                               nullptr);
-            if (!childWindow)
-            {
-                return egl::Error(EGL_NOT_INITIALIZED, "Failed to create child window.");
-            }
-
-            mChildWindow = NativeWindow(childWindow);
-
-            if (!mChildWindow.initialize())
-            {
-                return egl::Error(EGL_BAD_SURFACE);
-            }
-        }
-#endif
-
-        if (!mNativeWindow.initialize())
+        if (!mNativeWindow->initialize())
         {
             return egl::Error(EGL_BAD_SURFACE);
         }
@@ -127,7 +99,12 @@ egl::Error SurfaceD3D::initialize()
     return egl::Error(EGL_SUCCESS);
 }
 
-egl::Error SurfaceD3D::bindTexImage(EGLint)
+FramebufferImpl *SurfaceD3D::createDefaultFramebuffer(const gl::FramebufferState &data)
+{
+    return mRenderer->createDefaultFramebuffer(data);
+}
+
+egl::Error SurfaceD3D::bindTexImage(gl::Texture *, EGLint)
 {
     return egl::Error(EGL_SUCCESS);
 }
@@ -135,6 +112,11 @@ egl::Error SurfaceD3D::bindTexImage(EGLint)
 egl::Error SurfaceD3D::releaseTexImage(EGLint)
 {
     return egl::Error(EGL_SUCCESS);
+}
+
+egl::Error SurfaceD3D::getSyncValues(EGLuint64KHR *ust, EGLuint64KHR *msc, EGLuint64KHR *sbc)
+{
+    return mSwapChain->getSyncValues(ust, msc, sbc);
 }
 
 egl::Error SurfaceD3D::resetSwapChain()
@@ -147,7 +129,7 @@ egl::Error SurfaceD3D::resetSwapChain()
     if (!mFixedSize)
     {
         RECT windowRect;
-        if (!mNativeWindow.getClientRect(&windowRect))
+        if (!mNativeWindow->getClientRect(&windowRect))
         {
             ASSERT(false);
 
@@ -164,8 +146,8 @@ egl::Error SurfaceD3D::resetSwapChain()
         height = mHeight;
     }
 
-    const NativeWindow &window = (mChildWindow.getNativeWindow() != nullptr) ? mChildWindow : mNativeWindow;
-    mSwapChain = mRenderer->createSwapChain(window, mShareHandle, mRenderTargetFormat, mDepthStencilFormat);
+    mSwapChain = mRenderer->createSwapChain(mNativeWindow, mShareHandle, mD3DTexture,
+                                            mRenderTargetFormat, mDepthStencilFormat, mOrientation);
     if (!mSwapChain)
     {
         return egl::Error(EGL_BAD_ALLOC);
@@ -200,17 +182,6 @@ egl::Error SurfaceD3D::resizeSwapChain(int backbufferWidth, int backbufferHeight
 
     mWidth = backbufferWidth;
     mHeight = backbufferHeight;
-
-#if !defined(ANGLE_ENABLE_WINDOWS_STORE)
-    if (mChildWindow.getNativeWindow())
-    {
-        // Resize the child window
-        if (!MoveWindow(mChildWindow.getNativeWindow(), 0, 0, mWidth, mHeight, FALSE))
-        {
-            return egl::Error(EGL_BAD_SURFACE, "Failed to move the child window.");
-        }
-    }
-#endif
 
     return egl::Error(EGL_SUCCESS);
 }
@@ -282,11 +253,11 @@ bool SurfaceD3D::checkForOutOfDateSwapChain()
     int clientWidth = getWidth();
     int clientHeight = getHeight();
     bool sizeDirty = false;
-    if (!mFixedSize && !mNativeWindow.isIconic())
+    if (!mFixedSize && !mNativeWindow->isIconic())
     {
         // The window is automatically resized to 150x22 when it's minimized, but the swapchain shouldn't be resized
         // because that's not a useful size to render to.
-        if (!mNativeWindow.getClientRect(&client))
+        if (!mNativeWindow->getClientRect(&client))
         {
             ASSERT(false);
             return false;
@@ -312,7 +283,7 @@ bool SurfaceD3D::checkForOutOfDateSwapChain()
     return wasDirty;
 }
 
-egl::Error SurfaceD3D::swap()
+egl::Error SurfaceD3D::swap(const DisplayImpl *displayImpl)
 {
     return swapRect(0, 0, mWidth, mHeight);
 }
@@ -354,10 +325,23 @@ EGLint SurfaceD3D::isPostSubBufferSupported() const
     return EGL_TRUE;
 }
 
+EGLint SurfaceD3D::getSwapBehavior() const
+{
+    return EGL_BUFFER_PRESERVED;
+}
+
 egl::Error SurfaceD3D::querySurfacePointerANGLE(EGLint attribute, void **value)
 {
-    ASSERT(attribute == EGL_D3D_TEXTURE_2D_SHARE_HANDLE_ANGLE);
-    *value = mSwapChain->getShareHandle();
+    if (attribute == EGL_D3D_TEXTURE_2D_SHARE_HANDLE_ANGLE)
+    {
+        *value = mSwapChain->getShareHandle();
+    }
+    else if (attribute == EGL_DXGI_KEYED_MUTEX_ANGLE)
+    {
+        *value = mSwapChain->getKeyedMutex();
+    }
+    else UNREACHABLE();
+
     return egl::Error(EGL_SUCCESS);
 }
 
@@ -372,7 +356,46 @@ gl::Error SurfaceD3D::getAttachmentRenderTarget(const gl::FramebufferAttachment:
     {
         *rtOut = mSwapChain->getDepthStencilRenderTarget();
     }
-    return gl::Error(GL_NO_ERROR);
+    return gl::NoError();
 }
 
+WindowSurfaceD3D::WindowSurfaceD3D(const egl::SurfaceState &state,
+                                   RendererD3D *renderer,
+                                   egl::Display *display,
+                                   EGLNativeWindowType window,
+                                   const egl::AttributeMap &attribs)
+    : SurfaceD3D(state,
+                 renderer,
+                 display,
+                 window,
+                 0,
+                 static_cast<EGLClientBuffer>(0),
+                 attribs)
+{
 }
+
+WindowSurfaceD3D::~WindowSurfaceD3D()
+{
+}
+
+PbufferSurfaceD3D::PbufferSurfaceD3D(const egl::SurfaceState &state,
+                                     RendererD3D *renderer,
+                                     egl::Display *display,
+                                     EGLenum buftype,
+                                     EGLClientBuffer clientBuffer,
+                                     const egl::AttributeMap &attribs)
+    : SurfaceD3D(state,
+                 renderer,
+                 display,
+                 static_cast<EGLNativeWindowType>(0),
+                 buftype,
+                 clientBuffer,
+                 attribs)
+{
+}
+
+PbufferSurfaceD3D::~PbufferSurfaceD3D()
+{
+}
+
+}  // namespace rc

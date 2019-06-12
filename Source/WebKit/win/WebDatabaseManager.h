@@ -26,13 +26,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebDatabaseManager_h
-#define WebDatabaseManager_h
+#pragma once
 
 #include "WebKit.h"
 #include <WebCore/DatabaseManagerClient.h>
 
-class WebDatabaseManager : public IWebDatabaseManager, private WebCore::DatabaseManagerClient {
+namespace WebCore {
+struct SecurityOriginData;
+}
+
+class WebDatabaseManager : public IWebDatabaseManager2, private WebCore::DatabaseManagerClient {
 public:
     static WebDatabaseManager* createInstance();
 
@@ -51,9 +54,12 @@ public:
     virtual HRESULT STDMETHODCALLTYPE deleteDatabase(_In_ BSTR databaseName, _In_opt_ IWebSecurityOrigin*);
     virtual HRESULT STDMETHODCALLTYPE setQuota(_In_ BSTR origin, unsigned long long quota);
 
+    // IWebDatabaseManager2
+    virtual HRESULT STDMETHODCALLTYPE deleteAllIndexedDatabases();
+
     // DatabaseManagerClient
-    virtual void dispatchDidModifyOrigin(WebCore::SecurityOrigin*);
-    virtual void dispatchDidModifyDatabase(WebCore::SecurityOrigin*, const WTF::String& databaseName);
+    virtual void dispatchDidModifyOrigin(const WebCore::SecurityOriginData&);
+    virtual void dispatchDidModifyDatabase(const WebCore::SecurityOriginData&, const WTF::String& databaseName);
 
 private:
     WebDatabaseManager();
@@ -63,5 +69,3 @@ private:
 };
 
 void WebKitInitializeWebDatabasesIfNecessary();
-
-#endif

@@ -15,7 +15,11 @@
         font-size: xx-large;
     }
 
-    .green input::-webkit-input-placeholder {
+    .green #first-line-inherit:first-line {
+        font-size: xx-large;
+    }
+
+    .green input::placeholder {
         color: green;
     }
 </style>
@@ -25,6 +29,9 @@
     </div>
     <div id="first-line">
         This sentence should be extra-extra-large.
+    </div>
+    <div id="first-line-inherit">
+        <span>This sentence should be extra-extra-large too.</span>
     </div>
     <input type="search" placeholder="This should be green">
     <script>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2011, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #include "config.h"
 #include "MarkStack.h"
 
+#include "GCSegmentedArrayInlines.h"
 #include "JSCInlines.h"
 
 namespace JSC {
@@ -33,6 +34,48 @@ namespace JSC {
 MarkStackArray::MarkStackArray()
     : GCSegmentedArray<const JSCell*>()
 {
+}
+
+void MarkStackArray::transferTo(MarkStackArray& other)
+{
+    RELEASE_ASSERT(this != &other);
+    
+    // Remove our head and the head of the other list.
+    GCArraySegment<const JSCell*>* myHead = m_segments.removeHead();
+    GCArraySegment<const JSCell*>* otherHead = other.m_segments.removeHead();
+    m_numberOfSegments--;
+    other.m_numberOfSegments--;
+    
+    other.m_segments.append(m_segments);
+    
+    other.m_numberOfSegments += m_numberOfSegments;
+    m_numberOfSegments = 0;
+    
+    // Put the original heads back in their places.
+    m_segments.push(myHead);
+    other.m_segments.push(otherHead);
+    m_numberOfSegments++;
+    other.m_numberOfSegments++;
+    
+    while (!isEmpty()) {
+        refill();
+        while (canRemoveLast())
+            other.append(removeLast());
+    }
+}
+
+size_t MarkStackArray::transferTo(MarkStackArray& other, size_t limit)
+{
+    size_t count = 0;
+    while (count < limit && !isEmpty()) {
+        refill();
+        while (count < limit && canRemoveLast()) {
+            other.append(removeLast());
+            count++;
+        }
+    }
+    RELEASE_ASSERT(count <= limit);
+    return count;
 }
 
 void MarkStackArray::donateSomeCellsTo(MarkStackArray& other)

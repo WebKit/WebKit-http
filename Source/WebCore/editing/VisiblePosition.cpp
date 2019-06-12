@@ -28,8 +28,10 @@
 #include "VisiblePosition.h"
 
 #include "Document.h"
+#include "Editing.h"
 #include "FloatQuad.h"
 #include "HTMLElement.h"
+#include "HTMLHtmlElement.h"
 #include "HTMLNames.h"
 #include "InlineTextBox.h"
 #include "Logging.h"
@@ -39,7 +41,6 @@
 #include "Text.h"
 #include "TextStream.h"
 #include "VisibleUnits.h"
-#include "htmlediting.h"
 #include <stdio.h>
 #include <wtf/text/CString.h>
 
@@ -455,29 +456,29 @@ VisiblePosition VisiblePosition::right(bool stayInEditableContent, bool* reached
     return honorEditingBoundaryAtOrAfter(right, reachedBoundary);
 }
 
-VisiblePosition VisiblePosition::honorEditingBoundaryAtOrBefore(const VisiblePosition &pos, bool* reachedBoundary) const
+VisiblePosition VisiblePosition::honorEditingBoundaryAtOrBefore(const VisiblePosition& position, bool* reachedBoundary) const
 {
     if (reachedBoundary)
         *reachedBoundary = false;
-    if (pos.isNull())
-        return pos;
+    if (position.isNull())
+        return position;
     
-    Node* highestRoot = highestEditableRoot(deepEquivalent());
+    auto* highestRoot = highestEditableRoot(deepEquivalent());
     
     // Return empty position if pos is not somewhere inside the editable region containing this position
-    if (highestRoot && !pos.deepEquivalent().deprecatedNode()->isDescendantOf(highestRoot)) {
+    if (highestRoot && !position.deepEquivalent().deprecatedNode()->isDescendantOf(*highestRoot)) {
         if (reachedBoundary)
             *reachedBoundary = true;
         return VisiblePosition();
     }
     
-    // Return pos itself if the two are from the very same editable region, or both are non-editable
+    // Return position itself if the two are from the very same editable region, or both are non-editable
     // FIXME: In the non-editable case, just because the new position is non-editable doesn't mean movement
     // to it is allowed.  VisibleSelection::adjustForEditableContent has this problem too.
-    if (highestEditableRoot(pos.deepEquivalent()) == highestRoot) {
+    if (highestEditableRoot(position.deepEquivalent()) == highestRoot) {
         if (reachedBoundary)
-            *reachedBoundary = *this == pos;
-        return pos;
+            *reachedBoundary = *this == position;
+        return position;
     }
   
     // Return empty position if this position is non-editable, but pos is editable
@@ -489,7 +490,7 @@ VisiblePosition VisiblePosition::honorEditingBoundaryAtOrBefore(const VisiblePos
     }
 
     // Return the last position before pos that is in the same editable region as this position
-    return lastEditablePositionBeforePositionInRoot(pos.deepEquivalent(), highestRoot);
+    return lastEditablePositionBeforePositionInRoot(position.deepEquivalent(), highestRoot);
 }
 
 VisiblePosition VisiblePosition::honorEditingBoundaryAtOrAfter(const VisiblePosition &pos, bool* reachedBoundary) const
@@ -499,10 +500,10 @@ VisiblePosition VisiblePosition::honorEditingBoundaryAtOrAfter(const VisiblePosi
     if (pos.isNull())
         return pos;
     
-    Node* highestRoot = highestEditableRoot(deepEquivalent());
+    auto* highestRoot = highestEditableRoot(deepEquivalent());
     
     // Return empty position if pos is not somewhere inside the editable region containing this position
-    if (highestRoot && !pos.deepEquivalent().deprecatedNode()->isDescendantOf(highestRoot)) {
+    if (highestRoot && !pos.deepEquivalent().deprecatedNode()->isDescendantOf(*highestRoot)) {
         if (reachedBoundary)
             *reachedBoundary = true;
         return VisiblePosition();
@@ -586,7 +587,7 @@ Position VisiblePosition::canonicalPosition(const Position& passedPosition)
         
     // If the html element is editable, descending into its body will look like a descent 
     // from non-editable to editable content since rootEditableElement() always stops at the body.
-    if ((editingRoot && editingRoot->hasTagName(htmlTag)) || position.deprecatedNode()->isDocumentNode())
+    if ((editingRoot && editingRoot->hasTagName(htmlTag)) || (node && (node->isDocumentNode() || node->isShadowRoot())))
         return next.isNotNull() ? next : prev;
         
     bool prevIsInSameEditableElement = prevNode && editableRootForPosition(prev) == editingRoot;
@@ -659,11 +660,11 @@ LayoutRect VisiblePosition::localCaretRect(RenderObject*& renderer) const
     return renderer->localCaretRect(inlineBox, caretOffset);
 }
 
-IntRect VisiblePosition::absoluteCaretBounds() const
+IntRect VisiblePosition::absoluteCaretBounds(bool* insideFixed) const
 {
     RenderBlock* renderer = nullptr;
     LayoutRect localRect = localCaretRectInRendererForCaretPainting(*this, renderer);
-    return absoluteBoundsForLocalCaretRect(renderer, localRect);
+    return absoluteBoundsForLocalCaretRect(renderer, localRect, insideFixed);
 }
 
 int VisiblePosition::lineDirectionPointForBlockDirectionNavigation() const
@@ -707,7 +708,7 @@ void VisiblePosition::showTreeForThis() const
 
 #endif
 
-PassRefPtr<Range> makeRange(const VisiblePosition &start, const VisiblePosition &end)
+RefPtr<Range> makeRange(const VisiblePosition& start, const VisiblePosition& end)
 {
     if (start.isNull() || end.isNull())
         return nullptr;
@@ -730,24 +731,28 @@ VisiblePosition endVisiblePosition(const Range *r, EAffinity affinity)
     return VisiblePosition(r->endPosition(), affinity);
 }
 
-bool setStart(Range *r, const VisiblePosition &visiblePosition)
+bool setStart(Range* range, const VisiblePosition& visiblePosition)
 {
-    if (!r)
+    if (!range)
         return false;
+
     Position p = visiblePosition.deepEquivalent().parentAnchoredEquivalent();
-    int code = 0;
-    r->setStart(p.containerNode(), p.offsetInContainerNode(), code);
-    return code == 0;
+    if (!p.containerNode())
+        return false;
+
+    return !range->setStart(*p.containerNode(), p.offsetInContainerNode()).hasException();
 }
 
-bool setEnd(Range *r, const VisiblePosition &visiblePosition)
+bool setEnd(Range* range, const VisiblePosition& visiblePosition)
 {
-    if (!r)
+    if (!range)
         return false;
+
     Position p = visiblePosition.deepEquivalent().parentAnchoredEquivalent();
-    int code = 0;
-    r->setEnd(p.containerNode(), p.offsetInContainerNode(), code);
-    return code == 0;
+    if (!p.containerNode())
+        return false;
+
+    return !range->setEnd(*p.containerNode(), p.offsetInContainerNode()).hasException();
 }
 
 // FIXME: Maybe this should be deprecated too, like the underlying function?

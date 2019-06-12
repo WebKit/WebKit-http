@@ -28,6 +28,7 @@
 #define PluginPackage_h
 
 #include "FileSystem.h"
+#include "PlatformModule.h"
 #include "PluginQuirkSet.h"
 #include "Timer.h"
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -46,9 +47,9 @@ namespace WebCore {
     class PluginPackage : public RefCounted<PluginPackage> {
     public:
         ~PluginPackage();
-        static PassRefPtr<PluginPackage> createPackage(const String& path, const time_t& lastModified);
+        static RefPtr<PluginPackage> createPackage(const String& path, const time_t& lastModified);
 #if ENABLE(NETSCAPE_PLUGIN_METADATA_CACHE)
-        static PassRefPtr<PluginPackage> createPackageFromCache(const String& path, const time_t& lastModified, const String& name, const String& description, const String& mimeDescription);
+        static Ref<PluginPackage> createPackageFromCache(const String& path, const time_t& lastModified, const String& name, const String& description, const String& mimeDescription);
 #endif
 
         const String& name() const { return m_name; }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,22 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGBasicBlock_h
-#define DFGBasicBlock_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DFGAbstractValue.h"
-#include "DFGAvailability.h"
 #include "DFGAvailabilityMap.h"
 #include "DFGBranchDirection.h"
-#include "DFGFlushedAt.h"
 #include "DFGNode.h"
-#include "DFGNodeOrigin.h"
+#include "DFGNodeAbstractValuePair.h"
 #include "DFGStructureClobberState.h"
 #include "Operands.h"
-#include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
@@ -93,6 +88,7 @@ struct BasicBlock : RefCounted<BasicBlock> {
             case Switch:
             case Return:
             case TailCall:
+            case DirectTailCall:
             case TailCallVarargs:
             case TailCallForwardVarargs:
             case Unreachable:
@@ -239,14 +235,21 @@ struct BasicBlock : RefCounted<BasicBlock> {
     struct SSAData {
         WTF_MAKE_FAST_ALLOCATED;
     public:
+        void invalidate()
+        {
+            liveAtTail.clear();
+            liveAtHead.clear();
+            valuesAtHead.clear();
+            valuesAtTail.clear();
+        }
+
         AvailabilityMap availabilityAtHead;
         AvailabilityMap availabilityAtTail;
-        
-        bool liveAtTailIsDirty { false };
-        HashSet<Node*> liveAtTail;
-        HashSet<Node*> liveAtHead;
-        HashMap<Node*, AbstractValue> valuesAtHead;
-        HashMap<Node*, AbstractValue> valuesAtTail;
+
+        Vector<NodeFlowProjection> liveAtHead;
+        Vector<NodeFlowProjection> liveAtTail;
+        Vector<NodeAbstractValuePair> valuesAtHead;
+        Vector<NodeAbstractValuePair> valuesAtTail;
         
         SSAData(BasicBlock*);
         ~SSAData();
@@ -288,6 +291,3 @@ static inline BasicBlock* blockForBytecodeOffset(Vector<BasicBlock*>& linkingTar
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGBasicBlock_h
-

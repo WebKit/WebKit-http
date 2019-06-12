@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2008, 2012, 2014-2015 Apple Inc. All rights reserved.
+# Copyright (C) 2006-2008, 2012, 2014-2015, 2017 Apple Inc. All rights reserved.
 # Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
 # Copyright (C) 2009 Cameron McCormack <cam@mcc.id.au>
 #
@@ -29,7 +29,10 @@
 VPATH = \
     $(WebCore) \
     $(WebCore)/Modules/airplay \
+    $(WebCore)/Modules/applepay \
+    $(WebCore)/Modules/credentials \
     $(WebCore)/Modules/encryptedmedia \
+    $(WebCore)/Modules/encryptedmedia/legacy \
     $(WebCore)/Modules/fetch \
     $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
@@ -46,11 +49,12 @@ VPATH = \
     $(WebCore)/Modules/streams \
     $(WebCore)/Modules/webaudio \
     $(WebCore)/Modules/webdatabase \
+    $(WebCore)/Modules/webdriver \
     $(WebCore)/Modules/websockets \
-    $(WebCore)/bindings/generic \
+    $(WebCore)/animation \
     $(WebCore)/bindings/js \
-    $(WebCore)/bindings/objc \
     $(WebCore)/crypto \
+    $(WebCore)/crypto/parameters \
     $(WebCore)/css \
     $(WebCore)/dom \
     $(WebCore)/editing \
@@ -73,15 +77,58 @@ VPATH = \
     $(WebCore)/websockets \
 #
 
-NON_SVG_BINDING_IDLS = \
+JS_BINDING_IDLS = \
     $(WebCore)/Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayError.idl \
+    $(WebCore)/Modules/applepay/ApplePayLineItem.idl \
+    $(WebCore)/Modules/applepay/ApplePayPayment.idl \
+    $(WebCore)/Modules/applepay/ApplePayPaymentAuthorizedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayPaymentAuthorizationResult.idl \
+    $(WebCore)/Modules/applepay/ApplePayPaymentContact.idl \
+    $(WebCore)/Modules/applepay/ApplePayPaymentMethod.idl \
+    $(WebCore)/Modules/applepay/ApplePayPaymentMethodSelectedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayPaymentMethodUpdate.idl \
+    $(WebCore)/Modules/applepay/ApplePayPaymentPass.idl \
+    $(WebCore)/Modules/applepay/ApplePayPaymentRequest.idl \
+    $(WebCore)/Modules/applepay/ApplePaySession.idl \
+    $(WebCore)/Modules/applepay/ApplePayShippingContactSelectedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayShippingContactUpdate.idl \
+    $(WebCore)/Modules/applepay/ApplePayShippingMethod.idl \
+    $(WebCore)/Modules/applepay/ApplePayShippingMethodSelectedEvent.idl \
+	$(WebCore)/Modules/applepay/ApplePayShippingMethodUpdate.idl \
+    $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
+    $(WebCore)/Modules/credentials/BasicCredential.idl \
+    $(WebCore)/Modules/credentials/CredentialCreationOptions.idl \
+    $(WebCore)/Modules/credentials/CredentialData.idl \
+    $(WebCore)/Modules/credentials/CredentialRequestOptions.idl \
+    $(WebCore)/Modules/credentials/CredentialUserData.idl \
+    $(WebCore)/Modules/credentials/CredentialsContainer.idl \
+    $(WebCore)/Modules/credentials/FederatedCredential.idl \
+    $(WebCore)/Modules/credentials/FederatedCredentialRequestOptions.idl \
+    $(WebCore)/Modules/credentials/FederatedCredentialInit.idl \
+    $(WebCore)/Modules/credentials/NavigatorCredentials.idl \
+    $(WebCore)/Modules/credentials/PasswordCredential.idl \
+    $(WebCore)/Modules/credentials/PasswordCredentialData.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
-    $(WebCore)/Modules/encryptedmedia/MediaKeyNeededEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySessionType.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyStatusMap.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemAccess.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemConfiguration.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemMediaCapability.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeys.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeysRequirement.idl \
+    $(WebCore)/Modules/encryptedmedia/NavigatorEME.idl \
+    $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeySession.idl \
+    $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeys.idl \
+    $(WebCore)/Modules/fetch/DOMWindowFetch.idl \
     $(WebCore)/Modules/fetch/FetchBody.idl \
     $(WebCore)/Modules/fetch/FetchHeaders.idl \
     $(WebCore)/Modules/fetch/FetchRequest.idl \
+    $(WebCore)/Modules/fetch/FetchResponse.idl \
+    $(WebCore)/Modules/fetch/WorkerGlobalScopeFetch.idl \
     $(WebCore)/Modules/gamepad/Gamepad.idl \
     $(WebCore)/Modules/gamepad/GamepadButton.idl \
     $(WebCore)/Modules/gamepad/GamepadEvent.idl \
@@ -93,9 +140,10 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/geolocation/PositionCallback.idl \
     $(WebCore)/Modules/geolocation/PositionError.idl \
     $(WebCore)/Modules/geolocation/PositionErrorCallback.idl \
+    $(WebCore)/Modules/geolocation/PositionOptions.idl \
     $(WebCore)/Modules/indexeddb/DOMWindowIndexedDatabase.idl \
-    $(WebCore)/Modules/indexeddb/IDBAny.idl \
     $(WebCore)/Modules/indexeddb/IDBCursor.idl \
+    $(WebCore)/Modules/indexeddb/IDBCursorDirection.idl \
     $(WebCore)/Modules/indexeddb/IDBCursorWithValue.idl \
     $(WebCore)/Modules/indexeddb/IDBDatabase.idl \
     $(WebCore)/Modules/indexeddb/IDBFactory.idl \
@@ -105,65 +153,70 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/indexeddb/IDBOpenDBRequest.idl \
     $(WebCore)/Modules/indexeddb/IDBRequest.idl \
     $(WebCore)/Modules/indexeddb/IDBTransaction.idl \
+    $(WebCore)/Modules/indexeddb/IDBTransactionMode.idl \
     $(WebCore)/Modules/indexeddb/IDBVersionChangeEvent.idl \
     $(WebCore)/Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl \
-    $(WebCore)/Modules/indieui/UIRequestEvent.idl \
     $(WebCore)/Modules/mediacontrols/MediaControlsHost.idl \
     $(WebCore)/Modules/mediasession/HTMLMediaElementMediaSession.idl \
     $(WebCore)/Modules/mediasession/MediaRemoteControls.idl \
     $(WebCore)/Modules/mediasession/MediaSession.idl \
-	$(WebCore)/Modules/mediasource/DOMURLMediaSource.idl \
-	$(WebCore)/Modules/mediasource/AudioTrackMediaSource.idl \
-	$(WebCore)/Modules/mediasource/MediaSource.idl \
-	$(WebCore)/Modules/mediasource/SourceBuffer.idl \
-	$(WebCore)/Modules/mediasource/SourceBufferList.idl \
+    $(WebCore)/Modules/mediasource/AudioTrackMediaSource.idl \
+    $(WebCore)/Modules/mediasource/DOMURLMediaSource.idl \
+    $(WebCore)/Modules/mediasource/MediaSource.idl \
     $(WebCore)/Modules/mediasource/SourceBuffer.idl \
     $(WebCore)/Modules/mediasource/SourceBufferList.idl \
-	$(WebCore)/Modules/mediasource/TextTrackMediaSource.idl \
-	$(WebCore)/Modules/mediasource/VideoTrackMediaSource.idl \
-	$(WebCore)/Modules/mediasource/VideoPlaybackQuality.idl \
-	$(WebCore)/Modules/mediastream/DOMURLMediaStream.idl \
-    $(WebCore)/Modules/mediastream/HTMLMediaElementMediaStream.idl \
+    $(WebCore)/Modules/mediasource/TextTrackMediaSource.idl \
+    $(WebCore)/Modules/mediasource/VideoPlaybackQuality.idl \
+    $(WebCore)/Modules/mediasource/VideoTrackMediaSource.idl \
+    $(WebCore)/Modules/mediastream/CanvasCaptureMediaStreamTrack.idl \
+    $(WebCore)/Modules/mediastream/DoubleRange.idl \
+    $(WebCore)/Modules/mediastream/LongRange.idl \
     $(WebCore)/Modules/mediastream/MediaDeviceInfo.idl \
     $(WebCore)/Modules/mediastream/MediaDevices.idl \
-	$(WebCore)/Modules/mediastream/MediaStream.idl \
+    $(WebCore)/Modules/mediastream/MediaStream.idl \
     $(WebCore)/Modules/mediastream/MediaStreamEvent.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrack.idl \
     $(WebCore)/Modules/mediastream/MediaStreamTrackEvent.idl \
-    $(WebCore)/Modules/mediastream/MediaStreamTrackSourcesCallback.idl \
-    $(WebCore)/Modules/mediastream/MediaTrackConstraint.idl \
     $(WebCore)/Modules/mediastream/MediaTrackConstraints.idl \
-    $(WebCore)/Modules/mediastream/MediaTrackConstraintSet.idl \
     $(WebCore)/Modules/mediastream/MediaTrackSupportedConstraints.idl \
     $(WebCore)/Modules/mediastream/NavigatorMediaDevices.idl \
     $(WebCore)/Modules/mediastream/NavigatorUserMedia.idl \
-    $(WebCore)/Modules/mediastream/NavigatorUserMediaError.idl \
+    $(WebCore)/Modules/mediastream/OverconstrainedError.idl \
+    $(WebCore)/Modules/mediastream/OverconstrainedErrorEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCAnswerOptions.idl \
     $(WebCore)/Modules/mediastream/RTCConfiguration.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
     $(WebCore)/Modules/mediastream/RTCDataChannel.idl \
     $(WebCore)/Modules/mediastream/RTCDataChannelEvent.idl \
     $(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
-    $(WebCore)/Modules/mediastream/RTCIceCandidateEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCPeerConnectionIceEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCIceConnectionState.idl \
+    $(WebCore)/Modules/mediastream/RTCIceGatheringState.idl \
     $(WebCore)/Modules/mediastream/RTCIceServer.idl \
+    $(WebCore)/Modules/mediastream/RTCIceTransport.idl \
+    $(WebCore)/Modules/mediastream/RTCIceTransportState.idl \
+    $(WebCore)/Modules/mediastream/RTCOfferAnswerOptions.idl \
+    $(WebCore)/Modules/mediastream/RTCOfferOptions.idl \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
+    $(WebCore)/Modules/mediastream/RTCPeerConnectionState.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpParameters.idl \
     $(WebCore)/Modules/mediastream/RTCRtpReceiver.idl \
     $(WebCore)/Modules/mediastream/RTCRtpSender.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpTransceiver.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpTransceiverDirection.idl \
     $(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
+    $(WebCore)/Modules/mediastream/RTCSignalingState.idl \
     $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
-    $(WebCore)/Modules/mediastream/RTCStatsResponse.idl \
     $(WebCore)/Modules/mediastream/RTCTrackEvent.idl \
-    $(WebCore)/Modules/mediastream/SourceInfo.idl \
-    $(WebCore)/Modules/notifications/DOMWindowNotifications.idl \
     $(WebCore)/Modules/notifications/Notification.idl \
-    $(WebCore)/Modules/notifications/NotificationCenter.idl \
+    $(WebCore)/Modules/notifications/NotificationPermission.idl \
     $(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
-    $(WebCore)/Modules/notifications/WorkerGlobalScopeNotifications.idl \
     $(WebCore)/Modules/plugins/QuickTimePluginReplacement.idl \
     $(WebCore)/Modules/quota/DOMWindowQuota.idl \
     $(WebCore)/Modules/quota/NavigatorStorageQuota.idl \
-    $(WebCore)/Modules/quota/StorageInfo.idl \
     $(WebCore)/Modules/quota/StorageErrorCallback.idl \
+    $(WebCore)/Modules/quota/StorageInfo.idl \
     $(WebCore)/Modules/quota/StorageQuota.idl \
     $(WebCore)/Modules/quota/StorageQuotaCallback.idl \
     $(WebCore)/Modules/quota/StorageUsageCallback.idl \
@@ -175,37 +228,41 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/speech/SpeechSynthesisVoice.idl \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.idl \
     $(WebCore)/Modules/streams/CountQueuingStrategy.idl \
+    $(WebCore)/Modules/streams/ReadableByteStreamController.idl \
     $(WebCore)/Modules/streams/ReadableStream.idl \
-    $(WebCore)/Modules/streams/ReadableStreamController.idl \
-    $(WebCore)/Modules/streams/ReadableStreamReader.idl \
+    $(WebCore)/Modules/streams/ReadableStreamBYOBReader.idl \
+    $(WebCore)/Modules/streams/ReadableStreamBYOBRequest.idl \
+    $(WebCore)/Modules/streams/ReadableStreamDefaultController.idl \
+    $(WebCore)/Modules/streams/ReadableStreamDefaultReader.idl \
+    $(WebCore)/Modules/streams/ReadableStreamSource.idl \
     $(WebCore)/Modules/streams/WritableStream.idl \
+    $(WebCore)/Modules/webaudio/AnalyserNode.idl \
     $(WebCore)/Modules/webaudio/AudioBuffer.idl \
     $(WebCore)/Modules/webaudio/AudioBufferCallback.idl \
     $(WebCore)/Modules/webaudio/AudioBufferSourceNode.idl \
-    $(WebCore)/Modules/webaudio/ChannelMergerNode.idl \
-    $(WebCore)/Modules/webaudio/ChannelSplitterNode.idl \
     $(WebCore)/Modules/webaudio/AudioContext.idl \
     $(WebCore)/Modules/webaudio/AudioDestinationNode.idl \
-    $(WebCore)/Modules/webaudio/GainNode.idl \
     $(WebCore)/Modules/webaudio/AudioListener.idl \
     $(WebCore)/Modules/webaudio/AudioNode.idl \
-    $(WebCore)/Modules/webaudio/PannerNode.idl \
     $(WebCore)/Modules/webaudio/AudioParam.idl \
     $(WebCore)/Modules/webaudio/AudioProcessingEvent.idl \
     $(WebCore)/Modules/webaudio/BiquadFilterNode.idl \
+    $(WebCore)/Modules/webaudio/ChannelMergerNode.idl \
+    $(WebCore)/Modules/webaudio/ChannelSplitterNode.idl \
     $(WebCore)/Modules/webaudio/ConvolverNode.idl \
     $(WebCore)/Modules/webaudio/DelayNode.idl \
     $(WebCore)/Modules/webaudio/DynamicsCompressorNode.idl \
-    $(WebCore)/Modules/webaudio/ScriptProcessorNode.idl \
+    $(WebCore)/Modules/webaudio/GainNode.idl \
     $(WebCore)/Modules/webaudio/MediaElementAudioSourceNode.idl \
     $(WebCore)/Modules/webaudio/MediaStreamAudioDestinationNode.idl \
     $(WebCore)/Modules/webaudio/MediaStreamAudioSourceNode.idl \
-    $(WebCore)/Modules/webaudio/OscillatorNode.idl \
-    $(WebCore)/Modules/webaudio/OfflineAudioContext.idl \
     $(WebCore)/Modules/webaudio/OfflineAudioCompletionEvent.idl \
-    $(WebCore)/Modules/webaudio/AnalyserNode.idl \
-    $(WebCore)/Modules/webaudio/WaveShaperNode.idl \
+    $(WebCore)/Modules/webaudio/OfflineAudioContext.idl \
+    $(WebCore)/Modules/webaudio/OscillatorNode.idl \
+    $(WebCore)/Modules/webaudio/PannerNode.idl \
     $(WebCore)/Modules/webaudio/PeriodicWave.idl \
+    $(WebCore)/Modules/webaudio/ScriptProcessorNode.idl \
+    $(WebCore)/Modules/webaudio/WaveShaperNode.idl \
     $(WebCore)/Modules/webdatabase/DOMWindowWebDatabase.idl \
     $(WebCore)/Modules/webdatabase/Database.idl \
     $(WebCore)/Modules/webdatabase/DatabaseCallback.idl \
@@ -218,18 +275,46 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/SQLTransaction.idl \
     $(WebCore)/Modules/webdatabase/SQLTransactionCallback.idl \
     $(WebCore)/Modules/webdatabase/SQLTransactionErrorCallback.idl \
+    $(WebCore)/Modules/webdriver/NavigatorWebDriver.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
+    $(WebCore)/animation/Animatable.idl \
+    $(WebCore)/animation/AnimationEffect.idl \
+    $(WebCore)/animation/AnimationTimeline.idl \
+    $(WebCore)/animation/DocumentAnimation.idl \
+    $(WebCore)/animation/DocumentTimeline.idl \
+    $(WebCore)/animation/KeyframeEffect.idl \
+    $(WebCore)/animation/WebAnimation.idl \
+    $(WebCore)/crypto/CryptoAlgorithmParameters.idl \
     $(WebCore)/crypto/CryptoKey.idl \
     $(WebCore)/crypto/CryptoKeyPair.idl \
+    $(WebCore)/crypto/CryptoKeyUsage.idl \
+    $(WebCore)/crypto/JsonWebKey.idl \
+    $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
-    $(WebCore)/css/CSSCharsetRule.idl \
-    $(WebCore)/css/CSSFontFaceLoadEvent.idl \
+    $(WebCore)/crypto/WebKitSubtleCrypto.idl \
+    $(WebCore)/crypto/parameters/AesCbcCfbParams.idl \
+    $(WebCore)/crypto/parameters/AesCtrParams.idl \
+    $(WebCore)/crypto/parameters/AesGcmParams.idl \
+    $(WebCore)/crypto/parameters/AesKeyParams.idl \
+    $(WebCore)/crypto/parameters/EcKeyParams.idl \
+    $(WebCore)/crypto/parameters/EcdhKeyDeriveParams.idl \
+    $(WebCore)/crypto/parameters/EcdsaParams.idl \
+    $(WebCore)/crypto/parameters/HkdfParams.idl \
+    $(WebCore)/crypto/parameters/HmacKeyParams.idl \
+    $(WebCore)/crypto/parameters/Pbkdf2Params.idl \
+    $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
+    $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/RsaKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/RsaOaepParams.idl \
+    $(WebCore)/crypto/parameters/RsaPssParams.idl \
     $(WebCore)/css/CSSFontFaceRule.idl \
     $(WebCore)/css/CSSImportRule.idl \
+    $(WebCore)/css/CSSKeyframeRule.idl \
+    $(WebCore)/css/CSSKeyframesRule.idl \
     $(WebCore)/css/CSSMediaRule.idl \
+    $(WebCore)/css/CSSNamespaceRule.idl \
     $(WebCore)/css/CSSPageRule.idl \
-    $(WebCore)/css/CSSPrimitiveValue.idl \
     $(WebCore)/css/CSSRule.idl \
     $(WebCore)/css/CSSRuleList.idl \
     $(WebCore)/css/CSSStyleDeclaration.idl \
@@ -237,27 +322,27 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/css/CSSStyleSheet.idl \
     $(WebCore)/css/CSSSupportsRule.idl \
     $(WebCore)/css/CSSUnknownRule.idl \
-    $(WebCore)/css/CSSValue.idl \
-    $(WebCore)/css/CSSValueList.idl \
-    $(WebCore)/css/Counter.idl \
-    $(WebCore)/css/DOMWindowCSS.idl \
+    $(WebCore)/css/DOMMatrix.idl \
+    $(WebCore)/css/DOMMatrixInit.idl \
+    $(WebCore)/css/DOMMatrixReadOnly.idl \
+    $(WebCore)/css/DeprecatedCSSOMCounter.idl \
+	$(WebCore)/css/DeprecatedCSSOMPrimitiveValue.idl \
+	$(WebCore)/css/DeprecatedCSSOMRGBColor.idl \
+	$(WebCore)/css/DeprecatedCSSOMRect.idl \
+	$(WebCore)/css/DeprecatedCSSOMValue.idl \
+    $(WebCore)/css/DeprecatedCSSOMValueList.idl \
+    $(WebCore)/css/DOMCSSNamespace.idl \
+    $(WebCore)/css/ElementCSSInlineStyle.idl \
     $(WebCore)/css/FontFace.idl \
     $(WebCore)/css/FontFaceSet.idl \
-    $(WebCore)/css/FontLoader.idl \
     $(WebCore)/css/MediaList.idl \
     $(WebCore)/css/MediaQueryList.idl \
     $(WebCore)/css/MediaQueryListListener.idl \
-    $(WebCore)/css/RGBColor.idl \
-    $(WebCore)/css/Rect.idl \
     $(WebCore)/css/StyleMedia.idl \
     $(WebCore)/css/StyleSheet.idl \
     $(WebCore)/css/StyleSheetList.idl \
-    $(WebCore)/css/WebKitCSSFilterValue.idl \
-    $(WebCore)/css/CSSKeyframeRule.idl \
-    $(WebCore)/css/CSSKeyframesRule.idl \
     $(WebCore)/css/WebKitCSSMatrix.idl \
     $(WebCore)/css/WebKitCSSRegionRule.idl \
-    $(WebCore)/css/WebKitCSSTransformValue.idl \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
     $(WebCore)/dom/AnimationEvent.idl \
     $(WebCore)/dom/Attr.idl \
@@ -267,14 +352,24 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/dom/CDATASection.idl \
     $(WebCore)/dom/CharacterData.idl \
     $(WebCore)/dom/ChildNode.idl \
-    $(WebCore)/dom/ClientRect.idl \
-    $(WebCore)/dom/ClientRectList.idl \
+    $(WebCore)/dom/ClipboardEvent.idl \
     $(WebCore)/dom/Comment.idl \
     $(WebCore)/dom/CompositionEvent.idl \
+    $(WebCore)/dom/CustomElementRegistry.idl \
     $(WebCore)/dom/CustomEvent.idl \
     $(WebCore)/dom/DOMCoreException.idl \
     $(WebCore)/dom/DOMError.idl \
     $(WebCore)/dom/DOMImplementation.idl \
+    $(WebCore)/dom/DOMNamedFlowCollection.idl \
+    $(WebCore)/dom/DOMPoint.idl \
+    $(WebCore)/dom/DOMPointInit.idl \
+    $(WebCore)/dom/DOMPointReadOnly.idl \
+    $(WebCore)/dom/DOMQuad.idl \
+    $(WebCore)/dom/DOMQuadInit.idl \
+    $(WebCore)/dom/DOMRect.idl \
+    $(WebCore)/dom/DOMRectInit.idl \
+    $(WebCore)/dom/DOMRectList.idl \
+    $(WebCore)/dom/DOMRectReadOnly.idl \
     $(WebCore)/dom/DOMStringList.idl \
     $(WebCore)/dom/DOMStringMap.idl \
     $(WebCore)/dom/DataTransfer.idl \
@@ -283,57 +378,69 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/dom/DeviceMotionEvent.idl \
     $(WebCore)/dom/DeviceOrientationEvent.idl \
     $(WebCore)/dom/Document.idl \
+    $(WebCore)/dom/DocumentAndElementEventHandlers.idl \
     $(WebCore)/dom/DocumentFragment.idl \
+    $(WebCore)/dom/DocumentOrShadowRoot.idl \
     $(WebCore)/dom/DocumentType.idl \
     $(WebCore)/dom/Element.idl \
-    $(WebCore)/dom/Entity.idl \
-    $(WebCore)/dom/EntityReference.idl \
     $(WebCore)/dom/ErrorEvent.idl \
     $(WebCore)/dom/Event.idl \
+    $(WebCore)/dom/EventInit.idl \
     $(WebCore)/dom/EventListener.idl \
+    $(WebCore)/dom/EventModifierInit.idl \
     $(WebCore)/dom/EventTarget.idl \
     $(WebCore)/dom/FocusEvent.idl \
     $(WebCore)/dom/GlobalEventHandlers.idl \
     $(WebCore)/dom/HashChangeEvent.idl \
+    $(WebCore)/dom/InputEvent.idl \
     $(WebCore)/dom/KeyboardEvent.idl \
     $(WebCore)/dom/MessageChannel.idl \
     $(WebCore)/dom/MessageEvent.idl \
     $(WebCore)/dom/MessagePort.idl \
     $(WebCore)/dom/MouseEvent.idl \
+    $(WebCore)/dom/MouseEventInit.idl \
     $(WebCore)/dom/MutationEvent.idl \
     $(WebCore)/dom/MutationObserver.idl \
     $(WebCore)/dom/MutationRecord.idl \
-    $(WebCore)/dom/DOMNamedFlowCollection.idl \
     $(WebCore)/dom/NamedNodeMap.idl \
     $(WebCore)/dom/Node.idl \
     $(WebCore)/dom/NodeFilter.idl \
     $(WebCore)/dom/NodeIterator.idl \
     $(WebCore)/dom/NodeList.idl \
-    $(WebCore)/dom/NonElementParentNode.idl \
     $(WebCore)/dom/NonDocumentTypeChildNode.idl \
+    $(WebCore)/dom/NonElementParentNode.idl \
     $(WebCore)/dom/OverflowEvent.idl \
     $(WebCore)/dom/PageTransitionEvent.idl \
     $(WebCore)/dom/ParentNode.idl \
     $(WebCore)/dom/PopStateEvent.idl \
     $(WebCore)/dom/ProcessingInstruction.idl \
     $(WebCore)/dom/ProgressEvent.idl \
-    $(WebCore)/dom/ProgressEvent.idl \
+    $(WebCore)/dom/PromiseRejectionEvent.idl \
     $(WebCore)/dom/Range.idl \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
     $(WebCore)/dom/SecurityPolicyViolationEvent.idl \
     $(WebCore)/dom/ShadowRoot.idl \
+    $(WebCore)/dom/ShadowRootMode.idl \
+    $(WebCore)/dom/Slotable.idl \
+    $(WebCore)/dom/StaticRange.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
+    $(WebCore)/dom/TextDecoder.idl \
+    $(WebCore)/dom/TextEncoder.idl \
     $(WebCore)/dom/TextEvent.idl \
     $(WebCore)/dom/TransitionEvent.idl \
     $(WebCore)/dom/TreeWalker.idl \
     $(WebCore)/dom/UIEvent.idl \
+    $(WebCore)/dom/UIEventInit.idl \
     $(WebCore)/dom/WebKitAnimationEvent.idl \
     $(WebCore)/dom/WebKitNamedFlow.idl \
     $(WebCore)/dom/WebKitTransitionEvent.idl \
     $(WebCore)/dom/WheelEvent.idl \
     $(WebCore)/dom/XMLDocument.idl \
     $(WebCore)/fileapi/Blob.idl \
+    $(WebCore)/fileapi/BlobCallback.idl \
+    $(WebCore)/fileapi/BlobLineEndings.idl \
+    $(WebCore)/fileapi/BlobPropertyBag.idl \
     $(WebCore)/fileapi/File.idl \
     $(WebCore)/fileapi/FileError.idl \
     $(WebCore)/fileapi/FileException.idl \
@@ -341,7 +448,6 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/fileapi/FileReader.idl \
     $(WebCore)/fileapi/FileReaderSync.idl \
     $(WebCore)/html/DOMFormData.idl \
-    $(WebCore)/html/DOMSettableTokenList.idl \
     $(WebCore)/html/DOMTokenList.idl \
     $(WebCore)/html/DOMURL.idl \
     $(WebCore)/html/HTMLAllCollection.idl \
@@ -352,7 +458,6 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLAudioElement.idl \
     $(WebCore)/html/HTMLBRElement.idl \
     $(WebCore)/html/HTMLBaseElement.idl \
-    $(WebCore)/html/HTMLBaseFontElement.idl \
     $(WebCore)/html/HTMLBodyElement.idl \
     $(WebCore)/html/HTMLButtonElement.idl \
     $(WebCore)/html/HTMLCanvasElement.idl \
@@ -376,6 +481,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLHeadElement.idl \
     $(WebCore)/html/HTMLHeadingElement.idl \
     $(WebCore)/html/HTMLHtmlElement.idl \
+    $(WebCore)/html/HTMLHyperlinkElementUtils.idl \
     $(WebCore)/html/HTMLIFrameElement.idl \
     $(WebCore)/html/HTMLImageElement.idl \
     $(WebCore)/html/HTMLInputElement.idl \
@@ -399,7 +505,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLOutputElement.idl \
     $(WebCore)/html/HTMLParagraphElement.idl \
     $(WebCore)/html/HTMLParamElement.idl \
-	$(WebCore)/html/HTMLPictureElement.idl \
+    $(WebCore)/html/HTMLPictureElement.idl \
     $(WebCore)/html/HTMLPreElement.idl \
     $(WebCore)/html/HTMLProgressElement.idl \
     $(WebCore)/html/HTMLQuoteElement.idl \
@@ -412,9 +518,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLTableCaptionElement.idl \
     $(WebCore)/html/HTMLTableCellElement.idl \
     $(WebCore)/html/HTMLTableColElement.idl \
-    $(WebCore)/html/HTMLTableDataCellElement.idl \
     $(WebCore)/html/HTMLTableElement.idl \
-    $(WebCore)/html/HTMLTableHeaderCellElement.idl \
     $(WebCore)/html/HTMLTableRowElement.idl \
     $(WebCore)/html/HTMLTableSectionElement.idl \
     $(WebCore)/html/HTMLTemplateElement.idl \
@@ -427,27 +531,27 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/HTMLVideoElement.idl \
     $(WebCore)/html/ImageData.idl \
     $(WebCore)/html/MediaController.idl \
+    $(WebCore)/html/MediaEncryptedEvent.idl \
     $(WebCore)/html/MediaError.idl \
-    $(WebCore)/html/MediaKeyError.idl \
-    $(WebCore)/html/MediaKeyEvent.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \
     $(WebCore)/html/TimeRanges.idl \
-    $(WebCore)/html/URLUtils.idl \
+    $(WebCore)/html/URLSearchParams.idl \
     $(WebCore)/html/ValidityState.idl \
     $(WebCore)/html/VoidCallback.idl \
+    $(WebCore)/html/WebKitMediaKeyError.idl \
     $(WebCore)/html/canvas/ANGLEInstancedArrays.idl \
     $(WebCore)/html/canvas/CanvasGradient.idl \
+    $(WebCore)/html/canvas/CanvasPath.idl \
     $(WebCore)/html/canvas/CanvasPattern.idl \
     $(WebCore)/html/canvas/CanvasProxy.idl \
-    $(WebCore)/html/canvas/CanvasRenderingContext.idl \
     $(WebCore)/html/canvas/CanvasRenderingContext2D.idl \
     $(WebCore)/html/canvas/DOMPath.idl \
+    $(WebCore)/html/canvas/EXTBlendMinMax.idl \
+    $(WebCore)/html/canvas/EXTFragDepth.idl \
     $(WebCore)/html/canvas/EXTShaderTextureLOD.idl \
     $(WebCore)/html/canvas/EXTTextureFilterAnisotropic.idl \
     $(WebCore)/html/canvas/EXTsRGB.idl \
-    $(WebCore)/html/canvas/EXTBlendMinMax.idl \
-    $(WebCore)/html/canvas/EXTFragDepth.idl \
     $(WebCore)/html/canvas/OESElementIndexUint.idl \
     $(WebCore)/html/canvas/OESStandardDerivatives.idl \
     $(WebCore)/html/canvas/OESTextureFloat.idl \
@@ -455,6 +559,7 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/canvas/OESTextureHalfFloat.idl \
     $(WebCore)/html/canvas/OESTextureHalfFloatLinear.idl \
     $(WebCore)/html/canvas/OESVertexArrayObject.idl \
+    $(WebCore)/html/canvas/WebGL2RenderingContext.idl \
     $(WebCore)/html/canvas/WebGLActiveInfo.idl \
     $(WebCore)/html/canvas/WebGLBuffer.idl \
     $(WebCore)/html/canvas/WebGLCompressedTextureATC.idl \
@@ -471,9 +576,8 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGLProgram.idl \
     $(WebCore)/html/canvas/WebGLQuery.idl \
     $(WebCore)/html/canvas/WebGLRenderbuffer.idl \
-    $(WebCore)/html/canvas/WebGLRenderingContextBase.idl \
     $(WebCore)/html/canvas/WebGLRenderingContext.idl \
-    $(WebCore)/html/canvas/WebGL2RenderingContext.idl \
+    $(WebCore)/html/canvas/WebGLRenderingContextBase.idl \
     $(WebCore)/html/canvas/WebGLSampler.idl \
     $(WebCore)/html/canvas/WebGLShader.idl \
     $(WebCore)/html/canvas/WebGLShaderPrecisionFormat.idl \
@@ -483,6 +587,28 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGLUniformLocation.idl \
     $(WebCore)/html/canvas/WebGLVertexArrayObject.idl \
     $(WebCore)/html/canvas/WebGLVertexArrayObjectOES.idl \
+    $(WebCore)/html/canvas/WebGPUBuffer.idl \
+    $(WebCore)/html/canvas/WebGPUCommandBuffer.idl \
+    $(WebCore)/html/canvas/WebGPUCommandQueue.idl \
+	$(WebCore)/html/canvas/WebGPUComputeCommandEncoder.idl \
+	$(WebCore)/html/canvas/WebGPUComputePipelineState.idl \
+    $(WebCore)/html/canvas/WebGPUDepthStencilDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPUDepthStencilState.idl \
+    $(WebCore)/html/canvas/WebGPUDrawable.idl \
+    $(WebCore)/html/canvas/WebGPUFunction.idl \
+    $(WebCore)/html/canvas/WebGPULibrary.idl \
+    $(WebCore)/html/canvas/WebGPURenderCommandEncoder.idl \
+    $(WebCore)/html/canvas/WebGPURenderingContext.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassColorAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassDepthAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPassDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPipelineColorAttachmentDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPipelineDescriptor.idl \
+    $(WebCore)/html/canvas/WebGPURenderPipelineState.idl \
+	$(WebCore)/html/canvas/WebGPUSize.idl \
+    $(WebCore)/html/canvas/WebGPUTexture.idl \
+    $(WebCore)/html/canvas/WebGPUTextureDescriptor.idl \
     $(WebCore)/html/track/AudioTrack.idl \
     $(WebCore)/html/track/AudioTrackList.idl \
     $(WebCore)/html/track/DataCue.idl \
@@ -490,37 +616,49 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/html/track/TextTrackCue.idl \
     $(WebCore)/html/track/TextTrackCueList.idl \
     $(WebCore)/html/track/TextTrackList.idl \
+    $(WebCore)/html/track/TrackEvent.idl \
+    $(WebCore)/html/track/VTTCue.idl \
     $(WebCore)/html/track/VTTRegion.idl \
     $(WebCore)/html/track/VTTRegionList.idl \
-    $(WebCore)/html/track/TrackEvent.idl \
     $(WebCore)/html/track/VideoTrack.idl \
     $(WebCore)/html/track/VideoTrackList.idl \
-    $(WebCore)/html/track/VTTCue.idl \
     $(WebCore)/inspector/CommandLineAPIHost.idl \
     $(WebCore)/inspector/InspectorFrontendHost.idl \
-    $(WebCore)/inspector/ScriptProfile.idl \
-    $(WebCore)/inspector/ScriptProfileNode.idl \
     $(WebCore)/loader/appcache/DOMApplicationCache.idl \
-    $(WebCore)/page/AbstractView.idl \
     $(WebCore)/page/BarProp.idl \
     $(WebCore)/page/Crypto.idl \
     $(WebCore)/page/DOMSelection.idl \
     $(WebCore)/page/DOMWindow.idl \
     $(WebCore)/page/EventSource.idl \
+    $(WebCore)/page/GlobalCrypto.idl \
+    $(WebCore)/page/GlobalPerformance.idl \
     $(WebCore)/page/History.idl \
+    $(WebCore)/page/IntersectionObserver.idl \
+    $(WebCore)/page/IntersectionObserverCallback.idl \
+    $(WebCore)/page/IntersectionObserverEntry.idl \
     $(WebCore)/page/Location.idl \
     $(WebCore)/page/Navigator.idl \
+    $(WebCore)/page/NavigatorID.idl \
+    $(WebCore)/page/NavigatorLanguage.idl \
+    $(WebCore)/page/NavigatorOnLine.idl \
     $(WebCore)/page/Performance.idl \
+    $(WebCore)/page/PerformanceEntry.idl \
+    $(WebCore)/page/PerformanceMark.idl \
+    $(WebCore)/page/PerformanceMeasure.idl \
     $(WebCore)/page/PerformanceNavigation.idl \
+    $(WebCore)/page/PerformanceObserver.idl \
+    $(WebCore)/page/PerformanceObserverCallback.idl \
+    $(WebCore)/page/PerformanceObserverEntryList.idl \
+    $(WebCore)/page/PerformanceResourceTiming.idl \
     $(WebCore)/page/PerformanceTiming.idl \
     $(WebCore)/page/Screen.idl \
-    $(WebCore)/page/WebKitPoint.idl \
-    $(WebCore)/page/WebKitNamespace.idl \
-    $(WebCore)/page/UserMessageHandlersNamespace.idl \
+    $(WebCore)/page/ScrollToOptions.idl \
     $(WebCore)/page/UserMessageHandler.idl \
-    $(WebCore)/page/WindowBase64.idl \
+    $(WebCore)/page/UserMessageHandlersNamespace.idl \
+    $(WebCore)/page/WebKitNamespace.idl \
+    $(WebCore)/page/WebKitPoint.idl \
     $(WebCore)/page/WindowEventHandlers.idl \
-    $(WebCore)/page/WindowTimers.idl \
+    $(WebCore)/page/WindowOrWorkerGlobalScope.idl \
     $(WebCore)/page/WorkerNavigator.idl \
     $(WebCore)/plugins/DOMMimeType.idl \
     $(WebCore)/plugins/DOMMimeTypeArray.idl \
@@ -528,34 +666,6 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/plugins/DOMPluginArray.idl \
     $(WebCore)/storage/Storage.idl \
     $(WebCore)/storage/StorageEvent.idl \
-    $(WebCore)/testing/Internals.idl \
-    $(WebCore)/testing/InternalSettings.idl \
-    $(WebCore)/testing/MallocStatistics.idl \
-    $(WebCore)/testing/MemoryInfo.idl \
-    $(WebCore)/testing/MockContentFilterSettings.idl \
-	$(WebCore)/testing/MockPageOverlay.idl \
-    $(WebCore)/testing/TypeConversions.idl \
-    $(WebCore)/workers/AbstractWorker.idl \
-    $(WebCore)/workers/DedicatedWorkerGlobalScope.idl \
-    $(WebCore)/workers/Worker.idl \
-    $(WebCore)/workers/WorkerGlobalScope.idl \
-    $(WebCore)/workers/WorkerLocation.idl \
-    $(WebCore)/xml/DOMParser.idl \
-    $(WebCore)/xml/XMLHttpRequest.idl \
-    $(WebCore)/xml/XMLHttpRequestEventTarget.idl \
-    $(WebCore)/xml/XMLHttpRequestProgressEvent.idl \
-    $(WebCore)/xml/XMLHttpRequestUpload.idl \
-    $(WebCore)/xml/XMLSerializer.idl \
-    $(WebCore)/xml/XPathEvaluator.idl \
-    $(WebCore)/xml/XPathException.idl \
-    $(WebCore)/xml/XPathExpression.idl \
-    $(WebCore)/xml/XPathNSResolver.idl \
-    $(WebCore)/xml/XPathResult.idl \
-    $(WebCore)/xml/XSLTProcessor.idl \
-    InternalSettingsGenerated.idl
-#
-
-SVG_BINDING_IDLS = \
     $(WebCore)/svg/SVGAElement.idl \
     $(WebCore)/svg/SVGAltGlyphDefElement.idl \
     $(WebCore)/svg/SVGAltGlyphElement.idl \
@@ -580,7 +690,6 @@ SVG_BINDING_IDLS = \
     $(WebCore)/svg/SVGAnimationElement.idl \
     $(WebCore)/svg/SVGCircleElement.idl \
     $(WebCore)/svg/SVGClipPathElement.idl \
-    $(WebCore)/svg/SVGColor.idl \
     $(WebCore)/svg/SVGComponentTransferFunctionElement.idl \
     $(WebCore)/svg/SVGCursorElement.idl \
     $(WebCore)/svg/SVGDefsElement.idl \
@@ -644,7 +753,6 @@ SVG_BINDING_IDLS = \
     $(WebCore)/svg/SVGMissingGlyphElement.idl \
     $(WebCore)/svg/SVGNumber.idl \
     $(WebCore)/svg/SVGNumberList.idl \
-    $(WebCore)/svg/SVGPaint.idl \
     $(WebCore)/svg/SVGPathElement.idl \
     $(WebCore)/svg/SVGPathSeg.idl \
     $(WebCore)/svg/SVGPathSegArcAbs.idl \
@@ -702,11 +810,39 @@ SVG_BINDING_IDLS = \
     $(WebCore)/svg/SVGViewElement.idl \
     $(WebCore)/svg/SVGViewSpec.idl \
     $(WebCore)/svg/SVGZoomAndPan.idl \
-    $(WebCore)/svg/SVGZoomEvent.idl
+    $(WebCore)/svg/SVGZoomEvent.idl \
+    $(WebCore)/testing/GCObservation.idl \
+    $(WebCore)/testing/InternalSettings.idl \
+    $(WebCore)/testing/Internals.idl \
+    $(WebCore)/testing/MallocStatistics.idl \
+    $(WebCore)/testing/MemoryInfo.idl \
+    $(WebCore)/testing/MockCDMFactory.idl \
+    $(WebCore)/testing/MockContentFilterSettings.idl \
+    $(WebCore)/testing/MockPageOverlay.idl \
+    $(WebCore)/testing/TypeConversions.idl \
+    $(WebCore)/workers/AbstractWorker.idl \
+    $(WebCore)/workers/DedicatedWorkerGlobalScope.idl \
+    $(WebCore)/workers/Worker.idl \
+    $(WebCore)/workers/WorkerGlobalScope.idl \
+    $(WebCore)/workers/WorkerLocation.idl \
+    $(WebCore)/xml/DOMParser.idl \
+    $(WebCore)/xml/XMLHttpRequest.idl \
+    $(WebCore)/xml/XMLHttpRequestEventTarget.idl \
+    $(WebCore)/xml/XMLHttpRequestProgressEvent.idl \
+    $(WebCore)/xml/XMLHttpRequestUpload.idl \
+    $(WebCore)/xml/XMLSerializer.idl \
+    $(WebCore)/xml/XPathEvaluator.idl \
+    $(WebCore)/xml/XPathException.idl \
+    $(WebCore)/xml/XPathExpression.idl \
+    $(WebCore)/xml/XPathNSResolver.idl \
+    $(WebCore)/xml/XPathResult.idl \
+    $(WebCore)/xml/XSLTProcessor.idl \
+    InternalSettingsGenerated.idl \
 #
 
 PYTHON = python
 PERL = perl
+RUBY = ruby
 
 ifeq ($(OS),Windows_NT)
     DELETE = cmd //C del
@@ -722,22 +858,22 @@ HEADER_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(HEADER_SEARCH_PATHS) | perl 
 TEXT_PREPROCESSOR_FLAGS=-E -P -x c -traditional
 
 ifneq ($(SDKROOT),)
-	SDK_FLAGS=-isysroot $(SDKROOT)
+    SDK_FLAGS=-isysroot $(SDKROOT)
 endif
 
-ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)
     WTF_PLATFORM_IOS = 1
 else
     WTF_PLATFORM_IOS = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep USE_APPLE_INTERNAL_SDK | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep USE_APPLE_INTERNAL_SDK | cut -d' ' -f3), 1)
     USE_APPLE_INTERNAL_SDK = 1
 else
     USE_APPLE_INTERNAL_SDK = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++11 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
     ENABLE_ORIENTATION_EVENTS = 1
 endif
 
@@ -761,6 +897,7 @@ endif
 ifeq ($(WTF_PLATFORM_IOS), 1)
 ifeq ($(findstring ENABLE_IOS_TOUCH_EVENTS,$(FEATURE_DEFINES)), ENABLE_IOS_TOUCH_EVENTS)
 ADDITIONAL_BINDING_IDLS += \
+    DocumentTouch.idl \
     Touch.idl \
     TouchEvent.idl \
     TouchList.idl
@@ -772,9 +909,7 @@ vpath %.in $(WEBKITADDITIONS_HEADER_SEARCH_PATHS)
 ADDITIONAL_EVENT_NAMES =
 ADDITIONAL_EVENT_TARGET_FACTORY =
 
--include WebCoreDerivedSourcesAdditions.make
-
-NON_SVG_BINDING_IDLS += $(ADDITIONAL_BINDING_IDLS)
+JS_BINDING_IDLS += $(ADDITIONAL_BINDING_IDLS)
 
 all : $(ADDITIONAL_BINDING_IDLS:%.idl=JS%.h)
 
@@ -786,7 +921,8 @@ $(ADDITIONAL_BINDING_IDLS) : % : WebKitAdditions/%
 endif # MACOS
 
 ifneq ($(WTF_PLATFORM_IOS), 1)
-NON_SVG_BINDING_IDLS += \
+JS_BINDING_IDLS += \
+    $(WebCore)/dom/DocumentTouch.idl \
     $(WebCore)/dom/Touch.idl \
     $(WebCore)/dom/TouchEvent.idl \
     $(WebCore)/dom/TouchList.idl
@@ -794,9 +930,7 @@ endif
 
 .PHONY : all
 
-BINDING_IDLS = $(NON_SVG_BINDING_IDLS) $(SVG_BINDING_IDLS)
-
-JS_DOM_CLASSES=$(basename $(notdir $(BINDING_IDLS)))
+JS_DOM_CLASSES=$(basename $(notdir $(JS_BINDING_IDLS)))
 
 JS_DOM_HEADERS=$(filter-out JSEventListener.h, $(JS_DOM_CLASSES:%=JS%.h))
 
@@ -809,12 +943,12 @@ all : \
     $(JS_DOM_HEADERS) \
     $(WEB_DOM_HEADERS) \
     \
-    CSSGrammar.cpp \
     CSSPropertyNames.cpp \
     CSSPropertyNames.h \
     CSSValueKeywords.cpp \
     CSSValueKeywords.h \
     ColorData.cpp \
+    DOMJITAbstractHeapRepository.h \
     EventInterfaces.h \
     EventTargetInterfaces.h \
     ExceptionCodeDescription.cpp \
@@ -853,7 +987,6 @@ all : \
     MathMLElementTypeHelpers.h \
     MathMLNames.cpp \
     MathMLNames.h \
-    XPathGrammar.cpp \
 #
 
 # --------
@@ -874,23 +1007,31 @@ endif
 
 # --------
 
+ADDITIONAL_CSS_PROPERTIES_DEFINES :=
+
+ifeq ($(WTF_PLATFORM_IOS), 1)
+    ADDITIONAL_CSS_PROPERTIES_DEFINES := WTF_PLATFORM_IOS
+endif
+
+# --------
+
 # CSS property names and value keywords
 
-WEBCORE_CSS_PROPERTY_NAMES := $(WebCore)/css/CSSPropertyNames.in
+WEBCORE_CSS_PROPERTY_NAMES := $(WebCore)/css/CSSProperties.json
 WEBCORE_CSS_VALUE_KEYWORDS := $(WebCore)/css/CSSValueKeywords.in
 WEBCORE_CSS_VALUE_KEYWORDS := $(WEBCORE_CSS_VALUE_KEYWORDS) $(WebCore)/css/SVGCSSValueKeywords.in
+WEBCORE_CSS_VALUE_KEYWORDS_DEFINES := $(FEATURE_DEFINES) $(ADDITIONAL_CSS_VALUE_KEYWORDS_DEFINES)
+WEBCORE_CSS_PROPERTIES_DEFINES := $(FEATURE_DEFINES) $(ADDITIONAL_CSS_PROPERTIES_DEFINES)
 
-CSSPropertyNames.h CSSPropertyNames.cpp StyleBuilder.cpp StylePropertyShorthandFunctions.h StylePropertyShorthandFunctions.cpp : makeprop.intermediate
-.INTERMEDIATE : makeprop.intermediate
-makeprop.intermediate : $(WEBCORE_CSS_PROPERTY_NAMES) css/makeprop.pl bindings/scripts/preprocessor.pm $(PLATFORM_FEATURE_DEFINES)
-	$(PERL) -pe '' $(WEBCORE_CSS_PROPERTY_NAMES) > CSSPropertyNames.in
-	$(PERL) -I$(WebCore)/bindings/scripts "$(WebCore)/css/makeprop.pl" --defines "$(FEATURE_DEFINES)"
+all : CSSPropertyNames.h CSSPropertyNames.cpp StyleBuilder.cpp StylePropertyShorthandFunctions.h StylePropertyShorthandFunctions.cpp
+CSSPropertyNames%h CSSPropertyNames%cpp StyleBuilder%cpp StylePropertyShorthandFunctions%h StylePropertyShorthandFunctions%cpp : $(WEBCORE_CSS_PROPERTY_NAMES) css/makeprop.pl $(PLATFORM_FEATURE_DEFINES)
+	$(PERL) -pe '' $(WEBCORE_CSS_PROPERTY_NAMES) > CSSProperties.json
+	$(PERL) "$(WebCore)/css/makeprop.pl" --defines "$(WEBCORE_CSS_PROPERTIES_DEFINES)"
 
-CSSValueKeywords.h CSSValueKeywords.cpp : makevalues.intermediate
-.INTERMEDIATE : makevalues.intermediate
-makevalues.intermediate : $(WEBCORE_CSS_VALUE_KEYWORDS) css/makevalues.pl bindings/scripts/preprocessor.pm $(PLATFORM_FEATURE_DEFINES)
+all : CSSValueKeywords.h CSSValueKeywords.cpp
+CSSValueKeywords%h CSSValueKeywords%cpp : $(WEBCORE_CSS_VALUE_KEYWORDS) css/makevalues.pl bindings/scripts/preprocessor.pm $(PLATFORM_FEATURE_DEFINES)
 	$(PERL) -pe '' $(WEBCORE_CSS_VALUE_KEYWORDS) > CSSValueKeywords.in
-	$(PERL) -I$(WebCore)/bindings/scripts "$(WebCore)/css/makevalues.pl" --defines "$(FEATURE_DEFINES)"
+	$(PERL) "$(WebCore)/css/makevalues.pl" --defines "$(WEBCORE_CSS_VALUE_KEYWORDS_DEFINES)"
 
 # --------
 
@@ -901,6 +1042,15 @@ SelectorPseudoClassAndCompatibilityElementMap.cpp : $(WebCore)/css/makeSelectorP
 
 SelectorPseudoElementTypeMap.cpp : $(WebCore)/css/makeSelectorPseudoElementsMap.py $(WebCore)/css/SelectorPseudoElementTypeMap.in
 	$(PYTHON) "$(WebCore)/css/makeSelectorPseudoElementsMap.py" $(WebCore)/css/SelectorPseudoElementTypeMap.in gperf "$(FEATURE_DEFINES)"
+
+# --------
+
+# DOMJIT Abstract Heap
+
+all : DOMJITAbstractHeapRepository.h
+
+DOMJITAbstractHeapRepository.h : $(WebCore)/domjit/generate-abstract-heap.rb $(WebCore)/domjit/DOMJITAbstractHeapRepository.yaml
+	$(RUBY) "$(WebCore)/domjit/generate-abstract-heap.rb" $(WebCore)/domjit/DOMJITAbstractHeapRepository.yaml ./DOMJITAbstractHeapRepository.h
 
 # --------
 
@@ -947,25 +1097,20 @@ ColorData.cpp : platform/ColorData.gperf $(WebCore)/make-hash-tools.pl
 
 # --------
 
-# Path to bison
+# WebRTC scripts
+
+WEBCORE_SDP_PROCESSOR_SCRIPTS = 
 
 ifeq ($(OS),MACOS)
-BISON=$(shell xcrun -find bison)
-else
-BISON=bison
+    WEBCORE_SDP_PROCESSOR_SCRIPTS := $(WEBCORE_SDP_PROCESSOR_SCRIPTS) $(WebCore)/Modules/mediastream/sdp.js
 endif
 
-# --------
+ifdef WEBCORE_SDP_PROCESSOR_SCRIPTS
+all : SDPProcessorScriptsData.h
 
-# CSS grammar
-CSSGrammar.cpp : css/CSSGrammar.y.in $(PLATFORM_FEATURE_DEFINES)
-	$(PERL) -I $(WebCore)/bindings/scripts $(WebCore)/css/makegrammar.pl --extraDefines "$(FEATURE_DEFINES)" --outputDir . --bison "$(BISON)" --symbolsPrefix cssyy $<
-
-# --------
-
-# XPath grammar
-XPathGrammar.cpp : xml/XPathGrammar.y $(PROJECT_FILE)
-	$(PERL) $(WebCore)/css/makegrammar.pl --outputDir . --bison "$(BISON)" --symbolsPrefix xpathyy $<
+SDPProcessorScriptsData.h : $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
+	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py -n WebCore $@ SDPProcessorScriptsData.cpp $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
+endif
 
 # --------
 
@@ -987,19 +1132,23 @@ ifeq ($(findstring ENABLE_FULLSCREEN_API,$(FEATURE_DEFINES)), ENABLE_FULLSCREEN_
 endif
 
 ifeq ($(findstring ENABLE_SERVICE_CONTROLS,$(FEATURE_DEFINES)), ENABLE_SERVICE_CONTROLS)
-	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/html/shadow/mac/imageControlsMac.css
+    USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/html/shadow/mac/imageControlsMac.css
 endif
 
 ifeq ($(OS),MACOS)
-	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/plugins/QuickTimePluginReplacement.css
+    USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/Modules/plugins/QuickTimePluginReplacement.css
 endif
 
 ifeq ($(OS), Windows_NT)
     USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/css/themeWin.css $(WebCore)/css/themeWinQuirks.css
 endif
 
+ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMENT)
+	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/html/shadow/meterElementShadow.css
+endif
+
 UserAgentStyleSheets.h : css/make-css-file-arrays.pl bindings/scripts/preprocessor.pm $(USER_AGENT_STYLE_SHEETS) $(PLATFORM_FEATURE_DEFINES)
-	$(PERL) -I$(WebCore)/bindings/scripts $< --defines "$(FEATURE_DEFINES)" $@ UserAgentStyleSheetsData.cpp $(USER_AGENT_STYLE_SHEETS)
+	$(PERL) $< --defines "$(FEATURE_DEFINES)" $@ UserAgentStyleSheetsData.cpp $(USER_AGENT_STYLE_SHEETS)
 
 # --------
 
@@ -1008,14 +1157,14 @@ UserAgentStyleSheets.h : css/make-css-file-arrays.pl bindings/scripts/preprocess
 USER_AGENT_SCRIPTS = 
 
 ifeq ($(OS),MACOS)
-	USER_AGENT_SCRIPTS := $(USER_AGENT_SCRIPTS) $(WebCore)/Modules/plugins/QuickTimePluginReplacement.js
+    USER_AGENT_SCRIPTS := $(USER_AGENT_SCRIPTS) $(WebCore)/Modules/plugins/QuickTimePluginReplacement.js
 endif
 
 ifdef USER_AGENT_SCRIPTS
 all : UserAgentScripts.h
 
-UserAgentScripts.h : Scripts/make-js-file-arrays.py $(USER_AGENT_SCRIPTS)
-	PYTHONPATH=$(JavaScriptCore_SCRIPTS_DIR) $(PYTHON) $< $@ UserAgentScriptsData.cpp $(USER_AGENT_SCRIPTS)
+UserAgentScripts.h : $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py $(USER_AGENT_SCRIPTS)
+	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/make-js-file-arrays.py -n WebCore $@ UserAgentScriptsData.cpp $(USER_AGENT_SCRIPTS)
 endif
 
 # --------
@@ -1025,27 +1174,18 @@ endif
 PLUG_INS_RESOURCES = $(WebCore)/Resources/plugIns.js
 
 PlugInsResources.h : css/make-css-file-arrays.pl bindings/scripts/preprocessor.pm $(PLUG_INS_RESOURCES) $(PLATFORM_FEATURE_DEFINES)
-	$(PERL) -I$(WebCore)/bindings/scripts $< --defines "$(FEATURE_DEFINES)" $@ PlugInsResourcesData.cpp $(PLUG_INS_RESOURCES)
+	$(PERL) $< --defines "$(FEATURE_DEFINES)" $@ PlugInsResourcesData.cpp $(PLUG_INS_RESOURCES)
 
 # --------
 
-WebKitFontFamilyNames.cpp WebKitFontFamilyNames.h: WebKitFontFamilyMakeNames.intermediate
-.INTERMEDIATE : WebKitFontFamilyMakeNames.intermediate
-WebKitFontFamilyMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm css/WebKitFontFamilyNames.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --fonts $(WebCore)/css/WebKitFontFamilyNames.in
+all : WebKitFontFamilyNames.cpp WebKitFontFamilyNames.h
+WebKitFontFamilyNames%cpp WebKitFontFamilyNames%h: dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm css/WebKitFontFamilyNames.in
+	$(PERL) $< --fonts $(WebCore)/css/WebKitFontFamilyNames.in
 
 # HTML tag and attribute names
 
 ifeq ($(findstring ENABLE_DATALIST_ELEMENT,$(FEATURE_DEFINES)), ENABLE_DATALIST_ELEMENT)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_DATALIST_ELEMENT=1
-endif
-
-ifeq ($(findstring ENABLE_DETAILS_ELEMENT,$(FEATURE_DEFINES)), ENABLE_DETAILS_ELEMENT)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_DETAILS_ELEMENT=1
-endif
-
-ifeq ($(findstring ENABLE_ENCRYPTED_MEDIA_V2,$(FEATURE_DEFINES)), ENABLE_ENCRYPTED_MEDIA_V2)
-	HTML_FLAGS := $(HTML_FLAGS) ENABLE_ENCRYPTED_MEDIA_V2=1
 endif
 
 ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMENT)
@@ -1061,41 +1201,40 @@ ifeq ($(findstring ENABLE_VIDEO_TRACK,$(FEATURE_DEFINES)), ENABLE_VIDEO_TRACK)
 endif
 
 ifeq ($(findstring ENABLE_DATACUE_VALUE,$(FEATURE_DEFINES)), ENABLE_DATACUE_VALUE)
-	HTML_FLAGS := $(HTML_FLAGS) ENABLE_DATACUE_VALUE=0
-endif
-
-ifeq ($(findstring ENABLE_ENCRYPTED_MEDIA,$(FEATURE_DEFINES)), ENABLE_ENCRYPTED_MEDIA)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_ENCRYPTED_MEDIA=1
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_DATACUE_VALUE=0
 endif
 
 ifeq ($(findstring ENABLE_MEDIA_STREAM,$(FEATURE_DEFINES)), ENABLE_MEDIA_STREAM)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_MEDIA_STREAM=1
 endif
 
-ifeq ($(findstring ENABLE_SHADOW_DOM,$(FEATURE_DEFINES)), ENABLE_SHADOW_DOM)
-    HTML_FLAGS := $(HTML_FLAGS) ENABLE_SHADOW_DOM=1
+ifeq ($(findstring ENABLE_LEGACY_ENCRYPTED_MEDIA,$(FEATURE_DEFINES)), ENABLE_LEGACY_ENCRYPTED_MEDIA)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_LEGACY_ENCRYPTED_MEDIA=1
 endif
 
-JSHTMLElementWrapperFactory.cpp JSHTMLElementWrapperFactory.h HTMLElementFactory.cpp HTMLElementFactory.h HTMLElementTypeHelpers.h HTMLNames.cpp HTMLNames.h : htmlMakeNames.intermediate
-.INTERMEDIATE : htmlMakeNames.intermediate
+ifeq ($(findstring ENABLE_ENCRYPTED_MEDIA,$(FEATURE_DEFINES)), ENABLE_ENCRYPTED_MEDIA)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_ENCRYPTED_MEDIA=1
+endif
+
+all : JSHTMLElementWrapperFactory.cpp JSHTMLElementWrapperFactory.h HTMLElementFactory.cpp HTMLElementFactory.h HTMLElementTypeHelpers.h HTMLNames.cpp HTMLNames.h
 
 ifdef HTML_FLAGS
 
-htmlMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm html/HTMLTagNames.in html/HTMLAttributeNames.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/html/HTMLTagNames.in --attrs $(WebCore)/html/HTMLAttributeNames.in --factory --wrapperFactory --extraDefines "$(HTML_FLAGS)"
+JSHTMLElementWrapperFactory%cpp JSHTMLElementWrapperFactory%h HTMLElementFactory%cpp HTMLElementFactory%h HTMLElementTypeHelpers%h HTMLNames%cpp HTMLNames%h : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm html/HTMLTagNames.in html/HTMLAttributeNames.in
+	$(PERL) $< --tags $(WebCore)/html/HTMLTagNames.in --attrs $(WebCore)/html/HTMLAttributeNames.in --factory --wrapperFactory --extraDefines "$(HTML_FLAGS)"
 
 else
 
-htmlMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm html/HTMLTagNames.in html/HTMLAttributeNames.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/html/HTMLTagNames.in --attrs $(WebCore)/html/HTMLAttributeNames.in --factory --wrapperFactory
+JSHTMLElementWrapperFactory%cpp JSHTMLElementWrapperFactory%h HTMLElementFactory%cpp HTMLElementFactory%h HTMLElementTypeHelpers%h HTMLNames%cpp HTMLNames%h : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm html/HTMLTagNames.in html/HTMLAttributeNames.in
+	$(PERL) $< --tags $(WebCore)/html/HTMLTagNames.in --attrs $(WebCore)/html/HTMLAttributeNames.in --factory --wrapperFactory
 
 endif
 
 XMLNSNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm xml/xmlnsattrs.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --attrs $(WebCore)/xml/xmlnsattrs.in
+	$(PERL) $< --attrs $(WebCore)/xml/xmlnsattrs.in
 
 XMLNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm xml/xmlattrs.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --attrs $(WebCore)/xml/xmlattrs.in
+	$(PERL) $< --attrs $(WebCore)/xml/xmlattrs.in
 
 # --------
 
@@ -1107,21 +1246,20 @@ endif
 
 # SVG tag and attribute names (need to pass an extra flag if svg experimental features are enabled)
 
-JSSVGElementWrapperFactory.cpp JSSVGElementWrapperFactory.h SVGElementFactory.cpp SVGElementFactory.h SVGElementTypeHelpers.h SVGNames.cpp SVGNames.h : svgMakeNames.intermediate
-.INTERMEDIATE : svgMakeNames.intermediate
+all : JSSVGElementWrapperFactory.cpp JSSVGElementWrapperFactory.h SVGElementFactory.cpp SVGElementFactory.h SVGElementTypeHelpers.h SVGNames.cpp SVGNames.h
 
 ifdef SVG_FLAGS
-svgMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/svgtags.in svg/svgattrs.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/svg/svgtags.in --attrs $(WebCore)/svg/svgattrs.in --extraDefines "$(SVG_FLAGS)" --factory --wrapperFactory
+JSSVGElementWrapperFactory%cpp JSSVGElementWrapperFactory%h SVGElementFactory%cpp SVGElementFactory%h SVGElementTypeHelpers%h SVGNames%cpp SVGNames%h : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/svgtags.in svg/svgattrs.in
+	$(PERL) $< --tags $(WebCore)/svg/svgtags.in --attrs $(WebCore)/svg/svgattrs.in --extraDefines "$(SVG_FLAGS)" --factory --wrapperFactory
 else
 
-svgMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/svgtags.in svg/svgattrs.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/svg/svgtags.in --attrs $(WebCore)/svg/svgattrs.in --factory --wrapperFactory
+JSSVGElementWrapperFactory%cpp JSSVGElementWrapperFactory%h SVGElementFactory%cpp SVGElementFactory%h SVGElementTypeHelpers%h SVGNames%cpp SVGNames%h : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/svgtags.in svg/svgattrs.in
+	$(PERL) $< --tags $(WebCore)/svg/svgtags.in --attrs $(WebCore)/svg/svgattrs.in --factory --wrapperFactory
 
 endif
 
 XLinkNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/xlinkattrs.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --attrs $(WebCore)/svg/xlinkattrs.in
+	$(PERL) $< --attrs $(WebCore)/svg/xlinkattrs.in
 
 # --------
 
@@ -1129,46 +1267,41 @@ XLinkNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/S
 
 EVENT_NAMES = EventNames.in $(ADDITIONAL_EVENT_NAMES)
 
-EventFactory.cpp EventHeaders.h EventInterfaces.h : EventFactory.intermediate
-.INTERMEDIATE : EventFactory.intermediate
-EventFactory.intermediate : dom/make_event_factory.pl $(EVENT_NAMES)
-	$(PERL) -I $(WebCore)/bindings/scripts $< $(addprefix --input , $(filter-out $(WebCore)/dom/make_event_factory.pl, $^))
+all : EventFactory.cpp EventHeaders.h EventInterfaces.h
+EventFactory%cpp EventHeaders%h EventInterfaces%h : dom/make_event_factory.pl $(EVENT_NAMES)
+	$(PERL) $< $(addprefix --input , $(filter-out $(WebCore)/dom/make_event_factory.pl, $^))
 
 EVENT_TARGET_FACTORY = EventTargetFactory.in $(ADDITIONAL_EVENT_TARGET_FACTORY)
 
-EventTargetHeaders.h EventTargetInterfaces.h : EventTargetFactory.intermediate
-.INTERMEDIATE : EventTargetFactory.intermediate
-EventTargetFactory.intermediate : dom/make_event_factory.pl $(EVENT_TARGET_FACTORY)
-	$(PERL) -I $(WebCore)/bindings/scripts $< $(addprefix --input , $(filter-out $(WebCore)/dom/make_event_factory.pl, $^))
+all : EventTargetHeaders.h EventTargetInterfaces.h
+EventTargetHeaders%h EventTargetInterfaces%h : dom/make_event_factory.pl $(EVENT_TARGET_FACTORY)
+	$(PERL) $< $(addprefix --input , $(filter-out $(WebCore)/dom/make_event_factory.pl, $^))
 
-ExceptionCodeDescription.cpp ExceptionCodeDescription.h ExceptionHeaders.h ExceptionInterfaces.h : MakeDOMExceptions.intermediate
-.INTERMEDIATE : MakeDOMExceptions.intermediate
-MakeDOMExceptions.intermediate : dom/make_dom_exceptions.pl dom/DOMExceptions.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --input $(WebCore)/dom/DOMExceptions.in
+all : ExceptionCodeDescription.cpp ExceptionCodeDescription.h ExceptionHeaders.h ExceptionInterfaces.h
+ExceptionCodeDescription%cpp ExceptionCodeDescription%h ExceptionHeaders%h ExceptionInterfaces%h : dom/make_dom_exceptions.pl dom/DOMExceptions.in
+	$(PERL) $< --input $(WebCore)/dom/DOMExceptions.in
 
 # --------
 
 # MathML tag and attribute names, and element factory
 
-JSMathMLElementWrapperFactory.cpp JSMathMLElementWrapperFactory.h MathMLElementFactory.cpp MathMLElementFactory.h MathMLElementTypeHelpers.h MathMLNames.cpp MathMLNames.h : mathmlMakeNames.intermediate
-.INTERMEDIATE : mathmlMakeNames.intermediate
-mathmlMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm mathml/mathtags.in mathml/mathattrs.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/mathml/mathtags.in --attrs $(WebCore)/mathml/mathattrs.in --factory --wrapperFactory
+all : JSMathMLElementWrapperFactory.cpp JSMathMLElementWrapperFactory.h MathMLElementFactory.cpp MathMLElementFactory.h MathMLElementTypeHelpers.h MathMLNames.cpp MathMLNames.h
+JSMathMLElementWrapperFactory%cpp JSMathMLElementWrapperFactory%h MathMLElementFactory%cpp MathMLElementFactory%h MathMLElementTypeHelpers%h MathMLNames%cpp MathMLNames%h : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm mathml/mathtags.in mathml/mathattrs.in
+	$(PERL) $< --tags $(WebCore)/mathml/mathtags.in --attrs $(WebCore)/mathml/mathattrs.in --factory --wrapperFactory
 
 # --------
 
 # Internal Settings
 
-InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h SettingsMacros.h : MakeSettings.intermediate
-.INTERMEDIATE : MakeSettings.intermediate
-MakeSettings.intermediate : page/make_settings.pl page/Settings.in
-	$(PERL) -I $(WebCore)/bindings/scripts $< --input $(WebCore)/page/Settings.in
+all : InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h SettingsMacros.h
+InternalSettingsGenerated%idl InternalSettingsGenerated%cpp InternalSettingsGenerated%h SettingsMacros%h : page/make_settings.pl page/Settings.in
+	$(PERL) $< --input $(WebCore)/page/Settings.in
 
 # --------
 
 # Common generator things
 
-GENERATE_SCRIPTS = \
+COMMON_BINDINGS_SCRIPTS = \
     bindings/scripts/CodeGenerator.pm \
     bindings/scripts/IDLParser.pm \
     bindings/scripts/generate-bindings.pl \
@@ -1177,15 +1310,13 @@ GENERATE_SCRIPTS = \
 PREPROCESS_IDLS_SCRIPTS = \
     bindings/scripts/preprocess-idls.pl
 
-generator_script = $(PERL) $(addprefix -I $(WebCore)/, $(sort $(dir $(1)))) $(WebCore)/bindings/scripts/generate-bindings.pl
-
-preprocess_idls_script = $(PERL) $(addprefix -I $(WebCore)/, $(sort $(dir $(1)))) $(WebCore)/bindings/scripts/preprocess-idls.pl
-
 # JS bindings generator
 
 IDL_INCLUDES = \
     $(WebCore)/Modules \
+    $(WebCore)/animation \
     $(WebCore)/css \
+    $(WebCore)/crypto \
     $(WebCore)/dom \
     $(WebCore)/fileapi \
     $(WebCore)/html \
@@ -1198,12 +1329,13 @@ IDL_INCLUDES = \
     $(WebCore)/plugins \
     $(WebCore)/storage \
     $(WebCore)/svg \
+    $(WebCore)/testing \
     $(WebCore)/workers \
     $(WebCore)/xml
 
 IDL_COMMON_ARGS = $(IDL_INCLUDES:%=--include %) --write-dependencies --outputDir .
 
-JS_BINDINGS_SCRIPTS = $(GENERATE_SCRIPTS) bindings/scripts/CodeGeneratorJS.pm
+JS_BINDINGS_SCRIPTS = $(COMMON_BINDINGS_SCRIPTS) bindings/scripts/CodeGeneratorJS.pm
 
 SUPPLEMENTAL_DEPENDENCY_FILE = ./SupplementalDependencies.txt
 SUPPLEMENTAL_MAKEFILE_DEPS = ./SupplementalDependencies.dep
@@ -1211,7 +1343,7 @@ WINDOW_CONSTRUCTORS_FILE = ./DOMWindowConstructors.idl
 WORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./WorkerGlobalScopeConstructors.idl
 DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./DedicatedWorkerGlobalScopeConstructors.idl
 IDL_FILES_TMP = ./idl_files.tmp
-IDL_ATTRIBUTES_FILE = $(WebCore)/bindings/scripts/IDLAttributes.txt
+IDL_ATTRIBUTES_FILE = $(WebCore)/bindings/scripts/IDLAttributes.json
 
 # The following lines get a newline character stored in a variable.
 # See <http://stackoverflow.com/questions/7039811/how-do-i-process-extremely-long-lists-of-files-in-a-make-recipe>.
@@ -1220,13 +1352,13 @@ define NL
 
 endef
 
-$(SUPPLEMENTAL_MAKEFILE_DEPS) : $(PREPROCESS_IDLS_SCRIPTS) $(BINDING_IDLS) $(PLATFORM_FEATURE_DEFINES) DerivedSources.make
-	$(foreach f,$(BINDING_IDLS),@echo $(f)>>$(IDL_FILES_TMP)$(NL))
-	$(call preprocess_idls_script, $(PREPROCESS_IDLS_SCRIPTS)) --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --idlFilesList $(IDL_FILES_TMP) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) --windowConstructorsFile $(WINDOW_CONSTRUCTORS_FILE) --workerGlobalScopeConstructorsFile $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --dedicatedWorkerGlobalScopeConstructorsFile $(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --supplementalMakefileDeps $@
+$(SUPPLEMENTAL_MAKEFILE_DEPS) : $(PREPROCESS_IDLS_SCRIPTS) $(JS_BINDING_IDLS) $(PLATFORM_FEATURE_DEFINES) DerivedSources.make
+	$(foreach f,$(JS_BINDING_IDLS),@echo $(f)>>$(IDL_FILES_TMP)$(NL))
+	$(PERL) $(WebCore)/bindings/scripts/preprocess-idls.pl --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --idlFilesList $(IDL_FILES_TMP) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) --windowConstructorsFile $(WINDOW_CONSTRUCTORS_FILE) --workerGlobalScopeConstructorsFile $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --dedicatedWorkerGlobalScopeConstructorsFile $(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --supplementalMakefileDeps $@
 	$(DELETE) $(IDL_FILES_TMP)
 
-JS%.h : %.idl $(JS_BINDINGS_SCRIPTS) $(IDL_ATTRIBUTES_FILE) $(WINDOW_CONSTRUCTORS_FILE) $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) $(PLATFORM_FEATURE_DEFINES)
-	$(call generator_script, $(JS_BINDINGS_SCRIPTS)) $(IDL_COMMON_ARGS) --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --generator JS --idlAttributesFile $(IDL_ATTRIBUTES_FILE) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) $<
+JS%.cpp JS%.h : %.idl $(JS_BINDINGS_SCRIPTS) $(IDL_ATTRIBUTES_FILE) $(WINDOW_CONSTRUCTORS_FILE) $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) $(PLATFORM_FEATURE_DEFINES)
+	$(PERL) $(WebCore)/bindings/scripts/generate-bindings.pl $(IDL_COMMON_ARGS) --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --generator JS --idlAttributesFile $(IDL_ATTRIBUTES_FILE) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) $<
 
 -include $(SUPPLEMENTAL_MAKEFILE_DEPS)
 
@@ -1242,47 +1374,40 @@ InspectorOverlayPage.h : InspectorOverlayPage.html InspectorOverlayPage.css Insp
 all : CommandLineAPIModuleSource.h
 
 CommandLineAPIModuleSource.h : CommandLineAPIModuleSource.js
-	echo "//# sourceURL=__WebInspectorCommandLineAPIModuleSource__" > ./CommandLineAPIModuleSource.min.js
+	echo "//# sourceURL=__InjectedScript_CommandLineAPIModuleSource.js" > ./CommandLineAPIModuleSource.min.js
 	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/jsmin.py <$(WebCore)/inspector/CommandLineAPIModuleSource.js >> ./CommandLineAPIModuleSource.min.js
 	$(PERL) $(JavaScriptCore_SCRIPTS_DIR)/xxd.pl CommandLineAPIModuleSource_js ./CommandLineAPIModuleSource.min.js CommandLineAPIModuleSource.h
 	$(DELETE) CommandLineAPIModuleSource.min.js
-
-# Web Replay inputs generator
-
-INPUT_GENERATOR_SCRIPTS = \
-    $(JavaScriptCore_SCRIPTS_DIR)/CodeGeneratorReplayInputs.py \
-    $(JavaScriptCore_SCRIPTS_DIR)/CodeGeneratorReplayInputsTemplates.py \
-#
-
-INPUT_GENERATOR_SPECIFICATIONS = \
-	$(WebCore)/replay/WebInputs.json \
-	$(JavaScriptCore_SCRIPTS_DIR)/JSInputs.json \
-#
-
-all : WebReplayInputs.h
-
-WebReplayInputs.h : $(INPUT_GENERATOR_SPECIFICATIONS) $(INPUT_GENERATOR_SCRIPTS)
-	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/CodeGeneratorReplayInputs.py --outputDir . --framework WebCore $(INPUT_GENERATOR_SPECIFICATIONS)
 
 -include $(JS_DOM_HEADERS:.h=.dep)
 
 # WebCore JS Builtins
 
 WebCore_BUILTINS_SOURCES = \
+    ${WebCore}/Modules/fetch/DOMWindowFetch.js \
     $(WebCore)/Modules/fetch/FetchHeaders.js \
-    $(WebCore)/Modules/mediastream/MediaDevices.js \
+    $(WebCore)/Modules/fetch/FetchInternals.js \
+    $(WebCore)/Modules/fetch/FetchRequest.js \
+    $(WebCore)/Modules/fetch/FetchResponse.js \
+    ${WebCore}/Modules/fetch/WorkerGlobalScopeFetch.js \
     $(WebCore)/Modules/mediastream/NavigatorUserMedia.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionInternals.js \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \
     $(WebCore)/Modules/streams/CountQueuingStrategy.js \
+    $(WebCore)/Modules/streams/ReadableByteStreamController.js \
+    $(WebCore)/Modules/streams/ReadableByteStreamInternals.js \
     $(WebCore)/Modules/streams/ReadableStream.js \
-    $(WebCore)/Modules/streams/ReadableStreamController.js \
+    $(WebCore)/Modules/streams/ReadableStreamBYOBRequest.js \
+    $(WebCore)/Modules/streams/ReadableStreamDefaultController.js \
     $(WebCore)/Modules/streams/ReadableStreamInternals.js \
-    $(WebCore)/Modules/streams/ReadableStreamReader.js \
+    $(WebCore)/Modules/streams/ReadableStreamBYOBReader.js \
+    $(WebCore)/Modules/streams/ReadableStreamDefaultReader.js \
     $(WebCore)/Modules/streams/StreamInternals.js \
     $(WebCore)/Modules/streams/WritableStream.js \
     $(WebCore)/Modules/streams/WritableStreamInternals.js \
+    $(WebCore)/bindings/js/JSDOMBindingInternals.js \
+    $(WebCore)/xml/XMLHttpRequest.js \
 #
 
 BUILTINS_GENERATOR_SCRIPTS = \
@@ -1294,33 +1419,43 @@ BUILTINS_GENERATOR_SCRIPTS = \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_combined_implementation.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_separate_header.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_separate_implementation.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_internals_wrapper_header.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_internals_wrapper_implementation.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_wrapper_header.py \
+    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_wrapper_implementation.py \
     $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py \
     $(JavaScriptCore_SCRIPTS_DIR)/lazywriter.py \
+#
+
+WebCore_BUILTINS_WRAPPERS = \
+    WebCoreJSBuiltins.h \
+    WebCoreJSBuiltins.cpp \
+    WebCoreJSBuiltinInternals.h \
+    WebCoreJSBuiltinInternals.cpp \
 #
 
 # Adding/removing scripts should trigger regeneration, but changing which builtins are
 # generated should not affect other builtins when not passing '--combined' to the generator.
 
-.PHONY: force
-WebCore_BUILTINS_DEPENDENCIES_LIST : $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py force
+WebCore_BUILTINS_SOURCES_LIST : $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py DerivedSources.make
+	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py '$(WebCore_BUILTINS_SOURCES)' $@
+
+WebCore_BUILTINS_DEPENDENCIES_LIST : $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py DerivedSources.make
 	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py '$(BUILTINS_GENERATOR_SCRIPTS)' $@
+
+$(firstword $(WebCore_BUILTINS_WRAPPERS)): $(WebCore_BUILTINS_SOURCES) WebCore_BUILTINS_SOURCES_LIST $(BUILTINS_GENERATOR_SCRIPTS) WebCore_BUILTINS_DEPENDENCIES_LIST
+	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py --wrappers-only --output-directory . --framework WebCore $(WebCore_BUILTINS_SOURCES)
 
 %Builtins.h: %.js $(BUILTINS_GENERATOR_SCRIPTS) WebCore_BUILTINS_DEPENDENCIES_LIST
 	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py --output-directory . --framework WebCore $<
 
-all : $(notdir $(WebCore_BUILTINS_SOURCES:%.js=%Builtins.h))
+all : $(notdir $(WebCore_BUILTINS_SOURCES:%.js=%Builtins.h)) $(firstword $(WebCore_BUILTINS_WRAPPERS))
 
 # ------------------------
 
 # Mac-specific rules
 
 ifeq ($(OS),MACOS)
-
-OBJC_DOM_CLASSES=$(basename $(notdir $(NON_SVG_BINDING_IDLS)))
-
-OBJC_DOM_HEADERS=$(filter-out DOMDOMWindow.h DOMDOMMimeType.h DOMDOMPlugin.h,$(OBJC_DOM_CLASSES:%=DOM%.h))
-
-all : $(OBJC_DOM_HEADERS)
 
 all : CharsetData.cpp
 
@@ -1339,16 +1474,6 @@ CharsetData.cpp : platform/text/mac/make-charset-table.pl platform/text/mac/char
 
 # --------
 
-# Objective-C bindings
-
-DOM_BINDINGS_SCRIPTS = $(GENERATE_BINDING_SCRIPTS) bindings/scripts/CodeGeneratorObjC.pm
-DOM%.h : %.idl $(DOM_BINDINGS_SCRIPTS) bindings/objc/PublicDOMInterfaces.h $(PLATFORM_FEATURE_DEFINES)
-	$(call generator_script, $(DOM_BINDINGS_SCRIPTS)) $(IDL_COMMON_ARGS) --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_OBJECTIVE_C" --generator ObjC --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) $<
-
--include $(OBJC_DOM_HEADERS:.h=.dep)
-
-# --------
-
 endif # MACOS
 
 # ------------------------
@@ -1363,4 +1488,3 @@ WebCoreHeaderDetection.h : $(WebCore)/AVFoundationSupport.py DerivedSources.make
 	$(PYTHON) $(WebCore)/AVFoundationSupport.py $(WEBKIT_LIBRARIES) > $@
 
 endif # Windows_NT
-

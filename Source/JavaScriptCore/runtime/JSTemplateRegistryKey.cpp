@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,25 +27,23 @@
 #include "config.h"
 #include "JSTemplateRegistryKey.h"
 
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
 #include "VM.h"
 
 namespace JSC {
 
-const ClassInfo JSTemplateRegistryKey::s_info = { "TemplateRegistryKey", &Base::s_info, nullptr, CREATE_METHOD_TABLE(JSTemplateRegistryKey) };
+const ClassInfo JSTemplateRegistryKey::s_info = { "TemplateRegistryKey", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(JSTemplateRegistryKey) };
 
 
-JSTemplateRegistryKey::JSTemplateRegistryKey(VM& vm, const TemplateRegistryKey& templateRegistryKey)
+JSTemplateRegistryKey::JSTemplateRegistryKey(VM& vm, Ref<TemplateRegistryKey>&& templateRegistryKey)
     : Base(vm, vm.templateRegistryKeyStructure.get())
-    , m_templateRegistryKey(templateRegistryKey)
+    , m_templateRegistryKey(WTFMove(templateRegistryKey))
 {
 }
 
-JSTemplateRegistryKey* JSTemplateRegistryKey::create(VM& vm, const TemplateRegistryKey& templateRegistryKey)
+JSTemplateRegistryKey* JSTemplateRegistryKey::create(VM& vm, Ref<TemplateRegistryKey>&& templateRegistryKey)
 {
-    JSTemplateRegistryKey* result = new (NotNull, allocateCell<JSTemplateRegistryKey>(vm.heap)) JSTemplateRegistryKey(vm, templateRegistryKey);
+    JSTemplateRegistryKey* result = new (NotNull, allocateCell<JSTemplateRegistryKey>(vm.heap)) JSTemplateRegistryKey(vm, WTFMove(templateRegistryKey));
     result->finishCreation(vm);
     return result;
 }

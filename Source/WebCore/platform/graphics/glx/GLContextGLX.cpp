@@ -23,6 +23,7 @@
 #include "GraphicsContext3D.h"
 #include "OpenGLShims.h"
 #include "PlatformDisplayX11.h"
+#include "XErrorTrapper.h"
 #include <GL/glx.h>
 #include <cairo.h>
 
@@ -32,28 +33,128 @@
 
 namespace WebCore {
 
-std::unique_ptr<GLContextGLX> GLContextGLX::createWindowContext(XID window, GLContext* sharingContext)
+#if !defined(PFNGLXSWAPINTERVALSGIPROC)
+typedef int (*PFNGLXSWAPINTERVALSGIPROC) (int);
+#endif
+#if !defined(PFNGLXCREATECONTEXTATTRIBSARBPROC)
+typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC) (Display *dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list);
+#endif
+
+static PFNGLXSWAPINTERVALSGIPROC glXSwapIntervalSGI;
+static PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
+
+static bool hasSGISwapControlExtension(Display* display)
 {
-    Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
+    static bool initialized = false;
+    if (initialized)
+        return !!glXSwapIntervalSGI;
+
+    initialized = true;
+    if (!GLContext::isExtensionSupported(glXQueryExtensionsString(display, 0), "GLX_SGI_swap_control"))
+        return false;
+
+    glXSwapIntervalSGI = reinterpret_cast<PFNGLXSWAPINTERVALSGIPROC>(glXGetProcAddress(reinterpret_cast<const unsigned char*>("glXSwapIntervalSGI")));
+    return !!glXSwapIntervalSGI;
+}
+
+static bool hasGLXARBCreateContextExtension(Display* display)
+{
+    static bool initialized = false;
+    if (initialized)
+        return !!glXCreateContextAttribsARB;
+
+    initialized = true;
+    if (!GLContext::isExtensionSupported(glXQueryExtensionsString(display, 0), "GLX_ARB_create_context"))
+        return false;
+
+    glXCreateContextAttribsARB = reinterpret_cast<PFNGLXCREATECONTEXTATTRIBSARBPROC>(glXGetProcAddress(reinterpret_cast<const unsigned char*>("glXCreateContextAttribsARB")));
+    return !!glXCreateContextAttribsARB;
+}
+
+static GLXContext createGLXARBContext(Display* display, GLXFBConfig config, GLXContext sharingContext)
+{
+    // We want to create a context with version >= 3.2 core profile, cause that ensures that the i965 driver won't
+    // use the software renderer. If that doesn't work, we will use whatever version available. Unfortunately,
+    // there's no way to know whether glXCreateContextAttribsARB can provide an OpenGL version >= 3.2 until
+    // we actually call it and check the return value. To make things more fun, if a version >= 3.2 cannot be
+    // provided, glXCreateContextAttribsARB will throw a GLXBadFBConfig X error, causing the app to crash.
+    // So, the first time a context is requested, we set a X error trap to disable crashes with GLXBadFBConfig
+    // and then check whether the return value is a context or not.
+
+    static bool canCreate320Context = false;
+    static bool canCreate320ContextInitialized = false;
+
+    static const int contextAttributes[] = {
+        GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+        GLX_CONTEXT_MINOR_VERSION_ARB, 2,
+        0
+    };
+
+    if (!canCreate320ContextInitialized) {
+        canCreate320ContextInitialized = true;
+
+        {
+            // Set an X error trapper that ignores errors to avoid crashing on GLXBadFBConfig. Use a scope
+            // here to limit the error trap to just this context creation call.
+            XErrorTrapper trapper(display, XErrorTrapper::Policy::Ignore);
+            GLXContext context = glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, contextAttributes);
+            if (context) {
+                canCreate320Context = true;
+                return context;
+            }
+        }
+
+        // Creating the 3.2 context failed, so use whatever is available.
+        return glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, nullptr);
+    }
+
+    if (canCreate320Context)
+        return glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, contextAttributes);
+
+    return glXCreateContextAttribsARB(display, config, sharingContext, GL_TRUE, nullptr);
+}
+
+std::unique_ptr<GLContextGLX> GLContextGLX::createWindowContext(GLNativeWindowType window, PlatformDisplay& platformDisplay, GLXContext sharingContext)
+{
+    Display* display = downcast<PlatformDisplayX11>(platformDisplay).native();
     XWindowAttributes attributes;
-    if (!XGetWindowAttributes(display, window, &attributes))
+    if (!XGetWindowAttributes(display, static_cast<Window>(window), &attributes))
         return nullptr;
 
     XVisualInfo visualInfo;
     visualInfo.visualid = XVisualIDFromVisual(attributes.visual);
 
-    int numReturned = 0;
-    XUniquePtr<XVisualInfo> visualInfoList(XGetVisualInfo(display, VisualIDMask, &visualInfo, &numReturned));
+    int numConfigs = 0;
+    GLXFBConfig config = nullptr;
+    XUniquePtr<GLXFBConfig> configs(glXGetFBConfigs(display, DefaultScreen(display), &numConfigs));
+    for (int i = 0; i < numConfigs; i++) {
+        XUniquePtr<XVisualInfo> glxVisualInfo(glXGetVisualFromFBConfig(display, configs.get()[i]));
+        if (!glxVisualInfo)
+            continue;
 
-    GLXContext glxSharingContext = sharingContext ? static_cast<GLContextGLX*>(sharingContext)->m_context.get() : nullptr;
-    XUniqueGLXContext context(glXCreateContext(display, visualInfoList.get(), glxSharingContext, True));
+        if (glxVisualInfo.get()->visualid == visualInfo.visualid) {
+            config = configs.get()[i];
+            break;
+        }
+    }
+    ASSERT(config);
+
+    XUniqueGLXContext context;
+    if (hasGLXARBCreateContextExtension(display))
+        context.reset(createGLXARBContext(display, config, sharingContext));
+    else {
+        // Legacy OpenGL version.
+        XUniquePtr<XVisualInfo> visualInfoList(glXGetVisualFromFBConfig(display, config));
+        context.reset(glXCreateContext(display, visualInfoList.get(), sharingContext, True));
+    }
+
     if (!context)
         return nullptr;
 
-    return std::make_unique<GLContextGLX>(WTFMove(context), window);
+    return std::unique_ptr<GLContextGLX>(new GLContextGLX(platformDisplay, WTFMove(context), window));
 }
 
-std::unique_ptr<GLContextGLX> GLContextGLX::createPbufferContext(GLXContext sharingContext)
+std::unique_ptr<GLContextGLX> GLContextGLX::createPbufferContext(PlatformDisplay& platformDisplay, GLXContext sharingContext)
 {
     static const int fbConfigAttributes[] = {
         GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
@@ -67,7 +168,7 @@ std::unique_ptr<GLContextGLX> GLContextGLX::createPbufferContext(GLXContext shar
     };
 
     int returnedElements;
-    Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
+    Display* display = downcast<PlatformDisplayX11>(platformDisplay).native();
     XUniquePtr<GLXFBConfig> configs(glXChooseFBConfig(display, 0, fbConfigAttributes, &returnedElements));
     if (!returnedElements)
         return nullptr;
@@ -78,14 +179,21 @@ std::unique_ptr<GLContextGLX> GLContextGLX::createPbufferContext(GLXContext shar
     if (!pbuffer)
         return nullptr;
 
-    XUniqueGLXContext context(glXCreateNewContext(display, configs.get()[0], GLX_RGBA_TYPE, sharingContext, GL_TRUE));
+    XUniqueGLXContext context;
+    if (hasGLXARBCreateContextExtension(display))
+        context.reset(createGLXARBContext(display, configs.get()[0], sharingContext));
+    else {
+        // Legacy OpenGL version.
+        context.reset(glXCreateNewContext(display, configs.get()[0], GLX_RGBA_TYPE, sharingContext, GL_TRUE));
+    }
+
     if (!context)
         return nullptr;
 
-    return std::make_unique<GLContextGLX>(WTFMove(context), WTFMove(pbuffer));
+    return std::unique_ptr<GLContextGLX>(new GLContextGLX(platformDisplay, WTFMove(context), WTFMove(pbuffer)));
 }
 
-std::unique_ptr<GLContextGLX> GLContextGLX::createPixmapContext(GLXContext sharingContext)
+std::unique_ptr<GLContextGLX> GLContextGLX::createPixmapContext(PlatformDisplay& platformDisplay, GLXContext sharingContext)
 {
     static int visualAttributes[] = {
         GLX_RGBA,
@@ -96,7 +204,7 @@ std::unique_ptr<GLContextGLX> GLContextGLX::createPixmapContext(GLXContext shari
         0
     };
 
-    Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
+    Display* display = downcast<PlatformDisplayX11>(platformDisplay).native();
     XUniquePtr<XVisualInfo> visualInfo(glXChooseVisual(display, DefaultScreen(display), visualAttributes));
     if (!visualInfo)
         return nullptr;
@@ -113,46 +221,49 @@ std::unique_ptr<GLContextGLX> GLContextGLX::createPixmapContext(GLXContext shari
     if (!glxPixmap)
         return nullptr;
 
-    return std::make_unique<GLContextGLX>(WTFMove(context), WTFMove(pixmap), WTFMove(glxPixmap));
+    return std::unique_ptr<GLContextGLX>(new GLContextGLX(platformDisplay, WTFMove(context), WTFMove(pixmap), WTFMove(glxPixmap)));
 }
 
-std::unique_ptr<GLContextGLX> GLContextGLX::createContext(XID window, GLContext* sharingContext)
+std::unique_ptr<GLContextGLX> GLContextGLX::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay)
 {
-    static bool initialized = false;
-    static bool success = true;
-    if (!initialized) {
-        success = initializeOpenGLShims();
-        initialized = true;
-    }
-    if (!success)
-        return nullptr;
-
-    GLXContext glxSharingContext = sharingContext ? static_cast<GLContextGLX*>(sharingContext)->m_context.get() : nullptr;
-    auto context = window ? createWindowContext(window, sharingContext) : nullptr;
+    GLXContext glxSharingContext = platformDisplay.sharingGLContext() ? static_cast<GLContextGLX*>(platformDisplay.sharingGLContext())->m_context.get() : nullptr;
+    auto context = window ? createWindowContext(window, platformDisplay, glxSharingContext) : nullptr;
     if (!context)
-        context = createPbufferContext(glxSharingContext);
+        context = createPbufferContext(platformDisplay, glxSharingContext);
     if (!context)
-        context = createPixmapContext(glxSharingContext);
-    if (!context)
-        return nullptr;
+        context = createPixmapContext(platformDisplay, glxSharingContext);
 
     return context;
 }
 
-GLContextGLX::GLContextGLX(XUniqueGLXContext&& context, XID window)
-    : m_context(WTFMove(context))
-    , m_window(window)
+std::unique_ptr<GLContextGLX> GLContextGLX::createSharingContext(PlatformDisplay& platformDisplay)
+{
+    auto context = createPbufferContext(platformDisplay);
+    if (!context)
+        context = createPixmapContext(platformDisplay);
+    return context;
+}
+
+GLContextGLX::GLContextGLX(PlatformDisplay& display, XUniqueGLXContext&& context, GLNativeWindowType window)
+    : GLContext(display)
+    , m_x11Display(downcast<PlatformDisplayX11>(m_display).native())
+    , m_context(WTFMove(context))
+    , m_window(static_cast<Window>(window))
 {
 }
 
-GLContextGLX::GLContextGLX(XUniqueGLXContext&& context, XUniqueGLXPbuffer&& pbuffer)
-    : m_context(WTFMove(context))
+GLContextGLX::GLContextGLX(PlatformDisplay& display, XUniqueGLXContext&& context, XUniqueGLXPbuffer&& pbuffer)
+    : GLContext(display)
+    , m_x11Display(downcast<PlatformDisplayX11>(m_display).native())
+    , m_context(WTFMove(context))
     , m_pbuffer(WTFMove(pbuffer))
 {
 }
 
-GLContextGLX::GLContextGLX(XUniqueGLXContext&& context, XUniquePixmap&& pixmap, XUniqueGLXPixmap&& glxPixmap)
-    : m_context(WTFMove(context))
+GLContextGLX::GLContextGLX(PlatformDisplay& display, XUniqueGLXContext&& context, XUniquePixmap&& pixmap, XUniqueGLXPixmap&& glxPixmap)
+    : GLContext(display)
+    , m_x11Display(downcast<PlatformDisplayX11>(m_display).native())
+    , m_context(WTFMove(context))
     , m_pixmap(WTFMove(pixmap))
     , m_glxPixmap(WTFMove(glxPixmap))
 {
@@ -164,11 +275,21 @@ GLContextGLX::~GLContextGLX()
         cairo_device_destroy(m_cairoDevice);
 
     if (m_context) {
-        // This may be necessary to prevent crashes with NVidia's closed source drivers. Originally
-        // from Mozilla's 3D canvas implementation at: http://bitbucket.org/ilmari/canvas3d/
-        Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
+        // Due to a bug in some nvidia drivers, we need bind the default framebuffer in a context before
+        // destroying it to avoid a crash. In order to do that, we need to make the context current and,
+        // after the bind change, we need to set the previous context again.
+        GLContext* previousActiveContext = GLContext::current();
+        makeContextCurrent();
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-        glXMakeCurrent(display, None, None);
+        if (previousActiveContext && previousActiveContext != this) {
+            // If there was a previous context different from this one, just make it current again.
+            previousActiveContext->makeContextCurrent();
+        } else {
+            // If there was no previous context or this was the previous, set a void context as current.
+            // We use the GLX function here, and the destructor of GLContext will clean the pointer
+            // returned by GLContext::current().
+            glXMakeCurrent(m_x11Display, None, None);
+        }
     }
 }
 
@@ -185,8 +306,7 @@ IntSize GLContextGLX::defaultFrameBufferSize()
     int x, y;
     Window rootWindow;
     unsigned int width, height, borderWidth, depth;
-    Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
-    if (!XGetGeometry(display, m_window, &rootWindow, &x, &y, &width, &height, &borderWidth, &depth))
+    if (!XGetGeometry(m_x11Display, m_window, &rootWindow, &x, &y, &width, &height, &borderWidth, &depth))
         return IntSize();
 
     return IntSize(width, height);
@@ -200,25 +320,31 @@ bool GLContextGLX::makeContextCurrent()
     if (glXGetCurrentContext() == m_context.get())
         return true;
 
-    Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
     if (m_window)
-        return glXMakeCurrent(display, m_window, m_context.get());
+        return glXMakeCurrent(m_x11Display, m_window, m_context.get());
 
     if (m_pbuffer)
-        return glXMakeCurrent(display, m_pbuffer.get(), m_context.get());
+        return glXMakeCurrent(m_x11Display, m_pbuffer.get(), m_context.get());
 
-    return ::glXMakeCurrent(display, m_glxPixmap.get(), m_context.get());
+    return ::glXMakeCurrent(m_x11Display, m_glxPixmap.get(), m_context.get());
 }
 
 void GLContextGLX::swapBuffers()
 {
     if (m_window)
-        glXSwapBuffers(downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native(), m_window);
+        glXSwapBuffers(m_x11Display, m_window);
 }
 
 void GLContextGLX::waitNative()
 {
     glXWaitX();
+}
+
+void GLContextGLX::swapInterval(int interval)
+{
+    if (!hasSGISwapControlExtension(m_x11Display))
+        return;
+    glXSwapIntervalSGI(interval);
 }
 
 cairo_device_t* GLContextGLX::cairoDevice()
@@ -227,7 +353,7 @@ cairo_device_t* GLContextGLX::cairoDevice()
         return m_cairoDevice;
 
 #if ENABLE(ACCELERATED_2D_CANVAS) && CAIRO_HAS_GLX_FUNCTIONS
-    m_cairoDevice = cairo_glx_device_create(downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native(), m_context.get());
+    m_cairoDevice = cairo_glx_device_create(m_x11Display, m_context.get());
 #endif
 
     return m_cairoDevice;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@ void emitSetVarargsFrame(CCallHelpers& jit, GPRReg lengthGPR, bool lengthInclude
     jit.andPtr(CCallHelpers::TrustedImm32(~(stackAlignmentRegisters() - 1)), resultGPR);
 
     jit.addPtr(lengthGPR, resultGPR);
-    jit.addPtr(CCallHelpers::TrustedImm32(JSStack::CallFrameHeaderSize + (lengthIncludesThis? 0 : 1)), resultGPR);
+    jit.addPtr(CCallHelpers::TrustedImm32(CallFrame::headerSizeInRegisters + (lengthIncludesThis ? 0 : 1)), resultGPR);
     
     // resultGPR now has the required frame size in Register units
     // Round resultGPR to next multiple of stackAlignmentRegisters()
@@ -60,7 +60,7 @@ void emitSetVarargsFrame(CCallHelpers& jit, GPRReg lengthGPR, bool lengthInclude
     jit.addPtr(GPRInfo::callFrameRegister, resultGPR);
 }
 
-void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GPRReg scratchGPR1, GPRReg scratchGPR2, GPRReg scratchGPR3, ValueRecovery argCountRecovery, VirtualRegister firstArgumentReg, unsigned firstVarArgOffset, CCallHelpers::JumpList& slowCase)
+static void emitSetupVarargsFrameFastCase(VM& vm, CCallHelpers& jit, GPRReg numUsedSlotsGPR, GPRReg scratchGPR1, GPRReg scratchGPR2, GPRReg scratchGPR3, ValueRecovery argCountRecovery, VirtualRegister firstArgumentReg, unsigned firstVarArgOffset, CCallHelpers::JumpList& slowCase)
 {
     CCallHelpers::JumpList end;
     
@@ -78,14 +78,18 @@ void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GP
         jit.sub32(CCallHelpers::TrustedImm32(firstVarArgOffset), scratchGPR1);
         endVarArgs.link(&jit);
     }
-    slowCase.append(jit.branch32(CCallHelpers::Above, scratchGPR1, CCallHelpers::TrustedImm32(maxArguments + 1)));
+    slowCase.append(jit.branch32(CCallHelpers::Above, scratchGPR1, CCallHelpers::TrustedImm32(JSC::maxArguments + 1)));
     
     emitSetVarargsFrame(jit, scratchGPR1, true, numUsedSlotsGPR, scratchGPR2);
 
-    slowCase.append(jit.branchPtr(CCallHelpers::Above, CCallHelpers::AbsoluteAddress(jit.vm()->addressOfStackLimit()), scratchGPR2));
+    slowCase.append(jit.branchPtr(CCallHelpers::Above, scratchGPR2, GPRInfo::callFrameRegister));
+    slowCase.append(jit.branchPtr(CCallHelpers::Above, CCallHelpers::AbsoluteAddress(vm.addressOfSoftStackLimit()), scratchGPR2));
+
+    // Before touching stack values, we should update the stack pointer to protect them from signal stack.
+    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), scratchGPR2, CCallHelpers::stackPointerRegister);
 
     // Initialize ArgumentCount.
-    jit.store32(scratchGPR1, CCallHelpers::Address(scratchGPR2, JSStack::ArgumentCount * static_cast<int>(sizeof(Register)) + PayloadOffset));
+    jit.store32(scratchGPR1, CCallHelpers::Address(scratchGPR2, CallFrameSlot::argumentCount * static_cast<int>(sizeof(Register)) + PayloadOffset));
 
     // Copy arguments.
     jit.signExtend32ToPtr(scratchGPR1, scratchGPR1);
@@ -108,12 +112,7 @@ void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GP
     done.link(&jit);
 }
 
-void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GPRReg scratchGPR1, GPRReg scratchGPR2, GPRReg scratchGPR3, unsigned firstVarArgOffset, CCallHelpers::JumpList& slowCase)
-{
-    emitSetupVarargsFrameFastCase(jit, numUsedSlotsGPR, scratchGPR1, scratchGPR2, scratchGPR3, nullptr, firstVarArgOffset, slowCase);
-}
-
-void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GPRReg scratchGPR1, GPRReg scratchGPR2, GPRReg scratchGPR3, InlineCallFrame* inlineCallFrame, unsigned firstVarArgOffset, CCallHelpers::JumpList& slowCase)
+void emitSetupVarargsFrameFastCase(VM& vm, CCallHelpers& jit, GPRReg numUsedSlotsGPR, GPRReg scratchGPR1, GPRReg scratchGPR2, GPRReg scratchGPR3, InlineCallFrame* inlineCallFrame, unsigned firstVarArgOffset, CCallHelpers::JumpList& slowCase)
 {
     ValueRecovery argumentCountRecovery;
     VirtualRegister firstArgumentReg;
@@ -131,10 +130,10 @@ void emitSetupVarargsFrameFastCase(CCallHelpers& jit, GPRReg numUsedSlotsGPR, GP
             firstArgumentReg = VirtualRegister(0);
     } else {
         argumentCountRecovery = ValueRecovery::displacedInJSStack(
-            VirtualRegister(JSStack::ArgumentCount), DataFormatInt32);
+            VirtualRegister(CallFrameSlot::argumentCount), DataFormatInt32);
         firstArgumentReg = VirtualRegister(CallFrame::argumentOffset(0));
     }
-    emitSetupVarargsFrameFastCase(jit, numUsedSlotsGPR, scratchGPR1, scratchGPR2, scratchGPR3, argumentCountRecovery, firstArgumentReg, firstVarArgOffset, slowCase);
+    emitSetupVarargsFrameFastCase(vm, jit, numUsedSlotsGPR, scratchGPR1, scratchGPR2, scratchGPR3, argumentCountRecovery, firstArgumentReg, firstVarArgOffset, slowCase);
 }
 
 } // namespace JSC

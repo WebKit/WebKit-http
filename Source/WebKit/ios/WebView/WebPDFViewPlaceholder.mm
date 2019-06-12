@@ -27,8 +27,8 @@
 
 #import "WebPDFViewPlaceholder.h"
 
-#import "WebPDFViewIOS.h"
 #import "WebFrameInternal.h"
+#import "WebPDFViewIOS.h"
 #import <JavaScriptCore/JSContextRef.h>
 #import <JavaScriptCore/JSStringRef.h>
 #import <JavaScriptCore/JSStringRefCF.h>
@@ -37,11 +37,10 @@
 #import <WebCore/EventNames.h>
 #import <WebCore/FormState.h>
 #import <WebCore/Frame.h>
-#import <WebCore/FrameLoader.h>
 #import <WebCore/FrameLoadRequest.h>
+#import <WebCore/FrameLoader.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/MouseEvent.h>
-#import <WebCore/SoftLinking.h>
 #import <WebKitLegacy/WebDataSourcePrivate.h>
 #import <WebKitLegacy/WebFramePrivate.h>
 #import <WebKitLegacy/WebJSPDFDoc.h>
@@ -50,6 +49,7 @@
 #import <WebKitLegacy/WebPDFDocumentExtras.h>
 #import <WebKitLegacy/WebViewPrivate.h>
 #import <wtf/CurrentTime.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/Vector.h>
 
 using namespace WebCore;
@@ -102,7 +102,19 @@ static const float PAGE_HEIGHT_INSET = 4.0f * 2.0f;
 
 #pragma mark WebPDFViewPlaceholder implementation
 
-@implementation WebPDFViewPlaceholder
+@implementation WebPDFViewPlaceholder {
+    NSString *_title;
+    NSArray *_pageRects;
+    NSArray *_pageYOrigins;
+    CGPDFDocumentRef _document;
+    WebDataSource *_dataSource; // weak to prevent cycles.
+    
+    NSObject<WebPDFViewPlaceholderDelegate> *_delegate;
+    
+    BOOL _didFinishLoad;
+    
+    CGSize _containerSize;
+}
 
 @synthesize delegate = _delegate;
 @synthesize pageRects = _pageRects;
@@ -317,7 +329,7 @@ static const float PAGE_HEIGHT_INSET = 4.0f * 2.0f;
 {
     NSString *titleFromURL = [URL lastPathComponent];
     if (![titleFromURL length] || [titleFromURL isEqualToString:@"/"])
-        titleFromURL = [[URL _web_hostString] _web_decodeHostName];
+        titleFromURL = [[URL _web_hostString] _webkit_decodeHostName];
 
     [self setTitle:titleFromURL];
     [[self _frame] _dispatchDidReceiveTitle:titleFromURL];
@@ -471,11 +483,12 @@ static const float PAGE_HEIGHT_INSET = 4.0f * 2.0f;
 #if ENABLE(POINTER_LOCK)
         0, 0,
 #endif
-        false, false, false, false, 0, 0, 0, 0, true);
+        false, false, false, false, 0, 0, 0, 0, 0, true);
 
     // Call to the frame loader because this is where our security checks are made.
     Frame* frame = core([_dataSource webFrame]);
-    frame->loader().loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(URL), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow), event.get(), nullptr);
+    FrameLoadRequest frameLoadRequest { *frame->document(), frame->document()->securityOrigin(), { URL }, { }, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow,  InitiatedByMainFrame::Unknown };
+    frame->loader().loadFrameRequest(WTFMove(frameLoadRequest), event.get(), nullptr);
 }
 
 @end

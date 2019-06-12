@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Gurpreet Kaur (k.gurpreet@samsung.com). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,25 +25,24 @@
  */
 
 #include "config.h"
-
-#if ENABLE(MATHML)
 #include "MathMLMencloseElement.h"
 
-#include "MathMLNames.h"
-#include "RenderElement.h"
-#include "RenderMathMLMenclose.h"
-#include "RenderObject.h"
-#include "TextRun.h"
-#include <wtf/Ref.h>
-#include <wtf/text/StringBuilder.h>
+#if ENABLE(MATHML)
 
+#include "HTMLParserIdioms.h"
+#include "MathMLNames.h"
+#include "RenderMathMLMenclose.h"
 
 namespace WebCore {
 
+using namespace MathMLNames;
+
 MathMLMencloseElement::MathMLMencloseElement(const QualifiedName& tagName, Document& document)
-    : MathMLInlineContainerElement(tagName, document)
-    , m_isRadicalValue(false)
+    : MathMLRowElement(tagName, document)
 {
+    // By default we draw a longdiv.
+    clearNotations();
+    addNotation(LongDiv);
 }
 
 Ref<MathMLMencloseElement> MathMLMencloseElement::create(const QualifiedName& tagName, Document& document)
@@ -50,94 +50,91 @@ Ref<MathMLMencloseElement> MathMLMencloseElement::create(const QualifiedName& ta
     return adoptRef(*new MathMLMencloseElement(tagName, document));
 }
 
-RenderPtr<RenderElement> MathMLMencloseElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
-{    
+RenderPtr<RenderElement> MathMLMencloseElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
+{
     return createRenderer<RenderMathMLMenclose>(*this, WTFMove(style));
 }
 
-bool MathMLMencloseElement::isPresentationAttribute(const QualifiedName& name) const
+void MathMLMencloseElement::addNotationFlags(StringView notation)
 {
-    if (name == MathMLNames::notationAttr)
-        return true;
-    return MathMLElement::isPresentationAttribute(name);
-}
-
-void MathMLMencloseElement::finishParsingChildren()
-{
-    MathMLInlineContainerElement::finishParsingChildren();
-    // When notation value is a radical and menclose does not have any child 
-    // then we add anonymous squareroot child to menclose so that square root
-    // symbol can be rendered.
-    if (m_isRadicalValue && !firstElementChild())
-        renderer()->addChild(nullptr, nullptr);
-}
-
-void MathMLMencloseElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
-{
-    String val = value;
-    if (val.isEmpty())
-        return;
-    if (name == MathMLNames::notationAttr) {
-        val.split(' ', m_notationValues);
-        size_t notationValueSize = m_notationValues.size();
-        for (size_t i = 0; i < notationValueSize; i++) {
-            if (m_notationValues[i] == "top" || m_notationValues[i] == "longdiv") {
-                if (m_notationValues[i] == "longdiv")
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingLeft, longDivLeftPadding());
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderTopStyle, "solid");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderTopWidth, "thin");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingTop, ".3ex");
-            } else if (m_notationValues[i] == "bottom") {
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderBottomStyle, "solid");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderBottomWidth, "thin");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingBottom, ".3ex");
-            } else if (m_notationValues[i] == "left") {
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderLeftStyle, "solid");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderLeftWidth, "thin");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingLeft, ".3ex");
-            } else if (m_notationValues[i] == "right") {
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderRightStyle, "solid");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderRightWidth, "thin");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingRight, ".3ex");
-            } else if (m_notationValues[i] == "box" || m_notationValues[i] == "roundedbox") {
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderStyle, "solid");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderWidth, "thin");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyPadding, ".3ex");
-                if (m_notationValues[i] == "roundedbox")
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderRadius, ASCIILiteral("5px"));
-            } else if (m_notationValues[i] == "actuarial" || m_notationValues[i] == "madruwb") {
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderRightStyle, "solid");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderRightWidth, "thin");
-                addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingRight, ".3ex");
-                if (m_notationValues[i] == "actuarial") {
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderTopStyle, "solid");
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderTopWidth, "thin");
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingTop, ".3ex");
-                } else if (m_notationValues[i] == "madruwb") {
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderBottomStyle, "solid");
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderBottomWidth, "thin");
-                    addPropertyToPresentationAttributeStyle(style, CSSPropertyPaddingBottom, ".3ex");
-                }
-            } else if (m_notationValues[i] == "radical")
-                m_isRadicalValue = true;
-        }
-    } else
-        MathMLInlineContainerElement::collectStyleForPresentationAttribute(name, value, style);
-}
-
-
-String MathMLMencloseElement::longDivLeftPadding() const
-{
-    StringBuilder padding;
-    String closingBrace(")", String::ConstructFromLiteral);
-    TextRun run(closingBrace);
-    Node* node = parentNode();
-    if (node && node->renderer()) {
-        const FontCascade& font = node->renderer()->style().fontCascade();
-        padding.appendNumber(font.width(run));
-        padding.appendLiteral("px");
+    ASSERT(m_notationFlags);
+    if (notation == "longdiv") {
+        addNotation(LongDiv);
+    } else if (notation == "roundedbox") {
+        addNotation(RoundedBox);
+    } else if (notation == "circle") {
+        addNotation(Circle);
+    } else if (notation == "left") {
+        addNotation(Left);
+    } else if (notation == "right") {
+        addNotation(Right);
+    } else if (notation == "top") {
+        addNotation(Top);
+    } else if (notation == "bottom") {
+        addNotation(Bottom);
+    } else if (notation == "updiagonalstrike") {
+        addNotation(UpDiagonalStrike);
+    } else if (notation == "downdiagonalstrike") {
+        addNotation(DownDiagonalStrike);
+    } else if (notation == "verticalstrike") {
+        addNotation(VerticalStrike);
+    } else if (notation == "horizontalstrike") {
+        addNotation(HorizontalStrike);
+    } else if (notation == "updiagonalarrow") {
+        addNotation(UpDiagonalArrow);
+    } else if (notation == "phasorangle") {
+        addNotation(PhasorAngle);
+    } else if (notation == "box") {
+        addNotation(Left);
+        addNotation(Right);
+        addNotation(Top);
+        addNotation(Bottom);
+    } else if (notation == "actuarial") {
+        addNotation(Right);
+        addNotation(Top);
+    } else if (notation == "madruwb") {
+        addNotation(Right);
+        addNotation(Bottom);
     }
-    return padding.toString();
+}
+
+void MathMLMencloseElement::parseNotationAttribute()
+{
+    clearNotations();
+    if (!hasAttribute(notationAttr)) {
+        addNotation(LongDiv); // The default value is longdiv.
+        return;
+    }
+    // We parse the list of whitespace-separated notation names.
+    StringView value = attributeWithoutSynchronization(notationAttr).string();
+    unsigned length = value.length();
+    unsigned start = 0;
+    while (start < length) {
+        if (isHTMLSpace(value[start])) {
+            start++;
+            continue;
+        }
+        unsigned end = start + 1;
+        while (end < length && !isHTMLSpace(value[end]))
+            end++;
+        addNotationFlags(value.substring(start, end - start));
+        start = end;
+    }
+}
+
+bool MathMLMencloseElement::hasNotation(MencloseNotationFlag notationFlag)
+{
+    if (!m_notationFlags)
+        parseNotationAttribute();
+    return m_notationFlags.value() & notationFlag;
+}
+
+void MathMLMencloseElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+{
+    if (name == notationAttr)
+        m_notationFlags = std::nullopt;
+
+    MathMLRowElement::parseAttribute(name, value);
 }
 
 }

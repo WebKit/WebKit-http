@@ -23,16 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGDesiredIdentifiers_h
-#define DFGDesiredIdentifiers_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
-#include "Identifier.h"
+#include <wtf/HashMap.h>
+#include <wtf/text/UniquedStringImpl.h>
 
 namespace JSC {
 
 class CodeBlock;
+class VM;
 
 namespace DFG {
 
@@ -63,6 +64,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGDesiredIdentifiers_h
-

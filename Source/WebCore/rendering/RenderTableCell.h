@@ -22,8 +22,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderTableCell_h
-#define RenderTableCell_h
+#pragma once
 
 #include "RenderBlockFlow.h"
 #include "RenderTableRow.h"
@@ -39,8 +38,8 @@ enum IncludeBorderColorOrNot { DoNotIncludeBorderColor, IncludeBorderColor };
 
 class RenderTableCell final : public RenderBlockFlow {
 public:
-    RenderTableCell(Element&, Ref<RenderStyle>&&);
-    RenderTableCell(Document&, Ref<RenderStyle>&&);
+    RenderTableCell(Element&, RenderStyle&&);
+    RenderTableCell(Document&, RenderStyle&&);
     
     unsigned colSpan() const;
     unsigned rowSpan() const;
@@ -63,21 +62,21 @@ public:
 
     void setCellLogicalWidth(LayoutUnit constrainedLogicalWidth);
 
-    virtual LayoutUnit borderLeft() const override;
-    virtual LayoutUnit borderRight() const override;
-    virtual LayoutUnit borderTop() const override;
-    virtual LayoutUnit borderBottom() const override;
-    virtual LayoutUnit borderStart() const override;
-    virtual LayoutUnit borderEnd() const override;
-    virtual LayoutUnit borderBefore() const override;
-    virtual LayoutUnit borderAfter() const override;
+    LayoutUnit borderLeft() const override;
+    LayoutUnit borderRight() const override;
+    LayoutUnit borderTop() const override;
+    LayoutUnit borderBottom() const override;
+    LayoutUnit borderStart() const override;
+    LayoutUnit borderEnd() const override;
+    LayoutUnit borderBefore() const override;
+    LayoutUnit borderAfter() const override;
 
     void collectBorderValues(RenderTable::CollapsedBorderValues&) const;
     static void sortBorderValues(RenderTable::CollapsedBorderValues&);
 
-    virtual void layout() override;
+    void layout() override;
 
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
 
     void paintCollapsedBorders(PaintInfo&, const LayoutPoint&);
     void paintBackgroundsBehindCell(PaintInfo&, const LayoutPoint&, RenderElement* backgroundObject);
@@ -91,26 +90,26 @@ public:
     LayoutUnit intrinsicPaddingBefore() const { return m_intrinsicPaddingBefore; }
     LayoutUnit intrinsicPaddingAfter() const { return m_intrinsicPaddingAfter; }
 
-    virtual LayoutUnit paddingTop() const override;
-    virtual LayoutUnit paddingBottom() const override;
-    virtual LayoutUnit paddingLeft() const override;
-    virtual LayoutUnit paddingRight() const override;
+    LayoutUnit paddingTop() const override;
+    LayoutUnit paddingBottom() const override;
+    LayoutUnit paddingLeft() const override;
+    LayoutUnit paddingRight() const override;
     
     // FIXME: For now we just assume the cell has the same block flow direction as the table. It's likely we'll
     // create an extra anonymous RenderBlock to handle mixing directionality anyway, in which case we can lock
     // the block flow directionality of the cells to the table's directionality.
-    virtual LayoutUnit paddingBefore() const override;
-    virtual LayoutUnit paddingAfter() const override;
+    LayoutUnit paddingBefore() const override;
+    LayoutUnit paddingAfter() const override;
 
     void setOverrideLogicalContentHeightFromRowHeight(LayoutUnit);
 
-    virtual void scrollbarsChanged(bool horizontalScrollbarChanged, bool verticalScrollbarChanged) override;
+    void scrollbarsChanged(bool horizontalScrollbarChanged, bool verticalScrollbarChanged) override;
 
     bool cellWidthChanged() const { return m_cellWidthChanged; }
     void setCellWidthChanged(bool b = true) { m_cellWidthChanged = b; }
 
-    static RenderTableCell* createAnonymousWithParentRenderer(const RenderObject*);
-    virtual RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const override { return createAnonymousWithParentRenderer(parent); }
+    static std::unique_ptr<RenderTableCell> createAnonymousWithParentRenderer(const RenderTableRow&);
+    std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const override;
 
     // This function is used to unify which table part's style we use for computing direction and
     // writing mode. Writing modes are not allowed on row group and row but direction is.
@@ -121,39 +120,41 @@ public:
 
     const BorderValue& borderAdjoiningTableStart() const;
     const BorderValue& borderAdjoiningTableEnd() const;
-    const BorderValue& borderAdjoiningCellBefore(const RenderTableCell*);
-    const BorderValue& borderAdjoiningCellAfter(const RenderTableCell*);
+    const BorderValue& borderAdjoiningCellBefore(const RenderTableCell&);
+    const BorderValue& borderAdjoiningCellAfter(const RenderTableCell&);
 
     using RenderBlockFlow::nodeAtPoint;
 #ifndef NDEBUG
     bool isFirstOrLastCellInRow() const { return !table()->cellAfter(this) || !table()->cellBefore(this); }
 #endif
     
-    virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
+    LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
 
     void invalidateHasEmptyCollapsedBorders();
     void setHasEmptyCollapsedBorder(CollapsedBorderSide, bool empty) const;
 
 protected:
-    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    virtual void computePreferredLogicalWidths() override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void computePreferredLogicalWidths() override;
 
 private:
-    virtual const char* renderName() const override { return (isAnonymous() || isPseudoElement()) ? "RenderTableCell (anonymous)" : "RenderTableCell"; }
+    static std::unique_ptr<RenderTableCell> createTableCellWithStyle(Document&, const RenderStyle&);
 
-    virtual bool isTableCell() const override { return true; }
+    const char* renderName() const override { return (isAnonymous() || isPseudoElement()) ? "RenderTableCell (anonymous)" : "RenderTableCell"; }
 
-    virtual void willBeRemovedFromTree() override;
+    bool isTableCell() const override { return true; }
 
-    virtual void updateLogicalWidth() override;
+    void willBeRemovedFromTree() override;
 
-    virtual void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
-    virtual void paintMask(PaintInfo&, const LayoutPoint&) override;
+    void updateLogicalWidth() override;
 
-    virtual bool boxShadowShouldBeAppliedToBackground(const LayoutPoint& paintOffset, BackgroundBleedAvoidance, InlineFlowBox*) const override;
+    void paintBoxDecorations(PaintInfo&, const LayoutPoint&) override;
+    void paintMask(PaintInfo&, const LayoutPoint&) override;
 
-    virtual LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const override;
-    virtual LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, bool fixed = false) const override;
+    bool boxShadowShouldBeAppliedToBackground(const LayoutPoint& paintOffset, BackgroundBleedAvoidance, InlineFlowBox*) const override;
+
+    LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const override;
+    LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, RepaintContext = { }) const override;
 
     LayoutUnit borderHalfLeft(bool outer) const;
     LayoutUnit borderHalfRight(bool outer) const;
@@ -237,7 +238,7 @@ inline unsigned RenderTableCell::rowSpan() const
 inline void RenderTableCell::setCol(unsigned column)
 {
     if (UNLIKELY(column > maxColumnIndex))
-        CRASH();
+        column = maxColumnIndex;
     m_column = column;
 }
 
@@ -284,6 +285,8 @@ inline LayoutUnit RenderTableCell::logicalHeightForRowSizing() const
 {
     // FIXME: This function does too much work, and is very hot during table layout!
     LayoutUnit adjustedLogicalHeight = logicalHeight() - (intrinsicPaddingBefore() + intrinsicPaddingAfter());
+    if (!style().logicalHeight().isSpecified())
+        return adjustedLogicalHeight;
     LayoutUnit styleLogicalHeight = valueForLength(style().logicalHeight(), 0);
     // In strict mode, box-sizing: content-box do the right thing and actually add in the border and padding.
     // Call computedCSSPadding* directly to avoid including implicitPadding.
@@ -301,7 +304,7 @@ inline bool RenderTableCell::isBaselineAligned() const
 inline const BorderValue& RenderTableCell::borderAdjoiningTableStart() const
 {
     ASSERT(isFirstOrLastCellInRow());
-    if (section()->hasSameDirectionAs(table()))
+    if (isDirectionSame(section(), table()))
         return style().borderStart();
 
     return style().borderEnd();
@@ -310,22 +313,22 @@ inline const BorderValue& RenderTableCell::borderAdjoiningTableStart() const
 inline const BorderValue& RenderTableCell::borderAdjoiningTableEnd() const
 {
     ASSERT(isFirstOrLastCellInRow());
-    if (section()->hasSameDirectionAs(table()))
+    if (isDirectionSame(section(), table()))
         return style().borderEnd();
 
     return style().borderStart();
 }
 
-inline const BorderValue& RenderTableCell::borderAdjoiningCellBefore(const RenderTableCell* cell)
+inline const BorderValue& RenderTableCell::borderAdjoiningCellBefore(const RenderTableCell& cell)
 {
-    ASSERT_UNUSED(cell, table()->cellAfter(cell) == this);
+    ASSERT_UNUSED(cell, table()->cellAfter(&cell) == this);
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderStart();
 }
 
-inline const BorderValue& RenderTableCell::borderAdjoiningCellAfter(const RenderTableCell* cell)
+inline const BorderValue& RenderTableCell::borderAdjoiningCellAfter(const RenderTableCell& cell)
 {
-    ASSERT_UNUSED(cell, table()->cellBefore(cell) == this);
+    ASSERT_UNUSED(cell, table()->cellBefore(&cell) == this);
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderEnd();
 }
@@ -372,8 +375,11 @@ inline void RenderTableCell::invalidateHasEmptyCollapsedBorders()
     m_hasEmptyCollapsedEndBorder = false;
 }
 
+inline std::unique_ptr<RenderBox> RenderTableCell::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
+{
+    return RenderTableCell::createTableCellWithStyle(renderer.document(), renderer.style());
+}
+
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderTableCell, isTableCell())
-
-#endif // RenderTableCell_h

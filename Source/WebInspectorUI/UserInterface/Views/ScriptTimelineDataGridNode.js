@@ -37,11 +37,6 @@ WebInspector.ScriptTimelineDataGridNode = class ScriptTimelineDataGridNode exten
 
     // Public
 
-    get record()
-    {
-        return this._record;
-    }
-
     get records()
     {
         return [this._record];
@@ -92,6 +87,24 @@ WebInspector.ScriptTimelineDataGridNode = class ScriptTimelineDataGridNode exten
         return this._cachedData;
     }
 
+    get subtitle()
+    {
+        if (this._subtitle !== undefined)
+            return this._subtitle;
+
+        this._subtitle = "";
+
+        if (this._record.eventType === WebInspector.ScriptTimelineRecord.EventType.TimerInstalled) {
+            let timeoutString = Number.secondsToString(this._record.details.timeout / 1000);
+            if (this._record.details.repeating)
+                this._subtitle = WebInspector.UIString("%s interval").format(timeoutString);
+            else
+                this._subtitle = WebInspector.UIString("%s delay").format(timeoutString);
+        }
+
+        return this._subtitle;
+    }
+
     updateRangeTimes(startTime, endTime)
     {
         var oldRangeStartTime = this._rangeStartTime;
@@ -124,8 +137,9 @@ WebInspector.ScriptTimelineDataGridNode = class ScriptTimelineDataGridNode exten
         var value = this.data[columnIdentifier];
 
         switch (columnIdentifier) {
-        case "eventType":
-            return WebInspector.ScriptTimelineRecord.EventType.displayName(value, this._record.details);
+        case "name":
+            cell.classList.add(...this.iconClassNames());
+            return this._createNameCellDocumentFragment();
 
         case "startTime":
             return isNaN(value) ? emDash : Number.secondsToString(value - this._baseStartTime, true);
@@ -136,9 +150,36 @@ WebInspector.ScriptTimelineDataGridNode = class ScriptTimelineDataGridNode exten
             return isNaN(value) ? emDash : Number.secondsToString(value, true);
 
         case "callCount":
-            return isNaN(value) ? emDash : value;
+            return isNaN(value) ? emDash : value.toLocaleString();
         }
 
         return super.createCellContent(columnIdentifier, cell);
+    }
+
+    // Protected
+
+    filterableDataForColumn(columnIdentifier)
+    {
+        if (columnIdentifier === "name")
+            return [this.displayName(), this.subtitle];
+
+        return super.filterableDataForColumn(columnIdentifier);
+    }
+
+    // Private
+
+    _createNameCellDocumentFragment(cellElement)
+    {
+        let fragment = document.createDocumentFragment();
+        fragment.append(this.displayName());
+
+        if (this.subtitle) {
+            let subtitleElement = document.createElement("span");
+            subtitleElement.classList.add("subtitle");
+            subtitleElement.textContent = this.subtitle;
+            fragment.append(subtitleElement);
+        }
+
+        return fragment;
     }
 };

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014, 2015 Apple Inc. All rights reserved.
+# Copyright (c) 2014-2016 Apple Inc. All rights reserved.
 # Copyright (c) 2014 University of Washington. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -46,23 +46,22 @@ class BuiltinsCombinedHeaderGenerator(BuiltinsGenerator):
     def generate_output(self):
         args = {
             'namespace': self.model().framework.setting('namespace'),
-            'headerGuard': self.output_filename().replace('.', '_'),
             'macroPrefix': self.model().framework.setting('macro_prefix'),
         }
 
         sections = []
         sections.append(self.generate_license())
         sections.append(Template(Templates.DoNotEditWarning).substitute(args))
-        sections.append(Template(Templates.HeaderIncludeGuardTop).substitute(args))
+        sections.append(Template(Templates.HeaderIncludeGuard).substitute(args))
         sections.append(self.generate_forward_declarations())
         sections.append(Template(Templates.NamespaceTop).substitute(args))
         for object in self.model().objects:
             sections.append(self.generate_section_for_object(object))
         sections.append(self.generate_section_for_code_table_macro())
         sections.append(self.generate_section_for_code_name_macro())
+        sections.append(self.generate_section_for_global_private_code_name_macro())
         sections.append(Template(Templates.CombinedHeaderStaticMacros).substitute(args))
         sections.append(Template(Templates.NamespaceBottom).substitute(args))
-        sections.append(Template(Templates.HeaderIncludeGuardBottom).substitute(args))
 
         return "\n\n".join(sections)
 
@@ -149,4 +148,23 @@ extern const JSC::ConstructAbility s_%(codeName)sConstructAbility;""" % function
             }
 
             lines.append("    macro(%(funcName)s) \\" % function_args)
+        return '\n'.join(lines)
+
+    def generate_section_for_global_private_code_name_macro(self):
+        args = {
+            'macroPrefix': self.model().framework.setting('macro_prefix'),
+        }
+
+        lines = []
+        lines.append("#define %(macroPrefix)s_FOREACH_BUILTIN_FUNCTION_PRIVATE_GLOBAL_NAME(macro) \\" % args)
+        functions = filter(lambda function: function.is_global_private, self.model().all_functions())
+        functions.sort(key=lambda x: x.function_name)
+        for function in functions:
+            function_args = {
+                'funcName': function.function_name,
+                'codeName': BuiltinsGenerator.mangledNameForFunction(function),
+            }
+
+            lines.append("    macro(%(funcName)s, %(codeName)s) \\" % function_args)
+
         return '\n'.join(lines)

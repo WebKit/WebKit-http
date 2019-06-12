@@ -26,23 +26,20 @@
 #import "config.h"
 #import "CDMSessionAVContentKeySession.h"
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
-#import "CDM.h"
 #import "CDMPrivateMediaSourceAVFObjC.h"
-#import "ExceptionCode.h"
 #import "FileSystem.h"
+#import "LegacyCDM.h"
 #import "Logging.h"
 #import "MediaPlayer.h"
-#import "SoftLinking.h"
 #import "SourceBufferPrivateAVFObjC.h"
-#import "UUID.h"
 #import "WebCoreNSErrorExtras.h"
 #import <AVFoundation/AVError.h>
 #import <CoreMedia/CMBase.h>
 #import <objc/objc-runtime.h>
 #import <runtime/TypedArrayInlines.h>
-#import <wtf/NeverDestroyed.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVStreamDataParser);
@@ -284,7 +281,7 @@ bool CDMSessionAVContentKeySession::update(Uint8Array* key, RefPtr<Uint8Array>& 
         NSError* error = nil;
         NSData* requestData = [m_keyRequest contentKeyRequestDataForApp:certificateData.get() contentIdentifier:nil options:options.get() error:&error];
         if (error) {
-            errorCode = MediaPlayerClient::DomainError;
+            errorCode = CDM::DomainError;
             systemCode = mediaKeyErrorSystemCode(error);
             return false;
         }
@@ -312,7 +309,7 @@ void CDMSessionAVContentKeySession::removeParser(AVStreamDataParser* parser)
     [contentKeySession() removeStreamDataParser:parser];
 }
 
-PassRefPtr<Uint8Array> CDMSessionAVContentKeySession::generateKeyReleaseMessage(unsigned short& errorCode, uint32_t& systemCode)
+RefPtr<Uint8Array> CDMSessionAVContentKeySession::generateKeyReleaseMessage(unsigned short& errorCode, uint32_t& systemCode)
 {
     ASSERT(m_mode == KeyRelease);
     m_certificate = m_initData;
@@ -361,7 +358,7 @@ AVContentKeySession* CDMSessionAVContentKeySession::contentKeySession()
                 return nil;
         }
 
-        m_contentKeySession = adoptNS([[getAVContentKeySessionClass() alloc] initWithStorageDirectoryAtURL:[NSURL fileURLWithPath:storagePath]]);
+        m_contentKeySession = adoptNS([allocAVContentKeySessionInstance() initWithStorageDirectoryAtURL:[NSURL fileURLWithPath:storagePath]]);
         m_contentKeySession.get().delegate = m_contentKeySessionDelegate.get();
     }
 

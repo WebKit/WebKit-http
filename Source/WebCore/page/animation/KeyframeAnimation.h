@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef KeyframeAnimation_h
-#define KeyframeAnimation_h
+#pragma once
 
 #include "AnimationBase.h"
 #include "Document.h"
@@ -40,49 +39,53 @@ class RenderStyle;
 // A KeyframeAnimation tracks the state of an explicit animation for a single RenderElement.
 class KeyframeAnimation final : public AnimationBase {
 public:
-    static Ref<KeyframeAnimation> create(Animation& animation, RenderElement* renderer, int index, CompositeAnimation* compositeAnimation, RenderStyle* unanimatedStyle)
+    static Ref<KeyframeAnimation> create(const Animation& animation, RenderElement* renderer, CompositeAnimation* compositeAnimation, const RenderStyle* unanimatedStyle)
     {
-        return adoptRef(*new KeyframeAnimation(animation, renderer, index, compositeAnimation, unanimatedStyle));
+        return adoptRef(*new KeyframeAnimation(animation, renderer, compositeAnimation, unanimatedStyle));
     }
 
-    virtual bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* currentStyle, RenderStyle* targetStyle, RefPtr<RenderStyle>& animatedStyle) override;
-    virtual void getAnimatedStyle(RefPtr<RenderStyle>&) override;
+    bool animate(CompositeAnimation&, RenderElement*, const RenderStyle* currentStyle, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle) override;
+    void getAnimatedStyle(std::unique_ptr<RenderStyle>&) override;
 
     bool computeExtentOfTransformAnimation(LayoutRect&) const override;
 
     const KeyframeList& keyframes() const { return m_keyframes; }
 
     const AtomicString& name() const { return m_keyframes.animationName(); }
-    int index() const { return m_index; }
-    void setIndex(int i) { m_index = i; }
 
     bool hasAnimationForProperty(CSSPropertyID) const;
-    
-    void setUnanimatedStyle(PassRefPtr<RenderStyle> style) { m_unanimatedStyle = style; }
+
+    bool triggersStackingContext() const { return m_triggersStackingContext; }
+    bool dependsOnLayout() const { return m_dependsOnLayout; }
+
+    void setUnanimatedStyle(std::unique_ptr<RenderStyle> style) { m_unanimatedStyle = WTFMove(style); }
     RenderStyle* unanimatedStyle() const { return m_unanimatedStyle.get(); }
 
-    virtual double timeToNextService() override;
+    std::optional<Seconds> timeToNextService() override;
 
 protected:
-    virtual void onAnimationStart(double elapsedTime) override;
-    virtual void onAnimationIteration(double elapsedTime) override;
-    virtual void onAnimationEnd(double elapsedTime) override;
-    virtual bool startAnimation(double timeOffset) override;
-    virtual void pauseAnimation(double timeOffset) override;
-    virtual void endAnimation() override;
+    void onAnimationStart(double elapsedTime) override;
+    void onAnimationIteration(double elapsedTime) override;
+    void onAnimationEnd(double elapsedTime) override;
+    bool startAnimation(double timeOffset) override;
+    void pauseAnimation(double timeOffset) override;
+    void endAnimation() override;
 
-    virtual void overrideAnimations() override;
-    virtual void resumeOverriddenAnimations() override;
+    void overrideAnimations() override;
+    void resumeOverriddenAnimations() override;
 
     bool shouldSendEventForListener(Document::ListenerType inListenerType) const;
     bool sendAnimationEvent(const AtomicString&, double elapsedTime);
 
-    virtual bool affectsProperty(CSSPropertyID) const override;
+    bool affectsProperty(CSSPropertyID) const override;
 
     bool computeExtentOfAnimationForMatrixAnimation(const FloatRect& rendererBox, LayoutRect&) const;
 
     bool computeExtentOfAnimationForMatchingTransformLists(const FloatRect& rendererBox, LayoutRect&) const;
 
+    void computeStackingContextImpact();
+    void computeLayoutDependency();
+    void resolveKeyframeStyles();
     void validateTransformFunctionList();
     void checkForMatchingFilterFunctionLists();
 #if ENABLE(FILTERS_LEVEL_2)
@@ -90,19 +93,18 @@ protected:
 #endif
 
 private:
-    KeyframeAnimation(Animation&, RenderElement*, int index, CompositeAnimation*, RenderStyle* unanimatedStyle);
+    KeyframeAnimation(const Animation&, RenderElement*, CompositeAnimation*, const RenderStyle* unanimatedStyle);
     virtual ~KeyframeAnimation();
     
     // Get the styles for the given property surrounding the current animation time and the progress between them.
     void fetchIntervalEndpointsForProperty(CSSPropertyID, const RenderStyle*& fromStyle, const RenderStyle*& toStyle, double& progress) const;
 
     KeyframeList m_keyframes;
-    RefPtr<RenderStyle> m_unanimatedStyle; // The style just before we started animation
+    std::unique_ptr<RenderStyle> m_unanimatedStyle; // The style just before we started animation
 
-    int m_index; // The order in which this animation appears in the animation-name style.
     bool m_startEventDispatched { false };
+    bool m_triggersStackingContext { false };
+    bool m_dependsOnLayout { false };
 };
 
 } // namespace WebCore
-
-#endif // KeyframeAnimation_h

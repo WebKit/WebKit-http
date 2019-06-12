@@ -28,9 +28,7 @@
 
 #if OS(WINDOWS)
 #include <windows.h>
-#elif PLATFORM(EFL)
-#include <Ecore.h>
-#elif PLATFORM(GTK)
+#elif USE(GLIB)
 #include <glib.h>
 #endif
 
@@ -53,6 +51,12 @@ void EventLoop::cycle()
     }
     TranslateMessage(&msg);
     DispatchMessage(&msg);
+#elif PLATFORM(WATCHOS)
+    // FIXME: <rdar://problem/25972777>. In order for auto-attach to work, we need to
+    // run in the default run loop mode otherwise we do not receive the XPC messages
+    // necessary to setup the relay connection and negotiate an auto-attach debugger.
+    CFTimeInterval timeInterval = 0.05;
+    CFRunLoopRunInMode(kCFRunLoopDefaultMode, timeInterval, true);
 #elif USE(CF)
     // Run the RunLoop in a custom run loop mode to prevent default observers
     // to run and potentially evaluate JavaScript in this context while we are
@@ -61,9 +65,7 @@ void EventLoop::cycle()
     // paused and can still access and evalute script in the JSContext.
     CFTimeInterval timeInterval = 0.05;
     CFRunLoopRunInMode(remoteInspectorRunLoopMode(), timeInterval, true);
-#elif PLATFORM(EFL)
-    ecore_main_loop_iterate();
-#elif PLATFORM(GTK)
+#elif USE(GLIB)
     g_main_context_iteration(NULL, FALSE);
 #endif
 }

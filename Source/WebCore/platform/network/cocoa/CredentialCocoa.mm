@@ -26,7 +26,7 @@
 #import "config.h"
 #import "CredentialCocoa.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 @interface NSURLCredential (WebDetails)
 - (id)_initWithCFURLCredential:(CFURLCredentialRef)credential;
 - (CFURLCredentialRef) _CFURLCredential;
@@ -84,7 +84,7 @@ Credential::Credential(const Credential& original, CredentialPersistence persist
     }
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 Credential::Credential(CFURLCredentialRef credential)
     : Credential(adoptNS([[NSURLCredential alloc] _initWithCFURLCredential:credential]).get())
 {
@@ -97,7 +97,7 @@ Credential::Credential(NSURLCredential *credential)
 {
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 CFURLCredentialRef Credential::cfCredential() const
 {
     return [nsCredential() _CFURLCredential];

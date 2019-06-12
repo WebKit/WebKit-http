@@ -27,7 +27,10 @@
 #include "WorkQueue.h"
 
 #include <mutex>
-#include <wtf/MessageQueue.h>
+#include <wtf/Condition.h>
+#include <wtf/Deque.h>
+#include <wtf/Function.h>
+#include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/NumberOfCores.h>
 #include <wtf/Ref.h>
@@ -53,7 +56,7 @@ WorkQueue::~WorkQueue()
 }
 
 #if !PLATFORM(COCOA) && !(PLATFORM(QT) && USE(MACH_PORTS))
-void WorkQueue::concurrentApply(size_t iterations, const std::function<void (size_t index)>& function)
+void WorkQueue::concurrentApply(size_t iterations, WTF::Function<void (size_t index)>&& function)
 {
     if (!iterations)
         return;
@@ -72,7 +75,7 @@ void WorkQueue::concurrentApply(size_t iterations, const std::function<void (siz
 
             m_workers.reserveInitialCapacity(threadCount);
             for (unsigned i = 0; i < threadCount; ++i) {
-                m_workers.append(createThread(String::format("ThreadPool Worker %u", i).utf8().data(), [this] {
+                m_workers.append(Thread::create(String::format("ThreadPool Worker %u", i).utf8().data(), [this] {
                     threadBody();
                 }));
             }
@@ -80,7 +83,7 @@ void WorkQueue::concurrentApply(size_t iterations, const std::function<void (siz
 
         size_t workerCount() const { return m_workers.size(); }
 
-        void dispatch(const std::function<void ()>* function)
+        void dispatch(const WTF::Function<void ()>* function)
         {
             LockHolder holder(m_lock);
 
@@ -92,7 +95,7 @@ void WorkQueue::concurrentApply(size_t iterations, const std::function<void (siz
         NO_RETURN void threadBody()
         {
             while (true) {
-                const std::function<void ()>* function;
+                const WTF::Function<void ()>* function;
 
                 {
                     LockHolder holder(m_lock);
@@ -110,9 +113,9 @@ void WorkQueue::concurrentApply(size_t iterations, const std::function<void (siz
 
         Lock m_lock;
         Condition m_condition;
-        Deque<const std::function<void ()>*> m_queue;
+        Deque<const WTF::Function<void ()>*> m_queue;
 
-        Vector<ThreadIdentifier> m_workers;
+        Vector<RefPtr<Thread>> m_workers;
     };
 
     static LazyNeverDestroyed<ThreadPool> threadPool;
@@ -130,7 +133,7 @@ void WorkQueue::concurrentApply(size_t iterations, const std::function<void (siz
     Condition condition;
     Lock lock;
 
-    std::function<void ()> applier = [&] {
+    WTF::Function<void ()> applier = [&, function = WTFMove(function)] {
         size_t index;
 
         // Call the function for as long as there are iterations left.

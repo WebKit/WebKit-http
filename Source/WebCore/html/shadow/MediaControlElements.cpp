@@ -28,34 +28,37 @@
  */
 
 #include "config.h"
+#include "MediaControlElements.h"
 
 #if ENABLE(VIDEO)
-#include "MediaControlElements.h"
 
 #include "DOMTokenList.h"
 #include "ElementChildIterator.h"
 #include "EventHandler.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
+#include "HTMLHeadingElement.h"
+#include "HTMLLIElement.h"
+#include "HTMLUListElement.h"
 #include "HTMLVideoElement.h"
 #include "ImageBuffer.h"
 #include "Language.h"
 #include "LocalizedStrings.h"
 #include "Logging.h"
 #include "MediaControls.h"
+#include "MouseEvent.h"
+#include "Page.h"
 #include "PageGroup.h"
 #include "RenderLayer.h"
 #include "RenderMediaControlElements.h"
 #include "RenderSlider.h"
+#include "RenderTheme.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#if ENABLE(VIDEO_TRACK)
 #include "TextTrackList.h"
-#endif
 #include "VTTRegionList.h"
 
 namespace WebCore {
@@ -136,7 +139,7 @@ void MediaControlPanelElement::startTimer()
     // The timer is required to set the property display:'none' on the panel,
     // such that captions are correctly displayed at the bottom of the video
     // at the end of the fadeout transition.
-    double duration = document().page() ? document().page()->theme().mediaControlsFadeOutDuration() : 0;
+    Seconds duration = RenderTheme::singleton().mediaControlsFadeOutDuration();
     m_transitionTimer.startOneShot(duration);
 }
 
@@ -166,7 +169,7 @@ void MediaControlPanelElement::setPosition(const LayoutPoint& position)
     setInlineStyleProperty(CSSPropertyMarginLeft, 0.0, CSSPrimitiveValue::CSS_PX);
     setInlineStyleProperty(CSSPropertyMarginTop, 0.0, CSSPrimitiveValue::CSS_PX);
 
-    classList().add("dragged", IGNORE_EXCEPTION);
+    classList().add("dragged");
 }
 
 void MediaControlPanelElement::resetPosition()
@@ -176,7 +179,7 @@ void MediaControlPanelElement::resetPosition()
     removeInlineStyleProperty(CSSPropertyMarginLeft);
     removeInlineStyleProperty(CSSPropertyMarginTop);
 
-    classList().remove("dragged", IGNORE_EXCEPTION);
+    classList().remove("dragged");
 
     m_cumulativeDragOffset.setX(0);
     m_cumulativeDragOffset.setY(0);
@@ -187,10 +190,10 @@ void MediaControlPanelElement::makeOpaque()
     if (m_opaque)
         return;
 
-    double duration = document().page() ? document().page()->theme().mediaControlsFadeInDuration() : 0;
+    double duration = RenderTheme::singleton().mediaControlsFadeInDuration();
 
-    setInlineStyleProperty(CSSPropertyWebkitTransitionProperty, CSSPropertyOpacity);
-    setInlineStyleProperty(CSSPropertyWebkitTransitionDuration, duration, CSSPrimitiveValue::CSS_S);
+    setInlineStyleProperty(CSSPropertyTransitionProperty, CSSPropertyOpacity);
+    setInlineStyleProperty(CSSPropertyTransitionDuration, duration, CSSPrimitiveValue::CSS_S);
     setInlineStyleProperty(CSSPropertyOpacity, 1.0, CSSPrimitiveValue::CSS_NUMBER);
 
     m_opaque = true;
@@ -204,31 +207,31 @@ void MediaControlPanelElement::makeTransparent()
     if (!m_opaque)
         return;
 
-    double duration = document().page() ? document().page()->theme().mediaControlsFadeOutDuration() : 0;
+    Seconds duration = RenderTheme::singleton().mediaControlsFadeOutDuration();
 
-    setInlineStyleProperty(CSSPropertyWebkitTransitionProperty, CSSPropertyOpacity);
-    setInlineStyleProperty(CSSPropertyWebkitTransitionDuration, duration, CSSPrimitiveValue::CSS_S);
+    setInlineStyleProperty(CSSPropertyTransitionProperty, CSSPropertyOpacity);
+    setInlineStyleProperty(CSSPropertyTransitionDuration, duration.value(), CSSPrimitiveValue::CSS_S);
     setInlineStyleProperty(CSSPropertyOpacity, 0.0, CSSPrimitiveValue::CSS_NUMBER);
 
     m_opaque = false;
     startTimer();
 }
 
-void MediaControlPanelElement::defaultEventHandler(Event* event)
+void MediaControlPanelElement::defaultEventHandler(Event& event)
 {
     MediaControlDivElement::defaultEventHandler(event);
 
-    if (is<MouseEvent>(*event)) {
-        LayoutPoint location = downcast<MouseEvent>(*event).absoluteLocation();
-        if (event->type() == eventNames().mousedownEvent && event->target() == this) {
+    if (is<MouseEvent>(event)) {
+        LayoutPoint location = downcast<MouseEvent>(event).absoluteLocation();
+        if (event.type() == eventNames().mousedownEvent && event.target() == this) {
             startDrag(location);
-            event->setDefaultHandled();
-        } else if (event->type() == eventNames().mousemoveEvent && m_isBeingDragged)
+            event.setDefaultHandled();
+        } else if (event.type() == eventNames().mousemoveEvent && m_isBeingDragged)
             continueDrag(location);
-        else if (event->type() == eventNames().mouseupEvent && m_isBeingDragged) {
+        else if (event.type() == eventNames().mouseupEvent && m_isBeingDragged) {
             continueDrag(location);
             endDrag();
-            event->setDefaultHandled();
+            event.setDefaultHandled();
         }
     }
 }
@@ -307,7 +310,7 @@ void MediaControlTimelineContainerElement::setTimeDisplaysHidden(bool hidden)
     }
 }
 
-RenderPtr<RenderElement> MediaControlTimelineContainerElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> MediaControlTimelineContainerElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderMediaControlTimelineContainer>(*this, WTFMove(style));
 }
@@ -327,18 +330,18 @@ Ref<MediaControlVolumeSliderContainerElement> MediaControlVolumeSliderContainerE
     return element;
 }
 
-RenderPtr<RenderElement> MediaControlVolumeSliderContainerElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> MediaControlVolumeSliderContainerElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderMediaVolumeSliderContainer>(*this, WTFMove(style));
 }
 
-void MediaControlVolumeSliderContainerElement::defaultEventHandler(Event* event)
+void MediaControlVolumeSliderContainerElement::defaultEventHandler(Event& event)
 {
-    if (!is<MouseEvent>(*event) || event->type() != eventNames().mouseoutEvent)
+    if (!is<MouseEvent>(event) || event.type() != eventNames().mouseoutEvent)
         return;
 
     // Poor man's mouseleave event detection.
-    MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
+    MouseEvent& mouseEvent = downcast<MouseEvent>(event);
     EventTarget* relatedTarget = mouseEvent.relatedTarget();
     if (!relatedTarget || !relatedTarget->toNode())
         return;
@@ -387,13 +390,13 @@ void MediaControlStatusDisplayElement::update()
 
     switch (m_stateBeingDisplayed) {
     case Nothing:
-        setInnerText("", IGNORE_EXCEPTION);
+        setInnerText(emptyString());
         break;
     case Loading:
-        setInnerText(mediaElementLoadingStateText(), IGNORE_EXCEPTION);
+        setInnerText(mediaElementLoadingStateText());
         break;
     case LiveBroadcast:
-        setInnerText(mediaElementLiveBroadcastStateText(), IGNORE_EXCEPTION);
+        setInnerText(mediaElementLiveBroadcastStateText());
         break;
     }
 }
@@ -417,9 +420,9 @@ Ref<MediaControlPanelMuteButtonElement> MediaControlPanelMuteButtonElement::crea
     return button;
 }
 
-void MediaControlPanelMuteButtonElement::defaultEventHandler(Event* event)
+void MediaControlPanelMuteButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().mouseoverEvent)
+    if (event.type() == eventNames().mouseoverEvent)
         m_controls->showVolumeSlider();
 
     MediaControlMuteButtonElement::defaultEventHandler(event);
@@ -457,15 +460,15 @@ Ref<MediaControlPlayButtonElement> MediaControlPlayButtonElement::create(Documen
     return button;
 }
 
-void MediaControlPlayButtonElement::defaultEventHandler(Event* event)
+void MediaControlPlayButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
         if (mediaController()->canPlay())
             mediaController()->play();
         else
             mediaController()->pause();
         updateDisplayType();
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
 }
@@ -491,12 +494,12 @@ Ref<MediaControlOverlayPlayButtonElement> MediaControlOverlayPlayButtonElement::
     return button;
 }
 
-void MediaControlOverlayPlayButtonElement::defaultEventHandler(Event* event)
+void MediaControlOverlayPlayButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent && mediaController()->canPlay()) {
+    if (event.type() == eventNames().clickEvent && mediaController()->canPlay()) {
         mediaController()->play();
         updateDisplayType();
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
 }
@@ -557,11 +560,11 @@ Ref<MediaControlRewindButtonElement> MediaControlRewindButtonElement::create(Doc
     return button;
 }
 
-void MediaControlRewindButtonElement::defaultEventHandler(Event* event)
+void MediaControlRewindButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
         mediaController()->setCurrentTime(std::max<double>(0, mediaController()->currentTime() - 30));
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
 }
@@ -583,11 +586,11 @@ Ref<MediaControlReturnToRealtimeButtonElement> MediaControlReturnToRealtimeButto
     return button;
 }
 
-void MediaControlReturnToRealtimeButtonElement::defaultEventHandler(Event* event)
+void MediaControlReturnToRealtimeButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
         mediaController()->returnToRealtime();
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
 }
@@ -624,9 +627,9 @@ void MediaControlToggleClosedCaptionsButtonElement::updateDisplayType()
     setChecked(captionsVisible);
 }
 
-void MediaControlToggleClosedCaptionsButtonElement::defaultEventHandler(Event* event)
+void MediaControlToggleClosedCaptionsButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
         // FIXME: It's not great that the shared code is dictating behavior of platform-specific
         // UI. Not all ports may want the closed captions button to toggle a list of tracks, so
         // we have to use #if.
@@ -638,7 +641,7 @@ void MediaControlToggleClosedCaptionsButtonElement::defaultEventHandler(Event* e
 #else
         m_controls->toggleClosedCaptionTrackList();
 #endif
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
 
     HTMLInputElement::defaultEventHandler(event);
@@ -655,7 +658,7 @@ MediaControlClosedCaptionsContainerElement::MediaControlClosedCaptionsContainerE
 Ref<MediaControlClosedCaptionsContainerElement> MediaControlClosedCaptionsContainerElement::create(Document& document)
 {
     Ref<MediaControlClosedCaptionsContainerElement> element = adoptRef(*new MediaControlClosedCaptionsContainerElement(document));
-    element->setAttribute(dirAttr, "auto");
+    element->setAttributeWithoutSynchronization(dirAttr, AtomicString("auto", AtomicString::ConstructFromLiteral));
     element->hide();
     return element;
 }
@@ -681,11 +684,11 @@ Ref<MediaControlClosedCaptionsTrackListElement> MediaControlClosedCaptionsTrackL
     return element;
 }
 
-void MediaControlClosedCaptionsTrackListElement::defaultEventHandler(Event* event)
+void MediaControlClosedCaptionsTrackListElement::defaultEventHandler(Event& event)
 {
 #if ENABLE(VIDEO_TRACK)
-    if (event->type() == eventNames().clickEvent) {
-        Node* target = event->target()->toNode();
+    if (event.type() == eventNames().clickEvent) {
+        Node* target = event.target()->toNode();
         if (!is<Element>(target))
             return;
 
@@ -734,8 +737,7 @@ void MediaControlClosedCaptionsTrackListElement::updateDisplay()
     if (!mediaElement)
         return;
 
-    TextTrackList* trackList = mediaElement->textTracks();
-    if (!trackList || !trackList->length())
+    if (!mediaElement->textTracks().length())
         return;
 
     rebuildTrackListMenu();
@@ -759,24 +761,24 @@ void MediaControlClosedCaptionsTrackListElement::updateDisplay()
 
         if (textTrack == TextTrack::captionMenuAutomaticItem()) {
             if (displayMode == CaptionUserPreferences::Automatic)
-                trackItem->classList().add(selectedClassValue, ASSERT_NO_EXCEPTION);
+                trackItem->classList().add(selectedClassValue);
             else
-                trackItem->classList().remove(selectedClassValue, ASSERT_NO_EXCEPTION);
+                trackItem->classList().remove(selectedClassValue);
             continue;
         }
 
-        if (displayMode != CaptionUserPreferences::Automatic && textTrack->mode() == TextTrack::showingKeyword()) {
+        if (displayMode != CaptionUserPreferences::Automatic && textTrack->mode() == TextTrack::Mode::Showing) {
             trackMenuItemSelected = true;
-            trackItem->classList().add(selectedClassValue, ASSERT_NO_EXCEPTION);
+            trackItem->classList().add(selectedClassValue);
         } else
-            trackItem->classList().remove(selectedClassValue, ASSERT_NO_EXCEPTION);
+            trackItem->classList().remove(selectedClassValue);
     }
 
     if (offMenuItem) {
         if (displayMode == CaptionUserPreferences::ForcedOnly && !trackMenuItemSelected)
-            offMenuItem->classList().add(selectedClassValue, ASSERT_NO_EXCEPTION);
+            offMenuItem->classList().add(selectedClassValue);
         else
-            offMenuItem->classList().remove(selectedClassValue, ASSERT_NO_EXCEPTION);
+            offMenuItem->classList().remove(selectedClassValue);
     }
 #endif
 }
@@ -796,29 +798,29 @@ void MediaControlClosedCaptionsTrackListElement::rebuildTrackListMenu()
     if (!mediaElement)
         return;
 
-    TextTrackList* trackList = mediaElement->textTracks();
-    if (!trackList || !trackList->length())
+    TextTrackList& trackList = mediaElement->textTracks();
+    if (!trackList.length())
         return;
 
     if (!document().page())
         return;
     auto& captionPreferences = document().page()->group().captionPreferences();
-    Vector<RefPtr<TextTrack>> tracksForMenu = captionPreferences.sortedTrackListForMenu(trackList);
+    Vector<RefPtr<TextTrack>> tracksForMenu = captionPreferences.sortedTrackListForMenu(&trackList);
 
-    Ref<Element> captionsHeader = document().createElement(h3Tag, ASSERT_NO_EXCEPTION);
+    auto captionsHeader = HTMLHeadingElement::create(h3Tag, document());
     captionsHeader->appendChild(document().createTextNode(textTrackSubtitlesText()));
-    appendChild(WTFMove(captionsHeader));
-    Ref<Element> captionsMenuList = document().createElement(ulTag, ASSERT_NO_EXCEPTION);
+    appendChild(captionsHeader);
+    auto captionsMenuList = HTMLUListElement::create(document());
 
     for (auto& textTrack : tracksForMenu) {
-        Ref<Element> menuItem = document().createElement(liTag, ASSERT_NO_EXCEPTION);
+        auto menuItem = HTMLLIElement::create(document());
         menuItem->appendChild(document().createTextNode(captionPreferences.displayNameForTrack(textTrack.get())));
-        captionsMenuList->appendChild(menuItem.copyRef());
+        captionsMenuList->appendChild(menuItem);
         m_menuItems.append(menuItem.ptr());
         m_menuToTrackMap.add(menuItem.ptr(), textTrack);
     }
 
-    appendChild(WTFMove(captionsMenuList));
+    appendChild(captionsMenuList);
 #endif
 }
 
@@ -838,32 +840,32 @@ Ref<MediaControlTimelineElement> MediaControlTimelineElement::create(Document& d
     Ref<MediaControlTimelineElement> timeline = adoptRef(*new MediaControlTimelineElement(document, controls));
     timeline->ensureUserAgentShadowRoot();
     timeline->setType("range");
-    timeline->setAttribute(precisionAttr, "float");
+    timeline->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
     return timeline;
 }
 
-void MediaControlTimelineElement::defaultEventHandler(Event* event)
+void MediaControlTimelineElement::defaultEventHandler(Event& event)
 {
     // Left button is 0. Rejects mouse events not from left button.
-    if (is<MouseEvent>(*event) && downcast<MouseEvent>(*event).button())
+    if (is<MouseEvent>(event) && downcast<MouseEvent>(event).button())
         return;
 
     if (!renderer())
         return;
 
-    if (event->type() == eventNames().mousedownEvent)
+    if (event.type() == eventNames().mousedownEvent)
         mediaController()->beginScrubbing();
 
-    if (event->type() == eventNames().mouseupEvent)
+    if (event.type() == eventNames().mouseupEvent)
         mediaController()->endScrubbing();
 
     MediaControlInputElement::defaultEventHandler(event);
 
-    if (event->type() == eventNames().mouseoverEvent || event->type() == eventNames().mouseoutEvent || event->type() == eventNames().mousemoveEvent)
+    if (event.type() == eventNames().mouseoverEvent || event.type() == eventNames().mouseoutEvent || event.type() == eventNames().mousemoveEvent)
         return;
 
     double time = value().toDouble();
-    if (event->type() == eventNames().inputEvent && time != mediaController()->currentTime())
+    if ((event.isInputEvent() || event.type() == eventNames().inputEvent) && time != mediaController()->currentTime())
         mediaController()->setCurrentTime(time);
 
     RenderSlider& slider = downcast<RenderSlider>(*renderer());
@@ -904,8 +906,8 @@ Ref<MediaControlPanelVolumeSliderElement> MediaControlPanelVolumeSliderElement::
     Ref<MediaControlPanelVolumeSliderElement> slider = adoptRef(*new MediaControlPanelVolumeSliderElement(document));
     slider->ensureUserAgentShadowRoot();
     slider->setType("range");
-    slider->setAttribute(precisionAttr, "float");
-    slider->setAttribute(maxAttr, "1");
+    slider->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(maxAttr, AtomicString("1", AtomicString::ConstructFromLiteral));
     return slider;
 }
 
@@ -922,8 +924,8 @@ Ref<MediaControlFullscreenVolumeSliderElement> MediaControlFullscreenVolumeSlide
     Ref<MediaControlFullscreenVolumeSliderElement> slider = adoptRef(*new MediaControlFullscreenVolumeSliderElement(document));
     slider->ensureUserAgentShadowRoot();
     slider->setType("range");
-    slider->setAttribute(precisionAttr, "float");
-    slider->setAttribute(maxAttr, "1");
+    slider->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(maxAttr, AtomicString("1", AtomicString::ConstructFromLiteral));
     return slider;
 }
 
@@ -944,24 +946,24 @@ Ref<MediaControlFullscreenButtonElement> MediaControlFullscreenButtonElement::cr
     return button;
 }
 
-void MediaControlFullscreenButtonElement::defaultEventHandler(Event* event)
+void MediaControlFullscreenButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
 #if ENABLE(FULLSCREEN_API)
         // Only use the new full screen API if the fullScreenEnabled setting has
         // been explicitly enabled. Otherwise, use the old fullscreen API. This
         // allows apps which embed a WebView to retain the existing full screen
         // video implementation without requiring them to implement their own full
         // screen behavior.
-        if (document().settings() && document().settings()->fullScreenEnabled()) {
+        if (document().settings().fullScreenEnabled()) {
             if (document().webkitIsFullScreen() && document().webkitCurrentFullScreenElement() == parentMediaElement(this))
                 document().webkitCancelFullScreen();
             else
-                document().requestFullScreenForElement(parentMediaElement(this), 0, Document::ExemptIFrameAllowFullScreenRequirement);
+                document().requestFullScreenForElement(parentMediaElement(this), Document::ExemptIFrameAllowFullScreenRequirement);
         } else
 #endif
             mediaController()->enterFullscreen();
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
 }
@@ -987,12 +989,11 @@ Ref<MediaControlFullscreenVolumeMinButtonElement> MediaControlFullscreenVolumeMi
     return button;
 }
 
-void MediaControlFullscreenVolumeMinButtonElement::defaultEventHandler(Event* event)
+void MediaControlFullscreenVolumeMinButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
-        ExceptionCode code = 0;
-        mediaController()->setVolume(0, code);
-        event->setDefaultHandled();
+    if (event.type() == eventNames().clickEvent) {
+        mediaController()->setVolume(0);
+        event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
 }
@@ -1013,12 +1014,11 @@ Ref<MediaControlFullscreenVolumeMaxButtonElement> MediaControlFullscreenVolumeMa
     return button;
 }
 
-void MediaControlFullscreenVolumeMaxButtonElement::defaultEventHandler(Event* event)
+void MediaControlFullscreenVolumeMaxButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
-        ExceptionCode code = 0;
-        mediaController()->setVolume(1, code);
-        event->setDefaultHandled();
+    if (event.type() == eventNames().clickEvent) {
+        mediaController()->setVolume(1);
+        event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
 }
@@ -1082,7 +1082,7 @@ Ref<MediaControlTextTrackContainerElement> MediaControlTextTrackContainerElement
     return element;
 }
 
-RenderPtr<RenderElement> MediaControlTextTrackContainerElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> MediaControlTextTrackContainerElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderTextTrackContainerElement>(*this, WTFMove(style));
 }
@@ -1172,8 +1172,8 @@ void MediaControlTextTrackContainerElement::updateDisplay()
 
         LOG(Media, "MediaControlTextTrackContainerElement::updateDisplay(%p) - adding and positioning cue #%zu: \"%s\", start=%.2f, end=%.2f, line=%.2f", this, i, cue->text().utf8().data(), cue->startTime(), cue->endTime(), cue->line());
 
-        RefPtr<VTTCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size(), m_fontSize);
-        if (cue->track()->mode() == TextTrack::disabledKeyword())
+        Ref<VTTCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size(), m_fontSize);
+        if (cue->track()->mode() == TextTrack::Mode::Disabled)
             continue;
 
         VTTRegion* region = cue->track()->regions()->getRegionById(cue->regionId());
@@ -1181,9 +1181,9 @@ void MediaControlTextTrackContainerElement::updateDisplay()
             // If cue has an empty text track cue region identifier or there is no
             // WebVTT region whose region identifier is identical to cue's text
             // track cue region identifier, run the following substeps:
-            if (displayBox->hasChildNodes() && !contains(displayBox.get())) {
+            if (displayBox->hasChildNodes() && !contains(displayBox.ptr())) {
                 // Note: the display tree of a cue is removed when the active flag of the cue is unset.
-                appendChild(*displayBox, ASSERT_NO_EXCEPTION);
+                appendChild(displayBox);
                 cue->setFontSize(m_fontSize, m_videoDisplaySize.size(), m_fontSizeIsImportant);
             }
         } else {
@@ -1195,7 +1195,7 @@ void MediaControlTextTrackContainerElement::updateDisplay()
             if (!contains(regionNode.ptr()))
                 appendChild(region->getDisplayTree());
 
-            region->appendTextTrackCueBox(displayBox);
+            region->appendTextTrackCueBox(WTFMove(displayBox));
         }
     }
 
@@ -1232,6 +1232,37 @@ void MediaControlTextTrackContainerElement::updateActiveCuesFontSize()
 
 }
 
+void MediaControlTextTrackContainerElement::updateTextStrokeStyle()
+{
+    if (!document().page())
+        return;
+
+    HTMLMediaElement* mediaElement = parentMediaElement(this);
+    if (!mediaElement)
+        return;
+    
+    String language;
+
+    // FIXME: Since it is possible to have more than one text track enabled, the following code may not find the correct language.
+    // The default UI only allows a user to enable one track at a time, so it should be OK for now, but we should consider doing
+    // this differently, see <https://bugs.webkit.org/show_bug.cgi?id=169875>.
+    auto& tracks = mediaElement->textTracks();
+    for (unsigned i = 0; i < tracks.length(); ++i) {
+        auto track = tracks.item(i);
+        if (track && track->mode() == TextTrack::Mode::Showing) {
+            language = track->validBCP47Language();
+            break;
+        }
+    }
+
+    float strokeWidth;
+    bool important;
+
+    // FIXME: find a way to set this property in the stylesheet like the other user style preferences, see <https://bugs.webkit.org/show_bug.cgi?id=169874>.
+    if (document().page()->group().captionPreferences().captionStrokeWidthForFont(m_fontSize, language, strokeWidth, important))
+        setInlineStyleProperty(CSSPropertyStrokeWidth, strokeWidth, CSSPrimitiveValue::CSS_PX, important);
+}
+
 void MediaControlTextTrackContainerElement::updateTimerFired()
 {
     if (!document().page())
@@ -1242,6 +1273,7 @@ void MediaControlTextTrackContainerElement::updateTimerFired()
 
     updateActiveCuesFontSize();
     updateDisplay();
+    updateTextStrokeStyle();
 }
 
 void MediaControlTextTrackContainerElement::updateTextTrackRepresentation()
@@ -1250,8 +1282,13 @@ void MediaControlTextTrackContainerElement::updateTextTrackRepresentation()
     if (!mediaElement)
         return;
 
-    if (!mediaElement->requiresTextTrackRepresentation())
+    if (!mediaElement->requiresTextTrackRepresentation()) {
+        if (m_textTrackRepresentation) {
+            clearTextTrackRepresentation();
+            updateSizes(true);
+        }
         return;
+    }
 
     if (!m_textTrackRepresentation) {
         m_textTrackRepresentation = TextTrackRepresentation::create(*this);
@@ -1338,7 +1375,7 @@ void MediaControlTextTrackContainerElement::updateSizes(bool forceUpdate)
     m_updateTextTrackRepresentationStyle = true;
 
     // FIXME (121170): This function is called during layout, and should lay out the text tracks immediately.
-    m_updateTimer.startOneShot(0);
+    m_updateTimer.startOneShot(0_s);
 }
 
 RefPtr<Image> MediaControlTextTrackContainerElement::createTextTrackRepresentationImage()

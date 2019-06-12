@@ -23,25 +23,22 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingCoordinator_h
-#define ScrollingCoordinator_h
+#pragma once
 
-#include "IntRect.h"
+#include "EventTrackingRegions.h"
 #include "LayoutRect.h"
 #include "PlatformWheelEvent.h"
-#include "RenderObject.h"
+#include "ScrollSnapOffsetsInfo.h"
 #include "ScrollTypes.h"
 #include <wtf/Forward.h>
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/TypeCasts.h>
+#include <wtf/Variant.h>
 
 #if ENABLE(ASYNC_SCROLLING)
 #include <wtf/HashMap.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Threading.h>
-#endif
-
-#if PLATFORM(COCOA)
-#include <wtf/RetainPtr.h>
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -54,6 +51,15 @@ typedef unsigned SynchronousScrollingReasons;
 typedef uint64_t ScrollingNodeID;
 
 enum ScrollingNodeType { FrameScrollingNode, OverflowScrollingNode, FixedNode, StickyNode };
+
+enum ScrollingStateTreeAsTextBehaviorFlags {
+    ScrollingStateTreeAsTextBehaviorNormal                  = 0,
+    ScrollingStateTreeAsTextBehaviorIncludeLayerIDs         = 1 << 0,
+    ScrollingStateTreeAsTextBehaviorIncludeNodeIDs          = 1 << 1,
+    ScrollingStateTreeAsTextBehaviorIncludeLayerPositions   = 1 << 2,
+    ScrollingStateTreeAsTextBehaviorDebug                   = ScrollingStateTreeAsTextBehaviorIncludeLayerIDs | ScrollingStateTreeAsTextBehaviorIncludeNodeIDs | ScrollingStateTreeAsTextBehaviorIncludeLayerPositions
+};
+typedef unsigned ScrollingStateTreeAsTextBehavior;
 
 class Document;
 class Frame;
@@ -69,9 +75,10 @@ class ViewportConstraints;
 class ScrollingTree;
 #endif
 
-enum SetOrSyncScrollingLayerPosition {
-    SetScrollingLayerPosition,
-    SyncScrollingLayerPosition
+enum class ScrollingLayerPositionAction {
+    Set,
+    SetApproximate,
+    Sync
 };
 
 struct ScrollableAreaParameters {
@@ -121,6 +128,9 @@ public:
     // Should be called whenever the given frame view has been laid out.
     virtual void frameViewLayoutUpdated(FrameView&) { }
 
+    using LayoutViewportOriginOrOverrideRect = WTF::Variant<std::optional<FloatPoint>, std::optional<FloatRect>>;
+    virtual void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool /* programmaticScroll */, bool /* inStableState*/, ScrollingLayerPositionAction) { }
+
     // Should be called whenever the slow repaint objects counter changes between zero and one.
     void frameViewHasSlowRepaintObjectsDidChange(FrameView&);
 
@@ -128,23 +138,14 @@ public:
     void frameViewFixedObjectsDidChange(FrameView&);
 
     // Called whenever the non-fast scrollable region changes for reasons other than layout.
-    virtual void frameViewNonFastScrollableRegionChanged(FrameView&) { }
+    virtual void frameViewEventTrackingRegionsChanged(FrameView&) { }
 
     // Should be called whenever the root layer for the given frame view changes.
     virtual void frameViewRootLayerDidChange(FrameView&);
 
-    // Return whether this scrolling coordinator can keep fixed position layers fixed to their
-    // containers while scrolling.
-    virtual bool supportsFixedPositionLayers() const { return false; }
-
 #if PLATFORM(COCOA)
     // Dispatched by the scrolling tree during handleWheelEvent. This is required as long as scrollbars are painted on the main thread.
     void handleWheelEventPhase(PlatformWheelEventPhase);
-#endif
-
-#if ENABLE(WEB_REPLAY)
-    // Called when the page transitions between executing normally and deterministically.
-    void replaySessionStateDidChange();
 #endif
 
     // Force all scroll layer position updates to happen on the main thread.
@@ -169,6 +170,8 @@ public:
 #if ENABLE(CSS_SCROLL_SNAP)
         Vector<LayoutUnit> horizontalSnapOffsets;
         Vector<LayoutUnit> verticalSnapOffsets;
+        Vector<ScrollOffsetRange<LayoutUnit>> horizontalSnapOffsetRanges;
+        Vector<ScrollOffsetRange<LayoutUnit>> verticalSnapOffsetRanges;
         unsigned currentHorizontalSnapPointIndex;
         unsigned currentVerticalSnapPointIndex;
 #endif
@@ -176,8 +179,8 @@ public:
 
     virtual void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/, GraphicsLayer* /*insetClipLayer*/, const ScrollingGeometry* = nullptr) { }
     virtual void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, const ScrollingGeometry* = nullptr) { }
-    virtual void syncChildPositions(const LayoutRect&) { }
-    virtual String scrollingStateTreeAsText() const;
+    virtual void reconcileViewportConstrainedLayerPositions(const LayoutRect&, ScrollingLayerPositionAction) { }
+    virtual String scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior = ScrollingStateTreeAsTextBehaviorNormal) const;
     virtual bool isRubberBandInProgress() const { return false; }
     virtual bool isScrollSnapInProgress() const { return false; }
     virtual void updateScrollSnapPropertiesWithFrameView(const FrameView&) { }
@@ -195,7 +198,7 @@ public:
     };
 
     SynchronousScrollingReasons synchronousScrollingReasons(const FrameView&) const;
-    bool shouldUpdateScrollLayerPositionSynchronously() const;
+    bool shouldUpdateScrollLayerPositionSynchronously(const FrameView&) const;
 
     virtual void willDestroyScrollableArea(ScrollableArea&) { }
     virtual void scrollableAreaScrollLayerDidChange(ScrollableArea&) { }
@@ -204,7 +207,8 @@ public:
     static String synchronousScrollingReasonsAsText(SynchronousScrollingReasons);
     String synchronousScrollingReasonsAsText() const;
 
-    Region absoluteNonFastScrollableRegion() const;
+    EventTrackingRegions absoluteEventTrackingRegions() const;
+    virtual void updateExpectsWheelEventTestTriggerWithFrameView(const FrameView&) { }
 
 protected:
     explicit ScrollingCoordinator(Page*);
@@ -224,17 +228,20 @@ protected:
     Page* m_page; // FIXME: ideally this would be a reference but it gets nulled on async teardown.
 
 private:
-    virtual void setSynchronousScrollingReasons(SynchronousScrollingReasons) { }
+    virtual void setSynchronousScrollingReasons(FrameView&, SynchronousScrollingReasons) { }
 
     virtual bool hasVisibleSlowRepaintViewportConstrainedObjects(const FrameView&) const;
     void updateSynchronousScrollingReasons(FrameView&);
+    void updateSynchronousScrollingReasonsForAllFrames();
 
-    Region absoluteNonFastScrollableRegionForFrame(const Frame&) const;
+    EventTrackingRegions absoluteEventTrackingRegionsForFrame(const Frame&) const;
     
     bool m_forceSynchronousScrollLayerPositionUpdates { false };
 };
 
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollableAreaParameters);
 WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollingNodeType);
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollingLayerPositionAction);
 
 } // namespace WebCore
 
@@ -242,5 +249,3 @@ WEBCORE_EXPORT TextStream& operator<<(TextStream&, ScrollingNodeType);
 SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
     static bool isType(const WebCore::ScrollingCoordinator& value) { return value.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // ScrollingCoordinator_h

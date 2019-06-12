@@ -24,10 +24,9 @@ id: "15.10.7.1-1",
 
 path: "TestCases/chapter15/15.10/15.10.7/15.10.7.1/15.10.7.1-1.js",
 
-description: "RegExp.prototype.source is of type String",
+description: "RegExp.prototype.source should be '(?:)'",
 
 test: function testcase() {
-  if((typeof(RegExp.prototype.source)) === 'string')
-    return true;
+    return RegExp.prototype.source === '(?:)';
  }
 });

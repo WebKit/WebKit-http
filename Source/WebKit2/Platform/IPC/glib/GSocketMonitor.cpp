@@ -27,6 +27,7 @@
 #include "GSocketMonitor.h"
 
 #include <gio/gio.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 
 namespace IPC {
 
@@ -42,7 +43,7 @@ gboolean GSocketMonitor::socketSourceCallback(GSocket*, GIOCondition condition, 
     return monitor->m_callback(condition);
 }
 
-void GSocketMonitor::start(GSocket* socket, GIOCondition condition, RunLoop& runLoop, std::function<gboolean (GIOCondition)>&& callback)
+void GSocketMonitor::start(GSocket* socket, GIOCondition condition, RunLoop& runLoop, Function<gboolean (GIOCondition)>&& callback)
 {
     stop();
 
@@ -51,6 +52,7 @@ void GSocketMonitor::start(GSocket* socket, GIOCondition condition, RunLoop& run
     g_source_set_name(m_source.get(), "[WebKit] Socket monitor");
     m_callback = WTFMove(callback);
     g_source_set_callback(m_source.get(), reinterpret_cast<GSourceFunc>(socketSourceCallback), this, nullptr);
+    g_source_set_priority(m_source.get(), RunLoopSourcePriority::RunLoopDispatcher);
     g_source_attach(m_source.get(), runLoop.mainContext());
 }
 

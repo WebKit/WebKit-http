@@ -64,16 +64,18 @@ NSString *WebViewportMinimumScaleKey = @"minimum-scale";
 NSString *WebViewportMaximumScaleKey = @"maximum-scale";
 NSString *WebViewportUserScalableKey = @"user-scalable";
 NSString *WebViewportShrinkToFitKey  = @"shrink-to-fit";
+NSString *WebViewportFitKey          = @"viewport-fit";
 NSString *WebViewportWidthKey        = @"width";
 NSString *WebViewportHeightKey       = @"height";
+
+NSString *WebViewportFitAutoValue    = @"auto";
+NSString *WebViewportFitContainValue = @"contain";
+NSString *WebViewportFitCoverValue   = @"cover";
 
 static NSString *scaleKey = @"scale";
 static NSString *scaleIsInitialKey = @"scaleIsInitial";
 static NSString *scrollPointXKey = @"scrollPointX";
 static NSString *scrollPointYKey = @"scrollPointY";
-
-static NSString * const bookmarkIDKey = @"bookmarkID";
-static NSString * const sharedLinkUniqueIdentifierKey = @"sharedLinkUniqueIdentifier";
 #endif
 
 // Private keys used in the WebHistoryItem's dictionary representation.
@@ -235,7 +237,7 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
     }
     
     if (coreItem->children().size()) {
-        const HistoryItemVector& children = coreItem->children();
+        const auto& children = coreItem->children();
         int currPos = [result length];
         unsigned size = children.size();        
         for (unsigned i = 0; i < size; ++i) {
@@ -270,7 +272,7 @@ WebHistoryItem *kit(HistoryItem* item)
     if (kitItem)
         return kitItem;
     
-    return [[[WebHistoryItem alloc] initWithWebCoreHistoryItem:item] autorelease];
+    return [[[WebHistoryItem alloc] initWithWebCoreHistoryItem:*item] autorelease];
 }
 
 + (WebHistoryItem *)entryWithURL:(NSURL *)URL
@@ -287,7 +289,7 @@ WebHistoryItem *kit(HistoryItem* item)
     return item;
 }
 
-- (id)initWithWebCoreHistoryItem:(PassRefPtr<HistoryItem>)item
+- (id)initWithWebCoreHistoryItem:(Ref<HistoryItem>&&)item
 {   
     WebCoreThreadViolationCheckRoundOne();
     // Need to tell WebCore what function to call for the 
@@ -301,7 +303,7 @@ WebHistoryItem *kit(HistoryItem* item)
         return nil;
 
     _private = [[WebHistoryItemPrivate alloc] init];
-    _private->_historyItem = item;
+    _private->_historyItem = WTFMove(item);
 
     ASSERT(!historyItemWrappers().get(core(_private)));
     historyItemWrappers().set(core(_private), self);
@@ -333,7 +335,7 @@ WebHistoryItem *kit(HistoryItem* item)
     // Check if we've read a broken URL from the file that has non-Latin1 chars.  If so, try to convert
     // as if it was from user typing.
     if (![URLString canBeConvertedToEncoding:NSISOLatin1StringEncoding]) {
-        NSURL *tempURL = [NSURL _web_URLWithUserTypedString:URLString];
+        NSURL *tempURL = [NSURL _webkit_URLWithUserTypedString:URLString];
         ASSERT(tempURL);
         NSString *newURLString = [tempURL _web_originalDataAsString];
         core(_private)->setURLString(newURLString);
@@ -354,7 +356,7 @@ WebHistoryItem *kit(HistoryItem* item)
             redirectURLsVector->uncheckedAppend((NSString *)redirectURL);
         }
 
-        core(_private)->setRedirectURLs(WTFMove(redirectURLsVector));
+        _private->_redirectURLs = WTFMove(redirectURLsVector);
     }
 
     NSArray *childDicts = [dict objectForKey:childrenKey];
@@ -379,14 +381,6 @@ WebHistoryItem *kit(HistoryItem* item)
     NSNumber *scrollPointYValue = [dict objectForKey:scrollPointYKey];
     if (scrollPointXValue && scrollPointYValue)
         core(_private)->setScrollPosition(IntPoint([scrollPointXValue intValue], [scrollPointYValue intValue]));
-
-    uint32_t bookmarkIDValue = [[dict objectForKey:bookmarkIDKey] unsignedIntValue];
-    if (bookmarkIDValue)
-        core(_private)->setBookmarkID(bookmarkIDValue);
-
-    NSString *sharedLinkUniqueIdentifierValue = [dict objectForKey:sharedLinkUniqueIdentifierKey];
-    if (sharedLinkUniqueIdentifierValue)
-        core(_private)->setSharedLinkUniqueIdentifier(sharedLinkUniqueIdentifierValue);
 #endif
 
     return self;
@@ -441,12 +435,12 @@ WebHistoryItem *kit(HistoryItem* item)
     }
     if (coreItem->lastVisitWasFailure())
         [dict setObject:[NSNumber numberWithBool:YES] forKey:lastVisitWasFailureKey];
-    if (Vector<String>* redirectURLs = coreItem->redirectURLs()) {
+    if (Vector<String>* redirectURLs = _private->_redirectURLs.get()) {
         size_t size = redirectURLs->size();
         ASSERT(size);
         NSMutableArray *result = [[NSMutableArray alloc] initWithCapacity:size];
         for (size_t i = 0; i < size; ++i)
-            [result addObject:(NSString*)redirectURLs->at(i)];
+            [result addObject:(NSString *)redirectURLs->at(i)];
         [dict setObject:result forKey:redirectURLsKey];
         [result release];
     }
@@ -456,7 +450,7 @@ WebHistoryItem *kit(HistoryItem* item)
 #else
     if (coreItem->children().size()) {
 #endif
-        const HistoryItemVector& children = coreItem->children();
+        const auto& children = coreItem->children();
         NSMutableArray *childDicts = [NSMutableArray arrayWithCapacity:children.size()];
         
         for (int i = children.size() - 1; i >= 0; i--)
@@ -475,14 +469,6 @@ WebHistoryItem *kit(HistoryItem* item)
     IntPoint scrollPosition = core(_private)->scrollPosition();
     [dict setObject:[NSNumber numberWithInt:scrollPosition.x()] forKey:scrollPointXKey];
     [dict setObject:[NSNumber numberWithInt:scrollPosition.y()] forKey:scrollPointYKey];
-
-    uint32_t bookmarkID = core(_private)->bookmarkID();
-    if (bookmarkID)
-        [dict setObject:[NSNumber numberWithUnsignedInt:bookmarkID] forKey:bookmarkIDKey];
-
-    NSString *sharedLinkUniqueIdentifier = [self _sharedLinkUniqueIdentifier];
-    if (sharedLinkUniqueIdentifier)
-        [dict setObject:sharedLinkUniqueIdentifier forKey:sharedLinkUniqueIdentifierKey];
 #endif
 
     return dict;
@@ -510,7 +496,7 @@ WebHistoryItem *kit(HistoryItem* item)
 
 - (NSArray *)children
 {
-    const HistoryItemVector& children = core(_private)->children();
+    const auto& children = core(_private)->children();
     if (!children.size())
         return nil;
 
@@ -554,7 +540,7 @@ WebHistoryItem *kit(HistoryItem* item)
 
 - (NSArray *)_redirectURLs
 {
-    Vector<String>* redirectURLs = core(_private)->redirectURLs();
+    Vector<String>* redirectURLs = _private->_redirectURLs.get();
     if (!redirectURLs)
         return nil;
 
@@ -619,25 +605,6 @@ WebHistoryItem *kit(HistoryItem* item)
     core(_private)->setScrollPosition(IntPoint(scrollPoint));
 }
 
-- (uint32_t)_bookmarkID
-{
-    return core(_private)->bookmarkID();
-}
-
-- (void)_setBookmarkID:(uint32_t)bookmarkID
-{
-    core(_private)->setBookmarkID(bookmarkID);
-}
-
-- (NSString *)_sharedLinkUniqueIdentifier
-{
-    return nsStringNilIfEmpty(core(_private)->sharedLinkUniqueIdentifier());
-}
-
-- (void)_setSharedLinkUniqueIdentifier:(NSString *)identifier
-{
-    core(_private)->setSharedLinkUniqueIdentifier(identifier);
-}
 #endif // PLATFORM(IOS)
 
 - (BOOL)_isInPageCache

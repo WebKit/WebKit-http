@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,75 +41,69 @@
 namespace WTF {
 
 static bool callbacksPaused; // This global variable is only accessed from main thread.
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
+#if !PLATFORM(COCOA)
 static ThreadIdentifier mainThreadIdentifier;
 #endif
 
 static StaticLock mainThreadFunctionQueueMutex;
 
-static Deque<std::function<void ()>>& functionQueue()
+static Deque<Function<void ()>>& functionQueue()
 {
-    static NeverDestroyed<Deque<std::function<void ()>>> functionQueue;
+    static NeverDestroyed<Deque<Function<void ()>>> functionQueue;
     return functionQueue;
 }
 
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
-
+// Share this initializeKey with initializeMainThread and initializeMainThreadToProcessMainThread.
+static std::once_flag initializeKey;
 void initializeMainThread()
 {
-    static bool initializedMainThread;
-    if (initializedMainThread)
-        return;
-    initializedMainThread = true;
-
-    mainThreadIdentifier = currentThread();
-
-    initializeMainThreadPlatform();
-    initializeGCThreads();
+    std::call_once(initializeKey, [] {
+        initializeThreading();
+#if !PLATFORM(COCOA)
+        mainThreadIdentifier = currentThread();
+#endif
+        initializeMainThreadPlatform();
+        initializeGCThreads();
+    });
 }
 
-#else
-
-static pthread_once_t initializeMainThreadKeyOnce = PTHREAD_ONCE_INIT;
-
-static void initializeMainThreadOnce()
+#if !PLATFORM(COCOA)
+bool isMainThread()
 {
-    initializeMainThreadPlatform();
+    return currentThread() == mainThreadIdentifier;
 }
+#endif
 
-void initializeMainThread()
-{
-    pthread_once(&initializeMainThreadKeyOnce, initializeMainThreadOnce);
-}
-
+#if PLATFORM(COCOA)
 #if !USE(WEB_THREAD)
-static void initializeMainThreadToProcessMainThreadOnce()
-{
-    initializeMainThreadToProcessMainThreadPlatform();
-}
-
 void initializeMainThreadToProcessMainThread()
 {
-    pthread_once(&initializeMainThreadKeyOnce, initializeMainThreadToProcessMainThreadOnce);
+    std::call_once(initializeKey, [] {
+        initializeThreading();
+        initializeMainThreadToProcessMainThreadPlatform();
+        initializeGCThreads();
+    });
 }
 #else
-static pthread_once_t initializeWebThreadKeyOnce = PTHREAD_ONCE_INIT;
-
-static void initializeWebThreadOnce()
-{
-    initializeWebThreadPlatform();
-}
-
 void initializeWebThread()
 {
-    pthread_once(&initializeWebThreadKeyOnce, initializeWebThreadOnce);
+    static std::once_flag initializeKey;
+    std::call_once(initializeKey, [] {
+        initializeWebThreadPlatform();
+    });
 }
 #endif // !USE(WEB_THREAD)
+#endif // PLATFORM(COCOA)
 
+#if !USE(WEB_THREAD)
+bool canAccessThreadLocalDataForThread(ThreadIdentifier threadId)
+{
+    return threadId == currentThread();
+}
 #endif
 
 // 0.1 sec delays in UI is approximate threshold when they become noticeable. Have a limit that's half of that.
-static const auto maxRunLoopSuspensionTime = std::chrono::milliseconds(50);
+static const auto maxRunLoopSuspensionTime = 50_ms;
 
 void dispatchFunctionsFromMainThread()
 {
@@ -118,9 +112,9 @@ void dispatchFunctionsFromMainThread()
     if (callbacksPaused)
         return;
 
-    auto startTime = std::chrono::steady_clock::now();
+    auto startTime = MonotonicTime::now();
 
-    std::function<void ()> function;
+    Function<void ()> function;
 
     while (true) {
         {
@@ -133,18 +127,21 @@ void dispatchFunctionsFromMainThread()
 
         function();
 
+        // Clearing the function can have side effects, so do so outside of the lock above.
+        function = nullptr;
+
         // If we are running accumulated functions for too long so UI may become unresponsive, we need to
         // yield so the user input can be processed. Otherwise user may not be able to even close the window.
         // This code has effect only in case the scheduleDispatchFunctionsOnMainThread() is implemented in a way that
         // allows input events to be processed before we are back here.
-        if (std::chrono::steady_clock::now() - startTime > maxRunLoopSuspensionTime) {
+        if (MonotonicTime::now() - startTime > maxRunLoopSuspensionTime) {
             scheduleDispatchFunctionsOnMainThread();
             break;
         }
     }
 }
 
-void callOnMainThread(std::function<void ()> function)
+void callOnMainThread(Function<void ()>&& function)
 {
     ASSERT(function);
 
@@ -173,28 +170,19 @@ void setMainThreadCallbacksPaused(bool paused)
         scheduleDispatchFunctionsOnMainThread();
 }
 
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)
-bool isMainThread()
-{
-    return currentThread() == mainThreadIdentifier;
-}
-#endif
-
-#if !USE(WEB_THREAD)
-bool canAccessThreadLocalDataForThread(ThreadIdentifier threadId)
-{
-    return threadId == currentThread();
-}
-#endif
-
-static ThreadSpecific<bool>* isGCThread;
+static ThreadSpecific<std::optional<GCThreadType>, CanBeGCThread::True>* isGCThread;
 
 void initializeGCThreads()
 {
-    isGCThread = new ThreadSpecific<bool>();
+    static std::once_flag flag;
+    std::call_once(
+        flag,
+        [] {
+            isGCThread = new ThreadSpecific<std::optional<GCThreadType>, CanBeGCThread::True>();
+        });
 }
 
-void registerGCThread()
+void registerGCThread(GCThreadType type)
 {
     if (!isGCThread) {
         // This happens if we're running in a process that doesn't care about
@@ -202,15 +190,24 @@ void registerGCThread()
         return;
     }
 
-    **isGCThread = true;
+    **isGCThread = type;
 }
 
 bool isMainThreadOrGCThread()
 {
-    if (isGCThread->isSet() && **isGCThread)
+    if (mayBeGCThread())
         return true;
 
     return isMainThread();
+}
+
+std::optional<GCThreadType> mayBeGCThread()
+{
+    if (!isGCThread)
+        return std::nullopt;
+    if (!isGCThread->isSet())
+        return std::nullopt;
+    return **isGCThread;
 }
 
 } // namespace WTF

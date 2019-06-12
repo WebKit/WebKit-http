@@ -26,12 +26,15 @@
 #if TARGET_OS_IPHONE
 
 #import <UIKit/UIPrintFormatter.h>
+#import <WebKit/WKFoundation.h>
 
 @class _WKFrameHandle;
 
+WK_CLASS_AVAILABLE(ios(8.0))
 @interface _WKWebViewPrintFormatter : UIViewPrintFormatter
 
 @property (nonatomic, strong) _WKFrameHandle *frameToPrint;
+@property (nonatomic) BOOL snapshotFirstPage WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 @end
 

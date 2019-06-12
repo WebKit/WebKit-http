@@ -19,35 +19,31 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSImportRule_h
-#define CSSImportRule_h
+#pragma once
 
 #include "CSSRule.h"
 
 namespace WebCore {
 
-class CachedCSSStyleSheet;
 class MediaList;
-class MediaQuerySet;
 class StyleRuleImport;
 
 class CSSImportRule final : public CSSRule {
 public:
     static Ref<CSSImportRule> create(StyleRuleImport& rule, CSSStyleSheet* sheet) { return adoptRef(*new CSSImportRule(rule, sheet)); }
-    
+
     virtual ~CSSImportRule();
 
-    virtual String cssText() const override;
-    virtual void reattach(StyleRuleBase&) override;
-
-    String href() const;
-    MediaList& media() const;
-    CSSStyleSheet* styleSheet() const;
+    WEBCORE_EXPORT String href() const;
+    WEBCORE_EXPORT MediaList& media() const;
+    WEBCORE_EXPORT CSSStyleSheet* styleSheet() const;
 
 private:
     CSSImportRule(StyleRuleImport&, CSSStyleSheet*);
 
-    virtual CSSRule::Type type() const override { return IMPORT_RULE; }
+    CSSRule::Type type() const final { return IMPORT_RULE; }
+    String cssText() const final;
+    void reattach(StyleRuleBase&) final;
 
     Ref<StyleRuleImport> m_importRule;
     mutable RefPtr<MediaList> m_mediaCSSOMWrapper;
@@ -57,5 +53,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_RULE(CSSImportRule, CSSRule::IMPORT_RULE)
-
-#endif // CSSImportRule_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,118 +73,92 @@ BuildbotQueueView.prototype = {
         this.element.appendChild(status.element);
     },
 
-    _appendPendingRevisionCount: function(queue)
-    {
-        var latestProductiveIteration = this._latestProductiveIteration(queue);
-        if (!latestProductiveIteration)
-            return;
-
-        var totalRevisionsBehind = 0;
-
-        // FIXME: To be 100% correct, we should also filter out changes that are ignored by
-        // the queue, see _should_file_trigger_build in wkbuild.py.
-        var branches = queue.branches;
-        for (var i = 0; i < branches.length; ++i) {
-            var branch = branches[i];
-            var repository = branch.repository;
-            var repositoryName = repository.name;
-            var trac = repository.trac;
-            var latestProductiveRevisionNumber = latestProductiveIteration.revision[repositoryName];
-            if (!latestProductiveRevisionNumber)
-                continue;
-            if (!trac)
-                continue;
-            if (!trac.latestRecordedRevisionNumber || trac.indexOfRevision(trac.oldestRecordedRevisionNumber) > trac.indexOfRevision(latestProductiveRevisionNumber)) {
-                trac.loadMoreHistoricalData();
-                return;
-            }
-
-            totalRevisionsBehind += trac.commitsOnBranchLaterThanRevision(branch.name, latestProductiveRevisionNumber).length;
-        }
-
-        if (!totalRevisionsBehind)
-            return;
-
-        var messageElement = document.createElement("span"); // We can't just pass text to StatusLineView here, because we need an element that perfectly fits the text for popover positioning.
-        messageElement.textContent = totalRevisionsBehind + " " + (totalRevisionsBehind === 1 ? "revision behind" : "revisions behind");
-        var status = new StatusLineView(messageElement, StatusLineView.Status.NoBubble);
-        this.element.appendChild(status.element);
-
-        new PopoverTracker(messageElement, this._presentPopoverForPendingCommits.bind(this), queue);
-    },
-
-    _popoverLinesForCommitRange: function(trac, branch, firstRevisionNumber, lastRevisionNumber)
-    {
-        function lineForCommit(trac, commit)
-        {
-            var result = document.createElement("div");
-            result.className = "pending-commit";
-
-            var linkElement = document.createElement("a");
-            linkElement.className = "revision";
-            linkElement.href = trac.revisionURL(commit.revisionNumber);
-            linkElement.target = "_blank";
-            linkElement.textContent = this._formatRevisionForDisplay(commit.revisionNumber, branch.repository);
-            result.appendChild(linkElement);
-
-            var authorElement = document.createElement("span");
-            authorElement.className = "author";
-            authorElement.textContent = commit.author;
-            result.appendChild(authorElement);
-
-            var titleElement = document.createElement("span");
-            titleElement.className = "title";
-            titleElement.innerHTML = commit.title.innerHTML;
-            result.appendChild(titleElement);
-
-            return result;
-        }
-
-        console.assert(trac.indexOfRevision(trac.oldestRecordedRevisionNumber) <= trac.indexOfRevision(firstRevisionNumber));
-
-        // FIXME: To be 100% correct, we should also filter out changes that are ignored by
-        // the queue, see _should_file_trigger_build in wkbuild.py.
-        var commits = trac.commitsOnBranchInRevisionRange(branch.name, firstRevisionNumber, lastRevisionNumber);
-        return commits.map(function(commit) {
-            return lineForCommit.call(this, trac, commit);
-        }, this).reverse();
-    },
-
-    _presentPopoverForPendingCommits: function(element, popover, queue)
-    {
-        var latestProductiveIteration = this._latestProductiveIteration(queue);
-        if (!latestProductiveIteration)
-            return false;
-
+    _createLoadingIndicator: function(iteration, heading) {
         var content = document.createElement("div");
-        content.className = "commit-history-popover";
+        content.className = "test-results-popover";
 
-        var shouldAddDivider = false;
-        var branches = queue.branches;
-        for (var i = 0; i < branches.length; ++i) {
-            var branch = branches[i];
-            var repository = branch.repository;
-            var repositoryName = repository.name;
-            var trac = repository.trac;
-            var latestProductiveRevisionNumber = latestProductiveIteration.revision[repositoryName];
-            if (!latestProductiveRevisionNumber || !trac.latestRecordedRevisionNumber)
-                continue;
-            var nextRevision = trac.nextRevision(branch.name, latestProductiveRevisionNumber);
-            if (nextRevision === Trac.NO_MORE_REVISIONS)
-                continue;
-            var lines = this._popoverLinesForCommitRange(trac, branch, nextRevision, trac.latestRecordedRevisionNumber);
-            var length = lines.length;
-            if (length && shouldAddDivider)
-                this._addDividerToPopover(content);
-            for (var j = 0; j < length; ++j)
-                content.appendChild(lines[j]);
-            shouldAddDivider = shouldAddDivider || length > 0;
+        this._addIterationHeadingToPopover(iteration, content, heading);
+        this._addDividerToPopover(content);
+
+        var loadingIndicator = document.createElement("div");
+        loadingIndicator.className = "loading-indicator";
+        loadingIndicator.textContent = "Loading\u2026";
+        content.appendChild(loadingIndicator);
+
+        return content;
+    },
+
+    // Work around bug 80159: -webkit-user-select:none not respected when copying content.
+    // We set clipboard data manually, temporarily making non-selectable content hidden
+    // to easily get accurate selection text.
+    _onPopoverCopy: function(event) {
+        var iterator = document.createNodeIterator(
+            event.currentTarget,
+            NodeFilter.SHOW_ELEMENT,
+            {
+                acceptNode: function(element) {
+                    if (window.getComputedStyle(element).webkitUserSelect !== "none")
+                        return NodeFilter.FILTER_ACCEPT;
+                    return NodeFilter.FILTER_SKIP;
+                }
+            }
+        );
+
+        while ((node = iterator.nextNode()))
+            node.style.visibility = "visible";
+
+        event.currentTarget.style.visibility = "hidden";
+        event.clipboardData.setData('text', window.getSelection());
+        event.currentTarget.style.visibility = "";
+        return false;
+    },
+
+    _popoverContentForJavaScriptCoreTestRegressions: function(iteration, testName)
+    {
+        var content = document.createElement("div");
+        content.className = "test-results-popover";
+
+        this._addIterationHeadingToPopover(iteration, content, "javascriptcore test failures", iteration.queue.buildbot.javaScriptCoreTestStdioUrlForIteration(iteration, testName));
+        this._addDividerToPopover(content);
+
+        if (!iteration.javaScriptCoreTestResults.regressions) {
+            var message = document.createElement("div");
+            message.className = "loading-failure";
+            message.textContent = "Test results couldn\u2019t be loaded";
+            content.appendChild(message);
+            return content;
+        }
+
+        var regressions = iteration.javaScriptCoreTestResults.regressions;
+
+        for (var i = 0, end = regressions.length; i != end; ++i) {
+            var test = regressions[i];
+            var rowElement = document.createElement("div");
+            var testPathElement = document.createElement("span");
+            testPathElement.className = "test-path";
+            testPathElement.textContent = test;
+            rowElement.appendChild(testPathElement);
+            content.appendChild(rowElement);
+        }
+
+        content.oncopy = this._onPopoverCopy;
+        return content;
+    },
+
+    _presentPopoverForJavaScriptCoreTestRegressions: function(testName, element, popover, iteration)
+    {
+        if (iteration.javaScriptCoreTestResults.regressions)
+            var content = this._popoverContentForJavaScriptCoreTestRegressions(iteration, testName);
+        else {
+            var content = this._createLoadingIndicator(iteration, "javascriptcore test failures");
+            iteration.loadJavaScriptCoreTestResults(testName, function() {
+                popover.content = this._popoverContentForJavaScriptCoreTestRegressions(iteration, testName);
+            }.bind(this));
         }
 
         var rect = Dashboard.Rect.rectFromClientRect(element.getBoundingClientRect());
         popover.content = content;
         popover.present(rect, [Dashboard.RectEdge.MIN_Y, Dashboard.RectEdge.MAX_Y, Dashboard.RectEdge.MAX_X, Dashboard.RectEdge.MIN_X]);
-
         return true;
     },
 
@@ -262,7 +236,7 @@ BuildbotQueueView.prototype = {
         return content;
     },
 
-    _addIterationHeadingToPopover: function(iteration, content, additionalText)
+    _addIterationHeadingToPopover: function(iteration, content, additionalText, additionalTextTarget)
     {
         var title = document.createElement("div");
         title.className = "popover-iteration-heading";
@@ -280,20 +254,18 @@ BuildbotQueueView.prototype = {
         title.appendChild(buildbotLink);
 
         if (additionalText) {
-            var additionalTextElement = document.createElement("span");
+            var elementType = additionalTextTarget ? "a" : "span";
+            var additionalTextElement = document.createElement(elementType);
             additionalTextElement.className = "additional-text";
             additionalTextElement.textContent = additionalText;
+            if (additionalTextTarget) {
+                additionalTextElement.href = additionalTextTarget;
+                additionalTextElement.target = "_blank";
+            }
             title.appendChild(additionalTextElement);
         }
 
         content.appendChild(title);
-    },
-
-    _addDividerToPopover: function(content)
-    {
-        var divider = document.createElement("div");
-        divider.className = "divider";
-        content.appendChild(divider);
     },
 
     revisionContentForIteration: function(iteration, previousDisplayedIteration)
@@ -312,6 +284,27 @@ BuildbotQueueView.prototype = {
             shouldAddPlusSign = true;
         }
         return fragment;
+    },
+
+    _testStepFailureDescription: function(failedStep)
+    {
+        if (!failedStep.failureCount)
+            return BuildbotIteration.TestSteps[failedStep.name] + " failed";
+        if (failedStep.failureCount === 1)
+            return BuildbotIteration.TestSteps[failedStep.name] + " failure";
+        return BuildbotIteration.TestSteps[failedStep.name] + " failures";
+    },
+
+    _testStepFailureDescriptionWithCount: function(failedStep)
+    {
+        if (!failedStep.failureCount)
+            return this._testStepFailureDescription(failedStep);
+        if (failedStep.tooManyFailures) {
+            // E.g. "50+ layout test failures", preventing line breaks around the "+".
+            return failedStep.failureCount + "\ufeff\uff0b\u00a0" + this._testStepFailureDescription(failedStep);
+        }
+        // E.g. "1 layout test failure", preventing line break after the number.
+        return failedStep.failureCount + "\u00a0" + this._testStepFailureDescription(failedStep);
     },
 
     appendBuildStyle: function(queues, defaultLabel, appendFunction)
@@ -356,14 +349,5 @@ BuildbotQueueView.prototype = {
     _unauthorizedAccess: function(event)
     {
         this.updateSoon();
-    },
-
-    _formatRevisionForDisplay: function(revision, repository)
-    {
-        console.assert(repository.isSVN || repository.isGit, "Should not get here; " + repository.name + " did not specify a known VCS type.");
-        if (repository.isSVN)
-            return "r" + revision;
-        // Truncating for display. Git traditionally uses seven characters for a short hash.
-        return revision.substr(0, 7);
     }
 };

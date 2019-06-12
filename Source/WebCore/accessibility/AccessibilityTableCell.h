@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityTableCell_h
-#define AccessibilityTableCell_h
+#pragma once
 
 #include "AccessibilityRenderObject.h"
 
@@ -41,7 +40,7 @@ public:
     static Ref<AccessibilityTableCell> create(RenderObject*);
     virtual ~AccessibilityTableCell();
     
-    virtual bool isTableCell() const override final;
+    bool isTableCell() const final;
     bool isTableHeaderCell() const;
     bool isColumnHeaderCell() const;
     bool isRowHeaderCell() const;
@@ -56,8 +55,8 @@ public:
     
     int ariaColumnIndex() const;
     int ariaRowIndex() const;
-    unsigned ariaColumnSpan() const;
-    unsigned ariaRowSpan() const;
+    int ariaColumnSpan() const;
+    int ariaRowSpan() const;
     void setARIAColIndexFromRow(int index) { m_ariaColIndexFromRow = index; }
 
 protected:
@@ -65,18 +64,18 @@ protected:
 
     AccessibilityTableRow* parentRow() const;
     virtual AccessibilityTable* parentTable() const;
-    virtual AccessibilityRole determineAccessibilityRole() override final;
+    AccessibilityRole determineAccessibilityRole() final;
 
     int m_rowIndex;
     int m_ariaColIndexFromRow;
 
 private:
     // If a table cell is not exposed as a table cell, a TH element can serve as its title UI element.
-    virtual AccessibilityObject* titleUIElement() const override final;
-    virtual bool exposesTitleUIElement() const override final { return true; }
-    virtual bool computeAccessibilityIsIgnored() const override final;
-    virtual String expandedTextValue() const override final;
-    virtual bool supportsExpandedTextValue() const override final;
+    AccessibilityObject* titleUIElement() const final;
+    bool exposesTitleUIElement() const final { return true; }
+    bool computeAccessibilityIsIgnored() const final;
+    String expandedTextValue() const final;
+    bool supportsExpandedTextValue() const final;
 
     bool isTableCellInSameRowGroup(AccessibilityTableCell*);
     bool isTableCellInSameColGroup(AccessibilityTableCell*);
@@ -85,5 +84,3 @@ private:
 } // namespace WebCore 
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityTableCell, isTableCell())
-
-#endif // AccessibilityTableCell_h

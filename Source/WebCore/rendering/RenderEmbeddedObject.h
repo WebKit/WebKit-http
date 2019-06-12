@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef RenderEmbeddedObject_h
-#define RenderEmbeddedObject_h
+#pragma once
 
 #include "RenderWidget.h"
 
@@ -35,10 +34,10 @@ class TextRun;
 // For example, <embed src="foo.html"> does not invoke a plug-in.
 class RenderEmbeddedObject : public RenderWidget {
 public:
-    RenderEmbeddedObject(HTMLFrameOwnerElement&, Ref<RenderStyle>&&);
+    RenderEmbeddedObject(HTMLFrameOwnerElement&, RenderStyle&&);
     virtual ~RenderEmbeddedObject();
 
-    static RenderPtr<RenderEmbeddedObject> createForApplet(HTMLAppletElement&, Ref<RenderStyle>&&);
+    static RenderPtr<RenderEmbeddedObject> createForApplet(HTMLAppletElement&, RenderStyle&&);
 
     enum PluginUnavailabilityReason {
         PluginMissing,
@@ -50,50 +49,51 @@ public:
     WEBCORE_EXPORT void setPluginUnavailabilityReasonWithDescription(PluginUnavailabilityReason, const String& description);
 
     bool isPluginUnavailable() const { return m_isPluginUnavailable; }
-    bool showsUnavailablePluginIndicator() const { return isPluginUnavailable() && !m_isUnavailablePluginIndicatorHidden; }
 
     WEBCORE_EXPORT void setUnavailablePluginIndicatorIsHidden(bool);
 
     void handleUnavailablePluginIndicatorEvent(Event*);
 
-    WEBCORE_EXPORT bool isReplacementObscured() const;
-
     bool allowsAcceleratedCompositing() const;
 
+    LayoutRect unavailablePluginIndicatorBounds(const LayoutPoint& accumulatedOffset) const;
 protected:
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) override final;
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    void paintReplaced(PaintInfo&, const LayoutPoint&) final;
+    void paint(PaintInfo&, const LayoutPoint&) override;
 
-    virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const override;
+    CursorDirective getCursor(const LayoutPoint&, Cursor&) const override;
 
 protected:
-    virtual void layout() override;
+    void layout() override;
+    void willBeDestroyed() override;
 
 private:
-    virtual const char* renderName() const override { return "RenderEmbeddedObject"; }
-    virtual bool isEmbeddedObject() const override final { return true; }
+    const char* renderName() const override { return "RenderEmbeddedObject"; }
+    bool isEmbeddedObject() const final { return true; }
 
+    bool showsUnavailablePluginIndicator() const { return isPluginUnavailable() && m_isUnavailablePluginIndicatorState != UnavailablePluginIndicatorState::Hidden; }
     void paintSnapshotImage(PaintInfo&, const LayoutPoint&, Image&);
-    virtual void paintContents(PaintInfo&, const LayoutPoint&) override final;
+    void paintContents(PaintInfo&, const LayoutPoint&) final;
 
-    virtual bool requiresLayer() const override final;
+    bool requiresLayer() const final;
 
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override final;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) final;
 
-    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = nullptr, RenderBox* startBox = nullptr, const IntPoint& wheelEventAbsolutePoint = IntPoint()) override final;
-    virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier, Element** stopElement) override final;
+    bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = nullptr, RenderBox* startBox = nullptr, const IntPoint& wheelEventAbsolutePoint = IntPoint()) final;
+    bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier, Element** stopElement) final;
 
     void setUnavailablePluginIndicatorIsPressed(bool);
     bool isInUnavailablePluginIndicator(const MouseEvent&) const;
     bool isInUnavailablePluginIndicator(const FloatPoint&) const;
-    bool getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, FloatRect& indicatorRect, FloatRect& replacementTextRect, FloatRect& arrowRect, FontCascade&, TextRun&, float& textWidth) const;
-    LayoutRect unavailablePluginIndicatorBounds(const LayoutPoint&) const;
+    void getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, FloatRect& indicatorRect, FloatRect& replacementTextRect, FloatRect& arrowRect, FontCascade&, TextRun&, float& textWidth) const;
+    LayoutRect getReplacementTextGeometry(const LayoutPoint& accumulatedOffset) const;
 
-    virtual bool canHaveChildren() const override final;
+    bool canHaveChildren() const final;
     virtual bool canHaveWidget() const { return true; }
 
     bool m_isPluginUnavailable;
-    bool m_isUnavailablePluginIndicatorHidden;
+    enum class UnavailablePluginIndicatorState { Uninitialized, Hidden, Visible };
+    UnavailablePluginIndicatorState m_isUnavailablePluginIndicatorState { UnavailablePluginIndicatorState::Uninitialized };
     PluginUnavailabilityReason m_pluginUnavailabilityReason;
     String m_unavailablePluginReplacementText;
     bool m_unavailablePluginIndicatorIsPressed;
@@ -104,5 +104,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderEmbeddedObject, isEmbeddedObject())
-
-#endif // RenderEmbeddedObject_h

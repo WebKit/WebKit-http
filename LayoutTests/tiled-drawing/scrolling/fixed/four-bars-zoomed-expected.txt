@@ -1,27 +1,40 @@
+
 (Frame scrolling node
   (scrollable area size 785 585)
   (contents size 1805 5108)
+  (scrollable area parameters 
+    (horizontal scroll elasticity 2)
+    (vertical scroll elasticity 2)
+    (horizontal scrollbar mode 0)
+    (vertical scrollbar mode 0)
+    (has enabled horizontal scrollbar 1)
+    (has enabled vertical scrollbar 1))
   (frame scale factor 2.30)
+  (visual viewport enabled 1)
+  (layout viewport at (0,0) size 785x585)
+  (min layout viewport origin (0,0))
+  (max layout viewport origin (0,1636))
+  (behavior for fixed 0)
   (children 4
     (Fixed node
       (anchor edges: AnchorEdgeLeft AnchorEdgeTop)
-      (viewport rect at last layout: 0.00 0.00 785.00 585.00)
-      (layer position at last layout -4.00 -4.00)
+      (viewport rect at last layout at (0,0) size 785x585)
+      (layer position at last layout (-4,-4))
     )
     (Fixed node
       (anchor edges: AnchorEdgeLeft AnchorEdgeTop)
-      (viewport rect at last layout: 0.00 0.00 785.00 585.00)
-      (layer position at last layout 6.00 196.00)
+      (viewport rect at last layout at (0,0) size 785x585)
+      (layer position at last layout (6,196))
     )
     (Fixed node
       (anchor edges: AnchorEdgeRight AnchorEdgeTop)
-      (viewport rect at last layout: 0.00 0.00 785.00 585.00)
-      (layer position at last layout 597.00 196.00)
+      (viewport rect at last layout at (0,0) size 785x585)
+      (layer position at last layout (597,196))
     )
     (Fixed node
       (anchor edges: AnchorEdgeLeft AnchorEdgeBottom)
-      (viewport rect at last layout: 0.00 0.00 785.00 585.00)
-      (layer position at last layout -4.00 497.00)
+      (viewport rect at last layout at (0,0) size 785x585)
+      (layer position at last layout (-4,497))
     )
   )
 )
@@ -43,9 +56,10 @@
       (coverage rect 0.00, 0.00 341.30 x 254.35)
       (intersects coverage rect 1)
       (contentsScale 2.30)
-      (tile cache coverage 0, 0 445 x 445)
-      (tile size 512 x 512)
-      (top left tile 0, 0 tiles grid 2 x 2)
+      (tile cache coverage 0, 0 341 x 445)
+      (tile size 785 x 512)
+      (top left tile 0, 0 tiles grid 1 x 2)
+      (in window 1)
       (children 4
         (GraphicsLayer
           (position -4.00 -4.00)

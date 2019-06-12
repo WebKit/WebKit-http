@@ -37,12 +37,12 @@ URLResponse::URLResponse(const WebCore::ResourceResponse& response)
 {
 }
 
-void URLResponse::encode(IPC::ArgumentEncoder& encoder) const
+void URLResponse::encode(IPC::Encoder& encoder) const
 {
     encoder << resourceResponse();
 }
 
-bool URLResponse::decode(IPC::ArgumentDecoder& decoder, RefPtr<Object>& result)
+bool URLResponse::decode(IPC::Decoder& decoder, RefPtr<Object>& result)
 {
     ResourceResponse response;
     if (!decoder.decode(response))

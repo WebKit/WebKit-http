@@ -24,10 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLAudioElement_h
-#define HTMLAudioElement_h
+#pragma once
 
 #if ENABLE(VIDEO)
+
 #include "HTMLMediaElement.h"
 
 namespace WebCore {
@@ -37,12 +37,12 @@ class Document;
 class HTMLAudioElement final : public HTMLMediaElement {
 public:
     static Ref<HTMLAudioElement> create(const QualifiedName&, Document&, bool);
-    static Ref<HTMLAudioElement> createForJSConstructor(Document&, const String& src);
+    static Ref<HTMLAudioElement> createForJSConstructor(Document&, const AtomicString& src);
 
 private:
     HTMLAudioElement(const QualifiedName&, Document&, bool);
 
-    virtual PlatformMediaSession::MediaType presentationType() const override { return PlatformMediaSession::Audio; }
+    PlatformMediaSession::MediaType presentationType() const final { return PlatformMediaSession::Audio; }
 };
 
 } // namespace WebCore
@@ -54,4 +54,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLAudioElement)
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(VIDEO)
-#endif // HTMLAudioElement_h

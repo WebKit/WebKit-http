@@ -23,18 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ContextMenuClient_h
-#define ContextMenuClient_h
+#pragma once
 
 #if ENABLE(CONTEXT_MENUS)
 
-#include "ContextMenu.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
-    class ContextMenuItem;
+
     class Frame;
-    class HitTestResult;
     class URL;
 
     class ContextMenuClient {
@@ -57,7 +54,7 @@ namespace WebCore {
         virtual void showContextMenu() = 0;
 #endif
     };
-}
+
+} // namespace WebCore
 
 #endif // ENABLE(CONTEXT_MENUS)
-#endif

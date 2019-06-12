@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef UnlinkCommand_h
-#define UnlinkCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -40,10 +39,8 @@ public:
 private:
     explicit UnlinkCommand(Document&);
 
-    virtual void doApply();
-    virtual EditAction editingAction() const { return EditActionUnlink; }
+    void doApply() override;
+    EditAction editingAction() const override { return EditActionUnlink; }
 };
 
 } // namespace WebCore
-
-#endif // UnlinkCommand_h

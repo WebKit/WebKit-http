@@ -30,7 +30,6 @@
 #include <string.h>
 #include <wtf/Assertions.h>
 #include <wtf/FastMalloc.h>
-#include <wtf/HashSet.h>
 #include <wtf/text/ASCIIFastPath.h>
 #include <wtf/text/StringHash.h>
 
@@ -43,7 +42,7 @@ Ref<StringImpl> Identifier::add(VM* vm, const char* c)
     ASSERT(c);
     ASSERT(c[0]);
     if (!c[1])
-        return *vm->smallStrings.singleCharacterStringRep(c[0]);
+        return vm->smallStrings.singleCharacterStringRep(c[0]);
 
     return *AtomicStringImpl::add(c);
 }
@@ -59,7 +58,7 @@ Ref<StringImpl> Identifier::add8(VM* vm, const UChar* s, int length)
         UChar c = s[0];
         ASSERT(c <= 0xff);
         if (canUseSingleCharacterString(c))
-            return *vm->smallStrings.singleCharacterStringRep(c);
+            return vm->smallStrings.singleCharacterStringRep(c);
     }
     if (!length)
         return *StringImpl::empty();

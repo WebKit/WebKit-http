@@ -49,101 +49,51 @@ Ref<HTMLTableSectionElement> HTMLTableSectionElement::create(const QualifiedName
     return adoptRef(*new HTMLTableSectionElement(tagName, document));
 }
 
-const StyleProperties* HTMLTableSectionElement::additionalPresentationAttributeStyle()
+const StyleProperties* HTMLTableSectionElement::additionalPresentationAttributeStyle() const
 {
-    if (HTMLTableElement* table = findParentTable())
-        return table->additionalGroupStyle(true);
-    return 0;
+    auto* table = findParentTable();
+    if (!table)
+        return nullptr;
+    return table->additionalGroupStyle(true);
 }
 
-// these functions are rather slow, since we need to get the row at
-// the index... but they aren't used during usual HTML parsing anyway
-RefPtr<HTMLElement> HTMLTableSectionElement::insertRow(int index, ExceptionCode& ec)
+ExceptionOr<Ref<HTMLElement>> HTMLTableSectionElement::insertRow(int index)
 {
-    RefPtr<HTMLTableRowElement> row;
-    Ref<HTMLCollection> children = rows();
+    if (index < -1)
+        return Exception { INDEX_SIZE_ERR };
+    auto children = rows();
     int numRows = children->length();
-    if (index < -1 || index > numRows)
-        ec = INDEX_SIZE_ERR; // per the DOM
-    else {
-        row = HTMLTableRowElement::create(trTag, document());
-        if (numRows == index || index == -1)
-            appendChild(*row, ec);
-        else {
-            Node* n;
-            if (index < 1)
-                n = firstChild();
-            else
-                n = children->item(index);
-            insertBefore(*row, n, ec);
-        }
-    }
-    return row;
-}
-
-void HTMLTableSectionElement::deleteRow(int index, ExceptionCode& ec)
-{
-    Ref<HTMLCollection> children = rows();
-    int numRows = children->length();
-    if (index == -1)
-        index = numRows - 1;
-    if (index >= 0 && index < numRows)
-        HTMLElement::removeChild(*children->item(index), ec);
+    if (index > numRows)
+        return Exception { INDEX_SIZE_ERR };
+    auto row = HTMLTableRowElement::create(trTag, document());
+    ExceptionOr<void> result;
+    if (numRows == index || index == -1)
+        result = appendChild(row);
     else
-        ec = INDEX_SIZE_ERR;
+        result = insertBefore(row, index < 1 ? firstChild() : children->item(index));
+    if (result.hasException())
+        return result.releaseException();
+    return Ref<HTMLElement> { WTFMove(row) };
+}
+
+ExceptionOr<void> HTMLTableSectionElement::deleteRow(int index)
+{
+    auto children = rows();
+    int numRows = children->length();
+    if (index == -1) {
+        if (!numRows)
+            return { };
+        index = numRows - 1;
+    }
+    if (index < 0 || index >= numRows)
+        return Exception { INDEX_SIZE_ERR };
+    return removeChild(*children->item(index));
 }
 
 int HTMLTableSectionElement::numRows() const
 {
-    int rows = 0;
-    const Node *n = firstChild();
-    while (n) {
-        if (n->hasTagName(trTag))
-            rows++;
-        n = n->nextSibling();
-    }
-
-    return rows;
-}
-
-const AtomicString& HTMLTableSectionElement::align() const
-{
-    return fastGetAttribute(alignAttr);
-}
-
-void HTMLTableSectionElement::setAlign(const AtomicString& value)
-{
-    setAttribute(alignAttr, value);
-}
-
-const AtomicString& HTMLTableSectionElement::ch() const
-{
-    return fastGetAttribute(charAttr);
-}
-
-void HTMLTableSectionElement::setCh(const AtomicString& value)
-{
-    setAttribute(charAttr, value);
-}
-
-const AtomicString& HTMLTableSectionElement::chOff() const
-{
-    return getAttribute(charoffAttr);
-}
-
-void HTMLTableSectionElement::setChOff(const AtomicString& value)
-{
-    setAttribute(charoffAttr, value);
-}
-
-const AtomicString& HTMLTableSectionElement::vAlign() const
-{
-    return fastGetAttribute(valignAttr);
-}
-
-void HTMLTableSectionElement::setVAlign(const AtomicString& value)
-{
-    setAttribute(valignAttr, value);
+    auto rows = childrenOfType<HTMLTableRowElement>(*this);
+    return std::distance(rows.begin(), rows.end());
 }
 
 Ref<HTMLCollection> HTMLTableSectionElement::rows()

@@ -37,13 +37,8 @@
 #include <QLibrary>
 #endif
 
-#if PLATFORM(GTK)
+#if USE(GLIB)
 typedef struct _GModule GModule;
-#endif
-
-#if PLATFORM(EFL)
-#include <Eina.h>
-#include <wtf/efl/UniquePtrEfl.h>
 #endif
 
 namespace WebKit {
@@ -80,10 +75,8 @@ private:
 #endif
 #elif PLATFORM(QT)
     QLibrary m_lib;
-#elif PLATFORM(GTK)
+#elif USE(GLIB)
     GModule* m_handle;
-#elif PLATFORM(EFL)
-    EflUniquePtr<Eina_Module> m_module;
 #endif
 };
 

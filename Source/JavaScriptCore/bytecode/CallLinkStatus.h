@@ -23,22 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CallLinkStatus_h
-#define CallLinkStatus_h
+#pragma once
 
 #include "CallLinkInfo.h"
 #include "CallVariant.h"
 #include "CodeOrigin.h"
-#include "CodeSpecializationKind.h"
-#include "ConcurrentJITLock.h"
-#include "ExitingJITType.h"
-#include "Intrinsic.h"
+#include "ConcurrentJSLock.h"
 #include "JSCJSValue.h"
 
 namespace JSC {
 
 class CodeBlock;
-class ExecutableBase;
 class InternalFunction;
 class JSFunction;
 class Structure;
@@ -72,14 +67,14 @@ public:
         bool takesSlowPath { false };
         bool badFunction { false };
     };
-    static ExitSiteData computeExitSiteData(const ConcurrentJITLocker&, CodeBlock*, unsigned bytecodeIndex);
+    static ExitSiteData computeExitSiteData(const ConcurrentJSLocker&, CodeBlock*, unsigned bytecodeIndex);
     
 #if ENABLE(JIT)
     // Computes the status assuming that we never took slow path and never previously
     // exited.
-    static CallLinkStatus computeFor(const ConcurrentJITLocker&, CodeBlock*, CallLinkInfo&);
+    static CallLinkStatus computeFor(const ConcurrentJSLocker&, CodeBlock*, CallLinkInfo&);
     static CallLinkStatus computeFor(
-        const ConcurrentJITLocker&, CodeBlock*, CallLinkInfo&, ExitSiteData);
+        const ConcurrentJSLocker&, CodeBlock*, CallLinkInfo&, ExitSiteData);
 #endif
     
     typedef HashMap<CodeOrigin, CallLinkStatus, CodeOriginApproximateHash> ContextMap;
@@ -101,6 +96,8 @@ public:
     
     bool couldTakeSlowPath() const { return m_couldTakeSlowPath; }
     
+    void setCouldTakeSlowPath(bool value) { m_couldTakeSlowPath = value; }
+    
     CallVariantList variants() const { return m_variants; }
     unsigned size() const { return m_variants.size(); }
     CallVariant at(unsigned i) const { return m_variants[i]; }
@@ -118,10 +115,10 @@ public:
 private:
     void makeClosureCall();
     
-    static CallLinkStatus computeFromLLInt(const ConcurrentJITLocker&, CodeBlock*, unsigned bytecodeIndex);
+    static CallLinkStatus computeFromLLInt(const ConcurrentJSLocker&, CodeBlock*, unsigned bytecodeIndex);
 #if ENABLE(JIT)
     static CallLinkStatus computeFromCallLinkInfo(
-        const ConcurrentJITLocker&, CallLinkInfo&);
+        const ConcurrentJSLocker&, CallLinkInfo&);
 #endif
     
     CallVariantList m_variants;
@@ -132,6 +129,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // CallLinkStatus_h
-

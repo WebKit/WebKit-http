@@ -23,13 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IntlDateTimeFormat_h
-#define IntlDateTimeFormat_h
+#pragma once
 
 #if ENABLE(INTL)
 
 #include "JSDestructibleObject.h"
 #include <unicode/udat.h>
+#include <unicode/uvernum.h>
+
+#define JSC_ICU_HAS_UFIELDPOSITER (U_ICU_VERSION_MAJOR_NUM >= 55)
 
 namespace JSC {
 
@@ -40,13 +42,16 @@ class IntlDateTimeFormat : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static IntlDateTimeFormat* create(VM&, IntlDateTimeFormatConstructor*);
+    static IntlDateTimeFormat* create(VM&, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
 
     void initializeDateTimeFormat(ExecState&, JSValue locales, JSValue options);
     JSValue format(ExecState&, double value);
+#if JSC_ICU_HAS_UFIELDPOSITER
+    JSValue formatToParts(ExecState&, double value);
+#endif
     JSObject* resolvedOptions(ExecState&);
 
     JSBoundFunction* boundFormat() const { return m_boundFormat.get(); }
@@ -54,7 +59,6 @@ public:
 
 protected:
     IntlDateTimeFormat(VM&, Structure*);
-    ~IntlDateTimeFormat();
     void finishCreation(VM&);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
@@ -70,6 +74,11 @@ private:
     enum class Second { None, TwoDigit, Numeric };
     enum class TimeZoneName { None, Short, Long };
 
+    struct UDateFormatDeleter {
+        void operator()(UDateFormat*) const;
+    };
+
+    void setFormatsFromPattern(const StringView&);
     static const char* weekdayString(Weekday);
     static const char* eraString(Era);
     static const char* yearString(Year);
@@ -81,14 +90,13 @@ private:
     static const char* timeZoneNameString(TimeZoneName);
 
     bool m_initializedDateTimeFormat { false };
-    void setFormatsFromPattern(const StringView&);
     WriteBarrier<JSBoundFunction> m_boundFormat;
-    UDateFormat* m_dateFormat { nullptr };
+    std::unique_ptr<UDateFormat, UDateFormatDeleter> m_dateFormat;
 
-    String m_locale { ASCIILiteral("en") };
-    String m_calendar { ASCIILiteral("gregorian") };
-    String m_numberingSystem { ASCIILiteral("latn") };
-    String m_timeZone { ASCIILiteral("UTC") };
+    String m_locale;
+    String m_calendar;
+    String m_numberingSystem;
+    String m_timeZone;
     bool m_hour12 { true };
     Weekday m_weekday { Weekday::None };
     Era m_era { Era::None };
@@ -99,10 +107,16 @@ private:
     Minute m_minute { Minute::None };
     Second m_second { Second::None };
     TimeZoneName m_timeZoneName { TimeZoneName::None };
+
+#if JSC_ICU_HAS_UFIELDPOSITER
+    struct UFieldPositionIteratorDeleter {
+        void operator()(UFieldPositionIterator*) const;
+    };
+
+    static const char* partTypeString(UDateFormatField);
+#endif
 };
 
 } // namespace JSC
 
 #endif // ENABLE(INTL)
-
-#endif // IntlDateTimeFormat_h

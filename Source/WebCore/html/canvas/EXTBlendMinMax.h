@@ -23,8 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EXTBlendMinMax_h
-#define EXTBlendMinMax_h
+#pragma once
 
 #include "WebGLExtension.h"
 
@@ -32,12 +31,10 @@ namespace WebCore {
 
 class EXTBlendMinMax final : public WebGLExtension {
 public:
-    explicit EXTBlendMinMax(WebGLRenderingContextBase*);
+    explicit EXTBlendMinMax(WebGLRenderingContextBase&);
     virtual ~EXTBlendMinMax();
 
-    virtual ExtensionName getName() const override;
+    ExtensionName getName() const override;
 };
 
 } // namespace WebCore
-
-#endif // EXTBlendMinMax_h

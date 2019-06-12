@@ -36,9 +36,11 @@
 #include "FrameLoader.h"
 #include "FrameSelection.h"
 #include "FrameTree.h"
-#include "HTMLFrameElementBase.h"
+#include "HTMLFrameElement.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
+#include "HTMLObjectElement.h"
 #include "IconDatabase.h"
 #include "Image.h"
 #include "URLHash.h"
@@ -78,20 +80,16 @@ RetainPtr<CFDictionaryRef> LegacyWebArchive::createPropertyListRepresentation(Ar
         CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceMIMETypeKey, 0);
         return propertyList;
     }
-    
-    RetainPtr<CFMutableDictionaryRef> propertyList = adoptCF(CFDictionaryCreateMutable(0, 6, 0, &kCFTypeDictionaryValueCallBacks));
-    
+
+    auto propertyList = adoptCF(CFDictionaryCreateMutable(0, 6, 0, &kCFTypeDictionaryValueCallBacks));
+
     // Resource data can be empty, but must be represented by an empty CFDataRef
-    SharedBuffer* data = resource->data();
-    RetainPtr<CFDataRef> cfData;
-    if (data)
-        cfData = data->createCFData();
-    else
-        cfData = adoptCF(CFDataCreate(0, 0, 0));
-    CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceDataKey, cfData.get());
-    
+    auto& data = resource->data();
+
+    CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceDataKey, data.createCFData().get());
+
     // Resource URL cannot be null
-    if (RetainPtr<CFStringRef> cfURL = resource->url().string().createCFString())
+    if (auto cfURL = resource->url().string().createCFString())
         CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceURLKey, cfURL.get());
     else {
         LOG(Archives, "LegacyWebArchive - NULL resource URL is invalid - returning null property list");
@@ -99,42 +97,41 @@ RetainPtr<CFDictionaryRef> LegacyWebArchive::createPropertyListRepresentation(Ar
     }
 
     // FrameName should be left out if empty for subresources, but always included for main resources
-    const String& frameName(resource->frameName());
+    auto& frameName = resource->frameName();
     if (!frameName.isEmpty() || isMainResource)
         CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceFrameNameKey, frameName.createCFString().get());
-    
+
     // Set MIMEType, TextEncodingName, and ResourceResponse only if they actually exist
-    const String& mimeType(resource->mimeType());
+    auto& mimeType = resource->mimeType();
     if (!mimeType.isEmpty())
         CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceMIMETypeKey, mimeType.createCFString().get());
-    
-    const String& textEncoding(resource->textEncoding());
+
+    auto& textEncoding = resource->textEncoding();
     if (!textEncoding.isEmpty())
         CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceTextEncodingNameKey, textEncoding.createCFString().get());
 
     // Don't include the resource response for the main resource
     if (!isMainResource) {
-        RetainPtr<CFDataRef> resourceResponseData = createPropertyListRepresentation(resource->response());
-        if (resourceResponseData)
+        if (auto resourceResponseData = createPropertyListRepresentation(resource->response()))
             CFDictionarySetValue(propertyList.get(), LegacyWebArchiveResourceResponseKey, resourceResponseData.get());    
     }
     
     return propertyList;
 }
 
-RetainPtr<CFDictionaryRef> LegacyWebArchive::createPropertyListRepresentation(Archive* archive)
+RetainPtr<CFDictionaryRef> LegacyWebArchive::createPropertyListRepresentation(Archive& archive)
 {
-    RetainPtr<CFMutableDictionaryRef> propertyList = adoptCF(CFDictionaryCreateMutable(0, 3, 0, &kCFTypeDictionaryValueCallBacks));
-    
-    RetainPtr<CFDictionaryRef> mainResourceDict = createPropertyListRepresentation(archive->mainResource(), MainResource);
+    auto propertyList = adoptCF(CFDictionaryCreateMutable(0, 3, 0, &kCFTypeDictionaryValueCallBacks));
+
+    auto mainResourceDict = createPropertyListRepresentation(archive.mainResource(), MainResource);
     ASSERT(mainResourceDict);
     if (!mainResourceDict)
         return nullptr;
     CFDictionarySetValue(propertyList.get(), LegacyWebArchiveMainResourceKey, mainResourceDict.get());
 
-    RetainPtr<CFMutableArrayRef> subresourcesArray = adoptCF(CFArrayCreateMutable(0, archive->subresources().size(), &kCFTypeArrayCallBacks));
-    for (auto& resource : archive->subresources()) {
-        if (RetainPtr<CFDictionaryRef> subresource = createPropertyListRepresentation(resource.get(), Subresource))
+    auto subresourcesArray = adoptCF(CFArrayCreateMutable(0, archive.subresources().size(), &kCFTypeArrayCallBacks));
+    for (auto& resource : archive.subresources()) {
+        if (auto subresource = createPropertyListRepresentation(resource.ptr(), Subresource))
             CFArrayAppendValue(subresourcesArray.get(), subresource.get());
         else
             LOG(Archives, "LegacyWebArchive - Failed to create property list for subresource");
@@ -142,9 +139,9 @@ RetainPtr<CFDictionaryRef> LegacyWebArchive::createPropertyListRepresentation(Ar
     if (CFArrayGetCount(subresourcesArray.get()))
         CFDictionarySetValue(propertyList.get(), LegacyWebArchiveSubresourcesKey, subresourcesArray.get());
 
-    RetainPtr<CFMutableArrayRef> subframesArray = adoptCF(CFArrayCreateMutable(0, archive->subframeArchives().size(), &kCFTypeArrayCallBacks));
-    for (auto& subframe : archive->subframeArchives()) {
-        if (RetainPtr<CFDictionaryRef> subframeArchive = createPropertyListRepresentation(subframe.get()))
+    auto subframesArray = adoptCF(CFArrayCreateMutable(0, archive.subframeArchives().size(), &kCFTypeArrayCallBacks));
+    for (auto& subframe : archive.subframeArchives()) {
+        if (auto subframeArchive = createPropertyListRepresentation(subframe.get()))
             CFArrayAppendValue(subframesArray.get(), subframeArchive.get());
         else
             LOG(Archives, "LegacyWebArchive - Failed to create property list for subframe archive");
@@ -160,63 +157,62 @@ ResourceResponse LegacyWebArchive::createResourceResponseFromPropertyListData(CF
     ASSERT(data);
     if (!data)
         return ResourceResponse();
-    
+
     // If the ResourceResponseVersion (passed in as responseDataType) exists at all, this is a "new" web archive that we
     // can parse well in a cross platform manner If it doesn't exist, we will assume this is an "old" web archive with,
     // NSURLResponse objects in it and parse the ResourceResponse as such.
     if (!responseDataType)
         return createResourceResponseFromMacArchivedData(data);
-        
+
     // FIXME: Parse the "new" format that the above comment references here. This format doesn't exist yet.
     return ResourceResponse();
 }
 
-PassRefPtr<ArchiveResource> LegacyWebArchive::createResource(CFDictionaryRef dictionary)
+RefPtr<ArchiveResource> LegacyWebArchive::createResource(CFDictionaryRef dictionary)
 {
     ASSERT(dictionary);
     if (!dictionary)
         return nullptr;
-        
-    CFDataRef resourceData = static_cast<CFDataRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceDataKey));
+
+    auto resourceData = static_cast<CFDataRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceDataKey));
     if (resourceData && CFGetTypeID(resourceData) != CFDataGetTypeID()) {
         LOG(Archives, "LegacyWebArchive - Resource data is not of type CFData, cannot create invalid resource");
         return nullptr;
     }
-    
-    CFStringRef frameName = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceFrameNameKey));
+
+    auto frameName = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceFrameNameKey));
     if (frameName && CFGetTypeID(frameName) != CFStringGetTypeID()) {
         LOG(Archives, "LegacyWebArchive - Frame name is not of type CFString, cannot create invalid resource");
         return nullptr;
     }
-    
-    CFStringRef mimeType = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceMIMETypeKey));
+
+    auto mimeType = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceMIMETypeKey));
     if (mimeType && CFGetTypeID(mimeType) != CFStringGetTypeID()) {
         LOG(Archives, "LegacyWebArchive - MIME type is not of type CFString, cannot create invalid resource");
         return nullptr;
     }
-    
-    CFStringRef url = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceURLKey));
+
+    auto url = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceURLKey));
     if (url && CFGetTypeID(url) != CFStringGetTypeID()) {
         LOG(Archives, "LegacyWebArchive - URL is not of type CFString, cannot create invalid resource");
         return nullptr;
     }
-    
-    CFStringRef textEncoding = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceTextEncodingNameKey));
+
+    auto textEncoding = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceTextEncodingNameKey));
     if (textEncoding && CFGetTypeID(textEncoding) != CFStringGetTypeID()) {
         LOG(Archives, "LegacyWebArchive - Text encoding is not of type CFString, cannot create invalid resource");
         return nullptr;
     }
 
     ResourceResponse response;
-    
-    CFDataRef resourceResponseData = static_cast<CFDataRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceResponseKey));
-    if (resourceResponseData) {
+
+    if (auto resourceResponseData = static_cast<CFDataRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceResponseKey))) {
         if (CFGetTypeID(resourceResponseData) != CFDataGetTypeID()) {
             LOG(Archives, "LegacyWebArchive - Resource response data is not of type CFData, cannot create invalid resource");
             return nullptr;
         }
         
-        CFStringRef resourceResponseVersion = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceResponseVersionKey));
+        auto resourceResponseVersion = static_cast<CFStringRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveResourceResponseVersionKey));
         if (resourceResponseVersion && CFGetTypeID(resourceResponseVersion) != CFStringGetTypeID()) {
             LOG(Archives, "LegacyWebArchive - Resource response version is not of type CFString, cannot create invalid resource");
             return nullptr;
@@ -224,49 +220,42 @@ PassRefPtr<ArchiveResource> LegacyWebArchive::createResource(CFDictionaryRef dic
         
         response = createResourceResponseFromPropertyListData(resourceResponseData, resourceResponseVersion);
     }
-    
-    return ArchiveResource::create(SharedBuffer::wrapCFData(resourceData), URL(URL(), url), mimeType, textEncoding, frameName, response);
+
+    return ArchiveResource::create(SharedBuffer::create(resourceData), URL(URL(), url), mimeType, textEncoding, frameName, response);
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create()
+Ref<LegacyWebArchive> LegacyWebArchive::create()
 {
-    return adoptRef(new LegacyWebArchive);
+    return adoptRef(*new LegacyWebArchive);
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(PassRefPtr<ArchiveResource> mainResource, Vector<RefPtr<ArchiveResource>> subresources, Vector<RefPtr<LegacyWebArchive>> subframeArchives)
+Ref<LegacyWebArchive> LegacyWebArchive::create(Ref<ArchiveResource>&& mainResource, Vector<Ref<ArchiveResource>>&& subresources, Vector<Ref<LegacyWebArchive>>&& subframeArchives)
 {
-    ASSERT(mainResource);
-    if (!mainResource)
-        return nullptr;
-    
-    RefPtr<LegacyWebArchive> archive = create();
-    archive->setMainResource(mainResource);
-    
+    auto archive = create();
+
+    archive->setMainResource(WTFMove(mainResource));
+
     for (auto& subresource : subresources)
         archive->addSubresource(WTFMove(subresource));
 
     for (auto& subframeArchive : subframeArchives)
         archive->addSubframeArchive(WTFMove(subframeArchive));
 
-    return archive.release();
+    return archive;
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(SharedBuffer* data)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(SharedBuffer& data)
 {
     return create(URL(), data);
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(const URL&, SharedBuffer* data)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(const URL&, SharedBuffer& data)
 {
     LOG(Archives, "LegacyWebArchive - Creating from raw data");
     
-    RefPtr<LegacyWebArchive> archive = create();
+    Ref<LegacyWebArchive> archive = create();
         
-    ASSERT(data);
-    if (!data)
-        return nullptr;
-        
-    RetainPtr<CFDataRef> cfData = data->createCFData();
+    RetainPtr<CFDataRef> cfData = data.createCFData();
     if (!cfData)
         return nullptr;
         
@@ -292,7 +281,7 @@ PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(const URL&, SharedBuffer* 
     if (!archive->extract(plist.get()))
         return nullptr;
 
-    return archive.release();
+    return WTFMove(archive);
 }
 
 bool LegacyWebArchive::extract(CFDictionaryRef dictionary)
@@ -312,56 +301,58 @@ bool LegacyWebArchive::extract(CFDictionaryRef dictionary)
         LOG(Archives, "LegacyWebArchive - Main resource is not the expected CFDictionary, aborting invalid WebArchive");
         return false;
     }
-    
-    setMainResource(createResource(mainResourceDict));
-    if (!mainResource()) {
+
+    auto mainResource = createResource(mainResourceDict);
+    if (!mainResource) {
         LOG(Archives, "LegacyWebArchive - Failed to parse main resource from CFDictionary or main resource does not exist, aborting invalid WebArchive");
         return false;
     }
-    
-    if (mainResource()->mimeType().isNull()) {
+
+    if (mainResource->mimeType().isNull()) {
         LOG(Archives, "LegacyWebArchive - Main resource MIME type is required, but was null.");
         return false;
     }
-    
-    CFArrayRef subresourceArray = static_cast<CFArrayRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveSubresourcesKey));
+
+    setMainResource(mainResource.releaseNonNull());
+
+    auto subresourceArray = static_cast<CFArrayRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveSubresourcesKey));
     if (subresourceArray && CFGetTypeID(subresourceArray) != CFArrayGetTypeID()) {
         LOG(Archives, "LegacyWebArchive - Subresources is not the expected Array, aborting invalid WebArchive");
         return false;
     }
-    
+
     if (subresourceArray) {
-        CFIndex count = CFArrayGetCount(subresourceArray);
+        auto count = CFArrayGetCount(subresourceArray);
         for (CFIndex i = 0; i < count; ++i) {
-            CFDictionaryRef subresourceDict = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(subresourceArray, i));
+            auto subresourceDict = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(subresourceArray, i));
             if (CFGetTypeID(subresourceDict) != CFDictionaryGetTypeID()) {
                 LOG(Archives, "LegacyWebArchive - Subresource is not expected CFDictionary, aborting invalid WebArchive");
                 return false;
             }
             
-            if (RefPtr<ArchiveResource> subresource = createResource(subresourceDict))
-                addSubresource(subresource.release());
+            if (auto subresource = createResource(subresourceDict))
+                addSubresource(subresource.releaseNonNull());
         }
     }
-    
-    CFArrayRef subframeArray = static_cast<CFArrayRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveSubframeArchivesKey));
+
+    auto subframeArray = static_cast<CFArrayRef>(CFDictionaryGetValue(dictionary, LegacyWebArchiveSubframeArchivesKey));
     if (subframeArray && CFGetTypeID(subframeArray) != CFArrayGetTypeID()) {
         LOG(Archives, "LegacyWebArchive - Subframe archives is not the expected Array, aborting invalid WebArchive");
         return false;
     }
-    
+
     if (subframeArray) {
-        CFIndex count = CFArrayGetCount(subframeArray);
+        auto count = CFArrayGetCount(subframeArray);
         for (CFIndex i = 0; i < count; ++i) {
-            CFDictionaryRef subframeDict = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(subframeArray, i));
+            auto subframeDict = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(subframeArray, i));
             if (CFGetTypeID(subframeDict) != CFDictionaryGetTypeID()) {
                 LOG(Archives, "LegacyWebArchive - Subframe array is not expected CFDictionary, aborting invalid WebArchive");
                 return false;
             }
             
-            RefPtr<LegacyWebArchive> subframeArchive = create();
+            auto subframeArchive = create();
             if (subframeArchive->extract(subframeDict))
-                addSubframeArchive(subframeArchive.release());
+                addSubframeArchive(WTFMove(subframeArchive));
             else
                 LOG(Archives, "LegacyWebArchive - Invalid subframe archive skipped");
         }
@@ -370,26 +361,21 @@ bool LegacyWebArchive::extract(CFDictionaryRef dictionary)
     return true;
 }
 
-Archive::Type LegacyWebArchive::type() const
-{
-    return Archive::WebArchive;
-}
-    
 RetainPtr<CFDataRef> LegacyWebArchive::rawDataRepresentation()
 {
-    RetainPtr<CFDictionaryRef> propertyList = createPropertyListRepresentation(this);
+    auto propertyList = createPropertyListRepresentation(*this);
     ASSERT(propertyList);
     if (!propertyList) {
         LOG(Archives, "LegacyWebArchive - Failed to create property list for archive, returning no data");
         return nullptr;
     }
 
-    RetainPtr<CFWriteStreamRef> stream = adoptCF(CFWriteStreamCreateWithAllocatedBuffers(0, 0));
+    auto stream = adoptCF(CFWriteStreamCreateWithAllocatedBuffers(0, 0));
 
     CFWriteStreamOpen(stream.get());
     CFPropertyListWrite(propertyList.get(), stream.get(), kCFPropertyListBinaryFormat_v1_0, 0, 0);
 
-    RetainPtr<CFDataRef> plistData = adoptCF(static_cast<CFDataRef>(CFWriteStreamCopyProperty(stream.get(), kCFStreamPropertyDataWritten)));
+    auto plistData = adoptCF(static_cast<CFDataRef>(CFWriteStreamCopyProperty(stream.get(), kCFStreamPropertyDataWritten)));
     ASSERT(plistData);
 
     CFWriteStreamClose(stream.get());
@@ -420,13 +406,9 @@ RetainPtr<CFDataRef> LegacyWebArchive::createPropertyListRepresentation(const Re
 
 #endif
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(Node* node, std::function<bool (Frame&)> frameFilter)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(Node& node, WTF::Function<bool (Frame&)>&& frameFilter)
 {
-    ASSERT(node);
-    if (!node)
-        return create();
-
-    Frame* frame = node->document().frame();
+    Frame* frame = node.document().frame();
     if (!frame)
         return create();
 
@@ -440,109 +422,103 @@ PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(Node* node, std::function<
     }
 
     Vector<Node*> nodeList;
-    String markupString = createMarkup(*node, IncludeNode, &nodeList, DoNotResolveURLs, tagNamesToFilter.get());
-    Node::NodeType nodeType = node->nodeType();
+    String markupString = createMarkup(node, IncludeNode, &nodeList, DoNotResolveURLs, tagNamesToFilter.get());
+    auto nodeType = node.nodeType();
     if (nodeType != Node::DOCUMENT_NODE && nodeType != Node::DOCUMENT_TYPE_NODE)
-        markupString = documentTypeString(node->document()) + markupString;
+        markupString = documentTypeString(node.document()) + markupString;
 
-    return create(markupString, frame, nodeList, WTFMove(frameFilter));
+    return create(markupString, *frame, nodeList, WTFMove(frameFilter));
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(Frame* frame)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(Frame& frame)
 {
-    ASSERT(frame);
-    
-    DocumentLoader* documentLoader = frame->loader().documentLoader();
-
+    auto* documentLoader = frame.loader().documentLoader();
     if (!documentLoader)
         return nullptr;
-        
-    Vector<RefPtr<LegacyWebArchive>> subframeArchives;
-    
-    for (unsigned i = 0; i < frame->tree().childCount(); ++i) {
-        if (RefPtr<LegacyWebArchive> childFrameArchive = create(frame->tree().child(i)))
-            subframeArchives.append(WTFMove(childFrameArchive));
+
+    auto mainResource = documentLoader->mainResource();
+    if (!mainResource)
+        return nullptr;
+
+    Vector<Ref<LegacyWebArchive>> subframeArchives;
+    for (unsigned i = 0; i < frame.tree().childCount(); ++i) {
+        if (auto childFrameArchive = create(*frame.tree().child(i)))
+            subframeArchives.append(childFrameArchive.releaseNonNull());
     }
 
-    auto subresources = documentLoader->subresources();
-    return create(documentLoader->mainResource(), WTFMove(subresources), WTFMove(subframeArchives));
+    return create(mainResource.releaseNonNull(), documentLoader->subresources(), WTFMove(subframeArchives));
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(Range* range)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(Range* range)
 {
     if (!range)
         return nullptr;
         
-    Document& document = range->startContainer().document();
-
-    Frame* frame = document.frame();
+    auto& document = range->startContainer().document();
+    auto* frame = document.frame();
     if (!frame)
         return nullptr;
-    
-    // FIXME: This is always "for interchange". Is that right? See the previous method.
+
+    // FIXME: This is always "for interchange". Is that right?
     Vector<Node*> nodeList;
     String markupString = documentTypeString(document) + createMarkup(*range, &nodeList, AnnotateForInterchange);
-
-    return create(markupString, frame, nodeList, nullptr);
+    return create(markupString, *frame, nodeList, nullptr);
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Frame* frame, const Vector<Node*>& nodes, std::function<bool (Frame&)> frameFilter)
+RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Frame& frame, const Vector<Node*>& nodes, WTF::Function<bool (Frame&)>&& frameFilter)
 {
-    ASSERT(frame);
-    
-    const ResourceResponse& response = frame->loader().documentLoader()->response();
+    auto& response = frame.loader().documentLoader()->response();
     URL responseURL = response.url();
     
     // it's possible to have a response without a URL here
     // <rdar://problem/5454935>
     if (responseURL.isNull())
         responseURL = URL(ParsedURLString, emptyString());
-        
-    RefPtr<ArchiveResource> mainResource = ArchiveResource::create(utf8Buffer(markupString), responseURL, response.mimeType(), "UTF-8", frame->tree().uniqueName());
 
-    Vector<RefPtr<LegacyWebArchive>> subframeArchives;
-    Vector<RefPtr<ArchiveResource>> subresources;
+    auto mainResource = ArchiveResource::create(utf8Buffer(markupString), responseURL, response.mimeType(), "UTF-8", frame.tree().uniqueName());
+    if (!mainResource)
+        return nullptr;
+
+    Vector<Ref<LegacyWebArchive>> subframeArchives;
+    Vector<Ref<ArchiveResource>> subresources;
     HashSet<URL> uniqueSubresources;
 
-    size_t nodesSize = nodes.size();    
-    for (size_t i = 0; i < nodesSize; ++i) {
-        Node& node = *nodes[i];
+    for (auto& nodePtr : nodes) {
+        Node& node = *nodePtr;
         Frame* childFrame;
         if ((is<HTMLFrameElementBase>(node) || is<HTMLObjectElement>(node))
             && (childFrame = downcast<HTMLFrameOwnerElement>(node).contentFrame())) {
             if (frameFilter && !frameFilter(*childFrame))
                 continue;
-                
-            if (RefPtr<LegacyWebArchive> subframeArchive = create(childFrame->document(), frameFilter))
-                subframeArchives.append(WTFMove(subframeArchive));
+            if (auto subframeArchive = create(*childFrame->document(), WTFMove(frameFilter)))
+                subframeArchives.append(subframeArchive.releaseNonNull());
             else
                 LOG_ERROR("Unabled to archive subframe %s", childFrame->tree().uniqueName().string().utf8().data());
 
         } else {
             ListHashSet<URL> subresourceURLs;
             node.getSubresourceURLs(subresourceURLs);
-            
-            DocumentLoader* documentLoader = frame->loader().documentLoader();
 
-            for (const auto& subresourceURL : subresourceURLs) {
+            ASSERT(frame.loader().documentLoader());
+            auto& documentLoader = *frame.loader().documentLoader();
+
+            for (auto& subresourceURL : subresourceURLs) {
                 if (uniqueSubresources.contains(subresourceURL))
                     continue;
 
                 uniqueSubresources.add(subresourceURL);
 
-                if (RefPtr<ArchiveResource> resource = documentLoader->subresource(subresourceURL)) {
-                    subresources.append(WTFMove(resource));
+                if (auto resource = documentLoader.subresource(subresourceURL)) {
+                    subresources.append(resource.releaseNonNull());
                     continue;
                 }
 
                 ResourceRequest request(subresourceURL);
-#if ENABLE(CACHE_PARTITIONING)
-                request.setDomainForCachePartition(frame->document()->topOrigin()->domainForCachePartition());
-#endif
-                CachedResource* cachedResource = MemoryCache::singleton().resourceForRequest(request, frame->page()->sessionID());
-                if (cachedResource) {
-                    if (RefPtr<ArchiveResource> resource = ArchiveResource::create(cachedResource->resourceBuffer(), subresourceURL, cachedResource->response())) {
-                        subresources.append(WTFMove(resource));
+                request.setDomainForCachePartition(frame.document()->topOrigin().domainForCachePartition());
+
+                if (auto* cachedResource = MemoryCache::singleton().resourceForRequest(request, frame.page()->sessionID())) {
+                    if (auto resource = ArchiveResource::create(cachedResource->resourceBuffer(), subresourceURL, cachedResource->response())) {
+                        subresources.append(resource.releaseNonNull());
                         continue;
                     }
                 }
@@ -554,25 +530,25 @@ PassRefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString
     }
 
     // Add favicon if one exists for this page, if we are archiving the entire page.
-    if (nodesSize && nodes[0]->isDocumentNode() && iconDatabase().isEnabled()) {
-        const String& iconURL = iconDatabase().synchronousIconURLForPageURL(responseURL);
+    if (!nodes.isEmpty() && nodes[0]->isDocumentNode() && iconDatabase().isEnabled()) {
+        auto iconURL = iconDatabase().synchronousIconURLForPageURL(responseURL);
         if (!iconURL.isEmpty() && iconDatabase().synchronousIconDataKnownForIconURL(iconURL)) {
-            if (Image* iconImage = iconDatabase().synchronousIconForPageURL(responseURL, IntSize(16, 16))) {
-                if (RefPtr<ArchiveResource> resource = ArchiveResource::create(iconImage->data(), URL(ParsedURLString, iconURL), "image/x-icon", "", ""))
-                    subresources.append(resource.release());
+            if (auto* iconImage = iconDatabase().synchronousIconForPageURL(responseURL, IntSize(16, 16))) {
+                if (auto resource = ArchiveResource::create(iconImage->data(), URL(ParsedURLString, iconURL), "image/x-icon", "", ""))
+                    subresources.append(resource.releaseNonNull());
             }
         }
     }
 
-    return create(mainResource.release(), subresources, WTFMove(subframeArchives));
+    return create(mainResource.releaseNonNull(), WTFMove(subresources), WTFMove(subframeArchives));
 }
 
-PassRefPtr<LegacyWebArchive> LegacyWebArchive::createFromSelection(Frame* frame)
+RefPtr<LegacyWebArchive> LegacyWebArchive::createFromSelection(Frame* frame)
 {
     if (!frame)
         return nullptr;
 
-    Document* document = frame->document();
+    auto* document = frame->document();
     if (!document)
         return nullptr;
 
@@ -580,22 +556,24 @@ PassRefPtr<LegacyWebArchive> LegacyWebArchive::createFromSelection(Frame* frame)
     builder.append(documentTypeString(*document));
 
     Vector<Node*> nodeList;
-    RefPtr<Range> selectionRange = frame->selection().toNormalizedRange();
-    if (selectionRange)
+    if (auto selectionRange = frame->selection().toNormalizedRange())
         builder.append(createMarkup(*selectionRange, &nodeList, AnnotateForInterchange));
 
-    String markupString = builder.toString();
-    RefPtr<LegacyWebArchive> archive = create(markupString, frame, nodeList, nullptr);
+    auto archive = create(builder.toString(), *frame, nodeList, nullptr);
     
     if (!document->isFrameSet())
-        return archive.release();
+        return archive;
         
     // Wrap the frameset document in an iframe so it can be pasted into
     // another document (which will have a body or frameset of its own). 
     String iframeMarkup = "<iframe frameborder=\"no\" marginwidth=\"0\" marginheight=\"0\" width=\"98%%\" height=\"98%%\" src=\"" + frame->loader().documentLoader()->response().url().string() + "\"></iframe>";
-    RefPtr<ArchiveResource> iframeResource = ArchiveResource::create(utf8Buffer(iframeMarkup), blankURL(), "text/html", "UTF-8", String());
+    auto iframeResource = ArchiveResource::create(utf8Buffer(iframeMarkup), blankURL(), "text/html", "UTF-8", String());
 
-    return create(iframeResource.release(), Vector<RefPtr<ArchiveResource>>(), Vector<RefPtr<LegacyWebArchive>> { archive });
+    Vector<Ref<LegacyWebArchive>> subframeArchives;
+    subframeArchives.reserveInitialCapacity(1);
+    subframeArchives.uncheckedAppend(archive.releaseNonNull());
+
+    return create(iframeResource.releaseNonNull(), { }, WTFMove(subframeArchives));
 }
 
 }

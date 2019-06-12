@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirInsertionSet_h
-#define AirInsertionSet_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -42,11 +41,11 @@ typedef WTF::Insertion<Inst> Insertion;
 class InsertionSet {
 public:
     InsertionSet(Code& code)
-        : m_code(code)
+        : m_code(&code)
     {
     }
 
-    Code& code() { return m_code; }
+    Code& code() { return *m_code; }
 
     template<typename T>
     void appendInsertion(T&& insertion)
@@ -60,7 +59,12 @@ public:
         appendInsertion(Insertion(index, std::forward<Inst>(inst)));
     }
 
-    void insertInsts(size_t index, const Vector<Inst>&);
+    template<typename InstVector>
+    void insertInsts(size_t index, const InstVector& insts)
+    {
+        for (const Inst& inst : insts)
+            insertInst(index, inst);
+    }
     void insertInsts(size_t index, Vector<Inst>&&);
     
     template<typename... Arguments>
@@ -72,13 +76,10 @@ public:
     void execute(BasicBlock*);
 
 private:
-    Code& m_code;
+    Code* m_code; // Pointer so that this can be copied.
     Vector<Insertion, 8> m_insertions;
 };
 
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirInsertionSet_h
-

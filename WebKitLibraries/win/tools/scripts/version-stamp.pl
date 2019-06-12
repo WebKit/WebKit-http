@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 
 use strict;
+use Cwd 'abs_path';
+use File::Basename;
 use File::Spec;
 use POSIX;
 
@@ -29,9 +31,11 @@ use POSIX;
 
 sub exitStatus($);
 
-my $WEBKIT_LIBRARIES = $ENV{'WEBKIT_LIBRARIES'};
+my $rawPath = $0;
 
-my $VERSION_STAMPER = File::Spec->catfile($WEBKIT_LIBRARIES, 'tools', 'VersionStamper', 'VersionStamper.exe');
+my $thisDirectory = dirname(abs_path($rawPath));
+
+my $VERSION_STAMPER = File::Spec->catfile($thisDirectory, '..', 'VersionStamper', 'VersionStamper.exe');
 
 unless (-e $VERSION_STAMPER) {
     print "No $VERSION_STAMPER executable. Exiting.\n";
@@ -88,6 +92,9 @@ close(VERSION_INFO);
 print "Processing version $components{'__VERSION_TEXT__'} for $target\n";
 
 my $TARGET_PATH = File::Spec->canonpath($target);
+
+# Replace forward slashes with backslashes in case we are running Cygwin Perl.
+$TARGET_PATH =~ s/\//\\/g;
 
 print "Adjusting RC_PROJECTSOURCEVERSION and RC_ProjectSourceVersion to be safe for VersionStamper.\n";
 

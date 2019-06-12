@@ -52,9 +52,9 @@ struct SameSizeAsRenderTableCell : public RenderBlockFlow {
 };
 
 COMPILE_ASSERT(sizeof(RenderTableCell) == sizeof(SameSizeAsRenderTableCell), RenderTableCell_should_stay_small);
-COMPILE_ASSERT(sizeof(CollapsedBorderValue) == 12, CollapsedBorderValue_should_stay_small);
+COMPILE_ASSERT(sizeof(CollapsedBorderValue) <= 24, CollapsedBorderValue_should_stay_small);
 
-RenderTableCell::RenderTableCell(Element& element, Ref<RenderStyle>&& style)
+RenderTableCell::RenderTableCell(Element& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
     , m_column(unsetColumnIndex)
     , m_cellWidthChanged(false)
@@ -70,7 +70,7 @@ RenderTableCell::RenderTableCell(Element& element, Ref<RenderStyle>&& style)
     updateColAndRowSpanFlags();
 }
 
-RenderTableCell::RenderTableCell(Document& document, Ref<RenderStyle>&& style)
+RenderTableCell::RenderTableCell(Document& document, RenderStyle&& style)
     : RenderBlockFlow(document, WTFMove(style))
     , m_column(unsetColumnIndex)
     , m_cellWidthChanged(false)
@@ -183,7 +183,7 @@ void RenderTableCell::computePreferredLogicalWidths()
     table()->recalcSectionsIfNeeded();
 
     RenderBlockFlow::computePreferredLogicalWidths();
-    if (!element() || !style().autoWrap() || !element()->fastHasAttribute(nowrapAttr))
+    if (!element() || !style().autoWrap() || !element()->hasAttributeWithoutSynchronization(nowrapAttr))
         return;
 
     Length w = styleOrColLogicalWidth();
@@ -276,6 +276,11 @@ void RenderTableCell::layout()
         layoutBlock(cellWidthChanged());
     }
     invalidateHasEmptyCollapsedBorders();
+    
+    // FIXME: This value isn't the intrinsic content logical height, but we need
+    // to update the value as its used by flexbox layout. crbug.com/367324
+    cacheIntrinsicContentLogicalHeightForFlexItem(contentLogicalHeight());
+
     setCellWidthChanged(false);
 }
 
@@ -386,14 +391,14 @@ LayoutRect RenderTableCell::clippedOverflowRectForRepaint(const RenderLayerModel
     return computeRectForRepaint(r, repaintContainer);
 }
 
-LayoutRect RenderTableCell::computeRectForRepaint(const LayoutRect& r, const RenderLayerModelObject* repaintContainer, bool fixed) const
+LayoutRect RenderTableCell::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
 {
     if (repaintContainer == this)
-        return r;
-    LayoutRect adjustedRect = r;
+        return rect;
+    LayoutRect adjustedRect = rect;
     if ((!view().layoutStateEnabled() || repaintContainer) && parent())
         adjustedRect.moveBy(-parentBox()->location()); // Rows are in the same coordinate space, so don't add their offset in.
-    return RenderBlockFlow::computeRectForRepaint(adjustedRect, repaintContainer, fixed);
+    return RenderBlockFlow::computeRectForRepaint(adjustedRect, repaintContainer, context);
 }
 
 LayoutUnit RenderTableCell::cellBaselinePosition() const
@@ -401,7 +406,14 @@ LayoutUnit RenderTableCell::cellBaselinePosition() const
     // <http://www.w3.org/TR/2007/CR-CSS21-20070719/tables.html#height-layout>: The baseline of a cell is the baseline of
     // the first in-flow line box in the cell, or the first in-flow table-row in the cell, whichever comes first. If there
     // is no such line box or table-row, the baseline is the bottom of content edge of the cell box.
-    return firstLineBaseline().valueOr(borderAndPaddingBefore() + contentLogicalHeight());
+    return firstLineBaseline().value_or(borderAndPaddingBefore() + contentLogicalHeight());
+}
+
+static inline void markCellDirtyWhenCollapsedBorderChanges(RenderTableCell* cell)
+{
+    if (!cell)
+        return;
+    cell->setNeedsLayoutAndPrefWidthsRecalc();
 }
 
 void RenderTableCell::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -410,7 +422,7 @@ void RenderTableCell::styleDidChange(StyleDifference diff, const RenderStyle* ol
     ASSERT(!row() || row()->rowIndexWasSet());
 
     RenderBlockFlow::styleDidChange(diff, oldStyle);
-    setHasBoxDecorations(true);
+    setHasVisibleBoxDecorations(true); // FIXME: Optimize this to only set to true if necessary.
 
     if (parent() && section() && oldStyle && style().height() != oldStyle->height())
         section()->rowLogicalHeightChanged(rowIndex());
@@ -422,8 +434,15 @@ void RenderTableCell::styleDidChange(StyleDifference diff, const RenderStyle* ol
 
     // If border was changed, notify table.
     RenderTable* table = this->table();
-    if (table && oldStyle && oldStyle->border() != style().border())
-        table->invalidateCollapsedBorders();
+    if (table && oldStyle && oldStyle->border() != style().border()) {
+        table->invalidateCollapsedBorders(this);
+        if (table->collapseBorders() && diff == StyleDifferenceLayout) {
+            markCellDirtyWhenCollapsedBorderChanges(table->cellBelow(this));
+            markCellDirtyWhenCollapsedBorderChanges(table->cellAbove(this));
+            markCellDirtyWhenCollapsedBorderChanges(table->cellBefore(this));
+            markCellDirtyWhenCollapsedBorderChanges(table->cellAfter(this));
+        }
+    }
 }
 
 // The following rules apply for resolving conflicts and figuring out which border
@@ -492,7 +511,7 @@ bool RenderTableCell::hasStartBorderAdjoiningTable() const
 {
     bool isStartColumn = !col();
     bool isEndColumn = table()->colToEffCol(col() + colSpan() - 1) == table()->numEffCols() - 1;
-    bool hasSameDirectionAsTable = hasSameDirectionAs(section());
+    bool hasSameDirectionAsTable = isDirectionSame(this, section());
 
     // The table direction determines the row direction. In mixed directionality, we cannot guarantee that
     // we have a common border with the table (think a ltr table with rtl start cell).
@@ -503,7 +522,7 @@ bool RenderTableCell::hasEndBorderAdjoiningTable() const
 {
     bool isStartColumn = !col();
     bool isEndColumn = table()->colToEffCol(col() + colSpan() - 1) == table()->numEffCols() - 1;
-    bool hasSameDirectionAsTable = hasSameDirectionAs(section());
+    bool hasSameDirectionAsTable = isDirectionSame(this, section());
 
     // The table direction determines the row direction. In mixed directionality, we cannot guarantee that
     // we have a common border with the table (think a ltr table with ltr end cell).
@@ -547,7 +566,7 @@ CollapsedBorderValue RenderTableCell::computeCollapsedStartBorder(IncludeBorderC
     // (2) The end border of the preceding cell.
     RenderTableCell* cellBefore = table->cellBefore(this);
     if (cellBefore) {
-        CollapsedBorderValue cellBeforeAdjoiningBorder = CollapsedBorderValue(cellBefore->borderAdjoiningCellAfter(this), includeColor ? cellBefore->style().visitedDependentColor(endColorProperty) : Color(), BCELL);
+        CollapsedBorderValue cellBeforeAdjoiningBorder = CollapsedBorderValue(cellBefore->borderAdjoiningCellAfter(*this), includeColor ? cellBefore->style().visitedDependentColor(endColorProperty) : Color(), BCELL);
         // |result| should be the 2nd argument as |cellBefore| should win in case of equality per CSS 2.1 (Border conflict resolution, point 4).
         result = chooseBorder(cellBeforeAdjoiningBorder, result);
         if (!result.exists())
@@ -557,12 +576,12 @@ CollapsedBorderValue RenderTableCell::computeCollapsedStartBorder(IncludeBorderC
     bool startBorderAdjoinsTable = hasStartBorderAdjoiningTable();
     if (startBorderAdjoinsTable) {
         // (3) Our row's start border.
-        result = chooseBorder(result, CollapsedBorderValue(row()->borderAdjoiningStartCell(this), includeColor ? parent()->style().visitedDependentColor(startColorProperty) : Color(), BROW));
+        result = chooseBorder(result, CollapsedBorderValue(row()->borderAdjoiningStartCell(*this), includeColor ? parent()->style().visitedDependentColor(startColorProperty) : Color(), BROW));
         if (!result.exists())
             return result;
 
         // (4) Our row group's start border.
-        result = chooseBorder(result, CollapsedBorderValue(section()->borderAdjoiningStartCell(this), includeColor ? section()->style().visitedDependentColor(startColorProperty) : Color(), BROWGROUP));
+        result = chooseBorder(result, CollapsedBorderValue(section()->borderAdjoiningStartCell(*this), includeColor ? section()->style().visitedDependentColor(startColorProperty) : Color(), BROWGROUP));
         if (!result.exists())
             return result;
     }
@@ -573,19 +592,19 @@ CollapsedBorderValue RenderTableCell::computeCollapsedStartBorder(IncludeBorderC
     if (RenderTableCol* colElt = table->colElement(col(), &startColEdge, &endColEdge)) {
         if (colElt->isTableColumnGroup() && startColEdge) {
             // The |colElt| is a column group and is also the first colgroup (in case of spanned colgroups).
-            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellStartBorder(this), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
+            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellStartBorder(), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
             if (!result.exists())
                 return result;
         } else if (!colElt->isTableColumnGroup()) {
             // We first consider the |colElt| and irrespective of whether it is a spanned col or not, we apply
             // its start border. This is as per HTML5 which states that: "For the purposes of the CSS table model,
             // the col element is expected to be treated as if it was present as many times as its span attribute specifies".
-            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellStartBorder(this), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOL));
+            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellStartBorder(), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOL));
             if (!result.exists())
                 return result;
             // Next, apply the start border of the enclosing colgroup but only if it is adjacent to the cell's edge.
             if (RenderTableCol* enclosingColumnGroup = colElt->enclosingColumnGroupIfAdjacentBefore()) {
-                result = chooseBorder(result, CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellStartBorder(this), includeColor ? enclosingColumnGroup->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
+                result = chooseBorder(result, CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellStartBorder(), includeColor ? enclosingColumnGroup->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
                 if (!result.exists())
                     return result;
             }
@@ -597,18 +616,18 @@ CollapsedBorderValue RenderTableCell::computeCollapsedStartBorder(IncludeBorderC
         if (RenderTableCol* colElt = table->colElement(col() - 1, &startColEdge, &endColEdge)) {
             if (colElt->isTableColumnGroup() && endColEdge) {
                 // The element is a colgroup and is also the last colgroup (in case of spanned colgroups).
-                result = chooseBorder(CollapsedBorderValue(colElt->borderAdjoiningCellAfter(this), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP), result);
+                result = chooseBorder(CollapsedBorderValue(colElt->borderAdjoiningCellAfter(*this), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP), result);
                 if (!result.exists())
                     return result;
             } else if (colElt->isTableColumn()) {
                 // Resolve the collapsing border against the col's border ignoring any 'span' as per HTML5.
-                result = chooseBorder(CollapsedBorderValue(colElt->borderAdjoiningCellAfter(this), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOL), result);
+                result = chooseBorder(CollapsedBorderValue(colElt->borderAdjoiningCellAfter(*this), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOL), result);
                 if (!result.exists())
                     return result;
                 // Next, if the previous col has a parent colgroup then its end border should be applied
                 // but only if it is adjacent to the cell's edge.
                 if (RenderTableCol* enclosingColumnGroup = colElt->enclosingColumnGroupIfAdjacentAfter()) {
-                    result = chooseBorder(CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellEndBorder(this), includeColor ? enclosingColumnGroup->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP), result);
+                    result = chooseBorder(CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellEndBorder(), includeColor ? enclosingColumnGroup->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP), result);
                     if (!result.exists())
                         return result;
                 }
@@ -618,7 +637,7 @@ CollapsedBorderValue RenderTableCell::computeCollapsedStartBorder(IncludeBorderC
 
     if (startBorderAdjoinsTable) {
         // (7) The table's start border.
-        result = chooseBorder(result, CollapsedBorderValue(table->tableStartBorderAdjoiningCell(this), includeColor ? table->style().visitedDependentColor(startColorProperty) : Color(), BTABLE));
+        result = chooseBorder(result, CollapsedBorderValue(table->tableStartBorderAdjoiningCell(*this), includeColor ? table->style().visitedDependentColor(startColorProperty) : Color(), BTABLE));
         if (!result.exists())
             return result;
     }
@@ -661,7 +680,7 @@ CollapsedBorderValue RenderTableCell::computeCollapsedEndBorder(IncludeBorderCol
     // (2) The start border of the following cell.
     if (!isEndColumn) {
         if (RenderTableCell* cellAfter = table->cellAfter(this)) {
-            CollapsedBorderValue cellAfterAdjoiningBorder = CollapsedBorderValue(cellAfter->borderAdjoiningCellBefore(this), includeColor ? cellAfter->style().visitedDependentColor(startColorProperty) : Color(), BCELL);
+            CollapsedBorderValue cellAfterAdjoiningBorder = CollapsedBorderValue(cellAfter->borderAdjoiningCellBefore(*this), includeColor ? cellAfter->style().visitedDependentColor(startColorProperty) : Color(), BCELL);
             result = chooseBorder(result, cellAfterAdjoiningBorder);
             if (!result.exists())
                 return result;
@@ -671,12 +690,12 @@ CollapsedBorderValue RenderTableCell::computeCollapsedEndBorder(IncludeBorderCol
     bool endBorderAdjoinsTable = hasEndBorderAdjoiningTable();
     if (endBorderAdjoinsTable) {
         // (3) Our row's end border.
-        result = chooseBorder(result, CollapsedBorderValue(row()->borderAdjoiningEndCell(this), includeColor ? parent()->style().visitedDependentColor(endColorProperty) : Color(), BROW));
+        result = chooseBorder(result, CollapsedBorderValue(row()->borderAdjoiningEndCell(*this), includeColor ? parent()->style().visitedDependentColor(endColorProperty) : Color(), BROW));
         if (!result.exists())
             return result;
         
         // (4) Our row group's end border.
-        result = chooseBorder(result, CollapsedBorderValue(section()->borderAdjoiningEndCell(this), includeColor ? section()->style().visitedDependentColor(endColorProperty) : Color(), BROWGROUP));
+        result = chooseBorder(result, CollapsedBorderValue(section()->borderAdjoiningEndCell(*this), includeColor ? section()->style().visitedDependentColor(endColorProperty) : Color(), BROWGROUP));
         if (!result.exists())
             return result;
     }
@@ -687,19 +706,19 @@ CollapsedBorderValue RenderTableCell::computeCollapsedEndBorder(IncludeBorderCol
     if (RenderTableCol* colElt = table->colElement(col() + colSpan() - 1, &startColEdge, &endColEdge)) {
         if (colElt->isTableColumnGroup() && endColEdge) {
             // The element is a colgroup and is also the last colgroup (in case of spanned colgroups).
-            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellEndBorder(this), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP));
+            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellEndBorder(), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP));
             if (!result.exists())
                 return result;
         } else if (!colElt->isTableColumnGroup()) {
             // First apply the end border of the column irrespective of whether it is spanned or not. This is as per
             // HTML5 which states that: "For the purposes of the CSS table model, the col element is expected to be
             // treated as if it was present as many times as its span attribute specifies".
-            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellEndBorder(this), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOL));
+            result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellEndBorder(), includeColor ? colElt->style().visitedDependentColor(endColorProperty) : Color(), BCOL));
             if (!result.exists())
                 return result;
             // Next, if it has a parent colgroup then we apply its end border but only if it is adjacent to the cell.
             if (RenderTableCol* enclosingColumnGroup = colElt->enclosingColumnGroupIfAdjacentAfter()) {
-                result = chooseBorder(result, CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellEndBorder(this), includeColor ? enclosingColumnGroup->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP));
+                result = chooseBorder(result, CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellEndBorder(), includeColor ? enclosingColumnGroup->style().visitedDependentColor(endColorProperty) : Color(), BCOLGROUP));
                 if (!result.exists())
                     return result;
             }
@@ -711,17 +730,17 @@ CollapsedBorderValue RenderTableCell::computeCollapsedEndBorder(IncludeBorderCol
         if (RenderTableCol* colElt = table->colElement(col() + colSpan(), &startColEdge, &endColEdge)) {
             if (colElt->isTableColumnGroup() && startColEdge) {
                 // This case is a colgroup without any col, we only compute it if it is adjacent to the cell's edge.
-                result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellBefore(this), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
+                result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellBefore(*this), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
                 if (!result.exists())
                     return result;
             } else if (colElt->isTableColumn()) {
                 // Resolve the collapsing border against the col's border ignoring any 'span' as per HTML5.
-                result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellBefore(this), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOL));
+                result = chooseBorder(result, CollapsedBorderValue(colElt->borderAdjoiningCellBefore(*this), includeColor ? colElt->style().visitedDependentColor(startColorProperty) : Color(), BCOL));
                 if (!result.exists())
                     return result;
                 // If we have a parent colgroup, resolve the border only if it is adjacent to the cell.
                 if (RenderTableCol* enclosingColumnGroup = colElt->enclosingColumnGroupIfAdjacentBefore()) {
-                    result = chooseBorder(result, CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellStartBorder(this), includeColor ? enclosingColumnGroup->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
+                    result = chooseBorder(result, CollapsedBorderValue(enclosingColumnGroup->borderAdjoiningCellStartBorder(), includeColor ? enclosingColumnGroup->style().visitedDependentColor(startColorProperty) : Color(), BCOLGROUP));
                     if (!result.exists())
                         return result;
                 }
@@ -731,7 +750,7 @@ CollapsedBorderValue RenderTableCell::computeCollapsedEndBorder(IncludeBorderCol
 
     if (endBorderAdjoinsTable) {
         // (7) The table's end border.
-        result = chooseBorder(result, CollapsedBorderValue(table->tableEndBorderAdjoiningCell(this), includeColor ? table->style().visitedDependentColor(endColorProperty) : Color(), BTABLE));
+        result = chooseBorder(result, CollapsedBorderValue(table->tableEndBorderAdjoiningCell(*this), includeColor ? table->style().visitedDependentColor(endColorProperty) : Color(), BTABLE));
         if (!result.exists())
             return result;
     }
@@ -1054,7 +1073,7 @@ LayoutUnit RenderTableCell::borderHalfStart(bool outer) const
 {
     CollapsedBorderValue border = collapsedStartBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isLeftToRightDirection() ^ outer) ? 1 : 0)) / 2); // Give the extra pixel to top and left.
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), styleForCellFlow().isLeftToRightDirection() ^ outer);
     return 0;
 }
     
@@ -1062,7 +1081,7 @@ LayoutUnit RenderTableCell::borderHalfEnd(bool outer) const
 {
     CollapsedBorderValue border = collapsedEndBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isLeftToRightDirection() ^ outer) ? 0 : 1)) / 2);
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), !(styleForCellFlow().isLeftToRightDirection() ^ outer));
     return 0;
 }
 
@@ -1070,7 +1089,7 @@ LayoutUnit RenderTableCell::borderHalfBefore(bool outer) const
 {
     CollapsedBorderValue border = collapsedBeforeBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isFlippedBlocksWritingMode() ^ outer) ? 0 : 1)) / 2); // Give the extra pixel to top and left.
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), !(styleForCellFlow().isFlippedBlocksWritingMode() ^ outer));
     return 0;
 }
 
@@ -1078,7 +1097,7 @@ LayoutUnit RenderTableCell::borderHalfAfter(bool outer) const
 {
     CollapsedBorderValue border = collapsedAfterBorder(DoNotIncludeBorderColor);
     if (border.exists())
-        return floorToInt((border.width() + ((styleForCellFlow().isFlippedBlocksWritingMode() ^ outer) ? 1 : 0)) / 2);
+        return CollapsedBorderValue::adjustedCollapsedBorderWidth(border.width(), document().deviceScaleFactor(), styleForCellFlow().isFlippedBlocksWritingMode() ^ outer);
     return 0;
 }
 
@@ -1204,20 +1223,26 @@ void RenderTableCell::paintCollapsedBorders(PaintInfo& paintInfo, const LayoutPo
     LayoutUnit leftWidth = leftVal.width();
     LayoutUnit rightWidth = rightVal.width();
 
-    LayoutRect borderRect = LayoutRect(paintRect.x() - floorToInt(leftWidth / 2),
-        paintRect.y() - floorToInt(topWidth / 2),
-        paintRect.width() + floorToInt(leftWidth / 2) + floorToInt((rightWidth + 1) / 2),
-        paintRect.height() + floorToInt(topWidth / 2) + floorToInt((bottomWidth + 1) / 2));
+    float deviceScaleFactor = document().deviceScaleFactor();
+    LayoutUnit leftHalfCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(leftWidth , deviceScaleFactor, false);
+    LayoutUnit topHalfCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(topWidth, deviceScaleFactor, false);
+    LayoutUnit righHalftCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(rightWidth, deviceScaleFactor, true);
+    LayoutUnit bottomHalfCollapsedBorder = CollapsedBorderValue::adjustedCollapsedBorderWidth(bottomWidth, deviceScaleFactor, true);
     
+    LayoutRect borderRect = LayoutRect(paintRect.x() - leftHalfCollapsedBorder,
+        paintRect.y() - topHalfCollapsedBorder,
+        paintRect.width() + leftHalfCollapsedBorder + righHalftCollapsedBorder,
+        paintRect.height() + topHalfCollapsedBorder + bottomHalfCollapsedBorder);
+
     EBorderStyle topStyle = collapsedBorderStyle(topVal.style());
     EBorderStyle bottomStyle = collapsedBorderStyle(bottomVal.style());
     EBorderStyle leftStyle = collapsedBorderStyle(leftVal.style());
     EBorderStyle rightStyle = collapsedBorderStyle(rightVal.style());
     
-    bool renderTop = topStyle > BHIDDEN && !topVal.isTransparent() && floorToInt(topWidth);
-    bool renderBottom = bottomStyle > BHIDDEN && !bottomVal.isTransparent() && floorToInt(bottomWidth);
-    bool renderLeft = leftStyle > BHIDDEN && !leftVal.isTransparent() && floorToInt(leftWidth);
-    bool renderRight = rightStyle > BHIDDEN && !rightVal.isTransparent() && floorToInt(rightWidth);
+    bool renderTop = topStyle > BHIDDEN && !topVal.isTransparent() && floorToDevicePixel(topWidth, deviceScaleFactor);
+    bool renderBottom = bottomStyle > BHIDDEN && !bottomVal.isTransparent() && floorToDevicePixel(bottomWidth, deviceScaleFactor);
+    bool renderLeft = leftStyle > BHIDDEN && !leftVal.isTransparent() && floorToDevicePixel(leftWidth, deviceScaleFactor);
+    bool renderRight = rightStyle > BHIDDEN && !rightVal.isTransparent() && floorToDevicePixel(rightWidth, deviceScaleFactor);
 
     // We never paint diagonals at the joins.  We simply let the border with the highest
     // precedence paint on top of borders with lower precedence.  
@@ -1256,9 +1281,9 @@ void RenderTableCell::paintBackgroundsBehindCell(PaintInfo& paintInfo, const Lay
         adjustedPaintOffset.moveBy(location());
 
     Color c = backgroundObject->style().visitedDependentColor(CSSPropertyBackgroundColor);
-    const FillLayer* bgLayer = backgroundObject->style().backgroundLayers();
+    auto& bgLayer = backgroundObject->style().backgroundLayers();
 
-    if (bgLayer->hasImage() || c.isValid()) {
+    if (bgLayer.hasImage() || c.isValid()) {
         // We have to clip here because the background would paint
         // on top of the borders otherwise.  This only matters for cells and rows.
         bool shouldClip = backgroundObject->hasLayer() && (backgroundObject == this || backgroundObject == parent()) && tableElt->collapseBorders();
@@ -1277,11 +1302,13 @@ void RenderTableCell::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoin
     if (!paintInfo.shouldPaintWithinRoot(*this))
         return;
 
-    RenderTable* tableElt = table();
-    if (!tableElt->collapseBorders() && style().emptyCells() == HIDE && !firstChild())
+    RenderTable* table = this->table();
+    if (!table->collapseBorders() && style().emptyCells() == HIDE && !firstChild())
         return;
 
     LayoutRect paintRect = LayoutRect(paintOffset, frameRect().size());
+    adjustBorderBoxRectForPainting(paintRect);
+
     paintBoxShadow(paintInfo, paintRect, style(), Normal);
     
     // Paint our cell background.
@@ -1289,7 +1316,7 @@ void RenderTableCell::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoin
 
     paintBoxShadow(paintInfo, paintRect, style(), Inset);
 
-    if (!style().hasBorder() || tableElt->collapseBorders() || (!firstChild() && document().inQuirksMode()))
+    if (!style().hasBorder() || table->collapseBorders())
         return;
 
     paintBorder(paintInfo, paintRect, style());
@@ -1304,7 +1331,10 @@ void RenderTableCell::paintMask(PaintInfo& paintInfo, const LayoutPoint& paintOf
     if (!tableElt->collapseBorders() && style().emptyCells() == HIDE && !firstChild())
         return;
    
-    paintMaskImages(paintInfo, LayoutRect(paintOffset, frameRect().size()));
+    LayoutRect paintRect = LayoutRect(paintOffset, frameRect().size());
+    adjustBorderBoxRectForPainting(paintRect);
+
+    paintMaskImages(paintInfo, paintRect);
 }
 
 bool RenderTableCell::boxShadowShouldBeAppliedToBackground(const LayoutPoint&, BackgroundBleedAvoidance, InlineFlowBox*) const
@@ -1336,11 +1366,16 @@ void RenderTableCell::scrollbarsChanged(bool horizontalScrollbarChanged, bool ve
         setIntrinsicPaddingAfter(intrinsicPaddingAfter() - scrollbarHeight);
 }
 
-RenderTableCell* RenderTableCell::createAnonymousWithParentRenderer(const RenderObject* parent)
+std::unique_ptr<RenderTableCell> RenderTableCell::createTableCellWithStyle(Document& document, const RenderStyle& style)
 {
-    auto cell = new RenderTableCell(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(&parent->style(), TABLE_CELL));
+    auto cell = std::make_unique<RenderTableCell>(document, RenderStyle::createAnonymousStyleWithDisplay(style, TABLE_CELL));
     cell->initializeStyle();
     return cell;
+}
+
+std::unique_ptr<RenderTableCell> RenderTableCell::createAnonymousWithParentRenderer(const RenderTableRow& parent)
+{
+    return RenderTableCell::createTableCellWithStyle(parent.document(), parent.style());
 }
 
 } // namespace WebCore

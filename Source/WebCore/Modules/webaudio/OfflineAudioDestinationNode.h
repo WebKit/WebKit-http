@@ -22,12 +22,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OfflineAudioDestinationNode_h
-#define OfflineAudioDestinationNode_h
+#pragma once
 
 #include "AudioBuffer.h"
 #include "AudioDestinationNode.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
 
@@ -46,14 +44,14 @@ public:
     virtual ~OfflineAudioDestinationNode();
     
     // AudioNode   
-    virtual void initialize() override;
-    virtual void uninitialize() override;
+    void initialize() override;
+    void uninitialize() override;
 
     // AudioDestinationNode
-    virtual void enableInput(const String&) override { }
-    virtual void startRendering() override;
+    void enableInput(const String&) override { }
+    void startRendering() override;
 
-    virtual float sampleRate() const override { return m_renderTarget->sampleRate(); }
+    float sampleRate() const override { return m_renderTarget->sampleRate(); }
 
 private:
     OfflineAudioDestinationNode(AudioContext&, AudioBuffer* renderTarget);
@@ -65,9 +63,8 @@ private:
     RefPtr<AudioBus> m_renderBus;
     
     // Rendering thread.
-    volatile ThreadIdentifier m_renderThread;
+    RefPtr<Thread> m_renderThread;
     bool m_startedRendering;
-    static void offlineRenderEntry(void* threadData);
     void offlineRender();
     
     // For completion callback on main thread.
@@ -75,5 +72,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // OfflineAudioDestinationNode_h

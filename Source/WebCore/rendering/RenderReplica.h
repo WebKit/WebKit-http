@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderReplica_h
-#define RenderReplica_h
+#pragma once
 
 #include "RenderBox.h"
 
@@ -35,24 +34,21 @@ namespace WebCore {
 
 class RenderReplica final : public RenderBox {
 public:
-    RenderReplica(Document&, Ref<RenderStyle>&&);
+    RenderReplica(Document&, RenderStyle&&);
     virtual ~RenderReplica();
 
-    virtual const char* renderName() const override { return "RenderReplica"; }
+    const char* renderName() const override { return "RenderReplica"; }
 
-    virtual bool requiresLayer() const override { return true; }
+    bool requiresLayer() const override { return true; }
 
-    virtual void layout() override;
+    void layout() override;
     
-    virtual void paint(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
 
 private:
-    virtual bool isReplica() const override { return true; }
-    virtual bool canHaveChildren() const override { return false; }
-    virtual void computePreferredLogicalWidths() override;
-
+    bool isReplica() const override { return true; }
+    bool canHaveChildren() const override { return false; }
+    void computePreferredLogicalWidths() override;
 };
 
 } // namespace WebCore
-
-#endif // RenderReplica_h

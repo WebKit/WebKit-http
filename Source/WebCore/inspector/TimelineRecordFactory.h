@@ -29,16 +29,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-#ifndef TimelineRecordFactory_h
-#define TimelineRecordFactory_h
+#pragma once
 
 #include <inspector/InspectorValues.h>
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
-
-namespace JSC {
-class Profile;
-}
 
 namespace Inspector {
 struct ScriptBreakpointAction;
@@ -58,19 +53,16 @@ public:
     static Ref<Inspector::InspectorObject> createProbeSampleData(const Inspector::ScriptBreakpointAction&, unsigned sampleId);
     static Ref<Inspector::InspectorObject> createEventDispatchData(const Event&);
     static Ref<Inspector::InspectorObject> createGenericTimerData(int timerId);
-    static Ref<Inspector::InspectorObject> createTimerInstallData(int timerId, int timeout, bool singleShot);
+    static Ref<Inspector::InspectorObject> createTimerInstallData(int timerId, Seconds timeout, bool singleShot);
     static Ref<Inspector::InspectorObject> createEvaluateScriptData(const String&, double lineNumber);
     static Ref<Inspector::InspectorObject> createTimeStampData(const String&);
     static Ref<Inspector::InspectorObject> createAnimationFrameData(int callbackId);
     static Ref<Inspector::InspectorObject> createPaintData(const FloatQuad&);
 
     static void appendLayoutRoot(Inspector::InspectorObject* data, const FloatQuad&);
-    static void appendProfile(Inspector::InspectorObject*, RefPtr<JSC::Profile>&&);
 
 private:
     TimelineRecordFactory() { }
 };
 
 } // namespace WebCore
-
-#endif // !defined(TimelineRecordFactory_h)

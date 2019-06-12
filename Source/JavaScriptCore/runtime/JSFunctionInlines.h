@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSFunctionInlines_h
-#define JSFunctionInlines_h
+#pragma once
 
-#include "Executable.h"
+#include "FunctionExecutable.h"
 #include "JSFunction.h"
+#include "NativeExecutable.h"
 
 namespace JSC {
 
@@ -35,7 +35,7 @@ inline JSFunction* JSFunction::createWithInvalidatedReallocationWatchpoint(
     VM& vm, FunctionExecutable* executable, JSScope* scope)
 {
     ASSERT(executable->singletonFunction()->hasBeenInvalidated());
-    return createImpl(vm, executable, scope, scope->globalObject()->functionStructure());
+    return createImpl(vm, executable, scope, scope->globalObject(vm)->functionStructure());
 }
 
 inline JSFunction::JSFunction(VM& vm, FunctionExecutable* executable, JSScope* scope, Structure* structure)
@@ -44,15 +44,6 @@ inline JSFunction::JSFunction(VM& vm, FunctionExecutable* executable, JSScope* s
     , m_rareData()
 {
 }
-
-#if ENABLE(WEBASSEMBLY)
-inline JSFunction::JSFunction(VM& vm, WebAssemblyExecutable* executable, JSScope* scope)
-    : Base(vm, scope, scope->globalObject()->functionStructure())
-    , m_executable(vm, this, executable)
-    , m_rareData()
-{
-}
-#endif
 
 inline FunctionExecutable* JSFunction::jsExecutable() const
 {
@@ -73,10 +64,6 @@ inline Intrinsic JSFunction::intrinsic() const
 
 inline bool JSFunction::isBuiltinFunction() const
 {
-#if ENABLE(WEBASSEMBLY)
-    if (m_executable->isWebAssemblyExecutable())
-        return false;
-#endif
     return !isHostFunction() && jsExecutable()->isBuiltinFunction();
 }
 
@@ -110,7 +97,14 @@ inline bool isHostFunction(JSValue value, NativeFunction nativeFunction)
     return function->nativeFunction() == nativeFunction;
 }
 
+inline bool JSFunction::hasReifiedLength() const
+{
+    return m_rareData ? m_rareData->hasReifiedLength() : false;
+}
+
+inline bool JSFunction::hasReifiedName() const
+{
+    return m_rareData ? m_rareData->hasReifiedName() : false;
+}
+
 } // namespace JSC
-
-#endif // JSFunctionInlines_h
-

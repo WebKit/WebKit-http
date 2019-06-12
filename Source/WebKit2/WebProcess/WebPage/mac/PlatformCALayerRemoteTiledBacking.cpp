@@ -29,7 +29,6 @@
 #import "RemoteLayerTreeContext.h"
 #import <WebCore/GraphicsLayerCA.h>
 #import <WebCore/PlatformCALayerCocoa.h>
-#import <WebCore/TiledBacking.h>
 #import <wtf/RetainPtr.h>
 
 using namespace WebCore;
@@ -86,6 +85,26 @@ bool PlatformCALayerRemoteTiledBacking::acceleratesDrawing() const
 void PlatformCALayerRemoteTiledBacking::setAcceleratesDrawing(bool acceleratesDrawing)
 {
     m_tileController->setAcceleratesDrawing(acceleratesDrawing);
+}
+
+bool PlatformCALayerRemoteTiledBacking::wantsDeepColorBackingStore() const
+{
+    return m_tileController->wantsDeepColorBackingStore();
+}
+
+void PlatformCALayerRemoteTiledBacking::setWantsDeepColorBackingStore(bool wantsDeepColorBackingStore)
+{
+    m_tileController->setWantsDeepColorBackingStore(wantsDeepColorBackingStore);
+}
+
+bool PlatformCALayerRemoteTiledBacking::supportsSubpixelAntialiasedText() const
+{
+    return m_tileController->supportsSubpixelAntialiasedText();
+}
+
+void PlatformCALayerRemoteTiledBacking::setSupportsSubpixelAntialiasedText(bool supportsSubpixelAntialiasedText)
+{
+    m_tileController->setSupportsSubpixelAntialiasedText(supportsSubpixelAntialiasedText);
 }
 
 float PlatformCALayerRemoteTiledBacking::contentsScale() const

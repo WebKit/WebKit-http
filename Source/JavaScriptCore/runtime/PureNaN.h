@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PureNaN_h
-#define PureNaN_h
+#pragma once
 
 #include <wtf/Assertions.h>
 #include <wtf/StdLibExtras.h>
@@ -33,7 +32,7 @@ namespace JSC {
 
 // NaN (not-a-number) double values are central to how JavaScriptCore encodes JavaScript
 // values (JSValues).  All values, including integers and non-numeric values, are always
-// encoded using the IEEE 854 binary double format.  Non-double values are encoded using
+// encoded using the IEEE 754 binary double format.  Non-double values are encoded using
 // a NaN with the sign bit set.  The 51-bit payload is then used for encoding the actual
 // value - be it an integer or a pointer to an object, or something else. But we only
 // make use of the low 49 bits and the top 15 bits being all set to 1 is the indicator
@@ -94,5 +93,3 @@ inline double purifyNaN(double value)
 }   
 
 } // namespace JSC
-
-#endif // PureNaN_h

@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITCode_h
-#define JITCode_h
+#pragma once
 
 #include "ArityCheckMode.h"
 #include "CallFrame.h"
 #include "CodeOrigin.h"
-#include "Disassembler.h"
 #include "JSCJSValue.h"
 #include "MacroAssemblerCodeRef.h"
 #include "RegisterSet.h"
@@ -197,7 +195,7 @@ public:
 
 #if ENABLE(JIT)
     virtual RegisterSet liveRegistersToPreserveAtExceptionHandlingCallSite(CodeBlock*, CallSiteIndex);
-    virtual Optional<CodeOrigin> findPC(CodeBlock*, void* pc) { UNUSED_PARAM(pc); return Nullopt; }
+    virtual std::optional<CodeOrigin> findPC(CodeBlock*, void* pc) { UNUSED_PARAM(pc); return std::nullopt; }
 #endif
 
 private:
@@ -212,11 +210,11 @@ protected:
 public:
     virtual ~JITCodeWithCodeRef();
 
-    virtual void* executableAddressAtOffset(size_t offset) override;
-    virtual void* dataAddressAtOffset(size_t offset) override;
-    virtual unsigned offsetOf(void* pointerIntoCode) override;
-    virtual size_t size() override;
-    virtual bool contains(void*) override;
+    void* executableAddressAtOffset(size_t offset) override;
+    void* dataAddressAtOffset(size_t offset) override;
+    unsigned offsetOf(void* pointerIntoCode) override;
+    size_t size() override;
+    bool contains(void*) override;
 
 protected:
     CodeRef m_ref;
@@ -230,7 +228,7 @@ public:
     
     void initializeCodeRef(CodeRef, CodePtr withArityCheck);
 
-    virtual CodePtr addressForCall(ArityCheckMode) override;
+    CodePtr addressForCall(ArityCheckMode) override;
 
 private:
     CodePtr m_withArityCheck;
@@ -244,7 +242,7 @@ public:
     
     void initializeCodeRef(CodeRef);
 
-    virtual CodePtr addressForCall(ArityCheckMode) override;
+    CodePtr addressForCall(ArityCheckMode) override;
 };
 
 } // namespace JSC
@@ -255,5 +253,3 @@ class PrintStream;
 void printInternal(PrintStream&, JSC::JITCode::JITType);
 
 } // namespace WTF
-
-#endif

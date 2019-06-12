@@ -35,8 +35,34 @@ JSValue PropertySlot::functionGetter(ExecState* exec) const
 
 JSValue PropertySlot::customGetter(ExecState* exec, PropertyName propertyName) const
 {
+    // FIXME: Remove this differences in custom values and custom accessors.
+    // https://bugs.webkit.org/show_bug.cgi?id=158014
     JSValue thisValue = m_attributes & CustomAccessor ? m_thisValue : JSValue(slotBase());
     return JSValue::decode(m_data.custom.getValue(exec, JSValue::encode(thisValue), propertyName));
+}
+
+JSValue PropertySlot::customAccessorGetter(ExecState* exec, PropertyName propertyName) const
+{
+    if (!m_data.customAccessor.getterSetter->getter())
+        return jsUndefined();
+    return JSValue::decode(m_data.customAccessor.getterSetter->getter()(exec, JSValue::encode(m_thisValue), propertyName));
+}
+
+JSValue PropertySlot::getPureResult() const
+{
+    JSValue result;
+    if (isTaintedByOpaqueObject())
+        result = jsNull();
+    else if (isCacheableValue())
+        result = JSValue::decode(m_data.value);
+    else if (isCacheableGetter())
+        result = getterSetter();
+    else if (isUnset())
+        result = jsUndefined();
+    else
+        result = jsNull();
+    
+    return result;
 }
 
 } // namespace JSC

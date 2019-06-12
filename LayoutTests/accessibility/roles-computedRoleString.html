@@ -7,6 +7,7 @@
 <!-- HTML elements in alphabetical order, excepting the need for nesting (e.g. <li> is with its <ol> and <ul> parents) -->
 <!-- This only tests elements that have an exact 1:1 ARIA role mapping, and computed role overrides. -->
 <!-- ==================================================================================================== -->
+<div id="content">
 <a data-role="link" href="#" data-note="[href]" class="ex">X</a>
 <article data-role="article" class="ex">X</article>
 <aside data-role="complementary" class="ex">X</aside>
@@ -52,7 +53,7 @@
 <input type="time" value="X" data-role="" class="ex" data-note="[type='time']">
 <input type="url" value="X" data-role="" class="ex" data-note="[type='url']">
 <input type="week" value="X" data-role="" class="ex" data-note="[type='week']">
-<ins data-role="group" class="ex">X</ins>
+<ins data-role="" class="ex">X</ins>
 <mark data-role="" class="ex">X</mark>
 <math data-role="math" class="ex">X</math>
 <!-- skipped <menu> -->
@@ -69,15 +70,19 @@
 <!-- skipped <output> -->
 <p data-role="" class="ex">X</p>
 <!-- skipped <param> -->
-<pre data-role="group" class="ex">X</pre>
+<pre data-role="" class="ex">X</pre>
 <progress data-role="progressbar" class="ex" value="0.75">X</progress>
 <q data-role="" class="ex">X</q>
 <!-- skipped <ruby/rp/rt> -->
 <s data-role="" class="ex">X</s>
-<samp data-role="group" class="ex">X</samp>
+<samp data-role="" class="ex">X</samp>
 <!-- skipped <script> -->
-<section data-role="region" class="ex">X</section>
-<select data-role="" class="ex" data-note=":not([multiple])">
+<section data-role="" class="ex" data-note=":not([aria-label]:not([aria-labelledby])">X</section>
+<section data-role="region" class="ex" aria-label="x" data-note="[aria-label]">X</section>
+<section data-role="region" class="ex" aria-labelledby="section-label" data-note="[aria-labelledby]">
+    <h2 id="section-label">X</h2>
+</section>
+<select data-role="button" class="ex" data-note=":not([multiple])">
     <option data-role="" class="ex">X</option>
     <optgroup data-role="" class="ex" label="more">
         <option data-role="" class="ex">X</option>
@@ -140,7 +145,7 @@
 <ul data-role="list" class="ex">
     <li data-role="listitem" class="ex">X</li>
 </ul>
-<var data-role="group" class="ex">X</var>
+<var data-role="" class="ex">X</var>
 <wbr data-role="" class="ex">X</wbr>
 
 <!-- ==================================================================================================== -->
@@ -177,6 +182,7 @@
 <div role="dialog"                   data-role="dialog" class="ex">X</div>
 <div role="directory"                data-role="list" class="ex">X</div><!-- FIXME: should be directory -->
 <div role="document"                 data-role="document" class="ex">X</div>
+<div role="figure"                   data-role="figure" class="ex">X</div>
 <div role="form"                     data-role="form" class="ex">X</div>
 <div role="grid"                     data-role="grid" class="ex">
     <div role="rowgroup"             data-role="rowgroup" class="ex">
@@ -187,6 +193,7 @@
         </div>
     </div>
 </div>
+<div role="feed"                     data-role="feed" class="ex">X</div>
 <div role="group"                    data-role="group" class="ex">X</div>
 <div role="heading"                  data-role="heading" class="ex">X</div>
 <div role="img"                      data-role="img" class="ex">X</div>
@@ -218,7 +225,12 @@
 <div role="radiogroup"               data-role="radiogroup" class="ex">
     <div role="radio"                data-role="radio" class="ex">X</div>
 </div>
-<div role="region"                   data-role="region" class="ex">X</div>
+<div role="region"                   class="ex" data-role="" data-note=":not([aria-label]:not([aria-labelledby])">X</div>
+<div role="region"                   class="ex" data-role="region" aria-label="x" data-note="[aria-label]">X</div>
+<div role="region"                   class="ex" data-role="region" aria-labelledby="region-label" data-note="[aria-labelledby]">
+    <h2 id="region-label">X</h2>
+</div>
+
 <div role="scrollbar"                data-role="scrollbar" class="ex">X</div>
 <div role="search"                   data-role="search" class="ex">X</div>
 <div role="separator"                data-role="separator" class="ex">X</div>
@@ -230,6 +242,7 @@
 </div>
 <div role="tabpanel"                 data-role="tabpanel" class="ex">X</div>
 <div role="textbox"                  data-role="" class="ex">X</div><!-- FIXME: should be textbox -->
+<div role="term"                     data-role="term" class="ex">X</div>
 <div role="timer"                    data-role="timer" class="ex">X</div>
 <div role="toolbar"                  data-role="toolbar" class="ex">X</div>
 <div role="tooltip"                  data-role="tooltip" class="ex">X</div>
@@ -239,7 +252,7 @@
         <div role="treeitem"         data-role="treeitem" class="ex">X</div>
     </div>
 </div>
-<div role="treegrid"                 data-role="grid" class="ex"><!-- FIXME: should be treegrid -->
+<div role="treegrid"                 data-role="treegrid" class="ex">
     <div role="rowgroup"             data-role="rowgroup" class="ex">
         <div role="row"              data-role="row" class="ex">
             <div role="rowheader"    data-role="rowheader" class="ex">X</div>
@@ -278,6 +291,7 @@ bar" src="foo.png"                   data-role="img" alt="X" class="ex"><!-- [si
 <img role="img text" src="foo.png"   data-role="img" alt="X" class="ex">
 <img role="presentation"             data-role="img" data-note="[aria-label]" alt="X" src="foo.png" aria-label="X" class="ex"><!-- presentation with global attr should fallback to implicit role -->
 <a href="#" role="foo bar"           data-role="link" class="ex">X</a>
+</div>
 
 <div id="console"></div>
 <script>
@@ -319,11 +333,7 @@ if (window.testRunner && window.accessibilityController) {
     }
 
     // Once tests are complete, hide all the example markup.
-    examples = document.querySelectorAll(".ex");
-    for (var i = 0, c = examples.length; i < c; i++) {
-        el = examples[i];
-        el.style.display = "none";
-    }
+    document.getElementById("content").style.visibility = "hidden";
 }
 </script>
 <script src="../resources/js-test-post.js"></script>

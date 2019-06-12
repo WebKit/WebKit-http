@@ -37,12 +37,13 @@ public:
     WTF_EXPORT_PRIVATE StringPrintStream();
     WTF_EXPORT_PRIVATE virtual ~StringPrintStream();
     
-    WTF_EXPORT_PRIVATE virtual void vprintf(const char* format, va_list) override WTF_ATTRIBUTE_PRINTF(2, 0);
+    WTF_EXPORT_PRIVATE void vprintf(const char* format, va_list) override WTF_ATTRIBUTE_PRINTF(2, 0);
 
     size_t length() const { return m_next; }
     
     WTF_EXPORT_PRIVATE CString toCString();
     WTF_EXPORT_PRIVATE String toString();
+    WTF_EXPORT_PRIVATE String toStringWithLatin1Fallback();
     WTF_EXPORT_PRIVATE void reset();
     
 private:

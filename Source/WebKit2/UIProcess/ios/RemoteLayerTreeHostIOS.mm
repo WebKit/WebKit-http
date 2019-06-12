@@ -60,7 +60,7 @@ using namespace WebCore;
     [[self subviews] enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
         CGPoint subviewPoint = [view convertPoint:point fromView:self];
 
-        if ([view pointInside:subviewPoint withEvent:event] && [view isKindOfClass:[UIScrollView class]])
+        if ([view pointInside:subviewPoint withEvent:event] && [view isKindOfClass:[UIScrollView class]] && view.isUserInteractionEnabled)
             foundView = view;
 
         if (![view subviews])
@@ -140,14 +140,10 @@ using namespace WebCore;
 
 @implementation WKRemoteView
 
-- (instancetype)initWithFrame:(CGRect)frame contextID:(uint32_t)contextID hostingDeviceScaleFactor:(float)scaleFactor
+- (instancetype)initWithFrame:(CGRect)frame contextID:(uint32_t)contextID
 {
-    if ((self = [super initWithFrame:frame])) {
+    if ((self = [super initWithFrame:frame]))
         [[self layer] setContextId:contextID];
-        // Invert the scale transform added in the WebProcess to fix <rdar://problem/18316542>.
-        float inverseScale = 1 / scaleFactor;
-        [[self layer] setTransform:CATransform3DMakeScale(inverseScale, inverseScale, 1)];
-    }
     
     return self;
 }
@@ -210,10 +206,15 @@ LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::
         break;
     case PlatformCALayer::LayerTypeCustom:
     case PlatformCALayer::LayerTypeAVPlayerLayer:
-    case PlatformCALayer::LayerTypeWebGLLayer:
-        if (!m_isDebugLayerTreeHost)
-            view = adoptNS([[WKRemoteView alloc] initWithFrame:CGRectZero contextID:properties.hostingContextID hostingDeviceScaleFactor:properties.hostingDeviceScaleFactor]);
-        else
+    case PlatformCALayer::LayerTypeContentsProvidedLayer:
+        if (!m_isDebugLayerTreeHost) {
+            view = adoptNS([[WKRemoteView alloc] initWithFrame:CGRectZero contextID:properties.hostingContextID]);
+            if (properties.type == PlatformCALayer::LayerTypeAVPlayerLayer) {
+                // Invert the scale transform added in the WebProcess to fix <rdar://problem/18316542>.
+                float inverseScale = 1 / properties.hostingDeviceScaleFactor;
+                [[view layer] setTransform:CATransform3DMakeScale(inverseScale, inverseScale, 1)];
+            }
+        } else
             view = adoptNS([[WKCompositingView alloc] init]);
         break;
     case PlatformCALayer::LayerTypeShapeLayer:

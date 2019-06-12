@@ -22,12 +22,12 @@
  *
  */
 
-#ifndef StyleTransformData_h
-#define StyleTransformData_h
+#pragma once
 
 #include "Length.h"
+#include "RenderStyleConstants.h"
 #include "TransformOperations.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -37,18 +37,19 @@ public:
     static Ref<StyleTransformData> create() { return adoptRef(*new StyleTransformData); }
     Ref<StyleTransformData> copy() const;
 
-    bool operator==(const StyleTransformData& o) const;
-    bool operator!=(const StyleTransformData& o) const
+    bool operator==(const StyleTransformData&) const;
+    bool operator!=(const StyleTransformData& other) const
     {
-        return !(*this == o);
+        return !(*this == other);
     }
     
-    bool hasTransform() const { return m_operations.size(); }
+    bool hasTransform() const { return operations.size(); }
 
-    TransformOperations m_operations;
-    Length m_x;
-    Length m_y;
-    float m_z;
+    TransformOperations operations;
+    Length x;
+    Length y;
+    float z;
+    TransformBox transformBox;
 
 private:
     StyleTransformData();
@@ -56,5 +57,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleTransformData_h

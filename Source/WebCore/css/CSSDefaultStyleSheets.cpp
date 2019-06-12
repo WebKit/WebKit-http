@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 2004-2005 Allan Sandfeld Jensen (kde@carewolf.com)
  * Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com)
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alexey Proskuryakov <ap@webkit.org>
  * Copyright (C) 2007, 2008 Eric Seidel <eric@webkit.org>
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
@@ -32,8 +32,15 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "HTMLAnchorElement.h"
-#include "HTMLAudioElement.h"
 #include "HTMLBRElement.h"
+#include "HTMLBodyElement.h"
+#include "HTMLDivElement.h"
+#include "HTMLEmbedElement.h"
+#include "HTMLHeadElement.h"
+#include "HTMLHtmlElement.h"
+#include "HTMLMediaElement.h"
+#include "HTMLObjectElement.h"
+#include "HTMLSpanElement.h"
 #include "MathMLElement.h"
 #include "MediaQueryEvaluator.h"
 #include "Page.h"
@@ -66,7 +73,7 @@ StyleSheetContents* CSSDefaultStyleSheets::imageControlsStyleSheet;
 // FIXME: It would be nice to use some mechanism that guarantees this is in sync with the real UA stylesheet.
 static const char* simpleUserAgentStyleSheet = "html,body,div{display:block}head{display:none}body{margin:8px}div:focus,span:focus,a:focus{outline:auto 5px -webkit-focus-ring-color}a:any-link{color:-webkit-link;text-decoration:underline}a:any-link:active{color:-webkit-activelink}";
 
-static inline bool elementCanUseSimpleDefaultStyle(Element& element)
+static inline bool elementCanUseSimpleDefaultStyle(const Element& element)
 {
     return is<HTMLHtmlElement>(element) || is<HTMLHeadElement>(element)
         || is<HTMLBodyElement>(element) || is<HTMLDivElement>(element)
@@ -76,19 +83,19 @@ static inline bool elementCanUseSimpleDefaultStyle(Element& element)
 
 static const MediaQueryEvaluator& screenEval()
 {
-    static NeverDestroyed<const MediaQueryEvaluator> staticScreenEval("screen");
+    static NeverDestroyed<const MediaQueryEvaluator> staticScreenEval(String(MAKE_STATIC_STRING_IMPL("screen")));
     return staticScreenEval;
 }
 
 static const MediaQueryEvaluator& printEval()
 {
-    static NeverDestroyed<const MediaQueryEvaluator> staticPrintEval("print");
+    static NeverDestroyed<const MediaQueryEvaluator> staticPrintEval(String(MAKE_STATIC_STRING_IMPL("print")));
     return staticPrintEval;
 }
 
 static StyleSheetContents* parseUASheet(const String& str)
 {
-    StyleSheetContents& sheet = StyleSheetContents::create().leakRef(); // leak the sheet on purpose
+    StyleSheetContents& sheet = StyleSheetContents::create(CSSParserContext(UASheetMode)).leakRef(); // leak the sheet on purpose
     sheet.parseString(str);
     return &sheet;
 }
@@ -98,7 +105,7 @@ static StyleSheetContents* parseUASheet(const char* characters, unsigned size)
     return parseUASheet(String(characters, size));
 }
 
-void CSSDefaultStyleSheets::initDefaultStyle(Element* root)
+void CSSDefaultStyleSheets::initDefaultStyle(const Element* root)
 {
     if (!defaultStyle) {
         if (!root || elementCanUseSimpleDefaultStyle(*root))
@@ -126,13 +133,13 @@ void CSSDefaultStyleSheets::loadFullDefaultStyle()
     }
 
     // Strict-mode rules.
-    String defaultRules = String(htmlUserAgentStyleSheet, sizeof(htmlUserAgentStyleSheet)) + RenderTheme::defaultTheme()->extraDefaultStyleSheet();
+    String defaultRules = String(htmlUserAgentStyleSheet, sizeof(htmlUserAgentStyleSheet)) + RenderTheme::singleton().extraDefaultStyleSheet();
     defaultStyleSheet = parseUASheet(defaultRules);
     defaultStyle->addRulesFromSheet(*defaultStyleSheet, screenEval());
     defaultPrintStyle->addRulesFromSheet(*defaultStyleSheet, printEval());
 
     // Quirks-mode rules.
-    String quirksRules = String(quirksUserAgentStyleSheet, sizeof(quirksUserAgentStyleSheet)) + RenderTheme::defaultTheme()->extraQuirksStyleSheet();
+    String quirksRules = String(quirksUserAgentStyleSheet, sizeof(quirksUserAgentStyleSheet)) + RenderTheme::singleton().extraQuirksStyleSheet();
     quirksStyleSheet = parseUASheet(quirksRules);
     defaultQuirksStyle->addRulesFromSheet(*quirksStyleSheet, screenEval());
 }
@@ -153,7 +160,7 @@ void CSSDefaultStyleSheets::loadSimpleDefaultStyle()
     // No need to initialize quirks sheet yet as there are no quirk rules for elements allowed in simple default style.
 }
 
-void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(Element& element)
+void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(const Element& element)
 {
     if (simpleDefaultStyleSheet && !elementCanUseSimpleDefaultStyle(element)) {
         loadFullDefaultStyle();
@@ -162,8 +169,8 @@ void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(Element& element)
 
     if (is<HTMLElement>(element)) {
         if (is<HTMLObjectElement>(element) || is<HTMLEmbedElement>(element)) {
-            if (!plugInsStyleSheet) {
-                String plugInsRules = RenderTheme::themeForPage(element.document().page())->extraPlugInsStyleSheet() + element.document().page()->chrome().client().plugInExtraStyleSheet();
+            if (!plugInsStyleSheet && element.document().page()) {
+                String plugInsRules = RenderTheme::singleton().extraPlugInsStyleSheet() + element.document().page()->chrome().client().plugInExtraStyleSheet();
                 if (plugInsRules.isEmpty())
                     plugInsRules = String(plugInsUserAgentStyleSheet, sizeof(plugInsUserAgentStyleSheet));
                 plugInsStyleSheet = parseUASheet(plugInsRules);
@@ -174,9 +181,9 @@ void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(Element& element)
 #if ENABLE(VIDEO)
         else if (is<HTMLMediaElement>(element)) {
             if (!mediaControlsStyleSheet) {
-                String mediaRules = RenderTheme::themeForPage(element.document().page())->mediaControlsStyleSheet();
+                String mediaRules = RenderTheme::singleton().mediaControlsStyleSheet();
                 if (mediaRules.isEmpty())
-                    mediaRules = String(mediaControlsUserAgentStyleSheet, sizeof(mediaControlsUserAgentStyleSheet)) + RenderTheme::themeForPage(element.document().page())->extraMediaControlsStyleSheet();
+                    mediaRules = String(mediaControlsUserAgentStyleSheet, sizeof(mediaControlsUserAgentStyleSheet)) + RenderTheme::singleton().extraMediaControlsStyleSheet();
                 mediaControlsStyleSheet = parseUASheet(mediaRules);
                 defaultStyle->addRulesFromSheet(*mediaControlsStyleSheet, screenEval());
                 defaultPrintStyle->addRulesFromSheet(*mediaControlsStyleSheet, printEval());
@@ -187,7 +194,7 @@ void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(Element& element)
 #if ENABLE(SERVICE_CONTROLS)
         else if (is<HTMLDivElement>(element) && element.isImageControlsRootElement()) {
             if (!imageControlsStyleSheet) {
-                String imageControlsRules = RenderTheme::themeForPage(element.document().page())->imageControlsStyleSheet();
+                String imageControlsRules = RenderTheme::singleton().imageControlsStyleSheet();
                 imageControlsStyleSheet = parseUASheet(imageControlsRules);
                 defaultStyle->addRulesFromSheet(*imageControlsStyleSheet, screenEval());
                 defaultPrintStyle->addRulesFromSheet(*imageControlsStyleSheet, printEval());
@@ -218,7 +225,7 @@ void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(Element& element)
 
 #if ENABLE(FULLSCREEN_API)
     if (!fullscreenStyleSheet && element.document().webkitIsFullScreen()) {
-        String fullscreenRules = String(fullscreenUserAgentStyleSheet, sizeof(fullscreenUserAgentStyleSheet)) + RenderTheme::defaultTheme()->extraFullScreenStyleSheet();
+        String fullscreenRules = String(fullscreenUserAgentStyleSheet, sizeof(fullscreenUserAgentStyleSheet)) + RenderTheme::singleton().extraFullScreenStyleSheet();
         fullscreenStyleSheet = parseUASheet(fullscreenRules);
         defaultStyle->addRulesFromSheet(*fullscreenStyleSheet, screenEval());
         defaultQuirksStyle->addRulesFromSheet(*fullscreenStyleSheet, screenEval());

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014, 2015 Apple Inc. All rights reserved.
+# Copyright (c) 2014-2016 Apple Inc. All rights reserved.
 # Copyright (c) 2014 University of Washington. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,24 +38,23 @@ from models import EnumType
 log = logging.getLogger('global')
 
 
-class CppFrontendDispatcherHeaderGenerator(Generator):
-    def __init__(self, model, input_filepath):
-        Generator.__init__(self, model, input_filepath)
+class CppFrontendDispatcherHeaderGenerator(CppGenerator):
+    def __init__(self, *args, **kwargs):
+        CppGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
-        return "InspectorFrontendDispatchers.h"
+        return "%sFrontendDispatchers.h" % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(lambda domain: len(domain.events) > 0, Generator.domains_to_generate(self))
+        return filter(lambda domain: len(self.events_for_domain(domain)) > 0, Generator.domains_to_generate(self))
 
     def generate_output(self):
         headers = [
-            '"InspectorProtocolObjects.h"',
+            '"%sProtocolObjects.h"' % self.protocol_name(),
             '<inspector/InspectorValues.h>',
             '<wtf/text/WTFString.h>']
 
         header_args = {
-            'headerGuardString': re.sub('\W+', '_', self.output_filename()),
             'includes': '\n'.join(['#include ' + header for header in headers]),
             'typedefs': 'class FrontendRouter;',
         }
@@ -91,8 +90,9 @@ class CppFrontendDispatcherHeaderGenerator(Generator):
 
         used_enum_names = set([])
 
+        events = self.events_for_domain(domain)
         event_declarations = []
-        for event in domain.events:
+        for event in events:
             event_declarations.append(self._generate_dispatcher_declaration_for_event(event, domain, used_enum_names))
 
         handler_args = {

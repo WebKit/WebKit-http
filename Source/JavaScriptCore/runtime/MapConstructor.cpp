@@ -29,118 +29,95 @@
 #include "Error.h"
 #include "GetterSetter.h"
 #include "IteratorOperations.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSMap.h"
+#include "JSObjectInlines.h"
 #include "MapPrototype.h"
-#include "StructureInlines.h"
 
 namespace JSC {
 
-const ClassInfo MapConstructor::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(MapConstructor) };
+const ClassInfo MapConstructor::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(MapConstructor) };
 
 void MapConstructor::finishCreation(VM& vm, MapPrototype* mapPrototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, mapPrototype->classInfo()->className);
+    Base::finishCreation(vm, mapPrototype->classInfo(vm)->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, mapPrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum | DontDelete);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontEnum | ReadOnly);
     putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
 }
 
 static EncodedJSValue JSC_HOST_CALL callMap(ExecState* exec)
 {
-    return JSValue::encode(throwTypeError(exec, ASCIILiteral("Map cannot be called as a function")));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "Map"));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructMap(ExecState* exec)
 {
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
     Structure* mapStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->mapStructure());
-    JSMap* map = JSMap::create(exec, mapStructure);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
     JSValue iterable = exec->argument(0);
     if (iterable.isUndefinedOrNull())
-        return JSValue::encode(map);
+        return JSValue::encode(JSMap::create(exec, vm, mapStructure));
+
+    if (isJSMap(iterable)) {
+        JSMap* iterableMap = jsCast<JSMap*>(iterable);
+        if (iterableMap->canCloneFastAndNonObservable(mapStructure))
+            return JSValue::encode(iterableMap->clone(exec, vm, mapStructure));
+    }
+
+    JSMap* map = JSMap::create(exec, vm, mapStructure);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     JSValue adderFunction = map->JSObject::get(exec, exec->propertyNames().set);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;
     CallType adderFunctionCallType = getCallData(adderFunction, adderFunctionCallData);
-    if (adderFunctionCallType == CallTypeNone)
-        return JSValue::encode(throwTypeError(exec));
+    if (adderFunctionCallType == CallType::None)
+        return JSValue::encode(throwTypeError(exec, scope));
 
-    JSValue iteratorFunction = iterable.get(exec, exec->propertyNames().iteratorSymbol);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    CallData iteratorFunctionCallData;
-    CallType iteratorFunctionCallType = getCallData(iteratorFunction, iteratorFunctionCallData);
-    if (iteratorFunctionCallType == CallTypeNone)
-        return JSValue::encode(throwTypeError(exec));
-
-    ArgList iteratorFunctionArguments;
-    JSValue iterator = call(exec, iteratorFunction, iteratorFunctionCallType, iteratorFunctionCallData, iterable, iteratorFunctionArguments);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    if (!iterator.isObject())
-        return JSValue::encode(throwTypeError(exec));
-
-    while (true) {
-        JSValue next = iteratorStep(exec, iterator);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-
-        if (next.isFalse())
-            return JSValue::encode(map);
-
-        JSValue nextItem = iteratorValue(exec, next);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-
+    scope.release();
+    forEachInIterable(exec, iterable, [&](VM& vm, ExecState* exec, JSValue nextItem) {
+        auto scope = DECLARE_THROW_SCOPE(vm);
         if (!nextItem.isObject()) {
-            throwTypeError(exec);
-            iteratorClose(exec, iterator);
-            return JSValue::encode(jsUndefined());
+            throwTypeError(exec, scope);
+            return;
         }
 
-        JSValue key = nextItem.get(exec, 0);
-        if (exec->hadException()) {
-            iteratorClose(exec, iterator);
-            return JSValue::encode(jsUndefined());
-        }
+        JSValue key = nextItem.get(exec, static_cast<unsigned>(0));
+        RETURN_IF_EXCEPTION(scope, void());
 
-        JSValue value = nextItem.get(exec, 1);
-        if (exec->hadException()) {
-            iteratorClose(exec, iterator);
-            return JSValue::encode(jsUndefined());
-        }
+        JSValue value = nextItem.get(exec, static_cast<unsigned>(1));
+        RETURN_IF_EXCEPTION(scope, void());
 
         MarkedArgumentBuffer arguments;
         arguments.append(key);
         arguments.append(value);
+        scope.release();
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, map, arguments);
-        if (exec->hadException()) {
-            iteratorClose(exec, iterator);
-            return JSValue::encode(jsUndefined());
-        }
-    }
-    RELEASE_ASSERT_NOT_REACHED();
+    });
+
     return JSValue::encode(map);
 }
 
 ConstructType MapConstructor::getConstructData(JSCell*, ConstructData& constructData)
 {
     constructData.native.function = constructMap;
-    return ConstructTypeHost;
+    return ConstructType::Host;
 }
 
 CallType MapConstructor::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callMap;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 }

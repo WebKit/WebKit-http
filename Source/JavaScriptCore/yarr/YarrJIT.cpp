@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,9 @@
 #include <wtf/ASCIICType.h>
 #include "LinkBuffer.h"
 #include "Options.h"
+#include "VM.h"
 #include "Yarr.h"
-#include "YarrCanonicalizeUCS2.h"
+#include "YarrCanonicalize.h"
 
 #if ENABLE(YARR_JIT)
 
@@ -51,6 +52,9 @@ class YarrGenerator : private MacroAssembler {
     static const RegisterID regT0 = ARMRegisters::r4;
     static const RegisterID regT1 = ARMRegisters::r5;
 
+    static const RegisterID initialStart = ARMRegisters::r6;
+#define HAVE_INITIAL_START_REG
+
     static const RegisterID returnRegister = ARMRegisters::r0;
     static const RegisterID returnRegister2 = ARMRegisters::r1;
 #elif CPU(ARM64)
@@ -61,6 +65,9 @@ class YarrGenerator : private MacroAssembler {
 
     static const RegisterID regT0 = ARM64Registers::x4;
     static const RegisterID regT1 = ARM64Registers::x5;
+
+    static const RegisterID initialStart = ARM64Registers::x6;
+#define HAVE_INITIAL_START_REG
 
     static const RegisterID returnRegister = ARM64Registers::x0;
     static const RegisterID returnRegister2 = ARM64Registers::x1;
@@ -73,19 +80,11 @@ class YarrGenerator : private MacroAssembler {
     static const RegisterID regT0 = MIPSRegisters::t4;
     static const RegisterID regT1 = MIPSRegisters::t5;
 
+    static const RegisterID initialStart = MIPSRegisters::t6;
+#define HAVE_INITIAL_START_REG
+
     static const RegisterID returnRegister = MIPSRegisters::v0;
     static const RegisterID returnRegister2 = MIPSRegisters::v1;
-#elif CPU(SH4)
-    static const RegisterID input = SH4Registers::r4;
-    static const RegisterID index = SH4Registers::r5;
-    static const RegisterID length = SH4Registers::r6;
-    static const RegisterID output = SH4Registers::r7;
-
-    static const RegisterID regT0 = SH4Registers::r0;
-    static const RegisterID regT1 = SH4Registers::r1;
-
-    static const RegisterID returnRegister = SH4Registers::r0;
-    static const RegisterID returnRegister2 = SH4Registers::r1;
 #elif CPU(X86)
     static const RegisterID input = X86Registers::eax;
     static const RegisterID index = X86Registers::edx;
@@ -116,6 +115,13 @@ class YarrGenerator : private MacroAssembler {
     static const RegisterID regT0 = X86Registers::eax;
     static const RegisterID regT1 = X86Registers::ebx;
 
+#if !OS(WINDOWS)
+    static const RegisterID initialStart = X86Registers::r8;
+#else
+    static const RegisterID initialStart = X86Registers::ecx;
+#endif
+#define HAVE_INITIAL_START_REG
+
     static const RegisterID returnRegister = X86Registers::eax;
     static const RegisterID returnRegister2 = X86Registers::edx;
 #endif
@@ -140,7 +146,7 @@ class YarrGenerator : private MacroAssembler {
         }
     }
 
-    void matchCharacterClassRange(RegisterID character, JumpList& failures, JumpList& matchDest, const CharacterRange* ranges, unsigned count, unsigned* matchIndex, const UChar* matches, unsigned matchCount)
+    void matchCharacterClassRange(RegisterID character, JumpList& failures, JumpList& matchDest, const CharacterRange* ranges, unsigned count, unsigned* matchIndex, const UChar32* matches, unsigned matchCount)
     {
         do {
             // pick which range we're going to generate
@@ -200,15 +206,15 @@ class YarrGenerator : private MacroAssembler {
 
             if (charClass->m_matchesUnicode.size()) {
                 for (unsigned i = 0; i < charClass->m_matchesUnicode.size(); ++i) {
-                    UChar ch = charClass->m_matchesUnicode[i];
+                    UChar32 ch = charClass->m_matchesUnicode[i];
                     matchDest.append(branch32(Equal, character, Imm32(ch)));
                 }
             }
 
             if (charClass->m_rangesUnicode.size()) {
                 for (unsigned i = 0; i < charClass->m_rangesUnicode.size(); ++i) {
-                    UChar lo = charClass->m_rangesUnicode[i].begin;
-                    UChar hi = charClass->m_rangesUnicode[i].end;
+                    UChar32 lo = charClass->m_rangesUnicode[i].begin;
+                    UChar32 hi = charClass->m_rangesUnicode[i].end;
 
                     Jump below = branch32(LessThan, character, Imm32(lo));
                     matchDest.append(branch32(LessThanOrEqual, character, Imm32(hi)));
@@ -234,7 +240,7 @@ class YarrGenerator : private MacroAssembler {
 
             for (unsigned i = 0; i < charClass->m_matches.size(); ++i) {
                 char ch = charClass->m_matches[i];
-                if (m_pattern.m_ignoreCase) {
+                if (m_pattern.ignoreCase()) {
                     if (isASCIILower(ch)) {
                         matchesAZaz.append(ch);
                         continue;
@@ -285,29 +291,62 @@ class YarrGenerator : private MacroAssembler {
         return branch32(NotEqual, index, length);
     }
 
-    Jump jumpIfCharNotEquals(UChar ch, int inputPosition, RegisterID character)
+    BaseIndex negativeOffsetIndexedAddress(Checked<unsigned> negativeCharacterOffset, RegisterID tempReg, RegisterID indexReg = index)
     {
-        readCharacter(inputPosition, character);
+        RegisterID base = input;
+
+        // BaseIndex() addressing can take a int32_t offset. Given that we can have a regular
+        // expression that has unsigned character offsets, BaseIndex's signed offset is insufficient
+        // for addressing in extreme cases where we might underflow. Therefore we check to see if
+        // negativeCharacterOffset will underflow directly or after converting for 16 bit characters.
+        // If so, we do our own address calculating by adjusting the base, using the result register
+        // as a temp address register.
+        unsigned maximumNegativeOffsetForCharacterSize = m_charSize == Char8 ? 0x7fffffff : 0x3fffffff;
+        unsigned offsetAdjustAmount = 0x40000000;
+        if (negativeCharacterOffset.unsafeGet() > maximumNegativeOffsetForCharacterSize) {
+            base = tempReg;
+            move(input, base);
+            while (negativeCharacterOffset.unsafeGet() > maximumNegativeOffsetForCharacterSize) {
+                subPtr(TrustedImm32(offsetAdjustAmount), base);
+                if (m_charSize != Char8)
+                    subPtr(TrustedImm32(offsetAdjustAmount), base);
+                negativeCharacterOffset -= offsetAdjustAmount;
+            }
+        }
+
+        Checked<int32_t> characterOffset(-static_cast<int32_t>(negativeCharacterOffset.unsafeGet()));
+
+        if (m_charSize == Char8)
+            return BaseIndex(input, indexReg, TimesOne, (characterOffset * static_cast<int32_t>(sizeof(char))).unsafeGet());
+
+        return BaseIndex(input, indexReg, TimesTwo, (characterOffset * static_cast<int32_t>(sizeof(UChar))).unsafeGet());
+    }
+
+    void readCharacter(Checked<unsigned> negativeCharacterOffset, RegisterID resultReg, RegisterID indexReg = index)
+    {
+        BaseIndex address = negativeOffsetIndexedAddress(negativeCharacterOffset, resultReg, indexReg);
+
+        if (m_charSize == Char8)
+            load8(address, resultReg);
+        else
+            load16Unaligned(address, resultReg);
+    }
+
+    Jump jumpIfCharNotEquals(UChar32 ch, Checked<unsigned> negativeCharacterOffset, RegisterID character)
+    {
+        readCharacter(negativeCharacterOffset, character);
 
         // For case-insesitive compares, non-ascii characters that have different
         // upper & lower case representations are converted to a character class.
-        ASSERT(!m_pattern.m_ignoreCase || isASCIIAlpha(ch) || isCanonicallyUnique(ch));
-        if (m_pattern.m_ignoreCase && isASCIIAlpha(ch)) {
+        ASSERT(!m_pattern.ignoreCase() || isASCIIAlpha(ch) || isCanonicallyUnique(ch));
+        if (m_pattern.ignoreCase() && isASCIIAlpha(ch)) {
             or32(TrustedImm32(0x20), character);
             ch |= 0x20;
         }
 
         return branch32(NotEqual, character, Imm32(ch));
     }
-
-    void readCharacter(int inputPosition, RegisterID reg)
-    {
-        if (m_charSize == Char8)
-            load8(BaseIndex(input, index, TimesOne, inputPosition * sizeof(char)), reg);
-        else
-            load16(BaseIndex(input, index, TimesTwo, inputPosition * sizeof(UChar)), reg);
-    }
-
+    
     void storeToFrame(RegisterID reg, unsigned frameLocation)
     {
         poke(reg, frameLocation);
@@ -354,6 +393,13 @@ class YarrGenerator : private MacroAssembler {
         unsigned callFrameSize = m_pattern.m_body->m_callFrameSize;
         if (callFrameSize)
             addPtr(Imm32(alignCallFrameSizeInBytes(callFrameSize)), stackPointerRegister);
+    }
+
+    void generateFailReturn()
+    {
+        move(TrustedImmPtr((void*)WTF::notFound), returnRegister);
+        move(TrustedImm32(0), returnRegister2);
+        generateReturn();
     }
 
     // Used to record subpatters, should only be called if compileMode is IncludeSubpatterns.
@@ -424,7 +470,7 @@ class YarrGenerator : private MacroAssembler {
         OpSimpleNestedAlternativeBegin,
         OpSimpleNestedAlternativeNext,
         OpSimpleNestedAlternativeEnd,
-        // Used to wrap 'Once' subpattern matches (quantityCount == 1).
+        // Used to wrap 'Once' subpattern matches (quantityMaxCount == 1).
         OpParenthesesSubpatternOnceBegin,
         OpParenthesesSubpatternOnceEnd,
         // Used to wrap 'Terminal' subpattern matches (at the end of the regexp).
@@ -486,9 +532,9 @@ class YarrGenerator : private MacroAssembler {
         bool m_isDeadCode;
 
         // Currently used in the case of some of the more complex management of
-        // 'm_checked', to cache the offset used in this alternative, to avoid
+        // 'm_checkedOffset', to cache the offset used in this alternative, to avoid
         // recalculating it.
-        int m_checkAdjust;
+        Checked<unsigned> m_checkAdjust;
 
         // Used by OpNestedAlternativeNext/End to hold the pointer to the
         // value that will be pushed into the pattern's frame to return to,
@@ -633,14 +679,14 @@ class YarrGenerator : private MacroAssembler {
         YarrOp& op = m_ops[opIndex];
         PatternTerm* term = op.m_term;
 
-        if (m_pattern.m_multiline) {
+        if (m_pattern.multiline()) {
             const RegisterID character = regT0;
 
             JumpList matchDest;
             if (!term->inputPosition)
-                matchDest.append(branch32(Equal, index, Imm32(m_checked)));
+                matchDest.append(branch32(Equal, index, Imm32(m_checkedOffset.unsafeGet())));
 
-            readCharacter((term->inputPosition - m_checked) - 1, character);
+            readCharacter(m_checkedOffset - term->inputPosition + 1, character);
             matchCharacterClass(character, matchDest, m_pattern.newlineCharacterClass());
             op.m_jumps.append(jump());
 
@@ -650,7 +696,7 @@ class YarrGenerator : private MacroAssembler {
             if (term->inputPosition)
                 op.m_jumps.append(jump());
             else
-                op.m_jumps.append(branch32(NotEqual, index, Imm32(m_checked)));
+                op.m_jumps.append(branch32(NotEqual, index, Imm32(m_checkedOffset.unsafeGet())));
         }
     }
     void backtrackAssertionBOL(size_t opIndex)
@@ -663,20 +709,20 @@ class YarrGenerator : private MacroAssembler {
         YarrOp& op = m_ops[opIndex];
         PatternTerm* term = op.m_term;
 
-        if (m_pattern.m_multiline) {
+        if (m_pattern.multiline()) {
             const RegisterID character = regT0;
 
             JumpList matchDest;
-            if (term->inputPosition == m_checked)
+            if (term->inputPosition == m_checkedOffset.unsafeGet())
                 matchDest.append(atEndOfInput());
 
-            readCharacter(term->inputPosition - m_checked, character);
+            readCharacter(m_checkedOffset - term->inputPosition, character);
             matchCharacterClass(character, matchDest, m_pattern.newlineCharacterClass());
             op.m_jumps.append(jump());
 
             matchDest.link(this);
         } else {
-            if (term->inputPosition == m_checked)
+            if (term->inputPosition == m_checkedOffset.unsafeGet())
                 op.m_jumps.append(notAtEndOfInput());
             // Erk, really should poison out these alternatives early. :-/
             else
@@ -696,10 +742,10 @@ class YarrGenerator : private MacroAssembler {
 
         const RegisterID character = regT0;
 
-        if (term->inputPosition == m_checked)
+        if (term->inputPosition == m_checkedOffset.unsafeGet())
             nextIsNotWordChar.append(atEndOfInput());
 
-        readCharacter((term->inputPosition - m_checked), character);
+        readCharacter(m_checkedOffset - term->inputPosition, character);
         matchCharacterClass(character, nextIsWordChar, m_pattern.wordcharCharacterClass());
     }
 
@@ -713,8 +759,8 @@ class YarrGenerator : private MacroAssembler {
         Jump atBegin;
         JumpList matchDest;
         if (!term->inputPosition)
-            atBegin = branch32(Equal, index, Imm32(m_checked));
-        readCharacter((term->inputPosition - m_checked) - 1, character);
+            atBegin = branch32(Equal, index, Imm32(m_checkedOffset.unsafeGet()));
+        readCharacter(m_checkedOffset - term->inputPosition + 1, character);
         matchCharacterClass(character, matchDest, m_pattern.wordcharCharacterClass());
         if (!term->inputPosition)
             atBegin.link(this);
@@ -766,7 +812,7 @@ class YarrGenerator : private MacroAssembler {
         YarrOp* nextOp = &m_ops[opIndex + 1];
 
         PatternTerm* term = op.m_term;
-        UChar ch = term->patternCharacter;
+        UChar32 ch = term->patternCharacter;
 
         if ((ch > 0xff) && (m_charSize == Char8)) {
             // Have a 16 bit pattern character and an 8 bit string - short circuit
@@ -775,21 +821,21 @@ class YarrGenerator : private MacroAssembler {
         }
 
         const RegisterID character = regT0;
-        int maxCharactersAtOnce = m_charSize == Char8 ? 4 : 2;
+        unsigned maxCharactersAtOnce = m_charSize == Char8 ? 4 : 2;
         unsigned ignoreCaseMask = 0;
 #if CPU(BIG_ENDIAN)
         int allCharacters = ch << (m_charSize == Char8 ? 24 : 16);
 #else
         int allCharacters = ch;
 #endif
-        int numberCharacters;
-        int startTermPosition = term->inputPosition;
+        unsigned numberCharacters;
+        unsigned startTermPosition = term->inputPosition;
 
         // For case-insesitive compares, non-ascii characters that have different
         // upper & lower case representations are converted to a character class.
-        ASSERT(!m_pattern.m_ignoreCase || isASCIIAlpha(ch) || isCanonicallyUnique(ch));
+        ASSERT(!m_pattern.ignoreCase() || isASCIIAlpha(ch) || isCanonicallyUnique(ch));
 
-        if (m_pattern.m_ignoreCase && isASCIIAlpha(ch))
+        if (m_pattern.ignoreCase() && isASCIIAlpha(ch))
 #if CPU(BIG_ENDIAN)
             ignoreCaseMask |= 32 << (m_charSize == Char8 ? 24 : 16);
 #else
@@ -801,7 +847,7 @@ class YarrGenerator : private MacroAssembler {
             
             if (nextTerm->type != PatternTerm::TypePatternCharacter
                 || nextTerm->quantityType != QuantifierFixedCount
-                || nextTerm->quantityCount != 1
+                || nextTerm->quantityMaxCount != 1
                 || nextTerm->inputPosition != (startTermPosition + numberCharacters))
                 break;
 
@@ -813,7 +859,7 @@ class YarrGenerator : private MacroAssembler {
             int shiftAmount = (m_charSize == Char8 ? 8 : 16) * numberCharacters;
 #endif
 
-            UChar currentCharacter = nextTerm->patternCharacter;
+            UChar32 currentCharacter = nextTerm->patternCharacter;
 
             if ((currentCharacter > 0xff) && (m_charSize == Char8)) {
                 // Have a 16 bit pattern character and an 8 bit string - short circuit
@@ -823,47 +869,43 @@ class YarrGenerator : private MacroAssembler {
 
             // For case-insesitive compares, non-ascii characters that have different
             // upper & lower case representations are converted to a character class.
-            ASSERT(!m_pattern.m_ignoreCase || isASCIIAlpha(currentCharacter) || isCanonicallyUnique(currentCharacter));
+            ASSERT(!m_pattern.ignoreCase() || isASCIIAlpha(currentCharacter) || isCanonicallyUnique(currentCharacter));
 
             allCharacters |= (currentCharacter << shiftAmount);
 
-            if ((m_pattern.m_ignoreCase) && (isASCIIAlpha(currentCharacter)))
+            if ((m_pattern.ignoreCase()) && (isASCIIAlpha(currentCharacter)))
                 ignoreCaseMask |= 32 << shiftAmount;                    
         }
 
         if (m_charSize == Char8) {
             switch (numberCharacters) {
             case 1:
-                op.m_jumps.append(jumpIfCharNotEquals(ch, startTermPosition - m_checked, character));
+                op.m_jumps.append(jumpIfCharNotEquals(ch, m_checkedOffset - startTermPosition, character));
                 return;
             case 2: {
-                BaseIndex address(input, index, TimesOne, (startTermPosition - m_checked) * sizeof(LChar));
-                load16Unaligned(address, character);
+                load16Unaligned(negativeOffsetIndexedAddress(m_checkedOffset - startTermPosition, character), character);
                 break;
             }
             case 3: {
-                BaseIndex highAddress(input, index, TimesOne, (startTermPosition - m_checked) * sizeof(LChar));
-                load16Unaligned(highAddress, character);
+                load16Unaligned(negativeOffsetIndexedAddress(m_checkedOffset - startTermPosition, character), character);
                 if (ignoreCaseMask)
                     or32(Imm32(ignoreCaseMask), character);
                 op.m_jumps.append(branch32(NotEqual, character, Imm32((allCharacters & 0xffff) | ignoreCaseMask)));
-                op.m_jumps.append(jumpIfCharNotEquals(allCharacters >> 16, startTermPosition + 2 - m_checked, character));
+                op.m_jumps.append(jumpIfCharNotEquals(allCharacters >> 16, m_checkedOffset - startTermPosition - 2, character));
                 return;
             }
             case 4: {
-                BaseIndex address(input, index, TimesOne, (startTermPosition - m_checked) * sizeof(LChar));
-                load32WithUnalignedHalfWords(address, character);
+                load32WithUnalignedHalfWords(negativeOffsetIndexedAddress(m_checkedOffset- startTermPosition, character), character);
                 break;
             }
             }
         } else {
             switch (numberCharacters) {
             case 1:
-                op.m_jumps.append(jumpIfCharNotEquals(ch, term->inputPosition - m_checked, character));
+                op.m_jumps.append(jumpIfCharNotEquals(ch, m_checkedOffset - term->inputPosition, character));
                 return;
             case 2:
-                BaseIndex address(input, index, TimesTwo, (term->inputPosition - m_checked) * sizeof(UChar));
-                load32WithUnalignedHalfWords(address, character);
+                load32WithUnalignedHalfWords(negativeOffsetIndexedAddress(m_checkedOffset- term->inputPosition, character), character);
                 break;
             }
         }
@@ -882,26 +924,20 @@ class YarrGenerator : private MacroAssembler {
     {
         YarrOp& op = m_ops[opIndex];
         PatternTerm* term = op.m_term;
-        UChar ch = term->patternCharacter;
+        UChar32 ch = term->patternCharacter;
 
         const RegisterID character = regT0;
         const RegisterID countRegister = regT1;
 
         move(index, countRegister);
-        sub32(Imm32(term->quantityCount.unsafeGet()), countRegister);
+        sub32(Imm32(term->quantityMaxCount.unsafeGet()), countRegister);
 
         Label loop(this);
-        BaseIndex address(input, countRegister, m_charScale, (Checked<int>(term->inputPosition - m_checked + Checked<int64_t>(term->quantityCount)) * static_cast<int>(m_charSize == Char8 ? sizeof(char) : sizeof(UChar))).unsafeGet());
-
-        if (m_charSize == Char8)
-            load8(address, character);
-        else
-            load16(address, character);
-
+        readCharacter(m_checkedOffset - term->inputPosition - term->quantityMaxCount, character, countRegister);
         // For case-insesitive compares, non-ascii characters that have different
         // upper & lower case representations are converted to a character class.
-        ASSERT(!m_pattern.m_ignoreCase || isASCIIAlpha(ch) || isCanonicallyUnique(ch));
-        if (m_pattern.m_ignoreCase && isASCIIAlpha(ch)) {
+        ASSERT(!m_pattern.ignoreCase() || isASCIIAlpha(ch) || isCanonicallyUnique(ch));
+        if (m_pattern.ignoreCase() && isASCIIAlpha(ch)) {
             or32(TrustedImm32(0x20), character);
             ch |= 0x20;
         }
@@ -919,7 +955,7 @@ class YarrGenerator : private MacroAssembler {
     {
         YarrOp& op = m_ops[opIndex];
         PatternTerm* term = op.m_term;
-        UChar ch = term->patternCharacter;
+        UChar32 ch = term->patternCharacter;
 
         const RegisterID character = regT0;
         const RegisterID countRegister = regT1;
@@ -931,14 +967,14 @@ class YarrGenerator : private MacroAssembler {
             JumpList failures;
             Label loop(this);
             failures.append(atEndOfInput());
-            failures.append(jumpIfCharNotEquals(ch, term->inputPosition - m_checked, character));
+            failures.append(jumpIfCharNotEquals(ch, m_checkedOffset - term->inputPosition, character));
 
             add32(TrustedImm32(1), countRegister);
             add32(TrustedImm32(1), index);
-            if (term->quantityCount == quantifyInfinite)
+            if (term->quantityMaxCount == quantifyInfinite)
                 jump(loop);
             else
-                branch32(NotEqual, countRegister, Imm32(term->quantityCount.unsafeGet())).linkTo(loop, this);
+                branch32(NotEqual, countRegister, Imm32(term->quantityMaxCount.unsafeGet())).linkTo(loop, this);
 
             failures.link(this);
         }
@@ -977,7 +1013,7 @@ class YarrGenerator : private MacroAssembler {
     {
         YarrOp& op = m_ops[opIndex];
         PatternTerm* term = op.m_term;
-        UChar ch = term->patternCharacter;
+        UChar32 ch = term->patternCharacter;
 
         const RegisterID character = regT0;
         const RegisterID countRegister = regT1;
@@ -990,9 +1026,9 @@ class YarrGenerator : private MacroAssembler {
         if (!((ch > 0xff) && (m_charSize == Char8))) {
             JumpList nonGreedyFailures;
             nonGreedyFailures.append(atEndOfInput());
-            if (term->quantityCount != quantifyInfinite)
-                nonGreedyFailures.append(branch32(Equal, countRegister, Imm32(term->quantityCount.unsafeGet())));
-            nonGreedyFailures.append(jumpIfCharNotEquals(ch, term->inputPosition - m_checked, character));
+            if (term->quantityMaxCount != quantifyInfinite)
+                nonGreedyFailures.append(branch32(Equal, countRegister, Imm32(term->quantityMaxCount.unsafeGet())));
+            nonGreedyFailures.append(jumpIfCharNotEquals(ch, m_checkedOffset - term->inputPosition, character));
 
             add32(TrustedImm32(1), countRegister);
             add32(TrustedImm32(1), index);
@@ -1013,7 +1049,7 @@ class YarrGenerator : private MacroAssembler {
         const RegisterID character = regT0;
 
         JumpList matchDest;
-        readCharacter(term->inputPosition - m_checked, character);
+        readCharacter(m_checkedOffset - term->inputPosition, character);
         matchCharacterClass(character, matchDest, term->characterClass);
 
         if (term->invert())
@@ -1037,14 +1073,11 @@ class YarrGenerator : private MacroAssembler {
         const RegisterID countRegister = regT1;
 
         move(index, countRegister);
-        sub32(Imm32(term->quantityCount.unsafeGet()), countRegister);
+        sub32(Imm32(term->quantityMaxCount.unsafeGet()), countRegister);
 
         Label loop(this);
         JumpList matchDest;
-        if (m_charSize == Char8)
-            load8(BaseIndex(input, countRegister, TimesOne, (Checked<int>(term->inputPosition - m_checked + Checked<int64_t>(term->quantityCount)) * static_cast<int>(sizeof(char))).unsafeGet()), character);
-        else
-            load16(BaseIndex(input, countRegister, TimesTwo, (Checked<int>(term->inputPosition - m_checked + Checked<int64_t>(term->quantityCount)) * static_cast<int>(sizeof(UChar))).unsafeGet()), character);
+        readCharacter(m_checkedOffset - term->inputPosition - term->quantityMaxCount, character, countRegister);
         matchCharacterClass(character, matchDest, term->characterClass);
 
         if (term->invert())
@@ -1077,11 +1110,11 @@ class YarrGenerator : private MacroAssembler {
         failures.append(atEndOfInput());
 
         if (term->invert()) {
-            readCharacter(term->inputPosition - m_checked, character);
+            readCharacter(m_checkedOffset - term->inputPosition, character);
             matchCharacterClass(character, failures, term->characterClass);
         } else {
             JumpList matchDest;
-            readCharacter(term->inputPosition - m_checked, character);
+            readCharacter(m_checkedOffset - term->inputPosition, character);
             matchCharacterClass(character, matchDest, term->characterClass);
             failures.append(jump());
             matchDest.link(this);
@@ -1089,8 +1122,8 @@ class YarrGenerator : private MacroAssembler {
 
         add32(TrustedImm32(1), countRegister);
         add32(TrustedImm32(1), index);
-        if (term->quantityCount != quantifyInfinite) {
-            branch32(NotEqual, countRegister, Imm32(term->quantityCount.unsafeGet())).linkTo(loop, this);
+        if (term->quantityMaxCount != quantifyInfinite) {
+            branch32(NotEqual, countRegister, Imm32(term->quantityMaxCount.unsafeGet())).linkTo(loop, this);
             failures.append(jump());
         } else
             jump(loop);
@@ -1142,10 +1175,10 @@ class YarrGenerator : private MacroAssembler {
         loadFromFrame(term->frameLocation, countRegister);
 
         nonGreedyFailures.append(atEndOfInput());
-        nonGreedyFailures.append(branch32(Equal, countRegister, Imm32(term->quantityCount.unsafeGet())));
+        nonGreedyFailures.append(branch32(Equal, countRegister, Imm32(term->quantityMaxCount.unsafeGet())));
 
         JumpList matchDest;
-        readCharacter(term->inputPosition - m_checked, character);
+        readCharacter(m_checkedOffset - term->inputPosition, character);
         matchCharacterClass(character, matchDest, term->characterClass);
 
         if (term->invert())
@@ -1172,6 +1205,9 @@ class YarrGenerator : private MacroAssembler {
 
         const RegisterID character = regT0;
         const RegisterID matchPos = regT1;
+#ifndef HAVE_INITIAL_START_REG
+        const RegisterID initialStart = character;
+#endif
 
         JumpList foundBeginningNewLine;
         JumpList saveStartIndex;
@@ -1180,7 +1216,10 @@ class YarrGenerator : private MacroAssembler {
         ASSERT(!m_pattern.m_body->m_hasFixedSize);
         getMatchStart(matchPos);
 
-        saveStartIndex.append(branchTest32(Zero, matchPos));
+#ifndef HAVE_INITIAL_START_REG
+        loadFromFrame(m_pattern.m_initialStartValueFrameLocation, initialStart);
+#endif
+        saveStartIndex.append(branch32(BelowOrEqual, matchPos, initialStart));
         Label findBOLLoop(this);
         sub32(TrustedImm32(1), matchPos);
         if (m_charSize == Char8)
@@ -1188,14 +1227,18 @@ class YarrGenerator : private MacroAssembler {
         else
             load16(BaseIndex(input, matchPos, TimesTwo, 0), character);
         matchCharacterClass(character, foundBeginningNewLine, m_pattern.newlineCharacterClass());
-        branchTest32(NonZero, matchPos).linkTo(findBOLLoop, this);
+
+#ifndef HAVE_INITIAL_START_REG
+        loadFromFrame(m_pattern.m_initialStartValueFrameLocation, initialStart);
+#endif
+        branch32(Above, matchPos, initialStart).linkTo(findBOLLoop, this);
         saveStartIndex.append(jump());
 
         foundBeginningNewLine.link(this);
         add32(TrustedImm32(1), matchPos); // Advance past newline
         saveStartIndex.link(this);
 
-        if (!m_pattern.m_multiline && term->anchors.bolAnchor)
+        if (!m_pattern.multiline() && term->anchors.bolAnchor)
             op.m_jumps.append(branchTest32(NonZero, matchPos));
 
         ASSERT(!m_pattern.m_body->m_hasFixedSize);
@@ -1215,7 +1258,7 @@ class YarrGenerator : private MacroAssembler {
 
         foundEndingNewLine.link(this);
 
-        if (!m_pattern.m_multiline && term->anchors.eolAnchor)
+        if (!m_pattern.multiline() && term->anchors.eolAnchor)
             op.m_jumps.append(branch32(NotEqual, matchPos, length));
 
         move(matchPos, index);
@@ -1238,7 +1281,7 @@ class YarrGenerator : private MacroAssembler {
         case PatternTerm::TypePatternCharacter:
             switch (term->quantityType) {
             case QuantifierFixedCount:
-                if (term->quantityCount == 1)
+                if (term->quantityMaxCount == 1)
                     generatePatternCharacterOnce(opIndex);
                 else
                     generatePatternCharacterFixed(opIndex);
@@ -1255,7 +1298,7 @@ class YarrGenerator : private MacroAssembler {
         case PatternTerm::TypeCharacterClass:
             switch (term->quantityType) {
             case QuantifierFixedCount:
-                if (term->quantityCount == 1)
+                if (term->quantityMaxCount == 1)
                     generateCharacterClassOnce(opIndex);
                 else
                     generateCharacterClassFixed(opIndex);
@@ -1304,7 +1347,7 @@ class YarrGenerator : private MacroAssembler {
         case PatternTerm::TypePatternCharacter:
             switch (term->quantityType) {
             case QuantifierFixedCount:
-                if (term->quantityCount == 1)
+                if (term->quantityMaxCount == 1)
                     backtrackPatternCharacterOnce(opIndex);
                 else
                     backtrackPatternCharacterFixed(opIndex);
@@ -1321,7 +1364,7 @@ class YarrGenerator : private MacroAssembler {
         case PatternTerm::TypeCharacterClass:
             switch (term->quantityType) {
             case QuantifierFixedCount:
-                if (term->quantityCount == 1)
+                if (term->quantityMaxCount == 1)
                     backtrackCharacterClassOnce(opIndex);
                 else
                     backtrackCharacterClassFixed(opIndex);
@@ -1410,7 +1453,7 @@ class YarrGenerator : private MacroAssembler {
                 // set as appropriate to this alternative.
                 op.m_reentry = label();
 
-                m_checked += alternative->m_minimumSize;
+                m_checkedOffset += alternative->m_minimumSize;
                 break;
             }
             case OpBodyAlternativeNext:
@@ -1463,8 +1506,8 @@ class YarrGenerator : private MacroAssembler {
                 }
 
                 if (op.m_op == OpBodyAlternativeNext)
-                    m_checked += alternative->m_minimumSize;
-                m_checked -= priorAlternative->m_minimumSize;
+                    m_checkedOffset += alternative->m_minimumSize;
+                m_checkedOffset -= priorAlternative->m_minimumSize;
                 break;
             }
 
@@ -1491,13 +1534,13 @@ class YarrGenerator : private MacroAssembler {
                 PatternDisjunction* disjunction = term->parentheses.disjunction;
 
                 // Calculate how much input we need to check for, and if non-zero check.
-                op.m_checkAdjust = alternative->m_minimumSize;
+                op.m_checkAdjust = Checked<unsigned>(alternative->m_minimumSize);
                 if ((term->quantityType == QuantifierFixedCount) && (term->type != PatternTerm::TypeParentheticalAssertion))
                     op.m_checkAdjust -= disjunction->m_minimumSize;
                 if (op.m_checkAdjust)
-                    op.m_jumps.append(jumpIfNoAvailableInput(op.m_checkAdjust));
+                    op.m_jumps.append(jumpIfNoAvailableInput(op.m_checkAdjust.unsafeGet()));
 
-                m_checked += op.m_checkAdjust;
+                m_checkedOffset += op.m_checkAdjust;
                 break;
             }
             case OpSimpleNestedAlternativeNext:
@@ -1545,11 +1588,11 @@ class YarrGenerator : private MacroAssembler {
                 if ((term->quantityType == QuantifierFixedCount) && (term->type != PatternTerm::TypeParentheticalAssertion))
                     op.m_checkAdjust -= disjunction->m_minimumSize;
                 if (op.m_checkAdjust)
-                    op.m_jumps.append(jumpIfNoAvailableInput(op.m_checkAdjust));
+                    op.m_jumps.append(jumpIfNoAvailableInput(op.m_checkAdjust.unsafeGet()));
 
                 YarrOp& lastOp = m_ops[op.m_previousOp];
-                m_checked -= lastOp.m_checkAdjust;
-                m_checked += op.m_checkAdjust;
+                m_checkedOffset -= lastOp.m_checkAdjust;
+                m_checkedOffset += op.m_checkAdjust;
                 break;
             }
             case OpSimpleNestedAlternativeEnd:
@@ -1578,7 +1621,7 @@ class YarrGenerator : private MacroAssembler {
                 op.m_jumps.clear();
 
                 YarrOp& lastOp = m_ops[op.m_previousOp];
-                m_checked -= lastOp.m_checkAdjust;
+                m_checkedOffset -= lastOp.m_checkAdjust;
                 break;
             }
 
@@ -1590,7 +1633,7 @@ class YarrGenerator : private MacroAssembler {
                 PatternTerm* term = op.m_term;
                 unsigned parenthesesFrameLocation = term->frameLocation;
                 const RegisterID indexTemporary = regT0;
-                ASSERT(term->quantityCount == 1);
+                ASSERT(term->quantityMaxCount == 1);
 
                 // Upon entry to a Greedy quantified set of parenthese store the index.
                 // We'll use this for two purposes:
@@ -1622,12 +1665,12 @@ class YarrGenerator : private MacroAssembler {
                 // offsets only afterwards, at the point the results array is
                 // being accessed.
                 if (term->capture() && compileMode == IncludeSubpatterns) {
-                    int inputOffset = term->inputPosition - m_checked;
+                    unsigned inputOffset = (m_checkedOffset - term->inputPosition).unsafeGet();
                     if (term->quantityType == QuantifierFixedCount)
-                        inputOffset -= term->parentheses.disjunction->m_minimumSize;
+                        inputOffset += term->parentheses.disjunction->m_minimumSize;
                     if (inputOffset) {
                         move(index, indexTemporary);
-                        add32(Imm32(inputOffset), indexTemporary);
+                        sub32(Imm32(inputOffset), indexTemporary);
                         setSubpatternStart(indexTemporary, term->parentheses.subpatternId);
                     } else
                         setSubpatternStart(index, term->parentheses.subpatternId);
@@ -1637,7 +1680,7 @@ class YarrGenerator : private MacroAssembler {
             case OpParenthesesSubpatternOnceEnd: {
                 PatternTerm* term = op.m_term;
                 const RegisterID indexTemporary = regT0;
-                ASSERT(term->quantityCount == 1);
+                ASSERT(term->quantityMaxCount == 1);
 
                 // Runtime ASSERT to make sure that the nested alternative handled the
                 // "no input consumed" check.
@@ -1655,10 +1698,10 @@ class YarrGenerator : private MacroAssembler {
                 // offsets only afterwards, at the point the results array is
                 // being accessed.
                 if (term->capture() && compileMode == IncludeSubpatterns) {
-                    int inputOffset = term->inputPosition - m_checked;
+                    unsigned inputOffset = (m_checkedOffset - term->inputPosition).unsafeGet();
                     if (inputOffset) {
                         move(index, indexTemporary);
-                        add32(Imm32(inputOffset), indexTemporary);
+                        sub32(Imm32(inputOffset), indexTemporary);
                         setSubpatternEnd(indexTemporary, term->parentheses.subpatternId);
                     } else
                         setSubpatternEnd(index, term->parentheses.subpatternId);
@@ -1680,7 +1723,7 @@ class YarrGenerator : private MacroAssembler {
             case OpParenthesesSubpatternTerminalBegin: {
                 PatternTerm* term = op.m_term;
                 ASSERT(term->quantityType == QuantifierGreedy);
-                ASSERT(term->quantityCount == quantifyInfinite);
+                ASSERT(term->quantityMaxCount == quantifyInfinite);
                 ASSERT(!term->capture());
 
                 // Upon entry set a label to loop back to.
@@ -1724,11 +1767,11 @@ class YarrGenerator : private MacroAssembler {
                 storeToFrame(index, parenthesesFrameLocation);
 
                 // Check 
-                op.m_checkAdjust = m_checked - term->inputPosition;
+                op.m_checkAdjust = m_checkedOffset - term->inputPosition;
                 if (op.m_checkAdjust)
-                    sub32(Imm32(op.m_checkAdjust), index);
+                    sub32(Imm32(op.m_checkAdjust.unsafeGet()), index);
 
-                m_checked -= op.m_checkAdjust;
+                m_checkedOffset -= op.m_checkAdjust;
                 break;
             }
             case OpParentheticalAssertionEnd: {
@@ -1746,15 +1789,13 @@ class YarrGenerator : private MacroAssembler {
                 }
 
                 YarrOp& lastOp = m_ops[op.m_previousOp];
-                m_checked += lastOp.m_checkAdjust;
+                m_checkedOffset += lastOp.m_checkAdjust;
                 break;
             }
 
             case OpMatchFailed:
                 removeCallFrame();
-                move(TrustedImmPtr((void*)WTF::notFound), returnRegister);
-                move(TrustedImm32(0), returnRegister2);
-                generateReturn();
+                generateFailReturn();
                 break;
             }
 
@@ -1806,9 +1847,9 @@ class YarrGenerator : private MacroAssembler {
 
                 if (op.m_op == OpBodyAlternativeNext) {
                     PatternAlternative* priorAlternative = m_ops[op.m_previousOp].m_alternative;
-                    m_checked += priorAlternative->m_minimumSize;
+                    m_checkedOffset += priorAlternative->m_minimumSize;
                 }
-                m_checked -= alternative->m_minimumSize;
+                m_checkedOffset -= alternative->m_minimumSize;
 
                 // Is this the last alternative? If not, then if we backtrack to this point we just
                 // need to jump to try to match the next alternative.
@@ -1825,6 +1866,8 @@ class YarrGenerator : private MacroAssembler {
                 }
 
                 bool onceThrough = endOp.m_nextOp == notFound;
+                
+                JumpList lastStickyAlternativeFailures;
 
                 // First, generate code to handle cases where we backtrack out of an attempted match
                 // of the last alternative. If this is a 'once through' set of alternatives then we
@@ -1840,43 +1883,49 @@ class YarrGenerator : private MacroAssembler {
                         && (alternative->m_minimumSize > beginOp->m_alternative->m_minimumSize)
                         && (alternative->m_minimumSize - beginOp->m_alternative->m_minimumSize == 1))
                         m_backtrackingState.linkTo(beginOp->m_reentry, this);
-                    else {
+                    else if (m_pattern.sticky() && m_ops[op.m_nextOp].m_op == OpBodyAlternativeEnd) {
+                        // It is a sticky pattern and the last alternative failed, jump to the end.
+                        m_backtrackingState.takeBacktracksToJumpList(lastStickyAlternativeFailures, this);
+                    } else {
                         // We need to generate a trampoline of code to execute before looping back
                         // around to the first alternative.
                         m_backtrackingState.link(this);
 
-                        // If the pattern size is not fixed, then store the start index, for use if we match.
-                        if (!m_pattern.m_body->m_hasFixedSize) {
-                            if (alternative->m_minimumSize == 1)
-                                setMatchStart(index);
-                            else {
-                                move(index, regT0);
-                                if (alternative->m_minimumSize)
-                                    sub32(Imm32(alternative->m_minimumSize - 1), regT0);
-                                else
-                                    add32(TrustedImm32(1), regT0);
-                                setMatchStart(regT0);
+                        // No need to advance and retry for a sticky pattern.
+                        if (!m_pattern.sticky()) {
+                            // If the pattern size is not fixed, then store the start index for use if we match.
+                            if (!m_pattern.m_body->m_hasFixedSize) {
+                                if (alternative->m_minimumSize == 1)
+                                    setMatchStart(index);
+                                else {
+                                    move(index, regT0);
+                                    if (alternative->m_minimumSize)
+                                        sub32(Imm32(alternative->m_minimumSize - 1), regT0);
+                                    else
+                                        add32(TrustedImm32(1), regT0);
+                                    setMatchStart(regT0);
+                                }
                             }
-                        }
 
-                        // Generate code to loop. Check whether the last alternative is longer than the
-                        // first (e.g. /a|xy/ or /a|xyz/).
-                        if (alternative->m_minimumSize > beginOp->m_alternative->m_minimumSize) {
-                            // We want to loop, and increment input position. If the delta is 1, it is
-                            // already correctly incremented, if more than one then decrement as appropriate.
-                            unsigned delta = alternative->m_minimumSize - beginOp->m_alternative->m_minimumSize;
-                            ASSERT(delta);
-                            if (delta != 1)
-                                sub32(Imm32(delta - 1), index);
-                            jump(beginOp->m_reentry);
-                        } else {
-                            // If the first alternative has minimum size 0xFFFFFFFFu, then there cannot
-                            // be sufficent input available to handle this, so just fall through.
-                            unsigned delta = beginOp->m_alternative->m_minimumSize - alternative->m_minimumSize;
-                            if (delta != 0xFFFFFFFFu) {
-                                // We need to check input because we are incrementing the input.
-                                add32(Imm32(delta + 1), index);
-                                checkInput().linkTo(beginOp->m_reentry, this);
+                            // Generate code to loop. Check whether the last alternative is longer than the
+                            // first (e.g. /a|xy/ or /a|xyz/).
+                            if (alternative->m_minimumSize > beginOp->m_alternative->m_minimumSize) {
+                                // We want to loop, and increment input position. If the delta is 1, it is
+                                // already correctly incremented, if more than one then decrement as appropriate.
+                                unsigned delta = alternative->m_minimumSize - beginOp->m_alternative->m_minimumSize;
+                                ASSERT(delta);
+                                if (delta != 1)
+                                    sub32(Imm32(delta - 1), index);
+                                jump(beginOp->m_reentry);
+                            } else {
+                                // If the first alternative has minimum size 0xFFFFFFFFu, then there cannot
+                                // be sufficent input available to handle this, so just fall through.
+                                unsigned delta = beginOp->m_alternative->m_minimumSize - alternative->m_minimumSize;
+                                if (delta != 0xFFFFFFFFu) {
+                                    // We need to check input because we are incrementing the input.
+                                    add32(Imm32(delta + 1), index);
+                                    checkInput().linkTo(beginOp->m_reentry, this);
+                                }
                             }
                         }
                     }
@@ -1885,7 +1934,7 @@ class YarrGenerator : private MacroAssembler {
                 // We can reach this point in the code in two ways:
                 //  - Fallthrough from the code above (a repeating alternative backtracked out of its
                 //    last alternative, and did not have sufficent input to run the first).
-                //  - We will loop back up to the following label when a releating alternative loops,
+                //  - We will loop back up to the following label when a repeating alternative loops,
                 //    following a failed input check.
                 //
                 // Either way, we have just failed the input check for the first alternative.
@@ -1945,56 +1994,57 @@ class YarrGenerator : private MacroAssembler {
                     needsToUpdateMatchStart = false;
                 }
 
-                // Check whether there is sufficient input to loop. Increment the input position by
-                // one, and check. Also add in the minimum disjunction size before checking - there
-                // is no point in looping if we're just going to fail all the input checks around
-                // the next iteration.
-                ASSERT(alternative->m_minimumSize >= m_pattern.m_body->m_minimumSize);
-                if (alternative->m_minimumSize == m_pattern.m_body->m_minimumSize) {
-                    // If the last alternative had the same minimum size as the disjunction,
-                    // just simply increment input pos by 1, no adjustment based on minimum size.
-                    add32(TrustedImm32(1), index);
-                } else {
-                    // If the minumum for the last alternative was one greater than than that
-                    // for the disjunction, we're already progressed by 1, nothing to do!
-                    unsigned delta = (alternative->m_minimumSize - m_pattern.m_body->m_minimumSize) - 1;
-                    if (delta)
-                        sub32(Imm32(delta), index);
-                }
-                Jump matchFailed = jumpIfNoAvailableInput();
-
-                if (needsToUpdateMatchStart) {
-                    if (!m_pattern.m_body->m_minimumSize)
-                        setMatchStart(index);
-                    else {
-                        move(index, regT0);
-                        sub32(Imm32(m_pattern.m_body->m_minimumSize), regT0);
-                        setMatchStart(regT0);
+                if (!m_pattern.sticky()) {
+                    // Check whether there is sufficient input to loop. Increment the input position by
+                    // one, and check. Also add in the minimum disjunction size before checking - there
+                    // is no point in looping if we're just going to fail all the input checks around
+                    // the next iteration.
+                    ASSERT(alternative->m_minimumSize >= m_pattern.m_body->m_minimumSize);
+                    if (alternative->m_minimumSize == m_pattern.m_body->m_minimumSize) {
+                        // If the last alternative had the same minimum size as the disjunction,
+                        // just simply increment input pos by 1, no adjustment based on minimum size.
+                        add32(TrustedImm32(1), index);
+                    } else {
+                        // If the minumum for the last alternative was one greater than than that
+                        // for the disjunction, we're already progressed by 1, nothing to do!
+                        unsigned delta = (alternative->m_minimumSize - m_pattern.m_body->m_minimumSize) - 1;
+                        if (delta)
+                            sub32(Imm32(delta), index);
                     }
+                    Jump matchFailed = jumpIfNoAvailableInput();
+
+                    if (needsToUpdateMatchStart) {
+                        if (!m_pattern.m_body->m_minimumSize)
+                            setMatchStart(index);
+                        else {
+                            move(index, regT0);
+                            sub32(Imm32(m_pattern.m_body->m_minimumSize), regT0);
+                            setMatchStart(regT0);
+                        }
+                    }
+
+                    // Calculate how much more input the first alternative requires than the minimum
+                    // for the body as a whole. If no more is needed then we dont need an additional
+                    // input check here - jump straight back up to the start of the first alternative.
+                    if (beginOp->m_alternative->m_minimumSize == m_pattern.m_body->m_minimumSize)
+                        jump(beginOp->m_reentry);
+                    else {
+                        if (beginOp->m_alternative->m_minimumSize > m_pattern.m_body->m_minimumSize)
+                            add32(Imm32(beginOp->m_alternative->m_minimumSize - m_pattern.m_body->m_minimumSize), index);
+                        else
+                            sub32(Imm32(m_pattern.m_body->m_minimumSize - beginOp->m_alternative->m_minimumSize), index);
+                        checkInput().linkTo(beginOp->m_reentry, this);
+                        jump(firstInputCheckFailed);
+                    }
+
+                    // We jump to here if we iterate to the point that there is insufficient input to
+                    // run any matches, and need to return a failure state from JIT code.
+                    matchFailed.link(this);
                 }
 
-                // Calculate how much more input the first alternative requires than the minimum
-                // for the body as a whole. If no more is needed then we dont need an additional
-                // input check here - jump straight back up to the start of the first alternative.
-                if (beginOp->m_alternative->m_minimumSize == m_pattern.m_body->m_minimumSize)
-                    jump(beginOp->m_reentry);
-                else {
-                    if (beginOp->m_alternative->m_minimumSize > m_pattern.m_body->m_minimumSize)
-                        add32(Imm32(beginOp->m_alternative->m_minimumSize - m_pattern.m_body->m_minimumSize), index);
-                    else
-                        sub32(Imm32(m_pattern.m_body->m_minimumSize - beginOp->m_alternative->m_minimumSize), index);
-                    checkInput().linkTo(beginOp->m_reentry, this);
-                    jump(firstInputCheckFailed);
-                }
-
-                // We jump to here if we iterate to the point that there is insufficient input to
-                // run any matches, and need to return a failure state from JIT code.
-                matchFailed.link(this);
-
+                lastStickyAlternativeFailures.link(this);
                 removeCallFrame();
-                move(TrustedImmPtr((void*)WTF::notFound), returnRegister);
-                move(TrustedImm32(0), returnRegister2);
-                generateReturn();
+                generateFailReturn();
                 break;
             }
             case OpBodyAlternativeEnd: {
@@ -2002,7 +2052,7 @@ class YarrGenerator : private MacroAssembler {
                 ASSERT(m_backtrackingState.isEmpty());
 
                 PatternAlternative* priorAlternative = m_ops[op.m_previousOp].m_alternative;
-                m_checked += priorAlternative->m_minimumSize;
+                m_checkedOffset += priorAlternative->m_minimumSize;
                 break;
             }
 
@@ -2053,7 +2103,7 @@ class YarrGenerator : private MacroAssembler {
                 if (op.m_checkAdjust) {
                     // Handle the cases where we need to link the backtracks here.
                     m_backtrackingState.link(this);
-                    sub32(Imm32(op.m_checkAdjust), index);
+                    sub32(Imm32(op.m_checkAdjust.unsafeGet()), index);
                     if (!isLastAlternative) {
                         // An alternative that is not the last should jump to its successor.
                         jump(nextOp.m_reentry);
@@ -2103,9 +2153,9 @@ class YarrGenerator : private MacroAssembler {
 
                 if (!isBegin) {
                     YarrOp& lastOp = m_ops[op.m_previousOp];
-                    m_checked += lastOp.m_checkAdjust;
+                    m_checkedOffset += lastOp.m_checkAdjust;
                 }
-                m_checked -= op.m_checkAdjust;
+                m_checkedOffset -= op.m_checkAdjust;
                 break;
             }
             case OpSimpleNestedAlternativeEnd:
@@ -2136,7 +2186,7 @@ class YarrGenerator : private MacroAssembler {
                 }
 
                 YarrOp& lastOp = m_ops[op.m_previousOp];
-                m_checked += lastOp.m_checkAdjust;
+                m_checkedOffset += lastOp.m_checkAdjust;
                 break;
             }
 
@@ -2157,7 +2207,7 @@ class YarrGenerator : private MacroAssembler {
             // matching start, depending of whether the match is Greedy or NonGreedy.
             case OpParenthesesSubpatternOnceBegin: {
                 PatternTerm* term = op.m_term;
-                ASSERT(term->quantityCount == 1);
+                ASSERT(term->quantityMaxCount == 1);
 
                 // We only need to backtrack to thispoint if capturing or greedy.
                 if ((term->capture() && compileMode == IncludeSubpatterns) || term->quantityType == QuantifierGreedy) {
@@ -2249,7 +2299,7 @@ class YarrGenerator : private MacroAssembler {
                      m_backtrackingState.link(this);
 
                     if (op.m_checkAdjust)
-                        add32(Imm32(op.m_checkAdjust), index);
+                        add32(Imm32(op.m_checkAdjust.unsafeGet()), index);
 
                     // In an inverted assertion failure to match the subpattern
                     // is treated as a successful match - jump to the end of the
@@ -2266,7 +2316,7 @@ class YarrGenerator : private MacroAssembler {
                 // added the failure caused by a successful match to this.
                 m_backtrackingState.append(endOp.m_jumps);
 
-                m_checked += op.m_checkAdjust;
+                m_checkedOffset += op.m_checkAdjust;
                 break;
             }
             case OpParentheticalAssertionEnd: {
@@ -2278,7 +2328,7 @@ class YarrGenerator : private MacroAssembler {
                 m_backtrackingState.takeBacktracksToJumpList(op.m_jumps, this);
 
                 YarrOp& lastOp = m_ops[op.m_previousOp];
-                m_checked -= lastOp.m_checkAdjust;
+                m_checkedOffset -= lastOp.m_checkAdjust;
                 break;
             }
 
@@ -2296,7 +2346,7 @@ class YarrGenerator : private MacroAssembler {
     // Emits ops for a subpattern (set of parentheses). These consist
     // of a set of alternatives wrapped in an outer set of nodes for
     // the parentheses.
-    // Supported types of parentheses are 'Once' (quantityCount == 1)
+    // Supported types of parentheses are 'Once' (quantityMaxCount == 1)
     // and 'Terminal' (non-capturing parentheses quantified as greedy
     // and infinite).
     // Alternatives will use the 'Simple' set of ops if either the
@@ -2317,7 +2367,10 @@ class YarrGenerator : private MacroAssembler {
         // comes where the subpattern is capturing, in which case we would
         // need to restore the capture from the first subpattern upon a
         // failure in the second.
-        if (term->quantityCount == 1 && !term->parentheses.isCopy) {
+        if (term->quantityMinCount && term->quantityMinCount != term->quantityMaxCount) {
+            m_shouldFallBack = true;
+            return;
+        } if (term->quantityMaxCount == 1 && !term->parentheses.isCopy) {
             // Select the 'Once' nodes.
             parenthesesBeginOpCode = OpParenthesesSubpatternOnceBegin;
             parenthesesEndOpCode = OpParenthesesSubpatternOnceEnd;
@@ -2576,9 +2629,6 @@ class YarrGenerator : private MacroAssembler {
         push(ARMRegisters::r4);
         push(ARMRegisters::r5);
         push(ARMRegisters::r6);
-#elif CPU(SH4)
-        push(SH4Registers::r11);
-        push(SH4Registers::r13);
 #elif CPU(MIPS)
         // Do nothing.
 #endif
@@ -2608,9 +2658,6 @@ class YarrGenerator : private MacroAssembler {
         pop(ARMRegisters::r6);
         pop(ARMRegisters::r5);
         pop(ARMRegisters::r4);
-#elif CPU(SH4)
-        pop(SH4Registers::r13);
-        pop(SH4Registers::r11);
 #elif CPU(MIPS)
         // Do nothing
 #endif
@@ -2622,20 +2669,16 @@ public:
         : m_vm(vm)
         , m_pattern(pattern)
         , m_charSize(charSize)
-        , m_charScale(m_charSize == Char8 ? TimesOne: TimesTwo)
         , m_shouldFallBack(false)
-        , m_checked(0)
     {
     }
 
-    void compile(VM* vm, YarrCodeBlock& jitObject)
+    void compile(YarrCodeBlock& jitObject)
     {
         generateEnter();
 
         Jump hasInput = checkInput();
-        move(TrustedImmPtr((void*)WTF::notFound), returnRegister);
-        move(TrustedImm32(0), returnRegister2);
-        generateReturn();
+        generateFailReturn();
         hasInput.link(this);
 
         if (compileMode == IncludeSubpatterns) {
@@ -2648,6 +2691,14 @@ public:
 
         initCallFrame();
 
+        if (m_pattern.m_saveInitialStartValue) {
+#ifdef HAVE_INITIAL_START_REG
+            move(index, initialStart);
+#else
+            storeToFrame(index, m_pattern.m_initialStartValueFrameLocation);
+#endif
+        }
+
         opCompileBody(m_pattern.m_body);
 
         if (m_shouldFallBack) {
@@ -2658,7 +2709,7 @@ public:
         generate();
         backtrack();
 
-        LinkBuffer linkBuffer(*vm, *this, REGEXP_CODE_ID, JITCompilationCanFail);
+        LinkBuffer linkBuffer(*this, REGEXP_CODE_ID, JITCompilationCanFail);
         if (linkBuffer.didFailToAllocate()) {
             jitObject.setFallBack(true);
             return;
@@ -2687,8 +2738,6 @@ private:
 
     YarrCharSize m_charSize;
 
-    Scale m_charScale;
-
     // Used to detect regular expression constructs that are not currently
     // supported in the JIT; fall back to the interpreter when this is detected.
     bool m_shouldFallBack;
@@ -2706,7 +2755,7 @@ private:
     // FIXME: This should go away. Rather than tracking this value throughout
     // code generation, we should gather this information up front & store it
     // on the YarrOp structure.
-    int m_checked;
+    Checked<unsigned> m_checkedOffset;
 
     // This class records state whilst generating the backtracking path of code.
     BacktrackingState m_backtrackingState;
@@ -2715,9 +2764,9 @@ private:
 void jitCompile(YarrPattern& pattern, YarrCharSize charSize, VM* vm, YarrCodeBlock& jitObject, YarrJITCompileMode mode)
 {
     if (mode == MatchOnly)
-        YarrGenerator<MatchOnly>(vm, pattern, charSize).compile(vm, jitObject);
+        YarrGenerator<MatchOnly>(vm, pattern, charSize).compile(jitObject);
     else
-        YarrGenerator<IncludeSubpatterns>(vm, pattern, charSize).compile(vm, jitObject);
+        YarrGenerator<IncludeSubpatterns>(vm, pattern, charSize).compile(jitObject);
 }
 
 }}

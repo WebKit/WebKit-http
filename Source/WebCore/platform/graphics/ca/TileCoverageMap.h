@@ -58,11 +58,11 @@ public:
 
 private:
     // PlatformCALayerClient
-    virtual GraphicsLayer::CompositingCoordinatesOrientation platformCALayerContentsOrientation() const override { return GraphicsLayer::CompositingCoordinatesTopDown; }
-    virtual bool platformCALayerContentsOpaque() const override { return true; }
-    virtual bool platformCALayerDrawsContent() const override { return true; }
-    virtual void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect&) override;
-    virtual float platformCALayerDeviceScaleFactor() const override;
+    GraphicsLayer::CompositingCoordinatesOrientation platformCALayerContentsOrientation() const override { return GraphicsLayer::CompositingCoordinatesTopDown; }
+    bool platformCALayerContentsOpaque() const override { return true; }
+    bool platformCALayerDrawsContent() const override { return true; }
+    void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect&, GraphicsLayerPaintFlags) override;
+    float platformCALayerDeviceScaleFactor() const override;
 
     void updateTimerFired();
     
@@ -71,7 +71,8 @@ private:
     Timer m_updateTimer;
 
     Ref<PlatformCALayer> m_layer;
-    Ref<PlatformCALayer> m_visibleRectIndicatorLayer;
+    Ref<PlatformCALayer> m_visibleViewportIndicatorLayer;
+    Ref<PlatformCALayer> m_layoutViewportIndicatorLayer;
     Ref<PlatformCALayer> m_coverageRectIndicatorLayer;
 
     FloatPoint m_position;

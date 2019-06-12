@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirUseCounts_h
-#define AirUseCounts_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -78,7 +77,7 @@ public:
                 frequency *= Options::rareBlockPenalty();
             for (Inst& inst : *block) {
                 inst.forEach<Thing>(
-                    [&] (Thing& arg, Arg::Role role, Arg::Type, Arg::Width) {
+                    [&] (Thing& arg, Arg::Role role, Bank, Width) {
                         Counts& counts = m_counts.add(arg, Counts()).iterator->value;
 
                         if (Arg::isWarmUse(role))
@@ -89,7 +88,7 @@ public:
                             counts.numDefs += frequency;
                     });
 
-                if ((inst.opcode == Move || inst.opcode == Move32)
+                if ((inst.kind.opcode == Move || inst.kind.opcode == Move32)
                     && inst.args[0].isSomeImm()
                     && inst.args[1].is<Thing>())
                     m_counts.add(inst.args[1].as<Thing>(), Counts()).iterator->value.numConstDefs++;
@@ -117,6 +116,3 @@ private:
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirUseCounts_h
-

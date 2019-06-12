@@ -23,18 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSNamedImageValue_h
-#define CSSNamedImageValue_h
+#pragma once
 
 #include "CSSImageGeneratorValue.h"
-
 #include "Image.h"
 
 namespace WebCore {
 
-class Document;
-
-class CSSNamedImageValue : public CSSImageGeneratorValue {
+class CSSNamedImageValue final : public CSSImageGeneratorValue {
 public:
     static Ref<CSSNamedImageValue> create(const String& name)
     {
@@ -58,11 +54,8 @@ private:
     }
 
     String m_name;
-    RefPtr<Image> m_generatedImage;
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSNamedImageValue, isNamedImageValue())
-
-#endif // CSSNamedImageValue_h

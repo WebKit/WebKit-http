@@ -31,10 +31,6 @@
 #import "XPCServiceEntryPoint.h"
 #import <wtf/RunLoop.h>
 
-#if HAVE(OS_ACTIVITY)
-#include <os/activity.h>
-#endif
-
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 namespace WebKit {
@@ -69,9 +65,9 @@ using namespace WebKit;
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-extern "C" WK_EXPORT void PluginServiceInitializer(xpc_connection_t connection, xpc_object_t initializerMessage);
+extern "C" WK_EXPORT void PluginServiceInitializer(xpc_connection_t connection, xpc_object_t initializerMessage, xpc_object_t priorityBoostMessage);
 
-void PluginServiceInitializer(xpc_connection_t connection, xpc_object_t initializerMessage)
+void PluginServiceInitializer(xpc_connection_t connection, xpc_object_t initializerMessage, xpc_object_t priorityBoostMessage)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     // FIXME: Add support for teardown from PluginProcessMain.mm
@@ -79,18 +75,6 @@ void PluginServiceInitializer(xpc_connection_t connection, xpc_object_t initiali
     // Remove the PluginProcess shim from the DYLD_INSERT_LIBRARIES environment variable so any processes
     // spawned by the PluginProcess don't try to insert the shim and crash.
     EnvironmentUtilities::stripValuesEndingWithString("DYLD_INSERT_LIBRARIES", "/PluginProcessShim.dylib");
-
-#if HAVE(OS_ACTIVITY)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    os_activity_t activity = os_activity_start("com.apple.WebKit.Plugin", OS_ACTIVITY_FLAG_DEFAULT);
-#pragma clang diagnostic pop
-#endif
-
-    XPCServiceInitializer<PluginProcess, PluginServiceInitializerDelegate>(adoptOSObject(connection), initializerMessage);
-
-#if HAVE(OS_ACTIVITY)
-    os_activity_end(activity);
-#endif
+    XPCServiceInitializer<PluginProcess, PluginServiceInitializerDelegate>(adoptOSObject(connection), initializerMessage, priorityBoostMessage);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 }

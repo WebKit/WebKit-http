@@ -66,8 +66,11 @@ class PerfTestsRunner(object):
             self._host = Host()
             self._port = self._host.port_factory.get(self._options.platform, self._options)
 
-        # The GTK+ and EFL ports only supports WebKit2, so they always use WKTR.
-        if self._port.name().startswith("gtk") or self._port.name().startswith("efl"):
+        # Timeouts are controlled by the Python Driver, so DRT/WTR runs with no-timeout.
+        self._options.additional_drt_flag.append('--no-timeout')
+
+        # The GTK+ port only supports WebKit2, so it always uses WKTR.
+        if self._port.name().startswith("gtk"):
             self._options.webkit_test_runner = True
 
         self._host.initialize_scm()
@@ -75,7 +78,6 @@ class PerfTestsRunner(object):
         self._base_path = self._port.perf_tests_dir()
         self._timestamp = time.time()
         self._utc_timestamp = datetime.datetime.utcnow()
-
 
     @staticmethod
     def _parse_args(args=None):
@@ -101,6 +103,8 @@ class PerfTestsRunner(object):
                 help="Path to the directory under which build files are kept (should not include configuration)"),
             optparse.make_option("--time-out-ms", default=600 * 1000,
                 help="Set the timeout for each test"),
+            optparse.make_option("--no-timeout", action="store_true", default=False,
+                help="Disable test timeouts"),
             optparse.make_option("--no-results", action="store_false", dest="generate_results", default=True,
                 help="Do no generate results JSON and results page."),
             optparse.make_option("--output-json-path", action='callback', callback=_expand_path, type="str",
@@ -136,6 +140,9 @@ class PerfTestsRunner(object):
                 help="wrapper command to insert before invocations of "
                  "DumpRenderTree or WebKitTestRunner; option is split on whitespace before "
                  "running. (Example: --wrapper='valgrind --smc-check=all')"),
+            optparse.make_option('--display-server', choices=['xvfb', 'xorg', 'weston', 'wayland'], default='xvfb',
+                help='"xvfb": Use a virtualized X11 server. "xorg": Use the current X11 session. '
+                     '"weston": Use a virtualized Weston server. "wayland": Use the current wayland session.'),
             ]
         return optparse.OptionParser(option_list=(perf_option_list)).parse_args(args)
 
@@ -172,6 +179,8 @@ class PerfTestsRunner(object):
             relative_path = filesystem.relpath(path, self._base_path).replace('\\', '/')
             if self._options.use_skipped_list and self._port.skips_perf_test(relative_path) and filesystem.normpath(relative_path) not in paths:
                 continue
+            if relative_path.endswith('/index.html'):
+                relative_path = relative_path[0:-len('/index.html')]
             test = PerfTestFactory.create_perf_test(self._port, relative_path, path, test_runner_count=test_runner_count)
             tests.append(test)
 
@@ -263,8 +272,8 @@ class PerfTestsRunner(object):
         revisions = {}
         for (name, path) in self._port.repository_paths():
             scm = SCMDetector(self._host.filesystem, self._host.executive).detect_scm_system(path) or self._host.scm()
-            revision = scm.svn_revision(path)
-            revisions[name] = {'revision': revision, 'timestamp': scm.timestamp_of_revision(path, revision)}
+            revision = scm.native_revision(path)
+            revisions[name] = {'revision': revision, 'timestamp': scm.timestamp_of_native_revision(path, revision)}
 
         meta_info = {
             'description': description,
@@ -286,10 +295,6 @@ class PerfTestsRunner(object):
                 is_last_token = i + 1 == len(path)
                 url = view_source_url('PerformanceTests/' + '/'.join(path[0:i + 1]))
                 test_name = path[i]
-
-                # FIXME: This is a temporary workaround for the fact perf dashboard doesn't support renaming tests.
-                if test_name == 'Speedometer':
-                    test_name = 'DoYouEvenBench'
 
                 tests.setdefault(test_name, {'url': url})
                 current_test = tests[test_name]
@@ -373,7 +378,8 @@ class PerfTestsRunner(object):
         for i, test in enumerate(tests):
             _log.info('Running %s (%d of %d)' % (test.test_name(), i + 1, len(tests)))
             start_time = time.time()
-            metrics = test.run(self._options.time_out_ms)
+            metrics = test.run(self._options.time_out_ms, self._options.no_timeout)
+
             if metrics:
                 self._results += metrics
             else:

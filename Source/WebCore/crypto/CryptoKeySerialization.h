@@ -23,21 +23,27 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoKeySerialization_h
-#define CryptoKeySerialization_h
+#pragma once
 
 #include "CryptoKeyUsage.h"
 #include <wtf/Noncopyable.h>
+#include <wtf/Optional.h>
+#include <wtf/RefPtr.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace WebCore {
 
 class CryptoAlgorithm;
-class CryptoAlgorithmParameters;
+class CryptoAlgorithmParametersDeprecated;
 class CryptoKeyData;
 
 typedef std::pair<const uint8_t*, size_t> CryptoOperationData;
+
+struct CryptoAlgorithmPair {
+    RefPtr<CryptoAlgorithm> algorithm;
+    RefPtr<CryptoAlgorithmParametersDeprecated> parameters;
+};
 
 class CryptoKeySerialization {
     WTF_MAKE_NONCOPYABLE(CryptoKeySerialization);
@@ -46,9 +52,9 @@ public:
     virtual ~CryptoKeySerialization() { }
 
     // Returns false if suggested algorithm was not compatible with one stored in the serialization.
-    virtual bool reconcileAlgorithm(std::unique_ptr<CryptoAlgorithm>&, std::unique_ptr<CryptoAlgorithmParameters>&) const = 0;
+    virtual std::optional<CryptoAlgorithmPair> reconcileAlgorithm(CryptoAlgorithm*, CryptoAlgorithmParametersDeprecated*) const = 0;
 
-    virtual void reconcileUsages(CryptoKeyUsage&) const = 0;
+    virtual void reconcileUsages(CryptoKeyUsageBitmap&) const = 0;
     virtual void reconcileExtractable(bool&) const = 0;
 
     virtual std::unique_ptr<CryptoKeyData> keyData() const = 0;
@@ -57,4 +63,3 @@ public:
 } // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoKeySerialization_h

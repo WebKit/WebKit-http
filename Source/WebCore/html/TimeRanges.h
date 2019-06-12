@@ -23,18 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TimeRanges_h
-#define TimeRanges_h
+#pragma once
 
+#include "ExceptionOr.h"
 #include "PlatformTimeRanges.h"
-#include <algorithm>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
-
-typedef int ExceptionCode;
 
 class TimeRanges : public RefCounted<TimeRanges> {
 public:
@@ -42,10 +36,10 @@ public:
     WEBCORE_EXPORT static Ref<TimeRanges> create(double start, double end);
     static Ref<TimeRanges> create(const PlatformTimeRanges&);
 
-    WEBCORE_EXPORT double start(unsigned index, ExceptionCode&) const;
-    WEBCORE_EXPORT double end(unsigned index, ExceptionCode&) const;
+    WEBCORE_EXPORT ExceptionOr<double> start(unsigned index) const;
+    WEBCORE_EXPORT ExceptionOr<double> end(unsigned index) const;
 
-    WEBCORE_EXPORT PassRefPtr<TimeRanges> copy() const;
+    WEBCORE_EXPORT Ref<TimeRanges> copy() const;
     void invert();
     WEBCORE_EXPORT void intersectWith(const TimeRanges&);
     void unionWith(const TimeRanges&);
@@ -63,14 +57,11 @@ public:
     PlatformTimeRanges& ranges() { return m_ranges; }
 
 private:
-    WEBCORE_EXPORT explicit TimeRanges();
+    WEBCORE_EXPORT TimeRanges();
     WEBCORE_EXPORT TimeRanges(double start, double end);
-    TimeRanges(const PlatformTimeRanges&);
-
+    explicit TimeRanges(const PlatformTimeRanges&);
 
     PlatformTimeRanges m_ranges;
 };
 
 } // namespace WebCore
-
-#endif

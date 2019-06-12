@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef RenderSearchField_h
-#define RenderSearchField_h
+#pragma once
 
 #include "PopupMenuClient.h"
 #include "RenderTextControlSingleLine.h"
@@ -33,7 +32,7 @@ class HTMLInputElement;
 
 class RenderSearchField final : public RenderTextControlSingleLine, private PopupMenuClient {
 public:
-    RenderSearchField(HTMLInputElement&, Ref<RenderStyle>&&);
+    RenderSearchField(HTMLInputElement&, RenderStyle&&);
     virtual ~RenderSearchField();
 
     void updateCancelButtonVisibility() const;
@@ -46,41 +45,42 @@ public:
     void hidePopup();
 
 private:
-    virtual void centerContainerIfNeeded(RenderBox*) const override;
-    virtual LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const override;
-    virtual LayoutUnit computeLogicalHeightLimit() const override;
-    virtual void updateFromElement() override;
+    bool isSearchField() const final { return true; }
+
+    void willBeDestroyed() override;
+    LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const override;
+    void updateFromElement() override;
     EVisibility visibilityForCancelButton() const;
     const AtomicString& autosaveName() const;
 
     // PopupMenuClient methods
-    virtual void valueChanged(unsigned listIndex, bool fireEvents = true) override;
-    virtual void selectionChanged(unsigned, bool) override { }
-    virtual void selectionCleared() override { }
-    virtual String itemText(unsigned listIndex) const override;
-    virtual String itemLabel(unsigned listIndex) const override;
-    virtual String itemIcon(unsigned listIndex) const override;
-    virtual String itemToolTip(unsigned) const override { return String(); }
-    virtual String itemAccessibilityText(unsigned) const override { return String(); }
-    virtual bool itemIsEnabled(unsigned listIndex) const override;
-    virtual PopupMenuStyle itemStyle(unsigned listIndex) const override;
-    virtual PopupMenuStyle menuStyle() const override;
-    virtual int clientInsetLeft() const override;
-    virtual int clientInsetRight() const override;
-    virtual LayoutUnit clientPaddingLeft() const override;
-    virtual LayoutUnit clientPaddingRight() const override;
-    virtual int listSize() const override;
-    virtual int selectedIndex() const override;
-    virtual void popupDidHide() override;
-    virtual bool itemIsSeparator(unsigned listIndex) const override;
-    virtual bool itemIsLabel(unsigned listIndex) const override;
-    virtual bool itemIsSelected(unsigned listIndex) const override;
-    virtual bool shouldPopOver() const override { return false; }
-    virtual bool valueShouldChangeOnHotTrack() const override { return false; }
-    virtual void setTextFromItem(unsigned listIndex) override;
-    virtual FontSelector* fontSelector() const override;
-    virtual HostWindow* hostWindow() const override;
-    virtual PassRefPtr<Scrollbar> createScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize) override;
+    void valueChanged(unsigned listIndex, bool fireEvents = true) override;
+    void selectionChanged(unsigned, bool) override { }
+    void selectionCleared() override { }
+    String itemText(unsigned listIndex) const override;
+    String itemLabel(unsigned listIndex) const override;
+    String itemIcon(unsigned listIndex) const override;
+    String itemToolTip(unsigned) const override { return String(); }
+    String itemAccessibilityText(unsigned) const override { return String(); }
+    bool itemIsEnabled(unsigned listIndex) const override;
+    PopupMenuStyle itemStyle(unsigned listIndex) const override;
+    PopupMenuStyle menuStyle() const override;
+    int clientInsetLeft() const override;
+    int clientInsetRight() const override;
+    LayoutUnit clientPaddingLeft() const override;
+    LayoutUnit clientPaddingRight() const override;
+    int listSize() const override;
+    int selectedIndex() const override;
+    void popupDidHide() override;
+    bool itemIsSeparator(unsigned listIndex) const override;
+    bool itemIsLabel(unsigned listIndex) const override;
+    bool itemIsSelected(unsigned listIndex) const override;
+    bool shouldPopOver() const override { return false; }
+    bool valueShouldChangeOnHotTrack() const override { return false; }
+    void setTextFromItem(unsigned listIndex) override;
+    FontSelector* fontSelector() const override;
+    HostWindow* hostWindow() const override;
+    Ref<Scrollbar> createScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize) override;
 
     HTMLElement* resultsButtonElement() const;
     HTMLElement* cancelButtonElement() const;
@@ -92,6 +92,4 @@ private:
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSearchField, isTextField())
-
-#endif
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSearchField, isSearchField())

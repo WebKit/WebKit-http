@@ -23,11 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AxisScrollSnapOffsets_h
-#define AxisScrollSnapOffsets_h
+#pragma once
 
 #if ENABLE(CSS_SCROLL_SNAP)
 
+#include "LayoutUnit.h"
+#include "ScrollSnapOffsetsInfo.h"
 #include "ScrollTypes.h"
 #include <wtf/Vector.h>
 
@@ -40,50 +41,10 @@ class ScrollableArea;
 
 void updateSnapOffsetsForScrollableArea(ScrollableArea&, HTMLElement& scrollingElement, const RenderBox& scrollingElementBox, const RenderStyle& scrollingElementStyle);
 
-// closestSnapOffset is a templated function that takes in a Vector representing snap offsets as LayoutTypes (e.g. LayoutUnit or float) and
-// as well as a VelocityType indicating the velocity (e.g. float, CGFloat, etc.) This function is templated because the UI process will now
-// use pixel snapped floats to represent snap offsets rather than LayoutUnits.
-template <typename LayoutType, typename VelocityType>
-LayoutType closestSnapOffset(const Vector<LayoutType>& snapOffsets, LayoutType scrollDestination, VelocityType velocity, unsigned& activeSnapIndex)
-{
-    ASSERT(snapOffsets.size());
-    activeSnapIndex = 0;
-    if (scrollDestination <= snapOffsets.first())
-        return snapOffsets.first();
-
-    activeSnapIndex = snapOffsets.size() - 1;
-    if (scrollDestination >= snapOffsets.last())
-        return snapOffsets.last();
-
-    size_t lowerIndex = 0;
-    size_t upperIndex = snapOffsets.size() - 1;
-    while (lowerIndex < upperIndex - 1) {
-        size_t middleIndex = (lowerIndex + upperIndex) / 2;
-        if (scrollDestination < snapOffsets[middleIndex])
-            upperIndex = middleIndex;
-        else if (scrollDestination > snapOffsets[middleIndex])
-            lowerIndex = middleIndex;
-        else {
-            upperIndex = middleIndex;
-            lowerIndex = middleIndex;
-            break;
-        }
-    }
-    LayoutType lowerSnapPosition = snapOffsets[lowerIndex];
-    LayoutType upperSnapPosition = snapOffsets[upperIndex];
-    // Nonzero velocity indicates a flick gesture. Even if another snap point is closer, snap to the one in the direction of the flick gesture.
-    if (velocity) {
-        activeSnapIndex = (velocity < 0) ? lowerIndex : upperIndex;
-        return velocity < 0 ? lowerSnapPosition : upperSnapPosition;
-    }
-
-    bool isCloserToLowerSnapPosition = scrollDestination - lowerSnapPosition <= upperSnapPosition - scrollDestination;
-    activeSnapIndex = isCloserToLowerSnapPosition ? lowerIndex : upperIndex;
-    return isCloserToLowerSnapPosition ? lowerSnapPosition : upperSnapPosition;
-}
+const unsigned invalidSnapOffsetIndex = UINT_MAX;
+WEBCORE_EXPORT LayoutUnit closestSnapOffset(const Vector<LayoutUnit>& snapOffsets, const Vector<ScrollOffsetRange<LayoutUnit>>& snapOffsetRanges, LayoutUnit scrollDestination, float velocity, unsigned& activeSnapIndex);
+WEBCORE_EXPORT float closestSnapOffset(const Vector<float>& snapOffsets, const Vector<ScrollOffsetRange<float>>& snapOffsetRanges, float scrollDestination, float velocity, unsigned& activeSnapIndex);
 
 } // namespace WebCore
 
-#endif // CSS_SCROLL_SNAP
-
-#endif // AxisScrollSnapOffsets_h
+#endif // ENABLE(CSS_SCROLL_SNAP)

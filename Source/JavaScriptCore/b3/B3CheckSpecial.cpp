@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,9 +40,9 @@ using namespace Air;
 
 namespace {
 
-unsigned numB3Args(B3::Opcode opcode)
+unsigned numB3Args(B3::Kind kind)
 {
-    switch (opcode) {
+    switch (kind.opcode()) {
     case CheckAdd:
     case CheckSub:
     case CheckMul:
@@ -57,7 +57,7 @@ unsigned numB3Args(B3::Opcode opcode)
 
 unsigned numB3Args(Value* value)
 {
-    return numB3Args(value->opcode());
+    return numB3Args(value->kind());
 }
 
 unsigned numB3Args(Inst& inst)
@@ -69,26 +69,26 @@ unsigned numB3Args(Inst& inst)
 
 CheckSpecial::Key::Key(const Inst& inst)
 {
-    m_opcode = inst.opcode;
+    m_kind = inst.kind;
     m_numArgs = inst.args.size();
     m_stackmapRole = SameAsRep;
 }
 
 void CheckSpecial::Key::dump(PrintStream& out) const
 {
-    out.print(m_opcode, "(", m_numArgs, ",", m_stackmapRole, ")");
+    out.print(m_kind, "(", m_numArgs, ",", m_stackmapRole, ")");
 }
 
-CheckSpecial::CheckSpecial(Air::Opcode opcode, unsigned numArgs, RoleMode stackmapRole)
-    : m_checkOpcode(opcode)
+CheckSpecial::CheckSpecial(Air::Kind kind, unsigned numArgs, RoleMode stackmapRole)
+    : m_checkKind(kind)
     , m_stackmapRole(stackmapRole)
     , m_numCheckArgs(numArgs)
 {
-    ASSERT(isTerminal(opcode));
+    ASSERT(isDefinitelyTerminal(kind.opcode));
 }
 
 CheckSpecial::CheckSpecial(const CheckSpecial::Key& key)
-    : CheckSpecial(key.opcode(), key.numArgs(), key.stackmapRole())
+    : CheckSpecial(key.kind(), key.numArgs(), key.stackmapRole())
 {
 }
 
@@ -98,26 +98,32 @@ CheckSpecial::~CheckSpecial()
 
 Inst CheckSpecial::hiddenBranch(const Inst& inst) const
 {
-    Inst hiddenBranch(m_checkOpcode, inst.origin);
+    Inst hiddenBranch(m_checkKind, inst.origin);
     hiddenBranch.args.reserveInitialCapacity(m_numCheckArgs);
     for (unsigned i = 0; i < m_numCheckArgs; ++i)
         hiddenBranch.args.append(inst.args[i + 1]);
+    ASSERT(hiddenBranch.isTerminal());
     return hiddenBranch;
 }
 
 void CheckSpecial::forEachArg(Inst& inst, const ScopedLambda<Inst::EachArgCallback>& callback)
 {
+    std::optional<Width> optionalDefArgWidth;
     Inst hidden = hiddenBranch(inst);
     hidden.forEachArg(
-        [&] (Arg& arg, Arg::Role role, Arg::Type type, Arg::Width width) {
+        [&] (Arg& arg, Arg::Role role, Bank bank, Width width) {
+            if (Arg::isAnyDef(role) && role != Arg::Scratch) {
+                ASSERT(!optionalDefArgWidth); // There can only be one Def'ed arg.
+                optionalDefArgWidth = width;
+            }
             unsigned index = &arg - &hidden.args[0];
-            callback(inst.args[1 + index], role, type, width);
+            callback(inst.args[1 + index], role, bank, width);
         });
 
-    Optional<unsigned> firstRecoverableIndex;
-    if (m_checkOpcode == BranchAdd32 || m_checkOpcode == BranchAdd64)
+    std::optional<unsigned> firstRecoverableIndex;
+    if (m_checkKind.opcode == BranchAdd32 || m_checkKind.opcode == BranchAdd64)
         firstRecoverableIndex = 1;
-    forEachArgImpl(numB3Args(inst), m_numCheckArgs + 1, inst, m_stackmapRole, firstRecoverableIndex, callback);
+    forEachArgImpl(numB3Args(inst), m_numCheckArgs + 1, inst, m_stackmapRole, firstRecoverableIndex, callback, optionalDefArgWidth);
 }
 
 bool CheckSpecial::isValid(Inst& inst)
@@ -134,11 +140,18 @@ bool CheckSpecial::admitsStack(Inst& inst, unsigned argIndex)
     return admitsStackImpl(numB3Args(inst), m_numCheckArgs + 1, inst, argIndex);
 }
 
-Optional<unsigned> CheckSpecial::shouldTryAliasingDef(Inst& inst)
+bool CheckSpecial::admitsExtendedOffsetAddr(Inst& inst, unsigned argIndex)
 {
-    if (Optional<unsigned> branchDef = hiddenBranch(inst).shouldTryAliasingDef())
+    if (argIndex >= 1 && argIndex < 1 + m_numCheckArgs)
+        return false;
+    return admitsStack(inst, argIndex);
+}
+
+std::optional<unsigned> CheckSpecial::shouldTryAliasingDef(Inst& inst)
+{
+    if (std::optional<unsigned> branchDef = hiddenBranch(inst).shouldTryAliasingDef())
         return *branchDef + 1;
-    return Nullopt;
+    return std::nullopt;
 }
 
 CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, GenerationContext& context)
@@ -163,7 +176,7 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
                 fail.link(&jit);
 
                 // If necessary, undo the operation.
-                switch (m_checkOpcode) {
+                switch (m_checkKind.opcode) {
                 case BranchAdd32:
                     if ((m_numCheckArgs == 4 && args[1] == args[2] && args[2] == args[3])
                         || (m_numCheckArgs == 3 && args[1] == args[2])) {
@@ -234,12 +247,12 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
 
 void CheckSpecial::dumpImpl(PrintStream& out) const
 {
-    out.print(m_checkOpcode, "(", m_numCheckArgs, ",", m_stackmapRole, ")");
+    out.print(m_checkKind, "(", m_numCheckArgs, ",", m_stackmapRole, ")");
 }
 
 void CheckSpecial::deepDumpImpl(PrintStream& out) const
 {
-    out.print("B3::CheckValue lowered to ", m_checkOpcode, " with ", m_numCheckArgs, " args.");
+    out.print("B3::CheckValue lowered to ", m_checkKind, " with ", m_numCheckArgs, " args.");
 }
 
 } } // namespace JSC::B3

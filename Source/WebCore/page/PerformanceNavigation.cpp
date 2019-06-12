@@ -35,6 +35,7 @@
 
 #include "DocumentLoader.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameLoaderTypes.h"
 
 namespace WebCore {
@@ -73,7 +74,7 @@ unsigned short PerformanceNavigation::redirectCount() const
     if (!loader)
         return 0;
 
-    DocumentLoadTiming& timing = loader->timing();
+    LoadTiming& timing = loader->timing();
     if (timing.hasCrossOriginRedirect())
         return 0;
 

@@ -27,11 +27,12 @@
 #define Zone_h
 
 #include "FixedVector.h"
+#include "Range.h"
 #include <malloc/malloc.h>
 
 namespace bmalloc {
 
-class SuperChunk;
+class Chunk;
 
 class Zone : public malloc_zone_t {
 public:
@@ -41,30 +42,30 @@ public:
     Zone();
     Zone(task_t, memory_reader_t, vm_address_t);
 
-    void addSuperChunk(SuperChunk*);
-    FixedVector<SuperChunk*, capacity>& superChunks() { return m_superChunks; }
+    void addRange(Range);
+    FixedVector<Range, capacity>& ranges() { return m_ranges; }
     
 private:
     // This vector has two purposes:
-    //     (1) It stores the list of SuperChunks so that we can enumerate
-    //         each SuperChunk and request that it be scanned if reachable.
-    //     (2) It roots a pointer to each SuperChunk in a global non-malloc
-    //         VM region, making each SuperChunk appear reachable, and therefore
+    //     (1) It stores the list of Chunks so that we can enumerate
+    //         each Chunk and request that it be scanned if reachable.
+    //     (2) It roots a pointer to each Chunk in a global non-malloc
+    //         VM region, making each Chunk appear reachable, and therefore
     //         ensuring that the leaks tool will scan it. (The leaks tool
     //         conservatively scans all writeable VM regions that are not malloc
     //         regions, and then scans malloc regions using the introspection API.)
     // This prevents the leaks tool from reporting false positive leaks for
     // objects pointed to from bmalloc memory -- though it also prevents the
     // leaks tool from finding any leaks in bmalloc memory.
-    FixedVector<SuperChunk*, capacity> m_superChunks;
+    FixedVector<Range, capacity> m_ranges;
 };
 
-inline void Zone::addSuperChunk(SuperChunk* superChunk)
+inline void Zone::addRange(Range range)
 {
-    if (m_superChunks.size() == m_superChunks.capacity())
+    if (m_ranges.size() == m_ranges.capacity())
         return;
     
-    m_superChunks.push(superChunk);
+    m_ranges.push(range);
 }
 
 } // namespace bmalloc

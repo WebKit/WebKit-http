@@ -23,14 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingThread_h
-#define ScrollingThread_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
 #include <functional>
 #include <wtf/Condition.h>
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Threading.h>
@@ -47,11 +47,11 @@ class ScrollingThread {
 
 public:
     static bool isCurrentThread();
-    WEBCORE_EXPORT static void dispatch(std::function<void ()>);
+    WEBCORE_EXPORT static void dispatch(Function<void ()>&&);
 
     // Will dispatch the given function on the main thread once all pending functions
     // on the scrolling thread have finished executing. Used for synchronization purposes.
-    WEBCORE_EXPORT static void dispatchBarrier(std::function<void ()>);
+    WEBCORE_EXPORT static void dispatchBarrier(Function<void ()>&&);
 
 private:
     friend NeverDestroyed<ScrollingThread>;
@@ -61,8 +61,6 @@ private:
     static ScrollingThread& singleton();
 
     void createThreadIfNeeded();
-    static void threadCallback(void* scrollingThread);
-    void threadBody();
     void dispatchFunctionsFromScrollingThread();
 
     void initializeRunLoop();
@@ -73,13 +71,13 @@ private:
     void threadRunLoopSourceCallback();
 #endif
 
-    ThreadIdentifier m_threadIdentifier;
+    RefPtr<Thread> m_thread;
 
     Condition m_initializeRunLoopConditionVariable;
     Lock m_initializeRunLoopMutex;
 
     Lock m_functionsMutex;
-    Vector<std::function<void ()>> m_functions;
+    Vector<Function<void ()>> m_functions;
 
 #if PLATFORM(COCOA)
     // FIXME: We should use WebCore::RunLoop here.
@@ -91,5 +89,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ScrollingThread_h

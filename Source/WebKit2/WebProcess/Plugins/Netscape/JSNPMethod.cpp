@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,7 +43,7 @@ namespace WebKit {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSNPMethod);
 
-const ClassInfo JSNPMethod::s_info = { "NPMethod", &InternalFunction::s_info, 0, CREATE_METHOD_TABLE(JSNPMethod) };
+const ClassInfo JSNPMethod::s_info = { "NPMethod", &InternalFunction::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSNPMethod) };
 
 JSNPMethod::JSNPMethod(JSGlobalObject* globalObject, Structure* structure, NPIdentifier npIdentifier)
     : InternalFunction(globalObject->vm(), structure)
@@ -54,17 +54,20 @@ JSNPMethod::JSNPMethod(JSGlobalObject* globalObject, Structure* structure, NPIde
 void JSNPMethod::finishCreation(VM& vm, const String& name)
 {
     Base::finishCreation(vm, name);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 static EncodedJSValue JSC_HOST_CALL callMethod(ExecState* exec)
 {
-    JSNPMethod* jsNPMethod = jsCast<JSNPMethod*>(exec->callee());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSNPMethod* jsNPMethod = jsCast<JSNPMethod*>(exec->jsCallee());
 
     JSValue thisValue = exec->thisValue();
 
     // Check if we're calling a method on the plug-in script object.
-    if (thisValue.inherits(JSHTMLElement::info())) {
+    if (thisValue.inherits(vm, JSHTMLElement::info())) {
         JSHTMLElement* element = jsCast<JSHTMLElement*>(asObject(thisValue));
 
         // Try to get the script object from the element
@@ -72,19 +75,19 @@ static EncodedJSValue JSC_HOST_CALL callMethod(ExecState* exec)
             thisValue = scriptObject;
     }
 
-    if (thisValue.inherits(JSNPObject::info())) {
+    if (thisValue.inherits(vm, JSNPObject::info())) {
         JSNPObject* jsNPObject = jsCast<JSNPObject*>(asObject(thisValue));
 
         return JSValue::encode(jsNPObject->callMethod(exec, jsNPMethod->npIdentifier()));
     }
 
-    return throwVMTypeError(exec);
+    return throwVMTypeError(exec, scope);
 }
 
 CallType JSNPMethod::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callMethod;
-    return CallTypeHost;
+    return CallType::Host;
 }
 
 } // namespace WebKit

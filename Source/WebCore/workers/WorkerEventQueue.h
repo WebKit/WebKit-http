@@ -21,11 +21,9 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
-#ifndef WorkerEventQueue_h
-#define WorkerEventQueue_h
+#pragma once
 
 #include "EventQueue.h"
 #include <wtf/HashMap.h>
@@ -39,19 +37,17 @@ public:
     explicit WorkerEventQueue(ScriptExecutionContext&);
     virtual ~WorkerEventQueue();
 
-    virtual bool enqueueEvent(Ref<Event>&&) override;
-    virtual bool cancelEvent(Event&) override;
-    virtual void close() override;
+    bool enqueueEvent(Ref<Event>&&) override;
+    bool cancelEvent(Event&) override;
+    void close() override;
 
 private:
     ScriptExecutionContext& m_scriptExecutionContext;
-    bool m_isClosed;
+    bool m_isClosed { false };
 
     class EventDispatcher;
     typedef HashMap<RefPtr<Event>, EventDispatcher*> EventDispatcherMap;
     EventDispatcherMap m_eventDispatcherMap;
 };
 
-}
-
-#endif // WorkerEventQueue_h
+} // namespace WebCore

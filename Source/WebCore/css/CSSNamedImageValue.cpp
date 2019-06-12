@@ -26,7 +26,6 @@
 #include "config.h"
 #include "CSSNamedImageValue.h"
 
-#include "ImageBuffer.h"
 #include "NamedImageGeneratedImage.h"
 
 namespace WebCore {
@@ -41,9 +40,7 @@ RefPtr<Image> CSSNamedImageValue::image(RenderElement*, const FloatSize& size)
     if (size.isEmpty())
         return nullptr;
 
-    m_generatedImage = NamedImageGeneratedImage::create(m_name, size);
-
-    return m_generatedImage.release();
+    return NamedImageGeneratedImage::create(m_name, size);
 }
 
 bool CSSNamedImageValue::equals(const CSSNamedImageValue& other) const

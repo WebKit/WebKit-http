@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2016 Oleksandr Skachkov <gskachkov@gmail.com>.
  * Copyright (C) 2015 Jordan Harband. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,24 +24,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-function assign(target/*[*/, /*...*/sources/*] */)
+function entries(object)
 {
     "use strict";
 
-    if (target == null)
-        throw new @TypeError("can't convert " + target + " to object");
+    if (object == null)
+        @throwTypeError("Object.entries requires that input parameter not be null or undefined");
 
-    var objTarget = @Object(target);
-    for (var s = 1, argumentsLength = arguments.length; s < argumentsLength; ++s) {
-        var nextSource = arguments[s];
-        if (nextSource != null) {
-            var from = @Object(nextSource);
-            var keys = @ownEnumerablePropertyKeys(from);
-            for (var i = 0, keysLength = keys.length; i < keysLength; ++i) {
-                var nextKey = keys[i];
-                objTarget[nextKey] = from[nextKey];
-            }
-        }
+    var obj = @Object(object);
+    var names = @getOwnPropertyNames(obj);
+    var properties = [];
+    for (var i = 0, length = names.length; i < length; ++i) {
+        var name = names[i];
+        if (@propertyIsEnumerable(obj, name))
+            properties.@push([name, obj[name]]);
     }
-    return objTarget;
+
+    return properties;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -62,7 +62,8 @@ JSValueRef JSEvaluateScript(JSContextRef ctx, JSStringRef script, JSObjectRef th
 
     // evaluate sets "this" to the global object if it is NULL
     JSGlobalObject* globalObject = exec->vmEntryGlobalObject();
-    SourceCode source = makeSource(script->string(), sourceURL ? sourceURL->string() : String(), TextPosition(OrdinalNumber::fromOneBasedInt(startingLineNumber), OrdinalNumber::first()));
+    auto sourceURLString = sourceURL ? sourceURL->string() : String();
+    SourceCode source = makeSource(script->string(), SourceOrigin { sourceURLString }, sourceURLString, TextPosition(OrdinalNumber::fromOneBasedInt(startingLineNumber), OrdinalNumber()));
 
     NakedPtr<Exception> evaluationException;
     JSValue returnValue = profiledEvaluate(globalObject->globalExec(), ProfilingReason::API, source, jsThisObject, evaluationException);
@@ -99,7 +100,8 @@ bool JSCheckScriptSyntax(JSContextRef ctx, JSStringRef script, JSStringRef sourc
 
     startingLineNumber = std::max(1, startingLineNumber);
 
-    SourceCode source = makeSource(script->string(), sourceURL ? sourceURL->string() : String(), TextPosition(OrdinalNumber::fromOneBasedInt(startingLineNumber), OrdinalNumber::first()));
+    auto sourceURLString = sourceURL ? sourceURL->string() : String();
+    SourceCode source = makeSource(script->string(), SourceOrigin { sourceURLString }, sourceURLString, TextPosition(OrdinalNumber::fromOneBasedInt(startingLineNumber), OrdinalNumber()));
     
     JSValue syntaxException;
     bool isValidSyntax = checkSyntax(exec->vmEntryGlobalObject()->globalExec(), source, &syntaxException);
@@ -155,7 +157,7 @@ void JSSynchronousGarbageCollectForDebugging(JSContextRef ctx)
 
     ExecState* exec = toJS(ctx);
     JSLockHolder locker(exec);
-    exec->vm().heap.collectAllGarbage();
+    exec->vm().heap.collectNow(Sync, CollectionScope::Full);
 }
 
 void JSSynchronousEdenCollectForDebugging(JSContextRef ctx)
@@ -165,7 +167,7 @@ void JSSynchronousEdenCollectForDebugging(JSContextRef ctx)
 
     ExecState* exec = toJS(ctx);
     JSLockHolder locker(exec);
-    exec->vm().heap.collect(EdenCollection);
+    exec->vm().heap.collectSync(CollectionScope::Eden);
 }
 
 void JSDisableGCTimer(void)

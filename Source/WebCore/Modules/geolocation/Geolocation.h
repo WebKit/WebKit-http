@@ -24,12 +24,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Geolocation_h
-#define Geolocation_h
+#pragma once
 
 #if ENABLE(GEOLOCATION)
 
 #include "ActiveDOMObject.h"
+#include "Document.h"
 #include "Geoposition.h"
 #include "PositionCallback.h"
 #include "PositionError.h"
@@ -37,33 +37,31 @@
 #include "PositionOptions.h"
 #include "ScriptWrappable.h"
 #include "Timer.h"
+#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 
-class Document;
 class Frame;
 class GeoNotifier;
-class GeolocationController;
 class GeolocationError;
-class GeolocationPosition;
 class Page;
 class ScriptExecutionContext;
 class SecurityOrigin;
+struct PositionOptions;
 
-class Geolocation : public ScriptWrappable, public RefCounted<Geolocation>, public ActiveDOMObject
-{
-friend class GeoNotifier;
-
+class Geolocation : public ScriptWrappable, public RefCounted<Geolocation>, public ActiveDOMObject {
+    friend class GeoNotifier;
 public:
     static Ref<Geolocation> create(ScriptExecutionContext*);
     WEBCORE_EXPORT ~Geolocation();
 
     WEBCORE_EXPORT void resetAllGeolocationPermission();
-    Document* document() const;
-    WEBCORE_EXPORT Frame* frame() const;
+    Document* document() const { return downcast<Document>(scriptExecutionContext()); }
+    Frame* frame() const { return document() ? document()->frame() : nullptr; }
 
-    void getCurrentPosition(RefPtr<PositionCallback>&&, RefPtr<PositionErrorCallback>&&, RefPtr<PositionOptions>&&);
-    int watchPosition(RefPtr<PositionCallback>&&, RefPtr<PositionErrorCallback>&&, RefPtr<PositionOptions>&&);
+    void getCurrentPosition(Ref<PositionCallback>&&, RefPtr<PositionErrorCallback>&&, PositionOptions&&);
+    int watchPosition(Ref<PositionCallback>&&, RefPtr<PositionErrorCallback>&&, PositionOptions&&);
     void clearWatch(int watchID);
 
     WEBCORE_EXPORT void setIsAllowed(bool);
@@ -72,6 +70,7 @@ public:
 
     void positionChanged();
     void setError(GeolocationError*);
+    bool shouldBlockGeolocationRequests();
 
 private:
     explicit Geolocation(ScriptExecutionContext*);
@@ -112,8 +111,8 @@ private:
 
     bool hasListeners() const { return !m_oneShots.isEmpty() || !m_watchers.isEmpty(); }
 
-    void sendError(GeoNotifierVector&, PositionError*);
-    void sendPosition(GeoNotifierVector&, Geoposition*);
+    void sendError(GeoNotifierVector&, PositionError&);
+    void sendPosition(GeoNotifierVector&, Geoposition&);
 
     static void extractNotifiersWithCachedPosition(GeoNotifierVector& notifiers, GeoNotifierVector* cached);
     static void copyToSet(const GeoNotifierVector&, GeoNotifierSet&);
@@ -126,8 +125,8 @@ private:
     void cancelRequests(GeoNotifierVector&);
     void cancelAllRequests();
 
-    void makeSuccessCallbacks();
-    void handleError(PositionError*);
+    void makeSuccessCallbacks(Geoposition&);
+    void handleError(PositionError&);
 
     void requestPermission();
 
@@ -141,7 +140,7 @@ private:
     void fatalErrorOccurred(GeoNotifier*);
     void requestTimedOut(GeoNotifier*);
     void requestUsesCachedPosition(GeoNotifier*);
-    bool haveSuitableCachedPosition(PositionOptions*);
+    bool haveSuitableCachedPosition(const PositionOptions&);
     void makeCachedPositionCallbacks();
 
     GeoNotifierSet m_oneShots;
@@ -169,6 +168,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(GEOLOCATION)
-
-#endif // Geolocation_h
-

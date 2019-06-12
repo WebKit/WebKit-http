@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2015 Roopesh Chander (roop@roopc.net)
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,6 +34,7 @@
 #include "config.h"
 #include "PingLoader.h"
 
+#include "ContentSecurityPolicy.h"
 #include "Document.h"
 #include "FormData.h"
 #include "Frame.h"
@@ -55,51 +57,71 @@
 
 namespace WebCore {
 
-#if ENABLE(CONTENT_EXTENSIONS)
-static ContentExtensions::BlockedStatus processContentExtensionRulesForLoad(const Frame& frame, ResourceRequest& request, ResourceType resourceType)
+#if !ENABLE(CONTENT_EXTENSIONS)
+
+// Returns true if we should block the load.
+static inline bool processContentExtensionRulesForLoad(const Frame&, ResourceRequest&, ResourceType)
 {
-    if (DocumentLoader* documentLoader = frame.loader().documentLoader()) {
-        if (Page* page = frame.page()) {
-            if (UserContentController* controller = page->userContentController())
-                return controller->processContentExtensionRulesForLoad(request, resourceType, *documentLoader);
-        }
-    }
-    return ContentExtensions::BlockedStatus::NotBlocked;
+    return false;
 }
+
+#else
+
+// Returns true if we should block the load.
+static bool processContentExtensionRulesForLoad(const Frame& frame, ResourceRequest& request, ResourceType resourceType)
+{
+    auto* documentLoader = frame.loader().documentLoader();
+    if (!documentLoader)
+        return false;
+    auto* page = frame.page();
+    if (!page)
+        return false;
+    auto status = page->userContentProvider().processContentExtensionRulesForLoad(request.url(), resourceType, *documentLoader);
+    applyBlockedStatusToRequest(status, request);
+    return status.blockedLoad;
+}
+
 #endif
 
 void PingLoader::loadImage(Frame& frame, const URL& url)
 {
-    if (!frame.document()->securityOrigin()->canDisplay(url)) {
+    ASSERT(frame.document());
+    auto& document = *frame.document();
+
+    if (!document.securityOrigin().canDisplay(url)) {
         FrameLoader::reportLocalLoadFailed(&frame, url);
         return;
     }
 
     ResourceRequest request(url);
-
-#if ENABLE(CONTENT_EXTENSIONS)
-    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Image) == ContentExtensions::BlockedStatus::Blocked)
+    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Image))
         return;
-#endif
+
+    document.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(request, ContentSecurityPolicy::InsecureRequestType::Load);
 
     request.setHTTPHeaderField(HTTPHeaderName::CacheControl, "max-age=0");
-    String referrer = SecurityPolicy::generateReferrerHeader(frame.document()->referrerPolicy(), request.url(), frame.loader().outgoingReferrer());
+    String referrer = SecurityPolicy::generateReferrerHeader(document.referrerPolicy(), request.url(), frame.loader().outgoingReferrer());
     if (!referrer.isEmpty())
         request.setHTTPReferrer(referrer);
     frame.loader().addExtraFieldsToSubresourceRequest(request);
 
-    startPingLoad(frame, request);
+    startPingLoad(frame, request, ShouldFollowRedirects::Yes);
 }
 
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/links.html#hyperlink-auditing
 void PingLoader::sendPing(Frame& frame, const URL& pingURL, const URL& destinationURL)
 {
-    ResourceRequest request(pingURL);
-    
-#if ENABLE(CONTENT_EXTENSIONS)
-    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Raw) == ContentExtensions::BlockedStatus::Blocked)
+    ASSERT(frame.document());
+
+    if (!pingURL.protocolIsInHTTPFamily())
         return;
-#endif
+
+    ResourceRequest request(pingURL);
+    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Raw))
+        return;
+
+    auto& document = *frame.document();
+    document.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(request, ContentSecurityPolicy::InsecureRequestType::Load);
 
     request.setHTTPMethod("POST");
     request.setHTTPContentType("text/ping");
@@ -107,30 +129,31 @@ void PingLoader::sendPing(Frame& frame, const URL& pingURL, const URL& destinati
     request.setHTTPHeaderField(HTTPHeaderName::CacheControl, "max-age=0");
     frame.loader().addExtraFieldsToSubresourceRequest(request);
 
-    SecurityOrigin* sourceOrigin = frame.document()->securityOrigin();
-    Ref<SecurityOrigin> pingOrigin(SecurityOrigin::create(pingURL));
-    FrameLoader::addHTTPOriginIfNeeded(request, sourceOrigin->toString());
+    auto& sourceOrigin = document.securityOrigin();
+    FrameLoader::addHTTPOriginIfNeeded(request, sourceOrigin.toString());
     request.setHTTPHeaderField(HTTPHeaderName::PingTo, destinationURL);
     if (!SecurityPolicy::shouldHideReferrer(pingURL, frame.loader().outgoingReferrer())) {
-        request.setHTTPHeaderField(HTTPHeaderName::PingFrom, frame.document()->url());
-        if (!sourceOrigin->isSameSchemeHostPort(&pingOrigin.get())) {
-            String referrer = SecurityPolicy::generateReferrerHeader(frame.document()->referrerPolicy(), pingURL, frame.loader().outgoingReferrer());
+        request.setHTTPHeaderField(HTTPHeaderName::PingFrom, document.url());
+        if (!sourceOrigin.isSameSchemeHostPort(SecurityOrigin::create(pingURL).get())) {
+            String referrer = SecurityPolicy::generateReferrerHeader(document.referrerPolicy(), pingURL, frame.loader().outgoingReferrer());
             if (!referrer.isEmpty())
                 request.setHTTPReferrer(referrer);
         }
     }
 
-    startPingLoad(frame, request);
+    startPingLoad(frame, request, ShouldFollowRedirects::Yes);
 }
 
-void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, RefPtr<FormData>&& report, ViolationReportType reportType)
+void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, Ref<FormData>&& report, ViolationReportType reportType)
 {
-    ResourceRequest request(reportURL);
+    ASSERT(frame.document());
 
-#if ENABLE(CONTENT_EXTENSIONS)
-    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Raw) == ContentExtensions::BlockedStatus::Blocked)
+    ResourceRequest request(reportURL);
+    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Raw))
         return;
-#endif
+
+    auto& document = *frame.document();
+    document.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(request, ContentSecurityPolicy::InsecureRequestType::Load);
 
     request.setHTTPMethod(ASCIILiteral("POST"));
     request.setHTTPBody(WTFMove(report));
@@ -144,25 +167,21 @@ void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, RefPtr<
     }
 
     bool removeCookies = true;
-    if (Document* document = frame.document()) {
-        if (SecurityOrigin* securityOrigin = document->securityOrigin()) {
-            if (securityOrigin->isSameSchemeHostPort(SecurityOrigin::create(reportURL).ptr()))
-                removeCookies = false;
-        }
-    }
+    if (document.securityOrigin().isSameSchemeHostPort(SecurityOrigin::create(reportURL).get()))
+        removeCookies = false;
     if (removeCookies)
         request.setAllowCookies(false);
 
     frame.loader().addExtraFieldsToSubresourceRequest(request);
 
-    String referrer = SecurityPolicy::generateReferrerHeader(frame.document()->referrerPolicy(), reportURL, frame.loader().outgoingReferrer());
+    String referrer = SecurityPolicy::generateReferrerHeader(document.referrerPolicy(), reportURL, frame.loader().outgoingReferrer());
     if (!referrer.isEmpty())
         request.setHTTPReferrer(referrer);
 
-    startPingLoad(frame, request);
+    startPingLoad(frame, request, ShouldFollowRedirects::No);
 }
 
-void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request)
+void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request, ShouldFollowRedirects shouldFollowRedirects)
 {
     unsigned long identifier = frame.page()->progress().createUniqueIdentifier();
     // FIXME: Why activeDocumentLoader? I would have expected documentLoader().
@@ -174,7 +193,7 @@ void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request)
 
     InspectorInstrumentation::continueAfterPingLoader(frame, identifier, frame.loader().activeDocumentLoader(), request, ResourceResponse());
 
-    platformStrategies()->loaderStrategy()->createPingHandle(frame.loader().networkingContext(), request, shouldUseCredentialStorage);
+    platformStrategies()->loaderStrategy()->createPingHandle(frame.loader().networkingContext(), request, shouldUseCredentialStorage, shouldFollowRedirects == ShouldFollowRedirects::Yes);
 }
 
 }

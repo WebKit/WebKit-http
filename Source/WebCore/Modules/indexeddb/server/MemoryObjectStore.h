@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MemoryObjectStore_h
-#define MemoryObjectStore_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -33,7 +32,6 @@
 #include "MemoryIndex.h"
 #include "MemoryObjectStoreCursor.h"
 #include "ThreadSafeDataBuffer.h"
-#include <set>
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 
@@ -41,11 +39,14 @@ namespace WebCore {
 
 class IDBCursorInfo;
 class IDBError;
+class IDBGetAllResult;
 class IDBKeyData;
+class IDBValue;
 
 struct IDBKeyRangeData;
 
 namespace IndexedDB {
+enum class GetAllType;
 enum class IndexRecordType;
 }
 
@@ -73,39 +74,44 @@ public:
     bool containsRecord(const IDBKeyData&);
     void deleteRecord(const IDBKeyData&);
     void deleteRange(const IDBKeyRangeData&);
-    IDBError addRecord(MemoryBackingStoreTransaction&, const IDBKeyData&, const ThreadSafeDataBuffer& value);
+    IDBError addRecord(MemoryBackingStoreTransaction&, const IDBKeyData&, const IDBValue&);
 
     uint64_t currentKeyGeneratorValue() const { return m_keyGeneratorValue; }
     void setKeyGeneratorValue(uint64_t value) { m_keyGeneratorValue = value; }
 
     void clear();
-    void replaceKeyValueStore(std::unique_ptr<KeyValueMap>&&, std::unique_ptr<std::set<IDBKeyData>>&&);
+    void replaceKeyValueStore(std::unique_ptr<KeyValueMap>&&, std::unique_ptr<IDBKeyDataSet>&&);
 
     ThreadSafeDataBuffer valueForKey(const IDBKeyData&) const;
     ThreadSafeDataBuffer valueForKeyRange(const IDBKeyRangeData&) const;
+    IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
     IDBGetResult indexValueForKeyRange(uint64_t indexIdentifier, IndexedDB::IndexRecordType, const IDBKeyRangeData&) const;
     uint64_t countForKeyRange(uint64_t indexIdentifier, const IDBKeyRangeData&) const;
+
+    void getAllRecords(const IDBKeyRangeData&, std::optional<uint32_t> count, IndexedDB::GetAllType, IDBGetAllResult&) const;
 
     const IDBObjectStoreInfo& info() const { return m_info; }
 
     MemoryObjectStoreCursor* maybeOpenCursor(const IDBCursorInfo&);
 
-    std::set<IDBKeyData>* orderedKeys() { return m_orderedKeys.get(); }
+    IDBKeyDataSet* orderedKeys() { return m_orderedKeys.get(); }
 
     MemoryIndex* indexForIdentifier(uint64_t);
 
     void maybeRestoreDeletedIndex(Ref<MemoryIndex>&&);
 
+    void rename(const String& newName) { m_info.rename(newName); }
+    void renameIndex(MemoryIndex&, const String& newName);
+
 private:
     MemoryObjectStore(const IDBObjectStoreInfo&);
 
-    IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
-    std::set<IDBKeyData>::iterator lowestIteratorInRange(const IDBKeyRangeData&, bool reverse) const;
+    IDBKeyDataSet::iterator lowestIteratorInRange(const IDBKeyRangeData&, bool reverse) const;
 
     IDBError populateIndexWithExistingRecords(MemoryIndex&);
     IDBError updateIndexesForPutRecord(const IDBKeyData&, const ThreadSafeDataBuffer& value);
     void updateIndexesForDeleteRecord(const IDBKeyData& value);
-    void updateCursorsForPutRecord(std::set<IDBKeyData>::iterator);
+    void updateCursorsForPutRecord(IDBKeyDataSet::iterator);
     void updateCursorsForDeleteRecord(const IDBKeyData&);
 
     RefPtr<MemoryIndex> takeIndexByIdentifier(uint64_t indexIdentifier);
@@ -116,7 +122,7 @@ private:
     uint64_t m_keyGeneratorValue { 1 };
 
     std::unique_ptr<KeyValueMap> m_keyValueStore;
-    std::unique_ptr<std::set<IDBKeyData>> m_orderedKeys;
+    std::unique_ptr<IDBKeyDataSet> m_orderedKeys;
 
     void unregisterIndex(MemoryIndex&);
     HashMap<uint64_t, RefPtr<MemoryIndex>> m_indexesByIdentifier;
@@ -128,4 +134,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // MemoryObjectStore_h

@@ -21,49 +21,75 @@
 #include "config.h"
 #include "JSTestObj.h"
 
-#include "CallbackFunction.h"
-#include "DOMStringList.h"
-#include "Dictionary.h"
 #include "Document.h"
-#include "ExceptionCode.h"
+#include "EventNames.h"
 #include "Frame.h"
 #include "HTMLNames.h"
+#include "JSBlob.h"
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
+#include "JSDOMBindingSecurity.h"
 #include "JSDOMConstructor.h"
-#include "JSDOMPromise.h"
+#include "JSDOMConvertAny.h"
+#include "JSDOMConvertBoolean.h"
+#include "JSDOMConvertBufferSource.h"
+#include "JSDOMConvertCallbacks.h"
+#include "JSDOMConvertEventListener.h"
+#include "JSDOMConvertInterface.h"
+#include "JSDOMConvertNullable.h"
+#include "JSDOMConvertNumbers.h"
+#include "JSDOMConvertObject.h"
+#include "JSDOMConvertRecord.h"
+#include "JSDOMConvertSequences.h"
+#include "JSDOMConvertSerializedScriptValue.h"
+#include "JSDOMConvertStrings.h"
+#include "JSDOMConvertUnion.h"
+#include "JSDOMConvertVariadic.h"
+#include "JSDOMConvertXPathNSResolver.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMGlobalObject.h"
+#include "JSDOMIterator.h"
+#include "JSDOMOperation.h"
+#include "JSDOMOperationReturningPromise.h"
 #include "JSDOMStringList.h"
+#include "JSDOMWindow.h"
+#include "JSDOMWindowBase.h"
+#include "JSDOMWindowProxy.h"
+#include "JSDOMWrapperCache.h"
 #include "JSDocument.h"
+#include "JSElement.h"
 #include "JSEventListener.h"
+#include "JSFetchRequest.h"
 #include "JSNode.h"
 #include "JSSVGDocument.h"
 #include "JSSVGPoint.h"
-#include "JSScriptProfile.h"
-#include "JSTestCallback.h"
 #include "JSTestCallbackFunction.h"
+#include "JSTestCallbackInterface.h"
+#include "JSTestInterface.h"
 #include "JSTestNode.h"
 #include "JSTestObj.h"
+#include "JSTestStandaloneDictionary.h"
+#include "JSTestStandaloneEnumeration.h"
 #include "JSTestSubObj.h"
-#include "JSbool.h"
-#include "SVGDocument.h"
-#include "SVGPoint.h"
-#include "SVGStaticPropertyTearOff.h"
-#include "ScriptProfile.h"
+#include "JSXPathNSResolver.h"
+#include "RuntimeEnabledFeatures.h"
+#include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
-#include "TestNode.h"
-#include "TestObj.h"
 #include "URL.h"
 #include "WebCoreJSClientData.h"
-#include "bool.h"
-#include <bindings/ScriptValue.h>
-#include <inspector/ScriptArguments.h>
-#include <inspector/ScriptCallStackFactory.h>
-#include <runtime/Error.h>
+#include <builtins/BuiltinNames.h>
+#include <runtime/ArrayPrototype.h>
 #include <runtime/FunctionPrototype.h>
+#include <runtime/IteratorOperations.h>
 #include <runtime/JSArray.h>
+#include <runtime/JSCInlines.h>
 #include <runtime/JSString.h>
-#include <runtime/Symbol.h>
+#include <runtime/ObjectConstructor.h>
+#include <runtime/PropertyNameArray.h>
 #include <wtf/GetPtr.h>
+#include <wtf/Variant.h>
+#include <wtf/Vector.h>
 
 #if ENABLE(Condition1)
 #include "JSTestObjectA.h"
@@ -85,8 +111,896 @@ using namespace JSC;
 
 namespace WebCore {
 
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumType enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        emptyString(),
+        MAKE_STATIC_STRING_IMPL("enumValue1"),
+        MAKE_STATIC_STRING_IMPL("EnumValue2"),
+        MAKE_STATIC_STRING_IMPL("EnumValue3"),
+    };
+    static_assert(static_cast<size_t>(TestObj::EnumType::EmptyString) == 0, "TestObj::EnumType::EmptyString is not 0 as expected");
+    static_assert(static_cast<size_t>(TestObj::EnumType::EnumValue1) == 1, "TestObj::EnumType::EnumValue1 is not 1 as expected");
+    static_assert(static_cast<size_t>(TestObj::EnumType::EnumValue2) == 2, "TestObj::EnumType::EnumValue2 is not 2 as expected");
+    static_assert(static_cast<size_t>(TestObj::EnumType::EnumValue3) == 3, "TestObj::EnumType::EnumValue3 is not 3 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::EnumType> parseEnumeration<TestObj::EnumType>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue.isEmpty())
+        return TestObj::EnumType::EmptyString;
+    if (stringValue == "enumValue1")
+        return TestObj::EnumType::EnumValue1;
+    if (stringValue == "EnumValue2")
+        return TestObj::EnumType::EnumValue2;
+    if (stringValue == "EnumValue3")
+        return TestObj::EnumType::EnumValue3;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::EnumType>()
+{
+    return "\"\", \"enumValue1\", \"EnumValue2\", \"EnumValue3\"";
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Optional enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        emptyString(),
+        MAKE_STATIC_STRING_IMPL("OptionalValue1"),
+        MAKE_STATIC_STRING_IMPL("OptionalValue2"),
+        MAKE_STATIC_STRING_IMPL("OptionalValue3"),
+    };
+    static_assert(static_cast<size_t>(TestObj::Optional::EmptyString) == 0, "TestObj::Optional::EmptyString is not 0 as expected");
+    static_assert(static_cast<size_t>(TestObj::Optional::OptionalValue1) == 1, "TestObj::Optional::OptionalValue1 is not 1 as expected");
+    static_assert(static_cast<size_t>(TestObj::Optional::OptionalValue2) == 2, "TestObj::Optional::OptionalValue2 is not 2 as expected");
+    static_assert(static_cast<size_t>(TestObj::Optional::OptionalValue3) == 3, "TestObj::Optional::OptionalValue3 is not 3 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::Optional> parseEnumeration<TestObj::Optional>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue.isEmpty())
+        return TestObj::Optional::EmptyString;
+    if (stringValue == "OptionalValue1")
+        return TestObj::Optional::OptionalValue1;
+    if (stringValue == "OptionalValue2")
+        return TestObj::Optional::OptionalValue2;
+    if (stringValue == "OptionalValue3")
+        return TestObj::Optional::OptionalValue3;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::Optional>()
+{
+    return "\"\", \"OptionalValue1\", \"OptionalValue2\", \"OptionalValue3\"";
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, AlternateEnumName enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        MAKE_STATIC_STRING_IMPL("enumValue1"),
+        MAKE_STATIC_STRING_IMPL("EnumValue2"),
+    };
+    static_assert(static_cast<size_t>(AlternateEnumName::EnumValue1) == 0, "AlternateEnumName::EnumValue1 is not 0 as expected");
+    static_assert(static_cast<size_t>(AlternateEnumName::EnumValue2) == 1, "AlternateEnumName::EnumValue2 is not 1 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<AlternateEnumName> parseEnumeration<AlternateEnumName>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue == "enumValue1")
+        return AlternateEnumName::EnumValue1;
+    if (stringValue == "EnumValue2")
+        return AlternateEnumName::EnumValue2;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<AlternateEnumName>()
+{
+    return "\"enumValue1\", \"EnumValue2\"";
+}
+
+#if ENABLE(Condition1)
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumA enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        MAKE_STATIC_STRING_IMPL("A"),
+    };
+    static_assert(static_cast<size_t>(TestObj::EnumA::A) == 0, "TestObj::EnumA::A is not 0 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::EnumA> parseEnumeration<TestObj::EnumA>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue == "A")
+        return TestObj::EnumA::A;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::EnumA>()
+{
+    return "\"A\"";
+}
+
+#endif
+
+#if ENABLE(Condition1) && ENABLE(Condition2)
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumB enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        MAKE_STATIC_STRING_IMPL("B"),
+    };
+    static_assert(static_cast<size_t>(TestObj::EnumB::B) == 0, "TestObj::EnumB::B is not 0 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::EnumB> parseEnumeration<TestObj::EnumB>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue == "B")
+        return TestObj::EnumB::B;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::EnumB>()
+{
+    return "\"B\"";
+}
+
+#endif
+
+#if ENABLE(Condition1) || ENABLE(Condition2)
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumC enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        MAKE_STATIC_STRING_IMPL("C"),
+    };
+    static_assert(static_cast<size_t>(TestObj::EnumC::C) == 0, "TestObj::EnumC::C is not 0 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::EnumC> parseEnumeration<TestObj::EnumC>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue == "C")
+        return TestObj::EnumC::C;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::EnumC>()
+{
+    return "\"C\"";
+}
+
+#endif
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Kind enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        MAKE_STATIC_STRING_IMPL("quick"),
+        MAKE_STATIC_STRING_IMPL("dead"),
+    };
+    static_assert(static_cast<size_t>(TestObj::Kind::Quick) == 0, "TestObj::Kind::Quick is not 0 as expected");
+    static_assert(static_cast<size_t>(TestObj::Kind::Dead) == 1, "TestObj::Kind::Dead is not 1 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::Kind> parseEnumeration<TestObj::Kind>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue == "quick")
+        return TestObj::Kind::Quick;
+    if (stringValue == "dead")
+        return TestObj::Kind::Dead;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::Kind>()
+{
+    return "\"quick\", \"dead\"";
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Size enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        MAKE_STATIC_STRING_IMPL("small"),
+        MAKE_STATIC_STRING_IMPL("much-much-larger"),
+    };
+    static_assert(static_cast<size_t>(TestObj::Size::Small) == 0, "TestObj::Size::Small is not 0 as expected");
+    static_assert(static_cast<size_t>(TestObj::Size::MuchMuchLarger) == 1, "TestObj::Size::MuchMuchLarger is not 1 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::Size> parseEnumeration<TestObj::Size>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue == "small")
+        return TestObj::Size::Small;
+    if (stringValue == "much-much-larger")
+        return TestObj::Size::MuchMuchLarger;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::Size>()
+{
+    return "\"small\", \"much-much-larger\"";
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Confidence enumerationValue)
+{
+    static NeverDestroyed<const String> values[] = {
+        MAKE_STATIC_STRING_IMPL("high"),
+        MAKE_STATIC_STRING_IMPL("kinda-low"),
+    };
+    static_assert(static_cast<size_t>(TestObj::Confidence::High) == 0, "TestObj::Confidence::High is not 0 as expected");
+    static_assert(static_cast<size_t>(TestObj::Confidence::KindaLow) == 1, "TestObj::Confidence::KindaLow is not 1 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+}
+
+template<> std::optional<TestObj::Confidence> parseEnumeration<TestObj::Confidence>(ExecState& state, JSValue value)
+{
+    auto stringValue = value.toWTFString(&state);
+    if (stringValue == "high")
+        return TestObj::Confidence::High;
+    if (stringValue == "kinda-low")
+        return TestObj::Confidence::KindaLow;
+    return std::nullopt;
+}
+
+template<> const char* expectedEnumerationValues<TestObj::Confidence>()
+{
+    return "\"high\", \"kinda-low\"";
+}
+
+template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::Dictionary result;
+    JSValue annotatedTypeInSequenceMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "annotatedTypeInSequenceMember"));
+    if (!annotatedTypeInSequenceMemberValue.isUndefined()) {
+        result.annotatedTypeInSequenceMember = convert<IDLSequence<IDLClampAdaptor<IDLLong>>>(state, annotatedTypeInSequenceMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue annotatedTypeInUnionMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "annotatedTypeInUnionMember"));
+    if (!annotatedTypeInUnionMemberValue.isUndefined()) {
+        result.annotatedTypeInUnionMember = convert<IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>>(state, annotatedTypeInUnionMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue anyTypedefValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyTypedefValue"));
+    if (!anyTypedefValueValue.isUndefined()) {
+        result.anyTypedefValue = convert<IDLAny>(state, anyTypedefValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.anyTypedefValue = jsUndefined();
+    JSValue anyValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyValue"));
+    if (!anyValueValue.isUndefined()) {
+        result.anyValue = convert<IDLAny>(state, anyValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.anyValue = jsUndefined();
+    JSValue anyValueWithNullDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyValueWithNullDefault"));
+    if (!anyValueWithNullDefaultValue.isUndefined()) {
+        result.anyValueWithNullDefault = convert<IDLAny>(state, anyValueWithNullDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.anyValueWithNullDefault = jsNull();
+    JSValue booleanWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithDefault"));
+    if (!booleanWithDefaultValue.isUndefined()) {
+        result.booleanWithDefault = convert<IDLBoolean>(state, booleanWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.booleanWithDefault = false;
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue bufferSourceValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "bufferSourceValue"));
+    if (!bufferSourceValueValue.isUndefined()) {
+        result.bufferSourceValue = convert<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, bufferSourceValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue dictionaryMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "dictionaryMember"));
+    if (!dictionaryMemberValue.isUndefined()) {
+        result.dictionaryMember = convert<IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>>(state, dictionaryMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue enumerationValueWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithDefault"));
+    if (!enumerationValueWithDefaultValue.isUndefined()) {
+        result.enumerationValueWithDefault = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.enumerationValueWithDefault = TestObj::EnumType::EnumValue1;
+    JSValue enumerationValueWithEmptyStringDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithEmptyStringDefault"));
+    if (!enumerationValueWithEmptyStringDefaultValue.isUndefined()) {
+        result.enumerationValueWithEmptyStringDefault = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueWithEmptyStringDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.enumerationValueWithEmptyStringDefault = TestObj::EnumType::EmptyString;
+    JSValue enumerationValueWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithoutDefault"));
+    if (!enumerationValueWithoutDefaultValue.isUndefined()) {
+        result.enumerationValueWithoutDefault = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue fooAliasValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "fooAlias"));
+    if (!fooAliasValue.isUndefined()) {
+        result.foo = convert<IDLAny>(state, fooAliasValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.foo = jsUndefined();
+    JSValue fooWithDefaultAliasValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "fooWithDefaultAlias"));
+    if (!fooWithDefaultAliasValue.isUndefined()) {
+        result.fooWithDefault = convert<IDLAny>(state, fooWithDefaultAliasValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.fooWithDefault = 0;
+    JSValue integerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "integer"));
+    if (!integerValue.isUndefined()) {
+        result.integer = convert<IDLLong>(state, integerValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue integerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "integerWithDefault"));
+    if (!integerWithDefaultValue.isUndefined()) {
+        result.integerWithDefault = convert<IDLLong>(state, integerWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.integerWithDefault = 0;
+    JSValue largeIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "largeInteger"));
+    if (!largeIntegerValue.isUndefined()) {
+        result.largeInteger = convert<IDLLongLong>(state, largeIntegerValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue largeIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "largeIntegerWithDefault"));
+    if (!largeIntegerWithDefaultValue.isUndefined()) {
+        result.largeIntegerWithDefault = convert<IDLLongLong>(state, largeIntegerWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.largeIntegerWithDefault = 0;
+    JSValue nullableIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableIntegerWithDefault"));
+    if (!nullableIntegerWithDefaultValue.isUndefined()) {
+        result.nullableIntegerWithDefault = convert<IDLNullable<IDLLong>>(state, nullableIntegerWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.nullableIntegerWithDefault = std::nullopt;
+    JSValue nullableNodeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableNode"));
+    if (!nullableNodeValue.isUndefined()) {
+        result.nullableNode = convert<IDLNullable<IDLInterface<Node>>>(state, nullableNodeValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.nullableNode = nullptr;
+    JSValue nullableStringWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableStringWithDefault"));
+    if (!nullableStringWithDefaultValue.isUndefined()) {
+        result.nullableStringWithDefault = convert<IDLNullable<IDLDOMString>>(state, nullableStringWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.nullableStringWithDefault = String();
+    JSValue nullableUnionMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableUnionMember"));
+    if (!nullableUnionMemberValue.isUndefined()) {
+        result.nullableUnionMember = convert<IDLNullable<IDLUnion<IDLLong, IDLInterface<Node>>>>(state, nullableUnionMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.nullableUnionMember = std::nullopt;
+    JSValue requiredBufferSourceValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredBufferSourceValue"));
+    if (!requiredBufferSourceValueValue.isUndefined()) {
+        result.requiredBufferSourceValue = convert<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, requiredBufferSourceValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else {
+        throwRequiredMemberTypeError(state, throwScope, "requiredBufferSourceValue", "TestDictionary", "(ArrayBufferView or ArrayBuffer)");
+        return { };
+    }
+    JSValue restrictedDoubleValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedDouble"));
+    if (!restrictedDoubleValue.isUndefined()) {
+        result.restrictedDouble = convert<IDLDouble>(state, restrictedDoubleValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue restrictedDoubleWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedDoubleWithDefault"));
+    if (!restrictedDoubleWithDefaultValue.isUndefined()) {
+        result.restrictedDoubleWithDefault = convert<IDLDouble>(state, restrictedDoubleWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.restrictedDoubleWithDefault = 0;
+    JSValue restrictedFloatValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedFloat"));
+    if (!restrictedFloatValue.isUndefined()) {
+        result.restrictedFloat = convert<IDLFloat>(state, restrictedFloatValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue restrictedFloatWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedFloatWithDefault"));
+    if (!restrictedFloatWithDefaultValue.isUndefined()) {
+        result.restrictedFloatWithDefault = convert<IDLFloat>(state, restrictedFloatWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.restrictedFloatWithDefault = 0;
+    JSValue sequenceOfStringsValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "sequenceOfStrings"));
+    if (!sequenceOfStringsValue.isUndefined()) {
+        result.sequenceOfStrings = convert<IDLSequence<IDLDOMString>>(state, sequenceOfStringsValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue smallIntegerClampedValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallIntegerClamped"));
+    if (!smallIntegerClampedValue.isUndefined()) {
+        result.smallIntegerClamped = convert<IDLClampAdaptor<IDLByte>>(state, smallIntegerClampedValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue smallIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallIntegerWithDefault"));
+    if (!smallIntegerWithDefaultValue.isUndefined()) {
+        result.smallIntegerWithDefault = convert<IDLByte>(state, smallIntegerWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue smallUnsignedIntegerEnforcedRangeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerEnforcedRange"));
+    if (!smallUnsignedIntegerEnforcedRangeValue.isUndefined()) {
+        result.smallUnsignedIntegerEnforcedRange = convert<IDLEnforceRangeAdaptor<IDLOctet>>(state, smallUnsignedIntegerEnforcedRangeValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue smallUnsignedIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerWithDefault"));
+    if (!smallUnsignedIntegerWithDefaultValue.isUndefined()) {
+        result.smallUnsignedIntegerWithDefault = convert<IDLOctet>(state, smallUnsignedIntegerWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.smallUnsignedIntegerWithDefault = 0;
+    JSValue stringTreatNullAsEmptyStringValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringTreatNullAsEmptyString"));
+    if (!stringTreatNullAsEmptyStringValue.isUndefined()) {
+        result.stringTreatNullAsEmptyString = convert<IDLTreatNullAsEmptyAdaptor<IDLDOMString>>(state, stringTreatNullAsEmptyStringValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue stringWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithDefault"));
+    if (!stringWithDefaultValue.isUndefined()) {
+        result.stringWithDefault = convert<IDLDOMString>(state, stringWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.stringWithDefault = ASCIILiteral("defaultString");
+    JSValue stringWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithoutDefault"));
+    if (!stringWithoutDefaultValue.isUndefined()) {
+        result.stringWithoutDefault = convert<IDLDOMString>(state, stringWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue unionMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unionMember"));
+    if (!unionMemberValue.isUndefined()) {
+        result.unionMember = convert<IDLUnion<IDLLong, IDLInterface<Node>>>(state, unionMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue unrestrictedDoubleValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedDouble"));
+    if (!unrestrictedDoubleValue.isUndefined()) {
+        result.unrestrictedDouble = convert<IDLUnrestrictedDouble>(state, unrestrictedDoubleValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue unrestrictedDoubleWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedDoubleWithDefault"));
+    if (!unrestrictedDoubleWithDefaultValue.isUndefined()) {
+        result.unrestrictedDoubleWithDefault = convert<IDLUnrestrictedDouble>(state, unrestrictedDoubleWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.unrestrictedDoubleWithDefault = 0;
+    JSValue unrestrictedFloatValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedFloat"));
+    if (!unrestrictedFloatValue.isUndefined()) {
+        result.unrestrictedFloat = convert<IDLUnrestrictedFloat>(state, unrestrictedFloatValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue unrestrictedFloatWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedFloatWithDefault"));
+    if (!unrestrictedFloatWithDefaultValue.isUndefined()) {
+        result.unrestrictedFloatWithDefault = convert<IDLUnrestrictedFloat>(state, unrestrictedFloatWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.unrestrictedFloatWithDefault = 0;
+    JSValue unsignedIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedInteger"));
+    if (!unsignedIntegerValue.isUndefined()) {
+        result.unsignedInteger = convert<IDLUnsignedLong>(state, unsignedIntegerValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue unsignedIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedIntegerWithDefault"));
+    if (!unsignedIntegerWithDefaultValue.isUndefined()) {
+        result.unsignedIntegerWithDefault = convert<IDLUnsignedLong>(state, unsignedIntegerWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.unsignedIntegerWithDefault = 0;
+    JSValue unsignedLargeIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedLargeInteger"));
+    if (!unsignedLargeIntegerValue.isUndefined()) {
+        result.unsignedLargeInteger = convert<IDLUnsignedLongLong>(state, unsignedLargeIntegerValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue unsignedLargeIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedLargeIntegerWithDefault"));
+    if (!unsignedLargeIntegerWithDefaultValue.isUndefined()) {
+        result.unsignedLargeIntegerWithDefault = convert<IDLUnsignedLongLong>(state, unsignedLargeIntegerWithDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.unsignedLargeIntegerWithDefault = 0;
+    return result;
+}
+
+JSC::JSObject* convertDictionaryToJS(JSC::ExecState& state, JSDOMGlobalObject& globalObject, const TestObj::Dictionary& dictionary)
+{
+    auto& vm = state.vm();
+
+    auto result = constructEmptyObject(&state, globalObject.objectPrototype());
+
+    if (!IDLSequence<IDLClampAdaptor<IDLLong>>::isNullValue(dictionary.annotatedTypeInSequenceMember)) {
+        auto annotatedTypeInSequenceMemberValue = toJS<IDLSequence<IDLClampAdaptor<IDLLong>>>(state, globalObject, IDLSequence<IDLClampAdaptor<IDLLong>>::extractValueFromNullable(dictionary.annotatedTypeInSequenceMember));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "annotatedTypeInSequenceMember"), annotatedTypeInSequenceMemberValue);
+    }
+    if (!IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>::isNullValue(dictionary.annotatedTypeInUnionMember)) {
+        auto annotatedTypeInUnionMemberValue = toJS<IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>>(state, globalObject, IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>::extractValueFromNullable(dictionary.annotatedTypeInUnionMember));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "annotatedTypeInUnionMember"), annotatedTypeInUnionMemberValue);
+    }
+    auto anyTypedefValueValue = toJS<IDLAny>(dictionary.anyTypedefValue);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyTypedefValue"), anyTypedefValueValue);
+    auto anyValueValue = toJS<IDLAny>(dictionary.anyValue);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyValue"), anyValueValue);
+    auto anyValueWithNullDefaultValue = toJS<IDLAny>(dictionary.anyValueWithNullDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyValueWithNullDefault"), anyValueWithNullDefaultValue);
+    auto booleanWithDefaultValue = toJS<IDLBoolean>(dictionary.booleanWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "booleanWithDefault"), booleanWithDefaultValue);
+    if (!IDLBoolean::isNullValue(dictionary.booleanWithoutDefault)) {
+        auto booleanWithoutDefaultValue = toJS<IDLBoolean>(IDLBoolean::extractValueFromNullable(dictionary.booleanWithoutDefault));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "booleanWithoutDefault"), booleanWithoutDefaultValue);
+    }
+    if (!IDLUnion<IDLArrayBufferView, IDLArrayBuffer>::isNullValue(dictionary.bufferSourceValue)) {
+        auto bufferSourceValueValue = toJS<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, globalObject, IDLUnion<IDLArrayBufferView, IDLArrayBuffer>::extractValueFromNullable(dictionary.bufferSourceValue));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "bufferSourceValue"), bufferSourceValueValue);
+    }
+    if (!IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>::isNullValue(dictionary.dictionaryMember)) {
+        auto dictionaryMemberValue = toJS<IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>>(state, globalObject, IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>::extractValueFromNullable(dictionary.dictionaryMember));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "dictionaryMember"), dictionaryMemberValue);
+    }
+    auto enumerationValueWithDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, dictionary.enumerationValueWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithDefault"), enumerationValueWithDefaultValue);
+    auto enumerationValueWithEmptyStringDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, dictionary.enumerationValueWithEmptyStringDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithEmptyStringDefault"), enumerationValueWithEmptyStringDefaultValue);
+    if (!IDLEnumeration<TestObj::EnumType>::isNullValue(dictionary.enumerationValueWithoutDefault)) {
+        auto enumerationValueWithoutDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, IDLEnumeration<TestObj::EnumType>::extractValueFromNullable(dictionary.enumerationValueWithoutDefault));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithoutDefault"), enumerationValueWithoutDefaultValue);
+    }
+    auto fooAliasValue = toJS<IDLAny>(dictionary.foo);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "fooAlias"), fooAliasValue);
+    auto fooWithDefaultAliasValue = toJS<IDLAny>(dictionary.fooWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "fooWithDefaultAlias"), fooWithDefaultAliasValue);
+    if (!IDLLong::isNullValue(dictionary.integer)) {
+        auto integerValue = toJS<IDLLong>(IDLLong::extractValueFromNullable(dictionary.integer));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "integer"), integerValue);
+    }
+    auto integerWithDefaultValue = toJS<IDLLong>(dictionary.integerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "integerWithDefault"), integerWithDefaultValue);
+    if (!IDLLongLong::isNullValue(dictionary.largeInteger)) {
+        auto largeIntegerValue = toJS<IDLLongLong>(IDLLongLong::extractValueFromNullable(dictionary.largeInteger));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "largeInteger"), largeIntegerValue);
+    }
+    auto largeIntegerWithDefaultValue = toJS<IDLLongLong>(dictionary.largeIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "largeIntegerWithDefault"), largeIntegerWithDefaultValue);
+    auto nullableIntegerWithDefaultValue = toJS<IDLNullable<IDLLong>>(dictionary.nullableIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableIntegerWithDefault"), nullableIntegerWithDefaultValue);
+    auto nullableNodeValue = toJS<IDLNullable<IDLInterface<Node>>>(state, globalObject, dictionary.nullableNode);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableNode"), nullableNodeValue);
+    auto nullableStringWithDefaultValue = toJS<IDLNullable<IDLDOMString>>(state, dictionary.nullableStringWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableStringWithDefault"), nullableStringWithDefaultValue);
+    auto nullableUnionMemberValue = toJS<IDLNullable<IDLUnion<IDLLong, IDLInterface<Node>>>>(state, globalObject, dictionary.nullableUnionMember);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableUnionMember"), nullableUnionMemberValue);
+    auto requiredBufferSourceValueValue = toJS<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, globalObject, dictionary.requiredBufferSourceValue);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "requiredBufferSourceValue"), requiredBufferSourceValueValue);
+    if (!IDLDouble::isNullValue(dictionary.restrictedDouble)) {
+        auto restrictedDoubleValue = toJS<IDLDouble>(IDLDouble::extractValueFromNullable(dictionary.restrictedDouble));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedDouble"), restrictedDoubleValue);
+    }
+    auto restrictedDoubleWithDefaultValue = toJS<IDLDouble>(dictionary.restrictedDoubleWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedDoubleWithDefault"), restrictedDoubleWithDefaultValue);
+    if (!IDLFloat::isNullValue(dictionary.restrictedFloat)) {
+        auto restrictedFloatValue = toJS<IDLFloat>(IDLFloat::extractValueFromNullable(dictionary.restrictedFloat));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedFloat"), restrictedFloatValue);
+    }
+    auto restrictedFloatWithDefaultValue = toJS<IDLFloat>(dictionary.restrictedFloatWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedFloatWithDefault"), restrictedFloatWithDefaultValue);
+    if (!IDLSequence<IDLDOMString>::isNullValue(dictionary.sequenceOfStrings)) {
+        auto sequenceOfStringsValue = toJS<IDLSequence<IDLDOMString>>(state, globalObject, IDLSequence<IDLDOMString>::extractValueFromNullable(dictionary.sequenceOfStrings));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "sequenceOfStrings"), sequenceOfStringsValue);
+    }
+    if (!IDLClampAdaptor<IDLByte>::isNullValue(dictionary.smallIntegerClamped)) {
+        auto smallIntegerClampedValue = toJS<IDLClampAdaptor<IDLByte>>(IDLClampAdaptor<IDLByte>::extractValueFromNullable(dictionary.smallIntegerClamped));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallIntegerClamped"), smallIntegerClampedValue);
+    }
+    if (!IDLByte::isNullValue(dictionary.smallIntegerWithDefault)) {
+        auto smallIntegerWithDefaultValue = toJS<IDLByte>(IDLByte::extractValueFromNullable(dictionary.smallIntegerWithDefault));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallIntegerWithDefault"), smallIntegerWithDefaultValue);
+    }
+    if (!IDLEnforceRangeAdaptor<IDLOctet>::isNullValue(dictionary.smallUnsignedIntegerEnforcedRange)) {
+        auto smallUnsignedIntegerEnforcedRangeValue = toJS<IDLEnforceRangeAdaptor<IDLOctet>>(IDLEnforceRangeAdaptor<IDLOctet>::extractValueFromNullable(dictionary.smallUnsignedIntegerEnforcedRange));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallUnsignedIntegerEnforcedRange"), smallUnsignedIntegerEnforcedRangeValue);
+    }
+    auto smallUnsignedIntegerWithDefaultValue = toJS<IDLOctet>(dictionary.smallUnsignedIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallUnsignedIntegerWithDefault"), smallUnsignedIntegerWithDefaultValue);
+    if (!IDLTreatNullAsEmptyAdaptor<IDLDOMString>::isNullValue(dictionary.stringTreatNullAsEmptyString)) {
+        auto stringTreatNullAsEmptyStringValue = toJS<IDLTreatNullAsEmptyAdaptor<IDLDOMString>>(state, IDLTreatNullAsEmptyAdaptor<IDLDOMString>::extractValueFromNullable(dictionary.stringTreatNullAsEmptyString));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringTreatNullAsEmptyString"), stringTreatNullAsEmptyStringValue);
+    }
+    auto stringWithDefaultValue = toJS<IDLDOMString>(state, dictionary.stringWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringWithDefault"), stringWithDefaultValue);
+    if (!IDLDOMString::isNullValue(dictionary.stringWithoutDefault)) {
+        auto stringWithoutDefaultValue = toJS<IDLDOMString>(state, IDLDOMString::extractValueFromNullable(dictionary.stringWithoutDefault));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringWithoutDefault"), stringWithoutDefaultValue);
+    }
+    if (!IDLUnion<IDLLong, IDLInterface<Node>>::isNullValue(dictionary.unionMember)) {
+        auto unionMemberValue = toJS<IDLUnion<IDLLong, IDLInterface<Node>>>(state, globalObject, IDLUnion<IDLLong, IDLInterface<Node>>::extractValueFromNullable(dictionary.unionMember));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unionMember"), unionMemberValue);
+    }
+    if (!IDLUnrestrictedDouble::isNullValue(dictionary.unrestrictedDouble)) {
+        auto unrestrictedDoubleValue = toJS<IDLUnrestrictedDouble>(IDLUnrestrictedDouble::extractValueFromNullable(dictionary.unrestrictedDouble));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedDouble"), unrestrictedDoubleValue);
+    }
+    auto unrestrictedDoubleWithDefaultValue = toJS<IDLUnrestrictedDouble>(dictionary.unrestrictedDoubleWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedDoubleWithDefault"), unrestrictedDoubleWithDefaultValue);
+    if (!IDLUnrestrictedFloat::isNullValue(dictionary.unrestrictedFloat)) {
+        auto unrestrictedFloatValue = toJS<IDLUnrestrictedFloat>(IDLUnrestrictedFloat::extractValueFromNullable(dictionary.unrestrictedFloat));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedFloat"), unrestrictedFloatValue);
+    }
+    auto unrestrictedFloatWithDefaultValue = toJS<IDLUnrestrictedFloat>(dictionary.unrestrictedFloatWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedFloatWithDefault"), unrestrictedFloatWithDefaultValue);
+    if (!IDLUnsignedLong::isNullValue(dictionary.unsignedInteger)) {
+        auto unsignedIntegerValue = toJS<IDLUnsignedLong>(IDLUnsignedLong::extractValueFromNullable(dictionary.unsignedInteger));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedInteger"), unsignedIntegerValue);
+    }
+    auto unsignedIntegerWithDefaultValue = toJS<IDLUnsignedLong>(dictionary.unsignedIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedIntegerWithDefault"), unsignedIntegerWithDefaultValue);
+    if (!IDLUnsignedLongLong::isNullValue(dictionary.unsignedLargeInteger)) {
+        auto unsignedLargeIntegerValue = toJS<IDLUnsignedLongLong>(IDLUnsignedLongLong::extractValueFromNullable(dictionary.unsignedLargeInteger));
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedLargeInteger"), unsignedLargeIntegerValue);
+    }
+    auto unsignedLargeIntegerWithDefaultValue = toJS<IDLUnsignedLongLong>(dictionary.unsignedLargeIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedLargeIntegerWithDefault"), unsignedLargeIntegerWithDefaultValue);
+    return result;
+}
+
+template<> TestObj::DictionaryThatShouldNotTolerateNull convertDictionary<TestObj::DictionaryThatShouldNotTolerateNull>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::DictionaryThatShouldNotTolerateNull result;
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue nonNullableNodeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nonNullableNode"));
+    if (!nonNullableNodeValue.isUndefined()) {
+        result.nonNullableNode = convert<IDLInterface<Node>>(state, nonNullableNodeValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else {
+        throwRequiredMemberTypeError(state, throwScope, "nonNullableNode", "TestDictionaryThatShouldNotTolerateNull", "Node");
+        return { };
+    }
+    JSValue requiredDictionaryMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredDictionaryMember"));
+    if (!requiredDictionaryMemberValue.isUndefined()) {
+        result.requiredDictionaryMember = convert<IDLDictionary<TestObj::Dictionary>>(state, requiredDictionaryMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else {
+        throwRequiredMemberTypeError(state, throwScope, "requiredDictionaryMember", "TestDictionaryThatShouldNotTolerateNull", "TestDictionary");
+        return { };
+    }
+    JSValue requiredEnumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredEnumerationValue"));
+    if (!requiredEnumerationValueValue.isUndefined()) {
+        result.requiredEnumerationValue = convert<IDLEnumeration<TestObj::EnumType>>(state, requiredEnumerationValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else {
+        throwRequiredMemberTypeError(state, throwScope, "requiredEnumerationValue", "TestDictionaryThatShouldNotTolerateNull", "TestEnumType");
+        return { };
+    }
+    return result;
+}
+
+template<> TestObj::DictionaryThatShouldTolerateNull convertDictionary<TestObj::DictionaryThatShouldTolerateNull>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::DictionaryThatShouldTolerateNull result;
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue enumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValue"));
+    if (!enumerationValueValue.isUndefined()) {
+        result.enumerationValue = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    return result;
+}
+
+template<> AlternateDictionaryName convertDictionary<AlternateDictionaryName>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    AlternateDictionaryName result;
+    JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
+    if (!booleanWithoutDefaultValue.isUndefined()) {
+        result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue enumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValue"));
+    if (!enumerationValueValue.isUndefined()) {
+        result.enumerationValue = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    return result;
+}
+
+template<> TestObj::ParentDictionary convertDictionary<TestObj::ParentDictionary>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::ParentDictionary result;
+    JSValue parentMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember1"));
+    if (!parentMember1Value.isUndefined()) {
+        result.parentMember1 = convert<IDLBoolean>(state, parentMember1Value);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue parentMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember2"));
+    if (!parentMember2Value.isUndefined()) {
+        result.parentMember2 = convert<IDLBoolean>(state, parentMember2Value);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    return result;
+}
+
+template<> TestObj::ChildDictionary convertDictionary<TestObj::ChildDictionary>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::ChildDictionary result;
+    JSValue parentMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember1"));
+    if (!parentMember1Value.isUndefined()) {
+        result.parentMember1 = convert<IDLBoolean>(state, parentMember1Value);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue parentMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember2"));
+    if (!parentMember2Value.isUndefined()) {
+        result.parentMember2 = convert<IDLBoolean>(state, parentMember2Value);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue childMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "childMember1"));
+    if (!childMember1Value.isUndefined()) {
+        result.childMember1 = convert<IDLBoolean>(state, childMember1Value);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue childMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "childMember2"));
+    if (!childMember2Value.isUndefined()) {
+        result.childMember2 = convert<IDLBoolean>(state, childMember2Value);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    return result;
+}
+
+#if ENABLE(Condition1)
+
+template<> TestObj::ConditionalDictionaryA convertDictionary<TestObj::ConditionalDictionaryA>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::ConditionalDictionaryA result;
+    JSValue stringWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithoutDefault"));
+    if (!stringWithoutDefaultValue.isUndefined()) {
+        result.stringWithoutDefault = convert<IDLDOMString>(state, stringWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    return result;
+}
+
+#endif
+
+#if ENABLE(Condition1) && ENABLE(Condition2)
+
+template<> TestObj::ConditionalDictionaryB convertDictionary<TestObj::ConditionalDictionaryB>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::ConditionalDictionaryB result;
+    JSValue stringWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithoutDefault"));
+    if (!stringWithoutDefaultValue.isUndefined()) {
+        result.stringWithoutDefault = convert<IDLDOMString>(state, stringWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    return result;
+}
+
+#endif
+
+#if ENABLE(Condition1) || ENABLE(Condition2)
+
+template<> TestObj::ConditionalDictionaryC convertDictionary<TestObj::ConditionalDictionaryC>(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    bool isNullOrUndefined = value.isUndefinedOrNull();
+    auto* object = isNullOrUndefined ? nullptr : value.getObject();
+    if (UNLIKELY(!isNullOrUndefined && !object)) {
+        throwTypeError(&state, throwScope);
+        return { };
+    }
+    TestObj::ConditionalDictionaryC result;
+    JSValue stringWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithoutDefault"));
+    if (!stringWithoutDefaultValue.isUndefined()) {
+        result.stringWithoutDefault = convert<IDLDOMString>(state, stringWithoutDefaultValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    return result;
+}
+
+#endif
+
 // Functions
 
+#if ENABLE(TEST_FEATURE)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledAtRuntimeOperation(JSC::ExecState*);
+#endif
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledInSpecificWorldWhenRuntimeFeatureEnabled(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWorldSpecificMethod(JSC::ExecState*);
+#if ENABLE(TEST_FEATURE)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledBySettingOperation(JSC::ExecState*);
+#endif
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCalculateSecretResult(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSecretBoolean(JSC::ExecState*);
+#if ENABLE(TEST_FEATURE)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestFeatureGetSecretBoolean(JSC::ExecState*);
+#endif
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionByteMethod(JSC::ExecState*);
@@ -98,18 +1012,31 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLongMethodWithArgs(J
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjInstanceFunctionUnforgeableMethod(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithSequenceArg(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodReturningSequence(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithArgTreatingNullAsEmptyString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithXPathNSResolverParameter(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionNullableStringMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionNullableStringStaticMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionNullableStringSpecialMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithEnumArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithStandaloneEnumArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalEnumArg(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalEnumArgAndDefaultValue(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodThatRequiresAllArgsAndThrows(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUSVStringArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNullableUSVStringArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUSVStringArgTreatingNullAsEmptyString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithByteStringArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNullableByteStringArg(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithByteStringArgTreatingNullAsEmptyString(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSerializedValue(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOptionsObject(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithRecord(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithException(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionWithMessage(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionReturningLong(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionReturningObject(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPrivateMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPublicAndPrivateMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAddEventListener(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionRemoveEventListener(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateVoid(JSC::ExecState*);
@@ -120,15 +1047,40 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionC
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptState(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateObjException(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateWithSpaces(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptArgumentsAndCallStack(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithDocumentArgument(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithCallerDocumentArgument(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithCallerWindowArgument(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalArg(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalArgAndDefaultValue(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndOptionalArg(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndTwoOptionalArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUSVString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicString(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringAndDefaultValue(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringAndDefaultValue(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsNull(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsUndefined(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsNullString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsNull(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsEmptyString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUSVStringIsEmptyString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsEmptyString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalDoubleIsNaN(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalFloatIsNaN(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalLongLong(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalLongLongIsZero(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLong(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLongIsZero(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalSequence(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalSequenceIsEmpty(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalBoolean(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalBooleanIsFalse(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAny(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalObject(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapper(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperIsNull(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalXPathNSResolver(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalRecord(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackArg(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackArg(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackAndOptionalArg(JSC::ExecState*);
@@ -148,6 +1100,12 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod3(J
 #endif
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadWithNullableUnion(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadWithOptionalUnion(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethodWithOptional(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod2(JSC::ExecState*);
@@ -155,195 +1113,268 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod2(JSC::
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionOverloadedMethod1(JSC::ExecState*);
 #endif
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithClamp(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithClampOnOptional(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithEnforceRange(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithEnforceRangeOnOptional(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStringArrayFunction(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionDomStringListFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithOptionalUnionParameter(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence2(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetElementById(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSVGDocument(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert1(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert2(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert3(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert4(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert5(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMutablePointFunction(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionImmutablePointFunction(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOrange(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunction(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunctionWithSequence(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunctionWithArray(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicStringMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicDoubleMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicNodeMethod(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicUnionMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAny(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunction(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgument(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithException(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgument(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseOverloadedFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticPromiseFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticPromiseFunctionWithException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestCustomPromiseFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticCustomPromiseFunction(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestCustomReturnsOwnPromiseFunction(JSC::ExecState*);
+#if ENABLE(CONDITION1) || ENABLE(CONDITION2)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalOverload(JSC::ExecState*);
+#endif
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSingleConditionalOverload(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAttachShadowRoot(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameter(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionBufferSourceParameter(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLegacyCallerNamed(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestReturnValueOptimization(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestReturnValueOptimizationWithException(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToString(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(JSC::ExecState*);
 
 // Attributes
 
+JSC::EncodedJSValue jsTestObjConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReadOnlyLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjReadOnlyStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjReadOnlyTestObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjConstructorStaticReadOnlyLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjConstructorStaticStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjConstructorTestSubObj(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjTestSubObjEnabledBySettingConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjTestSubObjEnabledBySettingConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjTestSubObjEnabledBySettingConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjEnumAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjEnumAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjEnumAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjByteAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjByteAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjByteAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjOctetAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjOctetAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjOctetAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjClampedShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjClampedShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjEnforceRangeShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjEnforceRangeShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjUnsignedShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjUnsignedShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjUnsignedShortAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjLongLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjLongLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjLongLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjUnsignedLongLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjUnsignedLongLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjUnsignedLongLongAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjUsvstringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjUsvstringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjTestObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjTestObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjTestObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjTestNullableObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjTestNullableObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjLenientTestObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjLenientTestObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjLenientTestObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjUnforgeableAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+JSC::EncodedJSValue jsTestObjStringAttrTreatingNullAsEmptyString(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjStringAttrTreatingNullAsEmptyString(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjUsvstringAttrTreatingNullAsEmptyString(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjUsvstringAttrTreatingNullAsEmptyString(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjByteStringAttrTreatingNullAsEmptyString(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjByteStringAttrTreatingNullAsEmptyString(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStringLongRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjStringLongRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjUsvstringLongRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjUsvstringLongRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjUsvstringLongRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjUsvstringLongRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStringObjRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjStringObjRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStringNullableObjRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjStringNullableObjRecordAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjDictionaryAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjDictionaryAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjNullableDictionaryAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjNullableDictionaryAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjAnnotatedTypeInUnionAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjAnnotatedTypeInUnionAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjAnnotatedTypeInSequenceAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjAnnotatedTypeInSequenceAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjImplementationEnumAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjImplementationEnumAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjXMLObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjXMLObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjXMLObjAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjCreate(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjCreate(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjReadOnlySymbolAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-JSC::EncodedJSValue jsTestObjConstructorStaticReadOnlySymbolAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjCreate(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedUSVStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjReflectedUSVStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedUnsignedIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedUnsignedIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedUnsignedIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedBooleanAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedBooleanAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedBooleanAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjReflectedUSVURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjReflectedUSVURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedStringAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedCustomIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedCustomIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedCustomIntegralAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedCustomBooleanAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedCustomBooleanAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedCustomBooleanAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReflectedCustomURLAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#if ENABLE(TEST_FEATURE)
+JSC::EncodedJSValue jsTestObjEnabledAtRuntimeAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjEnabledAtRuntimeAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#if ENABLE(TEST_FEATURE)
+JSC::EncodedJSValue jsTestObjEnabledBySettingAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjEnabledBySettingAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
 JSC::EncodedJSValue jsTestObjTypedArrayAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjTypedArrayAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjAttrWithGetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjAttrWithGetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjAttrWithGetterExceptionWithMessage(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjAttrWithGetterExceptionWithMessage(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjAttrWithSetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjAttrWithSetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjAttrWithSetterExceptionWithMessage(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjAttrWithSetterExceptionWithMessage(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjTypedArrayAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjAttributeWithGetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjAttributeWithGetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjAttributeWithSetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjAttributeWithSetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjStringAttrWithGetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjStringAttrWithGetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjStringAttrWithGetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjStringAttrWithSetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjStringAttrWithSetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjStrictTypeCheckingAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjStrictTypeCheckingAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjStringAttrWithSetterException(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjCustomAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjCustomAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjCustomAttr(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjOnfoo(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjOnfoo(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjOnfoo(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjOnwebkitfoo(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjOnwebkitfoo(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithScriptStateAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptStateAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithScriptStateAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithCallWithAndSetterCallWithAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithCallWithAndSetterCallWithAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithCallWithAndSetterCallWithAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptExecutionContextAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithScriptExecutionContextAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithScriptStateAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptStateAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithScriptStateAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptExecutionContextAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithScriptExecutionContextAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjWithScriptArgumentsAndCallStackAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjWithScriptArgumentsAndCallStackAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #if ENABLE(Condition1)
 JSC::EncodedJSValue jsTestObjConditionalAttr1(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConditionalAttr1(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjConditionalAttr1(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 #if ENABLE(Condition1) && ENABLE(Condition2)
 JSC::EncodedJSValue jsTestObjConditionalAttr2(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConditionalAttr2(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjConditionalAttr2(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 #if ENABLE(Condition1) || ENABLE(Condition2)
 JSC::EncodedJSValue jsTestObjConditionalAttr3(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConditionalAttr3(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjConditionalAttr3(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 #if ENABLE(Condition1)
 JSC::EncodedJSValue jsTestObjConditionalAttr4Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConditionalAttr4Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjConditionalAttr4Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 #if ENABLE(Condition1) && ENABLE(Condition2)
 JSC::EncodedJSValue jsTestObjConditionalAttr5Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConditionalAttr5Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjConditionalAttr5Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 #if ENABLE(Condition1) || ENABLE(Condition2)
 JSC::EncodedJSValue jsTestObjConditionalAttr6Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConditionalAttr6Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjConditionalAttr6Constructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 #endif
 JSC::EncodedJSValue jsTestObjCachedAttribute1(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjCachedAttribute2(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjAnyAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjAnyAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjAnyAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjObjectAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjObjectAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjContentDocument(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjMutablePoint(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjMutablePoint(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjImmutablePoint(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjImmutablePoint(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjMutablePoint(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjStrawberry(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjStrawberry(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjStrictFloat(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjStrictFloat(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjStrawberry(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjDescription(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjId(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjId(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjId(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjHash(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjReplaceableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjReplaceableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjReplaceableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjNullableDoubleAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjNullableLongAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjNullableBooleanAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjNullableStringAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjNullableLongSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjNullableLongSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjNullableLongSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjNullableStringSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjNullableStringSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjNullableUSVStringSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjNullableUSVStringSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjNullableByteStringSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjNullableByteStringSettableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjNullableStringValue(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjNullableStringValue(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjNullableStringValue(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjAttributeWithReservedEnumType(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjAttributeWithReservedEnumType(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjAttributeWithReservedEnumType(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjPutForwardsAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjPutForwardsAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjPutForwardsAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjPutForwardsNullableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjPutForwardsNullableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-void setJSTestObjConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+bool setJSTestObjPutForwardsNullableAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjStringifierAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjStringifierAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjConditionallyReadWriteAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+#if ENABLE(CONDITION)
+bool setJSTestObjConditionallyReadWriteAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#if ENABLE(CONDITION2)
+JSC::EncodedJSValue jsTestObjConditionalAndConditionallyReadWriteAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+#if ENABLE(CONDITION)
+bool setJSTestObjConditionalAndConditionallyReadWriteAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+#endif
+#endif
 
 class JSTestObjPrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
-    static JSTestObjPrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
+    using Base = JSC::JSNonFinalObject;
+    static JSTestObjPrototype* create(JSC::VM& vm, JSDOMGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSTestObjPrototype* ptr = new (NotNull, JSC::allocateCell<JSTestObjPrototype>(vm.heap)) JSTestObjPrototype(vm, globalObject, structure);
-        ptr->finishCreation(vm);
+        ptr->finishCreation(vm, *globalObject);
         return ptr;
     }
 
@@ -359,17 +1390,17 @@ private:
     {
     }
 
-    void finishCreation(JSC::VM&);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 };
 
-typedef JSDOMConstructor<JSTestObj> JSTestObjConstructor;
+using JSTestObjConstructor = JSDOMConstructor<JSTestObj>;
 
 /* Hash table */
 
 static const struct CompactHashIndex JSTestObjTableIndex[17] = {
-    { 5, -1 },
     { -1, -1 },
-    { 6, -1 },
+    { -1, -1 },
+    { 5, -1 },
     { -1, -1 },
     { -1, -1 },
     { -1, -1 },
@@ -406,11 +1437,10 @@ static const HashTableValue JSTestObjTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
-    { "contentDocument", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjContentDocument), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "unforgeableMethod", DontDelete | ReadOnly | JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjInstanceFunctionUnforgeableMethod), (intptr_t) (0) } },
 };
 
-static const HashTable JSTestObjTable = { 7, 15, true, JSTestObjTableValues, JSTestObjTableIndex };
+static const HashTable JSTestObjTable = { 6, 15, true, JSTestObjTableValues, JSTestObjTableIndex };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestObjConstructorTableValues[] =
@@ -432,10 +1462,10 @@ static const HashTableValue JSTestObjConstructorTableValues[] =
     { "CONST_VALUE_14", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(0x1abc) } },
     { "CONST_JAVASCRIPT", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(15) } },
     { "readonly", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(0) } },
-    { "staticReadOnlyLongAttr", DontDelete | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticReadOnlyLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "staticStringAttr", DontDelete, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConstructorStaticStringAttr) } },
-    { "TestSubObj", DontDelete | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorTestSubObj), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "staticReadOnlySymbolAttr", DontDelete | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticReadOnlySymbolAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "staticReadOnlyLongAttr", ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticReadOnlyLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "staticStringAttr", 0, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConstructorStaticStringAttr) } },
+    { "TestSubObj", ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorTestSubObj), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "nullableStringStaticMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionNullableStringStaticMethod), (intptr_t) (0) } },
     { "staticMethodWithCallbackAndOptionalArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionStaticMethodWithCallbackAndOptionalArg), (intptr_t) (0) } },
     { "staticMethodWithCallbackArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionStaticMethodWithCallbackArg), (intptr_t) (1) } },
     { "classMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionClassMethod), (intptr_t) (0) } },
@@ -446,38 +1476,47 @@ static const HashTableValue JSTestObjConstructorTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
+    { "testStaticPromiseFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionTestStaticPromiseFunction), (intptr_t) (0) } },
+    { "testStaticPromiseFunctionWithException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionTestStaticPromiseFunctionWithException), (intptr_t) (0) } },
+    { "testStaticCustomPromiseFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionTestStaticCustomPromiseFunction), (intptr_t) (0) } },
 };
 
-
 #if ENABLE(Condition1)
-COMPILE_ASSERT(0 == TestObj::CONDITIONAL_CONST, TestObjEnumCONDITIONAL_CONSTIsWrongUseDoNotCheckConstants);
+static_assert(TestObj::CONDITIONAL_CONST == 0, "CONDITIONAL_CONST in TestObj does not match value from IDL");
 #endif
-COMPILE_ASSERT(0 == TestObj::CONST_VALUE_0, TestObjEnumCONST_VALUE_0IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(1 == TestObj::CONST_VALUE_1, TestObjEnumCONST_VALUE_1IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(2 == TestObj::CONST_VALUE_2, TestObjEnumCONST_VALUE_2IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(4 == TestObj::CONST_VALUE_4, TestObjEnumCONST_VALUE_4IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(8 == TestObj::CONST_VALUE_8, TestObjEnumCONST_VALUE_8IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(-1 == TestObj::CONST_VALUE_9, TestObjEnumCONST_VALUE_9IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(0xffffffff == TestObj::CONST_VALUE_11, TestObjEnumCONST_VALUE_11IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(0x01 == TestObj::CONST_VALUE_12, TestObjEnumCONST_VALUE_12IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(0X20 == TestObj::CONST_VALUE_13, TestObjEnumCONST_VALUE_13IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(0x1abc == TestObj::CONST_VALUE_14, TestObjEnumCONST_VALUE_14IsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(15 == TestObj::CONST_IMPL, TestObjEnumCONST_IMPLIsWrongUseDoNotCheckConstants);
-COMPILE_ASSERT(0 == TestObj::readonly, TestObjEnumreadonlyIsWrongUseDoNotCheckConstants);
+static_assert(TestObj::CONST_VALUE_0 == 0, "CONST_VALUE_0 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_1 == 1, "CONST_VALUE_1 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_2 == 2, "CONST_VALUE_2 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_4 == 4, "CONST_VALUE_4 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_8 == 8, "CONST_VALUE_8 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_9 == -1, "CONST_VALUE_9 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_11 == 0xffffffff, "CONST_VALUE_11 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_12 == 0x01, "CONST_VALUE_12 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_13 == 0X20, "CONST_VALUE_13 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_VALUE_14 == 0x1abc, "CONST_VALUE_14 in TestObj does not match value from IDL");
+static_assert(TestObj::CONST_IMPL == 15, "CONST_IMPL in TestObj does not match value from IDL");
+static_assert(TestObj::readonly == 0, "readonly in TestObj does not match value from IDL");
 
 template<> EncodedJSValue JSC_HOST_CALL JSTestObjConstructor::construct(ExecState* state)
 {
-    auto* castedThis = jsCast<JSTestObjConstructor*>(state->callee());
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    auto* castedThis = jsCast<JSTestObjConstructor*>(state->jsCallee());
+    ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    if (!state->argument(0).isObject())
-        return throwArgumentMustBeFunctionError(*state, 0, "testCallback", "TestObj", nullptr);
-    RefPtr<TestCallback> testCallback = JSTestCallback::create(asObject(state->uncheckedArgument(0)), castedThis->globalObject());
-    if (!state->argument(1).isFunction())
-        return throwArgumentMustBeFunctionError(*state, 1, "testCallbackFunction", "TestObj", nullptr);
-    RefPtr<TestCallbackFunction> testCallbackFunction = JSTestCallbackFunction::create(asObject(state->uncheckedArgument(1)), castedThis->globalObject());
-    RefPtr<TestObj> object = TestObj::create(testCallback, testCallbackFunction);
-    return JSValue::encode(asObject(toJS(state, castedThis->globalObject(), object.get())));
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto* context = castedThis->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return throwConstructorScriptExecutionContextUnavailableError(*state, throwScope, "TestObject");
+    ASSERT(context->isDocument());
+    auto& document = downcast<Document>(*context);
+    auto testCallback = convert<IDLCallbackInterface<JSTestCallbackInterface>>(*state, state->uncheckedArgument(0), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "testCallback", "TestObject", nullptr); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto testCallbackFunction = convert<IDLCallbackFunction<JSTestCallbackFunction>>(*state, state->uncheckedArgument(1), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 1, "testCallbackFunction", "TestObject", nullptr); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto object = TestObj::create(document, testCallback.releaseNonNull(), testCallbackFunction.releaseNonNull());
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
 template<> JSValue JSTestObjConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
@@ -488,13 +1527,13 @@ template<> JSValue JSTestObjConstructor::prototypeForStructure(JSC::VM& vm, cons
 
 template<> void JSTestObjConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    putDirect(vm, vm.propertyNames->prototype, JSTestObj::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestObj::prototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestObject"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(2), ReadOnly | DontEnum);
     reifyStaticProperties(vm, JSTestObjConstructorTableValues, *this);
 }
 
-template<> const ClassInfo JSTestObjConstructor::s_info = { "TestObject", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestObjConstructor) };
+template<> const ClassInfo JSTestObjConstructor::s_info = { "TestObject", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestObjConstructor) };
 
 /* Hash table for prototype */
 
@@ -508,33 +1547,58 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "byteAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjByteAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjByteAttr) } },
     { "octetAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOctetAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOctetAttr) } },
     { "shortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjShortAttr) } },
+    { "clampedShortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjClampedShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjClampedShortAttr) } },
+    { "enforceRangeShortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnforceRangeShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnforceRangeShortAttr) } },
     { "unsignedShortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnsignedShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUnsignedShortAttr) } },
     { "longAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLongAttr) } },
     { "longLongAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLongLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLongLongAttr) } },
     { "unsignedLongLongAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnsignedLongLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUnsignedLongLongAttr) } },
     { "stringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttr) } },
+    { "usvstringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringAttr) } },
     { "testObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestObjAttr) } },
+    { "testNullableObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestNullableObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestNullableObjAttr) } },
     { "lenientTestObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLenientTestObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLenientTestObjAttr) } },
+    { "stringAttrTreatingNullAsEmptyString", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrTreatingNullAsEmptyString) } },
+    { "usvstringAttrTreatingNullAsEmptyString", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringAttrTreatingNullAsEmptyString) } },
+    { "byteStringAttrTreatingNullAsEmptyString", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjByteStringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjByteStringAttrTreatingNullAsEmptyString) } },
+    { "stringLongRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringLongRecordAttr) } },
+    { "usvstringLongRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringLongRecordAttr) } },
+    { "usvstringLongRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringLongRecordAttr) } },
+    { "stringObjRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringObjRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringObjRecordAttr) } },
+    { "stringNullableObjRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringNullableObjRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringNullableObjRecordAttr) } },
+    { "dictionaryAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjDictionaryAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjDictionaryAttr) } },
+    { "nullableDictionaryAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableDictionaryAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableDictionaryAttr) } },
+    { "annotatedTypeInUnionAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnnotatedTypeInUnionAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnnotatedTypeInUnionAttr) } },
+    { "annotatedTypeInSequenceAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnnotatedTypeInSequenceAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnnotatedTypeInSequenceAttr) } },
+    { "implementationEnumAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjImplementationEnumAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjImplementationEnumAttr) } },
     { "XMLObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjXMLObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjXMLObjAttr) } },
     { "create", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCreate), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjCreate) } },
-    { "readOnlySymbolAttr", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlySymbolAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "reflectedStringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedStringAttr) } },
+    { "reflectedUSVStringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUSVStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUSVStringAttr) } },
     { "reflectedIntegralAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedIntegralAttr) } },
     { "reflectedUnsignedIntegralAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUnsignedIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUnsignedIntegralAttr) } },
     { "reflectedBooleanAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedBooleanAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedBooleanAttr) } },
     { "reflectedURLAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedURLAttr) } },
+    { "reflectedUSVURLAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUSVURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUSVURLAttr) } },
     { "reflectedStringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedStringAttr) } },
     { "reflectedCustomIntegralAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomIntegralAttr) } },
     { "reflectedCustomBooleanAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomBooleanAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomBooleanAttr) } },
     { "reflectedCustomURLAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomURLAttr) } },
+#if ENABLE(TEST_FEATURE)
+    { "enabledAtRuntimeAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnabledAtRuntimeAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnabledAtRuntimeAttribute) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
+#if ENABLE(TEST_FEATURE)
+    { "enabledBySettingAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnabledBySettingAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnabledBySettingAttribute) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
     { "typedArrayAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTypedArrayAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTypedArrayAttr) } },
-    { "attrWithGetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttrWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttrWithGetterException) } },
-    { "attrWithGetterExceptionWithMessage", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttrWithGetterExceptionWithMessage), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttrWithGetterExceptionWithMessage) } },
-    { "attrWithSetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttrWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttrWithSetterException) } },
-    { "attrWithSetterExceptionWithMessage", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttrWithSetterExceptionWithMessage), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttrWithSetterExceptionWithMessage) } },
+    { "attributeWithGetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithGetterException) } },
+    { "attributeWithSetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithSetterException) } },
     { "stringAttrWithGetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrWithGetterException) } },
     { "stringAttrWithSetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrWithSetterException) } },
-    { "strictTypeCheckingAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStrictTypeCheckingAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStrictTypeCheckingAttribute) } },
     { "customAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCustomAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjCustomAttr) } },
 #if ENABLE(Condition4)
     { "jsBuiltinAttribute", Accessor | Builtin, NoIntrinsic, { (intptr_t)static_cast<BuiltinGenerator>(testObjJsBuiltinAttributeCodeGenerator), (intptr_t) (setTestObjJsBuiltinAttributeCodeGenerator) } },
@@ -547,6 +1611,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
     { "onfoo", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOnfoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOnfoo) } },
+    { "onwebkitfoo", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOnwebkitfoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOnwebkitfoo) } },
     { "withScriptStateAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptStateAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptStateAttribute) } },
     { "withCallWithAndSetterCallWithAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithCallWithAndSetterCallWithAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithCallWithAndSetterCallWithAttribute) } },
     { "withScriptExecutionContextAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAttribute) } },
@@ -555,7 +1620,6 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "withScriptExecutionContextAndScriptStateAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateAttribute) } },
     { "withScriptExecutionContextAndScriptStateAttributeRaises", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises) } },
     { "withScriptExecutionContextAndScriptStateWithSpacesAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute) } },
-    { "withScriptArgumentsAndCallStackAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptArgumentsAndCallStackAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptArgumentsAndCallStackAttribute) } },
 #if ENABLE(Condition1)
     { "conditionalAttr1", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr1) } },
 #else
@@ -574,10 +1638,10 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "cachedAttribute1", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "cachedAttribute2", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "anyAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnyAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnyAttribute) } },
+    { "objectAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjObjectAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjObjectAttribute) } },
+    { "contentDocument", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjContentDocument), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "mutablePoint", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjMutablePoint), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjMutablePoint) } },
-    { "immutablePoint", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjImmutablePoint), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjImmutablePoint) } },
     { "strawberry", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStrawberry), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStrawberry) } },
-    { "strictFloat", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStrictFloat), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStrictFloat) } },
     { "description", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjDescription), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "id", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjId), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjId) } },
     { "hash", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjHash), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
@@ -587,11 +1651,48 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "nullableBooleanAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableBooleanAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "nullableStringAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "nullableLongSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableLongSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableLongSettableAttribute) } },
+    { "nullableStringSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableStringSettableAttribute) } },
+    { "nullableUSVStringSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableUSVStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableUSVStringSettableAttribute) } },
+    { "nullableByteStringSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableByteStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableByteStringSettableAttribute) } },
     { "nullableStringValue", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringValue), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableStringValue) } },
     { "attribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "attributeWithReservedEnumType", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithReservedEnumType), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithReservedEnumType) } },
     { "putForwardsAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjPutForwardsAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjPutForwardsAttribute) } },
     { "putForwardsNullableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjPutForwardsNullableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjPutForwardsNullableAttribute) } },
+    { "stringifierAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringifierAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringifierAttribute) } },
+#if ENABLE(CONDITION)
+    { "conditionallyReadWriteAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionallyReadWriteAttribute) } },
+#else
+    { "conditionallyReadWriteAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+#endif
+#if ENABLE(CONDITION2)
+#if ENABLE(CONDITION)
+    { "conditionalAndConditionallyReadWriteAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAndConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAndConditionallyReadWriteAttribute) } },
+#else
+    { "conditionalAndConditionallyReadWriteAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAndConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+#endif
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
+#if ENABLE(TEST_FEATURE)
+    { "enabledAtRuntimeOperation", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionEnabledAtRuntimeOperation), (intptr_t) (1) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
+    { "enabledInSpecificWorldWhenRuntimeFeatureEnabled", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionEnabledInSpecificWorldWhenRuntimeFeatureEnabled), (intptr_t) (1) } },
+    { "worldSpecificMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWorldSpecificMethod), (intptr_t) (1) } },
+#if ENABLE(TEST_FEATURE)
+    { "enabledBySettingOperation", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionEnabledBySettingOperation), (intptr_t) (1) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
+    { "calculateSecretResult", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCalculateSecretResult), (intptr_t) (0) } },
+    { "getSecretBoolean", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetSecretBoolean), (intptr_t) (0) } },
+#if ENABLE(TEST_FEATURE)
+    { "testFeatureGetSecretBoolean", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestFeatureGetSecretBoolean), (intptr_t) (0) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
     { "voidMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVoidMethod), (intptr_t) (0) } },
     { "voidMethodWithArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVoidMethodWithArgs), (intptr_t) (3) } },
     { "byteMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionByteMethod), (intptr_t) (0) } },
@@ -602,19 +1703,28 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "longMethodWithArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionLongMethodWithArgs), (intptr_t) (3) } },
     { "objMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionObjMethod), (intptr_t) (0) } },
     { "objMethodWithArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionObjMethodWithArgs), (intptr_t) (3) } },
-    { "methodWithSequenceArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithSequenceArg), (intptr_t) (1) } },
-    { "methodReturningSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodReturningSequence), (intptr_t) (1) } },
+    { "methodWithArgTreatingNullAsEmptyString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithArgTreatingNullAsEmptyString), (intptr_t) (1) } },
+    { "methodWithXPathNSResolverParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithXPathNSResolverParameter), (intptr_t) (1) } },
+    { "nullableStringMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionNullableStringMethod), (intptr_t) (0) } },
+    { "nullableStringSpecialMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionNullableStringSpecialMethod), (intptr_t) (1) } },
     { "methodWithEnumArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithEnumArg), (intptr_t) (1) } },
+    { "methodWithStandaloneEnumArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithStandaloneEnumArg), (intptr_t) (1) } },
+    { "methodWithOptionalEnumArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalEnumArg), (intptr_t) (0) } },
     { "methodWithOptionalEnumArgAndDefaultValue", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalEnumArgAndDefaultValue), (intptr_t) (0) } },
     { "methodThatRequiresAllArgsAndThrows", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodThatRequiresAllArgsAndThrows), (intptr_t) (2) } },
+    { "methodWithUSVStringArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithUSVStringArg), (intptr_t) (1) } },
+    { "methodWithNullableUSVStringArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithNullableUSVStringArg), (intptr_t) (1) } },
+    { "methodWithUSVStringArgTreatingNullAsEmptyString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithUSVStringArgTreatingNullAsEmptyString), (intptr_t) (1) } },
+    { "methodWithByteStringArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithByteStringArg), (intptr_t) (1) } },
+    { "methodWithNullableByteStringArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithNullableByteStringArg), (intptr_t) (1) } },
+    { "methodWithByteStringArgTreatingNullAsEmptyString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithByteStringArgTreatingNullAsEmptyString), (intptr_t) (1) } },
     { "serializedValue", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionSerializedValue), (intptr_t) (1) } },
-    { "optionsObject", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOptionsObject), (intptr_t) (1) } },
+    { "methodWithRecord", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithRecord), (intptr_t) (1) } },
     { "methodWithException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithException), (intptr_t) (0) } },
-    { "methodWithExceptionWithMessage", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithExceptionWithMessage), (intptr_t) (0) } },
+    { "methodWithExceptionReturningLong", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithExceptionReturningLong), (intptr_t) (0) } },
+    { "methodWithExceptionReturningObject", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithExceptionReturningObject), (intptr_t) (0) } },
     { "customMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomMethod), (intptr_t) (0) } },
     { "customMethodWithArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomMethodWithArgs), (intptr_t) (3) } },
-    { "customBindingMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomBindingMethod), (intptr_t) (0) } },
-    { "customBindingMethodWithArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomBindingMethodWithArgs), (intptr_t) (3) } },
 #if ENABLE(Condition3)
     { "jsBuiltinMethod", JSC::Builtin, NoIntrinsic, { (intptr_t)static_cast<BuiltinGenerator>(testObjJsBuiltinMethodCodeGenerator), (intptr_t) (0) } },
 #else
@@ -625,6 +1735,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
+    { "publicAndPrivateMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionPublicAndPrivateMethod), (intptr_t) (1) } },
     { "addEventListener", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAddEventListener), (intptr_t) (2) } },
     { "removeEventListener", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionRemoveEventListener), (intptr_t) (2) } },
     { "withScriptStateVoid", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithScriptStateVoid), (intptr_t) (0) } },
@@ -635,15 +1746,40 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "withScriptExecutionContextAndScriptState", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptState), (intptr_t) (0) } },
     { "withScriptExecutionContextAndScriptStateObjException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateObjException), (intptr_t) (0) } },
     { "withScriptExecutionContextAndScriptStateWithSpaces", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateWithSpaces), (intptr_t) (0) } },
-    { "withScriptArgumentsAndCallStack", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithScriptArgumentsAndCallStack), (intptr_t) (0) } },
+    { "withDocumentArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithDocumentArgument), (intptr_t) (0) } },
+    { "withCallerDocumentArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithCallerDocumentArgument), (intptr_t) (0) } },
+    { "withCallerWindowArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithCallerWindowArgument), (intptr_t) (0) } },
     { "methodWithOptionalArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalArg), (intptr_t) (0) } },
     { "methodWithOptionalArgAndDefaultValue", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalArgAndDefaultValue), (intptr_t) (0) } },
     { "methodWithNonOptionalArgAndOptionalArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndOptionalArg), (intptr_t) (1) } },
     { "methodWithNonOptionalArgAndTwoOptionalArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndTwoOptionalArgs), (intptr_t) (1) } },
     { "methodWithOptionalString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalString), (intptr_t) (0) } },
+    { "methodWithOptionalUSVString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalUSVString), (intptr_t) (0) } },
+    { "methodWithOptionalAtomicString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalAtomicString), (intptr_t) (0) } },
     { "methodWithOptionalStringAndDefaultValue", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalStringAndDefaultValue), (intptr_t) (0) } },
+    { "methodWithOptionalAtomicStringAndDefaultValue", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringAndDefaultValue), (intptr_t) (0) } },
+    { "methodWithOptionalStringIsNull", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalStringIsNull), (intptr_t) (0) } },
     { "methodWithOptionalStringIsUndefined", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalStringIsUndefined), (intptr_t) (0) } },
-    { "methodWithOptionalStringIsNullString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalStringIsNullString), (intptr_t) (0) } },
+    { "methodWithOptionalAtomicStringIsNull", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsNull), (intptr_t) (0) } },
+    { "methodWithOptionalStringIsEmptyString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalStringIsEmptyString), (intptr_t) (0) } },
+    { "methodWithOptionalUSVStringIsEmptyString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalUSVStringIsEmptyString), (intptr_t) (0) } },
+    { "methodWithOptionalAtomicStringIsEmptyString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsEmptyString), (intptr_t) (0) } },
+    { "methodWithOptionalDoubleIsNaN", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalDoubleIsNaN), (intptr_t) (0) } },
+    { "methodWithOptionalFloatIsNaN", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalFloatIsNaN), (intptr_t) (0) } },
+    { "methodWithOptionalLongLong", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalLongLong), (intptr_t) (0) } },
+    { "methodWithOptionalLongLongIsZero", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalLongLongIsZero), (intptr_t) (0) } },
+    { "methodWithOptionalUnsignedLongLong", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLong), (intptr_t) (0) } },
+    { "methodWithOptionalUnsignedLongLongIsZero", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLongIsZero), (intptr_t) (0) } },
+    { "methodWithOptionalSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalSequence), (intptr_t) (0) } },
+    { "methodWithOptionalSequenceIsEmpty", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalSequenceIsEmpty), (intptr_t) (0) } },
+    { "methodWithOptionalBoolean", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalBoolean), (intptr_t) (0) } },
+    { "methodWithOptionalBooleanIsFalse", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalBooleanIsFalse), (intptr_t) (0) } },
+    { "methodWithOptionalAny", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalAny), (intptr_t) (0) } },
+    { "methodWithOptionalObject", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalObject), (intptr_t) (0) } },
+    { "methodWithOptionalNullableWrapper", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapper), (intptr_t) (0) } },
+    { "methodWithOptionalNullableWrapperIsNull", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperIsNull), (intptr_t) (0) } },
+    { "methodWithOptionalXPathNSResolver", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalXPathNSResolver), (intptr_t) (0) } },
+    { "methodWithOptionalRecord", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalRecord), (intptr_t) (0) } },
     { "methodWithCallbackArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithCallbackArg), (intptr_t) (1) } },
     { "methodWithNonCallbackArgAndCallbackArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackArg), (intptr_t) (2) } },
     { "methodWithCallbackAndOptionalArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithCallbackAndOptionalArg), (intptr_t) (0) } },
@@ -665,33 +1801,57 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
-    { "overloadedMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethod), (intptr_t) (2) } },
+    { "overloadedMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethod), (intptr_t) (0) } },
     { "overloadedMethodWithOptionalParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter), (intptr_t) (1) } },
+    { "overloadedMethodWithDistinguishingUnion", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion), (intptr_t) (1) } },
+    { "overloadedMethodWith2DistinguishingUnions", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions), (intptr_t) (1) } },
+    { "overloadedMethodWithNonDistinguishingUnion", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion), (intptr_t) (2) } },
+    { "overloadWithNullableUnion", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadWithNullableUnion), (intptr_t) (1) } },
+    { "overloadWithOptionalUnion", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadWithOptionalUnion), (intptr_t) (0) } },
+    { "overloadWithNullableNonDistinguishingParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter), (intptr_t) (2) } },
     { "classMethodWithClamp", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionClassMethodWithClamp), (intptr_t) (2) } },
+    { "classMethodWithClampOnOptional", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionClassMethodWithClampOnOptional), (intptr_t) (0) } },
+    { "classMethodWithEnforceRange", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionClassMethodWithEnforceRange), (intptr_t) (2) } },
+    { "classMethodWithEnforceRangeOnOptional", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionClassMethodWithEnforceRangeOnOptional), (intptr_t) (0) } },
     { "methodWithUnsignedLongSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence), (intptr_t) (1) } },
     { "stringArrayFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionStringArrayFunction), (intptr_t) (1) } },
     { "domStringListFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionDomStringListFunction), (intptr_t) (1) } },
+    { "operationWithOptionalUnionParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOperationWithOptionalUnionParameter), (intptr_t) (0) } },
     { "methodWithAndWithoutNullableSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence), (intptr_t) (2) } },
-    { "methodWithAndWithoutNullableSequence2", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence2), (intptr_t) (2) } },
+    { "getElementById", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetElementById), (intptr_t) (1) } },
     { "getSVGDocument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetSVGDocument), (intptr_t) (0) } },
     { "convert1", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert1), (intptr_t) (1) } },
     { "convert2", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert2), (intptr_t) (1) } },
+    { "convert3", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert3), (intptr_t) (1) } },
     { "convert4", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert4), (intptr_t) (1) } },
-    { "convert5", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConvert5), (intptr_t) (1) } },
     { "mutablePointFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMutablePointFunction), (intptr_t) (0) } },
-    { "immutablePointFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionImmutablePointFunction), (intptr_t) (0) } },
     { "orange", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOrange), (intptr_t) (0) } },
-    { "strictFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionStrictFunction), (intptr_t) (3) } },
-    { "strictFunctionWithSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionStrictFunctionWithSequence), (intptr_t) (2) } },
-    { "strictFunctionWithArray", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionStrictFunctionWithArray), (intptr_t) (2) } },
     { "variadicStringMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVariadicStringMethod), (intptr_t) (1) } },
     { "variadicDoubleMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVariadicDoubleMethod), (intptr_t) (1) } },
     { "variadicNodeMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVariadicNodeMethod), (intptr_t) (1) } },
+    { "variadicUnionMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVariadicUnionMethod), (intptr_t) (1) } },
     { "any", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAny), (intptr_t) (2) } },
     { "testPromiseFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestPromiseFunction), (intptr_t) (0) } },
     { "testPromiseFunctionWithFloatArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgument), (intptr_t) (1) } },
     { "testPromiseFunctionWithException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestPromiseFunctionWithException), (intptr_t) (0) } },
     { "testPromiseFunctionWithOptionalIntArgument", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgument), (intptr_t) (0) } },
+    { "testPromiseOverloadedFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestPromiseOverloadedFunction), (intptr_t) (1) } },
+    { "testCustomPromiseFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestCustomPromiseFunction), (intptr_t) (0) } },
+    { "testCustomReturnsOwnPromiseFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestCustomReturnsOwnPromiseFunction), (intptr_t) (0) } },
+#if ENABLE(CONDITION1) || ENABLE(CONDITION2)
+    { "conditionalOverload", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionConditionalOverload), (intptr_t) (1) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
+    { "singleConditionalOverload", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionSingleConditionalOverload), (intptr_t) (1) } },
+    { "attachShadowRoot", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAttachShadowRoot), (intptr_t) (1) } },
+    { "operationWithExternalDictionaryParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameter), (intptr_t) (1) } },
+    { "bufferSourceParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionBufferSourceParameter), (intptr_t) (1) } },
+    { "legacyCallerNamed", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionLegacyCallerNamed), (intptr_t) (1) } },
+    { "testReturnValueOptimization", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestReturnValueOptimization), (intptr_t) (2) } },
+    { "testReturnValueOptimizationWithException", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestReturnValueOptimizationWithException), (intptr_t) (2) } },
+    { "toString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToString), (intptr_t) (0) } },
+    { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToJSON), (intptr_t) (0) } },
 #if ENABLE(Condition1)
     { "CONDITIONAL_CONST", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(0) } },
 #else
@@ -711,31 +1871,106 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "readonly", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(0) } },
 };
 
-const ClassInfo JSTestObjPrototype::s_info = { "TestObjectPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestObjPrototype) };
+const ClassInfo JSTestObjPrototype::s_info = { "TestObjectPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestObjPrototype) };
 
-void JSTestObjPrototype::finishCreation(VM& vm)
+void JSTestObjPrototype::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
     reifyStaticProperties(vm, JSTestObjPrototypeTableValues, *this);
-    JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);
-    putDirect(vm, clientData.builtinNames().privateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPrivateMethod), ReadOnly | DontEnum);
+#if ENABLE(TEST_FEATURE)
+    if (!RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeOperation"), strlen("enabledAtRuntimeOperation"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+#endif
+    if (!(worldForDOMObject(this).someWorld() && RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledInSpecificWorldWhenRuntimeFeatureEnabled"), strlen("enabledInSpecificWorldWhenRuntimeFeatureEnabled"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+    if (!worldForDOMObject(this).someWorld()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("worldSpecificMethod"), strlen("worldSpecificMethod"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isSecureContext()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("calculateSecretResult"), strlen("calculateSecretResult"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isSecureContext()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("getSecretBoolean"), strlen("getSecretBoolean"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+#if ENABLE(TEST_FEATURE)
+    if (!(jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isSecureContext() && RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("testFeatureGetSecretBoolean"), strlen("testFeatureGetSecretBoolean"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+#endif
+#if ENABLE(TEST_FEATURE)
+    if (!(RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled() && RuntimeEnabledFeatures::sharedFeatures().testFeature1Enabled())) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeAttribute"), strlen("enabledAtRuntimeAttribute"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+#endif
+    auto* context = globalObject.scriptExecutionContext();
+    ASSERT(!context || context->isDocument());
+#if ENABLE(TEST_FEATURE)
+    if (!context || !downcast<Document>(*context).settings().testSettingEnabled()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingOperation"), strlen("enabledBySettingOperation"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject.globalExec(), propertyName);
+    }
+#endif
+#if ENABLE(TEST_FEATURE)
+    if (!context || !downcast<Document>(*context).settings().testSettingEnabled()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingAttribute"), strlen("enabledBySettingAttribute"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject.globalExec(), propertyName);
+    }
+#endif
+    putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().privateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPrivateMethod), ReadOnly | DontEnum);
+    putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().publicAndPrivateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPublicAndPrivateMethod), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->iteratorSymbol, globalObject()->arrayPrototype()->getDirect(vm, vm.propertyNames->builtinNames().valuesPrivateName()), DontEnum);
+    addValueIterableMethods(*globalObject(), *this);
+    JSObject& unscopables = *constructEmptyObject(globalObject()->globalExec(), globalObject()->nullPrototypeObjectStructure());
+    unscopables.putDirect(vm, Identifier::fromString(&vm, "voidMethod"), jsBoolean(true));
+    unscopables.putDirect(vm, Identifier::fromString(&vm, "shortAttr"), jsBoolean(true));
+    putDirectWithoutTransition(vm, vm.propertyNames->unscopablesSymbol, &unscopables, DontEnum | ReadOnly);
 }
 
-const ClassInfo JSTestObj::s_info = { "TestObject", &Base::s_info, &JSTestObjTable, CREATE_METHOD_TABLE(JSTestObj) };
+const ClassInfo JSTestObj::s_info = { "TestObject", &Base::s_info, &JSTestObjTable, nullptr, CREATE_METHOD_TABLE(JSTestObj) };
 
 JSTestObj::JSTestObj(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestObj>&& impl)
     : JSDOMWrapper<TestObj>(structure, globalObject, WTFMove(impl))
 {
 }
 
-JSObject* JSTestObj::createPrototype(VM& vm, JSGlobalObject* globalObject)
+void JSTestObj::finishCreation(VM& vm)
 {
-    return JSTestObjPrototype::create(vm, globalObject, JSTestObjPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
+    Base::finishCreation(vm);
+    ASSERT(inherits(vm, info()));
+
 }
 
-JSObject* JSTestObj::getPrototype(VM& vm, JSGlobalObject* globalObject)
+JSObject* JSTestObj::createPrototype(VM& vm, JSDOMGlobalObject& globalObject)
+{
+    return JSTestObjPrototype::create(vm, &globalObject, JSTestObjPrototype::createStructure(vm, &globalObject, globalObject.objectPrototype()));
+}
+
+JSObject* JSTestObj::prototype(VM& vm, JSDOMGlobalObject& globalObject)
 {
     return getDOMPrototype<JSTestObj>(vm, globalObject);
+}
+
+JSValue JSTestObj::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+{
+    return getDOMConstructor<JSTestObjConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
 void JSTestObj::destroy(JSC::JSCell* cell)
@@ -748,4107 +1983,6083 @@ bool JSTestObj::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyN
 {
     auto* thisObject = jsCast<JSTestObj*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    if (getStaticPropertySlot<JSTestObj, Base>(state, JSTestObjTable, thisObject, propertyName, slot))
-        return true;
-    return false;
+    if (auto index = parseIndex(propertyName)) {
+        if (index.value() < thisObject->wrapped().length()) {
+            auto value = toJS<IDLNullable<IDLDOMString>>(*state, thisObject->wrapped().nullableStringSpecialMethod(index.value()));
+            slot.setValue(thisObject, ReadOnly, value);
+            return true;
+        }
+    }
+    return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
+}
+
+bool JSTestObj::getOwnPropertySlotByIndex(JSObject* object, ExecState* state, unsigned index, PropertySlot& slot)
+{
+    auto* thisObject = jsCast<JSTestObj*>(object);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    if (LIKELY(index <= MAX_ARRAY_INDEX)) {
+        if (index < thisObject->wrapped().length()) {
+            auto value = toJS<IDLNullable<IDLDOMString>>(*state, thisObject->wrapped().nullableStringSpecialMethod(index));
+            slot.setValue(thisObject, ReadOnly, value);
+            return true;
+        }
+    }
+    return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
+}
+
+void JSTestObj::getOwnPropertyNames(JSObject* object, ExecState* state, PropertyNameArray& propertyNames, EnumerationMode mode)
+{
+    auto* thisObject = jsCast<JSTestObj*>(object);
+    ASSERT_GC_OBJECT_INHERITS(object, info());
+    for (unsigned i = 0, count = thisObject->wrapped().length(); i < count; ++i)
+        propertyNames.add(Identifier::from(state, i));
+    JSObject::getOwnPropertyNames(object, state, propertyNames, mode);
+}
+
+static inline EncodedJSValue callJSTestObj1(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    auto* castedThis = jsCast<JSTestObj*>(state->jsCallee());
+    ASSERT(castedThis);
+    auto& impl = castedThis->wrapped();
+    auto param = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.legacyCallerNamed(WTFMove(param));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline EncodedJSValue callJSTestObj2(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    auto* castedThis = jsCast<JSTestObj*>(state->jsCallee());
+    ASSERT(castedThis);
+    auto& impl = castedThis->wrapped();
+    auto param = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLLong>(impl.legacyCallerOperationFromBindings(WTFMove(param))));
+}
+
+static inline EncodedJSValue callJSTestObj3(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    auto* castedThis = jsCast<JSTestObj*>(state->jsCallee());
+    ASSERT(castedThis);
+    auto& impl = castedThis->wrapped();
+    impl.legacyCallerOperationFromBindings();
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL callJSTestObj(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 0) {
+        return callJSTestObj3(state);
+    }
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isNumber())
+            return callJSTestObj1(state);
+        return callJSTestObj2(state);
+    }
+    return throwVMTypeError(state, throwScope);
+}
+
+CallType JSTestObj::getCallData(JSCell*, CallData& callData)
+{
+    callData.native.function = callJSTestObj;
+    return CallType::Host;
+}
+
+template<> inline JSTestObj* IDLAttribute<JSTestObj>::cast(ExecState& state, EncodedJSValue thisValue)
+{
+    return jsDynamicDowncast<JSTestObj*>(state.vm(), JSValue::decode(thisValue));
+}
+
+template<> inline JSTestObj* IDLOperation<JSTestObj>::cast(ExecState& state)
+{
+    return jsDynamicDowncast<JSTestObj*>(state.vm(), state.thisValue());
+}
+
+EncodedJSValue jsTestObjConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    auto* prototype = jsDynamicDowncast<JSTestObjPrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype))
+        return throwVMTypeError(state, throwScope);
+    return JSValue::encode(JSTestObj::getConstructor(state->vm(), prototype->globalObject()));
+}
+
+bool setJSTestObjConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    auto* prototype = jsDynamicDowncast<JSTestObjPrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype)) {
+        throwVMTypeError(state, throwScope);
+        return false;
+    }
+    // Shadowing a built-in constructor
+    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
+}
+
+static inline JSValue jsTestObjReadOnlyLongAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.readOnlyLongAttr());
+    return result;
 }
 
 EncodedJSValue jsTestObjReadOnlyLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "readOnlyLongAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.readOnlyLongAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyLongAttrGetter>(*state, thisValue, "readOnlyLongAttr");
 }
 
+static inline JSValue jsTestObjReadOnlyStringAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.readOnlyStringAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjReadOnlyStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "readOnlyStringAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.readOnlyStringAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyStringAttrGetter>(*state, thisValue, "readOnlyStringAttr");
 }
 
+static inline JSValue jsTestObjReadOnlyTestObjAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), impl.readOnlyTestObjAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjReadOnlyTestObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "readOnlyTestObjAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.readOnlyTestObjAttr()));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyTestObjAttrGetter>(*state, thisValue, "readOnlyTestObjAttr");
 }
 
+static inline JSValue jsTestObjConstructorStaticReadOnlyLongAttrGetter(ExecState& state, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    JSValue result = toJS<IDLLong>(TestObj::staticReadOnlyLongAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjConstructorStaticReadOnlyLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue result = jsNumber(TestObj::staticReadOnlyLongAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::getStatic<jsTestObjConstructorStaticReadOnlyLongAttrGetter>(*state, thisValue, "staticReadOnlyLongAttr");
 }
 
+static inline JSValue jsTestObjConstructorStaticStringAttrGetter(ExecState& state, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    JSValue result = toJS<IDLDOMString>(state, TestObj::staticStringAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjConstructorStaticStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue result = jsStringWithCache(state, TestObj::staticStringAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::getStatic<jsTestObjConstructorStaticStringAttrGetter>(*state, thisValue, "staticStringAttr");
 }
 
+static inline bool setJSTestObjConstructorStaticStringAttrSetter(ExecState& state, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    TestObj::setStaticStringAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjConstructorStaticStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::setStatic<setJSTestObjConstructorStaticStringAttrSetter>(*state, thisValue, encodedValue, "staticStringAttr");
+}
+
+static inline JSValue jsTestObjConstructorTestSubObjGetter(ExecState& state, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return JSTestSubObj::getConstructor(state.vm(), thisObject.globalObject());
+}
 
 EncodedJSValue jsTestObjConstructorTestSubObj(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "TestSubObj");
-    }
-    return JSValue::encode(JSTestSubObj::getConstructor(state->vm(), castedThis->globalObject()));
+    return IDLAttribute<JSTestObj>::getStatic<jsTestObjConstructorTestSubObjGetter>(*state, thisValue, "TestSubObj");
 }
 
+static inline JSValue jsTestObjTestSubObjEnabledBySettingConstructorGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    if (UNLIKELY(!thisObject.wrapped().frame()))
+        return jsUndefined();
+    Settings& settings = thisObject.wrapped().frame()->settings();
+    if (!settings.testSettingEnabled())
+        return jsUndefined();
+    return JSTestSubObj::getConstructor(state.vm(), thisObject.globalObject());
+}
 
 EncodedJSValue jsTestObjTestSubObjEnabledBySettingConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "TestSubObjEnabledBySetting");
-    }
-    if (!castedThis->wrapped().frame())
-        return JSValue::encode(jsUndefined());
-    Settings& settings = castedThis->wrapped().frame()->settings();
-    if (!settings.testSettingEnabled())
-        return JSValue::encode(jsUndefined());
-    return JSValue::encode(JSTestSubObj::getConstructor(state->vm(), castedThis->globalObject()));
+    return IDLAttribute<JSTestObj>::get<jsTestObjTestSubObjEnabledBySettingConstructorGetter>(*state, thisValue, "TestSubObjEnabledBySetting");
 }
 
+static inline bool setJSTestObjTestSubObjEnabledBySettingConstructorSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    // Shadowing a built-in constructor.
+    return thisObject.putDirect(state.vm(), Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("TestSubObjEnabledBySetting"), strlen("TestSubObjEnabledBySetting")), value);
+}
+
+bool setJSTestObjTestSubObjEnabledBySettingConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjTestSubObjEnabledBySettingConstructorSetter>(*state, thisValue, encodedValue, "TestSubObjEnabledBySetting");
+}
+
+static inline JSValue jsTestObjEnumAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLEnumeration<TestObj::EnumType>>(state, impl.enumAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjEnumAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "enumAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.enumAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnumAttrGetter>(*state, thisValue, "enumAttr");
 }
 
+static inline bool setJSTestObjEnumAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto optionalNativeValue = parseEnumeration<TestObj::EnumType>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    if (UNLIKELY(!optionalNativeValue))
+        return false;
+    auto nativeValue = optionalNativeValue.value();
+    impl.setEnumAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjEnumAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjEnumAttrSetter>(*state, thisValue, encodedValue, "enumAttr");
+}
+
+static inline JSValue jsTestObjByteAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLByte>(impl.byteAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjByteAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "byteAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.byteAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjByteAttrGetter>(*state, thisValue, "byteAttr");
 }
 
+static inline bool setJSTestObjByteAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLByte>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setByteAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjByteAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjByteAttrSetter>(*state, thisValue, encodedValue, "byteAttr");
+}
+
+static inline JSValue jsTestObjOctetAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLOctet>(impl.octetAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjOctetAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "octetAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.octetAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjOctetAttrGetter>(*state, thisValue, "octetAttr");
 }
 
+static inline bool setJSTestObjOctetAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLOctet>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setOctetAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjOctetAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjOctetAttrSetter>(*state, thisValue, encodedValue, "octetAttr");
+}
+
+static inline JSValue jsTestObjShortAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLShort>(impl.shortAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "shortAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.shortAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjShortAttrGetter>(*state, thisValue, "shortAttr");
 }
 
+static inline bool setJSTestObjShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLShort>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setShortAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjShortAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjShortAttrSetter>(*state, thisValue, encodedValue, "shortAttr");
+}
+
+static inline JSValue jsTestObjClampedShortAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLClampAdaptor<IDLShort>>(impl.clampedShortAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjClampedShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjClampedShortAttrGetter>(*state, thisValue, "clampedShortAttr");
+}
+
+static inline bool setJSTestObjClampedShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLClampAdaptor<IDLShort>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setClampedShortAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjClampedShortAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjClampedShortAttrSetter>(*state, thisValue, encodedValue, "clampedShortAttr");
+}
+
+static inline JSValue jsTestObjEnforceRangeShortAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLEnforceRangeAdaptor<IDLShort>>(impl.enforceRangeShortAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjEnforceRangeShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnforceRangeShortAttrGetter>(*state, thisValue, "enforceRangeShortAttr");
+}
+
+static inline bool setJSTestObjEnforceRangeShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLEnforceRangeAdaptor<IDLShort>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setEnforceRangeShortAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjEnforceRangeShortAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjEnforceRangeShortAttrSetter>(*state, thisValue, encodedValue, "enforceRangeShortAttr");
+}
+
+static inline JSValue jsTestObjUnsignedShortAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUnsignedShort>(impl.unsignedShortAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjUnsignedShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "unsignedShortAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.unsignedShortAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjUnsignedShortAttrGetter>(*state, thisValue, "unsignedShortAttr");
 }
 
+static inline bool setJSTestObjUnsignedShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUnsignedShort>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setUnsignedShortAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjUnsignedShortAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjUnsignedShortAttrSetter>(*state, thisValue, encodedValue, "unsignedShortAttr");
+}
+
+static inline JSValue jsTestObjLongAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.longAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "longAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.longAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjLongAttrGetter>(*state, thisValue, "longAttr");
 }
 
+static inline bool setJSTestObjLongAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setLongAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjLongAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjLongAttrSetter>(*state, thisValue, encodedValue, "longAttr");
+}
+
+static inline JSValue jsTestObjLongLongAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLongLong>(impl.longLongAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "longLongAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.longLongAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjLongLongAttrGetter>(*state, thisValue, "longLongAttr");
 }
 
+static inline bool setJSTestObjLongLongAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLongLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setLongLongAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjLongLongAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjLongLongAttrSetter>(*state, thisValue, encodedValue, "longLongAttr");
+}
+
+static inline JSValue jsTestObjUnsignedLongLongAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUnsignedLongLong>(impl.unsignedLongLongAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "unsignedLongLongAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.unsignedLongLongAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjUnsignedLongLongAttrGetter>(*state, thisValue, "unsignedLongLongAttr");
 }
 
+static inline bool setJSTestObjUnsignedLongLongAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUnsignedLongLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setUnsignedLongLongAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjUnsignedLongLongAttrSetter>(*state, thisValue, encodedValue, "unsignedLongLongAttr");
+}
+
+static inline JSValue jsTestObjStringAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.stringAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "stringAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.stringAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrGetter>(*state, thisValue, "stringAttr");
 }
 
+static inline bool setJSTestObjStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setStringAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringAttrSetter>(*state, thisValue, encodedValue, "stringAttr");
+}
+
+static inline JSValue jsTestObjUsvstringAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUSVString>(state, impl.usvstringAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjUsvstringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringAttrGetter>(*state, thisValue, "usvstringAttr");
+}
+
+static inline bool setJSTestObjUsvstringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUSVString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setUsvstringAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjUsvstringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjUsvstringAttrSetter>(*state, thisValue, encodedValue, "usvstringAttr");
+}
+
+static inline JSValue jsTestObjTestObjAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), impl.testObjAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjTestObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "testObjAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.testObjAttr()));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjTestObjAttrGetter>(*state, thisValue, "testObjAttr");
 }
 
+static inline bool setJSTestObjTestObjAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "testObjAttr", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setTestObjAttr(*nativeValue);
+    return true;
+}
+
+bool setJSTestObjTestObjAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjTestObjAttrSetter>(*state, thisValue, encodedValue, "testObjAttr");
+}
+
+static inline JSValue jsTestObjTestNullableObjAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLInterface<TestObj>>>(state, *thisObject.globalObject(), impl.testNullableObjAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjTestNullableObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjTestNullableObjAttrGetter>(*state, thisValue, "testNullableObjAttr");
+}
+
+static inline bool setJSTestObjTestNullableObjAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLNullable<IDLInterface<TestObj>>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "testNullableObjAttr", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setTestNullableObjAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjTestNullableObjAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjTestNullableObjAttrSetter>(*state, thisValue, encodedValue, "testNullableObjAttr");
+}
+
+static inline JSValue jsTestObjLenientTestObjAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), impl.lenientTestObjAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjLenientTestObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return JSValue::encode(jsUndefined());
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.lenientTestObjAttr()));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjLenientTestObjAttrGetter, CastedThisErrorBehavior::ReturnEarly>(*state, thisValue, "lenientTestObjAttr");
 }
 
+static inline bool setJSTestObjLenientTestObjAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "lenientTestObjAttr", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setLenientTestObjAttr(*nativeValue);
+    return true;
+}
+
+bool setJSTestObjLenientTestObjAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjLenientTestObjAttrSetter, CastedThisErrorBehavior::ReturnEarly>(*state, thisValue, encodedValue, "lenientTestObjAttr");
+}
+
+static inline JSValue jsTestObjUnforgeableAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.unforgeableAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjUnforgeableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "unforgeableAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.unforgeableAttr());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjUnforgeableAttrGetter>(*state, thisValue, "unforgeableAttr");
 }
 
+static inline JSValue jsTestObjStringAttrTreatingNullAsEmptyStringGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLTreatNullAsEmptyAdaptor<IDLDOMString>>(state, impl.stringAttrTreatingNullAsEmptyString());
+    return result;
+}
+
+EncodedJSValue jsTestObjStringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrTreatingNullAsEmptyStringGetter>(*state, thisValue, "stringAttrTreatingNullAsEmptyString");
+}
+
+static inline bool setJSTestObjStringAttrTreatingNullAsEmptyStringSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLTreatNullAsEmptyAdaptor<IDLDOMString>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setStringAttrTreatingNullAsEmptyString(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjStringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringAttrTreatingNullAsEmptyStringSetter>(*state, thisValue, encodedValue, "stringAttrTreatingNullAsEmptyString");
+}
+
+static inline JSValue jsTestObjUsvstringAttrTreatingNullAsEmptyStringGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLTreatNullAsEmptyAdaptor<IDLUSVString>>(state, impl.usvstringAttrTreatingNullAsEmptyString());
+    return result;
+}
+
+EncodedJSValue jsTestObjUsvstringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringAttrTreatingNullAsEmptyStringGetter>(*state, thisValue, "usvstringAttrTreatingNullAsEmptyString");
+}
+
+static inline bool setJSTestObjUsvstringAttrTreatingNullAsEmptyStringSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLTreatNullAsEmptyAdaptor<IDLUSVString>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setUsvstringAttrTreatingNullAsEmptyString(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjUsvstringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjUsvstringAttrTreatingNullAsEmptyStringSetter>(*state, thisValue, encodedValue, "usvstringAttrTreatingNullAsEmptyString");
+}
+
+static inline JSValue jsTestObjByteStringAttrTreatingNullAsEmptyStringGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLTreatNullAsEmptyAdaptor<IDLByteString>>(state, impl.byteStringAttrTreatingNullAsEmptyString());
+    return result;
+}
+
+EncodedJSValue jsTestObjByteStringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjByteStringAttrTreatingNullAsEmptyStringGetter>(*state, thisValue, "byteStringAttrTreatingNullAsEmptyString");
+}
+
+static inline bool setJSTestObjByteStringAttrTreatingNullAsEmptyStringSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLTreatNullAsEmptyAdaptor<IDLByteString>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setByteStringAttrTreatingNullAsEmptyString(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjByteStringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjByteStringAttrTreatingNullAsEmptyStringSetter>(*state, thisValue, encodedValue, "byteStringAttrTreatingNullAsEmptyString");
+}
+
+static inline JSValue jsTestObjStringLongRecordAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLRecord<IDLDOMString, IDLLong>>(state, *thisObject.globalObject(), impl.stringLongRecordAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjStringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringLongRecordAttrGetter>(*state, thisValue, "stringLongRecordAttr");
+}
+
+static inline bool setJSTestObjStringLongRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLRecord<IDLDOMString, IDLLong>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setStringLongRecordAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjStringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringLongRecordAttrSetter>(*state, thisValue, encodedValue, "stringLongRecordAttr");
+}
+
+static inline JSValue jsTestObjUsvstringLongRecordAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLRecord<IDLUSVString, IDLLong>>(state, *thisObject.globalObject(), impl.usvstringLongRecordAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjUsvstringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringLongRecordAttrGetter>(*state, thisValue, "usvstringLongRecordAttr");
+}
+
+static inline bool setJSTestObjUsvstringLongRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLRecord<IDLUSVString, IDLLong>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setUsvstringLongRecordAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjUsvstringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjUsvstringLongRecordAttrSetter>(*state, thisValue, encodedValue, "usvstringLongRecordAttr");
+}
+
+static inline JSValue jsTestObjUsvstringLongRecordAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLRecord<IDLByteString, IDLLong>>(state, *thisObject.globalObject(), impl.usvstringLongRecordAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjUsvstringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringLongRecordAttrGetter>(*state, thisValue, "usvstringLongRecordAttr");
+}
+
+static inline bool setJSTestObjUsvstringLongRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLRecord<IDLByteString, IDLLong>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setUsvstringLongRecordAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjUsvstringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjUsvstringLongRecordAttrSetter>(*state, thisValue, encodedValue, "usvstringLongRecordAttr");
+}
+
+static inline JSValue jsTestObjStringObjRecordAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLRecord<IDLDOMString, IDLInterface<TestObj>>>(state, *thisObject.globalObject(), impl.stringObjRecordAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjStringObjRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringObjRecordAttrGetter>(*state, thisValue, "stringObjRecordAttr");
+}
+
+static inline bool setJSTestObjStringObjRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLRecord<IDLDOMString, IDLInterface<TestObj>>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setStringObjRecordAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjStringObjRecordAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringObjRecordAttrSetter>(*state, thisValue, encodedValue, "stringObjRecordAttr");
+}
+
+static inline JSValue jsTestObjStringNullableObjRecordAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLRecord<IDLDOMString, IDLNullable<IDLInterface<TestObj>>>>(state, *thisObject.globalObject(), impl.stringNullableObjRecordAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjStringNullableObjRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringNullableObjRecordAttrGetter>(*state, thisValue, "stringNullableObjRecordAttr");
+}
+
+static inline bool setJSTestObjStringNullableObjRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLRecord<IDLDOMString, IDLNullable<IDLInterface<TestObj>>>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setStringNullableObjRecordAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjStringNullableObjRecordAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringNullableObjRecordAttrSetter>(*state, thisValue, encodedValue, "stringNullableObjRecordAttr");
+}
+
+static inline JSValue jsTestObjDictionaryAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDictionary<TestObj::Dictionary>>(state, *thisObject.globalObject(), impl.dictionaryAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjDictionaryAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjDictionaryAttrGetter>(*state, thisValue, "dictionaryAttr");
+}
+
+static inline bool setJSTestObjDictionaryAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDictionary<TestObj::Dictionary>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setDictionaryAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjDictionaryAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjDictionaryAttrSetter>(*state, thisValue, encodedValue, "dictionaryAttr");
+}
+
+static inline JSValue jsTestObjNullableDictionaryAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLDictionary<TestObj::Dictionary>>>(state, *thisObject.globalObject(), impl.nullableDictionaryAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjNullableDictionaryAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableDictionaryAttrGetter>(*state, thisValue, "nullableDictionaryAttr");
+}
+
+static inline bool setJSTestObjNullableDictionaryAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLNullable<IDLDictionary<TestObj::Dictionary>>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setNullableDictionaryAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjNullableDictionaryAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjNullableDictionaryAttrSetter>(*state, thisValue, encodedValue, "nullableDictionaryAttr");
+}
+
+static inline JSValue jsTestObjAnnotatedTypeInUnionAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>>(state, *thisObject.globalObject(), impl.annotatedTypeInUnionAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjAnnotatedTypeInUnionAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjAnnotatedTypeInUnionAttrGetter>(*state, thisValue, "annotatedTypeInUnionAttr");
+}
+
+static inline bool setJSTestObjAnnotatedTypeInUnionAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAnnotatedTypeInUnionAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjAnnotatedTypeInUnionAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjAnnotatedTypeInUnionAttrSetter>(*state, thisValue, encodedValue, "annotatedTypeInUnionAttr");
+}
+
+static inline JSValue jsTestObjAnnotatedTypeInSequenceAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLSequence<IDLClampAdaptor<IDLLong>>>(state, *thisObject.globalObject(), impl.annotatedTypeInSequenceAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjAnnotatedTypeInSequenceAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjAnnotatedTypeInSequenceAttrGetter>(*state, thisValue, "annotatedTypeInSequenceAttr");
+}
+
+static inline bool setJSTestObjAnnotatedTypeInSequenceAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLSequence<IDLClampAdaptor<IDLLong>>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAnnotatedTypeInSequenceAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjAnnotatedTypeInSequenceAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjAnnotatedTypeInSequenceAttrSetter>(*state, thisValue, encodedValue, "annotatedTypeInSequenceAttr");
+}
+
+static inline JSValue jsTestObjImplementationEnumAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLEnumeration<AlternateEnumName>>(state, impl.implementationEnumAttr());
+    return result;
+}
+
+EncodedJSValue jsTestObjImplementationEnumAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjImplementationEnumAttrGetter>(*state, thisValue, "implementationEnumAttr");
+}
+
+static inline bool setJSTestObjImplementationEnumAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto optionalNativeValue = parseEnumeration<AlternateEnumName>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    if (UNLIKELY(!optionalNativeValue))
+        return false;
+    auto nativeValue = optionalNativeValue.value();
+    impl.setImplementationEnumAttr(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjImplementationEnumAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjImplementationEnumAttrSetter>(*state, thisValue, encodedValue, "implementationEnumAttr");
+}
+
+static inline JSValue jsTestObjXMLObjAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), impl.xmlObjAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjXMLObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "XMLObjAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.xmlObjAttr()));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjXMLObjAttrGetter>(*state, thisValue, "XMLObjAttr");
 }
 
+static inline bool setJSTestObjXMLObjAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "XMLObjAttr", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setXMLObjAttr(*nativeValue);
+    return true;
+}
+
+bool setJSTestObjXMLObjAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjXMLObjAttrSetter>(*state, thisValue, encodedValue, "XMLObjAttr");
+}
+
+static inline JSValue jsTestObjCreateGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLBoolean>(impl.isCreate());
+    return result;
+}
 
 EncodedJSValue jsTestObjCreate(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "create");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsBoolean(impl.isCreate());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjCreateGetter>(*state, thisValue, "create");
 }
 
-
-EncodedJSValue jsTestObjReadOnlySymbolAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline bool setJSTestObjCreateSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "readOnlySymbolAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = Symbol::create(state->vm(), *(impl.readOnlySymbolAttr()).uid());
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLBoolean>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setCreate(WTFMove(nativeValue));
+    return true;
 }
 
-
-EncodedJSValue jsTestObjConstructorStaticReadOnlySymbolAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+bool setJSTestObjCreate(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue result = Symbol::create(state->vm(), *(TestObj::staticReadOnlySymbolAttr()).uid());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::set<setJSTestObjCreateSetter>(*state, thisValue, encodedValue, "create");
 }
 
+static inline JSValue jsTestObjReflectedStringAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.attributeWithoutSynchronization(WebCore::HTMLNames::reflectedstringattrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedStringAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.fastGetAttribute(WebCore::HTMLNames::reflectedstringattrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedStringAttrGetter>(*state, thisValue, "reflectedStringAttr");
 }
 
+static inline bool setJSTestObjReflectedStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedstringattrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedStringAttrSetter>(*state, thisValue, encodedValue, "reflectedStringAttr");
+}
+
+static inline JSValue jsTestObjReflectedUSVStringAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUSVString>(state, impl.attributeWithoutSynchronization(WebCore::HTMLNames::reflectedusvstringattrAttr));
+    return result;
+}
+
+EncodedJSValue jsTestObjReflectedUSVStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUSVStringAttrGetter>(*state, thisValue, "reflectedUSVStringAttr");
+}
+
+static inline bool setJSTestObjReflectedUSVStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUSVString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedusvstringattrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedUSVStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedUSVStringAttrSetter>(*state, thisValue, encodedValue, "reflectedUSVStringAttr");
+}
+
+static inline JSValue jsTestObjReflectedIntegralAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.getIntegralAttribute(WebCore::HTMLNames::reflectedintegralattrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedIntegralAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedIntegralAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.getIntegralAttribute(WebCore::HTMLNames::reflectedintegralattrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedIntegralAttrGetter>(*state, thisValue, "reflectedIntegralAttr");
 }
 
+static inline bool setJSTestObjReflectedIntegralAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setIntegralAttribute(WebCore::HTMLNames::reflectedintegralattrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedIntegralAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedIntegralAttrSetter>(*state, thisValue, encodedValue, "reflectedIntegralAttr");
+}
+
+static inline JSValue jsTestObjReflectedUnsignedIntegralAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUnsignedLong>(std::max(0, impl.getIntegralAttribute(WebCore::HTMLNames::reflectedunsignedintegralattrAttr)));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedUnsignedIntegralAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedUnsignedIntegralAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(std::max(0, impl.getIntegralAttribute(WebCore::HTMLNames::reflectedunsignedintegralattrAttr)));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUnsignedIntegralAttrGetter>(*state, thisValue, "reflectedUnsignedIntegralAttr");
 }
 
+static inline bool setJSTestObjReflectedUnsignedIntegralAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUnsignedLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setUnsignedIntegralAttribute(WebCore::HTMLNames::reflectedunsignedintegralattrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedUnsignedIntegralAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedUnsignedIntegralAttrSetter>(*state, thisValue, encodedValue, "reflectedUnsignedIntegralAttr");
+}
+
+static inline JSValue jsTestObjReflectedBooleanAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLBoolean>(impl.hasAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedbooleanattrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedBooleanAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedBooleanAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsBoolean(impl.fastHasAttribute(WebCore::HTMLNames::reflectedbooleanattrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedBooleanAttrGetter>(*state, thisValue, "reflectedBooleanAttr");
 }
 
+static inline bool setJSTestObjReflectedBooleanAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLBoolean>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setBooleanAttribute(WebCore::HTMLNames::reflectedbooleanattrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedBooleanAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedBooleanAttrSetter>(*state, thisValue, encodedValue, "reflectedBooleanAttr");
+}
+
+static inline JSValue jsTestObjReflectedURLAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.getURLAttribute(WebCore::HTMLNames::reflectedurlattrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedURLAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedURLAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.getURLAttribute(WebCore::HTMLNames::reflectedurlattrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedURLAttrGetter>(*state, thisValue, "reflectedURLAttr");
 }
 
+static inline bool setJSTestObjReflectedURLAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedurlattrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedURLAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedURLAttrSetter>(*state, thisValue, encodedValue, "reflectedURLAttr");
+}
+
+static inline JSValue jsTestObjReflectedUSVURLAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUSVString>(state, impl.getURLAttribute(WebCore::HTMLNames::reflectedusvurlattrAttr));
+    return result;
+}
+
+EncodedJSValue jsTestObjReflectedUSVURLAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUSVURLAttrGetter>(*state, thisValue, "reflectedUSVURLAttr");
+}
+
+static inline bool setJSTestObjReflectedUSVURLAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUSVString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedusvurlattrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedUSVURLAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedUSVURLAttrSetter>(*state, thisValue, encodedValue, "reflectedUSVURLAttr");
+}
+
+static inline JSValue jsTestObjReflectedStringAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.attributeWithoutSynchronization(WebCore::HTMLNames::customContentStringAttrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedStringAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.fastGetAttribute(WebCore::HTMLNames::customContentStringAttrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedStringAttrGetter>(*state, thisValue, "reflectedStringAttr");
 }
 
+static inline bool setJSTestObjReflectedStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::customContentStringAttrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedStringAttrSetter>(*state, thisValue, encodedValue, "reflectedStringAttr");
+}
+
+static inline JSValue jsTestObjReflectedCustomIntegralAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.getIntegralAttribute(WebCore::HTMLNames::customContentIntegralAttrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedCustomIntegralAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedCustomIntegralAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.getIntegralAttribute(WebCore::HTMLNames::customContentIntegralAttrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomIntegralAttrGetter>(*state, thisValue, "reflectedCustomIntegralAttr");
 }
 
+static inline bool setJSTestObjReflectedCustomIntegralAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setIntegralAttribute(WebCore::HTMLNames::customContentIntegralAttrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedCustomIntegralAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedCustomIntegralAttrSetter>(*state, thisValue, encodedValue, "reflectedCustomIntegralAttr");
+}
+
+static inline JSValue jsTestObjReflectedCustomBooleanAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLBoolean>(impl.hasAttributeWithoutSynchronization(WebCore::HTMLNames::customContentBooleanAttrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedCustomBooleanAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedCustomBooleanAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsBoolean(impl.fastHasAttribute(WebCore::HTMLNames::customContentBooleanAttrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomBooleanAttrGetter>(*state, thisValue, "reflectedCustomBooleanAttr");
 }
 
+static inline bool setJSTestObjReflectedCustomBooleanAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLBoolean>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setBooleanAttribute(WebCore::HTMLNames::customContentBooleanAttrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedCustomBooleanAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedCustomBooleanAttrSetter>(*state, thisValue, encodedValue, "reflectedCustomBooleanAttr");
+}
+
+static inline JSValue jsTestObjReflectedCustomURLAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.getURLAttribute(WebCore::HTMLNames::customContentURLAttrAttr));
+    return result;
+}
 
 EncodedJSValue jsTestObjReflectedCustomURLAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "reflectedCustomURLAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.getURLAttribute(WebCore::HTMLNames::customContentURLAttrAttr));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomURLAttrGetter>(*state, thisValue, "reflectedCustomURLAttr");
 }
 
+static inline bool setJSTestObjReflectedCustomURLAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::customContentURLAttrAttr, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjReflectedCustomURLAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReflectedCustomURLAttrSetter>(*state, thisValue, encodedValue, "reflectedCustomURLAttr");
+}
+
+#if ENABLE(TEST_FEATURE)
+static inline JSValue jsTestObjEnabledAtRuntimeAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.enabledAtRuntimeAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjEnabledAtRuntimeAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnabledAtRuntimeAttributeGetter>(*state, thisValue, "enabledAtRuntimeAttribute");
+}
+
+#endif
+
+#if ENABLE(TEST_FEATURE)
+static inline bool setJSTestObjEnabledAtRuntimeAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setEnabledAtRuntimeAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjEnabledAtRuntimeAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjEnabledAtRuntimeAttributeSetter>(*state, thisValue, encodedValue, "enabledAtRuntimeAttribute");
+}
+
+#endif
+
+#if ENABLE(TEST_FEATURE)
+static inline JSValue jsTestObjEnabledBySettingAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.enabledBySettingAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjEnabledBySettingAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnabledBySettingAttributeGetter>(*state, thisValue, "enabledBySettingAttribute");
+}
+
+#endif
+
+#if ENABLE(TEST_FEATURE)
+static inline bool setJSTestObjEnabledBySettingAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setEnabledBySettingAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjEnabledBySettingAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjEnabledBySettingAttributeSetter>(*state, thisValue, encodedValue, "enabledBySettingAttribute");
+}
+
+#endif
+
+static inline JSValue jsTestObjTypedArrayAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLFloat32Array>(state, *thisObject.globalObject(), impl.typedArrayAttr());
+    return result;
+}
 
 EncodedJSValue jsTestObjTypedArrayAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "typedArrayAttr");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.typedArrayAttr()));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjTypedArrayAttrGetter>(*state, thisValue, "typedArrayAttr");
 }
 
-
-EncodedJSValue jsTestObjAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline bool setJSTestObjTypedArrayAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "attrWithGetterException");
-    }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithGetterException(ec));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLFloat32Array>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "typedArrayAttr", "Float32Array"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setTypedArrayAttr(nativeValue.releaseNonNull());
+    return true;
 }
 
+bool setJSTestObjTypedArrayAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjTypedArrayAttrSetter>(*state, thisValue, encodedValue, "typedArrayAttr");
+}
 
-EncodedJSValue jsTestObjAttrWithGetterExceptionWithMessage(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline JSValue jsTestObjAttributeWithGetterExceptionGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(state, throwScope, impl.attributeWithGetterException());
+    return result;
+}
+
+EncodedJSValue jsTestObjAttributeWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithGetterExceptionGetter>(*state, thisValue, "attributeWithGetterException");
+}
+
+static inline bool setJSTestObjAttributeWithGetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "attrWithGetterExceptionWithMessage");
-    }
-    ExceptionCodeWithMessage ec;
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithGetterExceptionWithMessage(ec));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAttributeWithGetterException(WTFMove(nativeValue));
+    return true;
 }
 
+bool setJSTestObjAttributeWithGetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjAttributeWithGetterExceptionSetter>(*state, thisValue, encodedValue, "attributeWithGetterException");
+}
 
-EncodedJSValue jsTestObjAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline JSValue jsTestObjAttributeWithSetterExceptionGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.attributeWithSetterException());
+    return result;
+}
+
+EncodedJSValue jsTestObjAttributeWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithSetterExceptionGetter>(*state, thisValue, "attributeWithSetterException");
+}
+
+static inline bool setJSTestObjAttributeWithSetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "attrWithSetterException");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithSetterException());
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    propagateException(state, throwScope, impl.setAttributeWithSetterException(WTFMove(nativeValue)));
+    return true;
 }
 
-
-EncodedJSValue jsTestObjAttrWithSetterExceptionWithMessage(ExecState* state, EncodedJSValue thisValue, PropertyName)
+bool setJSTestObjAttributeWithSetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "attrWithSetterExceptionWithMessage");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.attrWithSetterExceptionWithMessage());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::set<setJSTestObjAttributeWithSetterExceptionSetter>(*state, thisValue, encodedValue, "attributeWithSetterException");
 }
 
+static inline JSValue jsTestObjStringAttrWithGetterExceptionGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, throwScope, impl.stringAttrWithGetterException());
+    return result;
+}
 
 EncodedJSValue jsTestObjStringAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "stringAttrWithGetterException");
-    }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.stringAttrWithGetterException(ec));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrWithGetterExceptionGetter>(*state, thisValue, "stringAttrWithGetterException");
 }
 
+static inline bool setJSTestObjStringAttrWithGetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setStringAttrWithGetterException(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjStringAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringAttrWithGetterExceptionSetter>(*state, thisValue, encodedValue, "stringAttrWithGetterException");
+}
+
+static inline JSValue jsTestObjStringAttrWithSetterExceptionGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.stringAttrWithSetterException());
+    return result;
+}
 
 EncodedJSValue jsTestObjStringAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "stringAttrWithSetterException");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.stringAttrWithSetterException());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrWithSetterExceptionGetter>(*state, thisValue, "stringAttrWithSetterException");
 }
 
-
-EncodedJSValue jsTestObjStrictTypeCheckingAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline bool setJSTestObjStringAttrWithSetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "strictTypeCheckingAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.strictTypeCheckingAttribute()));
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLDOMString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    propagateException(state, throwScope, impl.setStringAttrWithSetterException(WTFMove(nativeValue)));
+    return true;
 }
 
+bool setJSTestObjStringAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringAttrWithSetterExceptionSetter>(*state, thisValue, encodedValue, "stringAttrWithSetterException");
+}
+
+static inline JSValue jsTestObjCustomAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return thisObject.customAttr(state);
+}
 
 EncodedJSValue jsTestObjCustomAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "customAttr");
-    }
-    return JSValue::encode(castedThis->customAttr(*state));
+    return IDLAttribute<JSTestObj>::get<jsTestObjCustomAttrGetter>(*state, thisValue, "customAttr");
 }
 
+static inline bool setJSTestObjCustomAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    thisObject.setCustomAttr(state, value);
+    return true;
+}
+
+bool setJSTestObjCustomAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjCustomAttrSetter>(*state, thisValue, encodedValue, "customAttr");
+}
+
+static inline JSValue jsTestObjOnfooGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return eventHandlerAttribute(thisObject.wrapped(), eventNames().fooEvent, worldForDOMObject(&thisObject));
+}
 
 EncodedJSValue jsTestObjOnfoo(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "onfoo");
-    }
-    UNUSED_PARAM(state);
-    return JSValue::encode(eventHandlerAttribute(castedThis->wrapped(), eventNames().fooEvent));
+    return IDLAttribute<JSTestObj>::get<jsTestObjOnfooGetter>(*state, thisValue, "onfoo");
 }
 
+static inline bool setJSTestObjOnfooSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    setEventHandlerAttribute(state, thisObject, thisObject.wrapped(), eventNames().fooEvent, value);
+    return true;
+}
+
+bool setJSTestObjOnfoo(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjOnfooSetter>(*state, thisValue, encodedValue, "onfoo");
+}
+
+static inline JSValue jsTestObjOnwebkitfooGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return eventHandlerAttribute(thisObject.wrapped(), eventNames().fooEvent, worldForDOMObject(&thisObject));
+}
+
+EncodedJSValue jsTestObjOnwebkitfoo(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjOnwebkitfooGetter>(*state, thisValue, "onwebkitfoo");
+}
+
+static inline bool setJSTestObjOnwebkitfooSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    setEventHandlerAttribute(state, thisObject, thisObject.wrapped(), eventNames().fooEvent, value);
+    return true;
+}
+
+bool setJSTestObjOnwebkitfoo(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjOnwebkitfooSetter>(*state, thisValue, encodedValue, "onwebkitfoo");
+}
+
+static inline JSValue jsTestObjWithScriptStateAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.withScriptStateAttribute(state));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptStateAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.withScriptStateAttribute(*state));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptStateAttributeGetter>(*state, thisValue, "withScriptStateAttribute");
 }
 
+static inline bool setJSTestObjWithScriptStateAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setWithScriptStateAttribute(state, WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjWithScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithScriptStateAttributeSetter>(*state, thisValue, encodedValue, "withScriptStateAttribute");
+}
+
+static inline JSValue jsTestObjWithCallWithAndSetterCallWithAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.withCallWithAndSetterCallWithAttribute(state));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithCallWithAndSetterCallWithAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withCallWithAndSetterCallWithAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.withCallWithAndSetterCallWithAttribute(*state));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithCallWithAndSetterCallWithAttributeGetter>(*state, thisValue, "withCallWithAndSetterCallWithAttribute");
 }
 
+static inline bool setJSTestObjWithCallWithAndSetterCallWithAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setWithCallWithAndSetterCallWithAttribute(state, activeDOMWindow(state), firstDOMWindow(state), WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjWithCallWithAndSetterCallWithAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithCallWithAndSetterCallWithAttributeSetter>(*state, thisValue, encodedValue, "withCallWithAndSetterCallWithAttribute");
+}
+
+static inline JSValue jsTestObjWithScriptExecutionContextAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return jsUndefined();
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), impl.withScriptExecutionContextAttribute(*context));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptExecutionContextAttribute");
-    }
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return JSValue::encode(jsUndefined());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptExecutionContextAttribute(scriptContext)));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAttributeGetter>(*state, thisValue, "withScriptExecutionContextAttribute");
 }
 
+static inline bool setJSTestObjWithScriptExecutionContextAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "withScriptExecutionContextAttribute", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return false;
+    impl.setWithScriptExecutionContextAttribute(*context, *nativeValue);
+    return true;
+}
+
+bool setJSTestObjWithScriptExecutionContextAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithScriptExecutionContextAttributeSetter>(*state, thisValue, encodedValue, "withScriptExecutionContextAttribute");
+}
+
+static inline JSValue jsTestObjWithScriptStateAttributeRaisesGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), throwScope, impl.withScriptStateAttributeRaises(state));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptStateAttributeRaises");
-    }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptStateAttributeRaises(*state, ec)));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptStateAttributeRaisesGetter>(*state, thisValue, "withScriptStateAttributeRaises");
 }
 
+static inline bool setJSTestObjWithScriptStateAttributeRaisesSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "withScriptStateAttributeRaises", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setWithScriptStateAttributeRaises(state, *nativeValue);
+    return true;
+}
+
+bool setJSTestObjWithScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithScriptStateAttributeRaisesSetter>(*state, thisValue, encodedValue, "withScriptStateAttributeRaises");
+}
+
+static inline JSValue jsTestObjWithScriptExecutionContextAttributeRaisesGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return jsUndefined();
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), throwScope, impl.withScriptExecutionContextAttributeRaises(*context));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAttributeRaises(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptExecutionContextAttributeRaises");
-    }
-    ExceptionCode ec = 0;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return JSValue::encode(jsUndefined());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptExecutionContextAttributeRaises(scriptContext, ec)));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAttributeRaisesGetter>(*state, thisValue, "withScriptExecutionContextAttributeRaises");
 }
 
+static inline bool setJSTestObjWithScriptExecutionContextAttributeRaisesSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "withScriptExecutionContextAttributeRaises", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return false;
+    impl.setWithScriptExecutionContextAttributeRaises(*context, *nativeValue);
+    return true;
+}
+
+bool setJSTestObjWithScriptExecutionContextAttributeRaises(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithScriptExecutionContextAttributeRaisesSetter>(*state, thisValue, encodedValue, "withScriptExecutionContextAttributeRaises");
+}
+
+static inline JSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return jsUndefined();
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), impl.withScriptExecutionContextAndScriptStateAttribute(state, *context));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateAttribute");
-    }
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return JSValue::encode(jsUndefined());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptExecutionContextAndScriptStateAttribute(*state, scriptContext)));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateAttributeGetter>(*state, thisValue, "withScriptExecutionContextAndScriptStateAttribute");
 }
 
+static inline bool setJSTestObjWithScriptExecutionContextAndScriptStateAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "withScriptExecutionContextAndScriptStateAttribute", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return false;
+    impl.setWithScriptExecutionContextAndScriptStateAttribute(state, *context, *nativeValue);
+    return true;
+}
+
+bool setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithScriptExecutionContextAndScriptStateAttributeSetter>(*state, thisValue, encodedValue, "withScriptExecutionContextAndScriptStateAttribute");
+}
+
+static inline JSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaisesGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return jsUndefined();
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), throwScope, impl.withScriptExecutionContextAndScriptStateAttributeRaises(state, *context));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateAttributeRaises");
-    }
-    ExceptionCode ec = 0;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return JSValue::encode(jsUndefined());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptExecutionContextAndScriptStateAttributeRaises(*state, scriptContext, ec)));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaisesGetter>(*state, thisValue, "withScriptExecutionContextAndScriptStateAttributeRaises");
 }
 
+static inline bool setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaisesSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "withScriptExecutionContextAndScriptStateAttributeRaises", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return false;
+    impl.setWithScriptExecutionContextAndScriptStateAttributeRaises(state, *context, *nativeValue);
+    return true;
+}
+
+bool setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaisesSetter>(*state, thisValue, encodedValue, "withScriptExecutionContextAndScriptStateAttributeRaises");
+}
+
+static inline JSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return jsUndefined();
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestObj>>(state, *thisObject.globalObject(), impl.withScriptExecutionContextAndScriptStateWithSpacesAttribute(state, *context));
+    return result;
+}
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateWithSpacesAttribute");
-    }
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return JSValue::encode(jsUndefined());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptExecutionContextAndScriptStateWithSpacesAttribute(*state, scriptContext)));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttributeGetter>(*state, thisValue, "withScriptExecutionContextAndScriptStateWithSpacesAttribute");
 }
 
-
-EncodedJSValue jsTestObjWithScriptArgumentsAndCallStackAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline bool setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "withScriptArgumentsAndCallStackAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptArgumentsAndCallStackAttribute()));
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<TestObj>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "withScriptExecutionContextAndScriptStateWithSpacesAttribute", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    auto* context = jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return false;
+    impl.setWithScriptExecutionContextAndScriptStateWithSpacesAttribute(state, *context, *nativeValue);
+    return true;
 }
 
+bool setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttributeSetter>(*state, thisValue, encodedValue, "withScriptExecutionContextAndScriptStateWithSpacesAttribute");
+}
 
 #if ENABLE(Condition1)
+static inline JSValue jsTestObjConditionalAttr1Getter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.conditionalAttr1());
+    return result;
+}
+
 EncodedJSValue jsTestObjConditionalAttr1(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "conditionalAttr1");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.conditionalAttr1());
-    return JSValue::encode(result);
-}
-
-#endif
-
-#if ENABLE(Condition1) && ENABLE(Condition2)
-EncodedJSValue jsTestObjConditionalAttr2(ExecState* state, EncodedJSValue thisValue, PropertyName)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "conditionalAttr2");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.conditionalAttr2());
-    return JSValue::encode(result);
-}
-
-#endif
-
-#if ENABLE(Condition1) || ENABLE(Condition2)
-EncodedJSValue jsTestObjConditionalAttr3(ExecState* state, EncodedJSValue thisValue, PropertyName)
-{
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "conditionalAttr3");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.conditionalAttr3());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr1Getter>(*state, thisValue, "conditionalAttr1");
 }
 
 #endif
 
 #if ENABLE(Condition1)
-EncodedJSValue jsTestObjConditionalAttr4Constructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline bool setJSTestObjConditionalAttr1Setter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "conditionalAttr4");
-    }
-    return JSValue::encode(JSTestObjectA::getConstructor(state->vm(), castedThis->globalObject()));
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionalAttr1(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjConditionalAttr1(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionalAttr1Setter>(*state, thisValue, encodedValue, "conditionalAttr1");
 }
 
 #endif
 
 #if ENABLE(Condition1) && ENABLE(Condition2)
-EncodedJSValue jsTestObjConditionalAttr5Constructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline JSValue jsTestObjConditionalAttr2Getter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.conditionalAttr2());
+    return result;
+}
+
+EncodedJSValue jsTestObjConditionalAttr2(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr2Getter>(*state, thisValue, "conditionalAttr2");
+}
+
+#endif
+
+#if ENABLE(Condition1) && ENABLE(Condition2)
+static inline bool setJSTestObjConditionalAttr2Setter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "conditionalAttr5");
-    }
-    return JSValue::encode(JSTestObjectB::getConstructor(state->vm(), castedThis->globalObject()));
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionalAttr2(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjConditionalAttr2(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionalAttr2Setter>(*state, thisValue, encodedValue, "conditionalAttr2");
 }
 
 #endif
 
 #if ENABLE(Condition1) || ENABLE(Condition2)
-EncodedJSValue jsTestObjConditionalAttr6Constructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline JSValue jsTestObjConditionalAttr3Getter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
 {
+    UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "conditionalAttr6");
-    }
-    return JSValue::encode(JSTestObjectC::getConstructor(state->vm(), castedThis->globalObject()));
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.conditionalAttr3());
+    return result;
+}
+
+EncodedJSValue jsTestObjConditionalAttr3(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr3Getter>(*state, thisValue, "conditionalAttr3");
 }
 
 #endif
+
+#if ENABLE(Condition1) || ENABLE(Condition2)
+static inline bool setJSTestObjConditionalAttr3Setter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionalAttr3(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjConditionalAttr3(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionalAttr3Setter>(*state, thisValue, encodedValue, "conditionalAttr3");
+}
+
+#endif
+
+#if ENABLE(Condition1)
+static inline JSValue jsTestObjConditionalAttr4ConstructorGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return JSTestObjectA::getConstructor(state.vm(), thisObject.globalObject());
+}
+
+EncodedJSValue jsTestObjConditionalAttr4Constructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr4ConstructorGetter>(*state, thisValue, "conditionalAttr4");
+}
+
+#endif
+
+#if ENABLE(Condition1)
+static inline bool setJSTestObjConditionalAttr4ConstructorSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    // Shadowing a built-in constructor.
+    return thisObject.putDirect(state.vm(), Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("conditionalAttr4"), strlen("conditionalAttr4")), value);
+}
+
+bool setJSTestObjConditionalAttr4Constructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionalAttr4ConstructorSetter>(*state, thisValue, encodedValue, "conditionalAttr4");
+}
+
+#endif
+
+#if ENABLE(Condition1) && ENABLE(Condition2)
+static inline JSValue jsTestObjConditionalAttr5ConstructorGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return JSTestObjectB::getConstructor(state.vm(), thisObject.globalObject());
+}
+
+EncodedJSValue jsTestObjConditionalAttr5Constructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr5ConstructorGetter>(*state, thisValue, "conditionalAttr5");
+}
+
+#endif
+
+#if ENABLE(Condition1) && ENABLE(Condition2)
+static inline bool setJSTestObjConditionalAttr5ConstructorSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    // Shadowing a built-in constructor.
+    return thisObject.putDirect(state.vm(), Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("conditionalAttr5"), strlen("conditionalAttr5")), value);
+}
+
+bool setJSTestObjConditionalAttr5Constructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionalAttr5ConstructorSetter>(*state, thisValue, encodedValue, "conditionalAttr5");
+}
+
+#endif
+
+#if ENABLE(Condition1) || ENABLE(Condition2)
+static inline JSValue jsTestObjConditionalAttr6ConstructorGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    return JSTestObjectC::getConstructor(state.vm(), thisObject.globalObject());
+}
+
+EncodedJSValue jsTestObjConditionalAttr6Constructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr6ConstructorGetter>(*state, thisValue, "conditionalAttr6");
+}
+
+#endif
+
+#if ENABLE(Condition1) || ENABLE(Condition2)
+static inline bool setJSTestObjConditionalAttr6ConstructorSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    // Shadowing a built-in constructor.
+    return thisObject.putDirect(state.vm(), Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("conditionalAttr6"), strlen("conditionalAttr6")), value);
+}
+
+bool setJSTestObjConditionalAttr6Constructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionalAttr6ConstructorSetter>(*state, thisValue, encodedValue, "conditionalAttr6");
+}
+
+#endif
+
+static inline JSValue jsTestObjCachedAttribute1Getter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    if (JSValue cachedValue = thisObject.m_cachedAttribute1.get())
+        return cachedValue;
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLAny>(impl.cachedAttribute1());
+    thisObject.m_cachedAttribute1.set(state.vm(), &thisObject, result);
+    return result;
+}
 
 EncodedJSValue jsTestObjCachedAttribute1(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "cachedAttribute1");
-    }
-    if (JSValue cachedValue = castedThis->m_cachedAttribute1.get())
-        return JSValue::encode(cachedValue);
-    auto& impl = castedThis->wrapped();
-    JSValue result = (impl.cachedAttribute1().hasNoValue() ? jsNull() : impl.cachedAttribute1().jsValue());
-    castedThis->m_cachedAttribute1.set(state->vm(), castedThis, result);
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjCachedAttribute1Getter>(*state, thisValue, "cachedAttribute1");
 }
 
+static inline JSValue jsTestObjCachedAttribute2Getter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    if (JSValue cachedValue = thisObject.m_cachedAttribute2.get())
+        return cachedValue;
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLAny>(impl.cachedAttribute2());
+    thisObject.m_cachedAttribute2.set(state.vm(), &thisObject, result);
+    return result;
+}
 
 EncodedJSValue jsTestObjCachedAttribute2(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "cachedAttribute2");
-    }
-    if (JSValue cachedValue = castedThis->m_cachedAttribute2.get())
-        return JSValue::encode(cachedValue);
-    auto& impl = castedThis->wrapped();
-    JSValue result = (impl.cachedAttribute2().hasNoValue() ? jsNull() : impl.cachedAttribute2().jsValue());
-    castedThis->m_cachedAttribute2.set(state->vm(), castedThis, result);
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjCachedAttribute2Getter>(*state, thisValue, "cachedAttribute2");
 }
 
+static inline JSValue jsTestObjAnyAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLAny>(impl.anyAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjAnyAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "anyAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = (impl.anyAttribute().hasNoValue() ? jsNull() : impl.anyAttribute().jsValue());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjAnyAttributeGetter>(*state, thisValue, "anyAttribute");
 }
 
+static inline bool setJSTestObjAnyAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLAny>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setAnyAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjAnyAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjAnyAttributeSetter>(*state, thisValue, encodedValue, "anyAttribute");
+}
+
+static inline JSValue jsTestObjObjectAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLObject>(impl.objectAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjObjectAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjObjectAttributeGetter>(*state, thisValue, "objectAttribute");
+}
+
+static inline bool setJSTestObjObjectAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLObject>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setObjectAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjObjectAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjObjectAttributeSetter>(*state, thisValue, encodedValue, "objectAttribute");
+}
+
+static inline JSValue jsTestObjContentDocumentGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<Document>>(state, *thisObject.globalObject(), BindingSecurity::checkSecurityForNode(state, impl.contentDocument()));
+    return result;
+}
 
 EncodedJSValue jsTestObjContentDocument(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "contentDocument");
-    }
-    auto& impl = castedThis->wrapped();
-    return JSValue::encode(shouldAllowAccessToNode(state, impl.contentDocument()) ? toJS(state, castedThis->globalObject(), WTF::getPtr(impl.contentDocument())) : jsNull());
+    return IDLAttribute<JSTestObj>::get<jsTestObjContentDocumentGetter>(*state, thisValue, "contentDocument");
 }
 
+static inline JSValue jsTestObjMutablePointGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<SVGPoint>>(state, *thisObject.globalObject(), impl.mutablePoint());
+    return result;
+}
 
 EncodedJSValue jsTestObjMutablePoint(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "mutablePoint");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(SVGStaticPropertyTearOff<TestObj, SVGPoint>::create(impl, impl.mutablePoint(), &TestObj::updateMutablePoint)));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjMutablePointGetter>(*state, thisValue, "mutablePoint");
 }
 
-
-EncodedJSValue jsTestObjImmutablePoint(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline bool setJSTestObjMutablePointSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "immutablePoint");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<SVGPoint>::create(impl.immutablePoint())));
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<SVGPoint>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "mutablePoint", "SVGPoint"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setMutablePoint(*nativeValue);
+    return true;
 }
 
+bool setJSTestObjMutablePoint(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjMutablePointSetter>(*state, thisValue, encodedValue, "mutablePoint");
+}
+
+static inline JSValue jsTestObjStrawberryGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.blueberry());
+    return result;
+}
 
 EncodedJSValue jsTestObjStrawberry(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "strawberry");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.blueberry());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjStrawberryGetter>(*state, thisValue, "strawberry");
 }
 
-
-EncodedJSValue jsTestObjStrictFloat(ExecState* state, EncodedJSValue thisValue, PropertyName)
+static inline bool setJSTestObjStrawberrySetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "strictFloat");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.strictFloat());
-    return JSValue::encode(result);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setBlueberry(WTFMove(nativeValue));
+    return true;
 }
 
+bool setJSTestObjStrawberry(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStrawberrySetter>(*state, thisValue, encodedValue, "strawberry");
+}
+
+static inline JSValue jsTestObjDescriptionGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.description());
+    return result;
+}
 
 EncodedJSValue jsTestObjDescription(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "description");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.description());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjDescriptionGetter>(*state, thisValue, "description");
 }
 
+static inline JSValue jsTestObjIdGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.id());
+    return result;
+}
 
 EncodedJSValue jsTestObjId(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "id");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.id());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjIdGetter>(*state, thisValue, "id");
 }
 
+static inline bool setJSTestObjIdSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLLong>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setId(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjId(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjIdSetter>(*state, thisValue, encodedValue, "id");
+}
+
+static inline JSValue jsTestObjHashGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.hash());
+    return result;
+}
 
 EncodedJSValue jsTestObjHash(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "hash");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.hash());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjHashGetter>(*state, thisValue, "hash");
 }
 
+static inline JSValue jsTestObjReplaceableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLLong>(impl.replaceableAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjReplaceableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "replaceableAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.replaceableAttribute());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjReplaceableAttributeGetter>(*state, thisValue, "replaceableAttribute");
 }
 
+static inline bool setJSTestObjReplaceableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    // Shadowing a built-in property.
+    return thisObject.putDirect(state.vm(), Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("replaceableAttribute"), strlen("replaceableAttribute")), value);
+}
+
+bool setJSTestObjReplaceableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjReplaceableAttributeSetter>(*state, thisValue, encodedValue, "replaceableAttribute");
+}
+
+static inline JSValue jsTestObjNullableDoubleAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLUnrestrictedDouble>>(impl.nullableDoubleAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjNullableDoubleAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "nullableDoubleAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toNullableJSNumber(impl.nullableDoubleAttribute());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableDoubleAttributeGetter>(*state, thisValue, "nullableDoubleAttribute");
 }
 
+static inline JSValue jsTestObjNullableLongAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLLong>>(impl.nullableLongAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjNullableLongAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "nullableLongAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toNullableJSNumber(impl.nullableLongAttribute());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableLongAttributeGetter>(*state, thisValue, "nullableLongAttribute");
 }
 
+static inline JSValue jsTestObjNullableBooleanAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLBoolean>>(impl.nullableBooleanAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjNullableBooleanAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "nullableBooleanAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsBoolean(impl.nullableBooleanAttribute());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableBooleanAttributeGetter>(*state, thisValue, "nullableBooleanAttribute");
 }
 
+static inline JSValue jsTestObjNullableStringAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLDOMString>>(state, impl.nullableStringAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjNullableStringAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "nullableStringAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.nullableStringAttribute());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringAttributeGetter>(*state, thisValue, "nullableStringAttribute");
 }
 
+static inline JSValue jsTestObjNullableLongSettableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLLong>>(impl.nullableLongSettableAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjNullableLongSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "nullableLongSettableAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toNullableJSNumber(impl.nullableLongSettableAttribute());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableLongSettableAttributeGetter>(*state, thisValue, "nullableLongSettableAttribute");
 }
 
+static inline bool setJSTestObjNullableLongSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLNullable<IDLLong>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setNullableLongSettableAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjNullableLongSettableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjNullableLongSettableAttributeSetter>(*state, thisValue, encodedValue, "nullableLongSettableAttribute");
+}
+
+static inline JSValue jsTestObjNullableStringSettableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLDOMString>>(state, impl.nullableStringSettableAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjNullableStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringSettableAttributeGetter>(*state, thisValue, "nullableStringSettableAttribute");
+}
+
+static inline bool setJSTestObjNullableStringSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLNullable<IDLDOMString>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setNullableStringSettableAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjNullableStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjNullableStringSettableAttributeSetter>(*state, thisValue, encodedValue, "nullableStringSettableAttribute");
+}
+
+static inline JSValue jsTestObjNullableUSVStringSettableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLUSVString>>(state, impl.nullableUSVStringSettableAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjNullableUSVStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableUSVStringSettableAttributeGetter>(*state, thisValue, "nullableUSVStringSettableAttribute");
+}
+
+static inline bool setJSTestObjNullableUSVStringSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLNullable<IDLUSVString>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setNullableUSVStringSettableAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjNullableUSVStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjNullableUSVStringSettableAttributeSetter>(*state, thisValue, encodedValue, "nullableUSVStringSettableAttribute");
+}
+
+static inline JSValue jsTestObjNullableByteStringSettableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLByteString>>(state, impl.nullableByteStringSettableAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjNullableByteStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableByteStringSettableAttributeGetter>(*state, thisValue, "nullableByteStringSettableAttribute");
+}
+
+static inline bool setJSTestObjNullableByteStringSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLNullable<IDLByteString>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setNullableByteStringSettableAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjNullableByteStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjNullableByteStringSettableAttributeSetter>(*state, thisValue, encodedValue, "nullableByteStringSettableAttribute");
+}
+
+static inline JSValue jsTestObjNullableStringValueGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLLong>>(state, throwScope, impl.nullableStringValue());
+    return result;
+}
 
 EncodedJSValue jsTestObjNullableStringValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "nullableStringValue");
-    }
-    ExceptionCode ec = 0;
-    auto& impl = castedThis->wrapped();
-    JSValue result = toNullableJSNumber(impl.nullableStringValue(ec));
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringValueGetter>(*state, thisValue, "nullableStringValue");
 }
 
+static inline bool setJSTestObjNullableStringValueSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLNullable<IDLLong>>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setNullableStringValue(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjNullableStringValue(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjNullableStringValueSetter>(*state, thisValue, encodedValue, "nullableStringValue");
+}
+
+static inline JSValue jsTestObjAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLDOMString>(state, impl.attribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "attribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.attribute());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeGetter>(*state, thisValue, "attribute");
 }
 
+static inline JSValue jsTestObjAttributeWithReservedEnumTypeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLEnumeration<TestObj::Optional>>(state, impl.attributeWithReservedEnumType());
+    return result;
+}
 
 EncodedJSValue jsTestObjAttributeWithReservedEnumType(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "attributeWithReservedEnumType");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.attributeWithReservedEnumType());
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithReservedEnumTypeGetter>(*state, thisValue, "attributeWithReservedEnumType");
 }
 
+static inline bool setJSTestObjAttributeWithReservedEnumTypeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto optionalNativeValue = parseEnumeration<TestObj::Optional>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    if (UNLIKELY(!optionalNativeValue))
+        return false;
+    auto nativeValue = optionalNativeValue.value();
+    impl.setAttributeWithReservedEnumType(WTFMove(nativeValue));
+    return true;
+}
+
+bool setJSTestObjAttributeWithReservedEnumType(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjAttributeWithReservedEnumTypeSetter>(*state, thisValue, encodedValue, "attributeWithReservedEnumType");
+}
+
+static inline JSValue jsTestObjPutForwardsAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<TestNode>>(state, *thisObject.globalObject(), impl.putForwardsAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjPutForwardsAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "putForwardsAttribute");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.putForwardsAttribute()));
-    return JSValue::encode(result);
+    return IDLAttribute<JSTestObj>::get<jsTestObjPutForwardsAttributeGetter>(*state, thisValue, "putForwardsAttribute");
 }
 
+static inline bool setJSTestObjPutForwardsAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto id = Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("putForwardsAttribute"), strlen("putForwardsAttribute"));
+    auto valueToForwardTo = thisObject.get(&state, id);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    if (UNLIKELY(!valueToForwardTo.isObject())) {
+        throwTypeError(&state, throwScope);
+        return false;
+    }
+    auto forwardId = Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("name"), strlen("name"));
+    PutPropertySlot slot(valueToForwardTo, false);
+    asObject(valueToForwardTo)->methodTable(state.vm())->put(asObject(valueToForwardTo), &state, forwardId, value, slot);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    return true;
+}
+
+bool setJSTestObjPutForwardsAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjPutForwardsAttributeSetter>(*state, thisValue, encodedValue, "putForwardsAttribute");
+}
+
+static inline JSValue jsTestObjPutForwardsNullableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLNullable<IDLInterface<TestNode>>>(state, *thisObject.globalObject(), impl.putForwardsNullableAttribute());
+    return result;
+}
 
 EncodedJSValue jsTestObjPutForwardsNullableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
+    return IDLAttribute<JSTestObj>::get<jsTestObjPutForwardsNullableAttributeGetter>(*state, thisValue, "putForwardsNullableAttribute");
+}
+
+static inline bool setJSTestObjPutForwardsNullableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
     UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestObj*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestObj", "putForwardsNullableAttribute");
+    UNUSED_PARAM(throwScope);
+    auto id = Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("putForwardsNullableAttribute"), strlen("putForwardsNullableAttribute"));
+    auto valueToForwardTo = thisObject.get(&state, id);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    if (UNLIKELY(!valueToForwardTo.isObject())) {
+        throwTypeError(&state, throwScope);
+        return false;
     }
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.putForwardsNullableAttribute()));
-    return JSValue::encode(result);
+    auto forwardId = Identifier::fromString(&state.vm(), reinterpret_cast<const LChar*>("name"), strlen("name"));
+    PutPropertySlot slot(valueToForwardTo, false);
+    asObject(valueToForwardTo)->methodTable(state.vm())->put(asObject(valueToForwardTo), &state, forwardId, value, slot);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    return true;
 }
 
-
-EncodedJSValue jsTestObjConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
+bool setJSTestObjPutForwardsNullableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    JSTestObjPrototype* domObject = jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
-        return throwVMTypeError(state);
-    return JSValue::encode(JSTestObj::getConstructor(state->vm(), domObject->globalObject()));
+    return IDLAttribute<JSTestObj>::set<setJSTestObjPutForwardsNullableAttributeSetter>(*state, thisValue, encodedValue, "putForwardsNullableAttribute");
 }
 
-void setJSTestObjConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+static inline JSValue jsTestObjStringifierAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    JSTestObjPrototype* domObject = jsDynamicCast<JSTestObjPrototype*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject)) {
-        throwVMTypeError(state);
-        return;
-    }
-    // Shadowing a built-in constructor
-    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLUSVString>(state, impl.stringifierAttribute());
+    return result;
 }
 
-void setJSTestObjConstructorStaticStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue jsTestObjStringifierAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    TestObj::setStaticStringAttr(nativeValue);
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringifierAttributeGetter>(*state, thisValue, "stringifierAttribute");
 }
 
-
-void setJSTestObjTestSubObjEnabledBySettingConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+static inline bool setJSTestObjStringifierAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "TestSubObjEnabledBySetting");
-        return;
-    }
-    // Shadowing a built-in constructor.
-    castedThis->putDirect(state->vm(), Identifier::fromString(state, "TestSubObjEnabledBySetting"), value);
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLUSVString>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setStringifierAttribute(WTFMove(nativeValue));
+    return true;
 }
 
-
-void setJSTestObjEnumAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+bool setJSTestObjStringifierAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "enumAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    if (nativeValue != "" && nativeValue != "EnumValue1" && nativeValue != "EnumValue2" && nativeValue != "EnumValue3")
-        return;
-    impl.setEnumAttr(nativeValue);
+    return IDLAttribute<JSTestObj>::set<setJSTestObjStringifierAttributeSetter>(*state, thisValue, encodedValue, "stringifierAttribute");
 }
 
-
-void setJSTestObjByteAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+static inline JSValue jsTestObjConditionallyReadWriteAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "byteAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int8_t nativeValue = toInt8(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setByteAttr(nativeValue);
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<Node>>(state, *thisObject.globalObject(), impl.conditionallyReadWriteAttribute());
+    return result;
 }
 
-
-void setJSTestObjOctetAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue jsTestObjConditionallyReadWriteAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "octetAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    uint8_t nativeValue = toUInt8(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setOctetAttr(nativeValue);
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionallyReadWriteAttributeGetter>(*state, thisValue, "conditionallyReadWriteAttribute");
 }
 
-
-void setJSTestObjShortAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+#if ENABLE(CONDITION)
+static inline bool setJSTestObjConditionallyReadWriteAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "shortAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int16_t nativeValue = toInt16(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setShortAttr(nativeValue);
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<Node>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "conditionallyReadWriteAttribute", "Node"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionallyReadWriteAttribute(*nativeValue);
+    return true;
 }
 
-
-void setJSTestObjUnsignedShortAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+bool setJSTestObjConditionallyReadWriteAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "unsignedShortAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    uint16_t nativeValue = toUInt16(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setUnsignedShortAttr(nativeValue);
-}
-
-
-void setJSTestObjLongAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "longAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setLongAttr(nativeValue);
-}
-
-
-void setJSTestObjLongLongAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "longLongAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    long long nativeValue = toInt64(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setLongLongAttr(nativeValue);
-}
-
-
-void setJSTestObjUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "unsignedLongLongAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    unsigned long long nativeValue = toUInt64(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setUnsignedLongLongAttr(nativeValue);
-}
-
-
-void setJSTestObjStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "stringAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setStringAttr(nativeValue);
-}
-
-
-void setJSTestObjTestObjAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "testObjAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setTestObjAttr(nativeValue);
-}
-
-
-void setJSTestObjLenientTestObjAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setLenientTestObjAttr(nativeValue);
-}
-
-
-void setJSTestObjXMLObjAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "XMLObjAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setXMLObjAttr(nativeValue);
-}
-
-
-void setJSTestObjCreate(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "create");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    bool nativeValue = value.toBoolean(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setCreate(nativeValue);
-}
-
-
-void setJSTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedStringAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedstringattrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedIntegralAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedIntegralAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setIntegralAttribute(WebCore::HTMLNames::reflectedintegralattrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedUnsignedIntegralAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedUnsignedIntegralAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    unsigned nativeValue = toUInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setUnsignedIntegralAttribute(WebCore::HTMLNames::reflectedunsignedintegralattrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedBooleanAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedBooleanAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    bool nativeValue = value.toBoolean(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setBooleanAttribute(WebCore::HTMLNames::reflectedbooleanattrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedURLAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedURLAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::reflectedurlattrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedStringAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::customContentStringAttrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedCustomIntegralAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedCustomIntegralAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setIntegralAttribute(WebCore::HTMLNames::customContentIntegralAttrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedCustomBooleanAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedCustomBooleanAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    bool nativeValue = value.toBoolean(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setBooleanAttribute(WebCore::HTMLNames::customContentBooleanAttrAttr, nativeValue);
-}
-
-
-void setJSTestObjReflectedCustomURLAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "reflectedCustomURLAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttributeWithoutSynchronization(WebCore::HTMLNames::customContentURLAttrAttr, nativeValue);
-}
-
-
-void setJSTestObjTypedArrayAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "typedArrayAttr");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    RefPtr<Float32Array> nativeValue = toFloat32Array(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setTypedArrayAttr(nativeValue.get());
-}
-
-
-void setJSTestObjAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "attrWithGetterException");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttrWithGetterException(nativeValue);
-}
-
-
-void setJSTestObjAttrWithGetterExceptionWithMessage(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "attrWithGetterExceptionWithMessage");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttrWithGetterExceptionWithMessage(nativeValue);
-}
-
-
-void setJSTestObjAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "attrWithSetterException");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttrWithSetterException(nativeValue, ec);
-    setDOMException(state, ec);
-}
-
-
-void setJSTestObjAttrWithSetterExceptionWithMessage(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "attrWithSetterExceptionWithMessage");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    ExceptionCodeWithMessage ec;
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAttrWithSetterExceptionWithMessage(nativeValue, ec);
-    setDOMException(state, ec);
-}
-
-
-void setJSTestObjStringAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "stringAttrWithGetterException");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setStringAttrWithGetterException(nativeValue);
-}
-
-
-void setJSTestObjStringAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "stringAttrWithSetterException");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setStringAttrWithSetterException(nativeValue, ec);
-    setDOMException(state, ec);
-}
-
-
-void setJSTestObjStrictTypeCheckingAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "strictTypeCheckingAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(!value.isUndefinedOrNull() && !value.inherits(JSTestObj::info()))) {
-        throwAttributeTypeError(*state, "TestObj", "strictTypeCheckingAttribute", "TestObj");
-        return;
-    };
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setStrictTypeCheckingAttribute(nativeValue);
-}
-
-
-void setJSTestObjCustomAttr(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "customAttr");
-        return;
-    }
-    castedThis->setCustomAttr(*state, value);
-}
-
-
-void setJSTestObjOnfoo(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "onfoo");
-        return;
-    }
-    setEventHandlerAttribute(*state, *castedThis, castedThis->wrapped(), eventNames().fooEvent, value);
-}
-
-
-void setJSTestObjWithScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptStateAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setWithScriptStateAttribute(*state, nativeValue);
-}
-
-
-void setJSTestObjWithCallWithAndSetterCallWithAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withCallWithAndSetterCallWithAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setWithCallWithAndSetterCallWithAttribute(*state, activeDOMWindow(state), firstDOMWindow(state), nativeValue);
-}
-
-
-void setJSTestObjWithScriptExecutionContextAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptExecutionContextAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return;
-    impl.setWithScriptExecutionContextAttribute(scriptContext, nativeValue);
-}
-
-
-void setJSTestObjWithScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptStateAttributeRaises");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setWithScriptStateAttributeRaises(*state, nativeValue);
-}
-
-
-void setJSTestObjWithScriptExecutionContextAttributeRaises(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptExecutionContextAttributeRaises");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return;
-    impl.setWithScriptExecutionContextAttributeRaises(scriptContext, nativeValue);
-}
-
-
-void setJSTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return;
-    impl.setWithScriptExecutionContextAndScriptStateAttribute(*state, scriptContext, nativeValue);
-}
-
-
-void setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateAttributeRaises");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return;
-    impl.setWithScriptExecutionContextAndScriptStateAttributeRaises(*state, scriptContext, nativeValue);
-}
-
-
-void setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateWithSpacesAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return;
-    impl.setWithScriptExecutionContextAndScriptStateWithSpacesAttribute(*state, scriptContext, nativeValue);
-}
-
-
-void setJSTestObjWithScriptArgumentsAndCallStackAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "withScriptArgumentsAndCallStackAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    TestObj* nativeValue = JSTestObj::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setWithScriptArgumentsAndCallStackAttribute(nativeValue);
-}
-
-
-#if ENABLE(Condition1)
-void setJSTestObjConditionalAttr1(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "conditionalAttr1");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setConditionalAttr1(nativeValue);
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionallyReadWriteAttributeSetter>(*state, thisValue, encodedValue, "conditionallyReadWriteAttribute");
 }
 
 #endif
 
-#if ENABLE(Condition1) && ENABLE(Condition2)
-void setJSTestObjConditionalAttr2(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+#if ENABLE(CONDITION2)
+static inline JSValue jsTestObjConditionalAndConditionallyReadWriteAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "conditionalAttr2");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setConditionalAttr2(nativeValue);
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLInterface<Node>>(state, *thisObject.globalObject(), impl.conditionalAndConditionallyReadWriteAttribute());
+    return result;
+}
+
+EncodedJSValue jsTestObjConditionalAndConditionallyReadWriteAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAndConditionallyReadWriteAttributeGetter>(*state, thisValue, "conditionalAndConditionallyReadWriteAttribute");
 }
 
 #endif
 
-#if ENABLE(Condition1) || ENABLE(Condition2)
-void setJSTestObjConditionalAttr3(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+#if ENABLE(CONDITION2)
+#if ENABLE(CONDITION)
+static inline bool setJSTestObjConditionalAndConditionallyReadWriteAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "conditionalAttr3");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setConditionalAttr3(nativeValue);
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLInterface<Node>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "conditionalAndConditionallyReadWriteAttribute", "Node"); });
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setConditionalAndConditionallyReadWriteAttribute(*nativeValue);
+    return true;
+}
+
+bool setJSTestObjConditionalAndConditionallyReadWriteAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return IDLAttribute<JSTestObj>::set<setJSTestObjConditionalAndConditionallyReadWriteAttributeSetter>(*state, thisValue, encodedValue, "conditionalAndConditionallyReadWriteAttribute");
 }
 
 #endif
 
-#if ENABLE(Condition1)
-void setJSTestObjConditionalAttr4Constructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+#endif
+
+#if ENABLE(TEST_FEATURE)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionEnabledAtRuntimeOperation1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "conditionalAttr4");
-        return;
-    }
-    // Shadowing a built-in constructor.
-    castedThis->putDirect(state->vm(), Identifier::fromString(state, "conditionalAttr4"), value);
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto testParam = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.enabledAtRuntimeOperation(WTFMove(testParam));
+    return JSValue::encode(jsUndefined());
 }
 
 #endif
 
-#if ENABLE(Condition1) && ENABLE(Condition2)
-void setJSTestObjConditionalAttr5Constructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+#if ENABLE(TEST_FEATURE)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionEnabledAtRuntimeOperation2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "conditionalAttr5");
-        return;
-    }
-    // Shadowing a built-in constructor.
-    castedThis->putDirect(state->vm(), Identifier::fromString(state, "conditionalAttr5"), value);
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto testParam = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.enabledAtRuntimeOperation(WTFMove(testParam));
+    return JSValue::encode(jsUndefined());
 }
 
 #endif
 
-#if ENABLE(Condition1) || ENABLE(Condition2)
-void setJSTestObjConditionalAttr6Constructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+#if ENABLE(TEST_FEATURE)
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionEnabledAtRuntimeOperationOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "conditionalAttr6");
-        return;
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+#if ENABLE(TEST_FEATURE)
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionEnabledAtRuntimeOperation2Body(state, castedThis, throwScope);
+#endif
+#if ENABLE(TEST_FEATURE)
+        return jsTestObjPrototypeFunctionEnabledAtRuntimeOperation1Body(state, castedThis, throwScope);
+#endif
     }
-    // Shadowing a built-in constructor.
-    castedThis->putDirect(state->vm(), Identifier::fromString(state, "conditionalAttr6"), value);
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledAtRuntimeOperation(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionEnabledAtRuntimeOperationOverloadDispatcher>(*state, "enabledAtRuntimeOperation");
 }
 
 #endif
 
-void setJSTestObjAnyAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionEnabledInSpecificWorldWhenRuntimeFeatureEnabledBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "anyAttribute");
-        return;
-    }
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    Deprecated::ScriptValue nativeValue = { state->vm(), value };
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setAnyAttribute(nativeValue);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto testParam = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.enabledInSpecificWorldWhenRuntimeFeatureEnabled(WTFMove(testParam));
+    return JSValue::encode(jsUndefined());
 }
 
-
-void setJSTestObjMutablePoint(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledInSpecificWorldWhenRuntimeFeatureEnabled(ExecState* state)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "mutablePoint");
-        return;
-    }
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionEnabledInSpecificWorldWhenRuntimeFeatureEnabledBody>(*state, "enabledInSpecificWorldWhenRuntimeFeatureEnabled");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWorldSpecificMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    SVGPropertyTearOff<SVGPoint>* nativeValue = JSSVGPoint::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setMutablePoint(nativeValue);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto testParam = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.worldSpecificMethod(WTFMove(testParam));
+    return JSValue::encode(jsUndefined());
 }
 
-
-void setJSTestObjImmutablePoint(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWorldSpecificMethod(ExecState* state)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "immutablePoint");
-        return;
-    }
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWorldSpecificMethodBody>(*state, "worldSpecificMethod");
+}
+
+#if ENABLE(TEST_FEATURE)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionEnabledBySettingOperationBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    SVGPropertyTearOff<SVGPoint>* nativeValue = JSSVGPoint::toWrapped(value);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setImmutablePoint(nativeValue);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto testParam = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.enabledBySettingOperation(WTFMove(testParam));
+    return JSValue::encode(jsUndefined());
 }
 
-
-void setJSTestObjStrawberry(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledBySettingOperation(ExecState* state)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "strawberry");
-        return;
-    }
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionEnabledBySettingOperationBody>(*state, "enabledBySettingOperation");
+}
+
+#endif
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionCalculateSecretResultBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setBlueberry(nativeValue);
+    impl.calculateSecretResult(WTFMove(promise));
+    return JSValue::encode(jsUndefined());
 }
 
-
-void setJSTestObjStrictFloat(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCalculateSecretResult(ExecState* state)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "strictFloat");
-        return;
-    }
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionCalculateSecretResultBody, PromiseExecutionScope::WindowOnly>(*state, "calculateSecretResult");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionGetSecretBooleanBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    float nativeValue = value.toFloat(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setStrictFloat(nativeValue);
+    return JSValue::encode(toJS<IDLBoolean>(impl.getSecretBoolean()));
 }
 
-
-void setJSTestObjId(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSecretBoolean(ExecState* state)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "id");
-        return;
-    }
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionGetSecretBooleanBody>(*state, "getSecretBoolean");
+}
+
+#if ENABLE(TEST_FEATURE)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestFeatureGetSecretBooleanBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setId(nativeValue);
+    return JSValue::encode(toJS<IDLBoolean>(impl.testFeatureGetSecretBoolean()));
 }
 
-
-void setJSTestObjReplaceableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestFeatureGetSecretBoolean(ExecState* state)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "replaceableAttribute");
-        return;
-    }
-    // Shadowing a built-in object.
-    castedThis->putDirect(state->vm(), Identifier::fromString(state, "replaceableAttribute"), value);
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionTestFeatureGetSecretBooleanBody>(*state, "testFeatureGetSecretBoolean");
 }
 
+#endif
 
-void setJSTestObjNullableLongSettableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVoidMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "nullableLongSettableAttribute");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setNullableLongSettableAttribute(nativeValue);
-}
-
-
-void setJSTestObjNullableStringValue(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "nullableStringValue");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setNullableStringValue(nativeValue);
-}
-
-
-void setJSTestObjAttributeWithReservedEnumType(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "attributeWithReservedEnumType");
-        return;
-    }
-    auto& impl = castedThis->wrapped();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    if (nativeValue != "" && nativeValue != "OptionalValue1" && nativeValue != "OptionalValue2" && nativeValue != "OptionalValue3")
-        return;
-    impl.setAttributeWithReservedEnumType(nativeValue);
-}
-
-
-void setJSTestObjPutForwardsAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "putForwardsAttribute");
-        return;
-    }
-    Ref<TestNode> forwardedImpl = castedThis->wrapped().putForwardsAttribute();
-    auto& impl = forwardedImpl.get();
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setName(nativeValue);
-}
-
-
-void setJSTestObjPutForwardsNullableAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
-{
-    JSValue value = JSValue::decode(encodedValue);
-    UNUSED_PARAM(thisValue);
-    JSTestObj* castedThis = jsDynamicCast<JSTestObj*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!castedThis)) {
-        throwSetterTypeError(*state, "TestObj", "putForwardsNullableAttribute");
-        return;
-    }
-    RefPtr<TestNode> forwardedImpl = castedThis->wrapped().putForwardsNullableAttribute();
-    if (!forwardedImpl)
-        return;
-    auto& impl = *forwardedImpl;
-    String nativeValue = value.toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return;
-    impl.setName(nativeValue);
-}
-
-
-JSValue JSTestObj::getConstructor(VM& vm, const JSGlobalObject* globalObject)
-{
-    return getDOMConstructor<JSTestObjConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
-}
-
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethod(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "voidMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     impl.voidMethod();
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethodWithArgs(ExecState* state)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "voidMethodWithArgs");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionVoidMethodBody>(*state, "voidMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVoidMethodWithArgsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 3))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int longArg = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    String strArg = state->argument(1).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(2));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.voidMethodWithArgs(longArg, strArg, objArg);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto longArg = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArg = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(2), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 2, "objArg", "TestObject", "voidMethodWithArgs", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.voidMethodWithArgs(WTFMove(longArg), WTFMove(strArg), *objArg);
     return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethodWithArgs(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionVoidMethodWithArgsBody>(*state, "voidMethodWithArgs");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionByteMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLByte>(impl.byteMethod()));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionByteMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "byteMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionByteMethodBody>(*state, "byteMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionByteMethodWithArgsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.byteMethod());
-    return JSValue::encode(result);
+    if (UNLIKELY(state->argumentCount() < 3))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto byteArg = convert<IDLByte>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArg = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(2), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 2, "objArg", "TestObject", "byteMethodWithArgs", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLByte>(impl.byteMethodWithArgs(WTFMove(byteArg), WTFMove(strArg), *objArg)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionByteMethodWithArgs(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "byteMethodWithArgs");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionByteMethodWithArgsBody>(*state, "byteMethodWithArgs");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOctetMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 3))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int8_t byteArg = toInt8(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    String strArg = state->argument(1).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(2));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = jsNumber(impl.byteMethodWithArgs(byteArg, strArg, objArg));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLOctet>(impl.octetMethod()));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOctetMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "octetMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOctetMethodBody>(*state, "octetMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOctetMethodWithArgsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.octetMethod());
-    return JSValue::encode(result);
+    if (UNLIKELY(state->argumentCount() < 3))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto octetArg = convert<IDLOctet>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArg = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(2), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 2, "objArg", "TestObject", "octetMethodWithArgs", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLOctet>(impl.octetMethodWithArgs(WTFMove(octetArg), WTFMove(strArg), *objArg)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOctetMethodWithArgs(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "octetMethodWithArgs");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOctetMethodWithArgsBody>(*state, "octetMethodWithArgs");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionLongMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 3))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    uint8_t octetArg = toUInt8(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    String strArg = state->argument(1).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(2));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = jsNumber(impl.octetMethodWithArgs(octetArg, strArg, objArg));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLLong>(impl.longMethod()));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLongMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "longMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionLongMethodBody>(*state, "longMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionLongMethodWithArgsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.longMethod());
-    return JSValue::encode(result);
+    if (UNLIKELY(state->argumentCount() < 3))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto longArg = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArg = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(2), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 2, "objArg", "TestObject", "longMethodWithArgs", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLLong>(impl.longMethodWithArgs(WTFMove(longArg), WTFMove(strArg), *objArg)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLongMethodWithArgs(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "longMethodWithArgs");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionLongMethodWithArgsBody>(*state, "longMethodWithArgs");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionObjMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 3))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int longArg = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    String strArg = state->argument(1).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(2));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = jsNumber(impl.longMethodWithArgs(longArg, strArg, objArg));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), impl.objMethod()));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "objMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionObjMethodBody>(*state, "objMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionObjMethodWithArgsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.objMethod()));
-    return JSValue::encode(result);
+    if (UNLIKELY(state->argumentCount() < 3))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto longArg = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArg = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(2), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 2, "objArg", "TestObject", "objMethodWithArgs", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), impl.objMethodWithArgs(WTFMove(longArg), WTFMove(strArg), *objArg)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethodWithArgs(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "objMethodWithArgs");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionObjMethodWithArgsBody>(*state, "objMethodWithArgs");
+}
+
+static inline JSC::EncodedJSValue jsTestObjInstanceFunctionUnforgeableMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 3))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int longArg = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    String strArg = state->argument(1).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(2));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.objMethodWithArgs(longArg, strArg, objArg)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLLong>(impl.unforgeableMethod()));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjInstanceFunctionUnforgeableMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "unforgeableMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsNumber(impl.unforgeableMethod());
-    return JSValue::encode(result);
+    return IDLOperation<JSTestObj>::call<jsTestObjInstanceFunctionUnforgeableMethodBody>(*state, "unforgeableMethod");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithSequenceArg(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithArgTreatingNullAsEmptyStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithSequenceArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<RefPtr<ScriptProfile>> sequenceArg = (toRefPtrNativeArray<ScriptProfile, JSScriptProfile>(state, state->argument(0), &JSScriptProfile::toWrapped));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithSequenceArg(sequenceArg);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto arg = convert<IDLTreatNullAsEmptyAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithArgTreatingNullAsEmptyString(WTFMove(arg));
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodReturningSequence(ExecState* state)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithArgTreatingNullAsEmptyString(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodReturningSequence");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithArgTreatingNullAsEmptyStringBody>(*state, "methodWithArgTreatingNullAsEmptyString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithXPathNSResolverParameterBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int longArg = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = jsArray(state, castedThis->globalObject(), impl.methodReturningSequence(longArg));
-    return JSValue::encode(result);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto resolver = convert<IDLXPathNSResolver<XPathNSResolver>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "resolver", "TestObject", "methodWithXPathNSResolverParameter", "XPathNSResolver"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithXPathNSResolverParameter(*resolver);
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithXPathNSResolverParameter(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithXPathNSResolverParameterBody>(*state, "methodWithXPathNSResolverParameter");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionNullableStringMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLNullable<IDLDOMString>>(*state, impl.nullableStringMethod()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionNullableStringMethod(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionNullableStringMethodBody>(*state, "nullableStringMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionNullableStringStaticMethodBody(JSC::ExecState* state, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    return JSValue::encode(toJS<IDLNullable<IDLDOMString>>(*state, TestObj::nullableStringStaticMethod()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionNullableStringStaticMethod(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::callStatic<jsTestObjConstructorFunctionNullableStringStaticMethodBody>(*state, "nullableStringStaticMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionNullableStringSpecialMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto index = convert<IDLUnsignedLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLNullable<IDLDOMString>>(*state, impl.nullableStringSpecialMethod(WTFMove(index))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionNullableStringSpecialMethod(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionNullableStringSpecialMethodBody>(*state, "nullableStringSpecialMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithEnumArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto enumArg = convert<IDLEnumeration<TestObj::EnumType>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeEnumError(state, scope, 0, "enumArg", "TestObject", "methodWithEnumArg", expectedEnumerationValues<TestObj::EnumType>()); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithEnumArg(WTFMove(enumArg));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithEnumArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithEnumArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithEnumArgBody>(*state, "methodWithEnumArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithStandaloneEnumArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    // Keep pointer to the JSString in a local so we don't need to ref the String.
-    auto* enumArgString = state->argument(0).toString(state);
-    auto& enumArg = enumArgString->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    if (enumArg != "" && enumArg != "EnumValue1" && enumArg != "EnumValue2" && enumArg != "EnumValue3")
-        return throwArgumentMustBeEnumError(*state, 0, "enumArg", "TestObj", "methodWithEnumArg", "\"\", \"EnumValue1\", \"EnumValue2\", \"EnumValue3\"");
-    impl.methodWithEnumArg(enumArg);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto enumArg = convert<IDLEnumeration<TestStandaloneEnumeration>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeEnumError(state, scope, 0, "enumArg", "TestObject", "methodWithStandaloneEnumArg", expectedEnumerationValues<TestStandaloneEnumeration>()); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithStandaloneEnumArg(WTFMove(enumArg));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithStandaloneEnumArg(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithStandaloneEnumArgBody>(*state, "methodWithStandaloneEnumArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalEnumArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto enumArg = state->argument(0).isUndefined() ? std::optional<Converter<IDLEnumeration<TestObj::EnumType>>::ReturnType>() : std::optional<Converter<IDLEnumeration<TestObj::EnumType>>::ReturnType>(convert<IDLEnumeration<TestObj::EnumType>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeEnumError(state, scope, 0, "enumArg", "TestObject", "methodWithOptionalEnumArg", expectedEnumerationValues<TestObj::EnumType>()); }));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalEnumArg(WTFMove(enumArg));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalEnumArg(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalEnumArgBody>(*state, "methodWithOptionalEnumArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalEnumArgAndDefaultValueBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto enumArg = state->argument(0).isUndefined() ? TestObj::EnumType::EnumValue1 : convert<IDLEnumeration<TestObj::EnumType>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeEnumError(state, scope, 0, "enumArg", "TestObject", "methodWithOptionalEnumArgAndDefaultValue", expectedEnumerationValues<TestObj::EnumType>()); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalEnumArgAndDefaultValue(WTFMove(enumArg));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalEnumArgAndDefaultValue(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithOptionalEnumArgAndDefaultValue");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalEnumArgAndDefaultValueBody>(*state, "methodWithOptionalEnumArgAndDefaultValue");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodThatRequiresAllArgsAndThrowsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        impl.methodWithOptionalEnumArgAndDefaultValue();
-        return JSValue::encode(jsUndefined());
-    }
-
-    String enumArg;
-    if (state->argument(0).isUndefined())
-        enumArg = ASCIILiteral("EnumValue1");
-    else {
-        enumArg = state->uncheckedArgument(0).toString(state)->value(state);
-        if (UNLIKELY(state->hadException()))
-            return JSValue::encode(jsUndefined());
-        if (enumArg != "" && enumArg != "EnumValue1" && enumArg != "EnumValue2" && enumArg != "EnumValue3")
-            return throwArgumentMustBeEnumError(*state, 0, "enumArg", "TestObj", "methodWithOptionalEnumArgAndDefaultValue", "\"\", \"EnumValue1\", \"EnumValue2\", \"EnumValue3\"");
-    }
-    impl.methodWithOptionalEnumArgAndDefaultValue(enumArg);
-    return JSValue::encode(jsUndefined());
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArg = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(1), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 1, "objArg", "TestObject", "methodThatRequiresAllArgsAndThrows", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), throwScope, impl.methodThatRequiresAllArgsAndThrows(WTFMove(strArg), *objArg)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodThatRequiresAllArgsAndThrows(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodThatRequiresAllArgsAndThrows");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    ExceptionCode ec = 0;
-    String strArg = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.methodThatRequiresAllArgsAndThrows(strArg, objArg, ec)));
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodThatRequiresAllArgsAndThrowsBody>(*state, "methodThatRequiresAllArgsAndThrows");
+}
 
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithUSVStringArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto str = convert<IDLUSVString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithUSVStringArg(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUSVStringArg(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithUSVStringArgBody>(*state, "methodWithUSVStringArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNullableUSVStringArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto str = convert<IDLNullable<IDLUSVString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithNullableUSVStringArg(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNullableUSVStringArg(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithNullableUSVStringArgBody>(*state, "methodWithNullableUSVStringArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithUSVStringArgTreatingNullAsEmptyStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto str = convert<IDLTreatNullAsEmptyAdaptor<IDLUSVString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithUSVStringArgTreatingNullAsEmptyString(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUSVStringArgTreatingNullAsEmptyString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithUSVStringArgTreatingNullAsEmptyStringBody>(*state, "methodWithUSVStringArgTreatingNullAsEmptyString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithByteStringArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto str = convert<IDLByteString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithByteStringArg(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithByteStringArg(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithByteStringArgBody>(*state, "methodWithByteStringArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNullableByteStringArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto str = convert<IDLNullable<IDLByteString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithNullableByteStringArg(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNullableByteStringArg(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithNullableByteStringArgBody>(*state, "methodWithNullableByteStringArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithByteStringArgTreatingNullAsEmptyStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto str = convert<IDLTreatNullAsEmptyAdaptor<IDLByteString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithByteStringArgTreatingNullAsEmptyString(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithByteStringArgTreatingNullAsEmptyString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithByteStringArgTreatingNullAsEmptyStringBody>(*state, "methodWithByteStringArgTreatingNullAsEmptyString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionSerializedValueBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto serializedArg = convert<IDLSerializedScriptValue<SerializedScriptValue>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.serializedValue(WTFMove(serializedArg));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSerializedValue(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "serializedValue");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionSerializedValueBody>(*state, "serializedValue");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithRecordBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    RefPtr<SerializedScriptValue> serializedArg = SerializedScriptValue::create(state, state->argument(0), 0, 0);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.serializedValue(serializedArg);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto recordParameter = convert<IDLRecord<IDLDOMString, IDLLong>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithRecord(WTFMove(recordParameter));
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOptionsObject(ExecState* state)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithRecord(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "optionsObject");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithRecordBody>(*state, "methodWithRecord");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithExceptionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Dictionary oo = { state, state->argument(0) };
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Dictionary ooo = { state, state->argument(1) };
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.optionsObject(oo, ooo);
+    propagateException(*state, throwScope, impl.methodWithException());
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithException(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithException");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    impl.methodWithException(ec);
-    setDOMException(state, ec);
-    return JSValue::encode(jsUndefined());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithExceptionBody>(*state, "methodWithException");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionWithMessage(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithExceptionReturningLongBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithExceptionWithMessage");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    ExceptionCodeWithMessage ec;
-    impl.methodWithExceptionWithMessage(ec);
-    setDOMException(state, ec);
-    return JSValue::encode(jsUndefined());
+    return JSValue::encode(toJS<IDLLong>(*state, throwScope, impl.methodWithExceptionReturningLong()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionReturningLong(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithExceptionReturningLongBody>(*state, "methodWithExceptionReturningLong");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithExceptionReturningObjectBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), throwScope, impl.methodWithExceptionReturningObject()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithExceptionReturningObject(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithExceptionReturningObjectBody>(*state, "methodWithExceptionReturningObject");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionCustomMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    return JSValue::encode(castedThis->customMethod(*state));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "customMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    return JSValue::encode(castedThis->customMethod(*state));
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionCustomMethodBody>(*state, "customMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionCustomMethodWithArgsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    return JSValue::encode(castedThis->customMethodWithArgs(*state));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCustomMethodWithArgs(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "customMethodWithArgs");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    return JSValue::encode(castedThis->customMethodWithArgs(*state));
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionCustomMethodWithArgsBody>(*state, "customMethodWithArgs");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionPrivateMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto argument = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLDOMString>(*state, impl.privateMethod(WTFMove(argument))));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPrivateMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "privateMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionPrivateMethodBody, CastedThisErrorBehavior::Assert>(*state, "privateMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionPublicAndPrivateMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    String argument = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = jsStringWithCache(state, impl.privateMethod(argument));
-    return JSValue::encode(result);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto argument = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLDOMString>(*state, impl.publicAndPrivateMethod(WTFMove(argument))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPublicAndPrivateMethod(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionPublicAndPrivateMethodBody>(*state, "publicAndPrivateMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionAddEventListenerBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto type = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto listener = convert<IDLEventListener<JSEventListener>>(*state, state->uncheckedArgument(1), *castedThis);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto useCapture = convert<IDLBoolean>(*state, state->argument(2));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.addEventListener(WTFMove(type), WTFMove(listener), WTFMove(useCapture));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAddEventListener(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "addEventListener");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionAddEventListenerBody>(*state, "addEventListener");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionRemoveEventListenerBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue listener = state->argument(1);
-    if (UNLIKELY(!listener.isObject()))
-        return JSValue::encode(jsUndefined());
-    impl.addEventListener(state->argument(0).toString(state)->toAtomicString(state), createJSEventListenerForAdd(*state, *asObject(listener), *castedThis), state->argument(2).toBoolean(state));
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto type = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto listener = convert<IDLEventListener<JSEventListener>>(*state, state->uncheckedArgument(1), *castedThis);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto useCapture = convert<IDLBoolean>(*state, state->argument(2));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.removeEventListener(WTFMove(type), WTFMove(listener), WTFMove(useCapture));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionRemoveEventListener(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "removeEventListener");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    JSValue listener = state->argument(1);
-    if (UNLIKELY(!listener.isObject()))
-        return JSValue::encode(jsUndefined());
-    impl.removeEventListener(state->argument(0).toString(state)->toAtomicString(state), createJSEventListenerForRemove(*state, *asObject(listener), *castedThis).ptr(), state->argument(2).toBoolean(state));
-    return JSValue::encode(jsUndefined());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionRemoveEventListenerBody>(*state, "removeEventListener");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateVoid(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptStateVoidBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptStateVoid");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     impl.withScriptStateVoid(*state);
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateVoid(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptStateVoidBody>(*state, "withScriptStateVoid");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptStateObjBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), impl.withScriptStateObj(*state)));
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateObj(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptStateObj");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptStateObjBody>(*state, "withScriptStateObj");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptStateVoidExceptionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptStateObj(*state)));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    return JSValue::encode(result);
+    propagateException(*state, throwScope, impl.withScriptStateVoidException(*state));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateVoidException(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptStateVoidException");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptStateVoidExceptionBody>(*state, "withScriptStateVoidException");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptStateObjExceptionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    impl.withScriptStateVoidException(*state, ec);
-    setDOMException(state, ec);
-    return JSValue::encode(jsUndefined());
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), throwScope, impl.withScriptStateObjException(*state)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptStateObjException(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptStateObjException");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptStateObjException(*state, ec)));
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptStateObjExceptionBody>(*state, "withScriptStateObjException");
+}
 
-    setDOMException(state, ec);
-    if (UNLIKELY(state->hadException()))
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptExecutionContextBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto* context = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
         return JSValue::encode(jsUndefined());
-    return JSValue::encode(result);
+    impl.withScriptExecutionContext(*context);
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContext(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptExecutionContext");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptExecutionContextBody>(*state, "withScriptExecutionContext");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
+    auto* context = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
         return JSValue::encode(jsUndefined());
-    impl.withScriptExecutionContext(scriptContext);
+    impl.withScriptExecutionContextAndScriptState(*state, *context);
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptState(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptState");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateBody>(*state, "withScriptExecutionContextAndScriptState");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateObjExceptionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
+    auto* context = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
         return JSValue::encode(jsUndefined());
-    impl.withScriptExecutionContextAndScriptState(*state, scriptContext);
-    return JSValue::encode(jsUndefined());
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), throwScope, impl.withScriptExecutionContextAndScriptStateObjException(*state, *context)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateObjException(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateObjException");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptExecutionContextAndScriptStateObjException(*state, scriptContext, ec)));
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateObjExceptionBody>(*state, "withScriptExecutionContextAndScriptStateObjException");
+}
 
-    setDOMException(state, ec);
-    if (UNLIKELY(state->hadException()))
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateWithSpacesBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto* context = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
         return JSValue::encode(jsUndefined());
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<TestObj>>(*state, *castedThis->globalObject(), impl.withScriptExecutionContextAndScriptStateWithSpaces(*state, *context)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateWithSpaces(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptExecutionContextAndScriptStateWithSpaces");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    auto* scriptContext = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
-    if (!scriptContext)
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.withScriptExecutionContextAndScriptStateWithSpaces(*state, scriptContext)));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    return JSValue::encode(result);
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithScriptExecutionContextAndScriptStateWithSpacesBody>(*state, "withScriptExecutionContextAndScriptStateWithSpaces");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithScriptArgumentsAndCallStack(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithDocumentArgumentBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "withScriptArgumentsAndCallStack");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    RefPtr<Inspector::ScriptArguments> scriptArguments(Inspector::createScriptArguments(state, 0));
-    impl.withScriptArgumentsAndCallStack(scriptArguments.release());
+    auto* context = jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject())->scriptExecutionContext();
+    if (UNLIKELY(!context))
+        return JSValue::encode(jsUndefined());
+    ASSERT(context->isDocument());
+    auto& document = downcast<Document>(*context);
+    impl.withDocumentArgument(document);
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithDocumentArgument(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithDocumentArgumentBody>(*state, "withDocumentArgument");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithCallerDocumentArgumentBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto* incumbentDocument = incumbentDOMWindow(*state).document();
+    if (!incumbentDocument)
+        return JSValue::encode(jsUndefined());
+    impl.withCallerDocumentArgument(*incumbentDocument);
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithCallerDocumentArgument(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithCallerDocumentArgumentBody>(*state, "withCallerDocumentArgument");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithCallerWindowArgumentBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    impl.withCallerWindowArgument(incumbentDOMWindow(*state));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWithCallerWindowArgument(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionWithCallerWindowArgumentBody>(*state, "withCallerWindowArgument");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto opt = state->argument(0).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalArg(WTFMove(opt));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithOptionalArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalArgBody>(*state, "methodWithOptionalArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalArgAndDefaultValueBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        impl.methodWithOptionalArg();
-        return JSValue::encode(jsUndefined());
-    }
-
-    int opt = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithOptionalArg(opt);
+    auto opt = state->argument(0).isUndefined() ? 666 : convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalArgAndDefaultValue(WTFMove(opt));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalArgAndDefaultValue(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithOptionalArgAndDefaultValue");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalArgAndDefaultValueBody>(*state, "methodWithOptionalArgAndDefaultValue");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndOptionalArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        impl.methodWithOptionalArgAndDefaultValue();
-        return JSValue::encode(jsUndefined());
-    }
-
-    int opt = state->argument(0).isUndefined() ? 666 : toInt32(state, state->uncheckedArgument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithOptionalArgAndDefaultValue(opt);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto nonOpt = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto opt = state->argument(1).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithNonOptionalArgAndOptionalArg(WTFMove(nonOpt), WTFMove(opt));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndOptionalArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithNonOptionalArgAndOptionalArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndOptionalArgBody>(*state, "methodWithNonOptionalArgAndOptionalArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndTwoOptionalArgsBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int nonOpt = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 1) {
-        impl.methodWithNonOptionalArgAndOptionalArg(nonOpt);
-        return JSValue::encode(jsUndefined());
-    }
-
-    int opt = toInt32(state, state->argument(1), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithNonOptionalArgAndOptionalArg(nonOpt, opt);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto nonOpt = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto opt1 = state->argument(1).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto opt2 = state->argument(2).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(2)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithNonOptionalArgAndTwoOptionalArgs(WTFMove(nonOpt), WTFMove(opt1), WTFMove(opt2));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndTwoOptionalArgs(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithNonOptionalArgAndTwoOptionalArgs");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithNonOptionalArgAndTwoOptionalArgsBody>(*state, "methodWithNonOptionalArgAndTwoOptionalArgs");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int nonOpt = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 1) {
-        impl.methodWithNonOptionalArgAndTwoOptionalArgs(nonOpt);
-        return JSValue::encode(jsUndefined());
-    }
-
-    int opt1 = toInt32(state, state->argument(1), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    if (argsCount <= 2) {
-        impl.methodWithNonOptionalArgAndTwoOptionalArgs(nonOpt, opt1);
-        return JSValue::encode(jsUndefined());
-    }
-
-    int opt2 = toInt32(state, state->argument(2), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithNonOptionalArgAndTwoOptionalArgs(nonOpt, opt1, opt2);
+    auto str = state->argument(0).isUndefined() ? String() : convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalString(WTFMove(str));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalString(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithOptionalString");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalStringBody>(*state, "methodWithOptionalString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalUSVStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
+    auto str = state->argument(0).isUndefined() ? String() : convert<IDLUSVString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalUSVString(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
 
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        impl.methodWithOptionalString();
-        return JSValue::encode(jsUndefined());
-    }
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUSVString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalUSVStringBody>(*state, "methodWithOptionalUSVString");
+}
 
-    String str = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithOptionalString(str);
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = state->argument(0).isUndefined() ? nullAtom() : convert<IDLAtomicStringAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalAtomicString(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringBody>(*state, "methodWithOptionalAtomicString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalStringAndDefaultValueBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = state->argument(0).isUndefined() ? ASCIILiteral("foo") : convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalStringAndDefaultValue(WTFMove(str));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringAndDefaultValue(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithOptionalStringAndDefaultValue");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalStringAndDefaultValueBody>(*state, "methodWithOptionalStringAndDefaultValue");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringAndDefaultValueBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
+    auto str = state->argument(0).isUndefined() ? AtomicString("foo", AtomicString::ConstructFromLiteral) : convert<IDLAtomicStringAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalAtomicStringAndDefaultValue(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
 
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        impl.methodWithOptionalStringAndDefaultValue();
-        return JSValue::encode(jsUndefined());
-    }
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringAndDefaultValue(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringAndDefaultValueBody>(*state, "methodWithOptionalAtomicStringAndDefaultValue");
+}
 
-    String str = state->argument(0).isUndefined() ? "foo" : state->uncheckedArgument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithOptionalStringAndDefaultValue(str);
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalStringIsNullBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = state->argument(0).isUndefined() ? String() : convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalStringIsNull(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsNull(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalStringIsNullBody>(*state, "methodWithOptionalStringIsNull");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalStringIsUndefinedBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = convert<IDLDOMString>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalStringIsUndefined(WTFMove(str));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsUndefined(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithOptionalStringIsUndefined");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalStringIsUndefinedBody>(*state, "methodWithOptionalStringIsUndefined");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsNullBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    String str = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithOptionalStringIsUndefined(str);
+    auto str = state->argument(0).isUndefined() ? nullAtom() : convert<IDLAtomicStringAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalAtomicStringIsNull(WTFMove(str));
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsNullString(ExecState* state)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsNull(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithOptionalStringIsNullString");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsNullBody>(*state, "methodWithOptionalAtomicStringIsNull");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalStringIsEmptyStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    String str = state->argument(0).isUndefined() ? String() : state->uncheckedArgument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithOptionalStringIsNullString(str);
+    auto str = state->argument(0).isUndefined() ? emptyString() : convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalStringIsEmptyString(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalStringIsEmptyString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalStringIsEmptyStringBody>(*state, "methodWithOptionalStringIsEmptyString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalUSVStringIsEmptyStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = state->argument(0).isUndefined() ? emptyString() : convert<IDLUSVString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalUSVStringIsEmptyString(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUSVStringIsEmptyString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalUSVStringIsEmptyStringBody>(*state, "methodWithOptionalUSVStringIsEmptyString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsEmptyStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = state->argument(0).isUndefined() ? emptyAtom() : convert<IDLAtomicStringAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalAtomicStringIsEmptyString(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsEmptyString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalAtomicStringIsEmptyStringBody>(*state, "methodWithOptionalAtomicStringIsEmptyString");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalDoubleIsNaNBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto number = convert<IDLUnrestrictedDouble>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalDoubleIsNaN(WTFMove(number));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalDoubleIsNaN(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalDoubleIsNaNBody>(*state, "methodWithOptionalDoubleIsNaN");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalFloatIsNaNBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto number = convert<IDLUnrestrictedFloat>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalFloatIsNaN(WTFMove(number));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalFloatIsNaN(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalFloatIsNaNBody>(*state, "methodWithOptionalFloatIsNaN");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalLongLongBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto number = state->argument(0).isUndefined() ? std::optional<Converter<IDLLongLong>::ReturnType>() : std::optional<Converter<IDLLongLong>::ReturnType>(convert<IDLLongLong>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalLongLong(WTFMove(number));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalLongLong(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalLongLongBody>(*state, "methodWithOptionalLongLong");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalLongLongIsZeroBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto number = convert<IDLLongLong>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalLongLongIsZero(WTFMove(number));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalLongLongIsZero(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalLongLongIsZeroBody>(*state, "methodWithOptionalLongLongIsZero");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLongBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto number = state->argument(0).isUndefined() ? std::optional<Converter<IDLUnsignedLongLong>::ReturnType>() : std::optional<Converter<IDLUnsignedLongLong>::ReturnType>(convert<IDLUnsignedLongLong>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalUnsignedLongLong(WTFMove(number));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLong(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLongBody>(*state, "methodWithOptionalUnsignedLongLong");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLongIsZeroBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto number = convert<IDLUnsignedLongLong>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalUnsignedLongLongIsZero(WTFMove(number));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLongIsZero(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalUnsignedLongLongIsZeroBody>(*state, "methodWithOptionalUnsignedLongLongIsZero");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalSequenceBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto array = state->argument(0).isUndefined() ? Converter<IDLSequence<IDLDOMString>>::ReturnType{ } : convert<IDLSequence<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalSequence(WTFMove(array));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalSequence(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalSequenceBody>(*state, "methodWithOptionalSequence");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalSequenceIsEmptyBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto array = state->argument(0).isUndefined() ? Converter<IDLSequence<IDLDOMString>>::ReturnType{ } : convert<IDLSequence<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalSequenceIsEmpty(WTFMove(array));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalSequenceIsEmpty(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalSequenceIsEmptyBody>(*state, "methodWithOptionalSequenceIsEmpty");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalBooleanBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto b = state->argument(0).isUndefined() ? std::optional<Converter<IDLBoolean>::ReturnType>() : std::optional<Converter<IDLBoolean>::ReturnType>(convert<IDLBoolean>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalBoolean(WTFMove(b));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalBoolean(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalBooleanBody>(*state, "methodWithOptionalBoolean");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalBooleanIsFalseBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto b = convert<IDLBoolean>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalBooleanIsFalse(WTFMove(b));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalBooleanIsFalse(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalBooleanIsFalseBody>(*state, "methodWithOptionalBooleanIsFalse");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalAnyBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto a = convert<IDLAny>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalAny(WTFMove(a));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAny(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalAnyBody>(*state, "methodWithOptionalAny");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalObjectBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto a = state->argument(0).isUndefined() ? std::optional<Converter<IDLObject>::ReturnType>() : std::optional<Converter<IDLObject>::ReturnType>(convert<IDLObject>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalObject(WTFMove(a));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalObject(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalObjectBody>(*state, "methodWithOptionalObject");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto obj = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->argument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "obj", "TestObject", "methodWithOptionalNullableWrapper", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalNullableWrapper(WTFMove(obj));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapper(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperBody>(*state, "methodWithOptionalNullableWrapper");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperIsNullBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto obj = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->argument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "obj", "TestObject", "methodWithOptionalNullableWrapperIsNull", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalNullableWrapperIsNull(WTFMove(obj));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperIsNull(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperIsNullBody>(*state, "methodWithOptionalNullableWrapperIsNull");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalXPathNSResolverBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto resolver = convert<IDLNullable<IDLXPathNSResolver<XPathNSResolver>>>(*state, state->argument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "resolver", "TestObject", "methodWithOptionalXPathNSResolver", "XPathNSResolver"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalXPathNSResolver(WTFMove(resolver));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalXPathNSResolver(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalXPathNSResolverBody>(*state, "methodWithOptionalXPathNSResolver");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalRecordBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto record = state->argument(0).isUndefined() ? std::nullopt : convert<IDLNullable<IDLRecord<IDLDOMString, IDLLong>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalRecord(WTFMove(record));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalRecord(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithOptionalRecordBody>(*state, "methodWithOptionalRecord");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithCallbackArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto callback = convert<IDLCallbackInterface<JSTestCallbackInterface>>(*state, state->uncheckedArgument(0), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "callback", "TestObject", "methodWithCallbackArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithCallbackArg(callback.releaseNonNull());
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithCallbackArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithCallbackArgBody>(*state, "methodWithCallbackArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    if (!state->argument(0).isObject())
-        return throwArgumentMustBeFunctionError(*state, 0, "callback", "TestObj", "methodWithCallbackArg");
-    RefPtr<TestCallback> callback = JSTestCallback::create(asObject(state->uncheckedArgument(0)), castedThis->globalObject());
-    impl.methodWithCallbackArg(callback);
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto nonCallback = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto callback = convert<IDLCallbackInterface<JSTestCallbackInterface>>(*state, state->uncheckedArgument(1), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 1, "callback", "TestObject", "methodWithNonCallbackArgAndCallbackArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithNonCallbackArgAndCallbackArg(WTFMove(nonCallback), callback.releaseNonNull());
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithNonCallbackArgAndCallbackArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackArgBody>(*state, "methodWithNonCallbackArgAndCallbackArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithCallbackAndOptionalArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int nonCallback = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    if (!state->argument(1).isObject())
-        return throwArgumentMustBeFunctionError(*state, 1, "callback", "TestObj", "methodWithNonCallbackArgAndCallbackArg");
-    RefPtr<TestCallback> callback = JSTestCallback::create(asObject(state->uncheckedArgument(1)), castedThis->globalObject());
-    impl.methodWithNonCallbackArgAndCallbackArg(nonCallback, callback);
+    auto callback = convert<IDLNullable<IDLCallbackInterface<JSTestCallbackInterface>>>(*state, state->argument(0), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "callback", "TestObject", "methodWithCallbackAndOptionalArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithCallbackAndOptionalArg(WTFMove(callback));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackAndOptionalArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithCallbackAndOptionalArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithCallbackAndOptionalArgBody>(*state, "methodWithCallbackAndOptionalArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithCallbackFunctionArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    RefPtr<TestCallback> callback;
-    if (!state->argument(0).isUndefinedOrNull()) {
-        if (!state->uncheckedArgument(0).isObject())
-            return throwArgumentMustBeFunctionError(*state, 0, "callback", "TestObj", "methodWithCallbackAndOptionalArg");
-        callback = JSTestCallback::create(asObject(state->uncheckedArgument(0)), castedThis->globalObject());
-    }
-    impl.methodWithCallbackAndOptionalArg(callback);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto callback = convert<IDLCallbackFunction<JSTestCallbackFunction>>(*state, state->uncheckedArgument(0), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "callback", "TestObject", "methodWithCallbackFunctionArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithCallbackFunctionArg(callback.releaseNonNull());
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackFunctionArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithCallbackFunctionArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithCallbackFunctionArgBody>(*state, "methodWithCallbackFunctionArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackFunctionArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    if (!state->argument(0).isFunction())
-        return throwArgumentMustBeFunctionError(*state, 0, "callback", "TestObj", "methodWithCallbackFunctionArg");
-    RefPtr<TestCallbackFunction> callback = JSTestCallbackFunction::create(asObject(state->uncheckedArgument(0)), castedThis->globalObject());
-    impl.methodWithCallbackFunctionArg(callback);
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto nonCallback = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto callback = convert<IDLCallbackFunction<JSTestCallbackFunction>>(*state, state->uncheckedArgument(1), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 1, "callback", "TestObject", "methodWithNonCallbackArgAndCallbackFunctionArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithNonCallbackArgAndCallbackFunctionArg(WTFMove(nonCallback), callback.releaseNonNull());
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackFunctionArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithNonCallbackArgAndCallbackFunctionArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithNonCallbackArgAndCallbackFunctionArgBody>(*state, "methodWithNonCallbackArgAndCallbackFunctionArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithCallbackFunctionAndOptionalArgBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int nonCallback = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    if (!state->argument(1).isFunction())
-        return throwArgumentMustBeFunctionError(*state, 1, "callback", "TestObj", "methodWithNonCallbackArgAndCallbackFunctionArg");
-    RefPtr<TestCallbackFunction> callback = JSTestCallbackFunction::create(asObject(state->uncheckedArgument(1)), castedThis->globalObject());
-    impl.methodWithNonCallbackArgAndCallbackFunctionArg(nonCallback, callback);
+    auto callback = convert<IDLNullable<IDLCallbackFunction<JSTestCallbackFunction>>>(*state, state->argument(0), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "callback", "TestObject", "methodWithCallbackFunctionAndOptionalArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithCallbackFunctionAndOptionalArg(WTFMove(callback));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithCallbackFunctionAndOptionalArg(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithCallbackFunctionAndOptionalArg");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    RefPtr<TestCallbackFunction> callback;
-    if (!state->argument(0).isUndefinedOrNull()) {
-        if (!state->uncheckedArgument(0).isFunction())
-            return throwArgumentMustBeFunctionError(*state, 0, "callback", "TestObj", "methodWithCallbackFunctionAndOptionalArg");
-        callback = JSTestCallbackFunction::create(asObject(state->uncheckedArgument(0)), castedThis->globalObject());
-    }
-    impl.methodWithCallbackFunctionAndOptionalArg(callback);
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithCallbackFunctionAndOptionalArgBody>(*state, "methodWithCallbackFunctionAndOptionalArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionStaticMethodWithCallbackAndOptionalArgBody(JSC::ExecState* state, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto callback = convert<IDLNullable<IDLCallbackInterface<JSTestCallbackInterface>>>(*state, state->argument(0), *jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "callback", "TestObject", "staticMethodWithCallbackAndOptionalArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    TestObj::staticMethodWithCallbackAndOptionalArg(WTFMove(callback));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionStaticMethodWithCallbackAndOptionalArg(ExecState* state)
 {
-    RefPtr<TestCallback> callback;
-    if (!state->argument(0).isUndefinedOrNull()) {
-        if (!state->uncheckedArgument(0).isObject())
-            return throwArgumentMustBeFunctionError(*state, 0, "callback", "TestObj", "staticMethodWithCallbackAndOptionalArg");
-        callback = createFunctionOnlyCallback<JSTestCallback>(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), state->uncheckedArgument(0));
-    }
-    TestObj::staticMethodWithCallbackAndOptionalArg(callback);
+    return IDLOperation<JSTestObj>::callStatic<jsTestObjConstructorFunctionStaticMethodWithCallbackAndOptionalArgBody>(*state, "staticMethodWithCallbackAndOptionalArg");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionStaticMethodWithCallbackArgBody(JSC::ExecState* state, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto callback = convert<IDLCallbackInterface<JSTestCallbackInterface>>(*state, state->uncheckedArgument(0), *jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "callback", "TestObject", "staticMethodWithCallbackArg"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    TestObj::staticMethodWithCallbackArg(callback.releaseNonNull());
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionStaticMethodWithCallbackArg(ExecState* state)
 {
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    if (!state->argument(0).isObject())
-        return throwArgumentMustBeFunctionError(*state, 0, "callback", "TestObj", "staticMethodWithCallbackArg");
-    RefPtr<TestCallback> callback = createFunctionOnlyCallback<JSTestCallback>(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), state->uncheckedArgument(0));
-    TestObj::staticMethodWithCallbackArg(callback);
-    return JSValue::encode(jsUndefined());
+    return IDLOperation<JSTestObj>::callStatic<jsTestObjConstructorFunctionStaticMethodWithCallbackArgBody>(*state, "staticMethodWithCallbackArg");
 }
 
 #if ENABLE(Condition1)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionalMethod1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLDOMString>(*state, impl.conditionalMethod1()));
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod1(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "conditionalMethod1");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.conditionalMethod1());
-    return JSValue::encode(result);
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConditionalMethod1Body>(*state, "conditionalMethod1");
 }
 
 #endif
 
 #if ENABLE(Condition1) && ENABLE(Condition2)
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod2(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionalMethod2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "conditionalMethod2");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     impl.conditionalMethod2();
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod2(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConditionalMethod2Body>(*state, "conditionalMethod2");
+}
+
 #endif
 
 #if ENABLE(Condition1) || ENABLE(Condition2)
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod3(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionalMethod3Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "conditionalMethod3");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     impl.conditionalMethod3();
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod3(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConditionalMethod3Body>(*state, "conditionalMethod3");
+}
+
 #endif
 
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod1(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    String strArg = state->argument(1).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(objArg, strArg);
+    auto objArg = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "objArg", "TestObject", "overloadedMethod", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(objArg), WTFMove(strArg));
     return JSValue::encode(jsUndefined());
 }
 
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod2(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
+    auto objArg = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "objArg", "TestObject", "overloadedMethod", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto longArg = state->argument(1).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(objArg), WTFMove(longArg));
+    return JSValue::encode(jsUndefined());
+}
 
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 1) {
-        impl.overloadedMethod(objArg);
-        return JSValue::encode(jsUndefined());
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod3Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(strArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod4Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto longArg = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(longArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod5Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto callback = convert<IDLCallbackInterface<JSTestCallbackInterface>>(*state, state->uncheckedArgument(0), *castedThis->globalObject(), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentMustBeFunctionError(state, scope, 0, "callback", "TestObject", "overloadedMethod"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(callback.releaseNonNull());
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod6Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto listArg = convert<IDLNullable<IDLInterface<DOMStringList>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "listArg", "TestObject", "overloadedMethod", "DOMStringList"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(listArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod7Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto arrayArg = convert<IDLNullable<IDLSequence<IDLDOMString>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(arrayArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod8Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objArg = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "objArg", "TestObject", "overloadedMethod", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(*objArg);
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod9Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto window = convert<IDLInterface<DOMWindow>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "window", "TestObject", "overloadedMethod", "DOMWindow"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(*window);
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod10Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto arrayArg = convert<IDLSequence<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(arrayArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod11Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto arrayArg = convert<IDLSequence<IDLUnsignedLong>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(arrayArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod12Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(strArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod13Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto blobArgs = convertVariadicArguments<IDLInterface<Blob>>(*state, 0);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethod(WTFMove(blobArgs.arguments.value()));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(2, state->argumentCount());
+    if (argsCount == 0) {
+        return jsTestObjPrototypeFunctionOverloadedMethod13Body(state, castedThis, throwScope);
     }
-
-    int longArg = toInt32(state, state->argument(1), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(objArg, longArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod3(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    String strArg = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(strArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod4(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int longArg = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(longArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod5(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    if (!state->argument(0).isObject())
-        return throwArgumentMustBeFunctionError(*state, 0, "callback", "TestObj", "overloadedMethod");
-    RefPtr<TestCallback> callback = JSTestCallback::create(asObject(state->uncheckedArgument(0)), castedThis->globalObject());
-    impl.overloadedMethod(callback);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod6(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    RefPtr<DOMStringList> listArg = toDOMStringList(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(listArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod7(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<String> arrayArg = toNativeArray<String>(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(arrayArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod8(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(objArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod9(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<String> arrayArg = toNativeArray<String>(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(arrayArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod10(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<unsigned> arrayArg = toNativeArray<unsigned>(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(arrayArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod11(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    String strArg = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethod(strArg);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod12(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    Vector<Blob*> blobArgs;
-    for (unsigned i = 0, count = state->argumentCount(); i < count; ++i) {
-        if (!state->uncheckedArgument(i).inherits(JSBlob::info()))
-            return throwArgumentTypeError(*state, i, "blobArgs", "TestObj", "overloadedMethod", "Blob");
-        blobArgs.append(JSBlob::toWrapped(state->uncheckedArgument(i)));
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isUndefinedOrNull())
+            return jsTestObjPrototypeFunctionOverloadedMethod2Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethod2Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestCallbackInterface::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethod5Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSDOMStringList::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethod6Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethod8Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && (asObject(distinguishingArg)->inherits(vm, JSDOMWindowProxy::info()) || asObject(distinguishingArg)->inherits(vm, JSDOMWindow::info())))
+            return jsTestObjPrototypeFunctionOverloadedMethod9Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSBlob::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethod13Body(state, castedThis, throwScope);
+        if (hasIteratorMethod(*state, distinguishingArg))
+            return jsTestObjPrototypeFunctionOverloadedMethod7Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject())
+            return jsTestObjPrototypeFunctionOverloadedMethod5Body(state, castedThis, throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadedMethod4Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadedMethod3Body(state, castedThis, throwScope);
     }
-    impl.overloadedMethod(blobArgs);
-    return JSValue::encode(jsUndefined());
+    if (argsCount == 2) {
+        JSValue distinguishingArg = state->uncheckedArgument(1);
+        if (distinguishingArg.isUndefined())
+            return jsTestObjPrototypeFunctionOverloadedMethod2Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSBlob::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethod13Body(state, castedThis, throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadedMethod2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadedMethod1Body(state, castedThis, throwScope);
+    }
+    return throwVMTypeError(state, throwScope);
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(ExecState* state)
 {
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadedMethodOverloadDispatcher>(*state, "overloadedMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto strArg = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArg = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->argument(1), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 1, "objArg", "TestObject", "overloadedMethodWithOptionalParameter", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithOptionalParameter(WTFMove(strArg), WTFMove(objArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objArg = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "objArg", "TestObject", "overloadedMethodWithOptionalParameter", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto longArg = state->argument(1).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(1)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithOptionalParameter(WTFMove(objArg), WTFMove(longArg));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameterOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
     size_t argsCount = std::min<size_t>(2, state->argumentCount());
-    JSValue arg0(state->argument(0));
-    JSValue arg1(state->argument(1));
-    if ((argsCount == 2 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info()))) && (arg1.isUndefinedOrNull() || arg1.isString() || arg1.isObject())))
-        return jsTestObjPrototypeFunctionOverloadedMethod1(state);
-    if ((argsCount == 1 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info())))) || (argsCount == 2 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info())))))
-        return jsTestObjPrototypeFunctionOverloadedMethod2(state);
-    if ((argsCount == 1 && (arg0.isUndefinedOrNull() || arg0.isString() || arg0.isObject())))
-        return jsTestObjPrototypeFunctionOverloadedMethod3(state);
-    if (argsCount == 1)
-        return jsTestObjPrototypeFunctionOverloadedMethod4(state);
-    if ((argsCount == 1 && (arg0.isNull() || arg0.isObject())))
-        return jsTestObjPrototypeFunctionOverloadedMethod5(state);
-    if ((argsCount == 1 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSDOMStringList::info())))))
-        return jsTestObjPrototypeFunctionOverloadedMethod6(state);
-    if ((argsCount == 1 && (arg0.isNull() || (arg0.isObject() && isJSArray(arg0)))))
-        return jsTestObjPrototypeFunctionOverloadedMethod7(state);
-    if ((argsCount == 1 && ((arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info())))))
-        return jsTestObjPrototypeFunctionOverloadedMethod8(state);
-    if ((argsCount == 1 && ((arg0.isObject() && isJSArray(arg0)))))
-        return jsTestObjPrototypeFunctionOverloadedMethod9(state);
-    if ((argsCount == 1 && ((arg0.isObject() && isJSArray(arg0)))))
-        return jsTestObjPrototypeFunctionOverloadedMethod10(state);
-    if (argsCount == 1)
-        return jsTestObjPrototypeFunctionOverloadedMethod11(state);
-    if ()
-        return jsTestObjPrototypeFunctionOverloadedMethod12(state);
-    if (argsCount < 1)
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    return throwVMTypeError(state);
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter1(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethodWithOptionalParameter");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestObj* objArg1 = JSTestObj::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 1) {
-        impl.overloadedMethodWithOptionalParameter(objArg1);
-        return JSValue::encode(jsUndefined());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isUndefinedOrNull())
+            return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter2Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter1Body(state, castedThis, throwScope);
     }
-
-    TestObj* objArg2 = JSTestObj::toWrapped(state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethodWithOptionalParameter(objArg1, objArg2);
-    return JSValue::encode(jsUndefined());
-}
-
-static EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter2(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "overloadedMethodWithOptionalParameter");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 1) {
-        impl.overloadedMethodWithOptionalParameter(objArg);
-        return JSValue::encode(jsUndefined());
+    if (argsCount == 2) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isUndefinedOrNull())
+            return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter2Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter1Body(state, castedThis, throwScope);
     }
-
-    int longArg = toInt32(state, state->argument(1), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.overloadedMethodWithOptionalParameter(objArg, longArg);
-    return JSValue::encode(jsUndefined());
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter(ExecState* state)
 {
-    size_t argsCount = std::min<size_t>(2, state->argumentCount());
-    JSValue arg0(state->argument(0));
-    JSValue arg1(state->argument(1));
-    if ((argsCount == 1 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info())))) || (argsCount == 2 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info()))) && (arg1.isUndefined() || arg1.isNull() || (arg1.isObject() && asObject(arg1)->inherits(JSTestObj::info())))))
-        return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter1(state);
-    if ((argsCount == 1 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info())))) || (argsCount == 2 && (arg0.isNull() || (arg0.isObject() && asObject(arg0)->inherits(JSTestObj::info())))))
-        return jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter2(state);
-    if (argsCount < 1)
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    return throwVMTypeError(state);
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameterOverloadDispatcher>(*state, "overloadedMethodWithOptionalParameter");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithDistinguishingUnion(WTFMove(objectOrNode));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto value = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithDistinguishingUnion(WTFMove(value));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnionOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2Body(state, castedThis, throwScope);
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnionOverloadDispatcher>(*state, "overloadedMethodWithDistinguishingUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWith2DistinguishingUnions(WTFMove(objectOrNode));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto value = convert<IDLUnion<IDLInterface<TestInterface>, IDLDOMString, IDLLong>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWith2DistinguishingUnions(WTFMove(value));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnionsOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestInterface::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2Body(state, castedThis, throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2Body(state, castedThis, throwScope);
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnionsOverloadDispatcher>(*state, "overloadedMethodWith2DistinguishingUnions");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto object = convert<IDLInterface<TestObj>>(*state, state->uncheckedArgument(1), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 1, "object", "TestObject", "overloadedMethodWithNonDistinguishingUnion", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithNonDistinguishingUnion(WTFMove(objectOrNode), *object);
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto node = convert<IDLInterface<TestNode>>(*state, state->uncheckedArgument(1), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 1, "node", "TestObject", "overloadedMethodWithNonDistinguishingUnion", "TestNode"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithNonDistinguishingUnion(WTFMove(objectOrNode), *node);
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnionOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(2, state->argumentCount());
+    if (argsCount == 2) {
+        JSValue distinguishingArg = state->uncheckedArgument(1);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion2Body(state, castedThis, throwScope);
+    }
+    return argsCount < 2 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnionOverloadDispatcher>(*state, "overloadedMethodWithNonDistinguishingUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithNullableUnion1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objectOrNode = convert<IDLNullable<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadWithNullableUnion(WTFMove(objectOrNode));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithNullableUnion2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto index = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadWithNullableUnion(WTFMove(index));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithNullableUnionOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isUndefinedOrNull())
+            return jsTestObjPrototypeFunctionOverloadWithNullableUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadWithNullableUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadWithNullableUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadWithNullableUnion2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadWithNullableUnion2Body(state, castedThis, throwScope);
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadWithNullableUnion(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadWithNullableUnionOverloadDispatcher>(*state, "overloadWithNullableUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithOptionalUnion1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objectOrNode = state->argument(0).isUndefined() ? true : convert<IDLUnion<IDLDOMString, IDLBoolean>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadWithOptionalUnion(WTFMove(objectOrNode));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithOptionalUnion2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto index = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadWithOptionalUnion(WTFMove(index));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithOptionalUnionOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 0) {
+        return jsTestObjPrototypeFunctionOverloadWithOptionalUnion1Body(state, castedThis, throwScope);
+    }
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isUndefined())
+            return jsTestObjPrototypeFunctionOverloadWithOptionalUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isBoolean())
+            return jsTestObjPrototypeFunctionOverloadWithOptionalUnion1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadWithOptionalUnion2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadWithOptionalUnion1Body(state, castedThis, throwScope);
+    }
+    return throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadWithOptionalUnion(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadWithOptionalUnionOverloadDispatcher>(*state, "overloadWithOptionalUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto obj = convert<IDLNullable<IDLInterface<TestObj>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "obj", "TestObject", "overloadWithNullableNonDistinguishingParameter", "TestObj"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto node = convert<IDLInterface<TestNode>>(*state, state->uncheckedArgument(1), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 1, "node", "TestObject", "overloadWithNullableNonDistinguishingParameter", "TestNode"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadWithNullableNonDistinguishingParameter(WTFMove(obj), *node);
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto node = convert<IDLNullable<IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "node", "TestObject", "overloadWithNullableNonDistinguishingParameter", "TestNode"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto index = convert<IDLLong>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadWithNullableNonDistinguishingParameter(WTFMove(node), WTFMove(index));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameterOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(2, state->argumentCount());
+    if (argsCount == 2) {
+        JSValue distinguishingArg = state->uncheckedArgument(1);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter1Body(state, castedThis, throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter2Body(state, castedThis, throwScope);
+        return jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter2Body(state, castedThis, throwScope);
+    }
+    return argsCount < 2 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameter(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOverloadWithNullableNonDistinguishingParameterOverloadDispatcher>(*state, "overloadWithNullableNonDistinguishingParameter");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionClassMethodBody(JSC::ExecState* state, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     TestObj::classMethod();
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::callStatic<jsTestObjConstructorFunctionClassMethodBody>(*state, "classMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionClassMethodWithOptionalBody(JSC::ExecState* state, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto arg = state->argument(0).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLLong>(TestObj::classMethodWithOptional(WTFMove(arg))));
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethodWithOptional(ExecState* state)
 {
+    return IDLOperation<JSTestObj>::callStatic<jsTestObjConstructorFunctionClassMethodWithOptionalBody>(*state, "classMethodWithOptional");
+}
 
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        JSValue result = jsNumber(TestObj::classMethodWithOptional());
-        return JSValue::encode(result);
-    }
-
-    int arg = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = jsNumber(TestObj::classMethodWithOptional(arg));
-    return JSValue::encode(result);
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionClassMethod2Body(JSC::ExecState* state, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    return JSValue::encode(JSTestObj::classMethod2(*state));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod2(ExecState* state)
 {
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    return JSValue::encode(JSTestObj::classMethod2(state));
+    return IDLOperation<JSTestObj>::callStatic<jsTestObjConstructorFunctionClassMethod2Body>(*state, "classMethod2");
 }
 
 #if ENABLE(Condition1)
-static EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionOverloadedMethod11(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionOverloadedMethod11Body(JSC::ExecState* state, JSC::ThrowScope& throwScope)
 {
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    int arg = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj::overloadedMethod1(arg);
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto arg = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    TestObj::overloadedMethod1(WTFMove(arg));
     return JSValue::encode(jsUndefined());
 }
 
 #endif
 
 #if ENABLE(Condition1)
-static EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionOverloadedMethod12(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionOverloadedMethod12Body(JSC::ExecState* state, JSC::ThrowScope& throwScope)
 {
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    String type = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    TestObj::overloadedMethod1(type);
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto type = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    TestObj::overloadedMethod1(WTFMove(type));
     return JSValue::encode(jsUndefined());
 }
 
 #endif
+
+#if ENABLE(Condition1)
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionOverloadedMethod1OverloadDispatcher(JSC::ExecState* state, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+#if ENABLE(Condition1)
+        if (distinguishingArg.isNumber())
+            return jsTestObjConstructorFunctionOverloadedMethod11Body(state, throwScope);
+#endif
+#if ENABLE(Condition1)
+        return jsTestObjConstructorFunctionOverloadedMethod12Body(state, throwScope);
+#endif
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
 
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionOverloadedMethod1(ExecState* state)
 {
-    size_t argsCount = std::min<size_t>(1, state->argumentCount());
-#if ENABLE(Condition1)
-    if (argsCount == 1)
-        return jsTestObjConstructorFunctionOverloadedMethod11(state);
+    return IDLOperation<JSTestObj>::callStatic<jsTestObjConstructorFunctionOverloadedMethod1OverloadDispatcher>(*state, "overloadedMethod1");
+}
+
 #endif
 
-    JSValue arg0(state->argument(0));
-#if ENABLE(Condition1)
-    if ((argsCount == 1 && (arg0.isUndefinedOrNull() || arg0.isString() || arg0.isObject())))
-        return jsTestObjConstructorFunctionOverloadedMethod12(state);
-#endif
-
-    if (argsCount < 1)
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    return throwVMTypeError(state);
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionClassMethodWithClampBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto objArgsShort = convert<IDLClampAdaptor<IDLUnsignedShort>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArgsLong = convert<IDLClampAdaptor<IDLUnsignedLong>>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.classMethodWithClamp(WTFMove(objArgsShort), WTFMove(objArgsLong));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithClamp(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "classMethodWithClamp");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionClassMethodWithClampBody>(*state, "classMethodWithClamp");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionClassMethodWithClampOnOptionalBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objArgsLong = convert<IDLClampAdaptor<IDLLong>>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.classMethodWithClampOnOptional(WTFMove(objArgsLong));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithClampOnOptional(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionClassMethodWithClampOnOptionalBody>(*state, "classMethodWithClampOnOptional");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionClassMethodWithEnforceRangeBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    unsigned short objArgsShort = 0;
-    double objArgsShortNativeValue = state->argument(0).toNumber(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto objArgsShort = convert<IDLEnforceRangeAdaptor<IDLUnsignedShort>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto objArgsLong = convert<IDLEnforceRangeAdaptor<IDLUnsignedLong>>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.classMethodWithEnforceRange(WTFMove(objArgsShort), WTFMove(objArgsLong));
+    return JSValue::encode(jsUndefined());
+}
 
-    if (!std::isnan(objArgsShortNativeValue))
-        objArgsShort = clampTo<unsigned short>(objArgsShortNativeValue);
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithEnforceRange(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionClassMethodWithEnforceRangeBody>(*state, "classMethodWithEnforceRange");
+}
 
-    unsigned long objArgsLong = 0;
-    double objArgsLongNativeValue = state->argument(1).toNumber(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionClassMethodWithEnforceRangeOnOptionalBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto objArgsLong = convert<IDLEnforceRangeAdaptor<IDLLong>>(*state, state->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.classMethodWithEnforceRangeOnOptional(WTFMove(objArgsLong));
+    return JSValue::encode(jsUndefined());
+}
 
-    if (!std::isnan(objArgsLongNativeValue))
-        objArgsLong = clampTo<unsigned long>(objArgsLongNativeValue);
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionClassMethodWithEnforceRangeOnOptional(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionClassMethodWithEnforceRangeOnOptionalBody>(*state, "classMethodWithEnforceRangeOnOptional");
+}
 
-    impl.classMethodWithClamp(objArgsShort, objArgsLong);
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithUnsignedLongSequenceBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto unsignedLongSequence = convert<IDLSequence<IDLUnsignedLong>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithUnsignedLongSequence(WTFMove(unsignedLongSequence));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithUnsignedLongSequence");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithUnsignedLongSequenceBody>(*state, "methodWithUnsignedLongSequence");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionStringArrayFunctionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<unsigned> unsignedLongSequence = toNativeArray<unsigned>(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithUnsignedLongSequence(unsignedLongSequence);
-    return JSValue::encode(jsUndefined());
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto values = convert<IDLSequence<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLSequence<IDLDOMString>>(*state, *castedThis->globalObject(), throwScope, impl.stringArrayFunction(WTFMove(values))));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStringArrayFunction(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "stringArrayFunction");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionStringArrayFunctionBody>(*state, "stringArrayFunction");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionDomStringListFunctionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    ExceptionCode ec = 0;
-    Vector<String> values = toNativeArray<String>(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = jsArray(state, castedThis->globalObject(), impl.stringArrayFunction(values, ec));
-
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto values = convert<IDLInterface<DOMStringList>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "values", "TestObject", "domStringListFunction", "DOMStringList"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLInterface<DOMStringList>>(*state, *castedThis->globalObject(), throwScope, impl.domStringListFunction(*values)));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionDomStringListFunction(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "domStringListFunction");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    ExceptionCode ec = 0;
-    RefPtr<DOMStringList> values = toDOMStringList(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.domStringListFunction(values, ec)));
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionDomStringListFunctionBody>(*state, "domStringListFunction");
+}
 
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOperationWithOptionalUnionParameterBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto optionalUnion = state->argument(0).isUndefined() ? std::optional<Converter<IDLUnion<IDLDOMString, IDLSequence<IDLUnrestrictedDouble>>>::ReturnType>() : std::optional<Converter<IDLUnion<IDLDOMString, IDLSequence<IDLUnrestrictedDouble>>>::ReturnType>(convert<IDLUnion<IDLDOMString, IDLSequence<IDLUnrestrictedDouble>>>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.operationWithOptionalUnionParameter(WTFMove(optionalUnion));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithOptionalUnionParameter(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOperationWithOptionalUnionParameterBody>(*state, "operationWithOptionalUnionParameter");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequenceBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto arrayArg = convert<IDLSequence<IDLUnsignedLong>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto nullableArrayArg = convert<IDLNullable<IDLSequence<IDLUnsignedLong>>>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithAndWithoutNullableSequence(WTFMove(arrayArg), WTFMove(nullableArrayArg));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithAndWithoutNullableSequence");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<unsigned> arrayArg = toNativeArray<unsigned>(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Vector<unsigned> nullableArrayArg = toNativeArray<unsigned>(state, state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithAndWithoutNullableSequence(arrayArg, nullableArrayArg);
-    return JSValue::encode(jsUndefined());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequenceBody>(*state, "methodWithAndWithoutNullableSequence");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithAndWithoutNullableSequence2(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionGetElementByIdBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "methodWithAndWithoutNullableSequence2");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<unsigned> arrayArg = toNativeArray<unsigned>(state, state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Vector<unsigned> nullableArrayArg = toNativeArray<unsigned>(state, state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.methodWithAndWithoutNullableSequence2(arrayArg, nullableArrayArg);
-    return JSValue::encode(jsUndefined());
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto elementId = convert<IDLRequiresExistingAtomicStringAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(toJS<IDLNullable<IDLInterface<Element>>>(*state, *castedThis->globalObject(), impl.getElementById(WTFMove(elementId))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetElementById(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionGetElementByIdBody>(*state, "getElementById");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionGetSVGDocumentBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLInterface<SVGDocument>>(*state, *castedThis->globalObject(), throwScope, BindingSecurity::checkSecurityForNode(*state, impl.getSVGDocument())));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSVGDocument(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "getSVGDocument");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    if (!shouldAllowAccessToNode(state, impl.getSVGDocument(ec)))
-        return JSValue::encode(jsNull());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.getSVGDocument(ec)));
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionGetSVGDocumentBody>(*state, "getSVGDocument");
+}
 
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConvert1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto value = convert<IDLInterface<TestNode>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "value", "TestObject", "convert1", "TestNode"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.convert1(*value);
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert1(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "convert1");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConvert1Body>(*state, "convert1");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConvert2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestNode* value = JSTestNode::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.convert1(value);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto value = convert<IDLNullable<IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "value", "TestObject", "convert2", "TestNode"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.convert2(WTFMove(value));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert2(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "convert2");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConvert2Body>(*state, "convert2");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConvert3Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestNode* value = JSTestNode::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.convert2(value);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto value = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.convert3(WTFMove(value));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert3(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConvert3Body>(*state, "convert3");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConvert4Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto value = convert<IDLNullable<IDLDOMString>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.convert4(WTFMove(value));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert4(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "convert4");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestNode* value = JSTestNode::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.convert4(value);
-    return JSValue::encode(jsUndefined());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConvert4Body>(*state, "convert4");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConvert5(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMutablePointFunctionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "convert5");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    TestNode* value = JSTestNode::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.convert5(value);
-    return JSValue::encode(jsUndefined());
+    return JSValue::encode(toJS<IDLInterface<SVGPoint>>(*state, *castedThis->globalObject(), impl.mutablePointFunction()));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMutablePointFunction(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "mutablePointFunction");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<SVGPoint>::create(impl.mutablePointFunction())));
-    return JSValue::encode(result);
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionMutablePointFunctionBody>(*state, "mutablePointFunction");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionImmutablePointFunction(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOrangeBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "immutablePointFunction");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(SVGPropertyTearOff<SVGPoint>::create(impl.immutablePointFunction())));
-    return JSValue::encode(result);
-}
-
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOrange(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "orange");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     impl.banana();
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunction(ExecState* state)
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOrange(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "strictFunction");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 3))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    ExceptionCode ec = 0;
-    String str = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    float a = state->argument(1).toFloat(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    int b = toInt32(state, state->argument(2), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.strictFunction(str, a, b, ec)));
-
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOrangeBody>(*state, "orange");
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunctionWithSequence(ExecState* state)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicStringMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "strictFunctionWithSequence");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    ExceptionCode ec = 0;
-    if (!state->argument(0).isUndefinedOrNull() && !state->argument(0).inherits(JSTestObj::info()))
-        return throwArgumentTypeError(*state, 0, "objArg", "TestObj", "strictFunctionWithSequence", "TestObj");
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Vector<unsigned> a = toNativeArray<unsigned>(state, state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.strictFunctionWithSequence(objArg, a, ec)));
-
-    setDOMException(state, ec);
-    return JSValue::encode(result);
-}
-
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionStrictFunctionWithArray(ExecState* state)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "strictFunctionWithArray");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    ExceptionCode ec = 0;
-    if (!state->argument(0).isUndefinedOrNull() && !state->argument(0).inherits(JSTestObj::info()))
-        return throwArgumentTypeError(*state, 0, "objArg", "TestObj", "strictFunctionWithArray", "TestObj");
-    TestObj* objArg = JSTestObj::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Vector<int> array = toNativeArray<int>(state, state->argument(1));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.strictFunctionWithArray(objArg, array, ec)));
-
-    setDOMException(state, ec);
-    return JSValue::encode(result);
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto head = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto tail = convertVariadicArguments<IDLDOMString>(*state, 1);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.variadicStringMethod(WTFMove(head), WTFMove(tail.arguments.value()));
+    return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicStringMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "variadicStringMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionVariadicStringMethodBody>(*state, "variadicStringMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicDoubleMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    String head = state->argument(0).toString(state)->value(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Vector<String> tail = toNativeArguments<String>(state, 1);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.variadicStringMethod(head, tail);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto head = convert<IDLUnrestrictedDouble>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto tail = convertVariadicArguments<IDLUnrestrictedDouble>(*state, 1);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.variadicDoubleMethod(WTFMove(head), WTFMove(tail.arguments.value()));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicDoubleMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "variadicDoubleMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionVariadicDoubleMethodBody>(*state, "variadicDoubleMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicNodeMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    double head = state->argument(0).toNumber(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Vector<double> tail = toNativeArguments<double>(state, 1);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.variadicDoubleMethod(head, tail);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto head = convert<IDLInterface<Node>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "head", "TestObject", "variadicNodeMethod", "Node"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto tail = convertVariadicArguments<IDLInterface<Node>>(*state, 1);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.variadicNodeMethod(*head, WTFMove(tail.arguments.value()));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicNodeMethod(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "variadicNodeMethod");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionVariadicNodeMethodBody>(*state, "variadicNodeMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicUnionMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    Node* head = JSNode::toWrapped(state->argument(0));
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    Vector<Node*> tail;
-    for (unsigned i = 1, count = state->argumentCount(); i < count; ++i) {
-        if (!state->uncheckedArgument(i).inherits(JSNode::info()))
-            return throwArgumentTypeError(*state, i, "tail", "TestObj", "variadicNodeMethod", "Node");
-        tail.append(JSNode::toWrapped(state->uncheckedArgument(i)));
-    }
-    impl.variadicNodeMethod(head, tail);
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto head = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto tail = convertVariadicArguments<IDLUnion<IDLInterface<Node>, IDLDOMString>>(*state, 1);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.variadicUnionMethod(WTFMove(head), WTFMove(tail.arguments.value()));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVariadicUnionMethod(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionVariadicUnionMethodBody>(*state, "variadicUnionMethod");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionAnyBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto a = convert<IDLUnrestrictedFloat>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto b = convert<IDLLong>(*state, state->uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.any(WTFMove(a), WTFMove(b));
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAny(ExecState* state)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "any");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionAnyBody>(*state, "any");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    if (UNLIKELY(state->argumentCount() < 2))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    float a = state->argument(0).toFloat(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    int b = toInt32(state, state->argument(1), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.any(a, b);
+    impl.testPromiseFunction(WTFMove(promise));
     return JSValue::encode(jsUndefined());
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionPromise(ExecState*, JSPromiseDeferred*);
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunction(ExecState* state)
 {
-    return JSValue::encode(callPromiseFunction(*state, jsTestObjPrototypeFunctionTestPromiseFunctionPromise));
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunction");
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionPromise(ExecState* state, JSPromiseDeferred* promiseDeferred)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "testPromiseFunction");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-    auto& impl = castedThis->wrapped();
-    impl.testPromiseFunction(DeferredWrapper(state, castedThis->globalObject(), promiseDeferred));
-    return JSValue::encode(jsUndefined());
-}
-
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentPromise(ExecState*, JSPromiseDeferred*);
-EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgument(ExecState* state)
-{
-    return JSValue::encode(callPromiseFunction(*state, jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentPromise));
-}
-
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentPromise(ExecState* state, JSPromiseDeferred* promiseDeferred)
-{
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "testPromiseFunctionWithFloatArgument");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
-    float a = state->argument(0).toFloat(state);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    if (!std::isfinite(a)) {
-        setDOMException(state, TypeError);
-        return JSValue::encode(jsUndefined());
-    }
-    impl.testPromiseFunctionWithFloatArgument(a, DeferredWrapper(state, castedThis->globalObject(), promiseDeferred));
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto a = convert<IDLFloat>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.testPromiseFunctionWithFloatArgument(WTFMove(a), WTFMove(promise));
     return JSValue::encode(jsUndefined());
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionPromise(ExecState*, JSPromiseDeferred*);
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgument(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithFloatArgumentBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunctionWithFloatArgument");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    propagateException(*state, throwScope, impl.testPromiseFunctionWithException(WTFMove(promise)));
+    return JSValue::encode(jsUndefined());
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithException(ExecState* state)
 {
-    return JSValue::encode(callPromiseFunction(*state, jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionPromise));
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunctionWithException");
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithExceptionPromise(ExecState* state, JSPromiseDeferred* promiseDeferred)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "testPromiseFunctionWithException");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    ExceptionCode ec = 0;
-    impl.testPromiseFunctionWithException(DeferredWrapper(state, castedThis->globalObject(), promiseDeferred), ec);
-    setDOMException(state, ec);
+    auto a = state->argument(0).isUndefined() ? std::optional<Converter<IDLLong>::ReturnType>() : std::optional<Converter<IDLLong>::ReturnType>(convert<IDLLong>(*state, state->uncheckedArgument(0)));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.testPromiseFunctionWithOptionalIntArgument(WTFMove(a), WTFMove(promise));
     return JSValue::encode(jsUndefined());
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentPromise(ExecState*, JSPromiseDeferred*);
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgument(ExecState* state)
 {
-    return JSValue::encode(callPromiseFunction(*state, jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentPromise));
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentBody, PromiseExecutionScope::WindowOnly>(*state, "testPromiseFunctionWithOptionalIntArgument");
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionTestPromiseFunctionWithOptionalIntArgumentPromise(ExecState* state, JSPromiseDeferred* promiseDeferred)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseOverloadedFunction1Body(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
 {
-    JSValue thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, "TestObj", "testPromiseFunctionWithOptionalIntArgument");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        impl.testPromiseFunctionWithOptionalIntArgument(DeferredWrapper(state, castedThis->globalObject(), promiseDeferred));
-        return JSValue::encode(jsUndefined());
-    }
-
-    int a = toInt32(state, state->argument(0), NormalConversion);
-    if (UNLIKELY(state->hadException()))
-        return JSValue::encode(jsUndefined());
-    impl.testPromiseFunctionWithOptionalIntArgument(a, DeferredWrapper(state, castedThis->globalObject(), promiseDeferred));
+    auto a = convert<IDLFloat>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.testPromiseOverloadedFunction(WTFMove(a), WTFMove(promise));
     return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseOverloadedFunction2Body(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto request = convert<IDLInterface<FetchRequest>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "request", "TestObject", "testPromiseOverloadedFunction", "FetchRequest"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.testPromiseOverloadedFunction(*request, WTFMove(promise));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestPromiseOverloadedFunctionOverloadDispatcher(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSFetchRequest::info()))
+            return jsTestObjPrototypeFunctionTestPromiseOverloadedFunction2Body(state, castedThis, WTFMove(promise), throwScope);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionTestPromiseOverloadedFunction1Body(state, castedThis, WTFMove(promise), throwScope);
+        return jsTestObjPrototypeFunctionTestPromiseOverloadedFunction1Body(state, castedThis, WTFMove(promise), throwScope);
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestPromiseOverloadedFunction(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestPromiseOverloadedFunctionOverloadDispatcher, PromiseExecutionScope::WindowOnly>(*state, "testPromiseOverloadedFunction");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticPromiseFunctionBody(JSC::ExecState* state, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    TestObj::testStaticPromiseFunction(WTFMove(promise));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticPromiseFunction(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testStaticPromiseFunction");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticPromiseFunctionWithExceptionBody(JSC::ExecState* state, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    propagateException(*state, throwScope, TestObj::testStaticPromiseFunctionWithException(WTFMove(promise)));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticPromiseFunctionWithException(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticPromiseFunctionWithExceptionBody, PromiseExecutionScope::WindowOnly>(*state, "testStaticPromiseFunctionWithException");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestCustomPromiseFunctionBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    return JSValue::encode(castedThis->testCustomPromiseFunction(*state, WTFMove(promise)));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestCustomPromiseFunction(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionTestCustomPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testCustomPromiseFunction");
+}
+
+static inline JSC::EncodedJSValue jsTestObjConstructorFunctionTestStaticCustomPromiseFunctionBody(JSC::ExecState* state, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    return JSValue::encode(JSTestObj::testStaticCustomPromiseFunction(*state, WTFMove(promise)));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionTestStaticCustomPromiseFunction(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::callStatic<jsTestObjConstructorFunctionTestStaticCustomPromiseFunctionBody, PromiseExecutionScope::WindowOnly>(*state, "testStaticCustomPromiseFunction");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestCustomReturnsOwnPromiseFunctionBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    return JSValue::encode(castedThis->testCustomReturnsOwnPromiseFunction(*state));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestCustomReturnsOwnPromiseFunction(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::callReturningOwnPromise<jsTestObjPrototypeFunctionTestCustomReturnsOwnPromiseFunctionBody>(*state, "testCustomReturnsOwnPromiseFunction");
+}
+
+#if ENABLE(CONDITION1)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionalOverload1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.conditionalOverload(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+#endif
+
+#if ENABLE(CONDITION2)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionalOverload2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto a = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.conditionalOverload(WTFMove(a));
+    return JSValue::encode(jsUndefined());
+}
+
+#endif
+
+#if ENABLE(CONDITION1) || ENABLE(CONDITION2)
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionConditionalOverloadOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+#if ENABLE(CONDITION2)
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionConditionalOverload2Body(state, castedThis, throwScope);
+#endif
+#if ENABLE(CONDITION1)
+        return jsTestObjPrototypeFunctionConditionalOverload1Body(state, castedThis, throwScope);
+#endif
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalOverload(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionConditionalOverloadOverloadDispatcher>(*state, "conditionalOverload");
+}
+
+#endif
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionSingleConditionalOverload1Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto str = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.singleConditionalOverload(WTFMove(str));
+    return JSValue::encode(jsUndefined());
+}
+
+#if ENABLE(CONDITION)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionSingleConditionalOverload2Body(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto a = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.singleConditionalOverload(WTFMove(a));
+    return JSValue::encode(jsUndefined());
+}
+
+#endif
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionSingleConditionalOverloadOverloadDispatcher(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    VM& vm = state->vm();
+    UNUSED_PARAM(vm);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+#if ENABLE(CONDITION)
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionSingleConditionalOverload2Body(state, castedThis, throwScope);
+#endif
+        return jsTestObjPrototypeFunctionSingleConditionalOverload1Body(state, castedThis, throwScope);
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSingleConditionalOverload(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionSingleConditionalOverloadOverloadDispatcher>(*state, "singleConditionalOverload");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionAttachShadowRootBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto init = convert<IDLDictionary<TestObj::Dictionary>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.attachShadowRoot(WTFMove(init));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAttachShadowRoot(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionAttachShadowRootBody>(*state, "attachShadowRoot");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameterBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto dict = convert<IDLDictionary<DictionaryImplName>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.operationWithExternalDictionaryParameter(WTFMove(dict));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameter(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameterBody>(*state, "operationWithExternalDictionaryParameter");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionBufferSourceParameterBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto data = convert<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.bufferSourceParameter(WTFMove(data));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionBufferSourceParameter(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionBufferSourceParameterBody>(*state, "bufferSourceParameter");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionLegacyCallerNamedBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto param = convert<IDLLong>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.legacyCallerNamed(WTFMove(param));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionLegacyCallerNamed(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionLegacyCallerNamedBody>(*state, "legacyCallerNamed");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestReturnValueOptimizationBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto returnValue = state->uncheckedArgument(0);
+    auto a = convert<IDLInterface<Node>>(*state, returnValue, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "a", "TestObject", "testReturnValueOptimization", "Node"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto b = convert<IDLInterface<Node>>(*state, state->uncheckedArgument(1), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 1, "b", "TestObject", "testReturnValueOptimization", "Node"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.testReturnValueOptimization(*a, *b);
+    return JSValue::encode(returnValue);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestReturnValueOptimization(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionTestReturnValueOptimizationBody>(*state, "testReturnValueOptimization");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestReturnValueOptimizationWithExceptionBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto returnValue = state->uncheckedArgument(0);
+    auto a = convert<IDLInterface<Node>>(*state, returnValue, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "a", "TestObject", "testReturnValueOptimizationWithException", "Node"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto b = convert<IDLInterface<Node>>(*state, state->uncheckedArgument(1), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 1, "b", "TestObject", "testReturnValueOptimizationWithException", "Node"); });
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    propagateException(*state, throwScope, impl.testReturnValueOptimizationWithException(*a, *b));
+    return JSValue::encode(returnValue);
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestReturnValueOptimizationWithException(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionTestReturnValueOptimizationWithExceptionBody>(*state, "testReturnValueOptimizationWithException");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionToStringBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLUSVString>(*state, impl.stringifierAttribute()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToString(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionToStringBody>(*state, "toString");
+}
+
+JSC::JSObject* JSTestObj::serialize(ExecState& state, JSTestObj& thisObject, JSDOMGlobalObject& globalObject, ThrowScope& throwScope)
+{
+    auto& vm = state.vm();
+    auto* result = constructEmptyObject(&state, globalObject.objectPrototype());
+
+    auto createValue = jsTestObjCreateGetter(state, thisObject, throwScope);
+    throwScope.assertNoException();
+    result->putDirect(vm, Identifier::fromString(&vm, "create"), createValue);
+
+    auto readOnlyStringAttrValue = jsTestObjReadOnlyStringAttrGetter(state, thisObject, throwScope);
+    throwScope.assertNoException();
+    result->putDirect(vm, Identifier::fromString(&vm, "readOnlyStringAttr"), readOnlyStringAttrValue);
+
+    auto enumAttrValue = jsTestObjEnumAttrGetter(state, thisObject, throwScope);
+    throwScope.assertNoException();
+    result->putDirect(vm, Identifier::fromString(&vm, "enumAttr"), enumAttrValue);
+
+    auto longAttrValue = jsTestObjLongAttrGetter(state, thisObject, throwScope);
+    throwScope.assertNoException();
+    result->putDirect(vm, Identifier::fromString(&vm, "longAttr"), longAttrValue);
+
+    return result;
+}
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionToJSONBody(ExecState* state, JSTestObj* thisObject, JSC::ThrowScope& throwScope)
+{
+    return JSValue::encode(JSTestObj::serialize(*state, *thisObject, *thisObject->globalObject(), throwScope));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionToJSONBody>(*state, "toJSON");
 }
 
 void JSTestObj::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -4856,8 +8067,8 @@ void JSTestObj::visitChildren(JSCell* cell, SlotVisitor& visitor)
     auto* thisObject = jsCast<JSTestObj*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_cachedAttribute1);
-    visitor.append(&thisObject->m_cachedAttribute2);
+    visitor.append(thisObject->m_cachedAttribute1);
+    visitor.append(thisObject->m_cachedAttribute2);
 }
 
 bool JSTestObjOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
@@ -4869,7 +8080,7 @@ bool JSTestObjOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle
 
 void JSTestObjOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    auto* jsTestObj = jsCast<JSTestObj*>(handle.slot()->asCell());
+    auto* jsTestObj = static_cast<JSTestObj*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestObj->wrapped(), jsTestObj);
 }
@@ -4883,44 +8094,38 @@ extern "C" { extern void* _ZTVN7WebCore7TestObjE[]; }
 #endif
 #endif
 
-JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestObj* impl)
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, Ref<TestObj>&& impl)
 {
-    if (!impl)
-        return jsNull();
-    return createNewWrapper<JSTestObj>(globalObject, impl);
-}
-
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestObj* impl)
-{
-    if (!impl)
-        return jsNull();
-    if (JSValue result = getExistingWrapper<JSTestObj>(globalObject, impl))
-        return result;
 
 #if ENABLE(BINDING_INTEGRITY)
-    void* actualVTablePointer = *(reinterpret_cast<void**>(impl));
+    void* actualVTablePointer = *(reinterpret_cast<void**>(impl.ptr()));
 #if PLATFORM(WIN)
     void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestObj@WebCore@@6B@"));
 #else
     void* expectedVTablePointer = &_ZTVN7WebCore7TestObjE[2];
-#if COMPILER(CLANG)
+#endif
+
     // If this fails TestObj does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestObj), TestObj_is_not_polymorphic);
-#endif
-#endif
+    static_assert(std::is_polymorphic<TestObj>::value, "TestObj is not polymorphic");
+
     // If you hit this assertion you either have a use after free bug, or
     // TestObj has subclasses. If TestObj has subclasses that get passed
     // to toJS() we currently require TestObj you to opt out of binding hardening
     // by adding the SkipVTableValidation attribute to the interface IDL definition
     RELEASE_ASSERT(actualVTablePointer == expectedVTablePointer);
 #endif
-    return createNewWrapper<JSTestObj>(globalObject, impl);
+    return createWrapper<TestObj>(globalObject, WTFMove(impl));
 }
 
-TestObj* JSTestObj::toWrapped(JSC::JSValue value)
+JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestObj& impl)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestObj*>(value))
+    return wrap(state, globalObject, impl);
+}
+
+TestObj* JSTestObj::toWrapped(JSC::VM& vm, JSC::JSValue value)
+{
+    if (auto* wrapper = jsDynamicDowncast<JSTestObj*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

@@ -28,6 +28,7 @@
 
 #include "SessionState.h"
 #include <WebCore/BlobData.h>
+#include <WebCore/FileSystem.h>
 #include <WebCore/FormData.h>
 #include <WebCore/HistoryItem.h>
 
@@ -85,6 +86,7 @@ static FrameState toFrameState(const HistoryItem& historyItem)
     frameState.itemSequenceNumber = historyItem.itemSequenceNumber();
 
     frameState.scrollPosition = historyItem.scrollPosition();
+    frameState.shouldRestoreScrollPosition = historyItem.shouldRestoreScrollPosition();
     frameState.pageScaleFactor = historyItem.pageScaleFactor();
 
     if (FormData* formData = const_cast<HistoryItem&>(historyItem).formData()) {
@@ -121,9 +123,9 @@ PageState toPageState(const WebCore::HistoryItem& historyItem)
     return pageState;
 }
 
-static PassRefPtr<FormData> toFormData(const HTTPBody& httpBody)
+static Ref<FormData> toFormData(const HTTPBody& httpBody)
 {
-    RefPtr<FormData> formData = FormData::create();
+    auto formData = FormData::create();
 
     for (const auto& element : httpBody.elements) {
         switch (element.type) {
@@ -132,7 +134,7 @@ static PassRefPtr<FormData> toFormData(const HTTPBody& httpBody)
             break;
 
         case HTTPBody::Element::Type::File:
-            formData->appendFileRange(element.filePath, element.fileStart, element.fileLength.valueOr(BlobDataItem::toEndOfFile), element.expectedFileModificationTime.valueOr(invalidFileTime()));
+            formData->appendFileRange(element.filePath, element.fileStart, element.fileLength.value_or(BlobDataItem::toEndOfFile), element.expectedFileModificationTime.value_or(invalidFileTime()));
             break;
 
         case HTTPBody::Element::Type::Blob:
@@ -141,7 +143,7 @@ static PassRefPtr<FormData> toFormData(const HTTPBody& httpBody)
         }
     }
 
-    return formData.release();
+    return formData;
 }
 
 static void applyFrameState(HistoryItem& historyItem, const FrameState& frameState)
@@ -161,6 +163,7 @@ static void applyFrameState(HistoryItem& historyItem, const FrameState& frameSta
     historyItem.setItemSequenceNumber(frameState.itemSequenceNumber);
 
     historyItem.setScrollPosition(frameState.scrollPosition);
+    historyItem.setShouldRestoreScrollPosition(frameState.shouldRestoreScrollPosition);
     historyItem.setPageScaleFactor(frameState.pageScaleFactor);
 
     if (frameState.httpBody) {

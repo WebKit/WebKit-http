@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,22 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLProgram_h
-#define WebGLProgram_h
+#pragma once
 
 #include "WebGLSharedObject.h"
 
-#include "WebGLShader.h"
-
-#include <wtf/Vector.h>
-
 namespace WebCore {
+
+class WebGLShader;
 
 class WebGLProgram final : public WebGLSharedObject {
 public:
+    static Ref<WebGLProgram> create(WebGLRenderingContextBase&);
     virtual ~WebGLProgram();
-
-    static Ref<WebGLProgram> create(WebGLRenderingContextBase*);
 
     unsigned numActiveAttribLocations();
     GC3Dint getActiveAttribLocation(GC3Duint index);
@@ -61,30 +57,25 @@ public:
     bool detachShader(WebGLShader*);
 
 protected:
-    WebGLProgram(WebGLRenderingContextBase*);
+    WebGLProgram(WebGLRenderingContextBase&);
 
-    virtual void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
+    void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 
 private:
-    virtual bool isProgram() const override { return true; }
-
     void cacheActiveAttribLocations(GraphicsContext3D*);
     void cacheInfoIfNeeded();
 
     Vector<GC3Dint> m_activeAttribLocations;
 
-    GC3Dint m_linkStatus;
+    GC3Dint m_linkStatus { 0 };
 
-    // This is used to track whether a WebGLUniformLocation belongs to this
-    // program or not.
-    unsigned m_linkCount;
+    // This is used to track whether a WebGLUniformLocation belongs to this program or not.
+    unsigned m_linkCount { 0 };
 
     RefPtr<WebGLShader> m_vertexShader;
     RefPtr<WebGLShader> m_fragmentShader;
 
-    bool m_infoValid;
+    bool m_infoValid { true };
 };
 
 } // namespace WebCore
-
-#endif // WebGLProgram_h

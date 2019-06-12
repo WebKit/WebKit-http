@@ -10,12 +10,14 @@
 #ifndef LIBANGLE_RENDERER_D3D_D3D9_FORMATUTILS9_H_
 #define LIBANGLE_RENDERER_D3D_D3D9_FORMATUTILS9_H_
 
-#include "libANGLE/renderer/d3d/formatutilsD3D.h"
-#include "libANGLE/angletypes.h"
+#include <map>
 
 #include "common/platform.h"
-
-#include <map>
+#include "libANGLE/angletypes.h"
+#include "libANGLE/formatutils.h"
+#include "libANGLE/renderer/Format.h"
+#include "libANGLE/renderer/renderer_utils.h"
+#include "libANGLE/renderer/d3d/formatutilsD3D.h"
 
 namespace rx
 {
@@ -25,11 +27,22 @@ class Renderer9;
 namespace d3d9
 {
 
-typedef std::map<std::pair<GLenum, GLenum>, ColorCopyFunction> FastCopyFunctionMap;
-
 struct D3DFormat
 {
-    D3DFormat();
+    constexpr D3DFormat();
+    constexpr D3DFormat(GLuint pixelBytes,
+                        GLuint blockWidth,
+                        GLuint blockHeight,
+                        GLuint redBits,
+                        GLuint greenBits,
+                        GLuint blueBits,
+                        GLuint alphaBits,
+                        GLuint luminanceBits,
+                        GLuint depthBits,
+                        GLuint stencilBits,
+                        angle::Format::ID formatID);
+
+    const angle::Format &info() const { return angle::Format::Get(formatID); }
 
     GLuint pixelBytes;
     GLuint blockWidth;
@@ -44,14 +57,9 @@ struct D3DFormat
     GLuint depthBits;
     GLuint stencilBits;
 
-    GLenum internalFormat;
-
-    MipGenerationFunction mipGenerationFunction;
-    ColorReadFunction colorReadFunction;
-
-    FastCopyFunctionMap fastCopyFunctions;
-    ColorCopyFunction getFastCopyFunction(GLenum format, GLenum type) const;
+    angle::Format::ID formatID;
 };
+
 const D3DFormat &GetD3DFormatInfo(D3DFORMAT format);
 
 struct VertexFormat
@@ -64,7 +72,7 @@ struct VertexFormat
     D3DDECLTYPE nativeFormat;
     GLenum componentType;
 };
-const VertexFormat &GetVertexFormatInfo(DWORD supportedDeclTypes, const gl::VertexFormat &vertexFormat);
+const VertexFormat &GetVertexFormatInfo(DWORD supportedDeclTypes, gl::VertexFormatType vertexFormatType);
 
 struct TextureFormat
 {

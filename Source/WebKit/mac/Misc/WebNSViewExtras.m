@@ -38,6 +38,7 @@
 
 #if !PLATFORM(IOS)
 #import <WebKitLegacy/WebNSPasteboardExtras.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -82,7 +83,7 @@
     NSEvent *nextEvent, *firstEvent, *dragEvent, *mouseUp;
     BOOL dragIt;
 
-    if ([mouseDownEvent type] != NSLeftMouseDown) {
+    if ([mouseDownEvent type] != NSEventTypeLeftMouseDown) {
         return NO;
     }
 
@@ -92,7 +93,7 @@
     mouseUp = nil;
     dragIt = NO;
 
-    while ((nextEvent = [[self window] nextEventMatchingMask:(NSLeftMouseUpMask | NSLeftMouseDraggedMask)
+    while ((nextEvent = [[self window] nextEventMatchingMask:(NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged)
                                                    untilDate:expiration
                                                       inMode:NSEventTrackingRunLoopMode
                                                      dequeue:YES]) != nil) {
@@ -100,7 +101,7 @@
             firstEvent = nextEvent;
         }
 
-        if ([nextEvent type] == NSLeftMouseDragged) {
+        if ([nextEvent type] == NSEventTypeLeftMouseDragged) {
             float deltax = ABS([nextEvent locationInWindow].x - [mouseDownEvent locationInWindow].x);
             float deltay = ABS([nextEvent locationInWindow].y - [mouseDownEvent locationInWindow].y);
             dragEvent = nextEvent;
@@ -114,7 +115,7 @@
                 dragIt = YES;
                 break;
             }
-        } else if ([nextEvent type] == NSLeftMouseUp) {
+        } else if ([nextEvent type] == NSEventTypeLeftMouseUp) {
             mouseUp = nextEvent;
             break;
         }

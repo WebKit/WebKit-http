@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderTableCaption_h
-#define RenderTableCaption_h
+#pragma once
 
 #include "RenderBlockFlow.h"
 
@@ -28,18 +27,18 @@ class RenderTable;
 
 class RenderTableCaption final : public RenderBlockFlow {
 public:
-    RenderTableCaption(Element&, Ref<RenderStyle>&&);
+    RenderTableCaption(Element&, RenderStyle&&);
     virtual ~RenderTableCaption();
 
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }
 
-    virtual LayoutUnit containingBlockLogicalWidthForContent() const override { return containingBlock()->logicalWidth(); }
+    LayoutUnit containingBlockLogicalWidthForContent() const override { return containingBlock()->logicalWidth(); }
     
 private:
-    virtual bool isTableCaption() const override { return true; }
+    bool isTableCaption() const override { return true; }
 
-    virtual void insertedIntoTree() override;
-    virtual void willBeRemovedFromTree() override;
+    void insertedIntoTree() override;
+    void willBeRemovedFromTree() override;
 
     RenderTable* table() const;
 };
@@ -47,5 +46,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderTableCaption, isTableCaption())
-
-#endif // RenderTableCaption_h

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ReplaceSelectionCommand_h
-#define ReplaceSelectionCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 #include "NodeTraversal.h"
@@ -53,10 +52,15 @@ public:
         return adoptRef(*new ReplaceSelectionCommand(document, WTFMove(fragment), options, editingAction));
     }
 
+    VisibleSelection visibleSelectionForInsertedText() const { return m_visibleSelectionForInsertedText; }
+
 private:
     ReplaceSelectionCommand(Document&, RefPtr<DocumentFragment>&&, CommandOptions, EditAction);
 
-    virtual void doApply();
+    String inputEventData() const final;
+    RefPtr<DataTransfer> inputEventDataTransfer() const final;
+    bool willApplyCommand() final;
+    void doApply() override;
 
     class InsertedNodes {
     public:
@@ -81,7 +85,7 @@ private:
         RefPtr<Node> m_lastNodeInserted;
     };
 
-    Node* insertAsListItems(PassRefPtr<HTMLElement> listElement, Node* insertionNode, const Position&, InsertedNodes&);
+    Node* insertAsListItems(HTMLElement& listElement, Node* insertionNode, const Position&, InsertedNodes&);
 
     void updateNodesInserted(Node*);
     bool shouldRemoveEndBR(Node*, const VisiblePosition&);
@@ -96,7 +100,7 @@ private:
     
     void removeRedundantStylesAndKeepStyleSpanInline(InsertedNodes&);
     void makeInsertedContentRoundTrippableWithHTMLTreeBuilder(InsertedNodes&);
-    void moveNodeOutOfAncestor(PassRefPtr<Node>, PassRefPtr<Node> ancestor, InsertedNodes&);
+    void moveNodeOutOfAncestor(Node&, Node& ancestor, InsertedNodes&);
     void handleStyleSpans(InsertedNodes&);
     void handlePasteAsQuotationNode();
     
@@ -108,8 +112,10 @@ private:
     void completeHTMLReplacement(const Position& lastPositionToSelect);
     void mergeTextNodesAroundPosition(Position&, Position& positionOnlyToBeUpdated);
 
+    ReplacementFragment* ensureReplacementFragment();
     bool performTrivialReplace(const ReplacementFragment&);
 
+    VisibleSelection m_visibleSelectionForInsertedText;
     Position m_startOfInsertedContent;
     Position m_endOfInsertedContent;
     RefPtr<EditingStyle> m_insertionStyle;
@@ -117,6 +123,9 @@ private:
     bool m_smartReplace;
     bool m_matchStyle;
     RefPtr<DocumentFragment> m_documentFragment;
+    std::unique_ptr<ReplacementFragment> m_replacementFragment;
+    String m_documentFragmentHTMLMarkup;
+    String m_documentFragmentPlainText;
     bool m_preventNesting;
     bool m_movingParagraph;
     bool m_sanitizeFragment;
@@ -125,5 +134,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ReplaceSelectionCommand_h

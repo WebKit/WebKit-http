@@ -37,7 +37,8 @@
 #import <WebCore/CSSPrimitiveValue.h>
 #import <WebCore/CSSPropertyNames.h>
 #import <WebCore/ColorMac.h>
-#import <WebCore/HTMLElement.h>
+#import <WebCore/Event.h>
+#import <WebCore/EventNames.h>
 #import <WebCore/HTMLInputElement.h>
 #import <WebCore/HTMLNames.h>
 #import <WebCore/HTMLOptionElement.h>
@@ -51,14 +52,14 @@ namespace WebKit {
 
 using namespace HTMLNames;
 
-PassRefPtr<PDFPluginAnnotation> PDFPluginAnnotation::create(PDFAnnotation *annotation, PDFLayerController *pdfLayerController, PDFPlugin* plugin)
+RefPtr<PDFPluginAnnotation> PDFPluginAnnotation::create(PDFAnnotation *annotation, PDFLayerController *pdfLayerController, PDFPlugin* plugin)
 {
     if ([annotation isKindOfClass:pdfAnnotationTextWidgetClass()])
         return PDFPluginTextAnnotation::create(annotation, pdfLayerController, plugin);
     if ([annotation isKindOfClass:pdfAnnotationChoiceWidgetClass()])
         return PDFPluginChoiceAnnotation::create(annotation, pdfLayerController, plugin);
 
-    return 0;
+    return nullptr;
 }
 
 void PDFPluginAnnotation::attach(Element* parent)
@@ -68,9 +69,10 @@ void PDFPluginAnnotation::attach(Element* parent)
     m_parent = parent;
     m_element = createAnnotationElement();
 
-    m_element->setAttribute(classAttr, "annotation");
-    m_element->addEventListener(eventNames().changeEvent, m_eventListener, false);
-    m_element->addEventListener(eventNames().blurEvent, m_eventListener, false);
+    m_element->setAttributeWithoutSynchronization(classAttr, AtomicString("annotation", AtomicString::ConstructFromLiteral));
+    m_element->setAttributeWithoutSynchronization(x_apple_pdf_annotationAttr, AtomicString("true", AtomicString::ConstructFromLiteral));
+    m_element->addEventListener(eventNames().changeEvent, *m_eventListener, false);
+    m_element->addEventListener(eventNames().blurEvent, *m_eventListener, false);
 
     updateGeometry();
 
@@ -87,8 +89,8 @@ void PDFPluginAnnotation::commit()
 
 PDFPluginAnnotation::~PDFPluginAnnotation()
 {
-    m_element->removeEventListener(eventNames().changeEvent, m_eventListener.get(), false);
-    m_element->removeEventListener(eventNames().blurEvent, m_eventListener.get(), false);
+    m_element->removeEventListener(eventNames().changeEvent, *m_eventListener, false);
+    m_element->removeEventListener(eventNames().blurEvent, *m_eventListener, false);
 
     m_eventListener->setAnnotation(0);
 
@@ -103,14 +105,9 @@ void PDFPluginAnnotation::updateGeometry()
     StyledElement* styledElement = static_cast<StyledElement*>(element());
     styledElement->setInlineStyleProperty(CSSPropertyWidth, annotationRect.size.width, CSSPrimitiveValue::CSS_PX);
     styledElement->setInlineStyleProperty(CSSPropertyHeight, annotationRect.size.height, CSSPrimitiveValue::CSS_PX);
-#if !USE(DEPRECATED_PDF_PLUGIN)
-    styledElement->setInlineStyleProperty(CSSPropertyLeft, annotationRect.origin.x, CSSPrimitiveValue::CSS_PX);
-    styledElement->setInlineStyleProperty(CSSPropertyTop, documentSize.height() - annotationRect.origin.y - annotationRect.size.height, CSSPrimitiveValue::CSS_PX);
-#else
     IntPoint scrollPosition(m_pdfLayerController.scrollPosition);
     styledElement->setInlineStyleProperty(CSSPropertyLeft, annotationRect.origin.x - scrollPosition.x(), CSSPrimitiveValue::CSS_PX);
     styledElement->setInlineStyleProperty(CSSPropertyTop, documentSize.height() - annotationRect.origin.y - annotationRect.size.height - scrollPosition.y(), CSSPrimitiveValue::CSS_PX);
-#endif
 }
 
 bool PDFPluginAnnotation::handleEvent(Event* event)

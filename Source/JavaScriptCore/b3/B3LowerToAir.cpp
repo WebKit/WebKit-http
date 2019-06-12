@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,21 +28,23 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirBlockInsertionSet.h"
 #include "AirCCallSpecial.h"
 #include "AirCode.h"
 #include "AirInsertionSet.h"
 #include "AirInstInlines.h"
+#include "AirPrintSpecial.h"
 #include "AirStackSlot.h"
 #include "B3ArgumentRegValue.h"
+#include "B3AtomicValue.h"
 #include "B3BasicBlockInlines.h"
 #include "B3BlockWorklist.h"
 #include "B3CCallValue.h"
 #include "B3CheckSpecial.h"
 #include "B3Commutativity.h"
 #include "B3Dominators.h"
-#include "B3IndexMap.h"
-#include "B3IndexSet.h"
-#include "B3MemoryValue.h"
+#include "B3FenceValue.h"
+#include "B3MemoryValueInlines.h"
 #include "B3PatchpointSpecial.h"
 #include "B3PatchpointValue.h"
 #include "B3PhaseScope.h"
@@ -55,6 +57,9 @@
 #include "B3ValueInlines.h"
 #include "B3Variable.h"
 #include "B3VariableValue.h"
+#include "B3WasmAddressValue.h"
+#include <wtf/IndexMap.h>
+#include <wtf/IndexSet.h>
 #include <wtf/ListDump.h>
 
 #if COMPILER(GCC) && ASSERT_DISABLED
@@ -70,6 +75,16 @@ namespace {
 
 const bool verbose = false;
 
+// FIXME: We wouldn't need this if Air supported Width modifiers in Air::Kind.
+// https://bugs.webkit.org/show_bug.cgi?id=169247
+#define OPCODE_FOR_WIDTH(opcode, width) ( \
+    (width) == Width8 ? opcode ## 8 : \
+    (width) == Width16 ? opcode ## 16 : \
+    (width) == Width32 ? opcode ## 32 : \
+    opcode ## 64)
+#define OPCODE_FOR_CANONICAL_WIDTH(opcode, width) ( \
+    (width) == Width64 ? opcode ## 64 : opcode ## 32)
+
 class LowerToAir {
 public:
     LowerToAir(Procedure& procedure)
@@ -81,6 +96,12 @@ public:
         , m_dominators(procedure.dominators())
         , m_procedure(procedure)
         , m_code(procedure.code())
+        , m_blockInsertionSet(m_code)
+#if CPU(X86) || CPU(X86_64)
+        , m_eax(X86Registers::eax)
+        , m_ecx(X86Registers::ecx)
+        , m_edx(X86Registers::edx)
+#endif
     {
     }
 
@@ -92,7 +113,7 @@ public:
         for (Value* value : m_procedure.values()) {
             switch (value->opcode()) {
             case Phi: {
-                m_phiToTmp[value] = m_code.newTmp(Arg::typeForB3Type(value->type()));
+                m_phiToTmp[value] = m_code.newTmp(value->resultBank());
                 if (verbose)
                     dataLog("Phi tmp for ", *value, ": ", m_phiToTmp[value], "\n");
                 break;
@@ -105,7 +126,7 @@ public:
         for (B3::StackSlot* stack : m_procedure.stackSlots())
             m_stackToStack.add(stack, m_code.addStackSlot(stack));
         for (Variable* variable : m_procedure.variables())
-            m_variableToTmp.add(variable, m_code.newTmp(Arg::typeForB3Type(variable->type())));
+            m_variableToTmp.add(variable, m_code.newTmp(variable->bank()));
 
         // Figure out which blocks are not rare.
         m_fastWorklist.push(m_procedure[0]);
@@ -122,14 +143,18 @@ public:
         // hoisted address expression before we duplicate it back into the loop.
         for (B3::BasicBlock* block : m_procedure.blocksInPreOrder()) {
             m_block = block;
-            // Reset some state.
-            m_insts.resize(0);
 
             m_isRare = !m_fastWorklist.saw(block);
 
             if (verbose)
                 dataLog("Lowering Block ", *block, ":\n");
             
+            // Make sure that the successors are set up correctly.
+            for (B3::FrequentedBlock successor : block->successors()) {
+                m_blockToBlock[block]->successors().append(
+                    Air::FrequentedBlock(m_blockToBlock[successor.block()], successor.frequency()));
+            }
+
             // Process blocks in reverse order so we see uses before defs. That's what allows us
             // to match patterns effectively.
             for (unsigned i = block->size(); i--;) {
@@ -147,20 +172,10 @@ public:
                 }
             }
 
-            // Now append the instructions. m_insts contains them in reverse order, so we process
-            // it in reverse.
-            for (unsigned i = m_insts.size(); i--;) {
-                for (Inst& inst : m_insts[i])
-                    m_blockToBlock[block]->appendInst(WTFMove(inst));
-            }
-
-            // Make sure that the successors are set up correctly.
-            ASSERT(block->successors().size() <= 2);
-            for (B3::FrequentedBlock successor : block->successors()) {
-                m_blockToBlock[block]->successors().append(
-                    Air::FrequentedBlock(m_blockToBlock[successor.block()], successor.frequency()));
-            }
+            finishAppendingInstructions(m_blockToBlock[block]);
         }
+        
+        m_blockInsertionSet.execute();
 
         Air::InsertionSet insertionSet(m_code);
         for (Inst& inst : m_prologue)
@@ -181,6 +196,7 @@ private:
     }
 
     class ArgPromise {
+        WTF_MAKE_NONCOPYABLE(ArgPromise);
     public:
         ArgPromise() { }
 
@@ -188,6 +204,37 @@ private:
             : m_arg(arg)
             , m_value(valueToLock)
         {
+        }
+        
+        void swap(ArgPromise& other)
+        {
+            std::swap(m_arg, other.m_arg);
+            std::swap(m_value, other.m_value);
+            std::swap(m_wasConsumed, other.m_wasConsumed);
+            std::swap(m_wasWrapped, other.m_wasWrapped);
+            std::swap(m_traps, other.m_traps);
+        }
+        
+        ArgPromise(ArgPromise&& other)
+        {
+            swap(other);
+        }
+        
+        ArgPromise& operator=(ArgPromise&& other)
+        {
+            swap(other);
+            return *this;
+        }
+        
+        ~ArgPromise()
+        {
+            if (m_wasConsumed)
+                RELEASE_ASSERT(m_wasWrapped);
+        }
+        
+        void setTraps(bool value)
+        {
+            m_traps = value;
         }
 
         static ArgPromise tmp(Value* value)
@@ -211,13 +258,23 @@ private:
             return m_arg;
         }
 
-        Arg consume(LowerToAir& lower) const
+        Arg consume(LowerToAir& lower)
         {
+            m_wasConsumed = true;
             if (!m_arg && m_value)
                 return lower.tmp(m_value);
             if (m_value)
                 lower.commitInternal(m_value);
             return m_arg;
+        }
+        
+        template<typename... Args>
+        Inst inst(Args&&... args)
+        {
+            Inst result(std::forward<Args>(args)...);
+            result.kind.effects |= m_traps;
+            m_wasWrapped = true;
+            return result;
         }
         
     private:
@@ -227,7 +284,10 @@ private:
         // Arg null, value non-null: it's a tmp, pin it when necessary.
         // Arg non-null, value non-null: use the arg, lock the value.
         Arg m_arg;
-        Value* m_value;
+        Value* m_value { nullptr };
+        bool m_wasConsumed { false };
+        bool m_wasWrapped { false };
+        bool m_traps { false };
     };
 
     // Consider using tmpPromise() in cases where you aren't sure that you want to pin the value yet.
@@ -246,11 +306,12 @@ private:
     //         append(Foo, tmp(bar))
     //
     // Idiom #3: Same as Idiom #2, but using tmpPromise. Notice that this calls consume() only after
-    // it's sure it will use the tmp. That's deliberate.
+    // it's sure it will use the tmp. That's deliberate. Also note that you're required to pass any
+    // Inst you create with consumed promises through that promise's inst() function.
     //
     //     ArgPromise promise = tmpPromise(bar);
     //     if (isValidForm(Foo, promise.kind()))
-    //         append(Foo, promise.consume(*this))
+    //         append(promise.inst(Foo, promise.consume(*this)))
     //
     // In both idiom #2 and idiom #3, we don't pin the value to a temporary except when we actually
     // emit the instruction. Both tmp() and tmpPromise().consume(*this) will pin it. Pinning means
@@ -288,9 +349,9 @@ private:
     // loadAddr() helper and require you to balance ArgPromise's in code like this. Such code will
     // work fine if written as:
     //
-    //     auto tryThings = [this] (const ArgPromise& left, const ArgPromise& right) {
+    //     auto tryThings = [this] (ArgPromise& left, ArgPromise& right) {
     //         if (isValidForm(Foo, left.kind(), right.kind()))
-    //             return Inst(Foo, m_value, left.consume(*this), right.consume(*this));
+    //             return left.inst(right.inst(Foo, m_value, left.consume(*this), right.consume(*this)));
     //         return Inst();
     //     };
     //     if (Inst result = tryThings(loadPromise(left), tmpPromise(right)))
@@ -314,7 +375,7 @@ private:
 
             Tmp& realTmp = m_valueToTmp[value];
             if (!realTmp) {
-                realTmp = m_code.newTmp(Arg::typeForB3Type(value->type()));
+                realTmp = m_code.newTmp(value->resultBank());
                 if (m_procedure.isFastConstant(value->key()))
                     m_code.addFastTmp(realTmp);
                 if (verbose)
@@ -353,7 +414,8 @@ private:
     // short, you should avoid this by using the pattern matcher to match patterns.
     void commitInternal(Value* value)
     {
-        m_locked.add(value);
+        if (value)
+            m_locked.add(value);
     }
 
     bool crossesInterference(Value* value)
@@ -379,11 +441,35 @@ private:
         return true;
     }
 
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    std::optional<unsigned> scaleForShl(Value* shl, Int offset, std::optional<Width> width = std::nullopt)
+    {
+        if (shl->opcode() != Shl)
+            return std::nullopt;
+        if (!shl->child(1)->hasInt32())
+            return std::nullopt;
+        unsigned logScale = shl->child(1)->asInt32();
+        if (shl->type() == Int32)
+            logScale &= 31;
+        else
+            logScale &= 63;
+        // Use 64-bit math to perform the shift so that <<32 does the right thing, but then switch
+        // to signed since that's what all of our APIs want.
+        int64_t bigScale = static_cast<uint64_t>(1) << static_cast<uint64_t>(logScale);
+        if (!isRepresentableAs<int32_t>(bigScale))
+            return std::nullopt;
+        unsigned scale = static_cast<int32_t>(bigScale);
+        if (!Arg::isValidIndexForm(scale, offset, width))
+            return std::nullopt;
+        return scale;
+    }
+    
     // This turns the given operand into an address.
-    Arg effectiveAddr(Value* address, int32_t offset, Arg::Width width)
+    template<typename Int, typename = Value::IsLegalOffset<Int>>
+    Arg effectiveAddr(Value* address, Int offset, Width width)
     {
         ASSERT(Arg::isValidAddrForm(offset, width));
-
+        
         auto fallback = [&] () -> Arg {
             return Arg::addr(tmp(address), offset);
         };
@@ -400,18 +486,12 @@ private:
             Value* right = address->child(1);
 
             auto tryIndex = [&] (Value* index, Value* base) -> Arg {
-                if (index->opcode() != Shl)
+                std::optional<unsigned> scale = scaleForShl(index, offset, width);
+                if (!scale)
                     return Arg();
                 if (m_locked.contains(index->child(0)) || m_locked.contains(base))
                     return Arg();
-                if (!index->child(1)->hasInt32())
-                    return Arg();
-                
-                unsigned scale = 1 << (index->child(1)->asInt32() & 31);
-                if (!Arg::isValidIndexForm(scale, offset, width))
-                    return Arg();
-
-                return Arg::index(tmp(base), tmp(index->child(0)), scale, offset);
+                return Arg::index(tmp(base), tmp(index->child(0)), *scale, offset);
             };
 
             if (Arg result = tryIndex(left, right))
@@ -445,6 +525,20 @@ private:
         case SlotBase:
             return Arg::stack(m_stackToStack.get(address->as<SlotBaseValue>()->slot()), offset);
 
+        case WasmAddress: {
+            WasmAddressValue* wasmAddress = address->as<WasmAddressValue>();
+            Value* pointer = wasmAddress->child(0);
+            if (!Arg::isValidIndexForm(1, offset, width) || m_locked.contains(pointer))
+                return fallback();
+
+            // FIXME: We should support ARM64 LDR 32-bit addressing, which will
+            // allow us to fuse a Shl ptr, 2 into the address. Additionally, and
+            // perhaps more importantly, it would allow us to avoid a truncating
+            // move. See: https://bugs.webkit.org/show_bug.cgi?id=163465
+
+            return Arg::index(Tmp(wasmAddress->pinnedGPR()), tmp(pointer), 1, offset);
+        }
+
         default:
             return fallback();
         }
@@ -457,23 +551,51 @@ private:
         MemoryValue* value = memoryValue->as<MemoryValue>();
         if (!value)
             return Arg();
+        
+        if (value->requiresSimpleAddr())
+            return Arg::simpleAddr(tmp(value->lastChild()));
 
-        int32_t offset = value->offset();
-        Arg::Width width = Arg::widthForBytes(value->accessByteSize());
+        Value::OffsetType offset = value->offset();
+        Width width = value->accessWidth();
 
         Arg result = effectiveAddr(value->lastChild(), offset, width);
-        ASSERT(result.isValidForm(width));
+        RELEASE_ASSERT(result.isValidForm(width));
 
         return result;
     }
-
+    
+    template<typename... Args>
+    Inst trappingInst(bool traps, Args&&... args)
+    {
+        Inst result(std::forward<Args>(args)...);
+        result.kind.effects |= traps;
+        return result;
+    }
+    
+    template<typename... Args>
+    Inst trappingInst(Value* value, Args&&... args)
+    {
+        return trappingInst(value->traps(), std::forward<Args>(args)...);
+    }
+    
     ArgPromise loadPromiseAnyOpcode(Value* loadValue)
     {
+        RELEASE_ASSERT(loadValue->as<MemoryValue>());
         if (!canBeInternal(loadValue))
             return Arg();
         if (crossesInterference(loadValue))
             return Arg();
-        return ArgPromise(addr(loadValue), loadValue);
+        // On x86, all loads have fences. Doing this kind of instruction selection will move the load,
+        // but that's fine because our interference analysis stops the motion of fences around other
+        // fences. So, any load motion we introduce here would not be observable.
+        if (!isX86() && loadValue->as<MemoryValue>()->hasFence())
+            return Arg();
+        Arg loadAddr = addr(loadValue);
+        RELEASE_ASSERT(loadAddr);
+        ArgPromise result(loadAddr, loadValue);
+        if (loadValue->traps())
+            result.setTraps(true);
+        return result;
     }
 
     ArgPromise loadPromise(Value* loadValue, B3::Opcode loadOpcode)
@@ -488,13 +610,17 @@ private:
         return loadPromise(loadValue, Load);
     }
 
+    Arg imm(int64_t intValue)
+    {
+        if (Arg::isValidImmForm(intValue))
+            return Arg::imm(intValue);
+        return Arg();
+    }
+
     Arg imm(Value* value)
     {
-        if (value->hasInt()) {
-            int64_t intValue = value->asInt();
-            if (Arg::isValidImmForm(intValue))
-                return Arg::imm(intValue);
-        }
+        if (value->hasInt())
+            return imm(value->asInt());
         return Arg();
     }
 
@@ -583,7 +709,7 @@ private:
 
         ArgPromise addr = loadPromise(value);
         if (isValidForm(opcode, addr.kind(), Arg::Tmp)) {
-            append(opcode, addr.consume(*this), result);
+            append(addr.inst(opcode, m_value, addr.consume(*this), result));
             return;
         }
 
@@ -639,7 +765,7 @@ private:
 
         return true;
     }
-
+    
     template<Air::Opcode opcode32, Air::Opcode opcode64, Air::Opcode opcodeDouble, Air::Opcode opcodeFloat, Commutativity commutativity = NotCommutative>
     void appendBinOp(Value* left, Value* right)
     {
@@ -715,19 +841,36 @@ private:
         // over three operand forms.
 
         if (left != right) {
+            ArgPromise leftAddr = loadPromise(left);
+            if (isValidForm(opcode, leftAddr.kind(), Arg::Tmp, Arg::Tmp)) {
+                append(leftAddr.inst(opcode, m_value, leftAddr.consume(*this), tmp(right), result));
+                return;
+            }
+
             if (commutativity == Commutative) {
-                ArgPromise leftAddr = loadPromise(left);
                 if (isValidForm(opcode, leftAddr.kind(), Arg::Tmp)) {
                     append(relaxedMoveForType(m_value->type()), tmp(right), result);
-                    append(opcode, leftAddr.consume(*this), result);
+                    append(leftAddr.inst(opcode, m_value, leftAddr.consume(*this), result));
                     return;
                 }
             }
 
             ArgPromise rightAddr = loadPromise(right);
+            if (isValidForm(opcode, Arg::Tmp, rightAddr.kind(), Arg::Tmp)) {
+                append(rightAddr.inst(opcode, m_value, tmp(left), rightAddr.consume(*this), result));
+                return;
+            }
+
+            if (commutativity == Commutative) {
+                if (isValidForm(opcode, rightAddr.kind(), Arg::Tmp, Arg::Tmp)) {
+                    append(rightAddr.inst(opcode, m_value, rightAddr.consume(*this), tmp(left), result));
+                    return;
+                }
+            }
+
             if (isValidForm(opcode, rightAddr.kind(), Arg::Tmp)) {
                 append(relaxedMoveForType(m_value->type()), tmp(left), result);
-                append(opcode, rightAddr.consume(*this), result);
+                append(rightAddr.inst(opcode, m_value, rightAddr.consume(*this), result));
                 return;
             }
         }
@@ -781,11 +924,9 @@ private:
             return;
         }
 
-#if CPU(X86) || CPU(X86_64)
         append(Move, tmp(value), tmp(m_value));
-        append(Move, tmp(amount), Tmp(X86Registers::ecx));
-        append(opcode, Tmp(X86Registers::ecx), tmp(m_value));
-#endif
+        append(Move, tmp(amount), m_ecx);
+        append(opcode, m_ecx, tmp(m_value));
     }
 
     template<Air::Opcode opcode32, Air::Opcode opcode64>
@@ -806,7 +947,7 @@ private:
             return false;
         
         loadPromise.consume(*this);
-        append(opcode, storeAddr);
+        append(trappingInst(m_value, loadPromise.inst(opcode, m_value, storeAddr)));
         return true;
     }
 
@@ -814,8 +955,13 @@ private:
         Air::Opcode opcode32, Air::Opcode opcode64, Commutativity commutativity = NotCommutative>
     bool tryAppendStoreBinOp(Value* left, Value* right)
     {
+        RELEASE_ASSERT(m_value->as<MemoryValue>());
+        
         Air::Opcode opcode = tryOpcodeForType(opcode32, opcode64, left->type());
         if (opcode == Air::Oops)
+            return false;
+        
+        if (m_value->as<MemoryValue>()->hasFence())
             return false;
         
         Arg storeAddr = addr(m_value);
@@ -858,7 +1004,7 @@ private:
 
         if (isValidForm(opcode, Arg::Imm, storeAddr.kind()) && imm(otherValue)) {
             loadPromise.consume(*this);
-            append(opcode, imm(otherValue), storeAddr);
+            append(trappingInst(m_value, loadPromise.inst(opcode, m_value, imm(otherValue), storeAddr)));
             return true;
         }
 
@@ -866,27 +1012,73 @@ private:
             return false;
 
         loadPromise.consume(*this);
-        append(opcode, tmp(otherValue), storeAddr);
+        append(trappingInst(m_value, loadPromise.inst(opcode, m_value, tmp(otherValue), storeAddr)));
         return true;
     }
 
-    Inst createStore(Air::Opcode move, Value* value, const Arg& dest)
+    Inst createStore(Air::Kind move, Value* value, const Arg& dest)
     {
-        if (imm(value) && isValidForm(move, Arg::Imm, dest.kind()))
+        if (imm(value) && isValidForm(move.opcode, Arg::Imm, dest.kind()))
             return Inst(move, m_value, imm(value), dest);
 
         return Inst(move, m_value, tmp(value), dest);
     }
-
-    Inst createStore(Value* value, const Arg& dest)
+    
+    Air::Opcode storeOpcode(Width width, Bank bank)
     {
-        Air::Opcode moveOpcode = moveForType(value->type());
-        return createStore(moveOpcode, value, dest);
+        switch (width) {
+        case Width8:
+            RELEASE_ASSERT(bank == GP);
+            return Air::Store8;
+        case Width16:
+            RELEASE_ASSERT(bank == GP);
+            return Air::Store16;
+        case Width32:
+            switch (bank) {
+            case GP:
+                return Move32;
+            case FP:
+                return MoveFloat;
+            }
+            break;
+        case Width64:
+            RELEASE_ASSERT(is64Bit());
+            switch (bank) {
+            case GP:
+                return Move;
+            case FP:
+                return MoveDouble;
+            }
+            break;
+        }
+        RELEASE_ASSERT_NOT_REACHED();
     }
-
+    
     void appendStore(Value* value, const Arg& dest)
     {
-        m_insts.last().append(createStore(value, dest));
+        MemoryValue* memory = value->as<MemoryValue>();
+        RELEASE_ASSERT(memory->isStore());
+
+        Air::Kind kind;
+        if (memory->hasFence()) {
+            RELEASE_ASSERT(memory->accessBank() == GP);
+            
+            if (isX86()) {
+                kind = OPCODE_FOR_WIDTH(Xchg, memory->accessWidth());
+                kind.effects = true;
+                Tmp swapTmp = m_code.newTmp(GP);
+                append(relaxedMoveForType(memory->accessType()), tmp(memory->child(0)), swapTmp);
+                append(kind, swapTmp, dest);
+                return;
+            }
+            
+            kind = OPCODE_FOR_WIDTH(StoreRel, memory->accessWidth());
+        } else
+            kind = storeOpcode(memory->accessWidth(), memory->accessBank());
+        
+        kind.effects |= memory->traps();
+        
+        append(createStore(kind, memory->child(0), dest));
     }
 
     Air::Opcode moveForType(Type type)
@@ -941,12 +1133,83 @@ private:
         return Air::Oops;
     }
 
+#if ENABLE(MASM_PROBE)
     template<typename... Arguments>
-    void append(Air::Opcode opcode, Arguments&&... arguments)
+    void print(Arguments&&... arguments)
     {
-        m_insts.last().append(Inst(opcode, m_value, std::forward<Arguments>(arguments)...));
+        Value* origin = m_value;
+        print(origin, std::forward<Arguments>(arguments)...);
     }
 
+    template<typename... Arguments>
+    void print(Value* origin, Arguments&&... arguments)
+    {
+        auto printList = Printer::makePrintRecordList(arguments...);
+        auto printSpecial = static_cast<PrintSpecial*>(m_code.addSpecial(std::make_unique<PrintSpecial>(printList)));
+        Inst inst(Patch, origin, Arg::special(printSpecial));
+        Printer::appendAirArgs(inst, std::forward<Arguments>(arguments)...);
+        append(WTFMove(inst));
+    }
+#else
+    template<typename... Arguments>
+    void print(Arguments&&...) { }
+#endif // ENABLE(MASM_PROBE)
+
+    template<typename... Arguments>
+    void append(Air::Kind kind, Arguments&&... arguments)
+    {
+        m_insts.last().append(Inst(kind, m_value, std::forward<Arguments>(arguments)...));
+    }
+    
+    template<typename... Arguments>
+    void appendTrapping(Air::Kind kind, Arguments&&... arguments)
+    {
+        m_insts.last().append(trappingInst(m_value, kind, m_value, std::forward<Arguments>(arguments)...));
+    }
+    
+    void append(Inst&& inst)
+    {
+        m_insts.last().append(WTFMove(inst));
+    }
+    void append(const Inst& inst)
+    {
+        m_insts.last().append(inst);
+    }
+    
+    void finishAppendingInstructions(Air::BasicBlock* target)
+    {
+        // Now append the instructions. m_insts contains them in reverse order, so we process
+        // it in reverse.
+        for (unsigned i = m_insts.size(); i--;) {
+            for (Inst& inst : m_insts[i])
+                target->appendInst(WTFMove(inst));
+        }
+        m_insts.resize(0);
+    }
+    
+    Air::BasicBlock* newBlock()
+    {
+        return m_blockInsertionSet.insertAfter(m_blockToBlock[m_block]);
+    }
+
+    // NOTE: This will create a continuation block (`nextBlock`) *after* any blocks you've created using
+    // newBlock(). So, it's preferable to create all of your blocks upfront using newBlock(). Also note
+    // that any code you emit before this will be prepended to the continuation, and any code you emit
+    // after this will be appended to the previous block.
+    void splitBlock(Air::BasicBlock*& previousBlock, Air::BasicBlock*& nextBlock)
+    {
+        Air::BasicBlock* block = m_blockToBlock[m_block];
+        
+        previousBlock = block;
+        nextBlock = m_blockInsertionSet.insertAfter(block);
+        
+        finishAppendingInstructions(nextBlock);
+        nextBlock->successors() = block->successors();
+        block->successors().clear();
+        
+        m_insts.append(Vector<Inst>());
+    }
+    
     template<typename T, typename... Arguments>
     T* ensureSpecial(T*& field, Arguments&&... arguments)
     {
@@ -988,14 +1251,15 @@ private:
             case ValueRep::SomeRegister:
                 arg = tmp(value.value());
                 break;
+            case ValueRep::LateRegister:
             case ValueRep::Register:
                 stackmap->earlyClobbered().clear(value.rep().reg());
                 arg = Tmp(value.rep().reg());
-                append(Move, immOrTmp(value.value()), arg);
+                append(relaxedMoveForType(value.value()->type()), immOrTmp(value.value()), arg);
                 break;
             case ValueRep::StackArgument:
                 arg = Arg::callArg(value.rep().offsetFromSP());
-                appendStore(value.value(), arg);
+                append(trappingInst(m_value, createStore(moveForType(value.value()->type()), value.value(), arg)));
                 break;
             default:
                 RELEASE_ASSERT_NOT_REACHED();
@@ -1009,8 +1273,8 @@ private:
     template<typename CompareFunctor, typename TestFunctor, typename CompareDoubleFunctor, typename CompareFloatFunctor>
     Inst createGenericCompare(
         Value* value,
-        const CompareFunctor& compare, // Signature: (Arg::Width, Arg relCond, Arg, Arg) -> Inst
-        const TestFunctor& test, // Signature: (Arg::Width, Arg resCond, Arg, Arg) -> Inst
+        const CompareFunctor& compare, // Signature: (Width, Arg relCond, Arg, Arg) -> Inst
+        const TestFunctor& test, // Signature: (Width, Arg resCond, Arg, Arg) -> Inst
         const CompareDoubleFunctor& compareDouble, // Signature: (Arg doubleCond, Arg, Arg) -> Inst
         const CompareFloatFunctor& compareFloat, // Signature: (Arg doubleCond, Arg, Arg) -> Inst
         bool inverted = false)
@@ -1126,7 +1390,9 @@ private:
 
             // It's safe to share value, but since we're sharing, it means that we aren't locking it.
             // If we don't lock it, then fusing loads is off limits and all of value's children will
-            // have to go through the sharing path as well.
+            // have to go through the sharing path as well. Fusing loads is off limits because the load
+            // could already have been emitted elsehwere - so fusing it here would duplicate the load.
+            // We don't consider that to be a legal optimization.
             canCommitInternal = false;
             
             return Fuse;
@@ -1172,7 +1438,7 @@ private:
                 Arg rightImm = imm(right);
 
                 auto tryCompare = [&] (
-                    Arg::Width width, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                    Width width, ArgPromise&& left, ArgPromise&& right) -> Inst {
                     if (Inst result = compare(width, relCond, left, right))
                         return result;
                     if (Inst result = compare(width, relCond.flipped(), right, left))
@@ -1181,7 +1447,7 @@ private:
                 };
 
                 auto tryCompareLoadImm = [&] (
-                    Arg::Width width, B3::Opcode loadOpcode, Arg::Signedness signedness) -> Inst {
+                    Width width, B3::Opcode loadOpcode, Arg::Signedness signedness) -> Inst {
                     if (rightImm && rightImm.isRepresentableAs(width, signedness)) {
                         if (Inst result = tryCompare(width, loadPromise(left, loadOpcode), rightImm)) {
                             commitInternal(left);
@@ -1197,7 +1463,7 @@ private:
                     return Inst();
                 };
 
-                Arg::Width width = Arg::widthForB3Type(value->child(0)->type());
+                Width width = value->child(0)->resultWidth();
                 
                 if (canCommitInternal) {
                     // First handle compares that involve fewer bits than B3's type system supports.
@@ -1210,22 +1476,22 @@ private:
                     //     Branch(@3)
                 
                     if (relCond.isSignedCond()) {
-                        if (Inst result = tryCompareLoadImm(Arg::Width8, Load8S, Arg::Signed))
+                        if (Inst result = tryCompareLoadImm(Width8, Load8S, Arg::Signed))
                             return result;
                     }
                 
                     if (relCond.isUnsignedCond()) {
-                        if (Inst result = tryCompareLoadImm(Arg::Width8, Load8Z, Arg::Unsigned))
+                        if (Inst result = tryCompareLoadImm(Width8, Load8Z, Arg::Unsigned))
                             return result;
                     }
 
                     if (relCond.isSignedCond()) {
-                        if (Inst result = tryCompareLoadImm(Arg::Width16, Load16S, Arg::Signed))
+                        if (Inst result = tryCompareLoadImm(Width16, Load16S, Arg::Signed))
                             return result;
                     }
                 
                     if (relCond.isUnsignedCond()) {
-                        if (Inst result = tryCompareLoadImm(Arg::Width16, Load16Z, Arg::Unsigned))
+                        if (Inst result = tryCompareLoadImm(Width16, Load16Z, Arg::Unsigned))
                             return result;
                     }
 
@@ -1261,20 +1527,24 @@ private:
                 }
 
                 // Finally, handle comparison between tmps.
-                return compare(width, relCond, tmpPromise(left), tmpPromise(right));
+                ArgPromise leftPromise = tmpPromise(left);
+                ArgPromise rightPromise = tmpPromise(right);
+                return compare(width, relCond, leftPromise, rightPromise);
             }
 
             // Floating point comparisons can't really do anything smart.
+            ArgPromise leftPromise = tmpPromise(left);
+            ArgPromise rightPromise = tmpPromise(right);
             if (value->child(0)->type() == Float)
-                return compareFloat(doubleCond, tmpPromise(left), tmpPromise(right));
-            return compareDouble(doubleCond, tmpPromise(left), tmpPromise(right));
+                return compareFloat(doubleCond, leftPromise, rightPromise);
+            return compareDouble(doubleCond, leftPromise, rightPromise);
         };
 
-        Arg::Width width = Arg::widthForB3Type(value->type());
+        Width width = value->resultWidth();
         Arg resCond = Arg::resCond(MacroAssembler::NonZero).inverted(inverted);
         
         auto tryTest = [&] (
-            Arg::Width width, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            Width width, ArgPromise&& left, ArgPromise&& right) -> Inst {
             if (Inst result = test(width, resCond, left, right))
                 return result;
             if (Inst result = test(width, resCond, right, left))
@@ -1313,22 +1583,44 @@ private:
                 Value* left = value->child(0);
                 Value* right = value->child(1);
 
-                // FIXME: We don't actually have to worry about leftImm.
-                // https://bugs.webkit.org/show_bug.cgi?id=150954
+                bool hasRightConst;
+                int64_t rightConst;
+                Arg rightImm;
+                Arg rightImm64;
 
-                Arg leftImm = imm(left);
-                Arg rightImm = imm(right);
+                hasRightConst = right->hasInt();
+                if (hasRightConst) {
+                    rightConst = right->asInt();
+                    rightImm = bitImm(right);
+                    rightImm64 = bitImm64(right);
+                }
                 
-                auto tryTestLoadImm = [&] (Arg::Width width, B3::Opcode loadOpcode) -> Inst {
-                    if (rightImm && rightImm.isRepresentableAs(width, Arg::Unsigned)) {
+                auto tryTestLoadImm = [&] (Width width, Arg::Signedness signedness, B3::Opcode loadOpcode) -> Inst {
+                    if (!hasRightConst)
+                        return Inst();
+                    // Signed loads will create high bits, so if the immediate has high bits
+                    // then we cannot proceed. Consider BitAnd(Load8S(ptr), 0x101). This cannot
+                    // be turned into testb (ptr), $1, since if the high bit within that byte
+                    // was set then it would be extended to include 0x100. The handling below
+                    // won't anticipate this, so we need to catch it here.
+                    if (signedness == Arg::Signed
+                        && !Arg::isRepresentableAs(width, Arg::Unsigned, rightConst))
+                        return Inst();
+                    
+                    // FIXME: If this is unsigned then we can chop things off of the immediate.
+                    // This might make the immediate more legal. Perhaps that's a job for
+                    // strength reduction?
+                    // https://bugs.webkit.org/show_bug.cgi?id=169248
+                    
+                    if (rightImm) {
                         if (Inst result = tryTest(width, loadPromise(left, loadOpcode), rightImm)) {
                             commitInternal(left);
                             return result;
                         }
                     }
-                    if (leftImm && leftImm.isRepresentableAs(width, Arg::Unsigned)) {
-                        if (Inst result = tryTest(width, leftImm, loadPromise(right, loadOpcode))) {
-                            commitInternal(right);
+                    if (rightImm64) {
+                        if (Inst result = tryTest(width, loadPromise(left, loadOpcode), rightImm64)) {
+                            commitInternal(left);
                             return result;
                         }
                     }
@@ -1338,29 +1630,33 @@ private:
                 if (canCommitInternal) {
                     // First handle test's that involve fewer bits than B3's type system supports.
 
-                    if (Inst result = tryTestLoadImm(Arg::Width8, Load8Z))
+                    if (Inst result = tryTestLoadImm(Width8, Arg::Unsigned, Load8Z))
                         return result;
                     
-                    if (Inst result = tryTestLoadImm(Arg::Width8, Load8S))
+                    if (Inst result = tryTestLoadImm(Width8, Arg::Signed, Load8S))
                         return result;
                     
-                    if (Inst result = tryTestLoadImm(Arg::Width16, Load16Z))
+                    if (Inst result = tryTestLoadImm(Width16, Arg::Unsigned, Load16Z))
                         return result;
                     
-                    if (Inst result = tryTestLoadImm(Arg::Width16, Load16S))
+                    if (Inst result = tryTestLoadImm(Width16, Arg::Signed, Load16S))
                         return result;
 
-                    // Now handle test's that involve a load and an immediate. Note that immediates
-                    // are 32-bit, and we want zero-extension. Hence, the immediate form is compiled
-                    // as a 32-bit test. Note that this spits on the grave of inferior endians, such
-                    // as the big one.
+                    // This allows us to use a 32-bit test for 64-bit BitAnd if the immediate is
+                    // representable as an unsigned 32-bit value. The logic involved is the same
+                    // as if we were pondering using a 32-bit test for
+                    // BitAnd(SExt(Load(ptr)), const), in the sense that in both cases we have
+                    // to worry about high bits. So, we use the "Signed" version of this helper.
+                    if (Inst result = tryTestLoadImm(Width32, Arg::Signed, Load))
+                        return result;
                     
-                    if (Inst result = tryTestLoadImm(Arg::Width32, Load))
+                    // This is needed to handle 32-bit test for arbitrary 32-bit immediates.
+                    if (Inst result = tryTestLoadImm(width, Arg::Unsigned, Load))
                         return result;
                     
                     // Now handle test's that involve a load.
                     
-                    Arg::Width width = Arg::widthForB3Type(value->child(0)->type());
+                    Width width = value->child(0)->resultWidth();
                     if (Inst result = tryTest(width, loadPromise(left), tmpPromise(right))) {
                         commitInternal(left);
                         return result;
@@ -1374,13 +1670,21 @@ private:
 
                 // Now handle test's that involve an immediate and a tmp.
 
-                if (leftImm && leftImm.isRepresentableAs<uint32_t>()) {
-                    if (Inst result = tryTest(Arg::Width32, leftImm, tmpPromise(right)))
+                if (hasRightConst) {
+                    if ((width == Width32 && rightConst == 0xffffffff)
+                        || (width == Width64 && rightConst == -1)) {
+                        if (Inst result = tryTest(width, tmpPromise(left), tmpPromise(left)))
+                            return result;
+                    }
+                    if (isRepresentableAs<uint32_t>(rightConst)) {
+                        if (Inst result = tryTest(Width32, tmpPromise(left), rightImm))
+                            return result;
+                        if (Inst result = tryTest(Width32, tmpPromise(left), rightImm64))
+                            return result;
+                    }
+                    if (Inst result = tryTest(width, tmpPromise(left), rightImm))
                         return result;
-                }
-
-                if (rightImm && rightImm.isRepresentableAs<uint32_t>()) {
-                    if (Inst result = tryTest(Arg::Width32, tmpPromise(left), rightImm))
+                    if (Inst result = tryTest(width, tmpPromise(left), rightImm64))
                         return result;
                 }
 
@@ -1399,43 +1703,47 @@ private:
             }
         }
 
-        if (Arg::isValidImmForm(-1)) {
+        if (Arg::isValidBitImmForm(-1)) {
             if (canCommitInternal && value->as<MemoryValue>()) {
                 // Handle things like Branch(Load8Z(value))
 
-                if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8Z), Arg::imm(-1))) {
+                if (Inst result = tryTest(Width8, loadPromise(value, Load8Z), Arg::bitImm(-1))) {
                     commitInternal(value);
                     return result;
                 }
 
-                if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8S), Arg::imm(-1))) {
+                if (Inst result = tryTest(Width8, loadPromise(value, Load8S), Arg::bitImm(-1))) {
                     commitInternal(value);
                     return result;
                 }
 
-                if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16Z), Arg::imm(-1))) {
+                if (Inst result = tryTest(Width16, loadPromise(value, Load16Z), Arg::bitImm(-1))) {
                     commitInternal(value);
                     return result;
                 }
 
-                if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16S), Arg::imm(-1))) {
+                if (Inst result = tryTest(Width16, loadPromise(value, Load16S), Arg::bitImm(-1))) {
                     commitInternal(value);
                     return result;
                 }
 
-                if (Inst result = tryTest(width, loadPromise(value), Arg::imm(-1))) {
+                if (Inst result = tryTest(width, loadPromise(value), Arg::bitImm(-1))) {
                     commitInternal(value);
                     return result;
                 }
             }
 
-            if (Inst result = test(width, resCond, tmpPromise(value), Arg::imm(-1)))
+            ArgPromise leftPromise = tmpPromise(value);
+            ArgPromise rightPromise = Arg::bitImm(-1);
+            if (Inst result = test(width, resCond, leftPromise, rightPromise))
                 return result;
         }
         
         // Sometimes this is the only form of test available. We prefer not to use this because
         // it's less canonical.
-        return test(width, resCond, tmpPromise(value), tmpPromise(value));
+        ArgPromise leftPromise = tmpPromise(value);
+        ArgPromise rightPromise = tmpPromise(value);
+        return test(width, resCond, leftPromise, rightPromise);
     }
 
     Inst createBranch(Value* value, bool inverted = false)
@@ -1443,78 +1751,78 @@ private:
         return createGenericCompare(
             value,
             [this] (
-                Arg::Width width, const Arg& relCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                Width width, const Arg& relCond,
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
-                case Arg::Width8:
+                case Width8:
                     if (isValidForm(Branch8, Arg::RelCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Branch8, m_value, relCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
-                case Arg::Width16:
+                case Width16:
                     return Inst();
-                case Arg::Width32:
+                case Width32:
                     if (isValidForm(Branch32, Arg::RelCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Branch32, m_value, relCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
-                case Arg::Width64:
+                case Width64:
                     if (isValidForm(Branch64, Arg::RelCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Branch64, m_value, relCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 }
                 ASSERT_NOT_REACHED();
             },
             [this] (
-                Arg::Width width, const Arg& resCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                Width width, const Arg& resCond,
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
-                case Arg::Width8:
+                case Width8:
                     if (isValidForm(BranchTest8, Arg::ResCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             BranchTest8, m_value, resCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
-                case Arg::Width16:
+                case Width16:
                     return Inst();
-                case Arg::Width32:
+                case Width32:
                     if (isValidForm(BranchTest32, Arg::ResCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             BranchTest32, m_value, resCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
-                case Arg::Width64:
+                case Width64:
                     if (isValidForm(BranchTest64, Arg::ResCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             BranchTest64, m_value, resCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 }
                 ASSERT_NOT_REACHED();
             },
-            [this] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(BranchDouble, Arg::DoubleCond, left.kind(), right.kind())) {
-                    return Inst(
+                    return left.inst(right.inst(
                         BranchDouble, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this));
+                        left.consume(*this), right.consume(*this)));
                 }
                 return Inst();
             },
-            [this] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(BranchFloat, Arg::DoubleCond, left.kind(), right.kind())) {
-                    return Inst(
+                    return left.inst(right.inst(
                         BranchFloat, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this));
+                        left.consume(*this), right.consume(*this)));
                 }
                 return Inst();
             },
@@ -1526,66 +1834,66 @@ private:
         return createGenericCompare(
             value,
             [this] (
-                Arg::Width width, const Arg& relCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                Width width, const Arg& relCond,
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
-                case Arg::Width8:
-                case Arg::Width16:
+                case Width8:
+                case Width16:
                     return Inst();
-                case Arg::Width32:
+                case Width32:
                     if (isValidForm(Compare32, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Compare32, m_value, relCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
-                case Arg::Width64:
+                case Width64:
                     if (isValidForm(Compare64, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Compare64, m_value, relCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
                 }
                 ASSERT_NOT_REACHED();
             },
             [this] (
-                Arg::Width width, const Arg& resCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                Width width, const Arg& resCond,
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
-                case Arg::Width8:
-                case Arg::Width16:
+                case Width8:
+                case Width16:
                     return Inst();
-                case Arg::Width32:
+                case Width32:
                     if (isValidForm(Test32, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Test32, m_value, resCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
-                case Arg::Width64:
+                case Width64:
                     if (isValidForm(Test64, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Test64, m_value, resCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
                 }
                 ASSERT_NOT_REACHED();
             },
-            [this] (const Arg& doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (const Arg& doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(CompareDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp)) {
-                    return Inst(
+                    return left.inst(right.inst(
                         CompareDouble, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this), tmp(m_value));
+                        left.consume(*this), right.consume(*this), tmp(m_value)));
                 }
                 return Inst();
             },
-            [this] (const Arg& doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (const Arg& doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(CompareFloat, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp)) {
-                    return Inst(
+                    return left.inst(right.inst(
                         CompareFloat, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this), tmp(m_value));
+                        left.consume(*this), right.consume(*this), tmp(m_value)));
                 }
                 return Inst();
             },
@@ -1602,72 +1910,504 @@ private:
     };
     Inst createSelect(const MoveConditionallyConfig& config)
     {
-        auto createSelectInstruction = [&] (Air::Opcode opcode, const Arg& condition, const ArgPromise& left, const ArgPromise& right) -> Inst {
+        auto createSelectInstruction = [&] (Air::Opcode opcode, const Arg& condition, ArgPromise& left, ArgPromise& right) -> Inst {
             if (isValidForm(opcode, condition.kind(), left.kind(), right.kind(), Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
                 Tmp result = tmp(m_value);
                 Tmp thenCase = tmp(m_value->child(1));
                 Tmp elseCase = tmp(m_value->child(2));
-                append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
-                return Inst(
+                return left.inst(right.inst(
                     opcode, m_value, condition,
-                    left.consume(*this), right.consume(*this), thenCase, elseCase, result);
+                    left.consume(*this), right.consume(*this), thenCase, elseCase, result));
             }
             if (isValidForm(opcode, condition.kind(), left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
                 Tmp result = tmp(m_value);
                 Tmp source = tmp(m_value->child(1));
                 append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
-                return Inst(
+                return left.inst(right.inst(
                     opcode, m_value, condition,
-                    left.consume(*this), right.consume(*this), source, result);
+                    left.consume(*this), right.consume(*this), source, result));
             }
             return Inst();
         };
 
         return createGenericCompare(
             m_value->child(0),
-            [&] (
-                Arg::Width width, const Arg& relCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [&] (Width width, const Arg& relCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
-                case Arg::Width8:
+                case Width8:
                     // FIXME: Support these things.
                     // https://bugs.webkit.org/show_bug.cgi?id=151504
                     return Inst();
-                case Arg::Width16:
+                case Width16:
                     return Inst();
-                case Arg::Width32:
+                case Width32:
                     return createSelectInstruction(config.moveConditionally32, relCond, left, right);
-                case Arg::Width64:
+                case Width64:
                     return createSelectInstruction(config.moveConditionally64, relCond, left, right);
                 }
                 ASSERT_NOT_REACHED();
             },
-            [&] (
-                Arg::Width width, const Arg& resCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [&] (Width width, const Arg& resCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
-                case Arg::Width8:
+                case Width8:
                     // FIXME: Support more things.
                     // https://bugs.webkit.org/show_bug.cgi?id=151504
                     return Inst();
-                case Arg::Width16:
+                case Width16:
                     return Inst();
-                case Arg::Width32:
+                case Width32:
                     return createSelectInstruction(config.moveConditionallyTest32, resCond, left, right);
-                case Arg::Width64:
+                case Width64:
                     return createSelectInstruction(config.moveConditionallyTest64, resCond, left, right);
                 }
                 ASSERT_NOT_REACHED();
             },
-            [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [&] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 return createSelectInstruction(config.moveConditionallyDouble, doubleCond, left, right);
             },
-            [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [&] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 return createSelectInstruction(config.moveConditionallyFloat, doubleCond, left, right);
             },
             false);
     }
+    
+    bool tryAppendLea()
+    {
+        Air::Opcode leaOpcode = tryOpcodeForType(Lea32, Lea64, m_value->type());
+        if (!isValidForm(leaOpcode, Arg::Index, Arg::Tmp))
+            return false;
+        
+        // This lets us turn things like this:
+        //
+        //     Add(Add(@x, Shl(@y, $2)), $100)
+        //
+        // Into this:
+        //
+        //     lea 100(%rdi,%rsi,4), %rax
+        //
+        // We have a choice here between committing the internal bits of an index or sharing
+        // them. There are solid arguments for both.
+        //
+        // Sharing: The word on the street is that the cost of a lea is one cycle no matter
+        // what it does. Every experiment I've ever seen seems to confirm this. So, sharing
+        // helps us in situations where Wasm input did this:
+        //
+        //     x = a[i].x;
+        //     y = a[i].y;
+        //
+        // With sharing we would do:
+        //
+        //     leal (%a,%i,4), %tmp
+        //     cmp (%size, %tmp)
+        //     ja _fail
+        //     movl (%base, %tmp), %x
+        //     leal 4(%a,%i,4), %tmp
+        //     cmp (%size, %tmp)
+        //     ja _fail
+        //     movl (%base, %tmp), %y
+        //
+        // In the absence of sharing, we may find ourselves needing separate registers for
+        // the innards of the index. That's relatively unlikely to be a thing due to other
+        // optimizations that we already have, but it could happen
+        //
+        // Committing: The worst case is that there is a complicated graph of additions and
+        // shifts, where each value has multiple uses. In that case, it's better to compute
+        // each one separately from the others since that way, each calculation will use a
+        // relatively nearby tmp as its input. That seems uncommon, but in those cases,
+        // committing is a clear winner: it would result in a simple interference graph
+        // while sharing would result in a complex one. Interference sucks because it means
+        // more time in IRC and it means worse code.
+        //
+        // It's not super clear if any of these corner cases would ever arise. Committing
+        // has the benefit that it's easier to reason about, and protects a much darker
+        // corner case (more interference).
+                
+        // Here are the things we want to match:
+        // Add(Add(@x, @y), $c)
+        // Add(Shl(@x, $c), @y)
+        // Add(@x, Shl(@y, $c))
+        // Add(Add(@x, Shl(@y, $c)), $d)
+        // Add(Add(Shl(@x, $c), @y), $d)
+        //
+        // Note that if you do Add(Shl(@x, $c), $d) then we will treat $d as a non-constant and
+        // force it to materialize. You'll get something like this:
+        //
+        // movl $d, %tmp
+        // leal (%tmp,%x,1<<c), %result
+        //
+        // Which is pretty close to optimal and has the nice effect of being able to handle large
+        // constants gracefully.
+        
+        Value* innerAdd = nullptr;
+        
+        Value* value = m_value;
+        
+        // We're going to consume Add(Add(_), $c). If we succeed at consuming it then we have these
+        // patterns left (i.e. in the Add(_)):
+        //
+        // Add(Add(@x, @y), $c)
+        // Add(Add(@x, Shl(@y, $c)), $d)
+        // Add(Add(Shl(@x, $c), @y), $d)
+        //
+        // Otherwise we are looking at these patterns:
+        //
+        // Add(Shl(@x, $c), @y)
+        // Add(@x, Shl(@y, $c))
+        //
+        // This means that the subsequent code only has to worry about three patterns:
+        //
+        // Add(Shl(@x, $c), @y)
+        // Add(@x, Shl(@y, $c))
+        // Add(@x, @y) (only if offset != 0)
+        Value::OffsetType offset = 0;
+        if (value->child(1)->isRepresentableAs<Value::OffsetType>()
+            && canBeInternal(value->child(0))
+            && value->child(0)->opcode() == Add) {
+            innerAdd = value->child(0);
+            offset = static_cast<Value::OffsetType>(value->child(1)->asInt());
+            value = value->child(0);
+        }
+        
+        auto tryShl = [&] (Value* shl, Value* other) -> bool {
+            std::optional<unsigned> scale = scaleForShl(shl, offset);
+            if (!scale)
+                return false;
+            if (!canBeInternal(shl))
+                return false;
+            
+            ASSERT(!m_locked.contains(shl->child(0)));
+            ASSERT(!m_locked.contains(other));
+            
+            append(leaOpcode, Arg::index(tmp(other), tmp(shl->child(0)), *scale, offset), tmp(m_value));
+            commitInternal(innerAdd);
+            commitInternal(shl);
+            return true;
+        };
+        
+        if (tryShl(value->child(0), value->child(1)))
+            return true;
+        if (tryShl(value->child(1), value->child(0)))
+            return true;
+        
+        // The remaining pattern is just:
+        // Add(@x, @y) (only if offset != 0)
+        if (!offset)
+            return false;
+        ASSERT(!m_locked.contains(value->child(0)));
+        ASSERT(!m_locked.contains(value->child(1)));
+        append(leaOpcode, Arg::index(tmp(value->child(0)), tmp(value->child(1)), 1, offset), tmp(m_value));
+        commitInternal(innerAdd);
+        return true;
+    }
 
+    void appendX86Div(B3::Opcode op)
+    {
+        Air::Opcode convertToDoubleWord;
+        Air::Opcode div;
+        switch (m_value->type()) {
+        case Int32:
+            convertToDoubleWord = X86ConvertToDoubleWord32;
+            div = X86Div32;
+            break;
+        case Int64:
+            convertToDoubleWord = X86ConvertToQuadWord64;
+            div = X86Div64;
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return;
+        }
+
+        ASSERT(op == Div || op == Mod);
+        Tmp result = op == Div ? m_eax : m_edx;
+
+        append(Move, tmp(m_value->child(0)), m_eax);
+        append(convertToDoubleWord, m_eax, m_edx);
+        append(div, m_eax, m_edx, tmp(m_value->child(1)));
+        append(Move, result, tmp(m_value));
+    }
+
+    void appendX86UDiv(B3::Opcode op)
+    {
+        Air::Opcode div = m_value->type() == Int32 ? X86UDiv32 : X86UDiv64;
+
+        ASSERT(op == UDiv || op == UMod);
+        Tmp result = op == UDiv ? m_eax : m_edx;
+
+        append(Move, tmp(m_value->child(0)), m_eax);
+        append(Xor64, m_edx, m_edx);
+        append(div, m_eax, m_edx, tmp(m_value->child(1)));
+        append(Move, result, tmp(m_value));
+    }
+    
+    Air::Opcode loadLinkOpcode(Width width, bool fence)
+    {
+        return fence ? OPCODE_FOR_WIDTH(LoadLinkAcq, width) : OPCODE_FOR_WIDTH(LoadLink, width);
+    }
+    
+    Air::Opcode storeCondOpcode(Width width, bool fence)
+    {
+        return fence ? OPCODE_FOR_WIDTH(StoreCondRel, width) : OPCODE_FOR_WIDTH(StoreCond, width);
+    }
+    
+    // This can emit code for the following patterns:
+    // AtomicWeakCAS
+    // BitXor(AtomicWeakCAS, 1)
+    // AtomicStrongCAS
+    // Equal(AtomicStrongCAS, expected)
+    // NotEqual(AtomicStrongCAS, expected)
+    // Branch(AtomicWeakCAS)
+    // Branch(Equal(AtomicStrongCAS, expected))
+    // Branch(NotEqual(AtomicStrongCAS, expected))
+    //
+    // It assumes that atomicValue points to the CAS, and m_value points to the instruction being
+    // generated. It assumes that you've consumed everything that needs to be consumed.
+    void appendCAS(Value* atomicValue, bool invert)
+    {
+        AtomicValue* atomic = atomicValue->as<AtomicValue>();
+        RELEASE_ASSERT(atomic);
+        
+        bool isBranch = m_value->opcode() == Branch;
+        bool isStrong = atomic->opcode() == AtomicStrongCAS;
+        bool returnsOldValue = m_value->opcode() == AtomicStrongCAS;
+        bool hasFence = atomic->hasFence();
+        
+        Width width = atomic->accessWidth();
+        Arg address = addr(atomic);
+
+        Tmp valueResultTmp;
+        Tmp boolResultTmp;
+        if (returnsOldValue) {
+            RELEASE_ASSERT(!invert);
+            valueResultTmp = tmp(m_value);
+            boolResultTmp = m_code.newTmp(GP);
+        } else if (isBranch) {
+            valueResultTmp = m_code.newTmp(GP);
+            boolResultTmp = m_code.newTmp(GP);
+        } else {
+            valueResultTmp = m_code.newTmp(GP);
+            boolResultTmp = tmp(m_value);
+        }
+        
+        Tmp successBoolResultTmp;
+        if (isStrong && !isBranch)
+            successBoolResultTmp = m_code.newTmp(GP);
+        else
+            successBoolResultTmp = boolResultTmp;
+
+        Tmp expectedValueTmp = tmp(atomic->child(0));
+        Tmp newValueTmp = tmp(atomic->child(1));
+        
+        Air::FrequentedBlock success;
+        Air::FrequentedBlock failure;
+        if (isBranch) {
+            success = m_blockToBlock[m_block]->successor(invert);
+            failure = m_blockToBlock[m_block]->successor(!invert);
+        }
+        
+        if (isX86()) {
+            append(relaxedMoveForType(atomic->accessType()), immOrTmp(atomic->child(0)), m_eax);
+            if (returnsOldValue) {
+                appendTrapping(OPCODE_FOR_WIDTH(AtomicStrongCAS, width), m_eax, newValueTmp, address);
+                append(relaxedMoveForType(atomic->accessType()), m_eax, valueResultTmp);
+            } else if (isBranch) {
+                appendTrapping(OPCODE_FOR_WIDTH(BranchAtomicStrongCAS, width), Arg::statusCond(MacroAssembler::Success), m_eax, newValueTmp, address);
+                m_blockToBlock[m_block]->setSuccessors(success, failure);
+            } else
+                appendTrapping(OPCODE_FOR_WIDTH(AtomicStrongCAS, width), Arg::statusCond(invert ? MacroAssembler::Failure : MacroAssembler::Success), m_eax, tmp(atomic->child(1)), address, boolResultTmp);
+            return;
+        }
+        
+        RELEASE_ASSERT(isARM64());
+        // We wish to emit:
+        //
+        // Block #reloop:
+        //     LoadLink
+        //     Branch NotEqual
+        //   Successors: Then:#fail, Else: #store
+        // Block #store:
+        //     StoreCond
+        //     Xor $1, %result    <--- only if !invert
+        //     Jump
+        //   Successors: #done
+        // Block #fail:
+        //     Move $invert, %result
+        //     Jump
+        //   Successors: #done
+        // Block #done:
+        
+        Air::BasicBlock* reloopBlock = newBlock();
+        Air::BasicBlock* storeBlock = newBlock();
+        Air::BasicBlock* successBlock = nullptr;
+        if (!isBranch && isStrong)
+            successBlock = newBlock();
+        Air::BasicBlock* failBlock = nullptr;
+        if (!isBranch) {
+            failBlock = newBlock();
+            failure = failBlock;
+        }
+        Air::BasicBlock* strongFailBlock;
+        if (isStrong && hasFence)
+            strongFailBlock = newBlock();
+        Air::FrequentedBlock comparisonFail = failure;
+        Air::FrequentedBlock weakFail;
+        if (isStrong) {
+            if (hasFence)
+                comparisonFail = strongFailBlock;
+            weakFail = reloopBlock;
+        } else 
+            weakFail = failure;
+        Air::BasicBlock* beginBlock;
+        Air::BasicBlock* doneBlock;
+        splitBlock(beginBlock, doneBlock);
+        
+        append(Air::Jump);
+        beginBlock->setSuccessors(reloopBlock);
+        
+        reloopBlock->append(trappingInst(m_value, loadLinkOpcode(width, atomic->hasFence()), m_value, address, valueResultTmp));
+        reloopBlock->append(OPCODE_FOR_CANONICAL_WIDTH(Branch, width), m_value, Arg::relCond(MacroAssembler::NotEqual), valueResultTmp, expectedValueTmp);
+        reloopBlock->setSuccessors(comparisonFail, storeBlock);
+        
+        storeBlock->append(trappingInst(m_value, storeCondOpcode(width, atomic->hasFence()), m_value, newValueTmp, address, successBoolResultTmp));
+        if (isBranch) {
+            storeBlock->append(BranchTest32, m_value, Arg::resCond(MacroAssembler::Zero), boolResultTmp, boolResultTmp);
+            storeBlock->setSuccessors(success, weakFail);
+            doneBlock->successors().clear();
+            RELEASE_ASSERT(!doneBlock->size());
+            doneBlock->append(Air::Oops, m_value);
+        } else {
+            if (isStrong) {
+                storeBlock->append(BranchTest32, m_value, Arg::resCond(MacroAssembler::Zero), successBoolResultTmp, successBoolResultTmp);
+                storeBlock->setSuccessors(successBlock, reloopBlock);
+                
+                successBlock->append(Move, m_value, Arg::imm(!invert), boolResultTmp);
+                successBlock->append(Air::Jump, m_value);
+                successBlock->setSuccessors(doneBlock);
+            } else {
+                if (!invert)
+                    storeBlock->append(Xor32, m_value, Arg::bitImm(1), boolResultTmp, boolResultTmp);
+                
+                storeBlock->append(Air::Jump, m_value);
+                storeBlock->setSuccessors(doneBlock);
+            }
+            
+            failBlock->append(Move, m_value, Arg::imm(invert), boolResultTmp);
+            failBlock->append(Air::Jump, m_value);
+            failBlock->setSuccessors(doneBlock);
+        }
+        
+        if (isStrong && hasFence) {
+            Tmp tmp = m_code.newTmp(GP);
+            strongFailBlock->append(trappingInst(m_value, storeCondOpcode(width, atomic->hasFence()), m_value, valueResultTmp, address, tmp));
+            strongFailBlock->append(BranchTest32, m_value, Arg::resCond(MacroAssembler::Zero), tmp, tmp);
+            strongFailBlock->setSuccessors(failure, reloopBlock);
+        }
+    }
+    
+    bool appendVoidAtomic(Air::Opcode atomicOpcode)
+    {
+        if (m_useCounts.numUses(m_value))
+            return false;
+        
+        Arg address = addr(m_value);
+        
+        if (isValidForm(atomicOpcode, Arg::Imm, address.kind()) && imm(m_value->child(0))) {
+            append(atomicOpcode, imm(m_value->child(0)), address);
+            return true;
+        }
+        
+        if (isValidForm(atomicOpcode, Arg::Tmp, address.kind())) {
+            append(atomicOpcode, tmp(m_value->child(0)), address);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    void appendGeneralAtomic(Air::Opcode opcode, Commutativity commutativity = NotCommutative)
+    {
+        AtomicValue* atomic = m_value->as<AtomicValue>();
+        
+        Arg address = addr(m_value);
+        Tmp oldValue = m_code.newTmp(GP);
+        Tmp newValue = opcode == Air::Nop ? tmp(atomic->child(0)) : m_code.newTmp(GP);
+        
+        // We need a CAS loop or a LL/SC loop. Using prepare/attempt jargon, we want:
+        //
+        // Block #reloop:
+        //     Prepare
+        //     opcode
+        //     Attempt
+        //   Successors: Then:#done, Else:#reloop
+        // Block #done:
+        //     Move oldValue, result
+        
+        append(relaxedMoveForType(atomic->type()), oldValue, tmp(atomic));
+        
+        Air::BasicBlock* reloopBlock = newBlock();
+        Air::BasicBlock* beginBlock;
+        Air::BasicBlock* doneBlock;
+        splitBlock(beginBlock, doneBlock);
+        
+        append(Air::Jump);
+        beginBlock->setSuccessors(reloopBlock);
+        
+        Air::Opcode prepareOpcode;
+        if (isX86()) {
+            switch (atomic->accessWidth()) {
+            case Width8:
+                prepareOpcode = Load8SignedExtendTo32;
+                break;
+            case Width16:
+                prepareOpcode = Load16SignedExtendTo32;
+                break;
+            case Width32:
+                prepareOpcode = Move32;
+                break;
+            case Width64:
+                prepareOpcode = Move;
+                break;
+            }
+        } else {
+            RELEASE_ASSERT(isARM64());
+            prepareOpcode = loadLinkOpcode(atomic->accessWidth(), atomic->hasFence());
+        }
+        reloopBlock->append(trappingInst(m_value, prepareOpcode, m_value, address, oldValue));
+        
+        if (opcode != Air::Nop) {
+            // FIXME: If we ever have to write this again, we need to find a way to share the code with
+            // appendBinOp.
+            // https://bugs.webkit.org/show_bug.cgi?id=169249
+            if (commutativity == Commutative && imm(atomic->child(0)) && isValidForm(opcode, Arg::Imm, Arg::Tmp, Arg::Tmp))
+                reloopBlock->append(opcode, m_value, imm(atomic->child(0)), oldValue, newValue);
+            else if (imm(atomic->child(0)) && isValidForm(opcode, Arg::Tmp, Arg::Imm, Arg::Tmp))
+                reloopBlock->append(opcode, m_value, oldValue, imm(atomic->child(0)), newValue);
+            else if (commutativity == Commutative && bitImm(atomic->child(0)) && isValidForm(opcode, Arg::BitImm, Arg::Tmp, Arg::Tmp))
+                reloopBlock->append(opcode, m_value, bitImm(atomic->child(0)), oldValue, newValue);
+            else if (isValidForm(opcode, Arg::Tmp, Arg::Tmp, Arg::Tmp))
+                reloopBlock->append(opcode, m_value, oldValue, tmp(atomic->child(0)), newValue);
+            else {
+                reloopBlock->append(relaxedMoveForType(atomic->type()), m_value, oldValue, newValue);
+                if (imm(atomic->child(0)) && isValidForm(opcode, Arg::Imm, Arg::Tmp))
+                    reloopBlock->append(opcode, m_value, imm(atomic->child(0)), newValue);
+                else
+                    reloopBlock->append(opcode, m_value, tmp(atomic->child(0)), newValue);
+            }
+        }
+
+        if (isX86()) {
+            Air::Opcode casOpcode = OPCODE_FOR_WIDTH(BranchAtomicStrongCAS, atomic->accessWidth());
+            reloopBlock->append(relaxedMoveForType(atomic->type()), m_value, oldValue, m_eax);
+            reloopBlock->append(trappingInst(m_value, casOpcode, m_value, Arg::statusCond(MacroAssembler::Success), m_eax, newValue, address));
+        } else {
+            RELEASE_ASSERT(isARM64());
+            Tmp boolResult = m_code.newTmp(GP);
+            reloopBlock->append(trappingInst(m_value, storeCondOpcode(atomic->accessWidth(), atomic->hasFence()), m_value, newValue, address, boolResult));
+            reloopBlock->append(BranchTest32, m_value, Arg::resCond(MacroAssembler::Zero), boolResult, boolResult);
+        }
+        reloopBlock->setSuccessors(doneBlock, reloopBlock);
+    }
+    
     void lower()
     {
         switch (m_value->opcode()) {
@@ -1678,45 +2418,161 @@ private:
         }
             
         case Load: {
-            append(
-                moveForType(m_value->type()),
-                addr(m_value), tmp(m_value));
+            MemoryValue* memory = m_value->as<MemoryValue>();
+            Air::Kind kind = moveForType(memory->type());
+            if (memory->hasFence()) {
+                if (isX86())
+                    kind.effects = true;
+                else {
+                    switch (memory->type()) {
+                    case Int32:
+                        kind = LoadAcq32;
+                        break;
+                    case Int64:
+                        kind = LoadAcq64;
+                        break;
+                    default:
+                        RELEASE_ASSERT_NOT_REACHED();
+                        break;
+                    }
+                }
+            }
+            append(trappingInst(m_value, kind, m_value, addr(m_value), tmp(m_value)));
             return;
         }
             
         case Load8S: {
-            append(Load8SignedExtendTo32, addr(m_value), tmp(m_value));
+            Air::Kind kind = Load8SignedExtendTo32;
+            if (m_value->as<MemoryValue>()->hasFence()) {
+                if (isX86())
+                    kind.effects = true;
+                else
+                    kind = LoadAcq8SignedExtendTo32;
+            }
+            append(trappingInst(m_value, kind, m_value, addr(m_value), tmp(m_value)));
             return;
         }
 
         case Load8Z: {
-            append(Load8, addr(m_value), tmp(m_value));
+            Air::Kind kind = Load8;
+            if (m_value->as<MemoryValue>()->hasFence()) {
+                if (isX86())
+                    kind.effects = true;
+                else
+                    kind = LoadAcq8;
+            }
+            append(trappingInst(m_value, kind, m_value, addr(m_value), tmp(m_value)));
             return;
         }
 
         case Load16S: {
-            append(Load16SignedExtendTo32, addr(m_value), tmp(m_value));
+            Air::Kind kind = Load16SignedExtendTo32;
+            if (m_value->as<MemoryValue>()->hasFence()) {
+                if (isX86())
+                    kind.effects = true;
+                else
+                    kind = LoadAcq16SignedExtendTo32;
+            }
+            append(trappingInst(m_value, kind, m_value, addr(m_value), tmp(m_value)));
             return;
         }
 
         case Load16Z: {
-            append(Load16, addr(m_value), tmp(m_value));
+            Air::Kind kind = Load16;
+            if (m_value->as<MemoryValue>()->hasFence()) {
+                if (isX86())
+                    kind.effects = true;
+                else
+                    kind = LoadAcq16;
+            }
+            append(trappingInst(m_value, kind, m_value, addr(m_value), tmp(m_value)));
             return;
         }
-
+            
         case Add: {
+            if (tryAppendLea())
+                return;
+            
+            Air::Opcode multiplyAddOpcode = tryOpcodeForType(MultiplyAdd32, MultiplyAdd64, m_value->type());
+            if (isValidForm(multiplyAddOpcode, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
+                Value* left = m_value->child(0);
+                Value* right = m_value->child(1);
+                if (!imm(right) || m_valueToTmp[right]) {
+                    auto tryAppendMultiplyAdd = [&] (Value* left, Value* right) -> bool {
+                        if (left->opcode() != Mul || !canBeInternal(left))
+                            return false;
+
+                        Value* multiplyLeft = left->child(0);
+                        Value* multiplyRight = left->child(1);
+                        if (canBeInternal(multiplyLeft) || canBeInternal(multiplyRight))
+                            return false;
+
+                        append(multiplyAddOpcode, tmp(multiplyLeft), tmp(multiplyRight), tmp(right), tmp(m_value));
+                        commitInternal(left);
+
+                        return true;
+                    };
+
+                    if (tryAppendMultiplyAdd(left, right))
+                        return;
+                    if (tryAppendMultiplyAdd(right, left))
+                        return;
+                }
+            }
+
             appendBinOp<Add32, Add64, AddDouble, AddFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
 
         case Sub: {
+            Air::Opcode multiplySubOpcode = tryOpcodeForType(MultiplySub32, MultiplySub64, m_value->type());
+            if (multiplySubOpcode != Air::Oops
+                && isValidForm(multiplySubOpcode, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
+                Value* left = m_value->child(0);
+                Value* right = m_value->child(1);
+                if (!imm(right) || m_valueToTmp[right]) {
+                    auto tryAppendMultiplySub = [&] () -> bool {
+                        if (right->opcode() != Mul || !canBeInternal(right))
+                            return false;
+
+                        Value* multiplyLeft = right->child(0);
+                        Value* multiplyRight = right->child(1);
+                        if (m_locked.contains(multiplyLeft) || m_locked.contains(multiplyRight))
+                            return false;
+
+                        append(multiplySubOpcode, tmp(multiplyLeft), tmp(multiplyRight), tmp(left), tmp(m_value));
+                        commitInternal(right);
+
+                        return true;
+                    };
+
+                    if (tryAppendMultiplySub())
+                        return;
+                }
+            }
+
             appendBinOp<Sub32, Sub64, SubDouble, SubFloat>(m_value->child(0), m_value->child(1));
             return;
         }
 
         case Neg: {
-            appendUnOp<Neg32, Neg64, NegateDouble, Air::Oops>(m_value->child(0));
+            Air::Opcode multiplyNegOpcode = tryOpcodeForType(MultiplyNeg32, MultiplyNeg64, m_value->type());
+            if (multiplyNegOpcode != Air::Oops
+                && isValidForm(multiplyNegOpcode, Arg::Tmp, Arg::Tmp, Arg::Tmp)
+                && m_value->child(0)->opcode() == Mul
+                && canBeInternal(m_value->child(0))) {
+                Value* multiplyOperation = m_value->child(0);
+                Value* multiplyLeft = multiplyOperation->child(0);
+                Value* multiplyRight = multiplyOperation->child(1);
+                if (!m_locked.contains(multiplyLeft) && !m_locked.contains(multiplyRight)) {
+                    append(multiplyNegOpcode, tmp(multiplyLeft), tmp(multiplyRight), tmp(m_value));
+                    commitInternal(multiplyOperation);
+                    return;
+                }
+            }
+
+            appendUnOp<Neg32, Neg64, NegateDouble, NegateFloat>(m_value->child(0));
             return;
         }
 
@@ -1726,29 +2582,42 @@ private:
             return;
         }
 
-        case ChillDiv:
-            RELEASE_ASSERT(isARM64());
-            FALLTHROUGH;
         case Div: {
-#if CPU(X86) || CPU(X86_64)
-            if (isInt(m_value->type())) {
-                lowerX86Div();
-                append(Move, Tmp(X86Registers::eax), tmp(m_value));
+            if (m_value->isChill())
+                RELEASE_ASSERT(isARM64());
+            if (isInt(m_value->type()) && isX86()) {
+                appendX86Div(Div);
                 return;
             }
-#endif
             ASSERT(!isX86() || isFloat(m_value->type()));
 
             appendBinOp<Div32, Div64, DivDouble, DivFloat>(m_value->child(0), m_value->child(1));
             return;
         }
 
+        case UDiv: {
+            if (isInt(m_value->type()) && isX86()) {
+                appendX86UDiv(UDiv);
+                return;
+            }
+
+            ASSERT(!isX86() && !isFloat(m_value->type()));
+
+            appendBinOp<UDiv32, UDiv64, Air::Oops, Air::Oops>(m_value->child(0), m_value->child(1));
+            return;
+
+        }
+
         case Mod: {
             RELEASE_ASSERT(isX86());
-#if CPU(X86) || CPU(X86_64)
-            lowerX86Div();
-            append(Move, Tmp(X86Registers::edx), tmp(m_value));
-#endif
+            RELEASE_ASSERT(!m_value->isChill());
+            appendX86Div(Mod);
+            return;
+        }
+
+        case UMod: {
+            RELEASE_ASSERT(isX86());
+            appendX86UDiv(UMod);
             return;
         }
 
@@ -1774,7 +2643,7 @@ private:
         }
 
         case BitOr: {
-            appendBinOp<Or32, Or64, Commutative>(
+            appendBinOp<Or32, Or64, OrDouble, OrFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
@@ -1787,8 +2656,26 @@ private:
                 appendUnOp<Not32, Not64>(m_value->child(0));
                 return;
             }
+            
+            // This pattern is super useful on both x86 and ARM64, since the inversion of the CAS result
+            // can be done with zero cost on x86 (just flip the set from E to NE) and it's a progression
+            // on ARM64 (since STX returns 0 on success, so ordinarily we have to flip it).
+            if (m_value->child(1)->isInt(1)
+                && m_value->child(0)->opcode() == AtomicWeakCAS
+                && canBeInternal(m_value->child(0))) {
+                commitInternal(m_value->child(0));
+                appendCAS(m_value->child(0), true);
+                return;
+            }
+            
             appendBinOp<Xor32, Xor64, XorDouble, XorFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
+            return;
+        }
+            
+        case Depend: {
+            RELEASE_ASSERT(isARM64());
+            appendUnOp<Depend32, Depend64>(m_value->child(0));
             return;
         }
 
@@ -1809,6 +2696,16 @@ private:
 
         case ZShr: {
             appendShift<Urshift32, Urshift64>(m_value->child(0), m_value->child(1));
+            return;
+        }
+
+        case RotR: {
+            appendShift<RotateRight32, RotateRight64>(m_value->child(0), m_value->child(1));
+            return;
+        }
+
+        case RotL: {
+            appendShift<RotateLeft32, RotateLeft64>(m_value->child(0), m_value->child(1));
             return;
         }
 
@@ -1881,7 +2778,7 @@ private:
                 }
             }
 
-            appendStore(valueToStore, addr(m_value));
+            appendStore(m_value, addr(m_value));
             return;
         }
 
@@ -1902,7 +2799,7 @@ private:
                     return;
                 }
             }
-            m_insts.last().append(createStore(Air::Store8, valueToStore, addr(m_value)));
+            appendStore(m_value, addr(m_value));
             return;
         }
 
@@ -1923,7 +2820,32 @@ private:
                     return;
                 }
             }
-            m_insts.last().append(createStore(Air::Store16, valueToStore, addr(m_value)));
+            appendStore(m_value, addr(m_value));
+            return;
+        }
+
+        case WasmAddress: {
+            WasmAddressValue* address = m_value->as<WasmAddressValue>();
+
+            append(Add64, Arg(address->pinnedGPR()), tmp(m_value->child(0)), tmp(address));
+            return;
+        }
+
+        case Fence: {
+            FenceValue* fence = m_value->as<FenceValue>();
+            if (!fence->write && !fence->read)
+                return;
+            if (!fence->write) {
+                // A fence that reads but does not write is for protecting motion of stores.
+                append(StoreFence);
+                return;
+            }
+            if (!fence->read) {
+                // A fence that writes but does not read is for protecting motion of loads.
+                append(LoadFence);
+                return;
+            }
+            append(MemoryFence);
             return;
         }
 
@@ -1987,7 +2909,7 @@ private:
             // We expect that the moveConstants() phase has run, and any doubles referenced from
             // stackmaps get fused.
             RELEASE_ASSERT(m_value->opcode() == ConstFloat || isIdentical(m_value->asDouble(), 0.0));
-            RELEASE_ASSERT(m_value->opcode() == ConstDouble || isIdentical(m_value->asFloat(), 0.0));
+            RELEASE_ASSERT(m_value->opcode() == ConstDouble || isIdentical(m_value->asFloat(), 0.0f));
             append(MoveZeroToDouble, tmp(m_value));
             return;
         }
@@ -1999,14 +2921,34 @@ private:
 
         case SlotBase: {
             append(
-                Lea,
+                pointerType() == Int64 ? Lea64 : Lea32,
                 Arg::stack(m_stackToStack.get(m_value->as<SlotBaseValue>()->slot())),
                 tmp(m_value));
             return;
         }
 
         case Equal:
-        case NotEqual:
+        case NotEqual: {
+            // FIXME: Teach this to match patterns that arise from subwidth CAS. The CAS's result has to
+            // be either zero- or sign-extended, and the value it's compared to should also be zero- or
+            // sign-extended in a matching way. It's not super clear that this is very profitable.
+            // https://bugs.webkit.org/show_bug.cgi?id=169250
+            if (m_value->child(0)->opcode() == AtomicStrongCAS
+                && m_value->child(0)->as<AtomicValue>()->isCanonicalWidth()
+                && m_value->child(0)->child(0) == m_value->child(1)
+                && canBeInternal(m_value->child(0))) {
+                ASSERT(!m_locked.contains(m_value->child(0)->child(1)));
+                ASSERT(!m_locked.contains(m_value->child(1)));
+                
+                commitInternal(m_value->child(0));
+                appendCAS(m_value->child(0), m_value->opcode() == NotEqual);
+                return;
+            }
+                
+            m_insts.last().append(createCompare(m_value));
+            return;
+        }
+            
         case LessThan:
         case GreaterThan:
         case LessEqual:
@@ -2031,6 +2973,7 @@ private:
                 config.moveConditionallyFloat = MoveConditionallyFloat;
             } else {
                 // FIXME: it's not obvious that these are particularly efficient.
+                // https://bugs.webkit.org/show_bug.cgi?id=169251
                 config.moveConditionally32 = MoveDoubleConditionally32;
                 config.moveConditionally64 = MoveDoubleConditionally64;
                 config.moveConditionallyTest32 = MoveDoubleConditionallyTest32;
@@ -2045,6 +2988,11 @@ private:
 
         case IToD: {
             appendUnOp<ConvertInt32ToDouble, ConvertInt64ToDouble>(m_value->child(0));
+            return;
+        }
+
+        case IToF: {
+            appendUnOp<ConvertInt32ToFloat, ConvertInt64ToFloat>(m_value->child(0));
             return;
         }
 
@@ -2087,6 +3035,7 @@ private:
                 case ValueRep::ColdAny:
                 case ValueRep::LateColdAny:
                 case ValueRep::SomeRegister:
+                case ValueRep::SomeEarlyRegister:
                     inst.args.append(tmp(patchpointValue));
                     break;
                 case ValueRep::Register: {
@@ -2115,9 +3064,9 @@ private:
                 patchpointValue->lateClobbered().clear(patchpointValue->resultConstraint.reg());
 
             for (unsigned i = patchpointValue->numGPScratchRegisters; i--;)
-                inst.args.append(m_code.newTmp(Arg::GP));
+                inst.args.append(m_code.newTmp(GP));
             for (unsigned i = patchpointValue->numFPScratchRegisters; i--;)
-                inst.args.append(m_code.newTmp(Arg::FP));
+                inst.args.append(m_code.newTmp(FP));
             
             m_insts.last().append(WTFMove(inst));
             m_insts.last().appendVector(after);
@@ -2199,8 +3148,8 @@ private:
             } else if (isValidForm(opcode, Arg::ResCond, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
                 sources.append(tmp(left));
                 sources.append(tmp(right));
-                sources.append(m_code.newTmp(Arg::typeForB3Type(m_value->type())));
-                sources.append(m_code.newTmp(Arg::typeForB3Type(m_value->type())));
+                sources.append(m_code.newTmp(m_value->resultBank()));
+                sources.append(m_code.newTmp(m_value->resultBank()));
             }
 
             // There is a really hilarious case that arises when we do BranchAdd32(%x, %x). We won't emit
@@ -2257,6 +3206,42 @@ private:
             return;
         }
 
+        case B3::WasmBoundsCheck: {
+            WasmBoundsCheckValue* value = m_value->as<WasmBoundsCheckValue>();
+
+            Value* ptr = value->child(0);
+
+            Arg ptrPlusImm = m_code.newTmp(GP);
+            append(Inst(Move32, value, tmp(ptr), ptrPlusImm));
+            if (value->offset()) {
+                if (imm(value->offset()))
+                    append(Add64, imm(value->offset()), ptrPlusImm);
+                else {
+                    Arg bigImm = m_code.newTmp(GP);
+                    append(Move, Arg::bigImm(value->offset()), bigImm);
+                    append(Add64, bigImm, ptrPlusImm);
+                }
+            }
+
+            Arg limit;
+            switch (value->boundsType()) {
+            case WasmBoundsCheckValue::Type::Pinned:
+                limit = Arg(value->bounds().pinned);
+                break;
+
+            case WasmBoundsCheckValue::Type::Maximum:
+                limit = m_code.newTmp(GP);
+                if (imm(value->bounds().maximum))
+                    append(Move, imm(value->bounds().maximum), limit);
+                else
+                    append(Move, Arg::bigImm(value->bounds().maximum), limit);
+                break;
+            }
+
+            append(Inst(Air::WasmBoundsCheck, value, ptrPlusImm, limit));
+            return;
+        }
+
         case Upsilon: {
             Value* value = m_value->child(0);
             append(
@@ -2291,6 +3276,46 @@ private:
         }
 
         case Branch: {
+            if (canBeInternal(m_value->child(0))) {
+                Value* branchChild = m_value->child(0);
+                switch (branchChild->opcode()) {
+                case AtomicWeakCAS:
+                    commitInternal(branchChild);
+                    appendCAS(branchChild, false);
+                    return;
+                    
+                case AtomicStrongCAS:
+                    // A branch is a comparison to zero.
+                    // FIXME: Teach this to match patterns that arise from subwidth CAS.
+                    // https://bugs.webkit.org/show_bug.cgi?id=169250
+                    if (branchChild->child(0)->isInt(0)
+                        && branchChild->as<AtomicValue>()->isCanonicalWidth()) {
+                        commitInternal(branchChild);
+                        appendCAS(branchChild, true);
+                        return;
+                    }
+                    break;
+                    
+                case Equal:
+                case NotEqual:
+                    // FIXME: Teach this to match patterns that arise from subwidth CAS.
+                    // https://bugs.webkit.org/show_bug.cgi?id=169250
+                    if (branchChild->child(0)->opcode() == AtomicStrongCAS
+                        && branchChild->child(0)->as<AtomicValue>()->isCanonicalWidth()
+                        && canBeInternal(branchChild->child(0))
+                        && branchChild->child(0)->child(0) == branchChild->child(1)) {
+                        commitInternal(branchChild);
+                        commitInternal(branchChild->child(0));
+                        appendCAS(branchChild->child(0), branchChild->opcode() == NotEqual);
+                        return;
+                    }
+                    break;
+                    
+                default:
+                    break;
+                }
+            }
+            
             m_insts.last().append(createBranch(m_value->child(0)));
             return;
         }
@@ -2306,6 +3331,10 @@ private:
         }
 
         case Return: {
+            if (!m_value->numChildren()) {
+                append(RetVoid);
+                return;
+            }
             Value* value = m_value->child(0);
             Tmp returnValueGPR = Tmp(GPRInfo::returnValueGPR);
             Tmp returnValueFPR = Tmp(FPRInfo::returnValueFPR);
@@ -2339,7 +3368,86 @@ private:
             append(Air::Oops);
             return;
         }
+            
+        case B3::EntrySwitch: {
+            append(Air::EntrySwitch);
+            return;
+        }
+            
+        case AtomicWeakCAS:
+        case AtomicStrongCAS: {
+            appendCAS(m_value, false);
+            return;
+        }
+            
+        case AtomicXchgAdd: {
+            AtomicValue* atomic = m_value->as<AtomicValue>();
+            if (appendVoidAtomic(OPCODE_FOR_WIDTH(AtomicAdd, atomic->accessWidth())))
+                return;
+            
+            Arg address = addr(atomic);
+            Air::Opcode opcode = OPCODE_FOR_WIDTH(AtomicXchgAdd, atomic->accessWidth());
+            if (isValidForm(opcode, Arg::Tmp, address.kind())) {
+                append(relaxedMoveForType(atomic->type()), tmp(atomic->child(0)), tmp(atomic));
+                append(opcode, tmp(atomic), address);
+                return;
+            }
 
+            appendGeneralAtomic(OPCODE_FOR_CANONICAL_WIDTH(Add, atomic->accessWidth()), Commutative);
+            return;
+        }
+
+        case AtomicXchgSub: {
+            AtomicValue* atomic = m_value->as<AtomicValue>();
+            if (appendVoidAtomic(OPCODE_FOR_WIDTH(AtomicSub, atomic->accessWidth())))
+                return;
+            
+            appendGeneralAtomic(OPCODE_FOR_CANONICAL_WIDTH(Sub, atomic->accessWidth()));
+            return;
+        }
+            
+        case AtomicXchgAnd: {
+            AtomicValue* atomic = m_value->as<AtomicValue>();
+            if (appendVoidAtomic(OPCODE_FOR_WIDTH(AtomicAnd, atomic->accessWidth())))
+                return;
+            
+            appendGeneralAtomic(OPCODE_FOR_CANONICAL_WIDTH(And, atomic->accessWidth()), Commutative);
+            return;
+        }
+            
+        case AtomicXchgOr: {
+            AtomicValue* atomic = m_value->as<AtomicValue>();
+            if (appendVoidAtomic(OPCODE_FOR_WIDTH(AtomicOr, atomic->accessWidth())))
+                return;
+            
+            appendGeneralAtomic(OPCODE_FOR_CANONICAL_WIDTH(Or, atomic->accessWidth()), Commutative);
+            return;
+        }
+            
+        case AtomicXchgXor: {
+            AtomicValue* atomic = m_value->as<AtomicValue>();
+            if (appendVoidAtomic(OPCODE_FOR_WIDTH(AtomicXor, atomic->accessWidth())))
+                return;
+            
+            appendGeneralAtomic(OPCODE_FOR_CANONICAL_WIDTH(Xor, atomic->accessWidth()), Commutative);
+            return;
+        }
+            
+        case AtomicXchg: {
+            AtomicValue* atomic = m_value->as<AtomicValue>();
+            
+            Arg address = addr(atomic);
+            Air::Opcode opcode = OPCODE_FOR_WIDTH(AtomicXchg, atomic->accessWidth());
+            if (isValidForm(opcode, Arg::Tmp, address.kind())) {
+                append(relaxedMoveForType(atomic->type()), tmp(atomic->child(0)), tmp(atomic));
+                append(opcode, tmp(atomic), address);
+                return;
+            }
+            
+            appendGeneralAtomic(Air::Nop);
+            return;
+        }
+            
         default:
             break;
         }
@@ -2347,39 +3455,11 @@ private:
         dataLog("FATAL: could not lower ", deepDump(m_procedure, m_value), "\n");
         RELEASE_ASSERT_NOT_REACHED();
     }
-
-#if CPU(X86) || CPU(X86_64)
-    void lowerX86Div()
-    {
-        Tmp eax = Tmp(X86Registers::eax);
-        Tmp edx = Tmp(X86Registers::edx);
-
-        Air::Opcode convertToDoubleWord;
-        Air::Opcode div;
-        switch (m_value->type()) {
-        case Int32:
-            convertToDoubleWord = X86ConvertToDoubleWord32;
-            div = X86Div32;
-            break;
-        case Int64:
-            convertToDoubleWord = X86ConvertToQuadWord64;
-            div = X86Div64;
-            break;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return;
-        }
-        
-        append(Move, tmp(m_value->child(0)), eax);
-        append(convertToDoubleWord, eax, edx);
-        append(div, eax, edx, tmp(m_value->child(1)));
-    }
-#endif
-
-    IndexSet<Value> m_locked; // These are values that will have no Tmp in Air.
-    IndexMap<Value, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
-    IndexMap<Value, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
-    IndexMap<B3::BasicBlock, Air::BasicBlock*> m_blockToBlock;
+    
+    IndexSet<Value*> m_locked; // These are values that will have no Tmp in Air.
+    IndexMap<Value*, Tmp> m_valueToTmp; // These are values that must have a Tmp in Air. We say that a Value* with a non-null Tmp is "pinned".
+    IndexMap<Value*, Tmp> m_phiToTmp; // Each Phi gets its own Tmp.
+    IndexMap<B3::BasicBlock*, Air::BasicBlock*> m_blockToBlock;
     HashMap<B3::StackSlot*, Air::StackSlot*> m_stackToStack;
     HashMap<Variable*, Tmp> m_variableToTmp;
 
@@ -2390,7 +3470,7 @@ private:
 
     Vector<Vector<Inst, 4>> m_insts;
     Vector<Inst> m_prologue;
-
+    
     B3::BasicBlock* m_block;
     bool m_isRare;
     unsigned m_index;
@@ -2401,6 +3481,12 @@ private:
 
     Procedure& m_procedure;
     Code& m_code;
+
+    Air::BlockInsertionSet m_blockInsertionSet;
+
+    Tmp m_eax;
+    Tmp m_ecx;
+    Tmp m_edx;
 };
 
 } // anonymous namespace

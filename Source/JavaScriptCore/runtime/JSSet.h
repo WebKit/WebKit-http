@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,106 +23,58 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSSet_h
-#define JSSet_h
+#pragma once
 
-#include "JSDestructibleObject.h"
+#include "HashMapImpl.h"
 #include "JSObject.h"
-#include "MapData.h"
 
 namespace JSC {
 
 class JSSetIterator;
 
-class JSSet : public JSDestructibleObject {
+class JSSet final : public HashMapImpl<HashMapBucket<HashMapBucketDataKey>> {
+    using Base = HashMapImpl<HashMapBucket<HashMapBucketDataKey>>;
 public:
-    typedef JSDestructibleObject Base;
 
     friend class JSSetIterator;
-
-    // Our marking functions expect Entry to maintain this layout, and have all
-    // fields be WriteBarrier<Unknown>
-    class Entry {
-    private:
-        WriteBarrier<Unknown> m_key;
-
-    public:
-        const WriteBarrier<Unknown>& key() const
-        {
-            return m_key;
-        }
-
-        const WriteBarrier<Unknown>& value() const
-        {
-            return m_key;
-        }
-
-        void visitChildren(SlotVisitor& visitor)
-        {
-            visitor.append(&m_key);
-        }
-
-        void setKey(VM& vm, const JSCell* owner, JSValue key)
-        {
-            m_key.set(vm, owner, key);
-        }
-
-        void setKeyWithoutWriteBarrier(JSValue key)
-        {
-            m_key.setWithoutWriteBarrier(key);
-        }
-
-        void setValue(VM&, const JSCell*, JSValue)
-        {
-        }
-
-        void clear()
-        {
-            m_key.clear();
-        }
-    };
-
-    typedef MapDataImpl<Entry, JSSetIterator> SetData;
 
     DECLARE_EXPORT_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(JSSetType, StructureFlags), info());
     }
 
-    static JSSet* create(VM& vm, Structure* structure)
+    static JSSet* create(ExecState* exec, VM& vm, Structure* structure)
     {
         JSSet* instance = new (NotNull, allocateCell<JSSet>(vm.heap)) JSSet(vm, structure);
-        instance->finishCreation(vm);
+        instance->finishCreation(exec, vm);
         return instance;
     }
 
-    static JSSet* create(ExecState* exec, Structure* structure)
-    {
-        return create(exec->vm(), structure);
-    }
-
-    bool has(ExecState*, JSValue);
-    size_t size(ExecState*);
-    JS_EXPORT_PRIVATE void add(ExecState*, JSValue);
-    void clear(ExecState*);
-    bool remove(ExecState*, JSValue);
+    bool isIteratorProtocolFastAndNonObservable();
+    bool canCloneFastAndNonObservable(Structure*);
+    JSSet* clone(ExecState*, VM&, Structure*);
 
 private:
     JSSet(VM& vm, Structure* structure)
         : Base(vm, structure)
-        , m_setData(vm, this)
     {
     }
 
-    static void destroy(JSCell*);
-    static void visitChildren(JSCell*, SlotVisitor&);
-    static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
-
-    SetData m_setData;
+    static String toStringName(const JSObject*, ExecState*);
 };
 
+inline bool isJSSet(JSCell* from)
+{
+    static_assert(std::is_final<JSSet>::value, "");
+    return from->type() == JSSetType;
 }
 
-#endif // !defined(JSSet_h)
+inline bool isJSSet(JSValue from)
+{
+    static_assert(std::is_final<JSSet>::value, "");
+    return from.isCell() && from.asCell()->type() == JSSetType;
+}
+
+} // namespace JSC

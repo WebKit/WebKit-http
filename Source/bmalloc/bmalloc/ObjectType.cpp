@@ -23,23 +23,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "LargeChunk.h"
 #include "ObjectType.h"
+
+#include "Chunk.h"
+#include "Heap.h"
+#include "Object.h"
+#include "PerProcess.h"
 
 namespace bmalloc {
 
 ObjectType objectType(void* object)
 {
-    if (isSmallOrMedium(object)) {
-        if (isSmall(object))
-            return Small;
-        return Medium;
+    if (mightBeLarge(object)) {
+        if (!object)
+            return ObjectType::Small;
+
+        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+        if (PerProcess<Heap>::getFastCase()->isLarge(lock, object))
+            return ObjectType::Large;
     }
     
-    if (!isXLarge(object))
-        return Large;
-    
-    return XLarge;
+    return ObjectType::Small;
 }
 
 } // namespace bmalloc

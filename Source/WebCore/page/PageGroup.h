@@ -23,54 +23,50 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PageGroup_h
-#define PageGroup_h
+#pragma once
 
-#include "Supplementable.h"
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-    class Page;
+class Page;
 #if ENABLE(VIDEO_TRACK)
-    class CaptionUserPreferences;
+class CaptionUserPreferences;
 #endif
 
-    class PageGroup {
-        WTF_MAKE_NONCOPYABLE(PageGroup); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        WEBCORE_EXPORT explicit PageGroup(const String& name);
-        explicit PageGroup(Page&);
-        ~PageGroup();
+class PageGroup {
+    WTF_MAKE_NONCOPYABLE(PageGroup); WTF_MAKE_FAST_ALLOCATED;
+public:
+    WEBCORE_EXPORT explicit PageGroup(const String& name);
+    explicit PageGroup(Page&);
+    ~PageGroup();
 
-        WEBCORE_EXPORT static PageGroup* pageGroup(const String& groupName);
+    WEBCORE_EXPORT static PageGroup* pageGroup(const String& groupName);
 
-        const HashSet<Page*>& pages() const { return m_pages; }
+    const HashSet<Page*>& pages() const { return m_pages; }
 
-        void addPage(Page&);
-        void removePage(Page&);
+    void addPage(Page&);
+    void removePage(Page&);
 
-        const String& name() { return m_name; }
-        unsigned identifier() { return m_identifier; }
-
-#if ENABLE(VIDEO_TRACK)
-        WEBCORE_EXPORT void captionPreferencesChanged();
-        WEBCORE_EXPORT CaptionUserPreferences& captionPreferences();
-#endif
-
-    private:
-        String m_name;
-        HashSet<Page*> m_pages;
-
-        unsigned m_identifier;
+    const String& name() { return m_name; }
+    unsigned identifier() { return m_identifier; }
 
 #if ENABLE(VIDEO_TRACK)
-        std::unique_ptr<CaptionUserPreferences> m_captionPreferences;
+    WEBCORE_EXPORT void captionPreferencesChanged();
+    WEBCORE_EXPORT CaptionUserPreferences& captionPreferences();
 #endif
-    };
+
+private:
+    String m_name;
+    HashSet<Page*> m_pages;
+
+    unsigned m_identifier;
+
+#if ENABLE(VIDEO_TRACK)
+    std::unique_ptr<CaptionUserPreferences> m_captionPreferences;
+#endif
+};
 
 } // namespace WebCore
-    
-#endif // PageGroup_h

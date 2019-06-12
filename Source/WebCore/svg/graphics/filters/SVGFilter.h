@@ -18,35 +18,31 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGFilter_h
-#define SVGFilter_h
+#pragma once
 
 #include "AffineTransform.h"
 #include "Filter.h"
 #include "FilterEffect.h"
 #include "FloatRect.h"
-#include "FloatSize.h"
-
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
 
-class SVGFilter : public Filter {
+class SVGFilter final : public Filter {
 public:
     static Ref<SVGFilter> create(const AffineTransform&, const FloatRect&, const FloatRect&, const FloatRect&, bool);
 
     FloatRect filterRegionInUserSpace() const { return m_filterRegion; }
-    virtual FloatRect filterRegion() const override { return m_absoluteFilterRegion; }
+    FloatRect filterRegion() const final { return m_absoluteFilterRegion; }
 
-    virtual float applyHorizontalScale(float value) const override;
-    virtual float applyVerticalScale(float value) const override;
+    float applyHorizontalScale(float value) const final;
+    float applyVerticalScale(float value) const final;
 
-    virtual FloatRect sourceImageRect() const override { return m_absoluteSourceDrawingRegion; }
+    FloatRect sourceImageRect() const final { return m_absoluteSourceDrawingRegion; }
     FloatRect targetBoundingBox() const { return m_targetBoundingBox; }
 
-    virtual bool isSVGFilter() const override final { return true; }
+    bool isSVGFilter() const final { return true; }
 
 private:
     SVGFilter(const AffineTransform& absoluteTransform, const FloatRect& absoluteSourceDrawingRegion, const FloatRect& targetBoundingBox, const FloatRect& filterRegion, bool effectBBoxMode);
@@ -63,5 +59,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SVGFilter)
     static bool isType(const WebCore::Filter& filter) { return filter.isSVGFilter(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // SVGFilter_h

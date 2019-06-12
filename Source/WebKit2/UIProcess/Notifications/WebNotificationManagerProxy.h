@@ -29,19 +29,23 @@
 #include "APIObject.h"
 #include "MessageReceiver.h"
 #include "WebContextSupplement.h"
-#include "WebNotificationProvider.h"
 #include <WebCore/NotificationClient.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/StringHash.h>
+
+namespace WebCore {
+enum class NotificationDirection;
+}
 
 namespace API {
 class Array;
+class NotificationProvider;
 class SecurityOrigin;
 }
 
 namespace WebKit {
 
+class WebNotification;
 class WebPageProxy;
 class WebProcessPool;
 
@@ -52,10 +56,10 @@ public:
 
     static Ref<WebNotificationManagerProxy> create(WebProcessPool*);
 
-    void initializeProvider(const WKNotificationProviderBase*);
-    void populateCopyOfNotificationPermissions(HashMap<String, bool>&);
+    void setProvider(std::unique_ptr<API::NotificationProvider>&&);
+    HashMap<String, bool> notificationPermissions();
 
-    void show(WebPageProxy*, const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, const String& dir, const String& originString, uint64_t pageNotificationID);
+    void show(WebPageProxy*, const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, WebCore::NotificationDirection, const String& originString, uint64_t pageNotificationID);
     void cancel(WebPageProxy*, uint64_t pageNotificationID);
     void clearNotifications(WebPageProxy*);
     void clearNotifications(WebPageProxy*, const Vector<uint64_t>& pageNotificationIDs);
@@ -67,6 +71,8 @@ public:
     void providerDidUpdateNotificationPolicy(const API::SecurityOrigin*, bool allowed);
     void providerDidRemoveNotificationPolicies(API::Array* origins);
 
+    uint64_t notificationLocalIDForTesting(WebNotification*);
+
     using API::Object::ref;
     using API::Object::deref;
 
@@ -77,11 +83,11 @@ private:
     void clearNotifications(WebPageProxy*, const Vector<uint64_t>& pageNotificationIDs, NotificationFilterFunction);
 
     // WebContextSupplement
-    virtual void processPoolDestroyed() override;
-    virtual void refWebContextSupplement() override;
-    virtual void derefWebContextSupplement() override;
+    void processPoolDestroyed() override;
+    void refWebContextSupplement() override;
+    void derefWebContextSupplement() override;
 
-    WebNotificationProvider m_provider;
+    std::unique_ptr<API::NotificationProvider> m_provider;
     // Pair comprised of web page ID and the web process's notification ID
     HashMap<uint64_t, std::pair<uint64_t, uint64_t>> m_globalNotificationMap;
     // Key pair comprised of web page ID and the web process's notification ID; value pair comprised of global notification ID, and notification object

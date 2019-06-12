@@ -20,29 +20,16 @@
 
 [
     JSCustomMarkFunction,
+    JSGenerateToJSObject,
     JSGenerateToNativeObject,
-    JSGenerateToJSObject
 ] interface Attr : Node {
+    readonly attribute DOMString? namespaceURI;
+    readonly attribute DOMString? prefix;
+    readonly attribute DOMString localName;
+    readonly attribute DOMString name;
+    [CEReactions] attribute DOMString value;
 
-    // DOM Level 1
+    readonly attribute Element? ownerElement;
 
-    [TreatReturnedNullStringAs=Null] readonly attribute DOMString name;
-
-    readonly attribute boolean specified;
-
-    [TreatReturnedNullStringAs=Null, TreatNullAs=NullString, SetterRaisesException] attribute DOMString value;
-
-    // DOM Level 2
-
-    readonly attribute Element ownerElement;
-
-    // DOM Level 3
-
-    readonly attribute boolean isId;
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // This extension is no longer needed, but it has to remain available in Objective C, as it's public API.
-    readonly attribute CSSStyleDeclaration style;
-#endif
+    readonly attribute boolean specified; // Useless; always returns true.
 };
-

@@ -24,10 +24,8 @@
  *
  */
 
-#ifndef MessageChannel_h
-#define MessageChannel_h
+#pragma once
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -52,5 +50,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // MessageChannel_h

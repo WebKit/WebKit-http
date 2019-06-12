@@ -24,36 +24,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RGBColor_h
-#define RGBColor_h
+#pragma once
 
 #include "Color.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-    class CSSPrimitiveValue;
+class CSSPrimitiveValue;
 
-    class RGBColor : public RefCounted<RGBColor> {
-    public:
-        static Ref<RGBColor> create(unsigned rgbColor);
+class RGBColor final : public RefCounted<RGBColor> {
+public:
+    static Ref<RGBColor> create(unsigned rgbColor);
 
-        Ref<CSSPrimitiveValue> red();
-        Ref<CSSPrimitiveValue> green();
-        Ref<CSSPrimitiveValue> blue();
-        Ref<CSSPrimitiveValue> alpha();
+    Color color() const { return Color(m_rgbColor); }
 
-        Color color() const { return Color(m_rgbColor); }
+    RGBA32 rgbColor() const { return m_rgbColor; }
 
-    private:
-        RGBColor(unsigned rgbColor)
-            : m_rgbColor(rgbColor)
-        {
-        }
+private:
+    RGBColor(unsigned rgbColor)
+        : m_rgbColor(rgbColor)
+    {
+    }
 
-        RGBA32 m_rgbColor;
-    };
+    RGBA32 m_rgbColor;
+};
 
 } // namespace WebCore
-
-#endif // RGBColor_h

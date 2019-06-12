@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGMetadataElement_h
-#define SVGMetadataElement_h
+#pragma once
 
 #include "SVGElement.h"
 
@@ -32,9 +31,7 @@ public:
 private:
     SVGMetadataElement(const QualifiedName&, Document&);
 
-    virtual bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
 };
 
 } // namespace WebCore
-
-#endif

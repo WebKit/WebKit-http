@@ -25,8 +25,18 @@
 (deny default (with partial-symbolication))
 (allow system-audit file-read-metadata)
 
+(deny mach-lookup (xpc-service-name-prefix ""))
+
 (import "common.sb")
-(import "removed-dev-nodes.sb")
+
+(deny sysctl*)
+(allow sysctl-read
+    (sysctl-name
+        "hw.availcpu"
+        "hw.ncpu"
+        "hw.model"
+        "kern.memorystatus_level"
+        "vm.footprint_suspend"))
 
 ;; Access to client's cache folder & re-vending to CFNetwork.
 ;; FIXME: Remove the webkit specific extension classes <rdar://problem/17755931>
@@ -52,6 +62,10 @@
 
 (network-client (remote tcp) (remote udp))
 
+;; allow 3rd party applications to access nsurlstoraged's top level domain data cache
+(allow-well-known-system-group-container-subpath-read
+    "/systemgroup.com.apple.nsurlstoragedresources/Library/dafsaData.bin")
+
 ;; Security framework
 (allow mach-lookup
     (global-name "com.apple.ocspd")
@@ -60,3 +74,15 @@
 
 (deny file-write-create
        (vnode-type SYMLINK))
+
+;; FIXME should be removed when <rdar://problem/30498072> is fixed.
+(allow network*
+    (local udp)
+    (remote udp)
+    (local tcp)
+    (remote tcp))
+
+;; Various services required by system frameworks
+(allow mach-lookup
+    (global-name "com.apple.lsd.mapdb")
+    (global-name "com.apple.analyticsd"))

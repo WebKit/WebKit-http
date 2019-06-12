@@ -43,12 +43,16 @@ raise unless SCRIPT_PATH.dirname.basename.to_s == "Scripts"
 raise unless SCRIPT_PATH.dirname.dirname.basename.to_s == "Tools"
 
 OPENSOURCE_PATH = SCRIPT_PATH.dirname.dirname.dirname
+PERFORMANCETESTS_PATH = OPENSOURCE_PATH + "PerformanceTests"
 
-SUNSPIDER_PATH = OPENSOURCE_PATH + "PerformanceTests" + "SunSpider" + "tests" + "sunspider-1.0"
-LONGSPIDER_PATH = OPENSOURCE_PATH + "PerformanceTests" + "LongSpider"
-V8_PATH = OPENSOURCE_PATH + "PerformanceTests" + "SunSpider" + "tests" + "v8-v6"
-JSREGRESS_PATH = OPENSOURCE_PATH + "LayoutTests" + "js" + "regress" + "script-tests"
-OCTANE_WRAPPER_PATH = OPENSOURCE_PATH + "PerformanceTests" + "Octane" + "wrappers"
+SUNSPIDER_PATH = PERFORMANCETESTS_PATH + "SunSpider" + "tests" + "sunspider-1.0"
+LONGSPIDER_PATH = PERFORMANCETESTS_PATH + "LongSpider"
+V8_PATH = PERFORMANCETESTS_PATH + "SunSpider" + "tests" + "v8-v6"
+MICROBENCHMARKS_PATH = OPENSOURCE_PATH + "JSTests" + "microbenchmarks"
+OCTANE_WRAPPER_PATH = PERFORMANCETESTS_PATH + "Octane" + "wrappers"
+JSBENCH_PATH = PERFORMANCETESTS_PATH + "JSBench"
+SIXSPEED_PATH = PERFORMANCETESTS_PATH + "SixSpeed" + "tests"
+SIXSPEED_WRAPPER_PATH = PERFORMANCETESTS_PATH + "SixSpeed" + "wrappers"
 
 TEMP_PATH = OPENSOURCE_PATH + "BenchmarkTemp"
 
@@ -214,13 +218,14 @@ $includeLongSpider=true
 $includeV8=true
 $includeKraken=true
 $includeJSBench=true
-$includeJSRegress=true
+$includeMicrobenchmarks=true
 $includeAsmBench=true
 $includeDSPJS=true
 $includeBrowsermarkJS=false
 $includeBrowsermarkDOM=false
 $includeOctane=true
 $includeCompressionBench = true
+$includeSixSpeed = true
 $measureGC=false
 $benchmarkPattern=nil
 $verbosity=0
@@ -233,6 +238,7 @@ $alsoLocal=false
 $sshOptions=[]
 $vms = []
 $environment = {}
+$dependencies = []
 $needToCopyVMs = false
 $dontCopyVMs = false
 $allDRT = true
@@ -305,7 +311,7 @@ def usage
   puts "--v8-spider          Only run V8."
   puts "--kraken             Only run Kraken."
   puts "--js-bench           Only run JSBench."
-  puts "--js-regress         Only run JSRegress."
+  puts "--microbenchmarks    Only run microbenchmarks."
   puts "--dsp                Only run DSP."
   puts "--asm-bench          Only run AsmBench."
   puts "--browsermark-js     Only run browsermark-js."
@@ -315,6 +321,7 @@ def usage
   puts "                     The default is to run all benchmarks. The above options can"
   puts "                     be combined to run any subset (so --sunspider --dsp will run"
   puts "                     both SunSpider and DSP)."
+  puts "--six-speed          Only run SixSpeed."
   puts "--benchmarks         Only run benchmarks matching the given regular expression."
   puts "--measure-gc         Turn off manual calls to gc(), so that GC time is measured."
   puts "                     Works best with large values of --inner.  You can also say"
@@ -348,6 +355,7 @@ def usage
   puts "                     be used for particular VMs and benchmarks."
   puts "--config <path>      Specify the path of the configuration file. Defaults to"
   puts "                     ~/.run-jsc-benchmarks"
+  puts "--dependencies       Additional dependent library paths."
   puts "--help or -h         Display this message."
   puts
   puts "Example:"
@@ -1028,6 +1036,11 @@ def emitBenchRunCodeFile(name, plan, benchParams)
       doublePuts($stderr,file,"function reportResult(result) {")
       doublePuts($stderr,file,"    __bencher_continuation(result);")
       doublePuts($stderr,file,"}")
+      doublePuts($stderr,file,"")
+      doublePuts($stderr,file,"function currentTimeInMS(msg)")
+      doublePuts($stderr,file,"{")
+      doublePuts($stderr,file,"    return #{curTime};")
+      doublePuts($stderr,file,"}")
       if benchParams.kind == :singleFileTimedCallbackBenchmark
         doublePuts($stderr,file,"")
         doublePuts($stderr,file,benchParams.callbackDecl)
@@ -1292,6 +1305,10 @@ class VM
       @libPath, @relativeBinPath = [$~.pre_match+"/Release"], "./#{$1}"
     elsif @path =~ /\/Debug\/([a-zA-Z]+)$/
       @libPath, @relativeBinPath = [$~.pre_match+"/Debug"], "./#{$1}"
+    elsif @path =~ /\/Release\/bin\/([a-zA-Z]+)$/
+      @libPath, @relativeBinPath = [$~.pre_match+"/Release/lib"], "./#{$1}"
+    elsif @path =~ /\/Debug\/bin\/([a-zA-Z]+)$/
+      @libPath, @relativeBinPath = [$~.pre_match+"/Debug/lib"], "./#{$1}"
     elsif @path =~ /\/Contents\/Resources\/([a-zA-Z]+)$/
       @libPath = [$~.pre_match + "/Contents/Resources", $~.pre_match + "/Contents/Frameworks"]
     elsif @path =~ /\/JavaScriptCore.framework\/Resources\/([a-zA-Z]+)$/
@@ -1299,6 +1316,7 @@ class VM
     elsif @path =~ /(DumpRenderTree|webkitTestRunner|jsc)$/
       @libPath, @relativeBinPath = [$~.pre_match+"/"], "./#{$1}"
     end
+    @libPath += $dependencies
   end
   
   def canCopyIntoBenchPath
@@ -1388,6 +1406,14 @@ class VM
     }
     $script.puts "export DYLD_LIBRARY_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
     $script.puts "export DYLD_FRAMEWORK_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
+    $script.puts "export LD_LIBRARY_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
+
+    unless myLibPath.empty?
+        primaryLibPath = myLibPath.first
+        $script.puts "export TEST_RUNNER_TEST_PLUGIN_PATH=#{Shellwords.shellescape(Pathname.new(primaryLibPath).join('plugins').to_s)}"
+        $script.puts "export TEST_RUNNER_INJECTED_BUNDLE_FILENAME=#{Shellwords.shellescape(Pathname.new(primaryLibPath).join('libTestRunnerInjectedBundle.so').to_s)}"
+    end
+
     @extraEnv.each_pair {
       | key, val |
       $script.puts "export #{Shellwords.shellescape(key)}=#{Shellwords.shellescape(val)}"
@@ -1598,7 +1624,7 @@ class JSBenchBenchmark
   end
 end
 
-class JSRegressBenchmark
+class MicrobenchmarksBenchmark
   include Benchmark
   
   def initialize(name)
@@ -1606,7 +1632,7 @@ class JSRegressBenchmark
   end
   
   def emitRunCode(plan)
-    emitBenchRunCode(fullname, plan, SingleFileTimedBenchmarkParameters.new(ensureFile("JSRegress-#{@name}", "#{JSREGRESS_PATH}/#{@name}.js")))
+    emitBenchRunCode(fullname, plan, SingleFileTimedBenchmarkParameters.new(ensureFile("Microbenchmarks-#{@name}", "#{MICROBENCHMARKS_PATH}/#{@name}.js")))
   end
 end
 
@@ -1619,6 +1645,20 @@ class AsmBenchBenchmark
   
   def emitRunCode(plan)
     emitBenchRunCode(fullname, plan, SingleFileTimedBenchmarkParameters.new(ensureFile("AsmBench-#{@name}", "#{ASMBENCH_PATH}/#{@name}.js")))
+  end
+end
+
+class SixSpeedBenchmark
+  include Benchmark
+
+  def initialize(name, path, iterations)
+    @name = name
+    @path = path
+    @iterations = iterations
+  end
+
+  def emitRunCode(plan)
+    emitBenchRunCode(fullname, plan, MultiFileTimedBenchmarkParameters.new([ensureFile("SixSpeed-#{@name}-wrapper", "#{SIXSPEED_WRAPPER_PATH}/wrapper.js"), ensureFile("SixSpeed-#{@name}", "#{SIXSPEED_PATH}/#{@path}")], simpleCommand("jscRun(#{@iterations});")))
   end
 end
 
@@ -2623,13 +2663,14 @@ begin
       $includeV8 = false
       $includeKraken = false
       $includeJSBench = false
-      $includeJSRegress = false
+      $includeMicrobenchmarks = false
       $includeAsmBench = false
       $includeDSPJS = false
       $includeBrowsermarkJS = false
       $includeBrowsermarkDOM = false
       $includeOctane = false
       $includeCompressionBench = false
+      $includeSixSpeed = false
       $sawBenchOptions = true
     end
   end
@@ -2647,13 +2688,14 @@ begin
                  ['--v8-spider', GetoptLong::NO_ARGUMENT],
                  ['--kraken', GetoptLong::NO_ARGUMENT],
                  ['--js-bench', GetoptLong::NO_ARGUMENT],
-                 ['--js-regress', GetoptLong::NO_ARGUMENT],
+                 ['--microbenchmarks', GetoptLong::NO_ARGUMENT],
                  ['--asm-bench', GetoptLong::NO_ARGUMENT],
                  ['--dsp', GetoptLong::NO_ARGUMENT],
                  ['--browsermark-js', GetoptLong::NO_ARGUMENT],
                  ['--browsermark-dom', GetoptLong::NO_ARGUMENT],
                  ['--octane', GetoptLong::NO_ARGUMENT],
                  ['--compression-bench', GetoptLong::NO_ARGUMENT],
+                 ['--six-speed', GetoptLong::NO_ARGUMENT],
                  ['--benchmarks', GetoptLong::REQUIRED_ARGUMENT],
                  ['--measure-gc', GetoptLong::OPTIONAL_ARGUMENT],
                  ['--force-vm-kind', GetoptLong::REQUIRED_ARGUMENT],
@@ -2671,6 +2713,7 @@ begin
                  ['--vms', GetoptLong::REQUIRED_ARGUMENT],
                  ['--output-name', GetoptLong::REQUIRED_ARGUMENT],
                  ['--environment', GetoptLong::REQUIRED_ARGUMENT],
+                 ['--dependencies', GetoptLong::REQUIRED_ARGUMENT],
                  ['--config', GetoptLong::REQUIRED_ARGUMENT],
                  ['--help', '-h', GetoptLong::NO_ARGUMENT]).each {
     | opt, arg |
@@ -2732,9 +2775,9 @@ begin
     when '--js-bench'
       resetBenchOptionsIfNecessary
       $includeJSBench = true
-    when '--js-regress'
+    when '--microbenchmarks'
       resetBenchOptionsIfNecessary
-      $includeJSRegress = true
+      $includeMicrobenchmarks = true
     when '--asm-bench'
       resetBenchOptionsIfNecessary
       $includeAsmBench = true
@@ -2753,6 +2796,9 @@ begin
     when '--compression-bench'
       resetBenchOptionsIfNecessary
       $includeCompressionBench = true
+    when '--six-speed'
+      resetBenchOptionsIfNecessary
+      $includeSixSpeed = true
     when '--benchmarks'
       $benchmarkPattern = Regexp.new(arg)
     when '--measure-gc'
@@ -2804,6 +2850,8 @@ begin
       }
     when '--environment'
       $environment = JSON::parse(IO::read(arg))
+    when '--dependencies'
+      $dependencies.push(Pathname.new(arg).realpath)
     when '--config'
       $configPath = Pathname.new(arg)
     when '--help'
@@ -2842,7 +2890,6 @@ begin
   DSPJS_JSLINUX_PATH = pathname_if_exist(config["DSPJSLinuxPath"])
   DSPJS_AMMOJS_ASMJS_PATH = pathname_if_exist(config["DSPJSAmmoJSAsmJSPath"])
   DSPJS_AMMOJS_REGULAR_PATH = pathname_if_exist(config["DSPJSAmmoJSRegularPath"])
-  JSBENCH_PATH = pathname_if_exist(config["JSBenchPath"])
   KRAKEN_PATH = pathname_if_exist(config["KrakenPath"])
   
   # If the --dont-copy-vms option was passed, it overrides the --force-vm-copy option.
@@ -2861,7 +2908,7 @@ begin
       nameKind = :auto
     end
     envs = []
-    while vm =~ /([a-zA-Z0-9_]+)=([a-zA-Z0-9_:.]+):/
+    while vm =~ /([a-zA-Z0-9_]+)=([a-zA-Z0-9_:.\/-]+):/
       envs << [$1, $2]
       vm = $~.post_match
     end
@@ -2930,7 +2977,7 @@ begin
    [["raytrace"], "raytrace", 2, true, false, 32],
    [["richards"], "richards", 2, true, false, 32],
    [["splay"], "splay", 2, true, false, 32],
-   [["regexp"], "regexp", 2, false, false, 16],
+   [["regexp"], "regexp", 2, true, false, 16],
    [["pdfjs"], "pdfjs", 2, false, false, 4],
    [["mandreel"], "mandreel", 2, false, false, 4],
    [["gbemu-part1", "gbemu-part2"], "gbemu", 2, false, false, 4],
@@ -2954,24 +3001,32 @@ begin
     KRAKEN.add KrakenBenchmark.new(name)
   }
   
-  JSBENCH = BenchmarkSuite.new("JSBench", :arithmeticMean, 0)
-  [["amazon", "urm"], ["facebook", "urem"], ["google", "urem"], ["twitter", "urem"],
-   ["yahoo", "urem"]].each {
+  JSBENCH = BenchmarkSuite.new("JSBench", :geometricMean, 0)
+  [["amazon-chrome", "urem"], ["amazon-chrome-win", "urem"], ["amazon-firefox", "urm"],
+   ["amazon-firefox-win", "urm"], ["amazon-safari", "urem"], ["facebook-chrome", "urem"],
+   ["facebook-chrome-win", "urem"], ["facebook-firefox", "urem"],
+   ["facebook-firefox-win", "urem"], ["facebook-safari", "urem"],
+   ["google-chrome", "urem"], ["google-chrome-win", "urem"], ["google-firefox", "uem"],
+   ["google-firefox-win", "urem"], ["google-safari", "urem"], ["twitter-chrome", "urem"],
+   ["twitter-chrome-win", "rem"], ["twitter-firefox", "urem"],
+   ["twitter-firefox-win", "urem"], ["twitter-safari", "urem"], ["yahoo-chrome", "urem"],
+   ["yahoo-chrome-win", "urem"], ["yahoo-firefox", "urem"], ["yahoo-firefox-win", "urem"],
+   ["yahoo-safari", "urem"]].each {
     | nameAndMode |
     JSBENCH.add JSBenchBenchmark.new(*nameAndMode)
   }
   
-  JSREGRESS = BenchmarkSuite.new("JSRegress", :geometricMean, 0)
-  Dir.foreach(JSREGRESS_PATH) {
+  MICROBENCHMARKS = BenchmarkSuite.new("Microbenchmarks", :geometricMean, 0)
+  Dir.foreach(MICROBENCHMARKS_PATH) {
     | filename |
     if filename =~ /\.js$/
       name = $~.pre_match
-      JSREGRESS.add JSRegressBenchmark.new(name)
+      MICROBENCHMARKS.add MicrobenchmarksBenchmark.new(name)
     end
   }
   
   ASMBENCH = BenchmarkSuite.new("AsmBench", :geometricMean, 0)
-  if JSBENCH_PATH
+  if ASMBENCH_PATH
     Dir.foreach(ASMBENCH_PATH) {
       | filename |
       if filename =~ /\.js$/
@@ -2995,6 +3050,39 @@ begin
   ].each {
     | args |
     COMPRESSIONBENCH.add CompressionBenchBenchmark.new(*args)
+  }
+
+  SIXSPEED = BenchmarkSuite.new("SixSpeed", :geometricMean, 0)
+  [[ "template_string", 200000000 ],
+   [ "defaults", 100000000 ],
+   [ "map-set-lookup", 200000 ],
+   [ "spread", 1000000 ],
+   [ "object-assign", 600000 ],
+   [ "spread-literal", 1000000 ],
+   [ "map-set", 10000 ],
+   [ "destructuring-simple", 20000000 ],
+   [ "super", 3000000 ],
+   [ "for-of-object", 1000000 ],
+   [ "rest", 500000 ],
+   [ "regex-u", 1000000 ],
+   [ "arrow", 20000000 ],
+   [ "bindings-compound", 20000000 ],
+   [ "classes", 10000000 ],
+   [ "template_string_tag", 2000000 ],
+   [ "map-string", 30000000 ],
+   [ "arrow-declare", 30000000 ],
+   [ "spread-generator", 1000000 ],
+   [ "object-literal-ext", 1000000 ],
+   [ "generator", 3000000 ],
+   [ "arrow-args", 20000000 ],
+   [ "for-of-array", 5000000 ],
+   [ "bindings", 20000000 ],
+   [ "destructuring", 20000000 ],
+   [ "map-set-object", 5000 ],
+  ].each {
+    | name, iterations |
+    SIXSPEED.add SixSpeedBenchmark.new("#{name}.es5", "#{name}/#{name}.es5", iterations)
+    SIXSPEED.add SixSpeedBenchmark.new("#{name}.es6", "#{name}/#{name}.es6", iterations)
   }
 
   DSPJS = BenchmarkSuite.new("DSP", :geometricMean, 0)
@@ -3066,8 +3154,8 @@ begin
     end
   end
   
-  if $includeJSRegress and not JSREGRESS.empty?
-    $suites << JSREGRESS
+  if $includeMicrobenchmarks and not MICROBENCHMARKS.empty?
+    $suites << MICROBENCHMARKS
   end
   
   if $includeAsmBench and not ASMBENCH.empty?
@@ -3117,6 +3205,15 @@ begin
       $stderr.puts "Warning: refusing to run CompressionBench because \"CompressionBenchPath\" isn't set in #{$configPath}"
     end
   end
+
+  if $includeSixSpeed and not SIXSPEED.empty?
+    if SIXSPEED_PATH
+      $suites << SIXSPEED
+    else
+      $stderr.puts "Warning: refusing to run SixSpeed because \"SixSpeedPath\" isn't set in #{$configPath}."
+    end
+  end
+
 
   $allSuites = $suites.map{|v| v.suites}.flatten(1)
   
@@ -3251,10 +3348,10 @@ begin
   if $prepare
     File.open("#{BENCH_DATA_PATH}/runscript", "w") {
       | file |
-      file.puts "echo \"HOSTNAME:\\c\""
+      file.puts "echo -e \"HOSTNAME:\\c\""
       file.puts "hostname"
       file.puts "echo"
-      file.puts "echo \"HARDWARE:\\c\""
+      file.puts "echo -e \"HARDWARE:\\c\""
       file.puts "/usr/sbin/sysctl hw.model"
       file.puts "echo"
       file.puts "set -e"
@@ -3264,14 +3361,14 @@ begin
         if $verbosity == 0 and not $silent
           text1 = lpad(idx.to_s,$runPlans.size.to_s.size)+"/"+$runPlans.size.to_s
           text2 = plan.to_s
-          file.puts("echo " + Shellwords.shellescape("\r#{text1} #{rpad(text2,$planpad)}") + "\"\\c\" 1>&2")
-          file.puts("echo " + Shellwords.shellescape("\r#{text1} #{text2}") + "\"\\c\" 1>&2")
+          file.puts("echo -e " + Shellwords.shellescape("\r#{text1} #{rpad(text2,$planpad)}") + "\"\\c\" 1>&2")
+          file.puts("echo -e " + Shellwords.shellescape("\r#{text1} #{text2}") + "\"\\c\" 1>&2")
         end
         plan.emitRunCode
       }
       if $verbosity == 0 and not $silent
-        file.puts("echo " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size} #{' '*($suitepad+1+$benchpad+1+$vmpad)}") + "\"\\c\" 1>&2")
-        file.puts("echo " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size}") + " 1>&2")
+        file.puts("echo -e " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size} #{' '*($suitepad+1+$benchpad+1+$vmpad)}") + "\"\\c\" 1>&2")
+        file.puts("echo -e " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size}") + " 1>&2")
       end
     }
   end

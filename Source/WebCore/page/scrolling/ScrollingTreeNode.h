@@ -23,21 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingTreeNode_h
-#define ScrollingTreeNode_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
 #include "IntRect.h"
 #include "ScrollTypes.h"
 #include "ScrollingCoordinator.h"
+#include "ScrollingStateNode.h"
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
 
 class ScrollingStateFixedNode;
-class ScrollingStateNode;
 class ScrollingStateScrollingNode;
 
 class ScrollingTreeNode : public RefCounted<ScrollingTreeNode> {
@@ -53,25 +52,28 @@ public:
     bool isFrameScrollingNode() const { return nodeType() == FrameScrollingNode; }
     bool isOverflowScrollingNode() const { return nodeType() == OverflowScrollingNode; }
 
-    virtual void updateBeforeChildren(const ScrollingStateNode&) = 0;
-    virtual void updateAfterChildren(const ScrollingStateNode&) { }
+    virtual void commitStateBeforeChildren(const ScrollingStateNode&) = 0;
+    virtual void commitStateAfterChildren(const ScrollingStateNode&) { }
 
     virtual void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) = 0;
 
     ScrollingTreeNode* parent() const { return m_parent; }
     void setParent(ScrollingTreeNode* parent) { m_parent = parent; }
 
-    typedef Vector<RefPtr<ScrollingTreeNode>> ScrollingTreeChildrenVector;
-    ScrollingTreeChildrenVector* children() { return m_children.get(); }
-    
-    void appendChild(PassRefPtr<ScrollingTreeNode>);
-    void removeChild(ScrollingTreeNode*);
+    Vector<RefPtr<ScrollingTreeNode>>* children() { return m_children.get(); }
+
+    void appendChild(Ref<ScrollingTreeNode>&&);
+    void removeChild(ScrollingTreeNode&);
+
+    WEBCORE_EXPORT void dump(TextStream&, ScrollingStateTreeAsTextBehavior) const;
 
 protected:
     ScrollingTreeNode(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
     ScrollingTree& scrollingTree() const { return m_scrollingTree; }
 
-    std::unique_ptr<ScrollingTreeChildrenVector> m_children;
+    std::unique_ptr<Vector<RefPtr<ScrollingTreeNode>>> m_children;
+
+    WEBCORE_EXPORT virtual void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const;
 
 private:
     ScrollingTree& m_scrollingTree;
@@ -90,5 +92,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ScrollingTreeNode_h

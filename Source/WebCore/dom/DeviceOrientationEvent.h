@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DeviceOrientationEvent_h
-#define DeviceOrientationEvent_h
+#pragma once
 
 #include "Event.h"
 
@@ -34,7 +33,6 @@ class DeviceOrientationData;
 
 class DeviceOrientationEvent final : public Event {
 public:
-    virtual ~DeviceOrientationEvent();
     static Ref<DeviceOrientationEvent> create(const AtomicString& eventType, DeviceOrientationData* orientation)
     {
         return adoptRef(*new DeviceOrientationEvent(eventType, orientation));
@@ -45,19 +43,30 @@ public:
         return adoptRef(*new DeviceOrientationEvent);
     }
 
-    void initDeviceOrientationEvent(const AtomicString& type, bool bubbles, bool cancelable, DeviceOrientationData*);
+    virtual ~DeviceOrientationEvent();
 
-    DeviceOrientationData* orientation() const { return m_orientation.get(); }
+    std::optional<double> alpha() const;
+    std::optional<double> beta() const;
+    std::optional<double> gamma() const;
 
-    virtual EventInterface eventInterface() const override;
+#if PLATFORM(IOS)
+    std::optional<double> compassHeading() const;
+    std::optional<double> compassAccuracy() const;
+
+    void initDeviceOrientationEvent(const AtomicString& type, bool bubbles, bool cancelable, std::optional<double> alpha, std::optional<double> beta, std::optional<double> gamma, std::optional<double> compassHeading, std::optional<double> compassAccuracy);
+#else
+    std::optional<bool> absolute() const;
+
+    void initDeviceOrientationEvent(const AtomicString& type, bool bubbles, bool cancelable, std::optional<double> alpha, std::optional<double> beta, std::optional<double> gamma, std::optional<bool> absolute);
+#endif
 
 private:
     DeviceOrientationEvent();
     DeviceOrientationEvent(const AtomicString& eventType, DeviceOrientationData*);
 
+    EventInterface eventInterface() const override;
+
     RefPtr<DeviceOrientationData> m_orientation;
 };
 
 } // namespace WebCore
-
-#endif // DeviceOrientationEvent_h

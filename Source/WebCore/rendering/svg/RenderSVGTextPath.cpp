@@ -28,11 +28,10 @@
 #include "SVGPathElement.h"
 #include "SVGRootInlineBox.h"
 #include "SVGTextPathElement.h"
-#include "SVGTransformList.h"
 
 namespace WebCore {
 
-RenderSVGTextPath::RenderSVGTextPath(SVGTextPathElement& element, Ref<RenderStyle>&& style)
+RenderSVGTextPath::RenderSVGTextPath(SVGTextPathElement& element, RenderStyle&& style)
     : RenderSVGInline(element, WTFMove(style))
 {
 }

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef VisibleSelection_h
-#define VisibleSelection_h
+#pragma once
 
 #include "TextGranularity.h"
 #include "VisiblePosition.h"
@@ -34,7 +33,7 @@ namespace WebCore {
 class Position;
 
 const EAffinity SEL_DEFAULT_AFFINITY = DOWNSTREAM;
-enum SelectionDirection { DirectionForward, DirectionBackward, DirectionRight, DirectionLeft };
+enum SelectionDirection : uint8_t { DirectionForward, DirectionBackward, DirectionRight, DirectionLeft };
 
 class VisibleSelection {
 public:
@@ -77,7 +76,7 @@ public:
     bool isRange() const { return selectionType() == RangeSelection; }
     bool isCaretOrRange() const { return selectionType() != NoSelection; }
     bool isNonOrphanedRange() const { return isRange() && !start().isOrphan() && !end().isOrphan(); }
-    bool isNonOrphanedCaretOrRange() const { return isCaretOrRange() && !start().isOrphan() && !end().isOrphan(); }
+    bool isNoneOrOrphaned() const { return isNone() || start().isOrphan() || end().isOrphan(); }
 
     bool isBaseFirst() const { return m_baseIsFirst; }
     bool isDirectional() const { return m_isDirectional; }
@@ -90,12 +89,12 @@ public:
     WEBCORE_EXPORT bool expandUsingGranularity(TextGranularity granularity);
     
     // We don't yet support multi-range selections, so we only ever have one range to return.
-    WEBCORE_EXPORT PassRefPtr<Range> firstRange() const;
+    WEBCORE_EXPORT RefPtr<Range> firstRange() const;
 
     // FIXME: Most callers probably don't want this function, but are using it
     // for historical reasons.  toNormalizedRange contracts the range around
     // text, and moves the caret upstream before returning the range.
-    WEBCORE_EXPORT PassRefPtr<Range> toNormalizedRange() const;
+    WEBCORE_EXPORT RefPtr<Range> toNormalizedRange() const;
     
     WEBCORE_EXPORT Element* rootEditableElement() const;
     WEBCORE_EXPORT bool isContentEditable() const;
@@ -153,13 +152,13 @@ inline bool operator!=(const VisibleSelection& a, const VisibleSelection& b)
 {
     return !(a == b);
 }
+    
+WEBCORE_EXPORT TextStream& operator<<(TextStream&, const VisibleSelection&);
 
 } // namespace WebCore
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showTree(const WebCore::VisibleSelection&);
 void showTree(const WebCore::VisibleSelection*);
 #endif
-
-#endif // VisibleSelection_h

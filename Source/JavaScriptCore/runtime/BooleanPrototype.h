@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef BooleanPrototype_h
-#define BooleanPrototype_h
+#pragma once
 
 #include "BooleanObject.h"
 
@@ -28,7 +27,7 @@ namespace JSC {
 class BooleanPrototype : public BooleanObject {
 public:
     typedef BooleanObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static BooleanPrototype* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
     {
@@ -49,9 +48,6 @@ protected:
 
 private:
     BooleanPrototype(VM&, Structure*);
-    static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 };
 
 } // namespace JSC
-
-#endif // BooleanPrototype_h

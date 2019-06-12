@@ -34,10 +34,10 @@
 #include "RenderMeter.h"
 #include "RenderSlider.h"
 #include "Settings.h"
-#include "SoftLinking.h"
 #include "SystemInfo.h"
 #include "UserAgentStyleSheets.h"
 #include "WebCoreBundleWin.h"
+#include <wtf/SoftLinking.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/win/GDIObject.h>
 
@@ -188,10 +188,10 @@ Ref<RenderTheme> RenderThemeWin::create()
     return adoptRef(*new RenderThemeWin);
 }
 
-PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page* page)
+RenderTheme& RenderTheme::singleton()
 {
-    static RenderTheme& winTheme = RenderThemeWin::create().leakRef();
-    return &winTheme;
+    static NeverDestroyed<Ref<RenderTheme>> theme(RenderThemeWin::create());
+    return theme.get();
 }
 
 RenderThemeWin::RenderThemeWin()
@@ -324,7 +324,7 @@ static void fillFontDescription(FontCascadeDescription& fontDescription, LOGFONT
     fontDescription.setIsAbsoluteSize(true);
     fontDescription.setOneFamily(String(logFont.lfFaceName));
     fontDescription.setSpecifiedSize(fontSize);
-    fontDescription.setWeight(logFont.lfWeight >= 700 ? FontWeightBold : FontWeightNormal); // FIXME: Use real weight.
+    fontDescription.setWeight(logFont.lfWeight >= 700 ? boldWeightValue() : normalWeightValue()); // FIXME: Use real weight.
     fontDescription.setIsItalic(logFont.lfItalic);
 }
 
@@ -687,7 +687,7 @@ bool RenderThemeWin::paintButton(const RenderObject& o, const PaintInfo& i, cons
     return false;
 }
 
-void RenderThemeWin::adjustInnerSpinButtonStyle(StyleResolver& styleResolver, RenderStyle& style, Element*) const
+void RenderThemeWin::adjustInnerSpinButtonStyle(StyleResolver& styleResolver, RenderStyle& style, const Element*) const
 {
     int width = ::GetSystemMetrics(SM_CXVSCROLL);
     if (width <= 0)
@@ -751,13 +751,13 @@ bool RenderThemeWin::paintMenuList(const RenderObject& renderer, const PaintInfo
     return paintMenuListButtonDecorations(downcast<RenderBox>(renderer), paintInfo, FloatRect(rect));
 }
 
-void RenderThemeWin::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, Element* e) const
+void RenderThemeWin::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* e) const
 {
     style.resetBorder();
     adjustMenuListButtonStyle(styleResolver, style, e);
 }
 
-void RenderThemeWin::adjustMenuListButtonStyle(StyleResolver& styleResolver, RenderStyle& style, Element*) const
+void RenderThemeWin::adjustMenuListButtonStyle(StyleResolver& styleResolver, RenderStyle& style, const Element*) const
 {
     // These are the paddings needed to place the text correctly in the <select> box
     const int dropDownBoxPaddingTop    = 2;
@@ -840,7 +840,7 @@ bool RenderThemeWin::paintSliderThumb(const RenderObject& o, const PaintInfo& i,
 const int sliderThumbWidth = 7;
 const int sliderThumbHeight = 15;
 
-void RenderThemeWin::adjustSliderThumbSize(RenderStyle& style, Element*) const
+void RenderThemeWin::adjustSliderThumbSize(RenderStyle& style, const Element*) const
 {
     ControlPart part = style.appearance();
     if (part == SliderThumbVerticalPart) {
@@ -861,7 +861,7 @@ bool RenderThemeWin::paintSearchField(const RenderObject& o, const PaintInfo& i,
     return paintTextField(o, i, r);
 }
 
-void RenderThemeWin::adjustSearchFieldStyle(StyleResolver& styleResolver, RenderStyle& style, Element* e) const
+void RenderThemeWin::adjustSearchFieldStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* e) const
 {
     // Override paddingSize to match AppKit text positioning.
     const int padding = 1;
@@ -890,13 +890,13 @@ bool RenderThemeWin::paintSearchFieldCancelButton(const RenderBox& o, const Pain
     // be one pixel closer to the bottom of the field.  This tends to look better with the text.
     bounds.setY(parentBox.y() + (parentBox.height() - bounds.height() + 1) / 2);
 
-    static Image* cancelImage = Image::loadPlatformResource("searchCancel").leakRef();
-    static Image* cancelPressedImage = Image::loadPlatformResource("searchCancelPressed").leakRef();
-    paintInfo.context().drawImage(isPressed(o) ? *cancelPressedImage : *cancelImage, bounds);
+    static Image& cancelImage = Image::loadPlatformResource("searchCancel").leakRef();
+    static Image& cancelPressedImage = Image::loadPlatformResource("searchCancelPressed").leakRef();
+    paintInfo.context().drawImage(isPressed(o) ? cancelPressedImage : cancelImage, bounds);
     return false;
 }
 
-void RenderThemeWin::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeWin::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the button size based on the font size
     float fontScale = style.fontSize() / defaultControlFontPixelSize;
@@ -905,14 +905,14 @@ void RenderThemeWin::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderSt
     style.setHeight(Length(cancelButtonSize, Fixed));
 }
 
-void RenderThemeWin::adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeWin::adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     IntSize emptySize(1, 11);
     style.setWidth(Length(emptySize.width(), Fixed));
     style.setHeight(Length(emptySize.height(), Fixed));
 }
 
-void RenderThemeWin::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeWin::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the decoration size based on the font size
     float fontScale = style.fontSize() / defaultControlFontPixelSize;
@@ -939,12 +939,12 @@ bool RenderThemeWin::paintSearchFieldResultsDecorationPart(const RenderBox& o, c
     // be one pixel closer to the bottom of the field.  This tends to look better with the text.
     bounds.setY(parentBox.y() + (parentBox.height() - bounds.height() + 1) / 2);
     
-    static Image* magnifierImage = Image::loadPlatformResource("searchMagnifier").leakRef();
-    paintInfo.context().drawImage(*magnifierImage, bounds);
+    static Image& magnifierImage = Image::loadPlatformResource("searchMagnifier").leakRef();
+    paintInfo.context().drawImage(magnifierImage, bounds);
     return false;
 }
 
-void RenderThemeWin::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeWin::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the button size based on the font size
     float fontScale = style.fontSize() / defaultControlFontPixelSize;
@@ -974,8 +974,8 @@ bool RenderThemeWin::paintSearchFieldResultsButton(const RenderBox& o, const Pai
     // be one pixel closer to the bottom of the field.  This tends to look better with the text.
     bounds.setY(parentBox.y() + (parentBox.height() - bounds.height() + 1) / 2);
 
-    static Image* magnifierImage = Image::loadPlatformResource("searchMagnifierResults").leakRef();
-    paintInfo.context().drawImage(*magnifierImage, bounds);
+    static Image& magnifierImage = Image::loadPlatformResource("searchMagnifierResults").leakRef();
+    paintInfo.context().drawImage(magnifierImage, bounds);
     return false;
 }
 
@@ -1107,7 +1107,7 @@ String RenderThemeWin::mediaControlsScript()
 #endif
 
 #if ENABLE(METER_ELEMENT)
-void RenderThemeWin::adjustMeterStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeWin::adjustMeterStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     style.setBoxShadow(nullptr);
 }

@@ -5,23 +5,23 @@ On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE
 
 Basics
 
-PASS objCWrapperClass(document.createAttribute()) is 'DOMAttr'
-PASS objCWrapperClass(document.createComment()) is 'DOMComment'
+PASS objCWrapperClass(document.createAttribute('test')) is 'DOMAttr'
+PASS objCWrapperClass(document.createComment('test')) is 'DOMComment'
 PASS objCWrapperClass(document.createDocumentFragment()) is 'DOMDocumentFragment'
 PASS objCWrapperClass(document.implementation) is 'DOMImplementation'
 PASS objCWrapperClass(root.attributes) is 'DOMNamedNodeMap'
 PASS objCWrapperClass(document.createNodeIterator(root, 0, null, false)) is 'DOMNodeIterator'
 PASS objCWrapperClass(document.getElementsByTagName('div')) is 'DOMHTMLCollection'
 PASS objCWrapperClass(document.createRange()) is 'DOMRange'
-PASS objCWrapperClass(document.createTextNode()) is 'DOMText'
+PASS objCWrapperClass(document.createTextNode('test')) is 'DOMText'
 PASS objCWrapperClass(document.createTreeWalker(root, 0, null, false)) is 'DOMTreeWalker'
 
 XML
 
 PASS objCWrapperClass(xmlDocument) is 'DOMDocument'
-PASS objCWrapperClass(xmlDocument.createCDATASection()) is 'DOMCDATASection'
+PASS objCWrapperClass(xmlDocument.createCDATASection('test')) is 'DOMCDATASection'
 PASS objCWrapperClass(xmlDocument.createElementNS('x', 'x', 'x')) is 'DOMElement'
-PASS objCWrapperClass(xmlDocument.createProcessingInstruction()) is 'DOMProcessingInstruction'
+PASS objCWrapperClass(xmlDocument.createProcessingInstruction('target', 'test')) is 'DOMProcessingInstruction'
 
 Events
 
@@ -46,8 +46,6 @@ PASS objCWrapperClass(stylesheet.cssRules.item(0).style.getPropertyCSSValue('col
 PASS objCWrapperClass(stylesheet.cssRules.item(0).style.getPropertyCSSValue('clip').getRectValue()) is 'DOMRect'
 PASS objCWrapperClass(stylesheet.cssRules.item(0).style.getPropertyCSSValue('content')) is 'DOMCSSValueList'
 PASS objCWrapperClass(stylesheet.cssRules.item(0).style.getPropertyCSSValue('content').item(0).getCounterValue()) is 'DOMCounter'
-PASS objCWrapperClass(stylesheet.cssRules.item(0).style.getPropertyCSSValue('-webkit-transform')) is 'DOMCSSValueList'
-PASS objCWrapperClass(stylesheet.cssRules.item(0).style.getPropertyCSSValue('-webkit-transform').item(0)) is 'DOMWebKitCSSTransformValue'
 PASS objCWrapperClass(stylesheet.media) is 'DOMMediaList'
 
 XPath
@@ -191,4 +189,9 @@ PASS typeof objCObjectOfClass('NSCFString') is 'string'
 PASS typeof objCObjectOfClass('WebScriptObject') is 'object'
 PASS objCObjectOfClass('NSArray') instanceof Array is true
 PASS concatenateArray(objCArrayOfString()) is 'onetwothree'
+PASS let arr = objCArrayOfString(); arr.length is 3
+PASS let arr = objCArrayOfString(); arr.length = 0 threw exception RangeError: Range error.
+PASS let arr = objCArrayOfString(); arr.length = 5 threw exception RangeError: Range error.
+PASS let arr = objCArrayOfString(); arr.length = 0x40000000 threw exception RangeError: Range error.
+PASS let arr = objCArrayOfString(); try { arr.length = 0 } catch(e) { } arr.length is 3
 

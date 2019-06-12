@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,21 +28,18 @@
  *
  */
 
-#ifndef FileIconLoader_h
-#define FileIconLoader_h
+#pragma once
 
 #include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class FileIconLoader;
 class Icon;
 
 class FileIconLoaderClient {
 public:
     virtual ~FileIconLoaderClient() { }
-    virtual void updateRendering(PassRefPtr<Icon>) = 0;
+    virtual void iconLoaded(RefPtr<Icon>&&) = 0;
 };
 
 class FileIconLoader {
@@ -50,12 +47,10 @@ public:
     explicit FileIconLoader(FileIconLoaderClient&);
 
     void invalidate();
-    WEBCORE_EXPORT void notifyFinished(PassRefPtr<Icon>);
+    WEBCORE_EXPORT void iconLoaded(RefPtr<Icon>&&);
 
 private:
     FileIconLoaderClient* m_client;
 };
 
 } // namespace WebCore
-
-#endif
