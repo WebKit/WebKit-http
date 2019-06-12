@@ -67,6 +67,21 @@
 #include "CDMClearKey.h"
 #endif
 
+// We shouldn't accept media that the player can't actually play.
+// AAC supports up to 96 channels.
+#define MEDIA_MAX_AAC_CHANNELS 96
+#if PLATFORM(RPI)
+// Raspberry Pi only supports up to 1080p@60fps hardware video decoding.
+#define MEDIA_MAX_WIDTH 1920.0f
+#define MEDIA_MAX_HEIGHT 1080.0f
+#define MEDIA_MAX_FRAMERATE 30.0f
+#else
+// Assume hardware video decoding acceleration up to 8K@60fps for the rest of the cases.
+#define MEDIA_MAX_WIDTH 7680.0f
+#define MEDIA_MAX_HEIGHT 4320.0f
+#define MEDIA_MAX_FRAMERATE 60.0f
+#endif
+
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 {
     switch (readyState) {
@@ -957,11 +972,9 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
         return result;
     }
 
-    // We shouldn't accept media that the player can't actually play. Using AAC audio, 8K and 60 fps limits here.
-    // AAC supports up to 96 channels.
     bool ok;
     unsigned channels = parameters.type.parameter("channels"_s).toUInt(&ok);
-    if (ok && channels > 96)
+    if (ok && channels > MEDIA_MAX_AAC_CHANNELS)
         return result;
 
     float width = parameters.type.parameter("width"_s).toFloat(&ok);
@@ -972,12 +985,11 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
     if (!ok)
         height = 0;
 
-    // 8K is up to 7680*4320
-    if (width > 7680.0 || height > 4320.0)
+    if (width > MEDIA_MAX_WIDTH || height > MEDIA_MAX_HEIGHT)
         return result;
 
     float framerate = parameters.type.parameter("framerate"_s).toFloat(&ok);
-    if (ok && framerate > 60.0)
+    if (ok && framerate > MEDIA_MAX_FRAMERATE)
         return result;
 
     // Spec says we should not return "probably" if the codecs string is empty.
