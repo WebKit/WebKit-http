@@ -33,9 +33,6 @@ namespace IPC {
 
 Attachment::Attachment()
     : m_type(Uninitialized)
-#if OS(WINDOWS)
-    , m_handle(0)
-#endif
 {
 }
 
@@ -64,6 +61,5 @@ bool Attachment::decode(Decoder& decoder, Attachment& attachment)
         return false;
     return true;
 }
-#endif
 
 } // namespace IPC

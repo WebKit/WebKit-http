@@ -189,11 +189,6 @@ void dumpSpeculation(PrintStream& outStream, SpeculatedType value)
                 strOut.print("DerivedArray");
             else
                 isTop = false;
-    
-            if (value & SpecRegExpObject)
-                myOut.print("Regexpobject");
-            else
-                isTop = false;
         }
 
         if ((value & SpecString) == SpecString)

@@ -145,10 +145,6 @@ public:
     xpc_connection_t xpcConnection() const { return m_xpcConnection.get(); }
     bool getAuditToken(audit_token_t&);
     pid_t remoteProcessID() const;
-#elif OS(WINDOWS)
-    typedef HANDLE Identifier;
-    static bool createServerAndClientIdentifiers(Identifier& serverIdentifier, Identifier& clientIdentifier);
-    static bool identifierIsNull(Identifier identifier) { return !identifier; }
 #endif
 
     static Ref<Connection> createServerConnection(Identifier, Client&);
@@ -351,23 +347,6 @@ private:
     std::unique_ptr<MachMessage> m_pendingOutgoingMachMessage;
 
     OSObjectPtr<xpc_connection_t> m_xpcConnection;
-#elif OS(WINDOWS)
-    // Called on the connection queue.
-    void readEventHandler();
-    void writeEventHandler();
-
-    // Called by Connection::SyncMessageState::waitWhileDispatchingSentWin32Messages.
-    // The absoluteTime is in seconds, starting on January 1, 1970. The time is assumed to use the
-    // same time zone as WTF::currentTime(). Dispatches sent (not posted) messages to the passed-in
-    // set of HWNDs until the semaphore is signaled or absoluteTime is reached. Returns true if the
-    // semaphore is signaled, false otherwise.
-    static bool dispatchSentMessagesUntil(const Vector<HWND>& windows, WTF::BinarySemaphore& semaphore, double absoluteTime);
-
-    Vector<uint8_t> m_readBuffer;
-    OVERLAPPED m_readState;
-    std::unique_ptr<MessageEncoder> m_pendingWriteEncoder;
-    OVERLAPPED m_writeState;
-    HANDLE m_connectionPipe;
 #endif
 };
 

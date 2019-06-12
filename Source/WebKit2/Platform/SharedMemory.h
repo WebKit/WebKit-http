@@ -79,9 +79,6 @@ public:
 #elif OS(DARWIN)
         mutable mach_port_t m_port;
         size_t m_size;
-#elif OS(WINDOWS)
-        mutable HANDLE m_handle;
-        size_t m_size;
 #endif
     };
 
@@ -90,10 +87,6 @@ public:
     static RefPtr<SharedMemory> map(const Handle&, Protection);
 #if USE(UNIX_DOMAIN_SOCKETS)
     static RefPtr<SharedMemory> wrapMap(void*, size_t, int fileDescriptor);
-#endif
-
-#if OS(WINDOWS)
-    static RefPtr<SharedMemory> adopt(HANDLE, size_t, Protection);
 #endif
 
     ~SharedMemory();
@@ -106,9 +99,6 @@ public:
         ASSERT(m_data);
         return m_data;
     }
-#if OS(WINDOWS)
-    HANDLE handle() const { return m_handle; }
-#endif
 
     // Return the system page size in bytes.
     static unsigned systemPageSize();
@@ -129,8 +119,6 @@ private:
     bool m_isWrappingMap { false };
 #elif OS(DARWIN)
     mach_port_t m_port;
-#elif OS(WINDOWS)
-    HANDLE m_handle;
 #endif
 };
 

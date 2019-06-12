@@ -26,7 +26,6 @@
 #include "config.h"
 #include "StructureStubInfo.h"
 
-#include "JSCellInlines.h"
 #include "JSObject.h"
 #include "JSCInlines.h"
 #include "PolymorphicAccess.h"

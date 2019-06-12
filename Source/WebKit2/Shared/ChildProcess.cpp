@@ -30,7 +30,6 @@
 #include "SandboxInitializationParameters.h"
 #include <WebCore/SessionID.h>
 #include <unistd.h>
-#endif
 
 namespace WebKit {
 

@@ -2432,11 +2432,7 @@ static void triggerFTLReplacementCompile(VM* vm, CodeBlock* codeBlock, JITCode* 
         jitCode->optimizeAfterWarmUp(codeBlock);
         return;
     }
-    return true;
-}
-
-static void triggerFTLReplacementCompile(VM* vm, CodeBlock* codeBlock, JITCode* jitCode)
-{
+    
     Worklist::State worklistState;
     if (Worklist* worklist = existingGlobalFTLWorklistOrNull()) {
         worklistState = worklist->completeAllReadyPlansForVM(

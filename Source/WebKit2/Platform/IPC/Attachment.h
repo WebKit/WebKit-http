@@ -58,10 +58,6 @@ public:
     ~Attachment();
 #elif OS(DARWIN)
     Attachment(mach_port_name_t, mach_msg_type_name_t disposition);
-#elif OS(WINDOWS)
-    Attachment(HANDLE handle)
-        : m_handle(handle)
-    { }
 #endif
 
     Type type() const { return m_type; }
@@ -77,8 +73,6 @@ public:
     // MachPortType
     mach_port_name_t port() const { return m_port; }
     mach_msg_type_name_t disposition() const { return m_disposition; }
-#elif OS(WINDOWS)
-    HANDLE handle() const { return m_handle; }
 #endif
 
     void encode(Encoder&) const;
@@ -93,8 +87,6 @@ private:
 #elif OS(DARWIN)
     mach_port_name_t m_port;
     mach_msg_type_name_t m_disposition;
-#elif OS(WINDOWS)
-    HANDLE m_handle;
 #endif
 };
 

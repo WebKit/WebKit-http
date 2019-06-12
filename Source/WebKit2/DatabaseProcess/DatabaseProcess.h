@@ -76,9 +76,9 @@ public:
     void getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, WTF::Function<void (SandboxExtension::HandleArray&&)>&& completionHandler);
 #endif
 
+private:
     DatabaseProcess();
 
-private:
     // ChildProcess
     void initializeProcess(const ChildProcessInitializationParameters&) override;
     void initializeProcessName(const ChildProcessInitializationParameters&) override;

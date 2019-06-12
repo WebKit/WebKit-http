@@ -1448,18 +1448,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(Heap);
         return;
 
-    case StringReplace:
-        if (node->child1().useKind() == StringUse
-            && node->child2().useKind() == RegExpObjectUse
-            && node->child3().useKind() == StringUse) {
-            read(RegExpState);
-            write(RegExpState);
-            return;
-        }
-        read(World);
-        write(Heap);
-        return;
-
     case StringCharAt:
         if (node->arrayMode().isOutOfBounds()) {
             read(World);

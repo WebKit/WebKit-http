@@ -9417,7 +9417,6 @@
 				A784A26411D16622005776AC /* SyntaxChecker.h in Headers */,
 				DC7997831CDE9FA0004D4A09 /* TagRegistersMode.h in Headers */,
 				70ECA6081AFDBEA200449739 /* TemplateRegistry.h in Headers */,
-				0F5B4A331C84F0D600F1B17E /* SlowPathReturnType.h in Headers */,
 				70ECA6091AFDBEA200449739 /* TemplateRegistryKey.h in Headers */,
 				95D4261AF4C84CE2ACBAC981 /* TemplateRegistryKeyTable.h in Headers */,
 				0F24E54F17EE274900ABB217 /* TempRegisterSet.h in Headers */,

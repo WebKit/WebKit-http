@@ -1066,18 +1066,6 @@ private:
             }
             break;
         }
-
-        case StringReplace: {
-            if (node->child1()->shouldSpeculateString()
-                && node->child2()->shouldSpeculateRegExpObject()
-                && node->child3()->shouldSpeculateString()) {
-                fixEdge<StringUse>(node->child1());
-                fixEdge<RegExpObjectUse>(node->child2());
-                fixEdge<StringUse>(node->child3());
-                break;
-            }
-            break;
-        }
             
         case Branch: {
             if (node->child1()->shouldSpeculateBoolean()) {

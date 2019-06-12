@@ -1,36 +1,3 @@
-2016-04-14  Carlos Garcia Campos  <cgarcia@igalia.com>
-
-        Unreviewed. REGRESSION: Web Inspector: Remote inspector doesn't work
-        https://bugs.webkit.org/show_bug.cgi?id=156543
-
-        WebSocket connection is blocked by CSP, but needed by the remote web inspector to work, so allow connect to ws
-        URLs from the web inspector.
-
-        * UserInterface/Main.html:
-
-2016-03-17  Carlos Garcia Campos  <cgarcia@igalia.com>
-
-        REGRESSION (r197724): [GTK] Web Inspector: Images being blocked by CSP 2.0
-        https://bugs.webkit.org/show_bug.cgi?id=155432
-
-        Reviewed by Daniel Bates.
-
-        Allow Web Inspector to load resource: image resources.
-
-        * UserInterface/Main.html:
-
-2016-03-08  Joseph Pecoraro  <pecoraro@apple.com>
-
-        Web Inspector: Images being blocked by CSP 2.0
-        https://bugs.webkit.org/show_bug.cgi?id=155182
-        <rdar://problem/25040640>
-
-        Reviewed by Daniel Bates.
-
-        * UserInterface/Main.html:
-        Allow Web Inspector to load file: and blob: image resources.
-        Also blob: media and font resources.
-
 2017-07-13  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Remove unused and untested Page domain commands
