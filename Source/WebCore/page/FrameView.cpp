@@ -34,6 +34,7 @@
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "CustomHeaderFields.h"
 #include "DOMWindow.h"
 #include "DebugPageOverlays.h"
 #include "DeprecatedGlobalSettings.h"
@@ -1524,7 +1525,7 @@ LayoutSize FrameView::expandedLayoutViewportSize(const LayoutSize& baseLayoutVie
     if (layoutViewportHeight > documentHeight)
         return baseLayoutViewportSize;
 
-    return { baseLayoutViewportSize.width(), std::min<LayoutUnit>(documentHeight, (1 + heightExpansionFactor) * layoutViewportHeight) };
+    return { baseLayoutViewportSize.width(), std::min(documentHeight, LayoutUnit((1 + heightExpansionFactor) * layoutViewportHeight)) };
 }
 
 LayoutRect FrameView::computeUpdatedLayoutViewportRect(const LayoutRect& layoutViewport, const LayoutRect& documentRect, const LayoutSize& unobscuredContentSize, const LayoutRect& unobscuredContentRect, const LayoutSize& baseLayoutViewportSize, const LayoutPoint& stableLayoutViewportOriginMin, const LayoutPoint& stableLayoutViewportOriginMax, LayoutViewportConstraint constraint)
@@ -4548,7 +4549,7 @@ void FrameView::forceLayoutForPagination(const FloatSize& pageSize, const FloatS
         LayoutUnit clippedLogicalLeft;
         if (!renderView.style().isLeftToRightDirection())
             clippedLogicalLeft = docLogicalRight - pageLogicalWidth;
-        LayoutRect overflow(clippedLogicalLeft, docLogicalTop, pageLogicalWidth, docLogicalHeight);
+        LayoutRect overflow { clippedLogicalLeft, docLogicalTop, LayoutUnit(pageLogicalWidth), docLogicalHeight };
 
         if (!horizontalWritingMode)
             overflow = overflow.transposedRect();
@@ -4791,11 +4792,35 @@ FloatPoint FrameView::clientToDocumentPoint(FloatPoint point) const
     return point;
 }
 
+FloatPoint FrameView::absoluteToLayoutViewportPoint(FloatPoint p) const
+{
+    ASSERT(frame().settings().visualViewportEnabled());
+    p.scale(1 / frame().frameScaleFactor());
+    p.moveBy(-layoutViewportRect().location());
+    return p;
+}
+
 FloatPoint FrameView::layoutViewportToAbsolutePoint(FloatPoint p) const
 {
     ASSERT(frame().settings().visualViewportEnabled());
     p.moveBy(layoutViewportRect().location());
     return p.scaled(frame().frameScaleFactor());
+}
+
+FloatRect FrameView::layoutViewportToAbsoluteRect(FloatRect rect) const
+{
+    ASSERT(frame().settings().visualViewportEnabled());
+    rect.moveBy(layoutViewportRect().location());
+    rect.scale(frame().frameScaleFactor());
+    return rect;
+}
+
+FloatRect FrameView::absoluteToLayoutViewportRect(FloatRect rect) const
+{
+    ASSERT(frame().settings().visualViewportEnabled());
+    rect.scale(1 / frame().frameScaleFactor());
+    rect.moveBy(-layoutViewportRect().location());
+    return rect;
 }
 
 FloatRect FrameView::clientToLayoutViewportRect(FloatRect rect) const
@@ -5169,7 +5194,7 @@ int FrameView::mapFromLayoutToCSSUnits(LayoutUnit value) const
 
 LayoutUnit FrameView::mapFromCSSToLayoutUnits(int value) const
 {
-    return value * frame().pageZoomFactor() * frame().frameScaleFactor();
+    return LayoutUnit(value * frame().pageZoomFactor() * frame().frameScaleFactor());
 }
 
 void FrameView::didAddWidgetToRenderTree(Widget& widget)

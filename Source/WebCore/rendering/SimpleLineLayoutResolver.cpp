@@ -206,7 +206,7 @@ unsigned RunResolver::lineIndexForHeight(LayoutUnit height, IndexType type) cons
     adjustedY = std::max<float>(adjustedY, 0);
     auto lineIndexCandidate =  std::min<unsigned>(adjustedY / m_lineHeight, m_layout.lineCount() - 1);
     if (m_layout.hasLineStruts())
-        return adjustLineIndexForStruts(y, type, lineIndexCandidate);
+        return adjustLineIndexForStruts(LayoutUnit(y), type, lineIndexCandidate);
     return lineIndexCandidate;
 }
 
@@ -300,17 +300,18 @@ WTF::IteratorRange<RunResolver::Iterator> RunResolver::rangeForRendererWithOffse
     ASSERT(startOffset <= endOffset);
     auto range = rangeForRenderer(renderer);
     auto it = range.begin();
-    // Advance to the firt run with the start offset inside.
+    auto localEnd = (*it).start() + endOffset;
+    // Advance to the first run with the start offset inside. Only the first node in a range can have a startOffset.
     while (it != range.end() && (*it).end() <= startOffset)
         ++it;
     if (it == range.end())
         return { end(), end() };
     auto rangeBegin = it;
     // Special case empty ranges that start at the edge of the run. Apparently normal line layout include those.
-    if (endOffset == startOffset && (*it).start() == endOffset)
+    if (localEnd == startOffset && (*it).start() == localEnd)
         return { rangeBegin, ++it };
     // Advance beyond the last run with the end offset.
-    while (it != range.end() && (*it).start() < endOffset)
+    while (it != range.end() && (*it).start() < localEnd)
         ++it;
     return { rangeBegin, it };
 }

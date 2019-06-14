@@ -96,6 +96,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << maximumUnobscuredSize;
     encoder << deviceOrientation;
     encoder << keyboardIsAttached;
+    encoder << canShowWhileLocked;
     encoder << overrideViewportArguments;
 #endif
 #if PLATFORM(COCOA)
@@ -130,6 +131,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << contentRuleLists;
 #endif
     encoder << backgroundColor;
+    encoder << oldPageID;
 }
 
 Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decoder& decoder)
@@ -283,6 +285,8 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
         return WTF::nullopt;
     if (!decoder.decode(parameters.keyboardIsAttached))
         return WTF::nullopt;
+    if (!decoder.decode(parameters.canShowWhileLocked))
+        return WTF::nullopt;
 
     Optional<Optional<WebCore::ViewportArguments>> overrideViewportArguments;
     decoder >> overrideViewportArguments;
@@ -387,6 +391,12 @@ Optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decod
     if (!backgroundColor)
         return WTF::nullopt;
     parameters.backgroundColor = WTFMove(*backgroundColor);
+
+    Optional<Optional<uint64_t>> oldPageID;
+    decoder >> oldPageID;
+    if (!oldPageID)
+        return WTF::nullopt;
+    parameters.oldPageID = WTFMove(*oldPageID);
 
     return parameters;
 }

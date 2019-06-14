@@ -204,6 +204,7 @@ namespace JSC {
         virtual bool isImportMeta() const { return false; }
         virtual bool isBytecodeIntrinsicNode() const { return false; }
         virtual bool isBinaryOpNode() const { return false; }
+        virtual bool isFunctionCall() const { return false; }
 
         virtual void emitBytecodeInConditionContext(BytecodeGenerator&, Label&, Label&, FallThroughMode);
 
@@ -869,6 +870,8 @@ namespace JSC {
     private:
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
+        bool isFunctionCall() const override { return true; }
+
         ArgumentsNode* m_args;
     };
 
@@ -878,6 +881,8 @@ namespace JSC {
 
     private:
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        bool isFunctionCall() const override { return true; }
 
         ExpressionNode* m_expr;
         ArgumentsNode* m_args;
@@ -890,6 +895,8 @@ namespace JSC {
     private:
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
+        bool isFunctionCall() const override { return true; }
+
         const Identifier& m_ident;
         ArgumentsNode* m_args;
     };
@@ -900,6 +907,8 @@ namespace JSC {
 
     private:
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        bool isFunctionCall() const override { return true; }
 
         ExpressionNode* m_base;
         ExpressionNode* m_subscript;
@@ -915,6 +924,8 @@ namespace JSC {
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
     protected:
+        bool isFunctionCall() const override { return true; }
+
         ExpressionNode* m_base;
         const Identifier& m_ident;
         ArgumentsNode* m_args;
@@ -944,6 +955,8 @@ namespace JSC {
 
     private:
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        bool isFunctionCall() const override { return m_type == Type::Function; }
 
         EmitterType m_emitter;
         const Identifier& m_ident;
@@ -1994,8 +2007,6 @@ namespace JSC {
         const Identifier& ident() { return m_ident; }
         void setEcmaName(const Identifier& ecmaName) { m_ecmaName = ecmaName; }
         const Identifier& ecmaName() { return m_ident.isEmpty() ? m_ecmaName : m_ident; }
-        void setInferredName(const Identifier& inferredName) { ASSERT(!inferredName.isNull()); m_inferredName = inferredName; }
-        const Identifier& inferredName() { return m_inferredName.isEmpty() ? m_ident : m_inferredName; }
 
         FunctionMode functionMode() { return m_functionMode; }
 
@@ -2042,7 +2053,6 @@ namespace JSC {
         FunctionMode m_functionMode;
         Identifier m_ident;
         Identifier m_ecmaName;
-        Identifier m_inferredName;
         unsigned m_startColumn;
         unsigned m_endColumn;
         int m_functionKeywordStart;

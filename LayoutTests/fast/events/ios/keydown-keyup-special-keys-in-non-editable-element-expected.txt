@@ -1,4 +1,4 @@
-This tests that DOM keydown and keyup events are dispatched to a non-editable <body> on iOS when pressing special keys on a hardware keyboard. To run this test manually, verify that two messages are emitted when you press the following keys: Tab, ↑, ↓, ←, →, Delete, End, Enter, Escape, Home, left Alt, left ⌘ Command, left Ctrl, left ⇧ Shift, Page Down, Page Up, Return, right Alt, right ⌘ Command, right Ctrl, right ⇧ Shift, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16.
+This tests that DOM keydown and keyup events are dispatched to a non-editable <body> on iOS when pressing special keys on a hardware keyboard. To run this test manually, verify that two messages are emitted when you press the following keys: Tab, ↑, ↓, ←, →, Delete, End, Enter, Escape, Home, left Alt, left ⌘ Command, left Ctrl, left ⇧ Shift, Page Down, Page Up, Return, right Alt, right ⌘ Command, right Ctrl, right ⇧ Shift, Numpad ,, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16.
 
 type: keydown, key: Tab, code: Tab, keyIdentifier: U+0009, keyCode: 9, charCode: 0, keyCode: 9, which: 9
 type: keyup, key: Dead, code: Tab, keyIdentifier: Unidentified, keyCode: 9, charCode: 0, keyCode: 9, which: 9
@@ -38,12 +38,14 @@ type: keydown, key: Enter, code: Enter, keyIdentifier: Enter, keyCode: 13, charC
 type: keyup, key: Dead, code: Enter, keyIdentifier: Unidentified, keyCode: 13, charCode: 0, keyCode: 13, which: 13
 type: keydown, key: Alt, code: Unidentified, keyIdentifier: Alt, keyCode: 18, charCode: 0, keyCode: 18, which: 18
 type: keyup, key: Alt, code: Unidentified, keyIdentifier: Alt, keyCode: 18, charCode: 0, keyCode: 18, which: 18
-type: keydown, key: Meta, code: Unidentified, keyIdentifier: Meta, keyCode: 93, charCode: 0, keyCode: 93, which: 93
-type: keyup, key: Meta, code: Unidentified, keyIdentifier: Meta, keyCode: 93, charCode: 0, keyCode: 93, which: 93
+type: keydown, key: Meta, code: MetaRight, keyIdentifier: Meta, keyCode: 93, charCode: 0, keyCode: 93, which: 93
+type: keyup, key: Meta, code: MetaRight, keyIdentifier: Meta, keyCode: 93, charCode: 0, keyCode: 93, which: 93
 type: keydown, key: Control, code: ControlRight, keyIdentifier: Control, keyCode: 17, charCode: 0, keyCode: 17, which: 17
 type: keyup, key: Control, code: ControlRight, keyIdentifier: Control, keyCode: 17, charCode: 0, keyCode: 17, which: 17
 type: keydown, key: Shift, code: ShiftRight, keyIdentifier: Shift, keyCode: 16, charCode: 0, keyCode: 16, which: 16
 type: keyup, key: Shift, code: ShiftRight, keyIdentifier: Shift, keyCode: 16, charCode: 0, keyCode: 16, which: 16
+type: keydown, key: ,, code: NumpadComma, keyIdentifier: U+002C, keyCode: 108, charCode: 0, keyCode: 108, which: 108
+type: keyup, key: ,, code: NumpadComma, keyIdentifier: U+002C, keyCode: 108, charCode: 0, keyCode: 108, which: 108
 type: keydown, key: , code: F1, keyIdentifier: U+0010, keyCode: 112, charCode: 0, keyCode: 112, which: 112
 type: keyup, key: Dead, code: F1, keyIdentifier: Unidentified, keyCode: 112, charCode: 0, keyCode: 112, which: 112
 type: keydown, key: , code: F2, keyIdentifier: U+0010, keyCode: 113, charCode: 0, keyCode: 113, which: 113

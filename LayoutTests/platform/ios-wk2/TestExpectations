@@ -7,6 +7,9 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 compositing/ios [ Pass ]
+compositing/shared-backing/overflow-scroll [ Pass ]
+compositing/scrolling/async-overflow-scrolling [ Pass ]
+compositing/layer-creation/clipping-scope [ Pass ]
 fast/device-orientation [ Pass ]
 fast/history/ios [ Pass ]
 fast/scrolling/ios [ Pass ]
@@ -364,6 +367,8 @@ http/tests/security/video-cross-origin-accesssameorigin.html
 http/tests/security/video-cross-origin-readback.html
 http/tests/websocket/tests/hybi/invalid-subprotocol-characters.html
 http/tests/xmlhttprequest/cross-origin-authorization-with-embedder.html
+
+http/wpt/service-workers/mac/ [ Skip ]
 
 # HTTP tests that are flaky:
 http/tests/navigation/forward-and-cancel.html [ Failure Pass ]
@@ -1301,16 +1306,11 @@ fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-
 fast/forms/password-scrolled-after-caps-lock-toggled.html [ Skip ]
 fast/repaint/placeholder-after-caps-lock-hidden.html [ Skip ]
 
-webkit.org/b/190888 [ Release ] fast/animation/request-animation-frame.html [ Pass Failure ]
-
 webkit.org/b/194826 [ Debug ] http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html [ Pass Timeout ]
-
-webkit.org/b/194253 [ Debug ] scrollingcoordinator/scrolling-tree/fixed-inside-frame.html [ Pass Failure ]
 
 webkit.org/b/195341 fast/viewport/ios/device-width-viewport-after-changing-view-scale.html [ Pass Failure ]
 webkit.org/b/195341 compositing/ios/overflow-scroll-update-overlap.html [ ImageOnlyFailure ]
 
-webkit.org/b/196013 compositing/rtl/rtl-overflow-scrolling.html [ Failure ]
 webkit.org/b/196013 fast/scrolling/rtl-scrollbars-sticky-overflow-scroll-2.html [ ImageOnlyFailure ]
 webkit.org/b/196013 fast/scrolling/rtl-scrollbars-sticky-overflow-scroll.html [ ImageOnlyFailure ]
 webkit.org/b/196013 fast/scrolling/rubber-band-shows-background.html [ ImageOnlyFailure ]

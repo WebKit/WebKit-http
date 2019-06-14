@@ -55,6 +55,7 @@ class FloatSize;
 class IntPoint;
 class IntSize;
 class IntRect;
+class Region;
 class TransformationMatrix;
 
 class AffineTransform {
@@ -90,6 +91,8 @@ public:
 
     WEBCORE_EXPORT FloatRect mapRect(const FloatRect&) const;
     WEBCORE_EXPORT FloatQuad mapQuad(const FloatQuad&) const;
+
+    WEBCORE_EXPORT Region mapRegion(const Region&) const;
 
     WEBCORE_EXPORT bool isIdentity() const;
 

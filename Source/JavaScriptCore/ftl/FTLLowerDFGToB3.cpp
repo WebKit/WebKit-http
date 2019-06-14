@@ -2070,10 +2070,9 @@ private:
         CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
         unsigned bytecodeIndex = m_node->origin.semantic.bytecodeIndex();
         ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(bytecodeIndex);
-        const Instruction* instruction = baselineCodeBlock->instructions().at(bytecodeIndex).ptr();
         auto repatchingFunction = operationValueAddOptimize;
         auto nonRepatchingFunction = operationValueAdd;
-        compileBinaryMathIC<JITAddGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
+        compileBinaryMathIC<JITAddGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
     }
 
     void compileValueSub()
@@ -2090,10 +2089,9 @@ private:
         CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
         unsigned bytecodeIndex = m_node->origin.semantic.bytecodeIndex();
         ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(bytecodeIndex);
-        const Instruction* instruction = baselineCodeBlock->instructions().at(bytecodeIndex).ptr();
         auto repatchingFunction = operationValueSubOptimize;
         auto nonRepatchingFunction = operationValueSub;
-        compileBinaryMathIC<JITSubGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
+        compileBinaryMathIC<JITSubGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
     }
 
     void compileValueMul()
@@ -2110,15 +2108,14 @@ private:
         CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
         unsigned bytecodeIndex = m_node->origin.semantic.bytecodeIndex();
         ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(bytecodeIndex);
-        const Instruction* instruction = baselineCodeBlock->instructions().at(bytecodeIndex).ptr();
         auto repatchingFunction = operationValueMulOptimize;
         auto nonRepatchingFunction = operationValueMul;
-        compileBinaryMathIC<JITMulGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
+        compileBinaryMathIC<JITMulGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
     }
 
     template <typename Generator, typename Func1, typename Func2,
         typename = std::enable_if_t<std::is_function<typename std::remove_pointer<Func1>::type>::value && std::is_function<typename std::remove_pointer<Func2>::type>::value>>
-    void compileUnaryMathIC(ArithProfile* arithProfile, const Instruction* instruction, Func1 repatchingFunction, Func2 nonRepatchingFunction)
+    void compileUnaryMathIC(ArithProfile* arithProfile, Func1 repatchingFunction, Func2 nonRepatchingFunction)
     {
         Node* node = m_node;
 
@@ -2144,7 +2141,7 @@ private:
 #endif
 
                 Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
-                JITUnaryMathIC<Generator>* mathIC = jit.codeBlock()->addMathIC<Generator>(arithProfile, instruction);
+                JITUnaryMathIC<Generator>* mathIC = jit.codeBlock()->addMathIC<Generator>(arithProfile);
                 mathIC->m_generator = Generator(JSValueRegs(params[0].gpr()), JSValueRegs(params[1].gpr()), params.gpScratch(0));
 
                 bool shouldEmitProfiling = false;
@@ -2204,7 +2201,7 @@ private:
 
     template <typename Generator, typename Func1, typename Func2,
         typename = std::enable_if_t<std::is_function<typename std::remove_pointer<Func1>::type>::value && std::is_function<typename std::remove_pointer<Func2>::type>::value>>
-    void compileBinaryMathIC(ArithProfile* arithProfile, const Instruction* instruction, Func1 repatchingFunction, Func2 nonRepatchingFunction)
+    void compileBinaryMathIC(ArithProfile* arithProfile, Func1 repatchingFunction, Func2 nonRepatchingFunction)
     {
         Node* node = m_node;
         
@@ -2238,7 +2235,7 @@ private:
 #endif
 
                 Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
-                JITBinaryMathIC<Generator>* mathIC = jit.codeBlock()->addMathIC<Generator>(arithProfile, instruction);
+                JITBinaryMathIC<Generator>* mathIC = jit.codeBlock()->addMathIC<Generator>(arithProfile);
                 mathIC->m_generator = Generator(leftOperand, rightOperand, JSValueRegs(params[0].gpr()),
                     JSValueRegs(params[1].gpr()), JSValueRegs(params[2].gpr()), params.fpScratch(0),
                     params.fpScratch(1), params.gpScratch(0), InvalidFPRReg);
@@ -2372,10 +2369,9 @@ private:
             CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
             unsigned bytecodeIndex = m_node->origin.semantic.bytecodeIndex();
             ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(bytecodeIndex);
-            const Instruction* instruction = baselineCodeBlock->instructions().at(bytecodeIndex).ptr();
             auto repatchingFunction = operationValueSubOptimize;
             auto nonRepatchingFunction = operationValueSub;
-            compileBinaryMathIC<JITSubGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
+            compileBinaryMathIC<JITSubGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
             break;
         }
 
@@ -3023,10 +3019,9 @@ private:
         CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
         unsigned bytecodeIndex = m_node->origin.semantic.bytecodeIndex();
         ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(bytecodeIndex);
-        const Instruction* instruction = baselineCodeBlock->instructions().at(bytecodeIndex).ptr();
         auto repatchingFunction = operationArithNegateOptimize;
         auto nonRepatchingFunction = operationArithNegate;
-        compileUnaryMathIC<JITNegGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
+        compileUnaryMathIC<JITNegGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
     }
 
     void compileArithNegate()
@@ -3920,6 +3915,7 @@ private:
         // FIXME: This needs caging.
         // https://bugs.webkit.org/show_bug.cgi?id=175515
         LValue dataPtr = m_out.loadPtr(arrayBufferPtr, m_heaps.ArrayBuffer_data);
+        dataPtr = removeArrayPtrTag(dataPtr);
 
         ValueFromBlock wastefulOut = m_out.anchor(m_out.sub(vectorPtr, dataPtr));
 
@@ -6468,14 +6464,17 @@ private:
                 m_heaps.typedArrayProperties);
 
 #if !GIGACAGE_ENABLED && CPU(ARM64E)
-            PatchpointValue* authenticate = m_out.patchpoint(pointerType());
-            authenticate->appendSomeRegister(storage);
-            authenticate->append(size, B3::ValueRep(B3::ValueRep::SomeLateRegister));
-            authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
-                jit.move(params[1].gpr(), params[0].gpr());
-                jit.tagArrayPtr(params[2].gpr(), params[0].gpr());
-            });
-            storage = authenticate;
+            {
+                LValue sizePtr = m_out.zeroExtPtr(size);
+                PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+                authenticate->appendSomeRegister(storage);
+                authenticate->append(sizePtr, B3::ValueRep(B3::ValueRep::SomeLateRegister));
+                authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                    jit.move(params[1].gpr(), params[0].gpr());
+                    jit.tagArrayPtr(params[2].gpr(), params[0].gpr());
+                });
+                storage = authenticate;
+            }
 #endif
 
             ValueFromBlock haveStorage = m_out.anchor(storage);
@@ -14105,8 +14104,7 @@ private:
 
     LValue untagArrayPtr(LValue ptr, LValue size)
     {
-
-#if !GIGACAGE_ENABLED && CPU(ARM64E)
+#if CPU(ARM64E)
         PatchpointValue* authenticate = m_out.patchpoint(pointerType());
         authenticate->appendSomeRegister(ptr);
         authenticate->append(size, B3::ValueRep(B3::ValueRep::SomeLateRegister));
@@ -14119,6 +14117,20 @@ private:
         UNUSED_PARAM(size);
         return ptr;
 #endif
+    }
+
+    LValue removeArrayPtrTag(LValue ptr)
+    {
+#if CPU(ARM64E)
+        PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+        authenticate->appendSomeRegister(ptr);
+        authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.removeArrayPtrTag(params[0].gpr());
+        });
+        return authenticate;
+#endif
+        return ptr;
     }
 
     LValue caged(Gigacage::Kind kind, LValue ptr, LValue base)
@@ -16576,16 +16588,9 @@ private:
 
         LBasicBlock lastNext = m_out.appendTo(isWasteful, continuation);
         LValue vector = m_out.loadPtr(base, m_heaps.JSArrayBufferView_vector);
-#if !GIGACAGE_ENABLED && CPU(ARM64E)
-        // FIXME: We could probably make this a mask. https://bugs.webkit.org/show_bug.cgi?id=197701
-        PatchpointValue* authenticate = m_out.patchpoint(pointerType());
-        authenticate->appendSomeRegister(vector);
-        authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
-            jit.move(params[1].gpr(), params[0].gpr());
-            jit.removeArrayPtrTag(params[0].gpr());
-        });
-        vector = authenticate;
-#endif
+        // FIXME: We could probably make this a mask.
+        // https://bugs.webkit.org/show_bug.cgi?id=197701
+        vector = removeArrayPtrTag(vector);
         speculate(Uncountable, jsValueValue(vector), m_node, m_out.isZero64(vector));
         m_out.jump(continuation);
 

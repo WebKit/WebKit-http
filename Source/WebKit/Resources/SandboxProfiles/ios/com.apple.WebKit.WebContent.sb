@@ -71,6 +71,8 @@
 
 (allow mach-register
     (local-name "com.apple.iphone.axserver")) ; Needed for Application Accessibility
+(allow mach-lookup
+    (global-name "com.apple.iphone.axserver-systemwide")) ; Needed to send accessibility notifications.
 
 ;; <rdar://problem/14555119> Access to high quality speech voices
 ;; Needed for WebSpeech
@@ -397,7 +399,6 @@
 ;; FIXME: remove overridden rules once the final list has been
 ;; established, see https://bugs.webkit.org/show_bug.cgi?id=193840
 (deny mach-lookup
-    (global-name "com.apple.AGXCompilerService")
     (global-name "com.apple.CoreAuthentication.daemon.libxpc")
     (global-name "com.apple.FileCoordination")
     (global-name "com.apple.FileProvider")
@@ -606,5 +607,8 @@
         (syscall-number SYS___semwait_signal_nocancel)
         (syscall-number SYS_kdebug_trace_string) ;; Needed for performance sampling, see <rdar://problem/48829655>.
         (syscall-number SYS_fgetattrlist) ;; <rdar://problem/50266257>
+        (syscall-number SYS_fsetxattr) ;; <rdar://problem/49795964>
+        (syscall-number SYS_abort_with_payload) ;; <rdar://problem/50967271>
+        (syscall-number SYS_kqueue_workloop_ctl) ;; <rdar://problem/50999499>
     )
 )

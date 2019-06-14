@@ -30,8 +30,8 @@
 #include "LibWebRTCNetwork.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "ServiceWorkerClientFetchMessages.h"
-#include "WebCacheStorageConnection.h"
-#include "WebCacheStorageConnectionMessages.h"
+#include "StorageAreaMap.h"
+#include "StorageAreaMapMessages.h"
 #include "WebCacheStorageProvider.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebIDBConnectionToServerMessages.h"
@@ -93,6 +93,11 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
             webPage->didReceiveWebPageMessage(connection, decoder);
         return;
     }
+    if (decoder.messageReceiverName() == Messages::StorageAreaMap::messageReceiverName()) {
+        if (auto* stoargeAreaMap = WebProcess::singleton().storageAreaMap(decoder.destinationID()))
+            stoargeAreaMap->didReceiveMessage(connection, decoder);
+        return;
+    }
 
 #if USE(LIBWEBRTC)
     if (decoder.messageReceiverName() == Messages::WebRTCSocket::messageReceiverName()) {
@@ -114,10 +119,6 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
         return;
     }
 #endif
-    if (decoder.messageReceiverName() == Messages::WebCacheStorageConnection::messageReceiverName()) {
-        WebProcess::singleton().cacheStorageProvider().process(connection, decoder);
-        return;
-    }
 
 #if ENABLE(INDEXED_DATABASE)
     if (decoder.messageReceiverName() == Messages::WebIDBConnectionToServer::messageReceiverName()) {

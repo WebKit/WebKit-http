@@ -222,6 +222,12 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         generalSettingsView.addSeparator();
 
+        if (InspectorBackend.domains.DOM && InspectorBackend.domains.DOM.setInspectModeEnabled && InspectorBackend.domains.DOM.setInspectModeEnabled.supports("showRulers")) {
+            generalSettingsView.addSetting(WI.UIString("Element Selection:"), WI.settings.showRulersDuringElementSelection, WI.UIString("Show page rulers and node border lines"));
+
+            generalSettingsView.addSeparator();
+        }
+
         const zoomLevels = [0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.2, 2.4];
         const zoomValues = zoomLevels.map((level) => [level, Number.percentageString(level, 0)]);
 
@@ -355,6 +361,15 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         let layoutDirectionEditor = this._debugSettingsView.addGroupWithCustomSetting(WI.unlocalizedString("Layout Direction:"), WI.SettingEditor.Type.Select, {values: layoutDirectionValues});
         layoutDirectionEditor.value = WI.settings.layoutDirection.value;
         layoutDirectionEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => { WI.setLayoutDirection(layoutDirectionEditor.value); });
+
+        let resetInspectorButton = document.createElement("button");
+        resetInspectorButton.textContent = WI.unlocalizedString("Reset Web Inspector");
+        resetInspectorButton.addEventListener("click", async (event) => {
+            await WI.ObjectStore.reset();
+            WI.Setting.reset();
+            InspectorFrontendHost.reopen();
+        });
+        this._debugSettingsView.addCenteredContainer(resetInspectorButton);
 
         this.addSettingsView(this._debugSettingsView);
     }

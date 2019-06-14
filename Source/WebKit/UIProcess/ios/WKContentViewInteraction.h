@@ -61,13 +61,6 @@
 
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKInteractionPreviewAdditions.h>)
 #import <WebKitAdditions/WKInteractionPreviewAdditions.h>
-#else
-#ifndef ADDITIONAL_LINK_PREVIEW_MEMBERS
-#define ADDITIONAL_LINK_PREVIEW_MEMBERS
-#endif
-#ifndef ADDITIONAL_LINK_PREVIEW_PROTOCOLS
-#define ADDITIONAL_LINK_PREVIEW_PROTOCOLS
-#endif
 #endif
 
 namespace API {
@@ -255,8 +248,11 @@ struct WKAutoCorrectionData {
     RetainPtr<UIGestureRecognizer> _previewSecondaryGestureRecognizer;
     Vector<bool> _focusStateStack;
 #if HAVE(LINK_PREVIEW)
+#if USE(LONG_PRESS_FOR_LINK_PREVIEW)
+    LONG_PRESS_LINK_PREVIEW_MEMBERS
+#else
     RetainPtr<UIPreviewItemController> _previewItemController;
-    ADDITIONAL_LINK_PREVIEW_MEMBERS
+#endif
 #endif
 
     std::unique_ptr<WebKit::SmartMagnificationController> _smartMagnificationController;
@@ -328,6 +324,7 @@ struct WKAutoCorrectionData {
 
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
     BOOL _candidateViewNeedsUpdate;
+    BOOL _seenHardwareKeyDownInNonEditableElement;
 #endif
 
     BOOL _becomingFirstResponder;
@@ -509,6 +506,8 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 
 - (void)_handleAutocorrectionContext:(const WebKit::WebAutocorrectionContext&)context;
 
+- (void)_didStartProvisionalLoadForMainFrame;
+
 @end
 
 @interface WKContentView (WKTesting)
@@ -527,7 +526,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 @end
 
 #if HAVE(LINK_PREVIEW)
-@interface WKContentView (WKInteractionPreview) <UIPreviewItemDelegate ADDITIONAL_LINK_PREVIEW_PROTOCOLS>
+#if USE(LONG_PRESS_FOR_LINK_PREVIEW)
+@interface WKContentView (WKInteractionPreview) <LONG_PRESS_LINK_PREVIEW_PROTOCOL>
+#else
+@interface WKContentView (WKInteractionPreview) <UIPreviewItemDelegate>
+#endif
 
 @property (nonatomic, readonly) BOOL shouldUsePreviewForLongPress;
 

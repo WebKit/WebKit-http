@@ -53,7 +53,7 @@ messages -> WebPage LegacyReceiver {
 
     HandleTap(WebCore::IntPoint point, OptionSet<WebKit::WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
     PotentialTapAtPosition(uint64_t requestID, WebCore::FloatPoint point, bool shouldRequestMagnificationInformation)
-    CommitPotentialTap(OptionSet<WebKit::WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
+    CommitPotentialTap(OptionSet<WebKit::WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId, WebCore::PointerID pointerId)
     CancelPotentialTap()
     TapHighlightAtPosition(uint64_t requestID, WebCore::FloatPoint point)
     DidRecognizeLongPress()
@@ -135,6 +135,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 
 #if ENABLE(POINTER_EVENTS)
     CancelPointer(WebCore::PointerID pointerId, WebCore::IntPoint documentPoint)
+    TouchWithIdentifierWasRemoved(WebCore::PointerID pointerId)
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -351,7 +352,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 
 #if ENABLE(MEDIA_STREAM)
     # MediaSteam
-    UserMediaAccessWasGranted(uint64_t userMediaID, WebCore::CaptureDevice audioDevice, WebCore::CaptureDevice videoDevice, String mediaDeviceIdentifierHashSalt)
+    UserMediaAccessWasGranted(uint64_t userMediaID, WebCore::CaptureDevice audioDevice, WebCore::CaptureDevice videoDevice, String mediaDeviceIdentifierHashSalt) -> () Async
     UserMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String invalidConstraint)
     DidCompleteMediaDeviceEnumeration(uint64_t userMediaID, Vector<WebCore::CaptureDevice> devices, String mediaDeviceIdentifierHashSalt, bool hasPersistentAccess)
     CaptureDevicesChanged()
@@ -434,6 +435,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 
     SetTextAsync(String text)
     InsertTextAsync(String text, struct WebKit::EditingRange replacementRange, struct WebKit::InsertTextOptions options)
+    HasMarkedText() -> (bool hasMarkedText) Async
     GetMarkedRangeAsync(WebKit::CallbackID callbackID)
     GetSelectedRangeAsync(WebKit::CallbackID callbackID)
     CharacterIndexForPointAsync(WebCore::IntPoint point, WebKit::CallbackID callbackID);

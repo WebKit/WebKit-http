@@ -5,6 +5,9 @@
 # Platform-specific directories. Skipped globally, then re-enabled here.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
+compositing/shared-backing/overflow-scroll [ Pass ]
+compositing/scrolling/async-overflow-scrolling [ Pass ]
+compositing/layer-creation/clipping-scope [ Pass ]
 editing/find [ Pass ]
 editing/undo-manager [ Pass ]
 fast/forms/select/mac-wk2 [ Pass ]
@@ -729,6 +732,7 @@ http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-r
 [ HighSierra+ ] http/tests/storageAccess/grant-with-prompt-preserves-gesture.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/deny-with-prompt-does-not-preserve-gesture.html [ Skip ]
 [ HighSierra+ ] http/tests/storageAccess/deny-without-prompt-preserves-gesture.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/has-storage-access-true-if-feature-off.html [ Pass ]
 
 # As of https://trac.webkit.org/changeset/227762 the timestampResolution is just 5 seconds which makes this test flaky
 http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Skip ]
@@ -821,7 +825,17 @@ webkit.org/b/173742 security/contentSecurityPolicy/plugins-types-allows-youtube-
 
 webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https.html [ Pass Failure ]
 
-webkit.org/b/181107 http/wpt/cache-storage/cache-put-stream.https.any.html [ Pass Failure ]
+http/wpt/cache-storage/cache-put-stream.https.any.html [ Slow ]
+http/wpt/cache-storage/cache-put-keys.https.any.html [ Slow ]
+http/wpt/cache-storage/a-cache-open.https.html [ Slow ]
+http/wpt/cache-storage/cache-put-stream.https.any.worker.html [ Slow ]
+http/wpt/cache-storage/cache-quota.any.html [ Slow ]
+http/wpt/cache-storage/cache-put-keys.https.any.worker.html [ Slow ]
+http/wpt/cache-storage/cache-remove-twice.html [ Slow ]
+http/wpt/cache-storage/cache-open-delete-in-parallel.https.html [ Slow ]
+http/wpt/cache-storage/cache-quota-add.any.html [ Slow ]
+http/wpt/cache-storage/quota-third-party.https.html [ Slow ]
+http/wpt/cache-storage/cache-quota-after-restart.any.html [ Slow ]
 
 webkit.org/b/181502 swipe/pushstate-with-manual-scrollrestoration.html [ Failure ]
 
@@ -852,14 +866,6 @@ webkit.org/b/184245 http/tests/workers/service/service-worker-cache-api.https.ht
 webkit.org/b/184937 transitions/opacity-transition-zindex.html [ Skip ]
 
 webkit.org/b/186362 [ Release ] http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Skip ]
-
-webkit.org/b/190808 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/containing-block.html [ Pass Failure ]
-webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/bounding-box.html [ Pass Failure ]
-webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/display-none.html [ Pass Failure ]
-webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/edge-inclusive-intersection.html [ Pass Failure ]
-webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/remove-element.html [ Pass Failure ]
-webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/shadow-content.html [ Pass Failure ]
-webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/unclipped-root.html [ Pass Failure ]
 
 # skip manual payment-request tests
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-call-immediate-manual.https.html [ Skip ]
@@ -910,13 +916,12 @@ webkit.org/b/191658 [ Sierra Release ] fast/layers/no-clipping-overflow-hidden-a
 
 webkit.org/b/194826 http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html [ Pass Timeout ]
 
-webkit.org/b/194253 scrollingcoordinator/scrolling-tree/fixed-inside-frame.html [ Pass Failure ]
-
 webkit.org/b/194916 fast/mediastream/MediaStream-video-element.html [ Pass Failure ]
 
-webkit.org/b/196307 http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html [ Pass Failure ]
-
 webkit.org/b/196376 storage/domstorage/localstorage/private-browsing-affects-storage.html [ Pass Failure ]
+
+webkit.org/b/197917 [ Debug ] http/wpt/webauthn/public-key-credential-create-success-hid.https.html [ Skip ]
+webkit.org/b/197917 [ Debug ] http/wpt/webauthn/public-key-credential-get-success-hid.https.html [ Skip ]
 
 webkit.org/b/194780 http/wpt/webauthn/public-key-credential-create-success-hid.https.html [ Pass Failure ]
 webkit.org/b/196377 http/wpt/webauthn/public-key-credential-get-success-hid.https.html [ Pass Failure ]
@@ -927,18 +932,13 @@ webkit.org/b/196403 imported/w3c/web-platform-tests/mediacapture-record/MediaRec
 
 webkit.org/b/187391 accessibility/mac/async-increment-decrement-action.html [ Skip ]
 
-webkit.org/b/196448 [ Debug ] inspector/audit/basic.html [ Pass Timeout ]
-
 webkit.org/b/194164 http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-but-access-from-wrong-frame.html [ Pass Timeout ]
-
-webkit.org/b/195961 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex7-event_order.html [ Pass Failure ]
-webkit.org/b/195961 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex6-event_order.html [ Pass Failure ]
 
 webkit.org/b/197068 [ Debug ] fast/selectors/matches-backtracking.html [ Pass Timeout ]
 
 webkit.org/b/197283 fast/css-custom-paint/animate-repaint.html [ Pass Failure ]
 
-webkit.org/b/197285 [ Debug ] http/tests/resourceLoadStatistics/prune-statistics.html [ Pass Failure ]
+webkit.org/b/197285 http/tests/resourceLoadStatistics/prune-statistics.html [ Pass Failure ]
 
 webkit.org/b/197207 http/wpt/resource-timing/rt-resources-per-frame.html [ Pass Failure ]
 
@@ -951,3 +951,9 @@ webkit.org/b/197662 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCPeerConn
 webkit.org/b/197289 [ Mojave Debug ] webgl/2.0.0/conformance/state/gl-object-get-calls.html [ Skip ]
 
 webkit.org/b/189672 [ Mojave Debug ] webgl/2.0.0/conformance2/textures/misc/tex-new-formats.html [ Skip ]
+
+webkit.org/b/196445 [ Debug ] storage/indexeddb/modern/deletedatabase-2-private.html [ Pass Failure ]
+
+webkit.org/b/198195 [ Release ] fast/css/sticky/sticky-left-percentage.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/187828 [ Release ] fast/css-grid-layout/flex-content-sized-columns-resize.html [ Pass ImageOnlyFailure ]

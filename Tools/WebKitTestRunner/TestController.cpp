@@ -459,13 +459,6 @@ void TestController::initialize(int argc, const char* argv[])
     m_checkForWorldLeaks = options.checkForWorldLeaks;
     m_allowAnyHTTPSCertificateForAllowedHosts = options.allowAnyHTTPSCertificateForAllowedHosts;
 
-    if (options.printSupportedFeatures) {
-        // FIXME: On Windows, DumpRenderTree uses this to expose whether it supports 3d
-        // transforms and accelerated compositing. When we support those features, we
-        // should match DRT's behavior.
-        exit(0);
-    }
-
     m_usingServerMode = (m_paths.size() == 1 && m_paths[0] == "-");
     if (m_usingServerMode)
         m_printSeparators = true;
@@ -784,7 +777,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
         WKPreferencesSetInternalDebugFeatureForKey(preferences, internalDebugFeature.value, toWK(internalDebugFeature.key).get());
 
     WKPreferencesSetProcessSwapOnNavigationEnabled(preferences, options.contextOptions.shouldEnableProcessSwapOnNavigation());
-    WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(preferences, false);
+    WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(preferences, options.enableAppNap);
     WKPreferencesSetOfflineWebApplicationCacheEnabled(preferences, true);
     WKPreferencesSetSubpixelAntialiasedLayerTextEnabled(preferences, false);
     WKPreferencesSetXSSAuditorEnabled(preferences, false);
@@ -922,6 +915,10 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
         WKRetainPtr<WKStringRef> jscOptionsValue = adoptWK(WKStringCreateWithUTF8CString(options.jscOptions.c_str()));
         WKDictionarySetItem(resetMessageBody.get(), jscOptionsKey.get(), jscOptionsValue.get());
     }
+
+#if PLATFORM(COCOA)
+    WebCoreTestSupport::setAdditionalSupportedImageTypesForTesting(options.additionalSupportedImageTypes.c_str());
+#endif
 
     WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), resetMessageBody.get());
 
@@ -1369,6 +1366,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.punchOutWhiteBackgroundsInDarkMode = parseBooleanTestHeaderValue(value);
         else if (key == "jscOptions")
             testOptions.jscOptions = value;
+        else if (key == "additionalSupportedImageTypes")
+            testOptions.additionalSupportedImageTypes = value;
         else if (key == "runSingly")
             testOptions.runSingly = parseBooleanTestHeaderValue(value);
         else if (key == "shouldIgnoreMetaViewport")
@@ -1391,6 +1390,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.contextOptions.ignoreSynchronousMessagingTimeouts = parseBooleanTestHeaderValue(value);
         else if (key == "shouldUseModernCompatibilityMode")
             testOptions.shouldUseModernCompatibilityMode = parseBooleanTestHeaderValue(value);
+        else if (key == "enableAppNap")
+            testOptions.enableAppNap = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }

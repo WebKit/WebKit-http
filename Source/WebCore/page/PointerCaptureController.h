@@ -52,8 +52,9 @@ public:
     void dispatchEventForTouchAtIndex(EventTarget&, const PlatformTouchEvent&, unsigned, bool isPrimary, WindowProxy&);
 #endif
 
-    void touchEndedOrWasCancelledForIdentifier(PointerID);
+    WEBCORE_EXPORT void touchWithIdentifierWasRemoved(PointerID);
     bool hasCancelledPointerEventForIdentifier(PointerID);
+    bool preventsCompatibilityMouseEventsForIdentifier(PointerID);
     void dispatchEvent(PointerEvent&, EventTarget*);
     WEBCORE_EXPORT void cancelPointer(PointerID, const IntPoint&);
 
@@ -64,6 +65,8 @@ private:
         String pointerType;
         bool cancelled { false };
         bool isPrimary { false };
+        bool preventsCompatibilityMouseEvents { false };
+        bool pointerIsPressed { false };
     };
 
     void pointerEventWillBeDispatched(const PointerEvent&, EventTarget*);

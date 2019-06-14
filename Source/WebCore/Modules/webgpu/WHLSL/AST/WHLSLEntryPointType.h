@@ -39,8 +39,19 @@ enum class EntryPointType : uint8_t {
     Vertex,
     Fragment,
     Compute,
-    // FIXME: Add an entry point type for testing
 };
+
+static ALWAYS_INLINE String toString(EntryPointType type)
+{
+    switch (type) {
+    case EntryPointType::Vertex:
+        return "vertex";
+    case EntryPointType::Fragment:
+        return "fragment";
+    case EntryPointType::Compute:
+        return "compute";
+    }
+}
 
 }
 

@@ -1,3 +1,389 @@
+2019-05-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Overlay: don't show setting for showing rulers/guides during element selection if it's not supported
+        https://bugs.webkit.org/show_bug.cgi?id=198221
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+
+2019-05-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: prevent stripping `console.assert` if it's used inside a string
+        https://bugs.webkit.org/show_bug.cgi?id=198207
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/remove-console-asserts.pl:
+        (removeConsoleAssertsInFile):
+
+2019-05-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Overlay: rulers/guides should be shown whenever element selection is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=198088
+
+        Reviewed by Timothy Hatcher.
+
+        When trying to "measure" the absolute position (to the viewport) or relative position (to
+        another element) of a given element, often the easiest way is to enable Element Selection
+        and Show Rulers at the same time.
+
+        This can have the undesired "side-effect" of having the rulers be always present, even when
+        not highlighting any nodes.
+
+        The ideal functionality is to allow the rulers/guides to be shown when element selection is
+        active and a node is hovered, regardless of whether "Show Rulers" is enabled.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+        Add a setting for controlling whether rulers/guides are shown during element selection.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.set inspectModeEnabled):
+        Pass the setting value as an optional parameter when calling `DOM.setInspectModeEnabled`.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-05-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r245665.
+        https://bugs.webkit.org/show_bug.cgi?id=198203
+
+        Inspector appears blank, again. (Requested by NVI on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Provide UIString descriptions to improve
+        localizations"
+        https://bugs.webkit.org/show_bug.cgi?id=195132
+        https://trac.webkit.org/changeset/245665
+
+2019-05-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove unused CSS class "offset-sections"
+        https://bugs.webkit.org/show_bug.cgi?id=198194
+        <rdar://problem/51080111>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/StyleDetailsPanel.js:
+        (WI.StyleDetailsPanel):
+
+2019-05-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: clicking a source link should never open the Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=197951
+
+        Reviewed by Timothy Hatcher.
+
+        The preview panel in the Network tab is really meant to be just that; a preview.
+
+        Opening resources in the preview panel is not a great experience, as the Network tab doesn't
+        have as much of the information one would expect when viewing a resource (namely the
+        Resource details sidebar panel).
+
+        Navigating within the Network tab also completely wipes out the current "state" of what
+        you're looking at (e.g. which panel), which could be unexpected.
+
+        The only way this could happen previously was if the Resources/Debugger/Sources tabs had
+        never been active at any point in the past. Selecting one of those tabs and then clicking on
+        an initiator link in the Network tab would re-select that other tab.
+
+        * UserInterface/Base/Main.js:
+        (WI.dialogWasDismissedWithRepresentedObject):
+
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._refreshSummarySection):
+
+2019-05-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Provide UIString descriptions to improve localizations
+        https://bugs.webkit.org/show_bug.cgi?id=195132
+        <rdar://problem/48457817>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/LoadLocalizedStrings.js:
+        (WI.UIString):
+        (WI.repeatedUIString.timelineRecordLayout):
+        (WI.repeatedUIString.timelineRecordPaint):
+        (WI.repeatedUIString.timelineRecordComposite):
+        (WI.repeatedUIString.allExceptions):
+        (WI.repeatedUIString.uncaughtExceptions):
+        (WI.repeatedUIString.assertionFailures):
+        (WI.repeatedUIString.allRequests):
+        (WI.repeatedUIString.fetch):
+        (WI.repeatedUIString.revealInDOMTree):
+        * UserInterface/Models/LayoutTimelineRecord.js:
+        (WI.LayoutTimelineRecord.displayNameForEventType):
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WI.RenderingFrameTimelineRecord.displayNameForTaskType):
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.displayNameForType):
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.layout):
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.displayNameForSampleType):
+        * UserInterface/Views/ContextMenuUtilities.js:
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement.displayNameForType):
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WI.DOMNodeTreeElement.prototype.populateContextMenu):
+        (WI.DOMNodeTreeElement):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.populateDOMNodeContextMenu):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addBreakpoint):
+        (WI.DebuggerSidebarPanel.prototype._handleCreateBreakpointMouseDown):
+        (WI.DebuggerSidebarPanel):
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WI.LayerTreeDetailsSidebarPanel.prototype._buildDataGridSection):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.shortDisplayNameForResourceType):
+        (WI.NetworkTableContentView.prototype.initialLayout):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._addBreakpoint):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleCreateBreakpointMouseDown):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._renderSelector):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.layout):
+
+2019-05-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a debug setting button to reset all settings for easier testing/presentation
+        https://bugs.webkit.org/show_bug.cgi?id=195777
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Setting.js:
+        (WI.Setting.reset): Added.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createDebugSettingsView):
+
+2019-05-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Storage tab crashes easily when adding new local/session storage entries.
+        https://bugs.webkit.org/show_bug.cgi?id=198004
+
+        Reviewed by Ross Kirsling.
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype._startEditingNodeAtColumnIndex):
+        Force a layout in the case that a new `PlaceholderDataGridNode` was added to the end of the
+        `DataGrid` as part of the `editCallback`. Web Inspector won't crash without this, but it
+        won't properly select/focus the next row when tabbing from the last column to the next row.
+
+        (WI.DataGrid.prototype._editingCommitted):
+        Save the new value of the column before removing the editing styles, as that refreshes the
+        `DataGridNode`. If the new value isn't saved, the old value is used during the refresh.
+
+        (WI.DataGrid.prototype._keyDown):
+        Drive-by: use `get element` instead of using the member variable directly, as the underlying
+        value might not have been initialized yet.
+
+2019-05-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Decrease spacing before and after tooltip paragraphs
+        https://bugs.webkit.org/show_bug.cgi?id=198024
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/Popover.css:
+        (.popover p): Added.
+        (.popover p + p): Added.
+
+2019-05-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: CPU/memory timeline bars sometimes don't draw correctly and jump around on scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=197440
+        <rdar://problem/46886315>
+
+        Reviewed by Joseph Pecoraro.
+
+        When drawing the Memory/CPU graphs, we need to know about the record immediately before/after
+        what's overlapping the visible range so that the graph correctly slopes off the screen.
+
+        * UserInterface/Models/Timeline.js:
+        (WI.Timeline.prototype.recordsInTimeRange):
+        (WI.Timeline.prototype.recordsOverlappingTimeRange): Deleted.
+        Merge `recordsOverlappingTimeRange` into `recordsInTimeRange` by accepting an options object
+        that determines whether to include the record before/after the first/last record that are
+        at all overlapping the range.
+
+        * UserInterface/Models/CPUTimelineRecord.js:
+        (WI.CPUTimelineRecord):
+        (WI.CPUTimelineRecord.get samplingRatePerSecond): Added.
+        (WI.CPUTimelineRecord.prototype.adjustStartTimeToLastRecord): Added.
+        * UserInterface/Models/MemoryTimelineRecord.js:
+        (WI.MemoryTimelineRecord):
+        (WI.MemoryTimelineRecord.get samplingRatePerSecond): Added.
+        (WI.MemoryTimelineRecord.prototype.adjustStartTimeToLastRecord): Added.
+        Adjust the `startTime` of the record by the sampling rate (which is 500ms).
+
+        * UserInterface/Models/CPUTimeline.js: Added.
+        (WI.CPUTimeline.prototype.addRecord):
+        * UserInterface/Models/MemoryTimeline.js:
+        (WI.MemoryTimeline.prototype.addRecord): Added.
+        Adjust the `startTime` of the new record to be equal to the `endTime` of the last record.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype._recordSelected):
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.layout):
+        (WI.CPUTimelineView.prototype._computeStatisticsData):
+        (WI.CPUTimelineView.prototype._attemptSelectIndicatatorTimelineRecord):
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph.prototype.layout):
+        (WI.CPUTimelineOverviewGraph.prototype._handleChartClick):
+        (WI.CPUTimelineOverviewGraph.prototype.get samplingRatePerSecond): Deleted.
+        (WI.CPUTimelineOverviewGraph.prototype.layout.yScaleForRecord): Deleted.
+
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView.prototype.layout):
+        * UserInterface/Views/MemoryTimelineOverviewGraph.js:
+        (WI.MemoryTimelineOverviewGraph.prototype.layout):
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+
+2019-05-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: make it easier to jump to any returned DOM node in the Elements tab
+        https://bugs.webkit.org/show_bug.cgi?id=197470
+        <rdar://problem/50466774>
+
+        Reviewed by Joseph Pecoraro.
+
+        Right now, the only way to jump to the Elements tab for any DOM nodes returned by an audit
+        is to context menu and "Reveal in DOM Tree". Providing a more visible/discoverable way to
+        jump to the Elements tab will help developers diagnose issues easier.
+
+        * UserInterface/Views/AuditTestCaseContentView.js:
+        (WI.AuditTestCaseContentView.prototype.layout):
+        * UserInterface/Views/AuditTestCaseContentView.css:
+        (.content-view.audit-test-case > section table):
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement):
+        (WI.DOMTreeElement.prototype.set showGoToArrow): Added.
+        (WI.DOMTreeElement.prototype._buildTagDOM):
+        (WI.DOMTreeElement.prototype._nodeTitleInfo):
+        Provide a way to insert a go-to arrow right after the:
+         - open tag, if the close tag is rendered on a separate line
+         - close tag, if the close tag is rendered on the same line
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline):
+        Allow `DOMTreeOutline` to be non-selectable.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom:not(.non-selectable):focus li:matches(.selected, .hovered) .selection-area): Added.
+        (.tree-outline.dom:not(.non-selectable) li.hovered:not(.selected) .selection-area): Added.
+        (.tree-outline.dom li .html-tag ~ .go-to-arrow): Added.
+        (.tree-outline.dom li:not(.hovered) .html-tag ~ .go-to-arrow): Added.
+        (.tree-outline.dom:focus li:matches(.selected, .hovered) .selection-area): Deleted.
+        (.tree-outline.dom li.hovered:not(.selected) .selection-area): Deleted.
+        Ensure that hovering a non-selectable node doesn't change the background color.
+
+2019-05-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: context menu items in DOM tree should work when not clicking directly on the node representation
+        https://bugs.webkit.org/show_bug.cgi?id=197541
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.populateDOMNodeContextMenu): Added.
+        (WI.DOMTreeElement.prototype._populateTagContextMenu): Deleted.
+        (WI.DOMTreeElement.prototype._populateTextContextMenu): Deleted.
+        (WI.DOMTreeElement.prototype._populateNodeContextMenu): Deleted.
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.populateContextMenu):
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+
+2019-05-17  Joonghun Park  <pjh0718@gmail.com>
+
+        Implement CSS `display: flow-root` (modern clearfix)
+        https://bugs.webkit.org/show_bug.cgi?id=165603
+
+        Reviewed by Zalan Bujtas.
+
+        This change follows https://drafts.csswg.org/css-display-3/#valdef-display-flow-root as below.
+
+        'display: flow-root' generates a block container box, and lays out its contents using flow layout.
+        It always establishes a new block formatting context for its contents.
+
+        * UserInterface/External/CodeMirror/css.js:
+
+2019-05-17  Ross Kirsling  <ross.kirsling@sony.com>
+
+        REGRESSION(r244350): Web Inspector: Storage tab data grids aren't editable.
+        https://bugs.webkit.org/show_bug.cgi?id=198003
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WI.DOMStorageContentView):
+        Fix typo.
+
+2019-05-17  Jamal Nasser  <jamaln@mail.com>
+
+        Web Inspector: Dark Mode: Fix colors in network table waterfall container
+        https://bugs.webkit.org/show_bug.cgi?id=197955
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-event):
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-activity):
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .area.dom-fullscreen):
+
+2019-05-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: null is not an object (evaluating 'resource.parentFrame.securityOrigin')
+        https://bugs.webkit.org/show_bug.cgi?id=196572
+        <rdar://problem/49578338>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._addResource):
+
+2019-05-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: unable to expand/collapse non-selectable WI.TreeOutline
+        https://bugs.webkit.org/show_bug.cgi?id=197591
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.treeElementToggled):
+
+2019-05-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: null is not an object (evaluating 'url.startsWith')
+        https://bugs.webkit.org/show_bug.cgi?id=196662
+        <rdar://problem/49659633>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype._appendLocationLink):
+        (WI.ConsoleMessageView.prototype._linkifyLocation): Deleted.
+
+        * UserInterface/Base/Main.js:
+        (WI.linkifyLocation):
+        (WI.linkifySourceCode): Added.
+        Split the logic into two functions, as there's no need to re-fetch the `SourceCode` from a
+        given url if you already have the `SourceCode` in the caller.
+
 2019-05-08  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r244952.

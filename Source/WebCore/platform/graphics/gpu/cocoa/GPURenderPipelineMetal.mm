@@ -181,7 +181,7 @@ static Optional<WHLSL::RenderPipelineDescriptor> convertRenderPipelineDescriptor
         return WTF::nullopt;
 
     for (size_t i = 0; i < descriptor.inputState.attributes.size(); ++i)
-        whlslDescriptor.vertexAttributes.append({ convertVertexFormat(descriptor.inputState.attributes[i].format), static_cast<unsigned>(i) });
+        whlslDescriptor.vertexAttributes.append({ convertVertexFormat(descriptor.inputState.attributes[i].format), descriptor.inputState.attributes[i].shaderLocation, static_cast<unsigned>(i) });
 
     for (size_t i = 0; i < descriptor.colorStates.size(); ++i) {
         if (auto format = convertTextureFormat(descriptor.colorStates[i].format))
@@ -263,6 +263,8 @@ static bool trySetWHLSLFunctionsForPipelineDescriptor(const char* const function
     if (!result)
         return false;
 
+    WTFLogAlways("Metal Source: %s", result->metalSource.utf8().data());
+
     NSError *error = nil;
     auto library = adoptNS([device.platformDevice() newLibraryWithSource:result->metalSource options:nil error:&error]);
     ASSERT(library);
@@ -335,7 +337,7 @@ static bool trySetInputStateForPipelineDescriptor(const char* const functionName
     auto attributeArray = retainPtr(mtlVertexDescriptor.get().attributes);
 
     for (size_t i = 0; i < attributes.size(); ++i) {
-        auto location = attributes[i].shaderLocation;
+        auto location = static_cast<unsigned>(i);
         // Maximum number of vertex attributes to be supported by Web GPU.
         if (location >= 16) {
             LOG(WebGPU, "%s: Invalid shaderLocation %u for vertex attribute!", functionName, location);

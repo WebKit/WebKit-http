@@ -842,9 +842,9 @@ void WebPageProxy::potentialTapAtPosition(const WebCore::FloatPoint& position, b
     process().send(Messages::WebPage::PotentialTapAtPosition(requestID, position, shouldRequestMagnificationInformation), m_pageID);
 }
 
-void WebPageProxy::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64_t layerTreeTransactionIdAtLastTouchStart)
+void WebPageProxy::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64_t layerTreeTransactionIdAtLastTouchStart, WebCore::PointerID pointerId)
 {
-    process().send(Messages::WebPage::CommitPotentialTap(modifiers, layerTreeTransactionIdAtLastTouchStart), m_pageID);
+    process().send(Messages::WebPage::CommitPotentialTap(modifiers, layerTreeTransactionIdAtLastTouchStart, pointerId), m_pageID);
 }
 
 void WebPageProxy::cancelPotentialTap()

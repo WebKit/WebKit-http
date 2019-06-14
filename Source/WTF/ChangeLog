@@ -1,3 +1,498 @@
+2019-05-23  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use target oriented design for bmalloc
+        https://bugs.webkit.org/show_bug.cgi?id=198046
+
+        Reviewed by Konstantin Tokarev.
+
+        Use WebKit::bmalloc target.
+
+        * wtf/CMakeLists.txt:
+
+2019-05-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [PlayStation] Implement platformUserPreferredLanguages.
+        https://bugs.webkit.org/show_bug.cgi?id=198149
+
+        Reviewed by Fujii Hironori.
+
+        * wtf/PlatformPlayStation.cmake:
+        * wtf/playstation/LanguagePlayStation.cpp: Added.
+        (WTF::platformUserPreferredLanguages):
+
+2019-05-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-optical-sizing applies the wrong variation value
+        https://bugs.webkit.org/show_bug.cgi?id=197528
+        <rdar://problem/50152854>
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Platform.h:
+
+2019-05-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245598.
+
+        Breaks watchOS build.
+
+        Reverted changeset:
+
+        "font-optical-sizing applies the wrong variation value"
+        https://bugs.webkit.org/show_bug.cgi?id=197528
+        https://trac.webkit.org/changeset/245598
+
+2019-05-21  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [PlayStation] Don't call fcntl.
+        https://bugs.webkit.org/show_bug.cgi?id=197961
+
+        Reviewed by Fujii Hironori.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformPlayStation.cmake:
+        * wtf/PlatformWPE.cmake:
+        * wtf/UniStdExtras.h:
+        * wtf/playstation/UniStdExtrasPlayStation.cpp: Added.
+        (WTF::setCloseOnExec):
+        (WTF::dupCloseOnExec):
+        (WTF::setNonBlock):
+        * wtf/unix/UniStdExtrasUnix.cpp: Renamed from Source/WTF/wtf/UniStdExtras.cpp.
+        (WTF::setNonBlock):
+        Move UniStdExtras to unix/, add a PlayStation version that doesn't use fcntl, add an abstraction for O_NONBLOCK.
+
+2019-05-20  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Only cache bytecode for API clients in data vaults
+        https://bugs.webkit.org/show_bug.cgi?id=197898
+
+        Reviewed by Keith Miller.
+
+        Add SPI to check if a filesystem path is restricted as a data vault.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/spi/darwin/DataVaultSPI.h: Added.
+
+2019-05-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Repeating timer is not stopped when stop is called from the callback
+        https://bugs.webkit.org/show_bug.cgi?id=197986
+
+        Reviewed by Michael Catanzaro.
+
+        In case of repeating timers we always update the ready time to fire interval after the user callback is called.
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::stop): Reset m_fireInterval and m_isRepeating.
+
+2019-05-19  Darin Adler  <darin@apple.com>
+
+        Change String::number to use "shortest" instead of "fixed precision 6 digits"
+        https://bugs.webkit.org/show_bug.cgi?id=178319
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringBuilder.h: Delete appendNumber for floating point and
+        appendECMAScriptNumber for single-precision.
+
+        * wtf/text/WTFString.h: Delete String::number for floating point and
+        numberToStringECMAScript for single-precision.
+
+2019-05-18  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Add extra information to dumpJITMemory
+        https://bugs.webkit.org/show_bug.cgi?id=197998
+
+        Reviewed by Saam Barati.
+
+        Add a new trace point code for JSC::dumpJITMemory
+
+        * wtf/SystemTracing.h:
+
+2019-05-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use builtin FindICU
+        https://bugs.webkit.org/show_bug.cgi?id=197934
+
+        Reviewed by Michael Catanzaro.
+
+        Remove uses of ICU_INCLUDE_DIRS and ICU_LIBRARIES. Use ICU:: targets which end
+        up propagating to all consumers of WTF.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformPlayStation.cmake:
+
+2019-05-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r245418.
+        https://bugs.webkit.org/show_bug.cgi?id=197989
+
+        New API test causing crashes on Mojave testers (Requested by
+        ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Add a unit test for client certificate authentication"
+        https://bugs.webkit.org/show_bug.cgi?id=197800
+        https://trac.webkit.org/changeset/245418
+
+2019-05-16  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should cage the memory base pointers in structs
+        https://bugs.webkit.org/show_bug.cgi?id=197620
+
+        Reviewed by Saam Barati.
+
+        Rename reauthenticate to recage.
+
+        * wtf/CagedPtr.h:
+        (WTF::CagedPtr::recage):
+        (WTF::CagedPtr::reauthenticate): Deleted.
+
+2019-05-16  Alex Christensen  <achristensen@webkit.org>
+
+        Add a unit test for client certificate authentication
+        https://bugs.webkit.org/show_bug.cgi?id=197800
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Move declarations from ArgumentCodersCF.cpp so they can be shared.
+
+2019-05-16  Eike Rathke  <erack@redhat.com>
+
+        Fix memcpy() call for big endian
+        https://bugs.webkit.org/show_bug.cgi?id=197945
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Packed.h:
+        (WTF::alignof):
+
+2019-05-15  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [PlayStation] WTFCrash should preserve register state.
+        https://bugs.webkit.org/show_bug.cgi?id=197932
+
+        Reviewed by Don Olmstead.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        Let r196397 apply to PlayStation port as well.
+
+2019-05-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Make LOG_WITH_STREAM more efficient
+        https://bugs.webkit.org/show_bug.cgi?id=197905
+
+        Reviewed by Alex Christensen.
+
+        Add a streamable repeat() class that can be used to output a series of characters.
+        This is useful for indenting output.
+
+        * wtf/text/TextStream.h:
+        (WTF::TextStream::repeat::repeat):
+        (WTF::TextStream::operator<<):
+
+2019-05-15  Víctor Manuel Jáquez Leal  <vjaquez@igalia.com>
+
+        compilation failure with clang 9
+        https://bugs.webkit.org/show_bug.cgi?id=197911
+
+        Reviewed by Alex Christensen.
+
+        Use std namespace for nullptr_t in tagArrayPtr templates.
+
+        * wtf/PtrTag.h:
+        (WTF::tagArrayPtr):
+
+2019-05-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r245281.
+        https://bugs.webkit.org/show_bug.cgi?id=197887
+
+        Broke API Test TestWebKitAPI.Challenge.ClientCertificate
+        (Requested by aakashjain on #webkit).
+
+        Reverted changeset:
+
+        "Add a unit test for client certificate authentication"
+        https://bugs.webkit.org/show_bug.cgi?id=197800
+        https://trac.webkit.org/changeset/245281
+
+2019-05-14  Alex Christensen  <achristensen@webkit.org>
+
+        Add a unit test for client certificate authentication
+        https://bugs.webkit.org/show_bug.cgi?id=197800
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Move declarations from ArgumentCodersCF.cpp so they can be shared.
+
+2019-05-13  Robin Morisset  <rmorisset@apple.com>
+
+        IndexSet::isEmpty should use BitVector::isEmpty() instead of size()
+        https://bugs.webkit.org/show_bug.cgi?id=197857
+
+        Reviewed by Darin Adler.
+
+        * wtf/IndexSet.h:
+        (WTF::IndexSet::isEmpty const):
+
+2019-05-13  Youenn Fablet  <youenn@apple.com>
+
+        [Mac] Use realpath for dlopen_preflight
+        https://bugs.webkit.org/show_bug.cgi?id=197803
+
+        Reviewed by Eric Carlson.
+
+        * wtf/cocoa/SoftLinking.h:
+
+2019-05-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, wrokaround for MACH_VM_MAX_ADDRESS in ARM32_64
+        https://bugs.webkit.org/show_bug.cgi?id=197730
+
+        Interestingly, MACH_VM_MAX_ADDRESS is larger than 32bit in ARM32_64, I think this is a bug.
+        But for now, we workaround for this case by using `CPU(ADDRESS64)`.
+
+        * wtf/WTFAssertions.cpp:
+
+2019-05-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Remove Threading workaround for support libraries in Windows
+        https://bugs.webkit.org/show_bug.cgi?id=197350
+
+        Reviewed by Darin Adler.
+
+        We kept old APIs for some support libraries at 2017. This patch removes them.
+
+        * wtf/Threading.h:
+        * wtf/win/ThreadingWin.cpp:
+        (WTF::createThread): Deleted.
+        (WTF::waitForThreadCompletion): Deleted.
+
+2019-05-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Simplify GCThread and CompilationThread flags by adding them to WTF::Thread
+        https://bugs.webkit.org/show_bug.cgi?id=197146
+
+        Reviewed by Saam Barati.
+
+        Since GCThread and CompilationThread flags exist in WTF, we put these flags into WTF::Thread directly instead of holding them in ThreadSpecific<>.
+        And this patch removes dependency from Threading.h to ThreadSpecific.h. ThreadSpecific.h's OS threading primitives are moved to ThreadingPrimitives.h,
+        and Threading.h relies on it instead.
+
+        * wtf/CompilationThread.cpp:
+        (WTF::isCompilationThread):
+        (WTF::initializeCompilationThreads): Deleted.
+        (WTF::exchangeIsCompilationThread): Deleted.
+        * wtf/CompilationThread.h:
+        (WTF::CompilationScope::CompilationScope):
+        (WTF::CompilationScope::~CompilationScope):
+        (WTF::CompilationScope::leaveEarly):
+        * wtf/MainThread.cpp:
+        (WTF::initializeMainThread):
+        (WTF::initializeMainThreadToProcessMainThread):
+        (WTF::isMainThreadOrGCThread):
+        (WTF::initializeGCThreads): Deleted.
+        (WTF::registerGCThread): Deleted.
+        (WTF::mayBeGCThread): Deleted.
+        * wtf/MainThread.h:
+        * wtf/ThreadSpecific.h:
+        (WTF::canBeGCThread>::ThreadSpecific):
+        (WTF::canBeGCThread>::set):
+        (WTF::threadSpecificKeyCreate): Deleted.
+        (WTF::threadSpecificKeyDelete): Deleted.
+        (WTF::threadSpecificSet): Deleted.
+        (WTF::threadSpecificGet): Deleted.
+        * wtf/Threading.cpp:
+        (WTF::Thread::exchangeIsCompilationThread):
+        (WTF::Thread::registerGCThread):
+        (WTF::Thread::mayBeGCThread):
+        * wtf/Threading.h:
+        (WTF::Thread::isCompilationThread const):
+        (WTF::Thread::gcThreadType const):
+        (WTF::Thread::joinableState const):
+        (WTF::Thread::hasExited const):
+        (WTF::Thread::Thread):
+        (WTF::Thread::joinableState): Deleted.
+        (WTF::Thread::hasExited): Deleted.
+        * wtf/ThreadingPrimitives.h:
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::threadSpecificSet):
+        (WTF::threadSpecificGet):
+        * wtf/win/ThreadSpecificWin.cpp:
+        (WTF::flsKeys):
+
+2019-05-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, follow-up after r245214
+        https://bugs.webkit.org/show_bug.cgi?id=197730
+
+        Suggested by Sam. We should have static_assert with MACH_VM_MAX_ADDRESS.
+
+        * wtf/WTFAssertions.cpp:
+
+2019-05-13  Youenn Fablet  <youenn@apple.com>
+
+        Use kDNSServiceFlagsKnownUnique for DNSServiceRegisterRecord only on platforms supporting it
+        https://bugs.webkit.org/show_bug.cgi?id=197802
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h:
+
+2019-05-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Compress miscelaneous JIT related data structures with Packed<>
+        https://bugs.webkit.org/show_bug.cgi?id=197830
+
+        Reviewed by Saam Barati.
+
+        * wtf/Packed.h:
+        (WTF::alignof):
+
+2019-05-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix unused variable warnings in release builds
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::escapeUnsafeCharacters):
+
+2019-05-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Compress Watchpoint size by using enum type and Packed<> data structure
+        https://bugs.webkit.org/show_bug.cgi?id=197730
+
+        Reviewed by Filip Pizlo.
+
+        This patch introduces a new data structures, WTF::Packed, WTF::PackedPtr, and WTF::PackedAlignedPtr.
+
+        - WTF::Packed
+
+            WTF::Packed is data storage. We can read and write trivial (in C++ term [1]) data to this storage. The difference to
+            the usual storage is that the alignment of this storage is always 1. We access the underlying data by using unalignedLoad/unalignedStore.
+            This class offers alignment = 1 data structure instead of missing the following characteristics.
+
+                1. Load / Store are non atomic even if the data size is within a pointer width. We should not use this for a member which can be accessed
+                   in a racy way. (e.g. fields accessed optimistically from the concurrent compilers).
+
+                2. We cannot take reference / pointer to the underlying storage since they are unaligned.
+
+                3. Access to this storage is unaligned access. The code is using memcpy, and the compiler will convert to an appropriate unaligned access
+                   in certain architectures (x86_64 / ARM64). It could be slow. So use it for non performance sensitive & memory sensitive places.
+
+        - WTF::PackedPtr
+
+            WTF::PackedPtr is a specialization of WTF::Packed<T*>. And it is basically WTF::PackedAlignedPtr with alignment = 1. We further compact
+            the pointer by leveraging the platform specific knowledge. In 64bit architectures, the effective width of pointers are less than 64 bit.
+            In x86_64, it is 48 bits. And Darwin ARM64 is further smaller, 36 bits. This information allows us to compact the pointer to 6 bytes in
+            x86_64 and 5 bytes in Darwin ARM64.
+
+        - WTF::PackedAlignedPtr
+
+            WTF::PackedAlignedPtr is the WTF::PackedPtr with alignment information of the T. If we use this alignment information, we could reduce the
+            size of packed pointer further in some cases. For example, since we guarantee that JSCells are 16 byte aligned, low 4 bits are empty. Leveraging
+            this information in Darwin ARM64 platform allows us to make packed JSCell pointer 4 bytes (36 - 4 bits). We do not use passed alignment
+            information if it is not profitable.
+
+        We also have PackedPtrTraits. This is new PtrTraits and use it for various data structures such as Bag<>.
+
+        [1]: https://en.cppreference.com/w/cpp/types/is_trivial
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Bag.h:
+        (WTF::Bag::clear):
+        (WTF::Bag::iterator::operator++):
+        * wtf/CMakeLists.txt:
+        * wtf/DumbPtrTraits.h:
+        * wtf/DumbValueTraits.h:
+        * wtf/MathExtras.h:
+        (WTF::clzConstexpr):
+        (WTF::clz):
+        (WTF::ctzConstexpr):
+        (WTF::ctz):
+        (WTF::getLSBSetConstexpr):
+        (WTF::getMSBSetConstexpr):
+        * wtf/Packed.h: Added.
+        (WTF::Packed::Packed):
+        (WTF::Packed::get const):
+        (WTF::Packed::set):
+        (WTF::Packed::operator=):
+        (WTF::Packed::exchange):
+        (WTF::Packed::swap):
+        (WTF::alignof):
+        (WTF::PackedPtrTraits::exchange):
+        (WTF::PackedPtrTraits::swap):
+        (WTF::PackedPtrTraits::unwrap):
+        * wtf/Platform.h:
+        * wtf/SentinelLinkedList.h:
+        (WTF::BasicRawSentinelNode::BasicRawSentinelNode):
+        (WTF::BasicRawSentinelNode::prev):
+        (WTF::BasicRawSentinelNode::next):
+        (WTF::PtrTraits>::remove):
+        (WTF::PtrTraits>::prepend):
+        (WTF::PtrTraits>::append):
+        (WTF::RawNode>::SentinelLinkedList):
+        (WTF::RawNode>::remove):
+        (WTF::BasicRawSentinelNode<T>::remove): Deleted.
+        (WTF::BasicRawSentinelNode<T>::prepend): Deleted.
+        (WTF::BasicRawSentinelNode<T>::append): Deleted.
+        * wtf/StdLibExtras.h:
+        (WTF::roundUpToMultipleOfImpl):
+        (WTF::roundUpToMultipleOfImpl0): Deleted.
+        * wtf/UnalignedAccess.h:
+        (WTF::unalignedLoad):
+        (WTF::unalignedStore):
+
+2019-05-10  Saam barati  <sbarati@apple.com>
+
+        Bag's move operator= leaks memory
+        https://bugs.webkit.org/show_bug.cgi?id=197757
+
+        Reviewed by Keith Miller.
+
+        It was unused. So I'm just removing it. We can implement it properly
+        if we ever need it.
+
+        * wtf/Bag.h:
+        (WTF::Bag::operator=): Deleted.
+
+2019-05-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] storage/indexeddb tests are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=196289
+
+        Reviewed by Alex Christensen.
+
+        * wtf/FileSystem.h: Added hardLink.
+        * wtf/glib/FileSystemGlib.cpp:
+        (WTF::FileSystemImpl::hardLink):
+        (WTF::FileSystemImpl::hardLinkOrCopyFile):
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::hardLink):
+        (WTF::FileSystemImpl::hardLinkOrCopyFile):
+        * wtf/win/FileSystemWin.cpp:
+        (WTF::FileSystemImpl::hardLink):
+        (WTF::FileSystemImpl::hardLinkOrCopyFile):
+        Added hardLink. Let hardLinkOrCopyFile use the hardLink.
+
+2019-05-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Remove "private:" from Noncopyable and Nonmovable macros
+        https://bugs.webkit.org/show_bug.cgi?id=197767
+
+        Reviewed by Saam Barati.
+
+        We no longer need "private:".
+
+        * wtf/Noncopyable.h:
+        * wtf/Nonmovable.h:
+
 2019-05-08  Zan Dobersek  <zdobersek@igalia.com>
 
         [GLib] Rework WPE RunLoopSourcePriority values

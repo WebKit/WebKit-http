@@ -40,6 +40,8 @@
 #include "B3Procedure.h"
 #include "B3ProcedureInlines.h"
 #include "BinarySwitch.h"
+#include "DisallowMacroScratchRegisterUsage.h"
+#include "JSCInlines.h"
 #include "ScratchRegisterAllocator.h"
 #include "VirtualRegister.h"
 #include "WasmCallingConvention.h"
@@ -229,6 +231,8 @@ public:
     ExpressionType addConstant(Type, uint64_t);
     ExpressionType addConstant(BasicBlock*, Type, uint64_t);
 
+    PartialResult WARN_UNUSED_RETURN addRefIsNull(ExpressionType& value, ExpressionType& result);
+
     // Locals
     PartialResult WARN_UNUSED_RETURN getLocal(uint32_t index, ExpressionType& result);
     PartialResult WARN_UNUSED_RETURN setLocal(uint32_t index, ExpressionType value);
@@ -359,6 +363,7 @@ private:
         case Type::I32:
             return g32();
         case Type::I64:
+        case Type::Anyref:
             return g64();
         case Type::F32:
             return f32();
@@ -785,6 +790,7 @@ AirIRGenerator::AirIRGenerator(const ModuleInformation& info, B3::Procedure& pro
             append(Move32, arg, m_locals[i]);
             break;
         case Type::I64:
+        case Type::Anyref:
             append(Move, arg, m_locals[i]);
             break;
         case Type::F32:
@@ -822,6 +828,8 @@ void AirIRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit resto
         RegisterSet clobbers;
         clobbers.set(pinnedRegs->baseMemoryPointer);
         clobbers.set(pinnedRegs->sizeRegister);
+        if (!isARM64())
+            clobbers.set(RegisterSet::macroScratchRegisters());
 
         auto* patchpoint = addPatchpoint(B3::Void);
         B3::Effects effects = B3::Effects::none();
@@ -829,13 +837,18 @@ void AirIRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit resto
         effects.reads = B3::HeapRange::top();
         patchpoint->effects = effects;
         patchpoint->clobber(clobbers);
+        patchpoint->numGPScratchRegisters = Gigacage::isEnabled(Gigacage::Primitive) ? 1 : 0;
 
         patchpoint->setGenerator([pinnedRegs] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
+            RELEASE_ASSERT(!Gigacage::isEnabled(Gigacage::Primitive) || !isARM64());
+            AllowMacroScratchRegisterUsageIf allowScratch(jit, !isARM64());
+            GPRReg baseMemory = pinnedRegs->baseMemoryPointer;
+            GPRReg scratchOrSize = Gigacage::isEnabled(Gigacage::Primitive) ? params.gpScratch(0) : pinnedRegs->sizeRegister;
+
             jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemorySize()), pinnedRegs->sizeRegister);
-            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemory()), pinnedRegs->baseMemoryPointer);
-#if CPU(ARM64E)
-            jit.untagArrayPtr(pinnedRegs->sizeRegister, pinnedRegs->baseMemoryPointer);
-#endif
+            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemory()), baseMemory);
+
+            jit.cageConditionally(Gigacage::Primitive, baseMemory, scratchOrSize);
         });
 
         emitPatchpoint(block, patchpoint, Tmp(), instance);
@@ -894,6 +907,7 @@ auto AirIRGenerator::addConstant(BasicBlock* block, Type type, uint64_t value) -
     switch (type) {
     case Type::I32:
     case Type::I64:
+    case Type::Anyref:
         append(block, Move, Arg::bigImm(value), result);
         break;
     case Type::F32:
@@ -914,6 +928,18 @@ auto AirIRGenerator::addConstant(BasicBlock* block, Type type, uint64_t value) -
 auto AirIRGenerator::addArguments(const Signature& signature) -> PartialResult
 {
     RELEASE_ASSERT(m_locals.size() == signature.argumentCount()); // We handle arguments in the prologue
+    return { };
+}
+
+auto AirIRGenerator::addRefIsNull(ExpressionType& value, ExpressionType& result) -> PartialResult
+{
+    ASSERT(value.tmp());
+    result = tmpForType(Type::I32);
+    auto tmp = g64();
+
+    append(Move, Arg::bigImm(JSValue::encode(jsNull())), tmp);
+    append(Compare64, Arg::relCond(MacroAssembler::Equal), value, tmp, result);
+
     return { };
 }
 
@@ -1501,6 +1527,7 @@ auto AirIRGenerator::addReturn(const ControlData& data, const ExpressionList& re
             append(Ret32, returnValueGPR);
             break;
         case Type::I64:
+        case Type::Anyref:
             append(Move, returnValues[0], returnValueGPR);
             append(Ret64, returnValueGPR);
             break;
@@ -1844,6 +1871,8 @@ auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<Expressi
         // FIXME: We shouldn't have to do this: https://bugs.webkit.org/show_bug.cgi?id=172181
         patchpoint->clobber(PinnedRegisterInfo::get().toSave(MemoryMode::BoundsChecking));
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        patchpoint->numGPScratchRegisters = Gigacage::isEnabled(Gigacage::Primitive) ? 1 : 0;
+
         patchpoint->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
             AllowMacroScratchRegisterUsage allowScratch(jit);
             GPRReg newContextInstance = params[0].gpr();
@@ -1857,11 +1886,12 @@ auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<Expressi
             // FIXME: We should support more than one memory size register
             //   see: https://bugs.webkit.org/show_bug.cgi?id=162952
             ASSERT(pinnedRegs.sizeRegister != newContextInstance);
+            GPRReg scratchOrSize = Gigacage::isEnabled(Gigacage::Primitive) ? params.gpScratch(0) : pinnedRegs.sizeRegister;
+
             jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemorySize()), pinnedRegs.sizeRegister); // Memory size.
             jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemory()), baseMemory); // Memory::void*.
-#if CPU(ARM64E)
-            jit.untagArrayPtr(pinnedRegs.sizeRegister, baseMemory);
-#endif
+
+            jit.cageConditionally(Gigacage::Primitive, baseMemory, scratchOrSize);
         });
 
         emitPatchpoint(doContextSwitch, patchpoint, Tmp(), newContextInstance, instanceValue());

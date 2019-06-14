@@ -200,13 +200,12 @@ static bool defaultShouldDecidePolicyBeforeLoadingQuickLookPreview()
 #endif
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAll;
     _ignoresViewportScaleLimits = NO;
-    _legacyEncryptedMediaAPIEnabled = NO;
 #else
     _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     _mediaDataLoadsAutomatically = YES;
     _userInterfaceDirectionPolicy = WKUserInterfaceDirectionPolicyContent;
-    _legacyEncryptedMediaAPIEnabled = YES;
 #endif
+    _legacyEncryptedMediaAPIEnabled = YES;
     _mainContentUserGestureOverrideEnabled = NO;
     _invisibleAutoplayNotPermitted = NO;
     _attachmentElementEnabled = NO;
@@ -769,6 +768,16 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 - (void)_setShouldDecidePolicyBeforeLoadingQuickLookPreview:(BOOL)shouldDecide
 {
     _shouldDecidePolicyBeforeLoadingQuickLookPreview = shouldDecide;
+}
+
+- (void)_setCanShowWhileLocked:(BOOL)value
+{
+    _pageConfiguration->setCanShowWhileLocked(value);
+}
+
+- (BOOL)_canShowWhileLocked
+{
+    return _pageConfiguration->canShowWhileLocked();
 }
 
 #endif // PLATFORM(IOS_FAMILY)

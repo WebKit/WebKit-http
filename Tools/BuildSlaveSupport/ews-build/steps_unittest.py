@@ -40,8 +40,8 @@ from steps import (AnalyzeAPITestsResults, ApplyPatch, ArchiveBuiltProduct, Arch
                    DownloadBuiltProduct, ExtractBuiltProduct, ExtractTestResults, KillOldProcesses,
                    PrintConfiguration, ReRunAPITests, ReRunJavaScriptCoreTests, RunAPITests, RunAPITestsWithoutPatch,
                    RunBindingsTests, RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests, RunWebKitPerlTests,
-                   RunWebKitPyTests, RunWebKitTests, TestWithFailureCount, Trigger, UnApplyPatchIfRequired, UploadBuiltProduct,
-                   UploadTestResults, ValidatePatch)
+                   RunWebKitPyTests, RunWebKitTests, TestWithFailureCount, Trigger, TransferToS3, UnApplyPatchIfRequired,
+                   UploadBuiltProduct, UploadTestResults, ValidatePatch)
 
 # Workaround for https://github.com/buildbot/buildbot/issues/4669
 from buildbot.test.fake.fakebuild import FakeBuild
@@ -318,7 +318,7 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         return self.runStep()
 
 
-class TestunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
+class TestRunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
         self.longMessage = True
         return self.setUpBuildStep()
@@ -1007,14 +1007,13 @@ class TestDownloadBuiltProduct(BuildStepMixinAdditions, unittest.TestCase):
 
     def test_success(self):
         self.setupStep(DownloadBuiltProduct())
-        self.setProperty('platform', 'ios')
         self.setProperty('fullPlatform', 'ios-simulator-12')
         self.setProperty('configuration', 'release')
         self.setProperty('architecture', 'x86_64')
         self.setProperty('patch_id', '1234')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['python', 'Tools/BuildSlaveSupport/download-built-product', '--platform=ios',  '--release', 'https://ews-build.webkit.org/archives/ios-simulator-12-x86_64-release/1234.zip'],
+                        command=['python', 'Tools/BuildSlaveSupport/download-built-product', '--release', 'https://s3-us-west-2.amazonaws.com/ews-archives.webkit.org/ios-simulator-12-x86_64-release/1234.zip'],
                         )
             + 0,
         )
@@ -1023,19 +1022,18 @@ class TestDownloadBuiltProduct(BuildStepMixinAdditions, unittest.TestCase):
 
     def test_failure(self):
         self.setupStep(DownloadBuiltProduct())
-        self.setProperty('platform', 'mac')
         self.setProperty('fullPlatform', 'mac-sierra')
         self.setProperty('configuration', 'debug')
         self.setProperty('architecture', 'x86_64')
         self.setProperty('patch_id', '123456')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['python', 'Tools/BuildSlaveSupport/download-built-product', '--platform=mac',  '--debug', 'https://ews-build.webkit.org/archives/mac-sierra-x86_64-debug/123456.zip'],
+                        command=['python', 'Tools/BuildSlaveSupport/download-built-product', '--debug', 'https://s3-us-west-2.amazonaws.com/ews-archives.webkit.org/mac-sierra-x86_64-debug/123456.zip'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure.')
             + 2,
         )
-        self.expectOutcome(result=FAILURE, state_string='Downloaded built product (failure)')
+        self.expectOutcome(result=FAILURE, state_string='Failed to download built product from S3')
         return self.runStep()
 
 
@@ -1072,6 +1070,51 @@ class TestExtractBuiltProduct(BuildStepMixinAdditions, unittest.TestCase):
             + 2,
         )
         self.expectOutcome(result=FAILURE, state_string='Extracted built product (failure)')
+        return self.runStep()
+
+
+class TestTransferToS3(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(TransferToS3())
+        self.setProperty('fullPlatform', 'mac-highsierra')
+        self.setProperty('configuration', 'release')
+        self.setProperty('architecture', 'x86_64')
+        self.setProperty('patch_id', '1234')
+        self.expectLocalCommands(
+            ExpectMasterShellCommand(command=['python',
+                                              '../Shared/transfer-archive-to-s3',
+                                              '--patch_id', '1234',
+                                              '--identifier', 'mac-highsierra-x86_64-release',
+                                              '--archive', 'public_html/archives/mac-highsierra-x86_64-release/1234.zip',
+                                             ])
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Transferred archive to S3')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(TransferToS3())
+        self.setProperty('fullPlatform', 'ios-simulator-12')
+        self.setProperty('configuration', 'debug')
+        self.setProperty('architecture', 'x86_64')
+        self.setProperty('patch_id', '1234')
+        self.expectLocalCommands(
+            ExpectMasterShellCommand(command=['python',
+                                              '../Shared/transfer-archive-to-s3',
+                                              '--patch_id', '1234',
+                                              '--identifier', 'ios-simulator-12-x86_64-debug',
+                                              '--archive', 'public_html/archives/ios-simulator-12-x86_64-debug/1234.zip',
+                                             ])
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Failed to transfer archive to S3')
         return self.runStep()
 
 
@@ -1234,7 +1277,7 @@ Testing completed, Exit status: 3
         self.expectOutcome(result=FAILURE, state_string='4 api tests failed or timed out (failure)')
         return self.runStep()
 
-    def test_unexpecte_failure(self):
+    def test_unexpected_failure(self):
         self.setupStep(RunAPITests())
         self.setProperty('fullPlatform', 'mac-mojave')
         self.setProperty('platform', 'mac')

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SecItemResponseData_h
-#define SecItemResponseData_h
+#pragma once
 
 #include <wtf/RetainPtr.h>
 
@@ -51,5 +50,3 @@ private:
 };
     
 } // namespace WebKit
-
-#endif // SecItemResponseData_h

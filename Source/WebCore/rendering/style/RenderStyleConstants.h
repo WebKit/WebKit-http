@@ -533,7 +533,8 @@ enum class LineBreak : uint8_t {
     Loose,
     Normal,
     Strict,
-    AfterWhiteSpace
+    AfterWhiteSpace,
+    Anywhere
 };
 
 enum class Resize : uint8_t {
@@ -875,6 +876,7 @@ enum class DisplayType : uint8_t {
     Contents,
     Grid,
     InlineGrid,
+    FlowRoot,
     None
 };
 

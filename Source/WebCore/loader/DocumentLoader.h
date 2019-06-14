@@ -76,10 +76,10 @@ class ArchiveResourceCollection;
 class CachedRawResource;
 class CachedResourceLoader;
 class ContentFilter;
+struct CustomHeaderFields;
 class FormState;
 class Frame;
 class FrameLoader;
-class HTTPHeaderField;
 class IconLoader;
 class Page;
 class PreviewConverter;
@@ -129,6 +129,12 @@ enum class SimulatedMouseEventsDispatchPolicy : uint8_t {
     Default,
     Allow,
     Deny,
+};
+
+enum class LegacyOverflowScrollingTouchPolicy : uint8_t {
+    Default,
+    Disable,
+    Enable,
 };
 
 class DocumentLoader
@@ -313,6 +319,9 @@ public:
     SimulatedMouseEventsDispatchPolicy simulatedMouseEventsDispatchPolicy() const { return m_simulatedMouseEventsDispatchPolicy; }
     void setSimulatedMouseEventsDispatchPolicy(SimulatedMouseEventsDispatchPolicy policy) { m_simulatedMouseEventsDispatchPolicy = policy; }
 
+    LegacyOverflowScrollingTouchPolicy legacyOverflowScrollingTouchPolicy() const { return m_legacyOverflowScrollingTouchPolicy; }
+    void setLegacyOverflowScrollingTouchPolicy(LegacyOverflowScrollingTouchPolicy policy) { m_legacyOverflowScrollingTouchPolicy = policy; }
+
     void addSubresourceLoader(ResourceLoader*);
     void removeSubresourceLoader(LoadCompletionType, ResourceLoader*);
     void addPlugInStreamLoader(ResourceLoader&);
@@ -371,8 +380,8 @@ public:
     void finishedLoadingApplicationManifest(ApplicationManifestLoader&);
 #endif
 
-    WEBCORE_EXPORT void setCustomHeaderFields(Vector<HTTPHeaderField>&& fields);
-    const Vector<HTTPHeaderField>& customHeaderFields() { return m_customHeaderFields; }
+    WEBCORE_EXPORT void setCustomHeaderFields(Vector<CustomHeaderFields>&&);
+    const Vector<CustomHeaderFields>& customHeaderFields() const { return m_customHeaderFields; }
 
     void setAllowsWebArchiveForMainFrame(bool allowsWebArchiveForMainFrame) { m_allowsWebArchiveForMainFrame = allowsWebArchiveForMainFrame; }
     bool allowsWebArchiveForMainFrame() const { return m_allowsWebArchiveForMainFrame; }
@@ -564,7 +573,7 @@ private:
     HashMap<std::unique_ptr<ApplicationManifestLoader>, uint64_t> m_applicationManifestLoaders;
 #endif
 
-    Vector<HTTPHeaderField> m_customHeaderFields;
+    Vector<CustomHeaderFields> m_customHeaderFields;
     
     bool m_subresourceLoadersArePageCacheAcceptable { false };
     ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy { ShouldOpenExternalURLsPolicy::ShouldNotAllow };
@@ -596,6 +605,7 @@ private:
     MetaViewportPolicy m_metaViewportPolicy { MetaViewportPolicy::Default };
     MediaSourcePolicy m_mediaSourcePolicy { MediaSourcePolicy::Default };
     SimulatedMouseEventsDispatchPolicy m_simulatedMouseEventsDispatchPolicy { SimulatedMouseEventsDispatchPolicy::Default };
+    LegacyOverflowScrollingTouchPolicy m_legacyOverflowScrollingTouchPolicy { LegacyOverflowScrollingTouchPolicy::Default };
 
 #if ENABLE(SERVICE_WORKER)
     Optional<ServiceWorkerRegistrationData> m_serviceWorkerRegistrationData;

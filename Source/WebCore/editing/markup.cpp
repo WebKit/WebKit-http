@@ -38,6 +38,7 @@
 #include "ChildListMutationScope.h"
 #include "Comment.h"
 #include "ComposedTreeIterator.h"
+#include "CustomHeaderFields.h"
 #include "DocumentFragment.h"
 #include "DocumentLoader.h"
 #include "DocumentType.h"
@@ -1226,10 +1227,14 @@ RefPtr<DocumentFragment> createFragmentForTransformToFragment(Document& outputDo
     return fragment;
 }
 
-Ref<DocumentFragment> createFragmentForImageAndURL(Document& document, const String& url)
+Ref<DocumentFragment> createFragmentForImageAndURL(Document& document, const String& url, Optional<FloatSize> preferredSize)
 {
     auto imageElement = HTMLImageElement::create(document);
     imageElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, url);
+    if (preferredSize) {
+        imageElement->setAttributeWithoutSynchronization(HTMLNames::widthAttr, AtomicString::number(preferredSize->width()));
+        imageElement->setAttributeWithoutSynchronization(HTMLNames::heightAttr, AtomicString::number(preferredSize->height()));
+    }
 
     auto fragment = document.createDocumentFragment();
     fragment->appendChild(imageElement);

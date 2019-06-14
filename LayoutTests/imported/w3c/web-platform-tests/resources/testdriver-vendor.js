@@ -46,7 +46,7 @@ function dispatchMouseActions(actions)
     });
 }
 
-function dispatchTouchActions(actions)
+function dispatchTouchActions(actions, options = { insertPauseAfterPointerUp: false })
 {
     if (!window.testRunner || typeof window.testRunner.runUIScript !== "function")
         return Promise.reject(new Error("window.testRunner.runUIScript() is undefined."));
@@ -54,11 +54,14 @@ function dispatchTouchActions(actions)
     let x = 0;
     let y = 0;
     let timeOffset = 0;
+    let pointerDown = false;
+    let id = 1;
 
-    const events = actions.map(action => {
+    const events = [];
+    for (let action of actions) {
         const touch = {
             inputType : "finger",
-            id : 1,
+            id,
             x : action.x,
             y : action.y,
             pressure : 0
@@ -83,16 +86,28 @@ function dispatchTouchActions(actions)
             }
             break;
         case "pointerDown":
+            pointerDown = true;
             touch.phase = "began";
+            if (action.x === undefined)
+                touch.x = x;
+            if (action.y === undefined)
+                touch.y = y;
             break;
         case "pointerUp":
+            pointerDown = false;
             touch.phase = "ended";
             touch.x = x;
             touch.y = y;
+            id++;
+            // We need to add a pause after a pointer up to ensure that a subsequent tap may be recognized as such.
+            if (options.insertPauseAfterPointerUp)
+                timeOffsetIncrease = 0.5;
             break;
         case "pause":
             timeOffsetIncrease = action.duration / 1000;
             touch.phase = "stationary";
+            if (!pointerDown)
+                id++;
             break;
         default:
             return Promise.reject(new Error(`Unknown action type "${action.type}".`));
@@ -100,10 +115,14 @@ function dispatchTouchActions(actions)
 
         x = touch.x;
         y = touch.y;
+
+        if (!pointerDown && touch.phase == "moved")
+            continue;
+
         timeOffset += timeOffsetIncrease;
 
-        return command;
-    });
+        events.push(command);
+    }
 
     const stream = JSON.stringify({ events });
     logDebug(() => stream);
@@ -157,8 +176,10 @@ window.test_driver_internal.action_sequence = function(sources)
 
     logDebug(() => JSON.stringify(pointerSource));
 
-    if (pointerType === "mouse")
-        return dispatchMouseActions(pointerSource.actions);
     if (pointerType === "touch")
         return dispatchTouchActions(pointerSource.actions);
+    if ("createTouch" in document)
+        return dispatchTouchActions(pointerSource.actions, { insertPauseAfterPointerUp: true });
+    if (pointerType === "mouse")
+        return dispatchMouseActions(pointerSource.actions);
 };

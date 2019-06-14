@@ -428,7 +428,7 @@ public:
     virtual String plugInExtraStyleSheet() const { return String(); }
     virtual String plugInExtraScript() const { return String(); }
 
-    virtual void didAssociateFormControls(const Vector<RefPtr<Element>>&) { };
+    virtual void didAssociateFormControls(const Vector<RefPtr<Element>>&, Frame&) { };
     virtual bool shouldNotifyOnFormChanges() { return false; };
 
     virtual void didAddHeaderLayer(GraphicsLayer&) { }
@@ -506,6 +506,9 @@ public:
     virtual void didDestroyEditableImage(GraphicsLayer::EmbeddedViewID) { }
 
     virtual void configureLoggingChannel(const String&, WTFLogChannelState, WTFLogLevel) { }
+
+    virtual bool userIsInteracting() const { return false; }
+    virtual void setUserIsInteracting(bool) { }
 
 protected:
     virtual ~ChromeClient() = default;

@@ -58,6 +58,21 @@ WI.Setting = class Setting extends WI.Object
         return value;
     }
 
+    static reset()
+    {
+        let prefix = Setting._localStorageKey("");
+
+        let keysToRemove = [];
+        for (let i = 0; i < window.localStorage.length; ++i) {
+            let key = window.localStorage.key(i);
+            if (key.startsWith(prefix))
+                keysToRemove.push(key);
+        }
+
+        for (let key of keysToRemove)
+            window.localStorage.removeItem(key);
+    }
+
     static _localStorageKey(name)
     {
         let inspectionLevel = InspectorFrontendHost ? InspectorFrontendHost.inspectionLevel() : 1;
@@ -151,6 +166,7 @@ WI.settings = {
     showJavaScriptTypeInformation: new WI.Setting("show-javascript-type-information", false),
     showPaintRects: new WI.Setting("show-paint-rects", false),
     showRulers: new WI.Setting("show-rulers", false),
+    showRulersDuringElementSelection: new WI.Setting("show-rulers-during-element-selection", true),
     showScopeChainOnPause: new WI.Setting("show-scope-chain-sidebar", true),
     showShadowDOM: new WI.Setting("show-shadow-dom", false),
     showWhitespaceCharacters: new WI.Setting("show-whitespace-characters", false),

@@ -25,13 +25,11 @@
 
 #pragma once
 
-#if HAVE(ACCESSIBILITY)
-
 #include "AccessibilityUIElement.h"
 #include "JSWrappable.h"
 #include <JavaScriptCore/JSObjectRef.h>
 #include <wtf/Platform.h>
-#if PLATFORM(GTK)
+#if USE(ATK)
 #include "AccessibilityNotificationHandlerAtk.h"
 #endif
 
@@ -52,8 +50,10 @@ public:
     JSRetainPtr<JSStringRef> platformName();
 
     // Controller Methods - platform-independent implementations.
+#if HAVE(ACCESSIBILITY)
     Ref<AccessibilityUIElement> rootElement();
     Ref<AccessibilityUIElement> focusedElement();
+#endif
     RefPtr<AccessibilityUIElement> elementAtPoint(int x, int y);
     RefPtr<AccessibilityUIElement> accessibleElementById(JSStringRef idAttribute);
 
@@ -68,16 +68,19 @@ public:
 
     void resetToConsistentState();
 
+#if !HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(WPE))
+    RefPtr<AccessibilityUIElement> rootElement() { return nullptr; }
+    RefPtr<AccessibilityUIElement> focusedElement() { return nullptr; }
+#endif
+
 private:
     AccessibilityController();
 
 #if PLATFORM(COCOA)
     RetainPtr<NotificationHandler> m_globalNotificationHandler;
-#elif PLATFORM(GTK) || PLATFORM(EFL)
+#elif USE(ATK)
     RefPtr<AccessibilityNotificationHandler> m_globalNotificationHandler;
 #endif
 };
 
 } // namespace WTR
-
-#endif // HAVE(ACCESSIBILITY)

@@ -180,6 +180,7 @@ UIProcess/API/glib/WebKitVersion.cpp @no-unify
 UIProcess/API/glib/WebKitWebContext.cpp @no-unify
 UIProcess/API/glib/WebKitWebResource.cpp @no-unify
 UIProcess/API/glib/WebKitWebView.cpp @no-unify
+UIProcess/API/glib/WebKitWebViewAccessible.cpp @no-unify
 UIProcess/API/glib/WebKitWebViewSessionState.cpp @no-unify
 UIProcess/API/glib/WebKitWebsiteData.cpp @no-unify
 UIProcess/API/glib/WebKitWebsiteDataManager.cpp @no-unify
@@ -189,6 +190,7 @@ UIProcess/API/gtk/PageClientImpl.cpp @no-unify
 UIProcess/API/gtk/WebKitAuthenticationDialog.cpp @no-unify
 UIProcess/API/gtk/WebKitColorChooser.cpp @no-unify
 UIProcess/API/gtk/WebKitColorChooserRequest.cpp @no-unify
+UIProcess/API/gtk/WebKitEmojiChooser.cpp @no-unify
 UIProcess/API/gtk/WebKitOptionMenu.cpp @no-unify
 UIProcess/API/gtk/WebKitOptionMenuItem.cpp @no-unify
 UIProcess/API/gtk/WebKitPopupMenu.cpp @no-unify
@@ -199,7 +201,6 @@ UIProcess/API/gtk/WebKitScriptDialogGtk.cpp @no-unify
 UIProcess/API/gtk/WebKitScriptDialogImpl.cpp @no-unify
 UIProcess/API/gtk/WebKitWebInspector.cpp @no-unify
 UIProcess/API/gtk/WebKitWebViewBase.cpp @no-unify
-UIProcess/API/gtk/WebKitWebViewBaseAccessible.cpp @no-unify
 UIProcess/API/gtk/WebKitWebViewDialog.cpp @no-unify
 UIProcess/API/gtk/WebKitWebViewGtk.cpp @no-unify
 
@@ -223,8 +224,6 @@ UIProcess/Plugins/gtk/PluginInfoCache.cpp @no-unify
 
 UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp @no-unify
 UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp @no-unify
-
-UIProcess/WebStorage/StorageManager.cpp
 
 UIProcess/WebsiteData/soup/WebsiteDataStoreSoup.cpp
 UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp

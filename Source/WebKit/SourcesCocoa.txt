@@ -42,6 +42,8 @@ NetworkProcess/Downloads/cocoa/DownloadCocoa.mm
 NetworkProcess/EntryPoint/Cocoa/Daemon/DaemonEntryPoint.mm
 NetworkProcess/EntryPoint/Cocoa/XPCService/NetworkServiceEntryPoint.mm
 
+NetworkProcess/WebStorage/ios/LocalStorageDatabaseTrackerIOS.mm
+
 NetworkProcess/ios/NetworkConnectionToWebProcessIOS.mm
 NetworkProcess/ios/NetworkProcessIOS.mm
 
@@ -111,7 +113,6 @@ Shared/API/Cocoa/_WKRemoteObjectRegistry.mm
 Shared/API/Cocoa/RemoteObjectInvocation.mm
 Shared/API/Cocoa/RemoteObjectRegistry.mm
 Shared/API/Cocoa/WKBrowsingContextHandle.mm
-Shared/API/Cocoa/WKMain.mm
 Shared/API/Cocoa/WKRemoteObject.mm
 Shared/API/Cocoa/WKRemoteObjectCoder.mm
 
@@ -242,6 +243,7 @@ UIProcess/API/Cocoa/_WKAutomationSession.mm
 UIProcess/API/Cocoa/_WKAutomationSessionConfiguration.mm
 UIProcess/API/Cocoa/_WKContentRuleListAction.mm
 UIProcess/API/Cocoa/_WKContextMenuElementInfo.mm
+UIProcess/API/Cocoa/_WKCustomHeaderFields.mm @no-unify
 UIProcess/API/Cocoa/_WKDownload.mm
 UIProcess/API/Cocoa/_WKElementAction.mm
 UIProcess/API/Cocoa/_WKErrorRecoveryAttempting.mm
@@ -487,10 +489,6 @@ UIProcess/WebAuthentication/Mock/MockLocalConnection.mm
 UIProcess/WebAuthentication/Mock/MockLocalService.mm
 
 UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm
-
-UIProcess/WebStorage/StorageManager.cpp
-
-UIProcess/WebStorage/ios/LocalStorageDatabaseTrackerIOS.mm
 
 WebProcess/API/Cocoa/WKWebProcess.cpp
 

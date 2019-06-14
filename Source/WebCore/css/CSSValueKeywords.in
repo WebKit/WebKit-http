@@ -454,6 +454,7 @@ inline-flex
 contents
 grid
 inline-grid
+flow-root
 //none
 //
 // CSS_PROP_CURSOR:
@@ -789,6 +790,7 @@ loose
 // normal
 strict
 after-white-space
+anywhere
 
 // -webkit-appearance
 // The order here must match the order in the ControlPart enum in ThemeTypes.h.

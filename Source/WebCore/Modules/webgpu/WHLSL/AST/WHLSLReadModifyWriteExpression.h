@@ -41,11 +41,11 @@ namespace WHLSL {
 namespace AST {
 
 /*
- *  1. Evaluate m_lValue
+ *  1. Evaluate m_leftValue
  *  2. Assign the result to m_oldValue
  *  3. Evaluate m_newValueExpression
  *  4. Assign the result to m_newValue
- *  5. Assign the result to m_lValue
+ *  5. Assign the result to m_leftValue
  *  6. Evaluate m_resultExpression
  *  7. Return the result
  */
@@ -73,38 +73,59 @@ public:
 
     UniqueRef<VariableReference> oldVariableReference()
     {
-        // The only reason we don't get use-after-frees is the fact that every instance of ReadModifyWriteExpression is allocated on the heap.
         return makeUniqueRef<VariableReference>(VariableReference::wrap(m_oldValue));
     }
 
     UniqueRef<VariableReference> newVariableReference()
     {
-        // The only reason we don't get use-after-frees is the fact that every instance of ReadModifyWriteExpression is allocated on the heap.
         return makeUniqueRef<VariableReference>(VariableReference::wrap(m_newValue));
     }
 
     bool isReadModifyWriteExpression() const override { return true; }
 
-    Expression& lValue() { return m_lValue; }
+    Expression& leftValue() { return m_leftValue; }
     VariableDeclaration& oldValue() { return m_oldValue; }
     VariableDeclaration& newValue() { return m_newValue; }
-    Expression* newValueExpression() { return m_newValueExpression ? &*m_newValueExpression : nullptr; }
-    Expression* resultExpression() { return m_resultExpression ? &*m_resultExpression : nullptr; }
+    Expression& newValueExpression()
+    {
+        ASSERT(m_newValueExpression);
+        return *m_newValueExpression;
+    }
+    Expression& resultExpression()
+    {
+        ASSERT(m_resultExpression);
+        return *m_resultExpression;
+    }
+    UniqueRef<Expression> takeLeftValue() { return WTFMove(m_leftValue); }
+    UniqueRef<VariableDeclaration> takeOldValue() { return WTFMove(m_oldValue); }
+    UniqueRef<VariableDeclaration> takeNewValue() { return WTFMove(m_newValue); }
+    UniqueRef<Expression> takeNewValueExpression()
+    {
+        auto result = WTFMove(m_newValueExpression.value());
+        m_newValueExpression.reset();
+        return result;
+    }
+    UniqueRef<Expression> takeResultExpression()
+    {
+        auto result = WTFMove(m_resultExpression.value());
+        m_resultExpression.reset();
+        return result;
+    }
 
 private:
     template<class U, class... Args> friend UniqueRef<U> WTF::makeUniqueRef(Args&&...);
 
-    ReadModifyWriteExpression(Lexer::Token&& origin, UniqueRef<Expression> lValue)
+    ReadModifyWriteExpression(Lexer::Token&& origin, UniqueRef<Expression> leftValue)
         : Expression(Lexer::Token(origin))
-        , m_lValue(WTFMove(lValue))
-        , m_oldValue(Lexer::Token(origin), Qualifiers(), WTF::nullopt, String(), WTF::nullopt, WTF::nullopt)
-        , m_newValue(WTFMove(origin), Qualifiers(), WTF::nullopt, String(), WTF::nullopt, WTF::nullopt)
+        , m_leftValue(WTFMove(leftValue))
+        , m_oldValue(makeUniqueRef<VariableDeclaration>(Lexer::Token(origin), Qualifiers(), WTF::nullopt, String(), WTF::nullopt, WTF::nullopt))
+        , m_newValue(makeUniqueRef<VariableDeclaration>(WTFMove(origin), Qualifiers(), WTF::nullopt, String(), WTF::nullopt, WTF::nullopt))
     {
     }
 
-    UniqueRef<Expression> m_lValue;
-    VariableDeclaration m_oldValue;
-    VariableDeclaration m_newValue;
+    UniqueRef<Expression> m_leftValue;
+    UniqueRef<VariableDeclaration> m_oldValue;
+    UniqueRef<VariableDeclaration> m_newValue;
     Optional<UniqueRef<Expression>> m_newValueExpression;
     Optional<UniqueRef<Expression>> m_resultExpression;
 };

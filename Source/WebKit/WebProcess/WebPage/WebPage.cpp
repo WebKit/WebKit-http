@@ -213,6 +213,7 @@
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
+#include <WebCore/SWClientConnection.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SerializedScriptValue.h>
@@ -414,6 +415,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_overrideScreenSize(parameters.overrideScreenSize)
     , m_deviceOrientation(parameters.deviceOrientation)
     , m_keyboardIsAttached(parameters.keyboardIsAttached)
+    , m_canShowWhileLocked(parameters.canShowWhileLocked)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
@@ -676,6 +678,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if USE(AUDIO_SESSION)
     PlatformMediaSessionManager::setShouldDeactivateAudioSession(true);
 #endif
+
+    updateThrottleState();
 }
 
 #if ENABLE(WEB_RTC)
@@ -762,17 +766,31 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 
 void WebPage::updateThrottleState()
 {
-    bool isActive = m_activityState.containsAny({ ActivityState::IsLoading, ActivityState::IsAudible, ActivityState::IsCapturingMedia, ActivityState::WindowIsActive });
-    bool isVisuallyIdle = m_activityState.contains(ActivityState::IsVisuallyIdle);
-
-    bool shouldAllowAppNap = m_isAppNapEnabled && !isActive && isVisuallyIdle;
+    bool isThrottleable = this->isThrottleable();
 
     // The UserActivity prevents App Nap. So if we want to allow App Nap of the page, stop the activity.
     // If the page should not be app nap'd, start it.
-    if (shouldAllowAppNap)
+    if (isThrottleable)
         m_userActivity.stop();
     else
         m_userActivity.start();
+
+#if ENABLE(SERVICE_WORKER)
+    RunLoop::main().dispatch([isThrottleable, sessionID = sessionID()] {
+        if (auto* connection = ServiceWorkerProvider::singleton().existingServiceWorkerConnectionForSession(sessionID)) {
+            if (isThrottleable != connection->isThrottleable())
+                connection->updateThrottleState();
+        }
+    });
+#endif
+}
+
+bool WebPage::isThrottleable() const
+{
+    bool isActive = m_activityState.containsAny({ ActivityState::IsLoading, ActivityState::IsAudible, ActivityState::IsCapturingMedia, ActivityState::WindowIsActive });
+    bool isVisuallyIdle = m_activityState.contains(ActivityState::IsVisuallyIdle);
+
+    return m_isAppNapEnabled && !isActive && isVisuallyIdle;
 }
 
 WebPage::~WebPage()
@@ -1387,6 +1405,7 @@ void WebPage::close()
     m_mainFrame->coreFrame()->loader().detachFromParent();
     m_drawingArea = nullptr;
 
+    auto sessionID = this->sessionID();
     DeferredPageDestructor::createDeferredPageDestructor(WTFMove(m_page), this);
 
     bool isRunningModal = m_isRunningModal;
@@ -1414,7 +1433,7 @@ void WebPage::close()
 #endif
 
     // The WebPage can be destroyed by this call.
-    WebProcess::singleton().removeWebPage(m_pageID);
+    WebProcess::singleton().removeWebPage(sessionID, m_pageID);
 
     WebProcess::singleton().updateActivePages();
 
@@ -2934,6 +2953,11 @@ void WebPage::cancelPointer(WebCore::PointerID pointerId, const WebCore::IntPoin
 {
     m_page->pointerCaptureController().cancelPointer(pointerId, documentPoint);
 }
+
+void WebPage::touchWithIdentifierWasRemoved(WebCore::PointerID pointerId)
+{
+    m_page->pointerCaptureController().touchWithIdentifierWasRemoved(pointerId);
+}
 #endif
 
 #if ENABLE(MAC_GESTURE_EVENTS)
@@ -4135,9 +4159,9 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 
 #if ENABLE(MEDIA_STREAM)
 
-void WebPage::userMediaAccessWasGranted(uint64_t userMediaID, WebCore::CaptureDevice&& audioDevice, WebCore::CaptureDevice&& videoDevice, String&& mediaDeviceIdentifierHashSalt)
+void WebPage::userMediaAccessWasGranted(uint64_t userMediaID, WebCore::CaptureDevice&& audioDevice, WebCore::CaptureDevice&& videoDevice, String&& mediaDeviceIdentifierHashSalt, CompletionHandler<void()>&& completionHandler)
 {
-    m_userMediaPermissionRequestManager->userMediaAccessWasGranted(userMediaID, WTFMove(audioDevice), WTFMove(videoDevice), WTFMove(mediaDeviceIdentifierHashSalt));
+    m_userMediaPermissionRequestManager->userMediaAccessWasGranted(userMediaID, WTFMove(audioDevice), WTFMove(videoDevice), WTFMove(mediaDeviceIdentifierHashSalt), WTFMove(completionHandler));
 }
 
 void WebPage::userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String&& invalidConstraint)
@@ -4233,11 +4257,8 @@ void WebPage::failedToShowPopupMenu()
 #if ENABLE(CONTEXT_MENUS)
 void WebPage::didSelectItemFromActiveContextMenu(const WebContextMenuItemData& item)
 {
-    if (!m_contextMenu)
-        return;
-
-    m_contextMenu->itemSelected(item);
-    m_contextMenu = nullptr;
+    if (auto contextMenu = std::exchange(m_contextMenu, nullptr))
+        contextMenu->itemSelected(item);
 }
 #endif
 
@@ -5135,6 +5156,8 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
 
     Ref<Frame> protector(frame);
 
+    UserGestureIndicator gestureIndicator { options.processingUserGesture ? ProcessingUserGesture : NotProcessingUserGesture, frame.document() };
+
     bool replacesText = false;
     if (replacementEditingRange.location != notFound) {
         if (auto replacementRange = EditingRange::toRange(frame, replacementEditingRange, options.editingRangeIsRelativeTo)) {
@@ -5153,6 +5176,11 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
         frame.editor().insertText(text, nullptr, replacesText ? TextEventInputAutocompletion : TextEventInputKeyboard);
     } else
         frame.editor().confirmComposition(text);
+}
+
+void WebPage::hasMarkedText(CompletionHandler<void(bool)>&& completionHandler)
+{
+    completionHandler(m_page->focusController().focusedOrMainFrame().editor().hasComposition());
 }
 
 void WebPage::getMarkedRangeAsync(CallbackID callbackID)
@@ -5740,6 +5768,8 @@ void WebPage::didCommitLoad(WebFrame* frame)
     WebProcess::singleton().updateActivePages();
 
     updateMainFrameScrollOffsetPinning();
+
+    updateMockAccessibilityElementAfterCommittingLoad();
 }
 
 void WebPage::didFinishDocumentLoad(WebFrame& frame)
@@ -5894,9 +5924,9 @@ void WebPage::determinePrimarySnapshottedPlugIn()
             IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollPosition, plugInRectRelativeToView.size());
             HitTestResult hitTestResult(plugInRectRelativeToTopDocument.center());
 
-            if (!mainFrameView->renderView())
+            if (!mainFrame() || !mainFrame()->document())
                 return;
-            mainFrameView->renderView()->hitTest(request, hitTestResult);
+            mainFrame()->document()->hitTest(request, hitTestResult);
 
             RefPtr<Element> element = hitTestResult.targetElement();
             if (!element)
@@ -5905,8 +5935,8 @@ void WebPage::determinePrimarySnapshottedPlugIn()
             IntRect elementRectRelativeToView = element->clientRect();
             IntRect elementRectRelativeToTopDocument(elementRectRelativeToView.location() + scrollPosition, elementRectRelativeToView.size());
             LayoutRect inflatedPluginRect = plugInRectRelativeToTopDocument;
-            LayoutUnit xOffset = (inflatedPluginRect.width() * overlappingImageBoundsScale - inflatedPluginRect.width()) / 2;
-            LayoutUnit yOffset = (inflatedPluginRect.height() * overlappingImageBoundsScale - inflatedPluginRect.height()) / 2;
+            LayoutUnit xOffset { (inflatedPluginRect.width() * overlappingImageBoundsScale - inflatedPluginRect.width()) / 2 };
+            LayoutUnit yOffset { (inflatedPluginRect.height() * overlappingImageBoundsScale - inflatedPluginRect.height()) / 2 };
             inflatedPluginRect.inflateX(xOffset);
             inflatedPluginRect.inflateY(yOffset);
 
@@ -6703,6 +6733,12 @@ void WebPage::configureLoggingChannel(const String& channelName, WTFLogChannelSt
 {
     send(Messages::WebPageProxy::ConfigureLoggingChannel(channelName, state, level));
 }
+
+#if !PLATFORM(COCOA)
+void WebPage::updateMockAccessibilityElementAfterCommittingLoad()
+{
+}
+#endif
 
 } // namespace WebKit
 

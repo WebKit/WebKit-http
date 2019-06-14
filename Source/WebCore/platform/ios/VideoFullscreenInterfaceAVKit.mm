@@ -44,6 +44,7 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 #import <pal/spi/cocoa/AVKitSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/text/CString.h>
@@ -203,7 +204,8 @@ static VideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullScre
 {
     self = [super init];
     if (self) {
-        [self setMasksToBounds:YES];
+        self.masksToBounds = YES;
+        self.allowsHitTesting = NO;
         _videoGravity = AVLayerVideoGravityResizeAspect;
     }
     return self;
@@ -551,6 +553,7 @@ NS_ASSUME_NONNULL_END
 
     _fullscreenInterface = interface;
     _avPlayerViewController = adoptNS([allocAVPlayerViewControllerInstance() initWithPlayerLayerView:interface->playerLayerView()]);
+    _avPlayerViewController.get().modalPresentationStyle = UIModalPresentationOverFullScreen;
 #if PLATFORM(WATCHOS)
     _avPlayerViewController.get().delegate = self;
 #endif

@@ -40,6 +40,7 @@
 #include "ContentSecurityPolicy.h"
 #include "ContentType.h"
 #include "CookieJar.h"
+#include "CustomHeaderFields.h"
 #include "DeprecatedGlobalSettings.h"
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
@@ -656,19 +657,17 @@ HTMLMediaElement::~HTMLMediaElement()
 }
 RefPtr<HTMLMediaElement> HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose purpose)
 {
-    auto allSessions = PlatformMediaSessionManager::sharedManager().currentSessionsMatching([] (const PlatformMediaSession& session) {
-        return is<MediaElementSession>(session);
-    });
-
     Vector<MediaElementSessionInfo> candidateSessions;
     bool atLeastOneNonCandidateMayBeConfusedForMainContent = false;
-    for (auto& session : allSessions) {
-        auto mediaElementSessionInfo = mediaElementSessionInfoForSession(downcast<MediaElementSession>(*session), purpose);
+    PlatformMediaSessionManager::sharedManager().forEachMatchingSession([](auto& session) {
+        return is<MediaElementSession>(session);
+    }, [&](auto& session) {
+        auto mediaElementSessionInfo = mediaElementSessionInfoForSession(downcast<MediaElementSession>(session), purpose);
         if (mediaElementSessionInfo.canShowControlsManager)
             candidateSessions.append(mediaElementSessionInfo);
         else if (mediaSessionMayBeConfusedWithMainContent(mediaElementSessionInfo, purpose))
             atLeastOneNonCandidateMayBeConfusedForMainContent = true;
-    }
+    });
 
     if (!candidateSessions.size())
         return nullptr;
@@ -839,7 +838,7 @@ void HTMLMediaElement::parseAttribute(const QualifiedName& name, const AtomicStr
         setMediaGroup(value);
     else if (name == autoplayAttr) {
         if (processingUserGestureForMedia())
-            removeBehaviorsRestrictionsAfterFirstUserGesture();
+            removeBehaviorRestrictionsAfterFirstUserGesture();
     } else if (name == titleAttr) {
         if (m_mediaSession)
             m_mediaSession->clientCharacteristicsChanged();
@@ -1178,9 +1177,6 @@ void HTMLMediaElement::load()
 
     INFO_LOG(LOGIDENTIFIER);
 
-    if (processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture();
-
     prepareForLoad();
     m_resourceSelectionTaskQueue.enqueueTask([this] {
         prepareToPlay();
@@ -1193,7 +1189,10 @@ void HTMLMediaElement::prepareForLoad()
     // The Media Element Load Algorithm
     // 12 February 2017
 
-    INFO_LOG(LOGIDENTIFIER);
+    ALWAYS_LOG(LOGIDENTIFIER, "gesture = ", processingUserGestureForMedia());
+
+    if (processingUserGestureForMedia())
+        removeBehaviorRestrictionsAfterFirstUserGesture();
 
     // 1 - Abort any already-running instance of the resource selection algorithm for this element.
     // Perform the cleanup required for the resource load algorithm to run.
@@ -1951,7 +1950,7 @@ void HTMLMediaElement::audioTrackEnabledChanged(AudioTrack& track)
     if (m_audioTracks && m_audioTracks->contains(track))
         m_audioTracks->scheduleChangeEvent();
     if (processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
+        removeBehaviorRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
 }
 
 void HTMLMediaElement::textTrackModeChanged(TextTrack& track)
@@ -3515,7 +3514,7 @@ void HTMLMediaElement::play(DOMPromiseDeferred<void>&& promise)
     }
 
     if (processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture();
+        removeBehaviorRestrictionsAfterFirstUserGesture();
 
     m_pendingPlayPromises.append(WTFMove(promise));
     playInternal();
@@ -3532,7 +3531,7 @@ void HTMLMediaElement::play()
         return;
     }
     if (processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture();
+        removeBehaviorRestrictionsAfterFirstUserGesture();
 
     playInternal();
 }
@@ -3633,7 +3632,7 @@ void HTMLMediaElement::pause()
         return;
 
     if (processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::RequireUserGestureToControlControlsManager);
+        removeBehaviorRestrictionsAfterFirstUserGesture(MediaElementSession::RequireUserGestureToControlControlsManager);
 
     pauseInternal();
 }
@@ -3744,7 +3743,7 @@ ExceptionOr<void> HTMLMediaElement::setVolume(double volume)
 
 #if !PLATFORM(IOS_FAMILY)
     if (volume && processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
+        removeBehaviorRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
 
     m_volume = volume;
     m_volumeInitialized = true;
@@ -3783,7 +3782,7 @@ void HTMLMediaElement::setMuted(bool muted)
     bool mutedStateChanged = m_muted != muted;
     if (mutedStateChanged || !m_explicitlyMuted) {
         if (processingUserGestureForMedia()) {
-            removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
+            removeBehaviorRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
 
             if (hasAudio() && muted)
                 userDidInterfereWithAutoplay();
@@ -5878,7 +5877,7 @@ void HTMLMediaElement::webkitShowPlaybackTargetPicker()
 {
     ALWAYS_LOG(LOGIDENTIFIER);
     if (processingUserGestureForMedia())
-        removeBehaviorsRestrictionsAfterFirstUserGesture();
+        removeBehaviorRestrictionsAfterFirstUserGesture();
     m_mediaSession->showPlaybackTargetPicker();
 }
 
@@ -5916,6 +5915,9 @@ void HTMLMediaElement::setIsPlayingToWirelessTarget(bool isPlayingToWirelessTarg
 void HTMLMediaElement::dispatchEvent(Event& event)
 {
     DEBUG_LOG(LOGIDENTIFIER, event.type());
+
+    if (m_removedBehaviorRestrictionsAfterFirstUserGesture && event.type() == eventNames().endedEvent)
+        document().userActivatedMediaFinishedPlaying();
 
     HTMLElement::dispatchEvent(event);
 }
@@ -7207,7 +7209,7 @@ void HTMLMediaElement::requestInstallMissingPlugins(const String& details, const
 }
 #endif
 
-void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::BehaviorRestrictions mask)
+void HTMLMediaElement::removeBehaviorRestrictionsAfterFirstUserGesture(MediaElementSession::BehaviorRestrictions mask)
 {
     MediaElementSession::BehaviorRestrictions restrictionsToRemove = mask &
         (MediaElementSession::RequireUserGestureForLoad
@@ -7221,6 +7223,8 @@ void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture(MediaEle
         | MediaElementSession::RequireUserGestureForVideoDueToLowPowerMode
         | MediaElementSession::InvisibleAutoplayNotPermitted
         | MediaElementSession::RequireUserGestureToControlControlsManager);
+
+    m_removedBehaviorRestrictionsAfterFirstUserGesture = true;
 
     m_mediaSession->removeBehaviorRestriction(restrictionsToRemove);
     document().topDocument().noteUserInteractionWithMediaElement();
@@ -8129,6 +8133,15 @@ void HTMLMediaElement::setInActiveDocument(bool inActiveDocument)
 HTMLMediaElementEnums::BufferingPolicy HTMLMediaElement::bufferingPolicy() const
 {
     return m_bufferingPolicy;    
+}
+
+bool HTMLMediaElement::hasMediaStreamSource() const
+{
+#if ENABLE(MEDIA_STREAM)
+    return hasMediaStreamSrcObject();
+#else
+    return false;
+#endif
 }
 
 }

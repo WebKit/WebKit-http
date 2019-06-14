@@ -92,12 +92,14 @@ struct TestOptions {
     bool shouldHandleRunOpenPanel { true };
     bool shouldPresentPopovers { true };
     bool shouldUseModernCompatibilityMode { false };
+    bool enableAppNap { false };
 
     double contentInsetTop { 0 };
 
     float deviceScaleFactor { 1 };
     std::string applicationManifest;
     std::string jscOptions;
+    std::string additionalSupportedImageTypes;
     HashMap<String, bool> experimentalFeatures;
     HashMap<String, bool> internalDebugFeatures;
 
@@ -132,6 +134,7 @@ struct TestOptions {
             || enableColorFilter != options.enableColorFilter
             || punchOutWhiteBackgroundsInDarkMode != options.punchOutWhiteBackgroundsInDarkMode
             || jscOptions != options.jscOptions
+            || additionalSupportedImageTypes != options.additionalSupportedImageTypes
             || runSingly != options.runSingly
             || checkForWorldLeaks != options.checkForWorldLeaks
             || shouldShowSpellCheckingDots != options.shouldShowSpellCheckingDots
@@ -142,7 +145,8 @@ struct TestOptions {
             || shouldHandleRunOpenPanel != options.shouldHandleRunOpenPanel
             || shouldPresentPopovers != options.shouldPresentPopovers
             || contentInsetTop != options.contentInsetTop
-            || shouldUseModernCompatibilityMode != options.shouldUseModernCompatibilityMode)
+            || shouldUseModernCompatibilityMode != options.shouldUseModernCompatibilityMode
+            || enableAppNap != options.enableAppNap)
             return false;
 
         if (!contextOptions.hasSameInitializationOptions(options.contextOptions))

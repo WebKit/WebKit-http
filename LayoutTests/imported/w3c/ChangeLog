@@ -1,3 +1,221 @@
+2019-05-22  Ali Juma  <ajuma@chromium.org>
+
+        Intersection Observer: bounding client rect is wrong for an inline element
+        https://bugs.webkit.org/show_bug.cgi?id=198009
+
+        Reviewed by Simon Fraser.
+
+        Import test added upstream in
+        https://github.com/web-platform-tests/wpt/commit/cf40205c68f739ae23429439de13d125e3df9f7a
+
+        * web-platform-tests/intersection-observer/inline-with-block-child-client-rect-expected.txt: Added.
+        * web-platform-tests/intersection-observer/inline-with-block-child-client-rect.html: Added.
+
+2019-05-22  Antoine Quint  <graouts@apple.com>
+
+        [iOS] Compatibility mouse events aren't prevented by calling preventDefault() on pointerdown
+        https://bugs.webkit.org/show_bug.cgi?id=198124
+        <rdar://problem/50410863>
+
+        Reviewed by Tim Horton.
+
+        We add basic support to run a test that wasn't specifically designed for a touch-based interaction such that the test
+        at imported/w3c/web-platform-tests/pointerevents/pointerevent_suppress_compat_events_on_click.html may run on iOS. The
+        trick here is to add a pause after a touch ends to avoid the likelihood or two tap gestures triggering a double tap.
+
+        * web-platform-tests/resources/testdriver-vendor.js:
+
+2019-05-22  Youenn Fablet  <youenn@apple.com>
+
+        Implement Feature policy self/none/* parsing
+        https://bugs.webkit.org/show_bug.cgi?id=198078
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/mediacapture-streams/MediaStream-feature-policy-none.https-expected.txt: Added.
+        * web-platform-tests/mediacapture-streams/MediaStream-feature-policy-none.https.html: Added.
+
+2019-05-21  Antoine Quint  <graouts@apple.com>
+
+        [macOS] Compatibility mouse events aren't prevented by calling preventDefault() on pointerdown
+        https://bugs.webkit.org/show_bug.cgi?id=198072
+        <rdar://problem/50983361>
+
+        Reviewed by Dean Jackson.
+
+        Mark the WPT test progression after fixing this bug.
+
+        * web-platform-tests/pointerevents/pointerevent_suppress_compat_events_on_click-expected.txt:
+
+2019-05-21  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Do not dispatch pointermove events when the pointer is not down in WPT testdriver
+        https://bugs.webkit.org/show_bug.cgi?id=198071
+
+        Reviewed by Dean Jackson.
+
+        WPT actions sequences may move the pointer prior to pressing it down. In this case, we need to make sure we don't
+        end up queuing a "moved" touch and instead save the pointer position for when the pointer is pressed. It's important
+        to also generate a different touch id for each time we pause or end a touch sequence. This allows a few more WPT
+        touch tests to pass without any source change in our Pointer Events implementation.
+
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_after_pointercancel_touch-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_pointerout_after_pointercancel_touch-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_touch-action-auto-css_touch-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_highest-parent-none_touch-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y_touch-expected.txt:
+        * web-platform-tests/resources/testdriver-vendor.js:
+
+2019-05-17  Rob Buis  <rbuis@igalia.com>
+
+        Implement imagesrcset and imagesizes attributes on link rel=preload
+        https://bugs.webkit.org/show_bug.cgi?id=192950
+
+        Reviewed by Youenn Fablet.
+
+        Import relevant tests for this feature.
+
+        * web-platform-tests/preload/dynamic-adding-preload-imagesrcset-expected.txt: Added.
+        * web-platform-tests/preload/dynamic-adding-preload-imagesrcset.html: Added.
+        * web-platform-tests/preload/link-header-preload-delay-onload-expected.txt: Added.
+        * web-platform-tests/preload/link-header-preload-delay-onload.html: Added.
+        * web-platform-tests/preload/link-header-preload-delay-onload.html.headers: Added.
+        * web-platform-tests/preload/link-header-preload-expected.txt: Added.
+        * web-platform-tests/preload/link-header-preload-imagesrcset-expected.txt: Added.
+        * web-platform-tests/preload/link-header-preload-imagesrcset.html: Added.
+        * web-platform-tests/preload/link-header-preload-imagesrcset.html.headers: Added.
+        * web-platform-tests/preload/link-header-preload-nonce-expected.txt: Added.
+        * web-platform-tests/preload/link-header-preload-nonce.html: Added.
+        * web-platform-tests/preload/link-header-preload-nonce.html.headers: Added.
+        * web-platform-tests/preload/link-header-preload.html: Added.
+        * web-platform-tests/preload/link-header-preload.html.headers: Added.
+        * web-platform-tests/preload/onload-event-expected.txt: Added.
+        * web-platform-tests/preload/onload-event.html: Added.
+        * web-platform-tests/preload/preload-csp.sub-expected.txt:
+        * web-platform-tests/preload/preload-csp.sub.html:
+        * web-platform-tests/preload/preload-default-csp.sub-expected.txt:
+        * web-platform-tests/preload/preload-default-csp.sub.html:
+        * web-platform-tests/preload/preload-with-type-expected.txt: Added.
+        * web-platform-tests/preload/preload-with-type.html: Added.
+        * web-platform-tests/preload/resources/A4.ogv: Added.
+        * web-platform-tests/preload/resources/A4.ogv.sub.headers: Added.
+        * web-platform-tests/preload/resources/cross-origin-module.py: Added.
+        (main):
+        * web-platform-tests/preload/resources/dummy-preloads-subresource.css: Added.
+        * web-platform-tests/preload/resources/dummy-preloads-subresource.css.sub.headers: Added.
+        * web-platform-tests/preload/resources/empty.html: Added.
+        * web-platform-tests/preload/resources/empty.html.sub.headers: Added.
+        * web-platform-tests/preload/resources/foo.vtt.sub.headers: Added.
+        * web-platform-tests/preload/resources/module1.js: Added.
+        * web-platform-tests/preload/resources/module2.js: Added.
+        * web-platform-tests/preload/resources/preload_helper.js:
+        (verifyNumberOfResourceTimingEntries):
+        (numberOfResourceTimingEntries):
+        (verifyLoadedAndNoDoubleDownload):
+        * web-platform-tests/preload/single-download-preload-expected.txt:
+        * web-platform-tests/preload/single-download-preload.html:
+
+2019-05-14  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Update grid when changing auto repeat type
+        https://bugs.webkit.org/show_bug.cgi?id=197849
+
+        Reviewed by Javier Fernandez.
+
+        Import WPT test.
+
+        * web-platform-tests/css/css-grid/grid-definition/grid-change-auto-repeat-tracks-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-change-auto-repeat-tracks.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/w3c-import.log:
+
+2019-05-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Use max size to compute auto repeat tracks
+        https://bugs.webkit.org/show_bug.cgi?id=197854
+
+        Reviewed by Javier Fernandez.
+
+        Imported WPT tests for this bug.
+
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-max-size-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-max-size-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-max-size-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-max-size-002.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-min-max-size-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-min-max-size-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-min-size-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-min-size-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-min-size-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-auto-repeat-min-size-002.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/w3c-import.log:
+
+2019-05-14  Joonghun Park  <jh718.park@samsung.com>
+
+        Implement page-break-* and -webkit-column-break-* as legacy-shorthands.
+        https://bugs.webkit.org/show_bug.cgi?id=197656
+
+        Reviewed by Darin Adler.
+
+        According to https://drafts.csswg.org/css-cascade-4/#legacy-shorthand,
+        implement page-break-* and -webkit-column-break-* as legacy-shorthands for break-*.
+
+        This change also serialize page-break-* properties
+        to CSSStyleDeclaration,
+        per https://drafts.csswg.org/css-break/#page-break-properties.
+
+        * web-platform-tests/css/cssom/serialize-values-expected.txt:
+
+2019-05-14  Javier Fernandez  <jfernandez@igalia.com>
+
+        Implement "line-break: anywhere"
+        https://bugs.webkit.org/show_bug.cgi?id=181169
+        <rdar://problem/48507088>
+
+        Reviewed by Myles C. Maxfield.
+
+        New tests to verify the new line-break: anywhere feature and how
+        it behaves different to 'word-break: break-all'.
+
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-001.html:
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-002.html:
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-003-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-003.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-004-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-004.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-005-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-005.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-006-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-006.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-007-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-007.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-008-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-008.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-009-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-009.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-010-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-010.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-011-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-011.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-012-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-012.html: Added.
+        * web-platform-tests/css/css-text/parsing/line-break-valid-expected.txt:
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-016-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-016.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-017-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-017.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-018-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-018.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-019-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-019.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-021-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-021.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-022-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-022.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-023-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-023.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-024-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-024.html: Added.
+
 2019-05-07  Antoine Quint  <graouts@apple.com>
 
         [Pointer Events] isPrimary property of pointercancel events should match previous events for that pointer

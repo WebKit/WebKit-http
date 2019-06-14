@@ -35,7 +35,6 @@
 #include "NetworkProcessMessages.h"
 #include "ShouldGrandfatherStatistics.h"
 #include "StorageAccessStatus.h"
-#include "StorageManager.h"
 #include "WebProcessCache.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
@@ -96,7 +95,6 @@ WebsiteDataStore::WebsiteDataStore(Ref<WebsiteDataStoreConfiguration>&& configur
     : m_sessionID(sessionID)
     , m_resolvedConfiguration(WTFMove(configuration))
     , m_configuration(m_resolvedConfiguration->copy())
-    , m_storageManager(StorageManager::create(m_configuration->localStorageDirectory()))
     , m_deviceIdHashSaltStorage(DeviceIdHashSaltStorage::create(isPersistent() ? m_configuration->deviceIdHashSaltsStorageDirectory() : String()))
     , m_queue(WorkQueue::create("com.apple.WebKit.WebsiteDataStore"))
     , m_sourceApplicationBundleIdentifier(m_configuration->sourceApplicationBundleIdentifier())
@@ -120,7 +118,6 @@ WebsiteDataStore::WebsiteDataStore(PAL::SessionID sessionID)
     : m_sessionID(sessionID)
     , m_resolvedConfiguration(WebsiteDataStoreConfiguration::create())
     , m_configuration(m_resolvedConfiguration->copy())
-    , m_storageManager(StorageManager::create({ }))
     , m_deviceIdHashSaltStorage(DeviceIdHashSaltStorage::create(isPersistent() ? m_configuration->deviceIdHashSaltsStorageDirectory() : String()))
     , m_queue(WorkQueue::create("com.apple.WebKit.WebsiteDataStore"))
 #if ENABLE(WEB_AUTHN)
@@ -207,21 +204,6 @@ void WebsiteDataStore::resolveDirectoriesIfNecessary()
     }
 }
 
-void WebsiteDataStore::cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage)
-{
-    auto& sourceDataStore = sourcePage.websiteDataStore();
-    auto& newDataStore = newPage.websiteDataStore();
-
-    // FIXME: Handle this.
-    if (&sourceDataStore != &newDataStore)
-        return;
-
-    if (!sourceDataStore.m_storageManager)
-        return;
-
-    sourceDataStore.m_storageManager->cloneSessionStorageNamespace(sourcePage.pageID(), newPage.pageID());
-}
-
 enum class ProcessAccessType {
     None,
     OnlyIfLaunched,
@@ -230,33 +212,14 @@ enum class ProcessAccessType {
 
 static ProcessAccessType computeNetworkProcessAccessTypeForDataFetch(OptionSet<WebsiteDataType> dataTypes, bool isNonPersistentStore)
 {
-    ProcessAccessType processAccessType = ProcessAccessType::None;
-
-    if (dataTypes.contains(WebsiteDataType::Cookies)) {
-        if (isNonPersistentStore)
-            processAccessType = std::max(processAccessType, ProcessAccessType::OnlyIfLaunched);
-        else
-            processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
+    for (auto dataType : dataTypes) {
+        if (WebsiteData::ownerProcess(dataType) == WebsiteDataProcessType::Network) {
+            if (isNonPersistentStore)
+                return ProcessAccessType::OnlyIfLaunched;
+            return ProcessAccessType::Launch;
+        }
     }
-
-    if (dataTypes.contains(WebsiteDataType::Credentials) && isNonPersistentStore)
-        processAccessType = std::max(processAccessType, ProcessAccessType::OnlyIfLaunched);
-
-    if (dataTypes.contains(WebsiteDataType::DiskCache) && !isNonPersistentStore)
-        processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
-
-    if (dataTypes.contains(WebsiteDataType::DOMCache))
-        processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
-    
-    if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases) && !isNonPersistentStore)
-        processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
-
-#if ENABLE(SERVICE_WORKER)
-    if (dataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations) && !isNonPersistentStore)
-        processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
-#endif
-
-    return processAccessType;
+    return ProcessAccessType::None;
 }
 
 static ProcessAccessType computeWebProcessAccessTypeForDataFetch(OptionSet<WebsiteDataType> dataTypes, bool isNonPersistentStore)
@@ -355,17 +318,6 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
                 record.addPluginDataHostName(hostName);
             }
 #endif
-
-            for (auto& origin : websiteData.originsWithCredentials) {
-                auto displayName = WebsiteDataRecord::displayNameForOrigin(WebCore::SecurityOriginData::fromURL(URL(URL(), origin)));
-                ASSERT(!displayName.isEmpty());
-
-                auto& record = m_websiteDataRecords.add(displayName, WebsiteDataRecord { }).iterator->value;
-                if (!record.displayName)
-                    record.displayName = WTFMove(displayName);
-
-                record.addOriginWithCredential(origin);
-            }
 
             for (auto& hostName : websiteData.hostNamesWithHSTSCache) {
                 auto displayName = WebsiteDataRecord::displayNameForHostName(hostName);
@@ -481,32 +433,6 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
                 callbackAggregator->removePendingCallback(WTFMove(websiteData));
             });
         }
-    }
-
-    if (dataTypes.contains(WebsiteDataType::SessionStorage) && m_storageManager) {
-        callbackAggregator->addPendingCallback();
-
-        m_storageManager->getSessionStorageOrigins([callbackAggregator](HashSet<WebCore::SecurityOriginData>&& origins) {
-            WebsiteData websiteData;
-
-            while (!origins.isEmpty())
-                websiteData.entries.append(WebsiteData::Entry { origins.takeAny(), WebsiteDataType::SessionStorage, 0 });
-
-            callbackAggregator->removePendingCallback(WTFMove(websiteData));
-        });
-    }
-
-    if (dataTypes.contains(WebsiteDataType::LocalStorage) && m_storageManager) {
-        callbackAggregator->addPendingCallback();
-
-        m_storageManager->getLocalStorageOrigins([callbackAggregator](HashSet<WebCore::SecurityOriginData>&& origins) {
-            WebsiteData websiteData;
-
-            while (!origins.isEmpty())
-                websiteData.entries.append(WebsiteData::Entry { origins.takeAny(), WebsiteDataType::LocalStorage, 0 });
-
-            callbackAggregator->removePendingCallback(WTFMove(websiteData));
-        });
     }
 
     if (dataTypes.contains(WebsiteDataType::DeviceIdHashSalt)) {
@@ -821,22 +747,6 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, WallTime
         }
     }
 
-    if (dataTypes.contains(WebsiteDataType::SessionStorage) && m_storageManager) {
-        callbackAggregator->addPendingCallback();
-
-        m_storageManager->deleteSessionStorageOrigins([callbackAggregator] {
-            callbackAggregator->removePendingCallback();
-        });
-    }
-
-    if (dataTypes.contains(WebsiteDataType::LocalStorage) && m_storageManager) {
-        callbackAggregator->addPendingCallback();
-
-        m_storageManager->deleteLocalStorageOriginsModifiedSince(modifiedSince, [callbackAggregator] {
-            callbackAggregator->removePendingCallback();
-        });
-    }
-
     if (dataTypes.contains(WebsiteDataType::DeviceIdHashSalt) || (dataTypes.contains(WebsiteDataType::Cookies))) {
         callbackAggregator->addPendingCallback();
 
@@ -1099,22 +1009,6 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
                 callbackAggregator->removePendingCallback();
             });
         }
-    }
-
-    if (dataTypes.contains(WebsiteDataType::SessionStorage) && m_storageManager) {
-        callbackAggregator->addPendingCallback();
-
-        m_storageManager->deleteSessionStorageEntriesForOrigins(origins, [callbackAggregator] {
-            callbackAggregator->removePendingCallback();
-        });
-    }
-
-    if (dataTypes.contains(WebsiteDataType::LocalStorage) && m_storageManager) {
-        callbackAggregator->addPendingCallback();
-
-        m_storageManager->deleteLocalStorageEntriesForOrigins(origins, [callbackAggregator] {
-            callbackAggregator->removePendingCallback();
-        });
     }
 
     if (dataTypes.contains(WebsiteDataType::DeviceIdHashSalt) || (dataTypes.contains(WebsiteDataType::Cookies))) {
@@ -1795,21 +1689,14 @@ void WebsiteDataStore::deleteCookiesForTesting(const URL& url, bool includeHttpO
 
 void WebsiteDataStore::hasLocalStorageForTesting(const URL& url, CompletionHandler<void(bool)>&& completionHandler) const
 {
-    if (!m_storageManager) {
-        completionHandler(false);
-        return;
-    }
-
-    m_storageManager->getLocalStorageOrigins([url, completionHandler = WTFMove(completionHandler)](HashSet<WebCore::SecurityOriginData>&& origins) mutable {
-        for (auto& origin : origins) {
-            if (origin.host == url.host()) {
-                completionHandler(true);
-                return;
-            }
+    for (auto& processPool : processPools()) {
+        if (auto* networkProcess = processPool->networkProcess()) {
+            networkProcess->hasLocalStorage(m_sessionID, WebCore::RegistrableDomain { url }, WTFMove(completionHandler));
+            ASSERT(processPools().size() == 1);
+            break;
         }
-
-        completionHandler(false);
-    });
+    }
+    ASSERT(!completionHandler);
 }
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
@@ -1838,42 +1725,6 @@ void WebsiteDataStore::resetCacheMaxAgeCapForPrevalentResources(CompletionHandle
 #else
     completionHandler();
 #endif
-}
-
-void WebsiteDataStore::webPageWasAdded(WebPageProxy& webPageProxy)
-{
-    if (m_storageManager)
-        m_storageManager->createSessionStorageNamespace(webPageProxy.pageID(), std::numeric_limits<unsigned>::max());
-}
-
-void WebsiteDataStore::webPageWasInvalidated(WebPageProxy& webPageProxy)
-{
-    if (m_storageManager)
-        m_storageManager->destroySessionStorageNamespace(webPageProxy.pageID());
-}
-
-void WebsiteDataStore::webProcessWillOpenConnection(WebProcessProxy& webProcessProxy, IPC::Connection& connection)
-{
-    if (m_storageManager)
-        m_storageManager->processWillOpenConnection(webProcessProxy, connection);
-}
-
-void WebsiteDataStore::webPageWillOpenConnection(WebPageProxy& webPageProxy, IPC::Connection& connection)
-{
-    if (m_storageManager)
-        m_storageManager->addAllowedSessionStorageNamespaceConnection(webPageProxy.pageID(), connection);
-}
-
-void WebsiteDataStore::webPageDidCloseConnection(WebPageProxy& webPageProxy, IPC::Connection& connection)
-{
-    if (m_storageManager)
-        m_storageManager->removeAllowedSessionStorageNamespaceConnection(webPageProxy.pageID(), connection);
-}
-
-void WebsiteDataStore::webProcessDidCloseConnection(WebProcessProxy& webProcessProxy, IPC::Connection& connection)
-{
-    if (m_storageManager)
-        m_storageManager->processDidCloseConnection(webProcessProxy, connection);
 }
 
 bool WebsiteDataStore::isAssociatedProcessPool(WebProcessPool& processPool) const
@@ -2107,6 +1958,12 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
 
     resolveDirectoriesIfNecessary();
 
+    auto localStorageDirectory = resolvedLocalStorageDirectory();
+    if (!localStorageDirectory.isEmpty()) {
+        parameters.networkSessionParameters.localStorageDirectory = localStorageDirectory;
+        SandboxExtension::createHandleForReadWriteDirectory(localStorageDirectory, parameters.networkSessionParameters.localStorageDirectoryExtensionHandle);
+    }
+
 #if ENABLE(INDEXED_DATABASE)
     parameters.indexedDatabaseDirectory = resolvedIndexedDatabaseDirectory();
     if (!parameters.indexedDatabaseDirectory.isEmpty())
@@ -2180,6 +2037,24 @@ bool WebsiteDataStore::setSourceApplicationBundleIdentifier(String&& identifier)
         return false;
     m_sourceApplicationBundleIdentifier = WTFMove(identifier);
     return true;
+}
+
+void WebsiteDataStore::getLocalStorageDetails(Function<void(Vector<LocalStorageDatabaseTracker::OriginDetails>&&)>&& completionHandler)
+{
+    if (!isPersistent()) {
+        completionHandler({ });
+        return;
+    }
+
+    for (auto& processPool : processPools()) {
+        processPool->ensureNetworkProcess(this);
+        processPool->networkProcess()->getLocalStorageDetails(m_sessionID, [completionHandler = WTFMove(completionHandler)](auto&& details) {
+            completionHandler(WTFMove(details));
+        });
+        // FIXME: Support fetching from multiple pools.
+        break;
+    }
+    ASSERT(!completionHandler);
 }
 
 }

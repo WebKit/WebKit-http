@@ -306,6 +306,7 @@ Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 
 Modules/webgpu/GPUCanvasContext.cpp
 Modules/webgpu/NavigatorGPU.cpp
+Modules/webgpu/WHLSL/WHLSLASTDumper.cpp
 Modules/webgpu/WHLSL/WHLSLInferTypes.cpp
 Modules/webgpu/WHLSL/WHLSLLexer.cpp
 Modules/webgpu/WHLSL/WHLSLParser.cpp
@@ -348,6 +349,7 @@ Modules/webgpu/WHLSL/AST/WHLSLTypeReference.cpp
 Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteral.cpp
 Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteral.cpp
 Modules/webgpu/WHLSL/WHLSLPrepare.cpp
+Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp
 Modules/webgpu/WebGPU.cpp
 Modules/webgpu/WebGPUAdapter.cpp
 Modules/webgpu/WebGPUBindGroup.cpp
@@ -1074,6 +1076,7 @@ html/DateTimeLocalInputType.cpp
 html/EmailInputType.cpp
 html/FTPDirectoryDocument.cpp
 html/FileListCreator.cpp
+html/FeaturePolicy.cpp
 html/FileInputType.cpp
 html/FormAssociatedElement.cpp
 html/FormController.cpp
@@ -1364,6 +1367,7 @@ loader/CookieJar.cpp
 loader/CrossOriginAccessControl.cpp
 loader/CrossOriginPreflightChecker.cpp
 loader/CrossOriginPreflightResultCache.cpp
+loader/CustomHeaderFields.cpp @no-unify
 loader/DocumentLoader.cpp
 loader/DocumentThreadableLoader.cpp
 loader/DocumentWriter.cpp
@@ -1971,6 +1975,7 @@ rendering/InlineElementBox.cpp
 rendering/InlineFlowBox.cpp
 rendering/InlineIterator.cpp
 rendering/InlineTextBox.cpp
+rendering/LayerOverlapMap.cpp
 rendering/LayoutDisallowedScope.cpp
 rendering/LayoutRepainter.cpp
 rendering/MarkedText.cpp
@@ -2514,6 +2519,7 @@ JSAudioListener.cpp
 JSAudioNode.cpp
 JSAudioParam.cpp
 JSAudioProcessingEvent.cpp
+JSAttestationConveyancePreference.cpp
 JSAuthenticationExtensionsClientInputs.cpp
 JSAuthenticatorAssertionResponse.cpp
 JSAuthenticatorAttestationResponse.cpp

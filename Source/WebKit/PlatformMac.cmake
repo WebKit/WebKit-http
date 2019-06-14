@@ -32,6 +32,8 @@ list(APPEND WebKit_SOURCES
 
     NetworkProcess/Downloads/cocoa/DownloadCocoa.mm
 
+    NetworkProcess/WebStorage/StorageManager.cpp
+
     NetworkProcess/cache/NetworkCacheDataCocoa.mm
     NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm
 
@@ -278,8 +280,6 @@ list(APPEND WebKit_SOURCES
     UIProcess/RemoteLayerTree/RemoteScrollingTree.cpp
     UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.mm
     UIProcess/RemoteLayerTree/RemoteLayerTreeHost.mm
-
-    UIProcess/WebStorage/StorageManager.cpp
 
     UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm
 

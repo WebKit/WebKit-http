@@ -146,6 +146,10 @@ public:
 
     Ref<CachedBytecode> release()
     {
+        if (!m_currentPage)
+            return CachedBytecode::create();
+
+        m_currentPage->alignEnd();
         size_t size = m_baseOffset + m_currentPage->size();
         MallocPtr<uint8_t> buffer = MallocPtr<uint8_t>::malloc(size);
         unsigned offset = 0;
@@ -193,6 +197,15 @@ private:
             return false;
         }
 
+        void alignEnd()
+        {
+            ptrdiff_t size = roundUpToMultipleOf(alignof(std::max_align_t), m_offset);
+            if (size == m_offset)
+                return;
+            ASSERT(static_cast<size_t>(size) <= m_capacity);
+            m_offset = size;
+        }
+
     private:
         MallocPtr<uint8_t> m_buffer;
         ptrdiff_t m_offset;
@@ -202,8 +215,10 @@ private:
     void allocateNewPage(size_t size = 0)
     {
         static size_t minPageSize = pageSize();
-        if (m_currentPage)
+        if (m_currentPage) {
+            m_currentPage->alignEnd();
             m_baseOffset += m_currentPage->size();
+        }
         if (size < minPageSize)
             size = minPageSize;
         else
@@ -383,6 +398,7 @@ protected:
     template<typename T>
     const T* buffer() const
     {
+        ASSERT(!(bitwise_cast<uintptr_t>(buffer()) % alignof(T)));
         return bitwise_cast<const T*>(buffer());
     }
 
@@ -403,6 +419,7 @@ protected:
     T* allocate(Encoder& encoder, unsigned size = 1)
     {
         uint8_t* result = allocate(encoder, sizeof(T) * size);
+        ASSERT(!(bitwise_cast<uintptr_t>(result) % alignof(T)));
         return new (result) T[size];
     }
 
@@ -1331,23 +1348,35 @@ public:
         m_hasMetadata = metadataTable.m_hasMetadata;
         if (!m_hasMetadata)
             return;
-        for (unsigned i = UnlinkedMetadataTable::s_offsetTableEntries; i--;)
-            m_metadata[i] = metadataTable.buffer()[i];
+        m_is32Bit = metadataTable.m_is32Bit;
+        if (m_is32Bit) {
+            for (unsigned i = UnlinkedMetadataTable::s_offsetTableEntries; i--;)
+                m_metadata[i] = metadataTable.offsetTable32()[i];
+        } else {
+            for (unsigned i = UnlinkedMetadataTable::s_offsetTableEntries; i--;)
+                m_metadata[i] = metadataTable.offsetTable16()[i];
+        }
     }
 
     Ref<UnlinkedMetadataTable> decode(Decoder&) const
     {
-        Ref<UnlinkedMetadataTable> metadataTable = UnlinkedMetadataTable::create();
+        Ref<UnlinkedMetadataTable> metadataTable = UnlinkedMetadataTable::create(m_is32Bit);
         metadataTable->m_isFinalized = true;
         metadataTable->m_isLinked = false;
         metadataTable->m_hasMetadata = m_hasMetadata;
-        for (unsigned i = UnlinkedMetadataTable::s_offsetTableEntries; i--;)
-            metadataTable->buffer()[i] = m_metadata[i];
+        if (m_is32Bit) {
+            for (unsigned i = UnlinkedMetadataTable::s_offsetTableEntries; i--;)
+                metadataTable->offsetTable32()[i] = m_metadata[i];
+        } else {
+            for (unsigned i = UnlinkedMetadataTable::s_offsetTableEntries; i--;)
+                metadataTable->offsetTable16()[i] = m_metadata[i];
+        }
         return metadataTable;
     }
 
 private:
     bool m_hasMetadata;
+    bool m_is32Bit;
     std::array<unsigned, UnlinkedMetadataTable::s_offsetTableEntries> m_metadata;
 };
 
@@ -1641,7 +1670,6 @@ public:
 
     Identifier name(Decoder& decoder) const { return m_name.decode(decoder); }
     Identifier ecmaName(Decoder& decoder) const { return m_ecmaName.decode(decoder); }
-    Identifier inferredName(Decoder& decoder) const { return m_inferredName.decode(decoder); }
 
     UnlinkedFunctionExecutable::RareData* rareData(Decoder& decoder) const { return m_rareData.decode(decoder); }
 
@@ -1651,33 +1679,32 @@ public:
 private:
     CachedFunctionExecutableMetadata m_mutableMetadata;
 
-    unsigned m_firstLineOffset;
-    unsigned m_lineCount;
-    unsigned m_unlinkedFunctionNameStart;
-    unsigned m_unlinkedBodyStartColumn;
-    unsigned m_unlinkedBodyEndColumn;
-    unsigned m_startOffset;
-    unsigned m_sourceLength;
-    unsigned m_parametersStartOffset;
+    unsigned m_firstLineOffset : 31;
+    unsigned m_isInStrictContext : 1;
+    unsigned m_lineCount : 31;
+    unsigned m_isBuiltinFunction : 1;
+    unsigned m_unlinkedFunctionNameStart : 31;
+    unsigned m_isBuiltinDefaultClassConstructor : 1;
+    unsigned m_unlinkedBodyStartColumn : 31;
+    unsigned m_constructAbility: 1;
+    unsigned m_unlinkedBodyEndColumn : 31;
+    unsigned m_startOffset : 31;
+    unsigned m_scriptMode: 1; // JSParserScriptMode
+    unsigned m_sourceLength : 31;
+    unsigned m_superBinding : 1;
+    unsigned m_parametersStartOffset : 31;
     unsigned m_typeProfilingStartOffset;
     unsigned m_typeProfilingEndOffset;
     unsigned m_parameterCount;
     SourceParseMode m_sourceParseMode;
-    unsigned m_isInStrictContext : 1;
-    unsigned m_isBuiltinFunction : 1;
-    unsigned m_isBuiltinDefaultClassConstructor : 1;
-    unsigned m_constructAbility: 1;
     unsigned m_constructorKind : 2;
     unsigned m_functionMode : 2; // FunctionMode
-    unsigned m_scriptMode: 1; // JSParserScriptMode
-    unsigned m_superBinding : 1;
     unsigned m_derivedContextType: 2;
 
     CachedPtr<CachedFunctionExecutableRareData> m_rareData;
 
     CachedIdentifier m_name;
     CachedIdentifier m_ecmaName;
-    CachedIdentifier m_inferredName;
 
     CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock> m_unlinkedCodeBlockForCall;
     CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock> m_unlinkedCodeBlockForConstruct;
@@ -2044,7 +2071,6 @@ ALWAYS_INLINE void CachedFunctionExecutable::encode(Encoder& encoder, const Unli
 
     m_name.encode(encoder, executable.name());
     m_ecmaName.encode(encoder, executable.ecmaName());
-    m_inferredName.encode(encoder, executable.inferredName());
 
     m_unlinkedCodeBlockForCall.encode(encoder, executable.m_unlinkedCodeBlockForCall);
     m_unlinkedCodeBlockForConstruct.encode(encoder, executable.m_unlinkedCodeBlockForConstruct);
@@ -2063,35 +2089,34 @@ ALWAYS_INLINE UnlinkedFunctionExecutable* CachedFunctionExecutable::decode(Decod
 ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& decoder, const CachedFunctionExecutable& cachedExecutable)
     : Base(decoder.vm(), decoder.vm().unlinkedFunctionExecutableStructure.get())
     , m_firstLineOffset(cachedExecutable.firstLineOffset())
+    , m_isInStrictContext(cachedExecutable.isInStrictContext())
     , m_lineCount(cachedExecutable.lineCount())
+    , m_hasCapturedVariables(cachedExecutable.hasCapturedVariables())
     , m_unlinkedFunctionNameStart(cachedExecutable.unlinkedFunctionNameStart())
+    , m_isBuiltinFunction(cachedExecutable.isBuiltinFunction())
     , m_unlinkedBodyStartColumn(cachedExecutable.unlinkedBodyStartColumn())
+    , m_isBuiltinDefaultClassConstructor(cachedExecutable.isBuiltinDefaultClassConstructor())
     , m_unlinkedBodyEndColumn(cachedExecutable.unlinkedBodyEndColumn())
+    , m_constructAbility(cachedExecutable.constructAbility())
     , m_startOffset(cachedExecutable.startOffset())
+    , m_scriptMode(cachedExecutable.scriptMode())
     , m_sourceLength(cachedExecutable.sourceLength())
+    , m_superBinding(cachedExecutable.superBinding())
     , m_parametersStartOffset(cachedExecutable.parametersStartOffset())
+    , m_isCached(false)
     , m_typeProfilingStartOffset(cachedExecutable.typeProfilingStartOffset())
     , m_typeProfilingEndOffset(cachedExecutable.typeProfilingEndOffset())
     , m_parameterCount(cachedExecutable.parameterCount())
     , m_features(cachedExecutable.features())
     , m_sourceParseMode(cachedExecutable.sourceParseMode())
-    , m_isInStrictContext(cachedExecutable.isInStrictContext())
-    , m_hasCapturedVariables(cachedExecutable.hasCapturedVariables())
-    , m_isBuiltinFunction(cachedExecutable.isBuiltinFunction())
-    , m_isBuiltinDefaultClassConstructor(cachedExecutable.isBuiltinDefaultClassConstructor())
-    , m_constructAbility(cachedExecutable.constructAbility())
     , m_constructorKind(cachedExecutable.constructorKind())
     , m_functionMode(cachedExecutable.functionMode())
-    , m_scriptMode(cachedExecutable.scriptMode())
-    , m_superBinding(cachedExecutable.superBinding())
     , m_derivedContextType(cachedExecutable.derivedContextType())
-    , m_isCached(false)
     , m_unlinkedCodeBlockForCall()
     , m_unlinkedCodeBlockForConstruct()
 
     , m_name(cachedExecutable.name(decoder))
     , m_ecmaName(cachedExecutable.ecmaName(decoder))
-    , m_inferredName(cachedExecutable.inferredName(decoder))
 
     , m_rareData(cachedExecutable.rareData(decoder))
 {
@@ -2104,8 +2129,11 @@ ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& de
                 codeBlockOffset = offset;
                 m_isCached = true;
                 leafExecutables--;
+                return;
             }
         }
+
+        codeBlockOffset = 0;
     };
 
     if (!cachedExecutable.unlinkedCodeBlockForCall().isEmpty() || !cachedExecutable.unlinkedCodeBlockForConstruct().isEmpty()) {
@@ -2113,6 +2141,8 @@ ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& de
         checkBounds(m_cachedCodeBlockForConstructOffset, cachedExecutable.unlinkedCodeBlockForConstruct());
         if (m_isCached)
             m_decoder = &decoder;
+        else
+            m_decoder = nullptr;
     }
 
     if (leafExecutables)

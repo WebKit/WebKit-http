@@ -194,15 +194,29 @@ void AuthenticatorManager::respondReceived(Respond&& respond)
     ASSERT(RunLoop::isMain());
     if (!m_requestTimeOutTimer.isActive())
         return;
-
     ASSERT(m_pendingCompletionHandler);
-    if (WTF::holds_alternative<PublicKeyCredentialData>(respond)) {
+
+    auto shouldComplete = WTF::holds_alternative<PublicKeyCredentialData>(respond);
+    if (!shouldComplete)
+        shouldComplete = WTF::get<ExceptionData>(respond).code == InvalidStateError;
+    if (shouldComplete) {
         m_pendingCompletionHandler(WTFMove(respond));
         clearStateAsync();
         m_requestTimeOutTimer.stop();
         return;
     }
     respondReceivedInternal(WTFMove(respond));
+}
+
+void AuthenticatorManager::downgrade(Authenticator* id, Ref<Authenticator>&& downgradedAuthenticator)
+{
+    RunLoop::main().dispatch([weakThis = makeWeakPtr(*this), id] {
+        if (!weakThis)
+            return;
+        auto removed = weakThis->m_authenticators.remove(id);
+        ASSERT_UNUSED(removed, removed);
+    });
+    authenticatorAdded(WTFMove(downgradedAuthenticator));
 }
 
 UniqueRef<AuthenticatorTransportService> AuthenticatorManager::createService(WebCore::AuthenticatorTransport transport, AuthenticatorTransportService::Observer& observer) const

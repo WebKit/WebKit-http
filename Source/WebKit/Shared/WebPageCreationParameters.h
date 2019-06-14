@@ -155,6 +155,7 @@ struct WebPageCreationParameters {
     WebCore::FloatSize maximumUnobscuredSize;
     int32_t deviceOrientation { 0 };
     bool keyboardIsAttached { false };
+    bool canShowWhileLocked { false };
     Optional<WebCore::ViewportArguments> overrideViewportArguments;
 #endif
 #if PLATFORM(COCOA)
@@ -200,6 +201,8 @@ struct WebPageCreationParameters {
 #endif
 
     Optional<WebCore::Color> backgroundColor;
+
+    Optional<uint64_t> oldPageID;
 };
 
 } // namespace WebKit

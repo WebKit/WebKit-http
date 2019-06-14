@@ -288,6 +288,15 @@ static bool isForceEvent(const PlatformMouseEvent& platformEvent)
     return platformEvent.type() == PlatformEvent::MouseForceChanged || platformEvent.type() == PlatformEvent::MouseForceDown || platformEvent.type() == PlatformEvent::MouseForceUp;
 }
 
+#if ENABLE(POINTER_EVENTS) && !ENABLE(TOUCH_EVENTS)
+static bool isCompatibilityMouseEvent(const MouseEvent& mouseEvent)
+{
+    // https://www.w3.org/TR/pointerevents/#compatibility-mapping-with-mouse-events
+    const auto& type = mouseEvent.type();
+    return type != eventNames().clickEvent && type != eventNames().mouseoverEvent && type != eventNames().mouseoutEvent && type != eventNames().mouseenterEvent && type != eventNames().mouseleaveEvent;
+}
+#endif
+
 bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const AtomicString& eventType, int detail, Element* relatedTarget)
 {
     if (isDisabledFormControl())
@@ -303,17 +312,27 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
 
     bool didNotSwallowEvent = true;
 
-#if ENABLE(POINTER_EVENTS) && !ENABLE(TOUCH_EVENTS)
+#if ENABLE(POINTER_EVENTS)
     if (RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled()) {
+#if ENABLE(TOUCH_EVENTS)
+        if (auto* page = document().page()) {
+            if (mouseEvent->type() != eventNames().clickEvent && page->pointerCaptureController().preventsCompatibilityMouseEventsForIdentifier(platformEvent.pointerId()))
+                return false;
+        }
+#else
         if (auto pointerEvent = PointerEvent::create(mouseEvent)) {
-            if (auto* page = document().page())
+            if (auto* page = document().page()) {
                 page->pointerCaptureController().dispatchEvent(*pointerEvent, this);
+                if (isCompatibilityMouseEvent(mouseEvent) && page->pointerCaptureController().preventsCompatibilityMouseEventsForIdentifier(pointerEvent->pointerId()))
+                    return false;
+            }
             if (pointerEvent->defaultPrevented() || pointerEvent->defaultHandled()) {
                 didNotSwallowEvent = false;
-                if (pointerEvent->type() == eventNames().pointerdownEvent || pointerEvent->type() == eventNames().pointerupEvent)
+                if (pointerEvent->type() == eventNames().pointerdownEvent)
                     return false;
             }
         }
+#endif
     }
 #endif
 
@@ -1414,10 +1433,8 @@ Ref<DOMRectList> Element::getClientRects()
     return DOMRectList::create(quads);
 }
 
-FloatRect Element::boundingClientRect()
+Optional<std::pair<RenderObject*, FloatRect>> Element::boundingAbsoluteRectWithoutLayout()
 {
-    document().updateLayoutIgnorePendingStylesheets();
-
     RenderObject* renderer = this->renderer();
     Vector<FloatQuad> quads;
     if (isSVGElement() && renderer && !renderer->isSVGRoot()) {
@@ -1433,12 +1450,23 @@ FloatRect Element::boundingClientRect()
         renderBoxModelObject->absoluteQuads(quads);
 
     if (quads.isEmpty())
-        return { };
+        return WTF::nullopt;
 
     FloatRect result = quads[0].boundingBox();
     for (size_t i = 1; i < quads.size(); ++i)
         result.unite(quads[i].boundingBox());
 
+    return std::make_pair(renderer, result);
+}
+
+FloatRect Element::boundingClientRect()
+{
+    document().updateLayoutIgnorePendingStylesheets();
+    auto pair = boundingAbsoluteRectWithoutLayout();
+    if (!pair)
+        return { };
+    RenderObject* renderer = pair->first;
+    FloatRect result = pair->second;
     document().convertAbsoluteToClientRect(result, renderer->style());
     return result;
 }

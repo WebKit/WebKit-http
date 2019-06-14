@@ -1246,11 +1246,11 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
         if (visibleToHitTesting()) {
             auto borderRegion = approximateAsRegion(style().getRoundedBorderFor(borderRect));
-            paintInfo.eventRegion->unite(borderRegion, style());
+            paintInfo.eventRegionContext->unite(borderRegion, style());
         }
 
         // No need to check descendants if we don't have overflow and the area is already covered.
-        bool needsTraverseDescendants = hasVisualOverflow() || !paintInfo.eventRegion->contains(enclosingIntRect(borderRect));
+        bool needsTraverseDescendants = hasVisualOverflow() || !paintInfo.eventRegionContext->contains(enclosingIntRect(borderRect));
 #if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
         needsTraverseDescendants = needsTraverseDescendants || document().touchActionElements();
 #endif
@@ -2856,8 +2856,8 @@ void RenderBlock::addFocusRingRects(Vector<LayoutRect>& rects, const LayoutPoint
         // FIXME: This is wrong for block-flows that are horizontal.
         // https://bugs.webkit.org/show_bug.cgi?id=46781
         bool prevInlineHasLineBox = downcast<RenderInline>(*inlineContinuation->element()->renderer()).firstLineBox();
-        float topMargin = prevInlineHasLineBox ? collapsedMarginBefore() : 0_lu;
-        float bottomMargin = nextInlineHasLineBox ? collapsedMarginAfter() : 0_lu;
+        auto topMargin = prevInlineHasLineBox ? collapsedMarginBefore() : 0_lu;
+        auto bottomMargin = nextInlineHasLineBox ? collapsedMarginAfter() : 0_lu;
         LayoutRect rect(additionalOffset.x(), additionalOffset.y() - topMargin, width(), height() + topMargin + bottomMargin);
         if (!rect.isEmpty())
             rects.append(rect);

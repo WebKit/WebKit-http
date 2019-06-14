@@ -53,6 +53,7 @@
 #include "CustomElementReactionQueue.h"
 #include "CustomElementRegistry.h"
 #include "CustomEvent.h"
+#include "CustomHeaderFields.h"
 #include "DOMImplementation.h"
 #include "DOMWindow.h"
 #include "DateComponents.h"
@@ -182,6 +183,7 @@
 #include "ScriptSourceCode.h"
 #include "ScriptState.h"
 #include "ScriptedAnimationController.h"
+#include "ScrollbarTheme.h"
 #include "ScrollingCoordinator.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginData.h"
@@ -328,6 +330,27 @@ using namespace WTF::Unicode;
 
 static const unsigned cMaxWriteRecursionDepth = 21;
 bool Document::hasEverCreatedAnAXObjectCache = false;
+static const Seconds maxIntervalForUserGestureForwardingAfterMediaFinishesPlaying { 1_s };
+
+struct FrameFlatteningLayoutDisallower {
+    FrameFlatteningLayoutDisallower(FrameView& frameView)
+        : m_frameView(frameView)
+        , m_disallowLayout(frameView.effectiveFrameFlattening() != FrameFlattening::Disabled)
+    {
+        if (m_disallowLayout)
+            m_frameView.startDisallowingLayout();
+    }
+
+    ~FrameFlatteningLayoutDisallower()
+    {
+        if (m_disallowLayout)
+            m_frameView.endDisallowingLayout();
+    }
+
+private:
+    FrameView& m_frameView;
+    bool m_disallowLayout { false };
+};
 
 // DOM Level 2 says (letters added):
 //
@@ -1692,7 +1715,7 @@ void Document::allowsMediaDocumentInlinePlaybackChanged()
 void Document::stopAllMediaPlayback()
 {
     if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
-        platformMediaSessionManager->stopAllMediaPlaybackForDocument(this);
+        platformMediaSessionManager->stopAllMediaPlaybackForDocument(*this);
 }
 
 void Document::suspendAllMediaPlayback()
@@ -1784,7 +1807,7 @@ void Document::scheduleFullStyleRebuild()
 
 void Document::scheduleStyleRecalc()
 {
-    ASSERT(!m_renderView || !m_renderView->inHitTesting());
+    ASSERT(!m_renderView || !inHitTesting());
 
     if (m_styleRecalcTimer.isActive() || pageCacheState() != NotInPageCache)
         return;
@@ -3702,7 +3725,7 @@ MouseEventWithHitTestResults Document::prepareMouseEvent(const HitTestRequest& r
         return MouseEventWithHitTestResults(event, HitTestResult(LayoutPoint()));
 
     HitTestResult result(documentPoint);
-    renderView()->hitTest(request, result);
+    hitTest(request, result);
 
     if (!request.readOnly())
         updateHoverActiveState(request, result.targetElement());
@@ -6300,12 +6323,10 @@ void Document::loadEventDelayTimerFired()
     // FIXME: Should this also call DocumentLoader::checkLoadComplete?
     // FIXME: Not obvious why checkCompleted needs to go first. The order these are called is
     // visible to WebKit clients, but it's more like a race than a well-defined relationship.
-    auto weakThis = makeWeakPtr(this);
+    Ref<Document> protectedThis(*this);
     checkCompleted();
-    if (weakThis) {
-        if (auto* frame = this->frame())
-            frame->loader().checkLoadComplete();
-    }
+    if (auto* frame = this->frame())
+        frame->loader().checkLoadComplete();
 }
 
 void Document::checkCompleted()
@@ -6576,6 +6597,9 @@ void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
 bool Document::processingUserGestureForMedia() const
 {
     if (UserGestureIndicator::processingUserGestureForMedia())
+        return true;
+
+    if (m_userActivatedMediaFinishedPlayingTimestamp + maxIntervalForUserGestureForwardingAfterMediaFinishesPlaying >= MonotonicTime::now())
         return true;
 
     if (settings().mediaUserGestureInheritsFromDocument())
@@ -6893,10 +6917,9 @@ float Document::deviceScaleFactor() const
 
 bool Document::useSystemAppearance() const
 {
-    bool useSystemAppearance = false;
-    if (Page* documentPage = page())
-        useSystemAppearance = documentPage->useSystemAppearance();
-    return useSystemAppearance;
+    if (auto* documentPage = page())
+        return documentPage->useSystemAppearance();
+    return false;
 }
 
 bool Document::useDarkAppearance(const RenderStyle* style) const
@@ -6937,6 +6960,13 @@ bool Document::useDarkAppearance(const RenderStyle* style) const
     return false;
 }
 
+bool Document::useInactiveAppearance() const
+{
+    if (auto* documentPage = page())
+        return documentPage->useInactiveAppearance();
+    return false;
+}
+
 OptionSet<StyleColor::Options> Document::styleColorOptions(const RenderStyle* style) const
 {
     OptionSet<StyleColor::Options> options;
@@ -6944,6 +6974,8 @@ OptionSet<StyleColor::Options> Document::styleColorOptions(const RenderStyle* st
         options.add(StyleColor::Options::UseSystemAppearance);
     if (useDarkAppearance(style))
         options.add(StyleColor::Options::UseDarkAppearance);
+    if (useInactiveAppearance())
+        options.add(StyleColor::Options::UseInactiveAppearance);
     return options;
 }
 
@@ -6961,8 +6993,10 @@ void Document::didAssociateFormControlsTimerFired()
 {
     auto vector = copyToVector(m_associatedFormControls);
     m_associatedFormControls.clear();
-    if (auto* page = this->page())
-        page->chrome().client().didAssociateFormControls(vector);
+    if (auto* page = this->page()) {
+        ASSERT(m_frame);
+        page->chrome().client().didAssociateFormControls(vector, *m_frame);
+    }
 }
 
 void Document::setCachedDOMCookies(const String& cookies)
@@ -7336,9 +7370,13 @@ static Optional<IntersectionObservationState> computeIntersectionState(FrameView
     LayoutRect localTargetBounds;
     if (is<RenderBox>(*targetRenderer))
         localTargetBounds = downcast<RenderBox>(targetRenderer)->borderBoundingBox();
-    else if (is<RenderInline>(targetRenderer))
-        localTargetBounds = downcast<RenderInline>(targetRenderer)->linesBoundingBox();
-    else if (is<RenderLineBreak>(targetRenderer))
+    else if (is<RenderInline>(targetRenderer)) {
+        auto pair = target.boundingAbsoluteRectWithoutLayout();
+        if (pair) {
+            FloatRect absoluteTargetBounds = pair->second;
+            localTargetBounds = enclosingLayoutRect(targetRenderer->absoluteToLocalQuad(absoluteTargetBounds).boundingBox());
+        }
+    } else if (is<RenderLineBreak>(targetRenderer))
         localTargetBounds = downcast<RenderLineBreak>(targetRenderer)->linesBoundingBox();
 
     Optional<LayoutRect> rootLocalTargetRect;
@@ -7995,6 +8033,45 @@ void Document::frameWasDisconnectedFromOwner()
         window->willDetachDocumentFromFrame();
 
     detachFromFrame();
+}
+
+bool Document::hitTest(const HitTestRequest& request, HitTestResult& result)
+{
+    return hitTest(request, result.hitTestLocation(), result);
+}
+
+bool Document::hitTest(const HitTestRequest& request, const HitTestLocation& location, HitTestResult& result)
+{
+    Ref<Document> protectedThis(*this);
+    updateLayout();
+    if (!renderView())
+        return false;
+
+#if !ASSERT_DISABLED
+    SetForScope<bool> hitTestRestorer { m_inHitTesting, true };
+#endif
+
+    auto& frameView = renderView()->frameView();
+    Ref<FrameView> protector(frameView);
+
+    FrameFlatteningLayoutDisallower disallower(frameView);
+
+    bool resultLayer = renderView()->layer()->hitTest(request, location, result);
+
+    // ScrollView scrollbars are not the same as RenderLayer scrollbars tested by RenderLayer::hitTestOverflowControls,
+    // so we need to test ScrollView scrollbars separately here. In case of using overlay scrollbars, the layer hit test
+    // will always work so we need to check the ScrollView scrollbars in that case too.
+    if (!resultLayer || ScrollbarTheme::theme().usesOverlayScrollbars()) {
+        // FIXME: Consider if this test should be done unconditionally.
+        if (request.allowsFrameScrollbars()) {
+            IntPoint windowPoint = frameView.contentsToWindow(location.roundedPoint());
+            if (auto* frameScrollbar = frameView.scrollbarAtPoint(windowPoint)) {
+                result.setScrollbar(frameScrollbar);
+                return true;
+            }
+        }
+    }
+    return resultLayer;
 }
 
 ElementIdentifier Document::identifierForElement(Element& element)

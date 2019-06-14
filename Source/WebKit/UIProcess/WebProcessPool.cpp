@@ -574,6 +574,12 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     parameters.shouldDisableServiceWorkerProcessTerminationDelay = m_shouldDisableServiceWorkerProcessTerminationDelay;
 #endif
 
+    auto localStorageDirectory = m_websiteDataStore ? m_websiteDataStore->websiteDataStore().resolvedLocalStorageDirectory() : nullString();
+    if (!localStorageDirectory)
+        localStorageDirectory = API::WebsiteDataStore::defaultLocalStorageDirectory();
+    parameters.defaultDataStoreParameters.networkSessionParameters.localStorageDirectory = localStorageDirectory;
+    SandboxExtension::createHandleForReadWriteDirectory(localStorageDirectory, parameters.defaultDataStoreParameters.networkSessionParameters.localStorageDirectoryExtensionHandle);
+
     if (m_websiteDataStore)
         parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectory = m_websiteDataStore->websiteDataStore().resolvedResourceLoadStatisticsDirectory();
     if (parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectory.isEmpty())
@@ -1100,6 +1106,7 @@ void WebProcessPool::processDidFinishLaunching(WebProcessProxy* process)
 void WebProcessPool::disconnectProcess(WebProcessProxy* process)
 {
     ASSERT(m_processes.contains(process));
+    ASSERT(!m_processesPlayingAudibleMedia.contains(process->coreProcessIdentifier()));
 
     if (m_prewarmedProcess == process) {
         ASSERT(m_prewarmedProcess->isPrewarmed());
@@ -1724,11 +1731,6 @@ void WebProcessPool::useTestingNetworkSession()
         return;
 
     m_shouldUseTestingNetworkSession = true;
-}
-
-void WebProcessPool::removeCredential(WebCore::Credential&& credential, WebCore::ProtectionSpace&& protectionSpace, CompletionHandler<void()>&& completionHandler)
-{
-    m_networkProcess->sendWithAsyncReply(Messages::NetworkProcess::RemoveCredential(credential, protectionSpace), WTFMove(completionHandler));
 }
 
 template<typename T, typename U>
@@ -2560,7 +2562,7 @@ void WebProcessPool::clearWebProcessHasUploads(ProcessIdentifier processID)
     ASSERT_UNUSED(result, result);
 
     auto* process = WebProcessProxy::processForIdentifier(processID);
-    ASSERT(process);
+    ASSERT_UNUSED(process, process);
     RELEASE_LOG(ProcessSuspension, "Web process pid %u no longer has uploads in progress", (unsigned)process->processIdentifier());
 
     if (m_processesWithUploads.isEmpty()) {
@@ -2573,6 +2575,42 @@ void WebProcessPool::clearWebProcessHasUploads(ProcessIdentifier processID)
         m_uiProcessUploadAssertion = nullptr;
     }
     
+}
+
+void WebProcessPool::setWebProcessIsPlayingAudibleMedia(WebCore::ProcessIdentifier processID)
+{
+    auto* process = WebProcessProxy::processForIdentifier(processID);
+    ASSERT(process);
+
+    RELEASE_LOG(ProcessSuspension, "Web process pid %u is now playing audible media", (unsigned)process->processIdentifier());
+
+    if (m_processesPlayingAudibleMedia.isEmpty()) {
+        RELEASE_LOG(ProcessSuspension, "The number of processes playing audible media is now one. Taking UI process assertion.");
+
+        ASSERT(!m_uiProcessMediaPlaybackAssertion);
+        m_uiProcessMediaPlaybackAssertion = std::make_unique<ProcessAssertion>(getCurrentProcessID(), "WebKit Media Playback"_s, AssertionState::Foreground, AssertionReason::MediaPlayback);
+    }
+
+    auto result = m_processesPlayingAudibleMedia.add(processID, nullptr);
+    ASSERT(result.isNewEntry);
+    result.iterator->value = std::make_unique<ProcessAssertion>(process->processIdentifier(), "WebKit Media Playback"_s, AssertionState::Foreground, AssertionReason::MediaPlayback);
+}
+
+void WebProcessPool::clearWebProcessIsPlayingAudibleMedia(WebCore::ProcessIdentifier processID)
+{
+    auto result = m_processesPlayingAudibleMedia.take(processID);
+    ASSERT_UNUSED(result, result);
+
+    auto* process = WebProcessProxy::processForIdentifier(processID);
+    ASSERT(process);
+    RELEASE_LOG(ProcessSuspension, "Web process pid %u is no longer playing audible media", (unsigned)process->processIdentifier());
+
+    if (m_processesPlayingAudibleMedia.isEmpty()) {
+        RELEASE_LOG(ProcessSuspension, "The number of processes playing audible media now zero. Releasing UI process assertion.");
+
+        ASSERT(m_uiProcessMediaPlaybackAssertion);
+        m_uiProcessMediaPlaybackAssertion = nullptr;
+    }
 }
 
 } // namespace WebKit

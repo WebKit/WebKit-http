@@ -68,7 +68,7 @@ enum ContextMenuAction {
     ContextMenuItemTagUnicodeInsertZWSMark,
     ContextMenuItemTagUnicodeInsertZWJMark,
     ContextMenuItemTagUnicodeInsertZWNJMark,
->>>>>>> 44cf026ce0d62d58efe398ea845056c3f2858b3d
+    ContextMenuItemTagInsertEmoji,
 #endif
     ContextMenuItemTagSpellingGuess,
     ContextMenuItemTagNoGuessesFound,

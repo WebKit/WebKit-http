@@ -77,7 +77,7 @@ messages -> NetworkProcess LegacyReceiver {
     ProcessDidTransitionToBackground()
     ProcessDidTransitionToForeground()
 
-    ProcessWillSuspendImminently() -> (bool handled) Synchronous
+    ProcessWillSuspendImminently()
     PrepareToSuspend()
     CancelPrepareToSuspend()
     ProcessDidResume()
@@ -98,6 +98,7 @@ messages -> NetworkProcess LegacyReceiver {
     SetPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
     SetPrevalentResourceForDebugMode(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
     HadUserInteraction(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> (bool hadUserInteraction) Async
+    HasLocalStorage(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> (bool hadUserInteraction) Async
     GetAllStorageAccessEntries(PAL::SessionID sessionID) -> (Vector<String> domains) Async
     IsRegisteredAsRedirectingTo(PAL::SessionID sessionID, WebCore::RegistrableDomain redirectedFromDomain, WebCore::RegistrableDomain redirectedToDomain) -> (bool isRedirectingTo) Async
     IsRegisteredAsSubFrameUnder(PAL::SessionID sessionID, WebCore::RegistrableDomain subFrameDomain, WebCore::RegistrableDomain topFrameDomain) -> (bool isSubframeUnder) Async
@@ -167,7 +168,7 @@ messages -> NetworkProcess LegacyReceiver {
     SetAdClickAttributionOverrideTimerForTesting(PAL::SessionID sessionID, bool value) -> () Async
     SetAdClickAttributionConversionURLForTesting(PAL::SessionID sessionID, URL url) -> () Async
     MarkAdClickAttributionsAsExpiredForTesting(PAL::SessionID sessionID) -> () Async
-    RemoveCredential(WebCore::Credential credential, WebCore::ProtectionSpace protectionSpace) -> () Async
     OriginsWithPersistentCredentials() -> (Vector<WebCore::SecurityOriginData> origins) Async
     RemoveCredentialsWithOrigins(Vector<WebCore::SecurityOriginData> origins) -> () Async
+    GetLocalStorageOriginDetails(PAL::SessionID sessionID) -> (Vector<WebKit::LocalStorageDatabaseTracker::OriginDetails> details) Async
 }

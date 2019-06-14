@@ -33,15 +33,15 @@ import re
 import requests
 
 BUG_SERVER_URL = 'https://bugs.webkit.org/'
-EWS_URL = 'https://ews-build.webkit.org/'
+S3URL = 'https://s3-us-west-2.amazonaws.com/'
 WithProperties = properties.WithProperties
 Interpolate = properties.Interpolate
 
 
 class ConfigureBuild(buildstep.BuildStep):
-    name = "configure-build"
-    description = ["configuring build"]
-    descriptionDone = ["Configured build"]
+    name = 'configure-build'
+    description = ['configuring build']
+    descriptionDone = ['Configured build']
 
     def __init__(self, platform, configuration, architectures, buildOnly, triggers, additionalArguments):
         super(ConfigureBuild, self).__init__()
@@ -50,7 +50,7 @@ class ConfigureBuild(buildstep.BuildStep):
             self.platform = platform.split('-', 1)[0]
         self.fullPlatform = platform
         self.configuration = configuration
-        self.architecture = " ".join(architectures) if architectures else None
+        self.architecture = ' '.join(architectures) if architectures else None
         self.buildOnly = buildOnly
         self.triggers = triggers
         self.additionalArguments = additionalArguments
@@ -65,11 +65,11 @@ class ConfigureBuild(buildstep.BuildStep):
         if self.architecture:
             self.setProperty('architecture', self.architecture, 'config.json')
         if self.buildOnly:
-            self.setProperty("buildOnly", self.buildOnly, 'config.json')
+            self.setProperty('buildOnly', self.buildOnly, 'config.json')
         if self.triggers:
             self.setProperty('triggers', self.triggers, 'config.json')
         if self.additionalArguments:
-            self.setProperty("additionalArguments", self.additionalArguments, 'config.json')
+            self.setProperty('additionalArguments', self.additionalArguments, 'config.json')
 
         self.add_patch_id_url()
         self.finished(SUCCESS)
@@ -153,34 +153,34 @@ class CheckPatchRelevance(buildstep.BuildStep):
     haltOnFailure = True
 
     bindings_paths = [
-        "Source/WebCore",
-        "Tools",
+        'Source/WebCore',
+        'Tools',
     ]
 
     jsc_paths = [
-        "JSTests/",
-        "Source/JavaScriptCore/",
-        "Source/WTF/",
-        "Source/bmalloc/",
-        "Makefile",
-        "Makefile.shared",
-        "Source/Makefile",
-        "Source/Makefile.shared",
-        "Tools/Scripts/build-webkit",
-        "Tools/Scripts/build-jsc",
-        "Tools/Scripts/jsc-stress-test-helpers/",
-        "Tools/Scripts/run-jsc",
-        "Tools/Scripts/run-jsc-benchmarks",
-        "Tools/Scripts/run-jsc-stress-tests",
-        "Tools/Scripts/run-javascriptcore-tests",
-        "Tools/Scripts/run-layout-jsc",
-        "Tools/Scripts/update-javascriptcore-test-results",
-        "Tools/Scripts/webkitdirs.pm",
+        'JSTests/',
+        'Source/JavaScriptCore/',
+        'Source/WTF/',
+        'Source/bmalloc/',
+        'Makefile',
+        'Makefile.shared',
+        'Source/Makefile',
+        'Source/Makefile.shared',
+        'Tools/Scripts/build-webkit',
+        'Tools/Scripts/build-jsc',
+        'Tools/Scripts/jsc-stress-test-helpers/',
+        'Tools/Scripts/run-jsc',
+        'Tools/Scripts/run-jsc-benchmarks',
+        'Tools/Scripts/run-jsc-stress-tests',
+        'Tools/Scripts/run-javascriptcore-tests',
+        'Tools/Scripts/run-layout-jsc',
+        'Tools/Scripts/update-javascriptcore-test-results',
+        'Tools/Scripts/webkitdirs.pm',
     ]
 
     webkitpy_paths = [
-        "Tools/Scripts/webkitpy/",
-        "Tools/QueueStatusServer/",
+        'Tools/Scripts/webkitpy/',
+        'Tools/QueueStatusServer/',
     ]
 
     group_to_paths_mapping = {
@@ -242,8 +242,8 @@ class ValidatePatch(buildstep.BuildStep):
     descriptionDone = ['Validated patch']
     flunkOnFailure = True
     haltOnFailure = True
-    bug_open_statuses = ["UNCONFIRMED", "NEW", "ASSIGNED", "REOPENED"]
-    bug_closed_statuses = ["RESOLVED", "VERIFIED", "CLOSED"]
+    bug_open_statuses = ['UNCONFIRMED', 'NEW', 'ASSIGNED', 'REOPENED']
+    bug_closed_statuses = ['RESOLVED', 'VERIFIED', 'CLOSED']
 
     @defer.inlineCallbacks
     def _addToLog(self, logName, message):
@@ -404,7 +404,7 @@ class Trigger(trigger.Trigger):
 
 
 class TestWithFailureCount(shell.Test):
-    failedTestsFormatString = "%d test%s failed"
+    failedTestsFormatString = '%d test%s failed'
     failedTestCount = 0
 
     def start(self):
@@ -418,7 +418,7 @@ class TestWithFailureCount(shell.Test):
     def commandComplete(self, cmd):
         shell.Test.commandComplete(self, cmd)
         self.failedTestCount = self.countFailures(cmd)
-        self.failedTestPluralSuffix = "" if self.failedTestCount == 1 else "s"
+        self.failedTestPluralSuffix = '' if self.failedTestCount == 1 else 's'
 
     def evaluateCommand(self, cmd):
         if self.failedTestCount:
@@ -579,13 +579,13 @@ def appendCustomBuildFlags(step, platform, fullPlatform):
 
 
 class CompileWebKit(shell.Compile):
-    name = "compile-webkit"
-    description = ["compiling"]
-    descriptionDone = ["Compiled WebKit"]
+    name = 'compile-webkit'
+    description = ['compiling']
+    descriptionDone = ['Compiled WebKit']
     env = {'MFLAGS': ''}
-    warningPattern = ".*arning: .*"
+    warningPattern = '.*arning: .*'
     haltOnFailure = False
-    command = ["perl", "Tools/Scripts/build-webkit", WithProperties("--%(configuration)s")]
+    command = ['perl', 'Tools/Scripts/build-webkit', WithProperties('--%(configuration)s')]
 
     def start(self):
         platform = self.getProperty('platform')
@@ -615,8 +615,7 @@ class CompileWebKit(shell.Compile):
             self.setProperty('patchFailedToBuild', True)
             self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileWebKitToT()])
         else:
-            self.build.addStepsAfterCurrentStep([ArchiveBuiltProduct(), UploadBuiltProduct()])
-
+            self.build.addStepsAfterCurrentStep([ArchiveBuiltProduct(), UploadBuiltProduct(), TransferToS3()])
 
         return super(CompileWebKit, self).evaluateCommand(cmd)
 
@@ -636,9 +635,9 @@ class CompileWebKitToT(CompileWebKit):
 
 
 class CompileJSCOnly(CompileWebKit):
-    name = "build-jsc"
-    descriptionDone = ["Compiled JSC"]
-    command = ["perl", "Tools/Scripts/build-jsc", WithProperties("--%(configuration)s")]
+    name = 'build-jsc'
+    descriptionDone = ['Compiled JSC']
+    command = ['perl', 'Tools/Scripts/build-jsc', WithProperties('--%(configuration)s')]
 
 
 class CompileJSCOnlyToT(CompileJSCOnly):
@@ -657,7 +656,7 @@ class RunJavaScriptCoreTests(shell.Test):
     descriptionDone = ['jscore-tests']
     flunkOnFailure = True
     jsonFileName = 'jsc_results.json'
-    logfiles = {"json": jsonFileName}
+    logfiles = {'json': jsonFileName}
     command = ['perl', 'Tools/Scripts/run-javascriptcore-tests', '--no-build', '--no-fail-fast', '--json-output={0}'.format(jsonFileName), WithProperties('--%(configuration)s')]
 
     def start(self):
@@ -698,17 +697,17 @@ class RunJavaScriptCoreTestsToT(RunJavaScriptCoreTests):
 
 
 class CleanBuild(shell.Compile):
-    name = "delete-WebKitBuild-directory"
-    description = ["deleting WebKitBuild directory"]
-    descriptionDone = ["Deleted WebKitBuild directory"]
-    command = ["python", "Tools/BuildSlaveSupport/clean-build", WithProperties("--platform=%(fullPlatform)s"), WithProperties("--%(configuration)s")]
+    name = 'delete-WebKitBuild-directory'
+    description = ['deleting WebKitBuild directory']
+    descriptionDone = ['Deleted WebKitBuild directory']
+    command = ['python', 'Tools/BuildSlaveSupport/clean-build', WithProperties('--platform=%(fullPlatform)s'), WithProperties('--%(configuration)s')]
 
 
 class KillOldProcesses(shell.Compile):
-    name = "kill-old-processes"
-    description = ["killing old processes"]
-    descriptionDone = ["Killed old processes"]
-    command = ["python", "Tools/BuildSlaveSupport/kill-old-processes", "buildbot"]
+    name = 'kill-old-processes'
+    description = ['killing old processes']
+    descriptionDone = ['Killed old processes']
+    command = ['python', 'Tools/BuildSlaveSupport/kill-old-processes', 'buildbot']
 
     def __init__(self, **kwargs):
         super(KillOldProcesses, self).__init__(timeout=60, **kwargs)
@@ -770,29 +769,66 @@ class UploadBuiltProduct(transfer.FileUpload):
         kwargs['blocksize'] = 1024 * 256
         transfer.FileUpload.__init__(self, **kwargs)
 
-    def finished(self, results):
-        if results == SUCCESS:
-            triggers = self.getProperty('triggers', None)
-            if triggers:
-                self.build.addStepsAfterCurrentStep([Trigger(schedulerNames=triggers)])
-
-        return super(UploadBuiltProduct, self).finished(results)
-
     def getResultSummary(self):
         if self.results != SUCCESS:
             return {u'step': u'Failed to upload built product'}
         return super(UploadBuiltProduct, self).getResultSummary()
 
 
+class TransferToS3(master.MasterShellCommand):
+    name = 'transfer-to-s3'
+    description = ['transferring to s3']
+    descriptionDone = ['Transferred archive to S3']
+    archive = WithProperties('public_html/archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')
+    identifier = WithProperties('%(fullPlatform)s-%(architecture)s-%(configuration)s')
+    patch_id = WithProperties('%(patch_id)s')
+    command = ['python', '../Shared/transfer-archive-to-s3', '--patch_id', patch_id, '--identifier', identifier, '--archive', archive]
+    haltOnFailure = True
+    flunkOnFailure = True
+
+    def __init__(self, **kwargs):
+        kwargs['command'] = self.command
+        master.MasterShellCommand.__init__(self, logEnviron=False, **kwargs)
+
+    def start(self):
+        self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
+        self.addLogObserver('stdio', self.log_observer)
+        return super(TransferToS3, self).start()
+
+    def finished(self, results):
+        log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
+        match = re.search(r'S3 URL: (?P<url>[^\s]+)', log_text)
+        # Sample log: S3 URL: https://s3-us-west-2.amazonaws.com/ews-archives.webkit.org/ios-simulator-12-x86_64-release/123456.zip
+        if match:
+            self.addURL('uploaded archive', match.group('url'))
+
+        if results == SUCCESS:
+            triggers = self.getProperty('triggers', None)
+            if triggers:
+                self.build.addStepsAfterCurrentStep([Trigger(schedulerNames=triggers)])
+
+        return super(TransferToS3, self).finished(results)
+
+    def getResultSummary(self):
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to transfer archive to S3'}
+        return super(TransferToS3, self).getResultSummary()
+
+
 class DownloadBuiltProduct(shell.ShellCommand):
     command = ['python', 'Tools/BuildSlaveSupport/download-built-product',
-        WithProperties('--platform=%(platform)s'), WithProperties('--%(configuration)s'),
-        WithProperties(EWS_URL + 'archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')]
+        WithProperties('--%(configuration)s'),
+        WithProperties(S3URL + 'ews-archives.webkit.org/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')]
     name = 'download-built-product'
     description = ['downloading built product']
     descriptionDone = ['Downloaded built product']
     haltOnFailure = True
     flunkOnFailure = True
+
+    def getResultSummary(self):
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to download built product from S3'}
+        return super(DownloadBuiltProduct, self).getResultSummary()
 
 
 class ExtractBuiltProduct(shell.ShellCommand):

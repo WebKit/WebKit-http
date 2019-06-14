@@ -110,6 +110,8 @@ public:
     static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore*, IsPrewarmed, ShouldLaunchProcess = ShouldLaunchProcess::Yes);
     ~WebProcessProxy();
 
+    static void forWebPagesWithOrigin(PAL::SessionID, const WebCore::SecurityOriginData&, const Function<void(WebPageProxy&)>&);
+
     WebConnection* webConnection() const { return m_webConnection.get(); }
 
     unsigned suspendedPageCount() const { return m_suspendedPageCount; }
@@ -306,6 +308,8 @@ public:
     void processWasUnexpectedlyUnsuspended(CompletionHandler<void()>&&);
 #endif
 
+    void webPageMediaStateDidChange(WebPageProxy&);
+
 protected:
     static uint64_t generatePageID();
     WebProcessProxy(WebProcessPool&, WebsiteDataStore*, IsPrewarmed);
@@ -485,6 +489,7 @@ private:
     unsigned m_suspendedPageCount { 0 };
     bool m_hasCommittedAnyProvisionalLoads { false };
     bool m_isPrewarmed;
+    bool m_hasAudibleWebPage { false };
 
 #if PLATFORM(WATCHOS)
     ProcessThrottler::BackgroundActivityToken m_backgroundActivityTokenForFullscreenFormControls;

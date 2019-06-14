@@ -296,6 +296,8 @@ Page* WebChromeClient::createWindow(Frame& frame, const FrameLoadRequest& reques
     if (!newPageID)
         return nullptr;
     ASSERT(parameters);
+    if (parameters->sessionID == m_page.sessionID())
+        parameters->oldPageID = m_page.pageID();
 
     webProcess.createWebPage(newPageID, WTFMove(*parameters));
     return webProcess.webPage(newPageID)->corePage();
@@ -847,9 +849,11 @@ RefPtr<Icon> WebChromeClient::createIconForFiles(const Vector<String>& filenames
 
 #endif
 
-void WebChromeClient::didAssociateFormControls(const Vector<RefPtr<Element>>& elements)
+void WebChromeClient::didAssociateFormControls(const Vector<RefPtr<Element>>& elements, WebCore::Frame& frame)
 {
-    return m_page.injectedBundleFormClient().didAssociateFormControls(&m_page, elements);
+    WebFrame* webFrame = WebFrame::fromCoreFrame(frame);
+    ASSERT(webFrame);
+    return m_page.injectedBundleFormClient().didAssociateFormControls(&m_page, elements, webFrame);
 }
 
 bool WebChromeClient::shouldNotifyOnFormChanges()
@@ -1336,6 +1340,16 @@ void WebChromeClient::shouldAllowDeviceOrientationAndMotionAccess(Frame& frame, 
 void WebChromeClient::configureLoggingChannel(const String& channelName, WTFLogChannelState state, WTFLogLevel level)
 {
     m_page.configureLoggingChannel(channelName, state, level);
+}
+
+bool WebChromeClient::userIsInteracting() const
+{
+    return m_page.userIsInteracting();
+}
+
+void WebChromeClient::setUserIsInteracting(bool userIsInteracting)
+{
+    m_page.setUserIsInteracting(userIsInteracting);
 }
 
 } // namespace WebKit

@@ -84,7 +84,7 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
         paintRect.moveBy(-paintOffset);
         for (auto run : layout.runResolver().rangeForRect(paintRect)) {
             FloatRect visualOverflowRect = computeOverflow(flow, run.rect());
-            paintInfo.eventRegion->unite(enclosingIntRect(visualOverflowRect), flow.style());
+            paintInfo.eventRegionContext->unite(enclosingIntRect(visualOverflowRect), flow.style());
         }
         return;
     }
@@ -263,10 +263,9 @@ Vector<FloatQuad> collectAbsoluteQuadsForRange(const RenderObject& renderer, uns
             quads.append(renderer.localToAbsoluteQuad(FloatQuad(runRect), UseTransforms, wasFixed));
             continue;
         }
-        ASSERT(start < run.end());
-        ASSERT(end > run.start());
         auto localStart = std::max(run.start(), start) - run.start();
         auto localEnd = std::min(run.end(), end) - run.start();
+        ASSERT(localStart <= localEnd);
         style.fontCascade().adjustSelectionRectForText(textRun, runRect, localStart, localEnd);
         quads.append(renderer.localToAbsoluteQuad(FloatQuad(runRect), UseTransforms, wasFixed));
     }
@@ -380,7 +379,7 @@ void generateLineBoxTree(RenderBlockFlow& flow, const Layout& layout)
         auto lineTop = firstRun.rect().y();
         auto lineHeight = firstRun.rect().height();
         rootLineBox.setLogicalTop(lineTop);
-        rootLineBox.setLineTopBottomPositions(lineTop, lineTop + lineHeight, lineTop, lineTop + lineHeight);
+        rootLineBox.setLineTopBottomPositions(LayoutUnit(lineTop), LayoutUnit(lineTop + lineHeight), LayoutUnit(lineTop), LayoutUnit(lineTop + lineHeight));
     }
 }
 

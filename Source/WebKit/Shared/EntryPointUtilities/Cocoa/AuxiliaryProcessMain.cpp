@@ -27,7 +27,5 @@
 
 int main(int argc, const char** argv)
 {
-    if (argc >= 2 && strstr(argv[1], "Daemon"))
-        return WKDaemonMain(argc, argv);
     return WKXPCServiceMain(argc, argv);
 }

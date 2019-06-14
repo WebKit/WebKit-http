@@ -261,8 +261,8 @@ public:
         Bag<JITSubIC> m_subICs;
         Bag<ByValInfo> m_byValInfos;
         Bag<CallLinkInfo> m_callLinkInfos;
-        SentinelLinkedList<CallLinkInfo, BasicRawSentinelNode<CallLinkInfo>> m_incomingCalls;
-        SentinelLinkedList<PolymorphicCallNode, BasicRawSentinelNode<PolymorphicCallNode>> m_incomingPolymorphicCalls;
+        SentinelLinkedList<CallLinkInfo, PackedRawSentinelNode<CallLinkInfo>> m_incomingCalls;
+        SentinelLinkedList<PolymorphicCallNode, PackedRawSentinelNode<PolymorphicCallNode>> m_incomingPolymorphicCalls;
         SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
         std::unique_ptr<PCToCodeOriginMap> m_pcToCodeOriginMap;
         std::unique_ptr<RegisterAtOffsetList> m_calleeSaveRegisters;
@@ -277,22 +277,22 @@ public:
     }
     JITData& ensureJITDataSlow(const ConcurrentJSLocker&);
 
-    JITAddIC* addJITAddIC(ArithProfile*, const Instruction*);
-    JITMulIC* addJITMulIC(ArithProfile*, const Instruction*);
-    JITNegIC* addJITNegIC(ArithProfile*, const Instruction*);
-    JITSubIC* addJITSubIC(ArithProfile*, const Instruction*);
+    JITAddIC* addJITAddIC(ArithProfile*);
+    JITMulIC* addJITMulIC(ArithProfile*);
+    JITNegIC* addJITNegIC(ArithProfile*);
+    JITSubIC* addJITSubIC(ArithProfile*);
 
     template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITAddGenerator>::value>::type>
-    JITAddIC* addMathIC(ArithProfile* profile, const Instruction* instruction) { return addJITAddIC(profile, instruction); }
+    JITAddIC* addMathIC(ArithProfile* profile) { return addJITAddIC(profile); }
 
     template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITMulGenerator>::value>::type>
-    JITMulIC* addMathIC(ArithProfile* profile, const Instruction* instruction) { return addJITMulIC(profile, instruction); }
+    JITMulIC* addMathIC(ArithProfile* profile) { return addJITMulIC(profile); }
 
     template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITNegGenerator>::value>::type>
-    JITNegIC* addMathIC(ArithProfile* profile, const Instruction* instruction) { return addJITNegIC(profile, instruction); }
+    JITNegIC* addMathIC(ArithProfile* profile) { return addJITNegIC(profile); }
 
     template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITSubGenerator>::value>::type>
-    JITSubIC* addMathIC(ArithProfile* profile, const Instruction* instruction) { return addJITSubIC(profile, instruction); }
+    JITSubIC* addMathIC(ArithProfile* profile) { return addJITSubIC(profile); }
 
     StructureStubInfo* addStubInfo(AccessType);
 
@@ -478,7 +478,6 @@ public:
     {
         ASSERT(vm()->canUseJIT()); // This is only called from the various JIT compilers or places that first check numberOfArgumentValueProfiles before calling this.
         ValueProfile& result = m_argumentValueProfiles[argumentIndex];
-        ASSERT(result.m_bytecodeOffset == -1);
         return result;
     }
 
@@ -907,7 +906,7 @@ private:
     
     double optimizationThresholdScalingFactor();
 
-    void updateAllPredictionsAndCountLiveness(unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles);
+    void updateAllValueProfilePredictionsAndCountLiveness(unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles);
 
     void setConstantIdentifierSetRegisters(VM&, const Vector<ConstantIdentifierSetEntry>& constants);
 
@@ -974,7 +973,7 @@ private:
     VM* m_vm;
 
     const void* m_instructionsRawPointer { nullptr };
-    SentinelLinkedList<LLIntCallLinkInfo, BasicRawSentinelNode<LLIntCallLinkInfo>> m_incomingLLIntCalls;
+    SentinelLinkedList<LLIntCallLinkInfo, PackedRawSentinelNode<LLIntCallLinkInfo>> m_incomingLLIntCalls;
     StructureWatchpointMap m_llintGetByIdWatchpointMap;
     RefPtr<JITCode> m_jitCode;
 #if ENABLE(JIT)

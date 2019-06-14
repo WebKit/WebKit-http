@@ -30,6 +30,7 @@
 #import "Blob.h"
 #import "BlobURL.h"
 #import "CachedResourceLoader.h"
+#import "CustomHeaderFields.h"
 #import "DOMURL.h"
 #import "Document.h"
 #import "DocumentFragment.h"
@@ -246,7 +247,7 @@ static bool supportsClientSideAttachmentData(const Frame& frame)
 
 #endif
 
-static Ref<DocumentFragment> createFragmentForImageAttachment(Frame& frame, Document& document, Ref<SharedBuffer>&& buffer, const String& contentType)
+static Ref<DocumentFragment> createFragmentForImageAttachment(Frame& frame, Document& document, Ref<SharedBuffer>&& buffer, const String& contentType, Optional<FloatSize> preferredSize)
 {
 #if ENABLE(ATTACHMENT_ELEMENT)
     auto attachment = HTMLAttachmentElement::create(HTMLNames::attachmentTag, document);
@@ -260,6 +261,10 @@ static Ref<DocumentFragment> createFragmentForImageAttachment(Frame& frame, Docu
             auto image = HTMLImageElement::create(document);
             image->setAttributeWithoutSynchronization(HTMLNames::srcAttr, DOMURL::createObjectURL(document, Blob::create(buffer.get(), contentType)));
             image->setAttachmentElement(WTFMove(attachment));
+            if (preferredSize) {
+                image->setAttributeWithoutSynchronization(HTMLNames::widthAttr, AtomicString::number(preferredSize->width()));
+                image->setAttributeWithoutSynchronization(HTMLNames::heightAttr, AtomicString::number(preferredSize->height()));
+            }
             fragment->appendChild(WTFMove(image));
         } else {
             attachment->updateAttributes(buffer->size(), contentType, defaultImageAttachmentName);
@@ -676,14 +681,14 @@ bool WebContentReader::readPlainText(const String& text)
     return true;
 }
 
-bool WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const String& type)
+bool WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const String& type, Optional<FloatSize> preferredPresentationSize)
 {
     ASSERT(frame.document());
     auto& document = *frame.document();
     if (shouldReplaceRichContentWithAttachments())
-        addFragment(createFragmentForImageAttachment(frame, document, WTFMove(buffer), type));
+        addFragment(createFragmentForImageAttachment(frame, document, WTFMove(buffer), type, preferredPresentationSize));
     else
-        addFragment(createFragmentForImageAndURL(document, DOMURL::createObjectURL(document, Blob::create(buffer.get(), type))));
+        addFragment(createFragmentForImageAndURL(document, DOMURL::createObjectURL(document, Blob::create(buffer.get(), type)), preferredPresentationSize));
 
     return fragment;
 }

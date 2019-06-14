@@ -20,6 +20,7 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/NetworkProcess/FileAPI"
     "${WEBKIT_DIR}/NetworkProcess/IndexedDB"
     "${WEBKIT_DIR}/NetworkProcess/ServiceWorker"
+    "${WEBKIT_DIR}/NetworkProcess/WebStorage"
     "${WEBKIT_DIR}/NetworkProcess/cache"
     "${WEBKIT_DIR}/NetworkProcess/watchos"
     "${WEBKIT_DIR}/NetworkProcess/webrtc"
@@ -58,7 +59,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/UserContent"
     "${WEBKIT_DIR}/UIProcess/WebAuthentication"
     "${WEBKIT_DIR}/UIProcess/WebAuthentication/Mock"
-    "${WEBKIT_DIR}/UIProcess/WebStorage"
     "${WEBKIT_DIR}/UIProcess/WebsiteData"
     "${WEBKIT_DIR}/WebProcess"
     "${WEBKIT_DIR}/WebProcess/ApplePay"
@@ -102,10 +102,6 @@ SET(WebKit_LOCAL_INCLUDE_DIRECTORIES
 
 set(PROTOCOL_GENERATOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
 
-set(WebKit_SYSTEM_INCLUDE_DIRECTORIES
-    ${ICU_INCLUDE_DIRS}
-)
-
 list(APPEND WebKit_UNIFIED_SOURCE_LIST_FILES
     "Sources.txt"
 )
@@ -124,6 +120,8 @@ set(WebKit_MESSAGES_IN_FILES
     NetworkProcess/ServiceWorker/ServiceWorkerFetchTask.messages.in
     NetworkProcess/ServiceWorker/WebSWServerConnection.messages.in
     NetworkProcess/ServiceWorker/WebSWServerToContextConnection.messages.in
+
+    NetworkProcess/WebStorage/StorageManager.messages.in
 
     NetworkProcess/cache/CacheStorageEngineConnection.messages.in
 
@@ -165,13 +163,9 @@ set(WebKit_MESSAGES_IN_FILES
 
     UIProcess/UserContent/WebUserContentControllerProxy.messages.in
 
-    UIProcess/WebStorage/StorageManager.messages.in
-
     WebProcess/WebProcess.messages.in
 
     WebProcess/Automation/WebAutomationSessionProxy.messages.in
-
-    WebProcess/Cache/WebCacheStorageConnection.messages.in
 
     WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.messages.in
 

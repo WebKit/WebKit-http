@@ -28,73 +28,7 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLArrayReferenceType.h"
-#include "WHLSLArrayType.h"
-#include "WHLSLAssignmentExpression.h"
-#include "WHLSLBaseFunctionAttribute.h"
-#include "WHLSLBaseSemantic.h"
-#include "WHLSLBlock.h"
-#include "WHLSLBooleanLiteral.h"
-#include "WHLSLBreak.h"
-#include "WHLSLBuiltInSemantic.h"
-#include "WHLSLCallExpression.h"
-#include "WHLSLCommaExpression.h"
-#include "WHLSLConstantExpression.h"
-#include "WHLSLContinue.h"
-#include "WHLSLDereferenceExpression.h"
-#include "WHLSLDoWhileLoop.h"
-#include "WHLSLDotExpression.h"
-#include "WHLSLEffectfulExpressionStatement.h"
-#include "WHLSLEnumerationDefinition.h"
-#include "WHLSLEnumerationMember.h"
-#include "WHLSLEnumerationMemberLiteral.h"
-#include "WHLSLExpression.h"
-#include "WHLSLFallthrough.h"
-#include "WHLSLFloatLiteral.h"
-#include "WHLSLForLoop.h"
-#include "WHLSLFunctionAttribute.h"
-#include "WHLSLFunctionDeclaration.h"
-#include "WHLSLFunctionDefinition.h"
-#include "WHLSLIfStatement.h"
-#include "WHLSLIndexExpression.h"
-#include "WHLSLIntegerLiteral.h"
-#include "WHLSLLogicalExpression.h"
-#include "WHLSLLogicalNotExpression.h"
-#include "WHLSLMakeArrayReferenceExpression.h"
-#include "WHLSLMakePointerExpression.h"
-#include "WHLSLNativeFunctionDeclaration.h"
-#include "WHLSLNativeTypeDeclaration.h"
-#include "WHLSLNode.h"
-#include "WHLSLNullLiteral.h"
-#include "WHLSLNumThreadsFunctionAttribute.h"
-#include "WHLSLPointerType.h"
-#include "WHLSLProgram.h"
-#include "WHLSLPropertyAccessExpression.h"
-#include "WHLSLQualifier.h"
-#include "WHLSLReadModifyWriteExpression.h"
-#include "WHLSLReferenceType.h"
-#include "WHLSLResourceSemantic.h"
-#include "WHLSLReturn.h"
-#include "WHLSLSemantic.h"
-#include "WHLSLSpecializationConstantSemantic.h"
-#include "WHLSLStageInOutSemantic.h"
-#include "WHLSLStatement.h"
-#include "WHLSLStructureDefinition.h"
-#include "WHLSLStructureElement.h"
-#include "WHLSLSwitchCase.h"
-#include "WHLSLSwitchStatement.h"
-#include "WHLSLTernaryExpression.h"
-#include "WHLSLTrap.h"
-#include "WHLSLType.h"
-#include "WHLSLTypeArgument.h"
-#include "WHLSLTypeDefinition.h"
-#include "WHLSLTypeReference.h"
-#include "WHLSLUnsignedIntegerLiteral.h"
-#include "WHLSLValue.h"
-#include "WHLSLVariableDeclaration.h"
-#include "WHLSLVariableDeclarationsStatement.h"
-#include "WHLSLVariableReference.h"
-#include "WHLSLWhileLoop.h"
+#include "WHLSLAST.h"
 
 namespace WebCore {
 
@@ -184,8 +118,8 @@ void Visitor::visit(AST::TypeReference& typeReference)
 {
     for (auto& typeArgument : typeReference.typeArguments())
         checkErrorAndVisit(typeArgument);
-    if (typeReference.resolvedType() && is<AST::TypeDefinition>(*typeReference.resolvedType())) {
-        auto& typeDefinition = downcast<AST::TypeDefinition>(*typeReference.resolvedType());
+    if (typeReference.maybeResolvedType() && is<AST::TypeDefinition>(typeReference.resolvedType())) {
+        auto& typeDefinition = downcast<AST::TypeDefinition>(typeReference.resolvedType());
         checkErrorAndVisit(typeDefinition.type());
     }
 }
@@ -320,29 +254,29 @@ void Visitor::visit(AST::BooleanLiteral&)
 
 void Visitor::visit(AST::IntegerLiteralType& integerLiteralType)
 {
-    if (integerLiteralType.resolvedType())
-        checkErrorAndVisit(*integerLiteralType.resolvedType());
+    if (integerLiteralType.maybeResolvedType())
+        checkErrorAndVisit(integerLiteralType.resolvedType());
     checkErrorAndVisit(integerLiteralType.preferredType());
 }
 
 void Visitor::visit(AST::UnsignedIntegerLiteralType& unsignedIntegerLiteralType)
 {
-    if (unsignedIntegerLiteralType.resolvedType())
-        checkErrorAndVisit(*unsignedIntegerLiteralType.resolvedType());
+    if (unsignedIntegerLiteralType.maybeResolvedType())
+        checkErrorAndVisit(unsignedIntegerLiteralType.resolvedType());
     checkErrorAndVisit(unsignedIntegerLiteralType.preferredType());
 }
 
 void Visitor::visit(AST::FloatLiteralType& floatLiteralType)
 {
-    if (floatLiteralType.resolvedType())
-        checkErrorAndVisit(*floatLiteralType.resolvedType());
+    if (floatLiteralType.maybeResolvedType())
+        checkErrorAndVisit(floatLiteralType.resolvedType());
     checkErrorAndVisit(floatLiteralType.preferredType());
 }
 
 void Visitor::visit(AST::NullLiteralType& nullLiteralType)
 {
-    if (nullLiteralType.resolvedType())
-        checkErrorAndVisit(*nullLiteralType.resolvedType());
+    if (nullLiteralType.maybeResolvedType())
+        checkErrorAndVisit(nullLiteralType.resolvedType());
 }
 
 void Visitor::visit(AST::EnumerationMemberLiteral&)
@@ -532,7 +466,7 @@ void Visitor::visit(AST::Trap&)
 void Visitor::visit(AST::VariableDeclarationsStatement& variableDeclarationsStatement)
 {
     for (auto& variableDeclaration : variableDeclarationsStatement.variableDeclarations())
-        checkErrorAndVisit(variableDeclaration);
+        checkErrorAndVisit(variableDeclaration.get());
 }
 
 void Visitor::visit(AST::WhileLoop& whileLoop)
@@ -589,23 +523,21 @@ void Visitor::visit(AST::LogicalNotExpression& logicalNotExpression)
 
 void Visitor::visit(AST::MakeArrayReferenceExpression& makeArrayReferenceExpression)
 {
-    checkErrorAndVisit(makeArrayReferenceExpression.lValue());
+    checkErrorAndVisit(makeArrayReferenceExpression.leftValue());
 }
 
 void Visitor::visit(AST::MakePointerExpression& makePointerExpression)
 {
-    checkErrorAndVisit(makePointerExpression.lValue());
+    checkErrorAndVisit(makePointerExpression.leftValue());
 }
 
 void Visitor::visit(AST::ReadModifyWriteExpression& readModifyWriteExpression)
 {
-    checkErrorAndVisit(readModifyWriteExpression.lValue());
+    checkErrorAndVisit(readModifyWriteExpression.leftValue());
     checkErrorAndVisit(readModifyWriteExpression.oldValue());
     checkErrorAndVisit(readModifyWriteExpression.newValue());
-    if (readModifyWriteExpression.newValueExpression())
-        checkErrorAndVisit(*readModifyWriteExpression.newValueExpression());
-    if (readModifyWriteExpression.resultExpression())
-        checkErrorAndVisit(*readModifyWriteExpression.resultExpression());
+    checkErrorAndVisit(readModifyWriteExpression.newValueExpression());
+    checkErrorAndVisit(readModifyWriteExpression.resultExpression());
 }
 
 void Visitor::visit(AST::TernaryExpression& ternaryExpression)

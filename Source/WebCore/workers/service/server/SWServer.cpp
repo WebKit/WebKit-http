@@ -69,6 +69,14 @@ SWServer::~SWServer()
     auto connections = WTFMove(m_connections);
     connections.clear();
 
+    Vector<SWServerWorker*> runningWorkers;
+    for (auto& worker : m_runningOrTerminatingWorkers.values()) {
+        if (worker->isRunning())
+            runningWorkers.append(worker.ptr());
+    }
+    for (auto& runningWorker : runningWorkers)
+        terminateWorker(*runningWorker);
+
     allServers().remove(this);
 }
 
@@ -212,8 +220,11 @@ void SWServer::clearAll(CompletionHandler<void()>&& completionHandler)
 
 void SWServer::startSuspension(CompletionHandler<void()>&& completionHandler)
 {
-    if (m_registrationStore)
-        m_registrationStore->startSuspension(WTFMove(completionHandler));
+    if (!m_registrationStore) {
+        completionHandler();
+        return;
+    }
+    m_registrationStore->startSuspension(WTFMove(completionHandler));
 }
 
 void SWServer::endSuspension()
@@ -536,6 +547,9 @@ void SWServer::tryInstallContextData(ServiceWorkerContextData&& data)
 
 void SWServer::serverToContextConnectionCreated(SWServerToContextConnection& contextConnection)
 {
+    for (auto& connection : m_connections.values())
+        connection->serverToContextConnectionCreated(contextConnection);
+
     auto pendingContextDatas = m_pendingContextDatas.take(contextConnection.registrableDomain());
     for (auto& data : pendingContextDatas)
         installContextData(data);

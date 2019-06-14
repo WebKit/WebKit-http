@@ -42,6 +42,7 @@
 #include "NetworkSessionCreationParameters.h"
 #include "PluginProcessConnectionManager.h"
 #include "StatisticsData.h"
+#include "StorageAreaMap.h"
 #include "UserData.h"
 #include "WebAutomationSessionProxy.h"
 #include "WebCacheStorageProvider.h"
@@ -56,6 +57,7 @@
 #include "WebMemorySampler.h"
 #include "WebMessagePortChannelProvider.h"
 #include "WebPage.h"
+#include "WebPageCreationParameters.h"
 #include "WebPageGroupProxy.h"
 #include "WebPaymentCoordinator.h"
 #include "WebPlatformStrategies.h"
@@ -117,6 +119,7 @@
 #include <WebCore/ServiceWorkerContextData.h>
 #include <WebCore/Settings.h>
 #include <WebCore/UserGestureIndicator.h>
+#include <wtf/Algorithms.h>
 #include <wtf/Language.h>
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
@@ -674,6 +677,7 @@ void WebProcess::createWebPage(uint64_t pageID, WebPageCreationParameters&& para
     // It is necessary to check for page existence here since during a window.open() (or targeted
     // link) the WebPage gets created both in the synchronous handler and through the normal way. 
     HashMap<uint64_t, RefPtr<WebPage>>::AddResult result = m_pageMap.add(pageID, nullptr);
+    auto oldPageID = parameters.oldPageID ? parameters.oldPageID.value() : pageID;
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = WebPage::create(pageID, WTFMove(parameters));
@@ -684,13 +688,16 @@ void WebProcess::createWebPage(uint64_t pageID, WebPageCreationParameters&& para
     } else
         result.iterator->value->reinitializeWebPage(WTFMove(parameters));
 
+    ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::WebPageWasAdded(result.iterator->value->sessionID(), pageID, oldPageID), 0);
+
     ASSERT(result.iterator->value);
 }
 
-void WebProcess::removeWebPage(uint64_t pageID)
+void WebProcess::removeWebPage(PAL::SessionID sessionID, uint64_t pageID)
 {
     ASSERT(m_pageMap.contains(pageID));
 
+    ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::WebPageWasRemoved(sessionID, pageID), 0);
     pageWillLeaveWindow(pageID);
     m_pageMap.remove(pageID);
 
@@ -731,8 +738,6 @@ void WebProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder
 {
     if (messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
-
-    didReceiveSyncWebProcessMessage(connection, decoder, replyEncoder);
 }
 
 void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
@@ -1242,6 +1247,16 @@ NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
 
         m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
         m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::SetWebProcessIdentifier(Process::identifier()), 0);
+
+        // To recover web storage, network process needs to know active webpages to prepare session storage.
+        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198051.
+        // Webpage should be added when Storage is used, not when connection is re-established.
+        for (auto& page : m_pageMap) {
+            if (!page.value)
+                continue;
+
+            m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::WebPageWasAdded(page.value->sessionID(), page.key, page.key), 0);
+        }
     }
     
     return *m_networkProcessConnection;
@@ -1271,6 +1286,9 @@ void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connec
 {
     ASSERT(m_networkProcessConnection);
     ASSERT_UNUSED(connection, m_networkProcessConnection == connection);
+
+    for (auto* storageAreaMap : m_storageAreaMaps.values())
+        storageAreaMap->disconnect();
 
 #if ENABLE(INDEXED_DATABASE)
     for (auto& page : m_pageMap.values()) {
@@ -1489,19 +1507,11 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
     });
 }
 
-void WebProcess::processWillSuspendImminently(CompletionHandler<void(bool)>&& completionHandler)
+void WebProcess::processWillSuspendImminently()
 {
-    if (parentProcessConnection()->inSendSync()) {
-        // Avoid reentrency bugs such as rdar://problem/21605505 by just bailing
-        // if we get an incoming ProcessWillSuspendImminently message when waiting for a
-        // reply to a sync message.
-        // FIXME: ProcessWillSuspendImminently should not be a sync message.
-        return completionHandler(false);
-    }
-
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processWillSuspendImminently()", this);
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processWillSuspendImminently() BEGIN", this);
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
-    completionHandler(true);
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processWillSuspendImminently() END", this);
 }
 
 void WebProcess::prepareToSuspend()
@@ -1637,6 +1647,40 @@ void WebProcess::nonVisibleProcessCleanupTimerFired()
 #if PLATFORM(COCOA)
     destroyRenderingResources();
 #endif
+}
+
+void WebProcess::registerStorageAreaMap(StorageAreaMap& storageAreaMap)
+{
+    ASSERT(!m_storageAreaMaps.contains(storageAreaMap.identifier()));
+    m_storageAreaMaps.set(storageAreaMap.identifier(), &storageAreaMap);
+}
+
+void WebProcess::unregisterStorageAreaMap(StorageAreaMap& storageAreaMap)
+{
+    ASSERT(m_storageAreaMaps.contains(storageAreaMap.identifier()));
+    ASSERT(m_storageAreaMaps.get(storageAreaMap.identifier()) == &storageAreaMap);
+    m_storageAreaMaps.remove(storageAreaMap.identifier());
+}
+
+StorageAreaMap* WebProcess::storageAreaMap(uint64_t identifier) const
+{
+    ASSERT(m_storageAreaMaps.contains(identifier));
+    return m_storageAreaMaps.get(identifier);
+}
+
+void WebProcess::enablePrivateBrowsingForTesting(bool enable)
+{
+    if (enable)
+        ensureLegacyPrivateBrowsingSessionInNetworkProcess();
+
+    Vector<uint64_t> pageIDs;
+    for (auto& page : m_pageMap) {
+        if (page.value)
+            pageIDs.append(page.key);
+    }
+
+    if (!pageIDs.isEmpty())
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::WebProcessSessionChanged(enable ? PAL::SessionID::legacyPrivateSessionID() : PAL::SessionID::defaultSessionID(), pageIDs), 0);
 }
 
 void WebProcess::setResourceLoadStatisticsEnabled(bool enabled)
@@ -1866,11 +1910,30 @@ void WebProcess::grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensi
     }
 }
 
+static inline void checkDocumentsCaptureStateConsistency(const Vector<String>& extensionIDs)
+{
+#if !ASSERT_DISABLED
+    bool isCapturingAudio = WTF::anyOf(Document::allDocumentsMap().values(), [](auto* document) {
+        return document->mediaState() & MediaProducer::AudioCaptureMask;
+    });
+    bool isCapturingVideo = WTF::anyOf(Document::allDocumentsMap().values(), [](auto* document) {
+        return document->mediaState() & MediaProducer::VideoCaptureMask;
+    });
+
+    if (isCapturingAudio)
+        ASSERT(extensionIDs.findMatching([](auto& id) { return id.contains("microphone"); }) == notFound);
+    if (isCapturingVideo)
+        ASSERT(extensionIDs.findMatching([](auto& id) { return id.contains("camera"); }) == notFound);
+#endif
+}
+
 void WebProcess::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& extensionIDs)
 {
+    checkDocumentsCaptureStateConsistency(extensionIDs);
+
     for (const auto& extensionID : extensionIDs) {
         auto extension = m_mediaCaptureSandboxExtensions.take(extensionID);
-        ASSERT(extension);
+        ASSERT(extension || MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled());
         if (extension) {
             extension->revoke();
             RELEASE_LOG(WebRTC, "UserMediaPermissionRequestManager::revokeUserMediaDeviceSandboxExtensions - revoked extension %s", extensionID.utf8().data());
@@ -1906,5 +1969,12 @@ void WebProcess::unblockAccessibilityServer(const SandboxExtension::Handle& hand
     ASSERT_UNUSED(ok, ok);
 }
 #endif
+
+bool WebProcess::areAllPagesThrottleable() const
+{
+    return WTF::allOf(m_pageMap.values(), [](auto& page) {
+        return page->isThrottleable();
+    });
+}
 
 } // namespace WebKit

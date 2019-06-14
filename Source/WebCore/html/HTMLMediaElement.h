@@ -562,6 +562,7 @@ public:
 #if !RELEASE_LOG_DISABLED
     const Logger& logger() const final { return *m_logger.get(); }
     const void* logIdentifier() const final { return m_logIdentifier; }
+    const char* logClassName() const final { return "HTMLMediaElement"; }
     WTFLogChannel& logChannel() const final;
 #endif
 
@@ -851,7 +852,7 @@ private:
 
     void changeNetworkStateFromLoadingToIdle();
 
-    void removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::BehaviorRestrictions mask = MediaElementSession::AllRestrictions);
+    void removeBehaviorRestrictionsAfterFirstUserGesture(MediaElementSession::BehaviorRestrictions mask = MediaElementSession::AllRestrictions);
 
     void updateMediaController();
     bool isBlocked() const;
@@ -891,6 +892,7 @@ private:
     bool shouldOverrideBackgroundLoadingRestriction() const override;
     bool canProduceAudio() const final;
     bool processingUserGestureForMedia() const final;
+    bool hasMediaStreamSource() const final;
 
     void pageMutedStateDidChange() override;
 
@@ -942,8 +944,6 @@ private:
     void setInActiveDocument(bool);
 
 #if !RELEASE_LOG_DISABLED
-    const char* logClassName() const final { return "HTMLMediaElement"; }
-
     const void* mediaPlayerLogIdentifier() final { return logIdentifier(); }
     const Logger& mediaPlayerLogger() final { return logger(); }
 #endif
@@ -1201,6 +1201,7 @@ private:
 
     bool m_isPlayingToWirelessTarget { false };
     bool m_playingOnSecondScreen { false };
+    bool m_removedBehaviorRestrictionsAfterFirstUserGesture { false };
 };
 
 String convertEnumerationToString(HTMLMediaElement::AutoplayEventPlaybackState);

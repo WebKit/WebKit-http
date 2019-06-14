@@ -112,6 +112,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     Modules/streams/ReadableStreamSink.h
     Modules/streams/ReadableStreamSource.h
 
+    Modules/webauthn/AttestationConveyancePreference.h
     Modules/webauthn/AuthenticationExtensionsClientInputs.h
     Modules/webauthn/AuthenticatorCoordinator.h
     Modules/webauthn/AuthenticatorCoordinatorClient.h
@@ -419,7 +420,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     dom/NodeRenderStyle.h
     dom/NodeTraversal.h
     dom/OverflowEvent.h
-    dom/PointerID.h
     dom/Position.h
     dom/ProcessingInstruction.h
     dom/ProgressEvent.h
@@ -526,6 +526,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     html/CollectionType.h
     html/DOMTokenList.h
     html/DataListSuggestionInformation.h
+    html/FeaturePolicy.h
     html/FormAssociatedElement.h
     html/FormNamedItem.h
     html/HTMLAnchorElement.h
@@ -654,6 +655,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     loader/CookieJar.h
     loader/CrossOriginAccessControl.h
     loader/CrossOriginPreflightResultCache.h
+    loader/CustomHeaderFields.h
     loader/DocumentLoader.h
     loader/DocumentWriter.h
     loader/EmptyClients.h
@@ -925,6 +927,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/PlatformTouchEvent.h
     platform/PlatformTouchPoint.h
     platform/PlatformWheelEvent.h
+    platform/PointerID.h
     platform/PopupMenu.h
     platform/PopupMenuClient.h
     platform/PopupMenuStyle.h

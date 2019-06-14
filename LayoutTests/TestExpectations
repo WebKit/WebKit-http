@@ -52,12 +52,18 @@ http/tests/events/touch/ios [ Skip ]
 http/tests/preload/viewport [ Skip ]
 http/tests/gzip-content-encoding [ Skip ]
 http/tests/cookies/same-site [ Skip ]
+http/tests/ssl/curl [ Skip ]
 system-preview [ Skip ]
 editing/images [ Skip ]
 pointerevents/ios [ Skip ]
 editing/pasteboard/ios [ Skip ]
 editing/pasteboard/mac [ Skip ]
 fast/media/ios [ Skip ]
+
+# Requires async overflow scrolling
+compositing/shared-backing/overflow-scroll [ Skip ]
+compositing/scrolling/async-overflow-scrolling [ Skip ]
+compositing/layer-creation/clipping-scope [ Skip ]
 
 # WebKit2 only.
 printing/printing-events.html [ Skip ]
@@ -529,9 +535,6 @@ webkit.org/b/129639 inspector/dom/dom-search-crash.html [ Skip ]
 webkit.org/b/128736 inspector/debugger/setBreakpoint-dfg.html [ Failure Pass ]
 webkit.org/b/134982 inspector/debugger/setBreakpoint-dfg-and-modify-local.html [ Failure Pass ]
 
-webkit.org/b/142208 inspector/timeline/debugger-paused-while-recording.html [ Skip ]
-webkit.org/b/142208 inspector/timeline/exception-in-injected-script-while-recording.html [ Skip ]
-
 # This test is fast enough in release but quite slow in debug builds.
 [ Debug ] inspector/debugger/debugger-stack-overflow.html [ Skip ]
 [ Debug ] inspector/canvas/recording-2d.html [ Slow ]
@@ -540,6 +543,9 @@ webkit.org/b/142208 inspector/timeline/exception-in-injected-script-while-record
 
 # Debugger stepping tests can timeout if they run slowly due to a short timer scheduled in the frontend.
 webkit.org/b/161951 [ Debug ] inspector/debugger/paused-scopes.html [ Skip ]
+
+# User interaction is a WK2 concept.
+inspector/runtime/evaluate-userGestureEmulation-userIsInteracting.html [ Skip ]
 
 # These conformance tests are no longer in sync with the latest specification
 # and expect compareDocumentPosition() to return:
@@ -1330,6 +1336,10 @@ webkit.org/b/145390 storage/indexeddb/deleteIndex-bug110792.html [ Pass Failure 
 fast/images/animated-gif-no-layout.html [ ImageOnlyFailure ]
 fast/images/gif-loop-count.html [ ImageOnlyFailure ]
 
+# HEIF images are only supported on macOS and iOS post Mojave
+fast/images/animated-heics-draw.html [ Skip ]
+fast/images/animated-heics-verify.html [ Skip ]
+
 webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [ Pass Failure ]
 
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
@@ -1985,11 +1995,18 @@ webkit.org/b/197277 imported/w3c/web-platform-tests/css/css-text/white-space/bre
 webkit.org/b/197277 imported/w3c/web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-004.html [ ImageOnlyFailure ]
 webkit.org/b/197277 imported/w3c/web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-005.html [ ImageOnlyFailure ]
 
+webkit.org/b/197409 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-016.html [ ImageOnlyFailure ]
+webkit.org/b/197409 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-019.html [ ImageOnlyFailure ]
+webkit.org/b/197411 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-018.html [ ImageOnlyFailure ]
+webkit.org/b/197411 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-021.html [ ImageOnlyFailure ]
+webkit.org/b/197411 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-022.html [ ImageOnlyFailure ]
+webkit.org/b/197430 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-023.html [ ImageOnlyFailure ]
+webkit.org/b/197430 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html [ ImageOnlyFailure ]
+
 ########################################
 ### START OF display: contents failures
 
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display/display-contents-dynamic-table-001-inline.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display/display-flow-root-001.html [ ImageOnlyFailure ]
 
 ### END OF display: contents failures
 ########################################
@@ -3082,3 +3099,5 @@ webkit.org/b/196274 imported/w3c/web-platform-tests/xhr/send-redirect-post-uploa
 
 # If requestAnimationFrame is invoked before ResizeObserver timer fired, it would pass, otherwise it would fail same as eventloop-expected.txt
 webkit.org/b/157743 imported/w3c/web-platform-tests/resize-observer/eventloop.html [ Pass Failure ]
+
+webkit.org/b/198103 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/offsets-into-the-media-resource/currentTime.html [ Pass Failure ]

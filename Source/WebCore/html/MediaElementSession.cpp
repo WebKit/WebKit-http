@@ -110,6 +110,7 @@ MediaElementSession::MediaElementSession(HTMLMediaElement& element)
     , m_restrictions(NoRestrictions)
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     , m_targetAvailabilityChangedTimer(*this, &MediaElementSession::targetAvailabilityChangedTimerFired)
+    , m_hasPlaybackTargets(PlatformMediaSessionManager::sharedManager().hasWirelessTargetsAvailable())
 #endif
     , m_mainContentCheckTimer(*this, &MediaElementSession::mainContentCheckTimerFired)
     , m_clientDataBufferingTimer(*this, &MediaElementSession::clientDataBufferingTimerFired)
@@ -241,7 +242,7 @@ void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restric
     if (!(m_restrictions & restriction))
         return;
 
-    INFO_LOG(LOGIDENTIFIER, "removing ", restrictionNames(m_restrictions & restriction));
+    INFO_LOG(LOGIDENTIFIER, "removed ", restrictionNames(m_restrictions & restriction));
     m_restrictions &= ~restriction;
 }
 
@@ -853,8 +854,6 @@ static bool isElementMainContentForPurposesOfAutoplay(const HTMLMediaElement& el
     if (!shouldHitTestMainFrame)
         return true;
 
-    RenderView& mainRenderView = *mainFrame.view()->renderView();
-
     // Hit test the area of the main frame where the element appears, to determine if the element is being obscured.
     IntRect rectRelativeToView = element.clientRect();
     ScrollPosition scrollPosition = mainFrame.view()->documentScrollPositionRelativeToViewOrigin();
@@ -863,7 +862,9 @@ static bool isElementMainContentForPurposesOfAutoplay(const HTMLMediaElement& el
     HitTestResult result(rectRelativeToTopDocument.center());
 
     // Elements which are obscured by other elements cannot be main content.
-    mainRenderView.hitTest(request, result);
+    if (!mainFrame.document())
+        return false;
+    mainFrame.document()->hitTest(request, result);
     result.setToNonUserAgentShadowAncestor();
     RefPtr<Element> hitElement = result.targetElement();
     if (hitElement != &element)

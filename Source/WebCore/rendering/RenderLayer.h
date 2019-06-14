@@ -63,7 +63,7 @@ namespace WebCore {
 class CSSFilter;
 class ClipRects;
 class ClipRectsCache;
-class EventRegion;
+class EventRegionContext;
 class HitTestRequest;
 class HitTestResult;
 class HitTestingTransformState;
@@ -115,6 +115,17 @@ enum class RequestState {
     False,
     True,
     Undetermined
+};
+
+enum class IndirectCompositingReason {
+    None,
+    Stacking,
+    OverflowScrollPositioning,
+    Overlap,
+    BackgroundLayer,
+    GraphicalEffect, // opacity, mask, filter, transform etc.
+    Perspective,
+    Preserve3D
 };
 
 struct ScrollRectToVisibleOptions {
@@ -603,6 +614,8 @@ public:
     // Part of the issue is with subtree relayout: we don't check if our ancestors have some descendant flags dirty, missing some updates.
     bool hasSelfPaintingLayerDescendant() const { return m_hasSelfPaintingLayerDescendant; }
 
+    bool ancestorLayerIsInContainingBlockChain(const RenderLayer& ancestor, const RenderLayer* checkLimit = nullptr) const;
+
     // Gets the nearest enclosing positioned ancestor layer (also includes
     // the <html> layer and the root layer).
     RenderLayer* enclosingAncestorForPosition(PositionType) const;
@@ -700,6 +713,8 @@ public:
     LayoutRect childrenClipRect() const; // Returns the foreground clip rect of the layer in the document's coordinate space.
     LayoutRect selfClipRect() const; // Returns the background clip rect of the layer in the document's coordinate space.
     LayoutRect localClipRect(bool& clipExceedsBounds) const; // Returns the background clip rect of the layer in the local coordinate space.
+
+    bool clipCrossesPaintingBoundary() const;
 
     // Pass offsetFromRoot if known.
     bool intersectsDamageRect(const LayoutRect& layerBounds, const LayoutRect& damageRect, const RenderLayer* rootLayer, const LayoutSize& offsetFromRoot, const LayoutRect* cachedBoundingBox = nullptr) const;
@@ -813,6 +828,13 @@ public:
     bool hasCompositingDescendant() const { return m_hasCompositingDescendant; }
     bool hasCompositedMask() const;
 
+    // If non-null, a non-ancestor composited layer that this layer paints into (it is sharing its backing store with this layer).
+    RenderLayer* backingProviderLayer() const { return m_backingProviderLayer.get(); }
+    void setBackingProviderLayer(RenderLayer*);
+    void disconnectFromBackingProviderLayer();
+
+    bool paintsIntoProvidedBacking() const { return !!m_backingProviderLayer; }
+
     RenderLayerBacking* backing() const { return m_backing.get(); }
     RenderLayerBacking* ensureBacking();
     void clearBacking(bool layerBeingDestroyed = false);
@@ -859,7 +881,9 @@ public:
 
     void setViewportConstrainedNotCompositedReason(ViewportConstrainedNotCompositedReason reason) { m_viewportConstrainedNotCompositedReason = reason; }
     ViewportConstrainedNotCompositedReason viewportConstrainedNotCompositedReason() const { return static_cast<ViewportConstrainedNotCompositedReason>(m_viewportConstrainedNotCompositedReason); }
-    
+
+    IndirectCompositingReason indirectCompositingReason() const { return static_cast<IndirectCompositingReason>(m_indirectCompositingReason); }
+
     bool isRenderFragmentedFlow() const { return renderer().isRenderFragmentedFlow(); }
     bool isOutOfFlowRenderFragmentedFlow() const { return renderer().isOutOfFlowRenderFragmentedFlow(); }
     bool isInsideFragmentedFlow() const { return renderer().fragmentedFlowState() != RenderObject::NotInsideFragmentedFlow; }
@@ -930,7 +954,7 @@ private:
         OptionSet<PaintBehavior> paintBehavior;
         bool requireSecurityOriginAccessForWidgets;
         bool clipToDirtyRect { true };
-        EventRegion* eventRegion { nullptr };
+        EventRegionContext* eventRegionContext { nullptr };
     };
 
     // Compute, cache and return clip rects computed with the given layer as the root.
@@ -992,6 +1016,8 @@ private:
     void applyFilters(GraphicsContext& originalContext, const LayerPaintingInfo&, const LayerFragments&);
 
     void paintLayer(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
+    void paintLayerWithEffects(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
+
     void paintLayerContentsAndReflection(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
     void paintLayerByApplyingTransform(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>, const LayoutSize& translationOffset = LayoutSize());
     void paintLayerContents(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
@@ -1144,19 +1170,7 @@ private:
 
     void setHasCompositingDescendant(bool b)  { m_hasCompositingDescendant = b; }
     
-    enum class IndirectCompositingReason {
-        None,
-        Stacking,
-        OverflowScrollPositioning,
-        Overlap,
-        BackgroundLayer,
-        GraphicalEffect, // opacity, mask, filter, transform etc.
-        Perspective,
-        Preserve3D
-    };
-    
     void setIndirectCompositingReason(IndirectCompositingReason reason) { m_indirectCompositingReason = static_cast<unsigned>(reason); }
-    IndirectCompositingReason indirectCompositingReason() const { return static_cast<IndirectCompositingReason>(m_indirectCompositingReason); }
     bool mustCompositeForIndirectReasons() const { return m_indirectCompositingReason; }
 
     friend class RenderLayerBacking;
@@ -1256,6 +1270,8 @@ private:
     RenderLayer* m_next { nullptr };
     RenderLayer* m_first { nullptr };
     RenderLayer* m_last { nullptr };
+
+    WeakPtr<RenderLayer> m_backingProviderLayer;
 
     // For layers that establish stacking contexts, m_posZOrderList holds a sorted list of all the
     // descendant layers within the stacking context that have z-indices of 0 or greater
@@ -1369,7 +1385,10 @@ void makeMatrixRenderable(TransformationMatrix&, bool has3DRendering);
 
 bool compositedWithOwnBackingStore(const RenderLayer&);
 
+WTF::TextStream& operator<<(WTF::TextStream&, ClipRectsType);
 WTF::TextStream& operator<<(WTF::TextStream&, const RenderLayer&);
+WTF::TextStream& operator<<(WTF::TextStream&, const RenderLayer::ClipRectsContext&);
+WTF::TextStream& operator<<(WTF::TextStream&, IndirectCompositingReason);
 
 } // namespace WebCore
 

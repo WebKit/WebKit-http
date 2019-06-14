@@ -206,7 +206,7 @@ private:
     void requestPointerUnlock() final;
 #endif
 
-    void didAssociateFormControls(const Vector<RefPtr<WebCore::Element>>&) final;
+    void didAssociateFormControls(const Vector<RefPtr<WebCore::Element>>&, WebCore::Frame&) final;
     bool shouldNotifyOnFormChanges() final;
 
     bool selectItemWritingDirectionIsNatural() final;
@@ -378,6 +378,9 @@ private:
 #endif
 
     void configureLoggingChannel(const String&, WTFLogChannelState, WTFLogLevel) final;
+
+    bool userIsInteracting() const final;
+    void setUserIsInteracting(bool) final;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

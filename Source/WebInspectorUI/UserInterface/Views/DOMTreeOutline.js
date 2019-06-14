@@ -30,9 +30,9 @@
 
 WI.DOMTreeOutline = class DOMTreeOutline extends WI.TreeOutline
 {
-    constructor({omitRootDOMNode, excludeRevealElementContextMenu, showLastSelected} = {})
+    constructor({selectable, omitRootDOMNode, excludeRevealElementContextMenu, showLastSelected} = {})
     {
-        super();
+        super(selectable);
 
         this.element.addEventListener("mousedown", this._onmousedown.bind(this), false);
         this.element.addEventListener("mousemove", this._onmousemove.bind(this), false);
@@ -272,11 +272,6 @@ WI.DOMTreeOutline = class DOMTreeOutline extends WI.TreeOutline
 
     populateContextMenu(contextMenu, event, treeElement)
     {
-        let tag = event.target.closest(".html-tag");
-        let textNode = event.target.closest(".html-text-node");
-        let commentNode = event.target.closest(".html-comment");
-        let pseudoElement = event.target.closest(".html-pseudo-element");
-
         let subMenus = {
             add: new WI.ContextSubMenuItem(contextMenu, WI.UIString("Add")),
             edit: new WI.ContextSubMenuItem(contextMenu, WI.UIString("Edit")),
@@ -287,12 +282,8 @@ WI.DOMTreeOutline = class DOMTreeOutline extends WI.TreeOutline
         if (treeElement.selected && this.selectedTreeElements.length > 1)
             subMenus.delete.appendItem(WI.UIString("Nodes"), () => { this.ondelete(); }, !this._editable);
 
-        if (tag && treeElement._populateTagContextMenu)
-            treeElement._populateTagContextMenu(contextMenu, event, subMenus);
-        else if (textNode && treeElement._populateTextContextMenu)
-            treeElement._populateTextContextMenu(contextMenu, textNode, subMenus);
-        else if ((commentNode || pseudoElement) && treeElement._populateNodeContextMenu)
-            treeElement._populateNodeContextMenu(contextMenu, subMenus);
+        if (treeElement.populateDOMNodeContextMenu)
+            treeElement.populateDOMNodeContextMenu(contextMenu, subMenus, event, subMenus);
 
         let options = {
             excludeRevealElement: this._excludeRevealElementContextMenu,

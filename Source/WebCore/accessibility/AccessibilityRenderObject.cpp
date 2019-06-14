@@ -2022,7 +2022,7 @@ int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& po
     if (indexPosition.isNull() || highestEditableRoot(indexPosition, HasEditableAXRole) != node)
         return 0;
 
-#if PLATFORM(GTK)
+#if USE(ATK)
     // We need to consider replaced elements for GTK, as they will be
     // presented with the 'object replacement character' (0xFFFC).
     bool forSelectionPreservation = true;
@@ -2211,7 +2211,7 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForPoint(const IntPoin
         HitTestRequest request(HitTestRequest::ReadOnly |
                                HitTestRequest::Active);
         HitTestResult result(ourpoint);
-        renderView->hitTest(request, result);
+        renderView->document().hitTest(request, result);
         innerNode = result.innerNode();
         if (!innerNode)
             return VisiblePosition();
@@ -2460,7 +2460,7 @@ AccessibilityObjectInterface* AccessibilityRenderObject::accessibilityHitTest(co
 
 bool AccessibilityRenderObject::shouldNotifyActiveDescendant() const
 {
-#if PLATFORM(GTK)
+#if USE(ATK)
     // According to the Core AAM spec, ATK expects object:state-changed:focused notifications
     // whenever the active descendant changes.
     return true;

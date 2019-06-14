@@ -29,10 +29,12 @@
 #include "WebCompatibilityMode.h"
 #include "WebsiteAutoplayPolicy.h"
 #include "WebsiteAutoplayQuirk.h"
+#include "WebsiteLegacyOverflowScrollingTouchPolicy.h"
 #include "WebsiteMediaSourcePolicy.h"
 #include "WebsiteMetaViewportPolicy.h"
 #include "WebsitePopUpPolicy.h"
 #include "WebsiteSimulatedMouseEventsDispatchPolicy.h"
+#include <WebCore/CustomHeaderFields.h>
 #include <WebCore/DeviceOrientationOrMotionPermissionState.h>
 #include <WebCore/HTTPHeaderField.h>
 #include <wtf/OptionSet.h>
@@ -68,9 +70,11 @@ public:
     void setDeviceOrientationAndMotionAccessState(WebCore::DeviceOrientationOrMotionPermissionState state) { m_deviceOrientationAndMotionAccessState = state; }
 #endif
 
-    const Vector<WebCore::HTTPHeaderField>& customHeaderFields() const { return m_customHeaderFields; }
-    Vector<WebCore::HTTPHeaderField>&& takeCustomHeaderFields() { return WTFMove(m_customHeaderFields); }
-    void setCustomHeaderFields(Vector<WebCore::HTTPHeaderField>&& fields) { m_customHeaderFields = WTFMove(fields); }
+    const Vector<WebCore::HTTPHeaderField>& legacyCustomHeaderFields() const { return m_legacyCustomHeaderFields; }
+    void setLegacyCustomHeaderFields(Vector<WebCore::HTTPHeaderField>&& fields) { m_legacyCustomHeaderFields = WTFMove(fields); }
+
+    const Vector<WebCore::CustomHeaderFields>& customHeaderFields() const { return m_customHeaderFields; }
+    void setCustomHeaderFields(Vector<WebCore::CustomHeaderFields>&& fields) { m_customHeaderFields = WTFMove(fields); }
 
     WebKit::WebsitePopUpPolicy popUpPolicy() const { return m_popUpPolicy; }
     void setPopUpPolicy(WebKit::WebsitePopUpPolicy policy) { m_popUpPolicy = policy; }
@@ -101,11 +105,17 @@ public:
     WebKit::WebsiteSimulatedMouseEventsDispatchPolicy simulatedMouseEventsDispatchPolicy() const { return m_simulatedMouseEventsDispatchPolicy; }
     void setSimulatedMouseEventsDispatchPolicy(WebKit::WebsiteSimulatedMouseEventsDispatchPolicy policy) { m_simulatedMouseEventsDispatchPolicy = policy; }
 
+    WebKit::WebsiteLegacyOverflowScrollingTouchPolicy legacyOverflowScrollingTouchPolicy() const { return m_legacyOverflowScrollingTouchPolicy; }
+    void setLegacyOverflowScrollingTouchPolicy(WebKit::WebsiteLegacyOverflowScrollingTouchPolicy policy) { m_legacyOverflowScrollingTouchPolicy = policy; }
+
     bool allowSiteSpecificQuirksToOverrideCompatibilityMode() const { return m_allowSiteSpecificQuirksToOverrideCompatibilityMode; }
     void setAllowSiteSpecificQuirksToOverrideCompatibilityMode(bool value) { m_allowSiteSpecificQuirksToOverrideCompatibilityMode = value; }
 
+    WTF::String applicationNameForUserAgentWithModernCompatibility() const { return m_applicationNameForUserAgentWithModernCompatibility; }
+    void setApplicationNameForUserAgentWithModernCompatibility(const WTF::String& applicationName) { m_applicationNameForUserAgentWithModernCompatibility = applicationName; }
+
 private:
-    WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk>, WebKit::WebsiteAutoplayPolicy, Vector<WebCore::HTTPHeaderField>&&, WebKit::WebsitePopUpPolicy, RefPtr<WebsiteDataStore>&&);
+    WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk>, WebKit::WebsiteAutoplayPolicy, Vector<WebCore::HTTPHeaderField>&&, Vector<WebCore::CustomHeaderFields>&&, WebKit::WebsitePopUpPolicy, RefPtr<WebsiteDataStore>&&);
 
     bool m_contentBlockersEnabled { true };
     OptionSet<WebKit::WebsiteAutoplayQuirk> m_allowedAutoplayQuirks;
@@ -113,7 +123,8 @@ private:
 #if ENABLE(DEVICE_ORIENTATION)
     WebCore::DeviceOrientationOrMotionPermissionState m_deviceOrientationAndMotionAccessState { WebCore::DeviceOrientationOrMotionPermissionState::Prompt };
 #endif
-    Vector<WebCore::HTTPHeaderField> m_customHeaderFields;
+    Vector<WebCore::HTTPHeaderField> m_legacyCustomHeaderFields;
+    Vector<WebCore::CustomHeaderFields> m_customHeaderFields;
     WebKit::WebsitePopUpPolicy m_popUpPolicy { WebKit::WebsitePopUpPolicy::Default };
     RefPtr<WebsiteDataStore> m_websiteDataStore;
     WTF::String m_customUserAgent;
@@ -123,7 +134,9 @@ private:
     WebKit::WebsiteMetaViewportPolicy m_metaViewportPolicy { WebKit::WebsiteMetaViewportPolicy::Default };
     WebKit::WebsiteMediaSourcePolicy m_mediaSourcePolicy { WebKit::WebsiteMediaSourcePolicy::Default };
     WebKit::WebsiteSimulatedMouseEventsDispatchPolicy m_simulatedMouseEventsDispatchPolicy { WebKit::WebsiteSimulatedMouseEventsDispatchPolicy::Default };
+    WebKit::WebsiteLegacyOverflowScrollingTouchPolicy m_legacyOverflowScrollingTouchPolicy { WebKit::WebsiteLegacyOverflowScrollingTouchPolicy::Default };
     bool m_allowSiteSpecificQuirksToOverrideCompatibilityMode { false };
+    WTF::String m_applicationNameForUserAgentWithModernCompatibility;
 };
 
 } // namespace API

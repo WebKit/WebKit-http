@@ -28,31 +28,35 @@
 #include <wtf/DumbPtrTraits.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Packed.h>
 
 namespace WTF {
 
 namespace Private {
 
-template<typename T>
+template<typename T, typename PassedPtrTraits = DumbPtrTraits<T>>
 class BagNode {
     WTF_MAKE_FAST_ALLOCATED;
 public:
+    using PtrTraits = typename PassedPtrTraits::template RebindTraits<BagNode>;
+
     template<typename... Args>
     BagNode(Args&&... args)
         : m_item(std::forward<Args>(args)...)
     { }
     
     T m_item;
-    BagNode* m_next { nullptr };
+    typename PtrTraits::StorageType m_next { nullptr };
 };
 
 } // namespace Private
 
-template<typename T, typename PtrTraits = DumbPtrTraits<Private::BagNode<T>>>
+template<typename T, typename PassedPtrTraits = DumbPtrTraits<T>>
 class Bag {
     WTF_MAKE_NONCOPYABLE(Bag);
     WTF_MAKE_FAST_ALLOCATED;
-    using Node = Private::BagNode<T>;
+    using Node = Private::BagNode<T, PassedPtrTraits>;
+    using PtrTraits = typename PassedPtrTraits::template RebindTraits<Node>;
 
 public:
     Bag() = default;
@@ -65,14 +69,6 @@ public:
         other.m_head = nullptr;
     }
 
-    template<typename U>
-    Bag& operator=(Bag<T, U>&& other)
-    {
-        m_head = other.unwrappedHead();
-        other.m_head = nullptr;
-        return *this;
-    }
-    
     ~Bag()
     {
         clear();
@@ -83,7 +79,7 @@ public:
         Node* head = this->unwrappedHead();
         while (head) {
             Node* current = head;
-            head = current->m_next;
+            head = Node::PtrTraits::unwrap(current->m_next);
             delete current;
         }
         m_head = nullptr;
@@ -112,7 +108,7 @@ public:
         
         iterator& operator++()
         {
-            m_node = m_node->m_next;
+            m_node = Node::PtrTraits::unwrap(m_node->m_next);
             return *this;
         }
         
@@ -156,6 +152,10 @@ private:
     typename PtrTraits::StorageType m_head { nullptr };
 };
 
+template<typename T>
+using PackedBag = Bag<T, PackedPtrTraits<T>>;
+
 } // namespace WTF
 
 using WTF::Bag;
+using WTF::PackedBag;

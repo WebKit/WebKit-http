@@ -234,9 +234,7 @@ void ScrollingTreeScrollingNodeDelegateIOS::commitStateAfterChildren(const Scrol
         || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollPosition)
         || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollOrigin)) {
         BEGIN_BLOCK_OBJC_EXCEPTIONS
-        UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate];
-        ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
-
+        UIScrollView *scrollView = this->scrollView();
         if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollContainerLayer)) {
             if (!m_scrollViewDelegate)
                 m_scrollViewDelegate = adoptNS([[WKScrollingNodeScrollViewDelegate alloc] initWithScrollingTreeNodeDelegate:this]);
@@ -272,21 +270,18 @@ void ScrollingTreeScrollingNodeDelegateIOS::commitStateAfterChildren(const Scrol
     // FIXME: If only one axis snaps in 2D scrolling, the other axis will decelerate fast as well. Is this what we want?
     if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::HorizontalSnapOffsets) || scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::VerticalSnapOffsets)) {
         BEGIN_BLOCK_OBJC_EXCEPTIONS
-        UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate];
-        ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
-
-        scrollView.decelerationRate = scrollingNode().horizontalSnapOffsets().size() || scrollingNode().verticalSnapOffsets().size() ? UIScrollViewDecelerationRateFast : UIScrollViewDecelerationRateNormal;
-#endif
+        scrollView().decelerationRate = scrollingNode().horizontalSnapOffsets().size() || scrollingNode().verticalSnapOffsets().size() ? UIScrollViewDecelerationRateFast : UIScrollViewDecelerationRateNormal;
         END_BLOCK_OBJC_EXCEPTIONS
     }
+#endif
 
     if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollableAreaParams)) {
         BEGIN_BLOCK_OBJC_EXCEPTIONS
-        UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate];
-        ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
+        UIScrollView *scrollView = this->scrollView();
 
         [scrollView setShowsHorizontalScrollIndicator:!scrollingNode().horizontalScrollbarHiddenByStyle()];
         [scrollView setShowsVerticalScrollIndicator:!scrollingNode().verticalScrollbarHiddenByStyle()];
+        [scrollView setScrollEnabled:scrollingNode().canHaveScrollbars()];
 
         END_BLOCK_OBJC_EXCEPTIONS
     }
@@ -299,12 +294,9 @@ void ScrollingTreeScrollingNodeDelegateIOS::commitStateAfterChildren(const Scrol
 
 void ScrollingTreeScrollingNodeDelegateIOS::repositionScrollingLayers()
 {
-    auto scrollPosition = scrollingNode().currentScrollPosition();
-
     BEGIN_BLOCK_OBJC_EXCEPTIONS
-    UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate];
-    ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
-    [scrollView setContentOffset:scrollPosition];
+    auto scrollOffset = ScrollableArea::scrollOffsetFromPosition(scrollingNode().currentScrollPosition(), toFloatSize(scrollOrigin()));
+    [scrollView() setContentOffset:scrollOffset];
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
@@ -323,11 +315,12 @@ void ScrollingTreeScrollingNodeDelegateIOS::scrollViewWillStartPanGesture() cons
     scrollingTree().scrollingTreeNodeWillStartPanGesture();
 }
 
-void ScrollingTreeScrollingNodeDelegateIOS::scrollViewDidScroll(const FloatPoint& scrollPosition, bool inUserInteraction)
+void ScrollingTreeScrollingNodeDelegateIOS::scrollViewDidScroll(const FloatPoint& scrollOffset, bool inUserInteraction)
 {
     if (m_updatingFromStateNode)
         return;
 
+    auto scrollPosition = ScrollableArea::scrollPositionFromOffset(scrollOffset, toFloatSize(scrollOrigin()));
     scrollingNode().wasScrolledByDelegatedScrolling(scrollPosition);
 }
 
@@ -337,6 +330,13 @@ void ScrollingTreeScrollingNodeDelegateIOS::currentSnapPointIndicesDidChange(uns
         return;
 
     scrollingTree().currentSnapPointIndicesDidChange(scrollingNode().scrollingNodeID(), horizontal, vertical);
+}
+
+UIScrollView *ScrollingTreeScrollingNodeDelegateIOS::scrollView() const
+{
+    UIScrollView *scrollView = (UIScrollView *)[scrollLayer() delegate];
+    ASSERT([scrollView isKindOfClass:[UIScrollView self]]);
+    return scrollView;
 }
 
 #if ENABLE(POINTER_EVENTS)

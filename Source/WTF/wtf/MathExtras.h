@@ -621,6 +621,23 @@ void shuffleVector(VectorType& vector, const RandomFunc& randomFunc)
     shuffleVector(vector, vector.size(), randomFunc);
 }
 
+template <typename T>
+constexpr unsigned clzConstexpr(T value)
+{
+    constexpr unsigned bitSize = sizeof(T) * CHAR_BIT;
+
+    using UT = typename std::make_unsigned<T>::type;
+    UT uValue = value;
+
+    unsigned zeroCount = 0;
+    for (int i = bitSize - 1; i >= 0; i--) {
+        if (uValue >> i)
+            break;
+        zeroCount++;
+    }
+    return zeroCount;
+}
+
 template<typename T>
 inline unsigned clz(T value)
 {
@@ -643,14 +660,29 @@ inline unsigned clz(T value)
         return bitSize - 1 - ret;
     return bitSize;
 #else
+    UNUSED_PARAM(bitSize);
+    UNUSED_PARAM(uValue);
+    return clzConstexpr(value);
+#endif
+}
+
+template <typename T>
+constexpr unsigned ctzConstexpr(T value)
+{
+    constexpr unsigned bitSize = sizeof(T) * CHAR_BIT;
+
+    using UT = typename std::make_unsigned<T>::type;
+    UT uValue = value;
+
     unsigned zeroCount = 0;
-    for (int i = bitSize - 1; i >= 0; i--) {
-        if (uValue >> i)
+    for (unsigned i = 0; i < bitSize; i++) {
+        if (uValue & 1)
             break;
+
         zeroCount++;
+        uValue >>= 1;
     }
     return zeroCount;
-#endif
 }
 
 template<typename T>
@@ -671,15 +703,9 @@ inline unsigned ctz(T value)
         return ret;
     return bitSize;
 #else
-    unsigned zeroCount = 0;
-    for (unsigned i = 0; i < bitSize; i++) {
-        if (uValue & 1)
-            break;
-
-        zeroCount++;
-        uValue >>= 1;
-    }
-    return zeroCount;
+    UNUSED_PARAM(bitSize);
+    UNUSED_PARAM(uValue);
+    return ctzConstexpr(value);
 #endif
 }
 
@@ -691,11 +717,26 @@ inline unsigned getLSBSet(T t)
 }
 
 template<typename T>
+constexpr unsigned getLSBSetConstexpr(T t)
+{
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(t);
+    return ctzConstexpr(t);
+}
+
+template<typename T>
 inline unsigned getMSBSet(T t)
 {
     constexpr unsigned bitSize = sizeof(T) * CHAR_BIT;
     ASSERT(t);
     return bitSize - 1 - clz(t);
+}
+
+template<typename T>
+constexpr unsigned getMSBSetConstexpr(T t)
+{
+    constexpr unsigned bitSize = sizeof(T) * CHAR_BIT;
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(t);
+    return bitSize - 1 - clzConstexpr(t);
 }
 
 } // namespace WTF

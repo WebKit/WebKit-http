@@ -9,6 +9,8 @@ list(APPEND WebKit_SOURCES
     NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp
     NetworkProcess/Classifier/WebResourceLoadStatisticsTelemetry.cpp
 
+    NetworkProcess/WebStorage/StorageManager.cpp
+
     NetworkProcess/win/NetworkProcessMainWin.cpp
 
     Platform/IPC/win/AttachmentWin.cpp
@@ -49,8 +51,6 @@ list(APPEND WebKit_SOURCES
     UIProcess/CoordinatedGraphics/DrawingAreaProxyCoordinatedGraphics.cpp
 
     UIProcess/Launcher/win/ProcessLauncherWin.cpp
-
-    UIProcess/WebStorage/StorageManager.cpp
 
     UIProcess/WebsiteData/curl/WebsiteDataStoreCurl.cpp
 
@@ -181,6 +181,19 @@ if (${WTF_PLATFORM_WIN_CAIRO})
             ${OPENSSL_LIBRARIES}
             mfuuid.lib
             strmiids.lib
+    )
+endif ()
+
+if (ENABLE_REMOTE_INSPECTOR)
+    list(APPEND WebKit_SOURCES
+        UIProcess/socket/RemoteInspectorClient.cpp
+        UIProcess/socket/RemoteInspectorProtocolHandler.cpp
+
+        UIProcess/win/RemoteWebInspectorProxyWin.cpp
+    )
+
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        "${WEBKIT_DIR}/UIProcess/socket"
     )
 endif ()
 

@@ -264,76 +264,43 @@ using namespace WebCore;
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webPageProxyCounter, ("WebPageProxy"));
 
-class ExceededDatabaseQuotaRecords {
-    WTF_MAKE_NONCOPYABLE(ExceededDatabaseQuotaRecords); WTF_MAKE_FAST_ALLOCATED;
-    friend NeverDestroyed<ExceededDatabaseQuotaRecords>;
+class StorageRequests {
+    WTF_MAKE_NONCOPYABLE(StorageRequests); WTF_MAKE_FAST_ALLOCATED;
+    friend NeverDestroyed<StorageRequests>;
 public:
-    struct Record {
-        uint64_t frameID;
-        String originIdentifier;
-        String databaseName;
-        String displayName;
-        uint64_t currentQuota;
-        uint64_t currentOriginUsage;
-        uint64_t currentDatabaseUsage;
-        uint64_t expectedUsage;
-        Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply reply;
-    };
+    static StorageRequests& singleton();
 
-    static ExceededDatabaseQuotaRecords& singleton();
+    void processOrAppend(CompletionHandler<void()>&& completionHandler)
+    {
+        if (m_requestsAreBeingProcessed) {
+            m_requests.append(WTFMove(completionHandler));
+            return;
+        }
+        m_requestsAreBeingProcessed = true;
+        completionHandler();
+    }
 
-    std::unique_ptr<Record> createRecord(uint64_t frameID, String originIdentifier,
-        String databaseName, String displayName, uint64_t currentQuota,
-        uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, 
-        Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply&&);
-
-    void add(std::unique_ptr<Record>);
-    bool areBeingProcessed() const { return !!m_currentRecord; }
-    Record* next();
+    void processNextIfAny()
+    {
+        if (m_requests.isEmpty()) {
+            m_requestsAreBeingProcessed = false;
+            return;
+        }
+        m_requests.takeFirst()();
+    }
 
 private:
-    ExceededDatabaseQuotaRecords() { }
-    ~ExceededDatabaseQuotaRecords() { }
+    StorageRequests() { }
+    ~StorageRequests() { }
 
-    Deque<std::unique_ptr<Record>> m_records;
-    std::unique_ptr<Record> m_currentRecord;
+    Deque<CompletionHandler<void()>> m_requests;
+    bool m_requestsAreBeingProcessed { false };
 };
 
-ExceededDatabaseQuotaRecords& ExceededDatabaseQuotaRecords::singleton()
+StorageRequests& StorageRequests::singleton()
 {
-    static NeverDestroyed<ExceededDatabaseQuotaRecords> records;
-    return records;
-}
-
-std::unique_ptr<ExceededDatabaseQuotaRecords::Record> ExceededDatabaseQuotaRecords::createRecord(
-    uint64_t frameID, String originIdentifier, String databaseName, String displayName,
-    uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage,
-    uint64_t expectedUsage, Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply&& reply)
-{
-    auto record = std::make_unique<Record>();
-    record->frameID = frameID;
-    record->originIdentifier = originIdentifier;
-    record->databaseName = databaseName;
-    record->displayName = displayName;
-    record->currentQuota = currentQuota;
-    record->currentOriginUsage = currentOriginUsage;
-    record->currentDatabaseUsage = currentDatabaseUsage;
-    record->expectedUsage = expectedUsage;
-    record->reply = WTFMove(reply);
-    return record;
-}
-
-void ExceededDatabaseQuotaRecords::add(std::unique_ptr<ExceededDatabaseQuotaRecords::Record> record)
-{
-    m_records.append(WTFMove(record));
-}
-
-ExceededDatabaseQuotaRecords::Record* ExceededDatabaseQuotaRecords::next()
-{
-    m_currentRecord = nullptr;
-    if (!m_records.isEmpty())
-        m_currentRecord = m_records.takeFirst();
-    return m_currentRecord.get();
+    static NeverDestroyed<StorageRequests> requests;
+    return requests;
 }
 
 #if !LOG_DISABLED
@@ -394,6 +361,25 @@ public:
 private:
     WeakPtr<PageClient> m_pageClient;
 };
+
+void WebPageProxy::forMostVisibleWebPageIfAny(PAL::SessionID sessionID, const SecurityOriginData& origin, CompletionHandler<void(WebPageProxy*)>&& completionHandler)
+{
+    // FIXME: If not finding right away a visible page, we might want to try again for a given period of time when there is a change of visibility.
+    WebPageProxy* selectedPage = nullptr;
+    WebProcessProxy::forWebPagesWithOrigin(sessionID, origin, [&](auto& page) {
+        if (!page.mainFrame())
+            return;
+        if (page.isViewVisible() && (!selectedPage || !selectedPage->isViewVisible())) {
+            selectedPage = &page;
+            return;
+        }
+        if (page.isViewFocused() && (!selectedPage || !selectedPage->isViewFocused())) {
+            selectedPage = &page;
+            return;
+        }
+    });
+    completionHandler(selectedPage);
+}
 
 Ref<WebPageProxy> WebPageProxy::create(PageClient& pageClient, WebProcessProxy& process, uint64_t pageID, Ref<API::PageConfiguration>&& configuration)
 {
@@ -742,18 +728,12 @@ void WebPageProxy::launchProcess(const RegistrableDomain& registrableDomain)
     finishAttachingToWebProcess(IsProcessSwap::No);
 }
 
-bool WebPageProxy::suspendCurrentPageIfPossible(API::Navigation& navigation, Optional<uint64_t> mainFrameID, ProcessSwapRequestedByClient processSwapRequestedByClient)
+bool WebPageProxy::suspendCurrentPageIfPossible(API::Navigation& navigation, Optional<uint64_t> mainFrameID, ProcessSwapRequestedByClient processSwapRequestedByClient, ShouldDelayClosingUntilEnteringAcceleratedCompositingMode shouldDelayClosingUntilEnteringAcceleratedCompositingMode)
 {
     m_lastSuspendedPage = nullptr;
 
     if (!mainFrameID)
         return false;
-
-    // If the client forced a swap then it may not be Web-compatible to suspend the previous page because other windows may have an opener link to the page.
-    if (processSwapRequestedByClient == ProcessSwapRequestedByClient::Yes) {
-        RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "suspendCurrentPageIfPossible: Not suspending current page for process pid %i because the swap was requested by the client", m_process->processIdentifier());
-        return false;
-    }
 
     if (!hasCommittedAnyProvisionalLoads()) {
         RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "suspendCurrentPageIfPossible: Not suspending current page for process pid %i because has not committed any load yet", m_process->processIdentifier());
@@ -781,9 +761,14 @@ bool WebPageProxy::suspendCurrentPageIfPossible(API::Navigation& navigation, Opt
     }
 
     RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "suspendCurrentPageIfPossible: Suspending current page for process pid %i", m_process->processIdentifier());
-    auto suspendedPage = std::make_unique<SuspendedPageProxy>(*this, m_process.copyRef(), *mainFrameID);
+    auto suspendedPage = std::make_unique<SuspendedPageProxy>(*this, m_process.copyRef(), *mainFrameID, shouldDelayClosingUntilEnteringAcceleratedCompositingMode);
 
     LOG(ProcessSwapping, "WebPageProxy %" PRIu64 " created suspended page %s for process pid %i, back/forward item %s" PRIu64, pageID(), suspendedPage->loggingString(), m_process->processIdentifier(), fromItem ? fromItem->itemID().logString() : 0);
+
+    // If the client forced a swap then it may not be web-compatible to keep the previous page because other windows may have an opener link to it. We thus close it as soon as we
+    // can do so without flashing.
+    if (processSwapRequestedByClient == ProcessSwapRequestedByClient::Yes)
+        suspendedPage->closeWithoutFlashing();
 
     if (fromItem && m_preferences->usesPageCache())
         fromItem->setSuspendedPage(suspendedPage.get());
@@ -1038,6 +1023,7 @@ void WebPageProxy::close()
 #endif
 
     stopAllURLSchemeTasks();
+    updatePlayingMediaDidChange(MediaProducer::IsNotPlaying);
 }
 
 bool WebPageProxy::tryClose()
@@ -2552,9 +2538,13 @@ void WebPageProxy::updateTouchEventTracking(const WebTouchEvent& touchStartEvent
         updateTrackingType(m_touchAndPointerEventTracking.touchStartTracking, names.touchstartEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchMoveTracking, names.touchmoveEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchEndTracking, names.touchendEvent);
+        updateTrackingType(m_touchAndPointerEventTracking.touchStartTracking, names.pointeroverEvent);
+        updateTrackingType(m_touchAndPointerEventTracking.touchStartTracking, names.pointerenterEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchStartTracking, names.pointerdownEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchMoveTracking, names.pointermoveEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchEndTracking, names.pointerupEvent);
+        updateTrackingType(m_touchAndPointerEventTracking.touchEndTracking, names.pointeroutEvent);
+        updateTrackingType(m_touchAndPointerEventTracking.touchEndTracking, names.pointerleaveEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchStartTracking, names.mousedownEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchMoveTracking, names.mousemoveEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchEndTracking, names.mouseupEvent);
@@ -2720,6 +2710,11 @@ void WebPageProxy::cancelPointer(WebCore::PointerID pointerId, const WebCore::In
 {
     m_process->send(Messages::WebPage::CancelPointer(pointerId, documentPoint), m_pageID);
 }
+
+void WebPageProxy::touchWithIdentifierWasRemoved(WebCore::PointerID pointerId)
+{
+    m_process->send(Messages::WebPage::TouchWithIdentifierWasRemoved(pointerId), m_pageID);
+}
 #endif
 
 void WebPageProxy::scrollBy(ScrollDirection direction, ScrollGranularity granularity)
@@ -2780,6 +2775,17 @@ void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, A
         data->contentBlockersEnabled = false;
     }
 
+#if ENABLE(DEVICE_ORIENTATION)
+    if (navigation && (!data || data->deviceOrientationAndMotionAccessState == WebCore::DeviceOrientationOrMotionPermissionState::Prompt)) {
+        auto deviceOrientationPermission = websiteDataStore->deviceOrientationAndMotionAccessController().cachedDeviceOrientationPermission(SecurityOriginData::fromURL(navigation->currentRequest().url()));
+        if (deviceOrientationPermission != WebCore::DeviceOrientationOrMotionPermissionState::Prompt) {
+            if (!data)
+                data = WebsitePoliciesData { };
+            data->deviceOrientationAndMotionAccessState = deviceOrientationPermission;
+        }
+    }
+#endif
+
 #if PLATFORM(COCOA)
     static const bool forceDownloadFromDownloadAttribute = false;
 #else
@@ -2825,7 +2831,7 @@ void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, A
             ASSERT(destinationSuspendedPage || !process().processPool().hasSuspendedPageFor(processForNavigation, *this));
 
             auto suspendedPage = destinationSuspendedPage ? process().processPool().takeSuspendedPage(*destinationSuspendedPage) : nullptr;
-            if (suspendedPage && suspendedPage->failedToSuspend())
+            if (suspendedPage && suspendedPage->pageIsClosedOrClosing())
                 suspendedPage = nullptr;
 
             continueNavigationInNewProcess(navigation, WTFMove(suspendedPage), WTFMove(processForNavigation), processSwapRequestedByClient, WTFMove(data));
@@ -2873,11 +2879,19 @@ void WebPageProxy::commitProvisionalPage(uint64_t frameID, uint64_t navigationID
 
     ASSERT(m_process.ptr() != &m_provisionalPage->process());
 
+    auto shouldDelayClosingUntilEnteringAcceleratedCompositingMode = ShouldDelayClosingUntilEnteringAcceleratedCompositingMode::No;
+#if PLATFORM(MAC)
+    // On macOS, when not using UI-side compositing, we need to make sure we do not close the page in the previous process until we've
+    // entered accelerated compositing for the new page or we will flash on navigation.
+    if (drawingArea()->type() == DrawingAreaTypeTiledCoreAnimation)
+        shouldDelayClosingUntilEnteringAcceleratedCompositingMode = ShouldDelayClosingUntilEnteringAcceleratedCompositingMode::Yes;
+#endif
+
     processDidTerminate(ProcessTerminationReason::NavigationSwap);
 
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
     auto* navigation = navigationState().navigation(m_provisionalPage->navigationID());
-    bool didSuspendPreviousPage = navigation ? suspendCurrentPageIfPossible(*navigation, mainFrameIDInPreviousProcess, m_provisionalPage->processSwapRequestedByClient()) : false;
+    bool didSuspendPreviousPage = navigation ? suspendCurrentPageIfPossible(*navigation, mainFrameIDInPreviousProcess, m_provisionalPage->processSwapRequestedByClient(), shouldDelayClosingUntilEnteringAcceleratedCompositingMode) : false;
     m_process->removeWebPage(*this, m_websiteDataStore.ptr() == &m_provisionalPage->process().websiteDataStore() ? WebProcessProxy::EndsUsingDataStore::No : WebProcessProxy::EndsUsingDataStore::Yes);
 
     // There is no way we'll be able to return to the page in the previous page so close it.
@@ -4396,6 +4410,7 @@ void WebPageProxy::didChangeMainDocument(uint64_t frameID)
 #else
     UNUSED_PARAM(frameID);
 #endif
+    m_isQuotaIncreaseDenied = false;
 }
 
 void WebPageProxy::viewIsBecomingVisible()
@@ -5018,7 +5033,6 @@ void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, 
 
         reply(newPage->pageID(), newPage->creationParameters(m_process, *newPage->drawingArea()));
 
-        WebsiteDataStore::cloneSessionData(*this, *newPage);
         newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL({ }, mainFrameURL), request.url());
 
 #if HAVE(LOAD_OPTIMIZER)
@@ -7053,6 +7067,8 @@ void WebPageProxy::resetStateAfterProcessExited(ProcessTerminationReason termina
         m_pageLoadState.reset(transaction);
     }
 
+    updatePlayingMediaDidChange(MediaProducer::IsNotPlaying);
+
     // FIXME: <rdar://problem/38676604> In case of process swaps, the old process should gracefully suspend instead of terminating.
     m_process->processTerminated();
 }
@@ -7126,6 +7142,7 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.deviceOrientation = m_deviceOrientation;
     parameters.keyboardIsAttached = isInHardwareKeyboardMode();
     parameters.overrideViewportArguments = m_overrideViewportArguments;
+    parameters.canShowWhileLocked = m_configuration->canShowWhileLocked();
 #endif
 
 #if PLATFORM(MAC)
@@ -7241,24 +7258,41 @@ void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t, Ref<Authenti
 
 void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply&& reply)
 {
-    ExceededDatabaseQuotaRecords& records = ExceededDatabaseQuotaRecords::singleton();
-    std::unique_ptr<ExceededDatabaseQuotaRecords::Record> newRecord = records.createRecord(frameID,
-        originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage,
-        currentDatabaseUsage, expectedUsage, WTFMove(reply));
-    records.add(WTFMove(newRecord));
+    requestStorageSpace(frameID, originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage, currentDatabaseUsage, expectedUsage, [reply = WTFMove(reply)](auto quota) mutable {
+        reply(quota);
+    });
+}
 
-    if (records.areBeingProcessed())
+void WebPageProxy::requestStorageSpace(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, CompletionHandler<void(uint64_t)>&& completionHandler)
+{
+    StorageRequests::singleton().processOrAppend([this, protectedThis = makeRef(*this), pageURL = currentURL(), frameID, originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage, currentDatabaseUsage, expectedUsage, completionHandler = WTFMove(completionHandler)]() mutable {
+        this->makeStorageSpaceRequest(frameID, originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage, currentDatabaseUsage, expectedUsage, [this, protectedThis = WTFMove(protectedThis), pageURL = WTFMove(pageURL), completionHandler = WTFMove(completionHandler), currentQuota](auto quota) mutable {
+            if (quota <= currentQuota && this->currentURL() == pageURL)
+                m_isQuotaIncreaseDenied =  true;
+            completionHandler(quota);
+            StorageRequests::singleton().processNextIfAny();
+        });
+    });
+}
+
+void WebPageProxy::makeStorageSpaceRequest(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, CompletionHandler<void(uint64_t)>&& completionHandler)
+{
+    if (m_isQuotaIncreaseDenied) {
+        completionHandler(currentQuota);
         return;
-
-    ExceededDatabaseQuotaRecords::Record* record = records.next();
-    while (record) {
-        WebFrameProxy* frame = m_process->webFrame(record->frameID);
-        MESSAGE_CHECK(m_process, frame);
-
-        auto origin = API::SecurityOrigin::create(SecurityOriginData::fromDatabaseIdentifier(record->originIdentifier)->securityOrigin());
-        m_uiClient->exceededDatabaseQuota(this, frame, origin.ptr(), record->databaseName, record->displayName, record->currentQuota, record->currentOriginUsage, record->currentDatabaseUsage, record->expectedUsage, WTFMove(record->reply));
-        record = records.next();
     }
+
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(m_process, frame);
+
+    auto originData = SecurityOriginData::fromDatabaseIdentifier(originIdentifier);
+    if (originData != SecurityOriginData::fromURL(URL { { }, currentURL() })) {
+        completionHandler(currentQuota);
+        return;
+    }
+
+    auto origin = API::SecurityOrigin::create(originData->securityOrigin());
+    m_uiClient->exceededDatabaseQuota(this, frame, origin.ptr(), databaseName, displayName, currentQuota, currentOriginUsage, currentDatabaseUsage, expectedUsage, WTFMove(completionHandler));
 }
 
 void WebPageProxy::reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply&& reply)
@@ -7922,6 +7956,15 @@ void WebPageProxy::insertTextAsync(const String& text, const EditingRange& repla
     process().send(Messages::WebPage::InsertTextAsync(text, replacementRange, WTFMove(options)), m_pageID);
 }
 
+void WebPageProxy::hasMarkedText(CompletionHandler<void(bool)>&& callback)
+{
+    if (!hasRunningProcess()) {
+        callback(false);
+        return;
+    }
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::HasMarkedText(), WTFMove(callback), m_pageID);
+}
+
 void WebPageProxy::getMarkedRangeAsync(WTF::Function<void (EditingRange, CallbackBase::Error)>&& callbackFunction)
 {
     if (!hasRunningProcess()) {
@@ -8073,7 +8116,8 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags newSta
     ASSERT(focusManager);
     focusManager->updatePlaybackAttributesFromMediaState(this, sourceElementID, newState);
 #endif
-    updatePlayingMediaDidChange(newState);
+    if (!m_isClosed)
+        updatePlayingMediaDidChange(newState);
 }
 
 void WebPageProxy::updatePlayingMediaDidChange(MediaProducer::MediaStateFlags newState)
@@ -8111,6 +8155,8 @@ void WebPageProxy::updatePlayingMediaDidChange(MediaProducer::MediaStateFlags ne
 
     if ((oldState & MediaProducer::HasAudioOrVideo) != (m_mediaState & MediaProducer::HasAudioOrVideo))
         videoControlsManagerDidChange();
+
+    m_process->webPageMediaStateDidChange(*this);
 }
 
 void WebPageProxy::videoControlsManagerDidChange()

@@ -1,3 +1,298 @@
+2019-05-23  Tadeu Zagallo  <tzagallo@apple.com>
+
+        DFG::OSREntry should not perform arity check
+        https://bugs.webkit.org/show_bug.cgi?id=198189
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/loop-osr-with-arity-mismatch.js: Added.
+        (foo):
+
+2019-05-23  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [PlayStation] Skip additional tests on PlayStation
+        https://bugs.webkit.org/show_bug.cgi?id=198145
+
+        Reviewed by Ross Kirsling.
+
+        * exceptionFuzz.yaml:
+        Add skip on hostOS playstation
+        * executableAllocationFuzz.yaml:
+        Add skip on hostOS playstation
+
+2019-05-23  Tadeu Zagallo  <tzagallo@apple.com>
+
+        createListFromArrayLike should throw if value is not an object
+        https://bugs.webkit.org/show_bug.cgi?id=198138
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/create-list-from-array-like-not-object.js: Added.
+        (testValid):
+        (testInvalid):
+        * stress/proxy-get-own-property-names-should-not-clear-previous-results.js:
+        (opt):
+        * stress/proxy-proto-enumerator.js: Added.
+        (main):
+        * stress/proxy-proto-own-keys.js: Added.
+        (assert):
+        (ownKeys):
+
+2019-05-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] ArrayAllocationProfile should not access to butterfly in concurrent compiler
+        https://bugs.webkit.org/show_bug.cgi?id=197809
+
+        Reviewed by Michael Saboff.
+
+        * stress/array-allocation-profile-should-not-update-itself-in-concurrent-compiler.js: Added.
+        (foo):
+
+2019-05-22  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [ESNext] Implement support for Numeric Separators
+        https://bugs.webkit.org/show_bug.cgi?id=196351
+
+        Reviewed by Keith Miller.
+
+        * stress/numeric-literal-separators.js: Added.
+        Add tests for feature.
+
+        * test262/expectations.yaml:
+        Mark 60 test cases as passing.
+
+2019-05-22  Tadeu Zagallo  <tzagallo@apple.com>
+
+        llint_slow_path_get_by_id needs to hold the CodeBlock's to update the metadata's mode
+        https://bugs.webkit.org/show_bug.cgi?id=198120
+        <rdar://problem/49668795>
+
+        Reviewed by Michael Saboff.
+
+        * stress/get-array-length-concurrently-change-mode.js: Added.
+        (main):
+
+2019-05-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r245634.
+        https://bugs.webkit.org/show_bug.cgi?id=198140
+
+        'This patch makes JSC crash on launch in debug builds'
+        (Requested by tadeuzagallo on #webkit).
+
+        Reverted changeset:
+
+        "[ESNext] Implement support for Numeric Separators"
+        https://bugs.webkit.org/show_bug.cgi?id=196351
+        https://trac.webkit.org/changeset/245634
+
+2019-05-22  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Stack-buffer-overflow in decodeURIComponent
+        https://bugs.webkit.org/show_bug.cgi?id=198109
+        <rdar://problem/50397550>
+
+        Reviewed by Michael Saboff.
+
+        * stress/decode-uri-icu-count-trail-bytes.js: Added.
+        (i.j.try.i.toString):
+        (i.j.catch):
+
+2019-05-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Don't clear PropertyNameArray in Proxy code
+        https://bugs.webkit.org/show_bug.cgi?id=197691
+
+        Reviewed by Saam Barati.
+
+        * stress/proxy-get-own-property-names-should-not-clear-previous-results.js: Added.
+        (shouldBe):
+        (opt):
+
+2019-05-22  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [ESNext] Implement support for Numeric Separators
+        https://bugs.webkit.org/show_bug.cgi?id=196351
+
+        Reviewed by Keith Miller.
+
+        * stress/numeric-literal-separators.js: Added.
+        Add tests for feature.
+
+        * test262/expectations.yaml:
+        Mark 60 test cases as passing.
+
+2019-05-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] ArrayBufferContents::tryAllocate signs the pointer with allocation size and authenticates it with sizeInBytes
+        https://bugs.webkit.org/show_bug.cgi?id=198101
+
+        Reviewed by Michael Saboff.
+
+        * stress/zero-sized-array-buffer-pointer-should-be-signed-with-zero.js: Added.
+        (shouldBe):
+
+2019-05-20  Keith Miller  <keith_miller@apple.com>
+
+        Cleanup Yarr regexp code around paren contexts.
+        https://bugs.webkit.org/show_bug.cgi?id=198063
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/regexp-many-named-sequential-capture-groups.js: Added.
+        (i.s):
+        * stress/regexp-many-unnamed-sequential-capture-groups.js: Added.
+
+2019-05-17  Justin Michaud  <justin_michaud@apple.com>
+
+        [WASM-References] Add support for Anyref in parameters and return types, Ref.null and Ref.is_null for Anyref values.
+        https://bugs.webkit.org/show_bug.cgi?id=197969
+
+        Reviewed by Keith Miller.
+
+        Support the anyref type in Builder.js, plus add some extra error logging.
+        Add new folder for wasm references tests.
+
+        * wasm.yaml:
+        * wasm/Builder.js:
+        (const._isValidValue):
+        * wasm/references/anyref_modules.js: Added.
+        (Call.3.RefIsNull.End.End.WebAssembly.js.ident):
+        (Call.3.RefIsNull.End.End.WebAssembly.js.make_null):
+        (Call.3.RefIsNull.End.End.WebAssembly):
+        (undefined):
+        * wasm/references/is_null.js: Added.
+        * wasm/references/is_null_error.js: Added.
+        * wasm/spec-harness/index.js:
+        * wasm/wasm.json:
+
+2019-05-16  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Invalid AssignmentTargetType should be an early error.
+        https://bugs.webkit.org/show_bug.cgi?id=197603
+
+        Reviewed by Keith Miller.
+
+        * test262/expectations.yaml:
+        Update expectations to reflect new SyntaxErrors.
+        (Ideally, these should all be viewed as passing in the near future.)
+
+        * stress/async-await-basic.js:
+        * stress/big-int-literals.js:
+        Update tests to reflect new SyntaxErrors.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/EH/try6.baseline-jsc:
+        * ChakraCore/test/Error/variousErrors3.baseline-jsc: Added.
+        Update baselines to reflect new SyntaxErrors.
+
+2019-05-15  Saam Barati  <sbarati@apple.com>
+
+        Bound liveness of SetArgumentMaybe nodes when maximal flush insertion phase is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=197855
+        <rdar://problem/50236506>
+
+        Reviewed by Michael Saboff.
+
+        * stress/set-argument-maybe-maximal-flush-should-not-extend-liveness-2.js: Added.
+        (f0):
+        (bar):
+        (foo):
+        * stress/set-argument-maybe-maximal-flush-should-not-extend-liveness.js: Added.
+        (f1):
+        (f2):
+        (foo):
+
+2019-05-14  Keith Miller  <keith_miller@apple.com>
+
+        Fix issue with byteOffset on ARM64E
+        https://bugs.webkit.org/show_bug.cgi?id=197884
+
+        Reviewed by Saam Barati.
+
+        We didn't have any tests that run with non-byte/non-zero offset
+        typed arrays.
+
+        * stress/ftl-gettypedarrayoffset-wasteful.js:
+
+2019-05-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Shrink sizeof(UnlinkedFunctionExecutable) more
+        https://bugs.webkit.org/show_bug.cgi?id=197833
+
+        Reviewed by Darin Adler.
+
+        * stress/generator-name.js: Added.
+        (shouldBe):
+        (gen):
+        (catch):
+
+2019-05-13  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JSObject::getOwnPropertyDescriptor is missing an exception check
+        https://bugs.webkit.org/show_bug.cgi?id=197693
+        <rdar://problem/50441784>
+
+        Reviewed by Saam Barati.
+
+        * stress/proxy-spread.js: Added.
+        (foo):
+
+2019-05-10  Saam barati  <sbarati@apple.com>
+
+        Call to JSToWasmICCallee::createStructure passes in wrong prototype value
+        https://bugs.webkit.org/show_bug.cgi?id=197807
+        <rdar://problem/50530400>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/js-to-wasm-callee-has-correct-prototype.js: Added.
+        (test.getInstance):
+        (test):
+
+2019-05-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Test262] Unreviewed expectations update following r245188.
+
+        * test262/config.yaml:
+        * test262/expectations.yaml:
+
+        * test262/test/intl402/DateTimeFormat/prototype/formatRange/date-is-infinity-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRange/date-is-nan-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRange/date-undefined-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRange/date-x-greater-than-y-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRange/this-is-not-object-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRangeToParts/date-is-infinity-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRangeToParts/date-is-nan-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRangeToParts/date-undefined-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRangeToParts/date-x-greater-than-y-throws.js:
+        * test262/test/intl402/DateTimeFormat/prototype/formatRangeToParts/this-is-not-object-throws.js:
+        These files have invalid YAML comments. Will also submit corrections back to Test262.
+
+2019-05-10  Keith Miller  <keith_miller@apple.com>
+
+        Update test262 tests.
+
+        Rubber-stamped by Yusuke Suzuki.
+
+        * test262/*: mega-patch too many things to list individually.
+
+2019-05-09  Keith Miller  <keith_miller@apple.com>
+
+        Unreview, fix test to have a try-catch.
+
+        * stress/many-nested-functions-parser-stack-overflow.js:
+        (catch):
+
+2019-05-09  Keith Miller  <keith_miller@apple.com>
+
+        parseStatementListItem needs a stack overflow check
+        https://bugs.webkit.org/show_bug.cgi?id=197749
+
+        Reviewed by Saam Barati.
+
+        * stress/many-nested-functions-parser-stack-overflow.js: Added.
+
 2019-05-08  Saam barati  <sbarati@apple.com>
 
         AccessGenerationState::emitExplicitExceptionHandler can clobber an in use register

@@ -727,6 +727,9 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [_singleTapGestureRecognizer setDelegate:self];
     [_singleTapGestureRecognizer setGestureIdentifiedTarget:self action:@selector(_singleTapIdentified:)];
     [_singleTapGestureRecognizer setResetTarget:self action:@selector(_singleTapDidReset:)];
+#if ENABLE(POINTER_EVENTS)
+    [_singleTapGestureRecognizer setSupportingWebTouchEventsGestureRecognizer:_touchEventGestureRecognizer.get()];
+#endif
     [self addGestureRecognizer:_singleTapGestureRecognizer.get()];
 
     _nonBlockingDoubleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_nonBlockingDoubleTapRecognized:)]);
@@ -738,7 +741,6 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     _doubleTapGestureRecognizerForDoubleClick = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognizedForDoubleClick:)]);
     [_doubleTapGestureRecognizerForDoubleClick setNumberOfTapsRequired:2];
     [_doubleTapGestureRecognizerForDoubleClick setDelegate:self];
-    [_doubleTapGestureRecognizerForDoubleClick setEnabled:YES];
     [self addGestureRecognizer:_doubleTapGestureRecognizerForDoubleClick.get()];
 
     [self _createAndConfigureDoubleTapGestureRecognizer];
@@ -842,6 +844,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
     _candidateViewNeedsUpdate = NO;
+    _seenHardwareKeyDownInNonEditableElement = NO;
 #endif
 
     if (_interactionViewsContainerView) {
@@ -864,6 +867,9 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [_singleTapGestureRecognizer setDelegate:nil];
     [_singleTapGestureRecognizer setGestureIdentifiedTarget:nil action:nil];
     [_singleTapGestureRecognizer setResetTarget:nil action:nil];
+#if ENABLE(POINTER_EVENTS)
+    [_singleTapGestureRecognizer setSupportingWebTouchEventsGestureRecognizer:nil];
+#endif
     [self removeGestureRecognizer:_singleTapGestureRecognizer.get()];
 
     [_highlightLongPressGestureRecognizer setDelegate:nil];
@@ -1634,6 +1640,11 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     if (_focusedElementInformation.inputMode == WebCore::InputMode::None && !GSEventIsHardwareKeyboardAttached())
         return NO;
 
+    return [self _shouldShowAutomaticKeyboardUIIgnoringInputMode];
+}
+
+- (BOOL)_shouldShowAutomaticKeyboardUIIgnoringInputMode
+{
     switch (_focusedElementInformation.elementType) {
     case WebKit::InputType::None:
     case WebKit::InputType::Drawing:
@@ -1664,12 +1675,12 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (BOOL)_requiresKeyboardWhenFirstResponder
 {
-#if USE(UIKIT_KEYBOARD_ADDITIONS)
-    return YES;
-#else
     // FIXME: We should add the logic to handle keyboard visibility during focus redirects.
-    return [self shouldShowAutomaticKeyboardUI];
+    return [self _shouldShowAutomaticKeyboardUIIgnoringInputMode]
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+        || _seenHardwareKeyDownInNonEditableElement
 #endif
+        ;
 }
 
 - (BOOL)_requiresKeyboardResetOnReload
@@ -2312,6 +2323,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
     cancelPotentialTapIfNecessary(self);
+#if ENABLE(POINTER_EVENTS)
+    if (auto* singleTapTouchIdentifier = [_singleTapGestureRecognizer lastActiveTouchIdentifier])
+        _page->touchWithIdentifierWasRemoved([singleTapTouchIdentifier unsignedIntValue]);
+#endif
 }
 
 - (void)_doubleTapDidFail:(UITapGestureRecognizer *)gestureRecognizer
@@ -2375,7 +2390,12 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
     RELEASE_LOG(ViewGestures, "Single tap recognized - commit potential tap (%p)", self);
 
-    _page->commitPotentialTap(WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastTouchStart);
+    WebCore::PointerID pointerId = WebCore::mousePointerID;
+#if ENABLE(POINTER_EVENTS)
+    if (auto* singleTapTouchIdentifier = [_singleTapGestureRecognizer lastActiveTouchIdentifier])
+        pointerId = [singleTapTouchIdentifier unsignedIntValue];
+#endif
+    _page->commitPotentialTap(WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastTouchStart, pointerId);
 
     if (!_isExpectingFastSingleTapCommit)
         [self _finishInteraction];
@@ -3761,6 +3781,13 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     [self _invokePendingAutocorrectionContextHandler:[WKAutocorrectionContext autocorrectionContextWithWebContext:context]];
 }
 
+- (void)_didStartProvisionalLoadForMainFrame
+{
+    // Reset the double tap gesture recognizer to prevent any double click that is in the process of being recognized.
+    [_doubleTapGestureRecognizerForDoubleClick setEnabled:NO];
+    [_doubleTapGestureRecognizerForDoubleClick setEnabled:YES];
+}
+
 #if !USE(UIKIT_KEYBOARD_ADDITIONS)
 - (NSArray *)keyCommands
 {
@@ -3787,12 +3814,9 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler
 {
-    auto completionHandlerCopy = Block_copy(completionHandler);
-    RetainPtr<WKContentView> view = self;
-    _page->setInitialFocus(selectingForward, false, WebKit::WebKeyboardEvent(), [view, completionHandlerCopy](WebKit::CallbackBase::Error) {
-        BOOL didBecomeFirstResponder = view->_focusedElementInformation.elementType != WebKit::InputType::None && [view becomeFirstResponder];
-        completionHandlerCopy(didBecomeFirstResponder);
-        Block_release(completionHandlerCopy);
+    constexpr bool isKeyboardEventValid = false;
+    _page->setInitialFocus(selectingForward, isKeyboardEventValid, { }, [protectedSelf = retainPtr(self), completionHandler = makeBlockPtr(completionHandler)] (auto) {
+        completionHandler([protectedSelf becomeFirstResponder]);
     });
 }
 
@@ -4179,7 +4203,12 @@ static WebKit::WritingDirection coreWritingDirection(NSWritingDirection directio
 // Inserts the given string, replacing any selected or marked text.
 - (void)insertText:(NSString *)aStringValue
 {
-    _page->insertTextAsync(aStringValue, WebKit::EditingRange(), { });
+    auto* keyboard = [UIKeyboardImpl sharedInstance];
+
+    WebKit::InsertTextOptions options;
+    options.processingUserGesture = [keyboard respondsToSelector:@selector(isCallingInputDelegate)] && keyboard.isCallingInputDelegate;
+
+    _page->insertTextAsync(aStringValue, WebKit::EditingRange(), WTFMove(options));
 }
 
 - (BOOL)hasText
@@ -4371,7 +4400,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         [_traits setKeyboardType:UIKeyboardTypeEmailAddress];
         break;
     case WebCore::InputMode::Numeric:
-        [_traits setKeyboardType:UIKeyboardTypeNumbersAndPunctuation];
+        [_traits setKeyboardType:UIKeyboardTypeNumberPad];
         break;
     case WebCore::InputMode::Decimal:
         [_traits setKeyboardType:UIKeyboardTypeDecimalPad];
@@ -4480,6 +4509,10 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
                 return;
         }
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
+        if (!_seenHardwareKeyDownInNonEditableElement) {
+            _seenHardwareKeyDownInNonEditableElement = YES;
+            [self reloadInputViews];
+        }
         [super _handleKeyUIEvent:event];
 #else
         [self handleKeyEvent:event];
@@ -4671,6 +4704,9 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)executeEditCommandWithCallback:(NSString *)commandName
 {
+    // FIXME: Editing commands are not considered by WebKit as user initiated even if they are the result
+    // of keydown or keyup. We need to query the keyboard to determine if this was called from the keyboard
+    // or not to know whether to tell WebKit to treat this command as user initiated or not.
     [self beginSelectionChange];
     RetainPtr<WKContentView> view = self;
     _page->executeEditCommand(commandName, { }, [view](WebKit::CallbackBase::Error) {
@@ -5210,8 +5246,10 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
 
 - (void)_hardwareKeyboardAvailabilityChanged
 {
-    if (hasFocusedElement(_focusedElementInformation) && _focusedElementInformation.inputMode == WebCore::InputMode::None)
-        [self reloadInputViews];
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    _seenHardwareKeyDownInNonEditableElement = NO;
+#endif
+    [self reloadInputViews];
 }
 
 - (void)_didUpdateInputMode:(WebCore::InputMode)mode
@@ -7206,8 +7244,12 @@ static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags
 
 #if HAVE(LINK_PREVIEW)
     if ([userInterfaceItem isEqualToString:@"linkPreviewPopoverContents"]) {
+#if USE(LONG_PRESS_FOR_LINK_PREVIEW)
+        return @{ userInterfaceItem: @{ @"pageURL": WTF::userVisibleString(_positionInformation.url) } };
+#else
         NSString *url = [_previewItemController previewData][UIPreviewDataLink];
         return @{ userInterfaceItem: @{ @"pageURL": url } };
+#endif
     }
 #endif
 
@@ -7224,28 +7266,37 @@ static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags
 
 #if HAVE(LINK_PREVIEW)
 
-@implementation WKContentView (WKInteractionPreview)
+static NSString *previewIdentifierForElementAction(_WKElementAction *action)
+{
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+    switch (action.type) {
+    case _WKElementActionTypeOpen:
+        return WKPreviewActionItemIdentifierOpen;
+    case _WKElementActionTypeCopy:
+        return WKPreviewActionItemIdentifierCopy;
+#if !defined(TARGET_OS_IOS) || TARGET_OS_IOS
+    case _WKElementActionTypeAddToReadingList:
+        return WKPreviewActionItemIdentifierAddToReadingList;
+#endif
+    case _WKElementActionTypeShare:
+        return WKPreviewActionItemIdentifierShare;
+    default:
+        return nil;
+    }
+    ALLOW_DEPRECATED_DECLARATIONS_END
+    ASSERT_NOT_REACHED();
+    return nil;
+}
 
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKInteractionPreviewAdditions.mm>)
+#if USE(LONG_PRESS_FOR_LINK_PREVIEW)
 #include <WebKitAdditions/WKInteractionPreviewAdditions.mm>
 #else
-static BOOL shouldUsePreviewForLongPress()
-{
-    return NO;
-}
 
-- (void)_registerPreviewLongPress
-{
-}
-
-- (void)_unregisterPreviewLongPress
-{
-}
-#endif
+@implementation WKContentView (WKInteractionPreview)
 
 - (BOOL)shouldUsePreviewForLongPress
 {
-    return shouldUsePreviewForLongPress();
+    return NO;
 }
 
 - (void)_registerPreview
@@ -7253,27 +7304,19 @@ static BOOL shouldUsePreviewForLongPress()
     if (!_webView.allowsLinkPreview)
         return;
 
-    if (shouldUsePreviewForLongPress())
-        [self _registerPreviewLongPress];
-    else {
-        _previewItemController = adoptNS([[UIPreviewItemController alloc] initWithView:self]);
-        [_previewItemController setDelegate:self];
-        _previewGestureRecognizer = _previewItemController.get().presentationGestureRecognizer;
-        if ([_previewItemController respondsToSelector:@selector(presentationSecondaryGestureRecognizer)])
-            _previewSecondaryGestureRecognizer = _previewItemController.get().presentationSecondaryGestureRecognizer;
-    }
+    _previewItemController = adoptNS([[UIPreviewItemController alloc] initWithView:self]);
+    [_previewItemController setDelegate:self];
+    _previewGestureRecognizer = _previewItemController.get().presentationGestureRecognizer;
+    if ([_previewItemController respondsToSelector:@selector(presentationSecondaryGestureRecognizer)])
+        _previewSecondaryGestureRecognizer = _previewItemController.get().presentationSecondaryGestureRecognizer;
 }
 
 - (void)_unregisterPreview
 {
-    if (shouldUsePreviewForLongPress())
-        [self _unregisterPreviewLongPress];
-    else {
-        [_previewItemController setDelegate:nil];
-        _previewGestureRecognizer = nil;
-        _previewSecondaryGestureRecognizer = nil;
-        _previewItemController = nil;
-    }
+    [_previewItemController setDelegate:nil];
+    _previewGestureRecognizer = nil;
+    _previewSecondaryGestureRecognizer = nil;
+    _previewItemController = nil;
 }
 
 - (BOOL)_interactionShouldBeginFromPreviewItemController:(UIPreviewItemController *)controller forPosition:(CGPoint)position
@@ -7292,10 +7335,12 @@ static BOOL shouldUsePreviewForLongPress()
     const URL& linkURL = _positionInformation.url;
     if (_positionInformation.isLink) {
         id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if ([uiDelegate respondsToSelector:@selector(webView:shouldPreviewElement:)]) {
             auto previewElementInfo = adoptNS([[WKPreviewElementInfo alloc] _initWithLinkURL:(NSURL *)linkURL]);
             return [uiDelegate webView:_webView shouldPreviewElement:previewElementInfo.get()];
         }
+        ALLOW_DEPRECATED_DECLARATIONS_END
         if (linkURL.isEmpty())
             return NO;
         if (linkURL.protocolIsInHTTPFamily())
@@ -7407,26 +7452,6 @@ static BOOL shouldUsePreviewForLongPress()
     return _positionInformation.bounds;
 }
 
-static NSString *previewIdentifierForElementAction(_WKElementAction *action)
-{
-    switch (action.type) {
-    case _WKElementActionTypeOpen:
-        return WKPreviewActionItemIdentifierOpen;
-    case _WKElementActionTypeCopy:
-        return WKPreviewActionItemIdentifierCopy;
-#if !defined(TARGET_OS_IOS) || TARGET_OS_IOS
-    case _WKElementActionTypeAddToReadingList:
-        return WKPreviewActionItemIdentifierAddToReadingList;
-#endif
-    case _WKElementActionTypeShare:
-        return WKPreviewActionItemIdentifierShare;
-    default:
-        return nil;
-    }
-    ASSERT_NOT_REACHED();
-    return nil;
-}
-
 - (UIViewController *)_presentedViewControllerForPreviewItemController:(UIPreviewItemController *)controller
 {
     id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
@@ -7462,9 +7487,11 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
                 }];
                 [previewActions addObject:previewAction];
             }
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             auto previewElementInfo = adoptNS([[WKPreviewElementInfo alloc] _initWithLinkURL:targetURL]);
             if (UIViewController *controller = [uiDelegate webView:_webView previewingViewControllerForElement:previewElementInfo.get() defaultActions:previewActions.get()])
                 return controller;
+            ALLOW_DEPRECATED_DECLARATIONS_END
         }
 
         if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:defaultActions:elementInfo:)])
@@ -7523,7 +7550,9 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
     }
 
     if ([uiDelegate respondsToSelector:@selector(webView:commitPreviewingViewController:)]) {
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         [uiDelegate webView:_webView commitPreviewingViewController:viewController];
+        ALLOW_DEPRECATED_DECLARATIONS_END
         return;
     }
 
@@ -7596,6 +7625,8 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 }
 
 @end
+
+#endif // USE(LONG_PRESS_FOR_LINK_PREVIEW)
 
 #endif // HAVE(LINK_PREVIEW)
 

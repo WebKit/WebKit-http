@@ -1071,7 +1071,7 @@ bool AccessibilityObject::press()
     if (document) {
         HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
         HitTestResult hitTestResult(clickPoint());
-        document->renderView()->hitTest(request, hitTestResult);
+        document->hitTest(request, hitTestResult);
         if (auto* innerNode = hitTestResult.innerNode()) {
             if (auto* shadowHost = innerNode->shadowHost())
                 hitTestElement = shadowHost;
@@ -3274,7 +3274,7 @@ TextIteratorBehavior AccessibilityObject::textIteratorBehaviorForTextRange() con
 {
     TextIteratorBehavior behavior = TextIteratorIgnoresStyleVisibility;
     
-#if PLATFORM(GTK)
+#if USE(ATK)
     // We need to emit replaced elements for GTK, and present
     // them with the 'object replacement character' (0xFFFC).
     behavior = static_cast<TextIteratorBehavior>(behavior | TextIteratorEmitsObjectReplacementCharacters);

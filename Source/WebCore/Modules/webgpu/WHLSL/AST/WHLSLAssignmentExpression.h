@@ -44,6 +44,9 @@ public:
         , m_left(WTFMove(left))
         , m_right(WTFMove(right))
     {
+#if CPU(ADDRESS32)
+        UNUSED_PARAM(m_pad);
+#endif
     }
 
     virtual ~AssignmentExpression() = default;
@@ -55,10 +58,14 @@ public:
 
     Expression& left() { return m_left; }
     Expression& right() { return m_right; }
+    UniqueRef<Expression> takeRight() { return WTFMove(m_right); }
 
 private:
     UniqueRef<Expression> m_left;
     UniqueRef<Expression> m_right;
+#if CPU(ADDRESS32)
+    char m_pad[1];
+#endif
 };
 
 } // namespace AST

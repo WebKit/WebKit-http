@@ -87,6 +87,8 @@ struct Highlight {
     HighlightType type {HighlightType::Node};
     Vector<FloatQuad> quads;
     bool usePageCoordinates {true};
+
+    using Bounds = FloatRect;
 };
 
 class InspectorOverlay {
@@ -113,6 +115,7 @@ public:
     void showPaintRect(const FloatRect&);
 
     void setShowRulers(bool);
+    void setShowRulersDuringElementSelection(bool enabled) { m_showRulersDuringElementSelection = enabled; }
 
     Node* highlightedNode() const;
 
@@ -125,13 +128,13 @@ private:
 
     bool shouldShowOverlay() const;
 
-    void drawNodeHighlight(GraphicsContext&, Node&);
-    void drawQuadHighlight(GraphicsContext&, const FloatQuad&);
+    Highlight::Bounds drawNodeHighlight(GraphicsContext&, Node&);
+    Highlight::Bounds drawQuadHighlight(GraphicsContext&, const FloatQuad&);
     void drawPaintRects(GraphicsContext&, const Deque<TimeRectPair>&);
-    void drawBounds(GraphicsContext&, const FloatRect&);
-    void drawRulers(GraphicsContext&);
+    void drawBounds(GraphicsContext&, const Highlight::Bounds&);
+    void drawRulers(GraphicsContext&, const Highlight::Bounds&);
 
-    void drawElementTitle(GraphicsContext&, Node&, const FloatRect& bounds);
+    void drawElementTitle(GraphicsContext&, Node&, const Highlight::Bounds&);
 
     void updatePaintRectsTimerFired();
 
@@ -148,9 +151,10 @@ private:
     Deque<TimeRectPair> m_paintRects;
     Timer m_paintRectUpdateTimer;
 
-    bool m_indicating {false};
-    bool m_showPaintRects {false};
-    bool m_showRulers {false};
+    bool m_indicating { false };
+    bool m_showPaintRects { false };
+    bool m_showRulers { false };
+    bool m_showRulersDuringElementSelection { false };
 };
 
 } // namespace WebCore

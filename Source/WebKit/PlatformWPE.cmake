@@ -265,6 +265,8 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/WebProcess/unix"
     "${WEBKIT_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT_DIR}/WebProcess/WebPage/CoordinatedGraphics"
+    "${WEBKIT_DIR}/WebProcess/WebPage/atk"
+    "${WEBKIT_DIR}/WebProcess/WebPage/libwpe"
     "${WEBKIT_DIR}/WebProcess/WebPage/wpe"
     "${WTF_DIR}/wtf/gtk/"
     "${WTF_DIR}/wtf/gobject"
@@ -272,6 +274,8 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
+    ${ATK_INCLUDE_DIRS}
+    ${ATK_BRIDGE_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${FREETYPE_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
@@ -283,16 +287,17 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_LIBRARIES
-    PRIVATE
-        ${CAIRO_LIBRARIES}
-        ${FREETYPE_LIBRARIES}
-        ${GLIB_LIBRARIES}
-        ${GLIB_GMODULE_LIBRARIES}
-        ${GSTREAMER_LIBRARIES}
-        ${HARFBUZZ_LIBRARIES}
-        ${LIBSECCOMP_LIBRARIES}
-        ${LIBSOUP_LIBRARIES}
-        ${WPE_LIBRARIES}
+    ${ATK_LIBRARIES}
+    ${ATK_BRIDGE_LIBRARIES}
+    ${CAIRO_LIBRARIES}
+    ${FREETYPE_LIBRARIES}
+    ${GLIB_LIBRARIES}
+    ${GLIB_GMODULE_LIBRARIES}
+    ${GSTREAMER_LIBRARIES}
+    ${HARFBUZZ_LIBRARIES}
+    ${LIBSECCOMP_LIBRARIES}
+    ${LIBSOUP_LIBRARIES}
+    ${WPE_LIBRARIES}
 )
 
 WEBKIT_BUILD_INSPECTOR_GRESOURCES(${DERIVED_SOURCES_WEBINSPECTORUI_DIR})
@@ -391,7 +396,7 @@ if (ENABLE_WPE_QT_API)
     set_target_properties(qtwpe PROPERTIES
         OUTPUT_NAME qtwpe
         AUTOMOC ON
-        CXX_STANDARD 14
+        CXX_STANDARD 17
     )
     target_compile_definitions(qtwpe PUBLIC QT_NO_KEYWORDS=1)
     target_link_libraries(qtwpe ${qtwpe_LIBRARIES})

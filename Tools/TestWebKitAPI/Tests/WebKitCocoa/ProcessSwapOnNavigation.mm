@@ -3510,8 +3510,8 @@ TEST(ProcessSwap, NumberOfCachedProcesses)
     TestWebKitAPI::Util::run(&done);
     done = false;
 
-    int timeout = 10;
-    while ([processPool _webProcessCount] > (maxSuspendedPageCount + 2) && timeout > 0) {
+    int timeout = 100;
+    while (([processPool _webProcessCount] > (maxSuspendedPageCount + 2) &&  [processPool _webProcessCountIgnoringPrewarmedAndCached] > (maxSuspendedPageCount + 1)) && timeout > 0) {
         TestWebKitAPI::Util::sleep(0.1);
         --timeout;
     }
@@ -3526,7 +3526,7 @@ TEST(ProcessSwap, NumberOfCachedProcesses)
     }];
     TestWebKitAPI::Util::run(&readyToContinue);
 
-    timeout = 10;
+    timeout = 100;
     while ([processPool _webProcessCount] > 1 && timeout > 0) {
         TestWebKitAPI::Util::sleep(0.1);
         --timeout;
@@ -4257,7 +4257,7 @@ TEST(ProcessSwap, APIControlledProcessSwapping)
     navigationDelegate->decidePolicyForNavigationAction = ^(WKNavigationAction *, void (^decisionHandler)(WKNavigationActionPolicy)) {
         decisionHandler(_WKNavigationActionPolicyAllowInNewProcess);
     };
-    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webit.org/3"]]];
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/3"]]];
     TestWebKitAPI::Util::run(&done);
     done = false;
     auto pid3 = [webView _webProcessIdentifier];
@@ -4265,6 +4265,56 @@ TEST(ProcessSwap, APIControlledProcessSwapping)
     EXPECT_EQ(3, numberOfDecidePolicyCalls);
     EXPECT_EQ(2u, seenPIDs.size());
     EXPECT_NE(pid1, pid3);
+}
+
+enum class WithDelay : bool { No, Yes };
+static void runAPIControlledProcessSwappingThenBackTest(WithDelay withDelay)
+{
+    auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    auto handler = adoptNS([[PSONScheme alloc] initWithBytes:"Hello World!"]);
+    [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
+    
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
+    auto navigationDelegate = adoptNS([[PSONNavigationDelegate alloc] init]);
+    [webView setNavigationDelegate:navigationDelegate.get()];
+
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org"]]];
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+    
+    auto pid1 = [webView _webProcessIdentifier];
+    
+    navigationDelegate->decidePolicyForNavigationAction = ^(WKNavigationAction *, void (^decisionHandler)(WKNavigationActionPolicy)) {
+        decisionHandler(_WKNavigationActionPolicyAllowInNewProcess);
+    };
+    
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com"]]];
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+    
+    auto pid2 = [webView _webProcessIdentifier];
+    EXPECT_NE(pid1, pid2);
+    
+    // Give time to the suspended WebPage to close.
+    if (withDelay == WithDelay::Yes)
+        TestWebKitAPI::Util::sleep(0.1);
+    
+    navigationDelegate->decidePolicyForNavigationAction = nil;
+    [webView goBack];
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+    
+    EXPECT_EQ(pid1, [webView _webProcessIdentifier]);
+}
+
+TEST(ProcessSwap, APIControlledProcessSwappingThenBackWithDelay)
+{
+    runAPIControlledProcessSwappingThenBackTest(WithDelay::Yes);
+}
+
+TEST(ProcessSwap, APIControlledProcessSwappingThenBackWithoutDelay)
+{
+    runAPIControlledProcessSwappingThenBackTest(WithDelay::No);
 }
 
 static const char* navigateToCrossSiteThenBackFromJSBytes = R"PSONRESOURCE(
@@ -4574,14 +4624,22 @@ TEST(ProcessSwap, OpenerLinkAfterAPIControlledProcessSwappingOfOpener)
 
     auto pid2 = [webView _webProcessIdentifier];
     EXPECT_NE(pid1, pid2);
-
-    // Auxiliary window's opener should no longer have an opener.
-    [createdWebView evaluateJavaScript:@"window.opener ? 'true' : 'false'" completionHandler: [&] (id hasOpener, NSError *error) {
-        EXPECT_WK_STREQ(@"false", hasOpener);
-        done = true;
-    }];
-    TestWebKitAPI::Util::run(&done);
-    done = false;
+    
+    bool hasOpener = true;
+    int timeout = 50;
+    do {
+        if (timeout != 50)
+            TestWebKitAPI::Util::sleep(0.1);
+        
+        // Auxiliary window's opener should no longer have an opener.
+        [createdWebView evaluateJavaScript:@"window.opener ? 'true' : 'false'" completionHandler: [&] (id hasOpenerString, NSError *error) {
+            hasOpener = [hasOpenerString isEqualToString:@"true"];
+            done = true;
+        }];
+        TestWebKitAPI::Util::run(&done);
+        done = false;
+    } while (hasOpener && (--timeout));
+    EXPECT_FALSE(hasOpener);
 
     [createdWebView evaluateJavaScript:@"savedOpener.closed ? 'true' : 'false'" completionHandler: [&] (id savedOpenerIsClosed, NSError *error) {
         EXPECT_WK_STREQ(@"true", savedOpenerIsClosed);
@@ -4991,7 +5049,7 @@ TEST(ProcessSwap, EphemeralWebStorage)
     TestWebKitAPI::Util::run(&done);
 
     done = false;
-    [webView evaluateJavaScript:@"window.sessionStorage.setItem('b,'a')" completionHandler:^(id, NSError *) {
+    [webView evaluateJavaScript:@"window.sessionStorage.setItem('b','a')" completionHandler:^(id, NSError *) {
         done = true;
     }];
     TestWebKitAPI::Util::run(&done);
@@ -5007,6 +5065,13 @@ TEST(ProcessSwap, EphemeralWebStorage)
     done = false;
     [webView evaluateJavaScript:@"window.localStorage.getItem('a')" completionHandler:^(id result, NSError *) {
         EXPECT_TRUE([@"b" isEqualToString:result]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    done = false;
+    [webView evaluateJavaScript:@"window.sessionStorage.getItem('b')" completionHandler:^(id result, NSError *) {
+        EXPECT_TRUE([@"a" isEqualToString:result]);
         done = true;
     }];
     TestWebKitAPI::Util::run(&done);

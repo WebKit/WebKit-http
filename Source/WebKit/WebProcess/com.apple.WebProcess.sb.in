@@ -40,6 +40,7 @@
 (allow file-read*
     (require-all (file-mode #o0004)
     (require-any (subpath "/Library/Filesystems/NetFSPlugins")
+    (subpath "/Library/Apple/System")
     (subpath "/Library/Preferences/Logging")      ; Logging Rethink
     (subpath "/System")
     (subpath "/private/var/db/dyld")
@@ -52,6 +53,15 @@
     (require-all (file-mode #o0004)
     (subpath "/AppleInternal/Library/Preferences/Logging")
     (system-attribute apple-internal)))
+
+;;; Allow mapping of system frameworks + dylibs
+(allow file-map-executable
+    (subpath "/Library/Apple/System/Library/Frameworks")
+    (subpath "/Library/Apple/System/Library/PrivateFrameworks")
+    (subpath "/System/Library/Frameworks")
+    (subpath "/System/Library/PrivateFrameworks")
+    (subpath "/usr/lib")
+    (literal "/usr/local/lib/sanitizers"))
 
 (allow file-read-metadata
     (literal "/etc")
@@ -201,6 +211,8 @@
     (iokit-property-regex #"Apple(GVAKeyDoesNotExist|IntelMEVABundleName)")
     (iokit-property-regex #"^AAPL,(DisplayPipe|OpenCLdisabled|IOGraphics_LER(|_RegTag_1|_RegTag_0|_Busy_2)|alias-policy|boot-display|display-alias|mux-switch-state|ndrv-dev|primary-display|slot-name)")
     (iokit-property-regex #"^ATY,(cbits|fb_(linebytes|offset|size)|intrev)")
+    (iokit-property "ATY,DeviceName") ;; Needed by Metal compilers
+    (iokit-property "ATY,FamilyName") ;; Ditto
     (iokit-property "AVCSupported")
     (iokit-property "BacklightHandle")
     (iokit-property "BlockSize")
@@ -343,16 +355,19 @@
     (iokit-property "device_type")
     (iokit-property "dpm")
     (iokit-property "errordb") ;; Needed for OpenGL on older hardware
+    (iokit-property "filevault-image") ;; Needed by LaunchServices
     (iokit-property "graphic-options")
     (iokit-property "hda-gfx")
     (iokit-property-regex #"^id(Product|Vendor)")
     (iokit-property "iofb_version")
     (iokit-property "image-encrypted")
+    (iokit-property "image-path") ;; Needed by LaunchServices
     (iokit-property "locationID") ;; Needed for Audio support on older hardware
     (iokit-property "model")
     (iokit-property "mt-device-id")
     (iokit-property "name")
     (iokit-property "nv-stats")
+    (iokit-property "od-server-name") ;; Needed by LaunchServices
     (iokit-property-regex #"^parser-(options|type)")
     (iokit-property-regex #"^pci(-aspm-default|debug)")
     (iokit-property "port-number")
@@ -582,6 +597,9 @@
 ;; Remote Web Inspector
 (allow mach-lookup
        (global-name "com.apple.webinspector"))
+
+(allow mach-lookup
+    (global-name "com.apple.FileCoordination"))
 
 ;; Various services required by AppKit and other frameworks
 (allow mach-lookup
@@ -976,6 +994,11 @@
         (syscall-number SYS_quotactl) ;; <rdar://problem/49945031>
         (syscall-number SYS_stat64_extended) ;; <rdar://problem/50473330>
         (syscall-number SYS_lstat64_extended)
+        (syscall-number SYS_iopolicysys)
+        (syscall-number SYS_workq_open)
+        (syscall-number SYS_getgroups)
+        (syscall-number SYS_fgetattrlist) ;; <rdar://problem/50931110>
+        (syscall-number SYS_kqueue_workloop_ctl) ;; <rdar://problem/50999499>
     )
 )
 

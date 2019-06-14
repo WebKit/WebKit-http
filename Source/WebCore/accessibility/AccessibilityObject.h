@@ -47,7 +47,7 @@
 #include <wtf/RetainPtr.h>
 #endif
 
-#if PLATFORM(GTK)
+#if USE(ATK)
 #include <wtf/glib/GRefPtr.h>
 #endif
 
@@ -1043,7 +1043,7 @@ protected:
 
     AccessibilityObject* radioGroupAncestor() const;
 
-#if PLATFORM(GTK) && HAVE(ACCESSIBILITY)
+#if HAVE(ACCESSIBILITY) && USE(ATK)
     bool allowsTextRanges() const;
     unsigned getLengthForTextRange() const;
 #else
@@ -1055,10 +1055,8 @@ protected:
     RetainPtr<WebAccessibilityObjectWrapper> m_wrapper;
 #elif PLATFORM(WIN)
     COMPtr<AccessibilityObjectWrapper> m_wrapper;
-#elif PLATFORM(GTK)
+#elif USE(ATK)
     GRefPtr<WebKitAccessible> m_wrapper;
-#elif PLATFORM(WPE)
-    RefPtr<AccessibilityObjectWrapper> m_wrapper;
 #endif
 };
 

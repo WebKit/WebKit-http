@@ -44,7 +44,8 @@ enum class VertexFormat : uint8_t {
 
 struct VertexAttribute {
     VertexFormat vertexFormat;
-    unsigned name;
+    unsigned shaderLocation;
+    unsigned metalLocation;
 };
 
 using VertexAttributes = Vector<VertexAttribute>;
@@ -118,7 +119,7 @@ enum class BindingType : uint8_t {
     Sampler,
     Texture,
     StorageBuffer,
-    // FIXME: Add the dynamic types
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198168 Add the dynamic types
 };
 
 struct Binding {

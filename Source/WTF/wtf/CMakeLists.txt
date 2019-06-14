@@ -150,6 +150,7 @@ set(WTF_PUBLIC_HEADERS
     OptionSet.h
     Optional.h
     OrderMaker.h
+    Packed.h
     PackedIntVector.h
     PageAllocation.h
     PageBlock.h
@@ -457,7 +458,6 @@ set(WTF_SOURCES
 )
 
 set(WTF_INCLUDE_DIRECTORIES
-    "${BMALLOC_DIR}"
     # FIXME: https://bugs.webkit.org/show_bug.cgi?id=196734#c1
     "${CMAKE_BINARY_DIR}"
     "${DERIVED_SOURCES_DIR}"
@@ -486,7 +486,7 @@ set(WTF_LIBRARIES
 )
 
 if (NOT USE_SYSTEM_MALLOC)
-    list(APPEND WTF_LIBRARIES bmalloc)
+    list(APPEND WTF_LIBRARIES WebKit::bmalloc)
 endif ()
 
 list(APPEND WTF_SOURCES
@@ -494,13 +494,11 @@ list(APPEND WTF_SOURCES
 
     unicode/icu/CollatorICU.cpp
 )
-set(WTF_SYSTEM_INCLUDE_DIRECTORIES
-    ${ICU_INCLUDE_DIRS}
-)
+
 list(APPEND WTF_LIBRARIES
-    ${ICU_DATA_LIBRARIES}
-    ${ICU_I18N_LIBRARIES}
-    ${ICU_LIBRARIES}
+    ICU::data
+    ICU::i18n
+    ICU::uc
 )
 
 WEBKIT_FRAMEWORK_DECLARE(WTF)

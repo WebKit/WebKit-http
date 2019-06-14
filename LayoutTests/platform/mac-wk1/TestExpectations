@@ -650,10 +650,8 @@ webkit.org/b/187711 [ Debug ] svg/custom/linking-uri-01-b.svg [ Pass Failure ]
 [ Mojave+ ] displaylists/replay-skip-clipped-rect.html [ Failure ]
 
 webkit.org/b/188357 legacy-animation-engine/compositing/backing/transform-transition-from-outside-view.html [ Pass Failure ]
-webkit.org/b/188357 legacy-animation-engine/compositing/geometry/limit-layer-bounds-opacity-transition.html [ Pass Failure ]
-webkit.org/b/188357 legacy-animation-engine/compositing/layer-creation/animation-overlap-with-children.html [ Pass Failure ]
 
-webkit.org/b/190648 compositing/layer-creation/fixed-overlap-extent.html [ Pass Failure ]
+webkit.org/b/184611 compositing/layer-creation/fixed-overlap-extent.html [ Pass Failure ]
 
 # <rdar://problem/42904780>
 [ Mojave+ Release ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html [ Failure ]
@@ -671,8 +669,6 @@ webkit.org/b/189756 [ Mojave+ ] compositing/filters/opacity-change-on-filtered-p
 webkit.org/b/189723 http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Pass Failure ]
 
 webkit.org/b/190350 [ Mojave ] storage/indexeddb/database-odd-names.html [ Failure ]
-
-webkit.org/b/188421 [ Sierra+ ] fast/repaint/canvas-object-fit.html [ Pass Failure ]
 
 webkit.org/b/190832 [ Debug ] fast/forms/state-restore-to-non-edited-controls.html [ Pass Failure ]
 
@@ -697,11 +693,11 @@ webkit.org/b/195098 pointerevents/mouse/over-enter-out-leave.html [ Failure ]
 webkit.org/b/195098 pointerevents/mouse/pointer-capture.html [ Failure ]
 webkit.org/b/195098 pointerevents/mouse/pointer-events-before-mouse-events.html [ Failure ]
 
-webkit.org/b/196448 [ Debug ] inspector/audit/basic.html [ Pass Timeout ]
-
 webkit.org/b/196502 media/video-background-tab-playback.html [ Pass Failure ]
 
 webkit.org/b/196915 [ Debug ] inspector/timeline/timeline-recording.html [ Pass Failure ]
 
 webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource.html [ Skip ]
 webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource-iframe.html [ Skip ]
+
+webkit.org/b/198177 pointerevents/mouse/compatibility-mouse-events-prevention-mouse-pressed.html [ Skip ]

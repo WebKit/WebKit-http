@@ -1705,11 +1705,13 @@ sub NeedsRuntimeCheck
     }
 
     return $context->extendedAttributes->{EnabledAtRuntime}
+        || $context->extendedAttributes->{EnabledForContext}
         || $context->extendedAttributes->{EnabledForWorld}
         || $context->extendedAttributes->{EnabledBySetting}
         || $context->extendedAttributes->{DisabledByQuirk}
         || $context->extendedAttributes->{SecureContext}
-        || $context->extendedAttributes->{ContextHasServiceWorkerScheme};
+        || $context->extendedAttributes->{ContextHasServiceWorkerScheme}
+        || $context->extendedAttributes->{CustomEnabled};
 }
 
 # https://heycam.github.io/webidl/#es-operations
@@ -3744,6 +3746,13 @@ sub GenerateRuntimeEnableConditionalString
         }
     }
 
+    if ($context->extendedAttributes->{CustomEnabled}) {
+        assert("CustomEnabled can only be used by interfaces only exposed to the Window") if $interface->extendedAttributes->{Exposed} && $interface->extendedAttributes->{Exposed} ne "Window";
+
+        my $className = "JS" . $interface->type->name;
+        push(@conjuncts, "${className}" . $codeGenerator->WK_ucfirst($context->name) . "IsEnabled()");
+    }
+
     if ($context->extendedAttributes->{DisabledByQuirk}) {
         assert("Must specify value for DisabledByQuirk.") if $context->extendedAttributes->{DisabledByQuirk} eq "VALUE_IS_MISSING";
 
@@ -3786,6 +3795,15 @@ sub GenerateRuntimeEnableConditionalString
                 push(@conjuncts, "RuntimeEnabledFeatures::sharedFeatures()." . ToMethodName($flag) . "Enabled()");
             }
         }
+    }
+
+    if ($context->extendedAttributes->{EnabledForContext}) {
+        assert("Must not specify value for EnabledForContext.") unless $context->extendedAttributes->{EnabledForContext} eq "VALUE_IS_MISSING";
+        assert("EnabledForContext must be an interface or constructor attribute.") unless $codeGenerator->IsConstructorType($context->type);
+
+        my $contextRef = "*jsCast<JSDOMGlobalObject*>(" . $globalObjectPtr . ")->scriptExecutionContext()";
+        my $name = $context->name;
+        push(@conjuncts,  "${name}::enabledForContext(" . $contextRef . ")");
     }
 
     my $result = join(" && ", @conjuncts);
