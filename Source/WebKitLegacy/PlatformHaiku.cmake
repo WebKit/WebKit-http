@@ -14,7 +14,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html/forms"
     "${WEBCORE_DIR}/inspector"
-    "${WEBCORE_DIR}/loader"
     "${WEBCORE_DIR}/loader/appcache"
     "${WEBCORE_DIR}/loader/archive"
     "${WEBCORE_DIR}/loader/cache"

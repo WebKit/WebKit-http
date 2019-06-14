@@ -27,8 +27,8 @@
 #include "BackForwardList.h"
 
 #include "Frame.h"
-#include <FrameLoader.h>
-#include <FrameLoaderClient.h>
+#include "WebCore/FrameLoader.h"
+#include "WebCore/FrameLoaderClient.h"
 #include <HistoryItem.h>
 #include <PageCache.h>
 #include <SerializedScriptValue.h>

@@ -33,13 +33,13 @@
 
 #include "DOMWrapperWorld.h"
 #include <Bitmap.h>
-#include <DocumentLoader.h>
+#include "WebCore/DocumentLoader.h"
 #include "Document.h"
 #include "DOMWindow.h"
 #include <Editor.h>
 #include "FocusController.h"
 #include "Frame.h"
-#include <FrameLoader.h>
+#include "WebCore/FrameLoader.h"
 #include "FrameView.h"
 #include "NotImplemented.h"
 #include "Page.h"

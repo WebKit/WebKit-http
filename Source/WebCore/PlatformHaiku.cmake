@@ -457,10 +457,12 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 )
 
 set(WebCore_FORWARDING_HEADERS_FILES
-	platform/graphics/transforms/TransformationMatrix.h
-
-    platform/PlatformExportMacros.h
     fileapi/Blob.h
+
+	loader/FrameLoader.h
+
+	platform/graphics/transforms/TransformationMatrix.h
+    platform/PlatformExportMacros.h
 )
 
 WEBKIT_CREATE_FORWARDING_HEADERS(WebCore DIRECTORIES ${WebCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebCore_FORWARDING_HEADERS_FILES})
